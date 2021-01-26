@@ -208,7 +208,7 @@ else:
 import nonexistent
 None + ''
 [out]
-main:1: error: Cannot find implementation or library stub for module named 'nonexistent'
+main:1: error: Cannot find implementation or library stub for module named "nonexistent"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:2: error: Unsupported left operand type for + ("None")
 
@@ -220,7 +220,7 @@ m.x = ''
 [file m.py]
 x = 1
 [out]
-main:1: error: Cannot find implementation or library stub for module named 'nonexistent'
+main:1: error: Cannot find implementation or library stub for module named "nonexistent"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:2: error: Unsupported left operand type for + ("None")
 main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
@@ -233,7 +233,7 @@ m.x = ''
 [file m.py]
 x = 1
 [out]
-main:1: error: Cannot find implementation or library stub for module named 'nonexistent'
+main:1: error: Cannot find implementation or library stub for module named "nonexistent"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:2: error: Unsupported left operand type for + ("None")
 main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
@@ -242,16 +242,16 @@ main:4: error: Incompatible types in assignment (expression has type "str", vari
 import nonexistent, another
 None + ''
 [out]
-main:1: error: Cannot find implementation or library stub for module named 'nonexistent'
+main:1: error: Cannot find implementation or library stub for module named "nonexistent"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:1: error: Cannot find implementation or library stub for module named 'another'
+main:1: error: Cannot find implementation or library stub for module named "another"
 main:2: error: Unsupported left operand type for + ("None")
 
 [case testTypeCheckWithUnknownModule5]
 import nonexistent as x
 None + ''
 [out]
-main:1: error: Cannot find implementation or library stub for module named 'nonexistent'
+main:1: error: Cannot find implementation or library stub for module named "nonexistent"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:2: error: Unsupported left operand type for + ("None")
 
@@ -259,7 +259,7 @@ main:2: error: Unsupported left operand type for + ("None")
 from nonexistent import x
 None + ''
 [out]
-main:1: error: Cannot find implementation or library stub for module named 'nonexistent'
+main:1: error: Cannot find implementation or library stub for module named "nonexistent"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:2: error: Unsupported left operand type for + ("None")
 
@@ -267,7 +267,7 @@ main:2: error: Unsupported left operand type for + ("None")
 from nonexistent import *
 None + ''
 [out]
-main:1: error: Cannot find implementation or library stub for module named 'nonexistent'
+main:1: error: Cannot find implementation or library stub for module named "nonexistent"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:2: error: Unsupported left operand type for + ("None")
 
@@ -276,7 +276,7 @@ import xyz
 xyz.foo()
 xyz()
 [out]
-main:1: error: Cannot find implementation or library stub for module named 'xyz'
+main:1: error: Cannot find implementation or library stub for module named "xyz"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testAccessingUnknownModule2]
@@ -284,16 +284,16 @@ import xyz, bar
 xyz.foo()
 bar()
 [out]
-main:1: error: Cannot find implementation or library stub for module named 'xyz'
+main:1: error: Cannot find implementation or library stub for module named "xyz"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:1: error: Cannot find implementation or library stub for module named 'bar'
+main:1: error: Cannot find implementation or library stub for module named "bar"
 
 [case testAccessingUnknownModule3]
 import xyz as z
 xyz.foo()
 z()
 [out]
-main:1: error: Cannot find implementation or library stub for module named 'xyz'
+main:1: error: Cannot find implementation or library stub for module named "xyz"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:2: error: Name 'xyz' is not defined
 
@@ -302,14 +302,14 @@ from xyz import y, z
 y.foo()
 z()
 [out]
-main:1: error: Cannot find implementation or library stub for module named 'xyz'
+main:1: error: Cannot find implementation or library stub for module named "xyz"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testAccessingNameImportedFromUnknownModule2]
 from xyz import *
 y
 [out]
-main:1: error: Cannot find implementation or library stub for module named 'xyz'
+main:1: error: Cannot find implementation or library stub for module named "xyz"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:2: error: Name 'y' is not defined
 
@@ -318,14 +318,14 @@ from xyz import y as z
 y
 z
 [out]
-main:1: error: Cannot find implementation or library stub for module named 'xyz'
+main:1: error: Cannot find implementation or library stub for module named "xyz"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:2: error: Name 'y' is not defined
 
 [case testUnknownModuleRedefinition]
 # Error messages differ with the new analyzer
 
-import xab  # E: Cannot find implementation or library stub for module named 'xab'  # N: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+import xab  # E: Cannot find implementation or library stub for module named "xab"  # N: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 def xab(): pass  # E: Name 'xab' already defined (possibly by an import)
 
 [case testAccessingUnknownModuleFromOtherModule]
@@ -336,7 +336,7 @@ x.z
 import nonexistent
 [builtins fixtures/module.pyi]
 [out]
-tmp/x.py:1: error: Cannot find implementation or library stub for module named 'nonexistent'
+tmp/x.py:1: error: Cannot find implementation or library stub for module named "nonexistent"
 tmp/x.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:3: error: Module has no attribute "z"
 
@@ -346,7 +346,7 @@ def f():
 def foobar(): pass
 foobar('')
 [out]
-main:2: error: Cannot find implementation or library stub for module named 'foobar'
+main:2: error: Cannot find implementation or library stub for module named "foobar"
 main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:4: error: Too many arguments for "foobar"
 
@@ -356,7 +356,7 @@ def f():
 def x(): pass
 x('')
 [out]
-main:2: error: Cannot find implementation or library stub for module named 'foobar'
+main:2: error: Cannot find implementation or library stub for module named "foobar"
 main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:4: error: Too many arguments for "x"
 
@@ -2180,8 +2180,8 @@ import c
 
 [out]
 -- TODO: it would be better for this to be in the other order
-tmp/b.py:1: error: Cannot find implementation or library stub for module named 'c'
-main:1: error: Cannot find implementation or library stub for module named 'c'
+tmp/b.py:1: error: Cannot find implementation or library stub for module named "c"
+main:1: error: Cannot find implementation or library stub for module named "c"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testIndirectFromImportWithinCycle1]
@@ -2313,7 +2313,7 @@ from typing import Any
 def __getattr__(attr: str) -> Any: ...
 [builtins fixtures/module.pyi]
 [out]
-main:1: error: Cannot find implementation or library stub for module named 'a.b'
+main:1: error: Cannot find implementation or library stub for module named "a.b"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testModuleGetattrInit4]
@@ -2358,12 +2358,12 @@ def __getattr__(attr: str) -> Any: ...
 # empty (i.e. complete subpackage)
 [builtins fixtures/module.pyi]
 [out]
-main:1: error: Cannot find implementation or library stub for module named 'a.b.c.d'
+main:1: error: Cannot find implementation or library stub for module named "a.b.c.d"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:1: error: Cannot find implementation or library stub for module named 'a.b.c'
+main:1: error: Cannot find implementation or library stub for module named "a.b.c"
 
 [case testModuleGetattrInit8a]
-import a.b.c  # E: Cannot find implementation or library stub for module named 'a.b.c'  # N: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+import a.b.c  # E: Cannot find implementation or library stub for module named "a.b.c"  # N: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 import a.d  # OK
 [file a/__init__.pyi]
 from typing import Any
@@ -2389,7 +2389,7 @@ def __getattr__(attr: str) -> Any: ...
 ignore_missing_imports = True
 [builtins fixtures/module.pyi]
 [out]
-main:3: error: Cannot find implementation or library stub for module named 'a.b.d'
+main:3: error: Cannot find implementation or library stub for module named "a.b.d"
 main:3: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testIndirectFromImportWithinCycleUsedAsBaseClass]
@@ -2621,7 +2621,7 @@ from foo.bar import x
 [file foo/bar.py]
 x = 0
 [out]
-main:1: error: Cannot find implementation or library stub for module named 'foo.bar'
+main:1: error: Cannot find implementation or library stub for module named "foo.bar"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testNamespacePackage]
@@ -2823,5 +2823,5 @@ from stub import d  # E: Module 'stub' has no attribute 'd'
 from mystery import a, b as b, c as d
 
 [out]
-tmp/stub.pyi:1: error: Cannot find implementation or library stub for module named 'mystery'
+tmp/stub.pyi:1: error: Cannot find implementation or library stub for module named "mystery"
 tmp/stub.pyi:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports

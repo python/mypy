@@ -334,7 +334,7 @@ from baz import baz
 baz(bar(foo(42)))
 baz(bar(foo('oof')))
 [out]
-file.py:1: error: Cannot find implementation or library stub for module named 'no_stubs'
+file.py:1: error: Cannot find implementation or library stub for module named "no_stubs"
 file.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 file.py:6: error: Argument 1 to "foo" has incompatible type "str"; expected "int"
 
@@ -489,7 +489,7 @@ reveal_type(missing.x)  # Expect Any
 \[mypy]
 ignore_missing_imports = False
 [out]
-main.py:1: error: Cannot find implementation or library stub for module named 'missing'
+main.py:1: error: Cannot find implementation or library stub for module named "missing"
 main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main.py:2: note: Revealed type is 'Any'
 
@@ -518,10 +518,10 @@ import missing
 [file main/grandparent.py]
 [file main/__init__.py]
 [out]
-main.py:1: error: Cannot find implementation or library stub for module named 'parent'
+main.py:1: error: Cannot find implementation or library stub for module named "parent"
 main.py:1: note: You may be running mypy in a subpackage, mypy should be run on the package root
-main.py:2: error: Cannot find implementation or library stub for module named 'grandparent'
-main.py:3: error: Cannot find implementation or library stub for module named 'missing'
+main.py:2: error: Cannot find implementation or library stub for module named "grandparent"
+main.py:3: error: Cannot find implementation or library stub for module named "missing"
 main.py:3: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testImportInParentButNoInit]
@@ -532,7 +532,7 @@ import needs_init
 [file main/needs_init.py]
 [file main/__init__.py]
 [out]
-main.py:1: error: Cannot find implementation or library stub for module named 'needs_init'
+main.py:1: error: Cannot find implementation or library stub for module named "needs_init"
 main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testConfigNoErrorForUnknownXFlagInSubsection]
@@ -567,9 +567,9 @@ import a.b
 [file a.b.py]
 whatever
 [out]
-main.py:1: error: Cannot find implementation or library stub for module named 'a.b'
+main.py:1: error: Cannot find implementation or library stub for module named "a.b"
 main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main.py:1: error: Cannot find implementation or library stub for module named 'a'
+main.py:1: error: Cannot find implementation or library stub for module named "a"
 
 [case testPythonVersionTooOld10]
 # cmd: mypy -c pass
@@ -1281,4 +1281,3 @@ x = 0  # type: str
 y = 0  # type: str
 [out]
 pkg.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
-

@@ -291,6 +291,8 @@ class Options:
         self.transform_source = None  # type: Optional[Callable[[Any], Any]]
         # Print full path to each file in the report.
         self.show_absolute_path = False  # type: bool
+        # Install missing stub packages if True
+        self.install_types = False
 
     # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property

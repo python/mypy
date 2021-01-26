@@ -3,54 +3,92 @@
 Using installed packages
 ========================
 
-:pep:`561` specifies how to mark a package as supporting type checking.
-Below is a summary of how to create PEP 561 compatible packages and have
-mypy use them in type checking.
+Packages installed with pip can declare that they support type
+checking. For example, the `aiohttp
+<https://docs.aiohttp.org/en/stable/>`_ package has built-in support
+for type checking.
 
-Using PEP 561 compatible packages with mypy
-*******************************************
+Packages can also provide stubs for a library. For example,
+``types-requests`` is a stub-only package that provides stubs for the
+`requests <https://requests.readthedocs.io/en/master/>`_ package.
+Stub packages are usually published from `typeshed
+<https://github.com/python/typeshed>`_, a shared repository for Python
+library stubs, and have a name of form ``types-<library>``. Note that
+many stub packages are not maintained by the original maintainers of
+the package.
 
-Generally, you do not need to do anything to use installed packages that
-support typing for the Python executable used to run mypy. Note that most
-packages do not support typing. Packages that do support typing should be
-automatically picked up by mypy and used for type checking.
+The sections below explain how mypy can use these packages, and how
+you can create such packages.
 
-By default, mypy searches for packages installed for the Python executable
-running mypy. It is highly unlikely you want this situation if you have
-installed typed packages in another Python's package directory.
+.. note::
 
-Generally, you can use the :option:`--python-version <mypy --python-version>` flag and mypy will try to find
-the correct package directory. If that fails, you can use the
-:option:`--python-executable <mypy --python-executable>` flag to point to the exact executable, and mypy will
-find packages installed for that Python executable.
+   :pep:`561` specifies how a package can declare that it supports
+   type checking.
 
-Note that mypy does not support some more advanced import features, such as zip
-imports and custom import hooks.
+Using installed packages with mypy (PEP 561)
+********************************************
 
-If you do not want to use typed packages, use the :option:`--no-site-packages <mypy --no-site-packages>` flag
-to disable searching.
+Typically mypy will automatically find and use installed packages that
+support type checking or provide stubs. This requires that you install
+the packages in the Python environment that you use to run mypy.  As
+many packages don't support type checking yet, you may also have to
+install a separate stub package, usually named
+``types-<library>``. (See :ref:`fix-missing-imports` for how to deal
+with libraries that don't support type checking and are also missing
+stubs.)
 
-Note that stub-only packages (defined in :pep:`PEP 561: Stub-only Packages
-<561#stub-only-packages>`) cannot be used with ``MYPYPATH``. If you want mypy
-to find the package, it must be installed. For a package ``foo``, the name of
-the stub-only package (``foo-stubs``) is not a legal package name, so mypy
-will not find it, unless it is installed.
+If you have installed typed packages in another Python installation or
+environment, mypy won't automatically find them. One option is to
+install another copy of those packages in the environment in which you
+use to run mypy. Alternatively, you can use the
+:option:`--python-executable <mypy --python-executable>` flag to point
+to the target Python executable, and mypy will find packages installed
+for that Python executable.
 
-Making PEP 561 compatible packages
-**********************************
+Note that mypy does not support some more advanced import features,
+such as zip imports and custom import hooks.
 
-:pep:`561` notes three main ways to distribute type information. The first is a
-package that has only inline type annotations in the code itself. The second is
-a package that ships :ref:`stub files <stub-files>` with type information
-alongside the runtime code. The third method, also known as a "stub only
-package" is a package that ships type information for a package separately as
-stub files.
+If you don't want to use installed packages that provide type
+information at all, use the :option:`--no-site-packages <mypy
+--no-site-packages>` flag to disable searching for installed packages.
 
-If you would like to publish a library package to a package repository (e.g.
-PyPI) for either internal or external use in type checking, packages that
-supply type information via type comments or annotations in the code should put
-a ``py.typed`` file in their package directory. For example, with a directory
-structure as follows
+Note that stub-only packages cannot be used with ``MYPYPATH``. If you
+want mypy to find the package, it must be installed. For a package
+``foo``, the name of the stub-only package (``foo-stubs``) is not a
+legal package name, so mypy will not find it, unless it is installed
+(see :pep:`PEP 561: Stub-only Packages <561#stub-only-packages>` for
+more information).
+
+Creating PEP 561 compatible packages
+************************************
+
+.. note::
+
+  You can generally ignore this section unless you maintain a package on
+  PyPI, or want to publish type information for an existing PyPI
+  package.
+
+:pep:`561` describes three main ways to distribute type
+information:
+
+1. A package has inline type annotations in the Python implementation.
+
+2. A package ships :ref:`stub files <stub-files>` with type
+   information alongside the Python implementation.
+
+3. A package ships type information for another package separately as
+   stub files (also known as a "stub-only package").
+
+If you want to create a stub-only package for an existing library, the
+simplest way is to contribute stubs to the `typeshed
+<https://github.com/python/typeshed>`_ repository, and a stub package
+will automatically be uploaded to PyPI.
+
+If you would like to publish a library package to a package repository
+yourself (e.g. on PyPI) for either internal or external use in type
+checking, packages that supply type information via type comments or
+annotations in the code should put a ``py.typed`` file in their
+package directory. For example, here is a typical directory structure:
 
 .. code-block:: text
 
@@ -60,7 +98,7 @@ structure as follows
         lib.py
         py.typed
 
-the ``setup.py`` might look like
+The ``setup.py`` file could look like this:
 
 .. code-block:: python
 
@@ -80,7 +118,7 @@ the ``setup.py`` might look like
    ``setup()``, or mypy will not be able to find the installed package.
 
 Some packages have a mix of stub files and runtime files. These packages also
-require a ``py.typed`` file. An example can be seen below
+require a ``py.typed`` file. An example can be seen below:
 
 .. code-block:: text
 
@@ -91,7 +129,7 @@ require a ``py.typed`` file. An example can be seen below
         lib.pyi
         py.typed
 
-the ``setup.py`` might look like:
+The ``setup.py`` file might look like this:
 
 .. code-block:: python
 
@@ -121,7 +159,7 @@ had stubs for ``package_c``, we might do the following:
         __init__.pyi
         lib.pyi
 
-the ``setup.py`` might look like:
+The ``setup.py`` might look like this:
 
 .. code-block:: python
 
@@ -134,3 +172,8 @@ the ``setup.py`` might look like:
         package_data={"package_c-stubs": ["__init__.pyi", "lib.pyi"]},
         packages=["package_c-stubs"]
     )
+
+If you have separate stubs for Python 2 and Python 3, you can place
+the Python 2 stubs in a directory with the suffix ``-python2-stubs``.
+We recommend that Python 2 and Python 3 stubs are bundled together for
+simplicity, instead of distributing them separately.

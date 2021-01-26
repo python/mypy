@@ -453,7 +453,7 @@ main:2: note: (Using --follow-imports=error, module not passed on command line)
 [case testIgnoreMissingImportsFalse]
 from mod import x
 [out]
-main:1: error: Cannot find implementation or library stub for module named 'mod'
+main:1: error: Cannot find implementation or library stub for module named "mod"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testIgnoreMissingImportsTrue]
@@ -610,7 +610,7 @@ from missing import MyType
 def f(x: MyType) -> None:
     pass
 [out]
-main:2: error: Cannot find implementation or library stub for module named 'missing'
+main:2: error: Cannot find implementation or library stub for module named "missing"
 main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:4: error: Argument 1 to "f" becomes "Any" due to an unfollowed import
 

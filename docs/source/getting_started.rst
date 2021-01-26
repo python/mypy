@@ -329,10 +329,11 @@ Library stubs and typeshed
 Mypy uses library *stubs* to type check code interacting with library
 modules, including the Python standard library. A library stub defines
 a skeleton of the public interface of the library, including classes,
-variables and functions, and their types. Mypy ships with stubs from
-the `typeshed <https://github.com/python/typeshed>`_ project, which
-contains library stubs for the Python builtins, the standard library,
-and selected third-party packages.
+variables and functions, and their types. Mypy ships with stubs for
+the standard library from the `typeshed
+<https://github.com/python/typeshed>`_ project, which contains library
+stubs for the Python builtins, the standard library, and selected
+third-party packages.
 
 For example, consider this code:
 
@@ -344,11 +345,40 @@ Without a library stub, mypy would have no way of inferring the type of ``x``
 and checking that the argument to :py:func:`chr` has a valid type.
 
 Mypy complains if it can't find a stub (or a real module) for a
-library module that you import. Some modules ship with stubs that mypy
-can automatically find, or you can install a 3rd party module with
-additional stubs (see :ref:`installed-packages` for details).  You can
-also :ref:`create stubs <stub-files>` easily. We discuss ways of
-silencing complaints about missing stubs in :ref:`ignore-missing-imports`.
+library module that you import. Some modules ship with stubs or inline
+annotations that mypy can automatically find, or you can install
+additional stubs using pip (see :ref:`fix-missing-imports` and
+:ref:`installed-packages` for the details). For example, you can install
+the stubs for the ``requests`` package like this:
+
+.. code-block::
+
+  python3 -m pip install types-requests
+
+The stubs are usually packaged in a distribution named
+``types-<distribution>``.  Note that the distribution name may be
+different from the name of the package that you import. For example,
+``types-PyYAML`` contains stubs for the ``yaml`` package. Mypy can
+often suggest the name of the stub distribution:
+
+.. code-block:: text
+
+  prog.py:1: error: Library stubs not installed for "yaml" (or incompatible with Python 3.8)
+  prog.py:1: note: Hint: "python3 -m pip install types-PyYAML"
+  ...
+
+.. note::
+
+   Starting in mypy 0.900, most third-party package stubs must be
+   installed explicitly. This decouples mypy and stub versioning,
+   allowing stubs to updated without updating mypy. This also allows
+   stubs not originally included with mypy to be installed. Earlier
+   mypy versions included a fixed set of stubs for third-party
+   packages.
+
+You can also :ref:`create
+stubs <stub-files>` easily. We discuss ways of silencing complaints
+about missing stubs in :ref:`ignore-missing-imports`.
 
 Configuring mypy
 ****************

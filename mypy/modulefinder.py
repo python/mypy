@@ -1,6 +1,6 @@
 """Low-level infrastructure to find modules.
 
-This build on fscache.py; find_sources.py builds on top of this.
+This builds on fscache.py; find_sources.py builds on top of this.
 """
 
 import ast
@@ -14,9 +14,9 @@ from enum import Enum
 from typing import Dict, Iterator, List, NamedTuple, Optional, Set, Tuple, Union
 from typing_extensions import Final
 
-from mypy.defaults import PYTHON3_VERSION_MIN
 from mypy.fscache import FileSystemCache
 from mypy.options import Options
+from mypy.stubinfo import legacy_bundled_packages
 from mypy import sitepkgs
 
 # Paths to be searched in find_module().
@@ -33,6 +33,8 @@ OnePackageDir = Tuple[str, bool]
 PackageDirs = List[OnePackageDir]
 
 PYTHON_EXTENSIONS = ['.pyi', '.py']  # type: Final
+
+PYTHON2_STUB_DIR = '@python2'  # type: Final
 
 
 # TODO: Consider adding more reasons here?
@@ -53,20 +55,31 @@ class ModuleNotFoundReason(Enum):
     # was able to be found in the parent directory.
     WRONG_WORKING_DIRECTORY = 2
 
-    def error_message_templates(self) -> Tuple[str, str]:
+    # Stub PyPI package (typically types-pkgname) known to exist but not installed.
+    STUBS_NOT_INSTALLED = 3
+
+    def error_message_templates(self) -> Tuple[str, List[str]]:
+        doc_link = "See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports"
         if self is ModuleNotFoundReason.NOT_FOUND:
-            msg = "Cannot find implementation or library stub for module named '{}'"
-            note = "See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports"
+            msg = 'Cannot find implementation or library stub for module named "{module}"'
+            notes = [doc_link]
         elif self is ModuleNotFoundReason.WRONG_WORKING_DIRECTORY:
-            msg = "Cannot find implementation or library stub for module named '{}'"
-            note = ("You may be running mypy in a subpackage, "
-                    "mypy should be run on the package root")
+            msg = 'Cannot find implementation or library stub for module named "{module}"'
+            notes = ["You may be running mypy in a subpackage, "
+                     "mypy should be run on the package root"]
         elif self is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
-            msg = "Skipping analyzing '{}': found module but no type hints or library stubs"
-            note = "See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports"
+            msg = 'Skipping analyzing "{module}": found module but no type hints or library stubs'
+            notes = [doc_link]
+        elif self is ModuleNotFoundReason.STUBS_NOT_INSTALLED:
+            msg = (
+                'Library stubs not installed for "{module}" (or incompatible with Python {pyver})'
+            )
+            notes = ['Hint: "python3 -m pip install {stub_dist}"',
+                     '(or run "mypy --install-types" to install all missing stub packages)',
+                     doc_link]
         else:
             assert False
-        return msg, note
+        return msg, notes
 
 
 # If we found the module, returns the path to the module as a str.
@@ -116,6 +129,11 @@ class FindModuleCache:
         self.results = {}  # type: Dict[str, ModuleSearchResult]
         self.ns_ancestors = {}  # type: Dict[str, str]
         self.options = options
+        custom_typeshed_dir = None
+        if options:
+            custom_typeshed_dir = options.custom_typeshed_dir
+        self.stdlib_py_versions = load_stdlib_py_versions(custom_typeshed_dir)
+        self.python2 = options and options.python_version[0] == 2
 
     def clear(self) -> None:
         self.results.clear()
@@ -125,7 +143,8 @@ class FindModuleCache:
     def find_lib_path_dirs(self, id: str, lib_path: Tuple[str, ...]) -> PackageDirs:
         """Find which elements of a lib_path have the directory a module needs to exist.
 
-        This is run for the python_path, mypy_path, and typeshed_path search paths."""
+        This is run for the python_path, mypy_path, and typeshed_path search paths.
+        """
         components = id.split('.')
         dir_chain = os.sep.join(components[:-1])  # e.g., 'foo/bar'
 
@@ -171,7 +190,13 @@ class FindModuleCache:
     def find_module(self, id: str) -> ModuleSearchResult:
         """Return the path of the module source file or why it wasn't found."""
         if id not in self.results:
-            self.results[id] = self._find_module(id)
+            top_level = id.partition('.')[0]
+            use_typeshed = True
+            if top_level in self.stdlib_py_versions:
+                min_version = self.stdlib_py_versions[top_level]
+                use_typeshed = (self.options is None
+                                or typeshed_py_version(self.options) >= min_version)
+            self.results[id] = self._find_module(id, use_typeshed)
             if (self.results[id] is ModuleNotFoundReason.NOT_FOUND
                     and self._can_find_module_in_parent_dir(id)):
                 self.results[id] = ModuleNotFoundReason.WRONG_WORKING_DIRECTORY
@@ -188,7 +213,9 @@ class FindModuleCache:
             elif not plausible_match and (self.fscache.isdir(dir_path)
                                           or self.fscache.isfile(dir_path + ".py")):
                 plausible_match = True
-        if plausible_match:
+        if components[0] in legacy_bundled_packages:
+            return ModuleNotFoundReason.STUBS_NOT_INSTALLED
+        elif plausible_match:
             return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
         else:
             return ModuleNotFoundReason.NOT_FOUND
@@ -211,11 +238,11 @@ class FindModuleCache:
                   for file in os.listdir(working_dir)):
             working_dir = os.path.dirname(working_dir)
             parent_search.search_paths = SearchPaths((working_dir,), (), (), ())
-            if not isinstance(parent_search._find_module(id), ModuleNotFoundReason):
+            if not isinstance(parent_search._find_module(id, False), ModuleNotFoundReason):
                 return True
         return False
 
-    def _find_module(self, id: str) -> ModuleSearchResult:
+    def _find_module(self, id: str, use_typeshed: bool) -> ModuleSearchResult:
         fscache = self.fscache
 
         # If we're looking for a module like 'foo.bar.baz', it's likely that most of the
@@ -224,18 +251,24 @@ class FindModuleCache:
         # that will require the same subdirectory.
         components = id.split('.')
         dir_chain = os.sep.join(components[:-1])  # e.g., 'foo/bar'
-        # TODO (ethanhs): refactor each path search to its own method with lru_cache
 
         # We have two sets of folders so that we collect *all* stubs folders and
         # put them in the front of the search path
         third_party_inline_dirs = []  # type: PackageDirs
         third_party_stubs_dirs = []  # type: PackageDirs
         found_possible_third_party_missing_type_hints = False
+        need_installed_stubs = False
         # Third-party stub/typed packages
         for pkg_dir in self.search_paths.package_path:
             stub_name = components[0] + '-stubs'
             stub_dir = os.path.join(pkg_dir, stub_name)
-            if fscache.isdir(stub_dir):
+            if self.python2:
+                alt_stub_name = components[0] + '-python2-stubs'
+                alt_stub_dir = os.path.join(pkg_dir, alt_stub_name)
+                if fscache.isdir(alt_stub_dir):
+                    stub_name = alt_stub_name
+                    stub_dir = alt_stub_dir
+            if fscache.isdir(stub_dir) and self._is_compatible_stub_package(stub_dir):
                 stub_typed_file = os.path.join(stub_dir, 'py.typed')
                 stub_components = [stub_name] + components[1:]
                 path = os.path.join(pkg_dir, *stub_components[:-1])
@@ -261,6 +294,8 @@ class FindModuleCache:
             if isinstance(non_stub_match, ModuleNotFoundReason):
                 if non_stub_match is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
                     found_possible_third_party_missing_type_hints = True
+                elif non_stub_match is ModuleNotFoundReason.STUBS_NOT_INSTALLED:
+                    need_installed_stubs = True
             else:
                 third_party_inline_dirs.append(non_stub_match)
                 self._update_ns_ancestors(components, non_stub_match)
@@ -270,9 +305,13 @@ class FindModuleCache:
             third_party_stubs_dirs.clear()
             found_possible_third_party_missing_type_hints = False
         python_mypy_path = self.search_paths.mypy_path + self.search_paths.python_path
-        candidate_base_dirs = self.find_lib_path_dirs(id, python_mypy_path) + \
-            third_party_stubs_dirs + third_party_inline_dirs + \
-            self.find_lib_path_dirs(id, self.search_paths.typeshed_path)
+        candidate_base_dirs = self.find_lib_path_dirs(id, python_mypy_path)
+        if use_typeshed:
+            # Search for stdlib stubs in typeshed before installed
+            # stubs to avoid picking up backports (dataclasses, for
+            # example) when the library is included in stdlib.
+            candidate_base_dirs += self.find_lib_path_dirs(id, self.search_paths.typeshed_path)
+        candidate_base_dirs += third_party_stubs_dirs + third_party_inline_dirs
 
         # If we're looking for a module like 'foo.bar.baz', then candidate_base_dirs now
         # contains just the subdirectories 'foo/bar' that actually exist under the
@@ -290,7 +329,11 @@ class FindModuleCache:
             # Prefer package over module, i.e. baz/__init__.py* over baz.py*.
             for extension in PYTHON_EXTENSIONS:
                 path = base_path + sepinit + extension
-                path_stubs = base_path + '-stubs' + sepinit + extension
+                suffix = '-stubs'
+                if self.python2:
+                    if os.path.isdir(base_path + '-python2-stubs'):
+                        suffix = '-python2-stubs'
+                path_stubs = base_path + suffix + sepinit + extension
                 if fscache.isfile_case(path, dir_prefix):
                     has_init = True
                     if verify and not verify_module(fscache, id, path, dir_prefix):
@@ -352,10 +395,30 @@ class FindModuleCache:
         if ancestor is not None:
             return ancestor
 
-        if found_possible_third_party_missing_type_hints:
+        if need_installed_stubs:
+            return ModuleNotFoundReason.STUBS_NOT_INSTALLED
+        elif found_possible_third_party_missing_type_hints:
             return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
         else:
             return ModuleNotFoundReason.NOT_FOUND
+
+    def _is_compatible_stub_package(self, stub_dir: str) -> bool:
+        """Does a stub package support the target Python version?
+
+        Stub packages may contain a metadata file which specifies
+        whether the stubs are compatible with Python 2 and 3.
+        """
+        metadata_fnam = os.path.join(stub_dir, 'METADATA.toml')
+        if os.path.isfile(metadata_fnam):
+            # Delay import for a possible minor performance win.
+            import toml
+            with open(metadata_fnam, 'r') as f:
+                metadata = toml.load(f)
+            if self.python2:
+                return bool(metadata.get('python2', False))
+            else:
+                return bool(metadata.get('python3', True))
+        return True
 
     def find_modules_recursive(self, module: str) -> List[BuildSource]:
         module_path = self.find_module(module)
@@ -442,30 +505,20 @@ def default_lib_path(data_dir: str,
                      pyversion: Tuple[int, int],
                      custom_typeshed_dir: Optional[str]) -> List[str]:
     """Return default standard library search paths."""
-    # IDEA: Make this more portable.
     path = []  # type: List[str]
 
     if custom_typeshed_dir:
-        typeshed_dir = custom_typeshed_dir
+        typeshed_dir = os.path.join(custom_typeshed_dir, "stdlib")
     else:
         auto = os.path.join(data_dir, 'stubs-auto')
         if os.path.isdir(auto):
             data_dir = auto
-        typeshed_dir = os.path.join(data_dir, "typeshed")
-    if pyversion[0] == 3:
-        # We allow a module for e.g. version 3.5 to be in 3.4/. The assumption
-        # is that a module added with 3.4 will still be present in Python 3.5.
-        versions = ["%d.%d" % (pyversion[0], minor)
-                    for minor in reversed(range(PYTHON3_VERSION_MIN[1], pyversion[1] + 1))]
-    else:
-        # For Python 2, we only have stubs for 2.7
-        versions = ["2.7"]
-    # E.g. for Python 3.6, try 3.6/, 3.5/, 3.4/, 3/, 2and3/.
-    for v in versions + [str(pyversion[0]), '2and3']:
-        for lib_type in ['stdlib', 'third_party']:
-            stubdir = os.path.join(typeshed_dir, lib_type, v)
-            if os.path.isdir(stubdir):
-                path.append(stubdir)
+        typeshed_dir = os.path.join(data_dir, "typeshed", "stdlib")
+    if pyversion[0] == 2:
+        # Python 2 variants of certain stdlib modules are in a separate directory.
+        python2_dir = os.path.join(typeshed_dir, PYTHON2_STUB_DIR)
+        path.append(python2_dir)
+    path.append(typeshed_dir)
 
     # Add fallback path that can be used if we have a broken installation.
     if sys.platform != 'win32':
@@ -485,7 +538,8 @@ def get_site_packages_dirs(python_executable: Optional[str]) -> Tuple[List[str],
 
     This runs a subprocess call, which generates a list of the egg directories, and the site
     package directories. To avoid repeatedly calling a subprocess (which can be slow!) we
-    lru_cache the results."""
+    lru_cache the results.
+    """
 
     if python_executable is None:
         return [], []
@@ -623,7 +677,46 @@ def compute_search_paths(sources: List[BuildSource],
                   file=sys.stderr)
             sys.exit(1)
 
-    return SearchPaths(tuple(reversed(python_path)),
-                       tuple(mypypath),
-                       tuple(egg_dirs + site_packages),
-                       tuple(lib_path))
+    return SearchPaths(python_path=tuple(reversed(python_path)),
+                       mypy_path=tuple(mypypath),
+                       package_path=tuple(egg_dirs + site_packages),
+                       typeshed_path=tuple(lib_path))
+
+
+def load_stdlib_py_versions(custom_typeshed_dir: Optional[str]) -> Dict[str, Tuple[int, int]]:
+    """Return dict with minimum Python versions of stdlib modules.
+
+    The contents look like {..., 'secrets': 3.6, 're': 2.7, ...}.
+    """
+    typeshed_dir = custom_typeshed_dir or os.path.join(os.path.dirname(__file__), "typeshed")
+    stdlib_dir = os.path.join(typeshed_dir, "stdlib")
+    result = {}
+
+    versions_path = os.path.join(stdlib_dir, "VERSIONS")
+    with open(versions_path) as f:
+        for line in f:
+            line = line.strip()
+            if line.startswith("#") or line == "":
+                continue
+            module, version = line.split(":")
+            major, minor = version.strip().split(".")
+            result[module] = int(major), int(minor)
+
+    # Modules that are Python 2 only or have separate Python 2 stubs
+    # have stubs in @python2/ and may need an override.
+    python2_dir = os.path.join(stdlib_dir, PYTHON2_STUB_DIR)
+    for fnam in os.listdir(python2_dir):
+        fnam = fnam.replace(".pyi", "")
+        result[fnam] = (2, 7)
+
+    return result
+
+
+def typeshed_py_version(options: Options) -> Tuple[int, int]:
+    """Return Python version used for checking whether module supports typeshed."""
+    # Typeshed no longer covers Python 3.x versions before 3.6, so 3.6 is
+    # the earliest we can support.
+    if options.python_version[0] >= 3:
+        return max(options.python_version, (3, 6))
+    else:
+        return options.python_version

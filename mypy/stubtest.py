@@ -1046,27 +1046,30 @@ def get_stub(module: str) -> Optional[nodes.MypyFile]:
 
 def get_typeshed_stdlib_modules(custom_typeshed_dir: Optional[str]) -> List[str]:
     """Returns a list of stdlib modules in typeshed (for current Python version)."""
-    # This snippet is based on code in mypy.modulefinder.default_lib_path
+    stdlib_py_versions = mypy.modulefinder.load_stdlib_py_versions(custom_typeshed_dir)
+    packages = set()
+    # Typeshed doesn't cover Python 3.5.
+    if sys.version_info < (3, 6):
+        version_info = (3, 6)
+    else:
+        version_info = sys.version_info[0:2]
+    for module, minver in stdlib_py_versions.items():
+        if version_info >= minver:
+            packages.add(module)
+
     if custom_typeshed_dir:
         typeshed_dir = Path(custom_typeshed_dir)
     else:
-        typeshed_dir = Path(mypy.build.default_data_dir())
-        if (typeshed_dir / "stubs-auto").exists():
-            typeshed_dir /= "stubs-auto"
-        typeshed_dir /= "typeshed"
-
-    versions = ["2and3", "3"]
-    for minor in range(sys.version_info.minor + 1):
-        versions.append("3.{}".format(minor))
+        typeshed_dir = Path(mypy.build.default_data_dir()) / "typeshed"
+    stdlib_dir = typeshed_dir / "stdlib"
 
     modules = []
-    for version in versions:
-        base = typeshed_dir / "stdlib" / version
-        if base.exists():
-            for path in base.rglob("*.pyi"):
-                if path.stem == "__init__":
-                    path = path.parent
-                modules.append(".".join(path.relative_to(base).parts[:-1] + (path.stem,)))
+    for path in stdlib_dir.rglob("*.pyi"):
+        if path.stem == "__init__":
+            path = path.parent
+        module = ".".join(path.relative_to(stdlib_dir).parts[:-1] + (path.stem,))
+        if module.split(".")[0] in packages:
+            modules.append(module)
     return sorted(modules)
 
 

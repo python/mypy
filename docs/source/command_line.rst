@@ -743,11 +743,13 @@ in developing or debugging mypy internals.
 
 .. option:: --custom-typeshed-dir DIR
 
-    This flag specifies the directory where mypy looks for typeshed
+    This flag specifies the directory where mypy looks for standard library typeshed
     stubs, instead of the typeshed that ships with mypy.  This is
     primarily intended to make it easier to test typeshed changes before
     submitting them upstream, but also allows you to use a forked version of
     typeshed.
+
+    Note that this doesn't affect third-party library stubs.
 
 .. _warn-incomplete-stub:
 
@@ -840,6 +842,26 @@ format into the specified directory.
 
 Miscellaneous
 *************
+
+.. option:: --install-types
+
+    This flag causes mypy to install known missing stub packages for
+    third-party libraries using pip.  It will display the pip command
+    line to run, and expects a confirmation before installing
+    anything.
+
+    If you use this option without providing any files or modules to
+    type check, mypy will install stub packages suggested during the
+    previous mypy run. If there are files or modules to type check,
+    mypy first type checks those, and proposes to install missing
+    stubs at the end of the run, but only if any missing modules were
+    detected.
+
+    .. note::
+
+        This is new in mypy 0.900. Previous mypy versions included a
+        selection of third-party package stubs, instead of having them
+        installed separately.
 
 .. option:: --junit-xml JUNIT_XML
 

@@ -628,7 +628,8 @@ class FancyFormatter:
                     self.highlight_quote_groups(msg) + self.style(code, 'yellow'))
         elif ': note:' in error:
             loc, msg = error.split('note:', maxsplit=1)
-            return loc + self.style('note:', 'blue') + self.underline_link(msg)
+            formatted = self.highlight_quote_groups(self.underline_link(msg))
+            return loc + self.style('note:', 'blue') + formatted
         elif error.startswith(' ' * DEFAULT_SOURCE_OFFSET):
             # TODO: detecting source code highlights through an indent can be surprising.
             if '^' not in error:
@@ -702,3 +703,11 @@ class FancyFormatter:
 def is_typeshed_file(file: str) -> bool:
     # gross, but no other clear way to tell
     return 'typeshed' in os.path.abspath(file).split(os.sep)
+
+
+def is_stub_package_file(file: str) -> bool:
+    # Use hacky heuristics to check whether file is part of a PEP 561 stub package.
+    if not file.endswith('.pyi'):
+        return False
+    return any(component.endswith('-stubs')
+               for component in os.path.abspath(file).split(os.sep))

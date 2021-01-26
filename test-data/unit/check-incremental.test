@@ -2135,7 +2135,7 @@ x = 1
 [rechecked n]
 [stale]
 [out2]
-tmp/n.py:1: error: Cannot find implementation or library stub for module named 'm'
+tmp/n.py:1: error: Cannot find implementation or library stub for module named "m"
 tmp/n.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testDeleteFileWithinCycle]
@@ -3433,7 +3433,7 @@ import a
 [out1]
 
 [out2]
-main:2: error: Cannot find implementation or library stub for module named 'a'
+main:2: error: Cannot find implementation or library stub for module named "a"
 main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testIncrementalInheritanceAddAnnotation]
@@ -3576,7 +3576,7 @@ def f() -> None: pass
 def f(x: int) -> None: pass
 [out]
 [out2]
-main:1: error: Cannot find implementation or library stub for module named 'p.q'
+main:1: error: Cannot find implementation or library stub for module named "p.q"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 [out3]
 main:2: error: Missing positional argument "x" in call to "f"
@@ -3776,6 +3776,7 @@ import b
 [rechecked b]
 
 [case testIncrementalDataclassesSubclassingCached]
+# flags: --python-version 3.7
 from a import A
 from dataclasses import dataclass
 
@@ -3808,6 +3809,7 @@ class A:
 [out2]
 
 [case testIncrementalDataclassesSubclassingCachedType]
+# flags: --python-version 3.7
 import b
 
 [file b.py]
@@ -3841,6 +3843,7 @@ class A:
 tmp/b.py:8: note: Revealed type is 'def (x: builtins.int) -> b.B'
 
 [case testIncrementalDataclassesArguments]
+# flags: --python-version 3.7
 import b
 
 [file b.py]
@@ -3889,6 +3892,7 @@ tmp/b.py:15: error: Unsupported left operand type for > ("NoCmp")
 tmp/b.py:16: error: Unsupported left operand type for >= ("NoCmp")
 
 [case testIncrementalDataclassesDunder]
+# flags: --python-version 3.7
 import b
 
 [file b.py]
@@ -3953,6 +3957,7 @@ tmp/b.py:27: error: Unsupported operand types for < ("A" and "int")
 tmp/b.py:28: error: Unsupported operand types for <= ("A" and "int")
 
 [case testIncrementalDataclassesSubclassModified]
+# flags: --python-version 3.7
 from b import B
 B(5, 'foo')
 
@@ -3982,10 +3987,11 @@ class B(A):
 [builtins fixtures/list.pyi]
 [out1]
 [out2]
-main:2: error: Argument 2 to "B" has incompatible type "str"; expected "int"
+main:3: error: Argument 2 to "B" has incompatible type "str"; expected "int"
 [rechecked b]
 
 [case testIncrementalDataclassesSubclassModifiedErrorFirst]
+# flags: --python-version 3.7
 from b import B
 B(5, 'foo')
 
@@ -4014,12 +4020,13 @@ class B(A):
 
 [builtins fixtures/list.pyi]
 [out1]
-main:2: error: Argument 2 to "B" has incompatible type "str"; expected "int"
+main:3: error: Argument 2 to "B" has incompatible type "str"; expected "int"
 
 [out2]
 [rechecked b]
 
 [case testIncrementalDataclassesThreeFiles]
+# flags: --python-version 3.7
 from c import C
 C('foo', 5, True)
 
@@ -4058,9 +4065,10 @@ class C(A, B):
 [out1]
 [out2]
 tmp/c.py:7: error: Incompatible types in assignment (expression has type "bool", base class "B" defined the type as "str")
-main:2: error: Argument 2 to "C" has incompatible type "int"; expected "bool"
+main:3: error: Argument 2 to "C" has incompatible type "int"; expected "bool"
 
 [case testIncrementalDataclassesThreeRuns]
+# flags: --python-version 3.7
 from a import A
 A(5)
 
@@ -4088,7 +4096,7 @@ class A:
 [builtins fixtures/list.pyi]
 [out1]
 [out2]
-main:2: error: Argument 1 to "A" has incompatible type "int"; expected "str"
+main:3: error: Argument 1 to "A" has incompatible type "int"; expected "str"
 [out3]
 
 [case testParentPatchingMess]
@@ -4201,10 +4209,10 @@ def __getattr__(attr: str) -> Any: ...
 # empty
 [builtins fixtures/module.pyi]
 [out]
-tmp/c.py:1: error: Cannot find implementation or library stub for module named 'a.b.c'
+tmp/c.py:1: error: Cannot find implementation or library stub for module named "a.b.c"
 tmp/c.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 [out2]
-tmp/c.py:1: error: Cannot find implementation or library stub for module named 'a.b.c'
+tmp/c.py:1: error: Cannot find implementation or library stub for module named "a.b.c"
 tmp/c.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testAddedMissingStubs]

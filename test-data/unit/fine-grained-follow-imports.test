@@ -39,7 +39,7 @@ def f(x: str) -> None: pass
 def f() -> None: pass
 
 [out]
-main.py:1: error: Cannot find implementation or library stub for module named 'a'
+main.py:1: error: Cannot find implementation or library stub for module named "a"
 main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 main.py:2: error: Missing positional argument "x" in call to "f"
@@ -82,7 +82,7 @@ def f(x: str) -> None: pass
 def f() -> None: pass
 
 [out]
-main.py:1: error: Cannot find implementation or library stub for module named 'a'
+main.py:1: error: Cannot find implementation or library stub for module named "a"
 main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 main.py:2: error: Missing positional argument "x" in call to "f"
@@ -216,7 +216,7 @@ def f(x: str) -> None: pass
 
 [out]
 ==
-main.py:1: error: Cannot find implementation or library stub for module named 'a'
+main.py:1: error: Cannot find implementation or library stub for module named "a"
 main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 main.py:2: error: Missing positional argument "x" in call to "f"
@@ -239,7 +239,7 @@ def f(x: str) -> None: pass
 
 [out]
 ==
-main.py:1: error: Cannot find implementation or library stub for module named 'a'
+main.py:1: error: Cannot find implementation or library stub for module named "a"
 main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 main.py:2: error: Missing positional argument "x" in call to "f"
@@ -333,7 +333,7 @@ import b
 [out]
 b.py:1: error: "int" not callable
 ==
-main.py:1: error: Cannot find implementation or library stub for module named 'a'
+main.py:1: error: Cannot find implementation or library stub for module named "a"
 main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 b.py:1: error: "int" not callable
@@ -473,12 +473,12 @@ from p2 import m
 [file p2/m.py.3]
 
 [out]
-main.py:1: error: Cannot find implementation or library stub for module named 'p1.m'
+main.py:1: error: Cannot find implementation or library stub for module named "p1.m"
 main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main.py:1: error: Cannot find implementation or library stub for module named 'p1'
-main.py:2: error: Cannot find implementation or library stub for module named 'p2'
+main.py:1: error: Cannot find implementation or library stub for module named "p1"
+main.py:2: error: Cannot find implementation or library stub for module named "p2"
 ==
-main.py:2: error: Cannot find implementation or library stub for module named 'p2'
+main.py:2: error: Cannot find implementation or library stub for module named "p2"
 main.py:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 p1/__init__.py:1: error: "int" not callable
 ==
@@ -498,7 +498,7 @@ from p import m
 ''()
 
 [out]
-main.py:1: error: Cannot find implementation or library stub for module named 'p'
+main.py:1: error: Cannot find implementation or library stub for module named "p"
 main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 main.py:1: error: Module 'p' has no attribute 'm'
@@ -530,13 +530,13 @@ def f(x: str) -> None: pass
 def f() -> None: pass
 
 [out]
-main.py:1: error: Cannot find implementation or library stub for module named 'p1.s1.m'
+main.py:1: error: Cannot find implementation or library stub for module named "p1.s1.m"
 main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main.py:1: error: Cannot find implementation or library stub for module named 'p1'
-main.py:1: error: Cannot find implementation or library stub for module named 'p1.s1'
-main.py:2: error: Cannot find implementation or library stub for module named 'p2.s2'
+main.py:1: error: Cannot find implementation or library stub for module named "p1"
+main.py:1: error: Cannot find implementation or library stub for module named "p1.s1"
+main.py:2: error: Cannot find implementation or library stub for module named "p2.s2"
 ==
-main.py:2: error: Cannot find implementation or library stub for module named 'p2.s2'
+main.py:2: error: Cannot find implementation or library stub for module named "p2.s2"
 main.py:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main.py:3: error: Missing positional argument "x" in call to "f"
 ==
@@ -586,7 +586,7 @@ def f() -> None:
 ''()
 
 [out]
-main.py:2: error: Cannot find implementation or library stub for module named 'p'
+main.py:2: error: Cannot find implementation or library stub for module named "p"
 main.py:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 p/m.py:1: error: "str" not callable
@@ -609,7 +609,7 @@ from p import m
 x x x
 
 [out]
-main.py:1: error: Cannot find implementation or library stub for module named 'p'
+main.py:1: error: Cannot find implementation or library stub for module named "p"
 main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 p/m.pyi:1: error: "str" not callable
@@ -636,13 +636,13 @@ import p2.m2
 
 [out]
 p1/m1.py:1: error: "int" not callable
-main.py:2: error: Cannot find implementation or library stub for module named 'p2.m2'
+main.py:2: error: Cannot find implementation or library stub for module named "p2.m2"
 main.py:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 p2/m2.py:1: error: "str" not callable
 p1/m1.py:1: error: "int" not callable
 ==
-main.py:2: error: Cannot find implementation or library stub for module named 'p2.m2'
+main.py:2: error: Cannot find implementation or library stub for module named "p2.m2"
 main.py:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 p1/m1.py:1: error: "int" not callable
 

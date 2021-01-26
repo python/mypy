@@ -70,6 +70,14 @@ def main(script_path: Optional[str],
     messages = []
     formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
 
+    if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
+        # Since --install-types performs user input, we want regular stdout and stderr.
+        fail("--install-types not supported in this mode of running mypy", stderr, options)
+
+    if options.install_types and not sources:
+        install_types(options.cache_dir, formatter)
+        return
+
     def flush_errors(new_messages: List[str], serious: bool) -> None:
         if options.pretty:
             new_messages = formatter.fit_in_terminal(new_messages)
@@ -119,6 +127,11 @@ def main(script_path: Optional[str],
         else:
             stdout.write(formatter.format_success(len(sources), options.color_output) + '\n')
         stdout.flush()
+
+    if options.install_types:
+        install_types(options.cache_dir, formatter, after_run=True)
+        return
+
     if options.fast_exit:
         # Exit without freeing objects -- it's faster.
         #
@@ -731,6 +744,10 @@ def process_options(args: List[str],
         '--scripts-are-modules', action='store_true',
         help="Script x becomes module x instead of __main__")
 
+    add_invertible_flag('--install-types', default=False, strict_flag=False,
+                        help="Install detected missing library stub packages using pip",
+                        group=other_group)
+
     if server_options:
         # TODO: This flag is superfluous; remove after a short transition (2018-03-16)
         other_group.add_argument(
@@ -863,7 +880,7 @@ def process_options(args: List[str],
         code_methods = sum(bool(c) for c in [special_opts.modules + special_opts.packages,
                                              special_opts.command,
                                              special_opts.files])
-        if code_methods == 0:
+        if code_methods == 0 and not options.install_types:
             parser.error("Missing target module, package, files, or command.")
         elif code_methods > 1:
             parser.error("May only specify one of: module/package, files, or command.")
@@ -1036,3 +1053,31 @@ def fail(msg: str, stderr: TextIO, options: Options) -> None:
     stderr.write('%s\n' % msg)
     maybe_write_junit_xml(0.0, serious=True, messages=[msg], options=options)
     sys.exit(2)
+
+
+def install_types(cache_dir: str,
+                  formatter: util.FancyFormatter,
+                  after_run: bool = False) -> None:
+    """Install stub packages using pip if some missing stubs were detected."""
+    if not os.path.isdir(cache_dir):
+        sys.stderr.write(
+            "Error: no mypy cache directory (you must enable incremental mode)\n")
+        sys.exit(2)
+    fnam = build.missing_stubs_file(cache_dir)
+    if not os.path.isfile(fnam):
+        # If there are no missing stubs, generate no output.
+        return
+    with open(fnam) as f:
+        packages = [line.strip() for line in f.readlines()]
+    if after_run:
+        print()
+    print('Installing missing stub packages:')
+    cmd = ['python3', '-m', 'pip', 'install'] + packages
+    print(formatter.style(' '.join(cmd), 'none', bold=True))
+    print()
+    x = input('Install? [yN] ')
+    if not x.strip() or not x.lower().startswith('y'):
+        print(formatter.style('mypy: Skipping installation', 'red', bold=True))
+        sys.exit(2)
+    print()
+    subprocess.run(cmd)

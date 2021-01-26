@@ -134,7 +134,7 @@ x x
 [file a.py.3]
 def f() -> None: pass
 [out]
-main:1: error: Cannot find implementation or library stub for module named 'a'
+main:1: error: Cannot find implementation or library stub for module named "a"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 a.py:1: error: invalid syntax
@@ -277,9 +277,9 @@ x x
 ==
 a.py:1: error: invalid syntax
 ==
-main:1: error: Cannot find implementation or library stub for module named 'a'
+main:1: error: Cannot find implementation or library stub for module named "a"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-b.py:1: error: Cannot find implementation or library stub for module named 'a'
+b.py:1: error: Cannot find implementation or library stub for module named "a"
 
 [case testDeleteFileWithBlockingError-only_when_cache]
 -- Different cache/no-cache tests because:
@@ -298,9 +298,9 @@ x x
 ==
 a.py:1: error: invalid syntax
 ==
-b.py:1: error: Cannot find implementation or library stub for module named 'a'
+b.py:1: error: Cannot find implementation or library stub for module named "a"
 b.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:1: error: Cannot find implementation or library stub for module named 'a'
+main:1: error: Cannot find implementation or library stub for module named "a"
 
 [case testModifyFileWhileBlockingErrorElsewhere]
 import a
@@ -371,7 +371,7 @@ class A: pass
 [builtins fixtures/module.pyi]
 [out]
 ==
-main:1: error: Cannot find implementation or library stub for module named 'a'
+main:1: error: Cannot find implementation or library stub for module named "a"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 main:4: error: "A" has no attribute "f"
@@ -389,7 +389,7 @@ class A:
 [builtins fixtures/module.pyi]
 [out]
 ==
-main:1: error: Cannot find implementation or library stub for module named 'a'
+main:1: error: Cannot find implementation or library stub for module named "a"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 main:1: error: Module 'a' has no attribute 'A'
