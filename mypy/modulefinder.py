@@ -194,7 +194,8 @@ class FindModuleCache:
             use_typeshed = True
             if top_level in self.stdlib_py_versions:
                 min_version = self.stdlib_py_versions[top_level]
-                use_typeshed = self.options is None or self.options.python_version >= min_version
+                use_typeshed = (self.options is None
+                                or typeshed_py_version(self.options) >= min_version)
             self.results[id] = self._find_module(id, use_typeshed)
             if (self.results[id] is ModuleNotFoundReason.NOT_FOUND
                     and self._can_find_module_in_parent_dir(id)):
@@ -709,3 +710,13 @@ def load_stdlib_py_versions(custom_typeshed_dir: Optional[str]) -> Dict[str, Tup
         result[fnam] = (2, 7)
 
     return result
+
+
+def typeshed_py_version(options: Options) -> Tuple[int, int]:
+    """Return Python version used for checking whether module supports typeshed."""
+    # Typeshed no longer covers Python 3.x versions before 3.6, so 3.6 is
+    # the earliest we can support.
+    if options.python_version[0] >= 3:
+        return max(options.python_version, (3, 6))
+    else:
+        return options.python_version
