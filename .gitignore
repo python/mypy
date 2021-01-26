@@ -2,7 +2,6 @@ build/
 __pycache__
 *.py[cod]
 *~
-@*
 /build
 /env*/
 docs/build/
