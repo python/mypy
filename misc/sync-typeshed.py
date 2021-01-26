@@ -34,11 +34,6 @@ def update_typeshed(typeshed_dir: str) -> None:
     shutil.rmtree(stub_dir)
     # Copy new stdlib stubs.
     shutil.copytree(os.path.join(typeshed_dir, 'stdlib'), stub_dir)
-    # Also include mypy_extensions and typing_extensions, since they are
-    # special and shouldn't be updated arbitrarily.
-    for distribution, fnam in [('mypy-extensions', 'mypy_extensions.pyi'),
-                               ('typing-extensions', 'typing_extensions.pyi')]:
-        shutil.copy(os.path.join(typeshed_dir, 'stubs', distribution, fnam), stub_dir)
 
 
 def main() -> None:

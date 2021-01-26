@@ -703,3 +703,11 @@ class FancyFormatter:
 def is_typeshed_file(file: str) -> bool:
     # gross, but no other clear way to tell
     return 'typeshed' in os.path.abspath(file).split(os.sep)
+
+
+def is_stub_package_file(file: str) -> bool:
+    # Use hacky heuristics to check whether file is part of a PEP 561 stub package.
+    if not file.endswith('.pyi'):
+        return False
+    return any(component.endswith('-stubs')
+               for component in os.path.abspath(file).split(os.sep))
