@@ -73,6 +73,7 @@ cmdclass = {'build_py': CustomPythonBuild}
 package_data = ['py.typed']
 
 package_data += find_package_data(os.path.join('mypy', 'typeshed'), ['*.py', '*.pyi'])
+package_data += [os.path.join('mypy', 'typeshed', 'stdlib', 'VERSIONS')]
 
 package_data += find_package_data(os.path.join('mypy', 'xml'), ['*.xsd', '*.xslt', '*.css'])
 
@@ -195,6 +196,7 @@ setup(name='mypy',
                         'mypy_extensions >= 0.4.3, < 0.5.0',
                         'types-typing-extensions>=3.7.0',
                         'types-mypy-extensions>=0.4.0',
+                        'toml',
                         ],
       # Same here.
       extras_require={'dmypy': 'psutil >= 4.0'},
