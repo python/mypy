@@ -508,7 +508,7 @@ def default_lib_path(data_dir: str,
     path = []  # type: List[str]
 
     if custom_typeshed_dir:
-        typeshed_dir = custom_typeshed_dir
+        typeshed_dir = os.path.join(custom_typeshed_dir, "stdlib")
     else:
         auto = os.path.join(data_dir, 'stubs-auto')
         if os.path.isdir(auto):
