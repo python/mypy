@@ -1048,8 +1048,13 @@ def get_typeshed_stdlib_modules(custom_typeshed_dir: Optional[str]) -> List[str]
     """Returns a list of stdlib modules in typeshed (for current Python version)."""
     stdlib_py_versions = mypy.modulefinder.load_stdlib_py_versions(custom_typeshed_dir)
     packages = set()
+    # Typeshed doesn't cover Python 3.5.
+    if sys.version_info < (3, 6):
+        version_info = (3, 6)
+    else:
+        version_info = sys.version_info[0:2]
     for module, minver in stdlib_py_versions.items():
-        if sys.version_info >= minver:
+        if version_info >= minver:
             packages.add(module)
 
     if custom_typeshed_dir:
