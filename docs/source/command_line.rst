@@ -743,11 +743,13 @@ in developing or debugging mypy internals.
 
 .. option:: --custom-typeshed-dir DIR
 
-    This flag specifies the directory where mypy looks for typeshed
+    This flag specifies the directory where mypy looks for standard library typeshed
     stubs, instead of the typeshed that ships with mypy.  This is
     primarily intended to make it easier to test typeshed changes before
     submitting them upstream, but also allows you to use a forked version of
     typeshed.
+
+    Note that this doesn't affect third-party library stubs.
 
 .. _warn-incomplete-stub:
 
