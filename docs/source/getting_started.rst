@@ -369,7 +369,7 @@ often suggest the name of the stub distribution:
 
 .. note::
 
-   Starting in mypy 0.800, most third-party package stubs must be
+   Starting in mypy 0.900, most third-party package stubs must be
    installed explicitly. This decouples mypy and stub versioning,
    allowing stubs to updated without updating mypy. This also allows
    stubs not originally included with mypy to be installed. Earlier

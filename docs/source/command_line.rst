@@ -859,8 +859,8 @@ Miscellaneous
 
     .. note::
 
-        This is new in mypy 0.800. Previous mypy versions included a
-        selection of third-party packages, instead of having them
+        This is new in mypy 0.900. Previous mypy versions included a
+        selection of third-party package stubs, instead of having them
         installed separately.
 
 .. option:: --junit-xml JUNIT_XML
