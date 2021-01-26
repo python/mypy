@@ -49,7 +49,6 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
     args = parse_args(testcase.input[0])
     custom_cwd = parse_cwd(testcase.input[1]) if len(testcase.input) > 1 else None
     args.append('--show-traceback')
-    args.append('--no-site-packages')
     if '--error-summary' not in args:
         args.append('--no-error-summary')
     # Type check the program.
