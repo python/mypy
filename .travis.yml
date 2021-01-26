@@ -93,7 +93,7 @@ install:
 # means that tox picks up the mypy from the source directories instead of
 # the version it installed into a venv. This is also *why* we need to do this,
 # since if we arranged for tox to build with mypyc, pytest wouldn't use it.
-- if [[ $TEST_MYPYC == 1 ]]; then pip install -r mypy-requirements.txt; CC=clang MYPYC_OPT_LEVEL=0 python3 setup.py --use-mypyc build_ext --inplace; fi
+- if [[ $TEST_MYPYC == 1 ]]; then pip install -r test-requirements.txt; CC=clang MYPYC_OPT_LEVEL=0 python3 setup.py --use-mypyc build_ext --inplace; fi
 
 script:
 - tox --skip-pkg-install -- $EXTRA_ARGS
