@@ -193,6 +193,8 @@ setup(name='mypy',
       install_requires=['typed_ast >= 1.4.0, < 1.5.0',
                         'typing_extensions>=3.7.4',
                         'mypy_extensions >= 0.4.3, < 0.5.0',
+                        'types-typing-extensions>=3.7.0',
+                        'types-mypy-extensions>=0.4.0',
                         ],
       # Same here.
       extras_require={'dmypy': 'psutil >= 4.0'},
