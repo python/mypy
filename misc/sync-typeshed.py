@@ -15,6 +15,7 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+from typing import Optional
 
 
 def check_state() -> None:
@@ -26,14 +27,27 @@ def check_state() -> None:
         sys.exit('error: Output of "git status -s mypy/typeshed" must be empty')
 
 
-def update_typeshed(typeshed_dir: str) -> None:
+def update_typeshed(typeshed_dir: str, commit: Optional[str]) -> str:
+    """Update contents of local typeshed copy.
+
+    Return the normalized typeshed commit hash.
+    """
     assert os.path.isdir(os.path.join(typeshed_dir, 'stdlib'))
     assert os.path.isdir(os.path.join(typeshed_dir, 'stubs'))
+    if commit:
+        subprocess.run(['git', 'checkout', commit], check=True, cwd=typeshed_dir)
+    commit = git_head_commit(typeshed_dir)
     stub_dir = os.path.join('mypy', 'typeshed', 'stdlib')
     # Remove existing stubs.
     shutil.rmtree(stub_dir)
     # Copy new stdlib stubs.
     shutil.copytree(os.path.join(typeshed_dir, 'stdlib'), stub_dir)
+    return commit
+
+
+def git_head_commit(repo: str) -> str:
+    commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=repo).decode('ascii')
+    return commit.strip()
 
 
 def main() -> None:
@@ -53,12 +67,17 @@ def main() -> None:
     if answer.lower() != 'y':
         sys.exit('Aborting')
 
-    # TODO: Clone typeshed repo if no directory given
-    assert args.typeshed_dir
-    update_typeshed(args.typeshed_dir)
+    if not args.typeshed_dir:
+        # Clone typeshed repo if no directory given.
+        with tempfile.TemporaryDirectory() as tempdir:
+            print('Cloning typeshed in {}...'.format(tempdir))
+            subprocess.run(['git', 'clone', 'https://github.com/python/typeshed.git'],
+                           check=True, cwd=tempdir)
+            repo = os.path.join(tempdir, 'typeshed')
+            commit = update_typeshed(repo, args.commit)
+    else:
+        commit = update_typeshed(args.typeshed_dir, args.commit)
 
-    commit = args.commit
-    # TODO: If cloning typeshd repo, use master commit
     assert commit
 
     # Create a commit
