@@ -509,6 +509,11 @@ def default_lib_path(data_dir: str,
 
     if custom_typeshed_dir:
         typeshed_dir = os.path.join(custom_typeshed_dir, "stdlib")
+        versions_file = os.path.join(typeshed_dir, "VERSIONS")
+        if not os.path.isdir(typeshed_dir) or not os.path.isfile(versions_file):
+            print("error: --custom-typeshed-dir does not point to a valid typeshed ({})".format(
+                custom_typeshed_dir))
+            sys.exit(2)
     else:
         auto = os.path.join(data_dir, 'stubs-auto')
         if os.path.isdir(auto):
