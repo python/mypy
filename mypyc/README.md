@@ -57,9 +57,9 @@ Windows Requirements
 Quick Start for Contributors
 ----------------------------
 
-First clone the mypy git repository *and git submodules*:
+First clone the mypy git repository:
 
-    $ git clone --recurse-submodules https://github.com/python/mypy.git
+    $ git clone https://github.com/python/mypy.git
     $ cd mypy
 
 Optionally create a virtualenv (recommended):
@@ -78,10 +78,9 @@ Now you can run the tests:
 Look at the [issue tracker](https://github.com/mypyc/mypyc/issues)
 for things to work on. Please express your interest in working on an
 issue by adding a comment before doing any significant work, since
-development is currently very active and there is real risk of duplicate
-work.
+there is a risk of duplicate work.
 
-Note that the issue tracker is still hosted on the mypyc project, not
+Note that the issue tracker is hosted on the mypyc GitHub project, not
 with mypy itself.
 
 Documentation
