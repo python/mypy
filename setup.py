@@ -18,9 +18,6 @@ sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 from setuptools import setup, find_packages
 from setuptools.command.build_py import build_py
 from mypy.version import __version__ as version
-from mypy import git
-
-git.verify_git_integrity_or_abort(".")
 
 description = 'Optional static typing for Python'
 long_description = '''

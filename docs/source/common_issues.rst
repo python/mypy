@@ -616,7 +616,7 @@ You can install the latest development version of mypy from source. Clone the
 
 .. code-block:: text
 
-    git clone --recurse-submodules https://github.com/python/mypy.git
+    git clone https://github.com/python/mypy.git
     cd mypy
     sudo python3 -m pip install --upgrade .
 
