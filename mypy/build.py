@@ -15,7 +15,6 @@ import errno
 import gc
 import json
 import os
-import pathlib
 import re
 import stat
 import sys
@@ -2771,8 +2770,8 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
             )
             manager.errors.report(
                 -1, -1,
-                "Are you missing an __init__.py? Alternatively, consider using --ignore-path to avoid "
-                "checking one of them.",
+                "Are you missing an __init__.py? Alternatively, consider using --ignore-path to "
+                "avoid checking one of them.",
                 severity='note'
             )
 
