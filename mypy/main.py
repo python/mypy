@@ -954,6 +954,8 @@ def process_options(args: List[str],
     if options.logical_deps:
         options.cache_fine_grained = True
 
+    options.ignore_path = [p.replace("/", os.sep) for p in options.ignore_path]
+
     # Set target.
     if special_opts.modules + special_opts.packages:
         options.build_type = BuildType.MODULE

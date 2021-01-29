@@ -451,7 +451,7 @@ class FindModuleCache:
                 continue
             subpath = os.path.join(package_path, name)
             if self.options and any(
-                subpath.endswith(pattern.rstrip("/")) for pattern in self.options.ignore_path
+                matches_ignore_pattern(subpath, pattern) for pattern in self.options.ignore_path
             ):
                 continue
 
@@ -473,6 +473,15 @@ class FindModuleCache:
                     seen.add(stem)
                     sources.extend(self.find_modules_recursive(module + '.' + stem))
         return sources
+
+
+def matches_ignore_pattern(path: str, pattern: str) -> bool:
+    path_components = path.split(os.sep)
+    pattern_components = pattern.split(os.sep)
+    return all(
+        path == pattern
+        for path, pattern in zip(reversed(path_components), reversed(pattern_components))
+    )
 
 
 def verify_module(fscache: FileSystemCache, id: str, path: str, prefix: str) -> bool:

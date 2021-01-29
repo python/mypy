@@ -6,7 +6,7 @@ import os
 from typing import List, Sequence, Set, Tuple, Optional
 from typing_extensions import Final
 
-from mypy.modulefinder import BuildSource, PYTHON_EXTENSIONS, mypy_path
+from mypy.modulefinder import BuildSource, PYTHON_EXTENSIONS, mypy_path, matches_ignore_pattern
 from mypy.fscache import FileSystemCache
 from mypy.options import Options
 
@@ -111,7 +111,7 @@ class SourceFinder:
             ):
                 continue
             subpath = os.path.join(path, name)
-            if any(subpath.endswith(pattern.rstrip("/")) for pattern in self.ignore_path):
+            if any(matches_ignore_pattern(subpath, pattern) for pattern in self.ignore_path):
                 continue
 
             if self.fscache.isdir(subpath):
