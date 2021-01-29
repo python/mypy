@@ -378,7 +378,7 @@ def join_instances(t: Instance, s: Instance) -> ProperType:
                 # No need to check subtype, as ta and sa already have to be subtypes of upper_bound
                 args.append(new_type)
             elif type_var.variance == INVARIANT:
-                if ta != sa:
+                if not is_equivalent(ta, sa):
                     return object_from_instance(t)
                 args.append(ta)
         return Instance(t.type, args)
