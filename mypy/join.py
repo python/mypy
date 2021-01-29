@@ -380,6 +380,7 @@ def join_instances(t: Instance, s: Instance) -> ProperType:
             elif type_var.variance == INVARIANT:
                 if ta != sa:
                     return object_from_instance(t)
+                args.append(ta)
         return Instance(t.type, args)
     elif t.type.bases and is_subtype_ignoring_tvars(t, s):
         return join_instances_via_supertype(t, s)
