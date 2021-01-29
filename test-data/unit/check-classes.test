@@ -5436,13 +5436,13 @@ main:8:6: error: Type argument "builtins.int" of "G" must be a subtype of "built
 [case testExtremeForwardReferencing]
 from typing import TypeVar, Generic
 
-T = TypeVar('T')
+T = TypeVar('T', covariant=True)
 class B(Generic[T]): ...
 
 y: A
 z: A[int]
 x = [y, z]
-reveal_type(x)  # N: Revealed type is 'builtins.list[builtins.object*]'
+reveal_type(x)  # N: Revealed type is 'builtins.list[__main__.B*[Any]]'
 
 A = B
 [builtins fixtures/list.pyi]
