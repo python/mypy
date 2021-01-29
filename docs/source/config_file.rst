@@ -197,6 +197,15 @@ section of the command line docs.
 
     This option may only be set in the global section (``[mypy]``).
 
+.. confval:: ignore_path
+
+    :type: comma-separated list of strings
+
+    A comma-separated list of file names, directory names or subpaths which mypy
+    should ignore while recursively discovering files to check.
+
+    This option may only be set in the global section (``[mypy]``).
+
 .. confval:: namespace_packages
 
     :type: boolean

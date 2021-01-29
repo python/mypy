@@ -252,3 +252,34 @@ class SourceFinderSuite(unittest.TestCase):
 
         finder = SourceFinder(FakeFSCache({"/a/pkg/a.py", "/b/pkg/b.py"}), options)
         assert find_sources(finder, "/") == [("pkg.a", "/a"), ("pkg.b", "/b")]
+
+    def test_find_sources_ignore_path(self) -> None:
+        options = Options()
+        options.namespace_packages = True
+
+        finder = SourceFinder(FakeFSCache({"/dir/a.py", "/dir/venv/site-packages/b.py"}), options)
+        assert find_sources(finder, "/") == [("a", "/dir")]
+
+        files = {
+            "/pkg/a1/b/c/d/e.py",
+            "/pkg/a1/b/f.py",
+            "/pkg/a2/__init__.py",
+            "/pkg/a2/b/c/d/e.py",
+            "/pkg/a2/b/f.py",
+        }
+
+        options.ignore_path = ["/pkg/a1"]
+        finder = SourceFinder(FakeFSCache(files), options)
+        assert find_sources(finder, "/") == [
+            ("a2", "/pkg"),
+            ("a2.b.c.d.e", "/pkg"),
+            ("a2.b.f", "/pkg"),
+        ]
+
+        options.ignore_path = ["f.py"]
+        finder = SourceFinder(FakeFSCache(files), options)
+        assert find_sources(finder, "/") == [
+            ("a2", "/pkg"),
+            ("a2.b.c.d.e", "/pkg"),
+            ("e", "/pkg/a1/b/c/d"),
+        ]

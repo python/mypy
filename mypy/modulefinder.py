@@ -443,9 +443,17 @@ class FindModuleCache:
         names = sorted(self.fscache.listdir(package_path))
         for name in names:
             # Skip certain names altogether
-            if name == '__pycache__' or name.startswith('.') or name.endswith('~'):
+            if (
+                name in ("__pycache__", "site-packages", "node_modules")
+                or name.startswith(".")
+                or name.endswith("~")
+            ):
                 continue
             subpath = os.path.join(package_path, name)
+            if self.options and any(
+                subpath.endswith(pattern.rstrip("/")) for pattern in self.options.ignore_path
+            ):
+                continue
 
             if self.fscache.isdir(subpath):
                 # Only recurse into packages

@@ -91,6 +91,7 @@ class SourceFinder:
         self.fscache = fscache
         self.explicit_package_bases = get_explicit_package_bases(options)
         self.namespace_packages = options.namespace_packages
+        self.ignore_path = options.ignore_path
 
     def is_explicit_package_base(self, path: str) -> bool:
         assert self.explicit_package_bases
@@ -103,9 +104,15 @@ class SourceFinder:
         names = sorted(self.fscache.listdir(path), key=keyfunc)
         for name in names:
             # Skip certain names altogether
-            if name == '__pycache__' or name.startswith('.') or name.endswith('~'):
+            if (
+                name in ("__pycache__", "site-packages", "node_modules")
+                or name.startswith(".")
+                or name.endswith("~")
+            ):
                 continue
             subpath = os.path.join(path, name)
+            if any(subpath.endswith(pattern.rstrip("/")) for pattern in self.ignore_path):
+                continue
 
             if self.fscache.isdir(subpath):
                 sub_sources = self.find_sources_in_dir(subpath)

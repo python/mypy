@@ -49,6 +49,13 @@ for full details, see :ref:`running-mypy`.
     Asks mypy to type check the provided string as a program.
 
 
+.. option:: --ignore-path
+
+    Asks mypy to ignore a given file name, directory name or subpath while
+    recursively discovering files to check. This flag may be repeated multiple
+    times.
+
+
 Optional arguments
 ******************
 

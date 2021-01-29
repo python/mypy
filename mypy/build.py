@@ -2769,14 +2769,12 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                 "Duplicate module named '%s' (also at '%s')" % (st.id, graph[st.id].xpath),
                 blocker=True,
             )
-            p1 = len(pathlib.PurePath(st.xpath).parents)
-            p2 = len(pathlib.PurePath(graph[st.id].xpath).parents)
-
-            if p1 != p2:
-                manager.errors.report(
-                    -1, -1,
-                    "Are you missing an __init__.py?"
-                )
+            manager.errors.report(
+                -1, -1,
+                "Are you missing an __init__.py? Alternatively, consider using --ignore-path to avoid "
+                "checking one of them.",
+                severity='note'
+            )
 
             manager.errors.raise_error()
         graph[st.id] = st

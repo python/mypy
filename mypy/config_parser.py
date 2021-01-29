@@ -83,6 +83,7 @@ config_types = {
     'custom_typing_module': str,
     'custom_typeshed_dir': expand_path,
     'mypy_path': lambda s: [expand_path(p.strip()) for p in re.split('[,:]', s)],
+    'ignore_path': lambda s: [expand_path(p.strip()) for p in s.split(',')],
     'files': split_and_match_files,
     'quickstart_file': expand_path,
     'junit_xml': expand_path,
