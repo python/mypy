@@ -5442,7 +5442,7 @@ class B(Generic[T]): ...
 y: A
 z: A[int]
 x = [y, z]
-reveal_type(x)  # N: Revealed type is 'builtins.list[__main__.B*[Any]]'
+reveal_type(x)  # N: Revealed type is 'builtins.list[builtins.object*]'
 
 A = B
 [builtins fixtures/list.pyi]
