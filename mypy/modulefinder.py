@@ -479,6 +479,8 @@ def matches_ignore_pattern(path: str, pattern: str) -> bool:
     path = os.path.splitdrive(path)[1]
     path_components = path.split(os.sep)
     pattern_components = pattern.split(os.sep)
+    if len(path_components) < len(pattern_components):
+        return False
     return all(
         path == pattern
         for path, pattern in zip(reversed(path_components), reversed(pattern_components))
