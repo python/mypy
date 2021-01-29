@@ -505,10 +505,6 @@ def process_options(args: List[str],
     platform_group.add_argument(
         '--always-false', metavar='NAME', action='append', default=[],
         help="Additional variable to be considered False (may be repeated)")
-    platform_group.add_argument(
-        '--extra-builtins', metavar='SOURCE_FILE', action='append', default=[],
-        help="Load additional variables from a file and treat them as builtins (may be repeated)"
-    )
 
     disallow_any_group = parser.add_argument_group(
         title='Disallow dynamic typing',
