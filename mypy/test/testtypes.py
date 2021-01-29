@@ -599,7 +599,7 @@ class JoinSuite(Suite):
     def test_simple_generics(self) -> None:
         self.assert_join(self.fx.ga, self.fx.ga, self.fx.ga)
         self.assert_join(self.fx.ga, self.fx.gb, self.fx.ga)
-        self.assert_join(self.fx.ga, self.fx.gd, self.fx.o)
+        self.assert_join(self.fx.ga, self.fx.gd, self.fx.go)
         self.assert_join(self.fx.ga, self.fx.g2a, self.fx.o)
 
         self.assert_join(self.fx.ga, self.fx.nonet, self.fx.ga)
@@ -612,17 +612,17 @@ class JoinSuite(Suite):
     def test_generics_with_multiple_args(self) -> None:
         self.assert_join(self.fx.hab, self.fx.hab, self.fx.hab)
         self.assert_join(self.fx.hab, self.fx.hbb, self.fx.hab)
-        self.assert_join(self.fx.had, self.fx.haa, self.fx.o)
+        self.assert_join(self.fx.had, self.fx.haa, self.fx.hao)
 
     def test_generics_with_inheritance(self) -> None:
         self.assert_join(self.fx.gsab, self.fx.gb, self.fx.gb)
         self.assert_join(self.fx.gsba, self.fx.gb, self.fx.ga)
-        self.assert_join(self.fx.gsab, self.fx.gd, self.fx.o)
+        self.assert_join(self.fx.gsab, self.fx.gd, self.fx.go)
 
     def test_generics_with_inheritance_and_shared_supertype(self) -> None:
         self.assert_join(self.fx.gsba, self.fx.gs2a, self.fx.ga)
         self.assert_join(self.fx.gsab, self.fx.gs2a, self.fx.ga)
-        self.assert_join(self.fx.gsab, self.fx.gs2d, self.fx.o)
+        self.assert_join(self.fx.gsab, self.fx.gs2d, self.fx.go)
 
     def test_generic_types_and_any(self) -> None:
         self.assert_join(self.fx.gdyn, self.fx.ga, self.fx.gdyn)
