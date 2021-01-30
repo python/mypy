@@ -627,9 +627,9 @@ class GroupGenerator:
         self.declare_global('const char []', 'BytesLiterals', initializer=init_bytes)
         init_int = self.cstring_initializer(literals.encoded_int_values())
         self.declare_global('const char []', 'IntLiterals', initializer=init_int)
-        init_floats = '{%s}' % ', '.join(literals.encoded_float_values())
+        init_floats = self.array_initializer(literals.encoded_float_values())
         self.declare_global('const double []', 'FloatLiterals', initializer=init_floats)
-        init_complex = '{%s}' % ', '.join(literals.encoded_complex_values())
+        init_complex = self.array_initializer(literals.encoded_complex_values())
         self.declare_global('const double []', 'ComplexLiterals', initializer=init_complex)
 
     def cstring_initializer(self, components: List[bytes]) -> str:
@@ -647,6 +647,23 @@ class GroupGenerator:
         if len(res) > 1:
             res.insert(0, '')
         return '\n    '.join(res)
+
+    def array_initializer(self, components: List[str]) -> str:
+        res = []
+        current = []  # type: List[str]
+        cur_len = 0
+        for c in components:
+            if not current or cur_len + 2 + len(c) < 70:
+                current.append(c)
+                cur_len += len(c) + 2
+            else:
+                res.append(', '.join(current))
+                current = [c]
+                cur_len = len(c)
+        if not res:
+            return '{%s}' % ', '.join(current);
+        res.append(', '.join(current))
+        return '{\n    ' + ',\n    '.join(res) + '\n}'
 
     def generate_export_table(self, decl_emitter: Emitter, code_emitter: Emitter) -> None:
         """Generate the declaration and definition of the group's export struct.
