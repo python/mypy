@@ -52,7 +52,7 @@ def f(x):
     r1, r2 :: object
     r3, d :: dict
 L0:
-    r0 = load_global CPyStatic_unicode_1 :: static
+    r0 = ''
     r1 = box(short_int, 2)
     r2 = box(short_int, 4)
     r3 = CPyDict_Build(2, r1, r2, r0, x)
@@ -194,7 +194,7 @@ def f(x, y):
     r6 :: int32
     r7 :: bit
 L0:
-    r0 = load_global CPyStatic_unicode_3 :: static  ('z')
+    r0 = 'z'
     r1 = box(short_int, 4)
     r2 = CPyDict_Build(1, x, r1)
     r3 = CPyDict_UpdateInDisplay(r2, y)

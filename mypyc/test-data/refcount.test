@@ -661,7 +661,7 @@ def f() -> str:
 def f():
     r0 :: str
 L0:
-    r0 = load_global CPyStatic_unicode_1 :: static  ('some string')
+    r0 = 'some string'
     inc_ref r0
     return r0
 
@@ -680,7 +680,7 @@ def g(x):
     r6 :: int
 L0:
     r0 = load_address PyLong_Type
-    r1 = load_global CPyStatic_unicode_1 :: static  ('base')
+    r1 = 'base'
     r2 = PyTuple_Pack(1, x)
     r3 = box(short_int, 4)
     r4 = CPyDict_Build(1, r1, r3)

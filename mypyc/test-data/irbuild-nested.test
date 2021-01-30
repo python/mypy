@@ -93,7 +93,7 @@ L0:
     r1 = r0.__mypyc_env__
     r2 = r0.second
     second = r2
-    r3 = load_global CPyStatic_unicode_3 :: static  ('b.first.second: nested function')
+    r3 = 'b.first.second: nested function'
     return r3
 def first_b_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
@@ -163,7 +163,7 @@ L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.inner
     inner = r1
-    r2 = load_global CPyStatic_unicode_4 :: static  ('!')
+    r2 = '!'
     r3 = PyUnicode_Concat(s, r2)
     return r3
 def c(num):
@@ -202,7 +202,7 @@ L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.inner
     inner = r1
-    r2 = load_global CPyStatic_unicode_5 :: static  ('?')
+    r2 = '?'
     r3 = PyUnicode_Concat(s, r2)
     return r3
 def d(num):
@@ -220,12 +220,12 @@ L0:
     r1 = inner_d_obj()
     r1.__mypyc_env__ = r0; r2 = is_error
     r0.inner = r1; r3 = is_error
-    r4 = load_global CPyStatic_unicode_6 :: static  ('one')
+    r4 = 'one'
     r5 = r0.inner
     r6 = PyObject_CallFunctionObjArgs(r5, r4, 0)
     r7 = cast(str, r6)
     a = r7
-    r8 = load_global CPyStatic_unicode_7 :: static  ('two')
+    r8 = 'two'
     r9 = r0.inner
     r10 = PyObject_CallFunctionObjArgs(r9, r8, 0)
     r11 = cast(str, r10)
@@ -234,17 +234,17 @@ L0:
 def inner():
     r0 :: str
 L0:
-    r0 = load_global CPyStatic_unicode_8 :: static  ('inner: normal function')
+    r0 = 'inner: normal function'
     return r0
 def first():
     r0 :: str
 L0:
-    r0 = load_global CPyStatic_unicode_9 :: static  ('first: normal function')
+    r0 = 'first: normal function'
     return r0
 def second():
     r0 :: str
 L0:
-    r0 = load_global CPyStatic_unicode_10 :: static  ('second: normal function')
+    r0 = 'second: normal function'
     return r0
 
 [case testFreeVars]
@@ -384,7 +384,7 @@ L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.inner
     inner = r1
-    r2 = load_global CPyStatic_unicode_3 :: static  ('f.inner: first definition')
+    r2 = 'f.inner: first definition'
     return r2
 def inner_c_obj_0.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
@@ -408,7 +408,7 @@ L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.inner
     inner = r1
-    r2 = load_global CPyStatic_unicode_4 :: static  ('f.inner: second definition')
+    r2 = 'f.inner: second definition'
     return r2
 def c(flag):
     flag :: bool
@@ -565,7 +565,7 @@ L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.inner
     inner = r1
-    r2 = load_global CPyStatic_unicode_1 :: static  ('f.inner: first definition')
+    r2 = 'f.inner: first definition'
     return r2
 def inner_f_obj_0.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
@@ -589,7 +589,7 @@ L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.inner
     inner = r1
-    r2 = load_global CPyStatic_unicode_2 :: static  ('f.inner: second definition')
+    r2 = 'f.inner: second definition'
     return r2
 def f(flag):
     flag :: bool

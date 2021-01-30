@@ -187,7 +187,7 @@ def g():
 L0:
 L1:
     r0 = builtins :: module
-    r1 = load_global CPyStatic_unicode_1 :: static  ('object')
+    r1 = 'object'
     r2 = CPyObject_GetAttr(r0, r1)
     if is_error(r2) goto L3 (error at g:3) else goto L2
 L2:
@@ -196,9 +196,9 @@ L2:
     if is_error(r3) goto L3 (error at g:3) else goto L10
 L3:
     r4 = CPy_CatchError()
-    r5 = load_global CPyStatic_unicode_2 :: static  ('weeee')
+    r5 = 'weeee'
     r6 = builtins :: module
-    r7 = load_global CPyStatic_unicode_3 :: static  ('print')
+    r7 = 'print'
     r8 = CPyObject_GetAttr(r6, r7)
     if is_error(r8) goto L6 (error at g:5) else goto L4
 L4:
@@ -253,7 +253,7 @@ def a():
 L0:
 L1:
     r0 = builtins :: module
-    r1 = load_global CPyStatic_unicode_1 :: static  ('print')
+    r1 = 'print'
     r2 = CPyObject_GetAttr(r0, r1)
     if is_error(r2) goto L5 (error at a:3) else goto L2
 L2:
@@ -261,7 +261,7 @@ L2:
     dec_ref r2
     if is_error(r3) goto L5 (error at a:3) else goto L20
 L3:
-    r4 = load_global CPyStatic_unicode_2 :: static  ('hi')
+    r4 = 'hi'
     inc_ref r4
     r5 = r4
 L4:
@@ -274,9 +274,9 @@ L5:
     r9 = CPy_CatchError()
     r7 = r9
 L6:
-    r10 = load_global CPyStatic_unicode_3 :: static  ('goodbye!')
+    r10 = 'goodbye!'
     r11 = builtins :: module
-    r12 = load_global CPyStatic_unicode_1 :: static  ('print')
+    r12 = 'print'
     r13 = CPyObject_GetAttr(r11, r12)
     if is_error(r13) goto L13 (error at a:6) else goto L7
 L7:
@@ -352,7 +352,7 @@ def lol(x):
     r3 :: str
 L0:
 L1:
-    r0 = load_global CPyStatic_unicode_3 :: static  ('foo')
+    r0 = 'foo'
     r1 = CPyObject_GetAttr(x, r0)
     if is_error(r1) goto L3 (error at lol:4) else goto L2
 L2:
@@ -360,7 +360,7 @@ L2:
     goto L4
 L3:
     r2 = CPy_CatchError()
-    r3 = load_global CPyStatic_unicode_4 :: static
+    r3 = ''
     CPy_RestoreExcInfo(r2)
     dec_ref r2
     inc_ref r3
@@ -394,12 +394,12 @@ L0:
     r1 = <error> :: object
     b = r1
 L1:
-    r2 = load_global CPyStatic_unicode_3 :: static  ('foo')
+    r2 = 'foo'
     r3 = CPyObject_GetAttr(x, r2)
     if is_error(r3) goto L4 (error at lol:4) else goto L15
 L2:
     a = r3
-    r4 = load_global CPyStatic_unicode_4 :: static  ('bar')
+    r4 = 'bar'
     r5 = CPyObject_GetAttr(x, r4)
     if is_error(r5) goto L4 (error at lol:5) else goto L16
 L3:
@@ -469,13 +469,13 @@ def f(b):
 L0:
     r0 = <error> :: str
     v = r0
-    r1 = load_global CPyStatic_unicode_1 :: static  ('a')
+    r1 = 'a'
     inc_ref r1
     u = r1
 L1:
     if b goto L10 else goto L11 :: bool
 L2:
-    r2 = load_global CPyStatic_unicode_2 :: static  ('b')
+    r2 = 'b'
     inc_ref r2
     v = r2
     r3 = v == u
@@ -483,7 +483,7 @@ L2:
     if r4 goto L11 else goto L1 :: bool
 L3:
     r5 = builtins :: module
-    r6 = load_global CPyStatic_unicode_3 :: static  ('print')
+    r6 = 'print'
     r7 = CPyObject_GetAttr(r5, r6)
     if is_error(r7) goto L12 (error at f:7) else goto L4
 L4:
