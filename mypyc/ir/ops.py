@@ -495,7 +495,7 @@ class LoadErrorValue(RegisterOp):
 
 
 class LoadLiteral(RegisterOp):
-    """Load a Python literal object.
+    """Load a Python literal object (dest = 'foo' / b'foo' / ...).
 
     This is used to load static PyObject * values corresponding to
     string literals, etc.
@@ -508,7 +508,7 @@ class LoadLiteral(RegisterOp):
     error_kind = ERR_NEVER
     is_borrowed = True
 
-    def __init__(self, value: str, rtype: RType) -> None:
+    def __init__(self, value: Union[str, bytes], rtype: RType) -> None:
         self.value = value
         self.type = rtype
 

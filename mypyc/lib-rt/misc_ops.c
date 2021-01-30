@@ -522,7 +522,10 @@ static const char *parse_int(const char *s, size_t *len) {
     return s;
 }
 
-int CPyStatics_Initialize(PyObject **statics, const char *strings) {
+// Initialize static constant array for literal values
+int CPyStatics_Initialize(PyObject **statics,
+                          const char *strings,
+                          const char *bytestrings) {
     if (strings) {
         size_t num;
         strings = parse_int(strings, &num);
@@ -536,6 +539,20 @@ int CPyStatics_Initialize(PyObject **statics, const char *strings) {
             PyUnicode_InternInPlace(&obj);
             *statics++ = obj;
             strings += len;
+        }
+    }
+    if (bytestrings) {
+        size_t num;
+        bytestrings = parse_int(bytestrings, &num);
+        while (num-- > 0) {
+            size_t len;
+            bytestrings = parse_int(bytestrings, &len);
+            PyObject *obj = PyBytes_FromStringAndSize(bytestrings, len);
+            if (obj == NULL) {
+                return -1;
+            }
+            *statics++ = obj;
+            bytestrings += len;
         }
     }
     return 0;

@@ -632,8 +632,10 @@ class GroupGenerator:
     def generate_literal_tables(self) -> None:
         literals = self.context.literals
         self.declare_global('PyObject *[%d]' % literals.num_literals(), 'CPyStatics')
-        init = self.cstring_initializer(literals.encoded_str_values())
-        self.declare_global('const char []', 'StrLiterals', initializer=init)
+        init_str = self.cstring_initializer(literals.encoded_str_values())
+        self.declare_global('const char []', 'StrLiterals', initializer=init_str)
+        init_bytes = self.cstring_initializer(literals.encoded_bytes_values())
+        self.declare_global('const char []', 'BytesLiterals', initializer=init_bytes)
 
     def cstring_initializer(self, components: List[bytes]) -> str:
         res = []
@@ -823,7 +825,8 @@ class GroupGenerator:
         for symbol, fixup in self.simple_inits:
             emitter.emit_line('{} = {};'.format(symbol, fixup))
 
-        emitter.emit_lines('if (CPyStatics_Initialize(CPyStatics, StrLiterals) < 0) {',
+        values = 'StrLiterals, BytesLiterals'
+        emitter.emit_lines('if (CPyStatics_Initialize(CPyStatics, {}) < 0) {{'.format(values),
                            'return -1;',
                            '}')
 
