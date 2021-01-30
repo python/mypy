@@ -498,7 +498,12 @@ class LoadLiteral(RegisterOp):
     """Load a Python literal object (dest = 'foo' / b'foo' / ...).
 
     This is used to load a static PyObject * value corresponding to
-    a str/bytes/float/... literal.
+    a literal of one of the supported types.
+
+    NOTE: For int literals, both int_rprimitive (CPyTagged) and
+          object_primitive (PyObject *) are supported as types. However,
+          when using int_rprimitive, the value must *not* be small enough
+          to fit in an unboxed integer.
 
     NOTE: You can use this to load boxed (Python) int objects. Use
           Integer to load unboxed, tagged integers or fixed-width,
