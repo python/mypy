@@ -269,15 +269,6 @@ class SourceFinderSuite(unittest.TestCase):
             "/pkg/a2/b/f.py",
         }
 
-        # directory name
-        options.ignore_path = ["/pkg/a1"]
-        finder = SourceFinder(FakeFSCache(files), options)
-        assert find_sources(finder, "/") == [
-            ("a2", "/pkg"),
-            ("a2.b.c.d.e", "/pkg"),
-            ("a2.b.f", "/pkg"),
-        ]
-
         # file name
         options.ignore_path = ["f.py"]
         finder = SourceFinder(FakeFSCache(files), options)
@@ -287,7 +278,24 @@ class SourceFinderSuite(unittest.TestCase):
             ("e", "/pkg/a1/b/c/d"),
         ]
 
-        # subpath
+        # directory name
+        options.ignore_path = ["a1"]
+        finder = SourceFinder(FakeFSCache(files), options)
+        assert find_sources(finder, "/") == [
+            ("a2", "/pkg"),
+            ("a2.b.c.d.e", "/pkg"),
+            ("a2.b.f", "/pkg"),
+        ]
+
+        # paths
+        options.ignore_path = ["/pkg/a1"]
+        finder = SourceFinder(FakeFSCache(files), options)
+        assert find_sources(finder, "/") == [
+            ("a2", "/pkg"),
+            ("a2.b.c.d.e", "/pkg"),
+            ("a2.b.f", "/pkg"),
+        ]
+
         options.ignore_path = ["b/c"]
         finder = SourceFinder(FakeFSCache(files), options)
         assert find_sources(finder, "/") == [
