@@ -1,8 +1,6 @@
 """Maintain a mapping from mypy concepts to IR/compiled concepts."""
 
-from typing import Dict, Optional, Union, Tuple, Any
-from mypy.ordered_dict import OrderedDict
-import typing
+from typing import Dict, Optional
 
 from mypy.nodes import FuncDef, TypeInfo, SymbolNode, ARG_STAR, ARG_STAR2
 from mypy.types import (
@@ -18,9 +16,6 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.ir.func_ir import FuncSignature, FuncDecl, RuntimeArg
 from mypyc.ir.class_ir import ClassIR
-
-
-LiteralsMap = Dict[Tuple[typing.Type[object], Union[int, float, str, bytes, complex]], str]
 
 
 class Mapper:

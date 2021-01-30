@@ -14,7 +14,7 @@ from typing import (
     List, Sequence, Dict, Generic, TypeVar, Optional, NamedTuple, Tuple, Union
 )
 
-from typing_extensions import Final, Type, TYPE_CHECKING
+from typing_extensions import Final, TYPE_CHECKING
 from mypy_extensions import trait
 
 from mypyc.ir.rtypes import (

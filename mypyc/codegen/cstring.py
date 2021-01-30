@@ -19,7 +19,6 @@ octal digits.
 """
 
 import string
-from typing import Tuple
 
 CHAR_MAP = ['\\{:03o}'.format(i) for i in range(256)]
 
@@ -38,18 +37,7 @@ for c in ('\'', '"', '\\', 'a', 'b', 'f', 'n', 'r', 't', 'v'):
 CHAR_MAP[ord('?')] = r'\?'
 
 
-def encode_as_c_string(s: str) -> Tuple[str, int]:
-    """Produce a quoted C string literal and its size, for a UTF-8 string."""
-    return encode_bytes_as_c_string(s.encode('utf-8'))
-
-
-def encode_bytes_as_c_string(b: bytes) -> Tuple[str, int]:
+def encode_bytes_as_c_string(b: bytes) -> str:
     """Produce a quoted C string literal and its size, for a byte string."""
     escaped = ''.join([CHAR_MAP[i] for i in b])
-    return '"{}"'.format(escaped), len(b)
-
-
-def encode_bytes_as_c_string_2(b: bytes) -> Tuple[str, int]:
-    """Produce a quoted C string literal and its size, for a byte string."""
-    escaped = ''.join([CHAR_MAP[i] for i in b])
-    return escaped, len(b)
+    return escaped

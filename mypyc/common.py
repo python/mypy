@@ -19,7 +19,6 @@ TEMP_ATTR_NAME = '__mypyc_temp__'  # type: Final
 LAMBDA_NAME = '__mypyc_lambda__'  # type: Final
 PROPSET_PREFIX = '__mypyc_setter__'  # type: Final
 SELF_NAME = '__mypyc_self__'  # type: Final
-INT_PREFIX = '__tmp_literal_int_'  # type: Final
 
 # Max short int we accept as a literal is based on 32-bit platforms,
 # so that we can just always emit the same code.

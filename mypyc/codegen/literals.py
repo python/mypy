@@ -1,6 +1,4 @@
-from typing import Dict, Type, List, Union
-
-from mypyc.codegen.cstring import encode_bytes_as_c_string
+from typing import Dict, List, Union
 
 
 class Literals:
