@@ -469,8 +469,7 @@ class LowLevelIRBuilder:
 
     def load_static_complex(self, value: complex) -> Value:
         """Loads a static complex value into a register."""
-        identifier = self.literal_static_name(value)
-        return self.add(LoadGlobal(object_rprimitive, identifier, ann=value))
+        return self.add(LoadLiteral(value, object_rprimitive))
 
     def load_static_unicode(self, value: str) -> Value:
         """Loads a static unicode value into a register.

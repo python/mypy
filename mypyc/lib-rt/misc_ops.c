@@ -522,11 +522,12 @@ static const char *parse_int(const char *s, size_t *len) {
     return s;
 }
 
-// Initialize static constant array for literal values
+// Initialize static constant array of literal values
 int CPyStatics_Initialize(PyObject **statics,
                           const char *strings,
                           const char *bytestrings,
-                          const double *floats) {
+                          const double *floats,
+                          const double *complex_numbers) {
     if (strings) {
         size_t num;
         strings = parse_int(strings, &num);
@@ -560,6 +561,18 @@ int CPyStatics_Initialize(PyObject **statics,
         size_t num_floats = (size_t)*floats++;
         while (num_floats-- > 0) {
             PyObject *obj = PyFloat_FromDouble(*floats++);
+            if (obj == NULL) {
+                return -1;
+            }
+            *statics++ = obj;
+        }
+    }
+    if (complex_numbers) {
+        size_t num_complex = (size_t)*complex_numbers++;
+        while (num_complex-- > 0) {
+            double real = *complex_numbers++;
+            double imag = *complex_numbers++;
+            PyObject *obj = PyComplex_FromDoubles(real, imag);
             if (obj == NULL) {
                 return -1;
             }

@@ -508,7 +508,7 @@ class LoadLiteral(RegisterOp):
     error_kind = ERR_NEVER
     is_borrowed = True
 
-    def __init__(self, value: Union[str, bytes, float], rtype: RType) -> None:
+    def __init__(self, value: Union[str, bytes, float, complex], rtype: RType) -> None:
         self.value = value
         self.type = rtype
 
