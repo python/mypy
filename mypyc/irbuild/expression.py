@@ -18,7 +18,7 @@ from mypy.types import TupleType, get_proper_type, Instance
 
 from mypyc.common import MAX_SHORT_INT
 from mypyc.ir.ops import (
-    Value, Register, TupleGet, TupleSet, BasicBlock, Assign, LoadAddress
+    Value, Register, TupleGet, TupleSet, BasicBlock, Assign, LoadAddress, LoadLiteral
 )
 from mypyc.ir.rtypes import (
     RTuple, object_rprimitive, is_none_rprimitive, int_rprimitive, is_int_rprimitive
