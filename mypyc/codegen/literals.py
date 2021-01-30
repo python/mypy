@@ -9,8 +9,9 @@ class Literals:
     def __init__(self) -> None:
         self.str_literals = {}  # type: Dict[str, int]
         self.bytes_literals = {}  # type: Dict[bytes, int]
+        self.float_literals = {}  # type: Dict[float, int]
 
-    def record_literal(self, value: Union[str, bytes]) -> None:
+    def record_literal(self, value: Union[str, bytes, float]) -> None:
         """Ensure that the literal value is available in generated code."""
         if isinstance(value, str):
             str_literals = self.str_literals
@@ -20,26 +21,36 @@ class Literals:
             bytes_literals = self.bytes_literals
             if value not in bytes_literals:
                 bytes_literals[value] = len(bytes_literals)
+        elif isinstance(value, float):
+            float_literals = self.float_literals
+            if value not in float_literals:
+                float_literals[value] = len(float_literals)
         else:
             assert False, 'invalid literal: %r' % value
 
-    def literal_index(self, value: Union[str, bytes]) -> int:
+    def literal_index(self, value: Union[str, bytes, float]) -> int:
         """Return the index to the literals array for given value."""
         if isinstance(value, str):
             return self.str_literals[value]
         n = len(self.str_literals)
         if isinstance(value, bytes):
             return n + self.bytes_literals[value]
+        n += len(self.bytes_literals)
+        if isinstance(value, float):
+            return n + self.float_literals[value]
         assert False, 'invalid literal: %r' % value
 
     def num_literals(self) -> int:
-        return len(self.str_literals) + len(self.bytes_literals)
+        return len(self.str_literals) + len(self.bytes_literals) + len(self.float_literals)
 
     def encoded_str_values(self) -> List[bytes]:
         return encode_str_values(self.str_literals)
 
     def encoded_bytes_values(self) -> List[bytes]:
         return encode_bytes_values(self.bytes_literals)
+
+    def encoded_float_values(self) -> List[str]:
+        return encode_float_values(self.float_literals)
 
 
 def encode_str_values(values: Dict[str, int]) -> List[bytes]:
@@ -67,6 +78,19 @@ def encode_bytes_values(values: Dict[bytes, int]) -> List[bytes]:
         value = value_by_index[i]
         result.append(format_int(len(value)))
         result.append(value)
+    return result
+
+
+def encode_float_values(values: Dict[float, int]) -> List[str]:
+    value_by_index = {}
+    for value, index in values.items():
+        value_by_index[index] = value
+    result = []
+    num = len(values)
+    result.append(str(num))
+    for i in range(num):
+        value = value_by_index[i]
+        result.append(str(value))
     return result
 
 

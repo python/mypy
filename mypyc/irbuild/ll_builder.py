@@ -461,8 +461,7 @@ class LowLevelIRBuilder:
 
     def load_static_float(self, value: float) -> Value:
         """Loads a static float value into a register."""
-        identifier = self.literal_static_name(value)
-        return self.add(LoadGlobal(float_rprimitive, identifier, ann=value))
+        return self.add(LoadLiteral(value, float_rprimitive))
 
     def load_static_bytes(self, value: bytes) -> Value:
         """Loads a static bytes value into a register."""
