@@ -2,7 +2,7 @@ from typing import Dict, List, Union
 
 
 class Literals:
-    """Collection of literal values used in a compilation group."""
+    """Collection of literal values used in a compilation group and related helpers."""
 
     def __init__(self) -> None:
         self.str_literals = {}  # type: Dict[str, int]
@@ -38,6 +38,7 @@ class Literals:
 
     def literal_index(self, value: Union[str, bytes, int, float, complex]) -> int:
         """Return the index to the literals array for given value."""
+        # The array contains first all str values, followed by bytes values, etc.
         if isinstance(value, str):
             return self.str_literals[value]
         n = len(self.str_literals)
@@ -57,6 +58,9 @@ class Literals:
     def num_literals(self) -> int:
         return (len(self.str_literals) + len(self.bytes_literals) + len(self.int_literals) +
                 len(self.float_literals) + len(self.complex_literals))
+
+    # The following methods return the C encodings of literal values
+    # of different types
 
     def encoded_str_values(self) -> List[bytes]:
         return encode_str_values(self.str_literals)
@@ -103,6 +107,7 @@ def encode_bytes_values(values: Dict[bytes, int]) -> List[bytes]:
 
 
 def format_int(n: int) -> bytes:
+    """Format an integer using a variable-length binary encoding."""
     if n < 128:
         a = [n]
     else:
@@ -111,6 +116,7 @@ def format_int(n: int) -> bytes:
             a.insert(0, n & 0x7f)
             n >>= 7
         for i in range(len(a) - 1):
+            # If the highest bit is set, more 7-bit digits follow
             a[i] |= 0x80
     return bytes(a)
 
@@ -121,6 +127,10 @@ def format_str_literal(s: str) -> bytes:
 
 
 def encode_int_values(values: Dict[int, int]) -> List[bytes]:
+    """Encode int values into C string fragments.
+
+    Values are stored in base 10 and separated by 0 bytes.
+    """
     value_by_index = {}
     for value, index in values.items():
         value_by_index[index] = value
@@ -134,6 +144,10 @@ def encode_int_values(values: Dict[int, int]) -> List[bytes]:
 
 
 def encode_float_values(values: Dict[float, int]) -> List[str]:
+    """Encode float values into a C array values.
+
+    The result contains the number of values followed by individual values.
+    """
     value_by_index = {}
     for value, index in values.items():
         value_by_index[index] = value
@@ -147,6 +161,11 @@ def encode_float_values(values: Dict[float, int]) -> List[str]:
 
 
 def encode_complex_values(values: Dict[complex, int]) -> List[str]:
+    """Encode float values into a C array values.
+
+    The result contains the number of values followed by pairs of doubles
+    representing complex numbers.
+    """
     value_by_index = {}
     for value, index in values.items():
         value_by_index[index] = value

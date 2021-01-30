@@ -619,16 +619,28 @@ class GroupGenerator:
         ]
 
     def generate_literal_tables(self) -> None:
+        """Generate tables containing descriptions of Python literals to construct.
+
+        We will store the constructed literals in a single array that contains
+        literals of all types. This way we can refer to an arbitrary literal by
+        its index.
+        """
         literals = self.context.literals
+        # During module initialization we store all the constructed objects here
         self.declare_global('PyObject *[%d]' % literals.num_literals(), 'CPyStatics')
+        # Descriptions of str literals
         init_str = c_string_initializer(literals.encoded_str_values())
         self.declare_global('const char []', 'StrLiterals', initializer=init_str)
+        # Descriptions of bytes literals
         init_bytes = c_string_initializer(literals.encoded_bytes_values())
         self.declare_global('const char []', 'BytesLiterals', initializer=init_bytes)
+        # Descriptions of int literals
         init_int = c_string_initializer(literals.encoded_int_values())
         self.declare_global('const char []', 'IntLiterals', initializer=init_int)
+        # Descriptions of float literals
         init_floats = c_array_initializer(literals.encoded_float_values())
         self.declare_global('const double []', 'FloatLiterals', initializer=init_floats)
+        # Descriptions of complex literals
         init_complex = c_array_initializer(literals.encoded_complex_values())
         self.declare_global('const double []', 'ComplexLiterals', initializer=init_complex)
 
@@ -1064,11 +1076,10 @@ def is_fastcall_supported(fn: FuncIR) -> bool:
 
 
 def collect_literals(fn: FuncIR, literals: Literals) -> None:
-    """Make sure all Python literal object refs in fn are stored in mapper.
+    """Store all Python literal object refs in fn.
 
-    Collecting literals must happen only after we have final IR, so
-    that no code is generated for literals that have been optimized
-    away, and that all literals are included.
+    Collecting literals must happen only after we have the final IR.
+    This way we won't include literals that have been optimized away.
     """
     for block in fn.blocks:
         for op in block.ops:
