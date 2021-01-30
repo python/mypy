@@ -1086,19 +1086,19 @@ def big_int() -> None:
 def big_int():
     r0, a_62_bit, r1, max_62_bit, r2, b_63_bit, r3, c_63_bit, r4, max_63_bit, r5, d_64_bit, r6, max_32_bit, max_31_bit :: int
 L0:
-    r0 = load_global CPyStatic_int_1 :: static  (4611686018427387902)
+    r0 = object 4611686018427387902
     a_62_bit = r0
-    r1 = load_global CPyStatic_int_2 :: static  (4611686018427387903)
+    r1 = object 4611686018427387903
     max_62_bit = r1
-    r2 = load_global CPyStatic_int_3 :: static  (4611686018427387904)
+    r2 = object 4611686018427387904
     b_63_bit = r2
-    r3 = load_global CPyStatic_int_4 :: static  (9223372036854775806)
+    r3 = object 9223372036854775806
     c_63_bit = r3
-    r4 = load_global CPyStatic_int_5 :: static  (9223372036854775807)
+    r4 = object 9223372036854775807
     max_63_bit = r4
-    r5 = load_global CPyStatic_int_6 :: static  (9223372036854775808)
+    r5 = object 9223372036854775808
     d_64_bit = r5
-    r6 = load_global CPyStatic_int_7 :: static  (2147483647)
+    r6 = object 2147483647
     max_32_bit = r6
     max_31_bit = 2147483646
     return 1
@@ -1126,7 +1126,7 @@ def call_callable_type() -> float:
 [out]
 def absolute_value(x):
     x :: int
-    r0 :: int64
+    r0 :: native_int
     r1, r2, r3 :: bit
     r4, r5 :: int
 L0:
@@ -2654,9 +2654,9 @@ L4:
     r82 = get_element_ptr r78 ob_item :: PyListObject
     r83 = load_mem r82, r78 :: ptr*
     set_mem r83, r79, r78 :: builtins.object*
-    r84 = r83 + 8
+    r84 = r83 + WORD_SIZE*1
     set_mem r84, r80, r78 :: builtins.object*
-    r85 = r83 + 16
+    r85 = r83 + WORD_SIZE*2
     set_mem r85, r81, r78 :: builtins.object*
     r86 = __main__.globals :: static
     r87 = 'Bar'
