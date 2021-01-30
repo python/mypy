@@ -627,27 +627,10 @@ class GroupGenerator:
         self.declare_global('const char []', 'BytesLiterals', initializer=init_bytes)
         init_int = c_string_initializer(literals.encoded_int_values())
         self.declare_global('const char []', 'IntLiterals', initializer=init_int)
-        init_floats = self.c_array_initializer(literals.encoded_float_values())
+        init_floats = c_array_initializer(literals.encoded_float_values())
         self.declare_global('const double []', 'FloatLiterals', initializer=init_floats)
-        init_complex = self.c_array_initializer(literals.encoded_complex_values())
+        init_complex = c_array_initializer(literals.encoded_complex_values())
         self.declare_global('const double []', 'ComplexLiterals', initializer=init_complex)
-
-    def c_array_initializer(self, components: List[str]) -> str:
-        res = []
-        current = []  # type: List[str]
-        cur_len = 0
-        for c in components:
-            if not current or cur_len + 2 + len(c) < 70:
-                current.append(c)
-                cur_len += len(c) + 2
-            else:
-                res.append(', '.join(current))
-                current = [c]
-                cur_len = len(c)
-        if not res:
-            return '{%s}' % ', '.join(current)
-        res.append(', '.join(current))
-        return '{\n    ' + ',\n    '.join(res) + '\n}'
 
     def generate_export_table(self, decl_emitter: Emitter, code_emitter: Emitter) -> None:
         """Generate the declaration and definition of the group's export struct.
@@ -1091,3 +1074,34 @@ def collect_literals(fn: FuncIR, literals: Literals) -> None:
         for op in block.ops:
             if isinstance(op, LoadLiteral):
                 literals.record_literal(op.value)
+
+
+def c_array_initializer(components: List[str]) -> str:
+    """Construct an initializer for a C array variable.
+
+    Components are C expressions valid in an initializer.
+
+    For example, if components are ["1", "2"], the result
+    would be "{1, 2}", which can be used like this:
+
+        int a[] = {1, 2};
+
+    If the result is long, split it into multiple lines.
+    """
+    res = []
+    current = []  # type: List[str]
+    cur_len = 0
+    for c in components:
+        if not current or cur_len + 2 + len(c) < 70:
+            current.append(c)
+            cur_len += len(c) + 2
+        else:
+            res.append(', '.join(current))
+            current = [c]
+            cur_len = len(c)
+    if not res:
+        # Result fits on a single line
+        return '{%s}' % ', '.join(current)
+    # Multi-line result
+    res.append(', '.join(current))
+    return '{\n    ' + ',\n    '.join(res) + '\n}'
