@@ -21,7 +21,10 @@ octal digits.
 from typing import List
 import string
 
-CHAR_MAP = ['\\{:03o}'.format(i) for i in range(256)]
+from typing_extensions import Final
+
+
+CHAR_MAP = ['\\{:03o}'.format(i) for i in range(256)]  # type: Final
 
 # It is safe to use string.printable as it always uses the C locale.
 for c in string.printable:
@@ -57,12 +60,12 @@ def c_string_initializer(components: List[bytes]) -> str:
     res = []
     current = ''
     for c in components:
-        cc = encode_bytes_as_c_string(c)
-        if not current or len(current) + len(cc) < 70:
-            current += cc
+        enc = encode_bytes_as_c_string(c)
+        if not current or len(current) + len(enc) < 70:
+            current += enc
         else:
             res.append('"%s"' % current)
-            current = cc
+            current = enc
     if current:
         res.append('"%s"' % current)
     if len(res) > 1:
