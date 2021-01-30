@@ -26,7 +26,7 @@ from mypyc.common import (
     PREFIX, TOP_LEVEL_NAME, MODULE_PREFIX, RUNTIME_C_FILES, USE_FASTCALL,
     USE_VECTORCALL, shared_lib_name,
 )
-from mypyc.codegen.cstring import encode_bytes_as_c_string
+from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.literals import Literals
 from mypyc.codegen.emit import EmitterContext, Emitter, HeaderDeclaration
 from mypyc.codegen.emitfunc import generate_native_function, native_function_header
@@ -621,32 +621,16 @@ class GroupGenerator:
     def generate_literal_tables(self) -> None:
         literals = self.context.literals
         self.declare_global('PyObject *[%d]' % literals.num_literals(), 'CPyStatics')
-        init_str = self.c_string_initializer(literals.encoded_str_values())
+        init_str = c_string_initializer(literals.encoded_str_values())
         self.declare_global('const char []', 'StrLiterals', initializer=init_str)
-        init_bytes = self.c_string_initializer(literals.encoded_bytes_values())
+        init_bytes = c_string_initializer(literals.encoded_bytes_values())
         self.declare_global('const char []', 'BytesLiterals', initializer=init_bytes)
-        init_int = self.c_string_initializer(literals.encoded_int_values())
+        init_int = c_string_initializer(literals.encoded_int_values())
         self.declare_global('const char []', 'IntLiterals', initializer=init_int)
         init_floats = self.c_array_initializer(literals.encoded_float_values())
         self.declare_global('const double []', 'FloatLiterals', initializer=init_floats)
         init_complex = self.c_array_initializer(literals.encoded_complex_values())
         self.declare_global('const double []', 'ComplexLiterals', initializer=init_complex)
-
-    def c_string_initializer(self, components: List[bytes]) -> str:
-        res = []
-        current = ''
-        for c in components:
-            cc = encode_bytes_as_c_string(c)
-            if not current or len(current) + len(cc) < 70:
-                current += cc
-            else:
-                res.append('"%s"' % current)
-                current = cc
-        if current:
-            res.append('"%s"' % current)
-        if len(res) > 1:
-            res.insert(0, '')
-        return '\n    '.join(res)
 
     def c_array_initializer(self, components: List[str]) -> str:
         res = []

@@ -18,6 +18,7 @@ suffer from the same issue as they are defined to parse at most three
 octal digits.
 """
 
+from typing import List
 import string
 
 CHAR_MAP = ['\\{:03o}'.format(i) for i in range(256)]
@@ -38,6 +39,32 @@ CHAR_MAP[ord('?')] = r'\?'
 
 
 def encode_bytes_as_c_string(b: bytes) -> str:
-    """Produce a quoted C string literal and its size, for a byte string."""
+    """Produce contents of a C string literal for a byte string, without quotes."""
     escaped = ''.join([CHAR_MAP[i] for i in b])
     return escaped
+
+
+def c_string_initializer(components: List[bytes]) -> str:
+    """Create initializer for a C char[] variable from a list of fragments.
+
+    For example, if components is [b'foo', b'bar'], the result would be
+    '"foobar"', which could then be used like this to initialize 's':
+
+        const char s[] = "foobar";
+
+    If the result is long, split it into multiple lines.
+    """
+    res = []
+    current = ''
+    for c in components:
+        cc = encode_bytes_as_c_string(c)
+        if not current or len(current) + len(cc) < 70:
+            current += cc
+        else:
+            res.append('"%s"' % current)
+            current = cc
+    if current:
+        res.append('"%s"' % current)
+    if len(res) > 1:
+        res.insert(0, '')
+    return '\n    '.join(res)
