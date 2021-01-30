@@ -60,7 +60,12 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return self.format('%r = <error> :: %s', op, op.type)
 
     def visit_load_literal(self, op: LoadLiteral) -> str:
-        return self.format('%r = %s', op, repr(op.value))
+        prefix = ''
+        # For values that have a potential unboxed representation, make
+        # it explicit that this is a Python object.
+        if isinstance(op.value, int):
+            return self.format('%r = object %s', op, repr(op.value))
+        return self.format('%r = %s%s', op, prefix, repr(op.value))
 
     def visit_get_attr(self, op: GetAttr) -> str:
         return self.format('%r = %r.%s', op, op.obj, op.attr)

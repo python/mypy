@@ -636,6 +636,8 @@ class GroupGenerator:
         self.declare_global('const char []', 'StrLiterals', initializer=init_str)
         init_bytes = self.cstring_initializer(literals.encoded_bytes_values())
         self.declare_global('const char []', 'BytesLiterals', initializer=init_bytes)
+        init_int = self.cstring_initializer(literals.encoded_int_values())
+        self.declare_global('const char []', 'IntLiterals', initializer=init_int)
         init_floats = '{%s}' % ', '.join(literals.encoded_float_values())
         self.declare_global('const double []', 'FloatLiterals', initializer=init_floats)
         init_complex = '{%s}' % ', '.join(literals.encoded_complex_values())
@@ -829,7 +831,7 @@ class GroupGenerator:
         for symbol, fixup in self.simple_inits:
             emitter.emit_line('{} = {};'.format(symbol, fixup))
 
-        values = 'StrLiterals, BytesLiterals, FloatLiterals, ComplexLiterals'
+        values = 'StrLiterals, BytesLiterals, IntLiterals, FloatLiterals, ComplexLiterals'
         emitter.emit_lines('if (CPyStatics_Initialize(CPyStatics, {}) < 0) {{'.format(values),
                            'return -1;',
                            '}')

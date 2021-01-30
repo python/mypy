@@ -454,8 +454,7 @@ class LowLevelIRBuilder:
     def load_static_int(self, value: int) -> Value:
         """Loads a static integer Python 'int' object into a register."""
         if abs(value) > MAX_LITERAL_SHORT_INT:
-            identifier = self.literal_static_name(value)
-            return self.add(LoadGlobal(int_rprimitive, identifier, ann=value))
+            return self.add(LoadLiteral(value, int_rprimitive))
         else:
             return Integer(value)
 

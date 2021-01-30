@@ -526,6 +526,7 @@ static const char *parse_int(const char *s, size_t *len) {
 int CPyStatics_Initialize(PyObject **statics,
                           const char *strings,
                           const char *bytestrings,
+                          const char *ints,
                           const double *floats,
                           const double *complex_numbers) {
     if (strings) {
@@ -557,9 +558,23 @@ int CPyStatics_Initialize(PyObject **statics,
             bytestrings += len;
         }
     }
+    if (ints) {
+        size_t num;
+        ints = parse_int(ints, &num);
+        while (num-- > 0) {
+            char *end;
+            PyObject *obj = PyLong_FromString(ints, &end, 10);
+            if (obj == NULL) {
+                return -1;
+            }
+            ints = end;
+            ints++;
+            *statics++ = obj;
+        }
+    }
     if (floats) {
-        size_t num_floats = (size_t)*floats++;
-        while (num_floats-- > 0) {
+        size_t num = (size_t)*floats++;
+        while (num-- > 0) {
             PyObject *obj = PyFloat_FromDouble(*floats++);
             if (obj == NULL) {
                 return -1;
@@ -568,8 +583,8 @@ int CPyStatics_Initialize(PyObject **statics,
         }
     }
     if (complex_numbers) {
-        size_t num_complex = (size_t)*complex_numbers++;
-        while (num_complex-- > 0) {
+        size_t num = (size_t)*complex_numbers++;
+        while (num-- > 0) {
             double real = *complex_numbers++;
             double imag = *complex_numbers++;
             PyObject *obj = PyComplex_FromDoubles(real, imag);

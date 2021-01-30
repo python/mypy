@@ -16,7 +16,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, is_tagged, is_int32_rprimitive, is_int64_rprimitive, RStruct,
-    is_pointer_rprimitive
+    is_pointer_rprimitive, is_int_rprimitive
 )
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD, all_values
 from mypyc.ir.class_ir import ClassIR
@@ -181,7 +181,11 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             ann = ' /* %s */' % s
         else:
             ann = ''
-        self.emit_line('%s = CPyStatics[%d];%s' % (self.reg(op), index, ann))
+        if not is_int_rprimitive(op.type):
+            self.emit_line('%s = CPyStatics[%d];%s' % (self.reg(op), index, ann))
+        else:
+            self.emit_line('%s = (CPyTagged)CPyStatics[%d] | 1;%s' % (
+                self.reg(op), index, ann))
 
     def get_attr_expr(self, obj: str, op: Union[GetAttr, SetAttr], decl_cl: ClassIR) -> str:
         """Generate attribute accessor for normal (non-property) access.
