@@ -533,6 +533,7 @@ int CPyStatics_Initialize(PyObject **statics, const char *strings) {
             if (obj == NULL) {
                 return -1;
             }
+            PyUnicode_InternInPlace(&obj);
             *statics++ = obj;
             strings += len;
         }
