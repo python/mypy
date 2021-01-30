@@ -448,9 +448,6 @@ class LowLevelIRBuilder:
         """Load Python None value (type: object_rprimitive)."""
         return self.add(LoadAddress(none_object_op.type, none_object_op.src, line=-1))
 
-    def literal_static_name(self, value: Union[int, float, complex, str, bytes]) -> str:
-        return STATIC_PREFIX + self.mapper.literal_static_name(self.current_module, value)
-
     def load_static_int(self, value: int) -> Value:
         """Loads a static integer Python 'int' object into a register."""
         if abs(value) > MAX_LITERAL_SHORT_INT:

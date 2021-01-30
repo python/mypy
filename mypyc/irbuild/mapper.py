@@ -37,12 +37,6 @@ class Mapper:
         self.group_map = group_map
         self.type_to_ir = {}  # type: Dict[TypeInfo, ClassIR]
         self.func_to_decl = {}  # type: Dict[SymbolNode, FuncDecl]
-        # LiteralsMap maps literal values to a static name. Each
-        # compilation group has its own LiteralsMap. (Since they can't
-        # share literals.)
-        self.literals = {
-            v: OrderedDict() for v in group_map.values()
-        }  # type: Dict[Optional[str], LiteralsMap]
 
     def type_to_rtype(self, typ: Optional[Type]) -> RType:
         if typ is None:
@@ -151,19 +145,3 @@ class Mapper:
         if fdef.name in ('__eq__', '__ne__', '__lt__', '__gt__', '__le__', '__ge__'):
             ret = object_rprimitive
         return FuncSignature(args, ret)
-
-    def literal_static_name(self, module: str,
-                            value: Union[int, float, complex, str, bytes]) -> str:
-        # Literals are shared between modules in a compilation group
-        # but not outside the group.
-        literals = self.literals[self.group_map.get(module)]
-
-        # Include type to distinguish between 1 and 1.0, and so on.
-        key = (type(value), value)
-        if key not in literals:
-            if isinstance(value, str):
-                prefix = 'unicode_'
-            else:
-                prefix = type(value).__name__ + '_'
-            literals[key] = prefix + str(len(literals))
-        return literals[key]

@@ -287,9 +287,8 @@ def compile_ir_to_c(
         if not group_modules:
             ctext[group_name] = []
             continue
-        literals = mapper.literals[group_name]
         generator = GroupGenerator(
-            literals, group_modules, source_paths,
+            group_modules, source_paths,
             group_name, mapper.group_map, names,
             compiler_options
         )
@@ -448,7 +447,6 @@ def group_dir(group_name: str) -> str:
 
 class GroupGenerator:
     def __init__(self,
-                 literals: LiteralsMap,
                  modules: List[Tuple[str, ModuleIR]],
                  source_paths: Dict[str, str],
                  group_name: Optional[str],
@@ -462,7 +460,6 @@ class GroupGenerator:
         one .c file per module if in multi_file mode.)
 
         Arguments:
-            literals: The literals declared in this group
             modules: (name, ir) pairs for each module in the group
             source_paths: Map from module names to source file paths
             group_name: The name of the group (or None if this is single-module compilation)
@@ -471,7 +468,6 @@ class GroupGenerator:
             multi_file: Whether to put each module in its own source file regardless
                         of group structure.
         """
-        self.literals = literals
         self.modules = modules
         self.source_paths = source_paths
         self.context = EmitterContext(names, group_name, group_map)
@@ -510,13 +506,6 @@ class GroupGenerator:
         base_emitter.emit_line('#include "__native{}.h"'.format(self.short_group_suffix))
         base_emitter.emit_line('#include "__native_internal{}.h"'.format(self.short_group_suffix))
         emitter = base_emitter
-
-        for (_, literal), identifier in self.literals.items():
-            if isinstance(literal, int):
-                symbol = emitter.static_name(identifier, None)
-                self.declare_global('CPyTagged ', symbol)
-            else:
-                self.declare_static_pyobject(identifier, emitter)
 
         self.generate_literal_tables()
 
@@ -835,47 +824,6 @@ class GroupGenerator:
         emitter.emit_lines('if (CPyStatics_Initialize(CPyStatics, {}) < 0) {{'.format(values),
                            'return -1;',
                            '}')
-
-        for (_, literal), identifier in self.literals.items():
-            symbol = emitter.static_name(identifier, None)
-            if isinstance(literal, int):
-                actual_symbol = symbol
-                symbol = INT_PREFIX + symbol
-                emitter.emit_line(
-                    'PyObject * {} = PyLong_FromString(\"{}\", NULL, 10);'.format(
-                        symbol, str(literal))
-                )
-            elif isinstance(literal, float):
-                emitter.emit_line(
-                    '{} = PyFloat_FromDouble({});'.format(symbol, str(literal))
-                )
-            elif isinstance(literal, complex):
-                emitter.emit_line(
-                    '{} = PyComplex_FromDoubles({}, {});'.format(
-                        symbol, str(literal.real), str(literal.imag))
-                )
-            elif isinstance(literal, str):
-                emitter.emit_line(
-                    '{} = PyUnicode_FromStringAndSize({}, {});'.format(
-                        symbol, *encode_as_c_string(literal))
-                )
-            elif isinstance(literal, bytes):
-                emitter.emit_line(
-                    '{} = PyBytes_FromStringAndSize({}, {});'.format(
-                        symbol, *encode_bytes_as_c_string(literal))
-                )
-            else:
-                assert False, ('Literals must be integers, floating point numbers, or strings,',
-                               'but the provided literal is of type {}'.format(type(literal)))
-            emitter.emit_lines('if (unlikely({} == NULL))'.format(symbol),
-                               '    return -1;')
-            # Ints have an unboxed representation.
-            if isinstance(literal, int):
-                emitter.emit_line(
-                    '{} = CPyTagged_FromObject({});'.format(actual_symbol, symbol)
-                )
-            elif isinstance(literal, str):
-                emitter.emit_line('PyUnicode_InternInPlace(&{});'.format(symbol))
 
         emitter.emit_lines(
             'is_initialized = 1;',
