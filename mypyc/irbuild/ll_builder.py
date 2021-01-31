@@ -336,9 +336,9 @@ class LowLevelIRBuilder:
     def _vectorcall_keywords(self, arg_names: Optional[Sequence[Optional[str]]]) -> Value:
         if arg_names:
             kw_list = [name for name in arg_names if name is not None]
-            return self.add(LoadLiteral(tuple(kw_list), object_rprimitive))
-        else:
-            return Integer(0, object_rprimitive)
+            if kw_list:
+                return self.add(LoadLiteral(tuple(kw_list), object_rprimitive))
+        return Integer(0, object_rprimitive)
 
     def py_method_call(self,
                        obj: Value,
