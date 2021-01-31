@@ -196,6 +196,7 @@ py_call_op = custom_op(
     var_arg_type=object_rprimitive,
     extra_int_constants=[(0, pointer_rprimitive)])
 
+# Call callable object using positional and/or keyword arguments (Python 3.8+)
 py_vectorcall_op = custom_op(
     arg_types=[object_rprimitive,  # Callable
                object_pointer_rprimitive,  # Args (PyObject **)
@@ -205,13 +206,14 @@ py_vectorcall_op = custom_op(
     c_function_name='_PyObject_Vectorcall',
     error_kind=ERR_MAGIC)
 
+# Call method using positional and/or keyword arguments (Python 3.9+)
 py_vectorcall_method_op = custom_op(
     arg_types=[object_rprimitive,  # Method name
                object_pointer_rprimitive,  # Args, including self (PyObject **)
                c_size_t_rprimitive,  # Number of positional args, including self
                object_rprimitive],  # Keyword arg names tuple (or NULL)
     return_type=object_rprimitive,
-    c_function_name='_PyObject_VectorcallMethod',
+    c_function_name='PyObject_VectorcallMethod',
     error_kind=ERR_MAGIC)
 
 # Call callable object with positional + keyword args: func(*args, **kwargs)
