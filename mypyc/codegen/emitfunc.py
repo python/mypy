@@ -514,7 +514,11 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             val = reg.value
             if val == 0 and is_pointer_rprimitive(reg.type):
                 return "NULL"
-            return str(val)
+            s = str(val)
+            if val >= (1 << 31):
+                # Avoid overflowing signed 32-bit int
+                s += 'U'
+            return s
         else:
             return self.emitter.reg(reg)
 
