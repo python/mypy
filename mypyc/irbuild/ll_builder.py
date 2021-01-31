@@ -256,7 +256,7 @@ class LowLevelIRBuilder:
                 return result
 
         # If all arguments are positional, we can use py_call_op.
-        if (arg_kinds is None) or all(kind == ARG_POS for kind in arg_kinds):
+        if arg_kinds is None or all(kind == ARG_POS for kind in arg_kinds):
             return self.call_c(py_call_op, [function] + arg_values, line)
 
         # Otherwise fallback to py_call_with_kwargs_op.
@@ -309,7 +309,7 @@ class LowLevelIRBuilder:
         API should be used instead.
         """
         # We can do this if all args are positional or named (no *args or **kwargs).
-        if (arg_kinds is None) or all(kind in (ARG_POS, ARG_NAMED) for kind in arg_kinds):
+        if arg_kinds is None or all(kind in (ARG_POS, ARG_NAMED) for kind in arg_kinds):
             if arg_values:
                 # Create a C array containing all arguments as boxed values.
                 array = Register(RArray(object_rprimitive, len(arg_values)))
@@ -318,18 +318,8 @@ class LowLevelIRBuilder:
                 arg_ptr = self.add(LoadAddress(object_pointer_rprimitive, array))
             else:
                 arg_ptr = Integer(0, object_pointer_rprimitive)
-            if arg_kinds is None:
-                num_pos = len(arg_values)
-            else:
-                num_pos = 0
-                for kind in arg_kinds:
-                    if kind == ARG_POS:
-                        num_pos += 1
-            if arg_names:
-                kw_list = [name for name in arg_names if name is not None]
-                keywords = self.add(LoadLiteral(tuple(kw_list), object_rprimitive))
-            else:
-                keywords = Integer(0, object_rprimitive)
+            num_pos = num_positional_args(arg_values, arg_kinds)
+            keywords = self._vectorcall_keywords(arg_names)
             value = self.call_c(py_vectorcall_op, [function,
                                                    arg_ptr,
                                                    Integer(num_pos, c_size_t_rprimitive),
@@ -342,6 +332,13 @@ class LowLevelIRBuilder:
                 self.add(KeepAlive(coerced_args))
             return value
         return None
+
+    def _vectorcall_keywords(self, arg_names: Optional[Sequence[Optional[str]]]) -> Value:
+        if arg_names:
+            kw_list = [name for name in arg_names if name is not None]
+            return self.add(LoadLiteral(tuple(kw_list), object_rprimitive))
+        else:
+            return Integer(0, object_rprimitive)
 
     def py_method_call(self,
                        obj: Value,
@@ -1225,3 +1222,13 @@ class LowLevelIRBuilder:
             return self.call_c(dict_build_op, [size_value] + items, line)
         else:
             return self.call_c(dict_new_op, [], line)
+
+
+def num_positional_args(arg_values: List[Value], arg_kinds: Optional[List[int]]) -> int:
+    if arg_kinds is None:
+        return len(arg_values)
+    num_pos = 0
+    for kind in arg_kinds:
+        if kind == ARG_POS:
+            num_pos += 1
+    return num_pos
