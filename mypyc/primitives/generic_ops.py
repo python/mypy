@@ -199,17 +199,17 @@ py_call_op = custom_op(
 py_vectorcall_op = custom_op(
     arg_types=[object_rprimitive,  # Callable
                object_pointer_rprimitive,  # Args (PyObject **)
-               c_size_t_rprimitive,  # Number of args
-               object_rprimitive],  # Keyword args tuple (or NULL)
+               c_size_t_rprimitive,  # Number of positional args
+               object_rprimitive],  # Keyword arg names tuple (or NULL)
     return_type=object_rprimitive,
     c_function_name='_PyObject_Vectorcall',
     error_kind=ERR_MAGIC)
 
 py_vectorcall_method_op = custom_op(
     arg_types=[object_rprimitive,  # Method name
-               object_pointer_rprimitive,  # Args (PyObject **)
-               c_size_t_rprimitive,  # Number of args
-               object_rprimitive],  # Keyword args tuple (or NULL)
+               object_pointer_rprimitive,  # Args, including self (PyObject **)
+               c_size_t_rprimitive,  # Number of positional args, including self
+               object_rprimitive],  # Keyword arg names tuple (or NULL)
     return_type=object_rprimitive,
     c_function_name='_PyObject_VectorcallMethod',
     error_kind=ERR_MAGIC)
