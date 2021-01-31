@@ -348,7 +348,33 @@ class LowLevelIRBuilder:
                        arg_kinds: Optional[List[int]],
                        arg_names: Optional[Sequence[Optional[str]]]) -> Value:
         """Call a Python method (non-native and slow)."""
-        if (arg_kinds is None) or all(kind == ARG_POS for kind in arg_kinds):
+        if USE_VECTORCALL:
+            # More recent Python versions support faster vectorcalls.
+            result = self._py_vector_method_call(
+                obj, method_name, arg_values, line, arg_kinds, arg_names)
+            if result is not None:
+                return result
+
+        if arg_kinds is None or all(kind == ARG_POS for kind in arg_kinds):
+            method_name_reg = self.load_str(method_name)
+            return self.call_c(py_method_call_op, [obj, method_name_reg] + arg_values, line)
+        else:
+            method = self.py_get_attr(obj, method_name, line)
+            return self.py_call(method, arg_values, line, arg_kinds=arg_kinds, arg_names=arg_names)
+
+    def _py_vector_method_call(self,
+                               obj: Value,
+                               method_name: str,
+                               arg_values: List[Value],
+                               line: int,
+                               arg_kinds: Optional[List[int]],
+                               arg_names: Optional[Sequence[Optional[str]]]) -> Optional[Value]:
+        """Call method using the vectorcall API if possible.
+
+        Return the return value if successful. Return None if a non-vectorcall
+        API should be used instead.
+        """
+        if arg_kinds is None or all(kind in (ARG_POS, ARG_NAMED) for kind in arg_kinds):
             method_name_reg = self.load_str(method_name)
             array = Register(RArray(object_rprimitive, len(arg_values) + 1))
             self_arg = self.coerce(obj, object_rprimitive, line)
@@ -356,22 +382,20 @@ class LowLevelIRBuilder:
                                          for arg in arg_values]
             self.add(AssignMulti(array, coerced_args))
             arg_ptr = self.add(LoadAddress(object_pointer_rprimitive, array))
+            num_pos = num_positional_args(arg_values, arg_kinds)
+            keywords = self._vectorcall_keywords(arg_names)
             value = self.call_c(py_vectorcall_method_op,
                                 [method_name_reg,
                                  arg_ptr,
-                                 Integer(len(arg_values) + 1, c_size_t_rprimitive),
-                                 Integer(0, object_rprimitive)],
+                                 Integer((num_pos + 1) | (1 << 63), c_size_t_rprimitive),
+                                 keywords],
                                 line)
             # Make sure arguments won't be freed until after the call.
             # We need this because RArray doesn't support automatic
             # memory management.
             self.add(KeepAlive(coerced_args))
             return value
-
-            #return self.call_c(py_method_call_op, [obj, method_name_reg] + arg_values, line)
-        else:
-            method = self.py_get_attr(obj, method_name, line)
-            return self.py_call(method, arg_values, line, arg_kinds=arg_kinds, arg_names=arg_names)
+        return None
 
     def call(self,
              decl: FuncDecl,
