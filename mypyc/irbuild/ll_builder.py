@@ -35,7 +35,7 @@ from mypyc.ir.rtypes import (
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.common import (
-    FAST_ISINSTANCE_MAX_SUBCLASSES, MAX_LITERAL_SHORT_INT, PLATFORM_SIZE
+    FAST_ISINSTANCE_MAX_SUBCLASSES, MAX_LITERAL_SHORT_INT, PLATFORM_SIZE, USE_VECTORCALL
 )
 from mypyc.primitives.registry import (
     method_call_ops, CFunctionDescription, function_ops,
@@ -249,26 +249,15 @@ class LowLevelIRBuilder:
 
         Use py_call_op or py_call_with_kwargs_op for Python function call.
         """
+        if USE_VECTORCALL:
+            # More recent Python versions support faster vectorcalls.
+            result = self._py_vector_call(function, arg_values, line, arg_kinds, arg_names)
+            if result is not None:
+                return result
+
         # If all arguments are positional, we can use py_call_op.
         if (arg_kinds is None) or all(kind == ARG_POS for kind in arg_kinds):
-            if arg_values:
-                array = Register(RArray(object_rprimitive, len(arg_values)))
-                coerced_args = [self.coerce(arg, object_rprimitive, line) for arg in arg_values]
-                self.add(AssignMulti(array, coerced_args))
-                arg_ptr = self.add(LoadAddress(object_pointer_rprimitive, array))
-            else:
-                arg_ptr = Integer(0, object_pointer_rprimitive)
-            value = self.call_c(py_vectorcall_op, [function,
-                                                   arg_ptr,
-                                                   Integer(len(arg_values), c_size_t_rprimitive),
-                                                   Integer(0, object_rprimitive)],
-                                line)
-            if arg_values:
-                # Make sure arguments won't be freed until after the call.
-                # We need this because RArray doesn't support automatic
-                # memory management.
-                self.add(KeepAlive(coerced_args))
-            return value
+            return self.call_c(py_call_op, [function] + arg_values, line)
 
         # Otherwise fallback to py_call_with_kwargs_op.
         assert arg_names is not None
@@ -307,6 +296,52 @@ class LowLevelIRBuilder:
 
         return self.call_c(
             py_call_with_kwargs_op, [function, pos_args_tuple, kw_args_dict], line)
+
+    def _py_vector_call(self,
+                        function: Value,
+                        arg_values: List[Value],
+                        line: int,
+                        arg_kinds: Optional[List[int]] = None,
+                        arg_names: Optional[Sequence[Optional[str]]] = None) -> Optional[Value]:
+        """Call function using the vectorcall API if possible.
+
+        Return the return value if successful. Return None if a non-vectorcall
+        API should be used instead.
+        """
+        # We can do this if all args are positional or named (no *args or **kwargs).
+        if (arg_kinds is None) or all(kind in (ARG_POS, ARG_NAMED) for kind in arg_kinds):
+            if arg_values:
+                # Create a C array containing all arguments as boxed values.
+                array = Register(RArray(object_rprimitive, len(arg_values)))
+                coerced_args = [self.coerce(arg, object_rprimitive, line) for arg in arg_values]
+                self.add(AssignMulti(array, coerced_args))
+                arg_ptr = self.add(LoadAddress(object_pointer_rprimitive, array))
+            else:
+                arg_ptr = Integer(0, object_pointer_rprimitive)
+            if arg_kinds is None:
+                num_pos = len(arg_values)
+            else:
+                num_pos = 0
+                for kind in arg_kinds:
+                    if kind == ARG_POS:
+                        num_pos += 1
+            if arg_names:
+                kw_list = [name for name in arg_names if name is not None]
+                keywords = self.add(LoadLiteral(tuple(kw_list), object_rprimitive))
+            else:
+                keywords = Integer(0, object_rprimitive)
+            value = self.call_c(py_vectorcall_op, [function,
+                                                   arg_ptr,
+                                                   Integer(num_pos, c_size_t_rprimitive),
+                                                   keywords],
+                                line)
+            if arg_values:
+                # Make sure arguments won't be freed until after the call.
+                # We need this because RArray doesn't support automatic
+                # memory management.
+                self.add(KeepAlive(coerced_args))
+            return value
+        return None
 
     def py_method_call(self,
                        obj: Value,
