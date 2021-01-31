@@ -12,6 +12,8 @@ from typing import (
     Callable, List, Tuple, Optional, Union, Sequence, cast
 )
 
+from typing_extensions import Final
+
 from mypy.nodes import ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, op_methods
 from mypy.types import AnyType, TypeOfAny
 from mypy.checkexpr import map_actuals_to_formals
@@ -67,6 +69,10 @@ from mypyc.irbuild.mapper import Mapper
 
 
 DictEntry = Tuple[Optional[Value], Value]
+
+
+# From CPython
+PY_VECTORCALL_ARGUMENTS_OFFSET = 1 << (PLATFORM_SIZE * 8 - 1)  # type: Final
 
 
 class LowLevelIRBuilder:
@@ -388,7 +394,8 @@ class LowLevelIRBuilder:
             value = self.call_c(py_vectorcall_method_op,
                                 [method_name_reg,
                                  arg_ptr,
-                                 Integer((num_pos + 1) | (1 << 63), c_size_t_rprimitive),
+                                 Integer((num_pos + 1) | PY_VECTORCALL_ARGUMENTS_OFFSET,
+                                         c_size_t_rprimitive),
                                  keywords],
                                 line)
             # Make sure arguments won't be freed until after the call.
