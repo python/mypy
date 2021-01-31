@@ -35,7 +35,8 @@ from mypyc.ir.rtypes import (
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.common import (
-    FAST_ISINSTANCE_MAX_SUBCLASSES, MAX_LITERAL_SHORT_INT, PLATFORM_SIZE, USE_VECTORCALL
+    FAST_ISINSTANCE_MAX_SUBCLASSES, MAX_LITERAL_SHORT_INT, PLATFORM_SIZE, USE_VECTORCALL,
+    USE_METHOD_VECTORCALL
 )
 from mypyc.primitives.registry import (
     method_call_ops, CFunctionDescription, function_ops,
@@ -348,7 +349,7 @@ class LowLevelIRBuilder:
                        arg_kinds: Optional[List[int]],
                        arg_names: Optional[Sequence[Optional[str]]]) -> Value:
         """Call a Python method (non-native and slow)."""
-        if USE_VECTORCALL:
+        if USE_METHOD_VECTORCALL:
             # More recent Python versions support faster vectorcalls.
             result = self._py_vector_method_call(
                 obj, method_name, arg_values, line, arg_kinds, arg_names)

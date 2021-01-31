@@ -55,6 +55,9 @@ USE_FASTCALL = sys.version_info >= (3, 7)  # type: Final
 # We can use vectorcalls on Python 3.8+ (PEP 590).
 USE_VECTORCALL = sys.version_info >= (3, 8)  # type: Final
 
+# We can use vectorcalls for method calls on Python 3.9+.
+USE_METHOD_VECTORCALL = sys.version_info >= (3, 9)  # type: Final
+
 # Runtime C library files
 RUNTIME_C_FILES = [
     'init.c',
