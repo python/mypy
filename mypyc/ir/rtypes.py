@@ -277,7 +277,7 @@ else:
 
 # Low level pointer, represented as integer in C backends
 pointer_rprimitive = RPrimitive('ptr', is_unboxed=True, is_refcounted=False,
-                              ctype='CPyPtr')  # type: Final
+                                ctype='CPyPtr')  # type: Final
 
 # Floats are represent as 'float' PyObject * values. (In the future
 # we'll likely switch to a more efficient, unboxed representation.)
