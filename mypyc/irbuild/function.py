@@ -14,7 +14,7 @@ from typing import Optional, List, Tuple, Union, Dict
 
 from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, Decorator, Var, YieldFromExpr, AwaitExpr, YieldExpr,
-    FuncItem, LambdaExpr, SymbolNode
+    FuncItem, LambdaExpr, SymbolNode, ARG_NAMED, ARG_NAMED_OPT
 )
 from mypy.types import CallableType, get_proper_type
 
@@ -665,7 +665,8 @@ def gen_glue_method(builder: IRBuilder, sig: FuncSignature, target: FuncIR,
     fake_vars = [(Var(arg.name), arg.type) for arg in rt_args]
     args = [builder.read(builder.add_local_reg(var, type, is_arg=True), line)
             for var, type in fake_vars]
-    arg_names = [arg.name for arg in rt_args]
+    arg_names = [arg.name if arg.kind in (ARG_NAMED, ARG_NAMED_OPT) else None
+                 for arg in rt_args]
     arg_kinds = [concrete_arg_kind(arg.kind) for arg in rt_args]
 
     if do_pycall:
