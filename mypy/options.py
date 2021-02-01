@@ -98,7 +98,7 @@ class Options:
         # top-level __init__.py to your packages.
         self.explicit_package_bases = False
         # File names, directory names or subpaths to avoid checking
-        self.ignore_path = []  # type: List[str]
+        self.exclude = []  # type: List[str]
 
         # disallow_any options
         self.disallow_any_generics = False

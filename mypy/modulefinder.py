@@ -451,7 +451,7 @@ class FindModuleCache:
                 continue
             subpath = os.path.join(package_path, name)
             if self.options and any(
-                matches_ignore_pattern(subpath, pattern) for pattern in self.options.ignore_path
+                matches_exclude_pattern(subpath, pattern) for pattern in self.options.exclude
             ):
                 continue
 
@@ -475,7 +475,7 @@ class FindModuleCache:
         return sources
 
 
-def matches_ignore_pattern(path: str, pattern: str) -> bool:
+def matches_exclude_pattern(path: str, pattern: str) -> bool:
     path = os.path.splitdrive(path)[1]
     path_components = path.split(os.sep)
     pattern_components = pattern.replace(os.sep, "/").split("/")

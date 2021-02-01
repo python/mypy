@@ -253,7 +253,7 @@ class SourceFinderSuite(unittest.TestCase):
         finder = SourceFinder(FakeFSCache({"/a/pkg/a.py", "/b/pkg/b.py"}), options)
         assert find_sources(finder, "/") == [("pkg.a", "/a"), ("pkg.b", "/b")]
 
-    def test_find_sources_ignore_path(self) -> None:
+    def test_find_sources_exclude(self) -> None:
         options = Options()
         options.namespace_packages = True
 
@@ -270,7 +270,7 @@ class SourceFinderSuite(unittest.TestCase):
         }
 
         # file name
-        options.ignore_path = ["f.py"]
+        options.exclude = ["f.py"]
         finder = SourceFinder(FakeFSCache(files), options)
         assert find_sources(finder, "/") == [
             ("a2", "/pkg"),
@@ -279,7 +279,7 @@ class SourceFinderSuite(unittest.TestCase):
         ]
 
         # directory name
-        options.ignore_path = ["a1"]
+        options.exclude = ["a1"]
         finder = SourceFinder(FakeFSCache(files), options)
         assert find_sources(finder, "/") == [
             ("a2", "/pkg"),
@@ -288,7 +288,7 @@ class SourceFinderSuite(unittest.TestCase):
         ]
 
         # paths
-        options.ignore_path = ["/pkg/a1"]
+        options.exclude = ["/pkg/a1"]
         finder = SourceFinder(FakeFSCache(files), options)
         assert find_sources(finder, "/") == [
             ("a2", "/pkg"),
@@ -296,7 +296,7 @@ class SourceFinderSuite(unittest.TestCase):
             ("a2.b.f", "/pkg"),
         ]
 
-        options.ignore_path = ["b/c"]
+        options.exclude = ["b/c"]
         finder = SourceFinder(FakeFSCache(files), options)
         assert find_sources(finder, "/") == [
             ("a2", "/pkg"),
@@ -305,7 +305,7 @@ class SourceFinderSuite(unittest.TestCase):
         ]
 
         # nothing should be ignored as a result of this
-        options.ignore_path = [
+        options.exclude = [
             "/pkg/a", "2", "1", "pk", "kg", "g.py", "bc", "/b", "/xxx/pkg/a2/b/f.py"
             "xxx/pkg/a2/b/f.py"
         ]
@@ -320,7 +320,7 @@ class SourceFinderSuite(unittest.TestCase):
             "pkg/a2/b/c/d/e.py",
             "pkg/a2/b/f.py",
         }
-        options.ignore_path = [
+        options.exclude = [
             "/pkg/a", "2", "1", "pk", "kg", "g.py", "bc", "/b", "/xxx/pkg/a2/b/f.py",
             "xxx/pkg/a2/b/f.py", "/pkg/a1", "/pkg/a2"
         ]

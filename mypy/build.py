@@ -2770,7 +2770,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
             )
             manager.errors.report(
                 -1, -1,
-                "Are you missing an __init__.py? Alternatively, consider using --ignore-path to "
+                "Are you missing an __init__.py? Alternatively, consider using --exclude to "
                 "avoid checking one of them.",
                 severity='note'
             )

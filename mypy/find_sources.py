@@ -6,7 +6,7 @@ import os
 from typing import List, Sequence, Set, Tuple, Optional
 from typing_extensions import Final
 
-from mypy.modulefinder import BuildSource, PYTHON_EXTENSIONS, mypy_path, matches_ignore_pattern
+from mypy.modulefinder import BuildSource, PYTHON_EXTENSIONS, mypy_path, matches_exclude_pattern
 from mypy.fscache import FileSystemCache
 from mypy.options import Options
 
@@ -91,7 +91,7 @@ class SourceFinder:
         self.fscache = fscache
         self.explicit_package_bases = get_explicit_package_bases(options)
         self.namespace_packages = options.namespace_packages
-        self.ignore_path = options.ignore_path
+        self.exclude = options.exclude
 
     def is_explicit_package_base(self, path: str) -> bool:
         assert self.explicit_package_bases
@@ -111,7 +111,7 @@ class SourceFinder:
             ):
                 continue
             subpath = os.path.join(path, name)
-            if any(matches_ignore_pattern(subpath, pattern) for pattern in self.ignore_path):
+            if any(matches_exclude_pattern(subpath, pattern) for pattern in self.exclude):
                 continue
 
             if self.fscache.isdir(subpath):

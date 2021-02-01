@@ -197,7 +197,7 @@ section of the command line docs.
 
     This option may only be set in the global section (``[mypy]``).
 
-.. confval:: ignore_path
+.. confval:: exclude
 
     :type: comma-separated list of strings
 

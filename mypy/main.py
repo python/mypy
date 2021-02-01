@@ -809,7 +809,7 @@ def process_options(args: List[str],
         '--explicit-package-bases', action='store_true',
         help="Use current directory and MYPYPATH to determine module names of files passed")
     code_group.add_argument(
-        "--ignore-path",
+        "--exclude",
         metavar="PATH",
         action="append",
         default=[],
