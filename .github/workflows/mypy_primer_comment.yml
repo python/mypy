@@ -94,15 +94,11 @@ jobs:
 
             console.log("Diff from mypy_primer:")
             console.log(data)
-            try {
-              if (data.trim()) {
-                await github.issues.createComment({
-                  issue_number: context.issue.number,
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  body: 'Diff from [mypy_primer](https://github.com/hauntsaninja/mypy_primer), showing the effect of this PR on open source code:\n```diff\n' + data + '```'
-                })
-              }
-            } catch (error) {
-              console.log(error)
+            if (data.trim()) {
+              await github.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: 'Diff from [mypy_primer](https://github.com/hauntsaninja/mypy_primer), showing the effect of this PR on open source code:\n```diff\n' + data + '```'
+              })
             }
