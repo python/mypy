@@ -129,6 +129,7 @@ class TypeFixture:
         self.gtf2 = Instance(self.gi, [self.tf2])    # G[T`-2]
         self.gs = Instance(self.gi, [self.s])        # G[S]
         self.gdyn = Instance(self.gi, [self.anyt])    # G[Any]
+        self.gn = Instance(self.gi, [NoneType()])    # G[None]
 
         self.g2a = Instance(self.g2i, [self.a])      # G2[A]
 

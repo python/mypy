@@ -364,23 +364,26 @@ def join_instances(t: Instance, s: Instance) -> ProperType:
         # N.B: We use zip instead of indexing because the lengths might have
         # mismatches during daemon reprocessing.
         for ta, sa, type_var in zip(t.args, s.args, t.type.defn.type_vars):
-            if type_var.variance == COVARIANT:
+            if isinstance(ta, AnyType):
+                new_type = AnyType(TypeOfAny.from_another_any, ta)
+            elif isinstance(sa, AnyType):
+                new_type = AnyType(TypeOfAny.from_another_any, sa)
+            elif type_var.variance == COVARIANT:
                 new_type = join_types(ta, sa)
                 if len(type_var.values) != 0 and new_type not in type_var.values:
                     return object_from_instance(t)
                 if not is_subtype(new_type, type_var.upper_bound):
                     return object_from_instance(t)
-                args.append(new_type)
             elif type_var.variance == CONTRAVARIANT:
                 new_type = meet.meet_types(ta, sa)
                 if len(type_var.values) != 0 and new_type not in type_var.values:
                     return object_from_instance(t)
                 # No need to check subtype, as ta and sa already have to be subtypes of upper_bound
-                args.append(new_type)
             elif type_var.variance == INVARIANT:
+                new_type = join_types(ta, sa)
                 if not is_equivalent(ta, sa):
                     return object_from_instance(t)
-                args.append(ta)
+            args.append(new_type)
         return Instance(t.type, args)
     elif t.type.bases and is_subtype_ignoring_tvars(t, s):
         return join_instances_via_supertype(t, s)
