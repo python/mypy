@@ -818,7 +818,9 @@ class JoinSuite(Suite):
 
 class MeetSuite(Suite):
     def setUp(self) -> None:
-        self.fx = TypeFixture()
+        self.fx = TypeFixture(INVARIANT)
+        self.fx_co = TypeFixture(COVARIANT)
+        self.fx_contra = TypeFixture(CONTRAVARIANT)
 
     def test_trivial_cases(self) -> None:
         for simple in self.fx.a, self.fx.o, self.fx.b:
@@ -895,12 +897,6 @@ class MeetSuite(Suite):
             self.assert_meet(t, self.fx.anyt, t)
 
     def test_simple_generics(self) -> None:
-        self.assert_meet(self.fx.ga, self.fx.ga, self.fx.ga)
-        self.assert_meet(self.fx.ga, self.fx.o, self.fx.ga)
-        self.assert_meet(self.fx.ga, self.fx.gb, self.fx.gb)
-        self.assert_meet(self.fx.ga, self.fx.gd, self.fx.nonet)
-        self.assert_meet(self.fx.ga, self.fx.g2a, self.fx.nonet)
-
         self.assert_meet(self.fx.ga, self.fx.nonet, self.fx.nonet)
         self.assert_meet(self.fx.ga, self.fx.anyt, self.fx.ga)
 
@@ -908,11 +904,32 @@ class MeetSuite(Suite):
                   self.callable(self.fx.a, self.fx.b)]:
             self.assert_meet(t, self.fx.ga, self.fx.nonet)
 
+    def test_generics_invariant(self) -> None:
+        self.assert_meet(self.fx.ga, self.fx.ga, self.fx.ga)
+        self.assert_meet(self.fx.ga, self.fx.o, self.fx.ga)
+        self.assert_meet(self.fx.ga, self.fx.gb, self.fx.nonet)
+        self.assert_meet(self.fx.ga, self.fx.gd, self.fx.nonet)
+        self.assert_meet(self.fx.ga, self.fx.g2a, self.fx.nonet)
+
+    def test_generics_covariant(self) -> None:
+        self.assert_meet(self.fx_co.ga, self.fx_co.ga, self.fx_co.ga)
+        self.assert_meet(self.fx_co.ga, self.fx_co.o, self.fx_co.ga)
+        self.assert_meet(self.fx_co.ga, self.fx_co.gb, self.fx_co.gb)
+        self.assert_meet(self.fx_co.ga, self.fx_co.gd, self.fx_co.gn)
+        self.assert_meet(self.fx_co.ga, self.fx_co.g2a, self.fx_co.nonet)
+
+    def test_generics_contravariant(self) -> None:
+        self.assert_meet(self.fx_contra.ga, self.fx_contra.ga, self.fx_contra.ga)
+        self.assert_meet(self.fx_contra.ga, self.fx_contra.o, self.fx_contra.ga)
+        self.assert_meet(self.fx_contra.ga, self.fx_contra.gb, self.fx_contra.ga)
+        self.assert_meet(self.fx_contra.ga, self.fx_contra.gd, self.fx_contra.go)
+        self.assert_meet(self.fx_contra.ga, self.fx_contra.g2a, self.fx_contra.nonet)
+
     def test_generics_with_multiple_args(self) -> None:
-        self.assert_meet(self.fx.hab, self.fx.hab, self.fx.hab)
-        self.assert_meet(self.fx.hab, self.fx.haa, self.fx.hab)
-        self.assert_meet(self.fx.hab, self.fx.had, self.fx.nonet)
-        self.assert_meet(self.fx.hab, self.fx.hbb, self.fx.hbb)
+        self.assert_meet(self.fx_co.hab, self.fx_co.hab, self.fx_co.hab)
+        self.assert_meet(self.fx_co.hab, self.fx_co.haa, self.fx_co.hab)
+        self.assert_meet(self.fx_co.hab, self.fx_co.had, self.fx_co.han)
+        self.assert_meet(self.fx_co.hab, self.fx_co.hbb, self.fx_co.hbb)
 
     def test_generics_with_inheritance(self) -> None:
         self.assert_meet(self.fx.gsab, self.fx.gb, self.fx.gsab)

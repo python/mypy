@@ -2452,7 +2452,7 @@ reveal_type([a_c, b_c]) # N: Revealed type is 'builtins.list[__main__.Container*
 [builtins fixtures/list.pyi]
 
 [case testGenericJoinContravariant]
-from typing import Generic, TypeVar, List
+from typing import Generic, TypeVar
 
 T = TypeVar("T", contravariant=True)
 
@@ -2464,4 +2464,25 @@ a_c: Container[A]
 b_c: Container[B]
 
 reveal_type([a_c, b_c]) # N: Revealed type is 'builtins.list[__main__.Container*[__main__.B]]'
+[builtins fixtures/list.pyi]
+
+[case testGenericJoinNestedMeet]
+from typing import Generic, TypeVar
+
+T_co = TypeVar("T_co", covariant=True)
+T_contra = TypeVar("T_contra", contravariant=True)
+
+class Container_co(Generic[T_co]): ...
+class Container_contra(Generic[T_contra]): ...
+class A: ...
+class B(A): ...
+
+a_c: Container_co[Container_co[A]]
+b_c: Container_co[Container_co[B]]
+
+a_c2: Container_contra[Container_co[A]]
+b_c2: Container_contra[Container_co[B]]
+
+reveal_type([a_c, b_c]) # N: Revealed type is 'builtins.list[__main__.Container_co*[__main__.Container_co[__main__.A]]]'
+reveal_type([a_c2, b_c2]) # N: Revealed type is 'builtins.list[__main__.Container_contra*[__main__.Container_co[__main__.B]]]'
 [builtins fixtures/list.pyi]
