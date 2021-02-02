@@ -199,10 +199,11 @@ section of the command line docs.
 
 .. confval:: exclude
 
-    :type: comma-separated list of strings
+    :type: regular expression
 
-    A comma-separated list of file names, directory names or subpaths which mypy
-    should ignore while recursively discovering files to check.
+    A regular expression that matches file names, directory names and paths
+    which mypy should ignore while recursively discovering files to check.
+    Use forward slashes on all platforms.
 
     This option may only be set in the global section (``[mypy]``).
 

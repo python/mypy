@@ -424,6 +424,7 @@ def process_options(args: List[str],
     # Options object.  Options that require further processing should have
     # their `dest` prefixed with `special-opts:`, which will cause them to be
     # parsed into the separate special_opts namespace object.
+    options = Options()
 
     # Note: we have a style guide for formatting the mypy --help text. See
     # https://github.com/python/mypy/wiki/Documentation-Conventions
@@ -811,9 +812,11 @@ def process_options(args: List[str],
     code_group.add_argument(
         "--exclude",
         metavar="PATH",
-        action="append",
-        default=[],
-        help="File names, directory names or subpaths to avoid checking",
+        default=options.exclude,
+        help=(
+            "Regex to match file names, directory names or paths to avoid checking. "
+            "Defaults to '%(default)s'."
+        )
     )
     code_group.add_argument(
         '-m', '--module', action='append', metavar='MODULE',
@@ -842,8 +845,6 @@ def process_options(args: List[str],
     # This lets `--config-file=` (an empty string) be used to disable all config files.
     if config_file and not os.path.exists(config_file):
         parser.error("Cannot find config file '%s'" % config_file)
-
-    options = Options()
 
     def set_strict_flags() -> None:
         for dest, value in strict_flag_assignments:

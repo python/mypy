@@ -257,7 +257,7 @@ class SourceFinderSuite(unittest.TestCase):
         options = Options()
         options.namespace_packages = True
 
-        # special cased name
+        # default
         finder = SourceFinder(FakeFSCache({"/dir/a.py", "/dir/venv/site-packages/b.py"}), options)
         assert find_sources(finder, "/") == [("a", "/dir")]
 
@@ -270,7 +270,7 @@ class SourceFinderSuite(unittest.TestCase):
         }
 
         # file name
-        options.exclude = ["f.py"]
+        options.exclude = "/f.py"
         finder = SourceFinder(FakeFSCache(files), options)
         assert find_sources(finder, "/") == [
             ("a2", "/pkg"),
@@ -279,7 +279,7 @@ class SourceFinderSuite(unittest.TestCase):
         ]
 
         # directory name
-        options.exclude = ["a1"]
+        options.exclude = "/a1/"
         finder = SourceFinder(FakeFSCache(files), options)
         assert find_sources(finder, "/") == [
             ("a2", "/pkg"),
@@ -288,7 +288,7 @@ class SourceFinderSuite(unittest.TestCase):
         ]
 
         # paths
-        options.exclude = ["/pkg/a1"]
+        options.exclude = "/pkg/a1/"
         finder = SourceFinder(FakeFSCache(files), options)
         assert find_sources(finder, "/") == [
             ("a2", "/pkg"),
@@ -296,7 +296,7 @@ class SourceFinderSuite(unittest.TestCase):
             ("a2.b.f", "/pkg"),
         ]
 
-        options.exclude = ["b/c"]
+        options.exclude = "b/c/"
         finder = SourceFinder(FakeFSCache(files), options)
         assert find_sources(finder, "/") == [
             ("a2", "/pkg"),
@@ -305,14 +305,13 @@ class SourceFinderSuite(unittest.TestCase):
         ]
 
         # nothing should be ignored as a result of this
-        options.exclude = [
-            "/pkg/a", "2", "1", "pk", "kg", "g.py", "bc", "/b", "/xxx/pkg/a2/b/f.py"
-            "xxx/pkg/a2/b/f.py"
-        ]
+        options.exclude = "|".join((
+            "/pkg/a/", "/2", "/1", "/pk/", "/kg", "/g.py", "/bc", "/xxx/pkg/a2/b/f.py"
+            "xxx/pkg/a2/b/f.py",
+        ))
         finder = SourceFinder(FakeFSCache(files), options)
         assert len(find_sources(finder, "/")) == len(files)
 
-        # nothing should be ignored as a result of this
         files = {
             "pkg/a1/b/c/d/e.py",
             "pkg/a1/b/f.py",
@@ -320,9 +319,5 @@ class SourceFinderSuite(unittest.TestCase):
             "pkg/a2/b/c/d/e.py",
             "pkg/a2/b/f.py",
         }
-        options.exclude = [
-            "/pkg/a", "2", "1", "pk", "kg", "g.py", "bc", "/b", "/xxx/pkg/a2/b/f.py",
-            "xxx/pkg/a2/b/f.py", "/pkg/a1", "/pkg/a2"
-        ]
         finder = SourceFinder(FakeFSCache(files), options)
         assert len(find_sources(finder, "/")) == len(files)

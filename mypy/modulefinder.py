@@ -7,6 +7,7 @@ import ast
 import collections
 import functools
 import os
+import re
 import subprocess
 import sys
 from enum import Enum
@@ -450,10 +451,13 @@ class FindModuleCache:
             ):
                 continue
             subpath = os.path.join(package_path, name)
-            if self.options and any(
-                matches_exclude_pattern(subpath, pattern) for pattern in self.options.exclude
-            ):
-                continue
+
+            if self.options and self.options.exclude:
+                subpath_str = "/" + os.path.abspath(subpath).replace(os.sep, "/")
+                if self.fscache.isdir(subpath):
+                    subpath_str += "/"
+                if re.search(self.options.exclude, subpath_str):
+                    continue
 
             if self.fscache.isdir(subpath):
                 # Only recurse into packages
@@ -473,18 +477,6 @@ class FindModuleCache:
                     seen.add(stem)
                     sources.extend(self.find_modules_recursive(module + '.' + stem))
         return sources
-
-
-def matches_exclude_pattern(path: str, pattern: str) -> bool:
-    path = os.path.splitdrive(path)[1]
-    path_components = path.split(os.sep)
-    pattern_components = pattern.replace(os.sep, "/").split("/")
-    if len(path_components) < len(pattern_components):
-        return False
-    return all(
-        path == pattern
-        for path, pattern in zip(reversed(path_components), reversed(pattern_components))
-    )
 
 
 def verify_module(fscache: FileSystemCache, id: str, path: str, prefix: str) -> bool:

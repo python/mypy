@@ -2,11 +2,12 @@
 
 import functools
 import os
+import re
 
 from typing import List, Sequence, Set, Tuple, Optional
 from typing_extensions import Final
 
-from mypy.modulefinder import BuildSource, PYTHON_EXTENSIONS, mypy_path, matches_exclude_pattern
+from mypy.modulefinder import BuildSource, PYTHON_EXTENSIONS, mypy_path
 from mypy.fscache import FileSystemCache
 from mypy.options import Options
 
@@ -103,16 +104,14 @@ class SourceFinder:
         seen = set()  # type: Set[str]
         names = sorted(self.fscache.listdir(path), key=keyfunc)
         for name in names:
-            # Skip certain names altogether
-            if (
-                name in ("__pycache__", "site-packages", "node_modules")
-                or name.startswith(".")
-                or name.endswith("~")
-            ):
-                continue
             subpath = os.path.join(path, name)
-            if any(matches_exclude_pattern(subpath, pattern) for pattern in self.exclude):
-                continue
+
+            if self.exclude:
+                subpath_str = "/" + os.path.abspath(subpath).replace(os.sep, "/")
+                if self.fscache.isdir(subpath):
+                    subpath_str += "/"
+                if re.search(self.exclude, subpath_str):
+                    continue
 
             if self.fscache.isdir(subpath):
                 sub_sources = self.find_sources_in_dir(subpath)
