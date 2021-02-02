@@ -364,10 +364,13 @@ def join_instances(t: Instance, s: Instance) -> ProperType:
         # N.B: We use zip instead of indexing because the lengths might have
         # mismatches during daemon reprocessing.
         for ta, sa, type_var in zip(t.args, s.args, t.type.defn.type_vars):
-            if isinstance(ta, AnyType):
-                new_type = AnyType(TypeOfAny.from_another_any, ta)
-            elif isinstance(sa, AnyType):
-                new_type = AnyType(TypeOfAny.from_another_any, sa)
+            ta_proper = get_proper_type(ta)
+            sa_proper = get_proper_type(sa)
+            new_type = NoneType()  # type: Type
+            if isinstance(ta_proper, AnyType):
+                new_type = AnyType(TypeOfAny.from_another_any, ta_proper)
+            elif isinstance(sa_proper, AnyType):
+                new_type = AnyType(TypeOfAny.from_another_any, sa_proper)
             elif type_var.variance == COVARIANT:
                 new_type = join_types(ta, sa)
                 if len(type_var.values) != 0 and new_type not in type_var.values:
