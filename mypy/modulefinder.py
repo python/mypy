@@ -453,10 +453,12 @@ class FindModuleCache:
             subpath = os.path.join(package_path, name)
 
             if self.options and self.options.exclude:
-                subpath_str = "/" + os.path.abspath(subpath).replace(os.sep, "/")
+                subpath_str = os.path.abspath(subpath).replace(os.sep, "/")
                 if self.fscache.isdir(subpath):
                     subpath_str += "/"
                 if re.search(self.options.exclude, subpath_str):
+                    if self.options.verbosity >= 2:
+                        print("TRACE: Excluding {}".format(subpath_str), file=sys.stderr)
                     continue
 
             if self.fscache.isdir(subpath):

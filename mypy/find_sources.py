@@ -3,6 +3,7 @@
 import functools
 import os
 import re
+import sys
 
 from typing import List, Sequence, Set, Tuple, Optional
 from typing_extensions import Final
@@ -93,6 +94,7 @@ class SourceFinder:
         self.explicit_package_bases = get_explicit_package_bases(options)
         self.namespace_packages = options.namespace_packages
         self.exclude = options.exclude
+        self.verbose = options.verbosity >= 2
 
     def is_explicit_package_base(self, path: str) -> bool:
         assert self.explicit_package_bases
@@ -107,10 +109,12 @@ class SourceFinder:
             subpath = os.path.join(path, name)
 
             if self.exclude:
-                subpath_str = "/" + os.path.abspath(subpath).replace(os.sep, "/")
+                subpath_str = os.path.abspath(subpath).replace(os.sep, "/")
                 if self.fscache.isdir(subpath):
                     subpath_str += "/"
                 if re.search(self.exclude, subpath_str):
+                    if self.verbose:
+                        print("TRACE: Excluding {}".format(subpath_str), file=sys.stderr)
                     continue
 
             if self.fscache.isdir(subpath):
