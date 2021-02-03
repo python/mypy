@@ -55,6 +55,7 @@ def find_sources_in_dir(finder: SourceFinder, f: str) -> List[Tuple[str, Optiona
 def find_sources(
     paths: List[str], options: Options, fscache: FileSystemCache
 ) -> List[Tuple[str, Optional[str]]]:
+    paths = [os.path.abspath(p) for p in paths]
     return normalise_build_source_list(create_source_list(paths, options, fscache))
 
 
