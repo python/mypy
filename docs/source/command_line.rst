@@ -68,7 +68,7 @@ for full details, see :ref:`running-mypy`.
     Note that mypy will never recursively discover files and directories named
     "site-packages", "node_modules" or "__pycache__", or those whose name starts
     with a period, exactly as ``--exclude
-    '/(site-packages|node_modules|__pycache__|\..*)$'`` would. Mypy will also
+    '/(site-packages|node_modules|__pycache__|\..*)/$'`` would. Mypy will also
     never recursively discover files with extensions other than ``.py`` or
     ``.pyi``.
 
