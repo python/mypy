@@ -2465,3 +2465,12 @@ b_c: Container[B]
 
 reveal_type([a_c, b_c]) # N: Revealed type is 'builtins.list[__main__.Container*[__main__.B]]'
 [builtins fixtures/list.pyi]
+
+[case testGenericJoinRecursiveTypes]
+from typing import Sequence, TypeVar
+
+class A(Sequence[A]): ...
+class B(Sequence[B]): ...
+
+reveal_type([A, B])
+[builtins fixtures/list.pyi]
