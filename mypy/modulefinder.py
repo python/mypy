@@ -480,7 +480,7 @@ def matches_exclude(subpath: str, exclude: str, fscache: FileSystemCache, verbos
     if fscache.isdir(subpath):
         subpath_str += "/"
     if re.search(exclude, subpath_str):
-        if verbose >= 2:
+        if verbose:
             print("TRACE: Excluding {}".format(subpath_str), file=sys.stderr)
         return True
     return False
