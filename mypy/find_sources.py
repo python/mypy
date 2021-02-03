@@ -105,7 +105,7 @@ class SourceFinder:
         names = sorted(self.fscache.listdir(path), key=keyfunc)
         for name in names:
             # Skip certain names altogether
-            if name in ("__pycache__", "site-packages") or name.startswith("."):
+            if name in ("__pycache__", "site-packages", "node_modules") or name.startswith("."):
                 continue
             subpath = os.path.join(path, name)
 

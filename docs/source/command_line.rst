@@ -57,7 +57,7 @@ for full details, see :ref:`running-mypy`.
 
     For instance, to avoid discovering any files named `setup.py` you could
     pass ``--exclude '/setup.py$'``. Similarly, you can ignore discovering
-    directories with a given name by e.g. ``--exclude /node_modules/`` or
+    directories with a given name by e.g. ``--exclude /build/`` or
     those matching a subpath with ``--exclude /project/vendor/``.
 
     Note that this flag only affects recursive discovery, that is, when mypy is
@@ -66,10 +66,11 @@ for full details, see :ref:`running-mypy`.
     instance, ``mypy --exclude '/setup.py$' but_still_check/setup.py``.
 
     Note that mypy will never recursively discover files and directories named
-    "site-packages" or "__pycache__" or those whose name starts with a period,
-    exactly as ``--exclude '/(site-packages|__pycache__|\..*)$'`` would.
-    Mypy will also never recursively discover files with extensions other than
-    ``.py`` or ``.pyi``.
+    "site-packages", "node_modules" or "__pycache__", or those whose name starts
+    with a period, exactly as ``--exclude
+    '/(site-packages|node_modules|__pycache__|\..*)$'`` would. Mypy will also
+    never recursively discover files with extensions other than ``.py`` or
+    ``.pyi``.
 
 
 Optional arguments
