@@ -1,8 +1,9 @@
 from mypy.modulefinder import BuildSource
 import os
+import pytest
 import unittest
 from typing import List, Optional, Set, Tuple
-from mypy.find_sources import SourceFinder
+from mypy.find_sources import InvalidSourceList, SourceFinder, create_source_list
 from mypy.fscache import FileSystemCache
 from mypy.modulefinder import BuildSource
 from mypy.options import Options
@@ -47,8 +48,14 @@ def crawl(finder: SourceFinder, f: str) -> Tuple[str, str]:
     return module, normalise_path(base_dir)
 
 
-def find_sources(finder: SourceFinder, f: str) -> List[Tuple[str, Optional[str]]]:
+def find_sources_in_dir(finder: SourceFinder, f: str) -> List[Tuple[str, Optional[str]]]:
     return normalise_build_source_list(finder.find_sources_in_dir(os.path.abspath(f)))
+
+
+def find_sources(
+    paths: List[str], options: Options, fscache: FileSystemCache
+) -> List[Tuple[str, Optional[str]]]:
+    return normalise_build_source_list(create_source_list(paths, options, fscache))
 
 
 class SourceFinderSuite(unittest.TestCase):
@@ -172,7 +179,7 @@ class SourceFinderSuite(unittest.TestCase):
         assert crawl(finder, "/a/pkg/a.py") == ("pkg.a", "/a")
         assert crawl(finder, "/b/pkg/b.py") == ("pkg.b", "/b")
 
-    def test_find_sources_no_namespace(self) -> None:
+    def test_find_sources_in_dir_no_namespace(self) -> None:
         options = Options()
         options.namespace_packages = False
 
@@ -184,7 +191,7 @@ class SourceFinderSuite(unittest.TestCase):
             "/pkg/a2/b/f.py",
         }
         finder = SourceFinder(FakeFSCache(files), options)
-        assert find_sources(finder, "/") == [
+        assert find_sources_in_dir(finder, "/") == [
             ("a2", "/pkg"),
             ("e", "/pkg/a1/b/c/d"),
             ("e", "/pkg/a2/b/c/d"),
@@ -192,7 +199,7 @@ class SourceFinderSuite(unittest.TestCase):
             ("f", "/pkg/a2/b"),
         ]
 
-    def test_find_sources_namespace(self) -> None:
+    def test_find_sources_in_dir_namespace(self) -> None:
         options = Options()
         options.namespace_packages = True
 
@@ -204,7 +211,7 @@ class SourceFinderSuite(unittest.TestCase):
             "/pkg/a2/b/f.py",
         }
         finder = SourceFinder(FakeFSCache(files), options)
-        assert find_sources(finder, "/") == [
+        assert find_sources_in_dir(finder, "/") == [
             ("a2", "/pkg"),
             ("a2.b.c.d.e", "/pkg"),
             ("a2.b.f", "/pkg"),
@@ -212,7 +219,7 @@ class SourceFinderSuite(unittest.TestCase):
             ("f", "/pkg/a1/b"),
         ]
 
-    def test_find_sources_namespace_explicit_base(self) -> None:
+    def test_find_sources_in_dir_namespace_explicit_base(self) -> None:
         options = Options()
         options.namespace_packages = True
         options.explicit_package_bases = True
@@ -226,7 +233,7 @@ class SourceFinderSuite(unittest.TestCase):
             "/pkg/a2/b/f.py",
         }
         finder = SourceFinder(FakeFSCache(files), options)
-        assert find_sources(finder, "/") == [
+        assert find_sources_in_dir(finder, "/") == [
             ("pkg.a1.b.c.d.e", "/"),
             ("pkg.a1.b.f", "/"),
             ("pkg.a2", "/"),
@@ -236,7 +243,7 @@ class SourceFinderSuite(unittest.TestCase):
 
         options.mypy_path = ["/pkg"]
         finder = SourceFinder(FakeFSCache(files), options)
-        assert find_sources(finder, "/") == [
+        assert find_sources_in_dir(finder, "/") == [
             ("a1.b.c.d.e", "/pkg"),
             ("a1.b.f", "/pkg"),
             ("a2", "/pkg"),
@@ -244,24 +251,30 @@ class SourceFinderSuite(unittest.TestCase):
             ("a2.b.f", "/pkg"),
         ]
 
-    def test_find_sources_namespace_multi_dir(self) -> None:
+    def test_find_sources_in_dir_namespace_multi_dir(self) -> None:
         options = Options()
         options.namespace_packages = True
         options.explicit_package_bases = True
         options.mypy_path = ["/a", "/b"]
 
         finder = SourceFinder(FakeFSCache({"/a/pkg/a.py", "/b/pkg/b.py"}), options)
-        assert find_sources(finder, "/") == [("pkg.a", "/a"), ("pkg.b", "/b")]
+        assert find_sources_in_dir(finder, "/") == [("pkg.a", "/a"), ("pkg.b", "/b")]
 
     def test_find_sources_exclude(self) -> None:
         options = Options()
         options.namespace_packages = True
 
         # default
-        finder = SourceFinder(FakeFSCache({"/dir/a.py", "/dir/venv/site-packages/b.py"}), options)
-        assert find_sources(finder, "/") == [("a", "/dir")]
-        assert find_sources(finder, "/dir/venv/") == []
-        assert find_sources(finder, "/dir/venv/site-packages") == [('b', '/dir/venv/site-packages')]
+        fscache = FakeFSCache({"/dir/a.py", "/dir/venv/site-packages/b.py"})
+        assert find_sources(["/"], options, fscache) == [("a", "/dir")]
+        with pytest.raises(InvalidSourceList):
+            find_sources(["/dir/venv/"], options, fscache)
+        assert find_sources(["/dir/venv/site-packages"], options, fscache) == [
+            ("b", "/dir/venv/site-packages")
+        ]
+        assert find_sources(["/dir/venv/site-packages/b.py"], options, fscache) == [
+            ("b", "/dir/venv/site-packages")
+        ]
 
         files = {
             "/pkg/a1/b/c/d/e.py",
@@ -273,42 +286,57 @@ class SourceFinderSuite(unittest.TestCase):
 
         # file name
         options.exclude = "/f.py$"
-        finder = SourceFinder(FakeFSCache(files), options)
-        assert find_sources(finder, "/") == [
+        fscache = FakeFSCache(files)
+        assert find_sources(["/"], options, fscache) == [
             ("a2", "/pkg"),
             ("a2.b.c.d.e", "/pkg"),
             ("e", "/pkg/a1/b/c/d"),
         ]
+        assert find_sources(["/pkg/a1/b/f.py"], options, fscache) == [('f', '/pkg/a1/b')]
+        assert find_sources(["/pkg/a2/b/f.py"], options, fscache) == [('a2.b.f', '/pkg')]
 
         # directory name
         options.exclude = "/a1/"
-        finder = SourceFinder(FakeFSCache(files), options)
-        assert find_sources(finder, "/") == [
+        fscache = FakeFSCache(files)
+        assert find_sources(["/"], options, fscache) == [
             ("a2", "/pkg"),
             ("a2.b.c.d.e", "/pkg"),
             ("a2.b.f", "/pkg"),
+        ]
+        with pytest.raises(InvalidSourceList):
+            find_sources(["/pkg/a1"], options, fscache)
+        with pytest.raises(InvalidSourceList):
+            find_sources(["/pkg/a1/"], options, fscache)
+        with pytest.raises(InvalidSourceList):
+            find_sources(["/pkg/a1/b"], options, fscache)
+
+        options.exclude = "/a1/$"
+        assert find_sources(["/pkg/a1"], options, fscache) == [
+            ('e', '/pkg/a1/b/c/d'), ('f', '/pkg/a1/b')
         ]
 
         # paths
         options.exclude = "/pkg/a1/"
-        finder = SourceFinder(FakeFSCache(files), options)
-        assert find_sources(finder, "/") == [
+        fscache = FakeFSCache(files)
+        assert find_sources(["/"], options, fscache) == [
             ("a2", "/pkg"),
             ("a2.b.c.d.e", "/pkg"),
             ("a2.b.f", "/pkg"),
         ]
+        with pytest.raises(InvalidSourceList):
+            find_sources(["/pkg/a1"], options, fscache)
 
         options.exclude = "/(a1|a3)/"
-        finder = SourceFinder(FakeFSCache(files), options)
-        assert find_sources(finder, "/") == [
+        fscache = FakeFSCache(files)
+        assert find_sources(["/"], options, fscache) == [
             ("a2", "/pkg"),
             ("a2.b.c.d.e", "/pkg"),
             ("a2.b.f", "/pkg"),
         ]
 
         options.exclude = "b/c/"
-        finder = SourceFinder(FakeFSCache(files), options)
-        assert find_sources(finder, "/") == [
+        fscache = FakeFSCache(files)
+        assert find_sources(["/"], options, fscache) == [
             ("a2", "/pkg"),
             ("a2.b.f", "/pkg"),
             ("f", "/pkg/a1/b"),
@@ -319,8 +347,8 @@ class SourceFinderSuite(unittest.TestCase):
             "/pkg/a/", "/2", "/1", "/pk/", "/kg", "/g.py", "/bc", "/xxx/pkg/a2/b/f.py"
             "xxx/pkg/a2/b/f.py",
         ))
-        finder = SourceFinder(FakeFSCache(files), options)
-        assert len(find_sources(finder, "/")) == len(files)
+        fscache = FakeFSCache(files)
+        assert len(find_sources(["/"], options, fscache)) == len(files)
 
         files = {
             "pkg/a1/b/c/d/e.py",
@@ -329,5 +357,5 @@ class SourceFinderSuite(unittest.TestCase):
             "pkg/a2/b/c/d/e.py",
             "pkg/a2/b/f.py",
         }
-        finder = SourceFinder(FakeFSCache(files), options)
-        assert len(find_sources(finder, "/")) == len(files)
+        fscache = FakeFSCache(files)
+        assert len(find_sources(["/"], options, fscache)) == len(files)
