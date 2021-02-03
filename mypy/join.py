@@ -21,7 +21,8 @@ from mypy import meet
 
 
 class InstanceJoiner:
-    seen_instances = []  # type: List[Tuple[Instance, Instance]]
+    def __init__(self) -> None:
+        self.seen_instances = []  # type: List[Tuple[Instance, Instance]]
 
     def join_instances(self, t: Instance, s: Instance) -> ProperType:
         if (t, s) in self.seen_instances or (s, t) in self.seen_instances:
@@ -41,7 +42,7 @@ class InstanceJoiner:
             for ta, sa, type_var in zip(t.args, s.args, t.type.defn.type_vars):
                 ta_proper = get_proper_type(ta)
                 sa_proper = get_proper_type(sa)
-                new_type = NoneType()  # type: Type
+                new_type = None  # type: Optional[Type]
                 if isinstance(ta_proper, AnyType):
                     new_type = AnyType(TypeOfAny.from_another_any, ta_proper)
                 elif isinstance(sa_proper, AnyType):
@@ -66,6 +67,7 @@ class InstanceJoiner:
                     if not is_equivalent(ta, sa):
                         self.seen_instances.pop()
                         return object_from_instance(t)
+                assert new_type is not None
                 args.append(new_type)
             result = Instance(t.type, args)  # type: ProperType
         elif t.type.bases and is_subtype_ignoring_tvars(t, s):
