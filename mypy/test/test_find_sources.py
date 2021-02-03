@@ -260,6 +260,8 @@ class SourceFinderSuite(unittest.TestCase):
         # default
         finder = SourceFinder(FakeFSCache({"/dir/a.py", "/dir/venv/site-packages/b.py"}), options)
         assert find_sources(finder, "/") == [("a", "/dir")]
+        assert find_sources(finder, "/dir/venv/") == []
+        assert find_sources(finder, "/dir/venv/site-packages") == [('b', '/dir/venv/site-packages')]
 
         files = {
             "/pkg/a1/b/c/d/e.py",
@@ -270,7 +272,7 @@ class SourceFinderSuite(unittest.TestCase):
         }
 
         # file name
-        options.exclude = "/f.py"
+        options.exclude = "/f.py$"
         finder = SourceFinder(FakeFSCache(files), options)
         assert find_sources(finder, "/") == [
             ("a2", "/pkg"),
@@ -289,6 +291,14 @@ class SourceFinderSuite(unittest.TestCase):
 
         # paths
         options.exclude = "/pkg/a1/"
+        finder = SourceFinder(FakeFSCache(files), options)
+        assert find_sources(finder, "/") == [
+            ("a2", "/pkg"),
+            ("a2.b.c.d.e", "/pkg"),
+            ("a2.b.f", "/pkg"),
+        ]
+
+        options.exclude = "/(a1|a3)/"
         finder = SourceFinder(FakeFSCache(files), options)
         assert find_sources(finder, "/") == [
             ("a2", "/pkg"),

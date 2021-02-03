@@ -205,6 +205,8 @@ section of the command line docs.
     which mypy should ignore while recursively discovering files to check.
     Use forward slashes on all platforms.
 
+    For more details, see :option:`--exclude <mypy --exclude>`.
+
     This option may only be set in the global section (``[mypy]``).
 
 .. confval:: namespace_packages
