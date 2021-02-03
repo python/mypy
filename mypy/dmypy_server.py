@@ -620,11 +620,11 @@ class Server:
 
         fix_module_deps(graph)
 
-        # Store current file state as side effect
-        self.fswatcher.find_changed()
-
         self.previous_sources = find_all_sources_in_build(graph)
         self.update_sources(self.previous_sources)
+
+        # Store current file state as side effect
+        self.fswatcher.find_changed()
 
         t5 = time.time()
 
