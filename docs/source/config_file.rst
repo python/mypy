@@ -207,6 +207,19 @@ section of the command line docs.
 
     This option may only be set in the global section (``[mypy]``).
 
+.. confval:: explicit_package_bases
+
+    :type: boolean
+    :default: False
+
+    This flag tells mypy that top-level packages will be based in either the
+    current directory, or a member of the ``MYPYPATH`` environment variable or
+    :confval:`mypy_path` config option. This option is only useful in
+    conjunction with :confval:`namespace_packages`. See :ref:`Mapping file
+    paths to modules <mapping-paths-to-modules>` for details.
+
+    This option may only be set in the global section (``[mypy]``).
+
 .. confval:: ignore_missing_imports
 
     :type: boolean
