@@ -215,7 +215,7 @@ section of the command line docs.
     This flag tells mypy that top-level packages will be based in either the
     current directory, or a member of the ``MYPYPATH`` environment variable or
     :confval:`mypy_path` config option. This option is only useful in
-    conjunction with :option:`namespace_packages`. See :ref:`Mapping file
+    conjunction with :confval:`namespace_packages`. See :ref:`Mapping file
     paths to modules <mapping-paths-to-modules>` for details.
 
     This option may only be set in the global section (``[mypy]``).
