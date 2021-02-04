@@ -917,6 +917,26 @@ class StubgencSuite(unittest.TestCase):
             'def __init__(*args, **kwargs) -> Any: ...'])
         assert_equal(set(imports), {'from typing import overload'})
 
+    def test_generate_autodoc_c_type_with_overload(self) -> None:
+        class TestClass:
+            def __init__(self, arg0: str) -> None:
+                """__init__(self: TestClass, arg0: str) -> None \\
+                __init__(self: TestClass, arg0: str, arg1: str) -> None
+                Overloaded function.
+                """
+                pass
+        output = []  # type: List[str]
+        imports = []  # type: List[str]
+        mod = ModuleType(TestClass.__module__, '')
+        generate_c_function_stub(mod, '__init__', TestClass.__init__, output, imports,
+                                 self_var='self', class_name='TestClass')
+        assert_equal(output, [
+            '@overload',
+            'def __init__(self, arg0: str) -> None: ...',
+            '@overload',
+            'def __init__(self, arg0: str, arg1: str) -> None: ...'])
+        assert_equal(set(imports), {'from typing import overload'})
+
 
 class ArgSigSuite(unittest.TestCase):
     def test_repr(self) -> None:

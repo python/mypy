@@ -203,6 +203,36 @@ class DocStringParser:
         return list(sorted(self.signatures, key=lambda x: 1 if args_kwargs(x) else 0))
 
 
+def _infer_escaped_sigs_from_docstring(docstr: str, name: str) -> List[FunctionSig]:
+    """Parse escaped function signatures at the start of the docstring.
+
+    This function is one half of infer_sig_from_docstring().
+    This function finds all the signatures at the start of the docstring
+    that are separated with a backslash, as is conventional in C extensions.
+    All other signatures in the docstring, including a single signature at
+    the start of the docstring that is not escaped, are handled by
+    _infer_sig_from_docstring().
+    """
+    sigs = []
+
+    lines = docstr.splitlines()
+    # We only want to handle escaped signatures.
+    # If there isn't one, let _infer_sig_from_docstring handle everything.
+    if not lines or not lines[0].endswith("\\"):
+        return sigs
+
+    for line in lines:
+        escaped = line.endswith("\\")
+        if escaped:
+            line = line[:-1].strip()
+        line_sigs = _infer_sig_from_docstring(line, name) or []
+        sigs.extend(line_sigs)
+        if not escaped:
+            break
+
+    return sigs
+
+
 def infer_sig_from_docstring(docstr: Optional[str], name: str) -> Optional[List[FunctionSig]]:
     """Convert function signature to list of TypedFunctionSig
 
@@ -221,6 +251,16 @@ def infer_sig_from_docstring(docstr: Optional[str], name: str) -> Optional[List[
     if not docstr:
         return None
 
+    other_sigs = _infer_sig_from_docstring(docstr, name)
+    if other_sigs is None:
+        return None
+
+    sigs = _infer_escaped_sigs_from_docstring(docstr, name)
+    sigs.extend(other_sigs)
+    return sigs
+
+
+def _infer_sig_from_docstring(docstr: str, name: str) -> Optional[List[FunctionSig]]:
     state = DocStringParser(name)
     # Return all found signatures, even if there is a parse error after some are found.
     with contextlib.suppress(tokenize.TokenError):
