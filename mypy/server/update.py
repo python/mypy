@@ -1172,7 +1172,11 @@ def refresh_suppressed_submodules(
         return None
     # Find any submodules present in the directory.
     pkgdir = os.path.dirname(path)
-    for fnam in fscache.listdir(pkgdir):
+    try:
+        entries = fscache.listdir(pkgdir)
+    except FileNotFoundError:
+        entries = []
+    for fnam in entries:
         if (not fnam.endswith(('.py', '.pyi'))
                 or fnam.startswith("__init__.")
                 or fnam.count('.') != 1):

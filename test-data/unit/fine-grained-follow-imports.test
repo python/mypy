@@ -739,3 +739,34 @@ from . import mod2
 main.py:1: error: Cannot find implementation or library stub for module named "pkg"
 main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
+
+[case testFollowImportsNormalDeletePackage]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file main.py]
+import pkg
+
+[file pkg/__init__.py]
+from . import mod
+
+[file pkg/mod.py]
+from . import mod2
+import pkg2
+
+[file pkg/mod2.py]
+from . import mod2
+import pkg2
+
+[file pkg2/__init__.py]
+from . import mod3
+
+[file pkg2/mod3.py]
+
+[delete pkg/.2]
+[delete pkg2/.2]
+
+[out]
+==
+main.py:1: error: Cannot find implementation or library stub for module named "pkg"
+main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
