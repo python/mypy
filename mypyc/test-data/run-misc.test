@@ -1024,6 +1024,7 @@ def test_str() -> None:
     assert 'foo bar' == eval("'foo bar'")
     assert 'foo\u1245\0bar' == eval("'foo' + chr(0x1245) + chr(0) + 'bar'")
     assert 'foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345' == eval("'foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345'")
+    assert 'Zoobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar123' == eval("'Zoobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar123'")
 
 def test_bytes() -> None:
     assert b'' == eval("b''")
