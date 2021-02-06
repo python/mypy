@@ -143,6 +143,16 @@ def encode_int_values(values: Dict[int, int]) -> List[bytes]:
     return result
 
 
+def float_to_c(x: float) -> str:
+    """Return C literal representation of a float value."""
+    s = str(x)
+    if s == 'inf':
+        return 'INFINITY'
+    elif s == '-inf':
+        return '-INFINITY'
+    return s
+
+
 def encode_float_values(values: Dict[float, int]) -> List[str]:
     """Encode float values into a C array values.
 
@@ -156,7 +166,7 @@ def encode_float_values(values: Dict[float, int]) -> List[str]:
     result.append(str(num))
     for i in range(num):
         value = value_by_index[i]
-        result.append(str(value))
+        result.append(float_to_c(value))
     return result
 
 
@@ -174,6 +184,6 @@ def encode_complex_values(values: Dict[complex, int]) -> List[str]:
     result.append(str(num))
     for i in range(num):
         value = value_by_index[i]
-        result.append(str(value.real))
-        result.append(str(value.imag))
+        result.append(float_to_c(value.real))
+        result.append(float_to_c(value.imag))
     return result
