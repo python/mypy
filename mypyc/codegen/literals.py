@@ -3,10 +3,12 @@ from typing import Dict, List, Union, Tuple, Any, cast
 from typing_extensions import Final
 
 
-LiteralValue = Union[str, bytes, int, float, complex, Tuple[object, ...], None]
+# Supported Python literal types. All tuple items must have supported
+# literal types as well, but we can't represent the type precisely.
+LiteralValue = Union[str, bytes, int, bool, float, complex, Tuple[object, ...], None]
 
 
-# Some literals are singletons and handled specially
+# Some literals are singletons and handled specially (None, False and True)
 NUM_SINGLETONS = 3  # type: Final
 
 
