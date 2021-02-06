@@ -500,20 +500,24 @@ class LoadLiteral(RegisterOp):
     This is used to load a static PyObject * value corresponding to
     a literal of one of the supported types.
 
-    NOTE: For int literals, both int_rprimitive (CPyTagged) and
-          object_primitive (PyObject *) are supported as types. However,
-          when using int_rprimitive, the value must *not* be small enough
-          to fit in an unboxed integer.
+    Tuple literals must contain only valid literal values as items.
 
     NOTE: You can use this to load boxed (Python) int objects. Use
           Integer to load unboxed, tagged integers or fixed-width,
           low-level integers.
+
+          For int literals, both int_rprimitive (CPyTagged) and
+          object_primitive (PyObject *) are supported as rtype. However,
+          when using int_rprimitive, the value must *not* be small enough
+          to fit in an unboxed integer.
     """
 
     error_kind = ERR_NEVER
     is_borrowed = True
 
-    def __init__(self, value: Union[str, bytes, int, float, complex], rtype: RType) -> None:
+    def __init__(self,
+                 value: Union[None, str, bytes, bool, int, float, complex, Tuple[object, ...]],
+                 rtype: RType) -> None:
         self.value = value
         self.type = rtype
 

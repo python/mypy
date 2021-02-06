@@ -643,6 +643,9 @@ class GroupGenerator:
         # Descriptions of complex literals
         init_complex = c_array_initializer(literals.encoded_complex_values())
         self.declare_global('const double []', 'CPyLit_Complex', initializer=init_complex)
+        # Descriptions of tuple literals
+        init_tuple = c_array_initializer(literals.encoded_tuple_values())
+        self.declare_global('const int []', 'CPyLit_Tuple', initializer=init_tuple)
 
     def generate_export_table(self, decl_emitter: Emitter, code_emitter: Emitter) -> None:
         """Generate the declaration and definition of the group's export struct.
@@ -816,7 +819,7 @@ class GroupGenerator:
         for symbol, fixup in self.simple_inits:
             emitter.emit_line('{} = {};'.format(symbol, fixup))
 
-        values = 'CPyLit_Str, CPyLit_Bytes, CPyLit_Int, CPyLit_Float, CPyLit_Complex'
+        values = 'CPyLit_Str, CPyLit_Bytes, CPyLit_Int, CPyLit_Float, CPyLit_Complex, CPyLit_Tuple'
         emitter.emit_lines('if (CPyStatics_Initialize(CPyStatics, {}) < 0) {{'.format(values),
                            'return -1;',
                            '}')

@@ -528,7 +528,16 @@ int CPyStatics_Initialize(PyObject **statics,
                           const char * const *bytestrings,
                           const char * const *ints,
                           const double *floats,
-                          const double *complex_numbers) {
+                          const double *complex_numbers,
+                          const int *tuples) {
+    PyObject **result = statics;
+    // Start with some hard-coded values
+    *result++ = Py_None;
+    Py_INCREF(Py_None);
+    *result++ = Py_False;
+    Py_INCREF(Py_False);
+    *result++ = Py_True;
+    Py_INCREF(Py_True);
     if (strings) {
         for (; **strings != '\0'; strings++) {
             size_t num;
@@ -542,7 +551,7 @@ int CPyStatics_Initialize(PyObject **statics,
                     return -1;
                 }
                 PyUnicode_InternInPlace(&obj);
-                *statics++ = obj;
+                *result++ = obj;
                 data += len;
             }
         }
@@ -559,7 +568,7 @@ int CPyStatics_Initialize(PyObject **statics,
                 if (obj == NULL) {
                     return -1;
                 }
-                *statics++ = obj;
+                *result++ = obj;
                 data += len;
             }
         }
@@ -577,7 +586,7 @@ int CPyStatics_Initialize(PyObject **statics,
                 }
                 data = end;
                 data++;
-                *statics++ = obj;
+                *result++ = obj;
             }
         }
     }
@@ -588,7 +597,7 @@ int CPyStatics_Initialize(PyObject **statics,
             if (obj == NULL) {
                 return -1;
             }
-            *statics++ = obj;
+            *result++ = obj;
         }
     }
     if (complex_numbers) {
@@ -600,7 +609,24 @@ int CPyStatics_Initialize(PyObject **statics,
             if (obj == NULL) {
                 return -1;
             }
-            *statics++ = obj;
+            *result++ = obj;
+        }
+    }
+    if (tuples) {
+        int num = *tuples++;
+        while (num-- > 0) {
+            int num_items = *tuples++;
+            PyObject *obj = PyTuple_New(num_items);
+            if (obj == NULL) {
+                return -1;
+            }
+            int i;
+            for (i = 0; i < num_items; i++) {
+                PyObject *item = statics[*tuples++];
+                Py_INCREF(item);
+                PyTuple_SET_ITEM(obj, i, item);
+            }
+            *result++ = obj;
         }
     }
     return 0;
