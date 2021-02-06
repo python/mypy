@@ -64,7 +64,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         # For values that have a potential unboxed representation, make
         # it explicit that this is a Python object.
         if isinstance(op.value, int):
-            return self.format('%r = object %s', op, repr(op.value))
+            prefix = 'object '
         return self.format('%r = %s%s', op, prefix, repr(op.value))
 
     def visit_get_attr(self, op: GetAttr) -> str:

@@ -5,6 +5,7 @@ class Literals:
     """Collection of literal values used in a compilation group and related helpers."""
 
     def __init__(self) -> None:
+        # Each dict maps value to literal index (0, 1, ...)
         self.str_literals = {}  # type: Dict[str, int]
         self.bytes_literals = {}  # type: Dict[bytes, int]
         self.int_literals = {}  # type: Dict[int, int]

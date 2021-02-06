@@ -191,11 +191,11 @@ class IRBuilder:
     def py_get_attr(self, obj: Value, attr: str, line: int) -> Value:
         return self.builder.py_get_attr(obj, attr, line)
 
-    def load_static_unicode(self, value: str) -> Value:
-        return self.builder.load_static_unicode(value)
+    def load_str(self, value: str) -> Value:
+        return self.builder.load_str(value)
 
-    def load_static_int(self, value: int) -> Value:
-        return self.builder.load_static_int(value)
+    def load_int(self, value: int) -> Value:
+        return self.builder.load_int(value)
 
     def unary_op(self, lreg: Value, expr_op: str, line: int) -> Value:
         return self.builder.unary_op(lreg, expr_op, line)
@@ -283,7 +283,7 @@ class IRBuilder:
     def add_to_non_ext_dict(self, non_ext: NonExtClassInfo,
                             key: str, val: Value, line: int) -> None:
         # Add an attribute entry into the class dict of a non-extension class.
-        key_unicode = self.load_static_unicode(key)
+        key_unicode = self.load_str(key)
         self.call_c(dict_set_item_op, [non_ext.dict, key_unicode, val], line)
 
     def gen_import(self, id: str, line: int) -> None:
@@ -295,7 +295,7 @@ class IRBuilder:
         self.add_bool_branch(comparison, out, needs_import)
 
         self.activate_block(needs_import)
-        value = self.call_c(import_op, [self.load_static_unicode(id)], line)
+        value = self.call_c(import_op, [self.load_str(id)], line)
         self.add(InitStatic(value, id, namespace=NAMESPACE_MODULE))
         self.goto_and_activate(out)
 
@@ -378,13 +378,13 @@ class IRBuilder:
         elif isinstance(val, int):
             # TODO: take care of negative integer initializers
             # (probably easier to fix this in mypy itself).
-            return self.builder.load_static_int(val)
+            return self.builder.load_int(val)
         elif isinstance(val, float):
-            return self.builder.load_static_float(val)
+            return self.builder.load_float(val)
         elif isinstance(val, str):
-            return self.builder.load_static_unicode(val)
+            return self.builder.load_str(val)
         elif isinstance(val, bytes):
-            return self.builder.load_static_bytes(val)
+            return self.builder.load_bytes(val)
         else:
             assert False, "Unsupported final literal value"
 
@@ -419,7 +419,7 @@ class IRBuilder:
                     return self.lookup(symbol)
             elif lvalue.kind == GDEF:
                 globals_dict = self.load_globals_dict()
-                name = self.load_static_unicode(lvalue.name)
+                name = self.load_str(lvalue.name)
                 return AssignmentTargetIndex(globals_dict, name)
             else:
                 assert False, lvalue.kind
@@ -484,7 +484,7 @@ class IRBuilder:
                 rvalue_reg = self.coerce(rvalue_reg, target.type, line)
                 self.add(SetAttr(target.obj, target.attr, rvalue_reg, line))
             else:
-                key = self.load_static_unicode(target.attr)
+                key = self.load_str(target.attr)
                 boxed_reg = self.builder.box(rvalue_reg)
                 self.call_c(py_setattr_op, [target.obj, key, boxed_reg], line)
         elif isinstance(target, AssignmentTargetIndex):
@@ -519,7 +519,7 @@ class IRBuilder:
         values = []
         for i in range(len(target.items)):
             item = target.items[i]
-            index = self.builder.load_static_int(i)
+            index = self.builder.load_int(i)
             if is_list_rprimitive(rvalue.type):
                 item_value = self.call_c(list_get_item_unsafe_op, [rvalue, index], line)
             else:
@@ -1074,7 +1074,7 @@ class IRBuilder:
 
     def load_global_str(self, name: str, line: int) -> Value:
         _globals = self.load_globals_dict()
-        reg = self.load_static_unicode(name)
+        reg = self.load_str(name)
         return self.call_c(dict_get_item_op, [_globals, reg], line)
 
     def load_globals_dict(self) -> Value:
