@@ -630,19 +630,19 @@ class GroupGenerator:
         self.declare_global('PyObject *[%d]' % literals.num_literals(), 'CPyStatics')
         # Descriptions of str literals
         init_str = c_string_initializer(literals.encoded_str_values())
-        self.declare_global('const char []', 'StrLiterals', initializer=init_str)
+        self.declare_global('const char []', 'CPyLit_Str', initializer=init_str)
         # Descriptions of bytes literals
         init_bytes = c_string_initializer(literals.encoded_bytes_values())
-        self.declare_global('const char []', 'BytesLiterals', initializer=init_bytes)
+        self.declare_global('const char []', 'CPyLit_Bytes', initializer=init_bytes)
         # Descriptions of int literals
         init_int = c_string_initializer(literals.encoded_int_values())
-        self.declare_global('const char []', 'IntLiterals', initializer=init_int)
+        self.declare_global('const char []', 'CPyLit_Int', initializer=init_int)
         # Descriptions of float literals
         init_floats = c_array_initializer(literals.encoded_float_values())
-        self.declare_global('const double []', 'FloatLiterals', initializer=init_floats)
+        self.declare_global('const double []', 'CPyLit_Float', initializer=init_floats)
         # Descriptions of complex literals
         init_complex = c_array_initializer(literals.encoded_complex_values())
-        self.declare_global('const double []', 'ComplexLiterals', initializer=init_complex)
+        self.declare_global('const double []', 'CPyLit_Complex', initializer=init_complex)
 
     def generate_export_table(self, decl_emitter: Emitter, code_emitter: Emitter) -> None:
         """Generate the declaration and definition of the group's export struct.
@@ -816,7 +816,7 @@ class GroupGenerator:
         for symbol, fixup in self.simple_inits:
             emitter.emit_line('{} = {};'.format(symbol, fixup))
 
-        values = 'StrLiterals, BytesLiterals, IntLiterals, FloatLiterals, ComplexLiterals'
+        values = 'CPyLit_Str, CPyLit_Bytes, CPyLit_Int, CPyLit_Float, CPyLit_Complex'
         emitter.emit_lines('if (CPyStatics_Initialize(CPyStatics, {}) < 0) {{'.format(values),
                            'return -1;',
                            '}')
