@@ -548,7 +548,7 @@ L1:
 L2:
     r1 = CPy_CatchError()
     r2 = builtins :: module
-    r3 = load_global CPyStatic_unicode_1 :: static  ('Exception')
+    r3 = 'Exception'
     r4 = CPyObject_GetAttr(r2, r3)
     if is_error(r4) goto L8 (error at lol:4) else goto L3
 L3:
@@ -605,3 +605,4 @@ L11:
 (10, 1)  {r8}                    {}
 (11, 0)  {}                      {r9}
 (11, 1)  {r9}                    {}
+

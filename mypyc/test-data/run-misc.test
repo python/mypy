@@ -1014,3 +1014,43 @@ from native import foo
 
 assert foo(None) == None
 assert foo([1, 2, 3]) == ((1, 2, 3), [1, 2, 3])
+
+[case testAllLiterals]
+# Test having all sorts of literals in a single file
+
+def test_str() -> None:
+    assert '' == eval("''")
+    assert len('foo bar' + str()) == 7
+    assert 'foo bar' == eval("'foo bar'")
+    assert 'foo\u1245\0bar' == eval("'foo' + chr(0x1245) + chr(0) + 'bar'")
+    assert 'foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345' == eval("'foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345'")
+    assert 'Zoobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar123' == eval("'Zoobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar123'")
+
+def test_bytes() -> None:
+    assert b'' == eval("b''")
+    assert b'foo bar' == eval("b'foo bar'")
+    assert b'\xafde' == eval(r"b'\xafde'")
+    assert b'foo\xde\0bar' == eval("b'foo' + bytes([0xde, 0]) + b'bar'")
+    assert b'foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345' == eval("b'foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345'")
+
+def test_int() -> None:
+    assert 2875872359823758923758923759 == eval('2875872359823758923758923759')
+    assert -552875872359823758923758923759 == eval('-552875872359823758923758923759')
+
+def test_float() -> None:
+    assert 1.5 == eval('1.5')
+    assert -3.75 == eval('-3.75')
+    assert 2.5e10 == eval('2.5e10')
+    assert 2.5e50 == eval('2.5e50')
+    assert 2.5e1000 == eval('2.5e1000')
+    assert -2.5e1000 == eval('-2.5e1000')
+
+def test_complex() -> None:
+    assert 1.5j == eval('1.5j')
+    assert 1.5j + 2.5 == eval('2.5 + 1.5j')
+    assert -3.75j == eval('-3.75j')
+    assert 2.5e10j == eval('2.5e10j')
+    assert 2.5e50j == eval('2.5e50j')
+    assert 2.5e1000j == eval('2.5e1000j')
+    assert 2.5e1000j + 3.5e2000 == eval('3.5e2000 + 2.5e1000j')
+    assert -2.5e1000j == eval('-2.5e1000j')
