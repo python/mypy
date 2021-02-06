@@ -1,4 +1,15 @@
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Tuple, Any, cast
+
+from typing_extensions import Final
+
+
+# Supported Python literal types. All tuple items must have supported
+# literal types as well, but we can't represent the type precisely.
+LiteralValue = Union[str, bytes, int, bool, float, complex, Tuple[object, ...], None]
+
+
+# Some literals are singletons and handled specially (None, False and True)
+NUM_SINGLETONS = 3  # type: Final
 
 
 class Literals:
@@ -11,9 +22,13 @@ class Literals:
         self.int_literals = {}  # type: Dict[int, int]
         self.float_literals = {}  # type: Dict[float, int]
         self.complex_literals = {}  # type: Dict[complex, int]
+        self.tuple_literals = {}  # type: Dict[Tuple[object, ...], int]
 
-    def record_literal(self, value: Union[str, bytes, int, float, complex]) -> None:
+    def record_literal(self, value: LiteralValue) -> None:
         """Ensure that the literal value is available in generated code."""
+        if value is None or value is True or value is False:
+            # These are special cased and always present
+            return
         if isinstance(value, str):
             str_literals = self.str_literals
             if value not in str_literals:
@@ -34,15 +49,29 @@ class Literals:
             complex_literals = self.complex_literals
             if value not in complex_literals:
                 complex_literals[value] = len(complex_literals)
+        elif isinstance(value, tuple):
+            tuple_literals = self.tuple_literals
+            if value not in tuple_literals:
+                for item in value:
+                    self.record_literal(cast(Any, item))
+                tuple_literals[value] = len(tuple_literals)
         else:
             assert False, 'invalid literal: %r' % value
 
-    def literal_index(self, value: Union[str, bytes, int, float, complex]) -> int:
+    def literal_index(self, value: LiteralValue) -> int:
         """Return the index to the literals array for given value."""
-        # The array contains first all str values, followed by bytes values, etc.
+        # The array contains first None and booleans, followed by all str values,
+        # followed by bytes values, etc.
+        if value is None:
+            return 0
+        elif value is False:
+            return 1
+        elif value is True:
+            return 2
+        n = NUM_SINGLETONS
         if isinstance(value, str):
-            return self.str_literals[value]
-        n = len(self.str_literals)
+            return n + self.str_literals[value]
+        n += len(self.str_literals)
         if isinstance(value, bytes):
             return n + self.bytes_literals[value]
         n += len(self.bytes_literals)
@@ -54,11 +83,16 @@ class Literals:
         n += len(self.float_literals)
         if isinstance(value, complex):
             return n + self.complex_literals[value]
+        n += len(self.complex_literals)
+        if isinstance(value, tuple):
+            return n + self.tuple_literals[value]
         assert False, 'invalid literal: %r' % value
 
     def num_literals(self) -> int:
-        return (len(self.str_literals) + len(self.bytes_literals) + len(self.int_literals) +
-                len(self.float_literals) + len(self.complex_literals))
+        # The first three are for None, True and False
+        return (NUM_SINGLETONS + len(self.str_literals) + len(self.bytes_literals) +
+                len(self.int_literals) + len(self.float_literals) + len(self.complex_literals) +
+                len(self.tuple_literals))
 
     # The following methods return the C encodings of literal values
     # of different types
@@ -77,6 +111,34 @@ class Literals:
 
     def encoded_complex_values(self) -> List[str]:
         return encode_complex_values(self.complex_literals)
+
+    def encoded_tuple_values(self) -> List[str]:
+        """Encode tuple values into a C array.
+
+        The format of the result is like this:
+
+           <number of tuples>
+           <length of the first tuple>
+           <literal index of first item>
+           ...
+           <literal index of last item>
+           <length of the second tuple>
+           ...
+        """
+        values = self.tuple_literals
+        value_by_index = {}
+        for value, index in values.items():
+            value_by_index[index] = value
+        result = []
+        num = len(values)
+        result.append(str(num))
+        for i in range(num):
+            value = value_by_index[i]
+            result.append(str(len(value)))
+            for item in value:
+                index = self.literal_index(cast(Any, item))
+                result.append(str(index))
+        return result
 
 
 def encode_str_values(values: Dict[str, int]) -> List[bytes]:
