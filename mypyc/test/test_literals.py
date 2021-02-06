@@ -37,7 +37,7 @@ class TestLiterals(unittest.TestCase):
         print(lit.encoded_tuple_values())
         assert lit.encoded_tuple_values() == [
             '3',  # Number of tuples
-            '2', '5', '4',  # First tuple
-            '4', '6', '3', '0', '7',  # Second tuple
-            '0',  # Third tuple
+            '2', '5', '4',  # First tuple (length=2)
+            '4', '6', '3', '0', '7',  # Second tuple (length=4)
+            '0',  # Third tuple (length=0)
         ]
