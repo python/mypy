@@ -56,7 +56,7 @@ for full details, see :ref:`running-mypy`.
     Use forward slashes on all platforms.
 
     For instance, to avoid discovering any files named `setup.py` you could
-    pass ``--exclude '/setup.py$'``. Similarly, you can ignore discovering
+    pass ``--exclude '/setup\.py$'``. Similarly, you can ignore discovering
     directories with a given name by e.g. ``--exclude /build/`` or
     those matching a subpath with ``--exclude /project/vendor/``.
 

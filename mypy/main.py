@@ -814,7 +814,7 @@ def process_options(args: List[str],
         default="",
         help=(
             "Regular expression to match file names, directory names or paths which mypy should "
-            "ignore while recursively discovering files to check, e.g. --exclude '/setup.py$'"
+            "ignore while recursively discovering files to check, e.g. --exclude '/setup\\.py$'"
         )
     )
     code_group.add_argument(

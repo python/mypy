@@ -266,16 +266,17 @@ class SourceFinderSuite(unittest.TestCase):
         options.namespace_packages = True
 
         # default
-        fscache = FakeFSCache({"/dir/a.py", "/dir/venv/site-packages/b.py"})
-        assert find_sources(["/"], options, fscache) == [("a", "/dir")]
-        with pytest.raises(InvalidSourceList):
-            find_sources(["/dir/venv/"], options, fscache)
-        assert find_sources(["/dir/venv/site-packages"], options, fscache) == [
-            ("b", "/dir/venv/site-packages")
-        ]
-        assert find_sources(["/dir/venv/site-packages/b.py"], options, fscache) == [
-            ("b", "/dir/venv/site-packages")
-        ]
+        for excluded_dir in ["site-packages", ".whatever", "node_modules", ".x/.z"]:
+            fscache = FakeFSCache({"/dir/a.py", "/dir/venv/{}/b.py".format(excluded_dir)})
+            assert find_sources(["/"], options, fscache) == [("a", "/dir")]
+            with pytest.raises(InvalidSourceList):
+                find_sources(["/dir/venv/"], options, fscache)
+            assert find_sources(["/dir/venv/{}".format(excluded_dir)], options, fscache) == [
+                ("b", "/dir/venv/{}".format(excluded_dir))
+            ]
+            assert find_sources(["/dir/venv/{}/b.py".format(excluded_dir)], options, fscache) == [
+                ("b", "/dir/venv/{}".format(excluded_dir))
+            ]
 
         files = {
             "/pkg/a1/b/c/d/e.py",
@@ -286,7 +287,7 @@ class SourceFinderSuite(unittest.TestCase):
         }
 
         # file name
-        options.exclude = "/f.py$"
+        options.exclude = r"/f\.py$"
         fscache = FakeFSCache(files)
         assert find_sources(["/"], options, fscache) == [
             ("a2", "/pkg"),
