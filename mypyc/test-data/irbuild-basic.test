@@ -820,8 +820,9 @@ L0:
     r1 = PyList_New(1)
     r2 = box(short_int, 2)
     r3 = get_element_ptr r1 ob_item :: PyListObject
-    r4 = load_mem r3, r1 :: ptr*
-    set_mem r4, r2, r1 :: builtins.object*
+    r4 = load_mem r3 :: ptr*
+    set_mem r4, r2 :: builtins.object*
+    keep_alive r1
     r5 = g(r1)
     r6 = box(None, 1)
     r7 = g(r6)
@@ -849,8 +850,9 @@ L0:
     r1 = g(r0)
     r2 = PyList_New(1)
     r3 = get_element_ptr r2 ob_item :: PyListObject
-    r4 = load_mem r3, r2 :: ptr*
-    set_mem r4, y, r2 :: builtins.object*
+    r4 = load_mem r3 :: ptr*
+    set_mem r4, y :: builtins.object*
+    keep_alive r2
     a = r2
     r5 = (2, 4)
     r6 = box(tuple[int, int], r5)
@@ -1311,7 +1313,8 @@ def lst(x):
     r3 :: bit
 L0:
     r0 = get_element_ptr x ob_size :: PyVarObject
-    r1 = load_mem r0, x :: native_int*
+    r1 = load_mem r0 :: native_int*
+    keep_alive x
     r2 = r1 << 1
     r3 = r2 != 0
     if r3 goto L1 else goto L2 :: bool
@@ -1721,8 +1724,9 @@ L0:
     r4 = PyList_New(1)
     r5 = box(short_int, 2)
     r6 = get_element_ptr r4 ob_item :: PyListObject
-    r7 = load_mem r6, r4 :: ptr*
-    set_mem r7, r5, r4 :: builtins.object*
+    r7 = load_mem r6 :: ptr*
+    set_mem r7, r5 :: builtins.object*
+    keep_alive r4
     r8 = box(tuple[int, int], r0)
     r9 = CPyList_Extend(r4, r8)
     r10 = PyList_AsTuple(r4)
@@ -1921,16 +1925,18 @@ L0:
     r3 = box(short_int, 4)
     r4 = box(short_int, 6)
     r5 = get_element_ptr r1 ob_item :: PyListObject
-    r6 = load_mem r5, r1 :: ptr*
-    set_mem r6, r2, r1 :: builtins.object*
+    r6 = load_mem r5 :: ptr*
+    set_mem r6, r2 :: builtins.object*
     r7 = r6 + WORD_SIZE*1
-    set_mem r7, r3, r1 :: builtins.object*
+    set_mem r7, r3 :: builtins.object*
     r8 = r6 + WORD_SIZE*2
-    set_mem r8, r4, r1 :: builtins.object*
+    set_mem r8, r4 :: builtins.object*
+    keep_alive r1
     r9 = 0
 L1:
     r10 = get_element_ptr r1 ob_size :: PyVarObject
-    r11 = load_mem r10, r1 :: native_int*
+    r11 = load_mem r10 :: native_int*
+    keep_alive r1
     r12 = r11 << 1
     r13 = r9 < r12 :: signed
     if r13 goto L2 else goto L14 :: bool
@@ -2018,16 +2024,18 @@ L0:
     r3 = box(short_int, 4)
     r4 = box(short_int, 6)
     r5 = get_element_ptr r1 ob_item :: PyListObject
-    r6 = load_mem r5, r1 :: ptr*
-    set_mem r6, r2, r1 :: builtins.object*
+    r6 = load_mem r5 :: ptr*
+    set_mem r6, r2 :: builtins.object*
     r7 = r6 + WORD_SIZE*1
-    set_mem r7, r3, r1 :: builtins.object*
+    set_mem r7, r3 :: builtins.object*
     r8 = r6 + WORD_SIZE*2
-    set_mem r8, r4, r1 :: builtins.object*
+    set_mem r8, r4 :: builtins.object*
+    keep_alive r1
     r9 = 0
 L1:
     r10 = get_element_ptr r1 ob_size :: PyVarObject
-    r11 = load_mem r10, r1 :: native_int*
+    r11 = load_mem r10 :: native_int*
+    keep_alive r1
     r12 = r11 << 1
     r13 = r9 < r12 :: signed
     if r13 goto L2 else goto L14 :: bool
@@ -2114,7 +2122,8 @@ L0:
     r0 = 0
 L1:
     r1 = get_element_ptr l ob_size :: PyVarObject
-    r2 = load_mem r1, l :: native_int*
+    r2 = load_mem r1 :: native_int*
+    keep_alive l
     r3 = r2 << 1
     r4 = r0 < r3 :: signed
     if r4 goto L2 else goto L4 :: bool
@@ -2136,7 +2145,8 @@ L4:
     r12 = 0
 L5:
     r13 = get_element_ptr l ob_size :: PyVarObject
-    r14 = load_mem r13, l :: native_int*
+    r14 = load_mem r13 :: native_int*
+    keep_alive l
     r15 = r14 << 1
     r16 = r12 < r15 :: signed
     if r16 goto L6 else goto L8 :: bool
@@ -2652,12 +2662,13 @@ L4:
     r80 = box(short_int, 4)
     r81 = box(short_int, 6)
     r82 = get_element_ptr r78 ob_item :: PyListObject
-    r83 = load_mem r82, r78 :: ptr*
-    set_mem r83, r79, r78 :: builtins.object*
+    r83 = load_mem r82 :: ptr*
+    set_mem r83, r79 :: builtins.object*
     r84 = r83 + WORD_SIZE*1
-    set_mem r84, r80, r78 :: builtins.object*
+    set_mem r84, r80 :: builtins.object*
     r85 = r83 + WORD_SIZE*2
-    set_mem r85, r81, r78 :: builtins.object*
+    set_mem r85, r81 :: builtins.object*
+    keep_alive r78
     r86 = __main__.globals :: static
     r87 = 'Bar'
     r88 = CPyDict_GetItem(r86, r87)

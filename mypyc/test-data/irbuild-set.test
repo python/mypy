@@ -81,7 +81,8 @@ L0:
     r8 = PySet_Add(r0, r7)
     r9 = r8 >= 0 :: signed
     r10 = get_element_ptr r0 used :: PySetObject
-    r11 = load_mem r10, r0 :: native_int*
+    r11 = load_mem r10 :: native_int*
+    keep_alive r0
     r12 = r11 << 1
     return r12
 
@@ -260,4 +261,3 @@ L0:
     r12 = PySet_Add(r0, r11)
     r13 = r12 >= 0 :: signed
     return r0
-
