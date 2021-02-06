@@ -156,10 +156,10 @@ def transform_import(builder: IRBuilder, node: Import) -> None:
         mod_dict = builder.call_c(get_module_dict_op, [], node.line)
         # Get top-level module/package object.
         obj = builder.call_c(dict_get_item_op,
-                             [mod_dict, builder.load_static_unicode(base)], node.line)
+                             [mod_dict, builder.load_str(base)], node.line)
 
         builder.gen_method_call(
-            globals, '__setitem__', [builder.load_static_unicode(name), obj],
+            globals, '__setitem__', [builder.load_str(name), obj],
             result_type=None, line=node.line)
 
 
@@ -193,7 +193,7 @@ def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:
         as_name = maybe_as_name or name
         obj = builder.py_get_attr(module, name, node.line)
         builder.gen_method_call(
-            globals, '__setitem__', [builder.load_static_unicode(as_name), obj],
+            globals, '__setitem__', [builder.load_str(as_name), obj],
             result_type=None, line=node.line)
 
 
@@ -663,7 +663,7 @@ def transform_del_item(builder: IRBuilder, target: AssignmentTarget, line: int) 
             line=line
         )
     elif isinstance(target, AssignmentTargetAttr):
-        key = builder.load_static_unicode(target.attr)
+        key = builder.load_str(target.attr)
         builder.call_c(py_delattr_op, [target.obj, key], line)
     elif isinstance(target, AssignmentTargetRegister):
         # Delete a local by assigning an error value to it, which will

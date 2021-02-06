@@ -509,3 +509,90 @@ int CPySequence_CheckUnpackCount(PyObject *sequence, Py_ssize_t expected) {
     }
     return 0;
 }
+
+// Parse an integer (size_t) encoded as a variable-length binary sequence.
+static const char *parse_int(const char *s, size_t *len) {
+    ssize_t n = 0;
+    while ((unsigned char)*s >= 0x80) {
+        n = (n << 7) + (*s & 0x7f);
+        s++;
+    }
+    n = (n << 7) | *s++;
+    *len = n;
+    return s;
+}
+
+// Initialize static constant array of literal values
+int CPyStatics_Initialize(PyObject **statics,
+                          const char *strings,
+                          const char *bytestrings,
+                          const char *ints,
+                          const double *floats,
+                          const double *complex_numbers) {
+    if (strings) {
+        size_t num;
+        strings = parse_int(strings, &num);
+        while (num-- > 0) {
+            size_t len;
+            strings = parse_int(strings, &len);
+            PyObject *obj = PyUnicode_FromStringAndSize(strings, len);
+            if (obj == NULL) {
+                return -1;
+            }
+            PyUnicode_InternInPlace(&obj);
+            *statics++ = obj;
+            strings += len;
+        }
+    }
+    if (bytestrings) {
+        size_t num;
+        bytestrings = parse_int(bytestrings, &num);
+        while (num-- > 0) {
+            size_t len;
+            bytestrings = parse_int(bytestrings, &len);
+            PyObject *obj = PyBytes_FromStringAndSize(bytestrings, len);
+            if (obj == NULL) {
+                return -1;
+            }
+            *statics++ = obj;
+            bytestrings += len;
+        }
+    }
+    if (ints) {
+        size_t num;
+        ints = parse_int(ints, &num);
+        while (num-- > 0) {
+            char *end;
+            PyObject *obj = PyLong_FromString(ints, &end, 10);
+            if (obj == NULL) {
+                return -1;
+            }
+            ints = end;
+            ints++;
+            *statics++ = obj;
+        }
+    }
+    if (floats) {
+        size_t num = (size_t)*floats++;
+        while (num-- > 0) {
+            PyObject *obj = PyFloat_FromDouble(*floats++);
+            if (obj == NULL) {
+                return -1;
+            }
+            *statics++ = obj;
+        }
+    }
+    if (complex_numbers) {
+        size_t num = (size_t)*complex_numbers++;
+        while (num-- > 0) {
+            double real = *complex_numbers++;
+            double imag = *complex_numbers++;
+            PyObject *obj = PyComplex_FromDoubles(real, imag);
+            if (obj == NULL) {
+                return -1;
+            }
+            *statics++ = obj;
+        }
+    }
+    return 0;
+}

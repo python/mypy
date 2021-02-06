@@ -20,6 +20,7 @@ from mypyc.ir.func_ir import FuncDecl
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.namegen import NameGenerator, exported_name
 from mypyc.sametype import is_same_type
+from mypyc.codegen.literals import Literals
 
 
 class HeaderDeclaration:
@@ -83,6 +84,8 @@ class EmitterContext:
         # used for declaring structs and the key corresponds to the name of the struct.
         # The declaration contains the body of the struct.
         self.declarations = OrderedDict()  # type: Dict[str, HeaderDeclaration]
+
+        self.literals = Literals()
 
 
 class Emitter:

@@ -18,8 +18,8 @@ from mypy.checkexpr import map_actuals_to_formals
 
 from mypyc.ir.ops import (
     BasicBlock, Op, Integer, Value, Register, Assign, Branch, Goto, Call, Box, Unbox, Cast,
-    GetAttr, LoadStatic, MethodCall, CallC, Truncate,
-    RaiseStandardError, Unreachable, LoadErrorValue, LoadGlobal,
+    GetAttr, LoadStatic, MethodCall, CallC, Truncate, LoadLiteral,
+    RaiseStandardError, Unreachable, LoadErrorValue,
     NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, IntOp, GetElementPtr,
     LoadMem, ComparisonOp, LoadAddress, TupleGet, SetMem, ERR_NEVER, ERR_FALSE
 )
@@ -34,8 +34,7 @@ from mypyc.ir.rtypes import (
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.common import (
-    FAST_ISINSTANCE_MAX_SUBCLASSES, MAX_LITERAL_SHORT_INT,
-    STATIC_PREFIX, PLATFORM_SIZE
+    FAST_ISINSTANCE_MAX_SUBCLASSES, MAX_LITERAL_SHORT_INT, PLATFORM_SIZE
 )
 from mypyc.primitives.registry import (
     method_call_ops, CFunctionDescription, function_ops,
@@ -191,7 +190,7 @@ class LowLevelIRBuilder:
 
         Prefer get_attr() which generates optimized code for native classes.
         """
-        key = self.load_static_unicode(attr)
+        key = self.load_str(attr)
         return self.call_c(py_getattr_op, [obj, key], line)
 
     # isinstance() checks
@@ -262,7 +261,7 @@ class LowLevelIRBuilder:
                 pos_arg_values.append(value)
             elif kind == ARG_NAMED:
                 assert name is not None
-                key = self.load_static_unicode(name)
+                key = self.load_str(name)
                 kw_arg_key_value_pairs.append((key, value))
             elif kind == ARG_STAR:
                 star_arg_values.append(value)
@@ -298,7 +297,7 @@ class LowLevelIRBuilder:
                        arg_names: Optional[Sequence[Optional[str]]]) -> Value:
         """Call a Python method (non-native and slow)."""
         if (arg_kinds is None) or all(kind == ARG_POS for kind in arg_kinds):
-            method_name_reg = self.load_static_unicode(method_name)
+            method_name_reg = self.load_str(method_name)
             return self.call_c(py_method_call_op, [obj, method_name_reg] + arg_values, line)
         else:
             method = self.py_get_attr(obj, method_name, line)
@@ -349,7 +348,7 @@ class LowLevelIRBuilder:
                 items = [args[i] for i in lst]
                 output_arg = self.new_tuple(items, line)
             elif arg.kind == ARG_STAR2:
-                dict_entries = [(self.load_static_unicode(cast(str, arg_names[i])), args[i])
+                dict_entries = [(self.load_str(cast(str, arg_names[i])), args[i])
                                 for i in lst]
                 output_arg = self.make_dict(dict_entries, line)
             elif not lst:
@@ -448,40 +447,32 @@ class LowLevelIRBuilder:
         """Load Python None value (type: object_rprimitive)."""
         return self.add(LoadAddress(none_object_op.type, none_object_op.src, line=-1))
 
-    def literal_static_name(self, value: Union[int, float, complex, str, bytes]) -> str:
-        return STATIC_PREFIX + self.mapper.literal_static_name(self.current_module, value)
-
-    def load_static_int(self, value: int) -> Value:
-        """Loads a static integer Python 'int' object into a register."""
+    def load_int(self, value: int) -> Value:
+        """Load a tagged (Python) integer literal value."""
         if abs(value) > MAX_LITERAL_SHORT_INT:
-            identifier = self.literal_static_name(value)
-            return self.add(LoadGlobal(int_rprimitive, identifier, ann=value))
+            return self.add(LoadLiteral(value, int_rprimitive))
         else:
             return Integer(value)
 
-    def load_static_float(self, value: float) -> Value:
-        """Loads a static float value into a register."""
-        identifier = self.literal_static_name(value)
-        return self.add(LoadGlobal(float_rprimitive, identifier, ann=value))
+    def load_float(self, value: float) -> Value:
+        """Load a float literal value."""
+        return self.add(LoadLiteral(value, float_rprimitive))
 
-    def load_static_bytes(self, value: bytes) -> Value:
-        """Loads a static bytes value into a register."""
-        identifier = self.literal_static_name(value)
-        return self.add(LoadGlobal(object_rprimitive, identifier, ann=value))
+    def load_str(self, value: str) -> Value:
+        """Load a str literal value.
 
-    def load_static_complex(self, value: complex) -> Value:
-        """Loads a static complex value into a register."""
-        identifier = self.literal_static_name(value)
-        return self.add(LoadGlobal(object_rprimitive, identifier, ann=value))
-
-    def load_static_unicode(self, value: str) -> Value:
-        """Loads a static unicode value into a register.
-
-        This is useful for more than just unicode literals; for example, method calls
+        This is useful for more than just str literals; for example, method calls
         also require a PyObject * form for the name of the method.
         """
-        identifier = self.literal_static_name(value)
-        return self.add(LoadGlobal(str_rprimitive, identifier, ann=value))
+        return self.add(LoadLiteral(value, str_rprimitive))
+
+    def load_bytes(self, value: bytes) -> Value:
+        """Load a bytes literal value."""
+        return self.add(LoadLiteral(value, object_rprimitive))
+
+    def load_complex(self, value: complex) -> Value:
+        """Load a complex literal value."""
+        return self.add(LoadLiteral(value, object_rprimitive))
 
     def load_static_checked(self, typ: RType, identifier: str, module_name: Optional[str] = None,
                             namespace: str = NAMESPACE_STATIC,

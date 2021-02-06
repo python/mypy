@@ -123,7 +123,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
             typ = builder.load_native_type_object(cdef.fullname)
             value = builder.accept(stmt.rvalue)
             builder.call_c(
-                py_setattr_op, [typ, builder.load_static_unicode(lvalue.name), value], stmt.line)
+                py_setattr_op, [typ, builder.load_str(lvalue.name), value], stmt.line)
             if builder.non_function_scope() and stmt.is_final_def:
                 builder.init_final_static(lvalue, value, cdef.name)
         elif isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, StrExpr):
@@ -150,7 +150,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
         builder.call_c(dict_set_item_op,
                        [
                            builder.load_globals_dict(),
-                           builder.load_static_unicode(cdef.name),
+                           builder.load_str(cdef.name),
                            non_ext_class
                        ], cdef.line)
 
@@ -166,7 +166,7 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
         tp_bases = builder.new_tuple(bases, cdef.line)
     else:
         tp_bases = builder.add(LoadErrorValue(object_rprimitive, is_borrowed=True))
-    modname = builder.load_static_unicode(builder.module_name)
+    modname = builder.load_str(builder.module_name)
     template = builder.add(LoadStatic(object_rprimitive, cdef.name + "_template",
                                    builder.module_name, NAMESPACE_TYPE))
     # Create the class
@@ -181,7 +181,7 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
                      FuncSignature([], bool_rprimitive)), [], -1))
     # Populate a '__mypyc_attrs__' field containing the list of attrs
     builder.call_c(py_setattr_op, [
-        tp, builder.load_static_unicode('__mypyc_attrs__'),
+        tp, builder.load_str('__mypyc_attrs__'),
         create_mypyc_attrs_tuple(builder, builder.mapper.type_to_ir[cdef.info], cdef.line)],
         cdef.line)
 
@@ -192,7 +192,7 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
     builder.call_c(dict_set_item_op,
                 [
                     builder.load_globals_dict(),
-                    builder.load_static_unicode(cdef.name),
+                    builder.load_str(cdef.name),
                     tp,
                 ], cdef.line)
 
@@ -242,7 +242,7 @@ def setup_non_ext_dict(builder: IRBuilder,
     # Check if the metaclass defines a __prepare__ method, and if so, call it.
     has_prepare = builder.call_c(py_hasattr_op,
                                 [metaclass,
-                                builder.load_static_unicode('__prepare__')], cdef.line)
+                                builder.load_str('__prepare__')], cdef.line)
 
     non_ext_dict = Register(dict_rprimitive)
 
@@ -250,7 +250,7 @@ def setup_non_ext_dict(builder: IRBuilder,
     builder.add_bool_branch(has_prepare, true_block, false_block)
 
     builder.activate_block(true_block)
-    cls_name = builder.load_static_unicode(cdef.name)
+    cls_name = builder.load_str(cdef.name)
     prepare_meth = builder.py_get_attr(metaclass, '__prepare__', cdef.line)
     prepare_dict = builder.py_call(prepare_meth, [cls_name, bases], cdef.line)
     builder.assign(non_ext_dict, prepare_dict, cdef.line)
@@ -277,7 +277,7 @@ def add_non_ext_class_attr(builder: IRBuilder,
     # We populate __annotations__ because dataclasses uses it to determine
     # which attributes to compute on.
     # TODO: Maybe generate more precise types for annotations
-    key = builder.load_static_unicode(lvalue.name)
+    key = builder.load_str(lvalue.name)
     typ = builder.add(LoadAddress(type_object_op.type, type_object_op.src, stmt.line))
     builder.call_c(dict_set_item_op, [non_ext.anns, key, typ], stmt.line)
 
@@ -389,7 +389,7 @@ def load_non_ext_class(builder: IRBuilder,
                        ir: ClassIR,
                        non_ext: NonExtClassInfo,
                        line: int) -> Value:
-    cls_name = builder.load_static_unicode(ir.name)
+    cls_name = builder.load_str(ir.name)
 
     finish_non_ext_dict(builder, non_ext, line)
 
@@ -432,14 +432,14 @@ def create_mypyc_attrs_tuple(builder: IRBuilder, ir: ClassIR, line: int) -> Valu
     attrs = [name for ancestor in ir.mro for name in ancestor.attributes]
     if ir.inherits_python:
         attrs.append('__dict__')
-    items = [builder.load_static_unicode(attr) for attr in attrs]
+    items = [builder.load_str(attr) for attr in attrs]
     return builder.new_tuple(items, line)
 
 
 def finish_non_ext_dict(builder: IRBuilder, non_ext: NonExtClassInfo, line: int) -> None:
     # Add __annotations__ to the class dict.
     builder.call_c(dict_set_item_op,
-                [non_ext.dict, builder.load_static_unicode('__annotations__'),
+                [non_ext.dict, builder.load_str('__annotations__'),
                 non_ext.anns], -1)
 
     # We add a __doc__ attribute so if the non-extension class is decorated with the
@@ -447,9 +447,9 @@ def finish_non_ext_dict(builder: IRBuilder, non_ext: NonExtClassInfo, line: int)
     # https://github.com/python/cpython/blob/3.7/Lib/dataclasses.py#L957
     filler_doc_str = 'mypyc filler docstring'
     builder.add_to_non_ext_dict(
-        non_ext, '__doc__', builder.load_static_unicode(filler_doc_str), line)
+        non_ext, '__doc__', builder.load_str(filler_doc_str), line)
     builder.add_to_non_ext_dict(
-        non_ext, '__module__', builder.load_static_unicode(builder.module_name), line)
+        non_ext, '__module__', builder.load_str(builder.module_name), line)
 
 
 def dataclass_finalize(

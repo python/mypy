@@ -12,11 +12,11 @@ from mypyc.ir.ops import (
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, MethodCall, Unreachable, NAMESPACE_STATIC, NAMESPACE_TYPE, NAMESPACE_MODULE,
     RaiseStandardError, CallC, LoadGlobal, Truncate, IntOp, LoadMem, GetElementPtr,
-    LoadAddress, ComparisonOp, SetMem, Register
+    LoadAddress, ComparisonOp, SetMem, Register, LoadLiteral
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, is_tagged, is_int32_rprimitive, is_int64_rprimitive, RStruct,
-    is_pointer_rprimitive
+    is_pointer_rprimitive, is_int_rprimitive
 )
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD, all_values
 from mypyc.ir.class_ir import ClassIR
@@ -96,6 +96,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.declarations = declarations
         self.source_path = source_path
         self.module_name = module_name
+        self.literals = emitter.context.literals
 
     def temp_name(self) -> str:
         return self.emitter.temp_name()
@@ -172,6 +173,19 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         else:
             self.emit_line('%s = %s;' % (self.reg(op),
                                          self.c_error_value(op.type)))
+
+    def visit_load_literal(self, op: LoadLiteral) -> None:
+        index = self.literals.literal_index(op.value)
+        s = repr(op.value)
+        if not any(x in s for x in ('/*', '*/', '\0')):
+            ann = ' /* %s */' % s
+        else:
+            ann = ''
+        if not is_int_rprimitive(op.type):
+            self.emit_line('%s = CPyStatics[%d];%s' % (self.reg(op), index, ann))
+        else:
+            self.emit_line('%s = (CPyTagged)CPyStatics[%d] | 1;%s' % (
+                self.reg(op), index, ann))
 
     def get_attr_expr(self, obj: str, op: Union[GetAttr, SetAttr], decl_cl: ClassIR) -> str:
         """Generate attribute accessor for normal (non-property) access.
