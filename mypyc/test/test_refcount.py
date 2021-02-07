@@ -33,7 +33,9 @@ class TestRefCountTransform(MypycDataSuite):
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         """Perform a runtime checking transformation test case."""
         options = infer_ir_build_options_from_test_name(testcase.name)
-        print(options.capi_version, testcase.name)
+        if options is None:
+            # Skipped test case
+            return
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
             expected_output = remove_comment_lines(testcase.output)
             expected_output = replace_native_int(expected_output)

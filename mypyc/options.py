@@ -21,7 +21,7 @@ class CompilerOptions:
             include_runtime_files if include_runtime_files is not None else not multi_file
         )
         # The target Python C API version. Overriding this is mostly
-        # useful for IR tests, since there's no guarantee that
+        # useful in IR tests, since there's no guarantee that
         # binaries are backward compatible even if no recent API
         # features are used.
         self.capi_version = capi_version or sys.version_info[:2]

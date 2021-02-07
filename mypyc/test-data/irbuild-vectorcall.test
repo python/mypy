@@ -96,7 +96,7 @@ L0:
 from typing import Any
 
 def f(o: Any) -> None:
-    # On Python 3.8 vectorcalls are only faster with keyword args
+    # Python 3.9 has a new API for calling methods
     o.m('x')
     o.m('x', 'y', a='z')
 [out]
@@ -132,6 +132,7 @@ L0:
 from typing import Any
 
 def f(o: Any) -> None:
+   # The IR is slightly different on 32-bit platforms
     o.m('x', a='y')
 [out]
 def f(o):

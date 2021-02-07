@@ -238,7 +238,6 @@ class AssignMulti(Op):
     assume that each RArray register is initialized exactly once
     with this op.
     """
-    # TODO: Relax the special rules above
 
     error_kind = ERR_NEVER
 
@@ -1159,6 +1158,17 @@ class KeepAlive(RegisterOp):
 
     This is sometimes useful to avoid decref when a reference is still
     being held but not seen by the compiler.
+
+    A typical use case is like this (C-like pseudocode):
+
+      ptr = &x.item
+      r = *ptr
+      keep_alive x  # x must not be freed here
+      # x may be freed here
+
+    If we didn't have "keep_alive x", x could be freed immediately
+    after taking the address of 'item', resulting in a read after free
+    on the second line.
     """
 
     error_kind = ERR_NEVER

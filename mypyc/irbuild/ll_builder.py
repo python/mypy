@@ -344,6 +344,10 @@ class LowLevelIRBuilder:
         return None
 
     def _vectorcall_keywords(self, arg_names: Optional[Sequence[Optional[str]]]) -> Value:
+        """Return a reference to a tuple literal with keyword argument names.
+
+        Return null pointer if there are no keyword arguments.
+        """
         if arg_names:
             kw_list = [name for name in arg_names if name is not None]
             if kw_list:

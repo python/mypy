@@ -720,7 +720,11 @@ def is_optional_type(rtype: RType) -> bool:
 
 
 class RArray(RType):
-    """Fixed-length C array type (for example, int[5])"""
+    """Fixed-length C array type (for example, int[5]).
+
+    Note that the implementation is a bit limited, and these can basically
+    be only used for local variables that are initialized in one location.
+    """
 
     def __init__(self,
                  item_type: RType,

@@ -88,7 +88,7 @@ def short_name(name: str) -> str:
 
 
 def use_fastcall(capi_version: Tuple[int, int]) -> bool:
-    # We can use METH_FASTCALL faster wrapper functions on Python 3.7+.
+    # We can use METH_FASTCALL for faster wrapper functions on Python 3.7+.
     return capi_version >= (3, 7)
 
 
@@ -98,5 +98,5 @@ def use_vectorcall(capi_version: Tuple[int, int]) -> bool:
 
 
 def use_method_vectorcall(capi_version: Tuple[int, int]) -> bool:
-    # We can use a specific vectorcall API to call methods on Python 3.9+.
+    # We can use a dedicated vectorcall API to call methods on Python 3.9+.
     return capi_version >= (3, 9)

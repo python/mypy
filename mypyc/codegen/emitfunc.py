@@ -170,6 +170,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         typ = op.dest.type
         assert isinstance(typ, RArray)
         dest = self.reg(op.dest)
+        # RArray values can only be assigned to once, so we can always
+        # declare them on initialization.
         self.emit_line('%s%s[%d] = {%s};' % (
             self.emitter.ctype_spaced(typ.item_type),
             dest,

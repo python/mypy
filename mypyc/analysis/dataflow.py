@@ -258,7 +258,7 @@ class DefinedVisitor(BaseAnalysisVisitor):
             return {op.dest}, set()
 
     def visit_assign_multi(self, op: AssignMulti) -> GenAndKill:
-        # TODO
+        # Array registers are special and we don't track the definedness of them.
         return set(), set()
 
     def visit_set_mem(self, op: SetMem) -> GenAndKill:
