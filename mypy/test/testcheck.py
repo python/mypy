@@ -24,87 +24,19 @@ from mypy.semanal_main import core_modules
 
 
 # List of files that contain test case descriptions.
-typecheck_files = [
-    'check-basic.test',
-    'check-union-or-syntax.test',
-    'check-callable.test',
-    'check-classes.test',
-    'check-statements.test',
-    'check-generics.test',
-    'check-dynamic-typing.test',
-    'check-inference.test',
-    'check-inference-context.test',
-    'check-kwargs.test',
-    'check-overloading.test',
-    'check-type-checks.test',
-    'check-abstract.test',
-    'check-multiple-inheritance.test',
-    'check-super.test',
-    'check-modules.test',
-    'check-typevar-values.test',
-    'check-unsupported.test',
-    'check-unreachable-code.test',
-    'check-unions.test',
-    'check-isinstance.test',
-    'check-lists.test',
-    'check-namedtuple.test',
-    'check-narrowing.test',
-    'check-typeddict.test',
-    'check-type-aliases.test',
-    'check-ignore.test',
-    'check-type-promotion.test',
-    'check-semanal-error.test',
-    'check-flags.test',
-    'check-incremental.test',
-    'check-serialize.test',
-    'check-bound.test',
-    'check-optional.test',
-    'check-fastparse.test',
-    'check-warnings.test',
-    'check-async-await.test',
-    'check-newtype.test',
-    'check-class-namedtuple.test',
-    'check-selftype.test',
-    'check-python2.test',
-    'check-columns.test',
-    'check-functions.test',
-    'check-tuples.test',
-    'check-expressions.test',
-    'check-generic-subtyping.test',
-    'check-varargs.test',
-    'check-newsyntax.test',
-    'check-protocols.test',
-    'check-underscores.test',
-    'check-classvar.test',
-    'check-enum.test',
-    'check-incomplete-fixture.test',
-    'check-custom-plugin.test',
-    'check-default-plugin.test',
-    'check-attr.test',
-    'check-ctypes.test',
-    'check-dataclasses.test',
-    'check-final.test',
-    'check-redefine.test',
-    'check-literal.test',
-    'check-newsemanal.test',
-    'check-inline-config.test',
-    'check-reports.test',
-    'check-errorcodes.test',
-    'check-annotated.test',
-    'check-parameter-specification.test',
-    'check-generic-alias.test',
-    'check-typeguard.test',
-]
+
+typecheck_files = [f for f in os.listdir("../../test-data/unit") if re.match(r'check-\w+-?\w+?.test',f)]
+
 
 # Tests that use Python 3.8-only AST features (like expression-scoped ignores):
-if sys.version_info >= (3, 8):
-    typecheck_files.append('check-python38.test')
-if sys.version_info >= (3, 9):
-    typecheck_files.append('check-python39.test')
+if sys.version_info < (3, 8):
+    typecheck_files.remove('check-python38.test')
+if sys.version_info < (3, 9):
+    typecheck_files.remove('check-python39.test')
 
 # Special tests for platforms with case-insensitive filesystems.
-if sys.platform in ('darwin', 'win32'):
-    typecheck_files.append('check-modules-case.test')
+if sys.platform not in ('darwin', 'win32'):
+    typecheck_files.remove('check-modules-case.test')
 
 
 class TypeCheckSuite(DataSuite):
