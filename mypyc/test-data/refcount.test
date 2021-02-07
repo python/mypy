@@ -865,7 +865,7 @@ L11:
     xdec_ref y :: int
     goto L6
 
-[case testVectorcall]
+[case testVectorcall_python3_8]
 from typing import Any
 
 def call(f: Any, x: int) -> int:
