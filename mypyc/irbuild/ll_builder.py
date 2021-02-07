@@ -37,8 +37,8 @@ from mypyc.ir.rtypes import (
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.common import (
-    FAST_ISINSTANCE_MAX_SUBCLASSES, MAX_LITERAL_SHORT_INT, PLATFORM_SIZE, USE_VECTORCALL,
-    USE_METHOD_VECTORCALL
+    FAST_ISINSTANCE_MAX_SUBCLASSES, MAX_LITERAL_SHORT_INT, PLATFORM_SIZE, use_vectorcall,
+    use_method_vectorcall
 )
 from mypyc.primitives.registry import (
     method_call_ops, CFunctionDescription, function_ops,
@@ -66,6 +66,7 @@ from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type
 from mypyc.irbuild.mapper import Mapper
+from mypyc.options import CompilerOptions
 
 
 DictEntry = Tuple[Optional[Value], Value]
@@ -80,9 +81,11 @@ class LowLevelIRBuilder:
         self,
         current_module: str,
         mapper: Mapper,
+        options: CompilerOptions,
     ) -> None:
         self.current_module = current_module
         self.mapper = mapper
+        self.options = options
         self.args = []  # type: List[Register]
         self.blocks = []  # type: List[BasicBlock]
         # Stack of except handler entry blocks
@@ -256,7 +259,7 @@ class LowLevelIRBuilder:
 
         Use py_call_op or py_call_with_kwargs_op for Python function call.
         """
-        if USE_VECTORCALL:
+        if use_vectorcall(self.options.capi_version):
             # More recent Python versions support faster vectorcalls.
             result = self._py_vector_call(function, arg_values, line, arg_kinds, arg_names)
             if result is not None:
@@ -355,7 +358,7 @@ class LowLevelIRBuilder:
                        arg_kinds: Optional[List[int]],
                        arg_names: Optional[Sequence[Optional[str]]]) -> Value:
         """Call a Python method (non-native and slow)."""
-        if USE_METHOD_VECTORCALL:
+        if use_method_vectorcall(self.options.capi_version):
             # More recent Python versions support faster vectorcalls.
             result = self._py_vector_method_call(
                 obj, method_name, arg_values, line, arg_kinds, arg_names)

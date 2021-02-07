@@ -23,8 +23,8 @@ from mypyc.irbuild.main import build_ir
 from mypyc.irbuild.prepare import load_type_map
 from mypyc.irbuild.mapper import Mapper
 from mypyc.common import (
-    PREFIX, TOP_LEVEL_NAME, MODULE_PREFIX, RUNTIME_C_FILES, USE_FASTCALL,
-    USE_VECTORCALL, shared_lib_name,
+    PREFIX, TOP_LEVEL_NAME, MODULE_PREFIX, RUNTIME_C_FILES, use_fastcall,
+    use_vectorcall, shared_lib_name,
 )
 from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.literals import Literals
@@ -421,7 +421,7 @@ def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:
         '{};'.format(native_function_header(fn.decl, emitter)),
         needs_export=True)
     if fn.name != TOP_LEVEL_NAME:
-        if is_fastcall_supported(fn):
+        if is_fastcall_supported(fn, emitter.capi_version):
             emitter.context.declarations[PREFIX + fn.cname(emitter.names)] = HeaderDeclaration(
                 '{};'.format(wrapper_function_header(fn, emitter.names)))
         else:
@@ -532,7 +532,7 @@ class GroupGenerator:
                 generate_native_function(fn, emitter, self.source_paths[module_name], module_name)
                 if fn.name != TOP_LEVEL_NAME:
                     emitter.emit_line()
-                    if is_fastcall_supported(fn):
+                    if is_fastcall_supported(fn, emitter.capi_version):
                         generate_wrapper_function(
                             fn, emitter, self.source_paths[module_name], module_name)
                     else:
@@ -838,7 +838,7 @@ class GroupGenerator:
         for fn in module.functions:
             if fn.class_name is not None or fn.name == TOP_LEVEL_NAME:
                 continue
-            if is_fastcall_supported(fn):
+            if is_fastcall_supported(fn, emitter.capi_version):
                 flag = 'METH_FASTCALL'
             else:
                 flag = 'METH_VARARGS'
@@ -1068,14 +1068,14 @@ def toposort(deps: Dict[T, Set[T]]) -> List[T]:
     return result
 
 
-def is_fastcall_supported(fn: FuncIR) -> bool:
+def is_fastcall_supported(fn: FuncIR, capi_version: Tuple[int, int]) -> bool:
     if fn.class_name is not None:
         if fn.name == '__call__':
             # We can use vectorcalls (PEP 590) when supported
-            return USE_VECTORCALL
+            return use_vectorcall(capi_version)
         # TODO: Support fastcall for __init__.
-        return USE_FASTCALL and fn.name != '__init__'
-    return USE_FASTCALL
+        return use_fastcall(capi_version) and fn.name != '__init__'
+    return use_fastcall(capi_version)
 
 
 def collect_literals(fn: FuncIR, literals: Literals) -> None:

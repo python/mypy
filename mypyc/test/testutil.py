@@ -89,7 +89,9 @@ def build_ir_for_single_file(input_lines: List[str],
                              compiler_options: Optional[CompilerOptions] = None) -> List[FuncIR]:
     program_text = '\n'.join(input_lines)
 
-    compiler_options = compiler_options or CompilerOptions()
+    # By default generate IR compatible with the earliest supported Python C API.
+    # If a test needs more recent API features, this should be overridden.
+    compiler_options = compiler_options or CompilerOptions(capi_version=(3, 5))
     options = Options()
     options.show_traceback = True
     options.use_builtins_fixtures = True

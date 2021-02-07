@@ -40,7 +40,8 @@ class TestGenOps(MypycDataSuite):
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         # Kind of hacky. Not sure if we need more structure here.
-        options = CompilerOptions(strip_asserts='StripAssert' in testcase.name)
+        options = CompilerOptions(strip_asserts='StripAssert' in testcase.name,
+                                  capi_version=(3, 5))
         """Perform a runtime checking transformation test case."""
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
             expected_output = remove_comment_lines(testcase.output)

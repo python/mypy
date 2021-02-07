@@ -4,7 +4,7 @@ from typing import Optional, List, Tuple, Dict, Callable, Mapping, Set
 
 from mypy.ordered_dict import OrderedDict
 
-from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX, USE_FASTCALL, USE_VECTORCALL
+from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX, use_fastcall
 from mypyc.codegen.emit import Emitter, HeaderDeclaration
 from mypyc.codegen.emitfunc import native_function_header
 from mypyc.codegen.emitwrapper import (
@@ -72,7 +72,7 @@ ALWAYS_FILL = {
 
 
 def generate_call_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
-    if USE_VECTORCALL:
+    if emitter.use_vectorcall():
         # Use vectorcall wrapper if supported (PEP 590).
         return 'PyVectorcall_Call'
     else:
@@ -250,7 +250,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     flags = ['Py_TPFLAGS_DEFAULT', 'Py_TPFLAGS_HEAPTYPE', 'Py_TPFLAGS_BASETYPE']
     if generate_full:
         flags.append('Py_TPFLAGS_HAVE_GC')
-    if cl.has_method('__call__') and USE_VECTORCALL:
+    if cl.has_method('__call__') and emitter.use_vectorcall():
         fields['tp_vectorcall_offset'] = 'offsetof({}, vectorcall)'.format(
             cl.struct_name(emitter.names))
         flags.append('_Py_TPFLAGS_HAVE_VECTORCALL')
@@ -290,7 +290,7 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
     lines += ['typedef struct {',
               'PyObject_HEAD',
               'CPyVTableItem *vtable;']
-    if cl.has_method('__call__') and USE_VECTORCALL:
+    if cl.has_method('__call__') and emitter.use_vectorcall():
         lines.append('vectorcallfunc vectorcall;')
     for base in reversed(cl.base_mro):
         if not base.is_trait:
@@ -466,7 +466,7 @@ def generate_setup_for_class(cl: ClassIR,
     else:
         emitter.emit_line('self->vtable = {};'.format(vtable_name))
 
-    if cl.has_method('__call__') and USE_VECTORCALL:
+    if cl.has_method('__call__') and emitter.use_vectorcall():
         name = cl.method_decl('__call__').cname(emitter.names)
         emitter.emit_line('self->vectorcall = {}{};'.format(PREFIX, name))
 
@@ -663,7 +663,7 @@ def generate_methods_table(cl: ClassIR,
             continue
         emitter.emit_line('{{"{}",'.format(fn.name))
         emitter.emit_line(' (PyCFunction){}{},'.format(PREFIX, fn.cname(emitter.names)))
-        if USE_FASTCALL:
+        if use_fastcall(emitter.capi_version):
             flags = ['METH_FASTCALL']
         else:
             flags = ['METH_VARARGS']
