@@ -366,9 +366,11 @@ class LowLevelIRBuilder:
                 return result
 
         if arg_kinds is None or all(kind == ARG_POS for kind in arg_kinds):
+            # Use legacy method call API
             method_name_reg = self.load_str(method_name)
             return self.call_c(py_method_call_op, [obj, method_name_reg] + arg_values, line)
         else:
+            # Use py_call since it supports keyword arguments (and vectorcalls).
             method = self.py_get_attr(obj, method_name, line)
             return self.py_call(method, arg_values, line, arg_kinds=arg_kinds, arg_names=arg_names)
 

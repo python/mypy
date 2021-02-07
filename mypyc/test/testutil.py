@@ -244,26 +244,26 @@ def infer_ir_build_options_from_test_name(name: str) -> Optional[CompilerOptions
 
     Supported naming conventions:
 
-      *_64bit:
+      *_64bit*:
           Run test case only on 64-bit platforms
-      *_32bit:
+      *_32bit*:
           Run test caseonly on 32-bit platforms
-      *_python3.8 (or for any Python version):
+      *_python3.8* (or for any Python version):
           Use Python 3.8+ C API features (default: lowest supported version)
       *StripAssert*:
           Don't generate code for assert statements
     """
     # If this is specific to some bit width, always pass if platform doesn't match.
-    if name.endswith('_64bit') and IS_32_BIT_PLATFORM:
+    if '_64bit' in name and IS_32_BIT_PLATFORM:
         return None
-    if name.endswith('_32bit') and not IS_32_BIT_PLATFORM:
+    if '_32bit' in name and not IS_32_BIT_PLATFORM:
         return None
     options = CompilerOptions(strip_asserts='StripAssert' in name,
                               capi_version=(3, 5))
     # A suffix like _python3.8 is used to set the target C API version.
-    m = re.search(r'_python([3-9]+)_([0-9]+)$', name)
+    m = re.search(r'_python([3-9]+)_([0-9]+)(_|\b)', name)
     if m:
         options.capi_version = (int(m.group(1)), int(m.group(2)))
-    elif re.search(r'_py(thon)?[^A-Z]*$', name) or '_Python' in name:
+    elif '_py' in name or '_Python' in name:
         assert False, 'Invalid _py* suffix (should be _pythonX_Y): {}'.format(name)
     return options
