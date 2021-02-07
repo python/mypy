@@ -551,10 +551,10 @@ L0:
     r1 = box(short_int, 0)
     r2 = box(short_int, 2)
     r3 = get_element_ptr r0 ob_item :: PyListObject
-    r4 = load_mem r3, r0 :: ptr*
-    set_mem r4, r1, r0 :: builtins.object*
+    r4 = load_mem r3 :: ptr*
+    set_mem r4, r1 :: builtins.object*
     r5 = r4 + WORD_SIZE*1
-    set_mem r5, r2, r0 :: builtins.object*
+    set_mem r5, r2 :: builtins.object*
     a = r0
     dec_ref a
     return 0
@@ -629,8 +629,8 @@ L0:
     r0 = C()
     r1 = PyList_New(1)
     r2 = get_element_ptr r1 ob_item :: PyListObject
-    r3 = load_mem r2, r1 :: ptr*
-    set_mem r3, r0, r1 :: builtins.object*
+    r3 = load_mem r2 :: ptr*
+    set_mem r3, r0 :: builtins.object*
     a = r1
     r4 = CPyList_GetItemShort(a, 0)
     dec_ref a
@@ -808,7 +808,7 @@ L0:
     r0 = PyList_New(0)
     x = r0
     r1 = get_element_ptr x ob_size :: PyVarObject
-    r2 = load_mem r1, x :: native_int*
+    r2 = load_mem r1 :: native_int*
     dec_ref x
     r3 = r2 << 1
     return r3
