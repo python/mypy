@@ -31,6 +31,7 @@ files = [
     'irbuild-str.test',
     'irbuild-strip-asserts.test',
     'irbuild-int.test',
+    'irbuild-vectorcall.test',
 ]
 
 

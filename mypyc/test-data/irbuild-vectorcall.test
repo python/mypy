@@ -1,0 +1,56 @@
+[case testeVectorcallBasic_python3_8]
+from typing import Any
+
+def f(c: Any) -> None:
+    c()
+    c('x', 'y')
+[out]
+def f(c):
+    c, r0 :: object
+    r1, r2 :: str
+    r3 :: object[2]
+    r4 :: object_ptr
+    r5 :: object
+L0:
+    r0 = _PyObject_Vectorcall(c, 0, 0, 0)
+    r1 = 'x'
+    r2 = 'y'
+    r3 = [r1, r2]
+    r4 = load_address r3
+    r5 = _PyObject_Vectorcall(c, r4, 2, 0)
+    keep_alive r1, r2
+    return 1
+
+[case testVectorcallKeywords_python3_8]
+from typing import Any
+
+def f(c: Any) -> None:
+    c(x='a')
+    c('x', a='y', b='z')
+[out]
+def f(c):
+    c :: object
+    r0 :: str
+    r1 :: object[1]
+    r2 :: object_ptr
+    r3, r4 :: object
+    r5, r6, r7 :: str
+    r8 :: object[3]
+    r9 :: object_ptr
+    r10, r11 :: object
+L0:
+    r0 = 'a'
+    r1 = [r0]
+    r2 = load_address r1
+    r3 = ('x',)
+    r4 = _PyObject_Vectorcall(c, r2, 0, r3)
+    keep_alive r0
+    r5 = 'x'
+    r6 = 'y'
+    r7 = 'z'
+    r8 = [r5, r6, r7]
+    r9 = load_address r8
+    r10 = ('a', 'b')
+    r11 = _PyObject_Vectorcall(c, r9, 1, r10)
+    keep_alive r5, r6, r7
+    return 1
