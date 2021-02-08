@@ -747,7 +747,7 @@ class MessageBuilder:
         self.fail("Unpacking a string is disallowed", context)
 
     def type_not_iterable(self, type: Type, context: Context) -> None:
-        self.fail('\'{}\' object is not iterable'.format(type), context)
+        self.fail('\"{}\" object is not iterable'.format(type), context)
 
     def incompatible_operator_assignment(self, op: str,
                                          context: Context) -> None:
@@ -881,7 +881,7 @@ class MessageBuilder:
                   code=codes.STRING_FORMATTING)
 
     def unsupported_placeholder(self, placeholder: str, context: Context) -> None:
-        self.fail('Unsupported format character \'%s\'' % placeholder, context,
+        self.fail('Unsupported format character \"{}\"'.format(placeholder), context,
                   code=codes.STRING_FORMATTING)
 
     def string_interpolation_with_star_and_key(self, context: Context) -> None:
@@ -894,7 +894,7 @@ class MessageBuilder:
                   context, code=codes.STRING_FORMATTING)
 
     def key_not_in_mapping(self, key: str, context: Context) -> None:
-        self.fail('Key \'%s\' not found in mapping' % key, context,
+        self.fail('Key \"{}\" not found in mapping'.format(key), context,
                   code=codes.STRING_FORMATTING)
 
     def string_interpolation_mixing_key_and_non_keys(self, context: Context) -> None:
@@ -1058,7 +1058,7 @@ class MessageBuilder:
         self.fail('Invalid signature "{}" for "{}"'.format(func_type, method_name), context)
 
     def reveal_type(self, typ: Type, context: Context) -> None:
-        self.note('Revealed type is \'{}\''.format(typ), context)
+        self.note('Revealed type is \"{}\"'.format(typ), context)
 
     def reveal_locals(self, type_map: Dict[str, Optional[Type]], context: Context) -> None:
         # To ensure that the output is predictable on Python < 3.6,
@@ -1157,7 +1157,7 @@ class MessageBuilder:
             item_name: str,
             context: Context) -> None:
         if typ.is_anonymous():
-            self.fail('\'{}\' is not a valid TypedDict key; expected one of {}'.format(
+            self.fail('\"{}\" is not a valid TypedDict key; expected one of {}'.format(
                 item_name, format_item_name_list(typ.items.keys())), context)
         else:
             self.fail("TypedDict {} has no key '{}'".format(format_type(typ), item_name), context)
