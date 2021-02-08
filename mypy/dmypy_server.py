@@ -442,6 +442,8 @@ class Server:
                     FileData(st_mtime=float(meta.mtime), st_size=meta.size, hash=meta.hash))
 
             changed, removed = self.find_changed(sources)
+            changed += self.find_added_suppressed(self.fine_grained_manager.graph, set(),
+                                                  self.fine_grained_manager.manager.search_paths)
 
             # Find anything that has had its dependency list change
             for state in self.fine_grained_manager.graph.values():
@@ -501,6 +503,8 @@ class Server:
             # (updated or added) or removed.
             self.update_sources(sources)
             changed, removed = self.find_changed(sources)
+            changed += self.find_added_suppressed(self.fine_grained_manager.graph, set(),
+                                                  manager.search_paths)
         else:
             # Use the remove/update lists to update fswatcher.
             # This avoids calling stat() for unchanged files.
@@ -716,6 +720,9 @@ class Server:
         for module in all_suppressed:
             result = finder.find_module(module)
             if isinstance(result, str) and module not in seen:
+                # When not following imports, we only follow imports to .pyi files.
+                if not self.following_imports() and not result.endswith('.pyi'):
+                    continue
                 found.append((module, result))
                 seen.add(module)
 
