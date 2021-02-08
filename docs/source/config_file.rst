@@ -275,6 +275,10 @@ section of the command line docs.
     Used in conjunction with :confval:`follow_imports=error <follow_imports>`, this can be used
     to make any use of a particular ``typeshed`` module an error.
 
+    .. note::
+
+         This is not supported by the mypy daemon.
+
 .. confval:: python_executable
 
     :type: string
