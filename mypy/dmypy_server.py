@@ -943,6 +943,7 @@ def filter_out_missing_top_level_packages(packages: Set[str],
             elif entry.endswith('.pyi'):
                 entry = entry[:-4]
             elif entry.endswith('-stubs'):
+                # Possible PEP 561 stub package
                 entry = entry[:-6]
                 if entry.endswith('-python2'):
                     entry = entry[:-8]
