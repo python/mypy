@@ -55,7 +55,7 @@ MYPYC_OPT_IN = [MYPYC_RUN, MYPYC_RUN_MULTI]
 # time to run.
 cmds = {
     # Self type check
-    'self': python_name + ' -m mypy --config-file mypy_self_check.ini -p mypy',
+    'self': '"' + python_name + '" -m mypy --config-file mypy_self_check.ini -p mypy',
     # Lint
     'lint': 'flake8 -j0',
     # Fast test cases only (this is the bulk of the test suite)
