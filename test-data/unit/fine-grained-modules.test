@@ -2156,7 +2156,7 @@ main.py:2: error: Incompatible types in assignment (expression has type "int", v
 ==
 
 [case testMissingStubAdded2]
-# flags: --follow-imports=skip
+# flags: --follow-imports=skip --py2
 # cmd: mypy main.py
 
 [file main.py]

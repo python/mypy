@@ -704,12 +704,18 @@ class Server:
         Return suppressed, added modules.
         """
         all_suppressed = set()
-        for module, state in graph.items():
+        for state in graph.values():
             all_suppressed |= state.suppressed_set
 
         # Filter out things that shouldn't actually be considered suppressed.
         # TODO: Figure out why these are treated as suppressed
         all_suppressed = {module for module in all_suppressed if module not in graph}
+
+        # Optimization: skip top-level packages that are obviously not
+        # there, to avoid calling the relatively slow find_module()
+        # below too many times.
+        packages = {module.split('.', 1)[0] for module in all_suppressed}
+        packages = filter_out_missing_top_level_packages(packages, search_paths, self.fscache)
 
         # TODO: Namespace packages
 
@@ -718,6 +724,10 @@ class Server:
         found = []
 
         for module in all_suppressed:
+            top_level_pkg = module.split('.', 1)[0]
+            if top_level_pkg not in packages:
+                # Fast path: non-existent top-level package
+                continue
             result = finder.find_module(module)
             if isinstance(result, str) and module not in seen:
                 # When not following imports, we only follow imports to .pyi files.
@@ -901,3 +911,41 @@ def fix_module_deps(graph: mypy.build.Graph) -> None:
         state.dependencies_set = set(new_dependencies)
         state.suppressed = new_suppressed
         state.suppressed_set = set(new_suppressed)
+
+
+def filter_out_missing_top_level_packages(packages: Set[str],
+                                          search_paths: SearchPaths,
+                                          fscache: FileSystemCache) -> Set[str]:
+    """Quickly filter out obviously missing top-level packages.
+
+    Return packages with entries that can't be found removed.
+
+    This is approximate: some packages that aren't actually valid may be
+    included. However, all potentially valid packages must be returned.
+    """
+    # Start with a empty set and add all potential top-level packages.
+    found = set()
+    paths = (
+        search_paths.python_path + search_paths.mypy_path + search_paths.package_path +
+        search_paths.typeshed_path
+    )
+    paths += tuple(os.path.join(p, '@python2') for p in search_paths.typeshed_path)
+    for p in paths:
+        try:
+            entries = fscache.listdir(p)
+        except Exception:
+            entries = []
+        for entry in entries:
+            # The code is hand-optimized for mypyc since this may be somewhat
+            # performance-critical.
+            if entry.endswith('.py'):
+                entry = entry[:-3]
+            elif entry.endswith('.pyi'):
+                entry = entry[:-4]
+            elif entry.endswith('-stubs'):
+                entry = entry[:-6]
+                if entry.endswith('-python2'):
+                    entry = entry[:-8]
+            if entry in packages:
+                found.add(entry)
+    return found
