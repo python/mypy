@@ -682,7 +682,7 @@ reveal_type(c[u'value'])  # N: Revealed type is 'builtins.int'
 from mypy_extensions import TypedDict
 TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 p: TaggedPoint
-p['typ']  # E: TypedDict "TaggedPoint" has no key 'typ' \
+p['typ']  # E: TypedDict "TaggedPoint" has no key "typ" \
           # N: Did you mean "type"?
 [builtins fixtures/dict.pyi]
 
@@ -737,7 +737,7 @@ p['x'] = 'y'  # E: Argument 2 has incompatible type "str"; expected "int"
 from mypy_extensions import TypedDict
 TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 p = TaggedPoint(type='2d', x=42, y=1337)
-p['z'] = 1  # E: TypedDict "TaggedPoint" has no key 'z'
+p['z'] = 1  # E: TypedDict "TaggedPoint" has no key "z"
 [builtins fixtures/dict.pyi]
 
 [case testCannotSetItemOfTypedDictWithNonLiteralKey]
@@ -1600,7 +1600,7 @@ a.has_key('x') # E: "A" has no attribute "has_key"
 # TODO: Better error message
 a.clear() # E: "A" has no attribute "clear"
 
-a.setdefault('invalid', 1) # E: TypedDict "A" has no key 'invalid'
+a.setdefault('invalid', 1) # E: TypedDict "A" has no key "invalid"
 reveal_type(a.setdefault('x', 1)) # N: Revealed type is 'builtins.int'
 reveal_type(a.setdefault('y', [])) # N: Revealed type is 'builtins.list[builtins.int]'
 a.setdefault('y', '') # E: Argument 2 to "setdefault" of "TypedDict" has incompatible type "str"; expected "List[int]"
@@ -1643,8 +1643,8 @@ reveal_type(a.pop('x')) # N: Revealed type is 'builtins.int'
 reveal_type(a.pop('y', [])) # N: Revealed type is 'builtins.list[builtins.int]'
 reveal_type(a.pop('x', '')) # N: Revealed type is 'Union[builtins.int, Literal['']?]'
 reveal_type(a.pop('x', (1, 2))) # N: Revealed type is 'Union[builtins.int, Tuple[Literal[1]?, Literal[2]?]]'
-a.pop('invalid', '') # E: TypedDict "A" has no key 'invalid'
-b.pop('x') # E: Key 'x' of TypedDict "B" cannot be deleted
+a.pop('invalid', '') # E: TypedDict "A" has no key "invalid"
+b.pop('x') # E: Key "x" of TypedDict "B" cannot be deleted
 x = ''
 b.pop(x) # E: Expected TypedDict key to be string literal
 pop = b.pop
@@ -1662,8 +1662,8 @@ a: A
 b: B
 
 del a['x']
-del a['invalid'] # E: TypedDict "A" has no key 'invalid'
-del b['x'] # E: Key 'x' of TypedDict "B" cannot be deleted
+del a['invalid'] # E: TypedDict "A" has no key "invalid"
+del b['x'] # E: Key "x" of TypedDict "B" cannot be deleted
 s = ''
 del a[s] # E: Expected TypedDict key to be string literal
 del b[s] # E: Expected TypedDict key to be string literal
@@ -1694,7 +1694,7 @@ reveal_type(td.get('c'))  # N: Revealed type is 'builtins.object*'
 reveal_type(td['a'])  # N: Revealed type is 'builtins.int'
 reveal_type(td['b'])  # N: Revealed type is 'Union[builtins.str, builtins.int]'
 reveal_type(td['c'])  # N: Revealed type is 'Union[Any, builtins.int]' \
-                      # E: TypedDict "TDA" has no key 'c'
+                      # E: TypedDict "TDA" has no key "c"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -1715,7 +1715,7 @@ td: Union[TDA, TDB]
 
 reveal_type(td.pop('a'))  # N: Revealed type is 'builtins.int'
 reveal_type(td.pop('b'))  # N: Revealed type is 'Union[builtins.str, builtins.int]'
-reveal_type(td.pop('c'))  # E: TypedDict "TDA" has no key 'c' \
+reveal_type(td.pop('c'))  # E: TypedDict "TDA" has no key "c" \
                           # N: Revealed type is 'Union[Any, builtins.int]'
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]

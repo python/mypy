@@ -798,7 +798,7 @@ except E1 as e: pass
 try: pass
 except E2 as e: pass
 e + 1 # E: Trying to read deleted variable 'e'
-e = E1() # E: Assignment to variable 'e' outside except: block
+e = E1() # E: Assignment to variable "e" outside except: block
 [builtins fixtures/exception.pyi]
 
 [case testReuseDefinedTryExceptionVariable]
@@ -810,8 +810,8 @@ def f(): e  # Prevent redefinition
 e = 1
 try: pass
 except E1 as e: pass
-e = 1 # E: Assignment to variable 'e' outside except: block
-e = E1() # E: Assignment to variable 'e' outside except: block
+e = 1 # E: Assignment to variable "e" outside except: block
+e = E1() # E: Assignment to variable "e" outside except: block
 [builtins fixtures/exception.pyi]
 
 [case testExceptionVariableReuseInDeferredNode1]

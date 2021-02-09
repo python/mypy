@@ -1121,7 +1121,7 @@ _testTypedDictMappingMethods.py:11: note: Revealed type is 'typing.ValuesView[bu
 _testTypedDictMappingMethods.py:12: note: Revealed type is 'TypedDict('_testTypedDictMappingMethods.Cell', {'value': builtins.int})'
 _testTypedDictMappingMethods.py:13: note: Revealed type is 'builtins.int'
 _testTypedDictMappingMethods.py:15: error: Unexpected TypedDict key 'invalid'
-_testTypedDictMappingMethods.py:16: error: Key 'value' of TypedDict "Cell" cannot be deleted
+_testTypedDictMappingMethods.py:16: error: Key "value" of TypedDict "Cell" cannot be deleted
 _testTypedDictMappingMethods.py:21: note: Revealed type is 'builtins.int'
 
 [case testCrashOnComplexCheckWithNamedTupleNext]

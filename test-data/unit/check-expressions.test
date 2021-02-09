@@ -2170,7 +2170,7 @@ d5 = dict(a=1, b='') # type: Dict[str, Any]
 
 [case testDictWithoutKeywordArgs]
 from typing import Dict
-d = dict() # E: Need type annotation for 'd' (hint: "d: Dict[<type>, <type>] = ...")
+d = dict() # E: Need type annotation for "d" (hint: "d: Dict[<type>, <type>] = ...")
 d2 = dict() # type: Dict[int, str]
 dict(undefined) # E: Name 'undefined' is not defined
 [builtins fixtures/dict.pyi]
@@ -2390,8 +2390,8 @@ class B: ...
 [builtins fixtures/dict.pyi]
 
 [case testTypeAnnotationNeededMultipleAssignment]
-x, y = [], [] # E: Need type annotation for 'x' (hint: "x: List[<type>] = ...") \
-            # E: Need type annotation for 'y' (hint: "y: List[<type>] = ...")
+x, y = [], [] # E: Need type annotation for "x" (hint: "x: List[<type>] = ...") \
+            # E: Need type annotation for "y" (hint: "y: List[<type>] = ...")
 [builtins fixtures/list.pyi]
 
 [case testStrictEqualityEq]

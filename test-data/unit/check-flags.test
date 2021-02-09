@@ -1497,7 +1497,7 @@ def g(l: List[str]) -> None: pass  # no error
 def h(l: List[List]) -> None: pass   # E: Missing type parameters for generic type "List"
 def i(l: List[List[List[List]]]) -> None: pass  # E: Missing type parameters for generic type "List"
 
-x = []  # E: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
+x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 y: List = []  # E: Missing type parameters for generic type "List"
 [builtins fixtures/list.pyi]
 

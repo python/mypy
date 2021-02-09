@@ -950,7 +950,7 @@ class C:
 x = C.x
 [builtins fixtures/list.pyi]
 [out]
-main:2: error: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
+main:2: error: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 
 [case testAccessingGenericClassAttribute]
 from typing import Generic, TypeVar

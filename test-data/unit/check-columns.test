@@ -200,7 +200,7 @@ if int():
 
 [case testColumnNeedTypeAnnotation]
 if 1:
-    x = [] # E:5: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
+    x = [] # E:5: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 [builtins fixtures/list.pyi]
 
 [case testColumnCallToUntypedFunction]
@@ -254,7 +254,7 @@ t: D = {'x':
     'y'} # E:5: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
 
 if int():
-    del t['y'] # E:5: TypedDict "D" has no key 'y'
+    del t['y'] # E:5: TypedDict "D" has no key "y"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 

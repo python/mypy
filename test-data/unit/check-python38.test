@@ -371,7 +371,7 @@ reveal_type(z2)  # E: Name 'z2' is not defined  # N: Revealed type is 'Any'
 from typing import List
 
 def check_partial_list() -> None:
-    if (x := []):  # E: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
+    if (x := []):  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
         pass
 
     y: List[str]

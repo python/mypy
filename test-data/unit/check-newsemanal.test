@@ -2907,11 +2907,11 @@ T = TypeVar('T')
 
 def f(x: Optional[T] = None) -> T: ...
 
-x = f()  # E: Need type annotation for 'x'
+x = f()  # E: Need type annotation for "x"
 y = x
 
 def g() -> None:
-    x = f()  # E: Need type annotation for 'x'
+    x = f()  # E: Need type annotation for "x"
     y = x
 
 [case testNewAnalyzerLessErrorsNeedAnnotationList]
@@ -2931,12 +2931,12 @@ class G(Generic[T]): ...
 
 def f(x: Optional[T] = None) -> G[T]: ...
 
-x = f()  # E: Need type annotation for 'x'
+x = f()  # E: Need type annotation for "x"
 y = x
 reveal_type(y)  # N: Revealed type is '__main__.G[Any]'
 
 def g() -> None:
-    x = f()  # E: Need type annotation for 'x'
+    x = f()  # E: Need type annotation for "x"
     y = x
     reveal_type(y)  # N: Revealed type is '__main__.G[Any]'
 

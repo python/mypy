@@ -441,7 +441,7 @@ class A: pass
 a = None # type: A
 
 def ff() -> None:
-    x = f() # E: Need type annotation for 'x'
+    x = f() # E: Need type annotation for "x"
     reveal_type(x) # N: Revealed type is 'Any'
 
 g(None) # Ok
@@ -970,7 +970,7 @@ for x in [A()]:
     b = x # E: Incompatible types in assignment (expression has type "A", variable has type "B")
     a = x
 
-for y in []: # E: Need type annotation for 'y'
+for y in []: # E: Need type annotation for "y"
     a = y
     reveal_type(y)  # N: Revealed type is 'Any'
 
@@ -1016,8 +1016,8 @@ for x, y in [[A()]]:
     a = x
     a = y
 
-for e, f in [[]]:  # E: Need type annotation for 'e' \
-                   # E: Need type annotation for 'f'
+for e, f in [[]]:  # E: Need type annotation for "e" \
+                   # E: Need type annotation for "f"
     reveal_type(e)  # N: Revealed type is 'Any'
     reveal_type(f)  # N: Revealed type is 'Any'
 
@@ -1055,7 +1055,7 @@ def f() -> None:
     if int():
         a = B() \
             # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    for a in []: pass # E: Need type annotation for 'a'
+    for a in []: pass # E: Need type annotation for "a"
     a = A()
     if int():
         a = B() \
@@ -1379,18 +1379,18 @@ a.append(0)  # E: Argument 1 to "append" of "list" has incompatible type "int"; 
 [builtins fixtures/list.pyi]
 
 [case testInferListInitializedToEmptyAndNotAnnotated]
-a = []  # E: Need type annotation for 'a' (hint: "a: List[<type>] = ...")
+a = []  # E: Need type annotation for "a" (hint: "a: List[<type>] = ...")
 [builtins fixtures/list.pyi]
 
 [case testInferListInitializedToEmptyAndReadBeforeAppend]
-a = []  # E: Need type annotation for 'a' (hint: "a: List[<type>] = ...")
+a = []  # E: Need type annotation for "a" (hint: "a: List[<type>] = ...")
 if a: pass
 a.xyz  # E: "List[Any]" has no attribute "xyz"
 a.append('')
 [builtins fixtures/list.pyi]
 
 [case testInferListInitializedToEmptyAndIncompleteTypeInAppend]
-a = [] # E: Need type annotation for 'a' (hint: "a: List[<type>] = ...")
+a = [] # E: Need type annotation for "a" (hint: "a: List[<type>] = ...")
 a.append([])
 a()  # E: "List[Any]" not callable
 [builtins fixtures/list.pyi]
@@ -1412,7 +1412,7 @@ def f() -> None:
 
 [case testInferListInitializedToEmptyAndNotAnnotatedInFunction]
 def f() -> None:
-    a = []  # E: Need type annotation for 'a' (hint: "a: List[<type>] = ...")
+    a = []  # E: Need type annotation for "a" (hint: "a: List[<type>] = ...")
 
 def g() -> None: pass
 
@@ -1422,7 +1422,7 @@ a.append(1)
 
 [case testInferListInitializedToEmptyAndReadBeforeAppendInFunction]
 def f() -> None:
-    a = []  # E: Need type annotation for 'a' (hint: "a: List[<type>] = ...")
+    a = []  # E: Need type annotation for "a" (hint: "a: List[<type>] = ...")
     if a: pass
     a.xyz  # E: "List[Any]" has no attribute "xyz"
     a.append('')
@@ -1437,7 +1437,7 @@ class A:
 
 [case testInferListInitializedToEmptyAndNotAnnotatedInClassBody]
 class A:
-    a = []  # E: Need type annotation for 'a' (hint: "a: List[<type>] = ...")
+    a = []  # E: Need type annotation for "a" (hint: "a: List[<type>] = ...")
 
 class B:
     a = []
@@ -1455,7 +1455,7 @@ class A:
 [case testInferListInitializedToEmptyAndNotAnnotatedInMethod]
 class A:
     def f(self) -> None:
-        a = []  # E: Need type annotation for 'a' (hint: "a: List[<type>] = ...")
+        a = []  # E: Need type annotation for "a" (hint: "a: List[<type>] = ...")
 [builtins fixtures/list.pyi]
 
 [case testInferListInitializedToEmptyInMethodViaAttribute]
@@ -1472,7 +1472,7 @@ from typing import List
 
 class A:
     def __init__(self) -> None:
-        self.x = [] # E: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
+        self.x = [] # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 
 class B(A):
     # TODO?: This error is kind of a false positive, unfortunately
@@ -1512,15 +1512,15 @@ a() # E: "Dict[str, int]" not callable
 [builtins fixtures/dict.pyi]
 
 [case testInferDictInitializedToEmptyUsingUpdateError]
-a = {}  # E: Need type annotation for 'a' (hint: "a: Dict[<type>, <type>] = ...")
+a = {}  # E: Need type annotation for "a" (hint: "a: Dict[<type>, <type>] = ...")
 a.update([1, 2])  # E: Argument 1 to "update" of "dict" has incompatible type "List[int]"; expected "Mapping[Any, Any]"
 a()  # E: "Dict[Any, Any]" not callable
 [builtins fixtures/dict.pyi]
 
 [case testInferDictInitializedToEmptyAndIncompleteTypeInUpdate]
-a = {} # E: Need type annotation for 'a' (hint: "a: Dict[<type>, <type>] = ...")
+a = {} # E: Need type annotation for "a" (hint: "a: Dict[<type>, <type>] = ...")
 a[1] = {}
-b = {} # E: Need type annotation for 'b' (hint: "b: Dict[<type>, <type>] = ...")
+b = {} # E: Need type annotation for "b" (hint: "b: Dict[<type>, <type>] = ...")
 b[{}] = 1
 [builtins fixtures/dict.pyi]
 
@@ -1570,7 +1570,7 @@ if bool():
     d = {1: 'x'}
 reveal_type(d) # N: Revealed type is 'builtins.dict[builtins.int*, builtins.str*]'
 
-dd = {} # E: Need type annotation for 'dd' (hint: "dd: Dict[<type>, <type>] = ...")
+dd = {} # E: Need type annotation for "dd" (hint: "dd: Dict[<type>, <type>] = ...")
 if bool():
     dd = [1] # E: Incompatible types in assignment (expression has type "List[int]", variable has type "Dict[Any, Any]")
 reveal_type(dd) # N: Revealed type is 'builtins.dict[Any, Any]'
@@ -1590,27 +1590,27 @@ reveal_type(oo) # N: Revealed type is 'collections.OrderedDict[builtins.int*, bu
 [builtins fixtures/dict.pyi]
 
 [case testEmptyCollectionAssignedToVariableTwiceIncremental]
-x = [] # E: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
+x = [] # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 y = x
 x = []
 reveal_type(x) # N: Revealed type is 'builtins.list[Any]'
-d = {} # E: Need type annotation for 'd' (hint: "d: Dict[<type>, <type>] = ...")
+d = {} # E: Need type annotation for "d" (hint: "d: Dict[<type>, <type>] = ...")
 z = d
 d = {}
 reveal_type(d) # N: Revealed type is 'builtins.dict[Any, Any]'
 [builtins fixtures/dict.pyi]
 [out2]
-main:1: error: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
+main:1: error: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 main:4: note: Revealed type is 'builtins.list[Any]'
-main:5: error: Need type annotation for 'd' (hint: "d: Dict[<type>, <type>] = ...")
+main:5: error: Need type annotation for "d" (hint: "d: Dict[<type>, <type>] = ...")
 main:8: note: Revealed type is 'builtins.dict[Any, Any]'
 
 [case testEmptyCollectionAssignedToVariableTwiceNoReadIncremental]
-x = [] # E: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
+x = [] # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 x = []
 [builtins fixtures/list.pyi]
 [out2]
-main:1: error: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
+main:1: error: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 
 [case testInferAttributeInitializedToEmptyAndAssigned]
 class C:
@@ -1651,7 +1651,7 @@ reveal_type(C().a)  # N: Revealed type is 'Union[builtins.int, None]'
 [case testInferAttributeInitializedToEmptyNonSelf]
 class C:
     def __init__(self) -> None:
-        self.a = []  # E: Need type annotation for 'a' (hint: "a: List[<type>] = ...")
+        self.a = []  # E: Need type annotation for "a" (hint: "a: List[<type>] = ...")
         if bool():
             a = self
             a.a = [1]
@@ -1662,7 +1662,7 @@ reveal_type(C().a)  # N: Revealed type is 'builtins.list[Any]'
 [case testInferAttributeInitializedToEmptyAndAssignedOtherMethod]
 class C:
     def __init__(self) -> None:
-        self.a = []  # E: Need type annotation for 'a' (hint: "a: List[<type>] = ...")
+        self.a = []  # E: Need type annotation for "a" (hint: "a: List[<type>] = ...")
     def meth(self) -> None:
         self.a = [1]
 reveal_type(C().a)  # N: Revealed type is 'builtins.list[Any]'
@@ -1671,7 +1671,7 @@ reveal_type(C().a)  # N: Revealed type is 'builtins.list[Any]'
 [case testInferAttributeInitializedToEmptyAndAppendedOtherMethod]
 class C:
     def __init__(self) -> None:
-        self.a = []  # E: Need type annotation for 'a' (hint: "a: List[<type>] = ...")
+        self.a = []  # E: Need type annotation for "a" (hint: "a: List[<type>] = ...")
     def meth(self) -> None:
         self.a.append(1)
 reveal_type(C().a)  # N: Revealed type is 'builtins.list[Any]'
@@ -1680,7 +1680,7 @@ reveal_type(C().a)  # N: Revealed type is 'builtins.list[Any]'
 [case testInferAttributeInitializedToEmptyAndAssignedItemOtherMethod]
 class C:
     def __init__(self) -> None:
-        self.a = {}  # E: Need type annotation for 'a' (hint: "a: Dict[<type>, <type>] = ...")
+        self.a = {}  # E: Need type annotation for "a" (hint: "a: Dict[<type>, <type>] = ...")
     def meth(self) -> None:
         self.a[0] = 'yes'
 reveal_type(C().a)  # N: Revealed type is 'builtins.dict[Any, Any]'
@@ -1697,7 +1697,7 @@ reveal_type(C().a)  # N: Revealed type is 'None'
 
 [case testInferAttributeInitializedToEmptyAndAssignedClassBody]
 class C:
-    a = []  # E: Need type annotation for 'a' (hint: "a: List[<type>] = ...")
+    a = []  # E: Need type annotation for "a" (hint: "a: List[<type>] = ...")
     def __init__(self) -> None:
         self.a = [1]
 reveal_type(C().a)  # N: Revealed type is 'builtins.list[Any]'
@@ -1705,7 +1705,7 @@ reveal_type(C().a)  # N: Revealed type is 'builtins.list[Any]'
 
 [case testInferAttributeInitializedToEmptyAndAppendedClassBody]
 class C:
-    a = []  # E: Need type annotation for 'a' (hint: "a: List[<type>] = ...")
+    a = []  # E: Need type annotation for "a" (hint: "a: List[<type>] = ...")
     def __init__(self) -> None:
         self.a.append(1)
 reveal_type(C().a)  # N: Revealed type is 'builtins.list[Any]'
@@ -1713,7 +1713,7 @@ reveal_type(C().a)  # N: Revealed type is 'builtins.list[Any]'
 
 [case testInferAttributeInitializedToEmptyAndAssignedItemClassBody]
 class C:
-    a = {}  # E: Need type annotation for 'a' (hint: "a: Dict[<type>, <type>] = ...")
+    a = {}  # E: Need type annotation for "a" (hint: "a: Dict[<type>, <type>] = ...")
     def __init__(self) -> None:
         self.a[0] = 'yes'
 reveal_type(C().a)  # N: Revealed type is 'builtins.dict[Any, Any]'
@@ -1833,7 +1833,7 @@ x.append('') # E: Argument 1 to "append" of "list" has incompatible type "str"; 
 x = None
 if object():
     # Promote from partial None to partial list.
-    x = []  # E: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
+    x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
     x
 [builtins fixtures/list.pyi]
 
@@ -1842,7 +1842,7 @@ def f() -> None:
     x = None
     if object():
         # Promote from partial None to partial list.
-        x = []  # E: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
+        x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 [builtins fixtures/list.pyi]
 [out]
 
@@ -1851,7 +1851,7 @@ def f() -> None:
 from typing import TypeVar,  Dict
 T = TypeVar('T')
 def f(*x: T) -> Dict[int, T]: pass
-x = None  # E: Need type annotation for 'x'
+x = None  # E: Need type annotation for "x"
 if object():
     x = f()
 [builtins fixtures/dict.pyi]
@@ -1928,7 +1928,7 @@ class A:
             pass
 [builtins fixtures/for.pyi]
 [out]
-main:3: error: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
+main:3: error: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 
 [case testPartialTypeErrorSpecialCase3]
 class A:
@@ -2094,9 +2094,9 @@ o = 1
 
 [case testMultipassAndPartialTypesSpecialCase3]
 def f() -> None:
-    x = {} # E: Need type annotation for 'x' (hint: "x: Dict[<type>, <type>] = ...")
+    x = {} # E: Need type annotation for "x" (hint: "x: Dict[<type>, <type>] = ...")
     y = o
-    z = {} # E: Need type annotation for 'z' (hint: "z: Dict[<type>, <type>] = ...")
+    z = {} # E: Need type annotation for "z" (hint: "z: Dict[<type>, <type>] = ...")
 o = 1
 [builtins fixtures/dict.pyi]
 [out]
@@ -2283,7 +2283,7 @@ main:4: error: Invalid type: try using Literal[0] instead?
 class C:
     x = None
     def __init__(self) -> None:
-        self.x = []  # E: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
+        self.x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 [builtins fixtures/list.pyi]
 [out]
 
@@ -2344,7 +2344,7 @@ T = TypeVar('T')
 def f() -> T: pass
 
 class C:
-    x = f() # E: Need type annotation for 'x'
+    x = f() # E: Need type annotation for "x"
     def m(self) -> str:
         return 42 # E: Incompatible return value type (got "int", expected "str")
 
@@ -2361,7 +2361,7 @@ T = TypeVar('T')
 def f(x: Optional[T] = None) -> T: pass
 
 class C:
-    x = f() # E: Need type annotation for 'x'
+    x = f() # E: Need type annotation for "x"
     def m(self) -> str:
         return 42 # E: Incompatible return value type (got "int", expected "str")
 
@@ -2377,7 +2377,7 @@ T = TypeVar('T')
 def f(x: List[T]) -> T: pass
 
 class C:
-    x = f([]) # E: Need type annotation for 'x'
+    x = f([]) # E: Need type annotation for "x"
     def m(self) -> str:
         return 42 # E: Incompatible return value type (got "int", expected "str")
 
@@ -2394,7 +2394,7 @@ if bool():
 
 [case testLocalPartialTypesWithGlobalInitializedToNone]
 # flags: --local-partial-types
-x = None # E: Need type annotation for 'x'
+x = None # E: Need type annotation for "x"
 
 def f() -> None:
     global x
@@ -2405,7 +2405,7 @@ reveal_type(x) # N: Revealed type is 'None'
 
 [case testLocalPartialTypesWithGlobalInitializedToNone2]
 # flags: --local-partial-types
-x = None # E: Need type annotation for 'x'
+x = None # E: Need type annotation for "x"
 
 def f():
     global x
@@ -2454,7 +2454,7 @@ reveal_type(a)  # N: Revealed type is 'builtins.str'
 [case testLocalPartialTypesWithClassAttributeInitializedToNone]
 # flags: --local-partial-types
 class A:
-    x = None # E: Need type annotation for 'x'
+    x = None # E: Need type annotation for "x"
 
     def f(self) -> None:
         self.x = 1
@@ -2462,7 +2462,7 @@ class A:
 [case testLocalPartialTypesWithClassAttributeInitializedToEmptyDict]
 # flags: --local-partial-types
 class A:
-    x = {}  # E: Need type annotation for 'x' (hint: "x: Dict[<type>, <type>] = ...")
+    x = {}  # E: Need type annotation for "x" (hint: "x: Dict[<type>, <type>] = ...")
 
     def f(self) -> None:
         self.x[0] = ''
@@ -2485,7 +2485,7 @@ reveal_type(a) # N: Revealed type is 'builtins.list[builtins.int]'
 
 [case testLocalPartialTypesWithGlobalInitializedToEmptyList2]
 # flags: --local-partial-types
-a = [] # E: Need type annotation for 'a' (hint: "a: List[<type>] = ...")
+a = [] # E: Need type annotation for "a" (hint: "a: List[<type>] = ...")
 
 def f() -> None:
     a.append(1)
@@ -2496,7 +2496,7 @@ reveal_type(a) # N: Revealed type is 'builtins.list[Any]'
 
 [case testLocalPartialTypesWithGlobalInitializedToEmptyList3]
 # flags: --local-partial-types
-a = [] # E: Need type annotation for 'a' (hint: "a: List[<type>] = ...")
+a = [] # E: Need type annotation for "a" (hint: "a: List[<type>] = ...")
 
 def f():
     a.append(1)
@@ -2518,7 +2518,7 @@ reveal_type(a) # N: Revealed type is 'builtins.dict[builtins.int, builtins.str]'
 
 [case testLocalPartialTypesWithGlobalInitializedToEmptyDict2]
 # flags: --local-partial-types
-a = {} # E: Need type annotation for 'a' (hint: "a: Dict[<type>, <type>] = ...")
+a = {} # E: Need type annotation for "a" (hint: "a: Dict[<type>, <type>] = ...")
 
 def f() -> None:
     a[0] = ''
@@ -2529,7 +2529,7 @@ reveal_type(a) # N: Revealed type is 'builtins.dict[Any, Any]'
 
 [case testLocalPartialTypesWithGlobalInitializedToEmptyDict3]
 # flags: --local-partial-types
-a = {} # E: Need type annotation for 'a' (hint: "a: Dict[<type>, <type>] = ...")
+a = {} # E: Need type annotation for "a" (hint: "a: Dict[<type>, <type>] = ...")
 
 def f():
     a[0] = ''
@@ -2637,7 +2637,7 @@ from typing import List
 def f(x): pass
 
 class A:
-    x = None  # E: Need type annotation for 'x'
+    x = None  # E: Need type annotation for "x"
 
     def f(self, p: List[str]) -> None:
         self.x = f(p)
@@ -2647,7 +2647,7 @@ class A:
 [case testLocalPartialTypesAccessPartialNoneAttribute]
 # flags: --local-partial-types
 class C:
-    a = None  # E: Need type annotation for 'a'
+    a = None  # E: Need type annotation for "a"
 
     def f(self, x) -> None:
         C.a.y  # E: Item "None" of "Optional[Any]" has no attribute "y"
@@ -2655,7 +2655,7 @@ class C:
 [case testLocalPartialTypesAccessPartialNoneAttribute]
 # flags: --local-partial-types
 class C:
-    a = None  # E: Need type annotation for 'a'
+    a = None  # E: Need type annotation for "a"
 
     def f(self, x) -> None:
         self.a.y  # E: Item "None" of "Optional[Any]" has no attribute "y"
@@ -2944,7 +2944,7 @@ T = TypeVar('T')
 
 def f(x: Optional[T] = None) -> Callable[..., T]: ...
 
-x = f()  # E: Need type annotation for 'x'
+x = f()  # E: Need type annotation for "x"
 y = x
 
 [case testDontNeedAnnotationForCallable]
@@ -3050,16 +3050,16 @@ x = defaultdict(int)
 x[''] = 1
 reveal_type(x) # N: Revealed type is 'collections.defaultdict[builtins.str, builtins.int]'
 
-y = defaultdict(int) # E: Need type annotation for 'y'
+y = defaultdict(int) # E: Need type annotation for "y"
 
-z = defaultdict(int)  # E: Need type annotation for 'z'
+z = defaultdict(int)  # E: Need type annotation for "z"
 z[''] = ''
 reveal_type(z) # N: Revealed type is 'collections.defaultdict[Any, Any]'
 [builtins fixtures/dict.pyi]
 
 [case testPartialDefaultDictInconsistentValueTypes]
 from collections import defaultdict
-a = defaultdict(int)  # E: Need type annotation for 'a'
+a = defaultdict(int)  # E: Need type annotation for "a"
 a[''] = ''
 a[''] = 1
 reveal_type(a) # N: Revealed type is 'collections.defaultdict[builtins.str, builtins.int]'
@@ -3096,32 +3096,32 @@ class A:
         self.x = defaultdict(list)
         self.x['x'].append(1)
         reveal_type(self.x) # N: Revealed type is 'collections.defaultdict[builtins.str, builtins.list[builtins.int]]'
-        self.y = defaultdict(list)  # E: Need type annotation for 'y'
+        self.y = defaultdict(list)  # E: Need type annotation for "y"
         s = self
         s.y['x'].append(1)
 
-x = {} # E: Need type annotation for 'x' (hint: "x: Dict[<type>, <type>] = ...")
+x = {} # E: Need type annotation for "x" (hint: "x: Dict[<type>, <type>] = ...")
 x['x'].append(1)
 
-y = defaultdict(list)  # E: Need type annotation for 'y'
+y = defaultdict(list)  # E: Need type annotation for "y"
 y[[]].append(1)
 [builtins fixtures/dict.pyi]
 
 [case testPartialDefaultDictSpecialCases2]
 from collections import defaultdict
 
-x = defaultdict(lambda: [1]) # E: Need type annotation for 'x'
+x = defaultdict(lambda: [1]) # E: Need type annotation for "x"
 x[1].append('') # E: Argument 1 to "append" of "list" has incompatible type "str"; expected "int"
 reveal_type(x) # N: Revealed type is 'collections.defaultdict[Any, builtins.list[builtins.int]]'
 
-xx = defaultdict(lambda: {'x': 1}) # E: Need type annotation for 'xx'
+xx = defaultdict(lambda: {'x': 1}) # E: Need type annotation for "xx"
 xx[1]['z'] = 3
 reveal_type(xx) # N: Revealed type is 'collections.defaultdict[Any, builtins.dict[builtins.str, builtins.int]]'
 
-y = defaultdict(dict)  # E: Need type annotation for 'y'
+y = defaultdict(dict)  # E: Need type annotation for "y"
 y['x'][1] = [3]
 
-z = defaultdict(int) # E: Need type annotation for 'z'
+z = defaultdict(int) # E: Need type annotation for "z"
 z[1].append('')
 reveal_type(z) # N: Revealed type is 'collections.defaultdict[Any, Any]'
 [builtins fixtures/dict.pyi]
@@ -3133,7 +3133,7 @@ x = defaultdict(list)
 x['a'] = [1, 2, 3]
 reveal_type(x)  # N: Revealed type is 'collections.defaultdict[builtins.str, builtins.list[builtins.int*]]'
 
-y = defaultdict(list)  # E: Need type annotation for 'y'
+y = defaultdict(list)  # E: Need type annotation for "y"
 y['a'] = []
 reveal_type(y)  # N: Revealed type is 'collections.defaultdict[Any, Any]'
 [builtins fixtures/dict.pyi]

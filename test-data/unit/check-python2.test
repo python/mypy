@@ -363,5 +363,5 @@ b = none.__bool__() # E: "None" has no attribute "__bool__"
 
 [case testDictWithoutTypeCommentInPython2]
 # flags: --py2
-d = dict() # E: Need type comment for 'd' (hint: "d = ...  \# type: Dict[<type>, <type>]")
+d = dict() # E: Need type comment for "d" (hint: "d = ...  \# type: Dict[<type>, <type>]")
 [builtins_py2 fixtures/floatdict_python2.pyi]
