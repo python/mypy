@@ -22,11 +22,16 @@ from mypy.test.helpers import (
 from mypy.errors import CompileError
 from mypy.semanal_main import core_modules
 
-
 # List of files that contain test case descriptions.
+typecheck_files = []
 
-typecheck_files = [f for f in os.listdir("../../test-data/unit") if re.match(r'check-\w+-?\w+?.test',f)]
+# Define the path where the check files are present.
+path2loc = os.path.join(os.path.abspath(__file__).split('/mypy')[0], 'mypy/test-data/unit')
 
+for check_files in os.listdir(path2loc):
+    # Append only if it has the pattern ( check-*-*.test)
+    if re.match(r'check-\w+-?\w+?.test', check_files):
+        typecheck_files.append(check_files)
 
 # Tests that use Python 3.8-only AST features (like expression-scoped ignores):
 if sys.version_info < (3, 8):
