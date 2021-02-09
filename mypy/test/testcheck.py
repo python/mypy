@@ -27,9 +27,9 @@ typecheck_files = []
 
 # Define the path where the check files are present.
 if sys.platform == 'win32':
-    path2loc = os.path.abspath(__file__).split('\\mypy')[0] + '\\mypy\\test-data\\unit'
+    path2loc = os.path.abspath(__file__).split('mypy\\test')[0] + 'test-data\\unit'
 else:
-    path2loc = os.path.join(os.path.abspath(__file__).split('/mypy')[0], 'mypy/test-data/unit')
+    path2loc = os.path.join(os.path.abspath(__file__).split('mypy/test')[0], 'test-data/unit')
 
 for check_files in os.listdir(path2loc):
     # Append only if it has the pattern ( check-*-*.test)
