@@ -1160,10 +1160,12 @@ class MessageBuilder:
             self.fail('\'{}\' is not a valid TypedDict key; expected one of {}'.format(
                 item_name, format_item_name_list(typ.items.keys())), context)
         else:
-            self.fail("TypedDict {} has no key \"{}\"".format(format_type(typ), item_name), context)
+            self.fail("TypedDict {} has no key \"{}\"".format(
+                format_type(typ), item_name), context)
             matches = best_matches(item_name, typ.items.keys())
             if matches:
-                self.note("Did you mean {}?".format(pretty_seq(matches[:3], "or")), context)
+                self.note("Did you mean {}?".format(
+                    pretty_seq(matches[:3], "or")), context)
 
     def typeddict_context_ambiguous(
             self,
@@ -1280,7 +1282,7 @@ class MessageBuilder:
         it does not change the truth value of the entire condition as a whole.
         'op_name' should either be the string "and" or the string "or".
         """
-        self.redundant_expr("Left operand of \" {}\"".format(op_name), op_name == 'and', context)
+        self.redundant_expr("Left operand of \"{}\"".format(op_name), op_name == 'and', context)
 
     def unreachable_right_operand(self, op_name: str, context: Context) -> None:
         """Indicates that the right operand of a boolean expression is redundant:

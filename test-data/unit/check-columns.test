@@ -297,7 +297,7 @@ class C:
 p: P
 if int():
     p = C() # E:9: Incompatible types in assignment (expression has type "C", variable has type "P") \
-      # N:9: 'C' is missing following 'P' protocol member: \
+      # N:9: "C" is missing following "P" protocol member: \
       # N:9:     y
 
 [case testColumnRedundantCast]

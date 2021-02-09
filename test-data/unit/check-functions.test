@@ -2344,7 +2344,7 @@ def make_list() -> List[T]: pass
 
 l: List[int] = make_list()
 
-bad = make_list()  # E: Need type annotation for "Bad" (hint: "bad: List[<type>] = ...")
+bad = make_list()  # E: Need type annotation for "bad" (hint: "bad: List[<type>] = ...")
 [builtins fixtures/list.pyi]
 
 [case testAnonymousArgumentError]
