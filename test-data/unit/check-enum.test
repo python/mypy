@@ -505,7 +505,8 @@ def fn(x: F) -> None:
 fn(b)
 [out]
 
-[case testFunctionalEnum_python2]
+[case testFunctionalEnum_python2-skip]
+# TODO: Needs to have enum34 stubs somehow
 from enum import Enum
 Eu = Enum(u'Eu', u'a b')
 Eb = Enum(b'Eb', b'a b')

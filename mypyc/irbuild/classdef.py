@@ -4,17 +4,17 @@ from typing import List, Optional
 
 from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, PassStmt, AssignmentStmt, NameExpr, StrExpr,
-    ExpressionStmt, TempNode, Decorator, Lvalue, RefExpr, Var, is_class_var
+    ExpressionStmt, TempNode, Decorator, Lvalue, RefExpr, is_class_var
 )
 from mypyc.ir.ops import (
-    Value, Call, LoadErrorValue, LoadStatic, InitStatic, TupleSet, SetAttr, Return,
+    Value, Register, Call, LoadErrorValue, LoadStatic, InitStatic, TupleSet, SetAttr, Return,
     BasicBlock, Branch, MethodCall, NAMESPACE_TYPE, LoadAddress
 )
 from mypyc.ir.rtypes import (
-    RInstance, object_rprimitive, bool_rprimitive, dict_rprimitive, is_optional_type,
+    object_rprimitive, bool_rprimitive, dict_rprimitive, is_optional_type,
     is_object_rprimitive, is_none_rprimitive
 )
-from mypyc.ir.func_ir import FuncIR, FuncDecl, FuncSignature, RuntimeArg
+from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.primitives.generic_ops import py_setattr_op, py_hasattr_op
 from mypyc.primitives.misc_ops import (
@@ -22,9 +22,8 @@ from mypyc.primitives.misc_ops import (
     not_implemented_op
 )
 from mypyc.primitives.dict_ops import dict_set_item_op, dict_new_op
-from mypyc.common import SELF_NAME
 from mypyc.irbuild.util import (
-    is_dataclass_decorator, get_func_def, is_dataclass, is_constant, add_self_to_env
+    is_dataclass_decorator, get_func_def, is_dataclass, is_constant
 )
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.function import transform_method
@@ -124,7 +123,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
             typ = builder.load_native_type_object(cdef.fullname)
             value = builder.accept(stmt.rvalue)
             builder.call_c(
-                py_setattr_op, [typ, builder.load_static_unicode(lvalue.name), value], stmt.line)
+                py_setattr_op, [typ, builder.load_str(lvalue.name), value], stmt.line)
             if builder.non_function_scope() and stmt.is_final_def:
                 builder.init_final_static(lvalue, value, cdef.name)
         elif isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, StrExpr):
@@ -151,7 +150,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
         builder.call_c(dict_set_item_op,
                        [
                            builder.load_globals_dict(),
-                           builder.load_static_unicode(cdef.name),
+                           builder.load_str(cdef.name),
                            non_ext_class
                        ], cdef.line)
 
@@ -167,7 +166,7 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
         tp_bases = builder.new_tuple(bases, cdef.line)
     else:
         tp_bases = builder.add(LoadErrorValue(object_rprimitive, is_borrowed=True))
-    modname = builder.load_static_unicode(builder.module_name)
+    modname = builder.load_str(builder.module_name)
     template = builder.add(LoadStatic(object_rprimitive, cdef.name + "_template",
                                    builder.module_name, NAMESPACE_TYPE))
     # Create the class
@@ -182,7 +181,7 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
                      FuncSignature([], bool_rprimitive)), [], -1))
     # Populate a '__mypyc_attrs__' field containing the list of attrs
     builder.call_c(py_setattr_op, [
-        tp, builder.load_static_unicode('__mypyc_attrs__'),
+        tp, builder.load_str('__mypyc_attrs__'),
         create_mypyc_attrs_tuple(builder, builder.mapper.type_to_ir[cdef.info], cdef.line)],
         cdef.line)
 
@@ -193,7 +192,7 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
     builder.call_c(dict_set_item_op,
                 [
                     builder.load_globals_dict(),
-                    builder.load_static_unicode(cdef.name),
+                    builder.load_str(cdef.name),
                     tp,
                 ], cdef.line)
 
@@ -229,7 +228,7 @@ def find_non_ext_metaclass(builder: IRBuilder, cdef: ClassDef, bases: Value) -> 
         declared_metaclass = builder.add(LoadAddress(type_object_op.type,
                                                      type_object_op.src, cdef.line))
 
-    return builder.primitive_op(py_calc_meta_op, [declared_metaclass, bases], cdef.line)
+    return builder.call_c(py_calc_meta_op, [declared_metaclass, bases], cdef.line)
 
 
 def setup_non_ext_dict(builder: IRBuilder,
@@ -243,15 +242,15 @@ def setup_non_ext_dict(builder: IRBuilder,
     # Check if the metaclass defines a __prepare__ method, and if so, call it.
     has_prepare = builder.call_c(py_hasattr_op,
                                 [metaclass,
-                                builder.load_static_unicode('__prepare__')], cdef.line)
+                                builder.load_str('__prepare__')], cdef.line)
 
-    non_ext_dict = builder.alloc_temp(dict_rprimitive)
+    non_ext_dict = Register(dict_rprimitive)
 
     true_block, false_block, exit_block, = BasicBlock(), BasicBlock(), BasicBlock()
     builder.add_bool_branch(has_prepare, true_block, false_block)
 
     builder.activate_block(true_block)
-    cls_name = builder.load_static_unicode(cdef.name)
+    cls_name = builder.load_str(cdef.name)
     prepare_meth = builder.py_get_attr(metaclass, '__prepare__', cdef.line)
     prepare_dict = builder.py_call(prepare_meth, [cls_name, bases], cdef.line)
     builder.assign(non_ext_dict, prepare_dict, cdef.line)
@@ -278,7 +277,7 @@ def add_non_ext_class_attr(builder: IRBuilder,
     # We populate __annotations__ because dataclasses uses it to determine
     # which attributes to compute on.
     # TODO: Maybe generate more precise types for annotations
-    key = builder.load_static_unicode(lvalue.name)
+    key = builder.load_str(lvalue.name)
     typ = builder.add(LoadAddress(type_object_op.type, type_object_op.src, stmt.line))
     builder.call_c(dict_set_item_op, [non_ext.anns, key, typ], stmt.line)
 
@@ -327,12 +326,9 @@ def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef) -> None:
     if not default_assignments:
         return
 
-    builder.enter()
-    builder.ret_types[-1] = bool_rprimitive
+    builder.enter_method(cls, '__mypyc_defaults_setup', bool_rprimitive)
 
-    rt_args = (RuntimeArg(SELF_NAME, RInstance(cls)),)
-    self_var = builder.read(add_self_to_env(builder.environment, cls), -1)
-
+    self_var = builder.self()
     for stmt in default_assignments:
         lvalue = stmt.lvalues[0]
         assert isinstance(lvalue, NameExpr)
@@ -351,55 +347,31 @@ def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef) -> None:
 
     builder.add(Return(builder.true()))
 
-    blocks, env, ret_type, _ = builder.leave()
-    ir = FuncIR(
-        FuncDecl('__mypyc_defaults_setup',
-                 cls.name, builder.module_name,
-                 FuncSignature(rt_args, ret_type)),
-        blocks, env)
-    builder.functions.append(ir)
-    cls.methods[ir.name] = ir
+    builder.leave_method()
 
 
 def create_ne_from_eq(builder: IRBuilder, cdef: ClassDef) -> None:
     """Create a "__ne__" method from a "__eq__" method (if only latter exists)."""
     cls = builder.mapper.type_to_ir[cdef.info]
     if cls.has_method('__eq__') and not cls.has_method('__ne__'):
-        f = gen_glue_ne_method(builder, cls, cdef.line)
-        cls.method_decls['__ne__'] = f.decl
-        cls.methods['__ne__'] = f
-        builder.functions.append(f)
+        gen_glue_ne_method(builder, cls, cdef.line)
 
 
-def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> FuncIR:
+def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> None:
     """Generate a "__ne__" method from a "__eq__" method. """
-    builder.enter()
-
-    rt_args = (RuntimeArg("self", RInstance(cls)), RuntimeArg("rhs", object_rprimitive))
-
-    # The environment operates on Vars, so we make some up
-    fake_vars = [(Var(arg.name), arg.type) for arg in rt_args]
-    args = [
-        builder.read(
-            builder.environment.add_local_reg(
-                var, type, is_arg=True
-            ),
-            line
-        )
-        for var, type in fake_vars
-    ]  # type: List[Value]
-    builder.ret_types[-1] = object_rprimitive
+    builder.enter_method(cls, '__ne__', object_rprimitive)
+    rhs_arg = builder.add_argument('rhs', object_rprimitive)
 
     # If __eq__ returns NotImplemented, then __ne__ should also
     not_implemented_block, regular_block = BasicBlock(), BasicBlock()
-    eqval = builder.add(MethodCall(args[0], '__eq__', [args[1]], line))
+    eqval = builder.add(MethodCall(builder.self(), '__eq__', [rhs_arg], line))
     not_implemented = builder.add(LoadAddress(not_implemented_op.type,
                                               not_implemented_op.src, line))
     builder.add(Branch(
         builder.translate_is_op(eqval, not_implemented, 'is', line),
         not_implemented_block,
         regular_block,
-        Branch.BOOL_EXPR))
+        Branch.BOOL))
 
     builder.activate_block(regular_block)
     retval = builder.coerce(
@@ -410,18 +382,14 @@ def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> FuncIR:
     builder.activate_block(not_implemented_block)
     builder.add(Return(not_implemented))
 
-    blocks, env, ret_type, _ = builder.leave()
-    return FuncIR(
-        FuncDecl('__ne__', cls.name, builder.module_name,
-                 FuncSignature(rt_args, ret_type)),
-        blocks, env)
+    builder.leave_method()
 
 
 def load_non_ext_class(builder: IRBuilder,
                        ir: ClassIR,
                        non_ext: NonExtClassInfo,
                        line: int) -> Value:
-    cls_name = builder.load_static_unicode(ir.name)
+    cls_name = builder.load_str(ir.name)
 
     finish_non_ext_dict(builder, non_ext, line)
 
@@ -464,14 +432,14 @@ def create_mypyc_attrs_tuple(builder: IRBuilder, ir: ClassIR, line: int) -> Valu
     attrs = [name for ancestor in ir.mro for name in ancestor.attributes]
     if ir.inherits_python:
         attrs.append('__dict__')
-    items = [builder.load_static_unicode(attr) for attr in attrs]
+    items = [builder.load_str(attr) for attr in attrs]
     return builder.new_tuple(items, line)
 
 
 def finish_non_ext_dict(builder: IRBuilder, non_ext: NonExtClassInfo, line: int) -> None:
     # Add __annotations__ to the class dict.
     builder.call_c(dict_set_item_op,
-                [non_ext.dict, builder.load_static_unicode('__annotations__'),
+                [non_ext.dict, builder.load_str('__annotations__'),
                 non_ext.anns], -1)
 
     # We add a __doc__ attribute so if the non-extension class is decorated with the
@@ -479,9 +447,9 @@ def finish_non_ext_dict(builder: IRBuilder, non_ext: NonExtClassInfo, line: int)
     # https://github.com/python/cpython/blob/3.7/Lib/dataclasses.py#L957
     filler_doc_str = 'mypyc filler docstring'
     builder.add_to_non_ext_dict(
-        non_ext, '__doc__', builder.load_static_unicode(filler_doc_str), line)
+        non_ext, '__doc__', builder.load_str(filler_doc_str), line)
     builder.add_to_non_ext_dict(
-        non_ext, '__module__', builder.load_static_unicode(builder.module_name), line)
+        non_ext, '__module__', builder.load_str(builder.module_name), line)
 
 
 def dataclass_finalize(

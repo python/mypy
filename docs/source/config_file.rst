@@ -177,6 +177,11 @@ section of the command line docs.
     Multiple paths are always separated with a ``:`` or ``,`` regardless of the platform.
     User home directory and environment variables will be expanded.
 
+    Relative paths are treated relative to the working directory of the mypy command,
+    not the config file.
+    Use the ``MYPY_CONFIG_FILE_DIR`` environment variable to refer to paths relative to
+    the config file (e.g. ``mypy_path = $MYPY_CONFIG_FILE_DIR/src``).
+
     This option may only be set in the global section (``[mypy]``).
 
     **Note:** On Windows, use UNC paths to avoid using ``:`` (e.g. ``\\127.0.0.1\X$\MyDir`` where ``X`` is the drive letter).
@@ -199,6 +204,19 @@ section of the command line docs.
 
     Enables :pep:`420` style namespace packages.  See the
     corresponding flag :option:`--namespace-packages <mypy --namespace-packages>` for more information.
+
+    This option may only be set in the global section (``[mypy]``).
+
+.. confval:: explicit_package_bases
+
+    :type: boolean
+    :default: False
+
+    This flag tells mypy that top-level packages will be based in either the
+    current directory, or a member of the ``MYPYPATH`` environment variable or
+    :confval:`mypy_path` config option. This option is only useful in
+    conjunction with :confval:`namespace_packages`. See :ref:`Mapping file
+    paths to modules <mapping-paths-to-modules>` for details.
 
     This option may only be set in the global section (``[mypy]``).
 
@@ -513,6 +531,9 @@ no analog available via the command line options.
 Miscellaneous strictness flags
 ******************************
 
+For more information, see the :ref:`Miscellaneous strictness flags <miscellaneous-strictness-flags>`
+section of the command line docs.
+
 .. confval:: allow_untyped_globals
 
     :type: boolean
@@ -528,6 +549,14 @@ Miscellaneous strictness flags
 
     Allows variables to be redefined with an arbitrary type, as long as the redefinition
     is in the same block and nesting level as the original definition.
+
+.. confval:: local_partial_types
+
+    :type: boolean
+    :default: False
+
+    Disallows inferring variable type for ``None`` from two assignments in different scopes.
+    This is always implicitly enabled when using the :ref:`mypy daemon <mypy_daemon>`.
 
 .. confval:: disable_error_code
 

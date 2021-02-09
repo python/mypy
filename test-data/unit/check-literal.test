@@ -867,7 +867,7 @@ func(f)  # E: Argument 1 to "func" has incompatible type "Union[Literal['foo'], 
 [case testLiteralDisallowAny]
 from typing import Any
 from typing_extensions import Literal
-from missing_module import BadAlias     # E: Cannot find implementation or library stub for module named 'missing_module' \
+from missing_module import BadAlias     # E: Cannot find implementation or library stub for module named "missing_module" \
                                         # N: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 a: Literal[Any]                         # E: Parameter 1 of Literal[...] cannot be of type "Any"
@@ -2227,7 +2227,7 @@ d[c_key]                      # E: TypedDict "Outer" has no key 'c'
 
 reveal_type(d.get(a_key, u))  # N: Revealed type is 'Union[builtins.int, __main__.Unrelated]'
 reveal_type(d.get(b_key, u))  # N: Revealed type is 'Union[builtins.str, __main__.Unrelated]'
-d.get(c_key, u)               # E: TypedDict "Outer" has no key 'c'
+reveal_type(d.get(c_key, u))  # N: Revealed type is 'builtins.object'
 
 reveal_type(d.pop(a_key))     # E: Key 'a' of TypedDict "Outer" cannot be deleted \
                               # N: Revealed type is 'builtins.int'
@@ -2271,11 +2271,11 @@ reveal_type(a[int_key_good])         # N: Revealed type is 'builtins.int'
 reveal_type(b[int_key_good])         # N: Revealed type is 'builtins.int'
 reveal_type(c[str_key_good])         # N: Revealed type is 'builtins.int'
 reveal_type(c.get(str_key_good, u))  # N: Revealed type is 'Union[builtins.int, __main__.Unrelated]'
+reveal_type(c.get(str_key_bad, u))   # N: Revealed type is 'builtins.object'
 
 a[int_key_bad]                       # E: Tuple index out of range
 b[int_key_bad]                       # E: Tuple index out of range
 c[str_key_bad]                       # E: TypedDict "MyDict" has no key 'missing'
-c.get(str_key_bad, u)                # E: TypedDict "MyDict" has no key 'missing'
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 [out]
@@ -2342,12 +2342,12 @@ reveal_type(test.get(good_keys, 3))               # N: Revealed type is 'Union[_
 reveal_type(test.pop(optional_keys))              # N: Revealed type is 'Union[__main__.D, __main__.E]'
 reveal_type(test.pop(optional_keys, 3))           # N: Revealed type is 'Union[__main__.D, __main__.E, Literal[3]?]'
 reveal_type(test.setdefault(good_keys, AAndB()))  # N: Revealed type is 'Union[__main__.A, __main__.B]'
+reveal_type(test.get(bad_keys))                   # N: Revealed type is 'builtins.object*'
+reveal_type(test.get(bad_keys, 3))                # N: Revealed type is 'builtins.object'
 del test[optional_keys]
 
 
 test[bad_keys]                  # E: TypedDict "Test" has no key 'bad'
-test.get(bad_keys)              # E: TypedDict "Test" has no key 'bad'
-test.get(bad_keys, 3)           # E: TypedDict "Test" has no key 'bad'
 test.pop(good_keys)             # E: Key 'a' of TypedDict "Test" cannot be deleted \
                                 # E: Key 'b' of TypedDict "Test" cannot be deleted
 test.pop(bad_keys)              # E: Key 'a' of TypedDict "Test" cannot be deleted \
@@ -2436,14 +2436,12 @@ good_keys: Literal['b', 'c']
 
 x[bad_keys]         # E: TypedDict "D1" has no key 'd' \
                     # E: TypedDict "D2" has no key 'a'
-x.get(bad_keys)     # E: TypedDict "D1" has no key 'd' \
-                    # E: TypedDict "D2" has no key 'a'
-x.get(bad_keys, 3)  # E: TypedDict "D1" has no key 'd' \
-                    # E: TypedDict "D2" has no key 'a'
 
 reveal_type(x[good_keys])           # N: Revealed type is 'Union[__main__.B, __main__.C]'
 reveal_type(x.get(good_keys))       # N: Revealed type is 'Union[__main__.B, __main__.C]'
 reveal_type(x.get(good_keys, 3))    # N: Revealed type is 'Union[__main__.B, Literal[3]?, __main__.C]'
+reveal_type(x.get(bad_keys))        # N: Revealed type is 'builtins.object*'
+reveal_type(x.get(bad_keys, 3))     # N: Revealed type is 'builtins.object'
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]

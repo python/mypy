@@ -340,19 +340,61 @@ def from_tuple(t: Tuple[int, str]) -> List[Any]:
     x, y = t
     return [y, x]
 
+def from_tuple_sequence(t: Tuple[int, ...]) -> List[int]:
+    x, y, z = t
+    return [z, y, x]
+
 def from_list(l: List[int]) -> List[int]:
     x, y = l
     return [y, x]
 
+def from_list_complex(l: List[int]) -> List[int]:
+    ll = l[:]
+    ll[1], ll[0] = l
+    return ll
+
 def from_any(o: Any) -> List[Any]:
     x, y = o
     return [y, x]
+
+def multiple_assignments(t: Tuple[int, str]) -> List[Any]:
+    a, b = c, d = t
+    e, f = g, h = 1, 2
+    return [a, b, c, d, e, f, g, h]
 [file driver.py]
-from native import from_tuple, from_list, from_any
+from native import (
+    from_tuple, from_tuple_sequence, from_list, from_list_complex, from_any, multiple_assignments
+)
 
 assert from_tuple((1, 'x')) == ['x', 1]
+
+assert from_tuple_sequence((1, 5, 4)) == [4, 5, 1]
+try:
+    from_tuple_sequence((1, 5))
+except ValueError as e:
+    assert 'not enough values to unpack (expected 3, got 2)' in str(e)
+else:
+    assert False
+
 assert from_list([3, 4]) == [4, 3]
+try:
+    from_list([5, 4, 3])
+except ValueError as e:
+    assert 'too many values to unpack (expected 2)' in str(e)
+else:
+    assert False
+
+assert from_list_complex([7, 6]) == [6, 7]
+try:
+    from_list_complex([5, 4, 3])
+except ValueError as e:
+    assert 'too many values to unpack (expected 2)' in str(e)
+else:
+    assert False
+
 assert from_any('xy') == ['y', 'x']
+
+assert multiple_assignments((4, 'x')) == [4, 'x', 4, 'x', 1, 2, 1, 2]
 
 [case testUnpack]
 from typing import List
@@ -972,3 +1014,43 @@ from native import foo
 
 assert foo(None) == None
 assert foo([1, 2, 3]) == ((1, 2, 3), [1, 2, 3])
+
+[case testAllLiterals]
+# Test having all sorts of literals in a single file
+
+def test_str() -> None:
+    assert '' == eval("''")
+    assert len('foo bar' + str()) == 7
+    assert 'foo bar' == eval("'foo bar'")
+    assert 'foo\u1245\0bar' == eval("'foo' + chr(0x1245) + chr(0) + 'bar'")
+    assert 'foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345' == eval("'foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345'")
+    assert 'Zoobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar123' == eval("'Zoobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar123'")
+
+def test_bytes() -> None:
+    assert b'' == eval("b''")
+    assert b'foo bar' == eval("b'foo bar'")
+    assert b'\xafde' == eval(r"b'\xafde'")
+    assert b'foo\xde\0bar' == eval("b'foo' + bytes([0xde, 0]) + b'bar'")
+    assert b'foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345' == eval("b'foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345'")
+
+def test_int() -> None:
+    assert 2875872359823758923758923759 == eval('2875872359823758923758923759')
+    assert -552875872359823758923758923759 == eval('-552875872359823758923758923759')
+
+def test_float() -> None:
+    assert 1.5 == eval('1.5')
+    assert -3.75 == eval('-3.75')
+    assert 2.5e10 == eval('2.5e10')
+    assert 2.5e50 == eval('2.5e50')
+    assert 2.5e1000 == eval('2.5e1000')
+    assert -2.5e1000 == eval('-2.5e1000')
+
+def test_complex() -> None:
+    assert 1.5j == eval('1.5j')
+    assert 1.5j + 2.5 == eval('2.5 + 1.5j')
+    assert -3.75j == eval('-3.75j')
+    assert 2.5e10j == eval('2.5e10j')
+    assert 2.5e50j == eval('2.5e50j')
+    assert 2.5e1000j == eval('2.5e1000j')
+    assert 2.5e1000j + 3.5e2000 == eval('3.5e2000 + 2.5e1000j')
+    assert -2.5e1000j == eval('-2.5e1000j')

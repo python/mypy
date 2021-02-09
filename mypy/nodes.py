@@ -114,11 +114,12 @@ type_aliases = {
     'typing.Counter': 'collections.Counter',
     'typing.DefaultDict': 'collections.defaultdict',
     'typing.Deque': 'collections.deque',
+    'typing.OrderedDict': 'collections.OrderedDict',
 }  # type: Final
 
 # This keeps track of the oldest supported Python version where the corresponding
-# alias _target_ is available.
-type_aliases_target_versions = {
+# alias source is available.
+type_aliases_source_versions = {
     'typing.List': (2, 7),
     'typing.Dict': (2, 7),
     'typing.Set': (2, 7),
@@ -127,6 +128,7 @@ type_aliases_target_versions = {
     'typing.Counter': (2, 7),
     'typing.DefaultDict': (2, 7),
     'typing.Deque': (2, 7),
+    'typing.OrderedDict': (3, 7),
 }  # type: Final
 
 reverse_builtin_aliases = {
@@ -136,9 +138,17 @@ reverse_builtin_aliases = {
     'builtins.frozenset': 'typing.FrozenSet',
 }  # type: Final
 
-nongen_builtins = {'builtins.tuple': 'typing.Tuple',
-                   'builtins.enumerate': ''}  # type: Final
-nongen_builtins.update((name, alias) for alias, name in type_aliases.items())
+_nongen_builtins = {'builtins.tuple': 'typing.Tuple',
+                    'builtins.enumerate': ''}  # type: Final
+_nongen_builtins.update((name, alias) for alias, name in type_aliases.items())
+# Drop OrderedDict from this for backward compatibility
+del _nongen_builtins['collections.OrderedDict']
+
+
+def get_nongen_builtins(python_version: Tuple[int, int]) -> Dict[str, str]:
+    # After 3.9 with pep585 generic builtins are allowed.
+    return _nongen_builtins if python_version < (3, 9) else {}
+
 
 RUNTIME_PROTOCOL_DECOS = ('typing.runtime_checkable',
                           'typing_extensions.runtime',
@@ -1438,7 +1448,8 @@ class StarExpr(Expression):
 class RefExpr(Expression):
     """Abstract base class for name-like constructs"""
 
-    __slots__ = ('kind', 'node', 'fullname', 'is_new_def', 'is_inferred_def', 'is_alias_rvalue')
+    __slots__ = ('kind', 'node', 'fullname', 'is_new_def', 'is_inferred_def', 'is_alias_rvalue',
+                 'type_guard')
 
     def __init__(self) -> None:
         super().__init__()
@@ -1457,6 +1468,8 @@ class RefExpr(Expression):
         self.is_inferred_def = False
         # Is this expression appears as an rvalue of a valid type alias definition?
         self.is_alias_rvalue = False
+        # Cache type guard from callable_type.type_guard
+        self.type_guard = None  # type: Optional[mypy.types.Type]
 
 
 class NameExpr(RefExpr):

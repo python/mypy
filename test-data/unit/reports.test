@@ -351,8 +351,6 @@ Total             0          0            0                  0       0          
 [case testTrickyCoverage]
 # cmd: mypy --linecoverage-report=report n.py
 [file n.py]
-import attr
-
 def blah(x): return x
 
 @blah
@@ -365,7 +363,7 @@ class Foo:
     def f(self, x: int) -> None:
         pass
 
-@attr.s
+@blah
 class Z(object):
     pass
 

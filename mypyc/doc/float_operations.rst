@@ -16,3 +16,9 @@ Construction
 ------------
 
 * Float literal
+* ``float(string)``
+
+Functions
+---------
+
+* ``abs(f)``

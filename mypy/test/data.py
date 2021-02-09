@@ -95,7 +95,7 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
             reprocessed = [] if item.arg is None else [t.strip() for t in item.arg.split(',')]
             targets[passnum] = reprocessed
         elif item.id == 'delete':
-            # File to delete during a multi-step test case
+            # File/directory to delete during a multi-step test case
             assert item.arg is not None
             m = re.match(r'(.*)\.([0-9]+)$', item.arg)
             assert m, 'Invalid delete section: {}'.format(item.arg)
@@ -149,7 +149,7 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
     case.input = input
     case.output = output
     case.output2 = output2
-    case.lastline = item.line
+    case.last_line = case.line + item.line + len(item.data) - 2
     case.files = files
     case.output_files = output_files
     case.expected_stale_modules = stale_modules
@@ -185,7 +185,7 @@ class DataDrivenTestCase(pytest.Item):
     normalize_output = True
 
     # Extra attributes used by some tests.
-    lastline = None  # type: int
+    last_line = None  # type: int
     output_files = None  # type: List[Tuple[str, str]] # Path and contents for output files
     deleted_paths = None  # type: Dict[int, Set[str]]  # Mapping run number -> paths
     triggered = None  # type: List[str]  # Active triggers (one line per incremental step)

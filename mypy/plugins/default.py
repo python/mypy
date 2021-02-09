@@ -100,7 +100,18 @@ class DefaultPlugin(Plugin):
         elif fullname in attrs.attr_dataclass_makers:
             return partial(
                 attrs.attr_class_maker_callback,
-                auto_attribs_default=True
+                auto_attribs_default=True,
+            )
+        elif fullname in attrs.attr_frozen_makers:
+            return partial(
+                attrs.attr_class_maker_callback,
+                auto_attribs_default=None,
+                frozen_default=True,
+            )
+        elif fullname in attrs.attr_define_makers:
+            return partial(
+                attrs.attr_class_maker_callback,
+                auto_attribs_default=None,
             )
         elif fullname in dataclasses.dataclass_makers:
             return dataclasses.dataclass_class_maker_callback
@@ -230,8 +241,7 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
         for key in keys:
             value_type = get_proper_type(ctx.type.items.get(key))
             if value_type is None:
-                ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
-                return AnyType(TypeOfAny.from_error)
+                return ctx.default_return_type
 
             if len(ctx.arg_types) == 1:
                 output_types.append(value_type)

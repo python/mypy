@@ -18,10 +18,13 @@ suffer from the same issue as they are defined to parse at most three
 octal digits.
 """
 
+from typing import List
 import string
-from typing import Tuple
 
-CHAR_MAP = ['\\{:03o}'.format(i) for i in range(256)]
+from typing_extensions import Final
+
+
+CHAR_MAP = ['\\{:03o}'.format(i) for i in range(256)]  # type: Final
 
 # It is safe to use string.printable as it always uses the C locale.
 for c in string.printable:
@@ -38,12 +41,33 @@ for c in ('\'', '"', '\\', 'a', 'b', 'f', 'n', 'r', 't', 'v'):
 CHAR_MAP[ord('?')] = r'\?'
 
 
-def encode_as_c_string(s: str) -> Tuple[str, int]:
-    """Produce a quoted C string literal and its size, for a UTF-8 string."""
-    return encode_bytes_as_c_string(s.encode('utf-8'))
-
-
-def encode_bytes_as_c_string(b: bytes) -> Tuple[str, int]:
-    """Produce a quoted C string literal and its size, for a byte string."""
+def encode_bytes_as_c_string(b: bytes) -> str:
+    """Produce contents of a C string literal for a byte string, without quotes."""
     escaped = ''.join([CHAR_MAP[i] for i in b])
-    return '"{}"'.format(escaped), len(b)
+    return escaped
+
+
+def c_string_initializer(components: List[bytes]) -> str:
+    """Create initializer for a C char[] variable from a list of fragments.
+
+    For example, if components is [b'foo', b'bar'], the result would be
+    '"foobar"', which could then be used like this to initialize 's':
+
+        const char s[] = "foobar";
+
+    If the result is long, split it into multiple lines.
+    """
+    res = []
+    current = ''
+    for c in components:
+        enc = encode_bytes_as_c_string(c)
+        if not current or len(current) + len(enc) < 70:
+            current += enc
+        else:
+            res.append('"%s"' % current)
+            current = enc
+    if current:
+        res.append('"%s"' % current)
+    if len(res) > 1:
+        res.insert(0, '')
+    return '\n    '.join(res)

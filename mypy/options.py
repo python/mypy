@@ -87,7 +87,16 @@ class Options:
         # Intended to be used for disabling specific stubs.
         self.follow_imports_for_stubs = False
         # PEP 420 namespace packages
+        # This allows definitions of packages without __init__.py and allows packages to span
+        # multiple directories. This flag affects both import discovery and the association of
+        # input files/modules/packages to the relevant file and fully qualified module name.
         self.namespace_packages = False
+        # Use current directory and MYPYPATH to determine fully qualified module names of files
+        # passed by automatically considering their subdirectories as packages. This is only
+        # relevant if namespace packages are enabled, since otherwise examining __init__.py's is
+        # sufficient to determine module names for files. As a possible alternative, add a single
+        # top-level __init__.py to your packages.
+        self.explicit_package_bases = False
 
         # disallow_any options
         self.disallow_any_generics = False
@@ -229,6 +238,9 @@ class Options:
         # mypy. (Like mypyc.)
         self.preserve_asts = False
 
+        # PEP 612 support is a work in progress, hide it from users
+        self.wip_pep_612 = False
+
         # Paths of user plugins
         self.plugins = []  # type: List[str]
 
@@ -279,6 +291,8 @@ class Options:
         self.transform_source = None  # type: Optional[Callable[[Any], Any]]
         # Print full path to each file in the report.
         self.show_absolute_path = False  # type: bool
+        # Install missing stub packages if True
+        self.install_types = False
 
     # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property

@@ -407,6 +407,27 @@ case you should add an explicit ``Optional[...]`` annotation (or type comment).
     ``Optional[...]`` type. It's possible that this will become the default
     behavior in the future.
 
+.. _alternative_union_syntax:
+
+X | Y syntax for Unions
+-----------------------
+
+:pep:`604` introduced an alternative way for spelling union types. In Python
+3.10 and later, you can write ``Union[int, str]`` as ``int | str``. It is
+possible to use this syntax in versions of Python where it isn't supported by
+the runtime with some limitations (see :ref:`runtime_troubles`).
+
+.. code-block:: python
+
+    from typing import List
+
+    t1: int | str  # equivalent to Union[int, str]
+
+    t2: int | None  # equivalent to Optional[int]
+
+    # Usable in type comments
+    t3 = 42  # type: int | str
+
 .. _no_strict_optional:
 
 Disabling strict optional checking
@@ -474,82 +495,6 @@ if strict optional checking is disabled, since ``None`` is implicitly
 valid for any type, but it's much more
 useful for a programmer who is reading the code. This also makes
 it easier to migrate to strict ``None`` checking in the future.
-
-Class name forward references
-*****************************
-
-Python does not allow references to a class object before the class is
-defined. Thus this code does not work as expected:
-
-.. code-block:: python
-
-   def f(x: A) -> None:  # Error: Name A not defined
-       ...
-
-   class A:
-       ...
-
-In cases like these you can enter the type as a string literal — this
-is a *forward reference*:
-
-.. code-block:: python
-
-   def f(x: 'A') -> None:  # OK
-       ...
-
-   class A:
-       ...
-
-Starting from Python 3.7 (:pep:`563`), you can add the special import ``from __future__ import annotations``,
-which makes the use of string literals in annotations unnecessary:
-
-.. code-block:: python
-
-   from __future__ import annotations
-
-   def f(x: A) -> None:  # OK
-       ...
-
-   class A:
-       ...
-
-.. note::
-
-    Even with the ``__future__`` import, there are some scenarios that could still
-    require string literals, typically involving use of forward references or generics in:
-
-    * :ref:`type aliases <type-aliases>`;
-    * :ref:`casts <casts>`;
-    * type definitions (see :py:class:`~typing.TypeVar`, :py:func:`~typing.NewType`, :py:class:`~typing.NamedTuple`);
-    * base classes.
-
-    .. code-block:: python
-
-        # base class example
-        class A(Tuple['B', 'C']): ... # OK
-        class B: ...
-        class C: ...
-
-Of course, instead of using a string literal type or special import, you could move the
-function definition after the class definition. This is not always
-desirable or even possible, though.
-
-Any type can be entered as a string literal, and you can combine
-string-literal types with non-string-literal types freely:
-
-.. code-block:: python
-
-   def f(a: List['A']) -> None: ...  # OK
-   def g(n: 'int') -> None: ...      # OK, though not useful
-
-   class A: pass
-
-String literal types are never needed in ``# type:`` comments and :ref:`stub files <stub-files>`.
-
-String literal types must be defined (or imported) later *in the same
-module*.  They cannot be used to leave cross-module references
-unresolved.  (For dealing with import cycles, see
-:ref:`import-cycles`.)
 
 .. _type-aliases:
 
@@ -741,9 +686,9 @@ so use :py:data:`~typing.AnyStr`:
    def concat(x: AnyStr, y: AnyStr) -> AnyStr:
        return x + y
 
-   concat('a', 'b')     # Okay
-   concat(b'a', b'b')   # Okay
-   concat('a', b'b')    # Error: cannot mix bytes and unicode
+   concat('foo', 'foo')     # Okay
+   concat(b'foo', b'foo')   # Okay
+   concat('foo', b'foo')    # Error: cannot mix bytes and unicode
 
 For more details, see :ref:`type-variable-value-restriction`.
 

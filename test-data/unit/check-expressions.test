@@ -783,9 +783,9 @@ reveal_type(divmod(d, d))  # N: Revealed type is 'Tuple[__main__.Decimal, __main
 
 # Now some bad calls
 divmod()  # E: 'divmod' expects 2 arguments \
-          # E: Too few arguments for "divmod"
+          # E: Missing positional arguments "_x", "_y" in call to "divmod"
 divmod(7)  # E: 'divmod' expects 2 arguments \
-           # E: Too few arguments for "divmod"
+           # E: Missing positional argument "_y" in call to "divmod"
 divmod(7, 8, 9)  # E: 'divmod' expects 2 arguments \
                  # E: Too many arguments for "divmod"
 divmod(_x=7, _y=9)  # E: 'divmod' must be called with 2 positional arguments

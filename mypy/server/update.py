@@ -232,15 +232,17 @@ class FineGrainedBuildManager:
             self.manager.log_fine_grained('previous targets with errors: %s' %
                              sorted(self.previous_targets_with_errors))
 
+        blocking_error = None
         if self.blocking_error:
             # Handle blocking errors first. We'll exit as soon as we find a
             # module that still has blocking errors.
             self.manager.log_fine_grained('existing blocker: %s' % self.blocking_error[0])
             changed_modules = dedupe_modules([self.blocking_error] + changed_modules)
+            blocking_error = self.blocking_error[0]
             self.blocking_error = None
 
         while True:
-            result = self.update_one(changed_modules, initial_set, removed_set)
+            result = self.update_one(changed_modules, initial_set, removed_set, blocking_error)
             changed_modules, (next_id, next_path), blocker_messages = result
 
             if blocker_messages is not None:
@@ -289,9 +291,10 @@ class FineGrainedBuildManager:
     def update_one(self,
                    changed_modules: List[Tuple[str, str]],
                    initial_set: Set[str],
-                   removed_set: Set[str]) -> Tuple[List[Tuple[str, str]],
-                                                   Tuple[str, str],
-                                                   Optional[List[str]]]:
+                   removed_set: Set[str],
+                   blocking_error: Optional[str]) -> Tuple[List[Tuple[str, str]],
+                                                           Tuple[str, str],
+                                                           Optional[List[str]]]:
         """Process a module from the list of changed modules.
 
         Returns:
@@ -303,9 +306,17 @@ class FineGrainedBuildManager:
         """
         t0 = time.time()
         next_id, next_path = changed_modules.pop(0)
-        if next_id not in self.previous_modules and next_id not in initial_set:
-            self.manager.log_fine_grained('skip %r (module not in import graph)' % next_id)
+
+        # If we have a module with a blocking error that is no longer
+        # in the import graph, we must skip it as otherwise we'll be
+        # stuck with the blocking error.
+        if (next_id == blocking_error
+                and next_id not in self.previous_modules
+                and next_id not in initial_set):
+            self.manager.log_fine_grained(
+                'skip %r (module with blocking error not in import graph)' % next_id)
             return changed_modules, (next_id, next_path), None
+
         result = self.update_module(next_id, next_path, next_id in removed_set)
         remaining, (next_id, next_path), blocker_messages = result
         changed_modules = [(id, path) for id, path in changed_modules
@@ -1161,7 +1172,11 @@ def refresh_suppressed_submodules(
         return None
     # Find any submodules present in the directory.
     pkgdir = os.path.dirname(path)
-    for fnam in fscache.listdir(pkgdir):
+    try:
+        entries = fscache.listdir(pkgdir)
+    except FileNotFoundError:
+        entries = []
+    for fnam in entries:
         if (not fnam.endswith(('.py', '.pyi'))
                 or fnam.startswith("__init__.")
                 or fnam.count('.') != 1):

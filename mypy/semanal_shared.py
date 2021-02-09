@@ -78,6 +78,11 @@ class SemanticAnalyzerCoreInterface:
         """Is the specific __future__ feature imported"""
         raise NotImplementedError
 
+    @property
+    @abstractmethod
+    def is_stub_file(self) -> bool:
+        raise NotImplementedError
+
 
 @trait
 class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):

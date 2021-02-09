@@ -36,11 +36,10 @@ from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, ErrorInfo, report_internal_error
 from mypy.util import (
     DecodeError, decode_python_encoding, is_sub_path, get_mypy_comments, module_prefix,
-    read_py_file, hash_digest, is_typeshed_file
+    read_py_file, hash_digest, is_typeshed_file, is_stub_package_file
 )
 if TYPE_CHECKING:
     from mypy.report import Reports  # Avoid unconditional slow import
-from mypy import moduleinfo
 from mypy.fixup import fixup_module
 from mypy.modulefinder import (
     BuildSource, compute_search_paths, FindModuleCache, SearchPaths, ModuleSearchResult,
@@ -60,6 +59,7 @@ from mypy.typestate import TypeState, reset_global_state
 from mypy.renaming import VariableRenameVisitor
 from mypy.config_parser import parse_mypy_comments
 from mypy.freetree import free_tree
+from mypy.stubinfo import legacy_bundled_packages
 from mypy import errorcodes as codes
 
 
@@ -269,6 +269,9 @@ def _build(sources: List[BuildSource],
             reports.finish()
         if not cache_dir_existed and os.path.isdir(options.cache_dir):
             add_catch_all_gitignore(options.cache_dir)
+            exclude_from_backups(options.cache_dir)
+        if os.path.isdir(options.cache_dir):
+            record_missing_stub_packages(options.cache_dir, manager.missing_stub_packages)
 
 
 def default_data_dir() -> str:
@@ -641,6 +644,8 @@ class BuildManager:
         # the semantic analyzer, used only for testing. Currently used only by the new
         # semantic analyzer.
         self.processed_targets = []  # type: List[str]
+        # Missing stub packages encountered.
+        self.missing_stub_packages = set()  # type: Set[str]
 
     def dump_stats(self) -> None:
         if self.options.dump_build_stats:
@@ -1113,6 +1118,22 @@ def add_catch_all_gitignore(target_dir: str) -> None:
         with open(gitignore, "x") as f:
             print("# Automatically created by mypy", file=f)
             print("*", file=f)
+    except FileExistsError:
+        pass
+
+
+def exclude_from_backups(target_dir: str) -> None:
+    """Exclude the directory from various archives and backups supporting CACHEDIR.TAG.
+
+    If the CACHEDIR.TAG file exists the function is a no-op.
+    """
+    cachedir_tag = os.path.join(target_dir, "CACHEDIR.TAG")
+    try:
+        with open(cachedir_tag, "x") as f:
+            f.write("""Signature: 8a477f597d28d172789f06886806bc55
+# This file is a cache directory tag automatically created by mypy.
+# For information about cache directory tags see https://bford.info/cachedir/
+""")
     except FileExistsError:
         pass
 
@@ -1699,6 +1720,7 @@ class State:
     order = None  # type: int  # Order in which modules were encountered
     id = None  # type: str  # Fully qualified module name
     path = None  # type: Optional[str]  # Path to module source
+    abspath = None  # type: Optional[str]  # Absolute path to module source
     xpath = None  # type: str  # Path or '<string>'
     source = None  # type: Optional[str]  # Module source code
     source_hash = None  # type: Optional[str]  # Hash calculated based on the source code
@@ -1800,6 +1822,8 @@ class State:
             if follow_imports == 'silent':
                 self.ignore_all = True
         self.path = path
+        if path:
+            self.abspath = os.path.abspath(path)
         self.xpath = path or '<string>'
         if path and source is None and self.manager.fscache.isdir(path):
             source = ''
@@ -2181,12 +2205,14 @@ class State:
 
     def compute_fine_grained_deps(self) -> Dict[str, Set[str]]:
         assert self.tree is not None
-        if '/typeshed/' in self.xpath or self.xpath.startswith('typeshed/'):
-            # We don't track changes to typeshed -- the assumption is that they are only changed
-            # as part of mypy updates, which will invalidate everything anyway.
-            #
-            # TODO: Not a reliable test, as we could have a package named typeshed.
-            # TODO: Consider relaxing this -- maybe allow some typeshed changes to be tracked.
+        if self.id in ('builtins', 'typing', 'types', 'sys', '_typeshed'):
+            # We don't track changes to core parts of typeshed -- the
+            # assumption is that they are only changed as part of mypy
+            # updates, which will invalidate everything anyway. These
+            # will always be processed in the initial non-fine-grained
+            # build. Other modules may be brought in as a result of an
+            # fine-grained increment, and we may need these
+            # dependencies then to handle cyclic imports.
             return {}
         from mypy.server.deps import get_dependencies  # Lazy import to speed up startup
         return get_dependencies(target=self.tree,
@@ -2373,10 +2399,11 @@ def find_module_and_diagnose(manager: BuildManager,
                     follow_imports = 'silent'
         if (id in CORE_BUILTIN_MODULES
                 and not is_typeshed_file(result)
+                and not is_stub_package_file(result)
                 and not options.use_builtins_fixtures
                 and not options.custom_typeshed_dir):
             raise CompileError([
-                'mypy: "%s" shadows library module "%s"' % (result, id),
+                'mypy: "%s" shadows library module "%s"' % (os.path.relpath(result), id),
                 'note: A user-defined top-level module with name "%s" is not supported' % id
             ])
         return (result, follow_imports)
@@ -2384,10 +2411,21 @@ def find_module_and_diagnose(manager: BuildManager,
         # Could not find a module.  Typically the reason is a
         # misspelled module name, missing stub, module not in
         # search path or the module has not been installed.
+
+        ignore_missing_imports = options.ignore_missing_imports
+        top_level = file_id.partition('.')[0]
+        # Don't honor a global (not per-module) ignore_missing_imports
+        # setting for modules that used to have bundled stubs, as
+        # otherwise updating mypy can silently result in new false
+        # negatives.
+        global_ignore_missing_imports = manager.options.ignore_missing_imports
+        if top_level in legacy_bundled_packages and global_ignore_missing_imports:
+            ignore_missing_imports = False
+
         if skip_diagnose:
             raise ModuleNotFound
         if caller_state:
-            if not (options.ignore_missing_imports or in_partial_package(id, manager)):
+            if not (ignore_missing_imports or in_partial_package(id, manager)):
                 module_not_found(manager, caller_line, caller_state, id, result)
             raise ModuleNotFound
         elif root_source:
@@ -2478,15 +2516,17 @@ def module_not_found(manager: BuildManager, line: int, caller_state: State,
         errors.report(line, 0, "Cannot find 'builtins' module. Typeshed appears broken!",
                       blocker=True)
         errors.raise_error()
-    elif moduleinfo.is_std_lib_module(manager.options.python_version, target):
-        msg = "No library stub file for standard library module '{}'".format(target)
-        note = "(Stub files are from https://github.com/python/typeshed)"
-        errors.report(line, 0, msg, code=codes.IMPORT)
-        errors.report(line, 0, note, severity='note', only_once=True, code=codes.IMPORT)
     else:
-        msg, note = reason.error_message_templates()
-        errors.report(line, 0, msg.format(target), code=codes.IMPORT)
-        errors.report(line, 0, note, severity='note', only_once=True, code=codes.IMPORT)
+        msg, notes = reason.error_message_templates()
+        pyver = '%d.%d' % manager.options.python_version
+        errors.report(line, 0, msg.format(module=target, pyver=pyver), code=codes.IMPORT)
+        top_level = target.partition('.')[0]
+        for note in notes:
+            if '{stub_dist}' in note:
+                note = note.format(stub_dist=legacy_bundled_packages[top_level])
+            errors.report(line, 0, note, severity='note', only_once=True, code=codes.IMPORT)
+        if reason is ModuleNotFoundReason.STUBS_NOT_INSTALLED:
+            manager.missing_stub_packages.add(legacy_bundled_packages[top_level])
     errors.set_import_context(save_import_context)
 
 
@@ -2521,36 +2561,24 @@ def skipping_ancestor(manager: BuildManager, id: str, path: str, ancestor_for: '
                           severity='note', only_once=True)
 
 
-def log_configuration(manager: BuildManager) -> None:
+def log_configuration(manager: BuildManager, sources: List[BuildSource]) -> None:
     """Output useful configuration information to LOG and TRACE"""
 
     manager.log()
     configuration_vars = [
         ("Mypy Version", __version__),
         ("Config File", (manager.options.config_file or "Default")),
-    ]
-
-    src_pth_str = "Source Path"
-    src_pths = list(manager.source_set.source_paths.copy())
-    src_pths.sort()
-
-    if len(src_pths) > 1:
-        src_pth_str += "s"
-        configuration_vars.append((src_pth_str, " ".join(src_pths)))
-    elif len(src_pths) == 1:
-        configuration_vars.append((src_pth_str, src_pths.pop()))
-    else:
-        configuration_vars.append((src_pth_str, "None"))
-
-    configuration_vars.extend([
         ("Configured Executable", manager.options.python_executable or "None"),
         ("Current Executable", sys.executable),
         ("Cache Dir", manager.options.cache_dir),
         ("Compiled", str(not __file__.endswith(".py"))),
-    ])
+    ]
 
     for conf_name, conf_value in configuration_vars:
         manager.log("{:24}{}".format(conf_name + ":", conf_value))
+
+    for source in sources:
+        manager.log("{:24}{}".format("Found source:", source))
 
     # Complete list of searched paths can get very long, put them under TRACE
     for path_type, paths in manager.search_paths._asdict().items():
@@ -2571,7 +2599,7 @@ def dispatch(sources: List[BuildSource],
              manager: BuildManager,
              stdout: TextIO,
              ) -> Graph:
-    log_configuration(manager)
+    log_configuration(manager, sources)
 
     t0 = time.time()
     graph = load_graph(sources, manager)
@@ -2740,7 +2768,8 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
             manager.errors.set_file(st.xpath, st.id)
             manager.errors.report(
                 -1, -1,
-                "Duplicate module named '%s' (also at '%s')" % (st.id, graph[st.id].xpath)
+                "Duplicate module named '%s' (also at '%s')" % (st.id, graph[st.id].xpath),
+                blocker=True,
             )
             p1 = len(pathlib.PurePath(st.xpath).parents)
             p2 = len(pathlib.PurePath(graph[st.id].xpath).parents)
@@ -2758,7 +2787,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
 
     # Note: Running this each time could be slow in the daemon. If it's a problem, we
     # can do more work to maintain this incrementally.
-    seen_files = {st.path: st for st in graph.values() if st.path}
+    seen_files = {st.abspath: st for st in graph.values() if st.path}
 
     # Collect dependencies.  We go breadth-first.
     # More nodes might get added to new as we go, but that's fine.
@@ -2805,16 +2834,18 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                     if dep in st.dependencies_set:
                         st.suppress_dependency(dep)
                 else:
-                    if newst.path in seen_files:
-                        manager.errors.report(
-                            -1, 0,
-                            "Source file found twice under different module names: '{}' and '{}'".
-                            format(seen_files[newst.path].id, newst.id),
-                            blocker=True)
-                        manager.errors.raise_error()
-
                     if newst.path:
-                        seen_files[newst.path] = newst
+                        newst_path = os.path.abspath(newst.path)
+
+                        if newst_path in seen_files:
+                            manager.errors.report(
+                                -1, 0,
+                                "Source file found twice under different module names: "
+                                "'{}' and '{}'".format(seen_files[newst_path].id, newst.id),
+                                blocker=True)
+                            manager.errors.raise_error()
+
+                        seen_files[newst_path] = newst
 
                     assert newst.id not in graph, newst.id
                     graph[newst.id] = newst
@@ -3212,3 +3243,23 @@ def topsort(data: Dict[AbstractSet[str],
                 for item, dep in data.items()
                 if item not in ready}
     assert not data, "A cyclic dependency exists amongst %r" % data
+
+
+def missing_stubs_file(cache_dir: str) -> str:
+    return os.path.join(cache_dir, 'missing_stubs')
+
+
+def record_missing_stub_packages(cache_dir: str, missing_stub_packages: Set[str]) -> None:
+    """Write a file containing missing stub packages.
+
+    This allows a subsequent "mypy --install-types" run (without other arguments)
+    to install missing stub packages.
+    """
+    fnam = missing_stubs_file(cache_dir)
+    if missing_stub_packages:
+        with open(fnam, 'w') as f:
+            for pkg in sorted(missing_stub_packages):
+                f.write('%s\n' % pkg)
+    else:
+        if os.path.isfile(fnam):
+            os.remove(fnam)

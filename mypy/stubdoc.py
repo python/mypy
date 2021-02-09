@@ -140,7 +140,8 @@ class DocStringParser:
                 self.state.pop()
             elif self.state[-1] == STATE_ARGUMENT_LIST:
                 self.arg_name = self.accumulator
-                if not _ARG_NAME_RE.match(self.arg_name):
+                if not (token.string == ')' and self.accumulator.strip() == '') \
+                        and not _ARG_NAME_RE.match(self.arg_name):
                     # Invalid argument name.
                     self.reset()
                     return
@@ -202,7 +203,7 @@ class DocStringParser:
         return list(sorted(self.signatures, key=lambda x: 1 if args_kwargs(x) else 0))
 
 
-def infer_sig_from_docstring(docstr: str, name: str) -> Optional[List[FunctionSig]]:
+def infer_sig_from_docstring(docstr: Optional[str], name: str) -> Optional[List[FunctionSig]]:
     """Convert function signature to list of TypedFunctionSig
 
     Look for function signatures of function in docstring. Signature is a string of
@@ -235,7 +236,7 @@ def infer_sig_from_docstring(docstr: str, name: str) -> Optional[List[FunctionSi
         """return true if function argument names are unique"""
         return len(sig.args) == len(set((arg.name for arg in sig.args)))
 
-    # Return only signatures that have unique argument names. Mypy fails on non-uniqnue arg names.
+    # Return only signatures that have unique argument names. Mypy fails on non-unique arg names.
     return [sig for sig in sigs if is_unique_args(sig)]
 
 

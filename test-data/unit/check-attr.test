@@ -361,6 +361,46 @@ class A:
 a = A(5)
 a.a = 16  # E: Property "a" defined in "A" is read-only
 [builtins fixtures/bool.pyi]
+[case testAttrsNextGenFrozen]
+from attr import frozen, field
+
+@frozen
+class A:
+    a = field()
+
+a = A(5)
+a.a = 16  # E: Property "a" defined in "A" is read-only
+[builtins fixtures/bool.pyi]
+
+[case testAttrsNextGenDetect]
+from attr import define, field
+
+@define
+class A:
+    a = field()
+
+@define
+class B:
+    a: int
+
+@define
+class C:
+    a: int = field()
+    b = field()
+
+@define
+class D:
+    a: int
+    b = field()
+
+reveal_type(A)  # N: Revealed type is 'def (a: Any) -> __main__.A'
+reveal_type(B)  # N: Revealed type is 'def (a: builtins.int) -> __main__.B'
+reveal_type(C)  # N: Revealed type is 'def (a: builtins.int, b: Any) -> __main__.C'
+reveal_type(D)  # N: Revealed type is 'def (b: Any) -> __main__.D'
+
+[builtins fixtures/bool.pyi]
+
+
 
 [case testAttrsDataClass]
 import attr
@@ -413,6 +453,109 @@ A(['str'], 7)  # E: Cannot infer type argument 1 of "A"
 A([1], '2')  # E: Cannot infer type argument 1 of "A"
 
 [builtins fixtures/list.pyi]
+
+
+[case testAttrsUntypedGenericInheritance]
+from typing import Generic, TypeVar
+import attr
+
+T = TypeVar("T")
+
+@attr.s(auto_attribs=True)
+class Base(Generic[T]):
+    attr: T
+
+@attr.s(auto_attribs=True)
+class Sub(Base):
+    pass
+
+sub = Sub(attr=1)
+reveal_type(sub)  # N: Revealed type is '__main__.Sub'
+reveal_type(sub.attr)  # N: Revealed type is 'Any'
+
+[builtins fixtures/bool.pyi]
+
+
+[case testAttrsGenericInheritance]
+from typing import Generic, TypeVar
+import attr
+
+S = TypeVar("S")
+T = TypeVar("T")
+
+@attr.s(auto_attribs=True)
+class Base(Generic[T]):
+    attr: T
+
+@attr.s(auto_attribs=True)
+class Sub(Base[S]):
+    pass
+
+sub_int = Sub[int](attr=1)
+reveal_type(sub_int)  # N: Revealed type is '__main__.Sub[builtins.int*]'
+reveal_type(sub_int.attr)  # N: Revealed type is 'builtins.int*'
+
+sub_str = Sub[str](attr='ok')
+reveal_type(sub_str)  # N: Revealed type is '__main__.Sub[builtins.str*]'
+reveal_type(sub_str.attr)  # N: Revealed type is 'builtins.str*'
+
+[builtins fixtures/bool.pyi]
+
+
+[case testAttrsGenericInheritance]
+from typing import Generic, TypeVar
+import attr
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+T3 = TypeVar("T3")
+
+@attr.s(auto_attribs=True)
+class Base(Generic[T1, T2, T3]):
+    one: T1
+    two: T2
+    three: T3
+
+@attr.s(auto_attribs=True)
+class Sub(Base[int, str, float]):
+    pass
+
+sub = Sub(one=1, two='ok', three=3.14)
+reveal_type(sub)  # N: Revealed type is '__main__.Sub'
+reveal_type(sub.one)  # N: Revealed type is 'builtins.int*'
+reveal_type(sub.two)  # N: Revealed type is 'builtins.str*'
+reveal_type(sub.three)  # N: Revealed type is 'builtins.float*'
+
+[builtins fixtures/bool.pyi]
+
+
+[case testAttrsMultiGenericInheritance]
+from typing import Generic, TypeVar
+import attr
+
+T = TypeVar("T")
+
+@attr.s(auto_attribs=True, eq=False)
+class Base(Generic[T]):
+    base_attr: T
+
+S = TypeVar("S")
+
+@attr.s(auto_attribs=True, eq=False)
+class Middle(Base[int], Generic[S]):
+    middle_attr: S
+
+@attr.s(auto_attribs=True, eq=False)
+class Sub(Middle[str]):
+    pass
+
+sub = Sub(base_attr=1, middle_attr='ok')
+reveal_type(sub)  # N: Revealed type is '__main__.Sub'
+reveal_type(sub.base_attr)  # N: Revealed type is 'builtins.int*'
+reveal_type(sub.middle_attr)  # N: Revealed type is 'builtins.str*'
+
+[builtins fixtures/bool.pyi]
+
 
 [case testAttrsGenericClassmethod]
 from typing import TypeVar, Generic, Optional
@@ -480,7 +623,7 @@ class A:
        return cls(6, 'hello')
     @classmethod
     def bad(cls) -> A:
-        return cls(17)  # E: Too few arguments for "A"
+        return cls(17)  # E: Missing positional argument "b" in call to "A"
     def foo(self) -> int:
        return self.a
 reveal_type(A)  # N: Revealed type is 'def (a: builtins.int, b: builtins.str) -> __main__.A'
@@ -1203,7 +1346,7 @@ if MYPY:  # Force deferral
 class C:
     total = attr.ib(type=int)
 
-C()  # E: Too few arguments for "C"
+C()  # E: Missing positional argument "total" in call to "C"
 C('no')  # E: Argument 1 to "C" has incompatible type "str"; expected "int"
 [file other.py]
 import lib

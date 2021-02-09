@@ -590,8 +590,7 @@ class MessageBuilder:
 
     def too_few_arguments(self, callee: CallableType, context: Context,
                           argument_names: Optional[Sequence[Optional[str]]]) -> None:
-        if (argument_names is not None and not all(k is None for k in argument_names)
-                and len(argument_names) >= 1):
+        if argument_names is not None:
             num_positional_args = sum(k is None for k in argument_names)
             arguments_left = callee.arg_names[num_positional_args:callee.min_args]
             diff = [k for k in arguments_left if k not in argument_names]
@@ -603,6 +602,9 @@ class MessageBuilder:
             if callee_name is not None and diff and all(d is not None for d in diff):
                 args = '", "'.join(cast(List[str], diff))
                 msg += ' "{}" in call to {}'.format(args, callee_name)
+            else:
+                msg = 'Too few arguments' + for_function(callee)
+
         else:
             msg = 'Too few arguments' + for_function(callee)
         self.fail(msg, context, code=codes.CALL_ARG)
@@ -1118,8 +1120,8 @@ class MessageBuilder:
             if actual_set < expected_set:
                 # Use list comprehension instead of set operations to preserve order.
                 missing = [key for key in expected_keys if key not in actual_set]
-                self.fail('{} missing for TypedDict {}'.format(
-                    format_key_list(missing, short=True).capitalize(), format_type(typ)),
+                self.fail('Missing {} for TypedDict {}'.format(
+                    format_key_list(missing, short=True), format_type(typ)),
                     context, code=codes.TYPEDDICT_ITEM)
                 return
             else:

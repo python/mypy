@@ -58,9 +58,9 @@
 extern "C" {
 #endif
 int CPyArg_ParseTupleAndKeywords(PyObject *, PyObject *,
-                                 const char *, char **, ...);
+                                 const char *, const char * const *, ...);
 int CPyArg_VaParseTupleAndKeywords(PyObject *, PyObject *,
-                                   const char *, char **, va_list);
+                                   const char *, const char * const *, va_list);
 
 
 #define FLAG_COMPAT 1
@@ -98,7 +98,7 @@ static Py_ssize_t convertbuffer(PyObject *, const void **p, const char **);
 static int getbuffer(PyObject *, Py_buffer *, const char**);
 
 static int vgetargskeywords(PyObject *, PyObject *,
-                            const char *, char **, va_list *, int);
+                            const char *, const char * const *, va_list *, int);
 static const char *skipitem(const char **, va_list *, int);
 
 /* Handle cleanup of allocated memory in case of exception */
@@ -1135,7 +1135,7 @@ int
 CPyArg_ParseTupleAndKeywords(PyObject *args,
                              PyObject *keywords,
                              const char *format,
-                             char **kwlist, ...)
+                             const char * const *kwlist, ...)
 {
     int retval;
     va_list va;
@@ -1160,7 +1160,7 @@ int
 CPyArg_VaParseTupleAndKeywords(PyObject *args,
                                PyObject *keywords,
                                const char *format,
-                               char **kwlist, va_list va)
+                               const char * const *kwlist, va_list va)
 {
     int retval;
     va_list lva;
@@ -1185,7 +1185,7 @@ CPyArg_VaParseTupleAndKeywords(PyObject *args,
 
 static int
 vgetargskeywords(PyObject *args, PyObject *kwargs, const char *format,
-                 char **kwlist, va_list *p_va, int flags)
+                 const char * const *kwlist, va_list *p_va, int flags)
 {
     char msgbuf[512];
     int levels[32];

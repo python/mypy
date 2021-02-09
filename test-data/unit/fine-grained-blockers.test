@@ -21,7 +21,7 @@ def f() -> None: pass
 ==
 a.py:1: error: invalid syntax
 ==
-main:2: error: Too few arguments for "f"
+main:2: error: Missing positional argument "x" in call to "f"
 ==
 
 [case testParseErrorShowSource]
@@ -42,7 +42,7 @@ a.py:1: error: invalid syntax  [syntax]
     def f(x: int) ->
                     ^
 ==
-main:3: error: Too few arguments for "f"  [call-arg]
+main:3: error: Missing positional argument "x" in call to "f"  [call-arg]
     a.f()
     ^
 ==
@@ -65,7 +65,7 @@ a.py:1: error: invalid syntax
 ==
 a.py:2: error: invalid syntax
 ==
-main:2: error: Too few arguments for "f"
+main:2: error: Missing positional argument "x" in call to "f"
 
 [case testSemanticAnalysisBlockingError]
 import a
@@ -81,7 +81,7 @@ def f(x: int) -> None: pass
 ==
 a.py:2: error: 'break' outside loop
 ==
-main:2: error: Too few arguments for "f"
+main:2: error: Missing positional argument "x" in call to "f"
 
 [case testBlockingErrorWithPreviousError]
 import a
@@ -124,7 +124,7 @@ class C:
 ==
 a.py:1: error: invalid syntax
 ==
-main:5: error: Too few arguments for "f" of "C"
+main:5: error: Missing positional argument "x" in call to "f" of "C"
 
 [case testAddFileWithBlockingError]
 import a
@@ -134,7 +134,7 @@ x x
 [file a.py.3]
 def f() -> None: pass
 [out]
-main:1: error: Cannot find implementation or library stub for module named 'a'
+main:1: error: Cannot find implementation or library stub for module named "a"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 a.py:1: error: invalid syntax
@@ -215,7 +215,7 @@ a.py:1: error: invalid syntax
 ==
 a.py:1: error: invalid syntax
 ==
-a.py:2: error: Too few arguments for "f"
+a.py:2: error: Missing positional argument "x" in call to "f"
 
 [case testModifyTwoFilesIntroduceTwoBlockingErrors]
 import a
@@ -277,9 +277,9 @@ x x
 ==
 a.py:1: error: invalid syntax
 ==
-main:1: error: Cannot find implementation or library stub for module named 'a'
+main:1: error: Cannot find implementation or library stub for module named "a"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-b.py:1: error: Cannot find implementation or library stub for module named 'a'
+b.py:1: error: Cannot find implementation or library stub for module named "a"
 
 [case testDeleteFileWithBlockingError-only_when_cache]
 -- Different cache/no-cache tests because:
@@ -298,9 +298,9 @@ x x
 ==
 a.py:1: error: invalid syntax
 ==
-b.py:1: error: Cannot find implementation or library stub for module named 'a'
+b.py:1: error: Cannot find implementation or library stub for module named "a"
 b.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:1: error: Cannot find implementation or library stub for module named 'a'
+main:1: error: Cannot find implementation or library stub for module named "a"
 
 [case testModifyFileWhileBlockingErrorElsewhere]
 import a
@@ -371,7 +371,7 @@ class A: pass
 [builtins fixtures/module.pyi]
 [out]
 ==
-main:1: error: Cannot find implementation or library stub for module named 'a'
+main:1: error: Cannot find implementation or library stub for module named "a"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 main:4: error: "A" has no attribute "f"
@@ -389,7 +389,7 @@ class A:
 [builtins fixtures/module.pyi]
 [out]
 ==
-main:1: error: Cannot find implementation or library stub for module named 'a'
+main:1: error: Cannot find implementation or library stub for module named "a"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 ==
 main:1: error: Module 'a' has no attribute 'A'

@@ -7,7 +7,7 @@ from mypy.test.data import DataDrivenTestCase
 from mypy.errors import CompileError
 
 from mypyc.common import TOP_LEVEL_NAME, IS_32_BIT_PLATFORM
-from mypyc.ir.func_ir import format_func
+from mypyc.ir.pprint import format_func
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite, build_ir_for_single_file,
     assert_test_output, remove_comment_lines, replace_native_int, replace_word_size

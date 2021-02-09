@@ -13,14 +13,11 @@ if sys.version_info < (3, 5, 0):
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 
 # This requires setuptools when building; setuptools is not needed
-# when installing from a wheel file (though it is still neeeded for
+# when installing from a wheel file (though it is still needed for
 # alternative forms of installing, as suggested by README.md).
-from setuptools import setup
+from setuptools import setup, find_packages
 from setuptools.command.build_py import build_py
 from mypy.version import __version__ as version
-from mypy import git
-
-git.verify_git_integrity_or_abort(".")
 
 description = 'Optional static typing for Python'
 long_description = '''
@@ -73,6 +70,7 @@ cmdclass = {'build_py': CustomPythonBuild}
 package_data = ['py.typed']
 
 package_data += find_package_data(os.path.join('mypy', 'typeshed'), ['*.py', '*.pyi'])
+package_data += [os.path.join('mypy', 'typeshed', 'stdlib', 'VERSIONS')]
 
 package_data += find_package_data(os.path.join('mypy', 'xml'), ['*.xsd', '*.xslt', '*.css'])
 
@@ -165,6 +163,7 @@ classifiers = [
     'Programming Language :: Python :: 3.6',
     'Programming Language :: Python :: 3.7',
     'Programming Language :: Python :: 3.8',
+    'Programming Language :: Python :: 3.9',
     'Topic :: Software Development',
 ]
 
@@ -178,11 +177,7 @@ setup(name='mypy',
       license='MIT License',
       py_modules=[],
       ext_modules=ext_modules,
-      packages=[
-          'mypy', 'mypy.test', 'mypy.server', 'mypy.plugins', 'mypy.dmypy',
-          'mypyc', 'mypyc.test', 'mypyc.codegen', 'mypyc.ir', 'mypyc.irbuild',
-          'mypyc.primitives', 'mypyc.transform'
-      ],
+      packages=find_packages(),
       package_data={'mypy': package_data},
       scripts=['scripts/mypyc'],
       entry_points={'console_scripts': ['mypy=mypy.__main__:console_entry',
@@ -196,6 +191,9 @@ setup(name='mypy',
       install_requires=['typed_ast >= 1.4.0, < 1.5.0',
                         'typing_extensions>=3.7.4',
                         'mypy_extensions >= 0.4.3, < 0.5.0',
+                        'types-typing-extensions>=3.7.0',
+                        'types-mypy-extensions>=0.4.0',
+                        'toml',
                         ],
       # Same here.
       extras_require={'dmypy': 'psutil >= 4.0'},

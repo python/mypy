@@ -620,11 +620,11 @@ class Server:
 
         fix_module_deps(graph)
 
-        # Store current file state as side effect
-        self.fswatcher.find_changed()
-
         self.previous_sources = find_all_sources_in_build(graph)
         self.update_sources(self.previous_sources)
+
+        # Store current file state as side effect
+        self.fswatcher.find_changed()
 
         t5 = time.time()
 
@@ -743,7 +743,7 @@ class Server:
                 n_errors, n_files = count_stats(messages)
                 if n_errors:
                     summary = self.formatter.format_error(n_errors, n_files, n_sources,
-                                                          use_color)
+                                                          use_color=use_color)
             else:
                 summary = self.formatter.format_success(n_sources, use_color)
             if summary:

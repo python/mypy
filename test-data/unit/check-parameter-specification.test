@@ -1,9 +1,11 @@
 [case testBasicParamSpec]
+# flags: --wip-pep-612
 from typing_extensions import ParamSpec
 P = ParamSpec('P')
 [builtins fixtures/tuple.pyi]
 
 [case testParamSpecLocations]
+# flags: --wip-pep-612
 from typing import Callable, List
 from typing_extensions import ParamSpec, Concatenate
 P = ParamSpec('P')

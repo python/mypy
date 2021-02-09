@@ -45,29 +45,47 @@ pkg/subpkg/a.py:1: error: Name 'undef' is not defined
 # cmd: mypy dir
 [file dir/a.py]
 undef
-[file dir/subdir/a.py]
+[file dir/subdir/b.py]
 undef
 [out]
 dir/a.py:1: error: Name 'undef' is not defined
+dir/subdir/b.py:1: error: Name 'undef' is not defined
 
-[case testCmdlineNonPackageSlash]
-# cmd: mypy dir/
+[case testCmdlineNonPackageDuplicate]
+# cmd: mypy dir
 [file dir/a.py]
 undef
 [file dir/subdir/a.py]
 undef
 [out]
+dir/a.py: error: Duplicate module named 'a' (also at 'dir/subdir/a.py')
+dir/a.py: error: Are you missing an __init__.py?
+== Return code: 2
+
+[case testCmdlineNonPackageSlash]
+# cmd: mypy dir/
+[file dir/a.py]
+undef
+import b
+[file dir/subdir/b.py]
+undef
+import a
+[out]
 dir/a.py:1: error: Name 'undef' is not defined
+dir/subdir/b.py:1: error: Name 'undef' is not defined
 
 [case testCmdlinePackageContainingSubdir]
 # cmd: mypy pkg
 [file pkg/__init__.py]
 [file pkg/a.py]
 undef
+import a
 [file pkg/subdir/a.py]
 undef
+import pkg.a
 [out]
 pkg/a.py:1: error: Name 'undef' is not defined
+pkg/subdir/a.py:1: error: Name 'undef' is not defined
 
 [case testCmdlineNonPackageContainingPackage]
 # cmd: mypy dir
@@ -316,7 +334,7 @@ from baz import baz
 baz(bar(foo(42)))
 baz(bar(foo('oof')))
 [out]
-file.py:1: error: Cannot find implementation or library stub for module named 'no_stubs'
+file.py:1: error: Cannot find implementation or library stub for module named "no_stubs"
 file.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 file.py:6: error: Argument 1 to "foo" has incompatible type "str"; expected "int"
 
@@ -471,7 +489,7 @@ reveal_type(missing.x)  # Expect Any
 \[mypy]
 ignore_missing_imports = False
 [out]
-main.py:1: error: Cannot find implementation or library stub for module named 'missing'
+main.py:1: error: Cannot find implementation or library stub for module named "missing"
 main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main.py:2: note: Revealed type is 'Any'
 
@@ -500,10 +518,10 @@ import missing
 [file main/grandparent.py]
 [file main/__init__.py]
 [out]
-main.py:1: error: Cannot find implementation or library stub for module named 'parent'
+main.py:1: error: Cannot find implementation or library stub for module named "parent"
 main.py:1: note: You may be running mypy in a subpackage, mypy should be run on the package root
-main.py:2: error: Cannot find implementation or library stub for module named 'grandparent'
-main.py:3: error: Cannot find implementation or library stub for module named 'missing'
+main.py:2: error: Cannot find implementation or library stub for module named "grandparent"
+main.py:3: error: Cannot find implementation or library stub for module named "missing"
 main.py:3: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testImportInParentButNoInit]
@@ -514,7 +532,7 @@ import needs_init
 [file main/needs_init.py]
 [file main/__init__.py]
 [out]
-main.py:1: error: Cannot find implementation or library stub for module named 'needs_init'
+main.py:1: error: Cannot find implementation or library stub for module named "needs_init"
 main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testConfigNoErrorForUnknownXFlagInSubsection]
@@ -549,9 +567,9 @@ import a.b
 [file a.b.py]
 whatever
 [out]
-main.py:1: error: Cannot find implementation or library stub for module named 'a.b'
+main.py:1: error: Cannot find implementation or library stub for module named "a.b"
 main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main.py:1: error: Cannot find implementation or library stub for module named 'a'
+main.py:1: error: Cannot find implementation or library stub for module named "a"
 
 [case testPythonVersionTooOld10]
 # cmd: mypy -c pass
@@ -645,6 +663,7 @@ a.__pow__() # E: All overload variants of "__pow__" of "int" require at least on
 # cmd: mypy m.py
 [file mypy.ini]
 \[mypy]
+python_version=3.6
 \[mypy-m]
 disallow_any_generics = True
 
@@ -790,6 +809,26 @@ def bar(a: int, b: int) -> str:
     return a + b
 [out]
 src/anamespace/foo/bar.py:2: error: Incompatible return value type (got "int", expected "str")
+
+[case testNestedPEP420Packages]
+# cmd: mypy -p pkg --namespace-packages
+[file pkg/a1/b/c/d/e.py]
+x = 0  # type: str
+[file pkg/a1/b/f.py]
+from pkg.a1.b.c.d.e import x
+x + 1
+
+[file pkg/a2/__init__.py]
+[file pkg/a2/b/c/d/e.py]
+x = 0  # type: str
+[file pkg/a2/b/f.py]
+from pkg.a2.b.c.d.e import x
+x + 1
+[out]
+pkg/a2/b/c/d/e.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+pkg/a1/b/c/d/e.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+pkg/a2/b/f.py:2: error: Unsupported operand types for + ("str" and "int")
+pkg/a1/b/f.py:2: error: Unsupported operand types for + ("str" and "int")
 
 [case testFollowImportStubs1]
 # cmd: mypy main.py
@@ -1090,20 +1129,6 @@ tabs.py:2: error: Incompatible return value type (got "None", expected "str")
             return None
                    ^
 
-[case testSpecialTypeshedGenericNote]
-# cmd: mypy --disallow-any-generics --python-version=3.6 test.py
-[file test.py]
-from os import PathLike
-from queue import Queue
-
-p: PathLike
-q: Queue
-[out]
-test.py:4: error: Missing type parameters for generic type "PathLike"
-test.py:4: note: Subscripting classes that are not generic at runtime may require escaping, see https://mypy.readthedocs.io/en/latest/common_issues.html#not-generic-runtime
-test.py:5: error: Missing type parameters for generic type "Queue"
-test.py:5: note: Subscripting classes that are not generic at runtime may require escaping, see https://mypy.readthedocs.io/en/latest/common_issues.html#not-generic-runtime
-
 [case testErrorMessageWhenOpenPydFile]
 # cmd: mypy a.pyd
 [file a.pyd]
@@ -1212,3 +1237,47 @@ class Thing: ...
 [out]
 Success: no issues found in 1 source file
 == Return code: 0
+
+[case testBlocker]
+# cmd: mypy pkg --error-summary --disable-error-code syntax
+[file pkg/x.py]
+public static void main(String[] args)
+[file pkg/y.py]
+x: str = 0
+[out]
+pkg/x.py:1: error: invalid syntax
+Found 1 error in 1 file (errors prevented further checking)
+== Return code: 2
+
+[case testCmdlinePackageAndFile]
+# cmd: mypy -p pkg file
+[out]
+usage: mypy [-h] [-v] [-V] [more options; see below]
+            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
+mypy: error: May only specify one of: module/package, files, or command.
+== Return code: 2
+
+[case testCmdlinePackageAndIniFiles]
+# cmd: mypy -p pkg
+[file mypy.ini]
+\[mypy]
+files=file
+[file pkg.py]
+x = 0  # type: str
+[file file.py]
+y = 0  # type: str
+[out]
+pkg.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+
+[case testCmdlineModuleAndIniFiles]
+# cmd: mypy -m pkg
+[file mypy.ini]
+\[mypy]
+files=file
+[file pkg.py]
+x = 0  # type: str
+[file file.py]
+y = 0  # type: str
+[out]
+pkg.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")

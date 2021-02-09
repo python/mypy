@@ -24,6 +24,7 @@ def map_actuals_to_formals(actual_kinds: List[int],
     """
     nformals = len(formal_kinds)
     formal_to_actual = [[] for i in range(nformals)]  # type: List[List[int]]
+    ambiguous_actual_kwargs = []  # type: List[int]
     fi = 0
     for ai, actual_kind in enumerate(actual_kinds):
         if actual_kind == nodes.ARG_POS:
@@ -76,18 +77,25 @@ def map_actuals_to_formals(actual_kinds: List[int],
                         formal_to_actual[formal_kinds.index(nodes.ARG_STAR2)].append(ai)
             else:
                 # We don't exactly know which **kwargs are provided by the
-                # caller. Assume that they will fill the remaining arguments.
-                for fi in range(nformals):
-                    # TODO: If there are also tuple varargs, we might be missing some potential
-                    #       matches if the tuple was short enough to not match everything.
-                    no_certain_match = (
-                        not formal_to_actual[fi]
-                        or actual_kinds[formal_to_actual[fi][0]] == nodes.ARG_STAR)
-                    if ((formal_names[fi]
-                            and no_certain_match
-                            and formal_kinds[fi] != nodes.ARG_STAR) or
-                            formal_kinds[fi] == nodes.ARG_STAR2):
-                        formal_to_actual[fi].append(ai)
+                # caller, so we'll defer until all the other unambiguous
+                # actuals have been processed
+                ambiguous_actual_kwargs.append(ai)
+
+    if ambiguous_actual_kwargs:
+        # Assume the ambiguous kwargs will fill the remaining arguments.
+        #
+        # TODO: If there are also tuple varargs, we might be missing some potential
+        #       matches if the tuple was short enough to not match everything.
+        unmatched_formals = [fi for fi in range(nformals)
+                             if (formal_names[fi]
+                                 and (not formal_to_actual[fi]
+                                      or actual_kinds[formal_to_actual[fi][0]] == nodes.ARG_STAR)
+                                 and formal_kinds[fi] != nodes.ARG_STAR)
+                             or formal_kinds[fi] == nodes.ARG_STAR2]
+        for ai in ambiguous_actual_kwargs:
+            for fi in unmatched_formals:
+                formal_to_actual[fi].append(ai)
+
     return formal_to_actual
 
 
