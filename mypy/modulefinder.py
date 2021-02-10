@@ -7,6 +7,7 @@ import ast
 import collections
 import functools
 import os
+import re
 import subprocess
 import sys
 from enum import Enum
@@ -443,9 +444,14 @@ class FindModuleCache:
         names = sorted(self.fscache.listdir(package_path))
         for name in names:
             # Skip certain names altogether
-            if name == '__pycache__' or name.startswith('.') or name.endswith('~'):
+            if name in ("__pycache__", "site-packages", "node_modules") or name.startswith("."):
                 continue
             subpath = os.path.join(package_path, name)
+
+            if self.options and matches_exclude(
+                subpath, self.options.exclude, self.fscache, self.options.verbosity >= 2
+            ):
+                continue
 
             if self.fscache.isdir(subpath):
                 # Only recurse into packages
@@ -460,11 +466,24 @@ class FindModuleCache:
                 if stem == '__init__':
                     continue
                 if stem not in seen and '.' not in stem and suffix in PYTHON_EXTENSIONS:
-                    # (If we sorted names) we could probably just make the BuildSource ourselves,
-                    # but this ensures compatibility with find_module / the cache
+                    # (If we sorted names by keyfunc) we could probably just make the BuildSource
+                    # ourselves, but this ensures compatibility with find_module / the cache
                     seen.add(stem)
                     sources.extend(self.find_modules_recursive(module + '.' + stem))
         return sources
+
+
+def matches_exclude(subpath: str, exclude: str, fscache: FileSystemCache, verbose: bool) -> bool:
+    if not exclude:
+        return False
+    subpath_str = os.path.abspath(subpath).replace(os.sep, "/")
+    if fscache.isdir(subpath):
+        subpath_str += "/"
+    if re.search(exclude, subpath_str):
+        if verbose:
+            print("TRACE: Excluding {}".format(subpath_str), file=sys.stderr)
+        return True
+    return False
 
 
 def verify_module(fscache: FileSystemCache, id: str, path: str, prefix: str) -> bool:

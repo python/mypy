@@ -59,7 +59,7 @@ undef
 undef
 [out]
 dir/a.py: error: Duplicate module named 'a' (also at 'dir/subdir/a.py')
-dir/a.py: error: Are you missing an __init__.py?
+dir/a.py: note: Are you missing an __init__.py? Alternatively, consider using --exclude to avoid checking one of them.
 == Return code: 2
 
 [case testCmdlineNonPackageSlash]
@@ -125,19 +125,7 @@ mypy: can't decode file 'a.py': unknown encoding: uft-8
 # type: ignore
 [out]
 two/mod/__init__.py: error: Duplicate module named 'mod' (also at 'one/mod/__init__.py')
-== Return code: 2
-
-[case promptsForgotInit]
-# cmd: mypy a.py one/mod/a.py
-[file one/__init__.py]
-# type: ignore
-[file a.py]
-# type: ignore
-[file one/mod/a.py]
-#type: ignore
-[out]
-one/mod/a.py: error: Duplicate module named 'a' (also at 'a.py')
-one/mod/a.py: error: Are you missing an __init__.py?
+two/mod/__init__.py: note: Are you missing an __init__.py? Alternatively, consider using --exclude to avoid checking one of them.
 == Return code: 2
 
 [case testFlagsFile]

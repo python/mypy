@@ -809,6 +809,15 @@ def process_options(args: List[str],
         '--explicit-package-bases', action='store_true',
         help="Use current directory and MYPYPATH to determine module names of files passed")
     code_group.add_argument(
+        "--exclude",
+        metavar="PATTERN",
+        default="",
+        help=(
+            "Regular expression to match file names, directory names or paths which mypy should "
+            "ignore while recursively discovering files to check, e.g. --exclude '/setup\\.py$'"
+        )
+    )
+    code_group.add_argument(
         '-m', '--module', action='append', metavar='MODULE',
         default=[],
         dest='special-opts:modules',

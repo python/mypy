@@ -97,6 +97,8 @@ class Options:
         # sufficient to determine module names for files. As a possible alternative, add a single
         # top-level __init__.py to your packages.
         self.explicit_package_bases = False
+        # File names, directory names or subpaths to avoid checking
+        self.exclude = ""  # type: str
 
         # disallow_any options
         self.disallow_any_generics = False

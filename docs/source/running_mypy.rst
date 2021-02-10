@@ -390,7 +390,8 @@ to modules to type check.
 - Mypy will check all paths provided that correspond to files.
 
 - Mypy will recursively discover and check all files ending in ``.py`` or
-  ``.pyi`` in directory paths provided.
+  ``.pyi`` in directory paths provided, after accounting for
+  :option:`--exclude <mypy --exclude>`.
 
 - For each file to be checked, mypy will attempt to associate the file (e.g.
   ``project/foo/bar/baz.py``) with a fully qualified module name (e.g.
