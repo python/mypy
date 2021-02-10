@@ -192,6 +192,18 @@ section of the command line docs.
 
     This option may only be set in the global section (``[mypy]``).
 
+.. confval:: exclude
+
+    :type: regular expression
+
+    A regular expression that matches file names, directory names and paths
+    which mypy should ignore while recursively discovering files to check.
+    Use forward slashes on all platforms.
+
+    For more details, see :option:`--exclude <mypy --exclude>`.
+
+    This option may only be set in the global section (``[mypy]``).
+
 .. confval:: namespace_packages
 
     :type: boolean
