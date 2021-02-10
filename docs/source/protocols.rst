@@ -490,6 +490,7 @@ a double underscore prefix is used. For example:
 
    copy_a: Callable[[T], T]
    copy_b: Copy
+   copy_c: Callable[[T], T]
 
    copy_a = copy_b  # OK
-   copy_b = copy_a  # Also OK
+   copy_b = copy_c  # OK, but would fail without the double underscore prefix
