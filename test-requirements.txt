@@ -1,4 +1,5 @@
 -r mypy-requirements.txt
+-r build-requirements.txt
 attrs>=18.0
 flake8>=3.8.1
 flake8-bugbear; python_version >= '3.5'
@@ -15,6 +16,3 @@ py>=1.5.2
 virtualenv<20
 setuptools!=50
 importlib-metadata==0.20
-types-typed-ast>=1.4.0,<1.5.0
-types-toml>=0.0
-types-enum34>=0.0; python_version == '3.5'
