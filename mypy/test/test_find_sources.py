@@ -1,12 +1,15 @@
-from mypy.modulefinder import BuildSource
 import os
 import pytest
+import shutil
+import tempfile
 import unittest
 from typing import List, Optional, Set, Tuple
+
 from mypy.find_sources import InvalidSourceList, SourceFinder, create_source_list
 from mypy.fscache import FileSystemCache
 from mypy.modulefinder import BuildSource
 from mypy.options import Options
+from mypy.modulefinder import BuildSource
 
 
 class FakeFSCache(FileSystemCache):
@@ -60,6 +63,15 @@ def find_sources(
 
 
 class SourceFinderSuite(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tempdir = tempfile.mkdtemp()
+        self.oldcwd = os.getcwd()
+        os.chdir(self.tempdir)
+
+    def tearDown(self) -> None:
+        os.chdir(self.oldcwd)
+        shutil.rmtree(self.tempdir)
+
     def test_crawl_no_namespace(self) -> None:
         options = Options()
         options.namespace_packages = False
