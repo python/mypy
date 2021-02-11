@@ -208,7 +208,7 @@ Example with an error:
 
    class Bundle:
        def __init__(self) -> None:
-           # Error: Need type annotation for 'items'
+           # Error: Need type annotation for "items"
            #        (hint: "items: List[<type>] = ...")  [var-annotated]
            self.items = []
 

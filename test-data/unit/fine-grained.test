@@ -2680,7 +2680,7 @@ class C(Generic[T]): pass
 [out]
 main:4: error: "object" has no attribute "C"
 ==
-main:4: error: Need type annotation for 'x'
+main:4: error: Need type annotation for "x"
 
 [case testPartialTypeInNestedClass]
 import a
@@ -2698,9 +2698,9 @@ def g() -> None: pass
 def g() -> int: pass
 [builtins fixtures/dict.pyi]
 [out]
-main:7: error: Need type annotation for 'x' (hint: "x: Dict[<type>, <type>] = ...")
+main:7: error: Need type annotation for "x" (hint: "x: Dict[<type>, <type>] = ...")
 ==
-main:7: error: Need type annotation for 'x' (hint: "x: Dict[<type>, <type>] = ...")
+main:7: error: Need type annotation for "x" (hint: "x: Dict[<type>, <type>] = ...")
 
 [case testRefreshPartialTypeInClass]
 import a
@@ -2716,9 +2716,9 @@ def g() -> None: pass
 def g() -> int: pass
 [builtins fixtures/dict.pyi]
 [out]
-main:5: error: Need type annotation for 'x' (hint: "x: Dict[<type>, <type>] = ...")
+main:5: error: Need type annotation for "x" (hint: "x: Dict[<type>, <type>] = ...")
 ==
-main:5: error: Need type annotation for 'x' (hint: "x: Dict[<type>, <type>] = ...")
+main:5: error: Need type annotation for "x" (hint: "x: Dict[<type>, <type>] = ...")
 
 [case testRefreshPartialTypeInferredAttributeIndex]
 from c import C
@@ -4164,9 +4164,9 @@ y = 0
 [file a.py.2]
 y = ''
 [out]
-main:4: error: Need type annotation for 'x'
+main:4: error: Need type annotation for "x"
 ==
-main:4: error: Need type annotation for 'x'
+main:4: error: Need type annotation for "x"
 
 [case testNonePartialType2]
 import a
@@ -4182,9 +4182,9 @@ y = 0
 [file a.py.2]
 y = ''
 [out]
-main:4: error: Need type annotation for 'x'
+main:4: error: Need type annotation for "x"
 ==
-main:4: error: Need type annotation for 'x'
+main:4: error: Need type annotation for "x"
 
 [case testNonePartialType3]
 import a
@@ -4196,7 +4196,7 @@ def f() -> None:
     y = ''
 [out]
 ==
-a.py:1: error: Need type annotation for 'y'
+a.py:1: error: Need type annotation for "y"
 
 [case testNonePartialType4]
 import a
@@ -4212,7 +4212,7 @@ def f() -> None:
     global y
     y = ''
 [out]
-a.py:1: error: Need type annotation for 'y'
+a.py:1: error: Need type annotation for "y"
 ==
 
 [case testSkippedClass1]
@@ -6128,7 +6128,7 @@ class P(Protocol):
 [out]
 ==
 a.py:8: error: Argument 1 to "g" has incompatible type "C"; expected "P"
-a.py:8: note: 'C' is missing following 'P' protocol member:
+a.py:8: note: "C" is missing following "P" protocol member:
 a.py:8: note:     y
 
 [case testProtocolRemoveAttrInClass]
@@ -6153,7 +6153,7 @@ class P(Protocol):
     x: int
 [out]
 a.py:8: error: Incompatible types in assignment (expression has type "C", variable has type "P")
-a.py:8: note: 'C' is missing following 'P' protocol member:
+a.py:8: note: "C" is missing following "P" protocol member:
 a.py:8: note:     y
 ==
 
@@ -6692,7 +6692,7 @@ class PBase(Protocol):
 [out]
 ==
 a.py:4: error: Incompatible types in assignment (expression has type "SubP", variable has type "SuperP")
-a.py:4: note: 'SubP' is missing following 'SuperP' protocol member:
+a.py:4: note: "SubP" is missing following "SuperP" protocol member:
 a.py:4: note:     z
 
 [case testProtocolVsProtocolSuperUpdated3]
@@ -6729,7 +6729,7 @@ class NewP(Protocol):
 [out]
 ==
 a.py:4: error: Incompatible types in assignment (expression has type "SubP", variable has type "SuperP")
-a.py:4: note: 'SubP' is missing following 'SuperP' protocol member:
+a.py:4: note: "SubP" is missing following "SuperP" protocol member:
 a.py:4: note:     z
 
 [case testProtocolMultipleUpdates]
@@ -6769,7 +6769,7 @@ class C2:
 [out]
 ==
 a.py:2: error: Incompatible types in assignment (expression has type "C", variable has type "P")
-a.py:2: note: 'C' is missing following 'P' protocol member:
+a.py:2: note: "C" is missing following "P" protocol member:
 a.py:2: note:     z
 ==
 ==

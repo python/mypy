@@ -259,8 +259,8 @@ from typing import TypeVar
 
 T = TypeVar('T')
 def f() -> T: pass
-x = f()  # E: Need type annotation for 'x'  [var-annotated]
-y = []  # E: Need type annotation for 'y' (hint: "y: List[<type>] = ...")  [var-annotated]
+x = f()  # E: Need type annotation for "x"  [var-annotated]
+y = []  # E: Need type annotation for "y" (hint: "y: List[<type>] = ...")  [var-annotated]
 [builtins fixtures/list.pyi]
 
 [case testErrorCodeBadOverride]
@@ -778,8 +778,8 @@ def foo() -> bool: ...
 
 lst = [1, 2, 3, 4]
 
-b = False or foo()                       # E: Left operand of 'or' is always false  [redundant-expr]
-c = True and foo()                       # E: Left operand of 'and' is always true  [redundant-expr]
+b = False or foo()                       # E: Left operand of "or" is always false  [redundant-expr]
+c = True and foo()                       # E: Left operand of "and" is always true  [redundant-expr]
 g = 3 if True else 4                     # E: If condition is always true  [redundant-expr]
 h = 3 if False else 4                    # E: If condition is always false  [redundant-expr]
 i = [x for x in lst if True]             # E: If condition in comprehension is always true  [redundant-expr]

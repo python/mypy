@@ -352,7 +352,7 @@ from typing import TypeVar, Generic
 X = TypeVar('X', int, str)
 class C(Generic[X]):
     def f(self, x: X) -> None:
-        self.x = x # E: Need type annotation for 'x'
+        self.x = x # E: Need type annotation for "x"
 ci: C[int]
 cs: C[str]
 reveal_type(ci.x) # N: Revealed type is 'Any'
@@ -376,7 +376,7 @@ X = TypeVar('X', int, str)
 class C(Generic[X]):
     x: X
     def f(self) -> None:
-        self.y = self.x # E: Need type annotation for 'y'
+        self.y = self.x # E: Need type annotation for "y"
 ci: C[int]
 cs: C[str]
 reveal_type(ci.y) # N: Revealed type is 'Any'
@@ -479,8 +479,8 @@ from typing import TypeVar
 T = TypeVar('T', int, str)
 class A:
     def f(self, x: T) -> None:
-        self.x = x # E: Need type annotation for 'x'
-        self.y = [x] # E: Need type annotation for 'y'
+        self.x = x # E: Need type annotation for "x"
+        self.y = [x] # E: Need type annotation for "y"
         self.z = 1
 reveal_type(A().x)  # N: Revealed type is 'Any'
 reveal_type(A().y)  # N: Revealed type is 'Any'

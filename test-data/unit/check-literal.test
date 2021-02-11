@@ -2223,20 +2223,20 @@ d: Outer
 
 reveal_type(d[a_key])         # N: Revealed type is 'builtins.int'
 reveal_type(d[b_key])         # N: Revealed type is 'builtins.str'
-d[c_key]                      # E: TypedDict "Outer" has no key 'c'
+d[c_key]                      # E: TypedDict "Outer" has no key "c"
 
 reveal_type(d.get(a_key, u))  # N: Revealed type is 'Union[builtins.int, __main__.Unrelated]'
 reveal_type(d.get(b_key, u))  # N: Revealed type is 'Union[builtins.str, __main__.Unrelated]'
 reveal_type(d.get(c_key, u))  # N: Revealed type is 'builtins.object'
 
-reveal_type(d.pop(a_key))     # E: Key 'a' of TypedDict "Outer" cannot be deleted \
+reveal_type(d.pop(a_key))     # E: Key "a" of TypedDict "Outer" cannot be deleted \
                               # N: Revealed type is 'builtins.int'
 reveal_type(d.pop(b_key))     # N: Revealed type is 'builtins.str'
-d.pop(c_key)                  # E: TypedDict "Outer" has no key 'c'
+d.pop(c_key)                  # E: TypedDict "Outer" has no key "c"
 
-del d[a_key]                  # E: Key 'a' of TypedDict "Outer" cannot be deleted
+del d[a_key]                  # E: Key "a" of TypedDict "Outer" cannot be deleted
 del d[b_key]
-del d[c_key]                  # E: TypedDict "Outer" has no key 'c'
+del d[c_key]                  # E: TypedDict "Outer" has no key "c"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 [out]
@@ -2275,7 +2275,7 @@ reveal_type(c.get(str_key_bad, u))   # N: Revealed type is 'builtins.object'
 
 a[int_key_bad]                       # E: Tuple index out of range
 b[int_key_bad]                       # E: Tuple index out of range
-c[str_key_bad]                       # E: TypedDict "MyDict" has no key 'missing'
+c[str_key_bad]                       # E: TypedDict "MyDict" has no key "missing"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 [out]
@@ -2347,17 +2347,17 @@ reveal_type(test.get(bad_keys, 3))                # N: Revealed type is 'builtin
 del test[optional_keys]
 
 
-test[bad_keys]                  # E: TypedDict "Test" has no key 'bad'
-test.pop(good_keys)             # E: Key 'a' of TypedDict "Test" cannot be deleted \
-                                # E: Key 'b' of TypedDict "Test" cannot be deleted
-test.pop(bad_keys)              # E: Key 'a' of TypedDict "Test" cannot be deleted \
-                                # E: TypedDict "Test" has no key 'bad'
+test[bad_keys]                  # E: TypedDict "Test" has no key "bad"
+test.pop(good_keys)             # E: Key "a" of TypedDict "Test" cannot be deleted \
+                                # E: Key "b" of TypedDict "Test" cannot be deleted
+test.pop(bad_keys)              # E: Key "a" of TypedDict "Test" cannot be deleted \
+                                # E: TypedDict "Test" has no key "bad"
 test.setdefault(good_keys, 3)   # E: Argument 2 to "setdefault" of "TypedDict" has incompatible type "int"; expected "A"
 test.setdefault(bad_keys, 3 )   # E: Argument 2 to "setdefault" of "TypedDict" has incompatible type "int"; expected "A"
-del test[good_keys]             # E: Key 'a' of TypedDict "Test" cannot be deleted \
-                                # E: Key 'b' of TypedDict "Test" cannot be deleted
-del test[bad_keys]              # E: Key 'a' of TypedDict "Test" cannot be deleted \
-                                # E: TypedDict "Test" has no key 'bad'
+del test[good_keys]             # E: Key "a" of TypedDict "Test" cannot be deleted \
+                                # E: Key "b" of TypedDict "Test" cannot be deleted
+del test[bad_keys]              # E: Key "a" of TypedDict "Test" cannot be deleted \
+                                # E: TypedDict "Test" has no key "bad"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 [out]
@@ -2434,8 +2434,8 @@ x: Union[D1, D2]
 bad_keys: Literal['a', 'b', 'c', 'd']
 good_keys: Literal['b', 'c']
 
-x[bad_keys]         # E: TypedDict "D1" has no key 'd' \
-                    # E: TypedDict "D2" has no key 'a'
+x[bad_keys]         # E: TypedDict "D1" has no key "d" \
+                    # E: TypedDict "D2" has no key "a"
 
 reveal_type(x[good_keys])           # N: Revealed type is 'Union[__main__.B, __main__.C]'
 reveal_type(x.get(good_keys))       # N: Revealed type is 'Union[__main__.B, __main__.C]'

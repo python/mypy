@@ -514,8 +514,8 @@ d, e = f, g, h = 1, 1 # E: Need more than 2 values to unpack (3 expected)
 [case testAssignmentToStarMissingAnnotation]
 from typing import List
 t = 1, 2
-a, b, *c = 1, 2  # E: Need type annotation for 'c' (hint: "c: List[<type>] = ...")
-aa, bb, *cc = t  # E: Need type annotation for 'cc' (hint: "cc: List[<type>] = ...")
+a, b, *c = 1, 2  # E: Need type annotation for "c" (hint: "c: List[<type>] = ...")
+aa, bb, *cc = t  # E: Need type annotation for "cc" (hint: "cc: List[<type>] = ...")
 [builtins fixtures/list.pyi]
 
 [case testAssignmentToStarAnnotation]
@@ -823,7 +823,7 @@ for x in t:
 [case testForLoopOverEmptyTuple]
 import typing
 t = ()
-for x in t: pass  # E: Need type annotation for 'x'
+for x in t: pass  # E: Need type annotation for "x"
 [builtins fixtures/for.pyi]
 
 [case testForLoopOverNoneValuedTuple]
@@ -1217,7 +1217,7 @@ if int():
 [builtins fixtures/tuple.pyi]
 
 [case testTupleWithoutContext]
-a = (1, [])  # E: Need type annotation for 'a'
+a = (1, [])  # E: Need type annotation for "a"
 [builtins fixtures/tuple.pyi]
 
 [case testTupleWithUnionContext]

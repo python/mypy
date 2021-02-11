@@ -155,7 +155,7 @@ if int():
     x = B()  # E: Incompatible types in assignment (expression has type "B", variable has type "P")
 if int():
     x = c1 # E: Incompatible types in assignment (expression has type "C1", variable has type "P") \
-        # N: 'C1' is missing following 'P' protocol member: \
+        # N: "C1" is missing following "P" protocol member: \
         # N:     meth2
 if int():
     x = c2
@@ -192,7 +192,7 @@ if int():
     x = C() # OK
 if int():
     x = Cbad() # E: Incompatible types in assignment (expression has type "Cbad", variable has type "P2") \
-        # N: 'Cbad' is missing following 'P2' protocol member: \
+        # N: "Cbad" is missing following "P2" protocol member: \
         # N:     meth2
 
 [case testProtocolMethodVsAttributeErrors]
@@ -439,10 +439,10 @@ from typing import TypeVar, Protocol
 T = TypeVar('T')
 
 # In case of these errors we proceed with declared variance.
-class Pco(Protocol[T]): # E: Invariant type variable 'T' used in protocol where covariant one is expected
+class Pco(Protocol[T]): # E: Invariant type variable "T" used in protocol where covariant one is expected
     def meth(self) -> T:
         pass
-class Pcontra(Protocol[T]): # E: Invariant type variable 'T' used in protocol where contravariant one is expected
+class Pcontra(Protocol[T]): # E: Invariant type variable "T" used in protocol where contravariant one is expected
     def meth(self, x: T) -> None:
         pass
 class Pinv(Protocol[T]):
@@ -478,11 +478,11 @@ T = TypeVar('T')
 S = TypeVar('S')
 T_co = TypeVar('T_co', covariant=True)
 
-class P(Protocol[T, S]): # E: Invariant type variable 'T' used in protocol where covariant one is expected \
-                         # E: Invariant type variable 'S' used in protocol where contravariant one is expected
+class P(Protocol[T, S]): # E: Invariant type variable "T" used in protocol where covariant one is expected \
+                         # E: Invariant type variable "S" used in protocol where contravariant one is expected
     def fun(self, callback: Callable[[T], S]) -> None: pass
 
-class P2(Protocol[T_co]): # E: Covariant type variable 'T_co' used in protocol where invariant one is expected
+class P2(Protocol[T_co]): # E: Covariant type variable "T_co" used in protocol where invariant one is expected
     lst: List[T_co]
 [builtins fixtures/list.pyi]
 
@@ -490,7 +490,7 @@ class P2(Protocol[T_co]): # E: Covariant type variable 'T_co' used in protocol w
 from typing import Protocol, TypeVar
 T = TypeVar('T')
 
-class P(Protocol[T]): # E: Invariant type variable 'T' used in protocol where covariant one is expected
+class P(Protocol[T]): # E: Invariant type variable "T" used in protocol where covariant one is expected
     attr: int
 
 [case testGenericProtocolsInference1]
@@ -616,7 +616,7 @@ class E(D[T]):
 def f(x: T) -> T:
     z: P2[T, T] = E[T]()
     y: P2[T, T] = D[T]() # E: Incompatible types in assignment (expression has type "D[T]", variable has type "P2[T, T]") \
-                         # N: 'D' is missing following 'P2' protocol member: \
+                         # N: "D" is missing following "P2" protocol member: \
                          # N:     attr2
     return x
 [builtins fixtures/isinstancelist.pyi]
@@ -751,8 +751,8 @@ from typing import Protocol, TypeVar, Iterable, Sequence
 T_co = TypeVar('T_co', covariant=True)
 T_contra = TypeVar('T_contra', contravariant=True)
 
-class Proto(Protocol[T_co, T_contra]): # E: Covariant type variable 'T_co' used in protocol where contravariant one is expected \
-                                       # E: Contravariant type variable 'T_contra' used in protocol where covariant one is expected
+class Proto(Protocol[T_co, T_contra]): # E: Covariant type variable "T_co" used in protocol where contravariant one is expected \
+                                       # E: Contravariant type variable "T_contra" used in protocol where covariant one is expected
     def one(self, x: Iterable[T_co]) -> None:
         pass
     def other(self) -> Sequence[T_contra]:
@@ -1675,7 +1675,7 @@ fun2(z) # E: Argument 1 to "fun2" has incompatible type "N"; expected "P[int, in
         # N:     y: expected "int", got "str"
 
 fun(N2(1)) # E: Argument 1 to "fun" has incompatible type "N2"; expected "P[int, str]" \
-           # N: 'N2' is missing following 'P' protocol member: \
+           # N: "N2" is missing following "P" protocol member: \
            # N:     y
 
 reveal_type(fun3(z)) # N: Revealed type is 'builtins.object*'
@@ -1844,7 +1844,7 @@ class C:
     def attr2(self) -> int: pass
 
 x: P = C() # E: Incompatible types in assignment (expression has type "C", variable has type "P") \
-           # N: 'C' is missing following 'P' protocol member: \
+           # N: "C" is missing following "P" protocol member: \
            # N:     attr3 \
            # N: Following member(s) of "C" have conflicts: \
            # N:     attr1: expected "int", got "str" \
@@ -1853,7 +1853,7 @@ x: P = C() # E: Incompatible types in assignment (expression has type "C", varia
 
 def f(x: P) -> P:
     return C() # E: Incompatible return value type (got "C", expected "P") \
-               # N: 'C' is missing following 'P' protocol member: \
+               # N: "C" is missing following "P" protocol member: \
                # N:     attr3 \
                # N: Following member(s) of "C" have conflicts: \
                # N:     attr1: expected "int", got "str" \
@@ -1861,7 +1861,7 @@ def f(x: P) -> P:
                # N: Protocol member P.attr2 expected settable variable, got read-only attribute
 
 f(C()) # E: Argument 1 to "f" has incompatible type "C"; expected "P" \
-       # N: 'C' is missing following 'P' protocol member: \
+       # N: "C" is missing following "P" protocol member: \
        # N:     attr3 \
        # N: Following member(s) of "C" have conflicts: \
        # N:     attr1: expected "int", got "str" \
@@ -2551,7 +2551,7 @@ class Blooper:
         reveal_type([self, x])  # N: Revealed type is 'builtins.list[builtins.object*]'
 
 class Gleemer:
-    flap = []  # E: Need type annotation for 'flap' (hint: "flap: List[<type>] = ...")
+    flap = []  # E: Need type annotation for "flap" (hint: "flap: List[<type>] = ...")
 
     def gleem(self, x: Flapper) -> None:
         reveal_type([self, x])  # N: Revealed type is 'builtins.list[builtins.object*]'

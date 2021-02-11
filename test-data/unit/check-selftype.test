@@ -569,7 +569,7 @@ SubP('no')  # E: No overload variant of "SubP" matches argument type "str" \
             # N:     def [T] __init__(self, use_str: Literal[False]) -> SubP[T]
 
 # This is a bit unfortunate: we don't have a way to map the overloaded __init__ to subtype.
-x = SubP(use_str=True)  # E: Need type annotation for 'x'
+x = SubP(use_str=True)  # E: Need type annotation for "x"
 reveal_type(x)  # N: Revealed type is '__main__.SubP[Any]'
 y: SubP[str] = SubP(use_str=True)
 
@@ -595,7 +595,7 @@ class C(Generic[T]):
 from lib import PFallBack, PFallBackAny
 
 t: bool
-xx = PFallBack(t)  # E: Need type annotation for 'xx'
+xx = PFallBack(t)  # E: Need type annotation for "xx"
 yy = PFallBackAny(t)  # OK
 
 [file lib.pyi]

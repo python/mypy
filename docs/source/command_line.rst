@@ -459,7 +459,7 @@ potentially problematic or redundant in some way.
     .. code-block:: python
 
         def process(x: int) -> None:
-            # Error: Right operand of 'or' is never evaluated
+            # Error: Right operand of "or" is never evaluated
             if isinstance(x, int) or x > 7:
                 # Error: Unsupported operand types for + ("int" and "str")
                 print(x + "bad")

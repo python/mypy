@@ -687,7 +687,7 @@ class MessageBuilder:
         if typ.source is None:
             s = ""
         else:
-            s = " '{}'".format(typ.source)
+            s = ' "{}"'.format(typ.source)
         self.fail('Trying to read deleted variable{}'.format(s), context)
 
     def deleted_as_lvalue(self, typ: DeletedType, context: Context) -> None:
@@ -699,7 +699,7 @@ class MessageBuilder:
         if typ.source is None:
             s = ""
         else:
-            s = " '{}'".format(typ.source)
+            s = ' "{}"'.format(typ.source)
         self.fail('Assignment to variable{} outside except: block'.format(s), context)
 
     def no_variant_matches_arguments(self,
@@ -1101,7 +1101,7 @@ class MessageBuilder:
         else:
             needed = 'comment'
 
-        self.fail("Need type {} for '{}'{}".format(needed, unmangle(node.name), hint), context,
+        self.fail('Need type {} for "{}"{}'.format(needed, unmangle(node.name), hint), context,
                   code=codes.VAR_ANNOTATED)
 
     def explicit_any(self, ctx: Context) -> None:
@@ -1160,10 +1160,12 @@ class MessageBuilder:
             self.fail('\'{}\' is not a valid TypedDict key; expected one of {}'.format(
                 item_name, format_item_name_list(typ.items.keys())), context)
         else:
-            self.fail("TypedDict {} has no key '{}'".format(format_type(typ), item_name), context)
+            self.fail('TypedDict {} has no key "{}"'.format(
+                format_type(typ), item_name), context)
             matches = best_matches(item_name, typ.items.keys())
             if matches:
-                self.note("Did you mean {}?".format(pretty_seq(matches[:3], "or")), context)
+                self.note("Did you mean {}?".format(
+                    pretty_seq(matches[:3], "or")), context)
 
     def typeddict_context_ambiguous(
             self,
@@ -1179,10 +1181,10 @@ class MessageBuilder:
             item_name: str,
             context: Context) -> None:
         if typ.is_anonymous():
-            self.fail("TypedDict key '{}' cannot be deleted".format(item_name),
+            self.fail('TypedDict key "{}" cannot be deleted'.format(item_name),
                       context)
         else:
-            self.fail("Key '{}' of TypedDict {} cannot be deleted".format(
+            self.fail('Key "{}" of TypedDict {} cannot be deleted'.format(
                 item_name, format_type(typ)), context)
 
     def typeddict_setdefault_arguments_inconsistent(
@@ -1235,8 +1237,8 @@ class MessageBuilder:
 
     def bad_proto_variance(self, actual: int, tvar_name: str, expected: int,
                            context: Context) -> None:
-        msg = capitalize("{} type variable '{}' used in protocol where"
-                         " {} one is expected".format(variance_string(actual),
+        msg = capitalize('{} type variable "{}" used in protocol where'
+                         ' {} one is expected'.format(variance_string(actual),
                                                       tvar_name,
                                                       variance_string(expected)))
         self.fail(msg, context)
@@ -1280,14 +1282,14 @@ class MessageBuilder:
         it does not change the truth value of the entire condition as a whole.
         'op_name' should either be the string "and" or the string "or".
         """
-        self.redundant_expr("Left operand of '{}'".format(op_name), op_name == 'and', context)
+        self.redundant_expr('Left operand of "{}"'.format(op_name), op_name == 'and', context)
 
     def unreachable_right_operand(self, op_name: str, context: Context) -> None:
         """Indicates that the right operand of a boolean expression is redundant:
         it does not change the truth value of the entire condition as a whole.
         'op_name' should either be the string "and" or the string "or".
         """
-        self.fail("Right operand of '{}' is never evaluated".format(op_name),
+        self.fail('Right operand of "{}" is never evaluated'.format(op_name),
                   context, code=codes.UNREACHABLE)
 
     def redundant_condition_in_comprehension(self, truthiness: bool, context: Context) -> None:
@@ -1352,7 +1354,7 @@ class MessageBuilder:
         missing = get_missing_protocol_members(subtype, supertype)
         if (missing and len(missing) < len(supertype.type.protocol_members) and
                 len(missing) <= MAX_ITEMS):
-            self.note("'{}' is missing following '{}' protocol member{}:"
+            self.note('"{}" is missing following "{}" protocol member{}:'
                       .format(subtype.type.name, supertype.type.name, plural_s(missing)),
                       context,
                       code=code)

@@ -897,12 +897,12 @@ def foo() -> bool: ...
 
 lst = [1, 2, 3, 4]
 
-a = True or foo()                        # E: Right operand of 'or' is never evaluated
-d = False and foo()                      # E: Right operand of 'and' is never evaluated
-e = True or (True or (True or foo()))    # E: Right operand of 'or' is never evaluated
-f = (True or foo()) or (True or foo())   # E: Right operand of 'or' is never evaluated
+a = True or foo()                        # E: Right operand of "or" is never evaluated
+d = False and foo()                      # E: Right operand of "and" is never evaluated
+e = True or (True or (True or foo()))    # E: Right operand of "or" is never evaluated
+f = (True or foo()) or (True or foo())   # E: Right operand of "or" is never evaluated
 
-k = [x for x in lst if isinstance(x, int) or foo()]  # E: Right operand of 'or' is never evaluated
+k = [x for x in lst if isinstance(x, int) or foo()]  # E: Right operand of "or" is never evaluated
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnreachableFlagMiscTestCaseMissingMethod]
@@ -910,10 +910,10 @@ k = [x for x in lst if isinstance(x, int) or foo()]  # E: Right operand of 'or' 
 
 class Case1:
     def test1(self) -> bool:
-        return False and self.missing()  # E: Right operand of 'and' is never evaluated
+        return False and self.missing()  # E: Right operand of "and" is never evaluated
 
     def test2(self) -> bool:
-        return not self.property_decorator_missing and self.missing()  # E: Right operand of 'and' is never evaluated
+        return not self.property_decorator_missing and self.missing()  # E: Right operand of "and" is never evaluated
 
     def property_decorator_missing(self) -> bool:
         return True

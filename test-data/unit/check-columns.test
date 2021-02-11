@@ -200,7 +200,7 @@ if int():
 
 [case testColumnNeedTypeAnnotation]
 if 1:
-    x = [] # E:5: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
+    x = [] # E:5: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 [builtins fixtures/list.pyi]
 
 [case testColumnCallToUntypedFunction]
@@ -254,7 +254,7 @@ t: D = {'x':
     'y'} # E:5: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
 
 if int():
-    del t['y'] # E:5: TypedDict "D" has no key 'y'
+    del t['y'] # E:5: TypedDict "D" has no key "y"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -297,7 +297,7 @@ class C:
 p: P
 if int():
     p = C() # E:9: Incompatible types in assignment (expression has type "C", variable has type "P") \
-      # N:9: 'C' is missing following 'P' protocol member: \
+      # N:9: "C" is missing following "P" protocol member: \
       # N:9:     y
 
 [case testColumnRedundantCast]
