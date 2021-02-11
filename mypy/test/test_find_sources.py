@@ -358,8 +358,8 @@ class SourceFinderSuite(unittest.TestCase):
 
         # nothing should be ignored as a result of this
         options.exclude = "|".join((
-            "/pkg/a/", "/2", "/1", "/pk/", "/kg", "/g.py", "/bc", "/xxx/pkg/a2/b/f.py"
-            "xxx/pkg/a2/b/f.py",
+            "/pkg/a/", "/2/", "/1/", "/pk/", "/kg/", r"/g\.py", "/b/d", r"/xxx/pkg/a2/b/f\.py"
+            r"xxx/pkg/a2/b/f\.py",
         ))
         fscache = FakeFSCache(files)
         assert len(find_sources(["/"], options, fscache)) == len(files)
@@ -372,4 +372,5 @@ class SourceFinderSuite(unittest.TestCase):
             "pkg/a2/b/f.py",
         }
         fscache = FakeFSCache(files)
+        print('cwd: {}'.format(self.tempdir))
         assert len(find_sources(["/"], options, fscache)) == len(files)
