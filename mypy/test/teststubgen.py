@@ -625,6 +625,14 @@ class StubgenPythonSuite(DataSuite):
 self_arg = ArgSig(name='self')
 
 
+class TestBaseClass:
+    pass
+
+
+class TestClass(TestBaseClass):
+    pass
+
+
 class StubgencSuite(unittest.TestCase):
     """Unit tests for stub generation from C modules using introspection.
 
@@ -668,7 +676,7 @@ class StubgencSuite(unittest.TestCase):
         mod = ModuleType('module', '')  # any module is fine
         generate_c_type_stub(mod, 'C', TestClassVariableCls, output, imports)
         assert_equal(imports, [])
-        assert_equal(output, ['class C:', '    x: Any = ...'])
+        assert_equal(output, ['class C:', '    x: ClassVar[int] = ...'])
 
     def test_generate_c_type_inheritance(self) -> None:
         class TestClass(KeyError):
@@ -682,12 +690,6 @@ class StubgencSuite(unittest.TestCase):
         assert_equal(imports, [])
 
     def test_generate_c_type_inheritance_same_module(self) -> None:
-        class TestBaseClass:
-            pass
-
-        class TestClass(TestBaseClass):
-            pass
-
         output = []  # type: List[str]
         imports = []  # type: List[str]
         mod = ModuleType(TestBaseClass.__module__, '')
@@ -813,7 +815,7 @@ class StubgencSuite(unittest.TestCase):
             attribute = property(get_attribute, doc="")
 
         output = []  # type: List[str]
-        generate_c_property_stub('attribute', TestClass.attribute, output, readonly=True)
+        generate_c_property_stub('attribute', TestClass.attribute, [], [], output, readonly=True)
         assert_equal(output, ['@property', 'def attribute(self) -> str: ...'])
 
     def test_generate_c_type_with_single_arg_generic(self) -> None:
