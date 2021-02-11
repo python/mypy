@@ -1,24 +1,20 @@
-from mypy.modulefinder import BuildSource
 import os
 import pytest
+import shutil
+import tempfile
 import unittest
 from typing import List, Optional, Set, Tuple
+
 from mypy.find_sources import InvalidSourceList, SourceFinder, create_source_list
 from mypy.fscache import FileSystemCache
 from mypy.modulefinder import BuildSource
 from mypy.options import Options
-
-
-def make_abs(f: str) -> str:
-    """Turn f into an absolute fake path deterministically."""
-    # We don't want to depend on the current working directory, so no
-    # os.path.abspath.
-    return os.path.join(os.sep, 'fakeroot', f).replace('/', os.sep)
+from mypy.modulefinder import BuildSource
 
 
 class FakeFSCache(FileSystemCache):
     def __init__(self, files: Set[str]) -> None:
-        self.files = {make_abs(f) for f in files}
+        self.files = {os.path.abspath(f) for f in files}
 
     def isfile(self, file: str) -> bool:
         return file in self.files
@@ -56,17 +52,26 @@ def crawl(finder: SourceFinder, f: str) -> Tuple[str, str]:
 
 
 def find_sources_in_dir(finder: SourceFinder, f: str) -> List[Tuple[str, Optional[str]]]:
-    return normalise_build_source_list(finder.find_sources_in_dir(make_abs(f)))
+    return normalise_build_source_list(finder.find_sources_in_dir(os.path.abspath(f)))
 
 
 def find_sources(
     paths: List[str], options: Options, fscache: FileSystemCache
 ) -> List[Tuple[str, Optional[str]]]:
-    paths = [make_abs(p) for p in paths]
+    paths = [os.path.abspath(p) for p in paths]
     return normalise_build_source_list(create_source_list(paths, options, fscache))
 
 
 class SourceFinderSuite(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tempdir = tempfile.mkdtemp()
+        self.oldcwd = os.getcwd()
+        os.chdir(self.tempdir)
+
+    def tearDown(self) -> None:
+        os.chdir(self.oldcwd)
+        shutil.rmtree(self.tempdir)
+
     def test_crawl_no_namespace(self) -> None:
         options = Options()
         options.namespace_packages = False
