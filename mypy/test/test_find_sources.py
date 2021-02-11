@@ -13,7 +13,7 @@ def make_abs(f: str) -> str:
     """Turn f into an absolute fake path deterministically."""
     # We don't want to depend on the current working directory, so no
     # os.path.abspath.
-    return os.path.join(os.sep, 'fakeroot', f)
+    return os.path.join(os.sep, 'fakeroot', f).replace('/', os.sep)
 
 
 class FakeFSCache(FileSystemCache):
