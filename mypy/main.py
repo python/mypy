@@ -863,6 +863,7 @@ def process_options(args: List[str],
     environ_cache_dir = os.getenv('MYPY_CACHE_DIR', '')
     if environ_cache_dir.strip():
         options.cache_dir = environ_cache_dir
+    options.cache_dir = os.path.expanduser(options.cache_dir)
 
     # Parse command line for real, using a split namespace.
     special_opts = argparse.Namespace()
