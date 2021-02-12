@@ -1082,7 +1082,7 @@ def install_types(cache_dir: str,
     if after_run:
         print()
     print('Installing missing stub packages:')
-    cmd = ['python3', '-m', 'pip', 'install'] + packages
+    cmd = [sys.executable, '-m', 'pip', 'install'] + packages
     print(formatter.style(' '.join(cmd), 'none', bold=True))
     print()
     x = input('Install? [yN] ')
