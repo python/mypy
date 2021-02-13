@@ -104,6 +104,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.declarations = declarations
         self.source_path = source_path
         self.module_name = module_name
+        self.literals = emitter.context.literals
         self.next_block = None  # type: Optional[BasicBlock]
 
     def temp_name(self) -> str:
