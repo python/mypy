@@ -75,6 +75,7 @@ class str:
     def upper(self) -> str: pass
     def startswith(self, x: str, start: int=..., end: int=...) -> bool: pass
     def endswith(self, x: str, start: int=..., end: int=...) -> bool: pass
+    def replace(self, old: str, new: str, maxcount: Optional[int] = None) -> str: pass
 
 class float:
     def __init__(self, x: object) -> None: pass
