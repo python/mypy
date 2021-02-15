@@ -503,12 +503,12 @@ class Server:
             # (updated or added) or removed.
             self.update_sources(sources)
             changed, removed = self.find_changed(sources)
-            changed += self.find_added_suppressed(self.fine_grained_manager.graph, set(),
-                                                  manager.search_paths)
         else:
             # Use the remove/update lists to update fswatcher.
             # This avoids calling stat() for unchanged files.
             changed, removed = self.update_changed(sources, remove or [], update or [])
+        changed += self.find_added_suppressed(self.fine_grained_manager.graph, set(),
+                                              manager.search_paths)
         manager.search_paths = compute_search_paths(sources, manager.options, manager.data_dir)
         t1 = time.time()
         manager.log("fine-grained increment: find_changed: {:.3f}s".format(t1 - t0))
