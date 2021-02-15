@@ -372,4 +372,4 @@ class SourceFinderSuite(unittest.TestCase):
             "pkg/a2/b/f.py",
         }
         fscache = FakeFSCache(files)
-        assert len(find_sources(["/"], options, fscache)) == len(files)
+        assert len(find_sources(["."], options, fscache)) == len(files)
