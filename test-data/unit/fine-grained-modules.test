@@ -2105,21 +2105,6 @@ x = 1
 ==
 main:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
-[case testFineFollowImportSkipNotInvalidatedOnAddedStubOnFollowForStubs]
-# flags: --follow-imports=skip --ignore-missing-imports --config-file=tmp/mypy.ini
-# cmd: mypy main.py
-[file main.py]
-import other
-[file other.pyi.2]
-x = 1
-[file mypy.ini]
-\[mypy]
-follow_imports_for_stubs = True
-[stale]
-[rechecked]
-[out]
-==
-
 [case testFineAddedSkippedStubsPackageFrom]
 # flags: --follow-imports=skip --ignore-missing-imports
 # cmd: mypy main.py
@@ -2150,3 +2135,53 @@ x: str
 [out]
 ==
 a.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testMissingStubAdded1]
+# flags: --follow-imports=skip
+# cmd: mypy main.py
+
+[file main.py]
+import foo
+foo.x = 1
+[file foo.pyi.2]
+x = 'x'
+[file main.py.3]
+import foo
+foo.x = 'y'
+[out]
+main.py:1: error: Cannot find implementation or library stub for module named "foo"
+main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+==
+main.py:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+==
+
+[case testMissingStubAdded2]
+# flags: --follow-imports=skip --py2
+# cmd: mypy main.py
+
+[file main.py]
+import foo  # type: ignore
+foo.x = 1
+[file foo.pyi.2]
+x = 'x'
+[file main.py.3]
+import foo
+foo.x = 'y'
+[out]
+==
+main.py:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+==
+
+[case testDoNotFollowImportToNonStubFile]
+# flags: --follow-imports=skip
+# cmd: mypy main.py
+
+[file main.py]
+import foo  # type: ignore
+foo.x = 1
+[file foo.py.2]
+x = 'x'
+1 + 'x'
+
+[out]
+==
