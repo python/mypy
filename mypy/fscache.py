@@ -229,11 +229,10 @@ class FileSystemCache:
         if path in self.exists_case_cache:
             return self.exists_case_cache[path]
         head, tail = os.path.split(path)
-        if not head.startswith(prefix):
+        if not head.startswith(prefix) or not tail:
             # Only perform the check for paths under prefix.
             self.exists_case_cache[path] = True
             return True
-        assert tail
         try:
             names = self.listdir(head)
             # This allows one to check file name case sensitively in
