@@ -708,8 +708,15 @@ class Server:
             all_suppressed |= state.suppressed_set
 
         # Filter out things that shouldn't actually be considered suppressed.
+        #
+        # Various submodules of 'encodings' can be suppressed, since it uses
+        # module-level '__getattr__'. Skip them since there are many of them,
+        # and following imports to them is kind of pointless.
+        #
         # TODO: Figure out why these are treated as suppressed
-        all_suppressed = {module for module in all_suppressed if module not in graph}
+        all_suppressed = {module
+                          for module in all_suppressed
+                          if module not in graph and not module.startswith('encodings.')}
 
         # Optimization: skip top-level packages that are obviously not
         # there, to avoid calling the relatively slow find_module()
