@@ -25,7 +25,7 @@ class TestFileSystemCache(unittest.TestCase):
         self.make_file('bar.py')
         self.make_file('pkg/sub_package/__init__.py')
         self.make_file('pkg/sub_package/foo.py')
-        # Run twice to test bost cached and non-cached code paths.
+        # Run twice to test both cached and non-cached code paths.
         for i in range(2):
             assert self.isfile_case('bar.py')
             assert self.isfile_case('pkg/sub_package/__init__.py')
@@ -44,7 +44,7 @@ class TestFileSystemCache(unittest.TestCase):
         self.make_file('bar.py')
         self.make_file('pkg/sub_package/__init__.py')
         self.make_file('pkg/sub_package/foo.py')
-        # Run twice to test bost cached and non-cached code paths.
+        # Run twice to test both cached and non-cached code paths.
         # This reverses the order of checks from test_isfile_case_1.
         for i in range(2):
             assert not self.isfile_case('Bar.py')
@@ -57,6 +57,22 @@ class TestFileSystemCache(unittest.TestCase):
             assert self.isfile_case('pkg/sub_package/foo.py')
             assert not self.isfile_case('non_existent.py')
             assert not self.isfile_case('pkg/non_existent.py')
+
+    def test_isfile_case_3(self) -> None:
+        self.make_file('bar.py')
+        self.make_file('pkg/sub_package/__init__.py')
+        self.make_file('pkg/sub_package/foo.py')
+        # Run twice to test both cached and non-cached code paths.
+        for i in range(2):
+            assert self.isfile_case('bar.py')
+            assert not self.isfile_case('non_existent.py')
+            assert not self.isfile_case('pkg/non_existent.py')
+            assert not self.isfile_case('Bar.py')
+            assert not self.isfile_case('pkg/sub_package/__init__.PY')
+            assert not self.isfile_case('pkg/Sub_Package/foo.py')
+            assert not self.isfile_case('Pkg/sub_package/foo.py')
+            assert self.isfile_case('pkg/sub_package/__init__.py')
+            assert self.isfile_case('pkg/sub_package/foo.py')
 
     def test_isfile_case_other_directory(self) -> None:
         self.make_file('bar.py')
