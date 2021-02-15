@@ -146,6 +146,14 @@ def process_start_options(flags: List[str], allow_sources: bool) -> Options:
     return options
 
 
+def ignore_suppressed_imports(module: str) -> bool:
+    """Can we skip looking for newly unsuppressed imports to module?"""
+    # Various submodules of 'encodings' can be suppressed, since it
+    # uses module-level '__getattr__'. Skip them since there are many
+    # of them, and following imports to them is kind of pointless.
+    return module.startswith('encodings.')
+
+
 ModulePathPair = Tuple[str, str]
 ModulePathPairs = List[ModulePathPair]
 ChangesAndRemovals = Tuple[ModulePathPairs, ModulePathPairs]
@@ -708,8 +716,11 @@ class Server:
             all_suppressed |= state.suppressed_set
 
         # Filter out things that shouldn't actually be considered suppressed.
+        #
         # TODO: Figure out why these are treated as suppressed
-        all_suppressed = {module for module in all_suppressed if module not in graph}
+        all_suppressed = {module
+                          for module in all_suppressed
+                          if module not in graph and not ignore_suppressed_imports(module)}
 
         # Optimization: skip top-level packages that are obviously not
         # there, to avoid calling the relatively slow find_module()
