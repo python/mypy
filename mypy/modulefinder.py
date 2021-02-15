@@ -476,7 +476,7 @@ class FindModuleCache:
 def matches_exclude(subpath: str, exclude: str, fscache: FileSystemCache, verbose: bool) -> bool:
     if not exclude:
         return False
-    subpath_str = os.path.abspath(subpath).replace(os.sep, "/")
+    subpath_str = os.path.relpath(subpath).replace(os.sep, "/")
     if fscache.isdir(subpath):
         subpath_str += "/"
     if re.search(exclude, subpath_str):
