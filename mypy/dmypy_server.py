@@ -728,7 +728,7 @@ class Server:
             if top_level_pkg not in packages:
                 # Fast path: non-existent top-level package
                 continue
-            result = finder.find_module(module)
+            result = finder.find_module(module, fast_path=True)
             if isinstance(result, str) and module not in seen:
                 # When not following imports, we only follow imports to .pyi files.
                 if not self.following_imports() and not result.endswith('.pyi'):

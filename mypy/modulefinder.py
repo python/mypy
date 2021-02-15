@@ -188,8 +188,12 @@ class FindModuleCache:
         self.initial_components[lib_path] = components
         return components.get(id, [])
 
-    def find_module(self, id: str) -> ModuleSearchResult:
-        """Return the path of the module source file or why it wasn't found."""
+    def find_module(self, id: str, *, fast_path: bool = False) -> ModuleSearchResult:
+        """Return the path of the module source file or why it wasn't found.
+
+        If fast_path is True, prioritize performance over generating detailed
+        error descriptions.
+        """
         if id not in self.results:
             top_level = id.partition('.')[0]
             use_typeshed = True
@@ -198,7 +202,8 @@ class FindModuleCache:
                 use_typeshed = (self.options is None
                                 or typeshed_py_version(self.options) >= min_version)
             self.results[id] = self._find_module(id, use_typeshed)
-            if (self.results[id] is ModuleNotFoundReason.NOT_FOUND
+            if (not fast_path
+                    and self.results[id] is ModuleNotFoundReason.NOT_FOUND
                     and self._can_find_module_in_parent_dir(id)):
                 self.results[id] = ModuleNotFoundReason.WRONG_WORKING_DIRECTORY
         return self.results[id]
