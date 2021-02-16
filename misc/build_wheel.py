@@ -32,6 +32,12 @@ from typing import Dict
 # Clang package we use on Linux
 LLVM_URL = 'https://github.com/mypyc/mypy_mypyc-wheels/releases/download/llvm/llvm-centos-5.tar.gz'
 
+# Script to configure 64-bit MSVC compiler executable
+VCVARS64 = (
+    r'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise' +
+    r'\VC\Auxiliary\Build\vcvars64.bat'
+)
+
 # Mypy repository root
 ROOT_DIR = os.path.dirname(os.path.dirname(__file__))
 
@@ -53,18 +59,22 @@ def create_environ(python_version: str) -> Dict[str, str]:
     #
     # TODO: remove use of mypy-requirements.txt once we no longer need to support
     #       building pre modular typeshed releases
-    env['CIBW_BEFORE_BUILD'] = """
+    install_deps = """
       pip install -r {package}/mypy-requirements.txt &&
       (pip install -r {package}/build-requirements.txt || true)
     """.replace('\n', ' ')
+    env['CIBW_BEFORE_BUILD'] = install_deps
 
     # download a copy of clang to use to compile on linux. this was probably built in 2018,
     # speeds up compilation 2x
-    env['CIBW_BEFORE_BUILD_LINUX'] = """
-      (cd / && curl -L %s | tar xzf -) &&
-      pip install -r {package}/mypy-requirements.txt &&
-      (pip install -r {package}/build-requirements.txt || true)
-    """.replace('\n', ' ') % LLVM_URL
+    env['CIBW_BEFORE_BUILD_LINUX'] = (
+        "(cd / && curl -L %s | tar xzf -) && %s" % (LLVM_URL, install_deps)
+    )
+
+    # IMPORTANT: The build can run out of memory if we don't use a 64-bit compiler on Windows.
+    env['CIBW_BEFORE_BUILD_WINDOWS'] = (
+        'call "%s" && %s' % (VCVARS64, install_deps)
+    )
 
     # the double negative is counterintuitive, https://github.com/pypa/pip/issues/5735
     env['CIBW_ENVIRONMENT'] = 'MYPY_USE_MYPYC=1 MYPYC_OPT_LEVEL=3 PIP_NO_BUILD_ISOLATION=no'
