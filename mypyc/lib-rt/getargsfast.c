@@ -96,7 +96,8 @@ CPyArg_ParseStackAndKeywordsSimple(PyObject *const *args, Py_ssize_t nargs, PyOb
     if (kwnames == NULL && nargs >= parser->min && nargs <= parser->max) {
         // Fast path: correct number of positional arguments only
         PyObject **p;
-        for (Py_ssize_t i = 0; i < nargs; i++) {
+        Py_ssize_t i;
+        for (i = 0; i < nargs; i++) {
             p = va_arg(va, PyObject **);
             *p = args[i];
         }
