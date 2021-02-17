@@ -201,7 +201,7 @@ Ignoring a single class or function
 -----------------------------------
 
 A ``@typing.no_type_check`` decorator added to a class, method or function has the
-effect of ignoring that class, method orfunction.
+effect of ignoring that class, method or function.
 
 .. code-block:: python
 
