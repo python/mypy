@@ -1122,13 +1122,14 @@ class NonDataclass:
     pass
 
 reveal_type(asdict(Person('John', 32)))  # N: Revealed type is 'TypedDict({'name': builtins.str, 'age': builtins.int})'
-asdict(Person) # E: 'dataclasses.asdict' should be called on dataclass instances
-asdict(NonDataclass()) # E: 'dataclasses.asdict' should be called on dataclass instances
+# It's OK to call on a non-dataclass, to reduce false-positives.
+reveal_type(asdict(Person)) # N: Revealed type is 'builtins.dict*[builtins.str, Any]'
+reveal_type(asdict(NonDataclass())) # N: Revealed type is 'builtins.dict*[builtins.str, Any]'
 
 def my_dict_factory(seq: List[Tuple[str, Any]]) -> Dict[str, Any]:
     pass
 
-asdict(NonDataclass(), dict_factory=my_dict_factory) # E: 'dataclasses.asdict' should be called on dataclass instances
+reveal_type(asdict(NonDataclass(), dict_factory=my_dict_factory)) # N: Revealed type is 'builtins.dict*[builtins.str, Any]'
 
 # Passing in a dict_factory should not return a TypedDict
 reveal_type(asdict(Person('John', 32), dict_factory=my_dict_factory))  # N: Revealed type is 'builtins.dict*[builtins.str, Any]'

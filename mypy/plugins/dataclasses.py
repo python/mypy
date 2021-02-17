@@ -403,15 +403,9 @@ def asdict_callback(ctx: FunctionContext) -> Type:
         if isinstance(dataclass_instance, Instance):
             if is_type_dataclass(dataclass_instance.type):
                 if len(ctx.arg_types) == 1:
+                    # Can only infer a more precise type for calls where dict_factory is not set.
                     return _asdictify(ctx.api, dataclass_instance)
-                else:
-                    # We can't infer a more precise type for calls where dict_factory is set.
-                    # At least for now, typeshed stubs for asdict don't allow you to pass in
-                    # `dict` as dict_factory, so we can't special-case that.
-                    return ctx.default_return_type
 
-    ctx.api.fail("'dataclasses.asdict' should be called on dataclass instances",
-                 ctx.context)
     return ctx.default_return_type
 
 
