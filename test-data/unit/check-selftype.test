@@ -69,7 +69,7 @@ class C:
         if self:
             return reveal_type(_type(self)(1))  # N: Revealed type is 'Q`-1'
         else:
-            return _type(self)()  # E: Too few arguments for "C"
+            return _type(self)()  # E: Missing positional argument "a" in call to "C"
 
 
 [builtins fixtures/bool.pyi]
@@ -96,7 +96,7 @@ class C:
         if cls:
             return cls(1)
         else:
-            return cls()  # E: Too few arguments for "C"
+            return cls()  # E: Missing positional argument "a" in call to "C"
 
 
 reveal_type(A.new)  # N: Revealed type is 'def () -> __main__.A*'
@@ -540,7 +540,7 @@ class C(Generic[T]):
 ci: C[int]
 cs: C[str]
 reveal_type(cs.from_item())  # N: Revealed type is 'builtins.str'
-ci.from_item()  # E: Too few arguments for "from_item" of "C"
+ci.from_item()  # E: Missing positional argument "converter" in call to "from_item" of "C"
 
 def conv(x: int) -> str: ...
 def bad(x: str) -> str: ...
@@ -569,7 +569,7 @@ SubP('no')  # E: No overload variant of "SubP" matches argument type "str" \
             # N:     def [T] __init__(self, use_str: Literal[False]) -> SubP[T]
 
 # This is a bit unfortunate: we don't have a way to map the overloaded __init__ to subtype.
-x = SubP(use_str=True)  # E: Need type annotation for 'x'
+x = SubP(use_str=True)  # E: Need type annotation for "x"
 reveal_type(x)  # N: Revealed type is '__main__.SubP[Any]'
 y: SubP[str] = SubP(use_str=True)
 
@@ -595,7 +595,7 @@ class C(Generic[T]):
 from lib import PFallBack, PFallBackAny
 
 t: bool
-xx = PFallBack(t)  # E: Need type annotation for 'xx'
+xx = PFallBack(t)  # E: Need type annotation for "xx"
 yy = PFallBackAny(t)  # OK
 
 [file lib.pyi]

@@ -112,6 +112,14 @@ NO_ANY_RETURN = ErrorCode(
     'General')  # type: Final
 UNREACHABLE = ErrorCode(
     'unreachable', "Warn about unreachable statements or expressions", 'General')  # type: Final
+REDUNDANT_EXPR = ErrorCode(
+    'redundant-expr',
+    "Warn about redundant expressions",
+    'General',
+    default_enabled=False)  # type: Final
+NAME_MATCH = ErrorCode(
+    'name-match', "Check that type definition has consistent naming", 'General')  # type: Final
+
 
 # Syntax errors are often blocking.
 SYNTAX = ErrorCode(

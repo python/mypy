@@ -270,6 +270,16 @@ class TypeAliasType(Type):
             self.line, self.column)
 
 
+class TypeGuardType(Type):
+    """Only used by find_instance_check() etc."""
+    def __init__(self, type_guard: Type):
+        super().__init__(line=type_guard.line, column=type_guard.column)
+        self.type_guard = type_guard
+
+    def __repr__(self) -> str:
+        return "TypeGuard({})".format(self.type_guard)
+
+
 class ProperType(Type):
     """Not a type alias.
 
@@ -328,12 +338,34 @@ class TypeVarId:
         return self.meta_level > 0
 
 
-class TypeVarDef(mypy.nodes.Context):
-    """Definition of a single type variable."""
-
+class TypeVarLikeDef(mypy.nodes.Context):
     name = ''  # Name (may be qualified)
     fullname = ''  # Fully qualified name
     id = None  # type: TypeVarId
+
+    def __init__(
+        self, name: str, fullname: str, id: Union[TypeVarId, int], line: int = -1, column: int = -1
+    ) -> None:
+        super().__init__(line, column)
+        self.name = name
+        self.fullname = fullname
+        if isinstance(id, int):
+            id = TypeVarId(id)
+        self.id = id
+
+    def __repr__(self) -> str:
+        return self.name
+
+    def serialize(self) -> JsonDict:
+        raise NotImplementedError
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'TypeVarLikeDef':
+        raise NotImplementedError
+
+
+class TypeVarDef(TypeVarLikeDef):
+    """Definition of a single type variable."""
     values = None  # type: List[Type]  # Value restriction, empty list if no restriction
     upper_bound = None  # type: Type
     variance = INVARIANT  # type: int
@@ -341,13 +373,8 @@ class TypeVarDef(mypy.nodes.Context):
     def __init__(self, name: str, fullname: str, id: Union[TypeVarId, int], values: List[Type],
                  upper_bound: Type, variance: int = INVARIANT, line: int = -1,
                  column: int = -1) -> None:
-        super().__init__(line, column)
+        super().__init__(name, fullname, id, line, column)
         assert values is not None, "No restrictions must be represented by empty list"
-        self.name = name
-        self.fullname = fullname
-        if isinstance(id, int):
-            id = TypeVarId(id)
-        self.id = id
         self.values = values
         self.upper_bound = upper_bound
         self.variance = variance
@@ -387,6 +414,28 @@ class TypeVarDef(mypy.nodes.Context):
                           deserialize_type(data['upper_bound']),
                           data['variance'],
                           )
+
+
+class ParamSpecDef(TypeVarLikeDef):
+    """Definition of a single ParamSpec variable."""
+
+    def serialize(self) -> JsonDict:
+        assert not self.id.is_meta_var()
+        return {
+            '.class': 'ParamSpecDef',
+            'name': self.name,
+            'fullname': self.fullname,
+            'id': self.id.raw_id,
+        }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'ParamSpecDef':
+        assert data['.class'] == 'ParamSpecDef'
+        return ParamSpecDef(
+            data['name'],
+            data['fullname'],
+            data['id'],
+        )
 
 
 class UnboundType(ProperType):
@@ -966,6 +1015,7 @@ class CallableType(FunctionLike):
                                 # tools that consume mypy ASTs
                  'def_extras',  # Information about original definition we want to serialize.
                                 # This is used for more detailed error messages.
+                 'type_guard',  # T, if -> TypeGuard[T] (ret_type is bool in this case).
                  )
 
     def __init__(self,
@@ -976,7 +1026,7 @@ class CallableType(FunctionLike):
                  fallback: Instance,
                  name: Optional[str] = None,
                  definition: Optional[SymbolNode] = None,
-                 variables: Optional[List[TypeVarDef]] = None,
+                 variables: Optional[Sequence[TypeVarLikeDef]] = None,
                  line: int = -1,
                  column: int = -1,
                  is_ellipsis_args: bool = False,
@@ -985,6 +1035,7 @@ class CallableType(FunctionLike):
                  from_type_type: bool = False,
                  bound_args: Sequence[Optional[Type]] = (),
                  def_extras: Optional[Dict[str, Any]] = None,
+                 type_guard: Optional[Type] = None,
                  ) -> None:
         super().__init__(line, column)
         assert len(arg_types) == len(arg_kinds) == len(arg_names)
@@ -1019,6 +1070,7 @@ class CallableType(FunctionLike):
                                not definition.is_static else None}
         else:
             self.def_extras = {}
+        self.type_guard = type_guard
 
     def copy_modified(self,
                       arg_types: Bogus[Sequence[Type]] = _dummy,
@@ -1028,7 +1080,7 @@ class CallableType(FunctionLike):
                       fallback: Bogus[Instance] = _dummy,
                       name: Bogus[Optional[str]] = _dummy,
                       definition: Bogus[SymbolNode] = _dummy,
-                      variables: Bogus[List[TypeVarDef]] = _dummy,
+                      variables: Bogus[Sequence[TypeVarLikeDef]] = _dummy,
                       line: Bogus[int] = _dummy,
                       column: Bogus[int] = _dummy,
                       is_ellipsis_args: Bogus[bool] = _dummy,
@@ -1036,7 +1088,9 @@ class CallableType(FunctionLike):
                       special_sig: Bogus[Optional[str]] = _dummy,
                       from_type_type: Bogus[bool] = _dummy,
                       bound_args: Bogus[List[Optional[Type]]] = _dummy,
-                      def_extras: Bogus[Dict[str, Any]] = _dummy) -> 'CallableType':
+                      def_extras: Bogus[Dict[str, Any]] = _dummy,
+                      type_guard: Bogus[Optional[Type]] = _dummy,
+                      ) -> 'CallableType':
         return CallableType(
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,
             arg_kinds=arg_kinds if arg_kinds is not _dummy else self.arg_kinds,
@@ -1055,6 +1109,7 @@ class CallableType(FunctionLike):
             from_type_type=from_type_type if from_type_type is not _dummy else self.from_type_type,
             bound_args=bound_args if bound_args is not _dummy else self.bound_args,
             def_extras=def_extras if def_extras is not _dummy else dict(self.def_extras),
+            type_guard=type_guard if type_guard is not _dummy else self.type_guard,
         )
 
     def var_arg(self) -> Optional[FormalArgument]:
@@ -1216,6 +1271,8 @@ class CallableType(FunctionLike):
     def serialize(self) -> JsonDict:
         # TODO: As an optimization, leave out everything related to
         # generic functions for non-generic functions.
+        assert (self.type_guard is None
+                or isinstance(get_proper_type(self.type_guard), Instance)), str(self.type_guard)
         return {'.class': 'CallableType',
                 'arg_types': [t.serialize() for t in self.arg_types],
                 'arg_kinds': self.arg_kinds,
@@ -1230,6 +1287,7 @@ class CallableType(FunctionLike):
                 'bound_args': [(None if t is None else t.serialize())
                                for t in self.bound_args],
                 'def_extras': dict(self.def_extras),
+                'type_guard': self.type_guard.serialize() if self.type_guard is not None else None,
                 }
 
     @classmethod
@@ -1247,7 +1305,9 @@ class CallableType(FunctionLike):
                             implicit=data['implicit'],
                             bound_args=[(None if t is None else deserialize_type(t))
                                         for t in data['bound_args']],
-                            def_extras=data['def_extras']
+                            def_extras=data['def_extras'],
+                            type_guard=(deserialize_type(data['type_guard'])
+                                        if data['type_guard'] is not None else None),
                             )
 
 
@@ -1683,13 +1743,18 @@ class StarType(ProperType):
 class UnionType(ProperType):
     """The union type Union[T1, ..., Tn] (at least one type argument)."""
 
-    __slots__ = ('items',)
+    __slots__ = ('items', 'is_evaluated', 'uses_pep604_syntax')
 
-    def __init__(self, items: Sequence[Type], line: int = -1, column: int = -1) -> None:
+    def __init__(self, items: Sequence[Type], line: int = -1, column: int = -1,
+                 is_evaluated: bool = True, uses_pep604_syntax: bool = False) -> None:
         super().__init__(line, column)
         self.items = flatten_nested_unions(items)
         self.can_be_true = any(item.can_be_true for item in items)
         self.can_be_false = any(item.can_be_false for item in items)
+        # is_evaluated should be set to false for type comments and string literals
+        self.is_evaluated = is_evaluated
+        # uses_pep604_syntax is True if Union uses OR syntax (X | Y)
+        self.uses_pep604_syntax = uses_pep604_syntax
 
     def __hash__(self) -> int:
         return hash(frozenset(self.items))
@@ -2053,19 +2118,26 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         s = '({})'.format(s)
 
         if not isinstance(get_proper_type(t.ret_type), NoneType):
-            s += ' -> {}'.format(t.ret_type.accept(self))
+            if t.type_guard is not None:
+                s += ' -> TypeGuard[{}]'.format(t.type_guard.accept(self))
+            else:
+                s += ' -> {}'.format(t.ret_type.accept(self))
 
         if t.variables:
             vs = []
-            # We reimplement TypeVarDef.__repr__ here in order to support id_mapper.
             for var in t.variables:
-                if var.values:
-                    vals = '({})'.format(', '.join(val.accept(self) for val in var.values))
-                    vs.append('{} in {}'.format(var.name, vals))
-                elif not is_named_instance(var.upper_bound, 'builtins.object'):
-                    vs.append('{} <: {}'.format(var.name, var.upper_bound.accept(self)))
+                if isinstance(var, TypeVarDef):
+                    # We reimplement TypeVarDef.__repr__ here in order to support id_mapper.
+                    if var.values:
+                        vals = '({})'.format(', '.join(val.accept(self) for val in var.values))
+                        vs.append('{} in {}'.format(var.name, vals))
+                    elif not is_named_instance(var.upper_bound, 'builtins.object'):
+                        vs.append('{} <: {}'.format(var.name, var.upper_bound.accept(self)))
+                    else:
+                        vs.append(var.name)
                 else:
-                    vs.append(var.name)
+                    # For other TypeVarLikeDefs, just use the repr
+                    vs.append(repr(var))
             s = '{} {}'.format('[{}]'.format(', '.join(vs)), s)
 
         return 'def {}'.format(s)

@@ -1,0 +1,133 @@
+-- Type checking of union types with '|' syntax
+
+[case testUnionOrSyntaxWithTwoBuiltinsTypes]
+# flags: --python-version 3.10
+from __future__ import annotations
+def f(x: int | str) -> int | str:
+    reveal_type(x)  # N: Revealed type is 'Union[builtins.int, builtins.str]'
+    z: int | str = 0
+    reveal_type(z)  # N: Revealed type is 'Union[builtins.int, builtins.str]'
+    return x
+reveal_type(f)  # N: Revealed type is 'def (x: Union[builtins.int, builtins.str]) -> Union[builtins.int, builtins.str]'
+[builtins fixtures/tuple.pyi]
+
+
+[case testUnionOrSyntaxWithThreeBuiltinsTypes]
+# flags: --python-version 3.10
+def f(x: int | str | float) -> int | str | float:
+    reveal_type(x)  # N: Revealed type is 'Union[builtins.int, builtins.str, builtins.float]'
+    z: int | str | float = 0
+    reveal_type(z)  # N: Revealed type is 'Union[builtins.int, builtins.str, builtins.float]'
+    return x
+reveal_type(f)  # N: Revealed type is 'def (x: Union[builtins.int, builtins.str, builtins.float]) -> Union[builtins.int, builtins.str, builtins.float]'
+
+
+[case testUnionOrSyntaxWithTwoTypes]
+# flags: --python-version 3.10
+class A: pass
+class B: pass
+def f(x: A | B) -> A | B:
+    reveal_type(x)  # N: Revealed type is 'Union[__main__.A, __main__.B]'
+    z: A | B = A()
+    reveal_type(z)  # N: Revealed type is 'Union[__main__.A, __main__.B]'
+    return x
+reveal_type(f)  # N: Revealed type is 'def (x: Union[__main__.A, __main__.B]) -> Union[__main__.A, __main__.B]'
+
+
+[case testUnionOrSyntaxWithThreeTypes]
+# flags: --python-version 3.10
+class A: pass
+class B: pass
+class C: pass
+def f(x: A | B | C) -> A | B | C:
+    reveal_type(x)  # N: Revealed type is 'Union[__main__.A, __main__.B, __main__.C]'
+    z: A | B | C = A()
+    reveal_type(z)  # N: Revealed type is 'Union[__main__.A, __main__.B, __main__.C]'
+    return x
+reveal_type(f)  # N: Revealed type is 'def (x: Union[__main__.A, __main__.B, __main__.C]) -> Union[__main__.A, __main__.B, __main__.C]'
+
+
+[case testUnionOrSyntaxWithLiteral]
+# flags: --python-version 3.10
+from typing_extensions import Literal
+reveal_type(Literal[4] | str)  # N: Revealed type is 'Any'
+[builtins fixtures/tuple.pyi]
+
+
+[case testUnionOrSyntaxWithBadOperator]
+# flags: --python-version 3.10
+x: 1 + 2  # E: Invalid type comment or annotation
+
+
+[case testUnionOrSyntaxWithBadOperands]
+# flags: --python-version 3.10
+x: int | 42  # E: Invalid type: try using Literal[42] instead?
+y: 42 | int  # E: Invalid type: try using Literal[42] instead?
+z: str | 42 | int  # E: Invalid type: try using Literal[42] instead?
+
+
+[case testUnionOrSyntaxWithGenerics]
+# flags: --python-version 3.10
+from typing import List
+x: List[int | str]
+reveal_type(x)  # N: Revealed type is 'builtins.list[Union[builtins.int, builtins.str]]'
+[builtins fixtures/list.pyi]
+
+
+[case testUnionOrSyntaxWithQuotedFunctionTypes]
+# flags: --python-version 3.4
+from typing import Union
+def f(x: 'Union[int, str, None]') -> 'Union[int, None]':
+    reveal_type(x)  # N: Revealed type is 'Union[builtins.int, builtins.str, None]'
+    return 42
+reveal_type(f)  # N: Revealed type is 'def (x: Union[builtins.int, builtins.str, None]) -> Union[builtins.int, None]'
+
+def g(x: "int | str | None") -> "int | None":
+    reveal_type(x)  # N: Revealed type is 'Union[builtins.int, builtins.str, None]'
+    return 42
+reveal_type(g)  # N: Revealed type is 'def (x: Union[builtins.int, builtins.str, None]) -> Union[builtins.int, None]'
+
+
+[case testUnionOrSyntaxWithQuotedVariableTypes]
+# flags: --python-version 3.6
+y: "int | str" = 42
+reveal_type(y)  # N: Revealed type is 'Union[builtins.int, builtins.str]'
+
+
+[case testUnionOrSyntaxWithTypeAliasWorking]
+# flags: --python-version 3.10
+from typing import Union
+T = Union[int, str]
+x: T
+reveal_type(x)  # N: Revealed type is 'Union[builtins.int, builtins.str]'
+
+
+[case testUnionOrSyntaxWithTypeAliasNotAllowed]
+# flags: --python-version 3.9
+from __future__ import annotations
+T = int | str  # E: Unsupported left operand type for | ("Type[int]")
+[builtins fixtures/tuple.pyi]
+
+
+[case testUnionOrSyntaxInComment]
+# flags: --python-version 3.6
+x = 1  # type: int | str
+
+
+[case testUnionOrSyntaxFutureImport]
+# flags: --python-version 3.7
+from __future__ import annotations
+x: int | None
+[builtins fixtures/tuple.pyi]
+
+
+[case testUnionOrSyntaxMissingFutureImport]
+# flags: --python-version 3.9
+x: int | None  # E: X | Y syntax for unions requires Python 3.10
+
+
+[case testUnionOrSyntaxInStubFile]
+# flags: --python-version 3.6
+from lib import x
+[file lib.pyi]
+x: int | None

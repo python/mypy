@@ -254,7 +254,7 @@ f(*(a, b, b)) # E: Argument 1 to "f" has incompatible type "*Tuple[A, B, B]"; ex
 f(*(b, b, c)) # E: Argument 1 to "f" has incompatible type "*Tuple[B, B, C]"; expected "A"
 f(a, *(b, b)) # E: Argument 2 to "f" has incompatible type "*Tuple[B, B]"; expected "C"
 f(b, *(b, c)) # E: Argument 1 to "f" has incompatible type "B"; expected "A"
-f(*(a, b))    # E: Too few arguments for "f"
+f(*(a, b))    # E: Missing positional arguments "b", "c" in call to "f"
 f(*(a, b, c, c)) # E: Too many arguments for "f"
 f(a, *(b, c, c)) # E: Too many arguments for "f"
 f(*(a, b, c))

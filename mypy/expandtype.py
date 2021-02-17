@@ -40,6 +40,8 @@ def freshen_function_type_vars(callee: F) -> F:
         tvdefs = []
         tvmap = {}  # type: Dict[TypeVarId, Type]
         for v in callee.variables:
+            # TODO(shantanu): fix for ParamSpecDef
+            assert isinstance(v, TypeVarDef)
             tvdef = TypeVarDef.new_unification_variable(v)
             tvdefs.append(tvdef)
             tvmap[v.id] = TypeVarType(tvdef)
@@ -95,7 +97,9 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
 
     def visit_callable_type(self, t: CallableType) -> Type:
         return t.copy_modified(arg_types=self.expand_types(t.arg_types),
-                               ret_type=t.ret_type.accept(self))
+                               ret_type=t.ret_type.accept(self),
+                               type_guard=(t.type_guard.accept(self)
+                                           if t.type_guard is not None else None))
 
     def visit_overloaded(self, t: Overloaded) -> Type:
         items = []  # type: List[CallableType]

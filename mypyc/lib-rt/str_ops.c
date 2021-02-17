@@ -53,8 +53,42 @@ PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split)
     return PyUnicode_Split(str, sep, temp_max_split);
 }
 
+bool CPyStr_Startswith(PyObject *self, PyObject *subobj) {
+    Py_ssize_t start = 0;
+    Py_ssize_t end = PyUnicode_GET_LENGTH(self);
+    return PyUnicode_Tailmatch(self, subobj, start, end, -1);
+}
+
+bool CPyStr_Endswith(PyObject *self, PyObject *subobj) {
+    Py_ssize_t start = 0;
+    Py_ssize_t end = PyUnicode_GET_LENGTH(self);
+    return PyUnicode_Tailmatch(self, subobj, start, end, 1);
+}
+
 /* This does a dodgy attempt to append in place  */
 PyObject *CPyStr_Append(PyObject *o1, PyObject *o2) {
     PyUnicode_Append(&o1, o2);
     return o1;
+}
+
+PyObject *CPyStr_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
+    if (likely(PyUnicode_CheckExact(obj)
+               && CPyTagged_CheckShort(start) && CPyTagged_CheckShort(end))) {
+        Py_ssize_t startn = CPyTagged_ShortAsSsize_t(start);
+        Py_ssize_t endn = CPyTagged_ShortAsSsize_t(end);
+        if (startn < 0) {
+            startn += PyUnicode_GET_LENGTH(obj);
+            if (startn < 0) {
+                startn = 0;
+            }
+        }
+        if (endn < 0) {
+            endn += PyUnicode_GET_LENGTH(obj);
+            if (endn < 0) {
+                endn = 0;
+            }
+        }
+        return PyUnicode_Substring(obj, startn, endn);
+    }
+    return CPyObject_GetSlice(obj, start, end);
 }

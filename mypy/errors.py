@@ -316,7 +316,7 @@ class Errors:
         if end_line is None:
             end_line = origin_line
 
-        code = code or codes.MISC
+        code = code or (codes.MISC if not blocker else None)
 
         info = ErrorInfo(self.import_context(), file, self.current_module(), type,
                          function, line, column, severity, message, code,
@@ -357,14 +357,17 @@ class Errors:
         self._add_error_info(file, info)
 
     def is_ignored_error(self, line: int, info: ErrorInfo, ignores: Dict[int, List[str]]) -> bool:
+        if info.blocker:
+            # Blocking errors can never be ignored
+            return False
         if info.code and self.is_error_code_enabled(info.code) is False:
             return True
-        elif line not in ignores:
+        if line not in ignores:
             return False
-        elif not ignores[line]:
+        if not ignores[line]:
             # Empty list means that we ignore all errors
             return True
-        elif info.code and self.is_error_code_enabled(info.code) is True:
+        if info.code and self.is_error_code_enabled(info.code) is True:
             return info.code.code in ignores[line]
         return False
 

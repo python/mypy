@@ -35,7 +35,7 @@ from mypy.types import (
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
     is_named_instance, union_items, TypeQuery, LiteralType,
     is_optional, remove_optional, TypeTranslator, StarType, get_proper_type, ProperType,
-    get_proper_types, is_literal_type, TypeAliasType)
+    get_proper_types, is_literal_type, TypeAliasType, TypeGuardType)
 from mypy.sametypes import is_same_type
 from mypy.messages import (
     MessageBuilder, make_inferred_type_note, append_invariance_notes, pretty_seq,
@@ -50,7 +50,7 @@ from mypy.typeops import (
     erase_def_to_union_or_bound, erase_to_union_or_bound, coerce_to_literal,
     try_getting_str_literals_from_type, try_getting_int_literals_from_type,
     tuple_fallback, is_singleton_type, try_expanding_enum_to_union,
-    true_only, false_only, function_type, TypeVarExtractor, custom_special_method,
+    true_only, false_only, function_type, get_type_vars, custom_special_method,
     is_literal_type_like,
 )
 from mypy import message_registry
@@ -1389,15 +1389,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         typ: CallableType) -> List[Tuple[FuncItem, CallableType]]:
         # TODO use generator
         subst = []  # type: List[List[Tuple[TypeVarId, Type]]]
-        tvars = typ.variables or []
-        tvars = tvars[:]
+        tvars = list(typ.variables) or []
         if defn.info:
             # Class type variables
             tvars += defn.info.defn.type_vars or []
+        # TODO(shantanu): audit for paramspec
         for tvar in tvars:
-            if tvar.values:
-                subst.append([(tvar.id, value)
-                              for value in tvar.values])
+            if isinstance(tvar, TypeVarDef) and tvar.values:
+                subst.append([(tvar.id, value) for value in tvar.values])
         # Make a copy of the function to check for each combination of
         # value restricted type variables. (Except when running mypyc,
         # where we need one canonical version of the function.)
@@ -3045,32 +3044,33 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             context, object_type=attribute_type,
         )
 
-        # Here we just infer the type, the result should be type-checked like a normal assignment.
-        # For this we use the rvalue as type context.
+        # For non-overloaded setters, the result should be type-checked like a regular assignment.
+        # Hence, we first only try to infer the type by using the rvalue as type context.
+        type_context = rvalue
         self.msg.disable_errors()
         _, inferred_dunder_set_type = self.expr_checker.check_call(
             dunder_set_type,
-            [TempNode(instance_type, context=context), rvalue],
+            [TempNode(instance_type, context=context), type_context],
             [nodes.ARG_POS, nodes.ARG_POS],
             context, object_type=attribute_type,
             callable_name=callable_name)
         self.msg.enable_errors()
 
-        # And now we type check the call second time, to show errors related
-        # to wrong arguments count, etc.
+        # And now we in fact type check the call, to show errors related to wrong arguments
+        # count, etc., replacing the type context for non-overloaded setters only.
+        inferred_dunder_set_type = get_proper_type(inferred_dunder_set_type)
+        if isinstance(inferred_dunder_set_type, CallableType):
+            type_context = TempNode(AnyType(TypeOfAny.special_form), context=context)
         self.expr_checker.check_call(
             dunder_set_type,
-            [TempNode(instance_type, context=context),
-             TempNode(AnyType(TypeOfAny.special_form), context=context)],
+            [TempNode(instance_type, context=context), type_context],
             [nodes.ARG_POS, nodes.ARG_POS],
             context, object_type=attribute_type,
             callable_name=callable_name)
 
-        # should be handled by get_method above
-        assert isinstance(inferred_dunder_set_type, CallableType)  # type: ignore
-
-        if len(inferred_dunder_set_type.arg_types) < 2:
-            # A message already will have been recorded in check_call
+        # In the following cases, a message already will have been recorded in check_call.
+        if ((not isinstance(inferred_dunder_set_type, CallableType)) or
+                (len(inferred_dunder_set_type.arg_types) < 2)):
             return AnyType(TypeOfAny.from_error), get_type, False
 
         set_type = inferred_dunder_set_type.arg_types[1]
@@ -3958,6 +3958,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                               ) -> Tuple[TypeMap, TypeMap]:
         """Find any isinstance checks (within a chain of ands).  Includes
         implicit and explicit checks for None and calls to callable.
+        Also includes TypeGuard functions.
 
         Return value is a map of variables to their types if the condition
         is true and a map of variables to their types if the condition is false.
@@ -4002,6 +4003,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if literal(expr) == LITERAL_TYPE:
                     vartype = type_map[expr]
                     return self.conditional_callable_type_map(expr, vartype)
+            elif isinstance(node.callee, RefExpr):
+                if node.callee.type_guard is not None:
+                    # TODO: Follow keyword args or *args, **kwargs
+                    if node.arg_kinds[0] != nodes.ARG_POS:
+                        self.fail("Type guard requires positional argument", node)
+                        return {}, {}
+                    if literal(expr) == LITERAL_TYPE:
+                        return {expr: TypeGuardType(node.callee.type_guard)}, {}
         elif isinstance(node, ComparisonExpr):
             # Step 1: Obtain the types of each operand and whether or not we can
             # narrow their types. (For example, we shouldn't try narrowing the
@@ -5370,7 +5379,7 @@ def detach_callable(typ: CallableType) -> CallableType:
 
     appear_map = {}  # type: Dict[str, List[int]]
     for i, inner_type in enumerate(type_list):
-        typevars_available = inner_type.accept(TypeVarExtractor())
+        typevars_available = get_type_vars(inner_type)
         for var in typevars_available:
             if var.fullname not in appear_map:
                 appear_map[var.fullname] = []
@@ -5380,7 +5389,7 @@ def detach_callable(typ: CallableType) -> CallableType:
     for var_name, appearances in appear_map.items():
         used_type_var_names.add(var_name)
 
-    all_type_vars = typ.accept(TypeVarExtractor())
+    all_type_vars = get_type_vars(typ)
     new_variables = []
     for var in set(all_type_vars):
         if var.fullname not in used_type_var_names:
@@ -5503,7 +5512,7 @@ class SetNothingToAny(TypeTranslator):
         return t
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
-        # Target of the alias cannot by an ambigous <nothing>, so we just
+        # Target of the alias cannot by an ambiguous <nothing>, so we just
         # replace the arguments.
         return t.copy_modified(args=[a.accept(self) for a in t.args])
 

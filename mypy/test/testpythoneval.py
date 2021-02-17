@@ -51,10 +51,10 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
     version.
     """
     assert testcase.old_cwd is not None, "test was not properly set up"
+    # We must enable site packages to get access to installed stubs.
     # TODO: Enable strict optional for these tests
     mypy_cmdline = [
         '--show-traceback',
-        '--no-site-packages',
         '--no-strict-optional',
         '--no-silence-site-packages',
         '--no-error-summary',

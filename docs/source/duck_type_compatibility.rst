@@ -8,6 +8,7 @@ supported for a small set of built-in types:
 
 * ``int`` is duck type compatible with ``float`` and ``complex``.
 * ``float`` is duck type compatible with ``complex``.
+* ``bytearray`` and ``memoryview`` are duck type compatible with ``bytes``.
 * In Python 2, ``str`` is duck type compatible with ``unicode``.
 
 For example, mypy considers an ``int`` object to be valid whenever a

@@ -36,7 +36,7 @@ def second() -> str:
 [out]
 def inner_a_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -71,7 +71,7 @@ L0:
     return r4
 def second_b_first_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -93,11 +93,11 @@ L0:
     r1 = r0.__mypyc_env__
     r2 = r0.second
     second = r2
-    r3 = unicode_3 :: static  ('b.first.second: nested function')
+    r3 = 'b.first.second: nested function'
     return r3
 def first_b_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -142,7 +142,7 @@ L0:
     return r4
 def inner_c_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -163,7 +163,7 @@ L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.inner
     inner = r1
-    r2 = unicode_4 :: static  ('!')
+    r2 = '!'
     r3 = PyUnicode_Concat(s, r2)
     return r3
 def c(num):
@@ -181,7 +181,7 @@ L0:
     return r4
 def inner_d_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -202,7 +202,7 @@ L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.inner
     inner = r1
-    r2 = unicode_5 :: static  ('?')
+    r2 = '?'
     r3 = PyUnicode_Concat(s, r2)
     return r3
 def d(num):
@@ -220,31 +220,31 @@ L0:
     r1 = inner_d_obj()
     r1.__mypyc_env__ = r0; r2 = is_error
     r0.inner = r1; r3 = is_error
-    r4 = unicode_6 :: static  ('one')
+    r4 = 'one'
     r5 = r0.inner
-    r6 = py_call(r5, r4)
+    r6 = PyObject_CallFunctionObjArgs(r5, r4, 0)
     r7 = cast(str, r6)
     a = r7
-    r8 = unicode_7 :: static  ('two')
+    r8 = 'two'
     r9 = r0.inner
-    r10 = py_call(r9, r8)
+    r10 = PyObject_CallFunctionObjArgs(r9, r8, 0)
     r11 = cast(str, r10)
     b = r11
     return a
 def inner():
     r0 :: str
 L0:
-    r0 = unicode_8 :: static  ('inner: normal function')
+    r0 = 'inner: normal function'
     return r0
 def first():
     r0 :: str
 L0:
-    r0 = unicode_9 :: static  ('first: normal function')
+    r0 = 'first: normal function'
     return r0
 def second():
     r0 :: str
 L0:
-    r0 = unicode_10 :: static  ('second: normal function')
+    r0 = 'second: normal function'
     return r0
 
 [case testFreeVars]
@@ -276,7 +276,7 @@ def c(flag: bool) -> str:
 [out]
 def inner_a_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -313,12 +313,12 @@ L0:
     r2.__mypyc_env__ = r0; r3 = is_error
     r0.inner = r2; r4 = is_error
     r5 = r0.inner
-    r6 = py_call(r5)
+    r6 = PyObject_CallFunctionObjArgs(r5, 0)
     r7 = unbox(int, r6)
     return r7
 def inner_b_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -357,14 +357,14 @@ L0:
     r2.__mypyc_env__ = r0; r3 = is_error
     r0.inner = r2; r4 = is_error
     r5 = r0.inner
-    r6 = py_call(r5)
+    r6 = PyObject_CallFunctionObjArgs(r5, 0)
     r7 = unbox(int, r6)
     r8 = r0.num
     r9 = CPyTagged_Add(r7, r8)
     return r9
 def inner_c_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -384,11 +384,11 @@ L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.inner
     inner = r1
-    r2 = unicode_3 :: static  ('f.inner: first definition')
+    r2 = 'f.inner: first definition'
     return r2
 def inner_c_obj_0.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -408,7 +408,7 @@ L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.inner
     inner = r1
-    r2 = unicode_4 :: static  ('f.inner: second definition')
+    r2 = 'f.inner: second definition'
     return r2
 def c(flag):
     flag :: bool
@@ -433,7 +433,7 @@ L2:
     r0.inner = r4; r6 = is_error
 L3:
     r7 = r0.inner
-    r8 = py_call(r7)
+    r8 = PyObject_CallFunctionObjArgs(r7, 0)
     r9 = cast(str, r8)
     return r9
 
@@ -450,7 +450,7 @@ def a() -> int:
 [out]
 def c_a_b_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -476,7 +476,7 @@ L0:
     return r3
 def b_a_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -512,7 +512,7 @@ L0:
     r7.__mypyc_env__ = r2; r8 = is_error
     r2.c = r7; r9 = is_error
     r10 = r2.c
-    r11 = py_call(r10)
+    r11 = PyObject_CallFunctionObjArgs(r10, 0)
     r12 = unbox(int, r11)
     return r12
 def a():
@@ -529,7 +529,7 @@ L0:
     r2.__mypyc_env__ = r0; r3 = is_error
     r0.b = r2; r4 = is_error
     r5 = r0.b
-    r6 = py_call(r5)
+    r6 = PyObject_CallFunctionObjArgs(r5, 0)
     r7 = unbox(int, r6)
     return r7
 
@@ -545,7 +545,7 @@ def f(flag: bool) -> str:
 [out]
 def inner_f_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -565,11 +565,11 @@ L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.inner
     inner = r1
-    r2 = unicode_1 :: static  ('f.inner: first definition')
+    r2 = 'f.inner: first definition'
     return r2
 def inner_f_obj_0.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -589,7 +589,7 @@ L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.inner
     inner = r1
-    r2 = unicode_2 :: static  ('f.inner: second definition')
+    r2 = 'f.inner: second definition'
     return r2
 def f(flag):
     flag :: bool
@@ -614,7 +614,7 @@ L2:
     r0.inner = r4; r6 = is_error
 L3:
     r7 = r0.inner
-    r8 = py_call(r7)
+    r8 = PyObject_CallFunctionObjArgs(r7, 0)
     r9 = cast(str, r8)
     return r9
 
@@ -638,7 +638,7 @@ def f(a: int) -> int:
 [out]
 def foo_f_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -663,7 +663,7 @@ L0:
     return r3
 def bar_f_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -684,12 +684,12 @@ L0:
     r1 = r0.bar
     bar = r1
     r2 = r0.foo
-    r3 = py_call(r2)
+    r3 = PyObject_CallFunctionObjArgs(r2, 0)
     r4 = unbox(int, r3)
     return r4
 def baz_f_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -705,37 +705,25 @@ def baz_f_obj.__call__(__mypyc_self__, n):
     n :: int
     r0 :: __main__.f_env
     r1, baz :: object
-    r2 :: bool
-    r3 :: native_int
-    r4, r5, r6 :: bool
-    r7 :: int
-    r8, r9 :: object
-    r10, r11 :: int
+    r2 :: bit
+    r3 :: int
+    r4, r5 :: object
+    r6, r7 :: int
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.baz
     baz = r1
-    r3 = n & 1
-    r4 = r3 == 0
-    if r4 goto L1 else goto L2 :: bool
+    r2 = n == 0
+    if r2 goto L1 else goto L2 :: bool
 L1:
-    r5 = n == 0
-    r2 = r5
-    goto L3
-L2:
-    r6 = CPyTagged_IsEq_(n, 0)
-    r2 = r6
-L3:
-    if r2 goto L4 else goto L5 :: bool
-L4:
     return 0
-L5:
-    r7 = CPyTagged_Subtract(n, 2)
-    r8 = box(int, r7)
-    r9 = py_call(baz, r8)
-    r10 = unbox(int, r9)
-    r11 = CPyTagged_Add(n, r10)
-    return r11
+L2:
+    r3 = CPyTagged_Subtract(n, 2)
+    r4 = box(int, r3)
+    r5 = PyObject_CallFunctionObjArgs(baz, r4, 0)
+    r6 = unbox(int, r5)
+    r7 = CPyTagged_Add(n, r6)
+    return r7
 def f(a):
     a :: int
     r0 :: __main__.f_env
@@ -763,12 +751,12 @@ L0:
     r8.__mypyc_env__ = r0; r9 = is_error
     r0.baz = r8; r10 = is_error
     r11 = r0.bar
-    r12 = py_call(r11)
+    r12 = PyObject_CallFunctionObjArgs(r11, 0)
     r13 = unbox(int, r12)
     r14 = r0.a
     r15 = r0.baz
     r16 = box(int, r14)
-    r17 = py_call(r15, r16)
+    r17 = PyObject_CallFunctionObjArgs(r15, r16, 0)
     r18 = unbox(int, r17)
     r19 = CPyTagged_Add(r13, r18)
     return r19
@@ -782,7 +770,7 @@ def f(x: int, y: int) -> None:
 [out]
 def __mypyc_lambda__0_f_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -804,7 +792,7 @@ L0:
     return r1
 def __mypyc_lambda__1_f_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bool
+    r1 :: bit
     r2 :: object
 L0:
     r0 = load_address _Py_NoneStruct
@@ -823,7 +811,7 @@ def __mypyc_lambda__1_f_obj.__call__(__mypyc_self__, a, b):
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.s
-    r2 = py_call(r1, a, b)
+    r2 = PyObject_CallFunctionObjArgs(r1, a, b, 0)
     return r2
 def f(x, y):
     x, y :: int
@@ -844,7 +832,7 @@ L0:
     t = r4
     r6 = box(int, x)
     r7 = box(int, y)
-    r8 = py_call(t, r6, r7)
+    r8 = PyObject_CallFunctionObjArgs(t, r6, r7, 0)
     r9 = unbox(None, r8)
     return r9
 
@@ -859,28 +847,16 @@ def baz(n: int) -> int:
 [out]
 def baz(n):
     n :: int
-    r0 :: bool
-    r1 :: native_int
-    r2, r3, r4 :: bool
-    r5, r6, r7 :: int
+    r0 :: bit
+    r1, r2, r3 :: int
 L0:
-    r1 = n & 1
-    r2 = r1 == 0
-    if r2 goto L1 else goto L2 :: bool
+    r0 = n == 0
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r3 = n == 0
-    r0 = r3
-    goto L3
-L2:
-    r4 = CPyTagged_IsEq_(n, 0)
-    r0 = r4
-L3:
-    if r0 goto L4 else goto L5 :: bool
-L4:
     return 0
-L5:
-    r5 = CPyTagged_Subtract(n, 2)
-    r6 = baz(r5)
-    r7 = CPyTagged_Add(n, r6)
-    return r7
+L2:
+    r1 = CPyTagged_Subtract(n, 2)
+    r2 = baz(r1)
+    r3 = CPyTagged_Add(n, r2)
+    return r3
 

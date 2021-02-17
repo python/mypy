@@ -21,7 +21,7 @@ from mypy.erasetype import erase_type
 from mypy.errors import Errors
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType, LiteralType,
-    UnionType, NoneType, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
+    UnionType, NoneType, AnyType, Overloaded, FunctionLike, DeletedType, TypeType, TypeVarDef,
     UninhabitedType, TypeOfAny, UnboundType, PartialType, get_proper_type, ProperType,
     get_proper_types
 )
@@ -590,8 +590,7 @@ class MessageBuilder:
 
     def too_few_arguments(self, callee: CallableType, context: Context,
                           argument_names: Optional[Sequence[Optional[str]]]) -> None:
-        if (argument_names is not None and not all(k is None for k in argument_names)
-                and len(argument_names) >= 1):
+        if argument_names is not None:
             num_positional_args = sum(k is None for k in argument_names)
             arguments_left = callee.arg_names[num_positional_args:callee.min_args]
             diff = [k for k in arguments_left if k not in argument_names]
@@ -603,6 +602,9 @@ class MessageBuilder:
             if callee_name is not None and diff and all(d is not None for d in diff):
                 args = '", "'.join(cast(List[str], diff))
                 msg += ' "{}" in call to {}'.format(args, callee_name)
+            else:
+                msg = 'Too few arguments' + for_function(callee)
+
         else:
             msg = 'Too few arguments' + for_function(callee)
         self.fail(msg, context, code=codes.CALL_ARG)
@@ -685,7 +687,7 @@ class MessageBuilder:
         if typ.source is None:
             s = ""
         else:
-            s = " '{}'".format(typ.source)
+            s = ' "{}"'.format(typ.source)
         self.fail('Trying to read deleted variable{}'.format(s), context)
 
     def deleted_as_lvalue(self, typ: DeletedType, context: Context) -> None:
@@ -697,7 +699,7 @@ class MessageBuilder:
         if typ.source is None:
             s = ""
         else:
-            s = " '{}'".format(typ.source)
+            s = ' "{}"'.format(typ.source)
         self.fail('Assignment to variable{} outside except: block'.format(s), context)
 
     def no_variant_matches_arguments(self,
@@ -1099,7 +1101,7 @@ class MessageBuilder:
         else:
             needed = 'comment'
 
-        self.fail("Need type {} for '{}'{}".format(needed, unmangle(node.name), hint), context,
+        self.fail('Need type {} for "{}"{}'.format(needed, unmangle(node.name), hint), context,
                   code=codes.VAR_ANNOTATED)
 
     def explicit_any(self, ctx: Context) -> None:
@@ -1118,8 +1120,8 @@ class MessageBuilder:
             if actual_set < expected_set:
                 # Use list comprehension instead of set operations to preserve order.
                 missing = [key for key in expected_keys if key not in actual_set]
-                self.fail('{} missing for TypedDict {}'.format(
-                    format_key_list(missing, short=True).capitalize(), format_type(typ)),
+                self.fail('Missing {} for TypedDict {}'.format(
+                    format_key_list(missing, short=True), format_type(typ)),
                     context, code=codes.TYPEDDICT_ITEM)
                 return
             else:
@@ -1158,10 +1160,12 @@ class MessageBuilder:
             self.fail('\'{}\' is not a valid TypedDict key; expected one of {}'.format(
                 item_name, format_item_name_list(typ.items.keys())), context)
         else:
-            self.fail("TypedDict {} has no key '{}'".format(format_type(typ), item_name), context)
+            self.fail('TypedDict {} has no key "{}"'.format(
+                format_type(typ), item_name), context)
             matches = best_matches(item_name, typ.items.keys())
             if matches:
-                self.note("Did you mean {}?".format(pretty_seq(matches[:3], "or")), context)
+                self.note("Did you mean {}?".format(
+                    pretty_seq(matches[:3], "or")), context)
 
     def typeddict_context_ambiguous(
             self,
@@ -1177,10 +1181,10 @@ class MessageBuilder:
             item_name: str,
             context: Context) -> None:
         if typ.is_anonymous():
-            self.fail("TypedDict key '{}' cannot be deleted".format(item_name),
+            self.fail('TypedDict key "{}" cannot be deleted'.format(item_name),
                       context)
         else:
-            self.fail("Key '{}' of TypedDict {} cannot be deleted".format(
+            self.fail('Key "{}" of TypedDict {} cannot be deleted'.format(
                 item_name, format_type(typ)), context)
 
     def typeddict_setdefault_arguments_inconsistent(
@@ -1233,8 +1237,8 @@ class MessageBuilder:
 
     def bad_proto_variance(self, actual: int, tvar_name: str, expected: int,
                            context: Context) -> None:
-        msg = capitalize("{} type variable '{}' used in protocol where"
-                         " {} one is expected".format(variance_string(actual),
+        msg = capitalize('{} type variable "{}" used in protocol where'
+                         ' {} one is expected'.format(variance_string(actual),
                                                       tvar_name,
                                                       variance_string(expected)))
         self.fail(msg, context)
@@ -1278,14 +1282,14 @@ class MessageBuilder:
         it does not change the truth value of the entire condition as a whole.
         'op_name' should either be the string "and" or the string "or".
         """
-        self.redundant_expr("Left operand of '{}'".format(op_name), op_name == 'and', context)
+        self.redundant_expr('Left operand of "{}"'.format(op_name), op_name == 'and', context)
 
-    def redundant_right_operand(self, op_name: str, context: Context) -> None:
+    def unreachable_right_operand(self, op_name: str, context: Context) -> None:
         """Indicates that the right operand of a boolean expression is redundant:
         it does not change the truth value of the entire condition as a whole.
         'op_name' should either be the string "and" or the string "or".
         """
-        self.fail("Right operand of '{}' is never evaluated".format(op_name),
+        self.fail('Right operand of "{}" is never evaluated'.format(op_name),
                   context, code=codes.UNREACHABLE)
 
     def redundant_condition_in_comprehension(self, truthiness: bool, context: Context) -> None:
@@ -1299,7 +1303,7 @@ class MessageBuilder:
 
     def redundant_expr(self, description: str, truthiness: bool, context: Context) -> None:
         self.fail("{} is always {}".format(description, str(truthiness).lower()),
-                  context, code=codes.UNREACHABLE)
+                  context, code=codes.REDUNDANT_EXPR)
 
     def impossible_intersection(self,
                                 formatted_base_class_list: str,
@@ -1350,7 +1354,7 @@ class MessageBuilder:
         missing = get_missing_protocol_members(subtype, supertype)
         if (missing and len(missing) < len(supertype.type.protocol_members) and
                 len(missing) <= MAX_ITEMS):
-            self.note("'{}' is missing following '{}' protocol member{}:"
+            self.note('"{}" is missing following "{}" protocol member{}:'
                       .format(subtype.type.name, supertype.type.name, plural_s(missing)),
                       context,
                       code=code)
@@ -1626,10 +1630,7 @@ def format_type_inner(typ: Type,
         for t in typ.items:
             items.append(format(t))
         s = 'Tuple[{}]'.format(', '.join(items))
-        if len(s) < 400:
-            return s
-        else:
-            return '<tuple: {} items>'.format(len(items))
+        return s
     elif isinstance(typ, TypedDictType):
         # If the TypedDictType is named, return the name
         if not typ.is_anonymous():
@@ -1661,10 +1662,7 @@ def format_type_inner(typ: Type,
             for t in typ.items:
                 items.append(format(t))
             s = 'Union[{}]'.format(', '.join(items))
-            if len(s) < 400:
-                return s
-            else:
-                return '<union: {} items>'.format(len(items))
+            return s
     elif isinstance(typ, NoneType):
         return 'None'
     elif isinstance(typ, AnyType):
@@ -1868,16 +1866,20 @@ def pretty_callable(tp: CallableType) -> str:
     if tp.variables:
         tvars = []
         for tvar in tp.variables:
-            upper_bound = get_proper_type(tvar.upper_bound)
-            if (isinstance(upper_bound, Instance) and
-                    upper_bound.type.fullname != 'builtins.object'):
-                tvars.append('{} <: {}'.format(tvar.name, format_type_bare(upper_bound)))
-            elif tvar.values:
-                tvars.append('{} in ({})'
-                             .format(tvar.name, ', '.join([format_type_bare(tp)
-                                                           for tp in tvar.values])))
+            if isinstance(tvar, TypeVarDef):
+                upper_bound = get_proper_type(tvar.upper_bound)
+                if (isinstance(upper_bound, Instance) and
+                        upper_bound.type.fullname != 'builtins.object'):
+                    tvars.append('{} <: {}'.format(tvar.name, format_type_bare(upper_bound)))
+                elif tvar.values:
+                    tvars.append('{} in ({})'
+                                 .format(tvar.name, ', '.join([format_type_bare(tp)
+                                                               for tp in tvar.values])))
+                else:
+                    tvars.append(tvar.name)
             else:
-                tvars.append(tvar.name)
+                # For other TypeVarLikeDefs, just use the repr
+                tvars.append(repr(tvar))
         s = '[{}] {}'.format(', '.join(tvars), s)
     return 'def {}'.format(s)
 

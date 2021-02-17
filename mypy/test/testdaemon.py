@@ -1,13 +1,20 @@
 """End-to-end test cases for the daemon (dmypy).
 
 These are special because they run multiple shell commands.
+
+This also includes some unit tests.
 """
 
 import os
 import subprocess
 import sys
-
+import tempfile
+import unittest
 from typing import List, Tuple
+
+from mypy.modulefinder import SearchPaths
+from mypy.fscache import FileSystemCache
+from mypy.dmypy_server import filter_out_missing_top_level_packages
 
 from mypy.test.config import test_temp_dir, PREFIX
 from mypy.test.data import DataDrivenTestCase, DataSuite
@@ -87,3 +94,40 @@ def run_cmd(input: str) -> Tuple[int, str]:
         return 0, output
     except subprocess.CalledProcessError as err:
         return err.returncode, err.output
+
+
+class DaemonUtilitySuite(unittest.TestCase):
+    """Unit tests for helpers"""
+
+    def test_filter_out_missing_top_level_packages(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            self.make_file(td, 'base/a/')
+            self.make_file(td, 'base/b.py')
+            self.make_file(td, 'base/c.pyi')
+            self.make_file(td, 'base/missing.txt')
+            self.make_file(td, 'typeshed/d.pyi')
+            self.make_file(td, 'typeshed/@python2/e')
+            self.make_file(td, 'pkg1/f-stubs')
+            self.make_file(td, 'pkg2/g-python2-stubs')
+            self.make_file(td, 'mpath/sub/long_name/')
+
+            def makepath(p: str) -> str:
+                return os.path.join(td, p)
+
+            search = SearchPaths(python_path=(makepath('base'),),
+                                 mypy_path=(makepath('mpath/sub'),),
+                                 package_path=(makepath('pkg1'), makepath('pkg2')),
+                                 typeshed_path=(makepath('typeshed'),))
+            fscache = FileSystemCache()
+            res = filter_out_missing_top_level_packages(
+                {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'long_name', 'ff', 'missing'},
+                search,
+                fscache)
+            assert res == {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'long_name'}
+
+    def make_file(self, base: str, path: str) -> None:
+        fullpath = os.path.join(base, path)
+        os.makedirs(os.path.dirname(fullpath), exist_ok=True)
+        if not path.endswith('/'):
+            with open(fullpath, 'w') as f:
+                f.write('# test file')

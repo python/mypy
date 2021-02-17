@@ -15,12 +15,12 @@ from mypy.nodes import (
     ConditionalExpr, DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr,
     UnicodeExpr, FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr,
     SliceExpr, OpExpr, UnaryExpr, LambdaExpr, TypeApplication, PrintStmt,
-    SymbolTable, RefExpr, TypeVarExpr, NewTypeExpr, PromoteExpr,
+    SymbolTable, RefExpr, TypeVarExpr, ParamSpecExpr, NewTypeExpr, PromoteExpr,
     ComparisonExpr, TempNode, StarExpr, Statement, Expression,
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SetComprehension,
     DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, AwaitExpr, AssignmentExpr,
-    OverloadPart, EnumCallExpr, REVEAL_TYPE
+    OverloadPart, EnumCallExpr, REVEAL_TYPE, GDEF
 )
 from mypy.types import Type, FunctionLike, ProperType
 from mypy.traverser import TraverserVisitor
@@ -37,6 +37,8 @@ class TransformVisitor(NodeVisitor[Node]):
 
     Notes:
 
+     * This can only be used to transform functions or classes, not top-level
+       statements, and/or modules as a whole.
      * Do not duplicate TypeInfo nodes. This would generally not be desirable.
      * Only update some name binding cross-references, but only those that
        refer to Var, Decorator or FuncDef nodes, not those targeting ClassDef or
@@ -48,6 +50,9 @@ class TransformVisitor(NodeVisitor[Node]):
     """
 
     def __init__(self) -> None:
+        # To simplify testing, set this flag to True if you want to transform
+        # all statements in a file (this is prohibited in normal mode).
+        self.test_only = False
         # There may be multiple references to a Var node. Keep track of
         # Var translations using a dictionary.
         self.var_map = {}  # type: Dict[Var, Var]
@@ -58,6 +63,7 @@ class TransformVisitor(NodeVisitor[Node]):
         self.func_placeholder_map = {}  # type: Dict[FuncDef, FuncDef]
 
     def visit_mypy_file(self, node: MypyFile) -> MypyFile:
+        assert self.test_only, "This visitor should not be used for whole files."
         # NOTE: The 'names' and 'imports' instance variables will be empty!
         ignored_lines = {line: codes[:]
                          for line, codes in node.ignored_lines.items()}
@@ -358,7 +364,10 @@ class TransformVisitor(NodeVisitor[Node]):
         new.fullname = original.fullname
         target = original.node
         if isinstance(target, Var):
-            target = self.visit_var(target)
+            # Do not transform references to global variables. See
+            # testGenericFunctionAliasExpand for an example where this is important.
+            if original.kind != GDEF:
+                target = self.visit_var(target)
         elif isinstance(target, Decorator):
             target = self.visit_var(target.var)
         elif isinstance(target, FuncDef):
@@ -497,6 +506,11 @@ class TransformVisitor(NodeVisitor[Node]):
         return TypeVarExpr(node.name, node.fullname,
                            self.types(node.values),
                            self.type(node.upper_bound), variance=node.variance)
+
+    def visit_paramspec_expr(self, node: ParamSpecExpr) -> ParamSpecExpr:
+        return ParamSpecExpr(
+            node.name, node.fullname, self.type(node.upper_bound), variance=node.variance
+        )
 
     def visit_type_alias_expr(self, node: TypeAliasExpr) -> TypeAliasExpr:
         return TypeAliasExpr(node.node)

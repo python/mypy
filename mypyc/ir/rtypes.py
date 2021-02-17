@@ -132,7 +132,7 @@ class RVoid(RType):
     """The void type (no value).
 
     This is a singleton -- use void_rtype (below) to refer to this instead of
-    constructing a new instace.
+    constructing a new instance.
     """
 
     is_unboxed = False
@@ -191,6 +191,8 @@ class RPrimitive(RType):
             self.c_undefined = 'NULL'
         elif ctype == 'char':
             self.c_undefined = '2'
+        elif ctype == 'PyObject **':
+            self.c_undefined = 'NULL'
         else:
             assert False, 'Unrecognized ctype: %r' % ctype
 
@@ -222,6 +224,10 @@ class RPrimitive(RType):
 # faster.
 object_rprimitive = RPrimitive('builtins.object', is_unboxed=False,
                                is_refcounted=True)  # type: Final
+
+# represents a low level pointer of an object
+object_pointer_rprimitive = RPrimitive('object_ptr', is_unboxed=False,
+                               is_refcounted=False, ctype='PyObject **')  # type: Final
 
 # Arbitrary-precision integer (corresponds to Python 'int'). Small
 # enough values are stored unboxed, while large integers are
@@ -265,10 +271,17 @@ pointer_rprimitive = RPrimitive('ptr', is_unboxed=True, is_refcounted=False,
 float_rprimitive = RPrimitive('builtins.float', is_unboxed=False,
                               is_refcounted=True)  # type: Final
 
-# An unboxed boolean value. This actually has three possible values
-# (0 -> False, 1 -> True, 2 -> error).
+# An unboxed Python bool value. This actually has three possible values
+# (0 -> False, 1 -> True, 2 -> error). If you only need True/False, use
+# bit_rprimitive instead.
 bool_rprimitive = RPrimitive('builtins.bool', is_unboxed=True, is_refcounted=False,
                              ctype='char', size=1)  # type: Final
+
+# A low-level boolean value with two possible values: 0 and 1. Any
+# other value results in undefined behavior. Undefined or error values
+# are not supported.
+bit_rprimitive = RPrimitive('bit', is_unboxed=True, is_refcounted=False,
+                            ctype='char', size=1)  # type: Final
 
 # The 'None' value. The possible values are 0 -> None and 2 -> error.
 none_rprimitive = RPrimitive('builtins.None', is_unboxed=True, is_refcounted=False,
@@ -327,6 +340,10 @@ def is_float_rprimitive(rtype: RType) -> bool:
 
 def is_bool_rprimitive(rtype: RType) -> bool:
     return isinstance(rtype, RPrimitive) and rtype.name == 'builtins.bool'
+
+
+def is_bit_rprimitive(rtype: RType) -> bool:
+    return isinstance(rtype, RPrimitive) and rtype.name == 'bit'
 
 
 def is_object_rprimitive(rtype: RType) -> bool:
@@ -515,7 +532,7 @@ def compute_aligned_offsets_and_size(types: List[RType]) -> Tuple[List[int], int
             current_offset += cur_size
             next_alignment = alignments[i + 1]
             # compute aligned offset,
-            # check https://en.wikipedia.org/wiki/Data_structure_alignment for more infomation
+            # check https://en.wikipedia.org/wiki/Data_structure_alignment for more information
             current_offset = (current_offset + (next_alignment - 1)) & -next_alignment
         else:
             struct_alignment = max(alignments)
@@ -699,3 +716,9 @@ PySetObject = RStruct(
     types=[PyObject, c_pyssize_t_rprimitive, c_pyssize_t_rprimitive, c_pyssize_t_rprimitive,
            pointer_rprimitive, c_pyssize_t_rprimitive, c_pyssize_t_rprimitive, smalltable,
            pointer_rprimitive])
+
+PyListObject = RStruct(
+    name='PyListObject',
+    names=['ob_base', 'ob_item', 'allocated'],
+    types=[PyObject, pointer_rprimitive, c_pyssize_t_rprimitive]
+)

@@ -114,11 +114,12 @@ type_aliases = {
     'typing.Counter': 'collections.Counter',
     'typing.DefaultDict': 'collections.defaultdict',
     'typing.Deque': 'collections.deque',
+    'typing.OrderedDict': 'collections.OrderedDict',
 }  # type: Final
 
 # This keeps track of the oldest supported Python version where the corresponding
-# alias _target_ is available.
-type_aliases_target_versions = {
+# alias source is available.
+type_aliases_source_versions = {
     'typing.List': (2, 7),
     'typing.Dict': (2, 7),
     'typing.Set': (2, 7),
@@ -127,6 +128,7 @@ type_aliases_target_versions = {
     'typing.Counter': (2, 7),
     'typing.DefaultDict': (2, 7),
     'typing.Deque': (2, 7),
+    'typing.OrderedDict': (3, 7),
 }  # type: Final
 
 reverse_builtin_aliases = {
@@ -136,9 +138,17 @@ reverse_builtin_aliases = {
     'builtins.frozenset': 'typing.FrozenSet',
 }  # type: Final
 
-nongen_builtins = {'builtins.tuple': 'typing.Tuple',
-                   'builtins.enumerate': ''}  # type: Final
-nongen_builtins.update((name, alias) for alias, name in type_aliases.items())
+_nongen_builtins = {'builtins.tuple': 'typing.Tuple',
+                    'builtins.enumerate': ''}  # type: Final
+_nongen_builtins.update((name, alias) for alias, name in type_aliases.items())
+# Drop OrderedDict from this for backward compatibility
+del _nongen_builtins['collections.OrderedDict']
+
+
+def get_nongen_builtins(python_version: Tuple[int, int]) -> Dict[str, str]:
+    # After 3.9 with pep585 generic builtins are allowed.
+    return _nongen_builtins if python_version < (3, 9) else {}
+
 
 RUNTIME_PROTOCOL_DECOS = ('typing.runtime_checkable',
                           'typing_extensions.runtime',
@@ -1438,7 +1448,8 @@ class StarExpr(Expression):
 class RefExpr(Expression):
     """Abstract base class for name-like constructs"""
 
-    __slots__ = ('kind', 'node', 'fullname', 'is_new_def', 'is_inferred_def', 'is_alias_rvalue')
+    __slots__ = ('kind', 'node', 'fullname', 'is_new_def', 'is_inferred_def', 'is_alias_rvalue',
+                 'type_guard')
 
     def __init__(self) -> None:
         super().__init__()
@@ -1457,6 +1468,8 @@ class RefExpr(Expression):
         self.is_inferred_def = False
         # Is this expression appears as an rvalue of a valid type alias definition?
         self.is_alias_rvalue = False
+        # Cache type guard from callable_type.type_guard
+        self.type_guard = None  # type: Optional[mypy.types.Type]
 
 
 class NameExpr(RefExpr):
@@ -2043,23 +2056,10 @@ COVARIANT = 1  # type: Final[int]
 CONTRAVARIANT = 2  # type: Final[int]
 
 
-class TypeVarExpr(SymbolNode, Expression):
-    """Type variable expression TypeVar(...).
-
-    This is also used to represent type variables in symbol tables.
-
-    A type variable is not valid as a type unless bound in a TypeVarScope.
-    That happens within:
-
-     1. a generic class that uses the type variable as a type argument or
-     2. a generic function that refers to the type variable in its signature.
-    """
-
+class TypeVarLikeExpr(SymbolNode, Expression):
+    """Base class for TypeVarExpr and ParamSpecExpr."""
     _name = ''
     _fullname = ''
-    # Value restriction: only types in the list are valid as values. If the
-    # list is empty, there is no restriction.
-    values = None  # type: List[mypy.types.Type]
     # Upper bound: only subtypes of upper_bound are valid as values. By default
     # this is 'object', meaning no restriction.
     upper_bound = None  # type: mypy.types.Type
@@ -2069,14 +2069,12 @@ class TypeVarExpr(SymbolNode, Expression):
     # variable.
     variance = INVARIANT
 
-    def __init__(self, name: str, fullname: str,
-                 values: List['mypy.types.Type'],
-                 upper_bound: 'mypy.types.Type',
-                 variance: int = INVARIANT) -> None:
+    def __init__(
+        self, name: str, fullname: str, upper_bound: 'mypy.types.Type', variance: int = INVARIANT
+    ) -> None:
         super().__init__()
         self._name = name
         self._fullname = fullname
-        self.values = values
         self.upper_bound = upper_bound
         self.variance = variance
 
@@ -2087,6 +2085,29 @@ class TypeVarExpr(SymbolNode, Expression):
     @property
     def fullname(self) -> str:
         return self._fullname
+
+
+class TypeVarExpr(TypeVarLikeExpr):
+    """Type variable expression TypeVar(...).
+
+    This is also used to represent type variables in symbol tables.
+
+    A type variable is not valid as a type unless bound in a TypeVarLikeScope.
+    That happens within:
+
+     1. a generic class that uses the type variable as a type argument or
+     2. a generic function that refers to the type variable in its signature.
+    """
+    # Value restriction: only types in the list are valid as values. If the
+    # list is empty, there is no restriction.
+    values = None  # type: List[mypy.types.Type]
+
+    def __init__(self, name: str, fullname: str,
+                 values: List['mypy.types.Type'],
+                 upper_bound: 'mypy.types.Type',
+                 variance: int = INVARIANT) -> None:
+        super().__init__(name, fullname, upper_bound, variance)
+        self.values = values
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_type_var_expr(self)
@@ -2108,6 +2129,30 @@ class TypeVarExpr(SymbolNode, Expression):
                            [mypy.types.deserialize_type(v) for v in data['values']],
                            mypy.types.deserialize_type(data['upper_bound']),
                            data['variance'])
+
+
+class ParamSpecExpr(TypeVarLikeExpr):
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
+        return visitor.visit_paramspec_expr(self)
+
+    def serialize(self) -> JsonDict:
+        return {
+            '.class': 'ParamSpecExpr',
+            'name': self._name,
+            'fullname': self._fullname,
+            'upper_bound': self.upper_bound.serialize(),
+            'variance': self.variance,
+        }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'ParamSpecExpr':
+        assert data['.class'] == 'ParamSpecExpr'
+        return ParamSpecExpr(
+            data['name'],
+            data['fullname'],
+            mypy.types.deserialize_type(data['upper_bound']),
+            data['variance']
+        )
 
 
 class TypeAliasExpr(Expression):

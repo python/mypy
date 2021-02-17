@@ -104,7 +104,7 @@ class B: pass
 from typing import TypeVar, Generic
 T = TypeVar('T')
 def g() -> None:
-    x = f() # E: Need type annotation for 'x'
+    x = f() # E: Need type annotation for "x"
 
 def f() -> 'A[T]': pass
 class A(Generic[T]): pass
@@ -425,7 +425,7 @@ class B(A): pass
 [case testLocalVariableInferenceFromEmptyList]
 import typing
 def f() -> None:
-    a = []     # E: Need type annotation for 'a' (hint: "a: List[<type>] = ...")
+    a = []     # E: Need type annotation for "a" (hint: "a: List[<type>] = ...")
     b = [None]
     c = [B()]
     if int():

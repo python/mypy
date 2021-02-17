@@ -783,9 +783,9 @@ reveal_type(divmod(d, d))  # N: Revealed type is 'Tuple[__main__.Decimal, __main
 
 # Now some bad calls
 divmod()  # E: 'divmod' expects 2 arguments \
-          # E: Too few arguments for "divmod"
+          # E: Missing positional arguments "_x", "_y" in call to "divmod"
 divmod(7)  # E: 'divmod' expects 2 arguments \
-           # E: Too few arguments for "divmod"
+           # E: Missing positional argument "_y" in call to "divmod"
 divmod(7, 8, 9)  # E: 'divmod' expects 2 arguments \
                  # E: Too many arguments for "divmod"
 divmod(_x=7, _y=9)  # E: 'divmod' must be called with 2 positional arguments
@@ -2170,7 +2170,7 @@ d5 = dict(a=1, b='') # type: Dict[str, Any]
 
 [case testDictWithoutKeywordArgs]
 from typing import Dict
-d = dict() # E: Need type annotation for 'd' (hint: "d: Dict[<type>, <type>] = ...")
+d = dict() # E: Need type annotation for "d" (hint: "d: Dict[<type>, <type>] = ...")
 d2 = dict() # type: Dict[int, str]
 dict(undefined) # E: Name 'undefined' is not defined
 [builtins fixtures/dict.pyi]
@@ -2390,8 +2390,8 @@ class B: ...
 [builtins fixtures/dict.pyi]
 
 [case testTypeAnnotationNeededMultipleAssignment]
-x, y = [], [] # E: Need type annotation for 'x' (hint: "x: List[<type>] = ...") \
-            # E: Need type annotation for 'y' (hint: "y: List[<type>] = ...")
+x, y = [], [] # E: Need type annotation for "x" (hint: "x: List[<type>] = ...") \
+            # E: Need type annotation for "y" (hint: "y: List[<type>] = ...")
 [builtins fixtures/list.pyi]
 
 [case testStrictEqualityEq]
@@ -2803,3 +2803,10 @@ def f() -> int:  # E: Missing return statement
     x: int
     assert isinstance(x, int), '...'
 [builtins fixtures/isinstance.pyi]
+
+[case testTypeVarAsValue]
+from typing import TypeVar
+T = TypeVar("T")
+x: int
+x + T  # E: Unsupported operand types for + ("int" and "object")
+T()  # E: "object" not callable

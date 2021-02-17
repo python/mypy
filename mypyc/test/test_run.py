@@ -33,6 +33,8 @@ files = [
     'run-misc.test',
     'run-functions.test',
     'run-integers.test',
+    'run-floats.test',
+    'run-bools.test',
     'run-strings.test',
     'run-tuples.test',
     'run-lists.test',
@@ -49,6 +51,10 @@ files = [
     'run-bench.test',
     'run-mypy-sim.test',
 ]
+if sys.version_info >= (3, 7):
+    files.append('run-python37.test')
+if sys.version_info >= (3, 8):
+    files.append('run-python38.test')
 
 setup_format = """\
 from setuptools import setup

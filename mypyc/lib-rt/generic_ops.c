@@ -35,3 +35,25 @@ PyObject *CPyIter_Next(PyObject *iter)
 {
     return (*iter->ob_type->tp_iternext)(iter);
 }
+
+PyObject *CPyNumber_Power(PyObject *base, PyObject *index)
+{
+    return PyNumber_Power(base, index, Py_None);
+}
+
+PyObject *CPyObject_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
+    PyObject *start_obj = CPyTagged_AsObject(start);
+    PyObject *end_obj = CPyTagged_AsObject(end);
+    if (unlikely(start_obj == NULL || end_obj == NULL)) {
+        return NULL;
+    }
+    PyObject *slice = PySlice_New(start_obj, end_obj, NULL);
+    Py_DECREF(start_obj);
+    Py_DECREF(end_obj);
+    if (unlikely(slice == NULL)) {
+        return NULL;
+    }
+    PyObject *result = PyObject_GetItem(obj, slice);
+    Py_DECREF(slice);
+    return result;
+}

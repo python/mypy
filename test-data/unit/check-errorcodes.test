@@ -214,7 +214,7 @@ main:5: error: Invalid "type: ignore" comment  [syntax]
 
 [case testErrorCodeArgKindAndCount]
 def f(x: int) -> None: pass  # N: "f" defined here
-f()  # E: Too few arguments for "f"  [call-arg]
+f()  # E: Missing positional argument "x" in call to "f"  [call-arg]
 f(1, 2)  # E: Too many arguments for "f"  [call-arg]
 f(y=1)  # E: Unexpected keyword argument "y" for "f"  [call-arg]
 
@@ -259,8 +259,8 @@ from typing import TypeVar
 
 T = TypeVar('T')
 def f() -> T: pass
-x = f()  # E: Need type annotation for 'x'  [var-annotated]
-y = []  # E: Need type annotation for 'y' (hint: "y: List[<type>] = ...")  [var-annotated]
+x = f()  # E: Need type annotation for "x"  [var-annotated]
+y = []  # E: Need type annotation for "y" (hint: "y: List[<type>] = ...")  [var-annotated]
 [builtins fixtures/list.pyi]
 
 [case testErrorCodeBadOverride]
@@ -499,13 +499,13 @@ if int() is str():  # E: Non-overlapping identity check (left operand type: "int
 [builtins fixtures/primitives.pyi]
 
 [case testErrorCodeMissingModule]
-from defusedxml import xyz  # E: Cannot find implementation or library stub for module named 'defusedxml'  [import] \
+from defusedxml import xyz  # E: Cannot find implementation or library stub for module named "defusedxml"  [import] \
                             # N: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-from nonexistent import foobar  # E: Cannot find implementation or library stub for module named 'nonexistent'  [import]
-import nonexistent2  # E: Cannot find implementation or library stub for module named 'nonexistent2'  [import]
-from nonexistent3 import *  # E: Cannot find implementation or library stub for module named 'nonexistent3'  [import]
+from nonexistent import foobar  # E: Cannot find implementation or library stub for module named "nonexistent"  [import]
+import nonexistent2  # E: Cannot find implementation or library stub for module named "nonexistent2"  [import]
+from nonexistent3 import *  # E: Cannot find implementation or library stub for module named "nonexistent3"  [import]
 from pkg import bad  # E: Module 'pkg' has no attribute 'bad'  [attr-defined]
-from pkg.bad2 import bad3  # E: Cannot find implementation or library stub for module named 'pkg.bad2'  [import]
+from pkg.bad2 import bad3  # E: Cannot find implementation or library stub for module named "pkg.bad2"  [import]
 [file pkg/__init__.py]
 
 [case testErrorCodeAlreadyDefined]
@@ -771,3 +771,30 @@ def f(**x: int) -> None:
 f(**1)  # type: ignore[arg-type]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testRedundantExpressions]
+# flags: --enable-error-code redundant-expr
+def foo() -> bool: ...
+
+lst = [1, 2, 3, 4]
+
+b = False or foo()                       # E: Left operand of "or" is always false  [redundant-expr]
+c = True and foo()                       # E: Left operand of "and" is always true  [redundant-expr]
+g = 3 if True else 4                     # E: If condition is always true  [redundant-expr]
+h = 3 if False else 4                    # E: If condition is always false  [redundant-expr]
+i = [x for x in lst if True]             # E: If condition in comprehension is always true  [redundant-expr]
+j = [x for x in lst if False]            # E: If condition in comprehension is always false  [redundant-expr]
+k = [x for x in lst if isinstance(x, int) or foo()]  # E: If condition in comprehension is always true  [redundant-expr]
+[builtins fixtures/isinstancelist.pyi]
+
+[case testNamedTupleNameMismatch]
+from typing import NamedTuple
+
+Foo = NamedTuple("Bar", [])  # E: First argument to namedtuple() should be 'Foo', not 'Bar'  [name-match]
+[builtins fixtures/tuple.pyi]
+
+[case testTypedDictNameMismatch]
+from typing_extensions import TypedDict
+
+Foo = TypedDict("Bar", {})  # E: First argument 'Bar' to TypedDict() does not match variable name 'Foo'  [name-match]
+[builtins fixtures/dict.pyi]

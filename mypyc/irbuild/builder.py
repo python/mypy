@@ -19,7 +19,7 @@ from mypy.build import Graph
 from mypy.nodes import (
     MypyFile, SymbolNode, Statement, OpExpr, IntExpr, NameExpr, LDEF, Var, UnaryExpr,
     CallExpr, IndexExpr, Expression, MemberExpr, RefExpr, Lvalue, TupleExpr,
-    TypeInfo, Decorator, OverloadedFuncDef, StarExpr, GDEF, ARG_POS, ARG_NAMED
+    TypeInfo, Decorator, OverloadedFuncDef, StarExpr, ComparisonExpr, GDEF, ARG_POS, ARG_NAMED
 )
 from mypy.types import (
     Type, Instance, TupleType, UninhabitedType, get_proper_type
@@ -28,31 +28,33 @@ from mypy.maptype import map_instance_to_supertype
 from mypy.visitor import ExpressionVisitor, StatementVisitor
 from mypy.util import split_target
 
-from mypyc.common import TEMP_ATTR_NAME
+from mypyc.common import TEMP_ATTR_NAME, SELF_NAME
 from mypyc.irbuild.prebuildvisitor import PreBuildVisitor
 from mypyc.ir.ops import (
-    BasicBlock, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
-    AssignmentTargetAttr, AssignmentTargetTuple, Environment, LoadInt, Value,
-    Register, Op, Assign, Branch, Unreachable, TupleGet, GetAttr, SetAttr, LoadStatic,
-    InitStatic, OpDescription, NAMESPACE_MODULE, RaiseStandardError,
+    BasicBlock, Integer, Value, Register, Op, Assign, Branch, Unreachable, TupleGet, GetAttr,
+    SetAttr, LoadStatic, InitStatic, NAMESPACE_MODULE, RaiseStandardError
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, RInstance, int_rprimitive, dict_rprimitive,
     none_rprimitive, is_none_rprimitive, object_rprimitive, is_object_rprimitive,
-    str_rprimitive,
+    str_rprimitive, is_tagged, is_list_rprimitive, is_tuple_rprimitive, c_pyssize_t_rprimitive
 )
-from mypyc.ir.func_ir import FuncIR, INVALID_FUNC_DEF
+from mypyc.ir.func_ir import FuncIR, INVALID_FUNC_DEF, RuntimeArg, FuncSignature, FuncDecl
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
-from mypyc.primitives.registry import func_ops, CFunctionDescription, c_function_ops
-from mypyc.primitives.list_ops import to_list, list_pop_last
+from mypyc.primitives.registry import CFunctionDescription, function_ops
+from mypyc.primitives.list_ops import to_list, list_pop_last, list_get_item_unsafe_op
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import py_setattr_op, iter_op, next_op
-from mypyc.primitives.misc_ops import import_op
+from mypyc.primitives.misc_ops import import_op, check_unpack_count_op
 from mypyc.crash import catch_errors
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
 from mypyc.irbuild.nonlocalcontrol import (
     NonlocalControl, BaseNonlocalControl, LoopNonlocalControl, GeneratorNonlocalControl
+)
+from mypyc.irbuild.targets import (
+    AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex, AssignmentTargetAttr,
+    AssignmentTargetTuple
 )
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.irbuild.mapper import Mapper
@@ -68,6 +70,9 @@ class UnsupportedException(Exception):
     pass
 
 
+SymbolTarget = Union[AssignmentTargetRegister, AssignmentTargetAttr]
+
+
 class IRBuilder:
     def __init__(self,
                  current_module: str,
@@ -80,6 +85,10 @@ class IRBuilder:
                  options: CompilerOptions) -> None:
         self.builder = LowLevelIRBuilder(current_module, mapper)
         self.builders = [self.builder]
+        self.symtables = [OrderedDict()]  # type: List[OrderedDict[SymbolNode, SymbolTarget]]
+        self.runtime_args = [[]]  # type: List[List[RuntimeArg]]
+        self.function_name_stack = []  # type: List[str]
+        self.class_ir_stack = []  # type: List[ClassIR]
 
         self.current_module = current_module
         self.mapper = mapper
@@ -153,7 +162,7 @@ class IRBuilder:
                 # messages. Generate a temp of the right type to keep
                 # from causing more downstream trouble.
                 except UnsupportedException:
-                    res = self.alloc_temp(self.node_type(node))
+                    res = Register(self.node_type(node))
                 return res
             else:
                 try:
@@ -176,17 +185,17 @@ class IRBuilder:
     def goto_and_activate(self, block: BasicBlock) -> None:
         self.builder.goto_and_activate(block)
 
-    def alloc_temp(self, type: RType) -> Register:
-        return self.builder.alloc_temp(type)
+    def self(self) -> Register:
+        return self.builder.self()
 
     def py_get_attr(self, obj: Value, attr: str, line: int) -> Value:
         return self.builder.py_get_attr(obj, attr, line)
 
-    def load_static_unicode(self, value: str) -> Value:
-        return self.builder.load_static_unicode(value)
+    def load_str(self, value: str) -> Value:
+        return self.builder.load_str(value)
 
-    def primitive_op(self, desc: OpDescription, args: List[Value], line: int) -> Value:
-        return self.builder.primitive_op(desc, args, line)
+    def load_int(self, value: int) -> Value:
+        return self.builder.load_int(value)
 
     def unary_op(self, lreg: Value, expr_op: str, line: int) -> Value:
         return self.builder.unary_op(lreg, expr_op, line)
@@ -208,6 +217,12 @@ class IRBuilder:
 
     def false(self) -> Value:
         return self.builder.false()
+
+    def new_list_op(self, values: List[Value], line: int) -> Value:
+        return self.builder.new_list_op(values, line)
+
+    def new_set_op(self, values: List[Value], line: int) -> Value:
+        return self.builder.new_set_op(values, line)
 
     def translate_is_op(self,
                         lreg: Value,
@@ -248,11 +263,14 @@ class IRBuilder:
     def call_c(self, desc: CFunctionDescription, args: List[Value], line: int) -> Value:
         return self.builder.call_c(desc, args, line)
 
-    def binary_int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
-        return self.builder.binary_int_op(type, lhs, rhs, op, line)
+    def int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
+        return self.builder.int_op(type, lhs, rhs, op, line)
 
     def compare_tagged(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         return self.builder.compare_tagged(lhs, rhs, op, line)
+
+    def compare_tuples(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
+        return self.builder.compare_tuples(lhs, rhs, op, line)
 
     def builtin_len(self, val: Value, line: int) -> Value:
         return self.builder.builtin_len(val, line)
@@ -260,16 +278,12 @@ class IRBuilder:
     def new_tuple(self, items: List[Value], line: int) -> Value:
         return self.builder.new_tuple(items, line)
 
-    @property
-    def environment(self) -> Environment:
-        return self.builder.environment
-
     # Helpers for IR building
 
     def add_to_non_ext_dict(self, non_ext: NonExtClassInfo,
                             key: str, val: Value, line: int) -> None:
         # Add an attribute entry into the class dict of a non-extension class.
-        key_unicode = self.load_static_unicode(key)
+        key_unicode = self.load_str(key)
         self.call_c(dict_set_item_op, [non_ext.dict, key_unicode, val], line)
 
     def gen_import(self, id: str, line: int) -> None:
@@ -281,17 +295,17 @@ class IRBuilder:
         self.add_bool_branch(comparison, out, needs_import)
 
         self.activate_block(needs_import)
-        value = self.call_c(import_op, [self.load_static_unicode(id)], line)
+        value = self.call_c(import_op, [self.load_str(id)], line)
         self.add(InitStatic(value, id, namespace=NAMESPACE_MODULE))
         self.goto_and_activate(out)
 
-    def assign_if_null(self, target: AssignmentTargetRegister,
+    def assign_if_null(self, target: Register,
                        get_val: Callable[[], Value], line: int) -> None:
-        """Generate blocks for registers that NULL values."""
+        """If target is NULL, assign value produced by get_val to it."""
         error_block, body_block = BasicBlock(), BasicBlock()
-        self.add(Branch(target.register, error_block, body_block, Branch.IS_ERROR))
+        self.add(Branch(target, error_block, body_block, Branch.IS_ERROR))
         self.activate_block(error_block)
-        self.add(Assign(target.register, self.coerce(get_val(), target.register.type, line)))
+        self.add(Assign(target, self.coerce(get_val(), target.type, line)))
         self.goto(body_block)
         self.activate_block(body_block)
 
@@ -364,13 +378,13 @@ class IRBuilder:
         elif isinstance(val, int):
             # TODO: take care of negative integer initializers
             # (probably easier to fix this in mypy itself).
-            return self.builder.load_static_int(val)
+            return self.builder.load_int(val)
         elif isinstance(val, float):
-            return self.builder.load_static_float(val)
+            return self.builder.load_float(val)
         elif isinstance(val, str):
-            return self.builder.load_static_unicode(val)
+            return self.builder.load_str(val)
         elif isinstance(val, bytes):
-            return self.builder.load_static_bytes(val)
+            return self.builder.load_bytes(val)
         else:
             assert False, "Unsupported final literal value"
 
@@ -387,7 +401,7 @@ class IRBuilder:
                 assert lvalue.is_special_form
                 symbol = Var(lvalue.name)
             if lvalue.kind == LDEF:
-                if symbol not in self.environment.symtable:
+                if symbol not in self.symtables[-1]:
                     # If the function is a generator function, then first define a new variable
                     # in the current function's environment class. Next, define a target that
                     # refers to the newly defined variable in that environment class. Add the
@@ -399,13 +413,13 @@ class IRBuilder:
                                                          reassign=False)
 
                     # Otherwise define a new local variable.
-                    return self.environment.add_local_reg(symbol, self.node_type(lvalue))
+                    return self.add_local_reg(symbol, self.node_type(lvalue))
                 else:
                     # Assign to a previously defined variable.
-                    return self.environment.lookup(symbol)
+                    return self.lookup(symbol)
             elif lvalue.kind == GDEF:
                 globals_dict = self.load_globals_dict()
-                name = self.load_static_unicode(lvalue.name)
+                name = self.load_str(lvalue.name)
                 return AssignmentTargetIndex(globals_dict, name)
             else:
                 assert False, lvalue.kind
@@ -456,8 +470,10 @@ class IRBuilder:
 
         assert False, 'Unsupported lvalue: %r' % target
 
-    def assign(self, target: Union[Register, AssignmentTarget],
-               rvalue_reg: Value, line: int) -> None:
+    def assign(self,
+               target: Union[Register, AssignmentTarget],
+               rvalue_reg: Value,
+               line: int) -> None:
         if isinstance(target, Register):
             self.add(Assign(target, rvalue_reg))
         elif isinstance(target, AssignmentTargetRegister):
@@ -468,7 +484,7 @@ class IRBuilder:
                 rvalue_reg = self.coerce(rvalue_reg, target.type, line)
                 self.add(SetAttr(target.obj, target.attr, rvalue_reg, line))
             else:
-                key = self.load_static_unicode(target.attr)
+                key = self.load_str(target.attr)
                 boxed_reg = self.builder.box(rvalue_reg)
                 self.call_c(py_setattr_op, [target.obj, key, boxed_reg], line)
         elif isinstance(target, AssignmentTargetIndex):
@@ -482,10 +498,38 @@ class IRBuilder:
                 for i in range(len(rtypes)):
                     item_value = self.add(TupleGet(rvalue_reg, i, line))
                     self.assign(target.items[i], item_value, line)
+            elif ((is_list_rprimitive(rvalue_reg.type) or is_tuple_rprimitive(rvalue_reg.type))
+                  and target.star_idx is None):
+                self.process_sequence_assignment(target, rvalue_reg, line)
             else:
                 self.process_iterator_tuple_assignment(target, rvalue_reg, line)
         else:
             assert False, 'Unsupported assignment target'
+
+    def process_sequence_assignment(self,
+                                    target: AssignmentTargetTuple,
+                                    rvalue: Value,
+                                    line: int) -> None:
+        """Process assignment like 'x, y = s', where s is a variable-length list or tuple."""
+        # Check the length of sequence.
+        expected_len = Integer(len(target.items), c_pyssize_t_rprimitive)
+        self.builder.call_c(check_unpack_count_op, [rvalue, expected_len], line)
+
+        # Read sequence items.
+        values = []
+        for i in range(len(target.items)):
+            item = target.items[i]
+            index = self.builder.load_int(i)
+            if is_list_rprimitive(rvalue.type):
+                item_value = self.call_c(list_get_item_unsafe_op, [rvalue, index], line)
+            else:
+                item_value = self.builder.gen_method_call(
+                    rvalue, '__getitem__', [index], item.type, line)
+            values.append(item_value)
+
+        # Assign sequence items to the target lvalues.
+        for lvalue, value in zip(target.items, values):
+            self.assign(lvalue, value, line)
 
     def process_iterator_tuple_assignment_helper(self,
                                                  litem: AssignmentTarget,
@@ -531,11 +575,11 @@ class IRBuilder:
             post_star_vals = target.items[split_idx + 1:]
             iter_list = self.call_c(to_list, [iterator], line)
             iter_list_len = self.builtin_len(iter_list, line)
-            post_star_len = self.add(LoadInt(len(post_star_vals)))
+            post_star_len = Integer(len(post_star_vals))
             condition = self.binary_op(post_star_len, iter_list_len, '<=', line)
 
             error_block, ok_block = BasicBlock(), BasicBlock()
-            self.add(Branch(condition, ok_block, error_block, Branch.BOOL_EXPR))
+            self.add(Branch(condition, ok_block, error_block, Branch.BOOL))
 
             self.activate_block(error_block)
             self.add(RaiseStandardError(RaiseStandardError.VALUE_ERROR,
@@ -608,7 +652,7 @@ class IRBuilder:
             return value
 
         # Allocate a temporary register for the assignable value.
-        reg = self.alloc_temp(value.type)
+        reg = Register(value.type)
         self.assign(reg, value, -1)
         return reg
 
@@ -746,15 +790,9 @@ class IRBuilder:
 
         # Handle data-driven special-cased primitive call ops.
         if callee.fullname is not None and expr.arg_kinds == [ARG_POS] * len(arg_values):
-            call_c_ops_candidates = c_function_ops.get(callee.fullname, [])
+            call_c_ops_candidates = function_ops.get(callee.fullname, [])
             target = self.builder.matching_call_c(call_c_ops_candidates, arg_values,
                                                   expr.line, self.node_type(expr))
-            if target:
-                return target
-            ops = func_ops.get(callee.fullname, [])
-            target = self.builder.matching_primitive_op(
-                ops, arg_values, expr.line, self.node_type(expr)
-            )
             if target:
                 return target
 
@@ -801,10 +839,44 @@ class IRBuilder:
                 self.process_conditional(e.right, true, false)
         elif isinstance(e, UnaryExpr) and e.op == 'not':
             self.process_conditional(e.expr, false, true)
-        # Catch-all for arbitrary expressions.
         else:
+            res = self.maybe_process_conditional_comparison(e, true, false)
+            if res:
+                return
+            # Catch-all for arbitrary expressions.
             reg = self.accept(e)
             self.add_bool_branch(reg, true, false)
+
+    def maybe_process_conditional_comparison(self,
+                                             e: Expression,
+                                             true: BasicBlock,
+                                             false: BasicBlock) -> bool:
+        """Transform simple tagged integer comparisons in a conditional context.
+
+        Return True if the operation is supported (and was transformed). Otherwise,
+        do nothing and return False.
+
+        Args:
+            e: Arbitrary expression
+            true: Branch target if comparison is true
+            false: Branch target if comparison is false
+        """
+        if not isinstance(e, ComparisonExpr) or len(e.operands) != 2:
+            return False
+        ltype = self.node_type(e.operands[0])
+        rtype = self.node_type(e.operands[1])
+        if not is_tagged(ltype) or not is_tagged(rtype):
+            return False
+        op = e.operators[0]
+        if op not in ('==', '!=', '<', '<=', '>', '>='):
+            return False
+        left = self.accept(e.operands[0])
+        right = self.accept(e.operands[1])
+        # "left op right" for two tagged integers
+        self.builder.compare_tagged_condition(left, right, op, true, false, e.line)
+        return True
+
+    # Basic helpers
 
     def flatten_classes(self, arg: Union[RefExpr, TupleExpr]) -> Optional[List[ClassIR]]:
         """Flatten classes in isinstance(obj, (A, (B, C))).
@@ -829,13 +901,13 @@ class IRBuilder:
                     return None
             return res
 
-    # Basic helpers
-
     def enter(self, fn_info: Union[FuncInfo, str] = '') -> None:
         if isinstance(fn_info, str):
             fn_info = FuncInfo(name=fn_info)
         self.builder = LowLevelIRBuilder(self.current_module, self.mapper)
         self.builders.append(self.builder)
+        self.symtables.append(OrderedDict())
+        self.runtime_args.append([])
         self.fn_info = fn_info
         self.fn_infos.append(self.fn_info)
         self.ret_types.append(none_rprimitive)
@@ -845,14 +917,108 @@ class IRBuilder:
             self.nonlocal_control.append(BaseNonlocalControl())
         self.activate_block(BasicBlock())
 
-    def leave(self) -> Tuple[List[BasicBlock], Environment, RType, FuncInfo]:
+    def leave(self) -> Tuple[List[Register], List[RuntimeArg], List[BasicBlock], RType, FuncInfo]:
         builder = self.builders.pop()
+        self.symtables.pop()
+        runtime_args = self.runtime_args.pop()
         ret_type = self.ret_types.pop()
         fn_info = self.fn_infos.pop()
         self.nonlocal_control.pop()
         self.builder = self.builders[-1]
         self.fn_info = self.fn_infos[-1]
-        return builder.blocks, builder.environment, ret_type, fn_info
+        return builder.args, runtime_args, builder.blocks, ret_type, fn_info
+
+    def enter_method(self,
+                     class_ir: ClassIR,
+                     name: str,
+                     ret_type: RType,
+                     fn_info: Union[FuncInfo, str] = '',
+                     self_type: Optional[RType] = None) -> None:
+        """Begin generating IR for a method.
+
+        If the method takes arguments, you should immediately afterwards call
+        add_argument() for each non-self argument (self is created implicitly).
+
+        Call leave_method() to finish the generation of the method.
+
+        You can enter multiple methods at a time. They are maintained in a
+        stack, and leave_method() leaves the topmost one.
+
+        Args:
+            class_ir: Add method to this class
+            name: Short name of the method
+            ret_type: Return type of the method
+            fn_info: Optionally, additional information about the method
+            self_type: If not None, override default type of the implicit 'self'
+                argument (by default, derive type from class_ir)
+        """
+        self.enter(fn_info)
+        self.function_name_stack.append(name)
+        self.class_ir_stack.append(class_ir)
+        self.ret_types[-1] = ret_type
+        if self_type is None:
+            self_type = RInstance(class_ir)
+        self.add_argument(SELF_NAME, self_type)
+
+    def add_argument(self, var: Union[str, Var], typ: RType, kind: int = ARG_POS) -> Register:
+        """Declare an argument in the current function.
+
+        You should use this instead of directly calling add_local() in new code.
+        """
+        if isinstance(var, str):
+            var = Var(var)
+        reg = self.add_local(var, typ, is_arg=True)
+        self.runtime_args[-1].append(RuntimeArg(var.name, typ, kind))
+        return reg
+
+    def leave_method(self) -> None:
+        """Finish the generation of IR for a method."""
+        arg_regs, args, blocks, ret_type, fn_info = self.leave()
+        sig = FuncSignature(args, ret_type)
+        name = self.function_name_stack.pop()
+        class_ir = self.class_ir_stack.pop()
+        decl = FuncDecl(name, class_ir.name, self.module_name, sig)
+        ir = FuncIR(decl, arg_regs, blocks)
+        class_ir.methods[name] = ir
+        class_ir.method_decls[name] = ir.decl
+        self.functions.append(ir)
+
+    def lookup(self, symbol: SymbolNode) -> SymbolTarget:
+        return self.symtables[-1][symbol]
+
+    def add_local(self, symbol: SymbolNode, typ: RType, is_arg: bool = False) -> 'Register':
+        """Add register that represents a symbol to the symbol table.
+
+        Args:
+            is_arg: is this a function argument
+        """
+        assert isinstance(symbol, SymbolNode)
+        reg = Register(typ, symbol.name, is_arg=is_arg, line=symbol.line)
+        self.symtables[-1][symbol] = AssignmentTargetRegister(reg)
+        if is_arg:
+            self.builder.args.append(reg)
+        return reg
+
+    def add_local_reg(self,
+                      symbol: SymbolNode,
+                      typ: RType,
+                      is_arg: bool = False) -> AssignmentTargetRegister:
+        """Like add_local, but return an assignment target instead of value."""
+        self.add_local(symbol, typ, is_arg)
+        target = self.symtables[-1][symbol]
+        assert isinstance(target, AssignmentTargetRegister)
+        return target
+
+    def add_self_to_env(self, cls: ClassIR) -> AssignmentTargetRegister:
+        """Low-level function that adds a 'self' argument.
+
+        This is only useful if using enter() instead of enter_method().
+        """
+        return self.add_local_reg(Var(SELF_NAME), RInstance(cls), is_arg=True)
+
+    def add_target(self, symbol: SymbolNode, target: SymbolTarget) -> SymbolTarget:
+        self.symtables[-1][symbol] = target
+        return target
 
     def type_to_rtype(self, typ: Optional[Type]) -> RType:
         return self.mapper.type_to_rtype(typ)
@@ -879,12 +1045,12 @@ class IRBuilder:
         if reassign:
             # Read the local definition of the variable, and set the corresponding attribute of
             # the environment class' variable to be that value.
-            reg = self.read(self.environment.lookup(var), self.fn_info.fitem.line)
+            reg = self.read(self.lookup(var), self.fn_info.fitem.line)
             self.add(SetAttr(base.curr_env_reg, var.name, reg, self.fn_info.fitem.line))
 
         # Override the local definition of the variable to instead point at the variable in
         # the environment class.
-        return self.environment.add_target(var, attr_target)
+        return self.add_target(var, attr_target)
 
     def is_builtin_ref_expr(self, expr: RefExpr) -> bool:
         assert expr.node, "RefExpr not resolved"
@@ -908,7 +1074,7 @@ class IRBuilder:
 
     def load_global_str(self, name: str, line: int) -> Value:
         _globals = self.load_globals_dict()
-        reg = self.load_static_unicode(name)
+        reg = self.load_str(name)
         return self.call_c(dict_get_item_op, [_globals, reg], line)
 
     def load_globals_dict(self) -> Value:
@@ -939,7 +1105,7 @@ def gen_arg_defaults(builder: IRBuilder) -> None:
     fitem = builder.fn_info.fitem
     for arg in fitem.arguments:
         if arg.initializer:
-            target = builder.environment.lookup(arg.variable)
+            target = builder.lookup(arg.variable)
 
             def get_default() -> Value:
                 assert arg.initializer is not None
@@ -960,4 +1126,4 @@ def gen_arg_defaults(builder: IRBuilder) -> None:
                     return builder.add(
                         GetAttr(builder.fn_info.callable_class.self_reg, name, arg.line))
             assert isinstance(target, AssignmentTargetRegister)
-            builder.assign_if_null(target, get_default, arg.initializer.line)
+            builder.assign_if_null(target.register, get_default, arg.initializer.line)

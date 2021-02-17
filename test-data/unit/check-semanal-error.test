@@ -18,7 +18,7 @@ m.foo()
 m.x = m.y
 1() # E
 [out]
-main:1: error: Cannot find implementation or library stub for module named 'm'
+main:1: error: Cannot find implementation or library stub for module named "m"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:4: error: "int" not callable
 
@@ -28,7 +28,7 @@ x.foo()
 x.a = x.b
 1() # E
 [out]
-main:1: error: Cannot find implementation or library stub for module named 'm'
+main:1: error: Cannot find implementation or library stub for module named "m"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:4: error: "int" not callable
 
@@ -37,7 +37,7 @@ from m import * # E
 x # E
 1() # E
 [out]
-main:1: error: Cannot find implementation or library stub for module named 'm'
+main:1: error: Cannot find implementation or library stub for module named "m"
 main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 main:2: error: Name 'x' is not defined
 main:3: error: "int" not callable

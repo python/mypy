@@ -1,10 +1,20 @@
-"""Generate CPython API wrapper function for a native function."""
+"""Generate CPython API wrapper functions for native functions.
+
+The wrapper functions are used by the CPython runtime when calling
+native functions from interpreted code, and when the called function
+can't be determined statically in compiled code. They validate, match,
+unbox and type check function arguments, and box return values as
+needed. All wrappers accept and return 'PyObject *' (boxed) values.
+
+The wrappers aren't used for most calls between two native functions
+or methods in a single compilation unit.
+"""
 
 from typing import List, Optional
 
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_NAMED_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2
 
-from mypyc.common import PREFIX, NATIVE_PREFIX, DUNDER_PREFIX
+from mypyc.common import PREFIX, NATIVE_PREFIX, DUNDER_PREFIX, USE_VECTORCALL
 from mypyc.codegen.emit import Emitter
 from mypyc.ir.rtypes import (
     RType, is_object_rprimitive, is_int_rprimitive, is_bool_rprimitive, object_rprimitive
@@ -14,15 +24,85 @@ from mypyc.ir.class_ir import ClassIR
 from mypyc.namegen import NameGenerator
 
 
+# Generic vectorcall wrapper functions (Python 3.7+)
+#
+# A wrapper function has a signature like this:
+#
+# PyObject *fn(PyObject *self, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
+#
+# The function takes a self object, pointer to an array of arguments,
+# the number of positional arguments, and a tuple of keyword argument
+# names (that are stored starting in args[nargs]).
+#
+# It returns the returned object, or NULL on an exception.
+#
+# These are more efficient than legacy wrapper functions, since
+# usually no tuple or dict objects need to be created for the
+# arguments. Vectorcalls also use pre-constructed str objects for
+# keyword argument names and other pre-computed information, instead
+# of processing the argument format string on each call.
+
+
 def wrapper_function_header(fn: FuncIR, names: NameGenerator) -> str:
-    return 'PyObject *{prefix}{name}(PyObject *self, PyObject *args, PyObject *kw)'.format(
-        prefix=PREFIX,
-        name=fn.cname(names))
+    """Return header of a vectorcall wrapper function.
+
+    See comment above for a summary of the arguments.
+    """
+    return (
+        'PyObject *{prefix}{name}('
+        'PyObject *self, PyObject *const *args, size_t nargs, PyObject *kwnames)').format(
+            prefix=PREFIX,
+            name=fn.cname(names))
+
+
+def generate_traceback_code(fn: FuncIR,
+                            emitter: Emitter,
+                            source_path: str,
+                            module_name: str) -> str:
+    # If we hit an error while processing arguments, then we emit a
+    # traceback frame to make it possible to debug where it happened.
+    # Unlike traceback frames added for exceptions seen in IR, we do this
+    # even if there is no `traceback_name`. This is because the error will
+    # have originated here and so we need it in the traceback.
+    globals_static = emitter.static_name('globals', module_name)
+    traceback_code = 'CPy_AddTraceback("%s", "%s", %d, %s);' % (
+        source_path.replace("\\", "\\\\"),
+        fn.traceback_name or fn.name,
+        fn.line,
+        globals_static)
+    return traceback_code
+
+
+def make_arg_groups(args: List[RuntimeArg]) -> List[List[RuntimeArg]]:
+    """Group arguments by kind."""
+    return [[arg for arg in args if arg.kind == k] for k in range(ARG_NAMED_OPT + 1)]
+
+
+def reorder_arg_groups(groups: List[List[RuntimeArg]]) -> List[RuntimeArg]:
+    """Reorder argument groups to match their order in a format string."""
+    return groups[ARG_POS] + groups[ARG_OPT] + groups[ARG_NAMED_OPT] + groups[ARG_NAMED]
+
+
+def make_static_kwlist(args: List[RuntimeArg]) -> str:
+    arg_names = ''.join('"{}", '.format(arg.name) for arg in args)
+    return 'static const char * const kwlist[] = {{{}0}};'.format(arg_names)
 
 
 def make_format_string(func_name: str, groups: List[List[RuntimeArg]]) -> str:
-    # Construct the format string. Each group requires the previous
-    # groups delimiters to be present first.
+    """Return a format string that specifies the accepted arguments.
+
+    The format string is an extended subset of what is supported by
+    PyArg_ParseTupleAndKeywords(). Only the type 'O' is used, and we
+    also support some extensions:
+
+    - Required keyword-only arguments are introduced after '@'
+    - If the function receives *args or **kwargs, we add a '%' prefix
+
+    Each group requires the previous groups' delimiters to be present
+    first.
+
+    These are used by both vectorcall and legacy wrapper functions.
+    """
     main_format = ''
     if groups[ARG_STAR] or groups[ARG_STAR2]:
         main_format += '%'
@@ -40,24 +120,95 @@ def generate_wrapper_function(fn: FuncIR,
                               emitter: Emitter,
                               source_path: str,
                               module_name: str) -> None:
-    """Generates a CPython-compatible wrapper function for a native function.
+    """Generate a CPython-compatible vectorcall wrapper for a native function.
 
     In particular, this handles unboxing the arguments, calling the native function, and
     then boxing the return value.
     """
     emitter.emit_line('{} {{'.format(wrapper_function_header(fn, emitter.names)))
 
-    # If we hit an error while processing arguments, then we emit a
-    # traceback frame to make it possible to debug where it happened.
-    # Unlike traceback frames added for exceptions seen in IR, we do this
-    # even if there is no `traceback_name`. This is because the error will
-    # have originated here and so we need it in the traceback.
-    globals_static = emitter.static_name('globals', module_name)
-    traceback_code = 'CPy_AddTraceback("%s", "%s", %d, %s);' % (
-        source_path.replace("\\", "\\\\"),
-        fn.traceback_name or fn.name,
-        fn.line,
-        globals_static)
+    # If fn is a method, then the first argument is a self param
+    real_args = list(fn.args)
+    if fn.class_name and not fn.decl.kind == FUNC_STATICMETHOD:
+        arg = real_args.pop(0)
+        emitter.emit_line('PyObject *obj_{} = self;'.format(arg.name))
+
+    # Need to order args as: required, optional, kwonly optional, kwonly required
+    # This is because CPyArg_ParseStackAndKeywords format string requires
+    # them grouped in that way.
+    groups = make_arg_groups(real_args)
+    reordered_args = reorder_arg_groups(groups)
+
+    emitter.emit_line(make_static_kwlist(reordered_args))
+    fmt = make_format_string(fn.name, groups)
+    # Define the arguments the function accepts (but no types yet)
+    emitter.emit_line('static CPyArg_Parser parser = {{"{}", kwlist, 0}};'.format(fmt))
+
+    for arg in real_args:
+        emitter.emit_line('PyObject *obj_{}{};'.format(
+                          arg.name, ' = NULL' if arg.optional else ''))
+
+    cleanups = ['CPy_DECREF(obj_{});'.format(arg.name)
+                for arg in groups[ARG_STAR] + groups[ARG_STAR2]]
+
+    arg_ptrs = []  # type: List[str]
+    if groups[ARG_STAR] or groups[ARG_STAR2]:
+        arg_ptrs += ['&obj_{}'.format(groups[ARG_STAR][0].name) if groups[ARG_STAR] else 'NULL']
+        arg_ptrs += ['&obj_{}'.format(groups[ARG_STAR2][0].name) if groups[ARG_STAR2] else 'NULL']
+    arg_ptrs += ['&obj_{}'.format(arg.name) for arg in reordered_args]
+
+    if fn.name == '__call__' and USE_VECTORCALL:
+        nargs = 'PyVectorcall_NARGS(nargs)'
+    else:
+        nargs = 'nargs'
+    parse_fn = 'CPyArg_ParseStackAndKeywords'
+    # Special case some common signatures
+    if len(real_args) == 0:
+        # No args
+        parse_fn = 'CPyArg_ParseStackAndKeywordsNoArgs'
+    elif len(real_args) == 1 and len(groups[ARG_POS]) == 1:
+        # Single positional arg
+        parse_fn = 'CPyArg_ParseStackAndKeywordsOneArg'
+    elif len(real_args) == len(groups[ARG_POS]) + len(groups[ARG_OPT]):
+        # No keyword-only args, *args or **kwargs
+        parse_fn = 'CPyArg_ParseStackAndKeywordsSimple'
+    emitter.emit_lines(
+        'if (!{}(args, {}, kwnames, &parser{})) {{'.format(
+            parse_fn, nargs, ''.join(', ' + n for n in arg_ptrs)),
+        'return NULL;',
+        '}')
+    traceback_code = generate_traceback_code(fn, emitter, source_path, module_name)
+    generate_wrapper_core(fn, emitter, groups[ARG_OPT] + groups[ARG_NAMED_OPT],
+                          cleanups=cleanups,
+                          traceback_code=traceback_code)
+
+    emitter.emit_line('}')
+
+
+# Legacy generic wrapper functions
+#
+# These take a self object, a Python tuple of positional arguments,
+# and a dict of keyword arguments. These are a lot slower than
+# vectorcall wrappers, especially in calls involving keyword
+# arguments.
+
+
+def legacy_wrapper_function_header(fn: FuncIR, names: NameGenerator) -> str:
+    return 'PyObject *{prefix}{name}(PyObject *self, PyObject *args, PyObject *kw)'.format(
+        prefix=PREFIX,
+        name=fn.cname(names))
+
+
+def generate_legacy_wrapper_function(fn: FuncIR,
+                                     emitter: Emitter,
+                                     source_path: str,
+                                     module_name: str) -> None:
+    """Generates a CPython-compatible legacy wrapper for a native function.
+
+    In particular, this handles unboxing the arguments, calling the native function, and
+    then boxing the return value.
+    """
+    emitter.emit_line('{} {{'.format(legacy_wrapper_function_header(fn, emitter.names)))
 
     # If fn is a method, then the first argument is a self param
     real_args = list(fn.args)
@@ -68,11 +219,10 @@ def generate_wrapper_function(fn: FuncIR,
     # Need to order args as: required, optional, kwonly optional, kwonly required
     # This is because CPyArg_ParseTupleAndKeywords format string requires
     # them grouped in that way.
-    groups = [[arg for arg in real_args if arg.kind == k] for k in range(ARG_NAMED_OPT + 1)]
-    reordered_args = groups[ARG_POS] + groups[ARG_OPT] + groups[ARG_NAMED_OPT] + groups[ARG_NAMED]
+    groups = make_arg_groups(real_args)
+    reordered_args = reorder_arg_groups(groups)
 
-    arg_names = ''.join('"{}", '.format(arg.name) for arg in reordered_args)
-    emitter.emit_line('static char *kwlist[] = {{{}0}};'.format(arg_names))
+    emitter.emit_line(make_static_kwlist(reordered_args))
     for arg in real_args:
         emitter.emit_line('PyObject *obj_{}{};'.format(
                           arg.name, ' = NULL' if arg.optional else ''))
@@ -91,11 +241,15 @@ def generate_wrapper_function(fn: FuncIR,
             make_format_string(fn.name, groups), ''.join(', ' + n for n in arg_ptrs)),
         'return NULL;',
         '}')
+    traceback_code = generate_traceback_code(fn, emitter, source_path, module_name)
     generate_wrapper_core(fn, emitter, groups[ARG_OPT] + groups[ARG_NAMED_OPT],
                           cleanups=cleanups,
                           traceback_code=traceback_code)
 
     emitter.emit_line('}')
+
+
+# Specialized wrapper functions
 
 
 def generate_dunder_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
@@ -214,12 +368,16 @@ def generate_bool_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     return name
 
 
+# Helpers
+
+
 def generate_wrapper_core(fn: FuncIR, emitter: Emitter,
                           optional_args: Optional[List[RuntimeArg]] = None,
                           arg_names: Optional[List[str]] = None,
                           cleanups: Optional[List[str]] = None,
                           traceback_code: Optional[str] = None) -> None:
     """Generates the core part of a wrapper function for a native function.
+
     This expects each argument as a PyObject * named obj_{arg} as a precondition.
     It converts the PyObject *s to the necessary types, checking and unboxing if necessary,
     makes the call, then boxes the result if necessary and returns it.

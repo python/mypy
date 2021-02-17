@@ -21,6 +21,10 @@ Literal: _SpecialForm = ...
 
 Annotated: _SpecialForm = ...
 
+ParamSpec: _SpecialForm
+Concatenate: _SpecialForm
+
+TypeGuard: _SpecialForm
 
 # Fallback type for all typed dicts (does not exist at runtime).
 class _TypedDict(Mapping[str, object]):

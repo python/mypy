@@ -1092,7 +1092,7 @@ import a
 [file a.py]
 C = 1
 MYPY = False
-if MYPY:  # Tweak processing ordre
+if MYPY:  # Tweak processing order
     from b import *  # E: Incompatible import of "C" (imported name has type "Type[C]", local name has type "int")
 
 [file b.py]
@@ -2907,11 +2907,11 @@ T = TypeVar('T')
 
 def f(x: Optional[T] = None) -> T: ...
 
-x = f()  # E: Need type annotation for 'x'
+x = f()  # E: Need type annotation for "x"
 y = x
 
 def g() -> None:
-    x = f()  # E: Need type annotation for 'x'
+    x = f()  # E: Need type annotation for "x"
     y = x
 
 [case testNewAnalyzerLessErrorsNeedAnnotationList]
@@ -2931,12 +2931,12 @@ class G(Generic[T]): ...
 
 def f(x: Optional[T] = None) -> G[T]: ...
 
-x = f()  # E: Need type annotation for 'x'
+x = f()  # E: Need type annotation for "x"
 y = x
 reveal_type(y)  # N: Revealed type is '__main__.G[Any]'
 
 def g() -> None:
-    x = f()  # E: Need type annotation for 'x'
+    x = f()  # E: Need type annotation for "x"
     y = x
     reveal_type(y)  # N: Revealed type is '__main__.G[Any]'
 

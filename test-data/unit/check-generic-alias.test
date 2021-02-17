@@ -1,0 +1,241 @@
+-- Test cases for generic aliases
+
+[case testGenericBuiltinWarning]
+# flags: --python-version 3.7
+t1: list
+t2: list[int]  # E: "list" is not subscriptable, use "typing.List" instead
+t3: list[str]  # E: "list" is not subscriptable, use "typing.List" instead
+
+t4: tuple
+t5: tuple[int]  # E: "tuple" is not subscriptable, use "typing.Tuple" instead
+t6: tuple[int, str]  # E: "tuple" is not subscriptable, use "typing.Tuple" instead
+t7: tuple[int, ...]  # E: Unexpected '...' \
+                     # E: "tuple" is not subscriptable, use "typing.Tuple" instead
+
+t8: dict = {}
+t9: dict[int, str]  # E: "dict" is not subscriptable, use "typing.Dict" instead
+
+t10: type
+t11: type[int]  # E: "type" expects no type arguments, but 1 given
+[builtins fixtures/dict.pyi]
+
+
+[case testGenericBuiltinSetWarning]
+# flags: --python-version 3.7
+t1: set
+t2: set[int]  # E: "set" is not subscriptable, use "typing.Set" instead
+[builtins fixtures/set.pyi]
+
+
+[case testGenericCollectionsWarning]
+# flags: --python-version 3.7
+import collections
+
+t01: collections.deque
+t02: collections.deque[int]  # E: "deque" is not subscriptable, use "typing.Deque" instead
+t03: collections.defaultdict
+t04: collections.defaultdict[int, str]  # E: "defaultdict" is not subscriptable, use "typing.DefaultDict" instead
+t05: collections.OrderedDict
+t06: collections.OrderedDict[int, str]
+t07: collections.Counter
+t08: collections.Counter[int]  # E: "Counter" is not subscriptable, use "typing.Counter" instead
+t09: collections.ChainMap
+t10: collections.ChainMap[int, str]  # E: "ChainMap" is not subscriptable, use "typing.ChainMap" instead
+
+
+[case testGenericBuiltinFutureAnnotations]
+# flags: --python-version 3.7
+from __future__ import annotations
+t1: list
+t2: list[int]
+t3: list[str]
+
+t4: tuple
+t5: tuple[int]
+t6: tuple[int, str]
+t7: tuple[int, ...]
+
+t8: dict = {}
+t9: dict[int, str]
+
+t10: type
+t11: type[int]
+[builtins fixtures/dict.pyi]
+
+
+[case testGenericCollectionsFutureAnnotations]
+# flags: --python-version 3.7
+from __future__ import annotations
+import collections
+
+t01: collections.deque
+t02: collections.deque[int]
+t03: collections.defaultdict
+t04: collections.defaultdict[int, str]
+t05: collections.OrderedDict
+t06: collections.OrderedDict[int, str]
+t07: collections.Counter
+t08: collections.Counter[int]
+t09: collections.ChainMap
+t10: collections.ChainMap[int, str]
+[builtins fixtures/tuple.pyi]
+
+
+[case testGenericAliasBuiltinsReveal]
+# flags: --python-version 3.9
+t1: list
+t2: list[int]
+t3: list[str]
+
+t4: tuple
+t5: tuple[int]
+t6: tuple[int, str]
+t7: tuple[int, ...]
+
+t8: dict = {}
+t9: dict[int, str]
+
+t10: type
+t11: type[int]
+
+reveal_type(t1)  # N: Revealed type is 'builtins.list[Any]'
+reveal_type(t2)  # N: Revealed type is 'builtins.list[builtins.int]'
+reveal_type(t3)  # N: Revealed type is 'builtins.list[builtins.str]'
+reveal_type(t4)  # N: Revealed type is 'builtins.tuple[Any]'
+# TODO: ideally these would reveal builtins.tuple
+reveal_type(t5)  # N: Revealed type is 'Tuple[builtins.int]'
+reveal_type(t6)  # N: Revealed type is 'Tuple[builtins.int, builtins.str]'
+# TODO: this is incorrect, see #9522
+reveal_type(t7)  # N: Revealed type is 'builtins.tuple[builtins.int]'
+reveal_type(t8)  # N: Revealed type is 'builtins.dict[Any, Any]'
+reveal_type(t9)  # N: Revealed type is 'builtins.dict[builtins.int, builtins.str]'
+reveal_type(t10)  # N: Revealed type is 'builtins.type'
+reveal_type(t11)  # N: Revealed type is 'Type[builtins.int]'
+[builtins fixtures/dict.pyi]
+
+
+[case testGenericAliasBuiltinsSetReveal]
+# flags: --python-version 3.9
+t1: set
+t2: set[int]
+t3: set[str]
+
+reveal_type(t1)  # N: Revealed type is 'builtins.set[Any]'
+reveal_type(t2)  # N: Revealed type is 'builtins.set[builtins.int]'
+reveal_type(t3)  # N: Revealed type is 'builtins.set[builtins.str]'
+[builtins fixtures/set.pyi]
+
+
+[case testGenericAliasCollectionsReveal]
+# flags: --python-version 3.9
+import collections
+
+t1: collections.deque[int]
+t2: collections.defaultdict[int, str]
+t3: collections.OrderedDict[int, str]
+t4: collections.Counter[int]
+t5: collections.ChainMap[int, str]
+
+reveal_type(t1)  # N: Revealed type is 'collections.deque[builtins.int]'
+reveal_type(t2)  # N: Revealed type is 'collections.defaultdict[builtins.int, builtins.str]'
+reveal_type(t3)  # N: Revealed type is 'collections.OrderedDict[builtins.int, builtins.str]'
+reveal_type(t4)  # N: Revealed type is 'collections.Counter[builtins.int]'
+reveal_type(t5)  # N: Revealed type is 'collections.ChainMap[builtins.int, builtins.str]'
+[builtins fixtures/tuple.pyi]
+
+
+[case testGenericAliasCollectionsABCReveal]
+# flags: --python-version 3.9
+import collections.abc
+
+t01: collections.abc.Awaitable[int]
+t02: collections.abc.Coroutine[str, int, float]
+t03: collections.abc.AsyncIterable[int]
+t04: collections.abc.AsyncIterator[int]
+t05: collections.abc.AsyncGenerator[int, float]
+t06: collections.abc.Iterable[int]
+t07: collections.abc.Iterator[int]
+t08: collections.abc.Generator[int, float, str]
+t09: collections.abc.Reversible[int]
+t10: collections.abc.Container[int]
+t11: collections.abc.Collection[int]
+t12: collections.abc.Callable[[int], float]
+t13: collections.abc.Set[int]
+t14: collections.abc.MutableSet[int]
+t15: collections.abc.Mapping[int, str]
+t16: collections.abc.MutableMapping[int, str]
+t17: collections.abc.Sequence[int]
+t18: collections.abc.MutableSequence[int]
+t19: collections.abc.ByteString
+t20: collections.abc.MappingView[int, int]
+t21: collections.abc.KeysView[int]
+t22: collections.abc.ItemsView[int, str]
+t23: collections.abc.ValuesView[str]
+
+# TODO: these currently reveal the classes from typing, see #7907
+# reveal_type(t01)  # Nx Revealed type is 'collections.abc.Awaitable[builtins.int]'
+# reveal_type(t02)  # Nx Revealed type is 'collections.abc.Coroutine[builtins.str, builtins.int, builtins.float]'
+# reveal_type(t03)  # Nx Revealed type is 'collections.abc.AsyncIterable[builtins.int]'
+# reveal_type(t04)  # Nx Revealed type is 'collections.abc.AsyncIterator[builtins.int]'
+# reveal_type(t05)  # Nx Revealed type is 'collections.abc.AsyncGenerator[builtins.int, builtins.float]'
+# reveal_type(t06)  # Nx Revealed type is 'collections.abc.Iterable[builtins.int]'
+# reveal_type(t07)  # Nx Revealed type is 'collections.abc.Iterator[builtins.int]'
+# reveal_type(t08)  # Nx Revealed type is 'collections.abc.Generator[builtins.int, builtins.float, builtins.str]'
+# reveal_type(t09)  # Nx Revealed type is 'collections.abc.Reversible[builtins.int]'
+# reveal_type(t10)  # Nx Revealed type is 'collections.abc.Container[builtins.int]'
+# reveal_type(t11)  # Nx Revealed type is 'collections.abc.Collection[builtins.int]'
+# reveal_type(t12)  # Nx Revealed type is 'collections.abc.Callable[[builtins.int], builtins.float]'
+# reveal_type(t13)  # Nx Revealed type is 'collections.abc.Set[builtins.int]'
+# reveal_type(t14)  # Nx Revealed type is 'collections.abc.MutableSet[builtins.int]'
+# reveal_type(t15)  # Nx Revealed type is 'collections.abc.Mapping[builtins.int, builtins.str]'
+# reveal_type(t16)  # Nx Revealed type is 'collections.abc.MutableMapping[builtins.int, builtins.str]'
+# reveal_type(t17)  # Nx Revealed type is 'collections.abc.Sequence[builtins.int]'
+# reveal_type(t18)  # Nx Revealed type is 'collections.abc.MutableSequence[builtins.int]'
+# reveal_type(t19)  # Nx Revealed type is 'collections.abc.ByteString'
+# reveal_type(t20)  # Nx Revealed type is 'collections.abc.MappingView[builtins.int, builtins.int]'
+# reveal_type(t21)  # Nx Revealed type is 'collections.abc.KeysView[builtins.int]'
+# reveal_type(t22)  # Nx Revealed type is 'collections.abc.ItemsView[builtins.int, builtins.str]'
+# reveal_type(t23)  # Nx Revealed type is 'collections.abc.ValuesView[builtins.str]'
+[builtins fixtures/tuple.pyi]
+
+
+[case testGenericAliasImportRe]
+# flags: --python-version 3.9
+from re import Pattern, Match
+t1: Pattern[str]
+t2: Match[str]
+[builtins fixtures/tuple.pyi]
+
+
+[case testGenericBuiltinTupleTyping]
+# flags: --python-version 3.6
+from typing import Tuple
+
+t01: Tuple = ()
+t02: Tuple[int] = (1, )
+t03: Tuple[int, str] = (1, 'a')
+t04: Tuple[int, int] = (1, 2)
+t05: Tuple[int, int, int] = (1, 2, 3)
+t06: Tuple[int, ...]
+t07: Tuple[int, ...] = (1,)
+t08: Tuple[int, ...] = (1, 2)
+t09: Tuple[int, ...] = (1, 2, 3)
+[builtins fixtures/tuple.pyi]
+
+
+[case testGenericBuiltinTuple]
+# flags: --python-version 3.9
+
+t01: tuple = ()
+t02: tuple[int] = (1, )
+t03: tuple[int, str] = (1, 'a')
+t04: tuple[int, int] = (1, 2)
+t05: tuple[int, int, int] = (1, 2, 3)
+t06: tuple[int, ...]
+t07: tuple[int, ...] = (1,)
+t08: tuple[int, ...] = (1, 2)
+t09: tuple[int, ...] = (1, 2, 3)
+
+from typing import Tuple
+t10: Tuple[int, ...] = t09
+[builtins fixtures/tuple.pyi]

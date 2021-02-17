@@ -514,8 +514,8 @@ d, e = f, g, h = 1, 1 # E: Need more than 2 values to unpack (3 expected)
 [case testAssignmentToStarMissingAnnotation]
 from typing import List
 t = 1, 2
-a, b, *c = 1, 2  # E: Need type annotation for 'c' (hint: "c: List[<type>] = ...")
-aa, bb, *cc = t  # E: Need type annotation for 'cc' (hint: "cc: List[<type>] = ...")
+a, b, *c = 1, 2  # E: Need type annotation for "c" (hint: "c: List[<type>] = ...")
+aa, bb, *cc = t  # E: Need type annotation for "cc" (hint: "cc: List[<type>] = ...")
 [builtins fixtures/list.pyi]
 
 [case testAssignmentToStarAnnotation]
@@ -763,7 +763,7 @@ class LongTypeName:
     def __add__(self, x: 'LongTypeName') -> 'LongTypeName': pass
 [builtins fixtures/tuple.pyi]
 [out]
-main:3: error: Unsupported operand types for + ("LongTypeName" and <tuple: 50 items>)
+main:3: error: Unsupported operand types for + ("LongTypeName" and "Tuple[LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName, LongTypeName]")
 
 
 -- Tuple methods
@@ -823,7 +823,7 @@ for x in t:
 [case testForLoopOverEmptyTuple]
 import typing
 t = ()
-for x in t: pass  # E: Need type annotation for 'x'
+for x in t: pass  # E: Need type annotation for "x"
 [builtins fixtures/for.pyi]
 
 [case testForLoopOverNoneValuedTuple]
@@ -1217,7 +1217,7 @@ if int():
 [builtins fixtures/tuple.pyi]
 
 [case testTupleWithoutContext]
-a = (1, [])  # E: Need type annotation for 'a'
+a = (1, [])  # E: Need type annotation for "a"
 [builtins fixtures/tuple.pyi]
 
 [case testTupleWithUnionContext]
@@ -1457,4 +1457,16 @@ points3 = ["test1", "test2"]
 x7, x8, y7, y8 = *points2, *points3 # E: Contiguous iterable with same type expected
 
 x9, y9, x10, y10, z5 = *points2, 1, *points2 # E: Contiguous iterable with same type expected
+[builtins fixtures/tuple.pyi]
+
+[case testAssignEmptyPy36]
+# flags: --python-version 3.6
+() = []
+
+[case testAssignEmptyPy27]
+# flags: --python-version 2.7
+() = []  # E: can't assign to ()
+
+[case testAssignEmptyBogus]
+() = 1  # E: 'Literal[1]?' object is not iterable
 [builtins fixtures/tuple.pyi]

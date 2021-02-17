@@ -49,6 +49,30 @@ for full details, see :ref:`running-mypy`.
     Asks mypy to type check the provided string as a program.
 
 
+.. option:: --exclude
+
+    A regular expression that matches file names, directory names and paths
+    which mypy should ignore while recursively discovering files to check.
+    Use forward slashes on all platforms.
+
+    For instance, to avoid discovering any files named `setup.py` you could
+    pass ``--exclude '/setup\.py$'``. Similarly, you can ignore discovering
+    directories with a given name by e.g. ``--exclude /build/`` or
+    those matching a subpath with ``--exclude /project/vendor/``.
+
+    Note that this flag only affects recursive discovery, that is, when mypy is
+    discovering files within a directory tree or submodules of a package to
+    check. If you pass a file or module explicitly it will still be checked. For
+    instance, ``mypy --exclude '/setup.py$' but_still_check/setup.py``.
+
+    Note that mypy will never recursively discover files and directories named
+    "site-packages", "node_modules" or "__pycache__", or those whose name starts
+    with a period, exactly as ``--exclude
+    '/(site-packages|node_modules|__pycache__|\..*)/$'`` would. Mypy will also
+    never recursively discover files with extensions other than ``.py`` or
+    ``.pyi``.
+
+
 Optional arguments
 ******************
 
@@ -110,10 +134,18 @@ imports.
     passed on the command line, the ``MYPYPATH`` environment variable,
     and the :confval:`mypy_path` config option.
 
-    Note that this only affects import discovery -- for modules and
-    packages explicitly passed on the command line, mypy still
-    searches for ``__init__.py[i]`` files in order to determine the
-    fully-qualified module/package name.
+    This flag affects how mypy finds modules and packages explicitly passed on
+    the command line. It also affects how mypy determines fully qualified module
+    names for files passed on the command line. See :ref:`Mapping file paths to
+    modules <mapping-paths-to-modules>` for details.
+
+.. option:: --explicit-package-bases
+
+    This flag tells mypy that top-level packages will be based in either the
+    current directory, or a member of the ``MYPYPATH`` environment variable or
+    :confval:`mypy_path` config option. This option is only useful in
+    conjunction with :option:`--namespace-packages`. See :ref:`Mapping file
+    paths to modules <mapping-paths-to-modules>` for details.
 
 .. option:: --ignore-missing-imports
 
@@ -427,7 +459,7 @@ potentially problematic or redundant in some way.
     .. code-block:: python
 
         def process(x: int) -> None:
-            # Error: Right operand of 'or' is never evaluated
+            # Error: Right operand of "or" is never evaluated
             if isinstance(x, int) or x > 7:
                 # Error: Unsupported operand types for + ("int" and "str")
                 print(x + "bad")
@@ -452,6 +484,8 @@ potentially problematic or redundant in some way.
 
         This limitation will be removed in future releases of mypy.
 
+
+.. _miscellaneous-strictness-flags:
 
 Miscellaneous strictness flags
 ******************************
@@ -733,11 +767,13 @@ in developing or debugging mypy internals.
 
 .. option:: --custom-typeshed-dir DIR
 
-    This flag specifies the directory where mypy looks for typeshed
+    This flag specifies the directory where mypy looks for standard library typeshed
     stubs, instead of the typeshed that ships with mypy.  This is
     primarily intended to make it easier to test typeshed changes before
     submitting them upstream, but also allows you to use a forked version of
     typeshed.
+
+    Note that this doesn't affect third-party library stubs.
 
 .. _warn-incomplete-stub:
 
@@ -830,6 +866,26 @@ format into the specified directory.
 
 Miscellaneous
 *************
+
+.. option:: --install-types
+
+    This flag causes mypy to install known missing stub packages for
+    third-party libraries using pip.  It will display the pip command
+    line to run, and expects a confirmation before installing
+    anything.
+
+    If you use this option without providing any files or modules to
+    type check, mypy will install stub packages suggested during the
+    previous mypy run. If there are files or modules to type check,
+    mypy first type checks those, and proposes to install missing
+    stubs at the end of the run, but only if any missing modules were
+    detected.
+
+    .. note::
+
+        This is new in mypy 0.900. Previous mypy versions included a
+        selection of third-party package stubs, instead of having them
+        installed separately.
 
 .. option:: --junit-xml JUNIT_XML
 

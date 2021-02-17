@@ -17,6 +17,8 @@ from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.options import Options
 from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
 from mypy.messages import MessageBuilder
+from mypy.errorcodes import ErrorCode
+from mypy import errorcodes as codes
 
 TPDICT_CLASS_ERROR = ('Invalid statement in TypedDict definition; '
                       'expected "field_name: field_type"')  # type: Final
@@ -201,7 +203,7 @@ class TypedDictAnalyzer:
             if var_name is not None and name != var_name:
                 self.fail(
                     "First argument '{}' to TypedDict() does not match variable name '{}'".format(
-                        name, var_name), node)
+                        name, var_name), node, code=codes.NAME_MATCH)
             if name != var_name or is_func_scope:
                 # Give it a unique name derived from the line number.
                 name += '@' + str(call.line)
@@ -319,9 +321,8 @@ class TypedDictAnalyzer:
         return (isinstance(expr, RefExpr) and isinstance(expr.node, TypeInfo) and
                 expr.node.typeddict_type is not None)
 
-    def fail(self, msg: str, ctx: Context) -> None:
-        self.api.fail(msg, ctx)
-
+    def fail(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
+        self.api.fail(msg, ctx, code=code)
 
 def get_anonymous_typeddict_type(
         api: Union[SemanticAnalyzerInterface, CheckerPluginInterface]) -> Optional[Instance]:

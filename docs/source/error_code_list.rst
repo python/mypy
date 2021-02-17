@@ -25,7 +25,7 @@ Example:
        def __init__(self, name: str) -> None:
            self.name = name
 
-   r = Resouce('x')
+   r = Resource('x')
    print(r.name)  # OK
    print(r.id)  # Error: "Resource" has no attribute "id"  [attr-defined]
    r.id = 5  # Error: "Resource" has no attribute "id"  [attr-defined]
@@ -208,7 +208,7 @@ Example with an error:
 
    class Bundle:
        def __init__(self) -> None:
-           # Error: Need type annotation for 'items'
+           # Error: Need type annotation for "items"
            #        (hint: "items: List[<type>] = ...")  [var-annotated]
            self.items = []
 
@@ -648,6 +648,18 @@ You can also use ``None``:
        def __exit__(self, exc, value, tb) -> None:  # Also OK
            print('exit')
 
+Check that naming is consistent [name-match]
+--------------------------------------------
+
+The definition of a named tuple or a TypedDict must be named
+consistently when using the call-based syntax. Example:
+
+.. code-block:: python
+
+    from typing import NamedTuple
+
+    # Error: First argument to namedtuple() should be 'Point2D', not 'Point'
+    Point2D = NamedTuple("Point", [("x", int), ("y", int)])
 
 Report syntax errors [syntax]
 -----------------------------

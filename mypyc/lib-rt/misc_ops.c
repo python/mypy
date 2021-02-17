@@ -134,9 +134,10 @@ static bool _CPy_IsSafeMetaClass(PyTypeObject *metaclass) {
 // This is super hacky and maybe we should suck it up and use PyType_FromSpec instead.
 // We allow bases to be NULL to represent just inheriting from object.
 // We don't support NULL bases and a non-type metaclass.
-PyObject *CPyType_FromTemplate(PyTypeObject *template_,
+PyObject *CPyType_FromTemplate(PyObject *template,
                                PyObject *orig_bases,
                                PyObject *modname) {
+    PyTypeObject *template_ = (PyTypeObject *)template;
     PyHeapTypeObject *t = NULL;
     PyTypeObject *dummy_class = NULL;
     PyObject *name = NULL;
@@ -493,4 +494,131 @@ PyObject *CPyTagged_Str(CPyTagged n) {
 void CPyDebug_Print(const char *msg) {
     printf("%s\n", msg);
     fflush(stdout);
+}
+
+int CPySequence_CheckUnpackCount(PyObject *sequence, Py_ssize_t expected) {
+    Py_ssize_t actual = Py_SIZE(sequence);
+    if (unlikely(actual != expected)) {
+        if (actual < expected) {
+            PyErr_Format(PyExc_ValueError, "not enough values to unpack (expected %zd, got %zd)",
+                         expected, actual);
+        } else {
+            PyErr_Format(PyExc_ValueError, "too many values to unpack (expected %zd)", expected);
+        }
+        return -1;
+    }
+    return 0;
+}
+
+// Parse an integer (size_t) encoded as a variable-length binary sequence.
+static const char *parse_int(const char *s, size_t *len) {
+    ssize_t n = 0;
+    while ((unsigned char)*s >= 0x80) {
+        n = (n << 7) + (*s & 0x7f);
+        s++;
+    }
+    n = (n << 7) | *s++;
+    *len = n;
+    return s;
+}
+
+// Initialize static constant array of literal values
+int CPyStatics_Initialize(PyObject **statics,
+                          const char *strings,
+                          const char *bytestrings,
+                          const char *ints,
+                          const double *floats,
+                          const double *complex_numbers,
+                          const int *tuples) {
+    PyObject **result = statics;
+    // Start with some hard-coded values
+    *result++ = Py_None;
+    Py_INCREF(Py_None);
+    *result++ = Py_False;
+    Py_INCREF(Py_False);
+    *result++ = Py_True;
+    Py_INCREF(Py_True);
+    if (strings) {
+        size_t num;
+        strings = parse_int(strings, &num);
+        while (num-- > 0) {
+            size_t len;
+            strings = parse_int(strings, &len);
+            PyObject *obj = PyUnicode_FromStringAndSize(strings, len);
+            if (obj == NULL) {
+                return -1;
+            }
+            PyUnicode_InternInPlace(&obj);
+            *result++ = obj;
+            strings += len;
+        }
+    }
+    if (bytestrings) {
+        size_t num;
+        bytestrings = parse_int(bytestrings, &num);
+        while (num-- > 0) {
+            size_t len;
+            bytestrings = parse_int(bytestrings, &len);
+            PyObject *obj = PyBytes_FromStringAndSize(bytestrings, len);
+            if (obj == NULL) {
+                return -1;
+            }
+            *result++ = obj;
+            bytestrings += len;
+        }
+    }
+    if (ints) {
+        size_t num;
+        ints = parse_int(ints, &num);
+        while (num-- > 0) {
+            char *end;
+            PyObject *obj = PyLong_FromString(ints, &end, 10);
+            if (obj == NULL) {
+                return -1;
+            }
+            ints = end;
+            ints++;
+            *result++ = obj;
+        }
+    }
+    if (floats) {
+        size_t num = (size_t)*floats++;
+        while (num-- > 0) {
+            PyObject *obj = PyFloat_FromDouble(*floats++);
+            if (obj == NULL) {
+                return -1;
+            }
+            *result++ = obj;
+        }
+    }
+    if (complex_numbers) {
+        size_t num = (size_t)*complex_numbers++;
+        while (num-- > 0) {
+            double real = *complex_numbers++;
+            double imag = *complex_numbers++;
+            PyObject *obj = PyComplex_FromDoubles(real, imag);
+            if (obj == NULL) {
+                return -1;
+            }
+            *result++ = obj;
+        }
+    }
+    if (tuples) {
+        int num = *tuples++;
+        while (num-- > 0) {
+            int num_items = *tuples++;
+            PyObject *obj = PyTuple_New(num_items);
+            if (obj == NULL) {
+                return -1;
+            }
+            int i;
+            for (i = 0; i < num_items; i++) {
+                PyObject *item = statics[*tuples++];
+                Py_INCREF(item);
+                PyTuple_SET_ITEM(obj, i, item);
+            }
+            *result++ = obj;
+        }
+    }
+    return 0;
 }

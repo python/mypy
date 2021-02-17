@@ -63,6 +63,10 @@ PyObject *CPyDict_Get(PyObject *dict, PyObject *key, PyObject *fallback) {
     return res;
 }
 
+PyObject *CPyDict_GetWithNone(PyObject *dict, PyObject *key) {
+    return CPyDict_Get(dict, key, Py_None);
+}
+
 int CPyDict_SetItem(PyObject *dict, PyObject *key, PyObject *value) {
     if (PyDict_CheckExact(dict)) {
         return PyDict_SetItem(dict, key, value);
@@ -220,6 +224,18 @@ PyObject *CPyDict_Items(PyObject *dict) {
     }
     Py_DECREF(res);
     return list;
+}
+
+char CPyDict_Clear(PyObject *dict) {
+    if (PyDict_CheckExact(dict)) {
+        PyDict_Clear(dict);
+    } else {
+        PyObject *res = PyObject_CallMethod(dict, "clear", NULL);
+        if (res == NULL) {
+            return 0;
+        }
+    }
+    return 1;
 }
 
 PyObject *CPyDict_GetKeysIter(PyObject *dict) {

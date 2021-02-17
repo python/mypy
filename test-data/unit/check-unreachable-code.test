@@ -78,7 +78,7 @@ else:
     import pow123 # E
 [builtins fixtures/bool.pyi]
 [out]
-main:6: error: Cannot find implementation or library stub for module named 'pow123'
+main:6: error: Cannot find implementation or library stub for module named "pow123"
 main:6: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testMypyConditional]
@@ -98,7 +98,7 @@ else:
     import xyz753
 [typing fixtures/typing-medium.pyi]
 [out]
-main:3: error: Cannot find implementation or library stub for module named 'pow123'
+main:3: error: Cannot find implementation or library stub for module named "pow123"
 main:3: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testTypeCheckingConditionalFromImport]
@@ -109,7 +109,7 @@ else:
     import xyz753
 [typing fixtures/typing-medium.pyi]
 [out]
-main:3: error: Cannot find implementation or library stub for module named 'pow123'
+main:3: error: Cannot find implementation or library stub for module named "pow123"
 main:3: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testNegatedTypeCheckingConditional]
@@ -121,7 +121,7 @@ else:
 [builtins fixtures/bool.pyi]
 [typing fixtures/typing-medium.pyi]
 [out]
-main:5: error: Cannot find implementation or library stub for module named 'xyz753'
+main:5: error: Cannot find implementation or library stub for module named "xyz753"
 main:5: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testUndefinedTypeCheckingConditional]
@@ -132,7 +132,7 @@ else:
 [builtins fixtures/bool.pyi]
 [out]
 main:1: error: Name 'TYPE_CHECKING' is not defined
-main:4: error: Cannot find implementation or library stub for module named 'xyz753'
+main:4: error: Cannot find implementation or library stub for module named "xyz753"
 main:4: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
 
 [case testConditionalClassDefPY3]
@@ -897,19 +897,12 @@ def foo() -> bool: ...
 
 lst = [1, 2, 3, 4]
 
-a = True or foo()                        # E: Right operand of 'or' is never evaluated
-b = False or foo()                       # E: Left operand of 'or' is always false
-c = True and foo()                       # E: Left operand of 'and' is always true
-d = False and foo()                      # E: Right operand of 'and' is never evaluated
-e = True or (True or (True or foo()))    # E: Right operand of 'or' is never evaluated
-f = (True or foo()) or (True or foo())   # E: Right operand of 'or' is never evaluated
-g = 3 if True else 4                     # E: If condition is always true
-h = 3 if False else 4                    # E: If condition is always false
-i = [x for x in lst if True]             # E: If condition in comprehension is always true
-j = [x for x in lst if False]            # E: If condition in comprehension is always false
+a = True or foo()                        # E: Right operand of "or" is never evaluated
+d = False and foo()                      # E: Right operand of "and" is never evaluated
+e = True or (True or (True or foo()))    # E: Right operand of "or" is never evaluated
+f = (True or foo()) or (True or foo())   # E: Right operand of "or" is never evaluated
 
-k = [x for x in lst if isinstance(x, int) or foo()]  # E: If condition in comprehension is always true \
-                                                     # E: Right operand of 'or' is never evaluated
+k = [x for x in lst if isinstance(x, int) or foo()]  # E: Right operand of "or" is never evaluated
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnreachableFlagMiscTestCaseMissingMethod]
@@ -917,10 +910,10 @@ k = [x for x in lst if isinstance(x, int) or foo()]  # E: If condition in compre
 
 class Case1:
     def test1(self) -> bool:
-        return False and self.missing()  # E: Right operand of 'and' is never evaluated
+        return False and self.missing()  # E: Right operand of "and" is never evaluated
 
     def test2(self) -> bool:
-        return not self.property_decorator_missing and self.missing()  # E: Right operand of 'and' is never evaluated
+        return not self.property_decorator_missing and self.missing()  # E: Right operand of "and" is never evaluated
 
     def property_decorator_missing(self) -> bool:
         return True
@@ -932,6 +925,7 @@ from typing import TypeVar, Generic
 
 T1 = TypeVar('T1', bound=int)
 T2 = TypeVar('T2', int, str)
+T3 = TypeVar('T3', None, str)
 
 def test1(x: T1) -> T1:
     if isinstance(x, int):
@@ -967,6 +961,19 @@ class Test3(Generic[T2]):
         if False:
             # Same issue as above
             reveal_type(self.x)
+
+
+class Test4(Generic[T3]):
+    def __init__(self, x: T3):
+        # https://github.com/python/mypy/issues/9456
+        # On TypeVars with value restrictions, we currently have no way
+        # of checking a statement for all the type expansions.
+        # Thus unreachable warnings are disabled
+        if x and False:
+            pass
+        # This test should fail after this limitation is removed.
+        if False and x:
+            pass
 
 [builtins fixtures/isinstancelist.pyi]
 
