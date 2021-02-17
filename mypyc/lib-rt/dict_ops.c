@@ -238,6 +238,13 @@ char CPyDict_Clear(PyObject *dict) {
     return 1;
 }
 
+PyObject *CPyDict_Copy(PyObject *dict) {
+    if (PyDict_CheckExact(dict)) {
+        return PyDict_Copy(dict);
+    }
+    return PyObject_CallMethod(dict, "copy", NULL);
+}
+
 PyObject *CPyDict_GetKeysIter(PyObject *dict) {
     if (PyDict_CheckExact(dict)) {
         // Return dict itself to indicate we can use fast path instead.
