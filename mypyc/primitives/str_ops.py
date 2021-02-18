@@ -113,7 +113,7 @@ str_slice_op = custom_op(
 # str.replace(old, new)
 method_op(
     name='replace',
-    arg_types=[str_rprimitive, str_rprimitive],
+    arg_types=[str_rprimitive, str_rprimitive, str_rprimitive],
     return_type=str_rprimitive,
     c_function_name="PyUnicode_Replace",
     error_kind=ERR_MAGIC,
@@ -122,7 +122,7 @@ method_op(
 # str.replace(old, new, count)
 method_op(
     name='replace',
-    arg_types=[str_rprimitive, str_rprimitive, int_rprimitive],
+    arg_types=[str_rprimitive, str_rprimitive, str_rprimitive, int_rprimitive],
     return_type=str_rprimitive,
-    c_function_name="PyUnicode_Replace",
+    c_function_name="CPyStr_Replace",
     error_kind=ERR_MAGIC)
