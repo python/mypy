@@ -99,8 +99,11 @@ if USE_MYPYC:
         # Also I think there would be problems with how we generate version.py.
         'version.py',
 
-        # Can be removed once we drop support for Python 3.5.2 and lower.
+        # Skip these to reduce the size of the build
         'stubtest.py',
+        'stubgenc.py',
+        'stubdoc.py',
+        'stubutil.py',
     )) + (
         # Don't want to grab this accidentally
         os.path.join('mypyc', 'lib-rt', 'setup.py'),
