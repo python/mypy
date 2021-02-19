@@ -772,3 +772,30 @@ False:
 
 If you use the :option:`--warn-unreachable <mypy --warn-unreachable>` flag, mypy will generate
 an error about each unreachable code block.
+
+
+Narrowing and inner functions
+-----------------------------
+
+Because closures in Python are late-binding (https://docs.python-guide.org/writing/gotchas/#late-binding-closures),
+mypy will not narrow the type of a captured variable in an inner function.
+This is best understood via an example:
+
+.. code-block:: python
+
+    def foo(x: Optional[int]) -> Callable[[], int]:
+        if x is None:
+            x = 5
+        print(x + 1)  # mypy correctly deduces x must be an int here
+        def inner() -> int:
+            return x + 1  # but (correctly) complains about this line
+
+        x = None  # because x could later be assigned None
+        return inner
+
+    inner = foo(5)
+    inner()  # this will raise an error when called
+
+To get this code to type check, you could assign ``y = x`` after ``x`` has been
+narrowed, and use ``y`` in the inner function, or add an assert in the inner
+function.
