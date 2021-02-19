@@ -23,11 +23,10 @@ from mypyc.irbuild.main import build_ir
 from mypyc.irbuild.prepare import load_type_map
 from mypyc.irbuild.mapper import Mapper
 from mypyc.common import (
-    PREFIX, TOP_LEVEL_NAME, MODULE_PREFIX, RUNTIME_C_FILES, USE_FASTCALL,
+    PREFIX, TOP_LEVEL_NAME, INT_PREFIX, MODULE_PREFIX, RUNTIME_C_FILES, USE_FASTCALL,
     USE_VECTORCALL, shared_lib_name,
 )
-from mypyc.codegen.cstring import c_string_initializer
-from mypyc.codegen.literals import Literals
+from mypyc.codegen.cstring import encode_as_c_string, encode_bytes_as_c_string
 from mypyc.codegen.emit import EmitterContext, Emitter, HeaderDeclaration
 from mypyc.codegen.emitfunc import generate_native_function, native_function_header
 from mypyc.codegen.emitclass import generate_class_type_decl, generate_class
@@ -35,7 +34,7 @@ from mypyc.codegen.emitwrapper import (
     generate_wrapper_function, wrapper_function_header,
     generate_legacy_wrapper_function, legacy_wrapper_function_header,
 )
-from mypyc.ir.ops import DeserMaps, LoadLiteral
+from mypyc.ir.ops import LiteralsMap, DeserMaps
 from mypyc.ir.rtypes import RType, RTuple
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.class_ir import ClassIR
@@ -287,8 +286,9 @@ def compile_ir_to_c(
         if not group_modules:
             ctext[group_name] = []
             continue
+        literals = mapper.literals[group_name]
         generator = GroupGenerator(
-            group_modules, source_paths,
+            literals, group_modules, source_paths,
             group_name, mapper.group_map, names,
             compiler_options
         )
@@ -447,6 +447,7 @@ def group_dir(group_name: str) -> str:
 
 class GroupGenerator:
     def __init__(self,
+                 literals: LiteralsMap,
                  modules: List[Tuple[str, ModuleIR]],
                  source_paths: Dict[str, str],
                  group_name: Optional[str],
@@ -460,6 +461,7 @@ class GroupGenerator:
         one .c file per module if in multi_file mode.)
 
         Arguments:
+            literals: The literals declared in this group
             modules: (name, ir) pairs for each module in the group
             source_paths: Map from module names to source file paths
             group_name: The name of the group (or None if this is single-module compilation)
@@ -468,6 +470,7 @@ class GroupGenerator:
             multi_file: Whether to put each module in its own source file regardless
                         of group structure.
         """
+        self.literals = literals
         self.modules = modules
         self.source_paths = source_paths
         self.context = EmitterContext(names, group_name, group_map)
@@ -492,11 +495,6 @@ class GroupGenerator:
         file_contents = []
         multi_file = self.use_shared_lib and self.multi_file
 
-        # Collect all literal refs in IR.
-        for _, module in self.modules:
-            for fn in module.functions:
-                collect_literals(fn, self.context.literals)
-
         base_emitter = Emitter(self.context)
         # Optionally just include the runtime library c files to
         # reduce the number of compiler invocations needed
@@ -507,7 +505,12 @@ class GroupGenerator:
         base_emitter.emit_line('#include "__native_internal{}.h"'.format(self.short_group_suffix))
         emitter = base_emitter
 
-        self.generate_literal_tables()
+        for (_, literal), identifier in self.literals.items():
+            if isinstance(literal, int):
+                symbol = emitter.static_name(identifier, None)
+                self.declare_global('CPyTagged ', symbol)
+            else:
+                self.declare_static_pyobject(identifier, emitter)
 
         for module_name, module in self.modules:
             if multi_file:
@@ -617,32 +620,6 @@ class GroupGenerator:
             (os.path.join(output_dir, '__native{}.h'.format(self.short_group_suffix)),
              ''.join(ext_declarations.fragments)),
         ]
-
-    def generate_literal_tables(self) -> None:
-        """Generate tables containing descriptions of Python literals to construct.
-
-        We will store the constructed literals in a single array that contains
-        literals of all types. This way we can refer to an arbitrary literal by
-        its index.
-        """
-        literals = self.context.literals
-        # During module initialization we store all the constructed objects here
-        self.declare_global('PyObject *[%d]' % literals.num_literals(), 'CPyStatics')
-        # Descriptions of str literals
-        init_str = c_string_initializer(literals.encoded_str_values())
-        self.declare_global('const char []', 'CPyLit_Str', initializer=init_str)
-        # Descriptions of bytes literals
-        init_bytes = c_string_initializer(literals.encoded_bytes_values())
-        self.declare_global('const char []', 'CPyLit_Bytes', initializer=init_bytes)
-        # Descriptions of int literals
-        init_int = c_string_initializer(literals.encoded_int_values())
-        self.declare_global('const char []', 'CPyLit_Int', initializer=init_int)
-        # Descriptions of float literals
-        init_floats = c_array_initializer(literals.encoded_float_values())
-        self.declare_global('const double []', 'CPyLit_Float', initializer=init_floats)
-        # Descriptions of complex literals
-        init_complex = c_array_initializer(literals.encoded_complex_values())
-        self.declare_global('const double []', 'CPyLit_Complex', initializer=init_complex)
 
     def generate_export_table(self, decl_emitter: Emitter, code_emitter: Emitter) -> None:
         """Generate the declaration and definition of the group's export struct.
@@ -816,10 +793,46 @@ class GroupGenerator:
         for symbol, fixup in self.simple_inits:
             emitter.emit_line('{} = {};'.format(symbol, fixup))
 
-        values = 'CPyLit_Str, CPyLit_Bytes, CPyLit_Int, CPyLit_Float, CPyLit_Complex'
-        emitter.emit_lines('if (CPyStatics_Initialize(CPyStatics, {}) < 0) {{'.format(values),
-                           'return -1;',
-                           '}')
+        for (_, literal), identifier in self.literals.items():
+            symbol = emitter.static_name(identifier, None)
+            if isinstance(literal, int):
+                actual_symbol = symbol
+                symbol = INT_PREFIX + symbol
+                emitter.emit_line(
+                    'PyObject * {} = PyLong_FromString(\"{}\", NULL, 10);'.format(
+                        symbol, str(literal))
+                )
+            elif isinstance(literal, float):
+                emitter.emit_line(
+                    '{} = PyFloat_FromDouble({});'.format(symbol, str(literal))
+                )
+            elif isinstance(literal, complex):
+                emitter.emit_line(
+                    '{} = PyComplex_FromDoubles({}, {});'.format(
+                        symbol, str(literal.real), str(literal.imag))
+                )
+            elif isinstance(literal, str):
+                emitter.emit_line(
+                    '{} = PyUnicode_FromStringAndSize({}, {});'.format(
+                        symbol, *encode_as_c_string(literal))
+                )
+            elif isinstance(literal, bytes):
+                emitter.emit_line(
+                    '{} = PyBytes_FromStringAndSize({}, {});'.format(
+                        symbol, *encode_bytes_as_c_string(literal))
+                )
+            else:
+                assert False, ('Literals must be integers, floating point numbers, or strings,',
+                               'but the provided literal is of type {}'.format(type(literal)))
+            emitter.emit_lines('if (unlikely({} == NULL))'.format(symbol),
+                               '    return -1;')
+            # Ints have an unboxed representation.
+            if isinstance(literal, int):
+                emitter.emit_line(
+                    '{} = CPyTagged_FromObject({});'.format(actual_symbol, symbol)
+                )
+            elif isinstance(literal, str):
+                emitter.emit_line('PyUnicode_InternInPlace(&{});'.format(symbol))
 
         emitter.emit_lines(
             'is_initialized = 1;',
@@ -961,19 +974,13 @@ class GroupGenerator:
     def declare_global(self, type_spaced: str, name: str,
                        *,
                        initializer: Optional[str] = None) -> None:
-        if '[' not in type_spaced:
-            base = '{}{}'.format(type_spaced, name)
-        else:
-            a, b = type_spaced.split('[', 1)
-            base = '{}{}[{}'.format(a, name, b)
-
         if not initializer:
             defn = None
         else:
-            defn = ['{} = {};'.format(base, initializer)]
+            defn = ['{}{} = {};'.format(type_spaced, name, initializer)]
         if name not in self.context.declarations:
             self.context.declarations[name] = HeaderDeclaration(
-                '{};'.format(base),
+                '{}{};'.format(type_spaced, name),
                 defn=defn,
             )
 
@@ -1073,46 +1080,3 @@ def is_fastcall_supported(fn: FuncIR) -> bool:
         # TODO: Support fastcall for __init__.
         return USE_FASTCALL and fn.name != '__init__'
     return USE_FASTCALL
-
-
-def collect_literals(fn: FuncIR, literals: Literals) -> None:
-    """Store all Python literal object refs in fn.
-
-    Collecting literals must happen only after we have the final IR.
-    This way we won't include literals that have been optimized away.
-    """
-    for block in fn.blocks:
-        for op in block.ops:
-            if isinstance(op, LoadLiteral):
-                literals.record_literal(op.value)
-
-
-def c_array_initializer(components: List[str]) -> str:
-    """Construct an initializer for a C array variable.
-
-    Components are C expressions valid in an initializer.
-
-    For example, if components are ["1", "2"], the result
-    would be "{1, 2}", which can be used like this:
-
-        int a[] = {1, 2};
-
-    If the result is long, split it into multiple lines.
-    """
-    res = []
-    current = []  # type: List[str]
-    cur_len = 0
-    for c in components:
-        if not current or cur_len + 2 + len(c) < 70:
-            current.append(c)
-            cur_len += len(c) + 2
-        else:
-            res.append(', '.join(current))
-            current = [c]
-            cur_len = len(c)
-    if not res:
-        # Result fits on a single line
-        return '{%s}' % ', '.join(current)
-    # Multi-line result
-    res.append(', '.join(current))
-    return '{\n    ' + ',\n    '.join(res) + '\n}'
