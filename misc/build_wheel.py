@@ -73,7 +73,7 @@ def create_environ(python_version: str) -> Dict[str, str]:
         'CC=/opt/llvm/bin/clang'
     )
     env['CIBW_ENVIRONMENT_WINDOWS'] = (
-        'MYPY_USE_MYPYC=1 MYPYC_OPT_LEVEL=2 PIP_NO_BUILD_ISOLATION=no'
+        'MYPY_USE_MYPYC=1 MYPYC_OPT_LEVEL=2 MYPYC_MULTI_FILE=1 PIP_NO_BUILD_ISOLATION=no'
     )
 
     # lxml is slow to build wheels for new releases, so allow installing reqs to fail
