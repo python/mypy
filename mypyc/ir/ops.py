@@ -14,7 +14,7 @@ from typing import (
     List, Sequence, Dict, Generic, TypeVar, Optional, NamedTuple, Tuple, Union
 )
 
-from typing_extensions import Final, TYPE_CHECKING
+from typing_extensions import Final, Type, TYPE_CHECKING
 from mypy_extensions import trait
 
 from mypyc.ir.rtypes import (
@@ -143,7 +143,7 @@ class Register(Value):
 
 
 class Integer(Value):
-    """Short integer literal.
+    """Integer literal.
 
     Integer literals are treated as constant values and are generally
     not included in data flow analyses and such, unlike Register and
@@ -494,36 +494,6 @@ class LoadErrorValue(RegisterOp):
         return visitor.visit_load_error_value(self)
 
 
-class LoadLiteral(RegisterOp):
-    """Load a Python literal object (dest = 'foo' / b'foo' / ...).
-
-    This is used to load a static PyObject * value corresponding to
-    a literal of one of the supported types.
-
-    NOTE: For int literals, both int_rprimitive (CPyTagged) and
-          object_primitive (PyObject *) are supported as types. However,
-          when using int_rprimitive, the value must *not* be small enough
-          to fit in an unboxed integer.
-
-    NOTE: You can use this to load boxed (Python) int objects. Use
-          Integer to load unboxed, tagged integers or fixed-width,
-          low-level integers.
-    """
-
-    error_kind = ERR_NEVER
-    is_borrowed = True
-
-    def __init__(self, value: Union[str, bytes, int, float, complex], rtype: RType) -> None:
-        self.value = value
-        self.type = rtype
-
-    def sources(self) -> List[Value]:
-        return []
-
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
-        return visitor.visit_load_literal(self)
-
-
 class GetAttr(RegisterOp):
     """obj.attr (for a native object)"""
 
@@ -870,12 +840,7 @@ class Truncate(RegisterOp):
 
 
 class LoadGlobal(RegisterOp):
-    """Load a low-level global variable/pointer.
-
-    Note that can't be used to directly load Python module-level
-    global variable, since they are stored in a globals dictionary
-    and accessed using dictionary operations.
-    """
+    """Load a global variable/pointer."""
 
     error_kind = ERR_NEVER
     is_borrowed = True
@@ -1160,10 +1125,6 @@ class OpVisitor(Generic[T]):
         raise NotImplementedError
 
     @abstractmethod
-    def visit_load_literal(self, op: LoadLiteral) -> T:
-        raise NotImplementedError
-
-    @abstractmethod
     def visit_get_attr(self, op: GetAttr) -> T:
         raise NotImplementedError
 
@@ -1254,7 +1215,7 @@ class OpVisitor(Generic[T]):
         raise NotImplementedError
 
 
-# TODO: Should the following definition live somewhere else?
+# TODO: Should the following definitions live somewhere else?
 
 # We do a three-pass deserialization scheme in order to resolve name
 # references.
@@ -1280,3 +1241,5 @@ class OpVisitor(Generic[T]):
 # compilation but so far it is not hooked up to anything.)
 DeserMaps = NamedTuple('DeserMaps',
                        [('classes', Dict[str, 'ClassIR']), ('functions', Dict[str, 'FuncIR'])])
+
+LiteralsMap = Dict[Tuple[Type[object], Union[int, float, str, bytes, complex]], str]
