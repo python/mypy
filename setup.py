@@ -101,7 +101,6 @@ if USE_MYPYC:
 
         # Skip these to reduce the size of the build
         'stubtest.py',
-        'stubgen.py',
         'stubgenc.py',
         'stubdoc.py',
         'stubutil.py',
