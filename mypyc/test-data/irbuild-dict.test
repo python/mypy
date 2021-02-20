@@ -324,3 +324,14 @@ def f(d):
 L0:
     r0 = CPyDict_Clear(d)
     return 1
+
+[case testDictCopy]
+from typing import Dict
+def f(d: Dict[int, int]) -> Dict[int, int]:
+    return d.copy()
+[out]
+def f(d):
+    d, r0 :: dict
+L0:
+    r0 = CPyDict_Copy(d)
+    return r0

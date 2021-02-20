@@ -172,6 +172,7 @@ class dict(Mapping[K, V]):
     def values(self) -> Iterable[V]: pass
     def items(self) -> Iterable[Tuple[K, V]]: pass
     def clear(self) -> None: pass
+    def copy(self) -> Dict[K, V]: pass
 
 class set(Generic[T]):
     def __init__(self, i: Optional[Iterable[T]] = None) -> None: pass
