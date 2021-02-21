@@ -55,7 +55,7 @@ cmds = {
                                                           STUBGEN_CMD,
                                                           STUBGEN_PY])],
     # Test cases that may take seconds to run each
-    'pytest-slow': ['pytest', '-q', '-k', '%s' % ' or '.join(
+    'pytest-slow': ['pytest', '-q', '-k', ' or '.join(
         [SAMPLES,
          TYPESHED,
          PEP561,
@@ -64,13 +64,13 @@ cmds = {
          MYPYC_COMMAND_LINE,
          ERROR_STREAM])],
     # Test cases to run in typeshed CI
-    'typeshed-ci': ['pytest', '-q', '-k', '%s' % ' or '.join([CMDLINE,
-                                                              EVALUATION,
-                                                              SAMPLES,
-                                                              TYPESHED])],
+    'typeshed-ci': ['pytest', '-q', '-k', ' or '.join([CMDLINE,
+                                                       EVALUATION,
+                                                       SAMPLES,
+                                                       TYPESHED])],
     # Mypyc tests that aren't run by default, since they are slow and rarely
     # fail for commits that don't touch mypyc
-    'mypyc-extra': ['pytest', '-q', '-k', '%s' % ' or '.join(MYPYC_OPT_IN)],
+    'mypyc-extra': ['pytest', '-q', '-k', ' or '.join(MYPYC_OPT_IN)],
 }
 
 # Stop run immediately if these commands fail
