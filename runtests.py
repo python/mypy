@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import subprocess
 from subprocess import Popen
-from sys import stdout, argv, exit, executable
+from sys import argv, exit, executable
 
 # Slow test suites
 CMDLINE = 'PythonCmdline'
@@ -50,10 +50,10 @@ cmds = {
     # Fast test cases only (this is the bulk of the test suite)
     'pytest-fast': ['pytest', '-q', '-k', 'not (%s)' % ' or '.join(ALL_NON_FAST)],
     # Test cases that invoke mypy (with small inputs)
-    'pytest-cmdline': ['pytest', '-q', '-k', '%s' % ' or '.join([CMDLINE,
-                                                                 EVALUATION,
-                                                                 STUBGEN_CMD,
-                                                                 STUBGEN_PY])],
+    'pytest-cmdline': ['pytest', '-q', '-k', ' or '.join([CMDLINE,
+                                                          EVALUATION,
+                                                          STUBGEN_CMD,
+                                                          STUBGEN_PY])],
     # Test cases that may take seconds to run each
     'pytest-slow': ['pytest', '-q', '-k', '%s' % ' or '.join(
         [SAMPLES,
@@ -85,9 +85,7 @@ def run_cmd(name: str) -> int:
     status = 0
     cmd = cmds[name]
     print('run %s: %s' % (name, cmd))
-    proc = subprocess.run(cmd,
-                          stderr=subprocess.STDOUT,
-                          stdout=stdout)
+    proc = subprocess.run(cmd, stderr=subprocess.STDOUT)
     if proc.returncode:
         print('\nFAILED: %s' % name)
         status = proc.returncode
