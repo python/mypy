@@ -647,7 +647,7 @@ class BuildManager:
         # Missing stub packages encountered.
         self.missing_stub_packages = set()  # type: Set[str]
         # Cache for mypy ASTs that have completed semantic analysis
-        # pass 1.  When multiple files are added to the build in a
+        # pass 1. When multiple files are added to the build in a
         # single daemon increment, only one of the files gets added
         # per step and the others are discarded. This gets repeated
         # until all the files have been added. This means that a
@@ -2065,8 +2065,7 @@ class State:
 
         self.check_blockers()
 
-        if source is not None:
-            manager.ast_cache[self.id] = (self.tree, self.early_errors)
+        manager.ast_cache[self.id] = (self.tree, self.early_errors)
 
     def parse_inline_configuration(self, source: str) -> None:
         """Check for inline mypy: options directive and parse them."""

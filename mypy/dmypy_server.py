@@ -270,7 +270,6 @@ class Server:
                 del data['is_tty']
                 del data['terminal_width']
             return method(self, **data)
-        self.flush_caches()
 
     # Command functions (run in the server via RPC).
 
@@ -433,7 +432,6 @@ class Server:
             return {'out': out, 'err': err, 'status': 2}
         messages = result.errors
         self.fine_grained_manager = FineGrainedBuildManager(result)
-        self.fine_grained_manager.manager.ast_cache.clear()
 
         if self.following_imports():
             sources = find_all_sources_in_build(self.fine_grained_manager.graph, sources)
