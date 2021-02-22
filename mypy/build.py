@@ -2004,6 +2004,7 @@ class State:
 
         manager = self.manager
 
+        # Can we reuse a previously parsed AST? This avoids redundant work in daemon.
         cached = self.id in manager.ast_cache and True
         modules = manager.modules
         if not cached:
@@ -2046,6 +2047,7 @@ class State:
                                                self.options)
 
             else:
+                # Reuse a cached AST
                 self.tree = manager.ast_cache[self.id][0]
                 manager.errors.set_file_ignored_lines(self.xpath, self.tree.ignored_lines,
                                                       self.ignore_all or self.options.ignore_errors)
