@@ -562,6 +562,7 @@ class BuildManager:
                        not only for debugging, but also required for correctness,
                        in particular to check consistency of the fine-grained dependency cache.
       fscache:         A file system cacher
+      ast_cache:       AST cache to speed up mypy daemon
     """
 
     def __init__(self, data_dir: str,
@@ -645,6 +646,14 @@ class BuildManager:
         self.processed_targets = []  # type: List[str]
         # Missing stub packages encountered.
         self.missing_stub_packages = set()  # type: Set[str]
+        # Cache for mypy ASTs that have completed semantic analysis
+        # pass 1. When multiple files are added to the build in a
+        # single daemon increment, only one of the files gets added
+        # per step and the others are discarded. This gets repeated
+        # until all the files have been added. This means that a
+        # new file can be processed O(n**2) times. This cache
+        # avoids most of this redundant work.
+        self.ast_cache = {}  # type: Dict[str, Tuple[MypyFile, List[ErrorInfo]]]
 
     def dump_stats(self) -> None:
         if self.options.dump_build_stats:
@@ -1994,8 +2003,14 @@ class State:
             return
 
         manager = self.manager
+
+        # Can we reuse a previously parsed AST? This avoids redundant work in daemon.
+        cached = self.id in manager.ast_cache
         modules = manager.modules
-        manager.log("Parsing %s (%s)" % (self.xpath, self.id))
+        if not cached:
+            manager.log("Parsing %s (%s)" % (self.xpath, self.id))
+        else:
+            manager.log("Using cached AST for %s (%s)" % (self.xpath, self.id))
 
         with self.wrap_context():
             source = self.source
@@ -2026,20 +2041,35 @@ class State:
                 self.source_hash = compute_hash(source)
 
             self.parse_inline_configuration(source)
-            self.tree = manager.parse_file(self.id, self.xpath, source,
-                                           self.ignore_all or self.options.ignore_errors,
-                                           self.options)
+            if not cached:
+                self.tree = manager.parse_file(self.id, self.xpath, source,
+                                               self.ignore_all or self.options.ignore_errors,
+                                               self.options)
+
+            else:
+                # Reuse a cached AST
+                self.tree = manager.ast_cache[self.id][0]
+                manager.errors.set_file_ignored_lines(
+                    self.xpath,
+                    self.tree.ignored_lines,
+                    self.ignore_all or self.options.ignore_errors)
+
+        if not cached:
+            # Make a copy of any errors produced during parse time so that
+            # fine-grained mode can repeat them when the module is
+            # reprocessed.
+            self.early_errors = list(manager.errors.error_info_map.get(self.xpath, []))
+        else:
+            self.early_errors = manager.ast_cache[self.id][1]
 
         modules[self.id] = self.tree
 
-        # Make a copy of any errors produced during parse time so that
-        # fine-grained mode can repeat them when the module is
-        # reprocessed.
-        self.early_errors = list(manager.errors.error_info_map.get(self.xpath, []))
-
-        self.semantic_analysis_pass1()
+        if not cached:
+            self.semantic_analysis_pass1()
 
         self.check_blockers()
+
+        manager.ast_cache[self.id] = (self.tree, self.early_errors)
 
     def parse_inline_configuration(self, source: str) -> None:
         """Check for inline mypy: options directive and parse them."""

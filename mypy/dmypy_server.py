@@ -373,7 +373,7 @@ class Server:
             assert remove is None and update is None
             messages = self.fine_grained_increment_follow_imports(sources)
         res = self.increment_output(messages, sources, is_tty, terminal_width)
-        self.fscache.flush()
+        self.flush_caches()
         self.update_stats(res)
         return res
 
@@ -392,9 +392,14 @@ class Server:
             else:
                 messages = self.fine_grained_increment_follow_imports(sources)
             res = self.increment_output(messages, sources, is_tty, terminal_width)
-        self.fscache.flush()
+        self.flush_caches()
         self.update_stats(res)
         return res
+
+    def flush_caches(self) -> None:
+        self.fscache.flush()
+        if self.fine_grained_manager:
+            self.fine_grained_manager.flush_cache()
 
     def update_stats(self, res: Dict[str, Any]) -> None:
         if self.fine_grained_manager:
@@ -852,7 +857,7 @@ class Server:
                 out += "\n"
             return {'out': out, 'err': "", 'status': 0}
         finally:
-            self.fscache.flush()
+            self.flush_caches()
 
     def cmd_hang(self) -> Dict[str, object]:
         """Hang for 100 seconds, as a debug hack."""
