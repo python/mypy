@@ -2049,8 +2049,10 @@ class State:
             else:
                 # Reuse a cached AST
                 self.tree = manager.ast_cache[self.id][0]
-                manager.errors.set_file_ignored_lines(self.xpath, self.tree.ignored_lines,
-                                                      self.ignore_all or self.options.ignore_errors)
+                manager.errors.set_file_ignored_lines(
+                    self.xpath,
+                    self.tree.ignored_lines,
+                    self.ignore_all or self.options.ignore_errors)
 
         if not cached:
             # Make a copy of any errors produced during parse time so that
