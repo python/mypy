@@ -2005,7 +2005,7 @@ class State:
         manager = self.manager
 
         # Can we reuse a previously parsed AST? This avoids redundant work in daemon.
-        cached = self.id in manager.ast_cache and True
+        cached = self.id in manager.ast_cache
         modules = manager.modules
         if not cached:
             manager.log("Parsing %s (%s)" % (self.xpath, self.id))
