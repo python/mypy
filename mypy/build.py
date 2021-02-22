@@ -2003,13 +2003,12 @@ class State:
 
         manager = self.manager
 
-        if self.id in manager.ast_cache:
-            manager.log("Using cached AST for %s (%s)" % (self.xpath, self.id))
-            self.tree, self.early_errors = manager.ast_cache[self.id]
-            return
-
+        cached = self.id in manager.ast_cache and True
         modules = manager.modules
-        manager.log("Parsing %s (%s)" % (self.xpath, self.id))
+        if not cached:
+            manager.log("Parsing %s (%s)" % (self.xpath, self.id))
+        else:
+            manager.log("Using cached AST for %s (%s)" % (self.xpath, self.id))
 
         with self.wrap_context():
             source = self.source
@@ -2040,22 +2039,33 @@ class State:
                 self.source_hash = compute_hash(source)
 
             self.parse_inline_configuration(source)
-            self.tree = manager.parse_file(self.id, self.xpath, source,
-                                           self.ignore_all or self.options.ignore_errors,
-                                           self.options)
+            if not cached:
+                self.tree = manager.parse_file(self.id, self.xpath, source,
+                                               self.ignore_all or self.options.ignore_errors,
+                                               self.options)
+
+            else:
+                self.tree = manager.ast_cache[self.id][0]
+                manager.errors.set_file_ignored_lines(self.xpath, self.tree.ignored_lines,
+                                                      self.ignore_all or self.options.ignore_errors)
+
+        if not cached:
+            # Make a copy of any errors produced during parse time so that
+            # fine-grained mode can repeat them when the module is
+            # reprocessed.
+            self.early_errors = list(manager.errors.error_info_map.get(self.xpath, []))
+        else:
+            self.early_errors = manager.ast_cache[self.id][1]
 
         modules[self.id] = self.tree
 
-        # Make a copy of any errors produced during parse time so that
-        # fine-grained mode can repeat them when the module is
-        # reprocessed.
-        self.early_errors = list(manager.errors.error_info_map.get(self.xpath, []))
-
-        self.semantic_analysis_pass1()
+        if not cached:
+            self.semantic_analysis_pass1()
 
         self.check_blockers()
 
-        manager.ast_cache[self.id] = (self.tree, self.early_errors)
+        if source is not None:
+            manager.ast_cache[self.id] = (self.tree, self.early_errors)
 
     def parse_inline_configuration(self, source: str) -> None:
         """Check for inline mypy: options directive and parse them."""
