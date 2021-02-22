@@ -646,12 +646,13 @@ class BuildManager:
         self.processed_targets = []  # type: List[str]
         # Missing stub packages encountered.
         self.missing_stub_packages = set()  # type: Set[str]
-        # Cache for mypy ASTs that have completed semantic analysis pass 1.
-        # When mypy daemon processes an increment where multiple files
-        # are added to the build, only one the files actually gets added and
-        # the others are discarded. This gets repeated until all the files
-        # have been added. This means that the same new file can be parsed
-        # O(n**2) times. We use this cache to avoid this redundant work.
+        # Cache for mypy ASTs that have completed semantic analysis
+        # pass 1.  When multiple files are added to the build in a
+        # single daemon increment, only one of the files gets added
+        # per step and the others are discarded. This gets repeated
+        # until all the files have been added. This means that a
+        # new file can be processed O(n**2) times. This cache
+        # avoids most of this redundant work.
         self.ast_cache = {}  # type: Dict[str, Tuple[MypyFile, List[ErrorInfo]]]
 
     def dump_stats(self) -> None:
