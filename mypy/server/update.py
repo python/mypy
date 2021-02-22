@@ -288,6 +288,14 @@ class FineGrainedBuildManager:
         self.previous_messages = self.manager.errors.new_messages()[:]
         return self.update(changed_modules, [])
 
+    def flush_cache(self) -> None:
+        """Flush AST cache.
+
+        This needs to be called after each increment, or file changes won't
+        be detected reliably.
+        """
+        self.manager.ast_cache.clear()
+
     def update_one(self,
                    changed_modules: List[Tuple[str, str]],
                    initial_set: Set[str],

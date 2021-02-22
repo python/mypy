@@ -399,7 +399,7 @@ class Server:
     def flush_caches(self) -> None:
         self.fscache.flush()
         if self.fine_grained_manager:
-            self.fine_grained_manager.manager.ast_cache.clear()
+            self.fine_grained_manager.flush_cache()
 
     def update_stats(self, res: Dict[str, Any]) -> None:
         if self.fine_grained_manager:
