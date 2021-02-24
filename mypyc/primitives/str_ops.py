@@ -109,3 +109,20 @@ str_slice_op = custom_op(
     return_type=object_rprimitive,
     c_function_name='CPyStr_GetSlice',
     error_kind=ERR_MAGIC)
+
+# str.replace(old, new)
+method_op(
+    name='replace',
+    arg_types=[str_rprimitive, str_rprimitive, str_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="PyUnicode_Replace",
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(-1, c_int_rprimitive)])
+
+# str.replace(old, new, count)
+method_op(
+    name='replace',
+    arg_types=[str_rprimitive, str_rprimitive, str_rprimitive, int_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPyStr_Replace",
+    error_kind=ERR_MAGIC)

@@ -150,3 +150,12 @@ def test_slicing() -> None:
     assert s[1:big_int] == "oobar"
     assert s[big_int:] == ""
     assert s[-big_int:-1] == "fooba"
+
+def test_str_replace() -> None:
+    a = "foofoofoo"
+    assert a.replace("foo", "bar") == "barbarbar"
+    assert a.replace("foo", "bar", -1) == "barbarbar"
+    assert a.replace("foo", "bar", 1) == "barfoofoo"
+    assert a.replace("foo", "bar", 4) == "barbarbar"
+    assert a.replace("aaa", "bar") == "foofoofoo"
+    assert a.replace("ofo", "xyzw") == "foxyzwxyzwo"
