@@ -352,7 +352,7 @@ def generate_c_type_stub(module: ModuleType,
         if attr not in done:
             static_properties.append('%s: ClassVar[%s] = ...' % (
                 attr, strip_or_import(get_type_fullname(type(value)), module, imports)))
-    all_bases = obj.mro()
+    all_bases = type.mro(obj)
     if all_bases[-1] is object:
         # TODO: Is this always object?
         del all_bases[-1]
