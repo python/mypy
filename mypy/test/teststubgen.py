@@ -710,6 +710,16 @@ class StubgencSuite(unittest.TestCase):
         assert_equal(output, ['class C(argparse.Action): ...', ])
         assert_equal(imports, ['import argparse'])
 
+    def test_generate_c_type_inheritance_builtin_type(self) -> None:
+        class TestClass(type):
+            pass
+        output = []  # type: List[str]
+        imports = []  # type: List[str]
+        mod = ModuleType('module', '')
+        generate_c_type_stub(mod, 'C', TestClass, output, imports)
+        assert_equal(output, ['class C(type): ...', ])
+        assert_equal(imports, [])
+
     def test_generate_c_type_with_docstring(self) -> None:
         class TestClass:
             def test(self, arg0: str) -> None:
