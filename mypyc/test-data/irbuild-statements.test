@@ -737,7 +737,7 @@ L1:
     if r5 goto L3 else goto L2 :: bool
 L2:
     r6 = builtins :: module
-    r7 = load_global CPyStatic_unicode_3 :: static  ('AssertionError')
+    r7 = 'AssertionError'
     r8 = CPyObject_GetAttr(r6, r7)
     r9 = PyObject_CallFunctionObjArgs(r8, s, 0)
     CPy_Raise(r9)
@@ -841,13 +841,13 @@ def delDict():
     r6 :: int32
     r7 :: bit
 L0:
-    r0 = load_global CPyStatic_unicode_1 :: static  ('one')
-    r1 = load_global CPyStatic_unicode_2 :: static  ('two')
+    r0 = 'one'
+    r1 = 'two'
     r2 = box(short_int, 2)
     r3 = box(short_int, 4)
     r4 = CPyDict_Build(2, r0, r2, r1, r3)
     d = r4
-    r5 = load_global CPyStatic_unicode_1 :: static  ('one')
+    r5 = 'one'
     r6 = PyObject_DelItem(d, r5)
     r7 = r6 >= 0 :: signed
     return 1
@@ -861,18 +861,18 @@ def delDictMultiple():
     r13 :: int32
     r14 :: bit
 L0:
-    r0 = load_global CPyStatic_unicode_1 :: static  ('one')
-    r1 = load_global CPyStatic_unicode_2 :: static  ('two')
-    r2 = load_global CPyStatic_unicode_3 :: static  ('three')
-    r3 = load_global CPyStatic_unicode_4 :: static  ('four')
+    r0 = 'one'
+    r1 = 'two'
+    r2 = 'three'
+    r3 = 'four'
     r4 = box(short_int, 2)
     r5 = box(short_int, 4)
     r6 = box(short_int, 6)
     r7 = box(short_int, 8)
     r8 = CPyDict_Build(4, r0, r4, r1, r5, r2, r6, r3, r7)
     d = r8
-    r9 = load_global CPyStatic_unicode_1 :: static  ('one')
-    r10 = load_global CPyStatic_unicode_4 :: static  ('four')
+    r9 = 'one'
+    r10 = 'four'
     r11 = PyObject_DelItem(d, r9)
     r12 = r11 >= 0 :: signed
     r13 = PyObject_DelItem(d, r10)
@@ -907,7 +907,7 @@ def delAttribute():
 L0:
     r0 = Dummy(2, 4)
     dummy = r0
-    r1 = load_global CPyStatic_unicode_3 :: static  ('x')
+    r1 = 'x'
     r2 = PyObject_DelAttr(dummy, r1)
     r3 = r2 >= 0 :: signed
     return 1
@@ -922,10 +922,10 @@ def delAttributeMultiple():
 L0:
     r0 = Dummy(2, 4)
     dummy = r0
-    r1 = load_global CPyStatic_unicode_3 :: static  ('x')
+    r1 = 'x'
     r2 = PyObject_DelAttr(dummy, r1)
     r3 = r2 >= 0 :: signed
-    r4 = load_global CPyStatic_unicode_4 :: static  ('y')
+    r4 = 'y'
     r5 = PyObject_DelAttr(dummy, r4)
     r6 = r5 >= 0 :: signed
     return 1

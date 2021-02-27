@@ -62,7 +62,7 @@ L0:
     a = r4
     r5 = unbox(int, a)
     n = r5
-    r6 = load_global CPyStatic_unicode_6 :: static  ('a')
+    r6 = 'a'
     r7 = box(int, n)
     r8 = PyObject_SetAttr(a, r6, r7)
     r9 = r8 >= 0 :: signed

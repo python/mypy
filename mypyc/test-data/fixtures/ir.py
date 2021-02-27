@@ -91,6 +91,7 @@ class complex:
     def __sub__(self, n: complex) -> complex: pass
     def __mul__(self, n: complex) -> complex: pass
     def __truediv__(self, n: complex) -> complex: pass
+    def __neg__(self) -> complex: pass
 
 class bytes:
     def __init__(self, x: object) -> None: pass

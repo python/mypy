@@ -96,7 +96,7 @@ def transform_decorator(builder: IRBuilder, dec: Decorator) -> None:
         # Set the callable object representing the decorated function as a global.
         builder.call_c(dict_set_item_op,
                     [builder.load_globals_dict(),
-                    builder.load_static_unicode(dec.func.name), decorated_func],
+                    builder.load_str(dec.func.name), decorated_func],
                     decorated_func.line)
 
     builder.functions.append(func_ir)
@@ -361,7 +361,7 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
         builder.call_c(py_setattr_op,
                     [
                         typ,
-                        builder.load_static_unicode(name),
+                        builder.load_str(name),
                         decorated_func
                     ],
                     fdef.line)
