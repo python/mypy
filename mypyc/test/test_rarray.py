@@ -4,7 +4,7 @@ import unittest
 
 from mypyc.common import PLATFORM_SIZE
 from mypyc.ir.rtypes import (
-    RArray, RStruct, int_rprimitive, bool_rprimitive, compute_rtype_alignment, compute_rtype_size
+    RArray, int_rprimitive, bool_rprimitive, compute_rtype_alignment, compute_rtype_size
 )
 
 
@@ -26,7 +26,6 @@ class TestRArray(unittest.TestCase):
         assert a != RArray(int_rprimitive, 9)
 
     def test_hash(self) -> None:
-        a = RArray(int_rprimitive, 10)
         assert hash(RArray(int_rprimitive, 10)) == hash(RArray(int_rprimitive, 10))
         assert hash(RArray(bool_rprimitive, 5)) == hash(RArray(bool_rprimitive, 5))
 
