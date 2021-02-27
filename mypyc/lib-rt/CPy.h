@@ -531,7 +531,8 @@ int CPyStatics_Initialize(PyObject **statics,
                           const char * const *bytestrings,
                           const char * const *ints,
                           const double *floats,
-                          const double *complex_numbers);
+                          const double *complex_numbers,
+                          const int *tuples);
 
 
 #ifdef __cplusplus
