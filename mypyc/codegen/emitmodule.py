@@ -629,14 +629,14 @@ class GroupGenerator:
         # During module initialization we store all the constructed objects here
         self.declare_global('PyObject *[%d]' % literals.num_literals(), 'CPyStatics')
         # Descriptions of str literals
-        init_str = c_string_initializer(literals.encoded_str_values())
-        self.declare_global('const char []', 'CPyLit_Str', initializer=init_str)
+        init_str = c_string_array_initializer(literals.encoded_str_values())
+        self.declare_global('const char * const []', 'CPyLit_Str', initializer=init_str)
         # Descriptions of bytes literals
-        init_bytes = c_string_initializer(literals.encoded_bytes_values())
-        self.declare_global('const char []', 'CPyLit_Bytes', initializer=init_bytes)
+        init_bytes = c_string_array_initializer(literals.encoded_bytes_values())
+        self.declare_global('const char * const []', 'CPyLit_Bytes', initializer=init_bytes)
         # Descriptions of int literals
-        init_int = c_string_initializer(literals.encoded_int_values())
-        self.declare_global('const char []', 'CPyLit_Int', initializer=init_int)
+        init_int = c_string_array_initializer(literals.encoded_int_values())
+        self.declare_global('const char * const []', 'CPyLit_Int', initializer=init_int)
         # Descriptions of float literals
         init_floats = c_array_initializer(literals.encoded_float_values())
         self.declare_global('const double []', 'CPyLit_Float', initializer=init_floats)
@@ -1116,3 +1116,12 @@ def c_array_initializer(components: List[str]) -> str:
     # Multi-line result
     res.append(', '.join(current))
     return '{\n    ' + ',\n    '.join(res) + '\n}'
+
+
+def c_string_array_initializer(components: List[bytes]) -> str:
+    result = []
+    result.append('{\n')
+    for s in components:
+        result.append('    ' + c_string_initializer(s) + ',\n')
+    result.append('}')
+    return ''.join(result)

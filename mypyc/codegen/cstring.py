@@ -18,7 +18,6 @@ suffer from the same issue as they are defined to parse at most three
 octal digits.
 """
 
-from typing import List
 import string
 
 from typing_extensions import Final
@@ -47,27 +46,9 @@ def encode_bytes_as_c_string(b: bytes) -> str:
     return escaped
 
 
-def c_string_initializer(components: List[bytes]) -> str:
-    """Create initializer for a C char[] variable from a list of fragments.
+def c_string_initializer(value: bytes) -> str:
+    """Create initializer for a C char[]/ char * variable from a string.
 
-    For example, if components is [b'foo', b'bar'], the result would be
-    '"foobar"', which could then be used like this to initialize 's':
-
-        const char s[] = "foobar";
-
-    If the result is long, split it into multiple lines.
+    For example, if value if b'foo', the result would be '"foo"'.
     """
-    res = []
-    current = ''
-    for c in components:
-        enc = encode_bytes_as_c_string(c)
-        if not current or len(current) + len(enc) < 70:
-            current += enc
-        else:
-            res.append('"%s"' % current)
-            current = enc
-    if current:
-        res.append('"%s"' % current)
-    if len(res) > 1:
-        res.insert(0, '')
-    return '\n    '.join(res)
+    return '"' + encode_bytes_as_c_string(value) + '"'

@@ -524,52 +524,61 @@ static const char *parse_int(const char *s, size_t *len) {
 
 // Initialize static constant array of literal values
 int CPyStatics_Initialize(PyObject **statics,
-                          const char *strings,
-                          const char *bytestrings,
-                          const char *ints,
+                          const char * const *strings,
+                          const char * const *bytestrings,
+                          const char * const *ints,
                           const double *floats,
                           const double *complex_numbers) {
     if (strings) {
-        size_t num;
-        strings = parse_int(strings, &num);
-        while (num-- > 0) {
-            size_t len;
-            strings = parse_int(strings, &len);
-            PyObject *obj = PyUnicode_FromStringAndSize(strings, len);
-            if (obj == NULL) {
-                return -1;
+        for (; **strings != '\0'; strings++) {
+            size_t num;
+            const char *data = *strings;
+            data = parse_int(data, &num);
+            while (num-- > 0) {
+                size_t len;
+                data = parse_int(data, &len);
+                PyObject *obj = PyUnicode_FromStringAndSize(data, len);
+                if (obj == NULL) {
+                    return -1;
+                }
+                PyUnicode_InternInPlace(&obj);
+                *statics++ = obj;
+                data += len;
             }
-            PyUnicode_InternInPlace(&obj);
-            *statics++ = obj;
-            strings += len;
         }
     }
     if (bytestrings) {
-        size_t num;
-        bytestrings = parse_int(bytestrings, &num);
-        while (num-- > 0) {
-            size_t len;
-            bytestrings = parse_int(bytestrings, &len);
-            PyObject *obj = PyBytes_FromStringAndSize(bytestrings, len);
-            if (obj == NULL) {
-                return -1;
+        for (; **bytestrings != '\0'; bytestrings++) {
+            size_t num;
+            const char *data = *bytestrings;
+            data = parse_int(data, &num);
+            while (num-- > 0) {
+                size_t len;
+                data = parse_int(data, &len);
+                PyObject *obj = PyBytes_FromStringAndSize(data, len);
+                if (obj == NULL) {
+                    return -1;
+                }
+                *statics++ = obj;
+                data += len;
             }
-            *statics++ = obj;
-            bytestrings += len;
         }
     }
     if (ints) {
-        size_t num;
-        ints = parse_int(ints, &num);
-        while (num-- > 0) {
-            char *end;
-            PyObject *obj = PyLong_FromString(ints, &end, 10);
-            if (obj == NULL) {
-                return -1;
+        for (; **ints != '\0'; ints++) {
+            size_t num;
+            const char *data = *ints;
+            data = parse_int(data, &num);
+            while (num-- > 0) {
+                char *end;
+                PyObject *obj = PyLong_FromString(data, &end, 10);
+                if (obj == NULL) {
+                    return -1;
+                }
+                data = end;
+                data++;
+                *statics++ = obj;
             }
-            ints = end;
-            ints++;
-            *statics++ = obj;
         }
     }
     if (floats) {
