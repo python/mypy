@@ -248,7 +248,7 @@ def infer_ir_build_options_from_test_name(name: str) -> Optional[CompilerOptions
           Run test case only on 64-bit platforms
       *_32bit*:
           Run test caseonly on 32-bit platforms
-      *_python3.8* (or for any Python version):
+      *_python3_8* (or for any Python version):
           Use Python 3.8+ C API features (default: lowest supported version)
       *StripAssert*:
           Don't generate code for assert statements
