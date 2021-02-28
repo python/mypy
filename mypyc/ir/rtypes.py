@@ -64,12 +64,6 @@ class RType:
     def __repr__(self) -> str:
         return '<%s>' % self.__class__.__name__
 
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, RType) and other.name == self.name
-
-    def __hash__(self) -> int:
-        return hash(self.name)
-
     def serialize(self) -> Union[JsonDict, str]:
         raise NotImplementedError('Cannot serialize {} instance'.format(self.__class__.__name__))
 
@@ -149,6 +143,12 @@ class RVoid(RType):
     def serialize(self) -> str:
         return 'void'
 
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, RVoid)
+
+    def __hash__(self) -> int:
+        return 12345
+
 
 # Singleton instance of RVoid
 void_rtype = RVoid()  # type: Final
@@ -208,6 +208,12 @@ class RPrimitive(RType):
 
     def __repr__(self) -> str:
         return '<RPrimitive %s>' % self.name
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, RPrimitive) and other.name == self.name
+
+    def __hash__(self) -> int:
+        return hash(self.name)
 
 
 # NOTE: All the supported instances of RPrimitive are defined
@@ -659,6 +665,12 @@ class RInstance(RType):
 
     def __repr__(self) -> str:
         return '<RInstance %s>' % self.name
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, RInstance) and other.name == self.name
+
+    def __hash__(self) -> int:
+        return hash(self.name)
 
     def serialize(self) -> str:
         return self.name
