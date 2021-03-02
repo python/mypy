@@ -1243,3 +1243,59 @@ class Comparator(enum.Enum):
 
 reveal_type(Comparator.__foo__)  # N: Revealed type is 'builtins.dict[builtins.str, builtins.int]'
 [builtins fixtures/dict.pyi]
+
+[case testEnumWithInstanceAttributes]
+from enum import Enum
+class Foo(Enum):
+    def __init__(self, value: int) -> None:
+        self.foo = "bar"
+    A = 1
+    B = 2
+
+a = Foo.A
+reveal_type(a.value)    # N: Revealed type is 'builtins.int'
+reveal_type(a._value_)  # N: Revealed type is 'builtins.int'
+
+[case testNewSetsUnexpectedValueType]
+from enum import Enum
+
+class bytes:
+    def __new__(cls): pass
+
+class Foo(bytes, Enum):
+    def __new__(cls, value: int) -> 'Foo':
+        obj = bytes.__new__(cls)
+        obj._value_ = "Number %d" % value
+        return obj
+    A = 1
+    B = 2
+
+a = Foo.A
+reveal_type(a.value)    # N: Revealed type is 'Any'
+reveal_type(a._value_)  # N: Revealed type is 'Any'
+[builtins fixtures/__new__.pyi]
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testValueTypeWithNewInParentClass]
+from enum import Enum
+
+class bytes:
+    def __new__(cls): pass
+
+class Foo(bytes, Enum):
+    def __new__(cls, value: int) -> 'Foo':
+        obj = bytes.__new__(cls)
+        obj._value_ = "Number %d" % value
+        return obj
+
+class Bar(Foo):
+    A = 1
+    B = 2
+
+a = Bar.A
+reveal_type(a.value)    # N: Revealed type is 'Any'
+reveal_type(a._value_)  # N: Revealed type is 'Any'
+[builtins fixtures/__new__.pyi]
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-medium.pyi]
