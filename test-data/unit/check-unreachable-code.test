@@ -79,7 +79,7 @@ else:
 [builtins fixtures/bool.pyi]
 [out]
 main:6: error: Cannot find implementation or library stub for module named "pow123"
-main:6: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main:6: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testMypyConditional]
 import typing
@@ -99,7 +99,7 @@ else:
 [typing fixtures/typing-medium.pyi]
 [out]
 main:3: error: Cannot find implementation or library stub for module named "pow123"
-main:3: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main:3: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testTypeCheckingConditionalFromImport]
 from typing import TYPE_CHECKING
@@ -110,7 +110,7 @@ else:
 [typing fixtures/typing-medium.pyi]
 [out]
 main:3: error: Cannot find implementation or library stub for module named "pow123"
-main:3: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main:3: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testNegatedTypeCheckingConditional]
 import typing
@@ -122,7 +122,7 @@ else:
 [typing fixtures/typing-medium.pyi]
 [out]
 main:5: error: Cannot find implementation or library stub for module named "xyz753"
-main:5: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main:5: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testUndefinedTypeCheckingConditional]
 if not TYPE_CHECKING: # E
@@ -133,7 +133,7 @@ else:
 [out]
 main:1: error: Name 'TYPE_CHECKING' is not defined
 main:4: error: Cannot find implementation or library stub for module named "xyz753"
-main:4: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main:4: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testConditionalClassDefPY3]
 def f(): pass

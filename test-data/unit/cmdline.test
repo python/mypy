@@ -323,7 +323,7 @@ baz(bar(foo(42)))
 baz(bar(foo('oof')))
 [out]
 file.py:1: error: Cannot find implementation or library stub for module named "no_stubs"
-file.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+file.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 file.py:6: error: Argument 1 to "foo" has incompatible type "str"; expected "int"
 
 [case testIgnoreErrorsConfig]
@@ -478,7 +478,7 @@ reveal_type(missing.x)  # Expect Any
 ignore_missing_imports = False
 [out]
 main.py:1: error: Cannot find implementation or library stub for module named "missing"
-main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main.py:2: note: Revealed type is 'Any'
 
 [case testConfigSilentMissingImportsOn]
@@ -510,7 +510,7 @@ main.py:1: error: Cannot find implementation or library stub for module named "p
 main.py:1: note: You may be running mypy in a subpackage, mypy should be run on the package root
 main.py:2: error: Cannot find implementation or library stub for module named "grandparent"
 main.py:3: error: Cannot find implementation or library stub for module named "missing"
-main.py:3: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main.py:3: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testImportInParentButNoInit]
 # cmd: mypy main.py
@@ -521,7 +521,7 @@ import needs_init
 [file main/__init__.py]
 [out]
 main.py:1: error: Cannot find implementation or library stub for module named "needs_init"
-main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testConfigNoErrorForUnknownXFlagInSubsection]
 # cmd: mypy -c pass
@@ -556,7 +556,7 @@ import a.b
 whatever
 [out]
 main.py:1: error: Cannot find implementation or library stub for module named "a.b"
-main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main.py:1: error: Cannot find implementation or library stub for module named "a"
 
 [case testPythonVersionTooOld10]
@@ -1037,7 +1037,7 @@ y = []  # type: List[int]
 x = y
 [out]
 bad.py:4: error: Incompatible types in assignment (expression has type "List[int]", variable has type "List[float]")
-bad.py:4: note: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance
+bad.py:4: note: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance
 bad.py:4: note: Consider using "Sequence" instead, which is covariant
 Found 1 error in 1 file (checked 1 source file)
 

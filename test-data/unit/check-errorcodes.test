@@ -251,7 +251,7 @@ x: f  # E: Function "__main__.f" is not valid as a type  [valid-type] \
 import sys
 y: sys  # E: Module "sys" is not valid as a type  [valid-type]
 z: y  # E: Variable "__main__.y" is not valid as a type  [valid-type] \
-      # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+      # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 [builtins fixtures/tuple.pyi]
 
 [case testErrorCodeNeedTypeAnnotation]
@@ -500,7 +500,7 @@ if int() is str():  # E: Non-overlapping identity check (left operand type: "int
 
 [case testErrorCodeMissingModule]
 from defusedxml import xyz  # E: Cannot find implementation or library stub for module named "defusedxml"  [import] \
-                            # N: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+                            # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 from nonexistent import foobar  # E: Cannot find implementation or library stub for module named "nonexistent"  [import]
 import nonexistent2  # E: Cannot find implementation or library stub for module named "nonexistent2"  [import]
 from nonexistent3 import *  # E: Cannot find implementation or library stub for module named "nonexistent3"  [import]

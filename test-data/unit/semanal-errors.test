@@ -137,7 +137,7 @@ z = 0 # type: x
 main:5: error: Function "__main__.f" is not valid as a type
 main:5: note: Perhaps you need "Callable[...]" or a callback protocol?
 main:6: error: Variable "__main__.x" is not valid as a type
-main:6: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+main:6: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
 [case testGlobalVarRedefinition]
 import typing
@@ -202,21 +202,21 @@ import typing
 import m
 [out]
 main:2: error: Cannot find implementation or library stub for module named "m"
-main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testMissingModule2]
 import typing
 from m import x
 [out]
 main:2: error: Cannot find implementation or library stub for module named "m"
-main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testMissingModule3]
 import typing
 from m import *
 [out]
 main:2: error: Cannot find implementation or library stub for module named "m"
-main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testMissingModuleRelativeImport]
 import typing
@@ -225,7 +225,7 @@ import m
 from .x import y
 [out]
 tmp/m/__init__.py:1: error: Cannot find implementation or library stub for module named "m.x"
-tmp/m/__init__.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+tmp/m/__init__.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testMissingModuleRelativeImport2]
 import typing
@@ -235,7 +235,7 @@ import m.a
 from .x import y
 [out]
 tmp/m/a.py:1: error: Cannot find implementation or library stub for module named "m.x"
-tmp/m/a.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+tmp/m/a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testModuleNotImported]
 import typing
@@ -284,7 +284,7 @@ import typing
 import m.n
 [out]
 main:2: error: Cannot find implementation or library stub for module named "m.n"
-main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main:2: error: Cannot find implementation or library stub for module named "m"
 
 [case testMissingPackage2]
@@ -293,7 +293,7 @@ from m.n import x
 from a.b import *
 [out]
 main:2: error: Cannot find implementation or library stub for module named "m.n"
-main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main:3: error: Cannot find implementation or library stub for module named "a.b"
 
 [case testErrorInImportedModule]
@@ -323,7 +323,7 @@ m.n.x
 x = 1
 [out]
 main:2: error: Cannot find implementation or library stub for module named "m.n"
-main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main:2: error: Cannot find implementation or library stub for module named "m"
 
 [case testBreakOutsideLoop]
@@ -799,7 +799,7 @@ cast([int, str], None)   # E: Bracketed expression "[...]" is not valid as a typ
 from typing import cast
 x = 0
 cast(x, None)        # E: Variable "__main__.x" is not valid as a type \
-                     # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+                     # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 cast(t, None)        # E: Name 't' is not defined
 cast(__builtins__.x, None) # E: Name '__builtins__.x' is not defined
 [out]
@@ -895,7 +895,7 @@ from typing import TypeVar, Generic
 t = TypeVar('t')
 class A(Generic[t]): pass
 A[TypeVar] # E: Variable "typing.TypeVar" is not valid as a type \
-           # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+           # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 [out]
 
 [case testInvalidTypeInTypeApplication2]

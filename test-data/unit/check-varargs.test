@@ -602,7 +602,7 @@ if int():
     a, aa = G().f(*[a]) \
       # E: Incompatible types in assignment (expression has type "List[A]", variable has type "A") \
       # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "List[A]") \
-      # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+      # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
       # N: Consider using "Sequence" instead, which is covariant
 
 if int():
@@ -610,19 +610,19 @@ if int():
 if int():
     ab, aa = G().f(*[a]) \
       # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "List[A]") \
-      # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+      # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
       # N: Consider using "Sequence" instead, which is covariant \
       # E: Argument 1 to "f" of "G" has incompatible type "*List[A]"; expected "B"
 
 if int():
     ao, ao = G().f(*[a]) \
       # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "List[object]") \
-      # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+      # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
       # N: Consider using "Sequence" instead, which is covariant
 if int():
     aa, aa = G().f(*[a]) \
       # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "List[A]") \
-      # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+      # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
       # N: Consider using "Sequence" instead, which is covariant
 
 class G(Generic[T]):
@@ -698,12 +698,12 @@ b = {'b': ['c', 'd']}
 c = {'c': 1.0}
 d = {'d': 1}
 f(a) # E: Argument 1 to "f" has incompatible type "Dict[str, List[int]]"; expected "Dict[str, Sequence[int]]" \
-     # N: "Dict" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+     # N: "Dict" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
      # N: Consider using "Mapping" instead, which is covariant in the value type
 f(b) # E: Argument 1 to "f" has incompatible type "Dict[str, List[str]]"; expected "Dict[str, Sequence[int]]"
 g(c)
 g(d) # E: Argument 1 to "g" has incompatible type "Dict[str, int]"; expected "Dict[str, float]" \
-     # N: "Dict" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+     # N: "Dict" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
      # N: Consider using "Mapping" instead, which is covariant in the value type
 h(c) # E: Argument 1 to "h" has incompatible type "Dict[str, float]"; expected "Dict[str, int]"
 h(d)
@@ -715,7 +715,7 @@ from typing import List, Union
 def f(numbers: List[Union[int, float]]) -> None: pass
 a = [1, 2]
 f(a) # E: Argument 1 to "f" has incompatible type "List[int]"; expected "List[Union[int, float]]" \
-     # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+     # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
      # N: Consider using "Sequence" instead, which is covariant
 x = [1]
 y = ['a']

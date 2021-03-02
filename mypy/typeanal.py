@@ -458,7 +458,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         notes = []  # type: List[str]
         if isinstance(sym.node, Var):
             notes.append('See https://mypy.readthedocs.io/en/'
-                         'latest/common_issues.html#variables-vs-type-aliases')
+                         'stable/common_issues.html#variables-vs-type-aliases')
             message = 'Variable "{}" is not valid as a type'
         elif isinstance(sym.node, (SYMBOL_FUNCBASE_TYPES, Decorator)):
             message = 'Function "{}" is not valid as a type'
@@ -1040,8 +1040,8 @@ def get_omitted_any(disallow_any: bool, fail: MsgCallback, note: MsgCallback,
                 # (string literal escaping) for classes not generic at runtime
                 note(
                     "Subscripting classes that are not generic at runtime may require "
-                    "escaping, see https://mypy.readthedocs.io/"
-                    "en/latest/common_issues.html#not-generic-runtime",
+                    "escaping, see https://mypy.readthedocs.io/en/stable/runtime_troubles.html"
+                    "#not-generic-runtime",
                     typ,
                     code=codes.TYPE_ARG)
 

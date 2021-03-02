@@ -2077,7 +2077,7 @@ def append_invariance_notes(notes: List[str], arg_type: Instance,
     if invariant_type and covariant_suggestion:
         notes.append(
             '"{}" is invariant -- see '.format(invariant_type) +
-            'http://mypy.readthedocs.io/en/latest/common_issues.html#variance')
+            "https://mypy.readthedocs.io/en/stable/common_issues.html#variance")
         notes.append(covariant_suggestion)
     return notes
 
