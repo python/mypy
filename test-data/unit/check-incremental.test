@@ -2136,7 +2136,7 @@ x = 1
 [stale]
 [out2]
 tmp/n.py:1: error: Cannot find implementation or library stub for module named "m"
-tmp/n.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+tmp/n.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testDeleteFileWithinCycle]
 import a
@@ -3434,7 +3434,7 @@ import a
 
 [out2]
 main:2: error: Cannot find implementation or library stub for module named "a"
-main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testIncrementalInheritanceAddAnnotation]
 # flags: --strict-optional
@@ -3577,7 +3577,7 @@ def f(x: int) -> None: pass
 [out]
 [out2]
 main:1: error: Cannot find implementation or library stub for module named "p.q"
-main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 [out3]
 main:2: error: Missing positional argument "x" in call to "f"
 
@@ -4210,10 +4210,10 @@ def __getattr__(attr: str) -> Any: ...
 [builtins fixtures/module.pyi]
 [out]
 tmp/c.py:1: error: Cannot find implementation or library stub for module named "a.b.c"
-tmp/c.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+tmp/c.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 [out2]
 tmp/c.py:1: error: Cannot find implementation or library stub for module named "a.b.c"
-tmp/c.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+tmp/c.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testAddedMissingStubs]
 # flags: --ignore-missing-imports

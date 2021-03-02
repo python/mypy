@@ -1260,7 +1260,7 @@ bar: Type[C]
 bar * 4 + bar + 3  # should not produce more errors
 [out]
 _testMetaclassOpAccessAny.py:2: error: Cannot find implementation or library stub for module named "nonexistent"
-_testMetaclassOpAccessAny.py:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+_testMetaclassOpAccessAny.py:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testEnumIterationAndPreciseElementType]
 # Regression test for #2305

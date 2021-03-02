@@ -40,7 +40,7 @@ def f() -> None: pass
 
 [out]
 main.py:1: error: Cannot find implementation or library stub for module named "a"
-main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
 main.py:2: error: Missing positional argument "x" in call to "f"
 ==
@@ -83,7 +83,7 @@ def f() -> None: pass
 
 [out]
 main.py:1: error: Cannot find implementation or library stub for module named "a"
-main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
 main.py:2: error: Missing positional argument "x" in call to "f"
 ==
@@ -217,7 +217,7 @@ def f(x: str) -> None: pass
 [out]
 ==
 main.py:1: error: Cannot find implementation or library stub for module named "a"
-main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
 main.py:2: error: Missing positional argument "x" in call to "f"
 
@@ -240,7 +240,7 @@ def f(x: str) -> None: pass
 [out]
 ==
 main.py:1: error: Cannot find implementation or library stub for module named "a"
-main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
 main.py:2: error: Missing positional argument "x" in call to "f"
 
@@ -334,7 +334,7 @@ import b
 b.py:1: error: "int" not callable
 ==
 main.py:1: error: Cannot find implementation or library stub for module named "a"
-main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
 b.py:1: error: "int" not callable
 
@@ -474,12 +474,12 @@ from p2 import m
 
 [out]
 main.py:1: error: Cannot find implementation or library stub for module named "p1.m"
-main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main.py:1: error: Cannot find implementation or library stub for module named "p1"
 main.py:2: error: Cannot find implementation or library stub for module named "p2"
 ==
 main.py:2: error: Cannot find implementation or library stub for module named "p2"
-main.py:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main.py:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 p1/__init__.py:1: error: "int" not callable
 ==
 p1/__init__.py:1: error: "int" not callable
@@ -499,7 +499,7 @@ from p import m
 
 [out]
 main.py:1: error: Cannot find implementation or library stub for module named "p"
-main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
 main.py:1: error: Module 'p' has no attribute 'm'
 ==
@@ -531,13 +531,13 @@ def f() -> None: pass
 
 [out]
 main.py:1: error: Cannot find implementation or library stub for module named "p1.s1.m"
-main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main.py:1: error: Cannot find implementation or library stub for module named "p1"
 main.py:1: error: Cannot find implementation or library stub for module named "p1.s1"
 main.py:2: error: Cannot find implementation or library stub for module named "p2.s2"
 ==
 main.py:2: error: Cannot find implementation or library stub for module named "p2.s2"
-main.py:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main.py:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main.py:3: error: Missing positional argument "x" in call to "f"
 ==
 main.py:3: error: Missing positional argument "x" in call to "f"
@@ -587,7 +587,7 @@ def f() -> None:
 
 [out]
 main.py:2: error: Cannot find implementation or library stub for module named "p"
-main.py:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main.py:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
 p/m.py:1: error: "str" not callable
 p/__init__.py:1: error: "int" not callable
@@ -610,7 +610,7 @@ x x x
 
 [out]
 main.py:1: error: Cannot find implementation or library stub for module named "p"
-main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
 p/m.pyi:1: error: "str" not callable
 p/__init__.pyi:1: error: "int" not callable
@@ -637,13 +637,13 @@ import p2.m2
 [out]
 p1/m1.py:1: error: "int" not callable
 main.py:2: error: Cannot find implementation or library stub for module named "p2.m2"
-main.py:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main.py:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
 p2/m2.py:1: error: "str" not callable
 p1/m1.py:1: error: "int" not callable
 ==
 main.py:2: error: Cannot find implementation or library stub for module named "p2.m2"
-main.py:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main.py:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 p1/m1.py:1: error: "int" not callable
 
 [case testFollowImportsNormalNewFileOnCommandLine]
@@ -737,7 +737,7 @@ from . import mod2
 
 [out]
 main.py:1: error: Cannot find implementation or library stub for module named "pkg"
-main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
 
 [case testFollowImportsNormalDeletePackage]
@@ -769,4 +769,4 @@ from . import mod3
 [out]
 ==
 main.py:1: error: Cannot find implementation or library stub for module named "pkg"
-main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports

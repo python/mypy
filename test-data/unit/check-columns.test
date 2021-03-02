@@ -154,21 +154,21 @@ from typing import Iterable
 bad = 0
 
 def f(x: bad): # E:10: Variable "__main__.bad" is not valid as a type \
-               # N:10: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+               # N:10: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
     y: bad # E:8: Variable "__main__.bad" is not valid as a type \
-           # N:8: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+           # N:8: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
 if int():
     def g(x): # E:5: Variable "__main__.bad" is not valid as a type \
-              # N:5: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+              # N:5: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
         # type: (bad) -> None
         y = 0  # type: bad  # E:9: Variable "__main__.bad" is not valid as a type \
-                            # N:9: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+                            # N:9: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
 z: Iterable[bad] # E:13: Variable "__main__.bad" is not valid as a type \
-                 # N:13: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+                 # N:13: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 h: bad[int] # E:4: Variable "__main__.bad" is not valid as a type \
-            # N:4: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+            # N:4: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
 [case testColumnInvalidType_python2]
 
@@ -178,13 +178,13 @@ bad = 0
 
 if int():
     def g(x): # E:5: Variable "__main__.bad" is not valid as a type \
-              # N:5: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+              # N:5: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
         # type: (bad) -> None
         y = 0  # type: bad  # E:9: Variable "__main__.bad" is not valid as a type \
-                            # N:9: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+                            # N:9: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
     z = ()  # type: Iterable[bad] # E:5: Variable "__main__.bad" is not valid as a type \
-                                  # N:5: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+                                  # N:5: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
 [case testColumnFunctionMissingTypeAnnotation]
 # flags: --disallow-untyped-defs

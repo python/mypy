@@ -1021,7 +1021,7 @@ def do_thing_with_enums(enums: Union[List[Enum], Enum]) -> None: ...
 
 boop: List[Boop] = []
 do_thing_with_enums(boop)  # E: Argument 1 to "do_thing_with_enums" has incompatible type "List[Boop]"; expected "Union[List[Enum], Enum]" \
-                           # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+                           # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
                            # N: Consider using "Sequence" instead, which is covariant
 [builtins fixtures/isinstancelist.pyi]
 

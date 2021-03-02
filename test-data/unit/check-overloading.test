@@ -1370,7 +1370,7 @@ main:18: note: Revealed type is 'builtins.str'
 main:19: note: Revealed type is 'Any'
 main:20: note: Revealed type is 'Union[builtins.int, builtins.str]'
 main:21: error: Argument 1 to "foo" has incompatible type "List[bool]"; expected "List[int]"
-main:21: note: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance
+main:21: note: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance
 main:21: note: Consider using "Sequence" instead, which is covariant
 main:22: error: Argument 1 to "foo" has incompatible type "List[object]"; expected "List[int]"
 main:23: error: Argument 1 to "foo" has incompatible type "List[Union[int, str]]"; expected "List[int]"

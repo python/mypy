@@ -1333,7 +1333,7 @@ if int():
 if int():
     a = x3 \
      # E: Incompatible types in assignment (expression has type "List[B]", variable has type "List[A]") \
-     # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+     # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
      # N: Consider using "Sequence" instead, which is covariant
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -1356,7 +1356,7 @@ if int():
 if int():
     a = x3 \
      # E: Incompatible types in assignment (expression has type "List[B]", variable has type "List[A]") \
-     # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+     # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
      # N: Consider using "Sequence" instead, which is covariant
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-medium.pyi]

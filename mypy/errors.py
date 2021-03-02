@@ -721,7 +721,8 @@ def report_internal_error(err: Exception,
     # Print "INTERNAL ERROR" message.
     print('{}error: INTERNAL ERROR --'.format(prefix),
           'Please try using mypy master on Github:\n'
-          'https://mypy.rtfd.io/en/latest/common_issues.html#using-a-development-mypy-build',
+          'https://mypy.readthedocs.io/en/stable/common_issues.html'
+          '#using-a-development-mypy-build',
           file=stderr)
     if options.show_traceback:
         print('Please report a bug at https://github.com/python/mypy/issues',

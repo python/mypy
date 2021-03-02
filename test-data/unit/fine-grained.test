@@ -474,7 +474,7 @@ x = 3
 ==
 ==
 a.py:1: error: Cannot find implementation or library stub for module named "b"
-a.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testIgnoreWorksWithMissingImports]
 import a
@@ -508,7 +508,7 @@ from xyz import x  # type: ignore
 x = str()
 [out]
 b.py:1: error: Cannot find implementation or library stub for module named "xyz"
-b.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+b.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
 ==
 a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
@@ -527,7 +527,7 @@ x = str()
 [out]
 ==
 b.py:1: error: Cannot find implementation or library stub for module named "xyz"
-b.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+b.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
 a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
@@ -1810,7 +1810,7 @@ def f() -> Iterator[None]:
 main:2: note: Revealed type is 'contextlib.GeneratorContextManager[None]'
 ==
 a.py:3: error: Cannot find implementation or library stub for module named "b"
-a.py:3: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+a.py:3: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main:2: note: Revealed type is 'contextlib.GeneratorContextManager[None]'
 ==
 main:2: note: Revealed type is 'contextlib.GeneratorContextManager[None]'
@@ -1857,7 +1857,7 @@ def g() -> None:
 a.py:11: error: Too many arguments for "h"
 ==
 a.py:10: error: Cannot find implementation or library stub for module named "b"
-a.py:10: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+a.py:10: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
 a.py:11: error: Too many arguments for "h"
 ==
@@ -1891,7 +1891,7 @@ def f(x: List[int]) -> Iterator[None]:
 [out]
 ==
 a.py:3: error: Cannot find implementation or library stub for module named "b"
-a.py:3: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+a.py:3: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
 ==
 
@@ -2510,7 +2510,7 @@ def g() -> None: pass
 [out]
 ==
 main:2: error: Cannot find implementation or library stub for module named "m"
-main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main:7: error: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
 main:9: error: Cannot find implementation or library stub for module named "n"
 
@@ -2539,7 +2539,7 @@ def g() -> None: pass
 [out]
 ==
 main:2: error: Cannot find implementation or library stub for module named "m"
-main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main:12: error: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
 main:14: error: Cannot find implementation or library stub for module named "n"
 
@@ -7926,18 +7926,18 @@ x = 1
 a.py:1: error: Name 'TypeVar' is not defined
 a.py:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import TypeVar")
 a.py:7: error: Variable "a.T" is not valid as a type
-a.py:7: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+a.py:7: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 a.py:10: error: Name 'bar' already defined on line 6
 a.py:11: error: Variable "a.T" is not valid as a type
-a.py:11: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+a.py:11: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 ==
 a.py:1: error: Name 'TypeVar' is not defined
 a.py:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import TypeVar")
 a.py:7: error: Variable "a.T" is not valid as a type
-a.py:7: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+a.py:7: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 a.py:10: error: Name 'bar' already defined on line 6
 a.py:11: error: Variable "a.T" is not valid as a type
-a.py:11: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+a.py:11: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
 [case testRefreshForWithTypeComment1]
 [file a.py]
@@ -8402,7 +8402,7 @@ B = func
 [out]
 ==
 main:5: error: Variable "b.B" is not valid as a type
-main:5: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+main:5: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
 [case testNamedTupleForwardFunctionIndirect]
 # flags: --ignore-missing-imports
@@ -8420,7 +8420,7 @@ B = func
 [out]
 ==
 main:5: error: Variable "a.A" is not valid as a type
-main:5: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+main:5: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
 [case testNamedTupleForwardFunctionIndirectReveal]
 # flags: --ignore-missing-imports
@@ -8448,10 +8448,10 @@ B = func
 [out]
 ==
 m.py:4: error: Variable "a.A" is not valid as a type
-m.py:4: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+m.py:4: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 ==
 m.py:4: error: Variable "a.A" is not valid as a type
-m.py:4: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+m.py:4: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 m.py:5: note: Revealed type is 'Any'
 m.py:7: note: Revealed type is 'Any'
 
@@ -8467,7 +8467,7 @@ B = int()
 [out]
 ==
 main:5: error: Variable "b.B" is not valid as a type
-main:5: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+main:5: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
 [case testAliasForwardFunctionIndirect]
 # flags: --ignore-missing-imports
@@ -8484,7 +8484,7 @@ B = func
 [out]
 ==
 main:5: error: Variable "a.A" is not valid as a type
-main:5: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+main:5: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
 [case testLiteralFineGrainedVarConversion]
 import mod

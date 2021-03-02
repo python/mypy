@@ -707,7 +707,7 @@ y: Foo[Foo]     # E: Literal[...] must have at least one parameter
 
 NotAType = 3
 def f() -> NotAType['also' + 'not' + 'a' + 'type']: ... # E: Variable "__main__.NotAType" is not valid as a type \
-                                                        # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases \
+                                                        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases \
                                                         # E: Invalid type comment or annotation
 
 # Note: this makes us re-inspect the type (e.g. via '_patch_indirect_dependencies'
@@ -868,7 +868,7 @@ func(f)  # E: Argument 1 to "func" has incompatible type "Union[Literal['foo'], 
 from typing import Any
 from typing_extensions import Literal
 from missing_module import BadAlias     # E: Cannot find implementation or library stub for module named "missing_module" \
-                                        # N: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+                                        # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 a: Literal[Any]                         # E: Parameter 1 of Literal[...] cannot be of type "Any"
 b: Literal[BadAlias]                    # E: Parameter 1 of Literal[...] cannot be of type "Any"
@@ -909,11 +909,11 @@ d2t = 3j
 a2: a2t
 reveal_type(a2)      # N: Revealed type is 'Any'
 b2: b2t              # E: Variable "__main__.b2t" is not valid as a type \
-                     # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+                     # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 c2: c2t
 reveal_type(c2)      # N: Revealed type is 'Any'
 d2: d2t              # E: Variable "__main__.d2t" is not valid as a type \
-                     # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+                     # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 [builtins fixtures/complex_tuple.pyi]
 [out]
 
@@ -953,9 +953,9 @@ from typing_extensions import Literal
 at = Literal[{"a": 1, "b": 2}]  # E: Invalid type alias: expression is not a valid type
 bt = {"a": 1, "b": 2}
 a: at                           # E: Variable "__main__.at" is not valid as a type \
-                                # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+                                # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 b: bt                           # E: Variable "__main__.bt" is not valid as a type \
-                                # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+                                # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 [builtins fixtures/dict.pyi]
 [out]
 
@@ -965,9 +965,9 @@ from typing_extensions import Literal
 at = Literal[{1, 2, 3}]         # E: Invalid type alias: expression is not a valid type
 bt = {1, 2, 3}
 a: at                           # E: Variable "__main__.at" is not valid as a type \
-                                # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+                                # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 b: bt                           # E: Variable "__main__.bt" is not valid as a type \
-                                # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+                                # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 [builtins fixtures/set.pyi]
 [out]
 
@@ -1276,7 +1276,7 @@ a: List[Literal[1]]
 b: List[Literal[1, 2, 3]]
 
 foo(a)  # E: Argument 1 to "foo" has incompatible type "List[Literal[1]]"; expected "List[Union[Literal[1], Literal[2]]]" \
-        # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+        # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
         # N: Consider using "Sequence" instead, which is covariant
 foo(b)  # E: Argument 1 to "foo" has incompatible type "List[Union[Literal[1], Literal[2], Literal[3]]]"; expected "List[Union[Literal[1], Literal[2]]]"
 bar(a)
@@ -2874,16 +2874,16 @@ d: Literal[3]
 # at least case "b" for consistency?
 a_wrap: Literal[4, a]  # E: Parameter 2 of Literal[...] is invalid \
                        # E: Variable "__main__.a" is not valid as a type \
-                       # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+                       # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 b_wrap: Literal[4, b]  # E: Parameter 2 of Literal[...] is invalid \
                        # E: Variable "__main__.b" is not valid as a type \
-                       # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+                       # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 c_wrap: Literal[4, c]  # E: Parameter 2 of Literal[...] is invalid \
                        # E: Variable "__main__.c" is not valid as a type \
-                       # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+                       # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 d_wrap: Literal[4, d]  # E: Parameter 2 of Literal[...] is invalid \
                        # E: Variable "__main__.d" is not valid as a type \
-                       # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+                       # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 [builtins fixtures/tuple.pyi]
 [out]
 

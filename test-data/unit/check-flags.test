@@ -454,7 +454,7 @@ main:2: note: (Using --follow-imports=error, module not passed on command line)
 from mod import x
 [out]
 main:1: error: Cannot find implementation or library stub for module named "mod"
-main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testIgnoreMissingImportsTrue]
 # flags: --ignore-missing-imports
@@ -611,7 +611,7 @@ def f(x: MyType) -> None:
     pass
 [out]
 main:2: error: Cannot find implementation or library stub for module named "missing"
-main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main:4: error: Argument 1 to "f" becomes "Any" due to an unfollowed import
 
 [case testDisallowImplicitAnyVariableDefinition]
@@ -1122,9 +1122,9 @@ x: Future[str]
 y: Queue[int]
 
 p: Future  # E: Missing type parameters for generic type "Future" \
-           # N: Subscripting classes that are not generic at runtime may require escaping, see https://mypy.readthedocs.io/en/latest/common_issues.html#not-generic-runtime
+           # N: Subscripting classes that are not generic at runtime may require escaping, see https://mypy.readthedocs.io/en/stable/runtime_troubles.html#not-generic-runtime
 q: Queue  # E: Missing type parameters for generic type "Queue" \
-          # N: Subscripting classes that are not generic at runtime may require escaping, see https://mypy.readthedocs.io/en/latest/common_issues.html#not-generic-runtime
+          # N: Subscripting classes that are not generic at runtime may require escaping, see https://mypy.readthedocs.io/en/stable/runtime_troubles.html#not-generic-runtime
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
 

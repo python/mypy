@@ -409,7 +409,7 @@ from typing import List
 x: List[int]
 y: List[float]
 y = x # E: Incompatible types in assignment (expression has type "List[int]", variable has type "List[float]") \
-     # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+     # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
      # N: Consider using "Sequence" instead, which is covariant
 [builtins fixtures/list.pyi]
 
@@ -418,7 +418,7 @@ from typing import Dict
 x: Dict[str, int]
 y: Dict[str, float]
 y = x # E: Incompatible types in assignment (expression has type "Dict[str, int]", variable has type "Dict[str, float]") \
-     # N: "Dict" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+     # N: "Dict" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
      # N: Consider using "Mapping" instead, which is covariant in the value type
 [builtins fixtures/dict.pyi]
 
