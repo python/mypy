@@ -2073,6 +2073,38 @@ main:14: note:     Got:
 main:14: note:         def g(self, x: str) -> None
 main:14: note:     <2 more conflict(s) not shown>
 
+[case testProtocolIncompatibilityWithUnionType]
+from typing import Any, Optional, Protocol
+
+class A(Protocol):
+    def execute(self, statement: Any, *args: Any, **kwargs: Any) -> None: ...
+
+class B(Protocol):
+    def execute(self, stmt: Any, *args: Any, **kwargs: Any) -> None: ...
+    def cool(self) -> None: ...
+
+def func1(arg: A) -> None: ...        
+def func2(arg: Optional[A]) -> None: ...
+
+x: B
+func1(x)
+func2(x)
+[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[out]
+main:14: error: Argument 1 to "func1" has incompatible type "B"; expected "A"
+main:14: note: Following member(s) of "B" have conflicts:
+main:14: note:     Expected:
+main:14: note:         def execute(self, statement: Any, *args: Any, **kwargs: Any) -> None
+main:14: note:     Got:
+main:14: note:         def execute(self, stmt: Any, *args: Any, **kwargs: Any) -> None
+main:15: error: Argument 1 to "func2" has incompatible type "B"; expected "Optional[A]"
+main:15: note: Following member(s) of "B" have conflicts:
+main:15: note:     Expected:
+main:15: note:         def execute(self, statement: Any, *args: Any, **kwargs: Any) -> None
+main:15: note:     Got:
+main:15: note:         def execute(self, stmt: Any, *args: Any, **kwargs: Any) -> None
+
 [case testDontShowNotesForTupleAndIterableProtocol]
 from typing import Iterable, Sequence, Protocol, NamedTuple
 
