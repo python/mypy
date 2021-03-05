@@ -1,6 +1,6 @@
 -- Test cases for generating dependencies between ASTs nodes.
 --
--- The dependencies are used for fined-grained incremental checking and
+-- The dependencies are used for fined-grained incremental checking in
 -- the daemon mode.
 --
 -- The output of each test case includes the dependency map for whitelisted
@@ -600,7 +600,7 @@ class C:
 class C: pass
 
 class A:
-    x = None
+    x = None  # type: ignore
 
     def f(self) -> None:
         self.x = C()
@@ -609,14 +609,14 @@ class A:
 <m.A> -> m.A
 <m.C.__init__> -> m.A.f
 <m.C.__new__> -> m.A.f
-<m.C> -> <m.A.x>, m.A.f, m.C
+<m.C> -> m.A.f, m.C
 
 [case testPartialNoneTypeAttributeCrash2]
 # flags: --strict-optional
 class C: pass
 
 class A:
-    x = None
+    x = None  # type: ignore
 
     def f(self) -> None:
         self.x = C()
@@ -625,7 +625,7 @@ class A:
 <m.A> -> m.A
 <m.C.__init__> -> m.A.f
 <m.C.__new__> -> m.A.f
-<m.C> -> <m.A.x>, m.A.f, m.C
+<m.C> -> m.A.f, m.C
 
 [case testRelativeImport]
 import pkg  # Magic package name in test runner

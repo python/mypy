@@ -429,7 +429,6 @@ def g(o: int) -> None:
 [builtins fixtures/callable.pyi]
 
 [case testCallableTuple]
-
 from typing import NamedTuple
 
 Thing = NamedTuple('Thing', [('s', str), ('n', int)])
@@ -440,26 +439,24 @@ def g(o: Thing) -> None:
         i, s = o
         i + s  # E: Unsupported operand types for + ("str" and "int")
         o(1,2,3)
-
 [builtins fixtures/callable.pyi]
 
 [case testCallableNoArgs]
-
 if callable():  # E: Missing positional argument "x" in call to "callable"
     pass
-
 [builtins fixtures/callable.pyi]
 
 [case testCallableWithNoneArgs]
-
-fn = None
+fn = None  # E: Need type annotation for "fn"
 if callable(fn):
   fn()
 
+fn2: None = None
+if callable(fn2):
+  fn2()
 [builtins fixtures/callable.pyi]
 
 [case testCallableUnionOfNoneAndCallable]
-
 from typing import Union, Callable
 
 def f() -> int:

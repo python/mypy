@@ -266,7 +266,7 @@ class MyHashable(Protocol):
         return 0
 
 class C:
-    __my_hash__ = None
+    __my_hash__: None = None
 
 var: MyHashable = C()  # E: Incompatible types in assignment (expression has type "C", variable has type "MyHashable")
 
@@ -289,7 +289,7 @@ class P(Protocol):
     x = 0  # type: int
 
 class C:
-    x = None
+    x: None = None
 
 x: P = C() # Error!
 def f(x: P) -> None: pass
@@ -2083,7 +2083,7 @@ class B(Protocol):
     def execute(self, stmt: Any, *args: Any, **kwargs: Any) -> None: ...
     def cool(self) -> None: ...
 
-def func1(arg: A) -> None: ...        
+def func1(arg: A) -> None: ...
 def func2(arg: Optional[A]) -> None: ...
 
 x: B
@@ -2571,6 +2571,7 @@ hh(None)
 
 
 [case testPartialTypeProtocol]
+# flags: --no-local-partial-types
 from typing import Protocol
 
 class Flapper(Protocol):

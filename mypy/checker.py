@@ -133,9 +133,9 @@ TypeRange = NamedTuple(
         ('is_upper_bound', bool),  # False => precise type
     ])
 
-# Keeps track of partial types in a single scope. In fine-grained incremental
-# mode partial types initially defined at the top level cannot be completed in
-# a function, and we use the 'is_function' attribute to enforce this.
+# Keeps track of partial types in a single scope. By default, partial
+# types initially defined at the top level cannot be completed in a
+# function, and we use the 'is_function' attribute to enforce this.
 PartialTypeScope = NamedTuple('PartialTypeScope', [('map', Dict[Var, Context]),
                                                    ('is_function', bool),
                                                    ('is_local', bool),
@@ -1715,7 +1715,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         for base in typ.mro[1:]:
             if base.is_final:
                 self.fail(message_registry.CANNOT_INHERIT_FROM_FINAL.format(base.name), defn)
-        with self.tscope.class_scope(defn.info), self.enter_partial_types(is_class=True):
+        with self.tscope.class_scope(typ), self.enter_partial_types(is_class=True,
+                                                                    is_enum=typ.is_enum):
             old_binder = self.binder
             self.binder = ConditionalTypeBinder()
             with self.binder.top_frame_context():
@@ -2042,11 +2043,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.fail(message_registry.DEPENDENT_FINAL_IN_CLASS_BODY, s)
 
     def check_assignment(self, lvalue: Lvalue, rvalue: Expression, infer_lvalue_type: bool = True,
-                         new_syntax: bool = False) -> None:
+                         new_syntax: bool = False, *, for_stmt: bool = False) -> None:
         """Type check a single assignment: lvalue = rvalue."""
         if isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
             self.check_assignment_to_multiple_lvalues(lvalue.items, rvalue, rvalue,
-                                                      infer_lvalue_type)
+                                                      infer_lvalue_type, for_stmt=for_stmt)
         else:
             self.try_infer_partial_generic_type_from_assignment(lvalue, rvalue, '=')
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
@@ -2082,7 +2083,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         # None initializers preserve the partial None type.
                         return
 
-                    if is_valid_inferred_type(rvalue_type):
+                    if is_valid_inferred_type(rvalue_type, for_stmt):
                         var = lvalue_type.var
                         partial_types = self.find_partial_types(var)
                         if partial_types is not None:
@@ -2099,7 +2100,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     else:
                         # Try to infer a partial type. No need to check the return value, as
                         # an error will be reported elsewhere.
-                        self.infer_partial_type(lvalue_type.var, lvalue, rvalue_type)
+                        self.infer_partial_type(lvalue_type.var, lvalue, rvalue_type, rvalue)
                     # Handle None PartialType's super type checking here, after it's resolved.
                     if (isinstance(lvalue, RefExpr) and
                             self.check_compatibility_all_supers(lvalue, lvalue_type, rvalue)):
@@ -2146,7 +2147,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 rvalue_type = self.expr_checker.accept(rvalue)
                 if not inferred.is_final:
                     rvalue_type = remove_instance_last_known_values(rvalue_type)
-                self.infer_variable_type(inferred, lvalue, rvalue_type, rvalue)
+                self.infer_variable_type(inferred, lvalue, rvalue_type, rvalue, for_stmt=for_stmt)
 
     # (type, operator) tuples for augmented assignments supported with partial types
     partial_type_augmented_ops = {
@@ -2475,7 +2476,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def check_assignment_to_multiple_lvalues(self, lvalues: List[Lvalue], rvalue: Expression,
                                              context: Context,
-                                             infer_lvalue_type: bool = True) -> None:
+                                             infer_lvalue_type: bool = True,
+                                             *,
+                                             for_stmt: bool) -> None:
         if isinstance(rvalue, TupleExpr) or isinstance(rvalue, ListExpr):
             # Recursively go into Tuple or List expression rhs instead of
             # using the type of rhs, because this allowed more fine grained
@@ -2545,7 +2548,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 for lv, rv in lr_pairs:
                     self.check_assignment(lv, rv, infer_lvalue_type)
         else:
-            self.check_multi_assignment(lvalues, rvalue, context, infer_lvalue_type)
+            self.check_multi_assignment(lvalues, rvalue, context, infer_lvalue_type,
+                                        for_stmt=for_stmt)
 
     def check_rvalue_count_in_assignment(self, lvalues: List[Lvalue], rvalue_count: int,
                                          context: Context) -> bool:
@@ -2565,7 +2569,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                context: Context,
                                infer_lvalue_type: bool = True,
                                rv_type: Optional[Type] = None,
-                               undefined_rvalue: bool = False) -> None:
+                               undefined_rvalue: bool = False,
+                               *,
+                               for_stmt: bool) -> None:
         """Check the assignment of one rvalue to a number of lvalues."""
 
         # Infer the type of an ordinary rvalue expression.
@@ -2584,22 +2590,24 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     lv = lv.expr
                 temp_node = self.temp_node(AnyType(TypeOfAny.from_another_any,
                                                    source_any=rvalue_type), context)
-                self.check_assignment(lv, temp_node, infer_lvalue_type)
+                self.check_assignment(lv, temp_node, infer_lvalue_type, for_stmt=for_stmt)
         elif isinstance(rvalue_type, TupleType):
             self.check_multi_assignment_from_tuple(lvalues, rvalue, rvalue_type,
-                                                   context, undefined_rvalue, infer_lvalue_type)
+                                                   context, undefined_rvalue, infer_lvalue_type,
+                                                   for_stmt=for_stmt)
         elif isinstance(rvalue_type, UnionType):
             self.check_multi_assignment_from_union(lvalues, rvalue, rvalue_type, context,
-                                                   infer_lvalue_type)
+                                                   infer_lvalue_type, for_stmt=for_stmt)
         elif isinstance(rvalue_type, Instance) and rvalue_type.type.fullname == 'builtins.str':
             self.msg.unpacking_strings_disallowed(context)
         else:
             self.check_multi_assignment_from_iterable(lvalues, rvalue_type,
-                                                      context, infer_lvalue_type)
+                                                      context, infer_lvalue_type,
+                                                      for_stmt=for_stmt)
 
     def check_multi_assignment_from_union(self, lvalues: List[Expression], rvalue: Expression,
                                           rvalue_type: UnionType, context: Context,
-                                          infer_lvalue_type: bool) -> None:
+                                          infer_lvalue_type: bool, *, for_stmt: bool) -> None:
         """Check assignment to multiple lvalue targets when rvalue type is a Union[...].
         For example:
 
@@ -2622,7 +2630,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # the inferred lvalue types for each union item.
                 self.check_multi_assignment(lvalues, rvalue, context,
                                             infer_lvalue_type=infer_lvalue_type,
-                                            rv_type=item, undefined_rvalue=True)
+                                            rv_type=item, undefined_rvalue=True, for_stmt=for_stmt)
                 for t, lv in zip(transposed, self.flatten_lvalues(lvalues)):
                     t.append(self.type_map.pop(lv, AnyType(TypeOfAny.special_form)))
         union_types = tuple(make_simplified_union(col) for col in transposed)
@@ -2667,7 +2675,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_multi_assignment_from_tuple(self, lvalues: List[Lvalue], rvalue: Expression,
                                           rvalue_type: TupleType, context: Context,
                                           undefined_rvalue: bool,
-                                          infer_lvalue_type: bool = True) -> None:
+                                          infer_lvalue_type: bool = True, *,
+                                          for_stmt: bool) -> None:
         if self.check_rvalue_count_in_assignment(lvalues, len(rvalue_type.items), context):
             star_index = next((i for i, lv in enumerate(lvalues)
                                if isinstance(lv, StarExpr)), len(lvalues))
@@ -2690,7 +2699,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if isinstance(reinferred_rvalue_type, UnionType):
                     self.check_multi_assignment_from_union(lvalues, rvalue,
                                                            reinferred_rvalue_type, context,
-                                                           infer_lvalue_type)
+                                                           infer_lvalue_type, for_stmt=for_stmt)
                     return
                 if isinstance(reinferred_rvalue_type, AnyType) and self.current_node_deferred:
                     # Doing more inference in deferred nodes can be hard, so give up for now.
@@ -2702,14 +2711,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 rvalue_type.items, star_index, len(lvalues))
 
             for lv, rv_type in zip(left_lvs, left_rv_types):
-                self.check_assignment(lv, self.temp_node(rv_type, context), infer_lvalue_type)
+                self.check_assignment(lv, self.temp_node(rv_type, context), infer_lvalue_type,
+                                      for_stmt=for_stmt)
             if star_lv:
                 list_expr = ListExpr([self.temp_node(rv_type, context)
                                       for rv_type in star_rv_types])
                 list_expr.set_line(context.get_line())
-                self.check_assignment(star_lv.expr, list_expr, infer_lvalue_type)
+                self.check_assignment(star_lv.expr, list_expr, infer_lvalue_type,
+                                      for_stmt=for_stmt)
             for lv, rv_type in zip(right_lvs, right_rv_types):
-                self.check_assignment(lv, self.temp_node(rv_type, context), infer_lvalue_type)
+                self.check_assignment(lv, self.temp_node(rv_type, context), infer_lvalue_type,
+                                      for_stmt=for_stmt)
 
     def lvalue_type_for_inference(self, lvalues: List[Lvalue], rvalue_type: TupleType) -> Type:
         star_index = next((i for i, lv in enumerate(lvalues)
@@ -2771,7 +2783,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def check_multi_assignment_from_iterable(self, lvalues: List[Lvalue], rvalue_type: Type,
                                              context: Context,
-                                             infer_lvalue_type: bool = True) -> None:
+                                             infer_lvalue_type: bool = True, *,
+                                             for_stmt: bool) -> None:
         rvalue_type = get_proper_type(rvalue_type)
         if self.type_is_iterable(rvalue_type) and isinstance(rvalue_type, Instance):
             item_type = self.iterable_item_type(rvalue_type)
@@ -2779,10 +2792,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if isinstance(lv, StarExpr):
                     items_type = self.named_generic_type('builtins.list', [item_type])
                     self.check_assignment(lv.expr, self.temp_node(items_type, context),
-                                          infer_lvalue_type)
+                                          infer_lvalue_type, for_stmt=for_stmt)
                 else:
                     self.check_assignment(lv, self.temp_node(item_type, context),
-                                          infer_lvalue_type)
+                                          infer_lvalue_type, for_stmt=for_stmt)
         else:
             self.msg.type_not_iterable(rvalue_type, context)
 
@@ -2841,24 +2854,25 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return False
 
     def infer_variable_type(self, name: Var, lvalue: Lvalue,
-                            init_type: Type, context: Context) -> None:
+                            init_type: Type, init_expr: Expression, *, for_stmt: bool) -> None:
         """Infer the type of initialized variables from initializer type."""
         init_type = get_proper_type(init_type)
         if isinstance(init_type, DeletedType):
-            self.msg.deleted_as_rvalue(init_type, context)
-        elif not is_valid_inferred_type(init_type) and not self.no_partial_types:
+            self.msg.deleted_as_rvalue(init_type, context=init_expr)
+        elif not is_valid_inferred_type(
+                init_type, for_stmt=for_stmt) and not self.no_partial_types:
             # We cannot use the type of the initialization expression for full type
             # inference (it's not specific enough), but we might be able to give
             # partial type which will be made more specific later. A partial type
             # gets generated in assignment like 'x = []' where item type is not known.
-            if not self.infer_partial_type(name, lvalue, init_type):
-                self.msg.need_annotation_for_var(name, context, self.options.python_version)
+            if not self.infer_partial_type(name, lvalue, init_type, init_expr):
+                self.msg.need_annotation_for_var(name, init_expr, self.options.python_version)
                 self.set_inference_error_fallback_type(name, lvalue, init_type)
         elif (isinstance(lvalue, MemberExpr) and self.inferred_attribute_types is not None
               and lvalue.def_var and lvalue.def_var in self.inferred_attribute_types
               and not is_same_type(self.inferred_attribute_types[lvalue.def_var], init_type)):
             # Multiple, inconsistent types inferred for an attribute.
-            self.msg.need_annotation_for_var(name, context, self.options.python_version)
+            self.msg.need_annotation_for_var(name, init_expr, self.options.python_version)
             name.type = AnyType(TypeOfAny.from_error)
         else:
             # Infer type of the target.
@@ -2868,9 +2882,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             self.set_inferred_type(name, lvalue, init_type)
 
-    def infer_partial_type(self, name: Var, lvalue: Lvalue, init_type: Type) -> bool:
+    def infer_partial_type(self, name: Var, lvalue: Lvalue, init_type: Type,
+                           init_expr: Expression) -> bool:
         init_type = get_proper_type(init_type)
         if isinstance(init_type, NoneType):
+            if isinstance(init_expr, CallExpr):
+                # In cases like 'x = f()', we don't infer a partial type but None.
+                self.set_inferred_type(name, lvalue, init_type)
+                return True
             partial_type = PartialType(None, name)
         elif isinstance(init_type, Instance):
             fullname = init_type.type.fullname
@@ -3536,7 +3555,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def analyze_index_variables(self, index: Expression, item_type: Type,
                                 infer_lvalue_type: bool, context: Context) -> None:
         """Type check or infer for loop or list comprehension index vars."""
-        self.check_assignment(index, self.temp_node(item_type, context), infer_lvalue_type)
+        self.check_assignment(
+            index, self.temp_node(item_type, context), infer_lvalue_type, for_stmt=True
+        )
 
     def visit_del_stmt(self, s: DelStmt) -> None:
         if isinstance(s.expr, IndexExpr):
@@ -4687,7 +4708,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     @contextmanager
     def enter_partial_types(self, *, is_function: bool = False,
-                            is_class: bool = False) -> Iterator[None]:
+                            is_class: bool = False, is_enum: bool = False) -> Iterator[None]:
         """Enter a new scope for collecting partial types.
 
         Also report errors for (some) variables which still have partial
@@ -4699,12 +4720,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         # Don't complain about not being able to infer partials if it is
         # at the toplevel (with allow_untyped_globals) or if it is in an
-        # untyped function being checked with check_untyped_defs.
+        # untyped function being checked with check_untyped_defs, or in an
+        # enum class (None is a valid value for an item).
         permissive = (self.options.allow_untyped_globals and not is_local) or (
             self.options.check_untyped_defs
             and self.dynamic_funcs
             and self.dynamic_funcs[-1]
-        )
+        ) or is_enum
 
         partial_types, _, _ = self.partial_types.pop()
         if not self.current_node_deferred:
@@ -5433,7 +5455,7 @@ def infer_operator_assignment_method(typ: Type, operator: str) -> Tuple[bool, st
     return False, method
 
 
-def is_valid_inferred_type(typ: Type) -> bool:
+def is_valid_inferred_type(typ: Type, for_stmt: bool = False) -> bool:
     """Is an inferred type valid?
 
     Examples of invalid types include the None type or List[<uninhabited>].
@@ -5442,11 +5464,15 @@ def is_valid_inferred_type(typ: Type) -> bool:
     invalid.  When doing strict Optional checking, only None and types that are
     incompletely defined (i.e. contain UninhabitedType) are invalid.
     """
-    if isinstance(get_proper_type(typ), (NoneType, UninhabitedType)):
+    proper_type = get_proper_type(typ)
+    if isinstance(proper_type, (NoneType, UninhabitedType)):
         # With strict Optional checking, we *may* eventually infer NoneType when
         # the initializer is None, but we only do that if we can't infer a
         # specific Optional type.  This resolution happens in
         # leave_partial_types when we pop a partial types scope.
+        if for_stmt and isinstance(proper_type, NoneType):
+            # For statements shouldn't produce partial types.
+            return True
         return False
     return not typ.accept(NothingSeeker())
 

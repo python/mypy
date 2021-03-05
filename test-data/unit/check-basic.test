@@ -399,7 +399,7 @@ def foo(
     pass
 
 [case testNoneHasBool]
-none = None
+none: None = None
 b = none.__bool__()
 reveal_type(b)  # N: Revealed type is 'builtins.bool'
 [builtins fixtures/bool.pyi]
