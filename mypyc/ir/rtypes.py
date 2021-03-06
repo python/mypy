@@ -147,7 +147,7 @@ class RVoid(RType):
         return isinstance(other, RVoid)
 
     def __hash__(self) -> int:
-        return 12345
+        return hash(RVoid)
 
 
 # Singleton instance of RVoid
@@ -744,7 +744,6 @@ class RArray(RType):
         self.item_type = item_type
         # Number of items
         self.length = length
-        self._ctype = 'xxx'
         self.is_refcounted = False
 
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
