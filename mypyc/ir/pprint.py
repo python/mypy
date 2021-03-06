@@ -9,7 +9,8 @@ from mypyc.ir.ops import (
     Goto, Branch, Return, Unreachable, Assign, Integer, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, IncRef, DecRef, Call, MethodCall, Cast, Box, Unbox,
     RaiseStandardError, CallC, Truncate, LoadGlobal, IntOp, ComparisonOp, LoadMem, SetMem,
-    GetElementPtr, LoadAddress, Register, Value, OpVisitor, BasicBlock, ControlOp, LoadLiteral
+    GetElementPtr, LoadAddress, Register, Value, OpVisitor, BasicBlock, ControlOp, LoadLiteral,
+    AssignMulti, KeepAlive
 )
 from mypyc.ir.func_ir import FuncIR, all_values_full
 from mypyc.ir.module_ir import ModuleIRs
@@ -55,6 +56,11 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
 
     def visit_assign(self, op: Assign) -> str:
         return self.format('%r = %r', op.dest, op.src)
+
+    def visit_assign_multi(self, op: AssignMulti) -> str:
+        return self.format('%r = [%s]',
+                           op.dest,
+                           ', '.join(self.format('%r', v) for v in op.src))
 
     def visit_load_error_value(self, op: LoadErrorValue) -> str:
         return self.format('%r = <error> :: %s', op, op.type)
@@ -171,18 +177,10 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
                            op.rhs, sign_format)
 
     def visit_load_mem(self, op: LoadMem) -> str:
-        if op.base:
-            base = self.format(', %r', op.base)
-        else:
-            base = ''
-        return self.format("%r = load_mem %r%s :: %t*", op, op.src, base, op.type)
+        return self.format("%r = load_mem %r :: %t*", op, op.src, op.type)
 
     def visit_set_mem(self, op: SetMem) -> str:
-        if op.base:
-            base = self.format(', %r', op.base)
-        else:
-            base = ''
-        return self.format("set_mem %r, %r%s :: %t*", op.dest, op.src, base, op.dest_type)
+        return self.format("set_mem %r, %r :: %t*", op.dest, op.src, op.dest_type)
 
     def visit_get_element_ptr(self, op: GetElementPtr) -> str:
         return self.format("%r = get_element_ptr %r %s :: %t", op, op.src, op.field, op.src_type)
@@ -192,6 +190,10 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
             return self.format("%r = load_address %r", op, op.src)
         else:
             return self.format("%r = load_address %s", op, op.src)
+
+    def visit_keep_alive(self, op: KeepAlive) -> str:
+        return self.format('keep_alive %s' % ', '.join(self.format('%r', v)
+                                                       for v in op.src))
 
     # Helpers
 
@@ -348,7 +350,7 @@ def generate_names_for_ir(args: List[Register], blocks: List[BasicBlock]) -> Dic
                 if source not in names:
                     values.append(source)
 
-            if isinstance(op, Assign):
+            if isinstance(op, (Assign, AssignMulti)):
                 values.append(op.dest)
             elif isinstance(op, ControlOp) or op.is_void:
                 continue

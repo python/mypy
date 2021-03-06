@@ -311,7 +311,8 @@ L0:
     r0 = 0
 L1:
     r1 = get_element_ptr ls ob_size :: PyVarObject
-    r2 = load_mem r1, ls :: native_int*
+    r2 = load_mem r1 :: native_int*
+    keep_alive ls
     r3 = r2 << 1
     r4 = r0 < r3 :: signed
     if r4 goto L2 else goto L4 :: bool
@@ -766,10 +767,11 @@ L0:
     r1 = box(short_int, 2)
     r2 = box(short_int, 4)
     r3 = get_element_ptr r0 ob_item :: PyListObject
-    r4 = load_mem r3, r0 :: ptr*
-    set_mem r4, r1, r0 :: builtins.object*
+    r4 = load_mem r3 :: ptr*
+    set_mem r4, r1 :: builtins.object*
     r5 = r4 + WORD_SIZE*1
-    set_mem r5, r2, r0 :: builtins.object*
+    set_mem r5, r2 :: builtins.object*
+    keep_alive r0
     l = r0
     r6 = box(short_int, 2)
     r7 = PyObject_DelItem(l, r6)
@@ -799,20 +801,21 @@ L0:
     r6 = box(short_int, 12)
     r7 = box(short_int, 14)
     r8 = get_element_ptr r0 ob_item :: PyListObject
-    r9 = load_mem r8, r0 :: ptr*
-    set_mem r9, r1, r0 :: builtins.object*
+    r9 = load_mem r8 :: ptr*
+    set_mem r9, r1 :: builtins.object*
     r10 = r9 + WORD_SIZE*1
-    set_mem r10, r2, r0 :: builtins.object*
+    set_mem r10, r2 :: builtins.object*
     r11 = r9 + WORD_SIZE*2
-    set_mem r11, r3, r0 :: builtins.object*
+    set_mem r11, r3 :: builtins.object*
     r12 = r9 + WORD_SIZE*3
-    set_mem r12, r4, r0 :: builtins.object*
+    set_mem r12, r4 :: builtins.object*
     r13 = r9 + WORD_SIZE*4
-    set_mem r13, r5, r0 :: builtins.object*
+    set_mem r13, r5 :: builtins.object*
     r14 = r9 + WORD_SIZE*5
-    set_mem r14, r6, r0 :: builtins.object*
+    set_mem r14, r6 :: builtins.object*
     r15 = r9 + WORD_SIZE*6
-    set_mem r15, r7, r0 :: builtins.object*
+    set_mem r15, r7 :: builtins.object*
+    keep_alive r0
     l = r0
     r16 = box(short_int, 2)
     r17 = PyObject_DelItem(l, r16)
@@ -958,7 +961,8 @@ L0:
     r1 = 0
 L1:
     r2 = get_element_ptr a ob_size :: PyVarObject
-    r3 = load_mem r2, a :: native_int*
+    r3 = load_mem r2 :: native_int*
+    keep_alive a
     r4 = r3 << 1
     r5 = r1 < r4 :: signed
     if r5 goto L2 else goto L4 :: bool
@@ -1039,7 +1043,8 @@ L0:
     r1 = PyObject_GetIter(b)
 L1:
     r2 = get_element_ptr a ob_size :: PyVarObject
-    r3 = load_mem r2, a :: native_int*
+    r3 = load_mem r2 :: native_int*
+    keep_alive a
     r4 = r3 << 1
     r5 = r0 < r4 :: signed
     if r5 goto L2 else goto L7 :: bool
@@ -1093,7 +1098,8 @@ L1:
     if is_error(r3) goto L6 else goto L2
 L2:
     r4 = get_element_ptr b ob_size :: PyVarObject
-    r5 = load_mem r4, b :: native_int*
+    r5 = load_mem r4 :: native_int*
+    keep_alive b
     r6 = r5 << 1
     r7 = r1 < r6 :: signed
     if r7 goto L3 else goto L6 :: bool

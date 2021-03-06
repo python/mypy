@@ -14,7 +14,7 @@ from typing import List, Optional
 
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_NAMED_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2
 
-from mypyc.common import PREFIX, NATIVE_PREFIX, DUNDER_PREFIX, USE_VECTORCALL
+from mypyc.common import PREFIX, NATIVE_PREFIX, DUNDER_PREFIX, use_vectorcall
 from mypyc.codegen.emit import Emitter
 from mypyc.ir.rtypes import (
     RType, is_object_rprimitive, is_int_rprimitive, is_bool_rprimitive, object_rprimitive
@@ -157,7 +157,7 @@ def generate_wrapper_function(fn: FuncIR,
         arg_ptrs += ['&obj_{}'.format(groups[ARG_STAR2][0].name) if groups[ARG_STAR2] else 'NULL']
     arg_ptrs += ['&obj_{}'.format(arg.name) for arg in reordered_args]
 
-    if fn.name == '__call__' and USE_VECTORCALL:
+    if fn.name == '__call__' and use_vectorcall(emitter.capi_version):
         nargs = 'PyVectorcall_NARGS(nargs)'
     else:
         nargs = 'nargs'

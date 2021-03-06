@@ -7,12 +7,12 @@ from mypy.ordered_dict import OrderedDict
 from mypy.test.helpers import assert_string_arrays_equal
 
 from mypyc.ir.ops import (
-    BasicBlock, Goto, Return, Integer, Assign, IncRef, DecRef, Branch,
+    BasicBlock, Goto, Return, Integer, Assign, AssignMulti, IncRef, DecRef, Branch,
     Call, Unbox, Box, TupleGet, GetAttr, SetAttr, Op, Value, CallC, IntOp, LoadMem,
     GetElementPtr, LoadAddress, ComparisonOp, SetMem, Register
 )
 from mypyc.ir.rtypes import (
-    RTuple, RInstance, RType, int_rprimitive, bool_rprimitive, list_rprimitive,
+    RTuple, RInstance, RType, RArray, int_rprimitive, bool_rprimitive, list_rprimitive,
     dict_rprimitive, object_rprimitive, c_int_rprimitive, short_int_rprimitive, int32_rprimitive,
     int64_rprimitive, RStruct, pointer_rprimitive
 )
@@ -283,13 +283,11 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                          """cpy_r_r0 = cpy_r_o != cpy_r_o2;""")
 
     def test_load_mem(self) -> None:
-        self.assert_emit(LoadMem(bool_rprimitive, self.ptr, None),
-                         """cpy_r_r0 = *(char *)cpy_r_ptr;""")
-        self.assert_emit(LoadMem(bool_rprimitive, self.ptr, self.s1),
+        self.assert_emit(LoadMem(bool_rprimitive, self.ptr),
                          """cpy_r_r0 = *(char *)cpy_r_ptr;""")
 
     def test_set_mem(self) -> None:
-        self.assert_emit(SetMem(bool_rprimitive, self.ptr, self.b, None),
+        self.assert_emit(SetMem(bool_rprimitive, self.ptr, self.b),
                          """*(char *)cpy_r_ptr = cpy_r_b;""")
 
     def test_get_element_ptr(self) -> None:
@@ -305,6 +303,20 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_load_address(self) -> None:
         self.assert_emit(LoadAddress(object_rprimitive, "PyDict_Type"),
                          """cpy_r_r0 = (PyObject *)&PyDict_Type;""")
+
+    def test_assign_multi(self) -> None:
+        t = RArray(object_rprimitive, 2)
+        a = Register(t, 'a')
+        self.registers.append(a)
+        self.assert_emit(AssignMulti(a, [self.o, self.o2]),
+                         """PyObject *cpy_r_a[2] = {cpy_r_o, cpy_r_o2};""")
+
+    def test_long_unsigned(self) -> None:
+        a = Register(int64_rprimitive, 'a')
+        self.assert_emit(Assign(a, Integer(1 << 31, int64_rprimitive)),
+                         """cpy_r_a = 2147483648U;""")
+        self.assert_emit(Assign(a, Integer((1 << 31) - 1, int64_rprimitive)),
+                         """cpy_r_a = 2147483647;""")
 
     def assert_emit(self, op: Op, expected: str) -> None:
         block = BasicBlock(0)

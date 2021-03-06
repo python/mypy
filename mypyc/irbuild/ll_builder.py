@@ -12,29 +12,33 @@ from typing import (
     Callable, List, Tuple, Optional, Union, Sequence, cast
 )
 
+from typing_extensions import Final
+
 from mypy.nodes import ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, op_methods
 from mypy.types import AnyType, TypeOfAny
 from mypy.checkexpr import map_actuals_to_formals
 
 from mypyc.ir.ops import (
     BasicBlock, Op, Integer, Value, Register, Assign, Branch, Goto, Call, Box, Unbox, Cast,
-    GetAttr, LoadStatic, MethodCall, CallC, Truncate, LoadLiteral,
+    GetAttr, LoadStatic, MethodCall, CallC, Truncate, LoadLiteral, AssignMulti,
     RaiseStandardError, Unreachable, LoadErrorValue,
     NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, IntOp, GetElementPtr,
-    LoadMem, ComparisonOp, LoadAddress, TupleGet, SetMem, ERR_NEVER, ERR_FALSE
+    LoadMem, ComparisonOp, LoadAddress, TupleGet, SetMem, KeepAlive, ERR_NEVER, ERR_FALSE
 )
 from mypyc.ir.rtypes import (
-    RType, RUnion, RInstance, optional_value_type, int_rprimitive, float_rprimitive,
+    RType, RUnion, RInstance, RArray, optional_value_type, int_rprimitive, float_rprimitive,
     bool_rprimitive, list_rprimitive, str_rprimitive, is_none_rprimitive, object_rprimitive,
     c_pyssize_t_rprimitive, is_short_int_rprimitive, is_tagged, PyVarObject, short_int_rprimitive,
     is_list_rprimitive, is_tuple_rprimitive, is_dict_rprimitive, is_set_rprimitive, PySetObject,
     none_rprimitive, RTuple, is_bool_rprimitive, is_str_rprimitive, c_int_rprimitive,
-    pointer_rprimitive, PyObject, PyListObject, bit_rprimitive, is_bit_rprimitive
+    pointer_rprimitive, PyObject, PyListObject, bit_rprimitive, is_bit_rprimitive,
+    object_pointer_rprimitive, c_size_t_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.common import (
-    FAST_ISINSTANCE_MAX_SUBCLASSES, MAX_LITERAL_SHORT_INT, PLATFORM_SIZE
+    FAST_ISINSTANCE_MAX_SUBCLASSES, MAX_LITERAL_SHORT_INT, PLATFORM_SIZE, use_vectorcall,
+    use_method_vectorcall
 )
 from mypyc.primitives.registry import (
     method_call_ops, CFunctionDescription, function_ops,
@@ -48,7 +52,8 @@ from mypyc.primitives.dict_ops import (
     dict_update_in_display_op, dict_new_op, dict_build_op, dict_size_op
 )
 from mypyc.primitives.generic_ops import (
-    py_getattr_op, py_call_op, py_call_with_kwargs_op, py_method_call_op, generic_len_op
+    py_getattr_op, py_call_op, py_call_with_kwargs_op, py_method_call_op, generic_len_op,
+    py_vectorcall_op, py_vectorcall_method_op
 )
 from mypyc.primitives.misc_ops import (
     none_object_op, fast_isinstance_op, bool_op
@@ -61,9 +66,14 @@ from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type
 from mypyc.irbuild.mapper import Mapper
+from mypyc.options import CompilerOptions
 
 
 DictEntry = Tuple[Optional[Value], Value]
+
+
+# From CPython
+PY_VECTORCALL_ARGUMENTS_OFFSET = 1 << (PLATFORM_SIZE * 8 - 1)  # type: Final
 
 
 class LowLevelIRBuilder:
@@ -71,9 +81,11 @@ class LowLevelIRBuilder:
         self,
         current_module: str,
         mapper: Mapper,
+        options: CompilerOptions,
     ) -> None:
         self.current_module = current_module
         self.mapper = mapper
+        self.options = options
         self.args = []  # type: List[Register]
         self.blocks = []  # type: List[BasicBlock]
         # Stack of except handler entry blocks
@@ -208,7 +220,8 @@ class LowLevelIRBuilder:
 
     def type_is_op(self, obj: Value, type_obj: Value, line: int) -> Value:
         ob_type_address = self.add(GetElementPtr(obj, PyObject, 'ob_type', line))
-        ob_type = self.add(LoadMem(object_rprimitive, ob_type_address, obj))
+        ob_type = self.add(LoadMem(object_rprimitive, ob_type_address))
+        self.add(KeepAlive([obj]))
         return self.add(ComparisonOp(ob_type, type_obj, ComparisonOp.EQ, line))
 
     def isinstance_native(self, obj: Value, class_ir: ClassIR, line: int) -> Value:
@@ -246,8 +259,14 @@ class LowLevelIRBuilder:
 
         Use py_call_op or py_call_with_kwargs_op for Python function call.
         """
+        if use_vectorcall(self.options.capi_version):
+            # More recent Python versions support faster vectorcalls.
+            result = self._py_vector_call(function, arg_values, line, arg_kinds, arg_names)
+            if result is not None:
+                return result
+
         # If all arguments are positional, we can use py_call_op.
-        if (arg_kinds is None) or all(kind == ARG_POS for kind in arg_kinds):
+        if arg_kinds is None or all(kind == ARG_POS for kind in arg_kinds):
             return self.call_c(py_call_op, [function] + arg_values, line)
 
         # Otherwise fallback to py_call_with_kwargs_op.
@@ -288,6 +307,53 @@ class LowLevelIRBuilder:
         return self.call_c(
             py_call_with_kwargs_op, [function, pos_args_tuple, kw_args_dict], line)
 
+    def _py_vector_call(self,
+                        function: Value,
+                        arg_values: List[Value],
+                        line: int,
+                        arg_kinds: Optional[List[int]] = None,
+                        arg_names: Optional[Sequence[Optional[str]]] = None) -> Optional[Value]:
+        """Call function using the vectorcall API if possible.
+
+        Return the return value if successful. Return None if a non-vectorcall
+        API should be used instead.
+        """
+        # We can do this if all args are positional or named (no *args or **kwargs).
+        if arg_kinds is None or all(kind in (ARG_POS, ARG_NAMED) for kind in arg_kinds):
+            if arg_values:
+                # Create a C array containing all arguments as boxed values.
+                array = Register(RArray(object_rprimitive, len(arg_values)))
+                coerced_args = [self.coerce(arg, object_rprimitive, line) for arg in arg_values]
+                self.add(AssignMulti(array, coerced_args))
+                arg_ptr = self.add(LoadAddress(object_pointer_rprimitive, array))
+            else:
+                arg_ptr = Integer(0, object_pointer_rprimitive)
+            num_pos = num_positional_args(arg_values, arg_kinds)
+            keywords = self._vectorcall_keywords(arg_names)
+            value = self.call_c(py_vectorcall_op, [function,
+                                                   arg_ptr,
+                                                   Integer(num_pos, c_size_t_rprimitive),
+                                                   keywords],
+                                line)
+            if arg_values:
+                # Make sure arguments won't be freed until after the call.
+                # We need this because RArray doesn't support automatic
+                # memory management.
+                self.add(KeepAlive(coerced_args))
+            return value
+        return None
+
+    def _vectorcall_keywords(self, arg_names: Optional[Sequence[Optional[str]]]) -> Value:
+        """Return a reference to a tuple literal with keyword argument names.
+
+        Return null pointer if there are no keyword arguments.
+        """
+        if arg_names:
+            kw_list = [name for name in arg_names if name is not None]
+            if kw_list:
+                return self.add(LoadLiteral(tuple(kw_list), object_rprimitive))
+        return Integer(0, object_rprimitive)
+
     def py_method_call(self,
                        obj: Value,
                        method_name: str,
@@ -296,12 +362,57 @@ class LowLevelIRBuilder:
                        arg_kinds: Optional[List[int]],
                        arg_names: Optional[Sequence[Optional[str]]]) -> Value:
         """Call a Python method (non-native and slow)."""
-        if (arg_kinds is None) or all(kind == ARG_POS for kind in arg_kinds):
+        if use_method_vectorcall(self.options.capi_version):
+            # More recent Python versions support faster vectorcalls.
+            result = self._py_vector_method_call(
+                obj, method_name, arg_values, line, arg_kinds, arg_names)
+            if result is not None:
+                return result
+
+        if arg_kinds is None or all(kind == ARG_POS for kind in arg_kinds):
+            # Use legacy method call API
             method_name_reg = self.load_str(method_name)
             return self.call_c(py_method_call_op, [obj, method_name_reg] + arg_values, line)
         else:
+            # Use py_call since it supports keyword arguments (and vectorcalls).
             method = self.py_get_attr(obj, method_name, line)
             return self.py_call(method, arg_values, line, arg_kinds=arg_kinds, arg_names=arg_names)
+
+    def _py_vector_method_call(self,
+                               obj: Value,
+                               method_name: str,
+                               arg_values: List[Value],
+                               line: int,
+                               arg_kinds: Optional[List[int]],
+                               arg_names: Optional[Sequence[Optional[str]]]) -> Optional[Value]:
+        """Call method using the vectorcall API if possible.
+
+        Return the return value if successful. Return None if a non-vectorcall
+        API should be used instead.
+        """
+        if arg_kinds is None or all(kind in (ARG_POS, ARG_NAMED) for kind in arg_kinds):
+            method_name_reg = self.load_str(method_name)
+            array = Register(RArray(object_rprimitive, len(arg_values) + 1))
+            self_arg = self.coerce(obj, object_rprimitive, line)
+            coerced_args = [self_arg] + [self.coerce(arg, object_rprimitive, line)
+                                         for arg in arg_values]
+            self.add(AssignMulti(array, coerced_args))
+            arg_ptr = self.add(LoadAddress(object_pointer_rprimitive, array))
+            num_pos = num_positional_args(arg_values, arg_kinds)
+            keywords = self._vectorcall_keywords(arg_names)
+            value = self.call_c(py_vectorcall_method_op,
+                                [method_name_reg,
+                                 arg_ptr,
+                                 Integer((num_pos + 1) | PY_VECTORCALL_ARGUMENTS_OFFSET,
+                                         c_size_t_rprimitive),
+                                 keywords],
+                                line)
+            # Make sure arguments won't be freed until after the call.
+            # We need this because RArray doesn't support automatic
+            # memory management.
+            self.add(KeepAlive(coerced_args))
+            return value
+        return None
 
     def call(self,
              decl: FuncDecl,
@@ -784,7 +895,7 @@ class LowLevelIRBuilder:
             return result_list
         args = [self.coerce(item, object_rprimitive, line) for item in values]
         ob_item_ptr = self.add(GetElementPtr(result_list, PyListObject, 'ob_item', line))
-        ob_item_base = self.add(LoadMem(pointer_rprimitive, ob_item_ptr, result_list, line))
+        ob_item_base = self.add(LoadMem(pointer_rprimitive, ob_item_ptr, line))
         for i in range(len(values)):
             if i == 0:
                 item_address = ob_item_base
@@ -792,7 +903,8 @@ class LowLevelIRBuilder:
                 offset = Integer(PLATFORM_SIZE * i, c_pyssize_t_rprimitive, line)
                 item_address = self.add(IntOp(pointer_rprimitive, ob_item_base, offset,
                                               IntOp.ADD, line))
-            self.add(SetMem(object_rprimitive, item_address, args[i], result_list, line))
+            self.add(SetMem(object_rprimitive, item_address, args[i], line))
+        self.add(KeepAlive([result_list]))
         return result_list
 
     def new_set_op(self, values: List[Value], line: int) -> Value:
@@ -971,7 +1083,8 @@ class LowLevelIRBuilder:
         typ = val.type
         if is_list_rprimitive(typ) or is_tuple_rprimitive(typ):
             elem_address = self.add(GetElementPtr(val, PyVarObject, 'ob_size'))
-            size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address, val))
+            size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
+            self.add(KeepAlive([val]))
             offset = Integer(1, c_pyssize_t_rprimitive, line)
             return self.int_op(short_int_rprimitive, size_value, offset,
                                IntOp.LEFT_SHIFT, line)
@@ -982,7 +1095,8 @@ class LowLevelIRBuilder:
                                IntOp.LEFT_SHIFT, line)
         elif is_set_rprimitive(typ):
             elem_address = self.add(GetElementPtr(val, PySetObject, 'used'))
-            size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address, val))
+            size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
+            self.add(KeepAlive([val]))
             offset = Integer(1, c_pyssize_t_rprimitive, line)
             return self.int_op(short_int_rprimitive, size_value, offset,
                                IntOp.LEFT_SHIFT, line)
@@ -1149,3 +1263,13 @@ class LowLevelIRBuilder:
             return self.call_c(dict_build_op, [size_value] + items, line)
         else:
             return self.call_c(dict_new_op, [], line)
+
+
+def num_positional_args(arg_values: List[Value], arg_kinds: Optional[List[int]]) -> int:
+    if arg_kinds is None:
+        return len(arg_values)
+    num_pos = 0
+    for kind in arg_kinds:
+        if kind == ARG_POS:
+            num_pos += 1
+    return num_pos

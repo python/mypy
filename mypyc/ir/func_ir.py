@@ -7,7 +7,7 @@ from mypy.nodes import FuncDef, Block, ARG_POS, ARG_OPT, ARG_NAMED_OPT
 
 from mypyc.common import JsonDict
 from mypyc.ir.ops import (
-    DeserMaps, BasicBlock, Value, Register, Assign, ControlOp, LoadAddress
+    DeserMaps, BasicBlock, Value, Register, Assign, AssignMulti, ControlOp, LoadAddress
 )
 from mypyc.ir.rtypes import RType, deserialize_type
 from mypyc.namegen import NameGenerator
@@ -234,7 +234,7 @@ def all_values(args: List[Register], blocks: List[BasicBlock]) -> List[Value]:
     for block in blocks:
         for op in block.ops:
             if not isinstance(op, ControlOp):
-                if isinstance(op, Assign):
+                if isinstance(op, (Assign, AssignMulti)):
                     if op.dest not in seen_registers:
                         values.append(op.dest)
                         seen_registers.add(op.dest)
@@ -266,7 +266,7 @@ def all_values_full(args: List[Register], blocks: List[BasicBlock]) -> List[Valu
                     values.append(source)
                     seen_registers.add(source)
             if not isinstance(op, ControlOp):
-                if isinstance(op, Assign):
+                if isinstance(op, (Assign, AssignMulti)):
                     if op.dest not in seen_registers:
                         values.append(op.dest)
                         seen_registers.add(op.dest)

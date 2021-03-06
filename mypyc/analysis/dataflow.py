@@ -6,10 +6,10 @@ from typing import Dict, Tuple, List, Set, TypeVar, Iterator, Generic, Optional,
 
 from mypyc.ir.ops import (
     Value, ControlOp,
-    BasicBlock, OpVisitor, Assign, Integer, LoadErrorValue, RegisterOp, Goto, Branch, Return, Call,
-    Box, Unbox, Cast, Op, Unreachable, TupleGet, TupleSet, GetAttr, SetAttr, LoadLiteral,
-    LoadStatic, InitStatic, MethodCall, RaiseStandardError, CallC, LoadGlobal,
-    Truncate, IntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp, SetMem
+    BasicBlock, OpVisitor, Assign, AssignMulti, Integer, LoadErrorValue, RegisterOp, Goto, Branch,
+    Return, Call, Box, Unbox, Cast, Op, Unreachable, TupleGet, TupleSet, GetAttr, SetAttr,
+    LoadLiteral, LoadStatic, InitStatic, MethodCall, RaiseStandardError, CallC, LoadGlobal,
+    Truncate, IntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp, SetMem, KeepAlive
 )
 from mypyc.ir.func_ir import all_values
 
@@ -153,6 +153,10 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill]):
         raise NotImplementedError
 
     @abstractmethod
+    def visit_assign_multi(self, op: AssignMulti) -> GenAndKill:
+        raise NotImplementedError
+
+    @abstractmethod
     def visit_set_mem(self, op: SetMem) -> GenAndKill:
         raise NotImplementedError
 
@@ -222,6 +226,9 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill]):
     def visit_load_address(self, op: LoadAddress) -> GenAndKill:
         return self.visit_register_op(op)
 
+    def visit_keep_alive(self, op: KeepAlive) -> GenAndKill:
+        return self.visit_register_op(op)
+
 
 class DefinedVisitor(BaseAnalysisVisitor):
     """Visitor for finding defined registers.
@@ -249,6 +256,10 @@ class DefinedVisitor(BaseAnalysisVisitor):
             return set(), {op.dest}
         else:
             return {op.dest}, set()
+
+    def visit_assign_multi(self, op: AssignMulti) -> GenAndKill:
+        # Array registers are special and we don't track the definedness of them.
+        return set(), set()
 
     def visit_set_mem(self, op: SetMem) -> GenAndKill:
         return set(), set()
@@ -313,6 +324,9 @@ class BorrowedArgumentsVisitor(BaseAnalysisVisitor):
             return set(), {op.dest}
         return set(), set()
 
+    def visit_assign_multi(self, op: AssignMulti) -> GenAndKill:
+        return set(), set()
+
     def visit_set_mem(self, op: SetMem) -> GenAndKill:
         return set(), set()
 
@@ -348,6 +362,9 @@ class UndefinedVisitor(BaseAnalysisVisitor):
         return set(), {op} if not op.is_void else set()
 
     def visit_assign(self, op: Assign) -> GenAndKill:
+        return set(), {op.dest}
+
+    def visit_assign_multi(self, op: AssignMulti) -> GenAndKill:
         return set(), {op.dest}
 
     def visit_set_mem(self, op: SetMem) -> GenAndKill:
@@ -402,6 +419,9 @@ class LivenessVisitor(BaseAnalysisVisitor):
             return gen, set()
 
     def visit_assign(self, op: Assign) -> GenAndKill:
+        return non_trivial_sources(op), {op.dest}
+
+    def visit_assign_multi(self, op: AssignMulti) -> GenAndKill:
         return non_trivial_sources(op), {op.dest}
 
     def visit_set_mem(self, op: SetMem) -> GenAndKill:

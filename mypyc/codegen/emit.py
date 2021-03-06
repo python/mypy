@@ -1,11 +1,12 @@
 """Utilities for emitting C code."""
 
 from mypy.ordered_dict import OrderedDict
-from typing import List, Set, Dict, Optional, Callable, Union
+from typing import List, Set, Dict, Optional, Callable, Union, Tuple
+import sys
 
 from mypyc.common import (
     REG_PREFIX, ATTR_PREFIX, STATIC_PREFIX, TYPE_PREFIX, NATIVE_PREFIX,
-    FAST_ISINSTANCE_MAX_SUBCLASSES,
+    FAST_ISINSTANCE_MAX_SUBCLASSES, use_vectorcall
 )
 from mypyc.ir.ops import BasicBlock, Value
 from mypyc.ir.rtypes import (
@@ -93,8 +94,11 @@ class Emitter:
 
     def __init__(self,
                  context: EmitterContext,
-                 value_names: Optional[Dict[Value, str]] = None) -> None:
+                 value_names: Optional[Dict[Value, str]] = None,
+                 capi_version: Optional[Tuple[int, int]] = None,
+                 ) -> None:
         self.context = context
+        self.capi_version = capi_version or sys.version_info[:2]
         self.names = context.names
         self.value_names = value_names or {}
         self.fragments = []  # type: List[str]
@@ -253,6 +257,9 @@ class Emitter:
         result.append('')
 
         return result
+
+    def use_vectorcall(self) -> bool:
+        return use_vectorcall(self.capi_version)
 
     def emit_undefined_attr_check(self, rtype: RType, attr_expr: str,
                                   compare: str,

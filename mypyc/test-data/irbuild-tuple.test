@@ -67,7 +67,8 @@ def f(x):
     r2 :: short_int
 L0:
     r0 = get_element_ptr x ob_size :: PyVarObject
-    r1 = load_mem r0, x :: native_int*
+    r1 = load_mem r0 :: native_int*
+    keep_alive x
     r2 = r1 << 1
     return r2
 
@@ -110,10 +111,11 @@ L0:
     r1 = box(short_int, 2)
     r2 = box(short_int, 4)
     r3 = get_element_ptr r0 ob_item :: PyListObject
-    r4 = load_mem r3, r0 :: ptr*
-    set_mem r4, r1, r0 :: builtins.object*
+    r4 = load_mem r3 :: ptr*
+    set_mem r4, r1 :: builtins.object*
     r5 = r4 + WORD_SIZE*1
-    set_mem r5, r2, r0 :: builtins.object*
+    set_mem r5, r2 :: builtins.object*
+    keep_alive r0
     r6 = CPyList_Extend(r0, x)
     r7 = CPyList_Extend(r0, y)
     r8 = box(short_int, 6)
@@ -142,7 +144,8 @@ L0:
     r0 = 0
 L1:
     r1 = get_element_ptr xs ob_size :: PyVarObject
-    r2 = load_mem r1, xs :: native_int*
+    r2 = load_mem r1 :: native_int*
+    keep_alive xs
     r3 = r2 << 1
     r4 = r0 < r3 :: signed
     if r4 goto L2 else goto L4 :: bool

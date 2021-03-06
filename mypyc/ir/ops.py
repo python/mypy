@@ -18,7 +18,7 @@ from typing_extensions import Final, TYPE_CHECKING
 from mypy_extensions import trait
 
 from mypyc.ir.rtypes import (
-    RType, RInstance, RTuple, RVoid, is_bool_rprimitive, is_int_rprimitive,
+    RType, RInstance, RTuple, RArray, RVoid, is_bool_rprimitive, is_int_rprimitive,
     is_short_int_rprimitive, is_none_rprimitive, object_rprimitive, bool_rprimitive,
     short_int_rprimitive, int_rprimitive, void_rtype, pointer_rprimitive, is_pointer_rprimitive,
     bit_rprimitive, is_bit_rprimitive
@@ -149,11 +149,13 @@ class Integer(Value):
     not included in data flow analyses and such, unlike Register and
     Op subclasses.
 
-    These can represent both short tagged integers
-    (short_int_primitive type; the tag bit is clear), ordinary
-    fixed-width integers (e.g., int32_rprimitive), and values of some
-    other unboxed primitive types that are represented as integers
-    (none_rprimitive, bool_rprimitive).
+    Integer can represent multiple types:
+
+     * Short tagged integers (short_int_primitive type; the tag bit is clear)
+     * Ordinary fixed-width integers (e.g., int32_rprimitive)
+     * Values of other unboxed primitive types that are represented as integers
+       (none_rprimitive, bool_rprimitive)
+     * Null pointers (value 0) of various types, including object_rprimitive
     """
 
     def __init__(self, value: int, rtype: RType = short_int_rprimitive, line: int = -1) -> None:
@@ -224,6 +226,37 @@ class Assign(Op):
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_assign(self)
+
+
+class AssignMulti(Op):
+    """Assign multiple values to a Register (dest = src1, src2, ...).
+
+    This is used to initialize RArray values. It's provided to avoid
+    very verbose IR for common vectorcall operations.
+
+    Note that this interacts atypically with reference counting. We
+    assume that each RArray register is initialized exactly once
+    with this op.
+    """
+
+    error_kind = ERR_NEVER
+
+    def __init__(self, dest: Register, src: List[Value], line: int = -1) -> None:
+        super().__init__(line)
+        assert src
+        assert isinstance(dest.type, RArray)
+        assert dest.type.length == len(src)
+        self.src = src
+        self.dest = dest
+
+    def sources(self) -> List[Value]:
+        return self.src[:]
+
+    def stolen(self) -> List[Value]:
+        return []
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_assign_multi(self)
 
 
 class ControlOp(Op):
@@ -1018,30 +1051,21 @@ class LoadMem(RegisterOp):
     Attributes:
       type: Type of the read value
       src: Pointer to memory to read
-      base: If not None, the object from which we are reading memory.
-            It's used to avoid the target object from being freed via
-            reference counting. If the target is not in reference counted
-            memory, or we know that the target won't be freed, it can be
-            None.
     """
 
     error_kind = ERR_NEVER
 
-    def __init__(self, type: RType, src: Value, base: Optional[Value], line: int = -1) -> None:
+    def __init__(self, type: RType, src: Value, line: int = -1) -> None:
         super().__init__(line)
         self.type = type
         # TODO: for now we enforce that the src memory address should be Py_ssize_t
         #       later we should also support same width unsigned int
         assert is_pointer_rprimitive(src.type)
         self.src = src
-        self.base = base
         self.is_borrowed = True
 
     def sources(self) -> List[Value]:
-        if self.base:
-            return [self.src, self.base]
-        else:
-            return [self.src]
+        return [self.src]
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_load_mem(self)
@@ -1054,11 +1078,6 @@ class SetMem(Op):
       type: Type of the written value
       dest: Pointer to memory to write
       src: Source value
-      base: If not None, the object which we are modifying.
-            It's used to avoid the target object from being freed via
-            reference counting. If the target is not in reference counted
-            memory, or we know that the target won't be freed, it can be
-            None.
     """
 
     error_kind = ERR_NEVER
@@ -1067,20 +1086,15 @@ class SetMem(Op):
                  type: RType,
                  dest: Value,
                  src: Value,
-                 base: Optional[Value],
                  line: int = -1) -> None:
         super().__init__(line)
         self.type = void_rtype
         self.dest_type = type
         self.src = src
         self.dest = dest
-        self.base = base
 
     def sources(self) -> List[Value]:
-        if self.base:
-            return [self.src, self.base, self.dest]
-        else:
-            return [self.src, self.dest]
+        return [self.src, self.dest]
 
     def stolen(self) -> List[Value]:
         return [self.src]
@@ -1090,7 +1104,11 @@ class SetMem(Op):
 
 
 class GetElementPtr(RegisterOp):
-    """Get the address of a struct element."""
+    """Get the address of a struct element.
+
+    Note that you may need to use KeepAlive to avoid the struct
+    being freed, if it's reference counted, such as PyObject *.
+    """
 
     error_kind = ERR_NEVER
 
@@ -1135,6 +1153,37 @@ class LoadAddress(RegisterOp):
         return visitor.visit_load_address(self)
 
 
+class KeepAlive(RegisterOp):
+    """A no-op operation that ensures source values aren't freed.
+
+    This is sometimes useful to avoid decref when a reference is still
+    being held but not seen by the compiler.
+
+    A typical use case is like this (C-like pseudocode):
+
+      ptr = &x.item
+      r = *ptr
+      keep_alive x  # x must not be freed here
+      # x may be freed here
+
+    If we didn't have "keep_alive x", x could be freed immediately
+    after taking the address of 'item', resulting in a read after free
+    on the second line.
+    """
+
+    error_kind = ERR_NEVER
+
+    def __init__(self, src: List[Value]) -> None:
+        assert src
+        self.src = src
+
+    def sources(self) -> List[Value]:
+        return self.src[:]
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_keep_alive(self)
+
+
 @trait
 class OpVisitor(Generic[T]):
     """Generic visitor over ops (uses the visitor design pattern)."""
@@ -1157,6 +1206,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_assign(self, op: Assign) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_assign_multi(self, op: AssignMulti) -> T:
         raise NotImplementedError
 
     @abstractmethod
@@ -1255,6 +1308,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_load_address(self, op: LoadAddress) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_keep_alive(self, op: KeepAlive) -> T:
         raise NotImplementedError
 
 

@@ -52,8 +52,9 @@ L0:
     c.x = 10; r1 = is_error
     r2 = PyList_New(1)
     r3 = get_element_ptr r2 ob_item :: PyListObject
-    r4 = load_mem r3, r2 :: ptr*
-    set_mem r4, c, r2 :: builtins.object*
+    r4 = load_mem r3 :: ptr*
+    set_mem r4, c :: builtins.object*
+    keep_alive r2
     a = r2
     r5 = CPyList_GetItemShort(a, 0)
     r6 = cast(__main__.C, r5)
@@ -492,7 +493,8 @@ def f(x):
 L0:
     r0 = __main__.B :: type
     r1 = get_element_ptr x ob_type :: PyObject
-    r2 = load_mem r1, x :: builtins.object*
+    r2 = load_mem r1 :: builtins.object*
+    keep_alive x
     r3 = r2 == r0
     if r3 goto L1 else goto L2 :: bool
 L1:
@@ -530,7 +532,8 @@ def f(x):
 L0:
     r0 = __main__.A :: type
     r1 = get_element_ptr x ob_type :: PyObject
-    r2 = load_mem r1, x :: builtins.object*
+    r2 = load_mem r1 :: builtins.object*
+    keep_alive x
     r3 = r2 == r0
     if r3 goto L1 else goto L2 :: bool
 L1:
@@ -539,7 +542,8 @@ L1:
 L2:
     r5 = __main__.B :: type
     r6 = get_element_ptr x ob_type :: PyObject
-    r7 = load_mem r6, x :: builtins.object*
+    r7 = load_mem r6 :: builtins.object*
+    keep_alive x
     r8 = r7 == r5
     r4 = r8
 L3:
@@ -575,7 +579,8 @@ def f(x):
 L0:
     r0 = __main__.A :: type
     r1 = get_element_ptr x ob_type :: PyObject
-    r2 = load_mem r1, x :: builtins.object*
+    r2 = load_mem r1 :: builtins.object*
+    keep_alive x
     r3 = r2 == r0
     if r3 goto L1 else goto L2 :: bool
 L1:
@@ -584,7 +589,8 @@ L1:
 L2:
     r5 = __main__.R :: type
     r6 = get_element_ptr x ob_type :: PyObject
-    r7 = load_mem r6, x :: builtins.object*
+    r7 = load_mem r6 :: builtins.object*
+    keep_alive x
     r8 = r7 == r5
     r4 = r8
 L3:
@@ -624,7 +630,8 @@ def f(x):
 L0:
     r0 = __main__.A :: type
     r1 = get_element_ptr x ob_type :: PyObject
-    r2 = load_mem r1, x :: builtins.object*
+    r2 = load_mem r1 :: builtins.object*
+    keep_alive x
     r3 = r2 == r0
     if r3 goto L1 else goto L2 :: bool
 L1:
@@ -633,7 +640,8 @@ L1:
 L2:
     r5 = __main__.C :: type
     r6 = get_element_ptr x ob_type :: PyObject
-    r7 = load_mem r6, x :: builtins.object*
+    r7 = load_mem r6 :: builtins.object*
+    keep_alive x
     r8 = r7 == r5
     r4 = r8
 L3:

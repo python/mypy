@@ -551,10 +551,10 @@ L0:
     r1 = box(short_int, 0)
     r2 = box(short_int, 2)
     r3 = get_element_ptr r0 ob_item :: PyListObject
-    r4 = load_mem r3, r0 :: ptr*
-    set_mem r4, r1, r0 :: builtins.object*
+    r4 = load_mem r3 :: ptr*
+    set_mem r4, r1 :: builtins.object*
     r5 = r4 + WORD_SIZE*1
-    set_mem r5, r2, r0 :: builtins.object*
+    set_mem r5, r2 :: builtins.object*
     a = r0
     dec_ref a
     return 0
@@ -629,8 +629,8 @@ L0:
     r0 = C()
     r1 = PyList_New(1)
     r2 = get_element_ptr r1 ob_item :: PyListObject
-    r3 = load_mem r2, r1 :: ptr*
-    set_mem r3, r0, r1 :: builtins.object*
+    r3 = load_mem r2 :: ptr*
+    set_mem r3, r0 :: builtins.object*
     a = r1
     r4 = CPyList_GetItemShort(a, 0)
     dec_ref a
@@ -808,7 +808,7 @@ L0:
     r0 = PyList_New(0)
     x = r0
     r1 = get_element_ptr x ob_size :: PyVarObject
-    r2 = load_mem r1, x :: native_int*
+    r2 = load_mem r1 :: native_int*
     dec_ref x
     r3 = r2 << 1
     return r3
@@ -864,3 +864,55 @@ L10:
 L11:
     xdec_ref y :: int
     goto L6
+
+[case testVectorcall_python3_8]
+from typing import Any
+
+def call(f: Any, x: int) -> int:
+    return f(x)
+[out]
+def call(f, x):
+    f :: object
+    x :: int
+    r0 :: object
+    r1 :: object[1]
+    r2 :: object_ptr
+    r3 :: object
+    r4 :: int
+L0:
+    inc_ref x :: int
+    r0 = box(int, x)
+    r1 = [r0]
+    r2 = load_address r1
+    r3 = _PyObject_Vectorcall(f, r2, 1, 0)
+    dec_ref r0
+    r4 = unbox(int, r3)
+    dec_ref r3
+    return r4
+
+[case testVectorcallMethod_python3_9_64bit]
+from typing import Any
+
+def call(o: Any, x: int) -> int:
+    return o.m(x)
+[out]
+def call(o, x):
+    o :: object
+    x :: int
+    r0 :: str
+    r1 :: object
+    r2 :: object[2]
+    r3 :: object_ptr
+    r4 :: object
+    r5 :: int
+L0:
+    r0 = 'm'
+    inc_ref x :: int
+    r1 = box(int, x)
+    r2 = [o, r1]
+    r3 = load_address r2
+    r4 = PyObject_VectorcallMethod(r0, r3, 9223372036854775810, 0)
+    dec_ref r1
+    r5 = unbox(int, r4)
+    dec_ref r4
+    return r5
