@@ -311,6 +311,13 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(AssignMulti(a, [self.o, self.o2]),
                          """PyObject *cpy_r_a[2] = {cpy_r_o, cpy_r_o2};""")
 
+    def test_long_unsigned(self) -> None:
+        a = Register(int64_rprimitive, 'a')
+        self.assert_emit(Assign(a, Integer(1 << 31, int64_rprimitive)),
+                         """cpy_r_a = 2147483648U;""")
+        self.assert_emit(Assign(a, Integer((1 << 31) - 1, int64_rprimitive)),
+                         """cpy_r_a = 2147483647;""")
+
     def assert_emit(self, op: Op, expected: str) -> None:
         block = BasicBlock(0)
         block.ops.append(op)
