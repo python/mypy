@@ -3,19 +3,31 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to mypyc's documentation!
-=================================
+Welcome to mypyc documentation!
+===============================
+
+Mypyc is a compiler from type-annotated Python to fast C extension
+modules, using `mypy <http://www.mypy-lang.org>`_ as the type checker.
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: First steps
 
    introduction
    getting_started
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Using mypyc
+
    using_type_annotations
    native_classes
    differences_from_python
    compilation_units
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Native operations reference
 
    native_operations
    int_operations
@@ -26,6 +38,10 @@ Welcome to mypyc's documentation!
    dict_operations
    set_operations
    tuple_operations
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Advanced topics
 
    performance_tips_and_tricks
 
