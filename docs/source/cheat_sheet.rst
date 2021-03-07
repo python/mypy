@@ -13,6 +13,12 @@ language represents various common types in Python 2.
    many of the examples have a dual purpose: show how to write the
    annotation, and show the inferred types.
 
+.. note::
+
+   To check Python 2 code with mypy, you'll need to install mypy with
+   ``pip install 'mypy[python2]'``.
+
+
 
 Built-in types
 **************
