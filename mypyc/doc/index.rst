@@ -6,8 +6,10 @@
 Welcome to mypyc documentation!
 ===============================
 
-Mypyc is a compiler from type-annotated Python to fast C extension
-modules, using `mypy <http://www.mypy-lang.org>`_ as the type checker.
+Mypyc compiles Python modules to C extensions. It uses standard Python
+`type hints
+<https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html>`_ to
+generate fast code.
 
 .. toctree::
    :maxdepth: 2
