@@ -26,7 +26,7 @@ runtime):
 
 * Existing code with type annotations often gets **1.5x to 5x** faster.
 
-* Code tuned for mypyc can be **5x to 15x** faster.
+* Code tuned for mypyc can be **5x to 10x** faster.
 
 There is no simple answer to how fast your code will be when compiled.
 You should try it out!

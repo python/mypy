@@ -4,16 +4,15 @@
 # list see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-# -- Path setup --------------------------------------------------------------
+import sys
+import os
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, os.path.abspath('../..'))
 
+from mypy.version import __version__ as mypy_version
 
 # -- Project information -----------------------------------------------------
 
@@ -21,6 +20,14 @@ project = 'mypyc'
 copyright = '2020, mypyc team'
 author = 'mypyc team'
 
+# The version info for the project you're documenting, acts as replacement for
+# |version| and |release|, also used in various other places throughout the
+# built documents.
+#
+# The short X.Y version.
+version = mypy_version.split('-')[0]
+# The full version, including alpha/beta/rc tags.
+release = mypy_version
 
 # -- General configuration ---------------------------------------------------
 
