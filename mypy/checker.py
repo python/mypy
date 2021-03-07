@@ -4862,11 +4862,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return function_type(func, self.named_type('builtins.function'))
 
     def push_type_map(self, type_map: 'TypeMap') -> None:
-        if type_map is None:
-            self.binder.unreachable()
-        else:
-            for expr, type in type_map.items():
-                self.binder.put(expr, type)
+        for expr, type in type_map.items():
+            self.binder.put(expr, type)
 
     def infer_issubclass_maps(self, node: CallExpr,
                               expr: Expression,
