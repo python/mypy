@@ -2,7 +2,7 @@ mypyc: Mypy to Python C Extension Compiler
 ==========================================
 
 **NOTE: We are in the process of moving the mypyc README to the**
-**[mypyc repository](https://github.com/mypyc/mypyc/blob/master/README.md)**
+**[mypyc repository](https://github.com/mypyc/mypyc)**
 
 **This may be out of date!**
 
