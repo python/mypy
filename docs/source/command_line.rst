@@ -232,6 +232,11 @@ For more information on how to use these flags, see :ref:`version_and_platform_c
 
     Equivalent to running :option:`--python-version 2.7 <--python-version>`.
 
+    .. note::
+
+        To check Python 2 code with mypy, you'll need to install mypy with
+        ``pip install 'mypy[python2]'``.
+
 .. option:: --platform PLATFORM
 
     This flag will make mypy type check your code as if it were

@@ -68,7 +68,8 @@ except ImportError:
         from typed_ast import ast35  # type: ignore[attr-defined]  # noqa: F401
     except ImportError:
         print('The typed_ast package is not installed.\n'
-              'You can install it with `python3 -m pip install typed-ast`.',
+              'For Python 2 support, install mypy using `python3 -m pip install "mypy[python2]"`'
+              'Alternatively, you can install typed_ast with `python3 -m pip install typed-ast`.',
               file=sys.stderr)
     else:
         print('You need a more recent version of the typed_ast package.\n'

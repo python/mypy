@@ -191,7 +191,7 @@ setup(name='mypy',
       classifiers=classifiers,
       cmdclass=cmdclass,
       # When changing this, also update mypy-requirements.txt.
-      install_requires=['typed_ast >= 1.4.0, < 1.5.0',
+      install_requires=["typed_ast >= 1.4.0, < 1.5.0; python_version<'3.8'",
                         'typing_extensions>=3.7.4',
                         'mypy_extensions >= 0.4.3, < 0.5.0',
                         'types-typing-extensions>=3.7.0',
@@ -199,7 +199,7 @@ setup(name='mypy',
                         'toml',
                         ],
       # Same here.
-      extras_require={'dmypy': 'psutil >= 4.0'},
+      extras_require={'dmypy': 'psutil >= 4.0', 'python2': 'typed_ast >= 1.4.0, < 1.5.0'},
       python_requires=">=3.5",
       include_package_data=True,
       project_urls={
