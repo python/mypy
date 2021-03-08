@@ -38,7 +38,7 @@ can be assigned to (similar to using ``__slots__``)::
         def method(self) -> None:
             self.z = "x"
 
-    o = Cls()
+    o = Cls(0)
     print(o.x, o.y)  # OK
     o.z = "y"  # OK
     o.extra = 3  # Error: no attribute "extra"
@@ -90,7 +90,7 @@ You need to install ``mypy-extensions`` to use ``@mypyc_attr``:
 Class variables
 ---------------
 
-Class variables much be explicitly declared using ``attr: ClassVar``
+Class variables must be explicitly declared using ``attr: ClassVar``
 or ``attr: ClassVar[<type>]``. You can't assign to a class variable
 through an instance. Example::
 
