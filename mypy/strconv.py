@@ -311,6 +311,15 @@ class StrConv(NodeVisitor[str]):
     def visit_exec_stmt(self, o: 'mypy.nodes.ExecStmt') -> str:
         return self.dump([o.expr, o.globals, o.locals], o)
 
+    def visit_match_stmt(self, o: 'mypy.nodes.MatchStmt') -> str:
+        a = [o.subject]  # type: List[Any]
+        for i in range(len(o.patterns)):
+            a.append(('Pattern', [o.patterns[i]]))
+            if o.guards[i] is not None:
+                a.append(('Guard', [o.guards[i]]))
+            a.append(('Body', o.bodies[i].body))
+        return self.dump(a, o)
+
     # Expressions
 
     # Simple expressions
@@ -534,6 +543,12 @@ class StrConv(NodeVisitor[str]):
 
     def visit_temp_node(self, o: 'mypy.nodes.TempNode') -> str:
         return self.dump([o.type], o)
+
+    def visit_match_as(self, o: 'mypy.nodes.MatchAs') -> str:
+        return self.dump([o.name, o.pattern], o)
+
+    def visit_match_or(self, o: 'mypy.nodes.MatchOr') -> str:
+        return self.dump(o.patterns, o)
 
 
 def dump_tagged(nodes: Sequence[object], tag: Optional[str], str_conv: 'StrConv') -> str:
