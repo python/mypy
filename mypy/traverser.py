@@ -8,12 +8,13 @@ from mypy.nodes import (
     Block, MypyFile, FuncBase, FuncItem, CallExpr, ClassDef, Decorator, FuncDef,
     ExpressionStmt, AssignmentStmt, OperatorAssignmentStmt, WhileStmt,
     ForStmt, ReturnStmt, AssertStmt, DelStmt, IfStmt, RaiseStmt,
-    TryStmt, WithStmt, NameExpr, MemberExpr, OpExpr, SliceExpr, CastExpr, RevealExpr,
-    UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr, IndexExpr, AssignmentExpr,
+    TryStmt, WithStmt, MatchStmt, NameExpr, MemberExpr, OpExpr, SliceExpr, CastExpr,
+    RevealExpr, UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr, IndexExpr, AssignmentExpr,
     GeneratorExpr, ListComprehension, SetComprehension, DictionaryComprehension,
     ConditionalExpr, TypeApplication, ExecStmt, Import, ImportFrom,
     LambdaExpr, ComparisonExpr, OverloadedFuncDef, YieldFromExpr,
-    YieldExpr, StarExpr, BackquoteExpr, AwaitExpr, PrintStmt, SuperExpr, Node, REVEAL_TYPE,
+    YieldExpr, StarExpr, BackquoteExpr, AwaitExpr, PrintStmt, SuperExpr, MatchAs, MatchOr,
+    Node, REVEAL_TYPE,
 )
 
 
@@ -156,6 +157,15 @@ class TraverserVisitor(NodeVisitor[None]):
                 targ.accept(self)
         o.body.accept(self)
 
+    def visit_match_stmt(self, o: MatchStmt) -> None:
+        o.subject.accept(self)
+        for i in range(len(o.patterns)):
+            o.patterns[i].accept(self)
+            guard = o.guards[i]
+            if guard is not None:
+                guard.accept(self)
+            o.bodies[i].accept(self)
+
     def visit_member_expr(self, o: MemberExpr) -> None:
         o.expr.accept(self)
 
@@ -278,6 +288,13 @@ class TraverserVisitor(NodeVisitor[None]):
 
     def visit_super_expr(self, o: SuperExpr) -> None:
         o.call.accept(self)
+
+    def visit_match_as(self, o: MatchAs) -> None:
+        o.pattern.accept(self)
+
+    def visit_match_or(self, o: MatchOr) -> None:
+        for p in o.patterns:
+            p.accept(self)
 
     def visit_import(self, o: Import) -> None:
         for a in o.assignments:
