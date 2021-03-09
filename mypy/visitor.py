@@ -192,6 +192,14 @@ class ExpressionVisitor(Generic[T]):
     def visit_temp_node(self, o: 'mypy.nodes.TempNode') -> T:
         pass
 
+    @abstractmethod
+    def visit_match_as(self, o: 'mypy.nodes.MatchAs') -> T:
+        pass
+
+    @abstractmethod
+    def visit_match_or(self, o: 'mypy.nodes.MatchOr') -> T:
+        pass
+
 
 @trait
 @mypyc_attr(allow_interpreted_subclasses=True)
@@ -308,6 +316,10 @@ class StatementVisitor(Generic[T]):
 
     @abstractmethod
     def visit_exec_stmt(self, o: 'mypy.nodes.ExecStmt') -> T:
+        pass
+
+    @abstractmethod
+    def visit_match_stmt(self, o: 'mypy.nodes.MatchStmt') -> T:
         pass
 
 

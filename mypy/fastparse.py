@@ -17,14 +17,14 @@ from mypy.nodes import (
     ClassDef, Decorator, Block, Var, OperatorAssignmentStmt,
     ExpressionStmt, AssignmentStmt, ReturnStmt, RaiseStmt, AssertStmt,
     DelStmt, BreakStmt, ContinueStmt, PassStmt, GlobalDecl,
-    WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt,
+    WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt, MatchStmt,
     TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
     DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
     UnaryExpr, LambdaExpr, ComparisonExpr, AssignmentExpr,
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
-    AwaitExpr, TempNode, Expression, Statement,
+    AwaitExpr, MatchAs, MatchOr, TempNode, Expression, Statement,
     ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR2,
     check_arg_names,
     FakeInfo,
@@ -1271,6 +1271,24 @@ class ASTConverter:
     def visit_Index(self, n: Index) -> Node:
         # cast for mypyc's benefit on Python 3.9
         return self.visit(cast(Any, n).value)
+
+    # Match(expr subject, match_case* cases) # python 3.10 and later
+    def visit_Match(self, n: ast3.Match) -> MatchStmt:
+        node = MatchStmt(self.visit(n.subject),
+                         [self.visit(c.pattern) for c in n.cases],
+                         [self.visit(c.guard) for c in n.cases],
+                         [self.as_required_block(c.body, n.lineno) for c in n.cases])
+        return self.set_line(node, n)
+
+    # MatchAs(expr pattern, identifier name)
+    def visit_MatchAs(self, n: ast3.MatchAs) -> MatchAs:
+        node = MatchAs(self.visit(n.pattern), n.name)
+        return self.set_line(node, n)
+
+    # MatchOr(expr* pattern)
+    def visit_MatchOr(self, n: ast3.MatchOr) -> MatchOr:
+        node = MatchOr([self.visit(pattern) for pattern in n.patterns])
+        return self.set_line(node, n)
 
 
 class TypeConverter:
