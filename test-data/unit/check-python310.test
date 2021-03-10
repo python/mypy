@@ -73,3 +73,85 @@ match m:
         pass
     case longName:
         pass
+
+[case testWildcardPattern]
+# flags: --python-version 3.10
+m: object
+match m:
+    case _:
+        pass
+
+
+[case testValuePattern]
+# flags: --python-version 3.10
+class A:
+    b = 1
+a = A()
+m: object
+
+match m:
+    case a.b:
+        pass
+
+
+[case testGroupPattern]
+# flags: --python-version 3.10
+m: object
+
+match m:
+    case (1):
+        pass
+
+
+[case testSequencePattern]
+# flags: --python-version 3.10
+m: object
+
+match m:
+    case []:
+        pass
+    case ():
+        pass
+    case [1]:
+        pass
+    case (1,):
+        pass
+    case [1, 2, 3]:
+        pass
+    case (1, 2, 3):
+        pass
+    case [1, *a, 2]:
+        pass
+    case (1, *a, 2):
+        pass
+    case [1, *_, 2]:
+        pass
+    case (1, *_, 2):
+        pass
+
+
+[case testMappingPattern]
+# flags: --python-version 3.10
+class A:
+    b = 'l'
+    c = 2
+a = A()
+m: object
+
+match m:
+    case {'k': v}:
+        pass
+    case {a.b: v}:
+        pass
+    case {1: v}:
+        pass
+    case {a.c: v}:
+        pass
+    case {'k': v1, a.b: v2, 1: v3, a.c: v4}:
+        pass
+    case {'k': 1, a.b: "str", 1: b'bytes', a.c: None}:
+        pass
+    case {'k': v, **r}:
+        pass
+    case {**r}:
+        pass

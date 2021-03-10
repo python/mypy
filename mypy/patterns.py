@@ -1,9 +1,9 @@
 """Classes for representing match statement patterns."""
-from typing import TypeVar, List, Any
+from typing import TypeVar, List, Any, Union, Optional
 
 from mypy_extensions import trait
 
-from mypy.nodes import Node
+from mypy.nodes import Node, MemberExpr
 from mypy.visitor import PatternVisitor
 
 # These are not real AST nodes. CPython represents patterns using the normal expression nodes.
@@ -71,3 +71,57 @@ class CapturePattern(Pattern):
 class WildcardPattern(Pattern):
     def accept(self, visitor: PatternVisitor[T]) -> T:
         return visitor.visit_wildcard_pattern(self)
+
+
+class ValuePattern(Pattern):
+    expr = None  # type: MemberExpr
+
+    def __init__(self, expr: MemberExpr):
+        super().__init__()
+        self.expr = expr
+
+    def accept(self, visitor: PatternVisitor[T]) -> T:
+        return visitor.visit_value_pattern(self)
+
+
+class SequencePattern(Pattern):
+    patterns = None  # type: List[Pattern]
+
+    def __init__(self, patterns: List[Pattern]):
+        super().__init__()
+        self.patterns = patterns
+
+    def accept(self, visitor: PatternVisitor[T]) -> T:
+        return visitor.visit_sequence_pattern(self)
+
+
+# TODO: A StarredPattern is only valid within a SequencePattern. This is not guaranteed by our
+# type hierarchy. Should it be?
+class StarredPattern(Pattern):
+    name = None  # type: str
+
+    def __init__(self, name: str):
+        super().__init__()
+        self.name = name
+
+    def accept(self, visitor: PatternVisitor[T]) -> T:
+        return visitor.visit_starred_pattern(self)
+
+
+MappingKeyPattern = Union[LiteralPattern, ValuePattern]
+
+
+class MappingPattern(Pattern):
+    keys = None  # type: List[MappingKeyPattern]
+    values = None  # type: List[Pattern]
+    rest = None  # type: Optional[CapturePattern]
+
+    def __init__(self, keys: List[MappingKeyPattern], values: List[Pattern],
+                 rest: Optional[CapturePattern]):
+        super().__init__()
+        self.keys = keys
+        self.values = values
+        self.rest = rest
+
+    def accept(self, visitor: PatternVisitor[T]) -> T:
+        return visitor.visit_mapping_pattern(self)

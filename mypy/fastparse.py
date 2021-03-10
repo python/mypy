@@ -32,7 +32,8 @@ from mypy.nodes import (
     FakeInfo,
 )
 from mypy.patterns import (
-    AsPattern, OrPattern, LiteralPattern, CapturePattern, WildcardPattern
+    AsPattern, OrPattern, LiteralPattern, CapturePattern, WildcardPattern, ValuePattern,
+    SequencePattern, StarredPattern, MappingPattern
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType, CallableArgument,
@@ -1305,7 +1306,7 @@ class ASTConverter(Converter):
 
     # Match(expr subject, match_case* cases) # python 3.10 and later
     def visit_Match(self, n: Match) -> MatchStmt:
-        pattern_converter = PatternConverter(self.errors)
+        pattern_converter = PatternConverter(self.options, self.errors)
         node = MatchStmt(self.visit(n.subject),
                          [pattern_converter.visit(c.pattern) for c in n.cases],
                          [self.visit(c.guard) for c in n.cases],
@@ -1314,8 +1315,13 @@ class ASTConverter(Converter):
 
 
 class PatternConverter(Converter):
-    def __init__(self, errors: Optional[Errors]) -> None:
+    # Errors is optional is superclass, but not here
+    errors = None  # type: Errors
+
+    def __init__(self, options: Options, errors: Errors) -> None:
         super().__init__(errors)
+
+        self.options = options
 
     # MatchAs(expr pattern, identifier name)
     def visit_MatchAs(self, n: MatchAs) -> AsPattern:
@@ -1327,25 +1333,16 @@ class PatternConverter(Converter):
         node = OrPattern([self.visit(pattern) for pattern in n.patterns])
         return self.set_line(node, n)
 
-    def assert_numeric_constant(self, n: ast3.AST) -> Union[int, float, complex]:
-        # Constant is Any on python < 3.8, but this code is only reachable on python >= 3.10
-        if isinstance(n, Constant):  # type: ignore[misc]
-            val = n.value
-            if isinstance(val, int) or isinstance(val, float) or isinstance(val, complex):
-                return val
-        raise RuntimeError("Only numeric literals can be used with '+' and '-'. Found "
-                           + str(type(n)))
-
+    # Constant(constant value)
     def visit_Constant(self, n: Constant) -> LiteralPattern:
         val = n.value
-        if val is None or isinstance(val, bool) or isinstance(val, int) or \
-                isinstance(val, float) or isinstance(val, complex) or \
-                isinstance(val, str) or isinstance(val, bytes):
+        if val is None or isinstance(val, (bool, int, float, complex, str, bytes)):
             node = LiteralPattern(val)
         else:
             raise RuntimeError("Pattern not implemented for " + str(type(val)))
         return self.set_line(node, n)
 
+    # UnaryOp(unaryop op, expr operand)
     def visit_UnaryOp(self, n: ast3.UnaryOp) -> LiteralPattern:
         # Constant is Any on python < 3.8, but this code is only reachable on python >= 3.10
         if not isinstance(n.operand, Constant):  # type: ignore[misc]
@@ -1362,6 +1359,7 @@ class PatternConverter(Converter):
 
         return self.set_line(node, n)
 
+    # BinOp(expr left, operator op, expr right)
     def visit_BinOp(self, n: ast3.BinOp) -> LiteralPattern:
         if isinstance(n.left, UnaryOp) and isinstance(n.left.op, ast3.USub):
             left_val = -1 * self.assert_numeric_constant(n.left.operand)
@@ -1381,11 +1379,76 @@ class PatternConverter(Converter):
 
         return self.set_line(node, n)
 
+    def assert_numeric_constant(self, n: ast3.AST) -> Union[int, float, complex]:
+        # Constant is Any on python < 3.8, but this code is only reachable on python >= 3.10
+        if isinstance(n, Constant):  # type: ignore[misc]
+            val = n.value
+            if isinstance(val, (int, float, complex)):
+                return val
+        raise RuntimeError("Only numeric literals can be used with '+' and '-'. Found "
+                           + str(type(n)))
+
+    # Name(identifier id, expr_context ctx)
     def visit_Name(self, n: ast3.Name) -> Union[WildcardPattern, CapturePattern]:
+        node = None  # type: Optional[Union[WildcardPattern, CapturePattern]]
         if n.id == '_':
-            return WildcardPattern()
+            node = WildcardPattern()
         else:
-            return CapturePattern(n.id)
+            node = CapturePattern(n.id)
+
+        return self.set_line(node, n)
+
+    # Attribute(expr value, identifier attr, expr_context ctx)
+    def visit_Attribute(self, n: ast3.Attribute) -> ValuePattern:
+        # We can directly call `visit_Attribute`, as we know the type of n
+        node = ASTConverter(self.options, False, self.errors).visit_Attribute(n)
+        if not isinstance(node, MemberExpr):
+            raise RuntimeError("Unsupported pattern")
+        return self.set_line(ValuePattern(node), n)
+
+    # List(expr* elts, expr_context ctx)
+    def visit_List(self, n: ast3.List) -> SequencePattern:
+        return self.make_sequence(n)
+
+    # Tuple(expr* elts, expr_context ctx)
+    def visit_Tuple(self, n: ast3.Tuple) -> SequencePattern:
+        return self.make_sequence(n)
+
+    def make_sequence(self, n: Union[ast3.List, ast3.Tuple]) -> SequencePattern:
+        patterns = [self.visit(p) for p in n.elts]
+        stars = [p for p in patterns if isinstance(p, StarredPattern)]
+        if len(stars) >= 2:
+            raise RuntimeError("Unsupported pattern")
+
+        node = SequencePattern(patterns)
+        return self.set_line(node, n)
+
+    # Starred(expr value, expr_context ctx)
+    def visit_Starred(self, n: ast3.Starred) -> StarredPattern:
+        expr = n.value
+        if not isinstance(expr, Name):
+            raise RuntimeError("Unsupported Pattern")
+        node = StarredPattern(expr.id)
+
+        return self.set_line(node, n)
+
+    # Dict(expr* keys, expr* values)
+    def visit_Dict(self, n: ast3.Dict) -> MappingPattern:
+        keys = [self.visit(k) for k in n.keys]
+        values = [self.visit(v) for v in n.values]
+
+        if keys[-1] is None:
+            rest = values.pop()
+            keys.pop()
+        else:
+            rest = None
+
+        for key in keys:
+            if not isinstance(key, (LiteralPattern, ValuePattern)):
+                raise RuntimeError("Unsupported Pattern")
+
+        node = MappingPattern(keys, values, rest)
+        return self.set_line(node, n)
 
 
 class TypeConverter(Converter):
