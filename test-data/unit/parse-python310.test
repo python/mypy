@@ -16,6 +16,35 @@ MypyFile:1(
     Body(
       PassStmt:3())))
 
+[case testMatchWithGuard]
+match a:
+    case 1 if f():
+        pass
+    case d if d > 5:
+        pass
+[out]
+MypyFile:1(
+  MatchStmt:1(
+    NameExpr(a)
+    Pattern(
+      LiteralPattern:2(
+        1))
+    Guard(
+      CallExpr:2(
+        NameExpr(f)
+        Args()))
+    Body(
+      PassStmt:3())
+    Pattern(
+      CapturePattern:4(
+        NameExpr(d)))
+    Guard(
+      ComparisonExpr:4(
+        >
+        NameExpr(d)
+        IntExpr(5)))
+    Body(
+      PassStmt:5())))
 
 [case testAsPattern]
 match a:

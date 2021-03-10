@@ -16,8 +16,10 @@ class ParserSuite(DataSuite):
     required_out_section = True
     base_path = '.'
     files = ['parse.test',
-             'parse-python310.test',
              'parse-python2.test']
+
+    if sys.version_info >= (3, 10):
+        files.append('parse-python310.test')
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_parser(testcase)
