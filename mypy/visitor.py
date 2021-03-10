@@ -331,6 +331,14 @@ class PatternVisitor(Generic[T]):
     def visit_literal_pattern(self, o: 'mypy.patterns.LiteralPattern') -> T:
         pass
 
+    @abstractmethod
+    def visit_capture_pattern(self, o: 'mypy.patterns.CapturePattern') -> T:
+        pass
+
+    @abstractmethod
+    def visit_wildcard_pattern(self, o: 'mypy.patterns.WildcardPattern') -> T:
+        pass
+
 
 @trait
 @mypyc_attr(allow_interpreted_subclasses=True)

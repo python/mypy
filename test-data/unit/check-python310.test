@@ -35,7 +35,7 @@ match m:
         reveal_type(x)
 
 
-[case testPatternLiteral]
+[case testLiteralPattern]
 # flags: --python-version 3.10
 m: object
 match m:

@@ -45,7 +45,7 @@ class OrPattern(Pattern):
         return visitor.visit_or_pattern(self)
 
 
-# TODO: Do we need subclassed for the typed of literals?
+# TODO: Do we need subclasses for the types of literals?
 class LiteralPattern(Pattern):
     value = None  # type: Any
 
@@ -55,3 +55,19 @@ class LiteralPattern(Pattern):
 
     def accept(self, visitor: PatternVisitor[T]) -> T:
         return visitor.visit_literal_pattern(self)
+
+
+class CapturePattern(Pattern):
+    name = None  # type: str
+
+    def __init__(self, name: str):
+        super().__init__()
+        self.name = name
+
+    def accept(self, visitor: PatternVisitor[T]) -> T:
+        return visitor.visit_capture_pattern(self)
+
+
+class WildcardPattern(Pattern):
+    def accept(self, visitor: PatternVisitor[T]) -> T:
+        return visitor.visit_wildcard_pattern(self)
