@@ -478,6 +478,9 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T], Pattern
     def visit_exec_stmt(self, o: 'mypy.nodes.ExecStmt') -> T:
         pass
 
+    def visit_match_stmt(self, o: 'mypy.nodes.MatchStmt') -> T:
+        pass
+
     # Expressions (default no-op implementation)
 
     def visit_int_expr(self, o: 'mypy.nodes.IntExpr') -> T:
@@ -610,4 +613,36 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T], Pattern
         pass
 
     def visit_temp_node(self, o: 'mypy.nodes.TempNode') -> T:
+        pass
+
+    # Patterns
+
+    def visit_as_pattern(self, o: 'mypy.patterns.AsPattern') -> T:
+        pass
+
+    def visit_or_pattern(self, o: 'mypy.patterns.OrPattern') -> T:
+        pass
+
+    def visit_literal_pattern(self, o: 'mypy.patterns.LiteralPattern') -> T:
+        pass
+
+    def visit_capture_pattern(self, o: 'mypy.patterns.CapturePattern') -> T:
+        pass
+
+    def visit_wildcard_pattern(self, o: 'mypy.patterns.WildcardPattern') -> T:
+        pass
+
+    def visit_value_pattern(self, o: 'mypy.patterns.ValuePattern') -> T:
+        pass
+
+    def visit_sequence_pattern(self, o: 'mypy.patterns.SequencePattern') -> T:
+        pass
+
+    def visit_starred_pattern(self, o: 'mypy.patterns.StarredPattern') -> T:
+        pass
+
+    def visit_mapping_pattern(self, o: 'mypy.patterns.MappingPattern') -> T:
+        pass
+
+    def visit_class_pattern(self, o: 'mypy.patterns.ClassPattern') -> T:
         pass

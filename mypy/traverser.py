@@ -3,7 +3,8 @@
 from typing import List
 from mypy_extensions import mypyc_attr
 
-from mypy.patterns import AsPattern, OrPattern
+from mypy.patterns import AsPattern, OrPattern, CapturePattern, ValuePattern, SequencePattern, \
+    StarredPattern, MappingPattern, ClassPattern
 from mypy.visitor import NodeVisitor
 from mypy.nodes import (
     Block, MypyFile, FuncBase, FuncItem, CallExpr, ClassDef, Decorator, FuncDef,
@@ -295,6 +296,34 @@ class TraverserVisitor(NodeVisitor[None]):
     def visit_or_pattern(self, o: OrPattern) -> None:
         for p in o.patterns:
             p.accept(self)
+
+    def visit_capture_pattern(self, o: CapturePattern) -> None:
+        o.name.accept(self)
+
+    def visit_value_pattern(self, o: ValuePattern) -> None:
+        o.expr.accept(self)
+
+    def visit_sequence_pattern(self, o: SequencePattern) -> None:
+        for p in o.patterns:
+            p.accept(self)
+
+    def visit_starred_patten(self, o: StarredPattern) -> None:
+        o.capture.accept(self)
+
+    def visit_mapping_pattern(self, o: MappingPattern) -> None:
+        for key in o.keys:
+            key.accept(self)
+        for value in o.values:
+            value.accept(self)
+        if o.rest is not None:
+            o.rest.accept(self)
+
+    def visit_class_pattern(self, o: ClassPattern) -> None:
+        o.class_ref.accept(self)
+        for p in o.positionals:
+            p.accept(self)
+        for v in o.keyword_values:
+            v.accept(self)
 
     def visit_import(self, o: Import) -> None:
         for a in o.assignments:
