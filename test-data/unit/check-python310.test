@@ -35,6 +35,16 @@ match m:
         reveal_type(x)
 
 
+[case testMatchWithGuard]
+# flags: --python-version 3.10
+m: object
+
+match m:
+    case 1 if False:
+        pass
+    case 2:
+        pass
+
 [case testLiteralPattern]
 # flags: --python-version 3.10
 m: object
@@ -149,7 +159,7 @@ match m:
         pass
     case {'k': v1, a.b: v2, 1: v3, a.c: v4}:
         pass
-    case {'k': 1, a.b: "str", 1: b'bytes', a.c: None}:
+    case {'k1': 1, 'k2': "str", 'k3': b'bytes', 'k4': None}:
         pass
     case {'k': v, **r}:
         pass

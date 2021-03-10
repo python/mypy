@@ -549,6 +549,7 @@ class StrConv(NodeVisitor[str]):
         return self.dump([o.type], o)
 
     def visit_as_pattern(self, o: 'mypy.patterns.AsPattern') -> str:
+        # We display the name first for better readability
         return self.dump([o.name, o.pattern], o)
 
     def visit_or_pattern(self, o: 'mypy.patterns.OrPattern') -> str:
@@ -557,8 +558,41 @@ class StrConv(NodeVisitor[str]):
     def visit_literal_pattern(self, o: 'mypy.patterns.LiteralPattern') -> str:
         value = o.value
         if isinstance(o.value, str):
-            value = self.str_repr(o.value)
+            value = "'" + self.str_repr(o.value) + "'"
         return self.dump([value], o)
+
+    def visit_capture_pattern(self, o: 'mypy.patterns.CapturePattern') -> str:
+        return self.dump([o.name], o)
+
+    def visit_wildcard_pattern(self, o: 'mypy.patterns.WildcardPattern') -> str:
+        return self.dump([], o)
+
+    def visit_value_pattern(self, o: 'mypy.patterns.ValuePattern') -> str:
+        return self.dump([o.expr], o)
+
+    def visit_sequence_pattern(self, o: 'mypy.patterns.SequencePattern') -> str:
+        return self.dump(o.patterns, o)
+
+    def visit_starred_pattern(self, o: 'mypy.patterns.StarredPattern') -> str:
+        return self.dump([o.capture], o)
+
+    def visit_mapping_pattern(self, o: 'mypy.patterns.MappingPattern') -> str:
+        a = []  # type: List[Any]
+        for i in range(len(o.keys)):
+            a.append(('Key', [o.keys[i]]))
+            a.append(('Value', [o.values[i]]))
+        if o.rest is not None:
+            a.append(('Rest', [o.rest]))
+        return self.dump(a, o)
+
+    def visit_class_pattern(self, o: 'mypy.patterns.ClassPattern') -> str:
+        a = [o.class_ref]  # type: List[Any]
+        if len(o.positionals) > 0:
+            a.append(('Positionals', o.positionals))
+        for i in range(len(o.keyword_keys)):
+            a.append(('Keyword', [o.keyword_keys[i], o.keyword_values[i]]))
+
+        return self.dump(a, o)
 
 
 def dump_tagged(nodes: Sequence[object], tag: Optional[str], str_conv: 'StrConv') -> str:

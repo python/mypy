@@ -1394,7 +1394,7 @@ class PatternConverter(Converter):
         if n.id == '_':
             node = WildcardPattern()
         else:
-            node = CapturePattern(n.id)
+            node = CapturePattern(ASTConverter(self.options, False, self.errors).visit_Name(n))
 
         return self.set_line(node, n)
 
@@ -1428,7 +1428,7 @@ class PatternConverter(Converter):
         expr = n.value
         if not isinstance(expr, Name):
             raise RuntimeError("Unsupported Pattern")
-        node = StarredPattern(expr.id)
+        node = StarredPattern(self.visit_Name(expr))
 
         return self.set_line(node, n)
 

@@ -3,7 +3,7 @@ from typing import TypeVar, List, Any, Union, Optional
 
 from mypy_extensions import trait
 
-from mypy.nodes import Node, MemberExpr, RefExpr
+from mypy.nodes import Node, MemberExpr, RefExpr, NameExpr
 from mypy.visitor import PatternVisitor
 
 # These are not real AST nodes. CPython represents patterns using the normal expression nodes.
@@ -58,9 +58,9 @@ class LiteralPattern(Pattern):
 
 
 class CapturePattern(Pattern):
-    name = None  # type: str
+    name = None  # type: NameExpr
 
-    def __init__(self, name: str):
+    def __init__(self, name: NameExpr):
         super().__init__()
         self.name = name
 
@@ -98,11 +98,11 @@ class SequencePattern(Pattern):
 # TODO: A StarredPattern is only valid within a SequencePattern. This is not guaranteed by our
 # type hierarchy. Should it be?
 class StarredPattern(Pattern):
-    name = None  # type: str
+    capture = None  # type: Union[CapturePattern, WildcardPattern]
 
-    def __init__(self, name: str):
+    def __init__(self, capture: Union[CapturePattern, WildcardPattern]):
         super().__init__()
-        self.name = name
+        self.capture = capture
 
     def accept(self, visitor: PatternVisitor[T]) -> T:
         return visitor.visit_starred_pattern(self)
