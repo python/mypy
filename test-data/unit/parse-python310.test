@@ -243,17 +243,25 @@ match a:
         pass
     case (1,):
         pass
+    case 1,:
+        pass
     case [1, 2, 3]:
         pass
     case (1, 2, 3):
+        pass
+    case 1, 2, 3:
         pass
     case [1, *a, 2]:
         pass
     case (1, *a, 2):
         pass
+    case 1, *a, 2:
+        pass
     case [1, *_, 2]:
         pass
     case (1, *_, 2):
+        pass
+    case 1, *_, 2:
         pass
 [out]
 MypyFile:1(
@@ -282,11 +290,7 @@ MypyFile:1(
     Pattern(
       SequencePattern:10(
         LiteralPattern:10(
-          1)
-        LiteralPattern:10(
-          2)
-        LiteralPattern:10(
-          3)))
+          1)))
     Body(
       PassStmt:11())
     Pattern(
@@ -303,22 +307,20 @@ MypyFile:1(
       SequencePattern:14(
         LiteralPattern:14(
           1)
-        StarredPattern:14(
-          CapturePattern:14(
-            NameExpr(a)))
         LiteralPattern:14(
-          2)))
+          2)
+        LiteralPattern:14(
+          3)))
     Body(
       PassStmt:15())
     Pattern(
       SequencePattern:16(
         LiteralPattern:16(
           1)
-        StarredPattern:16(
-          CapturePattern:16(
-            NameExpr(a)))
         LiteralPattern:16(
-          2)))
+          2)
+        LiteralPattern:16(
+          3)))
     Body(
       PassStmt:17())
     Pattern(
@@ -326,7 +328,8 @@ MypyFile:1(
         LiteralPattern:18(
           1)
         StarredPattern:18(
-          WildcardPattern:18())
+          CapturePattern:18(
+            NameExpr(a)))
         LiteralPattern:18(
           2)))
     Body(
@@ -336,11 +339,53 @@ MypyFile:1(
         LiteralPattern:20(
           1)
         StarredPattern:20(
-          WildcardPattern:20())
+          CapturePattern:20(
+            NameExpr(a)))
         LiteralPattern:20(
           2)))
     Body(
-      PassStmt:21())))
+      PassStmt:21())
+    Pattern(
+      SequencePattern:22(
+        LiteralPattern:22(
+          1)
+        StarredPattern:22(
+          CapturePattern:22(
+            NameExpr(a)))
+        LiteralPattern:22(
+          2)))
+    Body(
+      PassStmt:23())
+    Pattern(
+      SequencePattern:24(
+        LiteralPattern:24(
+          1)
+        StarredPattern:24(
+          WildcardPattern:24())
+        LiteralPattern:24(
+          2)))
+    Body(
+      PassStmt:25())
+    Pattern(
+      SequencePattern:26(
+        LiteralPattern:26(
+          1)
+        StarredPattern:26(
+          WildcardPattern:26())
+        LiteralPattern:26(
+          2)))
+    Body(
+      PassStmt:27())
+    Pattern(
+      SequencePattern:28(
+        LiteralPattern:28(
+          1)
+        StarredPattern:28(
+          WildcardPattern:28())
+        LiteralPattern:28(
+          2)))
+    Body(
+      PassStmt:29())))
 
 [case testMappingPattern]
 match a:
