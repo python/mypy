@@ -4,10 +4,14 @@ import re
 import os
 
 from typing import Any, List, Tuple, Optional, Union, Sequence
+from typing_extensions import TYPE_CHECKING
 
 from mypy.util import short_type, IdMapper
 import mypy.nodes
 from mypy.visitor import NodeVisitor
+
+if TYPE_CHECKING:
+    import mypy.patterns
 
 
 class StrConv(NodeVisitor[str]):
@@ -544,11 +548,17 @@ class StrConv(NodeVisitor[str]):
     def visit_temp_node(self, o: 'mypy.nodes.TempNode') -> str:
         return self.dump([o.type], o)
 
-    def visit_match_as(self, o: 'mypy.nodes.MatchAs') -> str:
+    def visit_as_pattern(self, o: 'mypy.patterns.AsPattern') -> str:
         return self.dump([o.name, o.pattern], o)
 
-    def visit_match_or(self, o: 'mypy.nodes.MatchOr') -> str:
+    def visit_or_pattern(self, o: 'mypy.patterns.OrPattern') -> str:
         return self.dump(o.patterns, o)
+
+    def visit_literal_pattern(self, o: 'mypy.patterns.LiteralPattern') -> str:
+        value = o.value
+        if isinstance(o.value, str):
+            value = self.str_repr(o.value)
+        return self.dump([value], o)
 
 
 def dump_tagged(nodes: Sequence[object], tag: Optional[str], str_conv: 'StrConv') -> str:

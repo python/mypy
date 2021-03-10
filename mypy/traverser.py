@@ -3,6 +3,7 @@
 from typing import List
 from mypy_extensions import mypyc_attr
 
+from mypy.patterns import AsPattern, OrPattern
 from mypy.visitor import NodeVisitor
 from mypy.nodes import (
     Block, MypyFile, FuncBase, FuncItem, CallExpr, ClassDef, Decorator, FuncDef,
@@ -13,8 +14,7 @@ from mypy.nodes import (
     GeneratorExpr, ListComprehension, SetComprehension, DictionaryComprehension,
     ConditionalExpr, TypeApplication, ExecStmt, Import, ImportFrom,
     LambdaExpr, ComparisonExpr, OverloadedFuncDef, YieldFromExpr,
-    YieldExpr, StarExpr, BackquoteExpr, AwaitExpr, PrintStmt, SuperExpr, MatchAs, MatchOr,
-    Node, REVEAL_TYPE,
+    YieldExpr, StarExpr, BackquoteExpr, AwaitExpr, PrintStmt, SuperExpr, Node, REVEAL_TYPE,
 )
 
 
@@ -289,10 +289,10 @@ class TraverserVisitor(NodeVisitor[None]):
     def visit_super_expr(self, o: SuperExpr) -> None:
         o.call.accept(self)
 
-    def visit_match_as(self, o: MatchAs) -> None:
+    def visit_as_pattern(self, o: AsPattern) -> None:
         o.pattern.accept(self)
 
-    def visit_match_or(self, o: MatchOr) -> None:
+    def visit_or_pattern(self, o: OrPattern) -> None:
         for p in o.patterns:
             p.accept(self)
 

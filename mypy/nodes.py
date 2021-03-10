@@ -2295,31 +2295,6 @@ class AwaitExpr(Expression):
         return visitor.visit_await_expr(self)
 
 
-# Note: CPython considers MatchAs and MatchOr to be expressions, but they are only allowed inside match_case patterns
-class MatchAs(Expression):
-    pattern = None  # type: Expression
-    name = None  # type: str
-
-    def __init__(self, pattern: Expression, name: str) -> None:
-        super().__init__()
-        self.pattern = pattern
-        self.name = name
-
-    def accept(self, visitor: ExpressionVisitor[T]) -> T:
-        return visitor.visit_match_as(self)
-
-
-class MatchOr(Expression):
-    patterns = None  # type: List[Expression]
-
-    def __init__(self, patterns: List[Expression]) -> None:
-        super().__init__()
-        self.patterns = patterns
-
-    def accept(self, visitor: ExpressionVisitor[T]) -> T:
-        return visitor.visit_match_or(self)
-
-
 # Constants
 
 

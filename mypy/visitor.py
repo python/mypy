@@ -8,6 +8,7 @@ from mypy_extensions import trait, mypyc_attr
 if TYPE_CHECKING:
     # break import cycle only needed for mypy
     import mypy.nodes
+    import mypy.patterns
 
 
 T = TypeVar('T')
@@ -192,14 +193,6 @@ class ExpressionVisitor(Generic[T]):
     def visit_temp_node(self, o: 'mypy.nodes.TempNode') -> T:
         pass
 
-    @abstractmethod
-    def visit_match_as(self, o: 'mypy.nodes.MatchAs') -> T:
-        pass
-
-    @abstractmethod
-    def visit_match_or(self, o: 'mypy.nodes.MatchOr') -> T:
-        pass
-
 
 @trait
 @mypyc_attr(allow_interpreted_subclasses=True)
@@ -325,7 +318,23 @@ class StatementVisitor(Generic[T]):
 
 @trait
 @mypyc_attr(allow_interpreted_subclasses=True)
-class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
+class PatternVisitor(Generic[T]):
+    @abstractmethod
+    def visit_as_pattern(self, o: 'mypy.patterns.AsPattern') -> T:
+        pass
+
+    @abstractmethod
+    def visit_or_pattern(self, o: 'mypy.patterns.OrPattern') -> T:
+        pass
+
+    @abstractmethod
+    def visit_literal_pattern(self, o: 'mypy.patterns.LiteralPattern') -> T:
+        pass
+
+
+@trait
+@mypyc_attr(allow_interpreted_subclasses=True)
+class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T], PatternVisitor[T]):
     """Empty base class for parse tree node visitors.
 
     The T type argument specifies the return type of the visit
