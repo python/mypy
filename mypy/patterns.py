@@ -3,7 +3,7 @@ from typing import TypeVar, List, Any, Union, Optional
 
 from mypy_extensions import trait
 
-from mypy.nodes import Node, MemberExpr
+from mypy.nodes import Node, MemberExpr, RefExpr
 from mypy.visitor import PatternVisitor
 
 # These are not real AST nodes. CPython represents patterns using the normal expression nodes.
@@ -125,3 +125,21 @@ class MappingPattern(Pattern):
 
     def accept(self, visitor: PatternVisitor[T]) -> T:
         return visitor.visit_mapping_pattern(self)
+
+
+class ClassPattern(Pattern):
+    class_ref = None  # type: RefExpr
+    positionals = None  # type: List[Pattern]
+    keyword_keys = None  # type: List[str]
+    keyword_values = None  # type: List[Pattern]
+
+    def __init__(self, class_ref: RefExpr, positionals: List[Pattern], keyword_keys: List[str],
+                 keyword_values: List[Pattern]):
+        super().__init__()
+        self.class_ref = class_ref
+        self.positionals = positionals
+        self.keyword_keys = keyword_keys
+        self.keyword_values = keyword_values
+
+    def accept(self, visitor: PatternVisitor[T]) -> T:
+        return visitor.visit_class_pattern(self)

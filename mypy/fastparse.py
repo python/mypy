@@ -26,14 +26,14 @@ from mypy.nodes import (
     UnaryExpr, LambdaExpr, ComparisonExpr, AssignmentExpr,
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
-    AwaitExpr, TempNode, Expression, Statement,
+    AwaitExpr, TempNode, RefExpr, Expression, Statement,
     ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR2,
     check_arg_names,
     FakeInfo,
 )
 from mypy.patterns import (
     AsPattern, OrPattern, LiteralPattern, CapturePattern, WildcardPattern, ValuePattern,
-    SequencePattern, StarredPattern, MappingPattern
+    SequencePattern, StarredPattern, MappingPattern, ClassPattern
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType, CallableArgument,
@@ -1448,6 +1448,24 @@ class PatternConverter(Converter):
                 raise RuntimeError("Unsupported Pattern")
 
         node = MappingPattern(keys, values, rest)
+        return self.set_line(node, n)
+
+    # Call(expr func, expr* args, keyword* keywords)
+    def visit_Call(self, n: ast3.Call) -> ClassPattern:
+        def raise_if_none(value: Optional[str]) -> str:
+            if value is None:
+                raise RuntimeError("Unsupported Pattern")
+            else:
+                return value
+
+        class_ref = ASTConverter(self.options, False, self.errors).visit(n.func)
+        if not isinstance(class_ref, RefExpr):
+            raise RuntimeError("Unsupported Pattern")
+        positionals = [self.visit(p) for p in n.args]
+        keyword_keys = [raise_if_none(keyword.arg) for keyword in n.keywords]
+        keyword_values = [self.visit(keyword.value) for keyword in n.keywords]
+
+        node = ClassPattern(class_ref, positionals, keyword_keys, keyword_values)
         return self.set_line(node, n)
 
 

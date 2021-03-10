@@ -155,3 +155,26 @@ match m:
         pass
     case {**r}:
         pass
+
+
+[case testClassPattern]
+# flags: --python-version 3.10
+class A:
+    pass
+class B:
+    __match_args__ = ('a', 'b')
+    a: int
+    b: int
+
+m: object
+
+match m:
+    case A():
+        pass
+    case B(1, 2):
+        pass
+    case B(1, b=2):
+        pass
+    case B(a=1, b=2):
+        pass
+[builtins fixtures/tuple.pyi]

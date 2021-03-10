@@ -355,6 +355,10 @@ class PatternVisitor(Generic[T]):
     def visit_mapping_pattern(self, o: 'mypy.patterns.MappingPattern') -> T:
         pass
 
+    @abstractmethod
+    def visit_class_pattern(self, o: 'mypy.patterns.ClassPattern') -> T:
+        pass
+
 
 @trait
 @mypyc_attr(allow_interpreted_subclasses=True)
