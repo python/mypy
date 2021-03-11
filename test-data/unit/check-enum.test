@@ -713,6 +713,7 @@ elif x is Foo.C:
     reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.C]'
 else:
     reveal_type(x)  # No output here: this branch is unreachable
+reveal_type(x) # N: Revealed type is '__main__.Foo'
 
 if Foo.A is x:
     reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.A]'
@@ -722,6 +723,7 @@ elif Foo.C is x:
     reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.C]'
 else:
     reveal_type(x)  # No output here: this branch is unreachable
+reveal_type(x) # N: Revealed type is '__main__.Foo'
 
 y: Foo
 if y is Foo.A:
@@ -732,6 +734,7 @@ elif y is Foo.C:
     reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.C]'
 else:
     reveal_type(y)  # No output here: this branch is unreachable
+reveal_type(y) # N: Revealed type is '__main__.Foo'
 
 if Foo.A is y:
     reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.A]'
@@ -741,6 +744,7 @@ elif Foo.C is y:
     reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.C]'
 else:
     reveal_type(y)  # No output here: this branch is unreachable
+reveal_type(y) # N: Revealed type is '__main__.Foo'
 [builtins fixtures/bool.pyi]
 
 [case testEnumReachabilityChecksWithOrdering]
@@ -815,12 +819,14 @@ if x is y:
 else:
     reveal_type(x)  # N: Revealed type is 'Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]'
     reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+reveal_type(x) # N: Revealed type is '__main__.Foo'
 if y is x:
     reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.A]'
     reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.A]'
 else:
     reveal_type(x)  # N: Revealed type is 'Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]'
     reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+reveal_type(x) # N: Revealed type is '__main__.Foo'
 
 if x is z:
     reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.A]'
@@ -830,6 +836,7 @@ else:
     reveal_type(x)  # N: Revealed type is 'Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]'
     reveal_type(z)  # N: Revealed type is 'Literal[__main__.Foo.A]?'
     accepts_foo_a(z)
+reveal_type(x) # N: Revealed type is '__main__.Foo'
 if z is x:
     reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.A]'
     reveal_type(z)  # N: Revealed type is 'Literal[__main__.Foo.A]?'
@@ -838,6 +845,7 @@ else:
     reveal_type(x)  # N: Revealed type is 'Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]'
     reveal_type(z)  # N: Revealed type is 'Literal[__main__.Foo.A]?'
     accepts_foo_a(z)
+reveal_type(x) # N: Revealed type is '__main__.Foo'
 
 if y is z:
     reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.A]'
@@ -909,6 +917,7 @@ if x is Foo.A:
     reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.A]'
 else:
     reveal_type(x)  # N: Revealed type is 'Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C], None]'
+reveal_type(x) # N: Revealed type is 'Union[__main__.Foo, None]'
 [builtins fixtures/bool.pyi]
 
 [case testEnumReachabilityWithMultipleEnums]
@@ -928,18 +937,21 @@ if x1 is Foo.A:
     reveal_type(x1)  # N: Revealed type is 'Literal[__main__.Foo.A]'
 else:
     reveal_type(x1)  # N: Revealed type is 'Union[Literal[__main__.Foo.B], __main__.Bar]'
+reveal_type(x1) # N: Revealed type is 'Union[__main__.Foo, __main__.Bar]'
 
 x2: Union[Foo, Bar]
 if x2 is Bar.A:
     reveal_type(x2)  # N: Revealed type is 'Literal[__main__.Bar.A]'
 else:
     reveal_type(x2)  # N: Revealed type is 'Union[__main__.Foo, Literal[__main__.Bar.B]]'
+reveal_type(x2) # N: Revealed type is 'Union[__main__.Foo, __main__.Bar]'
 
 x3: Union[Foo, Bar]
 if x3 is Foo.A or x3 is Bar.A:
     reveal_type(x3)  # N: Revealed type is 'Union[Literal[__main__.Foo.A], Literal[__main__.Bar.A]]'
 else:
     reveal_type(x3)  # N: Revealed type is 'Union[Literal[__main__.Foo.B], Literal[__main__.Bar.B]]'
+reveal_type(x3) # N: Revealed type is 'Union[__main__.Foo, __main__.Bar]'
 
 [builtins fixtures/bool.pyi]
 
@@ -1299,3 +1311,25 @@ reveal_type(a._value_)  # N: Revealed type is 'Any'
 [builtins fixtures/__new__.pyi]
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-medium.pyi]
+
+[case testEnumNarrowedToTwoLiterals]
+# Regression test: two literals of an enum would be joined
+# as the full type, regardless of the amount of elements
+# the enum contains.
+from enum import Enum
+from typing import Union
+from typing_extensions import Literal
+
+class Foo(Enum):
+    A = 1
+    B = 2
+    C = 3
+
+def f(x: Foo):
+    if x is Foo.A:
+        return x
+    if x is Foo.B:
+        pass
+    reveal_type(x) # N: Revealed type is 'Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]'
+
+[builtins fixtures/bool.pyi]
