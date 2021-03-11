@@ -112,10 +112,16 @@ int CPyDict_Update(PyObject *dict, PyObject *stuff) {
 }
 
 int CPyDict_UpdateFromAny(PyObject *dict, PyObject *stuff) {
+    PyObject *tmp;
+
     if (PyDict_CheckExact(dict)) {
         // Argh this sucks
         _Py_IDENTIFIER(keys);
-        if (PyDict_Check(stuff) || _PyObject_HasAttrId(stuff, &PyId_keys)) {
+        int hasAttr = PyDict_Check(stuff) || _PyObject_LookupAttrId(stuff, &PyId_keys, &tmp);
+        if (tmp) {
+            Py_DECREF(tmp);
+        }
+        if (hasAttr) {
             return PyDict_Update(dict, stuff);
         } else {
             return PyDict_MergeFromSeq2(dict, stuff, 1);
@@ -126,6 +132,8 @@ int CPyDict_UpdateFromAny(PyObject *dict, PyObject *stuff) {
 }
 
 PyObject *CPyDict_FromAny(PyObject *obj) {
+    PyObject *tmp;
+
     if (PyDict_Check(obj)) {
         return PyDict_Copy(obj);
     } else {
@@ -135,10 +143,13 @@ PyObject *CPyDict_FromAny(PyObject *obj) {
             return NULL;
         }
         _Py_IDENTIFIER(keys);
-        if (_PyObject_HasAttrId(obj, &PyId_keys)) {
+        if (_PyObject_LookupAttrId(obj, &PyId_keys, &tmp)) {
             res = PyDict_Update(dict, obj);
         } else {
             res = PyDict_MergeFromSeq2(dict, obj, 1);
+        }
+        if (tmp) {
+            Py_DECREF(tmp);
         }
         if (res < 0) {
             Py_DECREF(dict);

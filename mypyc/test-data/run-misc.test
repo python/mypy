@@ -940,7 +940,10 @@ import sys
 
 # We lie about the version we are running in tests if it is 3.5, so
 # that hits a crash case.
-if sys.version_info[:2] == (3, 9):
+if sys.version_info[:2] == (3, 10):
+    def version() -> int:
+        return 10
+elif sys.version_info[:2] == (3, 9):
     def version() -> int:
         return 9
 elif sys.version_info[:2] == (3, 8):
