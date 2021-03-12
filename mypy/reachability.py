@@ -4,9 +4,9 @@ from typing import Tuple, TypeVar, Union, Optional
 from typing_extensions import Final
 
 from mypy.nodes import (
-    Expression, IfStmt, Block, AssertStmt, NameExpr, UnaryExpr, MemberExpr, OpExpr, ComparisonExpr,
-    StrExpr, UnicodeExpr, CallExpr, IntExpr, TupleExpr, IndexExpr, SliceExpr, Import, ImportFrom,
-    ImportAll, LITERAL_YES
+    Expression, IfStmt, Block, AssertStmt, MatchStmt, NameExpr, UnaryExpr, MemberExpr, OpExpr,
+    ComparisonExpr, StrExpr, UnicodeExpr, CallExpr, IntExpr, TupleExpr, IndexExpr, SliceExpr,
+    Import, ImportFrom, ImportAll, LITERAL_YES
 )
 from mypy.options import Options
 from mypy.traverser import TraverserVisitor
@@ -52,6 +52,21 @@ def infer_reachability_of_if_statement(s: IfStmt, options: Options) -> None:
                 s.else_body = Block([])
             mark_block_unreachable(s.else_body)
             break
+
+
+def infer_reachability_of_match_statement(s: MatchStmt, options: Options) -> None:
+    for i, guard in enumerate(s.guards):
+        # Right now we only consider the guard to infer unreachability.
+        # In the future this could also consider the pattern
+        if guard is not None:
+            result = infer_condition_value(guard, options)
+            if result in (ALWAYS_FALSE, MYPY_FALSE):
+                # The guard is considered always false, so we skip the case body.
+                mark_block_unreachable(s.bodies[i])
+            elif result == MYPY_TRUE:
+                # This condition is false at runtime; this will affect
+                # import priorities.
+                mark_block_mypy_only(s.bodies[i])
 
 
 def assert_will_always_fail(s: AssertStmt, options: Options) -> bool:
