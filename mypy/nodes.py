@@ -16,6 +16,9 @@ from mypy.visitor import NodeVisitor, StatementVisitor, ExpressionVisitor
 
 from mypy.bogus_type import Bogus
 
+if TYPE_CHECKING:
+    from mypy.patterns import Pattern
+
 
 class Context:
     """Base type for objects that are valid as error message locations."""
@@ -1270,11 +1273,11 @@ class WithStmt(Statement):
 
 class MatchStmt(Statement):
     subject = None  # type: Expression
-    patterns = None  # type: List[Expression]
+    patterns = None  # type: List['Pattern']
     guards = None  # type: List[Optional[Expression]]
     bodies = None  # type: List[Block]
 
-    def __init__(self, subject: Expression, patterns: List[Expression],
+    def __init__(self, subject: Expression, patterns: List['Pattern'],
                  guards: List[Optional[Expression]], bodies: List[Block]) -> None:
         super().__init__()
         self.subject = subject

@@ -33,7 +33,7 @@ from mypy.nodes import (
 )
 from mypy.patterns import (
     AsPattern, OrPattern, LiteralPattern, CapturePattern, WildcardPattern, ValuePattern,
-    SequencePattern, StarredPattern, MappingPattern, ClassPattern
+    SequencePattern, StarredPattern, MappingPattern, MappingKeyPattern, ClassPattern, Pattern
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType, CallableArgument,
@@ -1323,6 +1323,9 @@ class PatternConverter(Converter):
 
         self.options = options
 
+    def visit(self, node: Optional[AST]) -> Pattern:
+        return super().visit(node)
+
     # MatchAs(expr pattern, identifier name)
     def visit_MatchAs(self, n: MatchAs) -> AsPattern:
         node = AsPattern(self.visit(n.pattern), n.name)
@@ -1443,12 +1446,17 @@ class PatternConverter(Converter):
         else:
             rest = None
 
+        checked_keys = self.assert_key_patterns(keys)
+
+        node = MappingPattern(checked_keys, values, rest)
+        return self.set_line(node, n)
+
+    def assert_key_patterns(self, keys: List[Pattern]) -> List[MappingKeyPattern]:
         for key in keys:
             if not isinstance(key, (LiteralPattern, ValuePattern)):
                 raise RuntimeError("Unsupported Pattern")
 
-        node = MappingPattern(keys, values, rest)
-        return self.set_line(node, n)
+        return cast(List[MappingKeyPattern], keys)
 
     # Call(expr func, expr* args, keyword* keywords)
     def visit_Call(self, n: ast3.Call) -> ClassPattern:

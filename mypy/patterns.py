@@ -108,6 +108,7 @@ class StarredPattern(Pattern):
         return visitor.visit_starred_pattern(self)
 
 
+# When changing this make sure to also change assert_key_pattern in fastparse.py PatternConverter
 MappingKeyPattern = Union[LiteralPattern, ValuePattern]
 
 
