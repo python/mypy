@@ -1453,7 +1453,7 @@ class PatternConverter(Converter):
 
     def assert_key_patterns(self, keys: List[Pattern]) -> List[MappingKeyPattern]:
         for key in keys:
-            if not isinstance(key, (LiteralPattern, ValuePattern)):
+            if not isinstance(key, MappingKeyPattern):
                 raise RuntimeError("Unsupported Pattern")
 
         return cast(List[MappingKeyPattern], keys)

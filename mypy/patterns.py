@@ -1,5 +1,5 @@
 """Classes for representing match statement patterns."""
-from typing import TypeVar, List, Any, Union, Optional
+from typing import TypeVar, List, Any, Optional
 
 from mypy_extensions import trait
 
@@ -19,6 +19,20 @@ class Pattern(Node):
 
     def accept(self, visitor: PatternVisitor[T]) -> T:
         raise RuntimeError('Not implemented')
+
+
+@trait
+class AlwaysTruePattern(Pattern):
+    """A pattern that is always matches"""
+
+    __slots__ = ()
+
+
+@trait
+class MappingKeyPattern(Pattern):
+    """A pattern that can be used as a key in a mapping pattern"""
+
+    __slots__ = ()
 
 
 class AsPattern(Pattern):
@@ -46,7 +60,7 @@ class OrPattern(Pattern):
 
 
 # TODO: Do we need subclasses for the types of literals?
-class LiteralPattern(Pattern):
+class LiteralPattern(MappingKeyPattern):
     value = None  # type: Any
 
     def __init__(self, value: Any):
@@ -57,7 +71,7 @@ class LiteralPattern(Pattern):
         return visitor.visit_literal_pattern(self)
 
 
-class CapturePattern(Pattern):
+class CapturePattern(AlwaysTruePattern):
     name = None  # type: NameExpr
 
     def __init__(self, name: NameExpr):
@@ -68,12 +82,12 @@ class CapturePattern(Pattern):
         return visitor.visit_capture_pattern(self)
 
 
-class WildcardPattern(Pattern):
+class WildcardPattern(AlwaysTruePattern):
     def accept(self, visitor: PatternVisitor[T]) -> T:
         return visitor.visit_wildcard_pattern(self)
 
 
-class ValuePattern(Pattern):
+class ValuePattern(MappingKeyPattern):
     expr = None  # type: MemberExpr
 
     def __init__(self, expr: MemberExpr):
@@ -98,18 +112,14 @@ class SequencePattern(Pattern):
 # TODO: A StarredPattern is only valid within a SequencePattern. This is not guaranteed by our
 # type hierarchy. Should it be?
 class StarredPattern(Pattern):
-    capture = None  # type: Union[CapturePattern, WildcardPattern]
+    capture = None  # type: AlwaysTruePattern
 
-    def __init__(self, capture: Union[CapturePattern, WildcardPattern]):
+    def __init__(self, capture: AlwaysTruePattern):
         super().__init__()
         self.capture = capture
 
     def accept(self, visitor: PatternVisitor[T]) -> T:
         return visitor.visit_starred_pattern(self)
-
-
-# When changing this make sure to also change assert_key_pattern in fastparse.py PatternConverter
-MappingKeyPattern = Union[LiteralPattern, ValuePattern]
 
 
 class MappingPattern(Pattern):
