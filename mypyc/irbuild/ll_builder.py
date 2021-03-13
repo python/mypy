@@ -646,6 +646,8 @@ class LowLevelIRBuilder:
         if is_bool_rprimitive(ltype) and is_bool_rprimitive(rtype) and op in (
                 '&', '&=', '|', '|=', '^', '^='):
             return self.bool_bitwise_op(lreg, rreg, op[0], line)
+        if isinstance(rtype, RInstance) and op in ('in', 'not in'):
+            return self.translate_instance_contains(rreg, lreg, op, line)
 
         call_c_ops_candidates = binary_ops.get(op, [])
         target = self.matching_call_c(call_c_ops_candidates, [lreg, rreg], line)
@@ -828,6 +830,14 @@ class LowLevelIRBuilder:
         self.add(Assign(result, self.true(), line))
         self.goto_and_activate(out)
         return result
+
+    def translate_instance_contains(self, inst: Value, item: Value, op: str, line: int) -> Value:
+        res = self.gen_method_call(inst, '__contains__', [item], None, line)
+        if not is_bool_rprimitive(res.type):
+            res = self.call_c(bool_op, [res], line)
+        if op == 'not in':
+            res = self.bool_bitwise_op(res, Integer(1, rtype=bool_rprimitive), '^', line)
+        return res
 
     def bool_bitwise_op(self, lreg: Value, rreg: Value, op: str, line: int) -> Value:
         if op == '&':
