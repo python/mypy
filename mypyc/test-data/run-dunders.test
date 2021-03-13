@@ -111,6 +111,9 @@ class Seq:
     def __contains__(self, x: int) -> bool:
         return x == 3
 
+    def __delitem__(self, key: int) -> None:
+        self.key = key
+
 class Plain: pass
 
 def any_seq() -> Any:
@@ -148,6 +151,11 @@ def test_contains() -> None:
     assert 3 in Seq()
     assert 4 not in Seq()
     assert 2 not in Seq()
+
+def test_delitem() -> None:
+    s = any_seq()
+    del s[55]
+    assert s.key == 55
 
 class SeqAny:
     def __contains__(self, x: Any) -> Any:

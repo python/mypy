@@ -393,11 +393,10 @@ def generate_bool_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     return name
 
 
-def generate_set_item_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
-    """Generates a wrapper for native __setitem__ method.
+def generate_del_item_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    """Generates a wrapper for native __delitem__.
 
-    This is used with the mapping protocol slot. Arguments are taken as *PyObjects and we
-    return a negative C int on error.
+    This is only called from a combined __delitem__/__setitem__ wrapper.
     """
     name = '{}{}{}'.format(DUNDER_PREFIX, fn.name, cl.name_prefix(emitter.names))
     input_args = ', '.join('PyObject *obj_{}'.format(arg.name) for arg in fn.args)
@@ -405,6 +404,47 @@ def generate_set_item_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
         name=name,
         input_args=input_args,
     ))
+    generate_set_del_item_wrapper_inner(fn, emitter)
+    return name
+
+
+def generate_set_del_item_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    """Generates a wrapper for native __setitem__ method (also works for __delitem__).
+
+    This is used with the mapping protocol slot. Arguments are taken as *PyObjects and we
+    return a negative C int on error.
+
+    Create a separate wrapper function for __delitem__ as needed and have the
+    __setitem__ wrapper call it if the value is NULL. Return the name
+    of the outer (__setitem__) wrapper.
+    """
+    method_cls = cl.get_method_and_class('__delitem__')
+    del_name = None
+    if method_cls and method_cls[1] == cl:
+        # Generate a separate wrapper for __delitem__
+        del_name = generate_del_item_wrapper(cl, method_cls[0], emitter)
+
+    name = '{}{}{}'.format(DUNDER_PREFIX, fn.name, cl.name_prefix(emitter.names))
+    input_args = ', '.join('PyObject *obj_{}'.format(arg.name) for arg in fn.args)
+    emitter.emit_line('static int {name}({input_args}) {{'.format(
+        name=name,
+        input_args=input_args,
+    ))
+
+    if del_name is not None:
+        # First check if we should call the __delitem__ wrapper
+        args = fn.args
+        emitter.emit_line('if (obj_{} == NULL) {{'.format(args[2].name))
+        emitter.emit_line('return {}(obj_{}, obj_{});'.format(del_name,
+                                                              args[0].name,
+                                                              args[1].name))
+        emitter.emit_line('}')
+
+    generate_set_del_item_wrapper_inner(fn, emitter)
+    return name
+
+
+def generate_set_del_item_wrapper_inner(fn: FuncIR, emitter: Emitter) -> None:
     for arg in fn.args:
         generate_arg_check(arg.name, arg.type, emitter, 'goto fail;', False)
     native_args = ', '.join('arg_{}'.format(arg.name) for arg in fn.args)
@@ -418,8 +458,6 @@ def generate_set_item_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     emitter.emit_label('fail')
     emitter.emit_line('return -1;')
     emitter.emit_line('}')
-
-    return name
 
 
 def generate_contains_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
