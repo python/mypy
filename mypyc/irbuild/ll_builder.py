@@ -1139,9 +1139,18 @@ class LowLevelIRBuilder:
             return self.int_op(short_int_rprimitive, size_value, offset,
                                IntOp.LEFT_SHIFT, line)
         elif isinstance(typ, RInstance):
-            # TODO: Generate error on negative value
             # TODO: use_pyssize_t
-            return self.gen_method_call(val, '__len__', [], int_rprimitive, line)
+            length = self.gen_method_call(val, '__len__', [], int_rprimitive, line)
+            length = self.coerce(length, int_rprimitive, line)
+            ok, fail = BasicBlock(), BasicBlock()
+            self.compare_tagged_condition(length, Integer(0), '>=', ok, fail, line)
+            self.activate_block(fail)
+            self.add(RaiseStandardError(RaiseStandardError.VALUE_ERROR,
+                                        "__len__() should return >= 0",
+                                        line))
+            self.add(Unreachable())
+            self.activate_block(ok)
+            return length
         else:
             if use_pyssize_t:
                 return self.call_c(generic_ssize_t_len_op, [val], line)

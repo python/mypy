@@ -183,6 +183,9 @@ class SeqError:
     def __contains__(self, x: int) -> bool:
         raise RuntimeError()
 
+    def __len__(self):
+        return -5
+
 def any_seq_error() -> Any:
     return SeqError()
 
@@ -200,6 +203,14 @@ def test_contains_error_propagate() -> None:
     try:
         3 in s
     except RuntimeError:
+        pass
+    else:
+        assert False
+
+def test_negative_len() -> None:
+    try:
+        len(SeqError())
+    except ValueError:
         pass
     else:
         assert False
