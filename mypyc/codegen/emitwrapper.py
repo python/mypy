@@ -286,10 +286,12 @@ def generate_set_item_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     for arg in fn.args:
         generate_arg_check(arg.name, arg.type, emitter, 'goto fail;', False)
     native_args = ', '.join('arg_{}'.format(arg.name) for arg in fn.args)
-    emitter.emit_line('int retval = {}{}({});'.format(NATIVE_PREFIX,
-                                                      fn.cname(emitter.names),
-                                                      native_args))
-    emitter.emit_error_check('retval', fn.ret_type, 'goto fail;')
+    emitter.emit_line('{}val = {}{}({});'.format(emitter.ctype_spaced(fn.ret_type),
+                                                 NATIVE_PREFIX,
+                                                 fn.cname(emitter.names),
+                                                 native_args))
+    emitter.emit_error_check('val', fn.ret_type, 'goto fail;')
+    emitter.emit_dec_ref('val', fn.ret_type)
     emitter.emit_line('return 0;')
     emitter.emit_label('fail')
     emitter.emit_line('return -1;')
@@ -433,7 +435,9 @@ def generate_contains_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     if is_bool_rprimitive(fn.ret_type):
         emitter.emit_line('return val;')
     else:
-        emitter.emit_line('return PyObject_IsTrue(val);')
+        emitter.emit_line('int boolval = PyObject_IsTrue(val);')
+        emitter.emit_dec_ref('val', fn.ret_type)
+        emitter.emit_line('return boolval;')
     emitter.emit_line('}')
     return name
 
