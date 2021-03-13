@@ -168,6 +168,9 @@ class SeqError:
     def __setitem__(self, key: int, value: int) -> None:
         raise RuntimeError()
 
+    def __contains__(self, x: int) -> bool:
+        raise RuntimeError()
+
 def any_seq_error() -> Any:
     return SeqError()
 
@@ -175,6 +178,15 @@ def test_set_item_error_propagate() -> None:
     s = any_seq_error()
     try:
         s[44] = 66
+    except RuntimeError:
+        pass
+    else:
+        assert False
+
+def test_contains_error_propagate() -> None:
+    s = any_seq_error()
+    try:
+        3 in s
     except RuntimeError:
         pass
     else:
