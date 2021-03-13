@@ -549,8 +549,7 @@ class StrConv(NodeVisitor[str]):
         return self.dump([o.type], o)
 
     def visit_as_pattern(self, o: 'mypy.patterns.AsPattern') -> str:
-        # We display the name first for better readability
-        return self.dump([o.name, o.pattern], o)
+        return self.dump([o.pattern, o.name], o)
 
     def visit_or_pattern(self, o: 'mypy.patterns.OrPattern') -> str:
         return self.dump(o.patterns, o)

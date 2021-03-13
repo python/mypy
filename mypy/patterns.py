@@ -37,9 +37,9 @@ class MappingKeyPattern(Pattern):
 
 class AsPattern(Pattern):
     pattern = None  # type: Pattern
-    name = None  # type: str
+    name = None  # type: NameExpr
 
-    def __init__(self, pattern: Pattern, name: str) -> None:
+    def __init__(self, pattern: Pattern, name: NameExpr) -> None:
         super().__init__()
         self.pattern = pattern
         self.name = name

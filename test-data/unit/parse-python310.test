@@ -16,6 +16,23 @@ MypyFile:1(
     Body(
       PassStmt:3())))
 
+
+[case testTupleMatch]
+match a, b:
+    case 1:
+        pass
+[out]
+MypyFile:1(
+  MatchStmt:1(
+    TupleExpr:1(
+      NameExpr(a)
+      NameExpr(b))
+    Pattern(
+      LiteralPattern:2(
+        1))
+    Body(
+      PassStmt:3())))
+
 [case testMatchWithGuard]
 match a:
     case 1 if f():
@@ -56,9 +73,9 @@ MypyFile:1(
     NameExpr(a)
     Pattern(
       AsPattern:2(
-        b
         LiteralPattern:2(
-          1)))
+          1)
+        NameExpr(b)))
     Body(
       PassStmt:3())))
 
