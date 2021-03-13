@@ -111,10 +111,22 @@ class Seq:
     def __contains__(self, x: int) -> bool:
         return x == 3
 
+class Plain: pass
+
 def any_seq() -> Any:
     """Return Any-typed Seq."""
     return Seq()
 
+def any_plain() -> Any:
+    """Return Any-typed Seq."""
+    return Plain()
+
 def test_len() -> None:
     assert len(any_seq()) == 5
     assert len(Seq()) == 5
+    try:
+        len(any_plain())
+    except TypeError:
+        pass
+    else:
+        assert False
