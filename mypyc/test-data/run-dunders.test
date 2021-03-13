@@ -149,6 +149,21 @@ def test_contains() -> None:
     assert 4 not in Seq()
     assert 2 not in Seq()
 
+class ContainsAny:
+    def __contains__(self, x: Any) -> Any:
+        return x == 3
+
+def test_contains_any() -> None:
+    assert (3 in ContainsAny()) is True
+    assert (2 in ContainsAny()) is False
+    assert (3 not in ContainsAny()) is False
+    assert (2 not in ContainsAny()) is True
+    c: Any = ContainsAny()
+    assert (3 in c) is True
+    assert (2 in c) is False
+    assert (3 not in c) is False
+    assert (2 not in c) is True
+
 class SeqError:
     def __setitem__(self, key: int, value: int) -> None:
         raise RuntimeError()
