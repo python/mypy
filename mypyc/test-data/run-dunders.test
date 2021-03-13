@@ -124,9 +124,35 @@ def any_plain() -> Any:
 def test_len() -> None:
     assert len(any_seq()) == 5
     assert len(Seq()) == 5
+
+def test_len_error() -> None:
     try:
         len(any_plain())
     except TypeError:
+        pass
+    else:
+        assert False
+
+def test_set_item() -> None:
+    s = any_seq()
+    s[44] = 66
+    assert s.key == 44 and s.value == 66
+    ss = Seq()
+    ss[33] = 55
+    assert ss.key == 33 and ss.value == 55
+
+class SeqError:
+    def __setitem__(self, key: int, value: int) -> None:
+        raise RuntimeError()
+
+def any_seq_error() -> Any:
+    return SeqError()
+
+def test_set_item_error_propagate() -> None:
+    s = any_seq_error()
+    try:
+        s[44] = 66
+    except RuntimeError:
         pass
     else:
         assert False
