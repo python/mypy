@@ -9,7 +9,8 @@ from mypyc.codegen.emit import Emitter, HeaderDeclaration
 from mypyc.codegen.emitfunc import native_function_header
 from mypyc.codegen.emitwrapper import (
     generate_dunder_wrapper, generate_hash_wrapper, generate_richcompare_wrapper,
-    generate_bool_wrapper, generate_get_wrapper, generate_len_wrapper, generate_set_item_wrapper
+    generate_bool_wrapper, generate_get_wrapper, generate_len_wrapper, generate_set_item_wrapper,
+    generate_contains_wrapper
 )
 from mypyc.ir.rtypes import RType, RTuple, object_rprimitive
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
@@ -50,6 +51,10 @@ AS_MAPPING_SLOT_DEFS = {
     '__len__': ('mp_length', generate_len_wrapper),
 }  # type: SlotTable
 
+AS_SEQUENCE_SLOT_DEFS = {
+    '__contains__': ('sq_contains', generate_contains_wrapper),
+}  # type: SlotTable
+
 AS_NUMBER_SLOT_DEFS = {
     '__bool__': ('nb_bool', generate_bool_wrapper),
 }  # type: SlotTable
@@ -62,6 +67,7 @@ AS_ASYNC_SLOT_DEFS = {
 
 SIDE_TABLES = [
     ('as_mapping', 'PyMappingMethods', AS_MAPPING_SLOT_DEFS),
+    ('as_sequence', 'PySequenceMethods', AS_SEQUENCE_SLOT_DEFS),
     ('as_number', 'PyNumberMethods', AS_NUMBER_SLOT_DEFS),
     ('as_async', 'PyAsyncMethods', AS_ASYNC_SLOT_DEFS),
 ]

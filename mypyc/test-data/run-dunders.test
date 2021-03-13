@@ -141,6 +141,14 @@ def test_set_item() -> None:
     ss[33] = 55
     assert ss.key == 33 and ss.value == 55
 
+def test_contains() -> None:
+    assert 3 in any_seq()
+    assert 4 not in any_seq()
+    assert 2 not in any_seq()
+    assert 3 in Seq()
+    assert 4 not in Seq()
+    assert 2 not in Seq()
+
 class SeqError:
     def __setitem__(self, key: int, value: int) -> None:
         raise RuntimeError()

@@ -419,6 +419,25 @@ def generate_bool_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     return name
 
 
+def generate_contains_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    """Generates a wrapper for a native __contains__ method."""
+    name = '{}{}{}'.format(DUNDER_PREFIX, fn.name, cl.name_prefix(emitter.names))
+    emitter.emit_line(
+        'static int {name}(PyObject *self, PyObject *obj_item) {{'.
+        format(name=name))
+    generate_arg_check('item', fn.args[1].type, emitter, 'return -1;', False)
+    emitter.emit_line('{}val = {}{}(self, arg_item);'.format(emitter.ctype_spaced(fn.ret_type),
+                                                             NATIVE_PREFIX,
+                                                             fn.cname(emitter.names)))
+    emitter.emit_error_check('val', fn.ret_type, 'return -1;')
+    if is_bool_rprimitive(fn.ret_type):
+        emitter.emit_line('return val;')
+    else:
+        emitter.emit_line('return PyObject_IsTrue(val);')
+    emitter.emit_line('}')
+    return name
+
+
 # Helpers
 
 
