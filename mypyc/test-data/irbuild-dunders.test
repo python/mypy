@@ -18,3 +18,23 @@ def f(c):
 L0:
     r0 = c.__len__()
     return r0
+
+[case testDundersSetItem]
+class C:
+    def __setitem__(self, key: int, value: int) -> None:
+        pass
+
+def f(c: C) -> None:
+    c[3] = 4
+[out]
+def C.__setitem__(self, key, value):
+    self :: __main__.C
+    key, value :: int
+L0:
+    return 1
+def f(c):
+    c :: __main__.C
+    r0 :: None
+L0:
+    r0 = c.__setitem__(6, 8)
+    return 1
