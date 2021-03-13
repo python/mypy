@@ -1,0 +1,20 @@
+# Test cases for various (not all!) dunder methods
+
+[case testDundersLen]
+class C:
+    def __len__(self) -> int:
+        return 2
+
+def f(c: C) -> int:
+    return len(c)
+[out]
+def C.__len__(self):
+    self :: __main__.C
+L0:
+    return 4
+def f(c):
+    c :: __main__.C
+    r0 :: int
+L0:
+    r0 = c.__len__()
+    return r0

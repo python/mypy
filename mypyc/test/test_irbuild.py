@@ -33,6 +33,7 @@ files = [
     'irbuild-vectorcall.test',
     'irbuild-unreachable.test',
     'irbuild-isinstance.test',
+    'irbuild-dunders.test',
 ]
 
 

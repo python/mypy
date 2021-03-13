@@ -1128,7 +1128,10 @@ class LowLevelIRBuilder:
             offset = Integer(1, c_pyssize_t_rprimitive, line)
             return self.int_op(short_int_rprimitive, size_value, offset,
                                IntOp.LEFT_SHIFT, line)
-        # generic case
+        elif isinstance(typ, RInstance):
+            # TODO: Generate error on negative value
+            # TODO: use_pyssize_t
+            return self.gen_method_call(val, '__len__', [], int_rprimitive, line)
         else:
             if use_pyssize_t:
                 return self.call_c(generic_ssize_t_len_op, [val], line)
