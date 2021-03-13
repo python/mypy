@@ -271,34 +271,6 @@ def generate_dunder_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     return name
 
 
-def generate_set_item_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
-    """Generates a wrapper for native __setitem__ method.
-
-    This is used with the mapping protocol slot. Arguments are taken as *PyObjects and we
-    return a negative C int on error.
-    """
-    name = '{}{}{}'.format(DUNDER_PREFIX, fn.name, cl.name_prefix(emitter.names))
-    input_args = ', '.join('PyObject *obj_{}'.format(arg.name) for arg in fn.args)
-    emitter.emit_line('static int {name}({input_args}) {{'.format(
-        name=name,
-        input_args=input_args,
-    ))
-    for arg in fn.args:
-        generate_arg_check(arg.name, arg.type, emitter, 'goto fail;', False)
-    native_args = ', '.join('arg_{}'.format(arg.name) for arg in fn.args)
-    emitter.emit_line('{}val = {}{}({});'.format(emitter.ctype_spaced(fn.ret_type),
-                                                 NATIVE_PREFIX,
-                                                 fn.cname(emitter.names),
-                                                 native_args))
-    emitter.emit_error_check('val', fn.ret_type, 'goto fail;')
-    emitter.emit_dec_ref('val', fn.ret_type)
-    emitter.emit_line('return 0;')
-    emitter.emit_label('fail')
-    emitter.emit_line('return -1;')
-    emitter.emit_line('}')
-    return name
-
-
 RICHCOMPARE_OPS = {
     '__lt__': 'Py_LT',
     '__gt__': 'Py_GT',
@@ -421,6 +393,35 @@ def generate_bool_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     return name
 
 
+def generate_set_item_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    """Generates a wrapper for native __setitem__ method.
+
+    This is used with the mapping protocol slot. Arguments are taken as *PyObjects and we
+    return a negative C int on error.
+    """
+    name = '{}{}{}'.format(DUNDER_PREFIX, fn.name, cl.name_prefix(emitter.names))
+    input_args = ', '.join('PyObject *obj_{}'.format(arg.name) for arg in fn.args)
+    emitter.emit_line('static int {name}({input_args}) {{'.format(
+        name=name,
+        input_args=input_args,
+    ))
+    for arg in fn.args:
+        generate_arg_check(arg.name, arg.type, emitter, 'goto fail;', False)
+    native_args = ', '.join('arg_{}'.format(arg.name) for arg in fn.args)
+    emitter.emit_line('{}val = {}{}({});'.format(emitter.ctype_spaced(fn.ret_type),
+                                                 NATIVE_PREFIX,
+                                                 fn.cname(emitter.names),
+                                                 native_args))
+    emitter.emit_error_check('val', fn.ret_type, 'goto fail;')
+    emitter.emit_dec_ref('val', fn.ret_type)
+    emitter.emit_line('return 0;')
+    emitter.emit_label('fail')
+    emitter.emit_line('return -1;')
+    emitter.emit_line('}')
+
+    return name
+
+
 def generate_contains_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     """Generates a wrapper for a native __contains__ method."""
     name = '{}{}{}'.format(DUNDER_PREFIX, fn.name, cl.name_prefix(emitter.names))
@@ -439,6 +440,7 @@ def generate_contains_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
         emitter.emit_dec_ref('val', fn.ret_type)
         emitter.emit_line('return boolval;')
     emitter.emit_line('}')
+
     return name
 
 
