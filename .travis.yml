@@ -22,6 +22,7 @@ env:
   PYTHON_DEBUG_BUILD=0
 
 jobs:
+  fast_finish: true
   include:
   # Specifically request 3.5.1 because we need to be compatible with that.
   - name: "run test suite with python 3.5.1 (compiled with mypyc)"
