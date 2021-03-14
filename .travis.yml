@@ -43,6 +43,8 @@ jobs:
     python: 3.8
   - name: "run test suite with python 3.9"
     python: 3.9
+  - name: "run test suite with python nightly"
+    python: nightly
   - name: "run mypyc runtime tests with python 3.6 debug build"
     language: generic
     env:
@@ -80,6 +82,8 @@ jobs:
   #   env:
   #   - TOXENV=dev
   #   - EXTRA_ARGS=
+  allow_failures:
+  - python: nightly
 
 install:
 # pip 21.0 no longer works on Python 3.5
