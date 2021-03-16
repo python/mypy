@@ -14,9 +14,10 @@ from mypy.subtypes import (
     is_subtype, is_equivalent, is_subtype_ignoring_tvars, is_proper_subtype,
     is_protocol_implementation, find_member
 )
-from mypy.nodes import ARG_NAMED, ARG_NAMED_OPT
+from mypy.nodes import ARG_NAMED, ARG_NAMED_OPT, INVARIANT, COVARIANT, CONTRAVARIANT
 import mypy.typeops
 from mypy import state
+from mypy import meet
 
 
 def join_simple(declaration: Optional[Type], s: Type, t: Type) -> ProperType:
@@ -358,17 +359,36 @@ def join_instances(t: Instance, s: Instance) -> ProperType:
     if t.type == s.type:
         # Simplest case: join two types with the same base type (but
         # potentially different arguments).
-        if is_subtype(t, s) or is_subtype(s, t):
-            # Compatible; combine type arguments.
-            args = []  # type: List[Type]
-            # N.B: We use zip instead of indexing because the lengths might have
-            # mismatches during daemon reprocessing.
-            for ta, sa in zip(t.args, s.args):
-                args.append(join_types(ta, sa))
-            return Instance(t.type, args)
-        else:
-            # Incompatible; return trivial result object.
-            return object_from_instance(t)
+
+        # Combine type arguments.
+        args = []  # type: List[Type]
+        # N.B: We use zip instead of indexing because the lengths might have
+        # mismatches during daemon reprocessing.
+        for ta, sa, type_var in zip(t.args, s.args, t.type.defn.type_vars):
+            ta_proper = get_proper_type(ta)
+            sa_proper = get_proper_type(sa)
+            new_type = NoneType()  # type: Type
+            if isinstance(ta_proper, AnyType):
+                new_type = AnyType(TypeOfAny.from_another_any, ta_proper)
+            elif isinstance(sa_proper, AnyType):
+                new_type = AnyType(TypeOfAny.from_another_any, sa_proper)
+            elif type_var.variance == COVARIANT:
+                new_type = join_types(ta, sa)
+                if len(type_var.values) != 0 and new_type not in type_var.values:
+                    return object_from_instance(t)
+                if not is_subtype(new_type, type_var.upper_bound):
+                    return object_from_instance(t)
+            elif type_var.variance == CONTRAVARIANT:
+                new_type = meet.meet_types(ta, sa)
+                if len(type_var.values) != 0 and new_type not in type_var.values:
+                    return object_from_instance(t)
+                # No need to check subtype, as ta and sa already have to be subtypes of upper_bound
+            elif type_var.variance == INVARIANT:
+                new_type = join_types(ta, sa)
+                if not is_equivalent(ta, sa):
+                    return object_from_instance(t)
+            args.append(new_type)
+        return Instance(t.type, args)
     elif t.type.bases and is_subtype_ignoring_tvars(t, s):
         return join_instances_via_supertype(t, s)
     else:
