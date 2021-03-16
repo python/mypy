@@ -27,6 +27,12 @@ new_tuple_op = custom_op(
     error_kind=ERR_MAGIC,
     var_arg_type=object_rprimitive)
 
+new_tuple_with_length_op = custom_op(
+    arg_types=[c_pyssize_t_rprimitive],
+    return_type=tuple_rprimitive,
+    c_function_name='PyTuple_New',
+    error_kind=ERR_MAGIC)
+
 # Construct tuple from a list.
 list_tuple_op = function_op(
     name='builtins.tuple',

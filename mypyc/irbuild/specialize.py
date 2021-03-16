@@ -135,6 +135,9 @@ def translate_safe_generator_call(
                     + [builder.accept(arg) for arg in expr.args[1:]]),
                 builder.node_type(expr), expr.line, expr.arg_kinds, expr.arg_names)
         else:
+            if callee.fullname == "builtins.tuple":
+                length = builder.builder.builtin_len(builder.accept(expr.args[0].sequences[0]), expr.line)
+                tuple_ops = builder.builder.new_tuple_with_length(length, expr.line)
             return builder.call_refexpr_with_args(
                 expr, callee,
                 ([translate_list_comprehension(builder, expr.args[0])]

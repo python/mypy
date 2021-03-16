@@ -47,7 +47,9 @@ from mypyc.primitives.registry import (
 from mypyc.primitives.list_ops import (
     list_extend_op, new_list_op
 )
-from mypyc.primitives.tuple_ops import list_tuple_op, new_tuple_op
+from mypyc.primitives.tuple_ops import (
+    list_tuple_op, new_tuple_op, new_tuple_with_length_op
+)
 from mypyc.primitives.dict_ops import (
     dict_update_in_display_op, dict_new_op, dict_build_op, dict_size_op
 )
@@ -1107,6 +1109,9 @@ class LowLevelIRBuilder:
     def new_tuple(self, items: List[Value], line: int) -> Value:
         size = Integer(len(items), c_pyssize_t_rprimitive)  # type: Value
         return self.call_c(new_tuple_op, [size] + items, line)
+
+    def new_tuple_with_length(self, length: Value, line: int) -> Value:
+        return self.call_c(new_tuple_with_length_op, [length], line)
 
     # Internal helpers
 
