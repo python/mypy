@@ -1081,12 +1081,15 @@ class LowLevelIRBuilder:
     def comparison_op(self, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.add(ComparisonOp(lhs, rhs, op, line))
 
-    def builtin_len(self, val: Value, line: int) -> Value:
+    def builtin_len(self, val: Value, line: int,
+                    get_c_pyssize_t_rprimitive: bool = False) -> Value:
         typ = val.type
         if is_list_rprimitive(typ) or is_tuple_rprimitive(typ):
             elem_address = self.add(GetElementPtr(val, PyVarObject, 'ob_size'))
             size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
             self.add(KeepAlive([val]))
+            if get_c_pyssize_t_rprimitive:
+                return size_value
             offset = Integer(1, c_pyssize_t_rprimitive, line)
             return self.int_op(short_int_rprimitive, size_value, offset,
                                IntOp.LEFT_SHIFT, line)
@@ -1110,7 +1113,14 @@ class LowLevelIRBuilder:
         size = Integer(len(items), c_pyssize_t_rprimitive)  # type: Value
         return self.call_c(new_tuple_op, [size] + items, line)
 
-    def new_tuple_with_length(self, length: Value, line: int) -> Value:
+    def new_tuple_with_length(self, val: Value, line: int) -> Value:
+        """Generate a new empty tuple with length from a list or tuple
+
+        Args:
+            val: a list or tuple
+            line: line number
+        """
+        length = self.builtin_len(val, line, get_c_pyssize_t_rprimitive=True)
         return self.call_c(new_tuple_with_length_op, [length], line)
 
     # Internal helpers

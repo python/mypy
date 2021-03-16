@@ -22,7 +22,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
-    bool_rprimitive, is_dict_rprimitive
+    bool_rprimitive, is_dict_rprimitive, is_list_rprimitive
 )
 from mypyc.primitives.dict_ops import dict_keys_op, dict_values_op, dict_items_op
 from mypyc.irbuild.builder import IRBuilder
@@ -136,12 +136,30 @@ def translate_safe_generator_call(
                 builder.node_type(expr), expr.line, expr.arg_kinds, expr.arg_names)
         else:
             if callee.fullname == "builtins.tuple":
-                length = builder.builder.builtin_len(builder.accept(expr.args[0].sequences[0]), expr.line)
-                tuple_ops = builder.builder.new_tuple_with_length(length, expr.line)
+                val = tuple_from_generator_helper(builder, expr.args[0])
+                if val is not None:
+                    return val
             return builder.call_refexpr_with_args(
                 expr, callee,
                 ([translate_list_comprehension(builder, expr.args[0])]
                     + [builder.accept(arg) for arg in expr.args[1:]]))
+    return None
+
+
+def tuple_from_generator_helper(builder: IRBuilder,
+                                gen: GeneratorExpr) -> Optional[Value]:
+
+    if len(gen.sequences) == 1:
+        # Currently we only optimize for simplest generator expression
+        if not is_list_rprimitive(builder.node_type(gen.sequences[0])):
+            return None
+
+        tuple_ops = builder.builder.new_tuple_with_length(builder.accept(gen.sequences[0]),
+                                                          gen.line)
+
+        # TODO
+        loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
+
     return None
 
 
