@@ -44,6 +44,8 @@ htmlcov
 bin/
 lib/
 include/
+.python-version
+pyvenv.cfg
 
 .tox
 pip-wheel-metadata
