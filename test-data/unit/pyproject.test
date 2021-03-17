@@ -1,0 +1,693 @@
+-- Tests for command line parsing
+-- ------------------------------
+--
+-- The initial line specifies the command line, in the format
+--
+--   # cmd: mypy <options>
+--
+-- Note that # flags: --some-flag IS NOT SUPPORTED.
+-- Use # cmd: mypy --some-flag ...
+--
+-- '== Return code: <value>' is added to the output when the process return code
+-- is "nonobvious" -- that is, when it is something other than 0 if there are no
+-- messages and 1 if there are.
+
+-- Directories/packages on the command line
+-- ----------------------------------------
+
+[case testConfigFile]
+# cmd: mypy --config-file pyproject.toml main.py
+[file pyproject.toml]
+\[tool.mypy]
+python_version = 2.7
+[file main.py]
+def f():
+    try:
+        1/0
+    except ZeroDivisionError, err:
+        print err
+
+[case testErrorContextConfig]
+# cmd: mypy main.py
+[file pyproject.toml]
+\[tool.mypy]
+show_error_context = true
+[file main.py]
+def f() -> None:
+  0 + ""
+[out]
+main.py: note: In function "f":
+main.py:2: error: Unsupported operand types for + ("int" and "str")
+
+[case testNoConfigFile]
+# cmd: mypy main.py --config-file=
+[file pyproject.toml]
+\[tool.mypy]
+warn_unused_ignores = true
+[file main.py]
+# type: ignore
+
+[case testPerFileConfigSection]
+# cmd: mypy x.py y.py z.py
+[file pyproject.toml]
+\[tool.mypy]
+disallow_untyped_defs = true
+\[tool.mypy-y]
+disallow_untyped_defs = false
+\[tool.mypy-z]
+disallow_untyped_calls = true
+[file x.py]
+def f(a):
+    pass
+def g(a: int) -> int:
+    return f(a)
+[file y.py]
+def f(a):
+    pass
+def g(a: int) -> int:
+    return f(a)
+[file z.py]
+def f(a):
+    pass
+def g(a: int) -> int:
+    return f(a)
+[out]
+z.py:1: error: Function is missing a type annotation
+z.py:4: error: Call to untyped function "f" in typed context
+x.py:1: error: Function is missing a type annotation
+
+[case testPerFileConfigSectionMultipleMatchesDisallowed]
+# cmd: mypy xx.py xy.py yx.py yy.py
+[file pyproject.toml]
+\[tool.mypy]
+\[tool.'mypy-*x*']
+disallow_untyped_defs = true
+\[tool.'mypy-*y*']
+disallow_untyped_calls = true
+[file xx.py]
+def f(a): pass
+def g(a: int) -> int: return f(a)
+[file xy.py]
+def f(a): pass
+def g(a: int) -> int: return f(a)
+[file yx.py]
+def f(a): pass
+def g(a: int) -> int: return f(a)
+[file yy.py]
+def f(a): pass
+def g(a: int) -> int: return f(a)
+[out]
+pyproject.toml: [mypy-*x*]: Patterns must be fully-qualified module names, optionally with '*' in some components (e.g spam.*.eggs.*)
+pyproject.toml: [mypy-*y*]: Patterns must be fully-qualified module names, optionally with '*' in some components (e.g spam.*.eggs.*)
+== Return code: 0
+
+[case testMultipleGlobConfigSection]
+# cmd: mypy x.py y.py z.py
+[file pyproject.toml]
+\[tool.mypy]
+\[tool.'mypy-x.*,z.*']
+disallow_untyped_defs = true
+[file x.py]
+def f(a): pass
+[file y.py]
+def f(a): pass
+[file z.py]
+def f(a): pass
+[out]
+z.py:1: error: Function is missing a type annotation
+x.py:1: error: Function is missing a type annotation
+
+[case testConfigNoErrorNoSection]
+# cmd: mypy -c pass
+[file pyproject.toml]
+[out]
+
+[case testConfigErrorUnknownFlag]
+# cmd: mypy -c pass
+[file pyproject.toml]
+\[tool.mypy]
+bad = 0
+[out]
+pyproject.toml: [mypy]: Unrecognized option: bad = 0
+== Return code: 0
+
+[case testConfigErrorBadFlag]
+# cmd: mypy a.py
+[file pyproject.toml]
+\[tool.mypy]
+disallow-untyped-defs = true
+[file a.py]
+def f():
+    pass
+[out]
+pyproject.toml: [mypy]: Unrecognized option: disallow-untyped-defs = True
+== Return code: 0
+
+[case testConfigErrorBadBoolean]
+# cmd: mypy -c pass
+[file pyproject.toml]
+\[tool.mypy]
+ignore_missing_imports = "nah"
+[out]
+pyproject.toml: [mypy]: ignore_missing_imports: Not a boolean: nah
+== Return code: 0
+
+[case testConfigErrorNotPerFile]
+# cmd: mypy -c pass
+[file pyproject.toml]
+\[tool.mypy]
+\[tool.'mypy-*']
+python_version = 3.4
+[out]
+pyproject.toml: [mypy-*]: Per-module sections should only specify per-module flags (python_version)
+== Return code: 0
+
+[case testConfigMypyPath]
+# cmd: mypy file.py
+[file pyproject.toml]
+\[tool.mypy]
+mypy_path = "foo:bar,baz"
+[file foo/foo.pyi]
+def foo(x: int) -> str: ...
+[file bar/bar.pyi]
+def bar(x: str) -> list: ...
+[file baz/baz.pyi]
+def baz(x: list) -> dict: ...
+[file file.py]
+import no_stubs
+from foo import foo
+from bar import bar
+from baz import baz
+baz(bar(foo(42)))
+baz(bar(foo('oof')))
+[out]
+file.py:1: error: Cannot find implementation or library stub for module named "no_stubs"
+file.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+file.py:6: error: Argument 1 to "foo" has incompatible type "str"; expected "int"
+
+[case testIgnoreErrorsConfig]
+# cmd: mypy x.py y.py
+[file pyproject.toml]
+\[tool.mypy]
+\[tool.mypy-x]
+ignore_errors = true
+[file x.py]
+"" + 0
+[file y.py]
+"" + 0
+[out]
+y.py:1: error: Unsupported operand types for + ("str" and "int")
+
+[case testConfigFollowImportsNormal]
+# cmd: mypy main.py
+[file main.py]
+from a import x
+x + 0
+x + ''  # E
+import a
+a.x + 0
+a.x + ''  # E
+a.y  # E
+a + 0  # E
+[file pyproject.toml]
+\[tool.mypy]
+follow_imports = "normal"
+[file a.py]
+x = 0
+x += ''  # Error reported here
+[out]
+a.py:2: error: Unsupported operand types for + ("int" and "str")
+main.py:3: error: Unsupported operand types for + ("int" and "str")
+main.py:6: error: Unsupported operand types for + ("int" and "str")
+main.py:7: error: Module has no attribute "y"
+main.py:8: error: Unsupported operand types for + (Module and "int")
+
+[case testConfigFollowImportsSilent]
+# cmd: mypy main.py
+[file main.py]
+from a import x
+x + ''
+import a
+a.x + ''
+a.y
+a + 0
+[file pyproject.toml]
+\[tool.mypy]
+follow_imports = "silent"
+[file a.py]
+x = 0
+x += ''  # No error reported
+[out]
+main.py:2: error: Unsupported operand types for + ("int" and "str")
+main.py:4: error: Unsupported operand types for + ("int" and "str")
+main.py:5: error: Module has no attribute "y"
+main.py:6: error: Unsupported operand types for + (Module and "int")
+
+[case testConfigFollowImportsSkip]
+# cmd: mypy main.py
+[file main.py]
+from a import x
+reveal_type(x)  # Expect Any
+import a
+reveal_type(a.x)  # Expect Any
+[file pyproject.toml]
+\[tool.mypy]
+follow_imports = "skip"
+[file a.py]
+/  # No error reported
+[out]
+main.py:2: note: Revealed type is 'Any'
+main.py:4: note: Revealed type is 'Any'
+
+[case testConfigFollowImportsError]
+# cmd: mypy main.py
+[file main.py]
+from a import x
+reveal_type(x)  # Expect Any
+import a  # Error reported here
+reveal_type(a.x)  # Expect Any
+[file pyproject.toml]
+\[tool.mypy]
+follow_imports = "error"
+[file a.py]
+/  # No error reported
+[out]
+main.py:1: error: Import of 'a' ignored
+main.py:1: note: (Using --follow-imports=error, module not passed on command line)
+main.py:2: note: Revealed type is 'Any'
+main.py:4: note: Revealed type is 'Any'
+
+[case testConfigFollowImportsSelective]
+# cmd: mypy main.py
+[file pyproject.toml]
+\[tool.mypy]
+\[tool.mypy-normal]
+follow_imports = "normal"
+\[tool.mypy-silent]
+follow_imports = "silent"
+\[tool.mypy-skip]
+follow_imports = "skip"
+\[tool.mypy-error]
+follow_imports = "error"
+[file main.py]
+import normal
+import silent
+import skip
+import error
+reveal_type(normal.x)
+reveal_type(silent.x)
+reveal_type(skip)
+reveal_type(error)
+[file normal.py]
+x = 0
+x += ''
+[file silent.py]
+x = 0
+x += ''
+[file skip.py]
+bla bla
+[file error.py]
+bla bla
+[out]
+normal.py:2: error: Unsupported operand types for + ("int" and "str")
+main.py:4: error: Import of 'error' ignored
+main.py:4: note: (Using --follow-imports=error, module not passed on command line)
+main.py:5: note: Revealed type is 'builtins.int'
+main.py:6: note: Revealed type is 'builtins.int'
+main.py:7: note: Revealed type is 'Any'
+main.py:8: note: Revealed type is 'Any'
+
+[case testConfigFollowImportsInvalid]
+# cmd: mypy main.py
+[file pyproject.toml]
+\[tool.mypy]
+follow_imports = true
+[file main.py]
+[out]
+pyproject.toml: [mypy]: follow_imports: invalid choice 'True' (choose from 'normal', 'silent', 'skip', 'error')
+== Return code: 0
+
+[case testConfigSilentMissingImportsOff]
+# cmd: mypy main.py
+[file main.py]
+import missing  # Expect error here
+reveal_type(missing.x)  # Expect Any
+[file pyproject.toml]
+\[tool.mypy]
+ignore_missing_imports = false
+[out]
+main.py:1: error: Cannot find implementation or library stub for module named "missing"
+main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+main.py:2: note: Revealed type is 'Any'
+
+[case testConfigSilentMissingImportsOn]
+# cmd: mypy main.py
+[file main.py]
+import missing  # No error here
+reveal_type(missing.x)  # Expect Any
+[file pyproject.toml]
+\[tool.mypy]
+ignore_missing_imports = true
+[out]
+main.py:2: note: Revealed type is 'Any'
+
+[case testConfigNoErrorForUnknownXFlagInSubsection]
+# cmd: mypy -c pass
+[file pyproject.toml]
+\[tool.mypy]
+\[tool.mypy-foo]
+x_bad = 0
+[out]
+
+[case testPythonVersionTooOld10]
+# cmd: mypy -c pass
+[file pyproject.toml]
+\[tool.mypy]
+python_version = 1.0
+[out]
+pyproject.toml: [mypy]: python_version: Python major version '1' out of range (must be 2 or 3)
+== Return code: 0
+
+[case testPythonVersionTooOld26]
+# cmd: mypy -c pass
+[file pyproject.toml]
+\[tool.mypy]
+python_version = 2.6
+[out]
+pyproject.toml: [mypy]: python_version: Python 2.6 is not supported (must be 2.7)
+== Return code: 0
+
+[case testPythonVersionTooOld33]
+# cmd: mypy -c pass
+[file pyproject.toml]
+\[tool.mypy]
+python_version = 3.3
+[out]
+pyproject.toml: [mypy]: python_version: Python 3.3 is not supported (must be 3.4 or higher)
+== Return code: 0
+
+[case testPythonVersionTooNew28]
+# cmd: mypy -c pass
+[file pyproject.toml]
+\[tool.mypy]
+python_version = 2.8
+[out]
+pyproject.toml: [mypy]: python_version: Python 2.8 is not supported (must be 2.7)
+== Return code: 0
+
+[case testPythonVersionTooNew40]
+# cmd: mypy -c pass
+[file pyproject.toml]
+\[tool.mypy]
+python_version = 4.0
+[out]
+pyproject.toml: [mypy]: python_version: Python major version '4' out of range (must be 2 or 3)
+== Return code: 0
+
+[case testPythonVersionAccepted27]
+# cmd: mypy -c pass
+[file pyproject.toml]
+\[tool.mypy]
+python_version = 2.7
+[out]
+
+[case testPythonVersionAccepted34]
+# cmd: mypy -c pass
+[file pyproject.toml]
+\[tool.mypy]
+python_version = 3.4
+[out]
+
+[case testPythonVersionAccepted36]
+# cmd: mypy -c pass
+[file pyproject.toml]
+\[tool.mypy]
+python_version = 3.6
+[out]
+
+[case testDisallowAnyGenericsBuiltinCollections]
+# cmd: mypy m.py
+[file pyproject.toml]
+\[tool.mypy]
+python_version = 3.6
+\[tool.mypy-m]
+disallow_any_generics = true
+
+[file m.py]
+s = tuple([1, 2, 3])  # no error
+
+def f(t: tuple) -> None: pass
+def g() -> list: pass
+def h(s: dict) -> None: pass
+def i(s: set) -> None: pass
+def j(s: frozenset) -> None: pass
+[out]
+m.py:3: error: Implicit generic "Any". Use "typing.Tuple" and specify generic parameters
+m.py:4: error: Implicit generic "Any". Use "typing.List" and specify generic parameters
+m.py:5: error: Implicit generic "Any". Use "typing.Dict" and specify generic parameters
+m.py:6: error: Implicit generic "Any". Use "typing.Set" and specify generic parameters
+m.py:7: error: Implicit generic "Any". Use "typing.FrozenSet" and specify generic parameters
+
+[case testDisallowAnyGenericsTypingCollections]
+# cmd: mypy m.py
+[file pyproject.toml]
+\[tool.mypy]
+\[tool.mypy-m]
+disallow_any_generics = true
+
+[file m.py]
+from typing import Tuple, List, Dict, Set, FrozenSet
+
+def f(t: Tuple) -> None: pass
+def g() -> List: pass
+def h(s: Dict) -> None: pass
+def i(s: Set) -> None: pass
+def j(s: FrozenSet) -> None: pass
+[out]
+m.py:3: error: Missing type parameters for generic type "Tuple"
+m.py:4: error: Missing type parameters for generic type "List"
+m.py:5: error: Missing type parameters for generic type "Dict"
+m.py:6: error: Missing type parameters for generic type "Set"
+m.py:7: error: Missing type parameters for generic type "FrozenSet"
+
+[case testSectionInheritance]
+# cmd: mypy a
+[file a/__init__.py]
+0()
+[file a/foo.py]
+0()
+[file a/b/__init__.py]
+[file a/b/c/__init__.py]
+0()
+[file a/b/c/d/__init__.py]
+[file a/b/c/d/e/__init__.py]
+from typing import List
+def g(x: List) -> None: pass
+g(None)
+[file pyproject.toml]
+\[tool.mypy]
+allow_any_generics = true
+\[tool.'mypy-a.*']
+ignore_errors = true
+\[tool.'mypy-a.b.*']
+disallow_any_generics = true
+ignore_errors = true
+\[tool.'mypy-a.b.c.*']
+ignore_errors = true
+\[tool.'mypy-a.b.c.d.*']
+ignore_errors = true
+\[tool.'mypy-a.b.c.d.e.*']
+ignore_errors = true
+strict_optional = true
+\[tool.'mypy-a.b.c.d.e']
+ignore_errors = false
+[out]
+a/b/c/d/e/__init__.py:2: error: Missing type parameters for generic type "List"
+a/b/c/d/e/__init__.py:3: error: Argument 1 to "g" has incompatible type "None"; expected "List[Any]"
+
+[case testDisallowUntypedDefsAndGenerics]
+# cmd: mypy a.py
+[file pyproject.toml]
+\[tool.mypy]
+disallow_untyped_defs = true
+disallow_any_generics = true
+[file a.py]
+def get_tasks(self):
+    return 'whatever'
+[out]
+a.py:1: error: Function is missing a return type annotation
+
+[case testSrcPEP420Packages]
+# cmd: mypy -p anamespace --namespace-packages
+[file pyproject.toml]
+\[tool.mypy]
+mypy_path = "src"
+[file src/setup.cfg]
+[file src/anamespace/foo/__init__.py]
+[file src/anamespace/foo/bar.py]
+def bar(a: int, b: int) -> str:
+    return a + b
+[out]
+src/anamespace/foo/bar.py:2: error: Incompatible return value type (got "int", expected "str")
+
+[case testFollowImportStubsPyprojectTOML1]
+# cmd: mypy main.py
+[file pyproject.toml]
+\[tool.mypy]
+\[tool.'mypy-math.*']
+follow_imports = "error"
+follow_imports_for_stubs = true
+[file main.py]
+import math
+math.frobnicate()
+[out]
+main.py:1: error: Import of 'math' ignored
+main.py:1: note: (Using --follow-imports=error, module not passed on command line)
+
+[case testFollowImportStubsPyprojectTOML2]
+# cmd: mypy main.py
+[file pyproject.toml]
+\[tool.mypy]
+\[tool.'mypy-math.*']
+follow_imports = "skip"
+follow_imports_for_stubs = true
+[file main.py]
+import math
+math.frobnicate()
+
+[case testConfigWarnUnusedSectionPyprojectTOML1]
+# cmd: mypy foo.py quux.py spam/eggs.py
+[file pyproject.toml]
+\[tool.mypy]
+warn_unused_configs = true
+incremental = false
+\[tool.mypy-bar]
+\[tool.mypy-foo]
+\[tool.'mypy-baz.*']
+\[tool.'mypy-quux.*']
+\[tool.'mypy-spam.*']
+\[tool.'mypy-spam.eggs']
+\[tool.'mypy-emarg.*']
+\[tool.'mypy-emarg.hatch']
+# Currently we don't treat an unstructured pattern like a.*.b as unused
+# if it matches another section (like a.x.b). This would be reasonable
+# to change. '
+\[tool.'mypy-a.*.b']
+\[tool.'mypy-a.*.c']
+\[tool.'mypy-a.x.b']
+[file foo.py]
+[file quux.py]
+[file spam/__init__.py]
+[file spam/eggs.py]
+[out]
+Warning: unused section(s) in pyproject.toml: [mypy-bar], [mypy-baz.*], [mypy-emarg.*], [mypy-emarg.hatch], [mypy-a.*.c], [mypy-a.x.b]
+== Return code: 0
+
+[case testConfigUnstructuredGlob]
+# cmd: mypy emarg foo
+[file pyproject.toml]
+\[tool.mypy]
+ignore_errors = true
+\[tool.'mypy-*.lol']
+ignore_errors = false
+\[tool.'mypy-emarg.*']
+ignore_errors = false
+\[tool.'mypy-emarg.*.villip.*']
+ignore_errors = true
+\[tool.'mypy-emarg.hatch.villip.mankangulisk']
+ignore_errors = false
+[file emarg/__init__.py]
+[file emarg/foo.py]
+fail
+[file emarg/villip.py]
+fail
+[file emarg/hatch/__init__.py]
+[file emarg/hatch/villip/__init__.py]
+[file emarg/hatch/villip/nus.py]
+fail
+[file emarg/hatch/villip/mankangulisk.py]
+fail
+[file foo/__init__.py]
+[file foo/lol.py]
+fail
+[out]
+foo/lol.py:1: error: Name 'fail' is not defined
+emarg/foo.py:1: error: Name 'fail' is not defined
+emarg/hatch/villip/mankangulisk.py:1: error: Name 'fail' is not defined
+
+[case testTomlFiles]
+# cmd: mypy
+[file pyproject.toml]
+\[tool.mypy]
+files = [
+    "a.py",
+    "b.py"
+]
+[file a.py]
+fail
+[file b.py]
+fail
+[out]
+b.py:1: error: Name 'fail' is not defined
+a.py:1: error: Name 'fail' is not defined
+
+[case testTomlFilesGlobbing]
+# cmd: mypy
+[file pyproject.toml]
+\[tool.mypy]
+files = "**/*.py"
+[file a/b.py]
+fail
+[file c.py]
+fail
+[out]
+a/b.py:1: error: Name 'fail' is not defined
+c.py:1: error: Name 'fail' is not defined
+
+[case testTomlFilesCmdlineOverridesConfig]
+# cmd: mypy override.py
+[file pyproject.toml]
+\[tool.mypy]
+files = "config.py"
+[out]
+mypy: can't read file 'override.py': No such file or directory
+== Return code: 2
+
+[case testDuplicateModules]
+# cmd: mypy src
+[file pyproject.toml]
+\[tool.mypy]
+mypy_path = "src"
+[file src/__init__.py]
+[file src/a.py]
+import foo.bar
+[file src/foo/__init__.py]
+[file src/foo/bar.py]
+1+'x'
+[out]
+src/foo/bar.py: error: Source file found twice under different module names: 'src.foo.bar' and 'foo.bar'
+== Return code: 2
+
+[case testCmdlinePackageAndTomlFiles]
+# cmd: mypy -p pkg
+[file pyproject.toml]
+\[tool.mypy]
+files = "file"
+[file pkg.py]
+x = 0  # type: str
+[file file.py]
+y = 0  # type: str
+[out]
+pkg.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testCmdlineModuleAndTomlFiles]
+# cmd: mypy -m pkg
+[file pyproject.toml]
+\[tool.mypy]
+files = "file"
+[file pkg.py]
+x = 0  # type: str
+[file file.py]
+y = 0  # type: str
+[out]
+pkg.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
