@@ -146,6 +146,8 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
                 parser = {key: value
                           for key, value in toml_data.get('tool', {}).items()
                           if key.split('-')[0] == 'mypy'}
+                if parser.get('mypy') is None:
+                    continue
             else:
                 config_parser.read(config_file)
                 parser = {key: value for key, value in config_parser.items()}

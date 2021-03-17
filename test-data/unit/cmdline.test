@@ -363,12 +363,10 @@ x.py:1: error: Function is missing a type annotation
 mypy.ini: No [mypy] section in config file
 == Return code: 0
 
-[case testConfigErrorNoSectionPyprojectTOML]
+[case testConfigNoErrorNoSectionPyprojectTOML]
 # cmd: mypy -c pass
 [file pyproject.toml]
 [out]
-pyproject.toml: No [mypy] section in config file
-== Return code: 0
 
 [case testConfigErrorUnknownFlag]
 # cmd: mypy -c pass
