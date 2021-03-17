@@ -23,7 +23,8 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
-    bool_rprimitive, is_dict_rprimitive, is_list_rprimitive, c_pyssize_t_rprimitive
+    bool_rprimitive, is_dict_rprimitive, is_list_rprimitive, c_pyssize_t_rprimitive,
+    is_int_rprimitive, is_tuple_rprimitive
 )
 from mypyc.primitives.dict_ops import dict_keys_op, dict_values_op, dict_items_op
 from mypyc.primitives.tuple_ops import new_tuple_set_item_op
@@ -156,29 +157,28 @@ def tuple_from_generator_helper(builder: IRBuilder,
 
     if len(gen.sequences) == 1 and len(gen.condlists[0]) == 0:
         # Currently we only optimize for simplest generator expression
-        if not is_list_rprimitive(builder.node_type(gen.sequences[0])):
-            return None
+        rtype = builder.node_type(gen.sequences[0])
+        if ((is_list_rprimitive(rtype) or is_tuple_rprimitive(rtype))
+                and is_int_rprimitive(builder.node_type(gen.indices[0]))):
+            tuple_ops = builder.builder.new_tuple_with_length(builder.accept(gen.sequences[0]),
+                                                              gen.line)
+            index, expr = gen.indices[0], gen.sequences[0]
 
-        tuple_ops = builder.builder.new_tuple_with_length(builder.accept(gen.sequences[0]),
-                                                          gen.line)
-        index, expr = gen.indices[0], gen.sequences[0]
+            def set_tuple_item() -> None:
+                e = builder.accept(gen.left_expr)
+                index_val = builder.accept(index)
+                offset = Integer(1, c_pyssize_t_rprimitive, gen.line)
+                index_pyssize_t = builder.int_op(c_pyssize_t_rprimitive, index_val, offset,
+                                                 IntOp.RIGHT_SHIFT, gen.line)
+                index_pyssize_t = builder.int_op(c_pyssize_t_rprimitive, index_pyssize_t, offset,
+                                                 IntOp.SUB, gen.line)
+                builder.call_c(new_tuple_set_item_op, [tuple_ops, index_pyssize_t, e], gen.line)
 
-        def set_tuple_item() -> None:
-            e = builder.accept(gen.left_expr)
-            index_val = builder.accept(index)
-            offset = Integer(1, c_pyssize_t_rprimitive, gen.line)
-            index_pyssize_t = builder.int_op(c_pyssize_t_rprimitive, index_val, offset,
-                                             IntOp.RIGHT_SHIFT, gen.line)
-            index_pyssize_t = builder.int_op(c_pyssize_t_rprimitive, index_pyssize_t, offset,
-                                             IntOp.SUB, gen.line)
-            builder.call_c(new_tuple_set_item_op, [tuple_ops, index_pyssize_t, e], gen.line)
+            for_loop_helper(builder, index, expr,
+                            lambda: set_tuple_item(),
+                            None, gen.line)
 
-        for_loop_helper(builder, index, expr,
-                        lambda: set_tuple_item(),
-                        None, gen.line)
-
-        return tuple_ops
-
+            return tuple_ops
     return None
 
 
