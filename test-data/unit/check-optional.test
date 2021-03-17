@@ -832,3 +832,28 @@ main:4: error: Argument 1 to "asdf" has incompatible type "List[str]"; expected 
 main:4: note: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance
 main:4: note: Consider using "Sequence" instead, which is covariant
 [builtins fixtures/list.pyi]
+
+[case testStrictOptionalCovarianceCrossModulePyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+from a import asdf
+x = ["lol"]
+asdf(x)
+
+[file a.py]
+from typing import List, Optional
+
+def asdf(x: List[Optional[str]]) -> None:
+    pass
+
+x = ["lol"]
+asdf(x)
+
+[file pyproject.toml]
+\[tool.mypy]
+\[tool.mypy-a]
+strict_optional = false
+[out]
+main:4: error: Argument 1 to "asdf" has incompatible type "List[str]"; expected "List[Optional[str]]"
+main:4: note: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance
+main:4: note: Consider using "Sequence" instead, which is covariant
+[builtins fixtures/list.pyi]

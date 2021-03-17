@@ -1812,6 +1812,23 @@ main:3: note: Revealed type is 'builtins.int'
 [out2]
 main:3: note: Revealed type is 'Any'
 
+[case testIncrementalFollowImportsVariablePyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+import a
+reveal_type(a.x)
+[file a.py]
+x = 0
+[file pyproject.toml]
+\[tool.mypy]
+follow_imports = "normal"
+[file pyproject.toml.2]
+\[tool.mypy]
+follow_imports = "skip"
+[out1]
+main:3: note: Revealed type is 'builtins.int'
+[out2]
+main:3: note: Revealed type is 'Any'
+
 [case testIncrementalNamedTupleInMethod]
 from ntcrash import nope
 [file ntcrash.py]
@@ -2007,6 +2024,18 @@ pass
 warn_no_return = False
 \[mypy-a]
 warn_no_return = True
+[rechecked]
+
+[case testIncrementalPerFileFlagsPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+import a
+[file a.py]
+pass
+[file pyproject.toml]
+\[tool.mypy]
+warn_no_return = false
+\[tool.mypy-a]
+warn_no_return = true
 [rechecked]
 
 [case testIncrementalClassVar]
@@ -3665,6 +3694,21 @@ cache_fine_grained = False
 [rechecked]
 [stale]
 
+[case testRegularUsesFgCachePyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+import a
+[file a.py]
+x = 0
+[file pyproject.toml]
+\[tool.mypy]
+cache_fine_grained = true
+[file pyproject.toml.2]
+\[tool.mypy]
+cache_fine_grained = false
+-- Nothing should get rechecked
+[rechecked]
+[stale]
+
 [case testFgCacheNeedsFgCache]
 # flags: --config-file tmp/mypy.ini
 import a
@@ -3676,6 +3720,21 @@ cache_fine_grained = False
 [file mypy.ini.2]
 \[mypy]
 cache_fine_grained = True
+[rechecked a, builtins, typing]
+[stale a, builtins, typing]
+[builtins fixtures/tuple.pyi]
+
+[case testFgCacheNeedsFgCachePyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+import a
+[file a.py]
+x = 0
+[file pyproject.toml]
+\[tool.mypy]
+cache_fine_grained = false
+[file pyproject.toml.2]
+\[tool.mypy]
+cache_fine_grained = true
 [rechecked a, builtins, typing]
 [stale a, builtins, typing]
 [builtins fixtures/tuple.pyi]
@@ -4660,6 +4719,19 @@ follow_imports_for_stubs = True
 [stale]
 [rechecked]
 
+[case testFollowImportSkipNotInvalidatedOnAddedStubOnFollowForStubsPyprojectTOML]
+# flags: --follow-imports=skip --ignore-missing-imports --config-file=tmp/pyproject.toml
+# cmd: mypy -m main
+[file main.py]
+import other
+[file other.pyi.2]
+x = 1
+[file pyproject.toml]
+\[tool.mypy]
+follow_imports_for_stubs = true
+[stale]
+[rechecked]
+
 [case testAddedSkippedStubsPackageFrom]
 # flags: --follow-imports=skip --ignore-missing-imports
 # cmd: mypy -m main
@@ -4919,6 +4991,112 @@ plugins=basic_plugin.py
 [out2]
 tmp/a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
+[case testChangedPluginsInvalidateCachePyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+import a
+[file a.py]
+from b import x
+y: int = x
+
+[file a.py.2]
+from b import x
+y: int = x
+touch = 1
+
+[file b.py]
+class C: ...
+def f() -> C: ...
+x = f()
+
+[file basic_plugin.py]
+from mypy.plugin import Plugin
+
+class MyPlugin(Plugin):
+    def get_function_hook(self, fullname):
+        if fullname.endswith('.f'):
+            return my_hook
+        assert fullname is not None
+        return None
+
+def my_hook(ctx):
+    return ctx.api.named_generic_type('builtins.int', [])
+
+def plugin(version):
+    return MyPlugin
+
+[file basic_plugin.py.2]
+from mypy.plugin import Plugin
+
+class MyPlugin(Plugin):
+    def get_function_hook(self, fullname):
+        if fullname.endswith('.f'):
+            return my_hook
+        assert fullname is not None
+        return None
+
+def my_hook(ctx):
+    return ctx.api.named_generic_type('builtins.str', [])
+
+def plugin(version):
+    return MyPlugin
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "basic_plugin.py"
+[out]
+[out2]
+tmp/a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testChangedPluginsInvalidateCachePyprojectTOML2]
+# flags: --config-file tmp/pyproject.toml
+import a
+[file a.py]
+from b import x
+y: int = x
+
+[file a.py.2]
+from b import x
+y: int = x
+touch = 1
+
+[file b.py]
+class C: ...
+def f() -> C: ...
+x = f()
+
+[file basic_plugin.py]
+from mypy.plugin import Plugin
+from version_plugin import __version__, choice
+
+class MyPlugin(Plugin):
+    def get_function_hook(self, fullname):
+        if fullname.endswith('.f'):
+            return my_hook
+        assert fullname is not None
+        return None
+
+def my_hook(ctx):
+    if choice:
+        return ctx.api.named_generic_type('builtins.int', [])
+    else:
+        return ctx.api.named_generic_type('builtins.str', [])
+
+def plugin(version):
+    return MyPlugin
+
+[file version_plugin.py]
+__version__ = 0.1
+choice = True
+
+[file version_plugin.py.2]
+__version__ = 0.2
+choice = False
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "basic_plugin.py"
+[out]
+[out2]
+tmp/a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
 [case testAddedPluginsInvalidateCache]
 # flags: --config-file tmp/mypy.ini
 import a
@@ -4958,6 +5136,49 @@ python_version=3.6
 \[mypy]
 python_version=3.6
 plugins=basic_plugin.py
+[out]
+[out2]
+tmp/a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testAddedPluginsInvalidateCachePyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+import a
+[file a.py]
+from b import x
+y: int = x
+
+[file a.py.2]
+from b import x
+y: int = x
+touch = 1
+
+[file b.py]
+def f() -> int: ...
+x = f()
+
+[file basic_plugin.py]
+from mypy.plugin import Plugin
+
+class MyPlugin(Plugin):
+    def get_function_hook(self, fullname):
+        if fullname.endswith('.f'):
+            return my_hook
+        assert fullname is not None
+        return None
+
+def my_hook(ctx):
+    return ctx.api.named_generic_type('builtins.str', [])
+
+def plugin(version):
+    return MyPlugin
+
+[file pyproject.toml]
+\[tool.mypy]
+python_version = 3.6
+[file pyproject.toml.2]
+\[tool.mypy]
+python_version = 3.6
+plugins = "basic_plugin.py"
 [out]
 [out2]
 tmp/a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
@@ -5005,6 +5226,49 @@ python_version=3.6
 [out2]
 tmp/a.py:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
+[case testRemovedPluginsInvalidateCachePyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+import a
+[file a.py]
+from b import x
+y: str = x
+
+[file a.py.2]
+from b import x
+y: str = x
+touch = 1
+
+[file b.py]
+def f() -> int: ...
+x = f()
+
+[file basic_plugin.py]
+from mypy.plugin import Plugin
+
+class MyPlugin(Plugin):
+    def get_function_hook(self, fullname):
+        if fullname.endswith('.f'):
+            return my_hook
+        assert fullname is not None
+        return None
+
+def my_hook(ctx):
+    return ctx.api.named_generic_type('builtins.str', [])
+
+def plugin(version):
+    return MyPlugin
+
+[file pyproject.toml]
+\[tool.mypy]
+python_version = 3.6
+plugins = "basic_plugin.py"
+[file pyproject.toml.2]
+\[tool.mypy]
+python_version = 3.6
+[out]
+[out2]
+tmp/a.py:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
 [case testPluginConfigData]
 # flags: --config-file tmp/mypy.ini
 import a
@@ -5019,6 +5283,24 @@ import b
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/config_data.py
+
+# The config change will force a to be rechecked but not b.
+[rechecked a]
+
+[case testPluginConfigDataPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+import a
+import b
+[file a.py]
+[file b.py]
+[file test.json]
+{"a": false, "b": false}
+[file test.json.2]
+{"a": true, "b": false}
+
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/config_data.py"
 
 # The config change will force a to be rechecked but not b.
 [rechecked a]

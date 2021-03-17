@@ -11,6 +11,14 @@ reveal_type(f())  # N: Revealed type is 'builtins.int'
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/fnplugin.py
 
+[case testFunctionPluginFilePyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+def f() -> str: ...
+reveal_type(f())  # N: Revealed type is 'builtins.int'
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/fnplugin.py"
+
 [case testFunctionPlugin]
 # flags: --config-file tmp/mypy.ini
 def f() -> str: ...
@@ -18,6 +26,14 @@ reveal_type(f())  # N: Revealed type is 'builtins.int'
 [file mypy.ini]
 \[mypy]
 plugins=fnplugin
+
+[case testFunctionPluginPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+def f() -> str: ...
+reveal_type(f())  # N: Revealed type is 'builtins.int'
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "fnplugin"
 
 [case testFunctionPluginFullnameIsNotNone]
 # flags: --config-file tmp/mypy.ini
@@ -29,6 +45,17 @@ g(f)()
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/fnplugin.py
+
+[case testFunctionPluginFullnameIsNotNonePyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+from typing import Callable, TypeVar
+f: Callable[[], None]
+T = TypeVar('T')
+def g(x: T) -> T: return x  # This strips out the name of a callable
+g(f)()
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/fnplugin.py"
 
 [case testTwoPlugins]
 # flags: --config-file tmp/mypy.ini
@@ -43,6 +70,21 @@ reveal_type(h())  # N: Revealed type is 'Any'
 plugins=<ROOT>/test-data/unit/plugins/fnplugin.py,
   <ROOT>/test-data/unit/plugins/plugin2.py
 
+[case testTwoPluginsPyprojetTOML]
+# flags: --config-file tmp/pyproject.toml
+def f(): ...
+def g(): ...
+def h(): ...
+reveal_type(f())  # N: Revealed type is 'builtins.int'
+reveal_type(g())  # N: Revealed type is 'builtins.str'
+reveal_type(h())  # N: Revealed type is 'Any'
+[file pyproject.toml]
+\[tool.mypy]
+plugins=[
+    "<ROOT>/test-data/unit/plugins/fnplugin.py",
+    "<ROOT>/test-data/unit/plugins/plugin2.py"
+]
+
 [case testTwoPluginsMixedType]
 # flags: --config-file tmp/mypy.ini
 def f(): ...
@@ -55,6 +97,21 @@ reveal_type(h())  # N: Revealed type is 'Any'
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/fnplugin.py, plugin2
 
+[case testTwoPluginsMixedTypePyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+def f(): ...
+def g(): ...
+def h(): ...
+reveal_type(f())  # N: Revealed type is 'builtins.int'
+reveal_type(g())  # N: Revealed type is 'builtins.str'
+reveal_type(h())  # N: Revealed type is 'Any'
+[file pyproject.toml]
+\[tool.mypy]
+plugins = [
+    "<ROOT>/test-data/unit/plugins/fnplugin.py",
+    "plugin2"
+]
+
 [case testMissingPluginFile]
 # flags: --config-file tmp/mypy.ini
 [file mypy.ini]
@@ -64,6 +121,15 @@ plugins=missing.py
 tmp/mypy.ini:2: error: Can't find plugin 'tmp/missing.py'
 --' (work around syntax highlighting)
 
+[case testMissingPluginFilePyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "missing.py"
+[out]
+tmp/pyproject.toml:1: error: Can't find plugin 'tmp/missing.py'
+--' (work around syntax highlighting)
+
 [case testMissingPlugin]
 # flags: --config-file tmp/mypy.ini
 [file mypy.ini]
@@ -71,6 +137,14 @@ tmp/mypy.ini:2: error: Can't find plugin 'tmp/missing.py'
 plugins=missing
 [out]
 tmp/mypy.ini:2: error: Error importing plugin 'missing': No module named 'missing'
+
+[case testMissingPluginPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "missing"
+[out]
+tmp/pyproject.toml:1: error: Error importing plugin 'missing': No module named 'missing'
 
 [case testMultipleSectionsDefinePlugin]
 # flags: --config-file tmp/mypy.ini
@@ -85,6 +159,19 @@ plugins=another_plugin
 tmp/mypy.ini:4: error: Can't find plugin 'tmp/missing.py'
 --' (work around syntax highlighting)
 
+[case testMultipleSectionsDefinePluginPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+[file pyproject.toml]
+\[acme]
+plugins = "acmeplugin"
+\[tool.mypy]
+plugins = "missing.py"
+\[another]
+plugins = "another_plugin"
+[out]
+tmp/pyproject.toml:1: error: Can't find plugin 'tmp/missing.py'
+--' (work around syntax highlighting)
+
 [case testInvalidPluginExtension]
 # flags: --config-file tmp/mypy.ini
 [file mypy.ini]
@@ -94,6 +181,15 @@ plugins=dir/badext.pyi
 [out]
 tmp/mypy.ini:2: error: Plugin 'badext.pyi' does not have a .py extension
 
+[case testInvalidPluginExtensionPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "dir/badext.pyi"
+[file dir/badext.pyi]
+[out]
+tmp/pyproject.toml:1: error: Plugin 'badext.pyi' does not have a .py extension
+
 [case testMissingPluginEntryPoint]
 # flags: --config-file tmp/mypy.ini
 [file mypy.ini]
@@ -101,6 +197,14 @@ tmp/mypy.ini:2: error: Plugin 'badext.pyi' does not have a .py extension
  plugins = <ROOT>/test-data/unit/plugins/noentry.py
 [out]
 tmp/mypy.ini:2: error: Plugin '<ROOT>/test-data/unit/plugins/noentry.py' does not define entry point function "plugin"
+
+[case testMissingPluginEntryPointPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+[file pyproject.toml]
+\[tool.mypy]
+ plugins = "<ROOT>/test-data/unit/plugins/noentry.py"
+[out]
+tmp/pyproject.toml:1: error: Plugin '<ROOT>/test-data/unit/plugins/noentry.py' does not define entry point function "plugin"
 
 [case testCustomPluginEntryPointFile]
 # flags: --config-file tmp/mypy.ini
@@ -110,6 +214,14 @@ reveal_type(f())  # N: Revealed type is 'builtins.int'
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/customentry.py:register
 
+[case testCustomPluginEntryPointFilePyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+def f() -> str: ...
+reveal_type(f())  # N: Revealed type is 'builtins.int'
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/customentry.py:register"
+
 [case testCustomPluginEntryPoint]
 # flags: --config-file tmp/mypy.ini
 def f() -> str: ...
@@ -117,6 +229,14 @@ reveal_type(f())  # N: Revealed type is 'builtins.int'
 [file mypy.ini]
 \[mypy]
 plugins=customentry:register
+
+[case testCustomPluginEntryPointPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+def f() -> str: ...
+reveal_type(f())  # N: Revealed type is 'builtins.int'
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "customentry:register"
 
 [case testInvalidPluginEntryPointReturnValue]
 # flags: --config-file tmp/mypy.ini
@@ -139,6 +259,27 @@ plugins=<ROOT>/test-data/unit/plugins/badreturn2.py
 [out]
 tmp/mypy.ini:2: error: Return value of "plugin" must be a subclass of "mypy.plugin.Plugin" (in <ROOT>/test-data/unit/plugins/badreturn2.py)
 
+[case testInvalidPluginEntryPointReturnValuePyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+def f(): pass
+f()
+[file pyproject.toml]
+\[tool.mypy]
+
+plugins = "<ROOT>/test-data/unit/plugins/badreturn.py"
+[out]
+tmp/pyproject.toml:1: error: Type object expected as the return value of "plugin"; got None (in <ROOT>/test-data/unit/plugins/badreturn.py)
+
+[case testInvalidPluginEntryPointReturnValuePyprojectTOML2]
+# flags: --config-file tmp/pyproject.toml
+def f(): pass
+f()
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/badreturn2.py"
+[out]
+tmp/pyproject.toml:1: error: Return value of "plugin" must be a subclass of "mypy.plugin.Plugin" (in <ROOT>/test-data/unit/plugins/badreturn2.py)
+
 [case testAttributeTypeHookPlugin]
 # flags: --config-file tmp/mypy.ini
 from typing import Callable
@@ -159,6 +300,27 @@ class DerivedSignal(Signal[T]): ...
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/attrhook.py
+
+[case testAttributeTypeHookPluginPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+from typing import Callable
+from m import Signal, DerivedSignal
+s: Signal[Callable[[int], None]] = Signal()
+s(1)
+s('') # E: Argument 1 has incompatible type "str"; expected "int"
+
+ds: DerivedSignal[Callable[[int], None]] = DerivedSignal()
+ds('') # E: Argument 1 has incompatible type "str"; expected "int"
+[file m.py]
+from typing import TypeVar, Generic, Callable
+T = TypeVar('T', bound=Callable[..., None])
+class Signal(Generic[T]):
+    __call__: Callable[..., None]  # This type is replaced by the plugin
+
+class DerivedSignal(Signal[T]): ...
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/attrhook.py"
 
 [case testAttributeHookPluginForDynamicClass]
 # flags: --config-file tmp/mypy.ini
@@ -185,6 +347,31 @@ class DerivedMagic(Magic): ...
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/attrhook2.py
 
+[case testAttributeHookPluginForDynamicClassPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+from m import Magic, DerivedMagic
+
+magic = Magic()
+reveal_type(magic.magic_field)  # N: Revealed type is 'builtins.str'
+reveal_type(magic.non_magic_method())  # N: Revealed type is 'builtins.int'
+reveal_type(magic.non_magic_field)  # N: Revealed type is 'builtins.int'
+magic.nonexistent_field  # E: Field does not exist
+reveal_type(magic.fallback_example)  # N: Revealed type is 'Any'
+reveal_type(DerivedMagic().magic_field)  # N: Revealed type is 'builtins.str'
+[file m.py]
+from typing import Any
+class Magic:
+    # Triggers plugin infrastructure:
+    def __getattr__(self, x: Any) -> Any: ...
+    def non_magic_method(self) -> int: ...
+    non_magic_field: int
+
+class DerivedMagic(Magic): ...
+
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/attrhook2.py"
+
 [case testTypeAnalyzeHookPlugin]
 # flags: --config-file tmp/mypy.ini
 from typing import Callable
@@ -202,6 +389,25 @@ class Signal(Generic[T]):
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/type_anal_hook.py
+[builtins fixtures/dict.pyi]
+
+[case testTypeAnalyzeHookPluginPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+from typing import Callable
+from mypy_extensions import DefaultArg
+from m import Signal
+s: Signal[[int, DefaultArg(str, 'x')]] = Signal()
+reveal_type(s) # N: Revealed type is 'm.Signal[def (builtins.int, x: builtins.str =)]'
+s.x # E: "Signal[Callable[[int, str], None]]" has no attribute "x"
+ss: Signal[int, str] # E: Invalid "Signal" type (expected "Signal[[t, ...]]")
+[file m.py]
+from typing import TypeVar, Generic, Callable
+T = TypeVar('T', bound=Callable[..., None])
+class Signal(Generic[T]):
+    __call__: Callable[..., None]
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/type_anal_hook.py"
 [builtins fixtures/dict.pyi]
 
 [case testFunctionPluginHookForClass]
@@ -242,6 +448,44 @@ plugins=<ROOT>/test-data/unit/plugins/class_callable.py
 [builtins fixtures/bool.pyi]
 [out]
 
+[case testFunctionPluginHookForClassPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+import mod
+from mod import AttrInt
+
+Alias = AttrInt
+AnotherAlias = mod.Attr
+
+class C:
+    x = Alias()
+    y = mod.AttrInt(required=True)
+    z = AnotherAlias(int, required=False)
+
+c = C()
+reveal_type(c.x)  # N: Revealed type is 'Union[builtins.int, None]'
+reveal_type(c.y)  # N: Revealed type is 'builtins.int*'
+reveal_type(c.z)  # N: Revealed type is 'Union[builtins.int*, None]'
+
+[file mod.py]
+from typing import Generic, TypeVar, Type
+T = TypeVar('T')
+
+class Attr(Generic[T]):
+    def __init__(self, tp: Type[T], required: bool = False) -> None:
+        pass
+    def __get__(self, instance: object, owner: type) -> T:
+        pass
+
+class AttrInt(Attr[int]):
+    def __init__(self, required: bool = False) -> None:
+        pass
+
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/class_callable.py"
+[builtins fixtures/bool.pyi]
+[out]
+
 [case testFunctionPluginHookForReturnedCallable]
 # flags: --config-file tmp/mypy.ini
 from m import decorator1, decorator2
@@ -258,6 +502,23 @@ def decorator2() -> Callable[..., Callable[..., int]]: pass
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/named_callable.py
+
+[case testFunctionPluginHookForReturnedCallablePyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+from m import decorator1, decorator2
+@decorator1()
+def f() -> None: pass
+@decorator2()
+def g() -> None: pass
+reveal_type(f) # N: Revealed type is 'def (*Any, **Any) -> builtins.str'
+reveal_type(g) # N: Revealed type is 'def (*Any, **Any) -> builtins.int'
+[file m.py]
+from typing import Callable
+def decorator1() -> Callable[..., Callable[..., int]]: pass
+def decorator2() -> Callable[..., Callable[..., int]]: pass
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/named_callable.py"
 
 [case testFunctionMethodContextsHasArgNames]
 # flags: --config-file tmp/mypy.ini
@@ -286,6 +547,35 @@ def func(classname: str, arg1: Any, arg2: Any) -> Any:
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/arg_names.py
+[builtins fixtures/classmethod.pyi]
+
+[case testFunctionMethodContextsHasArgNamesPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+from mod import Class, func
+
+reveal_type(Class().method(arg1=1, arg2=2, classname='builtins.str'))  # N: Revealed type is 'builtins.str'
+reveal_type(Class.myclassmethod(arg1=1, arg2=2, classname='builtins.str'))  # N: Revealed type is 'builtins.str'
+reveal_type(Class.mystaticmethod(arg1=1, arg2=2, classname='builtins.str'))  # N: Revealed type is 'builtins.str'
+reveal_type(Class.method(self=Class(), arg1=1, arg2=2, classname='builtins.str'))  # N: Revealed type is 'builtins.str'
+reveal_type(func(arg1=1, arg2=2, classname='builtins.str'))  # N: Revealed type is 'builtins.str'
+
+[file mod.py]
+from typing import Any
+class Class:
+    def method(self, classname: str, arg1: Any, arg2: Any) -> Any:
+        pass
+    @classmethod
+    def myclassmethod(cls, classname: str, arg1: Any, arg2: Any):
+        pass
+    @staticmethod
+    def mystaticmethod(classname: str, arg1: Any, arg2: Any):
+        pass
+def func(classname: str, arg1: Any, arg2: Any) -> Any:
+    pass
+
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/arg_names.py"
 [builtins fixtures/classmethod.pyi]
 
 [case testFunctionMethodContextsHasArgNamesPositionals]
@@ -317,6 +607,35 @@ def func(classname: str, arg1: Any, arg2: Any) -> Any:
 plugins=<ROOT>/test-data/unit/plugins/arg_names.py
 [builtins fixtures/classmethod.pyi]
 
+[case testFunctionMethodContextsHasArgNamesPositionalsPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+from mod import Class, func
+
+reveal_type(Class().method('builtins.str', arg1=1, arg2=2))  # N: Revealed type is 'builtins.str'
+reveal_type(Class.myclassmethod('builtins.str', arg1=1, arg2=2))  # N: Revealed type is 'builtins.str'
+reveal_type(Class.mystaticmethod('builtins.str', arg1=1, arg2=2))  # N: Revealed type is 'builtins.str'
+reveal_type(Class.method(Class(), 'builtins.str', arg1=1, arg2=2))  # N: Revealed type is 'builtins.str'
+reveal_type(func('builtins.str', arg1=1, arg2=2))  # N: Revealed type is 'builtins.str'
+
+[file mod.py]
+from typing import Any
+class Class:
+    def method(self, classname: str, arg1: Any, arg2: Any) -> Any:
+        pass
+    @classmethod
+    def myclassmethod(cls, classname: str, arg1: Any, arg2: Any):
+        pass
+    @staticmethod
+    def mystaticmethod(classname: str, arg1: Any, arg2: Any):
+        pass
+def func(classname: str, arg1: Any, arg2: Any) -> Any:
+    pass
+
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/arg_names.py"
+[builtins fixtures/classmethod.pyi]
+
 [case testFunctionMethodContextsHasArgNamesInitMethod]
 # flags: --config-file tmp/mypy.ini
 from mod import ClassInit, Outer
@@ -337,6 +656,27 @@ class Outer:
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/arg_names.py
+
+[case testFunctionMethodContextsHasArgNamesInitMethodPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+from mod import ClassInit, Outer
+
+reveal_type(ClassInit('builtins.str'))  # N: Revealed type is 'builtins.str'
+reveal_type(ClassInit(classname='builtins.str'))  # N: Revealed type is 'builtins.str'
+reveal_type(Outer.NestedClassInit(classname='builtins.str'))  # N: Revealed type is 'builtins.str'
+[file mod.py]
+from typing import Any
+class ClassInit:
+    def __init__(self, classname: str):
+        pass
+class Outer:
+    class NestedClassInit:
+        def __init__(self, classname: str):
+            pass
+
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/arg_names.py"
 
 [case testFunctionMethodContextsHasArgNamesUnfilledArguments]
 # flags: --config-file tmp/mypy.ini
@@ -360,6 +700,29 @@ def func_unfilled(classname: str, arg1: Any = None, arg2: Any = None) -> Any:
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/arg_names.py
+
+[case testFunctionMethodContextsHasArgNamesUnfilledArgumentsPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+from mod import ClassUnfilled, func_unfilled
+
+reveal_type(ClassUnfilled().method(classname='builtins.str', arg1=1))  # N: Revealed type is 'builtins.str'
+reveal_type(ClassUnfilled().method(arg2=1, classname='builtins.str'))  # N: Revealed type is 'builtins.str'
+reveal_type(ClassUnfilled().method('builtins.str'))  # N: Revealed type is 'builtins.str'
+reveal_type(func_unfilled(classname='builtins.str', arg1=1))  # N: Revealed type is 'builtins.str'
+reveal_type(func_unfilled(arg2=1, classname='builtins.str'))  # N: Revealed type is 'builtins.str'
+reveal_type(func_unfilled('builtins.str'))  # N: Revealed type is 'builtins.str'
+
+[file mod.py]
+from typing import Any
+class ClassUnfilled:
+    def method(self, classname: str, arg1: Any = None, arg2: Any = None) -> Any:
+        pass
+def func_unfilled(classname: str, arg1: Any = None, arg2: Any = None) -> Any:
+    pass
+
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/arg_names.py"
 
 [case testFunctionMethodContextsHasArgNamesStarExpressions]
 # flags: --config-file tmp/mypy.ini
@@ -386,6 +749,31 @@ def func_star_expr(classname: str, *args, **kwargs) -> Any:
 plugins=<ROOT>/test-data/unit/plugins/arg_names.py
 [builtins fixtures/dict.pyi]
 
+[case testFunctionMethodContextsHasArgNamesStarExpressionsPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+from mod import ClassStarExpr, func_star_expr
+
+reveal_type(ClassStarExpr().method(classname='builtins.str', arg1=1))  # N: Revealed type is 'builtins.str'
+reveal_type(ClassStarExpr().method('builtins.str', arg1=1))  # N: Revealed type is 'builtins.str'
+reveal_type(ClassStarExpr().method('builtins.str', arg1=1, arg2=1))  # N: Revealed type is 'builtins.str'
+reveal_type(ClassStarExpr().method('builtins.str', 2, 3, 4, arg1=1, arg2=1))  # N: Revealed type is 'builtins.str'
+reveal_type(func_star_expr(classname='builtins.str', arg1=1))  # N: Revealed type is 'builtins.str'
+reveal_type(func_star_expr('builtins.str', arg1=1))  # N: Revealed type is 'builtins.str'
+reveal_type(func_star_expr('builtins.str', 2, 3, 4, arg1=1, arg2=2))  # N: Revealed type is 'builtins.str'
+
+[file mod.py]
+from typing import Any
+class ClassStarExpr:
+    def method(self, classname: str, *args, **kwargs) -> Any:
+        pass
+def func_star_expr(classname: str, *args, **kwargs) -> Any:
+    pass
+
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/arg_names.py"
+[builtins fixtures/dict.pyi]
+
 [case testFunctionMethodContextArgNamesForInheritedMethods]
 # flags: --config-file tmp/mypy.ini
 from mod import ClassChild
@@ -408,6 +796,30 @@ class ClassChild(Base):
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/arg_names.py
+[builtins fixtures/classmethod.pyi]
+
+[case testFunctionMethodContextArgNamesForInheritedMethodsPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+from mod import ClassChild
+
+reveal_type(ClassChild().method(classname='builtins.str', arg1=1, arg2=1))  # N: Revealed type is 'builtins.str'
+reveal_type(ClassChild().method(arg1=1, classname='builtins.str', arg2=1))  # N: Revealed type is 'builtins.str'
+reveal_type(ClassChild().method('builtins.str', arg1=1, arg2=1))  # N: Revealed type is 'builtins.str'
+reveal_type(ClassChild.myclassmethod('builtins.str'))  # N: Revealed type is 'builtins.str'
+[file mod.py]
+from typing import Any
+class Base:
+    def method(self, classname: str, arg1: Any, arg2: Any) -> Any:
+        pass
+    @classmethod
+    def myclassmethod(cls, classname: str) -> Any:
+        pass
+class ClassChild(Base):
+    pass
+
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/arg_names.py"
 [builtins fixtures/classmethod.pyi]
 
 [case testMethodSignatureHook]
@@ -439,6 +851,35 @@ for x in foo:
 plugins=<ROOT>/test-data/unit/plugins/method_sig_hook.py
 [builtins fixtures/tuple.pyi]
 
+[case testMethodSignatureHookPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+from typing import Iterator
+
+class Foo:
+    # Test that method signature hooks are applied in various cases: explicit method calls, and
+    # implicit dunder method calls through language syntax.
+    # The plugin's method signature hook should turn all str occurrences into int.
+    def __init__(self) -> None: ...
+    def __getitem__(self, index: str) -> str: ...
+    def __setitem__(self, index: str, value: str) -> None: ...
+    def __iter__(self) -> Iterator[str]: ...
+    def __next__(self) -> str: ...
+    def __call__(self, *args: str) -> str: ...
+    def m(self, arg: str) -> str: ...
+
+foo = Foo()
+reveal_type(foo.m(2)) # N: Revealed type is 'builtins.int'
+reveal_type(foo[3]) # N: Revealed type is 'builtins.int'
+reveal_type(foo(4, 5, 6)) # N: Revealed type is 'builtins.int'
+foo[4] = 5
+for x in foo:
+    reveal_type(x) # N: Revealed type is 'builtins.int*'
+
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/method_sig_hook.py"
+[builtins fixtures/tuple.pyi]
+
 [case testMethodSignatureHookNamesFullyQualified]
 # flags: --config-file tmp/mypy.ini
 from mypy_extensions import TypedDict
@@ -462,6 +903,31 @@ reveal_type(FullyQualifiedTestNamedTuple('')._asdict()) # N: Revealed type is 'b
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/fully_qualified_test_hook.py
+[builtins fixtures/classmethod.pyi]
+
+[case testMethodSignatureHookNamesFullyQualifiedPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+from mypy_extensions import TypedDict
+from typing import NamedTuple
+
+class FullyQualifiedTestClass:
+    @classmethod
+    def class_method(self) -> str: ...
+    def instance_method(self) -> str: ...
+
+class FullyQualifiedTestTypedDict(TypedDict):
+    foo: str
+
+FullyQualifiedTestNamedTuple = NamedTuple('FullyQualifiedTestNamedTuple', [('foo', str)])
+
+# Check the return types to ensure that the method signature hook is called in each case
+reveal_type(FullyQualifiedTestClass.class_method()) # N: Revealed type is 'builtins.int'
+reveal_type(FullyQualifiedTestClass().instance_method()) # N: Revealed type is 'builtins.int'
+reveal_type(FullyQualifiedTestNamedTuple('')._asdict()) # N: Revealed type is 'builtins.int'
+
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/fully_qualified_test_hook.py"
 [builtins fixtures/classmethod.pyi]
 
 [case testDynamicClassPlugin]
@@ -489,6 +955,32 @@ class Instr(Generic[T]): ...
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/dyn_class.py
+
+[case testDynamicClassPluginPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+from mod import declarative_base, Column, Instr
+
+Base = declarative_base()
+
+class Model(Base):
+    x: Column[int]
+class Other:
+    x: Column[int]
+
+reveal_type(Model().x)  # N: Revealed type is 'mod.Instr[builtins.int]'
+reveal_type(Other().x)  # N: Revealed type is 'mod.Column[builtins.int]'
+[file mod.py]
+from typing import Generic, TypeVar
+def declarative_base(): ...
+
+T = TypeVar('T')
+
+class Column(Generic[T]): ...
+class Instr(Generic[T]): ...
+
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/dyn_class.py"
 
 [case testDynamicClassPluginNegatives]
 # flags: --config-file tmp/mypy.ini
@@ -520,6 +1012,36 @@ class Instr(Generic[T]): ...
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/dyn_class.py
 
+[case testDynamicClassPluginNegativesPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+from mod import declarative_base, Column, Instr, non_declarative_base
+
+Bad1 = non_declarative_base()
+Bad2 = Bad3 = declarative_base()
+
+class C1(Bad1): ...  # E: Variable "__main__.Bad1" is not valid as a type \
+                     # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases \
+                     # E: Invalid base class "Bad1"
+class C2(Bad2): ...  # E: Variable "__main__.Bad2" is not valid as a type \
+                     # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases \
+                     # E: Invalid base class "Bad2"
+class C3(Bad3): ...  # E: Variable "__main__.Bad3" is not valid as a type \
+                     # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases \
+                     # E: Invalid base class "Bad3"
+[file mod.py]
+from typing import Generic, TypeVar
+def declarative_base(): ...
+def non_declarative_base(): ...
+
+T = TypeVar('T')
+
+class Column(Generic[T]): ...
+class Instr(Generic[T]): ...
+
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/dyn_class.py"
+
 [case testDynamicClassHookFromClassMethod]
 # flags: --config-file tmp/mypy.ini
 
@@ -548,6 +1070,35 @@ class Manager:
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/dyn_class_from_method.py
+
+[case testDynamicClassHookFromClassMethodPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+
+from mod import QuerySet, Manager
+
+MyManager = Manager.from_queryset(QuerySet)
+
+reveal_type(MyManager())  # N: Revealed type is '__main__.MyManager'
+reveal_type(MyManager().attr)  # N: Revealed type is 'builtins.str'
+
+def func(manager: MyManager) -> None:
+    reveal_type(manager)   # N: Revealed type is '__main__.MyManager'
+    reveal_type(manager.attr)   # N: Revealed type is 'builtins.str'
+
+func(MyManager())
+
+[file mod.py]
+from typing import Generic, TypeVar, Type
+class QuerySet:
+    attr: str
+class Manager:
+    @classmethod
+    def from_queryset(cls, queryset_cls: Type[QuerySet]): ...
+
+[builtins fixtures/classmethod.pyi]
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/dyn_class_from_method.py"
 
 [case testBaseClassPluginHookWorksIncremental]
 # flags: --config-file tmp/mypy.ini
@@ -580,6 +1131,37 @@ plugins=<ROOT>/test-data/unit/plugins/common_api_incremental.py
 tmp/a.py:3: note: Revealed type is 'builtins.str'
 tmp/a.py:4: error: "Type[Base]" has no attribute "__magic__"
 
+[case testBaseClassPluginHookWorksIncrementalPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+import a
+
+[file a.py]
+from base import Base
+class C(Base): ...
+
+[file a.py.2]
+from base import Base
+class C(Base): ...
+reveal_type(C().__magic__)
+Base.__magic__
+
+[file base.py]
+from lib import declarative_base
+Base = declarative_base()
+
+[file lib.py]
+from typing import Any
+def declarative_base() -> Any: ...
+
+[file pyproject.toml]
+\[tool.mypy]
+python_version = 3.6
+plugins = "<ROOT>/test-data/unit/plugins/common_api_incremental.py"
+[out]
+[out2]
+tmp/a.py:3: note: Revealed type is 'builtins.str'
+tmp/a.py:4: error: "Type[Base]" has no attribute "__magic__"
+
 [case testArgKindsMethod]
 # flags: --config-file tmp/mypy.ini
 class Class:
@@ -592,6 +1174,18 @@ Class().method(1, *[2], **{'a': 1})  # E: [[0, 2], [4]]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/arg_kinds.py
 
+[case testArgKindsMethodPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+class Class:
+    def method(self, *args, **kwargs):
+        pass
+
+Class().method(1, *[2], **{'a': 1})  # E: [[0, 2], [4]]
+[builtins fixtures/dict.pyi]
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/arg_kinds.py"
+
 [case testArgKindsFunction]
 # flags: --config-file tmp/mypy.ini
 def func(*args, **kwargs):
@@ -602,6 +1196,17 @@ func(1, 2, [3, 4], *[5, 6, 7], **{'a': 1})  # E: [[0, 0, 0, 2], [4]]
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/arg_kinds.py
+
+[case testArgKindsFunctionPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+def func(*args, **kwargs):
+    pass
+
+func(1, 2, [3, 4], *[5, 6, 7], **{'a': 1})  # E: [[0, 0, 0, 2], [4]]
+[builtins fixtures/dict.pyi]
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/arg_kinds.py"
 
 [case testHookCallableInstance]
 # flags: --config-file tmp/mypy.ini
@@ -617,6 +1222,21 @@ reveal_type(instance(2))  # N: Revealed type is 'builtins.float*'
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/callable_instance.py
+
+[case testHookCallableInstancePyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+from typing import Generic, TypeVar
+T = TypeVar("T")
+class Class(Generic[T]):
+    def __init__(self, one: T): ...
+    def __call__(self, two: T) -> int: ...
+reveal_type(Class("hi")("there"))  # N: Revealed type is 'builtins.str*'
+instance = Class(3.14)
+reveal_type(instance(2))  # N: Revealed type is 'builtins.float*'
+
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/callable_instance.py"
 
 [case testGetMethodHooksOnUnions]
 # flags: --config-file tmp/mypy.ini --no-strict-optional
@@ -640,6 +1260,28 @@ else:
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/union_method.py
 
+[case testGetMethodHooksOnUnionsPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml --no-strict-optional
+from typing import Union
+
+class Foo:
+    def meth(self, x: str) -> str: ...
+class Bar:
+    def meth(self, x: int) -> float: ...
+class Other:
+    meth: int
+
+x: Union[Foo, Bar, Other]
+if isinstance(x.meth, int):
+    reveal_type(x.meth)  # N: Revealed type is 'builtins.int'
+else:
+    reveal_type(x.meth(int()))  # N: Revealed type is 'builtins.int'
+
+[builtins fixtures/isinstancelist.pyi]
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/union_method.py"
+
 [case testGetMethodHooksOnUnionsStrictOptional]
 # flags: --config-file tmp/mypy.ini --strict-optional
 from typing import Union
@@ -662,6 +1304,28 @@ else:
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/union_method.py
 
+[case testGetMethodHooksOnUnionsStrictOptionalPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml --strict-optional
+from typing import Union
+
+class Foo:
+    def meth(self, x: str) -> str: ...
+class Bar:
+    def meth(self, x: int) -> float: ...
+class Other:
+    meth: int
+
+x: Union[Foo, Bar, Other]
+if isinstance(x.meth, int):
+    reveal_type(x.meth)  # N: Revealed type is 'builtins.int'
+else:
+    reveal_type(x.meth(int()))  # N: Revealed type is 'builtins.int'
+
+[builtins fixtures/isinstancelist.pyi]
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/union_method.py"
+
 [case testGetMethodHooksOnUnionsSpecial]
 # flags: --config-file tmp/mypy.ini
 from typing import Union
@@ -679,6 +1343,23 @@ reveal_type(x[int()])  # N: Revealed type is 'builtins.int'
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/union_method.py
 
+[case testGetMethodHooksOnUnionsSpecialPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+from typing import Union
+
+class Foo:
+    def __getitem__(self, x: str) -> str: ...
+class Bar:
+    def __getitem__(self, x: int) -> float: ...
+
+x: Union[Foo, Bar]
+reveal_type(x[int()])  # N: Revealed type is 'builtins.int'
+
+[builtins fixtures/isinstancelist.pyi]
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/union_method.py"
+
 [case testPluginDependencies]
 # flags: --config-file tmp/mypy.ini
 
@@ -692,12 +1373,32 @@ plugins=<ROOT>/test-data/unit/plugins/union_method.py
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/depshook.py
 
+[case testPluginDependenciesPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+
+# The top level file here doesn't do anything, but the plugin should add
+# a dependency on err that will cause err to be processed and an error reported.
+
+[file err.py]
+1 + 'lol'  # E: Unsupported operand types for + ("int" and "str")
+
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/depshook.py"
+
 [case testCustomizeMroTrivial]
 # flags: --config-file tmp/mypy.ini
 class A: pass
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/customize_mro.py
+
+[case testCustomizeMroTrivialPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+class A: pass
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/customize_mro.py"
 
 [case testDescriptorMethods]
 # flags: --config-file tmp/mypy.ini
@@ -722,6 +1423,29 @@ Cls().attr = "foo"  # E: Incompatible types in assignment (expression has type "
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/descriptor.py
 
+[case testDescriptorMethodsPyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+
+class Desc:
+    def __get__(self, obj, cls):
+        pass
+
+    def __set__(self, obj, val):
+        pass
+
+class Cls:
+    attr = Desc()
+
+reveal_type(Cls().attr)  # N: Revealed type is 'builtins.int'
+reveal_type(Cls.attr)  # N: Revealed type is 'builtins.str'
+
+Cls().attr = 3
+Cls().attr = "foo"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/descriptor.py"
+
 [case testFunctionSigPluginFile]
 # flags: --config-file tmp/mypy.ini
 
@@ -730,3 +1454,12 @@ reveal_type(dynamic_signature(1))  # N: Revealed type is 'builtins.int'
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/function_sig_hook.py
+
+[case testFunctionSigPluginFilePyprojectTOML]
+# flags: --config-file tmp/pyproject.toml
+
+def dynamic_signature(arg1: str) -> str: ...
+reveal_type(dynamic_signature(1))  # N: Revealed type is 'builtins.int'
+[file pyproject.toml]
+\[tool.mypy]
+plugins = "<ROOT>/test-data/unit/plugins/function_sig_hook.py"

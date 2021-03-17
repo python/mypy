@@ -4,8 +4,8 @@ The mypy configuration file
 ===========================
 
 Mypy supports reading configuration settings from a file.  By default
-it uses the file ``mypy.ini`` with a fallback to ``.mypy.ini``, then ``setup.cfg`` in
-the current directory, then ``$XDG_CONFIG_HOME/mypy/config``, then
+it uses the file ``mypy.ini`` with a fallback to ``.mypy.ini``, then ``pyproject.toml``,
+then ``setup.cfg`` in the current directory, then ``$XDG_CONFIG_HOME/mypy/config``, then
 ``~/.config/mypy/config``, and finally ``.mypy.ini`` in the user home directory
 if none of them are found; the :option:`--config-file <mypy --config-file>` command-line flag can be used
 to read a different file instead (see :ref:`config-file-flag`).
@@ -885,5 +885,34 @@ These options may only be set in the global section (``[mypy]``).
 
     Controls how much debug output will be generated.  Higher numbers are more verbose.
 
+
+Using a pyproject.toml file
+***************************
+
+Instead of using a ``mypy.ini`` file, a ``pyproject.toml`` file (as specified by
+`PEP 518`_) may be used instead. A few notes on doing so:
+
+* All ``[mypy]`` sections should have ``tool.`` prepended to their name:
+
+  * ``[mypy]`` would become ``[tool.mypy]``
+
+  * For example, ``[mypy-packagename]`` would become ``[tool.mypy-packagename]``
+
+* Any section with special characters (such as ``.`` or ``*``) will need to be wrapped in single quotes:
+
+  * For example, ``[tool.mypy-package.*]`` would become ``[tool.'mypy-package.*']``
+
+* The following care should be given to values in the ``pyproject.toml`` files as compared to ``ini`` files:
+
+  * Strings must be wrapped in double quotes
+
+  * Boolean values should be all lower case
+
+Please see the `TOML Documentation`_ for more details and information on 
+what is allowed in a ``toml`` file. See `PEP 518`_ for more information on the layout
+and structure of the ``pyproject.toml`` file.
+
 .. _lxml: https://pypi.org/project/lxml/
 .. _SQLite: https://www.sqlite.org/
+.. _PEP 518: https://www.python.org/dev/peps/pep-0518/
+.. _TOML Documentation: https://toml.io/

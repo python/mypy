@@ -6,14 +6,17 @@ import os
 import re
 import sys
 
-from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, TextIO
+import toml
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, TextIO, Tuple, Union
 from typing_extensions import Final
 
 from mypy import defaults
 from mypy.options import Options, PER_MODULE_OPTIONS
 
 
-def parse_version(v: str) -> Tuple[int, int]:
+def parse_version(v: Union[str, float]) -> Tuple[int, int]:
+    if isinstance(v, float):
+        v = str(v)
     m = re.match(r'\A(\d)\.(\d+)\Z', v)
     if not m:
         raise argparse.ArgumentTypeError(
@@ -34,6 +37,13 @@ def parse_version(v: str) -> Tuple[int, int]:
     return major, minor
 
 
+def try_split(v: Union[str, Sequence[str]]) -> List[str]:
+    if isinstance(v, str):
+        return [p.strip() for p in v.split(',')]
+
+    return [p.strip() for p in v]
+
+
 def expand_path(path: str) -> str:
     """Expand the user home directory and any environment variables contained within
     the provided path.
@@ -42,7 +52,7 @@ def expand_path(path: str) -> str:
     return os.path.expandvars(os.path.expanduser(path))
 
 
-def split_and_match_files(paths: str) -> List[str]:
+def split_and_match_files(paths: Union[str, Sequence[str]]) -> List[str]:
     """Take a string representing a list of files/directories (with support for globbing
     through the glob library).
 
@@ -52,7 +62,10 @@ def split_and_match_files(paths: str) -> List[str]:
     """
     expanded_paths = []
 
-    for path in paths.split(','):
+    if isinstance(paths, str):
+        paths = paths.split(',')
+
+    for path in paths:
         path = expand_path(path.strip())
         globbed_files = fileglob.glob(path, recursive=True)
         if globbed_files:
@@ -91,12 +104,12 @@ config_types = {
     'almost_silent': bool,
     'follow_imports': check_follow_imports,
     'no_site_packages': bool,
-    'plugins': lambda s: [p.strip() for p in s.split(',')],
-    'always_true': lambda s: [p.strip() for p in s.split(',')],
-    'always_false': lambda s: [p.strip() for p in s.split(',')],
-    'disable_error_code': lambda s: [p.strip() for p in s.split(',')],
-    'enable_error_code': lambda s: [p.strip() for p in s.split(',')],
-    'package_root': lambda s: [p.strip() for p in s.split(',')],
+    'plugins': try_split,
+    'always_true': try_split,
+    'always_false': try_split,
+    'disable_error_code': try_split,
+    'enable_error_code': try_split,
+    'package_root': try_split,
     'cache_dir': expand_path,
     'python_executable': expand_path,
     'strict': bool,
@@ -121,14 +134,22 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
     else:
         config_files = tuple(map(os.path.expanduser, defaults.CONFIG_FILES))
 
-    parser = configparser.RawConfigParser()
+    config_parser = configparser.RawConfigParser()
 
     for config_file in config_files:
         if not os.path.exists(config_file):
             continue
         try:
-            parser.read(config_file)
-        except configparser.Error as err:
+            if config_file.endswith('.toml'):
+                toml_data = toml.load(config_file)
+                # Filter down to just mypy relevant toml keys
+                parser = {key: value
+                          for key, value in toml_data.get('tool', {}).items()
+                          if key.split('-')[0] == 'mypy'}
+            else:
+                config_parser.read(config_file)
+                parser = {key: value for key, value in config_parser.items()}
+        except (toml.TomlDecodeError, configparser.Error) as err:
             print("%s: %s" % (config_file, err), file=stderr)
         else:
             if config_file in defaults.SHARED_CONFIG_FILES and 'mypy' not in parser:
@@ -240,7 +261,10 @@ def parse_section(prefix: str, template: Options,
         v = None  # type: Any
         try:
             if ct is bool:
-                v = section.getboolean(key)  # type: ignore[attr-defined]  # Until better stub
+                if isinstance(section, dict):
+                    v = convert_to_boolean(section.get(key))
+                else:
+                    v = section.getboolean(key)  # type: ignore[attr-defined]  # Until better stub
                 if invert:
                     v = not v
             elif callable(ct):
@@ -279,6 +303,18 @@ def parse_section(prefix: str, template: Options,
                     results['follow_imports'] = 'error'
         results[options_key] = v
     return results, report_dirs
+
+
+def convert_to_boolean(value: Optional[Any]) -> bool:
+    """Return a boolean value translating from other types if necessary.
+    """
+    if isinstance(value, bool):
+        return value
+    if not isinstance(value, str):
+        value = str(value)
+    if value.lower() not in configparser.RawConfigParser.BOOLEAN_STATES:
+        raise ValueError('Not a boolean: %s' % value)
+    return configparser.RawConfigParser.BOOLEAN_STATES[value.lower()]
 
 
 def split_directive(s: str) -> Tuple[List[str], List[str]]:
