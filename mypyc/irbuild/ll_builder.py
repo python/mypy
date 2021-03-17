@@ -54,8 +54,9 @@ from mypyc.primitives.dict_ops import (
     dict_update_in_display_op, dict_new_op, dict_build_op, dict_size_op
 )
 from mypyc.primitives.generic_ops import (
-    py_getattr_op, py_call_op, py_call_with_kwargs_op, py_method_call_op, generic_len_op,
-    py_vectorcall_op, py_vectorcall_method_op
+    py_getattr_op, py_call_op, py_call_with_kwargs_op, py_method_call_op,
+    py_vectorcall_op, py_vectorcall_method_op,
+    generic_len_op, generic_ssize_t_len_op
 )
 from mypyc.primitives.misc_ops import (
     none_object_op, fast_isinstance_op, bool_op
@@ -1111,7 +1112,10 @@ class LowLevelIRBuilder:
                                IntOp.LEFT_SHIFT, line)
         # generic case
         else:
-            return self.call_c(generic_len_op, [val], line)
+            if get_c_pyssize_t_rprimitive:
+                return self.call_c(generic_ssize_t_len_op, [val], line)
+            else:
+                return self.call_c(generic_len_op, [val], line)
 
     def new_tuple(self, items: List[Value], line: int) -> Value:
         size = Integer(len(items), c_pyssize_t_rprimitive)  # type: Value
