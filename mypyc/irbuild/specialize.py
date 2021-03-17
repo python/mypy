@@ -31,7 +31,7 @@ from mypyc.primitives.tuple_ops import new_tuple_set_item_op
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import (
     translate_list_comprehension, comprehension_helper,
-    for_loop_helper
+    for_loop_helper, for_loop_helper_simple
 )
 
 
@@ -158,24 +158,17 @@ def tuple_from_generator_helper(builder: IRBuilder,
     if len(gen.sequences) == 1 and len(gen.condlists[0]) == 0:
         # Currently we only optimize for simplest generator expression
         rtype = builder.node_type(gen.sequences[0])
-        if ((is_list_rprimitive(rtype) or is_tuple_rprimitive(rtype))
-                and is_int_rprimitive(builder.node_type(gen.indices[0]))):
+        if is_list_rprimitive(rtype) or is_tuple_rprimitive(rtype):
             tuple_ops = builder.builder.new_tuple_with_length(builder.accept(gen.sequences[0]),
                                                               gen.line)
             index, expr = gen.indices[0], gen.sequences[0]
 
-            def set_tuple_item() -> None:
+            def set_tuple_item(index_target: Register) -> None:
                 e = builder.accept(gen.left_expr)
-                index_val = builder.accept(index)
+                builder.call_c(new_tuple_set_item_op, [tuple_ops, index_target, e], gen.line)
 
-                offset = Integer(1, int_rprimitive, gen.line)
-                index_val = builder.int_op(int_rprimitive, index_val, offset,
-                                           IntOp.SUB, gen.line)
-                builder.call_c(new_tuple_set_item_op, [tuple_ops, index_val, e], gen.line)
-
-            for_loop_helper(builder, index, expr,
-                            lambda: set_tuple_item(),
-                            None, gen.line)
+            for_loop_helper_simple(builder, index, expr,
+                                   set_tuple_item, gen.line)
 
             return tuple_ops
     return None

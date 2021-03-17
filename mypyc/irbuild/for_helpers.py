@@ -86,6 +86,38 @@ def for_loop_helper(builder: IRBuilder, index: Lvalue, expr: Expression,
     builder.activate_block(exit_block)
 
 
+def for_loop_helper_simple(builder: IRBuilder, index: Lvalue, expr: Expression,
+                           body_insts: Callable[[Register], None], line: int) -> None:
+
+    body_block, step_block, exit_block = BasicBlock(), BasicBlock(), BasicBlock()
+    condition_block = BasicBlock()
+
+    expr_reg = builder.accept(expr)
+    target_type = builder.get_sequence_type(expr)
+
+    for_gen = ForSequence(builder, index, body_block, exit_block, line, False)
+    for_gen.init(expr_reg, target_type, reverse=False)
+
+    builder.push_loop_stack(step_block, exit_block)
+
+    builder.goto_and_activate(condition_block)
+    for_gen.gen_condition()
+
+    builder.activate_block(body_block)
+    for_gen.begin_body()
+    body_insts(for_gen.index_target)
+
+    builder.goto_and_activate(step_block)
+    for_gen.gen_step()
+    builder.goto(condition_block)
+
+    for_gen.add_cleanup(exit_block)
+    builder.pop_loop_stack()
+
+    builder.activate_block(exit_block)
+
+
+
 def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value:
     list_ops = builder.new_list_op([], gen.line)
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))

@@ -239,7 +239,7 @@ generic_len_op = custom_op(
     arg_types=[object_rprimitive],
     return_type=int_rprimitive,
     c_function_name='CPyObject_Size',
-    error_kind=ERR_NEVER)
+    error_kind=ERR_MAGIC)
 
 # len(obj)
 # same as generic_len_op, however return py_ssize_t
@@ -247,7 +247,7 @@ generic_ssize_t_len_op = custom_op(
     arg_types=[object_rprimitive],
     return_type=c_pyssize_t_rprimitive,
     c_function_name='PyObject_Size',
-    error_kind=ERR_NEVER)
+    error_kind=ERR_NEG_INT)
 
 # iter(obj)
 iter_op = function_op(name='builtins.iter',
