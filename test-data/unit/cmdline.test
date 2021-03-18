@@ -492,6 +492,7 @@ ignore_missing_imports = True
 [out]
 main.py:2: note: Revealed type is 'Any'
 
+
 [case testFailedImportOnWrongCWD]
 # cmd: mypy main.py
 # cwd: main/subdir1/subdir2
@@ -653,21 +654,6 @@ a.__pow__() # E: All overload variants of "__pow__" of "int" require at least on
 python_version=3.6
 \[mypy-m]
 disallow_any_generics = True
-
-[file m.py]
-s = tuple([1, 2, 3])  # no error
-
-def f(t: tuple) -> None: pass
-def g() -> list: pass
-def h(s: dict) -> None: pass
-def i(s: set) -> None: pass
-def j(s: frozenset) -> None: pass
-[out]
-m.py:3: error: Implicit generic "Any". Use "typing.Tuple" and specify generic parameters
-m.py:4: error: Implicit generic "Any". Use "typing.List" and specify generic parameters
-m.py:5: error: Implicit generic "Any". Use "typing.Dict" and specify generic parameters
-m.py:6: error: Implicit generic "Any". Use "typing.Set" and specify generic parameters
-m.py:7: error: Implicit generic "Any". Use "typing.FrozenSet" and specify generic parameters
 
 [file m.py]
 s = tuple([1, 2, 3])  # no error
@@ -1270,6 +1256,7 @@ x = 0  # type: str
 y = 0  # type: str
 [out]
 pkg.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
 
 [case testCmdlineModuleAndIniFiles]
 # cmd: mypy -m pkg

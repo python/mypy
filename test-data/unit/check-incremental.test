@@ -5005,6 +5005,39 @@ python_version=3.6
 [out2]
 tmp/a.py:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
+[case testPluginConfigData]
+# flags: --config-file tmp/mypy.ini
+import a
+import b
+[file a.py]
+[file b.py]
+[file test.json]
+{"a": false, "b": false}
+[file test.json.2]
+{"a": true, "b": false}
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/config_data.py
+
+# The config change will force a to be rechecked but not b.
+[rechecked a]
+
+[case testLiteralIncrementalTurningIntoLiteral]
+import mod
+reveal_type(mod.a)
+[file mod.py]
+from typing_extensions import Literal
+a = 1
+[file mod.py.2]
+from typing_extensions import Literal
+a: Literal[2] = 2
+[builtins fixtures/tuple.pyi]
+[out]
+main:2: note: Revealed type is 'builtins.int'
+[out2]
+main:2: note: Revealed type is 'Literal[2]'
+
 [case testAddedSubStarImport]
 # cmd: mypy -m a pack pack.mod b
 # cmd2: mypy -m other

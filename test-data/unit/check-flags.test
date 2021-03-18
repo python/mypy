@@ -477,6 +477,7 @@ disallow_incomplete_defs = False
 \[mypy-incomplete]
 disallow_incomplete_defs = True
 
+
 [case testPerFileStrictOptionalBasic]
 # flags: --config-file tmp/mypy.ini
 import standard, optional
@@ -495,6 +496,7 @@ if int():
 strict_optional = False
 \[mypy-optional]
 strict_optional = True
+
 
 [case testPerFileStrictOptionalBasicImportStandard]
 # flags: --config-file tmp/mypy.ini
@@ -521,6 +523,7 @@ f(standard.optional_int)  # E: Argument 1 to "f" has incompatible type "None"; e
 strict_optional = False
 \[mypy-optional]
 strict_optional = True
+
 
 [case testPerFileStrictOptionalBasicImportOptional]
 # flags: --config-file tmp/mypy.ini
