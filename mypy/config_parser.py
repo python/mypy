@@ -1,5 +1,6 @@
 import argparse
 import configparser
+import copy
 import glob as fileglob
 from io import StringIO
 import os
@@ -14,9 +15,7 @@ from mypy import defaults
 from mypy.options import Options, PER_MODULE_OPTIONS
 
 
-def parse_version(v: Union[str, float]) -> Tuple[int, int]:
-    if isinstance(v, float):
-        v = str(v)
+def parse_version(v: str) -> Tuple[int, int]:
     m = re.match(r'\A(\d)\.(\d+)\Z', v)
     if not m:
         raise argparse.ArgumentTypeError(
@@ -37,9 +36,11 @@ def parse_version(v: Union[str, float]) -> Tuple[int, int]:
     return major, minor
 
 
-def try_split(v: Union[str, Sequence[str]]) -> List[str]:
+def try_split(v: Union[str, Sequence[str]], split_regex: str = '[,]') -> List[str]:
+    """Split and trim a str or list of str into a list of str
+    """
     if isinstance(v, str):
-        return [p.strip() for p in v.split(',')]
+        return [p.strip() for p in re.split(split_regex, v)]
 
     return [p.strip() for p in v]
 
@@ -52,18 +53,14 @@ def expand_path(path: str) -> str:
     return os.path.expandvars(os.path.expanduser(path))
 
 
-def split_and_match_files(paths: Union[str, Sequence[str]]) -> List[str]:
-    """Take a string representing a list of files/directories (with support for globbing
-    through the glob library).
+def split_and_match_files_list(paths: Sequence[str]) -> List[str]:
+    """Take a list of files/directories (with support for globbing through the glob library).
 
     Where a path/glob matches no file, we still include the raw path in the resulting list.
 
     Returns a list of file paths
     """
     expanded_paths = []
-
-    if isinstance(paths, str):
-        paths = paths.split(',')
 
     for path in paths:
         path = expand_path(path.strip())
@@ -74,6 +71,18 @@ def split_and_match_files(paths: Union[str, Sequence[str]]) -> List[str]:
             expanded_paths.append(path)
 
     return expanded_paths
+
+
+def split_and_match_files(paths: str) -> List[str]:
+    """Take a string representing a list of files/directories (with support for globbing
+    through the glob library).
+
+    Where a path/glob matches no file, we still include the raw path in the resulting list.
+
+    Returns a list of file paths
+    """
+
+    return split_and_match_files_list(paths.split(','))
 
 
 def check_follow_imports(choice: str) -> str:
@@ -90,7 +99,7 @@ def check_follow_imports(choice: str) -> str:
 # sufficient, and we don't have to do anything here.  This table
 # exists to specify types for values initialized to None or container
 # types.
-config_types = {
+ini_config_types = {
     'python_version': parse_version,
     'strict_optional_whitelist': lambda s: s.split(),
     'custom_typing_module': str,
@@ -104,16 +113,31 @@ config_types = {
     'almost_silent': bool,
     'follow_imports': check_follow_imports,
     'no_site_packages': bool,
+    'plugins': lambda s: [p.strip() for p in s.split(',')],
+    'always_true': lambda s: [p.strip() for p in s.split(',')],
+    'always_false': lambda s: [p.strip() for p in s.split(',')],
+    'disable_error_code': lambda s: [p.strip() for p in s.split(',')],
+    'enable_error_code': lambda s: [p.strip() for p in s.split(',')],
+    'package_root': lambda s: [p.strip() for p in s.split(',')],
+    'cache_dir': expand_path,
+    'python_executable': expand_path,
+    'strict': bool,
+}  # type: Final
+
+# Reuse the ini_config_types and overwrite the diff
+toml_config_types = copy.deepcopy(ini_config_types)  # type: Final
+toml_config_types.update({
+    'python_version': lambda s: parse_version(str(s)),
+    'strict_optional_whitelist': try_split,
+    'mypy_path': lambda s: [expand_path(p) for p in try_split(s, '[,:]')],
+    'files': lambda s: split_and_match_files_list(try_split(s)),
     'plugins': try_split,
     'always_true': try_split,
     'always_false': try_split,
     'disable_error_code': try_split,
     'enable_error_code': try_split,
     'package_root': try_split,
-    'cache_dir': expand_path,
-    'python_executable': expand_path,
-    'strict': bool,
-}  # type: Final
+})
 
 
 def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
@@ -148,9 +172,11 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
                           if key.split('-')[0] == 'mypy'}
                 if parser.get('mypy') is None:
                     continue
+                config_types = toml_config_types
             else:
                 config_parser.read(config_file)
                 parser = {key: value for key, value in config_parser.items()}
+                config_types = ini_config_types
         except (toml.TomlDecodeError, configparser.Error) as err:
             print("%s: %s" % (config_file, err), file=stderr)
         else:
@@ -171,7 +197,8 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
     else:
         section = parser['mypy']
         prefix = '%s: [%s]: ' % (file_read, 'mypy')
-        updates, report_dirs = parse_section(prefix, options, set_strict_flags, section, stderr)
+        updates, report_dirs = parse_section(
+            prefix, options, set_strict_flags, section, config_types, stderr)
         for k, v in updates.items():
             setattr(options, k, v)
         options.report_dirs.update(report_dirs)
@@ -180,7 +207,7 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
         if name.startswith('mypy-'):
             prefix = '%s: [%s]: ' % (file_read, name)
             updates, report_dirs = parse_section(
-                prefix, options, set_strict_flags, section, stderr)
+                prefix, options, set_strict_flags, section, config_types, stderr)
             if report_dirs:
                 print("%sPer-module sections should not specify reports (%s)" %
                       (prefix, ', '.join(s + '_report' for s in sorted(report_dirs))),
@@ -210,6 +237,7 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
 def parse_section(prefix: str, template: Options,
                   set_strict_flags: Callable[[], None],
                   section: Mapping[str, str],
+                  config_types: Dict[str, Callable],
                   stderr: TextIO = sys.stderr
                   ) -> Tuple[Dict[str, object], Dict[str, str]]:
     """Parse one section of a config file.
@@ -400,7 +428,7 @@ def parse_mypy_comments(
             strict_found = True
 
         new_sections, reports = parse_section(
-            '', template, set_strict_flags, parser['dummy'], stderr=stderr)
+            '', template, set_strict_flags, parser['dummy'], ini_config_types, stderr=stderr)
         errors.extend((lineno, x) for x in stderr.getvalue().strip().split('\n') if x)
         if reports:
             errors.append((lineno, "Reports not supported in inline configuration"))
