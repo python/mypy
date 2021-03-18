@@ -8,8 +8,7 @@ import re
 import sys
 
 import toml
-from typing import (Any, Callable, Dict, List, Mapping, Optional, Sequence, TextIO, Tuple, Type,
-                    Union)
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, TextIO, Tuple, Union
 from typing_extensions import Final
 
 from mypy import defaults
@@ -96,18 +95,6 @@ def check_follow_imports(choice: str) -> str:
     return choice
 
 
-_ConfigDict = Dict[str,
-    Union[
-        Callable[..., Union[
-            List[str],
-            str,
-            Tuple[int, int]
-        ]],
-        Type[bool]
-    ]
-]
-
-
 # For most options, the type of the default value set in options.py is
 # sufficient, and we don't have to do anything here.  This table
 # exists to specify types for values initialized to None or container
@@ -135,10 +122,10 @@ ini_config_types = {
     'cache_dir': expand_path,
     'python_executable': expand_path,
     'strict': bool,
-}  # type: Final[_ConfigDict]
+}  # type: Final[Dict[str, Any]]
 
 # Reuse the ini_config_types and overwrite the diff
-toml_config_types = copy.deepcopy(ini_config_types)  # type: Final[_ConfigDict]
+toml_config_types = copy.deepcopy(ini_config_types)  # type: Final[Dict[str, Any]]
 toml_config_types.update({
     'python_version': lambda s: parse_version(str(s)),
     'strict_optional_whitelist': try_split,
@@ -250,7 +237,7 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
 def parse_section(prefix: str, template: Options,
                   set_strict_flags: Callable[[], None],
                   section: Mapping[str, str],
-                  config_types: _ConfigDict,
+                  config_types: Dict[str, Any],
                   stderr: TextIO = sys.stderr
                   ) -> Tuple[Dict[str, object], Dict[str, str]]:
     """Parse one section of a config file.
