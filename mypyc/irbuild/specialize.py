@@ -18,20 +18,18 @@ from mypy.nodes import CallExpr, RefExpr, MemberExpr, TupleExpr, GeneratorExpr, 
 from mypy.types import AnyType, TypeOfAny
 
 from mypyc.ir.ops import (
-    Value, Register, BasicBlock, Integer, RaiseStandardError, Unreachable,
-    IntOp
+    Value, Register, BasicBlock, Integer, RaiseStandardError, Unreachable
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
-    bool_rprimitive, is_dict_rprimitive, is_list_rprimitive, is_tuple_rprimitive,
-    int_rprimitive, is_int_rprimitive
+    bool_rprimitive, is_dict_rprimitive, is_list_rprimitive, is_tuple_rprimitive
 )
 from mypyc.primitives.dict_ops import dict_keys_op, dict_values_op, dict_items_op
 from mypyc.primitives.tuple_ops import new_tuple_set_item_op
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import (
     translate_list_comprehension, comprehension_helper,
-    for_loop_helper, for_loop_helper_simple
+    for_loop_helper_simple
 )
 
 
@@ -163,7 +161,7 @@ def tuple_from_generator_helper(builder: IRBuilder,
                                                               gen.line)
             index, expr = gen.indices[0], gen.sequences[0]
 
-            def set_tuple_item(index_target: Register) -> None:
+            def set_tuple_item(index_target: Value) -> None:
                 e = builder.accept(gen.left_expr)
                 builder.call_c(new_tuple_set_item_op, [tuple_ops, index_target, e], gen.line)
 

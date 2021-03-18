@@ -87,7 +87,7 @@ def for_loop_helper(builder: IRBuilder, index: Lvalue, expr: Expression,
 
 
 def for_loop_helper_simple(builder: IRBuilder, index: Lvalue, expr: Expression,
-                           body_insts: Callable[[Register], None], line: int) -> None:
+                           body_insts: Callable[[Value], None], line: int) -> None:
 
     body_block, step_block, exit_block = BasicBlock(), BasicBlock(), BasicBlock()
     condition_block = BasicBlock()
@@ -105,7 +105,7 @@ def for_loop_helper_simple(builder: IRBuilder, index: Lvalue, expr: Expression,
 
     builder.activate_block(body_block)
     for_gen.begin_body()
-    body_insts(for_gen.index_target)
+    body_insts(builder.read(for_gen.index_target))
 
     builder.goto_and_activate(step_block)
     for_gen.gen_step()
@@ -115,7 +115,6 @@ def for_loop_helper_simple(builder: IRBuilder, index: Lvalue, expr: Expression,
     builder.pop_loop_stack()
 
     builder.activate_block(exit_block)
-
 
 
 def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value:
