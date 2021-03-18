@@ -270,7 +270,7 @@ def test() -> None:
 [out]
 def f(val):
     val, r0 :: int
-    r1 :: int64
+    r1 :: native_int
     r2, r3 :: bit
     r4 :: bool
     r5 :: bit
@@ -294,11 +294,11 @@ def test():
     r4, r5, r6, r7 :: ptr
     source :: list
     r8 :: ptr
-    r9 :: int64
+    r9 :: native_int
     r10 :: tuple
     r11 :: short_int
     r12 :: ptr
-    r13 :: int64
+    r13 :: native_int
     r14 :: short_int
     r15 :: bit
     r16 :: object
@@ -323,13 +323,13 @@ L0:
     keep_alive r0
     source = r0
     r8 = get_element_ptr source ob_size :: PyVarObject
-    r9 = load_mem r8 :: int64*
+    r9 = load_mem r8 :: native_int*
     keep_alive source
     r10 = PyTuple_New(r9)
     r11 = 0
 L1:
     r12 = get_element_ptr source ob_size :: PyVarObject
-    r13 = load_mem r12 :: int64*
+    r13 = load_mem r12 :: native_int*
     keep_alive source
     r14 = r13 << 1
     r15 = r11 < r14 :: signed
@@ -371,11 +371,11 @@ def test():
     r4, r5, r6, r7 :: ptr
     source :: list
     r8 :: ptr
-    r9 :: int64
+    r9 :: native_int
     r10 :: tuple
     r11 :: short_int
     r12 :: ptr
-    r13 :: int64
+    r13 :: native_int
     r14 :: short_int
     r15 :: bit
     r16 :: object
@@ -401,13 +401,13 @@ L0:
     keep_alive r3
     source = r3
     r8 = get_element_ptr source ob_size :: PyVarObject
-    r9 = load_mem r8 :: int64*
+    r9 = load_mem r8 :: native_int*
     keep_alive source
     r10 = PyTuple_New(r9)
     r11 = 0
 L1:
     r12 = get_element_ptr source ob_size :: PyVarObject
-    r13 = load_mem r12 :: int64*
+    r13 = load_mem r12 :: native_int*
     keep_alive source
     r14 = r13 << 1
     r15 = r11 < r14 :: signed
@@ -432,11 +432,12 @@ L4:
 
 
 [case testTupleBuiltFromTuple]
+from typing import Tuple
+
 def f(val: bool) -> bool:
     return not val
 
-def test() -> None:
-    source = (True, True, False, True)
+def test(source: Tuple[bool, bool, bool]) -> None:
     a = tuple(f(x) for x in source)
 [out]
 def f(val):
@@ -444,36 +445,34 @@ def f(val):
 L0:
     r0 = val ^ 1
     return r0
-def test():
-    r0, source :: tuple[bool, bool, bool, bool]
-    r1 :: list
-    r2, r3, r4 :: object
-    r5, x, r6 :: bool
-    r7 :: object
-    r8 :: int32
-    r9, r10 :: bit
-    r11, a :: tuple
+def test(source):
+    source :: tuple[bool, bool, bool]
+    r0 :: list
+    r1, r2, r3 :: object
+    r4, x, r5 :: bool
+    r6 :: object
+    r7 :: int32
+    r8, r9 :: bit
+    r10, a :: tuple
 L0:
-    r0 = (1, 1, 0, 1)
-    source = r0
-    r1 = PyList_New(0)
-    r2 = box(tuple[bool, bool, bool, bool], source)
-    r3 = PyObject_GetIter(r2)
+    r0 = PyList_New(0)
+    r1 = box(tuple[bool, bool, bool], source)
+    r2 = PyObject_GetIter(r1)
 L1:
-    r4 = PyIter_Next(r3)
-    if is_error(r4) goto L4 else goto L2
+    r3 = PyIter_Next(r2)
+    if is_error(r3) goto L4 else goto L2
 L2:
-    r5 = unbox(bool, r4)
-    x = r5
-    r6 = f(x)
-    r7 = box(bool, r6)
-    r8 = PyList_Append(r1, r7)
-    r9 = r8 >= 0 :: signed
+    r4 = unbox(bool, r3)
+    x = r4
+    r5 = f(x)
+    r6 = box(bool, r5)
+    r7 = PyList_Append(r0, r6)
+    r8 = r7 >= 0 :: signed
 L3:
     goto L1
 L4:
-    r10 = CPy_NoErrOccured()
+    r9 = CPy_NoErrOccured()
 L5:
-    r11 = PyList_AsTuple(r1)
-    a = r11
+    r10 = PyList_AsTuple(r0)
+    a = r10
     return 1
