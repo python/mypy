@@ -1,0 +1,12 @@
+-- Tests for reports
+--
+-- This file follows syntax of cmdline.test.
+
+[case testConfigErrorUnknownReportPyprojectTOML]
+# cmd: mypy -c pass
+[file pyproject.toml]
+\[tool.mypy]
+bad_report = "."
+[out]
+pyproject.toml: [mypy]: Unrecognized report type: bad_report
+== Return code: 0

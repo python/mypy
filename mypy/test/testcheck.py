@@ -41,6 +41,7 @@ typecheck_files = [
     'check-multiple-inheritance.test',
     'check-super.test',
     'check-modules.test',
+    'check-modules.pyproject.test',
     'check-typevar-values.test',
     'check-unsupported.test',
     'check-unreachable-code.test',
@@ -55,10 +56,13 @@ typecheck_files = [
     'check-type-promotion.test',
     'check-semanal-error.test',
     'check-flags.test',
+    'check-flags.pyproject.test',
     'check-incremental.test',
+    'check-incremental.pyproject.test',
     'check-serialize.test',
     'check-bound.test',
     'check-optional.test',
+    'check-optional.pyproject.test',
     'check-fastparse.test',
     'check-warnings.test',
     'check-async-await.test',
@@ -79,6 +83,7 @@ typecheck_files = [
     'check-enum.test',
     'check-incomplete-fixture.test',
     'check-custom-plugin.test',
+    'check-custom-plugin.pyproject.test',
     'check-default-plugin.test',
     'check-attr.test',
     'check-ctypes.test',
@@ -104,7 +109,7 @@ if sys.version_info >= (3, 9):
 
 # Special tests for platforms with case-insensitive filesystems.
 if sys.platform in ('darwin', 'win32'):
-    typecheck_files.append('check-modules-case.test')
+    typecheck_files.extend(['check-modules-case.test', 'check-modules-case.pyproject.test'])
 
 
 class TypeCheckSuite(DataSuite):

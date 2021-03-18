@@ -15,7 +15,9 @@
 -- Directories/packages on the command line
 -- ----------------------------------------
 
-[case testConfigFile]
+-- Tests mirrored off of cmdline.test
+
+[case testConfigFilePyprojectTOML]
 # cmd: mypy --config-file pyproject.toml main.py
 [file pyproject.toml]
 \[tool.mypy]
@@ -27,7 +29,7 @@ def f():
     except ZeroDivisionError, err:
         print err
 
-[case testErrorContextConfig]
+[case testErrorContextConfigPyprojectTOML]
 # cmd: mypy main.py
 [file pyproject.toml]
 \[tool.mypy]
@@ -39,7 +41,7 @@ def f() -> None:
 main.py: note: In function "f":
 main.py:2: error: Unsupported operand types for + ("int" and "str")
 
-[case testNoConfigFile]
+[case testNoConfigFilePyprojectTOML]
 # cmd: mypy main.py --config-file=
 [file pyproject.toml]
 \[tool.mypy]
@@ -47,7 +49,7 @@ warn_unused_ignores = true
 [file main.py]
 # type: ignore
 
-[case testPerFileConfigSection]
+[case testPerFileConfigSectionPyprojectTOML]
 # cmd: mypy x.py y.py z.py
 [file pyproject.toml]
 \[tool.mypy]
@@ -76,7 +78,7 @@ z.py:1: error: Function is missing a type annotation
 z.py:4: error: Call to untyped function "f" in typed context
 x.py:1: error: Function is missing a type annotation
 
-[case testPerFileConfigSectionMultipleMatchesDisallowed]
+[case testPerFileConfigSectionMultipleMatchesDisallowedPyprojectTOML]
 # cmd: mypy xx.py xy.py yx.py yy.py
 [file pyproject.toml]
 \[tool.mypy]
@@ -101,7 +103,7 @@ pyproject.toml: [mypy-*x*]: Patterns must be fully-qualified module names, optio
 pyproject.toml: [mypy-*y*]: Patterns must be fully-qualified module names, optionally with '*' in some components (e.g spam.*.eggs.*)
 == Return code: 0
 
-[case testMultipleGlobConfigSection]
+[case testMultipleGlobConfigSectionPyprojectTOML]
 # cmd: mypy x.py y.py z.py
 [file pyproject.toml]
 \[tool.mypy]
@@ -117,12 +119,12 @@ def f(a): pass
 z.py:1: error: Function is missing a type annotation
 x.py:1: error: Function is missing a type annotation
 
-[case testConfigNoErrorNoSection]
+[case testConfigNoErrorNoSectionPyprojectTOML]
 # cmd: mypy -c pass
 [file pyproject.toml]
 [out]
 
-[case testConfigErrorUnknownFlag]
+[case testConfigErrorUnknownFlagPyprojectTOML]
 # cmd: mypy -c pass
 [file pyproject.toml]
 \[tool.mypy]
@@ -131,7 +133,7 @@ bad = 0
 pyproject.toml: [mypy]: Unrecognized option: bad = 0
 == Return code: 0
 
-[case testConfigErrorBadFlag]
+[case testConfigErrorBadFlagPyprojectTOML]
 # cmd: mypy a.py
 [file pyproject.toml]
 \[tool.mypy]
@@ -143,7 +145,7 @@ def f():
 pyproject.toml: [mypy]: Unrecognized option: disallow-untyped-defs = True
 == Return code: 0
 
-[case testConfigErrorBadBoolean]
+[case testConfigErrorBadBooleanPyprojectTOML]
 # cmd: mypy -c pass
 [file pyproject.toml]
 \[tool.mypy]
@@ -152,7 +154,7 @@ ignore_missing_imports = "nah"
 pyproject.toml: [mypy]: ignore_missing_imports: Not a boolean: nah
 == Return code: 0
 
-[case testConfigErrorNotPerFile]
+[case testConfigErrorNotPerFilePyprojectTOML]
 # cmd: mypy -c pass
 [file pyproject.toml]
 \[tool.mypy]
@@ -162,7 +164,7 @@ python_version = 3.4
 pyproject.toml: [mypy-*]: Per-module sections should only specify per-module flags (python_version)
 == Return code: 0
 
-[case testConfigMypyPath]
+[case testConfigMypyPathPyprojectTOML]
 # cmd: mypy file.py
 [file pyproject.toml]
 \[tool.mypy]
@@ -185,7 +187,7 @@ file.py:1: error: Cannot find implementation or library stub for module named "n
 file.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 file.py:6: error: Argument 1 to "foo" has incompatible type "str"; expected "int"
 
-[case testIgnoreErrorsConfig]
+[case testIgnoreErrorsConfigPyprojectTOML]
 # cmd: mypy x.py y.py
 [file pyproject.toml]
 \[tool.mypy]
@@ -198,7 +200,7 @@ ignore_errors = true
 [out]
 y.py:1: error: Unsupported operand types for + ("str" and "int")
 
-[case testConfigFollowImportsNormal]
+[case testConfigFollowImportsNormalPyprojectTOML]
 # cmd: mypy main.py
 [file main.py]
 from a import x
@@ -222,7 +224,7 @@ main.py:6: error: Unsupported operand types for + ("int" and "str")
 main.py:7: error: Module has no attribute "y"
 main.py:8: error: Unsupported operand types for + (Module and "int")
 
-[case testConfigFollowImportsSilent]
+[case testConfigFollowImportsSilentPyprojectTOML]
 # cmd: mypy main.py
 [file main.py]
 from a import x
@@ -243,7 +245,7 @@ main.py:4: error: Unsupported operand types for + ("int" and "str")
 main.py:5: error: Module has no attribute "y"
 main.py:6: error: Unsupported operand types for + (Module and "int")
 
-[case testConfigFollowImportsSkip]
+[case testConfigFollowImportsSkipPyprojectTOML]
 # cmd: mypy main.py
 [file main.py]
 from a import x
@@ -259,7 +261,7 @@ follow_imports = "skip"
 main.py:2: note: Revealed type is 'Any'
 main.py:4: note: Revealed type is 'Any'
 
-[case testConfigFollowImportsError]
+[case testConfigFollowImportsErrorPyprojectTOML]
 # cmd: mypy main.py
 [file main.py]
 from a import x
@@ -277,7 +279,7 @@ main.py:1: note: (Using --follow-imports=error, module not passed on command lin
 main.py:2: note: Revealed type is 'Any'
 main.py:4: note: Revealed type is 'Any'
 
-[case testConfigFollowImportsSelective]
+[case testConfigFollowImportsSelectivePyprojectTOML]
 # cmd: mypy main.py
 [file pyproject.toml]
 \[tool.mypy]
@@ -317,7 +319,7 @@ main.py:6: note: Revealed type is 'builtins.int'
 main.py:7: note: Revealed type is 'Any'
 main.py:8: note: Revealed type is 'Any'
 
-[case testConfigFollowImportsInvalid]
+[case testConfigFollowImportsInvalidPyprojectTOML]
 # cmd: mypy main.py
 [file pyproject.toml]
 \[tool.mypy]
@@ -327,7 +329,7 @@ follow_imports = true
 pyproject.toml: [mypy]: follow_imports: invalid choice 'True' (choose from 'normal', 'silent', 'skip', 'error')
 == Return code: 0
 
-[case testConfigSilentMissingImportsOff]
+[case testConfigSilentMissingImportsOffPyprojectTOML]
 # cmd: mypy main.py
 [file main.py]
 import missing  # Expect error here
@@ -340,7 +342,7 @@ main.py:1: error: Cannot find implementation or library stub for module named "m
 main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main.py:2: note: Revealed type is 'Any'
 
-[case testConfigSilentMissingImportsOn]
+[case testConfigSilentMissingImportsOnPyprojectTOML]
 # cmd: mypy main.py
 [file main.py]
 import missing  # No error here
@@ -351,7 +353,7 @@ ignore_missing_imports = true
 [out]
 main.py:2: note: Revealed type is 'Any'
 
-[case testConfigNoErrorForUnknownXFlagInSubsection]
+[case testConfigNoErrorForUnknownXFlagInSubsectionPyprojectTOML]
 # cmd: mypy -c pass
 [file pyproject.toml]
 \[tool.mypy]
@@ -359,7 +361,7 @@ main.py:2: note: Revealed type is 'Any'
 x_bad = 0
 [out]
 
-[case testPythonVersionTooOld10]
+[case testPythonVersionTooOld10PyprojectTOML]
 # cmd: mypy -c pass
 [file pyproject.toml]
 \[tool.mypy]
@@ -368,7 +370,7 @@ python_version = 1.0
 pyproject.toml: [mypy]: python_version: Python major version '1' out of range (must be 2 or 3)
 == Return code: 0
 
-[case testPythonVersionTooOld26]
+[case testPythonVersionTooOld26PyprojectTOML]
 # cmd: mypy -c pass
 [file pyproject.toml]
 \[tool.mypy]
@@ -377,7 +379,7 @@ python_version = 2.6
 pyproject.toml: [mypy]: python_version: Python 2.6 is not supported (must be 2.7)
 == Return code: 0
 
-[case testPythonVersionTooOld33]
+[case testPythonVersionTooOld33PyprojectTOML]
 # cmd: mypy -c pass
 [file pyproject.toml]
 \[tool.mypy]
@@ -386,7 +388,7 @@ python_version = 3.3
 pyproject.toml: [mypy]: python_version: Python 3.3 is not supported (must be 3.4 or higher)
 == Return code: 0
 
-[case testPythonVersionTooNew28]
+[case testPythonVersionTooNew28PyprojectTOML]
 # cmd: mypy -c pass
 [file pyproject.toml]
 \[tool.mypy]
@@ -395,7 +397,7 @@ python_version = 2.8
 pyproject.toml: [mypy]: python_version: Python 2.8 is not supported (must be 2.7)
 == Return code: 0
 
-[case testPythonVersionTooNew40]
+[case testPythonVersionTooNew40PyprojectTOML]
 # cmd: mypy -c pass
 [file pyproject.toml]
 \[tool.mypy]
@@ -404,28 +406,28 @@ python_version = 4.0
 pyproject.toml: [mypy]: python_version: Python major version '4' out of range (must be 2 or 3)
 == Return code: 0
 
-[case testPythonVersionAccepted27]
+[case testPythonVersionAccepted27PyprojectTOML]
 # cmd: mypy -c pass
 [file pyproject.toml]
 \[tool.mypy]
 python_version = 2.7
 [out]
 
-[case testPythonVersionAccepted34]
+[case testPythonVersionAccepted34PyprojectTOML]
 # cmd: mypy -c pass
 [file pyproject.toml]
 \[tool.mypy]
 python_version = 3.4
 [out]
 
-[case testPythonVersionAccepted36]
+[case testPythonVersionAccepted36PyprojectTOML]
 # cmd: mypy -c pass
 [file pyproject.toml]
 \[tool.mypy]
 python_version = 3.6
 [out]
 
-[case testDisallowAnyGenericsBuiltinCollections]
+[case testDisallowAnyGenericsBuiltinCollectionsPyprojectTOML]
 # cmd: mypy m.py
 [file pyproject.toml]
 \[tool.mypy]
@@ -448,7 +450,7 @@ m.py:5: error: Implicit generic "Any". Use "typing.Dict" and specify generic par
 m.py:6: error: Implicit generic "Any". Use "typing.Set" and specify generic parameters
 m.py:7: error: Implicit generic "Any". Use "typing.FrozenSet" and specify generic parameters
 
-[case testDisallowAnyGenericsTypingCollections]
+[case testDisallowAnyGenericsTypingCollectionsPyprojectTOML]
 # cmd: mypy m.py
 [file pyproject.toml]
 \[tool.mypy]
@@ -470,7 +472,7 @@ m.py:5: error: Missing type parameters for generic type "Dict"
 m.py:6: error: Missing type parameters for generic type "Set"
 m.py:7: error: Missing type parameters for generic type "FrozenSet"
 
-[case testSectionInheritance]
+[case testSectionInheritancePyprojectTOML]
 # cmd: mypy a
 [file a/__init__.py]
 0()
@@ -505,7 +507,7 @@ ignore_errors = false
 a/b/c/d/e/__init__.py:2: error: Missing type parameters for generic type "List"
 a/b/c/d/e/__init__.py:3: error: Argument 1 to "g" has incompatible type "None"; expected "List[Any]"
 
-[case testDisallowUntypedDefsAndGenerics]
+[case testDisallowUntypedDefsAndGenericsPyprojectTOML]
 # cmd: mypy a.py
 [file pyproject.toml]
 \[tool.mypy]
@@ -517,7 +519,7 @@ def get_tasks(self):
 [out]
 a.py:1: error: Function is missing a return type annotation
 
-[case testSrcPEP420Packages]
+[case testSrcPEP420PackagesPyprojectTOML]
 # cmd: mypy -p anamespace --namespace-packages
 [file pyproject.toml]
 \[tool.mypy]
@@ -530,7 +532,7 @@ def bar(a: int, b: int) -> str:
 [out]
 src/anamespace/foo/bar.py:2: error: Incompatible return value type (got "int", expected "str")
 
-[case testFollowImportStubsPyprojectTOML1]
+[case testFollowImportStubs1PyprojectTOML]
 # cmd: mypy main.py
 [file pyproject.toml]
 \[tool.mypy]
@@ -544,7 +546,7 @@ math.frobnicate()
 main.py:1: error: Import of 'math' ignored
 main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 
-[case testFollowImportStubsPyprojectTOML2]
+[case testFollowImportStubs2PyprojectTOML]
 # cmd: mypy main.py
 [file pyproject.toml]
 \[tool.mypy]
@@ -555,7 +557,7 @@ follow_imports_for_stubs = true
 import math
 math.frobnicate()
 
-[case testConfigWarnUnusedSectionPyprojectTOML1]
+[case testConfigWarnUnusedSection1PyprojectTOML]
 # cmd: mypy foo.py quux.py spam/eggs.py
 [file pyproject.toml]
 \[tool.mypy]
@@ -583,7 +585,7 @@ incremental = false
 Warning: unused section(s) in pyproject.toml: [mypy-bar], [mypy-baz.*], [mypy-emarg.*], [mypy-emarg.hatch], [mypy-a.*.c], [mypy-a.x.b]
 == Return code: 0
 
-[case testConfigUnstructuredGlob]
+[case testConfigUnstructuredGlobPyprojectTOML]
 # cmd: mypy emarg foo
 [file pyproject.toml]
 \[tool.mypy]
@@ -615,7 +617,7 @@ foo/lol.py:1: error: Name 'fail' is not defined
 emarg/foo.py:1: error: Name 'fail' is not defined
 emarg/hatch/villip/mankangulisk.py:1: error: Name 'fail' is not defined
 
-[case testTomlFiles]
+[case testTomlFilesPyprojectTOML]
 # cmd: mypy
 [file pyproject.toml]
 \[tool.mypy]
@@ -631,7 +633,7 @@ fail
 b.py:1: error: Name 'fail' is not defined
 a.py:1: error: Name 'fail' is not defined
 
-[case testTomlFilesGlobbing]
+[case testTomlFilesGlobbingPyprojectTOML]
 # cmd: mypy
 [file pyproject.toml]
 \[tool.mypy]
@@ -644,7 +646,7 @@ fail
 a/b.py:1: error: Name 'fail' is not defined
 c.py:1: error: Name 'fail' is not defined
 
-[case testTomlFilesCmdlineOverridesConfig]
+[case testTomlFilesCmdlineOverridesConfigPyprojectTOML]
 # cmd: mypy override.py
 [file pyproject.toml]
 \[tool.mypy]
@@ -653,7 +655,7 @@ files = "config.py"
 mypy: can't read file 'override.py': No such file or directory
 == Return code: 2
 
-[case testDuplicateModules]
+[case testDuplicateModulesPyprojectTOML]
 # cmd: mypy src
 [file pyproject.toml]
 \[tool.mypy]
@@ -668,7 +670,7 @@ import foo.bar
 src/foo/bar.py: error: Source file found twice under different module names: 'src.foo.bar' and 'foo.bar'
 == Return code: 2
 
-[case testCmdlinePackageAndTomlFiles]
+[case testCmdlinePackageAndTomlFilesPyprojectTOML]
 # cmd: mypy -p pkg
 [file pyproject.toml]
 \[tool.mypy]
@@ -680,7 +682,7 @@ y = 0  # type: str
 [out]
 pkg.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
-[case testCmdlineModuleAndTomlFiles]
+[case testCmdlineModuleAndTomlFilesPyprojectTOML]
 # cmd: mypy -m pkg
 [file pyproject.toml]
 \[tool.mypy]

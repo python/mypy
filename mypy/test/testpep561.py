@@ -35,7 +35,10 @@ dne("abc")
 
 
 class PEP561Suite(DataSuite):
-    files = ['pep561.test']
+    files = [
+        'pep561.test',
+        'pep561.pyproject.test'
+    ]
 
     def run_case(self, test_case: DataDrivenTestCase) -> None:
         test_pep561(test_case)
@@ -135,6 +138,9 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
                 for name, content in testcase.files:
                     if 'mypy.ini' in name:
                         with open('mypy.ini', 'w') as m:
+                            m.write(content)
+                    elif 'pyproject.toml' in name:
+                        with open('pyproject.toml', 'w') as m:
                             m.write(content)
             output = []
             # Type check the module

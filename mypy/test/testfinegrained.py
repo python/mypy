@@ -45,6 +45,7 @@ CHECK_CONSISTENCY = False
 class FineGrainedSuite(DataSuite):
     files = [
         'fine-grained.test',
+        'fine-grained.pyproject.test',
         'fine-grained-cycles.test',
         'fine-grained-blockers.test',
         'fine-grained-modules.test',
@@ -159,7 +160,7 @@ class FineGrainedSuite(DataSuite):
             options.follow_imports = 'error'
 
         for name, _ in testcase.files:
-            if 'mypy.ini' in name:
+            if 'mypy.ini' in name or 'pyproject.toml' in name:
                 parse_config_file(options, lambda: None, name)
                 break
 
