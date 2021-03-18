@@ -350,7 +350,7 @@ L4:
     return 1
 
 
-[case testTupleBuiltFromList]
+[case testTupleBuiltFromList2]
 def f2(val: str) -> str:
     return val + "f2"
 
@@ -431,13 +431,13 @@ L4:
     return 1
 
 
-[case testTupleBuiltFromTuple]
+[case testTupleBuiltFromVariableLengthTuple]
 from typing import Tuple
 
 def f(val: bool) -> bool:
     return not val
 
-def test(source: Tuple[bool, bool, bool]) -> None:
+def test(source: Tuple[bool, ...]) -> None:
     a = tuple(f(x) for x in source)
 [out]
 def f(val):
@@ -446,33 +446,45 @@ L0:
     r0 = val ^ 1
     return r0
 def test(source):
-    source :: tuple[bool, bool, bool]
-    r0 :: list
-    r1, r2, r3 :: object
-    r4, x, r5 :: bool
-    r6 :: object
-    r7 :: int32
-    r8, r9 :: bit
-    r10, a :: tuple
+    source :: tuple
+    r0 :: ptr
+    r1 :: native_int
+    r2 :: tuple
+    r3 :: short_int
+    r4 :: ptr
+    r5 :: native_int
+    r6 :: short_int
+    r7 :: bit
+    r8 :: object
+    r9, x, r10 :: bool
+    r11 :: object
+    r12 :: bit
+    r13 :: short_int
+    a :: tuple
 L0:
-    r0 = PyList_New(0)
-    r1 = box(tuple[bool, bool, bool], source)
-    r2 = PyObject_GetIter(r1)
+    r0 = get_element_ptr source ob_size :: PyVarObject
+    r1 = load_mem r0 :: native_int*
+    keep_alive source
+    r2 = PyTuple_New(r1)
+    r3 = 0
 L1:
-    r3 = PyIter_Next(r2)
-    if is_error(r3) goto L4 else goto L2
+    r4 = get_element_ptr source ob_size :: PyVarObject
+    r5 = load_mem r4 :: native_int*
+    keep_alive source
+    r6 = r5 << 1
+    r7 = r3 < r6 :: signed
+    if r7 goto L2 else goto L4 :: bool
 L2:
-    r4 = unbox(bool, r3)
-    x = r4
-    r5 = f(x)
-    r6 = box(bool, r5)
-    r7 = PyList_Append(r0, r6)
-    r8 = r7 >= 0 :: signed
+    r8 = CPySequenceTuple_GetItem(source, r3)
+    r9 = unbox(bool, r8)
+    x = r9
+    r10 = f(x)
+    r11 = box(bool, r10)
+    r12 = CPySequenceTuple_SETITEM(r2, r3, r11)
 L3:
+    r13 = r3 + 2
+    r3 = r13
     goto L1
 L4:
-    r9 = CPy_NoErrOccured()
-L5:
-    r10 = PyList_AsTuple(r0)
-    a = r10
+    a = r2
     return 1

@@ -29,7 +29,7 @@ from mypyc.primitives.tuple_ops import new_tuple_set_item_op
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import (
     translate_list_comprehension, comprehension_helper,
-    for_loop_helper_simple
+    for_loop_helper_with_index
 )
 
 
@@ -165,8 +165,8 @@ def tuple_from_generator_helper(builder: IRBuilder,
                 e = builder.accept(gen.left_expr)
                 builder.call_c(new_tuple_set_item_op, [tuple_ops, index_target, e], gen.line)
 
-            for_loop_helper_simple(builder, index, expr,
-                                   set_tuple_item, gen.line)
+            for_loop_helper_with_index(builder, index, expr,
+                                       set_tuple_item, gen.line)
 
             return tuple_ops
     return None
