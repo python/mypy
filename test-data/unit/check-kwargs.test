@@ -491,3 +491,12 @@ m = {} # type: Mapping[str, object]
 f(**m)
 g(**m)  # TODO: Should be an error
 [builtins fixtures/dict.pyi]
+
+
+[case testGivingArgumentAsPositionalAndKeywordArg3]
+from typing import Mapping, Any
+from typing_extensions import Literal
+kw: Mapping[Literal["b"], int] = {"b": 2}
+def f(a=None, b=None, **kwargs) -> None: pass
+f(**kw)
+[builtins fixtures/dict.pyi]
