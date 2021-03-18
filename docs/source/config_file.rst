@@ -904,7 +904,7 @@ Instead of using a ``mypy.ini`` file, a ``pyproject.toml`` file (as specified by
 
 * The following care should be given to values in the ``pyproject.toml`` files as compared to ``ini`` files:
 
-  * Strings must be wrapped in double quotes
+  * Strings must be wrapped in double quotes, or single quotes if the string contains special characters
 
   * Boolean values should be all lower case
 
