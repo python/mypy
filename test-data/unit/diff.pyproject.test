@@ -35,7 +35,7 @@ class Instr(Generic[T]): ...
 
 [file pyproject.toml]
 \[tool.mypy]
-plugins = "<ROOT>/test-data/unit/plugins/dyn_class.py"
+plugins = '<ROOT>/test-data/unit/plugins/dyn_class.py'
 [out]
 __main__.Diff
 __main__.Diff.x

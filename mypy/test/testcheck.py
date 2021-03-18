@@ -83,7 +83,7 @@ typecheck_files = [
     'check-enum.test',
     'check-incomplete-fixture.test',
     'check-custom-plugin.test',
-    'check-custom-plugin.pyproject.test',
+    'check-custom-pyproject-plugin.test',
     'check-default-plugin.test',
     'check-attr.test',
     'check-ctypes.test',
