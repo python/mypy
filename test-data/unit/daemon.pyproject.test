@@ -6,7 +6,7 @@ $ dmypy start -- --follow-imports=error
 Daemon started
 [file pyproject.toml]
 \[tool.mypy]
-files = "./foo.py"
+files = './foo.py'
 
 [case testDaemonRunRestartPluginVersionPyprojectTOMLPyprojectTOML]
 $ dmypy run -- foo.py --no-error-summary
