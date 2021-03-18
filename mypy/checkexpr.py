@@ -32,7 +32,7 @@ from mypy.nodes import (
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
     TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, SymbolNode, PlaceholderNode,
     ParamSpecExpr,
-    ARG_POS, ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, LITERAL_TYPE, REVEAL_TYPE,
+    ARG_POS, ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, COVARIANT, LITERAL_TYPE, REVEAL_TYPE,
 )
 from mypy.literals import literal
 from mypy import nodes
@@ -3938,20 +3938,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def is_valid_keyword_var_arg(self, typ: Type) -> bool:
         """Is a type valid as a **kwargs argument?"""
         if self.chk.options.python_version[0] >= 3:
-            return is_subtype(typ, self.chk.named_generic_type(
-                'typing.Mapping', [self.named_type('builtins.str'),
-                                   AnyType(TypeOfAny.special_form)]))
+            key_type = self.named_type('builtins.str')
         else:
-            return (
-                is_subtype(typ, self.chk.named_generic_type(
-                    'typing.Mapping',
-                    [self.named_type('builtins.str'),
-                     AnyType(TypeOfAny.special_form)]))
-                or
-                is_subtype(typ, self.chk.named_generic_type(
-                    'typing.Mapping',
-                    [self.named_type('builtins.unicode'),
-                     AnyType(TypeOfAny.special_form)])))
+            key_type = UnionType.make_union([
+                self.named_type('builtins.str'),
+                self.named_type('builtins.unicode')])
+        kwargs_type = self.chk.named_generic_type(
+            'typing.Mapping', [key_type, AnyType(TypeOfAny.special_form)])
+        kwargs_type.type.defn.type_vars[0].variance = COVARIANT
+        return is_subtype(typ, kwargs_type)
 
     def has_member(self, typ: Type, member: str) -> bool:
         """Does type have member with the given name?"""
