@@ -316,9 +316,9 @@ L0:
     r4 = get_element_ptr r0 ob_item :: PyListObject
     r5 = load_mem r4 :: ptr*
     set_mem r5, r1 :: builtins.object*
-    r6 = r5 + 8
+    r6 = r5 + WORD_SIZE*1
     set_mem r6, r2 :: builtins.object*
-    r7 = r5 + 16
+    r7 = r5 + WORD_SIZE*2
     set_mem r7, r3 :: builtins.object*
     keep_alive r0
     source = r0
@@ -394,9 +394,9 @@ L0:
     r4 = get_element_ptr r3 ob_item :: PyListObject
     r5 = load_mem r4 :: ptr*
     set_mem r5, r0 :: builtins.object*
-    r6 = r5 + 8
+    r6 = r5 + WORD_SIZE*1
     set_mem r6, r1 :: builtins.object*
-    r7 = r5 + 16
+    r7 = r5 + WORD_SIZE*2
     set_mem r7, r2 :: builtins.object*
     keep_alive r3
     source = r3
