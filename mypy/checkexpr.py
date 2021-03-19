@@ -1472,7 +1472,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         not self.is_valid_var_arg(actual_type)):
                     messages.invalid_var_arg(actual_type, context)
                 if (actual_kind == nodes.ARG_STAR2 and
-                        not self.is_valid_keyword_var_arg(actual_type, args[actual])):
+                        not self.is_valid_keyword_var_arg(actual_type)):
                     is_mapping = is_subtype(actual_type, self.chk.named_type('typing.Mapping'))
                     messages.invalid_keyword_var_arg(actual_type, is_mapping, context)
                 expanded_actual = mapper.expand_actual_type(
@@ -3935,7 +3935,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                                             [AnyType(TypeOfAny.special_form)])) or
                 isinstance(typ, AnyType))
 
-    def is_valid_keyword_var_arg(self, typ: Type, arg: Any) -> bool:
+    def is_valid_keyword_var_arg(self, typ: Type) -> bool:
         """Is a type valid as a **kwargs argument?"""
         import pdb; pdb.set_trace()
         str_type = self.named_type('builtins.str')
@@ -3944,8 +3944,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 'typing.Mapping', [str_type,
                                    AnyType(TypeOfAny.special_form)]))
                     or
-            is_subtype(typ, self.chk.named_generic_type(
-                'typing.Mapping', [LiteralType(value=arg, fallback=str_type), AnyType(TypeOfAny.special_form)])))
+                    (is_subtype(typ, self.chk.named_type('typing.Mapping')) and isinstance(typ.args[0], LiteralType)
+                     and isinstance(typ.args[0].value, str)))
+        # try_getting_literal(typ.args[0])
+        # try_getting_str_literals(typ.args[0], typ.args[0])
         else:
             return (
                 is_subtype(typ, self.chk.named_generic_type(
@@ -3958,9 +3960,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     [self.named_type('builtins.unicode'),
                      AnyType(TypeOfAny.special_form)]))
                 or
-                is_subtype(typ, self.chk.named_generic_type(
-                    'typing.Mapping',
-                    [LiteralType(value=arg, fallback=str_type), AnyType(TypeOfAny.special_form)])))
+                (is_subtype(typ, self.chk.named_type('typing.Mapping'))
+                 and isinstance(typ.args[0], LiteralType)
+                 and isinstance(typ.args[0].value, str)))
 
     def has_member(self, typ: Type, member: str) -> bool:
         """Does type have member with the given name?"""

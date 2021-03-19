@@ -494,9 +494,24 @@ g(**m)  # TODO: Should be an error
 
 
 [case testGivingArgumentAsPositionalAndKeywordArg3]
-from typing import Mapping, Any
+from typing import Mapping, Any, Union
 from typing_extensions import Literal
-kw: Mapping[Literal["b"], int] = {"b": 2}
 def f(a=None, b=None, **kwargs) -> None: pass
-f(**kw)
+
+--s: Mapping[Literal[3], int] = {3: 2}
+--f(**s) # E: Keywords must be strings
+
+a: Mapping[Literal['b'], int] = {'b':2}
+--f(**a)
+
+b: Mapping[Literal['c'], int] = {'b':2}
+f(**b)
+
+c: Mapping[Literal['a','b'], Any] = {'a':2, 'b':1}
+f(**c)
+
+d: Mapping[Literal['d'], int] = {'c':2}
+
 [builtins fixtures/dict.pyi]
+
+-- check for union literal,
