@@ -125,7 +125,7 @@ ini_config_types = {
 }  # type: Final[Dict[str, Any]]
 
 # Reuse the ini_config_types and overwrite the diff
-toml_config_types = copy.deepcopy(ini_config_types)  # type: Final[Dict[str, Any]]
+toml_config_types = copy.copy(ini_config_types)  # type: Final[Dict[str, Any]]
 toml_config_types.update({
     'python_version': lambda s: parse_version(str(s)),
     'strict_optional_whitelist': try_split,
@@ -236,7 +236,7 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
 
 def parse_section(prefix: str, template: Options,
                   set_strict_flags: Callable[[], None],
-                  section: Mapping[str, str],
+                  section: Mapping[str, Any],
                   config_types: Dict[str, Any],
                   stderr: TextIO = sys.stderr
                   ) -> Tuple[Dict[str, object], Dict[str, str]]:
@@ -262,7 +262,7 @@ def parse_section(prefix: str, template: Options,
                 if key.endswith('_report'):
                     report_type = key[:-7].replace('_', '-')
                     if report_type in defaults.REPORTER_NAMES:
-                        report_dirs[report_type] = section[key]
+                        report_dirs[report_type] = str(section[key])
                     else:
                         print("%sUnrecognized report type: %s" % (prefix, key),
                               file=stderr)
