@@ -131,6 +131,7 @@ toml_config_types.update({
     'strict_optional_whitelist': try_split,
     'mypy_path': lambda s: [expand_path(p) for p in try_split(s, '[,:]')],
     'files': lambda s: split_and_match_files_list(try_split(s)),
+    'follow_imports': lambda s: check_follow_imports(str(s)),
     'plugins': try_split,
     'always_true': try_split,
     'always_false': try_split,
