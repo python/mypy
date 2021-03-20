@@ -17,7 +17,9 @@ from mypy.nodes import (
 from mypy.types import TupleType, get_proper_type, Instance
 
 from mypyc.common import MAX_SHORT_INT
-from mypyc.ir.ops import Value, Register, TupleGet, TupleSet, BasicBlock, Assign, LoadAddress
+from mypyc.ir.ops import (
+    Value, Register, TupleGet, TupleSet, BasicBlock, Assign, LoadAddress, RaiseStandardError
+)
 from mypyc.ir.rtypes import (
     RTuple, object_rprimitive, is_none_rprimitive, int_rprimitive, is_int_rprimitive
 )
@@ -40,7 +42,11 @@ from mypyc.irbuild.for_helpers import translate_list_comprehension, comprehensio
 
 
 def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
-    assert expr.node, "RefExpr not resolved"
+    if expr.node is None:
+        builder.add(RaiseStandardError(RaiseStandardError.RUNTIME_ERROR,
+                                       "mypyc internal error: should be unreachable",
+                                       expr.line))
+        return builder.none()
     fullname = expr.node.fullname
     if fullname in builtin_names:
         typ, src = builtin_names[fullname]
