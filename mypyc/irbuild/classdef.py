@@ -1,6 +1,6 @@
 """Transform class definitions from the mypy AST form to IR."""
 
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, PassStmt, AssignmentStmt, NameExpr, StrExpr,
@@ -11,7 +11,7 @@ from mypyc.ir.ops import (
     BasicBlock, Branch, MethodCall, NAMESPACE_TYPE, LoadAddress
 )
 from mypyc.ir.rtypes import (
-    object_rprimitive, bool_rprimitive, dict_rprimitive, is_optional_type,
+    RType, object_rprimitive, bool_rprimitive, dict_rprimitive, is_optional_type,
     is_object_rprimitive, is_none_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
@@ -76,7 +76,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
         dataclass_non_ext = None
         type_obj = None
 
-    attrs_to_cache = []  # type: List[Lvalue]
+    attrs_to_cache = []  # type: List[Tuple[Lvalue, RType]]
 
     for stmt in cdef.defs.body:
         if isinstance(stmt, OverloadedFuncDef) and stmt.is_property:
@@ -269,7 +269,7 @@ def add_non_ext_class_attr(builder: IRBuilder,
                            lvalue: NameExpr,
                            stmt: AssignmentStmt,
                            cdef: ClassDef,
-                           attr_to_cache: List[Lvalue]) -> None:
+                           attr_to_cache: List[Tuple[Lvalue, RType]]) -> None:
     """Add a class attribute to __annotations__ of a non-extension class.
 
     If the attribute is initialized with a value, also add it to __dict__.
@@ -294,7 +294,8 @@ def add_non_ext_class_attr(builder: IRBuilder,
             # Skip "_order_" and "__order__", since Enum will remove it
             and lvalue.name not in ('_order_', '__order__')
         ):
-            attr_to_cache.append(lvalue)
+            # Enum values are always boxed, so use object_rprimitive.
+            attr_to_cache.append((lvalue, object_rprimitive))
 
 
 def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef) -> None:
@@ -419,13 +420,15 @@ def load_decorated_class(builder: IRBuilder, cdef: ClassDef, type_obj: Value) ->
     return dec_class
 
 
-def cache_class_attrs(builder: IRBuilder, attrs_to_cache: List[Lvalue], cdef: ClassDef) -> None:
+def cache_class_attrs(builder: IRBuilder,
+                      attrs_to_cache: List[Tuple[Lvalue, RType]],
+                      cdef: ClassDef) -> None:
     """Add class attributes to be cached to the global cache."""
     typ = builder.load_native_type_object(cdef.fullname)
-    for lval in attrs_to_cache:
+    for lval, rtype in attrs_to_cache:
         assert isinstance(lval, NameExpr)
         rval = builder.py_get_attr(typ, lval.name, cdef.line)
-        builder.init_final_static(lval, rval, cdef.name)
+        builder.init_final_static(lval, rval, cdef.name, type_override=rtype)
 
 
 def create_mypyc_attrs_tuple(builder: IRBuilder, ir: ClassIR, line: int) -> Value:

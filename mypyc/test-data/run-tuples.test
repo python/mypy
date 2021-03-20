@@ -97,6 +97,7 @@ assert f(Sub(3, 2)) == 3
 
 [case testTupleOps]
 from typing import Tuple, List, Any, Optional
+from typing_extensions import Final
 
 def f() -> Tuple[()]:
     return ()
@@ -178,3 +179,9 @@ def test_slicing() -> None:
     assert s[1:long_int] == ("o", "o", "b", "a", "r")
     assert s[long_int:] == ()
     assert s[-long_int:-1] == ("f", "o", "o", "b", "a")
+
+TUPLE: Final[Tuple[str, ...]] = ('x', 'y')
+
+def test_final_boxed_tuple() -> None:
+    t = TUPLE
+    assert t == ('x', 'y')
