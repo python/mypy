@@ -97,3 +97,23 @@ L0:
     r3 = truncate r1: int32 to builtins.bool
     r4 = r3 ^ 1
     return r4
+
+[case testDundersDelItem]
+class C:
+    def __delitem__(self, x: int) -> None:
+        pass
+
+def f(c: C) -> None:
+    del c[5]
+[out]
+def C.__delitem__(self, x):
+    self :: __main__.C
+    x :: int
+L0:
+    return 1
+def f(c):
+    c :: __main__.C
+    r0 :: None
+L0:
+    r0 = c.__delitem__(10)
+    return 1
