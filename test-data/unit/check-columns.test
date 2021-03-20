@@ -235,6 +235,7 @@ y: Dict[int, int] = {
 [builtins fixtures/dict.pyi]
 
 [case testColumnCannotDetermineType]
+# flags: --no-local-partial-types
 (x)  # E:2: Cannot determine type of 'x'
 x = None
 

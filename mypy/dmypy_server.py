@@ -143,6 +143,8 @@ def process_start_options(flags: List[str], allow_sources: bool) -> Options:
         sys.exit("dmypy: start/restart should not disable incremental mode")
     if options.follow_imports not in ('skip', 'error', 'normal'):
         sys.exit("dmypy: follow-imports=silent not supported")
+    if not options.local_partial_types:
+        sys.exit("dmypy: disabling local-partial-types not supported")
     return options
 
 

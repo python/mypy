@@ -358,7 +358,7 @@ def foo(
     pass
 
 [case testNoneHasNoBoolInPython2]
-none = None
+none = None  # type: None
 b = none.__bool__() # E: "None" has no attribute "__bool__"
 
 [case testDictWithoutTypeCommentInPython2]

@@ -65,7 +65,7 @@ class RegistryError(Exception):
 if sys.platform == "win32":
     _WindowsError = WindowsError
 else:
-    _WindowsError = None
+    _WindowsError = None  # type: None
 
 
 # Function aliases to be patched in test cases

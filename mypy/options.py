@@ -277,7 +277,7 @@ class Options:
         self.dump_deps = False
         self.logical_deps = False
         # If True, partial types can't span a module top level and a function
-        self.local_partial_types = False
+        self.local_partial_types = True
         # Some behaviors are changed when using Bazel (https://bazel.build).
         self.bazel = False
         # If True, export inferred types for all expressions as BuildResult.types

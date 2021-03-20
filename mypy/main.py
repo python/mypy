@@ -778,7 +778,7 @@ def process_options(args: List[str],
     parser.add_argument('--semantic-analysis-only', action='store_true', help=argparse.SUPPRESS)
     # --local-partial-types disallows partial types spanning module top level and a function
     # (implicitly defined in fine-grained incremental mode)
-    parser.add_argument('--local-partial-types', action='store_true', help=argparse.SUPPRESS)
+    add_invertible_flag('--local-partial-types', default=False, help=argparse.SUPPRESS)
     # --logical-deps adds some more dependencies that are not semantically needed, but
     # may be helpful to determine relative importance of classes and functions for overall
     # type precision in a code base. It also _removes_ some deps, so this flag should be never
