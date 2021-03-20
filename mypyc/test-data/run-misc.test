@@ -1057,3 +1057,19 @@ def test_complex() -> None:
     assert 2.5e1000j == eval('2.5e1000j')
     assert 2.5e1000j + 3.5e2000 == eval('3.5e2000 + 2.5e1000j')
     assert -2.5e1000j == eval('-2.5e1000j')
+
+[case testUnreachableExpressions]
+from typing import cast
+import sys
+
+A = sys.platform == 'x' and foobar
+B = sys.platform == 'x' and sys.foobar
+C = sys.platform == 'x' and f(a, -b, 'y') > [c + e, g(y=2)]
+C = sys.platform == 'x' and cast(a, b[c])
+C = sys.platform == 'x' and (lambda x: y + x)
+# TODO: This still doesn't work
+# C = sys.platform == 'x' and (x for y in z)
+
+assert not A
+assert not B
+assert not C
