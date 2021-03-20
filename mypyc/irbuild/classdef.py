@@ -1,6 +1,7 @@
 """Transform class definitions from the mypy AST form to IR."""
 
-from typing import List, Optional
+from typing import List, Optional, Tuple
+from typing_extensions import Final
 
 from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, PassStmt, AssignmentStmt, NameExpr, StrExpr,
@@ -199,6 +200,14 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
     return tp
 
 
+# Mypy uses these internally as base classes of TypedDict classes. These are
+# lies and don't have any runtime equivalent.
+MAGIC_TYPED_DICT_CLASSES = (
+    'typing._TypedDict',
+    'typing_extensions._TypedDict',
+)  # type: Final[Tuple[str, ...]]
+
+
 def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
     """Create base class tuple of a non-extension class.
 
@@ -216,13 +225,13 @@ def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
                 base_ir.children.append(ir)
 
         name = cls.name
-        if cls.fullname == 'typing_extensions._TypedDict':
+        if cls.fullname in MAGIC_TYPED_DICT_CLASSES:
             # HAX: Mypy internally represents TypedDict classes differently from what
             #      should happen at runtime. Replace with something that works.
             name = 'TypedDict'
         base = builder.load_global_str(name, cdef.line)
         bases.append(base)
-        if cls.fullname == 'typing_extensions._TypedDict':
+        if cls.fullname in MAGIC_TYPED_DICT_CLASSES:
             # The remaining base classes are synthesized by mypy and should be ignored.
             break
     return builder.new_tuple(bases, cdef.line)
