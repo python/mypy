@@ -355,8 +355,9 @@ class IRBuilder:
             else:
                 name = '{}.{}'.format(class_name, lvalue.name)
             assert name is not None, "Full name not set for variable"
-            self.final_names.append((name, rvalue_reg.type))
-            self.add(InitStatic(rvalue_reg, name, self.module_name))
+            coerced = self.coerce(rvalue_reg, self.node_type(lvalue), lvalue.line)
+            self.final_names.append((name, coerced.type))
+            self.add(InitStatic(coerced, name, self.module_name))
 
     def load_final_static(self, fullname: str, typ: RType, line: int,
                           error_name: Optional[str] = None) -> Value:
