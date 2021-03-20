@@ -215,8 +215,16 @@ def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
             if base_ir.children is not None:
                 base_ir.children.append(ir)
 
-        base = builder.load_global_str(cls.name, cdef.line)
+        name = cls.name
+        if cls.fullname == 'typing_extensions._TypedDict':
+            # HAX: Mypy internally represents TypedDict classes differently from what
+            #      should happen at runtime. Replace with something that works.
+            name = 'TypedDict'
+        base = builder.load_global_str(name, cdef.line)
         bases.append(base)
+        if cls.fullname == 'typing_extensions._TypedDict':
+            # The remaining base classes are synthesized by mypy and should be ignored.
+            break
     return builder.new_tuple(bases, cdef.line)
 
 
