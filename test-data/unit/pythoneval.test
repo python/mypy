@@ -281,10 +281,10 @@ reveal_type(open('x', 'rb'))
 mode = 'rb'
 reveal_type(open('x', mode))
 [out]
-_program.py:1: note: Revealed type is 'typing.TextIO'
-_program.py:2: note: Revealed type is 'typing.TextIO'
-_program.py:3: note: Revealed type is 'typing.BinaryIO'
-_program.py:5: note: Revealed type is 'typing.IO[Any]'
+_program.py:1: note: Revealed type is "typing.TextIO"
+_program.py:2: note: Revealed type is "typing.TextIO"
+_program.py:3: note: Revealed type is "typing.BinaryIO"
+_program.py:5: note: Revealed type is "typing.IO[Any]"
 
 [case testOpenReturnTypeInferenceSpecialCases]
 reveal_type(open(mode='rb', file='x'))
@@ -292,9 +292,9 @@ reveal_type(open(file='x', mode='rb'))
 mode = 'rb'
 reveal_type(open(mode=mode, file='r'))
 [out]
-_testOpenReturnTypeInferenceSpecialCases.py:1: note: Revealed type is 'typing.BinaryIO'
-_testOpenReturnTypeInferenceSpecialCases.py:2: note: Revealed type is 'typing.BinaryIO'
-_testOpenReturnTypeInferenceSpecialCases.py:4: note: Revealed type is 'typing.IO[Any]'
+_testOpenReturnTypeInferenceSpecialCases.py:1: note: Revealed type is "typing.BinaryIO"
+_testOpenReturnTypeInferenceSpecialCases.py:2: note: Revealed type is "typing.BinaryIO"
+_testOpenReturnTypeInferenceSpecialCases.py:4: note: Revealed type is "typing.IO[Any]"
 
 [case testPathOpenReturnTypeInference]
 from pathlib import Path
@@ -305,10 +305,10 @@ reveal_type(p.open('rb'))
 mode = 'rb'
 reveal_type(p.open(mode))
 [out]
-_program.py:3: note: Revealed type is 'typing.TextIO'
-_program.py:4: note: Revealed type is 'typing.TextIO'
-_program.py:5: note: Revealed type is 'typing.BinaryIO'
-_program.py:7: note: Revealed type is 'typing.IO[Any]'
+_program.py:3: note: Revealed type is "typing.TextIO"
+_program.py:4: note: Revealed type is "typing.TextIO"
+_program.py:5: note: Revealed type is "typing.BinaryIO"
+_program.py:7: note: Revealed type is "typing.IO[Any]"
 
 [case testPathOpenReturnTypeInferenceSpecialCases]
 from pathlib import Path
@@ -318,9 +318,9 @@ reveal_type(p.open(errors='replace', mode='rb'))
 mode = 'rb'
 reveal_type(p.open(mode=mode, errors='replace'))
 [out]
-_program.py:3: note: Revealed type is 'typing.BinaryIO'
-_program.py:4: note: Revealed type is 'typing.BinaryIO'
-_program.py:6: note: Revealed type is 'typing.IO[Any]'
+_program.py:3: note: Revealed type is "typing.BinaryIO"
+_program.py:4: note: Revealed type is "typing.BinaryIO"
+_program.py:6: note: Revealed type is "typing.IO[Any]"
 
 [case testGenericPatterns]
 from typing import Pattern
@@ -901,13 +901,13 @@ o6 = t.Deque[int]()
 reveal_type(o6)
 
 [out]
-_testCollectionsAliases.py:5: note: Revealed type is 'collections.Counter[builtins.int]'
+_testCollectionsAliases.py:5: note: Revealed type is "collections.Counter[builtins.int]"
 _testCollectionsAliases.py:6: error: Invalid index type "str" for "Counter[int]"; expected type "int"
-_testCollectionsAliases.py:9: note: Revealed type is 'collections.ChainMap[builtins.int, builtins.str]'
-_testCollectionsAliases.py:12: note: Revealed type is 'collections.deque[builtins.int]'
-_testCollectionsAliases.py:15: note: Revealed type is 'collections.Counter[builtins.int*]'
-_testCollectionsAliases.py:18: note: Revealed type is 'collections.ChainMap[builtins.int*, builtins.str*]'
-_testCollectionsAliases.py:21: note: Revealed type is 'collections.deque[builtins.int*]'
+_testCollectionsAliases.py:9: note: Revealed type is "collections.ChainMap[builtins.int, builtins.str]"
+_testCollectionsAliases.py:12: note: Revealed type is "collections.deque[builtins.int]"
+_testCollectionsAliases.py:15: note: Revealed type is "collections.Counter[builtins.int*]"
+_testCollectionsAliases.py:18: note: Revealed type is "collections.ChainMap[builtins.int*, builtins.str*]"
+_testCollectionsAliases.py:21: note: Revealed type is "collections.deque[builtins.int*]"
 
 [case testChainMapUnimported]
 ChainMap[int, str]()
@@ -1060,10 +1060,10 @@ reveal_type(g)
 with f('') as s:
     reveal_type(s)
 [out]
-_program.py:13: note: Revealed type is 'def (x: builtins.int) -> contextlib._GeneratorContextManager[builtins.str*]'
-_program.py:14: note: Revealed type is 'def (*x: builtins.str) -> contextlib._GeneratorContextManager[builtins.int*]'
+_program.py:13: note: Revealed type is "def (x: builtins.int) -> contextlib._GeneratorContextManager[builtins.str*]"
+_program.py:14: note: Revealed type is "def (*x: builtins.str) -> contextlib._GeneratorContextManager[builtins.int*]"
 _program.py:16: error: Argument 1 to "f" has incompatible type "str"; expected "int"
-_program.py:17: note: Revealed type is 'builtins.str*'
+_program.py:17: note: Revealed type is "builtins.str*"
 
 [case testTypedDictGet]
 # Test that TypedDict get plugin works with typeshed stubs
@@ -1079,14 +1079,14 @@ d.get()
 s = ''
 reveal_type(d.get(s))
 [out]
-_testTypedDictGet.py:7: note: Revealed type is 'builtins.int'
-_testTypedDictGet.py:8: note: Revealed type is 'builtins.str'
-_testTypedDictGet.py:9: note: Revealed type is 'builtins.object*'
+_testTypedDictGet.py:7: note: Revealed type is "builtins.int"
+_testTypedDictGet.py:8: note: Revealed type is "builtins.str"
+_testTypedDictGet.py:9: note: Revealed type is "builtins.object*"
 _testTypedDictGet.py:10: error: All overload variants of "get" of "Mapping" require at least one argument
 _testTypedDictGet.py:10: note: Possible overload variants:
 _testTypedDictGet.py:10: note:     def get(self, key: str) -> object
 _testTypedDictGet.py:10: note:     def [_T] get(self, key: str, default: object) -> object
-_testTypedDictGet.py:12: note: Revealed type is 'builtins.object*'
+_testTypedDictGet.py:12: note: Revealed type is "builtins.object*"
 
 [case testTypedDictMappingMethods]
 from mypy_extensions import TypedDict
@@ -1111,18 +1111,18 @@ Cell2 = TypedDict('Cell2', {'value': int}, total=False)
 c2 = Cell2()
 reveal_type(c2.pop('value'))
 [out]
-_testTypedDictMappingMethods.py:5: note: Revealed type is 'builtins.str*'
-_testTypedDictMappingMethods.py:6: note: Revealed type is 'typing.Iterator[builtins.str*]'
-_testTypedDictMappingMethods.py:7: note: Revealed type is 'builtins.int'
-_testTypedDictMappingMethods.py:8: note: Revealed type is 'builtins.bool'
-_testTypedDictMappingMethods.py:9: note: Revealed type is 'typing.KeysView[builtins.str]'
-_testTypedDictMappingMethods.py:10: note: Revealed type is 'typing.ItemsView[builtins.str, builtins.object]'
-_testTypedDictMappingMethods.py:11: note: Revealed type is 'typing.ValuesView[builtins.object]'
-_testTypedDictMappingMethods.py:12: note: Revealed type is 'TypedDict('_testTypedDictMappingMethods.Cell', {'value': builtins.int})'
-_testTypedDictMappingMethods.py:13: note: Revealed type is 'builtins.int'
+_testTypedDictMappingMethods.py:5: note: Revealed type is "builtins.str*"
+_testTypedDictMappingMethods.py:6: note: Revealed type is "typing.Iterator[builtins.str*]"
+_testTypedDictMappingMethods.py:7: note: Revealed type is "builtins.int"
+_testTypedDictMappingMethods.py:8: note: Revealed type is "builtins.bool"
+_testTypedDictMappingMethods.py:9: note: Revealed type is "typing.KeysView[builtins.str]"
+_testTypedDictMappingMethods.py:10: note: Revealed type is "typing.ItemsView[builtins.str, builtins.object]"
+_testTypedDictMappingMethods.py:11: note: Revealed type is "typing.ValuesView[builtins.object]"
+_testTypedDictMappingMethods.py:12: note: Revealed type is "TypedDict('_testTypedDictMappingMethods.Cell', {'value': builtins.int})"
+_testTypedDictMappingMethods.py:13: note: Revealed type is "builtins.int"
 _testTypedDictMappingMethods.py:15: error: Unexpected TypedDict key 'invalid'
 _testTypedDictMappingMethods.py:16: error: Key "value" of TypedDict "Cell" cannot be deleted
-_testTypedDictMappingMethods.py:21: note: Revealed type is 'builtins.int'
+_testTypedDictMappingMethods.py:21: note: Revealed type is "builtins.int"
 
 [case testCrashOnComplexCheckWithNamedTupleNext]
 from typing import NamedTuple
@@ -1165,9 +1165,9 @@ async def main() -> None:
     reveal_type(a_y)
 reveal_type(asyncio.gather(*[asyncio.sleep(1), asyncio.sleep(1)]))
 [out]
-_testAsyncioGatherPreciseType.py:9: note: Revealed type is 'builtins.str'
-_testAsyncioGatherPreciseType.py:10: note: Revealed type is 'builtins.str'
-_testAsyncioGatherPreciseType.py:11: note: Revealed type is 'asyncio.futures.Future[builtins.list[Any]]'
+_testAsyncioGatherPreciseType.py:9: note: Revealed type is "builtins.str"
+_testAsyncioGatherPreciseType.py:10: note: Revealed type is "builtins.str"
+_testAsyncioGatherPreciseType.py:11: note: Revealed type is "asyncio.futures.Future[builtins.list[Any]]"
 
 [case testMultipleInheritanceWorksWithTupleTypeGeneric]
 from typing import SupportsAbs, NamedTuple
@@ -1198,12 +1198,12 @@ for a, b in x.items():
     reveal_type(a)
     reveal_type(b)
 [out]
-_testNoCrashOnGenericUnionUnpacking.py:6: note: Revealed type is 'builtins.str'
-_testNoCrashOnGenericUnionUnpacking.py:7: note: Revealed type is 'builtins.str'
-_testNoCrashOnGenericUnionUnpacking.py:10: note: Revealed type is 'Union[builtins.str, builtins.int]'
-_testNoCrashOnGenericUnionUnpacking.py:11: note: Revealed type is 'Union[builtins.str, builtins.int]'
-_testNoCrashOnGenericUnionUnpacking.py:15: note: Revealed type is 'Union[builtins.int*, builtins.str*]'
-_testNoCrashOnGenericUnionUnpacking.py:16: note: Revealed type is 'Union[builtins.int*, builtins.str*]'
+_testNoCrashOnGenericUnionUnpacking.py:6: note: Revealed type is "builtins.str"
+_testNoCrashOnGenericUnionUnpacking.py:7: note: Revealed type is "builtins.str"
+_testNoCrashOnGenericUnionUnpacking.py:10: note: Revealed type is "Union[builtins.str, builtins.int]"
+_testNoCrashOnGenericUnionUnpacking.py:11: note: Revealed type is "Union[builtins.str, builtins.int]"
+_testNoCrashOnGenericUnionUnpacking.py:15: note: Revealed type is "Union[builtins.int*, builtins.str*]"
+_testNoCrashOnGenericUnionUnpacking.py:16: note: Revealed type is "Union[builtins.int*, builtins.str*]"
 
 [case testMetaclassOpAccess]
 from typing import Type
@@ -1229,8 +1229,8 @@ other = 4 + get_c_type() + 5
 reveal_type(res)
 reveal_type(other)
 [out]
-_testMetaclassOpAccess.py:21: note: Revealed type is 'Type[_testMetaclassOpAccess.A]'
-_testMetaclassOpAccess.py:22: note: Revealed type is 'Type[_testMetaclassOpAccess.C]'
+_testMetaclassOpAccess.py:21: note: Revealed type is "Type[_testMetaclassOpAccess.A]"
+_testMetaclassOpAccess.py:22: note: Revealed type is "Type[_testMetaclassOpAccess.C]"
 
 [case testMetaclassOpAccessUnion]
 from typing import Type, Union
@@ -1250,7 +1250,7 @@ bar: Type[Union[A, B]]
 res = bar * 4
 reveal_type(res)
 [out]
-_testMetaclassOpAccessUnion.py:16: note: Revealed type is 'Union[builtins.str, builtins.int]'
+_testMetaclassOpAccessUnion.py:16: note: Revealed type is "Union[builtins.str, builtins.int]"
 
 [case testMetaclassOpAccessAny]
 from typing import Type
@@ -1271,8 +1271,8 @@ class E(Enum):
 for e in E:
     reveal_type(e)
 [out]
-_testEnumIterationAndPreciseElementType.py:5: note: Revealed type is '_testEnumIterationAndPreciseElementType.E*'
-_testEnumIterationAndPreciseElementType.py:7: note: Revealed type is '_testEnumIterationAndPreciseElementType.E*'
+_testEnumIterationAndPreciseElementType.py:5: note: Revealed type is "_testEnumIterationAndPreciseElementType.E*"
+_testEnumIterationAndPreciseElementType.py:7: note: Revealed type is "_testEnumIterationAndPreciseElementType.E*"
 
 [case testEnumIterable]
 from enum import Enum
@@ -1296,7 +1296,7 @@ f(N)
 g(N)
 reveal_type(list(N))
 [out]
-_testIntEnumIterable.py:11: note: Revealed type is 'builtins.list[_testIntEnumIterable.N*]'
+_testIntEnumIterable.py:11: note: Revealed type is "builtins.list[_testIntEnumIterable.N*]"
 
 [case testDerivedEnumIterable]
 from enum import Enum
@@ -1356,7 +1356,7 @@ def print_custom_table() -> None:
     for row in simple_map(format_row, a, a, a, a, a, a, a, a):  # 8 columns
         reveal_type(row)
 [out]
-_testLoadsOfOverloads.py:24: note: Revealed type is 'builtins.str*'
+_testLoadsOfOverloads.py:24: note: Revealed type is "builtins.str*"
 
 [case testReduceWithAnyInstance]
 from typing import Iterable
@@ -1388,7 +1388,7 @@ X = namedtuple('X', ['a', 'b'])
 x = X(a=1, b='s')
 
 [out]
-_testNamedTupleNew.py:12: note: Revealed type is 'Tuple[builtins.int, fallback=_testNamedTupleNew.Child]'
+_testNamedTupleNew.py:12: note: Revealed type is "Tuple[builtins.int, fallback=_testNamedTupleNew.Child]"
 
 [case testNewAnalyzerBasicTypeshed_newsemanal]
 from typing import Dict, List, Tuple
@@ -1396,7 +1396,7 @@ from typing import Dict, List, Tuple
 x: Dict[str, List[int]]
 reveal_type(x['test'][0])
 [out]
-_testNewAnalyzerBasicTypeshed_newsemanal.py:4: note: Revealed type is 'builtins.int*'
+_testNewAnalyzerBasicTypeshed_newsemanal.py:4: note: Revealed type is "builtins.int*"
 
 [case testNewAnalyzerTypedDictInStub_newsemanal]
 import stub
@@ -1412,7 +1412,7 @@ class StuffDict(TypedDict):
 def thing(stuff: StuffDict) -> int: ...
 
 [out]
-_testNewAnalyzerTypedDictInStub_newsemanal.py:2: note: Revealed type is 'def (stuff: TypedDict('stub.StuffDict', {'foo': builtins.str, 'bar': builtins.int})) -> builtins.int'
+_testNewAnalyzerTypedDictInStub_newsemanal.py:2: note: Revealed type is "def (stuff: TypedDict('stub.StuffDict', {'foo': builtins.str, 'bar': builtins.int})) -> builtins.int"
 
 [case testStrictEqualityWhitelist]
 # mypy: strict-equality

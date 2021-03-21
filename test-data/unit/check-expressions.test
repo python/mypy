@@ -333,7 +333,7 @@ b = None # type: bool
 i = None # type: str
 j = not b and i
 if j:
-    reveal_type(j) # N: Revealed type is 'builtins.str'
+    reveal_type(j) # N: Revealed type is "builtins.str"
 [builtins fixtures/bool.pyi]
 
 [case testRestrictedTypeOr]
@@ -342,14 +342,14 @@ b = None # type: bool
 i = None # type: str
 j = b or i
 if not j:
-    reveal_type(j) # N: Revealed type is 'builtins.str'
+    reveal_type(j) # N: Revealed type is "builtins.str"
 [builtins fixtures/bool.pyi]
 
 [case testAndOr]
 
 s = ""
 b = bool()
-reveal_type(s and b or b)  # N: Revealed type is 'builtins.bool'
+reveal_type(s and b or b)  # N: Revealed type is "builtins.bool"
 [builtins fixtures/bool.pyi]
 
 [case testRestrictedBoolAndOrWithGenerics]
@@ -358,7 +358,7 @@ from typing import List
 def f(a: List[str], b: bool) -> bool:
     x = a and b
     y: bool
-    return reveal_type(x or y)  # N: Revealed type is 'builtins.bool'
+    return reveal_type(x or y)  # N: Revealed type is "builtins.bool"
 [builtins fixtures/list.pyi]
 
 [case testNonBooleanOr]
@@ -769,17 +769,17 @@ i = 8
 f = 8.0
 d = Decimal(8)
 
-reveal_type(divmod(i, i))  # N: Revealed type is 'Tuple[builtins.int, builtins.int]'
-reveal_type(divmod(f, i))  # N: Revealed type is 'Tuple[builtins.float, builtins.float]'
-reveal_type(divmod(d, i))  # N: Revealed type is 'Tuple[__main__.Decimal, __main__.Decimal]'
+reveal_type(divmod(i, i))  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+reveal_type(divmod(f, i))  # N: Revealed type is "Tuple[builtins.float, builtins.float]"
+reveal_type(divmod(d, i))  # N: Revealed type is "Tuple[__main__.Decimal, __main__.Decimal]"
 
-reveal_type(divmod(i, f))  # N: Revealed type is 'Tuple[builtins.float, builtins.float]'
-reveal_type(divmod(f, f))  # N: Revealed type is 'Tuple[builtins.float, builtins.float]'
+reveal_type(divmod(i, f))  # N: Revealed type is "Tuple[builtins.float, builtins.float]"
+reveal_type(divmod(f, f))  # N: Revealed type is "Tuple[builtins.float, builtins.float]"
 divmod(d, f)  # E: Unsupported operand types for divmod ("Decimal" and "float")
 
-reveal_type(divmod(i, d))  # N: Revealed type is 'Tuple[__main__.Decimal, __main__.Decimal]'
+reveal_type(divmod(i, d))  # N: Revealed type is "Tuple[__main__.Decimal, __main__.Decimal]"
 divmod(f, d)  # E: Unsupported operand types for divmod ("float" and "Decimal")
-reveal_type(divmod(d, d))  # N: Revealed type is 'Tuple[__main__.Decimal, __main__.Decimal]'
+reveal_type(divmod(d, d))  # N: Revealed type is "Tuple[__main__.Decimal, __main__.Decimal]"
 
 # Now some bad calls
 divmod()  # E: 'divmod' expects 2 arguments \
@@ -1192,11 +1192,11 @@ xs: str
 xs = 'x'
 xu = u'x'
 
-reveal_type('%s' % xu)  # N: Revealed type is 'builtins.unicode'
-reveal_type('%s, %d' % (u'abc', 42))  # N: Revealed type is 'builtins.unicode'
-reveal_type('%(key)s' % {'key': xu})  # N: Revealed type is 'builtins.unicode'
-reveal_type('%r' % xu)  # N: Revealed type is 'builtins.str'
-reveal_type('%s' % xs)  # N: Revealed type is 'builtins.str'
+reveal_type('%s' % xu)  # N: Revealed type is "builtins.unicode"
+reveal_type('%s, %d' % (u'abc', 42))  # N: Revealed type is "builtins.unicode"
+reveal_type('%(key)s' % {'key': xu})  # N: Revealed type is "builtins.unicode"
+reveal_type('%r' % xu)  # N: Revealed type is "builtins.str"
+reveal_type('%s' % xs)  # N: Revealed type is "builtins.str"
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-medium.pyi]
 
@@ -1961,10 +1961,10 @@ if int():
 
 [case testConditionalExpressionUnion]
 from typing import Union
-reveal_type(1 if bool() else 2) # N: Revealed type is 'builtins.int'
-reveal_type(1 if bool() else '') # N: Revealed type is 'builtins.object'
+reveal_type(1 if bool() else 2) # N: Revealed type is "builtins.int"
+reveal_type(1 if bool() else '') # N: Revealed type is "builtins.object"
 x: Union[int, str] = reveal_type(1 if bool() else '') \
-    # N: Revealed type is 'Union[Literal[1]?, Literal['']?]'
+    # N: Revealed type is "Union[Literal[1]?, Literal['']?]"
 class A:
     pass
 class B(A):
@@ -1977,18 +1977,18 @@ a = A()
 b = B()
 c = C()
 d = D()
-reveal_type(a if bool() else b) # N: Revealed type is '__main__.A'
-reveal_type(b if bool() else c) # N: Revealed type is 'builtins.object'
-reveal_type(c if bool() else b) # N: Revealed type is 'builtins.object'
-reveal_type(c if bool() else a) # N: Revealed type is 'builtins.object'
-reveal_type(d if bool() else b) # N: Revealed type is '__main__.A'
+reveal_type(a if bool() else b) # N: Revealed type is "__main__.A"
+reveal_type(b if bool() else c) # N: Revealed type is "builtins.object"
+reveal_type(c if bool() else b) # N: Revealed type is "builtins.object"
+reveal_type(c if bool() else a) # N: Revealed type is "builtins.object"
+reveal_type(d if bool() else b) # N: Revealed type is "__main__.A"
 [builtins fixtures/bool.pyi]
 
 [case testConditionalExpressionUnionWithAny]
 from typing import Union, Any
 a: Any
-x: Union[int, str] = reveal_type(a if int() else 1)  # N: Revealed type is 'Union[Any, Literal[1]?]'
-reveal_type(a if int() else 1)  # N: Revealed type is 'Any'
+x: Union[int, str] = reveal_type(a if int() else 1)  # N: Revealed type is "Union[Any, Literal[1]?]"
+reveal_type(a if int() else 1)  # N: Revealed type is "Any"
 
 [case testConditionalExpressionStatementNoReturn]
 from typing import List, Union
@@ -2268,7 +2268,7 @@ d() # E: "D[str, int]" not callable
 [builtins fixtures/dict.pyi]
 
 [case testRevealType]
-reveal_type(1) # N: Revealed type is 'Literal[1]?'
+reveal_type(1) # N: Revealed type is "Literal[1]?"
 
 [case testRevealLocals]
 x = 1
@@ -2285,7 +2285,7 @@ main:4: note:     z: builtins.int
 reveal_type(x)
 [out]
 main:1: error: Name 'x' is not defined
-main:1: note: Revealed type is 'Any'
+main:1: note: Revealed type is "Any"
 
 [case testUserDefinedRevealType]
 def reveal_type(x: int) -> None: pass
@@ -2300,14 +2300,14 @@ def f() -> None:
     reveal_type(x)
 x = 1 + 1
 [out]
-main:2: note: Revealed type is 'builtins.int'
+main:2: note: Revealed type is "builtins.int"
 
 [case testRevealUncheckedFunction]
 def f():
     x = 42
     reveal_type(x)
 [out]
-main:3: note: Revealed type is 'Any'
+main:3: note: Revealed type is "Any"
 main:3: note: 'reveal_type' always outputs 'Any' in unchecked functions
 
 [case testRevealCheckUntypedDefs]
@@ -2316,14 +2316,14 @@ def f():
     x = 42
     reveal_type(x)
 [out]
-main:4: note: Revealed type is 'builtins.int'
+main:4: note: Revealed type is "builtins.int"
 
 [case testRevealTypedDef]
 def f() -> None:
     x = 42
     reveal_type(x)
 [out]
-main:3: note: Revealed type is 'builtins.int'
+main:3: note: Revealed type is "builtins.int"
 
 [case testEqNone]
 None == None

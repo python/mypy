@@ -173,10 +173,10 @@ def h() -> None: pass
 @TypedDecorator()
 def i() -> None: pass
 
-reveal_type(f)  # N: Revealed type is 'def (*Any, **Any) -> Any'
-reveal_type(g)  # N: Revealed type is 'Any'
-reveal_type(h)  # N: Revealed type is 'def (*Any, **Any) -> Any'
-reveal_type(i)  # N: Revealed type is 'Any'
+reveal_type(f)  # N: Revealed type is "def (*Any, **Any) -> Any"
+reveal_type(g)  # N: Revealed type is "Any"
+reveal_type(h)  # N: Revealed type is "def (*Any, **Any) -> Any"
+reveal_type(i)  # N: Revealed type is "Any"
 
 [case testDisallowUntypedDecoratorsNonCallableInstance]
 # flags: --disallow-untyped-decorators
@@ -324,7 +324,7 @@ from mypy_extensions import NoReturn
 def no_return() -> NoReturn: pass
 def f() -> int:
   return 0
-reveal_type(f() or no_return())  # N: Revealed type is 'builtins.int'
+reveal_type(f() or no_return())  # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
 
 [case testNoReturnVariable]
@@ -1620,4 +1620,4 @@ def f(x):
 
 y = 1
 f(reveal_type(y)) # E: Call to untyped function "f" in typed context \
-                  # N: Revealed type is 'builtins.int'
+                  # N: Revealed type is "builtins.int"

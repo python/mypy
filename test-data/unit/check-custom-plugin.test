@@ -6,7 +6,7 @@
 [case testFunctionPluginFile]
 # flags: --config-file tmp/mypy.ini
 def f() -> str: ...
-reveal_type(f())  # N: Revealed type is 'builtins.int'
+reveal_type(f())  # N: Revealed type is "builtins.int"
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/fnplugin.py
@@ -14,7 +14,7 @@ plugins=<ROOT>/test-data/unit/plugins/fnplugin.py
 [case testFunctionPlugin]
 # flags: --config-file tmp/mypy.ini
 def f() -> str: ...
-reveal_type(f())  # N: Revealed type is 'builtins.int'
+reveal_type(f())  # N: Revealed type is "builtins.int"
 [file mypy.ini]
 \[mypy]
 plugins=fnplugin
@@ -35,9 +35,9 @@ plugins=<ROOT>/test-data/unit/plugins/fnplugin.py
 def f(): ...
 def g(): ...
 def h(): ...
-reveal_type(f())  # N: Revealed type is 'builtins.int'
-reveal_type(g())  # N: Revealed type is 'builtins.str'
-reveal_type(h())  # N: Revealed type is 'Any'
+reveal_type(f())  # N: Revealed type is "builtins.int"
+reveal_type(g())  # N: Revealed type is "builtins.str"
+reveal_type(h())  # N: Revealed type is "Any"
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/fnplugin.py,
@@ -48,9 +48,9 @@ plugins=<ROOT>/test-data/unit/plugins/fnplugin.py,
 def f(): ...
 def g(): ...
 def h(): ...
-reveal_type(f())  # N: Revealed type is 'builtins.int'
-reveal_type(g())  # N: Revealed type is 'builtins.str'
-reveal_type(h())  # N: Revealed type is 'Any'
+reveal_type(f())  # N: Revealed type is "builtins.int"
+reveal_type(g())  # N: Revealed type is "builtins.str"
+reveal_type(h())  # N: Revealed type is "Any"
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/fnplugin.py, plugin2
@@ -105,7 +105,7 @@ tmp/mypy.ini:2: error: Plugin '<ROOT>/test-data/unit/plugins/noentry.py' does no
 [case testCustomPluginEntryPointFile]
 # flags: --config-file tmp/mypy.ini
 def f() -> str: ...
-reveal_type(f())  # N: Revealed type is 'builtins.int'
+reveal_type(f())  # N: Revealed type is "builtins.int"
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/customentry.py:register
@@ -113,7 +113,7 @@ plugins=<ROOT>/test-data/unit/plugins/customentry.py:register
 [case testCustomPluginEntryPoint]
 # flags: --config-file tmp/mypy.ini
 def f() -> str: ...
-reveal_type(f())  # N: Revealed type is 'builtins.int'
+reveal_type(f())  # N: Revealed type is "builtins.int"
 [file mypy.ini]
 \[mypy]
 plugins=customentry:register
@@ -165,12 +165,12 @@ plugins=<ROOT>/test-data/unit/plugins/attrhook.py
 from m import Magic, DerivedMagic
 
 magic = Magic()
-reveal_type(magic.magic_field)  # N: Revealed type is 'builtins.str'
-reveal_type(magic.non_magic_method())  # N: Revealed type is 'builtins.int'
-reveal_type(magic.non_magic_field)  # N: Revealed type is 'builtins.int'
+reveal_type(magic.magic_field)  # N: Revealed type is "builtins.str"
+reveal_type(magic.non_magic_method())  # N: Revealed type is "builtins.int"
+reveal_type(magic.non_magic_field)  # N: Revealed type is "builtins.int"
 magic.nonexistent_field  # E: Field does not exist
-reveal_type(magic.fallback_example)  # N: Revealed type is 'Any'
-reveal_type(DerivedMagic().magic_field)  # N: Revealed type is 'builtins.str'
+reveal_type(magic.fallback_example)  # N: Revealed type is "Any"
+reveal_type(DerivedMagic().magic_field)  # N: Revealed type is "builtins.str"
 [file m.py]
 from typing import Any
 class Magic:
@@ -191,7 +191,7 @@ from typing import Callable
 from mypy_extensions import DefaultArg
 from m import Signal
 s: Signal[[int, DefaultArg(str, 'x')]] = Signal()
-reveal_type(s) # N: Revealed type is 'm.Signal[def (builtins.int, x: builtins.str =)]'
+reveal_type(s) # N: Revealed type is "m.Signal[def (builtins.int, x: builtins.str =)]"
 s.x # E: "Signal[Callable[[int, str], None]]" has no attribute "x"
 ss: Signal[int, str] # E: Invalid "Signal" type (expected "Signal[[t, ...]]")
 [file m.py]
@@ -218,9 +218,9 @@ class C:
     z = AnotherAlias(int, required=False)
 
 c = C()
-reveal_type(c.x)  # N: Revealed type is 'Union[builtins.int, None]'
-reveal_type(c.y)  # N: Revealed type is 'builtins.int*'
-reveal_type(c.z)  # N: Revealed type is 'Union[builtins.int*, None]'
+reveal_type(c.x)  # N: Revealed type is "Union[builtins.int, None]"
+reveal_type(c.y)  # N: Revealed type is "builtins.int*"
+reveal_type(c.z)  # N: Revealed type is "Union[builtins.int*, None]"
 
 [file mod.py]
 from typing import Generic, TypeVar, Type
@@ -249,8 +249,8 @@ from m import decorator1, decorator2
 def f() -> None: pass
 @decorator2()
 def g() -> None: pass
-reveal_type(f) # N: Revealed type is 'def (*Any, **Any) -> builtins.str'
-reveal_type(g) # N: Revealed type is 'def (*Any, **Any) -> builtins.int'
+reveal_type(f) # N: Revealed type is "def (*Any, **Any) -> builtins.str"
+reveal_type(g) # N: Revealed type is "def (*Any, **Any) -> builtins.int"
 [file m.py]
 from typing import Callable
 def decorator1() -> Callable[..., Callable[..., int]]: pass
@@ -263,11 +263,11 @@ plugins=<ROOT>/test-data/unit/plugins/named_callable.py
 # flags: --config-file tmp/mypy.ini
 from mod import Class, func
 
-reveal_type(Class().method(arg1=1, arg2=2, classname='builtins.str'))  # N: Revealed type is 'builtins.str'
-reveal_type(Class.myclassmethod(arg1=1, arg2=2, classname='builtins.str'))  # N: Revealed type is 'builtins.str'
-reveal_type(Class.mystaticmethod(arg1=1, arg2=2, classname='builtins.str'))  # N: Revealed type is 'builtins.str'
-reveal_type(Class.method(self=Class(), arg1=1, arg2=2, classname='builtins.str'))  # N: Revealed type is 'builtins.str'
-reveal_type(func(arg1=1, arg2=2, classname='builtins.str'))  # N: Revealed type is 'builtins.str'
+reveal_type(Class().method(arg1=1, arg2=2, classname='builtins.str'))  # N: Revealed type is "builtins.str"
+reveal_type(Class.myclassmethod(arg1=1, arg2=2, classname='builtins.str'))  # N: Revealed type is "builtins.str"
+reveal_type(Class.mystaticmethod(arg1=1, arg2=2, classname='builtins.str'))  # N: Revealed type is "builtins.str"
+reveal_type(Class.method(self=Class(), arg1=1, arg2=2, classname='builtins.str'))  # N: Revealed type is "builtins.str"
+reveal_type(func(arg1=1, arg2=2, classname='builtins.str'))  # N: Revealed type is "builtins.str"
 
 [file mod.py]
 from typing import Any
@@ -292,11 +292,11 @@ plugins=<ROOT>/test-data/unit/plugins/arg_names.py
 # flags: --config-file tmp/mypy.ini
 from mod import Class, func
 
-reveal_type(Class().method('builtins.str', arg1=1, arg2=2))  # N: Revealed type is 'builtins.str'
-reveal_type(Class.myclassmethod('builtins.str', arg1=1, arg2=2))  # N: Revealed type is 'builtins.str'
-reveal_type(Class.mystaticmethod('builtins.str', arg1=1, arg2=2))  # N: Revealed type is 'builtins.str'
-reveal_type(Class.method(Class(), 'builtins.str', arg1=1, arg2=2))  # N: Revealed type is 'builtins.str'
-reveal_type(func('builtins.str', arg1=1, arg2=2))  # N: Revealed type is 'builtins.str'
+reveal_type(Class().method('builtins.str', arg1=1, arg2=2))  # N: Revealed type is "builtins.str"
+reveal_type(Class.myclassmethod('builtins.str', arg1=1, arg2=2))  # N: Revealed type is "builtins.str"
+reveal_type(Class.mystaticmethod('builtins.str', arg1=1, arg2=2))  # N: Revealed type is "builtins.str"
+reveal_type(Class.method(Class(), 'builtins.str', arg1=1, arg2=2))  # N: Revealed type is "builtins.str"
+reveal_type(func('builtins.str', arg1=1, arg2=2))  # N: Revealed type is "builtins.str"
 
 [file mod.py]
 from typing import Any
@@ -321,9 +321,9 @@ plugins=<ROOT>/test-data/unit/plugins/arg_names.py
 # flags: --config-file tmp/mypy.ini
 from mod import ClassInit, Outer
 
-reveal_type(ClassInit('builtins.str'))  # N: Revealed type is 'builtins.str'
-reveal_type(ClassInit(classname='builtins.str'))  # N: Revealed type is 'builtins.str'
-reveal_type(Outer.NestedClassInit(classname='builtins.str'))  # N: Revealed type is 'builtins.str'
+reveal_type(ClassInit('builtins.str'))  # N: Revealed type is "builtins.str"
+reveal_type(ClassInit(classname='builtins.str'))  # N: Revealed type is "builtins.str"
+reveal_type(Outer.NestedClassInit(classname='builtins.str'))  # N: Revealed type is "builtins.str"
 [file mod.py]
 from typing import Any
 class ClassInit:
@@ -342,12 +342,12 @@ plugins=<ROOT>/test-data/unit/plugins/arg_names.py
 # flags: --config-file tmp/mypy.ini
 from mod import ClassUnfilled, func_unfilled
 
-reveal_type(ClassUnfilled().method(classname='builtins.str', arg1=1))  # N: Revealed type is 'builtins.str'
-reveal_type(ClassUnfilled().method(arg2=1, classname='builtins.str'))  # N: Revealed type is 'builtins.str'
-reveal_type(ClassUnfilled().method('builtins.str'))  # N: Revealed type is 'builtins.str'
-reveal_type(func_unfilled(classname='builtins.str', arg1=1))  # N: Revealed type is 'builtins.str'
-reveal_type(func_unfilled(arg2=1, classname='builtins.str'))  # N: Revealed type is 'builtins.str'
-reveal_type(func_unfilled('builtins.str'))  # N: Revealed type is 'builtins.str'
+reveal_type(ClassUnfilled().method(classname='builtins.str', arg1=1))  # N: Revealed type is "builtins.str"
+reveal_type(ClassUnfilled().method(arg2=1, classname='builtins.str'))  # N: Revealed type is "builtins.str"
+reveal_type(ClassUnfilled().method('builtins.str'))  # N: Revealed type is "builtins.str"
+reveal_type(func_unfilled(classname='builtins.str', arg1=1))  # N: Revealed type is "builtins.str"
+reveal_type(func_unfilled(arg2=1, classname='builtins.str'))  # N: Revealed type is "builtins.str"
+reveal_type(func_unfilled('builtins.str'))  # N: Revealed type is "builtins.str"
 
 [file mod.py]
 from typing import Any
@@ -365,13 +365,13 @@ plugins=<ROOT>/test-data/unit/plugins/arg_names.py
 # flags: --config-file tmp/mypy.ini
 from mod import ClassStarExpr, func_star_expr
 
-reveal_type(ClassStarExpr().method(classname='builtins.str', arg1=1))  # N: Revealed type is 'builtins.str'
-reveal_type(ClassStarExpr().method('builtins.str', arg1=1))  # N: Revealed type is 'builtins.str'
-reveal_type(ClassStarExpr().method('builtins.str', arg1=1, arg2=1))  # N: Revealed type is 'builtins.str'
-reveal_type(ClassStarExpr().method('builtins.str', 2, 3, 4, arg1=1, arg2=1))  # N: Revealed type is 'builtins.str'
-reveal_type(func_star_expr(classname='builtins.str', arg1=1))  # N: Revealed type is 'builtins.str'
-reveal_type(func_star_expr('builtins.str', arg1=1))  # N: Revealed type is 'builtins.str'
-reveal_type(func_star_expr('builtins.str', 2, 3, 4, arg1=1, arg2=2))  # N: Revealed type is 'builtins.str'
+reveal_type(ClassStarExpr().method(classname='builtins.str', arg1=1))  # N: Revealed type is "builtins.str"
+reveal_type(ClassStarExpr().method('builtins.str', arg1=1))  # N: Revealed type is "builtins.str"
+reveal_type(ClassStarExpr().method('builtins.str', arg1=1, arg2=1))  # N: Revealed type is "builtins.str"
+reveal_type(ClassStarExpr().method('builtins.str', 2, 3, 4, arg1=1, arg2=1))  # N: Revealed type is "builtins.str"
+reveal_type(func_star_expr(classname='builtins.str', arg1=1))  # N: Revealed type is "builtins.str"
+reveal_type(func_star_expr('builtins.str', arg1=1))  # N: Revealed type is "builtins.str"
+reveal_type(func_star_expr('builtins.str', 2, 3, 4, arg1=1, arg2=2))  # N: Revealed type is "builtins.str"
 
 [file mod.py]
 from typing import Any
@@ -390,10 +390,10 @@ plugins=<ROOT>/test-data/unit/plugins/arg_names.py
 # flags: --config-file tmp/mypy.ini
 from mod import ClassChild
 
-reveal_type(ClassChild().method(classname='builtins.str', arg1=1, arg2=1))  # N: Revealed type is 'builtins.str'
-reveal_type(ClassChild().method(arg1=1, classname='builtins.str', arg2=1))  # N: Revealed type is 'builtins.str'
-reveal_type(ClassChild().method('builtins.str', arg1=1, arg2=1))  # N: Revealed type is 'builtins.str'
-reveal_type(ClassChild.myclassmethod('builtins.str'))  # N: Revealed type is 'builtins.str'
+reveal_type(ClassChild().method(classname='builtins.str', arg1=1, arg2=1))  # N: Revealed type is "builtins.str"
+reveal_type(ClassChild().method(arg1=1, classname='builtins.str', arg2=1))  # N: Revealed type is "builtins.str"
+reveal_type(ClassChild().method('builtins.str', arg1=1, arg2=1))  # N: Revealed type is "builtins.str"
+reveal_type(ClassChild.myclassmethod('builtins.str'))  # N: Revealed type is "builtins.str"
 [file mod.py]
 from typing import Any
 class Base:
@@ -427,12 +427,12 @@ class Foo:
     def m(self, arg: str) -> str: ...
 
 foo = Foo()
-reveal_type(foo.m(2)) # N: Revealed type is 'builtins.int'
-reveal_type(foo[3]) # N: Revealed type is 'builtins.int'
-reveal_type(foo(4, 5, 6)) # N: Revealed type is 'builtins.int'
+reveal_type(foo.m(2)) # N: Revealed type is "builtins.int"
+reveal_type(foo[3]) # N: Revealed type is "builtins.int"
+reveal_type(foo(4, 5, 6)) # N: Revealed type is "builtins.int"
 foo[4] = 5
 for x in foo:
-    reveal_type(x) # N: Revealed type is 'builtins.int*'
+    reveal_type(x) # N: Revealed type is "builtins.int*"
 
 [file mypy.ini]
 \[mypy]
@@ -455,9 +455,9 @@ class FullyQualifiedTestTypedDict(TypedDict):
 FullyQualifiedTestNamedTuple = NamedTuple('FullyQualifiedTestNamedTuple', [('foo', str)])
 
 # Check the return types to ensure that the method signature hook is called in each case
-reveal_type(FullyQualifiedTestClass.class_method()) # N: Revealed type is 'builtins.int'
-reveal_type(FullyQualifiedTestClass().instance_method()) # N: Revealed type is 'builtins.int'
-reveal_type(FullyQualifiedTestNamedTuple('')._asdict()) # N: Revealed type is 'builtins.int'
+reveal_type(FullyQualifiedTestClass.class_method()) # N: Revealed type is "builtins.int"
+reveal_type(FullyQualifiedTestClass().instance_method()) # N: Revealed type is "builtins.int"
+reveal_type(FullyQualifiedTestNamedTuple('')._asdict()) # N: Revealed type is "builtins.int"
 
 [file mypy.ini]
 \[mypy]
@@ -475,8 +475,8 @@ class Model(Base):
 class Other:
     x: Column[int]
 
-reveal_type(Model().x)  # N: Revealed type is 'mod.Instr[builtins.int]'
-reveal_type(Other().x)  # N: Revealed type is 'mod.Column[builtins.int]'
+reveal_type(Model().x)  # N: Revealed type is "mod.Instr[builtins.int]"
+reveal_type(Other().x)  # N: Revealed type is "mod.Column[builtins.int]"
 [file mod.py]
 from typing import Generic, TypeVar
 def declarative_base(): ...
@@ -527,12 +527,12 @@ from mod import QuerySet, Manager
 
 MyManager = Manager.from_queryset(QuerySet)
 
-reveal_type(MyManager())  # N: Revealed type is '__main__.MyManager'
-reveal_type(MyManager().attr)  # N: Revealed type is 'builtins.str'
+reveal_type(MyManager())  # N: Revealed type is "__main__.MyManager"
+reveal_type(MyManager().attr)  # N: Revealed type is "builtins.str"
 
 def func(manager: MyManager) -> None:
-    reveal_type(manager)   # N: Revealed type is '__main__.MyManager'
-    reveal_type(manager.attr)   # N: Revealed type is 'builtins.str'
+    reveal_type(manager)   # N: Revealed type is "__main__.MyManager"
+    reveal_type(manager.attr)   # N: Revealed type is "builtins.str"
 
 func(MyManager())
 
@@ -577,7 +577,7 @@ python_version=3.6
 plugins=<ROOT>/test-data/unit/plugins/common_api_incremental.py
 [out]
 [out2]
-tmp/a.py:3: note: Revealed type is 'builtins.str'
+tmp/a.py:3: note: Revealed type is "builtins.str"
 tmp/a.py:4: error: "Type[Base]" has no attribute "__magic__"
 
 [case testArgKindsMethod]
@@ -610,9 +610,9 @@ T = TypeVar("T")
 class Class(Generic[T]):
     def __init__(self, one: T): ...
     def __call__(self, two: T) -> int: ...
-reveal_type(Class("hi")("there"))  # N: Revealed type is 'builtins.str*'
+reveal_type(Class("hi")("there"))  # N: Revealed type is "builtins.str*"
 instance = Class(3.14)
-reveal_type(instance(2))  # N: Revealed type is 'builtins.float*'
+reveal_type(instance(2))  # N: Revealed type is "builtins.float*"
 
 [file mypy.ini]
 \[mypy]
@@ -631,9 +631,9 @@ class Other:
 
 x: Union[Foo, Bar, Other]
 if isinstance(x.meth, int):
-    reveal_type(x.meth)  # N: Revealed type is 'builtins.int'
+    reveal_type(x.meth)  # N: Revealed type is "builtins.int"
 else:
-    reveal_type(x.meth(int()))  # N: Revealed type is 'builtins.int'
+    reveal_type(x.meth(int()))  # N: Revealed type is "builtins.int"
 
 [builtins fixtures/isinstancelist.pyi]
 [file mypy.ini]
@@ -653,9 +653,9 @@ class Other:
 
 x: Union[Foo, Bar, Other]
 if isinstance(x.meth, int):
-    reveal_type(x.meth)  # N: Revealed type is 'builtins.int'
+    reveal_type(x.meth)  # N: Revealed type is "builtins.int"
 else:
-    reveal_type(x.meth(int()))  # N: Revealed type is 'builtins.int'
+    reveal_type(x.meth(int()))  # N: Revealed type is "builtins.int"
 
 [builtins fixtures/isinstancelist.pyi]
 [file mypy.ini]
@@ -672,7 +672,7 @@ class Bar:
     def __getitem__(self, x: int) -> float: ...
 
 x: Union[Foo, Bar]
-reveal_type(x[int()])  # N: Revealed type is 'builtins.int'
+reveal_type(x[int()])  # N: Revealed type is "builtins.int"
 
 [builtins fixtures/isinstancelist.pyi]
 [file mypy.ini]
@@ -712,8 +712,8 @@ class Desc:
 class Cls:
     attr = Desc()
 
-reveal_type(Cls().attr)  # N: Revealed type is 'builtins.int'
-reveal_type(Cls.attr)  # N: Revealed type is 'builtins.str'
+reveal_type(Cls().attr)  # N: Revealed type is "builtins.int"
+reveal_type(Cls.attr)  # N: Revealed type is "builtins.str"
 
 Cls().attr = 3
 Cls().attr = "foo"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
@@ -726,7 +726,7 @@ plugins=<ROOT>/test-data/unit/plugins/descriptor.py
 # flags: --config-file tmp/mypy.ini
 
 def dynamic_signature(arg1: str) -> str: ...
-reveal_type(dynamic_signature(1))  # N: Revealed type is 'builtins.int'
+reveal_type(dynamic_signature(1))  # N: Revealed type is "builtins.int"
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/function_sig_hook.py

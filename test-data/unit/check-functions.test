@@ -2215,7 +2215,7 @@ def f() -> None:
 def g(x: int) -> None:
     pass
 h = f if bool() else g
-reveal_type(h) # N: Revealed type is 'builtins.function'
+reveal_type(h) # N: Revealed type is "builtins.function"
 h(7) # E: Cannot call function of unknown type
 [builtins fixtures/bool.pyi]
 
@@ -2278,23 +2278,23 @@ from typing import Callable, TypeVar
 T = TypeVar('T')
 
 f: Callable[[T], T]
-reveal_type(f)  # N: Revealed type is 'def [T] (T`-1) -> T`-1'
+reveal_type(f)  # N: Revealed type is "def [T] (T`-1) -> T`-1"
 def g(__x: T) -> T: pass
 f = g
-reveal_type(f)  # N: Revealed type is 'def [T] (T`-1) -> T`-1'
+reveal_type(f)  # N: Revealed type is "def [T] (T`-1) -> T`-1"
 i = f(3)
-reveal_type(i)  # N: Revealed type is 'builtins.int*'
+reveal_type(i)  # N: Revealed type is "builtins.int*"
 
 [case testFunctionReturningGenericFunction]
 from typing import Callable, TypeVar
 
 T = TypeVar('T')
 def deco() -> Callable[[T], T]: pass
-reveal_type(deco)  # N: Revealed type is 'def () -> def [T] (T`-1) -> T`-1'
+reveal_type(deco)  # N: Revealed type is "def () -> def [T] (T`-1) -> T`-1"
 f = deco()
-reveal_type(f)  # N: Revealed type is 'def [T] (T`-1) -> T`-1'
+reveal_type(f)  # N: Revealed type is "def [T] (T`-1) -> T`-1"
 i = f(3)
-reveal_type(i)  # N: Revealed type is 'builtins.int*'
+reveal_type(i)  # N: Revealed type is "builtins.int*"
 
 [case testFunctionReturningGenericFunctionPartialBinding]
 from typing import Callable, TypeVar
@@ -2303,11 +2303,11 @@ T = TypeVar('T')
 U = TypeVar('U')
 
 def deco(x: U) -> Callable[[T, U], T]: pass
-reveal_type(deco)  # N: Revealed type is 'def [U] (x: U`-1) -> def [T] (T`-2, U`-1) -> T`-2'
+reveal_type(deco)  # N: Revealed type is "def [U] (x: U`-1) -> def [T] (T`-2, U`-1) -> T`-2"
 f = deco("foo")
-reveal_type(f)  # N: Revealed type is 'def [T] (T`-2, builtins.str*) -> T`-2'
+reveal_type(f)  # N: Revealed type is "def [T] (T`-2, builtins.str*) -> T`-2"
 i = f(3, "eggs")
-reveal_type(i)  # N: Revealed type is 'builtins.int*'
+reveal_type(i)  # N: Revealed type is "builtins.int*"
 
 [case testFunctionReturningGenericFunctionTwoLevelBinding]
 from typing import Callable, TypeVar
@@ -2316,11 +2316,11 @@ T = TypeVar('T')
 R = TypeVar('R')
 def deco() -> Callable[[T], Callable[[T, R], R]]: pass
 f = deco()
-reveal_type(f)  # N: Revealed type is 'def [T] (T`-1) -> def [R] (T`-1, R`-2) -> R`-2'
+reveal_type(f)  # N: Revealed type is "def [T] (T`-1) -> def [R] (T`-1, R`-2) -> R`-2"
 g = f(3)
-reveal_type(g)  # N: Revealed type is 'def [R] (builtins.int*, R`-2) -> R`-2'
+reveal_type(g)  # N: Revealed type is "def [R] (builtins.int*, R`-2) -> R`-2"
 s = g(4, "foo")
-reveal_type(s)  # N: Revealed type is 'builtins.str*'
+reveal_type(s)  # N: Revealed type is "builtins.str*"
 
 [case testGenericFunctionReturnAsDecorator]
 from typing import Callable, TypeVar
@@ -2331,9 +2331,9 @@ def deco(__i: int) -> Callable[[T], T]: pass
 @deco(3)
 def lol(x: int) -> str: ...
 
-reveal_type(lol)  # N: Revealed type is 'def (x: builtins.int) -> builtins.str'
+reveal_type(lol)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
 s = lol(4)
-reveal_type(s)  # N: Revealed type is 'builtins.str'
+reveal_type(s)  # N: Revealed type is "builtins.str"
 
 [case testGenericFunctionOnReturnTypeOnly]
 from typing import TypeVar, List
@@ -2462,7 +2462,7 @@ main:1: error: Unsupported operand types for + ("int" and "str")
 f = lambda: 5
 reveal_type(f)
 [out]
-main:2: note: Revealed type is 'def () -> builtins.int'
+main:2: note: Revealed type is "def () -> builtins.int"
 
 [case testRevealLocalsFunction]
 a = 1.0
@@ -2502,7 +2502,7 @@ def bar(x: Optional[int]) -> Optional[str]:
         return None
     return "number"
 
-reveal_type(bar(None))  # N: Revealed type is 'None'
+reveal_type(bar(None))  # N: Revealed type is "None"
 [builtins fixtures/isinstance.pyi]
 [out]
 
@@ -2520,7 +2520,7 @@ def bar(x: Optional[int]) -> Optional[str]:
         return None
     return "number"
 
-reveal_type(bar(None))  # N: Revealed type is 'None'
+reveal_type(bar(None))  # N: Revealed type is "None"
 [builtins fixtures/isinstance.pyi]
 [out]
 
@@ -2587,4 +2587,4 @@ def f(x: int = i):  # E: Name 'i' is not defined
 def foo() -> None:
     pass
 
-reveal_type(foo()) # N: Revealed type is 'None'
+reveal_type(foo()) # N: Revealed type is "None"
