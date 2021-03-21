@@ -352,7 +352,7 @@ Traceback (most recent call last):
     iterate_over_any(5)
   File "native.py", line 3, in iterate_over_any
     for element in a:
-TypeError: 'int' object is not iterable
+TypeError: "int" object is not iterable
 Traceback (most recent call last):
   File "driver.py", line 20, in <module>
     iterate_over_iterable(broken_generator(5))
