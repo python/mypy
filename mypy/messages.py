@@ -1164,7 +1164,7 @@ class MessageBuilder:
             item_name: str,
             context: Context) -> None:
         if typ.is_anonymous():
-            self.fail('\'{}\' is not a valid TypedDict key; expected one of {}'.format(
+            self.fail('"{}" is not a valid TypedDict key; expected one of {}'.format(
                 item_name, format_item_name_list(typ.items.keys())), context)
         else:
             self.fail('TypedDict {} has no key "{}"'.format(

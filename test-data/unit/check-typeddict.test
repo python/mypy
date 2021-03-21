@@ -702,8 +702,8 @@ T = TypeVar('T')
 def join(x: T, y: T) -> T: return x
 ab = join(A(x='', y=1, z=''), B(x='', z=1))
 ac = join(A(x='', y=1, z=''), C(x='', y=0, z=1))
-ab['y']  # E: 'y' is not a valid TypedDict key; expected one of ('x')
-ac['a']  # E: 'a' is not a valid TypedDict key; expected one of ('x', 'y')
+ab['y']  # E: "y" is not a valid TypedDict key; expected one of ('x')
+ac['a']  # E: "a" is not a valid TypedDict key; expected one of ('x', 'y')
 [builtins fixtures/dict.pyi]
 
 [case testCannotGetItemOfTypedDictWithNonLiteralKey]
