@@ -88,7 +88,7 @@ def make_static_kwlist(args: List[RuntimeArg]) -> str:
     return 'static const char * const kwlist[] = {{{}0}};'.format(arg_names)
 
 
-def make_format_string(func_name: str, groups: List[List[RuntimeArg]]) -> str:
+def make_format_string(func_name: Optional[str], groups: List[List[RuntimeArg]]) -> str:
     """Return a format string that specifies the accepted arguments.
 
     The format string is an extended subset of what is supported by
@@ -113,6 +113,8 @@ def make_format_string(func_name: str, groups: List[List[RuntimeArg]]) -> str:
         format += '$' + 'O' * len(groups[ARG_NAMED_OPT])
     if groups[ARG_NAMED]:
         format += '@' + 'O' * len(groups[ARG_NAMED])
+    if func_name is not None:
+        format += ':{}'.format(func_name)
     return format
 
 
@@ -238,7 +240,7 @@ def generate_legacy_wrapper_function(fn: FuncIR,
 
     emitter.emit_lines(
         'if (!CPyArg_ParseTupleAndKeywords(args, kw, "{}", "{}", kwlist{})) {{'.format(
-            make_format_string(groups), fn.name, ''.join(', ' + n for n in arg_ptrs)),
+            make_format_string(None, groups), fn.name, ''.join(', ' + n for n in arg_ptrs)),
         'return NULL;',
         '}')
     traceback_code = generate_traceback_code(fn, emitter, source_path, module_name)
