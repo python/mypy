@@ -48,7 +48,7 @@ PyObject *CPySequenceTuple_GetSlice(PyObject *obj, CPyTagged start, CPyTagged en
 
 // PyTuple_SET_ITEM does no error checking,
 // and should only be used to fill in brand new tuples.
-bool CPySequenceTuple_SETITEM(PyObject *tuple, CPyTagged index, PyObject *value)
+bool CPySequenceTuple_SetItemUnsafe(PyObject *tuple, CPyTagged index, PyObject *value)
 {
     if (CPyTagged_CheckShort(index)) {
         Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);

@@ -89,7 +89,9 @@ def for_loop_helper(builder: IRBuilder, index: Lvalue, expr: Expression,
 def for_loop_helper_with_index(builder: IRBuilder, index: Lvalue, expr: Expression,
                                body_insts: Callable[[Value], None], line: int) -> None:
     """Generate IR for a sequence iteration.
-       Compare to for_loop_helper, it would feed iteration index to body_insts.
+
+    This function only works for sequence type. Compared to for_loop_helper,
+    it would feed iteration index to body_insts.
 
     Args:
         index: the loop index Lvalue
@@ -97,11 +99,14 @@ def for_loop_helper_with_index(builder: IRBuilder, index: Lvalue, expr: Expressi
         body_insts: a function that generates the body of the loop.
                     It needs a index as parameter.
     """
-    body_block, step_block, exit_block = BasicBlock(), BasicBlock(), BasicBlock()
-    condition_block = BasicBlock()
-
     expr_reg = builder.accept(expr)
+    assert is_sequence_rprimitive(expr_reg.type)
     target_type = builder.get_sequence_type(expr)
+
+    body_block = BasicBlock()
+    step_block = BasicBlock()
+    exit_block = BasicBlock()
+    condition_block = BasicBlock()
 
     for_gen = ForSequence(builder, index, body_block, exit_block, line, False)
     for_gen.init(expr_reg, target_type, reverse=False)

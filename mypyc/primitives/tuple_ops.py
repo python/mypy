@@ -39,7 +39,7 @@ new_tuple_with_length_op = custom_op(
 new_tuple_set_item_op = custom_op(
     arg_types=[tuple_rprimitive, int_rprimitive, object_rprimitive],
     return_type=bit_rprimitive,
-    c_function_name='CPySequenceTuple_SETITEM',
+    c_function_name='CPySequenceTuple_SetItemUnsafe',
     error_kind=ERR_FALSE,
     steals=[False, False, True])
 

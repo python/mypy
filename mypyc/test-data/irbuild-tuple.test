@@ -340,7 +340,7 @@ L2:
     x = r17
     r18 = f(x)
     r19 = box(bool, r18)
-    r20 = CPySequenceTuple_SETITEM(r10, r11, r19)
+    r20 = CPySequenceTuple_SetItemUnsafe(r10, r11, r19)
 L3:
     r21 = r11 + 2
     r11 = r21
@@ -417,7 +417,7 @@ L2:
     r17 = cast(str, r16)
     x = r17
     r18 = f2(x)
-    r19 = CPySequenceTuple_SETITEM(r10, r11, r18)
+    r19 = CPySequenceTuple_SetItemUnsafe(r10, r11, r18)
 L3:
     r20 = r11 + 2
     r11 = r20
@@ -480,7 +480,7 @@ L2:
     x = r9
     r10 = f(x)
     r11 = box(bool, r10)
-    r12 = CPySequenceTuple_SETITEM(r2, r3, r11)
+    r12 = CPySequenceTuple_SetItemUnsafe(r2, r3, r11)
 L3:
     r13 = r3 + 2
     r3 = r13

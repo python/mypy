@@ -1083,20 +1083,21 @@ class LowLevelIRBuilder:
         return self.add(ComparisonOp(lhs, rhs, op, line))
 
     def builtin_len(self, val: Value, line: int,
-                    get_c_pyssize_t_rprimitive: bool = False) -> Value:
+                    use_pyssize_t: bool = False) -> Value:
+        """Return short_int_rprimitive by default."""
         typ = val.type
         if is_list_rprimitive(typ) or is_tuple_rprimitive(typ):
             elem_address = self.add(GetElementPtr(val, PyVarObject, 'ob_size'))
             size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
             self.add(KeepAlive([val]))
-            if get_c_pyssize_t_rprimitive:
+            if use_pyssize_t:
                 return size_value
             offset = Integer(1, c_pyssize_t_rprimitive, line)
             return self.int_op(short_int_rprimitive, size_value, offset,
                                IntOp.LEFT_SHIFT, line)
         elif is_dict_rprimitive(typ):
             size_value = self.call_c(dict_size_op, [val], line)
-            if get_c_pyssize_t_rprimitive:
+            if use_pyssize_t:
                 return size_value
             offset = Integer(1, c_pyssize_t_rprimitive, line)
             return self.int_op(short_int_rprimitive, size_value, offset,
@@ -1105,14 +1106,14 @@ class LowLevelIRBuilder:
             elem_address = self.add(GetElementPtr(val, PySetObject, 'used'))
             size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
             self.add(KeepAlive([val]))
-            if get_c_pyssize_t_rprimitive:
+            if use_pyssize_t:
                 return size_value
             offset = Integer(1, c_pyssize_t_rprimitive, line)
             return self.int_op(short_int_rprimitive, size_value, offset,
                                IntOp.LEFT_SHIFT, line)
         # generic case
         else:
-            if get_c_pyssize_t_rprimitive:
+            if use_pyssize_t:
                 return self.call_c(generic_ssize_t_len_op, [val], line)
             else:
                 return self.call_c(generic_len_op, [val], line)
@@ -1128,7 +1129,7 @@ class LowLevelIRBuilder:
             val: a list or tuple
             line: line number
         """
-        length = self.builtin_len(val, line, get_c_pyssize_t_rprimitive=True)
+        length = self.builtin_len(val, line, use_pyssize_t=True)
         return self.call_c(new_tuple_with_length_op, [length], line)
 
     # Internal helpers

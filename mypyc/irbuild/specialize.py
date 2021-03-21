@@ -159,13 +159,13 @@ def tuple_from_generator_helper(builder: IRBuilder,
         if is_list_rprimitive(rtype) or is_tuple_rprimitive(rtype):
             tuple_ops = builder.builder.new_tuple_with_length(builder.accept(gen.sequences[0]),
                                                               gen.line)
-            index, expr = gen.indices[0], gen.sequences[0]
+            item, expr = gen.indices[0], gen.sequences[0]
 
-            def set_tuple_item(index_target: Value) -> None:
+            def set_tuple_item(item_index: Value) -> None:
                 e = builder.accept(gen.left_expr)
-                builder.call_c(new_tuple_set_item_op, [tuple_ops, index_target, e], gen.line)
+                builder.call_c(new_tuple_set_item_op, [tuple_ops, item_index, e], gen.line)
 
-            for_loop_helper_with_index(builder, index, expr,
+            for_loop_helper_with_index(builder, item, expr,
                                        set_tuple_item, gen.line)
 
             return tuple_ops
