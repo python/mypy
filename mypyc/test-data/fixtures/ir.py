@@ -20,6 +20,7 @@ class object:
 class type:
     def __init__(self, o: object) -> None: ...
     __name__ : str
+    __annotations__: Dict[str, Any]
 
 class ellipsis: pass
 
