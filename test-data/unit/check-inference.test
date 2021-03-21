@@ -287,8 +287,8 @@ main:6: error: Need more than 3 values to unpack (4 expected)
 [case testInvalidRvalueTypeInInferredMultipleLvarDefinition]
 import typing
 def f() -> None:
-    a, b = f   # E: 'def ()' object is not iterable
-    c, d = A() # E: '__main__.A' object is not iterable
+    a, b = f   # E: "def ()" object is not iterable
+    c, d = A() # E: "__main__.A" object is not iterable
 class A: pass
 [builtins fixtures/for.pyi]
 [out]
@@ -296,8 +296,8 @@ class A: pass
 [case testInvalidRvalueTypeInInferredNestedTupleAssignment]
 import typing
 def f() -> None:
-    a1, (a2, b) = A(), f   # E: 'def ()' object is not iterable
-    a3, (c, d) = A(), A() # E: '__main__.A' object is not iterable
+    a1, (a2, b) = A(), f   # E: "def ()" object is not iterable
+    a3, (c, d) = A(), A() # E: "__main__.A" object is not iterable
 class A: pass
 [builtins fixtures/for.pyi]
 [out]
@@ -1004,7 +1004,7 @@ main:4: error: Incompatible types in assignment (expression has type "A", variab
 main:5: error: Incompatible types in assignment (expression has type "B", variable has type "C")
 main:6: error: Incompatible types in assignment (expression has type "C", variable has type "A")
 main:10: error: Need more than 2 values to unpack (3 expected)
-main:12: error: '__main__.B' object is not iterable
+main:12: error: "__main__.B" object is not iterable
 
 [case testInferenceOfFor3]
 
