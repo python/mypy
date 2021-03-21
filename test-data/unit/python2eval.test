@@ -427,4 +427,4 @@ def foo() -> None:
     x['lol'].append(10)
     reveal_type(x)
 [out]
-_testDefaultDictInference.py:5: note: Revealed type is 'collections.defaultdict[builtins.str, builtins.list[builtins.int]]'
+_testDefaultDictInference.py:5: note: Revealed type is "collections.defaultdict[builtins.str, builtins.list[builtins.int]]"

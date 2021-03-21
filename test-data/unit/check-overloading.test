@@ -33,8 +33,8 @@ def f(x: 'B') -> 'A': ...
 def f(x: Any) -> Any:
     pass
 
-reveal_type(f(A())) # N: Revealed type is '__main__.B'
-reveal_type(f(B())) # N: Revealed type is '__main__.A'
+reveal_type(f(A())) # N: Revealed type is "__main__.B"
+reveal_type(f(B())) # N: Revealed type is "__main__.A"
 
 class A: pass
 class B: pass
@@ -47,8 +47,8 @@ def f(x: 'A') -> 'B': ...
 @overload
 def f(x: 'B') -> 'A': ...
 
-reveal_type(f(A())) # N: Revealed type is '__main__.B'
-reveal_type(f(B())) # N: Revealed type is '__main__.A'
+reveal_type(f(A())) # N: Revealed type is "__main__.B"
+reveal_type(f(B())) # N: Revealed type is "__main__.A"
 
 class A: pass
 class B: pass
@@ -74,8 +74,8 @@ def f(x: 'B') -> 'A': ...
 def f(x: Any) -> Any:
     pass
 
-reveal_type(f(A())) # N: Revealed type is '__main__.B'
-reveal_type(f(B())) # N: Revealed type is '__main__.A'
+reveal_type(f(A())) # N: Revealed type is "__main__.B"
+reveal_type(f(B())) # N: Revealed type is "__main__.A"
 
 class A: pass
 class B: pass
@@ -95,8 +95,8 @@ def f(x: 'B') -> 'A': ...
 def f(x: Any) -> Any:
     pass
 
-reveal_type(f(A())) # N: Revealed type is '__main__.B'
-reveal_type(f(B())) # N: Revealed type is '__main__.A'
+reveal_type(f(A())) # N: Revealed type is "__main__.B"
+reveal_type(f(B())) # N: Revealed type is "__main__.A"
 
 class A: pass
 class B: pass
@@ -170,8 +170,8 @@ def f(x):
 def f(x):
     pass
 
-reveal_type(f(A()))  # N: Revealed type is '__main__.B'
-reveal_type(f(B()))  # N: Revealed type is '__main__.A'
+reveal_type(f(A()))  # N: Revealed type is "__main__.B"
+reveal_type(f(B()))  # N: Revealed type is "__main__.A"
 
 class A: pass
 class B: pass
@@ -200,8 +200,8 @@ def g(x):
     if int():
         foo = "bar"
 
-reveal_type(f(A()))  # N: Revealed type is '__main__.B'
-reveal_type(f(B()))  # N: Revealed type is '__main__.A'
+reveal_type(f(A()))  # N: Revealed type is "__main__.B"
+reveal_type(f(B()))  # N: Revealed type is "__main__.A"
 
 class A: pass
 class B: pass
@@ -234,8 +234,8 @@ def f(x: 'B') -> 'A': ...
 def f(x: 'A') -> Any: # E: Overloaded function implementation does not accept all possible arguments of signature 2
     pass
 
-reveal_type(f(A())) # N: Revealed type is '__main__.B'
-reveal_type(f(B())) # N: Revealed type is '__main__.A'
+reveal_type(f(A())) # N: Revealed type is "__main__.B"
+reveal_type(f(B())) # N: Revealed type is "__main__.A"
 
 [builtins fixtures/isinstance.pyi]
 
@@ -255,8 +255,8 @@ def f(x: 'B') -> 'A': ...
 def f(x: Any) -> 'B': # E: Overloaded function implementation cannot produce return type of signature 2
     return B()
 
-reveal_type(f(A())) # N: Revealed type is '__main__.B'
-reveal_type(f(B())) # N: Revealed type is '__main__.A'
+reveal_type(f(A())) # N: Revealed type is "__main__.B"
+reveal_type(f(B())) # N: Revealed type is "__main__.A"
 
 [builtins fixtures/isinstance.pyi]
 
@@ -278,8 +278,8 @@ def f(x: 'B') -> 'B': ...
 def f(x: T) -> T:
     ...
 
-reveal_type(f(A())) # N: Revealed type is '__main__.A'
-reveal_type(f(B())) # N: Revealed type is '__main__.B'
+reveal_type(f(A())) # N: Revealed type is "__main__.A"
+reveal_type(f(B())) # N: Revealed type is "__main__.B"
 
 [builtins fixtures/isinstance.pyi]
 
@@ -301,8 +301,8 @@ def f(x: 'B') -> 'B': ...
 def f(x: Union[T, B]) -> T:  # E: Overloaded function implementation cannot satisfy signature 2 due to inconsistencies in how they use type variables
     ...
 
-reveal_type(f(A())) # N: Revealed type is '__main__.A'
-reveal_type(f(B())) # N: Revealed type is '__main__.B'
+reveal_type(f(A())) # N: Revealed type is "__main__.A"
+reveal_type(f(B())) # N: Revealed type is "__main__.B"
 
 [builtins fixtures/isinstance.pyi]
 
@@ -1196,7 +1196,7 @@ def f(x: int, y: List[str] = None) -> int: pass
 f(y=[1], x=0)() # E: "int" not callable
 f(y=[''], x=0)() # E: "int" not callable
 a = f(y=[['']], x=0) # E: List item 0 has incompatible type "List[str]"; expected "int"
-reveal_type(a)  # N: Revealed type is 'builtins.int'
+reveal_type(a)  # N: Revealed type is "builtins.int"
 [builtins fixtures/list.pyi]
 
 [case testOverloadWithDerivedFromAny]
@@ -1257,7 +1257,7 @@ def g(x: U, y: V) -> None:
          # N:     def [T <: str] f(x: T) -> T \
          # N:     def [T <: str] f(x: List[T]) -> None
     a = f([x])
-    reveal_type(a)  # N: Revealed type is 'None'
+    reveal_type(a)  # N: Revealed type is "None"
     f([y]) # E: Value of type variable "T" of "f" cannot be "V"
     f([x, y]) # E: Value of type variable "T" of "f" cannot be "object"
 [builtins fixtures/list.pyi]
@@ -1365,10 +1365,10 @@ foo(g)
 
 [builtins fixtures/list.pyi]
 [out]
-main:17: note: Revealed type is 'builtins.int'
-main:18: note: Revealed type is 'builtins.str'
-main:19: note: Revealed type is 'Any'
-main:20: note: Revealed type is 'Union[builtins.int, builtins.str]'
+main:17: note: Revealed type is "builtins.int"
+main:18: note: Revealed type is "builtins.str"
+main:19: note: Revealed type is "Any"
+main:20: note: Revealed type is "Union[builtins.int, builtins.str]"
 main:21: error: Argument 1 to "foo" has incompatible type "List[bool]"; expected "List[int]"
 main:21: note: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance
 main:21: note: Consider using "Sequence" instead, which is covariant
@@ -1384,7 +1384,7 @@ def f(x: List[int]) -> int: ...
 def f(x: List[str]) -> str: ...
 def f(x): pass
 
-reveal_type(f([]))  # N: Revealed type is 'builtins.int'
+reveal_type(f([]))  # N: Revealed type is "builtins.int"
 [builtins fixtures/list.pyi]
 
 [case testOverloadAgainstEmptyCovariantCollections]
@@ -1403,9 +1403,9 @@ def f(x: Wrapper[A]) -> int: ...
 def f(x: Wrapper[C]) -> str: ...
 def f(x): pass
 
-reveal_type(f(Wrapper()))     # N: Revealed type is 'builtins.int'
-reveal_type(f(Wrapper[C]()))  # N: Revealed type is 'builtins.str'
-reveal_type(f(Wrapper[B]()))  # N: Revealed type is 'builtins.int'
+reveal_type(f(Wrapper()))     # N: Revealed type is "builtins.int"
+reveal_type(f(Wrapper[C]()))  # N: Revealed type is "builtins.str"
+reveal_type(f(Wrapper[B]()))  # N: Revealed type is "builtins.int"
 
 [case testOverlappingOverloadCounting]
 from foo import *
@@ -1552,7 +1552,7 @@ class Test(object):
         return 3
 
 t = Test()
-reveal_type(t.do_chain)  # N: Revealed type is '__main__.Chain'
+reveal_type(t.do_chain)  # N: Revealed type is "__main__.Chain"
 
 [case testOverloadWithOverlappingItemsAndAnyArgument1]
 from typing import overload, Any
@@ -1564,7 +1564,7 @@ def f(x: object) -> object: ...
 def f(x): pass
 
 a: Any
-reveal_type(f(a))  # N: Revealed type is 'Any'
+reveal_type(f(a))  # N: Revealed type is "Any"
 
 [case testOverloadWithOverlappingItemsAndAnyArgument2]
 from typing import overload, Any
@@ -1576,7 +1576,7 @@ def f(x: float) -> float: ...
 def f(x): pass
 
 a: Any
-reveal_type(f(a))  # N: Revealed type is 'Any'
+reveal_type(f(a))  # N: Revealed type is "Any"
 
 [case testOverloadWithOverlappingItemsAndAnyArgument3]
 from typing import overload, Any
@@ -1588,7 +1588,7 @@ def f(x: str) -> str: ...
 def f(x): pass
 
 a: Any
-reveal_type(f(a))  # N: Revealed type is 'Any'
+reveal_type(f(a))  # N: Revealed type is "Any"
 
 [case testOverloadWithOverlappingItemsAndAnyArgument4]
 from typing import overload, Any
@@ -1601,15 +1601,15 @@ def f(x): pass
 
 a: Any
 # Any causes ambiguity
-reveal_type(f(a, 1, ''))  # N: Revealed type is 'Any'
+reveal_type(f(a, 1, ''))  # N: Revealed type is "Any"
 # Any causes no ambiguity
-reveal_type(f(1, a, a))  # N: Revealed type is 'builtins.int'
-reveal_type(f('', a, a))  # N: Revealed type is 'builtins.object'
+reveal_type(f(1, a, a))  # N: Revealed type is "builtins.int"
+reveal_type(f('', a, a))  # N: Revealed type is "builtins.object"
 # Like above, but use keyword arguments.
-reveal_type(f(y=1, z='', x=a))  # N: Revealed type is 'Any'
-reveal_type(f(y=a, z='', x=1))  # N: Revealed type is 'builtins.int'
-reveal_type(f(z='', x=1, y=a))  # N: Revealed type is 'builtins.int'
-reveal_type(f(z='', x=a, y=1))  # N: Revealed type is 'Any'
+reveal_type(f(y=1, z='', x=a))  # N: Revealed type is "Any"
+reveal_type(f(y=a, z='', x=1))  # N: Revealed type is "builtins.int"
+reveal_type(f(z='', x=1, y=a))  # N: Revealed type is "builtins.int"
+reveal_type(f(z='', x=a, y=1))  # N: Revealed type is "Any"
 
 [case testOverloadWithOverlappingItemsAndAnyArgument5]
 from typing import overload, Any, Union
@@ -1631,8 +1631,8 @@ def g(x: Union[int, float]) -> float: ...
 def g(x): pass
 
 a: Any
-reveal_type(f(a))  # N: Revealed type is 'Any'
-reveal_type(g(a))  # N: Revealed type is 'Any'
+reveal_type(f(a))  # N: Revealed type is "Any"
+reveal_type(g(a))  # N: Revealed type is "Any"
 
 [case testOverloadWithOverlappingItemsAndAnyArgument6]
 from typing import overload, Any
@@ -1647,11 +1647,11 @@ def f(x): pass
 
 a: Any
 # Any causes ambiguity
-reveal_type(f(*a))  # N: Revealed type is 'Any'
-reveal_type(f(a, *a))  # N: Revealed type is 'Any'
-reveal_type(f(1, *a))  # N: Revealed type is 'Any'
-reveal_type(f(1.1, *a))  # N: Revealed type is 'Any'
-reveal_type(f('', *a))  # N: Revealed type is 'builtins.str'
+reveal_type(f(*a))  # N: Revealed type is "Any"
+reveal_type(f(a, *a))  # N: Revealed type is "Any"
+reveal_type(f(1, *a))  # N: Revealed type is "Any"
+reveal_type(f(1.1, *a))  # N: Revealed type is "Any"
+reveal_type(f('', *a))  # N: Revealed type is "builtins.str"
 
 [case testOverloadWithOverlappingItemsAndAnyArgument7]
 from typing import overload, Any
@@ -1669,8 +1669,8 @@ def g(x: object, y: int, z: str) -> object: ...
 def g(x): pass
 
 a: Any
-reveal_type(f(1, *a))  # N: Revealed type is 'builtins.int'
-reveal_type(g(1, *a))  # N: Revealed type is 'Any'
+reveal_type(f(1, *a))  # N: Revealed type is "builtins.int"
+reveal_type(g(1, *a))  # N: Revealed type is "Any"
 
 [case testOverloadWithOverlappingItemsAndAnyArgument8]
 from typing import overload, Any
@@ -1683,8 +1683,8 @@ def f(x): pass
 
 a: Any
 # The return type is not ambiguous so Any arguments cause no ambiguity.
-reveal_type(f(a, 1, 1)) # N: Revealed type is 'builtins.str'
-reveal_type(f(1, *a))  # N: Revealed type is 'builtins.str'
+reveal_type(f(a, 1, 1)) # N: Revealed type is "builtins.str"
+reveal_type(f(1, *a))  # N: Revealed type is "builtins.str"
 
 [case testOverloadWithOverlappingItemsAndAnyArgument9]
 from typing import overload, Any, List
@@ -1699,10 +1699,10 @@ a: Any
 b: List[Any]
 c: List[str]
 d: List[int]
-reveal_type(f(a)) # N: Revealed type is 'builtins.list[Any]'
-reveal_type(f(b))  # N: Revealed type is 'builtins.list[Any]'
-reveal_type(f(c))  # N: Revealed type is 'builtins.list[Any]'
-reveal_type(f(d))  # N: Revealed type is 'builtins.list[builtins.int]'
+reveal_type(f(a)) # N: Revealed type is "builtins.list[Any]"
+reveal_type(f(b))  # N: Revealed type is "builtins.list[Any]"
+reveal_type(f(c))  # N: Revealed type is "builtins.list[Any]"
+reveal_type(f(d))  # N: Revealed type is "builtins.list[builtins.int]"
 
 [builtins fixtures/list.pyi]
 
@@ -1720,9 +1720,9 @@ def f(*args, **kwargs): pass
 # keyword arguments.
 a: Any
 i: int
-reveal_type(f(x=a, y=i))  # N: Revealed type is 'builtins.int'
-reveal_type(f(y=a))       # N: Revealed type is 'Any'
-reveal_type(f(x=a, y=a))  # N: Revealed type is 'Any'
+reveal_type(f(x=a, y=i))  # N: Revealed type is "builtins.int"
+reveal_type(f(y=a))       # N: Revealed type is "Any"
+reveal_type(f(x=a, y=a))  # N: Revealed type is "Any"
 
 [builtins fixtures/dict.pyi]
 
@@ -1737,8 +1737,8 @@ def f(*args, **kwargs): pass
 
 a: Dict[str, Any]
 i: int
-reveal_type(f(x=i, **a))  # N: Revealed type is 'builtins.int'
-reveal_type(f(**a))       # N: Revealed type is 'Any'
+reveal_type(f(x=i, **a))  # N: Revealed type is "builtins.int"
+reveal_type(f(**a))       # N: Revealed type is "Any"
 
 [builtins fixtures/dict.pyi]
 
@@ -1752,7 +1752,7 @@ def f(x: str) -> str: ...
 def f(x): pass
 
 a: Any
-reveal_type(f(a))  # N: Revealed type is 'Any'
+reveal_type(f(a))  # N: Revealed type is "Any"
 
 [case testOverloadWithOverlappingItemsAndAnyArgument13]
 from typing import Any, overload, TypeVar, Generic
@@ -1769,7 +1769,7 @@ class A(Generic[T]):
 
 i: Any
 a: A[Any]
-reveal_type(a.f(i))  # N: Revealed type is 'Any'
+reveal_type(a.f(i))  # N: Revealed type is "Any"
 
 [case testOverloadWithOverlappingItemsAndAnyArgument14]
 from typing import Any, overload, TypeVar, Generic
@@ -1788,7 +1788,7 @@ class A(Generic[T]):
 
 i: Any
 a: A[Any]
-reveal_type(a.f(i))  # N: Revealed type is '__main__.Wrapper[Any]'
+reveal_type(a.f(i))  # N: Revealed type is "__main__.Wrapper[Any]"
 
 [case testOverloadWithOverlappingItemsAndAnyArgument15]
 from typing import overload, Any, Union
@@ -1806,8 +1806,8 @@ def g(x: str) -> Union[int, str]: ...
 def g(x): pass
 
 a: Any
-reveal_type(f(a))  # N: Revealed type is 'builtins.str'
-reveal_type(g(a))  # N: Revealed type is 'Union[builtins.str, builtins.int]'
+reveal_type(f(a))  # N: Revealed type is "builtins.str"
+reveal_type(g(a))  # N: Revealed type is "Union[builtins.str, builtins.int]"
 
 [case testOverloadWithOverlappingItemsAndAnyArgument16]
 from typing import overload, Any, Union, Callable
@@ -1819,8 +1819,8 @@ def f(x: str) -> Callable[[str], str]: ...
 def f(x): pass
 
 a: Any
-reveal_type(f(a))     # N: Revealed type is 'def (*Any, **Any) -> Any'
-reveal_type(f(a)(a))  # N: Revealed type is 'Any'
+reveal_type(f(a))     # N: Revealed type is "def (*Any, **Any) -> Any"
+reveal_type(f(a)(a))  # N: Revealed type is "Any"
 
 [case testOverloadOnOverloadWithType]
 from typing import Any, Type, TypeVar, overload
@@ -1836,7 +1836,7 @@ def make(*args):
     pass
 
 c = make(MyInt)
-reveal_type(c) # N: Revealed type is 'mod.MyInt*'
+reveal_type(c) # N: Revealed type is "mod.MyInt*"
 
 [file mod.pyi]
 from typing import overload
@@ -2047,9 +2047,9 @@ def foo(*, p1: A, p2: B = B()) -> A: ...
 def foo(*, p2: B = B()) -> B: ...
 def foo(p1, p2=None): ...
 
-reveal_type(foo())  # N: Revealed type is '__main__.B'
-reveal_type(foo(p2=B()))  # N: Revealed type is '__main__.B'
-reveal_type(foo(p1=A()))  # N: Revealed type is '__main__.A'
+reveal_type(foo())  # N: Revealed type is "__main__.B"
+reveal_type(foo(p2=B()))  # N: Revealed type is "__main__.B"
+reveal_type(foo(p1=A()))  # N: Revealed type is "__main__.A"
 
 [case testOverloadWithNonPositionalArgsIgnoresOrder]
 from typing import overload
@@ -2409,16 +2409,16 @@ def foo(x: int, y: int) -> B: ...
 def foo(x: int, y: int, z: int, *args: int) -> C: ...
 def foo(*args): pass
 
-reveal_type(foo(1))        # N: Revealed type is '__main__.A'
-reveal_type(foo(1, 2))     # N: Revealed type is '__main__.B'
-reveal_type(foo(1, 2, 3))  # N: Revealed type is '__main__.C'
+reveal_type(foo(1))        # N: Revealed type is "__main__.A"
+reveal_type(foo(1, 2))     # N: Revealed type is "__main__.B"
+reveal_type(foo(1, 2, 3))  # N: Revealed type is "__main__.C"
 
-reveal_type(foo(*[1]))        # N: Revealed type is '__main__.C'
-reveal_type(foo(*[1, 2]))     # N: Revealed type is '__main__.C'
-reveal_type(foo(*[1, 2, 3]))  # N: Revealed type is '__main__.C'
+reveal_type(foo(*[1]))        # N: Revealed type is "__main__.C"
+reveal_type(foo(*[1, 2]))     # N: Revealed type is "__main__.C"
+reveal_type(foo(*[1, 2, 3]))  # N: Revealed type is "__main__.C"
 
 x: List[int]
-reveal_type(foo(*x))  # N: Revealed type is '__main__.C'
+reveal_type(foo(*x))  # N: Revealed type is "__main__.C"
 
 y: List[str]
 foo(*y)  # E: No overload variant of "foo" matches argument type "List[str]" \
@@ -2446,11 +2446,11 @@ def foo(x: int, y: int, z: int, *args: int) -> C: ...
 def foo(*x: str) -> D: ...
 def foo(*args): pass
 
-reveal_type(foo(*[1, 2]))      # N: Revealed type is '__main__.C'
-reveal_type(foo(*["a", "b"]))  # N: Revealed type is '__main__.D'
+reveal_type(foo(*[1, 2]))      # N: Revealed type is "__main__.C"
+reveal_type(foo(*["a", "b"]))  # N: Revealed type is "__main__.D"
 
 x: List[Any]
-reveal_type(foo(*x))  # N: Revealed type is 'Any'
+reveal_type(foo(*x))  # N: Revealed type is "Any"
 [builtins fixtures/list.pyi]
 
 [case testOverloadMultipleVarargDefinitionComplex]
@@ -2492,9 +2492,9 @@ def f1(x: A) -> B: ...
 def f2(x: B) -> C: ...
 def f3(x: C) -> D: ...
 
-reveal_type(chain_call(A(), f1, f2))       # N: Revealed type is '__main__.C*'
-reveal_type(chain_call(A(), f1, f2, f3))   # N: Revealed type is 'Any'
-reveal_type(chain_call(A(), f, f, f, f))   # N: Revealed type is '__main__.A'
+reveal_type(chain_call(A(), f1, f2))       # N: Revealed type is "__main__.C*"
+reveal_type(chain_call(A(), f1, f2, f3))   # N: Revealed type is "Any"
+reveal_type(chain_call(A(), f, f, f, f))   # N: Revealed type is "__main__.A"
 [builtins fixtures/list.pyi]
 
 [case testOverloadVarargsSelection]
@@ -2508,14 +2508,14 @@ def f(*xs: int) -> Tuple[int, ...]: ...
 def f(*args): pass
 
 i: int
-reveal_type(f(i))           # N: Revealed type is 'Tuple[builtins.int]'
-reveal_type(f(i, i))        # N: Revealed type is 'Tuple[builtins.int, builtins.int]'
-reveal_type(f(i, i, i))     # N: Revealed type is 'builtins.tuple[builtins.int]'
+reveal_type(f(i))           # N: Revealed type is "Tuple[builtins.int]"
+reveal_type(f(i, i))        # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+reveal_type(f(i, i, i))     # N: Revealed type is "builtins.tuple[builtins.int]"
 
-reveal_type(f(*[]))         # N: Revealed type is 'builtins.tuple[builtins.int]'
-reveal_type(f(*[i]))        # N: Revealed type is 'builtins.tuple[builtins.int]'
-reveal_type(f(*[i, i]))     # N: Revealed type is 'builtins.tuple[builtins.int]'
-reveal_type(f(*[i, i, i]))  # N: Revealed type is 'builtins.tuple[builtins.int]'
+reveal_type(f(*[]))         # N: Revealed type is "builtins.tuple[builtins.int]"
+reveal_type(f(*[i]))        # N: Revealed type is "builtins.tuple[builtins.int]"
+reveal_type(f(*[i, i]))     # N: Revealed type is "builtins.tuple[builtins.int]"
+reveal_type(f(*[i, i, i]))  # N: Revealed type is "builtins.tuple[builtins.int]"
 [builtins fixtures/list.pyi]
 
 [case testOverloadVarargsSelectionWithTuples]
@@ -2529,10 +2529,10 @@ def f(*xs: int) -> Tuple[int, ...]: ...
 def f(*args): pass
 
 i: int
-reveal_type(f(*()))         # N: Revealed type is 'builtins.tuple[builtins.int]'
-reveal_type(f(*(i,)))       # N: Revealed type is 'Tuple[builtins.int]'
-reveal_type(f(*(i, i)))     # N: Revealed type is 'Tuple[builtins.int, builtins.int]'
-reveal_type(f(*(i, i, i)))  # N: Revealed type is 'builtins.tuple[builtins.int]'
+reveal_type(f(*()))         # N: Revealed type is "builtins.tuple[builtins.int]"
+reveal_type(f(*(i,)))       # N: Revealed type is "Tuple[builtins.int]"
+reveal_type(f(*(i, i)))     # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+reveal_type(f(*(i, i, i)))  # N: Revealed type is "builtins.tuple[builtins.int]"
 [builtins fixtures/tuple.pyi]
 
 [case testOverloadVarargsSelectionWithNamedTuples]
@@ -2550,9 +2550,9 @@ C = NamedTuple('C', [('a', int), ('b', int), ('c', int)])
 a: A
 b: B
 c: C
-reveal_type(f(*a))  # N: Revealed type is 'Tuple[builtins.int, builtins.int]'
-reveal_type(f(*b))  # N: Revealed type is 'Tuple[builtins.int, builtins.int]'
-reveal_type(f(*c))  # N: Revealed type is 'builtins.tuple[builtins.int]'
+reveal_type(f(*a))  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+reveal_type(f(*b))  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+reveal_type(f(*c))  # N: Revealed type is "builtins.tuple[builtins.int]"
 [builtins fixtures/tuple.pyi]
 
 [case testOverloadKwargsSelectionWithDict]
@@ -2566,10 +2566,10 @@ def f(**xs: int) -> Tuple[int, ...]: ...
 def f(**kwargs): pass
 
 empty: Dict[str, int]
-reveal_type(f(**empty))                      # N: Revealed type is 'builtins.tuple[builtins.int]'
-reveal_type(f(**{'x': 4}))                   # N: Revealed type is 'builtins.tuple[builtins.int]'
-reveal_type(f(**{'x': 4, 'y': 4}))           # N: Revealed type is 'builtins.tuple[builtins.int]'
-reveal_type(f(**{'a': 4, 'b': 4, 'c': 4}))   # N: Revealed type is 'builtins.tuple[builtins.int]'
+reveal_type(f(**empty))                      # N: Revealed type is "builtins.tuple[builtins.int]"
+reveal_type(f(**{'x': 4}))                   # N: Revealed type is "builtins.tuple[builtins.int]"
+reveal_type(f(**{'x': 4, 'y': 4}))           # N: Revealed type is "builtins.tuple[builtins.int]"
+reveal_type(f(**{'a': 4, 'b': 4, 'c': 4}))   # N: Revealed type is "builtins.tuple[builtins.int]"
 [builtins fixtures/dict.pyi]
 
 [case testOverloadKwargsSelectionWithTypedDict]
@@ -2591,9 +2591,9 @@ a: A
 b: B
 c: C
 
-reveal_type(f(**a))  # N: Revealed type is 'Tuple[builtins.int]'
-reveal_type(f(**b))  # N: Revealed type is 'Tuple[builtins.int, builtins.int]'
-reveal_type(f(**c))  # N: Revealed type is 'builtins.tuple[builtins.int]'
+reveal_type(f(**a))  # N: Revealed type is "Tuple[builtins.int]"
+reveal_type(f(**b))  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
+reveal_type(f(**c))  # N: Revealed type is "builtins.tuple[builtins.int]"
 [builtins fixtures/dict.pyi]
 
 [case testOverloadVarargsAndKwargsSelection]
@@ -2614,15 +2614,15 @@ a: Tuple[int, int]
 b: Tuple[int, ...]
 c: Dict[str, int]
 
-reveal_type(f(*a, **c))  # N: Revealed type is '__main__.A'
-reveal_type(f(*b, **c))  # N: Revealed type is '__main__.A'
-reveal_type(f(*a))       # N: Revealed type is '__main__.B'
-reveal_type(f(*b))       # N: Revealed type is 'Any'
+reveal_type(f(*a, **c))  # N: Revealed type is "__main__.A"
+reveal_type(f(*b, **c))  # N: Revealed type is "__main__.A"
+reveal_type(f(*a))       # N: Revealed type is "__main__.B"
+reveal_type(f(*b))       # N: Revealed type is "Any"
 
 # TODO: Should this be 'Any' instead?
 # The first matching overload with a kwarg is f(int, int, **int) -> A,
 # but f(*int, **int) -> Any feels like a better fit.
-reveal_type(f(**c))      # N: Revealed type is '__main__.A'
+reveal_type(f(**c))      # N: Revealed type is "__main__.A"
 [builtins fixtures/args.pyi]
 
 [case testOverloadWithPartiallyOverlappingUnions]
@@ -3040,7 +3040,7 @@ def f1(x: C) -> D: ...
 def f1(x): ...
 
 arg1: Union[A, C]
-reveal_type(f1(arg1))  # N: Revealed type is 'Union[__main__.B, __main__.D]'
+reveal_type(f1(arg1))  # N: Revealed type is "Union[__main__.B, __main__.D]"
 
 arg2: Union[A, B]
 f1(arg2)  # E: Argument 1 to "f1" has incompatible type "Union[A, B]"; expected "A"
@@ -3051,7 +3051,7 @@ def f2(x: A) -> B: ...
 def f2(x: C) -> B: ...
 def f2(x): ...
 
-reveal_type(f2(arg1))  # N: Revealed type is '__main__.B'
+reveal_type(f2(arg1))  # N: Revealed type is "__main__.B"
 
 [case testOverloadInferUnionReturnMultipleArguments]
 from typing import overload, Union
@@ -3080,13 +3080,13 @@ reveal_type(f2(arg1, arg1))
 reveal_type(f2(arg1, C()))
 
 [out]
-main:15: note: Revealed type is '__main__.B'
+main:15: note: Revealed type is "__main__.B"
 main:15: error: Argument 1 to "f1" has incompatible type "Union[A, C]"; expected "A"
 main:15: error: Argument 2 to "f1" has incompatible type "Union[A, C]"; expected "C"
-main:23: note: Revealed type is '__main__.B'
+main:23: note: Revealed type is "__main__.B"
 main:23: error: Argument 1 to "f2" has incompatible type "Union[A, C]"; expected "A"
 main:23: error: Argument 2 to "f2" has incompatible type "Union[A, C]"; expected "C"
-main:24: note: Revealed type is 'Union[__main__.B, __main__.D]'
+main:24: note: Revealed type is "Union[__main__.B, __main__.D]"
 
 [case testOverloadInferUnionRespectsVariance]
 from typing import overload, TypeVar, Union, Generic
@@ -3108,7 +3108,7 @@ def foo(x: WrapperContra[B]) -> str: ...
 def foo(x): pass
 
 compat: Union[WrapperCo[C], WrapperContra[A]]
-reveal_type(foo(compat))  # N: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(foo(compat))  # N: Revealed type is "Union[builtins.int, builtins.str]"
 
 not_compat: Union[WrapperCo[A], WrapperContra[C]]
 foo(not_compat)  # E: Argument 1 to "foo" has incompatible type "Union[WrapperCo[A], WrapperContra[C]]"; expected "WrapperCo[B]"
@@ -3127,9 +3127,9 @@ def f(y: B) -> C: ...
 def f(x): ...
 
 x: Union[A, B]
-reveal_type(f(A()))  # N: Revealed type is '__main__.B'
-reveal_type(f(B()))  # N: Revealed type is '__main__.C'
-reveal_type(f(x))    # N: Revealed type is 'Union[__main__.B, __main__.C]'
+reveal_type(f(A()))  # N: Revealed type is "__main__.B"
+reveal_type(f(B()))  # N: Revealed type is "__main__.C"
+reveal_type(f(x))    # N: Revealed type is "Union[__main__.B, __main__.C]"
 
 [case testOverloadInferUnionReturnFunctionsWithKwargs]
 from typing import overload, Union, Optional
@@ -3147,12 +3147,12 @@ def f(x: A, y: Optional[B] = None) -> C: ...
 def f(x: A, z: Optional[C] = None) -> B: ...
 def f(x, y=None, z=None): ...
 
-reveal_type(f(A(), B()))  # N: Revealed type is '__main__.C'
-reveal_type(f(A(), C()))  # N: Revealed type is '__main__.B'
+reveal_type(f(A(), B()))  # N: Revealed type is "__main__.C"
+reveal_type(f(A(), C()))  # N: Revealed type is "__main__.B"
 
 arg: Union[B, C]
-reveal_type(f(A(), arg))  # N: Revealed type is 'Union[__main__.C, __main__.B]'
-reveal_type(f(A()))       # N: Revealed type is '__main__.D'
+reveal_type(f(A(), arg))  # N: Revealed type is "Union[__main__.C, __main__.B]"
+reveal_type(f(A()))       # N: Revealed type is "__main__.D"
 
 [builtins fixtures/tuple.pyi]
 
@@ -3172,7 +3172,7 @@ def f(x: B, y: B = B()) -> Parent: ...
 def f(*args): ...
 
 x: Union[A, B]
-reveal_type(f(x))  # N: Revealed type is '__main__.Parent'
+reveal_type(f(x))  # N: Revealed type is "__main__.Parent"
 f(x, B())  # E: Argument 1 to "f" has incompatible type "Union[A, B]"; expected "B"
 [builtins fixtures/tuple.pyi]
 
@@ -3192,10 +3192,10 @@ def f(*args): ...
 x: Union[A, B]
 y: Optional[A]
 z: Union[A, Optional[B]]
-reveal_type(f(x))  # N: Revealed type is 'Union[builtins.int, builtins.str]'
-reveal_type(f(y))  # N: Revealed type is 'Union[builtins.int, builtins.str]'
-reveal_type(f(z))  # N: Revealed type is 'Union[builtins.int, builtins.str]'
-reveal_type(f())   # N: Revealed type is 'builtins.str'
+reveal_type(f(x))  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(f(y))  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(f(z))  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(f())   # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
 
 [case testOverloadingInferUnionReturnWithTypevarWithValueRestriction]
@@ -3219,9 +3219,9 @@ class Wrapper(Generic[T]):
 obj: Wrapper[B] = Wrapper()
 x: Union[A, B]
 
-reveal_type(obj.f(A()))  # N: Revealed type is '__main__.C'
-reveal_type(obj.f(B()))  # N: Revealed type is '__main__.B'
-reveal_type(obj.f(x))    # N: Revealed type is 'Union[__main__.C, __main__.B]'
+reveal_type(obj.f(A()))  # N: Revealed type is "__main__.C"
+reveal_type(obj.f(B()))  # N: Revealed type is "__main__.B"
+reveal_type(obj.f(x))    # N: Revealed type is "Union[__main__.C, __main__.B]"
 
 [case testOverloadingInferUnionReturnWithFunctionTypevarReturn]
 from typing import overload, Union, TypeVar, Generic
@@ -3246,12 +3246,12 @@ def wrapper() -> None:
 
     a1: A = foo(obj1)
     a2 = foo(obj1)
-    reveal_type(a1)  # N: Revealed type is '__main__.A'
-    reveal_type(a2)  # N: Revealed type is '__main__.A*'
+    reveal_type(a1)  # N: Revealed type is "__main__.A"
+    reveal_type(a2)  # N: Revealed type is "__main__.A*"
 
     obj2: Union[W1[A], W2[B]]
 
-    reveal_type(foo(obj2))  # N: Revealed type is 'Union[__main__.A*, __main__.B*]'
+    reveal_type(foo(obj2))  # N: Revealed type is "Union[__main__.A*, __main__.B*]"
     bar(obj2)  # E: Cannot infer type argument 1 of "bar"
 
     b1_overload: A = foo(obj2)  # E: Incompatible types in assignment (expression has type "Union[A, B]", variable has type "A")
@@ -3280,7 +3280,7 @@ def wrapper() -> None:
     obj1: Union[W1[A], W2[A]]
 
     a1 = SomeType[A]().foo(obj1)
-    reveal_type(a1)  # N: Revealed type is '__main__.A*'
+    reveal_type(a1)  # N: Revealed type is "__main__.A*"
 
     # Note: These should be fine, but mypy has an unrelated bug
     #       that makes them error out?
@@ -3345,11 +3345,11 @@ T1 = TypeVar('T1', bound=A)
 def t_is_same_bound(arg1: T1, arg2: S) -> Tuple[T1, S]:
     x1: Union[List[S], List[Tuple[T1, S]]]
     y1: S
-    reveal_type(Dummy[T1]().foo(x1, y1))  # N: Revealed type is 'Union[S`-2, T1`-1]'
+    reveal_type(Dummy[T1]().foo(x1, y1))  # N: Revealed type is "Union[S`-2, T1`-1]"
 
     x2: Union[List[T1], List[Tuple[T1, T1]]]
     y2: T1
-    reveal_type(Dummy[T1]().foo(x2, y2))  # N: Revealed type is 'T1`-1'
+    reveal_type(Dummy[T1]().foo(x2, y2))  # N: Revealed type is "T1`-1"
 
     return arg1, arg2
 
@@ -3383,7 +3383,7 @@ def t_is_same_bound(arg1: T1, arg2: S) -> Tuple[T1, S]:
 
     x4: Union[List[int], List[Tuple[C, int]]]
     y4: int
-    reveal_type(Dummy[C]().foo(x4, y4))  # N: Revealed type is 'Union[builtins.int*, __main__.C]'
+    reveal_type(Dummy[C]().foo(x4, y4))  # N: Revealed type is "Union[builtins.int*, __main__.C]"
     Dummy[A]().foo(x4, y4)               # E: Argument 1 to "foo" of "Dummy" has incompatible type "Union[List[int], List[Tuple[C, int]]]"; expected "List[Tuple[A, int]]"
 
     return arg1, arg2
@@ -3412,11 +3412,11 @@ T1 = TypeVar('T1', bound=B)
 def t_is_tighter_bound(arg1: T1, arg2: S) -> Tuple[T1, S]:
     x1: Union[List[S], List[Tuple[T1, S]]]
     y1: S
-    reveal_type(Dummy[T1]().foo(x1, y1))  # N: Revealed type is 'Union[S`-2, T1`-1]'
+    reveal_type(Dummy[T1]().foo(x1, y1))  # N: Revealed type is "Union[S`-2, T1`-1]"
 
     x2: Union[List[T1], List[Tuple[T1, T1]]]
     y2: T1
-    reveal_type(Dummy[T1]().foo(x2, y2))  # N: Revealed type is 'T1`-1'
+    reveal_type(Dummy[T1]().foo(x2, y2))  # N: Revealed type is "T1`-1"
 
     return arg1, arg2
 
@@ -3454,10 +3454,10 @@ def t_is_compatible_bound(arg1: T3, arg2: S) -> Tuple[T3, S]:
 
 [builtins fixtures/list.pyi]
 [out]
-main:22: note: Revealed type is 'Union[S`-2, __main__.B]'
-main:22: note: Revealed type is 'Union[S`-2, __main__.C]'
-main:26: note: Revealed type is '__main__.B*'
-main:26: note: Revealed type is '__main__.C*'
+main:22: note: Revealed type is "Union[S`-2, __main__.B]"
+main:22: note: Revealed type is "Union[S`-2, __main__.C]"
+main:26: note: Revealed type is "__main__.B*"
+main:26: note: Revealed type is "__main__.C*"
 
 [case testOverloadInferUnionReturnWithInconsistentTypevarNames]
 from typing import overload, TypeVar, Union
@@ -3482,7 +3482,7 @@ def inconsistent(x: T, y: Union[str, int]) -> T:
 def test(x: T) -> T:
     y: Union[str, int]
 
-    reveal_type(consistent(x, y))  # N: Revealed type is 'T`-1'
+    reveal_type(consistent(x, y))  # N: Revealed type is "T`-1"
 
     # On one hand, this overload is defined in a weird way; on the other, there's technically nothing wrong with it.
     inconsistent(x, y)
@@ -3511,9 +3511,9 @@ def g(x): ...
 a: None
 b: int
 c: Optional[int]
-reveal_type(g(a))  # N: Revealed type is 'builtins.int'
-reveal_type(g(b))  # N: Revealed type is 'builtins.str'
-reveal_type(g(c))  # N: Revealed type is 'builtins.str'
+reveal_type(g(a))  # N: Revealed type is "builtins.int"
+reveal_type(g(b))  # N: Revealed type is "builtins.str"
+reveal_type(g(c))  # N: Revealed type is "builtins.str"
 
 [case testOverloadsAndNoneWithStrictOptional]
 # flags: --strict-optional
@@ -3534,9 +3534,9 @@ def g(x): ...
 a: None
 b: int
 c: Optional[int]
-reveal_type(g(a))  # N: Revealed type is 'builtins.int'
-reveal_type(g(b))  # N: Revealed type is 'builtins.str'
-reveal_type(g(c))  # N: Revealed type is 'Union[builtins.str, builtins.int]'
+reveal_type(g(a))  # N: Revealed type is "builtins.int"
+reveal_type(g(b))  # N: Revealed type is "builtins.str"
+reveal_type(g(c))  # N: Revealed type is "Union[builtins.str, builtins.int]"
 
 [case testOverloadsNoneAndTypeVarsWithNoStrictOptional]
 # flags: --no-strict-optional
@@ -3556,9 +3556,9 @@ f1: Callable[[int], str]
 f2: None
 f3: Optional[Callable[[int], str]]
 
-reveal_type(mymap(f1, seq))  # N: Revealed type is 'typing.Iterable[builtins.str*]'
-reveal_type(mymap(f2, seq))  # N: Revealed type is 'typing.Iterable[builtins.int*]'
-reveal_type(mymap(f3, seq))  # N: Revealed type is 'typing.Iterable[builtins.str*]'
+reveal_type(mymap(f1, seq))  # N: Revealed type is "typing.Iterable[builtins.str*]"
+reveal_type(mymap(f2, seq))  # N: Revealed type is "typing.Iterable[builtins.int*]"
+reveal_type(mymap(f3, seq))  # N: Revealed type is "typing.Iterable[builtins.str*]"
 
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -3581,9 +3581,9 @@ f1: Callable[[int], str]
 f2: None
 f3: Optional[Callable[[int], str]]
 
-reveal_type(mymap(f1, seq))  # N: Revealed type is 'typing.Iterable[builtins.str*]'
-reveal_type(mymap(f2, seq))  # N: Revealed type is 'typing.Iterable[builtins.int*]'
-reveal_type(mymap(f3, seq))  # N: Revealed type is 'Union[typing.Iterable[builtins.str*], typing.Iterable[builtins.int*]]'
+reveal_type(mymap(f1, seq))  # N: Revealed type is "typing.Iterable[builtins.str*]"
+reveal_type(mymap(f2, seq))  # N: Revealed type is "typing.Iterable[builtins.int*]"
+reveal_type(mymap(f3, seq))  # N: Revealed type is "Union[typing.Iterable[builtins.str*], typing.Iterable[builtins.int*]]"
 
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -3604,12 +3604,12 @@ def test_narrow_int() -> None:
     a: Union[int, str]
     if int():
         a = narrow_int(a)
-        reveal_type(a)  # N: Revealed type is 'builtins.int'
+        reveal_type(a)  # N: Revealed type is "builtins.int"
 
     b: int
     if int():
         b = narrow_int(b)
-        reveal_type(b)  # N: Revealed type is 'builtins.int'
+        reveal_type(b)  # N: Revealed type is "builtins.int"
 
     c: str
     if int():
@@ -3636,12 +3636,12 @@ def test_narrow_int() -> None:
     a: Union[int, str]
     if int():
         a = narrow_int(a)
-        reveal_type(a)  # N: Revealed type is 'builtins.int'
+        reveal_type(a)  # N: Revealed type is "builtins.int"
 
     b: int
     if int():
         b = narrow_int(b)
-        reveal_type(b)  # N: Revealed type is 'builtins.int'
+        reveal_type(b)  # N: Revealed type is "builtins.int"
 
     c: str
     if int():
@@ -3669,12 +3669,12 @@ def test_narrow_none() -> None:
     a: Optional[int]
     if int():
         a = narrow_none(a)
-        reveal_type(a)  # N: Revealed type is 'builtins.int'
+        reveal_type(a)  # N: Revealed type is "builtins.int"
 
     b: int
     if int():
         b = narrow_none(b)
-        reveal_type(b)  # N: Revealed type is 'builtins.int'
+        reveal_type(b)  # N: Revealed type is "builtins.int"
 
     c: None
     if int():
@@ -3701,12 +3701,12 @@ def test_narrow_none() -> None:
     a: Optional[int]
     if int():
         a = narrow_none(a)
-        reveal_type(a)  # N: Revealed type is 'builtins.int'
+        reveal_type(a)  # N: Revealed type is "builtins.int"
 
     b: int
     if int():
         b = narrow_none(b)
-        reveal_type(b)  # N: Revealed type is 'builtins.int'
+        reveal_type(b)  # N: Revealed type is "builtins.int"
 
     c: None
     if int():
@@ -3733,12 +3733,12 @@ def test_narrow_none_v2() -> None:
     a: Optional[int]
     if int():
         a = narrow_none_v2(a)
-        reveal_type(a)  # N: Revealed type is 'builtins.int'
+        reveal_type(a)  # N: Revealed type is "builtins.int"
 
     b: int
     if int():
         b = narrow_none_v2(b)
-        reveal_type(b)  # N: Revealed type is 'builtins.int'
+        reveal_type(b)  # N: Revealed type is "builtins.int"
 
     c: None
     if int():
@@ -3764,12 +3764,12 @@ def test_narrow_none_v2() -> None:
     a: Optional[int]
     if int():
         a = narrow_none_v2(a)
-        reveal_type(a)  # N: Revealed type is 'builtins.int'
+        reveal_type(a)  # N: Revealed type is "builtins.int"
 
     b: int
     if int():
         b = narrow_none_v2(b)
-        reveal_type(b)  # N: Revealed type is 'builtins.int'
+        reveal_type(b)  # N: Revealed type is "builtins.int"
 
     c: None
     if int():
@@ -3799,7 +3799,7 @@ def test() -> None:
     val: Union[A, B]
     if int():
         val = narrow_to_not_a(val)
-        reveal_type(val)   # N: Revealed type is '__main__.B'
+        reveal_type(val)   # N: Revealed type is "__main__.B"
 
     val2: A
     if int():
@@ -3828,7 +3828,7 @@ def narrow_to_not_a_v2(x: T) -> T:
 def test_v2(val: Union[A, B], val2: A) -> None:
     if int():
         val = narrow_to_not_a_v2(val)
-        reveal_type(val)   # N: Revealed type is '__main__.B'
+        reveal_type(val)   # N: Revealed type is "__main__.B"
 
     if int():
         val2 = narrow_to_not_a_v2(val2)
@@ -3856,11 +3856,11 @@ class NumberAttribute:
 class MyModel:
     my_number = NumberAttribute()
 
-reveal_type(MyModel().my_number)  # N: Revealed type is 'builtins.int'
+reveal_type(MyModel().my_number)  # N: Revealed type is "builtins.int"
 MyModel().my_number.foo()         # E: "int" has no attribute "foo"
 
-reveal_type(MyModel.my_number)        # N: Revealed type is '__main__.NumberAttribute'
-reveal_type(MyModel.my_number.foo())  # N: Revealed type is 'builtins.str'
+reveal_type(MyModel.my_number)        # N: Revealed type is "__main__.NumberAttribute"
+reveal_type(MyModel.my_number.foo())  # N: Revealed type is "builtins.str"
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -3896,14 +3896,14 @@ class NumberAttribute(Generic[T]):
 class MyModel:
     my_number = NumberAttribute[MyModel]()
 
-reveal_type(MyModel().my_number)  # N: Revealed type is 'builtins.int'
+reveal_type(MyModel().my_number)  # N: Revealed type is "builtins.int"
 MyModel().my_number.foo()         # E: "int" has no attribute "foo"
 
-reveal_type(MyModel.my_number)        # N: Revealed type is '__main__.NumberAttribute[__main__.MyModel*]'
-reveal_type(MyModel.my_number.foo())  # N: Revealed type is 'builtins.str'
+reveal_type(MyModel.my_number)        # N: Revealed type is "__main__.NumberAttribute[__main__.MyModel*]"
+reveal_type(MyModel.my_number.foo())  # N: Revealed type is "builtins.str"
 
-reveal_type(NumberAttribute[MyModel]().__get__(None, MyModel))  # N: Revealed type is '__main__.NumberAttribute[__main__.MyModel*]'
-reveal_type(NumberAttribute[str]().__get__(None, str))      # N: Revealed type is '__main__.NumberAttribute[builtins.str*]'
+reveal_type(NumberAttribute[MyModel]().__get__(None, MyModel))  # N: Revealed type is "__main__.NumberAttribute[__main__.MyModel*]"
+reveal_type(NumberAttribute[str]().__get__(None, str))      # N: Revealed type is "__main__.NumberAttribute[builtins.str*]"
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -3946,7 +3946,7 @@ def add_proxy(x, y):
 
 # The lambda definition is a syntax error in Python 3
 tup = (1, '2')
-reveal_type(foo(lambda (x, y): add_proxy(x, y), tup))  # N: Revealed type is 'builtins.str*'
+reveal_type(foo(lambda (x, y): add_proxy(x, y), tup))  # N: Revealed type is "builtins.str*"
 [builtins fixtures/primitives.pyi]
 
 [case testOverloadWithClassMethods]
@@ -3962,8 +3962,8 @@ class Wrapper:
     @classmethod
     def foo(cls, x): pass
 
-reveal_type(Wrapper.foo(3))      # N: Revealed type is 'builtins.int'
-reveal_type(Wrapper.foo("foo"))  # N: Revealed type is 'builtins.str'
+reveal_type(Wrapper.foo(3))      # N: Revealed type is "builtins.int"
+reveal_type(Wrapper.foo("foo"))  # N: Revealed type is "builtins.str"
 
 [builtins fixtures/classmethod.pyi]
 
@@ -4035,8 +4035,8 @@ class Wrapper3:
 
     def foo(cls, x): pass
 
-reveal_type(Wrapper1.foo(3))  # N: Revealed type is 'builtins.int'
-reveal_type(Wrapper2.foo(3))  # N: Revealed type is 'builtins.int'
+reveal_type(Wrapper1.foo(3))  # N: Revealed type is "builtins.int"
+reveal_type(Wrapper2.foo(3))  # N: Revealed type is "builtins.int"
 
 [builtins fixtures/classmethod.pyi]
 
@@ -4150,8 +4150,8 @@ class Wrapper:
 
     @classmethod    # E: Overloaded function implementation cannot produce return type of signature 1
     def foo(cls, x: Union[int, str]) -> str:
-        reveal_type(cls)          # N: Revealed type is 'Type[__main__.Wrapper]'
-        reveal_type(cls.other())  # N: Revealed type is 'builtins.str'
+        reveal_type(cls)          # N: Revealed type is "Type[__main__.Wrapper]"
+        reveal_type(cls.other())  # N: Revealed type is "builtins.str"
         return "..."
 
 [builtins fixtures/classmethod.pyi]
@@ -4169,8 +4169,8 @@ class Wrapper:
     @staticmethod
     def foo(x): pass
 
-reveal_type(Wrapper.foo(3))      # N: Revealed type is 'builtins.int'
-reveal_type(Wrapper.foo("foo"))  # N: Revealed type is 'builtins.str'
+reveal_type(Wrapper.foo(3))      # N: Revealed type is "builtins.int"
+reveal_type(Wrapper.foo("foo"))  # N: Revealed type is "builtins.str"
 
 [builtins fixtures/staticmethod.pyi]
 
@@ -4243,8 +4243,8 @@ class Wrapper3:
     @staticmethod
     def foo(x): pass
 
-reveal_type(Wrapper1.foo(3))  # N: Revealed type is 'builtins.int'
-reveal_type(Wrapper2.foo(3))  # N: Revealed type is 'builtins.int'
+reveal_type(Wrapper1.foo(3))  # N: Revealed type is "builtins.int"
+reveal_type(Wrapper2.foo(3))  # N: Revealed type is "builtins.int"
 
 [builtins fixtures/staticmethod.pyi]
 
@@ -4373,7 +4373,7 @@ def f(x):
     pass
 
 x: Union[int, str]
-reveal_type(f(x))  # N: Revealed type is 'builtins.int'
+reveal_type(f(x))  # N: Revealed type is "builtins.int"
 [out]
 
 [case testOverloadAndSelfTypes]
@@ -4388,7 +4388,7 @@ class Parent:
     def foo(self, x: str) -> str: pass
 
     def foo(self: T, x: Union[int, str]) -> Union[T, str]:
-        reveal_type(self.bar())    # N: Revealed type is 'builtins.str'
+        reveal_type(self.bar())    # N: Revealed type is "builtins.str"
         return self
 
     def bar(self) -> str: pass
@@ -4397,11 +4397,11 @@ class Child(Parent):
     def child_only(self) -> int: pass
 
 x: Union[int, str]
-reveal_type(Parent().foo(3))                  # N: Revealed type is '__main__.Parent*'
-reveal_type(Child().foo(3))                   # N: Revealed type is '__main__.Child*'
-reveal_type(Child().foo("..."))               # N: Revealed type is 'builtins.str'
-reveal_type(Child().foo(x))                   # N: Revealed type is 'Union[__main__.Child*, builtins.str]'
-reveal_type(Child().foo(3).child_only())      # N: Revealed type is 'builtins.int'
+reveal_type(Parent().foo(3))                  # N: Revealed type is "__main__.Parent*"
+reveal_type(Child().foo(3))                   # N: Revealed type is "__main__.Child*"
+reveal_type(Child().foo("..."))               # N: Revealed type is "builtins.str"
+reveal_type(Child().foo(x))                   # N: Revealed type is "Union[__main__.Child*, builtins.str]"
+reveal_type(Child().foo(3).child_only())      # N: Revealed type is "builtins.int"
 
 [case testOverloadAndClassTypes]
 from typing import overload, Union, TypeVar, Type
@@ -4418,7 +4418,7 @@ class Parent:
 
     @classmethod
     def foo(cls: Type[T], x: Union[int, str]) -> Union[Type[T], str]:
-        reveal_type(cls.bar())    # N: Revealed type is 'builtins.str'
+        reveal_type(cls.bar())    # N: Revealed type is "builtins.str"
         return cls
 
     @classmethod
@@ -4428,11 +4428,11 @@ class Child(Parent):
     def child_only(self) -> int: pass
 
 x: Union[int, str]
-reveal_type(Parent.foo(3))                  # N: Revealed type is 'Type[__main__.Parent*]'
-reveal_type(Child.foo(3))                   # N: Revealed type is 'Type[__main__.Child*]'
-reveal_type(Child.foo("..."))               # N: Revealed type is 'builtins.str'
-reveal_type(Child.foo(x))                   # N: Revealed type is 'Union[Type[__main__.Child*], builtins.str]'
-reveal_type(Child.foo(3)().child_only())    # N: Revealed type is 'builtins.int'
+reveal_type(Parent.foo(3))                  # N: Revealed type is "Type[__main__.Parent*]"
+reveal_type(Child.foo(3))                   # N: Revealed type is "Type[__main__.Child*]"
+reveal_type(Child.foo("..."))               # N: Revealed type is "builtins.str"
+reveal_type(Child.foo(x))                   # N: Revealed type is "Union[Type[__main__.Child*], builtins.str]"
+reveal_type(Child.foo(3)().child_only())    # N: Revealed type is "builtins.int"
 [builtins fixtures/classmethod.pyi]
 
 [case testOptionalIsNotAUnionIfNoStrictOverload]
@@ -4450,7 +4450,7 @@ def rp(x):
     pass
 
 x: Optional[C]
-reveal_type(rp(x))  # N: Revealed type is '__main__.C'
+reveal_type(rp(x))  # N: Revealed type is "__main__.C"
 [out]
 
 [case testOptionalIsNotAUnionIfNoStrictOverloadStr]
@@ -4459,7 +4459,7 @@ reveal_type(rp(x))  # N: Revealed type is '__main__.C'
 from typing import Optional
 from m import relpath
 a = '' # type: Optional[str]
-reveal_type(relpath(a))  # N: Revealed type is 'builtins.str'
+reveal_type(relpath(a))  # N: Revealed type is "builtins.str"
 
 [file m.pyi]
 from typing import overload
@@ -4501,7 +4501,7 @@ class D(C):
 
 x: D
 y: Union[D, Any]
-reveal_type(x.f(y))  # N: Revealed type is 'Union[__main__.D, Any]'
+reveal_type(x.f(y))  # N: Revealed type is "Union[__main__.D, Any]"
 [out]
 
 [case testManyUnionsInOverload]
@@ -4523,7 +4523,7 @@ class B: pass
 x: Union[int, str, A, B]
 y = f(x, x, x, x, x, x, x, x) # 8 args
 
-reveal_type(y)  # N: Revealed type is 'Union[builtins.int, builtins.str, __main__.A, __main__.B]'
+reveal_type(y)  # N: Revealed type is "Union[builtins.int, builtins.str, __main__.A, __main__.B]"
 [builtins fixtures/dict.pyi]
 [out]
 
@@ -4645,7 +4645,7 @@ class Other:
             return NotImplemented
 
 actually_b: A = B()
-reveal_type(actually_b + Other())  # N: Revealed type is '__main__.Other'
+reveal_type(actually_b + Other())  # N: Revealed type is "__main__.Other"
 # Runtime type is B, this is why we report the error on overriding.
 [builtins fixtures/isinstance.pyi]
 [out]
@@ -4695,7 +4695,7 @@ g(3)  # E: No overload variant of "g" matches argument type "int" \
 from lib import f, g
 
 for fun in [f, g]:
-    reveal_type(fun)  # N: Revealed type is 'Overload(def (x: builtins.int) -> builtins.str, def (x: builtins.str) -> builtins.int)'
+    reveal_type(fun)  # N: Revealed type is "Overload(def (x: builtins.int) -> builtins.str, def (x: builtins.str) -> builtins.int)"
 [file lib.pyi]
 from typing import overload
 
@@ -4743,7 +4743,7 @@ def f() -> None:
                      # N: Possible overload variant: \
                      # N:     def [T] g(x: T, y: int) -> T \
                      # N:     <1 more non-matching overload not shown>
-    reveal_type(g(str(), int()))  # N: Revealed type is 'builtins.str*'
+    reveal_type(g(str(), int()))  # N: Revealed type is "builtins.str*"
 [out]
 
 [case testNestedOverloadsTypeVarOverlap]
@@ -4772,14 +4772,14 @@ def f() -> None:
     @overload
     def g(x: T) -> Dict[int, T]: ...
     def g(*args, **kwargs) -> Any:
-        reveal_type(h(C()))  # N: Revealed type is 'builtins.dict[builtins.str, __main__.C*]'
+        reveal_type(h(C()))  # N: Revealed type is "builtins.dict[builtins.str, __main__.C*]"
 
     @overload
     def h() -> None: ...
     @overload
     def h(x: T) -> Dict[str, T]: ...
     def h(*args, **kwargs) -> Any:
-        reveal_type(g(C()))  # N: Revealed type is 'builtins.dict[builtins.int, __main__.C*]'
+        reveal_type(g(C()))  # N: Revealed type is "builtins.dict[builtins.int, __main__.C*]"
 
 [builtins fixtures/dict.pyi]
 [out]
@@ -4788,10 +4788,10 @@ def f() -> None:
 from lib import attr
 from typing import Any
 
-reveal_type(attr(1))  # N: Revealed type is 'builtins.int*'
-reveal_type(attr("hi"))  # N: Revealed type is 'builtins.int'
+reveal_type(attr(1))  # N: Revealed type is "builtins.int*"
+reveal_type(attr("hi"))  # N: Revealed type is "builtins.int"
 x: Any
-reveal_type(attr(x)) # N: Revealed type is 'Any'
+reveal_type(attr(x)) # N: Revealed type is "Any"
 attr("hi", 1)  # E: No overload variant of "attr" matches argument types "str", "int" \
                # N: Possible overload variant: \
                # N:     def [T in (int, float)] attr(default: T = ..., blah: int = ...) -> T \
@@ -4811,10 +4811,10 @@ def attr(default: Any = ...) -> int: ...
 from lib import attr
 from typing import Any
 
-reveal_type(attr(1))  # N: Revealed type is 'builtins.int*'
-reveal_type(attr("hi"))  # N: Revealed type is 'builtins.int'
+reveal_type(attr(1))  # N: Revealed type is "builtins.int*"
+reveal_type(attr("hi"))  # N: Revealed type is "builtins.int"
 x: Any
-reveal_type(attr(x)) # N: Revealed type is 'Any'
+reveal_type(attr(x)) # N: Revealed type is "Any"
 attr("hi", 1)  # E: No overload variant of "attr" matches argument types "str", "int" \
                # N: Possible overload variant: \
                # N:     def [T <: int] attr(default: T = ..., blah: int = ...) -> T \
@@ -4863,10 +4863,10 @@ def f(x: Child) -> List[Child]: pass    # E: Overloaded function signatures 1 an
 def f(x: Parent) -> List[Parent]: pass
 def f(x: Union[Child, Parent]) -> Union[List[Child], List[Parent]]:
     if isinstance(x, Child):
-        reveal_type(x)      # N: Revealed type is '__main__.Child'
+        reveal_type(x)      # N: Revealed type is "__main__.Child"
         return children
     else:
-        reveal_type(x)      # N: Revealed type is '__main__.Parent'
+        reveal_type(x)      # N: Revealed type is "__main__.Parent"
         return parents
 
 ints: List[int]
@@ -4878,10 +4878,10 @@ def g(x: int) -> List[int]: pass
 def g(x: float) -> List[float]: pass
 def g(x: Union[int, float]) -> Union[List[int], List[float]]:
     if isinstance(x, int):
-        reveal_type(x)      # N: Revealed type is 'builtins.int'
+        reveal_type(x)      # N: Revealed type is "builtins.int"
         return ints
     else:
-        reveal_type(x)      # N: Revealed type is 'builtins.float'
+        reveal_type(x)      # N: Revealed type is "builtins.float"
         return floats
 
 [builtins fixtures/isinstancelist.pyi]
@@ -4922,13 +4922,13 @@ a = multiple_plausible(Other())  # E: No overload variant of "multiple_plausible
                                  # N: Possible overload variants: \
                                  # N:     def multiple_plausible(x: int) -> int \
                                  # N:     def multiple_plausible(x: str) -> str
-reveal_type(a)                   # N: Revealed type is 'Any'
+reveal_type(a)                   # N: Revealed type is "Any"
 
 b = single_plausible(Other)      # E: Argument 1 to "single_plausible" has incompatible type "Type[Other]"; expected "Type[int]"
-reveal_type(b)                   # N: Revealed type is 'builtins.int'
+reveal_type(b)                   # N: Revealed type is "builtins.int"
 
 c = single_plausible([Other()])  # E: List item 0 has incompatible type "Other"; expected "str"
-reveal_type(c)                   # N: Revealed type is 'builtins.str'
+reveal_type(c)                   # N: Revealed type is "builtins.str"
 [builtins fixtures/list.pyi]
 
 [case testDisallowUntypedDecoratorsOverload]
@@ -4952,8 +4952,8 @@ def f(name: str) -> int:
 def g(name: str) -> int:
     return 0
 
-reveal_type(f)  # N: Revealed type is 'def (name: builtins.str) -> builtins.int'
-reveal_type(g)  # N: Revealed type is 'def (name: builtins.str) -> builtins.int'
+reveal_type(f)  # N: Revealed type is "def (name: builtins.str) -> builtins.int"
+reveal_type(g)  # N: Revealed type is "def (name: builtins.str) -> builtins.int"
 
 [case testDisallowUntypedDecoratorsOverloadDunderCall]
 # flags: --disallow-untyped-decorators
@@ -4979,8 +4979,8 @@ def f(name: str) -> int:
 def g(name: str) -> int:
     return 0
 
-reveal_type(f)  # N: Revealed type is 'def (name: builtins.str) -> builtins.int'
-reveal_type(g)  # N: Revealed type is 'def (name: builtins.str) -> builtins.int'
+reveal_type(f)  # N: Revealed type is "def (name: builtins.str) -> builtins.int"
+reveal_type(g)  # N: Revealed type is "def (name: builtins.str) -> builtins.int"
 
 [case testOverloadBadArgumentsInferredToAny1]
 from typing import Union, Any, overload
@@ -5027,7 +5027,7 @@ def f(x: int) -> int: ...
 def f(x: List[int]) -> List[int]: ...
 def f(x): pass
 
-reveal_type(f(g()))  # N: Revealed type is 'builtins.list[builtins.int]'
+reveal_type(f(g()))  # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
 
 [case testOverloadInferringArgumentsUsingContext2-skip]
@@ -5051,7 +5051,7 @@ def f(x: List[int]) -> List[int]: ...
 def f(x):
     pass
 
-reveal_type(f(g([])))  # N: Revealed type is 'builtins.list[builtins.int]'
+reveal_type(f(g([])))  # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
 
 [case testOverloadDeferredNode]
@@ -5093,7 +5093,7 @@ def func(x):
 [out]
 tmp/lib.pyi:1: error: Name 'overload' is not defined
 tmp/lib.pyi:4: error: Name 'func' already defined on line 1
-main:2: note: Revealed type is 'Any'
+main:2: note: Revealed type is "Any"
 
 -- Order of errors is different
 [case testVeryBrokenOverload2]
@@ -5109,7 +5109,7 @@ def func(x: str) -> str: ...
 tmp/lib.pyi:1: error: Name 'overload' is not defined
 tmp/lib.pyi:3: error: Name 'func' already defined on line 1
 tmp/lib.pyi:3: error: Name 'overload' is not defined
-main:3: note: Revealed type is 'Any'
+main:3: note: Revealed type is "Any"
 
 [case testLiteralSubtypeOverlap]
 from typing import overload
@@ -5148,7 +5148,7 @@ def compose(f: Callable[[U], V], g: Callable[[W], U]) -> Callable[[W], V]:
 ID = NewType("ID", fakeint)
 
 compose(ID, fakeint)("test")
-reveal_type(compose(ID, fakeint))  # N: Revealed type is 'def (Union[builtins.str, builtins.bytes]) -> __main__.ID*'
+reveal_type(compose(ID, fakeint))  # N: Revealed type is "def (Union[builtins.str, builtins.bytes]) -> __main__.ID*"
 
 [builtins fixtures/tuple.pyi]
 

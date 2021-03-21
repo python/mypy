@@ -617,18 +617,18 @@ class B: pass
 
 [case testInferLambdaTypeUsingContext]
 x : str = (lambda x: x + 1)(1)  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
-reveal_type((lambda x, y: x + y)(1, 2))  # N: Revealed type is 'builtins.int'
+reveal_type((lambda x, y: x + y)(1, 2))  # N: Revealed type is "builtins.int"
 (lambda x, y: x + y)(1, "")  # E: Unsupported operand types for + ("int" and "str")
 (lambda *, x, y: x + y)(x=1, y="")  # E: Unsupported operand types for + ("int" and "str")
-reveal_type((lambda s, i: s)(i=0, s='x')) # N: Revealed type is 'Literal['x']?'
-reveal_type((lambda s, i: i)(i=0, s='x')) # N: Revealed type is 'Literal[0]?'
-reveal_type((lambda x, s, i: x)(1.0, i=0, s='x')) # N: Revealed type is 'builtins.float'
+reveal_type((lambda s, i: s)(i=0, s='x')) # N: Revealed type is "Literal['x']?"
+reveal_type((lambda s, i: i)(i=0, s='x')) # N: Revealed type is "Literal[0]?"
+reveal_type((lambda x, s, i: x)(1.0, i=0, s='x')) # N: Revealed type is "builtins.float"
 (lambda x, s, i: x)() # E: Too few arguments
 (lambda: 0)(1) # E: Too many arguments
 -- varargs are not handled, but it should not crash
-reveal_type((lambda *k, s, i: i)(type, i=0, s='x')) # N: Revealed type is 'Any'
-reveal_type((lambda s, *k, i: i)(i=0, s='x')) # N: Revealed type is 'Any'
-reveal_type((lambda s, i, **k: i)(i=0, s='x')) # N: Revealed type is 'Any'
+reveal_type((lambda *k, s, i: i)(type, i=0, s='x')) # N: Revealed type is "Any"
+reveal_type((lambda s, *k, i: i)(i=0, s='x')) # N: Revealed type is "Any"
+reveal_type((lambda s, i, **k: i)(i=0, s='x')) # N: Revealed type is "Any"
 [builtins fixtures/dict.pyi]
 
 [case testInferLambdaAsGenericFunctionArgument]
@@ -642,8 +642,8 @@ f(list_a, lambda a: a.x)
 [builtins fixtures/list.pyi]
 
 [case testLambdaWithoutContext]
-reveal_type(lambda x: x)  # N: Revealed type is 'def (x: Any) -> Any'
-reveal_type(lambda x: 1)  # N: Revealed type is 'def (x: Any) -> Literal[1]?'
+reveal_type(lambda x: x)  # N: Revealed type is "def (x: Any) -> Any"
+reveal_type(lambda x: 1)  # N: Revealed type is "def (x: Any) -> Literal[1]?"
 
 [case testLambdaContextVararg]
 from typing import Callable
@@ -904,8 +904,8 @@ from typing import TypeVar, Callable, Generic
 T = TypeVar('T')
 class A(Generic[T]):
     pass
-reveal_type(A()) # N: Revealed type is '__main__.A[<nothing>]'
-b = reveal_type(A())  # type: A[int] # N: Revealed type is '__main__.A[builtins.int]'
+reveal_type(A()) # N: Revealed type is "__main__.A[<nothing>]"
+b = reveal_type(A())  # type: A[int] # N: Revealed type is "__main__.A[builtins.int]"
 
 [case testUnionWithGenericTypeItemContext]
 from typing import TypeVar, Union, List
@@ -913,9 +913,9 @@ from typing import TypeVar, Union, List
 T = TypeVar('T')
 
 def f(x: Union[T, List[int]]) -> Union[T, List[int]]: pass
-reveal_type(f(1)) # N: Revealed type is 'Union[builtins.int*, builtins.list[builtins.int]]'
-reveal_type(f([])) # N: Revealed type is 'builtins.list[builtins.int]'
-reveal_type(f(None)) # N: Revealed type is 'builtins.list[builtins.int]'
+reveal_type(f(1)) # N: Revealed type is "Union[builtins.int*, builtins.list[builtins.int]]"
+reveal_type(f([])) # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(f(None)) # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
 
 [case testUnionWithGenericTypeItemContextAndStrictOptional]
@@ -925,9 +925,9 @@ from typing import TypeVar, Union, List
 T = TypeVar('T')
 
 def f(x: Union[T, List[int]]) -> Union[T, List[int]]: pass
-reveal_type(f(1)) # N: Revealed type is 'Union[builtins.int*, builtins.list[builtins.int]]'
-reveal_type(f([])) # N: Revealed type is 'builtins.list[builtins.int]'
-reveal_type(f(None)) # N: Revealed type is 'Union[None, builtins.list[builtins.int]]'
+reveal_type(f(1)) # N: Revealed type is "Union[builtins.int*, builtins.list[builtins.int]]"
+reveal_type(f([])) # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(f(None)) # N: Revealed type is "Union[None, builtins.list[builtins.int]]"
 [builtins fixtures/list.pyi]
 
 [case testUnionWithGenericTypeItemContextInMethod]
@@ -940,10 +940,10 @@ class C(Generic[T]):
     def f(self, x: Union[T, S]) -> Union[T, S]: pass
 
 c = C[List[int]]()
-reveal_type(c.f('')) # N: Revealed type is 'Union[builtins.list[builtins.int], builtins.str*]'
-reveal_type(c.f([1])) # N: Revealed type is 'builtins.list[builtins.int]'
-reveal_type(c.f([])) # N: Revealed type is 'builtins.list[builtins.int]'
-reveal_type(c.f(None)) # N: Revealed type is 'builtins.list[builtins.int]'
+reveal_type(c.f('')) # N: Revealed type is "Union[builtins.list[builtins.int], builtins.str*]"
+reveal_type(c.f([1])) # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(c.f([])) # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(c.f(None)) # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
 
 [case testGenericMethodCalledInGenericContext]
@@ -991,7 +991,7 @@ class D(C): ...
 
 def f(x: Sequence[T], y: Sequence[T]) -> List[T]: ...
 
-reveal_type(f([C()], [D()])) # N: Revealed type is 'builtins.list[__main__.C*]'
+reveal_type(f([C()], [D()])) # N: Revealed type is "builtins.list[__main__.C*]"
 [builtins fixtures/list.pyi]
 
 [case testInferTypeVariableFromTwoGenericTypes2]
@@ -1023,7 +1023,7 @@ def f(x: A[T], y: A[T]) -> B[T]: ...
 
 c: B[C]
 d: B[D]
-reveal_type(f(c, d)) # N: Revealed type is '__main__.B[__main__.D*]'
+reveal_type(f(c, d)) # N: Revealed type is "__main__.B[__main__.D*]"
 
 [case testInferTypeVariableFromTwoGenericTypes4]
 from typing import Generic, TypeVar, Callable, List
@@ -1043,7 +1043,7 @@ def f(x: Callable[[B[T]], None],
 def gc(x: A[C]) -> None: pass  # B[C]
 def gd(x: A[D]) -> None: pass  # B[C]
 
-reveal_type(f(gc, gd)) # N: Revealed type is 'builtins.list[__main__.C*]'
+reveal_type(f(gc, gd)) # N: Revealed type is "builtins.list[__main__.C*]"
 [builtins fixtures/list.pyi]
 
 [case testWideOuterContextSubClassBound]
@@ -1302,7 +1302,7 @@ T = TypeVar('T')
 def f(i: Iterable[T], c: Callable[[T], str]) -> Optional[T]: ...
 
 def g(l: List[C], x: str) -> Optional[C]:
-    return f(l, lambda c: reveal_type(c).x)  # N: Revealed type is '__main__.C'
+    return f(l, lambda c: reveal_type(c).x)  # N: Revealed type is "__main__.C"
 [builtins fixtures/list.pyi]
 
 [case testWideOuterContextEmpty]

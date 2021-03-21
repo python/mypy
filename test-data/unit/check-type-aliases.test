@@ -144,7 +144,7 @@ class C(Generic[T]):
     A = List[T] # E: Can't use bound type variable "T" to define generic alias
 
 x: C.A
-reveal_type(x) # N: Revealed type is 'builtins.list[Any]'
+reveal_type(x) # N: Revealed type is "builtins.list[Any]"
 
 def f(x: T) -> T:
     A = List[T] # E: Can't use bound type variable "T" to define generic alias
@@ -162,18 +162,18 @@ f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "str"
 from typing import Tuple, Callable
 EmptyTuple = Tuple[()]
 x = None # type: EmptyTuple
-reveal_type(x)  # N: Revealed type is 'Tuple[]'
+reveal_type(x)  # N: Revealed type is "Tuple[]"
 
 EmptyTupleCallable = Callable[[Tuple[()]], None]
 f = None # type: EmptyTupleCallable
-reveal_type(f)  # N: Revealed type is 'def (Tuple[])'
+reveal_type(f)  # N: Revealed type is "def (Tuple[])"
 [builtins fixtures/list.pyi]
 
 [case testForwardTypeAlias]
 def f(p: 'Alias') -> None:
     pass
 
-reveal_type(f) # N: Revealed type is 'def (p: builtins.int)'
+reveal_type(f) # N: Revealed type is "def (p: builtins.int)"
 Alias = int
 [out]
 
@@ -182,7 +182,7 @@ from typing import TypeVar, Tuple
 def f(p: 'Alias[str]') -> None:
     pass
 
-reveal_type(f) # N: Revealed type is 'def (p: Tuple[builtins.int, builtins.str])'
+reveal_type(f) # N: Revealed type is "def (p: Tuple[builtins.int, builtins.str])"
 T = TypeVar('T')
 Alias = Tuple[int, T]
 [builtins fixtures/tuple.pyi]
@@ -213,14 +213,14 @@ main:5: error: Cannot resolve name "B" (possible cyclic definition)
 main:6: error: Cannot resolve name "B" (possible cyclic definition)
 main:6: error: Cannot resolve name "C" (possible cyclic definition)
 main:7: error: Cannot resolve name "C" (possible cyclic definition)
-main:9: note: Revealed type is 'Union[Any, builtins.int]'
+main:9: note: Revealed type is "Union[Any, builtins.int]"
 
 [case testDoubleForwardAlias]
 from typing import List
 x: A
 A = List[B]
 B = List[int]
-reveal_type(x) # N: Revealed type is 'builtins.list[builtins.list[builtins.int]]'
+reveal_type(x) # N: Revealed type is "builtins.list[builtins.list[builtins.int]]"
 [builtins fixtures/list.pyi]
 [out]
 
@@ -230,7 +230,7 @@ x: A
 A = List[B]
 class B(NamedTuple):
     x: str
-reveal_type(x[0].x) # N: Revealed type is 'builtins.str'
+reveal_type(x[0].x) # N: Revealed type is "builtins.str"
 [builtins fixtures/list.pyi]
 [out]
 
@@ -240,16 +240,16 @@ reveal_type(x[0].x) # N: Revealed type is 'builtins.str'
 from typing import List, Union, Dict
 x: JSON # E: Cannot resolve name "JSON" (possible cyclic definition)
 JSON = Union[int, str, List[JSON], Dict[str, JSON]] # E: Cannot resolve name "JSON" (possible cyclic definition)
-reveal_type(x) # N: Revealed type is 'Any'
+reveal_type(x) # N: Revealed type is "Any"
 if isinstance(x, list):
-    reveal_type(x) # N: Revealed type is 'builtins.list[Any]'
+    reveal_type(x) # N: Revealed type is "builtins.list[Any]"
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
 [case testForwardRefToTypeVar]
 
 from typing import TypeVar, List
-reveal_type(a)  # N: Revealed type is 'builtins.list[builtins.int]'
+reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
 a: A[int]
 A = List[T]
 T = TypeVar('T')
@@ -264,7 +264,7 @@ T = TypeVar('T')
 
 def f(x: T) -> List[T]:
     y: A[T]
-    reveal_type(y)  # N: Revealed type is 'builtins.list[T`-1]'
+    reveal_type(y)  # N: Revealed type is "builtins.list[T`-1]"
     return [x] + y
 
 A = List[T]
@@ -278,7 +278,7 @@ from typing import List, TypeVar
 def f() -> None:
     X = List[int]
     x: A[X]
-    reveal_type(x)  # N: Revealed type is 'builtins.list[builtins.list[builtins.int]]'
+    reveal_type(x)  # N: Revealed type is "builtins.list[builtins.list[builtins.int]]"
 
 T = TypeVar('T')
 A = List[T]
@@ -289,9 +289,9 @@ A = List[T]
 from typing import Union
 void = type(None)
 x: void
-reveal_type(x)  # N: Revealed type is 'None'
+reveal_type(x)  # N: Revealed type is "None"
 y: Union[int, void]
-reveal_type(y)  # N: Revealed type is 'Union[builtins.int, None]'
+reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
 [builtins fixtures/bool.pyi]
 
 [case testNoneAliasStrict]
@@ -311,8 +311,8 @@ C = Callable
 T = Tuple
 c: C
 t: T
-reveal_type(c)  # N: Revealed type is 'def (*Any, **Any) -> Any'
-reveal_type(t)  # N: Revealed type is 'builtins.tuple[Any]'
+reveal_type(c)  # N: Revealed type is "def (*Any, **Any) -> Any"
+reveal_type(t)  # N: Revealed type is "builtins.tuple[Any]"
 bad: C[int]  # E: Bad number of arguments for type alias, expected: 0, given: 1
 also_bad: T[int]  # E: Bad number of arguments for type alias, expected: 0, given: 1
 [builtins fixtures/tuple.pyi]
@@ -330,21 +330,21 @@ class N:
     B = C[int]
 
 x: N.A[C]
-reveal_type(x)  # N: Revealed type is '__main__.C[__main__.C[Any]]'
+reveal_type(x)  # N: Revealed type is "__main__.C[__main__.C[Any]]"
 
 xx = N.A[C]()
-reveal_type(xx)  # N: Revealed type is '__main__.C[__main__.C*[Any]]'
+reveal_type(xx)  # N: Revealed type is "__main__.C[__main__.C*[Any]]"
 
 y = N.A()
-reveal_type(y)  # N: Revealed type is '__main__.C[Any]'
+reveal_type(y)  # N: Revealed type is "__main__.C[Any]"
 
 M = N
 b = M.A[int]()
-reveal_type(b)  # N: Revealed type is '__main__.C[builtins.int*]'
+reveal_type(b)  # N: Revealed type is "__main__.C[builtins.int*]"
 
 n: Type[N]
 w = n.B()
-reveal_type(w)  # N: Revealed type is '__main__.C[builtins.int]'
+reveal_type(w)  # N: Revealed type is "__main__.C[builtins.int]"
 [out]
 
 [case testTypeAliasesToNamedTuple]
@@ -361,25 +361,25 @@ class Cls:
 
 A1('no')  # E: Argument 1 to "C" has incompatible type "str"; expected "int"
 a1 = A1(1)
-reveal_type(a1)  # N: Revealed type is 'Tuple[builtins.int, fallback=nt.C]'
+reveal_type(a1)  # N: Revealed type is "Tuple[builtins.int, fallback=nt.C]"
 
 A2(0)  # E: Argument 1 to "D" has incompatible type "int"; expected "str"
 a2 = A2('yes')
-reveal_type(a2)  # N: Revealed type is 'Tuple[builtins.str, fallback=nt.D]'
+reveal_type(a2)  # N: Revealed type is "Tuple[builtins.str, fallback=nt.D]"
 
 a3 = A3()
-reveal_type(a3)  # N: Revealed type is 'Tuple[builtins.int, builtins.str, fallback=nt.E]'
+reveal_type(a3)  # N: Revealed type is "Tuple[builtins.int, builtins.str, fallback=nt.E]"
 
 Cls.A1('no')  # E: Argument 1 has incompatible type "str"; expected "int"
 ca1 = Cls.A1(1)
-reveal_type(ca1)  # N: Revealed type is 'Tuple[builtins.int, fallback=nt.C]'
+reveal_type(ca1)  # N: Revealed type is "Tuple[builtins.int, fallback=nt.C]"
 
 Cls.A2(0)  # E: Argument 1 has incompatible type "int"; expected "str"
 ca2 = Cls.A2('yes')
-reveal_type(ca2)  # N: Revealed type is 'Tuple[builtins.str, fallback=nt.D]'
+reveal_type(ca2)  # N: Revealed type is "Tuple[builtins.str, fallback=nt.D]"
 
 ca3 = Cls.A3()
-reveal_type(ca3)  # N: Revealed type is 'Tuple[builtins.int, builtins.str, fallback=nt.E]'
+reveal_type(ca3)  # N: Revealed type is "Tuple[builtins.int, builtins.str, fallback=nt.E]"
 [file nt.pyi]
 from typing import NamedTuple, Tuple
 
@@ -449,8 +449,8 @@ class C:
 
 class D(C): ...
 
-reveal_type(D.meth(1))  # N: Revealed type is 'Union[__main__.D*, builtins.int]'
-reveal_type(D().meth(1))  # N: Revealed type is 'Union[__main__.D*, builtins.int]'
+reveal_type(D.meth(1))  # N: Revealed type is "Union[__main__.D*, builtins.int]"
+reveal_type(D().meth(1))  # N: Revealed type is "Union[__main__.D*, builtins.int]"
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -496,9 +496,9 @@ MYPY = False
 if MYPY:
     from t2 import A
 x: A
-reveal_type(x)  # N: Revealed type is 't2.D'
+reveal_type(x)  # N: Revealed type is "t2.D"
 
-reveal_type(A)  # N: Revealed type is 'def () -> t2.D'
+reveal_type(A)  # N: Revealed type is "def () -> t2.D"
 A()
 [file t2.py]
 import t
@@ -517,22 +517,22 @@ U = TypeVar('U')
 AnInt = FlexibleAlias[T, int]
 
 x: AnInt[str]
-reveal_type(x)  # N: Revealed type is 'builtins.int'
+reveal_type(x)  # N: Revealed type is "builtins.int"
 
 TwoArgs = FlexibleAlias[Tuple[T, U], bool]
 TwoArgs2 = FlexibleAlias[Tuple[T, U], List[U]]
 
 def welp(x: TwoArgs[str, int]) -> None:
-    reveal_type(x)  # N: Revealed type is 'builtins.bool'
+    reveal_type(x)  # N: Revealed type is "builtins.bool"
 
 def welp2(x: TwoArgs2[str, int]) -> None:
-    reveal_type(x)  # N: Revealed type is 'builtins.list[builtins.int]'
+    reveal_type(x)  # N: Revealed type is "builtins.list[builtins.int]"
 
 
 Id = FlexibleAlias[T, T]
 
 def take_id(x: Id[int]) -> None:
-    reveal_type(x)  # N: Revealed type is 'builtins.int'
+    reveal_type(x)  # N: Revealed type is "builtins.int"
 
 def id(x: Id[T]) -> T:
     return x
@@ -540,16 +540,16 @@ def id(x: Id[T]) -> T:
 # TODO: This doesn't work and maybe it should?
 # Indirection = AnInt[T]
 # y: Indirection[str]
-# reveal_type(y)  # E : Revealed type is 'builtins.int'
+# reveal_type(y)  # E : Revealed type is "builtins.int"
 
 # But this does
 Indirection2 = FlexibleAlias[T, AnInt[T]]
 z: Indirection2[str]
-reveal_type(z)  # N: Revealed type is 'builtins.int'
+reveal_type(z)  # N: Revealed type is "builtins.int"
 
 Indirection3 = FlexibleAlias[Tuple[T, U], AnInt[T]]
 w: Indirection3[str, int]
-reveal_type(w)  # N: Revealed type is 'builtins.int'
+reveal_type(w)  # N: Revealed type is "builtins.int"
 
 [builtins fixtures/dict.pyi]
 
@@ -569,10 +569,10 @@ else:
 class A:
     x: Bogus[str]
 
-reveal_type(A().x)  # N: Revealed type is 'Any'
+reveal_type(A().x)  # N: Revealed type is "Any"
 
 def foo(x: Bogus[int]) -> None:
-    reveal_type(x)  # N: Revealed type is 'Any'
+    reveal_type(x)  # N: Revealed type is "Any"
 
 [builtins fixtures/dict.pyi]
 
@@ -592,10 +592,10 @@ else:
 class A:
     x: Bogus[str]
 
-reveal_type(A().x)  # N: Revealed type is 'builtins.str'
+reveal_type(A().x)  # N: Revealed type is "builtins.str"
 
 def foo(x: Bogus[int]) -> None:
-    reveal_type(x)  # N: Revealed type is 'builtins.int'
+    reveal_type(x)  # N: Revealed type is "builtins.int"
 
 [builtins fixtures/dict.pyi]
 
@@ -604,7 +604,7 @@ C = C
 class C:  # type: ignore
     pass
 x: C
-reveal_type(x)  # N: Revealed type is '__main__.C'
+reveal_type(x)  # N: Revealed type is "__main__.C"
 [out]
 
 [case testOverrideByIdemAliasCorrectTypeReversed]
@@ -612,14 +612,14 @@ class C:
     pass
 C = C  # type: ignore
 x: C
-reveal_type(x)  # N: Revealed type is '__main__.C'
+reveal_type(x)  # N: Revealed type is "__main__.C"
 [out]
 
 [case testOverrideByIdemAliasCorrectTypeImported]
 from other import C as B
 C = B
 x: C
-reveal_type(x)  # N: Revealed type is 'other.C'
+reveal_type(x)  # N: Revealed type is "other.C"
 [file other.py]
 class C:
     pass
@@ -635,7 +635,7 @@ except BaseException:
 try:
     pass
 except E as e:
-    reveal_type(e)  # N: Revealed type is '__main__.E'
+    reveal_type(e)  # N: Revealed type is "__main__.E"
 [builtins fixtures/exception.pyi]
 [out]
 
@@ -655,7 +655,7 @@ w: O.In
 x: I.Inner
 y: OI.Inner
 z: B.In
-reveal_type(w)  # N: Revealed type is '__main__.Out.In'
-reveal_type(x)  # N: Revealed type is '__main__.Out.In.Inner'
-reveal_type(y)  # N: Revealed type is '__main__.Out.In.Inner'
-reveal_type(z)  # N: Revealed type is '__main__.Out.In'
+reveal_type(w)  # N: Revealed type is "__main__.Out.In"
+reveal_type(x)  # N: Revealed type is "__main__.Out.In.Inner"
+reveal_type(y)  # N: Revealed type is "__main__.Out.In.Inner"
+reveal_type(z)  # N: Revealed type is "__main__.Out.In"

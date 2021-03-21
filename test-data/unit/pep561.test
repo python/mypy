@@ -9,7 +9,7 @@ reveal_type(a)
 \[mypy]
 ignore_missing_imports = True
 [out]
-testTypedPkgNoSitePkgsIgnoredImports.py:6: note: Revealed type is 'Any'
+testTypedPkgNoSitePkgsIgnoredImports.py:6: note: Revealed type is "Any"
 
 [case testTypedPkgSimple]
 # pkgs: typedpkg
@@ -18,7 +18,7 @@ from typedpkg import dne
 a = ex([''])
 reveal_type(a)
 [out]
-testTypedPkgSimple.py:5: note: Revealed type is 'builtins.tuple[builtins.str]'
+testTypedPkgSimple.py:5: note: Revealed type is "builtins.tuple[builtins.str]"
 
 [case testTypedPkgSimplePackageSearchPath]
 # pkgs: typedpkg
@@ -38,7 +38,7 @@ no_site_packages=True
 testTypedPkg_config_nositepackages.py:2: error: Cannot find implementation or library stub for module named "typedpkg.sample"
 testTypedPkg_config_nositepackages.py:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 testTypedPkg_config_nositepackages.py:3: error: Cannot find implementation or library stub for module named "typedpkg"
-testTypedPkg_config_nositepackages.py:5: note: Revealed type is 'Any'
+testTypedPkg_config_nositepackages.py:5: note: Revealed type is "Any"
 
 [case testTypedPkg_args_nositepackages]
 # pkgs: typedpkg
@@ -51,7 +51,7 @@ reveal_type(a)
 testTypedPkg_args_nositepackages.py:3: error: Cannot find implementation or library stub for module named "typedpkg.sample"
 testTypedPkg_args_nositepackages.py:3: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 testTypedPkg_args_nositepackages.py:4: error: Cannot find implementation or library stub for module named "typedpkg"
-testTypedPkg_args_nositepackages.py:6: note: Revealed type is 'Any'
+testTypedPkg_args_nositepackages.py:6: note: Revealed type is "Any"
 
 [case testTypedPkgStubs]
 # pkgs: typedpkg-stubs
@@ -61,7 +61,7 @@ a = ex([''])
 reveal_type(a)
 [out]
 testTypedPkgStubs.py:3: error: Module 'typedpkg' has no attribute 'dne'
-testTypedPkgStubs.py:5: note: Revealed type is 'builtins.list[builtins.str]'
+testTypedPkgStubs.py:5: note: Revealed type is "builtins.list[builtins.str]"
 
 [case testStubPrecedence]
 # pkgs: typedpkg, typedpkg-stubs
@@ -70,7 +70,7 @@ from typedpkg import dne
 a = ex([''])
 reveal_type(a)
 [out]
-testStubPrecedence.py:5: note: Revealed type is 'builtins.list[builtins.str]'
+testStubPrecedence.py:5: note: Revealed type is "builtins.list[builtins.str]"
 
 [case testTypedPkgStubs_python2]
 # pkgs: typedpkg-stubs
@@ -80,7 +80,7 @@ a = ex([''])
 reveal_type(a)
 [out]
 testTypedPkgStubs_python2.py:3: error: Module 'typedpkg' has no attribute 'dne'
-testTypedPkgStubs_python2.py:5: note: Revealed type is 'builtins.list[builtins.str]'
+testTypedPkgStubs_python2.py:5: note: Revealed type is "builtins.list[builtins.str]"
 
 [case testTypedPkgSimple_python2]
 # pkgs: typedpkg
@@ -89,7 +89,7 @@ from typedpkg import dne
 a = ex([''])
 reveal_type(a)
 [out]
-testTypedPkgSimple_python2.py:5: note: Revealed type is 'builtins.tuple[builtins.str]'
+testTypedPkgSimple_python2.py:5: note: Revealed type is "builtins.tuple[builtins.str]"
 
 [case testTypedPkgSimpleEgg]
 # pkgs: typedpkg; no-pip
@@ -98,7 +98,7 @@ from typedpkg import dne
 a = ex([''])
 reveal_type(a)
 [out]
-testTypedPkgSimpleEgg.py:5: note: Revealed type is 'builtins.tuple[builtins.str]'
+testTypedPkgSimpleEgg.py:5: note: Revealed type is "builtins.tuple[builtins.str]"
 
 [case testTypedPkgSimpleEditable]
 # pkgs: typedpkg; editable
@@ -107,7 +107,7 @@ from typedpkg import dne
 a = ex([''])
 reveal_type(a)
 [out]
-testTypedPkgSimpleEditable.py:5: note: Revealed type is 'builtins.tuple[builtins.str]'
+testTypedPkgSimpleEditable.py:5: note: Revealed type is "builtins.tuple[builtins.str]"
 
 [case testTypedPkgSimpleEditableEgg]
 # pkgs: typedpkg; editable; no-pip
@@ -116,7 +116,7 @@ from typedpkg import dne
 a = ex([''])
 reveal_type(a)
 [out]
-testTypedPkgSimpleEditableEgg.py:5: note: Revealed type is 'builtins.tuple[builtins.str]'
+testTypedPkgSimpleEditableEgg.py:5: note: Revealed type is "builtins.tuple[builtins.str]"
 
 [case testTypedPkgNamespaceImportFrom]
 # pkgs: typedpkg, typedpkg_ns

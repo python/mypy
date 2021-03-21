@@ -397,8 +397,8 @@ follow_imports = skip
 [file a.py]
 /  # No error reported
 [out]
-main.py:2: note: Revealed type is 'Any'
-main.py:4: note: Revealed type is 'Any'
+main.py:2: note: Revealed type is "Any"
+main.py:4: note: Revealed type is "Any"
 
 [case testConfigFollowImportsError]
 # cmd: mypy main.py
@@ -415,8 +415,8 @@ follow_imports = error
 [out]
 main.py:1: error: Import of 'a' ignored
 main.py:1: note: (Using --follow-imports=error, module not passed on command line)
-main.py:2: note: Revealed type is 'Any'
-main.py:4: note: Revealed type is 'Any'
+main.py:2: note: Revealed type is "Any"
+main.py:4: note: Revealed type is "Any"
 
 [case testConfigFollowImportsSelective]
 # cmd: mypy main.py
@@ -453,10 +453,10 @@ bla bla
 normal.py:2: error: Unsupported operand types for + ("int" and "str")
 main.py:4: error: Import of 'error' ignored
 main.py:4: note: (Using --follow-imports=error, module not passed on command line)
-main.py:5: note: Revealed type is 'builtins.int'
-main.py:6: note: Revealed type is 'builtins.int'
-main.py:7: note: Revealed type is 'Any'
-main.py:8: note: Revealed type is 'Any'
+main.py:5: note: Revealed type is "builtins.int"
+main.py:6: note: Revealed type is "builtins.int"
+main.py:7: note: Revealed type is "Any"
+main.py:8: note: Revealed type is "Any"
 
 [case testConfigFollowImportsInvalid]
 # cmd: mypy main.py
@@ -479,7 +479,7 @@ ignore_missing_imports = False
 [out]
 main.py:1: error: Cannot find implementation or library stub for module named "missing"
 main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-main.py:2: note: Revealed type is 'Any'
+main.py:2: note: Revealed type is "Any"
 
 [case testConfigSilentMissingImportsOn]
 # cmd: mypy main.py
@@ -490,7 +490,7 @@ reveal_type(missing.x)  # Expect Any
 \[mypy]
 ignore_missing_imports = True
 [out]
-main.py:2: note: Revealed type is 'Any'
+main.py:2: note: Revealed type is "Any"
 
 
 [case testFailedImportOnWrongCWD]
@@ -633,15 +633,15 @@ python_version = 3.6
 [file int_pow.py]
 a = 1
 b = a + 2
-reveal_type(a**0) # N: Revealed type is 'builtins.int'
-reveal_type(a**1) # N: Revealed type is 'builtins.int'
-reveal_type(a**2) # N: Revealed type is 'builtins.int'
-reveal_type(a**-0) # N: Revealed type is 'builtins.int'
-reveal_type(a**-1) # N: Revealed type is 'builtins.float'
-reveal_type(a**(-2)) # N: Revealed type is 'builtins.float'
-reveal_type(a**b) # N: Revealed type is 'Any'
-reveal_type(a.__pow__(2)) # N: Revealed type is 'builtins.int'
-reveal_type(a.__pow__(a)) # N: Revealed type is 'Any'
+reveal_type(a**0) # N: Revealed type is "builtins.int"
+reveal_type(a**1) # N: Revealed type is "builtins.int"
+reveal_type(a**2) # N: Revealed type is "builtins.int"
+reveal_type(a**-0) # N: Revealed type is "builtins.int"
+reveal_type(a**-1) # N: Revealed type is "builtins.float"
+reveal_type(a**(-2)) # N: Revealed type is "builtins.float"
+reveal_type(a**b) # N: Revealed type is "Any"
+reveal_type(a.__pow__(2)) # N: Revealed type is "builtins.int"
+reveal_type(a.__pow__(a)) # N: Revealed type is "Any"
 a.__pow__() # E: All overload variants of "__pow__" of "int" require at least one argument \
             # N: Possible overload variants: \
             # N:     def __pow__(self, Literal[2], Optional[int] = ...) -> int \

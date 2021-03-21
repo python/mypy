@@ -1774,7 +1774,7 @@ class B:
 [out]
 ==
 ==
-a.py:4: note: Revealed type is 'builtins.int'
+a.py:4: note: Revealed type is "builtins.int"
 
 [case testStripRevealType]
 import a
@@ -1784,9 +1784,9 @@ def f() -> int: pass
 [file a.py.2]
 def f() -> str: pass
 [out]
-main:2: note: Revealed type is 'builtins.int'
+main:2: note: Revealed type is "builtins.int"
 ==
-main:2: note: Revealed type is 'builtins.str'
+main:2: note: Revealed type is "builtins.str"
 
 [case testDecoratorTypeAfterReprocessing]
 import a
@@ -1807,13 +1807,13 @@ def f() -> Iterator[None]:
 2: <b>, __main__
 3: <b>, __main__, a
 [out]
-main:2: note: Revealed type is 'contextlib.GeneratorContextManager[None]'
+main:2: note: Revealed type is "contextlib.GeneratorContextManager[None]"
 ==
 a.py:3: error: Cannot find implementation or library stub for module named "b"
 a.py:3: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-main:2: note: Revealed type is 'contextlib.GeneratorContextManager[None]'
+main:2: note: Revealed type is "contextlib.GeneratorContextManager[None]"
 ==
-main:2: note: Revealed type is 'contextlib.GeneratorContextManager[None]'
+main:2: note: Revealed type is "contextlib.GeneratorContextManager[None]"
 
 [case testDecoratorSpecialCase1]
 import a
@@ -2565,13 +2565,13 @@ class Wrapper:
     def foo(cls, x: str) -> str: ...
 [builtins fixtures/classmethod.pyi]
 [out]
-main:3: note: Revealed type is 'builtins.int'
+main:3: note: Revealed type is "builtins.int"
 ==
 main:3: error: No overload variant of "foo" of "Wrapper" matches argument type "int"
 main:3: note: Possible overload variants:
 main:3: note:     def foo(cls: Wrapper, x: int) -> int
 main:3: note:     def foo(cls: Wrapper, x: str) -> str
-main:3: note: Revealed type is 'Any'
+main:3: note: Revealed type is "Any"
 
 [case testRefreshGenericClass]
 from typing import TypeVar, Generic
@@ -2737,9 +2737,9 @@ from typing import List
 def f() -> str: ...
 [builtins fixtures/dict.pyi]
 [out]
-main:2: note: Revealed type is 'builtins.dict[builtins.int, builtins.int]'
+main:2: note: Revealed type is "builtins.dict[builtins.int, builtins.int]"
 ==
-main:2: note: Revealed type is 'builtins.dict[builtins.int, builtins.str]'
+main:2: note: Revealed type is "builtins.dict[builtins.int, builtins.str]"
 
 [case testRefreshPartialTypeInferredAttributeAssign]
 from c import C
@@ -2759,9 +2759,9 @@ from typing import List
 def f() -> List[str]: ...
 [builtins fixtures/list.pyi]
 [out]
-main:2: note: Revealed type is 'builtins.list[builtins.int]'
+main:2: note: Revealed type is "builtins.list[builtins.int]"
 ==
-main:2: note: Revealed type is 'builtins.list[builtins.str]'
+main:2: note: Revealed type is "builtins.list[builtins.str]"
 
 [case testRefreshPartialTypeInferredAttributeAppend]
 from c import C
@@ -2779,9 +2779,9 @@ def f() -> int: ...
 def f() -> str: ...
 [builtins fixtures/list.pyi]
 [out]
-main:2: note: Revealed type is 'builtins.list[builtins.int]'
+main:2: note: Revealed type is "builtins.list[builtins.int]"
 ==
-main:2: note: Revealed type is 'builtins.list[builtins.str]'
+main:2: note: Revealed type is "builtins.list[builtins.str]"
 
 [case testRefreshTryExcept]
 import a
@@ -3883,9 +3883,9 @@ def f(x: a.A):
 reveal_type(f)
 [builtins fixtures/dict.pyi]
 [out]
-b.py:4: note: Revealed type is 'def (x: builtins.str) -> Any'
+b.py:4: note: Revealed type is "def (x: builtins.str) -> Any"
 ==
-b.py:4: note: Revealed type is 'def (x: builtins.dict[Any, builtins.int]) -> Any'
+b.py:4: note: Revealed type is "def (x: builtins.dict[Any, builtins.int]) -> Any"
 
 [case testAliasFineChangedNumberOfTypeVars]
 import b
@@ -7826,7 +7826,7 @@ A = NamedTuple('A', F)  # type: ignore
 [builtins fixtures/list.pyi]
 [out]
 ==
-b.py:3: note: Revealed type is 'Tuple[, fallback=a.A]'
+b.py:3: note: Revealed type is "Tuple[, fallback=a.A]"
 
 [case testImportOnTopOfAlias1]
 from a import A
@@ -8452,8 +8452,8 @@ m.py:4: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#varia
 ==
 m.py:4: error: Variable "a.A" is not valid as a type
 m.py:4: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
-m.py:5: note: Revealed type is 'Any'
-m.py:7: note: Revealed type is 'Any'
+m.py:5: note: Revealed type is "Any"
+m.py:7: note: Revealed type is "Any"
 
 [case testAliasForwardFunctionDirect]
 # flags: --ignore-missing-imports
@@ -8499,12 +8499,12 @@ from typing_extensions import Literal
 x: Literal[1] = 2
 [builtins fixtures/tuple.pyi]
 [out]
-main:2: note: Revealed type is 'builtins.int'
+main:2: note: Revealed type is "builtins.int"
 ==
-main:2: note: Revealed type is 'Literal[1]'
+main:2: note: Revealed type is "Literal[1]"
 ==
 mod.py:2: error: Incompatible types in assignment (expression has type "Literal[2]", variable has type "Literal[1]")
-main:2: note: Revealed type is 'Literal[1]'
+main:2: note: Revealed type is "Literal[1]"
 
 [case testLiteralFineGrainedFunctionConversion]
 from mod import foo
@@ -8563,9 +8563,9 @@ def foo(x: Literal['bar']) -> int: ...
 def foo(x): pass
 [builtins fixtures/tuple.pyi]
 [out]
-main:2: note: Revealed type is 'builtins.str'
+main:2: note: Revealed type is "builtins.str"
 ==
-main:2: note: Revealed type is 'Literal['foo']'
+main:2: note: Revealed type is "Literal['foo']"
 
 [case testLiteralFineGrainedChainedDefinitions]
 from mod1 import foo
@@ -8648,9 +8648,9 @@ from typing_extensions import Literal
 bar: Literal[3] = 3
 [builtins fixtures/tuple.pyi]
 [out]
-main:2: note: Revealed type is 'builtins.int*'
+main:2: note: Revealed type is "builtins.int*"
 ==
-main:2: note: Revealed type is 'Literal[3]'
+main:2: note: Revealed type is "Literal[3]"
 
 [case testLiteralFineGrainedChainedViaFinal]
 from mod1 import foo
@@ -8696,11 +8696,11 @@ from typing_extensions import Literal
 def bar() -> Literal[b"foo"]: pass
 [builtins fixtures/tuple.pyi]
 [out]
-main:2: note: Revealed type is 'Literal['foo']'
+main:2: note: Revealed type is "Literal['foo']"
 ==
-main:2: note: Revealed type is 'Literal['foo']'
+main:2: note: Revealed type is "Literal['foo']"
 ==
-main:2: note: Revealed type is 'Literal[b'foo']'
+main:2: note: Revealed type is "Literal[b'foo']"
 
 [case testLiteralFineGrainedStringConversionPython2]
 # flags: --python-version 2.7
@@ -8737,15 +8737,15 @@ def bar():
     # type: () -> Literal[u"foo"]
     pass
 [out]
-main:3: note: Revealed type is 'Literal['foo']'
+main:3: note: Revealed type is "Literal['foo']"
 ==
-main:3: note: Revealed type is 'Literal['foo']'
+main:3: note: Revealed type is "Literal['foo']"
 ==
-main:3: note: Revealed type is 'Literal[u'foo']'
+main:3: note: Revealed type is "Literal[u'foo']"
 ==
-main:3: note: Revealed type is 'Literal['foo']'
+main:3: note: Revealed type is "Literal['foo']"
 ==
-main:3: note: Revealed type is 'Literal[u'foo']'
+main:3: note: Revealed type is "Literal[u'foo']"
 
 [case testReprocessModuleTopLevelWhileMethodDefinesAttr]
 import a
@@ -9333,7 +9333,7 @@ x: List[C] = [a.f(), a.f()]
 
 [out]
 ==
-b.py:7: note: Revealed type is 'def () -> b.C[Any]'
+b.py:7: note: Revealed type is "def () -> b.C[Any]"
 [builtins fixtures/list.pyi]
 
 [case testGenericChange2]
@@ -9415,7 +9415,7 @@ reveal_type(Foo().x)
 [builtins fixtures/isinstance.pyi]
 [out]
 ==
-b.py:2: note: Revealed type is 'a.<subclass of "A" and "B">'
+b.py:2: note: Revealed type is "a.<subclass of "A" and "B">"
 
 [case testIsInstanceAdHocIntersectionFineGrainedIncrementalIsInstanceChange]
 import c
@@ -9449,9 +9449,9 @@ from b import y
 reveal_type(y)
 [builtins fixtures/isinstance.pyi]
 [out]
-c.py:2: note: Revealed type is 'a.<subclass of "A" and "B">'
+c.py:2: note: Revealed type is "a.<subclass of "A" and "B">"
 ==
-c.py:2: note: Revealed type is 'a.<subclass of "A" and "C">'
+c.py:2: note: Revealed type is "a.<subclass of "A" and "C">"
 
 [case testIsInstanceAdHocIntersectionFineGrainedIncrementalUnderlyingObjChang]
 import c
@@ -9477,9 +9477,9 @@ from b import y
 reveal_type(y)
 [builtins fixtures/isinstance.pyi]
 [out]
-c.py:2: note: Revealed type is 'b.<subclass of "A" and "B">'
+c.py:2: note: Revealed type is "b.<subclass of "A" and "B">"
 ==
-c.py:2: note: Revealed type is 'b.<subclass of "A" and "C">'
+c.py:2: note: Revealed type is "b.<subclass of "A" and "C">"
 
 [case testIsInstanceAdHocIntersectionFineGrainedIncrementalIntersectionToUnreachable]
 import c
@@ -9510,9 +9510,9 @@ from b import z
 reveal_type(z)
 [builtins fixtures/isinstance.pyi]
 [out]
-c.py:2: note: Revealed type is 'a.<subclass of "A" and "B">'
+c.py:2: note: Revealed type is "a.<subclass of "A" and "B">"
 ==
-c.py:2: note: Revealed type is 'a.A'
+c.py:2: note: Revealed type is "a.A"
 
 [case testIsInstanceAdHocIntersectionFineGrainedIncrementalUnreachaableToIntersection]
 import c
@@ -9543,9 +9543,9 @@ from b import z
 reveal_type(z)
 [builtins fixtures/isinstance.pyi]
 [out]
-c.py:2: note: Revealed type is 'a.A'
+c.py:2: note: Revealed type is "a.A"
 ==
-c.py:2: note: Revealed type is 'a.<subclass of "A" and "B">'
+c.py:2: note: Revealed type is "a.<subclass of "A" and "B">"
 
 [case testStubFixupIssues]
 [file a.py]

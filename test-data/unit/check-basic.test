@@ -401,7 +401,7 @@ def foo(
 [case testNoneHasBool]
 none = None
 b = none.__bool__()
-reveal_type(b)  # N: Revealed type is 'builtins.bool'
+reveal_type(b)  # N: Revealed type is "builtins.bool"
 [builtins fixtures/bool.pyi]
 
 [case testAssignmentInvariantNoteForList]

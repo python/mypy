@@ -1065,7 +1065,7 @@ class MessageBuilder:
         self.fail('Invalid signature "{}" for "{}"'.format(func_type, method_name), context)
 
     def reveal_type(self, typ: Type, context: Context) -> None:
-        self.note('Revealed type is \'{}\''.format(typ), context)
+        self.note('Revealed type is "{}"'.format(typ), context)
 
     def reveal_locals(self, type_map: Dict[str, Optional[Type]], context: Context) -> None:
         # To ensure that the output is predictable on Python < 3.6,

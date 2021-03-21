@@ -344,8 +344,8 @@ class C(Generic[X]):
         self.x = x  # type: X
 ci: C[int]
 cs: C[str]
-reveal_type(ci.x) # N: Revealed type is 'builtins.int*'
-reveal_type(cs.x) # N: Revealed type is 'builtins.str*'
+reveal_type(ci.x) # N: Revealed type is "builtins.int*"
+reveal_type(cs.x) # N: Revealed type is "builtins.str*"
 
 [case testAttributeInGenericTypeWithTypevarValuesUsingInference1]
 from typing import TypeVar, Generic
@@ -355,8 +355,8 @@ class C(Generic[X]):
         self.x = x # E: Need type annotation for "x"
 ci: C[int]
 cs: C[str]
-reveal_type(ci.x) # N: Revealed type is 'Any'
-reveal_type(cs.x) # N: Revealed type is 'Any'
+reveal_type(ci.x) # N: Revealed type is "Any"
+reveal_type(cs.x) # N: Revealed type is "Any"
 
 [case testAttributeInGenericTypeWithTypevarValuesUsingInference2]
 from typing import TypeVar, Generic
@@ -364,11 +364,11 @@ X = TypeVar('X', int, str)
 class C(Generic[X]):
     def f(self, x: X) -> None:
         self.x = 1
-        reveal_type(self.x) # N: Revealed type is 'builtins.int'
+        reveal_type(self.x) # N: Revealed type is "builtins.int"
 ci: C[int]
 cs: C[str]
-reveal_type(ci.x) # N: Revealed type is 'builtins.int'
-reveal_type(cs.x) # N: Revealed type is 'builtins.int'
+reveal_type(ci.x) # N: Revealed type is "builtins.int"
+reveal_type(cs.x) # N: Revealed type is "builtins.int"
 
 [case testAttributeInGenericTypeWithTypevarValuesUsingInference3]
 from typing import TypeVar, Generic
@@ -379,8 +379,8 @@ class C(Generic[X]):
         self.y = self.x # E: Need type annotation for "y"
 ci: C[int]
 cs: C[str]
-reveal_type(ci.y) # N: Revealed type is 'Any'
-reveal_type(cs.y) # N: Revealed type is 'Any'
+reveal_type(ci.y) # N: Revealed type is "Any"
+reveal_type(cs.y) # N: Revealed type is "Any"
 
 [case testInferredAttributeInGenericClassBodyWithTypevarValues]
 from typing import TypeVar, Generic
@@ -482,9 +482,9 @@ class A:
         self.x = x # E: Need type annotation for "x"
         self.y = [x] # E: Need type annotation for "y"
         self.z = 1
-reveal_type(A().x)  # N: Revealed type is 'Any'
-reveal_type(A().y)  # N: Revealed type is 'Any'
-reveal_type(A().z)  # N: Revealed type is 'builtins.int'
+reveal_type(A().x)  # N: Revealed type is "Any"
+reveal_type(A().y)  # N: Revealed type is "Any"
+reveal_type(A().z)  # N: Revealed type is "builtins.int"
 [builtins fixtures/list.pyi]
 
 
