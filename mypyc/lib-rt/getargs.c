@@ -17,7 +17,7 @@
  *    Unlike most format specifiers, the caller takes ownership of these objects
  *    and is responsible for decrefing them.
  *  - All arguments must use the 'O' format.
- *  - There's minimal error checking of format strings, they are are generated
+ *  - There's minimal error checking of format strings. They are generated
  *    programmatically and can be assumed valid.
  */
 
