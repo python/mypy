@@ -754,7 +754,7 @@ class MessageBuilder:
         self.fail("Unpacking a string is disallowed", context)
 
     def type_not_iterable(self, type: Type, context: Context) -> None:
-        self.fail('\'{}\' object is not iterable'.format(type), context)
+        self.fail('"{}" object is not iterable'.format(type), context)
 
     def incompatible_operator_assignment(self, op: str,
                                          context: Context) -> None:

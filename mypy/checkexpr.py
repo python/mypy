@@ -3801,8 +3801,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 true_map, false_map = self.chk.find_isinstance_check(condition)
 
                 if true_map:
-                    for var, type in true_map.items():
-                        self.chk.binder.put(var, type)
+                    self.chk.push_type_map(true_map)
 
                 if codes.REDUNDANT_EXPR in self.chk.options.enabled_error_codes:
                     if true_map is None:

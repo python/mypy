@@ -556,7 +556,7 @@ reveal_type(d1)  # N: Revealed type is 'Union[Any, builtins.float]'
 reveal_type(d2)  # N: Revealed type is 'Union[Any, builtins.float]'
 
 e: Union[Any, Tuple[float, float], int]
-(e1, e2) = e  # E: 'builtins.int' object is not iterable
+(e1, e2) = e  # E: "builtins.int" object is not iterable
 [builtins fixtures/tuple.pyi]
 
 [case testUnionMultiassignNotJoin]
@@ -694,7 +694,7 @@ reveal_type(d) # N: Revealed type is 'builtins.list[builtins.int*]'
 from typing import Union
 bad: Union[int, str]
 
-x, y = bad # E: 'builtins.int' object is not iterable \
+x, y = bad # E: "builtins.int" object is not iterable \
            # E: Unpacking a string is disallowed
 reveal_type(x) # N: Revealed type is 'Any'
 reveal_type(y) # N: Revealed type is 'Any'

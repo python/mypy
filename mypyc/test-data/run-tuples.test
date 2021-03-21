@@ -97,6 +97,7 @@ assert f(Sub(3, 2)) == 3
 
 [case testTupleOps]
 from typing import Tuple, List, Any, Optional
+from typing_extensions import Final
 
 def f() -> Tuple[()]:
     return ()
@@ -195,3 +196,8 @@ def test_sequence_generator() -> None:
     a = tuple(f8(x) for x in source_fixed_length_tuple)
     assert a == (False, True, False, True)
 
+TUPLE: Final[Tuple[str, ...]] = ('x', 'y')
+
+def test_final_boxed_tuple() -> None:
+    t = TUPLE
+    assert t == ('x', 'y')

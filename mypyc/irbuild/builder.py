@@ -345,8 +345,12 @@ class IRBuilder:
         # Currently the stack always has at least two items: dummy and top-level.
         return len(self.fn_infos) <= 2
 
-    def init_final_static(self, lvalue: Lvalue, rvalue_reg: Value,
-                          class_name: Optional[str] = None) -> None:
+    def init_final_static(self,
+                          lvalue: Lvalue,
+                          rvalue_reg: Value,
+                          class_name: Optional[str] = None,
+                          *,
+                          type_override: Optional[RType] = None) -> None:
         assert isinstance(lvalue, NameExpr)
         assert isinstance(lvalue.node, Var)
         if lvalue.node.final_value is None:
@@ -355,8 +359,9 @@ class IRBuilder:
             else:
                 name = '{}.{}'.format(class_name, lvalue.name)
             assert name is not None, "Full name not set for variable"
-            self.final_names.append((name, rvalue_reg.type))
-            self.add(InitStatic(rvalue_reg, name, self.module_name))
+            coerced = self.coerce(rvalue_reg, type_override or self.node_type(lvalue), lvalue.line)
+            self.final_names.append((name, coerced.type))
+            self.add(InitStatic(coerced, name, self.module_name))
 
     def load_final_static(self, fullname: str, typ: RType, line: int,
                           error_name: Optional[str] = None) -> Value:
