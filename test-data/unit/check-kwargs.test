@@ -498,20 +498,21 @@ from typing import Mapping, Any, Union
 from typing_extensions import Literal
 def f(a=None, b=None, **kwargs) -> None: pass
 
---s: Mapping[Literal[3], int] = {3: 2}
---f(**s) # E: Keywords must be strings
+s = {3: 2} # type: Mapping[Literal[3], int]
+f(**s) # E: Keywords must be strings
 
-a: Mapping[Literal['b'], int] = {'b':2}
---f(**a)
+a = {'b':2} # type: Mapping[Literal['b'], int]
+f(**a)
 
-b: Mapping[Literal['c'], int] = {'b':2}
+b = {'b':2} # type: Mapping[Literal['c'], int] \
+# E: Dict entry 0 has incompatible type "Literal['b']": "int"; expected "Literal['c']": "int"
 f(**b)
 
-c: Mapping[Literal['a','b'], Any] = {'a':2, 'b':1}
+c = {'a':2, 'b':1} # type: Mapping[Literal['a','b'], int]
 f(**c)
 
-d: Mapping[Literal['d'], int] = {'c':2}
+d = {'c':2} # type: Mapping[Literal['d'], int] \
+# E: Dict entry 0 has incompatible type "Literal['c']": "int"; expected "Literal['d']": "int"
+f(**d)
 
 [builtins fixtures/dict.pyi]
-
--- check for union literal,

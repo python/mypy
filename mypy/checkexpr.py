@@ -6,7 +6,7 @@ import itertools
 from typing import (
     Any, cast, Dict, Set, List, Tuple, Callable, Union, Optional, Sequence, Iterator
 )
-from typing_extensions import ClassVar, Final, overload, Literal
+from typing_extensions import ClassVar, Final, overload
 
 from mypy.errors import report_internal_error
 from mypy.typeanal import (
@@ -64,7 +64,7 @@ from mypy.plugin import (
 from mypy.typeops import (
     tuple_fallback, make_simplified_union, true_only, false_only, erase_to_union_or_bound,
     function_type, callable_type, try_getting_str_literals, custom_special_method,
-    is_literal_type_like,
+    is_literal_type_like, try_getting_str_literals_from_type,
 )
 import mypy.errorcodes as codes
 
@@ -3944,10 +3944,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 'typing.Mapping', [str_type,
                                    AnyType(TypeOfAny.special_form)]))
                     or
-                    (is_subtype(typ, self.chk.named_type('typing.Mapping')) and isinstance(typ.args[0], LiteralType)
-                     and isinstance(typ.args[0].value, str)))
-        # try_getting_literal(typ.args[0])
-        # try_getting_str_literals(typ.args[0], typ.args[0])
+                    (is_subtype(typ, self.chk.named_type('typing.Mapping')) and
+                    try_getting_str_literals_from_type(typ.args[0]) is not None))
+
         else:
             return (
                 is_subtype(typ, self.chk.named_generic_type(
@@ -3960,9 +3959,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     [self.named_type('builtins.unicode'),
                      AnyType(TypeOfAny.special_form)]))
                 or
-                (is_subtype(typ, self.chk.named_type('typing.Mapping'))
-                 and isinstance(typ.args[0], LiteralType)
-                 and isinstance(typ.args[0].value, str)))
+                (is_subtype(typ, self.chk.named_type('typing.Mapping')) and
+                 try_getting_str_literals_from_type(typ.args[0]) is not None))
 
     def has_member(self, typ: Type, member: str) -> bool:
         """Does type have member with the given name?"""
