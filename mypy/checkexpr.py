@@ -3943,7 +3943,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                    AnyType(TypeOfAny.special_form)]))
                     or
                     (is_subtype(typ, self.chk.named_type('typing.Mapping')) and
-                    try_getting_str_literals_from_type(typ.args[0]) is not None))
+                    try_getting_str_literals_from_type(typ.args[0])))
 
         else:
             return (
@@ -3958,7 +3958,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                      AnyType(TypeOfAny.special_form)]))
                 or
                 (is_subtype(typ, self.chk.named_type('typing.Mapping')) and
-                 try_getting_str_literals_from_type(typ.args[0]) is not None))
+                 try_getting_str_literals_from_type(typ.args[0])))
 
     def has_member(self, typ: Type, member: str) -> bool:
         """Does type have member with the given name?"""
