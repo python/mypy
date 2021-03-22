@@ -849,7 +849,6 @@ class MessageBuilder:
     def invalid_keyword_var_arg(self, typ: Type, is_mapping: bool, context: Context) -> None:
         typ = get_proper_type(typ)
         if isinstance(typ, Instance) and is_mapping:
-            import pdb; pdb.set_trace()
             self.fail('Keywords must be strings', context)
         else:
             suffix = ''

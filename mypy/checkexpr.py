@@ -3937,11 +3937,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def is_valid_keyword_var_arg(self, typ: Type) -> bool:
         """Is a type valid as a **kwargs argument?"""
-        import pdb; pdb.set_trace()
-        str_type = self.named_type('builtins.str')
         if self.chk.options.python_version[0] >= 3:
             return (is_subtype(typ, self.chk.named_generic_type(
-                'typing.Mapping', [str_type,
+                'typing.Mapping', [self.named_type('builtins.str'),
                                    AnyType(TypeOfAny.special_form)]))
                     or
                     (is_subtype(typ, self.chk.named_type('typing.Mapping')) and
@@ -3951,7 +3949,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return (
                 is_subtype(typ, self.chk.named_generic_type(
                     'typing.Mapping',
-                    [str_type,
+                    [self.named_type('builtins.str'),
                      AnyType(TypeOfAny.special_form)]))
                 or
                 is_subtype(typ, self.chk.named_generic_type(
