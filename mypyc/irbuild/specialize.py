@@ -248,7 +248,11 @@ def translate_next_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> 
 
 @specialize_function('builtins.isinstance')
 def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-    # Special case builtins.isinstance
+    # Special case for builtins.isinstance
+    # Prevent coercions on the thing we are checking the instance of - there is no need to coerce
+    # something to a new type before checking what type it is, and the coercion could lead to bugs.
+    builder.types[expr.args[0]] = AnyType(TypeOfAny.from_error)
+
     if (len(expr.args) == 2
             and expr.arg_kinds == [ARG_POS, ARG_POS]
             and isinstance(expr.args[1], (RefExpr, TupleExpr))):
