@@ -1442,7 +1442,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 elif actual_type.type.has_base('typing.Mapping'):
                     if messages:
                         args = try_getting_str_literals_from_type(actual_type.args[0])
-                        if nodes.ARG_STAR2 not in callee.arg_kinds:
+                        if args and nodes.ARG_STAR2 not in callee.arg_kinds:
                             messages.unexpected_keyword_argument(callee, args[0], actual_type.args[0], context)
                             is_unexpected_arg_error = True
                         elif args and nodes.ARG_POS in callee.arg_kinds and not all(arg in callee.arg_names for arg in args):
