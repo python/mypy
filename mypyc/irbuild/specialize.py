@@ -253,8 +253,8 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
             and isinstance(expr.args[1], (RefExpr, TupleExpr))):
         # Special case for builtins.isinstance
         # Prevent coercions on the thing we are checking the instance of - there is no need to
-        # coerceomething to a new type before checking what type it is, and the coercion could lead
-        # to bugs.
+        # coerce something to a new type before checking what type it is, and the coercion could
+        # lead to bugs.
         builder.types[expr.args[0]] = AnyType(TypeOfAny.from_error)
 
         irs = builder.flatten_classes(expr.args[1])
