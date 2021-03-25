@@ -22,11 +22,15 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
-    bool_rprimitive, is_dict_rprimitive
+    bool_rprimitive, is_dict_rprimitive, is_list_rprimitive, is_tuple_rprimitive
 )
 from mypyc.primitives.dict_ops import dict_keys_op, dict_values_op, dict_items_op
+from mypyc.primitives.tuple_ops import new_tuple_set_item_op
 from mypyc.irbuild.builder import IRBuilder
-from mypyc.irbuild.for_helpers import translate_list_comprehension, comprehension_helper
+from mypyc.irbuild.for_helpers import (
+    translate_list_comprehension, comprehension_helper,
+    for_loop_helper_with_index
+)
 
 
 # Specializers are attempted before compiling the arguments to the
@@ -135,10 +139,36 @@ def translate_safe_generator_call(
                     + [builder.accept(arg) for arg in expr.args[1:]]),
                 builder.node_type(expr), expr.line, expr.arg_kinds, expr.arg_names)
         else:
+            if callee.fullname == "builtins.tuple":
+                val = tuple_from_generator_helper(builder, expr.args[0])
+                if val is not None:
+                    return val
             return builder.call_refexpr_with_args(
                 expr, callee,
                 ([translate_list_comprehension(builder, expr.args[0])]
                     + [builder.accept(arg) for arg in expr.args[1:]]))
+    return None
+
+
+def tuple_from_generator_helper(builder: IRBuilder,
+                                gen: GeneratorExpr) -> Optional[Value]:
+
+    if len(gen.sequences) == 1 and len(gen.condlists[0]) == 0:
+        # Currently we only optimize for simplest generator expression
+        rtype = builder.node_type(gen.sequences[0])
+        if is_list_rprimitive(rtype) or is_tuple_rprimitive(rtype):
+            tuple_ops = builder.builder.new_tuple_with_length(builder.accept(gen.sequences[0]),
+                                                              gen.line)
+            item, expr = gen.indices[0], gen.sequences[0]
+
+            def set_tuple_item(item_index: Value) -> None:
+                e = builder.accept(gen.left_expr)
+                builder.call_c(new_tuple_set_item_op, [tuple_ops, item_index, e], gen.line)
+
+            for_loop_helper_with_index(builder, item, expr,
+                                       set_tuple_item, gen.line)
+
+            return tuple_ops
     return None
 
 

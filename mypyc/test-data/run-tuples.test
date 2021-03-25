@@ -180,6 +180,22 @@ def test_slicing() -> None:
     assert s[long_int:] == ()
     assert s[-long_int:-1] == ("f", "o", "o", "b", "a")
 
+def f8(val: int) -> bool:
+    return val % 2 == 0
+
+def test_sequence_generator() -> None:
+    source_list = [1, 2, 3]
+    a = tuple(f8(x) for x in source_list)
+    assert a == (False, True, False)
+
+    source_tuple: Tuple[int, ...] = (1, 2, 3)
+    a = tuple(f8(x) for x in source_tuple)
+    assert a == (False, True, False)
+
+    source_fixed_length_tuple = (1, 2, 3, 4)
+    a = tuple(f8(x) for x in source_fixed_length_tuple)
+    assert a == (False, True, False, True)
+
 TUPLE: Final[Tuple[str, ...]] = ('x', 'y')
 
 def test_final_boxed_tuple() -> None:
