@@ -157,6 +157,15 @@ def check_bitwise(x: int, y: int) -> None:
             check_or(ll, rr)
             check_xor(ll, rr)
 
+[case testIsinstanceNotBoolAndIsInt]
+def test_isinstance_not_bool_and_is_int(value: object) -> bool:
+    return not isinstance(value, bool) and isinstance(value, int)
+[file driver.py]
+from native import test_isinstance_not_bool_and_is_int
+assert test_isinstance_not_bool_and_is_int(True) == False
+assert test_isinstance_not_bool_and_is_int(1) == True
+
+
 SHIFT = 30
 DIGIT0a = 615729753
 DIGIT0b = 832796681
