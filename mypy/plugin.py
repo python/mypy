@@ -545,7 +545,7 @@ class Plugin(CommonPluginApi):
 
     def get_function_signature_hook(self, fullname: str
                                     ) -> Optional[Callable[[FunctionSigContext], CallableType]]:
-        """Adjust the signature a function.
+        """Adjust the signature of a function.
 
         This method is called before type checking a function call. Plugin
         may infer a better type for the function.
