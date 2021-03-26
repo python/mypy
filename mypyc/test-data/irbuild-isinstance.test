@@ -38,7 +38,8 @@ L0:
     return r6
 
 [case testIsinstanceIntAndNotBool]
-# This test is to ensure that 'value' doesn't get coerced into a bool when we need it to be an int
+# This test is to ensure that 'value' doesn't get coerced to int when we are
+# checking if it's a bool, since an int can never be an instance of a bool
 def is_not_bool_and_is_int(value: object) -> bool:
     return isinstance(value, int) and not isinstance(value, bool)
 
