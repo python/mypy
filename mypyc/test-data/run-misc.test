@@ -875,6 +875,30 @@ assert call_all(mixed_110) == 1
 assert call_any_nested([[1, 1, 1], [1, 1], []]) == 1
 assert call_any_nested([[1, 1, 1], [0, 1], []]) == 0
 
+
+[case testSum]
+from typing import Callable, Iterable, TypeVar
+
+T = TypeVar('T')
+
+
+def test_sum(l: Iterable[T], comparison: Callable[[T], bool], correct: int) -> None:
+    res = sum(comparison(x) for x in l)
+    assert res == correct, \
+        f'sum({comparison} for x in {l}) incorrect: got {res}, should be {correct}'
+
+[file driver.py]
+from native import test_sum
+
+test_sum([], lambda x: x == 0, 0)
+test_sum([0], lambda x: x == 0, 1)
+test_sum([0, 0, 0], lambda x: x == 0, 3)
+test_sum([0, 1, 0], lambda x: x == 0, 2)
+test_sum(range(2**10), lambda x: x % 2 == 0, 2**9)
+
+test_sum('abcdd', lambda c: c == 'd', 2)
+
+
 [case testNoneStuff]
 from typing import Optional
 class A:
