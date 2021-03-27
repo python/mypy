@@ -741,6 +741,40 @@ TypeError
 TypeError
 10
 
+[case testClassBasedTypedDict]
+from typing_extensions import TypedDict
+
+class TD(TypedDict):
+    a: int
+
+class TD2(TD):
+    b: int
+
+class TD3(TypedDict, total=False):
+    c: int
+
+class TD4(TD3, TD2, total=False):
+    d: int
+
+def test_typed_dict() -> None:
+    d = TD(a=5)
+    assert d['a'] == 5
+    assert type(d) == dict
+    # TODO: This doesn't work yet
+    # assert TD.__annotations__ == {'a': int}
+
+def test_inherited_typed_dict() -> None:
+    d = TD2(a=5, b=3)
+    assert d['a'] == 5
+    assert d['b'] == 3
+    assert type(d) == dict
+
+def test_non_total_typed_dict() -> None:
+    d3 = TD3(c=3)
+    d4 = TD4(a=1, b=2, c=3, d=4)
+    assert d3['c'] == 3
+    assert d4['d'] == 4
+
 [case testUnion]
 from typing import Union
 
