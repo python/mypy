@@ -1,0 +1,77 @@
+[case testIsinstanceInt]
+def is_int(value: object) -> bool:
+    return isinstance(value, int)
+
+[out]
+def is_int(value):
+    value, r0 :: object
+    r1 :: int32
+    r2 :: bit
+    r3 :: bool
+L0:
+    r0 = load_address PyLong_Type
+    r1 = PyObject_IsInstance(value, r0)
+    r2 = r1 >= 0 :: signed
+    r3 = truncate r1: int32 to builtins.bool
+    return r3
+
+[case testIsinstanceNotBool1]
+def is_not_bool(value: object) -> bool:
+    return not isinstance(value, bool)
+
+[out]
+def is_not_bool(value):
+    value, r0 :: object
+    r1 :: str
+    r2 :: object
+    r3 :: int32
+    r4 :: bit
+    r5, r6 :: bool
+L0:
+    r0 = builtins :: module
+    r1 = 'bool'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = PyObject_IsInstance(value, r2)
+    r4 = r3 >= 0 :: signed
+    r5 = truncate r3: int32 to builtins.bool
+    r6 = r5 ^ 1
+    return r6
+
+[case testIsinstanceIntAndNotBool]
+# This test is to ensure that 'value' doesn't get coerced to int when we are
+# checking if it's a bool, since an int can never be an instance of a bool
+def is_not_bool_and_is_int(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+[out]
+def is_not_bool_and_is_int(value):
+    value, r0 :: object
+    r1 :: int32
+    r2 :: bit
+    r3, r4 :: bool
+    r5 :: object
+    r6 :: str
+    r7 :: object
+    r8 :: int32
+    r9 :: bit
+    r10, r11 :: bool
+L0:
+    r0 = load_address PyLong_Type
+    r1 = PyObject_IsInstance(value, r0)
+    r2 = r1 >= 0 :: signed
+    r3 = truncate r1: int32 to builtins.bool
+    if r3 goto L2 else goto L1 :: bool
+L1:
+    r4 = r3
+    goto L3
+L2:
+    r5 = builtins :: module
+    r6 = 'bool'
+    r7 = CPyObject_GetAttr(r5, r6)
+    r8 = PyObject_IsInstance(value, r7)
+    r9 = r8 >= 0 :: signed
+    r10 = truncate r8: int32 to builtins.bool
+    r11 = r10 ^ 1
+    r4 = r11
+L3:
+    return r4
