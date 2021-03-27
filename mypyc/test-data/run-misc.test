@@ -777,6 +777,12 @@ def test_non_total_typed_dict() -> None:
 
 [case testClassBasedNamedTuple]
 from typing import NamedTuple
+import sys
+
+# Class-based NamedTuple requires Python 3.6+
+version = sys.version_info[:2]
+if version[0] == 3 and version[1] < 6:
+    exit()
 
 class NT(NamedTuple):
     a: int
