@@ -45,7 +45,7 @@ from mypyc.primitives.registry import CFunctionDescription, function_ops
 from mypyc.primitives.list_ops import to_list, list_pop_last, list_get_item_unsafe_op
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import py_setattr_op, iter_op, next_op
-from mypyc.primitives.misc_ops import import_op, check_unpack_count_op
+from mypyc.primitives.misc_ops import import_op, check_unpack_count_op, get_module_dict_op
 from mypyc.crash import catch_errors
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
@@ -298,6 +298,25 @@ class IRBuilder:
         value = self.call_c(import_op, [self.load_str(id)], line)
         self.add(InitStatic(value, id, namespace=NAMESPACE_MODULE))
         self.goto_and_activate(out)
+
+    def get_module(self, module: str, line: int) -> Value:
+        # Python 3.7 has a nice 'PyImport_GetModule' function that we can't use :(
+        mod_dict = self.call_c(get_module_dict_op, [], line)
+        # Get module object from modules dict.
+        return self.call_c(dict_get_item_op,
+                           [mod_dict, self.load_str(module)], line)
+
+    def get_module_attr(self, module: str, attr: str, line: int) -> Value:
+        """Look up an attribute of a module without storing it in the local namespace.
+
+        For example, get_module_attr('typing', 'TypedDict', line) results in
+        the value of 'typing.TypedDict'.
+
+        Import the module if needed.
+        """
+        self.gen_import(module, line)
+        module_obj = self.get_module(module, line)
+        return self.py_get_attr(module_obj, attr, line)
 
     def assign_if_null(self, target: Register,
                        get_val: Callable[[], Value], line: int) -> None:

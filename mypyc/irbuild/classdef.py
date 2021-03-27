@@ -228,8 +228,18 @@ def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
         if cls.fullname in MAGIC_TYPED_DICT_CLASSES:
             # HAX: Mypy internally represents TypedDict classes differently from what
             #      should happen at runtime. Replace with something that works.
-            name = 'TypedDict'
-        base = builder.load_global_str(name, cdef.line)
+            module = 'typing'
+            if builder.options.capi_version < (3, 9):
+                name = 'TypedDict'
+                if builder.options.capi_version < (3, 8):
+                    # TypedDict was added to typing in Python 3.8.
+                    module = 'typing_extensions'
+            else:
+                # In Python 3.9 TypedDict is not a real type.
+                name = '_TypedDict'
+            base = builder.get_module_attr(module, name, cdef.line)
+        else:
+            base = builder.load_global_str(name, cdef.line)
         bases.append(base)
         if cls.fullname in MAGIC_TYPED_DICT_CLASSES:
             # The remaining base classes are synthesized by mypy and should be ignored.
@@ -242,6 +252,12 @@ def find_non_ext_metaclass(builder: IRBuilder, cdef: ClassDef, bases: Value) -> 
     if cdef.metaclass:
         declared_metaclass = builder.accept(cdef.metaclass)
     else:
+        if cdef.info.typeddict_type is not None and builder.options.capi_version >= (3, 9):
+            # In Python 3.9, the metaclass for class-based TypedDict is typing._TypedDictMeta.
+            # We can't easily calculate using generically, so special case it.
+            mod = builder.get_module('typing', cdef.line)
+            return builder.py_get_attr(mod, '_TypedDictMeta', cdef.line)
+
         declared_metaclass = builder.add(LoadAddress(type_object_op.type,
                                                      type_object_op.src, cdef.line))
 
