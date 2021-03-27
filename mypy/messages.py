@@ -13,8 +13,9 @@ from mypy.ordered_dict import OrderedDict
 import re
 import difflib
 from textwrap import dedent
+from contextlib import contextmanager
 
-from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Set, Optional, Union
+from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Set, Optional, Union, Iterator
 from typing_extensions import Final
 
 from mypy.erasetype import erase_type
@@ -136,8 +137,11 @@ class MessageBuilder:
                 for info in errs:
                     self.errors.add_error_info(info)
 
-    def disable_errors(self) -> None:
+    @contextmanager
+    def disable_errors(self) -> Iterator[None]:
         self.disable_count += 1
+        yield
+        self.disable_count -= 1
 
     def enable_errors(self) -> None:
         self.disable_count -= 1
