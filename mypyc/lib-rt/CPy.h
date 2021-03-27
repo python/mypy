@@ -516,7 +516,7 @@ CPyTagged CPyTagged_Id(PyObject *o);
 void CPyDebug_Print(const char *msg);
 void CPy_Init(void);
 int CPyArg_ParseTupleAndKeywords(PyObject *, PyObject *,
-                                 const char *, const char * const *, ...);
+                                 const char *, const char *, const char * const *, ...);
 int CPyArg_ParseStackAndKeywords(PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames,
                                  CPyArg_Parser *parser, ...);
 int CPyArg_ParseStackAndKeywordsNoArgs(PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames,
@@ -534,7 +534,6 @@ int CPyStatics_Initialize(PyObject **statics,
                           const double *floats,
                           const double *complex_numbers,
                           const int *tuples);
-
 
 #ifdef __cplusplus
 }
