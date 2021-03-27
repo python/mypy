@@ -2807,7 +2807,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if right_map is None:
             with self.msg.disable_errors():
-                right_type = self.analyze_cond_branch(right_map, e.right, left_type)                
+                right_type = self.analyze_cond_branch(right_map, e.right, left_type)
         else:
             right_type = self.analyze_cond_branch(right_map, e.right, left_type)
 
