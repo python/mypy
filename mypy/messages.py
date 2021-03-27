@@ -140,8 +140,10 @@ class MessageBuilder:
     @contextmanager
     def disable_errors(self) -> Iterator[None]:
         self.disable_count += 1
-        yield
-        self.disable_count -= 1
+        try:
+            yield
+        finally:
+            self.disable_count -= 1
 
     def is_errors(self) -> bool:
         return self.errors.is_errors()
