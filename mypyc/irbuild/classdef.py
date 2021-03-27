@@ -243,7 +243,12 @@ def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
                 name = '_TypedDict'
             base = builder.get_module_attr(module, name, cdef.line)
         elif is_named_tuple and cls.fullname == 'builtins.tuple':
-            base = builder.get_module_attr('typing', 'NamedTuple', cdef.line)
+            if builder.options.capi_version < (3, 9):
+                name = 'NamedTuple'
+            else:
+                # This was changed in Python 3.9.
+                name = '_NamedTuple'
+            base = builder.get_module_attr('typing', name, cdef.line)
         else:
             base = builder.load_global_str(cls.name, cdef.line)
         bases.append(base)
@@ -262,6 +267,10 @@ def find_non_ext_metaclass(builder: IRBuilder, cdef: ClassDef, bases: Value) -> 
             # In Python 3.9, the metaclass for class-based TypedDict is typing._TypedDictMeta.
             # We can't easily calculate it generically, so special case it.
             return builder.get_module_attr('typing', '_TypedDictMeta', cdef.line)
+        elif cdef.info.is_named_tuple and builder.options.capi_version >= (3, 9):
+            # In Python 3.9, the metaclass for class-based NamedTuple is typing.NamedTupleMeta.
+            # We can't easily calculate it generically, so special case it.
+            return builder.get_module_attr('typing', 'NamedTupleMeta', cdef.line)
 
         declared_metaclass = builder.add(LoadAddress(type_object_op.type,
                                                      type_object_op.src, cdef.line))
