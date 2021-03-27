@@ -143,9 +143,6 @@ class MessageBuilder:
         yield
         self.disable_count -= 1
 
-    def enable_errors(self) -> None:
-        self.disable_count -= 1
-
     def is_errors(self) -> bool:
         return self.errors.is_errors()
 
