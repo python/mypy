@@ -3638,3 +3638,19 @@ L2:
     r16 = CPyObject_GetAttr(r14, r15)
     r17 = unbox(int, r16)
     return r17
+
+[case testIsinstanceBool]
+def f(x: object) -> bool:
+    return isinstance(x, bool)
+[out]
+def f(x):
+    x, r0 :: object
+    r1 :: int32
+    r2 :: bit
+    r3 :: bool
+L0:
+    r0 = load_address PyBool_Type
+    r1 = PyObject_IsInstance(x, r0)
+    r2 = r1 >= 0 :: signed
+    r3 = truncate r1: int32 to builtins.bool
+    return r3
