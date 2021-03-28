@@ -148,7 +148,7 @@ Sometimes in order to add type annotations you have to add extra
 imports to a module and those imports cause cycles that didn't exist
 before. This can lead to errors at runtime like:
 
-.. code-block::
+.. code-block:: text
 
    ImportError: cannot import name 'b' from partially initialized module 'A' (most likely due to a circular import)
 
