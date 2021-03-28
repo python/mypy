@@ -265,7 +265,7 @@ def verify_typeinfo(
 
 
 def _verify_static_class_methods(
-    stub: nodes.FuncItem, runtime: types.FunctionType, object_path: List[str]
+    stub: nodes.FuncBase, runtime: Any, object_path: List[str]
 ) -> Iterator[str]:
     if stub.name in ("__new__", "__init_subclass__", "__class_getitem__"):
         # Special cased by Python, so don't bother checking
@@ -646,18 +646,20 @@ def _verify_signature(
 
 @verify.register(nodes.FuncItem)
 def verify_funcitem(
-    stub: nodes.FuncItem, runtime: MaybeMissing[types.FunctionType], object_path: List[str]
+    stub: nodes.FuncItem, runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
     if isinstance(runtime, Missing):
         yield Error(object_path, "is not present at runtime", stub, runtime)
         return
+
     if (
         not isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType))
         and not isinstance(runtime, (types.MethodType, types.BuiltinMethodType))
         and not inspect.ismethoddescriptor(runtime)
     ):
         yield Error(object_path, "is not a function", stub, runtime)
-        return
+        if not callable(runtime):
+            return
 
     for message in _verify_static_class_methods(stub, runtime, object_path):
         yield Error(object_path, "is inconsistent, " + message, stub, runtime)
@@ -733,6 +735,18 @@ def verify_overloadedfuncdef(
     if stub.is_property:
         # We get here in cases of overloads from property.setter
         return
+
+    if (
+        not isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType))
+        and not isinstance(runtime, (types.MethodType, types.BuiltinMethodType))
+        and not inspect.ismethoddescriptor(runtime)
+    ):
+        yield Error(object_path, "is not a function", stub, runtime)
+        if not callable(runtime):
+            return
+
+    for message in _verify_static_class_methods(stub, runtime, object_path):
+        yield Error(object_path, "is inconsistent, " + message, stub, runtime)
 
     try:
         signature = inspect.signature(runtime)
