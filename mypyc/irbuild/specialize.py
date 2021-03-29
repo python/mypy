@@ -28,8 +28,8 @@ from mypyc.primitives.dict_ops import dict_keys_op, dict_values_op, dict_items_o
 from mypyc.primitives.tuple_ops import new_tuple_set_item_op
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import (
-    translate_list_comprehension, comprehension_helper,
-    for_loop_helper_with_index
+    translate_list_comprehension, translate_set_comprehension,
+    comprehension_helper, for_loop_helper_with_index,
 )
 
 
@@ -143,6 +143,9 @@ def translate_safe_generator_call(
                 val = tuple_from_generator_helper(builder, expr.args[0])
                 if val is not None:
                     return val
+            if callee.fullname == "builtins.set":
+                return translate_set_comprehension(builder, expr.args[0])
+
             return builder.call_refexpr_with_args(
                 expr, callee,
                 ([translate_list_comprehension(builder, expr.args[0])]
