@@ -84,7 +84,7 @@ def test1():
     r8 :: set
     r9 :: short_int
     r10 :: ptr
-    r11 :: int64
+    r11 :: native_int
     r12 :: short_int
     r13 :: bit
     r14 :: object
@@ -318,7 +318,7 @@ def test():
     r13, r14 :: list
     r15 :: short_int
     r16 :: ptr
-    r17 :: int64
+    r17 :: native_int
     r18 :: short_int
     r19 :: bit
     r20 :: object
