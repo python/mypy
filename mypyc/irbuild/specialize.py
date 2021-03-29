@@ -22,7 +22,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
-    bool_rprimitive, is_dict_rprimitive, is_list_rprimitive, is_tuple_rprimitive
+    bool_rprimitive, is_dict_rprimitive, is_list_rprimitive, is_tuple_rprimitive, int_rprimitive,
 )
 from mypyc.primitives.dict_ops import dict_keys_op, dict_values_op, dict_items_op
 from mypyc.primitives.tuple_ops import new_tuple_set_item_op
@@ -116,7 +116,6 @@ def dict_methods_fast_path(
 @specialize_function('builtins.set')
 @specialize_function('builtins.frozenset')
 @specialize_function('builtins.dict')
-@specialize_function('builtins.sum')
 @specialize_function('builtins.min')
 @specialize_function('builtins.max')
 @specialize_function('builtins.sorted')
@@ -215,6 +214,34 @@ def any_all_helper(builder: IRBuilder,
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
     builder.goto_and_activate(exit_block)
+
+    return retval
+
+
+@specialize_function('builtins.sum')
+def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+    if not (len(expr.args) == 1
+            and expr.arg_kinds == [ARG_POS]
+            and isinstance(expr.args[0], GeneratorExpr)
+            and isinstance(expr.args[0].left_expr, CallExpr)):
+        return None
+
+    retval = Register(int_rprimitive)
+    builder.assign(retval, Integer(0), -1)
+    gen = expr.args[0]
+
+    loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
+    true_block, false_block, = BasicBlock(), BasicBlock()
+
+    def gen_inner_stmts() -> None:
+        call_expr = builder.accept(gen.left_expr)
+        builder.add_bool_branch(call_expr, true_block, false_block)
+        builder.activate_block(true_block)
+        builder.assign(retval, builder.binary_op(retval, Integer(1), '+', expr.line), -1)
+        builder.goto(false_block)
+        builder.activate_block(false_block)
+
+    comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
 
     return retval
 
