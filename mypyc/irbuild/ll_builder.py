@@ -958,6 +958,11 @@ class LowLevelIRBuilder:
             zero = Integer(0, short_int_rprimitive)
             self.compare_tagged_condition(value, zero, '!=', true, false, value.line)
             return
+        elif is_same_type(value.type, str_rprimitive):
+            length = self.builtin_len(value, value.line)
+            zero = Integer(0)
+            self.compare_tagged_condition(length, zero, '!=', true, false, value.line)
+            return
         elif is_same_type(value.type, list_rprimitive):
             length = self.builtin_len(value, value.line)
             zero = Integer(0)
