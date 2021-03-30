@@ -14,7 +14,15 @@ See comment below for more documentation.
 
 from typing import Callable, Optional, Dict, Tuple
 
-from mypy.nodes import CallExpr, RefExpr, MemberExpr, TupleExpr, GeneratorExpr, ARG_POS
+from mypy.nodes import (
+    ARG_POS,
+    CallExpr,
+    ComparisonExpr,
+    GeneratorExpr,
+    MemberExpr,
+    RefExpr,
+    TupleExpr,
+)
 from mypy.types import AnyType, TypeOfAny
 
 from mypyc.ir.ops import (
@@ -223,7 +231,9 @@ def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> O
     if not (len(expr.args) == 1
             and expr.arg_kinds == [ARG_POS]
             and isinstance(expr.args[0], GeneratorExpr)
-            and isinstance(expr.args[0].left_expr, CallExpr)):
+            and (isinstance(expr.args[0].left_expr, CallExpr)
+                or isinstance(expr.args[0].left_expr, ComparisonExpr))
+    ):
         return None
 
     retval = Register(int_rprimitive)

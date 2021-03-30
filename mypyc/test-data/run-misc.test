@@ -882,21 +882,31 @@ from typing import Callable, Iterable, TypeVar
 T = TypeVar('T')
 
 
-def test_sum(l: Iterable[T], comparison: Callable[[T], bool], correct: int) -> None:
+def test_sum_callable(l: Iterable[T], comparison: Callable[[T], bool], correct: int) -> None:
     res = sum(comparison(x) for x in l)
     assert res == correct, \
         f'sum({comparison} for x in {l}) incorrect: got {res}, should be {correct}'
 
+def test_sum_comparison(l: Iterable[T], correct: int) -> None:
+    res = sum(x == 0 for x in l)
+    assert res == correct, \
+        f'sum(x == 0 for x in {l}) incorrect: got {res}, should be {correct}'
+
+
 [file driver.py]
-from native import test_sum
+from native import test_sum_callable, test_sum_comparison
 
-test_sum([], lambda x: x == 0, 0)
-test_sum([0], lambda x: x == 0, 1)
-test_sum([0, 0, 0], lambda x: x == 0, 3)
-test_sum([0, 1, 0], lambda x: x == 0, 2)
-test_sum(range(2**10), lambda x: x % 2 == 0, 2**9)
-
-test_sum('abcdd', lambda c: c == 'd', 2)
+test_sum_callable([], lambda x: x == 0, 0)
+test_sum_callable([0], lambda x: x == 0, 1)
+test_sum_callable([0, 0, 0], lambda x: x == 0, 3)
+test_sum_callable([0, 1, 0], lambda x: x == 0, 2)
+test_sum_callable(range(2**10), lambda x: x % 2 == 0, 2**9)
+# note, according to sum()'s helptext, we don't need to support the string case, but CPython does
+test_sum_callable('abcdd', lambda c: c == 'd', 2)
+test_sum_comparison([], 0)
+test_sum_comparison([0], 1)
+test_sum_comparison([0, 0, 0], 3)
+test_sum_comparison([0, 1, 0], 2)
 
 
 [case testNoneStuff]
