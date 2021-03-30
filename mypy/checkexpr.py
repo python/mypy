@@ -4,7 +4,7 @@ from mypy.ordered_dict import OrderedDict
 from contextlib import contextmanager
 import itertools
 from typing import (
-    Any, cast, Dict, Set, List, Tuple, Callable, Union, Optional, Sequence, Iterator
+    Any, cast, Dict, Set, List, Tuple, Callable, Union, Optional, Sequence, Iterator, Iterable
 )
 from typing_extensions import ClassVar, Final, overload
 
@@ -1439,15 +1439,21 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                                                             context)
                                 is_unexpected_arg_error = True
                         ok = False
-                elif actual_type.type.has_base('typing.Mapping'):
-                    if messages:
+                elif isinstance(actual_type, Instance) and \
+                        actual_type.type.has_base('typing.Mapping'):
+                    if messages and actual_type.args:
                         args = try_getting_str_literals_from_type(actual_type.args[0])
                         if args and nodes.ARG_STAR2 not in callee.arg_kinds:
-                            messages.unexpected_keyword_argument(callee, args[0], actual_type.args[0], context)
+                            messages.unexpected_keyword_argument(
+                                callee, args[0], actual_type.args[0], context)
                             is_unexpected_arg_error = True
-                        elif args and nodes.ARG_POS in callee.arg_kinds and not all(arg in callee.arg_names for arg in args):
-                            act_name = [name for name, kind in zip(actual_names, actual_kinds) if kind != nodes.ARG_STAR2]
-                            messages.too_few_arguments(callee, context, act_name)
+                        elif args and nodes.ARG_POS in callee.arg_kinds and \
+                                not all(arg in callee.arg_names for arg in args) and \
+                                isinstance(actual_names, Iterable):
+                            act_names = [name for name, kind in
+                                         zip(iter(actual_names), actual_kinds)
+                                         if kind != nodes.ARG_STAR2]
+                            messages.too_few_arguments(callee, context, act_names)
                         ok = False
 
                 # *args/**kwargs can be applied even if the function takes a fixed
@@ -3948,28 +3954,32 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def is_valid_keyword_var_arg(self, typ: Type) -> bool:
         """Is a type valid as a **kwargs argument?"""
+        key_args = None
+        if hasattr(typ, 'args') and typ.args:
+            key_args = try_getting_str_literals_from_type(typ.args[0])  # type: ignore
+
         if self.chk.options.python_version[0] >= 3:
             return (is_subtype(typ, self.chk.named_generic_type(
                 'typing.Mapping', [self.named_type('builtins.str'),
                                    AnyType(TypeOfAny.special_form)]))
                     or
                     (is_subtype(typ, self.chk.named_type('typing.Mapping')) and
-                    try_getting_str_literals_from_type(typ.args[0])))
+                     key_args is not None))
 
         else:
             return (
-                is_subtype(typ, self.chk.named_generic_type(
+                (is_subtype(typ, self.chk.named_generic_type(
                     'typing.Mapping',
                     [self.named_type('builtins.str'),
-                     AnyType(TypeOfAny.special_form)]))
+                     AnyType(TypeOfAny.special_form)])))
                 or
-                is_subtype(typ, self.chk.named_generic_type(
+                (is_subtype(typ, self.chk.named_generic_type(
                     'typing.Mapping',
                     [self.named_type('builtins.unicode'),
-                     AnyType(TypeOfAny.special_form)]))
+                     AnyType(TypeOfAny.special_form)])))
                 or
                 (is_subtype(typ, self.chk.named_type('typing.Mapping')) and
-                 try_getting_str_literals_from_type(typ.args[0])))
+                 key_args is not None))
 
     def has_member(self, typ: Type, member: str) -> bool:
         """Does type have member with the given name?"""
