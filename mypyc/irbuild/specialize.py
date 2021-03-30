@@ -15,10 +15,13 @@ See comment below for more documentation.
 from typing import Callable, Optional, Dict, Tuple
 
 from mypy.nodes import (
+    ARG_NAMED,
     ARG_POS,
     CallExpr,
     ComparisonExpr,
+    Expression,
     GeneratorExpr,
+    IntExpr,
     MemberExpr,
     RefExpr,
     TupleExpr,
@@ -228,16 +231,28 @@ def any_all_helper(builder: IRBuilder,
 
 @specialize_function('builtins.sum')
 def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-    if not (len(expr.args) == 1
-            and expr.arg_kinds == [ARG_POS]
-            and isinstance(expr.args[0], GeneratorExpr)
-            and (isinstance(expr.args[0].left_expr, CallExpr)
-                or isinstance(expr.args[0].left_expr, ComparisonExpr))
-    ):
+    # specialized implementation is used if:
+    # - only one or two arguments given (if not, sum() has been given invalid arguments)
+    # - first argument is an evaluatable generator (there is no benefit to optimizing the
+    #   performance of eg. sum([1, 2, 3]))
+    # - second argument ('start'), if it exists, should be an int (if it's a different type, we
+    #   can't optimize the summing anyway)
+    if not (len(expr.args) in (1, 2)):
         return None
+    if not (isinstance(expr.args[0], GeneratorExpr)
+            and expr.arg_kinds[0] == ARG_POS
+            and (isinstance(expr.args[0].left_expr, CallExpr)
+                or isinstance(expr.args[0].left_expr, ComparisonExpr))):
+        return None
+    if len(expr.args) == 2:
+        if not (isinstance(expr.args[1], IntExpr) and expr.arg_kinds[1] in (ARG_POS, ARG_NAMED)):
+            return None
+        startval = expr.args[1].value
+    else:
+        startval = 0
 
     retval = Register(int_rprimitive)
-    builder.assign(retval, Integer(0), -1)
+    builder.assign(retval, Integer(startval), -1)
     gen = expr.args[0]
 
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
