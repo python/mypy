@@ -901,6 +901,12 @@ class RootLogger(Logger):
 
 root: RootLogger
 
+class Manager(object):
+    def __init__(self, rootnode: RootLogger) -> None: ...
+
+Logger.root: RootLogger
+Logger.manager: Manager
+
 if sys.version_info >= (3,):
     class PercentStyle(object):
         default_format: str
