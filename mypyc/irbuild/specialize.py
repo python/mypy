@@ -235,14 +235,12 @@ def any_all_helper(builder: IRBuilder,
 def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
     # specialized implementation is used if:
     # - only one or two arguments given (if not, sum() has been given invalid arguments)
-    # - first argument is an evaluatable generator (there is no benefit to optimizing the
-    #   performance of eg. sum([1, 2, 3]))
-    if not (len(expr.args) in (1, 2)):
-        return None
-    if not (isinstance(expr.args[0], GeneratorExpr)
-            and expr.arg_kinds[0] == ARG_POS
-            and (isinstance(expr.args[0].left_expr, CallExpr)
-                or isinstance(expr.args[0].left_expr, ComparisonExpr))):
+    # - first argument is a Generator (there is no benefit to optimizing the performance of eg.
+    #   sum([1, 2, 3]), so non-Generator Iterables are not handled)
+    if not (len(expr.args) in (1, 2)
+        and expr.arg_kinds[0] == ARG_POS
+        and isinstance(expr.args[0], GeneratorExpr)
+    ):
         return None
     # handle 'start' argument, if given
     if len(expr.args) == 2:
