@@ -877,36 +877,66 @@ assert call_any_nested([[1, 1, 1], [0, 1], []]) == 0
 
 
 [case testSum]
-from typing import Callable, Iterable, TypeVar
-
-T = TypeVar('T')
-
-
-def test_sum_callable(l: Iterable[T], comparison: Callable[[T], bool], correct: int) -> None:
-    res = sum(comparison(x) for x in l)
-    assert res == correct, \
-        f'sum({comparison} for x in {l}) incorrect: got {res}, should be {correct}'
-
-def test_sum_comparison(l: Iterable[T], correct: int) -> None:
-    res = sum(x == 0 for x in l)
-    assert res == correct, \
-        f'sum(x == 0 for x in {l}) incorrect: got {res}, should be {correct}'
-
-
 [file driver.py]
-from native import test_sum_callable, test_sum_comparison
+print('test cases where first arg to sum() is a Generator of Callables')
+print(sum((lambda x: x == 0)(x) for x in []))
+print(sum((lambda x: x == 0)(x) for x in [0]))
+print(sum((lambda x: x == 0)(x) for x in [0, 0, 0]))
+print(sum((lambda x: x == 0)(x) for x in [0, 1, 0]))
+print(sum((lambda x: x % 2 == 0)(x) for x in range(2**10)))
+print(sum(((lambda x: x % 2 == 0)(x) for x in range(2**10)), 1))
+print(sum(((lambda x: x % 2 == 0)(x) for x in range(2**10)), start=1))
 
-test_sum_callable([], lambda x: x == 0, 0)
-test_sum_callable([0], lambda x: x == 0, 1)
-test_sum_callable([0, 0, 0], lambda x: x == 0, 3)
-test_sum_callable([0, 1, 0], lambda x: x == 0, 2)
-test_sum_callable(range(2**10), lambda x: x % 2 == 0, 2**9)
-# note, according to sum()'s helptext, we don't need to support the string case, but CPython does
-test_sum_callable('abcdd', lambda c: c == 'd', 2)
-test_sum_comparison([], 0)
-test_sum_comparison([0], 1)
-test_sum_comparison([0, 0, 0], 3)
-test_sum_comparison([0, 1, 0], 2)
+print('test cases where first arg to sum() is a Generator of Comparison')
+print(sum(x == 0 for x in []))
+print(sum(x == 0 for x in [0]))
+print(sum(x == 0 for x in [0, 0, 0]))
+print(sum(x == 0 for x in [0, 1, 0]))
+print(sum(x % 2 == 0 for x in range(2**10)))
+print(sum((x % 2 == 0 for x in range(2**10)), 1))
+print(sum((x % 2 == 0 for x in range(2**10)), start=1))
+
+print('test multi-layered generator')
+print(sum(i + j == 0 for i, j in zip([0, 0, 0], [0, 1, 0])))
+
+# misc cases we do optimize (note, according to sum's helptext, we don't need to support non-numeric
+# cases, but CPython and mypyc both do anyway)
+print('test misc cases we do optimize')
+print(sum(c == 'd' for c in 'abcdd'))
+print(sum((c == 'd' for c in 'abcdd'), 1))
+print(sum((c == 'd' for c in 'abcdd'), start=1))
+print('test misc cases we should not optimize')
+print(sum([0, 1]))
+print(sum((x == 0 for x in [0, 1]), 0.5))
+print(sum((x == 0 for x in [0, 1]), 0 + 1j))
+
+[out]
+test cases where first arg to sum() is a Generator of Callables
+0
+1
+3
+2
+512
+513
+513
+test cases where first arg to sum() is a Generator of Comparison
+0
+1
+3
+2
+512
+513
+513
+test multi-layered generator
+2
+test misc cases we do optimize
+2
+3
+3
+test misc cases we should not optimize
+1
+1.5
+(1+1j)
 
 
 [case testNoneStuff]
