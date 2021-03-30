@@ -3954,17 +3954,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def is_valid_keyword_var_arg(self, typ: Type) -> bool:
         """Is a type valid as a **kwargs argument?"""
-        key_args = None
-        if hasattr(typ, 'args') and typ.args:
-            key_args = try_getting_str_literals_from_type(typ.args[0])  # type: ignore
 
         if self.chk.options.python_version[0] >= 3:
-            return (is_subtype(typ, self.chk.named_generic_type(
-                'typing.Mapping', [self.named_type('builtins.str'),
-                                   AnyType(TypeOfAny.special_form)]))
-                    or
-                    (is_subtype(typ, self.chk.named_type('typing.Mapping')) and
-                     key_args is not None))
+            return (
+                (is_subtype(typ, self.chk.named_generic_type(
+                    'typing.Mapping',
+                    [self.named_type('builtins.str'),
+                     AnyType(TypeOfAny.special_form)])))
+                or
+                (is_subtype(typ, self.chk.named_type(
+                    'typing.Mapping')) and
+                    typ.args and  # type: ignore
+                    try_getting_str_literals_from_type(typ.args[0]) is not None))  # type: ignore
 
         else:
             return (
@@ -3979,7 +3980,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                      AnyType(TypeOfAny.special_form)])))
                 or
                 (is_subtype(typ, self.chk.named_type('typing.Mapping')) and
-                 key_args is not None))
+                    typ.args and  # type: ignore
+                    try_getting_str_literals_from_type(typ.args[0]) is not None))  # type: ignore
 
     def has_member(self, typ: Type, member: str) -> bool:
         """Does type have member with the given name?"""
