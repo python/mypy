@@ -902,13 +902,18 @@ print(sum(i + j == 0 for i, j in zip([0, 0, 0], [0, 1, 0])))
 # misc cases we do optimize (note, according to sum's helptext, we don't need to support non-numeric
 # cases, but CPython and mypyc both do anyway)
 print('test misc cases we do optimize')
+print(sum((x == 0 for x in [0, 1]), 0.5))
+print(sum((x == 0 for x in [0, 1]), 1j))
 print(sum(c == 'd' for c in 'abcdd'))
 print(sum((c == 'd' for c in 'abcdd'), 1))
 print(sum((c == 'd' for c in 'abcdd'), start=1))
 print('test misc cases we should not optimize')
 print(sum([0, 1]))
-print(sum((x == 0 for x in [0, 1]), 0.5))
+# 0 + 1j is an OpExpr and not supported
 print(sum((x == 0 for x in [0, 1]), 0 + 1j))
+# a is a NameExpr and not supported
+a = 1
+print(sum((x == 0 for x in [0, 1]), a))
 
 [out]
 test cases where first arg to sum() is a Generator of Callables
@@ -930,13 +935,15 @@ test cases where first arg to sum() is a Generator of Comparison
 test multi-layered generator
 2
 test misc cases we do optimize
+1.5
+(1+1j)
 2
 3
 3
 test misc cases we should not optimize
 1
-1.5
 (1+1j)
+2
 
 
 [case testNoneStuff]
