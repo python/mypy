@@ -20,6 +20,7 @@ from mypy.nodes import (
     CallExpr,
     ComparisonExpr,
     Expression,
+    FloatExpr,
     GeneratorExpr,
     IntExpr,
     MemberExpr,
@@ -34,6 +35,7 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
     bool_rprimitive, is_dict_rprimitive, is_list_rprimitive, is_tuple_rprimitive, int_rprimitive,
+    float_rprimitive, object_rprimitive,
 )
 from mypyc.primitives.dict_ops import dict_keys_op, dict_values_op, dict_items_op
 from mypyc.primitives.tuple_ops import new_tuple_set_item_op
@@ -235,8 +237,6 @@ def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> O
     # - only one or two arguments given (if not, sum() has been given invalid arguments)
     # - first argument is an evaluatable generator (there is no benefit to optimizing the
     #   performance of eg. sum([1, 2, 3]))
-    # - second argument ('start'), if it exists, should be an int (if it's a different type, we
-    #   can't optimize the summing anyway)
     if not (len(expr.args) in (1, 2)):
         return None
     if not (isinstance(expr.args[0], GeneratorExpr)
@@ -244,15 +244,29 @@ def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> O
             and (isinstance(expr.args[0].left_expr, CallExpr)
                 or isinstance(expr.args[0].left_expr, ComparisonExpr))):
         return None
+    # handle 'start' argument, if given
     if len(expr.args) == 2:
-        if not (isinstance(expr.args[1], IntExpr) and expr.arg_kinds[1] in (ARG_POS, ARG_NAMED)):
+        # ensure call to sum() was improperly constructed
+        if not expr.arg_kinds[1] in (ARG_POS, ARG_NAMED):
             return None
-        startval = expr.args[1].value
+        start_expr = expr.args[1]
+        if isinstance(start_expr, IntExpr):
+            target_type = int_rprimitive
+        elif isinstance(start_expr, FloatExpr):
+            target_type = float_rprimitive
+        else:
+            target_type = object_rprimitive
+        # give up if start_expr is not a literal
+        # (maybe one day we could sometimes evaluate start_expr to get the initial value for
+        # 'start', but that's complicated and this method is probably not the right place to do so)
+        if not hasattr(start_expr, 'value'):
+            return None
+        retval = Register(target_type)
+        builder.assign(retval, builder.accept(start_expr), -1)
     else:
-        startval = 0
+        retval = Register(int_rprimitive)
+        builder.assign(retval, Integer(0), -1)
 
-    retval = Register(int_rprimitive)
-    builder.assign(retval, Integer(startval), -1)
     gen = expr.args[0]
 
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
