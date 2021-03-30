@@ -720,28 +720,26 @@ def complex_msg(x, s):
     r0 :: object
     r1 :: bit
     r2 :: str
-    r3 :: int32
+    r3 :: int
     r4 :: bit
-    r5 :: bool
-    r6 :: object
-    r7 :: str
-    r8, r9 :: object
+    r5 :: object
+    r6 :: str
+    r7, r8 :: object
 L0:
     r0 = load_address _Py_NoneStruct
     r1 = x != r0
     if r1 goto L1 else goto L2 :: bool
 L1:
     r2 = cast(str, x)
-    r3 = PyObject_IsTrue(r2)
-    r4 = r3 >= 0 :: signed
-    r5 = truncate r3: int32 to builtins.bool
-    if r5 goto L3 else goto L2 :: bool
+    r3 = CPyObject_Size(r2)
+    r4 = r3 != 0
+    if r4 goto L3 else goto L2 :: bool
 L2:
-    r6 = builtins :: module
-    r7 = 'AssertionError'
-    r8 = CPyObject_GetAttr(r6, r7)
-    r9 = PyObject_CallFunctionObjArgs(r8, s, 0)
-    CPy_Raise(r9)
+    r5 = builtins :: module
+    r6 = 'AssertionError'
+    r7 = CPyObject_GetAttr(r5, r6)
+    r8 = PyObject_CallFunctionObjArgs(r7, s, 0)
+    CPy_Raise(r8)
     unreachable
 L3:
     return 1

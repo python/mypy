@@ -196,24 +196,22 @@ def f(x: object, y: object) -> str:
 def f(x, y):
     x, y :: object
     r0 :: str
-    r1 :: int32
+    r1 :: int
     r2 :: bit
-    r3 :: bool
-    r4, r5 :: str
+    r3, r4 :: str
 L0:
     r0 = PyObject_Str(x)
-    r1 = PyObject_IsTrue(r0)
-    r2 = r1 >= 0 :: signed
-    r3 = truncate r1: int32 to builtins.bool
-    if r3 goto L1 else goto L2 :: bool
+    r1 = CPyObject_Size(r0)
+    r2 = r1 != 0
+    if r2 goto L1 else goto L2 :: bool
 L1:
-    r4 = r0
+    r3 = r0
     goto L3
 L2:
-    r5 = PyObject_Str(y)
-    r4 = r5
+    r4 = PyObject_Str(y)
+    r3 = r4
 L3:
-    return r4
+    return r3
 
 [case testOr]
 def f(x: int, y: int) -> int:
@@ -276,24 +274,22 @@ def f(x: object, y: object) -> str:
 def f(x, y):
     x, y :: object
     r0 :: str
-    r1 :: int32
+    r1 :: int
     r2 :: bit
-    r3 :: bool
-    r4, r5 :: str
+    r3, r4 :: str
 L0:
     r0 = PyObject_Str(x)
-    r1 = PyObject_IsTrue(r0)
-    r2 = r1 >= 0 :: signed
-    r3 = truncate r1: int32 to builtins.bool
-    if r3 goto L2 else goto L1 :: bool
+    r1 = CPyObject_Size(r0)
+    r2 = r1 != 0
+    if r2 goto L2 else goto L1 :: bool
 L1:
-    r4 = r0
+    r3 = r0
     goto L3
 L2:
-    r5 = PyObject_Str(y)
-    r4 = r5
+    r4 = PyObject_Str(y)
+    r3 = r4
 L3:
-    return r4
+    return r3
 
 [case testSimpleNot]
 def f(x: int, y: int) -> int:
