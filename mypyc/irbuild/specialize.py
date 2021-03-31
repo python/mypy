@@ -242,27 +242,20 @@ def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> O
         and isinstance(expr.args[0], GeneratorExpr)
     ):
         return None
+    retval = Register(builder.node_type(expr))
     # handle 'start' argument, if given
     if len(expr.args) == 2:
         # ensure call to sum() was improperly constructed
         if not expr.arg_kinds[1] in (ARG_POS, ARG_NAMED):
             return None
         start_expr = expr.args[1]
-        if isinstance(start_expr, IntExpr):
-            target_type = int_rprimitive
-        elif isinstance(start_expr, FloatExpr):
-            target_type = float_rprimitive
-        else:
-            target_type = object_rprimitive
         # give up if start_expr is not a literal
         # (maybe one day we could sometimes evaluate start_expr to get the initial value for
         # 'start', but that's complicated and this method is probably not the right place to do so)
         if not hasattr(start_expr, 'value'):
             return None
-        retval = Register(target_type)
         builder.assign(retval, builder.accept(start_expr), -1)
     else:
-        retval = Register(int_rprimitive)
         builder.assign(retval, Integer(0), -1)
 
     gen = expr.args[0]
