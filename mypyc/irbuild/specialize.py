@@ -112,8 +112,19 @@ def dict_methods_fast_path(
         return builder.call_c(dict_items_op, [obj], expr.line)
 
 
-@specialize_function('builtins.tuple')
 @specialize_function('builtins.set')
+def translate_set_from_generator_call(
+        builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+    # Special case for set creation from a generator：
+    #     set(f(x) for x in a_list/tuple/dict/range/nested_generators...)
+    if (len(expr.args) == 1
+            and expr.arg_kinds[0] == ARG_POS
+            and isinstance(expr.args[0], GeneratorExpr)):
+        return translate_set_comprehension(builder, expr.args[0])
+    return None
+
+
+@specialize_function('builtins.tuple')
 @specialize_function('builtins.frozenset')
 @specialize_function('builtins.dict')
 @specialize_function('builtins.sum')
@@ -143,8 +154,6 @@ def translate_safe_generator_call(
                 val = tuple_from_generator_helper(builder, expr.args[0])
                 if val is not None:
                     return val
-            if callee.fullname == "builtins.set":
-                return translate_set_comprehension(builder, expr.args[0])
 
             return builder.call_refexpr_with_args(
                 expr, callee,
