@@ -116,7 +116,7 @@ def dict_methods_fast_path(
 def translate_set_from_generator_call(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
     # Special case for set creation from a generator：
-    #     set(f(x) for x in a_list/tuple/dict/range/nested_generators...)
+    #     set(f(...) for ... in iterator/nested_generators...)
     if (len(expr.args) == 1
             and expr.arg_kinds[0] == ARG_POS
             and isinstance(expr.args[0], GeneratorExpr)):
