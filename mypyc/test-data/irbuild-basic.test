@@ -196,22 +196,20 @@ def f(x: object, y: object) -> str:
 def f(x, y):
     x, y :: object
     r0 :: str
-    r1 :: int
-    r2 :: bit
-    r3, r4 :: str
+    r1 :: bit
+    r2, r3 :: str
 L0:
     r0 = PyObject_Str(x)
-    r1 = CPyObject_Size(r0)
-    r2 = r1 != 0
-    if r2 goto L1 else goto L2 :: bool
+    r1 = CPyStr_IsTrue(r0)
+    if r1 goto L1 else goto L2 :: bool
 L1:
-    r3 = r0
+    r2 = r0
     goto L3
 L2:
-    r4 = PyObject_Str(y)
-    r3 = r4
+    r3 = PyObject_Str(y)
+    r2 = r3
 L3:
-    return r3
+    return r2
 
 [case testOr]
 def f(x: int, y: int) -> int:
@@ -274,22 +272,20 @@ def f(x: object, y: object) -> str:
 def f(x, y):
     x, y :: object
     r0 :: str
-    r1 :: int
-    r2 :: bit
-    r3, r4 :: str
+    r1 :: bit
+    r2, r3 :: str
 L0:
     r0 = PyObject_Str(x)
-    r1 = CPyObject_Size(r0)
-    r2 = r1 != 0
-    if r2 goto L2 else goto L1 :: bool
+    r1 = CPyStr_IsTrue(r0)
+    if r1 goto L2 else goto L1 :: bool
 L1:
-    r3 = r0
+    r2 = r0
     goto L3
 L2:
-    r4 = PyObject_Str(y)
-    r3 = r4
+    r3 = PyObject_Str(y)
+    r2 = r3
 L3:
-    return r3
+    return r2
 
 [case testSimpleNot]
 def f(x: int, y: int) -> int:
