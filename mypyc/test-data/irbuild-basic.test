@@ -3278,32 +3278,31 @@ def call_sum(l, comparison):
     r3, x :: int
     r4, r5 :: object
     r6 :: bool
-    r7 :: int
-    r8 :: bit
+    r7 :: object
+    r8, r9 :: int
+    r10 :: bit
 L0:
     r0 = 0
     r1 = PyObject_GetIter(l)
 L1:
     r2 = PyIter_Next(r1)
-    if is_error(r2) goto L6 else goto L2
+    if is_error(r2) goto L4 else goto L2
 L2:
     r3 = unbox(int, r2)
     x = r3
     r4 = box(int, x)
     r5 = PyObject_CallFunctionObjArgs(comparison, r4, 0)
     r6 = unbox(bool, r5)
-    if r6 goto L3 else goto L4 :: bool
+    r7 = box(bool, r6)
+    r8 = unbox(int, r7)
+    r9 = CPyTagged_Add(r0, r8)
+    r0 = r9
 L3:
-    r7 = CPyTagged_Add(r0, 2)
-    r0 = r7
-L4:
-L5:
     goto L1
-L6:
-    r8 = CPy_NoErrOccured()
-L7:
+L4:
+    r10 = CPy_NoErrOccured()
+L5:
     return r0
-
 
 [case testSetAttr1]
 from typing import Any, Dict, List

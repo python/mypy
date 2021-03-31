@@ -18,7 +18,6 @@ from mypy.nodes import (
     ARG_NAMED,
     ARG_POS,
     CallExpr,
-    ComparisonExpr,
     Expression,
     FloatExpr,
     GeneratorExpr,
@@ -35,7 +34,7 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
     bool_rprimitive, is_dict_rprimitive, is_list_rprimitive, is_tuple_rprimitive, int_rprimitive,
-    float_rprimitive, object_rprimitive,
+    float_rprimitive
 )
 from mypyc.primitives.dict_ops import dict_keys_op, dict_values_op, dict_items_op
 from mypyc.primitives.tuple_ops import new_tuple_set_item_op
@@ -238,40 +237,41 @@ def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> O
     # - first argument is a Generator (there is no benefit to optimizing the performance of eg.
     #   sum([1, 2, 3]), so non-Generator Iterables are not handled)
     if not (len(expr.args) in (1, 2)
-        and expr.arg_kinds[0] == ARG_POS
-        and isinstance(expr.args[0], GeneratorExpr)
-    ):
+            and expr.arg_kinds[0] == ARG_POS
+            and isinstance(expr.args[0], GeneratorExpr)):
         return None
-    retval = Register(builder.node_type(expr))
+
+    gen_expr = expr.args[0]
+    target_type = builder.node_type(expr)
+
     # handle 'start' argument, if given
+    start_expr: Optional[Expression] = None
     if len(expr.args) == 2:
         # ensure call to sum() was improperly constructed
         if not expr.arg_kinds[1] in (ARG_POS, ARG_NAMED):
             return None
         start_expr = expr.args[1]
-        # give up if start_expr is not a literal
-        # (maybe one day we could sometimes evaluate start_expr to get the initial value for
-        # 'start', but that's complicated and this method is probably not the right place to do so)
-        if not hasattr(start_expr, 'value'):
-            return None
-        builder.assign(retval, builder.accept(start_expr), -1)
     else:
-        builder.assign(retval, Integer(0), -1)
+        if target_type == int_rprimitive:
+            start_expr = IntExpr(0)
+        elif target_type == float_rprimitive:
+            start_expr = FloatExpr(0.0)
+        else:
+            # IntExpr feels better here, but then if the return value of sum was untypehinted and
+            # the result should be 1, it seems to be True instead, unless we initialize it this
+            # way?
+            start_expr = FloatExpr(0.0)
 
-    gen = expr.args[0]
+    retval = Register(target_type)
+    builder.assign(retval, builder.accept(start_expr), -1)
 
-    loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
-    true_block, false_block, = BasicBlock(), BasicBlock()
+    loop_params = list(zip(gen_expr.indices, gen_expr.sequences, gen_expr.condlists))
 
     def gen_inner_stmts() -> None:
-        call_expr = builder.accept(gen.left_expr)
-        builder.add_bool_branch(call_expr, true_block, false_block)
-        builder.activate_block(true_block)
-        builder.assign(retval, builder.binary_op(retval, Integer(1), '+', expr.line), -1)
-        builder.goto(false_block)
-        builder.activate_block(false_block)
+        call_expr = builder.accept(gen_expr.left_expr)
+        builder.assign(retval, builder.binary_op(retval, call_expr, '+', -1), -1)
 
-    comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
+    comprehension_helper(builder, loop_params, gen_inner_stmts, gen_expr.line)
 
     return retval
 
