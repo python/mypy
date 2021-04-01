@@ -258,8 +258,8 @@ follow_imports = "skip"
 [file a.py]
 /  # No error reported
 [out]
-main.py:2: note: Revealed type is 'Any'
-main.py:4: note: Revealed type is 'Any'
+main.py:2: note: Revealed type is "Any"
+main.py:4: note: Revealed type is "Any"
 
 [case testConfigFollowImportsErrorPyprojectTOML]
 # cmd: mypy main.py
@@ -276,8 +276,8 @@ follow_imports = "error"
 [out]
 main.py:1: error: Import of 'a' ignored
 main.py:1: note: (Using --follow-imports=error, module not passed on command line)
-main.py:2: note: Revealed type is 'Any'
-main.py:4: note: Revealed type is 'Any'
+main.py:2: note: Revealed type is "Any"
+main.py:4: note: Revealed type is "Any"
 
 [case testConfigFollowImportsSelectivePyprojectTOML]
 # cmd: mypy main.py
@@ -314,10 +314,10 @@ bla bla
 normal.py:2: error: Unsupported operand types for + ("int" and "str")
 main.py:4: error: Import of 'error' ignored
 main.py:4: note: (Using --follow-imports=error, module not passed on command line)
-main.py:5: note: Revealed type is 'builtins.int'
-main.py:6: note: Revealed type is 'builtins.int'
-main.py:7: note: Revealed type is 'Any'
-main.py:8: note: Revealed type is 'Any'
+main.py:5: note: Revealed type is "builtins.int"
+main.py:6: note: Revealed type is "builtins.int"
+main.py:7: note: Revealed type is "Any"
+main.py:8: note: Revealed type is "Any"
 
 [case testConfigFollowImportsInvalidPyprojectTOML]
 # cmd: mypy main.py
@@ -340,7 +340,7 @@ ignore_missing_imports = false
 [out]
 main.py:1: error: Cannot find implementation or library stub for module named "missing"
 main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-main.py:2: note: Revealed type is 'Any'
+main.py:2: note: Revealed type is "Any"
 
 [case testConfigSilentMissingImportsOnPyprojectTOML]
 # cmd: mypy main.py
@@ -351,7 +351,7 @@ reveal_type(missing.x)  # Expect Any
 \[tool.mypy]
 ignore_missing_imports = true
 [out]
-main.py:2: note: Revealed type is 'Any'
+main.py:2: note: Revealed type is "Any"
 
 [case testConfigNoErrorForUnknownXFlagInSubsectionPyprojectTOML]
 # cmd: mypy -c pass

@@ -54,9 +54,9 @@ follow_imports = "normal"
 \[tool.mypy]
 follow_imports = "skip"
 [out1]
-main:3: note: Revealed type is 'builtins.int'
+main:3: note: Revealed type is "builtins.int"
 [out2]
-main:3: note: Revealed type is 'Any'
+main:3: note: Revealed type is "Any"
 
 [case testIncrementalPerFileFlagsPyprojectTOML]
 # flags: --config-file tmp/pyproject.toml

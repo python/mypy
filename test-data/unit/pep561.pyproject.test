@@ -11,7 +11,7 @@ no_site_packages = true
 testTypedPkg_config_nositepackagesPyprojectTOML.py:2: error: Cannot find implementation or library stub for module named "typedpkg.sample"
 testTypedPkg_config_nositepackagesPyprojectTOML.py:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 testTypedPkg_config_nositepackagesPyprojectTOML.py:3: error: Cannot find implementation or library stub for module named "typedpkg"
-testTypedPkg_config_nositepackagesPyprojectTOML.py:5: note: Revealed type is 'Any'
+testTypedPkg_config_nositepackagesPyprojectTOML.py:5: note: Revealed type is "Any"
 
 [case testTypedPkgNoSitePkgsIgnoredImportsPyprojectTOML]
 # pkgs: typedpkg
@@ -24,4 +24,4 @@ reveal_type(a)
 \[tool.mypy]
 ignore_missing_imports = true
 [out]
-testTypedPkgNoSitePkgsIgnoredImportsPyprojectTOML.py:6: note: Revealed type is 'Any'
+testTypedPkgNoSitePkgsIgnoredImportsPyprojectTOML.py:6: note: Revealed type is "Any"
