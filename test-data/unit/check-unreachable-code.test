@@ -168,7 +168,7 @@ else:
     def foo():
         # type: () -> str
         return ''
-reveal_type(foo())  # N: Revealed type is 'builtins.str'
+reveal_type(foo())  # N: Revealed type is "builtins.str"
 [builtins_py2 fixtures/ops.pyi]
 [out]
 
@@ -178,7 +178,7 @@ if sys.version_info[0] >= 3:
     def foo() -> int: return 0
 else:
     def foo() -> str: return ''
-reveal_type(foo())  # N: Revealed type is 'builtins.int'
+reveal_type(foo())  # N: Revealed type is "builtins.int"
 [builtins fixtures/ops.pyi]
 [out]
 
@@ -192,7 +192,7 @@ else:
     def foo():
         # type: () -> str
         return ''
-reveal_type(foo())  # N: Revealed type is 'builtins.str'
+reveal_type(foo())  # N: Revealed type is "builtins.str"
 [builtins_py2 fixtures/ops.pyi]
 [out]
 
@@ -202,7 +202,7 @@ if not (sys.version_info[0] < 3):
     def foo() -> int: return 0
 else:
     def foo() -> str: return ''
-reveal_type(foo())  # N: Revealed type is 'builtins.int'
+reveal_type(foo())  # N: Revealed type is "builtins.int"
 [builtins fixtures/ops.pyi]
 [out]
 
@@ -367,7 +367,7 @@ class C:
         def foo(self) -> int: return 0
     else:
         def foo(self) -> str: return ''
-reveal_type(C().foo())  # N: Revealed type is 'builtins.int'
+reveal_type(C().foo())  # N: Revealed type is "builtins.int"
 [builtins fixtures/ops.pyi]
 [out]
 
@@ -378,7 +378,7 @@ def foo() -> None:
         x = ''
     else:
         x = 0
-    reveal_type(x)  # N: Revealed type is 'builtins.str'
+    reveal_type(x)  # N: Revealed type is "builtins.str"
 [builtins fixtures/ops.pyi]
 [out]
 
@@ -390,7 +390,7 @@ class C:
             x = ''
         else:
             x = 0
-        reveal_type(x)  # N: Revealed type is 'builtins.str'
+        reveal_type(x)  # N: Revealed type is "builtins.str"
 [builtins fixtures/ops.pyi]
 [out]
 
@@ -461,7 +461,7 @@ if sys.version_info == (3, 5):
     x = "foo"
 else:
     x = 3
-reveal_type(x)  # N: Revealed type is 'builtins.str'
+reveal_type(x)  # N: Revealed type is "builtins.str"
 [builtins fixtures/ops.pyi]
 [out]
 
@@ -472,7 +472,7 @@ if sys.version_info == (3, 6):
     x = "foo"
 else:
     x = 3
-reveal_type(x)  # N: Revealed type is 'builtins.int'
+reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/ops.pyi]
 [out]
 
@@ -483,7 +483,7 @@ if sys.platform == 'linux':
     x = "foo"
 else:
     x = 3
-reveal_type(x)  # N: Revealed type is 'builtins.str'
+reveal_type(x)  # N: Revealed type is "builtins.str"
 [builtins fixtures/ops.pyi]
 [out]
 
@@ -494,7 +494,7 @@ if sys.platform == 'linux':
     x = "foo"
 else:
     x = 3
-reveal_type(x)  # N: Revealed type is 'builtins.int'
+reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/ops.pyi]
 [out]
 
@@ -505,7 +505,7 @@ if sys.platform.startswith('win'):
     x = "foo"
 else:
     x = 3
-reveal_type(x)  # N: Revealed type is 'builtins.str'
+reveal_type(x)  # N: Revealed type is "builtins.str"
 [builtins fixtures/ops.pyi]
 [out]
 
@@ -522,14 +522,14 @@ e = (PY2 or PY3) and 's'
 f = (PY3 or PY2) and 's'
 g = (PY2 or PY3) or 's'
 h = (PY3 or PY2) or 's'
-reveal_type(a)  # N: Revealed type is 'builtins.bool'
-reveal_type(b)  # N: Revealed type is 'builtins.str'
-reveal_type(c)  # N: Revealed type is 'builtins.str'
-reveal_type(d)  # N: Revealed type is 'builtins.bool'
-reveal_type(e)  # N: Revealed type is 'builtins.str'
-reveal_type(f)  # N: Revealed type is 'builtins.str'
-reveal_type(g)  # N: Revealed type is 'builtins.bool'
-reveal_type(h)  # N: Revealed type is 'builtins.bool'
+reveal_type(a)  # N: Revealed type is "builtins.bool"
+reveal_type(b)  # N: Revealed type is "builtins.str"
+reveal_type(c)  # N: Revealed type is "builtins.str"
+reveal_type(d)  # N: Revealed type is "builtins.bool"
+reveal_type(e)  # N: Revealed type is "builtins.str"
+reveal_type(f)  # N: Revealed type is "builtins.str"
+reveal_type(g)  # N: Revealed type is "builtins.bool"
+reveal_type(h)  # N: Revealed type is "builtins.bool"
 [builtins fixtures/ops.pyi]
 [out]
 
@@ -543,12 +543,12 @@ if PY2 and sys.platform == 'linux':
     x = 'foo'
 else:
     x = 3
-reveal_type(x)  # N: Revealed type is 'builtins.int'
+reveal_type(x)  # N: Revealed type is "builtins.int"
 if sys.platform == 'linux' and PY2:
     y = 'foo'
 else:
     y = 3
-reveal_type(y)  # N: Revealed type is 'builtins.int'
+reveal_type(y)  # N: Revealed type is "builtins.int"
 [builtins fixtures/ops.pyi]
 
 [case testShortCircuitOrWithConditionalAssignment]
@@ -561,12 +561,12 @@ if PY2 or sys.platform == 'linux':
     x = 'foo'
 else:
     x = 3
-reveal_type(x)  # N: Revealed type is 'builtins.str'
+reveal_type(x)  # N: Revealed type is "builtins.str"
 if sys.platform == 'linux' or PY2:
     y = 'foo'
 else:
     y = 3
-reveal_type(y)  # N: Revealed type is 'builtins.str'
+reveal_type(y)  # N: Revealed type is "builtins.str"
 [builtins fixtures/ops.pyi]
 
 [case testShortCircuitNoEvaluation]
@@ -612,13 +612,13 @@ class A: pass
 class B(A): pass
 
 x = A()
-reveal_type(x)  # N: Revealed type is '__main__.A'
+reveal_type(x)  # N: Revealed type is "__main__.A"
 
 if typing.TYPE_CHECKING:
     assert isinstance(x, B)
-    reveal_type(x)  # N: Revealed type is '__main__.B'
+    reveal_type(x)  # N: Revealed type is "__main__.B"
 
-reveal_type(x)  # N: Revealed type is '__main__.B'
+reveal_type(x)  # N: Revealed type is "__main__.B"
 
 [builtins fixtures/isinstancelist.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -631,21 +631,21 @@ from typing import Any
 Parent: Any
 class Child(Parent):
     def foo(self) -> int:
-        reveal_type(self)       # N: Revealed type is '__main__.Child'
+        reveal_type(self)       # N: Revealed type is "__main__.Child"
         if self is None:
             reveal_type(self)
             return None
-        reveal_type(self)       # N: Revealed type is '__main__.Child'
+        reveal_type(self)       # N: Revealed type is "__main__.Child"
         return 3
 
     def bar(self) -> int:
         if 1:
             self = super(Child, self).something()
-            reveal_type(self)       # N: Revealed type is '__main__.Child'
+            reveal_type(self)       # N: Revealed type is "__main__.Child"
             if self is None:
                 reveal_type(self)
                 return None
-            reveal_type(self)       # N: Revealed type is '__main__.Child'
+            reveal_type(self)       # N: Revealed type is "__main__.Child"
             return 3
 [builtins fixtures/isinstance.pyi]
 
@@ -656,30 +656,30 @@ from typing import Any
 Parent: Any
 class Child(Parent):
     def foo(self) -> int:
-        reveal_type(self)       # N: Revealed type is '__main__.Child'
+        reveal_type(self)       # N: Revealed type is "__main__.Child"
         if self is None:
-            reveal_type(self)   # N: Revealed type is 'None'
+            reveal_type(self)   # N: Revealed type is "None"
             return None
-        reveal_type(self)       # N: Revealed type is '__main__.Child'
+        reveal_type(self)       # N: Revealed type is "__main__.Child"
         return 3
 [builtins fixtures/isinstance.pyi]
 
 [case testUnreachableAfterToplevelAssert]
 import sys
-reveal_type(0)  # N: Revealed type is 'Literal[0]?'
+reveal_type(0)  # N: Revealed type is "Literal[0]?"
 assert sys.platform == 'lol'
 reveal_type('')  # No error here :-)
 [builtins fixtures/ops.pyi]
 
 [case testUnreachableAfterToplevelAssert2]
 import sys
-reveal_type(0)  # N: Revealed type is 'Literal[0]?'
+reveal_type(0)  # N: Revealed type is "Literal[0]?"
 assert sys.version_info[0] == 1
 reveal_type('')  # No error here :-)
 [builtins fixtures/ops.pyi]
 
 [case testUnreachableAfterToplevelAssert3]
-reveal_type(0)  # N: Revealed type is 'Literal[0]?'
+reveal_type(0)  # N: Revealed type is "Literal[0]?"
 MYPY = False
 assert not MYPY
 reveal_type('')  # No error here :-)
@@ -687,7 +687,7 @@ reveal_type('')  # No error here :-)
 
 [case testUnreachableAfterToplevelAssert4]
 # flags: --always-false NOPE
-reveal_type(0)  # N: Revealed type is 'Literal[0]?'
+reveal_type(0)  # N: Revealed type is "Literal[0]?"
 NOPE = False
 assert NOPE
 reveal_type('')  # No error here :-)
@@ -716,26 +716,26 @@ def bar() -> None: pass
 import sys
 if sys.version_info[0] >= 2:
     assert sys.platform == 'lol'
-    reveal_type('')  # N: Revealed type is 'Literal['']?'
-reveal_type('')  # N: Revealed type is 'Literal['']?'
+    reveal_type('')  # N: Revealed type is "Literal['']?"
+reveal_type('')  # N: Revealed type is "Literal['']?"
 [builtins fixtures/ops.pyi]
 
 [case testUnreachableFlagWithBadControlFlow]
 # flags: --warn-unreachable
 a: int
 if isinstance(a, int):
-    reveal_type(a)  # N: Revealed type is 'builtins.int'
+    reveal_type(a)  # N: Revealed type is "builtins.int"
 else:
     reveal_type(a)  # E: Statement is unreachable
 
 b: int
 while isinstance(b, int):
-    reveal_type(b)  # N: Revealed type is 'builtins.int'
+    reveal_type(b)  # N: Revealed type is "builtins.int"
 else:
     reveal_type(b)  # E: Statement is unreachable
 
 def foo(c: int) -> None:
-    reveal_type(c)  # N: Revealed type is 'builtins.int'
+    reveal_type(c)  # N: Revealed type is "builtins.int"
     assert not isinstance(c, int)
     reveal_type(c)  # E: Statement is unreachable
 
@@ -745,7 +745,7 @@ if False:
 
 e: int
 if True:
-    reveal_type(e)  # N: Revealed type is 'builtins.int'
+    reveal_type(e)  # N: Revealed type is "builtins.int"
 else:
     reveal_type(e)  # E: Statement is unreachable
 
@@ -754,7 +754,7 @@ else:
 [case testUnreachableFlagStatementAfterReturn]
 # flags: --warn-unreachable
 def foo(x: int) -> None:
-    reveal_type(x)  # N: Revealed type is 'builtins.int'
+    reveal_type(x)  # N: Revealed type is "builtins.int"
     return
     reveal_type(x)  # E: Statement is unreachable
 
@@ -763,13 +763,13 @@ def foo(x: int) -> None:
 
 def foo(x: int) -> int:
     try:
-        reveal_type(x)      # N: Revealed type is 'builtins.int'
+        reveal_type(x)      # N: Revealed type is "builtins.int"
         return x
         reveal_type(x)      # E: Statement is unreachable
     finally:
-        reveal_type(x)      # N: Revealed type is 'builtins.int'
+        reveal_type(x)      # N: Revealed type is "builtins.int"
         if True:
-            reveal_type(x)  # N: Revealed type is 'builtins.int'
+            reveal_type(x)  # N: Revealed type is "builtins.int"
         else:
             reveal_type(x)  # E: Statement is unreachable
 
@@ -779,20 +779,20 @@ def bar(x: int) -> int:
             raise Exception()
         reveal_type(x)      # E: Statement is unreachable
     except:
-        reveal_type(x)      # N: Revealed type is 'builtins.int'
+        reveal_type(x)      # N: Revealed type is "builtins.int"
         return x
     else:
         reveal_type(x)      # E: Statement is unreachable
 
 def baz(x: int) -> int:
     try:
-        reveal_type(x)      # N: Revealed type is 'builtins.int'
+        reveal_type(x)      # N: Revealed type is "builtins.int"
     except:
         # Mypy assumes all lines could throw an exception
-        reveal_type(x)      # N: Revealed type is 'builtins.int'
+        reveal_type(x)      # N: Revealed type is "builtins.int"
         return x
     else:
-        reveal_type(x)      # N: Revealed type is 'builtins.int'
+        reveal_type(x)      # N: Revealed type is "builtins.int"
         return x
 [builtins fixtures/exception.pyi]
 
@@ -803,32 +803,32 @@ from typing import TYPE_CHECKING
 
 x: int
 if TYPE_CHECKING:
-    reveal_type(x)  # N: Revealed type is 'builtins.int'
+    reveal_type(x)  # N: Revealed type is "builtins.int"
 else:
     reveal_type(x)
 
 if not TYPE_CHECKING:
     reveal_type(x)
 else:
-    reveal_type(x)  # N: Revealed type is 'builtins.int'
+    reveal_type(x)  # N: Revealed type is "builtins.int"
 
 if sys.platform == 'darwin':
     reveal_type(x)
 else:
-    reveal_type(x)  # N: Revealed type is 'builtins.int'
+    reveal_type(x)  # N: Revealed type is "builtins.int"
 
 if sys.platform == 'win32':
-    reveal_type(x)  # N: Revealed type is 'builtins.int'
+    reveal_type(x)  # N: Revealed type is "builtins.int"
 else:
     reveal_type(x)
 
 if sys.version_info == (2, 7):
     reveal_type(x)
 else:
-    reveal_type(x)  # N: Revealed type is 'builtins.int'
+    reveal_type(x)  # N: Revealed type is "builtins.int"
 
 if sys.version_info == (3, 7):
-    reveal_type(x)  # N: Revealed type is 'builtins.int'
+    reveal_type(x)  # N: Revealed type is "builtins.int"
 else:
     reveal_type(x)
 
@@ -836,7 +836,7 @@ FOOBAR = ""
 if FOOBAR:
     reveal_type(x)
 else:
-    reveal_type(x)  # N: Revealed type is 'builtins.int'
+    reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/ops.pyi]
 [typing fixtures/typing-medium.pyi]
 
@@ -929,16 +929,16 @@ T3 = TypeVar('T3', None, str)
 
 def test1(x: T1) -> T1:
     if isinstance(x, int):
-        reveal_type(x)  # N: Revealed type is 'T1`-1'
+        reveal_type(x)  # N: Revealed type is "T1`-1"
     else:
         reveal_type(x)  # E: Statement is unreachable
     return x
 
 def test2(x: T2) -> T2:
     if isinstance(x, int):
-        reveal_type(x)  # N: Revealed type is 'builtins.int*'
+        reveal_type(x)  # N: Revealed type is "builtins.int*"
     else:
-        reveal_type(x)  # N: Revealed type is 'builtins.str*'
+        reveal_type(x)  # N: Revealed type is "builtins.str*"
 
     if False:
         # This is unreachable, but we don't report an error, unfortunately.
@@ -954,9 +954,9 @@ class Test3(Generic[T2]):
 
     def func(self) -> None:
         if isinstance(self.x, int):
-            reveal_type(self.x)  # N: Revealed type is 'builtins.int*'
+            reveal_type(self.x)  # N: Revealed type is "builtins.int*"
         else:
-            reveal_type(self.x)  # N: Revealed type is 'builtins.str*'
+            reveal_type(self.x)  # N: Revealed type is "builtins.str*"
 
         if False:
             # Same issue as above

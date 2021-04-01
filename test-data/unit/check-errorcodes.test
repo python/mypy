@@ -28,7 +28,7 @@ class A:
         pass
 
 [case testErrorCodeNoteHasNoCode]
-reveal_type(1) # N: Revealed type is 'Literal[1]?'
+reveal_type(1) # N: Revealed type is "Literal[1]?"
 
 [case testErrorCodeSyntaxError]
 1 '' # E: invalid syntax  [syntax]
@@ -461,7 +461,7 @@ c = {}  # E: Expected TypedDict key 'x' but found no keys  [typeddict-item]
 
 [case testErrorCodeCannotDetermineType]
 y = x  # E: Cannot determine type of 'x'  [has-type]
-reveal_type(y)  # N: Revealed type is 'Any'
+reveal_type(y)  # N: Revealed type is "Any"
 x = None
 
 [case testErrorCodeRedundantCast]

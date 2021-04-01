@@ -81,8 +81,8 @@ T = TypeVar('T')
 
 def f(x: T) -> T: return x
 [out2]
-tmp/a.py:2: note: Revealed type is 'builtins.int*'
-tmp/a.py:3: note: Revealed type is 'builtins.str*'
+tmp/a.py:2: note: Revealed type is "builtins.int*"
+tmp/a.py:3: note: Revealed type is "builtins.str*"
 
 [case testSerializeFunctionReturningGenericFunction]
 import a
@@ -99,8 +99,8 @@ T = TypeVar('T')
 
 def f() -> Callable[[T], T]: pass
 [out2]
-tmp/a.py:2: note: Revealed type is 'def () -> def [T] (T`-1) -> T`-1'
-tmp/a.py:3: note: Revealed type is 'builtins.str*'
+tmp/a.py:2: note: Revealed type is "def () -> def [T] (T`-1) -> T`-1"
+tmp/a.py:3: note: Revealed type is "builtins.str*"
 
 [case testSerializeArgumentKinds]
 import a
@@ -204,8 +204,8 @@ def f(x: int) -> int: pass
 @overload
 def f(x: str) -> str: pass
 [out2]
-tmp/a.py:2: note: Revealed type is 'builtins.int'
-tmp/a.py:3: note: Revealed type is 'builtins.str'
+tmp/a.py:2: note: Revealed type is "builtins.int"
+tmp/a.py:3: note: Revealed type is "builtins.str"
 
 [case testSerializeDecoratedFunction]
 import a
@@ -221,7 +221,7 @@ def dec(f: Callable[[int], int]) -> Callable[[str], str]: pass
 @dec
 def f(x: int) -> int: pass
 [out2]
-tmp/a.py:2: note: Revealed type is 'builtins.str'
+tmp/a.py:2: note: Revealed type is "builtins.str"
 tmp/a.py:3: error: Unexpected keyword argument "x" for "f"
 
 [case testSerializeTypeGuardFunction]
@@ -237,8 +237,8 @@ from typing_extensions import TypeGuard
 def guard(a: object) -> TypeGuard[str]: pass
 [builtins fixtures/tuple.pyi]
 [out2]
-tmp/a.py:2: note: Revealed type is 'builtins.bool'
-tmp/a.py:3: note: Revealed type is 'def (a: builtins.object) -> TypeGuard[builtins.str]'
+tmp/a.py:2: note: Revealed type is "builtins.bool"
+tmp/a.py:3: note: Revealed type is "def (a: builtins.object) -> TypeGuard[builtins.str]"
 --
 -- Classes
 --
@@ -369,8 +369,8 @@ class A(Generic[T, S]):
         return self.x
 [out2]
 tmp/a.py:3: error: Argument 1 to "A" has incompatible type "str"; expected "int"
-tmp/a.py:4: note: Revealed type is 'builtins.str*'
-tmp/a.py:5: note: Revealed type is 'builtins.int*'
+tmp/a.py:4: note: Revealed type is "builtins.str*"
+tmp/a.py:5: note: Revealed type is "builtins.int*"
 
 [case testSerializeAbstractClass]
 import a
@@ -446,7 +446,7 @@ class A:
     def x(self) -> int: return 0
 [builtins fixtures/property.pyi]
 [out2]
-tmp/a.py:2: note: Revealed type is 'builtins.int'
+tmp/a.py:2: note: Revealed type is "builtins.int"
 tmp/a.py:3: error: Property "x" defined in "A" is read-only
 
 [case testSerializeReadWriteProperty]
@@ -466,7 +466,7 @@ class A:
     def x(self, v: int) -> None: pass
 [builtins fixtures/property.pyi]
 [out2]
-tmp/a.py:2: note: Revealed type is 'builtins.int'
+tmp/a.py:2: note: Revealed type is "builtins.int"
 tmp/a.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testSerializeSelfType]
@@ -484,8 +484,8 @@ T = TypeVar('T', bound='A')
 class A:
     def f(self: T) -> T: return self
 [out2]
-tmp/a.py:2: note: Revealed type is 'b.A*'
-tmp/a.py:4: note: Revealed type is 'a.B*'
+tmp/a.py:2: note: Revealed type is "b.A*"
+tmp/a.py:4: note: Revealed type is "a.B*"
 
 [case testSerializeInheritance]
 import a
@@ -510,7 +510,7 @@ class C(A, B):
 [out2]
 tmp/a.py:2: error: Too many arguments for "f" of "A"
 tmp/a.py:3: error: Too many arguments for "g" of "B"
-tmp/a.py:4: note: Revealed type is 'builtins.int'
+tmp/a.py:4: note: Revealed type is "builtins.int"
 tmp/a.py:7: error: Incompatible types in assignment (expression has type "C", variable has type "int")
 
 [case testSerializeGenericInheritance]
@@ -529,7 +529,7 @@ class A(Generic[T]):
 class B(A[A[T]]):
     pass
 [out2]
-tmp/a.py:3: note: Revealed type is 'b.A*[builtins.int*]'
+tmp/a.py:3: note: Revealed type is "b.A*[builtins.int*]"
 
 [case testSerializeFixedLengthTupleBaseClass]
 import a
@@ -547,7 +547,7 @@ class A(Tuple[int, str]):
 [builtins fixtures/tuple.pyi]
 [out2]
 tmp/a.py:3: error: Too many arguments for "f" of "A"
-tmp/a.py:4: note: Revealed type is 'Tuple[builtins.int, builtins.str]'
+tmp/a.py:4: note: Revealed type is "Tuple[builtins.int, builtins.str]"
 
 [case testSerializeVariableLengthTupleBaseClass]
 import a
@@ -565,7 +565,7 @@ class A(Tuple[int, ...]):
 [builtins fixtures/tuple.pyi]
 [out2]
 tmp/a.py:3: error: Too many arguments for "f" of "A"
-tmp/a.py:4: note: Revealed type is 'Tuple[builtins.int*, builtins.int*]'
+tmp/a.py:4: note: Revealed type is "Tuple[builtins.int*, builtins.int*]"
 
 [case testSerializePlainTupleBaseClass]
 import a
@@ -583,7 +583,7 @@ class A(tuple):
 [builtins fixtures/tuple.pyi]
 [out2]
 tmp/a.py:3: error: Too many arguments for "f" of "A"
-tmp/a.py:4: note: Revealed type is 'Tuple[Any, Any]'
+tmp/a.py:4: note: Revealed type is "Tuple[Any, Any]"
 
 [case testSerializeNamedTupleBaseClass]
 import a
@@ -602,8 +602,8 @@ class A(NamedTuple('N', [('x', int), ('y', str)])):
 [builtins fixtures/tuple.pyi]
 [out2]
 tmp/a.py:3: error: Too many arguments for "f" of "A"
-tmp/a.py:4: note: Revealed type is 'Tuple[builtins.int, builtins.str]'
-tmp/a.py:5: note: Revealed type is 'Tuple[builtins.int, builtins.str]'
+tmp/a.py:4: note: Revealed type is "Tuple[builtins.int, builtins.str]"
+tmp/a.py:5: note: Revealed type is "Tuple[builtins.int, builtins.str]"
 
 [case testSerializeAnyBaseClass]
 import a
@@ -621,7 +621,7 @@ class B(A):
 [builtins fixtures/tuple.pyi]
 [out2]
 tmp/a.py:2: error: Too many arguments for "f" of "B"
-tmp/a.py:3: note: Revealed type is 'Any'
+tmp/a.py:3: note: Revealed type is "Any"
 
 [case testSerializeIndirectAnyBaseClass]
 import a
@@ -643,7 +643,7 @@ class C(B):
 [out2]
 tmp/a.py:2: error: Too many arguments for "f" of "B"
 tmp/a.py:3: error: Too many arguments for "g" of "C"
-tmp/a.py:4: note: Revealed type is 'Any'
+tmp/a.py:4: note: Revealed type is "Any"
 
 [case testSerializeNestedClass]
 import a
@@ -727,13 +727,13 @@ class C:
         self.c = A
 [builtins fixtures/tuple.pyi]
 [out1]
-main:2: note: Revealed type is 'Tuple[builtins.int, fallback=ntcrash.C.A@4]'
-main:3: note: Revealed type is 'Tuple[builtins.int, fallback=ntcrash.C.A@4]'
-main:4: note: Revealed type is 'def (x: builtins.int) -> Tuple[builtins.int, fallback=ntcrash.C.A@4]'
+main:2: note: Revealed type is "Tuple[builtins.int, fallback=ntcrash.C.A@4]"
+main:3: note: Revealed type is "Tuple[builtins.int, fallback=ntcrash.C.A@4]"
+main:4: note: Revealed type is "def (x: builtins.int) -> Tuple[builtins.int, fallback=ntcrash.C.A@4]"
 [out2]
-main:2: note: Revealed type is 'Tuple[builtins.int, fallback=ntcrash.C.A@4]'
-main:3: note: Revealed type is 'Tuple[builtins.int, fallback=ntcrash.C.A@4]'
-main:4: note: Revealed type is 'def (x: builtins.int) -> Tuple[builtins.int, fallback=ntcrash.C.A@4]'
+main:2: note: Revealed type is "Tuple[builtins.int, fallback=ntcrash.C.A@4]"
+main:3: note: Revealed type is "Tuple[builtins.int, fallback=ntcrash.C.A@4]"
+main:4: note: Revealed type is "def (x: builtins.int) -> Tuple[builtins.int, fallback=ntcrash.C.A@4]"
 
 --
 -- Strict optional
@@ -753,7 +753,7 @@ from typing import Optional
 x: Optional[int]
 def f(x: int) -> None: pass
 [out2]
-tmp/a.py:2: note: Revealed type is 'Union[builtins.int, None]'
+tmp/a.py:2: note: Revealed type is "Union[builtins.int, None]"
 tmp/a.py:3: error: Argument 1 to "f" has incompatible type "Optional[int]"; expected "int"
 
 --
@@ -766,9 +766,9 @@ reveal_type(b.x)
 [file b.py]
 x: NonExistent  # type: ignore
 [out1]
-main:2: note: Revealed type is 'Any'
+main:2: note: Revealed type is "Any"
 [out2]
-main:2: note: Revealed type is 'Any'
+main:2: note: Revealed type is "Any"
 
 [case testSerializeIgnoredInvalidType]
 import b
@@ -777,9 +777,9 @@ reveal_type(b.x)
 A = 0
 x: A  # type: ignore
 [out1]
-main:2: note: Revealed type is 'A?'
+main:2: note: Revealed type is "A?"
 [out2]
-main:2: note: Revealed type is 'A?'
+main:2: note: Revealed type is "A?"
 
 [case testSerializeIgnoredMissingBaseClass]
 import b
@@ -788,11 +788,11 @@ reveal_type(b.B().x)
 [file b.py]
 class B(A): pass  # type: ignore
 [out1]
-main:2: note: Revealed type is 'b.B'
-main:3: note: Revealed type is 'Any'
+main:2: note: Revealed type is "b.B"
+main:3: note: Revealed type is "Any"
 [out2]
-main:2: note: Revealed type is 'b.B'
-main:3: note: Revealed type is 'Any'
+main:2: note: Revealed type is "b.B"
+main:3: note: Revealed type is "Any"
 
 [case testSerializeIgnoredInvalidBaseClass]
 import b
@@ -802,11 +802,11 @@ reveal_type(b.B().x)
 A = 0
 class B(A): pass  # type: ignore
 [out1]
-main:2: note: Revealed type is 'b.B'
-main:3: note: Revealed type is 'Any'
+main:2: note: Revealed type is "b.B"
+main:3: note: Revealed type is "Any"
 [out2]
-main:2: note: Revealed type is 'b.B'
-main:3: note: Revealed type is 'Any'
+main:2: note: Revealed type is "b.B"
+main:3: note: Revealed type is "Any"
 
 [case testSerializeIgnoredImport]
 import a
@@ -820,8 +820,8 @@ reveal_type(b.x)
 import m  # type: ignore
 from m import x  # type: ignore
 [out2]
-tmp/a.py:2: note: Revealed type is 'Any'
-tmp/a.py:3: note: Revealed type is 'Any'
+tmp/a.py:2: note: Revealed type is "Any"
+tmp/a.py:3: note: Revealed type is "Any"
 
 --
 -- TypeVar
@@ -839,7 +839,7 @@ reveal_type(f)
 from typing import TypeVar
 T = TypeVar('T')
 [out2]
-tmp/a.py:3: note: Revealed type is 'def [b.T] (x: b.T`-1) -> b.T`-1'
+tmp/a.py:3: note: Revealed type is "def [b.T] (x: b.T`-1) -> b.T`-1"
 
 [case testSerializeBoundedTypeVar]
 import a
@@ -855,8 +855,8 @@ from typing import TypeVar
 T = TypeVar('T', bound=int)
 def g(x: T) -> T: return x
 [out2]
-tmp/a.py:3: note: Revealed type is 'def [b.T <: builtins.int] (x: b.T`-1) -> b.T`-1'
-tmp/a.py:4: note: Revealed type is 'def [T <: builtins.int] (x: T`-1) -> T`-1'
+tmp/a.py:3: note: Revealed type is "def [b.T <: builtins.int] (x: b.T`-1) -> b.T`-1"
+tmp/a.py:4: note: Revealed type is "def [T <: builtins.int] (x: T`-1) -> T`-1"
 
 [case testSerializeTypeVarWithValues]
 import a
@@ -872,8 +872,8 @@ from typing import TypeVar
 T = TypeVar('T', int, str)
 def g(x: T) -> T: return x
 [out2]
-tmp/a.py:3: note: Revealed type is 'def [b.T in (builtins.int, builtins.str)] (x: b.T`-1) -> b.T`-1'
-tmp/a.py:4: note: Revealed type is 'def [T in (builtins.int, builtins.str)] (x: T`-1) -> T`-1'
+tmp/a.py:3: note: Revealed type is "def [b.T in (builtins.int, builtins.str)] (x: b.T`-1) -> b.T`-1"
+tmp/a.py:4: note: Revealed type is "def [T in (builtins.int, builtins.str)] (x: T`-1) -> T`-1"
 
 [case testSerializeTypeVarInClassBody]
 import a
@@ -888,7 +888,7 @@ from typing import TypeVar
 class A:
     T = TypeVar('T', int, str)
 [out2]
-tmp/a.py:3: note: Revealed type is 'def [A.T in (builtins.int, builtins.str)] (x: A.T`-1) -> A.T`-1'
+tmp/a.py:3: note: Revealed type is "def [A.T in (builtins.int, builtins.str)] (x: A.T`-1) -> A.T`-1"
 
 --
 -- NewType
@@ -944,8 +944,8 @@ x: N
 [out2]
 tmp/a.py:5: error: Incompatible types in assignment (expression has type "Tuple[int]", variable has type "N")
 tmp/a.py:6: error: Incompatible types in assignment (expression has type "Tuple[int]", variable has type "N")
-tmp/a.py:9: note: Revealed type is 'Tuple[builtins.int, fallback=b.N]'
-tmp/a.py:10: note: Revealed type is 'builtins.int'
+tmp/a.py:9: note: Revealed type is "Tuple[builtins.int, fallback=b.N]"
+tmp/a.py:10: note: Revealed type is "builtins.int"
 tmp/a.py:11: error: Argument "x" to "N" has incompatible type "str"; expected "int"
 
 --
@@ -990,15 +990,15 @@ Ty = Type[int]
 Ty2 = type
 [builtins fixtures/list.pyi]
 [out2]
-tmp/a.py:9: note: Revealed type is 'b.DD'
-tmp/a.py:10: note: Revealed type is 'Any'
-tmp/a.py:11: note: Revealed type is 'Union[builtins.int, builtins.str]'
-tmp/a.py:12: note: Revealed type is 'builtins.list[builtins.int]'
-tmp/a.py:13: note: Revealed type is 'Tuple[builtins.int, builtins.str]'
-tmp/a.py:14: note: Revealed type is 'def (builtins.int) -> builtins.str'
-tmp/a.py:15: note: Revealed type is 'Type[builtins.int]'
-tmp/a.py:17: note: Revealed type is 'def (*Any, **Any) -> builtins.str'
-tmp/a.py:19: note: Revealed type is 'builtins.type'
+tmp/a.py:9: note: Revealed type is "b.DD"
+tmp/a.py:10: note: Revealed type is "Any"
+tmp/a.py:11: note: Revealed type is "Union[builtins.int, builtins.str]"
+tmp/a.py:12: note: Revealed type is "builtins.list[builtins.int]"
+tmp/a.py:13: note: Revealed type is "Tuple[builtins.int, builtins.str]"
+tmp/a.py:14: note: Revealed type is "def (builtins.int) -> builtins.str"
+tmp/a.py:15: note: Revealed type is "Type[builtins.int]"
+tmp/a.py:17: note: Revealed type is "def (*Any, **Any) -> builtins.str"
+tmp/a.py:19: note: Revealed type is "builtins.type"
 
 [case testSerializeGenericTypeAlias]
 import b
@@ -1011,9 +1011,9 @@ X = TypeVar('X')
 Y = Tuple[X, str]
 [builtins fixtures/tuple.pyi]
 [out1]
-main:4: note: Revealed type is 'Tuple[builtins.int, builtins.str]'
+main:4: note: Revealed type is "Tuple[builtins.int, builtins.str]"
 [out2]
-main:4: note: Revealed type is 'Tuple[builtins.int, builtins.str]'
+main:4: note: Revealed type is "Tuple[builtins.int, builtins.str]"
 
 [case testSerializeTuple]
 # Don't repreat types tested by testSerializeTypeAliases here.
@@ -1030,8 +1030,8 @@ x: Tuple[int, ...]
 y: tuple
 [builtins fixtures/tuple.pyi]
 [out2]
-tmp/a.py:2: note: Revealed type is 'builtins.tuple[builtins.int]'
-tmp/a.py:3: note: Revealed type is 'builtins.tuple[Any]'
+tmp/a.py:2: note: Revealed type is "builtins.tuple[builtins.int]"
+tmp/a.py:3: note: Revealed type is "builtins.tuple[Any]"
 
 [case testSerializeNone]
 import a
@@ -1043,7 +1043,7 @@ reveal_type(b.x)
 [file b.py]
 x: None
 [out2]
-tmp/a.py:2: note: Revealed type is 'None'
+tmp/a.py:2: note: Revealed type is "None"
 
 --
 -- TypedDict
@@ -1064,13 +1064,13 @@ class C:
         self.c = A
 [builtins fixtures/dict.pyi]
 [out1]
-main:2: note: Revealed type is 'TypedDict('ntcrash.C.A@4', {'x': builtins.int})'
-main:3: note: Revealed type is 'TypedDict('ntcrash.C.A@4', {'x': builtins.int})'
-main:4: note: Revealed type is 'def () -> ntcrash.C.A@4'
+main:2: note: Revealed type is "TypedDict('ntcrash.C.A@4', {'x': builtins.int})"
+main:3: note: Revealed type is "TypedDict('ntcrash.C.A@4', {'x': builtins.int})"
+main:4: note: Revealed type is "def () -> ntcrash.C.A@4"
 [out2]
-main:2: note: Revealed type is 'TypedDict('ntcrash.C.A@4', {'x': builtins.int})'
-main:3: note: Revealed type is 'TypedDict('ntcrash.C.A@4', {'x': builtins.int})'
-main:4: note: Revealed type is 'def () -> ntcrash.C.A@4'
+main:2: note: Revealed type is "TypedDict('ntcrash.C.A@4', {'x': builtins.int})"
+main:3: note: Revealed type is "TypedDict('ntcrash.C.A@4', {'x': builtins.int})"
+main:4: note: Revealed type is "def () -> ntcrash.C.A@4"
 
 [case testSerializeNonTotalTypedDict]
 from m import d
@@ -1081,9 +1081,9 @@ D = TypedDict('D', {'x': int, 'y': str}, total=False)
 d: D
 [builtins fixtures/dict.pyi]
 [out1]
-main:2: note: Revealed type is 'TypedDict('m.D', {'x'?: builtins.int, 'y'?: builtins.str})'
+main:2: note: Revealed type is "TypedDict('m.D', {'x'?: builtins.int, 'y'?: builtins.str})"
 [out2]
-main:2: note: Revealed type is 'TypedDict('m.D', {'x'?: builtins.int, 'y'?: builtins.str})'
+main:2: note: Revealed type is "TypedDict('m.D', {'x'?: builtins.int, 'y'?: builtins.str})"
 
 --
 -- Modules
@@ -1127,10 +1127,10 @@ from c import A
 class A: pass
 [out1]
 main:2: error: Too many arguments for "A"
-main:3: note: Revealed type is 'c.A'
+main:3: note: Revealed type is "c.A"
 [out2]
 main:2: error: Too many arguments for "A"
-main:3: note: Revealed type is 'c.A'
+main:3: note: Revealed type is "c.A"
 
 [case testSerializeFromImportedClassAs]
 import b
@@ -1142,10 +1142,10 @@ from c import A as B
 class A: pass
 [out1]
 main:2: error: Too many arguments for "A"
-main:3: note: Revealed type is 'c.A'
+main:3: note: Revealed type is "c.A"
 [out2]
 main:2: error: Too many arguments for "A"
-main:3: note: Revealed type is 'c.A'
+main:3: note: Revealed type is "c.A"
 
 [case testSerializeFromImportedModule]
 import b
@@ -1208,10 +1208,10 @@ def g(x: int) -> None: pass
 class A: pass
 [out1]
 main:3: error: Missing positional argument "x" in call to "g"
-main:5: note: Revealed type is 'd.A'
+main:5: note: Revealed type is "d.A"
 [out2]
 main:3: error: Missing positional argument "x" in call to "g"
-main:5: note: Revealed type is 'd.A'
+main:5: note: Revealed type is "d.A"
 
 [case testSerializeImportInClassBody]
 import b
@@ -1239,9 +1239,9 @@ from typing import Any
 class A: pass
 B = A
 [out1]
-main:3: note: Revealed type is 'c.A'
+main:3: note: Revealed type is "c.A"
 [out2]
-main:3: note: Revealed type is 'c.A'
+main:3: note: Revealed type is "c.A"
 
 [case testSerializeStarImport]
 import a
@@ -1259,7 +1259,7 @@ def f() -> None: pass
 class A: pass
 [out2]
 tmp/a.py:2: error: Too many arguments for "f"
-tmp/a.py:4: note: Revealed type is 'c.A'
+tmp/a.py:4: note: Revealed type is "c.A"
 
 [case testSerializeRelativeImport]
 import b.c
@@ -1291,9 +1291,9 @@ class Test:
             self.foo = o
 [builtins fixtures/callable.pyi]
 [out1]
-tmp/a.py:2: note: Revealed type is 'b.<callable subtype of Foo>'
+tmp/a.py:2: note: Revealed type is "b.<callable subtype of Foo>"
 [out2]
-tmp/a.py:2: note: Revealed type is 'b.<callable subtype of Foo>'
+tmp/a.py:2: note: Revealed type is "b.<callable subtype of Foo>"
 
 [case testSerializeForwardReferenceToAliasInProperty]
 import a
@@ -1315,7 +1315,7 @@ class A:
 C = str
 [builtins fixtures/property.pyi]
 [out2]
-tmp/a.py:2: note: Revealed type is 'builtins.str'
+tmp/a.py:2: note: Revealed type is "builtins.str"
 
 [case testSerializeForwardReferenceToImportedAliasInProperty]
 
@@ -1339,7 +1339,7 @@ from m import C
 C = str
 [builtins fixtures/property.pyi]
 [out2]
-tmp/a.py:2: note: Revealed type is 'builtins.str'
+tmp/a.py:2: note: Revealed type is "builtins.str"
 
 [case testSerializeNestedClassStuff]
 # flags: --verbose

@@ -500,6 +500,6 @@ def test() -> None:
 def bad(arg: P) -> T:
     pass
 [out]
-_program.py:8: note: Revealed type is 'def [T] (arg: P?) -> T`-1'
+_program.py:8: note: Revealed type is "def [T] (arg: P?) -> T`-1"
 _program.py:12: error: Variable "_testForwardRefToBadAsyncShouldNotCrash_newsemanal.P" is not valid as a type
 _program.py:12: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases

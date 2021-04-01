@@ -11,7 +11,7 @@ from a import B  # E: Module 'a' has no attribute 'B'
 
 from a import B  # E: Module 'a' has no attribute 'B'
 from other import x
-reveal_type(x)  # N: Revealed type is 'builtins.int'
+reveal_type(x)  # N: Revealed type is "builtins.int"
 
 [file a/__init__.py]
 [file a/b/__init__.py]
@@ -44,7 +44,7 @@ import a
 [case testNamespacePackagePickFirstOnMypyPathCase]
 # flags: --namespace-packages --config-file tmp/mypy.ini
 from foo.bar import x
-reveal_type(x)  # N: Revealed type is 'builtins.int'
+reveal_type(x)  # N: Revealed type is "builtins.int"
 [file XX/foo/bar.py]
 x = 0
 [file yy/foo/bar.py]
@@ -56,7 +56,7 @@ mypy_path = tmp/xx, tmp/yy
 [case testClassicPackageInsideNamespacePackageCase]
 # flags: --namespace-packages --config-file tmp/mypy.ini
 from foo.bar.baz.boo import x
-reveal_type(x)  # N: Revealed type is 'builtins.int'
+reveal_type(x)  # N: Revealed type is "builtins.int"
 [file xx/foo/bar/baz/boo.py]
 x = ''
 [file xx/foo/bar/baz/__init__.py]

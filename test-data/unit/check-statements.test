@@ -180,7 +180,7 @@ for z in x:  # type: int
     pass
 
 for w in x:  # type: Union[int, str]
-    reveal_type(w)  # N: Revealed type is 'Union[builtins.int, builtins.str]'
+    reveal_type(w)  # N: Revealed type is "Union[builtins.int, builtins.str]"
 
 for v in x:  # type: int, int  # E: Syntax error in type annotation # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
     pass
@@ -712,31 +712,31 @@ def variadic(exc: Tuple[Type[E1], ...]) -> None:
     try:
         pass
     except exc as e:
-        reveal_type(e)  # N: Revealed type is '__main__.E1'
+        reveal_type(e)  # N: Revealed type is "__main__.E1"
 
 def union(exc: Union[Type[E1], Type[E2]]) -> None:
     try:
         pass
     except exc as e:
-        reveal_type(e)  # N: Revealed type is 'Union[__main__.E1, __main__.E2]'
+        reveal_type(e)  # N: Revealed type is "Union[__main__.E1, __main__.E2]"
 
 def tuple_in_union(exc: Union[Type[E1], Tuple[Type[E2], Type[E3]]]) -> None:
     try:
         pass
     except exc as e:
-        reveal_type(e)  # N: Revealed type is 'Union[__main__.E1, __main__.E2, __main__.E3]'
+        reveal_type(e)  # N: Revealed type is "Union[__main__.E1, __main__.E2, __main__.E3]"
 
 def variadic_in_union(exc: Union[Type[E1], Tuple[Type[E2], ...]]) -> None:
     try:
         pass
     except exc as e:
-        reveal_type(e)  # N: Revealed type is 'Union[__main__.E1, __main__.E2]'
+        reveal_type(e)  # N: Revealed type is "Union[__main__.E1, __main__.E2]"
 
 def nested_union(exc: Union[Type[E1], Union[Type[E2], Type[E3]]]) -> None:
     try:
         pass
     except exc as e:
-        reveal_type(e)  # N: Revealed type is 'Union[__main__.E1, __main__.E2, __main__.E3]'
+        reveal_type(e)  # N: Revealed type is "Union[__main__.E1, __main__.E2, __main__.E3]"
 
 def error_in_union(exc: Union[Type[E1], int]) -> None:
     try:
@@ -762,19 +762,19 @@ class NotBaseDerived: pass
 try:
     pass
 except BaseException as e1:
-    reveal_type(e1)  # N: Revealed type is 'builtins.BaseException'
+    reveal_type(e1)  # N: Revealed type is "builtins.BaseException"
 except (E1, BaseException) as e2:
-    reveal_type(e2)  # N: Revealed type is 'Union[Any, builtins.BaseException]'
+    reveal_type(e2)  # N: Revealed type is "Union[Any, builtins.BaseException]"
 except (E1, E2) as e3:
-    reveal_type(e3)  # N: Revealed type is 'Union[Any, __main__.E2]'
+    reveal_type(e3)  # N: Revealed type is "Union[Any, __main__.E2]"
 except (E1, E2, BaseException) as e4:
-    reveal_type(e4)  # N: Revealed type is 'Union[Any, builtins.BaseException]'
+    reveal_type(e4)  # N: Revealed type is "Union[Any, builtins.BaseException]"
 
 try: pass
 except E1 as e1:
-    reveal_type(e1)  # N: Revealed type is 'Any'
+    reveal_type(e1)  # N: Revealed type is "Any"
 except E2 as e2:
-    reveal_type(e2)  # N: Revealed type is '__main__.E2'
+    reveal_type(e2)  # N: Revealed type is "__main__.E2"
 except NotBaseDerived as e3:  # E: Exception type must be derived from BaseException
     pass
 except (NotBaseDerived, E1) as e4:  # E: Exception type must be derived from BaseException
@@ -868,8 +868,8 @@ def f(*arg: BaseException) -> int:
 x = f()
 [builtins fixtures/exception.pyi]
 [out]
-main:11: note: Revealed type is 'builtins.int'
-main:16: note: Revealed type is 'builtins.str'
+main:11: note: Revealed type is "builtins.int"
+main:16: note: Revealed type is "builtins.str"
 
 [case testExceptionVariableReuseInDeferredNode5]
 class EA(BaseException):
@@ -892,8 +892,8 @@ def f(*arg: BaseException) -> int:
 x = f()
 [builtins fixtures/exception.pyi]
 [out]
-main:10: note: Revealed type is 'builtins.int'
-main:16: note: Revealed type is 'builtins.str'
+main:10: note: Revealed type is "builtins.int"
+main:16: note: Revealed type is "builtins.str"
 
 [case testExceptionVariableReuseInDeferredNode6]
 class EA(BaseException):
@@ -916,8 +916,8 @@ def f(*arg: BaseException) -> int:
 x = f()
 [builtins fixtures/exception.pyi]
 [out]
-main:10: note: Revealed type is 'builtins.int'
-main:15: note: Revealed type is 'builtins.str'
+main:10: note: Revealed type is "builtins.int"
+main:15: note: Revealed type is "builtins.str"
 
 [case testArbitraryExpressionAsExceptionType]
 import typing
@@ -1012,7 +1012,7 @@ def h(e: Type[int]):
     except e: pass
 [builtins fixtures/exception.pyi]
 [out]
-main:9: note: Revealed type is 'builtins.BaseException'
+main:9: note: Revealed type is "builtins.BaseException"
 main:12: error: Exception type must be derived from BaseException
 
 
@@ -1272,7 +1272,7 @@ T = TypeVar('T')
 def f(a: T) -> Generator[int, str, T]: pass
 def g() -> Generator[int, str, float]:
     r = yield from f('')
-    reveal_type(r)  # N: Revealed type is 'builtins.str*'
+    reveal_type(r)  # N: Revealed type is "builtins.str*"
     return 3.14
 
 [case testYieldFromTupleStatement]
@@ -1395,7 +1395,7 @@ with A() as c:  # type: int, int  # E: Syntax error in type annotation # N: Sugg
     pass
 
 with A() as d:  # type: Union[int, str]
-    reveal_type(d)  # N: Revealed type is 'Union[builtins.int, builtins.str]'
+    reveal_type(d)  # N: Revealed type is "Union[builtins.int, builtins.str]"
 
 [case testWithStmtTupleTypeComment]
 
@@ -1688,15 +1688,15 @@ main:8: error: Incompatible types in assignment (expression has type "A", variab
 
 [case testAugmentedAssignmentIntFloat]
 weight0 = 65.5
-reveal_type(weight0)  # N: Revealed type is 'builtins.float'
+reveal_type(weight0)  # N: Revealed type is "builtins.float"
 if int():
     weight0 = 65
-    reveal_type(weight0)  # N: Revealed type is 'builtins.int'
+    reveal_type(weight0)  # N: Revealed type is "builtins.int"
     weight0 *= 'a'  # E: Incompatible types in assignment (expression has type "str", variable has type "float")
     weight0 *= 0.5
-    reveal_type(weight0)  # N: Revealed type is 'builtins.float'
+    reveal_type(weight0)  # N: Revealed type is "builtins.float"
     weight0 *= object()  # E: Unsupported operand types for * ("float" and "object")
-    reveal_type(weight0) # N: Revealed type is 'builtins.float'
+    reveal_type(weight0) # N: Revealed type is "builtins.float"
 
 [builtins fixtures/float.pyi]
 
@@ -1704,28 +1704,28 @@ if int():
 class A:
     def __init__(self) -> None:
         self.weight0 = 65.5
-        reveal_type(self.weight0)  # N: Revealed type is 'builtins.float'
+        reveal_type(self.weight0)  # N: Revealed type is "builtins.float"
         self.weight0 = 65
-        reveal_type(self.weight0)  # N: Revealed type is 'builtins.int'
+        reveal_type(self.weight0)  # N: Revealed type is "builtins.int"
         self.weight0 *= 'a'  # E: Incompatible types in assignment (expression has type "str", variable has type "float")
         self.weight0 *= 0.5
-        reveal_type(self.weight0)  # N: Revealed type is 'builtins.float'
+        reveal_type(self.weight0)  # N: Revealed type is "builtins.float"
         self.weight0 *= object()  # E: Unsupported operand types for * ("float" and "object")
-        reveal_type(self.weight0) # N: Revealed type is 'builtins.float'
+        reveal_type(self.weight0) # N: Revealed type is "builtins.float"
 
 [builtins fixtures/float.pyi]
 
 [case testAugmentedAssignmentIntFloatDict]
 from typing import Dict
 d = {'weight0': 65.5}
-reveal_type(d['weight0'])  # N: Revealed type is 'builtins.float*'
+reveal_type(d['weight0'])  # N: Revealed type is "builtins.float*"
 d['weight0'] = 65
-reveal_type(d['weight0'])  # N: Revealed type is 'builtins.float*'
+reveal_type(d['weight0'])  # N: Revealed type is "builtins.float*"
 d['weight0'] *= 'a'  # E: Unsupported operand types for * ("float" and "str")
 d['weight0'] *= 0.5
-reveal_type(d['weight0'])  # N: Revealed type is 'builtins.float*'
+reveal_type(d['weight0'])  # N: Revealed type is "builtins.float*"
 d['weight0'] *= object()  # E: Unsupported operand types for * ("float" and "object")
-reveal_type(d['weight0']) # N: Revealed type is 'builtins.float*'
+reveal_type(d['weight0']) # N: Revealed type is "builtins.float*"
 
 [builtins fixtures/floatdict.pyi]
 
@@ -1734,7 +1734,7 @@ from typing import List, NamedTuple
 lst: List[N]
 
 for i in lst:
-    reveal_type(i.x)  # N: Revealed type is 'builtins.int'
+    reveal_type(i.x)  # N: Revealed type is "builtins.int"
     a: str = i[0] # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 N = NamedTuple('N', [('x', int)])
@@ -1746,7 +1746,7 @@ from typing import List, NamedTuple
 lst: List[M]
 
 for i in lst: # type: N
-    reveal_type(i.x)  # N: Revealed type is 'builtins.int'
+    reveal_type(i.x)  # N: Revealed type is "builtins.int"
     a: str = i[0] # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 N = NamedTuple('N', [('x', int)])

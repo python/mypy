@@ -836,9 +836,9 @@ def f(self, session: Session) -> None:  # E: Function "a.Session" is not valid a
 
 [case testSubmoduleRegularImportAddsAllParents]
 import a.b.c
-reveal_type(a.value)  # N: Revealed type is 'builtins.int'
-reveal_type(a.b.value)  # N: Revealed type is 'builtins.str'
-reveal_type(a.b.c.value)  # N: Revealed type is 'builtins.float'
+reveal_type(a.value)  # N: Revealed type is "builtins.int"
+reveal_type(a.b.value)  # N: Revealed type is "builtins.str"
+reveal_type(a.b.c.value)  # N: Revealed type is "builtins.float"
 b.value  # E: Name 'b' is not defined
 c.value  # E: Name 'c' is not defined
 
@@ -852,7 +852,7 @@ value = 3.2
 
 [case testSubmoduleImportAsDoesNotAddParents]
 import a.b.c as foo
-reveal_type(foo.value)  # N: Revealed type is 'builtins.float'
+reveal_type(foo.value)  # N: Revealed type is "builtins.float"
 a.value  # E: Name 'a' is not defined
 b.value  # E: Name 'b' is not defined
 c.value  # E: Name 'c' is not defined
@@ -867,7 +867,7 @@ value = 3.2
 
 [case testSubmoduleImportFromDoesNotAddParents]
 from a import b
-reveal_type(b.value)  # N: Revealed type is 'builtins.str'
+reveal_type(b.value)  # N: Revealed type is "builtins.str"
 b.c.value  # E: Module has no attribute "c"
 a.value  # E: Name 'a' is not defined
 
@@ -882,7 +882,7 @@ value = 3.2
 
 [case testSubmoduleImportFromDoesNotAddParents2]
 from a.b import c
-reveal_type(c.value)  # N: Revealed type is 'builtins.float'
+reveal_type(c.value)  # N: Revealed type is "builtins.float"
 a.value  # E: Name 'a' is not defined
 b.value  # E: Name 'b' is not defined
 
@@ -968,7 +968,7 @@ bar = parent.unrelated.ShouldNotLoad()
 
 [builtins fixtures/module.pyi]
 [out]
-tmp/parent/child.py:8: note: Revealed type is 'parent.common.SomeClass'
+tmp/parent/child.py:8: note: Revealed type is "parent.common.SomeClass"
 tmp/parent/child.py:9: error: Module has no attribute "unrelated"
 
 [case testSubmoduleMixingImportFromAndImport2]
@@ -987,7 +987,7 @@ reveal_type(foo)
 
 [builtins fixtures/module.pyi]
 [out]
-tmp/parent/child.py:4: note: Revealed type is 'parent.common.SomeClass'
+tmp/parent/child.py:4: note: Revealed type is "parent.common.SomeClass"
 
 -- Tests repeated imports
 
@@ -1189,7 +1189,7 @@ x = 0
 [case testImportInClass]
 class C:
     import foo
-reveal_type(C.foo.bar)  # N: Revealed type is 'builtins.int'
+reveal_type(C.foo.bar)  # N: Revealed type is "builtins.int"
 [file foo.py]
 bar = 0
 [builtins fixtures/module.pyi]
@@ -1262,7 +1262,7 @@ import x
 class Sub(x.Base):
     attr = 0
 [out]
-tmp/x.py:5: note: Revealed type is 'builtins.int'
+tmp/x.py:5: note: Revealed type is "builtins.int"
 
 -- This case has a symmetrical cycle, so it doesn't matter in what
 -- order the files are processed.  It depends on the lightweight type
@@ -1339,7 +1339,7 @@ def foo() -> int:
 import x
 value = 12
 [out]
-tmp/x.py:3: note: Revealed type is 'builtins.int'
+tmp/x.py:3: note: Revealed type is "builtins.int"
 
 -- This is not really cycle-related but still about the lightweight
 -- type checker.
@@ -1349,7 +1349,7 @@ x = 1  # type: str
 reveal_type(x)
 [out]
 main:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
-main:2: note: Revealed type is 'builtins.str'
+main:2: note: Revealed type is "builtins.str"
 
 -- Tests for cross-module second_pass checking.
 
@@ -1367,7 +1367,7 @@ def g() -> int:
     return a.y
 x = 1 + 1
 [out]
-tmp/b.py:3: note: Revealed type is 'builtins.int'
+tmp/b.py:3: note: Revealed type is "builtins.int"
 
 [case testSymmetricImportCycle2]
 import b
@@ -1383,7 +1383,7 @@ def g() -> int:
     return a.y
 x = 1 + 1
 [out]
-tmp/a.py:3: note: Revealed type is 'builtins.int'
+tmp/a.py:3: note: Revealed type is "builtins.int"
 
 [case testThreePassesRequired]
 import b
@@ -1444,7 +1444,7 @@ def deco(f: Callable[[T], int]) -> Callable[[T], int]:
     a.x
     return f
 [out]
-tmp/a.py:6: note: Revealed type is 'def (builtins.str*) -> builtins.int'
+tmp/a.py:6: note: Revealed type is "def (builtins.str*) -> builtins.int"
 
 [case testDeferredClassContext]
 class A:
@@ -1502,7 +1502,7 @@ def part4_thing(a: int) -> str: pass
 [builtins fixtures/bool.pyi]
 [typing fixtures/typing-medium.pyi]
 [out]
-tmp/part3.py:2: note: Revealed type is 'def (a: builtins.int) -> builtins.str'
+tmp/part3.py:2: note: Revealed type is "def (a: builtins.int) -> builtins.str"
 
 [case testImportStarAliasAnyList]
 import bar
@@ -1520,7 +1520,7 @@ AnyAlias = Any
 ListAlias = List
 [builtins fixtures/list.pyi]
 [out]
-tmp/bar.py:5: note: Revealed type is 'builtins.list[builtins.int]'
+tmp/bar.py:5: note: Revealed type is "builtins.list[builtins.int]"
 
 [case testImportStarAliasSimpleGeneric]
 from ex2a import *
@@ -1532,7 +1532,7 @@ def do_another() -> Row:
     return {}
 
 do_something({'good': 'bad'}) # E: Dict entry 0 has incompatible type "str": "str"; expected "str": "int"
-reveal_type(do_another()) # N: Revealed type is 'builtins.dict[builtins.str, builtins.int]'
+reveal_type(do_another()) # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
 
 [file ex2a.py]
 from typing import Dict
@@ -1547,10 +1547,10 @@ another = G[X]()
 second = XT[str]()
 last = XT[G]()
 
-reveal_type(notes) # N: Revealed type is 'y.G[y.G[builtins.int]]'
-reveal_type(another) # N: Revealed type is 'y.G[y.G*[builtins.int]]'
-reveal_type(second) # N: Revealed type is 'y.G[builtins.str*]'
-reveal_type(last) # N: Revealed type is 'y.G[y.G*[Any]]'
+reveal_type(notes) # N: Revealed type is "y.G[y.G[builtins.int]]"
+reveal_type(another) # N: Revealed type is "y.G[y.G*[builtins.int]]"
+reveal_type(second) # N: Revealed type is "y.G[builtins.str*]"
+reveal_type(last) # N: Revealed type is "y.G[y.G*[Any]]"
 
 [file y.py]
 from typing import Generic, TypeVar
@@ -1572,7 +1572,7 @@ def bar(x: Any, y: AnyCallable) -> Any:
     return 'foo'
 
 cb = None # type: AnyCallable
-reveal_type(cb) # N: Revealed type is 'def (*Any, **Any) -> Any'
+reveal_type(cb) # N: Revealed type is "def (*Any, **Any) -> Any"
 
 [file foo.py]
 from typing import Callable, Any
@@ -1583,8 +1583,8 @@ AnyCallable = Callable[..., Any]
 import types
 def f() -> types.ModuleType:
     return types
-reveal_type(f())  # N: Revealed type is 'types.ModuleType'
-reveal_type(types)  # N: Revealed type is 'types.ModuleType'
+reveal_type(f())  # N: Revealed type is "types.ModuleType"
+reveal_type(types)  # N: Revealed type is "types.ModuleType"
 
 [builtins fixtures/module.pyi]
 
@@ -1593,14 +1593,14 @@ class C:
     import m
     def foo(self) -> None:
         x = self.m.a
-        reveal_type(x)  # N: Revealed type is 'builtins.str'
+        reveal_type(x)  # N: Revealed type is "builtins.str"
         # ensure we distinguish self from other variables
         y = 'hello'
         z = y.m.a  # E: "str" has no attribute "m"
     @classmethod
     def cmethod(cls) -> None:
         y = cls.m.a
-        reveal_type(y)  # N: Revealed type is 'builtins.str'
+        reveal_type(y)  # N: Revealed type is "builtins.str"
     @staticmethod
     def smethod(foo: int) -> None:
         # we aren't confused by first arg of a staticmethod
@@ -1614,7 +1614,7 @@ a = 'foo'
 [case testModuleAlias]
 import m
 m2 = m
-reveal_type(m2.a)  # N: Revealed type is 'builtins.str'
+reveal_type(m2.a)  # N: Revealed type is "builtins.str"
 m2.b  # E: Module has no attribute "b"
 m2.c = 'bar'  # E: Module has no attribute "c"
 
@@ -1629,7 +1629,7 @@ import m
 class C:
     x = m
     def foo(self) -> None:
-        reveal_type(self.x.a)  # N: Revealed type is 'builtins.str'
+        reveal_type(self.x.a)  # N: Revealed type is "builtins.str"
 
 [file m.py]
 a = 'foo'
@@ -1641,12 +1641,12 @@ import m
 
 def foo() -> None:
     x = m
-    reveal_type(x.a)  # N: Revealed type is 'builtins.str'
+    reveal_type(x.a)  # N: Revealed type is "builtins.str"
 
 class C:
     def foo(self) -> None:
         x = m
-        reveal_type(x.a)  # N: Revealed type is 'builtins.str'
+        reveal_type(x.a)  # N: Revealed type is "builtins.str"
 
 [file m.py]
 a = 'foo'
@@ -1658,10 +1658,10 @@ import m
 m3 = m2 = m
 m4 = m3
 m5 = m4
-reveal_type(m2.a)  # N: Revealed type is 'builtins.str'
-reveal_type(m3.a)  # N: Revealed type is 'builtins.str'
-reveal_type(m4.a)  # N: Revealed type is 'builtins.str'
-reveal_type(m5.a)  # N: Revealed type is 'builtins.str'
+reveal_type(m2.a)  # N: Revealed type is "builtins.str"
+reveal_type(m3.a)  # N: Revealed type is "builtins.str"
+reveal_type(m4.a)  # N: Revealed type is "builtins.str"
+reveal_type(m5.a)  # N: Revealed type is "builtins.str"
 
 [file m.py]
 a = 'foo'
@@ -1671,15 +1671,15 @@ a = 'foo'
 [case testMultiModuleAlias]
 import m, n
 m2, n2, (m3, n3) = m, n, [m, n]
-reveal_type(m2.a)  # N: Revealed type is 'builtins.str'
-reveal_type(n2.b)  # N: Revealed type is 'builtins.str'
-reveal_type(m3.a)  # N: Revealed type is 'builtins.str'
-reveal_type(n3.b)  # N: Revealed type is 'builtins.str'
+reveal_type(m2.a)  # N: Revealed type is "builtins.str"
+reveal_type(n2.b)  # N: Revealed type is "builtins.str"
+reveal_type(m3.a)  # N: Revealed type is "builtins.str"
+reveal_type(n3.b)  # N: Revealed type is "builtins.str"
 
-x, y = m  # E: 'types.ModuleType' object is not iterable
+x, y = m  # E: "types.ModuleType" object is not iterable
 x, y, z = m, n  # E: Need more than 2 values to unpack (3 expected)
 x, y = m, m, m  # E: Too many values to unpack (2 expected, 3 provided)
-x, (y, z) = m, n  # E: 'types.ModuleType' object is not iterable
+x, (y, z) = m, n  # E: "types.ModuleType" object is not iterable
 x, (y, z) = m, (n, n, n)  # E: Too many values to unpack (2 expected, 3 provided)
 
 [file m.py]
@@ -1701,13 +1701,13 @@ mod_mod3 = m  # type: types.ModuleType
 mod_any: Any = m
 mod_int: int = m  # E: Incompatible types in assignment (expression has type Module, variable has type "int")
 
-reveal_type(mod_mod)  # N: Revealed type is 'types.ModuleType'
+reveal_type(mod_mod)  # N: Revealed type is "types.ModuleType"
 mod_mod.a  # E: Module has no attribute "a"
-reveal_type(mod_mod2)  # N: Revealed type is 'types.ModuleType'
+reveal_type(mod_mod2)  # N: Revealed type is "types.ModuleType"
 mod_mod2.a  # E: Module has no attribute "a"
-reveal_type(mod_mod3)  # N: Revealed type is 'types.ModuleType'
+reveal_type(mod_mod3)  # N: Revealed type is "types.ModuleType"
 mod_mod3.a  # E: Module has no attribute "a"
-reveal_type(mod_any)  # N: Revealed type is 'Any'
+reveal_type(mod_any)  # N: Revealed type is "Any"
 
 [file m.py]
 a = 'foo'
@@ -1719,7 +1719,7 @@ import types
 import m
 
 def takes_module(x: types.ModuleType):
-    reveal_type(x.__file__)  # N: Revealed type is 'builtins.str'
+    reveal_type(x.__file__)  # N: Revealed type is "builtins.str"
 
 n = m
 takes_module(m)
@@ -1767,7 +1767,7 @@ else:
     x = n
 
 x.a  # E: Module has no attribute "a"
-reveal_type(x.__file__)  # N: Revealed type is 'builtins.str'
+reveal_type(x.__file__)  # N: Revealed type is "builtins.str"
 
 [file m.py]
 a = 'foo'
@@ -1793,7 +1793,7 @@ if int():
 xx = m
 if int():
     xx = m
-reveal_type(xx.a)  # N: Revealed type is 'builtins.str'
+reveal_type(xx.a)  # N: Revealed type is "builtins.str"
 
 [file m.py]
 a = 'foo'
@@ -1822,9 +1822,9 @@ from stub import D  # E: Module 'stub' has no attribute 'D'
 from stub import C
 
 c = C()
-reveal_type(c.x)  # N: Revealed type is 'builtins.int'
+reveal_type(c.x)  # N: Revealed type is "builtins.int"
 it: Iterable[int]
-reveal_type(it)  # N: Revealed type is 'Any'
+reveal_type(it)  # N: Revealed type is "Any"
 
 [file stub.pyi]
 from typing import Iterable
@@ -1843,9 +1843,9 @@ class C:
 import stub
 
 c = stub.C()
-reveal_type(c.x)  # N: Revealed type is 'builtins.int'
+reveal_type(c.x)  # N: Revealed type is "builtins.int"
 it: stub.Iterable[int]  # E: Name 'stub.Iterable' is not defined
-reveal_type(it)  # N: Revealed type is 'Any'
+reveal_type(it)  # N: Revealed type is "Any"
 
 [file stub.pyi]
 from typing import Iterable
@@ -1862,9 +1862,9 @@ class C:
 [case testNoReExportFromStubsMemberVar]
 import stub
 
-reveal_type(stub.y)  # N: Revealed type is 'builtins.int'
+reveal_type(stub.y)  # N: Revealed type is "builtins.int"
 reveal_type(stub.z)  # E: Module has no attribute "z" \
-                     # N: Revealed type is 'Any'
+                     # N: Revealed type is "Any"
 
 [file stub.pyi]
 from substub import y as y
@@ -1880,9 +1880,9 @@ z: int
 import mod
 from mod import submod
 
-reveal_type(mod.x)  # N: Revealed type is 'mod.submod.C'
+reveal_type(mod.x)  # N: Revealed type is "mod.submod.C"
 y = submod.C()
-reveal_type(y.a)  # N: Revealed type is 'builtins.str'
+reveal_type(y.a)  # N: Revealed type is "builtins.str"
 
 [file mod/__init__.pyi]
 from . import submod
@@ -1898,7 +1898,7 @@ class C:
 import mod.submod
 
 y = mod.submod.C()
-reveal_type(y.a)  # N: Revealed type is 'builtins.str'
+reveal_type(y.a)  # N: Revealed type is "builtins.str"
 
 [file mod/__init__.pyi]
 from . import submod
@@ -1914,10 +1914,10 @@ class C:
 import mod
 from mod import C, D  # E: Module 'mod' has no attribute 'C'
 
-reveal_type(mod.x)  # N: Revealed type is 'mod.submod.C'
+reveal_type(mod.x)  # N: Revealed type is "mod.submod.C"
 mod.C  # E: Module has no attribute "C"
 y = mod.D()
-reveal_type(y.a)  # N: Revealed type is 'builtins.str'
+reveal_type(y.a)  # N: Revealed type is "builtins.str"
 
 [file mod/__init__.pyi]
 from .submod import C, D as D
@@ -1943,7 +1943,7 @@ x = 42
 [case testModuleAliasToQualifiedImport]
 import package.module
 alias = package.module
-reveal_type(alias.whatever('/'))  # N: Revealed type is 'builtins.str*'
+reveal_type(alias.whatever('/'))  # N: Revealed type is "builtins.str*"
 [file package/__init__.py]
 
 [file package/module.py]
@@ -1956,7 +1956,7 @@ def whatever(x: T) -> T: pass
 import mod
 import othermod
 alias = mod.submod
-reveal_type(alias.whatever('/'))  # N: Revealed type is 'builtins.str*'
+reveal_type(alias.whatever('/'))  # N: Revealed type is "builtins.str*"
 if int():
     alias = othermod  # E: Cannot assign multiple modules to name 'alias' without explicit 'types.ModuleType' annotation
 [file mod.py]
@@ -1972,7 +1972,7 @@ def whatever(x: T) -> T: pass
 [case testModuleLevelGetattr]
 import has_getattr
 
-reveal_type(has_getattr.any_attribute)  # N: Revealed type is 'Any'
+reveal_type(has_getattr.any_attribute)  # N: Revealed type is "Any"
 
 [file has_getattr.pyi]
 from typing import Any
@@ -1984,7 +1984,7 @@ def __getattr__(name: str) -> Any: ...
 [case testModuleLevelGetattrReturnType]
 import has_getattr
 
-reveal_type(has_getattr.any_attribute)  # N: Revealed type is 'builtins.str'
+reveal_type(has_getattr.any_attribute)  # N: Revealed type is "builtins.str"
 
 [file has_getattr.pyi]
 def __getattr__(name: str) -> str: ...
@@ -2001,7 +2001,7 @@ def __getattr__(x: int, y: str) -> str: ...
 
 [out]
 tmp/has_getattr.pyi:1: error: Invalid signature "def (builtins.int, builtins.str) -> builtins.str" for "__getattr__"
-main:3: note: Revealed type is 'builtins.str'
+main:3: note: Revealed type is "builtins.str"
 
 [builtins fixtures/module.pyi]
 
@@ -2015,13 +2015,13 @@ __getattr__ = 3
 
 [out]
 tmp/has_getattr.pyi:1: error: Invalid signature "builtins.int" for "__getattr__"
-main:3: note: Revealed type is 'Any'
+main:3: note: Revealed type is "Any"
 
 [builtins fixtures/module.pyi]
 
 [case testModuleLevelGetattrUntyped]
 import has_getattr
-reveal_type(has_getattr.any_attribute)  # N: Revealed type is 'Any'
+reveal_type(has_getattr.any_attribute)  # N: Revealed type is "Any"
 
 [file has_getattr.pyi]
 def __getattr__(name): ...
@@ -2032,7 +2032,7 @@ def __getattr__(name): ...
 # flags: --python-version 3.6
 import has_getattr
 reveal_type(has_getattr.any_attribute)  # E: Module has no attribute "any_attribute" \
-                                        # N: Revealed type is 'Any'
+                                        # N: Revealed type is "Any"
 [file has_getattr.py]
 def __getattr__(name) -> str: ...
 
@@ -2042,7 +2042,7 @@ def __getattr__(name) -> str: ...
 # flags: --python-version 3.7
 
 import has_getattr
-reveal_type(has_getattr.any_attribute)  # N: Revealed type is 'builtins.str'
+reveal_type(has_getattr.any_attribute)  # N: Revealed type is "builtins.str"
 
 [file has_getattr.py]
 def __getattr__(name) -> str: ...
@@ -2055,7 +2055,7 @@ def __getattribute__(): ...  # E: __getattribute__ is not valid at the module le
 
 [case testModuleLevelGetattrImportFrom]
 from has_attr import name
-reveal_type(name)  # N: Revealed type is 'Any'
+reveal_type(name)  # N: Revealed type is "Any"
 
 [file has_attr.pyi]
 from typing import Any
@@ -2065,7 +2065,7 @@ def __getattr__(name: str) -> Any: ...
 
 [case testModuleLevelGetattrImportFromRetType]
 from has_attr import int_attr
-reveal_type(int_attr)  # N: Revealed type is 'builtins.int'
+reveal_type(int_attr)  # N: Revealed type is "builtins.int"
 
 [file has_attr.pyi]
 def __getattr__(name: str) -> int: ...
@@ -2075,7 +2075,7 @@ def __getattr__(name: str) -> int: ...
 [case testModuleLevelGetattrImportFromNotStub36]
 # flags: --python-version 3.6
 from non_stub import name  # E: Module 'non_stub' has no attribute 'name'
-reveal_type(name)  # N: Revealed type is 'Any'
+reveal_type(name)  # N: Revealed type is "Any"
 
 [file non_stub.py]
 from typing import Any
@@ -2086,7 +2086,7 @@ def __getattr__(name: str) -> Any: ...
 [case testModuleLevelGetattrImportFromNotStub37]
 # flags: --python-version 3.7
 from non_stub import name
-reveal_type(name)  # N: Revealed type is 'Any'
+reveal_type(name)  # N: Revealed type is "Any"
 
 [file non_stub.py]
 from typing import Any
@@ -2096,8 +2096,8 @@ def __getattr__(name: str) -> Any: ...
 
 [case testModuleLevelGetattrImportFromAs]
 from has_attr import name as n
-reveal_type(name)  # E: Name 'name' is not defined  # N: Revealed type is 'Any'
-reveal_type(n)  # N: Revealed type is 'Any'
+reveal_type(name)  # E: Name 'name' is not defined  # N: Revealed type is "Any"
+reveal_type(n)  # N: Revealed type is "Any"
 
 [file has_attr.pyi]
 from typing import Any
@@ -2111,7 +2111,7 @@ from has_attr import name
 from has_attr import name
 from has_attr import x
 from has_attr import y as x  # E: Name 'x' already defined (possibly by an import)
-reveal_type(name)  # N: Revealed type is 'builtins.int'
+reveal_type(name)  # N: Revealed type is "builtins.int"
 
 [file has_attr.pyi]
 from typing import Any
@@ -2121,7 +2121,7 @@ def __getattr__(name: str) -> int: ...
 [case testModuleLevelGetattrAssignedGood]
 # flags: --python-version 3.7
 import non_stub
-reveal_type(non_stub.name)  # N: Revealed type is 'builtins.int'
+reveal_type(non_stub.name)  # N: Revealed type is "builtins.int"
 
 [file non_stub.py]
 from typing import Callable
@@ -2142,12 +2142,12 @@ __getattr__ = make_getattr_bad()
 
 [out]
 tmp/non_stub.py:4: error: Invalid signature "def () -> builtins.int" for "__getattr__"
-main:3: note: Revealed type is 'builtins.int'
+main:3: note: Revealed type is "builtins.int"
 
 [case testModuleLevelGetattrImportedGood]
 # flags: --python-version 3.7
 import non_stub
-reveal_type(non_stub.name)  # N: Revealed type is 'builtins.int'
+reveal_type(non_stub.name)  # N: Revealed type is "builtins.int"
 
 [file non_stub.py]
 from has_getattr import __getattr__
@@ -2168,7 +2168,7 @@ def __getattr__() -> int: ...
 
 [out]
 tmp/has_getattr.py:1: error: Invalid signature "def () -> builtins.int" for "__getattr__"
-main:3: note: Revealed type is 'builtins.int'
+main:3: note: Revealed type is "builtins.int"
 
 [builtins fixtures/module.pyi]
 
@@ -2193,7 +2193,7 @@ from c import x
 from c import y
 from a import x
 def f() -> None: pass
-reveal_type(x) # N: Revealed type is 'builtins.str'
+reveal_type(x) # N: Revealed type is "builtins.str"
 [file c.py]
 x = str()
 y = int()
@@ -2204,7 +2204,7 @@ import a
 from c import y
 from b import x
 def f() -> None: pass
-reveal_type(x) # N: Revealed type is 'builtins.str'
+reveal_type(x) # N: Revealed type is "builtins.str"
 [file b.py]
 from a import f
 from c import x
@@ -2222,7 +2222,7 @@ from p.c import x
 from p.c import y
 from p.a import x
 def f() -> None: pass
-reveal_type(x) # N: Revealed type is 'builtins.str'
+reveal_type(x) # N: Revealed type is "builtins.str"
 [file p/c.py]
 x = str()
 y = int()
@@ -2238,21 +2238,21 @@ from p.c import x
 from p.c import y
 from p.a import x
 def f() -> None: pass
-reveal_type(x) # N: Revealed type is 'builtins.str'
+reveal_type(x) # N: Revealed type is "builtins.str"
 [file p/c.py]
 x = str()
 y = int()
 
 [case testForwardReferenceToListAlias]
 x: List[int]
-reveal_type(x) # N: Revealed type is 'builtins.list[builtins.int]'
+reveal_type(x) # N: Revealed type is "builtins.list[builtins.int]"
 def f() -> 'List[int]': pass
-reveal_type(f) # N: Revealed type is 'def () -> builtins.list[builtins.int]'
+reveal_type(f) # N: Revealed type is "def () -> builtins.list[builtins.int]"
 class A:
     y: 'List[str]'
     def g(self, x: 'List[int]') -> None: pass
-reveal_type(A().y) # N: Revealed type is 'builtins.list[builtins.str]'
-reveal_type(A().g) # N: Revealed type is 'def (x: builtins.list[builtins.int])'
+reveal_type(A().y) # N: Revealed type is "builtins.list[builtins.str]"
+reveal_type(A().g) # N: Revealed type is "def (x: builtins.list[builtins.int])"
 from typing import List
 [builtins fixtures/list.pyi]
 
@@ -2265,7 +2265,7 @@ from c import x
 from c import y
 from a import *
 def f() -> None: pass
-reveal_type(x) # N: Revealed type is 'builtins.str'
+reveal_type(x) # N: Revealed type is "builtins.str"
 [file c.py]
 x = str()
 y = int()
@@ -2276,7 +2276,7 @@ import a
 from c import y
 from b import *
 def f() -> None: pass
-reveal_type(x) # N: Revealed type is 'builtins.str'
+reveal_type(x) # N: Revealed type is "builtins.str"
 [file b.py]
 from a import f
 from c import x
@@ -2400,7 +2400,7 @@ from c import B
 [file b.py]
 from c import y
 class A(B): pass
-reveal_type(A().x) # N: Revealed type is 'builtins.int'
+reveal_type(A().x) # N: Revealed type is "builtins.int"
 from a import B
 def f() -> None: pass
 [file c.py]
@@ -2431,11 +2431,11 @@ y: Two
 y = x
 x = y
 [out]
-tmp/m/two.py:2: note: Revealed type is 'def () -> m.one.One'
-tmp/m/two.py:4: note: Revealed type is 'm.one.One'
+tmp/m/two.py:2: note: Revealed type is "def () -> m.one.One"
+tmp/m/two.py:4: note: Revealed type is "m.one.One"
 tmp/m/two.py:9: error: Incompatible types in assignment (expression has type "One", variable has type "Two")
-tmp/m/__init__.py:3: note: Revealed type is 'def () -> m.one.One'
-main:2: note: Revealed type is 'def () -> m.one.One'
+tmp/m/__init__.py:3: note: Revealed type is "def () -> m.one.One"
+main:2: note: Revealed type is "def () -> m.one.One"
 
 [case testImportReExportInCycleUsingRelativeImport2]
 from m import One
@@ -2455,10 +2455,10 @@ reveal_type(x)
 class Two:
     pass
 [out]
-tmp/m/two.py:2: note: Revealed type is 'def () -> m.one.One'
-tmp/m/two.py:4: note: Revealed type is 'm.one.One'
-tmp/m/__init__.py:3: note: Revealed type is 'def () -> m.one.One'
-main:2: note: Revealed type is 'def () -> m.one.One'
+tmp/m/two.py:2: note: Revealed type is "def () -> m.one.One"
+tmp/m/two.py:4: note: Revealed type is "m.one.One"
+tmp/m/__init__.py:3: note: Revealed type is "def () -> m.one.One"
+main:2: note: Revealed type is "def () -> m.one.One"
 
 [case testImportReExportedNamedTupleInCycle1]
 from m import One
@@ -2477,7 +2477,7 @@ class Two:
     pass
 [builtins fixtures/tuple.pyi]
 [out]
-tmp/m/two.py:3: note: Revealed type is 'builtins.str'
+tmp/m/two.py:3: note: Revealed type is "builtins.str"
 
 [case testImportReExportedNamedTupleInCycle2]
 from m import One
@@ -2495,7 +2495,7 @@ class Two:
     pass
 [builtins fixtures/tuple.pyi]
 [out]
-tmp/m/two.py:3: note: Revealed type is 'builtins.str'
+tmp/m/two.py:3: note: Revealed type is "builtins.str"
 
 [case testImportReExportedTypeAliasInCycle]
 from m import One
@@ -2512,7 +2512,7 @@ reveal_type(x)
 class Two:
     pass
 [out]
-tmp/m/two.py:3: note: Revealed type is 'Union[builtins.int, builtins.str]'
+tmp/m/two.py:3: note: Revealed type is "Union[builtins.int, builtins.str]"
 
 [case testImportCycleSpecialCase]
 import p
@@ -2530,8 +2530,8 @@ def run() -> None:
     reveal_type(p.a.foo())
 [builtins fixtures/module.pyi]
 [out]
-tmp/p/b.py:4: note: Revealed type is 'builtins.int'
-tmp/p/__init__.py:3: note: Revealed type is 'builtins.int'
+tmp/p/b.py:4: note: Revealed type is "builtins.int"
+tmp/p/__init__.py:3: note: Revealed type is "builtins.int"
 
 [case testMissingSubmoduleImportedWithIgnoreMissingImports]
 # flags: --ignore-missing-imports
@@ -2570,7 +2570,7 @@ y = a.b.c.d.f()
 [case testModuleGetattrBusted]
 from a import A
 x: A
-reveal_type(x)  # N: Revealed type is 'Any'
+reveal_type(x)  # N: Revealed type is "Any"
 [file a.pyi]
 from typing import Any
 def __getattr__(attr: str) -> Any: ...
@@ -2580,7 +2580,7 @@ def __getattr__(attr: str) -> Any: ...
 [case testModuleGetattrBusted2]
 from a import A
 def f(x: A.B) -> None: ...
-reveal_type(f)  # N: Revealed type is 'def (x: Any)'
+reveal_type(f)  # N: Revealed type is "def (x: Any)"
 [file a.pyi]
 from typing import Any
 def __getattr__(attr: str) -> Any: ...
@@ -2590,7 +2590,7 @@ def __getattr__(attr: str) -> Any: ...
 [case testNoGetattrInterference]
 import testmod as t
 def f(x: t.Cls) -> None:
-    reveal_type(x)  # N: Revealed type is 'testmod.Cls'
+    reveal_type(x)  # N: Revealed type is "testmod.Cls"
 [file testmod.pyi]
 from typing import Any
 def __getattr__(attr: str) -> Any: ...
@@ -2627,7 +2627,7 @@ main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missin
 [case testNamespacePackage]
 # flags: --namespace-packages
 from foo.bar import x
-reveal_type(x)  # N: Revealed type is 'builtins.int'
+reveal_type(x)  # N: Revealed type is "builtins.int"
 [file foo/bar.py]
 x = 0
 
@@ -2636,9 +2636,9 @@ x = 0
 from foo.bax import x
 from foo.bay import y
 from foo.baz import z
-reveal_type(x)  # N: Revealed type is 'builtins.int'
-reveal_type(y)  # N: Revealed type is 'builtins.int'
-reveal_type(z)  # N: Revealed type is 'builtins.int'
+reveal_type(x)  # N: Revealed type is "builtins.int"
+reveal_type(y)  # N: Revealed type is "builtins.int"
+reveal_type(z)  # N: Revealed type is "builtins.int"
 [file xx/foo/bax.py]
 x = 0
 [file yy/foo/bay.py]
@@ -2652,7 +2652,7 @@ mypy_path = tmp/xx, tmp/yy
 [case testClassicPackageIgnoresEarlierNamespacePackage]
 # flags: --namespace-packages --config-file tmp/mypy.ini
 from foo.bar import y
-reveal_type(y)  # N: Revealed type is 'builtins.int'
+reveal_type(y)  # N: Revealed type is "builtins.int"
 [file xx/foo/bar.py]
 x = ''
 [file yy/foo/bar.py]
@@ -2665,7 +2665,7 @@ mypy_path = tmp/xx, tmp/yy
 [case testNamespacePackagePickFirstOnMypyPath]
 # flags: --namespace-packages --config-file tmp/mypy.ini
 from foo.bar import x
-reveal_type(x)  # N: Revealed type is 'builtins.int'
+reveal_type(x)  # N: Revealed type is "builtins.int"
 [file xx/foo/bar.py]
 x = 0
 [file yy/foo/bar.py]
@@ -2677,7 +2677,7 @@ mypy_path = tmp/xx, tmp/yy
 [case testNamespacePackageInsideClassicPackage]
 # flags: --namespace-packages --config-file tmp/mypy.ini
 from foo.bar.baz import x
-reveal_type(x)  # N: Revealed type is 'builtins.int'
+reveal_type(x)  # N: Revealed type is "builtins.int"
 [file xx/foo/bar/baz.py]
 x = ''
 [file yy/foo/bar/baz.py]
@@ -2690,7 +2690,7 @@ mypy_path = tmp/xx, tmp/yy
 [case testClassicPackageInsideNamespacePackage]
 # flags: --namespace-packages --config-file tmp/mypy.ini
 from foo.bar.baz.boo import x
-reveal_type(x)  # N: Revealed type is 'builtins.int'
+reveal_type(x)  # N: Revealed type is "builtins.int"
 [file xx/foo/bar/baz/boo.py]
 x = ''
 [file xx/foo/bar/baz/__init__.py]
@@ -2704,7 +2704,7 @@ mypy_path = tmp/xx, tmp/yy
 [case testNamespacePackagePlainImport]
 # flags: --namespace-packages
 import foo.bar.baz
-reveal_type(foo.bar.baz.x)  # N: Revealed type is 'builtins.int'
+reveal_type(foo.bar.baz.x)  # N: Revealed type is "builtins.int"
 [file foo/bar/baz.py]
 x = 0
 

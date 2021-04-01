@@ -43,8 +43,8 @@ tmp/m.py:1: error: invalid syntax
 [case testIgnoreAppliesOnlyToMissing]
 import a # type: ignore
 import b # type: ignore
-reveal_type(a.foo) # N: Revealed type is 'Any'
-reveal_type(b.foo) # N: Revealed type is 'builtins.int'
+reveal_type(a.foo) # N: Revealed type is "Any"
+reveal_type(b.foo) # N: Revealed type is "builtins.int"
 a.bar()
 b.bar() # E: Module has no attribute "bar"
 

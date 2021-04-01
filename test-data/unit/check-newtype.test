@@ -17,8 +17,8 @@ name_by_id(UserId(42))
 id = UserId(5)
 num = id + 1
 
-reveal_type(id)  # N: Revealed type is '__main__.UserId'
-reveal_type(num)  # N: Revealed type is 'builtins.int'
+reveal_type(id)  # N: Revealed type is "__main__.UserId"
+reveal_type(num)  # N: Revealed type is "builtins.int"
 
 [targets __main__, __main__.UserId.__init__, __main__.name_by_id]
 
@@ -46,8 +46,8 @@ TwoTuple = NewType('TwoTuple', Tuple[int, str])
 a = TwoTuple((3, "a"))
 b = TwoTuple(("a", 3))  # E: Argument 1 to "TwoTuple" has incompatible type "Tuple[str, int]"; expected "Tuple[int, str]"
 
-reveal_type(a[0])  # N: Revealed type is 'builtins.int'
-reveal_type(a[1])  # N: Revealed type is 'builtins.str'
+reveal_type(a[0])  # N: Revealed type is "builtins.int"
+reveal_type(a[1])  # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -66,9 +66,9 @@ foo.extend(IdList([UserId(1), UserId(2), UserId(3)]))
 bar = IdList([UserId(2)])
 
 baz = foo + bar
-reveal_type(foo)  # N: Revealed type is '__main__.IdList'
-reveal_type(bar)  # N: Revealed type is '__main__.IdList'
-reveal_type(baz)  # N: Revealed type is 'builtins.list[__main__.UserId*]'
+reveal_type(foo)  # N: Revealed type is "__main__.IdList"
+reveal_type(bar)  # N: Revealed type is "__main__.IdList"
+reveal_type(baz)  # N: Revealed type is "builtins.list[__main__.UserId*]"
 
 [builtins fixtures/list.pyi]
 [out]
@@ -96,8 +96,8 @@ Derived2(Base('a'))
 Derived3(Base(1))
 Derived3(Base('a'))
 
-reveal_type(Derived1(Base('a')).getter())  # N: Revealed type is 'builtins.str*'
-reveal_type(Derived3(Base('a')).getter())  # N: Revealed type is 'Any'
+reveal_type(Derived1(Base('a')).getter())  # N: Revealed type is "builtins.str*"
+reveal_type(Derived3(Base('a')).getter())  # N: Revealed type is "Any"
 [out]
 
 [case testNewTypeWithNamedTuple]
@@ -107,14 +107,14 @@ from typing import NewType, NamedTuple
 Vector1 = namedtuple('Vector1', ['x', 'y'])
 Point1 = NewType('Point1', Vector1)
 p1 = Point1(Vector1(1, 2))
-reveal_type(p1.x)  # N: Revealed type is 'Any'
-reveal_type(p1.y)  # N: Revealed type is 'Any'
+reveal_type(p1.x)  # N: Revealed type is "Any"
+reveal_type(p1.y)  # N: Revealed type is "Any"
 
 Vector2 = NamedTuple('Vector2', [('x', int), ('y', int)])
 Point2 = NewType('Point2', Vector2)
 p2 = Point2(Vector2(1, 2))
-reveal_type(p2.x)  # N: Revealed type is 'builtins.int'
-reveal_type(p2.y)  # N: Revealed type is 'builtins.int'
+reveal_type(p2.x)  # N: Revealed type is "builtins.int"
+reveal_type(p2.y)  # N: Revealed type is "builtins.int"
 
 class Vector3:
     def __init__(self, x: int, y: int) -> None:
@@ -122,8 +122,8 @@ class Vector3:
         self.y = y
 Point3 = NewType('Point3', Vector3)
 p3 = Point3(Vector3(1, 3))
-reveal_type(p3.x)  # N: Revealed type is 'builtins.int'
-reveal_type(p3.y)  # N: Revealed type is 'builtins.int'
+reveal_type(p3.x)  # N: Revealed type is "builtins.int"
+reveal_type(p3.y)  # N: Revealed type is "builtins.int"
 
 [builtins fixtures/list.pyi]
 
@@ -260,8 +260,8 @@ reveal_type(num)
 [stale]
 [out1]
 [out2]
-tmp/m.py:13: note: Revealed type is 'm.UserId'
-tmp/m.py:14: note: Revealed type is 'builtins.int'
+tmp/m.py:13: note: Revealed type is "m.UserId"
+tmp/m.py:14: note: Revealed type is "builtins.int"
 
 
 -- Check misuses of NewType fail
@@ -352,7 +352,7 @@ class D:
 C = NewType('C', P)  # E: NewType cannot be used with protocol classes
 
 x: C = C(D())  # We still accept this, treating 'C' as non-protocol subclass.
-reveal_type(x.attr)  # N: Revealed type is 'builtins.int'
+reveal_type(x.attr)  # N: Revealed type is "builtins.int"
 x.bad_attr  # E: "C" has no attribute "bad_attr"
 C(1)  # E: Argument 1 to "C" has incompatible type "int"; expected "P"
 [out]
@@ -367,7 +367,7 @@ from typing import NewType
 T = NewType('T', int)
 d: object
 if isinstance(d, T):   # E: Cannot use isinstance() with NewType type
-    reveal_type(d)     # N: Revealed type is '__main__.T'
+    reveal_type(d)     # N: Revealed type is "__main__.T"
 issubclass(object, T)  # E: Cannot use issubclass() with NewType type
 [builtins fixtures/isinstancelist.pyi]
 

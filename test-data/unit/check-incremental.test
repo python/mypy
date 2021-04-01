@@ -955,7 +955,7 @@ x = 10
 [stale parent.b]
 [rechecked parent.a, parent.b]
 [out2]
-tmp/parent/a.py:2: note: Revealed type is 'builtins.int'
+tmp/parent/a.py:2: note: Revealed type is "builtins.int"
 
 [case testIncrementalReferenceExistingFileWithImportFrom]
 from parent import a, b
@@ -1179,10 +1179,10 @@ reveal_type(foo)
 [rechecked m, n]
 [stale]
 [out1]
-tmp/n.py:2: note: Revealed type is 'builtins.str'
+tmp/n.py:2: note: Revealed type is "builtins.str"
 tmp/m.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
 [out2]
-tmp/n.py:2: note: Revealed type is 'builtins.float'
+tmp/n.py:2: note: Revealed type is "builtins.float"
 tmp/m.py:3: error: Argument 1 to "accept_int" has incompatible type "float"; expected "int"
 
 [case testIncrementalReplacingImports]
@@ -1262,8 +1262,8 @@ reveal_type(x)
 y: Alias[int]
 reveal_type(y)
 [out2]
-tmp/a.py:3: note: Revealed type is 'Union[builtins.int, builtins.str]'
-tmp/a.py:5: note: Revealed type is 'Union[builtins.int, builtins.int]'
+tmp/a.py:3: note: Revealed type is "Union[builtins.int, builtins.str]"
+tmp/a.py:5: note: Revealed type is "Union[builtins.int, builtins.int]"
 
 [case testIncrementalSilentImportsWithBlatantError]
 # cmd: mypy -m main
@@ -1283,7 +1283,7 @@ accept_int("not an int")
 [rechecked main]
 [stale]
 [out2]
-tmp/main.py:2: note: Revealed type is 'Any'
+tmp/main.py:2: note: Revealed type is "Any"
 
 [case testIncrementalImportIsNewlySilenced]
 # cmd: mypy -m main foo
@@ -1322,9 +1322,9 @@ bar = "str"
 [stale]
 [out1]
 tmp/main.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
-tmp/main.py:4: note: Revealed type is 'builtins.str'
+tmp/main.py:4: note: Revealed type is "builtins.str"
 [out2]
-tmp/main.py:4: note: Revealed type is 'Any'
+tmp/main.py:4: note: Revealed type is "Any"
 
 [case testIncrementalFixedBugCausesPropagation]
 import mod1
@@ -1361,10 +1361,10 @@ class C:
 [stale mod3, mod2]
 [out1]
 tmp/mod3.py:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-tmp/mod1.py:3: note: Revealed type is 'builtins.int'
+tmp/mod1.py:3: note: Revealed type is "builtins.int"
 
 [out2]
-tmp/mod1.py:3: note: Revealed type is 'builtins.int'
+tmp/mod1.py:3: note: Revealed type is "builtins.int"
 
 [case testIncrementalIncidentalChangeWithBugCausesPropagation]
 import mod1
@@ -1400,11 +1400,11 @@ class C:
 [stale mod4]
 [out1]
 tmp/mod3.py:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-tmp/mod1.py:3: note: Revealed type is 'builtins.int'
+tmp/mod1.py:3: note: Revealed type is "builtins.int"
 
 [out2]
 tmp/mod3.py:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-tmp/mod1.py:3: note: Revealed type is 'builtins.str'
+tmp/mod1.py:3: note: Revealed type is "builtins.str"
 
 [case testIncrementalIncidentalChangeWithBugFixCausesPropagation]
 import mod1
@@ -1445,10 +1445,10 @@ class C:
 [stale mod4, mod3, mod2]
 [out1]
 tmp/mod3.py:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-tmp/mod1.py:3: note: Revealed type is 'builtins.int'
+tmp/mod1.py:3: note: Revealed type is "builtins.int"
 
 [out2]
-tmp/mod1.py:3: note: Revealed type is 'builtins.str'
+tmp/mod1.py:3: note: Revealed type is "builtins.str"
 
 [case testIncrementalSilentImportsWithInnerImports]
 # cmd: mypy -m main foo
@@ -1472,7 +1472,7 @@ class MyClass:
 [rechecked main]
 [stale]
 [out2]
-tmp/main.py:3: note: Revealed type is 'Any'
+tmp/main.py:3: note: Revealed type is "Any"
 
 [case testIncrementalSilentImportsWithInnerImportsAndNewFile]
 # cmd: mypy -m main foo
@@ -1500,7 +1500,7 @@ def test() -> str: return "foo"
 [rechecked main, foo, unrelated]
 [stale foo, unrelated]
 [out2]
-tmp/main.py:3: note: Revealed type is 'builtins.str'
+tmp/main.py:3: note: Revealed type is "builtins.str"
 
 [case testIncrementalWorksWithNestedClasses]
 import foo
@@ -1777,9 +1777,9 @@ reveal_type(a.x)
 [file a.py.2]
 //
 [out]
-main:3: note: Revealed type is 'Any'
+main:3: note: Revealed type is "Any"
 [out2]
-main:3: note: Revealed type is 'Any'
+main:3: note: Revealed type is "Any"
 
 [case testIncrementalFollowImportsError]
 # flags: --follow-imports=error
@@ -1808,9 +1808,9 @@ follow_imports = normal
 \[mypy]
 follow_imports = skip
 [out1]
-main:3: note: Revealed type is 'builtins.int'
+main:3: note: Revealed type is "builtins.int"
 [out2]
-main:3: note: Revealed type is 'Any'
+main:3: note: Revealed type is "Any"
 
 [case testIncrementalNamedTupleInMethod]
 from ntcrash import nope
@@ -1955,15 +1955,15 @@ class D:
         self.a = A().b
 reveal_type(D().a)
 [out1]
-tmp/crash.py:8: note: Revealed type is 'crash.A@5'
-tmp/crash.py:17: note: Revealed type is 'crash.B@13[builtins.int*]'
-main:2: note: Revealed type is 'crash.A@5'
-main:3: note: Revealed type is 'crash.B@13[builtins.int*]'
+tmp/crash.py:8: note: Revealed type is "crash.A@5"
+tmp/crash.py:17: note: Revealed type is "crash.B@13[builtins.int*]"
+main:2: note: Revealed type is "crash.A@5"
+main:3: note: Revealed type is "crash.B@13[builtins.int*]"
 [out2]
-tmp/crash.py:8: note: Revealed type is 'crash.A@5'
-tmp/crash.py:17: note: Revealed type is 'crash.B@13[builtins.int*]'
-main:2: note: Revealed type is 'crash.A@5'
-main:3: note: Revealed type is 'crash.B@13[builtins.int*]'
+tmp/crash.py:8: note: Revealed type is "crash.A@5"
+tmp/crash.py:17: note: Revealed type is "crash.B@13[builtins.int*]"
+main:2: note: Revealed type is "crash.A@5"
+main:3: note: Revealed type is "crash.B@13[builtins.int*]"
 
 [case testGenericMethodRestoreMetaLevel]
 from typing import Dict
@@ -2057,11 +2057,11 @@ A = TypedDict('A', {'x': int, 'y': str})
 x: A
 [builtins fixtures/dict.pyi]
 [out1]
-main:2: note: Revealed type is 'TypedDict('b.A', {'x': builtins.int, 'y': builtins.str})'
-main:4: note: Revealed type is 'TypedDict('b.A', {'x': builtins.int, 'y': builtins.str})'
+main:2: note: Revealed type is "TypedDict('b.A', {'x': builtins.int, 'y': builtins.str})"
+main:4: note: Revealed type is "TypedDict('b.A', {'x': builtins.int, 'y': builtins.str})"
 [out2]
-main:2: note: Revealed type is 'TypedDict('b.A', {'x': builtins.int, 'y': builtins.str})'
-main:4: note: Revealed type is 'TypedDict('b.A', {'x': builtins.int, 'y': builtins.str})'
+main:2: note: Revealed type is "TypedDict('b.A', {'x': builtins.int, 'y': builtins.str})"
+main:4: note: Revealed type is "TypedDict('b.A', {'x': builtins.int, 'y': builtins.str})"
 
 [case testSerializeMetaclass]
 import b
@@ -2076,11 +2076,11 @@ class M(type):
 class A(metaclass=M): pass
 a: Type[A]
 [out]
-main:2: note: Revealed type is 'builtins.int'
-main:4: note: Revealed type is 'builtins.int'
+main:2: note: Revealed type is "builtins.int"
+main:4: note: Revealed type is "builtins.int"
 [out2]
-main:2: note: Revealed type is 'builtins.int'
-main:4: note: Revealed type is 'builtins.int'
+main:2: note: Revealed type is "builtins.int"
+main:4: note: Revealed type is "builtins.int"
 
 [case testSerializeMetaclassInImportCycle1]
 import b
@@ -2097,11 +2097,11 @@ a: Type[A]
 class M(type):
     def f(cls) -> int: return 0
 [out]
-main:3: note: Revealed type is 'builtins.int'
-main:5: note: Revealed type is 'builtins.int'
+main:3: note: Revealed type is "builtins.int"
+main:5: note: Revealed type is "builtins.int"
 [out2]
-main:3: note: Revealed type is 'builtins.int'
-main:5: note: Revealed type is 'builtins.int'
+main:3: note: Revealed type is "builtins.int"
+main:5: note: Revealed type is "builtins.int"
 
 [case testSerializeMetaclassInImportCycle2]
 import b
@@ -2119,11 +2119,11 @@ import b
 class A(metaclass=b.M): pass
 a: Type[A]
 [out]
-main:3: note: Revealed type is 'builtins.int'
-main:5: note: Revealed type is 'builtins.int'
+main:3: note: Revealed type is "builtins.int"
+main:5: note: Revealed type is "builtins.int"
 [out2]
-main:3: note: Revealed type is 'builtins.int'
-main:5: note: Revealed type is 'builtins.int'
+main:3: note: Revealed type is "builtins.int"
+main:5: note: Revealed type is "builtins.int"
 
 [case testDeleteFile]
 import n
@@ -2376,8 +2376,8 @@ class C:
 [builtins fixtures/list.pyi]
 [out]
 [out2]
-tmp/mod.py:4: note: Revealed type is 'builtins.list[builtins.int]'
-tmp/mod.py:5: note: Revealed type is 'builtins.int'
+tmp/mod.py:4: note: Revealed type is "builtins.list[builtins.int]"
+tmp/mod.py:5: note: Revealed type is "builtins.int"
 
 [case testClassNamesResolutionCrashReveal]
 import mod
@@ -2407,7 +2407,7 @@ foo = Foo()
 foo.bar(b"test")
 [out]
 [out2]
-tmp/mod.py:7: note: Revealed type is 'builtins.bytes'
+tmp/mod.py:7: note: Revealed type is "builtins.bytes"
 
 [case testIncrementalWithSilentImports]
 # cmd: mypy -m a
@@ -2942,10 +2942,10 @@ class A:
 
 [builtins fixtures/list.pyi]
 [out1]
-main:6: note: Revealed type is 'def (x: builtins.int) -> __main__.B'
+main:6: note: Revealed type is "def (x: builtins.int) -> __main__.B"
 
 [out2]
-main:6: note: Revealed type is 'def (x: builtins.int) -> __main__.B'
+main:6: note: Revealed type is "def (x: builtins.int) -> __main__.B"
 
 [case testAttrsIncrementalSubclassingCachedType]
 from a import A
@@ -2963,9 +2963,9 @@ class A:
 
 [builtins fixtures/list.pyi]
 [out1]
-main:6: note: Revealed type is 'def (x: builtins.int) -> __main__.B'
+main:6: note: Revealed type is "def (x: builtins.int) -> __main__.B"
 [out2]
-main:6: note: Revealed type is 'def (x: builtins.int) -> __main__.B'
+main:6: note: Revealed type is "def (x: builtins.int) -> __main__.B"
 
 [case testAttrsIncrementalArguments]
 from a import Frozen, NoInit, NoCmp
@@ -3015,11 +3015,11 @@ main:15: error: Unsupported left operand type for >= ("NoCmp")
 
 [case testAttrsIncrementalDunder]
 from a import A
-reveal_type(A)  # N: Revealed type is 'def (a: builtins.int) -> a.A'
-reveal_type(A.__lt__)  # N: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
-reveal_type(A.__le__)  # N: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
-reveal_type(A.__gt__)  # N: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
-reveal_type(A.__ge__)  # N: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
+reveal_type(A)  # N: Revealed type is "def (a: builtins.int) -> a.A"
+reveal_type(A.__lt__)  # N: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
+reveal_type(A.__le__)  # N: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
+reveal_type(A.__gt__)  # N: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
+reveal_type(A.__ge__)  # N: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
 
 A(1) < A(2)
 A(1) <= A(2)
@@ -3052,11 +3052,11 @@ class A:
 [rechecked]
 [stale]
 [out2]
-main:2: note: Revealed type is 'def (a: builtins.int) -> a.A'
-main:3: note: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
-main:4: note: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
-main:5: note: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
-main:6: note: Revealed type is 'def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool'
+main:2: note: Revealed type is "def (a: builtins.int) -> a.A"
+main:3: note: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
+main:4: note: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
+main:5: note: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
+main:6: note: Revealed type is "def [_AT] (self: _AT`-1, other: _AT`-1) -> builtins.bool"
 main:15: error: Unsupported operand types for < ("A" and "int")
 main:16: error: Unsupported operand types for <= ("A" and "int")
 main:17: error: Unsupported operand types for > ("A" and "int")
@@ -3170,9 +3170,9 @@ class A:
 
 [builtins fixtures/list.pyi]
 [out1]
-main:2: note: Revealed type is 'def (x: Union[builtins.int, None]) -> a.a.A'
+main:2: note: Revealed type is "def (x: Union[builtins.int, None]) -> a.a.A"
 [out2]
-main:2: note: Revealed type is 'def (x: Union[builtins.int, None]) -> a.a.A'
+main:2: note: Revealed type is "def (x: Union[builtins.int, None]) -> a.a.A"
 
 [case testAttrsIncrementalConverterManyStyles]
 import a
@@ -3330,9 +3330,9 @@ def foo() -> None:
     reveal_type(A)
 [builtins fixtures/list.pyi]
 [out1]
-main:8: note: Revealed type is 'def (x: builtins.str) -> __main__.A@6'
+main:8: note: Revealed type is "def (x: builtins.str) -> __main__.A@6"
 [out2]
-main:8: note: Revealed type is 'def (x: builtins.str) -> __main__.A@6'
+main:8: note: Revealed type is "def (x: builtins.str) -> __main__.A@6"
 
 -- FIXME: new analyzer busted
 [case testAttrsIncrementalConverterInSubmoduleForwardRef-skip]
@@ -3354,9 +3354,9 @@ F = List[int]
 
 [builtins fixtures/list.pyi]
 [out1]
-main:3: note: Revealed type is 'def (x: builtins.list[builtins.int]) -> a.a.A'
+main:3: note: Revealed type is "def (x: builtins.list[builtins.int]) -> a.a.A"
 [out2]
-main:3: note: Revealed type is 'def (x: builtins.list[builtins.int]) -> a.a.A'
+main:3: note: Revealed type is "def (x: builtins.list[builtins.int]) -> a.a.A"
 
 -- FIXME: new analyzer busted
 [case testAttrsIncrementalConverterType-skip]
@@ -3391,11 +3391,11 @@ class C:
     d: int = attr.ib(converter=parse)
 [builtins fixtures/attr.pyi]
 [out1]
-main:6: note: Revealed type is 'def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str]) -> a.C'
-main:10: note: Revealed type is 'def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str], x: builtins.str) -> __main__.D'
+main:6: note: Revealed type is "def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str]) -> a.C"
+main:10: note: Revealed type is "def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str], x: builtins.str) -> __main__.D"
 [out2]
-main:6: note: Revealed type is 'def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str]) -> a.C'
-main:10: note: Revealed type is 'def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str], x: builtins.str) -> __main__.D'
+main:6: note: Revealed type is "def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str]) -> a.C"
+main:10: note: Revealed type is "def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str], x: builtins.str) -> __main__.D"
 
 [case testAttrsIncrementalThreeRuns]
 from a import A
@@ -3619,7 +3619,7 @@ reveal_type(m.One.name)
 class Two:
     pass
 [out2]
-tmp/m/two.py:2: note: Revealed type is 'builtins.str'
+tmp/m/two.py:2: note: Revealed type is "builtins.str"
 
 [case testImportUnusedIgnore1]
 # flags: --warn-unused-ignores
@@ -3840,7 +3840,7 @@ class A:
 [builtins fixtures/list.pyi]
 [out1]
 [out2]
-tmp/b.py:8: note: Revealed type is 'def (x: builtins.int) -> b.B'
+tmp/b.py:8: note: Revealed type is "def (x: builtins.int) -> b.B"
 
 [case testIncrementalDataclassesArguments]
 # flags: --python-version 3.7
@@ -3940,13 +3940,13 @@ class A:
 [builtins fixtures/attr.pyi]
 [out1]
 [out2]
-tmp/b.py:3: note: Revealed type is 'def (a: builtins.int) -> a.A'
-tmp/b.py:4: note: Revealed type is 'def (builtins.object, builtins.object) -> builtins.bool'
-tmp/b.py:5: note: Revealed type is 'def (builtins.object, builtins.object) -> builtins.bool'
-tmp/b.py:6: note: Revealed type is 'def [_DT] (self: _DT`-1, other: _DT`-1) -> builtins.bool'
-tmp/b.py:7: note: Revealed type is 'def [_DT] (self: _DT`-1, other: _DT`-1) -> builtins.bool'
-tmp/b.py:8: note: Revealed type is 'def [_DT] (self: _DT`-1, other: _DT`-1) -> builtins.bool'
-tmp/b.py:9: note: Revealed type is 'def [_DT] (self: _DT`-1, other: _DT`-1) -> builtins.bool'
+tmp/b.py:3: note: Revealed type is "def (a: builtins.int) -> a.A"
+tmp/b.py:4: note: Revealed type is "def (builtins.object, builtins.object) -> builtins.bool"
+tmp/b.py:5: note: Revealed type is "def (builtins.object, builtins.object) -> builtins.bool"
+tmp/b.py:6: note: Revealed type is "def [_DT] (self: _DT`-1, other: _DT`-1) -> builtins.bool"
+tmp/b.py:7: note: Revealed type is "def [_DT] (self: _DT`-1, other: _DT`-1) -> builtins.bool"
+tmp/b.py:8: note: Revealed type is "def [_DT] (self: _DT`-1, other: _DT`-1) -> builtins.bool"
+tmp/b.py:9: note: Revealed type is "def [_DT] (self: _DT`-1, other: _DT`-1) -> builtins.bool"
 tmp/b.py:18: error: Unsupported operand types for < ("A" and "int")
 tmp/b.py:19: error: Unsupported operand types for <= ("A" and "int")
 tmp/b.py:20: error: Unsupported operand types for > ("A" and "int")
@@ -4577,7 +4577,7 @@ tmp/other.pyi:3: error: Cannot resolve name "B" (possible cyclic definition)
 [out2]
 tmp/lib.pyi:4: error: Module 'other' has no attribute 'B'
 tmp/other.pyi:3: error: Cannot resolve name "B" (possible cyclic definition)
-tmp/a.py:3: note: Revealed type is 'builtins.list[Any]'
+tmp/a.py:3: note: Revealed type is "builtins.list[Any]"
 
 [case testRecursiveNamedTupleTypedDict-skip]
 # https://github.com/python/mypy/issues/7125
@@ -4601,7 +4601,7 @@ B = TypedDict('B', {'x': A})
 [builtins fixtures/dict.pyi]
 [out]
 [out2]
-tmp/a.py:3: note: Revealed type is 'Tuple[TypedDict('other.B', {'x': Any}), fallback=lib.A]'
+tmp/a.py:3: note: Revealed type is "Tuple[TypedDict('other.B', {'x': Any}), fallback=lib.A]"
 
 [case testFollowImportSkipNotInvalidatedOnPresent]
 # flags: --follow-imports=skip
@@ -5034,9 +5034,9 @@ from typing_extensions import Literal
 a: Literal[2] = 2
 [builtins fixtures/tuple.pyi]
 [out]
-main:2: note: Revealed type is 'builtins.int'
+main:2: note: Revealed type is "builtins.int"
 [out2]
-main:2: note: Revealed type is 'Literal[2]'
+main:2: note: Revealed type is "Literal[2]"
 
 [case testAddedSubStarImport]
 # cmd: mypy -m a pack pack.mod b
@@ -5070,7 +5070,7 @@ NT = NamedTuple('BadName', [('x', int)])
 tmp/b.py:2: error: First argument to namedtuple() should be 'NT', not 'BadName'
 [out2]
 tmp/b.py:2: error: First argument to namedtuple() should be 'NT', not 'BadName'
-tmp/a.py:3: note: Revealed type is 'Tuple[builtins.int, fallback=b.NT]'
+tmp/a.py:3: note: Revealed type is "Tuple[builtins.int, fallback=b.NT]"
 
 [case testNewAnalyzerIncrementalBrokenNamedTupleNested]
 
@@ -5112,7 +5112,7 @@ class C:
 [builtins fixtures/tuple.pyi]
 [out]
 [out2]
-tmp/a.py:3: note: Revealed type is 'Tuple[builtins.int, fallback=b.C.Hidden@5]'
+tmp/a.py:3: note: Revealed type is "Tuple[builtins.int, fallback=b.C.Hidden@5]"
 
 [case testIncrementalNodeCreatedFromGetattr]
 import a
@@ -5129,7 +5129,7 @@ c: C
 reveal_type(c)
 [out]
 [out2]
-tmp/a.py:3: note: Revealed type is 'Any'
+tmp/a.py:3: note: Revealed type is "Any"
 
 [case testNewAnalyzerIncrementalNestedEnum]
 
@@ -5221,7 +5221,7 @@ reveal_type(Foo().x)
 [builtins fixtures/isinstance.pyi]
 [out]
 [out2]
-tmp/b.py:2: note: Revealed type is 'a.<subclass of "A" and "B">'
+tmp/b.py:2: note: Revealed type is "a.<subclass of "A" and "B">"
 
 [case testIsInstanceAdHocIntersectionIncrementalNoChangeSameName]
 import b
@@ -5244,7 +5244,7 @@ reveal_type(Foo().x)
 [builtins fixtures/isinstance.pyi]
 [out]
 [out2]
-tmp/b.py:2: note: Revealed type is 'a.<subclass of "B" and "B">'
+tmp/b.py:2: note: Revealed type is "a.<subclass of "B" and "B">"
 
 
 [case testIsInstanceAdHocIntersectionIncrementalNoChangeTuple]
@@ -5266,7 +5266,7 @@ reveal_type(Foo().x)
 [builtins fixtures/isinstance.pyi]
 [out]
 [out2]
-tmp/b.py:2: note: Revealed type is 'a.<subclass of "tuple" and "B">'
+tmp/b.py:2: note: Revealed type is "a.<subclass of "tuple" and "B">"
 
 [case testIsInstanceAdHocIntersectionIncrementalIsInstanceChange]
 import c
@@ -5300,9 +5300,9 @@ from b import y
 reveal_type(y)
 [builtins fixtures/isinstance.pyi]
 [out]
-tmp/c.py:2: note: Revealed type is 'a.<subclass of "A" and "B">'
+tmp/c.py:2: note: Revealed type is "a.<subclass of "A" and "B">"
 [out2]
-tmp/c.py:2: note: Revealed type is 'a.<subclass of "A" and "C">'
+tmp/c.py:2: note: Revealed type is "a.<subclass of "A" and "C">"
 
 [case testIsInstanceAdHocIntersectionIncrementalUnderlyingObjChang]
 import c
@@ -5328,9 +5328,9 @@ from b import y
 reveal_type(y)
 [builtins fixtures/isinstance.pyi]
 [out]
-tmp/c.py:2: note: Revealed type is 'b.<subclass of "A" and "B">'
+tmp/c.py:2: note: Revealed type is "b.<subclass of "A" and "B">"
 [out2]
-tmp/c.py:2: note: Revealed type is 'b.<subclass of "A" and "C">'
+tmp/c.py:2: note: Revealed type is "b.<subclass of "A" and "C">"
 
 [case testIsInstanceAdHocIntersectionIncrementalIntersectionToUnreachable]
 import c
@@ -5361,9 +5361,9 @@ from b import z
 reveal_type(z)
 [builtins fixtures/isinstance.pyi]
 [out]
-tmp/c.py:2: note: Revealed type is 'a.<subclass of "A" and "B">'
+tmp/c.py:2: note: Revealed type is "a.<subclass of "A" and "B">"
 [out2]
-tmp/c.py:2: note: Revealed type is 'a.A'
+tmp/c.py:2: note: Revealed type is "a.A"
 
 [case testIsInstanceAdHocIntersectionIncrementalUnreachaableToIntersection]
 import c
@@ -5394,9 +5394,9 @@ from b import z
 reveal_type(z)
 [builtins fixtures/isinstance.pyi]
 [out]
-tmp/c.py:2: note: Revealed type is 'a.A'
+tmp/c.py:2: note: Revealed type is "a.A"
 [out2]
-tmp/c.py:2: note: Revealed type is 'a.<subclass of "A" and "B">'
+tmp/c.py:2: note: Revealed type is "a.<subclass of "A" and "B">"
 
 [case testStubFixupIssues]
 import a

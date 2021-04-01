@@ -47,8 +47,8 @@ x = 1 + 1
 
 [out]
 ==== Errors flushed ====
-b.py:3: note: Revealed type is 'builtins.int'
+b.py:3: note: Revealed type is "builtins.int"
 b.py:5: error: Unsupported operand types for / ("int" and "str")
 ==== Errors flushed ====
 a.py:2: error: Unsupported operand types for + ("int" and "str")
-a.py:4: note: Revealed type is 'builtins.int'
+a.py:4: note: Revealed type is "builtins.int"

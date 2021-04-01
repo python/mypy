@@ -17,7 +17,9 @@ from mypy.nodes import (
 from mypy.types import TupleType, get_proper_type, Instance
 
 from mypyc.common import MAX_SHORT_INT
-from mypyc.ir.ops import Value, Register, TupleGet, TupleSet, BasicBlock, Assign, LoadAddress
+from mypyc.ir.ops import (
+    Value, Register, TupleGet, TupleSet, BasicBlock, Assign, LoadAddress, RaiseStandardError
+)
 from mypyc.ir.rtypes import (
     RTuple, object_rprimitive, is_none_rprimitive, int_rprimitive, is_int_rprimitive
 )
@@ -28,19 +30,26 @@ from mypyc.primitives.misc_ops import new_slice_op, ellipsis_op, type_op, get_mo
 from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
 from mypyc.primitives.tuple_ops import list_tuple_op, tuple_slice_op
 from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op, dict_get_item_op
-from mypyc.primitives.set_ops import new_set_op, set_add_op, set_update_op
+from mypyc.primitives.set_ops import set_add_op, set_update_op
 from mypyc.primitives.str_ops import str_slice_op
 from mypyc.primitives.int_ops import int_comparison_op_mapping
 from mypyc.irbuild.specialize import specializers
 from mypyc.irbuild.builder import IRBuilder
-from mypyc.irbuild.for_helpers import translate_list_comprehension, comprehension_helper
+from mypyc.irbuild.for_helpers import (
+    translate_list_comprehension, translate_set_comprehension,
+    comprehension_helper
+)
 
 
 # Name and attribute references
 
 
 def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
-    assert expr.node, "RefExpr not resolved"
+    if expr.node is None:
+        builder.add(RaiseStandardError(RaiseStandardError.RUNTIME_ERROR,
+                                       "mypyc internal error: should be unreachable",
+                                       expr.line))
+        return builder.none()
     fullname = expr.node.fullname
     if fullname in builtin_names:
         typ, src = builtin_names[fullname]
@@ -650,16 +659,7 @@ def transform_list_comprehension(builder: IRBuilder, o: ListComprehension) -> Va
 
 
 def transform_set_comprehension(builder: IRBuilder, o: SetComprehension) -> Value:
-    gen = o.generator
-    set_ops = builder.call_c(new_set_op, [], o.line)
-    loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
-
-    def gen_inner_stmts() -> None:
-        e = builder.accept(gen.left_expr)
-        builder.call_c(set_add_op, [set_ops, e], o.line)
-
-    comprehension_helper(builder, loop_params, gen_inner_stmts, o.line)
-    return set_ops
+    return translate_set_comprehension(builder, o.generator)
 
 
 def transform_dictionary_comprehension(builder: IRBuilder, o: DictionaryComprehension) -> Value:

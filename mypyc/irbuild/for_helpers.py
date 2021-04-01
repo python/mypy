@@ -24,6 +24,7 @@ from mypyc.primitives.dict_ops import (
     dict_key_iter_op, dict_value_iter_op, dict_item_iter_op
 )
 from mypyc.primitives.list_ops import list_append_op, list_get_item_unsafe_op
+from mypyc.primitives.set_ops import set_add_op
 from mypyc.primitives.generic_ops import iter_op, next_op
 from mypyc.primitives.exc_ops import no_err_occurred_op
 from mypyc.irbuild.builder import IRBuilder
@@ -86,6 +87,50 @@ def for_loop_helper(builder: IRBuilder, index: Lvalue, expr: Expression,
     builder.activate_block(exit_block)
 
 
+def for_loop_helper_with_index(builder: IRBuilder, index: Lvalue, expr: Expression,
+                               body_insts: Callable[[Value], None], line: int) -> None:
+    """Generate IR for a sequence iteration.
+
+    This function only works for sequence type. Compared to for_loop_helper,
+    it would feed iteration index to body_insts.
+
+    Args:
+        index: the loop index Lvalue
+        expr: the expression to iterate over
+        body_insts: a function that generates the body of the loop.
+                    It needs a index as parameter.
+    """
+    expr_reg = builder.accept(expr)
+    assert is_sequence_rprimitive(expr_reg.type)
+    target_type = builder.get_sequence_type(expr)
+
+    body_block = BasicBlock()
+    step_block = BasicBlock()
+    exit_block = BasicBlock()
+    condition_block = BasicBlock()
+
+    for_gen = ForSequence(builder, index, body_block, exit_block, line, False)
+    for_gen.init(expr_reg, target_type, reverse=False)
+
+    builder.push_loop_stack(step_block, exit_block)
+
+    builder.goto_and_activate(condition_block)
+    for_gen.gen_condition()
+
+    builder.activate_block(body_block)
+    for_gen.begin_body()
+    body_insts(builder.read(for_gen.index_target))
+
+    builder.goto_and_activate(step_block)
+    for_gen.gen_step()
+    builder.goto(condition_block)
+
+    for_gen.add_cleanup(exit_block)
+    builder.pop_loop_stack()
+
+    builder.activate_block(exit_block)
+
+
 def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value:
     list_ops = builder.new_list_op([], gen.line)
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
@@ -96,6 +141,18 @@ def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Valu
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
     return list_ops
+
+
+def translate_set_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value:
+    set_ops = builder.new_set_op([], gen.line)
+    loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
+
+    def gen_inner_stmts() -> None:
+        e = builder.accept(gen.left_expr)
+        builder.call_c(set_add_op, [set_ops, e], gen.line)
+
+    comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
+    return set_ops
 
 
 def comprehension_helper(builder: IRBuilder,

@@ -45,3 +45,17 @@ PyObject *CPySequenceTuple_GetSlice(PyObject *obj, CPyTagged start, CPyTagged en
     }
     return CPyObject_GetSlice(obj, start, end);
 }
+
+// PyTuple_SET_ITEM does no error checking,
+// and should only be used to fill in brand new tuples.
+bool CPySequenceTuple_SetItemUnsafe(PyObject *tuple, CPyTagged index, PyObject *value)
+{
+    if (CPyTagged_CheckShort(index)) {
+        Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
+        PyTuple_SET_ITEM(tuple, n, value);
+        return true;
+    } else {
+        PyErr_SetString(PyExc_OverflowError, "Python int too large to convert to C ssize_t");
+        return false;
+    }
+}

@@ -320,7 +320,7 @@ if int():
 
 [case testColumnRevealedType]
 if int():
-    reveal_type(1) # N:17: Revealed type is 'Literal[1]?'
+    reveal_type(1) # N:17: Revealed type is "Literal[1]?"
 
 [case testColumnNonOverlappingEqualityCheck]
 # flags: --strict-equality

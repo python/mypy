@@ -22,8 +22,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import exc_rtuple
 from mypyc.primitives.generic_ops import py_delattr_op
-from mypyc.primitives.misc_ops import type_op, get_module_dict_op
-from mypyc.primitives.dict_ops import dict_get_item_op
+from mypyc.primitives.misc_ops import type_op
 from mypyc.primitives.exc_ops import (
     raise_exception_op, reraise_exception_op, error_catch_op, exc_matches_op, restore_exc_info_op,
     get_exc_value_op, keep_propagating_op, get_exc_info_op
@@ -152,11 +151,7 @@ def transform_import(builder: IRBuilder, node: Import) -> None:
         else:
             base = name = node_id.split('.')[0]
 
-        # Python 3.7 has a nice 'PyImport_GetModule' function that we can't use :(
-        mod_dict = builder.call_c(get_module_dict_op, [], node.line)
-        # Get top-level module/package object.
-        obj = builder.call_c(dict_get_item_op,
-                             [mod_dict, builder.load_str(base)], node.line)
+        obj = builder.get_module(base, node.line)
 
         builder.gen_method_call(
             globals, '__setitem__', [builder.load_str(name), obj],
