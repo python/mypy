@@ -1,4 +1,5 @@
 import argparse
+from collections import OrderedDict
 import configparser
 import copy
 import glob as fileglob
@@ -166,17 +167,20 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
             continue
         try:
             if config_file.endswith('.toml'):
-                toml_data = toml.load(config_file)
+                toml_data = toml.load(config_file, _dict=OrderedDict)
                 # Filter down to just mypy relevant toml keys
-                parser = {key: value
-                          for key, value in toml_data.get('tool', {}).items()
-                          if key.split('-')[0] == 'mypy'}
-                if parser.get('mypy') is None:
+                toml_data = toml_data.get('tool', {})
+                other_keys = [key for key in toml_data.keys()
+                              if key.split('-')[0] != 'mypy']
+                for key in other_keys:
+                    del toml_data[key]
+                if toml_data.get('mypy') is None:
                     continue
+                parser = toml_data
                 config_types = toml_config_types
             else:
                 config_parser.read(config_file)
-                parser = {key: value for key, value in config_parser.items()}
+                parser = config_parser
                 config_types = ini_config_types
         except (toml.TomlDecodeError, configparser.Error) as err:
             print("%s: %s" % (config_file, err), file=stderr)
