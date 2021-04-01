@@ -245,25 +245,16 @@ def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> O
     target_type = builder.node_type(expr)
 
     # handle 'start' argument, if given
-    start_expr: Optional[Expression] = None
     if len(expr.args) == 2:
         # ensure call to sum() was improperly constructed
         if not expr.arg_kinds[1] in (ARG_POS, ARG_NAMED):
             return None
         start_expr = expr.args[1]
     else:
-        if target_type == int_rprimitive:
-            start_expr = IntExpr(0)
-        elif target_type == float_rprimitive:
-            start_expr = FloatExpr(0.0)
-        else:
-            # IntExpr feels better here, but then if the return value of sum was untypehinted and
-            # the result should be 1, it seems to be True instead, unless we initialize it this
-            # way?
-            start_expr = FloatExpr(0.0)
+        start_expr = IntExpr(0)
 
     retval = Register(target_type)
-    builder.assign(retval, builder.accept(start_expr), -1)
+    builder.assign(retval, builder.coerce(builder.accept(start_expr), target_type, -1), -1)
 
     loop_params = list(zip(gen_expr.indices, gen_expr.sequences, gen_expr.condlists))
 
