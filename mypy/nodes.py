@@ -2725,6 +2725,7 @@ class TypeInfo(SymbolNode):
         self.is_newtype = False
         self.is_intersection = False
         self.metadata = {}
+        self._promote = []
 
     def add_type_vars(self) -> None:
         if self.defn.type_vars:
