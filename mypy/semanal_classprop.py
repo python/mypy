@@ -169,4 +169,5 @@ def add_type_promotion(info: TypeInfo, module_names: SymbolTable, options: Optio
                 target_info = target_sym.node
                 assert isinstance(target_info, TypeInfo)
                 promote_target = Instance(target_info, [])
-    defn.info._promote = promote_target
+    if promote_target:
+        defn.info._promote.append(promote_target)

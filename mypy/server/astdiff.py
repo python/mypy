@@ -220,7 +220,7 @@ def snapshot_definition(node: Optional[SymbolNode],
                  # but this currently seems a bit ad hoc.
                  tuple(snapshot_type(tdef) for tdef in node.defn.type_vars),
                  [snapshot_type(base) for base in node.bases],
-                 snapshot_optional_type(node._promote))
+                 [snapshot_type(p) for p in node._promote])
         prefix = node.fullname
         symbol_table = snapshot_symbol_table(prefix, node.names)
         # Special dependency for abstract attribute handling.

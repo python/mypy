@@ -270,7 +270,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return True
             if not self.ignore_promotions:
                 for base in left.type.mro:
-                    if base._promote and self._is_subtype(base._promote, self.right):
+                    if base._promote and any(self._is_subtype(p, self.right)
+                                             for p in base._promote):
                         TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
                         return True
             rname = right.type.fullname
@@ -1415,7 +1416,8 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                 return True
             if not self.ignore_promotions:
                 for base in left.type.mro:
-                    if base._promote and self._is_proper_subtype(base._promote, right):
+                    if base._promote and any(self._is_proper_subtype(p, right)
+                                             for p in base._promote):
                         TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
                         return True
 
