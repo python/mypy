@@ -1,0 +1,9 @@
+[case testLowLevelIntBasics]
+from mypy_extensions import i32, i64
+
+def f(x: int) -> i32:
+    return i32(x)
+
+reveal_type(i32(1) + i32(2))  # N: Revealed type is "mypy_extensions.i32"
+i32(1) + i64(2)  # E: Unsupported operand types for + ("i32" and "i64")
+[builtins fixtures/dict.pyi]

@@ -1,6 +1,7 @@
 # NOTE: Requires fixtures/dict.pyi
 from typing import (
-    Any, Dict, Type, TypeVar, Optional, Any, Generic, Mapping, NoReturn as NoReturn, Iterator
+    Any, Dict, Type, TypeVar, Optional, Any, Generic, Mapping, NoReturn as NoReturn, Iterator,
+    Union
 )
 import sys
 
@@ -48,3 +49,13 @@ def trait(cls: Any) -> Any: ...
 mypyc_attr: Any
 
 class FlexibleAlias(Generic[_T, _U]): ...
+
+_Int = Union[int, i32, i64]
+
+class i32:
+    def __init__(self, x: _Int) -> None: ...
+    def __add__(self, x: i32) -> i32: ...
+
+class i64:
+    def __init__(self, x: _Int) -> None: ...
+    def __add__(self, x: i64) -> i64: ...
