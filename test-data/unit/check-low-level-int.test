@@ -17,4 +17,6 @@ c: i64 = a  # E: Incompatible types in assignment (expression has type "i32", va
 d: i64 = i64(a)
 e: i32 = b  # E: Incompatible types in assignment (expression has type "i64", variable has type "i32")
 f: i32 = i32(b)
+g: int = a
+h: int = b
 [builtins fixtures/dict.pyi]

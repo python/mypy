@@ -2680,6 +2680,9 @@ class TypeInfo(SymbolNode):
     # Is this a synthesized intersection type?
     is_intersection: bool
 
+    # Is this a low-level, fixed-width integer type?
+    is_low_level_int = False
+
     # This is a dictionary that will be serialized and un-serialized as is.
     # It is useful for plugins to add their data to save in the cache.
     metadata: Dict[str, JsonDict]

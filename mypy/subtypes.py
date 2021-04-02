@@ -274,6 +274,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
                                              for p in base._promote):
                         TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
                         return True
+                # Special case: Low-level integer types are compatible with 'int'. We can't
+                # use promotions, since 'int' is already promoted to low-level integer types,
+                # and we can't have circular promotions.
+                if left.type.is_low_level_int and self.right.type.fullname == "builtins.int":
+                    return True
             rname = right.type.fullname
             # Always try a nominal check if possible,
             # there might be errors that a user wants to silence *once*.
