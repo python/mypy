@@ -2660,6 +2660,11 @@ class TypeInfo(SymbolNode):
     # several builtin examples, in particular `int` -> `float`.
     _promote: List["mypy.types.Type"]
 
+    # Low-level integer types can be promoted 'int', and vice versa.
+    # This can be used for the other direction. This only supports
+    # one-step promotions (e.g., C -> D, not C -> D -> E).
+    alt_promote = None  # type: Optional[TypeInfo]
+
     # Representation of a Tuple[...] base class, if the class has any
     # (e.g., for named tuples). If this is not None, the actual Type
     # object used for this class is not an Instance but a TupleType;
@@ -2679,9 +2684,6 @@ class TypeInfo(SymbolNode):
 
     # Is this a synthesized intersection type?
     is_intersection: bool
-
-    # Is this a low-level, fixed-width integer type?
-    is_low_level_int = False
 
     # This is a dictionary that will be serialized and un-serialized as is.
     # It is useful for plugins to add their data to save in the cache.

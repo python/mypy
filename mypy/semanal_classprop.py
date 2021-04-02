@@ -174,5 +174,5 @@ def add_type_promotion(info: TypeInfo, module_names: SymbolTable, options: Optio
         int_sym = builtin_names['int']
         assert isinstance(int_sym.node, TypeInfo)
         int_sym.node._promote.append(Instance(defn.info, []))
-        defn.info.is_low_level_int = True
+        defn.info.alt_promote = int_sym.node
     defn.info._promote.extend(promote_targets)
