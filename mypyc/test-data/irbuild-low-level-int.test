@@ -63,3 +63,22 @@ L0:
     i = -3
     r0 = 0 - i
     return r0
+
+[case testLowLevelIntBoxingAndUnboxing]
+from typing import Any
+from mypy_extensions import i64
+
+def f(a: Any) -> None:
+    b: i64 = a
+    a = b
+[out]
+def f(a):
+    a :: object
+    r0, b :: int64
+    r1 :: object
+L0:
+    r0 = unbox(int64, a)
+    b = r0
+    r1 = box(int64, b)
+    a = r1
+    return 1
