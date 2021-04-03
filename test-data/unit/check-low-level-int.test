@@ -61,3 +61,10 @@ reveal_type(meet(f, f64))  # N: Revealed type is "builtins.int*"
 reveal_type(meet(f32, f64))  # N: Revealed type is "builtins.int*"
 reveal_type(meet(f64, f32))  # N: Revealed type is "builtins.int*"
 [builtins fixtures/dict.pyi]
+
+[case testLowLevelIntCoerceInArithmetic]
+from mypy_extensions import i32
+
+reveal_type(i32(1) + 1)  # N: Revealed type is "mypy_extensions.i32"
+reveal_type(1 + i32(1))  # N: Revealed type is "mypy_extensions.i32"
+[builtins fixtures/dict.pyi]

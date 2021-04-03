@@ -2585,6 +2585,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif (is_subtype(right_type, left_type)
                 and isinstance(left_type, Instance)
                 and isinstance(right_type, Instance)
+                and left_type.type.alt_promote is not right_type.type
                 and lookup_definer(left_type, op_name) != lookup_definer(right_type, rev_op_name)):
             # When we do "A() + B()" where B is a subclass of B, we'll actually try calling
             # B's __radd__ method first, but ONLY if B explicitly defines or overrides the
