@@ -84,3 +84,10 @@ if int():
     reveal_type(y)  # N: Revealed type is "builtins.int"
 reveal_type(y)  # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
+
+[case testLowLevelIntFloatConversion]
+from mypy_extensions import i32
+
+x: i32 = 1.1  # E: Incompatible types in assignment (expression has type "float", variable has type "i32")
+y: float = i32(1)  # E: Incompatible types in assignment (expression has type "i32", variable has type "float")
+[builtins fixtures/dict.pyi]
