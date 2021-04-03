@@ -34,7 +34,7 @@ from mypyc.ir.rtypes import (
     none_rprimitive, RTuple, is_bool_rprimitive, is_str_rprimitive, c_int_rprimitive,
     pointer_rprimitive, PyObject, PyListObject, bit_rprimitive, is_bit_rprimitive,
     object_pointer_rprimitive, c_size_t_rprimitive, dict_rprimitive, bytes_rprimitive,
-    is_bytes_rprimitive
+    is_bytes_rprimitive, is_int64_rprimitive, int64_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -185,13 +185,19 @@ class LowLevelIRBuilder:
         Returns the register with the converted value (may be same as src).
         """
         if src.type.is_unboxed and not target_type.is_unboxed:
+            # Unboxed -> boxed
             return self.box(src)
         if ((src.type.is_unboxed and target_type.is_unboxed)
                 and not is_runtime_subtype(src.type, target_type)):
-            # To go from one unboxed type to another, we go through a boxed
-            # in-between value, for simplicity.
-            tmp = self.box(src)
-            return self.unbox_or_cast(tmp, target_type, line)
+            if (isinstance(src, Integer) and is_short_int_rprimitive(src.type)
+                    and is_int64_rprimitive(target_type)):
+                # TODO: range check
+                return Integer(src.value >> 1, int64_rprimitive)
+            else:
+                # To go from one unboxed type to another, we go through a boxed
+                # in-between value, for simplicity.
+                tmp = self.box(src)
+                return self.unbox_or_cast(tmp, target_type, line)
         if ((not src.type.is_unboxed and target_type.is_unboxed)
                 or not is_subtype(src.type, target_type)):
             return self.unbox_or_cast(src, target_type, line, can_borrow=can_borrow)

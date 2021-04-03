@@ -1,0 +1,14 @@
+[case testLowLevelIntBasics]
+from mypy_extensions import i64
+
+def f() -> i64:
+    x: i64 = 5
+    y = x
+    return y
+[out]
+def f():
+    x, y :: int64
+L0:
+    x = 5
+    y = x
+    return y
