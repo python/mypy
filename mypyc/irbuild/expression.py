@@ -19,7 +19,7 @@ from mypy.types import TupleType, Instance, TypeType, ProperType, get_proper_typ
 from mypyc.common import MAX_SHORT_INT
 from mypyc.ir.ops import (
     Value, Register, TupleGet, TupleSet, BasicBlock, Assign, LoadAddress, RaiseStandardError,
-    ComparisonOp
+    ComparisonOp, Integer
 )
 from mypyc.ir.rtypes import (
     RTuple, object_rprimitive, is_none_rprimitive, int_rprimitive, is_int_rprimitive,
@@ -635,10 +635,20 @@ def transform_basic_comparison(builder: IRBuilder,
     if (is_int_rprimitive(left.type) and is_int_rprimitive(right.type)
             and op in int_comparison_op_mapping.keys()):
         return builder.compare_tagged(left, right, op, line)
-    if (is_int64_rprimitive(left.type) and is_int64_rprimitive(right.type)
-            and op in int_comparison_op_mapping.keys()):
+    if is_int64_rprimitive(left.type) and op in int_comparison_op_mapping.keys():
+        if is_int64_rprimitive(right.type):
+            op_id = ComparisonOp.signed_ops[op]
+            return builder.builder.comparison_op(left, right, op_id, line)
+        elif isinstance(right, Integer):
+            op_id = ComparisonOp.signed_ops[op]
+            return builder.builder.comparison_op(left, Integer(right.value >> 1, left.type),
+                                                 op_id, line)
+    elif (is_int64_rprimitive(right.type) and op in int_comparison_op_mapping.keys()
+              and isinstance(left, Integer)):
         op_id = ComparisonOp.signed_ops[op]
-        return builder.builder.comparison_op(left, right, op_id, line)
+        return builder.builder.comparison_op(Integer(left.value >> 1, right.type), right,
+                                             op_id, line)
+
     negate = False
     if op == 'is not':
         op, negate = 'is', True

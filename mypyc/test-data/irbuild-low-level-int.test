@@ -116,3 +116,30 @@ L0:
     b = r0
     r1 = 3 - b
     return r1
+
+[case testLowLevelIntMixedComparison]
+from mypy_extensions import i64
+
+def f(a: i64) -> i64:
+    if a < 3:
+        return 1
+    elif 3 < a:
+        return 2
+    return 3
+[out]
+def f(a):
+    a :: int64
+    r0, r1 :: bit
+L0:
+    r0 = a < 3 :: signed
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    return 1
+L2:
+    r1 = 3 < a :: signed
+    if r1 goto L3 else goto L4 :: bool
+L3:
+    return 2
+L4:
+L5:
+    return 3
