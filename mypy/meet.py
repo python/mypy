@@ -86,7 +86,12 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
           and narrowed.type.is_metaclass()):
         # We'd need intersection types, so give up.
         return declared
-    elif isinstance(declared, (Instance, TupleType, TypeType, LiteralType)):
+    elif isinstance(declared, Instance):
+        if declared.type.alt_promote:
+            # Special case: low-level integer type can't be narrowed
+            return declared
+        return meet_types(declared, narrowed)
+    elif isinstance(declared, (TupleType, TypeType, LiteralType)):
         return meet_types(declared, narrowed)
     elif isinstance(declared, TypedDictType) and isinstance(narrowed, Instance):
         # Special case useful for selecting TypedDicts from unions using isinstance(x, dict).
