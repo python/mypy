@@ -897,17 +897,16 @@ class LowLevelIRBuilder:
         if is_bool_rprimitive(ltype) and is_bool_rprimitive(rtype) and op in (
                 '&', '&=', '|', '|=', '^', '^='):
             return self.bool_bitwise_op(lreg, rreg, op[0], line)
-<<<<<<< HEAD
         if isinstance(rtype, RInstance) and op in ('in', 'not in'):
             return self.translate_instance_contains(rreg, lreg, op, line)
-        if is_int64_rprimitive(ltype) and is_int64_rprimitive(rtype) and op in ('+', '-'):
-||||||| constructed merge base
-        if is_int64_rprimitive(ltype) and is_int64_rprimitive(rtype) and op in ('+', '-'):
-=======
-        if is_int64_rprimitive(ltype) and is_int64_rprimitive(rtype) and op in ('+', '-', '*'):
->>>>>>> [mypyc] i64 negation
-            op_id = IntOp.op_to_id[op]
-            return self.int_op(ltype, lreg, rreg, op_id, line)
+        if is_int64_rprimitive(ltype) and op in ('+', '-', '*'):
+            if is_int64_rprimitive(rtype):
+                op_id = IntOp.op_to_id[op]
+                return self.int_op(ltype, lreg, rreg, op_id, line)
+            if isinstance(rreg, Integer):
+                # TODO: Check what kind of Integer
+                op_id = IntOp.op_to_id[op]
+                return self.int_op(ltype, lreg, Integer(rreg.value >> 1, rtype), op_id, line)
 
         call_c_ops_candidates = binary_ops.get(op, [])
         target = self.matching_call_c(call_c_ops_candidates, [lreg, rreg], line)

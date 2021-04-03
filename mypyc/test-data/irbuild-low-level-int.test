@@ -99,3 +99,20 @@ L0:
     r0 = CPyList_GetItemInt64(a, i)
     r1 = unbox(int64, r0)
     return r1
+
+[case testLowLevelIntMixedArithmetic]
+from mypy_extensions import i64
+
+def f() -> i64:
+    a: i64 = 1
+    b = a + 2
+    return 3 - b
+[out]
+def f():
+    a, r0, b, r1 :: int64
+L0:
+    a = 1
+    r0 = a + 4
+    b = r0
+    r1 = 3 - b
+    return r1
