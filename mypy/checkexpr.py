@@ -2806,10 +2806,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             left_map = None
 
         if right_map is None:
-            with self.msg.disable_errors():
-                right_type = self.analyze_cond_branch(right_map, e.right, left_type)
+            self.msg.disable_errors1()
+            right_type = self.analyze_cond_branch(map=right_map,
+                                                  node=e.right,
+                                                  context=left_type)
+            self.msg.enable_errors()
         else:
-            right_type = self.analyze_cond_branch(right_map, e.right, left_type)
+            right_type = self.analyze_cond_branch(map=right_map,
+                                                  node=e.right,
+                                                  context=left_type)
 
         if right_map is None:
             # The boolean expression is statically known to be the left value

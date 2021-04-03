@@ -137,6 +137,9 @@ class MessageBuilder:
                 for info in errs:
                     self.errors.add_error_info(info)
 
+    def disable_errors1(self) -> None:
+        self.disable_count += 1
+
     @contextmanager
     def disable_errors(self) -> Iterator[None]:
         self.disable_count += 1
@@ -144,6 +147,9 @@ class MessageBuilder:
             yield
         finally:
             self.disable_count -= 1
+
+    def enable_errors(self) -> None:
+        self.disable_count -= 1
 
     def is_errors(self) -> bool:
         return self.errors.is_errors()
