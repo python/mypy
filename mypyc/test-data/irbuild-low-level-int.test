@@ -112,7 +112,7 @@ def f():
     a, r0, b, r1 :: int64
 L0:
     a = 1
-    r0 = a + 4
+    r0 = a + 2
     b = r0
     r1 = 3 - b
     return r1
@@ -143,3 +143,22 @@ L3:
 L4:
 L5:
     return 3
+
+[case testLowLevelIntInplaceAdd]
+from mypy_extensions import i64
+
+def f(a: i64) -> i64:
+    b = a
+    b += 1
+    a += b
+    return a
+[out]
+def f(a):
+    a, b, r0, r1 :: int64
+L0:
+    b = a
+    r0 = b + 1
+    b = r0
+    r1 = a + b
+    a = r1
+    return a

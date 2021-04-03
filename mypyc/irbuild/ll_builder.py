@@ -899,14 +899,25 @@ class LowLevelIRBuilder:
             return self.bool_bitwise_op(lreg, rreg, op[0], line)
         if isinstance(rtype, RInstance) and op in ('in', 'not in'):
             return self.translate_instance_contains(rreg, lreg, op, line)
-        if is_int64_rprimitive(ltype) and op in ('+', '-', '*'):
+        if is_int64_rprimitive(ltype) and op in ('+', '-', '*', '+='):
+            # TODO: More ops
+            if op == '+=':
+                op = '+'
             if is_int64_rprimitive(rtype):
                 op_id = IntOp.op_to_id[op]
                 return self.int_op(ltype, lreg, rreg, op_id, line)
             if isinstance(rreg, Integer):
                 # TODO: Check what kind of Integer
                 op_id = IntOp.op_to_id[op]
-                return self.int_op(ltype, lreg, Integer(rreg.value >> 1, rtype), op_id, line)
+                return self.int_op(ltype, lreg, Integer(rreg.value >> 1, ltype), op_id, line)
+        elif is_int64_rprimitive(rtype) and isinstance(lreg, Integer) and op in ('+', '-', '*',
+                                                                                 '+='):
+            # TODO: More ops
+            if op == '+=':
+                op = '+'
+            # TODO: Check what kind of Integer
+            op_id = IntOp.op_to_id[op]
+            return self.int_op(rtype, Integer(lreg.value >> 1, rtype), rreg, op_id, line)
 
         call_c_ops_candidates = binary_ops.get(op, [])
         target = self.matching_call_c(call_c_ops_candidates, [lreg, rreg], line)
