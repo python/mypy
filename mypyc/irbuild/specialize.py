@@ -28,8 +28,8 @@ from mypyc.primitives.dict_ops import dict_keys_op, dict_values_op, dict_items_o
 from mypyc.primitives.tuple_ops import new_tuple_set_item_op
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import (
-    translate_list_comprehension, comprehension_helper,
-    for_loop_helper_with_index
+    translate_list_comprehension, translate_set_comprehension,
+    comprehension_helper, for_loop_helper_with_index,
 )
 
 
@@ -112,8 +112,19 @@ def dict_methods_fast_path(
         return builder.call_c(dict_items_op, [obj], expr.line)
 
 
-@specialize_function('builtins.tuple')
 @specialize_function('builtins.set')
+def translate_set_from_generator_call(
+        builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+    # Special case for set creation from a generator：
+    #     set(f(...) for ... in iterator/nested_generators...)
+    if (len(expr.args) == 1
+            and expr.arg_kinds[0] == ARG_POS
+            and isinstance(expr.args[0], GeneratorExpr)):
+        return translate_set_comprehension(builder, expr.args[0])
+    return None
+
+
+@specialize_function('builtins.tuple')
 @specialize_function('builtins.frozenset')
 @specialize_function('builtins.dict')
 @specialize_function('builtins.sum')
@@ -143,6 +154,7 @@ def translate_safe_generator_call(
                 val = tuple_from_generator_helper(builder, expr.args[0])
                 if val is not None:
                     return val
+
             return builder.call_refexpr_with_args(
                 expr, callee,
                 ([translate_list_comprehension(builder, expr.args[0])]

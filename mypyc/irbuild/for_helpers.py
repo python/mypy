@@ -24,6 +24,7 @@ from mypyc.primitives.dict_ops import (
     dict_key_iter_op, dict_value_iter_op, dict_item_iter_op
 )
 from mypyc.primitives.list_ops import list_append_op, list_get_item_unsafe_op
+from mypyc.primitives.set_ops import set_add_op
 from mypyc.primitives.generic_ops import iter_op, next_op
 from mypyc.primitives.exc_ops import no_err_occurred_op
 from mypyc.irbuild.builder import IRBuilder
@@ -140,6 +141,18 @@ def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Valu
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
     return list_ops
+
+
+def translate_set_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value:
+    set_ops = builder.new_set_op([], gen.line)
+    loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
+
+    def gen_inner_stmts() -> None:
+        e = builder.accept(gen.left_expr)
+        builder.call_c(set_add_op, [set_ops, e], gen.line)
+
+    comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
+    return set_ops
 
 
 def comprehension_helper(builder: IRBuilder,
