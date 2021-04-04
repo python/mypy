@@ -395,7 +395,7 @@ class A(metaclass=ABCMeta):
     def x(self) -> int: return 0
 [typing fixtures/typing-medium.pyi]
 [out2]
-tmp/a.py:2: error: Cannot instantiate abstract class 'A' with abstract attributes 'f' and 'x'
+tmp/a.py:2: error: Cannot instantiate abstract class "A" with abstract attributes "f" and "x"
 tmp/a.py:9: error: Property "x" defined in "A" is read-only
 
 [case testSerializeStaticMethod]

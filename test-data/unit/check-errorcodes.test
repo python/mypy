@@ -15,9 +15,9 @@ thing = 0
 [builtins fixtures/module.pyi]
 
 [case testErrorCodeUndefinedName]
-x # E: Name 'x' is not defined  [name-defined]
+x # E: Name "x" is not defined  [name-defined]
 def f() -> None:
-    y # E: Name 'y' is not defined  [name-defined]
+    y # E: Name "y" is not defined  [name-defined]
 [file m.py]
 [builtins fixtures/module.pyi]
 
@@ -92,7 +92,7 @@ c = 'x'.foobar  # type: int  # type: ignore
 [case testErrorCodeIgnoreMultiple1]
 a = 'x'.foobar(b)  # type: ignore[name-defined, attr-defined]
 a = 'x'.foobar(b)  # type: ignore[name-defined, xyz]  # E: "str" has no attribute "foobar"  [attr-defined]
-a = 'x'.foobar(b)  # type: ignore[xyz, w, attr-defined]  # E: Name 'b' is not defined  [name-defined]
+a = 'x'.foobar(b)  # type: ignore[xyz, w, attr-defined]  # E: Name "b" is not defined  [name-defined]
 
 [case testErrorCodeIgnoreMultiple2]
 a = 'x'.foobar(b) # type: int # type: ignore[name-defined, attr-defined]
@@ -101,7 +101,7 @@ b = 'x'.foobar(b) # type: int # type: ignore[name-defined, xyz]  # E: "str" has 
 [case testErrorCodeIgnoreMultiple1_python2]
 a = 'x'.foobar(b)  # type: ignore[name-defined, attr-defined]
 a = 'x'.foobar(b)  # type: ignore[name-defined, xyz]  # E: "str" has no attribute "foobar"  [attr-defined]
-a = 'x'.foobar(b)  # type: ignore[xyz, w, attr-defined]  # E: Name 'b' is not defined  [name-defined]
+a = 'x'.foobar(b)  # type: ignore[xyz, w, attr-defined]  # E: Name "b" is not defined  [name-defined]
 
 [case testErrorCodeIgnoreMultiple2_python2]
 a = 'x'.foobar(b) # type: int # type: ignore[name-defined, attr-defined]
@@ -112,16 +112,16 @@ x  # type: ignore   [name-defined]
 x2 # type: ignore   [ name-defined ]
 x3 # type: ignore   [ xyz , name-defined ]
 x4 # type: ignore[xyz,name-defined]
-y  # type: ignore   [xyz]  # E: Name 'y' is not defined  [name-defined]
-y  # type: ignore[  xyz  ]  # E: Name 'y' is not defined  [name-defined]
-y  # type: ignore[ xyz , foo  ]  # E: Name 'y' is not defined  [name-defined]
+y  # type: ignore   [xyz]  # E: Name "y" is not defined  [name-defined]
+y  # type: ignore[  xyz  ]  # E: Name "y" is not defined  [name-defined]
+y  # type: ignore[ xyz , foo  ]  # E: Name "y" is not defined  [name-defined]
 
 a = z  # type: int  # type: ignore  [name-defined]
 b = z2  # type: int  # type: ignore  [ name-defined ]
 c = z2  # type: int  # type: ignore  [ name-defined , xyz ]
-d = zz # type: int  # type: ignore  [xyz]  # E: Name 'zz' is not defined  [name-defined]
-e = zz # type: int  # type: ignore  [ xyz ]  # E: Name 'zz' is not defined  [name-defined]
-f = zz # type: int  # type: ignore  [ xyz,foo ]  # E: Name 'zz' is not defined  [name-defined]
+d = zz # type: int  # type: ignore  [xyz]  # E: Name "zz" is not defined  [name-defined]
+e = zz # type: int  # type: ignore  [ xyz ]  # E: Name "zz" is not defined  [name-defined]
+f = zz # type: int  # type: ignore  [ xyz,foo ]  # E: Name "zz" is not defined  [name-defined]
 
 [case testErrorCodeIgnoreAfterArgComment]
 def f(x  # type: xyz  # type: ignore[name-defined]  # Comment
@@ -134,7 +134,7 @@ def g(x  # type: xyz  # type: ignore  # Comment
     # type () -> None
     pass
 
-def h(x  # type: xyz  # type: ignore[foo]  # E: Name 'xyz' is not defined  [name-defined]
+def h(x  # type: xyz  # type: ignore[foo]  # E: Name "xyz" is not defined  [name-defined]
       ):
     # type () -> None
     pass
@@ -150,7 +150,7 @@ def g(x  # type: xyz  # type: ignore  # Comment
     # type () -> None
     pass
 
-def h(x  # type: xyz  # type: ignore[foo]  # E: Name 'xyz' is not defined  [name-defined]
+def h(x  # type: xyz  # type: ignore[foo]  # E: Name "xyz" is not defined  [name-defined]
       ):
     # type () -> None
     pass
@@ -550,7 +550,7 @@ class A:
 class B(A):
     pass
 
-B()  # E: Cannot instantiate abstract class 'B' with abstract attribute 'f'  [abstract]
+B()  # E: Cannot instantiate abstract class "B" with abstract attribute "f"  [abstract]
 
 [case testErrorCodeNewTypeNotSubclassable]
 from typing import Union, NewType
@@ -691,10 +691,10 @@ Foo() + a  # type: ignore[operator]
 x = y  # type: ignored[foo]
 xx = y  # type: ignored [foo]
 [out]
-main:1: error: Name 'ignored' is not defined  [name-defined]
-main:1: error: Name 'y' is not defined  [name-defined]
-main:2: error: Name 'ignored' is not defined  [name-defined]
-main:2: error: Name 'y' is not defined  [name-defined]
+main:1: error: Name "ignored" is not defined  [name-defined]
+main:1: error: Name "y" is not defined  [name-defined]
+main:2: error: Name "ignored" is not defined  [name-defined]
+main:2: error: Name "y" is not defined  [name-defined]
 
 [case testErrorCodeTypeIgnoreMisspelled2]
 x = y  # type: int  # type: ignored[foo]

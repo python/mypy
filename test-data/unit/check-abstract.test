@@ -157,7 +157,7 @@ class B(metaclass=ABCMeta):
   @abstractmethod
   def f(self): pass
 A() # OK
-B() # E: Cannot instantiate abstract class 'B' with abstract attribute 'f'
+B() # E: Cannot instantiate abstract class "B" with abstract attribute "f"
 [out]
 
 [case testInstantiatingClassWithInheritedAbstractMethod]
@@ -169,7 +169,7 @@ class A(metaclass=ABCMeta):
   @abstractmethod
   def g(self): pass
 class B(A): pass
-B() # E: Cannot instantiate abstract class 'B' with abstract attributes 'f' and 'g'
+B() # E: Cannot instantiate abstract class "B" with abstract attributes "f" and "g"
 [out]
 
 [case testInstantiationAbstractsInTypeForFunctions]
@@ -187,7 +187,7 @@ class C(B):
 def f(cls: Type[A]) -> A:
     return cls()  # OK
 def g() -> A:
-    return A()  # E: Cannot instantiate abstract class 'A' with abstract attribute 'm'
+    return A()  # E: Cannot instantiate abstract class "A" with abstract attribute "m"
 
 f(A)  # E: Only concrete class can be given where "Type[A]" is expected
 f(B)  # E: Only concrete class can be given where "Type[A]" is expected
@@ -213,7 +213,7 @@ def f(cls: Type[A]) -> A:
 
 Alias = A
 GoodAlias = C
-Alias()  # E: Cannot instantiate abstract class 'A' with abstract attribute 'm'
+Alias()  # E: Cannot instantiate abstract class "A" with abstract attribute "m"
 GoodAlias()
 f(Alias)  # E: Only concrete class can be given where "Type[A]" is expected
 f(GoodAlias)
@@ -293,7 +293,7 @@ class A(metaclass=ABCMeta):
     def i(self): pass
     @abstractmethod
     def j(self): pass
-a = A() # E: Cannot instantiate abstract class 'A' with abstract attributes 'a', 'b', ... and 'j' (7 methods suppressed)
+a = A() # E: Cannot instantiate abstract class "A" with abstract attributes "a", "b", ... and "j" (7 methods suppressed)
 [out]
 
 
@@ -524,8 +524,8 @@ class D(A, B):
 class E(A, B):
   def f(self) -> None: pass
   def g(self) -> None: pass
-C() # E: Cannot instantiate abstract class 'C' with abstract attribute 'g'
-D() # E: Cannot instantiate abstract class 'D' with abstract attribute 'f'
+C() # E: Cannot instantiate abstract class "C" with abstract attribute "g"
+D() # E: Cannot instantiate abstract class "D" with abstract attribute "f"
 E()
 
 [case testInconsistentMro]
@@ -555,7 +555,7 @@ class B(A):
   def f(self, x: int) -> int: pass
   @overload
   def f(self, x: str) -> str: pass
-A() # E: Cannot instantiate abstract class 'A' with abstract attribute 'f'
+A() # E: Cannot instantiate abstract class "A" with abstract attribute "f"
 B()
 B().f(1)
 a = B() # type: A
@@ -585,7 +585,7 @@ class B(A):
   def f(self, x: int) -> int: pass
   @overload
   def f(self, x: str) -> str: pass
-A() # E: Cannot instantiate abstract class 'A' with abstract attribute 'f'
+A() # E: Cannot instantiate abstract class "A" with abstract attribute "f"
 B()
 B().f(1)
 a = B() # type: A
@@ -738,7 +738,7 @@ class A(metaclass=ABCMeta):
     @abstractproperty
     def x(self) -> int: pass
 class B(A): pass
-b = B() # E: Cannot instantiate abstract class 'B' with abstract attribute 'x'
+b = B() # E: Cannot instantiate abstract class "B" with abstract attribute "x"
 
 [case testInstantiateClassWithReadWriteAbstractProperty]
 from abc import abstractproperty, ABCMeta
@@ -748,7 +748,7 @@ class A(metaclass=ABCMeta):
     @x.setter
     def x(self, x: int) -> None: pass
 class B(A): pass
-b = B() # E: Cannot instantiate abstract class 'B' with abstract attribute 'x'
+b = B() # E: Cannot instantiate abstract class "B" with abstract attribute "x"
 
 [case testImplementAbstractPropertyViaProperty]
 from abc import abstractproperty, ABCMeta
@@ -803,7 +803,7 @@ b.x.y # E
 [builtins fixtures/property.pyi]
 [out]
 main:7: error: Property "x" defined in "A" is read-only
-main:8: error: Cannot instantiate abstract class 'B' with abstract attribute 'x'
+main:8: error: Cannot instantiate abstract class "B" with abstract attribute "x"
 main:9: error: "int" has no attribute "y"
 
 [case testSuperWithAbstractProperty]
@@ -952,15 +952,15 @@ class A:
 
     class C(B): pass
 
-A.B()  # E: Cannot instantiate abstract class 'B' with abstract attribute 'f'
-A.C()  # E: Cannot instantiate abstract class 'C' with abstract attribute 'f'
+A.B()  # E: Cannot instantiate abstract class "B" with abstract attribute "f"
+A.C()  # E: Cannot instantiate abstract class "C" with abstract attribute "f"
 
 [case testAbstractNewTypeAllowed]
 from typing import NewType, Mapping
 
 Config = NewType('Config', Mapping[str, str])
 
-bad = Mapping[str, str]()  # E: Cannot instantiate abstract class 'Mapping' with abstract attribute '__iter__'
+bad = Mapping[str, str]()  # E: Cannot instantiate abstract class "Mapping" with abstract attribute "__iter__"
 default = Config({'cannot': 'modify'})  # OK
 
 default[1] = 2  # E: Unsupported target for indexed assignment ("Config")
@@ -1008,9 +1008,9 @@ a.do()
 b = my_concrete_types['B']()
 b.do()
 
-c = my_abstract_types['A']()  # E: Cannot instantiate abstract class 'MyAbstractType' with abstract attribute 'do'
+c = my_abstract_types['A']()  # E: Cannot instantiate abstract class "MyAbstractType" with abstract attribute "do"
 c.do()
-d = my_abstract_types['B']()  # E: Cannot instantiate abstract class 'MyAbstractType' with abstract attribute 'do'
+d = my_abstract_types['B']()  # E: Cannot instantiate abstract class "MyAbstractType" with abstract attribute "do"
 d.do()
 
 [builtins fixtures/dict.pyi]

@@ -197,7 +197,7 @@ class A: pass
 [file m.py.2]
 [out]
 ==
-main:3: error: Name 'm.A' is not defined
+main:3: error: Name "m.A" is not defined
 
 [case testTwoIncrementalSteps]
 import m
@@ -1602,7 +1602,7 @@ class C:
 [out]
 main:7: error: "A" has no attribute "x"
 ==
-main:3: error: Name 'm.C' is not defined
+main:3: error: Name "m.C" is not defined
 
 [case testBaseClassOfNestedClassDeleted]
 import m
@@ -1620,7 +1620,7 @@ class C:
 [out]
 main:8: error: "B" has no attribute "x"
 ==
-main:4: error: Name 'm.C' is not defined
+main:4: error: Name "m.C" is not defined
 
 [case testImportQualifiedModuleName]
 import a
@@ -2022,11 +2022,11 @@ class A:
 class A:
     def foo(self) -> int: pass
 [out]
-a.py:3: error: Name 'nothing' is not defined
+a.py:3: error: Name "nothing" is not defined
 ==
-a.py:3: error: Name 'nothing' is not defined
+a.py:3: error: Name "nothing" is not defined
 ==
-a.py:3: error: Name 'nothing' is not defined
+a.py:3: error: Name "nothing" is not defined
 ==
 
 [case testPreviousErrorInMethodSemanalPass3]
@@ -3205,7 +3205,7 @@ class M(type):
 whatever: int
 [out]
 ==
-b.py:2: error: Name 'c.M' is not defined
+b.py:2: error: Name "c.M" is not defined
 a.py:3: error: "Type[B]" has no attribute "x"
 
 [case testFixMissingMetaclass]
@@ -3224,7 +3224,7 @@ whatever: int
 class M(type):
     x: int
 [out]
-b.py:2: error: Name 'c.M' is not defined
+b.py:2: error: Name "c.M" is not defined
 a.py:3: error: "Type[B]" has no attribute "x"
 ==
 
@@ -3916,7 +3916,7 @@ A = int
 import a
 x: a.A
 [out]
-b.py:2: error: Name 'a.A' is not defined
+b.py:2: error: Name "a.A" is not defined
 ==
 
 [case testAliasFineDeleted]
@@ -3929,7 +3929,7 @@ import a
 x: a.A
 [out]
 ==
-b.py:2: error: Name 'a.A' is not defined
+b.py:2: error: Name "a.A" is not defined
 
 [case testAliasFineClassToAlias]
 import b
@@ -3975,7 +3975,7 @@ def f(x: A[int]):
 [builtins fixtures/dict.pyi]
 [out]
 ==
-b.py:4: error: Name 'a.B' is not defined
+b.py:4: error: Name "a.B" is not defined
 
 [case testAliasFineTargetDeleted]
 import c
@@ -3992,7 +3992,7 @@ def f(x: b.B):
     pass
 [out]
 ==
-c.py:2: error: Name 'b.B' is not defined
+c.py:2: error: Name "b.B" is not defined
 
 [case testAliasFineClassInFunction]
 import b
@@ -5090,7 +5090,7 @@ class B:
 [out]
 a.py:2: error: Value of type variable "T" of function cannot be "int"
 ==
-c.py:3: error: Name 'd.B' is not defined
+c.py:3: error: Name "d.B" is not defined
 
 [case testGenericFineCallableToNonGeneric]
 import a
@@ -6370,7 +6370,7 @@ class C:
     x: int
 [out]
 ==
-a.py:2: error: Cannot instantiate abstract class 'C' with abstract attribute 'x'
+a.py:2: error: Cannot instantiate abstract class "C" with abstract attribute "x"
 ==
 
 [case testInvalidateProtocolViaSuperClass]
@@ -7665,7 +7665,7 @@ class C:
     def g(self) -> None: pass
 [out]
 ==
-main:2: error: Cannot instantiate abstract class 'D' with abstract attribute 'g'
+main:2: error: Cannot instantiate abstract class "D" with abstract attribute "g"
 ==
 
 [case testMakeClassAbstract]
@@ -7681,7 +7681,7 @@ class C:
     def f(self) -> None: pass
 [out]
 ==
-main:2: error: Cannot instantiate abstract class 'C' with abstract attribute 'f'
+main:2: error: Cannot instantiate abstract class "C" with abstract attribute "f"
 
 [case testMakeMethodNoLongerAbstract1]
 [file z.py]
@@ -7923,7 +7923,7 @@ def bar(x: T) -> T:
     pass
 x = 1
 [out]
-a.py:1: error: Name 'TypeVar' is not defined
+a.py:1: error: Name "TypeVar" is not defined
 a.py:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import TypeVar")
 a.py:7: error: Variable "a.T" is not valid as a type
 a.py:7: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
@@ -7931,7 +7931,7 @@ a.py:10: error: Name 'bar' already defined on line 6
 a.py:11: error: Variable "a.T" is not valid as a type
 a.py:11: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 ==
-a.py:1: error: Name 'TypeVar' is not defined
+a.py:1: error: Name "TypeVar" is not defined
 a.py:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import TypeVar")
 a.py:7: error: Variable "a.T" is not valid as a type
 a.py:7: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
@@ -7968,7 +7968,7 @@ class A: pass
 [builtins fixtures/list.pyi]
 [out]
 ==
-main:4: error: Name 'm.A' is not defined
+main:4: error: Name "m.A" is not defined
 
 [case testIdLikeDecoForwardCrash]
 import b

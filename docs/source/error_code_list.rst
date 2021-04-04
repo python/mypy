@@ -87,7 +87,7 @@ This example accidentally calls ``sort()`` instead of :py:func:`sorted`:
 
 .. code-block:: python
 
-    x = sort([3, 2, 4])  # Error: Name 'sort' is not defined  [name-defined]
+    x = sort([3, 2, 4])  # Error: Name "sort" is not defined  [name-defined]
 
 Check arguments in calls [call-arg]
 -----------------------------------
@@ -565,7 +565,7 @@ Example:
 
         ...  # No "save" method
 
-    # Error: Cannot instantiate abstract class 'Thing' with abstract attribute 'save'  [abstract]
+    # Error: Cannot instantiate abstract class "Thing" with abstract attribute "save"  [abstract]
     t = Thing()
 
 Check the target of NewType [valid-newtype]

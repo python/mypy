@@ -375,6 +375,6 @@ issubclass(object, T)  # E: Cannot use issubclass() with NewType type
 
 from typing import List, NewType, Union
 N = NewType('N', XXX)  # E: Argument 2 to NewType(...) must be subclassable (got "Any") \
-                       # E: Name 'XXX' is not defined
+                       # E: Name "XXX" is not defined
 x: List[Union[N, int]]
 [builtins fixtures/list.pyi]

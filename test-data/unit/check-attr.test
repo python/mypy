@@ -1295,7 +1295,7 @@ import attr
 
 @attr.s
 class C:
-    total = attr.ib(type=Bad)  # E: Name 'Bad' is not defined
+    total = attr.ib(type=Bad)  # E: Name "Bad" is not defined
 [builtins fixtures/bool.pyi]
 
 [case testTypeInAttrForwardInRuntime]
@@ -1329,7 +1329,7 @@ import attr
 
 @attr.s(frozen=True)
 class C:
-    total = attr.ib(type=Bad)  # E: Name 'Bad' is not defined
+    total = attr.ib(type=Bad)  # E: Name "Bad" is not defined
 
 C(0).total = 1  # E: Property "total" defined in "C" is read-only
 [builtins fixtures/bool.pyi]

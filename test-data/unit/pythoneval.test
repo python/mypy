@@ -240,7 +240,7 @@ b'zar'
 import typing
 cast(int, 2)
 [out]
-_program.py:2: error: Name 'cast' is not defined
+_program.py:2: error: Name "cast" is not defined
 _program.py:2: note: Did you forget to import it from "typing"? (Suggestion: "from typing import cast")
 
 [case testBinaryIOType]
@@ -635,8 +635,8 @@ import typing
 def f(x: _T) -> None: pass
 s: FrozenSet
 [out]
-_program.py:2: error: Name '_T' is not defined
-_program.py:3: error: Name 'FrozenSet' is not defined
+_program.py:2: error: Name "_T" is not defined
+_program.py:3: error: Name "FrozenSet" is not defined
 
 [case testVarArgsFunctionSubtyping]
 import typing
@@ -913,7 +913,7 @@ _testCollectionsAliases.py:21: note: Revealed type is "collections.deque[builtin
 ChainMap[int, str]()
 
 [out]
-_testChainMapUnimported.py:1: error: Name 'ChainMap' is not defined
+_testChainMapUnimported.py:1: error: Name "ChainMap" is not defined
 
 [case testDequeWrongCase]
 import collections

@@ -218,7 +218,7 @@ version of Python considers legal code. These can result in some of the
 following errors when trying to run your code:
 
 * ``ImportError`` from circular imports
-* ``NameError: name 'X' is not defined`` from forward references
+* ``NameError: name "X" is not defined`` from forward references
 * ``TypeError: 'type' object is not subscriptable`` from types that are not generic at runtime
 * ``ImportError`` or ``ModuleNotFoundError`` from use of stub definitions not available at runtime
 * ``TypeError: unsupported operand type(s) for |: 'type' and 'type'`` from use of new syntax

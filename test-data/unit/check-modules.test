@@ -295,7 +295,7 @@ z()
 [out]
 main:1: error: Cannot find implementation or library stub for module named "xyz"
 main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-main:2: error: Name 'xyz' is not defined
+main:2: error: Name "xyz" is not defined
 
 [case testAccessingNameImportedFromUnknownModule]
 from xyz import y, z
@@ -311,7 +311,7 @@ y
 [out]
 main:1: error: Cannot find implementation or library stub for module named "xyz"
 main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-main:2: error: Name 'y' is not defined
+main:2: error: Name "y" is not defined
 
 [case testAccessingNameImportedFromUnknownModule3]
 from xyz import y as z
@@ -320,7 +320,7 @@ z
 [out]
 main:1: error: Cannot find implementation or library stub for module named "xyz"
 main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-main:2: error: Name 'y' is not defined
+main:2: error: Name "y" is not defined
 
 [case testUnknownModuleRedefinition]
 # Error messages differ with the new analyzer
@@ -404,8 +404,8 @@ _ = b
 _ = c
 _ = d
 _ = e
-_ = f # E: Name 'f' is not defined
-_ = _g # E: Name '_g' is not defined
+_ = f # E: Name "f" is not defined
+_ = _g # E: Name "_g" is not defined
 [file m.py]
 __all__ = ['a']
 __all__ += ('b',)
@@ -444,8 +444,8 @@ _ = _b
 _ = __c__
 _ = ___d
 _ = e
-_ = f # E: Name 'f' is not defined
-_ = _g # E: Name '_g' is not defined
+_ = f # E: Name "f" is not defined
+_ = _g # E: Name "_g" is not defined
 [file m.py]
 __all__ = ['a']
 __all__ += ('_b',)
@@ -839,8 +839,8 @@ import a.b.c
 reveal_type(a.value)  # N: Revealed type is "builtins.int"
 reveal_type(a.b.value)  # N: Revealed type is "builtins.str"
 reveal_type(a.b.c.value)  # N: Revealed type is "builtins.float"
-b.value  # E: Name 'b' is not defined
-c.value  # E: Name 'c' is not defined
+b.value  # E: Name "b" is not defined
+c.value  # E: Name "c" is not defined
 
 [file a/__init__.py]
 value = 3
@@ -853,9 +853,9 @@ value = 3.2
 [case testSubmoduleImportAsDoesNotAddParents]
 import a.b.c as foo
 reveal_type(foo.value)  # N: Revealed type is "builtins.float"
-a.value  # E: Name 'a' is not defined
-b.value  # E: Name 'b' is not defined
-c.value  # E: Name 'c' is not defined
+a.value  # E: Name "a" is not defined
+b.value  # E: Name "b" is not defined
+c.value  # E: Name "c" is not defined
 
 [file a/__init__.py]
 value = 3
@@ -869,7 +869,7 @@ value = 3.2
 from a import b
 reveal_type(b.value)  # N: Revealed type is "builtins.str"
 b.c.value  # E: Module has no attribute "c"
-a.value  # E: Name 'a' is not defined
+a.value  # E: Name "a" is not defined
 
 [file a/__init__.py]
 value = 3
@@ -883,8 +883,8 @@ value = 3.2
 [case testSubmoduleImportFromDoesNotAddParents2]
 from a.b import c
 reveal_type(c.value)  # N: Revealed type is "builtins.float"
-a.value  # E: Name 'a' is not defined
-b.value  # E: Name 'b' is not defined
+a.value  # E: Name "a" is not defined
+b.value  # E: Name "b" is not defined
 
 [file a/__init__.py]
 value = 3
@@ -912,14 +912,14 @@ a.b.c.value
 [file a/b/c.py]
 value = 3.2
 [out]
-tmp/a/b/__init__.py:2: error: Name 'c' is not defined
-tmp/a/b/__init__.py:3: error: Name 'a' is not defined
-tmp/a/__init__.py:2: error: Name 'b' is not defined
-tmp/a/__init__.py:3: error: Name 'a' is not defined
+tmp/a/b/__init__.py:2: error: Name "c" is not defined
+tmp/a/b/__init__.py:3: error: Name "a" is not defined
+tmp/a/__init__.py:2: error: Name "b" is not defined
+tmp/a/__init__.py:3: error: Name "a" is not defined
 
 [case testSubmoduleMixingLocalAndQualifiedNames]
 from a.b import MyClass
-val1 = None  # type: a.b.MyClass  # E: Name 'a' is not defined
+val1 = None  # type: a.b.MyClass  # E: Name "a" is not defined
 val2 = None  # type: MyClass
 
 [file a/__init__.py]
@@ -942,7 +942,7 @@ foo = parent.common.SomeClass()
 
 [builtins fixtures/module.pyi]
 [out]
-tmp/parent/child.py:3: error: Name 'parent' is not defined
+tmp/parent/child.py:3: error: Name "parent" is not defined
 
 [case testSubmoduleMixingImportFromAndImport]
 import parent.child
@@ -1844,7 +1844,7 @@ import stub
 
 c = stub.C()
 reveal_type(c.x)  # N: Revealed type is "builtins.int"
-it: stub.Iterable[int]  # E: Name 'stub.Iterable' is not defined
+it: stub.Iterable[int]  # E: Name "stub.Iterable" is not defined
 reveal_type(it)  # N: Revealed type is "Any"
 
 [file stub.pyi]
@@ -2096,7 +2096,7 @@ def __getattr__(name: str) -> Any: ...
 
 [case testModuleLevelGetattrImportFromAs]
 from has_attr import name as n
-reveal_type(name)  # E: Name 'name' is not defined  # N: Revealed type is "Any"
+reveal_type(name)  # E: Name "name" is not defined  # N: Revealed type is "Any"
 reveal_type(n)  # N: Revealed type is "Any"
 
 [file has_attr.pyi]
@@ -2762,7 +2762,7 @@ def __getattr__(name: str) -> ModuleType: ...
 # flags: --ignore-missing-imports
 import pack.mod as alias
 
-x: alias.NonExistent  # E: Name 'alias.NonExistent' is not defined
+x: alias.NonExistent  # E: Name "alias.NonExistent" is not defined
 
 [file pack/__init__.py]
 [file pack/mod.py]

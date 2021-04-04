@@ -567,7 +567,7 @@ C.A  # E: "Type[C]" has no attribute "A"
 from typing import NamedTuple
 def f() -> None:
     A = NamedTuple('A', [('x', int)])
-A  # E: Name 'A' is not defined
+A  # E: Name "A" is not defined
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleForwardAsUpperBound]

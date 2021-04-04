@@ -6,7 +6,7 @@ x() # E: "int" not callable
 [case testIgnoreUndefinedName]
 x = 1
 y # type: ignore
-z # E: Name 'z' is not defined
+z # E: Name "z" is not defined
 
 [case testIgnoreImportError]
 import xyz_m # type: ignore
@@ -29,7 +29,7 @@ b()
 
 [case testIgnoreImportAllError]
 from xyz_m import * # type: ignore
-x   # E: Name 'x' is not defined
+x   # E: Name "x" is not defined
 1() # E: "int" not callable
 
 [case testIgnoreImportBadModule]
@@ -254,16 +254,16 @@ IGNORE
 [case testDontIgnoreWholeModule1]
 if True:
     # type: ignore
-    ERROR # E: Name 'ERROR' is not defined
-ERROR # E: Name 'ERROR' is not defined
+    ERROR # E: Name "ERROR" is not defined
+ERROR # E: Name "ERROR" is not defined
 
 [case testDontIgnoreWholeModule2]
 @d  # type: ignore
 class C: ...
-ERROR # E: Name 'ERROR' is not defined
+ERROR # E: Name "ERROR" is not defined
 
 [case testDontIgnoreWholeModule3]
 @d  # type: ignore
 
 def f(): ...
-ERROR # E: Name 'ERROR' is not defined
+ERROR # E: Name "ERROR" is not defined

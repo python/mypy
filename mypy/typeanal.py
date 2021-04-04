@@ -286,7 +286,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 if self.api.is_incomplete_namespace('builtins'):
                     self.api.record_incomplete_ref()
                 else:
-                    self.fail("Name 'tuple' is not defined", t)
+                    self.fail('Name "tuple" is not defined', t)
                 return AnyType(TypeOfAny.special_form)
             if len(t.args) == 0 and not t.empty_tuple_index:
                 # Bare 'Tuple' is same as 'tuple'
