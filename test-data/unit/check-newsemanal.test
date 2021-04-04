@@ -3132,14 +3132,14 @@ class TopLevel(metaclass=ABCMeta):
     @abstractmethod
     def f(self) -> None: pass
 
-TopLevel()  # E: Cannot instantiate abstract class 'TopLevel' with abstract attribute 'f'
+TopLevel()  # E: Cannot instantiate abstract class "TopLevel" with abstract attribute "f"
 
 def func() -> None:
     class Function(metaclass=ABCMeta):
         @abstractmethod
         def f(self) -> None: pass
 
-    Function()  # E: Cannot instantiate abstract class 'Function' with abstract attribute 'f'
+    Function()  # E: Cannot instantiate abstract class "Function" with abstract attribute "f"
 
 class C:
     def meth(self) -> None:
@@ -3147,7 +3147,7 @@ class C:
             @abstractmethod
             def f(self) -> None: pass
 
-        Method()  # E: Cannot instantiate abstract class 'Method' with abstract attribute 'f'
+        Method()  # E: Cannot instantiate abstract class "Method" with abstract attribute "f"
 
 [case testModulesAndFuncsTargetsInCycle]
 import a

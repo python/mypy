@@ -6120,9 +6120,9 @@ class B(A):
 class C(B):
     def __init__(self, a: int) -> None:
         self.c = a
-a = A(1) # E: Cannot instantiate abstract class 'A' with abstract attribute '__init__'
+a = A(1) # E: Cannot instantiate abstract class "A" with abstract attribute "__init__"
 A.c # E: "Type[A]" has no attribute "c"
-b = B(2) # E: Cannot instantiate abstract class 'B' with abstract attribute '__init__'
+b = B(2) # E: Cannot instantiate abstract class "B" with abstract attribute "__init__"
 B.c # E: "Type[B]" has no attribute "c"
 c = C(3)
 c.c

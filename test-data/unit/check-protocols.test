@@ -393,7 +393,7 @@ class P(C, Protocol): # E: All bases of a protocol must be protocols
 class P2(P, D, Protocol): # E: All bases of a protocol must be protocols
     pass
 
-P2() # E: Cannot instantiate abstract class 'P2' with abstract attribute 'attr'
+P2() # E: Cannot instantiate abstract class "P2" with abstract attribute "attr"
 p: P2
 reveal_type(p.attr) # N: Revealed type is "builtins.int"
 
@@ -917,7 +917,7 @@ class P(Protocol):
 class A(P):
     pass
 
-A() # E: Cannot instantiate abstract class 'A' with abstract attribute 'meth'
+A() # E: Cannot instantiate abstract class "A" with abstract attribute "meth"
 
 class C(A):
     def meth(self) -> int:
@@ -938,7 +938,7 @@ class P(Protocol):
 class A(P):
     pass
 
-A() # E: Cannot instantiate abstract class 'A' with abstract attribute 'attr'
+A() # E: Cannot instantiate abstract class "A" with abstract attribute "attr"
 
 class C(A):
     attr: int
@@ -1114,7 +1114,7 @@ class P(Protocol):
     def meth(self, x: str) -> bytes: pass
 class C(P):
     pass
-C() # E: Cannot instantiate abstract class 'C' with abstract attribute 'meth'
+C() # E: Cannot instantiate abstract class "C" with abstract attribute "meth"
 
 [case testCanUseOverloadedImplementationsInProtocols]
 from typing import overload, Protocol, Union

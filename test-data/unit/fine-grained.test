@@ -6370,7 +6370,7 @@ class C:
     x: int
 [out]
 ==
-a.py:2: error: Cannot instantiate abstract class 'C' with abstract attribute 'x'
+a.py:2: error: Cannot instantiate abstract class "C" with abstract attribute "x"
 ==
 
 [case testInvalidateProtocolViaSuperClass]
@@ -7665,7 +7665,7 @@ class C:
     def g(self) -> None: pass
 [out]
 ==
-main:2: error: Cannot instantiate abstract class 'D' with abstract attribute 'g'
+main:2: error: Cannot instantiate abstract class "D" with abstract attribute "g"
 ==
 
 [case testMakeClassAbstract]
@@ -7681,7 +7681,7 @@ class C:
     def f(self) -> None: pass
 [out]
 ==
-main:2: error: Cannot instantiate abstract class 'C' with abstract attribute 'f'
+main:2: error: Cannot instantiate abstract class "C" with abstract attribute "f"
 
 [case testMakeMethodNoLongerAbstract1]
 [file z.py]

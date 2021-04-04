@@ -565,7 +565,7 @@ Example:
 
         ...  # No "save" method
 
-    # Error: Cannot instantiate abstract class 'Thing' with abstract attribute 'save'  [abstract]
+    # Error: Cannot instantiate abstract class "Thing" with abstract attribute "save"  [abstract]
     t = Thing()
 
 Check the target of NewType [valid-newtype]
