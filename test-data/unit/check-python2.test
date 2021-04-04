@@ -310,9 +310,9 @@ class C(object):
 [case testErrorInMetaclass]
 x = 0
 class A(object):
-    __metaclass__ = m.M  # E: Name 'm' is not defined
+    __metaclass__ = m.M  # E: Name "m" is not defined
 class B(object):
-    __metaclass__ = M  # E: Name 'M' is not defined
+    __metaclass__ = M  # E: Name "M" is not defined
 
 [case testMetaclassAndSkippedImportInPython2]
 # flags: --ignore-missing-imports

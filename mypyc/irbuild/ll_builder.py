@@ -593,7 +593,7 @@ class LowLevelIRBuilder:
                             line: int = -1,
                             error_msg: Optional[str] = None) -> Value:
         if error_msg is None:
-            error_msg = "name '{}' is not defined".format(identifier)
+            error_msg = 'name "{}" is not defined'.format(identifier)
         ok_block, error_block = BasicBlock(), BasicBlock()
         value = self.add(LoadStatic(typ, identifier, module_name, namespace, line=line))
         self.add(Branch(value, error_block, ok_block, Branch.IS_ERROR, rare=True))

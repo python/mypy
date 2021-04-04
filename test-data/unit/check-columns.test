@@ -196,7 +196,7 @@ if int():
         pass
 
 [case testColumnNameIsNotDefined]
-((x)) # E:3: Name 'x' is not defined
+((x)) # E:3: Name "x" is not defined
 
 [case testColumnNeedTypeAnnotation]
 if 1:

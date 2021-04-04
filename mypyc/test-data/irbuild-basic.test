@@ -539,12 +539,12 @@ def f() -> None:
     return 1 # E: No return value expected
 
 [case testReportSemanticaAnalysisError1]
-def f(x: List[int]) -> None: pass # E: Name 'List' is not defined \
+def f(x: List[int]) -> None: pass # E: Name "List" is not defined \
                                   # N: Did you forget to import it from "typing"? (Suggestion: "from typing import List")
 
 [case testReportSemanticaAnalysisError2]
 def f() -> None:
-    x # E: Name 'x' is not defined
+    x # E: Name "x" is not defined
 
 [case testElif]
 def f(n: int) -> int:

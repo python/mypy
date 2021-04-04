@@ -1788,7 +1788,7 @@ def foo() -> None:
     global bar
     # TODO: Confusing error message
     bar = []  # type: List[str]  # E: Name 'bar' already defined (possibly by an import)
-    bar  # E: Name 'bar' is not defined
+    bar  # E: Name "bar" is not defined
 
 def foo2():
     global bar2

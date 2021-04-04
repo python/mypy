@@ -352,7 +352,7 @@ assert 1
 assert 1, 2
 assert 1, 1+2
 assert 1, 1+'test'  # E: Unsupported operand types for + ("int" and "str")
-assert 1, f()  # E: Name 'f' is not defined
+assert 1, f()  # E: Name "f" is not defined
 
 [case testFastParserConsistentFunctionTypes]
 

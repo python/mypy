@@ -87,7 +87,7 @@ This example accidentally calls ``sort()`` instead of :py:func:`sorted`:
 
 .. code-block:: python
 
-    x = sort([3, 2, 4])  # Error: Name 'sort' is not defined  [name-defined]
+    x = sort([3, 2, 4])  # Error: Name "sort" is not defined  [name-defined]
 
 Check arguments in calls [call-arg]
 -----------------------------------

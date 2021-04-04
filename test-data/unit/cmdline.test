@@ -25,8 +25,8 @@ undef
 undef
 import pkg.subpkg.a
 [out]
-pkg/a.py:1: error: Name 'undef' is not defined
-pkg/subpkg/a.py:1: error: Name 'undef' is not defined
+pkg/a.py:1: error: Name "undef" is not defined
+pkg/subpkg/a.py:1: error: Name "undef" is not defined
 
 [case testCmdlinePackageSlash]
 # cmd: mypy pkg/
@@ -38,8 +38,8 @@ undef
 undef
 import pkg.subpkg.a
 [out]
-pkg/a.py:1: error: Name 'undef' is not defined
-pkg/subpkg/a.py:1: error: Name 'undef' is not defined
+pkg/a.py:1: error: Name "undef" is not defined
+pkg/subpkg/a.py:1: error: Name "undef" is not defined
 
 [case testCmdlineNonPackage]
 # cmd: mypy dir
@@ -48,8 +48,8 @@ undef
 [file dir/subdir/b.py]
 undef
 [out]
-dir/a.py:1: error: Name 'undef' is not defined
-dir/subdir/b.py:1: error: Name 'undef' is not defined
+dir/a.py:1: error: Name "undef" is not defined
+dir/subdir/b.py:1: error: Name "undef" is not defined
 
 [case testCmdlineNonPackageDuplicate]
 # cmd: mypy dir
@@ -71,8 +71,8 @@ import b
 undef
 import a
 [out]
-dir/a.py:1: error: Name 'undef' is not defined
-dir/subdir/b.py:1: error: Name 'undef' is not defined
+dir/a.py:1: error: Name "undef" is not defined
+dir/subdir/b.py:1: error: Name "undef" is not defined
 
 [case testCmdlinePackageContainingSubdir]
 # cmd: mypy pkg
@@ -84,8 +84,8 @@ import a
 undef
 import pkg.a
 [out]
-pkg/a.py:1: error: Name 'undef' is not defined
-pkg/subdir/a.py:1: error: Name 'undef' is not defined
+pkg/a.py:1: error: Name "undef" is not defined
+pkg/subdir/a.py:1: error: Name "undef" is not defined
 
 [case testCmdlineNonPackageContainingPackage]
 # cmd: mypy dir
@@ -96,8 +96,8 @@ import subpkg.a
 [file dir/subpkg/a.py]
 undef
 [out]
-dir/subpkg/a.py:1: error: Name 'undef' is not defined
-dir/a.py:1: error: Name 'undef' is not defined
+dir/subpkg/a.py:1: error: Name "undef" is not defined
+dir/a.py:1: error: Name "undef" is not defined
 
 [case testCmdlineInvalidPackageName]
 # cmd: mypy dir/sub.pkg/a.py
@@ -538,15 +538,15 @@ undef
 [file c.d.pyi]
 whatever
 [out]
-c.d.pyi:1: error: Name 'whatever' is not defined
-a.b.py:1: error: Name 'undef' is not defined
+c.d.pyi:1: error: Name "whatever" is not defined
+a.b.py:1: error: Name "undef" is not defined
 
 [case testDotInFilenameOKFolder]
 # cmd: mypy my.folder
 [file my.folder/tst.py]
 undef
 [out]
-my.folder/tst.py:1: error: Name 'undef' is not defined
+my.folder/tst.py:1: error: Name "undef" is not defined
 
 [case testDotInFilenameNoImport]
 # cmd: mypy main.py
@@ -938,9 +938,9 @@ fail
 [file foo/lol.py]
 fail
 [out]
-foo/lol.py:1: error: Name 'fail' is not defined
-emarg/foo.py:1: error: Name 'fail' is not defined
-emarg/hatch/villip/mankangulisk.py:1: error: Name 'fail' is not defined
+foo/lol.py:1: error: Name "fail" is not defined
+emarg/foo.py:1: error: Name "fail" is not defined
+emarg/hatch/villip/mankangulisk.py:1: error: Name "fail" is not defined
 
 [case testPackageRootEmpty]
 # cmd: mypy --package-root= a/b/c.py main.py
@@ -987,8 +987,8 @@ fail
 [file b.py]
 fail
 [out]
-b.py:1: error: Name 'fail' is not defined
-a.py:1: error: Name 'fail' is not defined
+b.py:1: error: Name "fail" is not defined
+a.py:1: error: Name "fail" is not defined
 
 [case testIniFilesGlobbing]
 # cmd: mypy
@@ -1000,8 +1000,8 @@ fail
 [file c.py]
 fail
 [out]
-a/b.py:1: error: Name 'fail' is not defined
-c.py:1: error: Name 'fail' is not defined
+a/b.py:1: error: Name "fail" is not defined
+c.py:1: error: Name "fail" is not defined
 
 [case testIniFilesCmdlineOverridesConfig]
 # cmd: mypy override.py

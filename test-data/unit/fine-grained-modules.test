@@ -130,9 +130,9 @@ import b
 f()
 [file a.py.2]
 [out]
-b.py:1: error: Name 'f' is not defined
+b.py:1: error: Name "f" is not defined
 ==
-b.py:1: error: Name 'f' is not defined
+b.py:1: error: Name "f" is not defined
 
 [case testRemoveSubmoduleFromBuild1]
 # cmd1: mypy a.py b/__init__.py b/c.py
@@ -763,8 +763,8 @@ z
 main:2: error: Cannot find implementation or library stub for module named "a"
 main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
-a.py:3: error: Name 'z' is not defined
-<ROOT>/test-data/unit/lib-stub/broken.pyi:2: error: Name 'y' is not defined
+a.py:3: error: Name "z" is not defined
+<ROOT>/test-data/unit/lib-stub/broken.pyi:2: error: Name "y" is not defined
 
 [case testRenameModule]
 import a
@@ -1485,7 +1485,7 @@ f()
 [file b.py.2]
 def f(x: int) -> None: pass
 [out]
-main:2: error: Name 'f' is not defined
+main:2: error: Name "f" is not defined
 ==
 main:2: error: Missing positional argument "x" in call to "f"
 
@@ -1504,11 +1504,11 @@ class C: pass
 def f() -> None: pass
 class C: pass
 [out]
-main:3: error: Name 'f' is not defined
-main:4: error: Name 'C' is not defined
+main:3: error: Name "f" is not defined
+main:4: error: Name "C" is not defined
 ==
 main:3: error: Missing positional argument "x" in call to "f"
-main:4: error: Name 'C' is not defined
+main:4: error: Name "C" is not defined
 ==
 main:3: error: Missing positional argument "x" in call to "f"
 ==
@@ -1537,7 +1537,7 @@ f()
 [file p/b.py.2]
 def f(x: int) -> None: pass
 [out]
-p/a.py:2: error: Name 'f' is not defined
+p/a.py:2: error: Name "f" is not defined
 ==
 p/a.py:2: error: Missing positional argument "x" in call to "f"
 
@@ -1561,7 +1561,7 @@ def f() -> None: pass
 [file b.py.2]
 [out]
 ==
-main:2: error: Name 'f' is not defined
+main:2: error: Name "f" is not defined
 
 [case testImportStarWithinFunction]
 def f() -> None:

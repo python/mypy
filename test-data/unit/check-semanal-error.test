@@ -39,11 +39,11 @@ x # E
 [out]
 main:1: error: Cannot find implementation or library stub for module named "m"
 main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-main:2: error: Name 'x' is not defined
+main:2: error: Name "x" is not defined
 main:3: error: "int" not callable
 
 [case testInvalidBaseClass1]
-class A(X): # E: Name 'X' is not defined
+class A(X): # E: Name "X" is not defined
     x = 1
 A().foo(1)
 A().x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
