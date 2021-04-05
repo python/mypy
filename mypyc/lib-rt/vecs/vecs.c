@@ -1,13 +1,60 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
+#define VEC_SIZE(v) ((v)->ob_base.ob_size)
+
 static PyObject *vec_new(PyTypeObject *self, PyObject *args, PyObject *kw);
 
 typedef struct {
     PyObject_VAR_HEAD
-    Py_ssize_t capacity;
-    long long item[1];
+    Py_ssize_t len;
+    long long items[1];
 } VecObject;
+
+PyObject *vec_repr(PyObject *self) {
+    // TODO: Type check, refcounting, error handling
+    VecObject *o = (VecObject *)self;
+    PyObject *prefix = Py_BuildValue("s", "vec(i64, [");
+    PyObject *suffix = Py_BuildValue("s", "])");
+    PyObject *l = Py_BuildValue("[]");
+    PyObject *sep = Py_BuildValue("s", "");
+    PyObject *comma = Py_BuildValue("s", ", ");
+    PyList_Append(l, prefix);
+    for (int i = 0; i < o->len; i++) {
+        char s[100];
+        sprintf(s, "%lld", o->items[i]);
+        PyObject *x = Py_BuildValue("s", s);
+        PyList_Append(l, x);
+        if (i + 1 < o->len)
+            PyList_Append(l, comma);
+    }
+    PyList_Append(l, suffix);
+    return PyUnicode_Join(sep, l);
+}
+
+PyObject *vec_get_item(PyObject *o, Py_ssize_t i) {
+    // TODO: Type check o
+    VecObject *v = (VecObject *)o;
+    if ((size_t)i < (size_t)v->len) {
+        return PyLong_FromLongLong(v->items[i]);
+    } else {
+        PyErr_SetString(PyExc_IndexError, "index out of range");
+        return NULL;
+    }
+}
+
+Py_ssize_t vec_length(PyObject *o) {
+    // TODO: Type check o
+    return ((VecObject *)o)->len;
+}
+
+static PyMappingMethods VecMapping = {
+    .mp_length = vec_length,
+};
+
+static PySequenceMethods VecSequence = {
+    .sq_item = vec_get_item,
+};
 
 static PyTypeObject VecType = {
     PyVarObject_HEAD_INIT(NULL, 0)
@@ -18,6 +65,9 @@ static PyTypeObject VecType = {
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_new = vec_new,
     .tp_free = PyObject_Del,
+    .tp_repr = (reprfunc)vec_repr,
+    .tp_as_sequence = &VecSequence,
+    .tp_as_mapping = &VecMapping,
 };
 
 static VecObject *
@@ -39,9 +89,9 @@ Vec_New(Py_ssize_t size)
     if (v == NULL)
         return NULL;
     for (Py_ssize_t i = 0; i < size; i++) {
-        v->item[i] = 0;
+        v->items[i] = 0;
     }
-    v->capacity = size;
+    v->len = size;
     return (PyObject *)v;
 }
 
@@ -54,6 +104,27 @@ PyObject *vec_new(PyTypeObject *self, PyObject *args, PyObject *kw) {
     return Vec_New(0);
 }
 
+VecObject *
+Vec_Append(VecObject *vec, long long x) {
+    Py_ssize_t cap = VEC_SIZE(vec);
+    Py_ssize_t len = vec->len;
+    if (len < cap) {
+        vec->items[len] = x;
+        vec->len = len + 1;
+        Py_INCREF(vec);
+        return vec;
+    } else {
+        Py_ssize_t new_size = 2 * cap + 1;
+        VecObject *new = vec_alloc(new_size);
+        if (new == NULL)
+            return NULL;
+        memcpy(new->items, vec->items, sizeof(long long) * len);
+        new->items[len] = x;
+        new->len = len + 1;
+        return new;
+    }
+}
+
 static PyObject *
 vecs_append(PyObject *self, PyObject *args)
 {
@@ -62,8 +133,10 @@ vecs_append(PyObject *self, PyObject *args)
 
     if (!PyArg_ParseTuple(args, "OL", &obj, &x))
         return NULL;
-    Py_INCREF(obj);
-    return obj;
+
+    // TODO: Type check obj
+
+    return (PyObject *)Vec_Append((VecObject *)obj, x);
 }
 
 static PyMethodDef VecsMethods[] = {
