@@ -938,7 +938,7 @@ A.B = None # E: Cannot assign to a type
 [targets __main__]
 
 [case testAccessingClassAttributeWithTypeInferenceIssue]
-x = C.x # E: Cannot determine type of 'x'
+x = C.x # E: Cannot determine type of "x"
 def f() -> int: return 1
 class C:
     x = f()

@@ -38,7 +38,7 @@ def f(): # E: Type signature has too many arguments  [syntax]
     # type: (int) -> None
     1
 
-x = 0  # type: x y  # E: syntax error in type comment 'x y'  [syntax]
+x = 0  # type: x y  # E: syntax error in type comment "x y"  [syntax]
 
 [case testErrorCodeSyntaxError3]
 # This is a bit inconsistent -- syntax error would be more logical?
@@ -61,7 +61,7 @@ def f(): # E: Type signature has too many arguments  [syntax]
     # type: (int) -> None
     1
 
-x = 0  # type: x y  # E: syntax error in type comment 'x y'  [syntax]
+x = 0  # type: x y  # E: syntax error in type comment "x y"  [syntax]
 
 [case testErrorCodeSyntaxError3_python2]
 def f(): pass
@@ -460,7 +460,7 @@ c = {}  # E: Expected TypedDict key 'x' but found no keys  [typeddict-item]
 [builtins fixtures/dict.pyi]
 
 [case testErrorCodeCannotDetermineType]
-y = x  # E: Cannot determine type of 'x'  [has-type]
+y = x  # E: Cannot determine type of "x"  [has-type]
 reveal_type(y)  # N: Revealed type is "Any"
 x = None
 
@@ -700,8 +700,8 @@ main:2: error: Name "y" is not defined  [name-defined]
 x = y  # type: int  # type: ignored[foo]
 x = y  # type: int  # type: ignored [foo]
 [out]
-main:1: error: syntax error in type comment 'int'  [syntax]
-main:2: error: syntax error in type comment 'int'  [syntax]
+main:1: error: syntax error in type comment "int"  [syntax]
+main:2: error: syntax error in type comment "int"  [syntax]
 
 [case testErrorCode__exit__Return]
 class InvalidReturn:

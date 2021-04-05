@@ -235,7 +235,7 @@ y: Dict[int, int] = {
 [builtins fixtures/dict.pyi]
 
 [case testColumnCannotDetermineType]
-(x)  # E:2: Cannot determine type of 'x'
+(x)  # E:2: Cannot determine type of "x"
 x = None
 
 [case testColumnInvalidIndexing]
@@ -354,7 +354,7 @@ if int():
     # TODO: It would be better to point to the type comment
     xyz = 0  # type: blurbnard blarb
 [out]
-main:3:5: error: syntax error in type comment 'blurbnard blarb'
+main:3:5: error: syntax error in type comment "blurbnard blarb"
 
 [case testColumnProperty]
 class A:

@@ -344,11 +344,11 @@ async def f() -> None:
 # flags: --python-version 3.5
 
 async def f():
-    yield None  # E: 'yield' in async function
+    yield None  # E: "yield" in async function
 async def g():
-    yield  # E: 'yield' in async function
+    yield  # E: "yield" in async function
 async def h():
-    x = yield  # E: 'yield' in async function
+    x = yield  # E: "yield" in async function
 [builtins fixtures/async_await.pyi]
 
 [case testNoYieldFromInAsyncDef]
@@ -359,8 +359,8 @@ async def g():
     x = yield from []
 [builtins fixtures/async_await.pyi]
 [out]
-main:3: error: 'yield from' in async function
-main:5: error: 'yield from' in async function
+main:3: error: "yield from" in async function
+main:5: error: "yield from" in async function
 
 [case testNoAsyncDefInPY2_python2]
 
@@ -554,7 +554,7 @@ async def f() -> AsyncGenerator[int, None]:
     pass
 
 async def gen() -> AsyncGenerator[int, None]:
-    yield from f()  # E: 'yield from' in async function
+    yield from f()  # E: "yield from" in async function
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-async.pyi]
