@@ -16,11 +16,29 @@ static PyTypeObject VecType = {
     .tp_new = PyType_GenericNew,
 };
 
+static PyObject *
+vecs_append(PyObject *self, PyObject *args)
+{
+    PyObject *obj;
+    long long x;
+
+    if (!PyArg_ParseTuple(args, "OL", &obj, &x))
+        return NULL;
+    Py_INCREF(obj);
+    return obj;
+}
+
+static PyMethodDef VecsMethods[] = {
+    {"append",  vecs_append, METH_VARARGS, "Append a value to a vec"},
+    {NULL, NULL, 0, NULL}        /* Sentinel */
+};
+
 static PyModuleDef vecsmodule = {
     PyModuleDef_HEAD_INIT,
     .m_name = "vecs",
     .m_doc = "vecs doc",
     .m_size = -1,
+    .m_methods = VecsMethods,
 };
 
 PyMODINIT_FUNC
