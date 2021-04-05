@@ -613,9 +613,9 @@ fail
 [file foo/lol.py]
 fail
 [out]
-foo/lol.py:1: error: Name 'fail' is not defined
-emarg/foo.py:1: error: Name 'fail' is not defined
-emarg/hatch/villip/mankangulisk.py:1: error: Name 'fail' is not defined
+foo/lol.py:1: error: Name "fail" is not defined
+emarg/foo.py:1: error: Name "fail" is not defined
+emarg/hatch/villip/mankangulisk.py:1: error: Name "fail" is not defined
 
 [case testTomlFilesPyprojectTOML]
 # cmd: mypy
@@ -630,8 +630,8 @@ fail
 [file b.py]
 fail
 [out]
-b.py:1: error: Name 'fail' is not defined
-a.py:1: error: Name 'fail' is not defined
+b.py:1: error: Name "fail" is not defined
+a.py:1: error: Name "fail" is not defined
 
 [case testTomlFilesGlobbingPyprojectTOML]
 # cmd: mypy
@@ -643,8 +643,8 @@ fail
 [file c.py]
 fail
 [out]
-a/b.py:1: error: Name 'fail' is not defined
-c.py:1: error: Name 'fail' is not defined
+a/b.py:1: error: Name "fail" is not defined
+c.py:1: error: Name "fail" is not defined
 
 [case testTomlFilesCmdlineOverridesConfigPyprojectTOML]
 # cmd: mypy override.py

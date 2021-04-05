@@ -34,11 +34,11 @@ def plugin(version): return Dummy
 -- Note: Backslash path separator in output is replaced with forward slash so the same test succeeds on Windows as well
 $ dmypy run -- foo --follow-imports=error --python-version=3.6
 Daemon started
-foo/lol.py:1: error: Name 'fail' is not defined
+foo/lol.py:1: error: Name "fail" is not defined
 Found 1 error in 1 file (checked 3 source files)
 == Return code: 1
 $ dmypy run -- foo --follow-imports=error --python-version=3.6
-foo/lol.py:1: error: Name 'fail' is not defined
+foo/lol.py:1: error: Name "fail" is not defined
 Found 1 error in 1 file (checked 3 source files)
 == Return code: 1
 $ {python} -c "print('[mypy]')" >mypy.ini
