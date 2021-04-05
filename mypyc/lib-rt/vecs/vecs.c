@@ -43,6 +43,21 @@ PyObject *vec_get_item(PyObject *o, Py_ssize_t i) {
     }
 }
 
+int vec_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
+    // TODO: Type check o
+    VecObject *v = (VecObject *)self;
+    if ((size_t)i < (size_t)v->len) {
+        long long x = PyLong_AsLongLong(o);
+        if (x == -1 && PyErr_Occurred())
+            return -1;
+        v->items[i] = x;
+        return 0;
+    } else {
+        PyErr_SetString(PyExc_IndexError, "index out of range");
+        return -1;
+    }
+}
+
 Py_ssize_t vec_length(PyObject *o) {
     // TODO: Type check o
     return ((VecObject *)o)->len;
@@ -54,6 +69,7 @@ static PyMappingMethods VecMapping = {
 
 static PySequenceMethods VecSequence = {
     .sq_item = vec_get_item,
+    .sq_ass_item = vec_ass_item,
 };
 
 static PyTypeObject VecType = {
