@@ -1245,7 +1245,7 @@ T = TypeVar('T')
 class A(Generic[T]):
     pass
 
-class B(A[S]): # E: Name 'S' is not defined
+class B(A[S]): # E: Name "S" is not defined
     pass
 [builtins fixtures/list.pyi]
 [out]

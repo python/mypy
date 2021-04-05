@@ -779,7 +779,7 @@ C.A  # E: "Type[C]" has no attribute "A"
 from mypy_extensions import TypedDict
 def f() -> None:
     A = TypedDict('A', {'x': int})
-A  # E: Name 'A' is not defined
+A  # E: Name "A" is not defined
 [builtins fixtures/dict.pyi]
 
 
@@ -1129,7 +1129,7 @@ class D(TypedDict, total=1): # E: Value of "total" must be True or False
 class E(TypedDict, total=bool): # E: Value of "total" must be True or False
     x: int
 class F(TypedDict, total=xyz): # E: Value of "total" must be True or False \
-                               # E: Name 'xyz' is not defined
+                               # E: Name "xyz" is not defined
     x: int
 [builtins fixtures/dict.pyi]
 

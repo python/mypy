@@ -425,7 +425,7 @@ main:2: error: Too few arguments for Enum()
 main:3: error: Enum() expects a string, tuple, list or dict literal as the second argument
 main:4: error: Too many arguments for Enum()
 main:5: error: Enum() expects a string, tuple, list or dict literal as the second argument
-main:5: error: Name 'foo' is not defined
+main:5: error: Name "foo" is not defined
 main:7: error: Enum() expects a string, tuple, list or dict literal as the second argument
 main:8: error: Too few arguments for IntEnum()
 main:9: error: IntEnum() expects a string, tuple, list or dict literal as the second argument

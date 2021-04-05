@@ -2172,7 +2172,7 @@ d5 = dict(a=1, b='') # type: Dict[str, Any]
 from typing import Dict
 d = dict() # E: Need type annotation for "d" (hint: "d: Dict[<type>, <type>] = ...")
 d2 = dict() # type: Dict[int, str]
-dict(undefined) # E: Name 'undefined' is not defined
+dict(undefined) # E: Name "undefined" is not defined
 [builtins fixtures/dict.pyi]
 
 [case testDictFromList]
@@ -2284,7 +2284,7 @@ main:4: note:     z: builtins.int
 [case testUndefinedRevealType]
 reveal_type(x)
 [out]
-main:1: error: Name 'x' is not defined
+main:1: error: Name "x" is not defined
 main:1: note: Revealed type is "Any"
 
 [case testUserDefinedRevealType]
@@ -2769,19 +2769,19 @@ if 1 in ('x', 'y'):  # E: Non-overlapping container check (element type: "int", 
 [typing fixtures/typing-full.pyi]
 
 [case testUnimportedHintAny]
-def f(x: Any) -> None:  # E: Name 'Any' is not defined \
+def f(x: Any) -> None:  # E: Name "Any" is not defined \
                         # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Any")
     pass
 
 
 [case testUnimportedHintAnyLower]
-def f(x: any) -> None:  # E: Name 'any' is not defined \
+def f(x: any) -> None:  # E: Name "any" is not defined \
                         # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Any")
     pass
 
 
 [case testUnimportedHintOptional]
-def f(x: Optional[str]) -> None:  # E: Name 'Optional' is not defined \
+def f(x: Optional[str]) -> None:  # E: Name "Optional" is not defined \
                                   # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Optional")
     pass
 

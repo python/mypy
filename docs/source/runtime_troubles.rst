@@ -108,7 +108,7 @@ defined (aka forward reference). Thus this code does not work as expected:
 
 .. code-block:: python
 
-   def f(x: A) -> None: ...  # NameError: name 'A' is not defined
+   def f(x: A) -> None: ...  # NameError: name "A" is not defined
    class A: ...
 
 Starting from Python 3.7, you can add ``from __future__ import annotations`` to

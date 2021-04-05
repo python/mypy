@@ -8,19 +8,19 @@ def f(a): pass
 def f(a): pass
 f(0)
 
-@overload  # E: Name 'overload' is not defined
+@overload  # E: Name "overload" is not defined
 def g(a:int): pass
 def g(a): pass  # E: Name 'g' already defined on line 9
 g(0)
 
-@something  # E: Name 'something' is not defined
+@something  # E: Name "something" is not defined
 def r(a:int): pass
 def r(a): pass  # E: Name 'r' already defined on line 14
 r(0)
 [out]
-main:2: error: Name 'overload' is not defined
+main:2: error: Name "overload" is not defined
 main:4: error: Name 'f' already defined on line 2
-main:4: error: Name 'overload' is not defined
+main:4: error: Name "overload" is not defined
 main:6: error: Name 'f' already defined on line 2
 
 [case testTypeCheckOverloadWithImplementation]
@@ -5091,7 +5091,7 @@ def func(x: int) -> int: ...
 def func(x):
     return x
 [out]
-tmp/lib.pyi:1: error: Name 'overload' is not defined
+tmp/lib.pyi:1: error: Name "overload" is not defined
 tmp/lib.pyi:4: error: Name 'func' already defined on line 1
 main:2: note: Revealed type is "Any"
 
@@ -5106,9 +5106,9 @@ def func(x: int) -> int: ...
 @overload
 def func(x: str) -> str: ...
 [out]
-tmp/lib.pyi:1: error: Name 'overload' is not defined
+tmp/lib.pyi:1: error: Name "overload" is not defined
 tmp/lib.pyi:3: error: Name 'func' already defined on line 1
-tmp/lib.pyi:3: error: Name 'overload' is not defined
+tmp/lib.pyi:3: error: Name "overload" is not defined
 main:3: note: Revealed type is "Any"
 
 [case testLiteralSubtypeOverlap]

@@ -931,9 +931,9 @@ class MessageBuilder:
     def cannot_instantiate_abstract_class(self, class_name: str,
                                           abstract_attributes: List[str],
                                           context: Context) -> None:
-        attrs = format_string_list(["'%s'" % a for a in abstract_attributes])
-        self.fail("Cannot instantiate abstract class '%s' with abstract "
-                  "attribute%s %s" % (class_name, plural_s(abstract_attributes),
+        attrs = format_string_list(['"%s"' % a for a in abstract_attributes])
+        self.fail('Cannot instantiate abstract class "%s" with abstract '
+                  'attribute%s %s' % (class_name, plural_s(abstract_attributes),
                                    attrs),
                   context, code=codes.ABSTRACT)
 

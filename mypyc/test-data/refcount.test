@@ -533,7 +533,7 @@ L0:
     return r1
 
 [case testError]
-def f(x: List[int]) -> None: pass # E: Name 'List' is not defined \
+def f(x: List[int]) -> None: pass # E: Name "List" is not defined \
                                   # N: Did you forget to import it from "typing"? (Suggestion: "from typing import List")
 
 [case testNewList]

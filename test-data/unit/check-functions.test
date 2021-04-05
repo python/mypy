@@ -1320,7 +1320,7 @@ class Base:
     @decorator
     def method(self) -> None: pass
 [out]
-tmp/foo/base.py:3: error: Name 'decorator' is not defined
+tmp/foo/base.py:3: error: Name "decorator" is not defined
 
 
 -- Conditional function definition
@@ -1792,7 +1792,7 @@ import mypy_extensions as ext
 
 def WrongArg(x, y): return y
 def a(f: Callable[[WrongArg(int, 'x')], int]): pass # E: Invalid argument constructor "__main__.WrongArg"
-def b(f: Callable[[BadArg(int, 'x')], int]): pass # E: Name 'BadArg' is not defined
+def b(f: Callable[[BadArg(int, 'x')], int]): pass # E: Name "BadArg" is not defined
 def d(f: Callable[[ext.VarArg(int)], int]): pass # ok
 def e(f: Callable[[VARG(), ext.KwArg()], int]): pass # ok
 def g(f: Callable[[ext.Arg(name='x', type=int)], int]): pass # ok
@@ -2373,18 +2373,18 @@ def test(a: str) -> (str,): # E: Syntax error in type annotation # N: Suggestion
 
 [case testReturnTypeLineNumberNewLine]
 def fn(a: str
-       ) -> badtype: # E: Name 'badtype' is not defined
+       ) -> badtype: # E: Name "badtype" is not defined
     pass
 
 [case testArgumentTypeLineNumberWithDecorator]
 def dec(f): pass
 
 @dec
-def some_method(self: badtype): pass # E: Name 'badtype' is not defined
+def some_method(self: badtype): pass # E: Name "badtype" is not defined
 
 [case TestArgumentTypeLineNumberNewline]
 def fn(
-        a: badtype) -> None: # E: Name 'badtype' is not defined
+        a: badtype) -> None: # E: Name "badtype" is not defined
     pass
 
 [case testInferredTypeSubTypeOfReturnType]
@@ -2451,7 +2451,7 @@ def i() -> List[Union[str, int]]:
 [case testLambdaSemanal]
 f = lambda: xyz
 [out]
-main:1: error: Name 'xyz' is not defined
+main:1: error: Name "xyz" is not defined
 
 [case testLambdaTypeCheck]
 f = lambda: 1 + '1'
@@ -2578,9 +2578,9 @@ import p
 def f() -> int: ...
 
 [case testLambdaDefaultTypeErrors]
-lambda a=nonsense: a  # E: Name 'nonsense' is not defined
+lambda a=nonsense: a  # E: Name "nonsense" is not defined
 lambda a=(1 + 'asdf'): a  # E: Unsupported operand types for + ("int" and "str")
-def f(x: int = i):  # E: Name 'i' is not defined
+def f(x: int = i):  # E: Name "i" is not defined
     i = 42
 
 [case testRevealTypeOfCallExpressionReturningNoneWorks]

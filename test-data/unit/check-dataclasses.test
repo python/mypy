@@ -881,8 +881,8 @@ from dataclasses import dataclass
 
 @dataclass
 class B:
-    x: Undefined  # E: Name 'Undefined' is not defined
-    y = undefined()  # E: Name 'undefined' is not defined
+    x: Undefined  # E: Name "Undefined" is not defined
+    y = undefined()  # E: Name "undefined" is not defined
 
 reveal_type(B)  # N: Revealed type is "def (x: Any) -> __main__.B"
 [builtins fixtures/list.pyi]

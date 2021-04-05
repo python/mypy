@@ -4731,7 +4731,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             # later on. Defer current target.
             self.record_incomplete_ref()
             return
-        message = "Name '{}' is not defined".format(name)
+        message = 'Name "{}" is not defined'.format(name)
         self.fail(message, ctx, code=codes.NAME_DEFINED)
 
         if 'builtins.{}'.format(name) in SUGGESTED_TEST_FIXTURES:

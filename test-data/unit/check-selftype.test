@@ -627,7 +627,7 @@ from typing import overload
 
 class P:
     @overload
-    def __init__(self: Bad, x: int) -> None: ...  # E: Name 'Bad' is not defined
+    def __init__(self: Bad, x: int) -> None: ...  # E: Name "Bad" is not defined
     @overload
     def __init__(self) -> None: ...
 

@@ -235,7 +235,7 @@ class D(object):
 class A(object):
     def f(self) -> None:
         self.attr = 1
-    attr  # E: Name 'attr' is not defined
+    attr  # E: Name "attr" is not defined
 
 class B(object):
     attr = 0
@@ -2918,7 +2918,7 @@ C(arg=0)
 
 [case testErrorMapToSupertype]
 import typing
-class X(Nope): pass  # E: Name 'Nope' is not defined
+class X(Nope): pass  # E: Name "Nope" is not defined
 a, b = X()  # Used to crash here (#2244)
 
 
@@ -5239,7 +5239,7 @@ b = object()
 @b.nothing         # E: "object" has no attribute "nothing"
 class C: pass
 
-@undefined         # E: Name 'undefined' is not defined
+@undefined         # E: Name "undefined" is not defined
 class D: pass
 
 [case testSlotsCompatibility]
@@ -6120,9 +6120,9 @@ class B(A):
 class C(B):
     def __init__(self, a: int) -> None:
         self.c = a
-a = A(1) # E: Cannot instantiate abstract class 'A' with abstract attribute '__init__'
+a = A(1) # E: Cannot instantiate abstract class "A" with abstract attribute "__init__"
 A.c # E: "Type[A]" has no attribute "c"
-b = B(2) # E: Cannot instantiate abstract class 'B' with abstract attribute '__init__'
+b = B(2) # E: Cannot instantiate abstract class "B" with abstract attribute "__init__"
 B.c # E: "Type[B]" has no attribute "c"
 c = C(3)
 c.c
@@ -6619,7 +6619,7 @@ reveal_type(Foo().y)  # N: Revealed type is "builtins.list[Any]"
 
 class Foo:
     def bad():  # E: Method must have at least one argument
-        self.x = 0  # E: Name 'self' is not defined
+        self.x = 0  # E: Name "self" is not defined
 
 [case testTypeAfterAttributeAccessWithDisallowAnyExpr]
 # flags: --disallow-any-expr

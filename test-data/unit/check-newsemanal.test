@@ -5,7 +5,7 @@
 [case testNewAnalyzerSimpleAssignment]
 x = 1
 x.y # E: "int" has no attribute "y"
-y # E: Name 'y' is not defined
+y # E: Name "y" is not defined
 
 [case testNewAnalyzerSimpleAnnotation]
 x: int = 0
@@ -21,7 +21,7 @@ a.y # E: "A" has no attribute "y"
 
 [case testNewAnalyzerErrorInClassBody]
 class A:
-    x # E: Name 'x' is not defined
+    x # E: Name "x" is not defined
 
 [case testNewAnalyzerTypeAnnotationForwardReference]
 class A:
@@ -87,8 +87,8 @@ _ = b
 _ = c
 _ = d
 _e = e
-_f = f # E: Name 'f' is not defined
-_ = _g # E: Name '_g' is not defined
+_f = f # E: Name "f" is not defined
+_ = _g # E: Name "_g" is not defined
 reveal_type(_e)  # N: Revealed type is "m.A"
 [file m.py]
 __all__ = ['a']
@@ -428,9 +428,9 @@ def main() -> None:
 [case testNewAnalyzerMissingNamesInFunctions]
 def main() -> None:
     def f() -> None:
-        x  # E: Name 'x' is not defined
+        x  # E: Name "x" is not defined
         class C:
-            x  # E: Name 'x' is not defined
+            x  # E: Name "x" is not defined
 
 [case testNewAnalyzerCyclicDefinitions]
 gx = gy  # E: Cannot resolve name "gy" (possible cyclic definition)
@@ -772,8 +772,8 @@ class C(Generic[T]):
     def __init__(self, x: T) -> None: ...
 def func(x: U) -> U: ...
 
-U = TypeVar('U', asdf, asdf)  # E: Name 'asdf' is not defined
-T = TypeVar('T', bound=asdf)  # E: Name 'asdf' is not defined
+U = TypeVar('U', asdf, asdf)  # E: Name "asdf" is not defined
+T = TypeVar('T', bound=asdf)  # E: Name "asdf" is not defined
 
 reveal_type(C)  # N: Revealed type is "def [T <: Any] (x: T`1) -> __main__.C[T`1]"
 reveal_type(func)  # N: Revealed type is "def [U in (Any, Any)] (x: U`-1) -> U`-1"
@@ -1118,7 +1118,7 @@ class B: ...
 [case testNewAnalyzerIncompleteFixture]
 from typing import Tuple
 
-x: Tuple[int]  # E: Name 'tuple' is not defined
+x: Tuple[int]  # E: Name "tuple" is not defined
 [builtins fixtures/complex.pyi]
 
 [case testNewAnalyzerMetaclass1]
@@ -1985,7 +1985,7 @@ class C(List[C], other=C): ...
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerClassKeywordsError]
-class C(other=asdf): ...  # E: Name 'asdf' is not defined
+class C(other=asdf): ...  # E: Name "asdf" is not defined
 
 [case testNewAnalyzerMissingImport]
 # flags: --ignore-missing-imports
@@ -2049,7 +2049,7 @@ class C(metaclass=Meta):
     pass
 
 [case testNewAnalyzerFunctionError]
-def f(x: asdf) -> None:  # E: Name 'asdf' is not defined
+def f(x: asdf) -> None:  # E: Name "asdf" is not defined
     pass
 
 [case testNewAnalyzerEnumRedefinition]
@@ -2496,7 +2496,7 @@ class TestSuite(BaseTestSuite):
 class TestCase: ...
 
 [out]
-tmp/unittest/suite.pyi:6: error: Name 'Iterable' is not defined
+tmp/unittest/suite.pyi:6: error: Name "Iterable" is not defined
 tmp/unittest/suite.pyi:6: note: Did you forget to import it from "typing"? (Suggestion: "from typing import Iterable")
 
 [case testNewAnalyzerNewTypeSpecialCase]
@@ -2535,7 +2535,7 @@ from p.c import B
 [case testNewSemanticAnalyzerQualifiedFunctionAsType]
 import m
 
-x: m.C.a.b # E: Name 'm.C.a.b' is not defined
+x: m.C.a.b # E: Name "m.C.a.b" is not defined
 
 [file m.py]
 def C(): pass
@@ -2543,7 +2543,7 @@ def C(): pass
 [case testNewSemanticAnalyzerModulePrivateRefInMiddleOfQualified]
 import m
 
-x: m.n.C # E: Name 'm.n.C' is not defined
+x: m.n.C # E: Name "m.n.C" is not defined
 reveal_type(x) # N: Revealed type is "Any"
 
 [file m.pyi]
@@ -2557,8 +2557,8 @@ class C: pass
 import m
 import n
 
-x: m.n.C # E: Name 'm.n.C' is not defined
-y: n.D # E: Name 'n.D' is not defined
+x: m.n.C # E: Name "m.n.C" is not defined
+y: n.D # E: Name "n.D" is not defined
 [file m.py]
 import n
 [file n.py]
@@ -2586,7 +2586,7 @@ class C:
 
     def f(self) -> None:
         # TODO: Error message could be better
-        class D(self.E): # E: Name 'self.E' is not defined
+        class D(self.E): # E: Name "self.E" is not defined
             pass
 
 [case testNewAnalyzerShadowOuterDefinitionBasedOnOrderSinglePass]
@@ -2674,10 +2674,10 @@ reveal_type(C().str()) # N: Revealed type is "builtins.str"
 
 [case testNewAnalyzerNameNotDefinedYetInClassBody]
 class C:
-    X = Y  # E: Name 'Y' is not defined
+    X = Y  # E: Name "Y" is not defined
     Y = 1
 
-    f = g  # E: Name 'g' is not defined
+    f = g  # E: Name "g" is not defined
 
     def g(self) -> None: pass
 
@@ -2859,7 +2859,7 @@ class B: ...
 [out]
 tmp/a/__init__.py:4: note: Revealed type is "def ()"
 tmp/a/__init__.py:5: note: Revealed type is "a.b.B"
-main:2: error: Name 'a.b.B' is not defined
+main:2: error: Name "a.b.B" is not defined
 main:3: note: Revealed type is "def ()"
 
 [case testNewAnalyzerConfusingImportConflictingNames]
@@ -3115,9 +3115,9 @@ reveal_type(C()) # N: Revealed type is "__main__.C"
 reveal_type(x) # N: Revealed type is "__main__.C"
 
 [case testNewAnalyzerIdentityAssignment7]
-C = C # E: Name 'C' is not defined
+C = C # E: Name "C" is not defined
 
-reveal_type(C) # E: Name 'C' is not defined \
+reveal_type(C) # E: Name "C" is not defined \
                # N: Revealed type is "Any"
 
 [case testNewAnalyzerIdentityAssignment8]
@@ -3132,14 +3132,14 @@ class TopLevel(metaclass=ABCMeta):
     @abstractmethod
     def f(self) -> None: pass
 
-TopLevel()  # E: Cannot instantiate abstract class 'TopLevel' with abstract attribute 'f'
+TopLevel()  # E: Cannot instantiate abstract class "TopLevel" with abstract attribute "f"
 
 def func() -> None:
     class Function(metaclass=ABCMeta):
         @abstractmethod
         def f(self) -> None: pass
 
-    Function()  # E: Cannot instantiate abstract class 'Function' with abstract attribute 'f'
+    Function()  # E: Cannot instantiate abstract class "Function" with abstract attribute "f"
 
 class C:
     def meth(self) -> None:
@@ -3147,7 +3147,7 @@ class C:
             @abstractmethod
             def f(self) -> None: pass
 
-        Method()  # E: Cannot instantiate abstract class 'Method' with abstract attribute 'f'
+        Method()  # E: Cannot instantiate abstract class "Method" with abstract attribute "f"
 
 [case testModulesAndFuncsTargetsInCycle]
 import a

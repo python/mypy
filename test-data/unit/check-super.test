@@ -328,7 +328,7 @@ class B:
     def f(self) -> None: pass
 class C(B):
     def h(self) -> None:
-        super(x, y).f # E: Name 'x' is not defined # E: Name 'y' is not defined
+        super(x, y).f # E: Name "x" is not defined # E: Name "y" is not defined
 
 [case testTypeErrorInSuperArg]
 class B:

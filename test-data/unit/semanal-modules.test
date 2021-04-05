@@ -825,7 +825,7 @@ tmp/f.py:1: error: Module 'm.x' has no attribute 'somefunction'; maybe "somefun_
 [case testFromImportAsInStub]
 from m import *
 x
-y  # E: Name 'y' is not defined
+y  # E: Name "y" is not defined
 [file m.pyi]
 from m2 import x as x
 from m2 import y
@@ -855,7 +855,7 @@ MypyFile:1(
 [case testImportAsInStub]
 from m import *
 m2
-m3  # E: Name 'm3' is not defined
+m3  # E: Name "m3" is not defined
 [file m.pyi]
 import m2 as m2
 import m3
@@ -886,8 +886,8 @@ x
 [file m.py]
 y
 [out]
-tmp/m.py:1: error: Name 'y' is not defined
-main:2: error: Name 'x' is not defined
+tmp/m.py:1: error: Name "y" is not defined
+main:2: error: Name "x" is not defined
 
 [case testImportTwice]
 import typing

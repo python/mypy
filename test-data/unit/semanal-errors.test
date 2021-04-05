@@ -3,8 +3,8 @@ import typing
 x
 y
 [out]
-main:2: error: Name 'x' is not defined
-main:3: error: Name 'y' is not defined
+main:2: error: Name "x" is not defined
+main:3: error: Name "y" is not defined
 
 [case testUndefinedVariableWithinFunctionContext]
 import typing
@@ -12,8 +12,8 @@ def f() -> None:
   x
 y
 [out]
-main:3: error: Name 'x' is not defined
-main:4: error: Name 'y' is not defined
+main:3: error: Name "x" is not defined
+main:4: error: Name "y" is not defined
 
 [case testMethodScope]
 import typing
@@ -21,7 +21,7 @@ class A:
   def f(self): pass
 f
 [out]
-main:4: error: Name 'f' is not defined
+main:4: error: Name "f" is not defined
 
 [case testMethodScope2]
 import typing
@@ -32,14 +32,14 @@ class B:
     f # error
     g # error
 [out]
-main:6: error: Name 'f' is not defined
-main:7: error: Name 'g' is not defined
+main:6: error: Name "f" is not defined
+main:7: error: Name "g" is not defined
 
 [case testInvalidType]
 import typing
 x = None # type: X
 [out]
-main:2: error: Name 'X' is not defined
+main:2: error: Name "X" is not defined
 
 [case testInvalidGenericArg]
 from typing import TypeVar, Generic
@@ -47,7 +47,7 @@ t = TypeVar('t')
 class A(Generic[t]): pass
 x = 0 # type: A[y]
 [out]
-main:4: error: Name 'y' is not defined
+main:4: error: Name "y" is not defined
 
 [case testInvalidNumberOfGenericArgsInTypeDecl]
 from typing import TypeVar, Generic
@@ -187,7 +187,7 @@ x
 [file m.py]
 x = y = 1
 [out]
-main:3: error: Name 'x' is not defined
+main:3: error: Name "x" is not defined
 
 [case testMissingNameInImportFrom]
 import typing
@@ -246,7 +246,7 @@ import _n
 [file _n.py]
 x = 1
 [out]
-main:3: error: Name '_n' is not defined
+main:3: error: Name "_n" is not defined
 
 [case testImportAsteriskPlusUnderscore]
 import typing
@@ -256,8 +256,8 @@ __x__
 [file _m.py]
 _x = __x__ = 1
 [out]
-main:3: error: Name '_x' is not defined
-main:4: error: Name '__x__' is not defined
+main:3: error: Name "_x" is not defined
+main:4: error: Name "__x__" is not defined
 
 [case testRelativeImportAtTopLevelModule]
 from . import m
@@ -276,8 +276,8 @@ def f() -> m.c: pass
 def g() -> n.c: pass
 [file m.py]
 [out]
-main:3: error: Name 'm.c' is not defined
-main:4: error: Name 'n' is not defined
+main:3: error: Name "m.c" is not defined
+main:4: error: Name "n" is not defined
 
 [case testMissingPackage]
 import typing
@@ -302,7 +302,7 @@ import m
 import typing
 x = y
 [out]
-tmp/m.py:2: error: Name 'y' is not defined
+tmp/m.py:2: error: Name "y" is not defined
 
 [case testErrorInImportedModule2]
 import m.n
@@ -313,7 +313,7 @@ import k
 import typing
 x = y
 [out]
-tmp/k.py:2: error: Name 'y' is not defined
+tmp/k.py:2: error: Name "y" is not defined
 
 [case testPackageWithoutInitFile]
 import typing
@@ -455,7 +455,7 @@ main:8: error: Two starred expressions in assignment
 (a for *a, (*b, c) in [])
 (a for a, (*b, *c) in [])
 [out]
-main:1: error: Name 'a' is not defined
+main:1: error: Name "a" is not defined
 main:1: error: Two starred expressions in assignment
 main:3: error: Two starred expressions in assignment
 
@@ -484,7 +484,7 @@ del x + 1 # E: can't delete operator
 [out]
 
 [case testInvalidDel3]
-del z     # E: Name 'z' is not defined
+del z     # E: Name "z" is not defined
 [out]
 
 [case testFunctionTvarScope]
@@ -530,7 +530,7 @@ main:3: error: Method must have at least one argument
 import typing
 class A(B): pass
 [out]
-main:2: error: Name 'B' is not defined
+main:2: error: Name "B" is not defined
 
 [case testSuperOutsideClass]
 class A: pass
@@ -564,7 +564,7 @@ def f() -> None:
     global x
     x = None
 [out]
-main:4: error: Name 'x' is not defined
+main:4: error: Name "x" is not defined
 
 [case testInvalidNonlocalDecl]
 import typing
@@ -574,7 +574,7 @@ def f():
        x = None
 [out]
 main:4: error: No binding for nonlocal 'x' found
-main:5: error: Name 'x' is not defined
+main:5: error: Name "x" is not defined
 
 [case testNonlocalDeclNotMatchingGlobal]
 import typing
@@ -584,7 +584,7 @@ def f() -> None:
     x = None
 [out]
 main:4: error: No binding for nonlocal 'x' found
-main:5: error: Name 'x' is not defined
+main:5: error: Name "x" is not defined
 
 [case testNonlocalDeclConflictingWithParameter]
 import typing
@@ -635,8 +635,8 @@ def f(x) -> None:
     y
     x
 [out]
-main:5: error: Name 'z' is not defined
-main:6: error: Name 'y' is not defined
+main:5: error: Name "z" is not defined
+main:6: error: Name "y" is not defined
 
 [case testMultipleNestedFunctionDef]
 import typing
@@ -668,14 +668,14 @@ class A:
            x
        y
 [out]
-main:5: error: Name 'x' is not defined
-main:6: error: Name 'y' is not defined
+main:5: error: Name "x" is not defined
+main:6: error: Name "y" is not defined
 
 [case testImportScope]
 import typing
 def f() -> None:
     import x
-x.y # E: Name 'x' is not defined
+x.y # E: Name "x" is not defined
 [file x.py]
 y = 1
 [out]
@@ -685,7 +685,7 @@ import typing
 def f() -> None:
     from x import y
     y
-y # E: Name 'y' is not defined
+y # E: Name "y" is not defined
 [file x.py]
 y = 1
 [out]
@@ -695,7 +695,7 @@ import typing
 def f() -> None:
     from x import *
     y
-y # E: Name 'y' is not defined
+y # E: Name "y" is not defined
 [file x.py]
 y = 1
 [out]
@@ -705,7 +705,7 @@ import typing
 class A:
     from x import *
     y
-y # E: Name 'y' is not defined
+y # E: Name "y" is not defined
 [file x.py]
 y = 1
 [out]
@@ -715,14 +715,14 @@ import typing
 def f():
     class A: pass
     A
-A # E: Name 'A' is not defined
+A # E: Name "A" is not defined
 [out]
 
 [case testScopeOfNestedClass2]
 import typing
 class A:
     class B: pass
-B # E: Name 'B' is not defined
+B # E: Name "B" is not defined
 [out]
 
 [case testScopeOfNestedClass3]
@@ -730,14 +730,14 @@ import typing
 class A:
     def f(self):
         class B: pass
-    B # E: Name 'B' is not defined
-B # E: Name 'B' is not defined
+    B # E: Name "B" is not defined
+B # E: Name "B" is not defined
 [out]
 
 [case testInvalidNestedClassReferenceInDecl]
 import typing
 class A: pass
-foo = 0 # type: A.x      # E: Name 'A.x' is not defined
+foo = 0 # type: A.x      # E: Name "A.x" is not defined
 [out]
 
 [case testTvarScopingWithNestedClass]
@@ -800,8 +800,8 @@ from typing import cast
 x = 0
 cast(x, None)        # E: Variable "__main__.x" is not valid as a type \
                      # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
-cast(t, None)        # E: Name 't' is not defined
-cast(__builtins__.x, None) # E: Name '__builtins__.x' is not defined
+cast(t, None)        # E: Name "t" is not defined
+cast(__builtins__.x, None) # E: Name "__builtins__.x" is not defined
 [out]
 
 [case testInvalidCastTargetType2]
@@ -965,7 +965,7 @@ from typing import TypeVar
 T = TypeVar('T')
 class A(Generic[T]): pass
 [out]
-main:3: error: Name 'Generic' is not defined
+main:3: error: Name "Generic" is not defined
 
 [case testInvalidTypeWithinGeneric]
 from typing import Generic
@@ -989,12 +989,12 @@ class A(Generic[T], Generic[S]): pass \
 [out]
 
 [case testInvalidMetaclass]
-class A(metaclass=x): pass # E: Name 'x' is not defined
+class A(metaclass=x): pass # E: Name "x" is not defined
 [out]
 
 [case testInvalidQualifiedMetaclass]
 import abc
-class A(metaclass=abc.Foo): pass # E: Name 'abc.Foo' is not defined
+class A(metaclass=abc.Foo): pass # E: Name "abc.Foo" is not defined
 [out]
 
 [case testNonClassMetaclass]
@@ -1039,14 +1039,14 @@ main:2: error: Use TypeVar('T', t, ...) instead of TypeVar('T', values=(t, ...))
 from typing import TypeVar
 def f() -> None:
     T = TypeVar('T')
-def g(x: T) -> None: pass # E: Name 'T' is not defined
+def g(x: T) -> None: pass # E: Name "T" is not defined
 [out]
 
 [case testClassTypevarScope]
 from typing import TypeVar
 class A:
     T = TypeVar('T')
-def g(x: T) -> None: pass # E: Name 'T' is not defined
+def g(x: T) -> None: pass # E: Name "T" is not defined
 [out]
 
 [case testRedefineVariableAsTypevar]
@@ -1085,7 +1085,7 @@ from typing import Generic as t # E: Name 't' already defined on line 2
 [out]
 
 [case testInvalidStrLiteralType]
-def f(x: 'foo'): pass # E: Name 'foo' is not defined
+def f(x: 'foo'): pass # E: Name "foo" is not defined
 [out]
 
 [case testInvalidStrLiteralStrayBrace]
@@ -1242,7 +1242,7 @@ import typing
 def f() -> List[int]: pass
 [builtins fixtures/list.pyi]
 [out]
-main:2: error: Name 'List' is not defined
+main:2: error: Name "List" is not defined
 main:2: note: Did you forget to import it from "typing"? (Suggestion: "from typing import List")
 
 [case testInvalidWithTarget]
@@ -1268,7 +1268,7 @@ main:3: error: can't assign to function call
 class A:
     class X: pass
     class B:
-        y = X  # E: Name 'X' is not defined
+        y = X  # E: Name "X" is not defined
 [out]
 
 [case testStubPackage]
@@ -1296,8 +1296,8 @@ class A:
     z = 1
     [x for i in z if y]
 [out]
-main:5: error: Name 'x' is not defined
-main:5: error: Name 'y' is not defined
+main:5: error: Name "x" is not defined
+main:5: error: Name "y" is not defined
 
 [case testTypeRedeclarationNoSpuriousWarnings]
 from typing import Tuple

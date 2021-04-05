@@ -269,7 +269,7 @@ def f(x: int = (c := 4)) -> int:
     reveal_type(y7)  # N: Revealed type is "builtins.int"
 
     reveal_type((lambda: (y8 := 3) and y8)())  # N: Revealed type is "Literal[3]?"
-    y8  # E: Name 'y8' is not defined
+    y8  # E: Name "y8" is not defined
 
     y7 = 1.0  # E: Incompatible types in assignment (expression has type "float", variable has type "int")
     if y7 := "x":  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
@@ -362,8 +362,8 @@ class AssignmentExpressionsClass:
         reveal_type(z3)  # N: Revealed type is "builtins.int"
 
 # Assignment expressions from inside the class should not escape the class scope.
-reveal_type(x2)  # E: Name 'x2' is not defined  # N: Revealed type is "Any"
-reveal_type(z2)  # E: Name 'z2' is not defined  # N: Revealed type is "Any"
+reveal_type(x2)  # E: Name "x2" is not defined  # N: Revealed type is "Any"
+reveal_type(z2)  # E: Name "z2" is not defined  # N: Revealed type is "Any"
 
 [builtins fixtures/isinstancelist.pyi]
 

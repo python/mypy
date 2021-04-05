@@ -67,7 +67,7 @@ def foo() -> None:
 [rechecked m]
 [stale]
 [out2]
-tmp/m.py:2: error: Name 'bar' is not defined
+tmp/m.py:2: error: Name "bar" is not defined
 
 [case testIncrementalSimpleImportSequence]
 import mod1
@@ -126,7 +126,7 @@ def func1() -> A: pass
 [rechecked mod1]
 [stale]
 [out2]
-tmp/mod1.py:1: error: Name 'A' is not defined
+tmp/mod1.py:1: error: Name "A" is not defined
 
 [case testIncrementalCallable]
 import mod1
@@ -1928,9 +1928,9 @@ class C:
             pass
         self.a = A()
 [out1]
-main:2: error: Name 'nonexisting' is not defined
+main:2: error: Name "nonexisting" is not defined
 [out2]
-main:2: error: Name 'nonexisting' is not defined
+main:2: error: Name "nonexisting" is not defined
 
 [case testIncrementalInnerClassAttrInMethodReveal]
 import crash
