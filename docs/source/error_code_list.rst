@@ -450,7 +450,7 @@ In this example the definitions of ``x`` and ``y`` are circular:
 
    class Problem:
        def set_x(self) -> None:
-           # Error: Cannot determine type of 'y'  [has-type]
+           # Error: Cannot determine type of "y"  [has-type]
            self.x = self.y
 
        def set_y(self) -> None:

@@ -235,7 +235,7 @@ y: Dict[int, int] = {
 [builtins fixtures/dict.pyi]
 
 [case testColumnCannotDetermineType]
-(x)  # E:2: Cannot determine type of 'x'
+(x)  # E:2: Cannot determine type of "x"
 x = None
 
 [case testColumnInvalidIndexing]

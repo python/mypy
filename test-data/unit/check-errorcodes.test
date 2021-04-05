@@ -460,7 +460,7 @@ c = {}  # E: Expected TypedDict key 'x' but found no keys  [typeddict-item]
 [builtins fixtures/dict.pyi]
 
 [case testErrorCodeCannotDetermineType]
-y = x  # E: Cannot determine type of 'x'  [has-type]
+y = x  # E: Cannot determine type of "x"  [has-type]
 reveal_type(y)  # N: Revealed type is "Any"
 x = None
 
