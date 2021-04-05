@@ -1,35 +1,45 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
-static PyObject *
-vecs_system(PyObject *self, PyObject *args)
-{
-    const char *command;
-    int sts;
+typedef struct {
+    PyObject_HEAD
+    /* Type-specific fields go here. */
+} VecObject;
 
-    if (!PyArg_ParseTuple(args, "s", &command))
-        return NULL;
-    sts = system(command);
-    return PyLong_FromLong(sts);
-}
-
-static PyMethodDef VecsMethods[] = {
-    {"system",  vecs_system, METH_VARARGS,
-     "Execute a shell command."},
-    {NULL, NULL, 0, NULL}        /* Sentinel */
+static PyTypeObject VecType = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "vecs.vec",
+    .tp_doc = "vec doc",
+    .tp_basicsize = sizeof(VecObject),
+    .tp_itemsize = 0,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_new = PyType_GenericNew,
 };
 
-static struct PyModuleDef vecsmodule = {
+static PyModuleDef vecsmodule = {
     PyModuleDef_HEAD_INIT,
-    "vecs",   /* name of module */
-    NULL, /* module documentation, may be NULL */
-    -1,       /* size of per-interpreter state of the module,
-                 or -1 if the module keeps state in global variables. */
-    VecsMethods
+    .m_name = "vecs",
+    .m_doc = "vecs doc",
+    .m_size = -1,
 };
 
 PyMODINIT_FUNC
 PyInit_vecs(void)
 {
-    return PyModule_Create(&vecsmodule);
+    PyObject *m;
+    if (PyType_Ready(&VecType) < 0)
+        return NULL;
+
+    m = PyModule_Create(&vecsmodule);
+    if (m == NULL)
+        return NULL;
+
+    Py_INCREF(&VecType);
+    if (PyModule_AddObject(m, "vec", (PyObject *) &VecType) < 0) {
+        Py_DECREF(&VecType);
+        Py_DECREF(m);
+        return NULL;
+    }
+
+    return m;
 }
