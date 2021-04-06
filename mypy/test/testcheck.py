@@ -34,7 +34,7 @@ else:
 
 for check_files in os.listdir(path2loc):
     # Append only if it has the pattern ( check-*-*.test)
-    if re.match(r'check-\w+-?\w+?.test', check_files):
+    if re.match(r'check-\w+-?\w+?-?\w+?.test', check_files):
         typecheck_files.append(check_files)
 
 # Tests that use Python 3.8-only AST features (like expression-scoped ignores):
