@@ -18,8 +18,6 @@ from mypy.nodes import (
     ARG_NAMED,
     ARG_POS,
     CallExpr,
-    Expression,
-    FloatExpr,
     GeneratorExpr,
     IntExpr,
     MemberExpr,
@@ -33,8 +31,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
-    bool_rprimitive, is_dict_rprimitive, is_list_rprimitive, is_tuple_rprimitive, int_rprimitive,
-    float_rprimitive
+    bool_rprimitive, is_dict_rprimitive, is_list_rprimitive, is_tuple_rprimitive
 )
 from mypyc.primitives.dict_ops import dict_keys_op, dict_values_op, dict_items_op
 from mypyc.primitives.tuple_ops import new_tuple_set_item_op
