@@ -2573,3 +2573,27 @@ if issubclass(x, B):
 else:
     reveal_type(x)        # N: Revealed type is "Type[__main__.A]"
 [builtins fixtures/isinstance.pyi]
+
+[case testTypeEqualsCheck]
+from typing import Any
+
+y: Any
+if type(y) == int:
+    reveal_type(y) # N: Revealed type is "builtins.int"
+
+
+[case testMultipleTypeEqualsCheck]
+from typing import Any
+
+x: Any
+y: Any
+if type(x) == type(y) == int:
+    reveal_type(y) # N: Revealed type is "builtins.int"
+    reveal_type(x) # N: Revealed type is "builtins.int"
+
+[case testTypeEqualsCheckUsingIs]
+from typing import Any
+
+y: Any
+if type(y) is int:
+    reveal_type(y) # N: Revealed type is "builtins.int"
