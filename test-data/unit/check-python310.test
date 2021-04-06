@@ -345,25 +345,84 @@ match m:
     case bytes(c):
         reveal_type(c)  # N: Revealed type is "builtins.bytes"
     case dict(d):
-        reveal_type(d)  # N: Revealed type is "builtins.dict"
+        reveal_type(d)  # N: Revealed type is "builtins.dict[Any, Any]"
     case float(e):
         reveal_type(e)  # N: Revealed type is "builtins.float"
     case frozenset(f):
-        reveal_type(f)  # N: Revealed type is "builtins.frozenset"
+        reveal_type(f)  # N: Revealed type is "builtins.frozenset[Any]"
     case int(g):
         reveal_type(g)  # N: Revealed type is "builtins.int"
     case list(h):
-        reveal_type(h)  # N: Revealed type is "builtins.list"
+        reveal_type(h)  # N: Revealed type is "builtins.list[Any]"
     case set(i):
-        reveal_type(i)  # N: Revealed type is "builtins.set"
+        reveal_type(i)  # N: Revealed type is "builtins.set[Any]"
     case str(j):
         reveal_type(j)  # N: Revealed type is "builtins.str"
     case tuple(k):
-        reveal_type(k)  # N: Revealed type is "builtins.tuple"
-[builtins fixtures/dict.pyi]
-[builtins fixtures/list.pyi]
-[builtins fixtures/set.pyi]
-[builtins fixtures/tuple.pyi]
+        reveal_type(k)  # N: Revealed type is "builtins.tuple[Any]"
+[builtins fixtures/primitives.pyi]
+
+[case testClassPatternCaptureGeneric]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class A(Generic[T]):
+    a: T
+
+m: object
+
+match m:
+    case A(a=i):
+        reveal_type(m)  # N: Revealed type is "__main__.A[Any]"
+        reveal_type(i)  # N: Revealed type is "Any"
+
+[case testClassPatternCaptureGenericAlreadyKnown]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class A(Generic[T]):
+    a: T
+
+m: A[int]
+
+match m:
+    case A(a=i):
+        reveal_type(m)  # N: Revealed type is "__main__.A[builtins.int]"
+        reveal_type(i)  # N: Revealed type is "builtins.int*"
+
+[case testClassPatternCaptureFilledGenericTypeAlias]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class A(Generic[T]):
+    a: T
+
+B = A[int]
+
+m: object
+
+match m:
+    case B(a=i):  # E: Class pattern class must not be a type alias with type parameters
+        reveal_type(i)
+
+[case testClassPatternCaptureGenericTypeAlias]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class A(Generic[T]):
+    a: T
+
+B = A
+
+m: object
+
+match m:
+    case B(a=i):
+        pass
 
 [case testClassPatternNarrows]
 from typing import Final

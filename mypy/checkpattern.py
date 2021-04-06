@@ -23,6 +23,21 @@ from mypy.visitor import PatternVisitor
 import mypy.checker
 
 
+self_match_type_names = [
+    "builtins.bool",
+    "builtins.bytearray",
+    "builtins.bytes",
+    "builtins.dict",
+    "builtins.float",
+    "builtins.frozenset",
+    "builtins.int",
+    "builtins.list",
+    "builtins.set",
+    "builtins.str",
+    "builtins.tuple",
+]
+
+
 class PatternChecker(PatternVisitor[Optional[Type]]):
     """Pattern checker.
 
@@ -41,6 +56,8 @@ class PatternChecker(PatternVisitor[Optional[Type]]):
     # Type of the subject to check the (sub)pattern against
     type_stack = []  # type: List[ProperType]
 
+    self_match_types = None  # type: List[Type]
+
     def __init__(self, chk: 'mypy.checker.TypeChecker', msg: MessageBuilder, plugin: Plugin,
                  subject: Expression, subject_type: ProperType) -> None:
         self.chk = chk
@@ -48,6 +65,8 @@ class PatternChecker(PatternVisitor[Optional[Type]]):
         self.plugin = plugin
         self.subject = subject
         self.type_stack.append(subject_type)
+
+        self.self_match_types = self.generate_self_match_types()
 
     def check_pattern(self, o: Pattern) -> 'mypy.checker.TypeMap':
         pattern_type = self.visit(o)
@@ -229,39 +248,60 @@ class PatternChecker(PatternVisitor[Optional[Type]]):
         return result
 
     def visit_class_pattern(self, o: ClassPattern) -> Optional[Type]:
-        can_match = True
-
+        current_type = self.type_stack[-1]
         class_name = o.class_ref.fullname
         assert class_name is not None
         sym = self.chk.lookup_qualified(class_name)
+        if isinstance(sym.node, TypeAlias) and not sym.node.no_args:
+            self.msg.fail("Class pattern class must not be a type alias with type parameters", o)
+            return None
         if isinstance(sym.node, (TypeAlias, TypeInfo)):
             typ = self.chk.named_type(class_name)
         else:
             self.msg.fail('Class pattern must be a type. Found "{}"'.format(sym.type), o.class_ref)
-            typ = self.chk.named_type("builtins.object")
-            can_match = False
-        match_args_type = find_member("__match_args__", typ, typ)
+            return None
 
-        if match_args_type is None and can_match:
-            if len(o.positionals) >= 1:
-                self.msg.fail("Class doesn't define __match_args__", o)
-
-        proper_match_args_type = get_proper_type(match_args_type)
-        if isinstance(proper_match_args_type, TupleType):
-            match_arg_names = get_match_arg_names(proper_match_args_type)
-
-            if len(o.positionals) > len(match_arg_names):
-                self.msg.fail("Too many positional patterns for class pattern", o)
-                match_arg_names += [None] * (len(o.positionals) - len(match_arg_names))
-        else:
-            match_arg_names = [None] * len(o.positionals)
-
-        positional_names = set()
         keyword_pairs = []  # type: List[Tuple[Optional[str], Pattern]]
+        match_arg_names = []  # type: List[Optional[str]]
 
-        for arg_name, pos in zip(match_arg_names, o.positionals):
-            keyword_pairs.append((arg_name, pos))
-            positional_names.add(arg_name)
+        can_match = True
+
+        if self.should_self_match(typ):
+            if len(o.positionals) >= 1:
+                self.type_stack.append(typ)
+                if self.visit(o.positionals[0]) is None:
+                    can_match = False
+                self.type_stack.pop()
+
+                if len(o.positionals) > 1:
+                    self.msg.fail("Too many positional patterns for class pattern", o)
+                    self.type_stack.append(self.chk.named_type("builtins.object"))
+                    for p in o.positionals[1:]:
+                        if self.visit(p) is None:
+                            can_match = False
+                    self.type_stack.pop()
+        else:
+            match_args_type = find_member("__match_args__", typ, typ)
+
+            if match_args_type is None and can_match:
+                if len(o.positionals) >= 1:
+                    self.msg.fail("Class doesn't define __match_args__", o)
+
+            proper_match_args_type = get_proper_type(match_args_type)
+            if isinstance(proper_match_args_type, TupleType):
+                match_arg_names = get_match_arg_names(proper_match_args_type)
+
+                if len(o.positionals) > len(match_arg_names):
+                    self.msg.fail("Too many positional patterns for class pattern", o)
+                    match_arg_names += [None] * (len(o.positionals) - len(match_arg_names))
+            else:
+                match_arg_names = [None] * len(o.positionals)
+
+            positional_names = set()
+
+            for arg_name, pos in zip(match_arg_names, o.positionals):
+                keyword_pairs.append((arg_name, pos))
+                positional_names.add(arg_name)
 
         keyword_names = set()
         for key, value in zip(o.keyword_keys, o.keyword_values):
@@ -275,7 +315,7 @@ class PatternChecker(PatternVisitor[Optional[Type]]):
 
         for keyword, pattern in keyword_pairs:
             if keyword is not None:
-                key_type = find_member(keyword, typ, typ)
+                key_type = find_member(keyword, typ, current_type)
                 if key_type is None:
                     key_type = self.chk.named_type("builtins.object")
             else:
@@ -287,9 +327,26 @@ class PatternChecker(PatternVisitor[Optional[Type]]):
             self.type_stack.pop()
 
         if can_match:
-            return get_more_specific_type(self.type_stack[-1], typ)
+            return get_more_specific_type(current_type, typ)
         else:
             return None
+
+    def should_self_match(self, typ: Type):
+        for other in self.self_match_types:
+            if is_subtype(typ, other):
+                return True
+        return False
+
+    def generate_self_match_types(self) -> List[Type]:
+        types = []
+        for name in self_match_type_names:
+            try:
+                types.append(self.chk.named_type(name))
+            except KeyError:
+                # Some built in types are not defined in all test cases
+                pass
+
+        return types
 
 
 def get_match_arg_names(typ: TupleType) -> List[Optional[str]]:
