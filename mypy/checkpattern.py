@@ -237,7 +237,7 @@ class PatternChecker(PatternVisitor[Optional[Type]]):
         if isinstance(sym.node, (TypeAlias, TypeInfo)):
             typ = self.chk.named_type(class_name)
         else:
-            self.msg.fail("Class pattern must be a type. Found '{}'".format(sym.type), o.class_ref)
+            self.msg.fail('Class pattern must be a type. Found "{}"'.format(sym.type), o.class_ref)
             typ = self.chk.named_type("builtins.object")
             can_match = False
         match_args_type = find_member("__match_args__", typ, typ)
@@ -267,10 +267,10 @@ class PatternChecker(PatternVisitor[Optional[Type]]):
         for key, value in zip(o.keyword_keys, o.keyword_values):
             keyword_pairs.append((key, value))
             if key in match_arg_names:
-                self.msg.fail("Keyword '{}' already matches a positional pattern".format(key),
+                self.msg.fail('Keyword "{}" already matches a positional pattern'.format(key),
                               value)
             elif key in keyword_names:
-                self.msg.fail("Duplicate keyword pattern '{}'".format(key), value)
+                self.msg.fail('Duplicate keyword pattern "{}"'.format(key), value)
             keyword_names.add(key)
 
         for keyword, pattern in keyword_pairs:
