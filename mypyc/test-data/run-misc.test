@@ -877,79 +877,52 @@ assert call_any_nested([[1, 1, 1], [0, 1], []]) == 0
 
 
 [case testSum]
-[file driver.py]
-print('test sums of numbers')
-print(sum((x for x in [0, 1, 2]), 0))
-print(sum((x for x in [0.0, 1, 2]), 0))
-print(sum((x for x in [1, 1j])))
-print(sum((x**2 for x in [0, 1.1, 8.3, 5.3])))
+from typing import Any, List
 
-print('test cases where first arg to sum() is a Generator of Callables')
-print(sum((lambda x: x == 0)(x) for x in []))
-print(sum((lambda x: x == 0)(x) for x in [0]))
-print(sum((lambda x: x == 0)(x) for x in [0, 0, 0]))
-print(sum((lambda x: x == 0)(x) for x in [0, 1, 0]))
-print(sum((lambda x: x % 2 == 0)(x) for x in range(2**10)))
-print(sum(((lambda x: x % 2 == 0)(x) for x in range(2**10)), 1))
+def test_sum_of_numbers() -> None:
+    assert sum(x for x in [1, 2, 3]) == 6
+    assert sum(x for x in [0.0, 1.2, 2]) == 6.2
+    assert sum(x for x in [1, 1j]) == 1 + 1j
 
-print('test cases where first arg to sum() is a Generator of Comparison')
-print(sum(x == 0 for x in []))
-print(sum(x == 0 for x in [0]))
-print(sum(x == 0 for x in [0, 0, 0]))
-print(sum(x == 0 for x in [0, 1, 0]))
-print(sum(x % 2 == 0 for x in range(2**10)))
-print(sum((x % 2 == 0 for x in range(2**10)), 1))
+def test_sum_callables() -> None:
+    assert sum((lambda x: x == 0)(x) for x in []) == 0
+    assert sum((lambda x: x == 0)(x) for x in [0]) == 1
+    assert sum((lambda x: x == 0)(x) for x in [0, 0, 0]) == 3
+    assert sum((lambda x: x == 0)(x) for x in [0, 1, 0]) == 2
+    assert sum((lambda x: x % 2 == 0)(x) for x in range(2**10)) == 2**9
 
-print('test multi-layered generator')
-print(sum(i + j == 0 for i, j in zip([0, 0, 0], [0, 1, 0])))
 
-print('test misc cases')
-print(sum((x == 0 for x in [0, 1]), 0 + 1j))
-a = 1
-print(sum((x == 0 for x in [0, 1]), a))
+def test_sum_comparisons() -> None:
+    assert sum(x == 0 for x in []) == 0
+    assert sum(x == 0 for x in [0]) == 1
+    assert sum(x == 0 for x in [0, 0, 0]) == 3
+    assert sum(x == 0 for x in [0, 1, 0]) == 2
+    assert sum(x % 2 == 0 for x in range(2**10)) == 2**9
 
-# misc cases we do optimize (note, according to sum's helptext, we don't need to support non-numeric
-# cases, but CPython and mypyc both do anyway)
-print('test misc cases we do optimize')
-print(sum((x == 0 for x in [0, 1]), 0.5))
-print(sum((x == 0 for x in [0, 1]), 1j))
-print(sum(c == 'd' for c in 'abcdd'))
-print(sum((c == 'd' for c in 'abcdd'), 1))
-print('test misc cases we should not optimize')
-print(sum([0, 1]))
 
-[out]
-test sums of numbers
-3
-3.0
-(1+1j)
-98.19000000000001
-test cases where first arg to sum() is a Generator of Callables
-0
-1
-3
-2
-512
-513
-test cases where first arg to sum() is a Generator of Comparison
-0
-1
-3
-2
-512
-513
-test multi-layered generator
-2
-test misc cases
-(1+1j)
-2
-test misc cases we do optimize
-1.5
-(1+1j)
-2
-3
-test misc cases we should not optimize
-1
+def test_sum_multi() -> None:
+    assert sum(i + j == 0 for i, j in zip([0, 0, 0], [0, 1, 0]))
+
+
+def test_sum_misc() -> None:
+    # misc cases we do optimize (note, according to sum's helptext, we don't need to support
+    # non-numeric cases, but CPython and mypyc both do anyway)
+    assert sum(c == 'd' for c in 'abcdd') == 2
+    # misc cases we do not optimize
+    assert sum([0, 1]) == 1
+    assert sum([0, 1], 1) == 2
+
+
+def test_sum_start_given() -> None:
+    a = 1
+    assert sum((x == 0 for x in [0, 1]), a) == 2
+    assert sum(((lambda x: x == 0)(x) for x in []), 1) == 1
+    assert sum(((lambda x: x == 0)(x) for x in [0]), 1) == 2
+    assert sum(((lambda x: x == 0)(x) for x in [0, 0, 0]), 1) == 4
+    assert sum(((lambda x: x == 0)(x) for x in [0, 1, 0]), 1) == 3
+    assert sum(((lambda x: x % 2 == 0)(x) for x in range(2**10)), 1) == 2**9 + 1
+    assert sum((x for x in [1, 1j]), 2j) == 1 + 3j
+    assert sum((c == 'd' for c in 'abcdd'), 1) == 3
 
 
 [case testNoneStuff]
