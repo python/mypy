@@ -243,7 +243,7 @@ def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> O
 
     # handle 'start' argument, if given
     if len(expr.args) == 2:
-        # ensure call to sum() was improperly constructed
+        # ensure call to sum() was properly constructed
         if not expr.arg_kinds[1] in (ARG_POS, ARG_NAMED):
             return None
         start_expr = expr.args[1]
