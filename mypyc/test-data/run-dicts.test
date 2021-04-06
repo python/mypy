@@ -217,3 +217,10 @@ def test_dict_copy() -> None:
     dd['a'] = 1
     assert dd.copy() == dd
     assert isinstance(dd.copy(), defaultdict)
+
+def test_dict_setdefault() -> None:
+    d: Dict[str, int] = {'a': 1, 'b': 2}
+    assert d.setdefault('a', 2) == 1
+    assert d.setdefault('c', 3) == 3
+    assert d['a'] == 1
+    assert d['c'] == 3
