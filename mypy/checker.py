@@ -10,6 +10,7 @@ from typing import (
 )
 from typing_extensions import Final
 
+from mypy.checkpattern import PatternChecker
 from mypy.errors import Errors, report_internal_error
 from mypy.nodes import (
     SymbolTable, Statement, MypyFile, Var, Expression, Lvalue, Node,
@@ -24,8 +25,7 @@ from mypy.nodes import (
     Import, ImportFrom, ImportAll, ImportBase, TypeAlias,
     ARG_POS, ARG_STAR, LITERAL_TYPE, MDEF, GDEF,
     CONTRAVARIANT, COVARIANT, INVARIANT, TypeVarExpr, AssignmentExpr,
-    is_final_node,
-    ARG_NAMED)
+    is_final_node, ARG_NAMED, MatchStmt)
 from mypy import nodes
 from mypy.literals import literal, literal_hash, Key
 from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any
@@ -1385,6 +1385,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if not is_subtype(typ, method_type):
             self.msg.invalid_signature_for_special_method(typ, context, '__setattr__')
 
+    def check_match_args(self, var: Var, typ: Type, context: Context) -> None:
+        """Check that __match_args__ is final and contains literal strings"""
+
+        if not var.is_final:
+            self.note("__match_args__ must be final for checking of match statements to work",
+                      context, code=codes.LITERAL_REQ)
+
+        typ = get_proper_type(typ)
+        if not isinstance(typ, TupleType) or \
+                not all([is_string_literal(item) for item in typ.items]):
+            self.msg.note("__match_args__ must be a tuple containing string literals for checking "
+                          "of match statements to work", context, code=codes.LITERAL_REQ)
+
     def expand_typevars(self, defn: FuncItem,
                         typ: CallableType) -> List[Tuple[FuncItem, CallableType]]:
         # TODO use generator
@@ -2065,6 +2078,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             self.check_setattr_method(signature, lvalue)
                         else:
                             self.check_getattr_method(signature, lvalue, name)
+
+                if name == '__match_args__' and inferred is not None:
+                    typ = self.expr_checker.accept(rvalue)
+                    self.check_match_args(inferred, typ, lvalue)
 
             # Defer PartialType's super type checking.
             if (isinstance(lvalue, RefExpr) and
@@ -3703,6 +3720,33 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def visit_continue_stmt(self, s: ContinueStmt) -> None:
         self.binder.handle_continue()
         return None
+
+    def visit_match_stmt(self, s: MatchStmt) -> None:
+        with self.binder.frame_context(can_skip=False, fall_through=0):
+            t = get_proper_type(self.expr_checker.accept(s.subject))
+
+            if isinstance(t, DeletedType):
+                self.msg.deleted_as_rvalue(t, s)
+
+            pattern_checker = PatternChecker(self, self.msg, self.plugin, s.subject, t)
+
+            for p, g, b in zip(s.patterns, s.guards, s.bodies):
+                if not b.is_unreachable:
+                    type_map = pattern_checker.check_pattern(p)
+                else:
+                    type_map = None
+                with self.binder.frame_context(can_skip=True, fall_through=2):
+                    self.push_type_map(type_map)
+                    if g is not None:
+                        gt = get_proper_type(self.expr_checker.accept(g))
+
+                        if isinstance(gt, DeletedType):
+                            self.msg.deleted_as_rvalue(gt, s)
+
+                        if_map, else_map = self.find_isinstance_check(g)
+
+                        self.push_type_map(if_map)
+                    self.accept(b)
 
     def make_fake_typeinfo(self,
                            curr_module_fullname: str,
@@ -5799,6 +5843,11 @@ def is_overlapping_types_no_promote(left: Type, right: Type) -> bool:
 def is_private(node_name: str) -> bool:
     """Check if node is private to class definition."""
     return node_name.startswith('__') and not node_name.endswith('__')
+
+
+def is_string_literal(typ: Type) -> bool:
+    strs = try_getting_str_literals_from_type(typ)
+    return strs is not None and len(strs) == 1
 
 
 def has_bool_item(typ: ProperType) -> bool:

@@ -4,7 +4,7 @@ from typing import List
 from mypy_extensions import mypyc_attr
 
 from mypy.patterns import AsPattern, OrPattern, CapturePattern, ValuePattern, SequencePattern, \
-    StarredPattern, MappingPattern, ClassPattern
+    StarredPattern, MappingPattern, ClassPattern, LiteralPattern
 from mypy.visitor import NodeVisitor
 from mypy.nodes import (
     Block, MypyFile, FuncBase, FuncItem, CallExpr, ClassDef, Decorator, FuncDef,
@@ -296,6 +296,9 @@ class TraverserVisitor(NodeVisitor[None]):
     def visit_or_pattern(self, o: OrPattern) -> None:
         for p in o.patterns:
             p.accept(self)
+
+    def visit_literal_pattern(self, o: LiteralPattern) -> None:
+        o.expr.accept(self)
 
     def visit_capture_pattern(self, o: CapturePattern) -> None:
         o.name.accept(self)

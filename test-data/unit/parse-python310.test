@@ -12,7 +12,8 @@ MypyFile:1(
     NameExpr(a)
     Pattern(
       LiteralPattern:2(
-        1))
+        1
+        IntExpr(1)))
     Body(
       PassStmt:3())))
 
@@ -29,7 +30,8 @@ MypyFile:1(
       NameExpr(b))
     Pattern(
       LiteralPattern:2(
-        1))
+        1
+        IntExpr(1)))
     Body(
       PassStmt:3())))
 
@@ -45,7 +47,8 @@ MypyFile:1(
     NameExpr(a)
     Pattern(
       LiteralPattern:2(
-        1))
+        1
+        IntExpr(1)))
     Guard(
       CallExpr:2(
         NameExpr(f)
@@ -74,7 +77,8 @@ MypyFile:1(
     Pattern(
       AsPattern:2(
         LiteralPattern:2(
-          1)
+          1
+          IntExpr(1))
         NameExpr(b)))
     Body(
       PassStmt:3())))
@@ -112,61 +116,91 @@ MypyFile:1(
     NameExpr(a)
     Pattern(
       LiteralPattern:2(
-        1))
+        1
+        IntExpr(1)))
     Body(
       PassStmt:3())
     Pattern(
       LiteralPattern:4(
-        -1))
+        -1
+        UnaryExpr:4(
+          -
+          IntExpr(1))))
     Body(
       PassStmt:5())
     Pattern(
       LiteralPattern:6(
-        (1+2j)))
+        (1+2j)
+        OpExpr:6(
+          +
+          IntExpr(1)
+          ComplexExpr(2j))))
     Body(
       PassStmt:7())
     Pattern(
       LiteralPattern:8(
-        (-1+2j)))
+        (-1+2j)
+        OpExpr:8(
+          +
+          UnaryExpr:8(
+            -
+            IntExpr(1))
+          ComplexExpr(2j))))
     Body(
       PassStmt:9())
     Pattern(
       LiteralPattern:10(
-        (1-2j)))
+        (1-2j)
+        OpExpr:10(
+          -
+          IntExpr(1)
+          ComplexExpr(2j))))
     Body(
       PassStmt:11())
     Pattern(
       LiteralPattern:12(
-        (-1-2j)))
+        (-1-2j)
+        OpExpr:12(
+          -
+          UnaryExpr:12(
+            -
+            IntExpr(1))
+          ComplexExpr(2j))))
     Body(
       PassStmt:13())
     Pattern(
       LiteralPattern:14(
-        'str'))
+        'str'
+        StrExpr(str)))
     Body(
       PassStmt:15())
     Pattern(
       LiteralPattern:16(
-        b'bytes'))
+        b'bytes'
+        BytesExpr(bytes)))
     Body(
       PassStmt:17())
     Pattern(
       LiteralPattern:18(
-        'raw_string'))
+        'raw_string'
+        StrExpr(raw_string)))
     Body(
       PassStmt:19())
     Pattern(
-      LiteralPattern:20())
+      LiteralPattern:20(
+        NameExpr(None)))
     Body(
       PassStmt:21())
     Pattern(
       LiteralPattern:22(
-        True))
+        True
+        NameExpr(True)))
     Body(
       PassStmt:23())
     Pattern(
       LiteralPattern:24(
-        False))
+        False
+        NameExpr(False)))
     Body(
       PassStmt:25())))
 
@@ -246,7 +280,8 @@ MypyFile:1(
     NameExpr(a)
     Pattern(
       LiteralPattern:3(
-        1))
+        1
+        IntExpr(1)))
     Body(
       PassStmt:4())))
 
@@ -295,112 +330,136 @@ MypyFile:1(
     Pattern(
       SequencePattern:6(
         LiteralPattern:6(
-          1)))
+          1
+          IntExpr(1))))
     Body(
       PassStmt:7())
     Pattern(
       SequencePattern:8(
         LiteralPattern:8(
-          1)))
+          1
+          IntExpr(1))))
     Body(
       PassStmt:9())
     Pattern(
       SequencePattern:10(
         LiteralPattern:10(
-          1)))
+          1
+          IntExpr(1))))
     Body(
       PassStmt:11())
     Pattern(
       SequencePattern:12(
         LiteralPattern:12(
-          1)
+          1
+          IntExpr(1))
         LiteralPattern:12(
-          2)
+          2
+          IntExpr(2))
         LiteralPattern:12(
-          3)))
+          3
+          IntExpr(3))))
     Body(
       PassStmt:13())
     Pattern(
       SequencePattern:14(
         LiteralPattern:14(
-          1)
+          1
+          IntExpr(1))
         LiteralPattern:14(
-          2)
+          2
+          IntExpr(2))
         LiteralPattern:14(
-          3)))
+          3
+          IntExpr(3))))
     Body(
       PassStmt:15())
     Pattern(
       SequencePattern:16(
         LiteralPattern:16(
-          1)
+          1
+          IntExpr(1))
         LiteralPattern:16(
-          2)
+          2
+          IntExpr(2))
         LiteralPattern:16(
-          3)))
+          3
+          IntExpr(3))))
     Body(
       PassStmt:17())
     Pattern(
       SequencePattern:18(
         LiteralPattern:18(
-          1)
+          1
+          IntExpr(1))
         StarredPattern:18(
           CapturePattern:18(
             NameExpr(a)))
         LiteralPattern:18(
-          2)))
+          2
+          IntExpr(2))))
     Body(
       PassStmt:19())
     Pattern(
       SequencePattern:20(
         LiteralPattern:20(
-          1)
+          1
+          IntExpr(1))
         StarredPattern:20(
           CapturePattern:20(
             NameExpr(a)))
         LiteralPattern:20(
-          2)))
+          2
+          IntExpr(2))))
     Body(
       PassStmt:21())
     Pattern(
       SequencePattern:22(
         LiteralPattern:22(
-          1)
+          1
+          IntExpr(1))
         StarredPattern:22(
           CapturePattern:22(
             NameExpr(a)))
         LiteralPattern:22(
-          2)))
+          2
+          IntExpr(2))))
     Body(
       PassStmt:23())
     Pattern(
       SequencePattern:24(
         LiteralPattern:24(
-          1)
+          1
+          IntExpr(1))
         StarredPattern:24(
           WildcardPattern:24())
         LiteralPattern:24(
-          2)))
+          2
+          IntExpr(2))))
     Body(
       PassStmt:25())
     Pattern(
       SequencePattern:26(
         LiteralPattern:26(
-          1)
+          1
+          IntExpr(1))
         StarredPattern:26(
           WildcardPattern:26())
         LiteralPattern:26(
-          2)))
+          2
+          IntExpr(2))))
     Body(
       PassStmt:27())
     Pattern(
       SequencePattern:28(
         LiteralPattern:28(
-          1)
+          1
+          IntExpr(1))
         StarredPattern:28(
           WildcardPattern:28())
         LiteralPattern:28(
-          2)))
+          2
+          IntExpr(2))))
     Body(
       PassStmt:29())))
 
@@ -430,7 +489,8 @@ MypyFile:1(
       MappingPattern:2(
         Key(
           LiteralPattern:2(
-            'k'))
+            'k'
+            StrExpr(k)))
         Value(
           CapturePattern:2(
             NameExpr(v)))))
@@ -452,7 +512,8 @@ MypyFile:1(
       MappingPattern:6(
         Key(
           LiteralPattern:6(
-            1))
+            1
+            IntExpr(1)))
         Value(
           CapturePattern:6(
             NameExpr(v)))))
@@ -474,7 +535,8 @@ MypyFile:1(
       MappingPattern:10(
         Key(
           LiteralPattern:10(
-            'k'))
+            'k'
+            StrExpr(k)))
         Value(
           CapturePattern:10(
             NameExpr(v1)))
@@ -488,7 +550,8 @@ MypyFile:1(
             NameExpr(v2)))
         Key(
           LiteralPattern:10(
-            1))
+            1
+            IntExpr(1)))
         Value(
           CapturePattern:10(
             NameExpr(v3)))
@@ -506,34 +569,43 @@ MypyFile:1(
       MappingPattern:12(
         Key(
           LiteralPattern:12(
-            'k1'))
+            'k1'
+            StrExpr(k1)))
         Value(
           LiteralPattern:12(
-            1))
+            1
+            IntExpr(1)))
         Key(
           LiteralPattern:12(
-            'k2'))
+            'k2'
+            StrExpr(k2)))
         Value(
           LiteralPattern:12(
-            'str'))
+            'str'
+            StrExpr(str)))
         Key(
           LiteralPattern:12(
-            'k3'))
+            'k3'
+            StrExpr(k3)))
         Value(
           LiteralPattern:12(
-            b'bytes'))
+            b'bytes'
+            BytesExpr(bytes)))
         Key(
           LiteralPattern:12(
-            'k4'))
+            'k4'
+            StrExpr(k4)))
         Value(
-          LiteralPattern:12())))
+          LiteralPattern:12(
+            NameExpr(None)))))
     Body(
       PassStmt:13())
     Pattern(
       MappingPattern:14(
         Key(
           LiteralPattern:14(
-            'k'))
+            'k'
+            StrExpr(k)))
         Value(
           CapturePattern:14(
             NameExpr(v)))
@@ -574,9 +646,11 @@ MypyFile:1(
         NameExpr(B)
         Positionals(
           LiteralPattern:4(
-            1)
+            1
+            IntExpr(1))
           LiteralPattern:4(
-            2))))
+            2
+            IntExpr(2)))))
     Body(
       PassStmt:5())
     Pattern(
@@ -584,11 +658,13 @@ MypyFile:1(
         NameExpr(B)
         Positionals(
           LiteralPattern:6(
-            1))
+            1
+            IntExpr(1)))
         Keyword(
           b
           LiteralPattern:6(
-            2))))
+            2
+            IntExpr(2)))))
     Body(
       PassStmt:7())
     Pattern(
@@ -597,10 +673,12 @@ MypyFile:1(
         Keyword(
           a
           LiteralPattern:8(
-            1))
+            1
+            IntExpr(1)))
         Keyword(
           b
           LiteralPattern:8(
-            2))))
+            2
+            IntExpr(2)))))
     Body(
       PassStmt:9())))

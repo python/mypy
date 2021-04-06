@@ -61,7 +61,8 @@ MypyFile:1(
         MappingPattern:3(
           Key(
             LiteralPattern:3(
-              'k'))
+              'k'
+              StrExpr(k)))
           Value(
             CapturePattern:3(
               NameExpr(b* [__main__.b]))))))
@@ -86,7 +87,8 @@ MypyFile:1(
     Pattern(
       AsPattern:3(
         LiteralPattern:3(
-          1)
+          1
+          IntExpr(1))
         NameExpr(a* [__main__.a])))
     Body(
       ExpressionStmt:4(
@@ -110,7 +112,8 @@ MypyFile:1(
     NameExpr(x [__main__.x])
     Pattern(
       LiteralPattern:4(
-        1))
+        1
+        IntExpr(1)))
     Guard(
       NameExpr(a [__main__.a]))
     Body(
@@ -151,7 +154,8 @@ MypyFile:1(
     Pattern(
       AsPattern:3(
         LiteralPattern:3(
-          1)
+          1
+          IntExpr(1))
         NameExpr(a* [__main__.a])))
     Guard(
       NameExpr(a [__main__.a]))

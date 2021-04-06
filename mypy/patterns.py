@@ -1,9 +1,9 @@
 """Classes for representing match statement patterns."""
-from typing import TypeVar, List, Any, Optional
+from typing import TypeVar, List, Optional, Union
 
 from mypy_extensions import trait
 
-from mypy.nodes import Node, MemberExpr, RefExpr, NameExpr
+from mypy.nodes import Node, MemberExpr, RefExpr, NameExpr, Expression
 from mypy.visitor import PatternVisitor
 
 # These are not real AST nodes. CPython represents patterns using the normal expression nodes.
@@ -32,7 +32,11 @@ class AlwaysTruePattern(Pattern):
 class MappingKeyPattern(Pattern):
     """A pattern that can be used as a key in a mapping pattern"""
 
-    __slots__ = ()
+    __slots__ = ("expr",)
+
+    def __init__(self, expr: Expression) -> None:
+        super().__init__()
+        self.expr = expr
 
 
 class AsPattern(Pattern):
@@ -59,12 +63,15 @@ class OrPattern(Pattern):
         return visitor.visit_or_pattern(self)
 
 
-# TODO: Do we need subclasses for the types of literals?
-class LiteralPattern(MappingKeyPattern):
-    value = None  # type: Any
+LiteralPatternType = Union[int, complex, float, str, bytes, bool, None]
 
-    def __init__(self, value: Any):
-        super().__init__()
+
+class LiteralPattern(MappingKeyPattern):
+    value = None  # type: LiteralPatternType
+    expr = None  # type: Expression
+
+    def __init__(self, value: LiteralPatternType, expr: Expression):
+        super().__init__(expr)
         self.value = value
 
     def accept(self, visitor: PatternVisitor[T]) -> T:
@@ -91,8 +98,7 @@ class ValuePattern(MappingKeyPattern):
     expr = None  # type: MemberExpr
 
     def __init__(self, expr: MemberExpr):
-        super().__init__()
-        self.expr = expr
+        super().__init__(expr)
 
     def accept(self, visitor: PatternVisitor[T]) -> T:
         return visitor.visit_value_pattern(self)
@@ -112,9 +118,9 @@ class SequencePattern(Pattern):
 # TODO: A StarredPattern is only valid within a SequencePattern. This is not guaranteed by our
 # type hierarchy. Should it be?
 class StarredPattern(Pattern):
-    capture = None  # type: AlwaysTruePattern
+    capture = None  # type: Union[WildcardPattern, CapturePattern]
 
-    def __init__(self, capture: AlwaysTruePattern):
+    def __init__(self, capture: Union[WildcardPattern, CapturePattern]):
         super().__init__()
         self.capture = capture
 

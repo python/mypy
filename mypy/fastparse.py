@@ -1318,6 +1318,9 @@ class PatternConverter(Converter):
     # Errors is optional is superclass, but not here
     errors = None  # type: Errors
 
+    has_sequence = False  # type: bool
+    has_mapping = False  # type: bool
+
     def __init__(self, options: Options, errors: Errors) -> None:
         super().__init__(errors)
 
@@ -1340,7 +1343,7 @@ class PatternConverter(Converter):
     def visit_Constant(self, n: Constant) -> LiteralPattern:
         val = n.value
         if val is None or isinstance(val, (bool, int, float, complex, str, bytes)):
-            node = LiteralPattern(val)
+            node = LiteralPattern(val, ASTConverter(self.options, False, self.errors).visit(n))
         else:
             raise RuntimeError("Pattern not implemented for " + str(type(val)))
         return self.set_line(node, n)
@@ -1354,9 +1357,9 @@ class PatternConverter(Converter):
         value = self.assert_numeric_constant(n.operand)
 
         if isinstance(n.op, ast3.UAdd):
-            node = LiteralPattern(value)
+            node = LiteralPattern(value, ASTConverter(self.options, False, self.errors).visit(n))
         elif isinstance(n.op, ast3.USub):
-            node = LiteralPattern(-value)
+            node = LiteralPattern(-value, ASTConverter(self.options, False, self.errors).visit(n))
         else:
             raise RuntimeError("Pattern not implemented for " + str(type(n.op)))
 
@@ -1374,9 +1377,11 @@ class PatternConverter(Converter):
             raise RuntimeError("Unsupported pattern")
 
         if isinstance(n.op, ast3.Add):
-            node = LiteralPattern(left_val + right_val)
+            node = LiteralPattern(left_val + right_val,
+                                  ASTConverter(self.options, False, self.errors).visit(n))
         elif isinstance(n.op, ast3.Sub):
-            node = LiteralPattern(left_val - right_val)
+            node = LiteralPattern(left_val - right_val,
+                                  ASTConverter(self.options, False, self.errors).visit(n))
         else:
             raise RuntimeError("Unsupported pattern")
 

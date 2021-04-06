@@ -558,7 +558,7 @@ class StrConv(NodeVisitor[str]):
         value = o.value
         if isinstance(o.value, str):
             value = "'" + self.str_repr(o.value) + "'"
-        return self.dump([value], o)
+        return self.dump([value, o.expr], o)
 
     def visit_capture_pattern(self, o: 'mypy.patterns.CapturePattern') -> str:
         return self.dump([o.name], o)

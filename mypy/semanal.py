@@ -4016,8 +4016,8 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def visit_class_pattern(self, p: ClassPattern) -> None:
         p.class_ref.accept(self)
-        for p in p.positionals:
-            p.accept(self)
+        for pos in p.positionals:
+            pos.accept(self)
         for v in p.keyword_values:
             v.accept(self)
 
