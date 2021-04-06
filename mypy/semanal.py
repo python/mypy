@@ -3566,7 +3566,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.fail("'yield from' outside function", e, serious=True, blocker=True)
         else:
             if self.function_stack[-1].is_coroutine:
-                self.fail("'yield from' in async function", e, serious=True, blocker=True)
+                self.fail('"yield from" in async function', e, serious=True, blocker=True)
             else:
                 self.function_stack[-1].is_generator = True
         if e.expr:
@@ -3949,7 +3949,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         else:
             if self.function_stack[-1].is_coroutine:
                 if self.options.python_version < (3, 6):
-                    self.fail("'yield' in async function", expr, serious=True, blocker=True)
+                    self.fail('"yield" in async function', expr, serious=True, blocker=True)
                 else:
                     self.function_stack[-1].is_generator = True
                     self.function_stack[-1].is_async_generator = True
@@ -4731,7 +4731,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             # later on. Defer current target.
             self.record_incomplete_ref()
             return
-        message = "Name '{}' is not defined".format(name)
+        message = 'Name "{}" is not defined'.format(name)
         self.fail(message, ctx, code=codes.NAME_DEFINED)
 
         if 'builtins.{}'.format(name) in SUGGESTED_TEST_FIXTURES:

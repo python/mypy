@@ -509,3 +509,125 @@ int CPySequence_CheckUnpackCount(PyObject *sequence, Py_ssize_t expected) {
     }
     return 0;
 }
+
+// Parse an integer (size_t) encoded as a variable-length binary sequence.
+static const char *parse_int(const char *s, size_t *len) {
+    ssize_t n = 0;
+    while ((unsigned char)*s >= 0x80) {
+        n = (n << 7) + (*s & 0x7f);
+        s++;
+    }
+    n = (n << 7) | *s++;
+    *len = n;
+    return s;
+}
+
+// Initialize static constant array of literal values
+int CPyStatics_Initialize(PyObject **statics,
+                          const char * const *strings,
+                          const char * const *bytestrings,
+                          const char * const *ints,
+                          const double *floats,
+                          const double *complex_numbers,
+                          const int *tuples) {
+    PyObject **result = statics;
+    // Start with some hard-coded values
+    *result++ = Py_None;
+    Py_INCREF(Py_None);
+    *result++ = Py_False;
+    Py_INCREF(Py_False);
+    *result++ = Py_True;
+    Py_INCREF(Py_True);
+    if (strings) {
+        for (; **strings != '\0'; strings++) {
+            size_t num;
+            const char *data = *strings;
+            data = parse_int(data, &num);
+            while (num-- > 0) {
+                size_t len;
+                data = parse_int(data, &len);
+                PyObject *obj = PyUnicode_FromStringAndSize(data, len);
+                if (obj == NULL) {
+                    return -1;
+                }
+                PyUnicode_InternInPlace(&obj);
+                *result++ = obj;
+                data += len;
+            }
+        }
+    }
+    if (bytestrings) {
+        for (; **bytestrings != '\0'; bytestrings++) {
+            size_t num;
+            const char *data = *bytestrings;
+            data = parse_int(data, &num);
+            while (num-- > 0) {
+                size_t len;
+                data = parse_int(data, &len);
+                PyObject *obj = PyBytes_FromStringAndSize(data, len);
+                if (obj == NULL) {
+                    return -1;
+                }
+                *result++ = obj;
+                data += len;
+            }
+        }
+    }
+    if (ints) {
+        for (; **ints != '\0'; ints++) {
+            size_t num;
+            const char *data = *ints;
+            data = parse_int(data, &num);
+            while (num-- > 0) {
+                char *end;
+                PyObject *obj = PyLong_FromString(data, &end, 10);
+                if (obj == NULL) {
+                    return -1;
+                }
+                data = end;
+                data++;
+                *result++ = obj;
+            }
+        }
+    }
+    if (floats) {
+        size_t num = (size_t)*floats++;
+        while (num-- > 0) {
+            PyObject *obj = PyFloat_FromDouble(*floats++);
+            if (obj == NULL) {
+                return -1;
+            }
+            *result++ = obj;
+        }
+    }
+    if (complex_numbers) {
+        size_t num = (size_t)*complex_numbers++;
+        while (num-- > 0) {
+            double real = *complex_numbers++;
+            double imag = *complex_numbers++;
+            PyObject *obj = PyComplex_FromDoubles(real, imag);
+            if (obj == NULL) {
+                return -1;
+            }
+            *result++ = obj;
+        }
+    }
+    if (tuples) {
+        int num = *tuples++;
+        while (num-- > 0) {
+            int num_items = *tuples++;
+            PyObject *obj = PyTuple_New(num_items);
+            if (obj == NULL) {
+                return -1;
+            }
+            int i;
+            for (i = 0; i < num_items; i++) {
+                PyObject *item = statics[*tuples++];
+                Py_INCREF(item);
+                PyTuple_SET_ITEM(obj, i, item);
+            }
+            *result++ = obj;
+        }
+    }
+    return 0;
+}

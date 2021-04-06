@@ -325,6 +325,8 @@ PyObject *CPyList_Pop(PyObject *obj, CPyTagged index);
 CPyTagged CPyList_Count(PyObject *obj, PyObject *value);
 int CPyList_Insert(PyObject *list, CPyTagged index, PyObject *value);
 PyObject *CPyList_Extend(PyObject *o1, PyObject *o2);
+int CPyList_Remove(PyObject *list, PyObject *obj);
+CPyTagged CPyList_Index(PyObject *list, PyObject *obj);
 PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size);
 PyObject *CPySequence_RMultiply(CPyTagged t_size, PyObject *seq);
 PyObject *CPyList_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
@@ -349,6 +351,7 @@ PyObject *CPyDict_Keys(PyObject *dict);
 PyObject *CPyDict_Values(PyObject *dict);
 PyObject *CPyDict_Items(PyObject *dict);
 char CPyDict_Clear(PyObject *dict);
+PyObject *CPyDict_Copy(PyObject *dict);
 PyObject *CPyDict_GetKeysIter(PyObject *dict);
 PyObject *CPyDict_GetItemsIter(PyObject *dict);
 PyObject *CPyDict_GetValuesIter(PyObject *dict);
@@ -377,6 +380,7 @@ static inline char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {
 
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
 PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split);
+PyObject *CPyStr_Replace(PyObject *str, PyObject *old_substr, PyObject *new_substr, CPyTagged max_replace);
 PyObject *CPyStr_Append(PyObject *o1, PyObject *o2);
 PyObject *CPyStr_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
 bool CPyStr_Startswith(PyObject *self, PyObject *subobj);
@@ -394,6 +398,7 @@ bool CPySet_Remove(PyObject *set, PyObject *key);
 
 PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index);
 PyObject *CPySequenceTuple_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
+bool CPySequenceTuple_SetItemUnsafe(PyObject *tuple, CPyTagged index, PyObject *value);
 
 
 // Exception operations
@@ -511,7 +516,7 @@ CPyTagged CPyTagged_Id(PyObject *o);
 void CPyDebug_Print(const char *msg);
 void CPy_Init(void);
 int CPyArg_ParseTupleAndKeywords(PyObject *, PyObject *,
-                                 const char *, const char * const *, ...);
+                                 const char *, const char *, const char * const *, ...);
 int CPyArg_ParseStackAndKeywords(PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames,
                                  CPyArg_Parser *parser, ...);
 int CPyArg_ParseStackAndKeywordsNoArgs(PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames,
@@ -522,7 +527,13 @@ int CPyArg_ParseStackAndKeywordsSimple(PyObject *const *args, Py_ssize_t nargs, 
                                        CPyArg_Parser *parser, ...);
 
 int CPySequence_CheckUnpackCount(PyObject *sequence, Py_ssize_t expected);
-
+int CPyStatics_Initialize(PyObject **statics,
+                          const char * const *strings,
+                          const char * const *bytestrings,
+                          const char * const *ints,
+                          const double *floats,
+                          const double *complex_numbers,
+                          const int *tuples);
 
 #ifdef __cplusplus
 }

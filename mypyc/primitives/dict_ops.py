@@ -150,6 +150,14 @@ method_op(
     c_function_name='CPyDict_Clear',
     error_kind=ERR_FALSE)
 
+# dict.copy()
+method_op(
+    name='copy',
+    arg_types=[dict_rprimitive],
+    return_type=dict_rprimitive,
+    c_function_name='CPyDict_Copy',
+    error_kind=ERR_MAGIC)
+
 # list(dict.keys())
 dict_keys_op = custom_op(
     arg_types=[dict_rprimitive],

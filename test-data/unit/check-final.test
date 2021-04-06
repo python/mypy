@@ -11,9 +11,9 @@ y: Final[float] = int()
 z: Final[int] = int()
 bad: Final[str] = int()  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
-reveal_type(x)  # N: Revealed type is 'builtins.int'
-reveal_type(y)  # N: Revealed type is 'builtins.float'
-reveal_type(z)  # N: Revealed type is 'builtins.int'
+reveal_type(x)  # N: Revealed type is "builtins.int"
+reveal_type(y)  # N: Revealed type is "builtins.float"
+reveal_type(z)  # N: Revealed type is "builtins.int"
 [out]
 
 [case testFinalDefiningInstanceVar]
@@ -26,12 +26,12 @@ class C:
     bad: Final[str] = int()  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 class D(C): pass
 
-reveal_type(D.x)  # N: Revealed type is 'builtins.int'
-reveal_type(D.y)  # N: Revealed type is 'builtins.float'
-reveal_type(D.z)  # N: Revealed type is 'builtins.int'
-reveal_type(D().x)  # N: Revealed type is 'builtins.int'
-reveal_type(D().y)  # N: Revealed type is 'builtins.float'
-reveal_type(D().z)  # N: Revealed type is 'builtins.int'
+reveal_type(D.x)  # N: Revealed type is "builtins.int"
+reveal_type(D.y)  # N: Revealed type is "builtins.float"
+reveal_type(D.z)  # N: Revealed type is "builtins.int"
+reveal_type(D().x)  # N: Revealed type is "builtins.int"
+reveal_type(D().y)  # N: Revealed type is "builtins.float"
+reveal_type(D().z)  # N: Revealed type is "builtins.int"
 [out]
 
 [case testFinalDefiningInstanceVarImplicit]
@@ -41,8 +41,8 @@ class C:
     def __init__(self, x: Tuple[int, Any]) -> None:
         self.x: Final = x
         self.y: Final[float] = 1
-reveal_type(C((1, 2)).x)  # N: Revealed type is 'Tuple[builtins.int, Any]'
-reveal_type(C((1, 2)).y)  # N: Revealed type is 'builtins.float'
+reveal_type(C((1, 2)).x)  # N: Revealed type is "Tuple[builtins.int, Any]"
+reveal_type(C((1, 2)).y)  # N: Revealed type is "builtins.float"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -51,12 +51,12 @@ from typing import Final
 
 x: Final[int, str]  # E: Final name must be initialized with a value \
                     # E: Final[...] takes at most one type argument
-reveal_type(x)  # N: Revealed type is 'builtins.int'
+reveal_type(x)  # N: Revealed type is "builtins.int"
 
 class C:
     def __init__(self) -> None:
         self.x: Final[float, float] = 1  # E: Final[...] takes at most one type argument
-reveal_type(C().x)  # N: Revealed type is 'builtins.float'
+reveal_type(C().x)  # N: Revealed type is "builtins.float"
 [out]
 
 [case testFinalInvalidDefinitions]
@@ -84,10 +84,10 @@ class C:
     def __init__(self) -> None:
         self.z: Final  # E: Type in Final[...] can only be omitted if there is an initializer
 
-reveal_type(x)  # N: Revealed type is 'Any'
-reveal_type(C.x)  # N: Revealed type is 'Any'
+reveal_type(x)  # N: Revealed type is "Any"
+reveal_type(C.x)  # N: Revealed type is "Any"
 v: C
-reveal_type(v.z)  # N: Revealed type is 'Any'
+reveal_type(v.z)  # N: Revealed type is "Any"
 [out]
 
 [case testFinalDefiningFunc]
@@ -115,7 +115,7 @@ from typing import final
 class C:
     @final
     def f(self, x: int) -> None: ...
-reveal_type(C().f)  # N: Revealed type is 'def (x: builtins.int)'
+reveal_type(C().f)  # N: Revealed type is "def (x: builtins.int)"
 [out]
 
 [case testFinalDefiningMethOverloaded]
@@ -138,7 +138,7 @@ class C:
     def bad(self, x):
         pass
 
-reveal_type(C().f)  # N: Revealed type is 'Overload(def (x: builtins.int) -> builtins.int, def (x: builtins.str) -> builtins.str)'
+reveal_type(C().f)  # N: Revealed type is "Overload(def (x: builtins.int) -> builtins.int, def (x: builtins.str) -> builtins.str)"
 [out]
 
 [case testFinalDefiningMethOverloadedStubs]
@@ -162,7 +162,7 @@ class C:
     def bad(self, x: str) -> str: ...
 [out]
 tmp/mod.pyi:12: error: In a stub file @final must be applied only to the first overload
-main:3: note: Revealed type is 'Overload(def (x: builtins.int) -> builtins.int, def (x: builtins.str) -> builtins.str)'
+main:3: note: Revealed type is "Overload(def (x: builtins.int) -> builtins.int, def (x: builtins.str) -> builtins.str)"
 
 [case testFinalDefiningProperty]
 from typing import final
@@ -174,8 +174,8 @@ class C:
     @property
     @final
     def g(self) -> int: pass
-reveal_type(C().f)  # N: Revealed type is 'builtins.int'
-reveal_type(C().g)  # N: Revealed type is 'builtins.int'
+reveal_type(C().f)  # N: Revealed type is "builtins.int"
+reveal_type(C().g)  # N: Revealed type is "builtins.int"
 [builtins fixtures/property.pyi]
 [out]
 
@@ -210,11 +210,11 @@ class C:
     y: Final[int]  # E: Final name must be initialized with a value
     def __init__(self) -> None:
         self.z: Final  # E: Type in Final[...] can only be omitted if there is an initializer
-reveal_type(x)  # N: Revealed type is 'Any'
-reveal_type(y)  # N: Revealed type is 'builtins.int'
-reveal_type(C().x)  # N: Revealed type is 'Any'
-reveal_type(C().y)  # N: Revealed type is 'builtins.int'
-reveal_type(C().z)  # N: Revealed type is 'Any'
+reveal_type(x)  # N: Revealed type is "Any"
+reveal_type(y)  # N: Revealed type is "builtins.int"
+reveal_type(C().x)  # N: Revealed type is "Any"
+reveal_type(C().y)  # N: Revealed type is "builtins.int"
+reveal_type(C().z)  # N: Revealed type is "Any"
 [out]
 
 [case testFinalDefiningNoRhsSubclass]
@@ -250,7 +250,7 @@ class C(Generic[T]):
         self.x: Final = x
         self.y: Final = 1
 
-reveal_type(C((1, 2)).x)  # N: Revealed type is 'Tuple[builtins.int*, builtins.int*]'
+reveal_type(C((1, 2)).x)  # N: Revealed type is "Tuple[builtins.int*, builtins.int*]"
 C.x  # E: Cannot access final instance attribute "x" on class object \
      # E: Access to generic instance variables via class is ambiguous
 C.y  # E: Cannot access final instance attribute "y" on class object

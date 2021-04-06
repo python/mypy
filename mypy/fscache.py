@@ -30,6 +30,7 @@ advantage of the benefits.
 
 import os
 import stat
+import sys
 from typing import Dict, List, Set
 from mypy.util import hash_digest
 from mypy_extensions import mypyc_attr
@@ -53,6 +54,7 @@ class FileSystemCache:
         self.listdir_cache = {}  # type: Dict[str, List[str]]
         self.listdir_error_cache = {}  # type: Dict[str, OSError]
         self.isfile_case_cache = {}  # type: Dict[str, bool]
+        self.exists_case_cache = {}  # type: Dict[str, bool]
         self.read_cache = {}  # type: Dict[str, bytes]
         self.read_error_cache = {}  # type: Dict[str, Exception]
         self.hash_cache = {}  # type: Dict[str, str]
@@ -197,30 +199,51 @@ class FileSystemCache:
 
         The caller must ensure that prefix is a valid file system prefix of path.
         """
+        if sys.platform == "linux":
+            # Assume that the file system on Linux is case sensitive
+            return self.isfile(path)
+        if not self.isfile(path):
+            # Fast path
+            return False
         if path in self.isfile_case_cache:
             return self.isfile_case_cache[path]
         head, tail = os.path.split(path)
         if not tail:
+            self.isfile_case_cache[path] = False
+            return False
+        try:
+            names = self.listdir(head)
+            # This allows one to check file name case sensitively in
+            # case-insensitive filesystems.
+            res = tail in names
+        except OSError:
             res = False
-        else:
-            try:
-                names = self.listdir(head)
-                # This allows one to check file name case sensitively in
-                # case-insensitive filesystems.
-                res = tail in names and self.isfile(path)
-            except OSError:
-                res = False
-
-        # Also check the other path components in case sensitive way.
-        head, dir = os.path.split(head)
-        while res and head and dir and head.startswith(prefix):
-            try:
-                res = dir in self.listdir(head)
-            except OSError:
-                res = False
-            head, dir = os.path.split(head)
-
+        if res:
+            # Also recursively check the other path components in case sensitive way.
+            res = self._exists_case(head, prefix)
         self.isfile_case_cache[path] = res
+        return res
+
+    def _exists_case(self, path: str, prefix: str) -> bool:
+        """Helper to check path components in case sensitive fashion, up to prefix."""
+        if path in self.exists_case_cache:
+            return self.exists_case_cache[path]
+        head, tail = os.path.split(path)
+        if not head.startswith(prefix) or not tail:
+            # Only perform the check for paths under prefix.
+            self.exists_case_cache[path] = True
+            return True
+        try:
+            names = self.listdir(head)
+            # This allows one to check file name case sensitively in
+            # case-insensitive filesystems.
+            res = tail in names
+        except OSError:
+            res = False
+        if res:
+            # Also recursively check other path components.
+            res = self._exists_case(head, prefix)
+        self.exists_case_cache[path] = res
         return res
 
     def isdir(self, path: str) -> bool:

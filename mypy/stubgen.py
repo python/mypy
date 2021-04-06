@@ -192,7 +192,7 @@ class Options:
         self.export_less = export_less
 
 
-class StubSource(BuildSource):
+class StubSource:
     """A single source for stub: can be a Python or C module.
 
     A simple extension of BuildSource that also carries the AST and
@@ -200,9 +200,17 @@ class StubSource(BuildSource):
     """
     def __init__(self, module: str, path: Optional[str] = None,
                  runtime_all: Optional[List[str]] = None) -> None:
-        super().__init__(path, module, None)
+        self.source = BuildSource(path, module, None)
         self.runtime_all = runtime_all
         self.ast = None  # type: Optional[MypyFile]
+
+    @property
+    def module(self) -> str:
+        return self.source.module
+
+    @property
+    def path(self) -> Optional[str]:
+        return self.source.path
 
 
 # What was generated previously in the stub file. We keep track of these to generate
@@ -1435,7 +1443,7 @@ def generate_asts_for_modules(py_modules: List[StubSource],
         return
     # Perform full semantic analysis of the source set.
     try:
-        res = build(list(py_modules), mypy_options)
+        res = build([module.source for module in py_modules], mypy_options)
     except CompileError as e:
         raise SystemExit("Critical error during semantic analysis: {}".format(e)) from e
 

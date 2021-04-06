@@ -15,7 +15,6 @@ import errno
 import gc
 import json
 import os
-import pathlib
 import re
 import stat
 import sys
@@ -36,7 +35,7 @@ from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, ErrorInfo, report_internal_error
 from mypy.util import (
     DecodeError, decode_python_encoding, is_sub_path, get_mypy_comments, module_prefix,
-    read_py_file, hash_digest, is_typeshed_file
+    read_py_file, hash_digest, is_typeshed_file, is_stub_package_file
 )
 if TYPE_CHECKING:
     from mypy.report import Reports  # Avoid unconditional slow import
@@ -59,6 +58,7 @@ from mypy.typestate import TypeState, reset_global_state
 from mypy.renaming import VariableRenameVisitor
 from mypy.config_parser import parse_mypy_comments
 from mypy.freetree import free_tree
+from mypy.stubinfo import legacy_bundled_packages
 from mypy import errorcodes as codes
 
 
@@ -269,6 +269,8 @@ def _build(sources: List[BuildSource],
         if not cache_dir_existed and os.path.isdir(options.cache_dir):
             add_catch_all_gitignore(options.cache_dir)
             exclude_from_backups(options.cache_dir)
+        if os.path.isdir(options.cache_dir):
+            record_missing_stub_packages(options.cache_dir, manager.missing_stub_packages)
 
 
 def default_data_dir() -> str:
@@ -560,6 +562,7 @@ class BuildManager:
                        not only for debugging, but also required for correctness,
                        in particular to check consistency of the fine-grained dependency cache.
       fscache:         A file system cacher
+      ast_cache:       AST cache to speed up mypy daemon
     """
 
     def __init__(self, data_dir: str,
@@ -641,6 +644,16 @@ class BuildManager:
         # the semantic analyzer, used only for testing. Currently used only by the new
         # semantic analyzer.
         self.processed_targets = []  # type: List[str]
+        # Missing stub packages encountered.
+        self.missing_stub_packages = set()  # type: Set[str]
+        # Cache for mypy ASTs that have completed semantic analysis
+        # pass 1. When multiple files are added to the build in a
+        # single daemon increment, only one of the files gets added
+        # per step and the others are discarded. This gets repeated
+        # until all the files have been added. This means that a
+        # new file can be processed O(n**2) times. This cache
+        # avoids most of this redundant work.
+        self.ast_cache = {}  # type: Dict[str, Tuple[MypyFile, List[ErrorInfo]]]
 
     def dump_stats(self) -> None:
         if self.options.dump_build_stats:
@@ -1126,7 +1139,7 @@ def exclude_from_backups(target_dir: str) -> None:
     try:
         with open(cachedir_tag, "x") as f:
             f.write("""Signature: 8a477f597d28d172789f06886806bc55
-# This file is a cache directory tag automtically created by mypy.
+# This file is a cache directory tag automatically created by mypy.
 # For information about cache directory tags see https://bford.info/cachedir/
 """)
     except FileExistsError:
@@ -1990,8 +2003,14 @@ class State:
             return
 
         manager = self.manager
+
+        # Can we reuse a previously parsed AST? This avoids redundant work in daemon.
+        cached = self.id in manager.ast_cache
         modules = manager.modules
-        manager.log("Parsing %s (%s)" % (self.xpath, self.id))
+        if not cached:
+            manager.log("Parsing %s (%s)" % (self.xpath, self.id))
+        else:
+            manager.log("Using cached AST for %s (%s)" % (self.xpath, self.id))
 
         with self.wrap_context():
             source = self.source
@@ -2022,20 +2041,35 @@ class State:
                 self.source_hash = compute_hash(source)
 
             self.parse_inline_configuration(source)
-            self.tree = manager.parse_file(self.id, self.xpath, source,
-                                           self.ignore_all or self.options.ignore_errors,
-                                           self.options)
+            if not cached:
+                self.tree = manager.parse_file(self.id, self.xpath, source,
+                                               self.ignore_all or self.options.ignore_errors,
+                                               self.options)
+
+            else:
+                # Reuse a cached AST
+                self.tree = manager.ast_cache[self.id][0]
+                manager.errors.set_file_ignored_lines(
+                    self.xpath,
+                    self.tree.ignored_lines,
+                    self.ignore_all or self.options.ignore_errors)
+
+        if not cached:
+            # Make a copy of any errors produced during parse time so that
+            # fine-grained mode can repeat them when the module is
+            # reprocessed.
+            self.early_errors = list(manager.errors.error_info_map.get(self.xpath, []))
+        else:
+            self.early_errors = manager.ast_cache[self.id][1]
 
         modules[self.id] = self.tree
 
-        # Make a copy of any errors produced during parse time so that
-        # fine-grained mode can repeat them when the module is
-        # reprocessed.
-        self.early_errors = list(manager.errors.error_info_map.get(self.xpath, []))
-
-        self.semantic_analysis_pass1()
+        if not cached:
+            self.semantic_analysis_pass1()
 
         self.check_blockers()
+
+        manager.ast_cache[self.id] = (self.tree, self.early_errors)
 
     def parse_inline_configuration(self, source: str) -> None:
         """Check for inline mypy: options directive and parse them."""
@@ -2200,12 +2234,14 @@ class State:
 
     def compute_fine_grained_deps(self) -> Dict[str, Set[str]]:
         assert self.tree is not None
-        if '/typeshed/' in self.xpath or self.xpath.startswith('typeshed/'):
-            # We don't track changes to typeshed -- the assumption is that they are only changed
-            # as part of mypy updates, which will invalidate everything anyway.
-            #
-            # TODO: Not a reliable test, as we could have a package named typeshed.
-            # TODO: Consider relaxing this -- maybe allow some typeshed changes to be tracked.
+        if self.id in ('builtins', 'typing', 'types', 'sys', '_typeshed'):
+            # We don't track changes to core parts of typeshed -- the
+            # assumption is that they are only changed as part of mypy
+            # updates, which will invalidate everything anyway. These
+            # will always be processed in the initial non-fine-grained
+            # build. Other modules may be brought in as a result of an
+            # fine-grained increment, and we may need these
+            # dependencies then to handle cyclic imports.
             return {}
         from mypy.server.deps import get_dependencies  # Lazy import to speed up startup
         return get_dependencies(target=self.tree,
@@ -2392,6 +2428,7 @@ def find_module_and_diagnose(manager: BuildManager,
                     follow_imports = 'silent'
         if (id in CORE_BUILTIN_MODULES
                 and not is_typeshed_file(result)
+                and not is_stub_package_file(result)
                 and not options.use_builtins_fixtures
                 and not options.custom_typeshed_dir):
             raise CompileError([
@@ -2403,10 +2440,21 @@ def find_module_and_diagnose(manager: BuildManager,
         # Could not find a module.  Typically the reason is a
         # misspelled module name, missing stub, module not in
         # search path or the module has not been installed.
+
+        ignore_missing_imports = options.ignore_missing_imports
+        top_level = file_id.partition('.')[0]
+        # Don't honor a global (not per-module) ignore_missing_imports
+        # setting for modules that used to have bundled stubs, as
+        # otherwise updating mypy can silently result in new false
+        # negatives.
+        global_ignore_missing_imports = manager.options.ignore_missing_imports
+        if top_level in legacy_bundled_packages and global_ignore_missing_imports:
+            ignore_missing_imports = False
+
         if skip_diagnose:
             raise ModuleNotFound
         if caller_state:
-            if not (options.ignore_missing_imports or in_partial_package(id, manager)):
+            if not (ignore_missing_imports or in_partial_package(id, manager)):
                 module_not_found(manager, caller_line, caller_state, id, result)
             raise ModuleNotFound
         elif root_source:
@@ -2498,9 +2546,16 @@ def module_not_found(manager: BuildManager, line: int, caller_state: State,
                       blocker=True)
         errors.raise_error()
     else:
-        msg, note = reason.error_message_templates()
-        errors.report(line, 0, msg.format(target), code=codes.IMPORT)
-        errors.report(line, 0, note, severity='note', only_once=True, code=codes.IMPORT)
+        msg, notes = reason.error_message_templates()
+        pyver = '%d.%d' % manager.options.python_version
+        errors.report(line, 0, msg.format(module=target, pyver=pyver), code=codes.IMPORT)
+        top_level = target.partition('.')[0]
+        for note in notes:
+            if '{stub_dist}' in note:
+                note = note.format(stub_dist=legacy_bundled_packages[top_level])
+            errors.report(line, 0, note, severity='note', only_once=True, code=codes.IMPORT)
+        if reason is ModuleNotFoundReason.STUBS_NOT_INSTALLED:
+            manager.missing_stub_packages.add(legacy_bundled_packages[top_level])
     errors.set_import_context(save_import_context)
 
 
@@ -2546,6 +2601,7 @@ def log_configuration(manager: BuildManager, sources: List[BuildSource]) -> None
         ("Current Executable", sys.executable),
         ("Cache Dir", manager.options.cache_dir),
         ("Compiled", str(not __file__.endswith(".py"))),
+        ("Exclude", manager.options.exclude),
     ]
 
     for conf_name, conf_value in configuration_vars:
@@ -2745,14 +2801,12 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                 "Duplicate module named '%s' (also at '%s')" % (st.id, graph[st.id].xpath),
                 blocker=True,
             )
-            p1 = len(pathlib.PurePath(st.xpath).parents)
-            p2 = len(pathlib.PurePath(graph[st.id].xpath).parents)
-
-            if p1 != p2:
-                manager.errors.report(
-                    -1, -1,
-                    "Are you missing an __init__.py?"
-                )
+            manager.errors.report(
+                -1, -1,
+                "Are you missing an __init__.py? Alternatively, consider using --exclude to "
+                "avoid checking one of them.",
+                severity='note'
+            )
 
             manager.errors.raise_error()
         graph[st.id] = st
@@ -3217,3 +3271,23 @@ def topsort(data: Dict[AbstractSet[str],
                 for item, dep in data.items()
                 if item not in ready}
     assert not data, "A cyclic dependency exists amongst %r" % data
+
+
+def missing_stubs_file(cache_dir: str) -> str:
+    return os.path.join(cache_dir, 'missing_stubs')
+
+
+def record_missing_stub_packages(cache_dir: str, missing_stub_packages: Set[str]) -> None:
+    """Write a file containing missing stub packages.
+
+    This allows a subsequent "mypy --install-types" run (without other arguments)
+    to install missing stub packages.
+    """
+    fnam = missing_stubs_file(cache_dir)
+    if missing_stub_packages:
+        with open(fnam, 'w') as f:
+            for pkg in sorted(missing_stub_packages):
+                f.write('%s\n' % pkg)
+    else:
+        if os.path.isfile(fnam):
+            os.remove(fnam)

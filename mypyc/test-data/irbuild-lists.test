@@ -85,10 +85,11 @@ L0:
     r1 = box(short_int, 2)
     r2 = box(short_int, 4)
     r3 = get_element_ptr r0 ob_item :: PyListObject
-    r4 = load_mem r3, r0 :: ptr*
-    set_mem r4, r1, r0 :: builtins.object*
+    r4 = load_mem r3 :: ptr*
+    set_mem r4, r1 :: builtins.object*
     r5 = r4 + WORD_SIZE*1
-    set_mem r5, r2, r0 :: builtins.object*
+    set_mem r5, r2 :: builtins.object*
+    keep_alive r0
     x = r0
     return 1
 
@@ -109,8 +110,9 @@ L0:
     r1 = PyList_New(1)
     r2 = box(short_int, 8)
     r3 = get_element_ptr r1 ob_item :: PyListObject
-    r4 = load_mem r3, r1 :: ptr*
-    set_mem r4, r2, r1 :: builtins.object*
+    r4 = load_mem r3 :: ptr*
+    set_mem r4, r2 :: builtins.object*
+    keep_alive r1
     r5 = CPySequence_RMultiply(6, r1)
     b = r5
     return 1
@@ -127,7 +129,8 @@ def f(a):
     r2 :: short_int
 L0:
     r0 = get_element_ptr a ob_size :: PyVarObject
-    r1 = load_mem r0, a :: native_int*
+    r1 = load_mem r0 :: native_int*
+    keep_alive a
     r2 = r1 << 1
     return r2
 
@@ -167,7 +170,8 @@ def increment(l):
     r9 :: short_int
 L0:
     r0 = get_element_ptr l ob_size :: PyVarObject
-    r1 = load_mem r0, l :: native_int*
+    r1 = load_mem r0 :: native_int*
+    keep_alive l
     r2 = r1 << 1
     r3 = 0
     i = r3
@@ -204,10 +208,11 @@ L0:
     r1 = box(short_int, 2)
     r2 = box(short_int, 4)
     r3 = get_element_ptr r0 ob_item :: PyListObject
-    r4 = load_mem r3, r0 :: ptr*
-    set_mem r4, r1, r0 :: builtins.object*
+    r4 = load_mem r3 :: ptr*
+    set_mem r4, r1 :: builtins.object*
     r5 = r4 + WORD_SIZE*1
-    set_mem r5, r2, r0 :: builtins.object*
+    set_mem r5, r2 :: builtins.object*
+    keep_alive r0
     r6 = CPyList_Extend(r0, x)
     r7 = CPyList_Extend(r0, y)
     r8 = box(short_int, 6)

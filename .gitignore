@@ -2,11 +2,11 @@ build/
 __pycache__
 *.py[cod]
 *~
-@*
 /build
 /env*/
 docs/build/
 docs/source/_build
+mypyc/doc/_build
 *.iml
 /out/
 .venv*/

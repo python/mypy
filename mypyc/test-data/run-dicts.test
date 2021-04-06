@@ -206,3 +206,14 @@ def test_dict_clear() -> None:
     dd['a'] = 1
     dd.clear()
     assert dd == {}
+
+def test_dict_copy() -> None:
+    d: Dict[str, int] = {}
+    assert d.copy() == d
+    d = {'a': 1, 'b': 2}
+    assert d.copy() == d
+    assert d.copy() is not d
+    dd: Dict[str, int] = defaultdict(int)
+    dd['a'] = 1
+    assert dd.copy() == dd
+    assert isinstance(dd.copy(), defaultdict)

@@ -1,7 +1,7 @@
 """Same type check for RTypes."""
 
 from mypyc.ir.rtypes import (
-    RType, RTypeVisitor, RInstance, RPrimitive, RTuple, RVoid, RUnion, RStruct
+    RType, RTypeVisitor, RInstance, RPrimitive, RTuple, RVoid, RUnion, RStruct, RArray
 )
 from mypyc.ir.func_ir import FuncSignature
 
@@ -54,6 +54,9 @@ class SameTypeVisitor(RTypeVisitor[bool]):
 
     def visit_rstruct(self, left: RStruct) -> bool:
         return isinstance(self.right, RStruct) and self.right.name == left.name
+
+    def visit_rarray(self, left: RArray) -> bool:
+        return left == self.right
 
     def visit_rvoid(self, left: RVoid) -> bool:
         return isinstance(self.right, RVoid)

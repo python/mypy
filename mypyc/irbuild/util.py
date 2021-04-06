@@ -82,7 +82,9 @@ def is_extension_class(cdef: ClassDef) -> bool:
         for d in cdef.decorators
     ):
         return False
-    elif (cdef.info.metaclass_type and cdef.info.metaclass_type.type.fullname not in (
+    if cdef.info.typeddict_type:
+        return False
+    if (cdef.info.metaclass_type and cdef.info.metaclass_type.type.fullname not in (
             'abc.ABCMeta', 'typing.TypingMeta', 'typing.GenericMeta')):
         return False
     return True

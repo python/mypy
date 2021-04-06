@@ -154,21 +154,21 @@ from typing import Iterable
 bad = 0
 
 def f(x: bad): # E:10: Variable "__main__.bad" is not valid as a type \
-               # N:10: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+               # N:10: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
     y: bad # E:8: Variable "__main__.bad" is not valid as a type \
-           # N:8: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+           # N:8: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
 if int():
     def g(x): # E:5: Variable "__main__.bad" is not valid as a type \
-              # N:5: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+              # N:5: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
         # type: (bad) -> None
         y = 0  # type: bad  # E:9: Variable "__main__.bad" is not valid as a type \
-                            # N:9: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+                            # N:9: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
 z: Iterable[bad] # E:13: Variable "__main__.bad" is not valid as a type \
-                 # N:13: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+                 # N:13: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 h: bad[int] # E:4: Variable "__main__.bad" is not valid as a type \
-            # N:4: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+            # N:4: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
 [case testColumnInvalidType_python2]
 
@@ -178,13 +178,13 @@ bad = 0
 
 if int():
     def g(x): # E:5: Variable "__main__.bad" is not valid as a type \
-              # N:5: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+              # N:5: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
         # type: (bad) -> None
         y = 0  # type: bad  # E:9: Variable "__main__.bad" is not valid as a type \
-                            # N:9: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+                            # N:9: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
     z = ()  # type: Iterable[bad] # E:5: Variable "__main__.bad" is not valid as a type \
-                                  # N:5: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+                                  # N:5: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
 [case testColumnFunctionMissingTypeAnnotation]
 # flags: --disallow-untyped-defs
@@ -196,11 +196,11 @@ if int():
         pass
 
 [case testColumnNameIsNotDefined]
-((x)) # E:3: Name 'x' is not defined
+((x)) # E:3: Name "x" is not defined
 
 [case testColumnNeedTypeAnnotation]
 if 1:
-    x = [] # E:5: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
+    x = [] # E:5: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 [builtins fixtures/list.pyi]
 
 [case testColumnCallToUntypedFunction]
@@ -235,7 +235,7 @@ y: Dict[int, int] = {
 [builtins fixtures/dict.pyi]
 
 [case testColumnCannotDetermineType]
-(x)  # E:2: Cannot determine type of 'x'
+(x)  # E:2: Cannot determine type of "x"
 x = None
 
 [case testColumnInvalidIndexing]
@@ -254,7 +254,7 @@ t: D = {'x':
     'y'} # E:5: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
 
 if int():
-    del t['y'] # E:5: TypedDict "D" has no key 'y'
+    del t['y'] # E:5: TypedDict "D" has no key "y"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -297,7 +297,7 @@ class C:
 p: P
 if int():
     p = C() # E:9: Incompatible types in assignment (expression has type "C", variable has type "P") \
-      # N:9: 'C' is missing following 'P' protocol member: \
+      # N:9: "C" is missing following "P" protocol member: \
       # N:9:     y
 
 [case testColumnRedundantCast]
@@ -320,7 +320,7 @@ if int():
 
 [case testColumnRevealedType]
 if int():
-    reveal_type(1) # N:17: Revealed type is 'Literal[1]?'
+    reveal_type(1) # N:17: Revealed type is "Literal[1]?"
 
 [case testColumnNonOverlappingEqualityCheck]
 # flags: --strict-equality
@@ -354,7 +354,7 @@ if int():
     # TODO: It would be better to point to the type comment
     xyz = 0  # type: blurbnard blarb
 [out]
-main:3:5: error: syntax error in type comment 'blurbnard blarb'
+main:3:5: error: syntax error in type comment "blurbnard blarb"
 
 [case testColumnProperty]
 class A:

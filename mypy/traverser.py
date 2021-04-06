@@ -1,6 +1,7 @@
 """Generic node traverser visitor"""
 
 from typing import List
+from mypy_extensions import mypyc_attr
 
 from mypy.visitor import NodeVisitor
 from mypy.nodes import (
@@ -16,6 +17,7 @@ from mypy.nodes import (
 )
 
 
+@mypyc_attr(allow_interpreted_subclasses=True)
 class TraverserVisitor(NodeVisitor[None]):
     """A parse tree visitor that traverses the parse tree during visiting.
 

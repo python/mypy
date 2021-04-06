@@ -405,8 +405,13 @@ class Errors:
         return sum(len(x) for x in self.error_info_map.values())
 
     def is_errors(self) -> bool:
-        """Are there any generated errors?"""
+        """Are there any generated messages?"""
         return bool(self.error_info_map)
+
+    def is_real_errors(self) -> bool:
+        """Are there any generated errors (not just notes, for example)?"""
+        return any(info.severity == 'error'
+                   for infos in self.error_info_map.values() for info in infos)
 
     def is_blockers(self) -> bool:
         """Are the any errors that are blockers?"""
@@ -721,7 +726,8 @@ def report_internal_error(err: Exception,
     # Print "INTERNAL ERROR" message.
     print('{}error: INTERNAL ERROR --'.format(prefix),
           'Please try using mypy master on Github:\n'
-          'https://mypy.rtfd.io/en/latest/common_issues.html#using-a-development-mypy-build',
+          'https://mypy.readthedocs.io/en/stable/common_issues.html'
+          '#using-a-development-mypy-build',
           file=stderr)
     if options.show_traceback:
         print('Please report a bug at https://github.com/python/mypy/issues',

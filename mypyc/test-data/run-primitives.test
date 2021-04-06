@@ -241,7 +241,7 @@ def to_int(x: float) -> int:
     return int(x)
 
 def get_complex() -> complex:
-    return 5.0j + 3.0
+    return 5.2j + 3.5 + 1j
 
 [file driver.py]
 from native import assign_and_return_float_sum, from_int, to_int, get_complex
@@ -253,7 +253,7 @@ assert sum == 50.0
 assert str(from_int(10)) == '10.0'
 assert str(to_int(3.14)) == '3'
 assert str(to_int(3)) == '3'
-assert get_complex() == 3+5j
+assert get_complex() == 3.5 + 6.2j
 
 [case testBytes]
 def f(x: bytes) -> bytes:

@@ -31,8 +31,9 @@ MIN_LINE_LENGTH_FOR_ALIGNMENT = 5
 
 def run_mypy(args: List[str]) -> None:
     __tracebackhide__ = True
+    # We must enable site packages even though they could cause problems,
+    # since stubs for typing_extensions live there.
     outval, errval, status = api.run(args + ['--show-traceback',
-                                             '--no-site-packages',
                                              '--no-silence-site-packages'])
     if status != 0:
         sys.stdout.write(outval)

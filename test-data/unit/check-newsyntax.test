@@ -41,7 +41,7 @@ def tst_local(dct: Dict[int, T]) -> Dict[T, int]:
     ret: Dict[T, int] = {}
     return ret
 
-reveal_type(tst_local({1: 'a'}))  # N: Revealed type is 'builtins.dict[builtins.str*, builtins.int]'
+reveal_type(tst_local({1: 'a'}))  # N: Revealed type is "builtins.dict[builtins.str*, builtins.int]"
 [builtins fixtures/dict.pyi]
 [out]
 
@@ -148,6 +148,6 @@ f'result: {value:{width}.{precision}}'
 [case testNewSyntaxFStringSingleField]
 # flags: --python-version 3.6
 v = 1
-reveal_type(f'{v}') # N: Revealed type is 'builtins.str'
-reveal_type(f'{1}') # N: Revealed type is 'builtins.str'
+reveal_type(f'{v}') # N: Revealed type is "builtins.str"
+reveal_type(f'{1}') # N: Revealed type is "builtins.str"
 [builtins fixtures/f_string.pyi]

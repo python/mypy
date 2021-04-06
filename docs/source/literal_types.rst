@@ -36,14 +36,14 @@ precise type signature for this function using ``Literal[...]`` and overloads:
         # Implementation is omitted
         ...
 
-    reveal_type(fetch_data(True))        # Revealed type is 'bytes'
-    reveal_type(fetch_data(False))       # Revealed type is 'str'
+    reveal_type(fetch_data(True))        # Revealed type is "bytes"
+    reveal_type(fetch_data(False))       # Revealed type is "str"
 
     # Variables declared without annotations will continue to have an
     # inferred type of 'bool'.
 
     variable = True
-    reveal_type(fetch_data(variable))    # Revealed type is 'Union[bytes, str]'
+    reveal_type(fetch_data(variable))    # Revealed type is "Union[bytes, str]"
 
 .. note::
 
@@ -96,7 +96,7 @@ a literal type:
 .. code-block:: python
 
     a: Literal[19] = 19
-    reveal_type(a)          # Revealed type is 'Literal[19]'
+    reveal_type(a)          # Revealed type is "Literal[19]"
 
 In order to preserve backwards-compatibility, variables without this annotation
 are **not** assumed to be literals:
@@ -104,7 +104,7 @@ are **not** assumed to be literals:
 .. code-block:: python
 
     b = 19
-    reveal_type(b)          # Revealed type is 'int'
+    reveal_type(b)          # Revealed type is "int"
 
 If you find repeating the value of the variable in the type hint to be tedious,
 you can instead change the variable to be ``Final`` (see :ref:`final_attrs`):
@@ -117,7 +117,7 @@ you can instead change the variable to be ``Final`` (see :ref:`final_attrs`):
 
     c: Final = 19
 
-    reveal_type(c)          # Revealed type is 'Literal[19]?'
+    reveal_type(c)          # Revealed type is "Literal[19]?"
     expects_literal(c)      # ...and this type checks!
 
 If you do not provide an explicit type in the ``Final``, the type of ``c`` becomes
@@ -155,13 +155,13 @@ For example, compare and contrast what happens when you try appending these type
     # Mypy will chose to infer List[int] here.
     list_of_ints = []
     list_of_ints.append(a)
-    reveal_type(list_of_ints)  # Revealed type is 'List[int]'
+    reveal_type(list_of_ints)  # Revealed type is "List[int]"
 
     # But if the variable you're appending is an explicit Literal, mypy
     # will infer List[Literal[19]].
     list_of_lits = []
     list_of_lits.append(b)
-    reveal_type(list_of_lits)  # Revealed type is 'List[Literal[19]]'
+    reveal_type(list_of_lits)  # Revealed type is "List[Literal[19]]"
 
 
 Intelligent indexing
@@ -182,19 +182,19 @@ corresponding to some particular index, we can use Literal types like so:
     tup = ("foo", 3.4)
 
     # Indexing with an int literal gives us the exact type for that index
-    reveal_type(tup[0])  # Revealed type is 'str'
+    reveal_type(tup[0])  # Revealed type is "str"
 
     # But what if we want the index to be a variable? Normally mypy won't
     # know exactly what the index is and so will return a less precise type:
     int_index = 1
-    reveal_type(tup[int_index])  # Revealed type is 'Union[str, float]'
+    reveal_type(tup[int_index])  # Revealed type is "Union[str, float]"
 
     # But if we use either Literal types or a Final int, we can gain back
     # the precision we originally had:
     lit_index: Literal[1] = 1
     fin_index: Final = 1
-    reveal_type(tup[lit_index])  # Revealed type is 'str'
-    reveal_type(tup[fin_index])  # Revealed type is 'str'
+    reveal_type(tup[lit_index])  # Revealed type is "str"
+    reveal_type(tup[fin_index])  # Revealed type is "str"
 
     # We can do the same thing with with TypedDict and str keys:
     class MyDict(TypedDict):
@@ -204,11 +204,11 @@ corresponding to some particular index, we can use Literal types like so:
 
     d: MyDict = {"name": "Saanvi", "main_id": 111, "backup_id": 222}
     name_key: Final = "name"
-    reveal_type(d[name_key])  # Revealed type is 'str'
+    reveal_type(d[name_key])  # Revealed type is "str"
 
     # You can also index using unions of literals
     id_key: Literal["main_id", "backup_id"]
-    reveal_type(d[id_key])    # Revealed type is 'int' 
+    reveal_type(d[id_key])    # Revealed type is "int" 
 
 .. _tagged_unions:
 
@@ -282,9 +282,9 @@ using ``isinstance()``:
         # However, we can side-step this by checking the type of `w.inner` to
         # narrow `w` itself:
         if isinstance(w.inner, int):
-            reveal_type(w)  # Revealed type is 'Wrapper[int]'
+            reveal_type(w)  # Revealed type is "Wrapper[int]"
         else:
-            reveal_type(w)  # Revealed type is 'Wrapper[str]'
+            reveal_type(w)  # Revealed type is "Wrapper[str]"
 
 This feature is sometimes called "sum types" or "discriminated union types"
 in other programming languages.

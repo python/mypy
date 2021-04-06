@@ -127,17 +127,21 @@ The third outcome is what mypy will do in the ideal case. The following
 sections will discuss what to do in the other two cases.
 
 .. _ignore-missing-imports:
+.. _fix-missing-imports:
 
 Missing imports
 ***************
 
-When you import a module, mypy may report that it is unable to
-follow the import.
+When you import a module, mypy may report that it is unable to follow
+the import.
 
-This can cause errors that look like the following::
+This can cause errors that look like the following:
 
-    main.py:1: error: Skipping analyzing 'django': found module but no type hints or library stubs
-    main.py:2: error: Cannot find implementation or library stub for module named 'this_module_does_not_exist'
+.. code-block:: text
+
+    main.py:1: error: Library stubs not installed for "requests" (or incompatible with Python 3.8)
+    main.py:2: error: Skipping analyzing 'django': found module but no type hints or library stubs
+    main.py:3: error: Cannot find implementation or library stub for module named "this_module_does_not_exist"
 
 If you get any of these errors on an import, mypy will assume the type of that
 module is ``Any``, the dynamic type. This means attempting to access any
@@ -152,6 +156,36 @@ attribute of the module will automatically succeed:
     x = does_not_exist.foobar()
 
 The next sections describe what each error means and recommended next steps.
+
+Library stubs not installed
+---------------------------
+
+If mypy can't find stubs for a third-party library, and it knows that stubs exist for
+the library, you will get a message like this:
+
+.. code-block:: text
+
+    main.py:1: error: Library stubs not installed for "yaml" (or incompatible with Python 3.8)
+    main.py:1: note: Hint: "python3 -m pip install types-PyYAML"
+    main.py:1: note: (or run "mypy --install-types" to install all missing stub packages)
+
+You can resolve the issue by running the suggested pip command or
+commands. Alternatively, you can use :option:`--install-types <mypy
+--install-types>` to install all known missing stubs:
+
+.. code-block:: text
+
+    mypy --install-types
+
+This installs any stub packages that were suggested in the previous
+mypy run. You can also use your normal mypy command line with the
+extra :option:`--install-types <mypy --install-types>` option to
+install missing stubs at the end of the run (if any were found).
+
+You can also get this message if the stubs only support Python 3 and
+your target Python version is Python 2, or vice versa. In this case
+follow instructions in
+:ref:`missing-type-hints-for-third-party-library`.
 
 .. _missing-type-hints-for-third-party-library:
 
@@ -294,11 +328,12 @@ the former has type hints and the latter does not. We run
 :option:`mypy -m mycode.foo <mypy -m>` and mypy discovers that ``mycode.foo`` imports
 ``mycode.bar``.
 
-How do we want mypy to type check ``mycode.bar``? We can configure the
-desired behavior by using the :option:`--follow-imports <mypy --follow-imports>` flag. This flag
+How do we want mypy to type check ``mycode.bar``? Mypy's behaviour here is
+configurable -- although we **strongly recommend** using the default --
+by using the :option:`--follow-imports <mypy --follow-imports>` flag. This flag
 accepts one of four string values:
 
--   ``normal`` (the default) follows all imports normally and
+-   ``normal`` (the default, recommended) follows all imports normally and
     type checks all top level code (as well as the bodies of all
     functions and methods with at least one type annotation in
     the signature).
@@ -328,7 +363,7 @@ files that do not use type hints) pass under :option:`--follow-imports=normal <m
 This is usually not too difficult to do: mypy is designed to report as
 few error messages as possible when it is looking at unannotated code.
 
-If doing this is intractable, we recommend passing mypy just the files
+Only if doing this is intractable, we recommend passing mypy just the files
 you want to type check and use :option:`--follow-imports=silent <mypy --follow-imports>`. Even if
 mypy is unable to perfectly type check a file, it can still glean some
 useful information by parsing it (for example, understanding what methods
@@ -355,7 +390,8 @@ to modules to type check.
 - Mypy will check all paths provided that correspond to files.
 
 - Mypy will recursively discover and check all files ending in ``.py`` or
-  ``.pyi`` in directory paths provided.
+  ``.pyi`` in directory paths provided, after accounting for
+  :option:`--exclude <mypy --exclude>`.
 
 - For each file to be checked, mypy will attempt to associate the file (e.g.
   ``project/foo/bar/baz.py``) with a fully qualified module name (e.g.

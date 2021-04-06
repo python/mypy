@@ -97,6 +97,8 @@ class Options:
         # sufficient to determine module names for files. As a possible alternative, add a single
         # top-level __init__.py to your packages.
         self.explicit_package_bases = False
+        # File names, directory names or subpaths to avoid checking
+        self.exclude = ""  # type: str
 
         # disallow_any options
         self.disallow_any_generics = False
@@ -291,6 +293,8 @@ class Options:
         self.transform_source = None  # type: Optional[Callable[[Any], Any]]
         # Print full path to each file in the report.
         self.show_absolute_path = False  # type: bool
+        # Install missing stub packages if True
+        self.install_types = False
 
     # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property

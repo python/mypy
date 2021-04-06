@@ -95,7 +95,7 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
             reprocessed = [] if item.arg is None else [t.strip() for t in item.arg.split(',')]
             targets[passnum] = reprocessed
         elif item.id == 'delete':
-            # File to delete during a multi-step test case
+            # File/directory to delete during a multi-step test case
             assert item.arg is not None
             m = re.match(r'(.*)\.([0-9]+)$', item.arg)
             assert m, 'Invalid delete section: {}'.format(item.arg)

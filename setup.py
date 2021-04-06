@@ -18,9 +18,6 @@ sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 from setuptools import setup, find_packages
 from setuptools.command.build_py import build_py
 from mypy.version import __version__ as version
-from mypy import git
-
-git.verify_git_integrity_or_abort(".")
 
 description = 'Optional static typing for Python'
 long_description = '''
@@ -73,6 +70,7 @@ cmdclass = {'build_py': CustomPythonBuild}
 package_data = ['py.typed']
 
 package_data += find_package_data(os.path.join('mypy', 'typeshed'), ['*.py', '*.pyi'])
+package_data += [os.path.join('mypy', 'typeshed', 'stdlib', 'VERSIONS')]
 
 package_data += find_package_data(os.path.join('mypy', 'xml'), ['*.xsd', '*.xslt', '*.css'])
 
@@ -101,8 +99,11 @@ if USE_MYPYC:
         # Also I think there would be problems with how we generate version.py.
         'version.py',
 
-        # Can be removed once we drop support for Python 3.5.2 and lower.
+        # Skip these to reduce the size of the build
         'stubtest.py',
+        'stubgenc.py',
+        'stubdoc.py',
+        'stubutil.py',
     )) + (
         # Don't want to grab this accidentally
         os.path.join('mypyc', 'lib-rt', 'setup.py'),
@@ -190,12 +191,15 @@ setup(name='mypy',
       classifiers=classifiers,
       cmdclass=cmdclass,
       # When changing this, also update mypy-requirements.txt.
-      install_requires=['typed_ast >= 1.4.0, < 1.5.0',
+      install_requires=["typed_ast >= 1.4.0, < 1.5.0; python_version<'3.8'",
                         'typing_extensions>=3.7.4',
                         'mypy_extensions >= 0.4.3, < 0.5.0',
+                        'types-typing-extensions>=3.7.0',
+                        'types-mypy-extensions>=0.4.0',
+                        'toml',
                         ],
       # Same here.
-      extras_require={'dmypy': 'psutil >= 4.0'},
+      extras_require={'dmypy': 'psutil >= 4.0', 'python2': 'typed_ast >= 1.4.0, < 1.5.0'},
       python_requires=">=3.5",
       include_package_data=True,
       project_urls={

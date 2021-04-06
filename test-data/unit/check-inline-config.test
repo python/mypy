@@ -61,7 +61,7 @@ import a
 [file a.py]
 # mypy: allow-any-generics, disallow-untyped-globals
 
-x = []  # E: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
+x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 
 from typing import List
 def foo() -> List:

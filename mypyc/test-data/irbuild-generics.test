@@ -22,8 +22,9 @@ L0:
     r0 = CPyList_GetItemShort(x, 0)
     r1 = PyList_New(1)
     r2 = get_element_ptr r1 ob_item :: PyListObject
-    r3 = load_mem r2, r1 :: ptr*
-    set_mem r3, r0, r1 :: builtins.object*
+    r3 = load_mem r2 :: ptr*
+    set_mem r3, r0 :: builtins.object*
+    keep_alive r1
     return r1
 def h(x, y):
     x :: int

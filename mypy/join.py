@@ -310,8 +310,9 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         if isinstance(self.s, LiteralType):
             if t == self.s:
                 return t
-            else:
-                return join_types(self.s.fallback, t.fallback)
+            if self.s.fallback.type.is_enum and t.fallback.type.is_enum:
+                return mypy.typeops.make_simplified_union([self.s, t])
+            return join_types(self.s.fallback, t.fallback)
         else:
             return join_types(self.s, t.fallback)
 
