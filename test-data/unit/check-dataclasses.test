@@ -1108,3 +1108,72 @@ class B(A):
 reveal_type(B)  # N: Revealed type is "def (foo: builtins.int) -> __main__.B"
 
 [builtins fixtures/property.pyi]
+
+[case testDataclassCallableProperty]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Callable
+
+@dataclass
+class A:
+    foo: Callable[[int], int]
+
+def my_foo(x: int) -> int:
+    return x
+
+a = A(foo=my_foo)
+a.foo(1)
+reveal_type(a.foo)  # N: Revealed type is "def (builtins.int) -> builtins.int"
+reveal_type(A.foo)  # N: Revealed type is "def (builtins.int) -> builtins.int"
+[typing fixtures/typing-medium.pyi]
+[case testDataclassCallableAssignment]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Callable
+
+@dataclass
+class A:
+    foo: Callable[[int], int]
+
+def my_foo(x: int) -> int:
+    return x
+
+a = A(foo=my_foo)
+
+def another_foo(x: int) -> int:
+    return x + 1
+
+a.foo = another_foo
+[case testDataclassCallablePropertyWrongType]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Callable
+
+@dataclass
+class A:
+    foo: Callable[[int], int]
+
+def my_foo(x: int) -> str:
+    return "foo"
+
+a = A(foo=my_foo)  # E: Argument "foo" to "A" has incompatible type "Callable[[int], str]"; expected "Callable[[int], int]"
+[typing fixtures/typing-medium.pyi]
+[case testDataclassCallablePropertyWrongTypeAssignment]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Callable
+
+@dataclass
+class A:
+    foo: Callable[[int], int]
+
+def my_foo(x: int) -> int:
+    return x
+
+a = A(foo=my_foo)
+
+def another_foo(x: int) -> str:
+    return "foo"
+
+a.foo = another_foo  # E: Incompatible types in assignment (expression has type "Callable[[int], str]", variable has type "Callable[[int], int]")
+[typing fixtures/typing-medium.pyi]
