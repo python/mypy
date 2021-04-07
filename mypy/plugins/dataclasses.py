@@ -10,10 +10,12 @@ from mypy.nodes import (
 )
 from mypy.plugin import ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
-    add_method, _get_decorator_bool_argument, deserialize_and_fixup_type,
+    add_method, _get_decorator_bool_argument, deserialize_and_fixup_type, add_attribute_to_class,
 )
 from mypy.typeops import map_type_from_supertype
-from mypy.types import Type, Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type
+from mypy.types import (
+    Type, Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type, TupleType, LiteralType,
+)
 from mypy.server.trigger import make_wildcard_trigger
 
 # The set of decorators that generate dataclasses.
@@ -172,6 +174,12 @@ class DataclassTransformer:
             self._freeze(attributes)
 
         self.reset_init_only_vars(info, attributes)
+
+        # Add __match_args__. This is always added
+        str_type = ctx.api.named_type("__builtins__.str")
+        literals = [LiteralType(attr.name, str_type) for attr in attributes]  # type: List[Type]
+        match_args_type = TupleType(literals, ctx.api.named_type("__builtins__.tuple"))
+        add_attribute_to_class(ctx.api, ctx.cls, "__match_args__", match_args_type, final=True)
 
         info.metadata['dataclass'] = {
             'attributes': [attr.serialize() for attr in attributes],

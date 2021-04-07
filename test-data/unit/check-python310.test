@@ -362,6 +362,21 @@ match m:
         reveal_type(k)  # N: Revealed type is "builtins.tuple[Any]"
 [builtins fixtures/primitives.pyi]
 
+[case testClassPatternCaptureDataclass]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    a: str
+    b: int
+
+m: A
+
+match m:
+    case A(i, j):
+        reveal_type(i)  # N: Revealed type is "builtins.str"
+        reveal_type(j)  # N: Revealed type is "builtins.int"
+
 [case testClassPatternCaptureGeneric]
 from typing import Generic, TypeVar
 

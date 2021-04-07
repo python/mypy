@@ -331,14 +331,14 @@ class PatternChecker(PatternVisitor[Optional[Type]]):
         else:
             return None
 
-    def should_self_match(self, typ: Type):
+    def should_self_match(self, typ: Type) -> bool:
         for other in self.self_match_types:
             if is_subtype(typ, other):
                 return True
         return False
 
     def generate_self_match_types(self) -> List[Type]:
-        types = []
+        types = []  # type: List[Type]
         for name in self_match_type_names:
             try:
                 types.append(self.chk.named_type(name))
