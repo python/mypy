@@ -54,12 +54,12 @@ class PatternChecker(PatternVisitor[Optional[Type]]):
     # The expression being matched against the pattern
     subject = None  # type: Expression
     # Type of the subject to check the (sub)pattern against
-    type_stack = []  # type: List[ProperType]
+    type_stack = []  # type: List[Type]
 
     self_match_types = None  # type: List[Type]
 
     def __init__(self, chk: 'mypy.checker.TypeChecker', msg: MessageBuilder, plugin: Plugin,
-                 subject: Expression, subject_type: ProperType) -> None:
+                 subject: Expression, subject_type: Type) -> None:
         self.chk = chk
         self.msg = msg
         self.plugin = plugin
@@ -83,7 +83,14 @@ class PatternChecker(PatternVisitor[Optional[Type]]):
         return o.accept(self)
 
     def visit_as_pattern(self, o: AsPattern) -> Optional[Type]:
-        return self.type_stack[-1]
+        typ = self.visit(o.pattern)
+        specific_type = get_more_specific_type(typ, self.type_stack[-1])
+        if specific_type is None:
+            return None
+        self.type_stack.append(specific_type)
+        self.check_capture(o.name)
+        self.type_stack.pop()
+        return typ
 
     def visit_or_pattern(self, o: OrPattern) -> Optional[Type]:
         return self.type_stack[-1]
@@ -135,7 +142,7 @@ class PatternChecker(PatternVisitor[Optional[Type]]):
 
     def visit_sequence_pattern(self, o: SequencePattern) -> Optional[Type]:
         current_type = self.type_stack[-1]
-        inner_type = get_proper_type(self.get_sequence_type(current_type))
+        inner_type = self.get_sequence_type(get_proper_type(current_type))
         if inner_type is None:
             if is_subtype(self.chk.named_type("typing.Iterable"), current_type):
                 # Current type is more general, but the actual value could still be iterable
@@ -191,7 +198,6 @@ class PatternChecker(PatternVisitor[Optional[Type]]):
             if inner_type is None:
                 can_match = False
                 inner_type = self.chk.named_type("builtins.object")
-            inner_type = get_proper_type(inner_type)
             self.type_stack.append(inner_type)
             if self.visit(value) is None:
                 can_match = False
@@ -206,7 +212,6 @@ class PatternChecker(PatternVisitor[Optional[Type]]):
                               mapping_type: Type,
                               key_pattern: MappingKeyPattern
                               ) -> Optional[Type]:
-        mapping_type = get_proper_type(mapping_type)
         local_errors = self.msg.clean_copy()
         local_errors.disable_count = 0
         if isinstance(mapping_type, TypedDictType):
@@ -321,7 +326,7 @@ class PatternChecker(PatternVisitor[Optional[Type]]):
             else:
                 key_type = self.chk.named_type("builtins.object")
 
-            self.type_stack.append(get_proper_type(key_type))
+            self.type_stack.append(key_type)
             if self.visit(pattern) is None:
                 can_match = False
             self.type_stack.pop()
@@ -331,9 +336,8 @@ class PatternChecker(PatternVisitor[Optional[Type]]):
         else:
             return None
 
-    def should_self_match(self, typ: Type) -> bool:
-        proper_type = get_proper_type(typ)
-        if isinstance(proper_type, Instance) and proper_type.type.is_named_tuple:
+    def should_self_match(self, typ: ProperType) -> bool:
+        if isinstance(typ, Instance) and typ.type.is_named_tuple:
             return False
         for other in self.self_match_types:
             if is_subtype(typ, other):
@@ -363,8 +367,10 @@ def get_match_arg_names(typ: TupleType) -> List[Optional[str]]:
     return args
 
 
-def get_more_specific_type(left: Type, right: Type) -> Optional[Type]:
-    if is_subtype(left, right):
+def get_more_specific_type(left: Optional[Type], right: Optional[Type]) -> Optional[Type]:
+    if left is None or right is None:
+        return None
+    elif is_subtype(left, right):
         return left
     elif is_subtype(right, left):
         return right

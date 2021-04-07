@@ -390,6 +390,19 @@ match m:
         reveal_type(j)  # N: Revealed type is "Any"
 [builtins fixtures/list.pyi]
 
+[case testClassPatternCaptureNamedTupleInlineTyped]
+from typing import NamedTuple
+
+A = NamedTuple("A", [("a", str), ("b", int)])
+
+m: A
+
+match m:
+    case A(i, j):
+        reveal_type(i)  # N: Revealed type is "builtins.str"
+        reveal_type(j)  # N: Revealed type is "builtins.int"
+[builtins fixtures/list.pyi]
+
 [case testClassPatternCaptureNamedTupleClass]
 from typing import NamedTuple
 
@@ -645,3 +658,27 @@ class B:
 
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-medium.pyi]
+
+
+-- as pattern --
+[case testAsPattern]
+m: int
+
+match m:
+    case x as l:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+        reveal_type(l)  # N: Revealed type is "builtins.int"
+
+[case testAsPatternNarrows]
+m: object
+
+match m:
+    case int() as l:
+        reveal_type(l)  # N: Revealed type is "builtins.int"
+
+[case testAsPatternAlreadyNarrower]
+m: bool
+
+match m:
+    case int() as l:
+        reveal_type(l)  # N: Revealed type is "builtins.bool"
