@@ -377,6 +377,33 @@ match m:
         reveal_type(i)  # N: Revealed type is "builtins.str"
         reveal_type(j)  # N: Revealed type is "builtins.int"
 
+[case testClassPatternCaptureNamedTupleInline]
+from collections import namedtuple
+
+A = namedtuple("A", ["a", "b"])
+
+m: A
+
+match m:
+    case A(i, j):
+        reveal_type(i)  # N: Revealed type is "Any"
+        reveal_type(j)  # N: Revealed type is "Any"
+[builtins fixtures/list.pyi]
+
+[case testClassPatternCaptureNamedTupleClass]
+from typing import NamedTuple
+
+class A(NamedTuple):
+    a: str
+    b: int
+
+m: A
+
+match m:
+    case A(i, j):
+        reveal_type(i)  # N: Revealed type is "builtins.str"
+        reveal_type(j)  # N: Revealed type is "builtins.int"
+
 [case testClassPatternCaptureGeneric]
 from typing import Generic, TypeVar
 
