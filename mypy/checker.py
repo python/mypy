@@ -4152,15 +4152,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                     type_being_compared = current_type
 
                         if_maps = [] # type: List[TypeMap]
-                        else_maps = [] # type: List[TypeMap]
                         for expr in exprs_in_type_calls:
-                            current_if_map, current_else_map = self.conditional_type_map_with_intersection(
+                            current_if_map, _ = self.conditional_type_map_with_intersection(
                                 expr,
                                 type_map[expr],
                                 type_being_compared
                             )
                             if_maps.append(current_if_map)
-                            else_maps.append(current_else_map)
                         def combine_maps(list_maps: List[TypeMap]) -> TypeMap:
                             """Combine all typemaps in list_maps into one typemap"""
                             result_map = {}
@@ -4169,7 +4167,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                     result_map.update(d)
                             return result_map
                         if_map = combine_maps(if_maps)
-                        else_map = combine_maps(else_maps)
+                        # type(x) == T is only true when x has the same type as T, meaning
+                        # that it can be false if x is an instance of a subclass of T. That means
+                        # we can't do any narrowing in the else case.
+                        else_map = {}
                 elif operator in {'in', 'not in'}:
                     assert len(expr_indices) == 2
                     left_index, right_index = expr_indices

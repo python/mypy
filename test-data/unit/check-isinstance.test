@@ -2597,3 +2597,12 @@ from typing import Any
 y: Any
 if type(y) is int:
     reveal_type(y) # N: Revealed type is "builtins.int"
+
+[case testTypeEqualsNarrowingUnionWithElse]
+from typing import Union
+
+x: Union[int, str]
+if type(x) is int:
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+else:
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
