@@ -4,7 +4,7 @@ match x:
     case _:
         pass
 [out]
-main:2: error: Name 'x' is not defined
+main:2: error: Name "x" is not defined
 
 [case testNoneBindingWildcardPattern]
 import typing
@@ -13,7 +13,7 @@ match x:
     case _:
         _
 [out]
-main:5: error: Name '_' is not defined
+main:5: error: Name "_" is not defined
 
 [case testNoneBindingStarredWildcardPattern]
 import typing
@@ -22,4 +22,4 @@ match x:
     case [*_]:
         _
 [out]
-main:5: error: Name '_' is not defined
+main:5: error: Name "_" is not defined
