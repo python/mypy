@@ -135,7 +135,7 @@ def consider_sys_version_info(expr: Expression, pyversion: Tuple[int, ...]) -> i
     op = expr.operators[0]
     if op not in ('==', '!=', '<=', '>=', '<', '>'):
         return TRUTH_VALUE_UNKNOWN
-    
+
     index = contains_sys_version_info(expr.operands[0])
     thing = contains_int_or_tuple_of_ints(expr.operands[1])
     if index is None or thing is None:
