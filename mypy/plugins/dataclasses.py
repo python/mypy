@@ -13,7 +13,10 @@ from mypy.plugins.common import (
     add_method, _get_decorator_bool_argument, deserialize_and_fixup_type,
 )
 from mypy.typeops import map_type_from_supertype
-from mypy.types import Type, Instance, NoneType, TypeVarDef, TypeVarType, CallableType, get_proper_type
+from mypy.types import (
+    Type, Instance, NoneType, TypeVarDef, TypeVarType, CallableType,
+    get_proper_type
+)
 from mypy.server.trigger import make_wildcard_trigger
 
 # The set of decorators that generate dataclasses.
@@ -365,7 +368,7 @@ class DataclassTransformer:
         """
         info = self._ctx.cls.info
         for attr in attributes:
-            if isinstance(attr.type, CallableType):
+            if isinstance(get_proper_type(attr.type), CallableType):
                 var = attr.to_var()
                 var.info = info
                 var.is_property = True
