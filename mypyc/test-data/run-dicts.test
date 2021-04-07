@@ -224,3 +224,6 @@ def test_dict_setdefault() -> None:
     assert d.setdefault('c', 3) == 3
     assert d['a'] == 1
     assert d['c'] == 3
+    assert d.setdefault('a') == 1
+    assert d.setdefault('e') == None
+    assert d.setdefault('e', 100) == None
