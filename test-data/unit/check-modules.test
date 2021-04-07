@@ -1398,7 +1398,7 @@ class C:
 import a
 b = 1 + 1
 [out]
-tmp/a.py:4: error: Cannot determine type of 'x2'
+tmp/a.py:4: error: Cannot determine type of "x2"
 
 [case testErrorInPassTwo1]
 import b

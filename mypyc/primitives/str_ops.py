@@ -5,7 +5,7 @@ from typing import List, Tuple
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     RType, object_rprimitive, str_rprimitive, int_rprimitive, list_rprimitive,
-    c_int_rprimitive, pointer_rprimitive, bool_rprimitive
+    c_int_rprimitive, pointer_rprimitive, bool_rprimitive, bit_rprimitive
 )
 from mypyc.primitives.registry import (
     method_op, binary_op, function_op,
@@ -126,3 +126,11 @@ method_op(
     return_type=str_rprimitive,
     c_function_name="CPyStr_Replace",
     error_kind=ERR_MAGIC)
+
+# check if a string is true (isn't an empty string)
+str_check_if_true = custom_op(
+    arg_types=[str_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="CPyStr_IsTrue",
+    error_kind=ERR_NEVER,
+)

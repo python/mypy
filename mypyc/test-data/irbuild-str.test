@@ -139,3 +139,23 @@ L4:
 L5: 
     unreachable 
     
+[case testStrToBool]
+def is_true(x: str) -> bool:
+    if x:
+        return True
+    else:
+        return False
+[out]
+def is_true(x):
+    x :: str
+    r0 :: bit
+L0:
+    r0 = CPyStr_IsTrue(x)
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    return 1
+L2:
+    return 0
+L3:
+    unreachable
+

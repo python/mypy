@@ -19,7 +19,7 @@ reveal_type(g2)  # N: Revealed type is "def (x: Literal['A B'])"
 
 [case testLiteralInvalidTypeComment]
 from typing_extensions import Literal
-def f(x):  # E: syntax error in type comment '(A[) -> None'
+def f(x):  # E: syntax error in type comment "(A[) -> None"
     # type: (A[) -> None
     pass
 

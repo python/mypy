@@ -1299,14 +1299,14 @@ class A: pass
 
 [case testAccessGlobalVarBeforeItsTypeIsAvailable]
 import typing
-x.y  # E: Cannot determine type of 'x'
+x.y  # E: Cannot determine type of "x"
 x = object()
 x.y  # E: "object" has no attribute "y"
 
 [case testAccessDataAttributeBeforeItsTypeIsAvailable]
 
 a = None # type: A
-a.x.y  # E: Cannot determine type of 'x'
+a.x.y  # E: Cannot determine type of "x"
 class A:
    def __init__(self) -> None:
        self.x = object()
@@ -1963,7 +1963,7 @@ class A:
 [out]
 
 [case testMultipassAndTopLevelVariable]
-y = x # E: Cannot determine type of 'x'
+y = x # E: Cannot determine type of "x"
 y()
 x = 1+0
 [out]
@@ -2066,7 +2066,7 @@ y = ''
 [case testMultipassAndCircularDependency]
 class A:
     def f(self) -> None:
-        self.x = self.y # E: Cannot determine type of 'y'
+        self.x = self.y # E: Cannot determine type of "y"
 
     def g(self) -> None:
         self.y = self.x
@@ -2146,7 +2146,7 @@ from typing import TypeVar, Callable
 T = TypeVar('T')
 def dec() -> Callable[[T], T]: pass
 
-A.g  # E: Cannot determine type of 'g'
+A.g  # E: Cannot determine type of "g"
 
 class A:
     @classmethod

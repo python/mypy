@@ -63,7 +63,7 @@ from mypyc.primitives.misc_ops import (
 )
 from mypyc.primitives.int_ops import int_comparison_op_mapping
 from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
-from mypyc.primitives.str_ops import unicode_compare
+from mypyc.primitives.str_ops import unicode_compare, str_check_if_true
 from mypyc.primitives.set_ops import new_set_op
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.subtype import is_subtype
@@ -958,6 +958,8 @@ class LowLevelIRBuilder:
             zero = Integer(0, short_int_rprimitive)
             self.compare_tagged_condition(value, zero, '!=', true, false, value.line)
             return
+        elif is_same_type(value.type, str_rprimitive):
+            value = self.call_c(str_check_if_true, [value], value.line)
         elif is_same_type(value.type, list_rprimitive):
             length = self.builtin_len(value, value.line)
             zero = Integer(0)
