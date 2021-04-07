@@ -14,7 +14,7 @@ from mypy.plugins.common import (
 )
 from mypy.typeops import map_type_from_supertype
 from mypy.types import (
-    Type, Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type, TupleType, LiteralType,
+    Type, Instance, NoneType, TypeVarDef, TypeVarType, TupleType, LiteralType, get_proper_type,
 )
 from mypy.server.trigger import make_wildcard_trigger
 
