@@ -3984,7 +3984,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # types being compared are, so we don't try to narrow types any
                     # further because we can't really get any information about the
                     # type of x from that check
-                    break
+                    return {}, {}
                 else:
                     type_being_compared = current_type
 
