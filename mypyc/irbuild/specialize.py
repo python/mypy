@@ -24,6 +24,7 @@ from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
     bool_rprimitive, is_dict_rprimitive, is_list_rprimitive, is_tuple_rprimitive
 )
+from mypyc.primitives.registry import CFunctionDescription
 from mypyc.primitives.dict_ops import dict_keys_op, dict_values_op, dict_items_op
 from mypyc.primitives.tuple_ops import new_tuple_set_item_op
 from mypyc.irbuild.builder import IRBuilder
@@ -150,8 +151,15 @@ def translate_safe_generator_call(
                     + [builder.accept(arg) for arg in expr.args[1:]]),
                 builder.node_type(expr), expr.line, expr.arg_kinds, expr.arg_names)
         else:
-            if callee.fullname == "builtins.tuple":
-                val = tuple_from_generator_helper(builder, expr.args[0])
+            if len(expr.args) == 1:
+                val = None
+                if callee.fullname == "builtins.tuple":
+                    val = preallocate_space_helper(builder, expr.args[0],
+                                                   empty_op_llbuilder=builder.builder.new_tuple_with_length,
+                                                   set_item_op=new_tuple_set_item_op)
+                # if callee.fullname == "builtins.list":
+                #     val = preallocate_space_helper(builder, expr.args[0],
+                #                                    set_item_op=new_tuple_set_item_op)
                 if val is not None:
                     return val
 
@@ -162,25 +170,27 @@ def translate_safe_generator_call(
     return None
 
 
-def tuple_from_generator_helper(builder: IRBuilder,
-                                gen: GeneratorExpr) -> Optional[Value]:
-
+def preallocate_space_helper(builder: IRBuilder,
+                             gen: GeneratorExpr,
+                             empty_op_llbuilder: Callable[[Value, int], Value],
+                             set_item_op: CFunctionDescription) -> Optional[Value]:
+    """Currently we only optimize for simplest generator expression"""
     if len(gen.sequences) == 1 and len(gen.condlists[0]) == 0:
-        # Currently we only optimize for simplest generator expression
         rtype = builder.node_type(gen.sequences[0])
         if is_list_rprimitive(rtype) or is_tuple_rprimitive(rtype):
-            tuple_ops = builder.builder.new_tuple_with_length(builder.accept(gen.sequences[0]),
-                                                              gen.line)
-            item, expr = gen.indices[0], gen.sequences[0]
 
-            def set_tuple_item(item_index: Value) -> None:
+            length = builder.builder.builtin_len(builder.accept(gen.sequences[0]),
+                                                 gen.line, use_pyssize_t=True)
+            target_op = empty_op_llbuilder(length, gen.line)
+
+            def set_item(item_index: Value) -> None:
                 e = builder.accept(gen.left_expr)
-                builder.call_c(new_tuple_set_item_op, [tuple_ops, item_index, e], gen.line)
+                builder.call_c(set_item_op, [target_op, item_index, e], gen.line)
 
-            for_loop_helper_with_index(builder, item, expr,
-                                       set_tuple_item, gen.line)
+            for_loop_helper_with_index(builder, gen.indices[0], gen.sequences[0],
+                                       set_item, gen.line)
 
-            return tuple_ops
+            return target_op
     return None
 
 
