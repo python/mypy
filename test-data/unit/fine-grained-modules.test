@@ -402,7 +402,7 @@ from p import q
 [file p/q.py.3]
 [out]
 ==
-main:1: error: Module 'p' has no attribute 'q'
+main:1: error: Module "p" has no attribute "q"
 -- TODO: The following messages are different compared to non-incremental mode
 main:1: error: Cannot find implementation or library stub for module named "p.q"
 main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
@@ -1474,7 +1474,7 @@ from c import *
 [file c.py.2]
 def f(x: int) -> None: pass
 [out]
-main:1: error: Module 'b' has no attribute 'f'
+main:1: error: Module "b" has no attribute "f"
 ==
 main:2: error: Missing positional argument "x" in call to "f"
 
@@ -1523,7 +1523,7 @@ from p.c import *
 [file p/c.py.2]
 def f(x: int) -> None: pass
 [out]
-main:1: error: Module 'p.b' has no attribute 'f'
+main:1: error: Module "p.b" has no attribute "f"
 ==
 main:2: error: Missing positional argument "x" in call to "f"
 
@@ -1551,7 +1551,7 @@ def f() -> None: pass
 [file c.py.2]
 [out]
 ==
-main:1: error: Module 'b' has no attribute 'f'
+main:1: error: Module "b" has no attribute "f"
 
 [case testImportStarRemoveDependency2]
 from b import *

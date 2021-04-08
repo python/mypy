@@ -415,7 +415,7 @@ app1 >= app3
 from dataclasses import dataclass
 
 @dataclass(eq=False, order=True)
-class Application:  # E: eq must be True if order is True
+class Application:  # E: eq must be "True" if order is "True"
    ...
 
 [builtins fixtures/list.pyi]

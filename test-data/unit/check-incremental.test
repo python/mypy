@@ -1821,9 +1821,9 @@ class C:
         A = NamedTuple('A', [('x', int), ('y', int)])
 [builtins fixtures/tuple.pyi]
 [out1]
-main:1: error: Module 'ntcrash' has no attribute 'nope'
+main:1: error: Module "ntcrash" has no attribute "nope"
 [out2]
-main:1: error: Module 'ntcrash' has no attribute 'nope'
+main:1: error: Module "ntcrash" has no attribute "nope"
 
 [case testIncrementalNamedTupleInMethod2]
 from ntcrash import nope
@@ -1835,9 +1835,9 @@ class C:
             A = NamedTuple('A', [('x', int), ('y', int)])
 [builtins fixtures/tuple.pyi]
 [out1]
-main:1: error: Module 'ntcrash' has no attribute 'nope'
+main:1: error: Module "ntcrash" has no attribute "nope"
 [out2]
-main:1: error: Module 'ntcrash' has no attribute 'nope'
+main:1: error: Module "ntcrash" has no attribute "nope"
 
 [case testIncrementalNamedTupleInMethod3]
 from ntcrash import nope
@@ -1850,9 +1850,9 @@ class C:
                 A = NamedTuple('A', [('x', int), ('y', int)])
 [builtins fixtures/tuple.pyi]
 [out1]
-main:1: error: Module 'ntcrash' has no attribute 'nope'
+main:1: error: Module "ntcrash" has no attribute "nope"
 [out2]
-main:1: error: Module 'ntcrash' has no attribute 'nope'
+main:1: error: Module "ntcrash" has no attribute "nope"
 
 [case testIncrementalTypedDictInMethod]
 from tdcrash import nope
@@ -1863,9 +1863,9 @@ class C:
         A = TypedDict('A', {'x': int, 'y': int})
 [builtins fixtures/dict.pyi]
 [out1]
-main:1: error: Module 'tdcrash' has no attribute 'nope'
+main:1: error: Module "tdcrash" has no attribute "nope"
 [out2]
-main:1: error: Module 'tdcrash' has no attribute 'nope'
+main:1: error: Module "tdcrash" has no attribute "nope"
 
 [case testIncrementalTypedDictInMethod2]
 from tdcrash import nope
@@ -1877,9 +1877,9 @@ class C:
             A = TypedDict('A', {'x': int, 'y': int})
 [builtins fixtures/dict.pyi]
 [out1]
-main:1: error: Module 'tdcrash' has no attribute 'nope'
+main:1: error: Module "tdcrash" has no attribute "nope"
 [out2]
-main:1: error: Module 'tdcrash' has no attribute 'nope'
+main:1: error: Module "tdcrash" has no attribute "nope"
 
 [case testIncrementalTypedDictInMethod3]
 from tdcrash import nope
@@ -1892,9 +1892,9 @@ class C:
                 A = TypedDict('A', {'x': int, 'y': int})
 [builtins fixtures/dict.pyi]
 [out1]
-main:1: error: Module 'tdcrash' has no attribute 'nope'
+main:1: error: Module "tdcrash" has no attribute "nope"
 [out2]
-main:1: error: Module 'tdcrash' has no attribute 'nope'
+main:1: error: Module "tdcrash" has no attribute "nope"
 
 [case testIncrementalNewTypeInMethod]
 from ntcrash import nope
@@ -1914,9 +1914,9 @@ def f() -> None:
 
 [builtins fixtures/dict.pyi]
 [out1]
-main:1: error: Module 'ntcrash' has no attribute 'nope'
+main:1: error: Module "ntcrash" has no attribute "nope"
 [out2]
-main:1: error: Module 'ntcrash' has no attribute 'nope'
+main:1: error: Module "ntcrash" has no attribute "nope"
 
 [case testIncrementalInnerClassAttrInMethod]
 import crash
@@ -2225,9 +2225,9 @@ from b import x
 1 + 1
 [out]
 [out2]
-tmp/b.py:1: error: Module 'c' has no attribute 'x'
+tmp/b.py:1: error: Module "c" has no attribute "x"
 [out3]
-tmp/b.py:1: error: Module 'c' has no attribute 'x'
+tmp/b.py:1: error: Module "c" has no attribute "x"
 
 [case testCacheDeletedAfterErrorsFound2]
 
@@ -2284,9 +2284,9 @@ from b import x
 1 + 1
 [out]
 [out2]
-tmp/c.py:1: error: Module 'd' has no attribute 'x'
+tmp/c.py:1: error: Module "d" has no attribute "x"
 [out3]
-tmp/c.py:1: error: Module 'd' has no attribute 'x'
+tmp/c.py:1: error: Module "d" has no attribute "x"
 
 [case testNoCrashOnDeletedWithCacheOnCmdline]
 # cmd: mypy -m nonexistent
@@ -4572,10 +4572,10 @@ B = List[A]
 
 [builtins fixtures/list.pyi]
 [out]
-tmp/lib.pyi:4: error: Module 'other' has no attribute 'B'
+tmp/lib.pyi:4: error: Module "other" has no attribute "B"
 tmp/other.pyi:3: error: Cannot resolve name "B" (possible cyclic definition)
 [out2]
-tmp/lib.pyi:4: error: Module 'other' has no attribute 'B'
+tmp/lib.pyi:4: error: Module "other" has no attribute "B"
 tmp/other.pyi:3: error: Cannot resolve name "B" (possible cyclic definition)
 tmp/a.py:3: note: Revealed type is "builtins.list[Any]"
 

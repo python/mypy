@@ -125,7 +125,7 @@ def f(x: object, n: int, s: str) -> None:
 [case testColumnHasNoAttribute]
 import m
 if int():
-    from m import foobaz # E:5: Module 'm' has no attribute 'foobaz'; maybe "foobar"?
+    from m import foobaz # E:5: Module "m" has no attribute "foobaz"; maybe "foobar"?
 1 .x # E:1: "int" has no attribute "x"
 (m.foobaz()) # E:2: Module has no attribute "foobaz"; maybe "foobar"?
 

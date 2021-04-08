@@ -36,7 +36,7 @@ target module can be found):
 
 .. code-block:: python
 
-    # Error: Module 'os' has no attribute 'non_existent'  [attr-defined]
+    # Error: Module "os" has no attribute "non_existent"  [attr-defined]
     from os import non_existent
 
 A reference to a missing attribute is given the ``Any`` type. In the

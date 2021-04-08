@@ -501,7 +501,7 @@ from p import m
 main.py:1: error: Cannot find implementation or library stub for module named "p"
 main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
-main.py:1: error: Module 'p' has no attribute 'm'
+main.py:1: error: Module "p" has no attribute "m"
 ==
 p/m.py:1: error: "str" not callable
 

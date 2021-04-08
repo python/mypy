@@ -282,11 +282,11 @@ class DeprecatedTrue:
 class DeprecatedFalse:
    ...
 
-@attrs(cmp=False, eq=True)  # E: Don't mix `cmp` with `eq' and `order`
+@attrs(cmp=False, eq=True)  # E: Don't mix "False" with "True" and "None"
 class Mixed:
    ...
 
-@attrs(order=True, eq=False)  # E: eq must be True if order is True
+@attrs(order=True, eq=False)  # E: eq must be "True" if order is "True"
 class Confused:
    ...
 [builtins fixtures/attr.pyi]
