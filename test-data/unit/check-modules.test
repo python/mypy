@@ -326,7 +326,7 @@ main:2: error: Name "y" is not defined
 # Error messages differ with the new analyzer
 
 import xab  # E: Cannot find implementation or library stub for module named "xab"  # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-def xab(): pass  # E: Name 'xab' already defined (possibly by an import)
+def xab(): pass  # E: Name "xab" already defined (possibly by an import)
 
 [case testAccessingUnknownModuleFromOtherModule]
 import x
@@ -2110,7 +2110,7 @@ def __getattr__(name: str) -> Any: ...
 from has_attr import name
 from has_attr import name
 from has_attr import x
-from has_attr import y as x  # E: Name 'x' already defined (possibly by an import)
+from has_attr import y as x  # E: Name "x" already defined (possibly by an import)
 reveal_type(name)  # N: Revealed type is "builtins.int"
 
 [file has_attr.pyi]

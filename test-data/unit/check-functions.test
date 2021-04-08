@@ -1390,7 +1390,7 @@ from typing import Any
 x = None # type: Any
 if x:
     def f(): pass
-def f(): pass # E: Name 'f' already defined on line 4
+def f(): pass # E: Name "f" already defined on line 4
 
 [case testIncompatibleConditionalFunctionDefinition]
 from typing import Any
@@ -1636,7 +1636,7 @@ x = None # type: Any
 class A:
     if x:
         def f(self): pass
-    def f(self): pass # E: Name 'f' already defined on line 5
+    def f(self): pass # E: Name "f" already defined on line 5
 
 [case testIncompatibleConditionalMethodDefinition]
 from typing import Any
@@ -2149,7 +2149,7 @@ f = g # E: Incompatible types in assignment (expression has type "Callable[[Any,
 
 [case testRedefineFunction2]
 def f() -> None: pass
-def f() -> None: pass # E: Name 'f' already defined on line 1
+def f() -> None: pass # E: Name "f" already defined on line 1
 
 
 -- Special cases

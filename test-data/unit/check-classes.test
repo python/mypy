@@ -1093,7 +1093,7 @@ A()
 class A: pass
 class A: pass
 [out]
-main:4: error: Name 'A' already defined on line 3
+main:4: error: Name "A" already defined on line 3
 
 [case testDocstringInClass]
 import typing
@@ -6101,13 +6101,13 @@ def test() -> None:
 class C:
     def __init__(self) -> None:
         self.foo = 12
-        self.foo: int = 12  # E: Attribute 'foo' already defined on line 3
+        self.foo: int = 12  # E: Attribute "foo" already defined on line 3
 
 [case testMemberRedefinitionDefinedInClass]
 class C:
     foo = 12
     def __init__(self) -> None:
-        self.foo: int = 12  # E: Attribute 'foo' already defined on line 2
+        self.foo: int = 12  # E: Attribute "foo" already defined on line 2
 
 [case testAbstractInit]
 from abc import abstractmethod, ABCMeta

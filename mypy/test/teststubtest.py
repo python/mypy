@@ -816,8 +816,8 @@ class StubtestMiscUnit(unittest.TestCase):
 
         output = run_stubtest(stub="def f(): ...\ndef f(): ...", runtime="", options=[])
         assert remove_color_code(output) == (
-            "error: failed mypy build.\n{}.pyi:2: "
-            "error: Name 'f' already defined on line 1\n".format(TEST_MODULE_NAME)
+            'error: failed mypy build.\n{}.pyi:2: '
+            'error: Name "f" already defined on line 1\n'.format(TEST_MODULE_NAME)
         )
 
     def test_missing_stubs(self) -> None:

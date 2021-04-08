@@ -145,7 +145,7 @@ class A: pass
 x = 0 # type: A
 x = 0 # type: A
 [out]
-main:4: error: Name 'x' already defined on line 3
+main:4: error: Name "x" already defined on line 3
 
 [case testLocalVarRedefinition]
 import typing
@@ -154,7 +154,7 @@ def f() -> None:
   x = 0 # type: A
   x = 0 # type: A
 [out]
-main:5: error: Name 'x' already defined on line 4
+main:5: error: Name "x" already defined on line 4
 
 [case testClassVarRedefinition]
 import typing
@@ -162,14 +162,14 @@ class A:
   x = 0 # type: object
   x = 0 # type: object
 [out]
-main:4: error: Name 'x' already defined on line 3
+main:4: error: Name "x" already defined on line 3
 
 [case testMultipleClassDefinitions]
 import typing
 class A: pass
 class A: pass
 [out]
-main:3: error: Name 'A' already defined on line 2
+main:3: error: Name "A" already defined on line 2
 
 [case testMultipleMixedDefinitions]
 import typing
@@ -177,8 +177,8 @@ x = 1
 def x(): pass
 class x: pass
 [out]
-main:3: error: Name 'x' already defined on line 2
-main:4: error: Name 'x' already defined on line 2
+main:3: error: Name "x" already defined on line 2
+main:4: error: Name "x" already defined on line 2
 
 [case testNameNotImported]
 import typing
@@ -556,7 +556,7 @@ class A:
   def g(self) -> None: pass
   def f(self, x: object) -> None: pass
 [out]
-main:5: error: Name 'f' already defined on line 3
+main:5: error: Name "f" already defined on line 3
 
 [case testInvalidGlobalDecl]
 import typing
@@ -573,7 +573,7 @@ def f():
        nonlocal x
        x = None
 [out]
-main:4: error: No binding for nonlocal 'x' found
+main:4: error: No binding for nonlocal "x" found
 main:5: error: Name "x" is not defined
 
 [case testNonlocalDeclNotMatchingGlobal]
@@ -583,7 +583,7 @@ def f() -> None:
     nonlocal x
     x = None
 [out]
-main:4: error: No binding for nonlocal 'x' found
+main:4: error: No binding for nonlocal "x" found
 main:5: error: Name "x" is not defined
 
 [case testNonlocalDeclConflictingWithParameter]
@@ -594,7 +594,7 @@ def g():
         nonlocal x
         x = None
 [out]
-main:5: error: Name 'x' is already defined in local scope before nonlocal declaration
+main:5: error: Name "x" is already defined in local scope before nonlocal declaration
 
 [case testNonlocalDeclOutsideFunction]
 x = 2
@@ -612,7 +612,7 @@ def f():
        nonlocal x
        x = None
 [out]
-main:7: error: Name 'x' is nonlocal and global
+main:7: error: Name "x" is nonlocal and global
 
 [case testNonlocalAndGlobalDecl]
 import typing
@@ -624,7 +624,7 @@ def f():
        global x
        x = None
 [out]
-main:7: error: Name 'x' is nonlocal and global
+main:7: error: Name "x" is nonlocal and global
 
 [case testNestedFunctionAndScoping]
 import typing
@@ -645,7 +645,7 @@ def f(x) -> None:
     x = 1
     def g(): pass
 [out]
-main:5: error: Name 'g' already defined on line 3
+main:5: error: Name "g" already defined on line 3
 
 [case testRedefinedOverloadedFunction]
 from typing import overload, Any
@@ -658,7 +658,7 @@ def f() -> None:
     def p(): pass # fail
 [out]
 main:3: error: An overloaded function outside a stub file must have an implementation
-main:8: error: Name 'p' already defined on line 3
+main:8: error: Name "p" already defined on line 3
 
 [case testNestedFunctionInMethod]
 import typing
@@ -1069,19 +1069,19 @@ t = 1 # E: Invalid assignment target
 [case testRedefineTypevar2]
 from typing import TypeVar
 t = TypeVar('t')
-def t(): pass # E: Name 't' already defined on line 2
+def t(): pass # E: Name "t" already defined on line 2
 [out]
 
 [case testRedefineTypevar3]
 from typing import TypeVar
 t = TypeVar('t')
-class t: pass # E: Name 't' already defined on line 2
+class t: pass # E: Name "t" already defined on line 2
 [out]
 
 [case testRedefineTypevar4]
 from typing import TypeVar
 t = TypeVar('t')
-from typing import Generic as t # E: Name 't' already defined on line 2
+from typing import Generic as t # E: Name "t" already defined on line 2
 [out]
 
 [case testInvalidStrLiteralType]
@@ -1123,7 +1123,7 @@ from typing import overload
 def dec(x): pass
 @dec
 def f(): pass
-@dec  # E: Name 'f' already defined on line 3
+@dec  # E: Name "f" already defined on line 3
 def f(): pass
 [out]
 
@@ -1220,7 +1220,7 @@ class A:
 import typing
 def f() -> None:
     import x
-    import y as x # E: Name 'x' already defined (by an import)
+    import y as x # E: Name "x" already defined (by an import)
     x.y
 [file x.py]
 y = 1
@@ -1230,7 +1230,7 @@ y = 1
 [case testImportTwoModulesWithSameNameInGlobalContext]
 import typing
 import x
-import y as x # E: Name 'x' already defined (by an import)
+import y as x # E: Name "x" already defined (by an import)
 x.y
 [file x.py]
 y = 1
@@ -1307,12 +1307,12 @@ a = ('spam', 'spam', 'eggs', 'spam')  # type: Tuple[str]
 [builtins fixtures/tuple.pyi]
 
 [out]
-main:3: error: Name 'a' already defined on line 2
-main:4: error: Name 'a' already defined on line 2
+main:3: error: Name "a" already defined on line 2
+main:4: error: Name "a" already defined on line 2
 
 [case testDuplicateDefFromImport]
 from m import A
-class A:  # E: Name 'A' already defined (possibly by an import)
+class A:  # E: Name "A" already defined (possibly by an import)
     pass
 [file m.py]
 class A:
@@ -1326,7 +1326,7 @@ def dec(x: Any) -> Any:
 @dec
 def f() -> None:
     pass
-@dec  # E: Name 'f' already defined on line 4
+@dec  # E: Name "f" already defined on line 4
 def f() -> None:
     pass
 [out]
@@ -1343,7 +1343,7 @@ if 1:
     def f(x: Any) -> None:
         pass
 else:
-    def f(x: str) -> None:  # E: Name 'f' already defined on line 3
+    def f(x: str) -> None:  # E: Name "f" already defined on line 3
         pass
 [out]
 
@@ -1352,7 +1352,7 @@ from typing import NamedTuple
 N = NamedTuple('N', [('a', int),
                      ('b', str)])
 
-class N:  # E: Name 'N' already defined on line 2
+class N:  # E: Name "N" already defined on line 2
     pass
 [builtins fixtures/tuple.pyi]
 [out]
@@ -1361,7 +1361,7 @@ class N:  # E: Name 'N' already defined on line 2
 from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 
-class Point:  # E: Name 'Point' already defined on line 2
+class Point:  # E: Name "Point" already defined on line 2
     pass
 [builtins fixtures/dict.pyi]
 
@@ -1370,14 +1370,14 @@ class Point:  # E: Name 'Point' already defined on line 2
 [case testTypeVarClassDup]
 from typing import TypeVar
 T = TypeVar('T')
-class T: ...  # E: Name 'T' already defined on line 2
+class T: ...  # E: Name "T" already defined on line 2
 
 [out]
 
 [case testAliasDup]
 from typing import List
 A = List[int]
-class A: ... # E: Name 'A' already defined on line 2
+class A: ... # E: Name "A" already defined on line 2
 
 [builtins fixtures/list.pyi]
 [out]
