@@ -3988,6 +3988,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 else:
                     type_being_compared = current_type
 
+        if not exprs_in_type_calls:
+            return {}, {}
+
         if_maps = []  # type: List[TypeMap]
         for expr in exprs_in_type_calls:
             current_if_map, _ = self.conditional_type_map_with_intersection(
