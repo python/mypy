@@ -158,10 +158,10 @@ def translate_safe_generator_call(
                 builder.node_type(expr), expr.line, expr.arg_kinds, expr.arg_names)
         else:
             if len(expr.args) == 1 and callee.fullname == "builtins.tuple":
-                val = preallocate_space_helper(builder, expr.args[0],
-                                               empty_op_llbuilder=
-                                                   builder.builder.new_tuple_with_length,
-                                               set_item_op=new_tuple_set_item_op)
+                val = preallocate_space_helper(
+                    builder, expr.args[0],
+                    empty_op_llbuilder=builder.builder.new_tuple_with_length,
+                    set_item_op=new_tuple_set_item_op)
                 if val is not None:
                     return val
 

@@ -338,3 +338,16 @@ assert list_in_mixed(0.0)
 assert not list_in_mixed([1])
 assert not list_in_mixed(object)
 assert list_in_mixed(type)
+
+[case testListBuiltFromGenerator]
+def test() -> None:
+    source = ["a", "b", "c"]
+    a = list(x + "f2" for x in source)
+    b = [x + "f2" for x in source]
+    c = [x + "f2" for x in (y + "yy" for y in source)]
+    assert a == ["af2", "bf2", "cf2"]
+    assert b == ["af2", "bf2", "cf2"]
+    assert c == ["ayyf2", "byyf2", "cyyf2"]
+    source2 = [1, 2, 3]
+    d = [x * 2 for x in source2]
+    assert d == [2, 4, 6]

@@ -255,3 +255,88 @@ L0:
     r1 = CPyList_Insert(x, 0, r0)
     r2 = r1 >= 0 :: signed
     return 1
+
+[case testListBuiltFromGenerator]
+from typing import List
+def f(source: List[int]) -> None:
+    a = list(x + 1 for x in source)
+    b = [x + 1 for x in source]
+[out]
+def f(source):
+    source :: list
+    r0 :: ptr
+    r1 :: native_int
+    r2 :: list
+    r3 :: short_int
+    r4 :: ptr
+    r5 :: native_int
+    r6 :: short_int
+    r7 :: bit
+    r8 :: object
+    r9, x, r10 :: int
+    r11 :: object
+    r12 :: bit
+    r13 :: short_int
+    a, r14 :: list
+    r15 :: short_int
+    r16 :: ptr
+    r17 :: native_int
+    r18 :: short_int
+    r19 :: bit
+    r20 :: object
+    r21, x_2, r22 :: int
+    r23 :: object
+    r24 :: int32
+    r25 :: bit
+    r26 :: short_int
+    b :: list
+L0:
+    r0 = get_element_ptr source ob_size :: PyVarObject
+    r1 = load_mem r0 :: native_int*
+    keep_alive source
+    r2 = PyList_New(r1)
+    r3 = 0
+L1:
+    r4 = get_element_ptr source ob_size :: PyVarObject
+    r5 = load_mem r4 :: native_int*
+    keep_alive source
+    r6 = r5 << 1
+    r7 = r3 < r6 :: signed
+    if r7 goto L2 else goto L4 :: bool
+L2:
+    r8 = CPyList_GetItemUnsafe(source, r3)
+    r9 = unbox(int, r8)
+    x = r9
+    r10 = CPyTagged_Add(x, 2)
+    r11 = box(int, r10)
+    r12 = CPyList_SetItem(r2, r3, r11)
+L3:
+    r13 = r3 + 2
+    r3 = r13
+    goto L1
+L4:
+    a = r2
+    r14 = PyList_New(0)
+    r15 = 0
+L5:
+    r16 = get_element_ptr source ob_size :: PyVarObject
+    r17 = load_mem r16 :: int64*
+    keep_alive source
+    r18 = r17 << 1
+    r19 = r15 < r18 :: signed
+    if r19 goto L6 else goto L8 :: bool
+L6:
+    r20 = CPyList_GetItemUnsafe(source, r15)
+    r21 = unbox(int, r20)
+    x_2 = r21
+    r22 = CPyTagged_Add(x_2, 2)
+    r23 = box(int, r22)
+    r24 = PyList_Append(r14, r23)
+    r25 = r24 >= 0 :: signed
+L7:
+    r26 = r15 + 2
+    r15 = r26
+    goto L5
+L8:
+    b = r14
+    return 1
