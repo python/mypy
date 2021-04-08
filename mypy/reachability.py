@@ -27,6 +27,14 @@ inverted_truth_mapping = {
     MYPY_FALSE: MYPY_TRUE,
 }  # type: Final
 
+reverse_op = {"==": "==",
+              "!=": "!=",
+              "<":  ">",
+              ">":  "<",
+              "<=": ">=",
+              ">=": "<=",
+              }  # type: Final
+
 
 def infer_reachability_of_if_statement(s: IfStmt, options: Options) -> None:
     for i in range(len(s.expr)):
@@ -127,10 +135,13 @@ def consider_sys_version_info(expr: Expression, pyversion: Tuple[int, ...]) -> i
     op = expr.operators[0]
     if op not in ('==', '!=', '<=', '>=', '<', '>'):
         return TRUTH_VALUE_UNKNOWN
-    thing = contains_int_or_tuple_of_ints(expr.operands[1])
-    if thing is None:
-        return TRUTH_VALUE_UNKNOWN
+
     index = contains_sys_version_info(expr.operands[0])
+    thing = contains_int_or_tuple_of_ints(expr.operands[1])
+    if index is None or thing is None:
+        index = contains_sys_version_info(expr.operands[1])
+        thing = contains_int_or_tuple_of_ints(expr.operands[0])
+        op = reverse_op[op]
     if isinstance(index, int) and isinstance(thing, int):
         # sys.version_info[i] <compare_op> k
         if 0 <= index <= 1:
