@@ -16,7 +16,8 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, is_short_int_rprimitive, is_list_rprimitive, is_sequence_rprimitive,
-    RTuple, is_dict_rprimitive, short_int_rprimitive, int_rprimitive
+    is_tuple_rprimitive, is_dict_rprimitive,
+    RTuple, short_int_rprimitive, int_rprimitive
 )
 from mypyc.primitives.registry import CFunctionDescription
 from mypyc.primitives.dict_ops import (
@@ -129,6 +130,30 @@ def for_loop_helper_with_index(builder: IRBuilder, index: Lvalue, expr: Expressi
     builder.pop_loop_stack()
 
     builder.activate_block(exit_block)
+
+
+def preallocate_space_helper(builder: IRBuilder,
+                             gen: GeneratorExpr,
+                             empty_op_llbuilder: Callable[[Value, int], Value],
+                             set_item_op: CFunctionDescription) -> Optional[Value]:
+    """Currently we only optimize for simplest generator expression"""
+    if len(gen.sequences) == 1 and len(gen.condlists[0]) == 0:
+        rtype = builder.node_type(gen.sequences[0])
+        if is_list_rprimitive(rtype) or is_tuple_rprimitive(rtype):
+
+            length = builder.builder.builtin_len(builder.accept(gen.sequences[0]),
+                                                 gen.line, use_pyssize_t=True)
+            target_op = empty_op_llbuilder(length, gen.line)
+
+            def set_item(item_index: Value) -> None:
+                e = builder.accept(gen.left_expr)
+                builder.call_c(set_item_op, [target_op, item_index, e], gen.line)
+
+            for_loop_helper_with_index(builder, gen.indices[0], gen.sequences[0],
+                                       set_item, gen.line)
+
+            return target_op
+    return None
 
 
 def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value:
