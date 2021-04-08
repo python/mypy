@@ -320,7 +320,7 @@ L4:
     r15 = 0
 L5:
     r16 = get_element_ptr source ob_size :: PyVarObject
-    r17 = load_mem r16 :: int64*
+    r17 = load_mem r16 :: native_int*
     keep_alive source
     r18 = r17 << 1
     r19 = r15 < r18 :: signed
