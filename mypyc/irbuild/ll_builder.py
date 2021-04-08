@@ -891,7 +891,7 @@ class LowLevelIRBuilder:
 
         return result
 
-    def new_list_op(self, length: Value, line: int) -> Value:
+    def new_list_op_with_length(self, length: Value, line: int) -> Value:
         return self.call_c(new_list_op, [length], line)
 
     def new_list_op(self, values: List[Value], line: int) -> Value:

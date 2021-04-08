@@ -27,6 +27,7 @@ from mypyc.ir.rtypes import (
 from mypyc.primitives.registry import CFunctionDescription
 from mypyc.primitives.dict_ops import dict_keys_op, dict_values_op, dict_items_op
 from mypyc.primitives.tuple_ops import new_tuple_set_item_op
+from mypyc.primitives.list_ops import list_set_item_op
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import (
     translate_list_comprehension, translate_set_comprehension,
@@ -93,6 +94,12 @@ def dict_methods_fast_path(
     if not (len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]):
         return None
     arg = expr.args[0]
+    if isinstance(arg, GeneratorExpr):
+        val = preallocate_space_helper(builder, arg,
+                                       empty_op_llbuilder=builder.builder.new_list_op_with_length,
+                                       set_item_op=list_set_item_op)
+        if val is not None:
+            return val
     if not (isinstance(arg, CallExpr) and not arg.args
             and isinstance(arg.callee, MemberExpr)):
         return None
@@ -151,15 +158,10 @@ def translate_safe_generator_call(
                     + [builder.accept(arg) for arg in expr.args[1:]]),
                 builder.node_type(expr), expr.line, expr.arg_kinds, expr.arg_names)
         else:
-            if len(expr.args) == 1:
-                val = None
-                if callee.fullname == "builtins.tuple":
-                    val = preallocate_space_helper(builder, expr.args[0],
-                                                   empty_op_llbuilder=builder.builder.new_tuple_with_length,
-                                                   set_item_op=new_tuple_set_item_op)
-                # if callee.fullname == "builtins.list":
-                #     val = preallocate_space_helper(builder, expr.args[0],
-                #                                    set_item_op=new_tuple_set_item_op)
+            if len(expr.args) == 1 and callee.fullname == "builtins.tuple":
+                val = preallocate_space_helper(builder, expr.args[0],
+                                               empty_op_llbuilder=builder.builder.new_tuple_with_length,
+                                               set_item_op=new_tuple_set_item_op)
                 if val is not None:
                     return val
 
