@@ -1,12 +1,13 @@
 """Pattern checker. This file is conceptually part of TypeChecker."""
-from typing import List, Optional, Union, Tuple
+from collections import defaultdict
+from typing import List, Optional, Union, Tuple, Dict
 
 from mypy import message_registry
 from mypy.expandtype import expand_type_by_instance
 from mypy.join import join_types
 
 from mypy.messages import MessageBuilder
-from mypy.nodes import Expression, NameExpr, ARG_POS, TypeAlias, TypeInfo
+from mypy.nodes import Expression, NameExpr, ARG_POS, TypeAlias, TypeInfo, Var
 from mypy.patterns import (
     Pattern, AsPattern, OrPattern, LiteralPattern, CapturePattern, WildcardPattern, ValuePattern,
     SequencePattern, StarredPattern, MappingPattern, ClassPattern, MappingKeyPattern
@@ -16,7 +17,7 @@ from mypy.subtypes import is_subtype, find_member, is_equivalent
 from mypy.typeops import try_getting_str_literals_from_type
 from mypy.types import (
     ProperType, AnyType, TypeOfAny, Instance, Type, NoneType, UninhabitedType, get_proper_type,
-    TypedDictType, TupleType
+    TypedDictType, TupleType, UnionType
 )
 from mypy.typevars import fill_typevars
 from mypy.visitor import PatternVisitor
@@ -43,6 +44,11 @@ class PatternChecker(PatternVisitor[Optional[Type]]):
 
     This class checks if a pattern can match a type, what the type can be narrowed to, and what
     type capture patterns should be inferred as.
+
+    visit_ methods return the type a pattern narrows to or None if the pattern can't match the
+    subject. They should not be called directly, as they change the state.
+
+    Use check_patterns() instead. A new PatternChecker should be used for each match statement.
     """
 
     # Some services are provided by a TypeChecker instance.
@@ -55,6 +61,10 @@ class PatternChecker(PatternVisitor[Optional[Type]]):
     subject = None  # type: Expression
     # Type of the subject to check the (sub)pattern against
     type_stack = []  # type: List[Type]
+    # TODO: This type looks kind of ugly
+    captured_types = None  # type: Dict[Var, List[Tuple[NameExpr, Type]]]
+
+    current_type_map = {}  # type: 'mypy.checker.TypeMap'
 
     self_match_types = None  # type: List[Type]
 
@@ -66,18 +76,50 @@ class PatternChecker(PatternVisitor[Optional[Type]]):
         self.subject = subject
         self.type_stack.append(subject_type)
 
+        self.captured_types = defaultdict(list)
         self.self_match_types = self.generate_self_match_types()
 
-    def check_pattern(self, o: Pattern) -> 'mypy.checker.TypeMap':
-        pattern_type = self.visit(o)
-        if pattern_type is None:
-            # This case is unreachable
-            return None
-        elif is_equivalent(self.type_stack[-1], pattern_type):
-            # No need to narrow
-            return {}
-        else:
-            return {self.subject: pattern_type}
+    def check_patterns(self, patterns: List[Pattern]) -> List['mypy.checker.TypeMap']:
+        type_maps = []  # type: List['mypy.checker.TypeMap']
+        for pattern in patterns:
+            self.current_type_map = {}  # type: Dict[Expression, Type]
+            pattern_type = self.visit(pattern)
+            if pattern_type is None:
+                # This case is unreachable
+                type_maps.append(None)
+            elif not is_equivalent(self.type_stack[-1], pattern_type):
+                self.current_type_map[self.subject] = pattern_type
+                type_maps.append(self.current_type_map)
+            else:
+                type_maps.append(self.current_type_map)
+
+        type_maps = self.infer_types(type_maps)
+        return type_maps
+
+    def infer_types(self, type_maps: List['mypy.checker.TypeMap']) -> List['mypy.checker.TypeMap']:
+        for var, captures in self.captured_types.items():
+            conflict = False
+            types = []  # type: List[Type]
+            for expr, typ in captures:
+                types.append(typ)
+
+                previous_type, _, inferred = self.chk.check_lvalue(expr)
+                if previous_type is not None:
+                    conflict = True
+                    self.chk.check_subtype(typ, previous_type, expr,
+                                           msg=message_registry.INCOMPATIBLE_TYPES_IN_CAPTURE,
+                                           subtype_label="pattern captures type",
+                                           supertype_label="variable has type")
+                    for type_map in type_maps:
+                        if type_map is not None and expr in type_map:
+                            del type_map[expr]
+
+            if not conflict:
+                new_type = UnionType.make_union(types)
+                # Infer the union type at the first occurrence
+                self.chk.infer_variable_type(var, captures[0][0], new_type, captures[0][0])
+
+        return type_maps
 
     def visit(self, o: Pattern) -> Optional[Type]:
         return o.accept(self)
@@ -123,15 +165,12 @@ class PatternChecker(PatternVisitor[Optional[Type]]):
         return self.type_stack[-1]
 
     def check_capture(self, capture: NameExpr) -> None:
-        capture_type, _, inferred = self.chk.check_lvalue(capture)
-        if capture_type:
-            self.chk.check_subtype(capture_type, self.type_stack[-1], capture,
-                                   msg=message_registry.INCOMPATIBLE_TYPES_IN_CAPTURE,
-                                   subtype_label="pattern captures type",
-                                   supertype_label="variable has type")
-        else:
-            assert inferred is not None
-            self.chk.infer_variable_type(inferred, capture, self.type_stack[-1], self.subject)
+        node = capture.node
+        assert isinstance(node, Var)
+        self.captured_types[node].append((capture, self.type_stack[-1]))
+        type_map = self.current_type_map
+        if type_map is not None:
+            type_map[capture] = self.type_stack[-1]
 
     def visit_wildcard_pattern(self, o: WildcardPattern) -> Optional[Type]:
         return self.type_stack[-1]
@@ -151,7 +190,6 @@ class PatternChecker(PatternVisitor[Optional[Type]]):
                 # Pattern can't match
                 return None
 
-        assert isinstance(current_type, Instance)
         self.type_stack.append(inner_type)
         new_inner_type = UninhabitedType()  # type: Type
         for p in o.patterns:
@@ -162,9 +200,11 @@ class PatternChecker(PatternVisitor[Optional[Type]]):
         self.type_stack.pop()
         iterable = self.chk.named_generic_type("typing.Iterable", [new_inner_type])
         if self.chk.type_is_iterable(current_type):
-            empty_type = fill_typevars(current_type.type)
+            proper_type = get_proper_type(current_type)
+            assert isinstance(proper_type, Instance)
+            empty_type = fill_typevars(proper_type.type)
             partial_type = expand_type_by_instance(empty_type, iterable)
-            new_type = expand_type_by_instance(partial_type, current_type)
+            new_type = expand_type_by_instance(partial_type, proper_type)
         else:
             new_type = iterable
 
@@ -214,6 +254,7 @@ class PatternChecker(PatternVisitor[Optional[Type]]):
                               ) -> Optional[Type]:
         local_errors = self.msg.clean_copy()
         local_errors.disable_count = 0
+        mapping_type = get_proper_type(mapping_type)
         if isinstance(mapping_type, TypedDictType):
             result = self.chk.expr_checker.visit_typeddict_index_expr(mapping_type,
                                                                       key_pattern.expr,

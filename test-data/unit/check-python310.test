@@ -7,25 +7,6 @@ match m:
     case a:
         reveal_type(a)  # N: Revealed type is "__main__.A"
 
-[case testCapturePatternPreexistingSame]
-class A: ...
-a: A
-m: A
-
-match m:
-    case a:
-        reveal_type(a)  # N: Revealed type is "__main__.A"
-
-[case testCapturePatternPreexistingIncompatible]
-class A: ...
-class B: ...
-a: B
-m: A
-
-match m:
-    case a:  # E: Incompatible types in capture pattern (pattern captures type "B", variable has type "A")
-        reveal_type(a)  # N: Revealed type is "__main__.B"
-
 
 -- Literal Pattern --
 [case testLiteralPatternNarrows]
@@ -682,3 +663,42 @@ m: bool
 match m:
     case int() as l:
         reveal_type(l)  # N: Revealed type is "builtins.bool"
+
+
+-- Interactions --
+[case testCapturePatternMultipleCaptures]
+m: object
+
+match m:
+    case int(x):
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+    case str(x):
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+
+reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+[case testCapturePatternPreexistingSame]
+a: int
+m: int
+
+match m:
+    case a:
+        reveal_type(a)  # N: Revealed type is "builtins.int"
+
+[case testCapturePatternPreexistingIncompatible]
+a: str
+m: int
+
+match m:
+    case a:  # E: Incompatible types in capture pattern (pattern captures type "int", variable has type "str")
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+
+[case testCapturePatternPreexistingIncompatibleLater]
+a: str
+m: object
+
+match m:
+    case str(a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    case int(a):  # E: Incompatible types in capture pattern (pattern captures type "int", variable has type "str")
+        reveal_type(a)  # N: Revealed type is "builtins.str"

@@ -3730,20 +3730,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             pattern_checker = PatternChecker(self, self.msg, self.plugin, s.subject, t)
 
-            for p, g, b in zip(s.patterns, s.guards, s.bodies):
-                if not b.is_unreachable:
-                    type_map = pattern_checker.check_pattern(p)
-                else:
-                    type_map = None
+            type_maps = pattern_checker.check_patterns(s.patterns)
+
+            for b, g, tm in zip(s.bodies, s.guards, type_maps):
                 with self.binder.frame_context(can_skip=True, fall_through=2):
-                    self.push_type_map(type_map)
+                    if not b.is_unreachable:
+                        self.push_type_map(tm)
+                    else:
+                        self.push_type_map(None)
                     if g is not None:
                         gt = get_proper_type(self.expr_checker.accept(g))
 
                         if isinstance(gt, DeletedType):
                             self.msg.deleted_as_rvalue(gt, s)
 
-                        if_map, else_map = self.find_isinstance_check(g)
+                        if_map, _ = self.find_isinstance_check(g)
 
                         self.push_type_map(if_map)
                     self.accept(b)
