@@ -142,8 +142,6 @@ def consider_sys_version_info(expr: Expression, pyversion: Tuple[int, ...]) -> i
         index = contains_sys_version_info(expr.operands[1])
         thing = contains_int_or_tuple_of_ints(expr.operands[0])
         op = reverse_op[op]
-    if index is None or thing is None:
-        return TRUTH_VALUE_UNKNOWN
     if isinstance(index, int) and isinstance(thing, int):
         # sys.version_info[i] <compare_op> k
         if 0 <= index <= 1:
