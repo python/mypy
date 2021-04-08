@@ -3954,9 +3954,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         return None, {}
 
-    def find_type_equals_check(self, node: Expression, expr_indices: List[int]
+    def find_type_equals_check(self, node: ComparisonExpr, expr_indices: List[int]
                                ) -> Tuple[TypeMap, TypeMap]:
-        """Narrow types based on any checks of the type ``type(x) == T``"""
+        """Narrow types based on any checks of the type ``type(x) == T``
+
+        :param node: The node that might contain the comparison
+
+        :param expr_indices: The list of indices of expressions in ``node`` that are being compared
+        """
         type_map = self.type_map
 
         def is_type_call(expr: CallExpr) -> bool:
