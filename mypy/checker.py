@@ -1610,7 +1610,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(original, FunctionLike) and isinstance(override, FunctionLike):
             if original_class_or_static and not override_class_or_static:
                 fail = True
-            if isinstance(original, CallableType) and isinstance(override, CallableType):
+            elif isinstance(original, CallableType) and isinstance(override, CallableType):
                 if original.type_guard is not None and override.type_guard is None:
                     fail = True
 
