@@ -137,7 +137,7 @@ class DataclassTransformer:
         # Add <, >, <=, >=, but only if the class has an eq method.
         if decorator_arguments['order']:
             if not decorator_arguments['eq']:
-                ctx.api.fail('eq must be "True" if order is "True"', ctx.cls)
+                ctx.api.fail('eq must be True if order is True', ctx.cls)
 
             for method_name in ['__lt__', '__gt__', '__le__', '__ge__']:
                 # Like for __eq__ and __ne__, we want "other" to match
