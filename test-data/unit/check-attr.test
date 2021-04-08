@@ -976,13 +976,13 @@ reveal_type(A)  # N: Revealed type is "def (b: Any, a: Any) -> __main__.A"
 class B:
    a: int = attr.ib(default=8)
    b: int = attr.ib()
-   a: int = attr.ib()  # E: Name 'a' already defined on line 10
+   a: int = attr.ib()  # E: Name "a" already defined on line 10
 reveal_type(B)  # N: Revealed type is "def (b: builtins.int, a: builtins.int) -> __main__.B"
 @attr.s(auto_attribs=True)
 class C:
    a: int = 8
    b: int
-   a: int = attr.ib()  # E: Name 'a' already defined on line 16
+   a: int = attr.ib()  # E: Name "a" already defined on line 16
 reveal_type(C)  # N: Revealed type is "def (a: builtins.int, b: builtins.int) -> __main__.C"
 [builtins fixtures/bool.pyi]
 

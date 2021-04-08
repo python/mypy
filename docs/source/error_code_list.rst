@@ -508,7 +508,7 @@ Example:
    class A:
        def __init__(self, x: int) -> None: ...
 
-   class A:  # Error: Name 'A' already defined on line 1  [no-redef]
+   class A:  # Error: Name "A" already defined on line 1  [no-redef]
        def __init__(self, x: str) -> None: ...
 
    # Error: Argument 1 to "A" has incompatible type "str"; expected "int"

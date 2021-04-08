@@ -510,11 +510,11 @@ from pkg.bad2 import bad3  # E: Cannot find implementation or library stub for m
 
 [case testErrorCodeAlreadyDefined]
 x: int
-x: str  # E: Name 'x' already defined on line 1  [no-redef]
+x: str  # E: Name "x" already defined on line 1  [no-redef]
 
 def f():
     pass
-def f(): # E: Name 'f' already defined on line 4  [no-redef]
+def f(): # E: Name "f" already defined on line 4  [no-redef]
     pass
 
 [case testErrorCodeMissingReturn]
