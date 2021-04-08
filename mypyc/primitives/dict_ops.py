@@ -123,7 +123,7 @@ method_op(
     name='setdefault',
     arg_types=[dict_rprimitive, object_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
-    c_function_name='PyDict_SetDefault',
+    c_function_name='CPyDict_SetDefault',
     is_borrowed=True,
     error_kind=ERR_MAGIC)
 

@@ -67,8 +67,15 @@ PyObject *CPyDict_GetWithNone(PyObject *dict, PyObject *key) {
     return CPyDict_Get(dict, key, Py_None);
 }
 
+PyObject *CPyDict_SetDefault(PyObject *dict, PyObject *key, PyObject *value) {
+    if (PyDict_CheckExact(dict)){
+        return PyDict_SetDefault(dict, key, value);
+    }
+    return PyObject_CallMethod(dict, "setdefault", "(OO)", key, value);
+}
+
 PyObject *CPyDict_SetDefaultWithNone(PyObject *dict, PyObject *key) {
-    return PyDict_SetDefault(dict, key, Py_None);
+    return CPyDict_SetDefault(dict, key, Py_None);
 }
 
 int CPyDict_SetItem(PyObject *dict, PyObject *key, PyObject *value) {
