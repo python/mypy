@@ -151,6 +151,10 @@ class RTypeVisitor(Generic[T]):
         raise NotImplementedError
 
     @abstractmethod
+    def visit_rvec(self, typ: RVec, /) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
     def visit_runion(self, typ: RUnion, /) -> T:
         raise NotImplementedError
 
@@ -542,6 +546,10 @@ def is_tagged(rtype: RType) -> TypeGuard[RPrimitive]:
     return rtype is int_rprimitive or rtype is short_int_rprimitive
 
 
+def is_any_int(rtype: RType) -> bool:
+    return is_tagged(rtype) or is_int32_rprimitive(rtype) or is_int64_rprimitive(rtype)
+
+
 def is_int_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return rtype is int_rprimitive
 
@@ -678,6 +686,9 @@ class TupleNameVisitor(RTypeVisitor[str]):
     """Produce a tuple name based on the concrete representations of types."""
 
     def visit_rinstance(self, t: RInstance) -> str:
+        return "O"
+
+    def visit_rvec(self, t: RVec) -> str:
         return "O"
 
     def visit_runion(self, t: RUnion) -> str:
@@ -981,6 +992,49 @@ class RInstance(RType):
 
 
 @final
+class RVec(RType):
+    """vecs.vec[T]"""
+
+    is_unboxed = False
+
+    def __init__(self, item_type: RType) -> None:
+        self.name = "vec[%s]" % item_type
+        self.item_type = item_type
+        self._ctype = "PyObject *"
+
+    def accept(self, visitor: "RTypeVisitor[T]") -> T:
+        return visitor.visit_rvec(self)
+
+    def __repr__(self) -> str:
+        return "<RVec[%s]>" % self.item_type
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, RVec) and other.item_type == self.item_type
+
+    def __hash__(self) -> int:
+        return hash(self.item_type) ^ 1
+
+    def serialize(self) -> str:
+        return self.name
+
+
+def vec_depth(t: RVec) -> int:
+    """Return nesting depth of a RVec type (0 == no nested vecs)."""
+    it = t.item_type
+    if isinstance(it, RUnion):
+        non_opt = optional_value_type(it)
+        it = non_opt
+    if isinstance(it, (RPrimitive, RInstance)):
+        return 0
+    elif isinstance(it, RVec):
+        if is_int64_rprimitive(it.item_type):
+            return 0
+        else:
+            return 1 + vec_depth(vec.item_type)
+    assert False, t
+
+
+@final
 class RUnion(RType):
     """union[x, ..., y]"""
 
@@ -1175,3 +1229,36 @@ def check_native_int_range(rtype: RPrimitive, n: int) -> bool:
     else:
         limit = 1 << (rtype.size * 8 - 1)
         return -limit <= n < limit
+
+
+# vec (common fields)
+VecObject = RStruct(
+    name="VecObject", names=["ob_base", "len"], types=[PyObject, c_pyssize_t_rprimitive]
+)
+
+# vec[i64]
+VecI64Object = RStruct(
+    name="VecI64Object",
+    names=["ob_base", "len", "items"],
+    types=[PyObject, c_pyssize_t_rprimitive, int64_rprimitive],
+)
+
+# vec[t]
+VecTObject = RStruct(
+    name="VecTObject",
+    names=["ob_base", "len", "items"],
+    types=[PyObject, c_pyssize_t_rprimitive, object_rprimitive],
+)
+
+# vec[t], for nested vec or optional t
+VecTExtObject = RStruct(
+    name="VecTExtObject",
+    names=["ob_base", "len", "depth", "optionals", "items"],
+    types=[
+        PyObject,
+        c_pyssize_t_rprimitive,
+        int32_rprimitive,
+        int32_rprimitive,
+        object_rprimitive,
+    ],
+)

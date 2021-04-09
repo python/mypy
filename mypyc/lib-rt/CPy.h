@@ -9,6 +9,7 @@
 #include <structmember.h>
 #include <assert.h>
 #include <stdint.h>
+#include "vecs.h"
 #include "pythonsupport.h"
 #include "mypyc_util.h"
 

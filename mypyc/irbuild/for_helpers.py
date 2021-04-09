@@ -50,6 +50,7 @@ from mypyc.ir.rtypes import (
     RTuple,
     RType,
     bool_rprimitive,
+    RVec,
     c_pyssize_t_rprimitive,
     int_rprimitive,
     is_dict_rprimitive,
@@ -69,6 +70,7 @@ from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
 from mypyc.irbuild.targets import AssignmentTarget, AssignmentTargetTuple
+from mypyc.irbuild.vec import vec_append, vec_create, vec_get_item_unsafe
 from mypyc.primitives.dict_ops import (
     dict_check_size_op,
     dict_item_iter_op,
@@ -355,6 +357,19 @@ def translate_set_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value
     return builder.read(set_ops, gen.line)
 
 
+def translate_vec_comprehension(builder: IRBuilder, vec_type: RVec, gen: GeneratorExpr) -> Value:
+    vec = Register(vec_type)
+    builder.assign(vec, vec_create(builder.builder, vec_type, 0, gen.line), gen.line)
+    loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
+
+    def gen_inner_stmts() -> None:
+        e = builder.accept(gen.left_expr)
+        builder.assign(vec, vec_append(builder.builder, vec, e, gen.line), gen.line)
+
+    comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
+    return vec
+
+
 def comprehension_helper(
     builder: IRBuilder,
     loop_params: list[tuple[Lvalue, Expression, list[Expression], bool]],
@@ -455,8 +470,8 @@ def make_for_loop_generator(
         return async_obj
 
     rtyp = builder.node_type(expr)
-    if is_sequence_rprimitive(rtyp):
-        # Special case "for x in <list>".
+    if is_sequence_rprimitive(rtyp) or isinstance(rtyp, RVec):
+        # Special case "for x in <seq>" for concrete sequence types.
         expr_reg = builder.accept(expr)
         target_type = builder.get_sequence_type(expr)
 
@@ -831,6 +846,8 @@ def unsafe_index(builder: IRBuilder, target: Value, index: Value, line: int) -> 
         return builder.call_c(tuple_get_item_unsafe_op, [target, index], line)
     elif is_str_rprimitive(target.type):
         return builder.call_c(str_get_item_unsafe_op, [target, index], line)
+    elif isinstance(target.type, RVec):
+        return vec_get_item_unsafe(builder.builder, target, index, line)
     else:
         return builder.gen_method_call(target, "__getitem__", [index], None, line)
 

@@ -87,6 +87,7 @@ from mypyc.ir.rtypes import (
     RTuple,
     RType,
     RUnion,
+    RVec,
     bit_rprimitive,
     bitmap_rprimitive,
     bool_rprimitive,
@@ -128,6 +129,7 @@ from mypyc.ir.rtypes import (
     str_rprimitive,
 )
 from mypyc.irbuild.util import concrete_arg_kind
+from mypyc.irbuild.vec import vec_contains, vec_get_item, vec_len
 from mypyc.options import CompilerOptions
 from mypyc.primitives.bytes_ops import bytes_compare
 from mypyc.primitives.dict_ops import (
@@ -1653,6 +1655,9 @@ class LowLevelIRBuilder:
         if dunder_op:
             return dunder_op
 
+        if isinstance(rtype, RVec) and op == "in":
+            return vec_contains(self, rreg, lreg, line)
+
         primitive_ops_candidates = binary_ops.get(op, [])
         target = self.matching_primitive_op(primitive_ops_candidates, [lreg, rreg], line)
         assert target, "Unsupported binary operation: %s" % op
@@ -1976,6 +1981,17 @@ class LowLevelIRBuilder:
         elif op == "~":
             return self.unary_invert(value, line)
         raise RuntimeError("Unsupported unary operation: %s" % op)
+
+    def get_item(self, base: Value, item: Value, result_type: Optional[RType], line: int) -> Value:
+        """Generate base[item]."""
+        if isinstance(base.type, RVec):
+            if is_int_rprimitive(item.type) or is_short_int_rprimitive(item.type):
+                item = self.coerce(item, int64_rprimitive, line)
+            if is_int64_rprimitive(item.type):
+                return vec_get_item(self, base, item, line)
+        # TODO: Move special casing for RTuple here from transform_index_expr
+        return self.gen_method_call(base, "__getitem__", [item], result_type, line)
+
 
     def make_dict(self, key_value_pairs: Sequence[DictEntry], line: int) -> Value:
         result: Value | None = None
@@ -2655,6 +2671,13 @@ class LowLevelIRBuilder:
             self.activate_block(ok)
             return length
 
+        elif isinstance(typ, RVec):
+            len_value = vec_len(self, val)
+            if use_pyssize_t:
+                return len_value
+            count = Integer(1, int64_rprimitive, line)
+            return self.int_op(short_int_rprimitive, len_value, count, IntOp.LEFT_SHIFT, line)
+
         op = self.matching_primitive_op(function_ops["builtins.len"], [val], line)
         if op is not None:
             return op
@@ -2693,6 +2716,31 @@ class LowLevelIRBuilder:
         """Make an object immortal on free-threaded builds (to avoid contention)."""
         if IS_FREE_THREADED and sys.version_info >= (3, 14):
             self.primitive_op(set_immortal_op, [v], line)
+
+    # Loop helpers
+
+    def begin_for(self, start: Value, end: Value, step: Value, *, signed: bool) -> "ForBuilder":
+        """Generate for loop over a pointer or native int range.
+
+        Roughly corresponds to "for i in range(start, end, step): ....". Only
+        positive values for step are supported.
+
+        The loop index register is generated automatically and is available
+        via the return value. Do not modify it!
+
+        Example usage that clears a memory area:
+
+          for_loop = builder.begin_for(start_ptr, end_ptr, int32_rprimitive.size)
+
+          # For loop body
+          builder.set_mem(for_loop.index, int32_rprimitive, Integer(0, int32_rprimitive))
+
+          for_loop.finish()
+        """
+        b = ForBuilder(self, start, end, step, signed=signed)
+        b.begin()
+        return b
+
 
     # Internal helpers
 

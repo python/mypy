@@ -151,7 +151,7 @@ method_op(
     priority=6,
 )
 
-# This is unsafe because it assumes that the index is a non-negative short integer
+# This is unsafe because it assumes that the index is a non-negative integer
 # that is in-bounds for the list.
 list_get_item_unsafe_op = custom_primitive_op(
     name="list_get_item_unsafe",

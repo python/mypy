@@ -31,6 +31,7 @@ from mypyc.ir.rtypes import (
     RTuple,
     RType,
     RUnion,
+    RVec,
     int_rprimitive,
     is_bool_or_bit_rprimitive,
     is_bytearray_rprimitive,
@@ -751,6 +752,14 @@ class Emitter:
         elif isinstance(typ, RTuple):
             assert not optional
             self.emit_tuple_cast(src, dest, typ, declare_dest, error, src_type)
+        elif isinstance(typ, RVec):
+            # TODO: Actually perform the type check, this is a no-op
+            if declare_dest:
+                self.emit_line("PyObject *{};".format(dest))
+            self.emit_arg_check(src, dest, typ, "", optional)
+            self.emit_line("{} = {};".format(dest, src))
+            if optional:
+                self.emit_line("}")
         else:
             assert False, "Cast not implemented: %s" % typ
 

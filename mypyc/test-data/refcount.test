@@ -1499,3 +1499,155 @@ L2:
     dec_ref r0 :: int
 L3:
     return r4
+
+[case testVecTSetItem]
+from vecs import vec
+from mypy_extensions import i64
+
+def f(v: vec[str], i: i64, x: str) -> None:
+    v[i] = x
+[out]
+def f(v, i, x):
+    v :: vec[str]
+    i :: int64
+    x :: str
+    r0 :: ptr
+    r1 :: native_int
+    r2 :: bit
+    r3 :: bool
+    r4 :: ptr
+    r5 :: int64
+    r6 :: ptr
+    r7 :: str
+L0:
+    r0 = get_element_ptr v len :: VecObject
+    r1 = load_mem r0 :: native_int*
+    r2 = i < r1 :: unsigned
+    if r2 goto L2 else goto L1 :: bool
+L1:
+    r3 = raise IndexError
+    unreachable
+L2:
+    r4 = get_element_ptr v items :: VecTObject
+    r5 = i * 8
+    r6 = r4 + r5
+    r7 = load_mem r6 :: builtins.str*
+    dec_ref r7
+    inc_ref x
+    set_mem r6, x :: builtins.str*
+    return 1
+
+[case testVecTConstructFromListMultiply]
+from typing import Optional
+from vecs import vec
+from mypy_extensions import i64
+
+def f(n: i64) -> vec[Optional[str]]:
+    return vec[Optional[str]]([None] * n)
+[out]
+def f(n):
+    n :: int64
+    r0, r1 :: object
+    r2 :: vec[union[str, None]]
+    r3 :: ptr
+    r4 :: int64
+    r5, r6 :: ptr
+    r7 :: bit
+    r8 :: ptr
+L0:
+    r0 = box(None, 1)
+    r1 = load_address PyUnicode_Type
+    r2 = VecTExtApi.alloc(n, r1, 1, 0)
+    r3 = get_element_ptr r2 items :: VecTExtObject
+    r4 = n * 8
+    r5 = r3 + r4
+    r6 = r3
+L1:
+    r7 = r6 < r5 :: unsigned
+    if r7 goto L2 else goto L3 :: bool
+L2:
+    inc_ref r0
+    set_mem r6, r0 :: union*
+    r8 = r6 + 8
+    r6 = r8
+    goto L1
+L3:
+    return r2
+
+[case testVecTForLoop]
+from vecs import vec
+from mypy_extensions import i64
+
+def f(v: vec[str]) -> i64:
+    t: i64 = 0
+    for s in v:
+        g(s)
+    return t
+
+def g(s: str) -> None: pass
+[out]
+def f(v):
+    v :: vec[str]
+    t :: int64
+    r0 :: native_int
+    r1 :: ptr
+    r2 :: int64
+    r3 :: bit
+    r4 :: ptr
+    r5 :: native_int
+    r6 :: ptr
+    r7, s :: str
+    r8 :: None
+    r9 :: native_int
+L0:
+    t = 0
+    r0 = 0
+L1:
+    r1 = get_element_ptr v len :: VecObject
+    r2 = load_mem r1 :: int64*
+    r3 = r0 < r2 :: signed
+    if r3 goto L2 else goto L4 :: bool
+L2:
+    r4 = get_element_ptr v items :: VecTObject
+    r5 = r0 * 8
+    r6 = r4 + r5
+    r7 = load_mem r6 :: builtins.str*
+    inc_ref r7
+    s = r7
+    r8 = g(s)
+    dec_ref s
+L3:
+    r9 = r0 + 1
+    r0 = r9
+    goto L1
+L4:
+    return t
+def g(s):
+    s :: str
+L0:
+    return 1
+
+[case testVecTConstructFromListExpr]
+from vecs import vec
+
+def f() -> vec[str]:
+    return vec[str](['x', 'y'])
+[out]
+def f():
+    r0, r1 :: str
+    r2 :: object
+    r3 :: vec[str]
+    r4, r5, r6 :: ptr
+L0:
+    r0 = 'x'
+    r1 = 'y'
+    r2 = load_address PyUnicode_Type
+    r3 = VecTApi.alloc(2, r2)
+    r4 = get_element_ptr r3 items :: VecTObject
+    inc_ref r0
+    set_mem r4, r0 :: builtins.str*
+    r5 = r4 + 8
+    inc_ref r1
+    set_mem r5, r1 :: builtins.str*
+    r6 = r5 + 8
+    return r3

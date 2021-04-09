@@ -583,6 +583,11 @@ class GroupGenerator:
 
         self.generate_literal_tables()
 
+        self.declare_global("VecCapsule *", "VecApi")
+        self.declare_global("VecI64Features ", "VecI64Api")
+        self.declare_global("VecTFeatures ", "VecTApi")
+        self.declare_global("VecTExtFeatures ", "VecTExtApi")
+
         for module_name, module in self.modules.items():
             if multi_file:
                 emitter = Emitter(self.context, filepath=self.source_paths[module_name])
@@ -962,6 +967,14 @@ class GroupGenerator:
         values = "CPyLit_Str, CPyLit_Bytes, CPyLit_Int, CPyLit_Float, CPyLit_Complex, CPyLit_Tuple, CPyLit_FrozenSet"
         emitter.emit_lines(
             f"if (CPyStatics_Initialize(CPyStatics, {values}) < 0) {{", "return -1;", "}"
+        )
+
+        emitter.emit_lines(
+            'VecApi = PyCapsule_Import("vecs._C_API", 0);',
+            "if (!VecApi) return -1;",
+            "VecI64Api = *VecApi->i64;",
+            "VecTApi = *VecApi->t;",
+            "VecTExtApi = *VecApi->t_ext;",
         )
 
         emitter.emit_lines("is_initialized = 1;", "return 0;", "}")

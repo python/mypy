@@ -227,6 +227,7 @@ def len_callback(ctx: FunctionContext) -> Type:
     return ctx.default_return_type
 
 
+
 def typed_dict_get_signature_callback(ctx: MethodSigContext) -> CallableType:
     """Try to infer a better signature type for TypedDict.get.
 

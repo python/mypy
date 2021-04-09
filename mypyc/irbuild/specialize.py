@@ -48,12 +48,16 @@ from mypyc.ir.ops import (
     Truncate,
     Unreachable,
     Value,
+    ERR_MAGIC,
+    CallC,
 )
 from mypyc.ir.rtypes import (
     RInstance,
     RPrimitive,
     RTuple,
     RType,
+    RUnion,
+    RVec,
     bool_rprimitive,
     bytes_rprimitive,
     bytes_writer_rprimitive,
@@ -82,6 +86,8 @@ from mypyc.ir.rtypes import (
     str_rprimitive,
     string_writer_rprimitive,
     uint8_rprimitive,
+    is_float_rprimitive,
+    vec_depth,
 )
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.constant_fold import constant_fold_expr
@@ -98,6 +104,7 @@ from mypyc.irbuild.format_str_tokenizer import (
     join_formatted_strings,
     tokenizer_format_call,
 )
+from mypyc.irbuild.vec import vec_append
 from mypyc.primitives.bytearray_ops import isinstance_bytearray
 from mypyc.primitives.bytes_ops import (
     bytes_adjust_index_op,
@@ -145,6 +152,7 @@ from mypyc.primitives.str_ops import (
     str_range_check_op,
 )
 from mypyc.primitives.tuple_ops import isinstance_tuple, new_tuple_set_item_op
+from mypyc.rt_subtype import is_runtime_subtype
 
 # Specializers are attempted before compiling the arguments to the
 # function.  Specializers can return None to indicate that they failed
@@ -317,7 +325,11 @@ def translate_len(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
         if is_sequence_rprimitive(expr_rtype) or isinstance(expr_rtype, RTuple):
             return get_expr_length_value(builder, arg, obj, expr.line, use_pyssize_t=False)
         else:
-            return builder.builtin_len(obj, expr.line)
+            # TODO: Decide type of result based on context somehow?
+            if isinstance(obj.type, RVec):
+                return builder.builtin_len(obj, expr.line, use_pyssize_t=True)
+            else:
+                return builder.builtin_len(obj, expr.line)
     return None
 
 
@@ -1177,6 +1189,7 @@ def translate_ord(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
     return None
 
 
+
 def is_object(callee: RefExpr) -> bool:
     """Returns True for object.<name> calls."""
     return (
@@ -1487,3 +1500,17 @@ def translate_bytes_get_item(
         bytes_range_check_op,
         bytes_get_item_unsafe_op,
     )
+
+
+@specialize_function("vecs.append")
+def translate_vec_append(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+    if len(expr.args) == 2 and expr.arg_kinds == [ARG_POS, ARG_POS]:
+        vec_arg = expr.args[0]
+        item_arg = expr.args[1]
+        vec_type = builder.node_type(vec_arg)
+        item_type = builder.node_type(item_arg)
+        if isinstance(vec_type, RVec):
+            vec_value = builder.accept(vec_arg)
+            arg_value = builder.accept(item_arg)
+            return vec_append(builder.builder, vec_value, arg_value, item_arg.line)
+    return None

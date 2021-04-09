@@ -7,7 +7,7 @@ from _typeshed import SupportsKeysAndGetItem
 import _typeshed
 from typing import (
     TypeVar, Generic, Iterable, Iterator, Mapping, Tuple, overload, Optional, Union, Sequence,
-    Self,
+    Self, Protocol
 )
 
 T = TypeVar('T')
@@ -62,3 +62,8 @@ class BaseException: pass
 
 def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass
 def iter(__iterable: Iterable[T]) -> Iterator[T]: pass
+
+class Sized(Protocol):
+    def __len__(self) -> int: ...
+
+def len(s: Sized) -> int: ...
