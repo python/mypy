@@ -2644,3 +2644,30 @@ if type(x) is not int:
     reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
 else:
     reveal_type(x)  # N: Revealed type is "builtins.int"
+
+[case testNarrowInElseCaseIfFinal]
+from typing import final, Union
+@final
+class C:
+    pass
+class D:
+    pass
+
+x: Union[C, D]
+if type(x) is C:
+    reveal_type(x)  # N: Revealed type is "__main__.C"
+else:
+    reveal_type(x)  # N: Revealed type is "__main__.D"
+[case testNarrowInElseCaseIfFinalUsingIsNot]
+from typing import final, Union
+@final
+class C:
+    pass
+class D:
+    pass
+
+x: Union[C, D]
+if type(x) is not C:
+    reveal_type(x)  # N: Revealed type is "__main__.D"
+else:
+    reveal_type(x)  # N: Revealed type is "__main__.C"
