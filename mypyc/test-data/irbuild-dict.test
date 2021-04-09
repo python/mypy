@@ -348,5 +348,5 @@ def f(d):
 L0:
     r0 = 'a'
     r1 = 'b'
-    r2 = PyDict_SetDefault(d, r0, r1)
+    r2 = CPyDict_SetDefault(d, r0, r1)
     return r2
