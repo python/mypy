@@ -3993,10 +3993,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # type of x from that check
                     return {}, {}
                 else:
-                    # FIXME: crashes if no fullname attribute (check if NameExpr?)
-                    if isinstance(expr, RefExpr) and expr.fullname is not None:
-                        info = self.lookup_typeinfo(expr.fullname)
-                        is_final = info.is_final
+                    try:
+                        if isinstance(expr, RefExpr) and expr.fullname is not None:
+                            info = self.lookup_typeinfo(expr.fullname)
+                            is_final = info.is_final
+                    # lookup_typeinfo sometimes fails with a KeyError
+                    except KeyError:
+                        # assume the expression isn't final unless we can confirm
+                        # otherwise
+                        is_final = False
                     type_being_compared = current_type
 
         if not exprs_in_type_calls:
