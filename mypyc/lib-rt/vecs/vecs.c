@@ -1,33 +1,10 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+#include "vecs.h"
 
 #define VEC_SIZE(v) ((v)->ob_base.ob_size)
 
 static PyObject *vec_new(PyTypeObject *self, PyObject *args, PyObject *kw);
-
-typedef struct {
-    PyObject_VAR_HEAD
-    Py_ssize_t len;
-    long long items[1];
-} VecObject;
-
-// vec[i64] operations + type object (stored in a capsule)
-typedef struct {
-    PyTypeObject *type;
-    PyObject *(*alloc)(Py_ssize_t);
-    VecObject *(*append)(VecObject *, int64_t);
-    // VecObject *(*extend)(VecObject *, PyObject *);
-    // VecObject *(*slice)(VecObject *, int64_t, int64_t);
-    // VecObject *(*concat)(VecObject *, VecObject *);
-    // bool (*contains)(VecObject *, int64_t);
-    // int64_t (*pop)(VecObject *);
-    // iter?
-} VecI64Features;
-
-typedef struct {
-    VecI64Features *i64;
-} VecCapsule;
-
 
 PyObject *vec_repr(PyObject *self) {
     // TODO: Type check, refcounting, error handling
