@@ -192,8 +192,16 @@ PyInit_vecs(void)
         return NULL;
     }
 
-    if (PyCapsule_New(&Capsule, "vecs.capsule", NULL) == NULL)
+    PyObject *c_api = PyCapsule_New(&Capsule, "vecs._C_API", NULL);
+    if (c_api == NULL)
         return NULL;
+
+    if (PyModule_AddObject(m, "_C_API", c_api) < 0) {
+        Py_XDECREF(c_api);
+        Py_DECREF(&VecType);
+        Py_DECREF(m);
+        return NULL;
+    }
 
     return m;
 }
