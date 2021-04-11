@@ -2658,7 +2658,7 @@ if type(x) is C:
     reveal_type(x)  # N: Revealed type is "__main__.C"
 else:
     reveal_type(x)  # N: Revealed type is "__main__.D"
-[case testNarrowInElseCaseIfFinalUsingIsNot]
+[case testNarrowInIfCaseIfFinalUsingIsNot]
 from typing import final, Union
 @final
 class C:
