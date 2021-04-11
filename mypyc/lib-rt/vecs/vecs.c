@@ -115,15 +115,16 @@ PyObject *vec_new(PyTypeObject *self, PyObject *args, PyObject *kw) {
     return Vec_New(0);
 }
 
-VecObject *
-Vec_Append(VecObject *vec, int64_t x) {
+PyObject *
+Vec_Append(PyObject *obj, int64_t x) {
+    VecObject *vec = (VecObject *)obj;
     Py_ssize_t cap = VEC_SIZE(vec);
     Py_ssize_t len = vec->len;
     if (len < cap) {
         vec->items[len] = x;
         vec->len = len + 1;
         Py_INCREF(vec);
-        return vec;
+        return (PyObject *)vec;
     } else {
         Py_ssize_t new_size = 2 * cap + 1;
         VecObject *new = vec_alloc(new_size);
@@ -132,7 +133,7 @@ Vec_Append(VecObject *vec, int64_t x) {
         memcpy(new->items, vec->items, sizeof(long long) * len);
         new->items[len] = x;
         new->len = len + 1;
-        return new;
+        return (PyObject *)new;
     }
 }
 
@@ -147,7 +148,7 @@ vecs_append(PyObject *self, PyObject *args)
 
     // TODO: Type check obj
 
-    return (PyObject *)Vec_Append((VecObject *)obj, x);
+    return Vec_Append(obj, x);
 }
 
 static PyMethodDef VecsMethods[] = {
