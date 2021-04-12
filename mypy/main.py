@@ -7,7 +7,7 @@ import subprocess
 import sys
 import time
 
-from typing import Any, Dict, IO, List, Optional, Sequence, Tuple, TextIO, Union
+from typing import Any, IO, List, Optional, Sequence, Tuple, TextIO, Union
 from typing_extensions import Final, NoReturn
 
 from mypy import build
