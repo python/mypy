@@ -14,9 +14,9 @@ if TYPE_CHECKING:
 
 
 class BuildType:
-    STANDARD = 0  # type: Final[int]
-    MODULE = 1  # type: Final[int]
-    PROGRAM_TEXT = 2  # type: Final[int]
+    STANDARD = 0  # type: Final
+    MODULE = 1  # type: Final
+    PROGRAM_TEXT = 2  # type: Final
 
 
 PER_MODULE_OPTIONS = {

@@ -41,7 +41,7 @@ type_of_any_name_map = collections.OrderedDict([
     (TypeOfAny.from_error, "Error"),
     (TypeOfAny.special_form, "Special Form"),
     (TypeOfAny.implementation_artifact, "Implementation Artifact"),
-])  # type: Final[collections.OrderedDict[int, str]]
+])  # type: Final
 
 ReporterClasses = Dict[str, Tuple[Callable[['Reports', str], 'AbstractReporter'], bool]]
 

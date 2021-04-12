@@ -164,7 +164,7 @@ flag_prefix_pairs = [
     ('allow', 'disallow'),
     ('show', 'hide'),
 ]  # type: Final
-flag_prefix_map = {}  # type: Final[Dict[str, str]]
+flag_prefix_map = {}  # type: Final
 for a, b in flag_prefix_pairs:
     flag_prefix_map[a] = b
     flag_prefix_map[b] = a

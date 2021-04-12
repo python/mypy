@@ -254,7 +254,7 @@ class ASTConverter:
         ast27.BitXor: '^',
         ast27.BitAnd: '&',
         ast27.FloorDiv: '//'
-    }  # type: Final[Dict[typing.Type[AST], str]]
+    }  # type: Final
 
     def from_operator(self, op: ast27.operator) -> str:
         op_name = ASTConverter.op_map.get(type(op))
@@ -276,7 +276,7 @@ class ASTConverter:
         ast27.IsNot: 'is not',
         ast27.In: 'in',
         ast27.NotIn: 'not in'
-    }  # type: Final[Dict[typing.Type[AST], str]]
+    }  # type: Final
 
     def from_comp_operator(self, op: ast27.cmpop) -> str:
         op_name = ASTConverter.comp_op_map.get(type(op))
