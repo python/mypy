@@ -2705,9 +2705,9 @@ class FakeInfo(TypeInfo):
         raise AssertionError(object.__getattribute__(self, 'msg'))
 
 
-VAR_NO_INFO = FakeInfo('Var is lacking info')  # type: Final
-CLASSDEF_NO_INFO = FakeInfo('ClassDef is lacking info')  # type: Final
-FUNC_NO_INFO = FakeInfo('FuncBase for non-methods lack info')  # type: Final
+VAR_NO_INFO = FakeInfo('Var is lacking info')  # type: Final[TypeInfo]
+CLASSDEF_NO_INFO = FakeInfo('ClassDef is lacking info')  # type: Final[TypeInfo]
+FUNC_NO_INFO = FakeInfo('FuncBase for non-methods lack info')  # type: Final[TypeInfo]
 
 
 class TypeAlias(SymbolNode):
