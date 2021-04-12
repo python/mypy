@@ -16,7 +16,6 @@ venv/
 .cache
 dmypy.json
 .dmypy.json
-*.so
 
 # Packages
 *.egg
