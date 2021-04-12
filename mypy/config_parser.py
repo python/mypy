@@ -38,8 +38,7 @@ def parse_version(v: str) -> Tuple[int, int]:
 
 
 def try_split(v: Union[str, Sequence[str]], split_regex: str = '[,]') -> List[str]:
-    """Split and trim a str or list of str into a list of str
-    """
+    """Split and trim a str or list of str into a list of str"""
     if isinstance(v, str):
         return [p.strip() for p in re.split(split_regex, v)]
 
