@@ -3,7 +3,7 @@
 [case testCaseInsensitivityDirPyprojectTOML]
 # flags: --config-file tmp/pyproject.toml
 
-from a import B  # E: Module 'a' has no attribute 'B'
+from a import B  # E: Module "a" has no attribute "B"
 from other import x
 reveal_type(x)  # N: Revealed type is "builtins.int"
 

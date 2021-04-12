@@ -216,7 +216,7 @@ implicit_reexport = true
 \[tool.mypy-other_module_2]
 implicit_reexport = false
 [out]
-main:2: error: Module 'other_module_2' has no attribute 'a'
+main:2: error: Module "other_module_2" has no attribute "a"
 
 [case testDisallowSubclassingAnyPyprojectTOML]
 # flags: --config-file tmp/pyproject.toml
