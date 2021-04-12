@@ -196,7 +196,7 @@ else:
 
 [case testDictMethods]
 from collections import defaultdict
-from typing import Dict
+from typing import Dict, Optional
 
 def test_dict_clear() -> None:
     d = {'a': 1, 'b': 2}
@@ -217,3 +217,39 @@ def test_dict_copy() -> None:
     dd['a'] = 1
     assert dd.copy() == dd
     assert isinstance(dd.copy(), defaultdict)
+
+class MyDict(dict):
+    def __init__(self, *args, **kwargs):
+        self.update(*args, **kwargs)
+
+    def setdefault(self, k, v=None):
+        if v is None:
+            if k in self.keys():
+                return self[k]
+            else:
+                return None
+        else:
+            return super().setdefault(k, v) + 10
+
+def test_dict_setdefault() -> None:
+    d: Dict[str, int] = {'a': 1, 'b': 2}
+    assert d.setdefault('a', 2) == 1
+    assert d.setdefault('b', 2) == 2
+    assert d.setdefault('c', 3) == 3
+    assert d['a'] == 1
+    assert d['c'] == 3
+    assert d.setdefault('a') == 1
+    assert d.setdefault('e') == None
+    assert d.setdefault('e', 100) == None
+
+def test_dict_subclass_setdefault() -> None:
+    d = MyDict()
+    d['a'] = 1
+    assert d.setdefault('a', 2) == 11
+    assert d.setdefault('b', 2) == 12
+    assert d.setdefault('c', 3) == 13
+    assert d['a'] == 1
+    assert d['c'] == 3
+    assert d.setdefault('a') == 1
+    assert d.setdefault('e') == None
+    assert d.setdefault('e', 100) == 110

@@ -339,6 +339,8 @@ PyObject *CPyDict_GetItem(PyObject *dict, PyObject *key);
 int CPyDict_SetItem(PyObject *dict, PyObject *key, PyObject *value);
 PyObject *CPyDict_Get(PyObject *dict, PyObject *key, PyObject *fallback);
 PyObject *CPyDict_GetWithNone(PyObject *dict, PyObject *key);
+PyObject *CPyDict_SetDefault(PyObject *dict, PyObject *key, PyObject *value);
+PyObject *CPyDict_SetDefaultWithNone(PyObject *dict, PyObject *key);
 PyObject *CPyDict_Build(Py_ssize_t size, ...);
 int CPyDict_Update(PyObject *dict, PyObject *stuff);
 int CPyDict_UpdateInDisplay(PyObject *dict, PyObject *stuff);

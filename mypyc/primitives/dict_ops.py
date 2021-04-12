@@ -17,6 +17,40 @@ load_address_op(
     type=object_rprimitive,
     src='PyDict_Type')
 
+# Construct an empty dictionary.
+dict_new_op = custom_op(
+    arg_types=[],
+    return_type=dict_rprimitive,
+    c_function_name='PyDict_New',
+    error_kind=ERR_MAGIC)
+
+# Construct a dictionary from keys and values.
+# Positional argument is the number of key-value pairs
+# Variable arguments are (key1, value1, ..., keyN, valueN).
+dict_build_op = custom_op(
+    arg_types=[c_pyssize_t_rprimitive],
+    return_type=dict_rprimitive,
+    c_function_name='CPyDict_Build',
+    error_kind=ERR_MAGIC,
+    var_arg_type=object_rprimitive)
+
+# Construct a dictionary from another dictionary.
+function_op(
+    name='builtins.dict',
+    arg_types=[dict_rprimitive],
+    return_type=dict_rprimitive,
+    c_function_name='PyDict_Copy',
+    error_kind=ERR_MAGIC,
+    priority=2)
+
+# Generic one-argument dict constructor: dict(obj)
+function_op(
+    name='builtins.dict',
+    arg_types=[object_rprimitive],
+    return_type=dict_rprimitive,
+    c_function_name='CPyDict_FromAny',
+    error_kind=ERR_MAGIC)
+
 # dict[key]
 dict_get_item_op = method_op(
     name='__getitem__',
@@ -84,38 +118,22 @@ method_op(
     c_function_name='CPyDict_GetWithNone',
     error_kind=ERR_MAGIC)
 
-# Construct an empty dictionary.
-dict_new_op = custom_op(
-    arg_types=[],
-    return_type=dict_rprimitive,
-    c_function_name='PyDict_New',
+# dict.setdefault(key, default)
+method_op(
+    name='setdefault',
+    arg_types=[dict_rprimitive, object_rprimitive, object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='CPyDict_SetDefault',
+    is_borrowed=True,
     error_kind=ERR_MAGIC)
 
-# Construct a dictionary from keys and values.
-# Positional argument is the number of key-value pairs
-# Variable arguments are (key1, value1, ..., keyN, valueN).
-dict_build_op = custom_op(
-    arg_types=[c_pyssize_t_rprimitive],
-    return_type=dict_rprimitive,
-    c_function_name='CPyDict_Build',
-    error_kind=ERR_MAGIC,
-    var_arg_type=object_rprimitive)
-
-# Construct a dictionary from another dictionary.
-function_op(
-    name='builtins.dict',
-    arg_types=[dict_rprimitive],
-    return_type=dict_rprimitive,
-    c_function_name='PyDict_Copy',
-    error_kind=ERR_MAGIC,
-    priority=2)
-
-# Generic one-argument dict constructor: dict(obj)
-function_op(
-    name='builtins.dict',
-    arg_types=[object_rprimitive],
-    return_type=dict_rprimitive,
-    c_function_name='CPyDict_FromAny',
+# dict.setdefault(key)
+method_op(
+    name='setdefault',
+    arg_types=[dict_rprimitive, object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='CPyDict_SetDefaultWithNone',
+    is_borrowed=True,
     error_kind=ERR_MAGIC)
 
 # dict.keys()
