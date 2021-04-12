@@ -1044,7 +1044,7 @@ from foo import B
 class C(B):
     pass
 [out]
-tmp/bar.py:1: error: Module 'foo' has no attribute 'B'
+tmp/bar.py:1: error: Module "foo" has no attribute "B"
 
 [case testImportSuppressedWhileAlmostSilent]
 # cmd: mypy -m main
@@ -1817,8 +1817,8 @@ m = n  # E: Cannot assign multiple modules to name 'm' without explicit 'types.M
 [builtins fixtures/module.pyi]
 
 [case testNoReExportFromStubs]
-from stub import Iterable  # E: Module 'stub' has no attribute 'Iterable'
-from stub import D  # E: Module 'stub' has no attribute 'D'
+from stub import Iterable  # E: Module "stub" has no attribute "Iterable"
+from stub import D  # E: Module "stub" has no attribute "D"
 from stub import C
 
 c = C()
@@ -1912,7 +1912,7 @@ class C:
 
 [case testNoReExportChildStubs]
 import mod
-from mod import C, D  # E: Module 'mod' has no attribute 'C'
+from mod import C, D  # E: Module "mod" has no attribute "C"
 
 reveal_type(mod.x)  # N: Revealed type is "mod.submod.C"
 mod.C  # E: Module has no attribute "C"
@@ -1930,7 +1930,7 @@ class D:
 [builtins fixtures/module.pyi]
 
 [case testNoReExportNestedStub]
-from stub import substub  # E: Module 'stub' has no attribute 'substub'
+from stub import substub  # E: Module "stub" has no attribute "substub"
 
 [file stub.pyi]
 import substub
@@ -2074,7 +2074,7 @@ def __getattr__(name: str) -> int: ...
 
 [case testModuleLevelGetattrImportFromNotStub36]
 # flags: --python-version 3.6
-from non_stub import name  # E: Module 'non_stub' has no attribute 'name'
+from non_stub import name  # E: Module "non_stub" has no attribute "name"
 reveal_type(name)  # N: Revealed type is "Any"
 
 [file non_stub.py]
@@ -2814,10 +2814,10 @@ CustomDict = TypedDict(
 [builtins fixtures/tuple.pyi]
 
 [case testNoReExportFromMissingStubs]
-from stub import a  # E: Module 'stub' has no attribute 'a'
+from stub import a  # E: Module "stub" has no attribute "a"
 from stub import b
-from stub import c  # E: Module 'stub' has no attribute 'c'
-from stub import d  # E: Module 'stub' has no attribute 'd'
+from stub import c  # E: Module "stub" has no attribute "c"
+from stub import d  # E: Module "stub" has no attribute "d"
 
 [file stub.pyi]
 from mystery import a, b as b, c as d

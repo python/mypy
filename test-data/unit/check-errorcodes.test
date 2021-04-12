@@ -6,8 +6,8 @@
 import m
 m.x  # E: Module has no attribute "x"  [attr-defined]
 'x'.foobar  # E: "str" has no attribute "foobar"  [attr-defined]
-from m import xx  # E: Module 'm' has no attribute 'xx'  [attr-defined]
-from m import think  # E: Module 'm' has no attribute 'think'; maybe "thing"?  [attr-defined]
+from m import xx  # E: Module "m" has no attribute "xx"  [attr-defined]
+from m import think  # E: Module "m" has no attribute "think"; maybe "thing"?  [attr-defined]
 for x in 1:  # E: "int" has no attribute "__iter__" (not iterable)  [attr-defined]
     pass
 [file m.py]
@@ -504,7 +504,7 @@ from defusedxml import xyz  # E: Cannot find implementation or library stub for 
 from nonexistent import foobar  # E: Cannot find implementation or library stub for module named "nonexistent"  [import]
 import nonexistent2  # E: Cannot find implementation or library stub for module named "nonexistent2"  [import]
 from nonexistent3 import *  # E: Cannot find implementation or library stub for module named "nonexistent3"  [import]
-from pkg import bad  # E: Module 'pkg' has no attribute 'bad'  [attr-defined]
+from pkg import bad  # E: Module "pkg" has no attribute "bad"  [attr-defined]
 from pkg.bad2 import bad3  # E: Cannot find implementation or library stub for module named "pkg.bad2"  [import]
 [file pkg/__init__.py]
 

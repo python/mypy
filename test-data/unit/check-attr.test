@@ -282,7 +282,7 @@ class DeprecatedTrue:
 class DeprecatedFalse:
    ...
 
-@attrs(cmp=False, eq=True)  # E: Don't mix `cmp` with `eq' and `order`
+@attrs(cmp=False, eq=True)  # E: Don't mix "cmp" with "eq" and "order"
 class Mixed:
    ...
 

@@ -335,3 +335,18 @@ def f(d):
 L0:
     r0 = CPyDict_Copy(d)
     return r0
+
+[case testDictSetdefault]
+from typing import Dict
+def f(d: Dict[object, object]) -> object:
+    return d.setdefault('a', 'b')
+[out]
+def f(d):
+    d :: dict
+    r0, r1 :: str
+    r2 :: object
+L0:
+    r0 = 'a'
+    r1 = 'b'
+    r2 = CPyDict_SetDefault(d, r0, r1)
+    return r2

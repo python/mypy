@@ -67,14 +67,14 @@ tmp/a.py:4: error: "B" not callable
 [case testNewAnalyzerTypeAnnotationCycle3]
 import b
 [file a.py]
-from b import bad # E: Module 'b' has no attribute 'bad'; maybe "bad2"?
+from b import bad # E: Module "b" has no attribute "bad"; maybe "bad2"?
 [file b.py]
-from a import bad2 # E: Module 'a' has no attribute 'bad2'; maybe "bad"?
+from a import bad2 # E: Module "a" has no attribute "bad2"; maybe "bad"?
 
 [case testNewAnalyzerTypeAnnotationCycle4]
 import b
 [file a.py]
-from b import bad # E: Module 'b' has no attribute 'bad'
+from b import bad # E: Module "b" has no attribute "bad"
 [file b.py]
 # TODO: Could we generate an error here as well?
 from a import bad
