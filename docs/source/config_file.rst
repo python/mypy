@@ -911,6 +911,32 @@ Instead of using a ``mypy.ini`` file, a ``pyproject.toml`` file (as specified by
 Please see the `TOML Documentation`_ for more details and information on 
 what is allowed in a ``toml`` file. See `PEP 518`_ for more information on the layout
 and structure of the ``pyproject.toml`` file.
+  
+Example ``pyproject.toml``
+**************************
+
+Here is an example of a ``pyproject.toml`` file. To use this config file, place it at the root
+of your repo (or append it to the end of an existing ``pyproject.toml`` file) and run mypy.
+
+.. code-block:: toml
+
+    # mypy global options:
+
+    [tool.mypy]
+    python_version = "2.7"
+    warn_return_any = true
+    warn_unused_configs = true
+
+    # mypy per-module options:
+
+    [tool.'mypy-mycode.foo.*']
+    disallow_untyped_defs = true
+
+    [tool.mypy-mycode.bar]
+    warn_return_any = false
+
+    [tool.mypy-somelibrary]
+    ignore_missing_imports = true
 
 .. _lxml: https://pypi.org/project/lxml/
 .. _SQLite: https://www.sqlite.org/
