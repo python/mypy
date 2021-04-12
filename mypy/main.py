@@ -7,7 +7,7 @@ import subprocess
 import sys
 import time
 
-from typing import Any, IO, List, Optional, Sequence, Tuple, TextIO, Union
+from typing import Any, Dict, IO, List, Optional, Sequence, Tuple, TextIO, Union
 from typing_extensions import Final, NoReturn
 
 from mypy import build
@@ -164,7 +164,7 @@ flag_prefix_pairs = [
     ('allow', 'disallow'),
     ('show', 'hide'),
 ]  # type: Final
-flag_prefix_map = {}  # type: Final
+flag_prefix_map = {}  # type: Final[Dict[str, str]]
 for a, b in flag_prefix_pairs:
     flag_prefix_map[a] = b
     flag_prefix_map[b] = a

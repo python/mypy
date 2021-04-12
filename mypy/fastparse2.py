@@ -17,6 +17,7 @@ two in a typesafe way.
 import sys
 import warnings
 
+import typing  # for typing.Type, which conflicts with types.Type
 from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List
 from typing_extensions import Final, Literal
 
@@ -253,7 +254,7 @@ class ASTConverter:
         ast27.BitXor: '^',
         ast27.BitAnd: '&',
         ast27.FloorDiv: '//'
-    }  # type: Final
+    }  # type: Final[Dict[typing.Type[AST], str]]
 
     def from_operator(self, op: ast27.operator) -> str:
         op_name = ASTConverter.op_map.get(type(op))
@@ -275,7 +276,7 @@ class ASTConverter:
         ast27.IsNot: 'is not',
         ast27.In: 'in',
         ast27.NotIn: 'not in'
-    }  # type: Final
+    }  # type: Final[Dict[typing.Type[AST], str]]
 
     def from_comp_operator(self, op: ast27.cmpop) -> str:
         op_name = ASTConverter.comp_op_map.get(type(op))

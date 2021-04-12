@@ -2,6 +2,7 @@ import re
 import sys
 import warnings
 
+import typing  # for typing.Type, which conflicts with types.Type
 from typing import (
     Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List, overload
 )
@@ -397,7 +398,7 @@ class ASTConverter:
         ast3.BitXor: '^',
         ast3.BitAnd: '&',
         ast3.FloorDiv: '//'
-    }  # type: Final
+    }  # type: Final[Dict[typing.Type[AST], str]]
 
     def from_operator(self, op: ast3.operator) -> str:
         op_name = ASTConverter.op_map.get(type(op))
@@ -417,7 +418,7 @@ class ASTConverter:
         ast3.IsNot: 'is not',
         ast3.In: 'in',
         ast3.NotIn: 'not in'
-    }  # type: Final
+    }  # type: Final[Dict[typing.Type[AST], str]]
 
     def from_comp_operator(self, op: ast3.cmpop) -> str:
         op_name = ASTConverter.comp_op_map.get(type(op))

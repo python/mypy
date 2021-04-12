@@ -205,7 +205,7 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
 MAGIC_TYPED_DICT_CLASSES = (
     'typing._TypedDict',
     'typing_extensions._TypedDict',
-)  # type: Final
+)  # type: Final[Tuple[str, ...]]
 
 
 def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
