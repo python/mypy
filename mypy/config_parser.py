@@ -15,6 +15,9 @@ from typing_extensions import Final
 from mypy import defaults
 from mypy.options import Options, PER_MODULE_OPTIONS
 
+_CONFIG_VALUE_TYPES = Union[str, bool, int, float, Dict[str, str], List[str], Tuple[int, int]]
+_INI_PARSER_CALLABLE = Callable[[Any], _CONFIG_VALUE_TYPES]
+
 
 def parse_version(v: str) -> Tuple[int, int]:
     m = re.match(r'\A(\d)\.(\d+)\Z', v)
@@ -122,10 +125,10 @@ ini_config_types = {
     'cache_dir': expand_path,
     'python_executable': expand_path,
     'strict': bool,
-}  # type: Final[Dict[str, Any]]
+}  # type: Final[Dict[str, _INI_PARSER_CALLABLE]]
 
 # Reuse the ini_config_types and overwrite the diff
-toml_config_types = copy.copy(ini_config_types)  # type: Final[Dict[str, Any]]
+toml_config_types = ini_config_types.copy()  # type: Final[Dict[str, _INI_PARSER_CALLABLE]]
 toml_config_types.update({
     'python_version': lambda s: parse_version(str(s)),
     'strict_optional_whitelist': try_split,
