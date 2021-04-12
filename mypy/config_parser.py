@@ -1,7 +1,6 @@
 import argparse
 from collections import OrderedDict
 import configparser
-import copy
 import glob as fileglob
 from io import StringIO
 import os
@@ -176,7 +175,7 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
                               if key.split('-')[0] != 'mypy']
                 for key in other_keys:
                     del toml_data[key]
-                if toml_data.get('mypy') is None:
+                if 'mypy' not in toml_data:
                     continue
                 parser = toml_data
                 config_types = toml_config_types
