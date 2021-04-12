@@ -342,8 +342,7 @@ def parse_section(prefix: str, template: Options,
 
 
 def convert_to_boolean(value: Optional[Any]) -> bool:
-    """Return a boolean value translating from other types if necessary.
-    """
+    """Return a boolean value translating from other types if necessary."""
     if isinstance(value, bool):
         return value
     if not isinstance(value, str):
