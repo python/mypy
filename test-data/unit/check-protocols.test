@@ -914,6 +914,19 @@ main:15: note:         def [T2] a(self, other: Union[P1[T2], P2[T2]]) -> Any
 main:15: note:     Got:
 main:15: note:         def [T2] a(self, other: P1[T2]) -> Any
 
+[case testHashable]
+
+from typing import Hashable, Iterable
+
+def f(x: Hashable) -> None:
+    pass
+
+def g(x: Iterable[str]) -> None:
+    f(x)   # E: Argument 1 to "f" has incompatible type "Iterable[str]"; expected "Hashable"
+
+[builtins fixtures/object_hashable.pyi]
+[typing fixtures/typing-full.pyi]
+
 -- FIXME: things like this should work
 [case testWeirdRecursiveInferenceForProtocols-skip]
 from typing import Protocol, TypeVar, Generic
