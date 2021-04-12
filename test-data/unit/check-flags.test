@@ -1303,7 +1303,7 @@ implicit_reexport = True
 \[mypy-other_module_2]
 implicit_reexport = False
 [out]
-main:2: error: Module 'other_module_2' has no attribute 'a'
+main:2: error: Module "other_module_2" has no attribute "a"
 
 [case testImplicitAnyOKForNoArgs]
 # flags: --disallow-any-generics --show-column-numbers

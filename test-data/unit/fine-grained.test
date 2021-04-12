@@ -1645,7 +1645,7 @@ def f() -> None: pass
 [file a.py.2]
 [out]
 ==
-main:2: error: Module 'a' has no attribute 'f'
+main:2: error: Module "a" has no attribute "f"
 
 [case testTypeVarRefresh]
 from typing import TypeVar
@@ -1656,7 +1656,7 @@ def f() -> None: pass
 [file a.py.2]
 [out]
 ==
-main:2: error: Module 'a' has no attribute 'f'
+main:2: error: Module "a" has no attribute "f"
 
 [case testRefreshTyping]
 from typing import Sized
@@ -1695,7 +1695,7 @@ def f() -> None: pass
 [builtins fixtures/tuple.pyi]
 [out]
 ==
-main:2: error: Module 'a' has no attribute 'f'
+main:2: error: Module "a" has no attribute "f"
 
 [case testModuleLevelAttributeRefresh]
 from typing import Callable
@@ -1707,7 +1707,7 @@ def f() -> None: pass
 [file a.py.2]
 [out]
 ==
-main:2: error: Module 'a' has no attribute 'f'
+main:2: error: Module "a" has no attribute "f"
 
 [case testClassBodyRefresh]
 from a import f
@@ -1722,7 +1722,7 @@ f = 1
 [file a.py.2]
 [out]
 ==
-main:1: error: Module 'a' has no attribute 'f'
+main:1: error: Module "a" has no attribute "f"
 
 [case testDecoratedMethodRefresh]
 from typing import Iterator, Callable, List
@@ -2588,7 +2588,7 @@ class A: pass
 class A: pass
 [out]
 ==
-main:2: error: Module 'a' has no attribute 'A'
+main:2: error: Module "a" has no attribute "A"
 ==
 
 [case testRefreshGenericAndFailInPass3]
@@ -3400,7 +3400,7 @@ class C: pass
 [file a.py.2]
 [out]
 ==
-main:1: error: Module 'a' has no attribute 'C'
+main:1: error: Module "a" has no attribute "C"
 
 [case testRefreshSubclassNestedInFunction2]
 from a import C
@@ -7845,7 +7845,7 @@ from b import A
 [builtins fixtures/list.pyi]
 [out]
 ==
-a.py:4: error: Module 'b' has no attribute 'A'
+a.py:4: error: Module "b" has no attribute "A"
 a.py:4: error: Name 'A' already defined on line 3
 
 -- the order of errors is different with cache
@@ -9176,7 +9176,7 @@ x = 42
 def good() -> None: ...
 [out]
 ==
-a.py:1: error: Module 'b' has no attribute 'bad'
+a.py:1: error: Module "b" has no attribute "bad"
 
 [case testFileAddedAndImported2]
 # flags: --ignore-missing-imports --follow-imports=skip
@@ -9193,7 +9193,7 @@ x = 42
 def good() -> None: ...
 [out]
 ==
-a.py:1: error: Module 'b' has no attribute 'bad'
+a.py:1: error: Module "b" has no attribute "bad"
 
 [case testTypedDictCrashFallbackAfterDeletedMeet]
 # flags: --ignore-missing-imports

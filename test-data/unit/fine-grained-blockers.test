@@ -392,7 +392,7 @@ class A:
 main:1: error: Cannot find implementation or library stub for module named "a"
 main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
-main:1: error: Module 'a' has no attribute 'A'
+main:1: error: Module "a" has no attribute "A"
 
 [case testFixingBlockingErrorBringsInAnotherModuleWithBlocker]
 import a

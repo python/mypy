@@ -1856,7 +1856,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             # is incomplete. Defer the current target.
             self.mark_incomplete(imported_id, context)
             return
-        message = "Module '{}' has no attribute '{}'".format(import_id, source_id)
+        message = 'Module "{}" has no attribute "{}"'.format(import_id, source_id)
         # Suggest alternatives, if any match is found.
         module = self.modules.get(import_id)
         if module:

@@ -771,7 +771,7 @@ import m.x
 [file m/x.py]
 from .x import nonexistent
 [out]
-tmp/m/x.py:1: error: Module 'm.x' has no attribute 'nonexistent'
+tmp/m/x.py:1: error: Module "m.x" has no attribute "nonexistent"
 
 [case testImportFromSameModule]
 import m.x
@@ -779,7 +779,7 @@ import m.x
 [file m/x.py]
 from m.x import nonexistent
 [out]
-tmp/m/x.py:1: error: Module 'm.x' has no attribute 'nonexistent'
+tmp/m/x.py:1: error: Module "m.x" has no attribute "nonexistent"
 
 [case testImportMisspellingSingleCandidate]
 import f
@@ -790,7 +790,7 @@ def some_function():
 [file f.py]
 from m.x import somefunction
 [out]
-tmp/f.py:1: error: Module 'm.x' has no attribute 'somefunction'; maybe "some_function"?
+tmp/f.py:1: error: Module "m.x" has no attribute "somefunction"; maybe "some_function"?
 
 [case testImportMisspellingMultipleCandidates]
 import f
@@ -803,7 +803,7 @@ def somef_unction():
 [file f.py]
 from m.x import somefunction
 [out]
-tmp/f.py:1: error: Module 'm.x' has no attribute 'somefunction'; maybe "somef_unction" or "some_function"?
+tmp/f.py:1: error: Module "m.x" has no attribute "somefunction"; maybe "somef_unction" or "some_function"?
 
 [case testImportMisspellingMultipleCandidatesTruncated]
 import f
@@ -820,7 +820,7 @@ def somefun_ction():
 [file f.py]
 from m.x import somefunction
 [out]
-tmp/f.py:1: error: Module 'm.x' has no attribute 'somefunction'; maybe "somefun_ction", "somefu_nction", or "somef_unction"?
+tmp/f.py:1: error: Module "m.x" has no attribute "somefunction"; maybe "somefun_ction", "somefu_nction", or "somef_unction"?
 
 [case testFromImportAsInStub]
 from m import *

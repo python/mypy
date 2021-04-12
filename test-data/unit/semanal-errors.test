@@ -195,7 +195,7 @@ from m import y
 [file m.py]
 x = 1
 [out]
-main:2: error: Module 'm' has no attribute 'y'
+main:2: error: Module "m" has no attribute "y"
 
 [case testMissingModule]
 import typing
@@ -1273,16 +1273,16 @@ class A:
 
 [case testStubPackage]
 from m import x
-from m import y # E: Module 'm' has no attribute 'y'
+from m import y # E: Module "m" has no attribute "y"
 [file m/__init__.pyi]
 x = 1
 [out]
 
 [case testStubPackageSubModule]
 from m import x
-from m import y # E: Module 'm' has no attribute 'y'
+from m import y # E: Module "m" has no attribute "y"
 from m.m2 import y
-from m.m2 import z # E: Module 'm.m2' has no attribute 'z'
+from m.m2 import z # E: Module "m.m2" has no attribute "z"
 [file m/__init__.pyi]
 x = 1
 [file m/m2.pyi]
