@@ -2768,6 +2768,17 @@ if 1 in ('x', 'y'):  # E: Non-overlapping container check (element type: "int", 
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testOverlappingAnyTypeWithoutStrictOptional]
+# flags: --no-strict-optional --strict-equality
+from typing import Any, Optional
+
+x: Optional[Any]
+
+if x in (1, 2):
+    pass
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
 [case testUnimportedHintAny]
 def f(x: Any) -> None:  # E: Name "Any" is not defined \
                         # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Any")
