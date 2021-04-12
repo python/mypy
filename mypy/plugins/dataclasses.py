@@ -112,6 +112,7 @@ class DataclassTransformer:
             'eq': _get_decorator_bool_argument(self._ctx, 'eq', True),
             'order': _get_decorator_bool_argument(self._ctx, 'order', False),
             'frozen': _get_decorator_bool_argument(self._ctx, 'frozen', False),
+            'match_args': _get_decorator_bool_argument(self._ctx, 'match_args', True),
         }
 
         # If there are no attributes, it may be that the semantic analyzer has not
@@ -175,11 +176,13 @@ class DataclassTransformer:
 
         self.reset_init_only_vars(info, attributes)
 
-        # Add __match_args__. This is always added
-        str_type = ctx.api.named_type("__builtins__.str")
-        literals = [LiteralType(attr.name, str_type) for attr in attributes]  # type: List[Type]
-        match_args_type = TupleType(literals, ctx.api.named_type("__builtins__.tuple"))
-        add_attribute_to_class(ctx.api, ctx.cls, "__match_args__", match_args_type, final=True)
+        if (decorator_arguments['match_args'] and
+                ('__match_args__' not in info.names or info.names['__match_args__'].plugin_generated) and
+                attributes):
+            str_type = ctx.api.named_type("__builtins__.str")
+            literals = [LiteralType(attr.name, str_type) for attr in attributes if attr.is_in_init]  # type: List[Type]
+            match_args_type = TupleType(literals, ctx.api.named_type("__builtins__.tuple"))
+            add_attribute_to_class(ctx.api, ctx.cls, "__match_args__", match_args_type, final=True)
 
         info.metadata['dataclass'] = {
             'attributes': [attr.serialize() for attr in attributes],

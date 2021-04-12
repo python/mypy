@@ -358,6 +358,36 @@ match m:
         reveal_type(i)  # N: Revealed type is "builtins.str"
         reveal_type(j)  # N: Revealed type is "builtins.int"
 
+[case testClassPatternCaptureDataclassNoMatchArgs]
+from dataclasses import dataclass
+
+@dataclass(match_args=False)
+class A:
+    a: str
+    b: int
+
+m: A
+
+match m:
+    case A(i, j):  # E: Class doesn't define __match_args__
+        pass
+
+[case testClassPatternCaptureDataclassPartialMatchArgs]
+from dataclasses import dataclass, field
+
+@dataclass
+class A:
+    a: str
+    b: int = field(init=False)
+
+m: A
+
+match m:
+    case A(i, j):  # E: Too many positional patterns for class pattern
+        pass
+    case A(k):
+        reveal_type(k)  # N: Revealed type is "builtins.str"
+
 [case testClassPatternCaptureNamedTupleInline]
 from collections import namedtuple
 
