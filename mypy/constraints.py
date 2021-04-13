@@ -18,8 +18,8 @@ from mypy.nodes import COVARIANT, CONTRAVARIANT
 from mypy.argmap import ArgTypeExpander
 from mypy.typestate import TypeState
 
-SUBTYPE_OF = 0  # type: Final[int]
-SUPERTYPE_OF = 1  # type: Final[int]
+SUBTYPE_OF = 0  # type: Final
+SUPERTYPE_OF = 1  # type: Final
 
 
 class Constraint:
