@@ -196,7 +196,7 @@ else:
 
 [case testDictMethods]
 from collections import defaultdict
-from typing import Dict, Optional
+from typing import Dict, Optional, List, Set
 
 def test_dict_clear() -> None:
     d = {'a': 1, 'b': 2}
@@ -253,3 +253,59 @@ def test_dict_subclass_setdefault() -> None:
     assert d.setdefault('a') == 1
     assert d.setdefault('e') == None
     assert d.setdefault('e', 100) == 110
+
+class MyDict2(dict):
+    def __init__(self, *args, **kwargs):
+        self.update(*args, **kwargs)
+
+    def setdefault(self, k, v=None):
+        if v is None:
+            if k in self.keys():
+                return self[k]
+            else:
+                return None
+        else:
+            if isinstance(v, list):
+                v.append(1)
+                return super().setdefault(k, v)
+            elif isinstance(v, set):
+                v.add(1)
+                return super().setdefault(k, v)
+            elif isinstance(v, dict):
+                v[1] = 1
+                return super().setdefault(k, v)
+            else:
+                return super().setdefault(k, v)
+
+def test_dict_set_empty_defeault() -> None:
+    d1: Dict[str, List[int]] = {'a': [1, 2, 3]}
+    assert d1.setdefault('a', []) == [1, 2, 3]
+    assert d1.setdefault('b', []) == []
+    assert 'b' in d1
+    d1['b'].append(3)
+    assert d1.setdefault('b', []) == [3]
+
+    d2: Dict[str, Dict[int, int]] = {'a': {1: 1}}
+    assert d2.setdefault('a', {}) == {1:1}
+    assert d2.setdefault('b', {}) == {}
+    assert 'b' in d2
+    d2['b'][3] = 2
+    assert d2.setdefault('b', {}) == {3: 2}
+
+    # d3: Dict[str, Set[int]] = {'a': {1}}
+    # assert d3.setdefault('a', set()) == {1}
+    # assert d3.setdefault('b', set()) == set()
+    # assert 'b' in d3
+    # d3['b'].add(4)
+    # assert d3.setdefault('b', set()) == {4}
+
+def test_dict_subclass_set_empty_default() -> None:
+    d1 = MyDict2()
+    d1.setdefault(1, [])
+    assert d1[1] == [1]
+    d2 = MyDict2()
+    d2.setdefault(1, {2, 3})
+    assert d2[1] == {1, 2, 3}
+    d3 = MyDict2()
+    d3.setdefault(1, {3:2})
+    assert d3[1] == {1:1, 3:2}

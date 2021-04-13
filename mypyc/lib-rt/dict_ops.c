@@ -78,6 +78,45 @@ PyObject *CPyDict_SetDefaultWithNone(PyObject *dict, PyObject *key) {
     return CPyDict_SetDefault(dict, key, Py_None);
 }
 
+
+// code: 0 for list, 1 for dict, 2 for set
+static inline PyObject *_code_to_collection_instance(int32_t code) {
+    switch (code)
+    {
+        case 0:
+            return PyList_New(0);
+        case 1:
+            return PyDict_New();
+        case 2:
+            return PySet_New(NULL);
+        default:
+            return NULL;
+    }
+}
+
+PyObject *CPyDict_SetDefaultWithEmptyCollection(PyObject *dict, PyObject *key, int32_t code) {
+    PyObject *res = NULL;
+    if(PyDict_CheckExact(dict)) {
+        res = PyDict_GetItemWithError(dict, key);
+        if(!res) {
+            res = _code_to_collection_instance(code);
+            if(res) {
+                if(PyDict_SetItem(dict, key, res) == -1) {
+                    Py_DECREF(res);
+                    res = NULL;
+                }
+            }
+        }
+        return res;
+    } else {
+        res = _code_to_collection_instance(code);
+        if(!res) {
+            return NULL;
+        }
+        return PyObject_CallMethod(dict, "setdefault", "(OO)", key, res);
+    }
+}
+
 int CPyDict_SetItem(PyObject *dict, PyObject *key, PyObject *value) {
     if (PyDict_CheckExact(dict)) {
         return PyDict_SetItem(dict, key, value);

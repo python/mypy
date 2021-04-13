@@ -340,6 +340,12 @@ L0:
 from typing import Dict
 def f(d: Dict[object, object]) -> object:
     return d.setdefault('a', 'b')
+def default_empty_list(d: Dict[object, object]) -> None:
+    d.setdefault('a', [])
+def default_empty_set(d: Dict[object, object]) -> None:
+    d.setdefault('a', set())
+def default_empty_dict(d: Dict[object, object]) -> None:
+    d.setdefault('a', {})
 [out]
 def f(d):
     d :: dict
@@ -350,3 +356,34 @@ L0:
     r1 = 'b'
     r2 = CPyDict_SetDefault(d, r0, r1)
     return r2
+def default_empty_list(d):
+    d :: dict
+    r0 :: str
+    r1 :: list
+    r2 :: object
+L0:
+    r0 = 'a'
+    r1 = PyList_New(0)
+    r2 = CPyDict_SetDefaultWithEmptyCollection(d, r0, 0)
+    return 1
+def default_empty_set(d):
+    d :: dict
+    r0 :: str
+    r1 :: set
+    r2 :: object
+L0:
+    r0 = 'a'
+    r1 = PySet_New(0)
+    r2 = CPyDict_SetDefault(d, r0, r1)
+    return 1
+def default_empty_dict(d):
+    d :: dict
+    r0 :: str
+    r1 :: dict
+    r2 :: object
+L0:
+    r0 = 'a'
+    r1 = PyDict_New()
+    r2 = CPyDict_SetDefaultWithEmptyCollection(d, r0, 1)
+    return 1
+

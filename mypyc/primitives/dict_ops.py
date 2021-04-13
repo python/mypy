@@ -1,14 +1,15 @@
 """Primitive dict ops."""
 
-from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_NEVER
+from typing import List
+from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_NEVER, Integer, Value, CallC
 from mypyc.ir.rtypes import (
-    dict_rprimitive, object_rprimitive, bool_rprimitive, int_rprimitive,
+    RType, dict_rprimitive, int32_rprimitive, object_rprimitive, bool_rprimitive, int_rprimitive,
     list_rprimitive, dict_next_rtuple_single, dict_next_rtuple_pair, c_pyssize_t_rprimitive,
     c_int_rprimitive, bit_rprimitive
 )
 
 from mypyc.primitives.registry import (
-    custom_op, method_op, function_op, binary_op, load_address_op, ERR_NEG_INT
+    COERCER, custom_op, method_op, function_op, binary_op, load_address_op, ERR_NEG_INT, default_match
 )
 
 # Get the 'dict' type object.
@@ -117,6 +118,43 @@ method_op(
     return_type=object_rprimitive,
     c_function_name='CPyDict_GetWithNone',
     error_kind=ERR_MAGIC)
+
+# dict.setdefault(key, {}) or dict.setdefault(key, []) or dict.setdefault(key, set())
+def _setdefault_empty_match(desc_arg_types: List[RType], args: List[Value]):
+    if not default_match(desc_arg_types, args):
+        return False
+    if isinstance(args[2], CallC):
+        # TODO: implement optimization for set
+        if args[2].function_name == "PyList_New":
+            if (len(args[2].args) == 1 and isinstance(args[2].args[0], Integer) and
+                    args[2].args[0].value == 0):
+                return True
+        elif args[2].function_name == "PyDict_New":
+            return True
+    return False
+
+def _setdefault_empty_create_args(args: List[Value], coercer: COERCER) -> List[Value]:
+    # code should be consistent with CPyDict_SetDefaultWithEmptyCollection
+    code_map = {
+        "PyList_New": 0,
+        "PyDict_New": 1,
+        "PySet_New": 2
+    }
+    assert isinstance(args[2], CallC)
+    enum_value = Integer(code_map[args[2].function_name], int32_rprimitive, args[2].line)
+    key = coercer(args[1], object_rprimitive, args[1].line, False)
+    return [args[0], key, enum_value]
+
+method_op(
+    name='setdefault',
+    arg_types=[dict_rprimitive, object_rprimitive, object_rprimitive],
+    return_type = object_rprimitive,
+    c_function_name='CPyDict_SetDefaultWithEmptyCollection',
+    is_borrowed=True,
+    error_kind=ERR_MAGIC,
+    priority=2,
+    match=_setdefault_empty_match,
+    arg_converter=_setdefault_empty_create_args)
 
 # dict.setdefault(key, default)
 method_op(

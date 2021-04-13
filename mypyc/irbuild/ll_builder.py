@@ -1001,30 +1001,35 @@ class LowLevelIRBuilder:
                result_type: Optional[RType] = None) -> Value:
         """Call function using C/native calling convention (not a Python callable)."""
         # Handle void function via singleton RVoid instance
-        coerced = []
-        # Coerce fixed number arguments
-        for i in range(min(len(args), len(desc.arg_types))):
-            formal_type = desc.arg_types[i]
-            arg = args[i]
-            arg = self.coerce(arg, formal_type, line)
-            coerced.append(arg)
-        # Reorder args if necessary
-        if desc.ordering is not None:
-            assert desc.var_arg_type is None
-            coerced = [coerced[i] for i in desc.ordering]
-        # Coerce any var_arg
-        var_arg_idx = -1
-        if desc.var_arg_type is not None:
-            var_arg_idx = len(desc.arg_types)
-            for i in range(len(desc.arg_types), len(args)):
+        if desc.arg_converter:
+            coerced = desc.arg_converter(args, self.coerce)
+            # TODO: add support for var_arg
+            var_arg_idx = -1
+        else:
+            coerced = []
+            # Coerce fixed number arguments
+            for i in range(min(len(args), len(desc.arg_types))):
+                formal_type = desc.arg_types[i]
                 arg = args[i]
-                arg = self.coerce(arg, desc.var_arg_type, line)
+                arg = self.coerce(arg, formal_type, line)
                 coerced.append(arg)
-        # Add extra integer constant if any
-        for item in desc.extra_int_constants:
-            val, typ = item
-            extra_int_constant = Integer(val, typ, line)
-            coerced.append(extra_int_constant)
+            # Reorder args if necessary
+            if desc.ordering is not None:
+                assert desc.var_arg_type is None
+                coerced = [coerced[i] for i in desc.ordering]
+            # Coerce any var_arg
+            var_arg_idx = -1
+            if desc.var_arg_type is not None:
+                var_arg_idx = len(desc.arg_types)
+                for i in range(len(desc.arg_types), len(args)):
+                    arg = args[i]
+                    arg = self.coerce(arg, desc.var_arg_type, line)
+                    coerced.append(arg)
+            # Add extra integer constant if any
+            for item in desc.extra_int_constants:
+                val, typ = item
+                extra_int_constant = Integer(val, typ, line)
+                coerced.append(extra_int_constant)
         error_kind = desc.error_kind
         if error_kind == ERR_NEG_INT:
             # Handled with an explicit comparison
@@ -1062,10 +1067,7 @@ class LowLevelIRBuilder:
         # we should remove the old one or refactor both them into only as we move forward
         matching = None  # type: Optional[CFunctionDescription]
         for desc in candidates:
-            if len(desc.arg_types) != len(args):
-                continue
-            if all(is_subtype(actual.type, formal)
-                   for actual, formal in zip(args, desc.arg_types)):
+            if desc.match(desc.arg_types, args):
                 if matching:
                     assert matching.priority != desc.priority, 'Ambiguous:\n1) %s\n2) %s' % (
                         matching, desc)
