@@ -201,7 +201,7 @@ def f(i):
     r4 :: int32
     r5 :: bit
     r6, r7, r8 :: bool
-    r9 :: int64
+    r9 :: native_int
     r10, r11 :: bit
     r12 :: bool
     r13 :: bit
@@ -213,7 +213,7 @@ def f(i):
     r21 :: int32
     r22 :: bit
     r23, r24, r25 :: bool
-    r26 :: int64
+    r26 :: native_int
     r27, r28 :: bit
     r29 :: bool
     r30 :: bit
@@ -225,7 +225,7 @@ def f(i):
     r38 :: int32
     r39 :: bit
     r40, r41, r42 :: bool
-    r43 :: int64
+    r43 :: native_int
     r44, r45 :: bit
     r46 :: bool
     r47 :: bit
