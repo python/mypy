@@ -281,7 +281,7 @@ glob_eqFalse = EqFalse()
 def inop_is_check(ins: EqFalse) -> bool:
     return ins in [glob_eqFalse]
 
-def test_inop_is(ins: EqFalse) -> None:
+def test_inop_is() -> None:
     a = EqFalse()
     b = EqFalse()
     c = a
