@@ -436,23 +436,36 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
             and isinstance(e.operands[1], (TupleExpr, ListExpr))):
         items = e.operands[1].items
         n_items = len(items)
-        # x in y -> x == y[0] or ... or x == y[n]
-        # x not in y -> x != y[0] and ... and x != y[n]
+        # x in y -> (x is y[0] or x == y[0]) or ... or (x is y[n] or x == y[n])
+        # x not in y -> (x is not y[0] and x != y[0]) and ... and (x is not y[n] and x != y[n])
         # 16 is arbitrarily chosen to limit code size
-        if 1 < n_items < 16:
+        if 1 <= n_items < 16:
+            lhs = e.operands[0]
             if e.operators[0] == 'in':
+                # check `is` relation statically
+                for item in items:
+                    if (isinstance(lhs, NameExpr) and isinstance(item, NameExpr)
+                            and lhs.node is not None and lhs.node is item.node):
+                        return builder.true()
                 bin_op = 'or'
                 cmp_op = '=='
+                id_cmp_op = 'is'
             else:
+                for item in items:
+                    if (isinstance(lhs, NameExpr) and isinstance(item, NameExpr)
+                            and lhs.node is not None and lhs.node is item.node):
+                        return builder.false()
                 bin_op = 'and'
                 cmp_op = '!='
-            lhs = e.operands[0]
+                id_cmp_op = 'is not'
             mypy_file = builder.graph['builtins'].tree
             assert mypy_file is not None
             bool_type = Instance(cast(TypeInfo, mypy_file.names['bool'].node), [])
             exprs = []
             for item in items:
-                expr = ComparisonExpr([cmp_op], [lhs, item])
+                is_expr = ComparisonExpr([id_cmp_op], [lhs, item])
+                eq_expr = ComparisonExpr([cmp_op], [lhs, item])
+                expr = OpExpr(bin_op, is_expr, eq_expr)
                 builder.types[expr] = bool_type
                 exprs.append(expr)
 
@@ -461,15 +474,6 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
                 or_expr = OpExpr(bin_op, or_expr, expr)
                 builder.types[or_expr] = bool_type
             return builder.accept(or_expr)
-        # x in [y]/(y) -> x == y
-        # x not in [y]/(y) -> x != y
-        elif n_items == 1:
-            if e.operators[0] == 'in':
-                cmp_op = '=='
-            else:
-                cmp_op = '!='
-            e.operators = [cmp_op]
-            e.operands[1] = items[0]
         # x in []/() -> False
         # x not in []/() -> True
         elif n_items == 0:

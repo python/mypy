@@ -273,6 +273,32 @@ def list_not_in_str(s: "str") -> bool:
 def list_in_mixed(i: object):
     return i in [[], (), "", 0, 0.0, False, 0j, {}, set(), type]
 
+class EqFalse:
+    def __eq__(self, other) -> bool:
+        return False
+glob_eqFalse = EqFalse()
+
+def inop_is_check(ins: EqFalse) -> bool:
+    return ins in [glob_eqFalse]
+
+def test_inop_is(ins: EqFalse) -> None:
+    a = EqFalse()
+    b = EqFalse()
+    c = a
+    assert a != a
+    assert c in [a]
+    assert c in [a, b]
+    assert b in [a, b]
+    assert b not in [a]
+    assert not (b not in [b, a])
+    assert a not in [b, b]
+    assert c in (a,)
+    assert c in (a, b)
+    assert b in (a, b)
+    assert b not in (a,)
+    assert not (b not in [b, a])
+    assert a not in (b, b)
+
 [file driver.py]
 
 from native import *
@@ -338,3 +364,6 @@ assert list_in_mixed(0.0)
 assert not list_in_mixed([1])
 assert not list_in_mixed(object)
 assert list_in_mixed(type)
+
+assert inop_is_check(glob_eqFalse)
+assert not inop_is_check(EqFalse())
