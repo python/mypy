@@ -35,7 +35,7 @@ section names in square brackets and flag settings of the form
 `NAME = VALUE`. Comments start with ``#`` characters.
 
 - A section named ``[mypy]`` must be present.  This specifies
-  the global flags. The ``setup.cfg`` file is an exception to this.
+  the global flags.
 
 - Additional sections named ``[mypy-PATTERN1,PATTERN2,...]`` may be
   present, where ``PATTERN1``, ``PATTERN2``, etc., are comma-separated
