@@ -39,11 +39,22 @@ class MappingKeyPattern(Pattern):
         self.expr = expr
 
 
-class AsPattern(Pattern):
-    pattern = None  # type: Pattern
+class CapturePattern(AlwaysTruePattern):
     name = None  # type: NameExpr
 
-    def __init__(self, pattern: Pattern, name: NameExpr) -> None:
+    def __init__(self, name: NameExpr):
+        super().__init__()
+        self.name = name
+
+    def accept(self, visitor: PatternVisitor[T]) -> T:
+        return visitor.visit_capture_pattern(self)
+
+
+class AsPattern(Pattern):
+    pattern = None  # type: Pattern
+    name = None  # type: CapturePattern
+
+    def __init__(self, pattern: Pattern, name: CapturePattern) -> None:
         super().__init__()
         self.pattern = pattern
         self.name = name
@@ -76,17 +87,6 @@ class LiteralPattern(MappingKeyPattern):
 
     def accept(self, visitor: PatternVisitor[T]) -> T:
         return visitor.visit_literal_pattern(self)
-
-
-class CapturePattern(AlwaysTruePattern):
-    name = None  # type: NameExpr
-
-    def __init__(self, name: NameExpr):
-        super().__init__()
-        self.name = name
-
-    def accept(self, visitor: PatternVisitor[T]) -> T:
-        return visitor.visit_capture_pattern(self)
 
 
 class WildcardPattern(AlwaysTruePattern):

@@ -1,28 +1,25 @@
 """Pattern checker. This file is conceptually part of TypeChecker."""
-from collections import defaultdict
-from typing import List, Optional, Union, Tuple, Dict
+from typing import List, Optional, Union, Tuple, Dict, NamedTuple, Set
 
-from mypy import message_registry
+import mypy.checker
 from mypy.expandtype import expand_type_by_instance
 from mypy.join import join_types
-
+from mypy.literals import literal_hash
 from mypy.messages import MessageBuilder
-from mypy.nodes import Expression, NameExpr, ARG_POS, TypeAlias, TypeInfo, Var
+from mypy.nodes import Expression, ARG_POS, TypeAlias, TypeInfo, Var, NameExpr
 from mypy.patterns import (
     Pattern, AsPattern, OrPattern, LiteralPattern, CapturePattern, WildcardPattern, ValuePattern,
     SequencePattern, StarredPattern, MappingPattern, ClassPattern, MappingKeyPattern
 )
 from mypy.plugin import Plugin
-from mypy.subtypes import is_subtype, find_member, is_equivalent
+from mypy.subtypes import is_subtype, find_member
 from mypy.typeops import try_getting_str_literals_from_type
 from mypy.types import (
     ProperType, AnyType, TypeOfAny, Instance, Type, NoneType, UninhabitedType, get_proper_type,
-    TypedDictType, TupleType, UnionType
+    TypedDictType, TupleType
 )
 from mypy.typevars import fill_typevars
 from mypy.visitor import PatternVisitor
-import mypy.checker
-
 
 self_match_type_names = [
     "builtins.bool",
@@ -39,16 +36,19 @@ self_match_type_names = [
 ]
 
 
-class PatternChecker(PatternVisitor[Optional[Type]]):
+PatternType = NamedTuple(
+    'PatternType',
+    [
+        ('type', Optional[Type]),
+        ('captures', Dict[Expression, Type]),
+    ])
+
+
+class PatternChecker(PatternVisitor[PatternType]):
     """Pattern checker.
 
     This class checks if a pattern can match a type, what the type can be narrowed to, and what
     type capture patterns should be inferred as.
-
-    visit_ methods return the type a pattern narrows to or None if the pattern can't match the
-    subject. They should not be called directly, as they change the state.
-
-    Use check_patterns() instead. A new PatternChecker should be used for each match statement.
     """
 
     # Some services are provided by a TypeChecker instance.
@@ -59,161 +59,113 @@ class PatternChecker(PatternVisitor[Optional[Type]]):
     plugin = None  # type: Plugin
     # The expression being matched against the pattern
     subject = None  # type: Expression
-    # Type of the subject to check the (sub)pattern against
-    type_stack = []  # type: List[Type]
-    # TODO: This type looks kind of ugly
-    captured_types = None  # type: Dict[Var, List[Tuple[NameExpr, Type]]]
 
-    current_type_map = {}  # type: 'mypy.checker.TypeMap'
+    subject_type = None  # type: Type
+    # Type of the subject to check the (sub)pattern against
+    type_context = None  # type: List[Type]
 
     self_match_types = None  # type: List[Type]
 
-    def __init__(self, chk: 'mypy.checker.TypeChecker', msg: MessageBuilder, plugin: Plugin,
-                 subject: Expression, subject_type: Type) -> None:
+    def __init__(self,
+                 chk: 'mypy.checker.TypeChecker',
+                 msg: MessageBuilder, plugin: Plugin
+                 ) -> None:
         self.chk = chk
         self.msg = msg
         self.plugin = plugin
-        self.subject = subject
-        self.type_stack.append(subject_type)
 
-        self.captured_types = defaultdict(list)
+        self.type_context = []
         self.self_match_types = self.generate_self_match_types()
 
-    def check_patterns(self, patterns: List[Pattern]) -> List['mypy.checker.TypeMap']:
-        type_maps = []  # type: List['mypy.checker.TypeMap']
-        for pattern in patterns:
-            self.current_type_map = {}  # type: Dict[Expression, Type]
-            pattern_type = self.visit(pattern)
-            if pattern_type is None:
-                # This case is unreachable
-                type_maps.append(None)
-            elif not is_equivalent(self.type_stack[-1], pattern_type):
-                self.current_type_map[self.subject] = pattern_type
-                type_maps.append(self.current_type_map)
-            else:
-                type_maps.append(self.current_type_map)
+    def accept(self, o: Pattern, type_context: Type) -> PatternType:
+        self.type_context.append(type_context)
+        result = o.accept(self)
+        self.type_context.pop()
 
-        type_maps = self.infer_types(type_maps)
-        return type_maps
+        return result
 
-    def infer_types(self, type_maps: List['mypy.checker.TypeMap']) -> List['mypy.checker.TypeMap']:
-        for var, captures in self.captured_types.items():
-            conflict = False
-            types = []  # type: List[Type]
-            for expr, typ in captures:
-                types.append(typ)
+    def visit_as_pattern(self, o: AsPattern) -> PatternType:
+        pattern_type = self.accept(o.pattern, self.type_context[-1])
+        typ, type_map = pattern_type
+        if typ is None:
+            return pattern_type
+        as_pattern_type = self.accept(o.name, typ)
+        self.update_type_map(type_map, as_pattern_type.captures)
+        return PatternType(typ, type_map)
 
-                previous_type, _, inferred = self.chk.check_lvalue(expr)
-                if previous_type is not None:
-                    conflict = True
-                    self.chk.check_subtype(typ, previous_type, expr,
-                                           msg=message_registry.INCOMPATIBLE_TYPES_IN_CAPTURE,
-                                           subtype_label="pattern captures type",
-                                           supertype_label="variable has type")
-                    for type_map in type_maps:
-                        if type_map is not None and expr in type_map:
-                            del type_map[expr]
+    def visit_or_pattern(self, o: OrPattern) -> PatternType:
+        # TODO
+        return PatternType(self.type_context[-1], {})
 
-            if not conflict:
-                new_type = UnionType.make_union(types)
-                # Infer the union type at the first occurrence
-                self.chk.infer_variable_type(var, captures[0][0], new_type, captures[0][0])
-
-        return type_maps
-
-    def visit(self, o: Pattern) -> Optional[Type]:
-        return o.accept(self)
-
-    def visit_as_pattern(self, o: AsPattern) -> Optional[Type]:
-        typ = self.visit(o.pattern)
-        specific_type = get_more_specific_type(typ, self.type_stack[-1])
-        if specific_type is None:
-            return None
-        self.type_stack.append(specific_type)
-        self.check_capture(o.name)
-        self.type_stack.pop()
-        return typ
-
-    def visit_or_pattern(self, o: OrPattern) -> Optional[Type]:
-        return self.type_stack[-1]
-
-    def visit_literal_pattern(self, o: LiteralPattern) -> Optional[Type]:
+    def visit_literal_pattern(self, o: LiteralPattern) -> PatternType:
         literal_type = self.get_literal_type(o.value)
-        return get_more_specific_type(literal_type, self.type_stack[-1])
+        typ = get_more_specific_type(literal_type, self.type_context[-1])
+        return PatternType(typ, {})
 
     def get_literal_type(self, l: Union[int, complex, float, str, bytes, None]) -> Type:
-        # TODO: Should we use ExprNodes instead of the raw value here?
-        if isinstance(l, int):
-            return self.chk.named_type("builtins.int")
+        if l is None:
+            typ = NoneType()  # type: Type
+        elif isinstance(l, int):
+            typ = self.chk.named_type("builtins.int")
         elif isinstance(l, complex):
-            return self.chk.named_type("builtins.complex")
+            typ = self.chk.named_type("builtins.complex")
         elif isinstance(l, float):
-            return self.chk.named_type("builtins.float")
+            typ = self.chk.named_type("builtins.float")
         elif isinstance(l, str):
-            return self.chk.named_type("builtins.str")
+            typ = self.chk.named_type("builtins.str")
         elif isinstance(l, bytes):
-            return self.chk.named_type("builtins.bytes")
+            typ = self.chk.named_type("builtins.bytes")
         elif isinstance(l, bool):
-            return self.chk.named_type("builtins.bool")
-        elif l is None:
-            return NoneType()
+            typ = self.chk.named_type("builtins.bool")
         else:
             assert False, "Invalid literal in literal pattern"
 
-    def visit_capture_pattern(self, o: CapturePattern) -> Optional[Type]:
-        self.check_capture(o.name)
-        return self.type_stack[-1]
+        return typ
 
-    def check_capture(self, capture: NameExpr) -> None:
-        node = capture.node
+    def visit_capture_pattern(self, o: CapturePattern) -> PatternType:
+        node = o.name.node
         assert isinstance(node, Var)
-        self.captured_types[node].append((capture, self.type_stack[-1]))
-        type_map = self.current_type_map
-        if type_map is not None:
-            type_map[capture] = self.type_stack[-1]
+        return PatternType(self.type_context[-1], {o.name: self.type_context[-1]})
 
-    def visit_wildcard_pattern(self, o: WildcardPattern) -> Optional[Type]:
-        return self.type_stack[-1]
+    def visit_wildcard_pattern(self, o: WildcardPattern) -> PatternType:
+        return PatternType(self.type_context[-1], {})
 
-    def visit_value_pattern(self, o: ValuePattern) -> Optional[Type]:
+    def visit_value_pattern(self, o: ValuePattern) -> PatternType:
         typ = self.chk.expr_checker.accept(o.expr)
-        return get_more_specific_type(typ, self.type_stack[-1])
+        specific_typ = get_more_specific_type(typ, self.type_context[-1])
+        return PatternType(specific_typ, {})
 
-    def visit_sequence_pattern(self, o: SequencePattern) -> Optional[Type]:
-        current_type = self.type_stack[-1]
-        inner_type = self.get_sequence_type(get_proper_type(current_type))
+    def visit_sequence_pattern(self, o: SequencePattern) -> PatternType:
+        current_type = self.type_context[-1]
+        inner_type = self.get_sequence_type(current_type)
         if inner_type is None:
             if is_subtype(self.chk.named_type("typing.Iterable"), current_type):
                 # Current type is more general, but the actual value could still be iterable
                 inner_type = self.chk.named_type("builtins.object")
             else:
-                # Pattern can't match
-                return None
+                return early_non_match()
 
-        self.type_stack.append(inner_type)
         new_inner_type = UninhabitedType()  # type: Type
+        captures = {}  # type: Dict[Expression, Type]
+        can_match = True
         for p in o.patterns:
-            pattern_type = self.visit(p)
-            if pattern_type is None:
-                return None
-            new_inner_type = join_types(new_inner_type, pattern_type)
-        self.type_stack.pop()
-        iterable = self.chk.named_generic_type("typing.Iterable", [new_inner_type])
-        if self.chk.type_is_iterable(current_type):
-            proper_type = get_proper_type(current_type)
-            assert isinstance(proper_type, Instance)
-            empty_type = fill_typevars(proper_type.type)
-            partial_type = expand_type_by_instance(empty_type, iterable)
-            new_type = expand_type_by_instance(partial_type, proper_type)
-        else:
-            new_type = iterable
+            pattern_type = self.accept(p, inner_type)
+            typ, type_map = pattern_type
+            if typ is None:
+                can_match = False
+            else:
+                new_inner_type = join_types(new_inner_type, typ)
+            self.update_type_map(captures, type_map)
 
-        if is_subtype(new_type, current_type):
-            return new_type
-        else:
-            return current_type
+        new_type = None  # type: Optional[Type]
+        if can_match:
+            new_type = self.construct_iterable_child(current_type, new_inner_type)
+            if not is_subtype(new_type, current_type):
+                new_type = current_type
+        return PatternType(new_type, captures)
 
-    def get_sequence_type(self, t: ProperType) -> Optional[Type]:
+    def get_sequence_type(self, t: Type) -> Optional[Type]:
+        t = get_proper_type(t)
         if isinstance(t, AnyType):
             return AnyType(TypeOfAny.from_another_any, t)
 
@@ -222,30 +174,36 @@ class PatternChecker(PatternVisitor[Optional[Type]]):
         else:
             return None
 
-    def visit_starred_pattern(self, o: StarredPattern) -> Optional[Type]:
-        if not isinstance(o.capture, WildcardPattern):
-            list_type = self.chk.named_generic_type('builtins.list', [self.type_stack[-1]])
-            self.type_stack.append(list_type)
-            self.visit_capture_pattern(o.capture)
-            self.type_stack.pop()
-        return self.type_stack[-1]
+    def visit_starred_pattern(self, o: StarredPattern) -> PatternType:
+        if isinstance(o.capture, CapturePattern):
+            list_type = self.chk.named_generic_type('builtins.list', [self.type_context[-1]])
+            pattern_type = self.accept(o.capture, list_type)
+            captures = pattern_type.captures
+        elif isinstance(o.capture, WildcardPattern):
+            captures = {}
+        else:
+            assert False
+        return PatternType(self.type_context[-1], captures)
 
-    def visit_mapping_pattern(self, o: MappingPattern) -> Optional[Type]:
-        current_type = self.type_stack[-1]
+    def visit_mapping_pattern(self, o: MappingPattern) -> PatternType:
+        current_type = self.type_context[-1]
         can_match = True
+        captures = {}  # type: Dict[Expression, Type]
         for key, value in zip(o.keys, o.values):
             inner_type = self.get_mapping_item_type(o, current_type, key)
             if inner_type is None:
                 can_match = False
                 inner_type = self.chk.named_type("builtins.object")
-            self.type_stack.append(inner_type)
-            if self.visit(value) is None:
+            pattern_type = self.accept(value, inner_type)
+            if pattern_type is None:
                 can_match = False
-            self.type_stack.pop()
+            else:
+                self.update_type_map(captures, pattern_type.captures)
         if can_match:
-            return self.type_stack[-1]
+            new_type = self.type_context[-1]  # type: Optional[Type]
         else:
-            return None
+            new_type = None
+        return PatternType(new_type, captures)
 
     def get_mapping_item_type(self,
                               pattern: MappingPattern,
@@ -293,89 +251,103 @@ class PatternChecker(PatternVisitor[Optional[Type]]):
                                                                     local_errors=local_errors)
         return result
 
-    def visit_class_pattern(self, o: ClassPattern) -> Optional[Type]:
-        current_type = self.type_stack[-1]
+    def visit_class_pattern(self, o: ClassPattern) -> PatternType:
+        current_type = self.type_context[-1]
+
+        #
+        # Check class type
+        #
         class_name = o.class_ref.fullname
         assert class_name is not None
         sym = self.chk.lookup_qualified(class_name)
         if isinstance(sym.node, TypeAlias) and not sym.node.no_args:
             self.msg.fail("Class pattern class must not be a type alias with type parameters", o)
-            return None
+            return early_non_match()
         if isinstance(sym.node, (TypeAlias, TypeInfo)):
             typ = self.chk.named_type(class_name)
         else:
             self.msg.fail('Class pattern must be a type. Found "{}"'.format(sym.type), o.class_ref)
-            return None
+            return early_non_match()
 
+        #
+        # Convert positional to keyword patterns
+        #
         keyword_pairs = []  # type: List[Tuple[Optional[str], Pattern]]
-        match_arg_names = []  # type: List[Optional[str]]
+        match_arg_set = set()  # type: Set[str]
 
-        can_match = True
+        captures = {}  # type: Dict[Expression, Type]
 
-        if self.should_self_match(typ):
-            if len(o.positionals) >= 1:
-                self.type_stack.append(typ)
-                if self.visit(o.positionals[0]) is None:
-                    can_match = False
-                self.type_stack.pop()
-
+        if len(o.positionals) != 0:
+            if self.should_self_match(typ):
                 if len(o.positionals) > 1:
                     self.msg.fail("Too many positional patterns for class pattern", o)
-                    self.type_stack.append(self.chk.named_type("builtins.object"))
-                    for p in o.positionals[1:]:
-                        if self.visit(p) is None:
-                            can_match = False
-                    self.type_stack.pop()
-        else:
-            match_args_type = find_member("__match_args__", typ, typ)
-
-            if match_args_type is None and can_match:
-                if len(o.positionals) >= 1:
-                    self.msg.fail("Class doesn't define __match_args__", o)
-
-            proper_match_args_type = get_proper_type(match_args_type)
-            if isinstance(proper_match_args_type, TupleType):
-                match_arg_names = get_match_arg_names(proper_match_args_type)
-
-                if len(o.positionals) > len(match_arg_names):
-                    self.msg.fail("Too many positional patterns for class pattern", o)
-                    match_arg_names += [None] * (len(o.positionals) - len(match_arg_names))
+                pattern_type = self.accept(o.positionals[0], typ)
+                if pattern_type.type is None:
+                    return pattern_type
+                captures = pattern_type.captures
             else:
-                match_arg_names = [None] * len(o.positionals)
+                match_args_type = find_member("__match_args__", typ, typ)
 
-            positional_names = set()
+                if match_args_type is None:
+                    self.msg.fail("Class doesn't define __match_args__", o)
+                    return early_non_match()
 
-            for arg_name, pos in zip(match_arg_names, o.positionals):
-                keyword_pairs.append((arg_name, pos))
-                positional_names.add(arg_name)
+                proper_match_args_type = get_proper_type(match_args_type)
+                if isinstance(proper_match_args_type, TupleType):
+                    match_arg_names = get_match_arg_names(proper_match_args_type)
 
-        keyword_names = set()
+                    if len(o.positionals) > len(match_arg_names):
+                        self.msg.fail("Too many positional patterns for class pattern", o)
+                        return early_non_match()
+                else:
+                    match_arg_names = [None] * len(o.positionals)
+
+                for arg_name, pos in zip(match_arg_names, o.positionals):
+                    keyword_pairs.append((arg_name, pos))
+                    if arg_name is not None:
+                        match_arg_set.add(arg_name)
+
+        #
+        # Check for duplicate patterns
+        #
+        keyword_arg_set = set()
+        has_duplicates = False
         for key, value in zip(o.keyword_keys, o.keyword_values):
             keyword_pairs.append((key, value))
-            if key in match_arg_names:
+            if key in match_arg_set:
                 self.msg.fail('Keyword "{}" already matches a positional pattern'.format(key),
                               value)
-            elif key in keyword_names:
+                has_duplicates = True
+            elif key in keyword_arg_set:
                 self.msg.fail('Duplicate keyword pattern "{}"'.format(key), value)
-            keyword_names.add(key)
+                has_duplicates = True
+            keyword_arg_set.add(key)
 
+        if has_duplicates:
+            return early_non_match()
+
+        #
+        # Check keyword patterns
+        #
+        can_match = True
         for keyword, pattern in keyword_pairs:
+            key_type = None  # type: Optional[Type]
             if keyword is not None:
                 key_type = find_member(keyword, typ, current_type)
-                if key_type is None:
-                    key_type = self.chk.named_type("builtins.object")
-            else:
-                key_type = self.chk.named_type("builtins.object")
+            if key_type is None:
+                key_type = AnyType(TypeOfAny.implementation_artifact)
 
-            self.type_stack.append(key_type)
-            if self.visit(pattern) is None:
+            pattern_type = self.accept(pattern, key_type)
+            if pattern_type is None:
                 can_match = False
-            self.type_stack.pop()
+            else:
+                self.update_type_map(captures, pattern_type.captures)
 
         if can_match:
-            return get_more_specific_type(current_type, typ)
+            new_type = get_more_specific_type(current_type, typ)
         else:
-            return None
+            new_type = None
+        return PatternType(new_type, captures)
 
     def should_self_match(self, typ: ProperType) -> bool:
         if isinstance(typ, Instance) and typ.type.is_named_tuple:
@@ -395,6 +367,34 @@ class PatternChecker(PatternVisitor[Optional[Type]]):
                 pass
 
         return types
+
+    def update_type_map(self,
+                        original_type_map: Dict[Expression, Type],
+                        extra_type_map: Dict[Expression, Type]
+                        ) -> None:
+        # Calculating this would not be needed if TypeMap directly used literal hashes instead of
+        # expressions, as suggested in the TODO above it's definition
+        already_captured = set(literal_hash(expr) for expr in original_type_map)
+        for expr, typ in extra_type_map.items():
+            if literal_hash(expr) in already_captured:
+                assert isinstance(expr, NameExpr)
+                node = expr.node
+                assert node is not None
+                self.msg.fail('Multiple assignments to name "{}" in pattern'.format(node.name),
+                              expr)
+            else:
+                original_type_map[expr] = typ
+
+    def construct_iterable_child(self, outer_type: Type, inner_type: Type) -> Type:
+        iterable = self.chk.named_generic_type("typing.Iterable", [inner_type])
+        if self.chk.type_is_iterable(outer_type):
+            proper_type = get_proper_type(outer_type)
+            assert isinstance(proper_type, Instance)
+            empty_type = fill_typevars(proper_type.type)
+            partial_type = expand_type_by_instance(empty_type, iterable)
+            return expand_type_by_instance(partial_type, proper_type)
+        else:
+            return iterable
 
 
 def get_match_arg_names(typ: TupleType) -> List[Optional[str]]:
@@ -417,3 +417,7 @@ def get_more_specific_type(left: Optional[Type], right: Optional[Type]) -> Optio
         return right
     else:
         return None
+
+
+def early_non_match() -> PatternType:
+    return PatternType(None, {})

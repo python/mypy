@@ -3987,7 +3987,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def visit_as_pattern(self, p: AsPattern) -> None:
         p.pattern.accept(self)
-        self.analyze_lvalue(p.name)
+        p.name.accept(self)
 
     def visit_or_pattern(self, p: OrPattern) -> None:
         for pattern in p.patterns:

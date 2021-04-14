@@ -89,7 +89,8 @@ MypyFile:1(
         LiteralPattern:3(
           1
           IntExpr(1))
-        NameExpr(a* [__main__.a])))
+        CapturePattern:3(
+          NameExpr(a* [__main__.a]))))
     Body(
       ExpressionStmt:4(
         NameExpr(a [__main__.a])))))
@@ -156,7 +157,8 @@ MypyFile:1(
         LiteralPattern:3(
           1
           IntExpr(1))
-        NameExpr(a* [__main__.a])))
+        CapturePattern:3(
+          NameExpr(a* [__main__.a]))))
     Guard(
       NameExpr(a [__main__.a]))
     Body(

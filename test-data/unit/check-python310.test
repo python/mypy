@@ -64,7 +64,7 @@ b: str
 
 
 -- Sequence Pattern --
-[case testSequenceCPatternCaptures]
+[case testSequencePatternCaptures]
 from typing import List
 m: List[int]
 
@@ -343,6 +343,34 @@ match m:
         reveal_type(k)  # N: Revealed type is "builtins.tuple[Any]"
 [builtins fixtures/primitives.pyi]
 
+[case testClassPatternNarrowSelfCapture]
+m: object
+
+match m:
+    case bool():
+        reveal_type(m)  # N: Revealed type is "builtins.bool"
+    case bytearray():
+        reveal_type(m)  # N: Revealed type is "builtins.bytearray"
+    case bytes():
+        reveal_type(m)  # N: Revealed type is "builtins.bytes"
+    case dict():
+        reveal_type(m)  # N: Revealed type is "builtins.dict[Any, Any]"
+    case float():
+        reveal_type(m)  # N: Revealed type is "builtins.float"
+    case frozenset():
+        reveal_type(m)  # N: Revealed type is "builtins.frozenset[Any]"
+    case int():
+        reveal_type(m)  # N: Revealed type is "builtins.int"
+    case list():
+        reveal_type(m)  # N: Revealed type is "builtins.list[Any]"
+    case set():
+        reveal_type(m)  # N: Revealed type is "builtins.set[Any]"
+    case str():
+        reveal_type(m)  # N: Revealed type is "builtins.str"
+    case tuple():
+        reveal_type(m)  # N: Revealed type is "builtins.tuple[Any]"
+[builtins fixtures/primitives.pyi]
+
 [case testClassPatternCaptureDataclass]
 from dataclasses import dataclass
 
@@ -551,7 +579,7 @@ m: object
 match m:
     case A(a=j):
         reveal_type(m)  # N: Revealed type is "__main__.A"
-        reveal_type(j)  # N: Revealed type is "builtins.object"
+        reveal_type(j)  # N: Revealed type is "Any"
 
 [case testClassPatternDuplicateKeyword]
 class A:
@@ -611,8 +639,8 @@ m: object
 
 match m:
     case A(i, j):
-        reveal_type(i)  # N: Revealed type is "builtins.object"
-        reveal_type(j)  # N: Revealed type is "builtins.object"
+        reveal_type(i)  # N: Revealed type is "Any"
+        reveal_type(j)  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 
 [case testAnyTupleMatchArgs]
@@ -627,9 +655,9 @@ m: object
 
 match m:
     case A(i, j, k):
-        reveal_type(i)  # N: Revealed type is "builtins.object"
-        reveal_type(j)  # N: Revealed type is "builtins.object"
-        reveal_type(k)  # N: Revealed type is "builtins.object"
+        reveal_type(i)  # N: Revealed type is "Any"
+        reveal_type(j)  # N: Revealed type is "Any"
+        reveal_type(k)  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 
 [case testNonLiteralMatchArgs]
@@ -648,7 +676,7 @@ match m:
         pass
     case A(i, j):
         reveal_type(i)  # N: Revealed type is "builtins.str"
-        reveal_type(j)  # N: Revealed type is "builtins.object"
+        reveal_type(j)  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 
 [case testExternalMatchArgs]
@@ -696,7 +724,7 @@ match m:
 
 
 -- Interactions --
-[case testCapturePatternMultipleCaptures]
+[case testCapturePatternMultipleCases]
 m: object
 
 match m:
@@ -706,6 +734,16 @@ match m:
         reveal_type(x)  # N: Revealed type is "builtins.str"
 
 reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+[case testCapturePatternMultipleCaptures]
+from typing import Iterable
+
+m: Iterable[int]
+
+match m:
+    case [x, x]:  # E: Multiple assignments to name "x" in pattern
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/list.pyi]
 
 [case testCapturePatternPreexistingSame]
 a: int

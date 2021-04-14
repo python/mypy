@@ -2,6 +2,7 @@
 
 import itertools
 import fnmatch
+from collections import defaultdict
 from contextlib import contextmanager
 
 from typing import (
@@ -10,7 +11,6 @@ from typing import (
 )
 from typing_extensions import Final
 
-from mypy.checkpattern import PatternChecker
 from mypy.errors import Errors, report_internal_error
 from mypy.nodes import (
     SymbolTable, Statement, MypyFile, Var, Expression, Lvalue, Node,
@@ -45,6 +45,7 @@ import mypy.checkexpr
 from mypy.checkmember import (
     analyze_member_access, analyze_descriptor_access, type_object_type,
 )
+from mypy.checkpattern import PatternChecker, PatternType
 from mypy.typeops import (
     map_type_from_supertype, bind_self, erase_to_bound, make_simplified_union,
     erase_def_to_union_or_bound, erase_to_union_or_bound, coerce_to_literal,
@@ -164,6 +165,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     # Helper for type checking expressions
     expr_checker = None  # type: mypy.checkexpr.ExpressionChecker
 
+    pattern_checker = None  # type: PatternChecker
+
     tscope = None  # type: Scope
     scope = None  # type: CheckerScope
     # Stack of function return types
@@ -220,6 +223,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.msg = MessageBuilder(errors, modules)
         self.plugin = plugin
         self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg, self.plugin)
+        self.pattern_checker = PatternChecker(self, self.msg, self.plugin)
         self.tscope = Scope()
         self.scope = CheckerScope(tree)
         self.binder = ConditionalTypeBinder()
@@ -3723,21 +3727,23 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def visit_match_stmt(self, s: MatchStmt) -> None:
         with self.binder.frame_context(can_skip=False, fall_through=0):
-            t = get_proper_type(self.expr_checker.accept(s.subject))
+            subject_type = get_proper_type(self.expr_checker.accept(s.subject))
 
-            if isinstance(t, DeletedType):
-                self.msg.deleted_as_rvalue(t, s)
+            if isinstance(subject_type, DeletedType):
+                self.msg.deleted_as_rvalue(subject_type, s)
 
-            pattern_checker = PatternChecker(self, self.msg, self.plugin, s.subject, t)
+            pattern_types = [self.pattern_checker.accept(p, subject_type) for p in s.patterns]
 
-            type_maps = pattern_checker.check_patterns(s.patterns)
+            type_maps = get_type_maps_from_pattern_types(pattern_types)
+            self.infer_names_from_type_maps(type_maps)
 
-            for b, g, tm in zip(s.bodies, s.guards, type_maps):
+            for pattern_type, g, b in zip(pattern_types, s.guards, s.bodies):
                 with self.binder.frame_context(can_skip=True, fall_through=2):
-                    if not b.is_unreachable:
-                        self.push_type_map(tm)
-                    else:
+                    if b.is_unreachable or pattern_type.type is None:
                         self.push_type_map(None)
+                    else:
+                        self.binder.put(s.subject, pattern_type.type)
+                        self.push_type_map(pattern_type.captures)
                     if g is not None:
                         gt = get_proper_type(self.expr_checker.accept(g))
 
@@ -3748,6 +3754,39 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                         self.push_type_map(if_map)
                     self.accept(b)
+
+    def infer_names_from_type_maps(self, type_maps: List[TypeMap]) -> None:
+        all_captures = defaultdict(list)  # type: Dict[Var, List[Tuple[NameExpr, Type]]]
+        for tm in type_maps:
+            if tm is not None:
+                for expr, typ in tm.items():
+                    if isinstance(expr, NameExpr):
+                        node = expr.node
+                        assert isinstance(node, Var)
+                        all_captures[node].append((expr, typ))
+
+        for var, captures in all_captures.items():
+            conflict = False
+            types = []  # type: List[Type]
+            for expr, typ in captures:
+                types.append(typ)
+
+                previous_type, _, inferred = self.check_lvalue(expr)
+                if previous_type is not None:
+                    conflict = True
+                    self.check_subtype(typ, previous_type, expr,
+                                       msg=message_registry.INCOMPATIBLE_TYPES_IN_CAPTURE,
+                                       subtype_label="pattern captures type",
+                                       supertype_label="variable has type")
+                    for type_map in type_maps:
+                        if type_map is not None and expr in type_map:
+                            del type_map[expr]
+
+            if not conflict:
+                new_type = UnionType.make_union(types)
+                # Infer the union type at the first occurrence
+                first_occurrence, _ = captures[0]
+                self.infer_variable_type(var, first_occurrence, new_type, first_occurrence)
 
     def make_fake_typeinfo(self,
                            curr_module_fullname: str,
@@ -5870,3 +5909,8 @@ def collapse_walrus(e: Expression) -> Expression:
     if isinstance(e, AssignmentExpr):
         return e.target
     return e
+
+
+def get_type_maps_from_pattern_types(pattern_types: List[PatternType]) -> List[TypeMap]:
+    return [pattern_type.captures if pattern_type is not None else None
+            for pattern_type in pattern_types]

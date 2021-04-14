@@ -1331,7 +1331,7 @@ class PatternConverter(Converter):
 
     # MatchAs(expr pattern, identifier name)
     def visit_MatchAs(self, n: MatchAs) -> AsPattern:
-        node = AsPattern(self.visit(n.pattern), NameExpr(n.name))
+        node = AsPattern(self.visit(n.pattern), self.set_line(CapturePattern(NameExpr(n.name)), n))
         return self.set_line(node, n)
 
     # MatchOr(expr* pattern)

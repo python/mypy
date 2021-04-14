@@ -79,7 +79,8 @@ MypyFile:1(
         LiteralPattern:2(
           1
           IntExpr(1))
-        NameExpr(b)))
+        CapturePattern:2(
+          NameExpr(b))))
     Body(
       PassStmt:3())))
 
