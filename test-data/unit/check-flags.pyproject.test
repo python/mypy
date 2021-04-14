@@ -11,7 +11,8 @@ def incomplete(x) -> int:  # E: Function is missing a type annotation for one or
 [file pyproject.toml]
 \[tool.mypy]
 disallow_incomplete_defs = false
-\[tool.mypy-incomplete]
+\[[tool.mypy.overrides]]
+module = "incomplete"
 disallow_incomplete_defs = true
 
 [case testPerFileStrictOptionalBasicPyprojectTOML]
@@ -30,7 +31,8 @@ if int():
 [file pyproject.toml]
 \[tool.mypy]
 strict_optional = false
-\[tool.mypy-optional]
+\[[tool.mypy.overrides]]
+module = "optional"
 strict_optional = true
 
 [case testPerFileStrictOptionalBasicImportStandardPyprojectTOML]
@@ -56,7 +58,8 @@ f(standard.optional_int)  # E: Argument 1 to "f" has incompatible type "None"; e
 [file pyproject.toml]
 \[tool.mypy]
 strict_optional = false
-\[tool.mypy-optional]
+\[[tool.mypy.overrides]]
+module = "optional"
 strict_optional = true
 
 [case testPerFileStrictOptionalBasicImportOptionalPyprojectTOML]
@@ -78,7 +81,8 @@ y = None  # type: None
 [file pyproject.toml]
 \[tool.mypy]
 strict_optional = false
-\[tool.mypy-optional]
+\[[tool.mypy.overrides]]
+module = "optional"
 strict_optional = true
 
 [case testPerFileStrictOptionalListItemImportOptionalPyprojectTOML]
@@ -101,7 +105,8 @@ y = []  # type: List[int]
 [file pyproject.toml]
 \[tool.mypy]
 strict_optional = false
-\[tool.mypy-optional]
+\[[tool.mypy.overrides]]
+module = "optional"
 strict_optional = true
 [builtins fixtures/list.pyi]
 
@@ -120,7 +125,8 @@ standard.f(None)
 [file pyproject.toml]
 \[tool.mypy]
 strict_optional = false
-\[tool.mypy-optional]
+\[[tool.mypy.overrides]]
+module = "optional"
 strict_optional = true
 
 [case testAlwaysTrueAlwaysFalseConfigFilePyprojectTOML]
@@ -196,7 +202,8 @@ import b
 [file pyproject.toml]
 \[tool.mypy]
 strict_equality = true
-\[tool.mypy-b]
+\[[tool.mypy.overrides]]
+module = "b"
 strict_equality = false
 [builtins fixtures/bool.pyi]
 
@@ -213,7 +220,8 @@ from other_module_1 import a
 [file pyproject.toml]
 \[tool.mypy]
 implicit_reexport = true
-\[tool.mypy-other_module_2]
+\[[tool.mypy.overrides]]
+module = "other_module_2"
 implicit_reexport = false
 [out]
 main:2: error: Module "other_module_2" has no attribute "a"
@@ -240,7 +248,8 @@ class ShouldNotBeFine(x): ...  # E: Class cannot subclass 'x' (has type 'Any')
 [file pyproject.toml]
 \[tool.mypy]
 disallow_subclassing_any = true
-\[tool.mypy-m]
+\[[tool.mypy.overrides]]
+module = "m"
 disallow_subclassing_any = false
 
 [case testNoImplicitOptionalPerModulePyprojectTOML]
@@ -254,7 +263,8 @@ def f(a: str = None) -> int:
 [file pyproject.toml]
 \[tool.mypy]
 no_implicit_optional = true
-\[tool.mypy-m]
+\[[tool.mypy.overrides]]
+module = "m"
 no_implicit_optional = false
 
 [case testNoImplicitOptionalPerModulePython2PyprojectTOML]
@@ -269,7 +279,8 @@ def f(a = None):
 [file pyproject.toml]
 \[tool.mypy]
 no_implicit_optional = true
-\[tool.mypy-m]
+\[[tool.mypy.overrides]]
+module = "m"
 no_implicit_optional = false
 
 [case testDisableErrorCodePyprojectTOML]

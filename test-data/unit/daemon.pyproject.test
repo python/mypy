@@ -53,7 +53,8 @@ Daemon stopped
 [file pyproject.toml]
 \[tool.mypy]
 ignore_errors = true
-\[tool.'mypy-*.lol']
+\[[tool.mypy.overrides]]
+module = "*.lol"
 ignore_errors = false
 
 [file foo/__init__.py]

@@ -14,7 +14,8 @@ def __getattr__(attr: str) -> Any: ...
 
 [file pyproject.toml]
 \[tool.mypy]
-\[tool.'mypy-a.b.c']
+\[[tool.mypy.overrides]]
+module = "a.b.c"
 ignore_missing_imports = true
 [builtins fixtures/module.pyi]
 [out]

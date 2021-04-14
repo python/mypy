@@ -17,7 +17,8 @@ asdf(x)
 
 [file pyproject.toml]
 \[tool.mypy]
-\[tool.mypy-a]
+\[[tool.mypy.overrides]]
+module = "a"
 strict_optional = false
 [out]
 main:4: error: Argument 1 to "asdf" has incompatible type "List[str]"; expected "List[Optional[str]]"

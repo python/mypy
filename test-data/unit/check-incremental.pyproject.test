@@ -66,7 +66,8 @@ pass
 [file pyproject.toml]
 \[tool.mypy]
 warn_no_return = false
-\[tool.mypy-a]
+\[[tool.mypy.overrides]]
+module = "a"
 warn_no_return = true
 [rechecked]
 
