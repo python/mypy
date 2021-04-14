@@ -805,9 +805,10 @@ def process_options(args: List[str],
         title="Running code",
         description="Specify the code you want to type check. For more details, see "
                     "mypy.readthedocs.io/en/stable/running_mypy.html#running-mypy")
-    code_group.add_argument(
-        '--explicit-package-bases', action='store_true',
-        help="Use current directory and MYPYPATH to determine module names of files passed")
+    add_invertible_flag(
+        '--explicit-package-bases', default=False,
+        help="Use current directory and MYPYPATH to determine module names of files passed",
+        group=code_group)
     code_group.add_argument(
         "--exclude",
         metavar="PATTERN",
