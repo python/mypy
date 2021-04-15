@@ -136,8 +136,11 @@ def preallocate_space_helper(builder: IRBuilder,
                              gen: GeneratorExpr,
                              empty_op_llbuilder: Callable[[Value, int], Value],
                              set_item_op: CFunctionDescription) -> Optional[Value]:
-    """Currently we only optimize for simplest generator expression"""
-    if len(gen.sequences) == 1 and len(gen.condlists[0]) == 0:
+    """Currently we only optimize for simplest generator expression.
+
+    "... for index in list/tuple"
+    """
+    if len(gen.sequences) == 1 and len(gen.indices) == 1 and len(gen.condlists[0]) == 0:
         rtype = builder.node_type(gen.sequences[0])
         if is_list_rprimitive(rtype) or is_tuple_rprimitive(rtype):
 
@@ -157,6 +160,7 @@ def preallocate_space_helper(builder: IRBuilder,
 
 
 def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value:
+    # Try simplest list comprehension, otherwise fall back to general one
     val = preallocate_space_helper(builder, gen,
                                    empty_op_llbuilder=builder.builder.new_list_op_with_length,
                                    set_item_op=list_set_item_op)

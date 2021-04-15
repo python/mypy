@@ -93,12 +93,6 @@ def dict_methods_fast_path(
     if not (len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]):
         return None
     arg = expr.args[0]
-    # if isinstance(arg, GeneratorExpr):
-    #     val = preallocate_space_helper(builder, arg,
-    #                                    empty_op_llbuilder=builder.builder.new_list_op_with_length,
-    #                                    set_item_op=list_set_item_op)
-    #     if val is not None:
-    #         return val
     if not (isinstance(arg, CallExpr) and not arg.args
             and isinstance(arg.callee, MemberExpr)):
         return None
