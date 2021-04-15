@@ -231,17 +231,17 @@ L2:
     return r1
 def f_unboxed(i):
     i :: int
-    r0 :: int64
+    r0 :: native_int
     r1, r2 :: bit
     r3 :: bool
     r4 :: bit
     r5 :: bool
-    r6 :: int64
+    r6 :: native_int
     r7, r8 :: bit
     r9 :: bool
     r10 :: bit
     r11 :: bool
-    r12 :: int64
+    r12 :: native_int
     r13, r14 :: bit
     r15 :: bool
     r16 :: bit
