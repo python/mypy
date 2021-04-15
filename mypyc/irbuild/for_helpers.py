@@ -24,7 +24,7 @@ from mypyc.primitives.dict_ops import (
     dict_next_key_op, dict_next_value_op, dict_next_item_op, dict_check_size_op,
     dict_key_iter_op, dict_value_iter_op, dict_item_iter_op
 )
-from mypyc.primitives.list_ops import list_append_op, list_get_item_unsafe_op, list_set_item_op
+from mypyc.primitives.list_ops import list_append_op, list_get_item_unsafe_op, new_list_set_item_op
 from mypyc.primitives.set_ops import set_add_op
 from mypyc.primitives.generic_ops import iter_op, next_op
 from mypyc.primitives.exc_ops import no_err_occurred_op
@@ -163,7 +163,7 @@ def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Valu
     # Try simplest list comprehension, otherwise fall back to general one
     val = preallocate_space_helper(builder, gen,
                                    empty_op_llbuilder=builder.builder.new_list_op_with_length,
-                                   set_item_op=list_set_item_op)
+                                   set_item_op=new_list_set_item_op)
     if val is not None:
         return val
 

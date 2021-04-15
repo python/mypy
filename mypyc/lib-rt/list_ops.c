@@ -74,12 +74,24 @@ bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value) {
             }
         }
         // PyList_SET_ITEM doesn't decref the old element, so we do
-        Py_XDECREF(PyList_GET_ITEM(list, n));
+        Py_DECREF(PyList_GET_ITEM(list, n));
         // N.B: Steals reference
         PyList_SET_ITEM(list, n, value);
         return true;
     } else {
-        PyErr_SetString(PyExc_IndexError, "list assignment index out of range");
+        PyErr_SetString(PyExc_OverflowError, "Python int too large to convert to C ssize_t");
+        return false;
+    }
+}
+
+// This function should only be used to fill in brand new lists.
+bool CPyList_SetItemUnsafe(PyObject *list, CPyTagged index, PyObject *value) {
+    if (CPyTagged_CheckShort(index)) {
+        Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
+        PyList_SET_ITEM(list, n, value);
+        return true;
+    } else {
+        PyErr_SetString(PyExc_OverflowError, "Python int too large to convert to C ssize_t");
         return false;
     }
 }

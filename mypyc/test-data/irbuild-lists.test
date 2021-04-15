@@ -312,7 +312,7 @@ L2:
     x = r9
     r10 = CPyTagged_Add(x, 2)
     r11 = box(int, r10)
-    r12 = CPyList_SetItem(r2, r3, r11)
+    r12 = CPyList_SetItemUnsafe(r2, r3, r11)
 L3:
     r13 = r3 + 2
     r3 = r13
@@ -339,7 +339,7 @@ L6:
     x_2 = r25
     r26 = CPyTagged_Add(x_2, 2)
     r27 = box(int, r26)
-    r28 = CPyList_SetItem(r18, r19, r27)
+    r28 = CPyList_SetItemUnsafe(r18, r19, r27)
 L7:
     r29 = r19 + 2
     r19 = r29
