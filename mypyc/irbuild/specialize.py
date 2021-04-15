@@ -26,7 +26,6 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.primitives.dict_ops import dict_keys_op, dict_values_op, dict_items_op
 from mypyc.primitives.tuple_ops import new_tuple_set_item_op
-from mypyc.primitives.list_ops import list_set_item_op
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import (
     translate_list_comprehension, translate_set_comprehension,
