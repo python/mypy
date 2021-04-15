@@ -15,6 +15,7 @@ from typing_extensions import Final
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.types import Type, Instance, LiteralType, CallableType, ProperType, get_proper_type
+from mypy.nodes import TypeInfo
 
 # Note: 'enum.EnumMeta' is deliberately excluded from this list. Classes that directly use
 # enum.EnumMeta do not necessarily automatically have the 'name' and 'value' attributes.
@@ -103,6 +104,17 @@ def _infer_value_type_with_auto_fallback(
     return ctx.default_attr_type
 
 
+def _implements_new(info: TypeInfo) -> bool:
+    """Check whether __new__ comes from enum.Enum or was implemented in a
+    subclass. In the latter case, we must infer Any as long as mypy can't infer
+    the type of _value_ from assignments in __new__.
+    """
+    type_with_new = _first(ti for ti in info.mro if ti.names.get('__new__'))
+    if type_with_new is None:
+        return False
+    return type_with_new.fullname != 'enum.Enum'
+
+
 def enum_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
     """This plugin refines the 'value' attribute in enums to refer to
     the original underlying value. For example, suppose we have the
@@ -135,12 +147,22 @@ def enum_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
         # The value-type is still known.
         if isinstance(ctx.type, Instance):
             info = ctx.type.type
+
+            # As long as mypy doesn't understand attribute creation in __new__,
+            # there is no way to predict the value type if the enum class has a
+            # custom implementation
+            if _implements_new(info):
+                return ctx.default_attr_type
+
             stnodes = (info.get(name) for name in info.names)
-            # Enums _can_ have methods.
-            # Omit methods for our value inference.
+
+            # Enums _can_ have methods and instance attributes.
+            # Omit methods and attributes created by assigning to self.*
+            # for our value inference.
             node_types = (
                 get_proper_type(n.type) if n else None
-                for n in stnodes)
+                for n in stnodes
+                if n is None or not n.implicit)
             proper_types = (
                 _infer_value_type_with_auto_fallback(ctx, t)
                 for t in node_types
@@ -158,6 +180,13 @@ def enum_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
 
     assert isinstance(ctx.type, Instance)
     info = ctx.type.type
+
+    # As long as mypy doesn't understand attribute creation in __new__,
+    # there is no way to predict the value type if the enum class has a
+    # custom implementation
+    if _implements_new(info):
+        return ctx.default_attr_type
+
     stnode = info.get(enum_field_name)
     if stnode is None:
         return ctx.default_attr_type

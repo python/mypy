@@ -62,9 +62,9 @@ class RegistryError(Exception):
     and unpacking registeries fails"""
 
 
-try:
-    _WindowsError = WindowsError # type: type
-except NameError:
+if sys.platform == "win32":
+    _WindowsError = WindowsError
+else:
     _WindowsError = None
 
 

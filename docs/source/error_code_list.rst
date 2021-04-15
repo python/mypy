@@ -36,7 +36,7 @@ target module can be found):
 
 .. code-block:: python
 
-    # Error: Module 'os' has no attribute 'non_existent'  [attr-defined]
+    # Error: Module "os" has no attribute "non_existent"  [attr-defined]
     from os import non_existent
 
 A reference to a missing attribute is given the ``Any`` type. In the
@@ -87,7 +87,7 @@ This example accidentally calls ``sort()`` instead of :py:func:`sorted`:
 
 .. code-block:: python
 
-    x = sort([3, 2, 4])  # Error: Name 'sort' is not defined  [name-defined]
+    x = sort([3, 2, 4])  # Error: Name "sort" is not defined  [name-defined]
 
 Check arguments in calls [call-arg]
 -----------------------------------
@@ -208,7 +208,7 @@ Example with an error:
 
    class Bundle:
        def __init__(self) -> None:
-           # Error: Need type annotation for 'items'
+           # Error: Need type annotation for "items"
            #        (hint: "items: List[<type>] = ...")  [var-annotated]
            self.items = []
 
@@ -450,7 +450,7 @@ In this example the definitions of ``x`` and ``y`` are circular:
 
    class Problem:
        def set_x(self) -> None:
-           # Error: Cannot determine type of 'y'  [has-type]
+           # Error: Cannot determine type of "y"  [has-type]
            self.x = self.y
 
        def set_y(self) -> None:
@@ -565,7 +565,7 @@ Example:
 
         ...  # No "save" method
 
-    # Error: Cannot instantiate abstract class 'Thing' with abstract attribute 'save'  [abstract]
+    # Error: Cannot instantiate abstract class "Thing" with abstract attribute "save"  [abstract]
     t = Thing()
 
 Check the target of NewType [valid-newtype]
@@ -648,6 +648,18 @@ You can also use ``None``:
        def __exit__(self, exc, value, tb) -> None:  # Also OK
            print('exit')
 
+Check that naming is consistent [name-match]
+--------------------------------------------
+
+The definition of a named tuple or a TypedDict must be named
+consistently when using the call-based syntax. Example:
+
+.. code-block:: python
+
+    from typing import NamedTuple
+
+    # Error: First argument to namedtuple() should be 'Point2D', not 'Point'
+    Point2D = NamedTuple("Point", [("x", int), ("y", int)])
 
 Report syntax errors [syntax]
 -----------------------------

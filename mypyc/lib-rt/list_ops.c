@@ -114,11 +114,57 @@ int CPyList_Insert(PyObject *list, CPyTagged index, PyObject *value)
         Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
         return PyList_Insert(list, n, value);
     }
+    // The max range doesn't exactly coincide with ssize_t, but we still
+    // want to keep the error message compatible with CPython.
+    PyErr_SetString(PyExc_OverflowError, "Python int too large to convert to C ssize_t");
     return -1;
 }
 
 PyObject *CPyList_Extend(PyObject *o1, PyObject *o2) {
     return _PyList_Extend((PyListObject *)o1, o2);
+}
+
+// Return -2 or error, -1 if not found, or index of first match otherwise.
+static Py_ssize_t _CPyList_Find(PyObject *list, PyObject *obj) {
+    Py_ssize_t i;
+    for (i = 0; i < Py_SIZE(list); i++) {
+        PyObject *item = PyList_GET_ITEM(list, i);
+        Py_INCREF(item);
+        int cmp = PyObject_RichCompareBool(item, obj, Py_EQ);
+        Py_DECREF(item);
+        if (cmp != 0) {
+            if (cmp > 0) {
+                return i;
+            } else {
+                return -2;
+            }
+        }
+    }
+    return -1;
+}
+
+int CPyList_Remove(PyObject *list, PyObject *obj) {
+    Py_ssize_t index = _CPyList_Find(list, obj);
+    if (index == -2) {
+        return -1;
+    }
+    if (index == -1) {
+        PyErr_SetString(PyExc_ValueError, "list.remove(x): x not in list");
+        return -1;
+    }
+    return PyList_SetSlice(list, index, index + 1, NULL);
+}
+
+CPyTagged CPyList_Index(PyObject *list, PyObject *obj) {
+    Py_ssize_t index = _CPyList_Find(list, obj);
+    if (index == -2) {
+        return CPY_INT_TAG;
+    }
+    if (index == -1) {
+        PyErr_SetString(PyExc_ValueError, "value is not in list");
+        return CPY_INT_TAG;
+    }
+    return index << 1;
 }
 
 PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size) {

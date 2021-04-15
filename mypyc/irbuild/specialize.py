@@ -18,15 +18,19 @@ from mypy.nodes import CallExpr, RefExpr, MemberExpr, TupleExpr, GeneratorExpr, 
 from mypy.types import AnyType, TypeOfAny
 
 from mypyc.ir.ops import (
-    Value, BasicBlock, LoadInt, RaiseStandardError, Unreachable
+    Value, Register, BasicBlock, Integer, RaiseStandardError, Unreachable
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
-    bool_rprimitive, is_dict_rprimitive
+    bool_rprimitive, is_dict_rprimitive, is_list_rprimitive, is_tuple_rprimitive
 )
 from mypyc.primitives.dict_ops import dict_keys_op, dict_values_op, dict_items_op
+from mypyc.primitives.tuple_ops import new_tuple_set_item_op
 from mypyc.irbuild.builder import IRBuilder
-from mypyc.irbuild.for_helpers import translate_list_comprehension, comprehension_helper
+from mypyc.irbuild.for_helpers import (
+    translate_list_comprehension, translate_set_comprehension,
+    comprehension_helper, for_loop_helper_with_index,
+)
 
 
 # Specializers are attempted before compiling the arguments to the
@@ -73,7 +77,7 @@ def translate_len(
             # len() of fixed-length tuple can be trivially determined statically,
             # though we still need to evaluate it.
             builder.accept(expr.args[0])
-            return builder.add(LoadInt(len(expr_rtype.types)))
+            return Integer(len(expr_rtype.types))
         else:
             obj = builder.accept(expr.args[0])
             return builder.builtin_len(obj, -1)
@@ -108,8 +112,19 @@ def dict_methods_fast_path(
         return builder.call_c(dict_items_op, [obj], expr.line)
 
 
-@specialize_function('builtins.tuple')
 @specialize_function('builtins.set')
+def translate_set_from_generator_call(
+        builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+    # Special case for set creation from a generator：
+    #     set(f(...) for ... in iterator/nested_generators...)
+    if (len(expr.args) == 1
+            and expr.arg_kinds[0] == ARG_POS
+            and isinstance(expr.args[0], GeneratorExpr)):
+        return translate_set_comprehension(builder, expr.args[0])
+    return None
+
+
+@specialize_function('builtins.tuple')
 @specialize_function('builtins.frozenset')
 @specialize_function('builtins.dict')
 @specialize_function('builtins.sum')
@@ -135,10 +150,37 @@ def translate_safe_generator_call(
                     + [builder.accept(arg) for arg in expr.args[1:]]),
                 builder.node_type(expr), expr.line, expr.arg_kinds, expr.arg_names)
         else:
+            if callee.fullname == "builtins.tuple":
+                val = tuple_from_generator_helper(builder, expr.args[0])
+                if val is not None:
+                    return val
+
             return builder.call_refexpr_with_args(
                 expr, callee,
                 ([translate_list_comprehension(builder, expr.args[0])]
                     + [builder.accept(arg) for arg in expr.args[1:]]))
+    return None
+
+
+def tuple_from_generator_helper(builder: IRBuilder,
+                                gen: GeneratorExpr) -> Optional[Value]:
+
+    if len(gen.sequences) == 1 and len(gen.condlists[0]) == 0:
+        # Currently we only optimize for simplest generator expression
+        rtype = builder.node_type(gen.sequences[0])
+        if is_list_rprimitive(rtype) or is_tuple_rprimitive(rtype):
+            tuple_ops = builder.builder.new_tuple_with_length(builder.accept(gen.sequences[0]),
+                                                              gen.line)
+            item, expr = gen.indices[0], gen.sequences[0]
+
+            def set_tuple_item(item_index: Value) -> None:
+                e = builder.accept(gen.left_expr)
+                builder.call_c(new_tuple_set_item_op, [tuple_ops, item_index, e], gen.line)
+
+            for_loop_helper_with_index(builder, item, expr,
+                                       set_tuple_item, gen.line)
+
+            return tuple_ops
     return None
 
 
@@ -170,7 +212,7 @@ def any_all_helper(builder: IRBuilder,
                    initial_value: Callable[[], Value],
                    modify: Callable[[Value], Value],
                    new_value: Callable[[], Value]) -> Value:
-    retval = builder.alloc_temp(bool_rprimitive)
+    retval = Register(bool_rprimitive)
     builder.assign(retval, initial_value(), -1)
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
     true_block, false_block, exit_block = BasicBlock(), BasicBlock(), BasicBlock()
@@ -216,7 +258,7 @@ def translate_next_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> 
 
     gen = expr.args[0]
 
-    retval = builder.alloc_temp(builder.node_type(expr))
+    retval = Register(builder.node_type(expr))
     default_val = None
     if len(expr.args) > 1:
         default_val = builder.accept(expr.args[1])
@@ -248,10 +290,15 @@ def translate_next_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> 
 
 @specialize_function('builtins.isinstance')
 def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-    # Special case builtins.isinstance
     if (len(expr.args) == 2
             and expr.arg_kinds == [ARG_POS, ARG_POS]
             and isinstance(expr.args[1], (RefExpr, TupleExpr))):
+        # Special case for builtins.isinstance
+        # Prevent coercions on the thing we are checking the instance of - there is no need to
+        # coerce something to a new type before checking what type it is, and the coercion could
+        # lead to bugs.
+        builder.types[expr.args[0]] = AnyType(TypeOfAny.from_error)
+
         irs = builder.flatten_classes(expr.args[1])
         if irs is not None:
             return builder.builder.isinstance_helper(builder.accept(expr.args[0]), irs, expr.line)

@@ -24,8 +24,11 @@ actual way mypy type checks your code, see our
 Specifying code to be checked
 *****************************
 
-Mypy lets you specify what files it should type check in several
-different ways.
+Mypy lets you specify what files it should type check in several different ways.
+
+Note that if you use namespace packages (in particular, packages without
+``__init__.py``), you'll need to specify :option:`--namespace-packages <mypy
+--namespace-packages>`.
 
 1.  First, you can pass in paths to Python files and directories you
     want to type check. For example::
@@ -124,17 +127,21 @@ The third outcome is what mypy will do in the ideal case. The following
 sections will discuss what to do in the other two cases.
 
 .. _ignore-missing-imports:
+.. _fix-missing-imports:
 
 Missing imports
 ***************
 
-When you import a module, mypy may report that it is unable to
-follow the import.
+When you import a module, mypy may report that it is unable to follow
+the import.
 
-This can cause errors that look like the following::
+This can cause errors that look like the following:
 
-    main.py:1: error: Skipping analyzing 'django': found module but no type hints or library stubs
-    main.py:2: error: Cannot find implementation or library stub for module named 'this_module_does_not_exist'
+.. code-block:: text
+
+    main.py:1: error: Library stubs not installed for "requests" (or incompatible with Python 3.8)
+    main.py:2: error: Skipping analyzing 'django': found module but no type hints or library stubs
+    main.py:3: error: Cannot find implementation or library stub for module named "this_module_does_not_exist"
 
 If you get any of these errors on an import, mypy will assume the type of that
 module is ``Any``, the dynamic type. This means attempting to access any
@@ -149,6 +156,36 @@ attribute of the module will automatically succeed:
     x = does_not_exist.foobar()
 
 The next sections describe what each error means and recommended next steps.
+
+Library stubs not installed
+---------------------------
+
+If mypy can't find stubs for a third-party library, and it knows that stubs exist for
+the library, you will get a message like this:
+
+.. code-block:: text
+
+    main.py:1: error: Library stubs not installed for "yaml" (or incompatible with Python 3.8)
+    main.py:1: note: Hint: "python3 -m pip install types-PyYAML"
+    main.py:1: note: (or run "mypy --install-types" to install all missing stub packages)
+
+You can resolve the issue by running the suggested pip command or
+commands. Alternatively, you can use :option:`--install-types <mypy
+--install-types>` to install all known missing stubs:
+
+.. code-block:: text
+
+    mypy --install-types
+
+This installs any stub packages that were suggested in the previous
+mypy run. You can also use your normal mypy command line with the
+extra :option:`--install-types <mypy --install-types>` option to
+install missing stubs at the end of the run (if any were found).
+
+You can also get this message if the stubs only support Python 3 and
+your target Python version is Python 2, or vice versa. In this case
+follow instructions in
+:ref:`missing-type-hints-for-third-party-library`.
 
 .. _missing-type-hints-for-third-party-library:
 
@@ -291,11 +328,12 @@ the former has type hints and the latter does not. We run
 :option:`mypy -m mycode.foo <mypy -m>` and mypy discovers that ``mycode.foo`` imports
 ``mycode.bar``.
 
-How do we want mypy to type check ``mycode.bar``? We can configure the
-desired behavior by using the :option:`--follow-imports <mypy --follow-imports>` flag. This flag
+How do we want mypy to type check ``mycode.bar``? Mypy's behaviour here is
+configurable -- although we **strongly recommend** using the default --
+by using the :option:`--follow-imports <mypy --follow-imports>` flag. This flag
 accepts one of four string values:
 
--   ``normal`` (the default) follows all imports normally and
+-   ``normal`` (the default, recommended) follows all imports normally and
     type checks all top level code (as well as the bodies of all
     functions and methods with at least one type annotation in
     the signature).
@@ -325,7 +363,7 @@ files that do not use type hints) pass under :option:`--follow-imports=normal <m
 This is usually not too difficult to do: mypy is designed to report as
 few error messages as possible when it is looking at unannotated code.
 
-If doing this is intractable, we recommend passing mypy just the files
+Only if doing this is intractable, we recommend passing mypy just the files
 you want to type check and use :option:`--follow-imports=silent <mypy --follow-imports>`. Even if
 mypy is unable to perfectly type check a file, it can still glean some
 useful information by parsing it (for example, understanding what methods
@@ -336,58 +374,80 @@ while this option can be quite powerful, it can also cause many
 hard-to-debug errors.
 
 
-
 .. _mapping-paths-to-modules:
 
 Mapping file paths to modules
 *****************************
 
-One of the main ways you can tell mypy what files to type check
-is by providing mypy the paths to those files. For example::
+One of the main ways you can tell mypy what to type check
+is by providing mypy a list of paths. For example::
 
     $ mypy file_1.py foo/file_2.py file_3.pyi some/directory
 
 This section describes how exactly mypy maps the provided paths
 to modules to type check.
 
-- Files ending in ``.py`` (and stub files ending in ``.pyi``) are
-  checked as Python modules.
+- Mypy will check all paths provided that correspond to files.
 
-- Files not ending in ``.py`` or ``.pyi`` are assumed to be Python
-  scripts and checked as such.
+- Mypy will recursively discover and check all files ending in ``.py`` or
+  ``.pyi`` in directory paths provided, after accounting for
+  :option:`--exclude <mypy --exclude>`.
 
-- Directories representing Python packages (i.e. containing a
-  ``__init__.py[i]`` file) are checked as Python packages; all
-  submodules and subpackages will be checked (subpackages must
-  themselves have a ``__init__.py[i]`` file).
+- For each file to be checked, mypy will attempt to associate the file (e.g.
+  ``project/foo/bar/baz.py``) with a fully qualified module name (e.g.
+  ``foo.bar.baz``). The directory the package is in (``project``) is then
+  added to mypy's module search paths.
 
-- Directories that don't represent Python packages (i.e. not directly
-  containing an ``__init__.py[i]`` file) are checked as follows:
+How mypy determines fully qualified module names depends on if the options
+:option:`--namespace-packages <mypy --namespace-packages>` and
+:option:`--explicit-package-bases <mypy --explicit-package-bases>` are set.
 
-  - All ``*.py[i]`` files contained directly therein are checked as
-    toplevel Python modules;
+1. If :option:`--namespace-packages <mypy --namespace-packages>` is off,
+   mypy will rely solely upon the presence of ``__init__.py[i]`` files to
+   determine the fully qualified module name. That is, mypy will crawl up the
+   directory tree for as long as it continues to find ``__init__.py`` (or
+   ``__init__.pyi``) files.
 
-  - All packages contained directly therein (i.e. immediate
-    subdirectories with an ``__init__.py[i]`` file) are checked as
-    toplevel Python packages.
+   For example, if your directory tree consists of ``pkg/subpkg/mod.py``, mypy
+   would require ``pkg/__init__.py`` and ``pkg/subpkg/__init__.py`` to exist in
+   order correctly associate ``mod.py`` with ``pkg.subpkg.mod``
 
-One more thing about checking modules and packages: if the directory
-*containing* a module or package specified on the command line has an
-``__init__.py[i]`` file, mypy assigns these an absolute module name by
-crawling up the path until no ``__init__.py[i]`` file is found.
+2. If :option:`--namespace-packages <mypy --namespace-packages>` is on, but
+   :option:`--explicit-package-bases <mypy --explicit-package-bases>` is off,
+   mypy will allow for the possibility that directories without
+   ``__init__.py[i]`` are packages. Specifically, mypy will look at all parent
+   directories of the file and use the location of the highest
+   ``__init__.py[i]`` in the directory tree to determine the top-level package.
 
-For example, suppose we run the command ``mypy foo/bar/baz.py`` where
-``foo/bar/__init__.py`` exists but ``foo/__init__.py`` does not.  Then
-the module name assumed is ``bar.baz`` and the directory ``foo`` is
-added to mypy's module search path.
+   For example, say your directory tree consists solely of ``pkg/__init__.py``
+   and ``pkg/a/b/c/d/mod.py``. When determining ``mod.py``'s fully qualified
+   module name, mypy will look at ``pkg/__init__.py`` and conclude that the
+   associated module name is ``pkg.a.b.c.d.mod``.
 
-On the other hand, if ``foo/bar/__init__.py`` did not exist, ``foo/bar``
-would be added to the module search path instead, and the module name
-assumed is just ``baz``.
+3. You'll notice that the above case still relies on ``__init__.py``. If
+   you can't put an ``__init__.py`` in your top-level package, but still wish to
+   pass paths (as opposed to packages or modules using the ``-p`` or ``-m``
+   flags), :option:`--explicit-package-bases <mypy --explicit-package-bases>`
+   provides a solution.
 
-If a script (a file not ending in ``.py[i]``) is processed, the module
-name assumed is ``__main__`` (matching the behavior of the
-Python interpreter), unless :option:`--scripts-are-modules <mypy --scripts-are-modules>` is passed.
+   With :option:`--explicit-package-bases <mypy --explicit-package-bases>`, mypy
+   will locate the nearest parent directory that is a member of the ``MYPYPATH``
+   environment variable, the :confval:`mypy_path` config or is the current
+   working directory. Mypy will then use the relative path to determine the
+   fully qualified module name.
+
+   For example, say your directory tree consists solely of
+   ``src/namespace_pkg/mod.py``. If you run the command following command, mypy
+   will correctly associate ``mod.py`` with ``namespace_pkg.mod``::
+
+       $ MYPYPATH=src mypy --namespace-packages --explicit-package-bases .
+
+If you pass a file not ending in ``.py[i]``, the module name assumed is
+``__main__`` (matching the behavior of the Python interpreter), unless
+:option:`--scripts-are-modules <mypy --scripts-are-modules>` is passed.
+
+Passing :option:`-v <mypy -v>` will show you the files and associated module
+names that mypy will check.
 
 
 .. _finding-imports:
@@ -407,7 +467,7 @@ This is computed from the following items:
   (a colon-separated list of directories).
 - The :confval:`mypy_path` config file option.
 - The directories containing the sources given on the command line
-  (see below).
+  (see :ref:`Mapping file paths to modules <mapping-paths-to-modules>`).
 - The installed packages marked as safe for type checking (see
   :ref:`PEP 561 support <installed-packages>`)
 - The relevant directories of the
@@ -417,11 +477,6 @@ This is computed from the following items:
 
     You cannot point to a :pep:`561` package via the ``MYPYPATH``, it must be
     installed (see :ref:`PEP 561 support <installed-packages>`)
-
-For sources given on the command line, the path is adjusted by crawling
-up from the given file or package to the nearest directory that does not
-contain an ``__init__.py`` or ``__init__.pyi`` file. If the given path
-is relative, it will only crawl as far as the current working directory.
 
 Second, mypy searches for stub files in addition to regular Python files
 and packages.

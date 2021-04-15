@@ -2,6 +2,7 @@
 
 import os
 import re
+import shutil
 import sys
 
 from typing import Dict, List, Set, Tuple
@@ -92,6 +93,8 @@ typecheck_files = [
     'check-annotated.test',
     'check-parameter-specification.test',
     'check-generic-alias.test',
+    'check-typeguard.test',
+    'check-functools.test',
 ]
 
 # Tests that use Python 3.8-only AST features (like expression-scoped ignores):
@@ -157,9 +160,13 @@ class TypeCheckSuite(DataSuite):
                     # Modify/create file
                     copy_and_fudge_mtime(op.source_path, op.target_path)
                 else:
-                    # Delete file
-                    # Use retries to work around potential flakiness on Windows (AppVeyor).
+                    # Delete file/directory
                     path = op.path
+                    if os.path.isdir(path):
+                        # Sanity check to avoid unexpected deletions
+                        assert path.startswith('tmp')
+                        shutil.rmtree(path)
+                    # Use retries to work around potential flakiness on Windows (AppVeyor).
                     retry_on_error(lambda: os.remove(path))
 
         # Parse options after moving files (in case mypy.ini is being moved).

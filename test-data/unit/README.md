@@ -92,11 +92,13 @@ module:
 The unit test suites are driven by the `pytest` framework. To run all mypy tests,
 run `pytest` in the mypy repository:
 
-    $ pytest mypy
+    $ pytest -q mypy
 
 This will run all tests, including integration and regression tests,
-and will verify that all stubs are valid. This may take several minutes to run,
-so you don't want to use this all the time while doing development.
+and will verify that all stubs are valid. This may take several
+minutes to run, so you don't want to use this all the time while doing
+development. (The `-q` option activates less verbose output that looks
+better when running tests using many CPU cores.)
 
 Test suites for individual components are in the files `mypy/test/test*.py`.
 
@@ -104,14 +106,14 @@ Note that some tests will be disabled for older python versions.
 
 If you work on mypyc, you will want to also run mypyc tests:
 
-    $ pytest mypyc
+    $ pytest -q mypyc
 
 You can run tests from a specific module directly, a specific suite within a
 module, or a test in a suite (even if it's data-driven):
 
-    $ pytest mypy/test/testdiff.py
+    $ pytest -q mypy/test/testdiff.py
 
-    $ pytest mypy/test/testsemanal.py::SemAnalTypeInfoSuite
+    $ pytest -q mypy/test/testsemanal.py::SemAnalTypeInfoSuite
 
     $ pytest -n0 mypy/test/testargs.py::ArgSuite::test_coherence
 
@@ -119,7 +121,7 @@ module, or a test in a suite (even if it's data-driven):
 
 To control which tests are run and how, you can use the `-k` switch:
 
-    $ pytest -k "MethodCall"
+    $ pytest -q -k "MethodCall"
 
 You can also run the type checker for manual testing without
 installing it by setting up the Python module search path suitably:

@@ -113,6 +113,38 @@ method_op(
     c_function_name='CPyList_Insert',
     error_kind=ERR_NEG_INT)
 
+# list.sort()
+method_op(
+    name='sort',
+    arg_types=[list_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name='PyList_Sort',
+    error_kind=ERR_NEG_INT)
+
+# list.reverse()
+method_op(
+    name='reverse',
+    arg_types=[list_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name='PyList_Reverse',
+    error_kind=ERR_NEG_INT)
+
+# list.remove(obj)
+method_op(
+    name='remove',
+    arg_types=[list_rprimitive, object_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name='CPyList_Remove',
+    error_kind=ERR_NEG_INT)
+
+# list.index(obj)
+method_op(
+    name='index',
+    arg_types=[list_rprimitive, object_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name='CPyList_Index',
+    error_kind=ERR_MAGIC)
+
 # list * int
 binary_op(
     name='*',

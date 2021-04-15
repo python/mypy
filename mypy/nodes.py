@@ -70,19 +70,19 @@ JsonDict = Dict[str, Any]
 #
 # TODO rename to use more descriptive names
 
-LDEF = 0  # type: Final[int]
-GDEF = 1  # type: Final[int]
-MDEF = 2  # type: Final[int]
+LDEF = 0  # type: Final
+GDEF = 1  # type: Final
+MDEF = 2  # type: Final
 
 # Placeholder for a name imported via 'from ... import'. Second phase of
 # semantic will replace this the actual imported reference. This is
 # needed so that we can detect whether a name has been imported during
 # XXX what?
-UNBOUND_IMPORTED = 3  # type: Final[int]
+UNBOUND_IMPORTED = 3  # type: Final
 
 # RevealExpr node kinds
-REVEAL_TYPE = 0  # type: Final[int]
-REVEAL_LOCALS = 1  # type: Final[int]
+REVEAL_TYPE = 0  # type: Final
+REVEAL_LOCALS = 1  # type: Final
 
 LITERAL_YES = 2  # type: Final
 LITERAL_TYPE = 1  # type: Final
@@ -1451,7 +1451,8 @@ class StarExpr(Expression):
 class RefExpr(Expression):
     """Abstract base class for name-like constructs"""
 
-    __slots__ = ('kind', 'node', 'fullname', 'is_new_def', 'is_inferred_def', 'is_alias_rvalue')
+    __slots__ = ('kind', 'node', 'fullname', 'is_new_def', 'is_inferred_def', 'is_alias_rvalue',
+                 'type_guard')
 
     def __init__(self) -> None:
         super().__init__()
@@ -1470,6 +1471,8 @@ class RefExpr(Expression):
         self.is_inferred_def = False
         # Is this expression appears as an rvalue of a valid type alias definition?
         self.is_alias_rvalue = False
+        # Cache type guard from callable_type.type_guard
+        self.type_guard = None  # type: Optional[mypy.types.Type]
 
 
 class NameExpr(RefExpr):
@@ -1513,17 +1516,17 @@ class MemberExpr(RefExpr):
 # Kinds of arguments
 
 # Positional argument
-ARG_POS = 0  # type: Final[int]
+ARG_POS = 0  # type: Final
 # Positional, optional argument (functions only, not calls)
-ARG_OPT = 1  # type: Final[int]
+ARG_OPT = 1  # type: Final
 # *arg argument
-ARG_STAR = 2  # type: Final[int]
+ARG_STAR = 2  # type: Final
 # Keyword argument x=y in call, or keyword-only function arg
-ARG_NAMED = 3  # type: Final[int]
+ARG_NAMED = 3  # type: Final
 # **arg argument
-ARG_STAR2 = 4  # type: Final[int]
+ARG_STAR2 = 4  # type: Final
 # In an argument list, keyword-only and also optional
-ARG_NAMED_OPT = 5  # type: Final[int]
+ARG_NAMED_OPT = 5  # type: Final
 
 
 class CallExpr(Expression):
@@ -1655,7 +1658,7 @@ op_methods = {
     '>': '__gt__',
     '<=': '__le__',
     'in': '__contains__',
-}  # type: Final[Dict[str, str]]
+}  # type: Final
 
 op_methods_to_symbols = {v: k for (k, v) in op_methods.items()}  # type: Final
 op_methods_to_symbols['__div__'] = '/'
@@ -2051,9 +2054,9 @@ class TypeApplication(Expression):
 #
 # If T is contravariant in Foo[T], Foo[object] is a subtype of
 # Foo[int], but not vice versa.
-INVARIANT = 0  # type: Final[int]
-COVARIANT = 1  # type: Final[int]
-CONTRAVARIANT = 2  # type: Final[int]
+INVARIANT = 0  # type: Final
+COVARIANT = 1  # type: Final
+CONTRAVARIANT = 2  # type: Final
 
 
 class TypeVarLikeExpr(SymbolNode, Expression):
@@ -2436,7 +2439,7 @@ class TypeInfo(SymbolNode):
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
         'is_newtype', 'is_protocol', 'runtime_protocol', 'is_final',
         'is_intersection',
-    ]  # type: Final[List[str]]
+    ]  # type: Final
 
     def __init__(self, names: 'SymbolTable', defn: ClassDef, module_name: str) -> None:
         """Initialize a TypeInfo."""

@@ -124,6 +124,7 @@ class ASTMergeSuite(DataSuite):
     def build_increment(self, manager: FineGrainedBuildManager,
                         module_id: str, path: str) -> Tuple[MypyFile,
                                                             Dict[Expression, Type]]:
+        manager.flush_cache()
         manager.update([(module_id, path)], [])
         module = manager.manager.modules[module_id]
         type_map = manager.graph[module_id].type_map()

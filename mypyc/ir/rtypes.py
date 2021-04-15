@@ -64,12 +64,6 @@ class RType:
     def __repr__(self) -> str:
         return '<%s>' % self.__class__.__name__
 
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, RType) and other.name == self.name
-
-    def __hash__(self) -> int:
-        return hash(self.name)
-
     def serialize(self) -> Union[JsonDict, str]:
         raise NotImplementedError('Cannot serialize {} instance'.format(self.__class__.__name__))
 
@@ -124,6 +118,10 @@ class RTypeVisitor(Generic[T]):
         raise NotImplementedError
 
     @abstractmethod
+    def visit_rarray(self, typ: 'RArray') -> T:
+        raise NotImplementedError
+
+    @abstractmethod
     def visit_rvoid(self, typ: 'RVoid') -> T:
         raise NotImplementedError
 
@@ -144,6 +142,12 @@ class RVoid(RType):
 
     def serialize(self) -> str:
         return 'void'
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, RVoid)
+
+    def __hash__(self) -> int:
+        return hash(RVoid)
 
 
 # Singleton instance of RVoid
@@ -184,7 +188,7 @@ class RPrimitive(RType):
         #       we need to figure out some way to represent here.
         if ctype == 'CPyTagged':
             self.c_undefined = 'CPY_INT_TAG'
-        elif ctype in ('int32_t', 'int64_t', 'CPyPtr'):
+        elif ctype in ('int32_t', 'int64_t', 'CPyPtr', 'uint32_t', 'uint64_t'):
             self.c_undefined = '0'
         elif ctype == 'PyObject *':
             # Boxed types use the null pointer as the error value.
@@ -204,6 +208,12 @@ class RPrimitive(RType):
 
     def __repr__(self) -> str:
         return '<RPrimitive %s>' % self.name
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, RPrimitive) and other.name == self.name
+
+    def __hash__(self) -> int:
+        return hash(self.name)
 
 
 # NOTE: All the supported instances of RPrimitive are defined
@@ -250,21 +260,30 @@ int_rprimitive = RPrimitive('builtins.int', is_unboxed=True, is_refcounted=True,
 short_int_rprimitive = RPrimitive('short_int', is_unboxed=True, is_refcounted=False,
                                   ctype='CPyTagged')  # type: Final
 
-# low level integer (corresponds to C's 'int's).
+# Low level integer types (correspond to C integer types)
+
 int32_rprimitive = RPrimitive('int32', is_unboxed=True, is_refcounted=False,
                               ctype='int32_t', size=4)  # type: Final
 int64_rprimitive = RPrimitive('int64', is_unboxed=True, is_refcounted=False,
                               ctype='int64_t', size=8)  # type: Final
-# integer alias
+uint32_rprimitive = RPrimitive('uint32', is_unboxed=True, is_refcounted=False,
+                               ctype='uint32_t', size=4)  # type: Final
+uint64_rprimitive = RPrimitive('uint64', is_unboxed=True, is_refcounted=False,
+                               ctype='uint64_t', size=8)  # type: Final
+
+# The C 'int' type
 c_int_rprimitive = int32_rprimitive
+
 if IS_32_BIT_PLATFORM:
+    c_size_t_rprimitive = uint32_rprimitive
     c_pyssize_t_rprimitive = int32_rprimitive
 else:
+    c_size_t_rprimitive = uint64_rprimitive
     c_pyssize_t_rprimitive = int64_rprimitive
 
-# low level pointer, represented as integer in C backends
+# Low level pointer, represented as integer in C backends
 pointer_rprimitive = RPrimitive('ptr', is_unboxed=True, is_refcounted=False,
-                              ctype='CPyPtr')  # type: Final
+                                ctype='CPyPtr')  # type: Final
 
 # Floats are represent as 'float' PyObject * values. (In the future
 # we'll likely switch to a more efficient, unboxed representation.)
@@ -324,6 +343,14 @@ def is_int32_rprimitive(rtype: RType) -> bool:
 
 def is_int64_rprimitive(rtype: RType) -> bool:
     return rtype is int64_rprimitive
+
+
+def is_uint32_rprimitive(rtype: RType) -> bool:
+    return rtype is uint32_rprimitive
+
+
+def is_uint64_rprimitive(rtype: RType) -> bool:
+    return rtype is uint64_rprimitive
 
 
 def is_c_py_ssize_t_rprimitive(rtype: RType) -> bool:
@@ -402,8 +429,10 @@ class TupleNameVisitor(RTypeVisitor[str]):
         return 'T{}{}'.format(len(parts), ''.join(parts))
 
     def visit_rstruct(self, t: 'RStruct') -> str:
-        assert False
-        return ""
+        assert False, 'RStruct not supported in tuple'
+
+    def visit_rarray(self, t: 'RArray') -> str:
+        assert False, 'RArray not supported in tuple'
 
     def visit_rvoid(self, t: 'RVoid') -> str:
         assert False, "rvoid in tuple?"
@@ -486,6 +515,8 @@ def compute_rtype_alignment(typ: RType) -> int:
         return platform_alignment
     elif isinstance(typ, RUnion):
         return platform_alignment
+    elif isinstance(typ, RArray):
+        return compute_rtype_alignment(typ.item_type)
     else:
         if isinstance(typ, RTuple):
             items = list(typ.types)
@@ -509,6 +540,10 @@ def compute_rtype_size(typ: RType) -> int:
         return compute_aligned_offsets_and_size(typ.types)[1]
     elif isinstance(typ, RInstance):
         return PLATFORM_SIZE
+    elif isinstance(typ, RArray):
+        alignment = compute_rtype_alignment(typ)
+        aligned_size = (compute_rtype_size(typ.item_type) + (alignment - 1)) & ~(alignment - 1)
+        return aligned_size * typ.length
     else:
         assert False, "invalid rtype for computing size"
 
@@ -542,7 +577,8 @@ def compute_aligned_offsets_and_size(types: List[RType]) -> Tuple[List[int], int
 
 
 class RStruct(RType):
-    """Represent CPython structs"""
+    """C struct type"""
+
     def __init__(self,
                  name: str,
                  names: List[str],
@@ -630,6 +666,12 @@ class RInstance(RType):
     def __repr__(self) -> str:
         return '<RInstance %s>' % self.name
 
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, RInstance) and other.name == self.name
+
+    def __hash__(self) -> int:
+        return hash(self.name)
+
     def serialize(self) -> str:
         return self.name
 
@@ -687,6 +729,45 @@ def optional_value_type(rtype: RType) -> Optional[RType]:
 def is_optional_type(rtype: RType) -> bool:
     """Is rtype an optional type with exactly two union items?"""
     return optional_value_type(rtype) is not None
+
+
+class RArray(RType):
+    """Fixed-length C array type (for example, int[5]).
+
+    Note that the implementation is a bit limited, and these can basically
+    be only used for local variables that are initialized in one location.
+    """
+
+    def __init__(self,
+                 item_type: RType,
+                 length: int) -> None:
+        self.item_type = item_type
+        # Number of items
+        self.length = length
+        self.is_refcounted = False
+
+    def accept(self, visitor: 'RTypeVisitor[T]') -> T:
+        return visitor.visit_rarray(self)
+
+    def __str__(self) -> str:
+        return '%s[%s]' % (self.item_type, self.length)
+
+    def __repr__(self) -> str:
+        return '<RArray %r[%s]>' % (self.item_type, self.length)
+
+    def __eq__(self, other: object) -> bool:
+        return (isinstance(other, RArray) and self.item_type == other.item_type
+                and self.length == other.length)
+
+    def __hash__(self) -> int:
+        return hash((self.item_type, self.length))
+
+    def serialize(self) -> JsonDict:
+        assert False
+
+    @classmethod
+    def deserialize(cls, data: JsonDict, ctx: 'DeserMaps') -> 'RArray':
+        assert False
 
 
 PyObject = RStruct(

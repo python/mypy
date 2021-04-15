@@ -12,21 +12,24 @@ import importlib.util
 from mypy.nodes import (
     Block, ExpressionStmt, ReturnStmt, AssignmentStmt, OperatorAssignmentStmt, IfStmt, WhileStmt,
     ForStmt, BreakStmt, ContinueStmt, RaiseStmt, TryStmt, WithStmt, AssertStmt, DelStmt,
-    Expression, StrExpr, TempNode, Lvalue, Import, ImportFrom, ImportAll, TupleExpr
+    Expression, StrExpr, TempNode, Lvalue, Import, ImportFrom, ImportAll, TupleExpr, ListExpr,
+    StarExpr
 )
 
 from mypyc.ir.ops import (
-    Assign, Unreachable, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
-    AssignmentTargetAttr, AssignmentTargetTuple, RaiseStandardError, LoadErrorValue,
-    BasicBlock, TupleGet, Value, Register, Branch, NO_TRACEBACK_LINE_NO
+    Assign, Unreachable, RaiseStandardError, LoadErrorValue, BasicBlock, TupleGet, Value, Register,
+    Branch, NO_TRACEBACK_LINE_NO
 )
 from mypyc.ir.rtypes import exc_rtuple
 from mypyc.primitives.generic_ops import py_delattr_op
-from mypyc.primitives.misc_ops import type_op, get_module_dict_op
-from mypyc.primitives.dict_ops import dict_get_item_op
+from mypyc.primitives.misc_ops import type_op
 from mypyc.primitives.exc_ops import (
     raise_exception_op, reraise_exception_op, error_catch_op, exc_matches_op, restore_exc_info_op,
     get_exc_value_op, keep_propagating_op, get_exc_info_op
+)
+from mypyc.irbuild.targets import (
+    AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex, AssignmentTargetAttr,
+    AssignmentTargetTuple
 )
 from mypyc.irbuild.nonlocalcontrol import (
     ExceptNonlocalControl, FinallyNonlocalControl, TryFinallyNonlocalControl
@@ -69,26 +72,30 @@ def transform_return_stmt(builder: IRBuilder, stmt: ReturnStmt) -> None:
 
 
 def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
-    assert len(stmt.lvalues) >= 1
-    builder.disallow_class_assignments(stmt.lvalues, stmt.line)
-    lvalue = stmt.lvalues[0]
+    lvalues = stmt.lvalues
+    assert len(lvalues) >= 1
+    builder.disallow_class_assignments(lvalues, stmt.line)
+    first_lvalue = lvalues[0]
     if stmt.type and isinstance(stmt.rvalue, TempNode):
         # This is actually a variable annotation without initializer. Don't generate
         # an assignment but we need to call get_assignment_target since it adds a
         # name binding as a side effect.
-        builder.get_assignment_target(lvalue, stmt.line)
+        builder.get_assignment_target(first_lvalue, stmt.line)
         return
 
-    # multiple assignment
-    if (isinstance(lvalue, TupleExpr) and isinstance(stmt.rvalue, TupleExpr)
-            and len(lvalue.items) == len(stmt.rvalue.items)):
+    # Special case multiple assignments like 'x, y = e1, e2'.
+    if (isinstance(first_lvalue, (TupleExpr, ListExpr))
+            and isinstance(stmt.rvalue, (TupleExpr, ListExpr))
+            and len(first_lvalue.items) == len(stmt.rvalue.items)
+            and all(is_simple_lvalue(item) for item in first_lvalue.items)
+            and len(lvalues) == 1):
         temps = []
         for right in stmt.rvalue.items:
             rvalue_reg = builder.accept(right)
-            temp = builder.alloc_temp(rvalue_reg.type)
+            temp = Register(rvalue_reg.type)
             builder.assign(temp, rvalue_reg, stmt.line)
             temps.append(temp)
-        for (left, temp) in zip(lvalue.items, temps):
+        for (left, temp) in zip(first_lvalue.items, temps):
             assignment_target = builder.get_assignment_target(left)
             builder.assign(assignment_target, temp, stmt.line)
         return
@@ -96,10 +103,14 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
     line = stmt.rvalue.line
     rvalue_reg = builder.accept(stmt.rvalue)
     if builder.non_function_scope() and stmt.is_final_def:
-        builder.init_final_static(lvalue, rvalue_reg)
-    for lvalue in stmt.lvalues:
+        builder.init_final_static(first_lvalue, rvalue_reg)
+    for lvalue in lvalues:
         target = builder.get_assignment_target(lvalue)
         builder.assign(target, rvalue_reg, line)
+
+
+def is_simple_lvalue(expr: Expression) -> bool:
+    return not isinstance(expr, (StarExpr, ListExpr, TupleExpr))
 
 
 def transform_operator_assignment_stmt(builder: IRBuilder, stmt: OperatorAssignmentStmt) -> None:
@@ -140,14 +151,10 @@ def transform_import(builder: IRBuilder, node: Import) -> None:
         else:
             base = name = node_id.split('.')[0]
 
-        # Python 3.7 has a nice 'PyImport_GetModule' function that we can't use :(
-        mod_dict = builder.call_c(get_module_dict_op, [], node.line)
-        # Get top-level module/package object.
-        obj = builder.call_c(dict_get_item_op,
-                             [mod_dict, builder.load_static_unicode(base)], node.line)
+        obj = builder.get_module(base, node.line)
 
         builder.gen_method_call(
-            globals, '__setitem__', [builder.load_static_unicode(name), obj],
+            globals, '__setitem__', [builder.load_str(name), obj],
             result_type=None, line=node.line)
 
 
@@ -181,7 +188,7 @@ def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:
         as_name = maybe_as_name or name
         obj = builder.py_get_attr(module, name, node.line)
         builder.gen_method_call(
-            globals, '__setitem__', [builder.load_static_unicode(as_name), obj],
+            globals, '__setitem__', [builder.load_str(as_name), obj],
             result_type=None, line=node.line)
 
 
@@ -394,7 +401,7 @@ def try_finally_entry_blocks(builder: IRBuilder,
                              main_entry: BasicBlock,
                              finally_block: BasicBlock,
                              ret_reg: Optional[Register]) -> Value:
-    old_exc = builder.alloc_temp(exc_rtuple)
+    old_exc = Register(exc_rtuple)
 
     # Entry block for non-exceptional flow
     builder.activate_block(main_entry)
@@ -651,7 +658,7 @@ def transform_del_item(builder: IRBuilder, target: AssignmentTarget, line: int) 
             line=line
         )
     elif isinstance(target, AssignmentTargetAttr):
-        key = builder.load_static_unicode(target.attr)
+        key = builder.load_str(target.attr)
         builder.call_c(py_delattr_op, [target.obj, key], line)
     elif isinstance(target, AssignmentTargetRegister):
         # Delete a local by assigning an error value to it, which will

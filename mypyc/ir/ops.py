@@ -1,28 +1,24 @@
-"""Representation of low-level opcodes for compiler intermediate representation (IR).
+"""Low-level opcodes for compiler intermediate representation (IR).
 
-Opcodes operate on abstract registers in a register machine. Each
-register has a type and a name, specified in an environment. A register
-can hold various things:
+Opcodes operate on abstract values (Value) in a register machine. Each
+value has a type (RType). A value can hold various things, such as:
 
-- local variables
-- intermediate values of expressions
+- local variables (Register)
+- intermediate values of expressions (RegisterOp subclasses)
 - condition flags (true/false)
 - literals (integer literals, True, False, etc.)
 """
 
 from abc import abstractmethod
 from typing import (
-    List, Sequence, Dict, Generic, TypeVar, Optional, NamedTuple, Tuple, Union, Iterable, Set
+    List, Sequence, Dict, Generic, TypeVar, Optional, NamedTuple, Tuple, Union
 )
-from mypy.ordered_dict import OrderedDict
 
-from typing_extensions import Final, Type, TYPE_CHECKING
+from typing_extensions import Final, TYPE_CHECKING
 from mypy_extensions import trait
 
-from mypy.nodes import SymbolNode
-
 from mypyc.ir.rtypes import (
-    RType, RInstance, RTuple, RVoid, is_bool_rprimitive, is_int_rprimitive,
+    RType, RInstance, RTuple, RArray, RVoid, is_bool_rprimitive, is_int_rprimitive,
     is_short_int_rprimitive, is_none_rprimitive, object_rprimitive, bool_rprimitive,
     short_int_rprimitive, int_rprimitive, void_rtype, pointer_rprimitive, is_pointer_rprimitive,
     bit_rprimitive, is_bit_rprimitive
@@ -35,143 +31,16 @@ if TYPE_CHECKING:
 T = TypeVar('T')
 
 
-# We do a three-pass deserialization scheme in order to resolve name
-# references.
-#  1. Create an empty ClassIR for each class in an SCC.
-#  2. Deserialize all of the functions, which can contain references
-#     to ClassIRs in their types
-#  3. Deserialize all of the classes, which contain lots of references
-#     to the functions they contain. (And to other classes.)
-#
-# Note that this approach differs from how we deserialize ASTs in mypy itself,
-# where everything is deserialized in one pass then a second pass cleans up
-# 'cross_refs'. We don't follow that approach here because it seems to be more
-# code for not a lot of gain since it is easy in mypyc to identify all the objects
-# we might need to reference.
-#
-# Because of these references, we need to maintain maps from class
-# names to ClassIRs and func names to FuncIRs.
-#
-# These are tracked in a DeserMaps which is passed to every
-# deserialization function.
-#
-# (Serialization and deserialization *will* be used for incremental
-# compilation but so far it is not hooked up to anything.)
-DeserMaps = NamedTuple('DeserMaps',
-                       [('classes', Dict[str, 'ClassIR']), ('functions', Dict[str, 'FuncIR'])])
-
-
-class AssignmentTarget(object):
-    """Abstract base class for assignment targets in IR"""
-
-    type = None  # type: RType
-
-
-class AssignmentTargetRegister(AssignmentTarget):
-    """Register as assignment target"""
-
-    def __init__(self, register: 'Register') -> None:
-        self.register = register
-        self.type = register.type
-
-
-class AssignmentTargetIndex(AssignmentTarget):
-    """base[index] as assignment target"""
-
-    def __init__(self, base: 'Value', index: 'Value') -> None:
-        self.base = base
-        self.index = index
-        # TODO: This won't be right for user-defined classes. Store the
-        #       lvalue type in mypy and remove this special case.
-        self.type = object_rprimitive
-
-
-class AssignmentTargetAttr(AssignmentTarget):
-    """obj.attr as assignment target"""
-
-    def __init__(self, obj: 'Value', attr: str) -> None:
-        self.obj = obj
-        self.attr = attr
-        if isinstance(obj.type, RInstance) and obj.type.class_ir.has_attr(attr):
-            # Native attribute reference
-            self.obj_type = obj.type  # type: RType
-            self.type = obj.type.attr_type(attr)
-        else:
-            # Python attribute reference
-            self.obj_type = object_rprimitive
-            self.type = object_rprimitive
-
-
-class AssignmentTargetTuple(AssignmentTarget):
-    """x, ..., y as assignment target"""
-
-    def __init__(self, items: List[AssignmentTarget],
-                 star_idx: Optional[int] = None) -> None:
-        self.items = items
-        self.star_idx = star_idx
-        # The shouldn't be relevant, but provide it just in case.
-        self.type = object_rprimitive
-
-
-class Environment:
-    """Maintain the register symbol table and manage temp generation"""
-
-    def __init__(self) -> None:
-        self.indexes = OrderedDict()  # type: Dict[Value, int]
-        self.symtable = OrderedDict()  # type: OrderedDict[SymbolNode, AssignmentTarget]
-        self.vars_needing_init = set()  # type: Set[Value]
-
-    def regs(self) -> Iterable['Value']:
-        return self.indexes.keys()
-
-    def add(self, value: 'Value') -> None:
-        self.indexes[value] = len(self.indexes)
-
-    def add_local(self, symbol: SymbolNode, typ: RType, is_arg: bool = False) -> 'Register':
-        """Add register that represents a symbol to the symbol table.
-
-        Args:
-            is_arg: is this a function argument
-        """
-        assert isinstance(symbol, SymbolNode)
-        reg = Register(typ, symbol.line, is_arg=is_arg, name=symbol.name)
-        self.symtable[symbol] = AssignmentTargetRegister(reg)
-        self.add(reg)
-        return reg
-
-    def add_local_reg(self, symbol: SymbolNode,
-                      typ: RType, is_arg: bool = False) -> AssignmentTargetRegister:
-        """Like add_local, but return an assignment target instead of value."""
-        self.add_local(symbol, typ, is_arg)
-        target = self.symtable[symbol]
-        assert isinstance(target, AssignmentTargetRegister)
-        return target
-
-    def add_target(self, symbol: SymbolNode, target: AssignmentTarget) -> AssignmentTarget:
-        self.symtable[symbol] = target
-        return target
-
-    def lookup(self, symbol: SymbolNode) -> AssignmentTarget:
-        return self.symtable[symbol]
-
-    def add_temp(self, typ: RType) -> 'Register':
-        """Add register that contains a temporary value with the given type."""
-        assert isinstance(typ, RType)
-        reg = Register(typ)
-        self.add(reg)
-        return reg
-
-    def add_op(self, reg: 'RegisterOp') -> None:
-        """Record the value of an operation."""
-        if reg.is_void:
-            return
-        self.add(reg)
-
-
 class BasicBlock:
-    """Basic IR block.
+    """IR basic block.
 
-    Ends with a jump, branch, or return.
+    Contains a sequence of Ops and ends with a ControlOp (Goto,
+    Branch, Return or Unreachable). Only the last op can be a
+    ControlOp.
+
+    All generated Ops live in basic blocks. Basic blocks determine the
+    order of evaluation and control flow within a function. A basic
+    block is always associated with a single function/method (FuncIR).
 
     When building the IR, ops that raise exceptions can be included in
     the middle of a basic block, but the exceptions aren't checked.
@@ -186,8 +55,8 @@ class BasicBlock:
     propagate up out of the function. This is compiled away by the
     `exceptions` module.
 
-    Block labels are used for pretty printing and emitting C code, and get
-    filled in by those passes.
+    Block labels are used for pretty printing and emitting C code, and
+    get filled in by those passes.
 
     Ops that may terminate the program aren't treated as exits.
     """
@@ -223,7 +92,17 @@ NO_TRACEBACK_LINE_NO = -10000
 class Value:
     """Abstract base class for all IR values.
 
-    These include references to registers, literals, and various operations.
+    These include references to registers, literals, and all
+    operations (Ops), such as assignments, calls and branches.
+
+    Values are often used as inputs of Ops. Register can be used as an
+    assignment target.
+
+    A Value is part of the IR being compiled if it's included in a BasicBlock
+    that is reachable from a FuncIR (i.e., is part of a function).
+
+    See also: Op is a subclass of Value that is the base class of all
+    operations.
     """
 
     # Source line number (-1 for no/unknown line)
@@ -238,15 +117,19 @@ class Value:
 
 
 class Register(Value):
-    """A register holds a value of a specific type, and it can be read and mutated.
+    """A Register holds a value of a specific type, and it can be read and mutated.
 
-    Each local variable maps to a register, and they are also used for some
-    (but not all) temporary values.
+    A Register is always local to a function. Each local variable maps
+    to a Register, and they are also used for some (but not all)
+    temporary values.
+
+    Note that the term 'register' is overloaded and is sometimes used
+    to refer to arbitrary Values (for example, in RegisterOp).
     """
 
-    def __init__(self, type: RType, line: int = -1, is_arg: bool = False, name: str = '') -> None:
-        self.name = name
+    def __init__(self, type: RType, name: str = '', is_arg: bool = False, line: int = -1) -> None:
         self.type = type
+        self.name = name
         self.is_arg = is_arg
         self.is_borrowed = is_arg
         self.line = line
@@ -255,9 +138,46 @@ class Register(Value):
     def is_void(self) -> bool:
         return False
 
+    def __repr__(self) -> str:
+        return '<Register %r at %s>' % (self.name, hex(id(self)))
+
+
+class Integer(Value):
+    """Short integer literal.
+
+    Integer literals are treated as constant values and are generally
+    not included in data flow analyses and such, unlike Register and
+    Op subclasses.
+
+    Integer can represent multiple types:
+
+     * Short tagged integers (short_int_primitive type; the tag bit is clear)
+     * Ordinary fixed-width integers (e.g., int32_rprimitive)
+     * Values of other unboxed primitive types that are represented as integers
+       (none_rprimitive, bool_rprimitive)
+     * Null pointers (value 0) of various types, including object_rprimitive
+    """
+
+    def __init__(self, value: int, rtype: RType = short_int_rprimitive, line: int = -1) -> None:
+        if is_short_int_rprimitive(rtype) or is_int_rprimitive(rtype):
+            self.value = value * 2
+        else:
+            self.value = value
+        self.type = rtype
+        self.line = line
+
 
 class Op(Value):
-    """Abstract base class for all operations (as opposed to values)."""
+    """Abstract base class for all IR operations.
+
+    Each operation must be stored in a BasicBlock (in 'ops') to be
+    active in the IR. This is different from non-Op values, including
+    Register and Integer, where a reference from an active Op is
+    sufficient to be considered active.
+
+    In well-formed IR an active Op has no references to inactive ops
+    or ops used in another function.
+    """
 
     def __init__(self, line: int) -> None:
         self.line = line
@@ -288,10 +208,64 @@ class Op(Value):
         pass
 
 
+class Assign(Op):
+    """Assign a value to a Register (dest = src)."""
+
+    error_kind = ERR_NEVER
+
+    def __init__(self, dest: Register, src: Value, line: int = -1) -> None:
+        super().__init__(line)
+        self.src = src
+        self.dest = dest
+
+    def sources(self) -> List[Value]:
+        return [self.src]
+
+    def stolen(self) -> List[Value]:
+        return [self.src]
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_assign(self)
+
+
+class AssignMulti(Op):
+    """Assign multiple values to a Register (dest = src1, src2, ...).
+
+    This is used to initialize RArray values. It's provided to avoid
+    very verbose IR for common vectorcall operations.
+
+    Note that this interacts atypically with reference counting. We
+    assume that each RArray register is initialized exactly once
+    with this op.
+    """
+
+    error_kind = ERR_NEVER
+
+    def __init__(self, dest: Register, src: List[Value], line: int = -1) -> None:
+        super().__init__(line)
+        assert src
+        assert isinstance(dest.type, RArray)
+        assert dest.type.length == len(src)
+        self.src = src
+        self.dest = dest
+
+    def sources(self) -> List[Value]:
+        return self.src[:]
+
+    def stolen(self) -> List[Value]:
+        return []
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_assign_multi(self)
+
+
 class ControlOp(Op):
-    # Basically just for hierarchy organization.
-    # We could plausibly have a targets() method if we wanted.
-    pass
+    """Control flow operation.
+
+    This is Basically just for class hierarchy organization.
+
+    We could plausibly have a targets() method if we wanted.
+    """
 
 
 class Goto(ControlOp):
@@ -323,15 +297,14 @@ class Branch(ControlOp):
        if [not] is_error(r1) goto L1 else goto L2
     """
 
-    # Branch ops must *not* raise an exception. If a comparison, for example, can raise an
-    # exception, it needs to split into two opcodes and only the first one may fail.
+    # Branch ops never raise an exception.
     error_kind = ERR_NEVER
 
     BOOL = 100  # type: Final
     IS_ERROR = 101  # type: Final
 
     def __init__(self,
-                 left: Value,
+                 value: Value,
                  true_label: BasicBlock,
                  false_label: BasicBlock,
                  op: int,
@@ -340,11 +313,14 @@ class Branch(ControlOp):
                  rare: bool = False) -> None:
         super().__init__(line)
         # Target value being checked
-        self.left = left
+        self.value = value
+        # Branch here if the condition is true
         self.true = true_label
+        # Branch here if the condition is false
         self.false = false_label
-        # BOOL (boolean check) or IS_ERROR (error value check)
+        # Branch.BOOL (boolean check) or Branch.IS_ERROR (error value check)
         self.op = op
+        # If True, the condition is negated
         self.negated = False
         # If not None, the true label should generate a traceback entry (func name, line number)
         self.traceback_entry = None  # type: Optional[Tuple[str, int]]
@@ -352,7 +328,7 @@ class Branch(ControlOp):
         self.rare = rare
 
     def sources(self) -> List[Value]:
-        return [self.left]
+        return [self.value]
 
     def invert(self) -> None:
         self.negated = not self.negated
@@ -366,28 +342,34 @@ class Return(ControlOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, reg: Value, line: int = -1) -> None:
+    def __init__(self, value: Value, line: int = -1) -> None:
         super().__init__(line)
-        self.reg = reg
+        self.value = value
 
     def sources(self) -> List[Value]:
-        return [self.reg]
+        return [self.value]
 
     def stolen(self) -> List[Value]:
-        return [self.reg]
+        return [self.value]
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_return(self)
 
 
 class Unreachable(ControlOp):
-    """Added to the end of non-None returning functions.
+    """Mark the end of basic block as unreachable.
 
-    Mypy statically guarantees that the end of the function is not unreachable
-    if there is not a return statement.
+    This is sometimes necessary when the end of a basic block is never
+    reached. This can also be explicitly added to the end of non-None
+    returning functions (in None-returning function we can just return
+    None).
 
-    This prevents the block formatter from being confused due to lack of a leave
-    and also leaves a nifty note in the IR. It is not generally processed by visitors.
+    Mypy statically guarantees that the end of the function is not
+    unreachable if there is not a return statement.
+
+    This prevents the block formatter from being confused due to lack
+    of a leave and also leaves a nifty note in the IR. It is not
+    generally processed by visitors.
     """
 
     error_kind = ERR_NEVER
@@ -405,8 +387,14 @@ class Unreachable(ControlOp):
 class RegisterOp(Op):
     """Abstract base class for operations that can be written as r1 = f(r2, ..., rn).
 
-    Takes some registers, performs an operation and generates an output.
-    Doesn't do any control flow, but can raise an error.
+    Takes some values, performs an operation, and generates an output
+    (unless the 'type' attribute is void_rtype, which is the default).
+    Other ops can refer to the result of the Op by referring to the Op
+    instance. This doesn't do any explicit control flow, but can raise an
+    error.
+
+    Note that the operands can be arbitrary Values, not just Register
+    instances, even though the naming may suggest otherwise.
     """
 
     error_kind = -1  # Can this raise exception and how is it signalled; one of ERR_*
@@ -422,7 +410,7 @@ class RegisterOp(Op):
 
 
 class IncRef(RegisterOp):
-    """Increase reference count (inc_ref r)."""
+    """Increase reference count (inc_ref src)."""
 
     error_kind = ERR_NEVER
 
@@ -439,7 +427,7 @@ class IncRef(RegisterOp):
 
 
 class DecRef(RegisterOp):
-    """Decrease reference count and free object if zero (dec_ref r).
+    """Decrease reference count and free object if zero (dec_ref src).
 
     The is_xdec flag says to use an XDECREF, which checks if the
     pointer is NULL first.
@@ -485,7 +473,7 @@ class Call(RegisterOp):
 
 
 class MethodCall(RegisterOp):
-    """Native method call obj.m(arg, ...) """
+    """Native method call obj.method(arg, ...)"""
 
     error_kind = ERR_MAGIC
 
@@ -510,77 +498,6 @@ class MethodCall(RegisterOp):
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_method_call(self)
-
-
-@trait
-class EmitterInterface:
-    @abstractmethod
-    def reg(self, name: Value) -> str:
-        raise NotImplementedError
-
-    @abstractmethod
-    def c_error_value(self, rtype: RType) -> str:
-        raise NotImplementedError
-
-    @abstractmethod
-    def temp_name(self) -> str:
-        raise NotImplementedError
-
-    @abstractmethod
-    def emit_line(self, line: str) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
-    def emit_lines(self, *lines: str) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
-    def emit_declaration(self, line: str) -> None:
-        raise NotImplementedError
-
-
-# True steals all arguments, False steals none, a list steals those in matching positions
-StealsDescription = Union[bool, List[bool]]
-
-
-class Assign(Op):
-    """Assign a value to a register (dest = int)."""
-
-    error_kind = ERR_NEVER
-
-    def __init__(self, dest: Register, src: Value, line: int = -1) -> None:
-        super().__init__(line)
-        self.src = src
-        self.dest = dest
-
-    def sources(self) -> List[Value]:
-        return [self.src]
-
-    def stolen(self) -> List[Value]:
-        return [self.src]
-
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
-        return visitor.visit_assign(self)
-
-
-class LoadInt(RegisterOp):
-    """Load an integer literal."""
-
-    error_kind = ERR_NEVER
-
-    def __init__(self, value: int, line: int = -1, rtype: RType = short_int_rprimitive) -> None:
-        super().__init__(line)
-        if is_short_int_rprimitive(rtype) or is_int_rprimitive(rtype):
-            self.value = value * 2
-        else:
-            self.value = value
-        self.type = rtype
-
-    def sources(self) -> List[Value]:
-        return []
-
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
-        return visitor.visit_load_int(self)
 
 
 class LoadErrorValue(RegisterOp):
@@ -608,6 +525,40 @@ class LoadErrorValue(RegisterOp):
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_load_error_value(self)
+
+
+class LoadLiteral(RegisterOp):
+    """Load a Python literal object (dest = 'foo' / b'foo' / ...).
+
+    This is used to load a static PyObject * value corresponding to
+    a literal of one of the supported types.
+
+    Tuple literals must contain only valid literal values as items.
+
+    NOTE: You can use this to load boxed (Python) int objects. Use
+          Integer to load unboxed, tagged integers or fixed-width,
+          low-level integers.
+
+          For int literals, both int_rprimitive (CPyTagged) and
+          object_primitive (PyObject *) are supported as rtype. However,
+          when using int_rprimitive, the value must *not* be small enough
+          to fit in an unboxed integer.
+    """
+
+    error_kind = ERR_NEVER
+    is_borrowed = True
+
+    def __init__(self,
+                 value: Union[None, str, bytes, bool, int, float, complex, Tuple[object, ...]],
+                 rtype: RType) -> None:
+        self.value = value
+        self.type = rtype
+
+    def sources(self) -> List[Value]:
+        return []
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_load_literal(self)
 
 
 class GetAttr(RegisterOp):
@@ -753,7 +704,7 @@ class TupleSet(RegisterOp):
 
 
 class TupleGet(RegisterOp):
-    """Get item of a fixed-length tuple (src[n])."""
+    """Get item of a fixed-length tuple (src[index])."""
 
     error_kind = ERR_NEVER
 
@@ -762,6 +713,7 @@ class TupleGet(RegisterOp):
         self.src = src
         self.index = index
         assert isinstance(src.type, RTuple), "TupleGet only operates on tuples"
+        assert index >= 0
         self.type = src.type.types[index]
 
     def sources(self) -> List[Value]:
@@ -877,10 +829,16 @@ class RaiseStandardError(RegisterOp):
         return visitor.visit_raise_standard_error(self)
 
 
-class CallC(RegisterOp):
-    """ret = func_call(arg0, arg1, ...)
+# True steals all arguments, False steals none, a list steals those in matching positions
+StealsDescription = Union[bool, List[bool]]
 
-    A call to a C function
+
+class CallC(RegisterOp):
+    """result = function(arg0, arg1, ...)
+
+    Call a C function that is not a compiled/native function (for
+    example, a Python C API function). Use Call to call native
+    functions.
     """
 
     def __init__(self,
@@ -899,7 +857,8 @@ class CallC(RegisterOp):
         self.type = ret_type
         self.steals = steals
         self.is_borrowed = is_borrowed
-        self.var_arg_idx = var_arg_idx  # the position of the first variable argument in args
+        # The position of the first variable argument in args (if >= 0)
+        self.var_arg_idx = var_arg_idx
 
     def sources(self) -> List[Value]:
         return self.args
@@ -916,12 +875,13 @@ class CallC(RegisterOp):
 
 
 class Truncate(RegisterOp):
-    """truncate src: src_type to dst_type
+    """result = truncate src from src_type to dst_type
 
-    Truncate a value from type with more bits to type with less bits
+    Truncate a value from type with more bits to type with less bits.
 
-    both src_type and dst_type should be non-reference counted integer types or bool
-    especially note that int_rprimitive is reference counted so should never be used here
+    Both src_type and dst_type should be non-reference counted integer
+    types or bool. Note that int_rprimitive is reference counted so
+    it should never be used here.
     """
 
     error_kind = ERR_NEVER
@@ -947,7 +907,12 @@ class Truncate(RegisterOp):
 
 
 class LoadGlobal(RegisterOp):
-    """Load a global variable/pointer"""
+    """Load a low-level global variable/pointer.
+
+    Note that can't be used to directly load Python module-level
+    global variable, since they are stored in a globals dictionary
+    and accessed using dictionary operations.
+    """
 
     error_kind = ERR_NEVER
     is_borrowed = True
@@ -969,22 +934,29 @@ class LoadGlobal(RegisterOp):
         return visitor.visit_load_global(self)
 
 
-class BinaryIntOp(RegisterOp):
-    """Binary arithmetic and bitwise operations on integer types
+class IntOp(RegisterOp):
+    """Binary arithmetic or bitwise op on integer operands (e.g., r1 = r2 + r3).
 
-    These ops are low-level and will be eventually generated to simple x op y form.
-    The left and right values should be of low-level integer types that support those ops
+    These ops are low-level and are similar to the corresponding C
+    operations (and unlike Python operations).
+
+    The left and right values must have low-level integer types with
+    compatible representations. Fixed-width integers, short_int_rprimitive,
+    bool_rprimitive and bit_rprimitive are supported.
+
+    For tagged (arbitrary-precision) integer ops look at mypyc.primitives.int_ops.
     """
+
     error_kind = ERR_NEVER
 
-    # arithmetic
+    # Arithmetic ops
     ADD = 0  # type: Final
     SUB = 1  # type: Final
     MUL = 2  # type: Final
     DIV = 3  # type: Final
     MOD = 4  # type: Final
 
-    # bitwise
+    # Bitwise ops
     AND = 200  # type: Final
     OR = 201  # type: Final
     XOR = 202  # type: Final
@@ -1015,22 +987,21 @@ class BinaryIntOp(RegisterOp):
         return [self.lhs, self.rhs]
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
-        return visitor.visit_binary_int_op(self)
+        return visitor.visit_int_op(self)
 
 
 class ComparisonOp(RegisterOp):
-    """Low-level comparison op.
+    """Low-level comparison op for integers and pointers.
 
-    Both unsigned and signed comparisons are supported.
+    Both unsigned and signed comparisons are supported. Supports
+    comparisons between fixed-width integer types and pointer types.
+    The operands should have matching sizes.
 
-    The operands are assumed to be fixed-width integers/pointers. Python
-    semantics, such as calling __eq__, are not supported.
+    The result is always a bit (representing a boolean).
 
-    The result is always a bit.
-
-    Supports comparisons between fixed-width integer types and pointer
-    types.
+    Python semantics, such as calling __eq__, are not supported.
     """
+
     # Must be ERR_NEVER or ERR_FALSE. ERR_FALSE means that a false result
     # indicates that an exception has been raised and should be propagated.
     error_kind = ERR_NEVER
@@ -1075,76 +1046,55 @@ class ComparisonOp(RegisterOp):
 
 
 class LoadMem(RegisterOp):
-    """Read a memory location.
-
-    type ret = *(type *)src
+    """Read a memory location: result = *(type *)src.
 
     Attributes:
       type: Type of the read value
       src: Pointer to memory to read
-      base: If not None, the object from which we are reading memory.
-            It's used to avoid the target object from being freed via
-            reference counting. If the target is not in reference counted
-            memory, or we know that the target won't be freed, it can be
-            None.
     """
+
     error_kind = ERR_NEVER
 
-    def __init__(self, type: RType, src: Value, base: Optional[Value], line: int = -1) -> None:
+    def __init__(self, type: RType, src: Value, line: int = -1) -> None:
         super().__init__(line)
         self.type = type
         # TODO: for now we enforce that the src memory address should be Py_ssize_t
         #       later we should also support same width unsigned int
         assert is_pointer_rprimitive(src.type)
         self.src = src
-        self.base = base
         self.is_borrowed = True
 
     def sources(self) -> List[Value]:
-        if self.base:
-            return [self.src, self.base]
-        else:
-            return [self.src]
+        return [self.src]
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_load_mem(self)
 
 
 class SetMem(Op):
-    """Write a memory location.
-
-    *(type *)dest = src
+    """Write to a memory location: *(type *)dest = src
 
     Attributes:
-      type: Type of the read value
+      type: Type of the written value
       dest: Pointer to memory to write
       src: Source value
-      base: If not None, the object from which we are reading memory.
-            It's used to avoid the target object from being freed via
-            reference counting. If the target is not in reference counted
-            memory, or we know that the target won't be freed, it can be
-            None.
     """
+
     error_kind = ERR_NEVER
 
     def __init__(self,
                  type: RType,
                  dest: Value,
                  src: Value,
-                 base: Optional[Value],
                  line: int = -1) -> None:
         super().__init__(line)
         self.type = void_rtype
         self.dest_type = type
         self.src = src
         self.dest = dest
-        self.base = base
 
     def sources(self) -> List[Value]:
-        if self.base:
-            return [self.src, self.base, self.dest]
-        else:
-            return [self.src, self.dest]
+        return [self.src, self.dest]
 
     def stolen(self) -> List[Value]:
         return [self.src]
@@ -1154,7 +1104,12 @@ class SetMem(Op):
 
 
 class GetElementPtr(RegisterOp):
-    """Get the address of a struct element"""
+    """Get the address of a struct element.
+
+    Note that you may need to use KeepAlive to avoid the struct
+    being freed, if it's reference counted, such as PyObject *.
+    """
+
     error_kind = ERR_NEVER
 
     def __init__(self, src: Value, src_type: RType, field: str, line: int = -1) -> None:
@@ -1172,15 +1127,14 @@ class GetElementPtr(RegisterOp):
 
 
 class LoadAddress(RegisterOp):
-    """Get the address of a value
-
-    ret = (type)&src
+    """Get the address of a value: result = (type)&src
 
     Attributes:
       type: Type of the loaded address(e.g. ptr/object_ptr)
-      src: Source value, str for named constants like 'PyList_Type',
-           Register for temporary values
+      src: Source value (str for globals like 'PyList_Type',
+           Register for temporary values or locals)
     """
+
     error_kind = ERR_NEVER
     is_borrowed = True
 
@@ -1197,6 +1151,37 @@ class LoadAddress(RegisterOp):
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_load_address(self)
+
+
+class KeepAlive(RegisterOp):
+    """A no-op operation that ensures source values aren't freed.
+
+    This is sometimes useful to avoid decref when a reference is still
+    being held but not seen by the compiler.
+
+    A typical use case is like this (C-like pseudocode):
+
+      ptr = &x.item
+      r = *ptr
+      keep_alive x  # x must not be freed here
+      # x may be freed here
+
+    If we didn't have "keep_alive x", x could be freed immediately
+    after taking the address of 'item', resulting in a read after free
+    on the second line.
+    """
+
+    error_kind = ERR_NEVER
+
+    def __init__(self, src: List[Value]) -> None:
+        assert src
+        self.src = src
+
+    def sources(self) -> List[Value]:
+        return self.src[:]
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_keep_alive(self)
 
 
 @trait
@@ -1224,11 +1209,15 @@ class OpVisitor(Generic[T]):
         raise NotImplementedError
 
     @abstractmethod
-    def visit_load_int(self, op: LoadInt) -> T:
+    def visit_assign_multi(self, op: AssignMulti) -> T:
         raise NotImplementedError
 
     @abstractmethod
     def visit_load_error_value(self, op: LoadErrorValue) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_load_literal(self, op: LoadLiteral) -> T:
         raise NotImplementedError
 
     @abstractmethod
@@ -1298,7 +1287,7 @@ class OpVisitor(Generic[T]):
         raise NotImplementedError
 
     @abstractmethod
-    def visit_binary_int_op(self, op: BinaryIntOp) -> T:
+    def visit_int_op(self, op: IntOp) -> T:
         raise NotImplementedError
 
     @abstractmethod
@@ -1321,10 +1310,34 @@ class OpVisitor(Generic[T]):
     def visit_load_address(self, op: LoadAddress) -> T:
         raise NotImplementedError
 
+    @abstractmethod
+    def visit_keep_alive(self, op: KeepAlive) -> T:
+        raise NotImplementedError
 
-# TODO: Should this live somewhere else?
-LiteralsMap = Dict[Tuple[Type[object], Union[int, float, str, bytes, complex]], str]
 
+# TODO: Should the following definition live somewhere else?
 
-# Import mypyc.primitives.registry that will set up set up global primitives tables.
-import mypyc.primitives.registry  # noqa
+# We do a three-pass deserialization scheme in order to resolve name
+# references.
+#  1. Create an empty ClassIR for each class in an SCC.
+#  2. Deserialize all of the functions, which can contain references
+#     to ClassIRs in their types
+#  3. Deserialize all of the classes, which contain lots of references
+#     to the functions they contain. (And to other classes.)
+#
+# Note that this approach differs from how we deserialize ASTs in mypy itself,
+# where everything is deserialized in one pass then a second pass cleans up
+# 'cross_refs'. We don't follow that approach here because it seems to be more
+# code for not a lot of gain since it is easy in mypyc to identify all the objects
+# we might need to reference.
+#
+# Because of these references, we need to maintain maps from class
+# names to ClassIRs and func names to FuncIRs.
+#
+# These are tracked in a DeserMaps which is passed to every
+# deserialization function.
+#
+# (Serialization and deserialization *will* be used for incremental
+# compilation but so far it is not hooked up to anything.)
+DeserMaps = NamedTuple('DeserMaps',
+                       [('classes', Dict[str, 'ClassIR']), ('functions', Dict[str, 'FuncIR'])])

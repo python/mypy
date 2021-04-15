@@ -42,7 +42,7 @@ def run_mypy(mypy_and_args: List[str], filename: str, tmp_name: str) -> str:
     return proc.stdout.decode(encoding="utf-8")
 
 def get_revealed_type(line: str, relevant_file: str, relevant_line: int) -> Optional[str]:
-    m = re.match(r"(.+?):(\d+): note: Revealed type is '(.*)'$", line)
+    m = re.match(r'(.+?):(\d+): note: Revealed type is "(.*)"$', line)
     if (m and
             int(m.group(2)) == relevant_line and
             os.path.samefile(relevant_file, m.group(1))):

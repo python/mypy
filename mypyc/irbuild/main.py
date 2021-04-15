@@ -124,8 +124,8 @@ def transform_mypy_file(builder: IRBuilder, mypyfile: MypyFile) -> None:
     builder.maybe_add_implicit_return()
 
     # Generate special function representing module top level.
-    blocks, env, ret_type, _ = builder.leave()
+    args, _, blocks, ret_type, _ = builder.leave()
     sig = FuncSignature([], none_rprimitive)
-    func_ir = FuncIR(FuncDecl(TOP_LEVEL_NAME, None, builder.module_name, sig), blocks, env,
+    func_ir = FuncIR(FuncDecl(TOP_LEVEL_NAME, None, builder.module_name, sig), args, blocks,
                      traceback_name="<module>")
     builder.functions.append(func_ir)

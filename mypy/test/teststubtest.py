@@ -830,6 +830,11 @@ class StubtestMiscUnit(unittest.TestCase):
         stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None)
         assert "builtins" in stdlib
         assert "os" in stdlib
+        assert "os.path" in stdlib
+        assert "mypy_extensions" not in stdlib
+        assert "typing_extensions" not in stdlib
+        assert "asyncio" in stdlib
+        assert ("dataclasses" in stdlib) == (sys.version_info >= (3, 7))
 
     def test_signature(self) -> None:
         def f(a: int, b: int, *, c: int, d: int = 0, **kwargs: Any) -> None:

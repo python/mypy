@@ -1,21 +1,20 @@
 """Utilities for pretty-printing IR in a human-readable form."""
 
-import re
-from typing import Any, Dict, List, Optional, Match
+from typing import Any, Dict, List
 
 from typing_extensions import Final
 
 from mypyc.common import short_name
 from mypyc.ir.ops import (
-    Goto, Branch, Return, Unreachable, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
+    Goto, Branch, Return, Unreachable, Assign, Integer, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, IncRef, DecRef, Call, MethodCall, Cast, Box, Unbox,
-    RaiseStandardError, CallC, Truncate, LoadGlobal, BinaryIntOp, ComparisonOp, LoadMem, SetMem,
-    GetElementPtr, LoadAddress, Register, Value, OpVisitor, BasicBlock, Environment
+    RaiseStandardError, CallC, Truncate, LoadGlobal, IntOp, ComparisonOp, LoadMem, SetMem,
+    GetElementPtr, LoadAddress, Register, Value, OpVisitor, BasicBlock, ControlOp, LoadLiteral,
+    AssignMulti, KeepAlive
 )
-from mypyc.ir.func_ir import FuncIR
+from mypyc.ir.func_ir import FuncIR, all_values_full
 from mypyc.ir.module_ir import ModuleIRs
 from mypyc.ir.rtypes import is_bool_rprimitive, is_int_rprimitive, RType
-from mypyc.ir.const_int import find_constant_integer_registers
 
 
 class IRPrettyPrintVisitor(OpVisitor[str]):
@@ -40,7 +39,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         if op.negated:
             fmt = 'not {}'.format(fmt)
 
-        cond = self.format(fmt, op.left)
+        cond = self.format(fmt, op.value)
         tb = ''
         if op.traceback_entry:
             tb = ' (error at %s:%d)' % op.traceback_entry
@@ -50,7 +49,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return self.format(fmt, op.true, op.false)
 
     def visit_return(self, op: Return) -> str:
-        return self.format('return %r', op.reg)
+        return self.format('return %r', op.value)
 
     def visit_unreachable(self, op: Unreachable) -> str:
         return "unreachable"
@@ -58,11 +57,21 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
     def visit_assign(self, op: Assign) -> str:
         return self.format('%r = %r', op.dest, op.src)
 
-    def visit_load_int(self, op: LoadInt) -> str:
-        return self.format('%r = %d', op, op.value)
+    def visit_assign_multi(self, op: AssignMulti) -> str:
+        return self.format('%r = [%s]',
+                           op.dest,
+                           ', '.join(self.format('%r', v) for v in op.src))
 
     def visit_load_error_value(self, op: LoadErrorValue) -> str:
         return self.format('%r = <error> :: %s', op, op.type)
+
+    def visit_load_literal(self, op: LoadLiteral) -> str:
+        prefix = ''
+        # For values that have a potential unboxed representation, make
+        # it explicit that this is a Python object.
+        if isinstance(op.value, int):
+            prefix = 'object '
+        return self.format('%r = %s%s', op, prefix, repr(op.value))
 
     def visit_get_attr(self, op: GetAttr) -> str:
         return self.format('%r = %r.%s', op, op.obj, op.attr)
@@ -132,13 +141,13 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
     def visit_raise_standard_error(self, op: RaiseStandardError) -> str:
         if op.value is not None:
             if isinstance(op.value, str):
-                return 'raise %s(%r)' % (op.class_name, op.value)
+                return self.format('%r = raise %s(%s)', op, op.class_name, repr(op.value))
             elif isinstance(op.value, Value):
-                return self.format('raise %s(%r)', op.class_name, op.value)
+                return self.format('%r = raise %s(%r)', op, op.class_name, op.value)
             else:
                 assert False, 'value type must be either str or Value'
         else:
-            return 'raise %s' % op.class_name
+            return self.format('%r = raise %s', op, op.class_name)
 
     def visit_call_c(self, op: CallC) -> str:
         args_str = ', '.join(self.format('%r', arg) for arg in op.args)
@@ -154,8 +163,8 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         ann = '  ({})'.format(repr(op.ann)) if op.ann else ''
         return self.format('%r = load_global %s :: static%s', op, op.identifier, ann)
 
-    def visit_binary_int_op(self, op: BinaryIntOp) -> str:
-        return self.format('%r = %r %s %r', op, op.lhs, BinaryIntOp.op_str[op.op], op.rhs)
+    def visit_int_op(self, op: IntOp) -> str:
+        return self.format('%r = %r %s %r', op, op.lhs, IntOp.op_str[op.op], op.rhs)
 
     def visit_comparison_op(self, op: ComparisonOp) -> str:
         if op.op in (ComparisonOp.SLT, ComparisonOp.SGT, ComparisonOp.SLE, ComparisonOp.SGE):
@@ -168,18 +177,10 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
                            op.rhs, sign_format)
 
     def visit_load_mem(self, op: LoadMem) -> str:
-        if op.base:
-            base = self.format(', %r', op.base)
-        else:
-            base = ''
-        return self.format("%r = load_mem %r%s :: %t*", op, op.src, base, op.type)
+        return self.format("%r = load_mem %r :: %t*", op, op.src, op.type)
 
     def visit_set_mem(self, op: SetMem) -> str:
-        if op.base:
-            base = self.format(', %r', op.base)
-        else:
-            base = ''
-        return self.format("set_mem %r, %r%s :: %t*", op.dest, op.src, base, op.dest_type)
+        return self.format("set_mem %r, %r :: %t*", op.dest, op.src, op.dest_type)
 
     def visit_get_element_ptr(self, op: GetElementPtr) -> str:
         return self.format("%r = get_element_ptr %r %s :: %t", op, op.src, op.field, op.src_type)
@@ -189,6 +190,10 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
             return self.format("%r = load_address %r", op, op.src)
         else:
             return self.format("%r = load_address %s", op, op.src)
+
+    def visit_keep_alive(self, op: KeepAlive) -> str:
+        return self.format('keep_alive %s' % ', '.join(self.format('%r', v)
+                                                       for v in op.src))
 
     # Helpers
 
@@ -218,7 +223,10 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
                 if typespec == 'r':
                     # Register/value
                     assert isinstance(arg, Value)
-                    result.append(self.names[arg])
+                    if isinstance(arg, Integer):
+                        result.append(str(arg.value))
+                    else:
+                        result.append(self.names[arg])
                 elif typespec == 'd':
                     # Integer
                     result.append('%d' % arg)
@@ -244,15 +252,11 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return ''.join(result)
 
 
-def env_to_lines(env: Environment,
-                 names: Dict[Value, str],
-                 const_regs: Optional[Dict[LoadInt, int]] = None) -> List[str]:
+def format_registers(func_ir: FuncIR,
+                     names: Dict[Value, str]) -> List[str]:
     result = []
     i = 0
-    regs = list(env.regs())
-    if const_regs is None:
-        const_regs = {}
-    regs = [reg for reg in regs if reg not in const_regs]
+    regs = all_values_full(func_ir.arg_regs, func_ir.blocks)
     while i < len(regs):
         i0 = i
         group = [names[regs[i0]]]
@@ -265,9 +269,7 @@ def env_to_lines(env: Environment,
 
 
 def format_blocks(blocks: List[BasicBlock],
-                  env: Environment,
-                  names: Dict[Value, str],
-                  const_regs: Dict[LoadInt, int]) -> List[str]:
+                  names: Dict[Value, str]) -> List[str]:
     """Format a list of IR basic blocks into a human-readable form."""
     # First label all of the blocks
     for i, block in enumerate(blocks):
@@ -278,7 +280,6 @@ def format_blocks(blocks: List[BasicBlock],
         if b.error_handler:
             handler_map.setdefault(b.error_handler, []).append(b)
 
-    names_rev = {value: key for key, value in names.items()}
     visitor = IRPrettyPrintVisitor(names)
 
     lines = []
@@ -294,21 +295,9 @@ def format_blocks(blocks: List[BasicBlock],
                 and ops[-1].label == blocks[i + 1]):
             # Hide the last goto if it just goes to the next basic block.
             ops = ops[:-1]
-        # load int registers start with 'i'
-        regex = re.compile(r'\bi[0-9]+\b')
         for op in ops:
-            if op not in const_regs:
-                line = '    ' + op.accept(visitor)
-
-                def repl(i: Match[str]) -> str:
-                    value = names_rev[i.group()]
-                    if isinstance(value, LoadInt) and value in const_regs:
-                        return str(const_regs[value])
-                    else:
-                        return i.group()
-
-                line = regex.sub(repl, line)
-                lines.append(line)
+            line = '    ' + op.accept(visitor)
+            lines.append(line)
 
         if not isinstance(block.ops[-1], (Goto, Branch, Return, Unreachable)):
             # Each basic block needs to exit somewhere.
@@ -321,12 +310,10 @@ def format_func(fn: FuncIR) -> List[str]:
     cls_prefix = fn.class_name + '.' if fn.class_name else ''
     lines.append('def {}{}({}):'.format(cls_prefix, fn.name,
                                         ', '.join(arg.name for arg in fn.args)))
-    # compute constants
-    const_regs = find_constant_integer_registers(fn.blocks)
-    names = generate_names_for_env(fn.env)
-    for line in env_to_lines(fn.env, names, const_regs):
+    names = generate_names_for_ir(fn.arg_regs, fn.blocks)
+    for line in format_registers(fn, names):
         lines.append('    ' + line)
-    code = format_blocks(fn.blocks, fn.env, names, const_regs)
+    code = format_blocks(fn.blocks, names)
     lines.extend(code)
     return lines
 
@@ -340,39 +327,58 @@ def format_modules(modules: ModuleIRs) -> List[str]:
     return ops
 
 
-def generate_names_for_env(env: Environment) -> Dict[Value, str]:
-    """Generate unique names for values in an environment.
+def generate_names_for_ir(args: List[Register], blocks: List[BasicBlock]) -> Dict[Value, str]:
+    """Generate unique names for IR values.
 
-    Give names such as 'r5' or 'i0' to temp values in IR which are useful
-    when pretty-printing or generating C. Ensure generated names are unique.
+    Give names such as 'r5' to temp values in IR which are useful when
+    pretty-printing or generating C. Ensure generated names are unique.
     """
-    names = {}
+    names = {}  # type: Dict[Value, str]
     used_names = set()
 
     temp_index = 0
-    int_index = 0
 
-    for value in env.indexes:
-        if isinstance(value, Register) and value.name:
-            name = value.name
-        elif isinstance(value, LoadInt):
-            name = 'i%d' % int_index
-            int_index += 1
-        else:
-            name = 'r%d' % temp_index
-            temp_index += 1
+    for arg in args:
+        names[arg] = arg.name
+        used_names.add(arg.name)
 
-        # Append _2, _3, ... if needed to make the name unique.
-        if name in used_names:
-            n = 2
-            while True:
-                candidate = '%s_%d' % (name, n)
-                if candidate not in used_names:
-                    name = candidate
-                    break
-                n += 1
+    for block in blocks:
+        for op in block.ops:
+            values = []
 
-        names[value] = name
-        used_names.add(name)
+            for source in op.sources():
+                if source not in names:
+                    values.append(source)
+
+            if isinstance(op, (Assign, AssignMulti)):
+                values.append(op.dest)
+            elif isinstance(op, ControlOp) or op.is_void:
+                continue
+            elif op not in names:
+                values.append(op)
+
+            for value in values:
+                if value in names:
+                    continue
+                if isinstance(value, Register) and value.name:
+                    name = value.name
+                elif isinstance(value, Integer):
+                    continue
+                else:
+                    name = 'r%d' % temp_index
+                    temp_index += 1
+
+                # Append _2, _3, ... if needed to make the name unique.
+                if name in used_names:
+                    n = 2
+                    while True:
+                        candidate = '%s_%d' % (name, n)
+                        if candidate not in used_names:
+                            name = candidate
+                            break
+                        n += 1
+
+                names[value] = name
+                used_names.add(name)
 
     return names

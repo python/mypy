@@ -93,6 +93,7 @@ class DefaultPlugin(Plugin):
                                  ) -> Optional[Callable[[ClassDefContext], None]]:
         from mypy.plugins import attrs
         from mypy.plugins import dataclasses
+        from mypy.plugins import functools
 
         if fullname in attrs.attr_class_makers:
             return attrs.attr_class_maker_callback
@@ -114,6 +115,9 @@ class DefaultPlugin(Plugin):
             )
         elif fullname in dataclasses.dataclass_makers:
             return dataclasses.dataclass_class_maker_callback
+        elif fullname in functools.functools_total_ordering_makers:
+            return functools.functools_total_ordering_maker_callback
+
         return None
 
 
@@ -237,8 +241,7 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
         for key in keys:
             value_type = get_proper_type(ctx.type.items.get(key))
             if value_type is None:
-                ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
-                return AnyType(TypeOfAny.from_error)
+                return ctx.default_return_type
 
             if len(ctx.arg_types) == 1:
                 output_types.append(value_type)

@@ -312,7 +312,7 @@ class Formatter:
 
 formatter = Formatter()
 formatter("test", bold=True)
-reveal_type(formatter.__call__)  # N: Revealed type is 'def (message: builtins.str, bold: builtins.bool =) -> builtins.str'
+reveal_type(formatter.__call__)  # N: Revealed type is "def (message: builtins.str, bold: builtins.bool =) -> builtins.str"
 [builtins fixtures/bool.pyi]
 [out]
 
@@ -323,7 +323,7 @@ class Formatter:
 
 formatter = Formatter()
 formatter("test", bold=True)
-reveal_type(formatter.__call__)  # N: Revealed type is 'def (message: builtins.str, *, bold: builtins.bool =) -> builtins.str'
+reveal_type(formatter.__call__)  # N: Revealed type is "def (message: builtins.str, *, bold: builtins.bool =) -> builtins.str"
 [builtins fixtures/bool.pyi]
 [out]
 

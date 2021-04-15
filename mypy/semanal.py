@@ -1867,7 +1867,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             # is incomplete. Defer the current target.
             self.mark_incomplete(imported_id, context)
             return
-        message = "Module '{}' has no attribute '{}'".format(import_id, source_id)
+        message = 'Module "{}" has no attribute "{}"'.format(import_id, source_id)
         # Suggest alternatives, if any match is found.
         module = self.modules.get(import_id)
         if module:
@@ -2216,7 +2216,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             return False
         if internal_name != name:
             self.fail("First argument to namedtuple() should be '{}', not '{}'".format(
-                name, internal_name), s.rvalue)
+                name, internal_name), s.rvalue, code=codes.NAME_MATCH)
             return True
         # Yes, it's a valid namedtuple, but defer if it is not ready.
         if not info:
@@ -3117,6 +3117,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         In the future, ParamSpec may accept bounds and variance arguments, in which
         case more aggressive sharing of code with process_typevar_declaration should be pursued.
         """
+        if not self.options.wip_pep_612:
+            return False
         call = self.get_typevarlike_declaration(
             s, ("typing_extensions.ParamSpec", "typing.ParamSpec")
         )
@@ -3575,7 +3577,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.fail("'yield from' outside function", e, serious=True, blocker=True)
         else:
             if self.function_stack[-1].is_coroutine:
-                self.fail("'yield from' in async function", e, serious=True, blocker=True)
+                self.fail('"yield from" in async function', e, serious=True, blocker=True)
             else:
                 self.function_stack[-1].is_generator = True
         if e.expr:
@@ -3958,7 +3960,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         else:
             if self.function_stack[-1].is_coroutine:
                 if self.options.python_version < (3, 6):
-                    self.fail("'yield' in async function", expr, serious=True, blocker=True)
+                    self.fail('"yield" in async function', expr, serious=True, blocker=True)
                 else:
                     self.function_stack[-1].is_generator = True
                     self.function_stack[-1].is_async_generator = True
@@ -4740,7 +4742,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             # later on. Defer current target.
             self.record_incomplete_ref()
             return
-        message = "Name '{}' is not defined".format(name)
+        message = 'Name "{}" is not defined'.format(name)
         self.fail(message, ctx, code=codes.NAME_DEFINED)
 
         if 'builtins.{}'.format(name) in SUGGESTED_TEST_FIXTURES:

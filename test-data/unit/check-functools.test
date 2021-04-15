@@ -1,0 +1,109 @@
+[case testTotalOrderingEqLt]
+from functools import total_ordering
+
+@total_ordering
+class Ord:
+    def __eq__(self, other: object) -> bool:
+        return False
+
+    def __lt__(self, other: "Ord") -> bool:
+        return False
+
+reveal_type(Ord() < Ord())  # N: Revealed type is "builtins.bool"
+reveal_type(Ord() <= Ord())  # N: Revealed type is "builtins.bool"
+reveal_type(Ord() == Ord())  # N: Revealed type is "builtins.bool"
+reveal_type(Ord() > Ord())  # N: Revealed type is "builtins.bool"
+reveal_type(Ord() >= Ord())  # N: Revealed type is "builtins.bool"
+
+Ord() < 1  # E: Unsupported operand types for < ("Ord" and "int")
+Ord() <= 1  # E: Unsupported operand types for <= ("Ord" and "int")
+Ord() == 1
+Ord() > 1  # E: Unsupported operand types for > ("Ord" and "int")
+Ord() >= 1  # E: Unsupported operand types for >= ("Ord" and "int")
+[builtins fixtures/ops.pyi]
+[builtins fixtures/dict.pyi]
+
+[case testTotalOrderingLambda]
+from functools import total_ordering
+from typing import Any, Callable
+
+@total_ordering
+class Ord:
+    __eq__: Callable[[Any, object], bool] = lambda self, other: False
+    __lt__: Callable[[Any, "Ord"], bool] = lambda self, other: False
+
+reveal_type(Ord() < Ord())  # N: Revealed type is "builtins.bool"
+reveal_type(Ord() <= Ord())  # N: Revealed type is "builtins.bool"
+reveal_type(Ord() == Ord())  # N: Revealed type is "builtins.bool"
+reveal_type(Ord() > Ord())  # N: Revealed type is "builtins.bool"
+reveal_type(Ord() >= Ord())  # N: Revealed type is "builtins.bool"
+
+Ord() < 1  # E: Argument 1 has incompatible type "int"; expected "Ord"
+Ord() <= 1  # E: Unsupported operand types for <= ("Ord" and "int")
+Ord() == 1
+Ord() > 1  # E: Unsupported operand types for > ("Ord" and "int")
+Ord() >= 1  # E: Unsupported operand types for >= ("Ord" and "int")
+[builtins fixtures/ops.pyi]
+[builtins fixtures/dict.pyi]
+
+[case testTotalOrderingNonCallable]
+from functools import total_ordering
+
+@total_ordering
+class Ord(object):
+    def __eq__(self, other: object) -> bool:
+        return False
+
+    __lt__ = 5
+
+Ord() <= Ord()  # E: Unsupported left operand type for <= ("Ord")
+Ord() > Ord()  # E: "int" not callable
+Ord() >= Ord()  # E: Unsupported left operand type for >= ("Ord")
+
+[builtins fixtures/ops.pyi]
+[builtins fixtures/dict.pyi]
+
+[case testTotalOrderingReturnNotBool]
+from functools import total_ordering
+
+@total_ordering
+class Ord:
+    def __eq__(self, other: object) -> bool:
+        return False
+
+    def __lt__(self, other: "Ord") -> str:
+        return "blah"
+
+reveal_type(Ord() < Ord())  # N: Revealed type is "builtins.str"
+reveal_type(Ord() <= Ord())  # N: Revealed type is "Any"
+reveal_type(Ord() == Ord())  # N: Revealed type is "builtins.bool"
+reveal_type(Ord() > Ord())  # N: Revealed type is "Any"
+reveal_type(Ord() >= Ord())  # N: Revealed type is "Any"
+
+[builtins fixtures/ops.pyi]
+[builtins fixtures/dict.pyi]
+
+[case testTotalOrderingAllowsAny]
+from functools import total_ordering
+
+@total_ordering
+class Ord:
+    def __eq__(self, other):
+        return False
+
+    def __gt__(self, other):
+        return False
+
+reveal_type(Ord() < Ord())  # N: Revealed type is "Any"
+Ord() <= Ord()  # E: Unsupported left operand type for <= ("Ord")
+reveal_type(Ord() == Ord())  # N: Revealed type is "Any"
+reveal_type(Ord() > Ord())  # N: Revealed type is "Any"
+Ord() >= Ord()  # E: Unsupported left operand type for >= ("Ord")
+
+Ord() < 1  # E: Unsupported left operand type for < ("Ord")
+Ord() <= 1  # E: Unsupported left operand type for <= ("Ord")
+Ord() == 1
+Ord() > 1
+Ord() >= 1  # E: Unsupported left operand type for >= ("Ord")
+[builtins fixtures/ops.pyi]
+[builtins fixtures/dict.pyi]
