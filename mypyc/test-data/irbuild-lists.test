@@ -277,18 +277,21 @@ def f(source):
     r11 :: object
     r12 :: bit
     r13 :: short_int
-    a, r14 :: list
-    r15 :: short_int
+    r14 :: object
+    r15, a :: list
     r16 :: ptr
     r17 :: native_int
-    r18 :: short_int
-    r19 :: bit
-    r20 :: object
-    r21, x_2, r22 :: int
-    r23 :: object
-    r24 :: int32
-    r25 :: bit
-    r26 :: short_int
+    r18 :: list
+    r19 :: short_int
+    r20 :: ptr
+    r21 :: native_int
+    r22 :: short_int
+    r23 :: bit
+    r24 :: object
+    r25, x_2, r26 :: int
+    r27 :: object
+    r28 :: bit
+    r29 :: short_int
     b :: list
 L0:
     r0 = get_element_ptr source ob_size :: PyVarObject
@@ -315,28 +318,32 @@ L3:
     r3 = r13
     goto L1
 L4:
-    a = r2
-    r14 = PyList_New(0)
-    r15 = 0
-L5:
+    r14 = PyObject_GetIter(r2)
+    r15 = PySequence_List(r14)
+    a = r15
     r16 = get_element_ptr source ob_size :: PyVarObject
     r17 = load_mem r16 :: native_int*
     keep_alive source
-    r18 = r17 << 1
-    r19 = r15 < r18 :: signed
-    if r19 goto L6 else goto L8 :: bool
+    r18 = PyList_New(r17)
+    r19 = 0
+L5:
+    r20 = get_element_ptr source ob_size :: PyVarObject
+    r21 = load_mem r20 :: native_int*
+    keep_alive source
+    r22 = r21 << 1
+    r23 = r19 < r22 :: signed
+    if r23 goto L6 else goto L8 :: bool
 L6:
-    r20 = CPyList_GetItemUnsafe(source, r15)
-    r21 = unbox(int, r20)
-    x_2 = r21
-    r22 = CPyTagged_Add(x_2, 2)
-    r23 = box(int, r22)
-    r24 = PyList_Append(r14, r23)
-    r25 = r24 >= 0 :: signed
+    r24 = CPyList_GetItemUnsafe(source, r19)
+    r25 = unbox(int, r24)
+    x_2 = r25
+    r26 = CPyTagged_Add(x_2, 2)
+    r27 = box(int, r26)
+    r28 = CPyList_SetItem(r18, r19, r27)
 L7:
-    r26 = r15 + 2
-    r15 = r26
+    r29 = r19 + 2
+    r19 = r29
     goto L5
 L8:
-    b = r14
+    b = r18
     return 1
