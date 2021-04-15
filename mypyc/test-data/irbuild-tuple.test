@@ -190,147 +190,144 @@ L2:
 
 
 [case testTupleOperatorIn]
-def f(i: int) -> bool:
+class A:
+    def __eq__(self, other) -> bool:
+        return True
+def f_unboxed(i: int) -> bool:
     return i in [1, 2, 3]
+def f_boxed_statically_eq(a: A) -> bool:
+    a1 = A()
+    return a in [a1, a]
+def f_boxed(a: A) -> bool:
+    a1 = A()
+    return a in [a1]
 [out]
-def f(i):
-    i :: int
-    r0, r1 :: object
-    r2 :: bit
-    r3 :: object
-    r4 :: int32
-    r5 :: bit
-    r6, r7, r8 :: bool
-    r9 :: native_int
-    r10, r11 :: bit
-    r12 :: bool
-    r13 :: bit
-    r14 :: object
-    r15, r16 :: bool
-    r17, r18 :: object
-    r19 :: bit
-    r20 :: object
-    r21 :: int32
-    r22 :: bit
-    r23, r24, r25 :: bool
-    r26 :: native_int
-    r27, r28 :: bit
-    r29 :: bool
-    r30 :: bit
-    r31 :: object
-    r32, r33 :: bool
-    r34, r35 :: object
-    r36 :: bit
-    r37 :: object
-    r38 :: int32
-    r39 :: bit
-    r40, r41, r42 :: bool
-    r43 :: native_int
-    r44, r45 :: bit
-    r46 :: bool
-    r47 :: bit
-    r48 :: object
-    r49 :: bool
+def A.__eq__(self, other):
+    self :: __main__.A
+    other, r0 :: object
 L0:
-    r0 = box(int, i)
-    r1 = box(short_int, 2)
+    r0 = box(bool, 1)
+    return r0
+def A.__ne__(__mypyc_self__, rhs):
+    __mypyc_self__ :: __main__.A
+    rhs, r0, r1 :: object
+    r2 :: bit
+    r3 :: int32
+    r4 :: bit
+    r5 :: bool
+    r6 :: object
+L0:
+    r0 = __mypyc_self__.__eq__(rhs)
+    r1 = load_address _Py_NotImplementedStruct
     r2 = r0 == r1
-    r3 = box(bit, r2)
-    r4 = PyObject_IsTrue(r3)
-    r5 = r4 >= 0 :: signed
-    r6 = truncate r4: int32 to builtins.bool
-    if r6 goto L1 else goto L2 :: bool
+    if r2 goto L2 else goto L1 :: bool
 L1:
-    r7 = unbox(bool, r3)
-    r8 = r7
-    goto L6
+    r3 = PyObject_Not(r0)
+    r4 = r3 >= 0 :: signed
+    r5 = truncate r3: int32 to builtins.bool
+    r6 = box(bool, r5)
+    return r6
 L2:
-    r9 = i & 1
-    r10 = r9 == 0
-    if r10 goto L3 else goto L4 :: bool
+    return r1
+def f_unboxed(i):
+    i :: int
+    r0 :: int64
+    r1, r2 :: bit
+    r3 :: bool
+    r4 :: bit
+    r5 :: bool
+    r6 :: int64
+    r7, r8 :: bit
+    r9 :: bool
+    r10 :: bit
+    r11 :: bool
+    r12 :: int64
+    r13, r14 :: bit
+    r15 :: bool
+    r16 :: bit
+L0:
+    r0 = i & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = i == 2
+    r3 = r2
+    goto L3
+L2:
+    r4 = CPyTagged_IsEq_(i, 2)
+    r3 = r4
 L3:
-    r11 = i == 2
-    r12 = r11
-    goto L5
+    if r3 goto L4 else goto L5 :: bool
 L4:
-    r13 = CPyTagged_IsEq_(i, 2)
-    r12 = r13
+    r5 = r3
+    goto L9
 L5:
-    r14 = box(bool, r12)
-    r15 = unbox(bool, r14)
-    r8 = r15
+    r6 = i & 1
+    r7 = r6 == 0
+    if r7 goto L6 else goto L7 :: bool
 L6:
-    if r8 goto L7 else goto L8 :: bool
+    r8 = i == 4
+    r9 = r8
+    goto L8
 L7:
-    r16 = r8
-    goto L15
+    r10 = CPyTagged_IsEq_(i, 4)
+    r9 = r10
 L8:
-    r17 = box(int, i)
-    r18 = box(short_int, 4)
-    r19 = r17 == r18
-    r20 = box(bit, r19)
-    r21 = PyObject_IsTrue(r20)
-    r22 = r21 >= 0 :: signed
-    r23 = truncate r21: int32 to builtins.bool
-    if r23 goto L9 else goto L10 :: bool
+    r5 = r9
 L9:
-    r24 = unbox(bool, r20)
-    r25 = r24
-    goto L14
+    if r5 goto L10 else goto L11 :: bool
 L10:
-    r26 = i & 1
-    r27 = r26 == 0
-    if r27 goto L11 else goto L12 :: bool
+    r11 = r5
+    goto L15
 L11:
-    r28 = i == 4
-    r29 = r28
-    goto L13
+    r12 = i & 1
+    r13 = r12 == 0
+    if r13 goto L12 else goto L13 :: bool
 L12:
-    r30 = CPyTagged_IsEq_(i, 4)
-    r29 = r30
+    r14 = i == 6
+    r15 = r14
+    goto L14
 L13:
-    r31 = box(bool, r29)
-    r32 = unbox(bool, r31)
-    r25 = r32
+    r16 = CPyTagged_IsEq_(i, 6)
+    r15 = r16
 L14:
-    r16 = r25
+    r11 = r15
 L15:
-    if r16 goto L16 else goto L17 :: bool
-L16:
-    r33 = r16
-    goto L24
-L17:
-    r34 = box(int, i)
-    r35 = box(short_int, 6)
-    r36 = r34 == r35
-    r37 = box(bit, r36)
-    r38 = PyObject_IsTrue(r37)
-    r39 = r38 >= 0 :: signed
-    r40 = truncate r38: int32 to builtins.bool
-    if r40 goto L18 else goto L19 :: bool
-L18:
-    r41 = unbox(bool, r37)
-    r42 = r41
-    goto L23
-L19:
-    r43 = i & 1
-    r44 = r43 == 0
-    if r44 goto L20 else goto L21 :: bool
-L20:
-    r45 = i == 6
-    r46 = r45
-    goto L22
-L21:
-    r47 = CPyTagged_IsEq_(i, 6)
-    r46 = r47
-L22:
-    r48 = box(bool, r46)
-    r49 = unbox(bool, r48)
-    r42 = r49
-L23:
-    r33 = r42
-L24:
-    return r33
+    return r11
+def f_boxed_statically_eq(a):
+    a, r0, a1 :: __main__.A
+L0:
+    r0 = A()
+    a1 = r0
+    return 1
+def f_boxed(a):
+    a, r0, a1 :: __main__.A
+    r1 :: bit
+    r2 :: object
+    r3 :: int32
+    r4 :: bit
+    r5, r6, r7 :: bool
+    r8 :: object
+    r9 :: bool
+L0:
+    r0 = A()
+    a1 = r0
+    r1 = a == a1
+    r2 = box(bit, r1)
+    r3 = PyObject_IsTrue(r2)
+    r4 = r3 >= 0 :: signed
+    r5 = truncate r3: int32 to builtins.bool
+    if r5 goto L1 else goto L2 :: bool
+L1:
+    r6 = unbox(bool, r2)
+    r7 = r6
+    goto L3
+L2:
+    r8 = a.__eq__(a1)
+    r9 = unbox(bool, r8)
+    r7 = r9
+L3:
+    return r7
 
 [case testTupleBuiltFromList]
 def f(val: int) -> bool:

@@ -441,6 +441,7 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
         # 16 is arbitrarily chosen to limit code size
         if 1 <= n_items < 16:
             lhs = e.operands[0]
+            lhs_type = builder.node_type(lhs)
             if e.operators[0] == 'in':
                 # check `is` relation statically
                 for item in items:
@@ -463,9 +464,14 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
             bool_type = Instance(cast(TypeInfo, mypy_file.names['bool'].node), [])
             exprs = []
             for item in items:
-                is_expr = ComparisonExpr([id_cmp_op], [lhs, item])
+                item_type = builder.node_type(item)
                 eq_expr = ComparisonExpr([cmp_op], [lhs, item])
-                expr = OpExpr(bin_op, is_expr, eq_expr)
+                # only add `is` check for two boxed types
+                if item_type.is_unboxed or lhs_type.is_unboxed:
+                    expr = eq_expr
+                else:
+                    is_expr = ComparisonExpr([id_cmp_op], [lhs, item])
+                    expr = OpExpr(bin_op, is_expr, eq_expr)
                 builder.types[expr] = bool_type
                 exprs.append(expr)
 
