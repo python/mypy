@@ -892,15 +892,18 @@ Using a pyproject.toml file
 Instead of using a ``mypy.ini`` file, a ``pyproject.toml`` file (as specified by
 `PEP 518`_) may be used instead. A few notes on doing so:
 
-* All ``[mypy]`` sections should have ``tool.`` prepended to their name:
+* The ``[mypy]`` section should have ``tool.`` prepended to its name:
 
-  * ``[mypy]`` would become ``[tool.mypy]``
+  * I.e., ``[mypy]`` would become ``[tool.mypy]``
 
-  * For example, ``[mypy-packagename]`` would become ``[tool.mypy-packagename]``
+* The module specific sections should be moved into a `[[tool.mypy.overrides]]` section:
 
-* Any section with special characters (such as ``.`` or ``*``) will need to be wrapped in single quotes:
-
-  * For example, ``[tool.mypy-package.*]`` would become ``[tool.'mypy-package.*']``
+  * For example, ``[mypy-packagename]`` would become:
+  ```
+  [[tool.mypy.overrides]]
+  module = 'packagename
+  ...
+  ```
 
 * The following care should be given to values in the ``pyproject.toml`` files as compared to ``ini`` files:
 
@@ -929,13 +932,16 @@ of your repo (or append it to the end of an existing ``pyproject.toml`` file) an
 
     # mypy per-module options:
 
-    [tool.'mypy-mycode.foo.*']
+    [[tool.mypy.overrides]]
+    module = "mycode.foo.*"
     disallow_untyped_defs = true
 
-    [tool.mypy-mycode.bar]
+    [[tool.mypy.overrides]]
+    module = "mycode.bar"
     warn_return_any = false
 
-    [tool.mypy-somelibrary]
+    [[tool.mypy.overrides]]
+    module = "somelibrary"
     ignore_missing_imports = true
 
 .. _lxml: https://pypi.org/project/lxml/

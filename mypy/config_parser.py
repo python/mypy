@@ -1,6 +1,7 @@
 import argparse
 from collections import OrderedDict
 import configparser
+import copy
 import glob as fileglob
 from io import StringIO
 import os
@@ -8,7 +9,8 @@ import re
 import sys
 
 import toml
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, TextIO, Tuple, Union
+from typing import (Any, Callable, Dict, List, Mapping, MutableMapping, Optional, Sequence,
+                    TextIO, Tuple, Union)
 from typing_extensions import Final
 
 from mypy import defaults
@@ -177,7 +179,7 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
                     del toml_data[key]
                 if 'mypy' not in toml_data:
                     continue
-                parser = toml_data
+                parser = destructure_overrides(toml_data)
                 config_types = toml_config_types
             else:
                 config_parser.read(config_file)
@@ -238,6 +240,80 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
                           file=stderr)
                 else:
                     options.per_module_options[glob] = updates
+
+
+def destructure_overrides(toml_data: MutableMapping[str, Any]) -> MutableMapping[str, Any]:
+    """Take the new [[tool.mypy.overrides]] section array in the pyproject.toml file,
+    and convert it back to a flatter structure that the existing config_parser can handle.
+
+    E.g. the following pyproject.toml file:
+
+        [[tool.mypy.overrides]]
+        module = [
+            "a.b",
+            "b.*"
+        ]
+        disallow_untyped_defs = true
+
+        [[tool.mypy.overrides]]
+        module = 'c'
+        disallow_untyped_defs = false
+
+    Would map to the following config dict that it would have gotten from parsing an equivalent
+    ini file:
+
+        {
+            "mypy-a.b": {
+                disallow_untyped_defs = true,
+            },
+            "mypy-b.*": {
+                disallow_untyped_defs = true,
+            },
+            "mypy-c": {
+                disallow_untyped_defs: false,
+            },
+        }
+    """
+    if 'overrides' not in toml_data['mypy']:
+        return toml_data
+
+    if not isinstance(toml_data['mypy']['overrides'], list):
+        raise ValueError("tool.mypy.overrides sections must be an array. Please make sure you are "
+                         "using double brackets like so: [[tool.mypy.overrides]]")
+
+    result = copy.copy(toml_data)
+    for override in result['mypy']['overrides']:
+        if 'module' not in override:
+            raise ValueError("pyproject.toml contains a [[tool.mypy.overrides]] section, but no "
+                             "module to override was specified.")
+
+        if isinstance(override['module'], str):
+            modules = [override['module']]
+        elif isinstance(override['module'], list):
+            modules = override['module']
+        else:
+            raise ValueError("pyproject.toml contains a [[tool.mypy.overrides]] section with "
+                             "a module value that is not a string or a list of strings")
+
+        for module in modules:
+            module_overrides = override.copy()
+            del module_overrides['module']
+            old_config_name = 'mypy-%s' % module
+            if old_config_name not in result:
+                result[old_config_name] = module_overrides
+            else:
+                for new_key, new_value in module_overrides.items():
+                    if (new_key in result[old_config_name] and
+                            result[old_config_name][new_key] != new_value):
+                        raise ValueError("pyproject.toml contains [[tool.mypy.overrides]] "
+                                         "sections with conflicting values. Module '%s' "
+                                         " has two different values for '%s'"
+                                         % (module, new_key))
+                    result[old_config_name][new_key] = new_value
+
+    del result['mypy']['overrides']
+    # print(result)
+    return result
 
 
 def parse_section(prefix: str, template: Options,
