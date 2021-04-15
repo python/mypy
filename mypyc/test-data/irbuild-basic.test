@@ -2158,7 +2158,7 @@ L6:
     r24 = CPyTagged_Add(x_2, y_2)
     r25 = CPyTagged_Add(r24, z_2)
     r26 = box(int, r25)
-    r27 = CPyList_SetItem(r13, r14, r26)
+    r27 = CPyList_SetItemUnsafe(r13, r14, r26)
 L7:
     r28 = r14 + 2
     r14 = r28
