@@ -896,9 +896,10 @@ Instead of using a ``mypy.ini`` file, a ``pyproject.toml`` file (as specified by
 
   * I.e., ``[mypy]`` would become ``[tool.mypy]``
 
-* The module specific sections should be moved into a `[[tool.mypy.overrides]]` section:
+* The module specific sections should be moved into ``[[tool.mypy.overrides]]`` sections:
 
   * For example, ``[mypy-packagename]`` would become:
+
   ```
   [[tool.mypy.overrides]]
   module = 'packagename
