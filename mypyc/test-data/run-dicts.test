@@ -253,3 +253,26 @@ def test_dict_subclass_setdefault() -> None:
     assert d.setdefault('a') == 1
     assert d.setdefault('e') == None
     assert d.setdefault('e', 100) == 110
+
+[case testDictToBool]
+from typing import Dict, List
+
+def is_true(x: dict) -> bool:
+    if x:
+        return True
+    else:
+        return False
+
+def is_false(x: dict) -> bool:
+    if not x:
+        return True
+    else:
+        return False
+
+def test_dict_to_bool() -> None:
+    assert is_false({})
+    assert not is_true({})
+    tmp_list: List[Dict] = [{2: bool}, {'a': 'b'}]
+    for x in tmp_list:
+        assert is_true(x)
+        assert not is_false(x)
