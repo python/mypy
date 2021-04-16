@@ -7845,13 +7845,8 @@ from b import A
 [builtins fixtures/list.pyi]
 [out]
 ==
-<<<<<<< HEAD
 a.py:4: error: Module "b" has no attribute "A"
 a.py:4: error: Name 'A' already defined on line 3
-=======
-a.py:4: error: Module 'b' has no attribute 'A'
-a.py:4: error: Name "A" already defined on line 3
->>>>>>> Name already defined - double quotes
 
 -- the order of errors is different with cache
 [case testImportOnTopOfAlias2]
