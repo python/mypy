@@ -339,40 +339,42 @@ def f(d: Dict[int, int]) -> None:
 def f(d):
     d :: dict
     r0 :: short_int
-    r1 :: native_int
-    r2 :: short_int
-    r3 :: object
-    r4 :: tuple[bool, int, object]
-    r5 :: int
-    r6 :: bool
-    r7 :: object
-    r8, key :: int
-    r9, r10 :: object
-    r11 :: int
-    r12, r13 :: bit
+    r1 :: ptr
+    r2 :: native_int
+    r3 :: short_int
+    r4 :: object
+    r5 :: tuple[bool, int, object]
+    r6 :: int
+    r7 :: bool
+    r8 :: object
+    r9, key :: int
+    r10, r11 :: object
+    r12 :: int
+    r13, r14 :: bit
 L0:
     r0 = 0
-    r1 = PyDict_Size(d)
-    r2 = r1 << 1
-    r3 = CPyDict_GetKeysIter(d)
+    r1 = get_element_ptr d ma_used :: PyDictObject
+    r2 = load_mem r1 :: native_int*
+    r3 = r2 << 1
+    r4 = CPyDict_GetKeysIter(d)
 L1:
-    r4 = CPyDict_NextKey(r3, r0)
-    r5 = r4[1]
-    r0 = r5
-    r6 = r4[0]
-    if r6 goto L2 else goto L4 :: bool
+    r5 = CPyDict_NextKey(r4, r0)
+    r6 = r5[1]
+    r0 = r6
+    r7 = r5[0]
+    if r7 goto L2 else goto L4 :: bool
 L2:
-    r7 = r4[2]
-    r8 = unbox(int, r7)
-    key = r8
-    r9 = box(int, key)
-    r10 = CPyDict_GetItem(d, r9)
-    r11 = unbox(int, r10)
+    r8 = r5[2]
+    r9 = unbox(int, r8)
+    key = r9
+    r10 = box(int, key)
+    r11 = CPyDict_GetItem(d, r10)
+    r12 = unbox(int, r11)
 L3:
-    r12 = CPyDict_CheckSize(d, r2)
+    r13 = CPyDict_CheckSize(d, r3)
     goto L1
 L4:
-    r13 = CPy_NoErrOccured()
+    r14 = CPy_NoErrOccured()
 L5:
     return 1
 
@@ -391,55 +393,57 @@ def sum_over_even_values(d):
     d :: dict
     s :: int
     r0 :: short_int
-    r1 :: native_int
-    r2 :: short_int
-    r3 :: object
-    r4 :: tuple[bool, int, object]
-    r5 :: int
-    r6 :: bool
-    r7 :: object
-    r8, key :: int
-    r9, r10 :: object
-    r11, r12 :: int
-    r13 :: bit
-    r14, r15 :: object
-    r16, r17 :: int
-    r18, r19 :: bit
+    r1 :: ptr
+    r2 :: native_int
+    r3 :: short_int
+    r4 :: object
+    r5 :: tuple[bool, int, object]
+    r6 :: int
+    r7 :: bool
+    r8 :: object
+    r9, key :: int
+    r10, r11 :: object
+    r12, r13 :: int
+    r14 :: bit
+    r15, r16 :: object
+    r17, r18 :: int
+    r19, r20 :: bit
 L0:
     s = 0
     r0 = 0
-    r1 = PyDict_Size(d)
-    r2 = r1 << 1
-    r3 = CPyDict_GetKeysIter(d)
+    r1 = get_element_ptr d ma_used :: PyDictObject
+    r2 = load_mem r1 :: native_int*
+    r3 = r2 << 1
+    r4 = CPyDict_GetKeysIter(d)
 L1:
-    r4 = CPyDict_NextKey(r3, r0)
-    r5 = r4[1]
-    r0 = r5
-    r6 = r4[0]
-    if r6 goto L2 else goto L6 :: bool
+    r5 = CPyDict_NextKey(r4, r0)
+    r6 = r5[1]
+    r0 = r6
+    r7 = r5[0]
+    if r7 goto L2 else goto L6 :: bool
 L2:
-    r7 = r4[2]
-    r8 = unbox(int, r7)
-    key = r8
-    r9 = box(int, key)
-    r10 = CPyDict_GetItem(d, r9)
-    r11 = unbox(int, r10)
-    r12 = CPyTagged_Remainder(r11, 4)
-    r13 = r12 != 0
-    if r13 goto L3 else goto L4 :: bool
+    r8 = r5[2]
+    r9 = unbox(int, r8)
+    key = r9
+    r10 = box(int, key)
+    r11 = CPyDict_GetItem(d, r10)
+    r12 = unbox(int, r11)
+    r13 = CPyTagged_Remainder(r12, 4)
+    r14 = r13 != 0
+    if r14 goto L3 else goto L4 :: bool
 L3:
     goto L5
 L4:
-    r14 = box(int, key)
-    r15 = CPyDict_GetItem(d, r14)
-    r16 = unbox(int, r15)
-    r17 = CPyTagged_Add(s, r16)
-    s = r17
+    r15 = box(int, key)
+    r16 = CPyDict_GetItem(d, r15)
+    r17 = unbox(int, r16)
+    r18 = CPyTagged_Add(s, r17)
+    s = r18
 L5:
-    r18 = CPyDict_CheckSize(d, r2)
+    r19 = CPyDict_CheckSize(d, r3)
     goto L1
 L6:
-    r19 = CPy_NoErrOccured()
+    r20 = CPy_NoErrOccured()
 L7:
     return s
 

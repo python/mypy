@@ -170,17 +170,18 @@ def test3():
     r6, tmp_dict :: dict
     r7 :: set
     r8 :: short_int
-    r9 :: native_int
-    r10 :: short_int
-    r11 :: object
-    r12 :: tuple[bool, int, object]
-    r13 :: int
-    r14 :: bool
-    r15 :: object
-    r16, x, r17 :: int
-    r18 :: object
-    r19 :: int32
-    r20, r21, r22 :: bit
+    r9 :: ptr
+    r10 :: native_int
+    r11 :: short_int
+    r12 :: object
+    r13 :: tuple[bool, int, object]
+    r14 :: int
+    r15 :: bool
+    r16 :: object
+    r17, x, r18 :: int
+    r19 :: object
+    r20 :: int32
+    r21, r22, r23 :: bit
     c :: set
 L0:
     r0 = '1'
@@ -193,28 +194,29 @@ L0:
     tmp_dict = r6
     r7 = PySet_New(0)
     r8 = 0
-    r9 = PyDict_Size(tmp_dict)
-    r10 = r9 << 1
-    r11 = CPyDict_GetKeysIter(tmp_dict)
+    r9 = get_element_ptr tmp_dict ma_used :: PyDictObject
+    r10 = load_mem r9 :: native_int*
+    r11 = r10 << 1
+    r12 = CPyDict_GetKeysIter(tmp_dict)
 L1:
-    r12 = CPyDict_NextKey(r11, r8)
-    r13 = r12[1]
-    r8 = r13
-    r14 = r12[0]
-    if r14 goto L2 else goto L4 :: bool
+    r13 = CPyDict_NextKey(r12, r8)
+    r14 = r13[1]
+    r8 = r14
+    r15 = r13[0]
+    if r15 goto L2 else goto L4 :: bool
 L2:
-    r15 = r12[2]
-    r16 = unbox(int, r15)
-    x = r16
-    r17 = f(x)
-    r18 = box(int, r17)
-    r19 = PySet_Add(r7, r18)
-    r20 = r19 >= 0 :: signed
+    r16 = r13[2]
+    r17 = unbox(int, r16)
+    x = r17
+    r18 = f(x)
+    r19 = box(int, r18)
+    r20 = PySet_Add(r7, r19)
+    r21 = r20 >= 0 :: signed
 L3:
-    r21 = CPyDict_CheckSize(tmp_dict, r10)
+    r22 = CPyDict_CheckSize(tmp_dict, r11)
     goto L1
 L4:
-    r22 = CPy_NoErrOccured()
+    r23 = CPy_NoErrOccured()
 L5:
     c = r7
     return 1
