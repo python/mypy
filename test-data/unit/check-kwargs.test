@@ -505,6 +505,7 @@ f(**s) # E: Keywords must be strings
 
 t = {'b':2} # type: Mapping[Literal['b'], int]
 f(**t)
+h(**t)
 
 u = {'b':2} # type: Mapping[Literal['c'], int] \
 # E: Dict entry 0 has incompatible type "Literal['b']": "int"; expected "Literal['c']": "int"

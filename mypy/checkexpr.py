@@ -1439,17 +1439,21 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                                                             context)
                                 is_unexpected_arg_error = True
                         ok = False
-                elif isinstance(actual_type, Instance) and \
-                        actual_type.type.has_base('typing.Mapping'):
-                    if messages and actual_type.args:
-                        args = try_getting_str_literals_from_type(actual_type.args[0])
+                elif (isinstance(actual_type, Instance) and
+                        actual_type.type.has_base('typing.Mapping')):
+                    any_type = AnyType(TypeOfAny.special_form)
+                    mapping_info = self.chk.named_generic_type('typing.Mapping',
+                                                               [any_type, any_type]).type
+                    supertype = map_instance_to_supertype(actual_type, mapping_info)
+                    if messages and supertype.args:
+                        args = try_getting_str_literals_from_type(supertype.args[0])
                         if args and nodes.ARG_STAR2 not in callee.arg_kinds:
                             messages.unexpected_keyword_argument(
-                                callee, args[0], actual_type.args[0], context)
+                                callee, args[0], supertype.args[0], context)
                             is_unexpected_arg_error = True
-                        elif args and nodes.ARG_POS in callee.arg_kinds and \
-                                not all(arg in callee.arg_names for arg in args) and \
-                                isinstance(actual_names, Iterable):
+                        elif (args and nodes.ARG_POS in callee.arg_kinds and
+                                not all(arg in callee.arg_names for arg in args) and
+                                isinstance(actual_names, Iterable)):
                             act_names = [name for name, kind in
                                          zip(iter(actual_names), actual_kinds)
                                          if kind != nodes.ARG_STAR2]
@@ -3954,18 +3958,20 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def is_valid_keyword_var_arg(self, typ: Type) -> bool:
         """Is a type valid as a **kwargs argument?"""
+        mapping_type = self.chk.named_generic_type('typing.Mapping',
+                    [self.named_type('builtins.str'),
+                     AnyType(TypeOfAny.special_form)])
+        typ = get_proper_type(typ)
 
         if self.chk.options.python_version[0] >= 3:
             return (
-                (is_subtype(typ, self.chk.named_generic_type(
-                    'typing.Mapping',
-                    [self.named_type('builtins.str'),
-                     AnyType(TypeOfAny.special_form)])))
+                (is_subtype(typ, mapping_type))
                 or
-                (is_subtype(typ, self.chk.named_type(
-                    'typing.Mapping')) and
-                    typ.args and  # type: ignore
-                    try_getting_str_literals_from_type(typ.args[0]) is not None))  # type: ignore
+                (isinstance(typ, Instance) and
+                 is_subtype(typ, self.chk.named_type('typing.Mapping')) and
+                 (try_getting_str_literals_from_type(
+                     map_instance_to_supertype(typ,
+                                               mapping_type.type).args[0]) is not None)))
 
         else:
             return (
@@ -3979,9 +3985,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     [self.named_type('builtins.unicode'),
                      AnyType(TypeOfAny.special_form)])))
                 or
-                (is_subtype(typ, self.chk.named_type('typing.Mapping')) and
-                    typ.args and  # type: ignore
-                    try_getting_str_literals_from_type(typ.args[0]) is not None))  # type: ignore
+                (isinstance(typ, Instance) and
+                 is_subtype(typ, self.chk.named_type('typing.Mapping')) and
+                 try_getting_str_literals_from_type(
+                     map_instance_to_supertype(typ,
+                                               mapping_type.type).args[0]) is not None))
 
     def has_member(self, typ: Type, member: str) -> bool:
         """Does type have member with the given name?"""
