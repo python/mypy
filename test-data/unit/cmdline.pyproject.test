@@ -530,6 +530,64 @@ ignore_errors = false
 a/b/c/d/e/__init__.py:2: error: Missing type parameters for generic type "List"
 a/b/c/d/e/__init__.py:3: error: Argument 1 to "g" has incompatible type "None"; expected "List[Any]"
 
+[case testDuplicateModulesAcrossSectionsPyprojectTOML]
+# cmd: mypy a
+[file a/__init__.py]
+[file pyproject.toml]
+\[tool.mypy]
+allow_any_generics = true
+\[[tool.mypy.overrides]]
+module = "a.*"
+ignore_errors = true
+\[[tool.mypy.overrides]]
+module = [
+    "a.b.*",
+    "a.*"
+]
+disallow_any_generics = true
+ignore_errors = false
+[out]
+pyproject.toml: toml config file contains [[tool.mypy.overrides]] sections with conflicting values. Module 'a.*' has two different values for 'ignore_errors'
+== Return code: 0
+
+[case testNonArrayOverridesSectionPyprojectTOML]
+# cmd: mypy a
+[file a/__init__.py]
+[file pyproject.toml]
+\[tool.mypy]
+allow_any_generics = true
+\[tool.mypy.overrides]
+module = "a.*"
+ignore_errors = true
+[out]
+pyproject.toml: tool.mypy.overrides sections must be an array. Please make sure you are using double brackets like so: [[tool.mypy.overrides]]
+== Return code: 0
+
+[case testOverridesSectionWithNoModulePyprojectTOML]
+# cmd: mypy a
+[file a/__init__.py]
+[file pyproject.toml]
+\[tool.mypy]
+allow_any_generics = true
+\[[tool.mypy.overrides]]
+ignore_errors = true
+[out]
+pyproject.toml: toml config file contains a [[tool.mypy.overrides]] section, but no module to override was specified.
+== Return code: 0
+
+[case testOverridesSectionWithInvalidModulePyprojectTOML]
+# cmd: mypy a
+[file a/__init__.py]
+[file pyproject.toml]
+\[tool.mypy]
+allow_any_generics = true
+\[[tool.mypy.overrides]]
+module = true
+ignore_errors = true
+[out]
+pyproject.toml: toml config file contains a [[tool.mypy.overrides]] section with a module value that is not a string or a list of strings
+== Return code: 0
+
 [case testDisallowUntypedDefsAndGenericsPyprojectTOML]
 # cmd: mypy a.py
 [file pyproject.toml]
