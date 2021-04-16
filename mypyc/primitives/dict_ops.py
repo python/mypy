@@ -9,7 +9,8 @@ from mypyc.ir.rtypes import (
 )
 
 from mypyc.primitives.registry import (
-    COERCER, custom_op, method_op, function_op, binary_op, load_address_op, ERR_NEG_INT, default_match
+    COERCER, custom_op, method_op, function_op, binary_op, load_address_op, ERR_NEG_INT,
+    default_match
 )
 
 # Get the 'dict' type object.
@@ -119,8 +120,9 @@ method_op(
     c_function_name='CPyDict_GetWithNone',
     error_kind=ERR_MAGIC)
 
+
 # dict.setdefault(key, {}) or dict.setdefault(key, []) or dict.setdefault(key, set())
-def _setdefault_empty_match(desc_arg_types: List[RType], args: List[Value]):
+def _setdefault_empty_match(desc_arg_types: List[RType], args: List[Value]) -> bool:
     if not default_match(desc_arg_types, args):
         return False
     if isinstance(args[2], CallC):
@@ -132,6 +134,7 @@ def _setdefault_empty_match(desc_arg_types: List[RType], args: List[Value]):
         elif args[2].function_name == "PyDict_New":
             return True
     return False
+
 
 def _setdefault_empty_create_args(args: List[Value], coercer: COERCER) -> List[Value]:
     # code should be consistent with CPyDict_SetDefaultWithEmptyCollection
@@ -145,10 +148,11 @@ def _setdefault_empty_create_args(args: List[Value], coercer: COERCER) -> List[V
     key = coercer(args[1], object_rprimitive, args[1].line, False)
     return [args[0], key, enum_value]
 
+
 method_op(
     name='setdefault',
     arg_types=[dict_rprimitive, object_rprimitive, object_rprimitive],
-    return_type = object_rprimitive,
+    return_type=object_rprimitive,
     c_function_name='CPyDict_SetDefaultWithEmptyCollection',
     is_borrowed=True,
     error_kind=ERR_MAGIC,

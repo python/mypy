@@ -87,9 +87,10 @@ builtin_names = {}  # type: Dict[str, Tuple[RType, str]]
 
 
 def default_match(desc_arg_types: List[RType], args: List[Value]) -> bool:
-    return (len(desc_arg_types) == len(args) and 
-                all(is_subtype(actual.type, formal)
-                    for actual, formal in zip(args, desc_arg_types)))
+    return (len(desc_arg_types) == len(args) and
+            all(is_subtype(actual.type, formal)
+                for actual, formal in zip(args, desc_arg_types)))
+
 
 def method_op(name: str,
               arg_types: List[RType],
