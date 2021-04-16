@@ -801,5 +801,14 @@ PySetObject = RStruct(
 PyListObject = RStruct(
     name='PyListObject',
     names=['ob_base', 'ob_item', 'allocated'],
-    types=[PyObject, pointer_rprimitive, c_pyssize_t_rprimitive]
+    types=[PyVarObject, pointer_rprimitive, c_pyssize_t_rprimitive]
+)
+
+# ma_keys: PyDictKeysObject*
+# ma_values: PyObject**
+PyDictObject = RStruct(
+    name='PyDictObject',
+    names=['ob_base', 'ma_used', 'ma_version_tag', 'ma_keys', 'ma_values'],
+    types=[PyObject, c_pyssize_t_rprimitive, uint64_rprimitive, pointer_rprimitive,
+           pointer_rprimitive]
 )
