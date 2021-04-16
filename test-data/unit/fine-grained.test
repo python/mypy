@@ -7846,7 +7846,7 @@ from b import A
 [out]
 ==
 a.py:4: error: Module "b" has no attribute "A"
-a.py:4: error: Name 'A' already defined on line 3
+a.py:4: error: Name "A" already defined on line 3
 
 -- the order of errors is different with cache
 [case testImportOnTopOfAlias2]
