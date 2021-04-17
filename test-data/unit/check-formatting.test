@@ -399,7 +399,7 @@ strings: List[str]
 '{:d}, {[0].x}'.format(*strings)  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "int") \
                                   # E: "str" has no attribute "x"
 # TODO: this is a runtime error, but error message is confusing
-'{[0][:]:d}'.format(*strings)  # E: Syntax error in format specifier "0[0]["
+'{[0][:]:d}'.format(*strings)  # E: Only index and member expressions are allowed in format field accessors; got "0[0]["
 [builtins fixtures/primitives.pyi]
 
 [case testFormatCallMatchingKwArg]
@@ -595,6 +595,8 @@ OK: Final[str] = '...'
 from typing import Any
 x: Any
 
+"{0[k-y]}".format(x)
+"{0[@#$%^&()+[-\"']}".format(x)
 '{.x:{[0]}}'.format('yes', 42)  # E: "str" has no attribute "x" \
                                 # E: Value of type "int" is not indexable
 
@@ -613,7 +615,7 @@ u: User
 '{user[name]:.3f}'.format(user=u)  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float]")
 
 def f() -> str: ...
-'{[f()]}'.format(u)  # E: Invalid index expression in format field accessor "[f()]"
+'{[f()]}'.format(u)  # E: TypedDict "User" has no key "f()"
 [builtins fixtures/primitives.pyi]
 
 [case testFormatCallFlags]
