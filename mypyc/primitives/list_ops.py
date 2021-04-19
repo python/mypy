@@ -66,7 +66,7 @@ list_set_item_op = method_op(
     steals=[False, False, True])
 
 # PyList_SET_ITEM does no error checking,
-# and should only be used to fill in brand new tuples.
+# and should only be used to fill in brand new lists.
 new_list_set_item_op = custom_op(
     arg_types=[list_rprimitive, int_rprimitive, object_rprimitive],
     return_type=bit_rprimitive,

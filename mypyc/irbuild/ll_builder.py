@@ -892,6 +892,13 @@ class LowLevelIRBuilder:
         return result
 
     def new_list_op_with_length(self, length: Value, line: int) -> Value:
+        """This function returns an uninitialized list. You might need
+        further initialization with `CPyList_SetItemUnsafe` op.
+
+        Args:
+            length: desired length of the new list. The rtype should be
+                    c_pyssize_t_rprimitive
+        """
         return self.call_c(new_list_op, [length], line)
 
     def new_list_op(self, values: List[Value], line: int) -> Value:

@@ -132,13 +132,31 @@ def for_loop_helper_with_index(builder: IRBuilder, index: Lvalue, expr: Expressi
     builder.activate_block(exit_block)
 
 
-def preallocate_space_helper(builder: IRBuilder,
-                             gen: GeneratorExpr,
-                             empty_op_llbuilder: Callable[[Value, int], Value],
-                             set_item_op: CFunctionDescription) -> Optional[Value]:
-    """Currently we only optimize for simplest generator expression.
+def sequence_from_generator_preallocate_helper(
+        builder: IRBuilder,
+        gen: GeneratorExpr,
+        empty_op_llbuilder: Callable[[Value, int], Value],
+        set_item_op: CFunctionDescription) -> Optional[Value]:
+    """Currently we only optimize for simplest generator expression, which means that
+    there is no condition list in the generator and only one original sequence with
+    one index is allowed.
 
-    "... for index in list/tuple"
+    e.g.  (1) tuple(f(x) for x in a_list/a_tuple)
+          (2) list(f(x) for x in a_list/a_tuple)
+          (3) [f(x) for x in a_list/a_tuple]
+    RTuple as an original sequence is not supported yet.
+
+    Args:
+        empty_op_llbuilder: A function that can generate an empty sequence op when
+            passed in length. See `new_list_op_with_length` and `new_tuple_op_with_length`
+            for detailed implementation.
+        set_item_op: A primitive that can modify an arbitrary position of a sequence.
+            The op should have three arguments:
+                - Self
+                - Target position
+                - New Value
+            See `new_list_set_item_op` and `new_tuple_set_item_op` for detailed
+            implementation.
     """
     if len(gen.sequences) == 1 and len(gen.indices) == 1 and len(gen.condlists[0]) == 0:
         rtype = builder.node_type(gen.sequences[0])
@@ -161,9 +179,10 @@ def preallocate_space_helper(builder: IRBuilder,
 
 def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value:
     # Try simplest list comprehension, otherwise fall back to general one
-    val = preallocate_space_helper(builder, gen,
-                                   empty_op_llbuilder=builder.builder.new_list_op_with_length,
-                                   set_item_op=new_list_set_item_op)
+    val = sequence_from_generator_preallocate_helper(
+        builder, gen,
+        empty_op_llbuilder=builder.builder.new_list_op_with_length,
+        set_item_op=new_list_set_item_op)
     if val is not None:
         return val
 

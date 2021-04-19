@@ -29,7 +29,7 @@ from mypyc.primitives.tuple_ops import new_tuple_set_item_op
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import (
     translate_list_comprehension, translate_set_comprehension,
-    comprehension_helper, preallocate_space_helper
+    comprehension_helper, sequence_from_generator_preallocate_helper
 )
 
 
@@ -151,7 +151,7 @@ def translate_safe_generator_call(
                 builder.node_type(expr), expr.line, expr.arg_kinds, expr.arg_names)
         else:
             if len(expr.args) == 1 and callee.fullname == "builtins.tuple":
-                val = preallocate_space_helper(
+                val = sequence_from_generator_preallocate_helper(
                     builder, expr.args[0],
                     empty_op_llbuilder=builder.builder.new_tuple_with_length,
                     set_item_op=new_tuple_set_item_op)
