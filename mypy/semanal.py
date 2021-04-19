@@ -1691,7 +1691,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 self.defer(defn)
                 return
             if not isinstance(sym.node, TypeInfo) or sym.node.tuple_type is not None:
-                self.fail("Invalid metaclass '%s'" % metaclass_name, defn.metaclass)
+                self.fail('Invalid metaclass "%s"' % metaclass_name, defn.metaclass)
                 return
             if not sym.node.is_metaclass():
                 self.fail('Metaclasses not inheriting from "type" are not supported',

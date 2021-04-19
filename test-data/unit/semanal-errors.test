@@ -999,7 +999,7 @@ class A(metaclass=abc.Foo): pass # E: Name "abc.Foo" is not defined
 
 [case testNonClassMetaclass]
 def f(): pass
-class A(metaclass=f): pass # E: Invalid metaclass 'f'
+class A(metaclass=f): pass # E: Invalid metaclass "f"
 [out]
 
 [case testInvalidTypevarArguments]
