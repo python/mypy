@@ -1028,7 +1028,7 @@ import a.b
 [rechecked b]
 [stale]
 [out2]
-tmp/b.py:4: error: Name 'a' already defined on line 3
+tmp/b.py:4: error: Name "a" already defined on line 3
 
 [case testIncrementalSilentImportsAndImportsInClass]
 # flags: --ignore-missing-imports

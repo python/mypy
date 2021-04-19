@@ -85,7 +85,7 @@ yield from x # E: 'yield from' outside function
 [case testImportFuncDup]
 
 import m
-def m() -> None: ...  # E: Name 'm' already defined (by an import)
+def m() -> None: ...  # E: Name "m" already defined (by an import)
 
 [file m.py]
 [out]
@@ -94,8 +94,8 @@ def m() -> None: ...  # E: Name 'm' already defined (by an import)
 
 import m # type: ignore
 from m import f # type: ignore
-def m() -> None: ...  # E: Name 'm' already defined (possibly by an import)
-def f() -> None: ...  # E: Name 'f' already defined (possibly by an import)
+def m() -> None: ...  # E: Name "m" already defined (possibly by an import)
+def f() -> None: ...  # E: Name "f" already defined (possibly by an import)
 
 [out]
 

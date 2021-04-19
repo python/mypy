@@ -3,7 +3,7 @@ def d(c): ...
 @d
 
 class C: ...
-class C: ...  # E: Name 'C' already defined on line 4
+class C: ...  # E: Name "C" already defined on line 4
 
 [case testDecoratedFunctionLine]
 # flags: --disallow-untyped-defs
