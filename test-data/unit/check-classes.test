@@ -4176,7 +4176,7 @@ class B(A, metaclass=Y): pass  # E: Inconsistent metaclass structure for 'B'
 class M:
     x = 0  # type: int
 
-class A(metaclass=M): pass  # E: Metaclasses not inheriting from 'type' are not supported
+class A(metaclass=M): pass  # E: Metaclasses not inheriting from "type" are not supported
 
 A.x  # E: "Type[A]" has no attribute "x"
 
@@ -4973,8 +4973,8 @@ class A(object): pass
 def f() -> type: return M
 class C1(six.with_metaclass(M), object): pass  # E: Unsupported dynamic base class "six.with_metaclass"
 class C2(C1, six.with_metaclass(M)): pass  # E: Unsupported dynamic base class "six.with_metaclass"
-class C3(six.with_metaclass(A)): pass  # E: Metaclasses not inheriting from 'type' are not supported
-@six.add_metaclass(A)  # E: Metaclasses not inheriting from 'type' are not supported  \
+class C3(six.with_metaclass(A)): pass  # E: Metaclasses not inheriting from "type" are not supported
+@six.add_metaclass(A)  # E: Metaclasses not inheriting from "type" are not supported  \
     # E: Argument 1 to "add_metaclass" has incompatible type "Type[A]"; expected "Type[type]"
 
 class D3(A): pass
@@ -5105,7 +5105,7 @@ class A(object): pass
 def f() -> type: return M
 class C1(future.utils.with_metaclass(M), object): pass  # E: Unsupported dynamic base class "future.utils.with_metaclass"
 class C2(C1, future.utils.with_metaclass(M)): pass  # E: Unsupported dynamic base class "future.utils.with_metaclass"
-class C3(future.utils.with_metaclass(A)): pass  # E: Metaclasses not inheriting from 'type' are not supported
+class C3(future.utils.with_metaclass(A)): pass  # E: Metaclasses not inheriting from "type" are not supported
 class C4(future.utils.with_metaclass(M), metaclass=M): pass  # E: Multiple metaclass definitions
 class C5(future.utils.with_metaclass(f())): pass  # E: Dynamic metaclass not supported for "C5"
 
