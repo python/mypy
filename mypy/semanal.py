@@ -1674,7 +1674,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             elif isinstance(defn.metaclass, MemberExpr):
                 metaclass_name = get_member_expr_fullname(defn.metaclass)
             if metaclass_name is None:
-                self.fail("Dynamic metaclass not supported for '%s'" % defn.name, defn.metaclass)
+                self.fail('Dynamic metaclass not supported for "%s"' % defn.name, defn.metaclass)
                 return
             sym = self.lookup_qualified(metaclass_name, defn.metaclass)
             if sym is None:

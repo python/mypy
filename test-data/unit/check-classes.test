@@ -3823,11 +3823,11 @@ class B(object, A): # E: Cannot determine consistent method resolution order (MR
     __iter__ = readlines
 
 [case testDynamicMetaclass]
-class C(metaclass=int()):  # E: Dynamic metaclass not supported for 'C'
+class C(metaclass=int()):  # E: Dynamic metaclass not supported for "C"
     pass
 
 [case testDynamicMetaclassCrash]
-class C(metaclass=int().x):  # E: Dynamic metaclass not supported for 'C'
+class C(metaclass=int().x):  # E: Dynamic metaclass not supported for "C"
     pass
 
 [case testVariableSubclass]
@@ -4981,8 +4981,8 @@ class D3(A): pass
 class C4(six.with_metaclass(M), metaclass=M): pass  # E: Multiple metaclass definitions
 @six.add_metaclass(M)
 class D4(metaclass=M): pass  # E: Multiple metaclass definitions
-class C5(six.with_metaclass(f())): pass  # E: Dynamic metaclass not supported for 'C5'
-@six.add_metaclass(f())  # E: Dynamic metaclass not supported for 'D5'
+class C5(six.with_metaclass(f())): pass  # E: Dynamic metaclass not supported for "C5"
+@six.add_metaclass(f())  # E: Dynamic metaclass not supported for "D5"
 class D5: pass
 
 @six.add_metaclass(M)
@@ -5107,7 +5107,7 @@ class C1(future.utils.with_metaclass(M), object): pass  # E: Unsupported dynamic
 class C2(C1, future.utils.with_metaclass(M)): pass  # E: Unsupported dynamic base class "future.utils.with_metaclass"
 class C3(future.utils.with_metaclass(A)): pass  # E: Metaclasses not inheriting from 'type' are not supported
 class C4(future.utils.with_metaclass(M), metaclass=M): pass  # E: Multiple metaclass definitions
-class C5(future.utils.with_metaclass(f())): pass  # E: Dynamic metaclass not supported for 'C5'
+class C5(future.utils.with_metaclass(f())): pass  # E: Dynamic metaclass not supported for "C5"
 
 class M1(type): pass
 class Q1(metaclass=M1): pass

@@ -72,7 +72,7 @@ def split_blocks_at_uninits(blocks: List[BasicBlock],
                                                 line=op.line))
                     raise_std = RaiseStandardError(
                         RaiseStandardError.UNBOUND_LOCAL_ERROR,
-                        "local variable '{}' referenced before assignment".format(src.name),
+                        'local variable "{}" referenced before assignment'.format(src.name),
                         op.line)
                     error_block.ops.append(raise_std)
                     error_block.ops.append(Unreachable())
