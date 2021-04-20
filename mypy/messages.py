@@ -549,7 +549,7 @@ class MessageBuilder:
                     bare=True)
                 arg_label = '"{}"'.format(arg_name)
             if isinstance(outer_context, IndexExpr) and isinstance(outer_context.index, StrExpr):
-                msg = 'Argument "{}" has incompatible type {}; expected {}' .format(
+                msg = 'Value of "{}" has incompatible type {}; expected {}' .format(
                     outer_context.index.value, quote_type_string(arg_type_str),
                     quote_type_string(expected_type_str))
             else:
