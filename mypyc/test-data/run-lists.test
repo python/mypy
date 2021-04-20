@@ -342,13 +342,15 @@ assert list_in_mixed(type)
 
 [case testListBuiltFromGenerator]
 def test() -> None:
-    source = ["a", "b", "c"]
-    a = list(x + "f2" for x in source)
-    b = [x + "f2" for x in source]
-    c = [x + "f2" for x in (y + "yy" for y in source)]
+    source_a = ["a", "b", "c"]
+    a = list(x + "f2" for x in source_a)
     assert a == ["af2", "bf2", "cf2"]
-    assert b == ["af2", "bf2", "cf2"]
-    assert c == ["ayyf2", "byyf2", "cyyf2"]
-    source2 = [1, 2, 3]
-    d = [x * 2 for x in source2]
-    assert d == [2, 4, 6]
+    source_b = [1, 2, 3, 4, 5]
+    b = [x * 2 for x in source_b]
+    assert b == [2, 4, 6, 8, 10]
+    source_c = [10, 20, 30]
+    c = [x + "f4" for x in (str(y) + "yy" for y in source_c)]
+    assert c == ["10yyf4", "20yyf4", "30yyf4"]
+    source_d = [True, False]
+    d = [not x for x in source_d]
+    assert d == [False, True]
