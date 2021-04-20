@@ -3823,11 +3823,11 @@ class B(object, A): # E: Cannot determine consistent method resolution order (MR
     __iter__ = readlines
 
 [case testDynamicMetaclass]
-class C(metaclass=int()):  # E: Dynamic metaclass not supported for 'C'
+class C(metaclass=int()):  # E: Dynamic metaclass not supported for "C"
     pass
 
 [case testDynamicMetaclassCrash]
-class C(metaclass=int().x):  # E: Dynamic metaclass not supported for 'C'
+class C(metaclass=int().x):  # E: Dynamic metaclass not supported for "C"
     pass
 
 [case testVariableSubclass]
@@ -4170,13 +4170,13 @@ class C(B):
 class X(type): pass
 class Y(type): pass
 class A(metaclass=X): pass
-class B(A, metaclass=Y): pass  # E: Inconsistent metaclass structure for 'B'
+class B(A, metaclass=Y): pass  # E: Inconsistent metaclass structure for "B"
 
 [case testMetaclassNoTypeReveal]
 class M:
     x = 0  # type: int
 
-class A(metaclass=M): pass  # E: Metaclasses not inheriting from 'type' are not supported
+class A(metaclass=M): pass  # E: Metaclasses not inheriting from "type" are not supported
 
 A.x  # E: "Type[A]" has no attribute "x"
 
@@ -4235,7 +4235,7 @@ reveal_type(list(Explicit))  # N: Revealed type is "builtins.list[builtins.int*]
 from typing import Tuple
 
 class M(Tuple[int]): pass
-class C(metaclass=M): pass  # E: Invalid metaclass 'M'
+class C(metaclass=M): pass  # E: Invalid metaclass "M"
 
 [builtins fixtures/tuple.pyi]
 
@@ -4309,9 +4309,9 @@ A.x # E: "Type[A]" has no attribute "x"
 from typing import Any
 M = 0  # type: int
 MM = 0
-class A(metaclass=M): # E: Invalid metaclass 'M'
+class A(metaclass=M): # E: Invalid metaclass "M"
     y = 0
-class B(metaclass=MM): # E: Invalid metaclass 'MM'
+class B(metaclass=MM): # E: Invalid metaclass "MM"
     y = 0
 reveal_type(A.y) # N: Revealed type is "builtins.int"
 A.x # E: "Type[A]" has no attribute "x"
@@ -4973,16 +4973,16 @@ class A(object): pass
 def f() -> type: return M
 class C1(six.with_metaclass(M), object): pass  # E: Unsupported dynamic base class "six.with_metaclass"
 class C2(C1, six.with_metaclass(M)): pass  # E: Unsupported dynamic base class "six.with_metaclass"
-class C3(six.with_metaclass(A)): pass  # E: Metaclasses not inheriting from 'type' are not supported
-@six.add_metaclass(A)  # E: Metaclasses not inheriting from 'type' are not supported  \
+class C3(six.with_metaclass(A)): pass  # E: Metaclasses not inheriting from "type" are not supported
+@six.add_metaclass(A)  # E: Metaclasses not inheriting from "type" are not supported  \
     # E: Argument 1 to "add_metaclass" has incompatible type "Type[A]"; expected "Type[type]"
 
 class D3(A): pass
 class C4(six.with_metaclass(M), metaclass=M): pass  # E: Multiple metaclass definitions
 @six.add_metaclass(M)
 class D4(metaclass=M): pass  # E: Multiple metaclass definitions
-class C5(six.with_metaclass(f())): pass  # E: Dynamic metaclass not supported for 'C5'
-@six.add_metaclass(f())  # E: Dynamic metaclass not supported for 'D5'
+class C5(six.with_metaclass(f())): pass  # E: Dynamic metaclass not supported for "C5"
+@six.add_metaclass(f())  # E: Dynamic metaclass not supported for "D5"
 class D5: pass
 
 @six.add_metaclass(M)
@@ -4991,8 +4991,8 @@ class CD(six.with_metaclass(M)): pass  # E: Multiple metaclass definitions
 class M1(type): pass
 class Q1(metaclass=M1): pass
 @six.add_metaclass(M)
-class CQA(Q1): pass  # E: Inconsistent metaclass structure for 'CQA'
-class CQW(six.with_metaclass(M, Q1)): pass  # E: Inconsistent metaclass structure for 'CQW'
+class CQA(Q1): pass  # E: Inconsistent metaclass structure for "CQA"
+class CQW(six.with_metaclass(M, Q1)): pass  # E: Inconsistent metaclass structure for "CQW"
 [builtins fixtures/tuple.pyi]
 
 [case testSixMetaclassErrors_python2]
@@ -5105,13 +5105,13 @@ class A(object): pass
 def f() -> type: return M
 class C1(future.utils.with_metaclass(M), object): pass  # E: Unsupported dynamic base class "future.utils.with_metaclass"
 class C2(C1, future.utils.with_metaclass(M)): pass  # E: Unsupported dynamic base class "future.utils.with_metaclass"
-class C3(future.utils.with_metaclass(A)): pass  # E: Metaclasses not inheriting from 'type' are not supported
+class C3(future.utils.with_metaclass(A)): pass  # E: Metaclasses not inheriting from "type" are not supported
 class C4(future.utils.with_metaclass(M), metaclass=M): pass  # E: Multiple metaclass definitions
-class C5(future.utils.with_metaclass(f())): pass  # E: Dynamic metaclass not supported for 'C5'
+class C5(future.utils.with_metaclass(f())): pass  # E: Dynamic metaclass not supported for "C5"
 
 class M1(type): pass
 class Q1(metaclass=M1): pass
-class CQW(future.utils.with_metaclass(M, Q1)): pass  # E: Inconsistent metaclass structure for 'CQW'
+class CQW(future.utils.with_metaclass(M, Q1)): pass  # E: Inconsistent metaclass structure for "CQW"
 [builtins fixtures/tuple.pyi]
 
 [case testFutureMetaclassErrors_python2]

@@ -413,14 +413,14 @@ L5:
 L6:
     if is_error(a) goto L17 else goto L9
 L7:
-    r7 = raise UnboundLocalError("local variable 'a' referenced before assignment")
+    r7 = raise UnboundLocalError('local variable "a" referenced before assignment')
     if not r7 goto L14 (error at lol:9) else goto L8 :: bool
 L8:
     unreachable
 L9:
     if is_error(b) goto L18 else goto L12
 L10:
-    r8 = raise UnboundLocalError("local variable 'b' referenced before assignment")
+    r8 = raise UnboundLocalError('local variable "b" referenced before assignment')
     if not r8 goto L14 (error at lol:9) else goto L11 :: bool
 L11:
     unreachable
@@ -489,7 +489,7 @@ L3:
 L4:
     if is_error(v) goto L13 else goto L7
 L5:
-    r8 = raise UnboundLocalError("local variable 'v' referenced before assignment")
+    r8 = raise UnboundLocalError('local variable "v" referenced before assignment')
     if not r8 goto L9 (error at f:7) else goto L6 :: bool
 L6:
     unreachable

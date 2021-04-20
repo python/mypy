@@ -1137,7 +1137,7 @@ reveal_type(A.f()) # N: Revealed type is "builtins.int"
 class A(metaclass=B):
     pass
 
-class AA(metaclass=C): # E: Metaclasses not inheriting from 'type' are not supported
+class AA(metaclass=C): # E: Metaclasses not inheriting from "type" are not supported
     pass
 
 class B(type):
@@ -1284,7 +1284,7 @@ class A:
     __metaclass__ = B
 
 class AA:
-    __metaclass__ = C  # E: Metaclasses not inheriting from 'type' are not supported
+    __metaclass__ = C  # E: Metaclasses not inheriting from "type" are not supported
 
 class B(type):
     def f(cls):

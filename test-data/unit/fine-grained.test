@@ -3050,7 +3050,7 @@ class M(type):
     pass
 [out]
 ==
-a.py:3: error: Inconsistent metaclass structure for 'D'
+a.py:3: error: Inconsistent metaclass structure for "D"
 
 [case testFineMetaclassDeclaredUpdate]
 import a
@@ -3066,7 +3066,7 @@ class M(type): pass
 class M2(type): pass
 [out]
 ==
-a.py:3: error: Inconsistent metaclass structure for 'D'
+a.py:3: error: Inconsistent metaclass structure for "D"
 
 [case testFineMetaclassRemoveFromClass]
 import a
@@ -3128,7 +3128,7 @@ M = 1
 class M(type):
     pass
 [out]
-a.py:2: error: Invalid metaclass 'b.M'
+a.py:2: error: Invalid metaclass "b.M"
 ==
 
 [case testFixedAttrOnAddedMetaclass]
@@ -3241,7 +3241,7 @@ class M(type):
 M = 1
 [out]
 ==
-a.py:2: error: Invalid metaclass 'b.M'
+a.py:2: error: Invalid metaclass "b.M"
 
 [case testRefreshGenericSubclass]
 from typing import Generic, TypeVar

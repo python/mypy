@@ -301,7 +301,7 @@ class M(type):
 
 [case testDynamicMetaclass]
 class C(object):
-    __metaclass__ = int()  # E: Dynamic metaclass not supported for 'C'
+    __metaclass__ = int()  # E: Dynamic metaclass not supported for "C"
 
 [case testMetaclassDefinedAsClass]
 class C(object):
