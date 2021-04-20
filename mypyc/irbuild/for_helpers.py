@@ -137,7 +137,9 @@ def sequence_from_generator_preallocate_helper(
         gen: GeneratorExpr,
         empty_op_llbuilder: Callable[[Value, int], Value],
         set_item_op: CFunctionDescription) -> Optional[Value]:
-    """Currently we only optimize for simplest generator expression, which means that
+    """Generate a new tuple or list from a simple generator expression.
+
+    Currently we only optimize for simplest generator expression, which means that
     there is no condition list in the generator and only one original sequence with
     one index is allowed.
 

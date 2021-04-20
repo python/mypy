@@ -52,7 +52,7 @@ PyObject *CPyList_GetItem(PyObject *list, CPyTagged index) {
         Py_INCREF(result);
         return result;
     } else {
-        PyErr_SetString(PyExc_IndexError, "list index out of range");
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
         return NULL;
     }
 }
@@ -79,7 +79,7 @@ bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value) {
         PyList_SET_ITEM(list, n, value);
         return true;
     } else {
-        PyErr_SetString(PyExc_OverflowError, "set_item index too large for list");
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
         return false;
     }
 }
@@ -91,7 +91,7 @@ bool CPyList_SetItemUnsafe(PyObject *list, CPyTagged index, PyObject *value) {
         PyList_SET_ITEM(list, n, value);
         return true;
     } else {
-        PyErr_SetString(PyExc_OverflowError, "set_item index too large for list");
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
         return false;
     }
 }
@@ -110,7 +110,7 @@ PyObject *CPyList_Pop(PyObject *obj, CPyTagged index)
         Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
         return list_pop_impl((PyListObject *)obj, n);
     } else {
-        PyErr_SetString(PyExc_IndexError, "pop index too large for list");
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
         return NULL;
     }
 }
@@ -128,7 +128,7 @@ int CPyList_Insert(PyObject *list, CPyTagged index, PyObject *value)
     }
     // The max range doesn't exactly coincide with ssize_t, but we still
     // want to keep the error message compatible with CPython.
-    PyErr_SetString(PyExc_OverflowError, "insert index too large for list");
+    PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
     return -1;
 }
 

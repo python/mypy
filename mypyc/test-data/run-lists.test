@@ -124,8 +124,9 @@ def test_insert() -> None:
         try:
             l.insert(long_int, 5)
         except Exception as e:
+            # The error message is used by CPython
             assert type(e).__name__ == 'OverflowError'
-            assert str(e) == 'insert index too large for list'
+            assert str(e) == 'Python int too large to convert to C ssize_t'
         else:
             assert False
 

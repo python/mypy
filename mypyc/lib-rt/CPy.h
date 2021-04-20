@@ -19,6 +19,8 @@ extern "C" {
 } // why isn't emacs smart enough to not indent this
 #endif
 
+#define CPYTHON_LARGE_INT_ERRMSG "Python int too large to convert to C ssize_t"
+
 
 // Naming conventions:
 //
