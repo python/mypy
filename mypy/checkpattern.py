@@ -1,4 +1,5 @@
 """Pattern checker. This file is conceptually part of TypeChecker."""
+from collections import defaultdict
 from typing import List, Optional, Union, Tuple, Dict, NamedTuple, Set
 
 import mypy.checker
@@ -16,7 +17,7 @@ from mypy.subtypes import is_subtype, find_member
 from mypy.typeops import try_getting_str_literals_from_type
 from mypy.types import (
     ProperType, AnyType, TypeOfAny, Instance, Type, NoneType, UninhabitedType, get_proper_type,
-    TypedDictType, TupleType
+    TypedDictType, TupleType, UnionType
 )
 from mypy.typevars import fill_typevars
 from mypy.visitor import PatternVisitor
@@ -94,8 +95,49 @@ class PatternChecker(PatternVisitor[PatternType]):
         return PatternType(typ, type_map)
 
     def visit_or_pattern(self, o: OrPattern) -> PatternType:
-        # TODO
-        return PatternType(self.type_context[-1], {})
+
+        #
+        # Check all the subpatterns
+        #
+        pattern_types = []
+        for pattern in o.patterns:
+            pattern_types.append(self.accept(pattern, self.type_context[-1]))
+
+        #
+        # Collect the final type
+        #
+        types = []
+        for pattern_type in pattern_types:
+            if pattern_type.type is not None:
+                types.append(pattern_type.type)
+
+        #
+        # Check the capture types
+        #
+        capture_types = defaultdict(list)  # type: Dict[Var, List[Tuple[Expression, Type]]]
+        # Collect captures from the first subpattern
+        for expr, typ in pattern_types[0].captures.items():
+            node = get_var(expr)
+            capture_types[node].append((expr, typ))
+
+        # Check if other subpatterns capture the same names
+        for i, pattern_type in enumerate(pattern_types[1:]):
+            vars = {get_var(expr) for expr, _ in pattern_type.captures.items()}
+            if capture_types.keys() != vars:
+                self.msg.fail("Alternative patterns bind different names", o.patterns[i])
+            for expr, typ in pattern_type.captures.items():
+                node = get_var(expr)
+                capture_types[node].append((expr, typ))
+
+        captures = {}  # type: Dict[Expression, Type]
+        for var, capture_list in capture_types.items():
+            typ = UninhabitedType()
+            for _, other in capture_list:
+                typ = join_types(typ, other)
+
+            captures[capture_list[0][0]] = typ
+
+        return PatternType(UnionType.make_union(types), captures)
 
     def visit_literal_pattern(self, o: LiteralPattern) -> PatternType:
         literal_type = self.get_literal_type(o.value)
@@ -123,8 +165,6 @@ class PatternChecker(PatternVisitor[PatternType]):
         return typ
 
     def visit_capture_pattern(self, o: CapturePattern) -> PatternType:
-        node = o.name.node
-        assert isinstance(node, Var)
         return PatternType(self.type_context[-1], {o.name: self.type_context[-1]})
 
     def visit_wildcard_pattern(self, o: WildcardPattern) -> PatternType:
@@ -377,9 +417,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         already_captured = set(literal_hash(expr) for expr in original_type_map)
         for expr, typ in extra_type_map.items():
             if literal_hash(expr) in already_captured:
-                assert isinstance(expr, NameExpr)
-                node = expr.node
-                assert node is not None
+                node = get_var(expr)
                 self.msg.fail('Multiple assignments to name "{}" in pattern'.format(node.name),
                               expr)
             else:
@@ -421,3 +459,14 @@ def get_more_specific_type(left: Optional[Type], right: Optional[Type]) -> Optio
 
 def early_non_match() -> PatternType:
     return PatternType(None, {})
+
+
+def get_var(expr: Expression) -> Var:
+    """
+    Warning: this in only true for expressions captured by a match statement.
+    Don't call it from anywhere else
+    """
+    assert isinstance(expr, NameExpr)
+    node = expr.node
+    assert isinstance(node, Var)
+    return node

@@ -699,7 +699,7 @@ class B:
 [typing fixtures/typing-medium.pyi]
 
 
--- as pattern --
+-- As Pattern --
 [case testAsPattern]
 m: int
 
@@ -721,6 +721,41 @@ m: bool
 match m:
     case int() as l:
         reveal_type(l)  # N: Revealed type is "builtins.bool"
+
+
+-- Or Pattern --
+[case testOrPatternNarrows]
+m: object
+
+match m:
+    case 1 | 2:
+        reveal_type(m)  # N: Revealed type is "builtins.int"
+
+[case testOrPatternNarrowsUnion]
+m: object
+
+match m:
+    case 1 | "foo":
+        reveal_type(m)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+[case testOrPatterCapturesMissing]
+from typing import List
+m: List[int]
+
+match m:
+    case [x, y] | list(x):  # E: Alternative patterns bind different names
+        reveal_type(x)  # N: Revealed type is "builtins.object"
+        reveal_type(y)  # N: Revealed type is "builtins.int*"
+[builtins fixtures/list.pyi]
+
+[case testOrPatternCapturesJoin]
+m: object
+
+match m:
+    case list(x) | dict(x):
+        reveal_type(x)  # N: Revealed type is "builtins.object"
+[builtins fixtures/list.pyi]
+[builtins fixtures/dict.pyi]
 
 
 -- Interactions --

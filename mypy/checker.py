@@ -45,7 +45,7 @@ import mypy.checkexpr
 from mypy.checkmember import (
     analyze_member_access, analyze_descriptor_access, type_object_type,
 )
-from mypy.checkpattern import PatternChecker, PatternType
+from mypy.checkpattern import PatternChecker
 from mypy.typeops import (
     map_type_from_supertype, bind_self, erase_to_bound, make_simplified_union,
     erase_def_to_union_or_bound, erase_to_union_or_bound, coerce_to_literal,
@@ -3734,7 +3734,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             pattern_types = [self.pattern_checker.accept(p, subject_type) for p in s.patterns]
 
-            type_maps = get_type_maps_from_pattern_types(pattern_types)
+            type_maps = [t.captures for t in pattern_types]  # type: List[TypeMap]
             self.infer_names_from_type_maps(type_maps)
 
             for pattern_type, g, b in zip(pattern_types, s.guards, s.bodies):
@@ -5909,8 +5909,3 @@ def collapse_walrus(e: Expression) -> Expression:
     if isinstance(e, AssignmentExpr):
         return e.target
     return e
-
-
-def get_type_maps_from_pattern_types(pattern_types: List[PatternType]) -> List[TypeMap]:
-    return [pattern_type.captures if pattern_type is not None else None
-            for pattern_type in pattern_types]
