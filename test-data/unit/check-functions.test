@@ -1851,7 +1851,7 @@ def k(f: Callable[[KwArg(), NamedArg(Any, 'x')], int]): pass # E: A **kwargs arg
 from typing import Callable
 from mypy_extensions import Arg, VarArg, KwArg, DefaultArg
 
-def f(f: Callable[[Arg(int, 'x'), int, Arg(int, 'x')], int]): pass # E: Duplicate argument 'x' in Callable
+def f(f: Callable[[Arg(int, 'x'), int, Arg(int, 'x')], int]): pass # E: Duplicate argument "x" in Callable
 
 [builtins fixtures/dict.pyi]
 
