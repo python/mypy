@@ -3,10 +3,10 @@ from decimal import Decimal
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, Union
 
 # workaround for mypy#2010
-if sys.version_info < (3,):
-    from __builtin__ import str as _str
-else:
+if sys.version_info >= (3, 0):
     from builtins import str as _str
+else:
+    from __builtin__ import str as _str
 
 CODESET: int
 D_T_FMT: int

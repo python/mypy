@@ -832,7 +832,6 @@ class StubtestMiscUnit(unittest.TestCase):
         assert "os" in stdlib
         assert "os.path" in stdlib
         assert "mypy_extensions" not in stdlib
-        assert "typing_extensions" not in stdlib
         assert "asyncio" in stdlib
         assert ("dataclasses" in stdlib) == (sys.version_info >= (3, 7))
 

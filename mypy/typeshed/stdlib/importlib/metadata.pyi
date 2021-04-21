@@ -9,11 +9,11 @@ from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union
 
 if sys.version_info >= (3, 8):
     class PackageNotFoundError(ModuleNotFoundError): ...
-    class EntryPointBase(NamedTuple):
+    class _EntryPointBase(NamedTuple):
         name: str
         value: str
         group: str
-    class EntryPoint(EntryPointBase):
+    class EntryPoint(_EntryPointBase):
         def load(self) -> Any: ...  # Callable[[], Any] or an importable module
         @property
         def extras(self) -> List[str]: ...
@@ -62,8 +62,6 @@ if sys.version_info >= (3, 8):
             def __init__(self, *, name: Optional[str] = ..., path: List[str] = ..., **kwargs: Any) -> None: ...
             @property
             def path(self) -> List[str]: ...
-            @property
-            def pattern(self) -> str: ...
         @abc.abstractmethod
         def find_distributions(self, context: DistributionFinder.Context = ...) -> Iterable[Distribution]: ...
     class MetadataPathFinder(DistributionFinder):

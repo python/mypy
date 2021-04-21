@@ -3,6 +3,50 @@ from typing import IO, Any, BinaryIO, NamedTuple, Optional, Tuple, Union, overlo
 
 _chtype = Union[str, bytes, int]
 
+# ACS codes are only initialized after initscr is called
+ACS_BBSS: int
+ACS_BLOCK: int
+ACS_BOARD: int
+ACS_BSBS: int
+ACS_BSSB: int
+ACS_BSSS: int
+ACS_BTEE: int
+ACS_BULLET: int
+ACS_CKBOARD: int
+ACS_DARROW: int
+ACS_DEGREE: int
+ACS_DIAMOND: int
+ACS_GEQUAL: int
+ACS_HLINE: int
+ACS_LANTERN: int
+ACS_LARROW: int
+ACS_LEQUAL: int
+ACS_LLCORNER: int
+ACS_LRCORNER: int
+ACS_LTEE: int
+ACS_NEQUAL: int
+ACS_PI: int
+ACS_PLMINUS: int
+ACS_PLUS: int
+ACS_RARROW: int
+ACS_RTEE: int
+ACS_S1: int
+ACS_S3: int
+ACS_S7: int
+ACS_S9: int
+ACS_SBBS: int
+ACS_SBSB: int
+ACS_SBSS: int
+ACS_SSBB: int
+ACS_SSBS: int
+ACS_SSSB: int
+ACS_SSSS: int
+ACS_STERLING: int
+ACS_TTEE: int
+ACS_UARROW: int
+ACS_ULCORNER: int
+ACS_URCORNER: int
+ACS_VLINE: int
 ALL_MOUSE_EVENTS: int
 A_ALTCHARSET: int
 A_ATTRIBUTES: int
@@ -223,7 +267,14 @@ def beep() -> None: ...
 def can_change_color() -> bool: ...
 def cbreak(__flag: bool = ...) -> None: ...
 def color_content(__color_number: int) -> Tuple[int, int, int]: ...
-def color_pair(__color_number: int) -> int: ...
+
+# Changed in Python 3.8.8 and 3.9.2
+if sys.version_info >= (3, 8):
+    def color_pair(pair_number: int) -> int: ...
+
+else:
+    def color_pair(__color_number: int) -> int: ...
+
 def curs_set(__visibility: int) -> int: ...
 def def_prog_mode() -> None: ...
 def def_shell_mode() -> None: ...
@@ -488,3 +539,4 @@ if sys.version_info >= (3, 8):
         minor: int
         patch: int
     ncurses_version: _ncurses_version
+    window = _CursesWindow  # undocumented

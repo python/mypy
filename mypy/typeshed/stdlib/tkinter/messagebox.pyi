@@ -1,5 +1,5 @@
 from tkinter.commondialog import Dialog
-from typing import Any, Optional
+from typing import Any, ClassVar, Optional
 
 ERROR: str
 INFO: str
@@ -19,7 +19,7 @@ YES: str
 NO: str
 
 class Message(Dialog):
-    command: str = ...
+    command: ClassVar[str] = ...
 
 def showinfo(title: Optional[str] = ..., message: Optional[str] = ..., **options: Any) -> str: ...
 def showwarning(title: Optional[str] = ..., message: Optional[str] = ..., **options: Any) -> str: ...

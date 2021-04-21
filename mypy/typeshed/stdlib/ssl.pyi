@@ -138,6 +138,7 @@ if sys.version_info >= (3, 6):
         OP_NO_TLSv1: int
         OP_NO_TLSv1_1: int
         OP_NO_TLSv1_2: int
+        OP_NO_TLSv1_3: int
         OP_CIPHER_SERVER_PREFERENCE: int
         OP_SINGLE_DH_USE: int
         OP_SINGLE_ECDH_USE: int
@@ -145,7 +146,6 @@ if sys.version_info >= (3, 6):
         OP_NO_TICKET: int
         if sys.version_info >= (3, 7):
             OP_NO_RENEGOTIATION: int
-            OP_NO_TLSv1_3: int
         if sys.version_info >= (3, 8):
             OP_ENABLE_MIDDLEBOX_COMPAT: int
     OP_ALL: Options
@@ -154,6 +154,7 @@ if sys.version_info >= (3, 6):
     OP_NO_TLSv1: Options
     OP_NO_TLSv1_1: Options
     OP_NO_TLSv1_2: Options
+    OP_NO_TLSv1_3: Options
     OP_CIPHER_SERVER_PREFERENCE: Options
     OP_SINGLE_DH_USE: Options
     OP_SINGLE_ECDH_USE: Options
@@ -161,7 +162,6 @@ if sys.version_info >= (3, 6):
     OP_NO_TICKET: Options
     if sys.version_info >= (3, 7):
         OP_NO_RENEGOTIATION: Options
-        OP_NO_TLSv1_3: Options
     if sys.version_info >= (3, 8):
         OP_ENABLE_MIDDLEBOX_COMPAT: Options
 else:
@@ -228,15 +228,15 @@ class _ASN1Object(NamedTuple):
     longname: str
     oid: str
 
-if sys.version_info < (3,):
-    class Purpose(_ASN1Object):
-        SERVER_AUTH: ClassVar[Purpose]
-        CLIENT_AUTH: ClassVar[Purpose]
-
-else:
+if sys.version_info >= (3, 0):
     class Purpose(_ASN1Object, enum.Enum):
         SERVER_AUTH: _ASN1Object
         CLIENT_AUTH: _ASN1Object
+
+else:
+    class Purpose(_ASN1Object):
+        SERVER_AUTH: ClassVar[Purpose]
+        CLIENT_AUTH: ClassVar[Purpose]
 
 class SSLSocket(socket.socket):
     context: SSLContext
@@ -245,6 +245,42 @@ class SSLSocket(socket.socket):
     if sys.version_info >= (3, 6):
         session: Optional[SSLSession]
         session_reused: Optional[bool]
+    if sys.version_info < (3, 7):
+        def __init__(
+            self,
+            sock: Optional[socket.socket] = ...,
+            keyfile: Optional[str] = ...,
+            certfile: Optional[str] = ...,
+            server_side: bool = ...,
+            cert_reqs: int = ...,
+            ssl_version: int = ...,
+            ca_certs: Optional[str] = ...,
+            do_handshake_on_connect: bool = ...,
+            family: int = ...,
+            type: int = ...,
+            proto: int = ...,
+            fileno: Optional[int] = ...,
+            suppress_ragged_eofs: bool = ...,
+            npn_protocols: Optional[Iterable[str]] = ...,
+            ciphers: Optional[str] = ...,
+            server_hostname: Optional[str] = ...,
+            _context: Optional[SSLContext] = ...,
+            _session: Optional[Any] = ...,
+        ) -> None: ...
+    else:
+        def __init__(self, *args: Any, **kwargs: Any) -> None: ...
+    def connect(self, addr: Union[socket._Address, bytes]) -> None: ...
+    def connect_ex(self, addr: Union[socket._Address, bytes]) -> int: ...
+    def recv(self, buflen: int = ..., flags: int = ...) -> bytes: ...
+    def recv_into(self, buffer: socket._WriteBuffer, nbytes: Optional[int] = ..., flags: int = ...) -> int: ...
+    def recvfrom(self, buflen: int = ..., flags: int = ...) -> tuple[bytes, socket._RetAddress]: ...
+    def recvfrom_into(
+        self, buffer: socket._WriteBuffer, nbytes: Optional[int] = ..., flags: int = ...
+    ) -> tuple[int, socket._RetAddress]: ...
+    @overload
+    def sendto(self, data: bytes, flags_or_addr: socket._Address) -> int: ...
+    @overload
+    def sendto(self, data: bytes, flags_or_addr: Union[int, socket._Address], addr: Optional[socket._Address] = ...) -> int: ...
     def read(self, len: int = ..., buffer: Optional[bytearray] = ...) -> bytes: ...
     def write(self, data: bytes) -> int: ...
     def do_handshake(self, block: bool = ...) -> None: ...  # block is undocumented
@@ -286,6 +322,10 @@ class SSLContext:
         options: int
     if sys.version_info >= (3, 8):
         post_handshake_auth: bool
+    if sys.version_info >= (3, 5):
+        def __new__(cls, protocol: int = ..., *args: Any, **kwargs: Any) -> SSLContext: ...
+    else:
+        def __new__(cls, protocol: int, *args: Any, **kwargs: Any) -> SSLContext: ...
     @property
     def protocol(self) -> int: ...
     verify_flags: int
@@ -362,6 +402,12 @@ if sys.version_info >= (3, 5):
         if sys.version_info >= (3, 6):
             session: Optional[SSLSession]
             session_reused: bool
+        if sys.version_info >= (3, 7):
+            def __init__(self, *args: Any, **kwargs: Any) -> None: ...
+        else:
+            def __init__(
+                self, sslobj: Any, owner: Optional[Union[SSLSocket, SSLObject]] = ..., session: Optional[Any] = ...
+            ) -> None: ...
         def read(self, len: int = ..., buffer: Optional[bytearray] = ...) -> bytes: ...
         def write(self, data: bytes) -> int: ...
         @overload
@@ -421,7 +467,8 @@ SSL_ERROR_ZERO_RETURN: int
 
 def get_protocol_name(protocol_code: int) -> str: ...
 
-AF_INET: int
+if sys.version_info < (3, 9):
+    AF_INET: int
 PEM_FOOTER: str
 PEM_HEADER: str
 SOCK_STREAM: int
