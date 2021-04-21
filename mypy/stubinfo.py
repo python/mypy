@@ -77,7 +77,6 @@ legacy_bundled_packages = {
     'toml': 'types-toml',
     'tornado': 'types-tornado',
     'typed_ast': 'types-typed-ast',
-    'typing_extensions': 'types-typing-extensions',
     'tzlocal': 'types-tzlocal',
     'ujson': 'types-ujson',
     'waitress': 'types-waitress',
