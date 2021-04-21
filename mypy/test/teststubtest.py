@@ -816,8 +816,8 @@ class StubtestMiscUnit(unittest.TestCase):
 
         output = run_stubtest(stub="def f(): ...\ndef f(): ...", runtime="", options=[])
         assert remove_color_code(output) == (
-            "error: failed mypy build.\n{}.pyi:2: "
-            "error: Name 'f' already defined on line 1\n".format(TEST_MODULE_NAME)
+            'error: failed mypy build.\n{}.pyi:2: '
+            'error: Name "f" already defined on line 1\n'.format(TEST_MODULE_NAME)
         )
 
     def test_missing_stubs(self) -> None:
@@ -832,7 +832,6 @@ class StubtestMiscUnit(unittest.TestCase):
         assert "os" in stdlib
         assert "os.path" in stdlib
         assert "mypy_extensions" not in stdlib
-        assert "typing_extensions" not in stdlib
         assert "asyncio" in stdlib
         assert ("dataclasses" in stdlib) == (sys.version_info >= (3, 7))
 

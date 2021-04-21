@@ -840,12 +840,12 @@ L2:
 L3:
     if is_error(y) goto L10 else goto L5
 L4:
-    r2 = raise UnboundLocalError("local variable 'y' referenced before assignment")
+    r2 = raise UnboundLocalError('local variable "y" referenced before assignment')
     unreachable
 L5:
     if is_error(z) goto L11 else goto L7
 L6:
-    r3 = raise UnboundLocalError("local variable 'z' referenced before assignment")
+    r3 = raise UnboundLocalError('local variable "z" referenced before assignment')
     unreachable
 L7:
     r4 = CPyTagged_Add(y, z)

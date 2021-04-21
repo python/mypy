@@ -4,10 +4,10 @@ from typing import List, Optional, Type, TypeVar, overload
 from .handlers import SimpleHandler
 from .types import ErrorStream, StartResponse, WSGIApplication, WSGIEnvironment
 
-if sys.version_info < (3,):
-    from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
-else:
+if sys.version_info >= (3, 0):
     from http.server import BaseHTTPRequestHandler, HTTPServer
+else:
+    from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
 server_version: str  # undocumented
 sys_version: str  # undocumented

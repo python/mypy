@@ -254,7 +254,7 @@ def f() -> None:
     x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
     reveal_type(x) # N: Revealed type is "def () -> Any"
     y = 1
-    def y(): pass # E: Name 'y' already defined on line 6
+    def y(): pass # E: Name "y" already defined on line 6
 
 [case testCannotRedefineVarAsClass]
 # flags: --allow-redefinition
@@ -263,7 +263,7 @@ def f() -> None:
     x = 1 # E: Cannot assign to a type \
           # E: Incompatible types in assignment (expression has type "int", variable has type "Type[x]")
     y = 1
-    class y: pass # E: Name 'y' already defined on line 5
+    class y: pass # E: Name "y" already defined on line 5
 
 [case testRedefineVarAsTypeVar]
 # flags: --allow-redefinition
@@ -285,7 +285,7 @@ def f() -> None:
     import typing as m
     m = 1 # E: Incompatible types in assignment (expression has type "int", variable has type Module)
     n = 1
-    import typing as n # E: Name 'n' already defined on line 5
+    import typing as n # E: Name "n" already defined on line 5
 [builtins fixtures/module.pyi]
 
 [case testRedefineLocalWithTypeAnnotation]
@@ -305,9 +305,9 @@ def h() -> None:
     x = 1
     reveal_type(x) # N: Revealed type is "builtins.int"
     x: object
-    x: object = '' # E: Name 'x' already defined on line 16
+    x: object = '' # E: Name "x" already defined on line 16
 def farg(x: int) -> None:
-    x: str = '' # E: Name 'x' already defined on line 18
+    x: str = '' # E: Name "x" already defined on line 18
 def farg2(x: int) -> None:
     x: str = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 

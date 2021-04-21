@@ -326,7 +326,7 @@ main:2: error: Name "y" is not defined
 # Error messages differ with the new analyzer
 
 import xab  # E: Cannot find implementation or library stub for module named "xab"  # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-def xab(): pass  # E: Name 'xab' already defined (possibly by an import)
+def xab(): pass  # E: Name "xab" already defined (possibly by an import)
 
 [case testAccessingUnknownModuleFromOtherModule]
 import x
@@ -1746,7 +1746,7 @@ else:
 if bool():
     z = m
 else:
-    z = n  # E: Cannot assign multiple modules to name 'z' without explicit 'types.ModuleType' annotation
+    z = n  # E: Cannot assign multiple modules to name "z" without explicit "types.ModuleType" annotation
 
 [file m.py]
 a = 'foo'
@@ -1782,13 +1782,13 @@ import m, n, o
 
 x = m
 if int():
-    x = n  # E: Cannot assign multiple modules to name 'x' without explicit 'types.ModuleType' annotation
+    x = n  # E: Cannot assign multiple modules to name "x" without explicit "types.ModuleType" annotation
 if int():
-    x = o  # E: Cannot assign multiple modules to name 'x' without explicit 'types.ModuleType' annotation
+    x = o  # E: Cannot assign multiple modules to name "x" without explicit "types.ModuleType" annotation
 
 y = o
 if int():
-    y, z = m, n  # E: Cannot assign multiple modules to name 'y' without explicit 'types.ModuleType' annotation
+    y, z = m, n  # E: Cannot assign multiple modules to name "y" without explicit "types.ModuleType" annotation
 
 xx = m
 if int():
@@ -1808,7 +1808,7 @@ a = 'bar'
 
 [case testModuleAliasToOtherModule]
 import m, n
-m = n  # E: Cannot assign multiple modules to name 'm' without explicit 'types.ModuleType' annotation
+m = n  # E: Cannot assign multiple modules to name "m" without explicit "types.ModuleType" annotation
 
 [file m.py]
 
@@ -1958,7 +1958,7 @@ import othermod
 alias = mod.submod
 reveal_type(alias.whatever('/'))  # N: Revealed type is "builtins.str*"
 if int():
-    alias = othermod  # E: Cannot assign multiple modules to name 'alias' without explicit 'types.ModuleType' annotation
+    alias = othermod  # E: Cannot assign multiple modules to name "alias" without explicit "types.ModuleType" annotation
 [file mod.py]
 import submod
 [file submod.py]
@@ -2110,7 +2110,7 @@ def __getattr__(name: str) -> Any: ...
 from has_attr import name
 from has_attr import name
 from has_attr import x
-from has_attr import y as x  # E: Name 'x' already defined (possibly by an import)
+from has_attr import y as x  # E: Name "x" already defined (possibly by an import)
 reveal_type(name)  # N: Revealed type is "builtins.int"
 
 [file has_attr.pyi]

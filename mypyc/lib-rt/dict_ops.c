@@ -69,7 +69,9 @@ PyObject *CPyDict_GetWithNone(PyObject *dict, PyObject *key) {
 
 PyObject *CPyDict_SetDefault(PyObject *dict, PyObject *key, PyObject *value) {
     if (PyDict_CheckExact(dict)){
-        return PyDict_SetDefault(dict, key, value);
+        PyObject* ret = PyDict_SetDefault(dict, key, value);
+        Py_XINCREF(ret);
+        return ret;
     }
     return PyObject_CallMethod(dict, "setdefault", "(OO)", key, value);
 }

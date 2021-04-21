@@ -52,7 +52,7 @@ def translation(
     domain: str,
     localedir: Optional[StrPath] = ...,
     languages: Optional[Iterable[str]] = ...,
-    class_: Type[_T] = ...,
+    class_: Type[Any] = ...,
     fallback: Literal[True] = ...,
     codeset: Optional[str] = ...,
 ) -> Any: ...

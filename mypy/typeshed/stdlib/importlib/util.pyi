@@ -20,16 +20,15 @@ def spec_from_loader(
     loader: Optional[importlib.abc.Loader],
     *,
     origin: Optional[str] = ...,
-    loader_state: Optional[Any] = ...,
     is_package: Optional[bool] = ...,
-) -> importlib.machinery.ModuleSpec: ...
+) -> Optional[importlib.machinery.ModuleSpec]: ...
 def spec_from_file_location(
     name: str,
-    location: Union[str, bytes, os.PathLike[str], os.PathLike[bytes]],
+    location: Optional[Union[str, bytes, os.PathLike[str], os.PathLike[bytes]]] = ...,
     *,
     loader: Optional[importlib.abc.Loader] = ...,
     submodule_search_locations: Optional[List[str]] = ...,
-) -> importlib.machinery.ModuleSpec: ...
+) -> Optional[importlib.machinery.ModuleSpec]: ...
 def module_from_spec(spec: importlib.machinery.ModuleSpec) -> types.ModuleType: ...
 
 class LazyLoader(importlib.abc.Loader):

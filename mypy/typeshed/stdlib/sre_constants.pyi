@@ -8,7 +8,7 @@ class error(Exception):
     pos: Optional[int]
     lineno: int
     colno: int
-    def __init__(self, msg: str, pattern: Union[str, bytes] = ..., pos: int = ...) -> None: ...
+    def __init__(self, msg: str, pattern: Optional[Union[str, bytes]] = ..., pos: Optional[int] = ...) -> None: ...
 
 class _NamedIntConstant(int):
     name: Any

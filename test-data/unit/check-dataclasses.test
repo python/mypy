@@ -1069,9 +1069,9 @@ class A2:
 from dataclasses import dataclass
 
 @dataclass
-class A:  # E: Name 'x' already defined (possibly by an import)
+class A:  # E: Name "x" already defined (possibly by an import)
     x: int = 0
-    x: int = 0  # E: Name 'x' already defined on line 7
+    x: int = 0  # E: Name "x" already defined on line 7
 
 @dataclass
 class B(A):

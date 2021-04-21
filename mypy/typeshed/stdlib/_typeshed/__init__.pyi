@@ -31,6 +31,12 @@ class SupportsLessThan(Protocol):
 
 SupportsLessThanT = TypeVar("SupportsLessThanT", bound=SupportsLessThan)  # noqa: Y001
 
+class SupportsDivMod(Protocol[_T_contra, _T_co]):
+    def __divmod__(self, __other: _T_contra) -> _T_co: ...
+
+class SupportsRDivMod(Protocol[_T_contra, _T_co]):
+    def __rdivmod__(self, __other: _T_contra) -> _T_co: ...
+
 # Mapping-like protocols
 
 class SupportsItems(Protocol[_KT_co, _VT_co]):
@@ -64,61 +70,53 @@ else:
     BytesPath = bytes
     AnyPath = Union[Text, bytes]
 
-OpenTextMode = Literal[
-    "r",
+OpenTextModeUpdating = Literal[
     "r+",
     "+r",
-    "rt",
-    "tr",
     "rt+",
     "r+t",
     "+rt",
     "tr+",
     "t+r",
     "+tr",
-    "w",
     "w+",
     "+w",
-    "wt",
-    "tw",
     "wt+",
     "w+t",
     "+wt",
     "tw+",
     "t+w",
     "+tw",
-    "a",
     "a+",
     "+a",
-    "at",
-    "ta",
     "at+",
     "a+t",
     "+at",
     "ta+",
     "t+a",
     "+ta",
-    "x",
     "x+",
     "+x",
-    "xt",
-    "tx",
     "xt+",
     "x+t",
     "+xt",
     "tx+",
     "t+x",
     "+tx",
-    "U",
-    "rU",
-    "Ur",
-    "rtU",
-    "rUt",
-    "Urt",
-    "trU",
-    "tUr",
-    "Utr",
 ]
+OpenTextModeWriting = Literal[
+    "w",
+    "wt",
+    "tw",
+    "a",
+    "at",
+    "ta",
+    "x",
+    "xt",
+    "tx",
+]
+OpenTextModeReading = Literal["r", "rt", "tr", "U", "rU", "Ur", "rtU", "rUt", "Urt", "trU", "tUr", "Utr"]
+OpenTextMode = Union[OpenTextModeUpdating, OpenTextModeWriting, OpenTextModeReading]
 OpenBinaryModeUpdating = Literal[
     "rb+",
     "r+b",
@@ -168,11 +166,11 @@ class SupportsWrite(Protocol[_T_contra]):
     def write(self, __s: _T_contra) -> Any: ...
 
 if sys.version_info >= (3,):
-    ReadableBuffer = Union[bytes, bytearray, memoryview, array.array, mmap.mmap]
-    WriteableBuffer = Union[bytearray, memoryview, array.array, mmap.mmap]
+    ReadableBuffer = Union[bytes, bytearray, memoryview, array.array[Any], mmap.mmap]
+    WriteableBuffer = Union[bytearray, memoryview, array.array[Any], mmap.mmap]
 else:
-    ReadableBuffer = Union[bytes, bytearray, memoryview, array.array, mmap.mmap, buffer]
-    WriteableBuffer = Union[bytearray, memoryview, array.array, mmap.mmap, buffer]
+    ReadableBuffer = Union[bytes, bytearray, memoryview, array.array[Any], mmap.mmap, buffer]
+    WriteableBuffer = Union[bytearray, memoryview, array.array[Any], mmap.mmap, buffer]
 
 if sys.version_info >= (3, 10):
     from types import NoneType as NoneType

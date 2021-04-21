@@ -1,3 +1,4 @@
+import io
 import sys
 from _typeshed import AnyPath, StrPath
 from types import TracebackType
@@ -72,7 +73,11 @@ def open(
     compresslevel: Optional[int] = ...,
 ) -> TarFile: ...
 
+class ExFileObject(io.BufferedReader):
+    def __init__(self, tarfile: TarFile, tarinfo: TarInfo) -> None: ...
+
 class TarFile(Iterable[TarInfo]):
+    OPEN_METH: Mapping[str, str]
     name: Optional[AnyPath]
     mode: str
     fileobj: Optional[IO[bytes]]
@@ -82,9 +87,11 @@ class TarFile(Iterable[TarInfo]):
     ignore_zeros: Optional[bool]
     encoding: Optional[str]
     errors: str
+    fileobject: Type[ExFileObject]
     pax_headers: Optional[Mapping[str, str]]
     debug: Optional[int]
     errorlevel: Optional[int]
+    offset: int  # undocumented
     if sys.version_info < (3,):
         posix: bool
     def __init__(
@@ -122,6 +129,74 @@ class TarFile(Iterable[TarInfo]):
         ignore_zeros: Optional[bool] = ...,
         encoding: Optional[str] = ...,
         errors: str = ...,
+        pax_headers: Optional[Mapping[str, str]] = ...,
+        debug: Optional[int] = ...,
+        errorlevel: Optional[int] = ...,
+    ) -> TarFile: ...
+    @classmethod
+    def taropen(
+        cls,
+        name: Optional[AnyPath],
+        mode: str = ...,
+        fileobj: Optional[IO[bytes]] = ...,
+        *,
+        compresslevel: int = ...,
+        format: Optional[int] = ...,
+        tarinfo: Optional[Type[TarInfo]] = ...,
+        dereference: Optional[bool] = ...,
+        ignore_zeros: Optional[bool] = ...,
+        encoding: Optional[str] = ...,
+        pax_headers: Optional[Mapping[str, str]] = ...,
+        debug: Optional[int] = ...,
+        errorlevel: Optional[int] = ...,
+    ) -> TarFile: ...
+    @classmethod
+    def gzopen(
+        cls,
+        name: Optional[AnyPath],
+        mode: str = ...,
+        fileobj: Optional[IO[bytes]] = ...,
+        compresslevel: int = ...,
+        *,
+        format: Optional[int] = ...,
+        tarinfo: Optional[Type[TarInfo]] = ...,
+        dereference: Optional[bool] = ...,
+        ignore_zeros: Optional[bool] = ...,
+        encoding: Optional[str] = ...,
+        pax_headers: Optional[Mapping[str, str]] = ...,
+        debug: Optional[int] = ...,
+        errorlevel: Optional[int] = ...,
+    ) -> TarFile: ...
+    @classmethod
+    def bz2open(
+        cls,
+        name: Optional[AnyPath],
+        mode: str = ...,
+        fileobj: Optional[IO[bytes]] = ...,
+        compresslevel: int = ...,
+        *,
+        format: Optional[int] = ...,
+        tarinfo: Optional[Type[TarInfo]] = ...,
+        dereference: Optional[bool] = ...,
+        ignore_zeros: Optional[bool] = ...,
+        encoding: Optional[str] = ...,
+        pax_headers: Optional[Mapping[str, str]] = ...,
+        debug: Optional[int] = ...,
+        errorlevel: Optional[int] = ...,
+    ) -> TarFile: ...
+    @classmethod
+    def xzopen(
+        cls,
+        name: Optional[AnyPath],
+        mode: str = ...,
+        fileobj: Optional[IO[bytes]] = ...,
+        preset: Optional[int] = ...,
+        *,
+        format: Optional[int] = ...,
+        tarinfo: Optional[Type[TarInfo]] = ...,
+        dereference: Optional[bool] = ...,
+        ignore_zeros: Optional[bool] = ...,
+        encoding: Optional[str] = ...,
         pax_headers: Optional[Mapping[str, str]] = ...,
         debug: Optional[int] = ...,
         errorlevel: Optional[int] = ...,
@@ -218,6 +293,13 @@ class TarInfo:
     path: str
     size: int
     mtime: int
+    chksum: int
+    devmajor: int
+    devminor: int
+    offset: int
+    offset_data: int
+    sparse: Optional[bytes]
+    tarfile: Optional[TarFile]
     mode: int
     type: bytes
     linkname: str
@@ -235,9 +317,24 @@ class TarInfo:
         def frombuf(cls, buf: bytes) -> TarInfo: ...
     @classmethod
     def fromtarfile(cls, tarfile: TarFile) -> TarInfo: ...
+    @property
+    def linkpath(self) -> str: ...
+    @linkpath.setter
+    def linkpath(self, linkname: str) -> None: ...
+    def get_info(self) -> Mapping[str, Union[str, int, bytes, Mapping[str, str]]]: ...
     def tobuf(self, format: Optional[int] = ..., encoding: Optional[str] = ..., errors: str = ...) -> bytes: ...
+    def create_ustar_header(
+        self, info: Mapping[str, Union[str, int, bytes, Mapping[str, str]]], encoding: str, errors: str
+    ) -> bytes: ...
+    def create_gnu_header(
+        self, info: Mapping[str, Union[str, int, bytes, Mapping[str, str]]], encoding: str, errors: str
+    ) -> bytes: ...
+    def create_pax_header(self, info: Mapping[str, Union[str, int, bytes, Mapping[str, str]]], encoding: str) -> bytes: ...
+    @classmethod
+    def create_pax_global_header(cls, pax_headers: Mapping[str, str]) -> bytes: ...
     def isfile(self) -> bool: ...
     def isreg(self) -> bool: ...
+    def issparse(self) -> bool: ...
     def isdir(self) -> bool: ...
     def issym(self) -> bool: ...
     def islnk(self) -> bool: ...

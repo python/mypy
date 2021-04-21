@@ -9,9 +9,8 @@ ITALIC: Literal["italic"]
 
 def nametofont(name: str) -> Font: ...
 
-# See 'FONT DESCRIPTIONS' in font man page. This uses str because Literal
-# inside Tuple doesn't work.
-_FontDescription = Union[str, Font, Tuple[str, int], Tuple[str, int, str], Tuple[str, int, tkinter._TkinterSequence[str]]]
+# Can contain e.g. nested sequences ('FONT DESCRIPTIONS' in font man page)
+_FontDescription = Union[str, Font, tkinter._TkinterSequence[Any]]
 
 class _FontDict(TypedDict):
     family: str

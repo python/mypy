@@ -7,9 +7,7 @@ class Error(Exception): ...
 
 WAVE_FORMAT_PCM: int
 
-if sys.version_info < (3, 0):
-    _wave_params = Tuple[int, int, int, int, str, str]
-else:
+if sys.version_info >= (3, 0):
     class _wave_params(NamedTuple):
         nchannels: int
         sampwidth: int
@@ -17,6 +15,9 @@ else:
         nframes: int
         comptype: str
         compname: str
+
+else:
+    _wave_params = Tuple[int, int, int, int, str, str]
 
 class Wave_read:
     def __init__(self, f: _File) -> None: ...

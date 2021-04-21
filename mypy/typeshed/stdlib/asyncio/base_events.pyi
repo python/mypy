@@ -21,7 +21,23 @@ _ProtocolFactory = Callable[[], BaseProtocol]
 _SSLContext = Union[bool, None, ssl.SSLContext]
 _TransProtPair = Tuple[BaseTransport, BaseProtocol]
 
-class Server(AbstractServer): ...
+class Server(AbstractServer):
+    if sys.version_info >= (3, 7):
+        def __init__(
+            self,
+            loop: AbstractEventLoop,
+            sockets: List[socket],
+            protocol_factory: _ProtocolFactory,
+            ssl_context: _SSLContext,
+            backlog: int,
+            ssl_handshake_timeout: Optional[float],
+        ) -> None: ...
+    else:
+        def __init__(
+            self,
+            loop: AbstractEventLoop,
+            sockets: List[socket],
+        ) -> None: ...
 
 class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
     def run_forever(self) -> None: ...
@@ -184,7 +200,7 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
         ) -> _TransProtPair: ...
     if sys.version_info >= (3, 7):
         async def sock_sendfile(
-            self, sock: socket, file: IO[bytes], offset: int = ..., count: Optional[int] = ..., *, fallback: bool = ...
+            self, sock: socket, file: IO[bytes], offset: int = ..., count: Optional[int] = ..., *, fallback: Optional[bool] = ...
         ) -> int: ...
         @overload
         async def create_server(

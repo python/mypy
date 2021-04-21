@@ -1,51 +1,54 @@
 import sys
-from _typeshed import AnyPath
-from typing import Any, Optional, Pattern
+from _typeshed import StrPath
+from typing import Any, Optional, Protocol
 
 if sys.version_info >= (3, 7):
     from py_compile import PycInvalidationMode
 
+class _SupportsSearch(Protocol):
+    def search(self, string: str) -> Any: ...
+
 if sys.version_info >= (3, 9):
     def compile_dir(
-        dir: AnyPath,
+        dir: StrPath,
         maxlevels: Optional[int] = ...,
-        ddir: Optional[AnyPath] = ...,
+        ddir: Optional[StrPath] = ...,
         force: bool = ...,
-        rx: Optional[Pattern[Any]] = ...,
+        rx: Optional[_SupportsSearch] = ...,
         quiet: int = ...,
         legacy: bool = ...,
         optimize: int = ...,
         workers: int = ...,
         invalidation_mode: Optional[PycInvalidationMode] = ...,
         *,
-        stripdir: Optional[str] = ...,  # TODO: change to Optional[AnyPath] once https://bugs.python.org/issue40447 is resolved
-        prependdir: Optional[AnyPath] = ...,
-        limit_sl_dest: Optional[AnyPath] = ...,
+        stripdir: Optional[str] = ...,  # TODO: change to Optional[StrPath] once https://bugs.python.org/issue40447 is resolved
+        prependdir: Optional[StrPath] = ...,
+        limit_sl_dest: Optional[StrPath] = ...,
         hardlink_dupes: bool = ...,
     ) -> int: ...
     def compile_file(
-        fullname: AnyPath,
-        ddir: Optional[AnyPath] = ...,
+        fullname: StrPath,
+        ddir: Optional[StrPath] = ...,
         force: bool = ...,
-        rx: Optional[Pattern[Any]] = ...,
+        rx: Optional[_SupportsSearch] = ...,
         quiet: int = ...,
         legacy: bool = ...,
         optimize: int = ...,
         invalidation_mode: Optional[PycInvalidationMode] = ...,
         *,
-        stripdir: Optional[str] = ...,  # TODO: change to Optional[AnyPath] once https://bugs.python.org/issue40447 is resolved
-        prependdir: Optional[AnyPath] = ...,
-        limit_sl_dest: Optional[AnyPath] = ...,
+        stripdir: Optional[str] = ...,  # TODO: change to Optional[StrPath] once https://bugs.python.org/issue40447 is resolved
+        prependdir: Optional[StrPath] = ...,
+        limit_sl_dest: Optional[StrPath] = ...,
         hardlink_dupes: bool = ...,
     ) -> int: ...
 
 elif sys.version_info >= (3, 7):
     def compile_dir(
-        dir: AnyPath,
+        dir: StrPath,
         maxlevels: int = ...,
-        ddir: Optional[AnyPath] = ...,
+        ddir: Optional[StrPath] = ...,
         force: bool = ...,
-        rx: Optional[Pattern[Any]] = ...,
+        rx: Optional[_SupportsSearch] = ...,
         quiet: int = ...,
         legacy: bool = ...,
         optimize: int = ...,
@@ -53,10 +56,10 @@ elif sys.version_info >= (3, 7):
         invalidation_mode: Optional[PycInvalidationMode] = ...,
     ) -> int: ...
     def compile_file(
-        fullname: AnyPath,
-        ddir: Optional[AnyPath] = ...,
+        fullname: StrPath,
+        ddir: Optional[StrPath] = ...,
         force: bool = ...,
-        rx: Optional[Pattern[Any]] = ...,
+        rx: Optional[_SupportsSearch] = ...,
         quiet: int = ...,
         legacy: bool = ...,
         optimize: int = ...,
@@ -64,23 +67,22 @@ elif sys.version_info >= (3, 7):
     ) -> int: ...
 
 else:
-    # rx can be any object with a 'search' method; once we have Protocols we can change the type
     def compile_dir(
-        dir: AnyPath,
+        dir: StrPath,
         maxlevels: int = ...,
-        ddir: Optional[AnyPath] = ...,
+        ddir: Optional[StrPath] = ...,
         force: bool = ...,
-        rx: Optional[Pattern[Any]] = ...,
+        rx: Optional[_SupportsSearch] = ...,
         quiet: int = ...,
         legacy: bool = ...,
         optimize: int = ...,
         workers: int = ...,
     ) -> int: ...
     def compile_file(
-        fullname: AnyPath,
-        ddir: Optional[AnyPath] = ...,
+        fullname: StrPath,
+        ddir: Optional[StrPath] = ...,
         force: bool = ...,
-        rx: Optional[Pattern[Any]] = ...,
+        rx: Optional[_SupportsSearch] = ...,
         quiet: int = ...,
         legacy: bool = ...,
         optimize: int = ...,

@@ -1,7 +1,7 @@
 import sys
 from _typeshed import SupportsWrite
 from types import FrameType, TracebackType
-from typing import IO, Any, Dict, Generator, Iterable, Iterator, List, Mapping, Optional, Tuple, Type
+from typing import IO, Any, Dict, Generator, Iterable, Iterator, List, Mapping, Optional, Set, Tuple, Type
 
 _PT = Tuple[str, int, str, Optional[str]]
 
@@ -90,20 +90,45 @@ if sys.version_info >= (3, 5):
         text: str
         offset: int
         msg: str
-        def __init__(
-            self,
-            exc_type: Type[BaseException],
-            exc_value: BaseException,
-            exc_traceback: TracebackType,
-            *,
-            limit: Optional[int] = ...,
-            lookup_lines: bool = ...,
-            capture_locals: bool = ...,
-        ) -> None: ...
-        @classmethod
-        def from_exception(
-            cls, exc: BaseException, *, limit: Optional[int] = ..., lookup_lines: bool = ..., capture_locals: bool = ...
-        ) -> TracebackException: ...
+        if sys.version_info >= (3, 10):
+            def __init__(
+                self,
+                exc_type: Type[BaseException],
+                exc_value: BaseException,
+                exc_traceback: TracebackType,
+                *,
+                limit: Optional[int] = ...,
+                lookup_lines: bool = ...,
+                capture_locals: bool = ...,
+                compact: bool = ...,
+                _seen: Optional[Set[int]] = ...,
+            ) -> None: ...
+            @classmethod
+            def from_exception(
+                cls,
+                exc: BaseException,
+                *,
+                limit: Optional[int] = ...,
+                lookup_lines: bool = ...,
+                capture_locals: bool = ...,
+                compact: bool = ...,
+            ) -> TracebackException: ...
+        else:
+            def __init__(
+                self,
+                exc_type: Type[BaseException],
+                exc_value: BaseException,
+                exc_traceback: TracebackType,
+                *,
+                limit: Optional[int] = ...,
+                lookup_lines: bool = ...,
+                capture_locals: bool = ...,
+                _seen: Optional[Set[int]] = ...,
+            ) -> None: ...
+            @classmethod
+            def from_exception(
+                cls, exc: BaseException, *, limit: Optional[int] = ..., lookup_lines: bool = ..., capture_locals: bool = ...
+            ) -> TracebackException: ...
         def format(self, *, chain: bool = ...) -> Generator[str, None, None]: ...
         def format_exception_only(self) -> Generator[str, None, None]: ...
     class FrameSummary(Iterable[Any]):
@@ -117,6 +142,7 @@ if sys.version_info >= (3, 5):
             filename: str,
             lineno: int,
             name: str,
+            *,
             lookup_line: bool = ...,
             locals: Optional[Mapping[str, str]] = ...,
             line: Optional[str] = ...,

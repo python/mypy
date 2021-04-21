@@ -1,11 +1,20 @@
 import types
 from _typeshed import StrPath
-from typing import Any, Callable, Mapping, Optional, Sequence, Tuple, TypeVar, Union
+from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple, TypeVar, Union
 
 _T = TypeVar("_T")
 _localtrace = Callable[[types.FrameType, str, Any], Callable[..., Any]]
+_fileModuleFunction = Tuple[str, Optional[str], str]
 
 class CoverageResults:
+    def __init__(
+        self,
+        counts: Optional[Dict[Tuple[str, int], int]] = ...,
+        calledfuncs: Optional[Dict[_fileModuleFunction, int]] = ...,
+        infile: Optional[StrPath] = ...,
+        callers: Optional[Dict[Tuple[_fileModuleFunction, _fileModuleFunction], int]] = ...,
+        outfile: Optional[StrPath] = ...,
+    ) -> None: ...  # undocumented
     def update(self, other: CoverageResults) -> None: ...
     def write_results(self, show_missing: bool = ..., summary: bool = ..., coverdir: Optional[StrPath] = ...) -> None: ...
     def write_results_file(
@@ -33,7 +42,7 @@ class Trace:
         locals: Optional[Mapping[str, Any]] = ...,
     ) -> None: ...
     def runfunc(self, func: Callable[..., _T], *args: Any, **kw: Any) -> _T: ...
-    def file_module_function_of(self, frame: types.FrameType) -> Tuple[str, Optional[str], str]: ...
+    def file_module_function_of(self, frame: types.FrameType) -> _fileModuleFunction: ...
     def globaltrace_trackcallers(self, frame: types.FrameType, why: str, arg: Any) -> None: ...
     def globaltrace_countfuncs(self, frame: types.FrameType, why: str, arg: Any) -> None: ...
     def globaltrace_lt(self, frame: types.FrameType, why: str, arg: Any) -> None: ...

@@ -1674,7 +1674,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             elif isinstance(defn.metaclass, MemberExpr):
                 metaclass_name = get_member_expr_fullname(defn.metaclass)
             if metaclass_name is None:
-                self.fail("Dynamic metaclass not supported for '%s'" % defn.name, defn.metaclass)
+                self.fail('Dynamic metaclass not supported for "%s"' % defn.name, defn.metaclass)
                 return
             sym = self.lookup_qualified(metaclass_name, defn.metaclass)
             if sym is None:
@@ -1691,10 +1691,10 @@ class SemanticAnalyzer(NodeVisitor[None],
                 self.defer(defn)
                 return
             if not isinstance(sym.node, TypeInfo) or sym.node.tuple_type is not None:
-                self.fail("Invalid metaclass '%s'" % metaclass_name, defn.metaclass)
+                self.fail('Invalid metaclass "%s"' % metaclass_name, defn.metaclass)
                 return
             if not sym.node.is_metaclass():
-                self.fail("Metaclasses not inheriting from 'type' are not supported",
+                self.fail('Metaclasses not inheriting from "type" are not supported',
                           defn.metaclass)
                 return
             inst = fill_typevars(sym.node)
@@ -1713,7 +1713,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             # Inconsistency may happen due to multiple baseclasses even in classes that
             # do not declare explicit metaclass, but it's harder to catch at this stage
             if defn.metaclass is not None:
-                self.fail("Inconsistent metaclass structure for '%s'" % defn.name, defn)
+                self.fail('Inconsistent metaclass structure for "%s"' % defn.name, defn)
         else:
             if defn.info.metaclass_type.type.has_base('enum.EnumMeta'):
                 defn.info.is_enum = True
@@ -3270,8 +3270,8 @@ class SemanticAnalyzer(NodeVisitor[None],
                         if isinstance(lnode.node, MypyFile) and lnode.node is not rnode.node:
                             assert isinstance(lval, (NameExpr, MemberExpr))
                             self.fail(
-                                "Cannot assign multiple modules to name '{}' "
-                                "without explicit 'types.ModuleType' annotation".format(lval.name),
+                                'Cannot assign multiple modules to name "{}" '
+                                'without explicit "types.ModuleType" annotation'.format(lval.name),
                                 ctx)
                         # never create module alias except on initial var definition
                         elif lval.is_inferred_def:
@@ -3463,7 +3463,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.statement = g
         for name in g.names:
             if name in self.nonlocal_decls[-1]:
-                self.fail("Name '{}' is nonlocal and global".format(name), g)
+                self.fail('Name "{}" is nonlocal and global'.format(name), g)
             self.global_decls[-1].add(name)
 
     def visit_nonlocal_decl(self, d: NonlocalDecl) -> None:
@@ -3476,14 +3476,14 @@ class SemanticAnalyzer(NodeVisitor[None],
                     if table is not None and name in table:
                         break
                 else:
-                    self.fail("No binding for nonlocal '{}' found".format(name), d)
+                    self.fail('No binding for nonlocal "{}" found'.format(name), d)
 
                 if self.locals[-1] is not None and name in self.locals[-1]:
-                    self.fail("Name '{}' is already defined in local "
-                              "scope before nonlocal declaration".format(name), d)
+                    self.fail('Name "{}" is already defined in local '
+                              'scope before nonlocal declaration'.format(name), d)
 
                 if name in self.global_decls[-1]:
-                    self.fail("Name '{}' is nonlocal and global".format(name), d)
+                    self.fail('Name "{}" is nonlocal and global'.format(name), d)
                 self.nonlocal_decls[-1].add(name)
 
     def visit_print_stmt(self, s: PrintStmt) -> None:
@@ -4783,7 +4783,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             extra_msg = ' on line {}'.format(node.line)
         else:
             extra_msg = ' (possibly by an import)'
-        self.fail("{} '{}' already defined{}".format(noun, unmangle(name), extra_msg), ctx,
+        self.fail('{} "{}" already defined{}'.format(noun, unmangle(name), extra_msg), ctx,
                   code=codes.NO_REDEF)
 
     def name_already_defined(self,

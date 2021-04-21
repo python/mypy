@@ -53,7 +53,8 @@ if sys.platform != "win32":
         **kwds: Any,
     ) -> events.AbstractServer: ...
 
-class FlowControlMixin(protocols.Protocol): ...
+class FlowControlMixin(protocols.Protocol):
+    def __init__(self, loop: Optional[events.AbstractEventLoop] = ...) -> None: ...
 
 class StreamReaderProtocol(FlowControlMixin, protocols.Protocol):
     def __init__(

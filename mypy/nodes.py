@@ -3225,7 +3225,7 @@ def check_arg_names(names: Sequence[Optional[str]], nodes: List[T], fail: Callab
     seen_names = set()  # type: Set[Optional[str]]
     for name, node in zip(names, nodes):
         if name is not None and name in seen_names:
-            fail("Duplicate argument '{}' in {}".format(name, description), node)
+            fail('Duplicate argument "{}" in {}'.format(name, description), node)
             break
         seen_names.add(name)
 
