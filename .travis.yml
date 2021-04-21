@@ -34,8 +34,12 @@ jobs:
     - TEST_MYPYC=1
   - name: "run test suite with python 3.8"
     python: 3.8
-  - name: "run test suite with python 3.9"
+  - name: "run test suite with python 3.9 (compiled with mypyc)"
     python: 3.9
+    env:
+    - TOXENV=py
+    - EXTRA_ARGS="-n 2"
+    - TEST_MYPYC=1
   - name: "run test suite with python nightly"
     python: nightly
   - name: "run mypyc runtime tests with python 3.6 debug build"
