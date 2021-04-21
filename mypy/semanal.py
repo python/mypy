@@ -3270,8 +3270,8 @@ class SemanticAnalyzer(NodeVisitor[None],
                         if isinstance(lnode.node, MypyFile) and lnode.node is not rnode.node:
                             assert isinstance(lval, (NameExpr, MemberExpr))
                             self.fail(
-                                "Cannot assign multiple modules to name '{}' "
-                                "without explicit 'types.ModuleType' annotation".format(lval.name),
+                                'Cannot assign multiple modules to name "{}" '
+                                'without explicit "types.ModuleType" annotation'.format(lval.name),
                                 ctx)
                         # never create module alias except on initial var definition
                         elif lval.is_inferred_def:
