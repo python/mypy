@@ -2938,7 +2938,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                              # Also give error for another type variable with the same name.
                              (isinstance(existing.node, TypeVarExpr) and
                               existing.node is call.analyzed)):
-            self.fail("Cannot redefine '%s' as a type variable" % name, s)
+            self.fail('Cannot redefine "%s" as a type variable' % name, s)
             return False
 
         if self.options.disallow_any_unimported:
@@ -2993,7 +2993,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                       context)
             return False
         elif call.args[0].value != name:
-            msg = "String argument 1 '{}' to {}(...) does not match variable name '{}'"
+            msg = 'String argument 1 "{}" to {}(...) does not match variable name "{}"'
             self.fail(msg.format(call.args[0].value, typevarlike_type, name), context)
             return False
         return True
