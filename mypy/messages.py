@@ -2121,11 +2121,11 @@ def make_inferred_type_note(context: Context,
 
 
 def format_key_list(keys: List[str], *, short: bool = False) -> str:
-    reprs = [repr(key) for key in keys]
+    formatted_keys = ['"{}"'.format(key) for key in keys]
     td = '' if short else 'TypedDict '
     if len(keys) == 0:
         return 'no {}keys'.format(td)
     elif len(keys) == 1:
-        return '{}key {}'.format(td, reprs[0])
+        return '{}key {}'.format(td, formatted_keys[0])
     else:
-        return '{}keys ({})'.format(td, ', '.join(reprs))
+        return '{}keys ({})'.format(td, ', '.join(formatted_keys))
