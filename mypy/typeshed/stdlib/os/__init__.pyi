@@ -11,6 +11,7 @@ from _typeshed import (
 from builtins import OSError, _PathLike
 from io import BufferedRandom, BufferedReader, BufferedWriter, FileIO, TextIOWrapper as _TextIOWrapper
 from posix import listdir as listdir, times_result
+from subprocess import Popen
 from typing import (
     IO,
     Any,
@@ -176,7 +177,36 @@ R_OK: int
 W_OK: int
 X_OK: int
 
+_EnvironCodeFunc = Callable[[AnyStr], AnyStr]
+
 class _Environ(MutableMapping[AnyStr, AnyStr], Generic[AnyStr]):
+    encodekey: _EnvironCodeFunc[AnyStr]
+    decodekey: _EnvironCodeFunc[AnyStr]
+    encodevalue: _EnvironCodeFunc[AnyStr]
+    decodevalue: _EnvironCodeFunc[AnyStr]
+    if sys.version_info >= (3, 9):
+        def __init__(
+            self,
+            data: MutableMapping[AnyStr, AnyStr],
+            encodekey: _EnvironCodeFunc[AnyStr],
+            decodekey: _EnvironCodeFunc[AnyStr],
+            encodevalue: _EnvironCodeFunc[AnyStr],
+            decodevalue: _EnvironCodeFunc[AnyStr],
+        ) -> None: ...
+    else:
+        putenv: Callable[[AnyStr, AnyStr], None]
+        unsetenv: Callable[[AnyStr, AnyStr], None]
+        def __init__(
+            self,
+            data: MutableMapping[AnyStr, AnyStr],
+            encodekey: _EnvironCodeFunc[AnyStr],
+            decodekey: _EnvironCodeFunc[AnyStr],
+            encodevalue: _EnvironCodeFunc[AnyStr],
+            decodevalue: _EnvironCodeFunc[AnyStr],
+            putenv: Callable[[AnyStr, AnyStr], None],
+            unsetenv: Callable[[AnyStr, AnyStr], None],
+        ) -> None: ...
+    def setdefault(self, key: AnyStr, value: AnyStr) -> AnyStr: ...  # type: ignore
     def copy(self) -> Dict[AnyStr, AnyStr]: ...
     def __delitem__(self, key: AnyStr) -> None: ...
     def __getitem__(self, key: AnyStr) -> AnyStr: ...
@@ -726,6 +756,7 @@ if sys.platform != "win32":
         def plock(op: int) -> None: ...  # ???op is int?
 
 class _wrap_close(_TextIOWrapper):
+    def __init__(self, stream: _TextIOWrapper, proc: Popen[str]) -> None: ...
     def close(self) -> Optional[int]: ...  # type: ignore
 
 def popen(cmd: str, mode: str = ..., buffering: int = ...) -> _wrap_close: ...

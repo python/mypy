@@ -582,7 +582,7 @@ class Progressbar(Widget):
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
         value: float = ...,
-        variable: tkinter.DoubleVar = ...,
+        variable: Union[tkinter.IntVar, tkinter.DoubleVar] = ...,
     ) -> None: ...
     @overload
     def configure(
@@ -598,7 +598,7 @@ class Progressbar(Widget):
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
         value: float = ...,
-        variable: tkinter.DoubleVar = ...,
+        variable: Union[tkinter.IntVar, tkinter.DoubleVar] = ...,
     ) -> Optional[Dict[str, Tuple[str, str, str, Any, Any]]]: ...
     @overload
     def configure(self, cnf: str) -> Tuple[str, str, str, Any, Any]: ...
@@ -671,7 +671,7 @@ class Scale(Widget, tkinter.Scale):
         takefocus: tkinter._TakeFocusValue = ...,
         to: float = ...,
         value: float = ...,
-        variable: tkinter.DoubleVar = ...,
+        variable: Union[tkinter.IntVar, tkinter.DoubleVar] = ...,
     ) -> None: ...
     @overload  # type: ignore
     def configure(
@@ -688,7 +688,7 @@ class Scale(Widget, tkinter.Scale):
         takefocus: tkinter._TakeFocusValue = ...,
         to: float = ...,
         value: float = ...,
-        variable: tkinter.DoubleVar = ...,
+        variable: Union[tkinter.IntVar, tkinter.DoubleVar] = ...,
     ) -> Optional[Dict[str, Tuple[str, str, str, Any, Any]]]: ...
     @overload
     def configure(self, cnf: str) -> Tuple[str, str, str, Any, Any]: ...
@@ -708,7 +708,7 @@ class Scale(Widget, tkinter.Scale):
         takefocus: tkinter._TakeFocusValue = ...,
         to: float = ...,
         value: float = ...,
-        variable: tkinter.DoubleVar = ...,
+        variable: Union[tkinter.IntVar, tkinter.DoubleVar] = ...,
     ) -> Optional[Dict[str, Tuple[str, str, str, Any, Any]]]: ...
     @overload
     def config(self, cnf: str) -> Tuple[str, str, str, Any, Any]: ...
@@ -938,9 +938,9 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
     def prev(self, item): ...
     def see(self, item): ...
     if sys.version_info >= (3, 8):
-        def selection(self) -> List[Any]: ...
+        def selection(self) -> Tuple[str, ...]: ...
     else:
-        def selection(self, selop: Optional[Any] = ..., items: Optional[Any] = ...) -> List[Any]: ...
+        def selection(self, selop: Optional[Any] = ..., items: Optional[Any] = ...) -> Tuple[str, ...]: ...
     def selection_set(self, items): ...
     def selection_add(self, items): ...
     def selection_remove(self, items): ...
@@ -953,7 +953,7 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
         self,
         tagname: str,
         sequence: Optional[str] = ...,
-        callback: Optional[Callable[[tkinter.Event[Treeview]], Optional[Literal["break"]]]] = ...,
+        callback: Optional[Callable[[tkinter.Event[Treeview]], Any]] = ...,
     ) -> str: ...
     @overload
     def tag_bind(self, tagname: str, sequence: Optional[str], callback: str) -> None: ...
