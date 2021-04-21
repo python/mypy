@@ -730,7 +730,7 @@ p['x'] = 1
 from mypy_extensions import TypedDict
 TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 p = TaggedPoint(type='2d', x=42, y=1337)
-p['x'] = 'y'  # E: Argument 2 has incompatible type "str"; expected "int"
+p['x'] = 'y'  # E: Value of "x" has incompatible type "str"; expected "int"
 [builtins fixtures/dict.pyi]
 
 [case testCannotSetItemOfTypedDictWithInvalidStringLiteralKey]
