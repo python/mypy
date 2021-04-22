@@ -1645,7 +1645,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 self.fail('Cycle in inheritance hierarchy', defn)
                 cycle = True
             if baseinfo.fullname == 'builtins.bool':
-                self.fail("'%s' is not a valid base class" %
+                self.fail('"%s" is not a valid base class' %
                           baseinfo.name, defn, blocker=True)
                 return False
         dup = find_duplicate(info.direct_base_classes())
