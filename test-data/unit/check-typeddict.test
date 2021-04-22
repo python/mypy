@@ -60,13 +60,13 @@ p = Point({x: 42, 'y': 1337})  # E: Expected TypedDict key to be string literal
 [case testCannotCreateTypedDictInstanceWithExtraItems]
 from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
-p = Point(x=42, y=1337, z=666)  # E: Extra key 'z' for TypedDict "Point"
+p = Point(x=42, y=1337, z=666)  # E: Extra key "z" for TypedDict "Point"
 [builtins fixtures/dict.pyi]
 
 [case testCannotCreateTypedDictInstanceWithMissingItems]
 from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
-p = Point(x=42)  # E: Missing key 'y' for TypedDict "Point"
+p = Point(x=42)  # E: Missing key "y" for TypedDict "Point"
 [builtins fixtures/dict.pyi]
 
 [case testCannotCreateTypedDictInstanceWithIncompatibleItemType]
@@ -149,7 +149,7 @@ def foo(x):
     # type: (Movie) -> None
     pass
 
-foo({})  # E: Missing keys ('name', 'year') for TypedDict "Movie"
+foo({})  # E: Missing keys ("name", "year") for TypedDict "Movie"
 foo({'name': 'lol', 'year': 2009, 'based_on': 0})  # E: Incompatible types (expression has type "int", TypedDict item "based_on" has type "str")
 
 [builtins fixtures/dict.pyi]
@@ -730,7 +730,7 @@ p['x'] = 1
 from mypy_extensions import TypedDict
 TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 p = TaggedPoint(type='2d', x=42, y=1337)
-p['x'] = 'y'  # E: Argument 2 has incompatible type "str"; expected "int"
+p['x'] = 'y'  # E: Value of "x" has incompatible type "str"; expected "int"
 [builtins fixtures/dict.pyi]
 
 [case testCannotSetItemOfTypedDictWithInvalidStringLiteralKey]
@@ -871,15 +871,15 @@ Point = TypedDict('Point', {'x': int, 'y': int})
 def f(p: Point) -> None:
     if int():
         p = {'x': 2, 'y': 3}
-        p = {'x': 2}  # E: Missing key 'y' for TypedDict "Point"
+        p = {'x': 2}  # E: Missing key "y" for TypedDict "Point"
         p = dict(x=2, y=3)
 
 f({'x': 1, 'y': 3})
 f({'x': 1, 'y': 'z'})  # E: Incompatible types (expression has type "str", TypedDict item "y" has type "int")
 
 f(dict(x=1, y=3))
-f(dict(x=1, y=3, z=4))  # E: Extra key 'z' for TypedDict "Point"
-f(dict(x=1, y=3, z=4, a=5))  # E: Extra keys ('z', 'a') for TypedDict "Point"
+f(dict(x=1, y=3, z=4))  # E: Extra key "z" for TypedDict "Point"
+f(dict(x=1, y=3, z=4, a=5))  # E: Extra keys ("z", "a") for TypedDict "Point"
 
 [builtins fixtures/dict.pyi]
 
@@ -888,15 +888,15 @@ from mypy_extensions import TypedDict
 
 Point = TypedDict('Point', {'x': int, 'y': int})
 
-p1a: Point = {'x': 'hi'}  # E: Missing key 'y' for TypedDict "Point"
-p1b: Point = {}           # E: Missing keys ('x', 'y') for TypedDict "Point"
+p1a: Point = {'x': 'hi'}  # E: Missing key "y" for TypedDict "Point"
+p1b: Point = {}           # E: Missing keys ("x", "y") for TypedDict "Point"
 
 p2: Point
-p2 = dict(x='bye')  # E: Missing key 'y' for TypedDict "Point"
+p2 = dict(x='bye')  # E: Missing key "y" for TypedDict "Point"
 
 p3 = Point(x=1, y=2)
 if int():
-    p3 = {'x': 'hi'}  # E: Missing key 'y' for TypedDict "Point"
+    p3 = {'x': 'hi'}  # E: Missing key "y" for TypedDict "Point"
 
 p4: Point = {'x': 1, 'y': 2}
 
@@ -911,7 +911,7 @@ T = TypeVar('T')
 def join(x: T, y: T) -> T: return x
 ab = join(A(x=1, y=1), B(x=1, y=''))
 if int():
-    ab = {'x': 1, 'z': 1} # E: Expected TypedDict key 'x' but found keys ('x', 'z')
+    ab = {'x': 1, 'z': 1} # E: Expected TypedDict key "x" but found keys ("x", "z")
 [builtins fixtures/dict.pyi]
 
 [case testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithMissingItems]
@@ -923,7 +923,7 @@ T = TypeVar('T')
 def join(x: T, y: T) -> T: return x
 ab = join(A(x=1, y=1, z=1), B(x=1, y=1, z=''))
 if int():
-    ab = {} # E: Expected TypedDict keys ('x', 'y') but found no keys
+    ab = {} # E: Expected TypedDict keys ("x", "y") but found no keys
 [builtins fixtures/dict.pyi]
 
 
@@ -1044,7 +1044,7 @@ f({})
 f({'x': 1})
 f({'y': ''})
 f({'x': 1, 'y': ''})
-f({'x': 1, 'z': ''}) # E: Extra key 'z' for TypedDict "D"
+f({'x': 1, 'z': ''}) # E: Extra key "z" for TypedDict "D"
 f({'x': ''}) # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
 [builtins fixtures/dict.pyi]
 
@@ -1056,7 +1056,7 @@ reveal_type(D()) # N: Revealed type is "TypedDict('__main__.D', {'x'?: builtins.
 reveal_type(D(x=1)) # N: Revealed type is "TypedDict('__main__.D', {'x'?: builtins.int, 'y'?: builtins.str})"
 f(D(y=''))
 f(D(x=1, y=''))
-f(D(x=1, z='')) # E: Extra key 'z' for TypedDict "D"
+f(D(x=1, z='')) # E: Extra key "z" for TypedDict "D"
 f(D(x='')) # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
 [builtins fixtures/dict.pyi]
 
@@ -1614,9 +1614,9 @@ a.update({'x': 1})
 a.update({'x': ''}) # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
 a.update({'x': 1, 'y': []})
 a.update({'x': 1, 'y': [1]})
-a.update({'z': 1}) # E: Unexpected TypedDict key 'z'
-a.update({'z': 1, 'zz': 1}) # E: Unexpected TypedDict keys ('z', 'zz')
-a.update({'z': 1, 'x': 1}) # E: Expected TypedDict key 'x' but found keys ('z', 'x')
+a.update({'z': 1}) # E: Unexpected TypedDict key "z"
+a.update({'z': 1, 'zz': 1}) # E: Unexpected TypedDict keys ("z", "zz")
+a.update({'z': 1, 'x': 1}) # E: Expected TypedDict key "x" but found keys ("z", "x")
 d = {'x': 1}
 a.update(d) # E: Argument 1 to "update" of "TypedDict" has incompatible type "Dict[str, int]"; expected "TypedDict({'x'?: int, 'y'?: List[int]})"
 [builtins fixtures/dict.pyi]
@@ -1977,7 +1977,7 @@ v = {union: 2} # E: Expected TypedDict key to be string literal
 num2: Literal['num']
 v = {num2: 2}
 bad2: Literal['bad']
-v = {bad2: 2}  # E: Extra key 'bad' for TypedDict "Value"
+v = {bad2: 2}  # E: Extra key "bad" for TypedDict "Value"
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
@@ -2107,5 +2107,5 @@ d[True] # E: TypedDict key must be a string literal; expected one of ('foo')
 from mypy_extensions import TypedDict
 
 Foo = TypedDict('Foo', {'camelCaseKey': str})
-value: Foo = {}  # E: Missing key 'camelCaseKey' for TypedDict "Foo"
+value: Foo = {}  # E: Missing key "camelCaseKey" for TypedDict "Foo"
 [builtins fixtures/dict.pyi]

@@ -454,9 +454,9 @@ class E(TypedDict):
     y: int
 
 a: D = {'x': ''}  # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")  [typeddict-item]
-b: D = {'y': ''}  # E: Extra key 'y' for TypedDict "D"  [typeddict-item]
+b: D = {'y': ''}  # E: Extra key "y" for TypedDict "D"  [typeddict-item]
 c = D(x=0) if int() else E(x=0, y=0)
-c = {}  # E: Expected TypedDict key 'x' but found no keys  [typeddict-item]
+c = {}  # E: Expected TypedDict key "x" but found no keys  [typeddict-item]
 [builtins fixtures/dict.pyi]
 
 [case testErrorCodeCannotDetermineType]
