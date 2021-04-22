@@ -200,7 +200,7 @@ class TypedDictAnalyzer:
         else:
             if var_name is not None and name != var_name:
                 self.fail(
-                    "First argument '{}' to TypedDict() does not match variable name '{}'".format(
+                    'First argument "{}" to TypedDict() does not match variable name "{}"'.format(
                         name, var_name), node, code=codes.NAME_MATCH)
             if name != var_name or is_func_scope:
                 # Give it a unique name derived from the line number.

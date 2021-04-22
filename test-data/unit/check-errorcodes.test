@@ -796,5 +796,5 @@ Foo = NamedTuple("Bar", [])  # E: First argument to namedtuple() should be "Foo"
 [case testTypedDictNameMismatch]
 from typing_extensions import TypedDict
 
-Foo = TypedDict("Bar", {})  # E: First argument 'Bar' to TypedDict() does not match variable name 'Foo'  [name-match]
+Foo = TypedDict("Bar", {})  # E: First argument "Bar" to TypedDict() does not match variable name "Foo"  [name-match]
 [builtins fixtures/dict.pyi]
