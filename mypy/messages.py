@@ -2012,9 +2012,9 @@ def format_string_list(lst: List[str]) -> str:
 def format_item_name_list(s: Iterable[str]) -> str:
     lst = list(s)
     if len(lst) <= 5:
-        return '(' + ', '.join(["'%s'" % name for name in lst]) + ')'
+        return '(' + ', '.join(['"%s"' % name for name in lst]) + ')'
     else:
-        return '(' + ', '.join(["'%s'" % name for name in lst[:5]]) + ', ...)'
+        return '(' + ', '.join(['"%s"' % name for name in lst[:5]]) + ', ...)'
 
 
 def callable_name(type: FunctionLike) -> Optional[str]:
