@@ -3326,7 +3326,7 @@ class SemanticAnalyzer(NodeVisitor[None],
     def visit_return_stmt(self, s: ReturnStmt) -> None:
         self.statement = s
         if not self.is_func_scope():
-            self.fail("'return' outside function", s)
+            self.fail('"return" outside function', s)
         if s.expr:
             s.expr.accept(self)
 
@@ -3385,12 +3385,12 @@ class SemanticAnalyzer(NodeVisitor[None],
     def visit_break_stmt(self, s: BreakStmt) -> None:
         self.statement = s
         if self.loop_depth == 0:
-            self.fail("'break' outside loop", s, serious=True, blocker=True)
+            self.fail('"break" outside loop', s, serious=True, blocker=True)
 
     def visit_continue_stmt(self, s: ContinueStmt) -> None:
         self.statement = s
         if self.loop_depth == 0:
-            self.fail("'continue' outside loop", s, serious=True, blocker=True)
+            self.fail('"continue" outside loop', s, serious=True, blocker=True)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
         self.statement = s
@@ -3581,7 +3581,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def visit_yield_from_expr(self, e: YieldFromExpr) -> None:
         if not self.is_func_scope():  # not sure
-            self.fail("'yield from' outside function", e, serious=True, blocker=True)
+            self.fail('"yield from" outside function', e, serious=True, blocker=True)
         else:
             if self.function_stack[-1].is_coroutine:
                 self.fail('"yield from" in async function', e, serious=True, blocker=True)
@@ -3963,7 +3963,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def visit_yield_expr(self, expr: YieldExpr) -> None:
         if not self.is_func_scope():
-            self.fail("'yield' outside function", expr, serious=True, blocker=True)
+            self.fail('"yield" outside function', expr, serious=True, blocker=True)
         else:
             if self.function_stack[-1].is_coroutine:
                 if self.options.python_version < (3, 6):
@@ -3978,9 +3978,9 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def visit_await_expr(self, expr: AwaitExpr) -> None:
         if not self.is_func_scope():
-            self.fail("'await' outside function", expr)
+            self.fail('"await" outside function', expr)
         elif not self.function_stack[-1].is_coroutine:
-            self.fail("'await' outside coroutine ('async def')", expr)
+            self.fail('"await" outside coroutine ("async def")', expr)
         expr.expr.accept(self)
 
     #

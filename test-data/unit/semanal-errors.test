@@ -331,31 +331,31 @@ break
 def f():
   break
 [out]
-main:1: error: 'break' outside loop
-main:3: error: 'break' outside loop
+main:1: error: "break" outside loop
+main:3: error: "break" outside loop
 
 [case testContinueOutsideLoop]
 continue
 def f():
   continue
 [out]
-main:1: error: 'continue' outside loop
-main:3: error: 'continue' outside loop
+main:1: error: "continue" outside loop
+main:3: error: "continue" outside loop
 
 [case testReturnOutsideFunction]
 def f(): pass
 return
 return 1
 [out]
-main:2: error: 'return' outside function
-main:3: error: 'return' outside function
+main:2: error: "return" outside function
+main:3: error: "return" outside function
 
 [case testYieldOutsideFunction]
 yield 1
 yield
 [out]
-main:1: error: 'yield' outside function
-main:2: error: 'yield' outside function
+main:1: error: "yield" outside function
+main:2: error: "yield" outside function
 
 [case testInvalidLvalues1]
 1 = 1

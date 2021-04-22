@@ -3671,7 +3671,7 @@ pass
 [out]
 [out2]
 [out3]
-tmp/a.py:2: error: unused 'type: ignore' comment
+tmp/a.py:2: error: unused "type: ignore" comment
 
 -- Test that a non cache_fine_grained run can use a fine-grained cache
 [case testRegularUsesFgCache]

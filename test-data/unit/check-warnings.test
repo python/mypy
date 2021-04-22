@@ -63,8 +63,8 @@ from m import * # type: ignore
 [file m.py]
 pass
 [out]
-main:3: error: unused 'type: ignore' comment
-main:4: error: unused 'type: ignore' comment
+main:3: error: unused "type: ignore" comment
+main:4: error: unused "type: ignore" comment
 
 
 -- No return
