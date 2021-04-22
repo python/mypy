@@ -51,7 +51,7 @@ a = 1
 if int():
     a = 'a' # type: ignore
 if int():
-    a = 2 # type: ignore # E: unused 'type: ignore' comment
+    a = 2 # type: ignore # E: unused "type: ignore" comment
 if int():
     a = 'b' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 

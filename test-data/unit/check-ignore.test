@@ -222,7 +222,7 @@ yield  # type: ignore  # E: 'yield' outside function
 [case testIgnoreWholeModule1]
 # flags: --warn-unused-ignores
 # type: ignore
-IGNORE # type: ignore  # E: unused 'type: ignore' comment
+IGNORE # type: ignore  # E: unused "type: ignore" comment
 
 [case testIgnoreWholeModule2]
 # type: ignore
