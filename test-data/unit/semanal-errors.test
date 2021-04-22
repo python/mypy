@@ -868,7 +868,7 @@ from abc import abstractmethod
 @abstractmethod
 def foo(): pass
 [out]
-main:3: error: 'abstractmethod' used with a non-method
+main:3: error: "abstractmethod" used with a non-method
 
 [case testAbstractNestedFunction]
 import typing
@@ -877,7 +877,7 @@ def g() -> None:
   @abstractmethod
   def foo(): pass
 [out]
-main:4: error: 'abstractmethod' used with a non-method
+main:4: error: "abstractmethod" used with a non-method
 
 [case testInvalidTypeDeclaration]
 import typing
@@ -1169,8 +1169,8 @@ class A:
     def h(): pass
 [builtins fixtures/staticmethod.pyi]
 [out]
-main:2: error: 'staticmethod' used with a non-method
-main:6: error: 'staticmethod' used with a non-method
+main:2: error: "staticmethod" used with a non-method
+main:6: error: "staticmethod" used with a non-method
 
 [case testClassmethodAndNonMethod]
 import typing
@@ -1182,12 +1182,12 @@ class A:
     def h(): pass
 [builtins fixtures/classmethod.pyi]
 [out]
-main:2: error: 'classmethod' used with a non-method
-main:6: error: 'classmethod' used with a non-method
+main:2: error: "classmethod" used with a non-method
+main:6: error: "classmethod" used with a non-method
 
 [case testNonMethodProperty]
 import typing
-@property  # E: 'property' used with a non-method
+@property  # E: "property" used with a non-method
 def f() -> int: pass
 [builtins fixtures/property.pyi]
 [out]

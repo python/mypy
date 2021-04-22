@@ -1039,7 +1039,7 @@ class SemanticAnalyzer(NodeVisitor[None],
     def check_decorated_function_is_method(self, decorator: str,
                                            context: Context) -> None:
         if not self.type or self.is_func_scope():
-            self.fail("'%s' used with a non-method" % decorator, context)
+            self.fail('"%s" used with a non-method' % decorator, context)
 
     #
     # Classes
