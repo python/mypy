@@ -127,7 +127,7 @@ class NewTypeAnalyzer:
             # Give a better error message than generic "Name already defined".
             if (existing and
                     not isinstance(existing.node, PlaceholderNode) and not s.rvalue.analyzed):
-                self.fail("Cannot redefine '%s' as a NewType" % name, s)
+                self.fail('Cannot redefine "%s" as a NewType' % name, s)
 
             # This dummy NewTypeExpr marks the call as sufficiently analyzed; it will be
             # overwritten later with a fully complete NewTypeExpr if there are no other
@@ -153,7 +153,7 @@ class NewTypeAnalyzer:
             self.fail("Argument 1 to NewType(...) must be a string literal", context)
             has_failed = True
         elif args[0].value != name:
-            msg = "String argument 1 '{}' to NewType(...) does not match variable name '{}'"
+            msg = 'String argument 1 "{}" to NewType(...) does not match variable name "{}"'
             self.fail(msg.format(args[0].value, name), context)
             has_failed = True
 

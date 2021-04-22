@@ -658,7 +658,7 @@ consistently when using the call-based syntax. Example:
 
     from typing import NamedTuple
 
-    # Error: First argument to namedtuple() should be 'Point2D', not 'Point'
+    # Error: First argument to namedtuple() should be "Point2D", not "Point"
     Point2D = NamedTuple("Point", [("x", int), ("y", int)])
 
 Report syntax errors [syntax]
