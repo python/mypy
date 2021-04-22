@@ -13,7 +13,7 @@ Got a question? Join us on Gitter!
 
 We don't have a mailing list; but we are always happy to answer your
 questions on [gitter chat](https://gitter.im/python/typing).  If you are
-sure that you have found a bug, please search for the bug in our our issue trackers for a
+sure that you have found a bug, please search for the bug in our issue trackers for a
 duplicate before filing up a new issue:
 
 - [mypy tracker](https://github.com/python/mypy/issues)
