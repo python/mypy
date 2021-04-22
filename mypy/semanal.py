@@ -3722,7 +3722,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                       expr)
             return False
         if expr.arg_kinds != [ARG_POS] * numargs:
-            self.fail("'%s' must be called with %s positional argument%s" %
+            self.fail('"%s" must be called with %s positional argument%s' %
                       (name, numargs, s), expr)
             return False
         return True

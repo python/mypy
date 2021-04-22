@@ -829,14 +829,14 @@ cast(str[str], None) # E: "str" expects no type arguments, but 1 given
 
 [case testInvalidNumberOfArgsToCast]
 from typing import cast
-cast(str) # E: 'cast' expects 2 arguments
-cast(str, None, None) # E: 'cast' expects 2 arguments
+cast(str) # E: "cast" expects 2 arguments
+cast(str, None, None) # E: "cast" expects 2 arguments
 [out]
 
 [case testInvalidKindsOfArgsToCast]
 from typing import cast
-cast(str, *None) # E: 'cast' must be called with 2 positional arguments
-cast(str, target=None) # E: 'cast' must be called with 2 positional arguments
+cast(str, *None) # E: "cast" must be called with 2 positional arguments
+cast(str, target=None) # E: "cast" must be called with 2 positional arguments
 [out]
 
 [case testInvalidAnyCall]
