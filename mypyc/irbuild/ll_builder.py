@@ -32,7 +32,7 @@ from mypyc.ir.rtypes import (
     is_list_rprimitive, is_tuple_rprimitive, is_dict_rprimitive, is_set_rprimitive, PySetObject,
     none_rprimitive, RTuple, is_bool_rprimitive, is_str_rprimitive, c_int_rprimitive,
     pointer_rprimitive, PyObject, PyListObject, bit_rprimitive, is_bit_rprimitive,
-    object_pointer_rprimitive, c_size_t_rprimitive, PyDictObject, dict_rprimitive
+    object_pointer_rprimitive, c_size_t_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -51,7 +51,7 @@ from mypyc.primitives.tuple_ops import (
     list_tuple_op, new_tuple_op, new_tuple_with_length_op
 )
 from mypyc.primitives.dict_ops import (
-    dict_update_in_display_op, dict_new_op, dict_build_op
+    dict_update_in_display_op, dict_new_op, dict_build_op, dict_size_op
 )
 from mypyc.primitives.generic_ops import (
     py_getattr_op, py_call_op, py_call_with_kwargs_op, py_method_call_op,
@@ -960,8 +960,7 @@ class LowLevelIRBuilder:
             return
         elif is_same_type(value.type, str_rprimitive):
             value = self.call_c(str_check_if_true, [value], value.line)
-        elif (is_same_type(value.type, list_rprimitive)
-              or is_same_type(value.type, dict_rprimitive)):
+        elif is_same_type(value.type, list_rprimitive):
             length = self.builtin_len(value, value.line)
             zero = Integer(0)
             value = self.binary_op(length, zero, '!=', value.line)
@@ -1099,8 +1098,7 @@ class LowLevelIRBuilder:
             return self.int_op(short_int_rprimitive, size_value, offset,
                                IntOp.LEFT_SHIFT, line)
         elif is_dict_rprimitive(typ):
-            elem_address = self.add(GetElementPtr(val, PyDictObject, 'ma_used'))
-            size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
+            size_value = self.call_c(dict_size_op, [val], line)
             if use_pyssize_t:
                 return size_value
             offset = Integer(1, c_pyssize_t_rprimitive, line)
