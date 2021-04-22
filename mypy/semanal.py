@@ -2204,7 +2204,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.fail("NamedTuple type as an attribute is not supported", lvalue)
             return False
         if internal_name != name:
-            self.fail("First argument to namedtuple() should be '{}', not '{}'".format(
+            self.fail('First argument to namedtuple() should be "{}", not "{}"'.format(
                 name, internal_name), s.rvalue, code=codes.NAME_MATCH)
             return True
         # Yes, it's a valid namedtuple, but defer if it is not ready.

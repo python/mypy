@@ -790,7 +790,7 @@ k = [x for x in lst if isinstance(x, int) or foo()]  # E: If condition in compre
 [case testNamedTupleNameMismatch]
 from typing import NamedTuple
 
-Foo = NamedTuple("Bar", [])  # E: First argument to namedtuple() should be 'Foo', not 'Bar'  [name-match]
+Foo = NamedTuple("Bar", [])  # E: First argument to namedtuple() should be "Foo", not "Bar"  [name-match]
 [builtins fixtures/tuple.pyi]
 
 [case testTypedDictNameMismatch]
