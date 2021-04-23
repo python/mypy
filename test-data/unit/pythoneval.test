@@ -809,6 +809,24 @@ _program.py:3: note: Possible overload variants:
 _program.py:3: note:     def __add__(self, Tuple[str, ...]) -> Tuple[str, ...]
 _program.py:3: note:     def __add__(self, Tuple[Any, ...]) -> Tuple[Any, ...]
 
+[case testMultiplyTupleByIntegerLiteral]
+t = ('',) * 2
+reveal_type(t)
+t2 = ('',) * -1
+reveal_type(t2)
+[out]
+_testMultiplyTupleByIntegerLiteral.py:2: note: Revealed type is "Tuple[builtins.str, builtins.str]"
+_testMultiplyTupleByIntegerLiteral.py:4: note: Revealed type is "Tuple[]"
+
+[case testMultiplyTupleByIntegerLiteralReverse]
+t = 2 * ('',)
+reveal_type(t)
+t2 = -1 * ('',)
+reveal_type(t2)
+[out]
+_testMultiplyTupleByIntegerLiteralReverse.py:2: note: Revealed type is "Tuple[builtins.str, builtins.str]"
+_testMultiplyTupleByIntegerLiteralReverse.py:4: note: Revealed type is "Tuple[]"
+
 [case testDictWithKeywordArgs]
 from typing import Dict, Any, List
 d1 = dict(a=1, b=2) # type: Dict[str, int]
