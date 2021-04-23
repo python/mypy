@@ -103,8 +103,8 @@ def g(a: int) -> int: return f(a)
 def f(a): pass
 def g(a: int) -> int: return f(a)
 [out]
-pyproject.toml: [mypy-*x*]: Patterns must be fully-qualified module names, optionally with '*' in some components (e.g spam.*.eggs.*)
-pyproject.toml: [mypy-*y*]: Patterns must be fully-qualified module names, optionally with '*' in some components (e.g spam.*.eggs.*)
+pyproject.toml: [module = "*x*"]: Patterns must be fully-qualified module names, optionally with '*' in some components (e.g spam.*.eggs.*)
+pyproject.toml: [module = "*y*"]: Patterns must be fully-qualified module names, optionally with '*' in some components (e.g spam.*.eggs.*)
 == Return code: 0
 
 [case testMultipleGlobConfigSectionPyprojectTOML]
@@ -170,7 +170,7 @@ pyproject.toml: [mypy]: ignore_missing_imports: Not a boolean: nah
 module = "*"
 python_version = 3.4
 [out]
-pyproject.toml: [mypy-*]: Per-module sections should only specify per-module flags (python_version)
+pyproject.toml: [module = "*"]: Per-module sections should only specify per-module flags (python_version)
 == Return code: 0
 
 [case testConfigMypyPathPyprojectTOML]
@@ -676,7 +676,7 @@ module = "a.x.b"
 [file spam/__init__.py]
 [file spam/eggs.py]
 [out]
-Warning: unused section(s) in pyproject.toml: [mypy-bar], [mypy-baz.*], [mypy-emarg.*], [mypy-emarg.hatch], [mypy-a.*.c], [mypy-a.x.b]
+Warning: unused section(s) in pyproject.toml: module = ['a.*.c', 'a.x.b', 'bar', 'baz.*', 'emarg.*', 'emarg.hatch']
 == Return code: 0
 
 [case testConfigUnstructuredGlobPyprojectTOML]

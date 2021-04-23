@@ -169,7 +169,7 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
         if not os.path.exists(config_file):
             continue
         try:
-            if config_file.endswith('.toml'):
+            if is_toml(config_file):
                 toml_data = toml.load(config_file, _dict=OrderedDict)
                 # Filter down to just mypy relevant toml keys
                 toml_data = toml_data.get('tool', {})
@@ -210,7 +210,7 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
 
     for name, section in parser.items():
         if name.startswith('mypy-'):
-            prefix = '%s: [%s]: ' % (file_read, name)
+            prefix = get_prefix(file_read, name)
             updates, report_dirs = parse_section(
                 prefix, options, set_strict_flags, section, config_types, stderr)
             if report_dirs:
@@ -237,6 +237,19 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
                           file=stderr)
                 else:
                     options.per_module_options[glob] = updates
+
+
+def get_prefix(file_read: str, name: str) -> str:
+    if is_toml(file_read):
+        module_name_str = 'module = "%s"' % '-'.join(name.split('-')[1:])
+    else:
+        module_name_str = name
+
+    return '%s: [%s]: ' % (file_read, module_name_str)
+
+
+def is_toml(filemame: str) -> bool:
+    return filemame.lower().endswith('.toml')
 
 
 def destructure_overrides(toml_data: MutableMapping[str, Any]) -> MutableMapping[str, Any]:
@@ -518,3 +531,13 @@ def parse_mypy_comments(
         sections.update(new_sections)
 
     return sections, errors
+
+
+def get_config_module_names(filename: str, modules: List[str]) -> str:
+    if not modules:
+        return ''
+
+    if not is_toml(filename):
+        return ", ".join("[mypy-%s]" % module for module in modules)
+
+    return "module = ['%s']" % ("', '".join(sorted(modules)))
