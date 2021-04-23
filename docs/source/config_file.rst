@@ -900,11 +900,25 @@ Instead of using a ``mypy.ini`` file, a ``pyproject.toml`` file (as specified by
 
   * For example, ``[mypy-packagename]`` would become:
 
-  ```
+.. code-block:: toml
+
   [[tool.mypy.overrides]]
-  module = 'packagename
+  module = 'packagename'
   ...
-  ```
+
+* Multi-module specific sections can be moved into a single ``[[tools.mypy.overrides]]`` section with a
+  module property set to an array of modules:
+
+  * For example, ``[mypy-packagename,packagename2]`` would become:
+
+.. code-block:: toml
+
+  [[tool.mypy.overrides]]
+  module = [
+      'packagename',
+      'packagename2'
+  ]
+  ...
 
 * The following care should be given to values in the ``pyproject.toml`` files as compared to ``ini`` files:
 
@@ -942,7 +956,10 @@ of your repo (or append it to the end of an existing ``pyproject.toml`` file) an
     warn_return_any = false
 
     [[tool.mypy.overrides]]
-    module = "somelibrary"
+    module = [
+        "somelibrary",
+        "some_other_library"
+    ]
     ignore_missing_imports = true
 
 .. _lxml: https://pypi.org/project/lxml/
