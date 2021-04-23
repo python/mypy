@@ -775,6 +775,25 @@ def test_non_total_typed_dict() -> None:
     assert d3['c'] == 3
     assert d4['d'] == 4
 
+[case testClassBasedNamedTuple]
+from typing import NamedTuple
+import sys
+
+# Class-based NamedTuple requires Python 3.6+
+version = sys.version_info[:2]
+if version[0] == 3 and version[1] < 6:
+    exit()
+
+class NT(NamedTuple):
+    a: int
+
+def test_named_tuple() -> None:
+    t = NT(a=1)
+    assert t.a == 1
+    assert type(t) is NT
+    assert isinstance(t, tuple)
+    assert not isinstance(tuple([1]), NT)
+
 [case testUnion]
 from typing import Union
 
