@@ -466,6 +466,7 @@ def int_neg_callback(ctx: MethodContext) -> Type:
             return LiteralType(value=-value, fallback=fallback)
     return ctx.default_return_type
 
+
 def tuple_mul_callback(ctx: MethodContext) -> Type:
     """Infer a more precise return type for tuple.__mul__ and tuple.__rmul__.
 
@@ -475,10 +476,10 @@ def tuple_mul_callback(ctx: MethodContext) -> Type:
     if isinstance(arg_type, Instance) and arg_type.last_known_value is not None:
         value = arg_type.last_known_value.value
         if isinstance(value, int):
-            return ctx.type.copy_modified(items = ctx.type.items * value)
+            return ctx.type.copy_modified(items=ctx.type.items * value)
     elif isinstance(ctx.type, LiteralType):
         value = arg_type.value
         if isinstance(value, int):
-             return ctx.type.copy_modified(items = ctx.type.items * value)
+            return ctx.type.copy_modified(items=ctx.type.items * value)
 
     return ctx.default_return_type
