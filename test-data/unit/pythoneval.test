@@ -814,18 +814,24 @@ t = ('',) * 2
 reveal_type(t)
 t2 = ('',) * -1
 reveal_type(t2)
+t3 = ('', 1) * 2
+reveal_type(t3)
 [out]
 _testMultiplyTupleByIntegerLiteral.py:2: note: Revealed type is "Tuple[builtins.str, builtins.str]"
 _testMultiplyTupleByIntegerLiteral.py:4: note: Revealed type is "Tuple[]"
+_testMultiplyTupleByIntegerLiteral.py:6: note: Revealed type is "Tuple[builtins.str, builtins.int, builtins.str, builtins.int]"
 
 [case testMultiplyTupleByIntegerLiteralReverse]
 t = 2 * ('',)
 reveal_type(t)
 t2 = -1 * ('',)
 reveal_type(t2)
+t3 = 2 * ('', 1)
+reveal_type(t3)
 [out]
 _testMultiplyTupleByIntegerLiteralReverse.py:2: note: Revealed type is "Tuple[builtins.str, builtins.str]"
 _testMultiplyTupleByIntegerLiteralReverse.py:4: note: Revealed type is "Tuple[]"
+_testMultiplyTupleByIntegerLiteralReverse.py:6: note: Revealed type is "Tuple[builtins.str, builtins.int, builtins.str, builtins.int]"
 
 [case testDictWithKeywordArgs]
 from typing import Dict, Any, List
