@@ -312,7 +312,6 @@ def destructure_overrides(toml_data: MutableMapping[str, Any]) -> MutableMapping
                     result[old_config_name][new_key] = new_value
 
     del result['mypy']['overrides']
-    # print(result)
     return result
 
 
