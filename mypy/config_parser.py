@@ -173,12 +173,9 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
                 toml_data = toml.load(config_file, _dict=OrderedDict)
                 # Filter down to just mypy relevant toml keys
                 toml_data = toml_data.get('tool', {})
-                other_keys = [key for key in toml_data.keys()
-                              if key.split('-')[0] != 'mypy']
-                for key in other_keys:
-                    del toml_data[key]
                 if 'mypy' not in toml_data:
                     continue
+                toml_data = {'mypy': toml_data['mypy']}
                 parser = destructure_overrides(toml_data)
                 config_types = toml_config_types
             else:
