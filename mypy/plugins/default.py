@@ -10,7 +10,8 @@ from mypy.plugin import (
 from mypy.plugins.common import try_getting_str_literals
 from mypy.types import (
     Type, Instance, AnyType, TypeOfAny, CallableType, NoneType, TypedDictType,
-    TypeVarDef, TypeVarType, TPDICT_FB_NAMES, get_proper_type, LiteralType
+    TypeVarDef, TypeVarType, TPDICT_FB_NAMES, get_proper_type, LiteralType,
+    TupleType
 )
 from mypy.subtypes import is_subtype
 from mypy.typeops import make_simplified_union
@@ -472,6 +473,9 @@ def tuple_mul_callback(ctx: MethodContext) -> Type:
 
     This is used to return a specific sized tuple if multiplied by Literal int
     """
+    if not isinstance(ctx.type, TupleType):
+        return ctx.default_return_type
+
     arg_type = ctx.arg_types[0][0]
     if isinstance(arg_type, Instance) and arg_type.last_known_value is not None:
         value = arg_type.last_known_value.value

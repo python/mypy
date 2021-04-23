@@ -810,28 +810,38 @@ _program.py:3: note:     def __add__(self, Tuple[str, ...]) -> Tuple[str, ...]
 _program.py:3: note:     def __add__(self, Tuple[Any, ...]) -> Tuple[Any, ...]
 
 [case testMultiplyTupleByIntegerLiteral]
+from typing import Tuple
 t = ('',) * 2
 reveal_type(t)
 t2 = ('',) * -1
 reveal_type(t2)
 t3 = ('', 1) * 2
 reveal_type(t3)
+def f() -> Tuple[str, ...]:
+    return ('', )
+reveal_type(f() * 2)
 [out]
-_testMultiplyTupleByIntegerLiteral.py:2: note: Revealed type is "Tuple[builtins.str, builtins.str]"
-_testMultiplyTupleByIntegerLiteral.py:4: note: Revealed type is "Tuple[]"
-_testMultiplyTupleByIntegerLiteral.py:6: note: Revealed type is "Tuple[builtins.str, builtins.int, builtins.str, builtins.int]"
+_testMultiplyTupleByIntegerLiteral.py:3: note: Revealed type is "Tuple[builtins.str, builtins.str]"
+_testMultiplyTupleByIntegerLiteral.py:5: note: Revealed type is "Tuple[]"
+_testMultiplyTupleByIntegerLiteral.py:7: note: Revealed type is "Tuple[builtins.str, builtins.int, builtins.str, builtins.int]"
+_testMultiplyTupleByIntegerLiteral.py:10: note: Revealed type is "builtins.tuple[builtins.str*]"
 
 [case testMultiplyTupleByIntegerLiteralReverse]
+from typing import Tuple
 t = 2 * ('',)
 reveal_type(t)
 t2 = -1 * ('',)
 reveal_type(t2)
 t3 = 2 * ('', 1)
 reveal_type(t3)
+def f() -> Tuple[str, ...]:
+    return ('', )
+reveal_type(2 * f())
 [out]
-_testMultiplyTupleByIntegerLiteralReverse.py:2: note: Revealed type is "Tuple[builtins.str, builtins.str]"
-_testMultiplyTupleByIntegerLiteralReverse.py:4: note: Revealed type is "Tuple[]"
-_testMultiplyTupleByIntegerLiteralReverse.py:6: note: Revealed type is "Tuple[builtins.str, builtins.int, builtins.str, builtins.int]"
+_testMultiplyTupleByIntegerLiteralReverse.py:3: note: Revealed type is "Tuple[builtins.str, builtins.str]"
+_testMultiplyTupleByIntegerLiteralReverse.py:5: note: Revealed type is "Tuple[]"
+_testMultiplyTupleByIntegerLiteralReverse.py:7: note: Revealed type is "Tuple[builtins.str, builtins.int, builtins.str, builtins.int]"
+_testMultiplyTupleByIntegerLiteralReverse.py:10: note: Revealed type is "builtins.tuple[builtins.str*]"
 
 [case testDictWithKeywordArgs]
 from typing import Dict, Any, List
