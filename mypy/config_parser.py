@@ -182,7 +182,7 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
                 config_parser.read(config_file)
                 parser = config_parser
                 config_types = ini_config_types
-        except (toml.TomlDecodeError, configparser.Error, ValueError) as err:
+        except (toml.TomlDecodeError, configparser.Error, ConfigTOMLValueError) as err:
             print("%s: %s" % (config_file, err), file=stderr)
         else:
             if config_file in defaults.SHARED_CONFIG_FILES and 'mypy' not in parser:
@@ -288,13 +288,13 @@ def destructure_overrides(toml_data: MutableMapping[str, Any]) -> MutableMapping
         return toml_data
 
     if not isinstance(toml_data['mypy']['overrides'], list):
-        raise ValueError("tool.mypy.overrides sections must be an array. Please make sure you are "
+        raise ConfigTOMLValueError("tool.mypy.overrides sections must be an array. Please make sure you are "
                          "using double brackets like so: [[tool.mypy.overrides]]")
 
     result = copy.copy(toml_data)
     for override in result['mypy']['overrides']:
         if 'module' not in override:
-            raise ValueError("toml config file contains a [[tool.mypy.overrides]] section, but no "
+            raise ConfigTOMLValueError("toml config file contains a [[tool.mypy.overrides]] section, but no "
                              "module to override was specified.")
 
         if isinstance(override['module'], str):
@@ -302,7 +302,7 @@ def destructure_overrides(toml_data: MutableMapping[str, Any]) -> MutableMapping
         elif isinstance(override['module'], list):
             modules = override['module']
         else:
-            raise ValueError("toml config file contains a [[tool.mypy.overrides]] section with "
+            raise ConfigTOMLValueError("toml config file contains a [[tool.mypy.overrides]] section with "
                              "a module value that is not a string or a list of strings")
 
         for module in modules:
@@ -315,7 +315,7 @@ def destructure_overrides(toml_data: MutableMapping[str, Any]) -> MutableMapping
                 for new_key, new_value in module_overrides.items():
                     if (new_key in result[old_config_name] and
                             result[old_config_name][new_key] != new_value):
-                        raise ValueError("toml config file contains [[tool.mypy.overrides]] "
+                        raise ConfigTOMLValueError("toml config file contains [[tool.mypy.overrides]] "
                                          "sections with conflicting values. Module '%s' "
                                          "has two different values for '%s'"
                                          % (module, new_key))
@@ -541,3 +541,7 @@ def get_config_module_names(filename: str, modules: List[str]) -> str:
         return ", ".join("[mypy-%s]" % module for module in modules)
 
     return "module = ['%s']" % ("', '".join(sorted(modules)))
+
+
+class ConfigTOMLValueError(ValueError):
+    pass
