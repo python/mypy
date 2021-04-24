@@ -2204,7 +2204,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.fail("NamedTuple type as an attribute is not supported", lvalue)
             return False
         if internal_name != name:
-            self.fail("First argument to namedtuple() should be '{}', not '{}'".format(
+            self.fail('First argument to namedtuple() should be "{}", not "{}"'.format(
                 name, internal_name), s.rvalue, code=codes.NAME_MATCH)
             return True
         # Yes, it's a valid namedtuple, but defer if it is not ready.
@@ -2938,7 +2938,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                              # Also give error for another type variable with the same name.
                              (isinstance(existing.node, TypeVarExpr) and
                               existing.node is call.analyzed)):
-            self.fail("Cannot redefine '%s' as a type variable" % name, s)
+            self.fail('Cannot redefine "%s" as a type variable' % name, s)
             return False
 
         if self.options.disallow_any_unimported:
@@ -2993,7 +2993,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                       context)
             return False
         elif call.args[0].value != name:
-            msg = "String argument 1 '{}' to {}(...) does not match variable name '{}'"
+            msg = 'String argument 1 "{}" to {}(...) does not match variable name "{}"'
             self.fail(msg.format(call.args[0].value, typevarlike_type, name), context)
             return False
         return True
@@ -3068,20 +3068,20 @@ class SemanticAnalyzer(NodeVisitor[None],
                         analyzed = PlaceholderType(None, [], context.line)
                     upper_bound = get_proper_type(analyzed)
                     if isinstance(upper_bound, AnyType) and upper_bound.is_from_error:
-                        self.fail("TypeVar 'bound' must be a type", param_value)
+                        self.fail('TypeVar "bound" must be a type', param_value)
                         # Note: we do not return 'None' here -- we want to continue
                         # using the AnyType as the upper bound.
                 except TypeTranslationError:
-                    self.fail("TypeVar 'bound' must be a type", param_value)
+                    self.fail('TypeVar "bound" must be a type', param_value)
                     return None
             elif param_name == 'values':
                 # Probably using obsolete syntax with values=(...). Explain the current syntax.
-                self.fail("TypeVar 'values' argument not supported", context)
+                self.fail('TypeVar "values" argument not supported', context)
                 self.fail("Use TypeVar('T', t, ...) instead of TypeVar('T', values=(t, ...))",
                           context)
                 return None
             else:
-                self.fail("Unexpected argument to TypeVar(): {}".format(param_name), context)
+                self.fail('Unexpected argument to TypeVar(): "{}"'.format(param_name), context)
                 return None
 
         if covariant and contravariant:

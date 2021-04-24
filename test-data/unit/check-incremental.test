@@ -5067,9 +5067,9 @@ from typing import NamedTuple
 NT = NamedTuple('BadName', [('x', int)])
 [builtins fixtures/tuple.pyi]
 [out]
-tmp/b.py:2: error: First argument to namedtuple() should be 'NT', not 'BadName'
+tmp/b.py:2: error: First argument to namedtuple() should be "NT", not "BadName"
 [out2]
-tmp/b.py:2: error: First argument to namedtuple() should be 'NT', not 'BadName'
+tmp/b.py:2: error: First argument to namedtuple() should be "NT", not "BadName"
 tmp/a.py:3: note: Revealed type is "Tuple[builtins.int, fallback=b.NT]"
 
 [case testNewAnalyzerIncrementalBrokenNamedTupleNested]
@@ -5089,9 +5089,9 @@ def test() -> None:
     NT = namedtuple('BadName', ['x', 'y'])
 [builtins fixtures/list.pyi]
 [out]
-tmp/b.py:4: error: First argument to namedtuple() should be 'NT', not 'BadName'
+tmp/b.py:4: error: First argument to namedtuple() should be "NT", not "BadName"
 [out2]
-tmp/b.py:4: error: First argument to namedtuple() should be 'NT', not 'BadName'
+tmp/b.py:4: error: First argument to namedtuple() should be "NT", not "BadName"
 
 [case testNewAnalyzerIncrementalMethodNamedTuple]
 

@@ -4573,7 +4573,7 @@ def parse_ast(name_dict: NameDict) -> None:
 [case testNoCrashForwardRefToBrokenDoubleNewType]
 from typing import Any, Dict, List, NewType
 
-Foo = NewType('NotFoo', int) # E: String argument 1 'NotFoo' to NewType(...) does not match variable name 'Foo'
+Foo = NewType('NotFoo', int) # E: String argument 1 "NotFoo" to NewType(...) does not match variable name "Foo"
 Foos = NewType('Foos', List[Foo]) # type: ignore
 
 def frob(foos: Dict[Any, Foos]) -> None:

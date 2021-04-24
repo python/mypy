@@ -269,7 +269,7 @@ tmp/m.py:14: note: Revealed type is "builtins.int"
 [case testNewTypeBadInitializationFails]
 from typing import NewType
 
-a = NewType('b', int)  # E: String argument 1 'b' to NewType(...) does not match variable name 'a'
+a = NewType('b', int)  # E: String argument 1 "b" to NewType(...) does not match variable name "a"
 b = NewType('b', 3)    # E: Argument 2 to NewType(...) must be a valid type
 c = NewType(2, int)    # E: Argument 1 to NewType(...) must be a string literal
 foo = "d"
@@ -317,12 +317,12 @@ from typing import NewType
 
 a = 3
 def f(): a
-a = NewType('a', int) # E: Cannot redefine 'a' as a NewType \
+a = NewType('a', int) # E: Cannot redefine "a" as a NewType \
                       # E: Name "a" already defined on line 4
 
 b = NewType('b', int)
 def g(): b
-b = NewType('b', float)  # E: Cannot redefine 'b' as a NewType \
+b = NewType('b', float)  # E: Cannot redefine "b" as a NewType \
                          # E: Name "b" already defined on line 8
 
 c = NewType('c', str)  # type: str  # E: Cannot declare the type of a NewType declaration

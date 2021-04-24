@@ -2062,7 +2062,7 @@ A = Enum('A', ['z', 't'])  # E: Name "A" already defined on line 3
 from typing import NewType
 
 A = NewType('A', int)
-A = NewType('A', str)  # E: Cannot redefine 'A' as a NewType \
+A = NewType('A', str)  # E: Cannot redefine "A" as a NewType \
                        # E: Name "A" already defined on line 3
 
 [case testNewAnalyzerNewTypeForwardClass]
@@ -2160,7 +2160,7 @@ from typing import TypeVar, Generic, Any
 
 T = TypeVar('T', bound=B[Any])
 # The "int" error is because of typing fixture.
-T = TypeVar('T', bound=C)  # E: Cannot redefine 'T' as a type variable \
+T = TypeVar('T', bound=C)  # E: Cannot redefine "T" as a type variable \
                            # E: Invalid assignment target \
                            # E: "int" not callable
 
@@ -2195,7 +2195,7 @@ reveal_type(y.x)
 [out]
 tmp/b.py:8: error: Type argument "builtins.int" of "B" must be a subtype of "b.B[Any]"
 tmp/b.py:10: note: Revealed type is "b.B*[Any]"
-tmp/a.py:5: error: Cannot redefine 'T' as a type variable
+tmp/a.py:5: error: Cannot redefine "T" as a type variable
 tmp/a.py:5: error: Invalid assignment target
 tmp/a.py:5: error: "int" not callable
 
@@ -2224,7 +2224,7 @@ reveal_type(y.x)
 [out]
 tmp/b.py:9: error: Type argument "builtins.int" of "B" must be a subtype of "b.B[Any]"
 tmp/b.py:11: note: Revealed type is "b.B*[Any]"
-tmp/a.py:5: error: Cannot redefine 'T' as a type variable
+tmp/a.py:5: error: Cannot redefine "T" as a type variable
 tmp/a.py:5: error: Invalid assignment target
 
 [case testNewAnalyzerTypeVarBoundInCycle]

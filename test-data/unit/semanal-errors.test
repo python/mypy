@@ -1007,12 +1007,12 @@ from typing import TypeVar
 a = TypeVar()       # E: Too few arguments for TypeVar()
 b = TypeVar(x='b')  # E: TypeVar() expects a string literal as first argument
 c = TypeVar(1)      # E: TypeVar() expects a string literal as first argument
-d = TypeVar('D')    # E: String argument 1 'D' to TypeVar(...) does not match variable name 'd'
-e = TypeVar('e', int, str, x=1)   # E: Unexpected argument to TypeVar(): x
+d = TypeVar('D')    # E: String argument 1 "D" to TypeVar(...) does not match variable name "d"
+e = TypeVar('e', int, str, x=1)   # E: Unexpected argument to TypeVar(): "x"
 f = TypeVar('f', (int, str), int) # E: Type expected
 g = TypeVar('g', int)             # E: TypeVar cannot have only a single constraint
-h = TypeVar('h', x=(int, str))    # E: Unexpected argument to TypeVar(): x
-i = TypeVar('i', bound=1)         # E: TypeVar 'bound' must be a type
+h = TypeVar('h', x=(int, str))    # E: Unexpected argument to TypeVar(): "x"
+i = TypeVar('i', bound=1)         # E: TypeVar "bound" must be a type
 [out]
 
 [case testMoreInvalidTypevarArguments]
@@ -1032,7 +1032,7 @@ c = TypeVar('c', int, 2) # E: Invalid type: try using Literal[2] instead?
 from typing import TypeVar
 a = TypeVar('a', values=(int, str))
 [out]
-main:2: error: TypeVar 'values' argument not supported
+main:2: error: TypeVar "values" argument not supported
 main:2: error: Use TypeVar('T', t, ...) instead of TypeVar('T', values=(t, ...))
 
 [case testLocalTypevarScope]
@@ -1052,7 +1052,7 @@ def g(x: T) -> None: pass # E: Name "T" is not defined
 [case testRedefineVariableAsTypevar]
 from typing import TypeVar
 x = 0
-x = TypeVar('x') # E: Cannot redefine 'x' as a type variable
+x = TypeVar('x') # E: Cannot redefine "x" as a type variable
 [out]
 
 [case testTypevarWithType]
@@ -1406,7 +1406,7 @@ def g() -> None:
 from typing_extensions import ParamSpec
 
 TParams = ParamSpec('TParams')
-TP = ParamSpec('?')  # E: String argument 1 '?' to ParamSpec(...) does not match variable name 'TP'
+TP = ParamSpec('?')  # E: String argument 1 "?" to ParamSpec(...) does not match variable name "TP"
 TP2: int = ParamSpec('TP2')  # E: Cannot declare the type of a parameter specification
 
 [out]
