@@ -1152,6 +1152,7 @@ class LowLevelIRBuilder:
             self.activate_block(ok)
             return length
         else:
+            # generic case
             if use_pyssize_t:
                 return self.call_c(generic_ssize_t_len_op, [val], line)
             else:

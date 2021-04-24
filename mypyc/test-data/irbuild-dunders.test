@@ -1,4 +1,4 @@
-# Test cases for various (not all!) dunder methods
+# Test cases for (some) dunder methods
 
 [case testDundersLen]
 class C:

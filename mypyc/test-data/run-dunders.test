@@ -1,4 +1,4 @@
-# Test cases for various (not all!) dunder methods (compile and run)
+# Test cases for (some) dunder methods (compile and run)
 
 [case testDundersMisc]
 # Legacy test case for dunders (don't add more here)
