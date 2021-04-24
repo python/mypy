@@ -222,3 +222,21 @@ def test_negative_len() -> None:
         pass
     else:
         assert False
+
+class DelItemNoSetItem:
+    def __delitem__(self, x: int) -> None:
+        self.key = x
+
+def test_del_item_with_no_set_item() -> None:
+    o = DelItemNoSetItem()
+    del o[22]
+    assert o.key == 22
+    a: Any = o
+    del a[12]
+    assert a.key == 12
+    try:
+        a[1] = 2
+    except TypeError as e:
+        assert str(e) == "'DelItemNoSetItem' object does not support item assignment"
+    else:
+        assert False

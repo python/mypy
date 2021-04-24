@@ -10,7 +10,7 @@ The wrappers aren't used for most calls between two native functions
 or methods in a single compilation unit.
 """
 
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_NAMED_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2
 
@@ -398,13 +398,13 @@ def generate_del_item_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
 
     This is only called from a combined __delitem__/__setitem__ wrapper.
     """
-    name = '{}{}{}'.format(DUNDER_PREFIX, fn.name, cl.name_prefix(emitter.names))
+    name = '{}{}{}'.format(DUNDER_PREFIX, '__delitem__', cl.name_prefix(emitter.names))
     input_args = ', '.join('PyObject *obj_{}'.format(arg.name) for arg in fn.args)
     emitter.emit_line('static int {name}({input_args}) {{'.format(
         name=name,
         input_args=input_args,
     ))
-    generate_set_del_item_wrapper_inner(fn, emitter)
+    generate_set_del_item_wrapper_inner(fn, emitter, fn.args)
     return name
 
 
@@ -424,8 +424,13 @@ def generate_set_del_item_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> 
         # Generate a separate wrapper for __delitem__
         del_name = generate_del_item_wrapper(cl, method_cls[0], emitter)
 
-    name = '{}{}{}'.format(DUNDER_PREFIX, fn.name, cl.name_prefix(emitter.names))
-    input_args = ', '.join('PyObject *obj_{}'.format(arg.name) for arg in fn.args)
+    args = fn.args
+    if fn.name == '__delitem__':
+        # Add an extra argument for value that we expect to be NULL.
+        args = list(args) + [RuntimeArg('___unused_value', object_rprimitive, ARG_POS)]
+
+    name = '{}{}{}'.format(DUNDER_PREFIX, '__setitem__', cl.name_prefix(emitter.names))
+    input_args = ', '.join('PyObject *obj_{}'.format(arg.name) for arg in args)
     emitter.emit_line('static int {name}({input_args}) {{'.format(
         name=name,
         input_args=input_args,
@@ -433,21 +438,29 @@ def generate_set_del_item_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> 
 
     if del_name is not None:
         # First check if we should call the __delitem__ wrapper
-        args = fn.args
         emitter.emit_line('if (obj_{} == NULL) {{'.format(args[2].name))
         emitter.emit_line('return {}(obj_{}, obj_{});'.format(del_name,
                                                               args[0].name,
                                                               args[1].name))
         emitter.emit_line('}')
 
-    generate_set_del_item_wrapper_inner(fn, emitter)
+    method_cls = cl.get_method_and_class('__setitem__')
+    if method_cls and method_cls[1] == cl:
+        generate_set_del_item_wrapper_inner(fn, emitter, args)
+    else:
+        msg = "'{}' object does not support item assignment".format(cl.name)
+        emitter.emit_line(
+            'PyErr_SetString(PyExc_TypeError, "{}");'.format(msg))
+        emitter.emit_line('return -1;')
+        emitter.emit_line('}')
     return name
 
 
-def generate_set_del_item_wrapper_inner(fn: FuncIR, emitter: Emitter) -> None:
-    for arg in fn.args:
+def generate_set_del_item_wrapper_inner(fn: FuncIR, emitter: Emitter,
+                                        args: Sequence[RuntimeArg]) -> None:
+    for arg in args:
         generate_arg_check(arg.name, arg.type, emitter, 'goto fail;', False)
-    native_args = ', '.join('arg_{}'.format(arg.name) for arg in fn.args)
+    native_args = ', '.join('arg_{}'.format(arg.name) for arg in args)
     emitter.emit_line('{}val = {}{}({});'.format(emitter.ctype_spaced(fn.ret_type),
                                                  NATIVE_PREFIX,
                                                  fn.cname(emitter.names),

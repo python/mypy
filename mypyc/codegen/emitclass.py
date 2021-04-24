@@ -48,7 +48,7 @@ SLOT_DEFS = {
 AS_MAPPING_SLOT_DEFS = {
     '__getitem__': ('mp_subscript', generate_dunder_wrapper),
     '__setitem__': ('mp_ass_subscript', generate_set_del_item_wrapper),
-    '__detitem__': ('mp_ass_subscript', generate_set_del_item_wrapper),
+    '__delitem__': ('mp_ass_subscript', generate_set_del_item_wrapper),
     '__len__': ('mp_length', generate_len_wrapper),
 }  # type: SlotTable
 
@@ -93,7 +93,7 @@ def generate_slots(cl: ClassIR, table: SlotTable, emitter: Emitter) -> Dict[str,
     fields = OrderedDict()  # type: Dict[str, str]
     generated = {}  # type: Dict[str, str]
     # Sort for determinism on Python 3.5
-    for name, (slot, generator) in sorted(table.items()):
+    for name, (slot, generator) in sorted(table.items(), reverse=True):
         method_cls = cl.get_method_and_class(name)
         if method_cls and (method_cls[1] == cl or name in ALWAYS_FILL):
             if slot in generated:
