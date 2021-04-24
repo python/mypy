@@ -18,7 +18,6 @@ from mypy.test.helpers import assert_string_arrays_equal, parse_options
 class ASTDiffSuite(DataSuite):
     files = [
         'diff.test',
-        'diff.pyproject.test',
     ]
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:

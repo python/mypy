@@ -23,7 +23,6 @@ from mypy.test.helpers import assert_string_arrays_equal, normalize_error_messag
 # Files containing test cases descriptions.
 daemon_files = [
     'daemon.test',
-    'daemon.pyproject.test',
 ]
 
 

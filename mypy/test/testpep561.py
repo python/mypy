@@ -37,7 +37,6 @@ dne("abc")
 class PEP561Suite(DataSuite):
     files = [
         'pep561.test',
-        'pep561.pyproject.test'
     ]
 
     def run_case(self, test_case: DataDrivenTestCase) -> None:

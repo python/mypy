@@ -45,7 +45,6 @@ CHECK_CONSISTENCY = False
 class FineGrainedSuite(DataSuite):
     files = [
         'fine-grained.test',
-        'fine-grained.pyproject.test',
         'fine-grained-cycles.test',
         'fine-grained-blockers.test',
         'fine-grained-modules.test',

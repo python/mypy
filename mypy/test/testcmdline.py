@@ -26,7 +26,6 @@ cmdline_files = [
     'cmdline.test',
     'cmdline.pyproject.test',
     'reports.test',
-    'reports.pyproject.test',
     'envvars.test',
 ]
 
