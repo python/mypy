@@ -1,7 +1,6 @@
 import argparse
 from collections import OrderedDict
 import configparser
-import copy
 import glob as fileglob
 from io import StringIO
 import os
@@ -9,7 +8,7 @@ import re
 import sys
 
 import toml
-from typing import (Any, Callable, Dict, List, Mapping, MutableMapping, Optional, Sequence,
+from typing import (Any, Callable, Dict, List, Mapping, Optional, Sequence,
                     TextIO, Tuple, Union)
 from typing_extensions import Final
 
@@ -170,7 +169,7 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
             continue
         try:
             if is_toml(config_file):
-                toml_data = toml.load(config_file, _dict=OrderedDict)
+                toml_data = toml.load(config_file, _dict=OrderedDict)  # type: OrderedDict
                 # Filter down to just mypy relevant toml keys
                 toml_data = toml_data.get('tool', {})
                 if 'mypy' not in toml_data:
@@ -252,7 +251,7 @@ def is_toml(filemame: str) -> bool:
     return filemame.lower().endswith('.toml')
 
 
-def destructure_overrides(toml_data: MutableMapping[str, Any]) -> MutableMapping[str, Any]:
+def destructure_overrides(toml_data: "OrderedDict[str, Any]") -> "OrderedDict[str, Any]":
     """Take the new [[tool.mypy.overrides]] section array in the pyproject.toml file,
     and convert it back to a flatter structure that the existing config_parser can handle.
 
