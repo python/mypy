@@ -288,22 +288,23 @@ def destructure_overrides(toml_data: MutableMapping[str, Any]) -> MutableMapping
         return toml_data
 
     if not isinstance(toml_data['mypy']['overrides'], list):
-        raise ConfigTOMLValueError("tool.mypy.overrides sections must be an array. Please make sure you are "
-                         "using double brackets like so: [[tool.mypy.overrides]]")
+        raise ConfigTOMLValueError("tool.mypy.overrides sections must be an array. Please make "
+                         "sure you are using double brackets like so: [[tool.mypy.overrides]]")
 
-    result = copy.copy(toml_data)
+    result = toml_data.copy()
     for override in result['mypy']['overrides']:
         if 'module' not in override:
-            raise ConfigTOMLValueError("toml config file contains a [[tool.mypy.overrides]] section, but no "
-                             "module to override was specified.")
+            raise ConfigTOMLValueError("toml config file contains a [[tool.mypy.overrides]] "
+                             "section, but no module to override was specified.")
 
         if isinstance(override['module'], str):
             modules = [override['module']]
         elif isinstance(override['module'], list):
             modules = override['module']
         else:
-            raise ConfigTOMLValueError("toml config file contains a [[tool.mypy.overrides]] section with "
-                             "a module value that is not a string or a list of strings")
+            raise ConfigTOMLValueError("toml config file contains a [[tool.mypy.overrides]] "
+                             "section with a module value that is not a string or a list of "
+                             "strings")
 
         for module in modules:
             module_overrides = override.copy()
@@ -315,9 +316,9 @@ def destructure_overrides(toml_data: MutableMapping[str, Any]) -> MutableMapping
                 for new_key, new_value in module_overrides.items():
                     if (new_key in result[old_config_name] and
                             result[old_config_name][new_key] != new_value):
-                        raise ConfigTOMLValueError("toml config file contains [[tool.mypy.overrides]] "
-                                         "sections with conflicting values. Module '%s' "
-                                         "has two different values for '%s'"
+                        raise ConfigTOMLValueError("toml config file contains "
+                                         "[[tool.mypy.overrides]] sections with conflicting "
+                                         "values. Module '%s' has two different values for '%s'"
                                          % (module, new_key))
                     result[old_config_name][new_key] = new_value
 
