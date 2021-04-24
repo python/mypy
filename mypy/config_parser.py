@@ -8,8 +8,8 @@ import re
 import sys
 
 import toml
-from typing import (Any, Callable, Dict, List, Mapping, Optional, Sequence,
-                    TextIO, Tuple, Union)
+from typing import (Any, Callable, Dict, List, Mapping, MutableMapping,  Optional, Sequence,
+                    TextIO, Tuple, Union, cast)
 from typing_extensions import Final
 
 from mypy import defaults
@@ -169,13 +169,14 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
             continue
         try:
             if is_toml(config_file):
-                toml_data = toml.load(config_file, _dict=OrderedDict)  # type: OrderedDict
+                toml_data = cast("OrderedDict[str, Any]",
+                                 toml.load(config_file, _dict=OrderedDict))
                 # Filter down to just mypy relevant toml keys
                 toml_data = toml_data.get('tool', {})
                 if 'mypy' not in toml_data:
                     continue
-                toml_data = {'mypy': toml_data['mypy']}
-                parser = destructure_overrides(toml_data)
+                toml_data = OrderedDict({'mypy': toml_data['mypy']})
+                parser = destructure_overrides(toml_data)  # type: MutableMapping[str, Any]
                 config_types = toml_config_types
             else:
                 config_parser.read(config_file)
@@ -533,8 +534,8 @@ def parse_mypy_comments(
     return sections, errors
 
 
-def get_config_module_names(filename: str, modules: List[str]) -> str:
-    if not modules:
+def get_config_module_names(filename: Optional[str], modules: List[str]) -> str:
+    if not filename or not modules:
         return ''
 
     if not is_toml(filename):
