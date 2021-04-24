@@ -467,6 +467,7 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
                 item_type = builder.node_type(item)
                 eq_expr = ComparisonExpr([cmp_op], [lhs, item])
                 # only add `is` check for two boxed types
+                expr: Union[OpExpr, ComparisonExpr]
                 if item_type.is_unboxed or lhs_type.is_unboxed:
                     expr = eq_expr
                 else:
