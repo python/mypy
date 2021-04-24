@@ -148,7 +148,7 @@ class ConversionSpecifier:
         return self.width == '*' or self.precision == '*'
 
 
-class LineNoChanger(TraverserVisitor):
+class LineNumChanger(TraverserVisitor):
     def __init__(self, line: int, end_line: Optional[int], column: int) -> None:
         self.line = line
         self.end_line = end_line
@@ -546,11 +546,16 @@ class StringFormatterChecker:
         try:
             first_obj, split_fields = string._string.formatter_field_name_split(
                 spec.field[len(spec.key):])
-            split_fields_str = [
-                ("." + str(field)) if is_attr else
-                '[{}]'.format(field) if isinstance(field, int) else
-                '["{}"]'.format(field.replace('"', '\\"')) for is_attr, field in split_fields]
-        except Exception:
+            split_fields_str = []
+            for is_attr, field in split_fields:
+                if is_attr:
+                    field_str = "." + str(field)
+                elif isinstance(field, int):
+                    field_str = '[{}]'.format(field)
+                else:
+                    field_str = '["{}"]'.format(field.replace('"', '\\"'))
+                split_fields_str.append(field_str)
+        except ValueError:
             self.msg.fail('Only index and member expressions are allowed in'
                           ' format field accessors; got "{}"'.format(spec.field),
                           ctx, code=codes.STRING_FORMATTING)
@@ -576,7 +581,7 @@ class StringFormatterChecker:
 
         # Check if there are any other errors (like missing members).
         # TODO: fix column to point to actual start of the format specifier _within_ string.
-        temp_ast.accept(LineNoChanger(ctx.line, ctx.end_line, ctx.column))
+        temp_ast.accept(LineNumChanger(ctx.line, ctx.end_line, ctx.column))
         self.exprchk.accept(temp_ast)
         return temp_ast
 
