@@ -166,10 +166,10 @@ class TypedDictAnalyzer:
         required_keys = {
             field
             for (field, t) in zip(fields, types)
-            if total or isinstance(t, RequiredType)
+            if total or isinstance(t, RequiredType)  # type: ignore[misc]
         }
         types = [  # unwrap Required[T] to just T
-            t.item if isinstance(t, RequiredType) else t
+            t.item if isinstance(t, RequiredType) else t  # type: ignore[misc]
             for t in types
         ]
 
@@ -219,10 +219,10 @@ class TypedDictAnalyzer:
             required_keys = {
                 field
                 for (field, t) in zip(items, types)
-                if total or isinstance(t, RequiredType)
+                if total or isinstance(t, RequiredType)  # type: ignore[misc]
             }
             types = [  # unwrap Required[T] to just T
-                t.item if isinstance(t, RequiredType) else t
+                t.item if isinstance(t, RequiredType) else t  # type: ignore[misc]
                 for t in types
             ]
             info = self.build_typeddict_typeinfo(name, items, types, required_keys)
