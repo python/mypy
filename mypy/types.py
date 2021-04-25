@@ -1818,20 +1818,13 @@ class UnionType(ProperType):
 
 # HACK: Pretend to be a 1-item union so that most code ignores the wrapping Required[].
 class RequiredType(UnionType):
-    """Required[T] (exactly one type argument)."""
+    """Required[T]. Only usable at top-level of a TypedDict definition."""
 
     def __init__(self, item: Type) -> None:
         super().__init__([item])
 
     def serialize(self) -> JsonDict:
-        return {'.class': 'RequiredType',
-                'item': self.items[0].serialize(),
-                }
-
-    @classmethod
-    def deserialize(cls, data: JsonDict) -> 'UnionType':
-        assert data['.class'] == 'RequiredType'
-        return RequiredType(deserialize_type(data['items'][0]))
+        assert False, "Required types don't serialize"
 
 
 class PartialType(ProperType):
