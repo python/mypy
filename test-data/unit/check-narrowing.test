@@ -1293,8 +1293,8 @@ else:
     reveal_type(x) # N: Revealed type is "Tuple[builtins.int, builtins.int, builtins.int]"
 [builtins fixtures/len.pyi]
 
-[case testNarrowingLenListAndStrUnaffected]
-from typing import Tuple, Union, List
+[case testNarrowingLenTypeUnaffected]
+from typing import Tuple, Union, List, Any
 
 def make() -> Union[str, List[int]]:
     return ""
@@ -1305,6 +1305,13 @@ if len(x) == 3:
     reveal_type(x) # N: Revealed type is "Union[builtins.str, builtins.list[builtins.int]]"
 else:
     reveal_type(x) # N: Revealed type is "Union[builtins.str, builtins.list[builtins.int]]"
+
+def f(self, value: Any) -> Any:
+    if isinstance(value, list) and len(value) == 0:
+        reveal_type(value) # N: Revealed type is "builtins.list[Any]"
+        return value
+    reveal_type(value) # N: Revealed type is "Any"
+    return None
 [builtins fixtures/len.pyi]
 
 [case testNarrowingLenLiteral]

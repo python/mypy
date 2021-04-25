@@ -5328,14 +5328,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 possible_types = union_items(current_type)
                 len_of_types = [len_of_type(typ) for typ in possible_types]
 
-                proposed_type = UnionType([
+                proposed_type = make_simplified_union([
                     self.narrow_type_by_length(typ, length)
                     for typ, l in zip(possible_types, len_of_types)
                     if l is None or l == length])
-                remaining_type = UnionType([
+                remaining_type = make_simplified_union([
                     typ for typ, l in zip(possible_types, len_of_types)
                     if l is None or l != length])
-                return {expr: proposed_type}, {expr: remaining_type}
+                if_map = (
+                    {} if is_same_type(proposed_type, current_type)
+                    else {expr: proposed_type})
+                else_map = (
+                    {} if is_same_type(remaining_type, current_type)
+                    else {expr: remaining_type})
+                return if_map, else_map
         else:
             return {}, {}
 
