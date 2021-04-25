@@ -280,6 +280,17 @@ class TypeGuardType(Type):
         return "TypeGuard({})".format(self.type_guard)
 
 
+class RequiredType(Type):
+    """Required[T]. Only usable at top-level of a TypedDict definition."""
+
+    def __init__(self, item: Type) -> None:
+        super().__init__(line=item.line, column=item.column)
+        self.item = item
+
+    def __repr__(self) -> str:
+        return "Required[{}]".format(self.item)
+
+
 class ProperType(Type):
     """Not a type alias.
 
@@ -1816,17 +1827,6 @@ class UnionType(ProperType):
         return UnionType([deserialize_type(t) for t in data['items']])
 
 
-# HACK: Pretend to be a 1-item union so that most code ignores the wrapping Required[].
-class RequiredType(UnionType):
-    """Required[T]. Only usable at top-level of a TypedDict definition."""
-
-    def __init__(self, item: Type) -> None:
-        super().__init__([item])
-
-    def serialize(self) -> JsonDict:
-        assert False, "Required types don't serialize"
-
-
 class PartialType(ProperType):
     """Type such as List[?] where type arguments are unknown, or partial None type.
 
@@ -2194,10 +2194,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
     def visit_union_type(self, t: UnionType) -> str:
         s = self.list_str(t.items)
-        if isinstance(t, RequiredType):
-            return 'Required[{}]'.format(s)
-        else:
-            return 'Union[{}]'.format(s)
+        return 'Union[{}]'.format(s)
 
     def visit_partial_type(self, t: PartialType) -> str:
         if t.type is None:

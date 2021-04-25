@@ -169,7 +169,7 @@ class TypedDictAnalyzer:
             if total or isinstance(t, RequiredType)
         }
         types = [  # unwrap Required[T] to just T
-            t.items[0] if isinstance(t, RequiredType) else t
+            t.item if isinstance(t, RequiredType) else t
             for t in types
         ]
 
@@ -222,7 +222,7 @@ class TypedDictAnalyzer:
                 if total or isinstance(t, RequiredType)
             }
             types = [  # unwrap Required[T] to just T
-                t.items[0] if isinstance(t, RequiredType) else t
+                t.item if isinstance(t, RequiredType) else t
                 for t in types
             ]
             info = self.build_typeddict_typeinfo(name, items, types, required_keys)
