@@ -216,7 +216,15 @@ class TypedDictAnalyzer:
             if name != var_name or is_func_scope:
                 # Give it a unique name derived from the line number.
                 name += '@' + str(call.line)
-            required_keys = set(items) if total else set()
+            required_keys = {
+                field
+                for (field, t) in zip(items, types)
+                if total or isinstance(t, RequiredType)
+            }
+            types = [  # unwrap Required[T] to just T
+                t.items[0] if isinstance(t, RequiredType) else t
+                for t in types
+            ]
             info = self.build_typeddict_typeinfo(name, items, types, required_keys)
             info.line = node.line
             # Store generated TypeInfo under both names, see semanal_namedtuple for more details.
