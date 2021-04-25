@@ -1816,6 +1816,29 @@ class UnionType(ProperType):
         return UnionType([deserialize_type(t) for t in data['items']])
 
 
+# HACK: Pretend to be a 1-item union so that most code ignores the wrapping Required[].
+class RequiredType(UnionType):
+    """Required[T] (exactly one type argument)."""
+
+    def __init__(self, item: Type) -> None:
+        super().__init__([item])
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        # TODO: Implement TypeVisitor.visit_required_type?
+        #       Needed to print repr() correctly.
+        return visitor.visit_union_type(self)
+
+    def serialize(self) -> JsonDict:
+        return {'.class': 'RequiredType',
+                'item': self.items[0].serialize(),
+                }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'UnionType':
+        assert data['.class'] == 'RequiredType'
+        return RequiredType(deserialize_type(data['items'][0]))
+
+
 class PartialType(ProperType):
     """Type such as List[?] where type arguments are unknown, or partial None type.
 

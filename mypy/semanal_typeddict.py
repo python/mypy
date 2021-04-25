@@ -4,7 +4,9 @@ from mypy.ordered_dict import OrderedDict
 from typing import Optional, List, Set, Tuple
 from typing_extensions import Final
 
-from mypy.types import Type, AnyType, TypeOfAny, TypedDictType, TPDICT_NAMES
+from mypy.types import (
+    Type, AnyType, TypeOfAny, TypedDictType, TPDICT_NAMES, RequiredType,
+)
 from mypy.nodes import (
     CallExpr, TypedDictExpr, Expression, NameExpr, Context, StrExpr, BytesExpr, UnicodeExpr,
     ClassDef, RefExpr, TypeInfo, AssignmentStmt, PassStmt, ExpressionStmt, EllipsisExpr, TempNode,
@@ -161,7 +163,16 @@ class TypedDictAnalyzer:
             if total is None:
                 self.fail('Value of "total" must be True or False', defn)
                 total = True
-        required_keys = set(fields) if total else set()
+        required_keys = {
+            field
+            for (field, t) in zip(fields, types)
+            if total or isinstance(t, RequiredType)
+        }
+        types = [  # unwrap Required[T] to just T
+            t.items[0] if isinstance(t, RequiredType) else t
+            for t in types
+        ]
+
         return fields, types, required_keys
 
     def check_typeddict(self,
