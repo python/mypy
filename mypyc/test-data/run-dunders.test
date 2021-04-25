@@ -240,3 +240,42 @@ def test_del_item_with_no_set_item() -> None:
         assert str(e) == "'DelItemNoSetItem' object does not support item assignment"
     else:
         assert False
+
+class SetItemOverride(dict):
+    # Only override __setitem__, __delitem__ comes from dict
+
+    def __setitem__(self, x: int, y: int) -> None:
+        self.key = x
+        self.value = y
+
+def test_set_item_override() -> None:
+    o = SetItemOverride({'x': 12, 'y': 13})
+    o[2] = 3
+    assert o.key == 2 and o.value == 3
+    a: Any = o
+    o[4] = 5
+    assert o.key == 4 and o.value == 5
+    assert o['x'] == 12
+    assert o['y'] == 13
+    del o['x']
+    assert 'x' not in o and 'y' in o
+    del a['y']
+    assert 'y' not in a and 'x' not in a
+
+class DelItemOverride(dict):
+    # Only override __delitem__, __setitem__ comes from dict
+
+    def __delitem__(self, x: int) -> None:
+        self.key = x
+
+def test_del_item_override() -> None:
+    o = DelItemOverride()
+    del o[2]
+    assert o.key == 2
+    a: Any = o
+    del o[5]
+    assert o.key == 5
+    o['x'] = 12
+    assert o['x'] == 12
+    a['y'] = 13
+    assert a['y'] == 13

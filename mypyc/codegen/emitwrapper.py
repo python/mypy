@@ -427,7 +427,7 @@ def generate_set_del_item_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> 
     args = fn.args
     if fn.name == '__delitem__':
         # Add an extra argument for value that we expect to be NULL.
-        args = list(args) + [RuntimeArg('___unused_value', object_rprimitive, ARG_POS)]
+        args = list(args) + [RuntimeArg('___value', object_rprimitive, ARG_POS)]
 
     name = '{}{}{}'.format(DUNDER_PREFIX, '__setitem__', cl.name_prefix(emitter.names))
     input_args = ', '.join('PyObject *obj_{}'.format(arg.name) for arg in args)
@@ -436,22 +436,48 @@ def generate_set_del_item_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> 
         input_args=input_args,
     ))
 
+    # First check if this is __delitem__
+    emitter.emit_line('if (obj_{} == NULL) {{'.format(args[2].name))
     if del_name is not None:
-        # First check if we should call the __delitem__ wrapper
-        emitter.emit_line('if (obj_{} == NULL) {{'.format(args[2].name))
+        # We have a native implementation, so call it
         emitter.emit_line('return {}(obj_{}, obj_{});'.format(del_name,
                                                               args[0].name,
                                                               args[1].name))
-        emitter.emit_line('}')
+    else:
+        # Try to call superclass method instead
+        emitter.emit_line(
+            'PyObject *super = CPy_Super(CPyModule_builtins, obj_{});'.format(args[0].name))
+        emitter.emit_line('if (super == NULL) return -1;')
+        emitter.emit_line(
+            'PyObject *result = PyObject_CallMethod(super, "__delitem__", "O", obj_{});'.format(
+                args[1].name))
+        emitter.emit_line('Py_DECREF(super);')
+        emitter.emit_line('Py_XDECREF(result);')
+        emitter.emit_line('return result == NULL ? -1 : 0;')
+    emitter.emit_line('}')
 
     method_cls = cl.get_method_and_class('__setitem__')
     if method_cls and method_cls[1] == cl:
         generate_set_del_item_wrapper_inner(fn, emitter, args)
     else:
-        msg = "'{}' object does not support item assignment".format(cl.name)
         emitter.emit_line(
-            'PyErr_SetString(PyExc_TypeError, "{}");'.format(msg))
-        emitter.emit_line('return -1;')
+            'PyObject *super = CPy_Super(CPyModule_builtins, obj_{});'.format(args[0].name))
+        emitter.emit_line('if (super == NULL) return -1;')
+        emitter.emit_line('PyObject *result;')
+
+        if method_cls is None and cl.builtin_base is None:
+            msg = "'{}' object does not support item assignment".format(cl.name)
+            emitter.emit_line(
+                'PyErr_SetString(PyExc_TypeError, "{}");'.format(msg))
+            emitter.emit_line('result = NULL;')
+        else:
+            # A base class may have __setitem__
+            emitter.emit_line(
+                'result = PyObject_CallMethod(super, "__setitem__", "OO", obj_{}, obj_{});'.format(
+                    args[1].name, args[2].name))
+        emitter.emit_line('Py_DECREF(super);')
+        emitter.emit_line('Py_XDECREF(result);')
+        emitter.emit_line('return result == NULL ? -1 : 0;')
         emitter.emit_line('}')
     return name
 
