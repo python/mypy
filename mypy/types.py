@@ -271,7 +271,7 @@ class TypeAliasType(Type):
 
 
 class TypeGuardType(Type):
-    """Only used by find_instance_check() etc."""
+    """Only used by find_isinstance_check() etc."""
     def __init__(self, type_guard: Type):
         super().__init__(line=type_guard.line, column=type_guard.column)
         self.type_guard = type_guard
