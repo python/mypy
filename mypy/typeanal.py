@@ -130,6 +130,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                  allow_unnormalized: bool = False,
                  allow_unbound_tvars: bool = False,
                  allow_placeholder: bool = False,
+                 allow_required: bool = False,
                  report_invalid_types: bool = True) -> None:
         self.api = api
         self.lookup_qualified = api.lookup_qualified
@@ -149,6 +150,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.allow_unbound_tvars = allow_unbound_tvars or defining_alias
         # If false, record incomplete ref if we generate PlaceholderType.
         self.allow_placeholder = allow_placeholder
+        # Are we in a context where Required[] is allowed?
+        self.allow_required = allow_required
         # Should we report an error whenever we encounter a RawExpressionType outside
         # of a Literal context: e.g. whenever we encounter an invalid type? Normally,
         # we want to report an error, but the caller may want to do more specialized
@@ -349,6 +352,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         elif fullname in ('typing_extensions.Required', 'typing.Required'):
             if len(t.args) != 1:
                 self.fail("Required[...] must have exactly one type argument", t)
+                return AnyType(TypeOfAny.from_error)
+            if not self.allow_required:
+                self.fail("Required[] can be only used in a TypedDict definition", t)
                 return AnyType(TypeOfAny.from_error)
             return RequiredType(self.anal_type(t.args[0]))
         elif self.anal_type_guard_arg(t, fullname) is not None:

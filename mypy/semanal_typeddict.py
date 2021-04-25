@@ -147,7 +147,7 @@ class TypedDictAnalyzer:
                 if stmt.type is None:
                     types.append(AnyType(TypeOfAny.unannotated))
                 else:
-                    analyzed = self.api.anal_type(stmt.type)
+                    analyzed = self.api.anal_type(stmt.type, allow_required=True)
                     if analyzed is None:
                         return None, [], set()  # Need to defer
                     types.append(analyzed)
@@ -311,7 +311,7 @@ class TypedDictAnalyzer:
             except TypeTranslationError:
                 self.fail_typeddict_arg('Invalid field type', field_type_expr)
                 return [], [], False
-            analyzed = self.api.anal_type(type)
+            analyzed = self.api.anal_type(type, allow_required=True)
             if analyzed is None:
                 return None
             types.append(analyzed)
