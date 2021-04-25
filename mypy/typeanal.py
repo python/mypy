@@ -356,7 +356,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if not self.allow_required:
                 self.fail("Required[] can be only used in a TypedDict definition", t)
                 return AnyType(TypeOfAny.from_error)
-            return RequiredType(self.anal_type(t.args[0]))
+
+            self.allow_required = False
+            try:
+                return RequiredType(self.anal_type(t.args[0]))
+            finally:
+                self.allow_required = True
         elif self.anal_type_guard_arg(t, fullname) is not None:
             # In most contexts, TypeGuard[...] acts as an alias for bool (ignoring its args)
             return self.named_type('builtins.bool')
