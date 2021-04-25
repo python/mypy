@@ -1823,11 +1823,6 @@ class RequiredType(UnionType):
     def __init__(self, item: Type) -> None:
         super().__init__([item])
 
-    def accept(self, visitor: 'TypeVisitor[T]') -> T:
-        # TODO: Implement TypeVisitor.visit_required_type?
-        #       Needed to print repr() correctly.
-        return visitor.visit_union_type(self)
-
     def serialize(self) -> JsonDict:
         return {'.class': 'RequiredType',
                 'item': self.items[0].serialize(),
@@ -2206,7 +2201,10 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
     def visit_union_type(self, t: UnionType) -> str:
         s = self.list_str(t.items)
-        return 'Union[{}]'.format(s)
+        if isinstance(t, RequiredType):
+            return 'Required[{}]'.format(s)
+        else:
+            return 'Union[{}]'.format(s)
 
     def visit_partial_type(self, t: PartialType) -> str:
         if t.type is None:
