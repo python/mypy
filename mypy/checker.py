@@ -4860,8 +4860,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         else_map = {}
                 else:
                     # comparison expression with len
-                    if operator in {'==', '!='}:
+                    if operator in {'==', '!=', '>=', '<=', '<', '>'}:
                         if_map, else_map = self.refine_len_comparison_expression(
+                            operator,
                             operands,
                             operand_types,
                             expr_indices,
@@ -4871,7 +4872,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         if_map = {}
                         else_map = {}
 
-                if operator in {'is not', '!=', 'not in'}:
+                if operator in {'is not', '!=', 'not in', '<', '>'}:
                     if_map, else_map = else_map, if_map
 
                 partial_type_maps.append((if_map, else_map))
@@ -5234,6 +5235,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return reduce_conditional_maps(partial_type_maps)
 
     def refine_len_comparison_expression(self,
+                                         operator: str,
                                          operands: List[Expression],
                                          operand_types: List[Type],
                                          chain_indices: List[int],
@@ -5267,6 +5269,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """
 
         target = None  # type: Optional[int]
+        target_index = None  # type: Optional[int]
         possible_target_indices = []
         for i in chain_indices:
             expr_type = operand_types[i]
@@ -5274,10 +5277,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if not isinstance(get_proper_type(expr_type), LiteralType):
                 continue
             if target and target != expr_type.value:
-                # We have multiple different target values. So the 'if' branch
-                # must be unreachable.
-                return None, {}
+                if operator in {'==', '!='}:
+                    # We have multiple different target values. So the 'if' branch
+                    # must be unreachable.
+                    return None, {}
+                else:
+                    # Other operators can go either way
+                    return {}, {}
+
             target = expr_type.value
+            target_index = i
             possible_target_indices.append(i)
 
         # There's nothing we can currently infer if none of the operands are valid targets,
@@ -5297,19 +5306,25 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # We intentionally use 'conditional_type_map' directly here instead of
             # 'self.conditional_type_map_with_intersection': we only compute ad-hoc
             # intersections when working with pure instances.
-            partial_type_maps.append(self.conditional_len_map(expr, expr_type, target))
+            partial_type_maps.append(
+                self.conditional_len_map(operator, expr, expr_type, i, target, target_index))
 
         return reduce_conditional_maps(partial_type_maps)
 
-    def narrow_type_by_length(self, typ: Type, length: int) -> Type:
+    def narrow_type_by_length(self, operator: str, typ: Type, length: int) -> Type:
+        if operator not in {"==", "!="}:
+            return typ
         if (isinstance(typ, Instance) and typ.type.fullname == "builtins.tuple" and length >= 0):
             return TupleType(typ.args[0:1] * length, self.named_type('builtins.tuple'))
         return typ
 
     def conditional_len_map(self,
+                            operator: str,
                             expr: Expression,
                             current_type: Optional[Type],
+                            expr_index: int,
                             length: Optional[int],
+                            target_index: int,
                             ) -> Tuple[TypeMap, TypeMap]:
         """Takes in an expression, the current type of the expression, and a
         proposed length of that expression.
@@ -5328,13 +5343,36 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 possible_types = union_items(current_type)
                 len_of_types = [len_of_type(typ) for typ in possible_types]
 
+                if operator in {'>=', '<=', '<', '>'} and target_index < expr_index:
+                    if operator == '>=':
+                        operator = '<='
+                    elif operator == '>':
+                        operator = '<'
+                    elif operator == '<=':
+                        operator = '>='
+                    else:
+                        operator = '>'
+
+                # We reverse the map for some operator outside this function
+                length_op_translator = {
+                    '==': int.__eq__,
+                    '!=': int.__eq__,
+                    '>=': int.__ge__,
+                    '<': int.__ge__,
+                    '<=': int.__le__,
+                    '>': int.__le__,
+                }
+
+                assert operator in length_op_translator
+                length_op = length_op_translator[operator]
+
                 proposed_type = make_simplified_union([
-                    self.narrow_type_by_length(typ, length)
+                    self.narrow_type_by_length(operator, typ, length)
                     for typ, l in zip(possible_types, len_of_types)
-                    if l is None or l == length])
+                    if l is None or length_op(l, length)])
                 remaining_type = make_simplified_union([
                     typ for typ, l in zip(possible_types, len_of_types)
-                    if l is None or l != length])
+                    if l is None or not length_op(l, length)])
                 if_map = (
                     {} if is_same_type(proposed_type, current_type)
                     else {expr: proposed_type})
