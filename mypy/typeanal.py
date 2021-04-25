@@ -356,12 +356,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if not self.allow_required:
                 self.fail("Required[] can be only used in a TypedDict definition", t)
                 return AnyType(TypeOfAny.from_error)
-
-            self.allow_required = False
-            try:
-                return RequiredType(self.anal_type(t.args[0]))
-            finally:
-                self.allow_required = True
+            return RequiredType(self.anal_type(t.args[0]))
         elif self.anal_type_guard_arg(t, fullname) is not None:
             # In most contexts, TypeGuard[...] acts as an alias for bool (ignoring its args)
             return self.named_type('builtins.bool')
@@ -971,11 +966,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def anal_type(self, t: Type, nested: bool = True) -> Type:
         if nested:
             self.nesting_level += 1
+        old_allow_required = self.allow_required
+        self.allow_required = False
         try:
             return t.accept(self)
         finally:
             if nested:
                 self.nesting_level -= 1
+            self.allow_required = old_allow_required
 
     def anal_var_def(self, var_def: TypeVarLikeDef) -> TypeVarLikeDef:
         if isinstance(var_def, TypeVarDef):
