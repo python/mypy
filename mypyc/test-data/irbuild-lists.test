@@ -279,11 +279,11 @@ def f(source):
     r13 :: short_int
     a :: list
     r14 :: ptr
-    r15 :: int64
+    r15 :: native_int
     r16 :: list
     r17 :: short_int
     r18 :: ptr
-    r19 :: int64
+    r19 :: native_int
     r20 :: short_int
     r21 :: bit
     r22 :: object
@@ -319,13 +319,13 @@ L3:
 L4:
     a = r2
     r14 = get_element_ptr source ob_size :: PyVarObject
-    r15 = load_mem r14 :: int64*
+    r15 = load_mem r14 :: native_int*
     keep_alive source
     r16 = PyList_New(r15)
     r17 = 0
 L5:
     r18 = get_element_ptr source ob_size :: PyVarObject
-    r19 = load_mem r18 :: int64*
+    r19 = load_mem r18 :: native_int*
     keep_alive source
     r20 = r19 << 1
     r21 = r17 < r20 :: signed
