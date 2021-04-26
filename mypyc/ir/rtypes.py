@@ -809,5 +809,12 @@ PySetObject = RStruct(
 PyListObject = RStruct(
     name='PyListObject',
     names=['ob_base', 'ob_item', 'allocated'],
-    types=[PyObject, pointer_rprimitive, c_pyssize_t_rprimitive]
+    types=[PyVarObject, pointer_rprimitive, c_pyssize_t_rprimitive]
+)
+
+PyRangeObject = RStruct(
+    name='rangeobject',
+    names=['ob_base', 'start', 'stop', 'step', 'length'],
+    types=[PyObject, pointer_rprimitive, pointer_rprimitive, pointer_rprimitive,
+           pointer_rprimitive]
 )
