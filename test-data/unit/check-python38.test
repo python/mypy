@@ -268,7 +268,7 @@ def f(x: int = (c := 4)) -> int:
     f(x=(y7 := 3))
     reveal_type(y7)  # N: Revealed type is "builtins.int"
 
-    reveal_type((lambda: (y8 := 3) and y8)())  # N: Revealed type is "Literal[3]?"
+    reveal_type((lambda: (y8 := 3) and y8)())  # N: Revealed type is "builtins.int"
     y8  # E: Name "y8" is not defined
 
     y7 = 1.0  # E: Incompatible types in assignment (expression has type "float", variable has type "int")

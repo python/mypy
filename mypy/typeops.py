@@ -367,7 +367,8 @@ def make_simplified_union(items: Sequence[Type],
             # Keep track of the truishness info for deleted subtypes which can be relevant
             cbt = cbf = False
             for j, tj in enumerate(items):
-                if i != j and is_proper_subtype(tj, ti, keep_erased_types=keep_erased):
+                if i != j and is_proper_subtype(tj, ti, keep_erased_types=keep_erased) and \
+                        is_redundant_literal_instance(ti, tj):
                     # We found a redundant item in the union.
                     removed.add(j)
                     cbt = cbt or tj.can_be_true
@@ -804,4 +805,15 @@ def custom_special_method(typ: Type, name: str, check_all: bool = False) -> bool
         # Avoid false positives in uncertain cases.
         return True
     # TODO: support other types (see ExpressionChecker.has_member())?
+    return False
+
+
+def is_redundant_literal_instance(general: ProperType, specific: ProperType) -> bool:
+    if not isinstance(general, Instance) or general.last_known_value is None:
+        return True
+    if isinstance(specific, Instance) and specific.last_known_value == general.last_known_value:
+        return True
+    if isinstance(specific, UninhabitedType):
+        return True
+
     return False
