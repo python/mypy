@@ -25,6 +25,7 @@ from mypyc.ir.rtypes import (
     bool_rprimitive, is_dict_rprimitive
 )
 from mypyc.primitives.dict_ops import dict_keys_op, dict_values_op, dict_items_op
+from mypyc.primitives.list_ops import new_list_set_item_op
 from mypyc.primitives.tuple_ops import new_tuple_set_item_op
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import (
@@ -92,6 +93,19 @@ def dict_methods_fast_path(
     if not (len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]):
         return None
     arg = expr.args[0]
+
+    # Special case for simplest list comprehension, for example
+    #     list(x for x in tmp_list)
+    # TODO: The following code should be moved to a new function after
+    #       supporting multiple specialize functions
+    if not isinstance(callee, MemberExpr) and isinstance(arg, GeneratorExpr):
+        val = sequence_from_generator_preallocate_helper(
+            builder, arg,
+            empty_op_llbuilder=builder.builder.new_list_op_with_length,
+            set_item_op=new_list_set_item_op)
+        if val is not None:
+            return val
+
     if not (isinstance(arg, CallExpr) and not arg.args
             and isinstance(arg.callee, MemberExpr)):
         return None
