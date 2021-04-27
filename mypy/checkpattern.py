@@ -220,6 +220,13 @@ class PatternChecker(PatternVisitor[PatternType]):
                 can_match = False
             else:
                 self.update_type_map(captures, pattern_type.captures)
+
+        if o.rest is not None:
+            # TODO: Infer dict type args
+            rest_type = self.accept(o.rest, self.chk.named_type("builtins.dict"))
+            assert rest_type is not None
+            self.update_type_map(captures, rest_type.captures)
+
         if can_match:
             new_type = self.type_context[-1]  # type: Optional[Type]
         else:

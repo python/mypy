@@ -266,6 +266,14 @@ match m:
 b: int
 [typing fixtures/typing-typeddict.pyi]
 
+[case testMappingPatternCaptureRest]
+m: object
+
+match m:
+    case {'k': 1, **r}:
+        reveal_type(r)  # N: Revealed type is "builtins.dict[Any, Any]"
+[builtins fixtures/dict.pyi]
+
 -- Mapping patterns currently don't narrow --
 
 -- Class Pattern --
