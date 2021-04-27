@@ -14,7 +14,7 @@ m: object
 
 match m:
     case 1:
-        reveal_type(m)  # N: Revealed type is "builtins.int"
+        reveal_type(m)  # N: Revealed type is "Literal[1]?"
 
 [case testLiteralPatternAlreadyNarrower]
 m: bool
@@ -715,6 +715,13 @@ match m:
     case int() as l:
         reveal_type(l)  # N: Revealed type is "builtins.int"
 
+[case testAsPatternCapturesOr]
+m: object
+
+match m:
+    case 1 | 2 as n:
+        reveal_type(n)  # N: Revealed type is "Union[Literal[1]?, Literal[2]?]"
+
 [case testAsPatternAlreadyNarrower]
 m: bool
 
@@ -729,14 +736,21 @@ m: object
 
 match m:
     case 1 | 2:
-        reveal_type(m)  # N: Revealed type is "builtins.int"
+        reveal_type(m)  # N: Revealed type is "Union[Literal[1]?, Literal[2]?]"
+
+[case testOrPatternNarrowsStr]
+m: object
+
+match m:
+    case "foo" | "bar":
+        reveal_type(m)  # N: Revealed type is "Union[Literal['foo']?, Literal['bar']?]"
 
 [case testOrPatternNarrowsUnion]
 m: object
 
 match m:
     case 1 | "foo":
-        reveal_type(m)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+        reveal_type(m)  # N: Revealed type is "Union[Literal[1]?, Literal['foo']?]"
 
 [case testOrPatterCapturesMissing]
 from typing import List

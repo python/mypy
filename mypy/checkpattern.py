@@ -1,6 +1,6 @@
 """Pattern checker. This file is conceptually part of TypeChecker."""
 from collections import defaultdict
-from typing import List, Optional, Union, Tuple, Dict, NamedTuple, Set
+from typing import List, Optional, Tuple, Dict, NamedTuple, Set
 
 import mypy.checker
 from mypy.expandtype import expand_type_by_instance
@@ -14,10 +14,10 @@ from mypy.patterns import (
 )
 from mypy.plugin import Plugin
 from mypy.subtypes import is_subtype, find_member
-from mypy.typeops import try_getting_str_literals_from_type
+from mypy.typeops import try_getting_str_literals_from_type, make_simplified_union
 from mypy.types import (
-    ProperType, AnyType, TypeOfAny, Instance, Type, NoneType, UninhabitedType, get_proper_type,
-    TypedDictType, TupleType, UnionType
+    ProperType, AnyType, TypeOfAny, Instance, Type, UninhabitedType, get_proper_type,
+    TypedDictType, TupleType
 )
 from mypy.typevars import fill_typevars
 from mypy.visitor import PatternVisitor
@@ -137,32 +137,13 @@ class PatternChecker(PatternVisitor[PatternType]):
 
             captures[capture_list[0][0]] = typ
 
-        return PatternType(UnionType.make_union(types), captures)
+        union_type = make_simplified_union(types)
+        return PatternType(union_type, captures)
 
     def visit_literal_pattern(self, o: LiteralPattern) -> PatternType:
-        literal_type = self.get_literal_type(o.value)
+        literal_type = self.chk.expr_checker.accept(o.expr)
         typ = get_more_specific_type(literal_type, self.type_context[-1])
         return PatternType(typ, {})
-
-    def get_literal_type(self, l: Union[int, complex, float, str, bytes, None]) -> Type:
-        if l is None:
-            typ = NoneType()  # type: Type
-        elif isinstance(l, int):
-            typ = self.chk.named_type("builtins.int")
-        elif isinstance(l, complex):
-            typ = self.chk.named_type("builtins.complex")
-        elif isinstance(l, float):
-            typ = self.chk.named_type("builtins.float")
-        elif isinstance(l, str):
-            typ = self.chk.named_type("builtins.str")
-        elif isinstance(l, bytes):
-            typ = self.chk.named_type("builtins.bytes")
-        elif isinstance(l, bool):
-            typ = self.chk.named_type("builtins.bool")
-        else:
-            assert False, "Invalid literal in literal pattern"
-
-        return typ
 
     def visit_capture_pattern(self, o: CapturePattern) -> PatternType:
         return PatternType(self.type_context[-1], {o.name: self.type_context[-1]})

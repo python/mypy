@@ -79,8 +79,8 @@ from mypy.nodes import (
     ParamSpecExpr, MatchStmt
 )
 from mypy.patterns import (
-    AsPattern, OrPattern, CapturePattern, ValuePattern, SequencePattern, StarredPattern,
-    MappingPattern, ClassPattern
+    AsPattern, OrPattern, CapturePattern, LiteralPattern, ValuePattern, SequencePattern,
+    StarredPattern, MappingPattern, ClassPattern
 
 )
 from mypy.tvar_scope import TypeVarLikeScope
@@ -3995,6 +3995,9 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def visit_capture_pattern(self, p: CapturePattern) -> None:
         self.analyze_lvalue(p.name)
+
+    def visit_literal_pattern(self, p: LiteralPattern) -> None:
+        p.expr.accept(self)
 
     def visit_value_pattern(self, p: ValuePattern) -> None:
         p.expr.accept(self)
