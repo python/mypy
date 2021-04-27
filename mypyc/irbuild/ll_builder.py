@@ -891,6 +891,20 @@ class LowLevelIRBuilder:
 
         return result
 
+    def new_list_op_with_length(self, length: Value, line: int) -> Value:
+        """This function returns an uninitialized list.
+
+        If the length is non-zero, the caller must initialize the list, before
+        it can be made visible to user code -- otherwise the list object is broken.
+        You might need further initialization with `new_list_set_item_op` op.
+
+        Args:
+            length: desired length of the new list. The rtype should be
+                    c_pyssize_t_rprimitive
+            line: line number
+        """
+        return self.call_c(new_list_op, [length], line)
+
     def new_list_op(self, values: List[Value], line: int) -> Value:
         length = Integer(len(values), c_pyssize_t_rprimitive, line)
         result_list = self.call_c(new_list_op, [length], line)
@@ -1125,14 +1139,18 @@ class LowLevelIRBuilder:
         size = Integer(len(items), c_pyssize_t_rprimitive)  # type: Value
         return self.call_c(new_tuple_op, [size] + items, line)
 
-    def new_tuple_with_length(self, val: Value, line: int) -> Value:
-        """Generate a new empty tuple with length from a list or tuple
+    def new_tuple_with_length(self, length: Value, line: int) -> Value:
+        """This function returns an uninitialized tuple.
+
+        If the length is non-zero, the caller must initialize the tuple, before
+        it can be made visible to user code -- otherwise the tuple object is broken.
+        You might need further initialization with `new_tuple_set_item_op` op.
 
         Args:
-            val: a list or tuple
+            length: desired length of the new tuple. The rtype should be
+                    c_pyssize_t_rprimitive
             line: line number
         """
-        length = self.builtin_len(val, line, use_pyssize_t=True)
         return self.call_c(new_tuple_with_length_op, [length], line)
 
     # Internal helpers
