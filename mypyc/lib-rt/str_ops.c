@@ -34,7 +34,7 @@ PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
             }
             return unicode;
         } else {
-            PyErr_SetString(PyExc_IndexError, "string index out of range");
+            PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
             return NULL;
         }
     } else {
@@ -47,7 +47,7 @@ PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split)
 {
     Py_ssize_t temp_max_split = CPyTagged_AsSsize_t(max_split);
     if (temp_max_split == -1 && PyErr_Occurred()) {
-        PyErr_SetString(PyExc_OverflowError, "Python int too large to convert to C ssize_t");
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
             return NULL;
     }
     return PyUnicode_Split(str, sep, temp_max_split);
@@ -57,7 +57,7 @@ PyObject *CPyStr_Replace(PyObject *str, PyObject *old_substr, PyObject *new_subs
 {
     Py_ssize_t temp_max_replace = CPyTagged_AsSsize_t(max_replace);
     if (temp_max_replace == -1 && PyErr_Occurred()) {
-        PyErr_SetString(PyExc_OverflowError, "Python int too large to convert to C ssize_t");
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
             return NULL;
     }
     return PyUnicode_Replace(str, old_substr, new_substr, temp_max_replace);
