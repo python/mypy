@@ -2825,3 +2825,21 @@ from mystery import a, b as b, c as d
 [out]
 tmp/stub.pyi:1: error: Cannot find implementation or library stub for module named "mystery"
 tmp/stub.pyi:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+[case testReExportAllInStub]
+from m1 import C
+from m1 import D  # E: Module "m1" has no attribute "D"
+C()
+C(1)  # E: Too many arguments for "C"
+[file m1.pyi]
+from m2 import *
+[file m2.pyi]
+from m3 import *
+from m3 import __all__ as __all__
+class D: pass
+[file m3.pyi]
+from m4 import C as C
+__all__ = ['C']
+[file m4.pyi]
+class C: pass
+[builtins fixtures/list.pyi]
