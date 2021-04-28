@@ -1,6 +1,5 @@
 import sys
-from builtins import _PathLike  # See comment in builtins
-from os import stat_result as stat_result
+from os import PathLike, stat_result as stat_result
 from typing import Dict, List, NamedTuple, Optional, overload
 
 class uname_result(NamedTuple):
@@ -150,6 +149,7 @@ WUNTRACED: int
 XATTR_CREATE: int
 XATTR_REPLACE: int
 XATTR_SIZE_MAX: int
+
 @overload
 def listdir(path: Optional[str] = ...) -> List[str]: ...
 @overload
@@ -157,7 +157,7 @@ def listdir(path: bytes) -> List[bytes]: ...
 @overload
 def listdir(path: int) -> List[str]: ...
 @overload
-def listdir(path: _PathLike[str]) -> List[str]: ...
+def listdir(path: PathLike[str]) -> List[str]: ...
 
 if sys.platform == "win32":
     environ: Dict[str, str]

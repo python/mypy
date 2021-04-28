@@ -3,6 +3,7 @@ from typing import Any, Dict, Generic, Iterable, List, Mapping, Optional, Tuple,
 
 _DataType = Union[str, Mapping[str, Union[str, Morsel[Any]]]]
 _T = TypeVar("_T")
+
 @overload
 def _quote(str: None) -> None: ...
 @overload
