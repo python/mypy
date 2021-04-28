@@ -3961,9 +3961,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                ) -> Tuple[TypeMap, TypeMap]:
         """Narrow types based on any checks of the type ``type(x) == T``
 
-        :param node: The node that might contain the comparison
-
-        :param expr_indices: The list of indices of expressions in ``node`` that are being compared
+        Args:
+            node: The node that might contain the comparison
+            expr_indices: The list of indices of expressions in ``node`` that are being
+                compared
         """
         type_map = self.type_map
 
