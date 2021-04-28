@@ -1,6 +1,6 @@
-import os
 import sys
 import types
+from _typeshed import AnyPath
 from abc import ABCMeta, abstractmethod
 from typing import IO, Any, Iterator, Mapping, Optional, Sequence, Tuple, Union
 from typing_extensions import Literal
@@ -62,12 +62,11 @@ class FileLoader(ResourceLoader, ExecutionLoader, metaclass=ABCMeta):
     def load_module(self, name: Optional[str] = ...) -> types.ModuleType: ...
 
 if sys.version_info >= (3, 7):
-    _PathLike = Union[bytes, str, os.PathLike[Any]]
     class ResourceReader(metaclass=ABCMeta):
         @abstractmethod
-        def open_resource(self, resource: _PathLike) -> IO[bytes]: ...
+        def open_resource(self, resource: AnyPath) -> IO[bytes]: ...
         @abstractmethod
-        def resource_path(self, resource: _PathLike) -> str: ...
+        def resource_path(self, resource: AnyPath) -> str: ...
         @abstractmethod
         def is_resource(self, name: str) -> bool: ...
         @abstractmethod

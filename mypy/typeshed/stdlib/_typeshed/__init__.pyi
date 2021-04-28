@@ -104,17 +104,7 @@ OpenTextModeUpdating = Literal[
     "t+x",
     "+tx",
 ]
-OpenTextModeWriting = Literal[
-    "w",
-    "wt",
-    "tw",
-    "a",
-    "at",
-    "ta",
-    "x",
-    "xt",
-    "tx",
-]
+OpenTextModeWriting = Literal["w", "wt", "tw", "a", "at", "ta", "x", "xt", "tx"]
 OpenTextModeReading = Literal["r", "rt", "tr", "U", "rU", "Ur", "rtU", "rUt", "Urt", "trU", "tUr", "Utr"]
 OpenTextMode = Union[OpenTextModeUpdating, OpenTextModeWriting, OpenTextModeReading]
 OpenBinaryModeUpdating = Literal[

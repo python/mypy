@@ -69,6 +69,7 @@ _BytesToBytesEncodingT = Literal[
     "zlib",
     "zlib_codec",
 ]
+
 @overload
 def encode(obj: bytes, encoding: _BytesToBytesEncodingT, errors: str = ...) -> bytes: ...
 @overload

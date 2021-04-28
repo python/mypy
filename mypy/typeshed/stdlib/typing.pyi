@@ -603,12 +603,7 @@ if sys.version_info >= (3, 7):
     ]
 else:
     _get_type_hints_obj_allowed_types = Union[
-        object,
-        Callable[..., Any],
-        FunctionType,
-        BuiltinFunctionType,
-        MethodType,
-        ModuleType,
+        object, Callable[..., Any], FunctionType, BuiltinFunctionType, MethodType, ModuleType,
     ]
 
 if sys.version_info >= (3, 9):
@@ -621,9 +616,7 @@ if sys.version_info >= (3, 9):
 
 else:
     def get_type_hints(
-        obj: _get_type_hints_obj_allowed_types,
-        globalns: Optional[Dict[str, Any]] = ...,
-        localns: Optional[Dict[str, Any]] = ...,
+        obj: _get_type_hints_obj_allowed_types, globalns: Optional[Dict[str, Any]] = ..., localns: Optional[Dict[str, Any]] = ...
     ) -> Dict[str, Any]: ...
 
 if sys.version_info >= (3, 8):

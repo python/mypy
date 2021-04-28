@@ -49,7 +49,7 @@ class Button(Widget):
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: tkinter.Variable = ...,
         underline: int = ...,
         width: Union[int, Literal[""]] = ...,
@@ -68,7 +68,7 @@ class Button(Widget):
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: tkinter.Variable = ...,
         underline: int = ...,
         width: Union[int, Literal[""]] = ...,
@@ -95,7 +95,7 @@ class Checkbutton(Widget):
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: tkinter.Variable = ...,
         underline: int = ...,
         # Seems like variable can be empty string, but actually setting it to
@@ -119,7 +119,7 @@ class Checkbutton(Widget):
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: tkinter.Variable = ...,
         underline: int = ...,
         variable: tkinter.Variable = ...,
@@ -351,7 +351,7 @@ class Label(Widget):
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: tkinter.Variable = ...,
         underline: int = ...,
         width: Union[int, Literal[""]] = ...,
@@ -377,7 +377,7 @@ class Label(Widget):
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: tkinter.Variable = ...,
         underline: int = ...,
         width: Union[int, Literal[""]] = ...,
@@ -404,7 +404,7 @@ class Labelframe(Widget):
         relief: tkinter._Relief = ...,  # undocumented
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         underline: int = ...,
         width: tkinter._ScreenUnits = ...,
     ) -> None: ...
@@ -423,7 +423,7 @@ class Labelframe(Widget):
         relief: tkinter._Relief = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         underline: int = ...,
         width: tkinter._ScreenUnits = ...,
     ) -> Optional[Dict[str, Tuple[str, str, str, Any, Any]]]: ...
@@ -449,7 +449,7 @@ class Menubutton(Widget):
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: tkinter.Variable = ...,
         underline: int = ...,
         width: Union[int, Literal[""]] = ...,
@@ -468,7 +468,7 @@ class Menubutton(Widget):
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: tkinter.Variable = ...,
         underline: int = ...,
         width: Union[int, Literal[""]] = ...,
@@ -622,7 +622,7 @@ class Radiobutton(Widget):
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: tkinter.Variable = ...,
         underline: int = ...,
         value: Any = ...,
@@ -642,7 +642,7 @@ class Radiobutton(Widget):
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: tkinter.Variable = ...,
         underline: int = ...,
         value: Any = ...,
@@ -950,10 +950,7 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
     # Also, it's 'callback' instead of 'func' here.
     @overload
     def tag_bind(
-        self,
-        tagname: str,
-        sequence: Optional[str] = ...,
-        callback: Optional[Callable[[tkinter.Event[Treeview]], Any]] = ...,
+        self, tagname: str, sequence: Optional[str] = ..., callback: Optional[Callable[[tkinter.Event[Treeview]], Any]] = ...
     ) -> str: ...
     @overload
     def tag_bind(self, tagname: str, sequence: Optional[str], callback: str) -> None: ...
