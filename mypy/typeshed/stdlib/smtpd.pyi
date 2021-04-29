@@ -87,18 +87,10 @@ class DebuggingServer(SMTPServer): ...
 
 class PureProxy(SMTPServer):
     def process_message(  # type: ignore
-        self,
-        peer: _Address,
-        mailfrom: str,
-        rcpttos: List[Text],
-        data: Union[bytes, str],
+        self, peer: _Address, mailfrom: str, rcpttos: List[Text], data: Union[bytes, str]
     ) -> Optional[str]: ...
 
 class MailmanProxy(PureProxy):
     def process_message(  # type: ignore
-        self,
-        peer: _Address,
-        mailfrom: str,
-        rcpttos: List[Text],
-        data: Union[bytes, str],
+        self, peer: _Address, mailfrom: str, rcpttos: List[Text], data: Union[bytes, str]
     ) -> Optional[str]: ...

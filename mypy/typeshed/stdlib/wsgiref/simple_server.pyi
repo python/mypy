@@ -33,6 +33,7 @@ class WSGIRequestHandler(BaseHTTPRequestHandler):
 def demo_app(environ: WSGIEnvironment, start_response: StartResponse) -> List[bytes]: ...
 
 _S = TypeVar("_S", bound=WSGIServer)
+
 @overload
 def make_server(host: str, port: int, app: WSGIApplication, *, handler_class: Type[WSGIRequestHandler] = ...) -> WSGIServer: ...
 @overload

@@ -9,6 +9,7 @@ _T = TypeVar("_T")
 class _MISSING_TYPE: ...
 
 MISSING: _MISSING_TYPE
+
 @overload
 def asdict(obj: Any) -> Dict[str, Any]: ...
 @overload

@@ -73,24 +73,13 @@ class Logger(Filterer):
     ) -> None: ...
     fatal = critical
     def log(
-        self,
-        level: int,
-        msg: Any,
-        *args: Any,
-        exc_info: _ExcInfoType = ...,
-        extra: Optional[Dict[str, Any]] = ...,
-        **kwargs: Any,
+        self, level: int, msg: Any, *args: Any, exc_info: _ExcInfoType = ..., extra: Optional[Dict[str, Any]] = ..., **kwargs: Any
     ) -> None: ...
     def exception(
         self, msg: Any, *args: Any, exc_info: _ExcInfoType = ..., extra: Optional[Dict[str, Any]] = ..., **kwargs: Any
     ) -> None: ...
     def _log(
-        self,
-        level: int,
-        msg: Any,
-        args: _ArgsType,
-        exc_info: Optional[_ExcInfoType] = ...,
-        extra: Optional[Dict[str, Any]] = ...,
+        self, level: int, msg: Any, args: _ArgsType, exc_info: Optional[_ExcInfoType] = ..., extra: Optional[Dict[str, Any]] = ...
     ) -> None: ...  # undocumented
     def filter(self, record: LogRecord) -> bool: ...
     def addHandler(self, hdlr: Handler) -> None: ...
@@ -210,13 +199,7 @@ class LoggerAdapter:
         self, msg: Any, *args: Any, exc_info: _ExcInfoType = ..., extra: Optional[Dict[str, Any]] = ..., **kwargs: Any
     ) -> None: ...
     def log(
-        self,
-        level: int,
-        msg: Any,
-        *args: Any,
-        exc_info: _ExcInfoType = ...,
-        extra: Optional[Dict[str, Any]] = ...,
-        **kwargs: Any,
+        self, level: int, msg: Any, *args: Any, exc_info: _ExcInfoType = ..., extra: Optional[Dict[str, Any]] = ..., **kwargs: Any
     ) -> None: ...
     def isEnabledFor(self, level: int) -> bool: ...
 

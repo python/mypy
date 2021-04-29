@@ -2,6 +2,7 @@ from typing import Any, Callable, Dict, Iterable, Optional, Tuple, TypeVar, over
 
 _T = TypeVar("_T")
 _S = TypeVar("_S")
+
 @overload
 def reduce(function: Callable[[_T, _T], _T], sequence: Iterable[_T]) -> _T: ...
 @overload

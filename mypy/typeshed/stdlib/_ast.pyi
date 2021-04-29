@@ -25,7 +25,8 @@ class mod(AST): ...
 
 if sys.version_info >= (3, 8):
     class type_ignore(AST): ...
-    class TypeIgnore(type_ignore): ...
+    class TypeIgnore(type_ignore):
+        tag: str
     class FunctionType(mod):
         argtypes: typing.List[expr]
         returns: expr

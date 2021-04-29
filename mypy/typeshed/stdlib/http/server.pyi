@@ -1,10 +1,8 @@
 import email.message
 import socketserver
 import sys
+from os import PathLike
 from typing import Any, ClassVar, Dict, List, Mapping, Optional, Sequence, Tuple, Union
-
-if sys.version_info >= (3, 7):
-    from builtins import _PathLike
 
 class HTTPServer(socketserver.TCPServer):
     server_name: str
@@ -59,7 +57,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             request: bytes,
             client_address: Tuple[str, int],
             server: socketserver.BaseServer,
-            directory: Optional[Union[str, _PathLike[str]]] = ...,
+            directory: Optional[Union[str, PathLike[str]]] = ...,
         ) -> None: ...
     else:
         def __init__(self, request: bytes, client_address: Tuple[str, int], server: socketserver.BaseServer) -> None: ...
