@@ -367,7 +367,8 @@ def make_simplified_union(items: Sequence[Type],
             # Keep track of the truishness info for deleted subtypes which can be relevant
             cbt = cbf = False
             for j, tj in enumerate(items):
-                if i != j and is_proper_subtype(tj, ti, keep_erased_types=keep_erased):
+                if i != j and is_proper_subtype(tj, ti, keep_erased_types=keep_erased) and \
+                        is_redundant_literal_instance(ti, tj):
                     # We found a redundant item in the union.
                     removed.add(j)
                     cbt = cbt or tj.can_be_true
@@ -714,7 +715,7 @@ def try_expanding_enum_to_union(typ: Type, target_fullname: str) -> ProperType:
         return typ
 
 
-def try_contracting_literals_in_union(types: List[ProperType]) -> List[ProperType]:
+def try_contracting_literals_in_union(types: Sequence[Type]) -> List[ProperType]:
     """Contracts any literal types back into a sum type if possible.
 
     Will replace the first instance of the literal with the sum type and
@@ -723,9 +724,10 @@ def try_contracting_literals_in_union(types: List[ProperType]) -> List[ProperTyp
     if we call `try_contracting_union(Literal[Color.RED, Color.BLUE, Color.YELLOW])`,
     this function will return Color.
     """
+    proper_types = [get_proper_type(typ) for typ in types]
     sum_types = {}  # type: Dict[str, Tuple[Set[Any], List[int]]]
     marked_for_deletion = set()
-    for idx, typ in enumerate(types):
+    for idx, typ in enumerate(proper_types):
         if isinstance(typ, LiteralType):
             fullname = typ.fallback.type.fullname
             if typ.fallback.type.is_enum:
@@ -736,10 +738,10 @@ def try_contracting_literals_in_union(types: List[ProperType]) -> List[ProperTyp
                 indexes.append(idx)
                 if not literals:
                     first, *rest = indexes
-                    types[first] = typ.fallback
+                    proper_types[first] = typ.fallback
                     marked_for_deletion |= set(rest)
-    return list(itertools.compress(types, [(i not in marked_for_deletion)
-                                           for i in range(len(types))]))
+    return list(itertools.compress(proper_types, [(i not in marked_for_deletion)
+                                                  for i in range(len(proper_types))]))
 
 
 def coerce_to_literal(typ: Type) -> Type:
@@ -804,4 +806,15 @@ def custom_special_method(typ: Type, name: str, check_all: bool = False) -> bool
         # Avoid false positives in uncertain cases.
         return True
     # TODO: support other types (see ExpressionChecker.has_member())?
+    return False
+
+
+def is_redundant_literal_instance(general: ProperType, specific: ProperType) -> bool:
+    if not isinstance(general, Instance) or general.last_known_value is None:
+        return True
+    if isinstance(specific, Instance) and specific.last_known_value == general.last_known_value:
+        return True
+    if isinstance(specific, UninhabitedType):
+        return True
+
     return False
