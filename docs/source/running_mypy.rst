@@ -520,3 +520,17 @@ For example, if you have multiple projects that happen to be
 using the same set of work-in-progress stubs, it could be
 convenient to just have your ``MYPYPATH`` point to a single
 directory containing the stubs.
+
+Directories specific to Python 2 (@python2)
+*******************************************
+
+When type checking in Python 2 mode, mypy also looks for files under
+the ``@python2`` subdirectory of each ``MYPYPATH`` and ``mypy_path``
+entry, if the subdirectory exists. Files under the subdirectory take
+precedence over the parent directory. This can be used to provide
+separate Python 2 versions of stubs.
+
+.. note::
+
+    This does not need to be used (and cannot be used) with
+    :ref:`PEP 561 compliant stub packages <installed-packages>`.

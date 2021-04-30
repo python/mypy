@@ -2843,3 +2843,41 @@ __all__ = ['C']
 [file m4.pyi]
 class C: pass
 [builtins fixtures/list.pyi]
+
+[case testMypyPathAndPython2Dir_python2]
+# flags: --config-file tmp/mypy.ini
+from m import f
+from mm import g
+f(1)
+f('x')  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+g()
+g(1)  # E: Too many arguments for "g"
+
+[file xx/@python2/m.pyi]
+def f(x: int) -> None: ...
+
+[file xx/m.pyi]
+def f(x: str) -> None: ...
+
+[file xx/mm.pyi]
+def g() -> None: ...
+
+[file mypy.ini]
+\[mypy]
+mypy_path = tmp/xx
+
+[case testMypyPathAndPython2Dir]
+# flags: --config-file tmp/mypy.ini
+from m import f
+f(1)  # E: Argument 1 to "f" has incompatible type "int"; expected "str"
+f('x')
+
+[file xx/@python2/m.pyi]
+def f(x: int) -> None: ...
+
+[file xx/m.pyi]
+def f(x: str) -> None: ...
+
+[file mypy.ini]
+\[mypy]
+mypy_path = tmp/xx
