@@ -4614,7 +4614,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         enum_name = None
         target = get_proper_type(target)
-        if isinstance(target, LiteralType) and target.is_enum_literal():
+        if (isinstance(target, LiteralType) and
+                (target.is_enum_literal() or isinstance(target.value, bool))):
             enum_name = target.fallback.type.fullname
 
         target_type = [TypeRange(target, is_upper_bound=False)]
