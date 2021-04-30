@@ -79,7 +79,7 @@ from mypy.nodes import (
     ParamSpecExpr, MatchStmt
 )
 from mypy.patterns import (
-    AsPattern, OrPattern, CapturePattern, LiteralPattern, ValuePattern, SequencePattern,
+    AsPattern, OrPattern, ValuePattern, SequencePattern,
     StarredPattern, MappingPattern, ClassPattern
 
 )
@@ -3986,18 +3986,14 @@ class SemanticAnalyzer(NodeVisitor[None],
     #
 
     def visit_as_pattern(self, p: AsPattern) -> None:
-        p.pattern.accept(self)
-        p.name.accept(self)
+        if p.pattern is not None:
+            p.pattern.accept(self)
+        if p.name is not None:
+            self.analyze_lvalue(p.name)
 
     def visit_or_pattern(self, p: OrPattern) -> None:
         for pattern in p.patterns:
             pattern.accept(self)
-
-    def visit_capture_pattern(self, p: CapturePattern) -> None:
-        self.analyze_lvalue(p.name)
-
-    def visit_literal_pattern(self, p: LiteralPattern) -> None:
-        p.expr.accept(self)
 
     def visit_value_pattern(self, p: ValuePattern) -> None:
         p.expr.accept(self)
@@ -4007,7 +4003,8 @@ class SemanticAnalyzer(NodeVisitor[None],
             pattern.accept(self)
 
     def visit_starred_pattern(self, p: StarredPattern) -> None:
-        p.capture.accept(self)
+        if p.capture is not None:
+            self.analyze_lvalue(p.capture)
 
     def visit_mapping_pattern(self, p: MappingPattern) -> None:
         for key in p.keys:
@@ -4015,7 +4012,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         for value in p.values:
             value.accept(self)
         if p.rest is not None:
-            p.rest.accept(self)
+            self.analyze_lvalue(p.rest)
 
     def visit_class_pattern(self, p: ClassPattern) -> None:
         p.class_ref.accept(self)

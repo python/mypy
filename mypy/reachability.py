@@ -9,7 +9,7 @@ from mypy.nodes import (
     Import, ImportFrom, ImportAll, LITERAL_YES
 )
 from mypy.options import Options
-from mypy.patterns import Pattern, WildcardPattern, CapturePattern
+from mypy.patterns import Pattern, AsPattern, OrPattern
 from mypy.traverser import TraverserVisitor
 from mypy.literals import literal
 
@@ -135,7 +135,10 @@ def infer_condition_value(expr: Expression, options: Options) -> int:
 
 
 def infer_pattern_value(pattern: Pattern) -> int:
-    if isinstance(pattern, (WildcardPattern, CapturePattern)):
+    if isinstance(pattern, AsPattern) and pattern.pattern is None:
+        return ALWAYS_TRUE
+    elif isinstance(pattern, OrPattern) and \
+            any(infer_pattern_value(p) == ALWAYS_TRUE for p in pattern.patterns):
         return ALWAYS_TRUE
     else:
         return TRUTH_VALUE_UNKNOWN

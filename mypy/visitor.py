@@ -328,19 +328,11 @@ class PatternVisitor(Generic[T]):
         pass
 
     @abstractmethod
-    def visit_literal_pattern(self, o: 'mypy.patterns.LiteralPattern') -> T:
-        pass
-
-    @abstractmethod
-    def visit_capture_pattern(self, o: 'mypy.patterns.CapturePattern') -> T:
-        pass
-
-    @abstractmethod
-    def visit_wildcard_pattern(self, o: 'mypy.patterns.WildcardPattern') -> T:
-        pass
-
-    @abstractmethod
     def visit_value_pattern(self, o: 'mypy.patterns.ValuePattern') -> T:
+        pass
+
+    @abstractmethod
+    def visit_singleton_pattern(self, o: 'mypy.patterns.SingletonPattern') -> T:
         pass
 
     @abstractmethod
@@ -623,16 +615,10 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T], Pattern
     def visit_or_pattern(self, o: 'mypy.patterns.OrPattern') -> T:
         pass
 
-    def visit_literal_pattern(self, o: 'mypy.patterns.LiteralPattern') -> T:
-        pass
-
-    def visit_capture_pattern(self, o: 'mypy.patterns.CapturePattern') -> T:
-        pass
-
-    def visit_wildcard_pattern(self, o: 'mypy.patterns.WildcardPattern') -> T:
-        pass
-
     def visit_value_pattern(self, o: 'mypy.patterns.ValuePattern') -> T:
+        pass
+
+    def visit_singleton_pattern(self, o: 'mypy.patterns.SingletonPattern') -> T:
         pass
 
     def visit_sequence_pattern(self, o: 'mypy.patterns.SequencePattern') -> T:

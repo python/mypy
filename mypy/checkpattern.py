@@ -9,15 +9,15 @@ from mypy.literals import literal_hash
 from mypy.messages import MessageBuilder
 from mypy.nodes import Expression, ARG_POS, TypeAlias, TypeInfo, Var, NameExpr
 from mypy.patterns import (
-    Pattern, AsPattern, OrPattern, LiteralPattern, CapturePattern, WildcardPattern, ValuePattern,
-    SequencePattern, StarredPattern, MappingPattern, ClassPattern, MappingKeyPattern
+    Pattern, AsPattern, OrPattern, ValuePattern, SequencePattern, StarredPattern, MappingPattern,
+    ClassPattern, SingletonPattern
 )
 from mypy.plugin import Plugin
 from mypy.subtypes import is_subtype, find_member
 from mypy.typeops import try_getting_str_literals_from_type, make_simplified_union
 from mypy.types import (
     ProperType, AnyType, TypeOfAny, Instance, Type, UninhabitedType, get_proper_type,
-    TypedDictType, TupleType
+    TypedDictType, TupleType, NoneType
 )
 from mypy.typevars import fill_typevars
 from mypy.visitor import PatternVisitor
@@ -86,12 +86,18 @@ class PatternChecker(PatternVisitor[PatternType]):
         return result
 
     def visit_as_pattern(self, o: AsPattern) -> PatternType:
-        pattern_type = self.accept(o.pattern, self.type_context[-1])
-        typ, type_map = pattern_type
-        if typ is None:
-            return pattern_type
-        as_pattern_type = self.accept(o.name, typ)
-        self.update_type_map(type_map, as_pattern_type.captures)
+        current_type = self.type_context[-1]
+        if o.pattern is not None:
+            pattern_type = self.accept(o.pattern, current_type)
+            typ, type_map = pattern_type
+        else:
+            typ, type_map = current_type, {}
+
+        if typ is not None and o.name is not None:
+            typ = get_more_specific_type(typ, current_type)
+            if typ is not None:
+                type_map[o.name] = typ
+
         return PatternType(typ, type_map)
 
     def visit_or_pattern(self, o: OrPattern) -> PatternType:
@@ -140,21 +146,22 @@ class PatternChecker(PatternVisitor[PatternType]):
         union_type = make_simplified_union(types)
         return PatternType(union_type, captures)
 
-    def visit_literal_pattern(self, o: LiteralPattern) -> PatternType:
-        literal_type = self.chk.expr_checker.accept(o.expr)
-        typ = get_more_specific_type(literal_type, self.type_context[-1])
-        return PatternType(typ, {})
-
-    def visit_capture_pattern(self, o: CapturePattern) -> PatternType:
-        return PatternType(self.type_context[-1], {o.name: self.type_context[-1]})
-
-    def visit_wildcard_pattern(self, o: WildcardPattern) -> PatternType:
-        return PatternType(self.type_context[-1], {})
-
     def visit_value_pattern(self, o: ValuePattern) -> PatternType:
         typ = self.chk.expr_checker.accept(o.expr)
         specific_typ = get_more_specific_type(typ, self.type_context[-1])
         return PatternType(specific_typ, {})
+
+    def visit_singleton_pattern(self, o: SingletonPattern) -> PatternType:
+        value = o.value
+        if isinstance(value, bool):
+            typ = self.chk.expr_checker.infer_literal_expr_type(value, "builtins.bool")
+        elif value is None:
+            typ = NoneType()
+        else:
+            assert False
+
+        specific_type = get_more_specific_type(typ, self.type_context[-1])
+        return PatternType(specific_type, {})
 
     def visit_sequence_pattern(self, o: SequencePattern) -> PatternType:
         current_type = self.type_context[-1]
@@ -196,14 +203,10 @@ class PatternChecker(PatternVisitor[PatternType]):
             return None
 
     def visit_starred_pattern(self, o: StarredPattern) -> PatternType:
-        if isinstance(o.capture, CapturePattern):
+        captures = {}  # type: Dict[Expression, Type]
+        if o.capture is not None:
             list_type = self.chk.named_generic_type('builtins.list', [self.type_context[-1]])
-            pattern_type = self.accept(o.capture, list_type)
-            captures = pattern_type.captures
-        elif isinstance(o.capture, WildcardPattern):
-            captures = {}
-        else:
-            assert False
+            captures[o.capture] = list_type
         return PatternType(self.type_context[-1], captures)
 
     def visit_mapping_pattern(self, o: MappingPattern) -> PatternType:
@@ -223,9 +226,7 @@ class PatternChecker(PatternVisitor[PatternType]):
 
         if o.rest is not None:
             # TODO: Infer dict type args
-            rest_type = self.accept(o.rest, self.chk.named_type("builtins.dict"))
-            assert rest_type is not None
-            self.update_type_map(captures, rest_type.captures)
+            captures[o.rest] = self.chk.named_type("builtins.dict")
 
         if can_match:
             new_type = self.type_context[-1]  # type: Optional[Type]
@@ -236,14 +237,14 @@ class PatternChecker(PatternVisitor[PatternType]):
     def get_mapping_item_type(self,
                               pattern: MappingPattern,
                               mapping_type: Type,
-                              key_pattern: MappingKeyPattern
+                              key: Expression
                               ) -> Optional[Type]:
         local_errors = self.msg.clean_copy()
         local_errors.disable_count = 0
         mapping_type = get_proper_type(mapping_type)
         if isinstance(mapping_type, TypedDictType):
             result = self.chk.expr_checker.visit_typeddict_index_expr(mapping_type,
-                                                                      key_pattern.expr,
+                                                                      key,
                                                                       local_errors=local_errors
                                                                       )  # type: Optional[Type]
             # If we can't determine the type statically fall back to treating it as a normal
@@ -253,7 +254,7 @@ class PatternChecker(PatternVisitor[PatternType]):
                 local_errors.disable_count = 0
                 result = self.get_simple_mapping_item_type(pattern,
                                                            mapping_type,
-                                                           key_pattern,
+                                                           key,
                                                            local_errors)
 
                 if local_errors.is_errors():
@@ -261,19 +262,19 @@ class PatternChecker(PatternVisitor[PatternType]):
         else:
             result = self.get_simple_mapping_item_type(pattern,
                                                        mapping_type,
-                                                       key_pattern,
+                                                       key,
                                                        local_errors)
         return result
 
     def get_simple_mapping_item_type(self,
                                      pattern: MappingPattern,
                                      mapping_type: Type,
-                                     key_pattern: MappingKeyPattern,
+                                     key: Expression,
                                      local_errors: MessageBuilder
                                      ) -> Type:
         result, _ = self.chk.expr_checker.check_method_call_by_name('__getitem__',
                                                                     mapping_type,
-                                                                    [key_pattern.expr],
+                                                                    [key],
                                                                     [ARG_POS],
                                                                     pattern,
                                                                     local_errors=local_errors)

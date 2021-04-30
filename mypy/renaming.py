@@ -6,7 +6,7 @@ from mypy.nodes import (
     WhileStmt, ForStmt, BreakStmt, ContinueStmt, TryStmt, WithStmt, MatchStmt, StarExpr,
     ImportFrom, MemberExpr, IndexExpr, Import, ClassDef
 )
-from mypy.patterns import CapturePattern
+from mypy.patterns import AsPattern
 from mypy.traverser import TraverserVisitor
 
 # Scope kinds
@@ -186,8 +186,9 @@ class VariableRenameVisitor(TraverserVisitor):
                 stmt.accept(self)
             self.leave_block()
 
-    def visit_capture_pattern(self, p: CapturePattern) -> None:
-        self.analyze_lvalue(p.name)
+    def visit_capture_pattern(self, p: AsPattern) -> None:
+        if p.name is not None:
+            self.analyze_lvalue(p.name)
 
     def analyze_lvalue(self, lvalue: Lvalue, is_nested: bool = False) -> None:
         """Process assignment; in particular, keep track of (re)defined names.

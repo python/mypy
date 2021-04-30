@@ -3,8 +3,10 @@
 from typing import List
 from mypy_extensions import mypyc_attr
 
-from mypy.patterns import AsPattern, OrPattern, CapturePattern, ValuePattern, SequencePattern, \
-    StarredPattern, MappingPattern, ClassPattern, LiteralPattern
+from mypy.patterns import (
+    AsPattern, OrPattern, ValuePattern, SequencePattern, StarredPattern, MappingPattern,
+    ClassPattern
+)
 from mypy.visitor import NodeVisitor
 from mypy.nodes import (
     Block, MypyFile, FuncBase, FuncItem, CallExpr, ClassDef, Decorator, FuncDef,
@@ -291,17 +293,14 @@ class TraverserVisitor(NodeVisitor[None]):
         o.call.accept(self)
 
     def visit_as_pattern(self, o: AsPattern) -> None:
-        o.pattern.accept(self)
+        if o.pattern is not None:
+            o.pattern.accept(self)
+        if o.name is not None:
+            o.name.accept(self)
 
     def visit_or_pattern(self, o: OrPattern) -> None:
         for p in o.patterns:
             p.accept(self)
-
-    def visit_literal_pattern(self, o: LiteralPattern) -> None:
-        o.expr.accept(self)
-
-    def visit_capture_pattern(self, o: CapturePattern) -> None:
-        o.name.accept(self)
 
     def visit_value_pattern(self, o: ValuePattern) -> None:
         o.expr.accept(self)
@@ -311,7 +310,8 @@ class TraverserVisitor(NodeVisitor[None]):
             p.accept(self)
 
     def visit_starred_patten(self, o: StarredPattern) -> None:
-        o.capture.accept(self)
+        if o.capture is not None:
+            o.capture.accept(self)
 
     def visit_mapping_pattern(self, o: MappingPattern) -> None:
         for key in o.keys:

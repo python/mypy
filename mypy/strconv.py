@@ -554,20 +554,11 @@ class StrConv(NodeVisitor[str]):
     def visit_or_pattern(self, o: 'mypy.patterns.OrPattern') -> str:
         return self.dump(o.patterns, o)
 
-    def visit_literal_pattern(self, o: 'mypy.patterns.LiteralPattern') -> str:
-        value = o.value
-        if isinstance(o.value, str):
-            value = "'" + self.str_repr(o.value) + "'"
-        return self.dump([value, o.expr], o)
-
-    def visit_capture_pattern(self, o: 'mypy.patterns.CapturePattern') -> str:
-        return self.dump([o.name], o)
-
-    def visit_wildcard_pattern(self, o: 'mypy.patterns.WildcardPattern') -> str:
-        return self.dump([], o)
-
     def visit_value_pattern(self, o: 'mypy.patterns.ValuePattern') -> str:
         return self.dump([o.expr], o)
+
+    def visit_singleton_pattern(self, o: 'mypy.patterns.SingletonPattern') -> str:
+        return self.dump([o.value], o)
 
     def visit_sequence_pattern(self, o: 'mypy.patterns.SequencePattern') -> str:
         return self.dump(o.patterns, o)

@@ -7,7 +7,6 @@ from typing import (
     Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List, overload
 )
 
-from mypy_extensions import trait
 from typing_extensions import Final, Literal, overload
 
 from mypy.sharedparse import (
@@ -32,8 +31,8 @@ from mypy.nodes import (
     FakeInfo,
 )
 from mypy.patterns import (
-    AsPattern, OrPattern, LiteralPattern, CapturePattern, WildcardPattern, ValuePattern,
-    SequencePattern, StarredPattern, MappingPattern, MappingKeyPattern, ClassPattern, Pattern
+    AsPattern, OrPattern, ValuePattern, SequencePattern, StarredPattern, MappingPattern,
+    ClassPattern, SingletonPattern
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType, CallableArgument,
@@ -113,10 +112,22 @@ try:
 
     if sys.version_info >= (3, 10):
         Match = ast3.Match
+        MatchValue = ast3.MatchValue
+        MatchSingleton = ast3.MatchSingleton
+        MatchSequence = ast3.MatchSequence
+        MatchStar = ast3.MatchStar
+        MatchMapping = ast3.MatchMapping
+        MatchClass = ast3.MatchClass
         MatchAs = ast3.MatchAs
         MatchOr = ast3.MatchOr
     else:
         Match = Any
+        MatchValue = Any
+        MatchSingleton = Any
+        MatchSequence = Any
+        MatchStar = Any
+        MatchMapping = Any
+        MatchClass = Any
         MatchAs = Any
         MatchOr = Any
 except ImportError:
@@ -152,6 +163,7 @@ def parse(source: Union[str, bytes],
           module: Optional[str],
           errors: Optional[Errors] = None,
           options: Optional[Options] = None) -> MypyFile:
+
     """Parse a source file, without doing any semantic analysis.
 
     Return the parse tree. If errors is not provided, raise ParseError
@@ -302,13 +314,34 @@ def is_no_type_check_decorator(expr: ast3.expr) -> bool:
     return False
 
 
-@trait
-class Converter:
-    def __init__(self, errors: Optional[Errors]):
+class ASTConverter:
+    def __init__(self,
+                 options: Options,
+                 is_stub: bool,
+                 errors: Errors) -> None:
+        # 'C' for class, 'F' for function
+        self.class_and_function_stack = []  # type: List[Literal['C', 'F']]
+        self.imports = []  # type: List[ImportBase]
+
+        self.options = options
+        self.is_stub = is_stub
         self.errors = errors
+
+        self.type_ignores = {}  # type: Dict[int, List[str]]
 
         # Cache of visit_X methods keyed by type of visited object
         self.visitor_cache = {}  # type: Dict[type, Callable[[Optional[AST]], Any]]
+
+    def note(self, msg: str, line: int, column: int) -> None:
+        self.errors.report(line, column, msg, severity='note', code=codes.SYNTAX)
+
+    def fail(self,
+             msg: str,
+             line: int,
+             column: int,
+             blocker: bool = True) -> None:
+        if blocker or not self.options.ignore_errors:
+            self.errors.report(line, column, msg, blocker=blocker, code=codes.SYNTAX)
 
     def visit(self, node: Optional[AST]) -> Any:
         if node is None:
@@ -326,45 +359,6 @@ class Converter:
         node.column = n.col_offset
         node.end_line = getattr(n, "end_lineno", None) if isinstance(n, ast3.expr) else None
         return node
-
-    def note(self, msg: str, line: int, column: int) -> None:
-        if self.errors is not None:
-            self.errors.report(line, column, msg, severity='note', code=codes.SYNTAX)
-
-    def fail(self,
-             msg: str,
-             line: int,
-             column: int,
-             blocker: bool = True) -> None:
-        if self.errors is not None:
-            self.errors.report(line, column, msg, blocker=blocker, code=codes.SYNTAX)
-
-
-class ASTConverter(Converter):
-    # Errors is optional is superclass, but not here
-    errors = None  # type: Errors
-
-    def __init__(self,
-                 options: Options,
-                 is_stub: bool,
-                 errors: Errors) -> None:
-        super().__init__(errors)
-        # 'C' for class, 'F' for function
-        self.class_and_function_stack = []  # type: List[Literal['C', 'F']]
-        self.imports = []  # type: List[ImportBase]
-
-        self.options = options
-        self.is_stub = is_stub
-
-        self.type_ignores = {}  # type: Dict[int, List[str]]
-
-    def fail(self,
-             msg: str,
-             line: int,
-             column: int,
-             blocker: bool = True) -> None:
-        if blocker or not self.options.ignore_errors:
-            super().fail(msg, line, column, blocker)
 
     def translate_opt_expr_list(self, l: Sequence[Optional[AST]]) -> List[Optional[Expression]]:
         res = []  # type: List[Optional[Expression]]
@@ -1306,32 +1300,66 @@ class ASTConverter(Converter):
 
     # Match(expr subject, match_case* cases) # python 3.10 and later
     def visit_Match(self, n: Match) -> MatchStmt:
-        pattern_converter = PatternConverter(self.options, self.errors)
         node = MatchStmt(self.visit(n.subject),
-                         [pattern_converter.visit(c.pattern) for c in n.cases],
+                         [self.visit(c.pattern) for c in n.cases],
                          [self.visit(c.guard) for c in n.cases],
                          [self.as_required_block(c.body, n.lineno) for c in n.cases])
         return self.set_line(node, n)
 
+    def visit_MatchValue(self, n: MatchValue) -> ValuePattern:
+        node = ValuePattern(self.visit(n.value))
+        return self.set_line(node, n)
 
-class PatternConverter(Converter):
-    # Errors is optional is superclass, but not here
-    errors = None  # type: Errors
+    def visit_MatchSingleton(self, n: MatchSingleton) -> SingletonPattern:
+        node = SingletonPattern(n.value)
+        return self.set_line(node, n)
 
-    has_sequence = False  # type: bool
-    has_mapping = False  # type: bool
+    def visit_MatchSequence(self, n: MatchSequence) -> SequencePattern:
+        patterns = [self.visit(p) for p in n.patterns]
+        stars = [p for p in patterns if isinstance(p, StarredPattern)]
+        assert len(stars) < 2
 
-    def __init__(self, options: Options, errors: Errors) -> None:
-        super().__init__(errors)
+        node = SequencePattern(patterns)
+        return self.set_line(node, n)
 
-        self.options = options
+    def visit_MatchStar(self, n: MatchStar) -> StarredPattern:
+        if n.name is None:
+            node = StarredPattern(None)
+        else:
+            node = StarredPattern(NameExpr(n.name))
 
-    def visit(self, node: Optional[AST]) -> Pattern:
-        return super().visit(node)
+        return self.set_line(node, n)
+
+    def visit_MatchMapping(self, n: MatchMapping) -> MappingPattern:
+        keys = [self.visit(k) for k in n.keys]
+        values = [self.visit(v) for v in n.patterns]
+
+        if n.rest is None:
+            rest = None
+        else:
+            rest = NameExpr(n.rest)
+
+        node = MappingPattern(keys, values, rest)
+        return self.set_line(node, n)
+
+    def visit_MatchClass(self, n: MatchClass) -> ClassPattern:
+        class_ref = self.visit(n.cls)
+        assert isinstance(class_ref, RefExpr)
+        positionals = [self.visit(p) for p in n.patterns]
+        keyword_keys = n.kwd_attrs
+        keyword_values = [self.visit(p) for p in n.kwd_patterns]
+
+        node = ClassPattern(class_ref, positionals, keyword_keys, keyword_values)
+        return self.set_line(node, n)
 
     # MatchAs(expr pattern, identifier name)
     def visit_MatchAs(self, n: MatchAs) -> AsPattern:
-        node = AsPattern(self.visit(n.pattern), self.set_line(CapturePattern(NameExpr(n.name)), n))
+        if n.name is None:
+            name = None
+        else:
+            name = NameExpr(n.name)
+            name = self.set_line(name, n)
+        node = AsPattern(self.visit(n.pattern), name)
         return self.set_line(node, n)
 
     # MatchOr(expr* pattern)
@@ -1339,153 +1367,16 @@ class PatternConverter(Converter):
         node = OrPattern([self.visit(pattern) for pattern in n.patterns])
         return self.set_line(node, n)
 
-    # Constant(constant value)
-    def visit_Constant(self, n: Constant) -> LiteralPattern:
-        val = n.value
-        if val is None or isinstance(val, (bool, int, float, complex, str, bytes)):
-            node = LiteralPattern(val, ASTConverter(self.options, False, self.errors).visit(n))
-        else:
-            raise RuntimeError("Pattern not implemented for " + str(type(val)))
-        return self.set_line(node, n)
 
-    # UnaryOp(unaryop op, expr operand)
-    def visit_UnaryOp(self, n: ast3.UnaryOp) -> LiteralPattern:
-        # Constant is Any on python < 3.8, but this code is only reachable on python >= 3.10
-        if not isinstance(n.operand, Constant):  # type: ignore[misc]
-            raise RuntimeError("Pattern not implemented for " + str(type(n.operand)))
-
-        value = self.assert_numeric_constant(n.operand)
-
-        if isinstance(n.op, ast3.UAdd):
-            node = LiteralPattern(value, ASTConverter(self.options, False, self.errors).visit(n))
-        elif isinstance(n.op, ast3.USub):
-            node = LiteralPattern(-value, ASTConverter(self.options, False, self.errors).visit(n))
-        else:
-            raise RuntimeError("Pattern not implemented for " + str(type(n.op)))
-
-        return self.set_line(node, n)
-
-    # BinOp(expr left, operator op, expr right)
-    def visit_BinOp(self, n: ast3.BinOp) -> LiteralPattern:
-        if isinstance(n.left, UnaryOp) and isinstance(n.left.op, ast3.USub):
-            left_val = -1 * self.assert_numeric_constant(n.left.operand)
-        else:
-            left_val = self.assert_numeric_constant(n.left)
-        right_val = self.assert_numeric_constant(n.right)
-
-        if left_val.imag != 0 or right_val.real:
-            raise RuntimeError("Unsupported pattern")
-
-        if isinstance(n.op, ast3.Add):
-            node = LiteralPattern(left_val + right_val,
-                                  ASTConverter(self.options, False, self.errors).visit(n))
-        elif isinstance(n.op, ast3.Sub):
-            node = LiteralPattern(left_val - right_val,
-                                  ASTConverter(self.options, False, self.errors).visit(n))
-        else:
-            raise RuntimeError("Unsupported pattern")
-
-        return self.set_line(node, n)
-
-    def assert_numeric_constant(self, n: ast3.AST) -> Union[int, float, complex]:
-        # Constant is Any on python < 3.8, but this code is only reachable on python >= 3.10
-        if isinstance(n, Constant):  # type: ignore[misc]
-            val = n.value
-            if isinstance(val, (int, float, complex)):
-                return val
-        raise RuntimeError("Only numeric literals can be used with '+' and '-'. Found "
-                           + str(type(n)))
-
-    # Name(identifier id, expr_context ctx)
-    def visit_Name(self, n: ast3.Name) -> Union[WildcardPattern, CapturePattern]:
-        node = None  # type: Optional[Union[WildcardPattern, CapturePattern]]
-        if n.id == '_':
-            node = WildcardPattern()
-        else:
-            node = CapturePattern(ASTConverter(self.options, False, self.errors).visit_Name(n))
-
-        return self.set_line(node, n)
-
-    # Attribute(expr value, identifier attr, expr_context ctx)
-    def visit_Attribute(self, n: ast3.Attribute) -> ValuePattern:
-        # We can directly call `visit_Attribute`, as we know the type of n
-        node = ASTConverter(self.options, False, self.errors).visit_Attribute(n)
-        if not isinstance(node, MemberExpr):
-            raise RuntimeError("Unsupported pattern")
-        return self.set_line(ValuePattern(node), n)
-
-    # List(expr* elts, expr_context ctx)
-    def visit_List(self, n: ast3.List) -> SequencePattern:
-        return self.make_sequence(n)
-
-    # Tuple(expr* elts, expr_context ctx)
-    def visit_Tuple(self, n: ast3.Tuple) -> SequencePattern:
-        return self.make_sequence(n)
-
-    def make_sequence(self, n: Union[ast3.List, ast3.Tuple]) -> SequencePattern:
-        patterns = [self.visit(p) for p in n.elts]
-        stars = [p for p in patterns if isinstance(p, StarredPattern)]
-        if len(stars) >= 2:
-            raise RuntimeError("Unsupported pattern")
-
-        node = SequencePattern(patterns)
-        return self.set_line(node, n)
-
-    # Starred(expr value, expr_context ctx)
-    def visit_Starred(self, n: ast3.Starred) -> StarredPattern:
-        expr = n.value
-        if not isinstance(expr, Name):
-            raise RuntimeError("Unsupported Pattern")
-        node = StarredPattern(self.visit_Name(expr))
-
-        return self.set_line(node, n)
-
-    # Dict(expr* keys, expr* values)
-    def visit_Dict(self, n: ast3.Dict) -> MappingPattern:
-        keys = [self.visit(k) for k in n.keys]
-        values = [self.visit(v) for v in n.values]
-
-        if keys[-1] is None:
-            rest = values.pop()
-            keys.pop()
-        else:
-            rest = None
-
-        checked_keys = self.assert_key_patterns(keys)
-
-        node = MappingPattern(checked_keys, values, rest)
-        return self.set_line(node, n)
-
-    def assert_key_patterns(self, keys: List[Pattern]) -> List[MappingKeyPattern]:
-        for key in keys:
-            if not isinstance(key, MappingKeyPattern):
-                raise RuntimeError("Unsupported Pattern")
-
-        return cast(List[MappingKeyPattern], keys)
-
-    # Call(expr func, expr* args, keyword* keywords)
-    def visit_Call(self, n: ast3.Call) -> ClassPattern:
-        def raise_if_none(value: Optional[str]) -> str:
-            if value is None:
-                raise RuntimeError("Unsupported Pattern")
-            else:
-                return value
-
-        class_ref = ASTConverter(self.options, False, self.errors).visit(n.func)
-        if not isinstance(class_ref, RefExpr):
-            raise RuntimeError("Unsupported Pattern")
-        positionals = [self.visit(p) for p in n.args]
-        keyword_keys = [raise_if_none(keyword.arg) for keyword in n.keywords]
-        keyword_values = [self.visit(keyword.value) for keyword in n.keywords]
-
-        node = ClassPattern(class_ref, positionals, keyword_keys, keyword_values)
-        return self.set_line(node, n)
-
-
-class TypeConverter(Converter):
-    def __init__(self, errors: Optional[Errors], line: int = -1, override_column: int = -1,
-                 assume_str_is_unicode: bool = True, is_evaluated: bool = True) -> None:
-        super().__init__(errors)
+class TypeConverter:
+    def __init__(self,
+                 errors: Optional[Errors],
+                 line: int = -1,
+                 override_column: int = -1,
+                 assume_str_is_unicode: bool = True,
+                 is_evaluated: bool = True,
+                 ) -> None:
+        self.errors = errors
         self.line = line
         self.override_column = override_column
         self.node_stack = []  # type: List[AST]
@@ -1547,6 +1438,14 @@ class TypeConverter(Converter):
         if len(self.node_stack) < 2:
             return None
         return self.node_stack[-2]
+
+    def fail(self, msg: str, line: int, column: int) -> None:
+        if self.errors:
+            self.errors.report(line, column, msg, blocker=True, code=codes.SYNTAX)
+
+    def note(self, msg: str, line: int, column: int) -> None:
+        if self.errors:
+            self.errors.report(line, column, msg, severity='note', code=codes.SYNTAX)
 
     def translate_expr_list(self, l: Sequence[ast3.expr]) -> List[Type]:
         return [self.visit(e) for e in l]
