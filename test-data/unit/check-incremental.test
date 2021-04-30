@@ -1812,6 +1812,30 @@ main:3: note: Revealed type is "builtins.int"
 [out2]
 main:3: note: Revealed type is "Any"
 
+
+[case testIncrementalFollowImportsVariablePyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+import a
+reveal_type(a.x)
+
+[file a.py]
+x = 0
+
+[file pyproject.toml]
+\[tool.mypy]
+follow_imports = 'normal'
+
+[file pyproject.toml.2]
+\[tool.mypy]
+follow_imports = 'skip'
+
+[out1]
+main:3: note: Revealed type is "builtins.int"
+
+[out2]
+main:3: note: Revealed type is "Any"
+
+
 [case testIncrementalNamedTupleInMethod]
 from ntcrash import nope
 [file ntcrash.py]
