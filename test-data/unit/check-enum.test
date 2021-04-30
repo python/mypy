@@ -1333,3 +1333,19 @@ def f(x: Foo):
     reveal_type(x) # N: Revealed type is "Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]"
 
 [builtins fixtures/bool.pyi]
+
+[case testEnumTypeCompatibleWithLiteralUnion]
+from enum import Enum
+from typing_extensions import Literal
+
+class E(Enum):
+    A = 1
+    B = 2
+    C = 3
+
+e: E
+a: Literal[E.A, E.B, E.C] = e
+b: Literal[E.A, E.B] = e  # E: Incompatible types in assignment (expression has type "E", variable has type "Union[Literal[E.A], Literal[E.B]]")
+c: Literal[E.A, E.C] = e  # E: Incompatible types in assignment (expression has type "E", variable has type "Union[Literal[E.A], Literal[E.C]]")
+b = a  # E: Incompatible types in assignment (expression has type "Union[Literal[E.A], Literal[E.B], Literal[E.C]]", variable has type "Union[Literal[E.A], Literal[E.B]]")
+[builtins fixtures/bool.pyi]
