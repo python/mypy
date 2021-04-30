@@ -699,7 +699,7 @@ def is_singleton_type(typ: Type) -> bool:
     )
 
 
-def try_expanding_enum_to_union(typ: Type, target_fullname: str) -> ProperType:
+def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperType:
     """Attempts to recursively expand any enum Instances with the given target_fullname
     into a Union of all of its component LiteralTypes.
 
@@ -721,7 +721,7 @@ def try_expanding_enum_to_union(typ: Type, target_fullname: str) -> ProperType:
     typ = get_proper_type(typ)
 
     if isinstance(typ, UnionType):
-        items = [try_expanding_enum_to_union(item, target_fullname) for item in typ.items]
+        items = [try_expanding_sum_type_to_union(item, target_fullname) for item in typ.items]
         return make_simplified_union(items, contract_literals=False)
     elif isinstance(typ, Instance) and typ.type.fullname == target_fullname:
         if typ.type.is_enum:

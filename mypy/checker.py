@@ -50,7 +50,7 @@ from mypy.typeops import (
     map_type_from_supertype, bind_self, erase_to_bound, make_simplified_union,
     erase_def_to_union_or_bound, erase_to_union_or_bound, coerce_to_literal,
     try_getting_str_literals_from_type, try_getting_int_literals_from_type,
-    tuple_fallback, is_singleton_type, try_expanding_enum_to_union,
+    tuple_fallback, is_singleton_type, try_expanding_sum_type_to_union,
     true_only, false_only, function_type, get_type_vars, custom_special_method,
     is_literal_type_like,
 )
@@ -4612,11 +4612,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if singleton_index == -1:
             singleton_index = possible_target_indices[-1]
 
-        enum_name = None
+        sum_type_name = None
         target = get_proper_type(target)
         if (isinstance(target, LiteralType) and
                 (target.is_enum_literal() or isinstance(target.value, bool))):
-            enum_name = target.fallback.type.fullname
+            sum_type_name = target.fallback.type.fullname
 
         target_type = [TypeRange(target, is_upper_bound=False)]
 
@@ -4637,8 +4637,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             expr = operands[i]
             expr_type = coerce_to_literal(operand_types[i])
 
-            if enum_name is not None:
-                expr_type = try_expanding_enum_to_union(expr_type, enum_name)
+            if sum_type_name is not None:
+                expr_type = try_expanding_sum_type_to_union(expr_type, sum_type_name)
 
             # We intentionally use 'conditional_type_map' directly here instead of
             # 'self.conditional_type_map_with_intersection': we only compute ad-hoc
