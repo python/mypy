@@ -1,6 +1,7 @@
 import sys
 from _typeshed import AnyPath
-from typing import Any, Callable, Dict, Optional, TypeVar, Union
+from types import CodeType
+from typing import Any, Callable, Dict, Optional, Tuple, TypeVar, Union
 
 def run(statement: str, filename: Optional[str] = ..., sort: Union[str, int] = ...) -> None: ...
 def runctx(
@@ -9,8 +10,10 @@ def runctx(
 
 _SelfT = TypeVar("_SelfT", bound=Profile)
 _T = TypeVar("_T")
+_Label = Tuple[str, int, str]
 
 class Profile:
+    stats: dict[_Label, tuple[int, int, int, int, dict[_Label, tuple[int, int, int, int]]]]  # undocumented
     def __init__(
         self, timer: Callable[[], float] = ..., timeunit: float = ..., subcalls: bool = ..., builtins: bool = ...
     ) -> None: ...
@@ -26,3 +29,5 @@ class Profile:
     if sys.version_info >= (3, 8):
         def __enter__(self: _SelfT) -> _SelfT: ...
         def __exit__(self, *exc_info: Any) -> None: ...
+
+def label(code: Union[str, CodeType]) -> _Label: ...  # undocumented

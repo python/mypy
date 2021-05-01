@@ -153,11 +153,6 @@ if sys.platform != "win32":
 TMP_MAX: int  # Undocumented, but used by tempfile
 
 # ----- os classes (structures) -----
-if sys.version_info >= (3, 6):
-    from builtins import _PathLike
-
-    PathLike = _PathLike  # See comment in builtins
-
 class _StatVFS(NamedTuple):
     f_bsize: int
     f_frsize: int

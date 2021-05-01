@@ -326,7 +326,7 @@ main:2: error: Name "y" is not defined
 # Error messages differ with the new analyzer
 
 import xab  # E: Cannot find implementation or library stub for module named "xab"  # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-def xab(): pass  # E: Name 'xab' already defined (possibly by an import)
+def xab(): pass  # E: Name "xab" already defined (possibly by an import)
 
 [case testAccessingUnknownModuleFromOtherModule]
 import x
@@ -1044,7 +1044,7 @@ from foo import B
 class C(B):
     pass
 [out]
-tmp/bar.py:1: error: Module 'foo' has no attribute 'B'
+tmp/bar.py:1: error: Module "foo" has no attribute "B"
 
 [case testImportSuppressedWhileAlmostSilent]
 # cmd: mypy -m main
@@ -1746,7 +1746,7 @@ else:
 if bool():
     z = m
 else:
-    z = n  # E: Cannot assign multiple modules to name 'z' without explicit 'types.ModuleType' annotation
+    z = n  # E: Cannot assign multiple modules to name "z" without explicit "types.ModuleType" annotation
 
 [file m.py]
 a = 'foo'
@@ -1782,13 +1782,13 @@ import m, n, o
 
 x = m
 if int():
-    x = n  # E: Cannot assign multiple modules to name 'x' without explicit 'types.ModuleType' annotation
+    x = n  # E: Cannot assign multiple modules to name "x" without explicit "types.ModuleType" annotation
 if int():
-    x = o  # E: Cannot assign multiple modules to name 'x' without explicit 'types.ModuleType' annotation
+    x = o  # E: Cannot assign multiple modules to name "x" without explicit "types.ModuleType" annotation
 
 y = o
 if int():
-    y, z = m, n  # E: Cannot assign multiple modules to name 'y' without explicit 'types.ModuleType' annotation
+    y, z = m, n  # E: Cannot assign multiple modules to name "y" without explicit "types.ModuleType" annotation
 
 xx = m
 if int():
@@ -1808,7 +1808,7 @@ a = 'bar'
 
 [case testModuleAliasToOtherModule]
 import m, n
-m = n  # E: Cannot assign multiple modules to name 'm' without explicit 'types.ModuleType' annotation
+m = n  # E: Cannot assign multiple modules to name "m" without explicit "types.ModuleType" annotation
 
 [file m.py]
 
@@ -1817,8 +1817,8 @@ m = n  # E: Cannot assign multiple modules to name 'm' without explicit 'types.M
 [builtins fixtures/module.pyi]
 
 [case testNoReExportFromStubs]
-from stub import Iterable  # E: Module 'stub' has no attribute 'Iterable'
-from stub import D  # E: Module 'stub' has no attribute 'D'
+from stub import Iterable  # E: Module "stub" has no attribute "Iterable"
+from stub import D  # E: Module "stub" has no attribute "D"
 from stub import C
 
 c = C()
@@ -1912,7 +1912,7 @@ class C:
 
 [case testNoReExportChildStubs]
 import mod
-from mod import C, D  # E: Module 'mod' has no attribute 'C'
+from mod import C, D  # E: Module "mod" has no attribute "C"
 
 reveal_type(mod.x)  # N: Revealed type is "mod.submod.C"
 mod.C  # E: Module has no attribute "C"
@@ -1930,7 +1930,7 @@ class D:
 [builtins fixtures/module.pyi]
 
 [case testNoReExportNestedStub]
-from stub import substub  # E: Module 'stub' has no attribute 'substub'
+from stub import substub  # E: Module "stub" has no attribute "substub"
 
 [file stub.pyi]
 import substub
@@ -1958,7 +1958,7 @@ import othermod
 alias = mod.submod
 reveal_type(alias.whatever('/'))  # N: Revealed type is "builtins.str*"
 if int():
-    alias = othermod  # E: Cannot assign multiple modules to name 'alias' without explicit 'types.ModuleType' annotation
+    alias = othermod  # E: Cannot assign multiple modules to name "alias" without explicit "types.ModuleType" annotation
 [file mod.py]
 import submod
 [file submod.py]
@@ -2074,7 +2074,7 @@ def __getattr__(name: str) -> int: ...
 
 [case testModuleLevelGetattrImportFromNotStub36]
 # flags: --python-version 3.6
-from non_stub import name  # E: Module 'non_stub' has no attribute 'name'
+from non_stub import name  # E: Module "non_stub" has no attribute "name"
 reveal_type(name)  # N: Revealed type is "Any"
 
 [file non_stub.py]
@@ -2110,7 +2110,7 @@ def __getattr__(name: str) -> Any: ...
 from has_attr import name
 from has_attr import name
 from has_attr import x
-from has_attr import y as x  # E: Name 'x' already defined (possibly by an import)
+from has_attr import y as x  # E: Name "x" already defined (possibly by an import)
 reveal_type(name)  # N: Revealed type is "builtins.int"
 
 [file has_attr.pyi]
@@ -2814,10 +2814,10 @@ CustomDict = TypedDict(
 [builtins fixtures/tuple.pyi]
 
 [case testNoReExportFromMissingStubs]
-from stub import a  # E: Module 'stub' has no attribute 'a'
+from stub import a  # E: Module "stub" has no attribute "a"
 from stub import b
-from stub import c  # E: Module 'stub' has no attribute 'c'
-from stub import d  # E: Module 'stub' has no attribute 'd'
+from stub import c  # E: Module "stub" has no attribute "c"
+from stub import d  # E: Module "stub" has no attribute "d"
 
 [file stub.pyi]
 from mystery import a, b as b, c as d
@@ -2825,3 +2825,59 @@ from mystery import a, b as b, c as d
 [out]
 tmp/stub.pyi:1: error: Cannot find implementation or library stub for module named "mystery"
 tmp/stub.pyi:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+[case testReExportAllInStub]
+from m1 import C
+from m1 import D  # E: Module "m1" has no attribute "D"
+C()
+C(1)  # E: Too many arguments for "C"
+[file m1.pyi]
+from m2 import *
+[file m2.pyi]
+from m3 import *
+from m3 import __all__ as __all__
+class D: pass
+[file m3.pyi]
+from m4 import C as C
+__all__ = ['C']
+[file m4.pyi]
+class C: pass
+[builtins fixtures/list.pyi]
+
+[case testMypyPathAndPython2Dir_python2]
+# flags: --config-file tmp/mypy.ini
+from m import f
+from mm import g
+f(1)
+f('x')  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+g()
+g(1)  # E: Too many arguments for "g"
+
+[file xx/@python2/m.pyi]
+def f(x: int) -> None: ...
+
+[file xx/m.pyi]
+def f(x: str) -> None: ...
+
+[file xx/mm.pyi]
+def g() -> None: ...
+
+[file mypy.ini]
+\[mypy]
+mypy_path = tmp/xx
+
+[case testMypyPathAndPython2Dir]
+# flags: --config-file tmp/mypy.ini
+from m import f
+f(1)  # E: Argument 1 to "f" has incompatible type "int"; expected "str"
+f('x')
+
+[file xx/@python2/m.pyi]
+def f(x: int) -> None: ...
+
+[file xx/m.pyi]
+def f(x: str) -> None: ...
+
+[file mypy.ini]
+\[mypy]
+mypy_path = tmp/xx

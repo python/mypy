@@ -42,6 +42,11 @@ S = TypeVar('S')
 # to silence the protocol variance checks. Maybe it is better to use type: ignore?
 
 @runtime_checkable
+class Hashable(Protocol, metaclass=ABCMeta):
+    @abstractmethod
+    def __hash__(self) -> int: pass
+
+@runtime_checkable
 class Container(Protocol[T_co]):
     @abstractmethod
     # Use int because bool isn't in the default test builtins

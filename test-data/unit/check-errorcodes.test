@@ -6,8 +6,8 @@
 import m
 m.x  # E: Module has no attribute "x"  [attr-defined]
 'x'.foobar  # E: "str" has no attribute "foobar"  [attr-defined]
-from m import xx  # E: Module 'm' has no attribute 'xx'  [attr-defined]
-from m import think  # E: Module 'm' has no attribute 'think'; maybe "thing"?  [attr-defined]
+from m import xx  # E: Module "m" has no attribute "xx"  [attr-defined]
+from m import think  # E: Module "m" has no attribute "think"; maybe "thing"?  [attr-defined]
 for x in 1:  # E: "int" has no attribute "__iter__" (not iterable)  [attr-defined]
     pass
 [file m.py]
@@ -454,9 +454,9 @@ class E(TypedDict):
     y: int
 
 a: D = {'x': ''}  # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")  [typeddict-item]
-b: D = {'y': ''}  # E: Extra key 'y' for TypedDict "D"  [typeddict-item]
+b: D = {'y': ''}  # E: Extra key "y" for TypedDict "D"  [typeddict-item]
 c = D(x=0) if int() else E(x=0, y=0)
-c = {}  # E: Expected TypedDict key 'x' but found no keys  [typeddict-item]
+c = {}  # E: Expected TypedDict key "x" but found no keys  [typeddict-item]
 [builtins fixtures/dict.pyi]
 
 [case testErrorCodeCannotDetermineType]
@@ -504,17 +504,17 @@ from defusedxml import xyz  # E: Cannot find implementation or library stub for 
 from nonexistent import foobar  # E: Cannot find implementation or library stub for module named "nonexistent"  [import]
 import nonexistent2  # E: Cannot find implementation or library stub for module named "nonexistent2"  [import]
 from nonexistent3 import *  # E: Cannot find implementation or library stub for module named "nonexistent3"  [import]
-from pkg import bad  # E: Module 'pkg' has no attribute 'bad'  [attr-defined]
+from pkg import bad  # E: Module "pkg" has no attribute "bad"  [attr-defined]
 from pkg.bad2 import bad3  # E: Cannot find implementation or library stub for module named "pkg.bad2"  [import]
 [file pkg/__init__.py]
 
 [case testErrorCodeAlreadyDefined]
 x: int
-x: str  # E: Name 'x' already defined on line 1  [no-redef]
+x: str  # E: Name "x" already defined on line 1  [no-redef]
 
 def f():
     pass
-def f(): # E: Name 'f' already defined on line 4  [no-redef]
+def f(): # E: Name "f" already defined on line 4  [no-redef]
     pass
 
 [case testErrorCodeMissingReturn]
@@ -790,11 +790,11 @@ k = [x for x in lst if isinstance(x, int) or foo()]  # E: If condition in compre
 [case testNamedTupleNameMismatch]
 from typing import NamedTuple
 
-Foo = NamedTuple("Bar", [])  # E: First argument to namedtuple() should be 'Foo', not 'Bar'  [name-match]
+Foo = NamedTuple("Bar", [])  # E: First argument to namedtuple() should be "Foo", not "Bar"  [name-match]
 [builtins fixtures/tuple.pyi]
 
 [case testTypedDictNameMismatch]
 from typing_extensions import TypedDict
 
-Foo = TypedDict("Bar", {})  # E: First argument 'Bar' to TypedDict() does not match variable name 'Foo'  [name-match]
+Foo = TypedDict("Bar", {})  # E: First argument "Bar" to TypedDict() does not match variable name "Foo"  [name-match]
 [builtins fixtures/dict.pyi]

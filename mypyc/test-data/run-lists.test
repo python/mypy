@@ -124,6 +124,7 @@ def test_insert() -> None:
         try:
             l.insert(long_int, 5)
         except Exception as e:
+            # The error message is used by CPython
             assert type(e).__name__ == 'OverflowError'
             assert str(e) == 'Python int too large to convert to C ssize_t'
         else:
@@ -338,3 +339,18 @@ assert list_in_mixed(0.0)
 assert not list_in_mixed([1])
 assert not list_in_mixed(object)
 assert list_in_mixed(type)
+
+[case testListBuiltFromGenerator]
+def test() -> None:
+    source_a = ["a", "b", "c"]
+    a = list(x + "f2" for x in source_a)
+    assert a == ["af2", "bf2", "cf2"]
+    source_b = [1, 2, 3, 4, 5]
+    b = [x * 2 for x in source_b]
+    assert b == [2, 4, 6, 8, 10]
+    source_c = [10, 20, 30]
+    c = [x + "f4" for x in (str(y) + "yy" for y in source_c)]
+    assert c == ["10yyf4", "20yyf4", "30yyf4"]
+    source_d = [True, False]
+    d = [not x for x in source_d]
+    assert d == [False, True]

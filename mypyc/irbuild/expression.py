@@ -88,7 +88,7 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
         if (isinstance(expr.node, Var) and is_none_rprimitive(builder.node_type(expr))
                 and expr.node.is_inferred):
             builder.error(
-                "Local variable '{}' has inferred type None; add an annotation".format(
+                'Local variable "{}" has inferred type None; add an annotation'.format(
                     expr.node.name),
                 expr.node.line)
 

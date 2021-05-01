@@ -36,15 +36,25 @@ class CDLL(object):
     _name: str = ...
     _handle: int = ...
     _FuncPtr: Type[_FuncPointer] = ...
-    def __init__(
-        self,
-        name: Optional[str],
-        mode: int = ...,
-        handle: Optional[int] = ...,
-        use_errno: bool = ...,
-        use_last_error: bool = ...,
-        winmode: Optional[int] = ...,
-    ) -> None: ...
+    if sys.version_info >= (3, 8):
+        def __init__(
+            self,
+            name: Optional[str],
+            mode: int = ...,
+            handle: Optional[int] = ...,
+            use_errno: bool = ...,
+            use_last_error: bool = ...,
+            winmode: Optional[int] = ...,
+        ) -> None: ...
+    else:
+        def __init__(
+            self,
+            name: Optional[str],
+            mode: int = ...,
+            handle: Optional[int] = ...,
+            use_errno: bool = ...,
+            use_last_error: bool = ...,
+        ) -> None: ...
     def __getattr__(self, name: str) -> _NamedFuncPointer: ...
     def __getitem__(self, name: str) -> _NamedFuncPointer: ...
 
@@ -72,7 +82,7 @@ pythonapi: PyDLL = ...
 # Anything that implements the read-write buffer interface.
 # The buffer interface is defined purely on the C level, so we cannot define a normal Protocol
 # for it. Instead we have to list the most common stdlib buffer classes in a Union.
-_WritableBuffer = _UnionT[bytearray, memoryview, array, _CData]
+_WritableBuffer = _UnionT[bytearray, memoryview, array[Any], _CData]
 # Same as _WritableBuffer, but also includes read-only buffer types (like bytes).
 _ReadOnlyBuffer = _UnionT[_WritableBuffer, bytes]
 
@@ -105,7 +115,7 @@ _ECT = Callable[[Optional[Type[_CData]], _FuncPointer, Tuple[_CData, ...]], _CDa
 _PF = _UnionT[Tuple[int], Tuple[int, str], Tuple[int, str, Any]]
 
 class _FuncPointer(_PointerLike, _CData):
-    restype: _UnionT[Type[_CData], Callable[[int], None], None] = ...
+    restype: _UnionT[Type[_CData], Callable[[int], Any], None] = ...
     argtypes: Sequence[Type[_CData]] = ...
     errcheck: _ECT = ...
     @overload
@@ -151,7 +161,7 @@ def byref(obj: _CData, offset: int = ...) -> _CArgObject: ...
 
 _CastT = TypeVar("_CastT", bound=_CanCastTo)
 
-def cast(obj: _UnionT[_CData, _CArgObject, int], type: Type[_CastT]) -> _CastT: ...
+def cast(obj: _UnionT[_CData, _CArgObject, int], typ: Type[_CastT]) -> _CastT: ...
 def create_string_buffer(init: _UnionT[int, bytes], size: Optional[int] = ...) -> Array[c_char]: ...
 
 c_buffer = create_string_buffer

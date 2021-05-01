@@ -105,6 +105,7 @@ _TkinterSequence2D = Union[List[List[_T]], List[Tuple[_T, ...]], Tuple[List[_T],
 _Anchor = Literal["nw", "n", "ne", "w", "center", "e", "sw", "s", "se"]  # manual page: Tk_GetAnchor
 _Bitmap = str  # manual page: Tk_GetBitmap
 _ButtonCommand = Union[str, Callable[[], Any]]  # return value is returned from Button.invoke()
+_CanvasItemId = int  # handles for items created on a canvas - can be passed to Canvas.delete()
 _Color = str  # typically '#rrggbb', '#rgb' or color names.
 _Compound = Literal["top", "left", "center", "right", "bottom", "none"]  # -compound in manual page named 'options'
 _Cursor = Union[str, Tuple[str], Tuple[str, str], Tuple[str, str, str], Tuple[str, str, str, str]]  # manual page: Tk_GetCursor
@@ -347,10 +348,7 @@ class Misc:
     # binds do. The default value of func is not str.
     @overload
     def bind(
-        self,
-        sequence: Optional[str] = ...,
-        func: Optional[Callable[[Event[Misc]], Optional[Literal["break"]]]] = ...,
-        add: Optional[bool] = ...,
+        self, sequence: Optional[str] = ..., func: Optional[Callable[[Event[Misc]], Any]] = ..., add: Optional[bool] = ...
     ) -> str: ...
     @overload
     def bind(self, sequence: Optional[str], func: str, add: Optional[bool] = ...) -> None: ...
@@ -360,10 +358,7 @@ class Misc:
     # callbacks will get, so those are Misc.
     @overload
     def bind_all(
-        self,
-        sequence: Optional[str] = ...,
-        func: Optional[Callable[[Event[Misc]], Optional[Literal["break"]]]] = ...,
-        add: Optional[bool] = ...,
+        self, sequence: Optional[str] = ..., func: Optional[Callable[[Event[Misc]], Any]] = ..., add: Optional[bool] = ...
     ) -> str: ...
     @overload
     def bind_all(self, sequence: Optional[str], func: str, add: Optional[bool] = ...) -> None: ...
@@ -374,7 +369,7 @@ class Misc:
         self,
         className: str,
         sequence: Optional[str] = ...,
-        func: Optional[Callable[[Event[Misc]], Optional[Literal["break"]]]] = ...,
+        func: Optional[Callable[[Event[Misc]], Any]] = ...,
         add: Optional[bool] = ...,
     ) -> str: ...
     @overload
@@ -645,7 +640,7 @@ class Tk(Misc, Wm):
     # Tk has __getattr__ so that tk_instance.foo falls back to tk_instance.tk.foo
     # Please keep in sync with _tkinter.TkappType
     call: Callable[..., Any]
-    eval: Callable[[str], str]
+    def eval(self, __code: str) -> str: ...
     adderrorinfo: Any
     createcommand: Any
     createfilehandler: Any
@@ -839,10 +834,7 @@ class Widget(BaseWidget, Pack, Place, Grid):
     # widgets don't.
     @overload
     def bind(
-        self: _W,
-        sequence: Optional[str] = ...,
-        func: Optional[Callable[[Event[_W]], Optional[Literal["break"]]]] = ...,
-        add: Optional[bool] = ...,
+        self: _W, sequence: Optional[str] = ..., func: Optional[Callable[[Event[_W]], Any]] = ..., add: Optional[bool] = ...
     ) -> str: ...
     @overload
     def bind(self, sequence: Optional[str], func: str, add: Optional[bool] = ...) -> None: ...
@@ -872,6 +864,7 @@ class Toplevel(BaseWidget, Wm):
         highlightcolor: _Color = ...,
         highlightthickness: _ScreenUnits = ...,
         menu: Menu = ...,
+        name: str = ...,
         padx: _ScreenUnits = ...,
         pady: _ScreenUnits = ...,
         relief: _Relief = ...,
@@ -947,7 +940,7 @@ class Button(Widget):
         repeatinterval: int = ...,
         state: Literal["normal", "active", "disabled"] = ...,
         takefocus: _TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         # We allow the textvariable to be any Variable, not necessarly
         # StringVar. This is useful for e.g. a button that displays the value
         # of an IntVar.
@@ -992,7 +985,7 @@ class Button(Widget):
         repeatinterval: int = ...,
         state: Literal["normal", "active", "disabled"] = ...,
         takefocus: _TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: Variable = ...,
         underline: int = ...,
         width: _ScreenUnits = ...,
@@ -1100,7 +1093,7 @@ class Canvas(Widget, XView, YView):
         self,
         tagOrId: Union[str, int],
         sequence: Optional[str] = ...,
-        func: Optional[Callable[[Event[Canvas]], Optional[Literal["break"]]]] = ...,
+        func: Optional[Callable[[Event[Canvas]], Any]] = ...,
         add: Optional[bool] = ...,
     ) -> str: ...
     @overload
@@ -1111,26 +1104,178 @@ class Canvas(Widget, XView, YView):
     def canvasx(self, screenx, gridspacing: Optional[Any] = ...): ...
     def canvasy(self, screeny, gridspacing: Optional[Any] = ...): ...
     def coords(self, *args): ...
-    def create_arc(self, *args, **kw): ...
-    def create_bitmap(self, *args, **kw): ...
-    def create_image(self, *args, **kw): ...
-    def create_line(self, *args, **kw): ...
-    def create_oval(self, *args, **kw): ...
-    def create_polygon(self, *args, **kw): ...
-    def create_rectangle(self, *args, **kw): ...
-    def create_text(self, *args, **kw): ...
-    def create_window(self, *args, **kw): ...
+    def create_arc(self, *args, **kw) -> _CanvasItemId: ...
+    def create_bitmap(self, *args, **kw) -> _CanvasItemId: ...
+    def create_image(self, *args, **kw) -> _CanvasItemId: ...
+    def create_line(
+        self,
+        __x0: float,
+        __y0: float,
+        __x1: float,
+        __y1: float,
+        *,
+        activedash: _Color = ...,
+        activefill: _Color = ...,
+        activestipple: str = ...,
+        activewidth: _ScreenUnits = ...,
+        arrow: Literal["first", "last", "both"] = ...,
+        arrowshape: Tuple[float, float, float] = ...,
+        capstyle: Literal["round", "projecting", "butt"] = ...,
+        dash: Union[Tuple[float], Tuple[float, float], Tuple[float, float, float, float]] = ...,
+        dashoffset: _ScreenUnits = ...,
+        disableddash: _Color = ...,
+        disabledfill: _Color = ...,
+        disabledstipple: _Bitmap = ...,
+        disabledwidth: _ScreenUnits = ...,
+        fill: _Color = ...,
+        joinstyle: Literal["round", "bevel", "miter"] = ...,
+        offset: _ScreenUnits = ...,
+        smooth: bool = ...,
+        splinesteps: float = ...,
+        state: Literal["normal", "active", "disabled"] = ...,
+        stipple: _Bitmap = ...,
+        tags: Union[str, Tuple[str, ...]] = ...,
+        width: _ScreenUnits = ...,
+    ) -> _CanvasItemId: ...
+    def create_oval(
+        self,
+        __x0: float,
+        __y0: float,
+        __x1: float,
+        __y1: float,
+        *,
+        activedash: _Color = ...,
+        activefill: _Color = ...,
+        activeoutline: _Color = ...,
+        activeoutlinestipple: _Color = ...,
+        activestipple: str = ...,
+        activewidth: _ScreenUnits = ...,
+        dash: Union[Tuple[float], Tuple[float, float], Tuple[float, float, float, float]] = ...,
+        dashoffset: _ScreenUnits = ...,
+        disableddash: _Color = ...,
+        disabledfill: _Color = ...,
+        disabledoutline: _Color = ...,
+        disabledoutlinestipple: _Color = ...,
+        disabledstipple: _Bitmap = ...,
+        disabledwidth: _ScreenUnits = ...,
+        fill: _Color = ...,
+        offset: _ScreenUnits = ...,
+        outline: _Color = ...,
+        outlineoffset: _ScreenUnits = ...,
+        outlinestipple: _Bitmap = ...,
+        state: Literal["normal", "active", "disabled"] = ...,
+        stipple: _Bitmap = ...,
+        tags: Union[str, Tuple[str, ...]] = ...,
+        width: _ScreenUnits = ...,
+    ) -> _CanvasItemId: ...
+    def create_polygon(
+        self,
+        __x0: float,
+        __y0: float,
+        __x1: float,
+        __y1: float,
+        *xy_pairs: float,
+        activedash: _Color = ...,
+        activefill: _Color = ...,
+        activeoutline: _Color = ...,
+        activeoutlinestipple: _Color = ...,
+        activestipple: str = ...,
+        activewidth: _ScreenUnits = ...,
+        dash: Union[Tuple[float], Tuple[float, float], Tuple[float, float, float, float]] = ...,
+        dashoffset: _ScreenUnits = ...,
+        disableddash: _Color = ...,
+        disabledfill: _Color = ...,
+        disabledoutline: _Color = ...,
+        disabledoutlinestipple: _Color = ...,
+        disabledstipple: _Bitmap = ...,
+        disabledwidth: _ScreenUnits = ...,
+        fill: _Color = ...,
+        joinstyle: Literal["round", "bevel", "miter"] = ...,
+        offset: _ScreenUnits = ...,
+        outline: _Color = ...,
+        outlineoffset: _ScreenUnits = ...,
+        outlinestipple: _Bitmap = ...,
+        smooth: bool = ...,
+        splinesteps: float = ...,
+        state: Literal["normal", "active", "disabled"] = ...,
+        stipple: _Bitmap = ...,
+        tags: Union[str, Tuple[str, ...]] = ...,
+        width: _ScreenUnits = ...,
+    ) -> _CanvasItemId: ...
+    def create_rectangle(
+        self,
+        __x0: float,
+        __y0: float,
+        __x1: float,
+        __y1: float,
+        *,
+        activedash: _Color = ...,
+        activefill: _Color = ...,
+        activeoutline: _Color = ...,
+        activeoutlinestipple: _Color = ...,
+        activestipple: str = ...,
+        activewidth: _ScreenUnits = ...,
+        dash: Union[Tuple[float], Tuple[float, float], Tuple[float, float, float, float]] = ...,
+        dashoffset: _ScreenUnits = ...,
+        disableddash: _Color = ...,
+        disabledfill: _Color = ...,
+        disabledoutline: _Color = ...,
+        disabledoutlinestipple: _Color = ...,
+        disabledstipple: _Bitmap = ...,
+        disabledwidth: _ScreenUnits = ...,
+        fill: _Color = ...,
+        offset: _ScreenUnits = ...,
+        outline: _Color = ...,
+        outlineoffset: _ScreenUnits = ...,
+        outlinestipple: _Bitmap = ...,
+        state: Literal["normal", "active", "disabled"] = ...,
+        stipple: _Bitmap = ...,
+        tags: Union[str, Tuple[str, ...]] = ...,
+        width: _ScreenUnits = ...,
+    ) -> _CanvasItemId: ...
+    def create_text(
+        self,
+        __x: float,
+        __y: float,
+        *,
+        activefill: _Color = ...,
+        activestipple: str = ...,
+        anchor: _Anchor = ...,
+        disabledfill: _Color = ...,
+        disabledstipple: _Bitmap = ...,
+        fill: _Color = ...,
+        font: _FontDescription = ...,
+        justify: Literal["left", "center", "right"] = ...,
+        offset: _ScreenUnits = ...,
+        state: Literal["normal", "active", "disabled"] = ...,
+        stipple: _Bitmap = ...,
+        tags: Union[str, Tuple[str, ...]] = ...,
+        text: Union[float, str] = ...,
+        width: _ScreenUnits = ...,
+    ) -> _CanvasItemId: ...
+    def create_window(
+        self,
+        __x: float,
+        __y: float,
+        *,
+        anchor: _Anchor = ...,
+        height: _ScreenUnits = ...,
+        state: Literal["normal", "active", "disabled"] = ...,
+        tags: Union[str, Tuple[str, ...]] = ...,
+        width: _ScreenUnits = ...,
+        window: Widget = ...,
+    ) -> _CanvasItemId: ...
     def dchars(self, *args): ...
-    def delete(self, *args): ...
+    def delete(self, *tagsOrCanvasIds: Union[str, _CanvasItemId]) -> None: ...
     def dtag(self, *args): ...
     def find(self, *args): ...
-    def find_above(self, tagOrId): ...
+    def find_above(self, tagOrId: Union[str, _CanvasItemId]): ...
     def find_all(self): ...
-    def find_below(self, tagOrId): ...
+    def find_below(self, tagOrId: Union[str, _CanvasItemId]): ...
     def find_closest(self, x, y, halo: Optional[Any] = ..., start: Optional[Any] = ...): ...
     def find_enclosed(self, x1, y1, x2, y2): ...
     def find_overlapping(self, x1, y1, x2, y2): ...
-    def find_withtag(self, tagOrId): ...
+    def find_withtag(self, tagOrId: Union[str, _CanvasItemId]): ...
     def focus(self, *args): ...
     def gettags(self, *args): ...
     def icursor(self, *args): ...
@@ -1143,7 +1288,7 @@ class Canvas(Widget, XView, YView):
     lower: Any
     def move(self, *args): ...
     if sys.version_info >= (3, 8):
-        def moveto(self, tagOrId: Union[int, str], x: str = ..., y: str = ...) -> None: ...
+        def moveto(self, tagOrId: Union[str, _CanvasItemId], x: str = ..., y: str = ...) -> None: ...
     def postscript(self, cnf=..., **kw): ...
     def tag_raise(self, *args): ...
     lift: Any
@@ -1208,7 +1353,7 @@ class Checkbutton(Widget):
         selectimage: _ImageSpec = ...,
         state: Literal["normal", "active", "disabled"] = ...,
         takefocus: _TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: Variable = ...,
         tristateimage: _ImageSpec = ...,
         tristatevalue: Any = ...,
@@ -1256,7 +1401,7 @@ class Checkbutton(Widget):
         selectimage: _ImageSpec = ...,
         state: Literal["normal", "active", "disabled"] = ...,
         takefocus: _TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: Variable = ...,
         tristateimage: _ImageSpec = ...,
         tristatevalue: Any = ...,
@@ -1470,7 +1615,7 @@ class Label(Widget):
         relief: _Relief = ...,
         state: Literal["normal", "active", "disabled"] = ...,
         takefocus: _TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: Variable = ...,
         underline: int = ...,
         width: _ScreenUnits = ...,
@@ -1507,7 +1652,7 @@ class Label(Widget):
         relief: _Relief = ...,
         state: Literal["normal", "active", "disabled"] = ...,
         takefocus: _TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: Variable = ...,
         underline: int = ...,
         width: _ScreenUnits = ...,
@@ -1936,7 +2081,7 @@ class Menubutton(Widget):
         relief: _Relief = ...,
         state: Literal["normal", "active", "disabled"] = ...,
         takefocus: _TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: Variable = ...,
         underline: int = ...,
         width: _ScreenUnits = ...,
@@ -1976,7 +2121,7 @@ class Menubutton(Widget):
         relief: _Relief = ...,
         state: Literal["normal", "active", "disabled"] = ...,
         takefocus: _TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: Variable = ...,
         underline: int = ...,
         width: _ScreenUnits = ...,
@@ -2012,7 +2157,7 @@ class Message(Widget):
         pady: _ScreenUnits = ...,
         relief: _Relief = ...,
         takefocus: _TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: Variable = ...,
         # there's width but no height
         width: _ScreenUnits = ...,
@@ -2041,7 +2186,7 @@ class Message(Widget):
         pady: _ScreenUnits = ...,
         relief: _Relief = ...,
         takefocus: _TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: Variable = ...,
         width: _ScreenUnits = ...,
     ) -> Optional[Dict[str, Tuple[str, str, str, Any, Any]]]: ...
@@ -2088,7 +2233,7 @@ class Radiobutton(Widget):
         selectimage: _ImageSpec = ...,
         state: Literal["normal", "active", "disabled"] = ...,
         takefocus: _TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: Variable = ...,
         tristateimage: _ImageSpec = ...,
         tristatevalue: Any = ...,
@@ -2135,7 +2280,7 @@ class Radiobutton(Widget):
         selectimage: _ImageSpec = ...,
         state: Literal["normal", "active", "disabled"] = ...,
         takefocus: _TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: Variable = ...,
         tristateimage: _ImageSpec = ...,
         tristatevalue: Any = ...,
@@ -2193,7 +2338,7 @@ class Scale(Widget):
         tickinterval: float = ...,
         to: float = ...,
         troughcolor: _Color = ...,
-        variable: DoubleVar = ...,
+        variable: Union[IntVar, DoubleVar] = ...,
         width: _ScreenUnits = ...,
     ) -> None: ...
     @overload
@@ -2233,7 +2378,7 @@ class Scale(Widget):
         tickinterval: float = ...,
         to: float = ...,
         troughcolor: _Color = ...,
-        variable: DoubleVar = ...,
+        variable: Union[IntVar, DoubleVar] = ...,
         width: _ScreenUnits = ...,
     ) -> Optional[Dict[str, Tuple[str, str, str, Any, Any]]]: ...
     @overload
@@ -2503,7 +2648,7 @@ class Text(Widget, XView, YView):
     def mark_set(self, markName: str, index: _TextIndex) -> None: ...
     def mark_unset(self, *markNames: str) -> None: ...
     def mark_next(self, index: _TextIndex) -> Optional[str]: ...
-    def mark_previous(self, index: _TextIndex): ...
+    def mark_previous(self, index: _TextIndex) -> Optional[str]: ...
     # **kw of peer_create is same as the kwargs of Text.__init__
     def peer_create(self, newPathName: Union[str, Text], cnf: Dict[str, Any] = ..., **kw: Any) -> None: ...
     def peer_names(self) -> Tuple[_tkinter.Tcl_Obj, ...]: ...
@@ -2528,11 +2673,7 @@ class Text(Widget, XView, YView):
     # tag_bind stuff is very similar to Canvas
     @overload
     def tag_bind(
-        self,
-        tagName: str,
-        sequence: Optional[str],
-        func: Optional[Callable[[Event[Text]], Optional[Literal["break"]]]],
-        add: Optional[bool] = ...,
+        self, tagName: str, sequence: Optional[str], func: Optional[Callable[[Event[Text]], Any]], add: Optional[bool] = ...
     ) -> str: ...
     @overload
     def tag_bind(self, tagName: str, sequence: Optional[str], func: str, add: Optional[bool] = ...) -> None: ...
@@ -2646,7 +2787,7 @@ class PhotoImage(Image):
         cnf: Dict[str, Any] = ...,
         master: Optional[Union[Misc, _tkinter.TkappType]] = ...,
         *,
-        data: str = ...,  # not same as data argument of put()
+        data: Union[str, bytes] = ...,  # not same as data argument of put()
         format: str = ...,
         file: AnyPath = ...,
         gamma: float = ...,
@@ -2657,7 +2798,7 @@ class PhotoImage(Image):
     def configure(
         self,
         *,
-        data: str = ...,
+        data: Union[str, bytes] = ...,
         format: str = ...,
         file: AnyPath = ...,
         gamma: float = ...,
@@ -2689,7 +2830,7 @@ class BitmapImage(Image):
         master: Optional[Union[Misc, _tkinter.TkappType]] = ...,
         *,
         background: _Color = ...,
-        data: str = ...,
+        data: Union[str, bytes] = ...,
         file: AnyPath = ...,
         foreground: _Color = ...,
         maskdata: str = ...,
@@ -2868,7 +3009,7 @@ class LabelFrame(Widget):
         pady: _ScreenUnits = ...,
         relief: _Relief = ...,
         takefocus: _TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         visual: Union[str, Tuple[str, int]] = ...,
         width: _ScreenUnits = ...,
     ) -> None: ...
@@ -2896,7 +3037,7 @@ class LabelFrame(Widget):
         pady: _ScreenUnits = ...,
         relief: _Relief = ...,
         takefocus: _TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         width: _ScreenUnits = ...,
     ) -> Optional[Dict[str, Tuple[str, str, str, Any, Any]]]: ...
     @overload

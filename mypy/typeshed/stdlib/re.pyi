@@ -1,5 +1,6 @@
 import enum
 import sys
+from sre_constants import error as error
 from typing import Any, AnyStr, Callable, Iterator, List, Optional, Tuple, Union, overload
 
 # ----- re variables and constants -----
@@ -49,13 +50,6 @@ _FlagsType = Union[int, RegexFlag]
 if sys.version_info < (3, 7):
     # undocumented
     _pattern_type: type
-
-class error(Exception):
-    msg: str
-    pattern: str
-    pos: Optional[int]
-    lineno: Optional[int]
-    colno: Optional[int]
 
 @overload
 def compile(pattern: AnyStr, flags: _FlagsType = ...) -> Pattern[AnyStr]: ...

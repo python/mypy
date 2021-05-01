@@ -124,7 +124,7 @@ class SMTP:
         msg: _Message,
         from_addr: Optional[str] = ...,
         to_addrs: Optional[Union[str, Sequence[str]]] = ...,
-        mail_options: List[str] = ...,
+        mail_options: Sequence[str] = ...,
         rcpt_options: Sequence[str] = ...,
     ) -> _SendErrs: ...
     def close(self) -> None: ...

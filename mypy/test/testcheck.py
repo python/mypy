@@ -94,6 +94,7 @@ typecheck_files = [
     'check-parameter-specification.test',
     'check-generic-alias.test',
     'check-typeguard.test',
+    'check-functools.test',
 ]
 
 # Tests that use Python 3.8-only AST features (like expression-scoped ignores):

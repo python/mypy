@@ -10,18 +10,18 @@ f(0)
 
 @overload  # E: Name "overload" is not defined
 def g(a:int): pass
-def g(a): pass  # E: Name 'g' already defined on line 9
+def g(a): pass  # E: Name "g" already defined on line 9
 g(0)
 
 @something  # E: Name "something" is not defined
 def r(a:int): pass
-def r(a): pass  # E: Name 'r' already defined on line 14
+def r(a): pass  # E: Name "r" already defined on line 14
 r(0)
 [out]
 main:2: error: Name "overload" is not defined
-main:4: error: Name 'f' already defined on line 2
+main:4: error: Name "f" already defined on line 2
 main:4: error: Name "overload" is not defined
-main:6: error: Name 'f' already defined on line 2
+main:6: error: Name "f" already defined on line 2
 
 [case testTypeCheckOverloadWithImplementation]
 from typing import overload, Any
@@ -144,9 +144,9 @@ def deco(fun): ...
 
 @deco
 def f(x: 'A') -> 'B': ...
-@deco  # E: Name 'f' already defined on line 5
+@deco  # E: Name "f" already defined on line 5
 def f(x: 'B') -> 'A': ...
-@deco  # E: Name 'f' already defined on line 5
+@deco  # E: Name "f" already defined on line 5
 def f(x: Any) -> Any: ...
 
 class A: pass
@@ -1459,7 +1459,7 @@ def f(a: int) -> None: pass
 @overload
 def f(a: str) -> None: pass
 [out]
-tmp/foo.pyi:3: error: Name 'f' already defined on line 2
+tmp/foo.pyi:3: error: Name "f" already defined on line 2
 tmp/foo.pyi:3: error: Single overload definition, multiple required
 
 [case testNonconsecutiveOverloads]
@@ -1473,7 +1473,7 @@ def f(a: int) -> None: pass
 def f(a: str) -> None: pass
 [out]
 tmp/foo.pyi:2: error: Single overload definition, multiple required
-tmp/foo.pyi:5: error: Name 'f' already defined on line 2
+tmp/foo.pyi:5: error: Name "f" already defined on line 2
 tmp/foo.pyi:5: error: Single overload definition, multiple required
 
 [case testNonconsecutiveOverloadsMissingFirstOverload]
@@ -1485,7 +1485,7 @@ def f(a: int) -> None: pass
 @overload
 def f(a: str) -> None: pass
 [out]
-tmp/foo.pyi:4: error: Name 'f' already defined on line 2
+tmp/foo.pyi:4: error: Name "f" already defined on line 2
 tmp/foo.pyi:4: error: Single overload definition, multiple required
 
 [case testNonconsecutiveOverloadsMissingLaterOverload]
@@ -1498,7 +1498,7 @@ def f(a: int) -> None: pass
 def f(a: str) -> None: pass
 [out]
 tmp/foo.pyi:2: error: Single overload definition, multiple required
-tmp/foo.pyi:5: error: Name 'f' already defined on line 2
+tmp/foo.pyi:5: error: Name "f" already defined on line 2
 
 [case testOverloadTuple]
 from foo import *
@@ -1543,11 +1543,11 @@ class Chain(object):
 class Test(object):
     do_chain = Chain()
 
-    @do_chain.chain  # E: Name 'do_chain' already defined on line 9
+    @do_chain.chain  # E: Name "do_chain" already defined on line 9
     def do_chain(self) -> int:
         return 2
 
-    @do_chain.chain  # E: Name 'do_chain' already defined on line 11
+    @do_chain.chain  # E: Name "do_chain" already defined on line 11
     def do_chain(self) -> int:
         return 3
 
@@ -5092,7 +5092,7 @@ def func(x):
     return x
 [out]
 tmp/lib.pyi:1: error: Name "overload" is not defined
-tmp/lib.pyi:4: error: Name 'func' already defined on line 1
+tmp/lib.pyi:4: error: Name "func" already defined on line 1
 main:2: note: Revealed type is "Any"
 
 -- Order of errors is different
@@ -5107,7 +5107,7 @@ def func(x: int) -> int: ...
 def func(x: str) -> str: ...
 [out]
 tmp/lib.pyi:1: error: Name "overload" is not defined
-tmp/lib.pyi:3: error: Name 'func' already defined on line 1
+tmp/lib.pyi:3: error: Name "func" already defined on line 1
 tmp/lib.pyi:3: error: Name "overload" is not defined
 main:3: note: Revealed type is "Any"
 

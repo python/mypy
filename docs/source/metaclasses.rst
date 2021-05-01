@@ -93,7 +93,7 @@ so it's better not to combine metaclasses and class hierarchies:
     class A1(metaclass=M1): pass
     class A2(metaclass=M2): pass
 
-    class B1(A1, metaclass=M2): pass  # Mypy Error: Inconsistent metaclass structure for 'B1'
+    class B1(A1, metaclass=M2): pass  # Mypy Error: Inconsistent metaclass structure for "B1"
     # At runtime the above definition raises an exception
     # TypeError: metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
 

@@ -1,15 +1,20 @@
 from _typeshed import WriteableBuffer
 from io import BufferedIOBase, RawIOBase
-from typing import Any, Callable, Tuple, Type, Union
+from typing import Any, Callable, Protocol, Tuple, Type, Union
 
 BUFFER_SIZE: Any
+
+class _Reader(Protocol):
+    def read(self, __n: int) -> bytes: ...
+    def seekable(self) -> bool: ...
+    def seek(self, __n: int) -> Any: ...
 
 class BaseStream(BufferedIOBase): ...
 
 class DecompressReader(RawIOBase):
     def __init__(
         self,
-        fp: RawIOBase,
+        fp: _Reader,
         decomp_factory: Callable[..., object],
         trailing_error: Union[Type[Exception], Tuple[Type[Exception], ...]] = ...,
         **decomp_args: Any,

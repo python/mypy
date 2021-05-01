@@ -31,7 +31,7 @@ from mypy.nodes import (
     FuncDef, reverse_builtin_aliases,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
-    CallExpr, SymbolTable, TempNode
+    CallExpr, IndexExpr, StrExpr, SymbolTable, TempNode
 )
 from mypy.subtypes import (
     is_subtype, find_member, get_member_flags,
@@ -536,7 +536,6 @@ class MessageBuilder:
                 arg_name = outer_context.arg_names[n - 1]
                 if arg_name is not None:
                     arg_label = '"{}"'.format(arg_name)
-
             if (arg_kind == ARG_STAR2
                     and isinstance(arg_type, TypedDictType)
                     and m <= len(callee.arg_names)
@@ -549,9 +548,14 @@ class MessageBuilder:
                     expected_type,
                     bare=True)
                 arg_label = '"{}"'.format(arg_name)
-            msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
-                arg_label, target, quote_type_string(arg_type_str),
-                quote_type_string(expected_type_str))
+            if isinstance(outer_context, IndexExpr) and isinstance(outer_context.index, StrExpr):
+                msg = 'Value of "{}" has incompatible type {}; expected {}' .format(
+                    outer_context.index.value, quote_type_string(arg_type_str),
+                    quote_type_string(expected_type_str))
+            else:
+                msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
+                    arg_label, target, quote_type_string(arg_type_str),
+                    quote_type_string(expected_type_str))
             code = codes.ARG_TYPE
             expected_type = get_proper_type(expected_type)
             if isinstance(expected_type, UnionType):
@@ -2121,11 +2125,11 @@ def make_inferred_type_note(context: Context,
 
 
 def format_key_list(keys: List[str], *, short: bool = False) -> str:
-    reprs = [repr(key) for key in keys]
+    formatted_keys = ['"{}"'.format(key) for key in keys]
     td = '' if short else 'TypedDict '
     if len(keys) == 0:
         return 'no {}keys'.format(td)
     elif len(keys) == 1:
-        return '{}key {}'.format(td, reprs[0])
+        return '{}key {}'.format(td, formatted_keys[0])
     else:
-        return '{}keys ({})'.format(td, ', '.join(reprs))
+        return '{}keys ({})'.format(td, ', '.join(formatted_keys))

@@ -84,6 +84,8 @@ def is_extension_class(cdef: ClassDef) -> bool:
         return False
     if cdef.info.typeddict_type:
         return False
+    if cdef.info.is_named_tuple:
+        return False
     if (cdef.info.metaclass_type and cdef.info.metaclass_type.type.fullname not in (
             'abc.ABCMeta', 'typing.TypingMeta', 'typing.GenericMeta')):
         return False

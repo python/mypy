@@ -395,50 +395,50 @@ def f(x: int):  # E: Function has duplicate type signatures
 def f(x, y, z):
   pass
 
-def g(x, y, x):  # E: Duplicate argument 'x' in function definition
+def g(x, y, x):  # E: Duplicate argument "x" in function definition
   pass
 
-def h(x, y, *x):  # E: Duplicate argument 'x' in function definition
+def h(x, y, *x):  # E: Duplicate argument "x" in function definition
   pass
 
-def i(x, y, *z, **z):  # E: Duplicate argument 'z' in function definition
+def i(x, y, *z, **z):  # E: Duplicate argument "z" in function definition
   pass
 
-def j(x: int, y: int, *, x: int = 3):  # E: Duplicate argument 'x' in function definition
+def j(x: int, y: int, *, x: int = 3):  # E: Duplicate argument "x" in function definition
   pass
 
-def k(*, y, z, y):  # E: Duplicate argument 'y' in function definition
+def k(*, y, z, y):  # E: Duplicate argument "y" in function definition
   pass
 
-lambda x, y, x: ...  # E: Duplicate argument 'x' in function definition
+lambda x, y, x: ...  # E: Duplicate argument "x" in function definition
 
 [case testFastParserDuplicateNames_python2]
 
 def f(x, y, z):
   pass
 
-def g(x, y, x):  # E: Duplicate argument 'x' in function definition
+def g(x, y, x):  # E: Duplicate argument "x" in function definition
   pass
 
-def h(x, y, *x):  # E: Duplicate argument 'x' in function definition
+def h(x, y, *x):  # E: Duplicate argument "x" in function definition
   pass
 
-def i(x, y, *z, **z):  # E: Duplicate argument 'z' in function definition
+def i(x, y, *z, **z):  # E: Duplicate argument "z" in function definition
   pass
 
-def j(x, (y, y), z):  # E: Duplicate argument 'y' in function definition
+def j(x, (y, y), z):  # E: Duplicate argument "y" in function definition
   pass
 
-def k(x, (y, x)):  # E: Duplicate argument 'x' in function definition
+def k(x, (y, x)):  # E: Duplicate argument "x" in function definition
   pass
 
-def l((x, y), (z, x)):  # E: Duplicate argument 'x' in function definition
+def l((x, y), (z, x)):  # E: Duplicate argument "x" in function definition
   pass
 
-def m(x, ((x, y), z)):  # E: Duplicate argument 'x' in function definition
+def m(x, ((x, y), z)):  # E: Duplicate argument "x" in function definition
   pass
 
-lambda x, (y, x): None  # E: Duplicate argument 'x' in function definition
+lambda x, (y, x): None  # E: Duplicate argument "x" in function definition
 
 [case testNoCrashOnImportFromStar]
 from pack import *

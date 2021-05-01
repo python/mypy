@@ -19,7 +19,7 @@ a = 5  # E: Incompatible types in assignment (expression has type "int", variabl
 b: str = 5  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 zzz: int
-zzz: str  # E: Name 'zzz' already defined on line 10
+zzz: str  # E: Name "zzz" already defined on line 10
 [out]
 
 [case testNewSyntaxWithDict]

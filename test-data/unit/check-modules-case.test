@@ -1,7 +1,7 @@
 -- Type checker test cases dealing with modules and imports on case-insensitive filesystems.
 
 [case testCaseSensitivityDir]
-from a import B  # E: Module 'a' has no attribute 'B'
+from a import B  # E: Module "a" has no attribute "B"
 
 [file a/__init__.py]
 [file a/b/__init__.py]
@@ -9,7 +9,7 @@ from a import B  # E: Module 'a' has no attribute 'B'
 [case testCaseInsensitivityDir]
 # flags: --config-file tmp/mypy.ini
 
-from a import B  # E: Module 'a' has no attribute 'B'
+from a import B  # E: Module "a" has no attribute "B"
 from other import x
 reveal_type(x)  # N: Revealed type is "builtins.int"
 
