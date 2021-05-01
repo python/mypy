@@ -11,8 +11,7 @@ from mypy.sametypes import is_same_type
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.types import (
     UnboundType, AnyType, CallableType, TupleType, TypeVarDef, Type, Instance, NoneType,
-    Overloaded, TypeType, UnionType, UninhabitedType, TypeVarId, TypeOfAny,
-    LiteralType, get_proper_type
+    Overloaded, TypeType, UnionType, UninhabitedType, TypeVarId, TypeOfAny, get_proper_type
 )
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.subtypes import is_subtype, is_more_precise, is_proper_subtype
@@ -463,7 +462,8 @@ class TypeOpsSuite(Suite):
         self.assert_simplified_union([fx.ga, fx.gsba], fx.ga)
         self.assert_simplified_union([fx.a, UnionType([fx.d])], UnionType([fx.a, fx.d]))
         self.assert_simplified_union([fx.a, UnionType([fx.a])], fx.a)
-        self.assert_simplified_union([fx.b, UnionType([fx.c, UnionType([fx.d])])], UnionType([fx.b, fx.c, fx.d]))
+        self.assert_simplified_union([fx.b, UnionType([fx.c, UnionType([fx.d])])],
+                                     UnionType([fx.b, fx.c, fx.d]))
         self.assert_simplified_union([fx.lit1, fx.lit2], UnionType([fx.lit1, fx.lit2]))
         self.assert_simplified_union([fx.lit1, fx.lit3], UnionType([fx.lit1, fx.lit3]))
         self.assert_simplified_union([fx.lit1, fx.uninhabited], fx.lit1)
@@ -971,7 +971,6 @@ class MeetSuite(Suite):
 
     def test_literal_type(self) -> None:
         a = self.fx.a
-        d = self.fx.d
         lit1 = self.fx.lit1
         lit2 = self.fx.lit2
         lit3 = self.fx.lit3
