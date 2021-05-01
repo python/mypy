@@ -1,6 +1,6 @@
 """Pattern checker. This file is conceptually part of TypeChecker."""
 from collections import defaultdict
-from typing import List, Optional, Tuple, Dict, NamedTuple, Set
+from typing import List, Optional, Tuple, Dict, NamedTuple, Set, cast
 
 import mypy.checker
 from mypy.expandtype import expand_type_by_instance
@@ -164,29 +164,76 @@ class PatternChecker(PatternVisitor[PatternType]):
         return PatternType(specific_type, {})
 
     def visit_sequence_pattern(self, o: SequencePattern) -> PatternType:
-        current_type = self.type_context[-1]
-        inner_type = self.get_sequence_type(current_type)
-        if inner_type is None:
-            if is_subtype(self.chk.named_type("typing.Iterable"), current_type):
-                # Current type is more general, but the actual value could still be iterable
-                inner_type = self.chk.named_type("builtins.object")
-            else:
-                return early_non_match()
-
-        new_inner_type = UninhabitedType()  # type: Type
-        captures = {}  # type: Dict[Expression, Type]
+        #
+        # check for existence of a starred pattern
+        #
+        current_type = get_proper_type(self.type_context[-1])
         can_match = True
-        for p in o.patterns:
-            pattern_type = self.accept(p, inner_type)
+        star_positions = [i for i, p in enumerate(o.patterns) if isinstance(p, StarredPattern)]
+        star_position = None  # type: Optional[int]
+        if len(star_positions) == 1:
+            star_position = star_positions[0]
+        elif len(star_positions) >= 2:
+            assert False, "Parser should prevent multiple starred patterns"
+        required_patterns = len(o.patterns)
+        if star_position is not None:
+            required_patterns -= 1
+
+        #
+        # get inner types of original type
+        #
+        if isinstance(current_type, TupleType):
+            inner_types = current_type.items
+            size_diff = len(inner_types) - required_patterns
+            if size_diff < 0:
+                return early_non_match()
+            elif size_diff > 0 and star_position is None:
+                return early_non_match()
+        else:
+            inner_type = self.get_sequence_type(current_type)
+            if inner_type is None:
+                if is_subtype(self.chk.named_type("typing.Iterable"), current_type):
+                    # Current type is more general, but the actual value could still be iterable
+                    inner_type = self.chk.named_type("builtins.object")
+                else:
+                    return early_non_match()
+            inner_types = [inner_type] * len(o.patterns)
+
+        #
+        # match inner patterns
+        #
+        contracted_new_inner_types = []  # type: List[Type]
+        captures = {}  # type: Dict[Expression, Type]
+
+        contracted_inner_types = self.contract_starred_pattern_types(inner_types, star_position, required_patterns)
+        for p, t in zip(o.patterns, contracted_inner_types):
+            pattern_type = self.accept(p, t)
             typ, type_map = pattern_type
             if typ is None:
                 can_match = False
             else:
-                new_inner_type = join_types(new_inner_type, typ)
+                contracted_new_inner_types.append(typ)
             self.update_type_map(captures, type_map)
+        new_inner_types = self.expand_starred_pattern_types(contracted_new_inner_types, star_position, len(inner_types))
 
-        new_type = None  # type: Optional[Type]
-        if can_match:
+        #
+        # Calculate new type
+        #
+        if not can_match:
+            new_type = None  # type: Optional[Type]
+        elif isinstance(current_type, TupleType):
+            specific_inner_types = []
+            for inner_type, new_inner_type in zip(inner_types, new_inner_types):
+                specific_inner_types.append(get_more_specific_type(inner_type, new_inner_type))
+            if all(typ is not None for typ in specific_inner_types):
+                specific_inner_types_cast = cast(List[Type], specific_inner_types)
+                new_type = TupleType(specific_inner_types_cast, current_type.partial_fallback)
+            else:
+                new_type = None
+        else:
+            new_inner_type = UninhabitedType()
+            for typ in new_inner_types:
+                new_inner_type = join_types(new_inner_type, typ)
             new_type = self.construct_iterable_child(current_type, new_inner_type)
             if not is_subtype(new_type, current_type):
                 new_type = current_type
@@ -201,6 +248,27 @@ class PatternChecker(PatternVisitor[PatternType]):
             return self.chk.iterable_item_type(t)
         else:
             return None
+
+    def contract_starred_pattern_types(self, types: List[Type], star_pos: Optional[int], num_patterns: int) -> List[Type]:
+        if star_pos is None:
+            return types
+        new_types = types[:star_pos]
+        star_length = len(types) - num_patterns
+        new_types.append(make_simplified_union(types[star_pos:star_pos+star_length]))
+        new_types += types[star_pos+star_length:]
+
+        return new_types
+
+    def expand_starred_pattern_types(self, types: List[Type], star_pos: Optional[int], num_types: int) -> List[Type]:
+        if star_pos is None:
+            return types
+        new_types = types[:star_pos]
+        star_length = num_types - len(types) + 1
+        new_types += [types[star_pos]] * star_length
+        new_types += types[star_pos+1:]
+
+        return new_types
+
 
     def visit_starred_pattern(self, o: StarredPattern) -> PatternType:
         captures = {}  # type: Dict[Expression, Type]

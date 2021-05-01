@@ -149,6 +149,84 @@ match m:
         reveal_type(m)  # N: Revealed type is "builtins.list[builtins.object]"
 [builtins fixtures/list.pyi]
 
+[case testSequencePatternCapturesTuple]
+from typing import Tuple
+m: Tuple[int, str, bool]
+
+match m:
+    case [a, b, c]:
+        reveal_type(a)  # N: Revealed type is "builtins.int"
+        reveal_type(b)  # N: Revealed type is "builtins.str"
+        reveal_type(c)  # N: Revealed type is "builtins.bool"
+        reveal_type(m)  # N: Revealed type is "Tuple[builtins.int, builtins.str, builtins.bool]"
+[builtins fixtures/list.pyi]
+
+[case testSequencePatternTupleToLong]
+from typing import Tuple
+m: Tuple[int, str]
+
+match m:
+    case [a, b, c]:
+        reveal_type(a)
+        reveal_type(b)
+        reveal_type(c)
+[builtins fixtures/list.pyi]
+
+[case testSequencePatternTupleToShort]
+from typing import Tuple
+m: Tuple[int, str, bool]
+
+match m:
+    case [a, b]:
+        reveal_type(a)
+        reveal_type(b)
+[builtins fixtures/list.pyi]
+
+[case testSequencePatternTupleNarrows]
+from typing import Tuple
+m: Tuple[object, object]
+
+match m:
+    case [1, "str"]:
+        reveal_type(m)  # N: Revealed type is "Tuple[Literal[1]?, Literal['str']?]"
+[builtins fixtures/list.pyi]
+
+[case testSequencePatternTupleStarred]
+from typing import Tuple
+m: Tuple[int, str, bool]
+
+match m:
+    case [a, *b, c]:
+        reveal_type(a)  # N: Revealed type is "builtins.int"
+        reveal_type(b)  # N: Revealed type is "builtins.list[builtins.str]"
+        reveal_type(c)  # N: Revealed type is "builtins.bool"
+        reveal_type(m)  # N: Revealed type is "Tuple[builtins.int, builtins.str, builtins.bool]"
+[builtins fixtures/list.pyi]
+
+[case testSequencePatternTupleStarredUnion]
+from typing import Tuple
+m: Tuple[int, str, float, bool]
+
+match m:
+    case [a, *b, c]:
+        reveal_type(a)  # N: Revealed type is "builtins.int"
+        reveal_type(b)  # N: Revealed type is "builtins.list[Union[builtins.str, builtins.float]]"
+        reveal_type(c)  # N: Revealed type is "builtins.bool"
+        reveal_type(m)  # N: Revealed type is "Tuple[builtins.int, builtins.str, builtins.float, builtins.bool]"
+[builtins fixtures/list.pyi]
+
+
+[case testSequencePatternTupleStarredTooShort]
+from typing import Tuple
+m: Tuple[int]
+reveal_type(m)  # N: Revealed type is "Tuple[builtins.int]"
+
+match m:
+    case [a, *b, c]:
+        reveal_type(a)
+        reveal_type(b)
+        reveal_type(c)
+[builtins fixtures/list.pyi]
 
 -- Mapping Pattern --
 [case testMappingPatternCaptures]
