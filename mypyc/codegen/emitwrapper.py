@@ -271,6 +271,37 @@ def generate_dunder_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     return name
 
 
+def generate_bin_op_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    """Generates a wrapper for a native binary __dunder__ method.
+
+    This also handles reverse methods (e.g. __radd__).
+
+    Both arguments and the return value are PyObject *.
+    """
+    rmethod = '__r' + fn.name[2:]
+    if cl.has_method(rmethod):
+        return generate_bin_op_wrapper_with_reverse(cl, fn, rmethod, emitter)
+    return generate_dunder_wrapper(cl, fn, emitter)
+
+
+def generate_bin_op_wrapper_with_reverse(cl: ClassIR,
+                                         fn: FuncIR,
+                                         rmethod: str,
+                                         emitter: Emitter) -> str:
+    name = '{}{}{}'.format(DUNDER_PREFIX, fn.name, cl.name_prefix(emitter.names))
+    emitter.emit_line(
+        'static PyObject *{name}(PyObject *obj_left, PyObject *obj_right) {{'.format(name=name))
+    emitter.emit_line('if (PyObject_IsInstance(obj_left, (PyObject *){})) {{'.format(
+        emitter.type_struct_name(cl)))
+    generate_wrapper_core(fn, emitter, arg_names=['left', 'right'])
+    emitter.emit_line('}')
+    fn_rev = cl.get_method(rmethod)
+    assert fn_rev
+    generate_wrapper_core(fn_rev, emitter, arg_names=['right', 'left'])
+    emitter.emit_line('}')
+    return name
+
+
 RICHCOMPARE_OPS = {
     '__lt__': 'Py_LT',
     '__gt__': 'Py_GT',

@@ -347,3 +347,49 @@ def test_unary_dunders_native() -> None:
     assert ~c == 12
     assert int(c) == 13
     assert float(c) == 14.0
+
+[case testDundersBinarySimple]
+from typing import Any
+
+class C:
+    def __init__(self) -> None:
+        self.x = 5
+
+    def __add__(self, y: int) -> int:
+        return self.x + y
+
+def test_generic() -> None:
+    a: Any = C()
+    assert a + 3 == 8
+
+def test_native() -> None:
+    c = C()
+    assert c + 3 == 8
+
+[case testDundersBinaryReverse]
+from typing import Any
+
+class C:
+    def __init__(self) -> None:
+        self.x = 5
+
+    def __add__(self, y: int) -> int:
+        return self.x + y
+
+    def __radd__(self, y: int) -> int:
+        return self.x + y + 1
+
+def test_generic() -> None:
+    a: Any = C()
+    assert a + 3 == 8
+    assert 4 + a == 10
+
+def test_native() -> None:
+    c = C()
+    assert c + 3 == 8
+    assert 4 + c == 10
+
+# TODO: NotImplemented
+# TODO: Errors
+# TODO: Only reverse
+# TODO: Inheritance

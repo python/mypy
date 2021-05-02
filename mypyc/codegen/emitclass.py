@@ -10,7 +10,7 @@ from mypyc.codegen.emitfunc import native_function_header
 from mypyc.codegen.emitwrapper import (
     generate_dunder_wrapper, generate_hash_wrapper, generate_richcompare_wrapper,
     generate_bool_wrapper, generate_get_wrapper, generate_len_wrapper,
-    generate_set_del_item_wrapper, generate_contains_wrapper
+    generate_set_del_item_wrapper, generate_contains_wrapper, generate_bin_op_wrapper
 )
 from mypyc.ir.rtypes import RType, RTuple, object_rprimitive
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
@@ -62,6 +62,7 @@ AS_NUMBER_SLOT_DEFS = {
     '__invert__': ('nb_invert', generate_dunder_wrapper),
     '__int__': ('nb_int', generate_dunder_wrapper),
     '__float__': ('nb_float', generate_dunder_wrapper),
+    '__add__': ('nb_add', generate_bin_op_wrapper),
 }  # type: SlotTable
 
 AS_ASYNC_SLOT_DEFS = {
