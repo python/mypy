@@ -275,5 +275,4 @@ def exit() -> None: ...
 class classmethod: pass
 class staticmethod: pass
 
-class NotImplementedType: pass
-NotImplemented = ...  # type: NotImplementedType
+NotImplemented = ...  # type: Any
