@@ -58,6 +58,10 @@ AS_SEQUENCE_SLOT_DEFS = {
 
 AS_NUMBER_SLOT_DEFS = {
     '__bool__': ('nb_bool', generate_bool_wrapper),
+    '__neg__': ('nb_negative', generate_dunder_wrapper),
+    '__invert__': ('nb_invert', generate_dunder_wrapper),
+    '__int__': ('nb_int', generate_dunder_wrapper),
+    '__float__': ('nb_float', generate_dunder_wrapper),
 }  # type: SlotTable
 
 AS_ASYNC_SLOT_DEFS = {

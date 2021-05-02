@@ -312,3 +312,30 @@ def test_native_del_item_override() -> None:
     assert a.key == 10 and a.value == 12
     del a[16]
     assert a.key == 18
+
+[case testDundersNumber]
+from typing import Any
+
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def __neg__(self) -> int:
+        return self.x + 1
+
+    def __invert__(self) -> int:
+        return self.x + 2
+
+    def __int__(self) -> int:
+        return self.x + 3
+
+    def __float__(self) -> float:
+        return float(self.x + 4)
+
+def test_unary_dunders() -> None:
+    a: Any = C(10)
+
+    assert -a == 11
+    assert ~a == 12
+    assert int(a) == 13
+    assert float(a) == 14.0
