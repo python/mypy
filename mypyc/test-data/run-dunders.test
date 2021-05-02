@@ -389,7 +389,30 @@ def test_native() -> None:
     assert c + 3 == 8
     assert 4 + c == 10
 
-# TODO: NotImplemented
+
+[case testDundersBinaryNotImplemented]
+from typing import Any, Union
+
+class C:
+    def __init__(self, v: int) -> None:
+        self.v = v
+
+    def __add__(self, y: int) -> Union[int, Any]:
+        if y == 1:
+            return self.v
+        return NotImplemented
+
+def test_generic() -> None:
+    a: Any = C(4)
+    assert a + 1 == 4
+    try:
+        a + 2
+    except TypeError:
+        pass
+    else:
+        assert False
+
+# TODO: more NotImplemented
 # TODO: Errors
 # TODO: Only reverse
 # TODO: Inheritance
