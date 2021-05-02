@@ -555,7 +555,8 @@ def generate_contains_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
 # Helpers
 
 
-def generate_wrapper_core(fn: FuncIR, emitter: Emitter,
+def generate_wrapper_core(fn: FuncIR,
+                          emitter: Emitter,
                           optional_args: Optional[List[RuntimeArg]] = None,
                           arg_names: Optional[List[str]] = None,
                           cleanups: Optional[List[str]] = None,
