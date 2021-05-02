@@ -7,7 +7,7 @@ from mypy.types import (
     Type, AnyType, NoneType, TypeVisitor, Instance, UnboundType, TypeVarType, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, FunctionLike, Overloaded, LiteralType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, get_proper_type,
-    ProperType, get_proper_types, TypeAliasType
+    ProperType, get_proper_types, TypeAliasType, PlaceholderType
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import (
@@ -99,6 +99,9 @@ def join_types(s: Type, t: Type) -> ProperType:
         s, t = t, s
 
     if isinstance(s, UninhabitedType) and not isinstance(t, UninhabitedType):
+        s, t = t, s
+
+    if isinstance(t, PlaceholderType) and not isinstance(s, PlaceholderType):
         s, t = t, s
 
     # Use a visitor to handle non-trivial cases.
