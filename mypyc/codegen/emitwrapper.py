@@ -259,16 +259,13 @@ def generate_dunder_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     protocol slot. This specifically means that the arguments are taken as *PyObjects and returned
     as *PyObjects.
     """
-    input_args = ', '.join('PyObject *obj_{}'.format(arg.name) for arg in fn.args)
-    name = '{}{}{}'.format(DUNDER_PREFIX, fn.name, cl.name_prefix(emitter.names))
-    emitter.emit_line('static PyObject *{name}({input_args}) {{'.format(
-        name=name,
-        input_args=input_args,
-    ))
-    generate_wrapper_core(fn, emitter)
-    emitter.emit_line('}')
-
-    return name
+    gen = WrapperGenerator(cl, emitter)
+    gen.set_target(fn)
+    gen.emit_header()
+    gen.emit_arg_processing()
+    gen.emit_call()
+    gen.finish()
+    return gen.wrapper_name()
 
 
 def generate_bin_op_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
@@ -278,28 +275,29 @@ def generate_bin_op_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
 
     Both arguments and the return value are PyObject *.
     """
+    gen = WrapperGenerator(cl, emitter)
+    gen.set_target(fn)
+    gen.arg_names = ['left', 'right']
+    wrapper_name = gen.wrapper_name()
+
+    gen.emit_header()
     rmethod = '__r' + fn.name[2:]
     if cl.has_method(rmethod):
-        return generate_bin_op_wrapper_with_reverse(cl, fn, rmethod, emitter)
-    return generate_dunder_wrapper(cl, fn, emitter)
+        emitter.emit_line('if (PyObject_IsInstance(obj_left, (PyObject *){})) {{'.format(
+            emitter.type_struct_name(cl)))
 
+    gen.emit_arg_processing()
+    gen.emit_call()
+    gen.finish()
 
-def generate_bin_op_wrapper_with_reverse(cl: ClassIR,
-                                         fn: FuncIR,
-                                         rmethod: str,
-                                         emitter: Emitter) -> str:
-    name = '{}{}{}'.format(DUNDER_PREFIX, fn.name, cl.name_prefix(emitter.names))
-    emitter.emit_line(
-        'static PyObject *{name}(PyObject *obj_left, PyObject *obj_right) {{'.format(name=name))
-    emitter.emit_line('if (PyObject_IsInstance(obj_left, (PyObject *){})) {{'.format(
-        emitter.type_struct_name(cl)))
-    generate_wrapper_core(fn, emitter, arg_names=['left', 'right'])
-    emitter.emit_line('}')
     fn_rev = cl.get_method(rmethod)
-    assert fn_rev
-    generate_wrapper_core(fn_rev, emitter, arg_names=['right', 'left'])
-    emitter.emit_line('}')
-    return name
+    if fn_rev:
+        gen.set_target(fn_rev)
+        gen.arg_names = ['right', 'left']
+        gen.emit_arg_processing()
+        gen.emit_call()
+        gen.finish()
+    return wrapper_name
 
 
 RICHCOMPARE_OPS = {
@@ -635,3 +633,86 @@ def generate_arg_check(name: str, typ: RType, emitter: Emitter,
                               name, name, error_code))
         else:
             emitter.emit_line('if (arg_{} == NULL) {}'.format(name, error_code))
+
+
+class WrapperGenerator:
+    # TODO: Support non-dunder wrappers as well (and this for them)
+
+    def __init__(self, cl: ClassIR, emitter: Emitter) -> None:
+        self.cl = cl
+        self.emitter = emitter
+        self.cleanups = []  # type: List[str]
+        self.optional_args = []  # type: List[RuntimeArg]
+        self.traceback_code = ''
+
+    def set_target(self, fn: FuncIR) -> None:
+        self.target_name = fn.name
+        self.target_cname = fn.cname(self.emitter.names)
+        self.arg_names = [arg.name for arg in fn.args]
+        self.args = fn.args[:]
+        self.ret_type = fn.ret_type
+
+    def wrapper_name(self) -> str:
+        return '{}{}{}'.format(DUNDER_PREFIX,
+                               self.target_name,
+                               self.cl.name_prefix(self.emitter.names))
+
+    def use_goto(self) -> bool:
+        return bool(self.cleanups or self.traceback_code)
+
+    def emit_header(self) -> None:
+        input_args = ', '.join('PyObject *obj_{}'.format(arg) for arg in self.arg_names)
+        self.emitter.emit_line('static PyObject *{name}({input_args}) {{'.format(
+            name=self.wrapper_name(),
+            input_args=input_args,
+        ))
+
+    def emit_arg_processing(self) -> None:
+        for arg_name, arg in zip(self.arg_names, self.args):
+            # Suppress the argument check for *args/**kwargs, since we know it must be right.
+            typ = arg.type if arg.kind not in (ARG_STAR, ARG_STAR2) else object_rprimitive
+            generate_arg_check(arg_name,
+                               typ,
+                               self.emitter,
+                               self.error_code(),
+                               arg in self.optional_args)
+
+    def emit_call(self) -> None:
+        native_args = ', '.join('arg_{}'.format(arg) for arg in self.arg_names)
+        ret_type = self.ret_type
+        emitter = self.emitter
+        if ret_type.is_unboxed or self.use_goto():
+            # TODO: The Py_RETURN macros return the correct PyObject * with reference count
+            #       handling. Are they relevant?
+            emitter.emit_line('{}retval = {}{}({});'.format(emitter.ctype_spaced(ret_type),
+                                                            NATIVE_PREFIX,
+                                                            self.target_cname,
+                                                            native_args))
+            emitter.emit_lines(*self.cleanups)
+            if ret_type.is_unboxed:
+                emitter.emit_error_check('retval', ret_type, 'return NULL;')
+                emitter.emit_box('retval', 'retbox', ret_type, declare_dest=True)
+
+            emitter.emit_line(
+                'return {};'.format('retbox' if ret_type.is_unboxed else 'retval'))
+        else:
+            emitter.emit_line('return {}{}({});'.format(NATIVE_PREFIX,
+                                                        self.target_cname,
+                                                        native_args))
+            # TODO: Tracebacks?
+
+    def error_code(self) -> str:
+        if self.cleanups or self.traceback_code:
+            return 'goto fail;'
+        else:
+            return 'return NULL;'
+
+    def finish(self) -> None:
+        emitter = self.emitter
+        if self.use_goto():
+            emitter.emit_label('fail')
+            emitter.emit_lines(*self.cleanups)
+            if self.traceback_code:
+                emitter.emit_line(self.traceback_code)
+            emitter.emit_line('return NULL;')
+        emitter.emit_line('}')
