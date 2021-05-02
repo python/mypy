@@ -282,20 +282,49 @@ def generate_bin_op_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
 
     gen.emit_header()
     rmethod = '__r' + fn.name[2:]
-    if cl.has_method(rmethod):
+    fn_rev = cl.get_method(rmethod)
+    if fn_rev is None:
+        gen.emit_arg_processing(error_code='{ PyErr_Clear(); goto typefail; }')
+        gen.emit_call()
+        gen.emit_error_handling()
+        emitter.emit_label('typefail')
+        emitter.emit_line('return PyObject_CallMethod(obj_right, "{}", "O", obj_left);'.format(
+            rmethod))
+        gen.finish()
+    else:
+        # There's both a forward and a reverse operator method. First
+        # check if we should try calling the forward one. If the
+        # argument type check fails, fall back to the reverse method.
+        # Here we can't perfectly match Python semantics. In regular
+        # Python code you'd return NotImplemented if the operand has
+        # the wrong type, but in compiled code we'll never get to
+        # execute the type check.
+        #
+        # The recommended way is to still use a type check in the
+        # body. This will only be used in interpreted mode:
+        #
+        #    def __add__(self, other: int) -> Foo:
+        #        if not isinstance(other, int):
+        #            return NotImplemented
+        #        ...
         emitter.emit_line('if (PyObject_IsInstance(obj_left, (PyObject *){})) {{'.format(
             emitter.type_struct_name(cl)))
-
-    gen.emit_arg_processing()
-    gen.emit_call()
-    gen.finish()
-
-    fn_rev = cl.get_method(rmethod)
-    if fn_rev:
+        gen.emit_arg_processing(error_code='{ PyErr_Clear(); goto typefail; }')
+        gen.emit_call()
+        gen.emit_error_handling()
+        emitter.emit_line('}')
+        emitter.emit_label('typefail')
+        emitter.emit_line('if (PyObject_IsInstance(obj_right, (PyObject *){})) {{'.format(
+            emitter.type_struct_name(cl)))
         gen.set_target(fn_rev)
         gen.arg_names = ['right', 'left']
         gen.emit_arg_processing()
         gen.emit_call()
+        gen.emit_error_handling()
+        emitter.emit_line('} else {')
+        emitter.emit_line('return PyObject_CallMethod(obj_right, "{}", "O", obj_left);'.format(
+            rmethod))
+        emitter.emit_line('}')
         gen.finish()
     return wrapper_name
 
@@ -604,8 +633,11 @@ def generate_wrapper_core(fn: FuncIR,
         emitter.emit_lines('return NULL;')
 
 
-def generate_arg_check(name: str, typ: RType, emitter: Emitter,
-                       error_code: str, optional: bool = False) -> None:
+def generate_arg_check(name: str,
+                       typ: RType,
+                       emitter: Emitter,
+                       error_code: str,
+                       optional: bool = False) -> None:
     """Insert a runtime check for argument and unbox if necessary.
 
     The object is named PyObject *obj_{}. This is expected to generate
@@ -667,14 +699,15 @@ class WrapperGenerator:
             input_args=input_args,
         ))
 
-    def emit_arg_processing(self) -> None:
+    def emit_arg_processing(self, error_code: str = '') -> None:
+        error_code = error_code or self.error_code()
         for arg_name, arg in zip(self.arg_names, self.args):
             # Suppress the argument check for *args/**kwargs, since we know it must be right.
             typ = arg.type if arg.kind not in (ARG_STAR, ARG_STAR2) else object_rprimitive
             generate_arg_check(arg_name,
                                typ,
                                self.emitter,
-                               self.error_code(),
+                               error_code,
                                arg in self.optional_args)
 
     def emit_call(self) -> None:
@@ -707,7 +740,7 @@ class WrapperGenerator:
         else:
             return 'return NULL;'
 
-    def finish(self) -> None:
+    def emit_error_handling(self) -> None:
         emitter = self.emitter
         if self.use_goto():
             emitter.emit_label('fail')
@@ -715,4 +748,6 @@ class WrapperGenerator:
             if self.traceback_code:
                 emitter.emit_line(self.traceback_code)
             emitter.emit_line('return NULL;')
-        emitter.emit_line('}')
+
+    def finish(self) -> None:
+        self.emitter.emit_line('}')
