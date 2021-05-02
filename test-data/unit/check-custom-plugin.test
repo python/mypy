@@ -17,7 +17,7 @@ def f() -> str: ...
 reveal_type(f())  # N: Revealed type is "builtins.int"
 [file pyproject.toml]
 \[tool.mypy]
-plugins="<ROOT>/test-data/unit/plugins/fnplugin.py"
+plugins='<ROOT>/test-data/unit/plugins/fnplugin.py'
 
 [case testFunctionPlugin]
 # flags: --config-file tmp/mypy.ini
@@ -80,8 +80,8 @@ reveal_type(g())  # N: Revealed type is "builtins.str"
 reveal_type(h())  # N: Revealed type is "Any"
 [file pyproject.toml]
 \[tool.mypy]
-plugins=["<ROOT>/test-data/unit/plugins/fnplugin.py",
-  "<ROOT>/test-data/unit/plugins/plugin2.py"
+plugins=['<ROOT>/test-data/unit/plugins/fnplugin.py',
+  '<ROOT>/test-data/unit/plugins/plugin2.py'
 ]
 
 [case testTwoPluginsMixedType]
@@ -106,7 +106,7 @@ reveal_type(g())  # N: Revealed type is "builtins.str"
 reveal_type(h())  # N: Revealed type is "Any"
 [file pyproject.toml]
 \[tool.mypy]
-plugins=["<ROOT>/test-data/unit/plugins/fnplugin.py", 'plugin2']
+plugins=['<ROOT>/test-data/unit/plugins/fnplugin.py', 'plugin2']
 
 [case testMissingPluginFile]
 # flags: --config-file tmp/mypy.ini
