@@ -332,10 +332,18 @@ class C:
     def __float__(self) -> float:
         return float(self.x + 4)
 
-def test_unary_dunders() -> None:
+def test_unary_dunders_generic() -> None:
     a: Any = C(10)
 
     assert -a == 11
     assert ~a == 12
     assert int(a) == 13
     assert float(a) == 14.0
+
+def test_unary_dunders_native() -> None:
+    c = C(10)
+
+    assert -c == 11
+    assert ~c == 12
+    assert int(c) == 13
+    assert float(c) == 14.0
