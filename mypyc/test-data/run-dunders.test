@@ -358,13 +358,18 @@ class C:
     def __add__(self, y: int) -> int:
         return self.x + y
 
+    def __sub__(self, y: int) -> int:
+        return self.x - y
+
 def test_generic() -> None:
     a: Any = C()
     assert a + 3 == 8
+    assert a - 3 == 2
 
 def test_native() -> None:
     c = C()
     assert c + 3 == 8
+    assert c - 3 == 2
 
 def test_error() -> None:
     a: Any = C()
@@ -372,6 +377,12 @@ def test_error() -> None:
         a + 'x'
     except TypeError as e:
         assert str(e) == "unsupported operand type(s) for +: 'C' and 'str'"
+    else:
+        assert False
+    try:
+        a - 'x'
+    except TypeError as e:
+        assert str(e) == "unsupported operand type(s) for -: 'C' and 'str'"
     else:
         assert False
 
@@ -388,15 +399,25 @@ class C:
     def __radd__(self, y: int) -> int:
         return self.x + y + 1
 
+    def __sub__(self, y: int) -> int:
+        return self.x - y
+
+    def __rsub__(self, y: int) -> int:
+        return self.x - y - 1
+
 def test_generic() -> None:
     a: Any = C()
     assert a + 3 == 8
     assert 4 + a == 10
+    assert a - 3 == 2
+    assert 4 - a == 0
 
 def test_native() -> None:
     c = C()
     assert c + 3 == 8
     assert 4 + c == 10
+    assert c - 3 == 2
+    assert 4 - c == 0
 
 def test_errors() -> None:
     a: Any = C()
@@ -404,6 +425,12 @@ def test_errors() -> None:
         a + 'x'
     except TypeError as e:
         assert str(e) == "unsupported operand type(s) for +: 'C' and 'str'"
+    else:
+        assert False
+    try:
+        a - 'x'
+    except TypeError as e:
+        assert str(e) == "unsupported operand type(s) for -: 'C' and 'str'"
     else:
         assert False
     try:
@@ -476,7 +503,5 @@ def test_generic_radd() -> None:
     assert d3 + e1 == 2
     assert d3 + e3 == 4
 
-# TODO: more NotImplemented
-# TODO: Errors
 # TODO: Only reverse
 # TODO: Inheritance

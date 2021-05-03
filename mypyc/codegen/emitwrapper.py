@@ -13,6 +13,7 @@ or methods in a single compilation unit.
 from typing import List, Optional, Sequence
 
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_NAMED_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2
+from mypy.operators import op_methods_to_symbols, reverse_op_methods
 
 from mypyc.common import PREFIX, NATIVE_PREFIX, DUNDER_PREFIX, use_vectorcall
 from mypyc.codegen.emit import Emitter, ErrorHandler, GotoHandler, AssignHandler, ReturnHandler
@@ -282,7 +283,7 @@ def generate_bin_op_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     wrapper_name = gen.wrapper_name()
 
     gen.emit_header()
-    rmethod = '__r' + fn.name[2:]
+    rmethod = reverse_op_methods[fn.name]
     fn_rev = cl.get_method(rmethod)
     if fn_rev is None:
         gen.emit_arg_processing(error=GotoHandler('typefail'), raise_exception=False)
@@ -290,7 +291,8 @@ def generate_bin_op_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
         gen.emit_error_handling()
         emitter.emit_label('typefail')
         emitter.emit_line(
-            'return CPy_CallReverseOpMethod(obj_left, obj_right, "+", "{}");'.format(
+            'return CPy_CallReverseOpMethod(obj_left, obj_right, "{}", "{}");'.format(
+                op_methods_to_symbols[fn.name],
                 rmethod))
         gen.finish()
     else:
@@ -325,7 +327,8 @@ def generate_bin_op_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
         gen.emit_error_handling()
         emitter.emit_line('} else {')
         emitter.emit_line(
-            'return CPy_CallReverseOpMethod(obj_left, obj_right, "+", "{}");'.format(
+            'return CPy_CallReverseOpMethod(obj_left, obj_right, "{}", "{}");'.format(
+                op_methods_to_symbols[fn.name],
                 rmethod))
         emitter.emit_line('}')
         emitter.emit_label('typefail2')

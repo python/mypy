@@ -63,6 +63,7 @@ AS_NUMBER_SLOT_DEFS = {
     '__int__': ('nb_int', generate_dunder_wrapper),
     '__float__': ('nb_float', generate_dunder_wrapper),
     '__add__': ('nb_add', generate_bin_op_wrapper),
+    '__sub__': ('nb_subtract', generate_bin_op_wrapper),
 }  # type: SlotTable
 
 AS_ASYNC_SLOT_DEFS = {
