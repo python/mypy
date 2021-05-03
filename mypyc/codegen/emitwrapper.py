@@ -17,7 +17,8 @@ from mypy.nodes import ARG_POS, ARG_OPT, ARG_NAMED_OPT, ARG_NAMED, ARG_STAR, ARG
 from mypyc.common import PREFIX, NATIVE_PREFIX, DUNDER_PREFIX, use_vectorcall
 from mypyc.codegen.emit import Emitter
 from mypyc.ir.rtypes import (
-    RType, is_object_rprimitive, is_int_rprimitive, is_bool_rprimitive, object_rprimitive
+    RType, RInstance, is_object_rprimitive, is_int_rprimitive, is_bool_rprimitive,
+    object_rprimitive
 )
 from mypyc.ir.func_ir import FuncIR, RuntimeArg, FUNC_STATICMETHOD
 from mypyc.ir.class_ir import ClassIR
@@ -285,7 +286,7 @@ def generate_bin_op_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     fn_rev = cl.get_method(rmethod)
     if fn_rev is None:
         gen.emit_arg_processing(error_code='{ PyErr_Clear(); goto typefail; }')
-        gen.emit_call()
+        gen.emit_call(not_implemented_handler='goto typefail;')
         gen.emit_error_handling()
         emitter.emit_label('typefail')
         emitter.emit_line('return PyObject_CallMethod(obj_right, "{}", "O", obj_left);'.format(
@@ -710,7 +711,7 @@ class WrapperGenerator:
                                error_code,
                                arg in self.optional_args)
 
-    def emit_call(self) -> None:
+    def emit_call(self, not_implemented_handler: str = '') -> None:
         native_args = ', '.join('arg_{}'.format(arg) for arg in self.arg_names)
         ret_type = self.ret_type
         emitter = self.emitter
@@ -729,9 +730,19 @@ class WrapperGenerator:
             emitter.emit_line(
                 'return {};'.format('retbox' if ret_type.is_unboxed else 'retval'))
         else:
-            emitter.emit_line('return {}{}({});'.format(NATIVE_PREFIX,
-                                                        self.target_cname,
-                                                        native_args))
+            if not_implemented_handler and not isinstance(ret_type, RInstance):
+                # The return value type may overlap with NotImplemented.
+                emitter.emit_line('PyObject *retbox = {}{}({});'.format(NATIVE_PREFIX,
+                                                                        self.target_cname,
+                                                                        native_args))
+                emitter.emit_lines('if (retbox == CPy_NotImplemented) {',
+                                   not_implemented_handler,
+                                   '}',
+                                   'return retbox;')
+            else:
+                emitter.emit_line('return {}{}({});'.format(NATIVE_PREFIX,
+                                                            self.target_cname,
+                                                            native_args))
             # TODO: Tracebacks?
 
     def error_code(self) -> str:

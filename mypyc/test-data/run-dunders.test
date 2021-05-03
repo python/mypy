@@ -389,6 +389,19 @@ def test_native() -> None:
     assert c + 3 == 8
     assert 4 + c == 10
 
+class F:
+    def __add__(self, x: int) -> int:
+        return 5
+
+class G:
+    def __add__(self, x: int) -> int:
+        return 33
+
+    def __radd__(self, x: F) -> int:
+        return 6
+
+def test_type_mismatch_fall_back_to_reverse() -> None:
+    assert F() + G() == 6
 
 [case testDundersBinaryNotImplemented]
 from typing import Any, Union
@@ -402,7 +415,7 @@ class C:
             return self.v
         return NotImplemented
 
-def test_generic() -> None:
+def test_generic_add() -> None:
     a: Any = C(4)
     assert a + 1 == 4
     try:
@@ -411,6 +424,33 @@ def test_generic() -> None:
         pass
     else:
         assert False
+
+class D:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def __add__(self, e: E) -> Union[int, Any]:
+        if e.x == 1:
+            return 2
+        return NotImplemented
+
+class E:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def __radd__(self, d: D) -> Union[int, Any]:
+        if d.x == 3:
+            return 4
+        return NotImplemented
+
+def test_generic_radd() -> None:
+    d1: Any = D(1)
+    d3: Any = D(3)
+    e1: Any = E(1)
+    e3: Any = E(3)
+    assert d1 + e1 == 2
+    assert d3 + e1 == 2
+    assert d3 + e3 == 4
 
 # TODO: more NotImplemented
 # TODO: Errors
