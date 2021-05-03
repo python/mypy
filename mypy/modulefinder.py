@@ -763,7 +763,8 @@ def load_stdlib_py_versions(custom_typeshed_dir: Optional[str]
             module, version_range = line.split(":")
             versions = version_range.split("-")
             min_version = parse_version(versions[0])
-            max_version = parse_version(versions[1]) if len(versions) >= 2 else None
+            max_version = (parse_version(versions[1])
+                           if len(versions) >= 2 and versions[1].strip() else None)
             result[module] = min_version, max_version
 
     # Modules that are Python 2 only or have separate Python 2 stubs
