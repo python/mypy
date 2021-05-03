@@ -205,7 +205,9 @@ class PatternChecker(PatternVisitor[PatternType]):
         contracted_new_inner_types = []  # type: List[Type]
         captures = {}  # type: Dict[Expression, Type]
 
-        contracted_inner_types = self.contract_starred_pattern_types(inner_types, star_position, required_patterns)
+        contracted_inner_types = self.contract_starred_pattern_types(inner_types,
+                                                                    star_position,
+                                                                     required_patterns)
         for p, t in zip(o.patterns, contracted_inner_types):
             pattern_type = self.accept(p, t)
             typ, type_map = pattern_type
@@ -214,7 +216,9 @@ class PatternChecker(PatternVisitor[PatternType]):
             else:
                 contracted_new_inner_types.append(typ)
             self.update_type_map(captures, type_map)
-        new_inner_types = self.expand_starred_pattern_types(contracted_new_inner_types, star_position, len(inner_types))
+        new_inner_types = self.expand_starred_pattern_types(contracted_new_inner_types,
+                                                            star_position,
+                                                            len(inner_types))
 
         #
         # Calculate new type
@@ -249,7 +253,11 @@ class PatternChecker(PatternVisitor[PatternType]):
         else:
             return None
 
-    def contract_starred_pattern_types(self, types: List[Type], star_pos: Optional[int], num_patterns: int) -> List[Type]:
+    def contract_starred_pattern_types(self,
+                                       types: List[Type],
+                                       star_pos: Optional[int],
+                                       num_patterns: int
+                                       ) -> List[Type]:
         if star_pos is None:
             return types
         new_types = types[:star_pos]
@@ -259,7 +267,11 @@ class PatternChecker(PatternVisitor[PatternType]):
 
         return new_types
 
-    def expand_starred_pattern_types(self, types: List[Type], star_pos: Optional[int], num_types: int) -> List[Type]:
+    def expand_starred_pattern_types(self,
+                                     types: List[Type],
+                                     star_pos: Optional[int],
+                                     num_types: int
+                                     ) -> List[Type]:
         if star_pos is None:
             return types
         new_types = types[:star_pos]
@@ -268,7 +280,6 @@ class PatternChecker(PatternVisitor[PatternType]):
         new_types += types[star_pos+1:]
 
         return new_types
-
 
     def visit_starred_pattern(self, o: StarredPattern) -> PatternType:
         captures = {}  # type: Dict[Expression, Type]
