@@ -636,3 +636,16 @@ def test_native() -> None:
     c = C()
     c += 3
     assert c.x == 8
+    c -= 5
+    assert c.x == 3
+    c *= 3
+    assert c.x == 9
+
+def test_error() -> None:
+    c: Any = C()
+    try:
+        c += 'x'
+    except TypeError as e:
+        assert str(e) == "int object expected; got str"
+    else:
+        assert False
