@@ -66,6 +66,8 @@ AS_NUMBER_SLOT_DEFS = {
     '__sub__': ('nb_subtract', generate_bin_op_wrapper),
     '__mul__': ('nb_multiply', generate_bin_op_wrapper),
     '__mod__': ('nb_remainder', generate_bin_op_wrapper),
+    '__truediv__': ('nb_true_divide', generate_bin_op_wrapper),
+    '__floordiv__': ('nb_floor_divide', generate_bin_op_wrapper),
     '__lshift__': ('nb_lshift', generate_bin_op_wrapper),
     '__rshift__': ('nb_rshift', generate_bin_op_wrapper),
     '__and__': ('nb_and', generate_bin_op_wrapper),
