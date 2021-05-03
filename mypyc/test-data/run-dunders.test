@@ -546,3 +546,24 @@ def test_generic_radd() -> None:
 
 # TODO: Only reverse
 # TODO: Inheritance
+
+[case testDundersInplace]
+from typing import Any
+
+class C:
+    def __init__(self) -> None:
+        self.x = 5
+
+    def __iadd__(self, y: int) -> C:
+        self.x += y
+        return self
+
+def test_generic() -> None:
+    c: Any = C()
+    c += 3
+    assert c.x == 8
+
+def test_native() -> None:
+    c = C()
+    c += 3
+    assert c.x == 8
