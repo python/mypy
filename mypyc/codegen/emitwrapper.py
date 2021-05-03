@@ -289,8 +289,9 @@ def generate_bin_op_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
         gen.emit_call(not_implemented_handler='goto typefail;')
         gen.emit_error_handling()
         emitter.emit_label('typefail')
-        emitter.emit_line('return PyObject_CallMethod(obj_right, "{}", "O", obj_left);'.format(
-            rmethod))
+        emitter.emit_line(
+            'return CPy_CallReverseOpMethod(obj_left, obj_right, "+", "{}");'.format(
+                rmethod))
         gen.finish()
     else:
         # There's both a forward and a reverse operator method. First
@@ -319,13 +320,17 @@ def generate_bin_op_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
             emitter.type_struct_name(cl)))
         gen.set_target(fn_rev)
         gen.arg_names = ['right', 'left']
-        gen.emit_arg_processing()
+        gen.emit_arg_processing(error=GotoHandler('typefail2'), raise_exception=False)
         gen.emit_call()
         gen.emit_error_handling()
         emitter.emit_line('} else {')
-        emitter.emit_line('return PyObject_CallMethod(obj_right, "{}", "O", obj_left);'.format(
-            rmethod))
+        emitter.emit_line(
+            'return CPy_CallReverseOpMethod(obj_left, obj_right, "+", "{}");'.format(
+                rmethod))
         emitter.emit_line('}')
+        emitter.emit_label('typefail2')
+        emitter.emit_line('Py_INCREF(Py_NotImplemented);')
+        emitter.emit_line('return Py_NotImplemented;')
         gen.finish()
     return wrapper_name
 

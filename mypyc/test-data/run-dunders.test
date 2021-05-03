@@ -366,6 +366,15 @@ def test_native() -> None:
     c = C()
     assert c + 3 == 8
 
+def test_error() -> None:
+    a: Any = C()
+    try:
+        a + 'x'
+    except TypeError as e:
+        assert str(e) == "unsupported operand type(s) for +: 'C' and 'str'"
+    else:
+        assert False
+
 [case testDundersBinaryReverse]
 from typing import Any
 
@@ -388,6 +397,21 @@ def test_native() -> None:
     c = C()
     assert c + 3 == 8
     assert 4 + c == 10
+
+def test_errors() -> None:
+    a: Any = C()
+    try:
+        a + 'x'
+    except TypeError as e:
+        assert str(e) == "unsupported operand type(s) for +: 'C' and 'str'"
+    else:
+        assert False
+    try:
+        'x' + a
+    except TypeError as e:
+        assert str(e) == 'can only concatenate str (not "C") to str'
+    else:
+        assert False
 
 class F:
     def __add__(self, x: int) -> int:
