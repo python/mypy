@@ -270,7 +270,7 @@ def generate_dunder_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
 
 
 def generate_bin_op_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
-    """Generates a wrapper for a native binary __dunder__ method.
+    """Generates a wrapper for a native binary dunder method.
 
     This also handles reverse methods (e.g. __radd__).
 
@@ -750,7 +750,7 @@ class WrapperGenerator:
                 emitter.emit_line('PyObject *retbox = {}{}({});'.format(NATIVE_PREFIX,
                                                                         self.target_cname,
                                                                         native_args))
-                emitter.emit_lines('if (retbox == CPy_NotImplemented) {',
+                emitter.emit_lines('if (retbox == Py_NotImplemented) {',
                                    not_implemented_handler,
                                    '}',
                                    'return retbox;')
