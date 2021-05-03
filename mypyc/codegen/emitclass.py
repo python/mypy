@@ -75,6 +75,17 @@ AS_NUMBER_SLOT_DEFS = {
     '__xor__': ('nb_xor', generate_bin_op_wrapper),
     '__matmul__': ('nb_matrix_multiply', generate_bin_op_wrapper),
     '__iadd__': ('nb_inplace_add', generate_dunder_wrapper),
+    '__isub__': ('nb_inplace_subtract', generate_dunder_wrapper),
+    '__imul__': ('nb_inplace_multiply', generate_dunder_wrapper),
+    '__imod__': ('nb_inplace_remainder', generate_dunder_wrapper),
+    '__itruediv__': ('nb_inplace_true_divide', generate_dunder_wrapper),
+    '__ifloordiv__': ('nb_inplace_floor_divide', generate_dunder_wrapper),
+    '__ilshift__': ('nb_inplace_lshift', generate_dunder_wrapper),
+    '__irshift__': ('nb_inplace_rshift', generate_dunder_wrapper),
+    '__iand__': ('nb_inplace_and', generate_dunder_wrapper),
+    '__ior__': ('nb_inplace_or', generate_dunder_wrapper),
+    '__ixor__': ('nb_inplace_xor', generate_dunder_wrapper),
+    '__imatmul__': ('nb_inplace_matrix_multiply', generate_dunder_wrapper),
 }  # type: SlotTable
 
 AS_ASYNC_SLOT_DEFS = {

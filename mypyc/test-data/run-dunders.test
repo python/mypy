@@ -558,10 +558,79 @@ class C:
         self.x += y
         return self
 
-def test_generic() -> None:
+    def __isub__(self, y: int) -> C:
+        self.x -= y
+        return self
+
+    def __imul__(self, y: int) -> C:
+        self.x *= y
+        return self
+
+    def __imod__(self, y: int) -> C:
+        self.x %= y
+        return self
+
+    def __itruediv__(self, y: int) -> C:
+        self.x += y + 10
+        return self
+
+    def __ifloordiv__(self, y: int) -> C:
+        self.x += y + 20
+        return self
+
+    def __ilshift__(self, y: int) -> C:
+        self.x <<= y
+        return self
+
+    def __irshift__(self, y: int) -> C:
+        self.x >>= y
+        return self
+
+    def __iand__(self, y: int) -> C:
+        self.x &= y
+        return self
+
+    def __ior__(self, y: int) -> C:
+        self.x |= y
+        return self
+
+    def __ixor__(self, y: int) -> C:
+        self.x ^= y
+        return self
+
+    def __imatmul__(self, y: int) -> C:
+        self.x += y + 5
+        return self
+
+def test_generic_1() -> None:
     c: Any = C()
     c += 3
     assert c.x == 8
+    c -= 5
+    assert c.x == 3
+    c *= 3
+    assert c.x == 9
+    c %= 4
+    assert c.x == 1
+    c /= 5
+    assert c.x == 16
+    c //= 4
+    assert c.x == 40
+
+def test_generic_2() -> None:
+    c: Any = C()
+    c <<= 4
+    assert c.x == 80
+    c >>= 3
+    assert c.x == 10
+    c &= 3
+    assert c.x == 2
+    c |= 6
+    assert c.x == 6
+    c ^= 12
+    assert c.x == 10
+    c @= 3
+    assert c.x == 18
 
 def test_native() -> None:
     c = C()
