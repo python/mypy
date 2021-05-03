@@ -101,8 +101,9 @@ def join_types(s: Type, t: Type) -> ProperType:
     if isinstance(s, UninhabitedType) and not isinstance(t, UninhabitedType):
         s, t = t, s
 
-    if isinstance(t, PlaceholderType) and not isinstance(s, PlaceholderType):
-        s, t = t, s
+    if isinstance(t, PlaceholderType):
+        # mypyc does not allow switching the values like above.
+        return s.accept(TypeJoinVisitor(s))
 
     # Use a visitor to handle non-trivial cases.
     return t.accept(TypeJoinVisitor(s))
