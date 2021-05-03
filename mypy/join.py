@@ -101,9 +101,11 @@ def join_types(s: Type, t: Type) -> ProperType:
     if isinstance(s, UninhabitedType) and not isinstance(t, UninhabitedType):
         s, t = t, s
 
-    if isinstance(t, PlaceholderType):
+    if isinstance(t, PlaceholderType) and not isinstance(s, PlaceholderType):
         # mypyc does not allow switching the values like above.
-        return s.accept(TypeJoinVisitor(s))
+        return s.accept(TypeJoinVisitor(t))
+    elif isinstance(t, PlaceholderType):
+        return AnyType(TypeOfAny.special_form)
 
     # Use a visitor to handle non-trivial cases.
     return t.accept(TypeJoinVisitor(s))
