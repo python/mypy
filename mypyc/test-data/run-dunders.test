@@ -361,10 +361,39 @@ class C:
     def __sub__(self, y: int) -> int:
         return self.x - y
 
+    def __mul__(self, y: int) -> int:
+        return self.x * y
+
+    def __mod__(self, y: int) -> int:
+        return self.x % y
+
+    def __lshift__(self, y: int) -> int:
+        return self.x << y
+
+    def __rshift__(self, y: int) -> int:
+        return self.x >> y
+
+    def __and__(self, y: int) -> int:
+        return self.x & y
+
+    def __or__(self, y: int) -> int:
+        return self.x | y
+
+    def __xor__(self, y: int) -> int:
+        return self.x ^ y
+
 def test_generic() -> None:
     a: Any = C()
     assert a + 3 == 8
     assert a - 3 == 2
+    assert a * 5 == 25
+    assert a % 2 == 1
+    assert a << 4 == 80
+    assert a >> 0 == 5
+    assert a >> 1 == 2
+    assert a & 1 == 1
+    assert a | 3 == 7
+    assert a ^ 3 == 6
 
 def test_native() -> None:
     c = C()
