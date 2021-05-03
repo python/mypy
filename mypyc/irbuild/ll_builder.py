@@ -14,7 +14,8 @@ from typing import (
 
 from typing_extensions import Final
 
-from mypy.nodes import ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, op_methods
+from mypy.nodes import ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2
+from mypy.operators import op_methods
 from mypy.types import AnyType, TypeOfAny
 from mypy.checkexpr import map_actuals_to_formals
 
