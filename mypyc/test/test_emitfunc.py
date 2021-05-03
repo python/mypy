@@ -236,8 +236,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                          """if (likely(PyLong_Check(cpy_r_m)))
                                 cpy_r_r0 = CPyTagged_FromObject(cpy_r_m);
                             else {
-                                CPy_TypeError("int", cpy_r_m);
-                                cpy_r_r0 = CPY_INT_TAG;
+                                CPy_TypeError("int", cpy_r_m); cpy_r_r0 = CPY_INT_TAG;
                             }
                          """)
 

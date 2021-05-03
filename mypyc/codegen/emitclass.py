@@ -5,7 +5,7 @@ from typing import Optional, List, Tuple, Dict, Callable, Mapping, Set
 from mypy.backports import OrderedDict
 
 from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX, use_fastcall
-from mypyc.codegen.emit import Emitter, HeaderDeclaration
+from mypyc.codegen.emit import Emitter, HeaderDeclaration, ReturnHandler
 from mypyc.codegen.emitfunc import native_function_header
 from mypyc.codegen.emitwrapper import (
     generate_dunder_wrapper, generate_hash_wrapper, generate_richcompare_wrapper,
@@ -842,7 +842,7 @@ def generate_setter(cl: ClassIR,
     if deletable:
         emitter.emit_line('if (value != NULL) {')
     if rtype.is_unboxed:
-        emitter.emit_unbox('value', 'tmp', rtype, custom_failure='return -1;', declare_dest=True)
+        emitter.emit_unbox('value', 'tmp', rtype, error=ReturnHandler('-1'), declare_dest=True)
     elif is_same_type(rtype, object_rprimitive):
         emitter.emit_line('PyObject *tmp = value;')
     else:
@@ -891,7 +891,7 @@ def generate_property_setter(cl: ClassIR,
         cl.struct_name(emitter.names)))
     emitter.emit_line('{')
     if arg_type.is_unboxed:
-        emitter.emit_unbox('value', 'tmp', arg_type, custom_failure='return -1;',
+        emitter.emit_unbox('value', 'tmp', arg_type, error=ReturnHandler('-1'),
                            declare_dest=True)
         emitter.emit_line('{}{}((PyObject *) self, tmp);'.format(
                           NATIVE_PREFIX,

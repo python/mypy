@@ -15,7 +15,7 @@ from typing import List, Optional, Sequence
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_NAMED_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2
 
 from mypyc.common import PREFIX, NATIVE_PREFIX, DUNDER_PREFIX, use_vectorcall
-from mypyc.codegen.emit import Emitter
+from mypyc.codegen.emit import Emitter, ErrorHandler, GotoHandler, AssignHandler, ReturnHandler
 from mypyc.ir.rtypes import (
     RType, RInstance, is_object_rprimitive, is_int_rprimitive, is_bool_rprimitive,
     object_rprimitive
@@ -285,7 +285,7 @@ def generate_bin_op_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     rmethod = '__r' + fn.name[2:]
     fn_rev = cl.get_method(rmethod)
     if fn_rev is None:
-        gen.emit_arg_processing(error_code='{ PyErr_Clear(); goto typefail; }')
+        gen.emit_arg_processing(error=GotoHandler('typefail'), raise_exception=False)
         gen.emit_call(not_implemented_handler='goto typefail;')
         gen.emit_error_handling()
         emitter.emit_label('typefail')
@@ -310,7 +310,7 @@ def generate_bin_op_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
         #        ...
         emitter.emit_line('if (PyObject_IsInstance(obj_left, (PyObject *){})) {{'.format(
             emitter.type_struct_name(cl)))
-        gen.emit_arg_processing(error_code='{ PyErr_Clear(); goto typefail; }')
+        gen.emit_arg_processing(error=GotoHandler('typefail'), raise_exception=False)
         gen.emit_call()
         gen.emit_error_handling()
         emitter.emit_line('}')
@@ -544,7 +544,7 @@ def generate_set_del_item_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> 
 def generate_set_del_item_wrapper_inner(fn: FuncIR, emitter: Emitter,
                                         args: Sequence[RuntimeArg]) -> None:
     for arg in args:
-        generate_arg_check(arg.name, arg.type, emitter, 'goto fail;', False)
+        generate_arg_check(arg.name, arg.type, emitter, GotoHandler('fail'))
     native_args = ', '.join('arg_{}'.format(arg.name) for arg in args)
     emitter.emit_line('{}val = {}{}({});'.format(emitter.ctype_spaced(fn.ret_type),
                                                  NATIVE_PREFIX,
@@ -564,7 +564,7 @@ def generate_contains_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     emitter.emit_line(
         'static int {name}(PyObject *self, PyObject *obj_item) {{'.
         format(name=name))
-    generate_arg_check('item', fn.args[1].type, emitter, 'return -1;', False)
+    generate_arg_check('item', fn.args[1].type, emitter, ReturnHandler('-1'))
     emitter.emit_line('{}val = {}{}(self, arg_item);'.format(emitter.ctype_spaced(fn.ret_type),
                                                              NATIVE_PREFIX,
                                                              fn.cname(emitter.names)))
@@ -599,13 +599,17 @@ def generate_wrapper_core(fn: FuncIR,
     optional_args = optional_args or []
     cleanups = cleanups or []
     use_goto = bool(cleanups or traceback_code)
-    error_code = 'return NULL;' if not use_goto else 'goto fail;'
+    error = ReturnHandler('NULL') if not use_goto else GotoHandler('fail')
 
     arg_names = arg_names or [arg.name for arg in fn.args]
     for arg_name, arg in zip(arg_names, fn.args):
         # Suppress the argument check for *args/**kwargs, since we know it must be right.
         typ = arg.type if arg.kind not in (ARG_STAR, ARG_STAR2) else object_rprimitive
-        generate_arg_check(arg_name, typ, emitter, error_code, arg in optional_args)
+        generate_arg_check(arg_name,
+                           typ,
+                           emitter,
+                           error,
+                           optional=arg in optional_args)
     native_args = ', '.join('arg_{}'.format(arg) for arg in arg_names)
     if fn.ret_type.is_unboxed or use_goto:
         # TODO: The Py_RETURN macros return the correct PyObject * with reference count handling.
@@ -637,8 +641,10 @@ def generate_wrapper_core(fn: FuncIR,
 def generate_arg_check(name: str,
                        typ: RType,
                        emitter: Emitter,
-                       error_code: str,
-                       optional: bool = False) -> None:
+                       error: ErrorHandler = AssignHandler(),
+                       *,
+                       optional: bool = False,
+                       raise_exception: bool = True) -> None:
     """Insert a runtime check for argument and unbox if necessary.
 
     The object is named PyObject *obj_{}. This is expected to generate
@@ -647,8 +653,14 @@ def generate_arg_check(name: str,
     """
     if typ.is_unboxed:
         # Borrow when unboxing to avoid reference count manipulation.
-        emitter.emit_unbox('obj_{}'.format(name), 'arg_{}'.format(name), typ,
-                           error_code, declare_dest=True, borrow=True, optional=optional)
+        emitter.emit_unbox('obj_{}'.format(name),
+                           'arg_{}'.format(name),
+                           typ,
+                           declare_dest=True,
+                           raise_exception=raise_exception,
+                           error=error,
+                           borrow=True,
+                           optional=optional)
     elif is_object_rprimitive(typ):
         # Object is trivial since any object is valid
         if optional:
@@ -659,13 +671,13 @@ def generate_arg_check(name: str,
         else:
             emitter.emit_line('PyObject *arg_{} = obj_{};'.format(name, name))
     else:
-        emitter.emit_cast('obj_{}'.format(name), 'arg_{}'.format(name), typ,
-                          declare_dest=True, optional=optional)
-        if optional:
-            emitter.emit_line('if (obj_{} != NULL && arg_{} == NULL) {}'.format(
-                              name, name, error_code))
-        else:
-            emitter.emit_line('if (arg_{} == NULL) {}'.format(name, error_code))
+        emitter.emit_cast('obj_{}'.format(name),
+                          'arg_{}'.format(name),
+                          typ,
+                          declare_dest=True,
+                          raise_exception=raise_exception,
+                          error=error,
+                          optional=optional)
 
 
 class WrapperGenerator:
@@ -700,16 +712,19 @@ class WrapperGenerator:
             input_args=input_args,
         ))
 
-    def emit_arg_processing(self, error_code: str = '') -> None:
-        error_code = error_code or self.error_code()
+    def emit_arg_processing(self,
+                            error: Optional[ErrorHandler] = None,
+                            raise_exception: bool = True) -> None:
+        error = error or self.error()
         for arg_name, arg in zip(self.arg_names, self.args):
             # Suppress the argument check for *args/**kwargs, since we know it must be right.
             typ = arg.type if arg.kind not in (ARG_STAR, ARG_STAR2) else object_rprimitive
             generate_arg_check(arg_name,
                                typ,
                                self.emitter,
-                               error_code,
-                               arg in self.optional_args)
+                               error,
+                               raise_exception=raise_exception,
+                               optional=arg in self.optional_args)
 
     def emit_call(self, not_implemented_handler: str = '') -> None:
         native_args = ', '.join('arg_{}'.format(arg) for arg in self.arg_names)
@@ -745,11 +760,11 @@ class WrapperGenerator:
                                                             native_args))
             # TODO: Tracebacks?
 
-    def error_code(self) -> str:
+    def error(self) -> ErrorHandler:
         if self.cleanups or self.traceback_code:
-            return 'goto fail;'
+            return GotoHandler('fail')
         else:
-            return 'return NULL;'
+            return ReturnHandler('NULL')
 
     def emit_error_handling(self) -> None:
         emitter = self.emitter
