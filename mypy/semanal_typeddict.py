@@ -166,7 +166,13 @@ class TypedDictAnalyzer:
         required_keys = {
             field
             for (field, t) in zip(fields, types)
-            if total or isinstance(t, RequiredType)  # type: ignore[misc]
+            if (total or (
+                isinstance(t, RequiredType) and  # type: ignore[misc]
+                t.required
+            )) and not (
+                isinstance(t, RequiredType) and  # type: ignore[misc]
+                not t.required
+            )
         }
         types = [  # unwrap Required[T] to just T
             t.item if isinstance(t, RequiredType) else t  # type: ignore[misc]
@@ -219,7 +225,13 @@ class TypedDictAnalyzer:
             required_keys = {
                 field
                 for (field, t) in zip(items, types)
-                if total or isinstance(t, RequiredType)  # type: ignore[misc]
+                if (total or (
+                    isinstance(t, RequiredType) and  # type: ignore[misc]
+                    t.required
+                )) and not (
+                    isinstance(t, RequiredType) and  # type: ignore[misc]
+                    not t.required
+                )
             }
             types = [  # unwrap Required[T] to just T
                 t.item if isinstance(t, RequiredType) else t  # type: ignore[misc]

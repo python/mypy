@@ -281,14 +281,18 @@ class TypeGuardType(Type):
 
 
 class RequiredType(Type):
-    """Required[T]. Only usable at top-level of a TypedDict definition."""
+    """Required[T] or NotRequired[T]. Only usable at top-level of a TypedDict definition."""
 
-    def __init__(self, item: Type) -> None:
+    def __init__(self, item: Type, *, required: bool) -> None:
         super().__init__(line=item.line, column=item.column)
         self.item = item
+        self.required = required
 
     def __repr__(self) -> str:
-        return "Required[{}]".format(self.item)
+        if self.required:
+            return "Required[{}]".format(self.item)
+        else:
+            return "NotRequired[{}]".format(self.item)
 
 
 class ProperType(Type):

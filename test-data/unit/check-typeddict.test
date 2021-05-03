@@ -2172,3 +2172,66 @@ class Movie(TypedDict, total=False):
     title: Required[str, bytes]  # E: Required[] must have exactly one type argument
     year: int
 [typing fixtures/typing-typeddict.pyi]
+
+
+-- NotRequired[]
+
+[case testDoesRecognizeNotRequiredInTypedDictWithClass]
+from typing import TypedDict
+from typing import NotRequired
+class Movie(TypedDict):
+    title: str
+    year: NotRequired[int]
+m = Movie(title='The Matrix')
+m = Movie()  # E: Missing key "title" for TypedDict "Movie"
+[typing fixtures/typing-typeddict.pyi]
+
+[case testDoesRecognizeNotRequiredInTypedDictWithAssignment]
+from typing import TypedDict
+from typing import NotRequired
+Movie = TypedDict('Movie', {
+    'title': str,
+    'year': NotRequired[int],
+})
+m = Movie(title='The Matrix')
+m = Movie()  # E: Missing key "title" for TypedDict "Movie"
+[typing fixtures/typing-typeddict.pyi]
+
+[case testDoesDisallowNotRequiredOutsideOfTypedDict]
+from typing import NotRequired
+x: NotRequired[int] = 42  # E: NotRequired[] can be only used in a TypedDict definition
+[typing fixtures/typing-typeddict.pyi]
+
+[case testDoesOnlyAllowNotRequiredInsideTypedDictAtTopLevel]
+from typing import TypedDict
+from typing import Union
+from typing import NotRequired
+Movie = TypedDict('Movie', {
+    'title': Union[
+        NotRequired[str],  # E: NotRequired[] can be only used in a TypedDict definition
+        bytes
+    ],
+    'year': int,
+})
+[typing fixtures/typing-typeddict.pyi]
+
+[case testDoesDisallowNotRequiredInsideNotRequired]
+from typing import TypedDict
+from typing import Union
+from typing import NotRequired
+Movie = TypedDict('Movie', {
+    'title': NotRequired[Union[
+        NotRequired[str],  # E: NotRequired[] can be only used in a TypedDict definition
+        bytes
+    ]],
+    'year': int,
+})
+[typing fixtures/typing-typeddict.pyi]
+
+[case testNotRequiredOnlyAllowsOneItem]
+from typing import TypedDict
+from typing import NotRequired
+class Movie(TypedDict):
+    title: NotRequired[str, bytes]  # E: NotRequired[] must have exactly one type argument
+    year: int
+[typing fixtures/typing-typeddict.pyi]
