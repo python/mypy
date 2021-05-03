@@ -382,6 +382,9 @@ class C:
     def __xor__(self, y: int) -> int:
         return self.x ^ y
 
+    def __matmul__(self, y: int) -> int:
+        return self.x + y + 10
+
 def test_generic() -> None:
     a: Any = C()
     assert a + 3 == 8
@@ -394,6 +397,7 @@ def test_generic() -> None:
     assert a & 1 == 1
     assert a | 3 == 7
     assert a ^ 3 == 6
+    assert a @ 3 == 18
 
 def test_native() -> None:
     c = C()

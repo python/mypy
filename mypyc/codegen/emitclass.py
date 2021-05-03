@@ -71,6 +71,7 @@ AS_NUMBER_SLOT_DEFS = {
     '__and__': ('nb_and', generate_bin_op_wrapper),
     '__or__': ('nb_or', generate_bin_op_wrapper),
     '__xor__': ('nb_xor', generate_bin_op_wrapper),
+    '__matmul__': ('nb_matrix_multiply', generate_bin_op_wrapper),
 }  # type: SlotTable
 
 AS_ASYNC_SLOT_DEFS = {
