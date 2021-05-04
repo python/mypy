@@ -112,7 +112,7 @@ def _implements_new(info: TypeInfo) -> bool:
     type_with_new = _first(ti for ti in info.mro if ti.names.get('__new__'))
     if type_with_new is None:
         return False
-    return type_with_new.fullname != 'enum.Enum'
+    return type_with_new.fullname not in ('enum.Enum', 'enum.IntEnum', 'enum.StrEnum')
 
 
 def enum_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
