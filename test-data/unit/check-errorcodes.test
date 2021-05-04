@@ -31,7 +31,11 @@ class A:
 reveal_type(1) # N: Revealed type is "Literal[1]?"
 
 [case testErrorCodeSyntaxError]
-1 '' # E: invalid syntax  [syntax]
+1 ''
+[out]
+main:1: error: invalid syntax  [syntax]
+[out version>=3.10]
+main:1: error: invalid syntax. Perhaps you forgot a comma?  [syntax]
 
 [case testErrorCodeSyntaxError2]
 def f(): # E: Type signature has too many arguments  [syntax]
@@ -457,7 +461,12 @@ a: D = {'x': ''}  # E: Incompatible types (expression has type "str", TypedDict 
 b: D = {'y': ''}  # E: Extra key "y" for TypedDict "D"  [typeddict-item]
 c = D(x=0) if int() else E(x=0, y=0)
 c = {}  # E: Expected TypedDict key "x" but found no keys  [typeddict-item]
+
+a['y'] = 1  # E: TypedDict "D" has no key "y"  [typeddict-item]
+a['x'] = 'x'  # E: Value of "x" has incompatible type "str"; expected "int"  [typeddict-item]
+a['y']  # E: TypedDict "D" has no key "y"  [typeddict-item]
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testErrorCodeCannotDetermineType]
 y = x  # E: Cannot determine type of "x"  [has-type]
@@ -756,7 +765,7 @@ class C(TypedDict):
     x: int
 
 c: C
-c.setdefault('x', '1')  # type: ignore[arg-type]
+c.setdefault('x', '1')  # type: ignore[typeddict-item]
 
 class A:
     pass

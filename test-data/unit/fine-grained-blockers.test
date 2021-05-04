@@ -23,6 +23,12 @@ a.py:1: error: invalid syntax
 ==
 main:2: error: Missing positional argument "x" in call to "f"
 ==
+[out version>=3.10]
+==
+a.py:1: error: expected ':'
+==
+main:2: error: Missing positional argument "x" in call to "f"
+==
 
 [case testParseErrorShowSource]
 # flags: --pretty --show-error-codes
@@ -46,6 +52,16 @@ main:3: error: Missing positional argument "x" in call to "f"  [call-arg]
     a.f()
     ^
 ==
+[out version>=3.10]
+==
+a.py:1: error: expected ':'  [syntax]
+    def f(x: int) ->
+                   ^
+==
+main:3: error: Missing positional argument "x" in call to "f"  [call-arg]
+    a.f()
+    ^
+==
 
 [case testParseErrorMultipleTimes]
 import a
@@ -64,6 +80,13 @@ def f(x: int) -> None: pass
 a.py:1: error: invalid syntax
 ==
 a.py:2: error: invalid syntax
+==
+main:2: error: Missing positional argument "x" in call to "f"
+[out version>=3.10]
+==
+a.py:1: error: expected ':'
+==
+a.py:2: error: expected ':'
 ==
 main:2: error: Missing positional argument "x" in call to "f"
 
@@ -105,6 +128,14 @@ a.py:1: error: invalid syntax
 ==
 main:3: error: Too many arguments for "f"
 main:5: error: Too many arguments for "f"
+[out version>=3.10]
+main:3: error: Too many arguments for "f"
+main:5: error: Too many arguments for "f"
+==
+a.py:1: error: expected ':'
+==
+main:3: error: Too many arguments for "f"
+main:5: error: Too many arguments for "f"
 
 [case testUpdateClassReferenceAcrossBlockingError]
 import a
@@ -125,6 +156,11 @@ class C:
 a.py:1: error: invalid syntax
 ==
 main:5: error: Missing positional argument "x" in call to "f" of "C"
+[out version>=3.10]
+==
+a.py:1: error: invalid syntax. Perhaps you forgot a comma?
+==
+main:5: error: Missing positional argument "x" in call to "f" of "C"
 
 [case testAddFileWithBlockingError]
 import a
@@ -138,6 +174,13 @@ main:1: error: Cannot find implementation or library stub for module named "a"
 main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
 a.py:1: error: invalid syntax
+==
+main:2: error: Too many arguments for "f"
+[out version>=3.10]
+main:1: error: Cannot find implementation or library stub for module named "a"
+main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+==
+a.py:1: error: invalid syntax. Perhaps you forgot a comma?
 ==
 main:2: error: Too many arguments for "f"
 
@@ -216,6 +259,13 @@ a.py:1: error: invalid syntax
 a.py:1: error: invalid syntax
 ==
 a.py:2: error: Missing positional argument "x" in call to "f"
+[out version>=3.10]
+==
+a.py:1: error: invalid syntax. Perhaps you forgot a comma?
+==
+a.py:1: error: invalid syntax. Perhaps you forgot a comma?
+==
+a.py:2: error: Missing positional argument "x" in call to "f"
 
 [case testModifyTwoFilesIntroduceTwoBlockingErrors]
 import a
@@ -280,6 +330,13 @@ a.py:1: error: invalid syntax
 main:1: error: Cannot find implementation or library stub for module named "a"
 main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 b.py:1: error: Cannot find implementation or library stub for module named "a"
+[out version>=3.10]
+==
+a.py:1: error: invalid syntax. Perhaps you forgot a comma?
+==
+main:1: error: Cannot find implementation or library stub for module named "a"
+main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+b.py:1: error: Cannot find implementation or library stub for module named "a"
 
 [case testDeleteFileWithBlockingError-only_when_cache]
 -- Different cache/no-cache tests because:
@@ -297,6 +354,13 @@ x x
 [out]
 ==
 a.py:1: error: invalid syntax
+==
+b.py:1: error: Cannot find implementation or library stub for module named "a"
+b.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+main:1: error: Cannot find implementation or library stub for module named "a"
+[out version>=3.10]
+==
+a.py:1: error: invalid syntax. Perhaps you forgot a comma?
 ==
 b.py:1: error: Cannot find implementation or library stub for module named "a"
 b.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
@@ -324,6 +388,14 @@ a.py:1: error: invalid syntax
 ==
 b.py:2: error: Module has no attribute "f"
 b.py:3: error: "int" not callable
+[out version>=3.10]
+==
+a.py:1: error: invalid syntax. Perhaps you forgot a comma?
+==
+a.py:1: error: invalid syntax. Perhaps you forgot a comma?
+==
+b.py:2: error: Module has no attribute "f"
+b.py:3: error: "int" not callable
 
 [case testImportBringsAnotherFileWithBlockingError1]
 import a
@@ -337,6 +409,11 @@ def f() -> None: pass
 [out]
 ==
 <ROOT>/test-data/unit/lib-stub/blocker.pyi:2: error: invalid syntax
+==
+a.py:1: error: "int" not callable
+[out version>=3.10]
+==
+<ROOT>/test-data/unit/lib-stub/blocker.pyi:2: error: invalid syntax. Perhaps you forgot a comma?
 ==
 a.py:1: error: "int" not callable
 
@@ -413,6 +490,13 @@ a.py:1: error: invalid syntax
 <ROOT>/test-data/unit/lib-stub/blocker.pyi:2: error: invalid syntax
 ==
 a.py:2: error: "int" not callable
+[out version>=3.10]
+==
+a.py:1: error: invalid syntax. Perhaps you forgot a comma?
+==
+<ROOT>/test-data/unit/lib-stub/blocker.pyi:2: error: invalid syntax. Perhaps you forgot a comma?
+==
+a.py:2: error: "int" not callable
 
 [case testInitialBlocker]
 # cmd: mypy a.py b.py
@@ -428,6 +512,11 @@ def f() -> int:
     return 0
 [out]
 a.py:1: error: invalid syntax
+==
+b.py:2: error: Incompatible return value type (got "str", expected "int")
+==
+[out version>=3.10]
+a.py:1: error: invalid syntax. Perhaps you forgot a comma?
 ==
 b.py:2: error: Incompatible return value type (got "str", expected "int")
 ==

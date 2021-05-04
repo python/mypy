@@ -77,6 +77,7 @@ ArgChecker = Callable[[Type,
                        int,
                        int,
                        CallableType,
+                       Optional[Type],
                        Context,
                        Context,
                        MessageBuilder],
@@ -1011,7 +1012,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                   arg_names, formal_to_actual, context, self.msg)
 
         self.check_argument_types(arg_types, arg_kinds, args, callee, formal_to_actual, context,
-                                  messages=arg_messages)
+                                  messages=arg_messages, object_type=object_type)
 
         if (callee.is_type_obj() and (len(arg_types) == 1)
                 and is_equivalent(callee.ret_type, self.named_type('builtins.type'))):
@@ -1452,10 +1453,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                              formal_to_actual: List[List[int]],
                              context: Context,
                              messages: Optional[MessageBuilder] = None,
-                             check_arg: Optional[ArgChecker] = None) -> None:
+                             check_arg: Optional[ArgChecker] = None,
+                             object_type: Optional[Type] = None) -> None:
         """Check argument types against a callable type.
 
         Report errors if the argument types are not compatible.
+
+        The check_call docstring describes some of the arguments.
         """
         messages = messages or self.msg
         check_arg = check_arg or self.check_arg
@@ -1480,7 +1484,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     callee.arg_names[i], callee.arg_kinds[i])
                 check_arg(expanded_actual, actual_type, arg_kinds[actual],
                           callee.arg_types[i],
-                          actual + 1, i + 1, callee, args[actual], context, messages)
+                          actual + 1, i + 1, callee, object_type, args[actual], context, messages)
 
     def check_arg(self,
                   caller_type: Type,
@@ -1490,6 +1494,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                   n: int,
                   m: int,
                   callee: CallableType,
+                  object_type: Optional[Type],
                   context: Context,
                   outer_context: Context,
                   messages: MessageBuilder) -> None:
@@ -1515,6 +1520,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                                   callee,
                                                   original_caller_type,
                                                   caller_kind,
+                                                  object_type=object_type,
                                                   context=context,
                                                   outer_context=outer_context)
             messages.incompatible_argument_note(original_caller_type, callee_type, context,
@@ -1978,6 +1984,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                       n: int,
                       m: int,
                       callee: CallableType,
+                      object_type: Optional[Type],
                       context: Context,
                       outer_context: Context,
                       messages: MessageBuilder) -> None:
@@ -2439,7 +2446,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         return self.check_call(method_type, args, arg_kinds,
                                context, arg_messages=local_errors,
-                               callable_name=callable_name, object_type=object_type)
+                               callable_name=callable_name, object_type=base_type)
 
     def check_op_reversible(self,
                             op_name: str,
@@ -2903,9 +2910,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if isinstance(left_type, UnionType):
             original_type = original_type or left_type
+            # Don't combine literal types, since we may need them for type narrowing.
             return make_simplified_union([self.visit_index_with_type(typ, e,
                                                                      original_type)
-                                          for typ in left_type.relevant_items()])
+                                          for typ in left_type.relevant_items()],
+                                         contract_literals=False)
         elif isinstance(left_type, TupleType) and self.chk.in_checked_function():
             # Special case for tuples. They return a more specific type when
             # indexed by an integer literal.

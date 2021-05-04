@@ -1074,8 +1074,9 @@ def get_typeshed_stdlib_modules(custom_typeshed_dir: Optional[str]) -> List[str]
         version_info = (3, 6)
     else:
         version_info = sys.version_info[0:2]
-    for module, minver in stdlib_py_versions.items():
-        if version_info >= minver:
+    for module, versions in stdlib_py_versions.items():
+        minver, maxver = versions
+        if version_info >= minver and (maxver is None or version_info <= maxver):
             packages.add(module)
 
     if custom_typeshed_dir:
