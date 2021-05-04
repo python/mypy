@@ -999,12 +999,15 @@ class SemanticAnalyzer(NodeVisitor[None],
                 dec.var.is_classmethod = True
                 self.check_decorated_function_is_method('classmethod', dec)
             elif (refers_to_fullname(d, 'builtins.property') or
-                  refers_to_fullname(d, 'abc.abstractproperty')):
+                  refers_to_fullname(d, 'abc.abstractproperty') or
+                  refers_to_fullname(d, 'functools.cached_property')):
                 removed.append(i)
                 dec.func.is_property = True
                 dec.var.is_property = True
                 if refers_to_fullname(d, 'abc.abstractproperty'):
                     dec.func.is_abstract = True
+                elif refers_to_fullname(d, 'functools.cached_property'):
+                    dec.var.is_settable_property = True
                 self.check_decorated_function_is_method('property', dec)
                 if len(dec.func.arguments) > 1:
                     self.fail('Too many arguments', dec.func)
