@@ -1031,6 +1031,7 @@ else:
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingTypedDictUsingEnumLiteral]
+# flags: --python-version 3.6
 from typing import Union
 from typing_extensions import TypedDict, Literal
 from enum import Enum
