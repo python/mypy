@@ -421,6 +421,10 @@ Check TypedDict items [typeddict-item]
 When constructing a ``TypedDict`` object, mypy checks that each key and value is compatible
 with the ``TypedDict`` type that is inferred from the surrounding context.
 
+When getting a ``TypedDict`` item, mypy checks that the key
+exists. When assigning to a ``TypedDict``, mypy checks that both the
+key and the value are valid.
+
 Example:
 
 .. code-block:: python
