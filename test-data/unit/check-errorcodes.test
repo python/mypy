@@ -31,7 +31,11 @@ class A:
 reveal_type(1) # N: Revealed type is "Literal[1]?"
 
 [case testErrorCodeSyntaxError]
-1 '' # E: invalid syntax  [syntax]
+1 ''
+[out]
+main:1: error: invalid syntax  [syntax]
+[out version>=3.10]
+main:1: error: invalid syntax. Perhaps you forgot a comma?  [syntax]
 
 [case testErrorCodeSyntaxError2]
 def f(): # E: Type signature has too many arguments  [syntax]

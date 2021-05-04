@@ -551,6 +551,8 @@ def f(x, y) -> None:
     del x, y + 1
 [out]
 main:2: error: can't delete operator
+[out version>=3.10]
+main:2: error: can't delete expression
 
 [case testTry]
 class c: pass
