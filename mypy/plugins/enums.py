@@ -109,7 +109,11 @@ def _implements_new(info: TypeInfo) -> bool:
     subclass. In the latter case, we must infer Any as long as mypy can't infer
     the type of _value_ from assignments in __new__.
     """
-    type_with_new = _first(ti for ti in info.mro if ti.names.get('__new__'))
+    type_with_new = _first(
+        ti
+        for ti in info.mro
+        if ti.names.get('__new__') and not ti.fullname.startswith('builtins.')
+    )
     if type_with_new is None:
         return False
     return type_with_new.fullname not in ('enum.Enum', 'enum.IntEnum', 'enum.StrEnum')
