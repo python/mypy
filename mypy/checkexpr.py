@@ -1458,6 +1458,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Check argument types against a callable type.
 
         Report errors if the argument types are not compatible.
+
+        The check_call docstring describes some of the arguments.
         """
         messages = messages or self.msg
         check_arg = check_arg or self.check_arg
