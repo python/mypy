@@ -1029,3 +1029,26 @@ else:
     reveal_type(str_or_bool_literal)  # N: Revealed type is "Union[Literal[False], Literal[True]]"
 
 [builtins fixtures/primitives.pyi]
+
+[case testNarrowingTypedDictUsingEnumLiteral]
+from typing import Union
+from typing_extensions import TypedDict, Literal
+from enum import Enum
+
+class E(Enum):
+    FOO = "a"
+    BAR = "b"
+
+class Foo(TypedDict):
+    tag: Literal[E.FOO]
+    x: int
+
+class Bar(TypedDict):
+    tag: Literal[E.BAR]
+    y: int
+
+def f(d: Union[Foo, Bar]) -> None:
+    assert d['tag'] == E.FOO
+    d['x']
+    reveal_type(d)  # N: Revealed type is "TypedDict('__main__.Foo', {'tag': Literal[__main__.E.FOO], 'x': builtins.int})"
+[builtins fixtures/dict.pyi]

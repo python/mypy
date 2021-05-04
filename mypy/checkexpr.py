@@ -2910,9 +2910,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if isinstance(left_type, UnionType):
             original_type = original_type or left_type
+            # Don't combine literal types, since we may need them for type narrowing.
             return make_simplified_union([self.visit_index_with_type(typ, e,
                                                                      original_type)
-                                          for typ in left_type.relevant_items()])
+                                          for typ in left_type.relevant_items()],
+                                         contract_literals=False)
         elif isinstance(left_type, TupleType) and self.chk.in_checked_function():
             # Special case for tuples. They return a more specific type when
             # indexed by an integer literal.
