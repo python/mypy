@@ -475,6 +475,7 @@ class TypeOpsSuite(Suite):
 
     def assert_simplified_union(self, original: List[Type], union: Type) -> None:
         assert_equal(make_simplified_union(original), union)
+        assert_equal(make_simplified_union(list(reversed(original))), union)
 
     # Helpers
 
