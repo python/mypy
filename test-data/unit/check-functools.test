@@ -107,3 +107,23 @@ Ord() > 1
 Ord() >= 1  # E: Unsupported left operand type for >= ("Ord")
 [builtins fixtures/ops.pyi]
 [builtins fixtures/dict.pyi]
+
+[case testCachedProperty]
+# flags: --python-version 3.8
+from functools import cached_property
+class Parent:
+    @property
+    def f(self) -> str: pass
+class Child(Parent):
+    @cached_property
+    def f(self) -> str: pass
+    @cached_property
+    def g(self) -> int: pass
+    @cached_property
+    def h(self, arg) -> int: pass  # E: Too many arguments
+reveal_type(Parent().f)  # N: Revealed type is "builtins.str"
+reveal_type(Child().f)  # N: Revealed type is "builtins.str"
+reveal_type(Child().g)  # N: Revealed type is "builtins.int"
+Child().f = "Hello World"
+Child().g = "invalid"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/property.pyi]
