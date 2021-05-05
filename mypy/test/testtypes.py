@@ -464,14 +464,21 @@ class TypeOpsSuite(Suite):
         self.assert_simplified_union([fx.a, UnionType([fx.a])], fx.a)
         self.assert_simplified_union([fx.b, UnionType([fx.c, UnionType([fx.d])])],
                                      UnionType([fx.b, fx.c, fx.d]))
+        self.assert_simplified_union([fx.lit1, fx.a], fx.a)
+        self.assert_simplified_union([fx.lit1, fx.lit1], fx.lit1)
         self.assert_simplified_union([fx.lit1, fx.lit2], UnionType([fx.lit1, fx.lit2]))
         self.assert_simplified_union([fx.lit1, fx.lit3], UnionType([fx.lit1, fx.lit3]))
         self.assert_simplified_union([fx.lit1, fx.uninhabited], fx.lit1)
+        self.assert_simplified_union([fx.lit1_inst, fx.a], fx.a)
+        self.assert_simplified_union([fx.lit1_inst, fx.lit1_inst], fx.lit1_inst)
         self.assert_simplified_union([fx.lit1_inst, fx.lit2_inst],
                                      UnionType([fx.lit1_inst, fx.lit2_inst]))
         self.assert_simplified_union([fx.lit1_inst, fx.lit3_inst],
                                      UnionType([fx.lit1_inst, fx.lit3_inst]))
         self.assert_simplified_union([fx.lit1_inst, fx.uninhabited], fx.lit1_inst)
+        self.assert_simplified_union([fx.lit1, fx.lit1_inst], UnionType([fx.lit1, fx.lit1_inst]))
+        self.assert_simplified_union([fx.lit1, fx.lit2_inst], UnionType([fx.lit1, fx.lit2_inst]))
+        self.assert_simplified_union([fx.lit1, fx.lit3_inst], UnionType([fx.lit1, fx.lit3_inst]))
 
     def assert_simplified_union(self, original: List[Type], union: Type) -> None:
         assert_equal(make_simplified_union(original), union)
