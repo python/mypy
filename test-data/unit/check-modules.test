@@ -2392,6 +2392,44 @@ ignore_missing_imports = True
 main:3: error: Cannot find implementation or library stub for module named "a.b.d"
 main:3: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
+
+[case testModuleGetattrInit10PyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+import a.b.c  # silenced
+import a.b.d  # error
+
+[file a/__init__.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: ...
+
+[file a/b/__init__.pyi]
+# empty (i.e. complete subpackage)
+
+[file pyproject.toml]
+\[tool.mypy]
+\[[tool.mypy.overrides]]
+module = 'a.b.c'
+ignore_missing_imports = true
+
+[builtins fixtures/module.pyi]
+
+[out]
+main:3: error: Cannot find implementation or library stub for module named "a.b.d"
+main:3: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+
+[case testMultipleModulesInOverridePyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+import a
+import b
+
+[file pyproject.toml]
+\[tool.mypy]
+\[[tool.mypy.overrides]]
+module = ['a', 'b']
+ignore_missing_imports = true
+
+
 [case testIndirectFromImportWithinCycleUsedAsBaseClass]
 import a
 [file a.py]
@@ -2648,6 +2686,30 @@ z = 0
 [file mypy.ini]
 \[mypy]
 mypy_path = tmp/xx, tmp/yy
+
+
+[case testNamespacePackageWithMypyPathPyProjectTOML]
+# flags: --namespace-packages --config-file tmp/pyproject.toml
+from foo.bax import x
+from foo.bay import y
+from foo.baz import z
+reveal_type(x)  # N: Revealed type is "builtins.int"
+reveal_type(y)  # N: Revealed type is "builtins.int"
+reveal_type(z)  # N: Revealed type is "builtins.int"
+
+[file xx/foo/bax.py]
+x = 0
+
+[file yy/foo/bay.py]
+y = 0
+
+[file foo/baz.py]
+z = 0
+
+[file pyproject.toml]
+\[tool.mypy]
+mypy_path = ["tmp/xx", "tmp/yy"]
+
 
 [case testClassicPackageIgnoresEarlierNamespacePackage]
 # flags: --namespace-packages --config-file tmp/mypy.ini

@@ -141,7 +141,7 @@ class Options:
         # Warn about unused '# type: ignore' comments
         self.warn_unused_ignores = False
 
-        # Warn about unused '[mypy-<pattern>] config sections
+        # Warn about unused '[mypy-<pattern>]'  or '[[tool.mypy.overrides]]' config sections
         self.warn_unused_configs = False
 
         # Files in which to ignore all non-fatal errors
