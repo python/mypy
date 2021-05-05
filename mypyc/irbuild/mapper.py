@@ -10,7 +10,7 @@ from mypy.types import (
 )
 
 from mypyc.ir.rtypes import (
-    RType, RUnion, RTuple, RInstance, object_rprimitive, dict_rprimitive, tuple_rprimitive,
+    RType, RUnion, RTuple, RInstance, filter_rpimitive, object_rprimitive, dict_rprimitive, tuple_rprimitive,
     none_rprimitive, int_rprimitive, float_rprimitive, str_rprimitive, bool_rprimitive,
     list_rprimitive, set_rprimitive
 )
@@ -58,6 +58,8 @@ class Mapper:
                 return set_rprimitive
             elif typ.type.fullname == 'builtins.tuple':
                 return tuple_rprimitive  # Varying-length tuple
+            elif typ.type.fullname == 'builtins.filter':
+                return filter_rpimitive
             elif typ.type in self.type_to_ir:
                 inst = RInstance(self.type_to_ir[typ.type])
                 # Treat protocols as Union[protocol, object], so that we can do fast
