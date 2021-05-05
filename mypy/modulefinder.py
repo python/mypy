@@ -185,6 +185,10 @@ class FindModuleCache:
                 name = os.path.splitext(name)[0]
                 components.setdefault(name, []).append(dir)
 
+        if self.python2:
+            components = {id: filter_redundant_py2_dirs(dirs)
+                          for id, dirs in components.items()}
+
         self.initial_components[lib_path] = components
         return components.get(id, [])
 
@@ -791,3 +795,19 @@ def typeshed_py_version(options: Options) -> Tuple[int, int]:
         return max(options.python_version, (3, 6))
     else:
         return options.python_version
+
+
+def filter_redundant_py2_dirs(dirs: List[str]) -> List[str]:
+    """If dirs has <dir>/@python2 followed by <dir>, filter out the latter."""
+    if len(dirs) <= 1 or not any(d.endswith(PYTHON2_STUB_DIR) for d in dirs):
+        # Fast path -- nothing to do
+        return dirs
+    seen = []
+    result = []
+    for d in dirs:
+        if d.endswith(PYTHON2_STUB_DIR):
+            seen.append(os.path.dirname(d))
+            result.append(d)
+        elif d not in seen:
+            result.append(d)
+    return result
