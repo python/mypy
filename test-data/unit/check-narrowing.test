@@ -1053,3 +1053,23 @@ def f(d: Union[Foo, Bar]) -> None:
     d['x']
     reveal_type(d)  # N: Revealed type is "TypedDict('__main__.Foo', {'tag': Literal[__main__.E.FOO], 'x': builtins.int})"
 [builtins fixtures/dict.pyi]
+
+[case testNarrowingUsingMetaclass]
+# flags: --strict-optional
+from typing import Type
+
+class M(type):
+    pass
+
+class C: pass
+
+def f(t: Type[C]) -> None:
+    if type(t) is M:
+        reveal_type(t)  # N: Revealed type is "Type[__main__.C]"
+    else:
+        reveal_type(t)  # N: Revealed type is "Type[__main__.C]"
+    if type(t) is not M:
+        reveal_type(t)  # N: Revealed type is "Type[__main__.C]"
+    else:
+        reveal_type(t)  # N: Revealed type is "Type[__main__.C]"
+    reveal_type(t)  # N: Revealed type is "Type[__main__.C]"
