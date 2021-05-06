@@ -4318,7 +4318,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         elif isinstance(node, RefExpr):
             # Restrict the type of the variable to True-ish/False-ish in the if and else branches
             # respectively
-            vartype = type_map[node]
+            vartype = try_expanding_sum_type_to_union(type_map[node], "builtins.bool")
             if_type: Type = true_only(vartype)
             else_type: Type = false_only(vartype)
             ref: Expression = node
