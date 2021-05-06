@@ -4239,6 +4239,34 @@ tmp/c.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mi
 tmp/c.py:1: error: Cannot find implementation or library stub for module named "a.b.c"
 tmp/c.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
+[case testModuleGetattrIncrementalSerializeVarFlag]
+import main
+
+[file main.py]
+from b import A, f
+f()
+
+[file main.py.3]
+from b import A, f  # foo
+f()
+
+[file b.py]
+from c import A
+def f() -> A: ...
+
+[file b.py.2]
+from c import A  # foo
+def f() -> A: ...
+
+[file c.py]
+from d import A
+
+[file d.pyi]
+def __getattr__(n): ...
+[out1]
+[out2]
+[out3]
+
 [case testAddedMissingStubs]
 # flags: --ignore-missing-imports
 from missing import f
