@@ -2,12 +2,9 @@ import sys
 import types
 from _typeshed import AnyPath
 from abc import ABCMeta, abstractmethod
-from typing import IO, Any, Iterator, Mapping, Optional, Sequence, Tuple, Union
-from typing_extensions import Literal
-
-# Loader is exported from this module, but for circular import reasons
-# exists in its own stub file (with ModuleSpec and ModuleType).
-from _importlib_modulespec import Loader as Loader, ModuleSpec  # Exported
+from importlib.machinery import ModuleSpec
+from typing import IO, Any, Iterator, Mapping, Optional, Protocol, Sequence, Tuple, Union
+from typing_extensions import Literal, runtime_checkable
 
 _Path = Union[bytes, str]
 
@@ -38,6 +35,7 @@ class SourceLoader(ResourceLoader, ExecutionLoader, metaclass=ABCMeta):
     def get_source(self, fullname: str) -> Optional[str]: ...
     def path_stats(self, path: _Path) -> Mapping[str, Any]: ...
 
+# Please keep in sync with sys._MetaPathFinder
 class MetaPathFinder(Finder):
     def find_module(self, fullname: str, path: Optional[Sequence[_Path]]) -> Optional[Loader]: ...
     def invalidate_caches(self) -> None: ...
@@ -52,6 +50,17 @@ class PathEntryFinder(Finder):
     def invalidate_caches(self) -> None: ...
     # Not defined on the actual class, but expected to exist.
     def find_spec(self, fullname: str, target: Optional[types.ModuleType] = ...) -> Optional[ModuleSpec]: ...
+
+class Loader(metaclass=ABCMeta):
+    def load_module(self, fullname: str) -> types.ModuleType: ...
+    def module_repr(self, module: types.ModuleType) -> str: ...
+    def create_module(self, spec: ModuleSpec) -> Optional[types.ModuleType]: ...
+    # Not defined on the actual class for backwards-compatibility reasons,
+    # but expected in new code.
+    def exec_module(self, module: types.ModuleType) -> None: ...
+
+class _LoaderProtocol(Protocol):
+    def load_module(self, fullname: str) -> types.ModuleType: ...
 
 class FileLoader(ResourceLoader, ExecutionLoader, metaclass=ABCMeta):
     name: str
@@ -73,7 +82,6 @@ if sys.version_info >= (3, 7):
         def contents(self) -> Iterator[str]: ...
 
 if sys.version_info >= (3, 9):
-    from typing import Protocol, runtime_checkable
     @runtime_checkable
     class Traversable(Protocol):
         @abstractmethod

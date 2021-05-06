@@ -1,3 +1,4 @@
+import sys
 from typing import Any, Dict, List, Optional, Union
 
 MAGIC: int
@@ -72,7 +73,10 @@ REPEAT: _NamedIntConstant
 REPEAT_ONE: _NamedIntConstant
 SUBPATTERN: _NamedIntConstant
 MIN_REPEAT_ONE: _NamedIntConstant
-RANGE_IGNORE: _NamedIntConstant
+if sys.version_info >= (3, 7):
+    RANGE_UNI_IGNORE: _NamedIntConstant
+else:
+    RANGE_IGNORE: _NamedIntConstant
 MIN_REPEAT: _NamedIntConstant
 MAX_REPEAT: _NamedIntConstant
 

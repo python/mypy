@@ -7,7 +7,17 @@ _PT = Tuple[str, int, str, Optional[str]]
 
 def print_tb(tb: Optional[TracebackType], limit: Optional[int] = ..., file: Optional[IO[str]] = ...) -> None: ...
 
-if sys.version_info >= (3,):
+if sys.version_info >= (3, 10):
+    def print_exception(
+        __exc: Optional[Type[BaseException]],
+        value: Optional[BaseException] = ...,
+        tb: Optional[TracebackType] = ...,
+        limit: Optional[int] = ...,
+        file: Optional[IO[str]] = ...,
+        chain: bool = ...,
+    ) -> None: ...
+
+elif sys.version_info >= (3,):
     def print_exception(
         etype: Optional[Type[BaseException]],
         value: Optional[BaseException],
@@ -16,8 +26,6 @@ if sys.version_info >= (3,):
         file: Optional[IO[str]] = ...,
         chain: bool = ...,
     ) -> None: ...
-    def print_exc(limit: Optional[int] = ..., file: Optional[IO[str]] = ..., chain: bool = ...) -> None: ...
-    def print_last(limit: Optional[int] = ..., file: Optional[IO[str]] = ..., chain: bool = ...) -> None: ...
 
 else:
     def print_exception(
@@ -27,6 +35,12 @@ else:
         limit: Optional[int] = ...,
         file: Optional[IO[str]] = ...,
     ) -> None: ...
+
+if sys.version_info >= (3,):
+    def print_exc(limit: Optional[int] = ..., file: Optional[IO[str]] = ..., chain: bool = ...) -> None: ...
+    def print_last(limit: Optional[int] = ..., file: Optional[IO[str]] = ..., chain: bool = ...) -> None: ...
+
+else:
     def print_exc(limit: Optional[int] = ..., file: Optional[IO[str]] = ...) -> None: ...
     def print_last(limit: Optional[int] = ..., file: Optional[IO[str]] = ...) -> None: ...
 
@@ -44,9 +58,22 @@ else:
     def extract_stack(f: Optional[FrameType] = ..., limit: Optional[int] = ...) -> List[_PT]: ...
     def format_list(extracted_list: List[_PT]) -> List[str]: ...
 
-def format_exception_only(etype: Optional[Type[BaseException]], value: Optional[BaseException]) -> List[str]: ...
+if sys.version_info >= (3, 10):
+    def format_exception_only(__exc: Optional[Type[BaseException]], value: Optional[BaseException] = ...) -> List[str]: ...
 
-if sys.version_info >= (3,):
+else:
+    def format_exception_only(etype: Optional[Type[BaseException]], value: Optional[BaseException]) -> List[str]: ...
+
+if sys.version_info >= (3, 10):
+    def format_exception(
+        __exc: Optional[Type[BaseException]],
+        value: Optional[BaseException] = ...,
+        tb: Optional[TracebackType] = ...,
+        limit: Optional[int] = ...,
+        chain: bool = ...,
+    ) -> List[str]: ...
+
+elif sys.version_info >= (3,):
     def format_exception(
         etype: Optional[Type[BaseException]],
         value: Optional[BaseException],
@@ -54,7 +81,6 @@ if sys.version_info >= (3,):
         limit: Optional[int] = ...,
         chain: bool = ...,
     ) -> List[str]: ...
-    def format_exc(limit: Optional[int] = ..., chain: bool = ...) -> str: ...
 
 else:
     def format_exception(
@@ -63,6 +89,11 @@ else:
         tb: Optional[TracebackType],
         limit: Optional[int] = ...,
     ) -> List[str]: ...
+
+if sys.version_info >= (3,):
+    def format_exc(limit: Optional[int] = ..., chain: bool = ...) -> str: ...
+
+else:
     def format_exc(limit: Optional[int] = ...) -> str: ...
 
 def format_tb(tb: Optional[TracebackType], limit: Optional[int] = ...) -> List[str]: ...
