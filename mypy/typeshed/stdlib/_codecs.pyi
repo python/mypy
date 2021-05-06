@@ -6,12 +6,12 @@ from typing import Any, Callable, Dict, Optional, Text, Tuple, Union
 _Handler = Callable[[Exception], Tuple[Text, int]]
 _String = Union[bytes, str]
 _Errors = Union[str, Text, None]
-if sys.version_info < (3, 0):
-    _Decodable = Union[bytes, Text]
-    _Encodable = Union[bytes, Text]
-else:
+if sys.version_info >= (3, 0):
     _Decodable = bytes
     _Encodable = str
+else:
+    _Decodable = Union[bytes, Text]
+    _Encodable = Union[bytes, Text]
 
 # This type is not exposed; it is defined in unicodeobject.c
 class _EncodingMap(object):

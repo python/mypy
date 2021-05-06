@@ -1039,11 +1039,18 @@ def build_stubs(modules: List[str], options: Options, find_submodules: bool = Fa
     try:
         res = mypy.build.build(sources=sources, options=options)
     except mypy.errors.CompileError as e:
-        output = [_style("error: ", color="red", bold=True), "failed mypy compile.\n", str(e)]
+        output = [
+            _style("error: ", color="red", bold=True),
+            "not checking stubs due to failed mypy compile:\n",
+            str(e),
+        ]
         print("".join(output))
         raise RuntimeError from e
     if res.errors:
-        output = [_style("error: ", color="red", bold=True), "failed mypy build.\n"]
+        output = [
+            _style("error: ", color="red", bold=True),
+            "not checking stubs due to mypy build errors:\n",
+        ]
         print("".join(output) + "\n".join(res.errors))
         raise RuntimeError
 
@@ -1067,8 +1074,9 @@ def get_typeshed_stdlib_modules(custom_typeshed_dir: Optional[str]) -> List[str]
         version_info = (3, 6)
     else:
         version_info = sys.version_info[0:2]
-    for module, minver in stdlib_py_versions.items():
-        if version_info >= minver:
+    for module, versions in stdlib_py_versions.items():
+        minver, maxver = versions
+        if version_info >= minver and (maxver is None or version_info <= maxver):
             packages.add(module)
 
     if custom_typeshed_dir:

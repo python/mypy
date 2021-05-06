@@ -67,14 +67,14 @@ tmp/a.py:4: error: "B" not callable
 [case testNewAnalyzerTypeAnnotationCycle3]
 import b
 [file a.py]
-from b import bad # E: Module 'b' has no attribute 'bad'; maybe "bad2"?
+from b import bad # E: Module "b" has no attribute "bad"; maybe "bad2"?
 [file b.py]
-from a import bad2 # E: Module 'a' has no attribute 'bad2'; maybe "bad"?
+from a import bad2 # E: Module "a" has no attribute "bad2"; maybe "bad"?
 
 [case testNewAnalyzerTypeAnnotationCycle4]
 import b
 [file a.py]
-from b import bad # E: Module 'b' has no attribute 'bad'
+from b import bad # E: Module "b" has no attribute "bad"
 [file b.py]
 # TODO: Could we generate an error here as well?
 from a import bad
@@ -286,11 +286,11 @@ if MYPY:
     from b import x as y
 x = 0
 
-def y(): pass # E: Name 'y' already defined on line 4
+def y(): pass # E: Name "y" already defined on line 4
 reveal_type(y) # N: Revealed type is "builtins.int"
 
 y2 = y
-class y2: pass # E: Name 'y2' already defined on line 9
+class y2: pass # E: Name "y2" already defined on line 9
 reveal_type(y2) # N: Revealed type is "builtins.int"
 
 y3, y4 = y, y
@@ -312,11 +312,11 @@ import a
 from b import x as y
 x = 0
 
-def y(): pass # E: Name 'y' already defined on line 2
+def y(): pass # E: Name "y" already defined on line 2
 reveal_type(y) # N: Revealed type is "builtins.int"
 
 y2 = y
-class y2: pass # E: Name 'y2' already defined on line 7
+class y2: pass # E: Name "y2" already defined on line 7
 reveal_type(y2) # N: Revealed type is "builtins.int"
 
 y3, y4 = y, y
@@ -340,7 +340,7 @@ MYPY = False
 if MYPY:  # Tweak processing order
     from b import C as C2
 class C: pass
-class C2: pass # E: Name 'C2' already defined on line 4
+class C2: pass # E: Name "C2" already defined on line 4
 
 [file b.py]
 from a import C
@@ -352,7 +352,7 @@ import a
 from b import C as C2
 class C: pass
 
-class C2: pass # E: Name 'C2' already defined on line 2
+class C2: pass # E: Name "C2" already defined on line 2
 [file b.py]
 MYPY = False
 if MYPY:  # Tweak processing order
@@ -366,7 +366,7 @@ from b import f as g
 def f(): pass
 
 a, *b = g()
-class b(): pass # E: Name 'b' already defined on line 4
+class b(): pass # E: Name "b" already defined on line 4
 reveal_type(b) # N: Revealed type is "Any"
 
 [file b.py]
@@ -381,7 +381,7 @@ reveal_type(x) # N: Revealed type is "b.A"
 
 from b import *
 
-class A: pass # E: Name 'A' already defined (possibly by an import)
+class A: pass # E: Name "A" already defined (possibly by an import)
 
 [file b.py]
 class A: pass
@@ -400,7 +400,7 @@ MYPY = False
 if MYPY: # Tweak processing order
     from b import *
 
-class A: pass # E: Name 'A' already defined (possibly by an import)
+class A: pass # E: Name "A" already defined (possibly by an import)
 
 [file b.py]
 class A: pass
@@ -1137,7 +1137,7 @@ reveal_type(A.f()) # N: Revealed type is "builtins.int"
 class A(metaclass=B):
     pass
 
-class AA(metaclass=C): # E: Metaclasses not inheriting from 'type' are not supported
+class AA(metaclass=C): # E: Metaclasses not inheriting from "type" are not supported
     pass
 
 class B(type):
@@ -1284,7 +1284,7 @@ class A:
     __metaclass__ = B
 
 class AA:
-    __metaclass__ = C  # E: Metaclasses not inheriting from 'type' are not supported
+    __metaclass__ = C  # E: Metaclasses not inheriting from "type" are not supported
 
 class B(type):
     def f(cls):
@@ -1764,6 +1764,38 @@ strict_optional = True
 \[mypy-b]
 strict_optional = False
 
+
+[case testNewAnalyzerTypeArgBoundCheckWithStrictOptionalPyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+import a
+
+[file b.py]
+from typing import TypeVar, Generic
+
+x: C[None]
+y: C[str]  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+z: C[int]
+
+T = TypeVar('T', bound=int)
+class C(Generic[T]):
+    pass
+
+[file a.py]
+from b import C
+
+x: C[None]  # E: Type argument "None" of "C" must be a subtype of "builtins.int"
+y: C[str]  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+z: C[int]
+
+[file pyproject.toml]
+\[[tool.mypy.overrides]]
+module = 'a'
+strict_optional = true
+\[[tool.mypy.overrides]]
+module = 'b'
+strict_optional = false
+
+
 [case testNewAnalyzerProperty]
 class A:
     @property
@@ -1911,7 +1943,7 @@ reveal_type(f) # N: Revealed type is "def (builtins.str)"
 [case testNewAnalyzerConditionallyDefineFuncOverClass]
 class C:
     1()  # E: "int" not callable
-def C() -> None:  # E: Name 'C' already defined on line 1
+def C() -> None:  # E: Name "C" already defined on line 1
     ''()  # E: "str" not callable
 
 [case testNewAnalyzerTupleIteration]
@@ -2014,7 +2046,7 @@ y = 1
 from non_existing import stuff, other_stuff
 
 stuff = 1  # OK
-other_stuff: int = 1  # E: Name 'other_stuff' already defined (possibly by an import)
+other_stuff: int = 1  # E: Name "other_stuff" already defined (possibly by an import)
 
 x: C
 class C: ...
@@ -2023,9 +2055,9 @@ class C: ...
 # flags: --ignore-missing-imports
 
 class Other: ...
-from non_existing import Other  # E: Name 'Other' already defined on line 3
+from non_existing import Other  # E: Name "Other" already defined on line 3
 from non_existing import Cls
-class Cls: ...  # E: Name 'Cls' already defined (possibly by an import)
+class Cls: ...  # E: Name "Cls" already defined (possibly by an import)
 
 x: C
 class C: ...
@@ -2056,14 +2088,14 @@ def f(x: asdf) -> None:  # E: Name "asdf" is not defined
 from enum import Enum
 
 A = Enum('A', ['x', 'y'])
-A = Enum('A', ['z', 't'])  # E: Name 'A' already defined on line 3
+A = Enum('A', ['z', 't'])  # E: Name "A" already defined on line 3
 
 [case testNewAnalyzerNewTypeRedefinition]
 from typing import NewType
 
 A = NewType('A', int)
-A = NewType('A', str)  # E: Cannot redefine 'A' as a NewType \
-                       # E: Name 'A' already defined on line 3
+A = NewType('A', str)  # E: Cannot redefine "A" as a NewType \
+                       # E: Name "A" already defined on line 3
 
 [case testNewAnalyzerNewTypeForwardClass]
 from typing import NewType, List
@@ -2160,7 +2192,7 @@ from typing import TypeVar, Generic, Any
 
 T = TypeVar('T', bound=B[Any])
 # The "int" error is because of typing fixture.
-T = TypeVar('T', bound=C)  # E: Cannot redefine 'T' as a type variable \
+T = TypeVar('T', bound=C)  # E: Cannot redefine "T" as a type variable \
                            # E: Invalid assignment target \
                            # E: "int" not callable
 
@@ -2195,7 +2227,7 @@ reveal_type(y.x)
 [out]
 tmp/b.py:8: error: Type argument "builtins.int" of "B" must be a subtype of "b.B[Any]"
 tmp/b.py:10: note: Revealed type is "b.B*[Any]"
-tmp/a.py:5: error: Cannot redefine 'T' as a type variable
+tmp/a.py:5: error: Cannot redefine "T" as a type variable
 tmp/a.py:5: error: Invalid assignment target
 tmp/a.py:5: error: "int" not callable
 
@@ -2224,7 +2256,7 @@ reveal_type(y.x)
 [out]
 tmp/b.py:9: error: Type argument "builtins.int" of "B" must be a subtype of "b.B[Any]"
 tmp/b.py:11: note: Revealed type is "b.B*[Any]"
-tmp/a.py:5: error: Cannot redefine 'T' as a type variable
+tmp/a.py:5: error: Cannot redefine "T" as a type variable
 tmp/a.py:5: error: Invalid assignment target
 
 [case testNewAnalyzerTypeVarBoundInCycle]
@@ -2432,7 +2464,7 @@ from other import C  # type: ignore
 
 y = 'bad'
 
-class C:  # E: Name 'C' already defined (possibly by an import)
+class C:  # E: Name "C" already defined (possibly by an import)
     def meth(self, other: int) -> None:
         y()  # E: "str" not callable
 
@@ -2445,7 +2477,7 @@ if int():
     def f(x: int) -> None:
         pass
 else:
-    @overload  # E: Name 'f' already defined on line 6
+    @overload  # E: Name "f" already defined on line 6
     def f(x: int) -> None: ...
     @overload
     def f(x: str) -> None: ...
@@ -2471,7 +2503,7 @@ x = y
 x = 1
 
 # We want to check that the first definition creates the variable.
-def x() -> None: ...  # E: Name 'x' already defined on line 1
+def x() -> None: ...  # E: Name "x" already defined on line 1
 y = 2
 
 [case testNewAnalyzerImportStarSpecialCase]
@@ -2955,7 +2987,7 @@ def g() -> None:
 
     def foo() -> None:
         nonlocal bar
-        bar = []  # type: typing.List[int] # E: Name 'bar' already defined on line 11
+        bar = []  # type: typing.List[int] # E: Name "bar" already defined on line 11
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerMoreInvalidTypeVarArgumentsDeferred]
@@ -3049,7 +3081,7 @@ from foo import *
 try:
     X = X
 except:
-    class X: # E: Name 'X' already defined (possibly by an import)
+    class X: # E: Name "X" already defined (possibly by an import)
         pass
 
 reveal_type(X()) # N: Revealed type is "foo.X"
@@ -3062,7 +3094,7 @@ try:
     int = int
     reveal_type(int()) # N: Revealed type is "builtins.int"
 except:
-    class int: # E: Name 'int' already defined (possibly by an import)
+    class int: # E: Name "int" already defined (possibly by an import)
         pass
 
 reveal_type(int()) # N: Revealed type is "builtins.int"
@@ -3074,7 +3106,7 @@ try:
     int = int
     reveal_type(int()) # N: Revealed type is "builtins.int"
 except:
-    class int: # E: Name 'int' already defined (possibly by an import)
+    class int: # E: Name "int" already defined (possibly by an import)
         pass
 
 reveal_type(int()) # N: Revealed type is "builtins.int"

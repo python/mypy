@@ -1645,7 +1645,7 @@ def f() -> None: pass
 [file a.py.2]
 [out]
 ==
-main:2: error: Module 'a' has no attribute 'f'
+main:2: error: Module "a" has no attribute "f"
 
 [case testTypeVarRefresh]
 from typing import TypeVar
@@ -1656,7 +1656,7 @@ def f() -> None: pass
 [file a.py.2]
 [out]
 ==
-main:2: error: Module 'a' has no attribute 'f'
+main:2: error: Module "a" has no attribute "f"
 
 [case testRefreshTyping]
 from typing import Sized
@@ -1695,7 +1695,7 @@ def f() -> None: pass
 [builtins fixtures/tuple.pyi]
 [out]
 ==
-main:2: error: Module 'a' has no attribute 'f'
+main:2: error: Module "a" has no attribute "f"
 
 [case testModuleLevelAttributeRefresh]
 from typing import Callable
@@ -1707,7 +1707,7 @@ def f() -> None: pass
 [file a.py.2]
 [out]
 ==
-main:2: error: Module 'a' has no attribute 'f'
+main:2: error: Module "a" has no attribute "f"
 
 [case testClassBodyRefresh]
 from a import f
@@ -1722,7 +1722,7 @@ f = 1
 [file a.py.2]
 [out]
 ==
-main:1: error: Module 'a' has no attribute 'f'
+main:1: error: Module "a" has no attribute "f"
 
 [case testDecoratedMethodRefresh]
 from typing import Iterator, Callable, List
@@ -2588,7 +2588,7 @@ class A: pass
 class A: pass
 [out]
 ==
-main:2: error: Module 'a' has no attribute 'A'
+main:2: error: Module "a" has no attribute "A"
 ==
 
 [case testRefreshGenericAndFailInPass3]
@@ -3050,7 +3050,7 @@ class M(type):
     pass
 [out]
 ==
-a.py:3: error: Inconsistent metaclass structure for 'D'
+a.py:3: error: Inconsistent metaclass structure for "D"
 
 [case testFineMetaclassDeclaredUpdate]
 import a
@@ -3066,7 +3066,7 @@ class M(type): pass
 class M2(type): pass
 [out]
 ==
-a.py:3: error: Inconsistent metaclass structure for 'D'
+a.py:3: error: Inconsistent metaclass structure for "D"
 
 [case testFineMetaclassRemoveFromClass]
 import a
@@ -3128,7 +3128,7 @@ M = 1
 class M(type):
     pass
 [out]
-a.py:2: error: Invalid metaclass 'b.M'
+a.py:2: error: Invalid metaclass "b.M"
 ==
 
 [case testFixedAttrOnAddedMetaclass]
@@ -3241,7 +3241,7 @@ class M(type):
 M = 1
 [out]
 ==
-a.py:2: error: Invalid metaclass 'b.M'
+a.py:2: error: Invalid metaclass "b.M"
 
 [case testRefreshGenericSubclass]
 from typing import Generic, TypeVar
@@ -3400,7 +3400,7 @@ class C: pass
 [file a.py.2]
 [out]
 ==
-main:1: error: Module 'a' has no attribute 'C'
+main:1: error: Module "a" has no attribute "C"
 
 [case testRefreshSubclassNestedInFunction2]
 from a import C
@@ -7845,8 +7845,8 @@ from b import A
 [builtins fixtures/list.pyi]
 [out]
 ==
-a.py:4: error: Module 'b' has no attribute 'A'
-a.py:4: error: Name 'A' already defined on line 3
+a.py:4: error: Module "b" has no attribute "A"
+a.py:4: error: Name "A" already defined on line 3
 
 -- the order of errors is different with cache
 [case testImportOnTopOfAlias2]
@@ -7887,9 +7887,9 @@ def a():
 def a():
     pass
 [out]
-b.py:5: error: Name 'a' already defined on line 2
+b.py:5: error: Name "a" already defined on line 2
 ==
-b.py:5: error: Name 'a' already defined on line 2
+b.py:5: error: Name "a" already defined on line 2
 
 [case testFakeOverloadCrash2]
 
@@ -7927,7 +7927,7 @@ a.py:1: error: Name "TypeVar" is not defined
 a.py:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import TypeVar")
 a.py:7: error: Variable "a.T" is not valid as a type
 a.py:7: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
-a.py:10: error: Name 'bar' already defined on line 6
+a.py:10: error: Name "bar" already defined on line 6
 a.py:11: error: Variable "a.T" is not valid as a type
 a.py:11: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 ==
@@ -7935,7 +7935,7 @@ a.py:1: error: Name "TypeVar" is not defined
 a.py:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import TypeVar")
 a.py:7: error: Variable "a.T" is not valid as a type
 a.py:7: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
-a.py:10: error: Name 'bar' already defined on line 6
+a.py:10: error: Name "bar" already defined on line 6
 a.py:11: error: Variable "a.T" is not valid as a type
 a.py:11: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
@@ -9176,7 +9176,7 @@ x = 42
 def good() -> None: ...
 [out]
 ==
-a.py:1: error: Module 'b' has no attribute 'bad'
+a.py:1: error: Module "b" has no attribute "bad"
 
 [case testFileAddedAndImported2]
 # flags: --ignore-missing-imports --follow-imports=skip
@@ -9193,7 +9193,7 @@ x = 42
 def good() -> None: ...
 [out]
 ==
-a.py:1: error: Module 'b' has no attribute 'bad'
+a.py:1: error: Module "b" has no attribute "bad"
 
 [case testTypedDictCrashFallbackAfterDeletedMeet]
 # flags: --ignore-missing-imports

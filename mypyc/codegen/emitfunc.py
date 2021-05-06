@@ -383,7 +383,6 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         rtype = op.receiver_type
         class_ir = rtype.class_ir
         name = op.method
-        method_idx = rtype.method_index(name)
         method = rtype.class_ir.get_method(name)
         assert method is not None
 
@@ -406,6 +405,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 dest, lib, NATIVE_PREFIX, method.cname(self.names), args))
         else:
             # Call using vtable.
+            method_idx = rtype.method_index(name)
             self.emit_line('{}CPY_GET_METHOD{}({}, {}, {}, {}, {})({}); /* {} */'.format(
                 dest, version, obj, self.emitter.type_struct_name(rtype.class_ir),
                 method_idx, rtype.struct_name(self.names), mtype, args, op.method))

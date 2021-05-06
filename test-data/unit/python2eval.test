@@ -428,3 +428,8 @@ def foo() -> None:
     reveal_type(x)
 [out]
 _testDefaultDictInference.py:5: note: Revealed type is "collections.defaultdict[builtins.str, builtins.list[builtins.int]]"
+
+[case testIgnorePython3StdlibStubs_python2]
+from collections import abc
+[out]
+_testIgnorePython3StdlibStubs_python2.py:1: error: Module "collections" has no attribute "abc"

@@ -19,6 +19,8 @@ extern "C" {
 } // why isn't emacs smart enough to not indent this
 #endif
 
+#define CPYTHON_LARGE_INT_ERRMSG "Python int too large to convert to C ssize_t"
+
 
 // Naming conventions:
 //
@@ -320,6 +322,7 @@ PyObject *CPyList_GetItem(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemUnsafe(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index);
 bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value);
+bool CPyList_SetItemUnsafe(PyObject *list, CPyTagged index, PyObject *value);
 PyObject *CPyList_PopLast(PyObject *obj);
 PyObject *CPyList_Pop(PyObject *obj, CPyTagged index);
 CPyTagged CPyList_Count(PyObject *obj, PyObject *value);
@@ -339,6 +342,8 @@ PyObject *CPyDict_GetItem(PyObject *dict, PyObject *key);
 int CPyDict_SetItem(PyObject *dict, PyObject *key, PyObject *value);
 PyObject *CPyDict_Get(PyObject *dict, PyObject *key, PyObject *fallback);
 PyObject *CPyDict_GetWithNone(PyObject *dict, PyObject *key);
+PyObject *CPyDict_SetDefault(PyObject *dict, PyObject *key, PyObject *value);
+PyObject *CPyDict_SetDefaultWithNone(PyObject *dict, PyObject *key);
 PyObject *CPyDict_Build(Py_ssize_t size, ...);
 int CPyDict_Update(PyObject *dict, PyObject *stuff);
 int CPyDict_UpdateInDisplay(PyObject *dict, PyObject *stuff);

@@ -25,7 +25,7 @@ PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index) {
         Py_INCREF(result);
         return result;
     } else {
-        PyErr_SetString(PyExc_IndexError, "tuple index out of range");
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
         return NULL;
     }
 }
@@ -55,7 +55,7 @@ bool CPySequenceTuple_SetItemUnsafe(PyObject *tuple, CPyTagged index, PyObject *
         PyTuple_SET_ITEM(tuple, n, value);
         return true;
     } else {
-        PyErr_SetString(PyExc_OverflowError, "Python int too large to convert to C ssize_t");
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
         return false;
     }
 }

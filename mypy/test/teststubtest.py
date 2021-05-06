@@ -7,6 +7,7 @@ import sys
 import tempfile
 import textwrap
 import unittest
+from pathlib import Path
 from typing import Any, Callable, Iterator, List, Optional
 
 import mypy.stubtest
@@ -83,7 +84,9 @@ def run_stubtest(
                 use_builtins_fixtures=True
             )
 
-        return output.getvalue()
+        module_path = Path(os.getcwd()) / TEST_MODULE_NAME
+        # remove cwd as it's not available from outside
+        return output.getvalue().replace(str(module_path), TEST_MODULE_NAME)
 
 
 class Case:
@@ -810,14 +813,14 @@ class StubtestMiscUnit(unittest.TestCase):
     def test_mypy_build(self) -> None:
         output = run_stubtest(stub="+", runtime="", options=[])
         assert remove_color_code(output) == (
-            "error: failed mypy compile.\n{}.pyi:1: "
+            "error: not checking stubs due to failed mypy compile:\n{}.pyi:1: "
             "error: invalid syntax\n".format(TEST_MODULE_NAME)
         )
 
         output = run_stubtest(stub="def f(): ...\ndef f(): ...", runtime="", options=[])
         assert remove_color_code(output) == (
-            "error: failed mypy build.\n{}.pyi:2: "
-            "error: Name 'f' already defined on line 1\n".format(TEST_MODULE_NAME)
+            'error: not checking stubs due to mypy build errors:\n{}.pyi:2: '
+            'error: Name "f" already defined on line 1\n'.format(TEST_MODULE_NAME)
         )
 
     def test_missing_stubs(self) -> None:
@@ -832,7 +835,6 @@ class StubtestMiscUnit(unittest.TestCase):
         assert "os" in stdlib
         assert "os.path" in stdlib
         assert "mypy_extensions" not in stdlib
-        assert "typing_extensions" not in stdlib
         assert "asyncio" in stdlib
         assert ("dataclasses" in stdlib) == (sys.version_info >= (3, 7))
 

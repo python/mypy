@@ -13,7 +13,10 @@ from mypy.plugins.common import (
     add_method, _get_decorator_bool_argument, deserialize_and_fixup_type,
 )
 from mypy.typeops import map_type_from_supertype
-from mypy.types import Type, Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type
+from mypy.types import (
+    Type, Instance, NoneType, TypeVarDef, TypeVarType, CallableType,
+    get_proper_type
+)
 from mypy.server.trigger import make_wildcard_trigger
 
 # The set of decorators that generate dataclasses.
@@ -170,6 +173,8 @@ class DataclassTransformer:
 
         if decorator_arguments['frozen']:
             self._freeze(attributes)
+        else:
+            self._propertize_callables(attributes)
 
         self.reset_init_only_vars(info, attributes)
 
@@ -350,6 +355,24 @@ class DataclassTransformer:
                 var = attr.to_var()
                 var.info = info
                 var.is_property = True
+                var._fullname = info.fullname + '.' + var.name
+                info.names[var.name] = SymbolTableNode(MDEF, var)
+
+    def _propertize_callables(self, attributes: List[DataclassAttribute]) -> None:
+        """Converts all attributes with callable types to @property methods.
+
+        This avoids the typechecker getting confused and thinking that
+        `my_dataclass_instance.callable_attr(foo)` is going to receive a
+        `self` argument (it is not).
+
+        """
+        info = self._ctx.cls.info
+        for attr in attributes:
+            if isinstance(get_proper_type(attr.type), CallableType):
+                var = attr.to_var()
+                var.info = info
+                var.is_property = True
+                var.is_settable_property = True
                 var._fullname = info.fullname + '.' + var.name
                 info.names[var.name] = SymbolTableNode(MDEF, var)
 

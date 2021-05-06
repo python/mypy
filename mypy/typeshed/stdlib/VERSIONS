@@ -3,6 +3,7 @@ _ast: 3.6
 _bisect: 2.7
 _bootlocale: 3.6
 _codecs: 2.7
+_collections_abc: 3.6
 _compat_pickle: 3.6
 _compression: 3.6
 _csv: 2.7
@@ -53,7 +54,7 @@ builtins: 3.6
 bz2: 2.7
 cProfile: 2.7
 calendar: 2.7
-cgi: 2.7
+cgi: 3.6
 cgitb: 2.7
 chunk: 2.7
 cmath: 2.7
@@ -124,7 +125,7 @@ keyword: 2.7
 lib2to3: 2.7
 linecache: 2.7
 locale: 2.7
-logging: 2.7
+logging: 3.6
 lzma: 3.6
 macpath: 2.7
 macurl2path: 3.6
@@ -232,6 +233,7 @@ tty: 2.7
 turtle: 2.7
 types: 3.6
 typing: 3.6
+typing_extensions: 2.7
 unicodedata: 2.7
 unittest: 3.6
 urllib: 3.6

@@ -212,7 +212,7 @@ def _determine_eq_order(ctx: 'mypy.plugin.ClassDefContext') -> bool:
     order = _get_decorator_optional_bool_argument(ctx, 'order')
 
     if cmp is not None and any((eq is not None, order is not None)):
-        ctx.api.fail("Don't mix `cmp` with `eq' and `order`", ctx.reason)
+        ctx.api.fail('Don\'t mix "cmp" with "eq" and "order"', ctx.reason)
 
     # cmp takes precedence due to bw-compatibility.
     if cmp is not None:
@@ -226,7 +226,7 @@ def _determine_eq_order(ctx: 'mypy.plugin.ClassDefContext') -> bool:
         order = eq
 
     if eq is False and order is True:
-        ctx.api.fail("eq must be True if order is True", ctx.reason)
+        ctx.api.fail('eq must be True if order is True', ctx.reason)
 
     return order
 

@@ -32,7 +32,7 @@ from mypyc.ir.rtypes import (
     is_list_rprimitive, is_tuple_rprimitive, is_dict_rprimitive, is_set_rprimitive, PySetObject,
     none_rprimitive, RTuple, is_bool_rprimitive, is_str_rprimitive, c_int_rprimitive,
     pointer_rprimitive, PyObject, PyListObject, bit_rprimitive, is_bit_rprimitive,
-    object_pointer_rprimitive, c_size_t_rprimitive
+    object_pointer_rprimitive, c_size_t_rprimitive, dict_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -891,6 +891,20 @@ class LowLevelIRBuilder:
 
         return result
 
+    def new_list_op_with_length(self, length: Value, line: int) -> Value:
+        """This function returns an uninitialized list.
+
+        If the length is non-zero, the caller must initialize the list, before
+        it can be made visible to user code -- otherwise the list object is broken.
+        You might need further initialization with `new_list_set_item_op` op.
+
+        Args:
+            length: desired length of the new list. The rtype should be
+                    c_pyssize_t_rprimitive
+            line: line number
+        """
+        return self.call_c(new_list_op, [length], line)
+
     def new_list_op(self, values: List[Value], line: int) -> Value:
         length = Integer(len(values), c_pyssize_t_rprimitive, line)
         result_list = self.call_c(new_list_op, [length], line)
@@ -960,7 +974,8 @@ class LowLevelIRBuilder:
             return
         elif is_same_type(value.type, str_rprimitive):
             value = self.call_c(str_check_if_true, [value], value.line)
-        elif is_same_type(value.type, list_rprimitive):
+        elif (is_same_type(value.type, list_rprimitive)
+                or is_same_type(value.type, dict_rprimitive)):
             length = self.builtin_len(value, value.line)
             zero = Integer(0)
             value = self.binary_op(length, zero, '!=', value.line)
@@ -1124,14 +1139,18 @@ class LowLevelIRBuilder:
         size = Integer(len(items), c_pyssize_t_rprimitive)  # type: Value
         return self.call_c(new_tuple_op, [size] + items, line)
 
-    def new_tuple_with_length(self, val: Value, line: int) -> Value:
-        """Generate a new empty tuple with length from a list or tuple
+    def new_tuple_with_length(self, length: Value, line: int) -> Value:
+        """This function returns an uninitialized tuple.
+
+        If the length is non-zero, the caller must initialize the tuple, before
+        it can be made visible to user code -- otherwise the tuple object is broken.
+        You might need further initialization with `new_tuple_set_item_op` op.
 
         Args:
-            val: a list or tuple
+            length: desired length of the new tuple. The rtype should be
+                    c_pyssize_t_rprimitive
             line: line number
         """
-        length = self.builtin_len(val, line, use_pyssize_t=True)
         return self.call_c(new_tuple_with_length_op, [length], line)
 
     # Internal helpers

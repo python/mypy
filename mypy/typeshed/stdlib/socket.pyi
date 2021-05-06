@@ -604,7 +604,7 @@ class timeout(error):
 
 # Addresses can be either tuples of varying lengths (AF_INET, AF_INET6,
 # AF_NETLINK, AF_TIPC) or strings (AF_UNIX).
-_Address = Union[tuple, str]
+_Address = Union[Tuple[Any, ...], str]
 _RetAddress = Any
 # TODO Most methods allow bytes as address objects
 

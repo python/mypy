@@ -1,6 +1,6 @@
 import sys
 from array import array
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 DEFLATED: int
 DEF_MEM_LEVEL: int
@@ -12,9 +12,11 @@ Z_DEFAULT_COMPRESSION: int
 Z_DEFAULT_STRATEGY: int
 Z_FILTERED: int
 Z_FINISH: int
+Z_FIXED: int
 Z_FULL_FLUSH: int
 Z_HUFFMAN_ONLY: int
 Z_NO_FLUSH: int
+Z_RLE: int
 Z_SYNC_FLUSH: int
 if sys.version_info >= (3,):
     DEF_BUF_SIZE: int
@@ -41,7 +43,12 @@ def compress(__data: bytes, level: int = ...) -> bytes: ...
 
 if sys.version_info >= (3,):
     def compressobj(
-        level: int = ..., method: int = ..., wbits: int = ..., memLevel: int = ..., strategy: int = ..., zdict: bytes = ...
+        level: int = ...,
+        method: int = ...,
+        wbits: int = ...,
+        memLevel: int = ...,
+        strategy: int = ...,
+        zdict: Optional[bytes] = ...,
     ) -> _Compress: ...
 
 else:

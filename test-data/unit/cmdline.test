@@ -753,6 +753,9 @@ def foo(
 [out]
 a.py:1: error: unexpected EOF while parsing
 == Return code: 2
+[out version>=3.10]
+a.py:1: error: '(' was never closed
+== Return code: 2
 
 [case testParseErrorAnnots]
 # cmd: mypy a.py
@@ -1234,6 +1237,10 @@ public static void main(String[] args)
 x: str = 0
 [out]
 pkg/x.py:1: error: invalid syntax
+Found 1 error in 1 file (errors prevented further checking)
+== Return code: 2
+[out version>=3.10]
+pkg/x.py:1: error: invalid syntax. Perhaps you forgot a comma?
 Found 1 error in 1 file (errors prevented further checking)
 == Return code: 2
 

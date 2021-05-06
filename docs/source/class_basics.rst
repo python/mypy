@@ -21,7 +21,7 @@ initialized within the class. Mypy infers the types of attributes:
 
    a = A(1)
    a.x = 2  # OK!
-   a.y = 3  # Error: 'A' has no attribute 'y'
+   a.y = 3  # Error: "A" has no attribute "y"
 
 This is a bit like each class having an implicitly defined
 :py:data:`__slots__ <object.__slots__>` attribute. This is only enforced during type

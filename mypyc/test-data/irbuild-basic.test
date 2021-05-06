@@ -2097,19 +2097,20 @@ def f(l):
     r6 :: tuple[int, int, int]
     r7, x, r8, y, r9, z :: int
     r10 :: short_int
-    r11 :: list
-    r12 :: short_int
-    r13 :: ptr
-    r14 :: native_int
-    r15 :: short_int
-    r16 :: bit
-    r17 :: object
-    r18 :: tuple[int, int, int]
-    r19, x_2, r20, y_2, r21, z_2, r22, r23 :: int
-    r24 :: object
-    r25 :: int32
-    r26 :: bit
-    r27 :: short_int
+    r11 :: ptr
+    r12 :: native_int
+    r13 :: list
+    r14 :: short_int
+    r15 :: ptr
+    r16 :: native_int
+    r17 :: short_int
+    r18 :: bit
+    r19 :: object
+    r20 :: tuple[int, int, int]
+    r21, x_2, r22, y_2, r23, z_2, r24, r25 :: int
+    r26 :: object
+    r27 :: bit
+    r28 :: short_int
 L0:
     r0 = 0
 L1:
@@ -2133,35 +2134,37 @@ L3:
     r0 = r10
     goto L1
 L4:
-    r11 = PyList_New(0)
-    r12 = 0
-L5:
-    r13 = get_element_ptr l ob_size :: PyVarObject
-    r14 = load_mem r13 :: native_int*
+    r11 = get_element_ptr l ob_size :: PyVarObject
+    r12 = load_mem r11 :: native_int*
     keep_alive l
-    r15 = r14 << 1
-    r16 = r12 < r15 :: signed
-    if r16 goto L6 else goto L8 :: bool
+    r13 = PyList_New(r12)
+    r14 = 0
+L5:
+    r15 = get_element_ptr l ob_size :: PyVarObject
+    r16 = load_mem r15 :: native_int*
+    keep_alive l
+    r17 = r16 << 1
+    r18 = r14 < r17 :: signed
+    if r18 goto L6 else goto L8 :: bool
 L6:
-    r17 = CPyList_GetItemUnsafe(l, r12)
-    r18 = unbox(tuple[int, int, int], r17)
-    r19 = r18[0]
-    x_2 = r19
-    r20 = r18[1]
-    y_2 = r20
-    r21 = r18[2]
-    z_2 = r21
-    r22 = CPyTagged_Add(x_2, y_2)
-    r23 = CPyTagged_Add(r22, z_2)
-    r24 = box(int, r23)
-    r25 = PyList_Append(r11, r24)
-    r26 = r25 >= 0 :: signed
+    r19 = CPyList_GetItemUnsafe(l, r14)
+    r20 = unbox(tuple[int, int, int], r19)
+    r21 = r20[0]
+    x_2 = r21
+    r22 = r20[1]
+    y_2 = r22
+    r23 = r20[2]
+    z_2 = r23
+    r24 = CPyTagged_Add(x_2, y_2)
+    r25 = CPyTagged_Add(r24, z_2)
+    r26 = box(int, r25)
+    r27 = CPyList_SetItemUnsafe(r13, r14, r26)
 L7:
-    r27 = r12 + 2
-    r12 = r27
+    r28 = r14 + 2
+    r14 = r28
     goto L5
 L8:
-    return r11
+    return r13
 
 [case testProperty]
 class PropertyHolder:

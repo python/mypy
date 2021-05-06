@@ -196,6 +196,16 @@ reveal_type(foo())  # N: Revealed type is "builtins.str"
 [builtins_py2 fixtures/ops.pyi]
 [out]
 
+[case testSysVersionInfoReversedOperandsOrder]
+import sys
+if (3,) <= sys.version_info:
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+reveal_type(foo())  # N: Revealed type is "builtins.int"
+[builtins fixtures/ops.pyi]
+[out]
+
 [case testSysVersionInfoNegated]
 import sys
 if not (sys.version_info[0] < 3):

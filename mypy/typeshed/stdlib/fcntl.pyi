@@ -80,13 +80,15 @@ LOCK_RW: int
 LOCK_SH: int
 LOCK_UN: int
 LOCK_WRITE: int
+
 @overload
 def fcntl(__fd: FileDescriptorLike, __cmd: int, __arg: int = ...) -> int: ...
 @overload
 def fcntl(__fd: FileDescriptorLike, __cmd: int, __arg: bytes) -> bytes: ...
 
 _ReadOnlyBuffer = bytes
-_WritableBuffer = Union[bytearray, memoryview, array]
+_WritableBuffer = Union[bytearray, memoryview, array[Any]]
+
 @overload
 def ioctl(__fd: FileDescriptorLike, __request: int, __arg: int = ..., __mutate_flag: bool = ...) -> int: ...
 @overload

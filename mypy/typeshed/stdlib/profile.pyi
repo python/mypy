@@ -1,5 +1,5 @@
 from _typeshed import AnyPath
-from typing import Any, Callable, Dict, Optional, TypeVar, Union
+from typing import Any, Callable, Dict, Optional, Tuple, TypeVar, Union
 
 def run(statement: str, filename: Optional[str] = ..., sort: Union[str, int] = ...) -> None: ...
 def runctx(
@@ -8,9 +8,11 @@ def runctx(
 
 _SelfT = TypeVar("_SelfT", bound=Profile)
 _T = TypeVar("_T")
+_Label = Tuple[str, int, str]
 
 class Profile:
     bias: int
+    stats: dict[_Label, tuple[int, int, int, int, dict[_Label, tuple[int, int, int, int]]]]  # undocumented
     def __init__(self, timer: Optional[Callable[[], float]] = ..., bias: Optional[int] = ...) -> None: ...
     def set_cmd(self, cmd: str) -> None: ...
     def simulate_call(self, name: str) -> None: ...
