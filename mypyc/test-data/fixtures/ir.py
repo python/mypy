@@ -192,10 +192,11 @@ class set(Generic[T]):
 
 class slice: pass
 
-class range(Sequence[int], Iterable[int]):
+class range(Iterable[int]):
     def __init__(self, x: int, y: int = ..., z: int = ...) -> None: pass
     def __iter__(self) -> Iterator[int]: pass
     def __len__(self) -> int: pass
+    def __next__(self) -> int: pass
 
 class property:
     def __init__(self, fget: Optional[Callable[[Any], Any]] = ...,
