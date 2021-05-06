@@ -247,6 +247,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         python_version=self.options.python_version,
                         use_generic_error=True,
                         unexpanded_type=t)
+                if node.eager:
+                    # TODO: Generate error if recursive (once we have recursive types)
+                    res = get_proper_type(res)
                 return res
             elif isinstance(node, TypeInfo):
                 return self.analyze_type_with_type_info(node, t.args, t)

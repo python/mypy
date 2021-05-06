@@ -5532,3 +5532,32 @@ def g() -> None:
     n: NT = NT(y='x')
 
 [builtins fixtures/tuple.pyi]
+
+[case testIncrementalNestedTypeAlias]
+import a
+
+[file a.py]
+import b
+
+[file a.py.2]
+import b
+reveal_type(b.C().x)
+reveal_type(b.D().x)
+
+[file b.py]
+from typing import List
+
+class C:
+    def __init__(self) -> None:
+        Alias = List[int]
+        self.x = []  # type: Alias
+
+class D:
+    def __init__(self) -> None:
+        Alias = List[str]
+        self.x = []  # type: Alias
+
+[builtins fixtures/list.pyi]
+[out2]
+tmp/a.py:2: note: Revealed type is "builtins.list[builtins.int]"
+tmp/a.py:3: note: Revealed type is "builtins.list[builtins.str]"
