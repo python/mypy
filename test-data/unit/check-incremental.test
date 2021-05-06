@@ -5506,3 +5506,29 @@ class Foo:
 [delete c1.py.2]
 [file c2.py.2]
 class C: pass
+
+[case testIncrementalNestedNamedTuple]
+# flags: --python-version 3.6
+import a
+
+[file a.py]
+import b
+
+[file a.py.2]
+import b # foo
+
+[file b.py]
+from typing import NamedTuple
+
+def f() -> None:
+    class NT(NamedTuple):
+        x: int
+
+    n: NT = NT(x=2)
+
+def g() -> None:
+    NT = NamedTuple('NT', [('y', str)])
+
+    n: NT = NT(y='x')
+
+[builtins fixtures/tuple.pyi]

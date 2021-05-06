@@ -72,12 +72,12 @@ class NewTypeAnalyzer:
         # Create the corresponding class definition if the aliased type is subtypeable
         if isinstance(old_type, TupleType):
             newtype_class_info = self.build_newtype_typeinfo(name, old_type,
-                                                             old_type.partial_fallback)
+                                                             old_type.partial_fallback, s.line)
             newtype_class_info.tuple_type = old_type
         elif isinstance(old_type, Instance):
             if old_type.type.is_protocol:
                 self.fail("NewType cannot be used with protocol classes", s)
-            newtype_class_info = self.build_newtype_typeinfo(name, old_type, old_type)
+            newtype_class_info = self.build_newtype_typeinfo(name, old_type, old_type, s.line)
         else:
             if old_type is not None:
                 message = "Argument 2 to NewType(...) must be subclassable (got {})"
@@ -85,7 +85,7 @@ class NewTypeAnalyzer:
             # Otherwise the error was already reported.
             old_type = AnyType(TypeOfAny.from_error)
             object_type = self.api.named_type('__builtins__.object')
-            newtype_class_info = self.build_newtype_typeinfo(name, old_type, object_type)
+            newtype_class_info = self.build_newtype_typeinfo(name, old_type, object_type, s.line)
             newtype_class_info.fallback_to_any = True
 
         check_for_explicit_any(old_type, self.options, self.api.is_typeshed_stub_file, self.msg,
@@ -181,8 +181,9 @@ class NewTypeAnalyzer:
 
         return None if has_failed else old_type, should_defer
 
-    def build_newtype_typeinfo(self, name: str, old_type: Type, base_type: Instance) -> TypeInfo:
-        info = self.api.basic_new_typeinfo(name, base_type)
+    def build_newtype_typeinfo(self, name: str, old_type: Type, base_type: Instance,
+                               line: int) -> TypeInfo:
+        info = self.api.basic_new_typeinfo(name, base_type, line)
         info.is_newtype = True
 
         # Add __init__ method

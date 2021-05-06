@@ -1396,7 +1396,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             #       incremental mode and we should avoid it. In general, this logic is too
             #       ad-hoc and needs to be removed/refactored.
             if '@' not in defn.info._fullname:
-                local_name = defn.info._fullname + '@' + str(defn.line)
+                local_name = defn.info.name + '@' + str(defn.line)
                 if defn.info.is_named_tuple:
                     # Module is already correctly set in _fullname for named tuples.
                     defn.info._fullname += '@' + str(defn.line)
@@ -1404,7 +1404,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                     defn.info._fullname = self.cur_mod_id + '.' + local_name
             else:
                 # Preserve name from previous fine-grained incremental run.
-                local_name = defn.info._fullname
+                local_name = defn.info.name
             defn.fullname = defn.info._fullname
             self.globals[local_name] = SymbolTableNode(GDEF, defn.info)
 
@@ -3140,7 +3140,11 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.add_symbol(name, call.analyzed, s)
         return True
 
-    def basic_new_typeinfo(self, name: str, basetype_or_fallback: Instance) -> TypeInfo:
+    def basic_new_typeinfo(self, name: str,
+                           basetype_or_fallback: Instance,
+                           line: int) -> TypeInfo:
+        if self.is_func_scope() and not self.type and '@' not in name:
+            name += '@' + str(line)
         class_def = ClassDef(name, Block([]))
         if self.is_func_scope() and not self.type:
             # Full names of generated classes should always be prefixed with the module names
