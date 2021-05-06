@@ -811,10 +811,3 @@ PyListObject = RStruct(
     names=['ob_base', 'ob_item', 'allocated'],
     types=[PyVarObject, pointer_rprimitive, c_pyssize_t_rprimitive]
 )
-
-PyRangeObject = RStruct(
-    name='rangeobject',
-    names=['ob_base', 'start', 'stop', 'step', 'length'],
-    types=[PyObject, pointer_rprimitive, pointer_rprimitive, pointer_rprimitive,
-           pointer_rprimitive]
-)

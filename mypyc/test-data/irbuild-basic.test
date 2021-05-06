@@ -3660,32 +3660,34 @@ def range_in_loop() -> None:
         sum += i
 [out]
 def range_object():
-    r0, r1, r2, r3, r4, r :: object
+    r0, r1, r2, r3, r4 :: object
+    r5, r :: range
     sum :: int
-    r5, r6 :: object
-    r7, i, r8 :: int
-    r9 :: bit
+    r6, r7 :: object
+    r8, i, r9 :: int
+    r10 :: bit
 L0:
     r0 = load_address PyRange_Type
     r1 = box(short_int, 8)
     r2 = box(short_int, 24)
     r3 = box(short_int, 4)
     r4 = PyObject_CallFunctionObjArgs(r0, r1, r2, r3, 0)
-    r = r4
+    r5 = cast(range, r4)
+    r = r5
     sum = 0
-    r5 = PyObject_GetIter(r)
+    r6 = PyObject_GetIter(r)
 L1:
-    r6 = PyIter_Next(r5)
-    if is_error(r6) goto L4 else goto L2
+    r7 = PyIter_Next(r6)
+    if is_error(r7) goto L4 else goto L2
 L2:
-    r7 = unbox(int, r6)
-    i = r7
-    r8 = CPyTagged_Add(sum, i)
-    sum = r8
+    r8 = unbox(int, r7)
+    i = r8
+    r9 = CPyTagged_Add(sum, i)
+    sum = r9
 L3:
     goto L1
 L4:
-    r9 = CPy_NoErrOccured()
+    r10 = CPy_NoErrOccured()
 L5:
     return 1
 def range_in_loop():

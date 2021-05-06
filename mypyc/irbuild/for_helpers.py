@@ -18,7 +18,6 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RType, is_short_int_rprimitive, is_list_rprimitive, is_sequence_rprimitive,
     RTuple, is_dict_rprimitive, short_int_rprimitive, int_rprimitive,
-    PyRangeObject, is_range_rprimitive
 )
 from mypyc.primitives.registry import CFunctionDescription
 from mypyc.primitives.dict_ops import (
@@ -250,20 +249,6 @@ def make_for_loop_generator(builder: IRBuilder,
         for_dict = ForDictionaryKeys(builder, index, body_block, loop_exit, line, nested)
         for_dict.init(expr_reg, target_type)
         return for_dict
-
-    if is_range_rprimitive(rtyp):
-        # Special case "for k in <range>".
-        range_reg = builder.accept(expr)
-        elem_address = builder.add(GetElementPtr(range_reg, PyRangeObject, 'start'))
-        start_reg = builder.add(LoadMem(int_rprimitive, elem_address))
-        elem_address = builder.add(GetElementPtr(range_reg, PyRangeObject, 'stop'))
-        stop_reg = builder.add(LoadMem(int_rprimitive, elem_address))
-        elem_address = builder.add(GetElementPtr(range_reg, PyRangeObject, 'step'))
-        step_reg = builder.add(LoadMem(int_rprimitive, elem_address))
-
-        for_range = ForRangeType(builder, index, body_block, loop_exit, line, nested)
-        for_range.init(start_reg, stop_reg, step_reg)
-        return for_range
 
     if (isinstance(expr, CallExpr)
             and isinstance(expr.callee, RefExpr)):
