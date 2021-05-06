@@ -2593,10 +2593,19 @@ class SemanticAnalyzer(NodeVisitor[None],
         # Note: with the new (lazy) type alias representation we only need to set no_args to True
         # if the expected number of arguments is non-zero, so that aliases like A = List work.
         # However, eagerly expanding aliases like Text = str is a nice performance optimization.
-        no_args = isinstance(res, Instance) and not res.args  # type: ignore
+        no_args = isinstance(res, Instance) and not res.args  # type: ignore[misc]
         fix_instance_types(res, self.fail, self.note, self.options.python_version)
-        alias_node = TypeAlias(res, self.qualified_name(lvalue.name), s.line, s.column,
-                               alias_tvars=alias_tvars, no_args=no_args)
+        # Aliases defined within functions can't be accessed outside
+        # the function, since the symbol table will no longer
+        # exist. Work around by expanding them eagerly when used.
+        eager = self.is_func_scope()
+        alias_node = TypeAlias(res,
+                               self.qualified_name(lvalue.name),
+                               s.line,
+                               s.column,
+                               alias_tvars=alias_tvars,
+                               no_args=no_args,
+                               eager=eager)
         if isinstance(s.rvalue, (IndexExpr, CallExpr)):  # CallExpr is for `void = type(None)`
             s.rvalue.analyzed = TypeAliasExpr(alias_node)
             s.rvalue.analyzed.line = s.line

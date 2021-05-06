@@ -2796,15 +2796,18 @@ class TypeAlias(SymbolNode):
         itself an alias), while the second cannot be subscripted because of
         Python runtime limitation.
     line and column: Line an column on the original alias definition.
+    eager: If True, immediately expand alias when referred to (useful for aliases
+        within functions that can't be looked up from the symbol table)
     """
     __slots__ = ('target', '_fullname', 'alias_tvars', 'no_args', 'normalized',
-                 'line', 'column', '_is_recursive')
+                 'line', 'column', '_is_recursive', 'eager')
 
     def __init__(self, target: 'mypy.types.Type', fullname: str, line: int, column: int,
                  *,
                  alias_tvars: Optional[List[str]] = None,
                  no_args: bool = False,
-                 normalized: bool = False) -> None:
+                 normalized: bool = False,
+                 eager: bool = False) -> None:
         self._fullname = fullname
         self.target = target
         if alias_tvars is None:
@@ -2815,6 +2818,7 @@ class TypeAlias(SymbolNode):
         # This attribute is manipulated by TypeAliasType. If non-None,
         # it is the cached value.
         self._is_recursive = None  # type: Optional[bool]
+        self.eager = eager
         super().__init__(line, column)
 
     @property
