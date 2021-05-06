@@ -12,8 +12,7 @@ from mypy.nodes import (
     Lvalue, Expression, TupleExpr, CallExpr, RefExpr, GeneratorExpr, ARG_POS, MemberExpr, TypeAlias
 )
 from mypyc.ir.ops import (
-    Value, BasicBlock, Integer, Branch, Register, TupleGet, TupleSet, IntOp, GetElementPtr,
-    LoadMem
+    Value, BasicBlock, Integer, Branch, Register, TupleGet, TupleSet, IntOp
 )
 from mypyc.ir.rtypes import (
     RType, is_short_int_rprimitive, is_list_rprimitive, is_sequence_rprimitive,
