@@ -60,7 +60,8 @@ class TypedDictAnalyzer:
                 fields, types, required_keys = self.analyze_typeddict_classdef_fields(defn)
                 if fields is None:
                     return True, None  # Defer
-                info = self.build_typeddict_typeinfo(defn.name, fields, types, required_keys)
+                info = self.build_typeddict_typeinfo(defn.name, fields, types, required_keys,
+                                                     defn.line)
                 defn.analyzed = TypedDictExpr(info)
                 defn.analyzed.line = defn.line
                 defn.analyzed.column = defn.column
@@ -97,7 +98,7 @@ class TypedDictAnalyzer:
             keys.extend(new_keys)
             types.extend(new_types)
             required_keys.update(new_required_keys)
-            info = self.build_typeddict_typeinfo(defn.name, keys, types, required_keys)
+            info = self.build_typeddict_typeinfo(defn.name, keys, types, required_keys, defn.line)
             defn.analyzed = TypedDictExpr(info)
             defn.analyzed.line = defn.line
             defn.analyzed.column = defn.column
@@ -196,7 +197,7 @@ class TypedDictAnalyzer:
         name, items, types, total, ok = res
         if not ok:
             # Error. Construct dummy return value.
-            info = self.build_typeddict_typeinfo('TypedDict', [], [], set())
+            info = self.build_typeddict_typeinfo('TypedDict', [], [], set(), call.line)
         else:
             if var_name is not None and name != var_name:
                 self.fail(
@@ -206,7 +207,7 @@ class TypedDictAnalyzer:
                 # Give it a unique name derived from the line number.
                 name += '@' + str(call.line)
             required_keys = set(items) if total else set()
-            info = self.build_typeddict_typeinfo(name, items, types, required_keys)
+            info = self.build_typeddict_typeinfo(name, items, types, required_keys, call.line)
             info.line = node.line
             # Store generated TypeInfo under both names, see semanal_namedtuple for more details.
             if name != var_name or is_func_scope:
@@ -305,13 +306,14 @@ class TypedDictAnalyzer:
 
     def build_typeddict_typeinfo(self, name: str, items: List[str],
                                  types: List[Type],
-                                 required_keys: Set[str]) -> TypeInfo:
+                                 required_keys: Set[str],
+                                 line: int) -> TypeInfo:
         # Prefer typing then typing_extensions if available.
         fallback = (self.api.named_type_or_none('typing._TypedDict', []) or
                     self.api.named_type_or_none('typing_extensions._TypedDict', []) or
                     self.api.named_type_or_none('mypy_extensions._TypedDict', []))
         assert fallback is not None
-        info = self.api.basic_new_typeinfo(name, fallback)
+        info = self.api.basic_new_typeinfo(name, fallback, line)
         info.typeddict_type = TypedDictType(OrderedDict(zip(items, types)), required_keys,
                                             fallback)
         return info
