@@ -1,3 +1,4 @@
+import sys
 import tkinter
 from typing import Any, List, Optional, Tuple, TypeVar, Union, overload
 from typing_extensions import Literal, TypedDict
@@ -6,8 +7,6 @@ NORMAL: Literal["normal"]
 ROMAN: Literal["roman"]
 BOLD: Literal["bold"]
 ITALIC: Literal["italic"]
-
-def nametofont(name: str) -> Font: ...
 
 # Can contain e.g. nested sequences ('FONT DESCRIPTIONS' in font man page)
 _FontDescription = Union[str, Font, tkinter._TkinterSequence[Any]]
@@ -95,3 +94,9 @@ class Font:
 
 def families(root: Optional[tkinter.Misc] = ..., displayof: Optional[tkinter.Misc] = ...) -> Tuple[str, ...]: ...
 def names(root: Optional[tkinter.Misc] = ...) -> Tuple[str, ...]: ...
+
+if sys.version_info >= (3, 10):
+    def nametofont(name: str, root: Optional[tkinter.Misc] = ...) -> Font: ...
+
+else:
+    def nametofont(name: str) -> Font: ...

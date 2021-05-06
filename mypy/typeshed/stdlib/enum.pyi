@@ -1,5 +1,6 @@
 import sys
 from abc import ABCMeta
+from builtins import property as _builtins_property
 from typing import Any, Dict, Iterator, List, Mapping, Type, TypeVar, Union
 
 _T = TypeVar("_T")
@@ -15,7 +16,7 @@ class EnumMeta(ABCMeta):
     def __reversed__(self: Type[_T]) -> Iterator[_T]: ...
     def __contains__(self: Type[Any], member: object) -> bool: ...
     def __getitem__(self: Type[_T], name: str) -> _T: ...
-    @property
+    @_builtins_property
     def __members__(self: Type[_T]) -> Mapping[str, _T]: ...
     def __len__(self) -> int: ...
 
@@ -74,3 +75,20 @@ class IntFlag(int, Flag):
     __ror__ = __or__
     __rand__ = __and__
     __rxor__ = __xor__
+
+if sys.version_info >= (3, 10):
+    class StrEnum(str, Enum):
+        def __new__(cls: Type[_T], value: Union[int, _T]) -> _T: ...
+    class FlagBoundary(StrEnum):
+        STRICT: str
+        CONFORM: str
+        EJECT: str
+        KEEP: str
+    STRICT = FlagBoundary.STRICT
+    CONFORM = FlagBoundary.CONFORM
+    EJECT = FlagBoundary.EJECT
+    KEEP = FlagBoundary.KEEP
+    class property(_builtins_property): ...
+    def global_enum(cls: _S) -> _S: ...
+    def global_enum_repr(self: Enum) -> str: ...
+    def global_flag_repr(self: Flag) -> str: ...

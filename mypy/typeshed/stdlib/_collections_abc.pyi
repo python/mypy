@@ -26,7 +26,6 @@ from typing import (
     ValuesView as ValuesView,
 )
 
-# Without the real definition, mypy and pytest both think that __all__ is empty, so re-exports nothing
 __all__ = [
     "Awaitable",
     "Coroutine",
