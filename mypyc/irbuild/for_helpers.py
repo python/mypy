@@ -764,41 +764,6 @@ class ForRange(ForGenerator):
         builder.assign(self.index_target, new_val, line)
 
 
-class ForRangeType(ForRange):
-    """Generate optimized IR for a for loop over an integer range."""
-
-    def init(self, start_reg: Value, end_reg: Value, step_reg: Value) -> None:
-        super().init(start_reg, end_reg, 0)
-        self.step_reg = step_reg
-
-    def gen_condition(self) -> None:
-        builder = self.builder
-        line = self.line
-        # Add loop condition check.
-        # cmp = '<' if self.step > 0 else '>'
-        comparison = builder.binary_op(builder.read(self.index_reg, line),
-                                       builder.read(self.end_target, line), '<', line)
-        builder.add_bool_branch(comparison, self.body_block, self.loop_exit)
-
-    def gen_step(self) -> None:
-        builder = self.builder
-        line = self.line
-
-        # Increment index register. If the range is known to fit in short ints, use
-        # short ints.
-        if (is_short_int_rprimitive(self.start_reg.type)
-                and is_short_int_rprimitive(self.end_reg.type)):
-            new_val = builder.int_op(short_int_rprimitive,
-                                     builder.read(self.index_reg, line),
-                                     self.step_reg, IntOp.ADD, line)
-
-        else:
-            new_val = builder.binary_op(
-                builder.read(self.index_reg, line), self.step_reg, '+', line)
-        builder.assign(self.index_reg, new_val, line)
-        builder.assign(self.index_target, new_val, line)
-
-
 class ForInfiniteCounter(ForGenerator):
     """Generate optimized IR for a for loop counting from 0 to infinity."""
 
