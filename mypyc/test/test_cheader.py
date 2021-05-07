@@ -4,7 +4,6 @@ import glob
 import os
 import re
 import unittest
-from typing import Union, List
 
 from mypyc.primitives import registry
 from mypyc.primitives.registry import CFunctionDescription
