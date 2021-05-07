@@ -97,7 +97,7 @@ Config file
 
     This flag makes mypy read configuration settings from the given file.
 
-    By default settings are read from ``mypy.ini``, ``.mypy.ini``, or ``setup.cfg``
+    By default settings are read from ``mypy.ini``, ``.mypy.ini``, ``pyproject.toml``, or ``setup.cfg``
     in the current directory. Settings override mypy's built-in defaults and
     command line flags can override settings.
 
@@ -231,6 +231,11 @@ For more information on how to use these flags, see :ref:`version_and_platform_c
 .. option:: -2, --py2
 
     Equivalent to running :option:`--python-version 2.7 <--python-version>`.
+
+    .. note::
+
+        To check Python 2 code with mypy, you'll need to install mypy with
+        ``pip install 'mypy[python2]'``.
 
 .. option:: --platform PLATFORM
 

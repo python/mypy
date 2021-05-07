@@ -1,15 +1,15 @@
 import sys
 from typing import Text, Union
 
-if sys.version_info < (3,):
-    # Python 2 accepts unicode ascii pretty much everywhere.
-    _Bytes = Text
-    _Ascii = Text
-else:
+if sys.version_info >= (3, 0):
     # But since Python 3.3 ASCII-only unicode strings are accepted by the
     # a2b_* functions.
     _Bytes = bytes
     _Ascii = Union[bytes, str]
+else:
+    # Python 2 accepts unicode ascii pretty much everywhere.
+    _Bytes = Text
+    _Ascii = Text
 
 def a2b_uu(__data: _Ascii) -> bytes: ...
 

@@ -111,11 +111,11 @@ def plugin(version): return Dummy
 -- Note: Backslash path separator in output is replaced with forward slash so the same test succeeds on Windows as well
 $ dmypy run -- foo --follow-imports=error --python-version=3.6
 Daemon started
-foo/lol.py:1: error: Name 'fail' is not defined
+foo/lol.py:1: error: Name "fail" is not defined
 Found 1 error in 1 file (checked 3 source files)
 == Return code: 1
 $ dmypy run -- foo --follow-imports=error --python-version=3.6
-foo/lol.py:1: error: Name 'fail' is not defined
+foo/lol.py:1: error: Name "fail" is not defined
 Found 1 error in 1 file (checked 3 source files)
 == Return code: 1
 $ {python} -c "print('[mypy]')" >mypy.ini
@@ -238,7 +238,7 @@ $ {python} -c "import time;time.sleep(1)"
 $ {python} -c "print('lol')" >foo.py
 $ dmypy run --log-file=log -- foo.py bar.py --follow-imports=error --use-fine-grained-cache --no-sqlite-cache --python-version=3.6 --quickstart-file test.json
 Daemon started
-foo.py:1: error: Name 'lol' is not defined
+foo.py:1: error: Name "lol" is not defined
 Found 1 error in 1 file (checked 2 source files)
 == Return code: 1
 -- make sure no errors made it to the log file

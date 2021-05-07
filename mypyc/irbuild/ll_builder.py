@@ -32,7 +32,7 @@ from mypyc.ir.rtypes import (
     is_list_rprimitive, is_tuple_rprimitive, is_dict_rprimitive, is_set_rprimitive, PySetObject,
     none_rprimitive, RTuple, is_bool_rprimitive, is_str_rprimitive, c_int_rprimitive,
     pointer_rprimitive, PyObject, PyListObject, bit_rprimitive, is_bit_rprimitive,
-    object_pointer_rprimitive, c_size_t_rprimitive
+    object_pointer_rprimitive, c_size_t_rprimitive, dict_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -47,20 +47,23 @@ from mypyc.primitives.registry import (
 from mypyc.primitives.list_ops import (
     list_extend_op, new_list_op
 )
-from mypyc.primitives.tuple_ops import list_tuple_op, new_tuple_op
+from mypyc.primitives.tuple_ops import (
+    list_tuple_op, new_tuple_op, new_tuple_with_length_op
+)
 from mypyc.primitives.dict_ops import (
     dict_update_in_display_op, dict_new_op, dict_build_op, dict_size_op
 )
 from mypyc.primitives.generic_ops import (
-    py_getattr_op, py_call_op, py_call_with_kwargs_op, py_method_call_op, generic_len_op,
-    py_vectorcall_op, py_vectorcall_method_op
+    py_getattr_op, py_call_op, py_call_with_kwargs_op, py_method_call_op,
+    py_vectorcall_op, py_vectorcall_method_op,
+    generic_len_op, generic_ssize_t_len_op
 )
 from mypyc.primitives.misc_ops import (
     none_object_op, fast_isinstance_op, bool_op
 )
 from mypyc.primitives.int_ops import int_comparison_op_mapping
 from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
-from mypyc.primitives.str_ops import unicode_compare
+from mypyc.primitives.str_ops import unicode_compare, str_check_if_true
 from mypyc.primitives.set_ops import new_set_op
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.subtype import is_subtype
@@ -590,7 +593,7 @@ class LowLevelIRBuilder:
                             line: int = -1,
                             error_msg: Optional[str] = None) -> Value:
         if error_msg is None:
-            error_msg = "name '{}' is not defined".format(identifier)
+            error_msg = 'name "{}" is not defined'.format(identifier)
         ok_block, error_block = BasicBlock(), BasicBlock()
         value = self.add(LoadStatic(typ, identifier, module_name, namespace, line=line))
         self.add(Branch(value, error_block, ok_block, Branch.IS_ERROR, rare=True))
@@ -888,6 +891,20 @@ class LowLevelIRBuilder:
 
         return result
 
+    def new_list_op_with_length(self, length: Value, line: int) -> Value:
+        """This function returns an uninitialized list.
+
+        If the length is non-zero, the caller must initialize the list, before
+        it can be made visible to user code -- otherwise the list object is broken.
+        You might need further initialization with `new_list_set_item_op` op.
+
+        Args:
+            length: desired length of the new list. The rtype should be
+                    c_pyssize_t_rprimitive
+            line: line number
+        """
+        return self.call_c(new_list_op, [length], line)
+
     def new_list_op(self, values: List[Value], line: int) -> Value:
         length = Integer(len(values), c_pyssize_t_rprimitive, line)
         result_list = self.call_c(new_list_op, [length], line)
@@ -955,7 +972,10 @@ class LowLevelIRBuilder:
             zero = Integer(0, short_int_rprimitive)
             self.compare_tagged_condition(value, zero, '!=', true, false, value.line)
             return
-        elif is_same_type(value.type, list_rprimitive):
+        elif is_same_type(value.type, str_rprimitive):
+            value = self.call_c(str_check_if_true, [value], value.line)
+        elif (is_same_type(value.type, list_rprimitive)
+                or is_same_type(value.type, dict_rprimitive)):
             length = self.builtin_len(value, value.line)
             zero = Integer(0)
             value = self.binary_op(length, zero, '!=', value.line)
@@ -1079,17 +1099,23 @@ class LowLevelIRBuilder:
     def comparison_op(self, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.add(ComparisonOp(lhs, rhs, op, line))
 
-    def builtin_len(self, val: Value, line: int) -> Value:
+    def builtin_len(self, val: Value, line: int,
+                    use_pyssize_t: bool = False) -> Value:
+        """Return short_int_rprimitive by default."""
         typ = val.type
         if is_list_rprimitive(typ) or is_tuple_rprimitive(typ):
             elem_address = self.add(GetElementPtr(val, PyVarObject, 'ob_size'))
             size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
             self.add(KeepAlive([val]))
+            if use_pyssize_t:
+                return size_value
             offset = Integer(1, c_pyssize_t_rprimitive, line)
             return self.int_op(short_int_rprimitive, size_value, offset,
                                IntOp.LEFT_SHIFT, line)
         elif is_dict_rprimitive(typ):
             size_value = self.call_c(dict_size_op, [val], line)
+            if use_pyssize_t:
+                return size_value
             offset = Integer(1, c_pyssize_t_rprimitive, line)
             return self.int_op(short_int_rprimitive, size_value, offset,
                                IntOp.LEFT_SHIFT, line)
@@ -1097,16 +1123,35 @@ class LowLevelIRBuilder:
             elem_address = self.add(GetElementPtr(val, PySetObject, 'used'))
             size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
             self.add(KeepAlive([val]))
+            if use_pyssize_t:
+                return size_value
             offset = Integer(1, c_pyssize_t_rprimitive, line)
             return self.int_op(short_int_rprimitive, size_value, offset,
                                IntOp.LEFT_SHIFT, line)
         # generic case
         else:
-            return self.call_c(generic_len_op, [val], line)
+            if use_pyssize_t:
+                return self.call_c(generic_ssize_t_len_op, [val], line)
+            else:
+                return self.call_c(generic_len_op, [val], line)
 
     def new_tuple(self, items: List[Value], line: int) -> Value:
         size = Integer(len(items), c_pyssize_t_rprimitive)  # type: Value
         return self.call_c(new_tuple_op, [size] + items, line)
+
+    def new_tuple_with_length(self, length: Value, line: int) -> Value:
+        """This function returns an uninitialized tuple.
+
+        If the length is non-zero, the caller must initialize the tuple, before
+        it can be made visible to user code -- otherwise the tuple object is broken.
+        You might need further initialization with `new_tuple_set_item_op` op.
+
+        Args:
+            length: desired length of the new tuple. The rtype should be
+                    c_pyssize_t_rprimitive
+            line: line number
+        """
+        return self.call_c(new_tuple_with_length_op, [length], line)
 
     # Internal helpers
 

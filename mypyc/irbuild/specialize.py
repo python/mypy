@@ -25,8 +25,13 @@ from mypyc.ir.rtypes import (
     bool_rprimitive, is_dict_rprimitive
 )
 from mypyc.primitives.dict_ops import dict_keys_op, dict_values_op, dict_items_op
+from mypyc.primitives.list_ops import new_list_set_item_op
+from mypyc.primitives.tuple_ops import new_tuple_set_item_op
 from mypyc.irbuild.builder import IRBuilder
-from mypyc.irbuild.for_helpers import translate_list_comprehension, comprehension_helper
+from mypyc.irbuild.for_helpers import (
+    translate_list_comprehension, translate_set_comprehension,
+    comprehension_helper, sequence_from_generator_preallocate_helper
+)
 
 
 # Specializers are attempted before compiling the arguments to the
@@ -88,6 +93,19 @@ def dict_methods_fast_path(
     if not (len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]):
         return None
     arg = expr.args[0]
+
+    # Special case for simplest list comprehension, for example
+    #     list(x for x in tmp_list)
+    # TODO: The following code should be moved to a new function after
+    #       supporting multiple specialize functions
+    if not isinstance(callee, MemberExpr) and isinstance(arg, GeneratorExpr):
+        val = sequence_from_generator_preallocate_helper(
+            builder, arg,
+            empty_op_llbuilder=builder.builder.new_list_op_with_length,
+            set_item_op=new_list_set_item_op)
+        if val is not None:
+            return val
+
     if not (isinstance(arg, CallExpr) and not arg.args
             and isinstance(arg.callee, MemberExpr)):
         return None
@@ -108,8 +126,19 @@ def dict_methods_fast_path(
         return builder.call_c(dict_items_op, [obj], expr.line)
 
 
-@specialize_function('builtins.tuple')
 @specialize_function('builtins.set')
+def translate_set_from_generator_call(
+        builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+    # Special case for set creation from a generator：
+    #     set(f(...) for ... in iterator/nested_generators...)
+    if (len(expr.args) == 1
+            and expr.arg_kinds[0] == ARG_POS
+            and isinstance(expr.args[0], GeneratorExpr)):
+        return translate_set_comprehension(builder, expr.args[0])
+    return None
+
+
+@specialize_function('builtins.tuple')
 @specialize_function('builtins.frozenset')
 @specialize_function('builtins.dict')
 @specialize_function('builtins.sum')
@@ -135,6 +164,14 @@ def translate_safe_generator_call(
                     + [builder.accept(arg) for arg in expr.args[1:]]),
                 builder.node_type(expr), expr.line, expr.arg_kinds, expr.arg_names)
         else:
+            if len(expr.args) == 1 and callee.fullname == "builtins.tuple":
+                val = sequence_from_generator_preallocate_helper(
+                    builder, expr.args[0],
+                    empty_op_llbuilder=builder.builder.new_tuple_with_length,
+                    set_item_op=new_tuple_set_item_op)
+                if val is not None:
+                    return val
+
             return builder.call_refexpr_with_args(
                 expr, callee,
                 ([translate_list_comprehension(builder, expr.args[0])]
@@ -248,10 +285,15 @@ def translate_next_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> 
 
 @specialize_function('builtins.isinstance')
 def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-    # Special case builtins.isinstance
     if (len(expr.args) == 2
             and expr.arg_kinds == [ARG_POS, ARG_POS]
             and isinstance(expr.args[1], (RefExpr, TupleExpr))):
+        # Special case for builtins.isinstance
+        # Prevent coercions on the thing we are checking the instance of - there is no need to
+        # coerce something to a new type before checking what type it is, and the coercion could
+        # lead to bugs.
+        builder.types[expr.args[0]] = AnyType(TypeOfAny.from_error)
+
         irs = builder.flatten_classes(expr.args[1])
         if irs is not None:
             return builder.builder.isinstance_helper(builder.accept(expr.args[0]), irs, expr.line)

@@ -1,7 +1,7 @@
-import collections
+import collections.abc
 from typing import Any, Dict, Iterator, Optional, Tuple
 
-class Shelf(collections.MutableMapping[Any, Any]):
+class Shelf(collections.abc.MutableMapping[Any, Any]):
     def __init__(
         self, dict: Dict[bytes, Any], protocol: Optional[int] = ..., writeback: bool = ..., keyencoding: str = ...
     ) -> None: ...

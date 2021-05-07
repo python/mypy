@@ -125,7 +125,7 @@ def f(x: object, n: int, s: str) -> None:
 [case testColumnHasNoAttribute]
 import m
 if int():
-    from m import foobaz # E:5: Module 'm' has no attribute 'foobaz'; maybe "foobar"?
+    from m import foobaz # E:5: Module "m" has no attribute "foobaz"; maybe "foobar"?
 1 .x # E:1: "int" has no attribute "x"
 (m.foobaz()) # E:2: Module has no attribute "foobaz"; maybe "foobar"?
 
@@ -196,7 +196,7 @@ if int():
         pass
 
 [case testColumnNameIsNotDefined]
-((x)) # E:3: Name 'x' is not defined
+((x)) # E:3: Name "x" is not defined
 
 [case testColumnNeedTypeAnnotation]
 if 1:
@@ -235,7 +235,7 @@ y: Dict[int, int] = {
 [builtins fixtures/dict.pyi]
 
 [case testColumnCannotDetermineType]
-(x)  # E:2: Cannot determine type of 'x'
+(x)  # E:2: Cannot determine type of "x"
 x = None
 
 [case testColumnInvalidIndexing]
@@ -320,7 +320,7 @@ if int():
 
 [case testColumnRevealedType]
 if int():
-    reveal_type(1) # N:17: Revealed type is 'Literal[1]?'
+    reveal_type(1) # N:17: Revealed type is "Literal[1]?"
 
 [case testColumnNonOverlappingEqualityCheck]
 # flags: --strict-equality
@@ -354,7 +354,7 @@ if int():
     # TODO: It would be better to point to the type comment
     xyz = 0  # type: blurbnard blarb
 [out]
-main:3:5: error: syntax error in type comment 'blurbnard blarb'
+main:3:5: error: syntax error in type comment "blurbnard blarb"
 
 [case testColumnProperty]
 class A:

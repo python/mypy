@@ -3,6 +3,7 @@ import io
 import ssl
 import sys
 import types
+from _typeshed import WriteableBuffer
 from socket import socket
 from typing import (
     IO,
@@ -103,6 +104,9 @@ class HTTPResponse(io.BufferedIOBase, BinaryIO):
     reason: str
     def __init__(self, sock: socket, debuglevel: int = ..., method: Optional[str] = ..., url: Optional[str] = ...) -> None: ...
     def read(self, amt: Optional[int] = ...) -> bytes: ...
+    def read1(self, n: int = ...) -> bytes: ...
+    def readinto(self, b: WriteableBuffer) -> int: ...
+    def readline(self, limit: int = ...) -> bytes: ...  # type: ignore
     @overload
     def getheader(self, name: str) -> Optional[str]: ...
     @overload
@@ -179,18 +183,33 @@ class HTTPConnection:
     def send(self, data: _DataType) -> None: ...
 
 class HTTPSConnection(HTTPConnection):
-    def __init__(
-        self,
-        host: str,
-        port: Optional[int] = ...,
-        key_file: Optional[str] = ...,
-        cert_file: Optional[str] = ...,
-        timeout: Optional[float] = ...,
-        source_address: Optional[Tuple[str, int]] = ...,
-        *,
-        context: Optional[ssl.SSLContext] = ...,
-        check_hostname: Optional[bool] = ...,
-    ) -> None: ...
+    if sys.version_info >= (3, 7):
+        def __init__(
+            self,
+            host: str,
+            port: Optional[int] = ...,
+            key_file: Optional[str] = ...,
+            cert_file: Optional[str] = ...,
+            timeout: Optional[float] = ...,
+            source_address: Optional[Tuple[str, int]] = ...,
+            *,
+            context: Optional[ssl.SSLContext] = ...,
+            check_hostname: Optional[bool] = ...,
+            blocksize: int = ...,
+        ) -> None: ...
+    else:
+        def __init__(
+            self,
+            host: str,
+            port: Optional[int] = ...,
+            key_file: Optional[str] = ...,
+            cert_file: Optional[str] = ...,
+            timeout: Optional[float] = ...,
+            source_address: Optional[Tuple[str, int]] = ...,
+            *,
+            context: Optional[ssl.SSLContext] = ...,
+            check_hostname: Optional[bool] = ...,
+        ) -> None: ...
 
 class HTTPException(Exception): ...
 
@@ -198,14 +217,25 @@ error = HTTPException
 
 class NotConnected(HTTPException): ...
 class InvalidURL(HTTPException): ...
-class UnknownProtocol(HTTPException): ...
+
+class UnknownProtocol(HTTPException):
+    def __init__(self, version: str) -> None: ...
+
 class UnknownTransferEncoding(HTTPException): ...
 class UnimplementedFileMode(HTTPException): ...
-class IncompleteRead(HTTPException): ...
+
+class IncompleteRead(HTTPException):
+    def __init__(self, partial: bytes, expected: Optional[int] = ...) -> None: ...
+
 class ImproperConnectionState(HTTPException): ...
 class CannotSendRequest(ImproperConnectionState): ...
 class CannotSendHeader(ImproperConnectionState): ...
 class ResponseNotReady(ImproperConnectionState): ...
-class BadStatusLine(HTTPException): ...
-class LineTooLong(HTTPException): ...
+
+class BadStatusLine(HTTPException):
+    def __init__(self, line: str) -> None: ...
+
+class LineTooLong(HTTPException):
+    def __init__(self, line_type: str) -> None: ...
+
 class RemoteDisconnected(ConnectionResetError, BadStatusLine): ...

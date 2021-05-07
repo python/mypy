@@ -15,5 +15,5 @@ from typing import Callable, List
 decorator_list: List[Callable[..., Callable[[int], str]]]
 @decorator_list[0]
 def f(x: float) -> float: ...
-reveal_type(f)  # N: Revealed type is 'def (builtins.int) -> builtins.str'
+reveal_type(f)  # N: Revealed type is "def (builtins.int) -> builtins.str"
 [builtins fixtures/list.pyi]

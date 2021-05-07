@@ -65,6 +65,15 @@ list_set_item_op = method_op(
     error_kind=ERR_FALSE,
     steals=[False, False, True])
 
+# PyList_SET_ITEM does no error checking,
+# and should only be used to fill in brand new lists.
+new_list_set_item_op = custom_op(
+    arg_types=[list_rprimitive, int_rprimitive, object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name='CPyList_SetItemUnsafe',
+    error_kind=ERR_FALSE,
+    steals=[False, False, True])
+
 # list.append(obj)
 list_append_op = method_op(
     name='append',

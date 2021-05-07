@@ -45,7 +45,7 @@ from mypyc.primitives.registry import CFunctionDescription, function_ops
 from mypyc.primitives.list_ops import to_list, list_pop_last, list_get_item_unsafe_op
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import py_setattr_op, iter_op, next_op
-from mypyc.primitives.misc_ops import import_op, check_unpack_count_op
+from mypyc.primitives.misc_ops import import_op, check_unpack_count_op, get_module_dict_op
 from mypyc.crash import catch_errors
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
@@ -299,6 +299,25 @@ class IRBuilder:
         self.add(InitStatic(value, id, namespace=NAMESPACE_MODULE))
         self.goto_and_activate(out)
 
+    def get_module(self, module: str, line: int) -> Value:
+        # Python 3.7 has a nice 'PyImport_GetModule' function that we can't use :(
+        mod_dict = self.call_c(get_module_dict_op, [], line)
+        # Get module object from modules dict.
+        return self.call_c(dict_get_item_op,
+                           [mod_dict, self.load_str(module)], line)
+
+    def get_module_attr(self, module: str, attr: str, line: int) -> Value:
+        """Look up an attribute of a module without storing it in the local namespace.
+
+        For example, get_module_attr('typing', 'TypedDict', line) results in
+        the value of 'typing.TypedDict'.
+
+        Import the module if needed.
+        """
+        self.gen_import(module, line)
+        module_obj = self.get_module(module, line)
+        return self.py_get_attr(module_obj, attr, line)
+
     def assign_if_null(self, target: Register,
                        get_val: Callable[[], Value], line: int) -> None:
         """If target is NULL, assign value produced by get_val to it."""
@@ -345,8 +364,12 @@ class IRBuilder:
         # Currently the stack always has at least two items: dummy and top-level.
         return len(self.fn_infos) <= 2
 
-    def init_final_static(self, lvalue: Lvalue, rvalue_reg: Value,
-                          class_name: Optional[str] = None) -> None:
+    def init_final_static(self,
+                          lvalue: Lvalue,
+                          rvalue_reg: Value,
+                          class_name: Optional[str] = None,
+                          *,
+                          type_override: Optional[RType] = None) -> None:
         assert isinstance(lvalue, NameExpr)
         assert isinstance(lvalue.node, Var)
         if lvalue.node.final_value is None:
@@ -355,8 +378,9 @@ class IRBuilder:
             else:
                 name = '{}.{}'.format(class_name, lvalue.name)
             assert name is not None, "Full name not set for variable"
-            self.final_names.append((name, rvalue_reg.type))
-            self.add(InitStatic(rvalue_reg, name, self.module_name))
+            coerced = self.coerce(rvalue_reg, type_override or self.node_type(lvalue), lvalue.line)
+            self.final_names.append((name, coerced.type))
+            self.add(InitStatic(coerced, name, self.module_name))
 
     def load_final_static(self, fullname: str, typ: RType, line: int,
                           error_name: Optional[str] = None) -> Value:

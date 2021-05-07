@@ -12,7 +12,7 @@ check that the priorities are configured properly.
 from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC
 from mypyc.ir.rtypes import (
     object_rprimitive, int_rprimitive, bool_rprimitive, c_int_rprimitive, pointer_rprimitive,
-    object_pointer_rprimitive, c_size_t_rprimitive
+    object_pointer_rprimitive, c_size_t_rprimitive, c_pyssize_t_rprimitive
 )
 from mypyc.primitives.registry import (
     binary_op, c_unary_op, method_op, function_op, custom_op, ERR_NEG_INT
@@ -239,7 +239,15 @@ generic_len_op = custom_op(
     arg_types=[object_rprimitive],
     return_type=int_rprimitive,
     c_function_name='CPyObject_Size',
-    error_kind=ERR_NEVER)
+    error_kind=ERR_MAGIC)
+
+# len(obj)
+# same as generic_len_op, however return py_ssize_t
+generic_ssize_t_len_op = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=c_pyssize_t_rprimitive,
+    c_function_name='PyObject_Size',
+    error_kind=ERR_NEG_INT)
 
 # iter(obj)
 iter_op = function_op(name='builtins.iter',

@@ -68,7 +68,8 @@ except ImportError:
         from typed_ast import ast35  # type: ignore[attr-defined]  # noqa: F401
     except ImportError:
         print('The typed_ast package is not installed.\n'
-              'You can install it with `python3 -m pip install typed-ast`.',
+              'For Python 2 support, install mypy using `python3 -m pip install "mypy[python2]"`'
+              'Alternatively, you can install typed_ast with `python3 -m pip install typed-ast`.',
               file=sys.stderr)
     else:
         print('You need a more recent version of the typed_ast package.\n'
@@ -404,7 +405,7 @@ class ASTConverter:
                     arg_types.insert(0, AnyType(TypeOfAny.special_form))
             except SyntaxError:
                 stripped_type = type_comment.split("#", 2)[0].strip()
-                err_msg = "{} '{}'".format(TYPE_COMMENT_SYNTAX_ERROR, stripped_type)
+                err_msg = '{} "{}"'.format(TYPE_COMMENT_SYNTAX_ERROR, stripped_type)
                 self.fail(err_msg, lineno, n.col_offset)
                 arg_types = [AnyType(TypeOfAny.from_error)] * len(args)
                 return_type = AnyType(TypeOfAny.from_error)

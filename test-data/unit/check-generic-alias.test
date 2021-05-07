@@ -98,19 +98,19 @@ t9: dict[int, str]
 t10: type
 t11: type[int]
 
-reveal_type(t1)  # N: Revealed type is 'builtins.list[Any]'
-reveal_type(t2)  # N: Revealed type is 'builtins.list[builtins.int]'
-reveal_type(t3)  # N: Revealed type is 'builtins.list[builtins.str]'
-reveal_type(t4)  # N: Revealed type is 'builtins.tuple[Any]'
+reveal_type(t1)  # N: Revealed type is "builtins.list[Any]"
+reveal_type(t2)  # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(t3)  # N: Revealed type is "builtins.list[builtins.str]"
+reveal_type(t4)  # N: Revealed type is "builtins.tuple[Any]"
 # TODO: ideally these would reveal builtins.tuple
-reveal_type(t5)  # N: Revealed type is 'Tuple[builtins.int]'
-reveal_type(t6)  # N: Revealed type is 'Tuple[builtins.int, builtins.str]'
+reveal_type(t5)  # N: Revealed type is "Tuple[builtins.int]"
+reveal_type(t6)  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
 # TODO: this is incorrect, see #9522
-reveal_type(t7)  # N: Revealed type is 'builtins.tuple[builtins.int]'
-reveal_type(t8)  # N: Revealed type is 'builtins.dict[Any, Any]'
-reveal_type(t9)  # N: Revealed type is 'builtins.dict[builtins.int, builtins.str]'
-reveal_type(t10)  # N: Revealed type is 'builtins.type'
-reveal_type(t11)  # N: Revealed type is 'Type[builtins.int]'
+reveal_type(t7)  # N: Revealed type is "builtins.tuple[builtins.int]"
+reveal_type(t8)  # N: Revealed type is "builtins.dict[Any, Any]"
+reveal_type(t9)  # N: Revealed type is "builtins.dict[builtins.int, builtins.str]"
+reveal_type(t10)  # N: Revealed type is "builtins.type"
+reveal_type(t11)  # N: Revealed type is "Type[builtins.int]"
 [builtins fixtures/dict.pyi]
 
 
@@ -120,9 +120,9 @@ t1: set
 t2: set[int]
 t3: set[str]
 
-reveal_type(t1)  # N: Revealed type is 'builtins.set[Any]'
-reveal_type(t2)  # N: Revealed type is 'builtins.set[builtins.int]'
-reveal_type(t3)  # N: Revealed type is 'builtins.set[builtins.str]'
+reveal_type(t1)  # N: Revealed type is "builtins.set[Any]"
+reveal_type(t2)  # N: Revealed type is "builtins.set[builtins.int]"
+reveal_type(t3)  # N: Revealed type is "builtins.set[builtins.str]"
 [builtins fixtures/set.pyi]
 
 
@@ -136,11 +136,11 @@ t3: collections.OrderedDict[int, str]
 t4: collections.Counter[int]
 t5: collections.ChainMap[int, str]
 
-reveal_type(t1)  # N: Revealed type is 'collections.deque[builtins.int]'
-reveal_type(t2)  # N: Revealed type is 'collections.defaultdict[builtins.int, builtins.str]'
-reveal_type(t3)  # N: Revealed type is 'collections.OrderedDict[builtins.int, builtins.str]'
-reveal_type(t4)  # N: Revealed type is 'collections.Counter[builtins.int]'
-reveal_type(t5)  # N: Revealed type is 'collections.ChainMap[builtins.int, builtins.str]'
+reveal_type(t1)  # N: Revealed type is "collections.deque[builtins.int]"
+reveal_type(t2)  # N: Revealed type is "collections.defaultdict[builtins.int, builtins.str]"
+reveal_type(t3)  # N: Revealed type is "collections.OrderedDict[builtins.int, builtins.str]"
+reveal_type(t4)  # N: Revealed type is "collections.Counter[builtins.int]"
+reveal_type(t5)  # N: Revealed type is "collections.ChainMap[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
 
 
@@ -173,29 +173,29 @@ t22: collections.abc.ItemsView[int, str]
 t23: collections.abc.ValuesView[str]
 
 # TODO: these currently reveal the classes from typing, see #7907
-# reveal_type(t01)  # Nx Revealed type is 'collections.abc.Awaitable[builtins.int]'
-# reveal_type(t02)  # Nx Revealed type is 'collections.abc.Coroutine[builtins.str, builtins.int, builtins.float]'
-# reveal_type(t03)  # Nx Revealed type is 'collections.abc.AsyncIterable[builtins.int]'
-# reveal_type(t04)  # Nx Revealed type is 'collections.abc.AsyncIterator[builtins.int]'
-# reveal_type(t05)  # Nx Revealed type is 'collections.abc.AsyncGenerator[builtins.int, builtins.float]'
-# reveal_type(t06)  # Nx Revealed type is 'collections.abc.Iterable[builtins.int]'
-# reveal_type(t07)  # Nx Revealed type is 'collections.abc.Iterator[builtins.int]'
-# reveal_type(t08)  # Nx Revealed type is 'collections.abc.Generator[builtins.int, builtins.float, builtins.str]'
-# reveal_type(t09)  # Nx Revealed type is 'collections.abc.Reversible[builtins.int]'
-# reveal_type(t10)  # Nx Revealed type is 'collections.abc.Container[builtins.int]'
-# reveal_type(t11)  # Nx Revealed type is 'collections.abc.Collection[builtins.int]'
-# reveal_type(t12)  # Nx Revealed type is 'collections.abc.Callable[[builtins.int], builtins.float]'
-# reveal_type(t13)  # Nx Revealed type is 'collections.abc.Set[builtins.int]'
-# reveal_type(t14)  # Nx Revealed type is 'collections.abc.MutableSet[builtins.int]'
-# reveal_type(t15)  # Nx Revealed type is 'collections.abc.Mapping[builtins.int, builtins.str]'
-# reveal_type(t16)  # Nx Revealed type is 'collections.abc.MutableMapping[builtins.int, builtins.str]'
-# reveal_type(t17)  # Nx Revealed type is 'collections.abc.Sequence[builtins.int]'
-# reveal_type(t18)  # Nx Revealed type is 'collections.abc.MutableSequence[builtins.int]'
-# reveal_type(t19)  # Nx Revealed type is 'collections.abc.ByteString'
-# reveal_type(t20)  # Nx Revealed type is 'collections.abc.MappingView[builtins.int, builtins.int]'
-# reveal_type(t21)  # Nx Revealed type is 'collections.abc.KeysView[builtins.int]'
-# reveal_type(t22)  # Nx Revealed type is 'collections.abc.ItemsView[builtins.int, builtins.str]'
-# reveal_type(t23)  # Nx Revealed type is 'collections.abc.ValuesView[builtins.str]'
+# reveal_type(t01)  # Nx Revealed type is "collections.abc.Awaitable[builtins.int]"
+# reveal_type(t02)  # Nx Revealed type is "collections.abc.Coroutine[builtins.str, builtins.int, builtins.float]"
+# reveal_type(t03)  # Nx Revealed type is "collections.abc.AsyncIterable[builtins.int]"
+# reveal_type(t04)  # Nx Revealed type is "collections.abc.AsyncIterator[builtins.int]"
+# reveal_type(t05)  # Nx Revealed type is "collections.abc.AsyncGenerator[builtins.int, builtins.float]"
+# reveal_type(t06)  # Nx Revealed type is "collections.abc.Iterable[builtins.int]"
+# reveal_type(t07)  # Nx Revealed type is "collections.abc.Iterator[builtins.int]"
+# reveal_type(t08)  # Nx Revealed type is "collections.abc.Generator[builtins.int, builtins.float, builtins.str]"
+# reveal_type(t09)  # Nx Revealed type is "collections.abc.Reversible[builtins.int]"
+# reveal_type(t10)  # Nx Revealed type is "collections.abc.Container[builtins.int]"
+# reveal_type(t11)  # Nx Revealed type is "collections.abc.Collection[builtins.int]"
+# reveal_type(t12)  # Nx Revealed type is "collections.abc.Callable[[builtins.int], builtins.float]"
+# reveal_type(t13)  # Nx Revealed type is "collections.abc.Set[builtins.int]"
+# reveal_type(t14)  # Nx Revealed type is "collections.abc.MutableSet[builtins.int]"
+# reveal_type(t15)  # Nx Revealed type is "collections.abc.Mapping[builtins.int, builtins.str]"
+# reveal_type(t16)  # Nx Revealed type is "collections.abc.MutableMapping[builtins.int, builtins.str]"
+# reveal_type(t17)  # Nx Revealed type is "collections.abc.Sequence[builtins.int]"
+# reveal_type(t18)  # Nx Revealed type is "collections.abc.MutableSequence[builtins.int]"
+# reveal_type(t19)  # Nx Revealed type is "collections.abc.ByteString"
+# reveal_type(t20)  # Nx Revealed type is "collections.abc.MappingView[builtins.int, builtins.int]"
+# reveal_type(t21)  # Nx Revealed type is "collections.abc.KeysView[builtins.int]"
+# reveal_type(t22)  # Nx Revealed type is "collections.abc.ItemsView[builtins.int, builtins.str]"
+# reveal_type(t23)  # Nx Revealed type is "collections.abc.ValuesView[builtins.str]"
 [builtins fixtures/tuple.pyi]
 
 

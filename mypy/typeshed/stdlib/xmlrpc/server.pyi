@@ -7,7 +7,7 @@ from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Patte
 from xmlrpc.client import Fault
 
 _Marshallable = Union[
-    None, bool, int, float, str, bytes, tuple, list, dict, datetime
+    None, bool, int, float, str, bytes, Tuple[Any, ...], List[Any], Dict[Any, Any], datetime
 ]  # TODO: Recursive type on tuple, list, dict
 
 # The dispatch accepts anywhere from 0 to N arguments, no easy way to allow this in mypy

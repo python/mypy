@@ -564,7 +564,7 @@ def dump_tagged(nodes: Sequence[object], tag: Optional[str], str_conv: 'StrConv'
             a.append(indent(n.accept(str_conv), 2))
         elif isinstance(n, Type):
             a.append(indent(n.accept(TypeStrVisitor(str_conv.id_mapper)), 2))
-        elif n:
+        elif n is not None:
             a.append(indent(str(n), 2))
     if tag:
         a[-1] += ')'

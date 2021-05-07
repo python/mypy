@@ -25,8 +25,8 @@ undef
 undef
 import pkg.subpkg.a
 [out]
-pkg/a.py:1: error: Name 'undef' is not defined
-pkg/subpkg/a.py:1: error: Name 'undef' is not defined
+pkg/a.py:1: error: Name "undef" is not defined
+pkg/subpkg/a.py:1: error: Name "undef" is not defined
 
 [case testCmdlinePackageSlash]
 # cmd: mypy pkg/
@@ -38,8 +38,8 @@ undef
 undef
 import pkg.subpkg.a
 [out]
-pkg/a.py:1: error: Name 'undef' is not defined
-pkg/subpkg/a.py:1: error: Name 'undef' is not defined
+pkg/a.py:1: error: Name "undef" is not defined
+pkg/subpkg/a.py:1: error: Name "undef" is not defined
 
 [case testCmdlineNonPackage]
 # cmd: mypy dir
@@ -48,8 +48,8 @@ undef
 [file dir/subdir/b.py]
 undef
 [out]
-dir/a.py:1: error: Name 'undef' is not defined
-dir/subdir/b.py:1: error: Name 'undef' is not defined
+dir/a.py:1: error: Name "undef" is not defined
+dir/subdir/b.py:1: error: Name "undef" is not defined
 
 [case testCmdlineNonPackageDuplicate]
 # cmd: mypy dir
@@ -71,8 +71,8 @@ import b
 undef
 import a
 [out]
-dir/a.py:1: error: Name 'undef' is not defined
-dir/subdir/b.py:1: error: Name 'undef' is not defined
+dir/a.py:1: error: Name "undef" is not defined
+dir/subdir/b.py:1: error: Name "undef" is not defined
 
 [case testCmdlinePackageContainingSubdir]
 # cmd: mypy pkg
@@ -84,8 +84,8 @@ import a
 undef
 import pkg.a
 [out]
-pkg/a.py:1: error: Name 'undef' is not defined
-pkg/subdir/a.py:1: error: Name 'undef' is not defined
+pkg/a.py:1: error: Name "undef" is not defined
+pkg/subdir/a.py:1: error: Name "undef" is not defined
 
 [case testCmdlineNonPackageContainingPackage]
 # cmd: mypy dir
@@ -96,8 +96,8 @@ import subpkg.a
 [file dir/subpkg/a.py]
 undef
 [out]
-dir/subpkg/a.py:1: error: Name 'undef' is not defined
-dir/a.py:1: error: Name 'undef' is not defined
+dir/subpkg/a.py:1: error: Name "undef" is not defined
+dir/a.py:1: error: Name "undef" is not defined
 
 [case testCmdlineInvalidPackageName]
 # cmd: mypy dir/sub.pkg/a.py
@@ -397,8 +397,8 @@ follow_imports = skip
 [file a.py]
 /  # No error reported
 [out]
-main.py:2: note: Revealed type is 'Any'
-main.py:4: note: Revealed type is 'Any'
+main.py:2: note: Revealed type is "Any"
+main.py:4: note: Revealed type is "Any"
 
 [case testConfigFollowImportsError]
 # cmd: mypy main.py
@@ -415,8 +415,8 @@ follow_imports = error
 [out]
 main.py:1: error: Import of 'a' ignored
 main.py:1: note: (Using --follow-imports=error, module not passed on command line)
-main.py:2: note: Revealed type is 'Any'
-main.py:4: note: Revealed type is 'Any'
+main.py:2: note: Revealed type is "Any"
+main.py:4: note: Revealed type is "Any"
 
 [case testConfigFollowImportsSelective]
 # cmd: mypy main.py
@@ -453,10 +453,10 @@ bla bla
 normal.py:2: error: Unsupported operand types for + ("int" and "str")
 main.py:4: error: Import of 'error' ignored
 main.py:4: note: (Using --follow-imports=error, module not passed on command line)
-main.py:5: note: Revealed type is 'builtins.int'
-main.py:6: note: Revealed type is 'builtins.int'
-main.py:7: note: Revealed type is 'Any'
-main.py:8: note: Revealed type is 'Any'
+main.py:5: note: Revealed type is "builtins.int"
+main.py:6: note: Revealed type is "builtins.int"
+main.py:7: note: Revealed type is "Any"
+main.py:8: note: Revealed type is "Any"
 
 [case testConfigFollowImportsInvalid]
 # cmd: mypy main.py
@@ -479,7 +479,7 @@ ignore_missing_imports = False
 [out]
 main.py:1: error: Cannot find implementation or library stub for module named "missing"
 main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-main.py:2: note: Revealed type is 'Any'
+main.py:2: note: Revealed type is "Any"
 
 [case testConfigSilentMissingImportsOn]
 # cmd: mypy main.py
@@ -490,7 +490,7 @@ reveal_type(missing.x)  # Expect Any
 \[mypy]
 ignore_missing_imports = True
 [out]
-main.py:2: note: Revealed type is 'Any'
+main.py:2: note: Revealed type is "Any"
 
 
 [case testFailedImportOnWrongCWD]
@@ -538,15 +538,15 @@ undef
 [file c.d.pyi]
 whatever
 [out]
-c.d.pyi:1: error: Name 'whatever' is not defined
-a.b.py:1: error: Name 'undef' is not defined
+c.d.pyi:1: error: Name "whatever" is not defined
+a.b.py:1: error: Name "undef" is not defined
 
 [case testDotInFilenameOKFolder]
 # cmd: mypy my.folder
 [file my.folder/tst.py]
 undef
 [out]
-my.folder/tst.py:1: error: Name 'undef' is not defined
+my.folder/tst.py:1: error: Name "undef" is not defined
 
 [case testDotInFilenameNoImport]
 # cmd: mypy main.py
@@ -633,15 +633,15 @@ python_version = 3.6
 [file int_pow.py]
 a = 1
 b = a + 2
-reveal_type(a**0) # N: Revealed type is 'builtins.int'
-reveal_type(a**1) # N: Revealed type is 'builtins.int'
-reveal_type(a**2) # N: Revealed type is 'builtins.int'
-reveal_type(a**-0) # N: Revealed type is 'builtins.int'
-reveal_type(a**-1) # N: Revealed type is 'builtins.float'
-reveal_type(a**(-2)) # N: Revealed type is 'builtins.float'
-reveal_type(a**b) # N: Revealed type is 'Any'
-reveal_type(a.__pow__(2)) # N: Revealed type is 'builtins.int'
-reveal_type(a.__pow__(a)) # N: Revealed type is 'Any'
+reveal_type(a**0) # N: Revealed type is "builtins.int"
+reveal_type(a**1) # N: Revealed type is "builtins.int"
+reveal_type(a**2) # N: Revealed type is "builtins.int"
+reveal_type(a**-0) # N: Revealed type is "builtins.int"
+reveal_type(a**-1) # N: Revealed type is "builtins.float"
+reveal_type(a**(-2)) # N: Revealed type is "builtins.float"
+reveal_type(a**b) # N: Revealed type is "Any"
+reveal_type(a.__pow__(2)) # N: Revealed type is "builtins.int"
+reveal_type(a.__pow__(a)) # N: Revealed type is "Any"
 a.__pow__() # E: All overload variants of "__pow__" of "int" require at least one argument \
             # N: Possible overload variants: \
             # N:     def __pow__(self, Literal[2], Optional[int] = ...) -> int \
@@ -752,6 +752,9 @@ mypy: can't read file 'nope.py': No such file or directory
 def foo(
 [out]
 a.py:1: error: unexpected EOF while parsing
+== Return code: 2
+[out version>=3.10]
+a.py:1: error: '(' was never closed
 == Return code: 2
 
 [case testParseErrorAnnots]
@@ -938,9 +941,9 @@ fail
 [file foo/lol.py]
 fail
 [out]
-foo/lol.py:1: error: Name 'fail' is not defined
-emarg/foo.py:1: error: Name 'fail' is not defined
-emarg/hatch/villip/mankangulisk.py:1: error: Name 'fail' is not defined
+foo/lol.py:1: error: Name "fail" is not defined
+emarg/foo.py:1: error: Name "fail" is not defined
+emarg/hatch/villip/mankangulisk.py:1: error: Name "fail" is not defined
 
 [case testPackageRootEmpty]
 # cmd: mypy --package-root= a/b/c.py main.py
@@ -987,8 +990,8 @@ fail
 [file b.py]
 fail
 [out]
-b.py:1: error: Name 'fail' is not defined
-a.py:1: error: Name 'fail' is not defined
+b.py:1: error: Name "fail" is not defined
+a.py:1: error: Name "fail" is not defined
 
 [case testIniFilesGlobbing]
 # cmd: mypy
@@ -1000,8 +1003,8 @@ fail
 [file c.py]
 fail
 [out]
-a/b.py:1: error: Name 'fail' is not defined
-c.py:1: error: Name 'fail' is not defined
+a/b.py:1: error: Name "fail" is not defined
+c.py:1: error: Name "fail" is not defined
 
 [case testIniFilesCmdlineOverridesConfig]
 # cmd: mypy override.py
@@ -1234,6 +1237,10 @@ public static void main(String[] args)
 x: str = 0
 [out]
 pkg/x.py:1: error: invalid syntax
+Found 1 error in 1 file (errors prevented further checking)
+== Return code: 2
+[out version>=3.10]
+pkg/x.py:1: error: invalid syntax. Perhaps you forgot a comma?
 Found 1 error in 1 file (errors prevented further checking)
 == Return code: 2
 

@@ -201,7 +201,7 @@ f((0, 0))
 
 def g(): # type: () -> None
     pass
-reveal_type(lambda (x,): g()) # N: Revealed type is 'def (Any)'
+reveal_type(lambda (x,): g()) # N: Revealed type is "def (Any)"
 [out]
 
 [case testLambdaTupleArgInferenceInPython2]
@@ -281,8 +281,8 @@ class M(type):
 class A(object):
     __metaclass__ = M
 
-reveal_type(A.x) # N: Revealed type is 'builtins.int'
-reveal_type(A.test()) # N: Revealed type is 'builtins.str'
+reveal_type(A.x) # N: Revealed type is "builtins.int"
+reveal_type(A.test()) # N: Revealed type is "builtins.str"
 
 [case testImportedMetaclass]
 import m
@@ -290,8 +290,8 @@ import m
 class A(object):
     __metaclass__ = m.M
 
-reveal_type(A.x) # N: Revealed type is 'builtins.int'
-reveal_type(A.test()) # N: Revealed type is 'builtins.str'
+reveal_type(A.x) # N: Revealed type is "builtins.int"
+reveal_type(A.test()) # N: Revealed type is "builtins.str"
 [file m.py]
 class M(type):
     x = 0
@@ -301,7 +301,7 @@ class M(type):
 
 [case testDynamicMetaclass]
 class C(object):
-    __metaclass__ = int()  # E: Dynamic metaclass not supported for 'C'
+    __metaclass__ = int()  # E: Dynamic metaclass not supported for "C"
 
 [case testMetaclassDefinedAsClass]
 class C(object):
@@ -310,9 +310,9 @@ class C(object):
 [case testErrorInMetaclass]
 x = 0
 class A(object):
-    __metaclass__ = m.M  # E: Name 'm' is not defined
+    __metaclass__ = m.M  # E: Name "m" is not defined
 class B(object):
-    __metaclass__ = M  # E: Name 'M' is not defined
+    __metaclass__ = M  # E: Name "M" is not defined
 
 [case testMetaclassAndSkippedImportInPython2]
 # flags: --ignore-missing-imports
@@ -320,7 +320,7 @@ from missing import M
 class A(object):
     __metaclass__ = M
     y = 0
-reveal_type(A.y) # N: Revealed type is 'builtins.int'
+reveal_type(A.y) # N: Revealed type is "builtins.int"
 A.x # E: "Type[A]" has no attribute "x"
 
 [case testAnyAsBaseOfMetaclass]

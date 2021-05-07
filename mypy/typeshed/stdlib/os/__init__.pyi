@@ -8,9 +8,10 @@ from _typeshed import (
     OpenBinaryModeWriting,
     OpenTextMode,
 )
-from builtins import OSError, _PathLike
+from builtins import OSError
 from io import BufferedRandom, BufferedReader, BufferedWriter, FileIO, TextIOWrapper as _TextIOWrapper
 from posix import listdir as listdir, times_result
+from subprocess import Popen
 from typing import (
     IO,
     Any,
@@ -27,12 +28,14 @@ from typing import (
     MutableMapping,
     NoReturn,
     Optional,
+    Protocol,
     Sequence,
     Set,
     Tuple,
     TypeVar,
     Union,
     overload,
+    runtime_checkable,
 )
 from typing_extensions import Literal
 
@@ -45,6 +48,7 @@ if sys.version_info >= (3, 9):
 _supports_unicode_filenames = path.supports_unicode_filenames
 
 _T = TypeVar("_T")
+_AnyStr_co = TypeVar("_AnyStr_co", str, bytes, covariant=True)
 
 # ----- os variables -----
 
@@ -176,7 +180,36 @@ R_OK: int
 W_OK: int
 X_OK: int
 
+_EnvironCodeFunc = Callable[[AnyStr], AnyStr]
+
 class _Environ(MutableMapping[AnyStr, AnyStr], Generic[AnyStr]):
+    encodekey: _EnvironCodeFunc[AnyStr]
+    decodekey: _EnvironCodeFunc[AnyStr]
+    encodevalue: _EnvironCodeFunc[AnyStr]
+    decodevalue: _EnvironCodeFunc[AnyStr]
+    if sys.version_info >= (3, 9):
+        def __init__(
+            self,
+            data: MutableMapping[AnyStr, AnyStr],
+            encodekey: _EnvironCodeFunc[AnyStr],
+            decodekey: _EnvironCodeFunc[AnyStr],
+            encodevalue: _EnvironCodeFunc[AnyStr],
+            decodevalue: _EnvironCodeFunc[AnyStr],
+        ) -> None: ...
+    else:
+        putenv: Callable[[AnyStr, AnyStr], None]
+        unsetenv: Callable[[AnyStr, AnyStr], None]
+        def __init__(
+            self,
+            data: MutableMapping[AnyStr, AnyStr],
+            encodekey: _EnvironCodeFunc[AnyStr],
+            decodekey: _EnvironCodeFunc[AnyStr],
+            encodevalue: _EnvironCodeFunc[AnyStr],
+            decodevalue: _EnvironCodeFunc[AnyStr],
+            putenv: Callable[[AnyStr, AnyStr], None],
+            unsetenv: Callable[[AnyStr, AnyStr], None],
+        ) -> None: ...
+    def setdefault(self, key: AnyStr, value: AnyStr) -> AnyStr: ...  # type: ignore
     def copy(self) -> Dict[AnyStr, AnyStr]: ...
     def __delitem__(self, key: AnyStr) -> None: ...
     def __getitem__(self, key: AnyStr) -> AnyStr: ...
@@ -271,7 +304,9 @@ class stat_result:
     st_creator: int
     st_type: int
 
-PathLike = _PathLike  # See comment in builtins
+@runtime_checkable
+class PathLike(Protocol[_AnyStr_co]):
+    def __fspath__(self) -> _AnyStr_co: ...
 
 _FdOrAnyPath = Union[int, AnyPath]
 
@@ -398,6 +433,7 @@ if sys.platform != "win32":
     def unsetenv(__name: Union[bytes, str]) -> None: ...
 
 _Opener = Callable[[str, int], int]
+
 @overload
 def fdopen(
     fd: int,
@@ -726,6 +762,7 @@ if sys.platform != "win32":
         def plock(op: int) -> None: ...  # ???op is int?
 
 class _wrap_close(_TextIOWrapper):
+    def __init__(self, stream: _TextIOWrapper, proc: Popen[str]) -> None: ...
     def close(self) -> Optional[int]: ...  # type: ignore
 
 def popen(cmd: str, mode: str = ..., buffering: int = ...) -> _wrap_close: ...

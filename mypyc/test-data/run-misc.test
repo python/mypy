@@ -741,6 +741,59 @@ TypeError
 TypeError
 10
 
+[case testClassBasedTypedDict]
+from typing_extensions import TypedDict
+
+class TD(TypedDict):
+    a: int
+
+class TD2(TD):
+    b: int
+
+class TD3(TypedDict, total=False):
+    c: int
+
+class TD4(TD3, TD2, total=False):
+    d: int
+
+def test_typed_dict() -> None:
+    d = TD(a=5)
+    assert d['a'] == 5
+    assert type(d) == dict
+    # TODO: This doesn't work yet
+    # assert TD.__annotations__ == {'a': int}
+
+def test_inherited_typed_dict() -> None:
+    d = TD2(a=5, b=3)
+    assert d['a'] == 5
+    assert d['b'] == 3
+    assert type(d) == dict
+
+def test_non_total_typed_dict() -> None:
+    d3 = TD3(c=3)
+    d4 = TD4(a=1, b=2, c=3, d=4)
+    assert d3['c'] == 3
+    assert d4['d'] == 4
+
+[case testClassBasedNamedTuple]
+from typing import NamedTuple
+import sys
+
+# Class-based NamedTuple requires Python 3.6+
+version = sys.version_info[:2]
+if version[0] == 3 and version[1] < 6:
+    exit()
+
+class NT(NamedTuple):
+    a: int
+
+def test_named_tuple() -> None:
+    t = NT(a=1)
+    assert t.a == 1
+    assert type(t) is NT
+    assert isinstance(t, tuple)
+    assert not isinstance(tuple([1]), NT)
+
 [case testUnion]
 from typing import Union
 
@@ -940,7 +993,10 @@ import sys
 
 # We lie about the version we are running in tests if it is 3.5, so
 # that hits a crash case.
-if sys.version_info[:2] == (3, 9):
+if sys.version_info[:2] == (3, 10):
+    def version() -> int:
+        return 10
+elif sys.version_info[:2] == (3, 9):
     def version() -> int:
         return 9
 elif sys.version_info[:2] == (3, 8):
@@ -1054,3 +1110,19 @@ def test_complex() -> None:
     assert 2.5e1000j == eval('2.5e1000j')
     assert 2.5e1000j + 3.5e2000 == eval('3.5e2000 + 2.5e1000j')
     assert -2.5e1000j == eval('-2.5e1000j')
+
+[case testUnreachableExpressions]
+from typing import cast
+import sys
+
+A = sys.platform == 'x' and foobar
+B = sys.platform == 'x' and sys.foobar
+C = sys.platform == 'x' and f(a, -b, 'y') > [c + e, g(y=2)]
+C = sys.platform == 'x' and cast(a, b[c])
+C = sys.platform == 'x' and (lambda x: y + x)
+# TODO: This still doesn't work
+# C = sys.platform == 'x' and (x for y in z)
+
+assert not A
+assert not B
+assert not C

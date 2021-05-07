@@ -14,9 +14,9 @@ if TYPE_CHECKING:
 
 
 class BuildType:
-    STANDARD = 0  # type: Final[int]
-    MODULE = 1  # type: Final[int]
-    PROGRAM_TEXT = 2  # type: Final[int]
+    STANDARD = 0  # type: Final
+    MODULE = 1  # type: Final
+    PROGRAM_TEXT = 2  # type: Final
 
 
 PER_MODULE_OPTIONS = {
@@ -141,7 +141,7 @@ class Options:
         # Warn about unused '# type: ignore' comments
         self.warn_unused_ignores = False
 
-        # Warn about unused '[mypy-<pattern>] config sections
+        # Warn about unused '[mypy-<pattern>]'  or '[[tool.mypy.overrides]]' config sections
         self.warn_unused_configs = False
 
         # Files in which to ignore all non-fatal errors
