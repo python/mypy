@@ -196,7 +196,7 @@ def translate_refexpr_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) 
     # they check that everything in arg_kinds is ARG_POS.
 
     # If there is a specializer for this function, try calling it.
-    # We would return the first success one.
+    # We would return the first successful one.
     if callee.fullname and (callee.fullname, None) in specializers:
         for specializer in specializers[callee.fullname, None]:
             val = specializer(builder, expr, callee)
@@ -258,7 +258,7 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
         receiver_typ = builder.node_type(callee.expr)
 
         # If there is a specializer for this method name/type, try calling it.
-        # We would return the first success one.
+        # We would return the first successful one.
         if (callee.name, receiver_typ) in specializers:
             for specializer in specializers[callee.name, receiver_typ]:
                 val = specializer(builder, expr, callee)
