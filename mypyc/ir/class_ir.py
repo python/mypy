@@ -152,6 +152,8 @@ class ClassIR:
         # None if separate compilation prevents this from working
         self.children: Optional[List[ClassIR]] = []
 
+        self._always_initialized_attrs = set()  # type: Set[str]
+
     def __repr__(self) -> str:
         return (
             "ClassIR("
@@ -229,6 +231,11 @@ class ClassIR:
             if name in ir.deletable:
                 return True
         return False
+
+    def is_always_defined(self, name: str) -> bool:
+        if self.is_deletable(name):
+            return False
+        return name in self._always_initialized_attrs
 
     def name_prefix(self, names: NameGenerator) -> str:
         return names.private_name(self.module_name, self.name)

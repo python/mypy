@@ -498,7 +498,9 @@ class IRBuilder:
         elif isinstance(lvalue, MemberExpr):
             # Attribute assignment x.y = e
             obj = self.accept(lvalue.expr)
-            return AssignmentTargetAttr(obj, lvalue.name)
+            initializers = self.fn_info.initializers
+            is_init = initializers is not None and lvalue in initializers
+            return AssignmentTargetAttr(obj, lvalue.name, is_init)
         elif isinstance(lvalue, TupleExpr):
             # Multiple assignment a, ..., b = e
             star_idx: Optional[int] = None
@@ -549,7 +551,8 @@ class IRBuilder:
         elif isinstance(target, AssignmentTargetAttr):
             if isinstance(target.obj_type, RInstance):
                 rvalue_reg = self.coerce(rvalue_reg, target.type, line)
-                self.add(SetAttr(target.obj, target.attr, rvalue_reg, line))
+                op = SetAttr(target.obj, target.attr, rvalue_reg, line, is_init=target.is_init)
+                self.add(op)
             else:
                 key = self.load_str(target.attr)
                 boxed_reg = self.builder.box(rvalue_reg)
@@ -1118,7 +1121,7 @@ class IRBuilder:
         # First, define the variable name as an attribute of the environment class, and then
         # construct a target for that attribute.
         self.fn_info.env_class.attributes[var.name] = rtype
-        attr_target = AssignmentTargetAttr(base.curr_env_reg, var.name)
+        attr_target = AssignmentTargetAttr(base.curr_env_reg, var.name, is_init=False)
 
         if reassign:
             # Read the local definition of the variable, and set the corresponding attribute of

@@ -846,12 +846,13 @@ def generate_getter(cl: ClassIR,
                                                            cl.struct_name(emitter.names)))
     emitter.emit_line('{')
     attr_expr = 'self->{}'.format(attr_field)
-    emitter.emit_undefined_attr_check(rtype, attr_expr, '==', unlikely=True)
-    emitter.emit_line('PyErr_SetString(PyExc_AttributeError,')
-    emitter.emit_line('    "attribute {} of {} undefined");'.format(repr(attr),
-                                                                    repr(cl.name)))
-    emitter.emit_line('return NULL;')
-    emitter.emit_line('}')
+    if not cl.is_always_defined(attr):
+        emitter.emit_undefined_attr_check(rtype, attr_expr, '==', unlikely=True)
+        emitter.emit_line('PyErr_SetString(PyExc_AttributeError,')
+        emitter.emit_line('    "attribute {} of {} undefined");'.format(repr(attr),
+                                                                        repr(cl.name)))
+        emitter.emit_line('return NULL;')
+        emitter.emit_line('}')
     emitter.emit_inc_ref('self->{}'.format(attr_field), rtype)
     emitter.emit_box('self->{}'.format(attr_field), 'retval', rtype, declare_dest=True)
     emitter.emit_line('return retval;')
@@ -878,14 +879,19 @@ def generate_setter(cl: ClassIR,
         emitter.emit_line('return -1;')
         emitter.emit_line('}')
 
+    always_defined = cl.is_always_defined(attr)
+
     if rtype.is_refcounted:
         attr_expr = 'self->{}'.format(attr_field)
-        emitter.emit_undefined_attr_check(rtype, attr_expr, '!=')
+        if not always_defined:
+            emitter.emit_undefined_attr_check(rtype, attr_expr, '!=')
         emitter.emit_dec_ref('self->{}'.format(attr_field), rtype)
-        emitter.emit_line('}')
+        if not always_defined:
+            emitter.emit_line('}')
 
     if deletable:
         emitter.emit_line('if (value != NULL) {')
+
     if rtype.is_unboxed:
         emitter.emit_unbox('value', 'tmp', rtype, error=ReturnHandler('-1'), declare_dest=True)
     elif is_same_type(rtype, object_rprimitive):

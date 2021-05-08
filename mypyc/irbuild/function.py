@@ -16,7 +16,7 @@ from typing import (
 
 from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, Decorator, Var, YieldFromExpr, AwaitExpr, YieldExpr,
-    FuncItem, LambdaExpr, SymbolNode, ArgKind, TypeInfo
+    FuncItem, LambdaExpr, SymbolNode, ArgKind, TypeInfo, MemberExpr
 )
 from mypy.types import CallableType, get_proper_type
 
@@ -57,6 +57,7 @@ from mypyc.irbuild.env_class import (
     setup_env_class, load_outer_envs, load_env_registers, finalize_env_class,
     setup_func_for_recursive_call
 )
+from mypyc.irbuild.defined import analyze_always_defined_attrs
 
 from mypyc.primitives.registry import builtin_names
 from collections import defaultdict
@@ -166,6 +167,7 @@ def gen_func_item(builder: IRBuilder,
                   name: str,
                   sig: FuncSignature,
                   cdef: Optional[ClassDef] = None,
+                  initializers: Optional[Set[MemberExpr]] = None,
                   ) -> Tuple[FuncIR, Optional[Value]]:
     """Generate and return the FuncIR for a given FuncDef.
 
@@ -224,7 +226,7 @@ def gen_func_item(builder: IRBuilder,
     else:
         func_name = name
     builder.enter(FuncInfo(fitem, func_name, class_name, gen_func_ns(builder),
-                           is_nested, contains_nested, is_decorated, in_non_ext))
+                           is_nested, contains_nested, is_decorated, in_non_ext, initializers))
 
     # Functions that contain nested functions need an environment class to store variables that
     # are free in their nested functions. Generator functions need an environment class to
@@ -366,7 +368,17 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
     # Perform the function of visit_method for methods inside extension classes.
     name = fdef.name
     class_ir = builder.mapper.type_to_ir[cdef.info]
-    func_ir, func_reg = gen_func_item(builder, fdef, name, builder.mapper.fdef_to_sig(fdef), cdef)
+    if name == '__init__':
+        initializers = analyze_always_defined_attrs(cdef.info, class_ir, builder.types,
+                                                    builder.mapper)
+    else:
+        initializers = set()
+    func_ir, func_reg = gen_func_item(builder,
+                                      fdef,
+                                      name,
+                                      builder.mapper.fdef_to_sig(fdef),
+                                      cdef,
+                                      initializers)
     builder.functions.append(func_ir)
 
     if is_decorated(builder, fdef):

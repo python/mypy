@@ -2212,11 +2212,11 @@ L3:
 def PropertyHolder.__init__(self, left, right, is_add):
     self :: __main__.PropertyHolder
     left, right :: int
-    is_add, r0, r1, r2 :: bool
+    is_add :: bool
 L0:
-    self.left = left; r0 = is_error
-    self.right = right; r1 = is_error
-    self.is_add = is_add; r2 = is_error
+    self.left = left
+    self.right = right
+    self.is_add = is_add
     return 1
 def PropertyHolder.twice_value(self):
     self :: __main__.PropertyHolder

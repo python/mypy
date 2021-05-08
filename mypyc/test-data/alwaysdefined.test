@@ -1,0 +1,217 @@
+[case testAlwaysDefinedSimple]
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+[out]
+C: [x]
+
+[case testAlwaysDefinedFail]
+class MethodCall:
+    def __init__(self, x: int) -> None:
+        self.f()
+        self.x = x
+
+    def f(self) -> None:
+        pass
+
+class FuncCall:
+    def __init__(self, x: int) -> None:
+        f()
+        self.x = x
+
+class GetAttr:
+    x: int
+    def __init__(self, x: int) -> None:
+        a = self.x
+        self.x = x
+
+class _Base:
+    def  __init__(self) -> None:
+        f()
+
+class CallSuper(_Base):
+    def __init__(self, x: int) -> None:
+        super().__init__()
+        self.x = x
+
+class Lambda:
+    def __init__(self, x: int) -> None:
+        f = lambda x: x + 1
+        self.x = x
+        g = lambda x: self
+        self.y = x
+
+class If:
+    def __init__(self, x: int) -> None:
+        self.a = 1
+        if x:
+            self.x = x
+        else:
+            self.y = 1
+
+def f() -> None: pass
+[out]
+MethodCall: []
+FuncCall: []
+GetAttr: []
+CallSuper: []
+Lambda: []
+If: [a]
+
+[case testAlwaysDefinedConditional]
+class IfAlways:
+    def __init__(self, x: int, y: int) -> None:
+        if x:
+            self.x = x
+            self.y = y
+        elif y:
+            self.x = y
+            self.y = x
+        else:
+            self.x = 0
+            self.y = 0
+        self.z = 0
+
+class IfSometimes1:
+    def __init__(self, x: int, y: int) -> None:
+        if x:
+            self.x = x
+            self.y = y
+        elif y:
+            self.z = y
+            self.y = x
+        else:
+            self.y = 0
+            self.a = 0
+
+class IfSometimes2:
+    def __init__(self, x: int, y: int) -> None:
+        if x:
+            self.x = x
+        self.y = y
+
+class IfStopAnalysis1:
+    def __init__(self, x: int, y: int) -> None:
+        if x:
+            self.x = x
+            f()
+        else:
+            self.x = x
+        self.y = y
+
+class IfStopAnalysis2:
+    def __init__(self, x: int, y: int) -> None:
+        if x:
+            self.x = x
+        else:
+            self.x = x
+            f()
+        self.y = y
+
+class IfStopAnalysis3:
+    def __init__(self, x: int, y: int) -> None:
+        if x:
+            self.x = x
+        else:
+            f()
+            self.x = x
+        self.y = y
+
+class IfConditionalAndNonConditional1:
+    def __init__(self, x: int) -> None:
+        self.x = 0
+        if x:
+            self.x = x
+
+class IfConditionalAndNonConditional2:
+    def __init__(self, x: int) -> None:
+        # x is not considered always defined, since the second assignment may
+        # either initialize or update.
+        if x:
+            self.x = x
+        self.x = 0
+
+def f() -> None: pass
+[out]
+IfAlways: [x, y, z]
+IfSometimes1: [y]
+IfSometimes2: [y]
+IfStopAnalysis1: [x]
+IfStopAnalysis2: [x]
+IfStopAnalysis3: []
+IfConditionalAndNonConditional1: [x]
+IfConditionalAndNonConditional2: []
+
+[case testAlwaysDefinedExpressions]
+from typing import Optional
+from typing_extensions import Final
+
+import other
+
+class C: pass
+
+class Collections:
+    def __init__(self, x: int) -> None:
+        self.a = [x]
+        self.b = {x}
+        self.c = {'x': x}
+        self.d = [f()]
+
+class Comparisons:
+    def __init__(self, y: int, c: C, s: str, o: Optional[str]) -> None:
+        self.n1 = y < 5
+        self.n2 = y == 5
+        self.c1 = y is c
+        self.c2 = y is not c
+        self.o1 = o is None
+        self.o2 = o is not None
+        self.s = s < 'x'
+
+class BinaryOps:
+    def __init__(self, x: int, s: str) -> None:
+        self.a = x + 2
+        self.b = x & 2
+        self.c = x * 2
+        self.d = -x
+        self.f = x << x
+        self.e = 'x' + s
+
+g = 2
+
+class LocalsAndGlobals:
+    def __init__(self, x: int) -> None:
+        t = x + 1
+        self.a = t - t
+        self.g = g
+
+class Booleans:
+    def __init__(self, x: int, b: bool) -> None:
+        self.a = True
+        self.b = False
+        self.c = not b
+        self.d = b or b
+
+F: Final = 3
+
+class ModuleFinal:
+    def __init__(self) -> None:
+        self.a = F
+        self.b = other.Y
+
+def f() -> int:
+    return 0
+
+[file other.py]
+# Not compiled
+from typing_extensions import Final
+
+Y: Final = 3
+
+[out]
+C: []
+Collections: [a, b, c]
+Comparisons: [c1, c2, n1, n2, o1, o2]
+BinaryOps: [a, b, c, d, f]
+LocalsAndGlobals: [a]
+Booleans: [a, b, c, d]
+ModuleFinal: [a]

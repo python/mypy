@@ -1,8 +1,8 @@
 """Helpers that store information about functions and the related classes."""
 
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Set
 
-from mypy.nodes import FuncItem
+from mypy.nodes import FuncItem, MemberExpr
 
 from mypyc.ir.ops import Value, BasicBlock
 from mypyc.ir.func_ir import INVALID_FUNC_DEF
@@ -22,6 +22,9 @@ class FuncInfo:
                  contains_nested: bool = False,
                  is_decorated: bool = False,
                  in_non_ext: bool = False) -> None:
+                 in_non_ext: bool = False,
+                 is_singledispatch: bool = False,
+                 initializers: Optional[Set[MemberExpr]] = None) -> None:
         self.fitem = fitem
         self.name = name
         self.class_name = class_name
@@ -46,6 +49,9 @@ class FuncInfo:
         self.contains_nested = contains_nested
         self.is_decorated = is_decorated
         self.in_non_ext = in_non_ext
+        self.is_singledispatch = is_singledispatch
+        # Member lvalues that always initialize an attribute (previously undefined)
+        self.initializers = initializers
 
         # TODO: add field for ret_type: RType = none_rprimitive
 

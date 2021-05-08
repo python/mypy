@@ -606,6 +606,8 @@ class GetAttr(RegisterOp):
         assert isinstance(obj.type, RInstance), 'Attribute access not supported: %s' % obj.type
         self.class_type = obj.type
         self.type = obj.type.attr_type(attr)
+        if self.class_type.class_ir.is_always_defined(attr):
+            self.error_kind = ERR_NEVER
 
     def sources(self) -> List[Value]:
         return [self.obj]
@@ -622,7 +624,8 @@ class SetAttr(RegisterOp):
 
     error_kind = ERR_FALSE
 
-    def __init__(self, obj: Value, attr: str, src: Value, line: int) -> None:
+    def __init__(self, obj: Value, attr: str, src: Value, line: int, *,
+                 is_init: bool = False) -> None:
         super().__init__(line)
         self.obj = obj
         self.attr = attr
@@ -630,6 +633,12 @@ class SetAttr(RegisterOp):
         assert isinstance(obj.type, RInstance), 'Attribute access not supported: %s' % obj.type
         self.class_type = obj.type
         self.type = bool_rprimitive
+        # If True, we can safely assume that the attribute is previously undefined
+        # and we don't use a setter
+        self.is_init = is_init
+        if is_init:
+            self.error_kind = ERR_NEVER
+            self.type = void_rtype
 
     def sources(self) -> List[Value]:
         return [self.obj, self.src]

@@ -17,6 +17,7 @@ from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.options import CompilerOptions
 from mypyc.analysis.ircheck import assert_func_ir_valid
 from mypyc.ir.func_ir import FuncIR
+from mypyc.ir.module_ir import ModuleIR
 from mypyc.errors import Errors
 from mypyc.irbuild.main import build_ir
 from mypyc.irbuild.mapper import Mapper
@@ -87,6 +88,12 @@ def perform_test(func: Callable[[DataDrivenTestCase], None],
 
 def build_ir_for_single_file(input_lines: List[str],
                              compiler_options: Optional[CompilerOptions] = None) -> List[FuncIR]:
+    return build_ir_for_single_file2(input_lines, compiler_options).functions
+
+
+def build_ir_for_single_file2(input_lines: List[str],
+                              compiler_options: Optional[CompilerOptions] = None
+                              ) -> ModuleIR:
     program_text = '\n'.join(input_lines)
 
     # By default generate IR compatible with the earliest supported Python C API.
@@ -121,7 +128,7 @@ def build_ir_for_single_file(input_lines: List[str],
     module = list(modules.values())[0]
     for fn in module.functions:
         assert_func_ir_valid(fn)
-    return module.functions
+    return module
 
 
 def update_testcase_output(testcase: DataDrivenTestCase, output: List[str]) -> None:

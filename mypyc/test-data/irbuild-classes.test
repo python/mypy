@@ -152,10 +152,9 @@ L0:
     return 1
 def B.__init__(self):
     self :: __main__.B
-    r0, r1 :: bool
 L0:
-    self.x = 40; r0 = is_error
-    self.y = 60; r1 = is_error
+    self.x = 40
+    self.y = 60
     return 1
 
 [case testAttrLvalue]
@@ -169,9 +168,8 @@ def increment(o: O) -> O:
 [out]
 def O.__init__(self):
     self :: __main__.O
-    r0 :: bool
 L0:
-    self.x = 2; r0 = is_error
+    self.x = 2
     return 1
 def increment(o):
     o :: __main__.O
