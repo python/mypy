@@ -122,7 +122,7 @@ def translate_list_from_generator_call(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
     # Special case for simplest list comprehension, for example
     #     list(f(x) for x in other_list/other_tuple)
-    # translate_safe_generator_call() would take care of other cases if this fails.
+    # translate_list_comprehension() would take care of other cases if this fails.
     if (len(expr.args) == 1
             and expr.arg_kinds[0] == ARG_POS
             and isinstance(expr.args[0], GeneratorExpr)):
