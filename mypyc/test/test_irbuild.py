@@ -49,7 +49,7 @@ class TestGenOps(MypycDataSuite):
             return
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
             expected_output = remove_comment_lines(testcase.output)
-            expected_output = replace_native_int(expected_output)
+            # expected_output = replace_native_int(expected_output)
             expected_output = replace_word_size(expected_output)
             name = testcase.name
             try:

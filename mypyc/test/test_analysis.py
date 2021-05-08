@@ -32,7 +32,7 @@ class TestAnalysis(MypycDataSuite):
         """Perform a data-flow analysis test case."""
 
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
-            testcase.output = replace_native_int(testcase.output)
+            # testcase.output = replace_native_int(testcase.output)
             try:
                 ir = build_ir_for_single_file(testcase.input)
             except CompileError as e:
