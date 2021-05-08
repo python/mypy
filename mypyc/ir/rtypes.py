@@ -277,11 +277,11 @@ c_int_rprimitive = int32_rprimitive
 if IS_32_BIT_PLATFORM:
     c_size_t_rprimitive = uint32_rprimitive
     c_pyssize_t_rprimitive = RPrimitive('native_int', is_unboxed=True, is_refcounted=False,
-                              ctype='int32_t', size=4)  # type: Final
+                              ctype='int32_t', size=4)
 else:
     c_size_t_rprimitive = uint64_rprimitive
     c_pyssize_t_rprimitive = RPrimitive('native_int', is_unboxed=True, is_refcounted=False,
-                              ctype='int64_t', size=8)  # type: Final
+                              ctype='int64_t', size=8)
 
 # Low level pointer, represented as integer in C backends
 pointer_rprimitive = RPrimitive('ptr', is_unboxed=True, is_refcounted=False,
