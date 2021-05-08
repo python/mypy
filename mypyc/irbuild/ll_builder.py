@@ -1109,9 +1109,12 @@ class LowLevelIRBuilder:
     def comparison_op(self, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.add(ComparisonOp(lhs, rhs, op, line))
 
-    def builtin_len(self, val: Value, line: int,
-                    use_pyssize_t: bool = False) -> Value:
-        """Return short_int_rprimitive by default."""
+    def builtin_len(self, val: Value, line: int, use_pyssize_t: bool = False) -> Value:
+        """Generate len(val).
+
+        Return short_int_rprimitive by default.
+        Return c_pyssize_t if use_pyssize_t is true (unshifted).
+        """
         typ = val.type
         if is_list_rprimitive(typ) or is_tuple_rprimitive(typ):
             elem_address = self.add(GetElementPtr(val, PyVarObject, 'ob_size'))
@@ -1139,7 +1142,8 @@ class LowLevelIRBuilder:
             return self.int_op(short_int_rprimitive, size_value, offset,
                                IntOp.LEFT_SHIFT, line)
         elif isinstance(typ, RInstance):
-            # TODO: use_pyssize_t
+            # TODO: Support use_pyssize_t
+            assert not use_pyssize_t
             length = self.gen_method_call(val, '__len__', [], int_rprimitive, line)
             length = self.coerce(length, int_rprimitive, line)
             ok, fail = BasicBlock(), BasicBlock()
