@@ -216,25 +216,7 @@ def translate_safe_generator_call(
             return builder.call_refexpr_with_args(
                 expr, callee,
                 ([translate_list_comprehension(builder, expr.args[0])]
-<<<<<<< HEAD
                  + [builder.accept(arg) for arg in expr.args[1:]]))
-=======
-                    + [builder.accept(arg) for arg in expr.args[1:]]))
-    elif (len(expr.args) > 0
-            and expr.arg_kinds == [ARG_POS, ARG_POS]
-            and callee.fullname == "builtins.min"):
-        x, y = builder.accept(expr.args[0]), builder.accept(expr.args[1])
-        comparison = builder.binary_op(x, y, '<', expr.line)
-        true = BasicBlock()
-        false = BasicBlock()
-        builder.add_bool_branch(comparison, true, false)
-        builder.activate_block(true)
-        builder.add(Return(x))
-        builder.activate_block(false)
-        builder.add(Return(y))
-        builder.activate_block(BasicBlock())
-
->>>>>>> update faster min logic
     return None
 
 

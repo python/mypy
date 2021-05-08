@@ -334,3 +334,8 @@ def check_min_int() -> None:
     x: int = 200
     y: int = 30
     assert min(x, y) == 30
+
+def check_min_int_2() -> None:
+    x: int = 30
+    y: int = 200
+    assert min(x, y) == 30
