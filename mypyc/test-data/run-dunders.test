@@ -170,7 +170,7 @@ def test_contains_any() -> None:
     assert (2 in SeqAny()) is False
     assert (3 not in SeqAny()) is False
     assert (2 not in SeqAny()) is True
-    s: Any = SeqAny()
+    s = SeqAny()  # type: Any
     assert (3 in s) is True
     assert (2 in s) is False
     assert (3 not in s) is False
@@ -180,7 +180,7 @@ def test_set_item_any() -> None:
     s = SeqAny()
     s[4] = 6
     assert s.x == 4
-    ss: Any = SeqAny()
+    ss = SeqAny()  # type: Any
     ss[5] = 7
     assert ss.x == 5
 
@@ -231,7 +231,7 @@ def test_del_item_with_no_set_item() -> None:
     o = DelItemNoSetItem()
     del o[22]
     assert o.key == 22
-    a: Any = o
+    a = o  # type: Any
     del a[12]
     assert a.key == 12
     try:
@@ -252,7 +252,7 @@ def test_set_item_override() -> None:
     o = SetItemOverride({'x': 12, 'y': 13})
     o[2] = 3
     assert o.key == 2 and o.value == 3
-    a: Any = o
+    a = o  # type: Any
     o[4] = 5
     assert o.key == 4 and o.value == 5
     assert o['x'] == 12
@@ -272,10 +272,43 @@ def test_del_item_override() -> None:
     o = DelItemOverride()
     del o[2]
     assert o.key == 2
-    a: Any = o
+    a = o  # type: Any
     del o[5]
     assert o.key == 5
     o['x'] = 12
     assert o['x'] == 12
     a['y'] = 13
     assert a['y'] == 13
+
+class SetItemOverrideNative(Seq):
+    def __setitem__(self, key: int, value: int) -> None:
+        self.key = key + 1
+        self.value = value + 1
+
+def test_native_set_item_override() -> None:
+    o = SetItemOverrideNative()
+    o[1] = 4
+    assert o.key == 2 and o.value == 5
+    del o[6]
+    assert o.key == 6
+    a = o  # type: Any
+    a[10] = 12
+    assert a.key == 11 and a.value == 13
+    del a[16]
+    assert a.key == 16
+
+class DelItemOverrideNative(Seq):
+    def __delitem__(self, key: int) -> None:
+        self.key = key + 2
+
+def test_native_del_item_override() -> None:
+    o = DelItemOverrideNative()
+    o[1] = 4
+    assert o.key == 1 and o.value == 4
+    del o[6]
+    assert o.key == 8
+    a = o  # type: Any
+    a[10] = 12
+    assert a.key == 10 and a.value == 12
+    del a[16]
+    assert a.key == 18
