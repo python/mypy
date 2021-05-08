@@ -340,13 +340,13 @@ def is_short_int_rprimitive(rtype: RType) -> bool:
 
 
 def is_int32_rprimitive(rtype: RType) -> bool:
-    return rtype is int32_rprimitive or
-        (rtype is c_pyssize_t_rprimitive and rtype._ctype == 'int32_t')
+    return (rtype is int32_rprimitive or
+            (rtype is c_pyssize_t_rprimitive and rtype._ctype == 'int32_t'))
 
 
 def is_int64_rprimitive(rtype: RType) -> bool:
-    return rtype is int64_rprimitive or
-        (rtype is c_pyssize_t_rprimitive and rtype._ctype == 'int64_t')
+    return (rtype is int64_rprimitive or
+            (rtype is c_pyssize_t_rprimitive and rtype._ctype == 'int64_t'))
 
 
 def is_uint32_rprimitive(rtype: RType) -> bool:
