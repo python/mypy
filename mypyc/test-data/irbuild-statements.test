@@ -631,7 +631,7 @@ def f(a):
     r13 :: bit
     r14 :: list
     r15 :: ptr
-    r16 :: int64
+    r16 :: native_int
     r17 :: short_int
     r18 :: bit
     r19 :: bool
@@ -670,7 +670,7 @@ L4:
     r13 = r12 >= 0 :: signed
     r14 = PySequence_List(r3)
     r15 = get_element_ptr r14 ob_size :: PyVarObject
-    r16 = load_mem r15 :: int64*
+    r16 = load_mem r15 :: native_int*
     keep_alive r14
     r17 = r16 << 1
     r18 = 4 <= r17 :: signed
