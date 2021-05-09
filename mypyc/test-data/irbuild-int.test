@@ -87,9 +87,9 @@ def f(x: int, y: int) -> int:
 [out]
 def f(x, y):
     x, y :: int                              
-    r0 :: int64                              
+    r0 :: native_int                              
     r1 :: bit                                
-    r2 :: int64                              
+    r2 :: native_int                              
     r3, r4, r5 :: bit                        
     r6 :: bool                               
     r7 :: bit                                
