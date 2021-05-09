@@ -15,7 +15,7 @@ L0:
 def f(c):
     c :: __main__.C
     r0 :: int
-    r1 :: int64
+    r1 :: native_int
     r2, r3, r4 :: bit
     r5 :: bool
 L0:
