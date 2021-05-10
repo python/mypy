@@ -86,43 +86,34 @@ def f(x: int, y: int) -> int:
     return min(x, y)
 [out]
 def f(x, y):
-    x, y :: int                              
-    r0 :: native_int                              
-    r1 :: bit                                
-    r2 :: native_int                              
-    r3, r4, r5 :: bit                        
-    r6 :: bool                               
-    r7 :: bit                                
-    r8 :: object                             
-    r9 :: str                                
-    r10, r11, r12, r13 :: object             
-    r14 :: int                               
-L0:                                          
-    r0 = x & 1                               
-    r1 = r0 == 0                             
-    r2 = y & 1                               
-    r3 = r2 == 0                             
-    r4 = r1 & r3                             
-    if r4 goto L1 else goto L2 :: bool       
-L1:                                          
-    r5 = x < y :: signed                     
-    r6 = r5                                  
-    goto L3                                  
-L2:                                          
-    r7 = CPyTagged_IsLt_(x, y)               
-    r6 = r7                                  
-L3:                                          
-    if r6 goto L4 else goto L5 :: bool       
-L4:                                          
-    return x                                 
-L5:                                          
-    return y                                 
-L6:                                          
-    r8 = builtins :: module                  
-    r9 = 'min'                               
-    r10 = CPyObject_GetAttr(r8, r9)          
-    r11 = box(int, x)                        
-    r12 = box(int, y)                        
-    r13 = PyObject_CallFunctionObjArgs(r10, r11, r12, 0)
-    r14 = unbox(int, r13)                    
-    return r14                               
+    x, y :: int
+    r0 :: native_int
+    r1 :: bit
+    r2 :: native_int
+    r3, r4, r5 :: bit
+    r6 :: bool
+    r7 :: bit
+    r8 :: int
+L0:
+    r0 = x & 1
+    r1 = r0 == 0
+    r2 = y & 1
+    r3 = r2 == 0
+    r4 = r1 & r3
+    if r4 goto L1 else goto L2 :: bool
+L1:
+    r5 = x < y :: signed
+    r6 = r5
+    goto L3
+L2:
+    r7 = CPyTagged_IsLt_(x, y)
+    r6 = r7
+L3:
+    if r6 goto L4 else goto L5 :: bool
+L4:
+    r8 = x
+    goto L6
+L5:
+    r8 = y
+L6:
+    return r8
