@@ -117,6 +117,8 @@ if sys.platform != "win32":
     RTLD_LOCAL: int
     RTLD_NODELETE: int
     RTLD_NOLOAD: int
+
+if sys.platform == "linux":
     RTLD_DEEPBIND: int
 
 SEEK_SET: int
@@ -712,7 +714,7 @@ if sys.platform != "win32":
         ) -> Iterator[Tuple[str, List[str], List[str], int]]: ...
     if sys.platform == "linux":
         def getxattr(path: _FdOrAnyPath, attribute: AnyPath, *, follow_symlinks: bool = ...) -> bytes: ...
-        def listxattr(path: _FdOrAnyPath, *, follow_symlinks: bool = ...) -> List[str]: ...
+        def listxattr(path: Optional[_FdOrAnyPath] = ..., *, follow_symlinks: bool = ...) -> List[str]: ...
         def removexattr(path: _FdOrAnyPath, attribute: AnyPath, *, follow_symlinks: bool = ...) -> None: ...
         def setxattr(
             path: _FdOrAnyPath, attribute: AnyPath, value: bytes, flags: int = ..., *, follow_symlinks: bool = ...
@@ -791,8 +793,9 @@ else:
     def spawnvp(mode: int, file: AnyPath, args: _ExecVArgs) -> int: ...
     def spawnvpe(mode: int, file: AnyPath, args: _ExecVArgs, env: _ExecEnv) -> int: ...
     def wait() -> Tuple[int, int]: ...  # Unix only
-    from posix import waitid_result
-    def waitid(idtype: int, ident: int, options: int) -> waitid_result: ...
+    if sys.platform != "darwin":
+        from posix import waitid_result
+        def waitid(idtype: int, ident: int, options: int) -> waitid_result: ...
     def wait3(options: int) -> Tuple[int, int, Any]: ...
     def wait4(pid: int, options: int) -> Tuple[int, int, Any]: ...
     def WCOREDUMP(__status: int) -> bool: ...
@@ -808,14 +811,15 @@ if sys.platform != "win32":
     from posix import sched_param
     def sched_get_priority_min(policy: int) -> int: ...  # some flavors of Unix
     def sched_get_priority_max(policy: int) -> int: ...  # some flavors of Unix
-    def sched_setscheduler(pid: int, policy: int, param: sched_param) -> None: ...  # some flavors of Unix
-    def sched_getscheduler(pid: int) -> int: ...  # some flavors of Unix
-    def sched_setparam(pid: int, param: sched_param) -> None: ...  # some flavors of Unix
-    def sched_getparam(pid: int) -> sched_param: ...  # some flavors of Unix
-    def sched_rr_get_interval(pid: int) -> float: ...  # some flavors of Unix
     def sched_yield() -> None: ...  # some flavors of Unix
-    def sched_setaffinity(pid: int, mask: Iterable[int]) -> None: ...  # some flavors of Unix
-    def sched_getaffinity(pid: int) -> Set[int]: ...  # some flavors of Unix
+    if sys.platform != "darwin":
+        def sched_setscheduler(pid: int, policy: int, param: sched_param) -> None: ...  # some flavors of Unix
+        def sched_getscheduler(pid: int) -> int: ...  # some flavors of Unix
+        def sched_rr_get_interval(pid: int) -> float: ...  # some flavors of Unix
+        def sched_setparam(pid: int, param: sched_param) -> None: ...  # some flavors of Unix
+        def sched_getparam(pid: int) -> sched_param: ...  # some flavors of Unix
+        def sched_setaffinity(pid: int, mask: Iterable[int]) -> None: ...  # some flavors of Unix
+        def sched_getaffinity(pid: int) -> Set[int]: ...  # some flavors of Unix
 
 def cpu_count() -> Optional[int]: ...
 

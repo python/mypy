@@ -14,7 +14,8 @@ timezone: int
 tzname: Tuple[str, str]
 
 if sys.version_info >= (3, 7) and sys.platform != "win32":
-    CLOCK_BOOTTIME: int  # Linux
+    if sys.platform == "linux":
+        CLOCK_BOOTTIME: int
     CLOCK_PROF: int  # FreeBSD, NetBSD, OpenBSD
     CLOCK_UPTIME: int  # FreeBSD, OpenBSD
 

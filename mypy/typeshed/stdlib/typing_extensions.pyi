@@ -20,7 +20,9 @@ from typing import (
     Tuple,
     Type as Type,
     TypeVar,
+    Union,
     ValuesView,
+    _Alias,
     overload as overload,
 )
 
@@ -42,7 +44,7 @@ def final(f: _F) -> _F: ...
 
 Literal: _SpecialForm = ...
 
-def IntVar(__name: str) -> Any: ...  # returns a new TypeVar
+def IntVar(name: str) -> Any: ...  # returns a new TypeVar
 
 # Internal mypy fallback type for all typed dicts (does not exist at runtime)
 class _TypedDict(Mapping[str, object], metaclass=abc.ABCMeta):
@@ -66,6 +68,8 @@ class _TypedDict(Mapping[str, object], metaclass=abc.ABCMeta):
 
 # TypedDict is a (non-subscriptable) special form.
 TypedDict: object = ...
+
+OrderedDict = _Alias()
 
 if sys.version_info >= (3, 3):
     from typing import ChainMap as ChainMap
@@ -96,9 +100,6 @@ if sys.version_info >= (3, 7):
 Annotated: _SpecialForm = ...
 _AnnotatedAlias: Any = ...  # undocumented
 
-# TypeAlias is a (non-subscriptable) special form.
-class TypeAlias: ...
-
 @runtime_checkable
 class SupportsIndex(Protocol, metaclass=abc.ABCMeta):
     @abc.abstractmethod
@@ -106,12 +107,26 @@ class SupportsIndex(Protocol, metaclass=abc.ABCMeta):
 
 # PEP 612 support for Python < 3.9
 if sys.version_info >= (3, 10):
-    from typing import Concatenate as Concatenate, ParamSpec as ParamSpec
+    from typing import Concatenate as Concatenate, ParamSpec as ParamSpec, TypeAlias as TypeAlias, TypeGuard as TypeGuard
 else:
+    class ParamSpecArgs:
+        __origin__: ParamSpec
+        def __init__(self, origin: ParamSpec) -> None: ...
+    class ParamSpecKwargs:
+        __origin__: ParamSpec
+        def __init__(self, origin: ParamSpec) -> None: ...
     class ParamSpec:
         __name__: str
-        def __init__(self, name: str) -> None: ...
+        __bound__: Optional[Type[Any]]
+        __covariant__: bool
+        __contravariant__: bool
+        def __init__(
+            self, name: str, *, bound: Union[None, Type[Any], str] = ..., contravariant: bool = ..., covariant: bool = ...
+        ) -> None: ...
+        @property
+        def args(self) -> ParamSpecArgs: ...
+        @property
+        def kwargs(self) -> ParamSpecKwargs: ...
     Concatenate: _SpecialForm = ...
-
-# PEP 647
-TypeGuard: _SpecialForm = ...
+    TypeAlias: _SpecialForm = ...
+    TypeGuard: _SpecialForm = ...

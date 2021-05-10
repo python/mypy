@@ -1,12 +1,7 @@
 import sys
 from _typeshed import AnyPath
-from typing import AnyStr, Sequence, Text
-
-if sys.version_info >= (3, 0):
-    def commonprefix(m: Sequence[str]) -> str: ...
-
-else:
-    def commonprefix(m: Sequence[AnyStr]) -> AnyStr: ...
+from os.path import commonprefix as commonprefix
+from typing import Text
 
 def exists(path: AnyPath) -> bool: ...
 def isfile(path: Text) -> bool: ...

@@ -183,18 +183,33 @@ class HTTPConnection:
     def send(self, data: _DataType) -> None: ...
 
 class HTTPSConnection(HTTPConnection):
-    def __init__(
-        self,
-        host: str,
-        port: Optional[int] = ...,
-        key_file: Optional[str] = ...,
-        cert_file: Optional[str] = ...,
-        timeout: Optional[float] = ...,
-        source_address: Optional[Tuple[str, int]] = ...,
-        *,
-        context: Optional[ssl.SSLContext] = ...,
-        check_hostname: Optional[bool] = ...,
-    ) -> None: ...
+    if sys.version_info >= (3, 7):
+        def __init__(
+            self,
+            host: str,
+            port: Optional[int] = ...,
+            key_file: Optional[str] = ...,
+            cert_file: Optional[str] = ...,
+            timeout: Optional[float] = ...,
+            source_address: Optional[Tuple[str, int]] = ...,
+            *,
+            context: Optional[ssl.SSLContext] = ...,
+            check_hostname: Optional[bool] = ...,
+            blocksize: int = ...,
+        ) -> None: ...
+    else:
+        def __init__(
+            self,
+            host: str,
+            port: Optional[int] = ...,
+            key_file: Optional[str] = ...,
+            cert_file: Optional[str] = ...,
+            timeout: Optional[float] = ...,
+            source_address: Optional[Tuple[str, int]] = ...,
+            *,
+            context: Optional[ssl.SSLContext] = ...,
+            check_hostname: Optional[bool] = ...,
+        ) -> None: ...
 
 class HTTPException(Exception): ...
 

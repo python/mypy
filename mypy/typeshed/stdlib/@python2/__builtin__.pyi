@@ -44,7 +44,7 @@ from typing import (
     ValuesView,
     overload,
 )
-from typing_extensions import Literal
+from typing_extensions import Literal, final
 
 class _SupportsIndex(Protocol):
     def __index__(self) -> int: ...
@@ -568,6 +568,7 @@ class memoryview(Sized, Container[str]):
     def tobytes(self) -> bytes: ...
     def tolist(self) -> List[int]: ...
 
+@final
 class bool(int):
     def __new__(cls: Type[_T], __o: object = ...) -> _T: ...
     @overload

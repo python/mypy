@@ -2,7 +2,7 @@ from email.message import Message as _Message
 from socket import socket
 from ssl import SSLContext
 from types import TracebackType
-from typing import Any, Dict, List, Optional, Pattern, Protocol, Sequence, Tuple, Type, Union, overload
+from typing import Any, Dict, Optional, Pattern, Protocol, Sequence, Tuple, Type, Union, overload
 
 _Reply = Tuple[int, bytes]
 _SendErrs = Dict[str, _Reply]
@@ -117,7 +117,7 @@ class SMTP:
         to_addrs: Union[str, Sequence[str]],
         msg: Union[bytes, str],
         mail_options: Sequence[str] = ...,
-        rcpt_options: List[str] = ...,
+        rcpt_options: Sequence[str] = ...,
     ) -> _SendErrs: ...
     def send_message(
         self,

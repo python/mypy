@@ -63,21 +63,39 @@ class DefaultCookiePolicy(CookiePolicy):
     DomainRFC2965Match: int
     DomainLiberal: int
     DomainStrict: int
-    def __init__(
-        self,
-        blocked_domains: Optional[Sequence[str]] = ...,
-        allowed_domains: Optional[Sequence[str]] = ...,
-        netscape: bool = ...,
-        rfc2965: bool = ...,
-        rfc2109_as_netscape: Optional[bool] = ...,
-        hide_cookie2: bool = ...,
-        strict_domain: bool = ...,
-        strict_rfc2965_unverifiable: bool = ...,
-        strict_ns_unverifiable: bool = ...,
-        strict_ns_domain: int = ...,
-        strict_ns_set_initial_dollar: bool = ...,
-        strict_ns_set_path: bool = ...,
-    ) -> None: ...
+    if sys.version_info >= (3, 8):
+        def __init__(
+            self,
+            blocked_domains: Optional[Sequence[str]] = ...,
+            allowed_domains: Optional[Sequence[str]] = ...,
+            netscape: bool = ...,
+            rfc2965: bool = ...,
+            rfc2109_as_netscape: Optional[bool] = ...,
+            hide_cookie2: bool = ...,
+            strict_domain: bool = ...,
+            strict_rfc2965_unverifiable: bool = ...,
+            strict_ns_unverifiable: bool = ...,
+            strict_ns_domain: int = ...,
+            strict_ns_set_initial_dollar: bool = ...,
+            strict_ns_set_path: bool = ...,
+            secure_protocols: Sequence[str] = ...,
+        ) -> None: ...
+    else:
+        def __init__(
+            self,
+            blocked_domains: Optional[Sequence[str]] = ...,
+            allowed_domains: Optional[Sequence[str]] = ...,
+            netscape: bool = ...,
+            rfc2965: bool = ...,
+            rfc2109_as_netscape: Optional[bool] = ...,
+            hide_cookie2: bool = ...,
+            strict_domain: bool = ...,
+            strict_rfc2965_unverifiable: bool = ...,
+            strict_ns_unverifiable: bool = ...,
+            strict_ns_domain: int = ...,
+            strict_ns_set_initial_dollar: bool = ...,
+            strict_ns_set_path: bool = ...,
+        ) -> None: ...
     def blocked_domains(self) -> Tuple[str, ...]: ...
     def set_blocked_domains(self, blocked_domains: Sequence[str]) -> None: ...
     def is_blocked(self, domain: str) -> bool: ...

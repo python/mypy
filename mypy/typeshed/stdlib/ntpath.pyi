@@ -3,7 +3,8 @@ import sys
 from _typeshed import AnyPath, BytesPath, StrPath
 from genericpath import exists as exists
 from os import PathLike
-from typing import Any, AnyStr, Optional, Sequence, Tuple, TypeVar, overload
+from os.path import commonpath as commonpath, commonprefix as commonprefix, lexists as lexists
+from typing import AnyStr, Optional, Tuple, TypeVar, overload
 
 _T = TypeVar("_T")
 
@@ -52,27 +53,10 @@ def normcase(s: AnyStr) -> AnyStr: ...
 def normpath(path: PathLike[AnyStr]) -> AnyStr: ...
 @overload
 def normpath(path: AnyStr) -> AnyStr: ...
-
-if sys.platform == "win32":
-    @overload
-    def realpath(path: PathLike[AnyStr]) -> AnyStr: ...
-    @overload
-    def realpath(path: AnyStr) -> AnyStr: ...
-
-else:
-    @overload
-    def realpath(filename: PathLike[AnyStr]) -> AnyStr: ...
-    @overload
-    def realpath(filename: AnyStr) -> AnyStr: ...
-
-# In reality it returns str for sequences of StrPath and bytes for sequences
-# of BytesPath, but mypy does not accept such a signature.
-def commonpath(paths: Sequence[AnyPath]) -> Any: ...
-
-# NOTE: Empty lists results in '' (str) regardless of contained type.
-# So, fall back to Any
-def commonprefix(m: Sequence[AnyPath]) -> Any: ...
-def lexists(path: AnyPath) -> bool: ...
+@overload
+def realpath(path: PathLike[AnyStr]) -> AnyStr: ...
+@overload
+def realpath(path: AnyStr) -> AnyStr: ...
 
 # These return float if os.stat_float_times() == True,
 # but int is a subclass of float.
