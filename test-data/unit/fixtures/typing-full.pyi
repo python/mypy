@@ -146,11 +146,6 @@ class Mapping(Iterable[T], Generic[T, T_co], metaclass=ABCMeta):
 class MutableMapping(Mapping[T, U], metaclass=ABCMeta):
     def __setitem__(self, k: T, v: U) -> None: pass
 
-@runtime_checkable
-class Reversible(Iterable[T_co], Protocol):
-    @abstractmethod
-    def __reversed__(self) -> Iterator[T_co]: ...
-
 class SupportsInt(Protocol):
     def __int__(self) -> int: pass
 
