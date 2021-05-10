@@ -36,6 +36,12 @@ self_match_type_names = [
     "builtins.tuple",
 ]
 
+non_sequence_match_type_names = [
+    "builtins.str",
+    "builtins.bytes",
+    "builtins.bytearray"
+]
+
 
 PatternType = NamedTuple(
     'PatternType',
@@ -67,6 +73,8 @@ class PatternChecker(PatternVisitor[PatternType]):
 
     self_match_types = None  # type: List[Type]
 
+    non_sequence_match_types = None  # type: List[Type]
+
     def __init__(self,
                  chk: 'mypy.checker.TypeChecker',
                  msg: MessageBuilder, plugin: Plugin
@@ -76,7 +84,8 @@ class PatternChecker(PatternVisitor[PatternType]):
         self.plugin = plugin
 
         self.type_context = []
-        self.self_match_types = self.generate_self_match_types()
+        self.self_match_types = self.generate_types(self_match_type_names)
+        self.non_sequence_match_types = self.generate_types(non_sequence_match_type_names)
 
     def accept(self, o: Pattern, type_context: Type) -> PatternType:
         self.type_context.append(type_context)
@@ -168,7 +177,8 @@ class PatternChecker(PatternVisitor[PatternType]):
         # check for existence of a starred pattern
         #
         current_type = get_proper_type(self.type_context[-1])
-        can_match = True
+        if not self.can_match_sequence(current_type):
+            return early_non_match()
         star_positions = [i for i, p in enumerate(o.patterns) if isinstance(p, StarredPattern)]
         star_position = None  # type: Optional[int]
         if len(star_positions) == 1:
@@ -192,11 +202,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         else:
             inner_type = self.get_sequence_type(current_type)
             if inner_type is None:
-                if is_subtype(self.chk.named_type("typing.Iterable"), current_type):
-                    # Current type is more general, but the actual value could still be iterable
-                    inner_type = self.chk.named_type("builtins.object")
-                else:
-                    return early_non_match()
+                inner_type = self.chk.named_type("builtins.object")
             inner_types = [inner_type] * len(o.patterns)
 
         #
@@ -208,6 +214,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         contracted_inner_types = self.contract_starred_pattern_types(inner_types,
                                                                     star_position,
                                                                      required_patterns)
+        can_match = True
         for p, t in zip(o.patterns, contracted_inner_types):
             pattern_type = self.accept(p, t)
             typ, type_map = pattern_type
@@ -465,13 +472,25 @@ class PatternChecker(PatternVisitor[PatternType]):
                 return True
         return False
 
-    def generate_self_match_types(self) -> List[Type]:
+    def can_match_sequence(self, typ: ProperType) -> bool:
+        for other in self.non_sequence_match_types:
+            # We have to ignore promotions, as memoryview should match, but bytes,
+            # which it can be promoted to, shouldn't
+            if is_subtype(typ, other, ignore_promotions=True):
+                return False
+        sequence = self.chk.named_type("typing.Sequence")
+        # If the static type is more general than sequence the actual type could still match
+        return is_subtype(typ, sequence) or is_subtype(sequence, typ)
+
+    def generate_types(self, type_names: List[str]) -> List[Type]:
         types = []  # type: List[Type]
-        for name in self_match_type_names:
+        for name in type_names:
             try:
                 types.append(self.chk.named_type(name))
-            except KeyError:
+            except KeyError as e:
                 # Some built in types are not defined in all test cases
+                if not name.startswith('builtins.'):
+                    raise e
                 pass
 
         return types
@@ -492,15 +511,15 @@ class PatternChecker(PatternVisitor[PatternType]):
                 original_type_map[expr] = typ
 
     def construct_iterable_child(self, outer_type: Type, inner_type: Type) -> Type:
-        iterable = self.chk.named_generic_type("typing.Iterable", [inner_type])
+        sequence = self.chk.named_generic_type("typing.Sequence", [inner_type])
         if self.chk.type_is_iterable(outer_type):
             proper_type = get_proper_type(outer_type)
             assert isinstance(proper_type, Instance)
             empty_type = fill_typevars(proper_type.type)
-            partial_type = expand_type_by_instance(empty_type, iterable)
+            partial_type = expand_type_by_instance(empty_type, sequence)
             return expand_type_by_instance(partial_type, proper_type)
         else:
-            return iterable
+            return sequence
 
 
 def get_match_arg_names(typ: TupleType) -> List[Optional[str]]:

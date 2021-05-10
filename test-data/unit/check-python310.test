@@ -74,22 +74,22 @@ match m:
 [builtins fixtures/list.pyi]
 
 [case testSequencePatternCapturesStarred]
-from typing import Iterable
-m: Iterable[int]
+from typing import Sequence
+m: Sequence[int]
 
 match m:
     case [a, *b]:
-        reveal_type(a)  # N: Revealed type is "builtins.int"
-        reveal_type(b)  # N: Revealed type is "builtins.list[builtins.int]"
+        reveal_type(a)  # N: Revealed type is "builtins.int*"
+        reveal_type(b)  # N: Revealed type is "builtins.list[builtins.int*]"
 [builtins fixtures/list.pyi]
 
 [case testSequencePatternNarrowsInner]
-from typing import Iterable
-m: Iterable[object]
+from typing import Sequence
+m: Sequence[object]
 
 match m:
     case [1, True]:
-        reveal_type(m)  # N: Revealed type is "typing.Iterable[builtins.int]"
+        reveal_type(m)  # N: Revealed type is "typing.Sequence[builtins.int]"
 
 [case testSequencePatternNarrowsOuter]
 from typing import Sequence
@@ -97,15 +97,15 @@ m: object
 
 match m:
     case [1, True]:
-        reveal_type(m)  # N: Revealed type is "typing.Iterable[builtins.int]"
+        reveal_type(m)  # N: Revealed type is "typing.Sequence[builtins.int]"
 
 [case testSequencePatternAlreadyNarrowerInner]
-from typing import Iterable
-m: Iterable[bool]
+from typing import Sequence
+m: Sequence[bool]
 
 match m:
     case [1, True]:
-        reveal_type(m)  # N: Revealed type is "typing.Iterable[builtins.bool]"
+        reveal_type(m)  # N: Revealed type is "typing.Sequence[builtins.bool]"
 
 [case testSequencePatternAlreadyNarrowerOuter]
 from typing import Sequence
@@ -124,20 +124,20 @@ match m:
         reveal_type(m)  # N: Revealed type is "typing.Sequence[builtins.bool]"
 
 [case testNestedSequencePatternNarrowsInner]
-from typing import Iterable
-m: Iterable[Iterable[object]]
+from typing import Sequence
+m: Sequence[Sequence[object]]
 
 match m:
     case [[1], [True]]:
-        reveal_type(m)  # N: Revealed type is "typing.Iterable[typing.Iterable[builtins.int]]"
+        reveal_type(m)  # N: Revealed type is "typing.Sequence[typing.Sequence[builtins.int]]"
 
 [case testNestedSequencePatternNarrowsOuter]
-from typing import Iterable
+from typing import Sequence
 m: object
 
 match m:
     case [[1], [True]]:
-        reveal_type(m)  # N: Revealed type is "typing.Iterable[typing.Iterable[builtins.int]]"
+        reveal_type(m)  # N: Revealed type is "typing.Sequence[typing.Sequence[builtins.int]]"
 
 
 [case testSequencePatternDoesntNarrowInvariant]
@@ -148,6 +148,70 @@ match m:
     case [1]:
         reveal_type(m)  # N: Revealed type is "builtins.list[builtins.object]"
 [builtins fixtures/list.pyi]
+
+[case testSequencePatternMatches]
+import array, collections
+from typing import Sequence, Iterable
+
+m1: Sequence[int]
+m2: array.array[int]
+m3: collections.deque[int]
+m4: list[int]
+m5: memoryview
+m6: range
+m7: tuple[int]
+
+m8: str
+m9: bytes
+m10: bytearray
+m11: Iterable[int]
+
+match m1:
+    case [a]:
+        reveal_type(a)  # N: Revealed type is "builtins.int*"
+
+match m2:
+    case [b]:
+        reveal_type(b)  # N: Revealed type is "builtins.int*"
+
+match m3:
+    case [c]:
+        reveal_type(c)  # N: Revealed type is "builtins.int*"
+
+match m4:
+    case [d]:
+        reveal_type(d)  # N: Revealed type is "builtins.int*"
+
+match m5:
+    case [e]:
+        reveal_type(e)  # N: Revealed type is "builtins.int*"
+
+match m6:
+    case [f]:
+        reveal_type(f)  # N: Revealed type is "builtins.int*"
+
+match m7:
+    case [g]:
+        reveal_type(g)  # N: Revealed type is "builtins.int"
+
+match m8:
+    case [h]:
+        reveal_type(h)
+
+match m9:
+    case [i]:
+        reveal_type(i)
+
+match m10:
+    case [j]:
+        reveal_type(j)
+
+match m11:
+    case [k]:
+        reveal_type(k)
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
+
 
 [case testSequencePatternCapturesTuple]
 from typing import Tuple
