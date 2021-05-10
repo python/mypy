@@ -395,6 +395,7 @@ class MessageBuilder:
                               callee: CallableType,
                               arg_type: Type,
                               arg_kind: int,
+                              object_type: Optional[Type],
                               context: Context,
                               outer_context: Context) -> Optional[ErrorCode]:
         """Report an error about an incompatible argument type.
@@ -556,7 +557,11 @@ class MessageBuilder:
                 msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
                     arg_label, target, quote_type_string(arg_type_str),
                     quote_type_string(expected_type_str))
-            code = codes.ARG_TYPE
+            object_type = get_proper_type(object_type)
+            if isinstance(object_type, TypedDictType):
+                code = codes.TYPEDDICT_ITEM
+            else:
+                code = codes.ARG_TYPE
             expected_type = get_proper_type(expected_type)
             if isinstance(expected_type, UnionType):
                 expected_types = list(expected_type.items)
@@ -1172,7 +1177,7 @@ class MessageBuilder:
                 item_name, format_item_name_list(typ.items.keys())), context)
         else:
             self.fail('TypedDict {} has no key "{}"'.format(
-                format_type(typ), item_name), context)
+                format_type(typ), item_name), context, code=codes.TYPEDDICT_ITEM)
             matches = best_matches(item_name, typ.items.keys())
             if matches:
                 self.note("Did you mean {}?".format(
@@ -1205,7 +1210,7 @@ class MessageBuilder:
             context: Context) -> None:
         msg = 'Argument 2 to "setdefault" of "TypedDict" has incompatible type {}; expected {}'
         self.fail(msg.format(format_type(default), format_type(expected)), context,
-                  code=codes.ARG_TYPE)
+                  code=codes.TYPEDDICT_ITEM)
 
     def type_arguments_not_allowed(self, context: Context) -> None:
         self.fail('Parameterized generics cannot be used with class or instance checks', context)

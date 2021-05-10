@@ -11,6 +11,14 @@ reveal_type(f())  # N: Revealed type is "builtins.int"
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/fnplugin.py
 
+[case testFunctionPluginFilePyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+def f() -> str: ...
+reveal_type(f())  # N: Revealed type is "builtins.int"
+[file pyproject.toml]
+\[tool.mypy]
+plugins='<ROOT>/test-data/unit/plugins/fnplugin.py'
+
 [case testFunctionPlugin]
 # flags: --config-file tmp/mypy.ini
 def f() -> str: ...
@@ -18,6 +26,14 @@ reveal_type(f())  # N: Revealed type is "builtins.int"
 [file mypy.ini]
 \[mypy]
 plugins=fnplugin
+
+[case testFunctionPluginPyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+def f() -> str: ...
+reveal_type(f())  # N: Revealed type is "builtins.int"
+[file pyproject.toml]
+\[tool.mypy]
+plugins = 'fnplugin'
 
 [case testFunctionPluginFullnameIsNotNone]
 # flags: --config-file tmp/mypy.ini
@@ -29,6 +45,17 @@ g(f)()
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/fnplugin.py
+
+[case testFunctionPluginFullnameIsNotNonePyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+from typing import Callable, TypeVar
+f: Callable[[], None]
+T = TypeVar('T')
+def g(x: T) -> T: return x  # This strips out the name of a callable
+g(f)()
+[file pyproject.toml]
+\[tool.mypy]
+plugins="<ROOT>/test-data/unit/plugins/fnplugin.py"
 
 [case testTwoPlugins]
 # flags: --config-file tmp/mypy.ini
@@ -43,6 +70,20 @@ reveal_type(h())  # N: Revealed type is "Any"
 plugins=<ROOT>/test-data/unit/plugins/fnplugin.py,
   <ROOT>/test-data/unit/plugins/plugin2.py
 
+[case testTwoPluginsPyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+def f(): ...
+def g(): ...
+def h(): ...
+reveal_type(f())  # N: Revealed type is "builtins.int"
+reveal_type(g())  # N: Revealed type is "builtins.str"
+reveal_type(h())  # N: Revealed type is "Any"
+[file pyproject.toml]
+\[tool.mypy]
+plugins=['<ROOT>/test-data/unit/plugins/fnplugin.py',
+  '<ROOT>/test-data/unit/plugins/plugin2.py'
+]
+
 [case testTwoPluginsMixedType]
 # flags: --config-file tmp/mypy.ini
 def f(): ...
@@ -54,6 +95,18 @@ reveal_type(h())  # N: Revealed type is "Any"
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/fnplugin.py, plugin2
+
+[case testTwoPluginsMixedTypePyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+def f(): ...
+def g(): ...
+def h(): ...
+reveal_type(f())  # N: Revealed type is "builtins.int"
+reveal_type(g())  # N: Revealed type is "builtins.str"
+reveal_type(h())  # N: Revealed type is "Any"
+[file pyproject.toml]
+\[tool.mypy]
+plugins=['<ROOT>/test-data/unit/plugins/fnplugin.py', 'plugin2']
 
 [case testMissingPluginFile]
 # flags: --config-file tmp/mypy.ini

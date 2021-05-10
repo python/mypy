@@ -4,8 +4,8 @@ The mypy configuration file
 ===========================
 
 Mypy supports reading configuration settings from a file.  By default
-it uses the file ``mypy.ini`` with a fallback to ``.mypy.ini``, then ``setup.cfg`` in
-the current directory, then ``$XDG_CONFIG_HOME/mypy/config``, then
+it uses the file ``mypy.ini`` with a fallback to ``.mypy.ini``, then ``pyproject.toml``,
+then ``setup.cfg`` in the current directory, then ``$XDG_CONFIG_HOME/mypy/config``, then
 ``~/.config/mypy/config``, and finally ``.mypy.ini`` in the user home directory
 if none of them are found; the :option:`--config-file <mypy --config-file>` command-line flag can be used
 to read a different file instead (see :ref:`config-file-flag`).
@@ -35,7 +35,7 @@ section names in square brackets and flag settings of the form
 `NAME = VALUE`. Comments start with ``#`` characters.
 
 - A section named ``[mypy]`` must be present.  This specifies
-  the global flags. The ``setup.cfg`` file is an exception to this.
+  the global flags.
 
 - Additional sections named ``[mypy-PATTERN1,PATTERN2,...]`` may be
   present, where ``PATTERN1``, ``PATTERN2``, etc., are comma-separated
@@ -885,5 +885,84 @@ These options may only be set in the global section (``[mypy]``).
 
     Controls how much debug output will be generated.  Higher numbers are more verbose.
 
+
+Using a pyproject.toml file
+***************************
+
+Instead of using a ``mypy.ini`` file, a ``pyproject.toml`` file (as specified by
+`PEP 518`_) may be used instead. A few notes on doing so:
+
+* The ``[mypy]`` section should have ``tool.`` prepended to its name:
+
+  * I.e., ``[mypy]`` would become ``[tool.mypy]``
+
+* The module specific sections should be moved into ``[[tool.mypy.overrides]]`` sections:
+
+  * For example, ``[mypy-packagename]`` would become:
+
+.. code-block:: toml
+
+  [[tool.mypy.overrides]]
+  module = 'packagename'
+  ...
+
+* Multi-module specific sections can be moved into a single ``[[tools.mypy.overrides]]`` section with a
+  module property set to an array of modules:
+
+  * For example, ``[mypy-packagename,packagename2]`` would become:
+
+.. code-block:: toml
+
+  [[tool.mypy.overrides]]
+  module = [
+      'packagename',
+      'packagename2'
+  ]
+  ...
+
+* The following care should be given to values in the ``pyproject.toml`` files as compared to ``ini`` files:
+
+  * Strings must be wrapped in double quotes, or single quotes if the string contains special characters
+
+  * Boolean values should be all lower case
+
+Please see the `TOML Documentation`_ for more details and information on 
+what is allowed in a ``toml`` file. See `PEP 518`_ for more information on the layout
+and structure of the ``pyproject.toml`` file.
+  
+Example ``pyproject.toml``
+**************************
+
+Here is an example of a ``pyproject.toml`` file. To use this config file, place it at the root
+of your repo (or append it to the end of an existing ``pyproject.toml`` file) and run mypy.
+
+.. code-block:: toml
+
+    # mypy global options:
+
+    [tool.mypy]
+    python_version = "2.7"
+    warn_return_any = true
+    warn_unused_configs = true
+
+    # mypy per-module options:
+
+    [[tool.mypy.overrides]]
+    module = "mycode.foo.*"
+    disallow_untyped_defs = true
+
+    [[tool.mypy.overrides]]
+    module = "mycode.bar"
+    warn_return_any = false
+
+    [[tool.mypy.overrides]]
+    module = [
+        "somelibrary",
+        "some_other_library"
+    ]
+    ignore_missing_imports = true
+
 .. _lxml: https://pypi.org/project/lxml/
 .. _SQLite: https://www.sqlite.org/
+.. _PEP 518: https://www.python.org/dev/peps/pep-0518/
+.. _TOML Documentation: https://toml.io/

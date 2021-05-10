@@ -11,7 +11,7 @@ This section introduces these related features:
 3. *Final classes* should not be subclassed.
 
 All of these are only enforced by mypy, and only in annotated code.
-They is no runtime enforcement by the Python runtime.
+There is no runtime enforcement by the Python runtime.
 
 .. note::
 

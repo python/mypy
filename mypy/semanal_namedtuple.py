@@ -385,7 +385,7 @@ class NamedTupleAnalyzer:
         literals = [LiteralType(item, strtype) for item in items]  # type: List[Type]
         match_args_type = TupleType(literals, basetuple_type)
 
-        info = self.api.basic_new_typeinfo(name, fallback)
+        info = self.api.basic_new_typeinfo(name, fallback, line)
         info.is_named_tuple = True
         tuple_base = TupleType(types, fallback)
         info.tuple_type = tuple_base

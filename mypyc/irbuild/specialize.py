@@ -12,7 +12,7 @@ generator comprehensions as the argument.
 See comment below for more documentation.
 """
 
-from typing import Callable, Optional, Dict, Tuple
+from typing import Callable, Optional, Dict, Tuple, List
 
 from mypy.nodes import CallExpr, RefExpr, MemberExpr, TupleExpr, GeneratorExpr, ARG_POS
 from mypy.types import AnyType, TypeOfAny
@@ -47,14 +47,18 @@ Specializer = Callable[['IRBuilder', CallExpr, RefExpr], Optional[Value]]
 #
 # Specializers can operate on methods as well, and are keyed on the
 # name and RType in that case.
-specializers = {}  # type: Dict[Tuple[str, Optional[RType]], Specializer]
+specializers = {}  # type: Dict[Tuple[str, Optional[RType]], List[Specializer]]
 
 
 def specialize_function(
         name: str, typ: Optional[RType] = None) -> Callable[[Specializer], Specializer]:
-    """Decorator to register a function as being a specializer."""
+    """Decorator to register a function as being a specializer.
+
+    There may exist multiple specializers for one function. When translating method
+    calls, the earlier appended specializer has higher priority.
+    """
     def wrapper(f: Specializer) -> Specializer:
-        specializers[name, typ] = f
+        specializers.setdefault((name, typ), []).append(f)
         return f
     return wrapper
 

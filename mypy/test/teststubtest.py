@@ -7,6 +7,7 @@ import sys
 import tempfile
 import textwrap
 import unittest
+from pathlib import Path
 from typing import Any, Callable, Iterator, List, Optional
 
 import mypy.stubtest
@@ -83,7 +84,9 @@ def run_stubtest(
                 use_builtins_fixtures=True
             )
 
-        return output.getvalue()
+        module_path = Path(os.getcwd()) / TEST_MODULE_NAME
+        # remove cwd as it's not available from outside
+        return output.getvalue().replace(str(module_path), TEST_MODULE_NAME)
 
 
 class Case:

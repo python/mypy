@@ -1004,12 +1004,15 @@ class SemanticAnalyzer(NodeVisitor[None],
                 dec.var.is_classmethod = True
                 self.check_decorated_function_is_method('classmethod', dec)
             elif (refers_to_fullname(d, 'builtins.property') or
-                  refers_to_fullname(d, 'abc.abstractproperty')):
+                  refers_to_fullname(d, 'abc.abstractproperty') or
+                  refers_to_fullname(d, 'functools.cached_property')):
                 removed.append(i)
                 dec.func.is_property = True
                 dec.var.is_property = True
                 if refers_to_fullname(d, 'abc.abstractproperty'):
                     dec.func.is_abstract = True
+                elif refers_to_fullname(d, 'functools.cached_property'):
+                    dec.var.is_settable_property = True
                 self.check_decorated_function_is_method('property', dec)
                 if len(dec.func.arguments) > 1:
                     self.fail('Too many arguments', dec.func)
@@ -1398,7 +1401,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             #       incremental mode and we should avoid it. In general, this logic is too
             #       ad-hoc and needs to be removed/refactored.
             if '@' not in defn.info._fullname:
-                local_name = defn.info._fullname + '@' + str(defn.line)
+                local_name = defn.info.name + '@' + str(defn.line)
                 if defn.info.is_named_tuple:
                     # Module is already correctly set in _fullname for named tuples.
                     defn.info._fullname += '@' + str(defn.line)
@@ -1406,7 +1409,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                     defn.info._fullname = self.cur_mod_id + '.' + local_name
             else:
                 # Preserve name from previous fine-grained incremental run.
-                local_name = defn.info._fullname
+                local_name = defn.info.name
             defn.fullname = defn.info._fullname
             self.globals[local_name] = SymbolTableNode(GDEF, defn.info)
 
@@ -2595,10 +2598,19 @@ class SemanticAnalyzer(NodeVisitor[None],
         # Note: with the new (lazy) type alias representation we only need to set no_args to True
         # if the expected number of arguments is non-zero, so that aliases like A = List work.
         # However, eagerly expanding aliases like Text = str is a nice performance optimization.
-        no_args = isinstance(res, Instance) and not res.args  # type: ignore
+        no_args = isinstance(res, Instance) and not res.args  # type: ignore[misc]
         fix_instance_types(res, self.fail, self.note, self.options.python_version)
-        alias_node = TypeAlias(res, self.qualified_name(lvalue.name), s.line, s.column,
-                               alias_tvars=alias_tvars, no_args=no_args)
+        # Aliases defined within functions can't be accessed outside
+        # the function, since the symbol table will no longer
+        # exist. Work around by expanding them eagerly when used.
+        eager = self.is_func_scope()
+        alias_node = TypeAlias(res,
+                               self.qualified_name(lvalue.name),
+                               s.line,
+                               s.column,
+                               alias_tvars=alias_tvars,
+                               no_args=no_args,
+                               eager=eager)
         if isinstance(s.rvalue, (IndexExpr, CallExpr)):  # CallExpr is for `void = type(None)`
             s.rvalue.analyzed = TypeAliasExpr(alias_node)
             s.rvalue.analyzed.line = s.line
@@ -3142,7 +3154,11 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.add_symbol(name, call.analyzed, s)
         return True
 
-    def basic_new_typeinfo(self, name: str, basetype_or_fallback: Instance) -> TypeInfo:
+    def basic_new_typeinfo(self, name: str,
+                           basetype_or_fallback: Instance,
+                           line: int) -> TypeInfo:
+        if self.is_func_scope() and not self.type and '@' not in name:
+            name += '@' + str(line)
         class_def = ClassDef(name, Block([]))
         if self.is_func_scope() and not self.type:
             # Full names of generated classes should always be prefixed with the module names

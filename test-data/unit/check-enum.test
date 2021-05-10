@@ -1349,3 +1349,14 @@ b: Literal[E.A, E.B] = e  # E: Incompatible types in assignment (expression has 
 c: Literal[E.A, E.C] = e  # E: Incompatible types in assignment (expression has type "E", variable has type "Union[Literal[E.A], Literal[E.C]]")
 b = a  # E: Incompatible types in assignment (expression has type "Union[Literal[E.A], Literal[E.B], Literal[E.C]]", variable has type "Union[Literal[E.A], Literal[E.B]]")
 [builtins fixtures/bool.pyi]
+
+[case testIntEnumWithNewTypeValue]
+from typing import NewType
+from enum import IntEnum
+
+N = NewType("N", int)
+
+class E(IntEnum):
+    A = N(0)
+
+reveal_type(E.A.value) # N: Revealed type is "__main__.N"

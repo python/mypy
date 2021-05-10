@@ -1812,6 +1812,30 @@ main:3: note: Revealed type is "builtins.int"
 [out2]
 main:3: note: Revealed type is "Any"
 
+
+[case testIncrementalFollowImportsVariablePyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+import a
+reveal_type(a.x)
+
+[file a.py]
+x = 0
+
+[file pyproject.toml]
+\[tool.mypy]
+follow_imports = 'normal'
+
+[file pyproject.toml.2]
+\[tool.mypy]
+follow_imports = 'skip'
+
+[out1]
+main:3: note: Revealed type is "builtins.int"
+
+[out2]
+main:3: note: Revealed type is "Any"
+
+
 [case testIncrementalNamedTupleInMethod]
 from ntcrash import nope
 [file ntcrash.py]
@@ -4215,6 +4239,34 @@ tmp/c.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mi
 tmp/c.py:1: error: Cannot find implementation or library stub for module named "a.b.c"
 tmp/c.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
+[case testModuleGetattrIncrementalSerializeVarFlag]
+import main
+
+[file main.py]
+from b import A, f
+f()
+
+[file main.py.3]
+from b import A, f  # foo
+f()
+
+[file b.py]
+from c import A
+def f() -> A: ...
+
+[file b.py.2]
+from c import A  # foo
+def f() -> A: ...
+
+[file c.py]
+from d import A
+
+[file d.pyi]
+def __getattr__(n): ...
+[out1]
+[out2]
+[out3]
+
 [case testAddedMissingStubs]
 # flags: --ignore-missing-imports
 from missing import f
@@ -5454,3 +5506,58 @@ class Foo:
 [delete c1.py.2]
 [file c2.py.2]
 class C: pass
+
+[case testIncrementalNestedNamedTuple]
+# flags: --python-version 3.6
+import a
+
+[file a.py]
+import b
+
+[file a.py.2]
+import b # foo
+
+[file b.py]
+from typing import NamedTuple
+
+def f() -> None:
+    class NT(NamedTuple):
+        x: int
+
+    n: NT = NT(x=2)
+
+def g() -> None:
+    NT = NamedTuple('NT', [('y', str)])
+
+    n: NT = NT(y='x')
+
+[builtins fixtures/tuple.pyi]
+
+[case testIncrementalNestedTypeAlias]
+import a
+
+[file a.py]
+import b
+
+[file a.py.2]
+import b
+reveal_type(b.C().x)
+reveal_type(b.D().x)
+
+[file b.py]
+from typing import List
+
+class C:
+    def __init__(self) -> None:
+        Alias = List[int]
+        self.x = []  # type: Alias
+
+class D:
+    def __init__(self) -> None:
+        Alias = List[str]
+        self.x = []  # type: Alias
+
+[builtins fixtures/list.pyi]
+[out2]
+tmp/a.py:2: note: Revealed type is "builtins.list[builtins.int]"
+tmp/a.py:3: note: Revealed type is "builtins.list[builtins.str]"
