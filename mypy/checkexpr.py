@@ -4042,7 +4042,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return AnyType(TypeOfAny.special_form)
         else:
             generator = self.check_method_call_by_name('__await__', t, [], [], ctx)[0]
-            return self.chk.get_generator_return_type(generator, False)
+            ret_type = self.chk.get_generator_return_type(generator, False)
+            ret_type = get_proper_type(ret_type)
+            if isinstance(ret_type, UninhabitedType) and not ret_type.ambiguous:
+                self.chk.binder.unreachable()
+            return ret_type
 
     def visit_yield_from_expr(self, e: YieldFromExpr, allow_none_return: bool = False) -> Type:
         # NOTE: Whether `yield from` accepts an `async def` decorated

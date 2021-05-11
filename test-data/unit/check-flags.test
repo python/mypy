@@ -334,6 +334,20 @@ from mypy_extensions import NoReturn
 x = 0  # type: NoReturn  # E: Incompatible types in assignment (expression has type "int", variable has type "NoReturn")
 [builtins fixtures/dict.pyi]
 
+[case testNoReturnAsync]
+# flags: --warn-no-return
+from mypy_extensions import NoReturn
+
+async def f() -> NoReturn: ...
+
+async def g() -> NoReturn:
+  await f()
+
+async def h() -> NoReturn:  # E: Implicit return in function which does not return
+  f()
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-async.pyi]
+
 [case testNoReturnImportFromTyping]
 from typing import NoReturn
 
