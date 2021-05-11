@@ -4043,6 +4043,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         else:
             generator = self.check_method_call_by_name('__await__', t, [], [], ctx)[0]
             ret_type = self.chk.get_generator_return_type(generator, False)
+            ret_type = get_proper_type(ret_type)
             if isinstance(ret_type, UninhabitedType) and not ret_type.ambiguous:
                 self.chk.binder.unreachable()
             return ret_type
