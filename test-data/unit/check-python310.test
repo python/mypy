@@ -413,7 +413,17 @@ m: object
 
 match m:
     case {'k': 1, **r}:
-        reveal_type(r)  # N: Revealed type is "builtins.dict[Any, Any]"
+        reveal_type(r)  # N: Revealed type is "builtins.dict[builtins.object, builtins.object]"
+[builtins fixtures/dict.pyi]
+
+[case testMappingPatternCaptureRestFromMapping]
+from typing import Mapping
+
+m: Mapping[str, int]
+
+match m:
+    case {'k': 1, **r}:
+        reveal_type(r)  # N: Revealed type is "builtins.dict[builtins.str*, builtins.int*]"
 [builtins fixtures/dict.pyi]
 
 -- Mapping patterns currently don't narrow --

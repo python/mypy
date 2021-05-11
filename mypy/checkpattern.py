@@ -6,6 +6,7 @@ import mypy.checker
 from mypy.expandtype import expand_type_by_instance
 from mypy.join import join_types
 from mypy.literals import literal_hash
+from mypy.maptype import map_instance_to_supertype
 from mypy.messages import MessageBuilder
 from mypy.nodes import Expression, ARG_POS, TypeAlias, TypeInfo, Var, NameExpr
 from mypy.patterns import (
@@ -311,10 +312,20 @@ class PatternChecker(PatternVisitor[PatternType]):
                 self.update_type_map(captures, pattern_type.captures)
 
         if o.rest is not None:
-            # TODO: Infer dict type args
-            captures[o.rest] = self.chk.named_type("builtins.dict")
+            mapping = self.chk.named_type("typing.Mapping")
+            if is_subtype(current_type, mapping) and isinstance(current_type, Instance):
+                mapping_inst = map_instance_to_supertype(current_type, mapping.type)
+                dict_typeinfo = self.chk.lookup_typeinfo("builtins.dict")
+                dict_type = fill_typevars(dict_typeinfo)
+                rest_type = expand_type_by_instance(dict_type, mapping_inst)
+            else:
+                object_type = self.chk.named_type("builtins.object")
+                rest_type = self.chk.named_generic_type("builtins.dict", [object_type, object_type])
+
+            captures[o.rest] = rest_type
 
         if can_match:
+            # We can't narrow the type here, as Mapping key is invariant.
             new_type = self.type_context[-1]  # type: Optional[Type]
         else:
             new_type = None
