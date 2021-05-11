@@ -3,6 +3,7 @@ from collections import defaultdict
 from typing import List, Optional, Tuple, Dict, NamedTuple, Set, cast
 
 import mypy.checker
+from mypy.checkmember import analyze_member_access
 from mypy.expandtype import expand_type_by_instance
 from mypy.join import join_types
 from mypy.literals import literal_hash
@@ -297,7 +298,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         return PatternType(self.type_context[-1], captures)
 
     def visit_mapping_pattern(self, o: MappingPattern) -> PatternType:
-        current_type = self.type_context[-1]
+        current_type = get_proper_type(self.type_context[-1])
         can_match = True
         captures = {}  # type: Dict[Expression, Type]
         for key, value in zip(o.keys, o.values):
@@ -320,7 +321,8 @@ class PatternChecker(PatternVisitor[PatternType]):
                 rest_type = expand_type_by_instance(dict_type, mapping_inst)
             else:
                 object_type = self.chk.named_type("builtins.object")
-                rest_type = self.chk.named_generic_type("builtins.dict", [object_type, object_type])
+                rest_type = self.chk.named_generic_type("builtins.dict",
+                                                        [object_type, object_type])
 
             captures[o.rest] = rest_type
 
@@ -378,21 +380,31 @@ class PatternChecker(PatternVisitor[PatternType]):
         return result
 
     def visit_class_pattern(self, o: ClassPattern) -> PatternType:
-        current_type = self.type_context[-1]
+        current_type = get_proper_type(self.type_context[-1])
 
         #
         # Check class type
         #
-        class_name = o.class_ref.fullname
-        assert class_name is not None
-        sym = self.chk.lookup_qualified(class_name)
-        if isinstance(sym.node, TypeAlias) and not sym.node.no_args:
+        type_info = o.class_ref.node
+        assert type_info is not None
+        if isinstance(type_info, TypeAlias) and not type_info.no_args:
             self.msg.fail("Class pattern class must not be a type alias with type parameters", o)
             return early_non_match()
-        if isinstance(sym.node, (TypeAlias, TypeInfo)):
-            typ = self.chk.named_type(class_name)
+        if isinstance(type_info, TypeInfo):
+            any_type = AnyType(TypeOfAny.implementation_artifact)
+            typ = Instance(type_info, [any_type] * len(type_info.defn.type_vars))
+        elif isinstance(type_info, TypeAlias):
+            typ = type_info.target
         else:
-            self.msg.fail('Class pattern must be a type. Found "{}"'.format(sym.type), o.class_ref)
+            if isinstance(type_info, Var):
+                name = type_info.type
+            else:
+                name = type_info.name
+            self.msg.fail('Class pattern must be a type. Found "{}"'.format(name), o.class_ref)
+            return early_non_match()
+
+        new_type = get_more_specific_type(current_type, typ)
+        if new_type is None:
             return early_non_match()
 
         #
@@ -458,9 +470,10 @@ class PatternChecker(PatternVisitor[PatternType]):
         can_match = True
         for keyword, pattern in keyword_pairs:
             key_type = None  # type: Optional[Type]
+            local_errors = self.msg.clean_copy()
             if keyword is not None:
-                key_type = find_member(keyword, typ, current_type)
-            if key_type is None:
+                key_type = analyze_member_access(keyword, new_type, pattern, False, False, False, local_errors, original_type=new_type, chk=self.chk)
+            if local_errors.is_errors() or key_type is None:
                 key_type = AnyType(TypeOfAny.implementation_artifact)
 
             pattern_type = self.accept(pattern, key_type)
@@ -469,9 +482,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             else:
                 self.update_type_map(captures, pattern_type.captures)
 
-        if can_match:
-            new_type = get_more_specific_type(current_type, typ)
-        else:
+        if not can_match:
             new_type = None
         return PatternType(new_type, captures)
 

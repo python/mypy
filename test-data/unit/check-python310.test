@@ -695,6 +695,36 @@ match m:
         reveal_type(m)  # N: Revealed type is "__main__.A"
 [builtins fixtures/tuple.pyi]
 
+[case testClassPatternNarrowsUnion]
+from typing import Final, Union
+
+class A:
+    __match_args__: Final = ("a", "b")
+    a: str
+    b: int
+
+class B:
+    __match_args__: Final = ("a", "b")
+    a: int
+    b: str
+
+m: Union[A, B]
+
+match m:
+    case A():
+        reveal_type(m)  # N: Revealed type is "__main__.A"
+    case A(i, j):
+        reveal_type(m)  # N: Revealed type is "__main__.A"
+        reveal_type(i)  # N: Revealed type is "builtins.str"
+        reveal_type(j)  # N: Revealed type is "builtins.int"
+    case B():
+        reveal_type(m)  # N: Revealed type is "__main__.B"
+    case B(i, j):
+        reveal_type(m)  # N: Revealed type is "__main__.B"
+        reveal_type(i)  # N: Revealed type is "builtins.int"
+        reveal_type(j)  # N: Revealed type is "builtins.str"
+[builtins fixtures/tuple.pyi]
+
 [case testClassPatternAlreadyNarrower]
 from typing import Final
 
