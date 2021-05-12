@@ -332,7 +332,6 @@ class MessageBuilder:
                 # The checker passes "object" in lieu of "None" for attribute
                 # checks, so we manually convert it back.
                 typ_format, orig_type_format = format_type_distinctly(typ, original_type)
-                # Not fully sure but I think we can replace "type(item) == NoneType" with "item is None"
                 if typ_format == '"object"' and \
                         any(type(item) == NoneType for item in original_type.items):
                     typ_format = '"None"'
