@@ -87,7 +87,7 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
 
     def visit_union_type(self, t: UnionType) -> ProperType:
         erased_items = [erase_type(item) for item in t.items]
-        from mypy.typeops import make_simplified_union  # asdf
+        from mypy.typeops import make_simplified_union
         return make_simplified_union(erased_items)
 
     def visit_type_type(self, t: TypeType) -> ProperType:
