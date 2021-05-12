@@ -2188,7 +2188,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if op != '=' and (typ.type.fullname, op) not in self.partial_type_augmented_ops:
                 return
             # TODO: some logic here duplicates the None partial type counterpart
-            #       inlined in check_assignment(), see # 8043.
+            #       inlined in check_assignment(), see #8043 (https://github.com/python/mypy/issues/8043).
             partial_types = self.find_partial_types(var)
             if partial_types is None:
                 return
@@ -2905,7 +2905,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return True
 
     def is_valid_defaultdict_partial_value_type(self, t: ProperType) -> bool:
-        """Check if t can be used as the basis for a partial defaultddict value type.
+        """Check if t can be used as the basis for a partial defaultdict value type.
 
         Examples:
 
@@ -4499,7 +4499,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if target is None:
             return {}, {}
 
-        # If possible, use an unassignable expression as the target.
+        # If possible, use an nonassignable expression as the target.
         # We skip refining the type of the target below, so ideally we'd
         # want to pick an expression we were going to skip anyways.
         singleton_index = -1
@@ -4507,7 +4507,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if i not in narrowable_operand_indices:
                 singleton_index = i
 
-        # But if none of the possible singletons are unassignable ones, we give up
+        # But if none of the possible singletons are nonassignable ones, we give up
         # and arbitrarily pick the last item, mostly because other parts of the
         # type narrowing logic bias towards picking the rightmost item and it'd be
         # nice to stay consistent.
@@ -5477,7 +5477,7 @@ def overload_can_never_match(signature: CallableType, other: CallableType) -> bo
 
 
 def is_more_general_arg_prefix(t: FunctionLike, s: FunctionLike) -> bool:
-    """Does t have wider arguments than s?"""
+    """Does it have wider arguments than s?"""
     # TODO should an overload with additional items be allowed to be more
     #      general than one with fewer items (or just one item)?
     if isinstance(t, CallableType):
