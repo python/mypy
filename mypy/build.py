@@ -2098,7 +2098,7 @@ class State:
         analyzer = SemanticAnalyzerPreAnalysis()
         with self.wrap_context():
             analyzer.visit_file(self.tree, self.xpath, self.id, options)
-        # TODO: Do this while contructing the AST?
+        # TODO: Do this while constructing the AST?
         self.tree.names = SymbolTable()
         if options.allow_redefinition:
             # Perform renaming across the AST to allow variable redefinitions
