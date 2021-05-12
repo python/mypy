@@ -127,4 +127,4 @@ SYNTAX = ErrorCode(
 
 # This is a catch-all for remaining uncategorized errors.
 MISC = ErrorCode(
-    'misc', "Miscenallenous other checks", 'General')  # type: Final
+    'misc', "Miscellaneous other checks", 'General')  # type: Final
