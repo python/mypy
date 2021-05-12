@@ -90,7 +90,7 @@ ArgChecker = Callable[[Type,
 MAX_UNIONS = 5  # type: Final
 
 
-# Types considered safe for comparisons with --strict-equality due to known behavior of __eq__.
+# Types considered safe for comparisons with --strict-equality due to known behaviour of __eq__.
 # NOTE: All these types are subtypes of AbstractSet.
 OVERLAPPING_TYPES_WHITELIST = ['builtins.set', 'builtins.frozenset',
                                'typing.KeysView', 'typing.ItemsView']  # type: Final

@@ -1741,7 +1741,7 @@ class State:
     # iteration over dependencies.
     # They should be managed with add_dependency and suppress_dependency.
     dependencies = None  # type: List[str]  # Modules directly imported by the module
-    dependencies_set = None  # type: Set[str]  # The same but as a set for duplication purposes
+    dependencies_set = None  # type: Set[str]  # The same but as a set for deduplication purposes
     suppressed = None  # type: List[str]  # Suppressed/missing dependencies
     suppressed_set = None  # type: Set[str]  # Suppressed/missing dependencies
     priorities = None  # type: Dict[str, int]
