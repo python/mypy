@@ -22,7 +22,7 @@ class DefaultPlugin(Plugin):
 
     def get_function_hook(self, fullname: str
                           ) -> Optional[Callable[[FunctionContext], Type]]:
-        from mypy.plugins import ctypes
+        from mypy.plugins import attrs, ctypes
 
         if fullname == 'contextlib.contextmanager':
             return contextmanager_callback
@@ -30,6 +30,8 @@ class DefaultPlugin(Plugin):
             return open_callback
         elif fullname == 'ctypes.Array':
             return ctypes.array_constructor_callback
+        elif fullname == 'attr.fields':
+            return attrs.adjust_fields
         return None
 
     def get_method_signature_hook(self, fullname: str

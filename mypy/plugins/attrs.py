@@ -1,5 +1,6 @@
 """Plugin for supporting the attrs library (http://www.attrs.org)"""
 
+from mypy.lookup import lookup_fully_qualified
 from mypy.ordered_dict import OrderedDict
 
 from typing import Optional, Dict, List, cast, Tuple, Iterable
@@ -9,19 +10,19 @@ import mypy.plugin  # To avoid circular imports.
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.fixup import lookup_qualified_stnode
 from mypy.nodes import (
-    Context, Argument, Var, ARG_OPT, ARG_POS, TypeInfo, AssignmentStmt,
-    TupleExpr, ListExpr, NameExpr, CallExpr, RefExpr, FuncDef,
+    Block, ClassDef, Context, Argument, SymbolTable, Var, ARG_OPT, ARG_POS, TypeInfo,
+    AssignmentStmt, TupleExpr, ListExpr, NameExpr, CallExpr, RefExpr, FuncDef,
     is_class_var, TempNode, Decorator, MemberExpr, Expression,
     SymbolTableNode, MDEF, JsonDict, OverloadedFuncDef, ARG_NAMED_OPT, ARG_NAMED,
     TypeVarExpr, PlaceholderNode
 )
-from mypy.plugin import SemanticAnalyzerPluginInterface
+from mypy.plugin import FunctionContext, SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
     _get_argument, _get_bool_argument, _get_decorator_bool_argument, add_method,
     deserialize_and_fixup_type
 )
 from mypy.types import (
-    Type, AnyType, TypeOfAny, CallableType, NoneType, TypeVarDef, TypeVarType,
+    Instance, Type, AnyType, TypeOfAny, CallableType, NoneType, TypeVarDef, TypeVarType,
     Overloaded, UnionType, FunctionLike, get_proper_type
 )
 from mypy.typeops import make_simplified_union, map_type_from_supertype
@@ -257,6 +258,14 @@ def _get_decorator_optional_bool_argument(
         return default
 
 
+def _make_var(n: str, i: Type, fullname: Optional[str] = None, is_classvar: bool = False) -> Var:
+    res = Var(n, i)
+    res.info = i.type
+    res.is_classvar = is_classvar
+    res._fullname = fullname
+    return res
+
+
 def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
                               auto_attribs_default: Optional[bool] = False,
                               frozen_default: bool = False) -> None:
@@ -318,6 +327,51 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
         _add_order(ctx, adder)
     if frozen:
         _make_frozen(ctx, attributes)
+
+    # Set up the `__attrs_attrs__` class variable.
+    attr_type: TypeInfo = lookup_fully_qualified("attr.Attribute",
+        ctx.api.modules,
+        raise_on_missing=True).node
+    tuple_type: TypeInfo = lookup_fully_qualified("builtins.tuple",
+        ctx.api.modules,
+        raise_on_missing=True).node
+
+    sym_table = SymbolTable(
+        {
+            a.name: SymbolTableNode(
+                MDEF,
+                _make_var(
+                    a.name,
+                    Instance(attr_type,
+                        # We want to support future attrs versions with a 2-param Attribute
+                        [Instance(ctx.cls.info, []), a.argument(ctx).type_annotation]
+                        if len(attr_type.type_vars) == 2 else
+                        [a.argument(ctx).type_annotation]),
+                ),
+            )
+            for a in attributes
+        },
+    )
+    cd = ClassDef(f"{info.name}Attributes", Block([]))
+    cd.fullname = f"{info.name}Attributes"
+    ti = TypeInfo(
+        sym_table,
+        cd,
+        "attr",
+    )
+    ti.is_named_tuple = True
+    ti.mro = [ti, tuple_type]
+    ti.type_vars = []
+    attributes_type = Instance(
+        ti,
+        [],
+    )
+    fn = ctx.cls.fullname + ".__attrs_attrs__"
+    ctx.cls.info.names["__attrs_attrs__"] = SymbolTableNode(
+        MDEF,
+        _make_var("__attrs_attrs__", attributes_type, fullname=fn, is_classvar=True),
+        plugin_generated=True
+    )
 
 
 def _get_frozen(ctx: 'mypy.plugin.ClassDefContext', frozen_default: bool) -> bool:
@@ -732,3 +786,17 @@ class MethodAdder:
         """
         self_type = self_type if self_type is not None else self.self_type
         add_method(self.ctx, method_name, args, ret_type, self_type, tvd)
+
+
+def adjust_fields(fc: FunctionContext) -> Type:
+    # We fish out the attrs class out of the return type.
+    try:
+        attrs_class: TypeInfo = fc.arg_types[0][0].ret_type.type
+    except Exception:
+        fc.api.fail("Argument is not an attrs class", fc.context)
+        return AnyType(TypeOfAny.from_error)
+
+    stn = attrs_class.get("__attrs_attrs__")
+    if stn is not None:
+        return stn.type
+    return None
