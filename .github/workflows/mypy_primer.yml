@@ -48,10 +48,48 @@ jobs:
             --num-shards 3 --shard-index ${{ matrix.shard-index }} \
             --debug \
             --output concise \
-            | tee diff.txt
+            | tee diff_${{ matrix.shard-index }}.txt
           ) || [ $? -eq 1 ]
       - name: Upload mypy_primer diff
         uses: actions/upload-artifact@v2
         with:
-          name: mypy_primer_diff_${{ matrix.shard-index }}
-          path: diff.txt
+          name: mypy_primer_diffs
+          path: diff_${{ matrix.shard-index }}.txt
+
+  comment:
+    name: Comment
+    runs-on: ubuntu-latest
+    needs: mypy_primer
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Download diffs
+        uses: actions/download-artifact@v2
+        with:
+          name: mypy_primer_diffs
+
+      - name: Post comment
+        uses: actions/github-script@v3
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            const fs = require('fs')
+            const data = (
+              ['diff_0.txt', 'diff_1.txt']
+              .map(fileName => fs.readFileSync(fileName, { encoding: 'utf8' }))
+              .join('')
+              .substr(0, 30000)  // About 300 lines
+            )
+
+            console.log("Diff from mypy_primer:")
+            console.log(data)
+
+            if (data.trim()) {
+              const body = 'Diff from [mypy_primer](https://github.com/hauntsaninja/mypy_primer), showing the effect of this PR on open source code:\n```diff\n' + data + '```'
+              await github.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body
+              })
+            }
