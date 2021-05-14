@@ -276,5 +276,5 @@ For more details, see the file [CONTRIBUTING.md](CONTRIBUTING.md).
 License
 -------
 
-Mypy is licensed under the terms of the MIT License (see the file
-LICENSE).
+Mypy is licensed under the terms of the MIT License, see the file[
+LICENSE](https://github.com/python/mypy/blob/master/LICENSE).
