@@ -646,6 +646,8 @@ class LowLevelIRBuilder:
         if is_bool_rprimitive(ltype) and is_bool_rprimitive(rtype) and op in (
                 '&', '&=', '|', '|=', '^', '^='):
             return self.bool_bitwise_op(lreg, rreg, op[0], line)
+        if isinstance(rtype, RInstance) and op in ('in', 'not in'):
+            return self.translate_instance_contains(rreg, lreg, op, line)
 
         call_c_ops_candidates = binary_ops.get(op, [])
         target = self.matching_call_c(call_c_ops_candidates, [lreg, rreg], line)
@@ -828,6 +830,14 @@ class LowLevelIRBuilder:
         self.add(Assign(result, self.true(), line))
         self.goto_and_activate(out)
         return result
+
+    def translate_instance_contains(self, inst: Value, item: Value, op: str, line: int) -> Value:
+        res = self.gen_method_call(inst, '__contains__', [item], None, line)
+        if not is_bool_rprimitive(res.type):
+            res = self.call_c(bool_op, [res], line)
+        if op == 'not in':
+            res = self.bool_bitwise_op(res, Integer(1, rtype=bool_rprimitive), '^', line)
+        return res
 
     def bool_bitwise_op(self, lreg: Value, rreg: Value, op: str, line: int) -> Value:
         if op == '&':
@@ -1099,9 +1109,12 @@ class LowLevelIRBuilder:
     def comparison_op(self, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.add(ComparisonOp(lhs, rhs, op, line))
 
-    def builtin_len(self, val: Value, line: int,
-                    use_pyssize_t: bool = False) -> Value:
-        """Return short_int_rprimitive by default."""
+    def builtin_len(self, val: Value, line: int, use_pyssize_t: bool = False) -> Value:
+        """Generate len(val).
+
+        Return short_int_rprimitive by default.
+        Return c_pyssize_t if use_pyssize_t is true (unshifted).
+        """
         typ = val.type
         if is_list_rprimitive(typ) or is_tuple_rprimitive(typ):
             elem_address = self.add(GetElementPtr(val, PyVarObject, 'ob_size'))
@@ -1128,8 +1141,22 @@ class LowLevelIRBuilder:
             offset = Integer(1, c_pyssize_t_rprimitive, line)
             return self.int_op(short_int_rprimitive, size_value, offset,
                                IntOp.LEFT_SHIFT, line)
-        # generic case
+        elif isinstance(typ, RInstance):
+            # TODO: Support use_pyssize_t
+            assert not use_pyssize_t
+            length = self.gen_method_call(val, '__len__', [], int_rprimitive, line)
+            length = self.coerce(length, int_rprimitive, line)
+            ok, fail = BasicBlock(), BasicBlock()
+            self.compare_tagged_condition(length, Integer(0), '>=', ok, fail, line)
+            self.activate_block(fail)
+            self.add(RaiseStandardError(RaiseStandardError.VALUE_ERROR,
+                                        "__len__() should return >= 0",
+                                        line))
+            self.add(Unreachable())
+            self.activate_block(ok)
+            return length
         else:
+            # generic case
             if use_pyssize_t:
                 return self.call_c(generic_ssize_t_len_op, [val], line)
             else:

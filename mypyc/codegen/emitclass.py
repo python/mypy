@@ -9,7 +9,8 @@ from mypyc.codegen.emit import Emitter, HeaderDeclaration
 from mypyc.codegen.emitfunc import native_function_header
 from mypyc.codegen.emitwrapper import (
     generate_dunder_wrapper, generate_hash_wrapper, generate_richcompare_wrapper,
-    generate_bool_wrapper, generate_get_wrapper,
+    generate_bool_wrapper, generate_get_wrapper, generate_len_wrapper,
+    generate_set_del_item_wrapper, generate_contains_wrapper
 )
 from mypyc.ir.rtypes import RType, RTuple, object_rprimitive
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
@@ -46,6 +47,13 @@ SLOT_DEFS = {
 
 AS_MAPPING_SLOT_DEFS = {
     '__getitem__': ('mp_subscript', generate_dunder_wrapper),
+    '__setitem__': ('mp_ass_subscript', generate_set_del_item_wrapper),
+    '__delitem__': ('mp_ass_subscript', generate_set_del_item_wrapper),
+    '__len__': ('mp_length', generate_len_wrapper),
+}  # type: SlotTable
+
+AS_SEQUENCE_SLOT_DEFS = {
+    '__contains__': ('sq_contains', generate_contains_wrapper),
 }  # type: SlotTable
 
 AS_NUMBER_SLOT_DEFS = {
@@ -60,6 +68,7 @@ AS_ASYNC_SLOT_DEFS = {
 
 SIDE_TABLES = [
     ('as_mapping', 'PyMappingMethods', AS_MAPPING_SLOT_DEFS),
+    ('as_sequence', 'PySequenceMethods', AS_SEQUENCE_SLOT_DEFS),
     ('as_number', 'PyNumberMethods', AS_NUMBER_SLOT_DEFS),
     ('as_async', 'PyAsyncMethods', AS_ASYNC_SLOT_DEFS),
 ]
@@ -82,11 +91,19 @@ def generate_call_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
 
 def generate_slots(cl: ClassIR, table: SlotTable, emitter: Emitter) -> Dict[str, str]:
     fields = OrderedDict()  # type: Dict[str, str]
+    generated = {}  # type: Dict[str, str]
     # Sort for determinism on Python 3.5
-    for name, (slot, generator) in sorted(table.items()):
+    for name, (slot, generator) in sorted(table.items(), reverse=True):
         method_cls = cl.get_method_and_class(name)
         if method_cls and (method_cls[1] == cl or name in ALWAYS_FILL):
-            fields[slot] = generator(cl, method_cls[0], emitter)
+            if slot in generated:
+                # Reuse previously generated wrapper.
+                fields[slot] = generated[slot]
+            else:
+                # Generate new wrapper.
+                name = generator(cl, method_cls[0], emitter)
+                fields[slot] = name
+                generated[slot] = name
 
     return fields
 
