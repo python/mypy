@@ -761,8 +761,8 @@ def load_stdlib_py_versions(custom_typeshed_dir: Optional[str]
     assert os.path.isfile(versions_path), (custom_typeshed_dir, versions_path, __file__)
     with open(versions_path) as f:
         for line in f:
-            line = line.strip()
-            if line.startswith("#") or line == "":
+            line = line.split("#")[0].strip()
+            if line == "":
                 continue
             module, version_range = line.split(":")
             versions = version_range.split("-")
