@@ -86,6 +86,23 @@ def g(x: int) -> int:
 from native import f
 assert f(1) == 2
 
+[case testFromImportWithUntypedModule]
+
+# avoid including an __init__.py and use type: ignore to test what happens
+# if mypy can't tell if mod isn't a module
+from pkg import mod # type: ignore
+
+def a(x: int) -> int:
+    return mod.h(x)
+
+[file pkg/mod.py]
+def h(x):
+    return x * 3
+
+[file driver.py]
+from native import a
+assert a(8) == 24
+
 [case testReexport]
 # Test that we properly handle accessing values that have been reexported
 import a
