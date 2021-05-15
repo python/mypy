@@ -13,6 +13,8 @@ jobs:
   mypy_primer:
     name: Run
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       matrix:
         shard-index: [0, 1, 2]
@@ -61,6 +63,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: mypy_primer
     permissions:
+      contents: read
       pull-requests: write
     steps:
       - name: Download diffs
