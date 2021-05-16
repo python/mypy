@@ -329,9 +329,17 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
         _make_frozen(ctx, attributes)
 
     # Set up the `__attrs_attrs__` class variable.
-    attr_type: TypeInfo = lookup_fully_qualified("attr.Attribute",
-        ctx.api.modules,
-        raise_on_missing=True).node
+    attr_symbol_tn = lookup_fully_qualified("attr.Attribute",
+        ctx.api.modules)
+
+    if attr_symbol_tn is None or attr_symbol_tn.node is None:
+        # Not expected to happen since the absence of attrs is handled elsewhere,
+        # but we check just in case. Without this we cannot generate
+        # the `__attrs_attrs__` variable, so we don't.
+        return
+    
+    attr_type = attr_symbol_tn.node
+
     tuple_type: TypeInfo = lookup_fully_qualified("builtins.tuple",
         ctx.api.modules,
         raise_on_missing=True).node
@@ -789,6 +797,7 @@ class MethodAdder:
 
 
 def adjust_fields(fc: FunctionContext) -> Type:
+    """Generate the proper return value for an `attr.fields` invocation."""
     # We fish out the attrs class out of the return type.
     try:
         attrs_class: TypeInfo = fc.arg_types[0][0].ret_type.type
@@ -796,7 +805,10 @@ def adjust_fields(fc: FunctionContext) -> Type:
         fc.api.fail("Argument is not an attrs class", fc.context)
         return AnyType(TypeOfAny.from_error)
 
+    # We've placed the appropriate instance on the type already, when we analyzed it.
     stn = attrs_class.get("__attrs_attrs__")
     if stn is not None:
         return stn.type
-    return None
+
+    # Should never happen.
+    return AnyType(TypeOfAny.from_error)
