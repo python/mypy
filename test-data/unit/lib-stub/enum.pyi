@@ -27,6 +27,7 @@ class Enum(metaclass=EnumMeta):
 
 class IntEnum(int, Enum):
     value: int
+    def __new__(cls: Type[_T], value: Union[int, _T]) -> _T: ...
 
 def unique(enumeration: _T) -> _T: pass
 

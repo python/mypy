@@ -334,6 +334,20 @@ from mypy_extensions import NoReturn
 x = 0  # type: NoReturn  # E: Incompatible types in assignment (expression has type "int", variable has type "NoReturn")
 [builtins fixtures/dict.pyi]
 
+[case testNoReturnAsync]
+# flags: --warn-no-return
+from mypy_extensions import NoReturn
+
+async def f() -> NoReturn: ...
+
+async def g() -> NoReturn:
+  await f()
+
+async def h() -> NoReturn:  # E: Implicit return in function which does not return
+  f()
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-async.pyi]
+
 [case testNoReturnImportFromTyping]
 from typing import NoReturn
 
@@ -478,6 +492,24 @@ disallow_incomplete_defs = False
 disallow_incomplete_defs = True
 
 
+[case testPerFileIncompleteDefsBasicPyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+import standard, incomplete
+
+[file standard.py]
+def incomplete(x) -> int:
+    return 0
+[file incomplete.py]
+def incomplete(x) -> int:  # E: Function is missing a type annotation for one or more arguments
+    return 0
+[file pyproject.toml]
+\[tool.mypy]
+disallow_incomplete_defs = false
+\[[tool.mypy.overrides]]
+module = 'incomplete'
+disallow_incomplete_defs = true
+
+
 [case testPerFileStrictOptionalBasic]
 # flags: --config-file tmp/mypy.ini
 import standard, optional
@@ -496,6 +528,27 @@ if int():
 strict_optional = False
 \[mypy-optional]
 strict_optional = True
+
+
+[case testPerFileStrictOptionalBasicPyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+import standard, optional
+
+[file standard.py]
+x = 0
+if int():
+    x = None
+[file optional.py]
+x = 0
+if int():
+    x = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+
+[file pyproject.toml]
+\[tool.mypy]
+strict_optional = false
+\[[tool.mypy.overrides]]
+module = 'optional'
+strict_optional = true
 
 
 [case testPerFileStrictOptionalBasicImportStandard]
@@ -525,6 +578,34 @@ strict_optional = False
 strict_optional = True
 
 
+[case testPerFileStrictOptionalBasicImportStandardPyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+import standard, optional
+
+[file standard.py]
+from typing import Optional
+def f(x: int) -> None: pass
+an_int = 0  # type: int
+optional_int = None  # type: Optional[int]
+f(an_int)  # ints can be used as ints
+f(optional_int)  # optional ints can be used as ints in this file
+
+[file optional.py]
+import standard
+def f(x: int) -> None: pass
+standard.an_int = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+standard.optional_int = None  # OK -- explicitly declared as optional
+f(standard.an_int)  # ints can be used as ints
+f(standard.optional_int)  # E: Argument 1 to "f" has incompatible type "None"; expected "int"
+
+[file pyproject.toml]
+\[tool.mypy]
+strict_optional = false
+\[[tool.mypy.overrides]]
+module = 'optional'
+strict_optional = true
+
+
 [case testPerFileStrictOptionalBasicImportOptional]
 # flags: --config-file tmp/mypy.ini
 import standard, optional
@@ -546,6 +627,31 @@ y = None  # type: None
 strict_optional = False
 \[mypy-optional]
 strict_optional = True
+
+
+[case testPerFileStrictOptionalBasicImportOptionalPyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+import standard, optional
+
+[file standard.py]
+import optional
+def f(x: int) -> None: pass
+f(optional.x)  # OK -- in non-strict Optional context
+f(optional.y)  # OK -- in non-strict Optional context
+
+[file optional.py]
+from typing import Optional
+def f(x: int) -> None: pass
+x = 0  # type: Optional[int]
+y = None  # type: None
+
+[file pyproject.toml]
+\[tool.mypy]
+strict_optional = false
+\[[tool.mypy.overrides]]
+module = 'optional'
+strict_optional = true
+
 
 [case testPerFileStrictOptionalListItemImportOptional]
 # flags: --config-file tmp/mypy.ini
@@ -571,6 +677,34 @@ strict_optional = False
 strict_optional = True
 [builtins fixtures/list.pyi]
 
+
+[case testPerFileStrictOptionalListItemImportOptionalPyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+import standard, optional
+
+[file standard.py]
+import optional
+from typing import List
+def f(x: List[int]) -> None: pass
+f(optional.x)  # OK -- in non-strict Optional context
+f(optional.y)  # OK -- in non-strict Optional context
+
+[file optional.py]
+from typing import Optional, List
+def f(x: List[int]) -> None: pass
+x = []  # type: List[Optional[int]]
+y = []  # type: List[int]
+
+[file pyproject.toml]
+\[tool.mypy]
+strict_optional = false
+\[[tool.mypy.overrides]]
+module = 'optional'
+strict_optional = true
+
+[builtins fixtures/list.pyi]
+
+
 [case testPerFileStrictOptionalComplicatedList]
 from typing import Union, Optional, List
 
@@ -595,6 +729,27 @@ standard.f(None)
 strict_optional = False
 \[mypy-optional]
 strict_optional = True
+
+
+[case testPerFileStrictOptionalNoneArgumentsPyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+import standard, optional
+
+[file standard.py]
+def f(x: int = None) -> None: pass
+
+[file optional.py]
+import standard
+def f(x: int = None) -> None: pass
+standard.f(None)
+
+[file pyproject.toml]
+\[tool.mypy]
+strict_optional = false
+\[[tool.mypy.overrides]]
+module = 'optional'
+strict_optional = true
+
 
 [case testDisallowImplicitTypesIgnoreMissingTypes]
 # flags: --ignore-missing-imports --disallow-any-unimported
@@ -1078,6 +1233,24 @@ always_true = YOLO1, YOLO
 always_false = BLAH, BLAH1
 [builtins fixtures/bool.pyi]
 
+
+[case testAlwaysTrueAlwaysFalseConfigFilePyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+from somewhere import YOLO, BLAH
+if not YOLO:
+    1+()
+if BLAH:
+    1+()
+
+[file pyproject.toml]
+\[tool.mypy]
+ignore_missing_imports = true
+always_true = ['YOLO1', 'YOLO']
+always_false = ['BLAH', 'BLAH1']
+
+[builtins fixtures/bool.pyi]
+
+
 [case testDisableErrorCodeConfigFile]
 # flags: --config-file tmp/mypy.ini --disallow-untyped-defs
 import foo
@@ -1086,6 +1259,18 @@ def bar():
 [file mypy.ini]
 \[mypy]
 disable_error_code = import, no-untyped-def
+
+
+[case testDisableErrorCodeConfigFilePyProjectTOML]
+# flags: --config-file tmp/pyproject.toml --disallow-untyped-defs
+import foo
+def bar():
+    pass
+
+[file pyproject.toml]
+\[tool.mypy]
+disable_error_code = ['import', 'no-untyped-def']
+
 
 [case testCheckDisallowAnyGenericsNamedTuple]
 # flags: --disallow-any-generics
@@ -1190,6 +1375,26 @@ def f(c: A) -> None:  # E: Missing type parameters for generic type "A"
 strict = True
 [out]
 
+
+[case testStrictInConfigAnyGenericPyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class A(Generic[T]):
+    pass
+
+def f(c: A) -> None:  # E: Missing type parameters for generic type "A"
+    pass
+
+[file pyproject.toml]
+\[tool.mypy]
+strict = true
+
+[out]
+
+
 [case testStrictFalseInConfigAnyGeneric]
 # flags: --config-file tmp/mypy.ini
 from typing import TypeVar, Generic
@@ -1205,6 +1410,26 @@ def f(c: A) -> None:
 \[mypy]
 strict = False
 [out]
+
+
+[case testStrictFalseInConfigAnyGenericPyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class A(Generic[T]):
+    pass
+
+def f(c: A) -> None:
+    pass
+
+[file pyproject.toml]
+\[tool.mypy]
+strict = false
+
+[out]
+
 
 [case testStrictAndStrictEquality]
 # flags: --strict
@@ -1226,6 +1451,25 @@ strict_equality = True
 \[mypy-b]
 strict_equality = False
 [builtins fixtures/bool.pyi]
+
+
+[case testStrictEqualityPerFilePyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+import b
+42 == 'no'  # E: Non-overlapping equality check (left operand type: "Literal[42]", right operand type: "Literal['no']")
+
+[file b.py]
+42 == 'no'
+
+[file pyproject.toml]
+\[tool.mypy]
+strict_equality = true
+\[[tool.mypy.overrides]]
+module = 'b'
+strict_equality = false
+
+[builtins fixtures/bool.pyi]
+
 
 [case testNoImplicitReexport]
 # flags: --no-implicit-reexport
@@ -1304,6 +1548,28 @@ implicit_reexport = True
 implicit_reexport = False
 [out]
 main:2: error: Module "other_module_2" has no attribute "a"
+
+
+[case testNoImplicitReexportPyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+from other_module_2 import a
+
+[file other_module_1.py]
+a = 5
+
+[file other_module_2.py]
+from other_module_1 import a
+
+[file pyproject.toml]
+\[tool.mypy]
+implicit_reexport = true
+\[[tool.mypy.overrides]]
+module = 'other_module_2'
+implicit_reexport = false
+
+[out]
+main:2: error: Module "other_module_2" has no attribute "a"
+
 
 [case testImplicitAnyOKForNoArgs]
 # flags: --disallow-any-generics --show-column-numbers
@@ -1539,6 +1805,34 @@ disallow_subclassing_any = True
 \[mypy-m]
 disallow_subclassing_any = False
 
+
+[case testDisallowSubclassingAnyPyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+import m
+import y
+
+[file m.py]
+from typing import Any
+
+x = None  # type: Any
+
+class ShouldBeFine(x): ...
+
+[file y.py]
+from typing import Any
+
+x = None  # type: Any
+
+class ShouldNotBeFine(x): ...  # E: Class cannot subclass 'x' (has type 'Any')
+
+[file pyproject.toml]
+\[tool.mypy]
+disallow_subclassing_any = true
+\[[tool.mypy.overrides]]
+module = 'm'
+disallow_subclassing_any = false
+
+
 [case testNoImplicitOptionalPerModule]
 # flags: --config-file tmp/mypy.ini
 import m
@@ -1552,6 +1846,23 @@ def f(a: str = None) -> int:
 no_implicit_optional = True
 \[mypy-m]
 no_implicit_optional = False
+
+
+[case testNoImplicitOptionalPerModulePyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+import m
+
+[file m.py]
+def f(a: str = None) -> int:
+    return 0
+
+[file pyproject.toml]
+\[tool.mypy]
+no_implicit_optional = true
+\[[tool.mypy.overrides]]
+module = 'm'
+no_implicit_optional = false
+
 
 [case testNoImplicitOptionalPerModulePython2]
 # flags: --config-file tmp/mypy.ini --python-version 2.7
@@ -1567,6 +1878,24 @@ def f(a = None):
 no_implicit_optional = True
 \[mypy-m]
 no_implicit_optional = False
+
+
+[case testNoImplicitOptionalPerModulePython2PyProjectTOML]
+# flags: --config-file tmp/pyproject.toml --python-version 2.7
+import m
+
+[file m.py]
+def f(a = None):
+    # type: (str) -> int
+    return 0
+
+[file pyproject.toml]
+\[tool.mypy]
+no_implicit_optional = true
+\[[tool.mypy.overrides]]
+module = 'm'
+no_implicit_optional = false
+
 
 [case testDisableErrorCode]
 # flags: --disable-error-code attr-defined

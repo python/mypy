@@ -1,10 +1,26 @@
 import importlib.abc
 import types
-from typing import Callable, List, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, List, Optional, Sequence, Tuple, Union
 
-# ModuleSpec is exported from this module, but for circular import
-# reasons exists in its own stub file (with Loader and ModuleType).
-from _importlib_modulespec import Loader, ModuleSpec as ModuleSpec  # Exported
+# TODO: the loaders seem a bit backwards, attribute is protocol but __init__ arg isn't?
+class ModuleSpec:
+    def __init__(
+        self,
+        name: str,
+        loader: Optional[importlib.abc.Loader],
+        *,
+        origin: Optional[str] = ...,
+        loader_state: Any = ...,
+        is_package: Optional[bool] = ...,
+    ) -> None: ...
+    name: str
+    loader: Optional[importlib.abc._LoaderProtocol]
+    origin: Optional[str]
+    submodule_search_locations: Optional[List[str]]
+    loader_state: Any
+    cached: Optional[str]
+    parent: Optional[str]
+    has_location: bool
 
 class BuiltinImporter(importlib.abc.MetaPathFinder, importlib.abc.InspectLoader):
     # MetaPathFinder
@@ -78,7 +94,7 @@ class PathFinder:
         cls, fullname: str, path: Optional[Sequence[Union[bytes, str]]] = ..., target: Optional[types.ModuleType] = ...
     ) -> Optional[ModuleSpec]: ...
     @classmethod
-    def find_module(cls, fullname: str, path: Optional[Sequence[Union[bytes, str]]] = ...) -> Optional[Loader]: ...
+    def find_module(cls, fullname: str, path: Optional[Sequence[Union[bytes, str]]] = ...) -> Optional[importlib.abc.Loader]: ...
 
 SOURCE_SUFFIXES: List[str]
 DEBUG_BYTECODE_SUFFIXES: List[str]

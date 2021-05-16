@@ -1,11 +1,9 @@
 import sys
 import typing
+from importlib.abc import _LoaderProtocol
+from importlib.machinery import ModuleSpec
 from typing import Any, Awaitable, Callable, Dict, Generic, Iterable, Iterator, Mapping, Optional, Tuple, Type, TypeVar, overload
 from typing_extensions import Literal, final
-
-# ModuleType is exported from this module, but for circular import
-# reasons exists in its own stub file (with ModuleSpec and Loader).
-from _importlib_modulespec import ModuleType as ModuleType  # Exported
 
 # Note, all classes "defined" here require special handling.
 
@@ -134,6 +132,15 @@ class SimpleNamespace:
     def __getattribute__(self, name: str) -> Any: ...
     def __setattr__(self, name: str, value: Any) -> None: ...
     def __delattr__(self, name: str) -> None: ...
+
+class ModuleType:
+    __name__: str
+    __file__: str
+    __dict__: Dict[str, Any]
+    __loader__: Optional[_LoaderProtocol]
+    __package__: Optional[str]
+    __spec__: Optional[ModuleSpec]
+    def __init__(self, name: str, doc: Optional[str] = ...) -> None: ...
 
 class GeneratorType:
     gi_code: CodeType

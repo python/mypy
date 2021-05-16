@@ -2188,7 +2188,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if op != '=' and (typ.type.fullname, op) not in self.partial_type_augmented_ops:
                 return
             # TODO: some logic here duplicates the None partial type counterpart
-            #       inlined in check_assignment(), see # 8043.
+            #       inlined in check_assignment(), see #8043.
             partial_types = self.find_partial_types(var)
             if partial_types is None:
                 return
@@ -2905,7 +2905,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return True
 
     def is_valid_defaultdict_partial_value_type(self, t: ProperType) -> bool:
-        """Check if t can be used as the basis for a partial defaultddict value type.
+        """Check if t can be used as the basis for a partial defaultdict value type.
 
         Examples:
 
@@ -3961,9 +3961,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                ) -> Tuple[TypeMap, TypeMap]:
         """Narrow types based on any checks of the type ``type(x) == T``
 
-        :param node: The node that might contain the comparison
-
-        :param expr_indices: The list of indices of expressions in ``node`` that are being compared
+        Args:
+            node: The node that might contain the comparison
+            expr_indices: The list of indices of expressions in ``node`` that are being
+                compared
         """
         type_map = self.type_map
 

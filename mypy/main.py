@@ -23,7 +23,7 @@ from mypy.fscache import FileSystemCache
 from mypy.errors import CompileError
 from mypy.errorcodes import error_codes
 from mypy.options import Options, BuildType
-from mypy.config_parser import parse_version, parse_config_file
+from mypy.config_parser import get_config_module_names, parse_version, parse_config_file
 from mypy.split_namespace import SplitNamespace
 
 from mypy.version import __version__
@@ -103,8 +103,9 @@ def main(script_path: Optional[str],
     if options.warn_unused_configs and options.unused_configs and not options.incremental:
         print("Warning: unused section(s) in %s: %s" %
               (options.config_file,
-               ", ".join("[mypy-%s]" % glob for glob in options.per_module_options.keys()
-                         if glob in options.unused_configs)),
+              get_config_module_names(options.config_file,
+                                      [glob for glob in options.per_module_options.keys()
+                                      if glob in options.unused_configs])),
               file=stderr)
     maybe_write_junit_xml(time.time() - t0, serious, messages, options)
 
@@ -154,7 +155,7 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
             # Assume we want to manually format the text
             return super()._fill_text(text, width, indent)
         else:
-            # Assume we want argparse to manage wrapping, indentating, and
+            # Assume we want argparse to manage wrapping, indenting, and
             # formatting the text for us.
             return argparse.HelpFormatter._fill_text(self, text, width, indent)
 
@@ -452,7 +453,8 @@ def process_options(args: List[str],
         help="Configuration file, must have a [mypy] section "
              "(defaults to {})".format(', '.join(defaults.CONFIG_FILES)))
     add_invertible_flag('--warn-unused-configs', default=False, strict_flag=True,
-                        help="Warn about unused '[mypy-<pattern>]' config sections",
+                        help="Warn about unused '[mypy-<pattern>]' or '[[tool.mypy.overrides]]' "
+                             "config sections",
                         group=config_group)
 
     imports_group = parser.add_argument_group(

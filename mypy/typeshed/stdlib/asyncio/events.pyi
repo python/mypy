@@ -9,6 +9,7 @@ from asyncio.transports import BaseTransport
 from asyncio.unix_events import AbstractChildWatcher
 from socket import AddressFamily, SocketKind, _Address, _RetAddress, socket
 from typing import IO, Any, Awaitable, Callable, Dict, Generator, List, Optional, Sequence, Tuple, TypeVar, Union, overload
+from typing_extensions import Literal
 
 if sys.version_info >= (3, 7):
     from contextvars import Context
@@ -399,19 +400,31 @@ class AbstractEventLoop(metaclass=ABCMeta):
         protocol_factory: _ProtocolFactory,
         cmd: Union[bytes, str],
         *,
-        stdin: Any = ...,
-        stdout: Any = ...,
-        stderr: Any = ...,
+        stdin: Union[int, IO[Any], None] = ...,
+        stdout: Union[int, IO[Any], None] = ...,
+        stderr: Union[int, IO[Any], None] = ...,
+        universal_newlines: Literal[False] = ...,
+        shell: Literal[True] = ...,
+        bufsize: Literal[0] = ...,
+        encoding: None = ...,
+        errors: None = ...,
+        text: Literal[False, None] = ...,
         **kwargs: Any,
     ) -> _TransProtPair: ...
     @abstractmethod
     async def subprocess_exec(
         self,
         protocol_factory: _ProtocolFactory,
+        program: Any,
         *args: Any,
-        stdin: Any = ...,
-        stdout: Any = ...,
-        stderr: Any = ...,
+        stdin: Union[int, IO[Any], None] = ...,
+        stdout: Union[int, IO[Any], None] = ...,
+        stderr: Union[int, IO[Any], None] = ...,
+        universal_newlines: Literal[False] = ...,
+        shell: Literal[True] = ...,
+        bufsize: Literal[0] = ...,
+        encoding: None = ...,
+        errors: None = ...,
         **kwargs: Any,
     ) -> _TransProtPair: ...
     @abstractmethod
@@ -447,7 +460,7 @@ class AbstractEventLoop(metaclass=ABCMeta):
     @abstractmethod
     def add_signal_handler(self, sig: int, callback: Callable[..., Any], *args: Any) -> None: ...
     @abstractmethod
-    def remove_signal_handler(self, sig: int) -> None: ...
+    def remove_signal_handler(self, sig: int) -> bool: ...
     # Error handlers.
     @abstractmethod
     def set_exception_handler(self, handler: Optional[_ExceptionHandler]) -> None: ...

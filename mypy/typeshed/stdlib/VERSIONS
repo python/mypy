@@ -1,4 +1,5 @@
 __future__: 2.7
+__main__: 2.7
 _ast: 3.6
 _bisect: 2.7
 _bootlocale: 3.6
@@ -13,7 +14,6 @@ _dummy_thread: 3.6
 _dummy_threading: 2.7
 _heapq: 2.7
 _imp: 3.6
-_importlib_modulespec: 3.6
 _json: 3.6
 _markupbase: 3.6
 _msi: 2.7

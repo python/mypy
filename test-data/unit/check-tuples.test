@@ -1496,3 +1496,29 @@ def f() -> Tuple[str, ...]:
     return ('', )
 reveal_type(2 * f())  # N: Revealed type is "builtins.tuple[builtins.str*]"
 [builtins fixtures/tuple.pyi]
+
+[case testSingleUndefinedTypeAndTuple]
+from typing import Tuple
+
+class Foo:
+    ...
+
+class Bar(aaaaaaaaaa):  # E: Name "aaaaaaaaaa" is not defined
+    ...
+
+class FooBarTuple(Tuple[Foo, Bar]):
+    ...
+[builtins fixtures/tuple.pyi]
+
+[case testMultipleUndefinedTypeAndTuple]
+from typing import Tuple
+
+class Foo(aaaaaaaaaa):  # E: Name "aaaaaaaaaa" is not defined
+    ...
+
+class Bar(aaaaaaaaaa):  # E: Name "aaaaaaaaaa" is not defined
+    ...
+
+class FooBarTuple(Tuple[Foo, Bar]):
+    ...
+[builtins fixtures/tuple.pyi]

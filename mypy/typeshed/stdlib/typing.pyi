@@ -56,9 +56,24 @@ if sys.version_info < (3, 7):
     class GenericMeta(type): ...
 
 if sys.version_info >= (3, 10):
+    class ParamSpecArgs:
+        __origin__: ParamSpec
+        def __init__(self, origin: ParamSpec) -> None: ...
+    class ParamSpecKwargs:
+        __origin__: ParamSpec
+        def __init__(self, origin: ParamSpec) -> None: ...
     class ParamSpec:
         __name__: str
-        def __init__(self, name: str) -> None: ...
+        __bound__: Optional[Type[Any]]
+        __covariant__: bool
+        __contravariant__: bool
+        def __init__(
+            self, name: str, *, bound: Union[None, Type[Any], str] = ..., contravariant: bool = ..., covariant: bool = ...
+        ) -> None: ...
+        @property
+        def args(self) -> ParamSpecArgs: ...
+        @property
+        def kwargs(self) -> ParamSpecKwargs: ...
     Concatenate: _SpecialForm = ...
     TypeAlias: _SpecialForm = ...
     TypeGuard: _SpecialForm = ...
@@ -603,12 +618,7 @@ if sys.version_info >= (3, 7):
     ]
 else:
     _get_type_hints_obj_allowed_types = Union[
-        object,
-        Callable[..., Any],
-        FunctionType,
-        BuiltinFunctionType,
-        MethodType,
-        ModuleType,
+        object, Callable[..., Any], FunctionType, BuiltinFunctionType, MethodType, ModuleType,
     ]
 
 if sys.version_info >= (3, 9):
@@ -621,9 +631,7 @@ if sys.version_info >= (3, 9):
 
 else:
     def get_type_hints(
-        obj: _get_type_hints_obj_allowed_types,
-        globalns: Optional[Dict[str, Any]] = ...,
-        localns: Optional[Dict[str, Any]] = ...,
+        obj: _get_type_hints_obj_allowed_types, globalns: Optional[Dict[str, Any]] = ..., localns: Optional[Dict[str, Any]] = ...
     ) -> Dict[str, Any]: ...
 
 if sys.version_info >= (3, 8):
@@ -688,3 +696,6 @@ if sys.version_info >= (3, 7):
         def __eq__(self, other: Any) -> bool: ...
         def __hash__(self) -> int: ...
         def __repr__(self) -> str: ...
+
+if sys.version_info >= (3, 10):
+    def is_typeddict(tp: Any) -> bool: ...

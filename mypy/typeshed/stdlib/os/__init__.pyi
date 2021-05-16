@@ -8,7 +8,7 @@ from _typeshed import (
     OpenBinaryModeWriting,
     OpenTextMode,
 )
-from builtins import OSError, _PathLike
+from builtins import OSError
 from io import BufferedRandom, BufferedReader, BufferedWriter, FileIO, TextIOWrapper as _TextIOWrapper
 from posix import listdir as listdir, times_result
 from subprocess import Popen
@@ -28,12 +28,14 @@ from typing import (
     MutableMapping,
     NoReturn,
     Optional,
+    Protocol,
     Sequence,
     Set,
     Tuple,
     TypeVar,
     Union,
     overload,
+    runtime_checkable,
 )
 from typing_extensions import Literal
 
@@ -46,6 +48,7 @@ if sys.version_info >= (3, 9):
 _supports_unicode_filenames = path.supports_unicode_filenames
 
 _T = TypeVar("_T")
+_AnyStr_co = TypeVar("_AnyStr_co", str, bytes, covariant=True)
 
 # ----- os variables -----
 
@@ -301,7 +304,9 @@ class stat_result:
     st_creator: int
     st_type: int
 
-PathLike = _PathLike  # See comment in builtins
+@runtime_checkable
+class PathLike(Protocol[_AnyStr_co]):
+    def __fspath__(self) -> _AnyStr_co: ...
 
 _FdOrAnyPath = Union[int, AnyPath]
 
@@ -428,6 +433,7 @@ if sys.platform != "win32":
     def unsetenv(__name: Union[bytes, str]) -> None: ...
 
 _Opener = Callable[[str, int], int]
+
 @overload
 def fdopen(
     fd: int,

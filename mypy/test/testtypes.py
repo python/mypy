@@ -11,14 +11,13 @@ from mypy.sametypes import is_same_type
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.types import (
     UnboundType, AnyType, CallableType, TupleType, TypeVarDef, Type, Instance, NoneType,
-    Overloaded, TypeType, UnionType, UninhabitedType, TypeVarId, TypeOfAny,
-    LiteralType, get_proper_type
+    Overloaded, TypeType, UnionType, UninhabitedType, TypeVarId, TypeOfAny, get_proper_type
 )
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.subtypes import is_subtype, is_more_precise, is_proper_subtype
 from mypy.test.typefixture import TypeFixture, InterfaceTypeFixture
 from mypy.state import strict_optional_set
-from mypy.typeops import true_only, false_only
+from mypy.typeops import true_only, false_only, make_simplified_union
 
 
 class TypesSuite(Suite):
@@ -299,9 +298,9 @@ class TypeOpsSuite(Suite):
     def test_is_proper_subtype_and_subtype_literal_types(self) -> None:
         fx = self.fx
 
-        lit1 = LiteralType(1, fx.a)
-        lit2 = LiteralType("foo", fx.d)
-        lit3 = LiteralType("bar", fx.d)
+        lit1 = fx.lit1
+        lit2 = fx.lit2
+        lit3 = fx.lit3
 
         assert_true(is_proper_subtype(lit1, fx.a))
         assert_false(is_proper_subtype(lit1, fx.d))
@@ -450,6 +449,40 @@ class TypeOpsSuite(Suite):
             assert_false(fo.items[0].can_be_true)
             assert_true(fo.items[0].can_be_false)
             assert_true(fo.items[1] is tup_type)
+
+    def test_simplified_union(self) -> None:
+        fx = self.fx
+
+        self.assert_simplified_union([fx.a, fx.a], fx.a)
+        self.assert_simplified_union([fx.a, fx.b], fx.a)
+        self.assert_simplified_union([fx.a, fx.d], UnionType([fx.a, fx.d]))
+        self.assert_simplified_union([fx.a, fx.uninhabited], fx.a)
+        self.assert_simplified_union([fx.ga, fx.gs2a], fx.ga)
+        self.assert_simplified_union([fx.ga, fx.gsab], UnionType([fx.ga, fx.gsab]))
+        self.assert_simplified_union([fx.ga, fx.gsba], fx.ga)
+        self.assert_simplified_union([fx.a, UnionType([fx.d])], UnionType([fx.a, fx.d]))
+        self.assert_simplified_union([fx.a, UnionType([fx.a])], fx.a)
+        self.assert_simplified_union([fx.b, UnionType([fx.c, UnionType([fx.d])])],
+                                     UnionType([fx.b, fx.c, fx.d]))
+        self.assert_simplified_union([fx.lit1, fx.a], fx.a)
+        self.assert_simplified_union([fx.lit1, fx.lit1], fx.lit1)
+        self.assert_simplified_union([fx.lit1, fx.lit2], UnionType([fx.lit1, fx.lit2]))
+        self.assert_simplified_union([fx.lit1, fx.lit3], UnionType([fx.lit1, fx.lit3]))
+        self.assert_simplified_union([fx.lit1, fx.uninhabited], fx.lit1)
+        self.assert_simplified_union([fx.lit1_inst, fx.a], fx.a)
+        self.assert_simplified_union([fx.lit1_inst, fx.lit1_inst], fx.lit1_inst)
+        self.assert_simplified_union([fx.lit1_inst, fx.lit2_inst],
+                                     UnionType([fx.lit1_inst, fx.lit2_inst]))
+        self.assert_simplified_union([fx.lit1_inst, fx.lit3_inst],
+                                     UnionType([fx.lit1_inst, fx.lit3_inst]))
+        self.assert_simplified_union([fx.lit1_inst, fx.uninhabited], fx.lit1_inst)
+        self.assert_simplified_union([fx.lit1, fx.lit1_inst], UnionType([fx.lit1, fx.lit1_inst]))
+        self.assert_simplified_union([fx.lit1, fx.lit2_inst], UnionType([fx.lit1, fx.lit2_inst]))
+        self.assert_simplified_union([fx.lit1, fx.lit3_inst], UnionType([fx.lit1, fx.lit3_inst]))
+
+    def assert_simplified_union(self, original: List[Type], union: Type) -> None:
+        assert_equal(make_simplified_union(original), union)
+        assert_equal(make_simplified_union(list(reversed(original))), union)
 
     # Helpers
 
@@ -723,9 +756,9 @@ class JoinSuite(Suite):
     def test_literal_type(self) -> None:
         a = self.fx.a
         d = self.fx.d
-        lit1 = LiteralType(1, a)
-        lit2 = LiteralType(2, a)
-        lit3 = LiteralType("foo", d)
+        lit1 = self.fx.lit1
+        lit2 = self.fx.lit2
+        lit3 = self.fx.lit3
 
         self.assert_join(lit1, lit1, lit1)
         self.assert_join(lit1, a, a)
@@ -951,10 +984,9 @@ class MeetSuite(Suite):
 
     def test_literal_type(self) -> None:
         a = self.fx.a
-        d = self.fx.d
-        lit1 = LiteralType(1, a)
-        lit2 = LiteralType(2, a)
-        lit3 = LiteralType("foo", d)
+        lit1 = self.fx.lit1
+        lit2 = self.fx.lit2
+        lit3 = self.fx.lit3
 
         self.assert_meet(lit1, lit1, lit1)
         self.assert_meet(lit1, a, lit1)
@@ -1011,11 +1043,10 @@ class SameTypeSuite(Suite):
 
     def test_literal_type(self) -> None:
         b = self.fx.b  # Reminder: b is a subclass of a
-        d = self.fx.d
 
-        lit1 = LiteralType(1, b)
-        lit2 = LiteralType(2, b)
-        lit3 = LiteralType("foo", d)
+        lit1 = self.fx.lit1
+        lit2 = self.fx.lit2
+        lit3 = self.fx.lit3
 
         self.assert_same(lit1, lit1)
         self.assert_same(UnionType([lit1, lit2]), UnionType([lit1, lit2]))
