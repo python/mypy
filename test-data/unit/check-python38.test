@@ -18,7 +18,7 @@ def f(): ...  # E: Function is missing a return type annotation \
 def d(f): ...  # type: ignore
 @d
 # type: ignore
-def f(): ...  # type: ignore  # E: unused 'type: ignore' comment
+def f(): ...  # type: ignore  # E: unused "type: ignore" comment
 
 [case testIgnoreDecoratedFunction2]
 # flags: --disallow-untyped-defs
@@ -91,28 +91,28 @@ def g(x: int): ...
 
 [case testIgnoreScopeUnused1]
 # flags: --warn-unused-ignores
-(  # type: ignore  # E: unused 'type: ignore' comment
-    "IGNORE"  # type: ignore  # E: unused 'type: ignore' comment
-    +  # type: ignore  # E: unused 'type: ignore' comment
+(  # type: ignore  # E: unused "type: ignore" comment
+    "IGNORE"  # type: ignore  # E: unused "type: ignore" comment
+    +  # type: ignore  # E: unused "type: ignore" comment
     0  # type: ignore
-)  # type: ignore  # E: unused 'type: ignore' comment
+)  # type: ignore  # E: unused "type: ignore" comment
 [builtins fixtures/primitives.pyi]
 
 [case testIgnoreScopeUnused2]
 # flags: --warn-unused-ignores
-(  # type: ignore  # E: unused 'type: ignore' comment
+(  # type: ignore  # E: unused "type: ignore" comment
     "IGNORE"
     -  # type: ignore
-    0  # type: ignore  # E: unused 'type: ignore' comment
-)  # type: ignore  # E: unused 'type: ignore' comment
+    0  # type: ignore  # E: unused "type: ignore" comment
+)  # type: ignore  # E: unused "type: ignore" comment
 
 [case testIgnoreScopeUnused3]
 # flags: --warn-unused-ignores
-(  # type: ignore  # E: unused 'type: ignore' comment
+(  # type: ignore  # E: unused "type: ignore" comment
     "IGNORE"
     /
     0  # type: ignore
-)  # type: ignore  # E: unused 'type: ignore' comment
+)  # type: ignore  # E: unused "type: ignore" comment
 
 [case testPEP570ArgTypesMissing]
 # flags: --disallow-untyped-defs

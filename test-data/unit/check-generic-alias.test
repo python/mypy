@@ -9,7 +9,7 @@ t3: list[str]  # E: "list" is not subscriptable, use "typing.List" instead
 t4: tuple
 t5: tuple[int]  # E: "tuple" is not subscriptable, use "typing.Tuple" instead
 t6: tuple[int, str]  # E: "tuple" is not subscriptable, use "typing.Tuple" instead
-t7: tuple[int, ...]  # E: Unexpected '...' \
+t7: tuple[int, ...]  # E: Unexpected "..." \
                      # E: "tuple" is not subscriptable, use "typing.Tuple" instead
 
 t8: dict = {}
