@@ -3718,7 +3718,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         if numargs == 1:
             s = ''
         if len(expr.args) != numargs:
-            self.fail("'%s' expects %d argument%s" % (name, numargs, s),
+            self.fail('"%s" expects %d argument%s' % (name, numargs, s),
                       expr)
             return False
         if expr.arg_kinds != [ARG_POS] * numargs:
