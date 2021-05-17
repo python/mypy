@@ -5,9 +5,9 @@ from collections.abc import Callable, Iterable, Mapping, MutableMapping, Sequenc
 from string import Template
 from time import struct_time
 from types import FrameType, TracebackType
-from typing import IO, Any, ClassVar, Optional, Tuple, Type, Union
+from typing import IO, Any, ClassVar, Optional, Pattern, Tuple, Type, Union
 
-_SysExcInfoType = Union[Tuple[type, BaseException, Optional[TracebackType]], Tuple[None, None, None]]
+_SysExcInfoType = Union[Tuple[Type[BaseException], BaseException, Optional[TracebackType]], Tuple[None, None, None]]
 _ExcInfoType = Union[None, bool, _SysExcInfoType, BaseException]
 _ArgsType = Union[Tuple[Any, ...], Mapping[str, Any]]
 _FilterType = Union[Filter, Callable[[LogRecord], int]]
@@ -31,7 +31,7 @@ class Filterer(object):
     def removeFilter(self, filter: _FilterType) -> None: ...
     def filter(self, record: LogRecord) -> bool: ...
 
-class Manager(object):
+class Manager(object):  # undocumented
     root: RootLogger
     disable: int
     emittedNoHandlerWarning: bool
@@ -44,14 +44,14 @@ class Manager(object):
     def setLogRecordFactory(self, factory: Callable[..., LogRecord]) -> None: ...
 
 class Logger(Filterer):
-    name: str
-    level: int
-    parent: Union[Logger, PlaceHolder]
+    name: str  # undocumented
+    level: int  # undocumented
+    parent: Optional[Logger]  # undocumented
     propagate: bool
-    handlers: list[Handler]
-    disabled: int
+    handlers: list[Handler]  # undocumented
+    disabled: bool  # undocumented
     root: ClassVar[RootLogger]  # undocumented
-    manager: ClassVar[Manager]  # undocumented
+    manager: Manager  # undocumented
     def __init__(self, name: str, level: _Level = ...) -> None: ...
     def setLevel(self, level: _Level) -> None: ...
     def isEnabledFor(self, level: int) -> bool: ...
@@ -204,7 +204,6 @@ class Logger(Filterer):
             extra: Optional[dict[str, Any]] = ...,
             **kwargs: Any,
         ) -> None: ...
-        fatal = critical
         def log(
             self,
             level: int,
@@ -233,6 +232,7 @@ class Logger(Filterer):
             extra: Optional[dict[str, Any]] = ...,
             stack_info: bool = ...,
         ) -> None: ...  # undocumented
+    fatal = critical
     def filter(self, record: LogRecord) -> bool: ...
     def addHandler(self, hdlr: Handler) -> None: ...
     def removeHandler(self, hdlr: Handler) -> None: ...
@@ -255,6 +255,7 @@ class Logger(Filterer):
         sinfo: Optional[str] = ...,
     ) -> LogRecord: ...
     def hasHandlers(self) -> bool: ...
+    def callHandlers(self, record: LogRecord) -> None: ...  # undocumented
 
 CRITICAL: int
 FATAL: int
@@ -271,26 +272,31 @@ class Handler(Filterer):
     lock: Optional[threading.Lock]  # undocumented
     name: Optional[str]  # undocumented
     def __init__(self, level: _Level = ...) -> None: ...
+    def get_name(self) -> str: ...  # undocumented
+    def set_name(self, name: str) -> None: ...  # undocumented
     def createLock(self) -> None: ...
     def acquire(self) -> None: ...
     def release(self) -> None: ...
     def setLevel(self, level: _Level) -> None: ...
-    def setFormatter(self, fmt: Formatter) -> None: ...
+    def setFormatter(self, fmt: Optional[Formatter]) -> None: ...
     def filter(self, record: LogRecord) -> bool: ...
     def flush(self) -> None: ...
     def close(self) -> None: ...
-    def handle(self, record: LogRecord) -> None: ...
+    def handle(self, record: LogRecord) -> bool: ...
     def handleError(self, record: LogRecord) -> None: ...
     def format(self, record: LogRecord) -> str: ...
     def emit(self, record: LogRecord) -> None: ...
 
 class Formatter:
     converter: Callable[[Optional[float]], struct_time]
-    _fmt: Optional[str]
-    datefmt: Optional[str]
-    _style: PercentStyle
+    _fmt: Optional[str]  # undocumented
+    datefmt: Optional[str]  # undocumented
+    _style: PercentStyle  # undocumented
     default_time_format: str
-    default_msec_format: str
+    if sys.version_info >= (3, 9):
+        default_msec_format: Optional[str]
+    else:
+        default_msec_format: str
 
     if sys.version_info >= (3, 8):
         def __init__(
@@ -303,15 +309,25 @@ class Formatter:
     def formatException(self, ei: _SysExcInfoType) -> str: ...
     def formatMessage(self, record: LogRecord) -> str: ...  # undocumented
     def formatStack(self, stack_info: str) -> str: ...
+    def usesTime(self) -> bool: ...  # undocumented
+
+class BufferingFormatter:
+    linefmt: Formatter
+    def __init__(self, linefmt: Optional[Formatter] = ...) -> None: ...
+    def formatHeader(self, records: Sequence[LogRecord]) -> str: ...
+    def formatFooter(self, records: Sequence[LogRecord]) -> str: ...
+    def format(self, records: Sequence[LogRecord]) -> str: ...
 
 class Filter:
+    name: str  # undocumented
+    nlen: int  # undocumented
     def __init__(self, name: str = ...) -> None: ...
     def filter(self, record: LogRecord) -> bool: ...
 
 class LogRecord:
     args: _ArgsType
     asctime: str
-    created: int
+    created: float
     exc_info: Optional[_SysExcInfoType]
     exc_text: Optional[str]
     filename: str
@@ -320,17 +336,17 @@ class LogRecord:
     levelno: int
     lineno: int
     module: str
-    msecs: int
+    msecs: float
     message: str
     msg: str
     name: str
     pathname: str
-    process: int
-    processName: str
-    relativeCreated: int
+    process: Optional[int]
+    processName: Optional[str]
+    relativeCreated: float
     stack_info: Optional[str]
-    thread: int
-    threadName: str
+    thread: Optional[int]
+    threadName: Optional[str]
     def __init__(
         self,
         name: str,
@@ -347,8 +363,13 @@ class LogRecord:
 
 class LoggerAdapter:
     logger: Logger
-    extra: Mapping[str, Any]
-    def __init__(self, logger: Logger, extra: Mapping[str, Any]) -> None: ...
+    manager: Manager  # undocumented
+    if sys.version_info >= (3, 10):
+        extra: Optional[Mapping[str, Any]]
+        def __init__(self, logger: Logger, extra: Optional[Mapping[str, Any]]) -> None: ...
+    else:
+        extra: Mapping[str, Any]
+        def __init__(self, logger: Logger, extra: Mapping[str, Any]) -> None: ...
     def process(self, msg: Any, kwargs: MutableMapping[str, Any]) -> tuple[Any, MutableMapping[str, Any]]: ...
     if sys.version_info >= (3, 8):
         def debug(
@@ -508,7 +529,7 @@ class LoggerAdapter:
         ) -> None: ...
     def isEnabledFor(self, level: int) -> bool: ...
     def getEffectiveLevel(self) -> int: ...
-    def setLevel(self, level: Union[int, str]) -> None: ...
+    def setLevel(self, level: _Level) -> None: ...
     def hasHandlers(self) -> bool: ...
     def _log(
         self,
@@ -519,9 +540,11 @@ class LoggerAdapter:
         extra: Optional[dict[str, Any]] = ...,
         stack_info: bool = ...,
     ) -> None: ...  # undocumented
+    @property
+    def name(self) -> str: ...  # undocumented
 
 def getLogger(name: Optional[str] = ...) -> Logger: ...
-def getLoggerClass() -> type: ...
+def getLoggerClass() -> Type[Logger]: ...
 def getLogRecordFactory() -> Callable[..., LogRecord]: ...
 
 if sys.version_info >= (3, 8):
@@ -675,7 +698,7 @@ else:
     def disable(level: int) -> None: ...
 
 def addLevelName(level: int, levelName: str) -> None: ...
-def getLevelName(level: Union[int, str]) -> Any: ...
+def getLevelName(level: _Level) -> Any: ...
 def makeLogRecord(dict: Mapping[str, Any]) -> LogRecord: ...
 
 if sys.version_info >= (3, 8):
@@ -724,12 +747,24 @@ class FileHandler(StreamHandler):
     mode: str  # undocumented
     encoding: Optional[str]  # undocumented
     delay: bool  # undocumented
-    def __init__(self, filename: StrPath, mode: str = ..., encoding: Optional[str] = ..., delay: bool = ...) -> None: ...
+    if sys.version_info >= (3, 9):
+        errors: Optional[str]  # undocumented
+        def __init__(
+            self,
+            filename: StrPath,
+            mode: str = ...,
+            encoding: Optional[str] = ...,
+            delay: bool = ...,
+            errors: Optional[str] = ...,
+        ) -> None: ...
+    else:
+        def __init__(self, filename: StrPath, mode: str = ..., encoding: Optional[str] = ..., delay: bool = ...) -> None: ...
     def _open(self) -> IO[Any]: ...
 
 class NullHandler(Handler): ...
 
-class PlaceHolder:
+class PlaceHolder:  # undocumented
+    loggerMap: dict[Logger, None]
     def __init__(self, alogger: Logger) -> None: ...
     def append(self, alogger: Logger) -> None: ...
 
@@ -740,18 +775,24 @@ class RootLogger(Logger):
 
 root: RootLogger
 
-class PercentStyle(object):
+class PercentStyle(object):  # undocumented
     default_format: str
     asctime_format: str
     asctime_search: str
+    if sys.version_info >= (3, 8):
+        validation_pattern: Pattern[str]
     _fmt: str
     def __init__(self, fmt: str) -> None: ...
     def usesTime(self) -> bool: ...
+    if sys.version_info >= (3, 8):
+        def validate(self) -> None: ...
     def format(self, record: Any) -> str: ...
 
-class StrFormatStyle(PercentStyle): ...
+class StrFormatStyle(PercentStyle):  # undocumented
+    fmt_spec = Any
+    field_spec = Any
 
-class StringTemplateStyle(PercentStyle):
+class StringTemplateStyle(PercentStyle):  # undocumented
     _tpl: Template
 
 _STYLES: dict[str, tuple[PercentStyle, str]]

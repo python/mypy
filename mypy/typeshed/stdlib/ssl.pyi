@@ -1,9 +1,11 @@
-import enum
 import socket
 import sys
 from _typeshed import StrPath
 from typing import Any, Callable, ClassVar, Dict, Iterable, List, NamedTuple, Optional, Set, Text, Tuple, Type, Union, overload
 from typing_extensions import Literal
+
+if sys.version_info >= (3, 4):
+    import enum
 
 _PCTRTT = Tuple[Tuple[str, str], ...]
 _PCTRTTT = Tuple[_PCTRTT, ...]
@@ -228,7 +230,7 @@ class _ASN1Object(NamedTuple):
     longname: str
     oid: str
 
-if sys.version_info >= (3, 0):
+if sys.version_info >= (3, 4):
     class Purpose(_ASN1Object, enum.Enum):
         SERVER_AUTH: _ASN1Object
         CLIENT_AUTH: _ASN1Object

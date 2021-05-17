@@ -1,4 +1,3 @@
-import enum
 import sys
 from typing import AnyStr, List, Optional, Text, Type, Union
 
@@ -12,6 +11,7 @@ class PyCompileError(Exception):
     def __init__(self, exc_type: Type[BaseException], exc_value: BaseException, file: str, msg: str = ...) -> None: ...
 
 if sys.version_info >= (3, 7):
+    import enum
     class PycInvalidationMode(enum.Enum):
         TIMESTAMP: int = ...
         CHECKED_HASH: int = ...

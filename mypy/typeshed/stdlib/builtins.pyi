@@ -27,7 +27,6 @@ from typing import (
     BinaryIO,
     ByteString,
     Callable,
-    Container,
     Dict,
     FrozenSet,
     Generic,
@@ -624,7 +623,7 @@ class bytearray(MutableSequence[int], ByteString):
     def __gt__(self, x: bytes) -> bool: ...
     def __ge__(self, x: bytes) -> bool: ...
 
-class memoryview(Sized, Container[int]):
+class memoryview(Sized, Sequence[int]):
     format: str
     itemsize: int
     shape: Optional[Tuple[int, ...]]
@@ -827,6 +826,7 @@ class dict(MutableMapping[_KT, _VT], Generic[_KT, _VT]):
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
         def __or__(self, __value: Mapping[_KT, _VT]) -> Dict[_KT, _VT]: ...
+        def __ror__(self, __value: Mapping[_KT, _VT]) -> Dict[_KT, _VT]: ...
         def __ior__(self, __value: Mapping[_KT, _VT]) -> Dict[_KT, _VT]: ...
 
 class set(MutableSet[_T], Generic[_T]):
