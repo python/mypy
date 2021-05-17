@@ -749,7 +749,7 @@ def load_stdlib_py_versions(custom_typeshed_dir: Optional[str]
     """Return dict with minimum and maximum Python versions of stdlib modules.
 
     The contents look like
-    {..., 'secrets': ((3, 6), None), 'symbol': (2, 7), (3, 9)), ...}
+    {..., 'secrets': ((3, 6), None), 'symbol': ((2, 7), (3, 9)), ...}
 
     None means there is no maximum version.
     """
@@ -774,10 +774,14 @@ def load_stdlib_py_versions(custom_typeshed_dir: Optional[str]
     # Modules that are Python 2 only or have separate Python 2 stubs
     # have stubs in @python2/ and may need an override.
     python2_dir = os.path.join(stdlib_dir, PYTHON2_STUB_DIR)
-    for fnam in os.listdir(python2_dir):
-        fnam = fnam.replace(".pyi", "")
-        max_version = result.get(fnam, ((2, 7), None))[1]
-        result[fnam] = (2, 7), max_version
+    try:
+        for fnam in os.listdir(python2_dir):
+            fnam = fnam.replace(".pyi", "")
+            max_version = result.get(fnam, ((2, 7), None))[1]
+            result[fnam] = (2, 7), max_version
+    except FileNotFoundError:
+        # Ignore error to support installations where Python 2 stubs aren't available.
+        pass
 
     return result
 
