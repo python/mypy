@@ -1,7 +1,6 @@
 import os
 import sys
 from _typeshed import AnyPath, BytesPath, StrPath
-from genericpath import exists as exists
 from typing import Any, AnyStr, Callable, List, Optional, Sequence, Text, Tuple, TypeVar, overload
 
 _T = TypeVar("_T")
@@ -40,6 +39,7 @@ else:
 # Also, in Python 2 mixed sequences of Text and bytes results in either Text or bytes
 # So, fall back to Any
 def commonprefix(m: Sequence[AnyPath]) -> Any: ...
+def exists(path: AnyPath) -> bool: ...
 def lexists(path: AnyPath) -> bool: ...
 
 # These return float if os.stat_float_times() == True,

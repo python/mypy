@@ -5,7 +5,6 @@ from types import CodeType, FrameType, TracebackType
 # Definitions of special type checking related constructs.  Their definitions
 # are not used, so their value does not matter.
 
-overload = object()
 Any = object()
 
 class TypeVar:
@@ -40,6 +39,7 @@ Final: _SpecialForm = ...
 _F = TypeVar("_F", bound=Callable[..., Any])
 
 def final(f: _F) -> _F: ...
+def overload(f: _F) -> _F: ...
 
 Literal: _SpecialForm = ...
 # TypedDict is a (non-subscriptable) special form.
@@ -63,11 +63,9 @@ _KT_co = TypeVar("_KT_co", covariant=True)  # Key type covariant containers.
 _VT_co = TypeVar("_VT_co", covariant=True)  # Value type covariant containers.
 _T_contra = TypeVar("_T_contra", contravariant=True)  # Ditto contravariant.
 _TC = TypeVar("_TC", bound=Type[object])
-_C = TypeVar("_C", bound=Callable[..., Any])
 
-no_type_check = object()
-
-def no_type_check_decorator(decorator: _C) -> _C: ...
+def no_type_check(f: _F) -> _F: ...
+def no_type_check_decorator(decorator: _F) -> _F: ...
 
 # Type aliases and type constructors
 
@@ -492,4 +490,4 @@ class _TypedDict(Mapping[str, object], metaclass=ABCMeta):
 def NewType(name: str, tp: Type[_T]) -> Type[_T]: ...
 
 # This itself is only available during type checking
-def type_check_only(func_or_cls: _C) -> _C: ...
+def type_check_only(func_or_cls: _F) -> _F: ...
