@@ -258,8 +258,8 @@ def f(x): # type: (*X) -> Y
 def g(*x): # type: (X) -> Y
     pass
 [out]
-file:1: error: Inconsistent use of '*' in function signature
-file:3: error: Inconsistent use of '*' in function signature
+file:1: error: Inconsistent use of "*" in function signature
+file:3: error: Inconsistent use of "*" in function signature
 
 [case testCommentFunctionAnnotationVarArgMispatch2-skip]
 # see mypy issue #1997
@@ -268,10 +268,10 @@ def f(*x, **y): # type: (**X, *Y) -> Z
 def g(*x, **y): # type: (*X, *Y) -> Z
     pass
 [out]
-file:1: error: Inconsistent use of '*' in function signature
+file:1: error: Inconsistent use of "*" in function signature
 file:3: error: syntax error in type comment
-file:3: error: Inconsistent use of '*' in function signature
-file:3: error: Inconsistent use of '**' in function signature
+file:3: error: Inconsistent use of "*" in function signature
+file:3: error: Inconsistent use of "**" in function signature
 
 [case testPrintStatementInPython35]
 # flags: --python-version 3.5
