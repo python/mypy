@@ -1,6 +1,7 @@
 # Test cases for strings (compile and run)
 
 [case testStr]
+from typing import Tuple
 def f() -> str:
     return 'some string'
 def g() -> str:
@@ -17,10 +18,15 @@ def eq(x: str) -> int:
     elif x != 'bar':
         return 1
     return 2
+def match(x: str, y: str) -> Tuple[bool, bool]:
+    return (x.startswith(y), x.endswith(y))
 
 [file driver.py]
-from native import f, g, tostr, booltostr, concat, eq
+from native import f, g, tostr, booltostr, concat, eq, match
+import sys
+
 assert f() == 'some string'
+assert f() is sys.intern('some string')
 assert g() == 'some\a \v \t \x7f " \n \0string 🐍'
 assert tostr(57) == '57'
 assert concat('foo', 'bar') == 'foobar'
@@ -32,6 +38,11 @@ assert eq('bar') == 2
 
 assert int(tostr(0)) == 0
 assert int(tostr(20)) == 20
+assert match('', '') == (True, True)
+assert match('abc', '') == (True, True)
+assert match('abc', 'a') == (True, False)
+assert match('abc', 'c') == (False, True)
+assert match('', 'abc') == (False, False)
 
 [case testStringOps]
 from typing import List, Optional
@@ -139,3 +150,31 @@ def test_slicing() -> None:
     assert s[1:big_int] == "oobar"
     assert s[big_int:] == ""
     assert s[-big_int:-1] == "fooba"
+
+def test_str_replace() -> None:
+    a = "foofoofoo"
+    assert a.replace("foo", "bar") == "barbarbar"
+    assert a.replace("foo", "bar", -1) == "barbarbar"
+    assert a.replace("foo", "bar", 1) == "barfoofoo"
+    assert a.replace("foo", "bar", 4) == "barbarbar"
+    assert a.replace("aaa", "bar") == "foofoofoo"
+    assert a.replace("ofo", "xyzw") == "foxyzwxyzwo"
+
+def is_true(x: str) -> bool:
+    if x:
+        return True
+    else:
+        return False
+
+def is_false(x: str) -> bool:
+    if not x:
+        return True
+    else:
+        return False
+
+def test_str_to_bool() -> None:
+    assert is_false('')
+    assert not is_true('')
+    for x in 'a', 'foo', 'bar', 'some string':
+        assert is_true(x)
+        assert not is_false(x)

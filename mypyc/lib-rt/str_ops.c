@@ -34,7 +34,7 @@ PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
             }
             return unicode;
         } else {
-            PyErr_SetString(PyExc_IndexError, "string index out of range");
+            PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
             return NULL;
         }
     } else {
@@ -47,10 +47,32 @@ PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split)
 {
     Py_ssize_t temp_max_split = CPyTagged_AsSsize_t(max_split);
     if (temp_max_split == -1 && PyErr_Occurred()) {
-        PyErr_SetString(PyExc_OverflowError, "Python int too large to convert to C ssize_t");
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
             return NULL;
     }
     return PyUnicode_Split(str, sep, temp_max_split);
+}
+
+PyObject *CPyStr_Replace(PyObject *str, PyObject *old_substr, PyObject *new_substr, CPyTagged max_replace)
+{
+    Py_ssize_t temp_max_replace = CPyTagged_AsSsize_t(max_replace);
+    if (temp_max_replace == -1 && PyErr_Occurred()) {
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+            return NULL;
+    }
+    return PyUnicode_Replace(str, old_substr, new_substr, temp_max_replace);
+}
+
+bool CPyStr_Startswith(PyObject *self, PyObject *subobj) {
+    Py_ssize_t start = 0;
+    Py_ssize_t end = PyUnicode_GET_LENGTH(self);
+    return PyUnicode_Tailmatch(self, subobj, start, end, -1);
+}
+
+bool CPyStr_Endswith(PyObject *self, PyObject *subobj) {
+    Py_ssize_t start = 0;
+    Py_ssize_t end = PyUnicode_GET_LENGTH(self);
+    return PyUnicode_Tailmatch(self, subobj, start, end, 1);
 }
 
 /* This does a dodgy attempt to append in place  */
@@ -79,4 +101,9 @@ PyObject *CPyStr_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
         return PyUnicode_Substring(obj, startn, endn);
     }
     return CPyObject_GetSlice(obj, start, end);
+}
+/* Check if the given string is true (i.e. it's length isn't zero) */
+bool CPyStr_IsTrue(PyObject *obj) {
+    Py_ssize_t length = PyUnicode_GET_LENGTH(obj);
+    return length != 0;
 }

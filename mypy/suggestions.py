@@ -220,7 +220,7 @@ class SuggestionEngine:
         self.manager = fgmanager.manager
         self.plugin = self.manager.plugin
         self.graph = fgmanager.graph
-        self.finder = SourceFinder(self.manager.fscache)
+        self.finder = SourceFinder(self.manager.fscache, self.manager.options)
 
         self.give_json = json
         self.no_errors = no_errors
@@ -640,6 +640,7 @@ class SuggestionEngine:
         If check_errors is true, raise an exception if there are errors.
         """
         assert state.path is not None
+        self.fgmanager.flush_cache()
         return self.fgmanager.update([(state.id, state.path)], [])
 
     def ensure_loaded(self, state: State, force: bool = False) -> MypyFile:

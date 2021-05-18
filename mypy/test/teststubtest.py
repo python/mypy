@@ -7,6 +7,7 @@ import sys
 import tempfile
 import textwrap
 import unittest
+from pathlib import Path
 from typing import Any, Callable, Iterator, List, Optional
 
 import mypy.stubtest
@@ -27,11 +28,42 @@ def use_tmp_dir() -> Iterator[None]:
 
 TEST_MODULE_NAME = "test_module"
 
+stubtest_builtins_stub = """
+from typing import Generic, Mapping, Sequence, TypeVar, overload
+
+T = TypeVar('T')
+T_co = TypeVar('T_co', covariant=True)
+KT = TypeVar('KT')
+VT = TypeVar('VT')
+
+class object:
+    def __init__(self) -> None: pass
+class type: ...
+
+class tuple(Sequence[T_co], Generic[T_co]): ...
+class dict(Mapping[KT, VT]): ...
+
+class function: pass
+class ellipsis: pass
+
+class int: ...
+class float: ...
+class bool(int): ...
+class str: ...
+class bytes: ...
+
+def property(f: T) -> T: ...
+def classmethod(f: T) -> T: ...
+def staticmethod(f: T) -> T: ...
+"""
+
 
 def run_stubtest(
     stub: str, runtime: str, options: List[str], config_file: Optional[str] = None,
 ) -> str:
     with use_tmp_dir():
+        with open("builtins.pyi", "w") as f:
+            f.write(stubtest_builtins_stub)
         with open("{}.pyi".format(TEST_MODULE_NAME), "w") as f:
             f.write(stub)
         with open("{}.py".format(TEST_MODULE_NAME), "w") as f:
@@ -47,9 +79,14 @@ def run_stubtest(
 
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
-            test_stubs(parse_options([TEST_MODULE_NAME] + options))
+            test_stubs(
+                parse_options([TEST_MODULE_NAME] + options),
+                use_builtins_fixtures=True
+            )
 
-        return output.getvalue()
+        module_path = Path(os.getcwd()) / TEST_MODULE_NAME
+        # remove cwd as it's not available from outside
+        return output.getvalue().replace(str(module_path), TEST_MODULE_NAME)
 
 
 class Case:
@@ -60,18 +97,25 @@ class Case:
 
 
 def collect_cases(fn: Callable[..., Iterator[Case]]) -> Callable[..., None]:
-    """Repeatedly invoking run_stubtest is slow, so use this decorator to combine cases.
+    """run_stubtest used to be slow, so we used this decorator to combine cases.
 
-    We could also manually combine cases, but this allows us to keep the contrasting stub and
-    runtime definitions next to each other.
+    If you're reading this and bored, feel free to refactor this and make it more like
+    other mypy tests.
 
     """
 
     def test(*args: Any, **kwargs: Any) -> None:
         cases = list(fn(*args, **kwargs))
-        expected_errors = set(
-            "{}.{}".format(TEST_MODULE_NAME, c.error) for c in cases if c.error is not None
-        )
+        expected_errors = set()
+        for c in cases:
+            if c.error is None:
+                continue
+            expected_error = "{}.{}".format(TEST_MODULE_NAME, c.error)
+            assert expected_error not in expected_errors, (
+                "collect_cases merges cases into a single stubtest invocation; we already "
+                "expect an error for {}".format(expected_error)
+            )
+            expected_errors.add(expected_error)
         output = run_stubtest(
             stub="\n\n".join(textwrap.dedent(c.stub.lstrip("\n")) for c in cases),
             runtime="\n\n".join(textwrap.dedent(c.runtime.lstrip("\n")) for c in cases),
@@ -508,6 +552,12 @@ class StubtestUnit(unittest.TestCase):
             runtime="x4 = (1, 3, 5)",
             error="x4",
         )
+        yield Case(stub="x5: int", runtime="def x5(a, b): pass", error="x5")
+        yield Case(
+            stub="def foo(a: int, b: int) -> None: ...\nx6 = foo",
+            runtime="def foo(a, b): pass\ndef x6(c, d): pass",
+            error="x6",
+        )
         yield Case(
             stub="""
             class X:
@@ -578,7 +628,39 @@ class StubtestUnit(unittest.TestCase):
         yield Case(stub="", runtime="__all__ += ['y']\ny = 5", error="y")
         yield Case(stub="", runtime="__all__ += ['g']\ndef g(): pass", error="g")
         # Here we should only check that runtime has B, since the stub explicitly re-exports it
-        yield Case(stub="from mystery import A, B as B  # type: ignore", runtime="", error="B")
+        yield Case(
+            stub="from mystery import A, B as B, C as D  # type: ignore", runtime="", error="B"
+        )
+
+    @collect_cases
+    def test_missing_no_runtime_all(self) -> Iterator[Case]:
+        yield Case(stub="", runtime="import sys", error=None)
+        yield Case(stub="", runtime="def g(): ...", error="g")
+
+    @collect_cases
+    def test_special_dunders(self) -> Iterator[Case]:
+        yield Case(
+            stub="class A:\n  def __init__(self, a: int, b: int) -> None: ...",
+            runtime="class A:\n  def __init__(self, a, bx): pass",
+            error="A.__init__",
+        )
+        yield Case(
+            stub="class B:\n  def __call__(self, c: int, d: int) -> None: ...",
+            runtime="class B:\n  def __call__(self, c, dx): pass",
+            error="B.__call__",
+        )
+        if sys.version_info >= (3, 6):
+            yield Case(
+                stub="class C:\n  def __init_subclass__(cls, e: int, **kwargs: int) -> None: ...",
+                runtime="class C:\n  def __init_subclass__(cls, e, **kwargs): pass",
+                error=None,
+            )
+        if sys.version_info >= (3, 9):
+            yield Case(
+                stub="class D:\n  def __class_getitem__(cls, type: type) -> type: ...",
+                runtime="class D:\n  def __class_getitem__(cls, type): ...",
+                error=None,
+            )
 
     @collect_cases
     def test_name_mangling(self) -> Iterator[Case]:
@@ -665,6 +747,11 @@ class StubtestMiscUnit(unittest.TestCase):
         assert not output
 
         output = run_stubtest(
+            stub="", runtime="def f(): pass", options=["--ignore-missing-stub"]
+        )
+        assert not output
+
+        output = run_stubtest(
             stub="def f(__a): ...", runtime="def f(a): pass", options=["--ignore-positional-only"]
         )
         assert not output
@@ -726,14 +813,14 @@ class StubtestMiscUnit(unittest.TestCase):
     def test_mypy_build(self) -> None:
         output = run_stubtest(stub="+", runtime="", options=[])
         assert remove_color_code(output) == (
-            "error: failed mypy compile.\n{}.pyi:1: "
+            "error: not checking stubs due to failed mypy compile:\n{}.pyi:1: "
             "error: invalid syntax\n".format(TEST_MODULE_NAME)
         )
 
         output = run_stubtest(stub="def f(): ...\ndef f(): ...", runtime="", options=[])
         assert remove_color_code(output) == (
-            "error: failed mypy build.\n{}.pyi:2: "
-            "error: Name 'f' already defined on line 1\n".format(TEST_MODULE_NAME)
+            'error: not checking stubs due to mypy build errors:\n{}.pyi:2: '
+            'error: Name "f" already defined on line 1\n'.format(TEST_MODULE_NAME)
         )
 
     def test_missing_stubs(self) -> None:
@@ -746,6 +833,10 @@ class StubtestMiscUnit(unittest.TestCase):
         stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None)
         assert "builtins" in stdlib
         assert "os" in stdlib
+        assert "os.path" in stdlib
+        assert "mypy_extensions" not in stdlib
+        assert "asyncio" in stdlib
+        assert ("dataclasses" in stdlib) == (sys.version_info >= (3, 7))
 
     def test_signature(self) -> None:
         def f(a: int, b: int, *, c: int, d: int = 0, **kwargs: Any) -> None:
@@ -755,12 +846,6 @@ class StubtestMiscUnit(unittest.TestCase):
             str(mypy.stubtest.Signature.from_inspect_signature(inspect.signature(f)))
             == "def (a, b, *, c, d = ..., **kwargs)"
         )
-
-
-class StubtestIntegration(unittest.TestCase):
-    def test_typeshed(self) -> None:
-        # check we don't crash while checking typeshed
-        test_stubs(parse_options(["--check-typeshed"]))
 
     def test_config_file(self) -> None:
         runtime = "temp = 5\n"

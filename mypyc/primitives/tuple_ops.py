@@ -4,15 +4,16 @@ Note: Varying-length tuples are represented as boxed Python tuple
 objects, i.e. tuple_rprimitive (RPrimitive), not RTuple.
 """
 
-from mypyc.ir.ops import ERR_MAGIC
+from mypyc.ir.ops import ERR_MAGIC, ERR_FALSE
 from mypyc.ir.rtypes import (
-    tuple_rprimitive, int_rprimitive, list_rprimitive, object_rprimitive, c_pyssize_t_rprimitive
+    tuple_rprimitive, int_rprimitive, list_rprimitive, object_rprimitive,
+    c_pyssize_t_rprimitive, bit_rprimitive
 )
-from mypyc.primitives.registry import c_method_op, c_function_op, c_custom_op
+from mypyc.primitives.registry import method_op, function_op, custom_op
 
 
 # tuple[index] (for an int index)
-tuple_get_item_op = c_method_op(
+tuple_get_item_op = method_op(
     name='__getitem__',
     arg_types=[tuple_rprimitive, int_rprimitive],
     return_type=object_rprimitive,
@@ -20,15 +21,30 @@ tuple_get_item_op = c_method_op(
     error_kind=ERR_MAGIC)
 
 # Construct a boxed tuple from items: (item1, item2, ...)
-new_tuple_op = c_custom_op(
+new_tuple_op = custom_op(
     arg_types=[c_pyssize_t_rprimitive],
     return_type=tuple_rprimitive,
     c_function_name='PyTuple_Pack',
     error_kind=ERR_MAGIC,
     var_arg_type=object_rprimitive)
 
+new_tuple_with_length_op = custom_op(
+    arg_types=[c_pyssize_t_rprimitive],
+    return_type=tuple_rprimitive,
+    c_function_name='PyTuple_New',
+    error_kind=ERR_MAGIC)
+
+# PyTuple_SET_ITEM does no error checking,
+# and should only be used to fill in brand new tuples.
+new_tuple_set_item_op = custom_op(
+    arg_types=[tuple_rprimitive, int_rprimitive, object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name='CPySequenceTuple_SetItemUnsafe',
+    error_kind=ERR_FALSE,
+    steals=[False, False, True])
+
 # Construct tuple from a list.
-list_tuple_op = c_function_op(
+list_tuple_op = function_op(
     name='builtins.tuple',
     arg_types=[list_rprimitive],
     return_type=tuple_rprimitive,
@@ -37,7 +53,7 @@ list_tuple_op = c_function_op(
     priority=2)
 
 # Construct tuple from an arbitrary (iterable) object.
-c_function_op(
+function_op(
     name='builtins.tuple',
     arg_types=[object_rprimitive],
     return_type=tuple_rprimitive,
@@ -45,7 +61,7 @@ c_function_op(
     error_kind=ERR_MAGIC)
 
 # tuple[begin:end]
-tuple_slice_op = c_custom_op(
+tuple_slice_op = custom_op(
     arg_types=[tuple_rprimitive, int_rprimitive, int_rprimitive],
     return_type=object_rprimitive,
     c_function_name='CPySequenceTuple_GetSlice',

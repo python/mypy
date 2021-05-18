@@ -20,6 +20,7 @@ class object:
 class type:
     def __init__(self, o: object) -> None: ...
     __name__ : str
+    __annotations__: Dict[str, Any]
 
 class ellipsis: pass
 
@@ -37,6 +38,12 @@ class int:
     def __mod__(self, x: int) -> int: pass
     def __neg__(self) -> int: pass
     def __pos__(self) -> int: pass
+    def __invert__(self) -> int: pass
+    def __and__(self, n: int) -> int: pass
+    def __or__(self, n: int) -> int: pass
+    def __xor__(self, n: int) -> int: pass
+    def __lshift__(self, x: int) -> int: pass
+    def __rshift__(self, x: int) -> int: pass
     def __eq__(self, n: object) -> bool: pass
     def __ne__(self, n: object) -> bool: pass
     def __lt__(self, n: int) -> bool: pass
@@ -67,6 +74,9 @@ class str:
     def join(self, x: Iterable[str]) -> str: pass
     def format(self, *args: Any, **kwargs: Any) -> str: ...
     def upper(self) -> str: pass
+    def startswith(self, x: str, start: int=..., end: int=...) -> bool: pass
+    def endswith(self, x: str, start: int=..., end: int=...) -> bool: pass
+    def replace(self, old: str, new: str, maxcount: Optional[int] = None) -> str: pass
 
 class float:
     def __init__(self, x: object) -> None: pass
@@ -74,6 +84,7 @@ class float:
     def __sub__(self, n: float) -> float: pass
     def __mul__(self, n: float) -> float: pass
     def __truediv__(self, n: float) -> float: pass
+    def __neg__(self) -> float: pass
 
 class complex:
     def __init__(self, x: object, y: object = None) -> None: pass
@@ -81,6 +92,7 @@ class complex:
     def __sub__(self, n: complex) -> complex: pass
     def __mul__(self, n: complex) -> complex: pass
     def __truediv__(self, n: complex) -> complex: pass
+    def __neg__(self) -> complex: pass
 
 class bytes:
     def __init__(self, x: object) -> None: pass
@@ -89,9 +101,20 @@ class bytes:
     def __ne__(self, x: object) -> bool: pass
     def join(self, x: Iterable[object]) -> bytes: pass
 
-class bool:
+class bool(int):
     def __init__(self, o: object = ...) -> None: ...
-
+    @overload
+    def __and__(self, n: bool) -> bool: ...
+    @overload
+    def __and__(self, n: int) -> int: ...
+    @overload
+    def __or__(self, n: bool) -> bool: ...
+    @overload
+    def __or__(self, n: int) -> int: ...
+    @overload
+    def __xor__(self, n: bool) -> bool: ...
+    @overload
+    def __xor__(self, n: int) -> int: ...
 
 class tuple(Generic[T_co], Sequence[T_co], Iterable[T_co]):
     def __init__(self, i: Iterable[T_co]) -> None: pass
@@ -124,6 +147,9 @@ class list(Generic[T], Sequence[T], Iterable[T]):
     def extend(self, l: Iterable[T]) -> None: pass
     def insert(self, i: int, x: T) -> None: pass
     def sort(self) -> None: pass
+    def reverse(self) -> None: pass
+    def remove(self, o: T) -> None: pass
+    def index(self, o: T) -> int: pass
 
 class dict(Mapping[K, V]):
     @overload
@@ -149,6 +175,8 @@ class dict(Mapping[K, V]):
     def values(self) -> Iterable[V]: pass
     def items(self) -> Iterable[Tuple[K, V]]: pass
     def clear(self) -> None: pass
+    def copy(self) -> Dict[K, V]: pass
+    def setdefault(self, k: K, v: Optional[V] = None) -> Optional[V]: pass
 
 class set(Generic[T]):
     def __init__(self, i: Optional[Iterable[T]] = None) -> None: pass
@@ -231,6 +259,9 @@ def enumerate(x: Iterable[T]) -> Iterator[Tuple[int, T]]: ...
 def zip(x: Iterable[T], y: Iterable[S]) -> Iterator[Tuple[T, S]]: ...
 @overload
 def zip(x: Iterable[T], y: Iterable[S], z: Iterable[V]) -> Iterator[Tuple[T, S, V]]: ...
+def eval(e: str) -> Any: ...
+def abs(x: float) -> float: ...
+def exit() -> None: ...
 
 # Dummy definitions.
 class classmethod: pass

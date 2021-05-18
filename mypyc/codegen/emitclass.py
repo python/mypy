@@ -1,15 +1,16 @@
 """Code generation for native classes and related wrappers."""
 
-
 from typing import Optional, List, Tuple, Dict, Callable, Mapping, Set
+
 from mypy.ordered_dict import OrderedDict
 
-from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX
+from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX, use_fastcall
 from mypyc.codegen.emit import Emitter, HeaderDeclaration
 from mypyc.codegen.emitfunc import native_function_header
 from mypyc.codegen.emitwrapper import (
     generate_dunder_wrapper, generate_hash_wrapper, generate_richcompare_wrapper,
-    generate_bool_wrapper, generate_get_wrapper,
+    generate_bool_wrapper, generate_get_wrapper, generate_len_wrapper,
+    generate_set_del_item_wrapper, generate_contains_wrapper
 )
 from mypyc.ir.rtypes import RType, RTuple, object_rprimitive
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
@@ -35,7 +36,7 @@ SlotTable = Mapping[str, Tuple[str, SlotGenerator]]
 
 SLOT_DEFS = {
     '__init__': ('tp_init', lambda c, t, e: generate_init_for_class(c, t, e)),
-    '__call__': ('tp_call', wrapper_slot),
+    '__call__': ('tp_call', lambda c, t, e: generate_call_wrapper(c, t, e)),
     '__str__': ('tp_str', native_slot),
     '__repr__': ('tp_repr', native_slot),
     '__next__': ('tp_iternext', native_slot),
@@ -46,6 +47,13 @@ SLOT_DEFS = {
 
 AS_MAPPING_SLOT_DEFS = {
     '__getitem__': ('mp_subscript', generate_dunder_wrapper),
+    '__setitem__': ('mp_ass_subscript', generate_set_del_item_wrapper),
+    '__delitem__': ('mp_ass_subscript', generate_set_del_item_wrapper),
+    '__len__': ('mp_length', generate_len_wrapper),
+}  # type: SlotTable
+
+AS_SEQUENCE_SLOT_DEFS = {
+    '__contains__': ('sq_contains', generate_contains_wrapper),
 }  # type: SlotTable
 
 AS_NUMBER_SLOT_DEFS = {
@@ -60,6 +68,7 @@ AS_ASYNC_SLOT_DEFS = {
 
 SIDE_TABLES = [
     ('as_mapping', 'PyMappingMethods', AS_MAPPING_SLOT_DEFS),
+    ('as_sequence', 'PySequenceMethods', AS_SEQUENCE_SLOT_DEFS),
     ('as_number', 'PyNumberMethods', AS_NUMBER_SLOT_DEFS),
     ('as_async', 'PyAsyncMethods', AS_ASYNC_SLOT_DEFS),
 ]
@@ -71,13 +80,30 @@ ALWAYS_FILL = {
 }
 
 
+def generate_call_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    if emitter.use_vectorcall():
+        # Use vectorcall wrapper if supported (PEP 590).
+        return 'PyVectorcall_Call'
+    else:
+        # On older Pythons use the legacy wrapper.
+        return wrapper_slot(cl, fn, emitter)
+
+
 def generate_slots(cl: ClassIR, table: SlotTable, emitter: Emitter) -> Dict[str, str]:
     fields = OrderedDict()  # type: Dict[str, str]
+    generated = {}  # type: Dict[str, str]
     # Sort for determinism on Python 3.5
-    for name, (slot, generator) in sorted(table.items()):
+    for name, (slot, generator) in sorted(table.items(), reverse=True):
         method_cls = cl.get_method_and_class(name)
         if method_cls and (method_cls[1] == cl or name in ALWAYS_FILL):
-            fields[slot] = generator(cl, method_cls[0], emitter)
+            if slot in generated:
+                # Reuse previously generated wrapper.
+                fields[slot] = generated[slot]
+            else:
+                # Generate new wrapper.
+                name = generator(cl, method_cls[0], emitter)
+                fields[slot] = name
+                generated[slot] = name
 
     return fields
 
@@ -241,6 +267,10 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     flags = ['Py_TPFLAGS_DEFAULT', 'Py_TPFLAGS_HEAPTYPE', 'Py_TPFLAGS_BASETYPE']
     if generate_full:
         flags.append('Py_TPFLAGS_HAVE_GC')
+    if cl.has_method('__call__') and emitter.use_vectorcall():
+        fields['tp_vectorcall_offset'] = 'offsetof({}, vectorcall)'.format(
+            cl.struct_name(emitter.names))
+        flags.append('_Py_TPFLAGS_HAVE_VECTORCALL')
     fields['tp_flags'] = ' | '.join(flags)
 
     emitter.emit_line("static PyTypeObject {}_template_ = {{".format(emitter.type_struct_name(cl)))
@@ -277,6 +307,8 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
     lines += ['typedef struct {',
               'PyObject_HEAD',
               'CPyVTableItem *vtable;']
+    if cl.has_method('__call__') and emitter.use_vectorcall():
+        lines.append('vectorcallfunc vectorcall;')
     for base in reversed(cl.base_mro):
         if not base.is_trait:
             for attr, rtype in base.attributes.items():
@@ -450,6 +482,10 @@ def generate_setup_for_class(cl: ClassIR,
         emitter.emit_line('}')
     else:
         emitter.emit_line('self->vtable = {};'.format(vtable_name))
+
+    if cl.has_method('__call__') and emitter.use_vectorcall():
+        name = cl.method_decl('__call__').cname(emitter.names)
+        emitter.emit_line('self->vectorcall = {}{};'.format(PREFIX, name))
 
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():
@@ -627,8 +663,11 @@ def generate_dealloc_for_class(cl: ClassIR,
     emitter.emit_line('{}({} *self)'.format(dealloc_func_name, cl.struct_name(emitter.names)))
     emitter.emit_line('{')
     emitter.emit_line('PyObject_GC_UnTrack(self);')
+    # The trashcan is needed to handle deep recursive deallocations
+    emitter.emit_line('CPy_TRASHCAN_BEGIN(self, {})'.format(dealloc_func_name))
     emitter.emit_line('{}(self);'.format(clear_func_name))
     emitter.emit_line('Py_TYPE(self)->tp_free((PyObject *)self);')
+    emitter.emit_line('CPy_TRASHCAN_END(self)')
     emitter.emit_line('}')
 
 
@@ -641,7 +680,11 @@ def generate_methods_table(cl: ClassIR,
             continue
         emitter.emit_line('{{"{}",'.format(fn.name))
         emitter.emit_line(' (PyCFunction){}{},'.format(PREFIX, fn.cname(emitter.names)))
-        flags = ['METH_VARARGS', 'METH_KEYWORDS']
+        if use_fastcall(emitter.capi_version):
+            flags = ['METH_FASTCALL']
+        else:
+            flags = ['METH_VARARGS']
+        flags.append('METH_KEYWORDS')
         if fn.decl.kind == FUNC_STATICMETHOD:
             flags.append('METH_STATIC')
         elif fn.decl.kind == FUNC_CLASSMETHOD:

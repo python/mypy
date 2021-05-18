@@ -49,7 +49,7 @@ class B(A):
     def f(self, b: str, a: int) -> None: pass # E: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int" \
                                               # N: This violates the Liskov substitution principle \
                                               # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides \
-                                              # E: Argument 2 of "f" is incompatible with supertype "A"; supertype defines the argument type as "str" 
+                                              # E: Argument 2 of "f" is incompatible with supertype "A"; supertype defines the argument type as "str"
 
 class C(A):
     def f(self, foo: int, bar: str) -> None: pass
@@ -247,6 +247,16 @@ if int():
     o = f
 
 class A: pass
+[builtins fixtures/tuple.pyi]
+
+[case testReturnEmptyTuple]
+from typing import Tuple
+def f(x): # type: (int) -> () # E: Syntax error in type annotation \
+                              # N: Suggestion: Use Tuple[()] instead of () for an empty tuple, or None for a function without a return value
+   pass
+
+def g(x: int) -> Tuple[()]:
+   pass
 [builtins fixtures/tuple.pyi]
 
 [case testFunctionSubtypingWithVoid]
@@ -727,7 +737,7 @@ import typing
 def f(x: object) -> None:
     def g(y):
         pass
-    g() # E: Too few arguments for "g"
+    g() # E: Missing positional argument "y" in call to "g"
     g(x)
 [out]
 
@@ -1070,7 +1080,7 @@ class A:
 [case testForwardReferenceToDynamicallyTypedStaticMethod]
 def f(self) -> None:
     A.x(1).y
-    A.x() # E: Too few arguments for "x"
+    A.x() # E: Missing positional argument "x" in call to "x"
 
 class A:
     @staticmethod
@@ -1092,7 +1102,7 @@ class A:
 [case testForwardReferenceToDynamicallyTypedClassMethod]
 def f(self) -> None:
     A.x(1).y
-    A.x() # E: Too few arguments for "x"
+    A.x() # E: Missing positional argument "a" in call to "x"
 
 class A:
     @classmethod
@@ -1310,7 +1320,7 @@ class Base:
     @decorator
     def method(self) -> None: pass
 [out]
-tmp/foo/base.py:3: error: Name 'decorator' is not defined
+tmp/foo/base.py:3: error: Name "decorator" is not defined
 
 
 -- Conditional function definition
@@ -1380,7 +1390,7 @@ from typing import Any
 x = None # type: Any
 if x:
     def f(): pass
-def f(): pass # E: Name 'f' already defined on line 4
+def f(): pass # E: Name "f" already defined on line 4
 
 [case testIncompatibleConditionalFunctionDefinition]
 from typing import Any
@@ -1494,7 +1504,7 @@ def g() -> None:
     f = None
     if object():
         def f(x: int) -> None: pass
-    f() # E: Too few arguments for "f"
+    f() # E: Missing positional argument "x" in call to "f"
     f(1)
     f('') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 [out]
@@ -1522,7 +1532,7 @@ if g(C()):
     def f(x: B) -> B: pass
 
 [case testRedefineFunctionDefinedAsVariableInitializedToEmptyList]
-f = [] # E: Need type annotation for 'f' (hint: "f: List[<type>] = ...")
+f = [] # E: Need type annotation for "f" (hint: "f: List[<type>] = ...")
 if object():
     def f(): pass # E: Incompatible redefinition
 f()  # E: "List[Any]" not callable
@@ -1626,7 +1636,7 @@ x = None # type: Any
 class A:
     if x:
         def f(self): pass
-    def f(self): pass # E: Name 'f' already defined on line 5
+    def f(self): pass # E: Name "f" already defined on line 5
 
 [case testIncompatibleConditionalMethodDefinition]
 from typing import Any
@@ -1782,7 +1792,7 @@ import mypy_extensions as ext
 
 def WrongArg(x, y): return y
 def a(f: Callable[[WrongArg(int, 'x')], int]): pass # E: Invalid argument constructor "__main__.WrongArg"
-def b(f: Callable[[BadArg(int, 'x')], int]): pass # E: Name 'BadArg' is not defined
+def b(f: Callable[[BadArg(int, 'x')], int]): pass # E: Name "BadArg" is not defined
 def d(f: Callable[[ext.VarArg(int)], int]): pass # ok
 def e(f: Callable[[VARG(), ext.KwArg()], int]): pass # ok
 def g(f: Callable[[ext.Arg(name='x', type=int)], int]): pass # ok
@@ -1841,7 +1851,7 @@ def k(f: Callable[[KwArg(), NamedArg(Any, 'x')], int]): pass # E: A **kwargs arg
 from typing import Callable
 from mypy_extensions import Arg, VarArg, KwArg, DefaultArg
 
-def f(f: Callable[[Arg(int, 'x'), int, Arg(int, 'x')], int]): pass # E: Duplicate argument 'x' in Callable
+def f(f: Callable[[Arg(int, 'x'), int, Arg(int, 'x')], int]): pass # E: Duplicate argument "x" in Callable
 
 [builtins fixtures/dict.pyi]
 
@@ -2139,7 +2149,7 @@ f = g # E: Incompatible types in assignment (expression has type "Callable[[Any,
 
 [case testRedefineFunction2]
 def f() -> None: pass
-def f() -> None: pass # E: Name 'f' already defined on line 1
+def f() -> None: pass # E: Name "f" already defined on line 1
 
 
 -- Special cases
@@ -2191,7 +2201,7 @@ from typing import Callable
 class A:
     def f(self) -> None:
         # In particular, test that the error message contains "g" of "A".
-        self.g() # E: Too few arguments for "g" of "A"
+        self.g() # E: Too few arguments for "g" of "A"   
         self.g(1)
     @dec
     def g(self, x: str) -> None: pass
@@ -2205,7 +2215,7 @@ def f() -> None:
 def g(x: int) -> None:
     pass
 h = f if bool() else g
-reveal_type(h) # N: Revealed type is 'builtins.function'
+reveal_type(h) # N: Revealed type is "builtins.function"
 h(7) # E: Cannot call function of unknown type
 [builtins fixtures/bool.pyi]
 
@@ -2268,23 +2278,23 @@ from typing import Callable, TypeVar
 T = TypeVar('T')
 
 f: Callable[[T], T]
-reveal_type(f)  # N: Revealed type is 'def [T] (T`-1) -> T`-1'
+reveal_type(f)  # N: Revealed type is "def [T] (T`-1) -> T`-1"
 def g(__x: T) -> T: pass
 f = g
-reveal_type(f)  # N: Revealed type is 'def [T] (T`-1) -> T`-1'
+reveal_type(f)  # N: Revealed type is "def [T] (T`-1) -> T`-1"
 i = f(3)
-reveal_type(i)  # N: Revealed type is 'builtins.int*'
+reveal_type(i)  # N: Revealed type is "builtins.int*"
 
 [case testFunctionReturningGenericFunction]
 from typing import Callable, TypeVar
 
 T = TypeVar('T')
 def deco() -> Callable[[T], T]: pass
-reveal_type(deco)  # N: Revealed type is 'def () -> def [T] (T`-1) -> T`-1'
+reveal_type(deco)  # N: Revealed type is "def () -> def [T] (T`-1) -> T`-1"
 f = deco()
-reveal_type(f)  # N: Revealed type is 'def [T] (T`-1) -> T`-1'
+reveal_type(f)  # N: Revealed type is "def [T] (T`-1) -> T`-1"
 i = f(3)
-reveal_type(i)  # N: Revealed type is 'builtins.int*'
+reveal_type(i)  # N: Revealed type is "builtins.int*"
 
 [case testFunctionReturningGenericFunctionPartialBinding]
 from typing import Callable, TypeVar
@@ -2293,11 +2303,11 @@ T = TypeVar('T')
 U = TypeVar('U')
 
 def deco(x: U) -> Callable[[T, U], T]: pass
-reveal_type(deco)  # N: Revealed type is 'def [U] (x: U`-1) -> def [T] (T`-2, U`-1) -> T`-2'
+reveal_type(deco)  # N: Revealed type is "def [U] (x: U`-1) -> def [T] (T`-2, U`-1) -> T`-2"
 f = deco("foo")
-reveal_type(f)  # N: Revealed type is 'def [T] (T`-2, builtins.str*) -> T`-2'
+reveal_type(f)  # N: Revealed type is "def [T] (T`-2, builtins.str*) -> T`-2"
 i = f(3, "eggs")
-reveal_type(i)  # N: Revealed type is 'builtins.int*'
+reveal_type(i)  # N: Revealed type is "builtins.int*"
 
 [case testFunctionReturningGenericFunctionTwoLevelBinding]
 from typing import Callable, TypeVar
@@ -2306,11 +2316,11 @@ T = TypeVar('T')
 R = TypeVar('R')
 def deco() -> Callable[[T], Callable[[T, R], R]]: pass
 f = deco()
-reveal_type(f)  # N: Revealed type is 'def [T] (T`-1) -> def [R] (T`-1, R`-2) -> R`-2'
+reveal_type(f)  # N: Revealed type is "def [T] (T`-1) -> def [R] (T`-1, R`-2) -> R`-2"
 g = f(3)
-reveal_type(g)  # N: Revealed type is 'def [R] (builtins.int*, R`-2) -> R`-2'
+reveal_type(g)  # N: Revealed type is "def [R] (builtins.int*, R`-2) -> R`-2"
 s = g(4, "foo")
-reveal_type(s)  # N: Revealed type is 'builtins.str*'
+reveal_type(s)  # N: Revealed type is "builtins.str*"
 
 [case testGenericFunctionReturnAsDecorator]
 from typing import Callable, TypeVar
@@ -2321,9 +2331,9 @@ def deco(__i: int) -> Callable[[T], T]: pass
 @deco(3)
 def lol(x: int) -> str: ...
 
-reveal_type(lol)  # N: Revealed type is 'def (x: builtins.int) -> builtins.str'
+reveal_type(lol)  # N: Revealed type is "def (x: builtins.int) -> builtins.str"
 s = lol(4)
-reveal_type(s)  # N: Revealed type is 'builtins.str'
+reveal_type(s)  # N: Revealed type is "builtins.str"
 
 [case testGenericFunctionOnReturnTypeOnly]
 from typing import TypeVar, List
@@ -2334,13 +2344,13 @@ def make_list() -> List[T]: pass
 
 l: List[int] = make_list()
 
-bad = make_list()  # E: Need type annotation for 'bad' (hint: "bad: List[<type>] = ...")
+bad = make_list()  # E: Need type annotation for "bad" (hint: "bad: List[<type>] = ...")
 [builtins fixtures/list.pyi]
 
 [case testAnonymousArgumentError]
 def foo(__b: int, x: int, y: int) -> int: pass
-foo(x=2, y=2)  # E: Missing positional argument
-foo(y=2)  # E: Missing positional arguments
+foo(x=2, y=2)  # E: Too few arguments for "foo"
+foo(y=2)  # E: Too few arguments for "foo"
 
 [case testMissingArgumentError]
 def f(a, b, c, d=None) -> None: pass
@@ -2363,18 +2373,18 @@ def test(a: str) -> (str,): # E: Syntax error in type annotation # N: Suggestion
 
 [case testReturnTypeLineNumberNewLine]
 def fn(a: str
-       ) -> badtype: # E: Name 'badtype' is not defined
+       ) -> badtype: # E: Name "badtype" is not defined
     pass
 
 [case testArgumentTypeLineNumberWithDecorator]
 def dec(f): pass
 
 @dec
-def some_method(self: badtype): pass # E: Name 'badtype' is not defined
+def some_method(self: badtype): pass # E: Name "badtype" is not defined
 
 [case TestArgumentTypeLineNumberNewline]
 def fn(
-        a: badtype) -> None: # E: Name 'badtype' is not defined
+        a: badtype) -> None: # E: Name "badtype" is not defined
     pass
 
 [case testInferredTypeSubTypeOfReturnType]
@@ -2382,14 +2392,14 @@ from typing import Union, Dict, List
 def f() -> List[Union[str, int]]:
     x = ['a']
     return x # E: Incompatible return value type (got "List[str]", expected "List[Union[str, int]]") \
-      # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+      # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
       # N: Consider using "Sequence" instead, which is covariant \
       # N: Perhaps you need a type annotation for "x"? Suggestion: "List[Union[str, int]]"
 
 def g() -> Dict[str, Union[str, int]]:
     x = {'a': 'a'}
     return x # E: Incompatible return value type (got "Dict[str, str]", expected "Dict[str, Union[str, int]]") \
-      # N: "Dict" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+      # N: "Dict" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
       # N: Consider using "Mapping" instead, which is covariant in the value type \
       # N: Perhaps you need a type annotation for "x"? Suggestion: "Dict[str, Union[str, int]]"
 
@@ -2401,7 +2411,7 @@ def h() -> Dict[Union[str, int], str]:
 def i() -> List[Union[int, float]]:
     x: List[int] = [1]
     return x # E: Incompatible return value type (got "List[int]", expected "List[Union[int, float]]") \
-      # N: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance \
+      # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
       # N: Consider using "Sequence" instead, which is covariant
 
 [builtins fixtures/dict.pyi]
@@ -2441,7 +2451,7 @@ def i() -> List[Union[str, int]]:
 [case testLambdaSemanal]
 f = lambda: xyz
 [out]
-main:1: error: Name 'xyz' is not defined
+main:1: error: Name "xyz" is not defined
 
 [case testLambdaTypeCheck]
 f = lambda: 1 + '1'
@@ -2452,7 +2462,7 @@ main:1: error: Unsupported operand types for + ("int" and "str")
 f = lambda: 5
 reveal_type(f)
 [out]
-main:2: note: Revealed type is 'def () -> builtins.int'
+main:2: note: Revealed type is "def () -> builtins.int"
 
 [case testRevealLocalsFunction]
 a = 1.0
@@ -2492,7 +2502,7 @@ def bar(x: Optional[int]) -> Optional[str]:
         return None
     return "number"
 
-reveal_type(bar(None))  # N: Revealed type is 'None'
+reveal_type(bar(None))  # N: Revealed type is "None"
 [builtins fixtures/isinstance.pyi]
 [out]
 
@@ -2510,7 +2520,7 @@ def bar(x: Optional[int]) -> Optional[str]:
         return None
     return "number"
 
-reveal_type(bar(None))  # N: Revealed type is 'None'
+reveal_type(bar(None))  # N: Revealed type is "None"
 [builtins fixtures/isinstance.pyi]
 [out]
 
@@ -2568,13 +2578,13 @@ import p
 def f() -> int: ...
 
 [case testLambdaDefaultTypeErrors]
-lambda a=nonsense: a  # E: Name 'nonsense' is not defined
+lambda a=nonsense: a  # E: Name "nonsense" is not defined
 lambda a=(1 + 'asdf'): a  # E: Unsupported operand types for + ("int" and "str")
-def f(x: int = i):  # E: Name 'i' is not defined
+def f(x: int = i):  # E: Name "i" is not defined
     i = 42
 
 [case testRevealTypeOfCallExpressionReturningNoneWorks]
 def foo() -> None:
     pass
 
-reveal_type(foo()) # N: Revealed type is 'None'
+reveal_type(foo()) # N: Revealed type is "None"

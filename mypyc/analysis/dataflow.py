@@ -6,11 +6,12 @@ from typing import Dict, Tuple, List, Set, TypeVar, Iterator, Generic, Optional,
 
 from mypyc.ir.ops import (
     Value, ControlOp,
-    BasicBlock, OpVisitor, Assign, LoadInt, LoadErrorValue, RegisterOp, Goto, Branch, Return, Call,
-    Environment, Box, Unbox, Cast, Op, Unreachable, TupleGet, TupleSet, GetAttr, SetAttr,
-    LoadStatic, InitStatic, PrimitiveOp, MethodCall, RaiseStandardError, CallC, LoadGlobal,
-    Truncate, BinaryIntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp, SetMem
+    BasicBlock, OpVisitor, Assign, AssignMulti, Integer, LoadErrorValue, RegisterOp, Goto, Branch,
+    Return, Call, Box, Unbox, Cast, Op, Unreachable, TupleGet, TupleSet, GetAttr, SetAttr,
+    LoadLiteral, LoadStatic, InitStatic, MethodCall, RaiseStandardError, CallC, LoadGlobal,
+    Truncate, IntOp, LoadMem, GetElementPtr, LoadAddress, ComparisonOp, SetMem, KeepAlive
 )
+from mypyc.ir.func_ir import all_values
 
 
 class CFG:
@@ -152,6 +153,10 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill]):
         raise NotImplementedError
 
     @abstractmethod
+    def visit_assign_multi(self, op: AssignMulti) -> GenAndKill:
+        raise NotImplementedError
+
+    @abstractmethod
     def visit_set_mem(self, op: SetMem) -> GenAndKill:
         raise NotImplementedError
 
@@ -161,13 +166,10 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill]):
     def visit_method_call(self, op: MethodCall) -> GenAndKill:
         return self.visit_register_op(op)
 
-    def visit_primitive_op(self, op: PrimitiveOp) -> GenAndKill:
-        return self.visit_register_op(op)
-
-    def visit_load_int(self, op: LoadInt) -> GenAndKill:
-        return self.visit_register_op(op)
-
     def visit_load_error_value(self, op: LoadErrorValue) -> GenAndKill:
+        return self.visit_register_op(op)
+
+    def visit_load_literal(self, op: LoadLiteral) -> GenAndKill:
         return self.visit_register_op(op)
 
     def visit_get_attr(self, op: GetAttr) -> GenAndKill:
@@ -209,7 +211,7 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill]):
     def visit_load_global(self, op: LoadGlobal) -> GenAndKill:
         return self.visit_register_op(op)
 
-    def visit_binary_int_op(self, op: BinaryIntOp) -> GenAndKill:
+    def visit_int_op(self, op: IntOp) -> GenAndKill:
         return self.visit_register_op(op)
 
     def visit_comparison_op(self, op: ComparisonOp) -> GenAndKill:
@@ -222,6 +224,9 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill]):
         return self.visit_register_op(op)
 
     def visit_load_address(self, op: LoadAddress) -> GenAndKill:
+        return self.visit_register_op(op)
+
+    def visit_keep_alive(self, op: KeepAlive) -> GenAndKill:
         return self.visit_register_op(op)
 
 
@@ -251,6 +256,10 @@ class DefinedVisitor(BaseAnalysisVisitor):
             return set(), {op.dest}
         else:
             return {op.dest}, set()
+
+    def visit_assign_multi(self, op: AssignMulti) -> GenAndKill:
+        # Array registers are special and we don't track the definedness of them.
+        return set(), set()
 
     def visit_set_mem(self, op: SetMem) -> GenAndKill:
         return set(), set()
@@ -315,6 +324,9 @@ class BorrowedArgumentsVisitor(BaseAnalysisVisitor):
             return set(), {op.dest}
         return set(), set()
 
+    def visit_assign_multi(self, op: AssignMulti) -> GenAndKill:
+        return set(), set()
+
     def visit_set_mem(self, op: SetMem) -> GenAndKill:
         return set(), set()
 
@@ -352,20 +364,24 @@ class UndefinedVisitor(BaseAnalysisVisitor):
     def visit_assign(self, op: Assign) -> GenAndKill:
         return set(), {op.dest}
 
+    def visit_assign_multi(self, op: AssignMulti) -> GenAndKill:
+        return set(), {op.dest}
+
     def visit_set_mem(self, op: SetMem) -> GenAndKill:
         return set(), set()
 
 
 def analyze_undefined_regs(blocks: List[BasicBlock],
                            cfg: CFG,
-                           env: Environment,
                            initial_defined: Set[Value]) -> AnalysisResult[Value]:
     """Calculate potentially undefined registers at each CFG location.
 
     A register is undefined if there is some path from initial block
     where it has an undefined value.
+
+    Function arguments are assumed to be always defined.
     """
-    initial_undefined = set(env.regs()) - initial_defined
+    initial_undefined = set(all_values([], blocks)) - initial_defined
     return run_analysis(blocks=blocks,
                         cfg=cfg,
                         gen_and_kill=UndefinedVisitor(),
@@ -374,28 +390,42 @@ def analyze_undefined_regs(blocks: List[BasicBlock],
                         kind=MAYBE_ANALYSIS)
 
 
+def non_trivial_sources(op: Op) -> Set[Value]:
+    result = set()
+    for source in op.sources():
+        if not isinstance(source, Integer):
+            result.add(source)
+    return result
+
+
 class LivenessVisitor(BaseAnalysisVisitor):
     def visit_branch(self, op: Branch) -> GenAndKill:
-        return set(op.sources()), set()
+        return non_trivial_sources(op), set()
 
     def visit_return(self, op: Return) -> GenAndKill:
-        return {op.reg}, set()
+        if not isinstance(op.value, Integer):
+            return {op.value}, set()
+        else:
+            return set(), set()
 
     def visit_unreachable(self, op: Unreachable) -> GenAndKill:
         return set(), set()
 
     def visit_register_op(self, op: RegisterOp) -> GenAndKill:
-        gen = set(op.sources())
+        gen = non_trivial_sources(op)
         if not op.is_void:
             return gen, {op}
         else:
             return gen, set()
 
     def visit_assign(self, op: Assign) -> GenAndKill:
-        return set(op.sources()), {op.dest}
+        return non_trivial_sources(op), {op.dest}
+
+    def visit_assign_multi(self, op: AssignMulti) -> GenAndKill:
+        return non_trivial_sources(op), {op.dest}
 
     def visit_set_mem(self, op: SetMem) -> GenAndKill:
-        return set(op.sources()), set()
+        return non_trivial_sources(op), set()
 
 
 def analyze_live_regs(blocks: List[BasicBlock],
