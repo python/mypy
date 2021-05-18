@@ -15,7 +15,7 @@ from mypy.patterns import (
     ClassPattern, SingletonPattern
 )
 from mypy.plugin import Plugin
-from mypy.subtypes import is_subtype, find_member
+from mypy.subtypes import is_subtype
 from mypy.typeops import try_getting_str_literals_from_type, make_simplified_union
 from mypy.types import (
     ProperType, AnyType, TypeOfAny, Instance, Type, UninhabitedType, get_proper_type,
@@ -392,12 +392,12 @@ class PatternChecker(PatternVisitor[PatternType]):
             return early_non_match()
         if isinstance(type_info, TypeInfo):
             any_type = AnyType(TypeOfAny.implementation_artifact)
-            typ = Instance(type_info, [any_type] * len(type_info.defn.type_vars))
+            typ = Instance(type_info, [any_type] * len(type_info.defn.type_vars))  # type: Type
         elif isinstance(type_info, TypeAlias):
             typ = type_info.target
         else:
             if isinstance(type_info, Var):
-                name = type_info.type
+                name = str(type_info.type)
             else:
                 name = type_info.name
             self.msg.fail('Class pattern must be a type. Found "{}"'.format(name), o.class_ref)
@@ -424,9 +424,14 @@ class PatternChecker(PatternVisitor[PatternType]):
                     return pattern_type
                 captures = pattern_type.captures
             else:
-                match_args_type = find_member("__match_args__", typ, typ)
+                local_errors = self.msg.clean_copy()
+                match_args_type = analyze_member_access("__match_args__", typ, o,
+                                                        False, False, False,
+                                                        local_errors,
+                                                        original_type=typ,
+                                                        chk=self.chk)
 
-                if match_args_type is None:
+                if local_errors.is_errors():
                     self.msg.fail("Class doesn't define __match_args__", o)
                     return early_non_match()
 
@@ -472,7 +477,15 @@ class PatternChecker(PatternVisitor[PatternType]):
             key_type = None  # type: Optional[Type]
             local_errors = self.msg.clean_copy()
             if keyword is not None:
-                key_type = analyze_member_access(keyword, new_type, pattern, False, False, False, local_errors, original_type=new_type, chk=self.chk)
+                key_type = analyze_member_access(keyword,
+                                                 new_type,
+                                                 pattern,
+                                                 False,
+                                                 False,
+                                                 False,
+                                                 local_errors,
+                                                 original_type=new_type,
+                                                 chk=self.chk)
             if local_errors.is_errors() or key_type is None:
                 key_type = AnyType(TypeOfAny.implementation_artifact)
 
@@ -486,7 +499,8 @@ class PatternChecker(PatternVisitor[PatternType]):
             new_type = None
         return PatternType(new_type, captures)
 
-    def should_self_match(self, typ: ProperType) -> bool:
+    def should_self_match(self, typ: Type) -> bool:
+        typ = get_proper_type(typ)
         if isinstance(typ, Instance) and typ.type.is_named_tuple:
             return False
         for other in self.self_match_types:
