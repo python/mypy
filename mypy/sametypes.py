@@ -1,7 +1,7 @@
 from typing import Sequence
 
 from mypy.types import (
-    Type, UnboundType, AnyType, NoneType, TupleType, TypedDictType,
+    Type, TypeGuardType, UnboundType, AnyType, NoneType, TupleType, TypedDictType,
     UnionType, CallableType, TypeVarType, Instance, TypeVisitor, ErasedType,
     Overloaded, PartialType, DeletedType, UninhabitedType, TypeType, LiteralType,
     ProperType, get_proper_type, TypeAliasType)
@@ -10,6 +10,14 @@ from mypy.typeops import tuple_fallback, make_simplified_union
 
 def is_same_type(left: Type, right: Type) -> bool:
     """Is 'left' the same type as 'right'?"""
+
+    # TypeGuard are not ProperTypes so we must treat them specially.
+    if isinstance(left, TypeGuardType):
+        if not isinstance(right, TypeGuardType):
+            return False
+        else:
+            return is_same_type(left.type_guard, right.type_guard)
+
     left = get_proper_type(left)
     right = get_proper_type(right)
 
