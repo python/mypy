@@ -306,7 +306,7 @@ def semantic_analyze_target(target: str,
 
     Return tuple with these items:
     - list of deferred targets
-    - was some definition incomplete
+    - was some definition incomplete (need to run another pass)
     - were any new names were defined (or placeholders replaced)
     """
     state.manager.processed_targets.append(target)
