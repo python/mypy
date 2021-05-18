@@ -94,7 +94,7 @@ from mypy.nodes import (
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
-    Type, Instance, AnyType, NoneType, TypeVisitor, CallableType, DeletedType, PartialType,
+    Type, Instance, AnyType, NoneType, TypeGuardType, TypeVisitor, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
     FunctionLike, Overloaded, TypeOfAny, LiteralType, ErasedType, get_proper_type, ProperType,
     TypeAliasType)
@@ -969,6 +969,9 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
 
     def visit_uninhabited_type(self, typ: UninhabitedType) -> List[str]:
         return []
+
+    def visit_type_guard_type(self, typ: TypeGuardType) -> List[str]:
+        return typ.type_guard.accept(self)
 
     def visit_union_type(self, typ: UnionType) -> List[str]:
         triggers = []

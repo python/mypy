@@ -5,7 +5,7 @@ from mypy.join import (
     is_similar_callables, combine_similar_callables, join_type_list, unpack_callback_protocol
 )
 from mypy.types import (
-    Type, AnyType, TypeVisitor, UnboundType, NoneType, TypeVarType, Instance, CallableType,
+    Type, AnyType, TypeGuardType, TypeVisitor, UnboundType, NoneType, TypeVarType, Instance, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeOfAny, Overloaded, FunctionLike, LiteralType,
     ProperType, get_proper_type, get_proper_types, TypeAliasType
@@ -646,6 +646,9 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             return self.default(self.s)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
+        assert False, "This should be never called, got {}".format(t)
+
+    def visit_type_guard_type(self, t: TypeGuardType) -> ProperType:
         assert False, "This should be never called, got {}".format(t)
 
     def meet(self, s: Type, t: Type) -> ProperType:

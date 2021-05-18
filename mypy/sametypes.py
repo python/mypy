@@ -11,13 +11,6 @@ from mypy.typeops import tuple_fallback, make_simplified_union
 def is_same_type(left: Type, right: Type) -> bool:
     """Is 'left' the same type as 'right'?"""
 
-    # TypeGuard are not ProperTypes so we must treat them specially.
-    if isinstance(left, TypeGuardType):
-        if not isinstance(right, TypeGuardType):
-            return False
-        else:
-            return is_same_type(left.type_guard, right.type_guard)
-
     left = get_proper_type(left)
     right = get_proper_type(right)
 
@@ -155,6 +148,12 @@ class SameTypeVisitor(TypeVisitor[bool]):
                     return False
 
             return True
+        else:
+            return False
+
+    def visit_type_guard_type(self, left: TypeGuardType) -> bool:
+        if isinstance(self.right, TypeGuardType):
+            return is_same_type(left.type_guard, self.right.type_guard)
         else:
             return False
 
