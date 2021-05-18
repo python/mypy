@@ -1,6 +1,6 @@
 """Pattern checker. This file is conceptually part of TypeChecker."""
 from collections import defaultdict
-from typing import List, Optional, Tuple, Dict, NamedTuple, Set, cast
+from typing import List, Optional, Tuple, Dict, NamedTuple, Set, cast, Union
 
 import mypy.checker
 from mypy.checkmember import analyze_member_access
@@ -163,7 +163,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         return PatternType(specific_typ, {})
 
     def visit_singleton_pattern(self, o: SingletonPattern) -> PatternType:
-        value = o.value
+        value = o.value  # type: Union[bool, None]
         if isinstance(value, bool):
             typ = self.chk.expr_checker.infer_literal_expr_type(value, "builtins.bool")
         elif value is None:
