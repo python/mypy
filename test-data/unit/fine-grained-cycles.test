@@ -172,7 +172,7 @@ def h() -> None:
 
 [out]
 ==
-a.py:1: error: Module 'b' has no attribute 'C'
+a.py:1: error: Module "b" has no attribute "C"
 
 [case testReferenceToTypeThroughCycleAndReplaceWithFunction]
 

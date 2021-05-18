@@ -1,5 +1,5 @@
 from types import TracebackType
-from typing import Iterator, MutableMapping, Optional, Type, Union
+from typing import Iterator, MutableMapping, Optional, Tuple, Type, Union
 from typing_extensions import Literal
 
 _KeyType = Union[str, bytes]
@@ -18,7 +18,9 @@ class _Database(MutableMapping[_KeyType, bytes]):
         self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
     ) -> None: ...
 
-class error(Exception): ...
+class _error(Exception): ...
+
+error = Tuple[Type[_error], Type[OSError]]
 
 def whichdb(filename: str) -> str: ...
 def open(file: str, flag: Literal["r", "w", "c", "n"] = ..., mode: int = ...) -> _Database: ...

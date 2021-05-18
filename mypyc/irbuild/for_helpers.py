@@ -16,14 +16,15 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, is_short_int_rprimitive, is_list_rprimitive, is_sequence_rprimitive,
-    RTuple, is_dict_rprimitive, short_int_rprimitive, int_rprimitive
+    is_tuple_rprimitive, is_dict_rprimitive,
+    RTuple, short_int_rprimitive, int_rprimitive
 )
 from mypyc.primitives.registry import CFunctionDescription
 from mypyc.primitives.dict_ops import (
     dict_next_key_op, dict_next_value_op, dict_next_item_op, dict_check_size_op,
     dict_key_iter_op, dict_value_iter_op, dict_item_iter_op
 )
-from mypyc.primitives.list_ops import list_append_op, list_get_item_unsafe_op
+from mypyc.primitives.list_ops import list_append_op, list_get_item_unsafe_op, new_list_set_item_op
 from mypyc.primitives.set_ops import set_add_op
 from mypyc.primitives.generic_ops import iter_op, next_op
 from mypyc.primitives.exc_ops import no_err_occurred_op
@@ -131,7 +132,62 @@ def for_loop_helper_with_index(builder: IRBuilder, index: Lvalue, expr: Expressi
     builder.activate_block(exit_block)
 
 
+def sequence_from_generator_preallocate_helper(
+        builder: IRBuilder,
+        gen: GeneratorExpr,
+        empty_op_llbuilder: Callable[[Value, int], Value],
+        set_item_op: CFunctionDescription) -> Optional[Value]:
+    """Generate a new tuple or list from a simple generator expression.
+
+    Currently we only optimize for simplest generator expression, which means that
+    there is no condition list in the generator and only one original sequence with
+    one index is allowed.
+
+    e.g.  (1) tuple(f(x) for x in a_list/a_tuple)
+          (2) list(f(x) for x in a_list/a_tuple)
+          (3) [f(x) for x in a_list/a_tuple]
+    RTuple as an original sequence is not supported yet.
+
+    Args:
+        empty_op_llbuilder: A function that can generate an empty sequence op when
+            passed in length. See `new_list_op_with_length` and `new_tuple_op_with_length`
+            for detailed implementation.
+        set_item_op: A primitive that can modify an arbitrary position of a sequence.
+            The op should have three arguments:
+                - Self
+                - Target position
+                - New Value
+            See `new_list_set_item_op` and `new_tuple_set_item_op` for detailed
+            implementation.
+    """
+    if len(gen.sequences) == 1 and len(gen.indices) == 1 and len(gen.condlists[0]) == 0:
+        rtype = builder.node_type(gen.sequences[0])
+        if is_list_rprimitive(rtype) or is_tuple_rprimitive(rtype):
+
+            length = builder.builder.builtin_len(builder.accept(gen.sequences[0]),
+                                                 gen.line, use_pyssize_t=True)
+            target_op = empty_op_llbuilder(length, gen.line)
+
+            def set_item(item_index: Value) -> None:
+                e = builder.accept(gen.left_expr)
+                builder.call_c(set_item_op, [target_op, item_index, e], gen.line)
+
+            for_loop_helper_with_index(builder, gen.indices[0], gen.sequences[0],
+                                       set_item, gen.line)
+
+            return target_op
+    return None
+
+
 def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value:
+    # Try simplest list comprehension, otherwise fall back to general one
+    val = sequence_from_generator_preallocate_helper(
+        builder, gen,
+        empty_op_llbuilder=builder.builder.new_list_op_with_length,
+        set_item_op=new_list_set_item_op)
+    if val is not None:
+        return val
+
     list_ops = builder.new_list_op([], gen.line)
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
 

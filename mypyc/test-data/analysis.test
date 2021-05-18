@@ -518,7 +518,7 @@ L6:
 (6, 0)   {a}                     {a}
 
 [case testError]
-def f(x: List[int]) -> None: pass # E: Name 'List' is not defined \
+def f(x: List[int]) -> None: pass # E: Name "List" is not defined \
                                   # N: Did you forget to import it from "typing"? (Suggestion: "from typing import List")
 
 [case testExceptUndefined_Liveness]

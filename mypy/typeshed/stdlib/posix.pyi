@@ -1,6 +1,5 @@
 import sys
-from builtins import _PathLike  # See comment in builtins
-from os import stat_result as stat_result
+from os import PathLike, stat_result as stat_result
 from typing import Dict, List, NamedTuple, Optional, overload
 
 class uname_result(NamedTuple):
@@ -17,12 +16,13 @@ class times_result(NamedTuple):
     children_system: float
     elapsed: float
 
-class waitid_result(NamedTuple):
-    si_pid: int
-    si_uid: int
-    si_signo: int
-    si_status: int
-    si_code: int
+if sys.platform != "darwin":
+    class waitid_result(NamedTuple):
+        si_pid: int
+        si_uid: int
+        si_signo: int
+        si_status: int
+        si_code: int
 
 class sched_param(NamedTuple):
     sched_priority: int
@@ -60,8 +60,9 @@ F_TEST: int
 F_TLOCK: int
 F_ULOCK: int
 
-GRND_NONBLOCK: int
-GRND_RANDOM: int
+if sys.platform == "linux":
+    GRND_NONBLOCK: int
+    GRND_RANDOM: int
 NGROUPS_MAX: int
 
 O_APPEND: int
@@ -85,12 +86,13 @@ O_SYNC: int
 O_TRUNC: int
 O_WRONLY: int
 
-POSIX_FADV_DONTNEED: int
-POSIX_FADV_NOREUSE: int
-POSIX_FADV_NORMAL: int
-POSIX_FADV_RANDOM: int
-POSIX_FADV_SEQUENTIAL: int
-POSIX_FADV_WILLNEED: int
+if sys.platform != "darwin":
+    POSIX_FADV_DONTNEED: int
+    POSIX_FADV_NOREUSE: int
+    POSIX_FADV_NORMAL: int
+    POSIX_FADV_RANDOM: int
+    POSIX_FADV_SEQUENTIAL: int
+    POSIX_FADV_WILLNEED: int
 
 PRIO_PGRP: int
 PRIO_PROCESS: int
@@ -100,7 +102,8 @@ P_ALL: int
 P_PGID: int
 P_PID: int
 
-RTLD_DEEPBIND: int
+if sys.platform == "linux":
+    RTLD_DEEPBIND: int
 RTLD_GLOBAL: int
 RTLD_LAZY: int
 RTLD_LOCAL: int
@@ -108,12 +111,15 @@ RTLD_NODELETE: int
 RTLD_NOLOAD: int
 RTLD_NOW: int
 
-SCHED_BATCH: int
 SCHED_FIFO: int
-SCHED_IDLE: int
 SCHED_OTHER: int
-SCHED_RESET_ON_FORK: int
 SCHED_RR: int
+
+if sys.platform == "linux":
+    SCHED_BATCH: int
+    SCHED_IDLE: int
+if sys.platform != "darwin":
+    SCHED_RESET_ON_FORK: int
 
 SEEK_DATA: int
 SEEK_HOLE: int
@@ -150,6 +156,7 @@ WUNTRACED: int
 XATTR_CREATE: int
 XATTR_REPLACE: int
 XATTR_SIZE_MAX: int
+
 @overload
 def listdir(path: Optional[str] = ...) -> List[str]: ...
 @overload
@@ -157,7 +164,7 @@ def listdir(path: bytes) -> List[bytes]: ...
 @overload
 def listdir(path: int) -> List[str]: ...
 @overload
-def listdir(path: _PathLike[str]) -> List[str]: ...
+def listdir(path: PathLike[str]) -> List[str]: ...
 
 if sys.platform == "win32":
     environ: Dict[str, str]

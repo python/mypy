@@ -113,116 +113,116 @@ file:1: error: invalid syntax
 0
 x = 0 # type: A A
 [out]
-file:2: error: syntax error in type comment 'A A'
+file:2: error: syntax error in type comment "A A"
 
 [case testInvalidTypeComment2]
 0
 x = 0 # type: A[
 [out]
-file:2: error: syntax error in type comment 'A['
+file:2: error: syntax error in type comment "A["
 
 [case testInvalidTypeComment3]
 0
 x = 0 # type:
 [out]
-file:2: error: syntax error in type comment ''
+file:2: error: syntax error in type comment ""
 
 [case testInvalidTypeComment4]
 0
 x = 0 # type: *
 [out]
-file:2: error: syntax error in type comment '*'
+file:2: error: syntax error in type comment "*"
 
 [case testInvalidTypeComment5]
 0
 x = 0 # type:# some comment
 [out]
-file:2: error: syntax error in type comment ''
+file:2: error: syntax error in type comment ""
 
 [case testInvalidTypeComment6]
 0
 x = 0 # type: *# comment #6
 [out]
-file:2: error: syntax error in type comment '*'
+file:2: error: syntax error in type comment "*"
 
 [case testInvalidTypeComment7]
 0
 x = 0 # type: A B #comment #7
 [out]
-file:2: error: syntax error in type comment 'A B'
+file:2: error: syntax error in type comment "A B"
 
 [case testInvalidSignatureInComment1]
 def f(): # type: x
   pass
 [out]
-file:1: error: syntax error in type comment 'x'
+file:1: error: syntax error in type comment "x"
 file:1: note: Suggestion: wrap argument types in parentheses
 
 [case testInvalidSignatureInComment2]
 def f(): # type:
   pass
 [out]
-file:1: error: syntax error in type comment ''
+file:1: error: syntax error in type comment ""
 
 [case testInvalidSignatureInComment3]
 def f(): # type: (
   pass
 [out]
-file:1: error: syntax error in type comment '('
+file:1: error: syntax error in type comment "("
 
 [case testInvalidSignatureInComment4]
 def f(): # type: (.
   pass
 [out]
-file:1: error: syntax error in type comment '(.'
+file:1: error: syntax error in type comment "(."
 
 [case testInvalidSignatureInComment5]
 def f(): # type: (x
   pass
 [out]
-file:1: error: syntax error in type comment '(x'
+file:1: error: syntax error in type comment "(x"
 
 [case testInvalidSignatureInComment6]
 def f(): # type: (x)
   pass
 [out]
-file:1: error: syntax error in type comment '(x)'
+file:1: error: syntax error in type comment "(x)"
 
 [case testInvalidSignatureInComment7]
 def f(): # type: (x) -
   pass
 [out]
-file:1: error: syntax error in type comment '(x) -'
+file:1: error: syntax error in type comment "(x) -"
 
 [case testInvalidSignatureInComment8]
 def f(): # type: (x) ->
   pass
 [out]
-file:1: error: syntax error in type comment '(x) ->'
+file:1: error: syntax error in type comment "(x) ->"
 
 [case testInvalidSignatureInComment9]
 def f(): # type: (x) -> .
   pass
 [out]
-file:1: error: syntax error in type comment '(x) -> .'
+file:1: error: syntax error in type comment "(x) -> ."
 
 [case testInvalidSignatureInComment10]
 def f(): # type: (x) -> x x
   pass
 [out]
-file:1: error: syntax error in type comment '(x) -> x x'
+file:1: error: syntax error in type comment "(x) -> x x"
 
 [case testInvalidSignatureInComment11]
 def f(): # type: # abc comment
   pass
 [out]
-file:1: error: syntax error in type comment ''
+file:1: error: syntax error in type comment ""
 
 [case testInvalidSignatureInComment12]
 def f(): # type: (x) -> x x # comment #2
   pass
 [out]
-file:1: error: syntax error in type comment '(x) -> x x'
+file:1: error: syntax error in type comment "(x) -> x x"
 
 
 [case testDuplicateSignatures1]

@@ -50,6 +50,7 @@ files = [
     'run-multimodule.test',
     'run-bench.test',
     'run-mypy-sim.test',
+    'run-dunders.test',
 ]
 if sys.version_info >= (3, 7):
     files.append('run-python37.test')

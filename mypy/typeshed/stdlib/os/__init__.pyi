@@ -8,9 +8,10 @@ from _typeshed import (
     OpenBinaryModeWriting,
     OpenTextMode,
 )
-from builtins import OSError, _PathLike
+from builtins import OSError
 from io import BufferedRandom, BufferedReader, BufferedWriter, FileIO, TextIOWrapper as _TextIOWrapper
 from posix import listdir as listdir, times_result
+from subprocess import Popen
 from typing import (
     IO,
     Any,
@@ -27,24 +28,27 @@ from typing import (
     MutableMapping,
     NoReturn,
     Optional,
+    Protocol,
     Sequence,
     Set,
     Tuple,
     TypeVar,
     Union,
     overload,
+    runtime_checkable,
 )
 from typing_extensions import Literal
 
-from . import path as path
+from . import path as _path
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
 
-# We need to use something from path, or flake8 and pytype get unhappy
-_supports_unicode_filenames = path.supports_unicode_filenames
+# This unnecessary alias is to work around various errors
+path = _path
 
 _T = TypeVar("_T")
+_AnyStr_co = TypeVar("_AnyStr_co", str, bytes, covariant=True)
 
 # ----- os variables -----
 
@@ -113,6 +117,8 @@ if sys.platform != "win32":
     RTLD_LOCAL: int
     RTLD_NODELETE: int
     RTLD_NOLOAD: int
+
+if sys.platform == "linux":
     RTLD_DEEPBIND: int
 
 SEEK_SET: int
@@ -176,7 +182,36 @@ R_OK: int
 W_OK: int
 X_OK: int
 
+_EnvironCodeFunc = Callable[[AnyStr], AnyStr]
+
 class _Environ(MutableMapping[AnyStr, AnyStr], Generic[AnyStr]):
+    encodekey: _EnvironCodeFunc[AnyStr]
+    decodekey: _EnvironCodeFunc[AnyStr]
+    encodevalue: _EnvironCodeFunc[AnyStr]
+    decodevalue: _EnvironCodeFunc[AnyStr]
+    if sys.version_info >= (3, 9):
+        def __init__(
+            self,
+            data: MutableMapping[AnyStr, AnyStr],
+            encodekey: _EnvironCodeFunc[AnyStr],
+            decodekey: _EnvironCodeFunc[AnyStr],
+            encodevalue: _EnvironCodeFunc[AnyStr],
+            decodevalue: _EnvironCodeFunc[AnyStr],
+        ) -> None: ...
+    else:
+        putenv: Callable[[AnyStr, AnyStr], None]
+        unsetenv: Callable[[AnyStr, AnyStr], None]
+        def __init__(
+            self,
+            data: MutableMapping[AnyStr, AnyStr],
+            encodekey: _EnvironCodeFunc[AnyStr],
+            decodekey: _EnvironCodeFunc[AnyStr],
+            encodevalue: _EnvironCodeFunc[AnyStr],
+            decodevalue: _EnvironCodeFunc[AnyStr],
+            putenv: Callable[[AnyStr, AnyStr], None],
+            unsetenv: Callable[[AnyStr, AnyStr], None],
+        ) -> None: ...
+    def setdefault(self, key: AnyStr, value: AnyStr) -> AnyStr: ...  # type: ignore
     def copy(self) -> Dict[AnyStr, AnyStr]: ...
     def __delitem__(self, key: AnyStr) -> None: ...
     def __getitem__(self, key: AnyStr) -> AnyStr: ...
@@ -271,7 +306,9 @@ class stat_result:
     st_creator: int
     st_type: int
 
-PathLike = _PathLike  # See comment in builtins
+@runtime_checkable
+class PathLike(Protocol[_AnyStr_co]):
+    def __fspath__(self) -> _AnyStr_co: ...
 
 _FdOrAnyPath = Union[int, AnyPath]
 
@@ -353,9 +390,9 @@ if sys.platform != "win32":
     def getegid() -> int: ...
     def geteuid() -> int: ...
     def getgid() -> int: ...
-    def getgrouplist(user: str, gid: int) -> List[int]: ...
+    def getgrouplist(__user: str, __group: int) -> List[int]: ...
     def getgroups() -> List[int]: ...  # Unix only, behaves differently on Mac
-    def initgroups(username: str, gid: int) -> None: ...
+    def initgroups(__username: str, __gid: int) -> None: ...
     def getpgid(pid: int) -> int: ...
     def getpgrp() -> int: ...
     def getpriority(which: int, who: int) -> int: ...
@@ -398,6 +435,7 @@ if sys.platform != "win32":
     def unsetenv(__name: Union[bytes, str]) -> None: ...
 
 _Opener = Callable[[str, int], int]
+
 @overload
 def fdopen(
     fd: int,
@@ -514,11 +552,11 @@ if sys.platform != "win32":
     def pread(__fd: int, __length: int, __offset: int) -> bytes: ...
     def pwrite(__fd: int, __buffer: bytes, __offset: int) -> int: ...
     @overload
-    def sendfile(__out_fd: int, __in_fd: int, offset: Optional[int], count: int) -> int: ...
+    def sendfile(out_fd: int, in_fd: int, offset: Optional[int], count: int) -> int: ...
     @overload
     def sendfile(
-        __out_fd: int,
-        __in_fd: int,
+        out_fd: int,
+        in_fd: int,
         offset: int,
         count: int,
         headers: Sequence[bytes] = ...,
@@ -676,7 +714,7 @@ if sys.platform != "win32":
         ) -> Iterator[Tuple[str, List[str], List[str], int]]: ...
     if sys.platform == "linux":
         def getxattr(path: _FdOrAnyPath, attribute: AnyPath, *, follow_symlinks: bool = ...) -> bytes: ...
-        def listxattr(path: _FdOrAnyPath, *, follow_symlinks: bool = ...) -> List[str]: ...
+        def listxattr(path: Optional[_FdOrAnyPath] = ..., *, follow_symlinks: bool = ...) -> List[str]: ...
         def removexattr(path: _FdOrAnyPath, attribute: AnyPath, *, follow_symlinks: bool = ...) -> None: ...
         def setxattr(
             path: _FdOrAnyPath, attribute: AnyPath, value: bytes, flags: int = ..., *, follow_symlinks: bool = ...
@@ -726,6 +764,7 @@ if sys.platform != "win32":
         def plock(op: int) -> None: ...  # ???op is int?
 
 class _wrap_close(_TextIOWrapper):
+    def __init__(self, stream: _TextIOWrapper, proc: Popen[str]) -> None: ...
     def close(self) -> Optional[int]: ...  # type: ignore
 
 def popen(cmd: str, mode: str = ..., buffering: int = ...) -> _wrap_close: ...
@@ -754,8 +793,9 @@ else:
     def spawnvp(mode: int, file: AnyPath, args: _ExecVArgs) -> int: ...
     def spawnvpe(mode: int, file: AnyPath, args: _ExecVArgs, env: _ExecEnv) -> int: ...
     def wait() -> Tuple[int, int]: ...  # Unix only
-    from posix import waitid_result
-    def waitid(idtype: int, ident: int, options: int) -> waitid_result: ...
+    if sys.platform != "darwin":
+        from posix import waitid_result
+        def waitid(idtype: int, ident: int, options: int) -> waitid_result: ...
     def wait3(options: int) -> Tuple[int, int, Any]: ...
     def wait4(pid: int, options: int) -> Tuple[int, int, Any]: ...
     def WCOREDUMP(__status: int) -> bool: ...
@@ -771,14 +811,15 @@ if sys.platform != "win32":
     from posix import sched_param
     def sched_get_priority_min(policy: int) -> int: ...  # some flavors of Unix
     def sched_get_priority_max(policy: int) -> int: ...  # some flavors of Unix
-    def sched_setscheduler(pid: int, policy: int, param: sched_param) -> None: ...  # some flavors of Unix
-    def sched_getscheduler(pid: int) -> int: ...  # some flavors of Unix
-    def sched_setparam(pid: int, param: sched_param) -> None: ...  # some flavors of Unix
-    def sched_getparam(pid: int) -> sched_param: ...  # some flavors of Unix
-    def sched_rr_get_interval(pid: int) -> float: ...  # some flavors of Unix
     def sched_yield() -> None: ...  # some flavors of Unix
-    def sched_setaffinity(pid: int, mask: Iterable[int]) -> None: ...  # some flavors of Unix
-    def sched_getaffinity(pid: int) -> Set[int]: ...  # some flavors of Unix
+    if sys.platform != "darwin":
+        def sched_setscheduler(pid: int, policy: int, param: sched_param) -> None: ...  # some flavors of Unix
+        def sched_getscheduler(pid: int) -> int: ...  # some flavors of Unix
+        def sched_rr_get_interval(pid: int) -> float: ...  # some flavors of Unix
+        def sched_setparam(pid: int, param: sched_param) -> None: ...  # some flavors of Unix
+        def sched_getparam(pid: int) -> sched_param: ...  # some flavors of Unix
+        def sched_setaffinity(pid: int, mask: Iterable[int]) -> None: ...  # some flavors of Unix
+        def sched_getaffinity(pid: int) -> Set[int]: ...  # some flavors of Unix
 
 def cpu_count() -> Optional[int]: ...
 

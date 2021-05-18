@@ -1,5 +1,5 @@
 import sys
-from typing import NamedTuple, Tuple, overload
+from typing import Any, Dict, Tuple, overload
 
 RLIMIT_AS: int
 RLIMIT_CORE: int
@@ -23,7 +23,10 @@ if sys.platform == "linux":
     RLIMIT_SIGPENDING: int
     RUSAGE_THREAD: int
 
-class _RUsage(NamedTuple):
+_Tuple16 = Tuple[float, float, int, int, int, int, int, int, int, int, int, int, int, int, int, int]
+
+class struct_rusage(_Tuple16):
+    def __new__(cls, sequence: _Tuple16, dict: Dict[str, Any] = ...) -> struct_rusage: ...
     ru_utime: float
     ru_stime: float
     ru_maxrss: int
@@ -43,7 +46,7 @@ class _RUsage(NamedTuple):
 
 def getpagesize() -> int: ...
 def getrlimit(__resource: int) -> Tuple[int, int]: ...
-def getrusage(__who: int) -> _RUsage: ...
+def getrusage(__who: int) -> struct_rusage: ...
 def setrlimit(__resource: int, __limits: Tuple[int, int]) -> None: ...
 
 if sys.platform == "linux":

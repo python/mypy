@@ -24,26 +24,22 @@ env:
 jobs:
   fast_finish: true
   include:
-  # Specifically request 3.5.1 because we need to be compatible with that.
-  - name: "run test suite with python 3.5.1 (compiled with mypyc)"
-    python: 3.5.1
-    dist: trusty
-    env:
-    - TOXENV=py
-    - EXTRA_ARGS="-n 2"
-    - TEST_MYPYC=1
-  - name: "run test suite with python 3.6"
+  - name: "run test suite with python 3.6 (compiled with mypyc)"
     python: 3.6    # 3.6.3  pip  9.0.1
-  - name: "run test suite with python 3.7 (compiled with mypyc)"
-    python: 3.7
     env:
     - TOXENV=py
     - EXTRA_ARGS="-n 2"
     - TEST_MYPYC=1
+  - name: "run test suite with python 3.7"
+    python: 3.7
   - name: "run test suite with python 3.8"
     python: 3.8
-  - name: "run test suite with python 3.9"
+  - name: "run test suite with python 3.9 (compiled with mypyc)"
     python: 3.9
+    env:
+    - TOXENV=py
+    - EXTRA_ARGS="-n 2"
+    - TEST_MYPYC=1
   - name: "run test suite with python nightly"
     python: nightly
   - name: "run mypyc runtime tests with python 3.6 debug build"

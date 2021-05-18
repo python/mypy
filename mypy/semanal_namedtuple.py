@@ -382,7 +382,7 @@ class NamedTupleAnalyzer:
         iterable_type = self.api.named_type_or_none('typing.Iterable', [implicit_any])
         function_type = self.api.named_type('__builtins__.function')
 
-        info = self.api.basic_new_typeinfo(name, fallback)
+        info = self.api.basic_new_typeinfo(name, fallback, line)
         info.is_named_tuple = True
         tuple_base = TupleType(types, fallback)
         info.tuple_type = tuple_base

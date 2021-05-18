@@ -160,7 +160,7 @@ class TypeAnalyzerPluginInterface:
 
     @abstractmethod
     def analyze_type(self, typ: Type) -> Type:
-        """Ananlyze an unbound type using the default mypy logic."""
+        """Analyze an unbound type using the default mypy logic."""
         raise NotImplementedError
 
     @abstractmethod

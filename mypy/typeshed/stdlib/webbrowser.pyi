@@ -38,7 +38,7 @@ class BackgroundBrowser(GenericBrowser):
     def open(self, url: Text, new: int = ..., autoraise: bool = ...) -> bool: ...
 
 class UnixBrowser(BaseBrowser):
-    raise_opts: List[str]
+    raise_opts: Optional[List[str]]
     background: bool
     redirect_stdout: bool
     remote_args: List[str]
@@ -48,7 +48,6 @@ class UnixBrowser(BaseBrowser):
     def open(self, url: Text, new: int = ..., autoraise: bool = ...) -> bool: ...
 
 class Mozilla(UnixBrowser):
-    raise_opts: List[str]
     remote_args: List[str]
     remote_action: str
     remote_action_newwin: str
@@ -70,7 +69,6 @@ class Chrome(UnixBrowser):
     background: bool
 
 class Opera(UnixBrowser):
-    raise_opts: List[str]
     remote_args: List[str]
     remote_action: str
     remote_action_newwin: str

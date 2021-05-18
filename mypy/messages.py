@@ -32,7 +32,7 @@ from mypy.nodes import (
     FuncDef, reverse_builtin_aliases,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
-    CallExpr, SymbolTable, TempNode
+    CallExpr, IndexExpr, StrExpr, SymbolTable, TempNode
 )
 from mypy.subtypes import (
     is_subtype, find_member, get_member_flags,
@@ -404,6 +404,7 @@ class MessageBuilder:
                               callee: CallableType,
                               arg_type: Type,
                               arg_kind: int,
+                              object_type: Optional[Type],
                               context: Context,
                               outer_context: Context) -> Optional[ErrorCode]:
         """Report an error about an incompatible argument type.
@@ -545,7 +546,6 @@ class MessageBuilder:
                 arg_name = outer_context.arg_names[n - 1]
                 if arg_name is not None:
                     arg_label = '"{}"'.format(arg_name)
-
             if (arg_kind == ARG_STAR2
                     and isinstance(arg_type, TypedDictType)
                     and m <= len(callee.arg_names)
@@ -558,10 +558,19 @@ class MessageBuilder:
                     expected_type,
                     bare=True)
                 arg_label = '"{}"'.format(arg_name)
-            msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
-                arg_label, target, quote_type_string(arg_type_str),
-                quote_type_string(expected_type_str))
-            code = codes.ARG_TYPE
+            if isinstance(outer_context, IndexExpr) and isinstance(outer_context.index, StrExpr):
+                msg = 'Value of "{}" has incompatible type {}; expected {}' .format(
+                    outer_context.index.value, quote_type_string(arg_type_str),
+                    quote_type_string(expected_type_str))
+            else:
+                msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
+                    arg_label, target, quote_type_string(arg_type_str),
+                    quote_type_string(expected_type_str))
+            object_type = get_proper_type(object_type)
+            if isinstance(object_type, TypedDictType):
+                code = codes.TYPEDDICT_ITEM
+            else:
+                code = codes.ARG_TYPE
             expected_type = get_proper_type(expected_type)
             if isinstance(expected_type, UnionType):
                 expected_types = list(expected_type.items)
@@ -918,10 +927,10 @@ class MessageBuilder:
                   code=codes.STRING_FORMATTING)
 
     def cannot_determine_type(self, name: str, context: Context) -> None:
-        self.fail("Cannot determine type of '%s'" % name, context, code=codes.HAS_TYPE)
+        self.fail('Cannot determine type of "%s"' % name, context, code=codes.HAS_TYPE)
 
     def cannot_determine_type_in_base(self, name: str, base: str, context: Context) -> None:
-        self.fail("Cannot determine type of '%s' in base class '%s'" % (name, base), context)
+        self.fail('Cannot determine type of "%s" in base class "%s"' % (name, base), context)
 
     def no_formal_self(self, name: str, item: CallableType, context: Context) -> None:
         self.fail('Attribute function "%s" with type %s does not accept self argument'
@@ -940,9 +949,9 @@ class MessageBuilder:
     def cannot_instantiate_abstract_class(self, class_name: str,
                                           abstract_attributes: List[str],
                                           context: Context) -> None:
-        attrs = format_string_list(["'%s'" % a for a in abstract_attributes])
-        self.fail("Cannot instantiate abstract class '%s' with abstract "
-                  "attribute%s %s" % (class_name, plural_s(abstract_attributes),
+        attrs = format_string_list(['"%s"' % a for a in abstract_attributes])
+        self.fail('Cannot instantiate abstract class "%s" with abstract '
+                  'attribute%s %s' % (class_name, plural_s(abstract_attributes),
                                    attrs),
                   context, code=codes.ABSTRACT)
 
@@ -1177,7 +1186,7 @@ class MessageBuilder:
                 item_name, format_item_name_list(typ.items.keys())), context)
         else:
             self.fail('TypedDict {} has no key "{}"'.format(
-                format_type(typ), item_name), context)
+                format_type(typ), item_name), context, code=codes.TYPEDDICT_ITEM)
             matches = best_matches(item_name, typ.items.keys())
             if matches:
                 self.note("Did you mean {}?".format(
@@ -1210,7 +1219,7 @@ class MessageBuilder:
             context: Context) -> None:
         msg = 'Argument 2 to "setdefault" of "TypedDict" has incompatible type {}; expected {}'
         self.fail(msg.format(format_type(default), format_type(expected)), context,
-                  code=codes.ARG_TYPE)
+                  code=codes.TYPEDDICT_ITEM)
 
     def type_arguments_not_allowed(self, context: Context) -> None:
         self.fail('Parameterized generics cannot be used with class or instance checks', context)
@@ -2012,9 +2021,9 @@ def format_string_list(lst: List[str]) -> str:
 def format_item_name_list(s: Iterable[str]) -> str:
     lst = list(s)
     if len(lst) <= 5:
-        return '(' + ', '.join(["'%s'" % name for name in lst]) + ')'
+        return '(' + ', '.join(['"%s"' % name for name in lst]) + ')'
     else:
-        return '(' + ', '.join(["'%s'" % name for name in lst[:5]]) + ', ...)'
+        return '(' + ', '.join(['"%s"' % name for name in lst[:5]]) + ', ...)'
 
 
 def callable_name(type: FunctionLike) -> Optional[str]:
@@ -2130,11 +2139,11 @@ def make_inferred_type_note(context: Context,
 
 
 def format_key_list(keys: List[str], *, short: bool = False) -> str:
-    reprs = [repr(key) for key in keys]
+    formatted_keys = ['"{}"'.format(key) for key in keys]
     td = '' if short else 'TypedDict '
     if len(keys) == 0:
         return 'no {}keys'.format(td)
     elif len(keys) == 1:
-        return '{}key {}'.format(td, reprs[0])
+        return '{}key {}'.format(td, formatted_keys[0])
     else:
-        return '{}keys ({})'.format(td, ', '.join(reprs))
+        return '{}keys ({})'.format(td, ', '.join(formatted_keys))

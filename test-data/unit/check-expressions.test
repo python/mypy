@@ -782,13 +782,13 @@ divmod(f, d)  # E: Unsupported operand types for divmod ("float" and "Decimal")
 reveal_type(divmod(d, d))  # N: Revealed type is "Tuple[__main__.Decimal, __main__.Decimal]"
 
 # Now some bad calls
-divmod()  # E: 'divmod' expects 2 arguments \
+divmod()  # E: "divmod" expects 2 arguments \
           # E: Missing positional arguments "_x", "_y" in call to "divmod"
-divmod(7)  # E: 'divmod' expects 2 arguments \
+divmod(7)  # E: "divmod" expects 2 arguments \
            # E: Missing positional argument "_y" in call to "divmod"
-divmod(7, 8, 9)  # E: 'divmod' expects 2 arguments \
+divmod(7, 8, 9)  # E: "divmod" expects 2 arguments \
                  # E: Too many arguments for "divmod"
-divmod(_x=7, _y=9)  # E: 'divmod' must be called with 2 positional arguments
+divmod(_x=7, _y=9)  # E: "divmod" must be called with 2 positional arguments
 
 divmod('foo', 'foo')  # E: Unsupported left operand type for divmod ("str")
 divmod(i, 'foo')  # E: Unsupported operand types for divmod ("int" and "str")
@@ -2172,7 +2172,7 @@ d5 = dict(a=1, b='') # type: Dict[str, Any]
 from typing import Dict
 d = dict() # E: Need type annotation for "d" (hint: "d: Dict[<type>, <type>] = ...")
 d2 = dict() # type: Dict[int, str]
-dict(undefined) # E: Name 'undefined' is not defined
+dict(undefined) # E: Name "undefined" is not defined
 [builtins fixtures/dict.pyi]
 
 [case testDictFromList]
@@ -2284,7 +2284,7 @@ main:4: note:     z: builtins.int
 [case testUndefinedRevealType]
 reveal_type(x)
 [out]
-main:1: error: Name 'x' is not defined
+main:1: error: Name "x" is not defined
 main:1: note: Revealed type is "Any"
 
 [case testUserDefinedRevealType]
@@ -2768,20 +2768,31 @@ if 1 in ('x', 'y'):  # E: Non-overlapping container check (element type: "int", 
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testOverlappingAnyTypeWithoutStrictOptional]
+# flags: --no-strict-optional --strict-equality
+from typing import Any, Optional
+
+x: Optional[Any]
+
+if x in (1, 2):
+    pass
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
 [case testUnimportedHintAny]
-def f(x: Any) -> None:  # E: Name 'Any' is not defined \
+def f(x: Any) -> None:  # E: Name "Any" is not defined \
                         # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Any")
     pass
 
 
 [case testUnimportedHintAnyLower]
-def f(x: any) -> None:  # E: Name 'any' is not defined \
+def f(x: any) -> None:  # E: Name "any" is not defined \
                         # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Any")
     pass
 
 
 [case testUnimportedHintOptional]
-def f(x: Optional[str]) -> None:  # E: Name 'Optional' is not defined \
+def f(x: Optional[str]) -> None:  # E: Name "Optional" is not defined \
                                   # N: Did you forget to import it from "typing"? (Suggestion: "from typing import Optional")
     pass
 

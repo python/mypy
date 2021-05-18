@@ -22,7 +22,7 @@ class error_temp(Error): ...
 class error_perm(Error): ...
 class error_proto(Error): ...
 
-all_errors = Tuple[Type[Exception], ...]
+all_errors: Tuple[Type[Exception], ...]
 
 class FTP:
     debugging: int
@@ -157,9 +157,5 @@ def parse227(resp: str) -> Tuple[str, int]: ...  # undocumented
 def parse229(resp: str, peer: Any) -> Tuple[str, int]: ...  # undocumented
 def parse257(resp: str) -> str: ...  # undocumented
 def ftpcp(
-    source: FTP,
-    sourcename: str,
-    target: FTP,
-    targetname: str = ...,
-    type: Literal["A", "I"] = ...,
+    source: FTP, sourcename: str, target: FTP, targetname: str = ..., type: Literal["A", "I"] = ...
 ) -> None: ...  # undocumented

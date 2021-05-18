@@ -67,7 +67,7 @@ def foo() -> None:
 [rechecked m]
 [stale]
 [out2]
-tmp/m.py:2: error: Name 'bar' is not defined
+tmp/m.py:2: error: Name "bar" is not defined
 
 [case testIncrementalSimpleImportSequence]
 import mod1
@@ -126,7 +126,7 @@ def func1() -> A: pass
 [rechecked mod1]
 [stale]
 [out2]
-tmp/mod1.py:1: error: Name 'A' is not defined
+tmp/mod1.py:1: error: Name "A" is not defined
 
 [case testIncrementalCallable]
 import mod1
@@ -1028,7 +1028,7 @@ import a.b
 [rechecked b]
 [stale]
 [out2]
-tmp/b.py:4: error: Name 'a' already defined on line 3
+tmp/b.py:4: error: Name "a" already defined on line 3
 
 [case testIncrementalSilentImportsAndImportsInClass]
 # flags: --ignore-missing-imports
@@ -1812,6 +1812,30 @@ main:3: note: Revealed type is "builtins.int"
 [out2]
 main:3: note: Revealed type is "Any"
 
+
+[case testIncrementalFollowImportsVariablePyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+import a
+reveal_type(a.x)
+
+[file a.py]
+x = 0
+
+[file pyproject.toml]
+\[tool.mypy]
+follow_imports = 'normal'
+
+[file pyproject.toml.2]
+\[tool.mypy]
+follow_imports = 'skip'
+
+[out1]
+main:3: note: Revealed type is "builtins.int"
+
+[out2]
+main:3: note: Revealed type is "Any"
+
+
 [case testIncrementalNamedTupleInMethod]
 from ntcrash import nope
 [file ntcrash.py]
@@ -1821,9 +1845,9 @@ class C:
         A = NamedTuple('A', [('x', int), ('y', int)])
 [builtins fixtures/tuple.pyi]
 [out1]
-main:1: error: Module 'ntcrash' has no attribute 'nope'
+main:1: error: Module "ntcrash" has no attribute "nope"
 [out2]
-main:1: error: Module 'ntcrash' has no attribute 'nope'
+main:1: error: Module "ntcrash" has no attribute "nope"
 
 [case testIncrementalNamedTupleInMethod2]
 from ntcrash import nope
@@ -1835,9 +1859,9 @@ class C:
             A = NamedTuple('A', [('x', int), ('y', int)])
 [builtins fixtures/tuple.pyi]
 [out1]
-main:1: error: Module 'ntcrash' has no attribute 'nope'
+main:1: error: Module "ntcrash" has no attribute "nope"
 [out2]
-main:1: error: Module 'ntcrash' has no attribute 'nope'
+main:1: error: Module "ntcrash" has no attribute "nope"
 
 [case testIncrementalNamedTupleInMethod3]
 from ntcrash import nope
@@ -1850,9 +1874,9 @@ class C:
                 A = NamedTuple('A', [('x', int), ('y', int)])
 [builtins fixtures/tuple.pyi]
 [out1]
-main:1: error: Module 'ntcrash' has no attribute 'nope'
+main:1: error: Module "ntcrash" has no attribute "nope"
 [out2]
-main:1: error: Module 'ntcrash' has no attribute 'nope'
+main:1: error: Module "ntcrash" has no attribute "nope"
 
 [case testIncrementalTypedDictInMethod]
 from tdcrash import nope
@@ -1863,9 +1887,9 @@ class C:
         A = TypedDict('A', {'x': int, 'y': int})
 [builtins fixtures/dict.pyi]
 [out1]
-main:1: error: Module 'tdcrash' has no attribute 'nope'
+main:1: error: Module "tdcrash" has no attribute "nope"
 [out2]
-main:1: error: Module 'tdcrash' has no attribute 'nope'
+main:1: error: Module "tdcrash" has no attribute "nope"
 
 [case testIncrementalTypedDictInMethod2]
 from tdcrash import nope
@@ -1877,9 +1901,9 @@ class C:
             A = TypedDict('A', {'x': int, 'y': int})
 [builtins fixtures/dict.pyi]
 [out1]
-main:1: error: Module 'tdcrash' has no attribute 'nope'
+main:1: error: Module "tdcrash" has no attribute "nope"
 [out2]
-main:1: error: Module 'tdcrash' has no attribute 'nope'
+main:1: error: Module "tdcrash" has no attribute "nope"
 
 [case testIncrementalTypedDictInMethod3]
 from tdcrash import nope
@@ -1892,9 +1916,9 @@ class C:
                 A = TypedDict('A', {'x': int, 'y': int})
 [builtins fixtures/dict.pyi]
 [out1]
-main:1: error: Module 'tdcrash' has no attribute 'nope'
+main:1: error: Module "tdcrash" has no attribute "nope"
 [out2]
-main:1: error: Module 'tdcrash' has no attribute 'nope'
+main:1: error: Module "tdcrash" has no attribute "nope"
 
 [case testIncrementalNewTypeInMethod]
 from ntcrash import nope
@@ -1914,9 +1938,9 @@ def f() -> None:
 
 [builtins fixtures/dict.pyi]
 [out1]
-main:1: error: Module 'ntcrash' has no attribute 'nope'
+main:1: error: Module "ntcrash" has no attribute "nope"
 [out2]
-main:1: error: Module 'ntcrash' has no attribute 'nope'
+main:1: error: Module "ntcrash" has no attribute "nope"
 
 [case testIncrementalInnerClassAttrInMethod]
 import crash
@@ -1928,9 +1952,9 @@ class C:
             pass
         self.a = A()
 [out1]
-main:2: error: Name 'nonexisting' is not defined
+main:2: error: Name "nonexisting" is not defined
 [out2]
-main:2: error: Name 'nonexisting' is not defined
+main:2: error: Name "nonexisting" is not defined
 
 [case testIncrementalInnerClassAttrInMethodReveal]
 import crash
@@ -2225,9 +2249,9 @@ from b import x
 1 + 1
 [out]
 [out2]
-tmp/b.py:1: error: Module 'c' has no attribute 'x'
+tmp/b.py:1: error: Module "c" has no attribute "x"
 [out3]
-tmp/b.py:1: error: Module 'c' has no attribute 'x'
+tmp/b.py:1: error: Module "c" has no attribute "x"
 
 [case testCacheDeletedAfterErrorsFound2]
 
@@ -2284,9 +2308,9 @@ from b import x
 1 + 1
 [out]
 [out2]
-tmp/c.py:1: error: Module 'd' has no attribute 'x'
+tmp/c.py:1: error: Module "d" has no attribute "x"
 [out3]
-tmp/c.py:1: error: Module 'd' has no attribute 'x'
+tmp/c.py:1: error: Module "d" has no attribute "x"
 
 [case testNoCrashOnDeletedWithCacheOnCmdline]
 # cmd: mypy -m nonexistent
@@ -3647,7 +3671,7 @@ pass
 [out]
 [out2]
 [out3]
-tmp/a.py:2: error: unused 'type: ignore' comment
+tmp/a.py:2: error: unused "type: ignore" comment
 
 -- Test that a non cache_fine_grained run can use a fine-grained cache
 [case testRegularUsesFgCache]
@@ -4215,6 +4239,34 @@ tmp/c.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mi
 tmp/c.py:1: error: Cannot find implementation or library stub for module named "a.b.c"
 tmp/c.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
+[case testModuleGetattrIncrementalSerializeVarFlag]
+import main
+
+[file main.py]
+from b import A, f
+f()
+
+[file main.py.3]
+from b import A, f  # foo
+f()
+
+[file b.py]
+from c import A
+def f() -> A: ...
+
+[file b.py.2]
+from c import A  # foo
+def f() -> A: ...
+
+[file c.py]
+from d import A
+
+[file d.pyi]
+def __getattr__(n): ...
+[out1]
+[out2]
+[out3]
+
 [case testAddedMissingStubs]
 # flags: --ignore-missing-imports
 from missing import f
@@ -4572,10 +4624,10 @@ B = List[A]
 
 [builtins fixtures/list.pyi]
 [out]
-tmp/lib.pyi:4: error: Module 'other' has no attribute 'B'
+tmp/lib.pyi:4: error: Module "other" has no attribute "B"
 tmp/other.pyi:3: error: Cannot resolve name "B" (possible cyclic definition)
 [out2]
-tmp/lib.pyi:4: error: Module 'other' has no attribute 'B'
+tmp/lib.pyi:4: error: Module "other" has no attribute "B"
 tmp/other.pyi:3: error: Cannot resolve name "B" (possible cyclic definition)
 tmp/a.py:3: note: Revealed type is "builtins.list[Any]"
 
@@ -5067,9 +5119,9 @@ from typing import NamedTuple
 NT = NamedTuple('BadName', [('x', int)])
 [builtins fixtures/tuple.pyi]
 [out]
-tmp/b.py:2: error: First argument to namedtuple() should be 'NT', not 'BadName'
+tmp/b.py:2: error: First argument to namedtuple() should be "NT", not "BadName"
 [out2]
-tmp/b.py:2: error: First argument to namedtuple() should be 'NT', not 'BadName'
+tmp/b.py:2: error: First argument to namedtuple() should be "NT", not "BadName"
 tmp/a.py:3: note: Revealed type is "Tuple[builtins.int, fallback=b.NT]"
 
 [case testNewAnalyzerIncrementalBrokenNamedTupleNested]
@@ -5089,9 +5141,9 @@ def test() -> None:
     NT = namedtuple('BadName', ['x', 'y'])
 [builtins fixtures/list.pyi]
 [out]
-tmp/b.py:4: error: First argument to namedtuple() should be 'NT', not 'BadName'
+tmp/b.py:4: error: First argument to namedtuple() should be "NT", not "BadName"
 [out2]
-tmp/b.py:4: error: First argument to namedtuple() should be 'NT', not 'BadName'
+tmp/b.py:4: error: First argument to namedtuple() should be "NT", not "BadName"
 
 [case testNewAnalyzerIncrementalMethodNamedTuple]
 
@@ -5183,11 +5235,11 @@ class Sub(Base):
 
 [builtins fixtures/property.pyi]
 [out]
-tmp/a.py:3: error: Cannot determine type of 'foo'
-tmp/a.py:4: error: Cannot determine type of 'foo'
+tmp/a.py:3: error: Cannot determine type of "foo"
+tmp/a.py:4: error: Cannot determine type of "foo"
 [out2]
-tmp/a.py:3: error: Cannot determine type of 'foo'
-tmp/a.py:4: error: Cannot determine type of 'foo'
+tmp/a.py:3: error: Cannot determine type of "foo"
+tmp/a.py:4: error: Cannot determine type of "foo"
 
 [case testRedefinitionClass]
 import b
@@ -5454,3 +5506,58 @@ class Foo:
 [delete c1.py.2]
 [file c2.py.2]
 class C: pass
+
+[case testIncrementalNestedNamedTuple]
+# flags: --python-version 3.6
+import a
+
+[file a.py]
+import b
+
+[file a.py.2]
+import b # foo
+
+[file b.py]
+from typing import NamedTuple
+
+def f() -> None:
+    class NT(NamedTuple):
+        x: int
+
+    n: NT = NT(x=2)
+
+def g() -> None:
+    NT = NamedTuple('NT', [('y', str)])
+
+    n: NT = NT(y='x')
+
+[builtins fixtures/tuple.pyi]
+
+[case testIncrementalNestedTypeAlias]
+import a
+
+[file a.py]
+import b
+
+[file a.py.2]
+import b
+reveal_type(b.C().x)
+reveal_type(b.D().x)
+
+[file b.py]
+from typing import List
+
+class C:
+    def __init__(self) -> None:
+        Alias = List[int]
+        self.x = []  # type: Alias
+
+class D:
+    def __init__(self) -> None:
+        Alias = List[str]
+        self.x = []  # type: Alias
+
+[builtins fixtures/list.pyi]
+[out2]
+tmp/a.py:2: note: Revealed type is "builtins.list[builtins.int]"
+tmp/a.py:3: note: Revealed type is "builtins.list[builtins.str]"

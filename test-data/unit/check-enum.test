@@ -425,7 +425,7 @@ main:2: error: Too few arguments for Enum()
 main:3: error: Enum() expects a string, tuple, list or dict literal as the second argument
 main:4: error: Too many arguments for Enum()
 main:5: error: Enum() expects a string, tuple, list or dict literal as the second argument
-main:5: error: Name 'foo' is not defined
+main:5: error: Name "foo" is not defined
 main:7: error: Enum() expects a string, tuple, list or dict literal as the second argument
 main:8: error: Too few arguments for IntEnum()
 main:9: error: IntEnum() expects a string, tuple, list or dict literal as the second argument
@@ -1333,3 +1333,30 @@ def f(x: Foo):
     reveal_type(x) # N: Revealed type is "Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]"
 
 [builtins fixtures/bool.pyi]
+
+[case testEnumTypeCompatibleWithLiteralUnion]
+from enum import Enum
+from typing_extensions import Literal
+
+class E(Enum):
+    A = 1
+    B = 2
+    C = 3
+
+e: E
+a: Literal[E.A, E.B, E.C] = e
+b: Literal[E.A, E.B] = e  # E: Incompatible types in assignment (expression has type "E", variable has type "Union[Literal[E.A], Literal[E.B]]")
+c: Literal[E.A, E.C] = e  # E: Incompatible types in assignment (expression has type "E", variable has type "Union[Literal[E.A], Literal[E.C]]")
+b = a  # E: Incompatible types in assignment (expression has type "Union[Literal[E.A], Literal[E.B], Literal[E.C]]", variable has type "Union[Literal[E.A], Literal[E.B]]")
+[builtins fixtures/bool.pyi]
+
+[case testIntEnumWithNewTypeValue]
+from typing import NewType
+from enum import IntEnum
+
+N = NewType("N", int)
+
+class E(IntEnum):
+    A = N(0)
+
+reveal_type(E.A.value) # N: Revealed type is "__main__.N"
