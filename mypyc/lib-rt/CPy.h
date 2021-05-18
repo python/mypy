@@ -540,6 +540,7 @@ int CPyStatics_Initialize(PyObject **statics,
                           const double *floats,
                           const double *complex_numbers,
                           const int *tuples);
+PyObject *CPy_Super(PyObject *builtins, PyObject *self);
 
 #ifdef __cplusplus
 }

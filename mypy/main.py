@@ -155,7 +155,7 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
             # Assume we want to manually format the text
             return super()._fill_text(text, width, indent)
         else:
-            # Assume we want argparse to manage wrapping, indentating, and
+            # Assume we want argparse to manage wrapping, indenting, and
             # formatting the text for us.
             return argparse.HelpFormatter._fill_text(self, text, width, indent)
 

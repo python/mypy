@@ -102,7 +102,7 @@ break
 def f(x: int) -> None: pass
 [out]
 ==
-a.py:2: error: 'break' outside loop
+a.py:2: error: "break" outside loop
 ==
 main:2: error: Missing positional argument "x" in call to "f"
 
@@ -427,7 +427,7 @@ import blocker2
 1()
 [out]
 ==
-<ROOT>/test-data/unit/lib-stub/blocker2.pyi:2: error: 'continue' outside loop
+<ROOT>/test-data/unit/lib-stub/blocker2.pyi:2: error: "continue" outside loop
 ==
 a.py:1: error: "int" not callable
 

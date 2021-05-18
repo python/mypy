@@ -396,7 +396,7 @@ class Errors:
             for line in set(ignored_lines) - self.used_ignored_lines[file]:
                 # Don't use report since add_error_info will ignore the error!
                 info = ErrorInfo(self.import_context(), file, self.current_module(), None,
-                                 None, line, -1, 'error', "unused 'type: ignore' comment",
+                                 None, line, -1, 'error', 'unused "type: ignore" comment',
                                  None, False, False)
                 self._add_error_info(file, info)
 

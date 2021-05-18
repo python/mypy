@@ -85,7 +85,7 @@ def translate_len(
             return Integer(len(expr_rtype.types))
         else:
             obj = builder.accept(expr.args[0])
-            return builder.builtin_len(obj, -1)
+            return builder.builtin_len(obj, expr.line)
     return None
 
 
