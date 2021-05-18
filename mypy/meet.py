@@ -5,10 +5,10 @@ from mypy.join import (
     is_similar_callables, combine_similar_callables, join_type_list, unpack_callback_protocol
 )
 from mypy.types import (
-    Type, AnyType, TypeGuardType, TypeVisitor, UnboundType, NoneType, TypeVarType, Instance, CallableType,
+    Type, AnyType, TypeVisitor, UnboundType, NoneType, TypeVarType, Instance, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeOfAny, Overloaded, FunctionLike, LiteralType,
-    ProperType, get_proper_type, get_proper_types, TypeAliasType
+    ProperType, get_proper_type, get_proper_types, TypeAliasType, TypeGuardType
 )
 from mypy.subtypes import is_equivalent, is_subtype, is_callable_compatible, is_proper_subtype
 from mypy.erasetype import erase_type

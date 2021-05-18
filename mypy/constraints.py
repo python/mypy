@@ -4,10 +4,10 @@ from typing import Iterable, List, Optional, Sequence
 from typing_extensions import Final
 
 from mypy.types import (
-    CallableType, Type, TypeGuardType, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarType, Instance,
+    CallableType, Type, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarType, Instance,
     TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeVarId, TypeQuery, is_named_instance, TypeOfAny, LiteralType,
-    ProperType, get_proper_type, TypeAliasType
+    ProperType, get_proper_type, TypeAliasType, TypeGuardType
 )
 from mypy.maptype import map_instance_to_supertype
 import mypy.subtypes

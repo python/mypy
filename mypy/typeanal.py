@@ -12,9 +12,9 @@ from mypy_extensions import DefaultNamedArg
 from mypy.messages import MessageBuilder, quote_type_string, format_type_bare
 from mypy.options import Options
 from mypy.types import (
-    Type, TypeGuardType, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance, AnyType,
+    Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance, AnyType,
     CallableType, NoneType, ErasedType, DeletedType, TypeList, TypeVarDef, SyntheticTypeVisitor,
-    StarType, PartialType, EllipsisType, UninhabitedType, TypeType,
+    StarType, PartialType, EllipsisType, UninhabitedType, TypeType, TypeGuardType,
     CallableArgument, TypeQuery, union_items, TypeOfAny, LiteralType, RawExpressionType,
     PlaceholderType, Overloaded, get_proper_type, TypeAliasType, TypeVarLikeDef, ParamSpecDef
 )

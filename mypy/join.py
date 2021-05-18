@@ -4,10 +4,10 @@ from mypy.ordered_dict import OrderedDict
 from typing import List, Optional
 
 from mypy.types import (
-    Type, AnyType, NoneType, TypeGuardType, TypeVisitor, Instance, UnboundType, TypeVarType, CallableType,
+    Type, AnyType, NoneType, TypeVisitor, Instance, UnboundType, TypeVarType, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, FunctionLike, Overloaded, LiteralType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, get_proper_type,
-    ProperType, get_proper_types, TypeAliasType, PlaceholderType
+    ProperType, get_proper_types, TypeAliasType, PlaceholderType, TypeGuardType
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import (

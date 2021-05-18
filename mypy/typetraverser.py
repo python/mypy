@@ -3,10 +3,10 @@ from typing import Iterable
 from mypy_extensions import trait
 
 from mypy.types import (
-    Type, SyntheticTypeVisitor, AnyType, TypeGuardType, UninhabitedType, NoneType, ErasedType, DeletedType,
+    Type, SyntheticTypeVisitor, AnyType, UninhabitedType, NoneType, ErasedType, DeletedType,
     TypeVarType, LiteralType, Instance, CallableType, TupleType, TypedDictType, UnionType,
     Overloaded, TypeType, CallableArgument, UnboundType, TypeList, StarType, EllipsisType,
-    PlaceholderType, PartialType, RawExpressionType, TypeAliasType
+    PlaceholderType, PartialType, RawExpressionType, TypeAliasType, TypeGuardType
 )
 
 

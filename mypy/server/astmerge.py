@@ -57,9 +57,9 @@ from mypy.nodes import (
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
     Type, SyntheticTypeVisitor, Instance, AnyType, NoneType, CallableType, ErasedType, DeletedType,
-    TupleType, TypeGuardType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
+    TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
     Overloaded, TypeVarDef, TypeList, CallableArgument, EllipsisType, StarType, LiteralType,
-    RawExpressionType, PartialType, PlaceholderType, TypeAliasType
+    RawExpressionType, PartialType, PlaceholderType, TypeAliasType, TypeGuardType
 )
 from mypy.util import get_prefix, replace_object_state
 from mypy.typestate import TypeState
