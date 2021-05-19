@@ -1271,8 +1271,6 @@ class CallableType(FunctionLike):
     def serialize(self) -> JsonDict:
         # TODO: As an optimization, leave out everything related to
         # generic functions for non-generic functions.
-        assert (self.type_guard is None
-                or isinstance(get_proper_type(self.type_guard), Instance)), str(self.type_guard)
         return {'.class': 'CallableType',
                 'arg_types': [t.serialize() for t in self.arg_types],
                 'arg_kinds': self.arg_kinds,
