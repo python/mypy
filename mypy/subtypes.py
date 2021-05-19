@@ -1378,8 +1378,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
         return all([self._is_proper_subtype(item, self.orig_right) for item in left.items])
 
     def visit_type_guard_type(self, left: TypeGuardType) -> bool:
-        # TODO: What's the right thing to do here?
-        return False
+        raise RuntimeError("TypeGuard should not be used in subtype checks")
 
     def visit_partial_type(self, left: PartialType) -> bool:
         # TODO: What's the right thing to do here?
