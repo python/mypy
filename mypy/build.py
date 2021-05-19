@@ -2546,7 +2546,8 @@ def module_not_found(manager: BuildManager, line: int, caller_state: State,
                       blocker=True)
         errors.raise_error()
     else:
-        msg, notes = reason.error_message_templates()
+        daemon = manager.options.fine_grained_incremental
+        msg, notes = reason.error_message_templates(daemon)
         pyver = '%d.%d' % manager.options.python_version
         errors.report(line, 0, msg.format(module=target, pyver=pyver), code=codes.IMPORT)
         top_level = target.partition('.')[0]

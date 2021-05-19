@@ -59,7 +59,7 @@ class ModuleNotFoundReason(Enum):
     # Stub PyPI package (typically types-pkgname) known to exist but not installed.
     STUBS_NOT_INSTALLED = 3
 
-    def error_message_templates(self) -> Tuple[str, List[str]]:
+    def error_message_templates(self, daemon: bool) -> Tuple[str, List[str]]:
         doc_link = "See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports"
         if self is ModuleNotFoundReason.NOT_FOUND:
             msg = 'Cannot find implementation or library stub for module named "{module}"'
@@ -75,9 +75,11 @@ class ModuleNotFoundReason(Enum):
             msg = (
                 'Library stubs not installed for "{module}" (or incompatible with Python {pyver})'
             )
-            notes = ['Hint: "python3 -m pip install {stub_dist}"',
-                     '(or run "mypy --install-types" to install all missing stub packages)',
-                     doc_link]
+            notes = ['Hint: "python3 -m pip install {stub_dist}"']
+            if not daemon:
+                notes.append(
+                    '(or run "mypy --install-types" to install all missing stub packages)')
+            notes.append(doc_link)
         else:
             assert False
         return msg, notes
