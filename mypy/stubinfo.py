@@ -47,7 +47,6 @@ legacy_bundled_packages = {
     'markupsafe': 'types-MarkupSafe',
     'maxminddb': 'types-maxminddb',
     'mock': 'types-mock',
-    'mypy_extensions': 'types-mypy-extensions',
     'OpenSSL': 'types-openssl-python',
     'orjson': 'types-orjson',
     'paramiko': 'types-paramiko',
