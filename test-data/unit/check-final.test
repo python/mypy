@@ -1082,3 +1082,12 @@ class A:
         self.x = 10  # type: Final
         undefined  # type: ignore
 [builtins fixtures/tuple.pyi]
+
+[case testFinalUsedWithClassVar]
+from typing import Final, ClassVar
+
+class A:
+    a: Final[ClassVar[int]]  # E: Variable should not be annotated with both ClassVar and Final
+    b: ClassVar[Final[int]]  # E: Final can be only used as an outermost qualifier in a variable annotation
+    c: ClassVar[Final] = 1  # E: Final can be only used as an outermost qualifier in a variable annotation
+[out]
