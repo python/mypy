@@ -42,6 +42,10 @@ def update_typeshed(typeshed_dir: str, commit: Optional[str]) -> str:
     shutil.rmtree(stub_dir)
     # Copy new stdlib stubs.
     shutil.copytree(os.path.join(typeshed_dir, 'stdlib'), stub_dir)
+    # Copy mypy_extensions stubs. We don't want to use a stub package, since it's
+    # treated specially by mypy and we make assumptions about what's there.
+    shutil.copy(os.path.join(typeshed_dir, 'stubs', 'mypy-extensions', 'mypy_extensions.pyi'),
+                stub_dir)
     return commit
 
 
