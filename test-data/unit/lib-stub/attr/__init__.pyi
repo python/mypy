@@ -1,4 +1,4 @@
-from typing import TypeVar, overload, Callable, Any, Type, Optional, Union, Sequence, Mapping
+from typing import Tuple, TypeVar, overload, Callable, Any, Type, Optional, Union, Sequence, Mapping, Generic, List, Dict
 
 _T = TypeVar('_T')
 _C = TypeVar('_C', bound=type)
@@ -7,6 +7,15 @@ _ValidatorType = Callable[[Any, Any, _T], Any]
 _ConverterType = Callable[[Any], _T]
 _FilterType = Callable[[Any, Any], bool]
 _ValidatorArgType = Union[_ValidatorType[_T], Sequence[_ValidatorType[_T]]]
+
+_EqOrderType = Union[bool, Callable[[Any], Any]]
+_ReprType = Callable[[Any], str]
+_ReprArgType = Union[bool, _ReprType]
+_OnSetAttrType = Callable[[Any, Attribute[Any], Any], Any]
+_OnSetAttrArgType = Union[
+    _OnSetAttrType, List[_OnSetAttrType]
+]
+_FieldTransformer = Callable[[type, List[Attribute[Any]]], List[Attribute[Any]]]
 
 # This form catches explicit None or no default but with no other arguments returns Any.
 @overload
@@ -240,3 +249,29 @@ def field(
     order: Optional[bool] = ...,
     on_setattr: Optional[object] = ...,
 ) -> Any: ...
+
+
+class Attribute(Generic[_T]):
+    name: str
+    default: Optional[_T]
+    validator: Optional[_ValidatorType[_T]]
+    repr: _ReprArgType
+    cmp: _EqOrderType
+    eq: _EqOrderType
+    order: _EqOrderType
+    hash: Optional[bool]
+    init: bool
+    converter: Optional[_ConverterType]
+    metadata: Dict[Any, Any]
+    type: Optional[Type[_T]]
+    kw_only: bool
+    on_setattr: _OnSetAttrType
+
+    def evolve(self, **changes: Any) -> "Attribute[Any]": ...
+
+
+class _Fields(Tuple[Attribute[Any], ...]):
+    def __getattr__(self, name: str) -> Attribute[Any]: ...
+
+
+def fields(cls: type) -> _Fields: ...

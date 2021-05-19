@@ -15,7 +15,8 @@ A(1, [2])
 A(1, [2], '3', 4)
 A(1, 2, 3, 4)
 A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
-[builtins fixtures/list.pyi]
+reveal_type(A.__attrs_attrs__)  # N: Revealed type is "builtins.AAttributes"
+[builtins fixtures/attr.pyi]
 
 [case testAttrsAnnotated]
 import attr
@@ -33,7 +34,7 @@ A(1, [2])
 A(1, [2], '3', 4)
 A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "List[int]" # E: Argument 3 to "A" has incompatible type "int"; expected "str"
 A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsPython2Annotations]
 import attr
@@ -51,7 +52,7 @@ A(1, [2])
 A(1, [2], '3', 4)
 A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "List[int]" # E: Argument 3 to "A" has incompatible type "int"; expected "str"
 A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsAutoAttribs]
 import attr
@@ -69,7 +70,7 @@ A(1, [2])
 A(1, [2], '3', 4)
 A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "List[int]" # E: Argument 3 to "A" has incompatible type "int"; expected "str"
 A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsUntypedNoUntypedDefs]
 # flags: --disallow-untyped-defs
@@ -81,7 +82,7 @@ class A:
     c = attr.ib(18)  # E: Need type annotation for "c"
     _d = attr.ib(validator=None, default=18)   # E: Need type annotation for "_d"
     E = 18
-[builtins fixtures/bool.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsWrongReturnValue]
 import attr
@@ -105,7 +106,7 @@ class D:
     x = attr.ib(8, type=int)
     def foo(self) -> str:
         return self.x  # E: Incompatible return value type (got "int", expected "str")
-[builtins fixtures/bool.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsSeriousNames]
 from attr import attrib, attrs
@@ -122,7 +123,7 @@ A(1, [2])
 A(1, [2], '3', 4)
 A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "List[int]"
 A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsDefaultErrors]
 import attr
@@ -146,7 +147,7 @@ class D:
     @x.default
     def foo(self):
         return 17
-[builtins fixtures/bool.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsNotBooleans]
 import attr
@@ -154,7 +155,7 @@ x = True
 @attr.s(cmp=x)  # E: "cmp" argument must be True or False.
 class A:
     a = attr.ib(init=x)  # E: "init" argument must be True or False.
-[builtins fixtures/bool.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsInitFalse]
 from attr import attrib, attrs
@@ -168,7 +169,7 @@ reveal_type(A)  # N: Revealed type is "def () -> __main__.A"
 A()
 A(1, [2])  # E: Too many arguments for "A"
 A(1, [2], '3', 4)  # E: Too many arguments for "A"
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsInitAttribFalse]
 from attr import attrib, attrs
@@ -177,7 +178,7 @@ class A:
     a = attrib(init=False)
     b = attrib()
 reveal_type(A)  # N: Revealed type is "def (b: Any) -> __main__.A"
-[builtins fixtures/bool.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsCmpTrue]
 from attr import attrib, attrs
@@ -304,7 +305,7 @@ class B:
 class C(A, B):
     c: bool = attr.ib()
 reveal_type(C)  # N: Revealed type is "def (a: builtins.int, b: builtins.str, c: builtins.bool) -> __main__.C"
-[builtins fixtures/bool.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsNestedInClasses]
 import attr
@@ -316,7 +317,7 @@ class C:
         x: int = attr.ib()
 reveal_type(C)  # N: Revealed type is "def (y: Any) -> __main__.C"
 reveal_type(C.D)  # N: Revealed type is "def (x: builtins.int) -> __main__.C.D"
-[builtins fixtures/bool.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsInheritanceOverride]
 import attr
@@ -339,7 +340,7 @@ class C(B):
 reveal_type(A)  # N: Revealed type is "def (a: builtins.int, x: builtins.int) -> __main__.A"
 reveal_type(B)  # N: Revealed type is "def (a: builtins.int, b: builtins.str, x: builtins.int =) -> __main__.B"
 reveal_type(C)  # N: Revealed type is "def (a: builtins.int, b: builtins.str, c: builtins.bool, x: builtins.int) -> __main__.C"
-[builtins fixtures/bool.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsTypeEquals]
 import attr
@@ -349,7 +350,7 @@ class A:
     a = attr.ib(type=int)
     b = attr.ib(18, type=int)
 reveal_type(A) # N: Revealed type is "def (a: builtins.int, b: builtins.int =) -> __main__.A"
-[builtins fixtures/bool.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsFrozen]
 import attr
@@ -360,7 +361,7 @@ class A:
 
 a = A(5)
 a.a = 16  # E: Property "a" defined in "A" is read-only
-[builtins fixtures/bool.pyi]
+[builtins fixtures/attr.pyi]
 [case testAttrsNextGenFrozen]
 from attr import frozen, field
 
@@ -370,7 +371,7 @@ class A:
 
 a = A(5)
 a.a = 16  # E: Property "a" defined in "A" is read-only
-[builtins fixtures/bool.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsNextGenDetect]
 from attr import define, field
@@ -398,9 +399,7 @@ reveal_type(B)  # N: Revealed type is "def (a: builtins.int) -> __main__.B"
 reveal_type(C)  # N: Revealed type is "def (a: builtins.int, b: Any) -> __main__.C"
 reveal_type(D)  # N: Revealed type is "def (b: Any) -> __main__.D"
 
-[builtins fixtures/bool.pyi]
-
-
+[builtins fixtures/attr.pyi]
 
 [case testAttrsDataClass]
 import attr
@@ -415,7 +414,7 @@ class A:
     F: ClassVar[int] = 22
 reveal_type(A)  # N: Revealed type is "def (a: builtins.int, b: builtins.list[builtins.str], c: builtins.str =, d: builtins.int =) -> __main__.A"
 A(1, ['2'])
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsTypeAlias]
 from typing import List
@@ -427,7 +426,7 @@ class A:
     x: Alias
     y: Alias2 = attr.ib()
 reveal_type(A) # N: Revealed type is "def (x: builtins.list[builtins.int], y: builtins.list[builtins.str]) -> __main__.A"
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsGeneric]
 from typing import TypeVar, Generic, List
@@ -452,7 +451,7 @@ reveal_type(a.y)  # N: Revealed type is "builtins.int*"
 A(['str'], 7)  # E: Cannot infer type argument 1 of "A"
 A([1], '2')  # E: Cannot infer type argument 1 of "A"
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 
 [case testAttrsUntypedGenericInheritance]
@@ -473,7 +472,7 @@ sub = Sub(attr=1)
 reveal_type(sub)  # N: Revealed type is "__main__.Sub"
 reveal_type(sub.attr)  # N: Revealed type is "Any"
 
-[builtins fixtures/bool.pyi]
+[builtins fixtures/attr.pyi]
 
 
 [case testAttrsGenericInheritance]
@@ -499,7 +498,7 @@ sub_str = Sub[str](attr='ok')
 reveal_type(sub_str)  # N: Revealed type is "__main__.Sub[builtins.str*]"
 reveal_type(sub_str.attr)  # N: Revealed type is "builtins.str*"
 
-[builtins fixtures/bool.pyi]
+[builtins fixtures/attr.pyi]
 
 
 [case testAttrsGenericInheritance]
@@ -526,7 +525,7 @@ reveal_type(sub.one)  # N: Revealed type is "builtins.int*"
 reveal_type(sub.two)  # N: Revealed type is "builtins.str*"
 reveal_type(sub.three)  # N: Revealed type is "builtins.float*"
 
-[builtins fixtures/bool.pyi]
+[builtins fixtures/attr.pyi]
 
 
 [case testAttrsMultiGenericInheritance]
@@ -554,7 +553,7 @@ reveal_type(sub)  # N: Revealed type is "__main__.Sub"
 reveal_type(sub.base_attr)  # N: Revealed type is "builtins.int*"
 reveal_type(sub.middle_attr)  # N: Revealed type is "builtins.str*"
 
-[builtins fixtures/bool.pyi]
+[builtins fixtures/attr.pyi]
 
 
 [case testAttrsGenericClassmethod]
@@ -568,7 +567,7 @@ class A(Generic[T]):
     def clsmeth(cls) -> None:
        reveal_type(cls)  # N: Revealed type is "Type[__main__.A[T`1]]"
 
-[builtins fixtures/classmethod.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsForwardReference]
 import attr
@@ -583,7 +582,7 @@ class B:
 reveal_type(A) # N: Revealed type is "def (parent: __main__.B) -> __main__.A"
 reveal_type(B) # N: Revealed type is "def (parent: __main__.A) -> __main__.B"
 A(B(None))
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsForwardReferenceInClass]
 import attr
@@ -598,7 +597,7 @@ class A:
 reveal_type(A) # N: Revealed type is "def (parent: __main__.A.B) -> __main__.A"
 reveal_type(A.B) # N: Revealed type is "def (parent: __main__.A) -> __main__.A.B"
 A(A.B(None))
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsImporting]
 from helper import A
@@ -609,7 +608,7 @@ import attr
 class A:
    a: int
    b: str = attr.ib()
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsOtherMethods]
 import attr
@@ -629,7 +628,7 @@ class A:
 reveal_type(A)  # N: Revealed type is "def (a: builtins.int, b: builtins.str) -> __main__.A"
 a = A.new()
 reveal_type(a.foo) # N: Revealed type is "def () -> builtins.int"
-[builtins fixtures/classmethod.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsOtherOverloads]
 import attr
@@ -661,7 +660,7 @@ class A:
 reveal_type(A.foo(3))      # N: Revealed type is "builtins.int"
 reveal_type(A.foo("foo"))  # N: Revealed type is "builtins.str"
 
-[builtins fixtures/classmethod.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsDefaultDecorator]
 import attr
@@ -673,7 +672,7 @@ class C(object):
     def name_does_not_matter(self):
         return self.x + 1
 C()
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsValidatorDecorator]
 import attr
@@ -686,7 +685,7 @@ class C(object):
             raise ValueError("x must be smaller or equal to 42")
 C(42)
 C(43)
-[builtins fixtures/exception.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsLocalVariablesInClassMethod]
 import attr
@@ -699,7 +698,8 @@ class A:
        a = foo
        b = a
        return cls(a, b)
-[builtins fixtures/classmethod.pyi]
+
+[builtins fixtures/attr.pyi]
 
 [case testAttrsUnionForward]
 import attr
@@ -718,7 +718,8 @@ reveal_type(A)  # N: Revealed type is "def (frob: builtins.list[Union[__main__.A
 reveal_type(B)  # N: Revealed type is "def () -> __main__.B"
 
 A([B()])
-[builtins fixtures/list.pyi]
+
+[builtins fixtures/attr.pyi]
 
 [case testAttrsUsingConvert]
 import attr
@@ -733,7 +734,7 @@ class C:
 # Because of the convert the __init__ takes an int, but the variable is a str.
 reveal_type(C)  # N: Revealed type is "def (x: builtins.int) -> __main__.C"
 reveal_type(C(15).x)  # N: Revealed type is "builtins.str"
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsUsingConverter]
 import attr
@@ -753,7 +754,7 @@ reveal_type(C(15, 16).x)  # N: Revealed type is "builtins.str"
 [file helper.py]
 def converter(s:int) -> str:
     return 'hello'
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsUsingConvertAndConverter]
 import attr
@@ -765,7 +766,7 @@ def converter(s:int) -> str:
 class C:
     x: str = attr.ib(converter=converter, convert=converter)  # E: Can't pass both `convert` and `converter`.
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsUsingBadConverter]
 # flags: --no-strict-optional
@@ -792,7 +793,7 @@ main:16: error: Argument "converter" has incompatible type "Callable[[], str]"; 
 main:17: error: Cannot determine __init__ type from converter
 main:17: error: Argument "converter" has incompatible type overloaded function; expected "Callable[[Any], int]"
 main:18: note: Revealed type is "def (bad: Any, bad_overloaded: Any) -> __main__.A"
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsUsingBadConverterReprocess]
 # flags: --no-strict-optional
@@ -820,7 +821,7 @@ main:17: error: Argument "converter" has incompatible type "Callable[[], str]"; 
 main:18: error: Cannot determine __init__ type from converter
 main:18: error: Argument "converter" has incompatible type overloaded function; expected "Callable[[Any], int]"
 main:19: note: Revealed type is "def (bad: Any, bad_overloaded: Any) -> __main__.A"
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsUsingUnsupportedConverter]
 import attr
@@ -836,7 +837,7 @@ class C:
     y: str = attr.ib(converter=lambda x: x)  # E: Unsupported converter, only named functions and types are currently supported
     z: str = attr.ib(converter=factory(8))   # E: Unsupported converter, only named functions and types are currently supported
 reveal_type(C)  # N: Revealed type is "def (x: Any, y: Any, z: Any) -> __main__.C"
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsUsingConverterAndSubclass]
 import attr
@@ -855,7 +856,7 @@ class A(C):
 # Because of the convert the __init__ takes an int, but the variable is a str.
 reveal_type(A)  # N: Revealed type is "def (x: builtins.int) -> __main__.A"
 reveal_type(A(15).x)  # N: Revealed type is "builtins.str"
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsUsingConverterWithTypes]
 from typing import overload
@@ -910,7 +911,7 @@ B() <= 1  # E: Unsupported operand types for <= ("B" and "int")
 C() <= 1  # E: Unsupported operand types for <= ("C" and "int")
 D() <= 1  # E: Unsupported operand types for <= ("D" and "int")
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsComplexSuperclass]
 import attr
@@ -926,7 +927,7 @@ class A(C):
     z: int = attr.ib(default=18)
 reveal_type(C)  # N: Revealed type is "def (x: builtins.int =, y: builtins.int =) -> __main__.C"
 reveal_type(A)  # N: Revealed type is "def (x: builtins.int =, y: builtins.int =, z: builtins.int =) -> __main__.A"
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsMultiAssign]
 import attr
@@ -934,14 +935,14 @@ import attr
 class A:
    x, y, z = attr.ib(), attr.ib(type=int), attr.ib(default=17)
 reveal_type(A) # N: Revealed type is "def (x: Any, y: builtins.int, z: Any =) -> __main__.A"
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsMultiAssign2]
 import attr
 @attr.s
 class A:
    x = y = z = attr.ib()  # E: Too many names for one attribute
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsPrivateInit]
 import attr
@@ -950,7 +951,7 @@ class C(object):
     _x = attr.ib(init=False, default=42)
 C()
 C(_x=42)  # E: Unexpected keyword argument "_x" for "C"
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsAutoMustBeAll]
 import attr
@@ -962,7 +963,7 @@ class A:
    c = attr.ib()  # E: Need type annotation for "c"
    d, e = attr.ib(), attr.ib() # E: Need type annotation for "d" # E: Need type annotation for "e"
    f = g = attr.ib()  # E: Need type annotation for "f" # E: Need type annotation for "g"
-[builtins fixtures/bool.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsRepeatedName]
 import attr
@@ -984,7 +985,7 @@ class C:
    b: int
    a: int = attr.ib()  # E: Name "a" already defined on line 16
 reveal_type(C)  # N: Revealed type is "def (a: builtins.int, b: builtins.int) -> __main__.C"
-[builtins fixtures/bool.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsNewStyleClassPy2]
 # flags: --py2
@@ -995,7 +996,7 @@ class Good(object):
 @attr.s
 class Bad:  # E: attrs only works with new-style classes
     pass
-[builtins_py2 fixtures/bool.pyi]
+[builtins_py2 fixtures/attr.pyi]
 
 [case testAttrsAutoAttribsPy2]
 # flags: --py2
@@ -1003,7 +1004,8 @@ import attr
 @attr.s(auto_attribs=True)  # E: auto_attribs is not supported in Python 2
 class A(object):
     x = attr.ib()
-[builtins_py2 fixtures/bool.pyi]
+
+[builtins_py2 fixtures/attr.pyi]
 
 [case testAttrsFrozenSubclass]
 import attr
@@ -1046,7 +1048,8 @@ c = NonFrozenFrozen(1, 2)
 c.a = 17  # E: Property "a" defined in "NonFrozenFrozen" is read-only
 c.b = 17  # E: Property "b" defined in "NonFrozenFrozen" is read-only
 
-[builtins fixtures/bool.pyi]
+[builtins fixtures/attr.pyi]
+
 [case testAttrsCallableAttributes]
 from typing import Callable
 import attr
@@ -1070,6 +1073,7 @@ class FFrozen(F):
     def bar(self) -> bool:
         return self._cb(5, 6)
 [builtins fixtures/callable.pyi]
+[builtins fixtures/dict.pyi]
 
 [case testAttrsWithFactory]
 from typing import List
@@ -1081,14 +1085,14 @@ class A:
     x: List[int] = attr.ib(factory=list)
     y: int = attr.ib(factory=my_factory)
 A()
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsFactoryAndDefault]
 import attr
 @attr.s
 class A:
     x: int = attr.ib(factory=int, default=7)  # E: Can't pass both `default` and `factory`.
-[builtins fixtures/bool.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsFactoryBadReturn]
 import attr
@@ -1098,7 +1102,7 @@ def my_factory() -> int:
 class A:
     x: int = attr.ib(factory=list)  # E: Incompatible types in assignment (expression has type "List[T]", variable has type "int")
     y: str = attr.ib(factory=my_factory) # E: Incompatible types in assignment (expression has type "int", variable has type "str")
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsDefaultAndInit]
 import attr
@@ -1111,7 +1115,7 @@ class C:
    d = attr.ib(init=False)  # Ok because this attribute is init=False
    e = attr.ib()  # E: Non-default attributes not allowed after default attributes.
 
-[builtins fixtures/bool.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsOptionalConverter]
 # flags: --strict-optional
@@ -1153,6 +1157,7 @@ class A:
 A()  # E: Missing named argument "a" for "A"
 A(15) # E: Too many positional arguments for "A"
 A(a=15)
+
 [builtins fixtures/attr.pyi]
 
 [case testAttrsKwOnlyClass]
@@ -1194,7 +1199,6 @@ class D:
 D(b=17)
 [builtins fixtures/attr.pyi]
 
-
 [case testAttrsKwOnlySubclass]
 import attr
 @attr.s
@@ -1230,7 +1234,7 @@ class A(object):
 @attr.s
 class B(object):
     x = attr.ib(kw_only=True)  # E: kw_only is not supported in Python 2
-[builtins_py2 fixtures/bool.pyi]
+[builtins_py2 fixtures/attr.pyi]
 
 [case testAttrsDisallowUntypedWorksForward]
 # flags: --disallow-untyped-defs
@@ -1245,7 +1249,7 @@ class C(List[C]):
     pass
 
 reveal_type(B)  # N: Revealed type is "def (x: __main__.C) -> __main__.B"
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testDisallowUntypedWorksForwardBad]
 # flags: --disallow-untyped-defs
@@ -1256,7 +1260,7 @@ class B:
     x = attr.ib()  # E: Need type annotation for "x"
 
 reveal_type(B)  # N: Revealed type is "def (x: Any) -> __main__.B"
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsDefaultDecoratorDeferred]
 defer: Yes
@@ -1271,7 +1275,7 @@ class C(object):
         return self.x + 1
 
 class Yes: ...
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsValidatorDecoratorDeferred]
 defer: Yes
@@ -1289,6 +1293,7 @@ C(43)
 
 class Yes: ...
 [builtins fixtures/exception.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testTypeInAttrUndefined]
 import attr
@@ -1296,7 +1301,7 @@ import attr
 @attr.s
 class C:
     total = attr.ib(type=Bad)  # E: Name "Bad" is not defined
-[builtins fixtures/bool.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testTypeInAttrForwardInRuntime]
 import attr
@@ -1308,7 +1313,7 @@ class C:
 reveal_type(C.total)  # N: Revealed type is "__main__.Forward"
 C('no')  # E: Argument 1 to "C" has incompatible type "str"; expected "Forward"
 class Forward: ...
-[builtins fixtures/bool.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testDefaultInAttrForward]
 import attr
@@ -1322,7 +1327,7 @@ def func() -> int: ...
 C()
 C(1)
 C(1, 2)  # E: Too many arguments for "C"
-[builtins fixtures/bool.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testTypeInAttrUndefinedFrozen]
 import attr
@@ -1332,7 +1337,7 @@ class C:
     total = attr.ib(type=Bad)  # E: Name "Bad" is not defined
 
 C(0).total = 1  # E: Property "total" defined in "C" is read-only
-[builtins fixtures/bool.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testTypeInAttrDeferredStar]
 import lib
@@ -1350,7 +1355,7 @@ C()  # E: Missing positional argument "total" in call to "C"
 C('no')  # E: Argument 1 to "C" has incompatible type "str"; expected "int"
 [file other.py]
 import lib
-[builtins fixtures/bool.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsDefaultsMroOtherFile]
 import a
@@ -1374,7 +1379,7 @@ class A1:
 class A2:
     b: int = attr.ib()
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [case testAttrsInheritanceNoAnnotation]
 import attr
@@ -1389,4 +1394,4 @@ class B(A):
     foo = x
 
 reveal_type(B)  # N: Revealed type is "def (foo: builtins.int) -> __main__.B"
-[builtins fixtures/bool.pyi]
+[builtins fixtures/attr.pyi]

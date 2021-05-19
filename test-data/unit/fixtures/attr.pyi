@@ -1,5 +1,7 @@
 # Builtins stub used to support @attr.s tests.
-from typing import Union, overload
+from typing import Union, overload, Mapping, Sequence, Generic, TypeVar
+
+T = TypeVar('T')
 
 class object:
     def __init__(self) -> None: pass
@@ -25,3 +27,10 @@ class complex:
 class str: pass
 class unicode: pass
 class ellipsis: pass
+
+class dict(Mapping): pass
+class tuple(Sequence[T], Generic): pass
+class list(Sequence[T]): pass
+class classmethod: pass
+class BaseException:
+    def __init__(self, *args: object) -> None: ...

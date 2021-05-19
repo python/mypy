@@ -2943,7 +2943,7 @@ class A:
     E = 7
     F: ClassVar[int] = 22
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 [out1]
 [out2]
 
@@ -2964,7 +2964,8 @@ import attr
 class A:
     x: str = attr.ib(converter=converter)
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
+
 [out1]
 main:6: note: Revealed type is "def (x: builtins.int) -> __main__.B"
 
@@ -2985,7 +2986,7 @@ import attr
 class A:
     x = attr.ib(type=int)
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 [out1]
 main:6: note: Revealed type is "def (x: builtins.int) -> __main__.B"
 [out2]
@@ -3020,7 +3021,7 @@ class NoInit:
 class NoCmp:
     x: int = attr.ib()
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 [rechecked]
 [stale]
 [out1]
@@ -3114,7 +3115,7 @@ from a import A
 class B(A):
     y: int
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 [out1]
 [out2]
 main:2: error: Argument 2 to "B" has incompatible type "str"; expected "int"
@@ -3143,7 +3144,7 @@ from a import A
 class B(A):
     y: str
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 [out1]
 main:2: error: Argument 2 to "B" has incompatible type "str"; expected "int"
 
@@ -3174,7 +3175,7 @@ import attr
 class C(A, B):
     c: bool = attr.ib()
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 [out1]
 [out2]
 
@@ -3192,7 +3193,7 @@ import attr
 class A:
     x: int = attr.ib(converter=converter)
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 [out1]
 main:2: note: Revealed type is "def (x: Union[builtins.int, None]) -> a.a.A"
 [out2]
@@ -3331,7 +3332,7 @@ class SubBB(SubBase):
     xx: int = attr.ib(converter=maybe_int)
     yy: str = attr.ib(converter=maybe_str)
     zz: bool = attr.ib(converter=bar.maybe_bool)
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 [out1]
 [out2]
 tmp/a.py:3: error: Argument 2 to "Base" has incompatible type "int"; expected "Optional[str]"
@@ -3352,7 +3353,7 @@ def foo() -> None:
     class A:
         x: int = attr.ib(converter=foo)
     reveal_type(A)
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 [out1]
 main:8: note: Revealed type is "def (x: builtins.str) -> __main__.A@6"
 [out2]
@@ -3443,7 +3444,7 @@ import attr
 class A:
     a: int = 6
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 [out1]
 [out2]
 main:2: error: Argument 1 to "A" has incompatible type "int"; expected "str"

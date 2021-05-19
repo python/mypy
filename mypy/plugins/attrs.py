@@ -258,7 +258,8 @@ def _get_decorator_optional_bool_argument(
         return default
 
 
-def _make_var(n: str, i: Type, fullname: Optional[str] = None, is_classvar: bool = False) -> Var:
+def _make_var(n: str, i: Instance, fullname: Optional[str] = None, is_classvar: bool = False) -> Var:
+    """Create a `Var` for a symbol table."""
     res = Var(n, i)
     res.info = i.type
     res.is_classvar = is_classvar
@@ -330,19 +331,26 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
 
     # Set up the `__attrs_attrs__` class variable.
     attr_symbol_tn = lookup_fully_qualified("attr.Attribute",
-        ctx.api.modules)
+        ctx.api.modules, raise_on_missing=False)
 
     if attr_symbol_tn is None or attr_symbol_tn.node is None:
         # Not expected to happen since the absence of attrs is handled elsewhere,
         # but we check just in case. Without this we cannot generate
         # the `__attrs_attrs__` variable, so we don't.
         return
-    
+
     attr_type = attr_symbol_tn.node
 
     tuple_type: TypeInfo = lookup_fully_qualified("builtins.tuple",
         ctx.api.modules,
         raise_on_missing=True).node
+    
+    # The `__attrs_attrs__` field is a special namedtuple, unique for each
+    # class, containing all gathered attributes.
+    # It's a namedtuple so attributes can be accessed by name:
+    # `X.__attrs_attrs__.a` points to the attribute for field `X.a`
+    # Both the namedtuple class and instance of it are generated at runtime
+    # by attrs, so we replicate that behavior here.
 
     sym_table = SymbolTable(
         {
@@ -352,20 +360,20 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
                     a.name,
                     Instance(attr_type,
                         # We want to support future attrs versions with a 2-param Attribute
-                        [Instance(ctx.cls.info, []), a.argument(ctx).type_annotation]
+                        [Instance(ctx.cls.info, []), info[a.name].type]
                         if len(attr_type.type_vars) == 2 else
-                        [a.argument(ctx).type_annotation]),
+                        [info[a.name].type]),
                 ),
             )
             for a in attributes
         },
     )
     cd = ClassDef(f"{info.name}Attributes", Block([]))
-    cd.fullname = f"{info.name}Attributes"
+    cd.fullname = f"builtins.{info.name}Attributes"  # To match the runtime semantics
     ti = TypeInfo(
         sym_table,
         cd,
-        "attr",
+        "builtins",
     )
     ti.is_named_tuple = True
     ti.mro = [ti, tuple_type]
