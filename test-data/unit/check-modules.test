@@ -2943,3 +2943,42 @@ def f(x: str) -> None: ...
 [file mypy.ini]
 \[mypy]
 mypy_path = tmp/xx
+
+[case testImportCycleSpecialCase2]
+import m
+
+[file m.pyi]
+from f import F
+class M: pass
+
+[file f.pyi]
+from m import M
+
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+
+class W(Generic[T]): ...
+
+class F(M):
+    A = W[int]
+    x: C
+    class C(W[F.A]): ...
+
+[case testImportCycleSpecialCase3]
+import f
+
+[file m.pyi]
+from f import F
+class M: pass
+
+[file f.pyi]
+from m import M
+
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+
+class F(M):
+    x: C
+    class C: ...

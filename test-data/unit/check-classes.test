@@ -3799,7 +3799,7 @@ int.__eq__(int)
 int.__eq__(3, 4)
 [builtins fixtures/args.pyi]
 [out]
-main:33: error: Too few arguments for "__eq__" of "int" 
+main:33: error: Too few arguments for "__eq__" of "int"
 main:33: error: Unsupported operand types for == ("int" and "Type[int]")
 
 [case testMroSetAfterError]
@@ -6817,3 +6817,7 @@ class A(metaclass=ABCMeta):
 @final
 class B(A):  # E: Final class __main__.B has abstract attributes "foo"
     pass
+
+[case testUndefinedBaseclassInNestedClass]
+class C:
+    class C1(XX): pass  # E: Name "XX" is not defined

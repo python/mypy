@@ -250,6 +250,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.imports = set()
         self.type = None
         self.type_stack = []
+        # Are the namespaces of classes being processed complete?
+        self.incomplete_type_stack = []  # type: List[bool]
         self.tvar_scope = TypeVarLikeScope()
         self.function_stack = []
         self.block_depth = [0]
@@ -526,6 +528,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.num_incomplete_refs = 0
 
         if active_type:
+            self.incomplete_type_stack.append(False)
             scope.enter_class(active_type)
             self.enter_class(active_type.defn.info)
             for tvar in active_type.defn.type_vars:
@@ -537,6 +540,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             scope.leave()
             self.leave_class()
             self.type = None
+            self.incomplete_type_stack.pop()
         scope.leave()
         del self.options
 
@@ -1047,8 +1051,10 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def visit_class_def(self, defn: ClassDef) -> None:
         self.statement = defn
+        self.incomplete_type_stack.append(not defn.info)
         with self.tvar_scope_frame(self.tvar_scope.class_frame()):
             self.analyze_class(defn)
+        self.incomplete_type_stack.pop()
 
     def analyze_class(self, defn: ClassDef) -> None:
         fullname = self.qualified_name(defn.name)
@@ -4749,7 +4755,15 @@ class SemanticAnalyzer(NodeVisitor[None],
                 self.name_already_defined(name, ctx, self.globals[name])
 
     def name_not_defined(self, name: str, ctx: Context, namespace: Optional[str] = None) -> None:
-        if self.is_incomplete_namespace(namespace or self.cur_mod_id):
+        incomplete = self.is_incomplete_namespace(namespace or self.cur_mod_id)
+        if (namespace is None
+                and self.type
+                and not self.is_func_scope()
+                and self.incomplete_type_stack[-1]
+                and not self.final_iteration):
+            # We are processing a class body for the first time, so it is incomplete.
+            incomplete = True
+        if incomplete:
             # Target namespace is incomplete, so it's possible that the name will be defined
             # later on. Defer current target.
             self.record_incomplete_ref()
