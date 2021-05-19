@@ -4754,7 +4754,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         if (namespace is None
                 and self.type
                 and not self.is_func_scope()
-                and self.incomplete_type_stack[-1]):
+                and self.incomplete_type_stack[-1]
+                and not self.final_iteration):
             # We are processing a class body for the first time, so it is incomplete.
             incomplete = True
         if incomplete:
