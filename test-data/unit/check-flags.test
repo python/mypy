@@ -461,7 +461,7 @@ x + ""
 [file mod.py]
 deliberate syntax error
 [out]
-main:2: error: Import of 'mod' ignored
+main:2: error: Import of "mod" ignored
 main:2: note: (Using --follow-imports=error, module not passed on command line)
 
 [case testIgnoreMissingImportsFalse]

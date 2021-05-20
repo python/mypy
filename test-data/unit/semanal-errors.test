@@ -533,8 +533,8 @@ class c(Generic[t]):
     def f(self) -> None: x = t
 def f(y: t): x = t
 [out]
-main:4: error: 't' is a type variable and only valid in type context
-main:5: error: 't' is a type variable and only valid in type context
+main:4: error: "t" is a type variable and only valid in type context
+main:5: error: "t" is a type variable and only valid in type context
 
 [case testMissingSelf]
 import typing

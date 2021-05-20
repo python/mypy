@@ -2568,7 +2568,7 @@ def skipping_module(manager: BuildManager, line: int, caller_state: Optional[Sta
     manager.errors.set_import_context(caller_state.import_context)
     manager.errors.set_file(caller_state.xpath, caller_state.id)
     manager.errors.report(line, 0,
-                          "Import of '%s' ignored" % (id,),
+                          'Import of "%s" ignored' % (id,),
                           severity='error')
     manager.errors.report(line, 0,
                           "(Using --follow-imports=error, module not passed on command line)",
@@ -2584,7 +2584,7 @@ def skipping_ancestor(manager: BuildManager, id: str, path: str, ancestor_for: '
     # so we'd need to cache the decision.
     manager.errors.set_import_context([])
     manager.errors.set_file(ancestor_for.xpath, ancestor_for.id)
-    manager.errors.report(-1, -1, "Ancestor package '%s' ignored" % (id,),
+    manager.errors.report(-1, -1, 'Ancestor package "%s" ignored' % (id,),
                           severity='error', only_once=True)
     manager.errors.report(-1, -1,
                           "(Using --follow-imports=error, submodule passed on command line)",
