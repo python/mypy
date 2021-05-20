@@ -932,7 +932,7 @@ import attr
 class A:
     a = attr.ib()   # type: int
     other = attr.ib()   # type: int
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 [out]
 ==
 b.py:7: error: Missing positional argument "b" in call to "B"
@@ -958,7 +958,7 @@ import attr
 class A:
     a = attr.ib()   # type: int
     other = attr.ib()   # type: int
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 [out]
 ==
 main:2: error: Missing positional argument "b" in call to "B"
@@ -991,7 +991,7 @@ import attr
 @attr.s(auto_attribs=True, init=False)
 class A:
     a: int
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 
 [out]
 ==
@@ -1018,7 +1018,7 @@ import attr
 @attr.s(eq=False, init=False)
 class A:
     a = attr.ib()   # type: int
-[builtins fixtures/list.pyi]
+[builtins fixtures/attr.pyi]
 [out]
 ==
 main:2: error: Unsupported left operand type for < ("B")
