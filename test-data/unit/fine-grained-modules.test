@@ -1828,10 +1828,10 @@ x = 1
 [file c.py.2]
 x = '2'
 [out]
-a.py:2: error: Import of 'b' ignored
+a.py:2: error: Import of "b" ignored
 a.py:2: note: (Using --follow-imports=error, module not passed on command line)
 ==
-a.py:2: error: Import of 'b' ignored
+a.py:2: error: Import of "b" ignored
 a.py:2: note: (Using --follow-imports=error, module not passed on command line)
 
 [case testErrorButDontIgnore2]
@@ -1848,7 +1848,7 @@ x = 1
 x = '2'
 [out]
 ==
-a.py:2: error: Import of 'b' ignored
+a.py:2: error: Import of "b" ignored
 a.py:2: note: (Using --follow-imports=error, module not passed on command line)
 
 -- TODO: This test fails because p.b does not depend on p (#4847)

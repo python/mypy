@@ -184,7 +184,7 @@ Daemon started
 $ dmypy check foo.py bar.py
 $ dmypy recheck
 $ dmypy recheck --update foo.py --remove bar.py sir_not_appearing_in_this_film.py
-foo.py:1: error: Import of 'bar' ignored
+foo.py:1: error: Import of "bar" ignored
 foo.py:1: note: (Using --follow-imports=error, module not passed on command line)
 == Return code: 1
 $ dmypy recheck --update bar.py
