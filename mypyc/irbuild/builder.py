@@ -290,14 +290,25 @@ class IRBuilder:
         self.imports[id] = None
 
         needs_import, out = BasicBlock(), BasicBlock()
-        first_load = self.load_module(id)
-        comparison = self.translate_is_op(first_load, self.none_object(), 'is not', line)
-        self.add_bool_branch(comparison, out, needs_import)
+        self.check_if_module_loaded(id, line, needs_import, out)
 
         self.activate_block(needs_import)
         value = self.call_c(import_op, [self.load_str(id)], line)
         self.add(InitStatic(value, id, namespace=NAMESPACE_MODULE))
         self.goto_and_activate(out)
+
+    def check_if_module_loaded(self, id: str, line: int,
+                               needs_import: BasicBlock, out: BasicBlock) -> None:
+        """Generate code that checks if the module `id` has been loaded yet.
+
+        Arguments:
+            id: name of module to check if imported
+            line: line number that the import occurs on
+            needs_import: the BasicBlock that is run if the module has not been loaded yet
+            out: the BasicBlock that is run if the module has already been loaded"""
+        first_load = self.load_module(id)
+        comparison = self.translate_is_op(first_load, self.none_object(), 'is not', line)
+        self.add_bool_branch(comparison, out, needs_import)
 
     def get_module(self, module: str, line: int) -> Value:
         # Python 3.7 has a nice 'PyImport_GetModule' function that we can't use :(
