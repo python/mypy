@@ -7,7 +7,7 @@ from mypy.types import (
     Type, AnyType, NoneType, TypeVisitor, Instance, UnboundType, TypeVarType, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, FunctionLike, Overloaded, LiteralType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, get_proper_type,
-    ProperType, get_proper_types, TypeAliasType, PlaceholderType
+    ProperType, get_proper_types, TypeAliasType, PlaceholderType, TypeGuardType
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import (
@@ -338,6 +338,9 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             return self.default(self.s)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
+        assert False, "This should be never called, got {}".format(t)
+
+    def visit_type_guard_type(self, t: TypeGuardType) -> ProperType:
         assert False, "This should be never called, got {}".format(t)
 
     def join(self, s: Type, t: Type) -> ProperType:

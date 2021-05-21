@@ -294,3 +294,24 @@ class C:
 class D(C):
     def is_float(self, a: object) -> bool: pass  # E: Signature of "is_float" incompatible with supertype "C"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeGuardInAnd]
+from typing import Any
+from typing_extensions import TypeGuard
+import types
+def isclass(a: object) -> bool:
+    pass
+def ismethod(a: object) -> TypeGuard[float]:
+    pass
+def isfunction(a: object) -> TypeGuard[str]:
+    pass
+def isclassmethod(obj: Any) -> bool:
+    if ismethod(obj) and obj.__self__ is not None and isclass(obj.__self__):  # E: "float" has no attribute "__self__"
+        return True
+
+    return False
+def coverage(obj: Any) -> bool:
+    if not (ismethod(obj) or isfunction(obj)):
+        return True
+    return False
+[builtins fixtures/classmethod.pyi]

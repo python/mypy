@@ -4,7 +4,7 @@ from mypy.types import (
     Type, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarId, Instance, TypeVarType,
     CallableType, TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType,
     DeletedType, TypeTranslator, UninhabitedType, TypeType, TypeOfAny, LiteralType, ProperType,
-    get_proper_type, TypeAliasType
+    get_proper_type, TypeAliasType, TypeGuardType
 )
 from mypy.nodes import ARG_STAR, ARG_STAR2
 
@@ -89,6 +89,9 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
         erased_items = [erase_type(item) for item in t.items]
         from mypy.typeops import make_simplified_union
         return make_simplified_union(erased_items)
+
+    def visit_type_guard_type(self, t: TypeGuardType) -> ProperType:
+        return TypeGuardType(t.type_guard.accept(self))
 
     def visit_type_type(self, t: TypeType) -> ProperType:
         return TypeType.make_normalized(t.item.accept(self), line=t.line)

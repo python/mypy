@@ -97,6 +97,9 @@ class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
     def visit_union_type(self, t: types.UnionType) -> Set[str]:
         return self._visit(t.items)
 
+    def visit_type_guard_type(self, t: types.TypeGuardType) -> Set[str]:
+        return self._visit(t.type_guard)
+
     def visit_partial_type(self, t: types.PartialType) -> Set[str]:
         return set()
 
