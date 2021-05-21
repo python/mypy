@@ -1502,7 +1502,7 @@ T = TypeVar('T')
 class Outer(Generic[T]):
     class Inner:
         x: T  # E: Invalid type "__main__.T"
-        def f(self, x: T) -> T: ...  # E: Type variable 'T' is bound by an outer class
+        def f(self, x: T) -> T: ...  # E: Type variable "T" is bound by an outer class
         def g(self) -> None:
             y: T  # E: Invalid type "__main__.T"
 
