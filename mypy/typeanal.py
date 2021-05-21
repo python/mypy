@@ -934,7 +934,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         defs = []  # type: List[TypeVarLikeDef]
         for name, tvar in typevars:
             if not self.tvar_scope.allow_binding(tvar.fullname):
-                self.fail("Type variable '{}' is bound by an outer class".format(name), defn)
+                self.fail('Type variable "{}" is bound by an outer class'.format(name), defn)
             self.tvar_scope.bind_new(name, tvar)
             binding = self.tvar_scope.get_binding(tvar.fullname)
             assert binding is not None

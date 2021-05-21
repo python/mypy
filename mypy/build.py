@@ -2799,7 +2799,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
             manager.errors.set_file(st.xpath, st.id)
             manager.errors.report(
                 -1, -1,
-                "Duplicate module named '%s' (also at '%s')" % (st.id, graph[st.id].xpath),
+                'Duplicate module named "%s" (also at "%s")' % (st.id, graph[st.id].xpath),
                 blocker=True,
             )
             manager.errors.report(
@@ -2869,8 +2869,8 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                         if newst_path in seen_files:
                             manager.errors.report(
                                 -1, 0,
-                                "Source file found twice under different module names: "
-                                "'{}' and '{}'".format(seen_files[newst_path].id, newst.id),
+                                'Source file found twice under different module names: '
+                                '"{}" and "{}"'.format(seen_files[newst_path].id, newst.id),
                                 blocker=True)
                             manager.errors.raise_error()
 

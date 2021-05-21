@@ -1499,14 +1499,14 @@ class SemanticAnalyzer(NodeVisitor[None],
                 base_types.append(actual_base)
             elif isinstance(base, Instance):
                 if base.type.is_newtype:
-                    self.fail("Cannot subclass NewType", defn)
+                    self.fail('Cannot subclass "NewType"', defn)
                 base_types.append(base)
             elif isinstance(base, AnyType):
                 if self.options.disallow_subclassing_any:
                     if isinstance(base_expr, (NameExpr, MemberExpr)):
-                        msg = "Class cannot subclass '{}' (has type 'Any')".format(base_expr.name)
+                        msg = 'Class cannot subclass "{}" (has type "Any")'.format(base_expr.name)
                     else:
-                        msg = "Class cannot subclass value of type 'Any'"
+                        msg = 'Class cannot subclass value of type "Any"'
                     self.fail(msg, base_expr)
                 info.fallback_to_any = True
             else:
