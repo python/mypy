@@ -202,3 +202,12 @@ def g(o: NotDeletable) -> None:
     del o.x
     del o.y  # E: "y" cannot be deleted \
              # N: Using "__deletable__ = ['<attr>']" in the class body enables "del obj.<attr>"
+
+class Base:
+    x: int
+
+class Deriv(Base):
+    __deletable__ = ['x']  # E: Attribute "x" not defined in "Deriv" (defined in "Base")
+
+class UndefinedDeletable:
+    __deletable__ = ['x']  # E: Attribute "x" not defined
