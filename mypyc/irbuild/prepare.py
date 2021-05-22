@@ -54,7 +54,8 @@ def build_type_map(mapper: Mapper,
         class_ir = ClassIR(cdef.name, module.fullname, is_trait(cdef),
                            is_abstract=cdef.info.is_abstract)
         class_ir.is_ext_class = is_extension_class(cdef)
-        class_ir.deletable = cdef.info.deletable_attributes[:]
+        if class_ir.is_ext_class:
+            class_ir.deletable = cdef.info.deletable_attributes[:]
         # If global optimizations are disabled, turn of tracking of class children
         if not options.global_opts:
             class_ir.children = None

@@ -142,6 +142,39 @@ def test_delete_with_inheritance_any() -> None:
         del d.d
     assert d.d == 'Y'
 
+def decorator(cls):
+    return cls
+
+@decorator
+class NonExt:
+    x: int
+    y: int
+
+    # No effect in a non-native class
+    __deletable__ = ['x']
+
+def test_non_ext() -> None:
+    n = NonExt()
+    n.x = 2
+    n.y = 3
+    del n.x
+    del n.y
+    with assertRaises(AttributeError):
+        n.x
+    with assertRaises(AttributeError):
+        n.y
+
+def test_non_ext_any() -> None:
+    n: Any = NonExt()
+    n.x = 2
+    n.y = 3
+    del n.x
+    del n.y
+    with assertRaises(AttributeError):
+        n.x
+    with assertRaises(AttributeError):
+        n.y
+
 [case testNonExtMisc]
 from typing import Any, overload
 
