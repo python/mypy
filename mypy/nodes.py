@@ -608,6 +608,8 @@ class FuncItem(FuncBase):
                  'expanded',  # Variants of function with type variables with values expanded
                  )
 
+    __deletable__ = ('arguments', 'max_pos', 'min_args')
+
     def __init__(self,
                  arguments: List[Argument],
                  body: 'Block',

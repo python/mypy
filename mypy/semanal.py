@@ -156,6 +156,8 @@ class SemanticAnalyzer(NodeVisitor[None],
     AST. Note that type checking is performed as a separate pass.
     """
 
+    __deletable__ = ['patches', 'options', 'cur_mod_node']
+
     # Module name space
     modules = None  # type: Dict[str, MypyFile]
     # Global name space for current module
