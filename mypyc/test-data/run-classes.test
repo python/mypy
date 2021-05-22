@@ -27,6 +27,7 @@ class D:
     pass
 [file driver.py]
 from native import C
+from testutil import assertRaises
 
 c = C()
 assert not hasattr(c, 'x')
@@ -42,11 +43,13 @@ print(c.x)
 assert hasattr(c, 'x')
 assert hasattr(c, 'y')
 assert not hasattr(c, 'z')
-del c.x
-assert not hasattr(c, 'x')
+with assertRaises(AttributeError, "'C' object attribute 'x' cannot be deleted"):
+    del c.x
+assert hasattr(c, 'x')
 assert hasattr(c, 'y')
-del c.y
-assert not hasattr(c, 'y')
+with assertRaises(AttributeError, "'C' object attribute 'y' cannot be deleted"):
+    del c.y
+assert hasattr(c, 'y')
 c.x = 10**30+2
 print(c.x)
 assert hasattr(c, 'x')
@@ -56,6 +59,46 @@ assert hasattr(c, 'x')
 1000000000000000000000000000000
 1000000000000000000000000000001
 1000000000000000000000000000002
+
+[case testClassWithDeletableAttributes]
+from typing import Any
+from testutil import assertRaises
+
+class C:
+    __deletable__ = ['x', 'y']
+    x: int
+    y: int
+    z: int
+
+def test_delete() -> None:
+    c = C()
+    c.x = 1
+    c.y = 2
+    c.z = 3
+    del c.x
+    del c.y
+    with assertRaises(AttributeError, "'C' object attribute 'z' cannot be deleted"):
+        del c.z
+    assert c.z == 3
+    with assertRaises(AttributeError):
+        c.x
+    with assertRaises(AttributeError):
+        c.y
+
+def test_delete_any() -> None:
+    c: Any = C()
+    c.x = 1
+    c.y = 2
+    c.z = 3
+    del c.x
+    del c.y
+    with assertRaises(AttributeError, "'C' object attribute 'z' cannot be deleted"):
+        del c.z
+    assert c.z == 3
+    with assertRaises(AttributeError):
+        c.x
+    with assertRaises(AttributeError):
+        c.y
 
 [case testNonExtMisc]
 from typing import Any, overload

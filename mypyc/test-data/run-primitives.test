@@ -317,6 +317,8 @@ def delDictMultiple() -> None:
     printDict(d)
 
 class Dummy():
+    __deletable__ = ('x', 'y')
+
     def __init__(self, x: int, y: int) -> None:
         self.x = x
         self.y = y

@@ -818,12 +818,24 @@ def generate_setter(cl: ClassIR,
         setter_name(cl, attr, emitter.names),
         cl.struct_name(emitter.names)))
     emitter.emit_line('{')
+
+    deletable = cl.is_deletable(attr)
+    if not deletable:
+        emitter.emit_line('if (value == NULL) {')
+        emitter.emit_line('PyErr_SetString(PyExc_AttributeError,')
+        emitter.emit_line('    "{} object attribute {} cannot be deleted");'.format(repr(cl.name),
+                                                                                    repr(attr)))
+        emitter.emit_line('return -1;')
+        emitter.emit_line('}')
+
     if rtype.is_refcounted:
         attr_expr = 'self->{}'.format(attr_field)
         emitter.emit_undefined_attr_check(rtype, attr_expr, '!=')
         emitter.emit_dec_ref('self->{}'.format(attr_field), rtype)
         emitter.emit_line('}')
-    emitter.emit_line('if (value != NULL) {')
+
+    if deletable:
+        emitter.emit_line('if (value != NULL) {')
     if rtype.is_unboxed:
         emitter.emit_unbox('value', 'tmp', rtype, custom_failure='return -1;', declare_dest=True)
     elif is_same_type(rtype, object_rprimitive):
@@ -834,8 +846,10 @@ def generate_setter(cl: ClassIR,
                            '    return -1;')
     emitter.emit_inc_ref('tmp', rtype)
     emitter.emit_line('self->{} = tmp;'.format(attr_field))
-    emitter.emit_line('} else')
-    emitter.emit_line('    self->{} = {};'.format(attr_field, emitter.c_undefined_value(rtype)))
+    if deletable:
+        emitter.emit_line('} else')
+        emitter.emit_line('    self->{} = {};'.format(attr_field,
+                                                      emitter.c_undefined_value(rtype)))
     emitter.emit_line('return 0;')
     emitter.emit_line('}')
 

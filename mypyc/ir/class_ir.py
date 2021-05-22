@@ -110,6 +110,8 @@ class ClassIR:
         self.ctor = FuncDecl(name, None, module_name, FuncSignature([], RInstance(self)))
 
         self.attributes = OrderedDict()  # type: OrderedDict[str, RType]
+        # Deletable attributes
+        self.deletable = []  # type: List[str]
         # We populate method_types with the signatures of every method before
         # we generate methods, and we rely on this information being present.
         self.method_decls = OrderedDict()  # type: OrderedDict[str, FuncDecl]
@@ -210,6 +212,12 @@ class ClassIR:
         except KeyError:
             return False
         return True
+
+    def is_deletable(self, name: str) -> bool:
+        for ir in self.mro:
+            if name in ir.deletable:
+                return True
+        return False
 
     def name_prefix(self, names: NameGenerator) -> str:
         return names.private_name(self.module_name, self.name)
