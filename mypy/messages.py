@@ -910,7 +910,7 @@ class MessageBuilder:
                   context, code=codes.STRING_FORMATTING)
 
     def key_not_in_mapping(self, key: str, context: Context) -> None:
-        self.fail('Key \'%s\' not found in mapping' % key, context,
+        self.fail('Key "%s" not found in mapping' % key, context,
                   code=codes.STRING_FORMATTING)
 
     def string_interpolation_mixing_key_and_non_keys(self, context: Context) -> None:

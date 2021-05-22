@@ -1295,7 +1295,7 @@ b'%(x)s' % {b'x': b'data'}
 [case testStringInterpolationMappingKeys]
 '%()d' % {'': 2}
 '%(a)d' % {'a': 1, 'b': 2, 'c': 3}
-'%(q)d' % {'a': 1, 'b': 2, 'c': 3}  # E: Key 'q' not found in mapping
+'%(q)d' % {'a': 1, 'b': 2, 'c': 3}  # E: Key "q" not found in mapping
 '%(a)d %%' % {'a': 1}
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-medium.pyi]
