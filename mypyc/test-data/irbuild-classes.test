@@ -1118,3 +1118,19 @@ class DeletableProperty:
     @property
     def prop(self) -> int:
         return 5
+
+[case testFinalDeletable]
+from typing import Final
+
+class DeletableFinal1:
+    x: Final[int]  # E: Deletable attribute cannot be final
+
+    __deletable__ = ['x']
+
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+class DeletableFinal2:
+    X: Final = 0  # E: Deletable attribute cannot be final
+
+    __deletable__ = ['X']

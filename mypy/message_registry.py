@@ -129,6 +129,8 @@ DEPENDENT_FINAL_IN_CLASS_BODY = \
     "Final name declared in class body cannot depend on type variables"  # type: Final
 CANNOT_ACCESS_FINAL_INSTANCE_ATTR = \
     'Cannot access final instance attribute "{}" on class object'  # type: Final
+CANNOT_MAKE_DELETABLE_FINAL = \
+    "Deletable attribute cannot be final"  # type: Final
 
 # ClassVar
 CANNOT_OVERRIDE_INSTANCE_VAR = \

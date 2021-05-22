@@ -1731,6 +1731,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if not defn.has_incompatible_baseclass:
                 # Otherwise we've already found errors; more errors are not useful
                 self.check_multiple_inheritance(typ)
+            self.check_final_deletable(typ)
 
             if defn.decorators:
                 sig = type_object_type(defn.info, self.named_type)  # type: Type
@@ -1756,6 +1757,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # that completely swap out the type.  (e.g. Callable[[Type[A]], Type[B]])
         if typ.is_protocol and typ.defn.type_vars:
             self.check_protocol_variance(defn)
+
+    def check_final_deletable(self, typ: TypeInfo) -> None:
+        # These checks are only for mypyc. Only perform some checks that are easier
+        # to implement here than in mypyc.
+        for attr in typ.deletable_attributes:
+            node = typ.names.get(attr)
+            if node and isinstance(node.node, Var) and node.node.is_final:
+                self.fail(message_registry.CANNOT_MAKE_DELETABLE_FINAL, node.node)
 
     def check_init_subclass(self, defn: ClassDef) -> None:
         """Check that keywords in a class definition are valid arguments for __init_subclass__().
