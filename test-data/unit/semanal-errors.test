@@ -1434,3 +1434,26 @@ TP = ParamSpec('?')  # E: String argument 1 "?" to ParamSpec(...) does not match
 TP2: int = ParamSpec('TP2')  # E: Cannot declare the type of a parameter specification
 
 [out]
+
+[case testDeletable]
+# This is a mypyc-specific feature, but the checks are always enabled in mypy
+
+class Err1:
+  __deletable__ = 'x'  # E: "__deletable__" must be initialized with a list or tuple expression
+class Err2:
+  __deletable__ = [
+    1  # E: Invalid "__deletable__" item; string literal expected
+  ]
+class Err3:
+  __deletable__ = ['x', ['y'], 'z']  # E: Invalid "__deletable__" item; string literal expected
+class Err4:
+  __deletable__ = (1,)  # E: Invalid "__deletable__" item; string literal expected
+a = ['x']
+class Err5:
+  __deletable__ = a  # E: "__deletable__" must be initialized with a list or tuple expression
+class Ok1:
+  __deletable__ = ('x',)
+  x: int
+class Ok2:
+  __deletable__ = ['x']
+  x: int
