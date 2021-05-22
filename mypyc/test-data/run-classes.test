@@ -100,6 +100,35 @@ def test_delete_any() -> None:
     with assertRaises(AttributeError):
         c.y
 
+class Base:
+    __deletable__ = ['a']
+    a: int
+    b: int
+
+class Deriv(Base):
+    __deletable__ = ('c',)
+    c: str
+    d: str
+
+def test_delete_with_inheritance() -> None:
+    d = Deriv()
+    d.a = 0
+    d.b = 1
+    d.c = 'X'
+    d.d = 'Y'
+    del d.a
+    with assertRaises(AttributeError):
+        d.a
+    del d.c
+    with assertRaises(AttributeError):
+        d.c
+    with assertRaises(AttributeError):
+        del d.b
+    assert d.b == 1
+    with assertRaises(AttributeError):
+        del d.d
+    assert d.d == 'Y'
+
 [case testNonExtMisc]
 from typing import Any, overload
 

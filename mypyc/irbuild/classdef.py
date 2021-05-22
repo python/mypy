@@ -362,7 +362,7 @@ def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef) -> None:
                     and isinstance(stmt.lvalues[0], NameExpr)
                     and not is_class_var(stmt.lvalues[0])
                     and not isinstance(stmt.rvalue, TempNode)):
-                if stmt.lvalues[0].name == '__slots__':
+                if stmt.lvalues[0].name in ('__slots__', '__deletable__'):
                     continue
 
                 # Skip type annotated assignments in dataclasses
