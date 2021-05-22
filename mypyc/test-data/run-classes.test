@@ -61,7 +61,7 @@ assert hasattr(c, 'x')
 1000000000000000000000000000002
 
 [case testClassWithDeletableAttributes]
-from typing import Any
+from typing import Any, cast
 from testutil import assertRaises
 
 class C:
@@ -77,8 +77,6 @@ def test_delete() -> None:
     c.z = 3
     del c.x
     del c.y
-    with assertRaises(AttributeError, "'C' object attribute 'z' cannot be deleted"):
-        del c.z
     assert c.z == 3
     with assertRaises(AttributeError):
         c.x
@@ -112,6 +110,21 @@ class Deriv(Base):
 
 def test_delete_with_inheritance() -> None:
     d = Deriv()
+    d.a = 0
+    d.b = 1
+    d.c = 'X'
+    d.d = 'Y'
+    del d.a
+    with assertRaises(AttributeError):
+        d.a
+    del d.c
+    with assertRaises(AttributeError):
+        d.c
+    assert d.b == 1
+    assert d.d == 'Y'
+
+def test_delete_with_inheritance_any() -> None:
+    d: Any = Deriv()
     d.a = 0
     d.b = 1
     d.c = 'X'

@@ -1119,6 +1119,9 @@ class IRBuilder:
     def error(self, msg: str, line: int) -> None:
         self.errors.error(msg, self.module_path, line)
 
+    def note(self, msg: str, line: int) -> None:
+        self.errors.note(msg, self.module_path, line)
+
 
 def gen_arg_defaults(builder: IRBuilder) -> None:
     """Generate blocks for arguments that have default values.
