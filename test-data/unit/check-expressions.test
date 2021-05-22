@@ -1219,14 +1219,14 @@ a = None # type: Any
 [typing fixtures/typing-medium.pyi]
 
 [case testStringInterpolationInvalidPlaceholder]
-'%W' % 1  # E: Unsupported format character 'W'
-'%b' % 1  # E: Format character 'b' is only supported on bytes patterns
+'%W' % 1  # E: Unsupported format character "W"
+'%b' % 1  # E: Format character "b" is only supported on bytes patterns
 
 [case testStringInterPolationPython2]
 # flags: --python-version 2.7
-b'%b' % 1  # E: Format character 'b' is only supported in Python 3.5 and later
+b'%b' % 1  # E: Format character "b" is only supported in Python 3.5 and later
 b'%s' % 1
-b'%a' % 1  # E: Format character 'a' is only supported in Python 3
+b'%a' % 1  # E: Format character "a" is only supported in Python 3
 
 [case testBytesInterpolationBefore35]
 # flags: --python-version 3.4
@@ -1295,7 +1295,7 @@ b'%(x)s' % {b'x': b'data'}
 [case testStringInterpolationMappingKeys]
 '%()d' % {'': 2}
 '%(a)d' % {'a': 1, 'b': 2, 'c': 3}
-'%(q)d' % {'a': 1, 'b': 2, 'c': 3}  # E: Key 'q' not found in mapping
+'%(q)d' % {'a': 1, 'b': 2, 'c': 3}  # E: Key "q" not found in mapping
 '%(a)d %%' % {'a': 1}
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -1529,8 +1529,8 @@ x: Union[Good, Bad]
 '{:s}'.format(42)
 '{:s}'.format('yes')
 
-'{:z}'.format('what')  # E: Unsupported format character 'z'
-'{:Z}'.format('what')  # E: Unsupported format character 'Z'
+'{:z}'.format('what')  # E: Unsupported format character "z"
+'{:Z}'.format('what')  # E: Unsupported format character "Z"
 [builtins fixtures/primitives.pyi]
 
 [case testFormatCallFormatTypesChar]

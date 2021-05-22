@@ -1872,8 +1872,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         module = self.modules.get(import_id)
         if module:
             if not self.options.implicit_reexport and source_id in module.names.keys():
-                message = ("Module '{}' does not explicitly export attribute '{}'"
-                           "; implicit reexport disabled".format(import_id, source_id))
+                message = ('Module "{}" does not explicitly export attribute "{}"'
+                           '; implicit reexport disabled'.format(import_id, source_id))
             else:
                 alternatives = set(module.names.keys()).difference({source_id})
                 matches = best_matches(source_id, alternatives)[:3]
