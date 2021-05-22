@@ -3318,6 +3318,8 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.add_exports(s.rvalue.items)
 
     def process__deletable__(self, s: AssignmentStmt) -> None:
+        if not self.options.mypyc:
+            return
         if (len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr) and
                 s.lvalues[0].name == '__deletable__' and s.lvalues[0].kind == MDEF):
             rvalue = s.rvalue
