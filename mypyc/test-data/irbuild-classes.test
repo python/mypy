@@ -1111,3 +1111,10 @@ class Deriv(Base):
 
 class UndefinedDeletable:
     __deletable__ = ['x']  # E: Attribute "x" not defined
+
+class DeletableProperty:
+    __deletable__ = ['prop']  # E: Cannot make property "prop" deletable
+
+    @property
+    def prop(self) -> int:
+        return 5

@@ -408,6 +408,11 @@ def check_deletable_declaration(builder: IRBuilder, cl: ClassIR, line: int) -> N
         if attr not in cl.attributes:
             if not cl.has_attr(attr):
                 builder.error('Attribute "{}" not defined'.format(attr), line)
+                continue
+            for base in cl.mro:
+                if attr in base.property_types:
+                    builder.error('Cannot make property "{}" deletable'.format(attr), line)
+                    break
             else:
                 _, base = cl.attr_details(attr)
                 builder.error(('Attribute "{}" not defined in "{}" ' +
