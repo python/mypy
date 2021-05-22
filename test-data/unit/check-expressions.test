@@ -1219,7 +1219,7 @@ a = None # type: Any
 [typing fixtures/typing-medium.pyi]
 
 [case testStringInterpolationInvalidPlaceholder]
-'%W' % 1  # E: Unsupported format character 'W'
+'%W' % 1  # E: Unsupported format character "W"
 '%b' % 1  # E: Format character 'b' is only supported on bytes patterns
 
 [case testStringInterPolationPython2]
@@ -1529,8 +1529,8 @@ x: Union[Good, Bad]
 '{:s}'.format(42)
 '{:s}'.format('yes')
 
-'{:z}'.format('what')  # E: Unsupported format character 'z'
-'{:Z}'.format('what')  # E: Unsupported format character 'Z'
+'{:z}'.format('what')  # E: Unsupported format character "z"
+'{:Z}'.format('what')  # E: Unsupported format character "Z"
 [builtins fixtures/primitives.pyi]
 
 [case testFormatCallFormatTypesChar]

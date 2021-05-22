@@ -897,7 +897,7 @@ class MessageBuilder:
                   code=codes.STRING_FORMATTING)
 
     def unsupported_placeholder(self, placeholder: str, context: Context) -> None:
-        self.fail('Unsupported format character \'%s\'' % placeholder, context,
+        self.fail('Unsupported format character "%s"' % placeholder, context,
                   code=codes.STRING_FORMATTING)
 
     def string_interpolation_with_star_and_key(self, context: Context) -> None:
