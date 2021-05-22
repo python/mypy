@@ -406,7 +406,7 @@ def load_plugins_from_config(
             # Plugin paths can be relative to the config file location.
             plugin_path = os.path.join(os.path.dirname(options.config_file), plugin_path)
             if not os.path.isfile(plugin_path):
-                plugin_error("Can't find plugin '{}'".format(plugin_path))
+                plugin_error('Can\'t find plugin "{}"'.format(plugin_path))
             # Use an absolute path to avoid populating the cache entry
             # for 'tmp' during tests, since it will be different in
             # different tests.
@@ -416,21 +416,21 @@ def load_plugins_from_config(
             sys.path.insert(0, plugin_dir)
         elif re.search(r'[\\/]', plugin_path):
             fnam = os.path.basename(plugin_path)
-            plugin_error("Plugin '{}' does not have a .py extension".format(fnam))
+            plugin_error('Plugin "{}" does not have a .py extension'.format(fnam))
         else:
             module_name = plugin_path
 
         try:
             module = importlib.import_module(module_name)
         except Exception as exc:
-            plugin_error("Error importing plugin '{}': {}".format(plugin_path, exc))
+            plugin_error('Error importing plugin "{}": {}'.format(plugin_path, exc))
         finally:
             if plugin_dir is not None:
                 assert sys.path[0] == plugin_dir
                 del sys.path[0]
 
         if not hasattr(module, func_name):
-            plugin_error('Plugin \'{}\' does not define entry point function "{}"'.format(
+            plugin_error('Plugin "{}" does not define entry point function "{}"'.format(
                 plugin_path, func_name))
 
         try:
