@@ -1789,10 +1789,10 @@ import a
 [file a.py.2]
 //
 [out1]
-main:2: error: Import of 'a' ignored
+main:2: error: Import of "a" ignored
 main:2: note: (Using --follow-imports=error, module not passed on command line)
 [out2]
-main:2: error: Import of 'a' ignored
+main:2: error: Import of "a" ignored
 main:2: note: (Using --follow-imports=error, module not passed on command line)
 
 [case testIncrementalFollowImportsVariable]
@@ -3671,7 +3671,7 @@ pass
 [out]
 [out2]
 [out3]
-tmp/a.py:2: error: unused 'type: ignore' comment
+tmp/a.py:2: error: unused "type: ignore" comment
 
 -- Test that a non cache_fine_grained run can use a fine-grained cache
 [case testRegularUsesFgCache]

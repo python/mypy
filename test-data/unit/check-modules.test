@@ -1054,7 +1054,7 @@ import mod
 [file mod.py]
 [builtins fixtures/module.pyi]
 [out]
-tmp/main.py:1: error: Import of 'mod' ignored
+tmp/main.py:1: error: Import of "mod" ignored
 tmp/main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 
 [case testAncestorSuppressedWhileAlmostSilent]
@@ -1064,7 +1064,7 @@ tmp/main.py:1: note: (Using --follow-imports=error, module not passed on command
 [file foo/__init__.py]
 [builtins fixtures/module.pyi]
 [out]
-tmp/foo/bar.py: error: Ancestor package 'foo' ignored
+tmp/foo/bar.py: error: Ancestor package "foo" ignored
 tmp/foo/bar.py: note: (Using --follow-imports=error, submodule passed on command line)
 
 [case testStubImportNonStubWhileSilent]
@@ -2943,3 +2943,42 @@ def f(x: str) -> None: ...
 [file mypy.ini]
 \[mypy]
 mypy_path = tmp/xx
+
+[case testImportCycleSpecialCase2]
+import m
+
+[file m.pyi]
+from f import F
+class M: pass
+
+[file f.pyi]
+from m import M
+
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+
+class W(Generic[T]): ...
+
+class F(M):
+    A = W[int]
+    x: C
+    class C(W[F.A]): ...
+
+[case testImportCycleSpecialCase3]
+import f
+
+[file m.pyi]
+from f import F
+class M: pass
+
+[file f.pyi]
+from m import M
+
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+
+class F(M):
+    x: C
+    class C: ...

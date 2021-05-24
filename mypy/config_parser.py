@@ -248,8 +248,8 @@ def get_prefix(file_read: str, name: str) -> str:
     return '%s: [%s]: ' % (file_read, module_name_str)
 
 
-def is_toml(filemame: str) -> bool:
-    return filemame.lower().endswith('.toml')
+def is_toml(filename: str) -> bool:
+    return filename.lower().endswith('.toml')
 
 
 def destructure_overrides(toml_data: "OrderedDict[str, Any]") -> "OrderedDict[str, Any]":
@@ -525,9 +525,9 @@ def parse_mypy_comments(
             errors.append((lineno, "Reports not supported in inline configuration"))
         if strict_found:
             errors.append((lineno,
-                           "Setting 'strict' not supported in inline configuration: specify it in "
-                           "a configuration file instead, or set individual inline flags "
-                           "(see 'mypy -h' for the list of flags enabled in strict mode)"))
+                           'Setting "strict" not supported in inline configuration: specify it in '
+                           'a configuration file instead, or set individual inline flags '
+                           '(see "mypy -h" for the list of flags enabled in strict mode)'))
 
         sections.update(new_sections)
 

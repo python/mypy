@@ -10,7 +10,7 @@ The wrappers aren't used for most calls between two native functions
 or methods in a single compilation unit.
 """
 
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_NAMED_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2
 
@@ -350,6 +350,29 @@ def generate_hash_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     return name
 
 
+def generate_len_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    """Generates a wrapper for native __len__ methods."""
+    name = '{}{}{}'.format(DUNDER_PREFIX, fn.name, cl.name_prefix(emitter.names))
+    emitter.emit_line('static Py_ssize_t {name}(PyObject *self) {{'.format(
+        name=name
+    ))
+    emitter.emit_line('{}retval = {}{}{}(self);'.format(emitter.ctype_spaced(fn.ret_type),
+                                                        emitter.get_group_prefix(fn.decl),
+                                                        NATIVE_PREFIX,
+                                                        fn.cname(emitter.names)))
+    emitter.emit_error_check('retval', fn.ret_type, 'return -1;')
+    if is_int_rprimitive(fn.ret_type):
+        emitter.emit_line('Py_ssize_t val = CPyTagged_AsSsize_t(retval);')
+    else:
+        emitter.emit_line('Py_ssize_t val = PyLong_AsSsize_t(retval);')
+    emitter.emit_dec_ref('retval', fn.ret_type)
+    emitter.emit_line('if (PyErr_Occurred()) return -1;')
+    emitter.emit_line('return val;')
+    emitter.emit_line('}')
+
+    return name
+
+
 def generate_bool_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     """Generates a wrapper for native __bool__ methods."""
     name = '{}{}{}'.format(DUNDER_PREFIX, fn.name, cl.name_prefix(emitter.names))
@@ -365,6 +388,134 @@ def generate_bool_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     # way easier to do in IR!)
     assert is_bool_rprimitive(fn.ret_type), "Only bool return supported for __bool__"
     emitter.emit_line('return val;')
+    emitter.emit_line('}')
+
+    return name
+
+
+def generate_del_item_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    """Generates a wrapper for native __delitem__.
+
+    This is only called from a combined __delitem__/__setitem__ wrapper.
+    """
+    name = '{}{}{}'.format(DUNDER_PREFIX, '__delitem__', cl.name_prefix(emitter.names))
+    input_args = ', '.join('PyObject *obj_{}'.format(arg.name) for arg in fn.args)
+    emitter.emit_line('static int {name}({input_args}) {{'.format(
+        name=name,
+        input_args=input_args,
+    ))
+    generate_set_del_item_wrapper_inner(fn, emitter, fn.args)
+    return name
+
+
+def generate_set_del_item_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    """Generates a wrapper for native __setitem__ method (also works for __delitem__).
+
+    This is used with the mapping protocol slot. Arguments are taken as *PyObjects and we
+    return a negative C int on error.
+
+    Create a separate wrapper function for __delitem__ as needed and have the
+    __setitem__ wrapper call it if the value is NULL. Return the name
+    of the outer (__setitem__) wrapper.
+    """
+    method_cls = cl.get_method_and_class('__delitem__')
+    del_name = None
+    if method_cls and method_cls[1] == cl:
+        # Generate a separate wrapper for __delitem__
+        del_name = generate_del_item_wrapper(cl, method_cls[0], emitter)
+
+    args = fn.args
+    if fn.name == '__delitem__':
+        # Add an extra argument for value that we expect to be NULL.
+        args = list(args) + [RuntimeArg('___value', object_rprimitive, ARG_POS)]
+
+    name = '{}{}{}'.format(DUNDER_PREFIX, '__setitem__', cl.name_prefix(emitter.names))
+    input_args = ', '.join('PyObject *obj_{}'.format(arg.name) for arg in args)
+    emitter.emit_line('static int {name}({input_args}) {{'.format(
+        name=name,
+        input_args=input_args,
+    ))
+
+    # First check if this is __delitem__
+    emitter.emit_line('if (obj_{} == NULL) {{'.format(args[2].name))
+    if del_name is not None:
+        # We have a native implementation, so call it
+        emitter.emit_line('return {}(obj_{}, obj_{});'.format(del_name,
+                                                              args[0].name,
+                                                              args[1].name))
+    else:
+        # Try to call superclass method instead
+        emitter.emit_line(
+            'PyObject *super = CPy_Super(CPyModule_builtins, obj_{});'.format(args[0].name))
+        emitter.emit_line('if (super == NULL) return -1;')
+        emitter.emit_line(
+            'PyObject *result = PyObject_CallMethod(super, "__delitem__", "O", obj_{});'.format(
+                args[1].name))
+        emitter.emit_line('Py_DECREF(super);')
+        emitter.emit_line('Py_XDECREF(result);')
+        emitter.emit_line('return result == NULL ? -1 : 0;')
+    emitter.emit_line('}')
+
+    method_cls = cl.get_method_and_class('__setitem__')
+    if method_cls and method_cls[1] == cl:
+        generate_set_del_item_wrapper_inner(fn, emitter, args)
+    else:
+        emitter.emit_line(
+            'PyObject *super = CPy_Super(CPyModule_builtins, obj_{});'.format(args[0].name))
+        emitter.emit_line('if (super == NULL) return -1;')
+        emitter.emit_line('PyObject *result;')
+
+        if method_cls is None and cl.builtin_base is None:
+            msg = "'{}' object does not support item assignment".format(cl.name)
+            emitter.emit_line(
+                'PyErr_SetString(PyExc_TypeError, "{}");'.format(msg))
+            emitter.emit_line('result = NULL;')
+        else:
+            # A base class may have __setitem__
+            emitter.emit_line(
+                'result = PyObject_CallMethod(super, "__setitem__", "OO", obj_{}, obj_{});'.format(
+                    args[1].name, args[2].name))
+        emitter.emit_line('Py_DECREF(super);')
+        emitter.emit_line('Py_XDECREF(result);')
+        emitter.emit_line('return result == NULL ? -1 : 0;')
+        emitter.emit_line('}')
+    return name
+
+
+def generate_set_del_item_wrapper_inner(fn: FuncIR, emitter: Emitter,
+                                        args: Sequence[RuntimeArg]) -> None:
+    for arg in args:
+        generate_arg_check(arg.name, arg.type, emitter, 'goto fail;', False)
+    native_args = ', '.join('arg_{}'.format(arg.name) for arg in args)
+    emitter.emit_line('{}val = {}{}({});'.format(emitter.ctype_spaced(fn.ret_type),
+                                                 NATIVE_PREFIX,
+                                                 fn.cname(emitter.names),
+                                                 native_args))
+    emitter.emit_error_check('val', fn.ret_type, 'goto fail;')
+    emitter.emit_dec_ref('val', fn.ret_type)
+    emitter.emit_line('return 0;')
+    emitter.emit_label('fail')
+    emitter.emit_line('return -1;')
+    emitter.emit_line('}')
+
+
+def generate_contains_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    """Generates a wrapper for a native __contains__ method."""
+    name = '{}{}{}'.format(DUNDER_PREFIX, fn.name, cl.name_prefix(emitter.names))
+    emitter.emit_line(
+        'static int {name}(PyObject *self, PyObject *obj_item) {{'.
+        format(name=name))
+    generate_arg_check('item', fn.args[1].type, emitter, 'return -1;', False)
+    emitter.emit_line('{}val = {}{}(self, arg_item);'.format(emitter.ctype_spaced(fn.ret_type),
+                                                             NATIVE_PREFIX,
+                                                             fn.cname(emitter.names)))
+    emitter.emit_error_check('val', fn.ret_type, 'return -1;')
+    if is_bool_rprimitive(fn.ret_type):
+        emitter.emit_line('return val;')
+    else:
+        emitter.emit_line('int boolval = PyObject_IsTrue(val);')
+        emitter.emit_dec_ref('val', fn.ret_type)
+        emitter.emit_line('return boolval;')
     emitter.emit_line('}')
 
     return name

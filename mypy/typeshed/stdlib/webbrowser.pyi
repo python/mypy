@@ -48,7 +48,6 @@ class UnixBrowser(BaseBrowser):
     def open(self, url: Text, new: int = ..., autoraise: bool = ...) -> bool: ...
 
 class Mozilla(UnixBrowser):
-    raise_opts: List[str]
     remote_args: List[str]
     remote_action: str
     remote_action_newwin: str

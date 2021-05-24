@@ -1,4 +1,4 @@
-// Misc primitive operations
+// Misc primitive operations + C helpers
 //
 // These are registered in mypyc.primitives.misc_ops.
 
@@ -630,4 +630,16 @@ int CPyStatics_Initialize(PyObject **statics,
         }
     }
     return 0;
+}
+
+// Call super(type(self), self)
+PyObject *
+CPy_Super(PyObject *builtins, PyObject *self) {
+    PyObject *super_type = PyObject_GetAttrString(builtins, "super");
+    if (!super_type)
+        return NULL;
+    PyObject *result = PyObject_CallFunctionObjArgs(
+        super_type, (PyObject*)self->ob_type, self, NULL);
+    Py_DECREF(super_type);
+    return result;
 }

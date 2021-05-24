@@ -13,21 +13,27 @@ daylight: int
 timezone: int
 tzname: Tuple[str, str]
 
-if sys.version_info >= (3, 7) and sys.platform != "win32":
-    CLOCK_BOOTTIME: int  # Linux
-    CLOCK_PROF: int  # FreeBSD, NetBSD, OpenBSD
-    CLOCK_UPTIME: int  # FreeBSD, OpenBSD
+if sys.version_info >= (3, 7):
+    if sys.platform == "linux":
+        CLOCK_BOOTTIME: int
+    if sys.platform != "linux" and sys.platform != "win32" and sys.platform != "darwin":
+        CLOCK_PROF: int  # FreeBSD, NetBSD, OpenBSD
+        CLOCK_UPTIME: int  # FreeBSD, OpenBSD
 
 if sys.version_info >= (3, 3) and sys.platform != "win32":
-    CLOCK_HIGHRES: int  # Solaris only
-    CLOCK_MONOTONIC: int  # Unix only
-    CLOCK_MONOTONIC_RAW: int  # Linux 2.6.28 or later
-    CLOCK_PROCESS_CPUTIME_ID: int  # Unix only
-    CLOCK_REALTIME: int  # Unix only
-    CLOCK_THREAD_CPUTIME_ID: int  # Unix only
+    CLOCK_MONOTONIC: int
+    CLOCK_MONOTONIC_RAW: int
+    CLOCK_PROCESS_CPUTIME_ID: int
+    CLOCK_REALTIME: int
+    CLOCK_THREAD_CPUTIME_ID: int
+    if sys.platform != "linux" and sys.platform != "darwin":
+        CLOCK_HIGHRES: int  # Solaris only
 
 if sys.version_info >= (3, 8) and sys.platform == "darwin":
     CLOCK_UPTIME_RAW: int
+
+if sys.version_info >= (3, 9) and sys.platform == "linux":
+    CLOCK_TAI: int
 
 class _struct_time(NamedTuple):
     tm_year: int

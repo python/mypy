@@ -58,7 +58,7 @@ undef
 [file dir/subdir/a.py]
 undef
 [out]
-dir/a.py: error: Duplicate module named 'a' (also at 'dir/subdir/a.py')
+dir/a.py: error: Duplicate module named "a" (also at "dir/subdir/a.py")
 dir/a.py: note: Are you missing an __init__.py? Alternatively, consider using --exclude to avoid checking one of them.
 == Return code: 2
 
@@ -124,7 +124,7 @@ mypy: can't decode file 'a.py': unknown encoding: uft-8
 [file two/mod/__init__.py]
 # type: ignore
 [out]
-two/mod/__init__.py: error: Duplicate module named 'mod' (also at 'one/mod/__init__.py')
+two/mod/__init__.py: error: Duplicate module named "mod" (also at "one/mod/__init__.py")
 two/mod/__init__.py: note: Are you missing an __init__.py? Alternatively, consider using --exclude to avoid checking one of them.
 == Return code: 2
 
@@ -413,7 +413,7 @@ follow_imports = error
 [file a.py]
 /  # No error reported
 [out]
-main.py:1: error: Import of 'a' ignored
+main.py:1: error: Import of "a" ignored
 main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 main.py:2: note: Revealed type is "Any"
 main.py:4: note: Revealed type is "Any"
@@ -451,7 +451,7 @@ bla bla
 bla bla
 [out]
 normal.py:2: error: Unsupported operand types for + ("int" and "str")
-main.py:4: error: Import of 'error' ignored
+main.py:4: error: Import of "error" ignored
 main.py:4: note: (Using --follow-imports=error, module not passed on command line)
 main.py:5: note: Revealed type is "builtins.int"
 main.py:6: note: Revealed type is "builtins.int"
@@ -832,7 +832,7 @@ follow_imports_for_stubs = True
 import math
 math.frobnicate()
 [out]
-main.py:1: error: Import of 'math' ignored
+main.py:1: error: Import of "math" ignored
 main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 
 [case testFollowImportStubs2]
@@ -1140,7 +1140,7 @@ import foo.bar
 [file src/foo/bar.py]
 1+'x'
 [out]
-src/foo/bar.py: error: Source file found twice under different module names: 'src.foo.bar' and 'foo.bar'
+src/foo/bar.py: error: Source file found twice under different module names: "src.foo.bar" and "foo.bar"
 == Return code: 2
 
 [case testEnableInvalidErrorCode]

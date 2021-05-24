@@ -348,7 +348,7 @@ accepts one of four string values:
 -   ``error`` behaves in the same way as ``skip`` but is not quite as
     silent -- it will flag the import as an error, like this::
 
-        main.py:1: note: Import of 'mycode.bar' ignored
+        main.py:1: note: Import of "mycode.bar" ignored
         main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 
 If you are starting a new codebase and plan on using type hints from

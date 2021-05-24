@@ -114,7 +114,7 @@ plugins=['<ROOT>/test-data/unit/plugins/fnplugin.py', 'plugin2']
 \[mypy]
 plugins=missing.py
 [out]
-tmp/mypy.ini:2: error: Can't find plugin 'tmp/missing.py'
+tmp/mypy.ini:2: error: Can't find plugin "tmp/missing.py"
 --' (work around syntax highlighting)
 
 [case testMissingPlugin]
@@ -123,7 +123,7 @@ tmp/mypy.ini:2: error: Can't find plugin 'tmp/missing.py'
 \[mypy]
 plugins=missing
 [out]
-tmp/mypy.ini:2: error: Error importing plugin 'missing': No module named 'missing'
+tmp/mypy.ini:2: error: Error importing plugin "missing": No module named 'missing'
 
 [case testMultipleSectionsDefinePlugin]
 # flags: --config-file tmp/mypy.ini
@@ -135,7 +135,7 @@ plugins=missing.py
 \[another]
 plugins=another_plugin
 [out]
-tmp/mypy.ini:4: error: Can't find plugin 'tmp/missing.py'
+tmp/mypy.ini:4: error: Can't find plugin "tmp/missing.py"
 --' (work around syntax highlighting)
 
 [case testInvalidPluginExtension]
@@ -145,7 +145,7 @@ tmp/mypy.ini:4: error: Can't find plugin 'tmp/missing.py'
 plugins=dir/badext.pyi
 [file dir/badext.pyi]
 [out]
-tmp/mypy.ini:2: error: Plugin 'badext.pyi' does not have a .py extension
+tmp/mypy.ini:2: error: Plugin "badext.pyi" does not have a .py extension
 
 [case testMissingPluginEntryPoint]
 # flags: --config-file tmp/mypy.ini
@@ -153,7 +153,7 @@ tmp/mypy.ini:2: error: Plugin 'badext.pyi' does not have a .py extension
 \[mypy]
  plugins = <ROOT>/test-data/unit/plugins/noentry.py
 [out]
-tmp/mypy.ini:2: error: Plugin '<ROOT>/test-data/unit/plugins/noentry.py' does not define entry point function "plugin"
+tmp/mypy.ini:2: error: Plugin "<ROOT>/test-data/unit/plugins/noentry.py" does not define entry point function "plugin"
 
 [case testCustomPluginEntryPointFile]
 # flags: --config-file tmp/mypy.ini

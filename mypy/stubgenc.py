@@ -167,9 +167,11 @@ def generate_c_function_stub(module: ModuleType,
     else:
         docstr = getattr(obj, '__doc__', None)
         inferred = infer_sig_from_docstring(docstr, name)
-        if inferred and is_pybind11_overloaded_function_docstring(docstr, name):
-            # Remove pybind11 umbrella (*args, **kwargs) for overloaded functions
-            del inferred[-1]
+        if inferred:
+            assert docstr is not None
+            if is_pybind11_overloaded_function_docstring(docstr, name):
+                # Remove pybind11 umbrella (*args, **kwargs) for overloaded functions
+                del inferred[-1]
         if not inferred:
             if class_name and name not in sigs:
                 inferred = [FunctionSig(name, args=infer_method_sig(name), ret_type=ret_type)]

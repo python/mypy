@@ -59,7 +59,7 @@ class ModuleNotFoundReason(Enum):
     # Stub PyPI package (typically types-pkgname) known to exist but not installed.
     STUBS_NOT_INSTALLED = 3
 
-    def error_message_templates(self) -> Tuple[str, List[str]]:
+    def error_message_templates(self, daemon: bool) -> Tuple[str, List[str]]:
         doc_link = "See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports"
         if self is ModuleNotFoundReason.NOT_FOUND:
             msg = 'Cannot find implementation or library stub for module named "{module}"'
@@ -75,9 +75,11 @@ class ModuleNotFoundReason(Enum):
             msg = (
                 'Library stubs not installed for "{module}" (or incompatible with Python {pyver})'
             )
-            notes = ['Hint: "python3 -m pip install {stub_dist}"',
-                     '(or run "mypy --install-types" to install all missing stub packages)',
-                     doc_link]
+            notes = ['Hint: "python3 -m pip install {stub_dist}"']
+            if not daemon:
+                notes.append(
+                    '(or run "mypy --install-types" to install all missing stub packages)')
+            notes.append(doc_link)
         else:
             assert False
         return msg, notes
@@ -542,6 +544,7 @@ def default_lib_path(data_dir: str,
 
     if custom_typeshed_dir:
         typeshed_dir = os.path.join(custom_typeshed_dir, "stdlib")
+        mypy_extensions_dir = os.path.join(custom_typeshed_dir, "stubs", "mypy-extensions")
         versions_file = os.path.join(typeshed_dir, "VERSIONS")
         if not os.path.isdir(typeshed_dir) or not os.path.isfile(versions_file):
             print("error: --custom-typeshed-dir does not point to a valid typeshed ({})".format(
@@ -552,11 +555,16 @@ def default_lib_path(data_dir: str,
         if os.path.isdir(auto):
             data_dir = auto
         typeshed_dir = os.path.join(data_dir, "typeshed", "stdlib")
+        mypy_extensions_dir = os.path.join(data_dir, "typeshed", "stubs", "mypy-extensions")
     if pyversion[0] == 2:
         # Python 2 variants of certain stdlib modules are in a separate directory.
         python2_dir = os.path.join(typeshed_dir, PYTHON2_STUB_DIR)
         path.append(python2_dir)
     path.append(typeshed_dir)
+
+    # Get mypy-extensions stubs from typeshed, since we treat it as an
+    # "internal" library, similar to typing and typing-extensions.
+    path.append(mypy_extensions_dir)
 
     # Add fallback path that can be used if we have a broken installation.
     if sys.platform != 'win32':
@@ -749,7 +757,7 @@ def load_stdlib_py_versions(custom_typeshed_dir: Optional[str]
     """Return dict with minimum and maximum Python versions of stdlib modules.
 
     The contents look like
-    {..., 'secrets': ((3, 6), None), 'symbol': (2, 7), (3, 9)), ...}
+    {..., 'secrets': ((3, 6), None), 'symbol': ((2, 7), (3, 9)), ...}
 
     None means there is no maximum version.
     """
@@ -761,8 +769,8 @@ def load_stdlib_py_versions(custom_typeshed_dir: Optional[str]
     assert os.path.isfile(versions_path), (custom_typeshed_dir, versions_path, __file__)
     with open(versions_path) as f:
         for line in f:
-            line = line.strip()
-            if line.startswith("#") or line == "":
+            line = line.split("#")[0].strip()
+            if line == "":
                 continue
             module, version_range = line.split(":")
             versions = version_range.split("-")
@@ -774,10 +782,14 @@ def load_stdlib_py_versions(custom_typeshed_dir: Optional[str]
     # Modules that are Python 2 only or have separate Python 2 stubs
     # have stubs in @python2/ and may need an override.
     python2_dir = os.path.join(stdlib_dir, PYTHON2_STUB_DIR)
-    for fnam in os.listdir(python2_dir):
-        fnam = fnam.replace(".pyi", "")
-        max_version = result.get(fnam, ((2, 7), None))[1]
-        result[fnam] = (2, 7), max_version
+    try:
+        for fnam in os.listdir(python2_dir):
+            fnam = fnam.replace(".pyi", "")
+            max_version = result.get(fnam, ((2, 7), None))[1]
+            result[fnam] = (2, 7), max_version
+    except FileNotFoundError:
+        # Ignore error to support installations where Python 2 stubs aren't available.
+        pass
 
     return result
 

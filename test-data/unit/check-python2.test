@@ -84,15 +84,15 @@ except BaseException, e:
 [case testTryExceptUnsupported]
 try:
     pass
-except BaseException, (e, f):  # E: Sorry, `except <expr>, <anything but a name>` is not supported
+except BaseException, (e, f):  # E: Sorry, "except <expr>, <anything but a name>" is not supported
     pass
 try:
     pass
-except BaseException, [e, f, g]:  # E: Sorry, `except <expr>, <anything but a name>` is not supported
+except BaseException, [e, f, g]:  # E: Sorry, "except <expr>, <anything but a name>" is not supported
     pass
 try:
     pass
-except BaseException, e[0]:  # E: Sorry, `except <expr>, <anything but a name>` is not supported
+except BaseException, e[0]:  # E: Sorry, "except <expr>, <anything but a name>" is not supported
     pass
 [builtins_py2 fixtures/exception.pyi]
 

@@ -250,6 +250,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.imports = set()
         self.type = None
         self.type_stack = []
+        # Are the namespaces of classes being processed complete?
+        self.incomplete_type_stack = []  # type: List[bool]
         self.tvar_scope = TypeVarLikeScope()
         self.function_stack = []
         self.block_depth = [0]
@@ -526,6 +528,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.num_incomplete_refs = 0
 
         if active_type:
+            self.incomplete_type_stack.append(False)
             scope.enter_class(active_type)
             self.enter_class(active_type.defn.info)
             for tvar in active_type.defn.type_vars:
@@ -537,6 +540,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             scope.leave()
             self.leave_class()
             self.type = None
+            self.incomplete_type_stack.pop()
         scope.leave()
         del self.options
 
@@ -1039,7 +1043,7 @@ class SemanticAnalyzer(NodeVisitor[None],
     def check_decorated_function_is_method(self, decorator: str,
                                            context: Context) -> None:
         if not self.type or self.is_func_scope():
-            self.fail("'%s' used with a non-method" % decorator, context)
+            self.fail('"%s" used with a non-method' % decorator, context)
 
     #
     # Classes
@@ -1047,8 +1051,10 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def visit_class_def(self, defn: ClassDef) -> None:
         self.statement = defn
+        self.incomplete_type_stack.append(not defn.info)
         with self.tvar_scope_frame(self.tvar_scope.class_frame()):
             self.analyze_class(defn)
+        self.incomplete_type_stack.pop()
 
     def analyze_class(self, defn: ClassDef) -> None:
         fullname = self.qualified_name(defn.name)
@@ -1493,14 +1499,14 @@ class SemanticAnalyzer(NodeVisitor[None],
                 base_types.append(actual_base)
             elif isinstance(base, Instance):
                 if base.type.is_newtype:
-                    self.fail("Cannot subclass NewType", defn)
+                    self.fail('Cannot subclass "NewType"', defn)
                 base_types.append(base)
             elif isinstance(base, AnyType):
                 if self.options.disallow_subclassing_any:
                     if isinstance(base_expr, (NameExpr, MemberExpr)):
-                        msg = "Class cannot subclass '{}' (has type 'Any')".format(base_expr.name)
+                        msg = 'Class cannot subclass "{}" (has type "Any")'.format(base_expr.name)
                     else:
-                        msg = "Class cannot subclass value of type 'Any'"
+                        msg = 'Class cannot subclass value of type "Any"'
                     self.fail(msg, base_expr)
                 info.fallback_to_any = True
             else:
@@ -1645,7 +1651,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 self.fail('Cycle in inheritance hierarchy', defn)
                 cycle = True
             if baseinfo.fullname == 'builtins.bool':
-                self.fail("'%s' is not a valid base class" %
+                self.fail('"%s" is not a valid base class' %
                           baseinfo.name, defn, blocker=True)
                 return False
         dup = find_duplicate(info.direct_base_classes())
@@ -1866,8 +1872,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         module = self.modules.get(import_id)
         if module:
             if not self.options.implicit_reexport and source_id in module.names.keys():
-                message = ("Module '{}' does not explicitly export attribute '{}'"
-                           "; implicit reexport disabled".format(import_id, source_id))
+                message = ('Module "{}" does not explicitly export attribute "{}"'
+                           '; implicit reexport disabled'.format(import_id, source_id))
             else:
                 alternatives = set(module.names.keys()).difference({source_id})
                 matches = best_matches(source_id, alternatives)[:3]
@@ -2295,6 +2301,11 @@ class SemanticAnalyzer(NodeVisitor[None],
                 self.fail("Type in Final[...] can only be omitted if there is an initializer", s)
         else:
             s.type = s.unanalyzed_type.args[0]
+
+        if s.type is not None and self.is_classvar(s.type):
+            self.fail("Variable should not be annotated with both ClassVar and Final", s)
+            return False
+
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], RefExpr):
             self.fail("Invalid final declaration", s)
             return False
@@ -3326,7 +3337,7 @@ class SemanticAnalyzer(NodeVisitor[None],
     def visit_return_stmt(self, s: ReturnStmt) -> None:
         self.statement = s
         if not self.is_func_scope():
-            self.fail("'return' outside function", s)
+            self.fail('"return" outside function', s)
         if s.expr:
             s.expr.accept(self)
 
@@ -3385,12 +3396,12 @@ class SemanticAnalyzer(NodeVisitor[None],
     def visit_break_stmt(self, s: BreakStmt) -> None:
         self.statement = s
         if self.loop_depth == 0:
-            self.fail("'break' outside loop", s, serious=True, blocker=True)
+            self.fail('"break" outside loop', s, serious=True, blocker=True)
 
     def visit_continue_stmt(self, s: ContinueStmt) -> None:
         self.statement = s
         if self.loop_depth == 0:
-            self.fail("'continue' outside loop", s, serious=True, blocker=True)
+            self.fail('"continue" outside loop', s, serious=True, blocker=True)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
         self.statement = s
@@ -3531,8 +3542,8 @@ class SemanticAnalyzer(NodeVisitor[None],
     def bind_name_expr(self, expr: NameExpr, sym: SymbolTableNode) -> None:
         """Bind name expression to a symbol table node."""
         if isinstance(sym.node, TypeVarExpr) and self.tvar_scope.get_binding(sym):
-            self.fail("'{}' is a type variable and only valid in type "
-                      "context".format(expr.name), expr)
+            self.fail('"{}" is a type variable and only valid in type '
+                      'context'.format(expr.name), expr)
         elif isinstance(sym.node, PlaceholderNode):
             self.process_placeholder(expr.name, 'name', expr)
         else:
@@ -3581,7 +3592,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def visit_yield_from_expr(self, e: YieldFromExpr) -> None:
         if not self.is_func_scope():  # not sure
-            self.fail("'yield from' outside function", e, serious=True, blocker=True)
+            self.fail('"yield from" outside function', e, serious=True, blocker=True)
         else:
             if self.function_stack[-1].is_coroutine:
                 self.fail('"yield from" in async function', e, serious=True, blocker=True)
@@ -3718,11 +3729,11 @@ class SemanticAnalyzer(NodeVisitor[None],
         if numargs == 1:
             s = ''
         if len(expr.args) != numargs:
-            self.fail("'%s' expects %d argument%s" % (name, numargs, s),
+            self.fail('"%s" expects %d argument%s' % (name, numargs, s),
                       expr)
             return False
         if expr.arg_kinds != [ARG_POS] * numargs:
-            self.fail("'%s' must be called with %s positional argument%s" %
+            self.fail('"%s" must be called with %s positional argument%s' %
                       (name, numargs, s), expr)
             return False
         return True
@@ -3963,7 +3974,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def visit_yield_expr(self, expr: YieldExpr) -> None:
         if not self.is_func_scope():
-            self.fail("'yield' outside function", expr, serious=True, blocker=True)
+            self.fail('"yield" outside function', expr, serious=True, blocker=True)
         else:
             if self.function_stack[-1].is_coroutine:
                 if self.options.python_version < (3, 6):
@@ -3978,9 +3989,9 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def visit_await_expr(self, expr: AwaitExpr) -> None:
         if not self.is_func_scope():
-            self.fail("'await' outside function", expr)
+            self.fail('"await" outside function', expr)
         elif not self.function_stack[-1].is_coroutine:
-            self.fail("'await' outside coroutine ('async def')", expr)
+            self.fail('"await" outside coroutine ("async def")', expr)
         expr.expr.accept(self)
 
     #
@@ -4744,7 +4755,15 @@ class SemanticAnalyzer(NodeVisitor[None],
                 self.name_already_defined(name, ctx, self.globals[name])
 
     def name_not_defined(self, name: str, ctx: Context, namespace: Optional[str] = None) -> None:
-        if self.is_incomplete_namespace(namespace or self.cur_mod_id):
+        incomplete = self.is_incomplete_namespace(namespace or self.cur_mod_id)
+        if (namespace is None
+                and self.type
+                and not self.is_func_scope()
+                and self.incomplete_type_stack[-1]
+                and not self.final_iteration):
+            # We are processing a class body for the first time, so it is incomplete.
+            incomplete = True
+        if incomplete:
             # Target namespace is incomplete, so it's possible that the name will be defined
             # later on. Defer current target.
             self.record_incomplete_ref()

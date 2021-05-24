@@ -22,6 +22,7 @@ from typing import (
     TypeVar,
     Union,
     ValuesView,
+    _Alias,
     overload as overload,
 )
 
@@ -43,7 +44,7 @@ def final(f: _F) -> _F: ...
 
 Literal: _SpecialForm = ...
 
-def IntVar(__name: str) -> Any: ...  # returns a new TypeVar
+def IntVar(name: str) -> Any: ...  # returns a new TypeVar
 
 # Internal mypy fallback type for all typed dicts (does not exist at runtime)
 class _TypedDict(Mapping[str, object], metaclass=abc.ABCMeta):
@@ -67,6 +68,8 @@ class _TypedDict(Mapping[str, object], metaclass=abc.ABCMeta):
 
 # TypedDict is a (non-subscriptable) special form.
 TypedDict: object = ...
+
+OrderedDict = _Alias()
 
 if sys.version_info >= (3, 3):
     from typing import ChainMap as ChainMap

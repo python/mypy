@@ -390,6 +390,7 @@ PyObject *CPyStr_Append(PyObject *o1, PyObject *o2);
 PyObject *CPyStr_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
 bool CPyStr_Startswith(PyObject *self, PyObject *subobj);
 bool CPyStr_Endswith(PyObject *self, PyObject *subobj);
+bool CPyStr_IsTrue(PyObject *obj);
 
 
 // Set operations
@@ -539,6 +540,7 @@ int CPyStatics_Initialize(PyObject **statics,
                           const double *floats,
                           const double *complex_numbers,
                           const int *tuples);
+PyObject *CPy_Super(PyObject *builtins, PyObject *self);
 
 #ifdef __cplusplus
 }

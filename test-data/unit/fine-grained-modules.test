@@ -1828,10 +1828,10 @@ x = 1
 [file c.py.2]
 x = '2'
 [out]
-a.py:2: error: Import of 'b' ignored
+a.py:2: error: Import of "b" ignored
 a.py:2: note: (Using --follow-imports=error, module not passed on command line)
 ==
-a.py:2: error: Import of 'b' ignored
+a.py:2: error: Import of "b" ignored
 a.py:2: note: (Using --follow-imports=error, module not passed on command line)
 
 [case testErrorButDontIgnore2]
@@ -1848,7 +1848,7 @@ x = 1
 x = '2'
 [out]
 ==
-a.py:2: error: Import of 'b' ignored
+a.py:2: error: Import of "b" ignored
 a.py:2: note: (Using --follow-imports=error, module not passed on command line)
 
 -- TODO: This test fails because p.b does not depend on p (#4847)
@@ -1868,7 +1868,7 @@ x = 1
 x = '2'
 [out]
 ==
-p/b.py: error: Ancestor package 'p' ignored
+p/b.py: error: Ancestor package "p" ignored
 p/b.py: note: (Using --follow-imports=error, submodule passed on command line)
 
 [case testErrorButDontIgnore4]
@@ -1886,7 +1886,7 @@ x = 1
 [delete z.py.2]
 [out]
 ==
-p/b.py: error: Ancestor package 'p' ignored
+p/b.py: error: Ancestor package "p" ignored
 p/b.py: note: (Using --follow-imports=error, submodule passed on command line)
 p/b.py:1: error: Cannot find implementation or library stub for module named "z"
 p/b.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
@@ -2185,3 +2185,21 @@ x = 'x'
 
 [out]
 ==
+
+[case testLibraryStubsNotInstalled]
+import a
+[file a.py]
+import waitress
+[file a.py.2]
+# nothing
+[file a.py.3]
+import pynamodb
+[out]
+a.py:1: error: Library stubs not installed for "waitress" (or incompatible with Python 3.6)
+a.py:1: note: Hint: "python3 -m pip install types-waitress"
+a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+==
+==
+a.py:1: error: Library stubs not installed for "pynamodb" (or incompatible with Python 3.6)
+a.py:1: note: Hint: "python3 -m pip install types-pynamodb"
+a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports

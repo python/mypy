@@ -565,18 +565,18 @@ from typing import AsyncGenerator
 
 async def return_int() -> AsyncGenerator[int, None]:
     yield 1
-    return 42  # E: 'return' with value in async generator is not allowed
+    return 42  # E: "return" with value in async generator is not allowed
 
 async def return_none() -> AsyncGenerator[int, None]:
     yield 1
-    return None  # E: 'return' with value in async generator is not allowed
+    return None  # E: "return" with value in async generator is not allowed
 
 def f() -> None:
     return
 
 async def return_f() -> AsyncGenerator[int, None]:
     yield 1
-    return f()  # E: 'return' with value in async generator is not allowed
+    return f()  # E: "return" with value in async generator is not allowed
 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-async.pyi]
