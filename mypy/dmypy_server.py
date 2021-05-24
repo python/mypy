@@ -139,7 +139,7 @@ def process_start_options(flags: List[str], allow_sources: bool) -> Options:
     if options.junit_xml:
         print("dmypy: Ignoring report generation settings. "
               "Start/restart does not support --junit-xml. Pass it to check/recheck instead")
-        options.junit_xml = False
+        options.junit_xml = None
     if not options.incremental:
         sys.exit("dmypy: start/restart should not disable incremental mode")
     if options.follow_imports not in ('skip', 'error', 'normal'):
