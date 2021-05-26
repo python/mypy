@@ -287,7 +287,7 @@ class DataclassTransformer:
             # (As a side-effect, fields' default value which are kept as class variables
             # after dataclass processing are no more considered as initialized in class,
             # but it's ok because it doesn't impact their resolution.)
-            cls.info[lhs.name].node.is_initialized_in_class = False
+            node.is_initialized_in_class = False
 
         # Next, collect attributes belonging to any class in the MRO
         # as long as those attributes weren't already collected.  This
