@@ -1108,3 +1108,20 @@ class B(A):
 reveal_type(B)  # N: Revealed type is "def (foo: builtins.int) -> __main__.B"
 
 [builtins fixtures/property.pyi]
+
+[case testDataclassCallableField]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Callable
+
+@dataclass
+class A:
+    x: Callable[[int], int]
+    y: Callable[[int], int] = lambda i: i
+
+a = A(lambda i:i)
+x: int = a.x(0)
+y: str = a.y(0) # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+reveal_type(a.x)  # N: Revealed type is "def (builtins.int) -> builtins.int"
+reveal_type(a.y)  # N: Revealed type is "def (builtins.int) -> builtins.int"
+reveal_type(A.y)  # N: Revealed type is "def (builtins.int) -> builtins.int"

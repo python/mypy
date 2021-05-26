@@ -281,6 +281,14 @@ class DataclassTransformer:
                 info=cls.info,
             ))
 
+            # Make attribute non initialized in class, as if they were defined in
+            # __init__ method and not in class definition. It allows callable fields
+            # to be accessed without being considered as methods.
+            # (As a side-effect, fields' default value which are kept as class variables
+            # after dataclass processing are no more considered as initialized in class,
+            # but it's ok because it doesn't impact their resolution.)
+            cls.info[lhs.name].node.is_initialized_in_class = False
+
         # Next, collect attributes belonging to any class in the MRO
         # as long as those attributes weren't already collected.  This
         # makes it possible to overwrite attributes in subclasses.
