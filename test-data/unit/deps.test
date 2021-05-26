@@ -1441,7 +1441,6 @@ class B(A):
 <m.A.y> -> <m.B.y>
 <m.A> -> m, m.A, m.B
 <m.A[wildcard]> -> m
-<m.B.y> -> m
 <m.B> -> m.B
 <m.Z> -> m
 <dataclasses.dataclass> -> m
