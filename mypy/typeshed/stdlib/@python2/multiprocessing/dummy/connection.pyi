@@ -1,5 +1,5 @@
 from Queue import Queue
-from typing import Any, List, Optional, Tuple, Type
+from typing import Any, List, Optional, Tuple
 
 families: List[None]
 

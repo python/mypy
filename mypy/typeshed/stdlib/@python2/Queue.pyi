@@ -1,4 +1,3 @@
-from collections import deque
 from typing import Any, Deque, Generic, Optional, TypeVar
 
 _T = TypeVar("_T")

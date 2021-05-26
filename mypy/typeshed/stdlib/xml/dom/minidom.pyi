@@ -1,13 +1,13 @@
 import sys
 import xml.dom
-from typing import IO, Any, Optional, Text as _Text, TypeVar, Union
+from typing import IO, Any, Optional, TypeVar, Union
 from xml.dom.xmlbuilder import DocumentLS, DOMImplementationLS
 from xml.sax.xmlreader import XMLReader
 
 _T = TypeVar("_T")
 
 def parse(file: Union[str, IO[Any]], parser: Optional[XMLReader] = ..., bufsize: Optional[int] = ...): ...
-def parseString(string: Union[bytes, _Text], parser: Optional[XMLReader] = ...): ...
+def parseString(string: Union[str, bytes], parser: Optional[XMLReader] = ...): ...
 def getDOMImplementation(features=...): ...
 
 class Node(xml.dom.Node):

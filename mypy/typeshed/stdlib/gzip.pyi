@@ -1,7 +1,7 @@
 import _compression
 import sys
 import zlib
-from _typeshed import AnyPath, ReadableBuffer
+from _typeshed import ReadableBuffer, StrOrBytesPath
 from io import FileIO
 from typing import Any, Optional, Protocol, TextIO, Union, overload
 from typing_extensions import Literal
@@ -31,7 +31,7 @@ class _WritableFileobj(Protocol):
 
 @overload
 def open(
-    filename: Union[AnyPath, _ReadableFileobj],
+    filename: Union[StrOrBytesPath, _ReadableFileobj],
     mode: _ReadBinaryMode = ...,
     compresslevel: int = ...,
     encoding: None = ...,
@@ -40,7 +40,7 @@ def open(
 ) -> GzipFile: ...
 @overload
 def open(
-    filename: Union[AnyPath, _WritableFileobj],
+    filename: Union[StrOrBytesPath, _WritableFileobj],
     mode: _WriteBinaryMode,
     compresslevel: int = ...,
     encoding: None = ...,
@@ -49,7 +49,7 @@ def open(
 ) -> GzipFile: ...
 @overload
 def open(
-    filename: AnyPath,
+    filename: StrOrBytesPath,
     mode: _OpenTextMode,
     compresslevel: int = ...,
     encoding: Optional[str] = ...,
@@ -58,7 +58,7 @@ def open(
 ) -> TextIO: ...
 @overload
 def open(
-    filename: Union[AnyPath, _ReadableFileobj, _WritableFileobj],
+    filename: Union[StrOrBytesPath, _ReadableFileobj, _WritableFileobj],
     mode: str,
     compresslevel: int = ...,
     encoding: Optional[str] = ...,
@@ -86,7 +86,7 @@ class GzipFile(_compression.BaseStream):
     @overload
     def __init__(
         self,
-        filename: Optional[AnyPath],
+        filename: Optional[StrOrBytesPath],
         mode: _ReadBinaryMode,
         compresslevel: int = ...,
         fileobj: Optional[_ReadableFileobj] = ...,
@@ -104,7 +104,7 @@ class GzipFile(_compression.BaseStream):
     @overload
     def __init__(
         self,
-        filename: Optional[AnyPath],
+        filename: Optional[StrOrBytesPath],
         mode: _WriteBinaryMode,
         compresslevel: int = ...,
         fileobj: Optional[_WritableFileobj] = ...,
@@ -122,7 +122,7 @@ class GzipFile(_compression.BaseStream):
     @overload
     def __init__(
         self,
-        filename: Optional[AnyPath] = ...,
+        filename: Optional[StrOrBytesPath] = ...,
         mode: Optional[str] = ...,
         compresslevel: int = ...,
         fileobj: Union[_ReadableFileobj, _WritableFileobj, None] = ...,

@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, Generator, Iterable, Iterator, List, Tuple, Union
+from typing import Any, Callable, Dict, Generator, Iterable, Iterator, List, Tuple
 
 __author__: str
 __credits__: str

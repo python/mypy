@@ -1,4 +1,4 @@
-from typing import AnyStr, Iterable, List, Optional, Type
+from typing import AnyStr, Iterable, List, Optional
 
 whitespace: str
 lowercase: str

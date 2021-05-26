@@ -1,13 +1,9 @@
 import sys
+from types import SimpleNamespace
 from typing import Any, NamedTuple, Optional, Tuple, Union
-
-if sys.version_info >= (3, 3):
-    from types import SimpleNamespace
 
 _TimeTuple = Tuple[int, int, int, int, int, int, int, int, int]
 
-if sys.version_info < (3, 3):
-    accept2dyear: bool
 altzone: int
 daylight: int
 timezone: int
@@ -20,7 +16,7 @@ if sys.version_info >= (3, 7):
         CLOCK_PROF: int  # FreeBSD, NetBSD, OpenBSD
         CLOCK_UPTIME: int  # FreeBSD, OpenBSD
 
-if sys.version_info >= (3, 3) and sys.platform != "win32":
+if sys.platform != "win32":
     CLOCK_MONOTONIC: int
     CLOCK_MONOTONIC_RAW: int
     CLOCK_PROCESS_CPUTIME_ID: int
@@ -52,36 +48,29 @@ class _struct_time(NamedTuple):
     @property
     def n_unnamed_fields(self) -> int: ...
 
-if sys.version_info >= (3, 3):
-    class struct_time(_struct_time):
-        def __init__(
-            self,
-            o: Union[
-                Tuple[int, int, int, int, int, int, int, int, int],
-                Tuple[int, int, int, int, int, int, int, int, int, str],
-                Tuple[int, int, int, int, int, int, int, int, int, str, int],
-            ],
-            _arg: Any = ...,
-        ) -> None: ...
-        def __new__(
-            cls,
-            o: Union[
-                Tuple[int, int, int, int, int, int, int, int, int],
-                Tuple[int, int, int, int, int, int, int, int, int, str],
-                Tuple[int, int, int, int, int, int, int, int, int, str, int],
-            ],
-            _arg: Any = ...,
-        ) -> struct_time: ...
-        if sys.version_info >= (3, 6) or sys.platform != "win32":
-            @property
-            def tm_zone(self) -> str: ...
-            @property
-            def tm_gmtoff(self) -> int: ...
-
-else:
-    class struct_time(_struct_time):
-        def __init__(self, o: _TimeTuple, _arg: Any = ...) -> None: ...
-        def __new__(cls, o: _TimeTuple, _arg: Any = ...) -> struct_time: ...
+class struct_time(_struct_time):
+    def __init__(
+        self,
+        o: Union[
+            Tuple[int, int, int, int, int, int, int, int, int],
+            Tuple[int, int, int, int, int, int, int, int, int, str],
+            Tuple[int, int, int, int, int, int, int, int, int, str, int],
+        ],
+        _arg: Any = ...,
+    ) -> None: ...
+    def __new__(
+        cls,
+        o: Union[
+            Tuple[int, int, int, int, int, int, int, int, int],
+            Tuple[int, int, int, int, int, int, int, int, int, str],
+            Tuple[int, int, int, int, int, int, int, int, int, str, int],
+        ],
+        _arg: Any = ...,
+    ) -> struct_time: ...
+    @property
+    def tm_zone(self) -> str: ...
+    @property
+    def tm_gmtoff(self) -> int: ...
 
 def asctime(t: Union[_TimeTuple, struct_time] = ...) -> str: ...
 
@@ -100,15 +89,15 @@ def time() -> float: ...
 if sys.platform != "win32":
     def tzset() -> None: ...  # Unix only
 
-if sys.version_info >= (3, 3):
-    def get_clock_info(name: str) -> SimpleNamespace: ...
-    def monotonic() -> float: ...
-    def perf_counter() -> float: ...
-    def process_time() -> float: ...
-    if sys.platform != "win32":
-        def clock_getres(clk_id: int) -> float: ...  # Unix only
-        def clock_gettime(clk_id: int) -> float: ...  # Unix only
-        def clock_settime(clk_id: int, time: float) -> None: ...  # Unix only
+def get_clock_info(name: str) -> SimpleNamespace: ...
+def monotonic() -> float: ...
+def perf_counter() -> float: ...
+def process_time() -> float: ...
+
+if sys.platform != "win32":
+    def clock_getres(clk_id: int) -> float: ...  # Unix only
+    def clock_gettime(clk_id: int) -> float: ...  # Unix only
+    def clock_settime(clk_id: int, time: float) -> None: ...  # Unix only
 
 if sys.version_info >= (3, 7):
     if sys.platform != "win32":
