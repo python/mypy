@@ -168,6 +168,7 @@ def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:
     else:
         module_package = ''
 
+    print(locals())
     id = importlib.util.resolve_name('.' * node.relative + node.id, module_package)
 
     builder.gen_import(id, node.line)
