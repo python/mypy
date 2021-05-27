@@ -165,10 +165,11 @@ def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:
     module_state = builder.graph[builder.module_name]
     if module_state.ancestors is not None and module_state.ancestors:
         module_package = module_state.ancestors[0]
+    elif builder.module_path.endswith("__init__.py"):
+        module_package = builder.module_name
     else:
         module_package = ''
 
-    print(locals())
     id = importlib.util.resolve_name('.' * node.relative + node.id, module_package)
 
     builder.gen_import(id, node.line)
