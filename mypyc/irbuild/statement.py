@@ -169,7 +169,7 @@ def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:
         module_package = builder.module_name
     else:
         module_package = ''
-    
+
     id = importlib.util.resolve_name('.' * node.relative + node.id, module_package)
 
     builder.gen_import(id, node.line)
