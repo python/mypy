@@ -11,6 +11,7 @@ The function build() is the main interface to this module.
 # TODO: More consistent terminology, e.g. path/fnam, module/id, state/file
 
 import contextlib
+import copy
 import errno
 import gc
 import json
@@ -2440,16 +2441,25 @@ def find_module_and_diagnose(manager: BuildManager,
         # Could not find a module.  Typically the reason is a
         # misspelled module name, missing stub, module not in
         # search path or the module has not been installed.
-
         ignore_missing_imports = options.ignore_missing_imports
         top_level = file_id.partition('.')[0]
+
         # Don't honor a global (not per-module) ignore_missing_imports
         # setting for modules that used to have bundled stubs, as
         # otherwise updating mypy can silently result in new false
-        # negatives.
+        # negatives. However, if ignore_missing_imports was set
+        # at the module level, we will honor it.
+        # https://github.com/python/mypy/issues/10283
         global_ignore_missing_imports = manager.options.ignore_missing_imports
         if top_level in legacy_bundled_packages and global_ignore_missing_imports:
-            ignore_missing_imports = False
+            # To see if this ignore_missing_imports was due to the global or due to the
+            # module, let's copy the options, set global ignore_missing_imports to False
+            # and then look again.
+            options_copy = copy.deepcopy(manager.options)
+            options_copy.ignore_missing_imports = False
+            module_copy = options_copy.clone_for_module(id)
+            if not module_copy.ignore_missing_imports:
+                ignore_missing_imports = False
 
         if skip_diagnose:
             raise ModuleNotFound

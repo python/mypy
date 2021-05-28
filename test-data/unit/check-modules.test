@@ -1,6 +1,7 @@
 -- Type checker test cases dealing with modules and imports.
 -- Towards the end there are tests for PEP 420 (namespace packages, i.e. __init__.py-less packages).
 
+
 [case testAccessImportedDefinitions]
 import m
 import typing
@@ -2982,3 +2983,43 @@ T = TypeVar("T")
 class F(M):
     x: C
     class C: ...
+
+
+-- https://github.com/python/mypy/issues/10283
+[case testIgnoreMissingImportsGlobalWithMissingStub]
+# flags: --config-file tmp/pyproject.toml
+from redis.sentinel import Sentinel
+
+[file pyproject.toml]
+\[tool.mypy]
+ignore_missing_imports = true
+
+[out]
+main:2: error: Cannot find implementation or library stub for module named "redis.sentinel"
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+
+-- https://github.com/python/mypy/issues/10283
+[case testIgnoreMissingImportsWildcardWithMissingStub]
+# flags: --config-file tmp/pyproject.toml
+from redis.sentinel import Sentinel
+
+[file pyproject.toml]
+\[tool.mypy]
+ignore_missing_imports = false
+\[[tool.mypy.overrides]]
+module = 'redis.*'
+ignore_missing_imports = true
+
+
+-- https://github.com/python/mypy/issues/10283
+[case testIgnoreMissingImportsGlobalAndWildcardWithMissingStub]
+# flags: --config-file tmp/pyproject.toml
+from redis.sentinel import Sentinel
+
+[file pyproject.toml]
+\[tool.mypy]
+ignore_missing_imports = true
+\[[tool.mypy.overrides]]
+module = 'redis.*'
+ignore_missing_imports = true
