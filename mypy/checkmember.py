@@ -530,6 +530,7 @@ def instance_alias_type(alias: TypeAlias,
     tp = type_object_type(target.type, builtin_type)
     return expand_type_by_instance(tp, target)
 
+
 def is_instance_var(var: Var, info: TypeInfo) -> bool:
     """Return if var is an instance variable according to PEP 526."""
     return (
@@ -539,6 +540,7 @@ def is_instance_var(var: Var, info: TypeInfo) -> bool:
         # variables without annotations are treated as classvar
         and not var.is_inferred
     )
+
 
 def analyze_var(name: str,
                 var: Var,
