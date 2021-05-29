@@ -33,6 +33,7 @@ class dict(Mapping[KT, VT]):
 
 class int: # for convenience
     def __add__(self, x: int) -> int: pass
+    def __bool__(self) -> bool: pass
 
 class str: pass # for keyword argument key type
 class unicode: pass # needed for py2 docstrings
