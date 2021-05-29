@@ -170,7 +170,8 @@ def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:
 
     id = importlib.util.resolve_name('.' * node.relative + node.id, module_package)
 
-    builder.gen_import(id, node.line)
+    imported = [name for name, _ in node.names]
+    builder.gen_import_from(id, node.line, imported)
     module = builder.load_module(id)
 
     # Copy everything into our module's dict.

@@ -35,7 +35,7 @@ from mypyc.ir.ops import (
     SetAttr, LoadStatic, InitStatic, NAMESPACE_MODULE, RaiseStandardError
 )
 from mypyc.ir.rtypes import (
-    RType, RTuple, RInstance, int_rprimitive, dict_rprimitive,
+    RType, RTuple, RInstance, c_int_rprimitive, int_rprimitive, dict_rprimitive,
     none_rprimitive, is_none_rprimitive, object_rprimitive, is_object_rprimitive,
     str_rprimitive, is_tagged, is_list_rprimitive, is_tuple_rprimitive, c_pyssize_t_rprimitive
 )
@@ -45,7 +45,9 @@ from mypyc.primitives.registry import CFunctionDescription, function_ops
 from mypyc.primitives.list_ops import to_list, list_pop_last, list_get_item_unsafe_op
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import py_setattr_op, iter_op, next_op
-from mypyc.primitives.misc_ops import import_op, check_unpack_count_op, get_module_dict_op
+from mypyc.primitives.misc_ops import (
+    import_op, check_unpack_count_op, get_module_dict_op, import_extra_args_op, get_locals
+)
 from mypyc.crash import catch_errors
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
@@ -285,6 +287,26 @@ class IRBuilder:
         # Add an attribute entry into the class dict of a non-extension class.
         key_unicode = self.load_str(key)
         self.call_c(dict_set_item_op, [non_ext.dict, key_unicode, val], line)
+
+    def gen_import_from(self, id: str, line: int, imported: List[str]) -> None:
+        self.imports[id] = None
+
+        needs_import, out = BasicBlock(), BasicBlock()
+        self.check_if_module_loaded(id, line, needs_import, out)
+
+        self.activate_block(needs_import)
+        globals_dict = self.load_globals_dict()
+        locals_dict = self.call_c(get_locals, [], line)
+        names_to_import = self.new_list_op([self.load_str(name) for name in imported], line)
+
+        level = Integer(0, c_int_rprimitive, line)
+        value = self.call_c(
+            import_extra_args_op,
+            [self.load_str(id), globals_dict, locals_dict, names_to_import, level],
+            line,
+        )
+        self.add(InitStatic(value, id, namespace=NAMESPACE_MODULE))
+        self.goto_and_activate(out)
 
     def gen_import(self, id: str, line: int) -> None:
         self.imports[id] = None
