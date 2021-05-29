@@ -92,16 +92,12 @@ assert f(1) == 2
 # if mypy can't tell if mod isn't a module
 from pkg import mod # type: ignore
 
-def a(x: int) -> int:
-    return mod.h(x)
+def test_import():
+    assert mod.h(8) == 24
 
 [file pkg/mod.py]
 def h(x):
     return x * 3
-
-[file driver.py]
-from native import a
-assert a(8) == 24
 
 [case testFromImportWithKnownModule]
 from pkg import mod
