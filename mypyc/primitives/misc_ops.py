@@ -3,7 +3,8 @@
 from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_FALSE
 from mypyc.ir.rtypes import (
     bool_rprimitive, object_rprimitive, str_rprimitive, object_pointer_rprimitive,
-    int_rprimitive, dict_rprimitive, c_int_rprimitive, bit_rprimitive, c_pyssize_t_rprimitive
+    int_rprimitive, dict_rprimitive, c_int_rprimitive, bit_rprimitive, c_pyssize_t_rprimitive,
+    list_rprimitive,
 )
 from mypyc.primitives.registry import (
     function_op, custom_op, load_address_op, ERR_NEG_INT
@@ -107,6 +108,15 @@ import_op = custom_op(
     c_function_name='PyImport_Import',
     error_kind=ERR_MAGIC)
 
+# Import with extra arguments (used in from import handling)
+import_extra_args_op = custom_op(
+    arg_types=[str_rprimitive, dict_rprimitive, dict_rprimitive,
+               list_rprimitive, c_int_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='PyImport_ImportModuleLevelObject',
+    error_kind=ERR_MAGIC
+)
+
 # Get the sys.modules dictionary
 get_module_dict_op = custom_op(
     arg_types=[],
@@ -114,6 +124,16 @@ get_module_dict_op = custom_op(
     c_function_name='PyImport_GetModuleDict',
     error_kind=ERR_NEVER,
     is_borrowed=True)
+
+# locals()
+get_locals = custom_op(
+    arg_types=[],
+    return_type=dict_rprimitive,
+    c_function_name='PyEval_GetLocals',
+    # documentation doesn't mention setting an exception on failure, but it might return NULL
+    error_kind=ERR_MAGIC,
+    is_borrowed=True
+)
 
 # isinstance(obj, cls)
 function_op(
