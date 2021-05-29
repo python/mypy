@@ -103,6 +103,17 @@ def h(x):
 from native import a
 assert a(8) == 24
 
+[case testFromImportWithKnownModule]
+from pkg import mod
+
+def test_import():
+    assert mod.h(8) == 24
+
+[file pkg/__init__.py]
+[file pkg/mod.py]
+def h(x: int) -> int:
+    return x * 3
+
 [case testReexport]
 # Test that we properly handle accessing values that have been reexported
 import a
