@@ -357,13 +357,10 @@ class Errors:
         self._add_error_info(file, info)
 
     def is_ignored_error(self, line: int, info: ErrorInfo, ignores: Dict[int, List[str]]) -> bool:
-        if info.blocker:
-            # Blocking errors can never be ignored
+        if info.blocker or line not in ignores:
             return False
         if info.code and self.is_error_code_enabled(info.code) is False:
             return True
-        if line not in ignores:
-            return False
         if not ignores[line]:
             # Empty list means that we ignore all errors
             return True
