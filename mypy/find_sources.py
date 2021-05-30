@@ -6,7 +6,7 @@ import os
 from typing import List, Sequence, Set, Tuple, Optional
 from typing_extensions import Final
 
-from mypy.modulefinder import BuildSource, PYTHON_EXTENSIONS, mypy_path
+from mypy.modulefinder import BuildSource, PYTHON_EXTENSIONS, mypy_path, matches_exclude
 from mypy.fscache import FileSystemCache
 from mypy.options import Options
 
@@ -91,6 +91,8 @@ class SourceFinder:
         self.fscache = fscache
         self.explicit_package_bases = get_explicit_package_bases(options)
         self.namespace_packages = options.namespace_packages
+        self.exclude = options.exclude
+        self.verbosity = options.verbosity
 
     def is_explicit_package_base(self, path: str) -> bool:
         assert self.explicit_package_bases
@@ -103,9 +105,14 @@ class SourceFinder:
         names = sorted(self.fscache.listdir(path), key=keyfunc)
         for name in names:
             # Skip certain names altogether
-            if name == '__pycache__' or name.startswith('.') or name.endswith('~'):
+            if name in ("__pycache__", "site-packages", "node_modules") or name.startswith("."):
                 continue
             subpath = os.path.join(path, name)
+
+            if matches_exclude(
+                subpath, self.exclude, self.fscache, self.verbosity >= 2
+            ):
+                continue
 
             if self.fscache.isdir(subpath):
                 sub_sources = self.find_sources_in_dir(subpath)

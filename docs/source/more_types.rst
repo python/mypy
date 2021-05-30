@@ -1019,8 +1019,8 @@ Keys that aren't required are shown with a ``?`` in error messages:
 
 .. code-block:: python
 
-   # Revealed type is 'TypedDict('GuiOptions', {'language'?: builtins.str,
-   #                                            'color'?: builtins.str})'
+   # Revealed type is "TypedDict('GuiOptions', {'language'?: builtins.str,
+   #                                            'color'?: builtins.str})"
    reveal_type(options)
 
 Totality also affects structural compatibility. You can't use a partial

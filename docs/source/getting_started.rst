@@ -302,7 +302,7 @@ for example, when assigning an empty dictionary to some global value:
 
 .. code-block:: python
 
-    my_global_dict = {}  # Error: Need type annotation for 'my_global_dict'
+    my_global_dict = {}  # Error: Need type annotation for "my_global_dict"
 
 You can teach mypy what type ``my_global_dict`` is meant to have by giving it
 a type hint. For example, if you knew this variable is supposed to be a dict

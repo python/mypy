@@ -108,7 +108,7 @@ defined (aka forward reference). Thus this code does not work as expected:
 
 .. code-block:: python
 
-   def f(x: A) -> None: ...  # NameError: name 'A' is not defined
+   def f(x: A) -> None: ...  # NameError: name "A" is not defined
    class A: ...
 
 Starting from Python 3.7, you can add ``from __future__ import annotations`` to
@@ -148,7 +148,7 @@ Sometimes in order to add type annotations you have to add extra
 imports to a module and those imports cause cycles that didn't exist
 before. This can lead to errors at runtime like:
 
-.. code-block::
+.. code-block:: text
 
    ImportError: cannot import name 'b' from partially initialized module 'A' (most likely due to a circular import)
 

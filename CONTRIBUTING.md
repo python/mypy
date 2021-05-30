@@ -12,7 +12,7 @@ Getting started, building, and testing
 
 If you haven't already, take a look at the project's
 [README.md file](README.md)
-and the [Mypy documentation](http://mypy.readthedocs.io/en/latest/),
+and the [Mypy documentation](https://mypy.readthedocs.io/en/latest/),
 and try adding type annotations to your file and type-checking it with Mypy.
 
 

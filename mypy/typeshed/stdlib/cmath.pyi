@@ -10,7 +10,7 @@ if sys.version_info >= (3, 6):
     nanj: complex
     tau: float
 
-_C = Union[SupportsFloat, SupportsComplex]
+_C = Union[SupportsFloat, SupportsComplex, complex]
 
 def acos(__z: _C) -> complex: ...
 def acosh(__z: _C) -> complex: ...

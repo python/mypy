@@ -19,7 +19,7 @@ XML_PARAM_ENTITY_PARSING_NEVER: int
 XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE: int
 XML_PARAM_ENTITY_PARSING_ALWAYS: int
 
-_Model = Tuple[int, int, Optional[str], tuple]
+_Model = Tuple[int, int, Optional[str], Tuple[Any, ...]]
 
 class XMLParserType(object):
     def Parse(self, __data: Union[Text, bytes], __isfinal: bool = ...) -> int: ...

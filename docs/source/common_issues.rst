@@ -218,7 +218,7 @@ version of Python considers legal code. These can result in some of the
 following errors when trying to run your code:
 
 * ``ImportError`` from circular imports
-* ``NameError: name 'X' is not defined`` from forward references
+* ``NameError: name "X" is not defined`` from forward references
 * ``TypeError: 'type' object is not subscriptable`` from types that are not generic at runtime
 * ``ImportError`` or ``ModuleNotFoundError`` from use of stub definitions not available at runtime
 * ``TypeError: unsupported operand type(s) for |: 'type' and 'type'`` from use of new syntax
@@ -493,7 +493,7 @@ understand how mypy handles a particular piece of code. Example:
 
 .. code-block:: python
 
-   reveal_type((1, 'hello'))  # Revealed type is 'Tuple[builtins.int, builtins.str]'
+   reveal_type((1, 'hello'))  # Revealed type is "Tuple[builtins.int, builtins.str]"
 
 You can also use ``reveal_locals()`` at any line in a file
 to see the types of all local variables at once. Example:
@@ -772,3 +772,30 @@ False:
 
 If you use the :option:`--warn-unreachable <mypy --warn-unreachable>` flag, mypy will generate
 an error about each unreachable code block.
+
+
+Narrowing and inner functions
+-----------------------------
+
+Because closures in Python are late-binding (https://docs.python-guide.org/writing/gotchas/#late-binding-closures),
+mypy will not narrow the type of a captured variable in an inner function.
+This is best understood via an example:
+
+.. code-block:: python
+
+    def foo(x: Optional[int]) -> Callable[[], int]:
+        if x is None:
+            x = 5
+        print(x + 1)  # mypy correctly deduces x must be an int here
+        def inner() -> int:
+            return x + 1  # but (correctly) complains about this line
+
+        x = None  # because x could later be assigned None
+        return inner
+
+    inner = foo(5)
+    inner()  # this will raise an error when called
+
+To get this code to type check, you could assign ``y = x`` after ``x`` has been
+narrowed, and use ``y`` in the inner function, or add an assert in the inner
+function.

@@ -5,7 +5,7 @@ from typing import Any, BinaryIO, Iterable, List, NoReturn, Optional, Tuple, Typ
 
 if sys.version_info >= (3, 8):
     # These are based in socket, maybe move them out into _typeshed.pyi or such
-    _Address = Union[tuple, str]
+    _Address = Union[Tuple[Any, ...], str]
     _RetAddress = Any
     _WriteBuffer = Union[bytearray, memoryview]
     _CMSG = Tuple[int, int, bytes]

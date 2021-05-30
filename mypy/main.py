@@ -23,7 +23,7 @@ from mypy.fscache import FileSystemCache
 from mypy.errors import CompileError
 from mypy.errorcodes import error_codes
 from mypy.options import Options, BuildType
-from mypy.config_parser import parse_version, parse_config_file
+from mypy.config_parser import get_config_module_names, parse_version, parse_config_file
 from mypy.split_namespace import SplitNamespace
 
 from mypy.version import __version__
@@ -103,8 +103,9 @@ def main(script_path: Optional[str],
     if options.warn_unused_configs and options.unused_configs and not options.incremental:
         print("Warning: unused section(s) in %s: %s" %
               (options.config_file,
-               ", ".join("[mypy-%s]" % glob for glob in options.per_module_options.keys()
-                         if glob in options.unused_configs)),
+              get_config_module_names(options.config_file,
+                                      [glob for glob in options.per_module_options.keys()
+                                      if glob in options.unused_configs])),
               file=stderr)
     maybe_write_junit_xml(time.time() - t0, serious, messages, options)
 
@@ -154,7 +155,7 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
             # Assume we want to manually format the text
             return super()._fill_text(text, width, indent)
         else:
-            # Assume we want argparse to manage wrapping, indentating, and
+            # Assume we want argparse to manage wrapping, indenting, and
             # formatting the text for us.
             return argparse.HelpFormatter._fill_text(self, text, width, indent)
 
@@ -248,17 +249,17 @@ recursively traverse any provided folders to find .py files:
 
 For more information on getting started, see:
 
-- http://mypy.readthedocs.io/en/latest/getting_started.html
+- https://mypy.readthedocs.io/en/stable/getting_started.html
 
 For more details on both running mypy and using the flags below, see:
 
-- http://mypy.readthedocs.io/en/latest/running_mypy.html
-- http://mypy.readthedocs.io/en/latest/command_line.html
+- https://mypy.readthedocs.io/en/stable/running_mypy.html
+- https://mypy.readthedocs.io/en/stable/command_line.html
 
 You can also use a config file to configure mypy instead of using
 command line flags. For more details, see:
 
-- http://mypy.readthedocs.io/en/latest/config_file.html
+- https://mypy.readthedocs.io/en/stable/config_file.html
 """  # type: Final
 
 FOOTER = """Environment variables:
@@ -452,7 +453,8 @@ def process_options(args: List[str],
         help="Configuration file, must have a [mypy] section "
              "(defaults to {})".format(', '.join(defaults.CONFIG_FILES)))
     add_invertible_flag('--warn-unused-configs', default=False, strict_flag=True,
-                        help="Warn about unused '[mypy-<pattern>]' config sections",
+                        help="Warn about unused '[mypy-<pattern>]' or '[[tool.mypy.overrides]]' "
+                             "config sections",
                         group=config_group)
 
     imports_group = parser.add_argument_group(
@@ -557,7 +559,7 @@ def process_options(args: List[str],
         title='None and Optional handling',
         description="Adjust how values of type 'None' are handled. For more context on "
                     "how mypy handles values of type 'None', see: "
-                    "http://mypy.readthedocs.io/en/latest/kinds_of_types.html#no-strict-optional")
+                    "https://mypy.readthedocs.io/en/stable/kinds_of_types.html#no-strict-optional")
     add_invertible_flag('--no-implicit-optional', default=False, strict_flag=True,
                         help="Don't assume arguments with default values of None are Optional",
                         group=none_group)
@@ -668,7 +670,7 @@ def process_options(args: List[str],
                     "Mypy caches type information about modules into a cache to "
                     "let you speed up future invocations of mypy. Also see "
                     "mypy's daemon mode: "
-                    "mypy.readthedocs.io/en/latest/mypy_daemon.html#mypy-daemon")
+                    "mypy.readthedocs.io/en/stable/mypy_daemon.html#mypy-daemon")
     incremental_group.add_argument(
         '-i', '--incremental', action='store_true',
         help=argparse.SUPPRESS)
@@ -804,10 +806,20 @@ def process_options(args: List[str],
     code_group = parser.add_argument_group(
         title="Running code",
         description="Specify the code you want to type check. For more details, see "
-                    "mypy.readthedocs.io/en/latest/running_mypy.html#running-mypy")
+                    "mypy.readthedocs.io/en/stable/running_mypy.html#running-mypy")
+    add_invertible_flag(
+        '--explicit-package-bases', default=False,
+        help="Use current directory and MYPYPATH to determine module names of files passed",
+        group=code_group)
     code_group.add_argument(
-        '--explicit-package-bases', action='store_true',
-        help="Use current directory and MYPYPATH to determine module names of files passed")
+        "--exclude",
+        metavar="PATTERN",
+        default="",
+        help=(
+            "Regular expression to match file names, directory names or paths which mypy should "
+            "ignore while recursively discovering files to check, e.g. --exclude '/setup\\.py$'"
+        )
+    )
     code_group.add_argument(
         '-m', '--module', action='append', metavar='MODULE',
         default=[],
@@ -854,6 +866,7 @@ def process_options(args: List[str],
     environ_cache_dir = os.getenv('MYPY_CACHE_DIR', '')
     if environ_cache_dir.strip():
         options.cache_dir = environ_cache_dir
+    options.cache_dir = os.path.expanduser(options.cache_dir)
 
     # Parse command line for real, using a split namespace.
     special_opts = argparse.Namespace()
@@ -1072,7 +1085,7 @@ def install_types(cache_dir: str,
     if after_run:
         print()
     print('Installing missing stub packages:')
-    cmd = ['python3', '-m', 'pip', 'install'] + packages
+    cmd = [sys.executable, '-m', 'pip', 'install'] + packages
     print(formatter.style(' '.join(cmd), 'none', bold=True))
     print()
     x = input('Install? [yN] ')

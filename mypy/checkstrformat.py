@@ -895,17 +895,17 @@ class StringFormatterChecker:
         INT_TYPES = REQUIRE_INT_NEW if format_call else REQUIRE_INT_OLD
         if p == 'b' and not format_call:
             if self.chk.options.python_version < (3, 5):
-                self.msg.fail("Format character 'b' is only supported in Python 3.5 and later",
+                self.msg.fail('Format character "b" is only supported in Python 3.5 and later',
                               context, code=codes.STRING_FORMATTING)
                 return None
             if not isinstance(expr, BytesExpr):
-                self.msg.fail("Format character 'b' is only supported on bytes patterns", context,
+                self.msg.fail('Format character "b" is only supported on bytes patterns', context,
                               code=codes.STRING_FORMATTING)
                 return None
             return self.named_type('builtins.bytes')
         elif p == 'a':
             if self.chk.options.python_version < (3, 0):
-                self.msg.fail("Format character 'a' is only supported in Python 3", context,
+                self.msg.fail('Format character "a" is only supported in Python 3', context,
                               code=codes.STRING_FORMATTING)
                 return None
             # TODO: return type object?

@@ -15,7 +15,6 @@ import errno
 import gc
 import json
 import os
-import pathlib
 import re
 import stat
 import sys
@@ -407,7 +406,7 @@ def load_plugins_from_config(
             # Plugin paths can be relative to the config file location.
             plugin_path = os.path.join(os.path.dirname(options.config_file), plugin_path)
             if not os.path.isfile(plugin_path):
-                plugin_error("Can't find plugin '{}'".format(plugin_path))
+                plugin_error('Can\'t find plugin "{}"'.format(plugin_path))
             # Use an absolute path to avoid populating the cache entry
             # for 'tmp' during tests, since it will be different in
             # different tests.
@@ -417,21 +416,21 @@ def load_plugins_from_config(
             sys.path.insert(0, plugin_dir)
         elif re.search(r'[\\/]', plugin_path):
             fnam = os.path.basename(plugin_path)
-            plugin_error("Plugin '{}' does not have a .py extension".format(fnam))
+            plugin_error('Plugin "{}" does not have a .py extension'.format(fnam))
         else:
             module_name = plugin_path
 
         try:
             module = importlib.import_module(module_name)
         except Exception as exc:
-            plugin_error("Error importing plugin '{}': {}".format(plugin_path, exc))
+            plugin_error('Error importing plugin "{}": {}'.format(plugin_path, exc))
         finally:
             if plugin_dir is not None:
                 assert sys.path[0] == plugin_dir
                 del sys.path[0]
 
         if not hasattr(module, func_name):
-            plugin_error('Plugin \'{}\' does not define entry point function "{}"'.format(
+            plugin_error('Plugin "{}" does not define entry point function "{}"'.format(
                 plugin_path, func_name))
 
         try:
@@ -563,6 +562,7 @@ class BuildManager:
                        not only for debugging, but also required for correctness,
                        in particular to check consistency of the fine-grained dependency cache.
       fscache:         A file system cacher
+      ast_cache:       AST cache to speed up mypy daemon
     """
 
     def __init__(self, data_dir: str,
@@ -646,6 +646,14 @@ class BuildManager:
         self.processed_targets = []  # type: List[str]
         # Missing stub packages encountered.
         self.missing_stub_packages = set()  # type: Set[str]
+        # Cache for mypy ASTs that have completed semantic analysis
+        # pass 1. When multiple files are added to the build in a
+        # single daemon increment, only one of the files gets added
+        # per step and the others are discarded. This gets repeated
+        # until all the files have been added. This means that a
+        # new file can be processed O(n**2) times. This cache
+        # avoids most of this redundant work.
+        self.ast_cache = {}  # type: Dict[str, Tuple[MypyFile, List[ErrorInfo]]]
 
     def dump_stats(self) -> None:
         if self.options.dump_build_stats:
@@ -1995,8 +2003,14 @@ class State:
             return
 
         manager = self.manager
+
+        # Can we reuse a previously parsed AST? This avoids redundant work in daemon.
+        cached = self.id in manager.ast_cache
         modules = manager.modules
-        manager.log("Parsing %s (%s)" % (self.xpath, self.id))
+        if not cached:
+            manager.log("Parsing %s (%s)" % (self.xpath, self.id))
+        else:
+            manager.log("Using cached AST for %s (%s)" % (self.xpath, self.id))
 
         with self.wrap_context():
             source = self.source
@@ -2027,20 +2041,35 @@ class State:
                 self.source_hash = compute_hash(source)
 
             self.parse_inline_configuration(source)
-            self.tree = manager.parse_file(self.id, self.xpath, source,
-                                           self.ignore_all or self.options.ignore_errors,
-                                           self.options)
+            if not cached:
+                self.tree = manager.parse_file(self.id, self.xpath, source,
+                                               self.ignore_all or self.options.ignore_errors,
+                                               self.options)
+
+            else:
+                # Reuse a cached AST
+                self.tree = manager.ast_cache[self.id][0]
+                manager.errors.set_file_ignored_lines(
+                    self.xpath,
+                    self.tree.ignored_lines,
+                    self.ignore_all or self.options.ignore_errors)
+
+        if not cached:
+            # Make a copy of any errors produced during parse time so that
+            # fine-grained mode can repeat them when the module is
+            # reprocessed.
+            self.early_errors = list(manager.errors.error_info_map.get(self.xpath, []))
+        else:
+            self.early_errors = manager.ast_cache[self.id][1]
 
         modules[self.id] = self.tree
 
-        # Make a copy of any errors produced during parse time so that
-        # fine-grained mode can repeat them when the module is
-        # reprocessed.
-        self.early_errors = list(manager.errors.error_info_map.get(self.xpath, []))
-
-        self.semantic_analysis_pass1()
+        if not cached:
+            self.semantic_analysis_pass1()
 
         self.check_blockers()
+
+        manager.ast_cache[self.id] = (self.tree, self.early_errors)
 
     def parse_inline_configuration(self, source: str) -> None:
         """Check for inline mypy: options directive and parse them."""
@@ -2069,7 +2098,7 @@ class State:
         analyzer = SemanticAnalyzerPreAnalysis()
         with self.wrap_context():
             analyzer.visit_file(self.tree, self.xpath, self.id, options)
-        # TODO: Do this while contructing the AST?
+        # TODO: Do this while constructing the AST?
         self.tree.names = SymbolTable()
         if options.allow_redefinition:
             # Perform renaming across the AST to allow variable redefinitions
@@ -2205,12 +2234,14 @@ class State:
 
     def compute_fine_grained_deps(self) -> Dict[str, Set[str]]:
         assert self.tree is not None
-        if '/typeshed/' in self.xpath or self.xpath.startswith('typeshed/'):
-            # We don't track changes to typeshed -- the assumption is that they are only changed
-            # as part of mypy updates, which will invalidate everything anyway.
-            #
-            # TODO: Not a reliable test, as we could have a package named typeshed.
-            # TODO: Consider relaxing this -- maybe allow some typeshed changes to be tracked.
+        if self.id in ('builtins', 'typing', 'types', 'sys', '_typeshed'):
+            # We don't track changes to core parts of typeshed -- the
+            # assumption is that they are only changed as part of mypy
+            # updates, which will invalidate everything anyway. These
+            # will always be processed in the initial non-fine-grained
+            # build. Other modules may be brought in as a result of an
+            # fine-grained increment, and we may need these
+            # dependencies then to handle cyclic imports.
             return {}
         from mypy.server.deps import get_dependencies  # Lazy import to speed up startup
         return get_dependencies(target=self.tree,
@@ -2515,7 +2546,8 @@ def module_not_found(manager: BuildManager, line: int, caller_state: State,
                       blocker=True)
         errors.raise_error()
     else:
-        msg, notes = reason.error_message_templates()
+        daemon = manager.options.fine_grained_incremental
+        msg, notes = reason.error_message_templates(daemon)
         pyver = '%d.%d' % manager.options.python_version
         errors.report(line, 0, msg.format(module=target, pyver=pyver), code=codes.IMPORT)
         top_level = target.partition('.')[0]
@@ -2536,7 +2568,7 @@ def skipping_module(manager: BuildManager, line: int, caller_state: Optional[Sta
     manager.errors.set_import_context(caller_state.import_context)
     manager.errors.set_file(caller_state.xpath, caller_state.id)
     manager.errors.report(line, 0,
-                          "Import of '%s' ignored" % (id,),
+                          'Import of "%s" ignored' % (id,),
                           severity='error')
     manager.errors.report(line, 0,
                           "(Using --follow-imports=error, module not passed on command line)",
@@ -2552,7 +2584,7 @@ def skipping_ancestor(manager: BuildManager, id: str, path: str, ancestor_for: '
     # so we'd need to cache the decision.
     manager.errors.set_import_context([])
     manager.errors.set_file(ancestor_for.xpath, ancestor_for.id)
-    manager.errors.report(-1, -1, "Ancestor package '%s' ignored" % (id,),
+    manager.errors.report(-1, -1, 'Ancestor package "%s" ignored' % (id,),
                           severity='error', only_once=True)
     manager.errors.report(-1, -1,
                           "(Using --follow-imports=error, submodule passed on command line)",
@@ -2570,6 +2602,7 @@ def log_configuration(manager: BuildManager, sources: List[BuildSource]) -> None
         ("Current Executable", sys.executable),
         ("Cache Dir", manager.options.cache_dir),
         ("Compiled", str(not __file__.endswith(".py"))),
+        ("Exclude", manager.options.exclude),
     ]
 
     for conf_name, conf_value in configuration_vars:
@@ -2766,17 +2799,15 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
             manager.errors.set_file(st.xpath, st.id)
             manager.errors.report(
                 -1, -1,
-                "Duplicate module named '%s' (also at '%s')" % (st.id, graph[st.id].xpath),
+                'Duplicate module named "%s" (also at "%s")' % (st.id, graph[st.id].xpath),
                 blocker=True,
             )
-            p1 = len(pathlib.PurePath(st.xpath).parents)
-            p2 = len(pathlib.PurePath(graph[st.id].xpath).parents)
-
-            if p1 != p2:
-                manager.errors.report(
-                    -1, -1,
-                    "Are you missing an __init__.py?"
-                )
+            manager.errors.report(
+                -1, -1,
+                "Are you missing an __init__.py? Alternatively, consider using --exclude to "
+                "avoid checking one of them.",
+                severity='note'
+            )
 
             manager.errors.raise_error()
         graph[st.id] = st
@@ -2838,8 +2869,8 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                         if newst_path in seen_files:
                             manager.errors.report(
                                 -1, 0,
-                                "Source file found twice under different module names: "
-                                "'{}' and '{}'".format(seen_files[newst_path].id, newst.id),
+                                'Source file found twice under different module names: '
+                                '"{}" and "{}"'.format(seen_files[newst_path].id, newst.id),
                                 blocker=True)
                             manager.errors.raise_error()
 

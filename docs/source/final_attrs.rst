@@ -11,7 +11,7 @@ This section introduces these related features:
 3. *Final classes* should not be subclassed.
 
 All of these are only enforced by mypy, and only in annotated code.
-They is no runtime enforcement by the Python runtime.
+There is no runtime enforcement by the Python runtime.
 
 .. note::
 
@@ -68,7 +68,9 @@ You can use ``Final`` in one of these forms:
 
   .. code-block:: python
 
-     ID: Final[float] = 1
+     ID: Final[int] = 1
+
+  Here mypy will infer type ``int`` for ``ID``.
 
 * You can omit the type:
 
@@ -76,11 +78,11 @@ You can use ``Final`` in one of these forms:
 
      ID: Final = 1
 
-  Here mypy will infer type ``int`` for ``ID``. Note that unlike for
+  Here mypy will infer type ``Literal[1]`` for ``ID``. Note that unlike for
   generic classes this is *not* the same as ``Final[Any]``.
 
 * In class bodies and stub files you can omit the right hand side and just write
-  ``ID: Final[float]``.
+  ``ID: Final[int]``.
 
 * Finally, you can write ``self.id: Final = 1`` (also optionally with
   a type in square brackets). This is allowed *only* in

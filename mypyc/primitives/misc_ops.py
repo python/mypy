@@ -9,6 +9,11 @@ from mypyc.primitives.registry import (
     function_op, custom_op, load_address_op, ERR_NEG_INT
 )
 
+# Get the 'bool' type object.
+load_address_op(
+    name='builtins.bool',
+    type=object_rprimitive,
+    src='PyBool_Type')
 
 # Get the boxed Python 'None' object
 none_object_op = load_address_op(

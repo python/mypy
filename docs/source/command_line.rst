@@ -49,6 +49,30 @@ for full details, see :ref:`running-mypy`.
     Asks mypy to type check the provided string as a program.
 
 
+.. option:: --exclude
+
+    A regular expression that matches file names, directory names and paths
+    which mypy should ignore while recursively discovering files to check.
+    Use forward slashes on all platforms.
+
+    For instance, to avoid discovering any files named `setup.py` you could
+    pass ``--exclude '/setup\.py$'``. Similarly, you can ignore discovering
+    directories with a given name by e.g. ``--exclude /build/`` or
+    those matching a subpath with ``--exclude /project/vendor/``.
+
+    Note that this flag only affects recursive discovery, that is, when mypy is
+    discovering files within a directory tree or submodules of a package to
+    check. If you pass a file or module explicitly it will still be checked. For
+    instance, ``mypy --exclude '/setup.py$' but_still_check/setup.py``.
+
+    Note that mypy will never recursively discover files and directories named
+    "site-packages", "node_modules" or "__pycache__", or those whose name starts
+    with a period, exactly as ``--exclude
+    '/(site-packages|node_modules|__pycache__|\..*)/$'`` would. Mypy will also
+    never recursively discover files with extensions other than ``.py`` or
+    ``.pyi``.
+
+
 Optional arguments
 ******************
 
@@ -73,7 +97,7 @@ Config file
 
     This flag makes mypy read configuration settings from the given file.
 
-    By default settings are read from ``mypy.ini``, ``.mypy.ini``, or ``setup.cfg``
+    By default settings are read from ``mypy.ini``, ``.mypy.ini``, ``pyproject.toml``, or ``setup.cfg``
     in the current directory. Settings override mypy's built-in defaults and
     command line flags can override settings.
 
@@ -207,6 +231,11 @@ For more information on how to use these flags, see :ref:`version_and_platform_c
 .. option:: -2, --py2
 
     Equivalent to running :option:`--python-version 2.7 <--python-version>`.
+
+    .. note::
+
+        To check Python 2 code with mypy, you'll need to install mypy with
+        ``pip install 'mypy[python2]'``.
 
 .. option:: --platform PLATFORM
 
@@ -435,7 +464,7 @@ potentially problematic or redundant in some way.
     .. code-block:: python
 
         def process(x: int) -> None:
-            # Error: Right operand of 'or' is never evaluated
+            # Error: Right operand of "or" is never evaluated
             if isinstance(x, int) or x > 7:
                 # Error: Unsupported operand types for + ("int" and "str")
                 print(x + "bad")

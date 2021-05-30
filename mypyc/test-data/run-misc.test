@@ -589,95 +589,6 @@ for a in sorted(s):
 9     7   63
 9     8   72
 
-[case testDunders]
-from typing import Any
-class Item:
-    def __init__(self, value: str) -> None:
-        self.value = value
-
-    def __hash__(self) -> int:
-        return hash(self.value)
-
-    def __eq__(self, rhs: object) -> bool:
-        return isinstance(rhs, Item) and self.value == rhs.value
-
-    def __lt__(self, x: 'Item') -> bool:
-        return self.value < x.value
-
-class Subclass1(Item):
-    def __bool__(self) -> bool:
-        return bool(self.value)
-
-class NonBoxedThing:
-    def __getitem__(self, index: Item) -> Item:
-        return Item("2 * " + index.value + " + 1")
-
-class BoxedThing:
-    def __getitem__(self, index: int) -> int:
-        return 2 * index + 1
-
-class Subclass2(BoxedThing):
-    pass
-
-class UsesNotImplemented:
-    def __eq__(self, b: object) -> bool:
-        return NotImplemented
-
-def index_into(x : Any, y : Any) -> Any:
-    return x[y]
-
-def internal_index_into() -> None:
-    x = BoxedThing()
-    print (x[3])
-    y = NonBoxedThing()
-    z = Item("3")
-    print(y[z].value)
-
-def is_truthy(x: Item) -> bool:
-    return True if x else False
-
-[file driver.py]
-from native import *
-x = BoxedThing()
-y = 3
-print(x[y], index_into(x, y))
-
-x = Subclass2()
-y = 3
-print(x[y], index_into(x, y))
-
-z = NonBoxedThing()
-w = Item("3")
-print(z[w].value, index_into(z, w).value)
-
-i1 = Item('lolol')
-i2 = Item('lol' + 'ol')
-i3 = Item('xyzzy')
-assert hash(i1) == hash(i2)
-
-assert i1 == i2
-assert not i1 != i2
-assert not i1 == i3
-assert i1 != i3
-assert i2 < i3
-assert not i1 < i2
-assert i1 == Subclass1('lolol')
-
-assert is_truthy(Item(''))
-assert is_truthy(Item('a'))
-assert not is_truthy(Subclass1(''))
-assert is_truthy(Subclass1('a'))
-
-assert UsesNotImplemented() != object()
-
-internal_index_into()
-[out]
-7 7
-7 7
-2 * 3 + 1 2 * 3 + 1
-7
-2 * 3 + 1
-
 [case testDummyTypes]
 from typing import Tuple, List, Dict, NamedTuple
 from typing_extensions import Literal, TypedDict, NewType
@@ -740,6 +651,59 @@ TypeError
 1
 TypeError
 10
+
+[case testClassBasedTypedDict]
+from typing_extensions import TypedDict
+
+class TD(TypedDict):
+    a: int
+
+class TD2(TD):
+    b: int
+
+class TD3(TypedDict, total=False):
+    c: int
+
+class TD4(TD3, TD2, total=False):
+    d: int
+
+def test_typed_dict() -> None:
+    d = TD(a=5)
+    assert d['a'] == 5
+    assert type(d) == dict
+    # TODO: This doesn't work yet
+    # assert TD.__annotations__ == {'a': int}
+
+def test_inherited_typed_dict() -> None:
+    d = TD2(a=5, b=3)
+    assert d['a'] == 5
+    assert d['b'] == 3
+    assert type(d) == dict
+
+def test_non_total_typed_dict() -> None:
+    d3 = TD3(c=3)
+    d4 = TD4(a=1, b=2, c=3, d=4)
+    assert d3['c'] == 3
+    assert d4['d'] == 4
+
+[case testClassBasedNamedTuple]
+from typing import NamedTuple
+import sys
+
+# Class-based NamedTuple requires Python 3.6+
+version = sys.version_info[:2]
+if version[0] == 3 and version[1] < 6:
+    exit()
+
+class NT(NamedTuple):
+    a: int
+
+def test_named_tuple() -> None:
+    t = NT(a=1)
+    assert t.a == 1
+    assert type(t) is NT
+    assert isinstance(t, tuple)
+    assert not isinstance(tuple([1]), NT)
 
 [case testUnion]
 from typing import Union
@@ -940,7 +904,10 @@ import sys
 
 # We lie about the version we are running in tests if it is 3.5, so
 # that hits a crash case.
-if sys.version_info[:2] == (3, 9):
+if sys.version_info[:2] == (3, 10):
+    def version() -> int:
+        return 10
+elif sys.version_info[:2] == (3, 9):
     def version() -> int:
         return 9
 elif sys.version_info[:2] == (3, 8):
@@ -1014,3 +981,59 @@ from native import foo
 
 assert foo(None) == None
 assert foo([1, 2, 3]) == ((1, 2, 3), [1, 2, 3])
+
+[case testAllLiterals]
+# Test having all sorts of literals in a single file
+
+def test_str() -> None:
+    assert '' == eval("''")
+    assert len('foo bar' + str()) == 7
+    assert 'foo bar' == eval("'foo bar'")
+    assert 'foo\u1245\0bar' == eval("'foo' + chr(0x1245) + chr(0) + 'bar'")
+    assert 'foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345' == eval("'foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345'")
+    assert 'Zoobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar123' == eval("'Zoobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar123'")
+
+def test_bytes() -> None:
+    assert b'' == eval("b''")
+    assert b'foo bar' == eval("b'foo bar'")
+    assert b'\xafde' == eval(r"b'\xafde'")
+    assert b'foo\xde\0bar' == eval("b'foo' + bytes([0xde, 0]) + b'bar'")
+    assert b'foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345' == eval("b'foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345foobar12345'")
+
+def test_int() -> None:
+    assert 2875872359823758923758923759 == eval('2875872359823758923758923759')
+    assert -552875872359823758923758923759 == eval('-552875872359823758923758923759')
+
+def test_float() -> None:
+    assert 1.5 == eval('1.5')
+    assert -3.75 == eval('-3.75')
+    assert 2.5e10 == eval('2.5e10')
+    assert 2.5e50 == eval('2.5e50')
+    assert 2.5e1000 == eval('2.5e1000')
+    assert -2.5e1000 == eval('-2.5e1000')
+
+def test_complex() -> None:
+    assert 1.5j == eval('1.5j')
+    assert 1.5j + 2.5 == eval('2.5 + 1.5j')
+    assert -3.75j == eval('-3.75j')
+    assert 2.5e10j == eval('2.5e10j')
+    assert 2.5e50j == eval('2.5e50j')
+    assert 2.5e1000j == eval('2.5e1000j')
+    assert 2.5e1000j + 3.5e2000 == eval('3.5e2000 + 2.5e1000j')
+    assert -2.5e1000j == eval('-2.5e1000j')
+
+[case testUnreachableExpressions]
+from typing import cast
+import sys
+
+A = sys.platform == 'x' and foobar
+B = sys.platform == 'x' and sys.foobar
+C = sys.platform == 'x' and f(a, -b, 'y') > [c + e, g(y=2)]
+C = sys.platform == 'x' and cast(a, b[c])
+C = sys.platform == 'x' and (lambda x: y + x)
+# TODO: This still doesn't work
+# C = sys.platform == 'x' and (x for y in z)
+
+assert not A
+assert not B
+assert not C

@@ -14,9 +14,9 @@ if TYPE_CHECKING:
 
 
 class BuildType:
-    STANDARD = 0  # type: Final[int]
-    MODULE = 1  # type: Final[int]
-    PROGRAM_TEXT = 2  # type: Final[int]
+    STANDARD = 0  # type: Final
+    MODULE = 1  # type: Final
+    PROGRAM_TEXT = 2  # type: Final
 
 
 PER_MODULE_OPTIONS = {
@@ -97,6 +97,8 @@ class Options:
         # sufficient to determine module names for files. As a possible alternative, add a single
         # top-level __init__.py to your packages.
         self.explicit_package_bases = False
+        # File names, directory names or subpaths to avoid checking
+        self.exclude = ""  # type: str
 
         # disallow_any options
         self.disallow_any_generics = False
@@ -139,7 +141,7 @@ class Options:
         # Warn about unused '# type: ignore' comments
         self.warn_unused_ignores = False
 
-        # Warn about unused '[mypy-<pattern>] config sections
+        # Warn about unused '[mypy-<pattern>]'  or '[[tool.mypy.overrides]]' config sections
         self.warn_unused_configs = False
 
         # Files in which to ignore all non-fatal errors

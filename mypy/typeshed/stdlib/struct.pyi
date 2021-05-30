@@ -8,7 +8,7 @@ class error(Exception): ...
 _FmtType = Union[bytes, Text]
 if sys.version_info >= (3,):
     _BufferType = Union[array[int], bytes, bytearray, memoryview, mmap]
-    _WriteBufferType = Union[array, bytearray, memoryview, mmap]
+    _WriteBufferType = Union[array[Any], bytearray, memoryview, mmap]
 else:
     _BufferType = Union[array[int], bytes, bytearray, buffer, memoryview, mmap]
     _WriteBufferType = Union[array[Any], bytearray, buffer, memoryview, mmap]

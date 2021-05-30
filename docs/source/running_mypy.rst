@@ -348,7 +348,7 @@ accepts one of four string values:
 -   ``error`` behaves in the same way as ``skip`` but is not quite as
     silent -- it will flag the import as an error, like this::
 
-        main.py:1: note: Import of 'mycode.bar' ignored
+        main.py:1: note: Import of "mycode.bar" ignored
         main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 
 If you are starting a new codebase and plan on using type hints from
@@ -390,7 +390,8 @@ to modules to type check.
 - Mypy will check all paths provided that correspond to files.
 
 - Mypy will recursively discover and check all files ending in ``.py`` or
-  ``.pyi`` in directory paths provided.
+  ``.pyi`` in directory paths provided, after accounting for
+  :option:`--exclude <mypy --exclude>`.
 
 - For each file to be checked, mypy will attempt to associate the file (e.g.
   ``project/foo/bar/baz.py``) with a fully qualified module name (e.g.
@@ -519,3 +520,17 @@ For example, if you have multiple projects that happen to be
 using the same set of work-in-progress stubs, it could be
 convenient to just have your ``MYPYPATH`` point to a single
 directory containing the stubs.
+
+Directories specific to Python 2 (@python2)
+*******************************************
+
+When type checking in Python 2 mode, mypy also looks for files under
+the ``@python2`` subdirectory of each ``MYPYPATH`` and ``mypy_path``
+entry, if the subdirectory exists. Files under the subdirectory take
+precedence over the parent directory. This can be used to provide
+separate Python 2 versions of stubs.
+
+.. note::
+
+    This does not need to be used (and cannot be used) with
+    :ref:`PEP 561 compliant stub packages <installed-packages>`.

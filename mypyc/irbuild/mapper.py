@@ -1,7 +1,6 @@
 """Maintain a mapping from mypy concepts to IR/compiled concepts."""
 
-from typing import Dict, Optional, Union
-from mypy.ordered_dict import OrderedDict
+from typing import Dict, Optional
 
 from mypy.nodes import FuncDef, TypeInfo, SymbolNode, ARG_STAR, ARG_STAR2
 from mypy.types import (
@@ -10,7 +9,6 @@ from mypy.types import (
     get_proper_type
 )
 
-from mypyc.ir.ops import LiteralsMap
 from mypyc.ir.rtypes import (
     RType, RUnion, RTuple, RInstance, object_rprimitive, dict_rprimitive, tuple_rprimitive,
     none_rprimitive, int_rprimitive, float_rprimitive, str_rprimitive, bool_rprimitive,
@@ -34,12 +32,6 @@ class Mapper:
         self.group_map = group_map
         self.type_to_ir = {}  # type: Dict[TypeInfo, ClassIR]
         self.func_to_decl = {}  # type: Dict[SymbolNode, FuncDecl]
-        # LiteralsMap maps literal values to a static name. Each
-        # compilation group has its own LiteralsMap. (Since they can't
-        # share literals.)
-        self.literals = {
-            v: OrderedDict() for v in group_map.values()
-        }  # type: Dict[Optional[str], LiteralsMap]
 
     def type_to_rtype(self, typ: Optional[Type]) -> RType:
         if typ is None:
@@ -148,19 +140,3 @@ class Mapper:
         if fdef.name in ('__eq__', '__ne__', '__lt__', '__gt__', '__le__', '__ge__'):
             ret = object_rprimitive
         return FuncSignature(args, ret)
-
-    def literal_static_name(self, module: str,
-                            value: Union[int, float, complex, str, bytes]) -> str:
-        # Literals are shared between modules in a compilation group
-        # but not outside the group.
-        literals = self.literals[self.group_map.get(module)]
-
-        # Include type to distinguish between 1 and 1.0, and so on.
-        key = (type(value), value)
-        if key not in literals:
-            if isinstance(value, str):
-                prefix = 'unicode_'
-            else:
-                prefix = type(value).__name__ + '_'
-            literals[key] = prefix + str(len(literals))
-        return literals[key]

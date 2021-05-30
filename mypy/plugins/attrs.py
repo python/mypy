@@ -212,7 +212,7 @@ def _determine_eq_order(ctx: 'mypy.plugin.ClassDefContext') -> bool:
     order = _get_decorator_optional_bool_argument(ctx, 'order')
 
     if cmp is not None and any((eq is not None, order is not None)):
-        ctx.api.fail("Don't mix `cmp` with `eq' and `order`", ctx.reason)
+        ctx.api.fail('Don\'t mix "cmp" with "eq" and "order"', ctx.reason)
 
     # cmp takes precedence due to bw-compatibility.
     if cmp is not None:
@@ -226,7 +226,7 @@ def _determine_eq_order(ctx: 'mypy.plugin.ClassDefContext') -> bool:
         order = eq
 
     if eq is False and order is True:
-        ctx.api.fail("eq must be True if order is True", ctx.reason)
+        ctx.api.fail('eq must be True if order is True', ctx.reason)
 
     return order
 
@@ -549,7 +549,7 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
     attr_has_factory = bool(_get_argument(rvalue, 'factory'))
 
     if attr_has_default and attr_has_factory:
-        ctx.api.fail("Can't pass both `default` and `factory`.", rvalue)
+        ctx.api.fail('Can\'t pass both "default" and "factory".', rvalue)
     elif attr_has_factory:
         attr_has_default = True
 
@@ -571,7 +571,7 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
     converter = _get_argument(rvalue, 'converter')
     convert = _get_argument(rvalue, 'convert')
     if convert and converter:
-        ctx.api.fail("Can't pass both `convert` and `converter`.", rvalue)
+        ctx.api.fail('Can\'t pass both "convert" and "converter".', rvalue)
     elif convert:
         ctx.api.fail("convert is deprecated, use converter", rvalue)
         converter = convert

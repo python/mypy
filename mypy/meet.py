@@ -5,7 +5,7 @@ from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, NoneType, TypeVarType, Instance, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeOfAny, Overloaded, FunctionLike, LiteralType,
-    ProperType, get_proper_type, get_proper_types, TypeAliasType
+    ProperType, get_proper_type, get_proper_types, TypeAliasType, TypeGuardType
 )
 from mypy.subtypes import is_equivalent, is_subtype, is_callable_compatible, is_proper_subtype
 from mypy.erasetype import erase_type
@@ -72,6 +72,11 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         return narrowed
     elif isinstance(declared, TypeType) and isinstance(narrowed, TypeType):
         return TypeType.make_normalized(narrow_declared_type(declared.item, narrowed.item))
+    elif (isinstance(declared, TypeType)
+          and isinstance(narrowed, Instance)
+          and narrowed.type.is_metaclass()):
+        # We'd need intersection types, so give up.
+        return declared
     elif isinstance(declared, (Instance, TupleType, TypeType, LiteralType)):
         return meet_types(declared, narrowed)
     elif isinstance(declared, TypedDictType) and isinstance(narrowed, Instance):
@@ -159,10 +164,6 @@ def is_overlapping_types(left: Type,
     if isinstance(left, illegal_types) or isinstance(right, illegal_types):
         return True
 
-    # 'Any' may or may not be overlapping with the other type
-    if isinstance(left, AnyType) or isinstance(right, AnyType):
-        return True
-
     # When running under non-strict optional mode, simplify away types of
     # the form 'Union[A, B, C, None]' into just 'Union[A, B, C]'.
 
@@ -172,6 +173,10 @@ def is_overlapping_types(left: Type,
         if isinstance(right, UnionType):
             right = UnionType.make_union(right.relevant_items())
         left, right = get_proper_types((left, right))
+
+    # 'Any' may or may not be overlapping with the other type
+    if isinstance(left, AnyType) or isinstance(right, AnyType):
+        return True
 
     # We check for complete overlaps next as a general-purpose failsafe.
     # If this check fails, we start checking to see if there exists a
@@ -639,6 +644,9 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             return self.default(self.s)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
+        assert False, "This should be never called, got {}".format(t)
+
+    def visit_type_guard_type(self, t: TypeGuardType) -> ProperType:
         assert False, "This should be never called, got {}".format(t)
 
     def meet(self, s: Type, t: Type) -> ProperType:

@@ -34,10 +34,8 @@ jobs:
           toxenv: py37
 
     steps:
-    - uses: actions/checkout@v1
-    - name: initialize submodules
-      run: git submodule update --init
-    - uses: actions/setup-python@v1
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python }}
         architecture: ${{ matrix.arch }}
