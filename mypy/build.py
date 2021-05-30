@@ -2555,7 +2555,7 @@ def module_not_found(manager: BuildManager, line: int, caller_state: State,
             if '{stub_dist}' in note:
                 note = note.format(stub_dist=legacy_bundled_packages[top_level])
             errors.report(line, 0, note, severity='note', only_once=True, code=codes.IMPORT)
-        if reason is ModuleNotFoundReason.STUBS_NOT_INSTALLED:
+        if reason is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED:
             manager.missing_stub_packages.add(legacy_bundled_packages[top_level])
     errors.set_import_context(save_import_context)
 
