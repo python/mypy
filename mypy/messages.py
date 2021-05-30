@@ -718,11 +718,11 @@ class MessageBuilder:
             s = ' "{}"'.format(typ.source)
         self.fail('Assignment to variable{} outside except: block'.format(s), context)
 
-    def type_converts_to_bool_implicitly(self, typ: Type, context: Context):
+    def type_converts_to_bool_implicitly(self, typ: Type, context: Context) -> str:
         return self.fail(message_registry.TYPE_CONVERTS_TO_BOOL_IMPLICITLY
                          .format(typ), context, code=codes.IMPLICIT_BOOL)
 
-    def type_union_converts_to_bool_implicitly(self, typ: UnionType, context: Context):
+    def type_union_converts_to_bool_implicitly(self, typ: UnionType, context: Context) -> strg:
         return self.fail(message_registry.ALL_TYPES_IN_UNION_CONVERT_TO_BOOL_IMPLICITLY
                          .format(typ), context, code=codes.IMPLICIT_BOOL)
 
