@@ -64,7 +64,7 @@ from mypy.plugin import (
 from mypy.typeops import (
     tuple_fallback, make_simplified_union, true_only, false_only, erase_to_union_or_bound,
     function_type, callable_type, try_getting_str_literals, custom_special_method,
-    is_literal_type_like,
+    is_literal_type_like, type_has_explicit_conversion_to_bool,
 )
 import mypy.errorcodes as codes
 
@@ -3819,7 +3819,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         self.msg.redundant_condition_in_comprehension(True, condition)
 
     def visit_conditional_expr(self, e: ConditionalExpr, allow_none_return: bool = False) -> Type:
-        self.accept(e.cond)
+        cond_type = self.accept(e.cond)
         ctx = self.type_context[-1]
 
         # Gain type information from isinstance if it is there
@@ -3830,6 +3830,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 self.msg.redundant_condition_in_if(False, e.cond)
             elif else_map is None:
                 self.msg.redundant_condition_in_if(True, e.cond)
+
+        if codes.IMPLICIT_BOOL in self.chk.options.enabled_error_codes:
+            cond_proper_type = get_proper_type(cond_type)
+
+            if isinstance(cond_proper_type, (Instance, FunctionLike)):
+                if not type_has_explicit_conversion_to_bool(cond_proper_type):
+                    self.msg.type_converts_to_bool_implicitly(cond_proper_type, e.cond)
+            elif isinstance(cond_proper_type, UnionType):
+                if not any(type_has_explicit_conversion_to_bool(item)
+                           for item in cond_proper_type.items):
+                    self.msg.type_union_converts_to_bool_implicitly(cond_proper_type, e.cond)
 
         if_type = self.analyze_cond_branch(if_map, e.if_expr, context=ctx,
                                            allow_none_return=allow_none_return)

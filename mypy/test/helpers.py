@@ -8,6 +8,7 @@ import contextlib
 from typing import List, Iterable, Dict, Tuple, Callable, Any, Optional, Iterator
 
 from mypy import defaults
+from mypy import errorcodes as codes
 import mypy.api as api
 
 import pytest
@@ -372,7 +373,6 @@ def assert_type(typ: type, value: object) -> None:
 def parse_options(program_text: str, testcase: DataDrivenTestCase,
                   incremental_step: int) -> Options:
     """Parse comments like '# flags: --foo' in a test case."""
-    options = Options()
     flags = re.search('# flags: (.*)$', program_text, flags=re.MULTILINE)
     if incremental_step > 1:
         flags2 = re.search('# flags{}: (.*)$'.format(incremental_step), program_text,
@@ -380,8 +380,12 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
         if flags2:
             flags = flags2
 
+    disabled_error_codes = {codes.IMPLICIT_BOOL}
+
     if flags:
         flag_list = flags.group(1).split()
+        for code in disabled_error_codes:
+            flag_list.extend(['--disable-error-code', code.code])
         flag_list.append('--no-site-packages')  # the tests shouldn't need an installed Python
         targets, options = process_options(flag_list, require_targets=False)
         if targets:
@@ -393,6 +397,7 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
         # TODO: Enable strict optional in test cases by default (requires *many* test case changes)
         options.strict_optional = False
         options.error_summary = False
+        options.disabled_error_codes = disabled_error_codes
 
     # Allow custom python version to override testcase_pyversion.
     if all(flag.split('=')[0] not in ['--python-version', '-2', '--py2'] for flag in flag_list):

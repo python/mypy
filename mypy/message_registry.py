@@ -84,6 +84,11 @@ DUPLICATE_TYPE_SIGNATURES = 'Function has duplicate type signatures'  # type: Fi
 DESCRIPTOR_SET_NOT_CALLABLE = "{}.__set__ is not callable"  # type: Final
 DESCRIPTOR_GET_NOT_CALLABLE = "{}.__get__ is not callable"  # type: Final
 MODULE_LEVEL_GETATTRIBUTE = '__getattribute__ is not valid at the module level'  # type: Final
+TYPE_CONVERTS_TO_BOOL_IMPLICITLY = \
+    '"{}" does not implement __bool__ or __len__ so the expression is always truthy'  # type: Final
+ALL_TYPES_IN_UNION_CONVERT_TO_BOOL_IMPLICITLY = \
+    'Neither of {} implements __bool__ or __len__ '\
+    'so the expression is always truthy'  # type: Final
 
 # Generic
 GENERIC_INSTANCE_VAR_CLASS_ACCESS = \

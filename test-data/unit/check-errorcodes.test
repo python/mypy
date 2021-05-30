@@ -807,3 +807,61 @@ from typing_extensions import TypedDict
 
 Foo = TypedDict("Bar", {})  # E: First argument "Bar" to TypedDict() does not match variable name "Foo"  [name-match]
 [builtins fixtures/dict.pyi]
+[case testImplicitBool]
+# flags: --enable-error-code implicit-bool
+from typing import List, Union
+
+class Foo:
+    pass
+
+
+foo = Foo()
+if foo:  # E: "__main__.Foo" does not implement __bool__ or __len__ so the expression is always truthy  [implicit-bool]
+    pass
+
+zero = 0
+if zero:
+    pass
+
+
+false = False
+if false:
+    pass
+
+
+null = None
+if null:
+    pass
+
+
+s = ''
+if s:
+    pass
+
+
+good_union: Union[str, int] = 5
+if good_union:
+    pass
+
+
+bad_union: Union[Foo, object] = Foo()
+if bad_union:  # E: Neither of Union[__main__.Foo, builtins.object] implements __bool__ or __len__ so the expression is always truthy  [implicit-bool]
+    pass
+
+
+def f():
+    pass
+
+
+if f:  # E: "def () -> Any" does not implement __bool__ or __len__ so the expression is always truthy  [implicit-bool]
+    pass
+
+
+lst: List[int] = []
+if lst:
+    pass
+
+
+conditional_result = 'foo' if f else 'bar'  # E: "def () -> Any" does not implement __bool__ or __len__ so the expression is always truthy  [implicit-bool]
+
+[builtins fixtures/implicit_bool.pyi]

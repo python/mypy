@@ -642,6 +642,15 @@ def get_enum_values(typ: Instance) -> List[str]:
     return [name for name, sym in typ.type.names.items() if isinstance(sym.node, Var)]
 
 
+def type_has_explicit_conversion_to_bool(typ: Type) -> bool:
+    if isinstance(typ, Instance):
+        return typ.type.has_readable_member('__bool__') or typ.type.has_readable_member('__len__')
+    elif isinstance(typ, FunctionLike):
+        return False
+    else:
+        return True
+
+
 def is_singleton_type(typ: Type) -> bool:
     """Returns 'true' if this type is a "singleton type" -- if there exists
     exactly only one runtime value associated with this type.

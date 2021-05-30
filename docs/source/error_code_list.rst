@@ -665,6 +665,24 @@ consistently when using the call-based syntax. Example:
     # Error: First argument to namedtuple() should be "Point2D", not "Point"
     Point2D = NamedTuple("Point", [("x", int), ("y", int)])
 
+
+
+Implicitly converting to bool always evaluates as True [implicit-bool]
+----------------------------------------------------------------------
+
+In contexts where an expression has to be converted to a bool, an object
+which does not implement __bool__ nor __len__ will always evaluate to True.
+
+.. code-block:: python
+
+    class Foo:
+      pass
+
+    foo = Foo()
+    # Error: "{}" does not implement __bool__ or __len__ so the expression is always truthy
+    if foo:
+       ...
+
 Report syntax errors [syntax]
 -----------------------------
 

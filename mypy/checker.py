@@ -51,7 +51,7 @@ from mypy.typeops import (
     try_getting_str_literals_from_type, try_getting_int_literals_from_type,
     tuple_fallback, is_singleton_type, try_expanding_enum_to_union,
     true_only, false_only, function_type, get_type_vars, custom_special_method,
-    is_literal_type_like,
+    is_literal_type_like, type_has_explicit_conversion_to_bool,
 )
 from mypy import message_registry
 from mypy.subtypes import (
@@ -3240,6 +3240,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if self.in_checked_function():
                     self.fail(message_registry.RETURN_VALUE_EXPECTED, s, code=codes.RETURN_VALUE)
 
+    def _type_has_explicit_conversion_to_bool(self, t: Type) -> bool:
+        if isinstance(t, Instance):
+            return t.type.has_readable_member('__bool__') or t.type.has_readable_member('__len__')
+        elif isinstance(t, FunctionLike):
+            return False
+        else:
+            return True
+
     def visit_if_stmt(self, s: IfStmt) -> None:
         """Type check an if statement."""
         # This frame records the knowledge from previous if/elif clauses not being taken.
@@ -3250,6 +3258,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 if isinstance(t, DeletedType):
                     self.msg.deleted_as_rvalue(t, s)
+
+                if codes.IMPLICIT_BOOL in self.options.enabled_error_codes:
+                    if isinstance(t, (Instance, FunctionLike)):
+                        if not type_has_explicit_conversion_to_bool(t):
+                            self.msg.type_converts_to_bool_implicitly(t, e)
+                    elif isinstance(t, UnionType):
+                        if not any(type_has_explicit_conversion_to_bool(item) for item in t.items):
+                            self.msg.type_union_converts_to_bool_implicitly(t, e)
 
                 if_map, else_map = self.find_isinstance_check(e)
 
