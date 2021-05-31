@@ -2593,9 +2593,9 @@ L3:
     r14 = get_element_ptr r13 ob_item :: PyListObject
     r15 = load_mem r14 :: ptr*
     set_mem r15, r10 :: builtins.object*
-    r16 = r15 + 8
+    r16 = r15 + WORD_SIZE*1
     set_mem r16, r11 :: builtins.object*
-    r17 = r15 + 16
+    r17 = r15 + WORD_SIZE*2
     set_mem r17, r12 :: builtins.object*
     keep_alive r13
     r18 = 'typing'
@@ -2677,9 +2677,9 @@ L4:
     r92 = get_element_ptr r88 ob_item :: PyListObject
     r93 = load_mem r92 :: ptr*
     set_mem r93, r89 :: builtins.object*
-    r94 = r93 + 8
+    r94 = r93 + WORD_SIZE*1
     set_mem r94, r90 :: builtins.object*
-    r95 = r93 + 16
+    r95 = r93 + WORD_SIZE*2
     set_mem r95, r91 :: builtins.object*
     keep_alive r88
     r96 = __main__.globals :: static
