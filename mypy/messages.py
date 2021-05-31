@@ -31,7 +31,7 @@ from mypy.nodes import (
     FuncDef, reverse_builtin_aliases,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
-    CallExpr, IndexExpr, StrExpr, SymbolTable, TempNode
+    CallExpr, IndexExpr, StrExpr, SymbolTable, TempNode, SYMBOL_FUNCBASE_TYPES
 )
 from mypy.subtypes import (
     is_subtype, find_member, get_member_flags,
@@ -1836,6 +1836,16 @@ def format_type_distinctly(*types: Type, bare: bool = False) -> Tuple[str, ...]:
         return tuple(strs)
     else:
         return tuple(quote_type_string(s) for s in strs)
+
+
+def pretty_class_or_static_decorator(tp: CallableType) -> Optional[str]:
+    """Return @classmethod or @staticmethod, if any, for the given callable type."""
+    if tp.definition is not None and isinstance(tp.definition, SYMBOL_FUNCBASE_TYPES):
+        if tp.definition.is_class:
+            return '@classmethod'
+        if tp.definition.is_static:
+            return '@staticmethod'
+    return None
 
 
 def pretty_callable(tp: CallableType) -> str:
