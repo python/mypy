@@ -7128,11 +7128,13 @@ class C:
 ==
 mod.py:9: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
-[case testOverloadedMethodSupertype]
+[case testOverloadedMethodSupertype-only_when_cache]
+-- Different cache/no-cache tests because
+-- CallableType.def_extras.first_arg differs ("self"/None)
 from typing import overload, Any
 import b
 class Child(b.Parent):
-    @overload
+    @overload                           # Fail
     def f(self, arg: int) -> int: ...
     @overload
     def f(self, arg: str) -> str: ...
@@ -7158,6 +7160,59 @@ class Parent:
 [out]
 ==
 main:4: error: Signature of "f" incompatible with supertype "Parent"
+main:4: note:      Superclass:
+main:4: note:          @overload
+main:4: note:          def f(self, arg: int) -> int
+main:4: note:          @overload
+main:4: note:          def f(self, arg: str) -> C
+main:4: note:      Subclass:
+main:4: note:          @overload
+main:4: note:          def f(self, arg: int) -> int
+main:4: note:          @overload
+main:4: note:          def f(self, arg: str) -> str
+
+[case testOverloadedMethodSupertype-only_when_nocache]
+-- Different cache/no-cache tests because
+-- CallableType.def_extras.first_arg differs ("self"/None)
+from typing import overload, Any
+import b
+class Child(b.Parent):
+    @overload                           # Fail
+    def f(self, arg: int) -> int: ...
+    @overload
+    def f(self, arg: str) -> str: ...
+    def f(self, arg: Any) -> Any: ...
+[file b.py]
+from typing import overload, Any
+class C: pass
+class Parent:
+    @overload
+    def f(self, arg: int) -> int: ...
+    @overload
+    def f(self, arg: str) -> str: ...
+    def f(self, arg: Any) -> Any: ...
+[file b.py.2]
+from typing import overload, Any
+class C: pass
+class Parent:
+    @overload
+    def f(self, arg: int) -> int: ...
+    @overload
+    def f(self, arg: str) -> C: ...
+    def f(self, arg: Any) -> Any: ...
+[out]
+==
+main:4: error: Signature of "f" incompatible with supertype "Parent"
+main:4: note:      Superclass:
+main:4: note:          @overload
+main:4: note:          def f(self, arg: int) -> int
+main:4: note:          @overload
+main:4: note:          def f(self, arg: str) -> C
+main:4: note:      Subclass:
+main:4: note:          @overload
+main:4: note:          def f(arg: int) -> int
+main:4: note:          @overload
+main:4: note:          def f(arg: str) -> str
 
 [case testOverloadedInitSupertype]
 import a
@@ -8309,7 +8364,9 @@ class D:
 ==
 a.py:3: error: Cannot override final attribute "meth" (previously declared in base class "C")
 
-[case testFinalBodyReprocessedAndStillFinalOverloaded]
+[case testFinalBodyReprocessedAndStillFinalOverloaded-only_when_cache]
+-- Different cache/no-cache tests because
+-- CallableType.def_extras.first_arg differs ("self"/None)
 import a
 [file a.py]
 from c import C
@@ -8346,6 +8403,60 @@ class D:
 ==
 a.py:3: error: Cannot override final attribute "meth" (previously declared in base class "C")
 a.py:3: error: Signature of "meth" incompatible with supertype "C"
+a.py:3: note:      Superclass:
+a.py:3: note:          @overload
+a.py:3: note:          def meth(self, x: int) -> int
+a.py:3: note:          @overload
+a.py:3: note:          def meth(self, x: str) -> str
+a.py:3: note:      Subclass:
+a.py:3: note:          def meth(self) -> None
+
+[case testFinalBodyReprocessedAndStillFinalOverloaded-only_when_nocache]
+-- Different cache/no-cache tests because
+-- CallableType.def_extras.first_arg differs ("self"/None)
+import a
+[file a.py]
+from c import C
+class A:
+    def meth(self) -> None: ...
+
+[file a.py.3]
+from c import C
+class A(C):
+    def meth(self) -> None: ...
+
+[file c.py]
+from typing import final, overload, Union
+from d import D
+
+class C:
+    @overload
+    def meth(self, x: int) -> int: ...
+    @overload
+    def meth(self, x: str) -> str: ...
+    @final
+    def meth(self, x: Union[int, str]) -> Union[int, str]:
+        D(int())
+        return x
+[file d.py]
+class D:
+    def __init__(self, x: int) -> None: ...
+[file d.py.2]
+from typing import Optional
+class D:
+    def __init__(self, x: Optional[int]) -> None: ...
+[out]
+==
+==
+a.py:3: error: Cannot override final attribute "meth" (previously declared in base class "C")
+a.py:3: error: Signature of "meth" incompatible with supertype "C"
+a.py:3: note:      Superclass:
+a.py:3: note:          @overload
+a.py:3: note:          def meth(x: int) -> int
+a.py:3: note:          @overload
+a.py:3: note:          def meth(x: str) -> str
+a.py:3: note:      Subclass:
+a.py:3: note:          def meth(self) -> None
 
 [case testIfMypyUnreachableClass]
 from a import x

@@ -277,7 +277,11 @@ class B(A):
     def f(self) -> str:  # E: Return type "str" of "f" incompatible with return type "int" in supertype "A"  [override]
         return ''
 class C(A):
-    def f(self, x: int) -> int:  # E: Signature of "f" incompatible with supertype "A"  [override]
+    def f(self, x: int) -> int:  # E: Signature of "f" incompatible with supertype "A"  [override] \
+                                 # N:      Superclass: \
+                                 # N:          def f(self) -> int \
+                                 # N:      Subclass: \
+                                 # N:          def f(self, x: int) -> int
         return 0
 class D:
     def f(self, x: int) -> int:

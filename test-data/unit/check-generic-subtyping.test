@@ -270,9 +270,14 @@ class A:
 class B(A):
     def f(self, x: List[S], y: List[T]) -> None: pass
 class C(A):
-    def f(self, x: List[T], y: List[T]) -> None: pass # E: Signature of "f" incompatible with supertype "A"
+    def f(self, x: List[T], y: List[T]) -> None: pass  # Fail
 [builtins fixtures/list.pyi]
 [out]
+main:11: error: Signature of "f" incompatible with supertype "A"
+main:11: note:      Superclass:
+main:11: note:          def [T, S] f(self, x: List[T], y: List[S]) -> None
+main:11: note:      Subclass:
+main:11: note:          def [T] f(self, x: List[T], y: List[T]) -> None
 
 [case testOverrideGenericMethodInNonGenericClassGeneralize]
 from typing import TypeVar
@@ -294,7 +299,10 @@ main:12: error: Argument 2 of "f" is incompatible with supertype "A"; supertype 
 main:12: note: This violates the Liskov substitution principle
 main:12: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 main:14: error: Signature of "f" incompatible with supertype "A"
-
+main:14: note:      Superclass:
+main:14: note:          def [S] f(self, x: int, y: S) -> None
+main:14: note:      Subclass:
+main:14: note:          def [T1 <: str, S] f(self, x: T1, y: S) -> None
 
 -- Inheritance from generic types with implicit dynamic supertype
 -- --------------------------------------------------------------
