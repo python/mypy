@@ -348,6 +348,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                           " and at least one annotation", t)
                 return AnyType(TypeOfAny.from_error)
             return self.anal_type(t.args[0])
+        elif fullname == 'mypy_extensions.Expand':
+            if self.nesting_level > 0:
+                self.fail("Invalid type: Expand[...] cannot be nested inside other type", t)
+            self.fail("Expand[...] can only be used with **kwargs in function declarations", t)
         elif self.anal_type_guard_arg(t, fullname) is not None:
             # In most contexts, TypeGuard[...] acts as an alias for bool (ignoring its args)
             return self.named_type('builtins.bool')

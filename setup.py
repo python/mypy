@@ -193,7 +193,7 @@ setup(name='mypy',
       # When changing this, also update mypy-requirements.txt.
       install_requires=["typed_ast >= 1.4.0, < 1.5.0; python_version<'3.8'",
                         'typing_extensions>=3.7.4',
-                        'mypy_extensions >= 0.4.3, < 0.5.0',
+                        'mypy_extensions >= 0.4.3, < 0.6.0',
                         'toml',
                         ],
       # Same here.

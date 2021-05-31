@@ -76,7 +76,7 @@ from mypy.nodes import (
     get_nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
     REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_source_versions,
     EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement, AssignmentExpr,
-    ParamSpecExpr
+    ParamSpecExpr, ARG_STAR2, ARG_NAMED_OPT, Argument
 )
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.typevars import fill_typevars
@@ -91,7 +91,7 @@ from mypy.types import (
     FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
     TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType,
-    get_proper_type, get_proper_types, TypeAliasType)
+    get_proper_type, get_proper_types, TypeAliasType, TypedDictType)
 from mypy.typeops import function_type
 from mypy.type_visitor import TypeQuery
 from mypy.nodes import implicit_module_attrs
@@ -594,11 +594,52 @@ class SemanticAnalyzer(NodeVisitor[None],
                     defn.type = defn.type.copy_modified(ret_type=NoneType())
             self.prepare_method_signature(defn, self.type)
 
+        # A flag indicating if **kwargs are typed using Expand.
+        was_expanded = False
+
         # Analyze function signature
         with self.tvar_scope_frame(self.tvar_scope.method_frame()):
             if defn.type:
                 self.check_classvar_in_signature(defn.type)
                 assert isinstance(defn.type, CallableType)
+                # Check if kwargs should be expanded.
+                if ARG_STAR2 in defn.type.arg_kinds:
+                    kwargs_index = defn.type.arg_kinds.index(ARG_STAR2)
+                    kwargs_type = defn.type.arg_types[kwargs_index]
+                    if isinstance(kwargs_type, UnboundType):
+                        sym = self.lookup_qualified(kwargs_type.name, kwargs_type)
+                        if (sym is not None and
+                        sym.node is not None and
+                        sym.node.fullname == 'mypy_extensions.Expand'):
+                            if len(kwargs_type.args) != 1:
+                                self.fail(
+                                    'Expand[...] must have exactly one type argument that is a TypedDict',  # noqa
+                                    kwargs_type
+                                )
+                            kwargs_expanded_type = get_proper_type(self.anal_type(kwargs_type.args[0]))  # noqa
+                            if not isinstance(kwargs_expanded_type, TypedDictType):
+                                self.fail('Expand[...] accepts only TypedDict as type argument', kwargs_type)  # noqa
+                            kwargs_expanded_type = cast(TypedDictType, kwargs_expanded_type)
+                            was_expanded = True
+                            # Expand the TypedDict.
+                            expanded_names = []
+                            expanded_types = []
+                            expanded_kinds = []
+                            assert kwargs_expanded_type is not None
+                            assert kwargs_expanded_type.items is not None
+                            for name, type in kwargs_expanded_type.items.items():
+                                expanded_names.append(name)
+                                expanded_types.append(type)
+                                expanded_kinds.append(
+                                    ARG_NAMED if name in kwargs_expanded_type.required_keys
+                                    else ARG_NAMED_OPT)
+                            del defn.type.arg_kinds[kwargs_index]
+                            del defn.type.arg_types[kwargs_index]
+                            del defn.type.arg_names[kwargs_index]
+                            defn.type.arg_kinds += expanded_kinds
+                            defn.type.arg_types += expanded_types
+                            defn.type.arg_names += expanded_names
+
                 # Signature must be analyzed in the surrounding scope so that
                 # class-level imported names and type variables are in scope.
                 analyzer = self.type_analyzer()
@@ -611,13 +652,29 @@ class SemanticAnalyzer(NodeVisitor[None],
                 assert isinstance(result, ProperType)
                 defn.type = result
                 self.add_type_alias_deps(analyzer.aliases_used)
-                self.check_function_signature(defn)
+                # TODO: inspect check_function_signature()
+                if not was_expanded:
+                    self.check_function_signature(defn)
                 if isinstance(defn, FuncDef):
                     assert isinstance(defn.type, CallableType)
                     defn.type = set_callable_name(defn.type, defn)
 
         self.analyze_arg_initializers(defn)
         self.analyze_function_body(defn)
+        if was_expanded:
+            # Delete **kwargs from the signature and replace them with actual types.
+            for i, arg in enumerate(defn.arguments):
+                if arg.kind == ARG_STAR2:
+                    index = i
+                    break
+            del defn.arguments[index]
+            expanded_arguments = [
+                Argument(Var(name, typ), typ, None, kind)
+                for name, typ, kind
+                in zip(expanded_names, expanded_types, expanded_kinds)]
+            defn.arguments += expanded_arguments
+            self.check_function_signature(defn)
+
         if (defn.is_coroutine and
                 isinstance(defn.type, CallableType) and
                 self.wrapped_coro_return_types.get(defn) != defn.type):
@@ -933,6 +990,14 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.function_stack.append(defn)
             self.enter(defn)
             for arg in defn.arguments:
+                if arg.kind == ARG_STAR2:
+                    annotation = arg.type_annotation
+                    if isinstance(annotation, UnboundType):
+                        if annotation.name == 'Expand':
+                            expanded_arg = annotation.args[0].accept(a)
+                            expanded_var = Var(arg.variable.name, expanded_arg)
+                            self.add_local(expanded_var, defn)
+                            continue
                 self.add_local(arg.variable, defn)
 
             # The first argument of a non-static, non-class method is like 'self'
