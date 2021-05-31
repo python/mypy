@@ -1948,7 +1948,12 @@ def pretty_callable(tp: CallableType) -> str:
     else:
         s = '({})'.format(s)
 
-    s += ' -> ' + format_type_bare(tp.ret_type)
+    s += ' -> '
+    if tp.type_guard is not None:
+        s += 'TypeGuard[{}]'.format(format_type_bare(tp.type_guard))
+    else:
+        s += format_type_bare(tp.ret_type)
+
     if tp.variables:
         tvars = []
         for tvar in tp.variables:
