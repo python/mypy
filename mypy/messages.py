@@ -161,7 +161,8 @@ class MessageBuilder:
                code: Optional[ErrorCode] = None,
                file: Optional[str] = None,
                origin: Optional[Context] = None,
-               offset: int = 0) -> None:
+               offset: int = 0,
+               allow_dups: bool = False) -> None:
         """Report an error or note (unless disabled)."""
         if origin is not None:
             end_line = origin.end_line
@@ -174,8 +175,7 @@ class MessageBuilder:
                                context.get_column() if context else -1,
                                msg, severity=severity, file=file, offset=offset,
                                origin_line=origin.get_line() if origin else None,
-                               end_line=end_line,
-                               code=code)
+                               end_line=end_line, code=code, allow_dups=allow_dups)
 
     def fail(self,
              msg: str,
@@ -183,9 +183,11 @@ class MessageBuilder:
              *,
              code: Optional[ErrorCode] = None,
              file: Optional[str] = None,
-             origin: Optional[Context] = None) -> None:
+             origin: Optional[Context] = None,
+             allow_dups: bool = False) -> None:
         """Report an error message (unless disabled)."""
-        self.report(msg, context, 'error', code=code, file=file, origin=origin)
+        self.report(msg, context, 'error', code=code, file=file,
+                    origin=origin, allow_dups=allow_dups)
 
     def note(self,
              msg: str,
@@ -193,19 +195,21 @@ class MessageBuilder:
              file: Optional[str] = None,
              origin: Optional[Context] = None,
              offset: int = 0,
+             allow_dups: bool = False,
              *,
              code: Optional[ErrorCode] = None) -> None:
         """Report a note (unless disabled)."""
         self.report(msg, context, 'note', file=file, origin=origin,
-                    offset=offset, code=code)
+                    offset=offset, allow_dups=allow_dups, code=code)
 
     def note_multiline(self, messages: str, context: Context, file: Optional[str] = None,
                        origin: Optional[Context] = None, offset: int = 0,
+                       allow_dups: bool = False,
                        code: Optional[ErrorCode] = None) -> None:
         """Report as many notes as lines in the message (unless disabled)."""
         for msg in messages.splitlines():
             self.report(msg, context, 'note', file=file, origin=origin,
-                        offset=offset, code=code)
+                        offset=offset, allow_dups=allow_dups, code=code)
 
     #
     # Specific operations
