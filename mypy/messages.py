@@ -785,11 +785,58 @@ class MessageBuilder:
         self.note(note_template.format(supertype), context, code=codes.OVERRIDE)
 
     def signature_incompatible_with_supertype(
-            self, name: str, name_in_super: str, supertype: str,
-            context: Context) -> None:
+            self, name: str, name_in_super: str, supertype: str, context: Context,
+            original: Optional[FunctionLike] = None,
+            override: Optional[FunctionLike] = None) -> None:
+        code = codes.OVERRIDE
         target = self.override_target(name, name_in_super, supertype)
         self.fail('Signature of "{}" incompatible with {}'.format(
-            name, target), context, code=codes.OVERRIDE)
+            name, target), context, code=code)
+
+        INCLUDE_DECORATOR = True  # Include @classmethod and @staticmethod decorators, if any
+        ALLOW_DUPS = True  # Allow duplicate notes, needed when signatures are duplicates
+        MAX_ITEMS = 3  # Display a max of three items for Overloaded types
+        ALIGN_OFFSET = 1  # One space, to account for the difference between error and note
+        OFFSET = 4  # Four spaces, so that notes will look like this:
+        # error: Signature of "f" incompatible with supertype "A"
+        # note:      Superclass:
+        # note:          def f(self) -> str
+        # note:      Subclass:
+        # note:          def f(self, x: str) -> None
+        if original is not None and isinstance(original, (CallableType, Overloaded)) \
+                and override is not None and isinstance(override, (CallableType, Overloaded)):
+            self.note('Superclass:', context, offset=ALIGN_OFFSET + OFFSET, code=code)
+            self.pretty_callable_or_overload(original, context, offset=ALIGN_OFFSET + 2 * OFFSET,
+                                            add_class_or_static_decorator=INCLUDE_DECORATOR,
+                                            overload_max_items=MAX_ITEMS, allow_dups=ALLOW_DUPS,
+                                            code=code)
+
+            self.note('Subclass:', context, offset=ALIGN_OFFSET + OFFSET, code=code)
+            self.pretty_callable_or_overload(override, context, offset=ALIGN_OFFSET + 2 * OFFSET,
+                                            add_class_or_static_decorator=INCLUDE_DECORATOR,
+                                            overload_max_items=MAX_ITEMS, allow_dups=ALLOW_DUPS,
+                                            code=code)
+
+    def pretty_callable_or_overload(self,
+                                    tp: Union[CallableType, Overloaded],
+                                    context: Context,
+                                    *,
+                                    offset: int = 0,
+                                    add_class_or_static_decorator: bool = False,
+                                    overload_max_items: int = 1,
+                                    allow_dups: bool = False,
+                                    code: Optional[ErrorCode] = None) -> None:
+        if isinstance(tp, CallableType):
+            if add_class_or_static_decorator:
+                decorator = pretty_class_or_static_decorator(tp)
+                if decorator is not None:
+                    self.note(decorator, context, offset=offset, allow_dups=allow_dups, code=code)
+            self.note(pretty_callable(tp), context,
+                      offset=offset, allow_dups=allow_dups, code=code)
+        elif isinstance(tp, Overloaded):
+            self.pretty_overload(tp, context, offset, overload_max_items,
+                                 add_class_or_static_decorator=add_class_or_static_decorator,
+                                 allow_dups=allow_dups, code=code)
 
     def argument_incompatible_with_supertype(
             self, arg_num: int, name: str, type_name: Optional[str],
