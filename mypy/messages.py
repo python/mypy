@@ -1404,13 +1404,13 @@ class MessageBuilder:
                         self.note(pretty_callable(exp), context, offset=2 * OFFSET, code=code)
                     else:
                         assert isinstance(exp, Overloaded)
-                        self.pretty_overload(exp, context, OFFSET, MAX_ITEMS, code=code)
+                        self.pretty_overload(exp, context, 2 * OFFSET, MAX_ITEMS, code=code)
                     self.note('Got:', context, offset=OFFSET, code=code)
                     if isinstance(got, CallableType):
                         self.note(pretty_callable(got), context, offset=2 * OFFSET, code=code)
                     else:
                         assert isinstance(got, Overloaded)
-                        self.pretty_overload(got, context, OFFSET, MAX_ITEMS, code=code)
+                        self.pretty_overload(got, context, 2 * OFFSET, MAX_ITEMS, code=code)
             self.print_more(conflict_types, context, OFFSET, MAX_ITEMS, code=code)
 
         # Report flag conflicts (i.e. settable vs read-only etc.)
@@ -1446,12 +1446,12 @@ class MessageBuilder:
                         *,
                         code: Optional[ErrorCode] = None) -> None:
         for item in tp.items()[:max_items]:
-            self.note('@overload', context, offset=2 * offset, code=code)
-            self.note(pretty_callable(item), context, offset=2 * offset, code=code)
+            self.note('@overload', context, offset=offset, code=code)
+            self.note(pretty_callable(item), context, offset=offset, code=code)
         left = len(tp.items()) - max_items
         if left > 0:
             msg = '<{} more overload{} not shown>'.format(left, plural_s(left))
-            self.note(msg, context, offset=2 * offset, code=code)
+            self.note(msg, context, offset=offset, code=code)
 
     def pretty_overload_matches(self,
                                 targets: List[CallableType],
