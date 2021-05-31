@@ -1448,14 +1448,23 @@ class MessageBuilder:
                         offset: int,
                         max_items: int,
                         *,
+                        add_class_or_static_decorator: bool = False,
+                        allow_dups: bool = False,
                         code: Optional[ErrorCode] = None) -> None:
         for item in tp.items()[:max_items]:
-            self.note('@overload', context, offset=offset, code=code)
-            self.note(pretty_callable(item), context, offset=offset, code=code)
+            self.note('@overload', context, offset=offset, allow_dups=allow_dups, code=code)
+
+            if add_class_or_static_decorator:
+                decorator = pretty_class_or_static_decorator(item)
+                if decorator is not None:
+                    self.note(decorator, context, offset=offset, allow_dups=allow_dups, code=code)
+
+            self.note(pretty_callable(item), context,
+                      offset=offset, allow_dups=allow_dups, code=code)
         left = len(tp.items()) - max_items
         if left > 0:
             msg = '<{} more overload{} not shown>'.format(left, plural_s(left))
-            self.note(msg, context, offset=offset, code=code)
+            self.note(msg, context, offset=offset, allow_dups=allow_dups, code=code)
 
     def pretty_overload_matches(self,
                                 targets: List[CallableType],
