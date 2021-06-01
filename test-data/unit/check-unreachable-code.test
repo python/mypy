@@ -615,6 +615,21 @@ if MYPY or mypy_only:
     pass
 [builtins fixtures/ops.pyi]
 
+[case testSemanticAnalysisFalseButTypeNarrowingTrue]
+# flags: --always-false COMPILE_TIME_FALSE
+from typing import Literal
+
+indeterminate: bool
+COMPILE_TIME_FALSE: Literal[True]  # type-narrowing: mapped in 'if' only
+_ = COMPILE_TIME_FALSE or indeterminate
+[typing fixtures/typing-medium.pyi]
+
+[case testSemanticAnalysisTrueButTypeNarrowingFalse]
+# flags: --always-true COMPILE_TIME_TRUE
+indeterminate: bool
+COMPILE_TIME_TRUE: None  # type-narrowing: mapped in 'else' only
+_ = COMPILE_TIME_TRUE or indeterminate
+
 [case testConditionalAssertWithoutElse]
 import typing
 
