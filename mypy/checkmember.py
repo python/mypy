@@ -268,7 +268,7 @@ def analyze_type_type_member_access(name: str,
     item = None
     fallback = mx.builtin_type('builtins.type')
     ignore_messages = mx.msg.copy()
-    ignore_messages.disable_errors()
+    ignore_messages.disable_errors().__enter__()
     if isinstance(typ.item, Instance):
         item = typ.item
     elif isinstance(typ.item, AnyType):

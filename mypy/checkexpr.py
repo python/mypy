@@ -1,7 +1,7 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
 from mypy.ordered_dict import OrderedDict
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 import itertools
 from typing import (
     Any, cast, Dict, Set, List, Tuple, Callable, Union, Optional, Sequence, Iterator
@@ -865,12 +865,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         res = []  # type: List[Type]
         for typ in object_type.relevant_items():
             # Member access errors are already reported when visiting the member expression.
-            self.msg.disable_errors()
-            item = analyze_member_access(member, typ, e, False, False, False,
-                                         self.msg, original_type=object_type, chk=self.chk,
-                                         in_literal_context=self.is_literal_context(),
-                                         self_type=typ)
-            self.msg.enable_errors()
+            with self.msg.disable_errors():
+                item = analyze_member_access(member, typ, e, False, False, False,
+                                             self.msg, original_type=object_type, chk=self.chk,
+                                             in_literal_context=self.is_literal_context(),
+                                             self_type=typ)
             narrowed = self.narrow_type_from_binder(e.callee, item, skip_non_overlapping=True)
             if narrowed is None:
                 continue
@@ -1203,12 +1202,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # due to partial available context information at this time, but
             # these errors can be safely ignored as the arguments will be
             # inferred again later.
-            self.msg.disable_errors()
-
-            arg_types = self.infer_arg_types_in_context(
-                callee_type, args, arg_kinds, formal_to_actual)
-
-            self.msg.enable_errors()
+            with self.msg.disable_errors():
+                arg_types = self.infer_arg_types_in_context(
+                    callee_type, args, arg_kinds, formal_to_actual)
 
             arg_pass_nums = self.get_arg_infer_passes(
                 callee_type.arg_types, formal_to_actual, len(args))
@@ -2815,13 +2811,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif e.right_always:
             left_map = None
 
-        if right_map is None:
-            self.msg.disable_errors()
-        try:
+        with (self.msg.disable_errors() if right_map is None else nullcontext()):
             right_type = self.analyze_cond_branch(right_map, e.right, left_type)
-        finally:
-            if right_map is None:
-                self.msg.enable_errors()
 
         if right_map is None:
             # The boolean expression is statically known to be the left value
