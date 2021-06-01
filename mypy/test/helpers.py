@@ -5,7 +5,7 @@ import time
 import shutil
 import contextlib
 
-from typing import List, Iterable, Dict, Tuple, Callable, Any, Optional, Iterator
+from typing import List, Iterable, Dict, Tuple, Callable, Any, Iterator
 
 from mypy import defaults
 import mypy.api as api
