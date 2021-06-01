@@ -527,7 +527,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def visit_type_var(self, t: TypeVarType) -> Type:
         return t
 
-    def visit_callable_type(self, t: CallableType, nested: bool = True) -> Type:
+    def visit_callable_type(self,
+                            t: CallableType,
+                            nested: bool = True,
+                            expand_kwargs: bool = False) -> Type:
         # Every Callable can bind its own type variables, if they're not in the outer scope
         with self.tvar_scope_frame():
             if self.defining_alias:
@@ -535,6 +538,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             else:
                 variables = self.bind_function_type_variables(t, t)
             special = self.anal_type_guard(t.ret_type)
+            if expand_kwargs:
+                self.expand_kwargs(t)
             ret = t.copy_modified(arg_types=self.anal_array(t.arg_types, nested=nested),
                                   ret_type=self.anal_type(t.ret_type, nested=nested),
                                   # If the fallback isn't filled in yet,
@@ -545,6 +550,33 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                                   type_guard=special,
                                   )
         return ret
+
+    def expand_kwargs(self, t: CallableType) -> None:
+        """Expand the function's signature with TypedDict items in place."""
+        kwargs_index = t.arg_kinds.index(ARG_STAR2)
+        expand = get_proper_type(t.arg_types[kwargs_index])
+        assert isinstance(expand, UnboundType)
+        # Get the TypedDict from Expand and analyze it.
+        kwargs_type = expand.args[0].accept(self)
+        kwargs_type = get_proper_type(kwargs_type)
+        assert isinstance(kwargs_type, TypedDictType)
+        assert kwargs_type.items is not None
+        # Expand the TypedDict.
+        expanded_types = []
+        expanded_kinds = []
+        expanded_names = []
+        for name, type in kwargs_type.items.items():
+            expanded_types.append(type)
+            expanded_kinds.append(
+                ARG_NAMED if name in kwargs_type.required_keys
+                else ARG_NAMED_OPT)
+            expanded_names.append(name)
+        del t.arg_types[kwargs_index]
+        del t.arg_kinds[kwargs_index]
+        del t.arg_names[kwargs_index]
+        t.arg_types += expanded_types
+        t.arg_kinds += expanded_kinds
+        t.arg_names += expanded_names
 
     def anal_type_guard(self, t: Type) -> Optional[Type]:
         if isinstance(t, UnboundType):

@@ -76,7 +76,7 @@ from mypy.nodes import (
     get_nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
     REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_source_versions,
     EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement, AssignmentExpr,
-    ParamSpecExpr, ARG_STAR2, ARG_NAMED_OPT, Argument
+    ParamSpecExpr, ARG_STAR2, Argument
 )
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.typevars import fill_typevars
@@ -594,57 +594,24 @@ class SemanticAnalyzer(NodeVisitor[None],
                     defn.type = defn.type.copy_modified(ret_type=NoneType())
             self.prepare_method_signature(defn, self.type)
 
-        # A flag indicating if **kwargs are typed using Expand.
-        was_expanded = False
-
+        expand_kwargs = False
         # Analyze function signature
         with self.tvar_scope_frame(self.tvar_scope.method_frame()):
             if defn.type:
                 self.check_classvar_in_signature(defn.type)
                 assert isinstance(defn.type, CallableType)
-                # Check if kwargs should be expanded.
-                if ARG_STAR2 in defn.type.arg_kinds:
-                    kwargs_index = defn.type.arg_kinds.index(ARG_STAR2)
-                    kwargs_type = defn.type.arg_types[kwargs_index]
-                    if isinstance(kwargs_type, UnboundType):
-                        sym = self.lookup_qualified(kwargs_type.name, kwargs_type)
-                        if (sym is not None and
-                        sym.node is not None and
-                        sym.node.fullname == 'mypy_extensions.Expand'):
-                            if len(kwargs_type.args) != 1:
-                                self.fail(
-                                    'Expand[...] must have exactly one type argument that is a TypedDict',  # noqa
-                                    kwargs_type
-                                )
-                            kwargs_expanded_type = get_proper_type(self.anal_type(kwargs_type.args[0]))  # noqa
-                            if not isinstance(kwargs_expanded_type, TypedDictType):
-                                self.fail('Expand[...] accepts only TypedDict as type argument', kwargs_type)  # noqa
-                            kwargs_expanded_type = cast(TypedDictType, kwargs_expanded_type)
-                            was_expanded = True
-                            # Expand the TypedDict.
-                            expanded_names = []
-                            expanded_types = []
-                            expanded_kinds = []
-                            assert kwargs_expanded_type is not None
-                            assert kwargs_expanded_type.items is not None
-                            for name, type in kwargs_expanded_type.items.items():
-                                expanded_names.append(name)
-                                expanded_types.append(type)
-                                expanded_kinds.append(
-                                    ARG_NAMED if name in kwargs_expanded_type.required_keys
-                                    else ARG_NAMED_OPT)
-                            del defn.type.arg_kinds[kwargs_index]
-                            del defn.type.arg_types[kwargs_index]
-                            del defn.type.arg_names[kwargs_index]
-                            defn.type.arg_kinds += expanded_kinds
-                            defn.type.arg_types += expanded_types
-                            defn.type.arg_names += expanded_names
+                expanded_kwargs_count = self.expanded_kwargs(defn)
+                if expanded_kwargs_count is not None:
+                    expand_kwargs = True
 
                 # Signature must be analyzed in the surrounding scope so that
                 # class-level imported names and type variables are in scope.
                 analyzer = self.type_analyzer()
                 tag = self.track_incomplete_refs()
-                result = analyzer.visit_callable_type(defn.type, nested=False)
+                result = analyzer.visit_callable_type(
+                    defn.type,
+                    nested=False,
+                    expand_kwargs=expand_kwargs)
                 # Don't store not ready types (including placeholders).
                 if self.found_incomplete_ref(tag) or has_placeholder(result):
                     self.defer(defn)
@@ -652,28 +619,23 @@ class SemanticAnalyzer(NodeVisitor[None],
                 assert isinstance(result, ProperType)
                 defn.type = result
                 self.add_type_alias_deps(analyzer.aliases_used)
-                # TODO: inspect check_function_signature()
-                if not was_expanded:
-                    self.check_function_signature(defn)
+                self.check_function_signature(defn, expanded_kwargs=expanded_kwargs_count)
                 if isinstance(defn, FuncDef):
                     assert isinstance(defn.type, CallableType)
                     defn.type = set_callable_name(defn.type, defn)
 
         self.analyze_arg_initializers(defn)
-        self.analyze_function_body(defn)
-        if was_expanded:
-            # Delete **kwargs from the signature and replace them with actual types.
-            for i, arg in enumerate(defn.arguments):
-                if arg.kind == ARG_STAR2:
-                    index = i
-                    break
-            del defn.arguments[index]
-            expanded_arguments = [
-                Argument(Var(name, typ), typ, None, kind)
-                for name, typ, kind
-                in zip(expanded_names, expanded_types, expanded_kinds)]
-            defn.arguments += expanded_arguments
-            self.check_function_signature(defn)
+        self.analyze_function_body(defn, expand_kwargs=expand_kwargs)
+
+        if expand_kwargs:
+            # Modify defn's arguments.
+            if isinstance(defn.type, FuncDef):
+                assert isinstance(defn.type, CallableType)
+                defn.arguments = [
+                    Argument(Var(name, typ), typ, None, kind)
+                    for name, typ, kind
+                    in zip(defn.type.arg_names, defn.type.arg_types, defn.type.arg_kinds)
+                ]
 
         if (defn.is_coroutine and
                 isinstance(defn.type, CallableType) and
@@ -980,7 +942,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if arg.initializer:
                     arg.initializer.accept(self)
 
-    def analyze_function_body(self, defn: FuncItem) -> None:
+    def analyze_function_body(self, defn: FuncItem, expand_kwargs: bool = False) -> None:
         is_method = self.is_class_scope()
         with self.tvar_scope_frame(self.tvar_scope.method_frame()):
             # Bind the type variables again to visit the body.
@@ -990,14 +952,13 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.function_stack.append(defn)
             self.enter(defn)
             for arg in defn.arguments:
-                if arg.kind == ARG_STAR2:
-                    annotation = arg.type_annotation
-                    if isinstance(annotation, UnboundType):
-                        if annotation.name == 'Expand':
-                            expanded_arg = annotation.args[0].accept(a)
-                            expanded_var = Var(arg.variable.name, expanded_arg)
-                            self.add_local(expanded_var, defn)
-                            continue
+                if arg.kind == ARG_STAR2 and expand_kwargs:
+                    assert isinstance(arg.type_annotation, UnboundType)
+                    expand_type = arg.type_annotation.args[0]
+                    expand_arg = expand_type.accept(a)
+                    expand_var = Var(arg.variable.name, expand_arg)
+                    self.add_local(expand_var, defn)
+                    continue
                 self.add_local(arg.variable, defn)
 
             # The first argument of a non-static, non-class method is like 'self'
@@ -1023,7 +984,9 @@ class SemanticAnalyzer(NodeVisitor[None],
                 # Show only one error per signature
                 break
 
-    def check_function_signature(self, fdef: FuncItem) -> None:
+    def check_function_signature(self,
+                                 fdef: FuncItem,
+                                 expanded_kwargs: Optional[int] = None) -> None:
         sig = fdef.type
         assert isinstance(sig, CallableType)
         if len(sig.arg_types) < len(fdef.arguments):
@@ -1032,7 +995,12 @@ class SemanticAnalyzer(NodeVisitor[None],
             num_extra_anys = len(fdef.arguments) - len(sig.arg_types)
             extra_anys = [AnyType(TypeOfAny.from_error)] * num_extra_anys
             sig.arg_types.extend(extra_anys)
-        elif len(sig.arg_types) > len(fdef.arguments):
+        elif (
+            (expanded_kwargs is not None and
+            len(sig.arg_types) > len(fdef.arguments) + expanded_kwargs - 1) or
+            (expanded_kwargs is None and
+            len(sig.arg_types) > len(fdef.arguments))
+        ):
             self.fail('Type signature has too many arguments', fdef, blocker=True)
 
     def visit_decorator(self, dec: Decorator) -> None:
@@ -5094,6 +5062,43 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def is_future_flag_set(self, flag: str) -> bool:
         return flag in self.future_import_flags
+
+    def expanded_kwargs(self, defn: FuncDef) -> Optional[int]:
+        """Check if **kwargs are typed using the Expand special form.
+
+        If there are no **kwargs or they are typed without using Expand return None.
+        Otherwise return the number of items in the TypedDict.
+        """
+        assert isinstance(defn.type, CallableType)
+        if ARG_STAR2 in defn.type.arg_kinds:
+            kwargs_index = defn.type.arg_kinds.index(ARG_STAR2)
+            kwargs_type = defn.type.arg_types[kwargs_index]
+            kwargs_type = get_proper_type(kwargs_type)
+            if isinstance(kwargs_type, UnboundType):
+                sym = self.lookup_qualified(kwargs_type.name, kwargs_type)
+                if (sym is not None and
+                sym.node is not None and
+                sym.node.fullname == 'mypy_extensions.Expand'):
+                    if len(kwargs_type.args) != 1:
+                        self.fail(
+                            'Expand[...] must have exactly one type argument that is a TypedDict',
+                            kwargs_type
+                        )
+                        return None
+                    argument_type = get_proper_type(self.anal_type(kwargs_type.args[0]))
+                    if not isinstance(argument_type, TypedDictType):
+                        self.fail(
+                            'Expand[...] accepts only TypedDict as type argument',
+                            kwargs_type)
+                        return None
+                    if argument_type.items is None:
+                        self.fail(
+                            'Expand[...] cannot accept an empty TypedDict',
+                            kwargs_type
+                        )
+                        return None
+                    return len(argument_type.items)
+        return None
 
 
 class HasPlaceholders(TypeQuery[bool]):
