@@ -229,10 +229,10 @@ class TypeOpsSuite(Suite):
         assert is_more_precise(fx.b, fx.b)
         assert is_more_precise(fx.b, fx.b)
         assert is_more_precise(fx.b, fx.anyt)
-        assert is_more_precise(self.tuple(fx.b, fx.a,
-                                    self.tuple(fx.b, fx.a)))
-        assert is_more_precise(self.tuple(fx.b, fx.b,
-                                    self.tuple(fx.b, fx.a)))
+        assert is_more_precise(self.tuple(fx.b, fx.a),
+                               self.tuple(fx.b, fx.a))
+        assert is_more_precise(self.tuple(fx.b, fx.b),
+                               self.tuple(fx.b, fx.a))
 
         assert not is_more_precise(fx.a, fx.b)
         assert not is_more_precise(fx.anyt, fx.b)
@@ -263,10 +263,10 @@ class TypeOpsSuite(Suite):
         assert not is_proper_subtype(fx.t, fx.s)
 
         assert is_proper_subtype(fx.a, UnionType([fx.a, fx.b]))
-        assert is_proper_subtype(UnionType([fx.a, fx.b],
-                                      UnionType([fx.a, fx.b, fx.c])))
-        assert not is_proper_subtype(UnionType([fx.a, fx.b],
-                                       UnionType([fx.b, fx.c])))
+        assert is_proper_subtype(UnionType([fx.a, fx.b]),
+                                 UnionType([fx.a, fx.b, fx.c]))
+        assert not is_proper_subtype(UnionType([fx.a, fx.b]),
+                                     UnionType([fx.b, fx.c]))
 
     def test_is_proper_subtype_covariance(self) -> None:
         fx_co = self.fx_co
@@ -802,10 +802,8 @@ class JoinSuite(Suite):
         expected = str(join)
         assert_equal(actual, expected,
                      'join({}, {}) == {{}} ({{}} expected)'.format(s, t))
-        assert is_subtype(s, result,
-                    '{} not subtype of {}'.format(s, result))
-        assert is_subtype(t, result,
-                    '{} not subtype of {}'.format(t, result))
+        assert is_subtype(s, result), '{} not subtype of {}'.format(s, result)
+        assert is_subtype(t, result), '{} not subtype of {}'.format(t, result)
 
     def tuple(self, *a: Type) -> TupleType:
         return TupleType(list(a), self.fx.std_tuple)
