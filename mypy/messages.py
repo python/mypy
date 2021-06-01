@@ -15,7 +15,7 @@ import re
 import difflib
 from textwrap import dedent
 
-from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Set, Optional, Union, ContextManager
+from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Set, Optional, Union
 from typing_extensions import Final
 
 from mypy.erasetype import erase_type
@@ -138,7 +138,7 @@ class MessageBuilder:
                     self.errors.add_error_info(info)
 
     @contextmanager
-    def disable_errors(self) -> ContextManager[None]:
+    def disable_errors(self) -> Iterable[None]:
         self.disable_count += 1
         try:
             yield
