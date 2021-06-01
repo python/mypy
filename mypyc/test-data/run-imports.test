@@ -92,7 +92,7 @@ assert f(1) == 2
 # if mypy can't tell if mod isn't a module
 from pkg import mod # type: ignore
 
-def test_import():
+def test_import() -> None:
     assert mod.h(8) == 24
 
 [file pkg/mod.py]
@@ -102,7 +102,7 @@ def h(x):
 [case testFromImportWithKnownModule]
 from pkg import mod
 
-def test_import():
+def test_import() -> None:
     assert mod.h(8) == 24
 
 [file pkg/__init__.py]
