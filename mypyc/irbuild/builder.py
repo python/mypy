@@ -291,10 +291,6 @@ class IRBuilder:
     def gen_import_from(self, id: str, line: int, imported: List[str]) -> None:
         self.imports[id] = None
 
-        needs_import, out = BasicBlock(), BasicBlock()
-        self.check_if_module_loaded(id, line, needs_import, out)
-
-        self.activate_block(needs_import)
         globals_dict = self.load_globals_dict()
         locals_dict = self.call_c(get_locals, [], line)
         names_to_import = self.new_list_op([self.load_str(name) for name in imported], line)
@@ -306,7 +302,6 @@ class IRBuilder:
             line,
         )
         self.add(InitStatic(value, id, namespace=NAMESPACE_MODULE))
-        self.goto_and_activate(out)
 
     def gen_import(self, id: str, line: int) -> None:
         self.imports[id] = None
