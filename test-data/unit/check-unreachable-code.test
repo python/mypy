@@ -908,6 +908,7 @@ def foo() -> bool: ...
 lst = [1, 2, 3, 4]
 
 a = True or foo()                        # E: Right operand of "or" is never evaluated
+b = 42 or False                          # E: Right operand of "or" is never evaluated
 d = False and foo()                      # E: Right operand of "and" is never evaluated
 e = True or (True or (True or foo()))    # E: Right operand of "or" is never evaluated
 f = (True or foo()) or (True or foo())   # E: Right operand of "or" is never evaluated

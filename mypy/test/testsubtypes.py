@@ -1,4 +1,4 @@
-from mypy.test.helpers import Suite, assert_true, skip
+from mypy.test.helpers import Suite, skip
 from mypy.nodes import CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.subtypes import is_subtype
 from mypy.test.typefixture import TypeFixture, InterfaceTypeFixture
@@ -188,10 +188,10 @@ class SubtypingSuite(Suite):
     #  * generic function types
 
     def assert_subtype(self, s: Type, t: Type) -> None:
-        assert_true(is_subtype(s, t), '{} not subtype of {}'.format(s, t))
+        assert is_subtype(s, t), '{} not subtype of {}'.format(s, t)
 
     def assert_not_subtype(self, s: Type, t: Type) -> None:
-        assert_true(not is_subtype(s, t), '{} subtype of {}'.format(s, t))
+        assert not is_subtype(s, t), '{} subtype of {}'.format(s, t)
 
     def assert_strict_subtype(self, s: Type, t: Type) -> None:
         self.assert_subtype(s, t)
