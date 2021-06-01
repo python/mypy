@@ -906,7 +906,7 @@ Instead of using a ``mypy.ini`` file, a ``pyproject.toml`` file (as specified by
   module = 'packagename'
   ...
 
-* Multi-module specific sections can be moved into a single ``[[tools.mypy.overrides]]`` section with a
+* Multi-module specific sections can be moved into a single ``[[tool.mypy.overrides]]`` section with a
   module property set to an array of modules:
 
   * For example, ``[mypy-packagename,packagename2]`` would become:
