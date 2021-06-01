@@ -2794,10 +2794,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if left_map is None:
                 self.msg.redundant_left_operand(e.op, e.left)
 
-        # If right_map is None then we know mypy considers the right branch
-        # to be unreachable and therefore any errors found in the right branch
-        # should be suppressed.
-        #
         # Note that we perform these checks *before* we take into account
         # the analysis from the semanal phase below. We assume that nodes
         # marked as unreachable during semantic analysis were done so intentionally.
@@ -2811,6 +2807,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif e.right_always:
             left_map = None
 
+        # If right_map is None then we know mypy considers the right branch
+        # to be unreachable and therefore any errors found in the right branch
+        # should be suppressed.
         with (self.msg.disable_errors() if right_map is None else nullcontext()):
             right_type = self.analyze_cond_branch(right_map, e.right, left_type)
 
