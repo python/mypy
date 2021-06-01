@@ -1,6 +1,6 @@
 """Utilities for emitting C code."""
 
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 from typing import List, Set, Dict, Optional, Callable, Union, Tuple
 import sys
 

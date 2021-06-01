@@ -1,6 +1,6 @@
 """Calculation of the least upper bound types (joins)."""
 
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 from typing import List, Optional
 
 from mypy.types import (

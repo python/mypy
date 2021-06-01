@@ -10,7 +10,7 @@ checker but we are moving away from this convention.
 """
 from contextlib import contextmanager
 
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 import re
 import difflib
 from textwrap import dedent
