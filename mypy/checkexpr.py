@@ -1,7 +1,8 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
+from mypy.nullcontext import nullcontext
 from mypy.ordered_dict import OrderedDict
-from contextlib import contextmanager, nullcontext
+from contextlib import contextmanager
 import itertools
 from typing import (
     Any, cast, Dict, Set, List, Tuple, Callable, Union, Optional, Sequence, Iterator
