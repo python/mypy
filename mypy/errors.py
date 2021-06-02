@@ -1,7 +1,7 @@
 import os.path
 import sys
 import traceback
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 from collections import defaultdict
 
 from typing import Tuple, List, TypeVar, Set, Dict, Optional, TextIO, Callable

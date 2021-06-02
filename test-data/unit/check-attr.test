@@ -763,7 +763,7 @@ def converter(s:int) -> str:
 
 @attr.s
 class C:
-    x: str = attr.ib(converter=converter, convert=converter)  # E: Can't pass both `convert` and `converter`.
+    x: str = attr.ib(converter=converter, convert=converter)  # E: Can't pass both "convert" and "converter".
 
 [builtins fixtures/list.pyi]
 
@@ -1087,7 +1087,7 @@ A()
 import attr
 @attr.s
 class A:
-    x: int = attr.ib(factory=int, default=7)  # E: Can't pass both `default` and `factory`.
+    x: int = attr.ib(factory=int, default=7)  # E: Can't pass both "default" and "factory".
 [builtins fixtures/bool.pyi]
 
 [case testAttrsFactoryBadReturn]

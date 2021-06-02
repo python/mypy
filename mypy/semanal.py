@@ -1533,14 +1533,14 @@ class SemanticAnalyzer(NodeVisitor[None],
                 base_types.append(actual_base)
             elif isinstance(base, Instance):
                 if base.type.is_newtype:
-                    self.fail("Cannot subclass NewType", defn)
+                    self.fail('Cannot subclass "NewType"', defn)
                 base_types.append(base)
             elif isinstance(base, AnyType):
                 if self.options.disallow_subclassing_any:
                     if isinstance(base_expr, (NameExpr, MemberExpr)):
-                        msg = "Class cannot subclass '{}' (has type 'Any')".format(base_expr.name)
+                        msg = 'Class cannot subclass "{}" (has type "Any")'.format(base_expr.name)
                     else:
-                        msg = "Class cannot subclass value of type 'Any'"
+                        msg = 'Class cannot subclass value of type "Any"'
                     self.fail(msg, base_expr)
                 info.fallback_to_any = True
             else:
@@ -1906,8 +1906,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         module = self.modules.get(import_id)
         if module:
             if not self.options.implicit_reexport and source_id in module.names.keys():
-                message = ("Module '{}' does not explicitly export attribute '{}'"
-                           "; implicit reexport disabled".format(import_id, source_id))
+                message = ('Module "{}" does not explicitly export attribute "{}"'
+                           '; implicit reexport disabled'.format(import_id, source_id))
             else:
                 alternatives = set(module.names.keys()).difference({source_id})
                 matches = best_matches(source_id, alternatives)[:3]

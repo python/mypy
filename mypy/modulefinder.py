@@ -57,7 +57,7 @@ class ModuleNotFoundReason(Enum):
     WRONG_WORKING_DIRECTORY = 2
 
     # Stub PyPI package (typically types-pkgname) known to exist but not installed.
-    STUBS_NOT_INSTALLED = 3
+    APPROVED_STUBS_NOT_INSTALLED = 3
 
     def error_message_templates(self, daemon: bool) -> Tuple[str, List[str]]:
         doc_link = "See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports"
@@ -71,7 +71,7 @@ class ModuleNotFoundReason(Enum):
         elif self is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
             msg = 'Skipping analyzing "{module}": found module but no type hints or library stubs'
             notes = [doc_link]
-        elif self is ModuleNotFoundReason.STUBS_NOT_INSTALLED:
+        elif self is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED:
             msg = (
                 'Library stubs not installed for "{module}" (or incompatible with Python {pyver})'
             )
@@ -231,7 +231,7 @@ class FindModuleCache:
                                           or self.fscache.isfile(dir_path + ".py")):
                 plausible_match = True
         if components[0] in legacy_bundled_packages:
-            return ModuleNotFoundReason.STUBS_NOT_INSTALLED
+            return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
         elif plausible_match:
             return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
         else:
@@ -311,7 +311,7 @@ class FindModuleCache:
             if isinstance(non_stub_match, ModuleNotFoundReason):
                 if non_stub_match is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
                     found_possible_third_party_missing_type_hints = True
-                elif non_stub_match is ModuleNotFoundReason.STUBS_NOT_INSTALLED:
+                elif non_stub_match is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED:
                     need_installed_stubs = True
             else:
                 third_party_inline_dirs.append(non_stub_match)
@@ -413,7 +413,7 @@ class FindModuleCache:
             return ancestor
 
         if need_installed_stubs:
-            return ModuleNotFoundReason.STUBS_NOT_INSTALLED
+            return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
         elif found_possible_third_party_missing_type_hints:
             return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
         else:
@@ -544,6 +544,7 @@ def default_lib_path(data_dir: str,
 
     if custom_typeshed_dir:
         typeshed_dir = os.path.join(custom_typeshed_dir, "stdlib")
+        mypy_extensions_dir = os.path.join(custom_typeshed_dir, "stubs", "mypy-extensions")
         versions_file = os.path.join(typeshed_dir, "VERSIONS")
         if not os.path.isdir(typeshed_dir) or not os.path.isfile(versions_file):
             print("error: --custom-typeshed-dir does not point to a valid typeshed ({})".format(
@@ -554,11 +555,16 @@ def default_lib_path(data_dir: str,
         if os.path.isdir(auto):
             data_dir = auto
         typeshed_dir = os.path.join(data_dir, "typeshed", "stdlib")
+        mypy_extensions_dir = os.path.join(data_dir, "typeshed", "stubs", "mypy-extensions")
     if pyversion[0] == 2:
         # Python 2 variants of certain stdlib modules are in a separate directory.
         python2_dir = os.path.join(typeshed_dir, PYTHON2_STUB_DIR)
         path.append(python2_dir)
     path.append(typeshed_dir)
+
+    # Get mypy-extensions stubs from typeshed, since we treat it as an
+    # "internal" library, similar to typing and typing-extensions.
+    path.append(mypy_extensions_dir)
 
     # Add fallback path that can be used if we have a broken installation.
     if sys.platform != 'win32':

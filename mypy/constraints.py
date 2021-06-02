@@ -7,7 +7,7 @@ from mypy.types import (
     CallableType, Type, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarType, Instance,
     TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeVarId, TypeQuery, is_named_instance, TypeOfAny, LiteralType,
-    ProperType, get_proper_type, TypeAliasType
+    ProperType, get_proper_type, TypeAliasType, TypeGuardType
 )
 from mypy.maptype import map_instance_to_supertype
 import mypy.subtypes
@@ -532,6 +532,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                        " (should have been handled in infer_constraints)")
 
     def visit_type_alias_type(self, template: TypeAliasType) -> List[Constraint]:
+        assert False, "This should be never called, got {}".format(template)
+
+    def visit_type_guard_type(self, template: TypeGuardType) -> List[Constraint]:
         assert False, "This should be never called, got {}".format(template)
 
     def infer_against_any(self, types: Iterable[Type], any_type: AnyType) -> List[Constraint]:

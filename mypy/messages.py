@@ -8,13 +8,14 @@ with format args, should be defined as constants in mypy.message_registry.
 Historically we tried to avoid all message string literals in the type
 checker but we are moving away from this convention.
 """
+from contextlib import contextmanager
 
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 import re
 import difflib
 from textwrap import dedent
 
-from typing import cast, List, Dict, Any, Sequence, Iterable, Tuple, Set, Optional, Union
+from typing import cast, List, Dict, Any, Sequence, Iterable, Iterator, Tuple, Set, Optional, Union
 from typing_extensions import Final
 
 from mypy.erasetype import erase_type
@@ -136,11 +137,13 @@ class MessageBuilder:
                 for info in errs:
                     self.errors.add_error_info(info)
 
-    def disable_errors(self) -> None:
+    @contextmanager
+    def disable_errors(self) -> Iterator[None]:
         self.disable_count += 1
-
-    def enable_errors(self) -> None:
-        self.disable_count -= 1
+        try:
+            yield
+        finally:
+            self.disable_count -= 1
 
     def is_errors(self) -> bool:
         return self.errors.is_errors()
@@ -897,7 +900,7 @@ class MessageBuilder:
                   code=codes.STRING_FORMATTING)
 
     def unsupported_placeholder(self, placeholder: str, context: Context) -> None:
-        self.fail('Unsupported format character \'%s\'' % placeholder, context,
+        self.fail('Unsupported format character "%s"' % placeholder, context,
                   code=codes.STRING_FORMATTING)
 
     def string_interpolation_with_star_and_key(self, context: Context) -> None:
@@ -910,7 +913,7 @@ class MessageBuilder:
                   context, code=codes.STRING_FORMATTING)
 
     def key_not_in_mapping(self, key: str, context: Context) -> None:
-        self.fail('Key \'%s\' not found in mapping' % key, context,
+        self.fail('Key "%s" not found in mapping' % key, context,
                   code=codes.STRING_FORMATTING)
 
     def string_interpolation_mixing_key_and_non_keys(self, context: Context) -> None:

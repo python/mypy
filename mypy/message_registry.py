@@ -20,7 +20,7 @@ RETURN_VALUE_EXPECTED = 'Return value expected'  # type: Final
 NO_RETURN_EXPECTED = 'Return statement in function which does not return'  # type: Final
 INVALID_EXCEPTION = 'Exception must be derived from BaseException'  # type: Final
 INVALID_EXCEPTION_TYPE = 'Exception type must be derived from BaseException'  # type: Final
-RETURN_IN_ASYNC_GENERATOR = "'return' with value in async generator is not allowed"  # type: Final
+RETURN_IN_ASYNC_GENERATOR = '"return" with value in async generator is not allowed'  # type: Final
 INVALID_RETURN_TYPE_FOR_GENERATOR = \
     'The return type of a generator function should be "Generator"' \
     ' or one of its supertypes'  # type: Final

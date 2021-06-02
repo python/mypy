@@ -1,7 +1,7 @@
 from typing import Dict, Iterable, List, TypeVar, Mapping, cast
 
 from mypy.types import (
-    Type, Instance, CallableType, TypeVisitor, UnboundType, AnyType,
+    Type, Instance, CallableType, TypeGuardType, TypeVisitor, UnboundType, AnyType,
     NoneType, TypeVarType, Overloaded, TupleType, TypedDictType, UnionType,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId,
     FunctionLike, TypeVarDef, LiteralType, get_proper_type, ProperType,
@@ -125,6 +125,9 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         # some of the resulting types might be subtypes of others.
         from mypy.typeops import make_simplified_union  # asdf
         return make_simplified_union(self.expand_types(t.items), t.line, t.column)
+
+    def visit_type_guard_type(self, t: TypeGuardType) -> ProperType:
+        return TypeGuardType(t.type_guard.accept(self))
 
     def visit_partial_type(self, t: PartialType) -> Type:
         return t

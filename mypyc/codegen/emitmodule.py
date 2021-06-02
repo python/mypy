@@ -5,7 +5,7 @@
 
 import os
 import json
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 from typing import List, Tuple, Dict, Iterable, Set, TypeVar, Optional
 
 from mypy.nodes import MypyFile

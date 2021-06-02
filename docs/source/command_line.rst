@@ -876,8 +876,11 @@ Miscellaneous
 
     This flag causes mypy to install known missing stub packages for
     third-party libraries using pip.  It will display the pip command
-    line to run, and expects a confirmation before installing
-    anything.
+    that will be run, and expects a confirmation before installing
+    anything. For security reasons, these stubs are limited to only a
+    small subset of manually selected packages that have been
+    verified by the typeshed team. These packages include only stub
+    files and no executable code.
 
     If you use this option without providing any files or modules to
     type check, mypy will install stub packages suggested during the
@@ -889,8 +892,8 @@ Miscellaneous
     .. note::
 
         This is new in mypy 0.900. Previous mypy versions included a
-        selection of third-party package stubs, instead of having them
-        installed separately.
+        selection of third-party package stubs, instead of having
+        them installed separately.
 
 .. option:: --junit-xml JUNIT_XML
 

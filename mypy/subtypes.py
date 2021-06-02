@@ -4,7 +4,7 @@ from typing import Any, List, Optional, Callable, Tuple, Iterator, Set, Union, c
 from typing_extensions import Final
 
 from mypy.types import (
-    Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneType,
+    Type, AnyType, TypeGuardType, UnboundType, TypeVisitor, FormalArgument, NoneType,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
     FunctionLike, TypeOfAny, LiteralType, get_proper_type, TypeAliasType
@@ -474,6 +474,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
     def visit_union_type(self, left: UnionType) -> bool:
         return all(self._is_subtype(item, self.orig_right) for item in left.items)
+
+    def visit_type_guard_type(self, left: TypeGuardType) -> bool:
+        raise RuntimeError("TypeGuard should not appear here")
 
     def visit_partial_type(self, left: PartialType) -> bool:
         # This is indeterminate as we don't really know the complete type yet.
@@ -1373,6 +1376,14 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
 
     def visit_union_type(self, left: UnionType) -> bool:
         return all([self._is_proper_subtype(item, self.orig_right) for item in left.items])
+
+    def visit_type_guard_type(self, left: TypeGuardType) -> bool:
+        if isinstance(self.right, TypeGuardType):
+            # TypeGuard[bool] is a subtype of TypeGuard[int]
+            return self._is_proper_subtype(left.type_guard, self.right.type_guard)
+        else:
+            # TypeGuards aren't a subtype of anything else for now (but see #10489)
+            return False
 
     def visit_partial_type(self, left: PartialType) -> bool:
         # TODO: What's the right thing to do here?

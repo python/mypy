@@ -2,7 +2,7 @@
 
 import os
 from abc import abstractmethod
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 from collections import defaultdict
 from typing import (
     Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, Callable, Sequence, Iterator
@@ -3080,7 +3080,9 @@ class SymbolTableNode:
                         and fullname != prefix + '.' + name
                         and not (isinstance(self.node, Var)
                                  and self.node.from_module_getattr)):
-                    assert not isinstance(self.node, PlaceholderNode)
+                    assert not isinstance(self.node, PlaceholderNode), (
+                        'Definition of {} is unexpectedly incomplete'.format(fullname)
+                    )
                     data['cross_ref'] = fullname
                     return data
             data['node'] = self.node.serialize()
