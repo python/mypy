@@ -100,6 +100,7 @@ class Person(TypedDict):
 
 def foo(**kwargs: Expand[Person]) -> int:
     name: str = kwargs['name']
+    age: str = kwargs['age']  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
     department: str = kwargs['department']  # E: TypedDict "Person" has no key "department"
     return kwargs['age']
 
@@ -115,7 +116,7 @@ class Person(TypedDict):
     name: str
     age: int
 
-def foo(name: str, **kwargs: Expand[Person]) -> None:
+def foo(name: str, **kwargs: Expand[Person]) -> None:  # E: Cannot expand keyword arguments. Keyword "name" already present
     ...
 
 [builtins fixtures/dict.pyi]

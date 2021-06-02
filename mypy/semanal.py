@@ -632,9 +632,10 @@ class SemanticAnalyzer(NodeVisitor[None],
             assert isinstance(defn, FuncDef)
             assert isinstance(defn.type, CallableType)
             defn.arguments = [
-                Argument(Var(name, typ), typ, None, kind)  # type: ignore
+                Argument(Var(name, typ), typ, None, kind)
                 for name, typ, kind
                 in zip(defn.type.arg_names, defn.type.arg_types, defn.type.arg_kinds)
+                if name is not None
             ]
 
         if (defn.is_coroutine and

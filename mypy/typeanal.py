@@ -566,6 +566,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         expanded_kinds = []
         expanded_names = []
         for name, type in kwargs_type.items.items():
+            if name in t.arg_names:
+                self.fail(f'Cannot expand keyword arguments. Keyword "{name}" already present', t)
             expanded_types.append(type)
             expanded_kinds.append(
                 ARG_NAMED if name in kwargs_type.required_keys
