@@ -3,7 +3,7 @@
 import itertools
 from itertools import chain
 from contextlib import contextmanager
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 
 from typing import Callable, List, Optional, Set, Tuple, Iterator, TypeVar, Iterable, Sequence
 from typing_extensions import Final

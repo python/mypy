@@ -14,5 +14,7 @@ def strict_optional_set(value: bool) -> Iterator[None]:
     global strict_optional
     saved = strict_optional
     strict_optional = value
-    yield
-    strict_optional = saved
+    try:
+        yield
+    finally:
+        strict_optional = saved

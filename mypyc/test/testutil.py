@@ -58,11 +58,12 @@ def use_custom_builtins(builtins_path: str, testcase: DataDrivenTestCase) -> Ite
         default_builtins = True
 
     # Actually peform the test case.
-    yield None
-
-    if default_builtins:
-        # Clean up.
-        os.remove(builtins)
+    try:
+        yield None
+    finally:
+        if default_builtins:
+            # Clean up.
+            os.remove(builtins)
 
 
 def perform_test(func: Callable[[DataDrivenTestCase], None],
@@ -156,6 +157,8 @@ def assert_test_output(testcase: DataDrivenTestCase,
                        message: str,
                        expected: Optional[List[str]] = None,
                        formatted: Optional[List[str]] = None) -> None:
+    __tracebackhide__ = True
+
     expected_output = expected if expected is not None else testcase.output
     if expected_output != actual and testcase.config.getoption('--update-data', False):
         update_testcase_output(testcase, actual)

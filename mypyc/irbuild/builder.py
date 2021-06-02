@@ -13,7 +13,7 @@ functions are transformed in mypyc.irbuild.function.
 
 from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any
 from typing_extensions import overload
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 
 from mypy.build import Graph
 from mypy.nodes import (

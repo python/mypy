@@ -1,4 +1,4 @@
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 from typing import List, Optional, Tuple, Callable
 
 from mypy.join import (
