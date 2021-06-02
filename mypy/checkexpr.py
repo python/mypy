@@ -2774,6 +2774,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         assert e.op in ('and', 'or')  # Checked by visit_op_expr
 
+        left_map: mypy.checker.TypeMap
+        right_map: mypy.checker.TypeMap
         if e.right_always:
             left_map, right_map = None, {}
         elif e.right_unreachable:
