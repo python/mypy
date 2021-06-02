@@ -1,4 +1,4 @@
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 import re
 import pprint
 import sys
