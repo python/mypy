@@ -1,6 +1,6 @@
 # NOTE: Requires fixtures/dict.pyi
 from typing import (
-    Any, Dict, Type, TypeVar, Optional, Any, Generic, Mapping, NoReturn as NoReturn, Iterator
+    _SpecialForm, Any, Dict, Type, TypeVar, Optional, Any, Generic, Mapping, NoReturn as NoReturn, Iterator
 )
 import sys
 
@@ -48,3 +48,7 @@ def trait(cls: Any) -> Any: ...
 mypyc_attr: Any
 
 class FlexibleAlias(Generic[_T, _U]): ...
+
+class _Expand(_SpecialForm): ...
+
+Expand: _Expand = ... 

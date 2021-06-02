@@ -1,7 +1,7 @@
 import abc
 import sys
 from typing import Any, Callable, Dict, Generic, ItemsView, KeysView, Mapping, Optional, Type, TypeVar, Union, ValuesView
-from typing import _GenericAlias, _SpecialForm, _tp_cache, _type_check  # type: ignore
+from typing import _SpecialForm  # type: ignore
 
 _T = TypeVar("_T")
 _U = TypeVar("_U")

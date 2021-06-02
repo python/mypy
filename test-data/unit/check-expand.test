@@ -1,0 +1,121 @@
+-- Check Expand[...] for `**kwargs`.
+
+[case testExpandOutsideOfKwargs]
+from mypy_extensions import Expand, TypedDict
+class Person(TypedDict):
+    name: str
+    age: int
+
+x: Expand[Person]  # E: Expand[...] can only be used with **kwargs in function declarations # E: Variable "mypy_extensions.Expand" is not valid as a type # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+
+def foo(x: Expand[Person]) -> None:  # E: Expand[...] can only be used with **kwargs in function declarations # E: Variable "mypy_extensions.Expand" is not valid as a type # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    ...
+
+def bar(x: int, *args: Expand[Person]) -> None:  # E: Expand[...] can only be used with **kwargs in function declarations # E: Variable "mypy_extensions.Expand" is not valid as a type # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    ...
+
+# Should not result in error.
+def baz(**kwargs: Expand[Person]) -> None:
+    ...
+
+[builtins fixtures/dict.pyi]
+
+
+[case testExpandWithoutTypedDict]
+from mypy_extensions import Expand
+
+def foo(**kwargs: Expand[dict]) -> None:  # E: Expand[...] accepts only TypedDict as type argument # E: Expand[...] can only be used with **kwargs in function declarations # E: Variable "mypy_extensions.Expand" is not valid as a type # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    ...
+
+[builtins fixtures/dict.pyi]
+
+
+[case testExpandsTypedDictTotality]
+from mypy_extensions import Expand, TypedDict
+
+class Circle(TypedDict, total=True):
+    radius: int
+    color: str
+    x: int
+    y: int
+
+def foo(**kwargs: Expand[Circle]):
+    ...
+
+foo(x=0, y=0, color='orange')  # E: Missing named argument "radius" for "foo"
+
+class Square(TypedDict, total=False):
+    side: int
+    color: str
+
+def bar(**kwargs: Expand[Square]):
+    ...
+
+# OK, because Square's totality is `False`.
+bar(side=12)
+
+[builtins fixtures/dict.pyi]
+
+
+[case testExpandUnexpectedKeyword]
+from mypy_extensions import Expand, TypedDict
+
+class Person(TypedDict, total=False):
+    name: str
+    age: int
+
+def foo(**kwargs: Expand[Person]) -> None:  # N: "foo" defined here
+    ...
+
+foo(name='John', age=42, department='Sales')  # E: Unexpected keyword argument "department" for "foo"
+
+foo(name='Jennifer', age=38)
+
+[builtins fixtures/dict.pyi]
+
+
+[case testExpandKeywordTypes]
+from mypy_extensions import Expand, TypedDict
+
+class Person(TypedDict):
+    name: str
+    age: int
+
+def foo(**kwargs: Expand[Person]):
+    ...
+
+foo(name='John', age='42')  # E: Argument "age" to "foo" has incompatible type "str"; expected "int"
+
+foo(name='Jennifer', age=38)
+
+[builtins fixtures/dict.pyi]
+
+
+[case testFunctionBodyWithExpandedKwargs]
+from mypy_extensions import Expand, TypedDict
+
+class Person(TypedDict):
+    name: str
+    age: int
+
+def foo(**kwargs: Expand[Person]) -> int:
+    name: str = kwargs['name']
+    department: str = kwargs['department']  # E: TypedDict "Person" has no key "department"
+    return kwargs['age']
+
+foo(name='John', age=42)
+
+[builtins fixtures/dict.pyi]
+
+
+[case testExpandWithDuplicateKeywords]
+from mypy_extensions import Expand, TypedDict
+
+class Person(TypedDict):
+    name: str
+    age: int
+
+def foo(name: str, **kwargs: Expand[Person]) -> None:
+    ...
+
+[builtins fixtures/dict.pyi]

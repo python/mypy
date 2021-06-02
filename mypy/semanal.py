@@ -629,13 +629,13 @@ class SemanticAnalyzer(NodeVisitor[None],
 
         if expand_kwargs:
             # Modify defn's arguments.
-            if isinstance(defn.type, FuncDef):
-                assert isinstance(defn.type, CallableType)
-                defn.arguments = [
-                    Argument(Var(name, typ), typ, None, kind)
-                    for name, typ, kind
-                    in zip(defn.type.arg_names, defn.type.arg_types, defn.type.arg_kinds)
-                ]
+            assert isinstance(defn, FuncDef)
+            assert isinstance(defn.type, CallableType)
+            defn.arguments = [
+                Argument(Var(name, typ), typ, None, kind)  # type: ignore
+                for name, typ, kind
+                in zip(defn.type.arg_names, defn.type.arg_types, defn.type.arg_kinds)
+            ]
 
         if (defn.is_coroutine and
                 isinstance(defn.type, CallableType) and
