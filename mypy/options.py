@@ -295,6 +295,10 @@ class Options:
         self.show_absolute_path = False  # type: bool
         # Install missing stub packages if True
         self.install_types = False
+        # When we encounter errors that may cause many additional errors,
+        # skip most errors after this many messages have been reported.
+        # -1 means unlimited.
+        self.many_errors_threshold = defaults.MANY_ERRORS_THRESHOLD
 
     # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property

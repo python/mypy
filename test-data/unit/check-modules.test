@@ -2982,3 +2982,85 @@ T = TypeVar("T")
 class F(M):
     x: C
     class C: ...
+
+[case testLimitLegacyStubErrorVolume]
+# flags: --disallow-any-expr --soft-error-limit=5
+import certifi # E: Cannot find implementation or library stub for module named "certifi" \
+               # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # N: (Skipping most remaining errors due to unresolved imports or missing stubs; fix these first)
+certifi.x
+certifi.x
+certifi.x
+certifi.x
+
+[case testDoNotLimitErrorVolumeIfNotImportErrors]
+# flags: --disallow-any-expr --soft-error-limit=5
+def f(): pass
+certifi = f()  # E: Expression has type "Any"
+1()  # E: "int" not callable
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+1()  # E: "int" not callable
+
+
+[case testDoNotLimitImportErrorVolume]
+# flags: --disallow-any-expr --soft-error-limit=3
+import xyz1  # E: Cannot find implementation or library stub for module named "xyz1" \
+             # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+import xyz2  # E: Cannot find implementation or library stub for module named "xyz2"
+import xyz3  # E: Cannot find implementation or library stub for module named "xyz3"
+import xyz4  # E: Cannot find implementation or library stub for module named "xyz4"
+
+[case testUnlimitedStubErrorVolume]
+# flags: --disallow-any-expr --soft-error-limit=-1
+import certifi # E: Cannot find implementation or library stub for module named "certifi" \
+               # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
