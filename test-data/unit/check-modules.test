@@ -3011,7 +3011,6 @@ certifi.x  # E: Expression has type "Any"
 certifi.x  # E: Expression has type "Any"
 1()  # E: "int" not callable
 
-
 [case testDoNotLimitImportErrorVolume]
 # flags: --disallow-any-expr --soft-error-limit=3
 import xyz1  # E: Cannot find implementation or library stub for module named "xyz1" \
@@ -3064,3 +3063,34 @@ certifi.x  # E: Expression has type "Any"
 certifi.x  # E: Expression has type "Any"
 certifi.x  # E: Expression has type "Any"
 certifi.x  # E: Expression has type "Any"
+
+[case testIgnoreErrorFromMissingStubs1]
+# flags: --config-file tmp/pyproject.toml
+import certifi
+from foobar1 import x
+import foobar2
+[file pyproject.toml]
+\[tool.mypy]
+ignore_missing_imports = true
+\[[tool.mypy.overrides]]
+module = "certifi"
+ignore_missing_imports = true
+\[[tool.mypy.overrides]]
+module = "foobar1"
+ignore_missing_imports = true
+
+[case testIgnoreErrorFromMissingStubs2]
+# flags: --config-file tmp/pyproject.toml
+import certifi
+from foobar1 import x
+import foobar2  # E: Cannot find implementation or library stub for module named "foobar2" \
+                # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+[file pyproject.toml]
+\[tool.mypy]
+ignore_missing_imports = false
+\[[tool.mypy.overrides]]
+module = "certifi"
+ignore_missing_imports = true
+\[[tool.mypy.overrides]]
+module = "foobar1"
+ignore_missing_imports = true
