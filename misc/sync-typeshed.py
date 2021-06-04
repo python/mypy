@@ -1,4 +1,4 @@
-"""Sync stdlib stubs from typeshed.
+"""Sync stdlib stubs (and a few other files) from typeshed.
 
 Usage:
 
@@ -49,6 +49,7 @@ def update_typeshed(typeshed_dir: str, commit: Optional[str]) -> str:
     os.makedirs(stubs_dir)
     shutil.copytree(os.path.join(typeshed_dir, 'stubs', 'mypy-extensions'),
                     os.path.join(stubs_dir, 'mypy-extensions'))
+    shutil.copy(os.path.join(typeshed_dir, 'LICENSE'), os.path.join('mypy', 'typeshed'))
     return commit
 
 
@@ -69,7 +70,7 @@ def main() -> None:
     )
     args = parser.parse_args()
     check_state()
-    print('Update contents of mypy/typeshed/stdlib from typeshed? [yN] ', end='')
+    print('Update contents of mypy/typeshed from typeshed? [yN] ', end='')
     answer = input()
     if answer.lower() != 'y':
         sys.exit('Aborting')

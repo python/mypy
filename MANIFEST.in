@@ -3,6 +3,7 @@
 
 # stubs
 prune mypy/typeshed
+include mypy/typeshed/LICENSE
 include mypy/typeshed/stdlib/VERSIONS
 recursive-include mypy/typeshed *.pyi
 
