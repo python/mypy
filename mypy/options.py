@@ -82,6 +82,8 @@ class Options:
         self.no_silence_site_packages = False
         self.no_site_packages = False
         self.ignore_missing_imports = False
+        # Is ignore_missing_imports set in a per-module section
+        self.ignore_missing_imports_per_module = False
         self.follow_imports = 'normal'  # normal|silent|skip|error
         # Whether to respect the follow_imports setting even for stub files.
         # Intended to be used for disabling specific stubs.
@@ -325,6 +327,10 @@ class Options:
         replace_object_state(new_options, self, copy_dict=True)
         for key, value in changes.items():
             setattr(new_options, key, value)
+        if changes.get("ignore_missing_imports"):
+            # This is the only option for which a per-module and a global
+            # option sometimes beheave differently.
+            new_options.ignore_missing_imports_per_module = True
         return new_options
 
     def build_per_module_cache(self) -> None:
