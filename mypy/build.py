@@ -2449,7 +2449,9 @@ def find_module_and_diagnose(manager: BuildManager,
         # otherwise updating mypy can silently result in new false
         # negatives.
         global_ignore_missing_imports = manager.options.ignore_missing_imports
-        if top_level in legacy_bundled_packages and global_ignore_missing_imports:
+        if (top_level in legacy_bundled_packages
+                and global_ignore_missing_imports
+                and not options.ignore_missing_imports_per_module):
             ignore_missing_imports = False
 
         if skip_diagnose:
