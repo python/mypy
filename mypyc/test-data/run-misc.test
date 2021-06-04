@@ -1143,6 +1143,10 @@ try:
     import native
 except:
     pass
-# try accessing those globals that were never properly initialized
-import native
-native.test()
+try:
+    # try accessing those globals that were never properly initialized
+    import native
+    native.test()
+# should fail with AssertionError due to `assert False` in other function
+except AssertionError:
+    pass
