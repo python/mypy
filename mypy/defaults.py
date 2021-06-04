@@ -30,3 +30,7 @@ REPORTER_NAMES = ['linecount',
                   'html',
                   'txt',
                   'lineprecision']  # type: Final
+
+# Threshold after which we sometimes filter out most errors to avoid very
+# verbose output
+MANY_ERRORS_THRESHOLD = 200  # type: Final
