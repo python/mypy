@@ -18,11 +18,6 @@ T = TypeVar('T')
 allowed_duplicates = ['@overload', 'Got:', 'Expected:']  # type: Final
 
 
-# Threshold after which we may filter out most errors to avoid very
-# verbose output
-MANY_ERRORS_THRESHOLD = 200
-
-
 class ErrorInfo:
     """Representation of a single error message."""
 
@@ -179,7 +174,8 @@ class Errors:
                  read_source: Optional[Callable[[str], Optional[List[str]]]] = None,
                  show_absolute_path: bool = False,
                  enabled_error_codes: Optional[Set[ErrorCode]] = None,
-                 disabled_error_codes: Optional[Set[ErrorCode]] = None) -> None:
+                 disabled_error_codes: Optional[Set[ErrorCode]] = None,
+                 many_errors_threshold: int = -1) -> None:
         self.show_error_context = show_error_context
         self.show_column_numbers = show_column_numbers
         self.show_error_codes = show_error_codes
@@ -189,6 +185,7 @@ class Errors:
         self.read_source = read_source
         self.enabled_error_codes = enabled_error_codes or set()
         self.disabled_error_codes = disabled_error_codes or set()
+        self.many_errors_threshold = many_errors_threshold
         self.initialize()
 
     def initialize(self) -> None:
@@ -215,7 +212,8 @@ class Errors:
                      self.read_source,
                      self.show_absolute_path,
                      self.enabled_error_codes,
-                     self.disabled_error_codes)
+                     self.disabled_error_codes,
+                     self.many_errors_threshold)
         new.file = self.file
         new.import_ctx = self.import_ctx[:]
         new.function_or_member = self.function_or_member[:]
@@ -382,9 +380,12 @@ class Errors:
         self._add_error_info(file, info)
 
     def has_many_errors(self) -> bool:
-        if len(self.error_info_map) >= MANY_ERRORS_THRESHOLD:
+        if self.many_errors_threshold < 0:
+            return False
+        if len(self.error_info_map) >= self.many_errors_threshold:
             return True
-        if sum(len(errors) for errors in self.error_info_map.values()) >= MANY_ERRORS_THRESHOLD:
+        if sum(len(errors)
+               for errors in self.error_info_map.values()) >= self.many_errors_threshold:
             return True
         return False
 
