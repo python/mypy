@@ -621,6 +621,18 @@ a = None # type: A
 a.f()
 a.f(a) # E: Too many arguments
 
+[case testMethodWithInferredMethodAsDataAttribute]
+from typing import Any
+def m(self: "A") -> int: ...
+
+class A:
+    n = m
+
+a = A()
+reveal_type(a.n())  # N: Revealed type is "builtins.int"
+reveal_type(A.n(a))  # N: Revealed type is "builtins.int"
+A.n()  # E: Too few arguments
+
 [case testOverloadedMethodAsDataAttribute]
 from foo import *
 [file foo.pyi]
