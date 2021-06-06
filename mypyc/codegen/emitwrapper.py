@@ -286,10 +286,26 @@ def generate_bin_op_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     rmethod = reverse_op_methods[fn.name]
     fn_rev = cl.get_method(rmethod)
     if fn_rev is None:
+        # There's only a forward operator method.
         gen.emit_arg_processing(error=GotoHandler('typefail'), raise_exception=False)
         gen.emit_call(not_implemented_handler='goto typefail;')
         gen.emit_error_handling()
         emitter.emit_label('typefail')
+        # If some argument has an incompatible type, treat this the same as
+        # returning NotImplemented, and try to call the reverse operator method.
+        #
+        # Note that in normal Python you'd instead of an explicit
+        # return of NotImplemented, but it doesn't generally work here
+        # the body won't be executed at all if there is an argument
+        # type check failure.
+        #
+        # The recommended way is to still use a type check in the
+        # body. This will only be used in interpreted mode:
+        #
+        #    def __add__(self, other: int) -> Foo:
+        #        if not isinstance(other, int):
+        #            return NotImplemented
+        #        ...
         emitter.emit_line(
             'return CPy_CallReverseOpMethod(obj_left, obj_right, "{}", "{}");'.format(
                 op_methods_to_symbols[fn.name],
@@ -299,18 +315,11 @@ def generate_bin_op_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
         # There's both a forward and a reverse operator method. First
         # check if we should try calling the forward one. If the
         # argument type check fails, fall back to the reverse method.
-        # Here we can't perfectly match Python semantics. In regular
-        # Python code you'd return NotImplemented if the operand has
-        # the wrong type, but in compiled code we'll never get to
-        # execute the type check.
         #
-        # The recommended way is to still use a type check in the
-        # body. This will only be used in interpreted mode:
-        #
-        #    def __add__(self, other: int) -> Foo:
-        #        if not isinstance(other, int):
-        #            return NotImplemented
-        #        ...
+        # Similar to above, we can't perfectly match Python semantics.
+        # In regular Python code you'd return NotImplemented if the
+        # operand has the wrong type, but in compiled code we'll never
+        # get to execute the type check.
         emitter.emit_line('if (PyObject_IsInstance(obj_left, (PyObject *){})) {{'.format(
             emitter.type_struct_name(cl)))
         gen.emit_arg_processing(error=GotoHandler('typefail'), raise_exception=False)
@@ -689,7 +698,9 @@ def generate_arg_check(name: str,
 
 
 class WrapperGenerator:
-    # TODO: Support non-dunder wrappers as well (and this for them)
+    """Helper that simplifies the generation of wrapper functions."""
+
+    # TODO: Use this for more wrappers
 
     def __init__(self, cl: ClassIR, emitter: Emitter) -> None:
         self.cl = cl
@@ -699,6 +710,11 @@ class WrapperGenerator:
         self.traceback_code = ''
 
     def set_target(self, fn: FuncIR) -> None:
+        """Set the wrapped function.
+
+        It's fine to modify the attributes initialized here later to customize
+        the wrapper function.
+        """
         self.target_name = fn.name
         self.target_cname = fn.cname(self.emitter.names)
         self.arg_names = [arg.name for arg in fn.args]
@@ -706,14 +722,17 @@ class WrapperGenerator:
         self.ret_type = fn.ret_type
 
     def wrapper_name(self) -> str:
+        """Return the name of the wrapper function."""
         return '{}{}{}'.format(DUNDER_PREFIX,
                                self.target_name,
                                self.cl.name_prefix(self.emitter.names))
 
     def use_goto(self) -> bool:
+        """Do we use a goto for error handling (instead of straight return)?"""
         return bool(self.cleanups or self.traceback_code)
 
     def emit_header(self) -> None:
+        """Emit the function header of the wrapper implementation."""
         input_args = ', '.join('PyObject *obj_{}'.format(arg) for arg in self.arg_names)
         self.emitter.emit_line('static PyObject *{name}({input_args}) {{'.format(
             name=self.wrapper_name(),
@@ -723,6 +742,7 @@ class WrapperGenerator:
     def emit_arg_processing(self,
                             error: Optional[ErrorHandler] = None,
                             raise_exception: bool = True) -> None:
+        """Emit validation and unboxing of arguments."""
         error = error or self.error()
         for arg_name, arg in zip(self.arg_names, self.args):
             # Suppress the argument check for *args/**kwargs, since we know it must be right.
@@ -735,6 +755,11 @@ class WrapperGenerator:
                                optional=arg in self.optional_args)
 
     def emit_call(self, not_implemented_handler: str = '') -> None:
+        """Emit call to the wrapper function.
+
+        If not_implemented_handler is non-empty, use this C code to handle
+        a NotImplemented return value (if it's possible based on the return type).
+        """
         native_args = ', '.join('arg_{}'.format(arg) for arg in self.arg_names)
         ret_type = self.ret_type
         emitter = self.emitter
@@ -769,12 +794,16 @@ class WrapperGenerator:
             # TODO: Tracebacks?
 
     def error(self) -> ErrorHandler:
+        """Figure out how to deal with errors in the wrapper."""
         if self.cleanups or self.traceback_code:
+            # We'll have a label at the end with error handling code.
             return GotoHandler('fail')
         else:
+            # Nothing special needs to done to handle errors, so just return.
             return ReturnHandler('NULL')
 
     def emit_error_handling(self) -> None:
+        """Emit error handling block at the end of the wrapper, if needed."""
         emitter = self.emitter
         if self.use_goto():
             emitter.emit_label('fail')
