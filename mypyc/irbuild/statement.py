@@ -20,7 +20,7 @@ from mypyc.ir.ops import (
     Assign, Unreachable, RaiseStandardError, LoadErrorValue, BasicBlock, TupleGet, Value, Register,
     Branch, NO_TRACEBACK_LINE_NO
 )
-from mypyc.ir.rtypes import exc_rtuple
+from mypyc.ir.rtypes import RInstance, exc_rtuple
 from mypyc.primitives.generic_ops import py_delattr_op
 from mypyc.primitives.misc_ops import type_op
 from mypyc.primitives.exc_ops import (
@@ -658,6 +658,13 @@ def transform_del_item(builder: IRBuilder, target: AssignmentTarget, line: int) 
             line=line
         )
     elif isinstance(target, AssignmentTargetAttr):
+        if isinstance(target.obj_type, RInstance):
+            cl = target.obj_type.class_ir
+            if not cl.is_deletable(target.attr):
+                builder.error('"{}" cannot be deleted'.format(target.attr), line)
+                builder.note(
+                    'Using "__deletable__ = ' +
+                    '[\'<attr>\']" in the class body enables "del obj.<attr>"', line)
         key = builder.load_str(target.attr)
         builder.call_c(py_delattr_op, [target.obj, key], line)
     elif isinstance(target, AssignmentTargetRegister):

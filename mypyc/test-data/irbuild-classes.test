@@ -1069,3 +1069,68 @@ class A(B): pass
 class B(C): pass
 class C: pass
 [out]
+
+[case testDeletableSemanticAnalysis]
+class Err1:
+    __deletable__ = 'x'  # E: "__deletable__" must be initialized with a list or tuple expression
+class Err2:
+    __deletable__ = [
+        1  # E: Invalid "__deletable__" item; string literal expected
+    ]
+class Err3:
+    __deletable__ = ['x', ['y'], 'z']  # E: Invalid "__deletable__" item; string literal expected
+class Err4:
+    __deletable__ = (1,)  # E: Invalid "__deletable__" item; string literal expected
+a = ['x']
+class Err5:
+    __deletable__ = a  # E: "__deletable__" must be initialized with a list or tuple expression
+
+class Ok1:
+    __deletable__ = ('x',)
+    x: int
+class Ok2:
+    __deletable__ = ['x']
+    x: int
+
+[case testInvalidDeletableAttribute]
+class NotDeletable:
+    __deletable__ = ['x']
+    x: int
+    y: int
+
+def g(o: NotDeletable) -> None:
+    del o.x
+    del o.y  # E: "y" cannot be deleted \
+             # N: Using "__deletable__ = ['<attr>']" in the class body enables "del obj.<attr>"
+
+class Base:
+    x: int
+
+class Deriv(Base):
+    __deletable__ = ['x']  # E: Attribute "x" not defined in "Deriv" (defined in "Base")
+
+class UndefinedDeletable:
+    __deletable__ = ['x']  # E: Attribute "x" not defined
+
+class DeletableProperty:
+    __deletable__ = ['prop']  # E: Cannot make property "prop" deletable
+
+    @property
+    def prop(self) -> int:
+        return 5
+
+[case testFinalDeletable]
+from typing import Final
+
+class DeletableFinal1:
+    x: Final[int]  # E: Deletable attribute cannot be final
+
+    __deletable__ = ['x']
+
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+class DeletableFinal2:
+    X: Final = 0  # E: Deletable attribute cannot be final
+
+    __deletable__ = ['X']

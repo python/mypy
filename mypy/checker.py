@@ -1731,6 +1731,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if not defn.has_incompatible_baseclass:
                 # Otherwise we've already found errors; more errors are not useful
                 self.check_multiple_inheritance(typ)
+            self.check_final_deletable(typ)
 
             if defn.decorators:
                 sig = type_object_type(defn.info, self.named_type)  # type: Type
@@ -1756,6 +1757,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # that completely swap out the type.  (e.g. Callable[[Type[A]], Type[B]])
         if typ.is_protocol and typ.defn.type_vars:
             self.check_protocol_variance(defn)
+
+    def check_final_deletable(self, typ: TypeInfo) -> None:
+        # These checks are only for mypyc. Only perform some checks that are easier
+        # to implement here than in mypyc.
+        for attr in typ.deletable_attributes:
+            node = typ.names.get(attr)
+            if node and isinstance(node.node, Var) and node.node.is_final:
+                self.fail(message_registry.CANNOT_MAKE_DELETABLE_FINAL, node.node)
 
     def check_init_subclass(self, defn: ClassDef) -> None:
         """Check that keywords in a class definition are valid arguments for __init_subclass__().
@@ -1927,8 +1936,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.cant_override_final(name, base2.name, ctx)
         if is_final_node(first.node):
             self.check_if_final_var_override_writable(name, second.node, ctx)
-        # __slots__ is special and the type can vary across class hierarchy.
-        if name == '__slots__':
+        # __slots__ and __deletable__ are special and the type can vary across class hierarchy.
+        if name in ('__slots__', '__deletable__'):
             ok = True
         if not ok:
             self.msg.base_class_definitions_incompatible(name, base1, base2,
@@ -2235,6 +2244,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # is __slots__, where it is allowed for any child class to
                 # redefine it.
                 if lvalue_node.name == "__slots__" and base.fullname != "builtins.object":
+                    continue
+                # We don't care about the type of "__deletable__".
+                if lvalue_node.name == "__deletable__":
                     continue
 
                 if is_private(lvalue_node.name):

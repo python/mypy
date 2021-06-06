@@ -608,6 +608,8 @@ class FuncItem(FuncBase):
                  'expanded',  # Variants of function with type variables with values expanded
                  )
 
+    __deletable__ = ('arguments', 'max_pos', 'min_args')
+
     def __init__(self,
                  arguments: List[Argument],
                  body: 'Block',
@@ -2348,6 +2350,7 @@ class TypeInfo(SymbolNode):
     is_protocol = False                    # Is this a protocol class?
     runtime_protocol = False               # Does this protocol support isinstance checks?
     abstract_attributes = None  # type: List[str]
+    deletable_attributes = None  # type: List[str]  # Used by mypyc only
 
     # The attributes 'assuming' and 'assuming_proper' represent structural subtype matrices.
     #
@@ -2450,6 +2453,7 @@ class TypeInfo(SymbolNode):
         self._fullname = defn.fullname
         self.is_abstract = False
         self.abstract_attributes = []
+        self.deletable_attributes = []
         self.assuming = []
         self.assuming_proper = []
         self.inferring = []
