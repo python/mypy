@@ -549,6 +549,7 @@ def test_generic_radd() -> None:
 
 [case testDundersInplace]
 from typing import Any
+from testutil import assertRaises
 
 class C:
     def __init__(self) -> None:
@@ -643,9 +644,17 @@ def test_native() -> None:
 
 def test_error() -> None:
     c: Any = C()
-    try:
+    with assertRaises(TypeError, "int object expected; got str"):
         c += 'x'
-    except TypeError as e:
-        assert str(e) == "int object expected; got str"
-    else:
-        assert False
+
+class BadInplaceAdd:
+    def __init__(self):
+        self.x = 0
+
+    def __iadd__(self, x):
+        self.x += x
+
+def test_in_place_operator_returns_none() -> None:
+    o = BadInplaceAdd()
+    with assertRaises(TypeError, "native.BadInplaceAdd object expected; got None"):
+        o += 5
