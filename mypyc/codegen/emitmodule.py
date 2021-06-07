@@ -888,7 +888,7 @@ class GroupGenerator:
 
         emitter.emit_lines('{} = PyModule_Create(&{}module);'.format(module_static, module_prefix),
                            'if (unlikely({} == NULL))'.format(module_static),
-                           '    return NULL;')
+                           '    goto fail;')
         emitter.emit_line(
             'PyObject *modname = PyObject_GetAttrString((PyObject *){}, "__name__");'.format(
                 module_static))
@@ -896,7 +896,7 @@ class GroupGenerator:
         module_globals = emitter.static_name('globals', module_name)
         emitter.emit_lines('{} = PyModule_GetDict({});'.format(module_globals, module_static),
                            'if (unlikely({} == NULL))'.format(module_globals),
-                           '    return NULL;')
+                           '    goto fail;')
 
         # HACK: Manually instantiate generated classes here
         for cl in module.classes:
@@ -907,16 +907,19 @@ class GroupGenerator:
                     '(PyObject *){t}_template, NULL, modname);'
                     .format(t=type_struct))
                 emitter.emit_lines('if (unlikely(!{}))'.format(type_struct),
-                                   '    return NULL;')
+                                   '    goto fail;')
 
         emitter.emit_lines('if (CPyGlobalsInit() < 0)',
-                           '    return NULL;')
+                           '    goto fail;')
 
         self.generate_top_level_call(module, emitter)
 
         emitter.emit_lines('Py_DECREF(modname);')
 
         emitter.emit_line('return {};'.format(module_static))
+        emitter.emit_lines('fail:',
+                           '{} = NULL;'.format(module_static),
+                           'return NULL;')
         emitter.emit_line('}')
 
     def generate_top_level_call(self, module: ModuleIR, emitter: Emitter) -> None:
@@ -927,7 +930,7 @@ class GroupGenerator:
                 emitter.emit_lines(
                     'char result = {}();'.format(emitter.native_function_name(fn.decl)),
                     'if (result == 2)',
-                    '    return NULL;',
+                    '    goto fail;',
                 )
                 break
 
