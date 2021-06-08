@@ -88,7 +88,10 @@ def for_loop_helper(builder: IRBuilder, index: Lvalue, expr: Expression,
     builder.activate_block(exit_block)
 
 
-def for_loop_helper_with_index(builder: IRBuilder, index: Lvalue, expr: Expression,
+def for_loop_helper_with_index(builder: IRBuilder,
+                               index: Lvalue,
+                               expr: Expression,
+                               expr_reg: Value,
                                body_insts: Callable[[Value], None], line: int) -> None:
     """Generate IR for a sequence iteration.
 
@@ -101,7 +104,6 @@ def for_loop_helper_with_index(builder: IRBuilder, index: Lvalue, expr: Expressi
         body_insts: a function that generates the body of the loop.
                     It needs a index as parameter.
     """
-    expr_reg = builder.accept(expr)
     assert is_sequence_rprimitive(expr_reg.type)
     target_type = builder.get_sequence_type(expr)
 
@@ -163,16 +165,15 @@ def sequence_from_generator_preallocate_helper(
     if len(gen.sequences) == 1 and len(gen.indices) == 1 and len(gen.condlists[0]) == 0:
         rtype = builder.node_type(gen.sequences[0])
         if is_list_rprimitive(rtype) or is_tuple_rprimitive(rtype):
-
-            length = builder.builder.builtin_len(builder.accept(gen.sequences[0]),
-                                                 gen.line, use_pyssize_t=True)
+            sequence = builder.accept(gen.sequences[0])
+            length = builder.builder.builtin_len(sequence, gen.line, use_pyssize_t=True)
             target_op = empty_op_llbuilder(length, gen.line)
 
             def set_item(item_index: Value) -> None:
                 e = builder.accept(gen.left_expr)
                 builder.call_c(set_item_op, [target_op, item_index, e], gen.line)
 
-            for_loop_helper_with_index(builder, gen.indices[0], gen.sequences[0],
+            for_loop_helper_with_index(builder, gen.indices[0], gen.sequences[0], sequence,
                                        set_item, gen.line)
 
             return target_op
