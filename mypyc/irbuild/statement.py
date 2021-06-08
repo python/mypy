@@ -244,6 +244,9 @@ def transform_while_stmt(builder: IRBuilder, s: WhileStmt) -> None:
 
 
 def transform_for_stmt(builder: IRBuilder, s: ForStmt) -> None:
+    if s.is_async:
+        builder.error('async for is unimplemented', s.line)
+
     def body() -> None:
         builder.accept(s.body)
 
@@ -612,6 +615,9 @@ def transform_with(builder: IRBuilder,
 
 
 def transform_with_stmt(builder: IRBuilder, o: WithStmt) -> None:
+    if o.is_async:
+        builder.error('async with is unimplemented', o.line)
+
     # Generate separate logic for each expr in it, left to right
     def generate(i: int) -> None:
         if i >= len(o.expr):

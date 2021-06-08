@@ -58,6 +58,10 @@ class FuncInfo:
         return self.fitem.is_generator or self.fitem.is_coroutine
 
     @property
+    def is_coroutine(self) -> bool:
+        return self.fitem.is_coroutine
+
+    @property
     def callable_class(self) -> 'ImplicitClass':
         assert self._callable_class is not None
         return self._callable_class
