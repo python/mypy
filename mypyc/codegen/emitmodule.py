@@ -874,6 +874,7 @@ class GroupGenerator:
             declaration = 'PyObject *CPyInit_{}(void)'.format(exported_name(module_name))
         emitter.emit_lines(declaration,
                            '{')
+        emitter.emit_line('PyObject* modname = NULL;')
         # Store the module reference in a static and return it when necessary.
         # This is separate from the *global* reference to the module that will
         # be populated when it is imported by a compiled module. We want that
@@ -890,7 +891,7 @@ class GroupGenerator:
                            'if (unlikely({} == NULL))'.format(module_static),
                            '    goto fail;')
         emitter.emit_line(
-            'PyObject *modname = PyObject_GetAttrString((PyObject *){}, "__name__");'.format(
+            'modname = PyObject_GetAttrString((PyObject *){}, "__name__");'.format(
                 module_static))
 
         module_globals = emitter.static_name('globals', module_name)
