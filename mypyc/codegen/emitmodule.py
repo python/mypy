@@ -902,9 +902,9 @@ class GroupGenerator:
         # HACK: Manually instantiate generated classes here
         type_structs = []  # type: List[str]
         for cl in module.classes:
+            type_struct = emitter.type_struct_name(cl)
+            type_structs.append(type_struct)
             if cl.is_generated:
-                type_struct = emitter.type_struct_name(cl)
-                type_structs.append(type_struct)
                 emitter.emit_lines(
                     '{t} = (PyTypeObject *)CPyType_FromTemplate('
                     '(PyObject *){t}_template, NULL, modname);'
