@@ -921,14 +921,13 @@ class GroupGenerator:
 
         emitter.emit_line('return {};'.format(module_static))
         emitter.emit_lines('fail:',
-                           'Py_XDECREF({});'.format(module_static),
+                           'Py_CLEAR({});'.format(module_static),
                            'Py_XDECREF(modname);')
         # the type objects returned from CPyType_FromTemplate are all new references
         # so we have to decref them
         for t in type_structs:
             emitter.emit_line('Py_XDECREF({});'.format(t))
-        emitter.emit_lines('{} = NULL;'.format(module_static),
-                           'return NULL;')
+        emitter.emit_line('return NULL;')
         emitter.emit_line('}')
 
     def generate_top_level_call(self, module: ModuleIR, emitter: Emitter) -> None:
