@@ -407,6 +407,10 @@ def compile_modules_to_c(
     group_map = {source.module: lib_name for group, lib_name in groups for source in group}
     mapper = Mapper(group_map)
 
+    # Sometimes when we call back into mypy, there might be errors.
+    # We don't want to crash when that happens.
+    result.manager.errors.set_file('<mypyc>', module=None, scope=None)
+
     modules = compile_modules_to_ir(result, mapper, compiler_options, errors)
     ctext = compile_ir_to_c(groups, modules, result, mapper, compiler_options)
 
