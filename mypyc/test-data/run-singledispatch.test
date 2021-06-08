@@ -1,0 +1,264 @@
+# Test cases related to the functools.singledispatch decorator
+# Some of these tests are commented out because mypyc doesn't support singledispatch yet
+# (These tests will be re-enabled when mypyc supports singledispatch)
+
+
+# [case testSpecializedImplementationUsed]
+# from functools import singledispatch
+
+# @singledispatch
+# def fun(arg) -> bool:
+#     return False
+
+# @fun.register
+# def fun_specialized(arg: str) -> bool:
+#     return True
+
+# def test_specialize() -> None:
+#     assert fun('a')
+#     assert not fun(3)
+
+# [case testSubclassesOfExpectedTypeUseSpecialized]
+# from functools import singledispatch
+# class A: pass
+# class B(A): pass
+
+# @singledispatch
+# def fun(arg) -> bool:
+#     return False
+
+# @fun.register
+# def fun_specialized(arg: A) -> bool:
+#     return True
+
+# def test_specialize() -> None:
+#     assert fun(B())
+#     assert fun(A())
+
+# [case testSuperclassImplementationNotUsedWhenSubclassHasImplementation]
+# from functools import singledispatch
+# class A: pass
+# class B(A): pass
+
+# @singledispatch
+# def fun(arg) -> bool:
+#     # shouldn't be using this
+#     assert False
+
+# @fun.register
+# def fun_specialized(arg: A) -> bool:
+#     return False
+
+# @fun.register
+# def fun_specialized2(arg: B) -> bool:
+#     return True
+
+# def test_specialize() -> None:
+#     assert fun(B())
+#     assert not fun(A())
+
+# [case testMultipleUnderscoreFunctionsIsntError]
+# from functools import singledispatch
+
+# @singledispatch
+# def fun(arg) -> str:
+#     return 'default'
+
+# @fun.register
+# def _(arg: str) -> str:
+#     return 'str'
+
+# @fun.register
+# def _(arg: int) -> str:
+#     return 'int'
+
+# def test_singledispatch() -> None:
+#     assert fun(0) == 'int'
+#     assert fun('a') == 'str'
+#     assert fun({'a': 'b'}) == 'default'
+
+# [case testCanRegisterCompiledClasses]
+# from functools import singledispatch
+# class A: pass
+
+# @singledispatch
+# def fun(arg) -> bool:
+#     return False
+# @fun.register
+# def fun_specialized(arg: A) -> bool:
+#     return True
+
+# def test_singledispatch() -> None:
+#     assert fun(A())
+#     assert not fun(1)
+
+[case testTypeUsedAsArgumentToRegister]
+from functools import singledispatch
+
+@singledispatch
+def fun(arg) -> bool:
+    return False
+
+@fun.register(int)
+def fun_specialized(arg) -> bool:
+    return True
+
+def test_singledispatch() -> None:
+    assert fun(1)
+    assert not fun('a')
+
+[case testUseRegisterAsAFunction]
+from functools import singledispatch
+
+@singledispatch
+def fun(arg) -> bool:
+    return False
+
+def fun_specialized_impl(arg) -> bool:
+    return True
+
+fun.register(int, fun_specialized_impl)
+
+def test_singledispatch() -> None:
+    assert fun(0)
+    assert not fun('a')
+
+# [case testRegisterDoesntChangeFunction]
+# from functools import singledispatch
+
+# @singledispatch
+# def fun(arg) -> bool:
+#     return False
+
+# @fun.register
+# def fun_specialized(arg: int) -> bool:
+#     return True
+
+# def test_singledispatch() -> None:
+#     assert fun_specialized('a')
+
+# [case testTypeAnnotationsDisagreeWithRegisterArgument]
+# from functools import singledispatch
+
+# @singledispatch
+# def fun(arg) -> bool:
+#     return False
+
+# @fun.register(int)
+# def fun_specialized(arg: str) -> bool:
+#     return True
+
+# def test_singledispatch() -> None:
+#     assert fun(3) # type: ignore
+#     assert not fun('a')
+
+# [case testNoneIsntATypeWhenUsedAsArgumentToRegister]
+# from functools import singledispatch
+
+# @singledispatch
+# def fun(arg) -> bool:
+#     return False
+
+# try:
+#     @fun.register(None)
+#     def fun_specialized(arg) -> bool:
+#         return True
+# except TypeError:
+#     pass
+
+[case testRegisteringTheSameFunctionSeveralTimes]
+from functools import singledispatch
+
+@singledispatch
+def fun(arg) -> bool:
+    return False
+
+@fun.register(int)
+@fun.register(str)
+def fun_specialized(arg) -> bool:
+    return True
+
+def test_singledispatch() -> None:
+    assert fun(0)
+    assert fun('a')
+    assert not fun([1, 2])
+
+# [case testTypeIsAnABC]
+# from functools import singledispatch
+# from collections.abc import Mapping
+
+# @singledispatch
+# def fun(arg) -> bool:
+#     return False
+
+# @fun.register
+# def fun_specialized(arg: Mapping) -> bool:
+#     return True
+
+# def test_singledispatch() -> None:
+#     assert not fun(1)
+#     assert fun({'a': 'b'})
+
+# [case testArgumentDoesntMatchTypeOfAnySpecializedImplementationsOrDefaultImplementation]
+# from functools import singledispatch
+# class A: pass
+# class B(A): pass
+
+# @singledispatch
+# def fun(arg: A) -> bool:
+#     return False
+
+# @fun.register
+# def fun_specialized(arg: B) -> bool:
+#     return True
+
+# def test_singledispatch() -> None:
+#     assert fun(B())
+#     assert fun(A())
+#     assert not fun([1, 2])
+
+
+# [case testSingleDispatchMethod]
+# from functools import singledispatchmethod
+# class A:
+#     @singledispatchmethod
+#     def fun(self, arg) -> str:
+#         return 'default'
+
+#     @fun.register
+#     def fun_int(self, arg: int) -> str:
+#         return 'int'
+
+#     @fun.register
+#     def fun_str(self, arg: str) -> str:
+#         return 'str'
+
+# def test_singledispatchmethod() -> None:
+#     x = A()
+#     assert x.fun(5) == 'int'
+#     assert x.fun('a') == 'str'
+#     assert x.fun([1, 2]) == 'default'
+
+# [case testSingleDispatchMethodWithOtherDecorator]
+# from functools import singledispatchmethod
+# class A:
+#     @singledispatchmethod
+#     @staticmethod
+#     def fun(arg) -> str:
+#         return 'default'
+
+#     @fun.register
+#     @staticmethod
+#     def fun_int(arg: int) -> str:
+#         return 'int'
+
+#     @fun.register
+#     @staticmethod
+#     def fun_str(arg: str) -> str:
+#         return 'str'
+
+# def test_singledispatchmethod() -> None:
+#     x = A()
+#     assert x.fun(5) == 'int'
+#     assert x.fun('a') == 'str'
+#     assert x.fun([1, 2]) == 'default'
