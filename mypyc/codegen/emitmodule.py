@@ -899,9 +899,11 @@ class GroupGenerator:
                            '    goto fail;')
 
         # HACK: Manually instantiate generated classes here
+        type_structs = []  # type: List[str]
         for cl in module.classes:
             if cl.is_generated:
                 type_struct = emitter.type_struct_name(cl)
+                type_structs.append(type_struct)
                 emitter.emit_lines(
                     '{t} = (PyTypeObject *)CPyType_FromTemplate('
                     '(PyObject *){t}_template, NULL, modname);'
@@ -918,7 +920,13 @@ class GroupGenerator:
 
         emitter.emit_line('return {};'.format(module_static))
         emitter.emit_lines('fail:',
-                           '{} = NULL;'.format(module_static),
+                           'Py_XDECREF({});'.format(module_static),
+                           'Py_XDECREF(modname);')
+        # the type objects returned from CPyType_FromTemplate are all new references
+        # so we have to decref them
+        for t in type_structs:
+            emitter.emit_line('Py_XDECREF({});'.format(t))
+        emitter.emit_lines('{} = NULL;'.format(module_static),
                            'return NULL;')
         emitter.emit_line('}')
 
