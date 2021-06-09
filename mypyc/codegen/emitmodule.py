@@ -36,7 +36,7 @@ from mypyc.codegen.emitwrapper import (
     generate_legacy_wrapper_function, legacy_wrapper_function_header,
 )
 from mypyc.ir.ops import DeserMaps, LoadLiteral
-from mypyc.ir.rtypes import RType, RTuple, is_tagged
+from mypyc.ir.rtypes import RType, RTuple
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.module_ir import ModuleIR, ModuleIRs, deserialize_modules
@@ -925,10 +925,9 @@ class GroupGenerator:
                            'Py_CLEAR(modname);')
         for name, typ in module.final_names:
             static_name = emitter.static_name(name, module_name)
-            if emitter.ctype(typ) == 'PyObject *':
-                emitter.emit_line('Py_CLEAR({});'.format(static_name))
-            elif is_tagged(typ):
-                emitter.emit_line('CPyTagged_XDecRef({});'.format(static_name))
+            emitter.emit_dec_ref(static_name, typ, is_xdec=True)
+            undef = emitter.c_undefined_value(typ)
+            emitter.emit_line('{} = {};'.format(static_name, undef))
         # the type objects returned from CPyType_FromTemplate are all new references
         # so we have to decref them
         for t in type_structs:
