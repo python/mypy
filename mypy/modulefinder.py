@@ -17,7 +17,7 @@ from typing_extensions import Final
 
 from mypy.fscache import FileSystemCache
 from mypy.options import Options
-from mypy.stubinfo import legacy_bundled_packages
+from mypy.stubinfo import is_legacy_bundled_package
 from mypy import sitepkgs
 
 # Paths to be searched in find_module().
@@ -136,7 +136,7 @@ class FindModuleCache:
         if options:
             custom_typeshed_dir = options.custom_typeshed_dir
         self.stdlib_py_versions = load_stdlib_py_versions(custom_typeshed_dir)
-        self.python2 = options and options.python_version[0] == 2
+        self.python_major_ver = 3 if options is None else options.python_version[0]
 
     def clear(self) -> None:
         self.results.clear()
@@ -187,7 +187,7 @@ class FindModuleCache:
                 name = os.path.splitext(name)[0]
                 components.setdefault(name, []).append(dir)
 
-        if self.python2:
+        if self.python_major_ver == 2:
             components = {id: filter_redundant_py2_dirs(dirs)
                           for id, dirs in components.items()}
 
@@ -230,8 +230,8 @@ class FindModuleCache:
             elif not plausible_match and (self.fscache.isdir(dir_path)
                                           or self.fscache.isfile(dir_path + ".py")):
                 plausible_match = True
-        if (components[0] in legacy_bundled_packages
-                or '.'.join(components[:2]) in legacy_bundled_packages):
+        if (is_legacy_bundled_package(components[0], self.python_major_ver)
+                or is_legacy_bundled_package('.'.join(components[:2]), self.python_major_ver)):
             return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
         elif plausible_match:
             return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
@@ -280,7 +280,7 @@ class FindModuleCache:
         for pkg_dir in self.search_paths.package_path:
             stub_name = components[0] + '-stubs'
             stub_dir = os.path.join(pkg_dir, stub_name)
-            if self.python2:
+            if self.python_major_ver == 2:
                 alt_stub_name = components[0] + '-python2-stubs'
                 alt_stub_dir = os.path.join(pkg_dir, alt_stub_name)
                 if fscache.isdir(alt_stub_dir):
@@ -348,7 +348,7 @@ class FindModuleCache:
             for extension in PYTHON_EXTENSIONS:
                 path = base_path + sepinit + extension
                 suffix = '-stubs'
-                if self.python2:
+                if self.python_major_ver == 2:
                     if os.path.isdir(base_path + '-python2-stubs'):
                         suffix = '-python2-stubs'
                 path_stubs = base_path + suffix + sepinit + extension
@@ -432,7 +432,7 @@ class FindModuleCache:
             import toml
             with open(metadata_fnam, 'r') as f:
                 metadata = toml.load(f)
-            if self.python2:
+            if self.python_major_ver == 2:
                 return bool(metadata.get('python2', False))
             else:
                 return bool(metadata.get('python3', True))
