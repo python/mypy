@@ -86,6 +86,49 @@ def g(x: int) -> int:
 from native import f
 assert f(1) == 2
 
+[case testFromImportWithUntypedModule]
+
+# avoid including an __init__.py and use type: ignore to test what happens
+# if mypy can't tell if mod isn't a module
+from pkg import mod # type: ignore
+
+def test_import() -> None:
+    assert mod.h(8) == 24
+
+[file pkg/mod.py]
+def h(x):
+    return x * 3
+
+[case testFromImportWithKnownModule]
+from pkg import mod
+
+def test_import() -> None:
+    assert mod.h(8) == 24
+
+[file pkg/__init__.py]
+[file pkg/mod.py]
+def h(x: int) -> int:
+    return x * 3
+
+[case testMultipleFromImportsWithSamePackageButDifferentModules]
+from pkg import a
+from pkg import b
+
+def test_import() -> None:
+    assert a.g() == 4
+    assert b.h() == 39
+
+[file pkg/__init__.py]
+[file pkg/a.py]
+
+def g() -> int:
+    return 4
+
+[file pkg/b.py]
+
+def h() -> int:
+    return 39
+
 [case testReexport]
 # Test that we properly handle accessing values that have been reexported
 import a

@@ -172,7 +172,8 @@ def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:
 
     id = importlib.util.resolve_name('.' * node.relative + node.id, module_package)
 
-    builder.gen_import(id, node.line)
+    imported = [name for name, _ in node.names]
+    builder.gen_import_from(id, node.line, imported)
     module = builder.load_module(id)
 
     # Copy everything into our module's dict.
@@ -181,12 +182,6 @@ def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:
     # This probably doesn't matter much and the code runs basically right.
     globals = builder.load_globals_dict()
     for name, maybe_as_name in node.names:
-        # If one of the things we are importing is a module,
-        # import it as a module also.
-        fullname = id + '.' + name
-        if fullname in builder.graph or fullname in module_state.suppressed:
-            builder.gen_import(fullname, node.line)
-
         as_name = maybe_as_name or name
         obj = builder.py_get_attr(module, name, node.line)
         builder.gen_method_call(

@@ -35,7 +35,7 @@ from mypyc.ir.ops import (
     SetAttr, LoadStatic, InitStatic, NAMESPACE_MODULE, RaiseStandardError
 )
 from mypyc.ir.rtypes import (
-    RType, RTuple, RInstance, int_rprimitive, dict_rprimitive,
+    RType, RTuple, RInstance, c_int_rprimitive, int_rprimitive, dict_rprimitive,
     none_rprimitive, is_none_rprimitive, object_rprimitive, is_object_rprimitive,
     str_rprimitive, is_tagged, is_list_rprimitive, is_tuple_rprimitive, c_pyssize_t_rprimitive
 )
@@ -45,7 +45,9 @@ from mypyc.primitives.registry import CFunctionDescription, function_ops
 from mypyc.primitives.list_ops import to_list, list_pop_last, list_get_item_unsafe_op
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import py_setattr_op, iter_op, next_op
-from mypyc.primitives.misc_ops import import_op, check_unpack_count_op, get_module_dict_op
+from mypyc.primitives.misc_ops import (
+    import_op, check_unpack_count_op, get_module_dict_op, import_extra_args_op
+)
 from mypyc.crash import catch_errors
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
@@ -286,18 +288,44 @@ class IRBuilder:
         key_unicode = self.load_str(key)
         self.call_c(dict_set_item_op, [non_ext.dict, key_unicode, val], line)
 
+    def gen_import_from(self, id: str, line: int, imported: List[str]) -> None:
+        self.imports[id] = None
+
+        globals_dict = self.load_globals_dict()
+        null = Integer(0, dict_rprimitive, line)
+        names_to_import = self.new_list_op([self.load_str(name) for name in imported], line)
+
+        level = Integer(0, c_int_rprimitive, line)
+        value = self.call_c(
+            import_extra_args_op,
+            [self.load_str(id), globals_dict, null, names_to_import, level],
+            line,
+        )
+        self.add(InitStatic(value, id, namespace=NAMESPACE_MODULE))
+
     def gen_import(self, id: str, line: int) -> None:
         self.imports[id] = None
 
         needs_import, out = BasicBlock(), BasicBlock()
-        first_load = self.load_module(id)
-        comparison = self.translate_is_op(first_load, self.none_object(), 'is not', line)
-        self.add_bool_branch(comparison, out, needs_import)
+        self.check_if_module_loaded(id, line, needs_import, out)
 
         self.activate_block(needs_import)
         value = self.call_c(import_op, [self.load_str(id)], line)
         self.add(InitStatic(value, id, namespace=NAMESPACE_MODULE))
         self.goto_and_activate(out)
+
+    def check_if_module_loaded(self, id: str, line: int,
+                               needs_import: BasicBlock, out: BasicBlock) -> None:
+        """Generate code that checks if the module `id` has been loaded yet.
+
+        Arguments:
+            id: name of module to check if imported
+            line: line number that the import occurs on
+            needs_import: the BasicBlock that is run if the module has not been loaded yet
+            out: the BasicBlock that is run if the module has already been loaded"""
+        first_load = self.load_module(id)
+        comparison = self.translate_is_op(first_load, self.none_object(), 'is not', line)
+        self.add_bool_branch(comparison, out, needs_import)
 
     def get_module(self, module: str, line: int) -> Value:
         # Python 3.7 has a nice 'PyImport_GetModule' function that we can't use :(
