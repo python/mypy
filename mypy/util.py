@@ -284,6 +284,17 @@ def get_prefix(fullname: str) -> str:
     return fullname.rsplit('.', 1)[0]
 
 
+def get_top_two_prefixes(fullname: str) -> Tuple[str, str]:
+    """Return one and two component prefixes of a fully qualified name.
+
+    Given 'a.b.c.d', return ('a', 'a.b').
+
+    If fullname has only one component, return (fullname, fullname).
+    """
+    components = fullname.split('.', 3)
+    return components[0], '.'.join(components[:2])
+
+
 def correct_relative_import(cur_mod_id: str,
                             relative: int,
                             target: str,

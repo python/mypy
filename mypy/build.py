@@ -35,7 +35,7 @@ from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, ErrorInfo, report_internal_error
 from mypy.util import (
     DecodeError, decode_python_encoding, is_sub_path, get_mypy_comments, module_prefix,
-    read_py_file, hash_digest, is_typeshed_file, is_stub_package_file
+    read_py_file, hash_digest, is_typeshed_file, is_stub_package_file, get_top_two_prefixes
 )
 if TYPE_CHECKING:
     from mypy.report import Reports  # Avoid unconditional slow import
@@ -2443,13 +2443,13 @@ def find_module_and_diagnose(manager: BuildManager,
         # search path or the module has not been installed.
 
         ignore_missing_imports = options.ignore_missing_imports
-        top_level = file_id.partition('.')[0]
+        top_level, second_level = get_top_two_prefixes(file_id)
         # Don't honor a global (not per-module) ignore_missing_imports
         # setting for modules that used to have bundled stubs, as
         # otherwise updating mypy can silently result in new false
         # negatives.
         global_ignore_missing_imports = manager.options.ignore_missing_imports
-        if (top_level in legacy_bundled_packages
+        if ((top_level in legacy_bundled_packages or second_level in legacy_bundled_packages)
                 and global_ignore_missing_imports
                 and not options.ignore_missing_imports_per_module):
             ignore_missing_imports = False
@@ -2553,7 +2553,9 @@ def module_not_found(manager: BuildManager, line: int, caller_state: State,
         msg, notes = reason.error_message_templates(daemon)
         pyver = '%d.%d' % manager.options.python_version
         errors.report(line, 0, msg.format(module=target, pyver=pyver), code=codes.IMPORT)
-        top_level = target.partition('.')[0]
+        top_level, second_level = get_top_two_prefixes(target)
+        if second_level in legacy_bundled_packages:
+            top_level = second_level
         for note in notes:
             if '{stub_dist}' in note:
                 note = note.format(stub_dist=legacy_bundled_packages[top_level])
