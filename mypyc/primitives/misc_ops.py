@@ -125,16 +125,6 @@ get_module_dict_op = custom_op(
     error_kind=ERR_NEVER,
     is_borrowed=True)
 
-# locals()
-get_locals = custom_op(
-    arg_types=[],
-    return_type=dict_rprimitive,
-    c_function_name='PyEval_GetLocals',
-    # documentation doesn't mention setting an exception on failure, but it might return NULL
-    error_kind=ERR_MAGIC,
-    is_borrowed=True
-)
-
 # isinstance(obj, cls)
 function_op(
     name='builtins.isinstance',
