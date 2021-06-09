@@ -46,7 +46,7 @@ from mypyc.primitives.list_ops import to_list, list_pop_last, list_get_item_unsa
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import py_setattr_op, iter_op, next_op
 from mypyc.primitives.misc_ops import (
-    import_op, check_unpack_count_op, get_module_dict_op, import_extra_args_op, get_locals
+    import_op, check_unpack_count_op, get_module_dict_op, import_extra_args_op
 )
 from mypyc.crash import catch_errors
 from mypyc.options import CompilerOptions
@@ -292,13 +292,13 @@ class IRBuilder:
         self.imports[id] = None
 
         globals_dict = self.load_globals_dict()
-        locals_dict = self.call_c(get_locals, [], line)
+        null = Integer(0, dict_rprimitive, line)
         names_to_import = self.new_list_op([self.load_str(name) for name in imported], line)
 
         level = Integer(0, c_int_rprimitive, line)
         value = self.call_c(
             import_extra_args_op,
-            [self.load_str(id), globals_dict, locals_dict, names_to_import, level],
+            [self.load_str(id), globals_dict, null, names_to_import, level],
             line,
         )
         self.add(InitStatic(value, id, namespace=NAMESPACE_MODULE))
