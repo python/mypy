@@ -264,7 +264,7 @@ def test_singledispatchmethod() -> None:
     assert x.fun('a') == 'str'
     assert x.fun([1, 2]) == 'default'
 
-[case testSingledispatchTreeSumAndEqual]
+[case testSingledispatchTreeSumAndEqual-skip]
 from functools import singledispatch
 
 class Tree:
@@ -322,7 +322,7 @@ def test_sum_and_equal():
     tree3 = build(4)
     assert not equal(tree, tree3)
 
-[case testSimulateMypySingledispatch]
+[case testSimulateMypySingledispatch-skip]
 from functools import singledispatch
 from mypy_extensions import trait
 from typing import Iterator, Union, TypeVar, Any, List, Type
@@ -375,7 +375,6 @@ def verify_typeinfo(stub: TypeInfo, a: MaybeMissing[Type[Any]], b: List[str]) ->
 def verify_typevarexpr(stub: TypeVarExpr, a: MaybeMissing[Any], b: List[str]) -> Iterator[Error]:
     if False:
         yield None
-    yield from b
 
 def verify_list(stub, a, b) -> List[str]:
     """Helper function that converts iterator of errors to list of messages"""
