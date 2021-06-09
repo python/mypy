@@ -2492,82 +2492,82 @@ def __top_level__():
     r2 :: bit
     r3 :: str
     r4 :: object
-    r5, r6 :: dict
-    r7, r8, r9 :: str
-    r10 :: list
-    r11, r12, r13, r14 :: ptr
-    r15 :: str
-    r16, r17 :: object
-    r18 :: dict
-    r19 :: str
-    r20 :: object
-    r21 :: str
-    r22 :: int32
-    r23 :: bit
-    r24 :: str
-    r25 :: object
-    r26 :: str
-    r27 :: int32
-    r28 :: bit
-    r29 :: str
-    r30 :: object
-    r31 :: str
-    r32 :: int32
-    r33 :: bit
-    r34, r35 :: str
-    r36 :: object
-    r37 :: tuple[str, object]
-    r38 :: object
-    r39 :: str
-    r40 :: object
-    r41 :: tuple[str, object]
-    r42 :: object
-    r43 :: tuple[object, object]
-    r44 :: object
-    r45 :: dict
-    r46 :: str
-    r47, r48 :: object
-    r49 :: dict
-    r50 :: str
-    r51 :: int32
-    r52 :: bit
-    r53 :: str
-    r54 :: dict
-    r55 :: str
-    r56, r57, r58 :: object
-    r59 :: tuple
-    r60 :: dict
-    r61 :: str
-    r62 :: int32
-    r63 :: bit
-    r64 :: dict
-    r65 :: str
-    r66, r67, r68 :: object
-    r69 :: dict
-    r70 :: str
-    r71 :: int32
-    r72 :: bit
-    r73 :: str
-    r74 :: dict
-    r75 :: str
-    r76 :: object
-    r77 :: dict
-    r78 :: str
-    r79, r80 :: object
-    r81 :: dict
-    r82 :: str
-    r83 :: int32
-    r84 :: bit
-    r85 :: list
-    r86, r87, r88 :: object
-    r89, r90, r91, r92 :: ptr
-    r93 :: dict
-    r94 :: str
-    r95, r96 :: object
-    r97 :: dict
-    r98 :: str
-    r99 :: int32
-    r100 :: bit
+    r5 :: dict
+    r6, r7, r8 :: str
+    r9 :: list
+    r10, r11, r12, r13 :: ptr
+    r14 :: str
+    r15, r16 :: object
+    r17 :: dict
+    r18 :: str
+    r19 :: object
+    r20 :: str
+    r21 :: int32
+    r22 :: bit
+    r23 :: str
+    r24 :: object
+    r25 :: str
+    r26 :: int32
+    r27 :: bit
+    r28 :: str
+    r29 :: object
+    r30 :: str
+    r31 :: int32
+    r32 :: bit
+    r33, r34 :: str
+    r35 :: object
+    r36 :: tuple[str, object]
+    r37 :: object
+    r38 :: str
+    r39 :: object
+    r40 :: tuple[str, object]
+    r41 :: object
+    r42 :: tuple[object, object]
+    r43 :: object
+    r44 :: dict
+    r45 :: str
+    r46, r47 :: object
+    r48 :: dict
+    r49 :: str
+    r50 :: int32
+    r51 :: bit
+    r52 :: str
+    r53 :: dict
+    r54 :: str
+    r55, r56, r57 :: object
+    r58 :: tuple
+    r59 :: dict
+    r60 :: str
+    r61 :: int32
+    r62 :: bit
+    r63 :: dict
+    r64 :: str
+    r65, r66, r67 :: object
+    r68 :: dict
+    r69 :: str
+    r70 :: int32
+    r71 :: bit
+    r72 :: str
+    r73 :: dict
+    r74 :: str
+    r75 :: object
+    r76 :: dict
+    r77 :: str
+    r78, r79 :: object
+    r80 :: dict
+    r81 :: str
+    r82 :: int32
+    r83 :: bit
+    r84 :: list
+    r85, r86, r87 :: object
+    r88, r89, r90, r91 :: ptr
+    r92 :: dict
+    r93 :: str
+    r94, r95 :: object
+    r96 :: dict
+    r97 :: str
+    r98 :: int32
+    r99 :: bit
 L0:
     r0 = builtins :: module
     r1 = load_address _Py_NoneStruct
@@ -2579,110 +2579,109 @@ L1:
     builtins = r4 :: module
 L2:
     r5 = __main__.globals :: static
-    r6 = PyEval_GetLocals()
-    r7 = 'List'
-    r8 = 'NewType'
-    r9 = 'NamedTuple'
-    r10 = PyList_New(3)
-    r11 = get_element_ptr r10 ob_item :: PyListObject
-    r12 = load_mem r11 :: ptr*
+    r6 = 'List'
+    r7 = 'NewType'
+    r8 = 'NamedTuple'
+    r9 = PyList_New(3)
+    r10 = get_element_ptr r9 ob_item :: PyListObject
+    r11 = load_mem r10 :: ptr*
+    set_mem r11, r6 :: builtins.object*
+    r12 = r11 + WORD_SIZE*1
     set_mem r12, r7 :: builtins.object*
-    r13 = r12 + WORD_SIZE*1
+    r13 = r11 + WORD_SIZE*2
     set_mem r13, r8 :: builtins.object*
-    r14 = r12 + WORD_SIZE*2
-    set_mem r14, r9 :: builtins.object*
-    keep_alive r10
-    r15 = 'typing'
-    r16 = PyImport_ImportModuleLevelObject(r15, r5, r6, r10, 0)
-    typing = r16 :: module
-    r17 = typing :: module
-    r18 = __main__.globals :: static
-    r19 = 'List'
-    r20 = CPyObject_GetAttr(r17, r19)
-    r21 = 'List'
-    r22 = CPyDict_SetItem(r18, r21, r20)
-    r23 = r22 >= 0 :: signed
-    r24 = 'NewType'
-    r25 = CPyObject_GetAttr(r17, r24)
-    r26 = 'NewType'
-    r27 = CPyDict_SetItem(r18, r26, r25)
-    r28 = r27 >= 0 :: signed
-    r29 = 'NamedTuple'
-    r30 = CPyObject_GetAttr(r17, r29)
-    r31 = 'NamedTuple'
-    r32 = CPyDict_SetItem(r18, r31, r30)
-    r33 = r32 >= 0 :: signed
-    r34 = 'Lol'
-    r35 = 'a'
-    r36 = load_address PyLong_Type
-    r37 = (r35, r36)
-    r38 = box(tuple[str, object], r37)
-    r39 = 'b'
-    r40 = load_address PyUnicode_Type
-    r41 = (r39, r40)
-    r42 = box(tuple[str, object], r41)
-    r43 = (r38, r42)
-    r44 = box(tuple[object, object], r43)
-    r45 = __main__.globals :: static
-    r46 = 'NamedTuple'
-    r47 = CPyDict_GetItem(r45, r46)
-    r48 = PyObject_CallFunctionObjArgs(r47, r34, r44, 0)
-    r49 = __main__.globals :: static
-    r50 = 'Lol'
-    r51 = CPyDict_SetItem(r49, r50, r48)
-    r52 = r51 >= 0 :: signed
-    r53 = ''
-    r54 = __main__.globals :: static
-    r55 = 'Lol'
-    r56 = CPyDict_GetItem(r54, r55)
-    r57 = box(short_int, 2)
-    r58 = PyObject_CallFunctionObjArgs(r56, r57, r53, 0)
-    r59 = cast(tuple, r58)
-    r60 = __main__.globals :: static
-    r61 = 'x'
-    r62 = CPyDict_SetItem(r60, r61, r59)
-    r63 = r62 >= 0 :: signed
-    r64 = __main__.globals :: static
-    r65 = 'List'
-    r66 = CPyDict_GetItem(r64, r65)
-    r67 = load_address PyLong_Type
-    r68 = PyObject_GetItem(r66, r67)
-    r69 = __main__.globals :: static
-    r70 = 'Foo'
-    r71 = CPyDict_SetItem(r69, r70, r68)
-    r72 = r71 >= 0 :: signed
-    r73 = 'Bar'
-    r74 = __main__.globals :: static
-    r75 = 'Foo'
-    r76 = CPyDict_GetItem(r74, r75)
-    r77 = __main__.globals :: static
-    r78 = 'NewType'
-    r79 = CPyDict_GetItem(r77, r78)
-    r80 = PyObject_CallFunctionObjArgs(r79, r73, r76, 0)
-    r81 = __main__.globals :: static
-    r82 = 'Bar'
-    r83 = CPyDict_SetItem(r81, r82, r80)
-    r84 = r83 >= 0 :: signed
-    r85 = PyList_New(3)
-    r86 = box(short_int, 2)
-    r87 = box(short_int, 4)
-    r88 = box(short_int, 6)
-    r89 = get_element_ptr r85 ob_item :: PyListObject
-    r90 = load_mem r89 :: ptr*
+    keep_alive r9
+    r14 = 'typing'
+    r15 = PyImport_ImportModuleLevelObject(r14, r5, 0, r9, 0)
+    typing = r15 :: module
+    r16 = typing :: module
+    r17 = __main__.globals :: static
+    r18 = 'List'
+    r19 = CPyObject_GetAttr(r16, r18)
+    r20 = 'List'
+    r21 = CPyDict_SetItem(r17, r20, r19)
+    r22 = r21 >= 0 :: signed
+    r23 = 'NewType'
+    r24 = CPyObject_GetAttr(r16, r23)
+    r25 = 'NewType'
+    r26 = CPyDict_SetItem(r17, r25, r24)
+    r27 = r26 >= 0 :: signed
+    r28 = 'NamedTuple'
+    r29 = CPyObject_GetAttr(r16, r28)
+    r30 = 'NamedTuple'
+    r31 = CPyDict_SetItem(r17, r30, r29)
+    r32 = r31 >= 0 :: signed
+    r33 = 'Lol'
+    r34 = 'a'
+    r35 = load_address PyLong_Type
+    r36 = (r34, r35)
+    r37 = box(tuple[str, object], r36)
+    r38 = 'b'
+    r39 = load_address PyUnicode_Type
+    r40 = (r38, r39)
+    r41 = box(tuple[str, object], r40)
+    r42 = (r37, r41)
+    r43 = box(tuple[object, object], r42)
+    r44 = __main__.globals :: static
+    r45 = 'NamedTuple'
+    r46 = CPyDict_GetItem(r44, r45)
+    r47 = PyObject_CallFunctionObjArgs(r46, r33, r43, 0)
+    r48 = __main__.globals :: static
+    r49 = 'Lol'
+    r50 = CPyDict_SetItem(r48, r49, r47)
+    r51 = r50 >= 0 :: signed
+    r52 = ''
+    r53 = __main__.globals :: static
+    r54 = 'Lol'
+    r55 = CPyDict_GetItem(r53, r54)
+    r56 = box(short_int, 2)
+    r57 = PyObject_CallFunctionObjArgs(r55, r56, r52, 0)
+    r58 = cast(tuple, r57)
+    r59 = __main__.globals :: static
+    r60 = 'x'
+    r61 = CPyDict_SetItem(r59, r60, r58)
+    r62 = r61 >= 0 :: signed
+    r63 = __main__.globals :: static
+    r64 = 'List'
+    r65 = CPyDict_GetItem(r63, r64)
+    r66 = load_address PyLong_Type
+    r67 = PyObject_GetItem(r65, r66)
+    r68 = __main__.globals :: static
+    r69 = 'Foo'
+    r70 = CPyDict_SetItem(r68, r69, r67)
+    r71 = r70 >= 0 :: signed
+    r72 = 'Bar'
+    r73 = __main__.globals :: static
+    r74 = 'Foo'
+    r75 = CPyDict_GetItem(r73, r74)
+    r76 = __main__.globals :: static
+    r77 = 'NewType'
+    r78 = CPyDict_GetItem(r76, r77)
+    r79 = PyObject_CallFunctionObjArgs(r78, r72, r75, 0)
+    r80 = __main__.globals :: static
+    r81 = 'Bar'
+    r82 = CPyDict_SetItem(r80, r81, r79)
+    r83 = r82 >= 0 :: signed
+    r84 = PyList_New(3)
+    r85 = box(short_int, 2)
+    r86 = box(short_int, 4)
+    r87 = box(short_int, 6)
+    r88 = get_element_ptr r84 ob_item :: PyListObject
+    r89 = load_mem r88 :: ptr*
+    set_mem r89, r85 :: builtins.object*
+    r90 = r89 + WORD_SIZE*1
     set_mem r90, r86 :: builtins.object*
-    r91 = r90 + WORD_SIZE*1
+    r91 = r89 + WORD_SIZE*2
     set_mem r91, r87 :: builtins.object*
-    r92 = r90 + WORD_SIZE*2
-    set_mem r92, r88 :: builtins.object*
-    keep_alive r85
-    r93 = __main__.globals :: static
-    r94 = 'Bar'
-    r95 = CPyDict_GetItem(r93, r94)
-    r96 = PyObject_CallFunctionObjArgs(r95, r85, 0)
-    r97 = __main__.globals :: static
-    r98 = 'y'
-    r99 = CPyDict_SetItem(r97, r98, r96)
-    r100 = r99 >= 0 :: signed
+    keep_alive r84
+    r92 = __main__.globals :: static
+    r93 = 'Bar'
+    r94 = CPyDict_GetItem(r92, r93)
+    r95 = PyObject_CallFunctionObjArgs(r94, r84, 0)
+    r96 = __main__.globals :: static
+    r97 = 'y'
+    r98 = CPyDict_SetItem(r96, r97, r95)
+    r99 = r98 >= 0 :: signed
     return 1
 
 [case testChainedConditional]
@@ -2999,31 +2998,31 @@ def __top_level__():
     r2 :: bit
     r3 :: str
     r4 :: object
-    r5, r6 :: dict
-    r7 :: str
-    r8 :: list
-    r9, r10 :: ptr
-    r11 :: str
-    r12, r13 :: object
-    r14 :: dict
-    r15 :: str
-    r16 :: object
-    r17 :: str
-    r18 :: int32
-    r19 :: bit
-    r20 :: dict
-    r21 :: str
-    r22 :: object
-    r23 :: dict
-    r24 :: str
-    r25, r26 :: object
-    r27 :: dict
-    r28 :: str
-    r29, r30 :: object
-    r31 :: dict
-    r32 :: str
-    r33 :: int32
-    r34 :: bit
+    r5 :: dict
+    r6 :: str
+    r7 :: list
+    r8, r9 :: ptr
+    r10 :: str
+    r11, r12 :: object
+    r13 :: dict
+    r14 :: str
+    r15 :: object
+    r16 :: str
+    r17 :: int32
+    r18 :: bit
+    r19 :: dict
+    r20 :: str
+    r21 :: object
+    r22 :: dict
+    r23 :: str
+    r24, r25 :: object
+    r26 :: dict
+    r27 :: str
+    r28, r29 :: object
+    r30 :: dict
+    r31 :: str
+    r32 :: int32
+    r33 :: bit
 L0:
     r0 = builtins :: module
     r1 = load_address _Py_NoneStruct
@@ -3035,38 +3034,37 @@ L1:
     builtins = r4 :: module
 L2:
     r5 = __main__.globals :: static
-    r6 = PyEval_GetLocals()
-    r7 = 'Callable'
-    r8 = PyList_New(1)
-    r9 = get_element_ptr r8 ob_item :: PyListObject
-    r10 = load_mem r9 :: ptr*
-    set_mem r10, r7 :: builtins.object*
-    keep_alive r8
-    r11 = 'typing'
-    r12 = PyImport_ImportModuleLevelObject(r11, r5, r6, r8, 0)
-    typing = r12 :: module
-    r13 = typing :: module
-    r14 = __main__.globals :: static
-    r15 = 'Callable'
-    r16 = CPyObject_GetAttr(r13, r15)
-    r17 = 'Callable'
-    r18 = CPyDict_SetItem(r14, r17, r16)
-    r19 = r18 >= 0 :: signed
-    r20 = __main__.globals :: static
-    r21 = '__mypyc_c_decorator_helper__'
-    r22 = CPyDict_GetItem(r20, r21)
-    r23 = __main__.globals :: static
-    r24 = 'b'
-    r25 = CPyDict_GetItem(r23, r24)
-    r26 = PyObject_CallFunctionObjArgs(r25, r22, 0)
-    r27 = __main__.globals :: static
-    r28 = 'a'
-    r29 = CPyDict_GetItem(r27, r28)
-    r30 = PyObject_CallFunctionObjArgs(r29, r26, 0)
-    r31 = __main__.globals :: static
-    r32 = 'c'
-    r33 = CPyDict_SetItem(r31, r32, r30)
-    r34 = r33 >= 0 :: signed
+    r6 = 'Callable'
+    r7 = PyList_New(1)
+    r8 = get_element_ptr r7 ob_item :: PyListObject
+    r9 = load_mem r8 :: ptr*
+    set_mem r9, r6 :: builtins.object*
+    keep_alive r7
+    r10 = 'typing'
+    r11 = PyImport_ImportModuleLevelObject(r10, r5, 0, r7, 0)
+    typing = r11 :: module
+    r12 = typing :: module
+    r13 = __main__.globals :: static
+    r14 = 'Callable'
+    r15 = CPyObject_GetAttr(r12, r14)
+    r16 = 'Callable'
+    r17 = CPyDict_SetItem(r13, r16, r15)
+    r18 = r17 >= 0 :: signed
+    r19 = __main__.globals :: static
+    r20 = '__mypyc_c_decorator_helper__'
+    r21 = CPyDict_GetItem(r19, r20)
+    r22 = __main__.globals :: static
+    r23 = 'b'
+    r24 = CPyDict_GetItem(r22, r23)
+    r25 = PyObject_CallFunctionObjArgs(r24, r21, 0)
+    r26 = __main__.globals :: static
+    r27 = 'a'
+    r28 = CPyDict_GetItem(r26, r27)
+    r29 = PyObject_CallFunctionObjArgs(r28, r25, 0)
+    r30 = __main__.globals :: static
+    r31 = 'c'
+    r32 = CPyDict_SetItem(r30, r31, r29)
+    r33 = r32 >= 0 :: signed
     return 1
 
 [case testDecoratorsSimple_toplevel]
@@ -3142,18 +3140,18 @@ def __top_level__():
     r2 :: bit
     r3 :: str
     r4 :: object
-    r5, r6 :: dict
-    r7 :: str
-    r8 :: list
-    r9, r10 :: ptr
-    r11 :: str
-    r12, r13 :: object
-    r14 :: dict
-    r15 :: str
-    r16 :: object
-    r17 :: str
-    r18 :: int32
-    r19 :: bit
+    r5 :: dict
+    r6 :: str
+    r7 :: list
+    r8, r9 :: ptr
+    r10 :: str
+    r11, r12 :: object
+    r13 :: dict
+    r14 :: str
+    r15 :: object
+    r16 :: str
+    r17 :: int32
+    r18 :: bit
 L0:
     r0 = builtins :: module
     r1 = load_address _Py_NoneStruct
@@ -3165,23 +3163,22 @@ L1:
     builtins = r4 :: module
 L2:
     r5 = __main__.globals :: static
-    r6 = PyEval_GetLocals()
-    r7 = 'Callable'
-    r8 = PyList_New(1)
-    r9 = get_element_ptr r8 ob_item :: PyListObject
-    r10 = load_mem r9 :: ptr*
-    set_mem r10, r7 :: builtins.object*
-    keep_alive r8
-    r11 = 'typing'
-    r12 = PyImport_ImportModuleLevelObject(r11, r5, r6, r8, 0)
-    typing = r12 :: module
-    r13 = typing :: module
-    r14 = __main__.globals :: static
-    r15 = 'Callable'
-    r16 = CPyObject_GetAttr(r13, r15)
-    r17 = 'Callable'
-    r18 = CPyDict_SetItem(r14, r17, r16)
-    r19 = r18 >= 0 :: signed
+    r6 = 'Callable'
+    r7 = PyList_New(1)
+    r8 = get_element_ptr r7 ob_item :: PyListObject
+    r9 = load_mem r8 :: ptr*
+    set_mem r9, r6 :: builtins.object*
+    keep_alive r7
+    r10 = 'typing'
+    r11 = PyImport_ImportModuleLevelObject(r10, r5, 0, r7, 0)
+    typing = r11 :: module
+    r12 = typing :: module
+    r13 = __main__.globals :: static
+    r14 = 'Callable'
+    r15 = CPyObject_GetAttr(r12, r14)
+    r16 = 'Callable'
+    r17 = CPyDict_SetItem(r13, r16, r15)
+    r18 = r17 >= 0 :: signed
     return 1
 
 [case testAnyAllG]
