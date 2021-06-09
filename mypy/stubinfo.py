@@ -1,6 +1,8 @@
 # Stubs for these third-party packages used to be shipped with mypy.
 #
 # Map package name to PyPI stub distribution name.
+#
+# Package name can have one or two components ('a' or 'a.b').
 legacy_bundled_packages = {
     'aiofiles': 'types-aiofiles',
     'atomicwrites': 'types-atomicwrites',
@@ -18,7 +20,6 @@ legacy_bundled_packages = {
     'concurrent': 'types-futures',
     'contextvars': 'types-contextvars',
     'croniter': 'types-croniter',
-    'Crypto': 'types-pycrypto',
     'cryptography': 'types-cryptography',
     'dataclasses': 'types-dataclasses',
     'dateparser': 'types-dateparser',
@@ -37,7 +38,7 @@ legacy_bundled_packages = {
     'frozendict': 'types-frozendict',
     'geoip2': 'types-geoip2',
     'gflags': 'types-python-gflags',
-    'google': 'types-protobuf',
+    'google.protobuf': 'types-protobuf',
     'ipaddress': 'types-ipaddress',
     'itsdangerous': 'types-itsdangerous',
     'jinja2': 'types-Jinja2',
@@ -56,8 +57,6 @@ legacy_bundled_packages = {
     'pycurl': 'types-pycurl',
     'pymssql': 'types-pymssql',
     'pymysql': 'types-PyMySQL',
-    'pynamodb': 'types-pynamodb',
-    'pyre_extensions': 'types-pyre-extensions',
     'pyrfc3339': 'types-pyRFC3339',
     'python2': 'types-six',
     'pytz': 'types-pytz',

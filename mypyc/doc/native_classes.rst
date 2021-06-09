@@ -159,6 +159,39 @@ as pure native classes.
    If a class definition uses an unsupported class decorator, *mypyc
    compiles the class into a regular Python class*.
 
+Deleting attributes
+-------------------
+
+By default, attributes defined in native classes can't be deleted. You
+can explicitly allow certain attributes to be deleted by using
+``__deletable__``::
+
+   class Cls:
+       x: int = 0
+       y: int = 0
+       other: int = 0
+
+       __deletable__ = ['x', 'y']  # 'x' and 'y' can be deleted
+
+   o = Cls()
+   del o.x  # OK
+   del o.y  # OK
+   del o.other  # Error
+
+You must initialize the ``__deletable__`` attribute in the class body,
+using a list or a tuple expression with only string literal items that
+refer to attributes. These are not valid::
+
+   a = ['x', 'y']
+
+   class Cls:
+       x: int
+       y: int
+
+       __deletable__ = a  # Error: cannot use variable 'a'
+
+   __deletable__ = ('a',)  # Error: not in a class body
+
 Other properties
 ----------------
 

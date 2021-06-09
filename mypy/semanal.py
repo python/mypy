@@ -156,6 +156,8 @@ class SemanticAnalyzer(NodeVisitor[None],
     AST. Note that type checking is performed as a separate pass.
     """
 
+    __deletable__ = ['patches', 'options', 'cur_mod_node']
+
     # Module name space
     modules = None  # type: Dict[str, MypyFile]
     # Global name space for current module
@@ -2025,6 +2027,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         if not s.type:
             self.process_module_assignment(s.lvalues, s.rvalue, s)
         self.process__all__(s)
+        self.process__deletable__(s)
 
     def analyze_identity_global_assignment(self, s: AssignmentStmt) -> bool:
         """Special case 'X = X' in global scope.
@@ -3313,6 +3316,25 @@ class SemanticAnalyzer(NodeVisitor[None],
                 s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
                 isinstance(s.rvalue, (ListExpr, TupleExpr))):
             self.add_exports(s.rvalue.items)
+
+    def process__deletable__(self, s: AssignmentStmt) -> None:
+        if not self.options.mypyc:
+            return
+        if (len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr) and
+                s.lvalues[0].name == '__deletable__' and s.lvalues[0].kind == MDEF):
+            rvalue = s.rvalue
+            if not isinstance(rvalue, (ListExpr, TupleExpr)):
+                self.fail('"__deletable__" must be initialized with a list or tuple expression', s)
+                return
+            items = rvalue.items
+            attrs = []
+            for item in items:
+                if not isinstance(item, StrExpr):
+                    self.fail('Invalid "__deletable__" item; string literal expected', item)
+                else:
+                    attrs.append(item.value)
+            assert self.type
+            self.type.deletable_attributes = attrs
 
     #
     # Misc statements

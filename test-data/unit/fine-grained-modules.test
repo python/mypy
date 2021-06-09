@@ -2193,13 +2193,13 @@ import waitress
 [file a.py.2]
 # nothing
 [file a.py.3]
-import pynamodb
+import requests
 [out]
 a.py:1: error: Library stubs not installed for "waitress" (or incompatible with Python 3.6)
 a.py:1: note: Hint: "python3 -m pip install types-waitress"
 a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
 ==
-a.py:1: error: Library stubs not installed for "pynamodb" (or incompatible with Python 3.6)
-a.py:1: note: Hint: "python3 -m pip install types-pynamodb"
+a.py:1: error: Library stubs not installed for "requests" (or incompatible with Python 3.6)
+a.py:1: note: Hint: "python3 -m pip install types-requests"
 a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports

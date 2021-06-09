@@ -663,6 +663,8 @@ def process_options(args: List[str],
     add_invertible_flag('--show-absolute-path', default=False,
                         help="Show absolute paths to files",
                         group=error_group)
+    error_group.add_argument('--soft-error-limit', default=defaults.MANY_ERRORS_THRESHOLD,
+                             type=int, dest="many_errors_threshold", help=argparse.SUPPRESS)
 
     incremental_group = parser.add_argument_group(
         title='Incremental mode',
