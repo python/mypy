@@ -923,14 +923,14 @@ class GroupGenerator:
         emitter.emit_lines('fail:',
                            'Py_CLEAR({});'.format(module_static),
                            'Py_CLEAR(modname);')
-        # the type objects returned from CPyType_FromTemplate are all new references
-        # so we have to decref them
         for name, typ in module.final_names:
             static_name = emitter.static_name(name, module_name)
             if emitter.ctype(typ) == 'PyObject *':
                 emitter.emit_line('Py_CLEAR({});'.format(static_name))
             elif is_tagged(typ):
                 emitter.emit_line('CPyTagged_XDecRef({});'.format(static_name))
+        # the type objects returned from CPyType_FromTemplate are all new references
+        # so we have to decref them
         for t in type_structs:
             emitter.emit_line('Py_CLEAR({});'.format(t))
         emitter.emit_line('return NULL;')
