@@ -591,18 +591,30 @@ class A:
 import collections, x
 X = collections.namedtuple('X', ['a', 'b'])
 [out]
-from collections import namedtuple
+from typing import Any, NamedTuple
 
-X = namedtuple('X', ['a', 'b'])
+class X(NamedTuple):
+    a: Any
+    b: Any
+
+[case testEmptyNamedtuple]
+import collections
+X = collections.namedtuple('X', [])
+[out]
+from typing import NamedTuple
+
+class X(NamedTuple): ...
 
 [case testNamedtupleAltSyntax]
 from collections import namedtuple, xx
 X = namedtuple('X', 'a b')
 xx
 [out]
-from collections import namedtuple
+from typing import Any, NamedTuple
 
-X = namedtuple('X', 'a b')
+class X(NamedTuple):
+    a: Any
+    b: Any
 
 [case testNamedtupleWithUnderscore]
 from collections import namedtuple as _namedtuple
@@ -610,11 +622,13 @@ def f(): ...
 X = _namedtuple('X', 'a b')
 def g(): ...
 [out]
-from collections import namedtuple
+from typing import Any, NamedTuple
 
 def f() -> None: ...
 
-X = namedtuple('X', 'a b')
+class X(NamedTuple):
+    a: Any
+    b: Any
 
 def g() -> None: ...
 
@@ -623,9 +637,11 @@ import collections, x
 _X = collections.namedtuple('_X', ['a', 'b'])
 class Y(_X): ...
 [out]
-from collections import namedtuple
+from typing import Any, NamedTuple
 
-_X = namedtuple('_X', ['a', 'b'])
+class _X(NamedTuple):
+    a: Any
+    b: Any
 
 class Y(_X): ...
 
@@ -636,13 +652,19 @@ Y = namedtuple('Y', ('a',))
 Z = namedtuple('Z', ('a', 'b', 'c', 'd', 'e'))
 xx
 [out]
-from collections import namedtuple
+from typing import Any, NamedTuple
 
-X = namedtuple('X', [])
+class X(NamedTuple): ...
 
-Y = namedtuple('Y', ['a'])
+class Y(NamedTuple):
+    a: Any
 
-Z = namedtuple('Z', ['a', 'b', 'c', 'd', 'e'])
+class Z(NamedTuple):
+    a: Any
+    b: Any
+    c: Any
+    d: Any
+    e: Any
 
 [case testDynamicNamedTuple]
 from collections import namedtuple
@@ -2187,10 +2209,12 @@ from collections import namedtuple
 class C:
     N = namedtuple('N', ['x', 'y'])
 [out]
-from collections import namedtuple
+from typing import Any, NamedTuple
 
 class C:
-    N = namedtuple('N', ['x', 'y'])
+    class N(NamedTuple):
+        x: Any
+        y: Any
 
 [case testImports_directImportsWithAlias]
 import p.a as a
