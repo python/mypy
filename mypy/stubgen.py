@@ -642,7 +642,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                     else:
                         annotation = ': {} = ...'.format(typename)
                 else:
-                    annotation += '=...'
+                    annotation += ' = ...'
                 arg = name + annotation
             elif kind == ARG_STAR:
                 arg = '*%s%s' % (name, annotation)
