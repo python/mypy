@@ -433,3 +433,17 @@ _testDefaultDictInference.py:5: note: Revealed type is "collections.defaultdict[
 from collections import abc
 [out]
 _testIgnorePython3StdlibStubs_python2.py:1: error: Module "collections" has no attribute "abc"
+
+[case testNoApprovedPython2StubInstalled_python2]
+# flags: --ignore-missing-imports
+import scribe
+from scribe import x
+import maxminddb
+import foobar_asdf
+[out]
+_testNoApprovedPython2StubInstalled_python2.py:2: error: Library stubs not installed for "scribe" (or incompatible with Python 2.7)
+_testNoApprovedPython2StubInstalled_python2.py:2: note: Hint: "python3 -m pip install types-scribe"
+_testNoApprovedPython2StubInstalled_python2.py:2: note: (or run "mypy --install-types" to install all missing stub packages)
+_testNoApprovedPython2StubInstalled_python2.py:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+_testNoApprovedPython2StubInstalled_python2.py:4: error: Library stubs not installed for "maxminddb" (or incompatible with Python 2.7)
+_testNoApprovedPython2StubInstalled_python2.py:4: note: Hint: "python3 -m pip install types-maxminddb"
