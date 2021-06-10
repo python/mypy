@@ -13,8 +13,7 @@ to read a different file instead (see :ref:`config-file-flag`).
 It is important to understand that there is no merging of configuration
 files, as it would lead to ambiguity.  The :option:`--config-file <mypy --config-file>` flag
 has the highest precedence and must be correct; otherwise mypy will report
-an error and exit.  Without command line option, mypy will look for defaults in the above mentioned order,
-but will use only one of them.
+an error and exit.  Without command line option, mypy will look for configuration files in the above mentioned order.
 
 Most flags correspond closely to :ref:`command-line flags
 <command-line>` but there are some differences in flag names and some
