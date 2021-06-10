@@ -900,7 +900,6 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
     def process_namedtuple(self, lvalue: NameExpr, rvalue: CallExpr) -> None:
         if self._state != EMPTY:
             self.add('\n')
-        name = repr(getattr(rvalue.args[0], 'value', ERROR_MARKER))
         if isinstance(rvalue.args[1], StrExpr):
             items = rvalue.args[1].value.split(" ")
         elif isinstance(rvalue.args[1], (ListExpr, TupleExpr)):
