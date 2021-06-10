@@ -297,6 +297,9 @@ class Options:
         self.show_absolute_path = False  # type: bool
         # Install missing stub packages if True
         self.install_types = False
+        # Install missing stub packages in non-interactive mode (don't prompt for
+        # confirmation, and don't show any errors)
+        self.non_interactive = False
         # When we encounter errors that may cause many additional errors,
         # skip most errors after this many messages have been reported.
         # -1 means unlimited.
