@@ -1555,10 +1555,27 @@ class A:
 from typing import Any
 
 def f(x: Any) -> None: ...
-def g(x: Any, y: str) -> Any: ...
+def g(x: Any, y: str): ...
 
 class A:
     def f(self, x: Any) -> None: ...
+
+[case testExplicitReturnedAny]
+from typing import Any
+
+def f(x: str) -> Any:
+    pass
+def g(x, y: str) -> Any:
+    pass
+def h(x) -> Any:
+    pass
+
+[out]
+from typing import Any
+
+def f(x: str) -> Any: ...
+def g(x: Any, y: str) -> Any: ...
+def h(x: Any) -> Any: ...
 
 [case testPlacementOfDecorators]
 class A:

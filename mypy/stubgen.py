@@ -654,7 +654,12 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             args.append(arg)
         retname = None
         if o.name != '__init__' and isinstance(o.unanalyzed_type, CallableType):
-            retname = self.print_annotation(o.unanalyzed_type.ret_type)
+            if isinstance(o.unanalyzed_type.ret_type, AnyType):
+                # Luckily, a function explicitly annotated with "Any" has
+                # return type "UnboundType" and will enter the else branch.
+                retname = None  # implicit Any
+            else:
+                retname = self.print_annotation(o.unanalyzed_type.ret_type)
         elif isinstance(o, FuncDef) and (o.is_abstract or o.name in METHODS_WITH_RETURN_VALUE):
             # Always assume abstract methods return Any unless explicitly annotated. Also
             # some dunder methods should not have a None return type.
