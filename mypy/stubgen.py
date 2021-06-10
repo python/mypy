@@ -536,7 +536,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         # Disable implicit exports of package-internal imports?
         self.export_less = export_less
         # Add imports that could be implicitly generated
-        self.import_tracker.add_import_from("collections", [("namedtuple", None)])
+        self.import_tracker.add_import_from("typing", [("NamedTuple", None)])
         # Names in __all__ are required
         for name in _all_ or ():
             if name not in IGNORED_DUNDERS:
@@ -900,18 +900,24 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
     def process_namedtuple(self, lvalue: NameExpr, rvalue: CallExpr) -> None:
         if self._state != EMPTY:
             self.add('\n')
-        name = repr(getattr(rvalue.args[0], 'value', ERROR_MARKER))
         if isinstance(rvalue.args[1], StrExpr):
-            items = repr(rvalue.args[1].value)
+            items = rvalue.args[1].value.split(" ")
         elif isinstance(rvalue.args[1], (ListExpr, TupleExpr)):
             list_items = cast(List[StrExpr], rvalue.args[1].items)
-            items = '[%s]' % ', '.join(repr(item.value) for item in list_items)
+            items = [item.value for item in list_items]
         else:
             self.add('%s%s: Any' % (self._indent, lvalue.name))
             self.import_tracker.require_name('Any')
             return
-        self.import_tracker.require_name('namedtuple')
-        self.add('%s%s = namedtuple(%s, %s)\n' % (self._indent, lvalue.name, name, items))
+        self.import_tracker.require_name('NamedTuple')
+        self.add('{}class {}(NamedTuple):'.format(self._indent, lvalue.name))
+        if len(items) == 0:
+            self.add(' ...\n')
+        else:
+            self.import_tracker.require_name('Any')
+            self.add('\n')
+            for item in items:
+                self.add('{}    {}: Any\n'.format(self._indent, item))
         self._state = CLASS
 
     def is_alias_expression(self, expr: Expression, top_level: bool = True) -> bool:
