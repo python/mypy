@@ -72,13 +72,18 @@ def main(script_path: Optional[str],
 
     if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
         # Since --install-types performs user input, we want regular stdout and stderr.
-        fail("--install-types not supported in this mode of running mypy", stderr, options)
+        fail("Error: --install-types not supported in this mode of running mypy", stderr, options)
+
+    if options.non_interactive and not options.install_types:
+        fail("Error: --non-interactive is only supported with --install-types", stderr, options)
 
     if options.install_types and not sources:
-        install_types(options.cache_dir, formatter)
+        install_types(options.cache_dir, formatter, non_interactive=options.non_interactive)
         return
 
     def flush_errors(new_messages: List[str], serious: bool) -> None:
+        if options.non_interactive:
+            return
         if options.pretty:
             new_messages = formatter.fit_in_terminal(new_messages)
         messages.extend(new_messages)
@@ -100,7 +105,10 @@ def main(script_path: Optional[str],
         blockers = True
         if not e.use_stdout:
             serious = True
-    if options.warn_unused_configs and options.unused_configs and not options.incremental:
+    if (options.warn_unused_configs
+            and options.unused_configs
+            and not options.incremental
+            and not options.non_interactive):
         print("Warning: unused section(s) in %s: %s" %
               (options.config_file,
               get_config_module_names(options.config_file,
@@ -116,7 +124,7 @@ def main(script_path: Optional[str],
     code = 0
     if messages:
         code = 2 if blockers else 1
-    if options.error_summary:
+    if options.error_summary and not options.non_interactive:
         if messages:
             n_errors, n_files = util.count_stats(messages)
             if n_errors:
@@ -130,7 +138,8 @@ def main(script_path: Optional[str],
         stdout.flush()
 
     if options.install_types:
-        install_types(options.cache_dir, formatter, after_run=True)
+        install_types(options.cache_dir, formatter, after_run=True,
+                      non_interactive=options.non_interactive)
         return
 
     if options.fast_exit:
@@ -751,6 +760,10 @@ def process_options(args: List[str],
     add_invertible_flag('--install-types', default=False, strict_flag=False,
                         help="Install detected missing library stub packages using pip",
                         group=other_group)
+    add_invertible_flag('--non-interactive', default=False, strict_flag=False,
+                        help=("Install stubs without asking for confirmation and hide " +
+                              "errors, with --install-types"),
+                        group=other_group, inverse="--interactive")
 
     if server_options:
         # TODO: This flag is superfluous; remove after a short transition (2018-03-16)
@@ -1072,7 +1085,9 @@ def fail(msg: str, stderr: TextIO, options: Options) -> None:
 
 def install_types(cache_dir: str,
                   formatter: util.FancyFormatter,
-                  after_run: bool = False) -> None:
+                  *,
+                  after_run: bool = False,
+                  non_interactive: bool = False) -> None:
     """Install stub packages using pip if some missing stubs were detected."""
     if not os.path.isdir(cache_dir):
         sys.stderr.write(
@@ -1084,15 +1099,16 @@ def install_types(cache_dir: str,
         return
     with open(fnam) as f:
         packages = [line.strip() for line in f.readlines()]
-    if after_run:
+    if after_run and not non_interactive:
         print()
     print('Installing missing stub packages:')
     cmd = [sys.executable, '-m', 'pip', 'install'] + packages
     print(formatter.style(' '.join(cmd), 'none', bold=True))
     print()
-    x = input('Install? [yN] ')
-    if not x.strip() or not x.lower().startswith('y'):
-        print(formatter.style('mypy: Skipping installation', 'red', bold=True))
-        sys.exit(2)
-    print()
+    if not non_interactive:
+        x = input('Install? [yN] ')
+        if not x.strip() or not x.lower().startswith('y'):
+            print(formatter.style('mypy: Skipping installation', 'red', bold=True))
+            sys.exit(2)
+        print()
     subprocess.run(cmd)
