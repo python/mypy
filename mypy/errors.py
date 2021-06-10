@@ -418,6 +418,7 @@ class Errors:
             code=None,
             blocker=False,
             only_once=True,
+            allow_dups=False,
             origin=info.origin,
             target=info.target,
         )
