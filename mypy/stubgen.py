@@ -72,7 +72,7 @@ from mypy.nodes import (
     Expression, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr,
     TupleExpr, ListExpr, ComparisonExpr, CallExpr, IndexExpr, EllipsisExpr,
     ClassDef, MypyFile, Decorator, AssignmentStmt, TypeInfo,
-    IfStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, TempNode, Block,
+    IfStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, Block,
     Statement, OverloadedFuncDef, ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT
 )
 from mypy.stubgenc import generate_stub_for_c_module
@@ -678,7 +678,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.visit_func_def(o.func, is_abstract=is_abstract)
 
     def process_decorator(self, o: Decorator) -> Tuple[bool, bool]:
-        """Process a series of decorataors.
+        """Process a series of decorators.
 
         Only preserve certain special decorators such as @abstractmethod.
 
@@ -1076,9 +1076,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 typename += '[{}]'.format(final_arg)
         else:
             typename = self.get_str_type_of_node(rvalue)
-        has_rhs = not (isinstance(rvalue, TempNode) and rvalue.no_rhs)
-        initializer = " = ..." if has_rhs and not self.is_top_level() else ""
-        return '%s%s: %s%s\n' % (self._indent, lvalue, typename, initializer)
+        return '%s%s: %s\n' % (self._indent, lvalue, typename)
 
     def add(self, string: str) -> None:
         """Add text to generated stub."""
