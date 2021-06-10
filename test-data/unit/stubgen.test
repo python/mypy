@@ -161,7 +161,7 @@ class C:
     x = 1
 [out]
 class C:
-    x: int = ...
+    x: int
 
 [case testInitTypeAnnotationPreserved]
 class C:
@@ -178,7 +178,7 @@ class C:
         x.y = 2
 [out]
 class C:
-    x: int = ...
+    x: int
     def __init__(self) -> None: ...
 
 [case testSelfAndClassBodyAssignment]
@@ -192,7 +192,7 @@ class C:
 x: int
 
 class C:
-    x: int = ...
+    x: int
     def __init__(self) -> None: ...
 
 [case testEmptyClass]
@@ -244,7 +244,7 @@ class A:
 _x: int
 
 class A:
-    _y: int = ...
+    _y: int
 
 [case testSpecialInternalVar]
 __all__ = []
@@ -438,7 +438,7 @@ class A:
     def f(self): ...
 [out]
 class A:
-    x: int = ...
+    x: int
     def f(self) -> None: ...
 
 [case testSkipMultiplePrivateDefs]
@@ -720,7 +720,7 @@ class A:
 [out]
 class A:
     class B:
-        x: int = ...
+        x: int
         def f(self) -> None: ...
     def g(self) -> None: ...
 
@@ -775,7 +775,7 @@ class A:
 from typing import Any, Optional
 
 class A:
-    x: Any = ...
+    x: Any
     def __init__(self, a: Optional[Any] = ...) -> None: ...
     def method(self, a: Optional[Any] = ...) -> None: ...
 
@@ -911,7 +911,7 @@ class Foo:
 from typing import Any
 
 class Foo:
-    alias: Any = ...
+    alias: Any
 
 [case testAliasExceptions]
 noalias1 = None
@@ -1561,14 +1561,14 @@ class B:
 from typing import Any
 
 class A:
-    y: str = ...
+    y: str
     @property
     def x(self): ...
 
 class B:
     @property
     def x(self): ...
-    y: str = ...
+    y: str
     @x.setter
     def x(self, value: Any) -> None: ...
 
@@ -2174,7 +2174,7 @@ class C:
 from typing import Any
 
 class C:
-    x: Any = ...
+    x: Any
     def __init__(self, x: Any) -> None: ...
     def __lt__(self, other: Any) -> Any: ...
     def __le__(self, other: Any) -> Any: ...
