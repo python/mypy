@@ -28,6 +28,8 @@ legacy_bundled_packages = {
     'backports_abc': StubInfo('types-backports_abc'),
     'bleach': StubInfo('types-bleach'),
     'boto': StubInfo('types-boto'),
+    'boto3': StubInfo('types-boto3'),
+    'botocore': StubInfo('types-botocore'),
     'cachetools': StubInfo('types-cachetools'),
     'certifi': StubInfo('types-certifi'),
     'characteristic': StubInfo('types-characteristic'),
