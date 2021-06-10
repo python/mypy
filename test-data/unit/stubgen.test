@@ -390,10 +390,8 @@ class A:
     def __getstate__(self): ...
     def __setstate__(self, state): ...
 [out]
-from typing import Any
-
 class A:
-    def __eq__(self) -> Any: ...
+    def __eq__(self): ...
 
 -- Tests that will perform runtime imports of modules.
 -- Don't use `_import` suffix if there are unquoted forward references.
@@ -1527,11 +1525,10 @@ class Base(metaclass=ABCMeta):
 import abc
 from abc import abstractmethod
 from base import Base
-from typing import Any
 
 class C(Base, metaclass=abc.ABCMeta):
     @abstractmethod
-    def other(self) -> Any: ...
+    def other(self): ...
 
 [case testInvalidNumberOfArgsInAnnotation]
 def f(x):
@@ -1666,12 +1663,11 @@ class A:
 
 [out]
 import abc
-from typing import Any
 
 class A(metaclass=abc.ABCMeta):
     @property
     @abc.abstractmethod
-    def x(self) -> Any: ...
+    def x(self): ...
 
 [case testAbstractProperty2_semanal]
 import other
@@ -1683,12 +1679,11 @@ class A:
 
 [out]
 import abc
-from typing import Any
 
 class A(metaclass=abc.ABCMeta):
     @property
     @abc.abstractmethod
-    def x(self) -> Any: ...
+    def x(self): ...
 
 [case testAbstractProperty3_semanal]
 import other
@@ -1700,12 +1695,11 @@ class A:
 
 [out]
 import abc
-from typing import Any
 
 class A(metaclass=abc.ABCMeta):
     @property
     @abc.abstractmethod
-    def x(self) -> Any: ...
+    def x(self): ...
 
 [case testClassWithNameAnyOrOptional]
 def f(x=object()):
@@ -2198,10 +2192,10 @@ from typing import Any
 class C:
     x: Any = ...
     def __init__(self, x: Any) -> None: ...
-    def __lt__(self, other: Any) -> Any: ...
-    def __le__(self, other: Any) -> Any: ...
-    def __gt__(self, other: Any) -> Any: ...
-    def __ge__(self, other: Any) -> Any: ...
+    def __lt__(self, other: Any): ...
+    def __le__(self, other: Any): ...
+    def __gt__(self, other: Any): ...
+    def __ge__(self, other: Any): ...
 
 [case testNamedTupleInClass]
 from collections import namedtuple

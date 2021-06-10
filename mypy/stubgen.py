@@ -658,8 +658,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         elif isinstance(o, FuncDef) and (o.is_abstract or o.name in METHODS_WITH_RETURN_VALUE):
             # Always assume abstract methods return Any unless explicitly annotated. Also
             # some dunder methods should not have a None return type.
-            retname = self.typing_name('Any')
-            self.add_typing_import("Any")
+            retname = None  # implicit Any
         elif not has_return_statement(o) and not is_abstract:
             retname = 'None'
         retfield = ''
