@@ -797,7 +797,7 @@ t + 1
 _program.py:3: error: No overload variant of "__add__" of "tuple" matches argument type "int"
 _program.py:3: note: Possible overload variants:
 _program.py:3: note:     def __add__(self, Tuple[str, ...]) -> Tuple[str, ...]
-_program.py:3: note:     def __add__(self, Tuple[Any, ...]) -> Tuple[Any, ...]
+_program.py:3: note:     def [_T] __add__(self, Tuple[_T, ...]) -> Tuple[Union[str, _T], ...]
 
 [case testMultiplyTupleByIntegerReverse]
 n = 4
@@ -807,7 +807,7 @@ t + 1
 _program.py:3: error: No overload variant of "__add__" of "tuple" matches argument type "int"
 _program.py:3: note: Possible overload variants:
 _program.py:3: note:     def __add__(self, Tuple[str, ...]) -> Tuple[str, ...]
-_program.py:3: note:     def __add__(self, Tuple[Any, ...]) -> Tuple[Any, ...]
+_program.py:3: note:     def [_T] __add__(self, Tuple[_T, ...]) -> Tuple[Union[str, _T], ...]
 
 [case testDictWithKeywordArgs]
 from typing import Dict, Any, List

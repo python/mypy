@@ -17,18 +17,13 @@ if sys.version_info >= (3, 8):
     @overload
     def new(key: bytes, *, digestmod: _DigestMod) -> HMAC: ...
 
-elif sys.version_info >= (3, 4):
-    def new(key: bytes, msg: Optional[ReadableBuffer] = ..., digestmod: Optional[_DigestMod] = ...) -> HMAC: ...
-
 else:
     def new(key: bytes, msg: Optional[ReadableBuffer] = ..., digestmod: Optional[_DigestMod] = ...) -> HMAC: ...
 
 class HMAC:
-    if sys.version_info >= (3,):
-        digest_size: int
-    if sys.version_info >= (3, 4):
-        block_size: int
-        name: str
+    digest_size: int
+    block_size: int
+    name: str
     def __init__(self, key: bytes, msg: Optional[ReadableBuffer] = ..., digestmod: _DigestMod = ...) -> None: ...
     def update(self, msg: ReadableBuffer) -> None: ...
     def digest(self) -> bytes: ...

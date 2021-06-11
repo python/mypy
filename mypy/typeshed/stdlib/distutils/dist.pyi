@@ -1,9 +1,9 @@
-from _typeshed import AnyPath, SupportsWrite
+from _typeshed import StrOrBytesPath, SupportsWrite
 from distutils.cmd import Command
 from typing import IO, Any, Dict, Iterable, List, Mapping, Optional, Tuple, Type, Union
 
 class DistributionMetadata:
-    def __init__(self, path: Optional[Union[int, AnyPath]] = ...) -> None: ...
+    def __init__(self, path: Optional[Union[int, StrOrBytesPath]] = ...) -> None: ...
     name: Optional[str]
     version: Optional[str]
     author: Optional[str]

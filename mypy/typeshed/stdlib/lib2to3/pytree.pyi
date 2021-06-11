@@ -1,22 +1,21 @@
-import sys
 from lib2to3.pgen2.grammar import Grammar
-from typing import Any, Callable, Dict, Iterator, List, Optional, Text, Tuple, TypeVar, Union
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, TypeVar, Union
 
 _P = TypeVar("_P")
 _NL = Union[Node, Leaf]
-_Context = Tuple[Text, int, int]
-_Results = Dict[Text, _NL]
-_RawNode = Tuple[int, Text, _Context, Optional[List[_NL]]]
+_Context = Tuple[str, int, int]
+_Results = Dict[str, _NL]
+_RawNode = Tuple[int, str, _Context, Optional[List[_NL]]]
 _Convert = Callable[[Grammar, _RawNode], Any]
 
 HUGE: int
 
-def type_repr(type_num: int) -> Text: ...
+def type_repr(type_num: int) -> str: ...
 
 class Base:
     type: int
     parent: Optional[Node]
-    prefix: Text
+    prefix: str
     children: List[_NL]
     was_changed: bool
     was_checked: bool
@@ -35,10 +34,7 @@ class Base:
     def prev_sibling(self) -> Optional[_NL]: ...
     def leaves(self) -> Iterator[Leaf]: ...
     def depth(self) -> int: ...
-    def get_suffix(self) -> Text: ...
-    if sys.version_info < (3,):
-        def get_prefix(self) -> Text: ...
-        def set_prefix(self, prefix: Text) -> None: ...
+    def get_suffix(self) -> str: ...
 
 class Node(Base):
     fixers_applied: List[Any]
@@ -47,7 +43,7 @@ class Node(Base):
         type: int,
         children: List[_NL],
         context: Optional[Any] = ...,
-        prefix: Optional[Text] = ...,
+        prefix: Optional[str] = ...,
         fixers_applied: Optional[List[Any]] = ...,
     ) -> None: ...
     def set_child(self, i: int, child: _NL) -> None: ...
@@ -57,14 +53,14 @@ class Node(Base):
 class Leaf(Base):
     lineno: int
     column: int
-    value: Text
+    value: str
     fixers_applied: List[Any]
     def __init__(
         self,
         type: int,
-        value: Text,
+        value: str,
         context: Optional[_Context] = ...,
-        prefix: Optional[Text] = ...,
+        prefix: Optional[str] = ...,
         fixers_applied: List[Any] = ...,
     ) -> None: ...
 
@@ -72,26 +68,26 @@ def convert(gr: Grammar, raw_node: _RawNode) -> _NL: ...
 
 class BasePattern:
     type: int
-    content: Optional[Text]
-    name: Optional[Text]
+    content: Optional[str]
+    name: Optional[str]
     def optimize(self) -> BasePattern: ...  # sic, subclasses are free to optimize themselves into different patterns
     def match(self, node: _NL, results: Optional[_Results] = ...) -> bool: ...
     def match_seq(self, nodes: List[_NL], results: Optional[_Results] = ...) -> bool: ...
     def generate_matches(self, nodes: List[_NL]) -> Iterator[Tuple[int, _Results]]: ...
 
 class LeafPattern(BasePattern):
-    def __init__(self, type: Optional[int] = ..., content: Optional[Text] = ..., name: Optional[Text] = ...) -> None: ...
+    def __init__(self, type: Optional[int] = ..., content: Optional[str] = ..., name: Optional[str] = ...) -> None: ...
 
 class NodePattern(BasePattern):
     wildcards: bool
-    def __init__(self, type: Optional[int] = ..., content: Optional[Text] = ..., name: Optional[Text] = ...) -> None: ...
+    def __init__(self, type: Optional[int] = ..., content: Optional[str] = ..., name: Optional[str] = ...) -> None: ...
 
 class WildcardPattern(BasePattern):
     min: int
     max: int
-    def __init__(self, content: Optional[Text] = ..., min: int = ..., max: int = ..., name: Optional[Text] = ...) -> None: ...
+    def __init__(self, content: Optional[str] = ..., min: int = ..., max: int = ..., name: Optional[str] = ...) -> None: ...
 
 class NegatedPattern(BasePattern):
-    def __init__(self, content: Optional[Text] = ...) -> None: ...
+    def __init__(self, content: Optional[str] = ...) -> None: ...
 
 def generate_matches(patterns: List[BasePattern], nodes: List[_NL]) -> Iterator[Tuple[int, _Results]]: ...

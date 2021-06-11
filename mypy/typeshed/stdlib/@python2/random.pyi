@@ -1,5 +1,5 @@
 import _random
-from typing import AbstractSet, Any, Callable, Iterator, List, MutableSequence, Protocol, Sequence, TypeVar, Union, overload
+from typing import Any, Callable, Iterator, List, MutableSequence, Protocol, Sequence, TypeVar, overload
 
 _T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)

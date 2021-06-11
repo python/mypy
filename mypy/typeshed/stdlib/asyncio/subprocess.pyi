@@ -1,12 +1,12 @@
 import subprocess
 import sys
-from _typeshed import AnyPath
+from _typeshed import StrOrBytesPath
 from asyncio import events, protocols, streams, transports
 from typing import IO, Any, Callable, Optional, Tuple, Union
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 8):
-    _ExecArg = AnyPath
+    _ExecArg = StrOrBytesPath
 else:
     _ExecArg = Union[str, bytes]
 
@@ -56,10 +56,10 @@ if sys.version_info >= (3, 10):
         errors: None = ...,
         text: Literal[False, None] = ...,
         # These parameters are taken by subprocess.Popen, which this ultimately delegates to
-        executable: Optional[AnyPath] = ...,
+        executable: Optional[StrOrBytesPath] = ...,
         preexec_fn: Optional[Callable[[], Any]] = ...,
         close_fds: bool = ...,
-        cwd: Optional[AnyPath] = ...,
+        cwd: Optional[StrOrBytesPath] = ...,
         env: Optional[subprocess._ENV] = ...,
         startupinfo: Optional[Any] = ...,
         creationflags: int = ...,
@@ -82,10 +82,10 @@ if sys.version_info >= (3, 10):
         errors: None = ...,
         # These parameters are taken by subprocess.Popen, which this ultimately delegates to
         text: Optional[bool] = ...,
-        executable: Optional[AnyPath] = ...,
+        executable: Optional[StrOrBytesPath] = ...,
         preexec_fn: Optional[Callable[[], Any]] = ...,
         close_fds: bool = ...,
-        cwd: Optional[AnyPath] = ...,
+        cwd: Optional[StrOrBytesPath] = ...,
         env: Optional[subprocess._ENV] = ...,
         startupinfo: Optional[Any] = ...,
         creationflags: int = ...,
@@ -111,10 +111,10 @@ else:
         errors: None = ...,
         text: Literal[False, None] = ...,
         # These parameters are taken by subprocess.Popen, which this ultimately delegates to
-        executable: Optional[AnyPath] = ...,
+        executable: Optional[StrOrBytesPath] = ...,
         preexec_fn: Optional[Callable[[], Any]] = ...,
         close_fds: bool = ...,
-        cwd: Optional[AnyPath] = ...,
+        cwd: Optional[StrOrBytesPath] = ...,
         env: Optional[subprocess._ENV] = ...,
         startupinfo: Optional[Any] = ...,
         creationflags: int = ...,
@@ -138,10 +138,10 @@ else:
         errors: None = ...,
         # These parameters are taken by subprocess.Popen, which this ultimately delegates to
         text: Optional[bool] = ...,
-        executable: Optional[AnyPath] = ...,
+        executable: Optional[StrOrBytesPath] = ...,
         preexec_fn: Optional[Callable[[], Any]] = ...,
         close_fds: bool = ...,
-        cwd: Optional[AnyPath] = ...,
+        cwd: Optional[StrOrBytesPath] = ...,
         env: Optional[subprocess._ENV] = ...,
         startupinfo: Optional[Any] = ...,
         creationflags: int = ...,
