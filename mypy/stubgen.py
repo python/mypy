@@ -85,7 +85,7 @@ from mypy.stubdoc import parse_all_signatures, find_unique_signatures, Sig
 from mypy.options import Options as MypyOptions
 from mypy.types import (
     Type, TypeStrVisitor, CallableType, UnboundType, NoneType, TupleType, TypeList, Instance,
-    AnyType
+    AnyType, get_proper_type
 )
 from mypy.visitor import NodeVisitor
 from mypy.find_sources import create_source_list, InvalidSourceList
@@ -624,13 +624,13 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             # name their 0th argument other than self/cls
             is_self_arg = i == 0 and name == 'self'
             is_cls_arg = i == 0 and name == 'cls'
-            if annotated_type and not isinstance(annotated_type, AnyType) and \
-                    not is_self_arg and not is_cls_arg:
+            annotation = ""
+            if annotated_type and not is_self_arg and not is_cls_arg:
+                print(annotated_type, get_proper_type(annotated_type))
                 # Luckily, an argument explicitly annotated with "Any" has
-                # type "UnboundType" and will enter the else branch.
-                annotation = ": {}".format(self.print_annotation(annotated_type))
-            else:
-                annotation = ""
+                # type "UnboundType" and will not match.
+                if not isinstance(get_proper_type(annotated_type), AnyType):
+                    annotation = ": {}".format(self.print_annotation(annotated_type))
             if arg_.initializer:
                 if kind in (ARG_NAMED, ARG_NAMED_OPT) and not any(arg.startswith('*')
                                                                   for arg in args):
@@ -653,7 +653,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             args.append(arg)
         retname = None
         if o.name != '__init__' and isinstance(o.unanalyzed_type, CallableType):
-            if isinstance(o.unanalyzed_type.ret_type, AnyType):
+            if isinstance(get_proper_type(o.unanalyzed_type.ret_type), AnyType):
                 # Luckily, a return type explicitly annotated with "Any" has
                 # type "UnboundType" and will enter the else branch.
                 retname = None  # implicit Any
