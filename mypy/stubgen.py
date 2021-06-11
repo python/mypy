@@ -626,7 +626,6 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             is_cls_arg = i == 0 and name == 'cls'
             annotation = ""
             if annotated_type and not is_self_arg and not is_cls_arg:
-                print(annotated_type, get_proper_type(annotated_type))
                 # Luckily, an argument explicitly annotated with "Any" has
                 # type "UnboundType" and will not match.
                 if not isinstance(get_proper_type(annotated_type), AnyType):
