@@ -900,10 +900,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             args: actual argument expressions
             arg_kinds: contains nodes.ARG_* constant for each argument in args
                  describing whether the argument is positional, *arg, etc.
+            context: current expression context, used for inference.
             arg_names: names of arguments (optional)
             callable_node: associate the inferred callable type to this node,
                 if specified
-            arg_messages: TODO
+            arg_messages: utility for generating messages, can be swapped to suppress errors,
+                by default uses 'self.msg' to show errors
             callable_name: Fully-qualified name of the function/method to call,
                 or None if unavailable (examples: 'builtins.open', 'typing.Mapping.get')
             object_type: If callable_name refers to a method, the type of the object
