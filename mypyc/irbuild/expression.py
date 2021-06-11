@@ -659,14 +659,21 @@ def _visit_display(builder: IRBuilder,
 
 
 def transform_list_comprehension(builder: IRBuilder, o: ListComprehension) -> Value:
+    if any(o.generator.is_async):
+        builder.error('async comprehensions are unimplemented', o.line)
     return translate_list_comprehension(builder, o.generator)
 
 
 def transform_set_comprehension(builder: IRBuilder, o: SetComprehension) -> Value:
+    if any(o.generator.is_async):
+        builder.error('async comprehensions are unimplemented', o.line)
     return translate_set_comprehension(builder, o.generator)
 
 
 def transform_dictionary_comprehension(builder: IRBuilder, o: DictionaryComprehension) -> Value:
+    if any(o.is_async):
+        builder.error('async comprehensions are unimplemented', o.line)
+
     d = builder.call_c(dict_new_op, [], o.line)
     loop_params = list(zip(o.indices, o.sequences, o.condlists))
 
@@ -696,6 +703,9 @@ def transform_slice_expr(builder: IRBuilder, expr: SliceExpr) -> Value:
 
 
 def transform_generator_expr(builder: IRBuilder, o: GeneratorExpr) -> Value:
+    if any(o.is_async):
+        builder.error('async comprehensions are unimplemented', o.line)
+
     builder.warning('Treating generator comprehension as list', o.line)
     return builder.call_c(
         iter_op, [translate_list_comprehension(builder, o)], o.line

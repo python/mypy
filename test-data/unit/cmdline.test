@@ -1276,3 +1276,15 @@ x = 0  # type: str
 y = 0  # type: str
 [out]
 pkg.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testCmdlineNonInteractiveWithoutInstallTypes]
+# cmd: mypy --non-interactive -m pkg
+[out]
+Error: --non-interactive is only supported with --install-types
+== Return code: 2
+
+[case testCmdlineNonInteractiveInstallTypesNothingToDo]
+# cmd: mypy --install-types --non-interactive -m pkg
+[file pkg.py]
+1()
+[out]

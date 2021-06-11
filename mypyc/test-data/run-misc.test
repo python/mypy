@@ -485,6 +485,8 @@ print(native.x)
 77
 
 [case testComprehensions]
+from typing import List
+
 # A list comprehension
 l = [str(x) + "     " + str(y) + "   " + str(x*y) for x in range(10)
      if x != 6 if x != 5 for y in range(x) if y*x != 8]
@@ -498,6 +500,17 @@ def pred(x: int) -> bool:
 # eventually and will raise an exception.
 l2 = [x for x in range(10) if x <= 6 if pred(x)]
 
+src = ['x']
+
+def f() -> List[str]:
+    global src
+    res = src
+    src = []
+    return res
+
+l3 = [s for s in f()]
+l4 = [s for s in f()]
+
 # A dictionary comprehension
 d = {k: k*k for k in range(10) if k != 5 if k != 6}
 
@@ -506,10 +519,12 @@ s = {str(x) + "     " + str(y) + "   " + str(x*y) for x in range(10)
      if x != 6 if x != 5 for y in range(x) if y*x != 8}
 
 [file driver.py]
-from native import l, l2, d, s
+from native import l, l2, l3, l4, d, s
 for a in l:
     print(a)
 print(tuple(l2))
+assert l3 == ['x']
+assert l4 == []
 for k in sorted(d):
     print(k, d[k])
 for a in sorted(s):
@@ -1037,3 +1052,27 @@ C = sys.platform == 'x' and (lambda x: y + x)
 assert not A
 assert not B
 assert not C
+
+[case testDoesntSegfaultWhenTopLevelFails]
+# make the initial import fail
+assert False
+
+class C:
+    def __init__(self):
+        self.x = 1
+        self.y = 2
+def test() -> None:
+    a = C()
+[file driver.py]
+# load native, cause PyInit to be run, create the module but don't finish initializing the globals
+try:
+    import native
+except:
+    pass
+try:
+    # try accessing those globals that were never properly initialized
+    import native
+    native.test()
+# should fail with AssertionError due to `assert False` in other function
+except AssertionError:
+    pass

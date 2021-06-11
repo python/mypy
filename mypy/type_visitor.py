@@ -12,7 +12,7 @@ other modules refer to them.
 """
 
 from abc import abstractmethod
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 from typing import Generic, TypeVar, cast, Any, List, Callable, Iterable, Optional, Set, Sequence
 from mypy_extensions import trait, mypyc_attr
 
