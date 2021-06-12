@@ -552,6 +552,8 @@ def split_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
     """
     with open(file, encoding='utf-8') as f:
         data = f.read()
+    # number of groups in the below regex
+    NUM_GROUPS = 6
     cases = re.split(r'^\[case ([a-zA-Z_0-9]+)'
                      r'(-writescache)?'
                      r'(-only_when_cache|-only_when_nocache)?'
@@ -561,8 +563,8 @@ def split_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
                      data,
                      flags=re.DOTALL | re.MULTILINE)
     line_no = cases[0].count('\n') + 1
-    for i in range(1, len(cases), 6):
-        name, writescache, only_when, platform_flag, skip, data = cases[i:i + 6]
+    for i in range(1, len(cases), NUM_GROUPS):
+        name, writescache, only_when, platform_flag, skip, data = cases[i:i + NUM_GROUPS]
         platform = platform_flag[1:] if platform_flag else None
         yield DataDrivenTestCase.from_parent(
             parent=parent,
