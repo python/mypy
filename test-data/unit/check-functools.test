@@ -25,12 +25,12 @@ Ord() >= 1  # E: Unsupported operand types for >= ("Ord" and "int")
 
 [case testTotalOrderingLambda]
 from functools import total_ordering
-from typing import Any, Callable
+from typing import Any, Callable, ClassVar
 
 @total_ordering
 class Ord:
-    __eq__: Callable[[Any, object], bool] = lambda self, other: False
-    __lt__: Callable[[Any, "Ord"], bool] = lambda self, other: False
+    __eq__: ClassVar[Callable[[Any, object], bool]] = lambda self, other: False
+    __lt__: ClassVar[Callable[[Any, "Ord"], bool]] = lambda self, other: False
 
 reveal_type(Ord() < Ord())  # N: Revealed type is "builtins.bool"
 reveal_type(Ord() <= Ord())  # N: Revealed type is "builtins.bool"
