@@ -531,6 +531,17 @@ def instance_alias_type(alias: TypeAlias,
     return expand_type_by_instance(tp, target)
 
 
+def is_instance_var(var: Var, info: TypeInfo) -> bool:
+    """Return if var is an instance variable according to PEP 526."""
+    return (
+        # check the type_info node is the var (not a decorated function, etc.)
+        var.name in info.names and info.names[var.name].node is var
+        and not var.is_classvar
+        # variables without annotations are treated as classvar
+        and not var.is_inferred
+    )
+
+
 def analyze_var(name: str,
                 var: Var,
                 itype: Instance,
@@ -559,7 +570,12 @@ def analyze_var(name: str,
         t = get_proper_type(expand_type_by_instance(typ, itype))
         result = t  # type: Type
         typ = get_proper_type(typ)
-        if var.is_initialized_in_class and isinstance(typ, FunctionLike) and not typ.is_type_obj():
+        if (
+            var.is_initialized_in_class
+            and not is_instance_var(var, info)
+            and isinstance(typ, FunctionLike)
+            and not typ.is_type_obj()
+        ):
             if mx.is_lvalue:
                 if var.is_property:
                     if not var.is_settable_property:

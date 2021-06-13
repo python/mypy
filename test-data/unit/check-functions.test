@@ -588,12 +588,12 @@ A().f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "i
 
 
 [case testMethodAsDataAttribute]
-from typing import Any, Callable
+from typing import Any, Callable, ClassVar
 class B: pass
 x = None # type: Any
 class A:
-    f = x # type: Callable[[A], None]
-    g = x # type: Callable[[A, B], None]
+    f = x # type: ClassVar[Callable[[A], None]]
+    g = x # type: ClassVar[Callable[[A, B], None]]
 a = None # type: A
 a.f()
 a.g(B())
@@ -601,25 +601,37 @@ a.f(a) # E: Too many arguments
 a.g()  # E: Too few arguments
 
 [case testMethodWithInvalidMethodAsDataAttribute]
-from typing import Any, Callable
+from typing import Any, Callable, ClassVar
 class B: pass
 x = None # type: Any
 class A:
-    f = x # type: Callable[[], None]
-    g = x # type: Callable[[B], None]
+    f = x # type: ClassVar[Callable[[], None]]
+    g = x # type: ClassVar[Callable[[B], None]]
 a = None # type: A
 a.f() # E: Attribute function "f" with type "Callable[[], None]" does not accept self argument
 a.g() # E: Invalid self argument "A" to attribute function "g" with type "Callable[[B], None]"
 
 [case testMethodWithDynamicallyTypedMethodAsDataAttribute]
-from typing import Any, Callable
+from typing import Any, Callable, ClassVar
 class B: pass
 x = None # type: Any
 class A:
-    f = x # type: Callable[[Any], Any]
+    f = x # type: ClassVar[Callable[[Any], Any]]
 a = None # type: A
 a.f()
 a.f(a) # E: Too many arguments
+
+[case testMethodWithInferredMethodAsDataAttribute]
+from typing import Any
+def m(self: "A") -> int: ...
+
+class A:
+    n = m
+
+a = A()
+reveal_type(a.n())  # N: Revealed type is "builtins.int"
+reveal_type(A.n(a))  # N: Revealed type is "builtins.int"
+A.n()  # E: Too few arguments
 
 [case testOverloadedMethodAsDataAttribute]
 from foo import *
@@ -662,35 +674,35 @@ a.g(B())
 a.g(a)   # E: Argument 1 has incompatible type "A[B]"; expected "B"
 
 [case testInvalidMethodAsDataAttributeInGenericClass]
-from typing import Any, TypeVar, Generic, Callable
+from typing import Any, TypeVar, Generic, Callable, ClassVar
 t = TypeVar('t')
 class B: pass
 class C: pass
 x = None # type: Any
 class A(Generic[t]):
-    f = x # type: Callable[[A[B]], None]
+    f = x # type: ClassVar[Callable[[A[B]], None]]
 ab = None # type: A[B]
 ac = None # type: A[C]
 ab.f()
 ac.f()   # E: Invalid self argument "A[C]" to attribute function "f" with type "Callable[[A[B]], None]"
 
 [case testPartiallyTypedSelfInMethodDataAttribute]
-from typing import Any, TypeVar, Generic, Callable
+from typing import Any, TypeVar, Generic, Callable, ClassVar
 t = TypeVar('t')
 class B: pass
 class C: pass
 x = None # type: Any
 class A(Generic[t]):
-    f = x # type: Callable[[A], None]
+    f = x # type: ClassVar[Callable[[A], None]]
 ab = None # type: A[B]
 ac = None # type: A[C]
 ab.f()
 ac.f()
 
 [case testCallableDataAttribute]
-from typing import Callable
+from typing import Callable, ClassVar
 class A:
-    g = None # type: Callable[[A], None]
+    g = None # type: ClassVar[Callable[[A], None]]
     def __init__(self, f: Callable[[], None]) -> None:
         self.f = f
 a = A(None)
