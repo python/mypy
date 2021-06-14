@@ -22,7 +22,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import RInstance, exc_rtuple
 from mypyc.primitives.generic_ops import py_delattr_op
-from mypyc.primitives.misc_ops import type_op
+from mypyc.primitives.misc_ops import type_op, import_from_op
 from mypyc.primitives.exc_ops import (
     raise_exception_op, reraise_exception_op, error_catch_op, exc_matches_op, restore_exc_info_op,
     get_exc_value_op, keep_propagating_op, get_exc_info_op
@@ -182,7 +182,11 @@ def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:
     # This probably doesn't matter much and the code runs basically right.
     for name, maybe_as_name in node.names:
         as_name = maybe_as_name or name
-        obj = builder.py_get_attr(module, name, node.line)
+        obj = builder.call_c(import_from_op,
+                             [module, builder.load_str(id),
+                              builder.load_str(name), builder.load_str(as_name)],
+                             node.line)
+        # obj = builder.py_get_attr(module, name, node.line)
         builder.gen_method_call(
             globals, '__setitem__', [builder.load_str(as_name), obj],
             result_type=None, line=node.line)
