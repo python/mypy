@@ -1,4 +1,4 @@
-[case testIncorrectDispatchArgumentWhenDoesntMatchFallback-skip]
+[case testIncorrectDispatchArgumentWhenDoesntMatchFallback-xfail]
 from functools import singledispatch
 
 class A: pass
@@ -16,7 +16,7 @@ fun(1) # E: Argument 1 to "fun" has incompatible type "int"; expected "__main__.
 # probably won't be required after singledispatch is special cased
 [builtins fixtures/args.pyi]
 
-[case testMultipleUnderscoreFunctionsIsntError-skip]
+[case testMultipleUnderscoreFunctionsIsntError-xfail]
 from functools import singledispatch
 
 @singledispatch
@@ -31,7 +31,7 @@ def _(arg: int) -> None:
 
 [builtins fixtures/args.pyi]
 
-[case testCheckNonDispatchArgumentsWithTypeAlwaysTheSame-skip]
+[case testCheckNonDispatchArgumentsWithTypeAlwaysTheSame-xfail]
 from functools import singledispatch
 
 @singledispatch
@@ -50,7 +50,7 @@ f('b', 1) # E: Argument 2 to "fun" has incompatible type "int"; expected "str"
 
 [builtins fixtures/args.pyi]
 
-[case testCheckNonDispatchArgumentsUsingMoreSpecificTypeInSpecializedVersion-skip]
+[case testCheckNonDispatchArgumentsUsingMoreSpecificTypeInSpecializedVersion-xfail]
 from functools import singledispatch
 
 class A: pass
@@ -72,7 +72,7 @@ f('b', B())
 
 [builtins fixtures/args.pyi]
 
-[case testImplementationHasSameDispatchTypeAsFallback-skip]
+[case testImplementationHasSameDispatchTypeAsFallback-xfail]
 from functools import singledispatch
 
 # TODO: differentiate between fallback and other implementations in error message
@@ -86,7 +86,7 @@ def g(arg: int) -> None:
 
 [builtins fixtures/args.pyi]
 
-[case testMultipleImplementationsHaveSameDispatchTypes-skip]
+[case testMultipleImplementationsHaveSameDispatchTypes-xfail]
 from functools import singledispatch
 
 @singledispatch
@@ -103,7 +103,7 @@ def h(arg: int) -> None:
 
 [builtins fixtures/args.pyi]
     
-[case testRegisterHasDifferentTypeThanTypeSignature-skip]
+[case testRegisterHasDifferentTypeThanTypeSignature-xfail]
 from functools import singledispatch
 
 @singledispatch
@@ -116,7 +116,7 @@ def g(arg: int) -> None: # E: Argument to register "str" is incompatible with ty
 
 [builtins fixtures/args.pyi]
 
-[case testMoreSpecificGenericNonDispatchArgumentInImplementations-skip]
+[case testMoreSpecificGenericNonDispatchArgumentInImplementations-xfail]
 from functools import singledispatch
 from typing import TypeVar, Optional, Any, Type
 
@@ -146,7 +146,7 @@ f('a', None)
 
 [builtins fixtures/args.pyi]
 
-[case testDispatchBasedOnTypeAnnotationsRequires37-skip]
+[case testDispatchBasedOnTypeAnnotationsRequires37-xfail]
 # flags: --python-version 3.6
 # the docs for singledispatch say that register didn't accept type annotations until python 3.7
 from functools import singledispatch
