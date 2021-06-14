@@ -1,13 +1,21 @@
 import sys
 from types import TracebackType
-from typing import IO, Any, Callable, ContextManager, Iterable, Iterator, Optional, Type, TypeVar, overload
+from typing import (
+    IO,
+    Any,
+    AsyncContextManager,
+    AsyncIterator,
+    Callable,
+    ContextManager,
+    Iterator,
+    Optional,
+    Type,
+    TypeVar,
+    overload,
+)
 from typing_extensions import Protocol
 
-if sys.version_info >= (3, 5):
-    from typing import AsyncContextManager, AsyncIterator
-
-if sys.version_info >= (3, 6):
-    AbstractContextManager = ContextManager
+AbstractContextManager = ContextManager
 if sys.version_info >= (3, 7):
     AbstractAsyncContextManager = AsyncContextManager
 
@@ -19,21 +27,13 @@ _F = TypeVar("_F", bound=Callable[..., Any])
 _ExitFunc = Callable[[Optional[Type[BaseException]], Optional[BaseException], Optional[TracebackType]], bool]
 _CM_EF = TypeVar("_CM_EF", ContextManager[Any], _ExitFunc)
 
-if sys.version_info >= (3, 2):
-    class _GeneratorContextManager(ContextManager[_T_co]):
-        def __call__(self, func: _F) -> _F: ...
-    def contextmanager(func: Callable[..., Iterator[_T]]) -> Callable[..., _GeneratorContextManager[_T]]: ...
+class _GeneratorContextManager(ContextManager[_T_co]):
+    def __call__(self, func: _F) -> _F: ...
 
-else:
-    class GeneratorContextManager(ContextManager[_T_co]):
-        def __call__(self, func: _F) -> _F: ...
-    def contextmanager(func: Callable[..., Iterator[_T]]) -> Callable[..., ContextManager[_T]]: ...
+def contextmanager(func: Callable[..., Iterator[_T]]) -> Callable[..., _GeneratorContextManager[_T]]: ...
 
 if sys.version_info >= (3, 7):
     def asynccontextmanager(func: Callable[..., AsyncIterator[_T]]) -> Callable[..., AsyncContextManager[_T]]: ...
-
-if sys.version_info < (3,):
-    def nested(*mgr: ContextManager[Any]) -> ContextManager[Iterable[Any]]: ...
 
 class _SupportsClose(Protocol):
     def close(self) -> None: ...
@@ -50,37 +50,37 @@ if sys.version_info >= (3, 10):
     class aclosing(AsyncContextManager[_SupportsAcloseT]):
         def __init__(self, thing: _SupportsAcloseT) -> None: ...
 
-if sys.version_info >= (3, 4):
-    class suppress(ContextManager[None]):
-        def __init__(self, *exceptions: Type[BaseException]) -> None: ...
-        def __exit__(
-            self, exctype: Optional[Type[BaseException]], excinst: Optional[BaseException], exctb: Optional[TracebackType]
-        ) -> bool: ...
-    class redirect_stdout(ContextManager[_T_io]):
-        def __init__(self, new_target: _T_io) -> None: ...
+class suppress(ContextManager[None]):
+    def __init__(self, *exceptions: Type[BaseException]) -> None: ...
+    def __exit__(
+        self, exctype: Optional[Type[BaseException]], excinst: Optional[BaseException], exctb: Optional[TracebackType]
+    ) -> bool: ...
 
-if sys.version_info >= (3, 5):
-    class redirect_stderr(ContextManager[_T_io]):
-        def __init__(self, new_target: _T_io) -> None: ...
+class redirect_stdout(ContextManager[_T_io]):
+    def __init__(self, new_target: _T_io) -> None: ...
 
-if sys.version_info >= (3,):
-    class ContextDecorator:
-        def __call__(self, func: _F) -> _F: ...
-    _U = TypeVar("_U", bound=ExitStack)
-    class ExitStack(ContextManager[ExitStack]):
-        def __init__(self) -> None: ...
-        def enter_context(self, cm: ContextManager[_T]) -> _T: ...
-        def push(self, exit: _CM_EF) -> _CM_EF: ...
-        def callback(self, callback: Callable[..., Any], *args: Any, **kwds: Any) -> Callable[..., Any]: ...
-        def pop_all(self: _U) -> _U: ...
-        def close(self) -> None: ...
-        def __enter__(self: _U) -> _U: ...
-        def __exit__(
-            self,
-            __exc_type: Optional[Type[BaseException]],
-            __exc_value: Optional[BaseException],
-            __traceback: Optional[TracebackType],
-        ) -> bool: ...
+class redirect_stderr(ContextManager[_T_io]):
+    def __init__(self, new_target: _T_io) -> None: ...
+
+class ContextDecorator:
+    def __call__(self, func: _F) -> _F: ...
+
+_U = TypeVar("_U", bound=ExitStack)
+
+class ExitStack(ContextManager[ExitStack]):
+    def __init__(self) -> None: ...
+    def enter_context(self, cm: ContextManager[_T]) -> _T: ...
+    def push(self, exit: _CM_EF) -> _CM_EF: ...
+    def callback(self, callback: Callable[..., Any], *args: Any, **kwds: Any) -> Callable[..., Any]: ...
+    def pop_all(self: _U) -> _U: ...
+    def close(self) -> None: ...
+    def __enter__(self: _U) -> _U: ...
+    def __exit__(
+        self,
+        __exc_type: Optional[Type[BaseException]],
+        __exc_value: Optional[BaseException],
+        __traceback: Optional[TracebackType],
+    ) -> bool: ...
 
 if sys.version_info >= (3, 7):
     from typing import Awaitable

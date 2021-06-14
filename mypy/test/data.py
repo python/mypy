@@ -223,6 +223,7 @@ class DataDrivenTestCase(pytest.Item):
                  only_when: str,
                  platform: Optional[str],
                  skip: bool,
+                 xfail: bool,
                  data: str,
                  line: int) -> None:
         super().__init__(name, parent)
@@ -234,6 +235,7 @@ class DataDrivenTestCase(pytest.Item):
                 or (platform == 'posix' and sys.platform == 'win32')):
             skip = True
         self.skip = skip
+        self.xfail = xfail
         self.data = data
         self.line = line
         self.old_cwd = None  # type: Optional[str]
@@ -242,6 +244,9 @@ class DataDrivenTestCase(pytest.Item):
     def runtest(self) -> None:
         if self.skip:
             pytest.skip()
+        # TODO: add a better error message for when someone uses skip and xfail at the same time
+        elif self.xfail:
+            self.add_marker(pytest.mark.xfail)
         suite = self.parent.obj()
         suite.setup()
         try:
@@ -552,17 +557,20 @@ def split_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
     """
     with open(file, encoding='utf-8') as f:
         data = f.read()
+    # number of groups in the below regex
+    NUM_GROUPS = 7
     cases = re.split(r'^\[case ([a-zA-Z_0-9]+)'
                      r'(-writescache)?'
                      r'(-only_when_cache|-only_when_nocache)?'
                      r'(-posix|-windows)?'
                      r'(-skip)?'
+                     r'(-xfail)?'
                      r'\][ \t]*$\n',
                      data,
                      flags=re.DOTALL | re.MULTILINE)
     line_no = cases[0].count('\n') + 1
-    for i in range(1, len(cases), 6):
-        name, writescache, only_when, platform_flag, skip, data = cases[i:i + 6]
+    for i in range(1, len(cases), NUM_GROUPS):
+        name, writescache, only_when, platform_flag, skip, xfail, data = cases[i:i + NUM_GROUPS]
         platform = platform_flag[1:] if platform_flag else None
         yield DataDrivenTestCase.from_parent(
             parent=parent,
@@ -573,6 +581,7 @@ def split_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
             only_when=only_when,
             platform=platform,
             skip=bool(skip),
+            xfail=bool(xfail),
             data=data,
             line=line_no,
         )

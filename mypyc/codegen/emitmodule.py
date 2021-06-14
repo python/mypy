@@ -878,6 +878,7 @@ class GroupGenerator:
             declaration = 'PyObject *CPyInit_{}(void)'.format(exported_name(module_name))
         emitter.emit_lines(declaration,
                            '{')
+        emitter.emit_line('PyObject* modname = NULL;')
         # Store the module reference in a static and return it when necessary.
         # This is separate from the *global* reference to the module that will
         # be populated when it is imported by a compiled module. We want that
@@ -894,7 +895,7 @@ class GroupGenerator:
                            'if (unlikely({} == NULL))'.format(module_static),
                            '    goto fail;')
         emitter.emit_line(
-            'PyObject *modname = PyObject_GetAttrString((PyObject *){}, "__name__");'.format(
+            'modname = PyObject_GetAttrString((PyObject *){}, "__name__");'.format(
                 module_static))
 
         module_globals = emitter.static_name('globals', module_name)
@@ -903,9 +904,11 @@ class GroupGenerator:
                            '    goto fail;')
 
         # HACK: Manually instantiate generated classes here
+        type_structs = []  # type: List[str]
         for cl in module.classes:
+            type_struct = emitter.type_struct_name(cl)
+            type_structs.append(type_struct)
             if cl.is_generated:
-                type_struct = emitter.type_struct_name(cl)
                 emitter.emit_lines(
                     '{t} = (PyTypeObject *)CPyType_FromTemplate('
                     '(PyObject *){t}_template, NULL, modname);'
@@ -922,8 +925,18 @@ class GroupGenerator:
 
         emitter.emit_line('return {};'.format(module_static))
         emitter.emit_lines('fail:',
-                           '{} = NULL;'.format(module_static),
-                           'return NULL;')
+                           'Py_CLEAR({});'.format(module_static),
+                           'Py_CLEAR(modname);')
+        for name, typ in module.final_names:
+            static_name = emitter.static_name(name, module_name)
+            emitter.emit_dec_ref(static_name, typ, is_xdec=True)
+            undef = emitter.c_undefined_value(typ)
+            emitter.emit_line('{} = {};'.format(static_name, undef))
+        # the type objects returned from CPyType_FromTemplate are all new references
+        # so we have to decref them
+        for t in type_structs:
+            emitter.emit_line('Py_CLEAR({});'.format(t))
+        emitter.emit_line('return NULL;')
         emitter.emit_line('}')
 
     def generate_top_level_call(self, module: ModuleIR, emitter: Emitter) -> None:

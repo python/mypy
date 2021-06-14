@@ -1,6 +1,6 @@
-import os
 import ssl
 import sys
+from _typeshed import StrOrBytesPath
 from email.message import Message
 from http.client import HTTPMessage, HTTPResponse, _HTTPConnectionProtocol
 from http.cookiejar import CookieJar
@@ -271,7 +271,7 @@ class HTTPErrorProcessor(BaseHandler):
 
 def urlretrieve(
     url: str,
-    filename: Optional[Union[str, os.PathLike[Any]]] = ...,
+    filename: Optional[StrOrBytesPath] = ...,
     reporthook: Optional[Callable[[int, int, int], None]] = ...,
     data: Optional[bytes] = ...,
 ) -> Tuple[str, HTTPMessage]: ...

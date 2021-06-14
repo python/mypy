@@ -1,5 +1,4 @@
-from abc import ABCMeta, abstractmethod
-from typing import Any, Callable, Dict, Generic, Iterable, Optional, Sequence, Tuple, Type, TypeVar, overload
+from typing import Any, Callable, Dict, Generic, Iterable, Sequence, Tuple, Type, TypeVar, overload
 
 _AnyCallable = Callable[..., Any]
 

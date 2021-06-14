@@ -1,22 +1,12 @@
 import sys
 from _typeshed import SupportsRead
+from importlib.abc import Loader, MetaPathFinder, PathEntryFinder
 from typing import IO, Any, Callable, Iterable, Iterator, List, NamedTuple, Optional, Tuple, Union
 
-if sys.version_info >= (3,):
-    from importlib.abc import Loader, MetaPathFinder, PathEntryFinder
-else:
-    Loader = Any
-    MetaPathFinder = Any
-    PathEntryFinder = Any
-
-if sys.version_info >= (3, 6):
-    class ModuleInfo(NamedTuple):
-        module_finder: Union[MetaPathFinder, PathEntryFinder]
-        name: str
-        ispkg: bool
-    _ModuleInfoLike = ModuleInfo
-else:
-    _ModuleInfoLike = Tuple[Union[MetaPathFinder, PathEntryFinder], str, bool]
+class ModuleInfo(NamedTuple):
+    module_finder: Union[MetaPathFinder, PathEntryFinder]
+    name: str
+    ispkg: bool
 
 def extend_path(path: List[str], name: str) -> List[str]: ...
 
@@ -30,11 +20,11 @@ def find_loader(fullname: str) -> Optional[Loader]: ...
 def get_importer(path_item: str) -> Optional[PathEntryFinder]: ...
 def get_loader(module_or_name: str) -> Loader: ...
 def iter_importers(fullname: str = ...) -> Iterator[Union[MetaPathFinder, PathEntryFinder]]: ...
-def iter_modules(path: Optional[Iterable[str]] = ..., prefix: str = ...) -> Iterator[_ModuleInfoLike]: ...
+def iter_modules(path: Optional[Iterable[str]] = ..., prefix: str = ...) -> Iterator[ModuleInfo]: ...
 def read_code(stream: SupportsRead[bytes]) -> Any: ...  # undocumented
 def walk_packages(
     path: Optional[Iterable[str]] = ..., prefix: str = ..., onerror: Optional[Callable[[str], None]] = ...
-) -> Iterator[_ModuleInfoLike]: ...
+) -> Iterator[ModuleInfo]: ...
 def get_data(package: str, resource: str) -> Optional[bytes]: ...
 
 if sys.version_info >= (3, 9):

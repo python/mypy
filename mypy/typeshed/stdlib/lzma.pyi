@@ -1,12 +1,12 @@
 import io
-from _typeshed import AnyPath, ReadableBuffer
+from _typeshed import ReadableBuffer, StrOrBytesPath
 from typing import IO, Any, Mapping, Optional, Sequence, TextIO, TypeVar, Union, overload
 from typing_extensions import Literal
 
 _OpenBinaryWritingMode = Literal["w", "wb", "x", "xb", "a", "ab"]
 _OpenTextWritingMode = Literal["wt", "xt", "at"]
 
-_PathOrFile = Union[AnyPath, IO[bytes]]
+_PathOrFile = Union[StrOrBytesPath, IO[bytes]]
 
 _FilterChain = Sequence[Mapping[str, Any]]
 _T = TypeVar("_T")
@@ -120,7 +120,7 @@ def open(
 ) -> LZMAFile: ...
 @overload
 def open(
-    filename: AnyPath,
+    filename: StrOrBytesPath,
     mode: Literal["rt"],
     *,
     format: Optional[int] = ...,
@@ -133,7 +133,7 @@ def open(
 ) -> TextIO: ...
 @overload
 def open(
-    filename: AnyPath,
+    filename: StrOrBytesPath,
     mode: _OpenTextWritingMode,
     *,
     format: Optional[int] = ...,

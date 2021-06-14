@@ -1,6 +1,6 @@
 import _tkinter
 import sys
-from _typeshed import AnyPath
+from _typeshed import StrOrBytesPath
 from enum import Enum
 from tkinter.constants import *  # comment this out to find undefined identifier names with flake8
 from tkinter.font import _FontDescription
@@ -2791,7 +2791,7 @@ class PhotoImage(Image):
         *,
         data: Union[str, bytes] = ...,  # not same as data argument of put()
         format: str = ...,
-        file: AnyPath = ...,
+        file: StrOrBytesPath = ...,
         gamma: float = ...,
         height: int = ...,
         palette: Union[int, str] = ...,
@@ -2802,7 +2802,7 @@ class PhotoImage(Image):
         *,
         data: Union[str, bytes] = ...,
         format: str = ...,
-        file: AnyPath = ...,
+        file: StrOrBytesPath = ...,
         gamma: float = ...,
         height: int = ...,
         palette: Union[int, str] = ...,
@@ -2819,7 +2819,9 @@ class PhotoImage(Image):
     def put(
         self, data: Union[str, _TkinterSequence[str], _TkinterSequence2D[_Color]], to: Optional[Tuple[int, int]] = ...
     ) -> None: ...
-    def write(self, filename: AnyPath, format: Optional[str] = ..., from_coords: Optional[Tuple[int, int]] = ...) -> None: ...
+    def write(
+        self, filename: StrOrBytesPath, format: Optional[str] = ..., from_coords: Optional[Tuple[int, int]] = ...
+    ) -> None: ...
     if sys.version_info >= (3, 8):
         def transparency_get(self, x: int, y: int) -> bool: ...
         def transparency_set(self, x: int, y: int, boolean: bool) -> None: ...
@@ -2833,10 +2835,10 @@ class BitmapImage(Image):
         *,
         background: _Color = ...,
         data: Union[str, bytes] = ...,
-        file: AnyPath = ...,
+        file: StrOrBytesPath = ...,
         foreground: _Color = ...,
         maskdata: str = ...,
-        maskfile: AnyPath = ...,
+        maskfile: StrOrBytesPath = ...,
     ) -> None: ...
 
 def image_names() -> Tuple[str, ...]: ...

@@ -72,7 +72,7 @@ from mypy.nodes import (
     Expression, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr,
     TupleExpr, ListExpr, ComparisonExpr, CallExpr, IndexExpr, EllipsisExpr,
     ClassDef, MypyFile, Decorator, AssignmentStmt, TypeInfo,
-    IfStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, TempNode, Block,
+    IfStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, Block,
     Statement, OverloadedFuncDef, ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT
 )
 from mypy.stubgenc import generate_stub_for_c_module
@@ -85,7 +85,7 @@ from mypy.stubdoc import parse_all_signatures, find_unique_signatures, Sig
 from mypy.options import Options as MypyOptions
 from mypy.types import (
     Type, TypeStrVisitor, CallableType, UnboundType, NoneType, TupleType, TypeList, Instance,
-    AnyType
+    AnyType, get_proper_type
 )
 from mypy.visitor import NodeVisitor
 from mypy.find_sources import create_source_list, InvalidSourceList
@@ -536,7 +536,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         # Disable implicit exports of package-internal imports?
         self.export_less = export_less
         # Add imports that could be implicitly generated
-        self.import_tracker.add_import_from("collections", [("namedtuple", None)])
+        self.import_tracker.add_import_from("typing", [("NamedTuple", None)])
         # Names in __all__ are required
         for name in _all_ or ():
             if name not in IGNORED_DUNDERS:
@@ -624,26 +624,24 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             # name their 0th argument other than self/cls
             is_self_arg = i == 0 and name == 'self'
             is_cls_arg = i == 0 and name == 'cls'
-            if (annotated_type is None
-                    and not arg_.initializer
-                    and not is_self_arg
-                    and not is_cls_arg):
-                self.add_typing_import("Any")
-                annotation = ": {}".format(self.typing_name("Any"))
-            elif annotated_type and not is_self_arg and not is_cls_arg:
-                annotation = ": {}".format(self.print_annotation(annotated_type))
-            else:
-                annotation = ""
+            annotation = ""
+            if annotated_type and not is_self_arg and not is_cls_arg:
+                # Luckily, an argument explicitly annotated with "Any" has
+                # type "UnboundType" and will not match.
+                if not isinstance(get_proper_type(annotated_type), AnyType):
+                    annotation = ": {}".format(self.print_annotation(annotated_type))
             if arg_.initializer:
-                initializer = '...'
                 if kind in (ARG_NAMED, ARG_NAMED_OPT) and not any(arg.startswith('*')
                                                                   for arg in args):
                     args.append('*')
                 if not annotation:
-                    typename = self.get_str_type_of_node(arg_.initializer, True)
-                    annotation = ': {} = ...'.format(typename)
+                    typename = self.get_str_type_of_node(arg_.initializer, True, False)
+                    if typename == '':
+                        annotation = '=...'
+                    else:
+                        annotation = ': {} = ...'.format(typename)
                 else:
-                    annotation += '={}'.format(initializer)
+                    annotation += ' = ...'
                 arg = name + annotation
             elif kind == ARG_STAR:
                 arg = '*%s%s' % (name, annotation)
@@ -654,12 +652,16 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             args.append(arg)
         retname = None
         if o.name != '__init__' and isinstance(o.unanalyzed_type, CallableType):
-            retname = self.print_annotation(o.unanalyzed_type.ret_type)
+            if isinstance(get_proper_type(o.unanalyzed_type.ret_type), AnyType):
+                # Luckily, a return type explicitly annotated with "Any" has
+                # type "UnboundType" and will enter the else branch.
+                retname = None  # implicit Any
+            else:
+                retname = self.print_annotation(o.unanalyzed_type.ret_type)
         elif isinstance(o, FuncDef) and (o.is_abstract or o.name in METHODS_WITH_RETURN_VALUE):
             # Always assume abstract methods return Any unless explicitly annotated. Also
             # some dunder methods should not have a None return type.
-            retname = self.typing_name('Any')
-            self.add_typing_import("Any")
+            retname = None  # implicit Any
         elif not has_return_statement(o) and not is_abstract:
             retname = 'None'
         retfield = ''
@@ -678,7 +680,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.visit_func_def(o.func, is_abstract=is_abstract)
 
     def process_decorator(self, o: Decorator) -> Tuple[bool, bool]:
-        """Process a series of decorataors.
+        """Process a series of decorators.
 
         Only preserve certain special decorators such as @abstractmethod.
 
@@ -900,18 +902,24 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
     def process_namedtuple(self, lvalue: NameExpr, rvalue: CallExpr) -> None:
         if self._state != EMPTY:
             self.add('\n')
-        name = repr(getattr(rvalue.args[0], 'value', ERROR_MARKER))
         if isinstance(rvalue.args[1], StrExpr):
-            items = repr(rvalue.args[1].value)
+            items = rvalue.args[1].value.split(" ")
         elif isinstance(rvalue.args[1], (ListExpr, TupleExpr)):
             list_items = cast(List[StrExpr], rvalue.args[1].items)
-            items = '[%s]' % ', '.join(repr(item.value) for item in list_items)
+            items = [item.value for item in list_items]
         else:
             self.add('%s%s: Any' % (self._indent, lvalue.name))
             self.import_tracker.require_name('Any')
             return
-        self.import_tracker.require_name('namedtuple')
-        self.add('%s%s = namedtuple(%s, %s)\n' % (self._indent, lvalue.name, name, items))
+        self.import_tracker.require_name('NamedTuple')
+        self.add('{}class {}(NamedTuple):'.format(self._indent, lvalue.name))
+        if len(items) == 0:
+            self.add(' ...\n')
+        else:
+            self.import_tracker.require_name('Any')
+            self.add('\n')
+            for item in items:
+                self.add('{}    {}: Any\n'.format(self._indent, item))
         self._state = CLASS
 
     def is_alias_expression(self, expr: Expression, top_level: bool = True) -> bool:
@@ -1070,9 +1078,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 typename += '[{}]'.format(final_arg)
         else:
             typename = self.get_str_type_of_node(rvalue)
-        has_rhs = not (isinstance(rvalue, TempNode) and rvalue.no_rhs)
-        initializer = " = ..." if has_rhs and not self.is_top_level() else ""
-        return '%s%s: %s%s\n' % (self._indent, lvalue, typename, initializer)
+        return '%s%s: %s\n' % (self._indent, lvalue, typename)
 
     def add(self, string: str) -> None:
         """Add text to generated stub."""
@@ -1144,7 +1150,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         return False
 
     def get_str_type_of_node(self, rvalue: Expression,
-                             can_infer_optional: bool = False) -> str:
+                             can_infer_optional: bool = False,
+                             can_be_any: bool = True) -> str:
         if isinstance(rvalue, IntExpr):
             return 'int'
         if isinstance(rvalue, StrExpr):
@@ -1159,12 +1166,13 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return 'bool'
         if can_infer_optional and \
                 isinstance(rvalue, NameExpr) and rvalue.name == 'None':
-            self.add_typing_import('Optional')
             self.add_typing_import('Any')
-            return '{}[{}]'.format(self.typing_name('Optional'),
-                                   self.typing_name('Any'))
-        self.add_typing_import('Any')
-        return self.typing_name('Any')
+            return '{} | None'.format(self.typing_name('Any'))
+        if can_be_any:
+            self.add_typing_import('Any')
+            return self.typing_name('Any')
+        else:
+            return ''
 
     def print_annotation(self, t: Type) -> str:
         printer = AnnotationPrinter(self)

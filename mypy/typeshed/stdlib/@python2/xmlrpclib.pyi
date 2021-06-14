@@ -5,7 +5,7 @@ from ssl import SSLContext
 from StringIO import StringIO
 from time import struct_time
 from types import InstanceType
-from typing import IO, Any, AnyStr, Callable, Iterable, List, Mapping, MutableMapping, Optional, Tuple, Type, TypeVar, Union
+from typing import IO, Any, AnyStr, Callable, Iterable, List, Mapping, MutableMapping, Optional, Tuple, Type, Union
 
 _Unmarshaller = Any
 _timeTuple = Tuple[int, int, int, int, int, int, int, int, int]
