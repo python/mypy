@@ -647,10 +647,9 @@ CPy_Super(PyObject *builtins, PyObject *self) {
 // This helper function is a simplification of cpython/ceval.c/import_from()
 PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
                                PyObject *import_name, PyObject *as_name) {
-
-    PyObject *x;
     // check if the imported module has an attribute by that name
-    if (_PyObject_LookupAttr(module, import_name, &x) == 0) {
+    PyObject *x = PyObject_GetAttr(module, import_name);
+    if (x == NULL) {
         // if not, attempt to import a submodule with that name
         PyObject *fullmodname = PyUnicode_FromFormat("%U.%U", package_name, import_name);
         if (fullmodname == NULL) {
@@ -660,7 +659,6 @@ PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
         // The following code is a simplification of cpython/import.c/PyImport_GetModule()
         x = PyObject_GetItem(module, fullmodname);
         Py_DECREF(fullmodname);
-
         if (x == NULL) {
             goto fail;
         }
