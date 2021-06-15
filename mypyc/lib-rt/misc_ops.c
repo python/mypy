@@ -644,7 +644,7 @@ CPy_Super(PyObject *builtins, PyObject *self) {
     return result;
 }
 
-// The following code is a simplification of cpython/ceval.c/import_from()
+// This helper function is a simplification of cpython/ceval.c/import_from()
 PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
                                PyObject *import_name, PyObject *as_name) {
 
@@ -658,15 +658,7 @@ PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
         }
 
         // The following code is a simplification of cpython/import.c/PyImport_GetModule()
-        Py_INCREF(module);
-        if (PyDict_CheckExact(module)) {
-            x = PyDict_GetItemWithError(module, fullmodname);
-            Py_XINCREF(x);
-        }
-        else {
-            x = PyObject_GetItem(module, fullmodname);
-        }
-        Py_DECREF(module);
+        x = PyObject_GetItem(module, fullmodname);
         Py_DECREF(fullmodname);
 
         if (x == NULL) {

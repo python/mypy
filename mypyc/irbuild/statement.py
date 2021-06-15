@@ -186,7 +186,6 @@ def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:
                              [module, builder.load_str(id),
                               builder.load_str(name), builder.load_str(as_name)],
                              node.line)
-        # obj = builder.py_get_attr(module, name, node.line)
         builder.gen_method_call(
             globals, '__setitem__', [builder.load_str(as_name), obj],
             result_type=None, line=node.line)
