@@ -1,0 +1,161 @@
+[case testIncorrectDispatchArgumentWhenDoesntMatchFallback-xfail]
+from functools import singledispatch
+
+class A: pass
+class B(A): pass
+
+@singledispatch
+def fun(arg: A) -> None:
+    pass
+@fun.register
+def fun_b(arg: B) -> None:
+    pass
+
+fun(1) # E: Argument 1 to "fun" has incompatible type "int"; expected "__main__.A"
+
+# probably won't be required after singledispatch is special cased
+[builtins fixtures/args.pyi]
+
+[case testMultipleUnderscoreFunctionsIsntError-xfail]
+from functools import singledispatch
+
+@singledispatch
+def fun(arg) -> None:
+    pass
+@fun.register
+def _(arg: str) -> None:
+    pass
+@fun.register
+def _(arg: int) -> None:
+    pass
+
+[builtins fixtures/args.pyi]
+
+[case testCheckNonDispatchArgumentsWithTypeAlwaysTheSame-xfail]
+from functools import singledispatch
+
+@singledispatch
+def f(arg: int, arg2: str) -> None:
+    pass
+
+@f.register
+def g(arg: str, arg2: str) -> None:
+    pass
+
+f(1, 'a') 
+f(1, 5) # E: Argument 2 to "fun" has incompatible type "int"; expected "str"
+
+f('b', 'a')
+f('b', 1) # E: Argument 2 to "fun" has incompatible type "int"; expected "str"
+
+[builtins fixtures/args.pyi]
+
+[case testCheckNonDispatchArgumentsUsingMoreSpecificTypeInSpecializedVersion-xfail]
+from functools import singledispatch
+
+class A: pass
+class B(A): pass
+
+@singledispatch
+def f(arg: int, arg2: A) -> None:
+    pass
+
+@f.register
+def g(arg: str, arg2: B) -> None:
+    pass
+
+f(1, A()) 
+f(1, B())
+
+f('b', A()) # E: Argument 2 to "fun" has incompatible type "__main__.A"; expected "__main__.B"
+f('b', B())
+
+[builtins fixtures/args.pyi]
+
+[case testImplementationHasSameDispatchTypeAsFallback-xfail]
+from functools import singledispatch
+
+# TODO: differentiate between fallback and other implementations in error message
+@singledispatch
+def f(arg: int) -> None: # E: singledispatch implementation 1 will never be used: implementation 2's dispatch type is the same
+    pass
+
+@f.register
+def g(arg: int) -> None:
+    pass
+
+[builtins fixtures/args.pyi]
+
+[case testMultipleImplementationsHaveSameDispatchTypes-xfail]
+from functools import singledispatch
+
+@singledispatch
+def f(arg) -> None: 
+    pass
+
+@f.register
+def g(arg: int) -> None: # E: singledispatch implementation 2 will never be used: implementation 3's dispatch type is the same
+    pass
+
+@f.register
+def h(arg: int) -> None:
+    pass
+
+[builtins fixtures/args.pyi]
+    
+[case testRegisterHasDifferentTypeThanTypeSignature-xfail]
+from functools import singledispatch
+
+@singledispatch
+def f(arg) -> None: 
+    pass
+
+@f.register(str)
+def g(arg: int) -> None: # E: Argument to register "str" is incompatible with type "int" in function signature
+    pass
+
+[builtins fixtures/args.pyi]
+
+[case testMoreSpecificGenericNonDispatchArgumentInImplementations-xfail]
+from functools import singledispatch
+from typing import TypeVar, Optional, Any, Type
+
+T = TypeVar('T')
+
+Alias = Optional[T]
+
+@singledispatch
+def f(arg, arg2: Alias[Any]) -> None: 
+    pass
+
+@f.register
+def g(arg: int, arg2: Alias[int]) -> None:
+    pass
+
+@f.register
+def h(arg: str, arg2: Alias[Type[Any]]) -> None:
+    pass
+
+f((3, 5), 'a')
+f(1, 'a') # E: Argument 2 to "f" has incompatible type "str"; expected "Union[int, None]"
+
+f('a', 'a') # E: Argument 2 to "f" has incompatible type "str"; expected "Union[Type[Any], None]"
+f('a', str)
+f('a', int)
+f('a', None)
+
+[builtins fixtures/args.pyi]
+
+[case testDispatchBasedOnTypeAnnotationsRequires37-xfail]
+# flags: --python-version 3.6
+# the docs for singledispatch say that register didn't accept type annotations until python 3.7
+from functools import singledispatch
+
+@singledispatch
+def f(arg) -> None:
+    pass
+@f.register
+def g(arg: int) -> None: # E: Singledispatch based on type annotations is only supported in Python 3.7 and greater
+    pass
+
+[builtins fixtures/args.pyi]
