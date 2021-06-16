@@ -1073,3 +1073,23 @@ def f(t: Type[C]) -> None:
     else:
         reveal_type(t)  # N: Revealed type is "Type[__main__.C]"
     reveal_type(t)  # N: Revealed type is "Type[__main__.C]"
+
+[case testNarrowingUsingTypeVar]
+# flags: --strict-optional
+from typing import Type, TypeVar
+
+class A: pass
+class B(A): pass
+
+T = TypeVar("T", bound=A)
+
+def f(t: Type[T], a: A, b: B) -> None:
+    if type(a) is t:
+        reveal_type(a)  # N: Revealed type is "T`-1"
+    else:
+        reveal_type(a)  # N: Revealed type is "__main__.A"
+
+    if type(b) is t:
+        reveal_type(b)  # N: Revealed type is "<nothing>"
+    else:
+        reveal_type(b)  # N: Revealed type is "__main__.B"
