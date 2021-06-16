@@ -542,6 +542,9 @@ int CPyStatics_Initialize(PyObject **statics,
                           const int *tuples);
 PyObject *CPy_Super(PyObject *builtins, PyObject *self);
 
+PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
+                               PyObject *import_name, PyObject *as_name);
+
 #ifdef __cplusplus
 }
 #endif

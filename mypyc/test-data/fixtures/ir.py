@@ -229,6 +229,8 @@ class ValueError(Exception): pass
 
 class AttributeError(Exception): pass
 
+class ImportError(Exception): pass
+
 class NameError(Exception): pass
 
 class LookupError(Exception): pass
