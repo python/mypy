@@ -128,6 +128,15 @@ def h(x: int) -> int:
 def g(x: int) -> int:
     return x + 3
 
+[case testFromImportWithUnKnownModule]
+def test_import() -> None:
+    try:
+        from pkg import a # type: ignore
+    except ImportError:
+        pass
+
+[file pkg/__init__.py]
+
 [case testMultipleFromImportsWithSamePackageButDifferentModules]
 from pkg import a
 from pkg import b
