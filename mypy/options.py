@@ -41,6 +41,7 @@ PER_MODULE_OPTIONS = {
     "follow_imports_for_stubs",
     "ignore_errors",
     "ignore_missing_imports",
+    "ignore_missing_type_hints",
     "implicit_reexport",
     "local_partial_types",
     "mypyc",
@@ -84,6 +85,7 @@ class Options:
         self.ignore_missing_imports = False
         # Is ignore_missing_imports set in a per-module section
         self.ignore_missing_imports_per_module = False
+        self.ignore_missing_type_hints = False
         self.follow_imports = 'normal'  # normal|silent|skip|error
         # Whether to respect the follow_imports setting even for stub files.
         # Intended to be used for disabling specific stubs.

@@ -477,6 +477,9 @@ def process_options(args: List[str],
         '--ignore-missing-imports', action='store_true',
         help="Silently ignore imports of missing modules")
     imports_group.add_argument(
+        '--ignore-missing-type-hints', action='store_true',
+        help="Silently ignore modules missing type hints")
+    imports_group.add_argument(
         '--follow-imports', choices=['normal', 'silent', 'skip', 'error'],
         default='normal', help="How to treat imports (default normal)")
     imports_group.add_argument(

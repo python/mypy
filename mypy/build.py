@@ -2443,6 +2443,7 @@ def find_module_and_diagnose(manager: BuildManager,
         # search path or the module has not been installed.
 
         ignore_missing_imports = options.ignore_missing_imports
+
         top_level, second_level = get_top_two_prefixes(file_id)
         # Don't honor a global (not per-module) ignore_missing_imports
         # setting for modules that used to have bundled stubs, as
@@ -2459,7 +2460,12 @@ def find_module_and_diagnose(manager: BuildManager,
         if skip_diagnose:
             raise ModuleNotFound
         if caller_state:
-            if not (ignore_missing_imports or in_partial_package(id, manager)):
+            should_ignore = (
+                ignore_missing_imports
+                or in_partial_package(id, manager)
+                or (options.ignore_missing_type_hints
+                    and result is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS))
+            if not should_ignore:
                 module_not_found(manager, caller_line, caller_state, id, result)
             raise ModuleNotFound
         elif root_source:
