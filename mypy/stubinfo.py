@@ -58,7 +58,7 @@ legacy_bundled_packages = {
     'markdown': StubInfo('types-Markdown'),
     'maxminddb': StubInfo('types-maxminddb'),
     'mock': StubInfo('types-mock'),
-    'OpenSSL': StubInfo('types-openssl-python', py_version=2),
+    'OpenSSL': StubInfo('types-pyOpenSSL'),
     'orjson': StubInfo('types-orjson', py_version=3),
     'paramiko': StubInfo('types-paramiko'),
     'pathlib2': StubInfo('types-pathlib2', py_version=2),
