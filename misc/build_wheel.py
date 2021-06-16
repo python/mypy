@@ -49,8 +49,8 @@ def create_environ(python_version: str) -> Dict[str, str]:
     # When cross-compiling on Intel, it is not possible to test arm64 and 
     # the arm64 part of a universal2 wheel. Warnings will be silenced with
     # following CIBW_TEST_SKIP
-    env['CIBW_ARCHS_MACOS'] = "x86_64 arm64"
-    env['CIBW_TEST_SKIP'] = "*-macosx_arm64"
+    env['CIBW_ARCHS_MACOS'] = "x86_64 arm64 universal2"
+    env['CIBW_TEST_SKIP'] = "*-macosx_arm64 *_universal2:arm64"
 
     env['CIBW_BUILD_VERBOSITY'] = '1'
 
