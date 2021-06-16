@@ -615,6 +615,27 @@ if MYPY or mypy_only:
     pass
 [builtins fixtures/ops.pyi]
 
+[case testSemanticAnalysisFalseButTypeNarrowingTrue]
+# flags: --always-false COMPILE_TIME_FALSE
+from typing import Literal
+
+indeterminate: bool
+COMPILE_TIME_FALSE: Literal[True]  # type-narrowing: mapped in 'if' only
+a = COMPILE_TIME_FALSE or indeterminate
+reveal_type(a)  # N: Revealed type is "builtins.bool"
+b = indeterminate or COMPILE_TIME_FALSE
+reveal_type(b)  # N: Revealed type is "Union[builtins.bool, Literal[True]]"
+[typing fixtures/typing-medium.pyi]
+
+[case testSemanticAnalysisTrueButTypeNarrowingFalse]
+# flags: --always-true COMPILE_TIME_TRUE
+indeterminate: bool
+COMPILE_TIME_TRUE: None  # type narrowed to `else` only
+a = COMPILE_TIME_TRUE or indeterminate
+reveal_type(a)  # N: Revealed type is "None"
+b = indeterminate or COMPILE_TIME_TRUE
+reveal_type(b)  # N: Revealed type is "Union[builtins.bool, None]"
+
 [case testConditionalAssertWithoutElse]
 import typing
 

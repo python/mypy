@@ -2776,38 +2776,34 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         assert e.op in ('and', 'or')  # Checked by visit_op_expr
 
-        if e.op == 'and':
+        left_map: mypy.checker.TypeMap
+        right_map: mypy.checker.TypeMap
+        if e.right_always:
+            left_map, right_map = None, {}
+        elif e.right_unreachable:
+            left_map, right_map = {}, None
+        elif e.op == 'and':
             right_map, left_map = self.chk.find_isinstance_check(e.left)
-            restricted_left_type = false_only(left_type)
-            result_is_left = not left_type.can_be_true
         elif e.op == 'or':
             left_map, right_map = self.chk.find_isinstance_check(e.left)
-            restricted_left_type = true_only(left_type)
-            result_is_left = not left_type.can_be_false
 
         # If left_map is None then we know mypy considers the left expression
         # to be redundant.
-        #
-        # Note that we perform these checks *before* we take into account
-        # the analysis from the semanal phase below. We assume that nodes
-        # marked as unreachable during semantic analysis were done so intentionally.
-        # So, we shouldn't report an error.
-        if codes.REDUNDANT_EXPR in self.chk.options.enabled_error_codes:
-            if left_map is None:
-                self.msg.redundant_left_operand(e.op, e.left)
+        if (
+            codes.REDUNDANT_EXPR in self.chk.options.enabled_error_codes
+            and left_map is None
+            # don't report an error if it's intentional
+            and not e.right_always
+        ):
+            self.msg.redundant_left_operand(e.op, e.left)
 
-        # Note that we perform these checks *before* we take into account
-        # the analysis from the semanal phase below. We assume that nodes
-        # marked as unreachable during semantic analysis were done so intentionally.
-        # So, we shouldn't report an error.
-        if self.chk.should_report_unreachable_issues():
-            if right_map is None:
-                self.msg.unreachable_right_operand(e.op, e.right)
-
-        if e.right_unreachable:
-            right_map = None
-        elif e.right_always:
-            left_map = None
+        if (
+            self.chk.should_report_unreachable_issues()
+            and right_map is None
+            # don't report an error if it's intentional
+            and not e.right_unreachable
+        ):
+            self.msg.unreachable_right_operand(e.op, e.right)
 
         # If right_map is None then we know mypy considers the right branch
         # to be unreachable and therefore any errors found in the right branch
@@ -2823,6 +2819,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # The boolean expression is statically known to be the right value
             assert right_map is not None  # find_isinstance_check guarantees this
             return right_type
+
+        if e.op == 'and':
+            restricted_left_type = false_only(left_type)
+            result_is_left = not left_type.can_be_true
+        elif e.op == 'or':
+            restricted_left_type = true_only(left_type)
+            result_is_left = not left_type.can_be_false
 
         if isinstance(restricted_left_type, UninhabitedType):
             # The left operand can never be the result
