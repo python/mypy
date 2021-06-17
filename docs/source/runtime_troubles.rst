@@ -9,7 +9,7 @@ and explains how to get your code running again. Generally speaking, we have
 three tools at our disposal:
 
 * For Python 3.7 through 3.9, use of ``from __future__ import annotations``
-  (:pep:`563`), made the default in Python 3.10 and later
+  (:pep:`563`), made the default in Python 3.11 and later
 * Use of string literal types or type comments
 * Use of ``typing.TYPE_CHECKING``
 
@@ -47,7 +47,7 @@ Future annotations import (PEP 563)
 -----------------------------------
 
 Many of the issues described here are caused by Python trying to evaluate
-annotations. From Python 3.10 on, Python will no longer attempt to evaluate
+annotations. From Python 3.11 on, Python will no longer attempt to evaluate
 function and variable annotations. This behaviour is made available in Python
 3.7 and later through the use of ``from __future__ import annotations``.
 
