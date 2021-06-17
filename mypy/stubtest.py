@@ -203,7 +203,7 @@ def verify_mypyfile(
         yield Error(object_path, "is not present at runtime", stub, runtime)
         return
     if not isinstance(runtime, types.ModuleType) and hasattr(runtime, "_module"):
-        # Workaround for OpenSSL.crypto that has submodules wrapped into cryptography.utils._ModuleWithDeprecations.
+        # Workaround for pyOpenSSL that has its submodules wrapped into cryptography.utils._ModuleWithDeprecations instances.
         # See https://github.com/python/typeshed/pull/5657 for details.
         runtime = runtime._module
     if not isinstance(runtime, types.ModuleType):
