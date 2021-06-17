@@ -205,7 +205,7 @@ def verify_mypyfile(
 
     # Workaround for pyOpenSSL that has its module objects wrapped.
     # See https://github.com/python/typeshed/pull/5657 for details.
-    if f"{type(runtime).__module__}.{type(runtime).__name__}" \
+    if f"{type(runtime).__module__}.{type(runtime).__qualname__}" \
             == "cryptography.utils._ModuleWithDeprecations":
         runtime = runtime._module
 
@@ -661,7 +661,7 @@ def verify_funcitem(
 
     # Workaround for pyOpenSSL that has some of its function objects wrapped.
     # See https://github.com/python/typeshed/pull/5657 for details.
-    if f"{type(runtime).__module__}.{type(runtime).__name__}" \
+    if f"{type(runtime).__module__}.{type(runtime).__qualname__}" \
             == "cryptography.utils._DeprecatedValue":
         runtime = runtime.value
 
