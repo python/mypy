@@ -660,6 +660,16 @@ def verify_funcitem(
         not isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType))
         and not isinstance(runtime, (types.MethodType, types.BuiltinMethodType))
         and not inspect.ismethoddescriptor(runtime)
+        and hasattr(runtime, "value")
+    ):
+        # Workaround for pyOpenSSL that has some of its function wrapped into cryptography.utils._DeprecatedValue instances.
+        # See https://github.com/python/typeshed/pull/5657 for details.
+        runtime = runtime.value
+
+    if (
+        not isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType))
+        and not isinstance(runtime, (types.MethodType, types.BuiltinMethodType))
+        and not inspect.ismethoddescriptor(runtime)
     ):
         yield Error(object_path, "is not a function", stub, runtime)
         if not callable(runtime):
