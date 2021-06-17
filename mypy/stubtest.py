@@ -207,7 +207,7 @@ def verify_mypyfile(
     # See https://github.com/python/typeshed/pull/5657 for details.
     if f"{type(runtime).__module__}.{type(runtime).__qualname__}" \
             == "cryptography.utils._ModuleWithDeprecations":
-        runtime = runtime._module
+        runtime = runtime._module # type: ignore[attr-defined]
 
     if not isinstance(runtime, types.ModuleType):
         yield Error(object_path, "is not a module", stub, runtime)
