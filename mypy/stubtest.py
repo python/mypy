@@ -202,11 +202,13 @@ def verify_mypyfile(
     if isinstance(runtime, Missing):
         yield Error(object_path, "is not present at runtime", stub, runtime)
         return
-    if not isinstance(runtime, types.ModuleType) and hasattr(runtime, "_module"):
-        # Workaround for pyOpenSSL that has its submodules
-        # wrapped into cryptography.utils._ModuleWithDeprecations instances.
-        # See https://github.com/python/typeshed/pull/5657 for details.
+
+    # Workaround for pyOpenSSL that has its module objects wrapped.
+    # See https://github.com/python/typeshed/pull/5657 for details.
+    if f"{type(runtime).__module__}.{type(runtime).__name__}" \
+            == "cryptography.utils._ModuleWithDeprecations":
         runtime = runtime._module
+
     if not isinstance(runtime, types.ModuleType):
         yield Error(object_path, "is not a module", stub, runtime)
         return
@@ -657,15 +659,10 @@ def verify_funcitem(
         yield Error(object_path, "is not present at runtime", stub, runtime)
         return
 
-    if (
-        not isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType))
-        and not isinstance(runtime, (types.MethodType, types.BuiltinMethodType))
-        and not inspect.ismethoddescriptor(runtime)
-        and hasattr(runtime, "value")
-    ):
-        # Workaround for pyOpenSSL that has some of its function
-        # wrapped into cryptography.utils._DeprecatedValue instances.
-        # See https://github.com/python/typeshed/pull/5657 for details.
+    # Workaround for pyOpenSSL that has some of its function objects wrapped.
+    # See https://github.com/python/typeshed/pull/5657 for details.
+    if f"{type(runtime).__module__}.{type(runtime).__name__}" \
+            == "cryptography.utils._DeprecatedValue":
         runtime = runtime.value
 
     if (
