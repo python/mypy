@@ -8,8 +8,8 @@ class TestStubInfo(unittest.TestCase):
         assert not is_legacy_bundled_package('foobar_asdf', 2)
         assert not is_legacy_bundled_package('foobar_asdf', 3)
 
-        assert is_legacy_bundled_package('click', 2)
-        assert is_legacy_bundled_package('click', 3)
+        assert is_legacy_bundled_package('certifi', 2)
+        assert is_legacy_bundled_package('certifi', 3)
 
         assert is_legacy_bundled_package('scribe', 2)
         assert not is_legacy_bundled_package('scribe', 3)

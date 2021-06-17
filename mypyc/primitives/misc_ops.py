@@ -123,6 +123,15 @@ import_extra_args_op = custom_op(
     error_kind=ERR_MAGIC
 )
 
+# Import-from helper op
+import_from_op = custom_op(
+    arg_types=[object_rprimitive, str_rprimitive,
+               str_rprimitive, str_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='CPyImport_ImportFrom',
+    error_kind=ERR_MAGIC
+)
+
 # Get the sys.modules dictionary
 get_module_dict_op = custom_op(
     arg_types=[],

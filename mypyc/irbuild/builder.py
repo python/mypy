@@ -288,20 +288,20 @@ class IRBuilder:
         key_unicode = self.load_str(key)
         self.call_c(dict_set_item_op, [non_ext.dict, key_unicode, val], line)
 
-    def gen_import_from(self, id: str, line: int, imported: List[str]) -> None:
+    def gen_import_from(self, id: str, globals_dict: Value,
+                        imported: List[str], line: int) -> Value:
         self.imports[id] = None
 
-        globals_dict = self.load_globals_dict()
-        null = Integer(0, dict_rprimitive, line)
+        null_dict = Integer(0, dict_rprimitive, line)
         names_to_import = self.new_list_op([self.load_str(name) for name in imported], line)
-
-        level = Integer(0, c_int_rprimitive, line)
+        zero_int = Integer(0, c_int_rprimitive, line)
         value = self.call_c(
             import_extra_args_op,
-            [self.load_str(id), globals_dict, null, names_to_import, level],
+            [self.load_str(id), globals_dict, null_dict, names_to_import, zero_int],
             line,
         )
         self.add(InitStatic(value, id, namespace=NAMESPACE_MODULE))
+        return value
 
     def gen_import(self, id: str, line: int) -> None:
         self.imports[id] = None
