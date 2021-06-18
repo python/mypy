@@ -118,7 +118,7 @@ def main(script_path: Optional[str],
 
     if options.install_types and not options.non_interactive:
         result = install_types(options.cache_dir, formatter, after_run=True,
-                               non_interactive=options.non_interactive)
+                               non_interactive=False)
         if result:
             print()
             print("note: Run mypy again for up-to-date results with installed types")
