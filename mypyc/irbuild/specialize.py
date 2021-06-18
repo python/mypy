@@ -340,7 +340,8 @@ def translate_dict_setdefault(builder: IRBuilder, expr: CallExpr, callee: RefExp
             if len(arg.items):
                 return None
             data_type = Integer(2, c_int_rprimitive, expr.line)
-        elif isinstance(arg.callee, NameExpr) and arg.callee.fullname == 'builtins.set':
+        elif (isinstance(arg, CallExpr) and isinstance(arg.callee, NameExpr)
+                and arg.callee.fullname == 'builtins.set'):
             if len(arg.args):
                 return None
             data_type = Integer(3, c_int_rprimitive, expr.line)
