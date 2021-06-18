@@ -340,6 +340,24 @@ L0:
 from typing import Dict
 def f(d: Dict[object, object]) -> object:
     return d.setdefault('a', 'b')
+
+def f2(d: Dict[object, object], flag: bool) -> object:
+    if flag:
+        return d.setdefault('a', set())
+    else:
+        return d.setdefault('a', set('b'))
+
+def f3(d: Dict[object, object], flag: bool) -> object:
+    if flag:
+        return d.setdefault('a', [])
+    else:
+        return d.setdefault('a', [1])
+
+def f4(d: Dict[object, object], flag: bool) -> object:
+    if flag:
+        return d.setdefault('a', {})
+    else:
+        return d.setdefault('a', {'c': 1})
 [out]
 def f(d):
     d :: dict
@@ -350,3 +368,81 @@ L0:
     r1 = 'b'
     r2 = CPyDict_SetDefault(d, r0, r1)
     return r2
+def f2(d, flag):
+    d :: dict
+    flag :: bool
+    r0 :: str
+    r1 :: object
+    r2, r3 :: str
+    r4 :: set
+    r5, r6 :: object
+L0:
+    if flag goto L1 else goto L2 :: bool
+L1:
+    r0 = 'a'
+    r1 = CPyDict_SetDefaultWithEmptyDatatype(d, r0, 3)
+    return r1
+L2:
+    r2 = 'a'
+    r3 = 'b'
+    r4 = PySet_New(r3)
+    r5 = CPyDict_SetDefault(d, r2, r4)
+    return r5
+L3:
+    r6 = box(None, 1)
+    return r6
+def f3(d, flag):
+    d :: dict
+    flag :: bool
+    r0 :: str
+    r1 :: object
+    r2 :: str
+    r3 :: list
+    r4 :: object
+    r5, r6 :: ptr
+    r7, r8 :: object
+L0:
+    if flag goto L1 else goto L2 :: bool
+L1:
+    r0 = 'a'
+    r1 = CPyDict_SetDefaultWithEmptyDatatype(d, r0, 1)
+    return r1
+L2:
+    r2 = 'a'
+    r3 = PyList_New(1)
+    r4 = box(short_int, 2)
+    r5 = get_element_ptr r3 ob_item :: PyListObject
+    r6 = load_mem r5 :: ptr*
+    set_mem r6, r4 :: builtins.object*
+    keep_alive r3
+    r7 = CPyDict_SetDefault(d, r2, r3)
+    return r7
+L3:
+    r8 = box(None, 1)
+    return r8
+def f4(d, flag):
+    d :: dict
+    flag :: bool
+    r0 :: str
+    r1 :: object
+    r2, r3 :: str
+    r4 :: object
+    r5 :: dict
+    r6, r7 :: object
+L0:
+    if flag goto L1 else goto L2 :: bool
+L1:
+    r0 = 'a'
+    r1 = CPyDict_SetDefaultWithEmptyDatatype(d, r0, 2)
+    return r1
+L2:
+    r2 = 'a'
+    r3 = 'c'
+    r4 = box(short_int, 2)
+    r5 = CPyDict_Build(1, r3, r4)
+    r6 = CPyDict_SetDefault(d, r2, r5)
+    return r6
+L3:
+    r7 = box(None, 1)
+    return r7
+

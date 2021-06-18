@@ -15,8 +15,7 @@ See comment below for more documentation.
 from typing import Callable, Optional, Dict, Tuple, List
 
 from mypy.nodes import (
-    CallExpr, RefExpr, MemberExpr, TupleExpr, ListExpr, SetExpr, GeneratorExpr,
-    ARG_POS
+    CallExpr, RefExpr, MemberExpr, TupleExpr, GeneratorExpr, ListExpr, DictExpr, ARG_POS
 )
 from mypy.types import AnyType, TypeOfAny
 
@@ -325,25 +324,24 @@ def translate_dict_setdefault(builder: IRBuilder, expr: CallExpr, callee: RefExp
     if (len(expr.args) == 2
             and expr.arg_kinds == [ARG_POS, ARG_POS]):
 
-        callee_dict = builder.accept(callee.expr)
-        key_val = builder.accept(expr.args[0])
-        arg = expr.args[1].callee
-
-        if arg.fullname == 'builtins.list':
-            if len(arg.node.metadata):
+        arg = expr.args[1]
+        if isinstance(arg, ListExpr):
+            if len(arg.items):
                 return None
             data_type = Integer(1, c_int_rprimitive, expr.line)
-        elif arg.fullname == 'builtins.dict':
-            if len(arg.node.metadata):
+        elif isinstance(arg, DictExpr):
+            if len(arg.items):
                 return None
             data_type = Integer(2, c_int_rprimitive, expr.line)
-        elif arg.fullname == 'builtins.set':
-            if len(arg.node.metadata):
+        elif isinstance(arg, CallExpr) and arg.callee.fullname == 'builtins.set':
+            if len(arg.args):
                 return None
             data_type = Integer(3, c_int_rprimitive, expr.line)
         else:
             return None
 
+        callee_dict = builder.accept(callee.expr)
+        key_val = builder.accept(expr.args[0])
         return builder.call_c(dict_setdefault_spec_init_op,
                               [callee_dict, key_val, data_type],
                               expr.line)

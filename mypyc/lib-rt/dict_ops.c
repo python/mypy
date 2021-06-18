@@ -112,7 +112,7 @@ PyObject *CPyDict_SetDefaultWithEmptyDatatype(PyObject *dict, PyObject *key,
         } else {
             return NULL;
         }
-        if (CPyDict_SetItem(dict, key, new_obj)) == -1) {
+        if (CPyDict_SetItem(dict, key, new_obj) == -1) {
             return NULL;
         } else {
             return new_obj;
