@@ -67,42 +67,100 @@ def main(script_path: Optional[str],
     sources, options = process_options(args, stdout=stdout, stderr=stderr,
                                        fscache=fscache)
 
-    messages = []
     formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
 
     if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
         # Since --install-types performs user input, we want regular stdout and stderr.
-        fail("Error: --install-types not supported in this mode of running mypy", stderr, options)
+        fail("error: --install-types not supported in this mode of running mypy", stderr, options)
 
     if options.non_interactive and not options.install_types:
-        fail("Error: --non-interactive is only supported with --install-types", stderr, options)
+        fail("error: --non-interactive is only supported with --install-types", stderr, options)
 
     if options.install_types and not options.incremental:
-        fail("Error: --install-types not supported with incremental mode disabled",
+        fail("error: --install-types not supported with incremental mode disabled",
              stderr, options)
 
     if options.install_types and not sources:
         install_types(options.cache_dir, formatter, non_interactive=options.non_interactive)
         return
 
+    res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
+
+    if options.non_interactive:
+        missing_pkgs = read_types_packages_to_install(options.cache_dir, after_run=True)
+        if missing_pkgs:
+            # Install missing type packages and rerun build.
+            install_types(options.cache_dir, formatter, after_run=True, non_interactive=True)
+            fscache.flush()
+            print()
+            res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
+        show_messages(messages, stderr, formatter, options)
+
+    if MEM_PROFILE:
+        from mypy.memprofile import print_memory_profile
+        print_memory_profile()
+
+    code = 0
+    if messages:
+        code = 2 if blockers else 1
+    if options.error_summary:
+        if messages:
+            n_errors, n_files = util.count_stats(messages)
+            if n_errors:
+                summary = formatter.format_error(
+                    n_errors, n_files, len(sources), blockers=blockers,
+                    use_color=options.color_output
+                )
+                stdout.write(summary + '\n')
+        else:
+            stdout.write(formatter.format_success(len(sources), options.color_output) + '\n')
+        stdout.flush()
+
+    if options.install_types and not options.non_interactive:
+        result = install_types(options.cache_dir, formatter, after_run=True,
+                               non_interactive=False)
+        if result:
+            print()
+            print("note: Run mypy again for up-to-date results with installed types")
+            code = 2
+
+    if options.fast_exit:
+        # Exit without freeing objects -- it's faster.
+        #
+        # NOTE: We don't flush all open files on exit (or run other destructors)!
+        util.hard_exit(code)
+    elif code:
+        sys.exit(code)
+
+    # HACK: keep res alive so that mypyc won't free it before the hard_exit
+    list([res])
+
+
+def run_build(sources: List[BuildSource],
+              options: Options,
+              fscache: FileSystemCache,
+              t0: float,
+              stdout: TextIO,
+              stderr: TextIO) -> Tuple[Optional[build.BuildResult], List[str], bool]:
+    formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
+
+    messages = []
+
     def flush_errors(new_messages: List[str], serious: bool) -> None:
-        if options.non_interactive:
-            return
         if options.pretty:
             new_messages = formatter.fit_in_terminal(new_messages)
         messages.extend(new_messages)
+        if options.non_interactive:
+            # Collect messages and possibly show them later.
+            return
         f = stderr if serious else stdout
-        for msg in new_messages:
-            if options.color_output:
-                msg = formatter.colorize(msg)
-            f.write(msg + '\n')
-        f.flush()
+        show_messages(new_messages, f, formatter, options)
 
     serious = False
     blockers = False
     res = None
     try:
-        # Keep a dummy reference (res) for memory profiling below, as otherwise
+        # Keep a dummy reference (res) for memory profiling afterwards, as otherwise
         # the result could be freed.
         res = build.build(sources, options, None, flush_errors, fscache, stdout, stderr)
     except CompileError as e:
@@ -120,42 +178,18 @@ def main(script_path: Optional[str],
                                       if glob in options.unused_configs])),
               file=stderr)
     maybe_write_junit_xml(time.time() - t0, serious, messages, options)
+    return res, messages, blockers
 
-    if MEM_PROFILE:
-        from mypy.memprofile import print_memory_profile
-        print_memory_profile()
 
-    code = 0
-    if messages:
-        code = 2 if blockers else 1
-    if options.error_summary and not options.non_interactive:
-        if messages:
-            n_errors, n_files = util.count_stats(messages)
-            if n_errors:
-                summary = formatter.format_error(
-                    n_errors, n_files, len(sources), blockers=blockers,
-                    use_color=options.color_output
-                )
-                stdout.write(summary + '\n')
-        else:
-            stdout.write(formatter.format_success(len(sources), options.color_output) + '\n')
-        stdout.flush()
-
-    if options.install_types:
-        install_types(options.cache_dir, formatter, after_run=True,
-                      non_interactive=options.non_interactive)
-        return
-
-    if options.fast_exit:
-        # Exit without freeing objects -- it's faster.
-        #
-        # NOTE: We don't flush all open files on exit (or run other destructors)!
-        util.hard_exit(code)
-    elif code:
-        sys.exit(code)
-
-    # HACK: keep res alive so that mypyc won't free it before the hard_exit
-    list([res])
+def show_messages(messages: List[str],
+                  f: TextIO,
+                  formatter: util.FancyFormatter,
+                  options: Options) -> None:
+    for msg in messages:
+        if options.color_output:
+            msg = formatter.colorize(msg)
+        f.write(msg + '\n')
+    f.flush()
 
 
 # Make the help output a little less jarring.
@@ -1087,29 +1121,36 @@ def fail(msg: str, stderr: TextIO, options: Options) -> None:
     sys.exit(2)
 
 
-def install_types(cache_dir: str,
-                  formatter: util.FancyFormatter,
-                  *,
-                  after_run: bool = False,
-                  non_interactive: bool = False) -> None:
-    """Install stub packages using pip if some missing stubs were detected."""
+def read_types_packages_to_install(cache_dir: str, after_run: bool) -> List[str]:
     if not os.path.isdir(cache_dir):
         if not after_run:
             sys.stderr.write(
-                "Error: Can't determine which types to install with no files to check " +
+                "error: Can't determine which types to install with no files to check " +
                 "(and no cache from previous mypy run)\n"
             )
         else:
             sys.stderr.write(
-                "Error: --install-types failed (no mypy cache directory)\n"
+                "error: --install-types failed (no mypy cache directory)\n"
             )
         sys.exit(2)
     fnam = build.missing_stubs_file(cache_dir)
     if not os.path.isfile(fnam):
-        # If there are no missing stubs, generate no output.
-        return
+        # No missing stubs.
+        return []
     with open(fnam) as f:
-        packages = [line.strip() for line in f.readlines()]
+        return [line.strip() for line in f.readlines()]
+
+
+def install_types(cache_dir: str,
+                  formatter: util.FancyFormatter,
+                  *,
+                  after_run: bool = False,
+                  non_interactive: bool = False) -> bool:
+    """Install stub packages using pip if some missing stubs were detected."""
+    packages = read_types_packages_to_install(cache_dir, after_run)
+    if not packages:
+        # If there are no missing stubs, generate no output.
+        return False
     if after_run and not non_interactive:
         print()
     print('Installing missing stub packages:')
@@ -1123,3 +1164,4 @@ def install_types(cache_dir: str,
             sys.exit(2)
         print()
     subprocess.run(cmd)
+    return True
