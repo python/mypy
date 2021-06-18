@@ -44,53 +44,23 @@ def stat_proxy(path: str) -> os.stat_result:
         return st
 
 
-def main(script_path: Optional[str],
-         stdout: TextIO,
-         stderr: TextIO,
-         args: Optional[List[str]] = None,
-         ) -> None:
-    """Main entry point to the type checker.
-
-    Args:
-        script_path: Path to the 'mypy' script (used for finding data files).
-        args: Custom command-line arguments.  If not given, sys.argv[1:] will
-        be used.
-    """
-    util.check_python_version('mypy')
-    t0 = time.time()
-    # To log stat() calls: os.stat = stat_proxy
-    sys.setrecursionlimit(2 ** 14)
-    if args is None:
-        args = sys.argv[1:]
-
-    fscache = FileSystemCache()
-    sources, options = process_options(args, stdout=stdout, stderr=stderr,
-                                       fscache=fscache)
-
-    messages = []
+def run_build(sources: List[BuildSource],
+              options: Options,
+              fscache: FileSystemCache,
+              t0: float,
+              stdout: TextIO,
+              stderr: TextIO) -> Tuple[Optional[build.BuildResult], List[str], bool]:
     formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
 
-    if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
-        # Since --install-types performs user input, we want regular stdout and stderr.
-        fail("Error: --install-types not supported in this mode of running mypy", stderr, options)
-
-    if options.non_interactive and not options.install_types:
-        fail("Error: --non-interactive is only supported with --install-types", stderr, options)
-
-    if options.install_types and not options.incremental:
-        fail("Error: --install-types not supported with incremental mode disabled",
-             stderr, options)
-
-    if options.install_types and not sources:
-        install_types(options.cache_dir, formatter, non_interactive=options.non_interactive)
-        return
+    messages = []
 
     def flush_errors(new_messages: List[str], serious: bool) -> None:
-        if options.non_interactive:
-            return
         if options.pretty:
             new_messages = formatter.fit_in_terminal(new_messages)
         messages.extend(new_messages)
+        if options.non_interactive:
+            # Collect messages and possibly show them later.
+            return
         f = stderr if serious else stdout
         for msg in new_messages:
             if options.color_output:
@@ -120,6 +90,61 @@ def main(script_path: Optional[str],
                                       if glob in options.unused_configs])),
               file=stderr)
     maybe_write_junit_xml(time.time() - t0, serious, messages, options)
+    return res, messages, blockers
+
+
+def main(script_path: Optional[str],
+         stdout: TextIO,
+         stderr: TextIO,
+         args: Optional[List[str]] = None,
+         ) -> None:
+    """Main entry point to the type checker.
+
+    Args:
+        script_path: Path to the 'mypy' script (used for finding data files).
+        args: Custom command-line arguments.  If not given, sys.argv[1:] will
+        be used.
+    """
+    util.check_python_version('mypy')
+    t0 = time.time()
+    # To log stat() calls: os.stat = stat_proxy
+    sys.setrecursionlimit(2 ** 14)
+    if args is None:
+        args = sys.argv[1:]
+
+    fscache = FileSystemCache()
+    sources, options = process_options(args, stdout=stdout, stderr=stderr,
+                                       fscache=fscache)
+
+    formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
+
+    if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
+        # Since --install-types performs user input, we want regular stdout and stderr.
+        fail("Error: --install-types not supported in this mode of running mypy", stderr, options)
+
+    if options.non_interactive and not options.install_types:
+        fail("Error: --non-interactive is only supported with --install-types", stderr, options)
+
+    if options.install_types and not options.incremental:
+        fail("Error: --install-types not supported with incremental mode disabled",
+             stderr, options)
+
+    if options.install_types and not sources:
+        install_types(options.cache_dir, formatter, non_interactive=options.non_interactive)
+        return
+
+    res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
+
+    if options.non_interactive:
+        missing_pkgs = read_types_packages_to_install(options.cache_dir, after_run=True)
+        if missing_pkgs:
+            # Install missing type packages and rerun build.
+            install_types(options.cache_dir, formatter, after_run=True, non_interactive=True)
+            fscache.flush()
+            print()
+            res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
+        for msg in messages:
+            stderr.write(msg + '\n')
 
     if MEM_PROFILE:
         from mypy.memprofile import print_memory_profile
@@ -128,7 +153,7 @@ def main(script_path: Optional[str],
     code = 0
     if messages:
         code = 2 if blockers else 1
-    if options.error_summary and not options.non_interactive:
+    if options.error_summary:
         if messages:
             n_errors, n_files = util.count_stats(messages)
             if n_errors:
@@ -141,9 +166,11 @@ def main(script_path: Optional[str],
             stdout.write(formatter.format_success(len(sources), options.color_output) + '\n')
         stdout.flush()
 
-    if options.install_types:
+    if options.install_types and not options.non_interactive:
         install_types(options.cache_dir, formatter, after_run=True,
                       non_interactive=options.non_interactive)
+        print()
+        print("Hint: Run mypy again to get up-to-date results with installed types")
         return
 
     if options.fast_exit:
@@ -1087,12 +1114,7 @@ def fail(msg: str, stderr: TextIO, options: Options) -> None:
     sys.exit(2)
 
 
-def install_types(cache_dir: str,
-                  formatter: util.FancyFormatter,
-                  *,
-                  after_run: bool = False,
-                  non_interactive: bool = False) -> None:
-    """Install stub packages using pip if some missing stubs were detected."""
+def read_types_packages_to_install(cache_dir: str, after_run: bool) -> List[str]:
     if not os.path.isdir(cache_dir):
         if not after_run:
             sys.stderr.write(
@@ -1106,10 +1128,22 @@ def install_types(cache_dir: str,
         sys.exit(2)
     fnam = build.missing_stubs_file(cache_dir)
     if not os.path.isfile(fnam):
+        # No missing stubs.
+        return []
+    with open(fnam) as f:
+        return [line.strip() for line in f.readlines()]
+
+
+def install_types(cache_dir: str,
+                  formatter: util.FancyFormatter,
+                  *,
+                  after_run: bool = False,
+                  non_interactive: bool = False) -> None:
+    """Install stub packages using pip if some missing stubs were detected."""
+    packages = read_types_packages_to_install(cache_dir, after_run)
+    if not packages:
         # If there are no missing stubs, generate no output.
         return
-    with open(fnam) as f:
-        packages = [line.strip() for line in f.readlines()]
     if after_run and not non_interactive:
         print()
     print('Installing missing stub packages:')
