@@ -894,13 +894,13 @@ else:
 
 [case testEnumReachabilityWithNone]
 # flags: --strict-optional
-from enum import Enum
+from enum import Flag
 from typing import Optional
 
-class Foo(Enum):
+class Foo(Flag):
     A = 1
     B = 2
-    C = 3
+    C = 4
 
 x: Optional[Foo]
 if x:

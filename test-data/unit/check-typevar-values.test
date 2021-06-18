@@ -86,8 +86,9 @@ class B:
     def g(self) -> B: return B()
 AB = TypeVar('AB', A, B)
 def f(x: AB) -> AB:
+    indeterminate: bool
     y = x
-    if y:
+    if indeterminate:
         return y.f()
     else:
         return y.g() # E: Incompatible return value type (got "B", expected "A")

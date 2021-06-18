@@ -11,11 +11,14 @@ class type:
 # These are provided here for convenience.
 class int:
     def __add__(self, other: int) -> int: pass
+    def __bool__(self) -> bool: pass
 class bool(int): pass
 class float: pass
 
-class str: pass
-class bytes: pass
+class str:
+    def __len__(self) -> int: pass
+class bytes:
+    def __len__(self) -> int: pass
 
 class function: pass
 class ellipsis: pass

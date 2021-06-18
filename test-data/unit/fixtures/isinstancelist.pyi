@@ -18,11 +18,13 @@ def issubclass(x: object, t: Union[type, Tuple]) -> bool: pass
 
 class int:
     def __add__(self, x: int) -> int: pass
+    def __bool__(self) -> bool: pass
 class float: pass
 class bool(int): pass
 class str:
     def __add__(self, x: str) -> str: pass
     def __getitem__(self, x: int) -> str: pass
+    def __len__(self) -> int: pass
 
 T = TypeVar('T')
 KT = TypeVar('KT')

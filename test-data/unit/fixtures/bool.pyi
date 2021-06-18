@@ -10,9 +10,11 @@ class object:
 class type: pass
 class tuple(Generic[T]): pass
 class function: pass
-class int: pass
+class int:
+    def __bool__(self) -> 'bool': pass
 class bool(int): pass
 class float: pass
-class str: pass
+class str:
+    def __len__(self) -> int: pass
 class unicode: pass
 class ellipsis: pass
