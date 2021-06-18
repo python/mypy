@@ -2447,13 +2447,14 @@ def find_module_and_diagnose(manager: BuildManager,
         # Don't honor a global (not per-module) ignore_missing_imports
         # setting for modules that used to have bundled stubs, as
         # otherwise updating mypy can silently result in new false
-        # negatives.
+        # negatives. (Unless there are stubs but they are incomplete.)
         global_ignore_missing_imports = manager.options.ignore_missing_imports
         py_ver = options.python_version[0]
         if ((is_legacy_bundled_package(top_level, py_ver)
                 or is_legacy_bundled_package(second_level, py_ver))
                 and global_ignore_missing_imports
-                and not options.ignore_missing_imports_per_module):
+                and not options.ignore_missing_imports_per_module
+                and result is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED):
             ignore_missing_imports = False
 
         if skip_diagnose:
