@@ -71,13 +71,13 @@ def main(script_path: Optional[str],
 
     if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
         # Since --install-types performs user input, we want regular stdout and stderr.
-        fail("Error: --install-types not supported in this mode of running mypy", stderr, options)
+        fail("error: --install-types not supported in this mode of running mypy", stderr, options)
 
     if options.non_interactive and not options.install_types:
-        fail("Error: --non-interactive is only supported with --install-types", stderr, options)
+        fail("error: --non-interactive is only supported with --install-types", stderr, options)
 
     if options.install_types and not options.incremental:
-        fail("Error: --install-types not supported with incremental mode disabled",
+        fail("error: --install-types not supported with incremental mode disabled",
              stderr, options)
 
     if options.install_types and not sources:
@@ -121,8 +121,8 @@ def main(script_path: Optional[str],
                                non_interactive=options.non_interactive)
         if result:
             print()
-            print("Hint: Run mypy again for up-to-date results with installed types")
-            return
+            print("note: Run mypy again for up-to-date results with installed types")
+            code = 2
 
     if options.fast_exit:
         # Exit without freeing objects -- it's faster.
@@ -1125,12 +1125,12 @@ def read_types_packages_to_install(cache_dir: str, after_run: bool) -> List[str]
     if not os.path.isdir(cache_dir):
         if not after_run:
             sys.stderr.write(
-                "Error: Can't determine which types to install with no files to check " +
+                "error: Can't determine which types to install with no files to check " +
                 "(and no cache from previous mypy run)\n"
             )
         else:
             sys.stderr.write(
-                "Error: --install-types failed (no mypy cache directory)\n"
+                "error: --install-types failed (no mypy cache directory)\n"
             )
         sys.exit(2)
     fnam = build.missing_stubs_file(cache_dir)
