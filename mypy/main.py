@@ -120,7 +120,7 @@ def main(script_path: Optional[str],
         install_types(options.cache_dir, formatter, after_run=True,
                       non_interactive=options.non_interactive)
         print()
-        print("Hint: Run mypy again to get up-to-date results with installed types")
+        print("Hint: Run mypy again for up-to-date results with installed types")
         return
 
     if options.fast_exit:
