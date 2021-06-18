@@ -77,6 +77,10 @@ def main(script_path: Optional[str],
     if options.non_interactive and not options.install_types:
         fail("Error: --non-interactive is only supported with --install-types", stderr, options)
 
+    if options.install_types and not options.incremental:
+        fail("Error: --install-types not supported with incremental mode disabled",
+             stderr, options)
+
     if options.install_types and not sources:
         install_types(options.cache_dir, formatter, non_interactive=options.non_interactive)
         return
@@ -1090,8 +1094,15 @@ def install_types(cache_dir: str,
                   non_interactive: bool = False) -> None:
     """Install stub packages using pip if some missing stubs were detected."""
     if not os.path.isdir(cache_dir):
-        sys.stderr.write(
-            "Error: no mypy cache directory (you must enable incremental mode)\n")
+        if not after_run:
+            sys.stderr.write(
+                "Error: Can't determine which types to install with no files to check " +
+                "(and no cache from previous mypy run)\n"
+            )
+        else:
+            sys.stderr.write(
+                "Error: --install-types failed (no mypy cache directory)\n"
+            )
         sys.exit(2)
     fnam = build.missing_stubs_file(cache_dir)
     if not os.path.isfile(fnam):
