@@ -153,13 +153,13 @@ def run_build(sources: List[BuildSource],
             # Collect messages and possibly show them later.
             return
         f = stderr if serious else stdout
-        show_messages(messages, f, formatter, options)
+        show_messages(new_messages, f, formatter, options)
 
     serious = False
     blockers = False
     res = None
     try:
-        # Keep a dummy reference (res) for memory profiling below, as otherwise
+        # Keep a dummy reference (res) for memory profiling afterwards, as otherwise
         # the result could be freed.
         res = build.build(sources, options, None, flush_errors, fscache, stdout, stderr)
     except CompileError as e:
