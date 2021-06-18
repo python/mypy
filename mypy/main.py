@@ -44,55 +44,6 @@ def stat_proxy(path: str) -> os.stat_result:
         return st
 
 
-def run_build(sources: List[BuildSource],
-              options: Options,
-              fscache: FileSystemCache,
-              t0: float,
-              stdout: TextIO,
-              stderr: TextIO) -> Tuple[Optional[build.BuildResult], List[str], bool]:
-    formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
-
-    messages = []
-
-    def flush_errors(new_messages: List[str], serious: bool) -> None:
-        if options.pretty:
-            new_messages = formatter.fit_in_terminal(new_messages)
-        messages.extend(new_messages)
-        if options.non_interactive:
-            # Collect messages and possibly show them later.
-            return
-        f = stderr if serious else stdout
-        for msg in new_messages:
-            if options.color_output:
-                msg = formatter.colorize(msg)
-            f.write(msg + '\n')
-        f.flush()
-
-    serious = False
-    blockers = False
-    res = None
-    try:
-        # Keep a dummy reference (res) for memory profiling below, as otherwise
-        # the result could be freed.
-        res = build.build(sources, options, None, flush_errors, fscache, stdout, stderr)
-    except CompileError as e:
-        blockers = True
-        if not e.use_stdout:
-            serious = True
-    if (options.warn_unused_configs
-            and options.unused_configs
-            and not options.incremental
-            and not options.non_interactive):
-        print("Warning: unused section(s) in %s: %s" %
-              (options.config_file,
-              get_config_module_names(options.config_file,
-                                      [glob for glob in options.per_module_options.keys()
-                                      if glob in options.unused_configs])),
-              file=stderr)
-    maybe_write_junit_xml(time.time() - t0, serious, messages, options)
-    return res, messages, blockers
-
-
 def main(script_path: Optional[str],
          stdout: TextIO,
          stderr: TextIO,
@@ -143,8 +94,7 @@ def main(script_path: Optional[str],
             fscache.flush()
             print()
             res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
-        for msg in messages:
-            stderr.write(msg + '\n')
+        show_messages(messages, stderr, formatter, options)
 
     if MEM_PROFILE:
         from mypy.memprofile import print_memory_profile
@@ -183,6 +133,62 @@ def main(script_path: Optional[str],
 
     # HACK: keep res alive so that mypyc won't free it before the hard_exit
     list([res])
+
+
+def run_build(sources: List[BuildSource],
+              options: Options,
+              fscache: FileSystemCache,
+              t0: float,
+              stdout: TextIO,
+              stderr: TextIO) -> Tuple[Optional[build.BuildResult], List[str], bool]:
+    formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
+
+    messages = []
+
+    def flush_errors(new_messages: List[str], serious: bool) -> None:
+        if options.pretty:
+            new_messages = formatter.fit_in_terminal(new_messages)
+        messages.extend(new_messages)
+        if options.non_interactive:
+            # Collect messages and possibly show them later.
+            return
+        f = stderr if serious else stdout
+        show_messages(messages, f, formatter, options)
+
+    serious = False
+    blockers = False
+    res = None
+    try:
+        # Keep a dummy reference (res) for memory profiling below, as otherwise
+        # the result could be freed.
+        res = build.build(sources, options, None, flush_errors, fscache, stdout, stderr)
+    except CompileError as e:
+        blockers = True
+        if not e.use_stdout:
+            serious = True
+    if (options.warn_unused_configs
+            and options.unused_configs
+            and not options.incremental
+            and not options.non_interactive):
+        print("Warning: unused section(s) in %s: %s" %
+              (options.config_file,
+              get_config_module_names(options.config_file,
+                                      [glob for glob in options.per_module_options.keys()
+                                      if glob in options.unused_configs])),
+              file=stderr)
+    maybe_write_junit_xml(time.time() - t0, serious, messages, options)
+    return res, messages, blockers
+
+
+def show_messages(messages: List[str],
+                  f: TextIO,
+                  formatter: util.FancyFormatter,
+                  options: Options) -> None:
+    for msg in messages:
+        if options.color_output:
+            msg = formatter.colorize(msg)
+        f.write(msg + '\n')
+    f.flush()
 
 
 # Make the help output a little less jarring.
