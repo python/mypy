@@ -1327,3 +1327,19 @@ async def f_malformed_2() -> int:
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/tuple.pyi]
+
+
+[case testConditionalTypeVarException]
+# every part of this test case was necessary to trigger the crash
+import sys
+from typing import TypeVar
+
+T = TypeVar("T", int, str)
+
+def f(t: T) -> None:
+    if sys.platform == "lol":
+        try:
+            pass
+        except BaseException as e:
+            pass
+[builtins fixtures/dict.pyi]
