@@ -117,11 +117,12 @@ def main(script_path: Optional[str],
         stdout.flush()
 
     if options.install_types and not options.non_interactive:
-        install_types(options.cache_dir, formatter, after_run=True,
-                      non_interactive=options.non_interactive)
-        print()
-        print("Hint: Run mypy again for up-to-date results with installed types")
-        return
+        result = install_types(options.cache_dir, formatter, after_run=True,
+                               non_interactive=options.non_interactive)
+        if result:
+            print()
+            print("Hint: Run mypy again for up-to-date results with installed types")
+            return
 
     if options.fast_exit:
         # Exit without freeing objects -- it's faster.
@@ -1144,12 +1145,12 @@ def install_types(cache_dir: str,
                   formatter: util.FancyFormatter,
                   *,
                   after_run: bool = False,
-                  non_interactive: bool = False) -> None:
+                  non_interactive: bool = False) -> bool:
     """Install stub packages using pip if some missing stubs were detected."""
     packages = read_types_packages_to_install(cache_dir, after_run)
     if not packages:
         # If there are no missing stubs, generate no output.
-        return
+        return False
     if after_run and not non_interactive:
         print()
     print('Installing missing stub packages:')
@@ -1163,3 +1164,4 @@ def install_types(cache_dir: str,
             sys.exit(2)
         print()
     subprocess.run(cmd)
+    return True

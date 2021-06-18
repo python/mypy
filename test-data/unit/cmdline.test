@@ -1295,3 +1295,10 @@ pkg.py:1: error: "int" not callable
 [file pkg.py]
 1 + 2
 [out]
+
+[case testCmdlineInteractiveInstallTypesNothingToDo]
+# cmd: mypy --install-types -m pkg
+[file pkg.py]
+1()
+[out]
+pkg.py:1: error: "int" not callable
