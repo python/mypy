@@ -25,23 +25,6 @@ PyObject *CPyDict_GetItem(PyObject *dict, PyObject *key) {
     }
 }
 
-bool CPyDict_HasKey(PyObject *dict, PyObject *key) {
-    PyObject *res;
-    if (PyDict_CheckExact(dict)) {
-        res = PyDict_GetItem(dict, key);
-        // PyDict_GetItem returns a borrowed value
-        return res != NULL;
-    } else {
-        res = PyObject_GetItem(dict, key);
-        if (res == NULL) {
-            return false;
-        } else {
-            Py_DECREF(res);
-            return true;
-        }
-    }
-}
-
 PyObject *CPyDict_Build(Py_ssize_t size, ...) {
     Py_ssize_t i;
 

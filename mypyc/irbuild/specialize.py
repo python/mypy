@@ -15,7 +15,8 @@ See comment below for more documentation.
 from typing import Callable, Optional, Dict, Tuple, List
 
 from mypy.nodes import (
-    CallExpr, RefExpr, MemberExpr, TupleExpr, GeneratorExpr, ListExpr, DictExpr, ARG_POS
+    CallExpr, RefExpr, MemberExpr, NameExpr, TupleExpr, GeneratorExpr,
+    ListExpr, DictExpr, ARG_POS
 )
 from mypy.types import AnyType, TypeOfAny
 
@@ -323,7 +324,13 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
 def translate_dict_setdefault(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
     if (len(expr.args) == 2
             and expr.arg_kinds == [ARG_POS, ARG_POS]):
-
+        # Special case for dict.setdefault
+        # We would only construct default collection when needed. The dict_setdefault_spec_init_op would
+        # check whether the dict contains the key and would construct empty collection only once.
+        # This specializer works for the following cases:
+        #     d.setdefault(key, set()).add(value)
+        #     d.setdefault(key, []).add(value)
+        #     d.setdefault(key, {}).add(value)
         arg = expr.args[1]
         if isinstance(arg, ListExpr):
             if len(arg.items):
@@ -333,7 +340,7 @@ def translate_dict_setdefault(builder: IRBuilder, expr: CallExpr, callee: RefExp
             if len(arg.items):
                 return None
             data_type = Integer(2, c_int_rprimitive, expr.line)
-        elif isinstance(arg, CallExpr) and arg.callee.fullname == 'builtins.set':
+        elif isinstance(arg.callee, NameExpr) and arg.callee.fullname == 'builtins.set':
             if len(arg.args):
                 return None
             data_type = Integer(3, c_int_rprimitive, expr.line)
