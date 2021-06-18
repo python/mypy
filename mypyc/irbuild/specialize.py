@@ -321,12 +321,14 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
 
 
 @specialize_function('setdefault', dict_rprimitive)
-def translate_dict_setdefault(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+def translate_dict_setdefault(
+        builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
     if (len(expr.args) == 2
-            and expr.arg_kinds == [ARG_POS, ARG_POS]):
+            and expr.arg_kinds == [ARG_POS, ARG_POS]
+            and isinstance(callee, MemberExpr)):
         # Special case for dict.setdefault
-        # We would only construct default collection when needed. The dict_setdefault_spec_init_op would
-        # check whether the dict contains the key and would construct empty collection only once.
+        # We would only construct default collection when needed. The dict_setdefault_spec_init_op
+        # would check whether the dict contains the key and would construct empty collection only once.
         # This specializer works for the following cases:
         #     d.setdefault(key, set()).add(value)
         #     d.setdefault(key, []).add(value)
