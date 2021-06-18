@@ -25,6 +25,23 @@ PyObject *CPyDict_GetItem(PyObject *dict, PyObject *key) {
     }
 }
 
+bool CPyDict_HasKey(PyObject *dict, PyObject *key) {
+    PyObject *res;
+    if (PyDict_CheckExact(dict)) {
+        res = PyDict_GetItem(dict, key);
+        // PyDict_GetItem returns a borrowed value
+        return res != NULL;
+    } else {
+        res = PyObject_GetItem(dict, key);
+        if (res == NULL) {
+            return false;
+        } else {
+            Py_DECREF(res);
+            return true;
+        }
+    }
+}
+
 PyObject *CPyDict_Build(Py_ssize_t size, ...) {
     Py_ssize_t i;
 
@@ -78,6 +95,31 @@ PyObject *CPyDict_SetDefault(PyObject *dict, PyObject *key, PyObject *value) {
 
 PyObject *CPyDict_SetDefaultWithNone(PyObject *dict, PyObject *key) {
     return CPyDict_SetDefault(dict, key, Py_None);
+}
+
+PyObject *CPyDict_SetDefaultWithEmptyDatatype(PyObject *dict, PyObject *key,
+                                              int data_type) {
+    PyObject *res = CPyDict_GetItem(dict, key);
+    if (!res) {
+        PyErr_Clear();
+        PyObject *new_obj;
+        if (data_type == 1) {
+            new_obj = PyList_New(0);
+        } else if (data_type == 2) {
+            new_obj = PyDict_New();
+        } else if (data_type == 3) {
+            new_obj = PySet_New(NULL);
+        } else {
+            return NULL;
+        }
+        if (CPyDict_SetItem(dict, key, new_obj)) == -1) {
+            return NULL;
+        } else {
+            return new_obj;
+        }
+    } else {
+        return res;
+    }
 }
 
 int CPyDict_SetItem(PyObject *dict, PyObject *key, PyObject *value) {
