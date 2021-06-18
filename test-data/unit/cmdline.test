@@ -1288,3 +1288,10 @@ Error: --non-interactive is only supported with --install-types
 [file pkg.py]
 1()
 [out]
+pkg.py:1: error: "int" not callable
+
+[case testCmdlineNonInteractiveInstallTypesNothingToDoNoError]
+# cmd: mypy --install-types --non-interactive -m pkg
+[file pkg.py]
+1 + 2
+[out]
