@@ -433,7 +433,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         assert False, "This should be never called, got {}".format(t)
 
     def visit_type_guard_type(self, t: TypeGuardType) -> ProperType:
-        assert False, "This should be never called, got {}".format(t)
+        return t.type_guard.accept(self)
 
     def join(self, s: Type, t: Type) -> ProperType:
         return join_types(s, t)

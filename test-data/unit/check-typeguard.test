@@ -315,3 +315,17 @@ def coverage(obj: Any) -> bool:
         return True
     return False
 [builtins fixtures/classmethod.pyi]
+
+[case testTypeGuardAssignment]
+from typing_extensions import TypeGuard
+
+class A: pass
+class B(A): pass
+
+def guard(a: A) -> TypeGuard[B]:
+    pass
+
+a = A()
+if not guard(a):
+    a = A()
+[builtins fixtures/tuple.pyi]
