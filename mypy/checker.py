@@ -4102,7 +4102,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         self.fail("Type guard requires positional argument", node)
                         return {}, {}
                     if literal(expr) == LITERAL_TYPE:
-                        return {expr: TypeGuardType(node.callee.type_guard)}, {}
+                        return {expr: node.callee.type_guard}, {}
         elif isinstance(node, ComparisonExpr):
             # Step 1: Obtain the types of each operand and whether or not we can
             # narrow their types. (For example, we shouldn't try narrowing the
