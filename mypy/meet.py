@@ -7,7 +7,6 @@ from mypy.types import (
     UninhabitedType, TypeType, TypeOfAny, Overloaded, FunctionLike, LiteralType,
     ProperType, get_proper_type, get_proper_types, TypeAliasType, TypeGuardType
 )
-from mypy.sametypes import is_same_type
 from mypy.subtypes import is_equivalent, is_subtype, is_callable_compatible, is_proper_subtype
 from mypy.erasetype import erase_type
 from mypy.maptype import map_instance_to_supertype
@@ -71,6 +70,8 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
                                       for x in narrowed.relevant_items()])
     elif isinstance(narrowed, AnyType):
         return narrowed
+    elif isinstance(narrowed, TypeVarType) and is_subtype(narrowed.upper_bound, declared):
+        return narrowed
     elif isinstance(declared, TypeType) and isinstance(narrowed, TypeType):
         return TypeType.make_normalized(narrow_declared_type(declared.item, narrowed.item))
     elif (isinstance(declared, TypeType)
@@ -78,10 +79,6 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
           and narrowed.type.is_metaclass()):
         # We'd need intersection types, so give up.
         return declared
-    elif isinstance(narrowed, TypeVarType):
-        if is_same_type(narrowed.upper_bound, meet_types(narrowed.upper_bound, declared)):
-            return narrowed
-        return meet_types(declared, narrowed)
     elif isinstance(declared, (Instance, TupleType, TypeType, LiteralType)):
         return meet_types(declared, narrowed)
     elif isinstance(declared, TypedDictType) and isinstance(narrowed, Instance):
