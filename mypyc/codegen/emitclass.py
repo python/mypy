@@ -63,17 +63,29 @@ AS_NUMBER_SLOT_DEFS = {
     '__int__': ('nb_int', generate_dunder_wrapper),
     '__float__': ('nb_float', generate_dunder_wrapper),
     '__add__': ('nb_add', generate_bin_op_wrapper),
+    '__radd__': ('nb_add', generate_bin_op_wrapper),
     '__sub__': ('nb_subtract', generate_bin_op_wrapper),
+    '__rsub__': ('nb_subtract', generate_bin_op_wrapper),
     '__mul__': ('nb_multiply', generate_bin_op_wrapper),
+    '__rmul__': ('nb_multiply', generate_bin_op_wrapper),
     '__mod__': ('nb_remainder', generate_bin_op_wrapper),
+    '__rmod__': ('nb_remainder', generate_bin_op_wrapper),
     '__truediv__': ('nb_true_divide', generate_bin_op_wrapper),
+    '__rtruediv__': ('nb_true_divide', generate_bin_op_wrapper),
     '__floordiv__': ('nb_floor_divide', generate_bin_op_wrapper),
+    '__rfloordiv__': ('nb_floor_divide', generate_bin_op_wrapper),
     '__lshift__': ('nb_lshift', generate_bin_op_wrapper),
+    '__rlshift__': ('nb_lshift', generate_bin_op_wrapper),
     '__rshift__': ('nb_rshift', generate_bin_op_wrapper),
+    '__rrshift__': ('nb_rshift', generate_bin_op_wrapper),
     '__and__': ('nb_and', generate_bin_op_wrapper),
+    '__rand__': ('nb_and', generate_bin_op_wrapper),
     '__or__': ('nb_or', generate_bin_op_wrapper),
+    '__ror__': ('nb_or', generate_bin_op_wrapper),
     '__xor__': ('nb_xor', generate_bin_op_wrapper),
+    '__rxor__': ('nb_xor', generate_bin_op_wrapper),
     '__matmul__': ('nb_matrix_multiply', generate_bin_op_wrapper),
+    '__rmatmul__': ('nb_matrix_multiply', generate_bin_op_wrapper),
     '__iadd__': ('nb_inplace_add', generate_dunder_wrapper),
     '__isub__': ('nb_inplace_subtract', generate_dunder_wrapper),
     '__imul__': ('nb_inplace_multiply', generate_dunder_wrapper),
@@ -117,11 +129,21 @@ def generate_call_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
         return wrapper_slot(cl, fn, emitter)
 
 
+def slot_key(attr: str) -> str:
+    """Map dunder method name to sort key.
+
+    Sort reverse operator methods and __delitem__ after others ('x' > '_').
+    """
+    if (attr.startswith('__r') and attr != '__rshift__') or attr == '__delitem__':
+        return 'x' + attr
+    return attr
+
+
 def generate_slots(cl: ClassIR, table: SlotTable, emitter: Emitter) -> Dict[str, str]:
     fields = OrderedDict()  # type: Dict[str, str]
     generated = {}  # type: Dict[str, str]
     # Sort for determinism on Python 3.5
-    for name, (slot, generator) in sorted(table.items(), reverse=True):
+    for name, (slot, generator) in sorted(table.items(), key=lambda x: slot_key(x[0])):
         method_cls = cl.get_method_and_class(name)
         if method_cls and (method_cls[1] == cl or name in ALWAYS_FILL):
             if slot in generated:

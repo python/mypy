@@ -283,68 +283,103 @@ def generate_bin_op_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     wrapper_name = gen.wrapper_name()
 
     gen.emit_header()
-    rmethod = reverse_op_methods[fn.name]
-    fn_rev = cl.get_method(rmethod)
-    if fn_rev is None:
-        # There's only a forward operator method.
-        gen.emit_arg_processing(error=GotoHandler('typefail'), raise_exception=False)
-        gen.emit_call(not_implemented_handler='goto typefail;')
-        gen.emit_error_handling()
-        emitter.emit_label('typefail')
-        # If some argument has an incompatible type, treat this the same as
-        # returning NotImplemented, and try to call the reverse operator method.
-        #
-        # Note that in normal Python you'd instead of an explicit
-        # return of NotImplemented, but it doesn't generally work here
-        # the body won't be executed at all if there is an argument
-        # type check failure.
-        #
-        # The recommended way is to still use a type check in the
-        # body. This will only be used in interpreted mode:
-        #
-        #    def __add__(self, other: int) -> Foo:
-        #        if not isinstance(other, int):
-        #            return NotImplemented
-        #        ...
-        emitter.emit_line(
-            'return CPy_CallReverseOpMethod(obj_left, obj_right, "{}", "{}");'.format(
-                op_methods_to_symbols[fn.name],
-                rmethod))
-        gen.finish()
+    if fn.name not in reverse_op_methods and fn.name in reverse_op_methods.values():
+        # There's only a reverse operator method.
+        generate_bin_op_reverse_only_wrapper(cl, fn, emitter, gen)
     else:
-        # There's both a forward and a reverse operator method. First
-        # check if we should try calling the forward one. If the
-        # argument type check fails, fall back to the reverse method.
-        #
-        # Similar to above, we can't perfectly match Python semantics.
-        # In regular Python code you'd return NotImplemented if the
-        # operand has the wrong type, but in compiled code we'll never
-        # get to execute the type check.
-        emitter.emit_line('if (PyObject_IsInstance(obj_left, (PyObject *){})) {{'.format(
-            emitter.type_struct_name(cl)))
-        gen.emit_arg_processing(error=GotoHandler('typefail'), raise_exception=False)
-        gen.emit_call()
-        gen.emit_error_handling()
-        emitter.emit_line('}')
-        emitter.emit_label('typefail')
-        emitter.emit_line('if (PyObject_IsInstance(obj_right, (PyObject *){})) {{'.format(
-            emitter.type_struct_name(cl)))
-        gen.set_target(fn_rev)
-        gen.arg_names = ['right', 'left']
-        gen.emit_arg_processing(error=GotoHandler('typefail2'), raise_exception=False)
-        gen.emit_call()
-        gen.emit_error_handling()
-        emitter.emit_line('} else {')
-        emitter.emit_line(
-            'return CPy_CallReverseOpMethod(obj_left, obj_right, "{}", "{}");'.format(
-                op_methods_to_symbols[fn.name],
-                rmethod))
-        emitter.emit_line('}')
-        emitter.emit_label('typefail2')
-        emitter.emit_line('Py_INCREF(Py_NotImplemented);')
-        emitter.emit_line('return Py_NotImplemented;')
-        gen.finish()
+        rmethod = reverse_op_methods[fn.name]
+        fn_rev = cl.get_method(rmethod)
+        if fn_rev is None:
+            # There's only a forward operator method.
+            generate_bin_op_forward_only_wrapper(cl, fn, emitter, gen)
+        else:
+            # There's both a forward and a reverse operator method.
+            generate_bin_op_both_wrappers(cl, fn, fn_rev, emitter, gen)
     return wrapper_name
+
+
+def generate_bin_op_forward_only_wrapper(cl: ClassIR,
+                                         fn: FuncIR,
+                                         emitter: Emitter,
+                                         gen: 'WrapperGenerator') -> None:
+    gen.emit_arg_processing(error=GotoHandler('typefail'), raise_exception=False)
+    gen.emit_call(not_implemented_handler='goto typefail;')
+    gen.emit_error_handling()
+    emitter.emit_label('typefail')
+    # If some argument has an incompatible type, treat this the same as
+    # returning NotImplemented, and try to call the reverse operator method.
+    #
+    # Note that in normal Python you'd instead of an explicit
+    # return of NotImplemented, but it doesn't generally work here
+    # the body won't be executed at all if there is an argument
+    # type check failure.
+    #
+    # The recommended way is to still use a type check in the
+    # body. This will only be used in interpreted mode:
+    #
+    #    def __add__(self, other: int) -> Foo:
+    #        if not isinstance(other, int):
+    #            return NotImplemented
+    #        ...
+    rmethod = reverse_op_methods[fn.name]
+    emitter.emit_line(
+        'return CPy_CallReverseOpMethod(obj_left, obj_right, "{}", "{}");'.format(
+            op_methods_to_symbols[fn.name],
+            rmethod))
+    gen.finish()
+
+
+def generate_bin_op_reverse_only_wrapper(cl: ClassIR,
+                                         fn_rev: FuncIR,
+                                         emitter: Emitter,
+                                         gen: 'WrapperGenerator') -> None:
+    gen.arg_names = ['right', 'left']
+    gen.emit_arg_processing(error=GotoHandler('typefail'), raise_exception=False)
+    gen.emit_call()
+    gen.emit_error_handling()
+    emitter.emit_label('typefail')
+    emitter.emit_line('Py_INCREF(Py_NotImplemented);')
+    emitter.emit_line('return Py_NotImplemented;')
+    gen.finish()
+
+
+def generate_bin_op_both_wrappers(cl: ClassIR,
+                                  fn: FuncIR,
+                                  fn_rev: FuncIR,
+                                  emitter: Emitter,
+                                  gen: 'WrapperGenerator') -> None:
+    # There's both a forward and a reverse operator method. First
+    # check if we should try calling the forward one. If the
+    # argument type check fails, fall back to the reverse method.
+    #
+    # Similar to above, we can't perfectly match Python semantics.
+    # In regular Python code you'd return NotImplemented if the
+    # operand has the wrong type, but in compiled code we'll never
+    # get to execute the type check.
+    emitter.emit_line('if (PyObject_IsInstance(obj_left, (PyObject *){})) {{'.format(
+        emitter.type_struct_name(cl)))
+    gen.emit_arg_processing(error=GotoHandler('typefail'), raise_exception=False)
+    gen.emit_call(not_implemented_handler='goto typefail;')
+    gen.emit_error_handling()
+    emitter.emit_line('}')
+    emitter.emit_label('typefail')
+    emitter.emit_line('if (PyObject_IsInstance(obj_right, (PyObject *){})) {{'.format(
+        emitter.type_struct_name(cl)))
+    gen.set_target(fn_rev)
+    gen.arg_names = ['right', 'left']
+    gen.emit_arg_processing(error=GotoHandler('typefail2'), raise_exception=False)
+    gen.emit_call()
+    gen.emit_error_handling()
+    emitter.emit_line('} else {')
+    emitter.emit_line(
+        'return CPy_CallReverseOpMethod(obj_left, obj_right, "{}", "{}");'.format(
+            op_methods_to_symbols[fn.name],
+            fn_rev.name))
+    emitter.emit_line('}')
+    emitter.emit_label('typefail2')
+    emitter.emit_line('Py_INCREF(Py_NotImplemented);')
+    emitter.emit_line('return Py_NotImplemented;')
+    gen.finish()
 
 
 RICHCOMPARE_OPS = {
