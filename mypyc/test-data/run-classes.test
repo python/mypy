@@ -27,6 +27,7 @@ class D:
     pass
 [file driver.py]
 from native import C
+from testutil import assertRaises
 
 c = C()
 assert not hasattr(c, 'x')
@@ -42,11 +43,13 @@ print(c.x)
 assert hasattr(c, 'x')
 assert hasattr(c, 'y')
 assert not hasattr(c, 'z')
-del c.x
-assert not hasattr(c, 'x')
+with assertRaises(AttributeError, "'C' object attribute 'x' cannot be deleted"):
+    del c.x
+assert hasattr(c, 'x')
 assert hasattr(c, 'y')
-del c.y
-assert not hasattr(c, 'y')
+with assertRaises(AttributeError, "'C' object attribute 'y' cannot be deleted"):
+    del c.y
+assert hasattr(c, 'y')
 c.x = 10**30+2
 print(c.x)
 assert hasattr(c, 'x')
@@ -56,6 +59,121 @@ assert hasattr(c, 'x')
 1000000000000000000000000000000
 1000000000000000000000000000001
 1000000000000000000000000000002
+
+[case testClassWithDeletableAttributes]
+from typing import Any, cast
+from testutil import assertRaises
+
+class C:
+    __deletable__ = ['x', 'y']
+    x: int
+    y: int
+    z: int
+
+def test_delete() -> None:
+    c = C()
+    c.x = 1
+    c.y = 2
+    c.z = 3
+    del c.x
+    del c.y
+    assert c.z == 3
+    with assertRaises(AttributeError):
+        c.x
+    with assertRaises(AttributeError):
+        c.y
+
+def test_delete_any() -> None:
+    c: Any = C()
+    c.x = 1
+    c.y = 2
+    c.z = 3
+    del c.x
+    del c.y
+    with assertRaises(AttributeError, "'C' object attribute 'z' cannot be deleted"):
+        del c.z
+    assert c.z == 3
+    with assertRaises(AttributeError):
+        c.x
+    with assertRaises(AttributeError):
+        c.y
+
+class Base:
+    __deletable__ = ['a']
+    a: int
+    b: int
+
+class Deriv(Base):
+    __deletable__ = ('c',)
+    c: str
+    d: str
+
+def test_delete_with_inheritance() -> None:
+    d = Deriv()
+    d.a = 0
+    d.b = 1
+    d.c = 'X'
+    d.d = 'Y'
+    del d.a
+    with assertRaises(AttributeError):
+        d.a
+    del d.c
+    with assertRaises(AttributeError):
+        d.c
+    assert d.b == 1
+    assert d.d == 'Y'
+
+def test_delete_with_inheritance_any() -> None:
+    d: Any = Deriv()
+    d.a = 0
+    d.b = 1
+    d.c = 'X'
+    d.d = 'Y'
+    del d.a
+    with assertRaises(AttributeError):
+        d.a
+    del d.c
+    with assertRaises(AttributeError):
+        d.c
+    with assertRaises(AttributeError):
+        del d.b
+    assert d.b == 1
+    with assertRaises(AttributeError):
+        del d.d
+    assert d.d == 'Y'
+
+def decorator(cls):
+    return cls
+
+@decorator
+class NonExt:
+    x: int
+    y: int
+
+    # No effect in a non-native class
+    __deletable__ = ['x']
+
+def test_non_ext() -> None:
+    n = NonExt()
+    n.x = 2
+    n.y = 3
+    del n.x
+    del n.y
+    with assertRaises(AttributeError):
+        n.x
+    with assertRaises(AttributeError):
+        n.y
+
+def test_non_ext_any() -> None:
+    n: Any = NonExt()
+    n.x = 2
+    n.y = 3
+    del n.x
+    del n.y
+    with assertRaises(AttributeError):
+        n.x
+    with assertRaises(AttributeError):
+        n.y
 
 [case testNonExtMisc]
 from typing import Any, overload
@@ -150,148 +268,6 @@ if sys.version_info[:2] > (3, 5):
     assert TestEnum.b.name == 'b'
     assert TestEnum.b.value == 2
 
-[case testRunDataclass]
-from dataclasses import dataclass, field
-from typing import Set, List, Callable, Any
-
-@dataclass
-class Person1:
-    age : int
-    name : str
-
-    def __bool__(self) -> bool:
-        return self.name == 'robot'
-
-def testBool(p: Person1) -> bool:
-    if p:
-        return True
-    else:
-        return False
-
-@dataclass
-class Person1b(Person1):
-    id: str = '000'
-
-@dataclass
-class Person2:
-    age : int
-    name : str = field(default='robot')
-
-@dataclass(order = True)
-class Person3:
-    age : int = field(default = 6)
-    friendIDs : List[int] = field(default_factory = list)
-
-    def get_age(self) -> int:
-        return (self.age)
-
-    def set_age(self, new_age : int) -> None:
-        self.age = new_age
-
-    def add_friendID(self, fid : int) -> None:
-        self.friendIDs.append(fid)
-
-    def get_friendIDs(self) -> List[int]:
-        return self.friendIDs
-
-def get_next_age(g: Callable[[Any], int]) -> Callable[[Any], int]:
-    def f(a: Any) -> int:
-        return g(a) + 1
-    return f
-
-@dataclass
-class Person4:
-    age : int
-    _name : str = 'Bot'
-
-    @get_next_age
-    def get_age(self) -> int:
-        return self.age
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-[file other.py]
-from native import Person1, Person1b, Person2, Person3, Person4, testBool
-i1 = Person1(age = 5, name = 'robot')
-assert i1.age == 5
-assert i1.name == 'robot'
-assert testBool(i1) == True
-assert testBool(Person1(age = 5, name = 'robo')) == False
-i1b = Person1b(age = 5, name = 'robot')
-assert i1b.age == 5
-assert i1b.name == 'robot'
-assert testBool(i1b) == True
-assert testBool(Person1b(age = 5, name = 'robo')) == False
-i1c = Person1b(age = 20, name = 'robot', id = 'test')
-assert i1c.age == 20
-assert i1c.id == 'test'
-
-i2 = Person2(age = 5)
-assert i2.age == 5
-assert i2.name == 'robot'
-i3 = Person2(age = 5, name = 'new_robot')
-assert i3.age == 5
-assert i3.name == 'new_robot'
-i4 = Person3()
-assert i4.age == 6
-assert i4.friendIDs == []
-i5 = Person3(age = 5)
-assert i5.age == 5
-assert i5.friendIDs == []
-i6 = Person3(age = 5, friendIDs = [1,2,3])
-assert i6.age == 5
-assert i6.friendIDs == [1,2,3]
-assert i6.get_age() == 5
-i6.set_age(10)
-assert i6.get_age() == 10
-i6.add_friendID(4)
-assert i6.get_friendIDs() == [1,2,3,4]
-i7 = Person4(age = 5)
-assert i7.get_age() == 6
-i7.age += 3
-assert i7.age == 8
-assert i7.name == 'Bot'
-i8 = Person3(age = 1, friendIDs = [1,2])
-i9 = Person3(age = 1, friendIDs = [1,2])
-assert i8 == i9
-i8.age = 2
-assert i8 > i9
-
-
-[file driver.py]
-import sys
-
-# Dataclasses introduced in 3.7
-version = sys.version_info[:2]
-if version[0] < 3 or version[1] < 7:
-    exit()
-
-# Run the tests in both interpreted and compiled mode
-import other
-import other_interpreted
-
-# Test for an exceptional cases
-from testutil import assertRaises
-from native import Person1, Person1b, Person3
-from types import BuiltinMethodType
-
-with assertRaises(TypeError, "missing 1 required positional argument"):
-    Person1(0)
-
-with assertRaises(TypeError, "missing 2 required positional arguments"):
-    Person1b()
-
-with assertRaises(TypeError, "int object expected; got str"):
-    Person1('nope', 'test')
-
-p = Person1(0, 'test')
-with assertRaises(TypeError, "int object expected; got str"):
-    p.age = 'nope'
-
-assert isinstance(Person3().get_age, BuiltinMethodType)
-
 [case testGetAttribute]
 class C:
     x: int
@@ -373,6 +349,16 @@ assert c is c2
 o = object()
 c1.d = o
 assert c1.d is o
+
+[case testInitMethodWithMissingNoneReturnAnnotation]
+class C:
+    def __init__(self):
+        self.x = 42
+[file driver.py]
+from native import C
+c = C()
+assert c is not None
+assert c.x == 42
 
 [case testConstructClassWithDefaultConstructor]
 class C:

@@ -1,4 +1,4 @@
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 import re
 import pprint
 import sys
@@ -14,9 +14,9 @@ if TYPE_CHECKING:
 
 
 class BuildType:
-    STANDARD = 0  # type: Final[int]
-    MODULE = 1  # type: Final[int]
-    PROGRAM_TEXT = 2  # type: Final[int]
+    STANDARD = 0  # type: Final
+    MODULE = 1  # type: Final
+    PROGRAM_TEXT = 2  # type: Final
 
 
 PER_MODULE_OPTIONS = {
@@ -82,12 +82,25 @@ class Options:
         self.no_silence_site_packages = False
         self.no_site_packages = False
         self.ignore_missing_imports = False
+        # Is ignore_missing_imports set in a per-module section
+        self.ignore_missing_imports_per_module = False
         self.follow_imports = 'normal'  # normal|silent|skip|error
         # Whether to respect the follow_imports setting even for stub files.
         # Intended to be used for disabling specific stubs.
         self.follow_imports_for_stubs = False
         # PEP 420 namespace packages
+        # This allows definitions of packages without __init__.py and allows packages to span
+        # multiple directories. This flag affects both import discovery and the association of
+        # input files/modules/packages to the relevant file and fully qualified module name.
         self.namespace_packages = False
+        # Use current directory and MYPYPATH to determine fully qualified module names of files
+        # passed by automatically considering their subdirectories as packages. This is only
+        # relevant if namespace packages are enabled, since otherwise examining __init__.py's is
+        # sufficient to determine module names for files. As a possible alternative, add a single
+        # top-level __init__.py to your packages.
+        self.explicit_package_bases = False
+        # File names, directory names or subpaths to avoid checking
+        self.exclude = ""  # type: str
 
         # disallow_any options
         self.disallow_any_generics = False
@@ -130,7 +143,7 @@ class Options:
         # Warn about unused '# type: ignore' comments
         self.warn_unused_ignores = False
 
-        # Warn about unused '[mypy-<pattern>] config sections
+        # Warn about unused '[mypy-<pattern>]'  or '[[tool.mypy.overrides]]' config sections
         self.warn_unused_configs = False
 
         # Files in which to ignore all non-fatal errors
@@ -229,6 +242,9 @@ class Options:
         # mypy. (Like mypyc.)
         self.preserve_asts = False
 
+        # PEP 612 support is a work in progress, hide it from users
+        self.wip_pep_612 = False
+
         # Paths of user plugins
         self.plugins = []  # type: List[str]
 
@@ -279,6 +295,15 @@ class Options:
         self.transform_source = None  # type: Optional[Callable[[Any], Any]]
         # Print full path to each file in the report.
         self.show_absolute_path = False  # type: bool
+        # Install missing stub packages if True
+        self.install_types = False
+        # Install missing stub packages in non-interactive mode (don't prompt for
+        # confirmation, and don't show any errors)
+        self.non_interactive = False
+        # When we encounter errors that may cause many additional errors,
+        # skip most errors after this many messages have been reported.
+        # -1 means unlimited.
+        self.many_errors_threshold = defaults.MANY_ERRORS_THRESHOLD
 
     # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property
@@ -305,6 +330,10 @@ class Options:
         replace_object_state(new_options, self, copy_dict=True)
         for key, value in changes.items():
             setattr(new_options, key, value)
+        if changes.get("ignore_missing_imports"):
+            # This is the only option for which a per-module and a global
+            # option sometimes beheave differently.
+            new_options.ignore_missing_imports_per_module = True
         return new_options
 
     def build_per_module_cache(self) -> None:

@@ -522,7 +522,7 @@ class MemoryXmlReporter(AbstractReporter):
             etree.SubElement(root, 'file',
                              file_info.attrib(),
                              module=file_info.module,
-                             name=file_info.name,
+                             name=pathname2url(file_info.name),
                              total=str(file_info.total()))
         xslt_path = os.path.relpath('mypy-html.xslt', '.')
         transform_pi = etree.ProcessingInstruction('xml-stylesheet',

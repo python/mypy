@@ -1,25 +1,27 @@
 """Utilities for emitting C code."""
 
-from mypy.ordered_dict import OrderedDict
-from typing import List, Set, Dict, Optional, Callable, Union
+from mypy.backports import OrderedDict
+from typing import List, Set, Dict, Optional, Callable, Union, Tuple
+import sys
 
 from mypyc.common import (
     REG_PREFIX, ATTR_PREFIX, STATIC_PREFIX, TYPE_PREFIX, NATIVE_PREFIX,
-    FAST_ISINSTANCE_MAX_SUBCLASSES,
+    FAST_ISINSTANCE_MAX_SUBCLASSES, use_vectorcall
 )
-from mypyc.ir.ops import Environment, BasicBlock, Value
+from mypyc.ir.ops import BasicBlock, Value
 from mypyc.ir.rtypes import (
     RType, RTuple, RInstance, RUnion, RPrimitive,
     is_float_rprimitive, is_bool_rprimitive, is_int_rprimitive, is_short_int_rprimitive,
     is_list_rprimitive, is_dict_rprimitive, is_set_rprimitive, is_tuple_rprimitive,
     is_none_rprimitive, is_object_rprimitive, object_rprimitive, is_str_rprimitive,
     int_rprimitive, is_optional_type, optional_value_type, is_int32_rprimitive,
-    is_int64_rprimitive, is_bit_rprimitive
+    is_int64_rprimitive, is_bit_rprimitive, is_range_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.namegen import NameGenerator, exported_name
 from mypyc.sametype import is_same_type
+from mypyc.codegen.literals import Literals
 
 
 class HeaderDeclaration:
@@ -84,14 +86,21 @@ class EmitterContext:
         # The declaration contains the body of the struct.
         self.declarations = OrderedDict()  # type: Dict[str, HeaderDeclaration]
 
+        self.literals = Literals()
+
 
 class Emitter:
     """Helper for C code generation."""
 
-    def __init__(self, context: EmitterContext, env: Optional[Environment] = None) -> None:
+    def __init__(self,
+                 context: EmitterContext,
+                 value_names: Optional[Dict[Value, str]] = None,
+                 capi_version: Optional[Tuple[int, int]] = None,
+                 ) -> None:
         self.context = context
+        self.capi_version = capi_version or sys.version_info[:2]
         self.names = context.names
-        self.env = env or Environment()
+        self.value_names = value_names or {}
         self.fragments = []  # type: List[str]
         self._indent = 0
 
@@ -108,7 +117,7 @@ class Emitter:
         return 'CPyL%s' % label.label
 
     def reg(self, reg: Value) -> str:
-        return REG_PREFIX + reg.name
+        return REG_PREFIX + self.value_names[reg]
 
     def attr(self, name: str) -> str:
         return ATTR_PREFIX + name
@@ -248,6 +257,9 @@ class Emitter:
         result.append('')
 
         return result
+
+    def use_vectorcall(self) -> bool:
+        return use_vectorcall(self.capi_version)
 
     def emit_undefined_attr_check(self, rtype: RType, attr_expr: str,
                                   compare: str,
@@ -398,8 +410,8 @@ class Emitter:
 
         # TODO: Verify refcount handling.
         if (is_list_rprimitive(typ) or is_dict_rprimitive(typ) or is_set_rprimitive(typ)
-                or is_float_rprimitive(typ) or is_str_rprimitive(typ) or is_int_rprimitive(typ)
-                or is_bool_rprimitive(typ)):
+                or is_str_rprimitive(typ) or is_range_rprimitive(typ) or is_float_rprimitive(typ)
+                or is_int_rprimitive(typ) or is_bool_rprimitive(typ)):
             if declare_dest:
                 self.emit_line('PyObject *{};'.format(dest))
             if is_list_rprimitive(typ):
@@ -408,10 +420,12 @@ class Emitter:
                 prefix = 'PyDict'
             elif is_set_rprimitive(typ):
                 prefix = 'PySet'
-            elif is_float_rprimitive(typ):
-                prefix = 'CPyFloat'
             elif is_str_rprimitive(typ):
                 prefix = 'PyUnicode'
+            elif is_range_rprimitive(typ):
+                prefix = 'PyRange'
+            elif is_float_rprimitive(typ):
+                prefix = 'CPyFloat'
             elif is_int_rprimitive(typ):
                 prefix = 'PyLong'
             elif is_bool_rprimitive(typ) or is_bit_rprimitive(typ):

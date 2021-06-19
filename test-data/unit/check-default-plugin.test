@@ -13,10 +13,10 @@ T = TypeVar('T')
 def yield_id(item: T) -> Iterator[T]:
     yield item
 
-reveal_type(yield_id) # N: Revealed type is 'def [T] (item: T`-1) -> contextlib.GeneratorContextManager[T`-1]'
+reveal_type(yield_id) # N: Revealed type is "def [T] (item: T`-1) -> contextlib.GeneratorContextManager[T`-1]"
 
 with yield_id(1) as x:
-    reveal_type(x) # N: Revealed type is 'builtins.int*'
+    reveal_type(x) # N: Revealed type is "builtins.int*"
 
 f = yield_id
 def g(x, y): pass
@@ -29,7 +29,7 @@ from contextlib import contextmanager
 from typing import Callable, Iterator
 
 c: Callable[..., Iterator[int]]
-reveal_type(c) # N: Revealed type is 'def (*Any, **Any) -> typing.Iterator[builtins.int]'
-reveal_type(contextmanager(c)) # N: Revealed type is 'def (*Any, **Any) -> contextlib.GeneratorContextManager[builtins.int*]'
+reveal_type(c) # N: Revealed type is "def (*Any, **Any) -> typing.Iterator[builtins.int]"
+reveal_type(contextmanager(c)) # N: Revealed type is "def (*Any, **Any) -> contextlib.GeneratorContextManager[builtins.int*]"
 [typing fixtures/typing-medium.pyi]
 [builtins fixtures/tuple.pyi]

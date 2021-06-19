@@ -8,6 +8,9 @@ annotations are given in comments, since the function annotation
 syntax was introduced in Python 3. The comment-based syntax is
 specified in :pep:`484`.
 
+Mypy requires typed-ast in order to check Python 2 code. You can install it
+using ``pip install 'mypy[python2]'``.
+
 Run mypy in Python 2 mode by using the :option:`--py2 <mypy --py2>` option::
 
     $ mypy --py2 program.py

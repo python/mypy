@@ -64,12 +64,6 @@ class RType:
     def __repr__(self) -> str:
         return '<%s>' % self.__class__.__name__
 
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, RType) and other.name == self.name
-
-    def __hash__(self) -> int:
-        return hash(self.name)
-
     def serialize(self) -> Union[JsonDict, str]:
         raise NotImplementedError('Cannot serialize {} instance'.format(self.__class__.__name__))
 
@@ -124,6 +118,10 @@ class RTypeVisitor(Generic[T]):
         raise NotImplementedError
 
     @abstractmethod
+    def visit_rarray(self, typ: 'RArray') -> T:
+        raise NotImplementedError
+
+    @abstractmethod
     def visit_rvoid(self, typ: 'RVoid') -> T:
         raise NotImplementedError
 
@@ -144,6 +142,12 @@ class RVoid(RType):
 
     def serialize(self) -> str:
         return 'void'
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, RVoid)
+
+    def __hash__(self) -> int:
+        return hash(RVoid)
 
 
 # Singleton instance of RVoid
@@ -184,13 +188,15 @@ class RPrimitive(RType):
         #       we need to figure out some way to represent here.
         if ctype == 'CPyTagged':
             self.c_undefined = 'CPY_INT_TAG'
-        elif ctype in ('int32_t', 'int64_t', 'CPyPtr'):
+        elif ctype in ('int32_t', 'int64_t', 'CPyPtr', 'uint32_t', 'uint64_t'):
             self.c_undefined = '0'
         elif ctype == 'PyObject *':
             # Boxed types use the null pointer as the error value.
             self.c_undefined = 'NULL'
         elif ctype == 'char':
             self.c_undefined = '2'
+        elif ctype == 'PyObject **':
+            self.c_undefined = 'NULL'
         else:
             assert False, 'Unrecognized ctype: %r' % ctype
 
@@ -202,6 +208,12 @@ class RPrimitive(RType):
 
     def __repr__(self) -> str:
         return '<RPrimitive %s>' % self.name
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, RPrimitive) and other.name == self.name
+
+    def __hash__(self) -> int:
+        return hash(self.name)
 
 
 # NOTE: All the supported instances of RPrimitive are defined
@@ -222,6 +234,10 @@ class RPrimitive(RType):
 # faster.
 object_rprimitive = RPrimitive('builtins.object', is_unboxed=False,
                                is_refcounted=True)  # type: Final
+
+# represents a low level pointer of an object
+object_pointer_rprimitive = RPrimitive('object_ptr', is_unboxed=False,
+                               is_refcounted=False, ctype='PyObject **')  # type: Final
 
 # Arbitrary-precision integer (corresponds to Python 'int'). Small
 # enough values are stored unboxed, while large integers are
@@ -244,21 +260,32 @@ int_rprimitive = RPrimitive('builtins.int', is_unboxed=True, is_refcounted=True,
 short_int_rprimitive = RPrimitive('short_int', is_unboxed=True, is_refcounted=False,
                                   ctype='CPyTagged')  # type: Final
 
-# low level integer (corresponds to C's 'int's).
+# Low level integer types (correspond to C integer types)
+
 int32_rprimitive = RPrimitive('int32', is_unboxed=True, is_refcounted=False,
                               ctype='int32_t', size=4)  # type: Final
 int64_rprimitive = RPrimitive('int64', is_unboxed=True, is_refcounted=False,
                               ctype='int64_t', size=8)  # type: Final
-# integer alias
-c_int_rprimitive = int32_rprimitive
-if IS_32_BIT_PLATFORM:
-    c_pyssize_t_rprimitive = int32_rprimitive
-else:
-    c_pyssize_t_rprimitive = int64_rprimitive
+uint32_rprimitive = RPrimitive('uint32', is_unboxed=True, is_refcounted=False,
+                               ctype='uint32_t', size=4)  # type: Final
+uint64_rprimitive = RPrimitive('uint64', is_unboxed=True, is_refcounted=False,
+                               ctype='uint64_t', size=8)  # type: Final
 
-# low level pointer, represented as integer in C backends
+# The C 'int' type
+c_int_rprimitive = int32_rprimitive
+
+if IS_32_BIT_PLATFORM:
+    c_size_t_rprimitive = uint32_rprimitive
+    c_pyssize_t_rprimitive = RPrimitive('native_int', is_unboxed=True, is_refcounted=False,
+                              ctype='int32_t', size=4)
+else:
+    c_size_t_rprimitive = uint64_rprimitive
+    c_pyssize_t_rprimitive = RPrimitive('native_int', is_unboxed=True, is_refcounted=False,
+                              ctype='int64_t', size=8)
+
+# Low level pointer, represented as integer in C backends
 pointer_rprimitive = RPrimitive('ptr', is_unboxed=True, is_refcounted=False,
-                              ctype='CPyPtr')  # type: Final
+                                ctype='CPyPtr')  # type: Final
 
 # Floats are represent as 'float' PyObject * values. (In the future
 # we'll likely switch to a more efficient, unboxed representation.)
@@ -299,6 +326,10 @@ str_rprimitive = RPrimitive('builtins.str', is_unboxed=False, is_refcounted=True
 tuple_rprimitive = RPrimitive('builtins.tuple', is_unboxed=False,
                               is_refcounted=True)  # type: Final
 
+# Python range object.
+range_rprimitive = RPrimitive('builtins.range', is_unboxed=False,
+                              is_refcounted=True)  # type: Final
+
 
 def is_tagged(rtype: RType) -> bool:
     return rtype is int_rprimitive or rtype is short_int_rprimitive
@@ -313,11 +344,21 @@ def is_short_int_rprimitive(rtype: RType) -> bool:
 
 
 def is_int32_rprimitive(rtype: RType) -> bool:
-    return rtype is int32_rprimitive
+    return (rtype is int32_rprimitive or
+            (rtype is c_pyssize_t_rprimitive and rtype._ctype == 'int32_t'))
 
 
 def is_int64_rprimitive(rtype: RType) -> bool:
-    return rtype is int64_rprimitive
+    return (rtype is int64_rprimitive or
+            (rtype is c_pyssize_t_rprimitive and rtype._ctype == 'int64_t'))
+
+
+def is_uint32_rprimitive(rtype: RType) -> bool:
+    return rtype is uint32_rprimitive
+
+
+def is_uint64_rprimitive(rtype: RType) -> bool:
+    return rtype is uint64_rprimitive
 
 
 def is_c_py_ssize_t_rprimitive(rtype: RType) -> bool:
@@ -368,6 +409,10 @@ def is_tuple_rprimitive(rtype: RType) -> bool:
     return isinstance(rtype, RPrimitive) and rtype.name == 'builtins.tuple'
 
 
+def is_range_rprimitive(rtype: RType) -> bool:
+    return isinstance(rtype, RPrimitive) and rtype.name == 'builtins.range'
+
+
 def is_sequence_rprimitive(rtype: RType) -> bool:
     return isinstance(rtype, RPrimitive) and (
         is_list_rprimitive(rtype) or is_tuple_rprimitive(rtype) or is_str_rprimitive(rtype)
@@ -396,8 +441,10 @@ class TupleNameVisitor(RTypeVisitor[str]):
         return 'T{}{}'.format(len(parts), ''.join(parts))
 
     def visit_rstruct(self, t: 'RStruct') -> str:
-        assert False
-        return ""
+        assert False, 'RStruct not supported in tuple'
+
+    def visit_rarray(self, t: 'RArray') -> str:
+        assert False, 'RArray not supported in tuple'
 
     def visit_rvoid(self, t: 'RVoid') -> str:
         assert False, "rvoid in tuple?"
@@ -480,6 +527,8 @@ def compute_rtype_alignment(typ: RType) -> int:
         return platform_alignment
     elif isinstance(typ, RUnion):
         return platform_alignment
+    elif isinstance(typ, RArray):
+        return compute_rtype_alignment(typ.item_type)
     else:
         if isinstance(typ, RTuple):
             items = list(typ.types)
@@ -503,6 +552,10 @@ def compute_rtype_size(typ: RType) -> int:
         return compute_aligned_offsets_and_size(typ.types)[1]
     elif isinstance(typ, RInstance):
         return PLATFORM_SIZE
+    elif isinstance(typ, RArray):
+        alignment = compute_rtype_alignment(typ)
+        aligned_size = (compute_rtype_size(typ.item_type) + (alignment - 1)) & ~(alignment - 1)
+        return aligned_size * typ.length
     else:
         assert False, "invalid rtype for computing size"
 
@@ -536,7 +589,8 @@ def compute_aligned_offsets_and_size(types: List[RType]) -> Tuple[List[int], int
 
 
 class RStruct(RType):
-    """Represent CPython structs"""
+    """C struct type"""
+
     def __init__(self,
                  name: str,
                  names: List[str],
@@ -624,6 +678,12 @@ class RInstance(RType):
     def __repr__(self) -> str:
         return '<RInstance %s>' % self.name
 
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, RInstance) and other.name == self.name
+
+    def __hash__(self) -> int:
+        return hash(self.name)
+
     def serialize(self) -> str:
         return self.name
 
@@ -683,6 +743,45 @@ def is_optional_type(rtype: RType) -> bool:
     return optional_value_type(rtype) is not None
 
 
+class RArray(RType):
+    """Fixed-length C array type (for example, int[5]).
+
+    Note that the implementation is a bit limited, and these can basically
+    be only used for local variables that are initialized in one location.
+    """
+
+    def __init__(self,
+                 item_type: RType,
+                 length: int) -> None:
+        self.item_type = item_type
+        # Number of items
+        self.length = length
+        self.is_refcounted = False
+
+    def accept(self, visitor: 'RTypeVisitor[T]') -> T:
+        return visitor.visit_rarray(self)
+
+    def __str__(self) -> str:
+        return '%s[%s]' % (self.item_type, self.length)
+
+    def __repr__(self) -> str:
+        return '<RArray %r[%s]>' % (self.item_type, self.length)
+
+    def __eq__(self, other: object) -> bool:
+        return (isinstance(other, RArray) and self.item_type == other.item_type
+                and self.length == other.length)
+
+    def __hash__(self) -> int:
+        return hash((self.item_type, self.length))
+
+    def serialize(self) -> JsonDict:
+        assert False
+
+    @classmethod
+    def deserialize(cls, data: JsonDict, ctx: 'DeserMaps') -> 'RArray':
+        assert False
+
+
 PyObject = RStruct(
     name='PyObject',
     names=['ob_refcnt', 'ob_type'],
@@ -714,5 +813,5 @@ PySetObject = RStruct(
 PyListObject = RStruct(
     name='PyListObject',
     names=['ob_base', 'ob_item', 'allocated'],
-    types=[PyObject, pointer_rprimitive, c_pyssize_t_rprimitive]
+    types=[PyVarObject, pointer_rprimitive, c_pyssize_t_rprimitive]
 )

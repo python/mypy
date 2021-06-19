@@ -7,7 +7,7 @@ from mypy.types import (
     CallableType, Type, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarType, Instance,
     TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeVarId, TypeQuery, is_named_instance, TypeOfAny, LiteralType,
-    ProperType, get_proper_type, TypeAliasType
+    ProperType, get_proper_type, TypeAliasType, TypeGuardType
 )
 from mypy.maptype import map_instance_to_supertype
 import mypy.subtypes
@@ -18,8 +18,8 @@ from mypy.nodes import COVARIANT, CONTRAVARIANT
 from mypy.argmap import ArgTypeExpander
 from mypy.typestate import TypeState
 
-SUBTYPE_OF = 0  # type: Final[int]
-SUPERTYPE_OF = 1  # type: Final[int]
+SUBTYPE_OF = 0  # type: Final
+SUPERTYPE_OF = 1  # type: Final
 
 
 class Constraint:
@@ -457,7 +457,12 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 for t, a in zip(template.arg_types, cactual.arg_types):
                     # Negate direction due to function argument type contravariance.
                     res.extend(infer_constraints(t, a, neg_op(self.direction)))
-            res.extend(infer_constraints(template.ret_type, cactual.ret_type,
+            template_ret_type, cactual_ret_type = template.ret_type, cactual.ret_type
+            if template.type_guard is not None:
+                template_ret_type = template.type_guard
+            if cactual.type_guard is not None:
+                cactual_ret_type = cactual.type_guard
+            res.extend(infer_constraints(template_ret_type, cactual_ret_type,
                                          self.direction))
             return res
         elif isinstance(self.actual, AnyType):
@@ -527,6 +532,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                        " (should have been handled in infer_constraints)")
 
     def visit_type_alias_type(self, template: TypeAliasType) -> List[Constraint]:
+        assert False, "This should be never called, got {}".format(template)
+
+    def visit_type_guard_type(self, template: TypeGuardType) -> List[Constraint]:
         assert False, "This should be never called, got {}".format(template)
 
     def infer_against_any(self, types: Iterable[Type], any_type: AnyType) -> List[Constraint]:

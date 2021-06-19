@@ -3,8 +3,8 @@ import typing
 x
 y
 [out]
-main:2: error: Name 'x' is not defined
-main:3: error: Name 'y' is not defined
+main:2: error: Name "x" is not defined
+main:3: error: Name "y" is not defined
 
 [case testUndefinedVariableWithinFunctionContext]
 import typing
@@ -12,8 +12,8 @@ def f() -> None:
   x
 y
 [out]
-main:3: error: Name 'x' is not defined
-main:4: error: Name 'y' is not defined
+main:3: error: Name "x" is not defined
+main:4: error: Name "y" is not defined
 
 [case testMethodScope]
 import typing
@@ -21,7 +21,7 @@ class A:
   def f(self): pass
 f
 [out]
-main:4: error: Name 'f' is not defined
+main:4: error: Name "f" is not defined
 
 [case testMethodScope2]
 import typing
@@ -32,14 +32,14 @@ class B:
     f # error
     g # error
 [out]
-main:6: error: Name 'f' is not defined
-main:7: error: Name 'g' is not defined
+main:6: error: Name "f" is not defined
+main:7: error: Name "g" is not defined
 
 [case testInvalidType]
 import typing
 x = None # type: X
 [out]
-main:2: error: Name 'X' is not defined
+main:2: error: Name "X" is not defined
 
 [case testInvalidGenericArg]
 from typing import TypeVar, Generic
@@ -47,7 +47,7 @@ t = TypeVar('t')
 class A(Generic[t]): pass
 x = 0 # type: A[y]
 [out]
-main:4: error: Name 'y' is not defined
+main:4: error: Name "y" is not defined
 
 [case testInvalidNumberOfGenericArgsInTypeDecl]
 from typing import TypeVar, Generic
@@ -137,7 +137,7 @@ z = 0 # type: x
 main:5: error: Function "__main__.f" is not valid as a type
 main:5: note: Perhaps you need "Callable[...]" or a callback protocol?
 main:6: error: Variable "__main__.x" is not valid as a type
-main:6: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+main:6: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
 [case testGlobalVarRedefinition]
 import typing
@@ -145,7 +145,7 @@ class A: pass
 x = 0 # type: A
 x = 0 # type: A
 [out]
-main:4: error: Name 'x' already defined on line 3
+main:4: error: Name "x" already defined on line 3
 
 [case testLocalVarRedefinition]
 import typing
@@ -154,7 +154,7 @@ def f() -> None:
   x = 0 # type: A
   x = 0 # type: A
 [out]
-main:5: error: Name 'x' already defined on line 4
+main:5: error: Name "x" already defined on line 4
 
 [case testClassVarRedefinition]
 import typing
@@ -162,14 +162,14 @@ class A:
   x = 0 # type: object
   x = 0 # type: object
 [out]
-main:4: error: Name 'x' already defined on line 3
+main:4: error: Name "x" already defined on line 3
 
 [case testMultipleClassDefinitions]
 import typing
 class A: pass
 class A: pass
 [out]
-main:3: error: Name 'A' already defined on line 2
+main:3: error: Name "A" already defined on line 2
 
 [case testMultipleMixedDefinitions]
 import typing
@@ -177,8 +177,8 @@ x = 1
 def x(): pass
 class x: pass
 [out]
-main:3: error: Name 'x' already defined on line 2
-main:4: error: Name 'x' already defined on line 2
+main:3: error: Name "x" already defined on line 2
+main:4: error: Name "x" already defined on line 2
 
 [case testNameNotImported]
 import typing
@@ -187,7 +187,7 @@ x
 [file m.py]
 x = y = 1
 [out]
-main:3: error: Name 'x' is not defined
+main:3: error: Name "x" is not defined
 
 [case testMissingNameInImportFrom]
 import typing
@@ -195,28 +195,28 @@ from m import y
 [file m.py]
 x = 1
 [out]
-main:2: error: Module 'm' has no attribute 'y'
+main:2: error: Module "m" has no attribute "y"
 
 [case testMissingModule]
 import typing
 import m
 [out]
-main:2: error: Cannot find implementation or library stub for module named 'm'
-main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main:2: error: Cannot find implementation or library stub for module named "m"
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testMissingModule2]
 import typing
 from m import x
 [out]
-main:2: error: Cannot find implementation or library stub for module named 'm'
-main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main:2: error: Cannot find implementation or library stub for module named "m"
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testMissingModule3]
 import typing
 from m import *
 [out]
-main:2: error: Cannot find implementation or library stub for module named 'm'
-main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main:2: error: Cannot find implementation or library stub for module named "m"
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testMissingModuleRelativeImport]
 import typing
@@ -224,8 +224,8 @@ import m
 [file m/__init__.py]
 from .x import y
 [out]
-tmp/m/__init__.py:1: error: Cannot find implementation or library stub for module named 'm.x'
-tmp/m/__init__.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+tmp/m/__init__.py:1: error: Cannot find implementation or library stub for module named "m.x"
+tmp/m/__init__.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testMissingModuleRelativeImport2]
 import typing
@@ -234,8 +234,8 @@ import m.a
 [file m/a.py]
 from .x import y
 [out]
-tmp/m/a.py:1: error: Cannot find implementation or library stub for module named 'm.x'
-tmp/m/a.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+tmp/m/a.py:1: error: Cannot find implementation or library stub for module named "m.x"
+tmp/m/a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testModuleNotImported]
 import typing
@@ -246,7 +246,7 @@ import _n
 [file _n.py]
 x = 1
 [out]
-main:3: error: Name '_n' is not defined
+main:3: error: Name "_n" is not defined
 
 [case testImportAsteriskPlusUnderscore]
 import typing
@@ -256,8 +256,8 @@ __x__
 [file _m.py]
 _x = __x__ = 1
 [out]
-main:3: error: Name '_x' is not defined
-main:4: error: Name '__x__' is not defined
+main:3: error: Name "_x" is not defined
+main:4: error: Name "__x__" is not defined
 
 [case testRelativeImportAtTopLevelModule]
 from . import m
@@ -276,25 +276,25 @@ def f() -> m.c: pass
 def g() -> n.c: pass
 [file m.py]
 [out]
-main:3: error: Name 'm.c' is not defined
-main:4: error: Name 'n' is not defined
+main:3: error: Name "m.c" is not defined
+main:4: error: Name "n" is not defined
 
 [case testMissingPackage]
 import typing
 import m.n
 [out]
-main:2: error: Cannot find implementation or library stub for module named 'm.n'
-main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:2: error: Cannot find implementation or library stub for module named 'm'
+main:2: error: Cannot find implementation or library stub for module named "m.n"
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+main:2: error: Cannot find implementation or library stub for module named "m"
 
 [case testMissingPackage2]
 import typing
 from m.n import x
 from a.b import *
 [out]
-main:2: error: Cannot find implementation or library stub for module named 'm.n'
-main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:3: error: Cannot find implementation or library stub for module named 'a.b'
+main:2: error: Cannot find implementation or library stub for module named "m.n"
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+main:3: error: Cannot find implementation or library stub for module named "a.b"
 
 [case testErrorInImportedModule]
 import m
@@ -302,7 +302,7 @@ import m
 import typing
 x = y
 [out]
-tmp/m.py:2: error: Name 'y' is not defined
+tmp/m.py:2: error: Name "y" is not defined
 
 [case testErrorInImportedModule2]
 import m.n
@@ -313,7 +313,7 @@ import k
 import typing
 x = y
 [out]
-tmp/k.py:2: error: Name 'y' is not defined
+tmp/k.py:2: error: Name "y" is not defined
 
 [case testPackageWithoutInitFile]
 import typing
@@ -322,50 +322,54 @@ m.n.x
 [file m/n.py]
 x = 1
 [out]
-main:2: error: Cannot find implementation or library stub for module named 'm.n'
-main:2: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:2: error: Cannot find implementation or library stub for module named 'm'
+main:2: error: Cannot find implementation or library stub for module named "m.n"
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+main:2: error: Cannot find implementation or library stub for module named "m"
 
 [case testBreakOutsideLoop]
 break
 def f():
   break
 [out]
-main:1: error: 'break' outside loop
-main:3: error: 'break' outside loop
+main:1: error: "break" outside loop
+main:3: error: "break" outside loop
 
 [case testContinueOutsideLoop]
 continue
 def f():
   continue
 [out]
-main:1: error: 'continue' outside loop
-main:3: error: 'continue' outside loop
+main:1: error: "continue" outside loop
+main:3: error: "continue" outside loop
 
 [case testReturnOutsideFunction]
 def f(): pass
 return
 return 1
 [out]
-main:2: error: 'return' outside function
-main:3: error: 'return' outside function
+main:2: error: "return" outside function
+main:3: error: "return" outside function
 
 [case testYieldOutsideFunction]
 yield 1
 yield
 [out]
-main:1: error: 'yield' outside function
-main:2: error: 'yield' outside function
+main:1: error: "yield" outside function
+main:2: error: "yield" outside function
 
 [case testInvalidLvalues1]
 1 = 1
 [out]
 main:1: error: can't assign to literal
+[out version>=3.10]
+main:1: error: can't assign to literal here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues2]
 (1) = 1
 [out]
 main:1: error: can't assign to literal
+[out version>=3.10]
+main:1: error: can't assign to literal here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues3]
 (1, 1) = 1
@@ -404,26 +408,36 @@ main:3: error: can't assign to literal
 x + x = 1
 [out]
 main:1: error: can't assign to operator
+[out version>=3.10]
+main:1: error: can't assign to expression here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues11]
 -x = 1
 [out]
 main:1: error: can't assign to operator
+[out version>=3.10]
+main:1: error: can't assign to expression here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues12]
 1.1 = 1
 [out]
 main:1: error: can't assign to literal
+[out version>=3.10]
+main:1: error: can't assign to literal here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues13]
 'x' = 1
 [out]
 main:1: error: can't assign to literal
+[out version>=3.10]
+main:1: error: can't assign to literal here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues14]
 x() = 1
 [out]
 main:1: error: can't assign to function call
+[out version>=3.10]
+main:1: error: can't assign to function call here. Maybe you meant '==' instead of '='?
 
 [case testTwoStarExpressions]
 a, *b, *c = 1
@@ -455,7 +469,7 @@ main:8: error: Two starred expressions in assignment
 (a for *a, (*b, c) in [])
 (a for a, (*b, *c) in [])
 [out]
-main:1: error: Name 'a' is not defined
+main:1: error: Name "a" is not defined
 main:1: error: Two starred expressions in assignment
 main:3: error: Two starred expressions in assignment
 
@@ -480,11 +494,14 @@ del x(1)  # E: can't delete function call
 
 [case testInvalidDel2]
 x = 1
-del x + 1 # E: can't delete operator
+del x + 1
 [out]
+main:2: error: cannot delete operator
+[out version>=3.10]
+main:2: error: cannot delete expression
 
 [case testInvalidDel3]
-del z     # E: Name 'z' is not defined
+del z     # E: Name "z" is not defined
 [out]
 
 [case testFunctionTvarScope]
@@ -516,8 +533,8 @@ class c(Generic[t]):
     def f(self) -> None: x = t
 def f(y: t): x = t
 [out]
-main:4: error: 't' is a type variable and only valid in type context
-main:5: error: 't' is a type variable and only valid in type context
+main:4: error: "t" is a type variable and only valid in type context
+main:5: error: "t" is a type variable and only valid in type context
 
 [case testMissingSelf]
 import typing
@@ -530,7 +547,7 @@ main:3: error: Method must have at least one argument
 import typing
 class A(B): pass
 [out]
-main:2: error: Name 'B' is not defined
+main:2: error: Name "B" is not defined
 
 [case testSuperOutsideClass]
 class A: pass
@@ -556,7 +573,7 @@ class A:
   def g(self) -> None: pass
   def f(self, x: object) -> None: pass
 [out]
-main:5: error: Name 'f' already defined on line 3
+main:5: error: Name "f" already defined on line 3
 
 [case testInvalidGlobalDecl]
 import typing
@@ -564,7 +581,7 @@ def f() -> None:
     global x
     x = None
 [out]
-main:4: error: Name 'x' is not defined
+main:4: error: Name "x" is not defined
 
 [case testInvalidNonlocalDecl]
 import typing
@@ -573,8 +590,8 @@ def f():
        nonlocal x
        x = None
 [out]
-main:4: error: No binding for nonlocal 'x' found
-main:5: error: Name 'x' is not defined
+main:4: error: No binding for nonlocal "x" found
+main:5: error: Name "x" is not defined
 
 [case testNonlocalDeclNotMatchingGlobal]
 import typing
@@ -583,8 +600,8 @@ def f() -> None:
     nonlocal x
     x = None
 [out]
-main:4: error: No binding for nonlocal 'x' found
-main:5: error: Name 'x' is not defined
+main:4: error: No binding for nonlocal "x" found
+main:5: error: Name "x" is not defined
 
 [case testNonlocalDeclConflictingWithParameter]
 import typing
@@ -594,7 +611,7 @@ def g():
         nonlocal x
         x = None
 [out]
-main:5: error: Name 'x' is already defined in local scope before nonlocal declaration
+main:5: error: Name "x" is already defined in local scope before nonlocal declaration
 
 [case testNonlocalDeclOutsideFunction]
 x = 2
@@ -612,7 +629,7 @@ def f():
        nonlocal x
        x = None
 [out]
-main:7: error: Name 'x' is nonlocal and global
+main:7: error: Name "x" is nonlocal and global
 
 [case testNonlocalAndGlobalDecl]
 import typing
@@ -624,7 +641,7 @@ def f():
        global x
        x = None
 [out]
-main:7: error: Name 'x' is nonlocal and global
+main:7: error: Name "x" is nonlocal and global
 
 [case testNestedFunctionAndScoping]
 import typing
@@ -635,8 +652,8 @@ def f(x) -> None:
     y
     x
 [out]
-main:5: error: Name 'z' is not defined
-main:6: error: Name 'y' is not defined
+main:5: error: Name "z" is not defined
+main:6: error: Name "y" is not defined
 
 [case testMultipleNestedFunctionDef]
 import typing
@@ -645,7 +662,7 @@ def f(x) -> None:
     x = 1
     def g(): pass
 [out]
-main:5: error: Name 'g' already defined on line 3
+main:5: error: Name "g" already defined on line 3
 
 [case testRedefinedOverloadedFunction]
 from typing import overload, Any
@@ -658,7 +675,7 @@ def f() -> None:
     def p(): pass # fail
 [out]
 main:3: error: An overloaded function outside a stub file must have an implementation
-main:8: error: Name 'p' already defined on line 3
+main:8: error: Name "p" already defined on line 3
 
 [case testNestedFunctionInMethod]
 import typing
@@ -668,14 +685,14 @@ class A:
            x
        y
 [out]
-main:5: error: Name 'x' is not defined
-main:6: error: Name 'y' is not defined
+main:5: error: Name "x" is not defined
+main:6: error: Name "y" is not defined
 
 [case testImportScope]
 import typing
 def f() -> None:
     import x
-x.y # E: Name 'x' is not defined
+x.y # E: Name "x" is not defined
 [file x.py]
 y = 1
 [out]
@@ -685,7 +702,7 @@ import typing
 def f() -> None:
     from x import y
     y
-y # E: Name 'y' is not defined
+y # E: Name "y" is not defined
 [file x.py]
 y = 1
 [out]
@@ -695,7 +712,7 @@ import typing
 def f() -> None:
     from x import *
     y
-y # E: Name 'y' is not defined
+y # E: Name "y" is not defined
 [file x.py]
 y = 1
 [out]
@@ -705,7 +722,7 @@ import typing
 class A:
     from x import *
     y
-y # E: Name 'y' is not defined
+y # E: Name "y" is not defined
 [file x.py]
 y = 1
 [out]
@@ -715,14 +732,14 @@ import typing
 def f():
     class A: pass
     A
-A # E: Name 'A' is not defined
+A # E: Name "A" is not defined
 [out]
 
 [case testScopeOfNestedClass2]
 import typing
 class A:
     class B: pass
-B # E: Name 'B' is not defined
+B # E: Name "B" is not defined
 [out]
 
 [case testScopeOfNestedClass3]
@@ -730,14 +747,14 @@ import typing
 class A:
     def f(self):
         class B: pass
-    B # E: Name 'B' is not defined
-B # E: Name 'B' is not defined
+    B # E: Name "B" is not defined
+B # E: Name "B" is not defined
 [out]
 
 [case testInvalidNestedClassReferenceInDecl]
 import typing
 class A: pass
-foo = 0 # type: A.x      # E: Name 'A.x' is not defined
+foo = 0 # type: A.x      # E: Name "A.x" is not defined
 [out]
 
 [case testTvarScopingWithNestedClass]
@@ -758,7 +775,7 @@ class A(Generic[t]):
 [out]
 
 [case testTestExtendPrimitives]
-class C(bool): pass # E: 'bool' is not a valid base class
+class C(bool): pass # E: "bool" is not a valid base class
 class A(int): pass # ok
 class B(float): pass # ok
 class D(str): pass # ok
@@ -799,9 +816,9 @@ cast([int, str], None)   # E: Bracketed expression "[...]" is not valid as a typ
 from typing import cast
 x = 0
 cast(x, None)        # E: Variable "__main__.x" is not valid as a type \
-                     # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
-cast(t, None)        # E: Name 't' is not defined
-cast(__builtins__.x, None) # E: Name '__builtins__.x' is not defined
+                     # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+cast(t, None)        # E: Name "t" is not defined
+cast(__builtins__.x, None) # E: Name "__builtins__.x" is not defined
 [out]
 
 [case testInvalidCastTargetType2]
@@ -812,14 +829,14 @@ cast(str[str], None) # E: "str" expects no type arguments, but 1 given
 
 [case testInvalidNumberOfArgsToCast]
 from typing import cast
-cast(str) # E: 'cast' expects 2 arguments
-cast(str, None, None) # E: 'cast' expects 2 arguments
+cast(str) # E: "cast" expects 2 arguments
+cast(str, None, None) # E: "cast" expects 2 arguments
 [out]
 
 [case testInvalidKindsOfArgsToCast]
 from typing import cast
-cast(str, *None) # E: 'cast' must be called with 2 positional arguments
-cast(str, target=None) # E: 'cast' must be called with 2 positional arguments
+cast(str, *None) # E: "cast" must be called with 2 positional arguments
+cast(str, target=None) # E: "cast" must be called with 2 positional arguments
 [out]
 
 [case testInvalidAnyCall]
@@ -851,7 +868,7 @@ from abc import abstractmethod
 @abstractmethod
 def foo(): pass
 [out]
-main:3: error: 'abstractmethod' used with a non-method
+main:3: error: "abstractmethod" used with a non-method
 
 [case testAbstractNestedFunction]
 import typing
@@ -860,7 +877,7 @@ def g() -> None:
   @abstractmethod
   def foo(): pass
 [out]
-main:4: error: 'abstractmethod' used with a non-method
+main:4: error: "abstractmethod" used with a non-method
 
 [case testInvalidTypeDeclaration]
 import typing
@@ -868,6 +885,8 @@ def f(): pass
 f() = 1 # type: int
 [out]
 main:3: error: can't assign to function call
+[out version>=3.10]
+main:3: error: can't assign to function call here. Maybe you meant '==' instead of '='?
 
 [case testIndexedAssignmentWithTypeDeclaration]
 import typing
@@ -895,7 +914,7 @@ from typing import TypeVar, Generic
 t = TypeVar('t')
 class A(Generic[t]): pass
 A[TypeVar] # E: Variable "typing.TypeVar" is not valid as a type \
-           # N: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+           # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 [out]
 
 [case testInvalidTypeInTypeApplication2]
@@ -941,8 +960,11 @@ x, y = 1, 2 # type: int # E: Tuple type expected for multiple variables
 
 [case testInvalidLvalueWithExplicitType]
 a = 1
-a() = None # type: int  # E: can't assign to function call
+a() = None # type: int
 [out]
+main:2: error: cannot assign to function call
+[out version>=3.10]
+main:2: error: cannot assign to function call here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalueWithExplicitType2]
 a = 1
@@ -965,7 +987,7 @@ from typing import TypeVar
 T = TypeVar('T')
 class A(Generic[T]): pass
 [out]
-main:3: error: Name 'Generic' is not defined
+main:3: error: Name "Generic" is not defined
 
 [case testInvalidTypeWithinGeneric]
 from typing import Generic
@@ -989,17 +1011,17 @@ class A(Generic[T], Generic[S]): pass \
 [out]
 
 [case testInvalidMetaclass]
-class A(metaclass=x): pass # E: Name 'x' is not defined
+class A(metaclass=x): pass # E: Name "x" is not defined
 [out]
 
 [case testInvalidQualifiedMetaclass]
 import abc
-class A(metaclass=abc.Foo): pass # E: Name 'abc.Foo' is not defined
+class A(metaclass=abc.Foo): pass # E: Name "abc.Foo" is not defined
 [out]
 
 [case testNonClassMetaclass]
 def f(): pass
-class A(metaclass=f): pass # E: Invalid metaclass 'f'
+class A(metaclass=f): pass # E: Invalid metaclass "f"
 [out]
 
 [case testInvalidTypevarArguments]
@@ -1007,12 +1029,12 @@ from typing import TypeVar
 a = TypeVar()       # E: Too few arguments for TypeVar()
 b = TypeVar(x='b')  # E: TypeVar() expects a string literal as first argument
 c = TypeVar(1)      # E: TypeVar() expects a string literal as first argument
-d = TypeVar('D')    # E: String argument 1 'D' to TypeVar(...) does not match variable name 'd'
-e = TypeVar('e', int, str, x=1)   # E: Unexpected argument to TypeVar(): x
+d = TypeVar('D')    # E: String argument 1 "D" to TypeVar(...) does not match variable name "d"
+e = TypeVar('e', int, str, x=1)   # E: Unexpected argument to TypeVar(): "x"
 f = TypeVar('f', (int, str), int) # E: Type expected
 g = TypeVar('g', int)             # E: TypeVar cannot have only a single constraint
-h = TypeVar('h', x=(int, str))    # E: Unexpected argument to TypeVar(): x
-i = TypeVar('i', bound=1)         # E: TypeVar 'bound' must be a type
+h = TypeVar('h', x=(int, str))    # E: Unexpected argument to TypeVar(): "x"
+i = TypeVar('i', bound=1)         # E: TypeVar "bound" must be a type
 [out]
 
 [case testMoreInvalidTypevarArguments]
@@ -1032,27 +1054,27 @@ c = TypeVar('c', int, 2) # E: Invalid type: try using Literal[2] instead?
 from typing import TypeVar
 a = TypeVar('a', values=(int, str))
 [out]
-main:2: error: TypeVar 'values' argument not supported
+main:2: error: TypeVar "values" argument not supported
 main:2: error: Use TypeVar('T', t, ...) instead of TypeVar('T', values=(t, ...))
 
 [case testLocalTypevarScope]
 from typing import TypeVar
 def f() -> None:
     T = TypeVar('T')
-def g(x: T) -> None: pass # E: Name 'T' is not defined
+def g(x: T) -> None: pass # E: Name "T" is not defined
 [out]
 
 [case testClassTypevarScope]
 from typing import TypeVar
 class A:
     T = TypeVar('T')
-def g(x: T) -> None: pass # E: Name 'T' is not defined
+def g(x: T) -> None: pass # E: Name "T" is not defined
 [out]
 
 [case testRedefineVariableAsTypevar]
 from typing import TypeVar
 x = 0
-x = TypeVar('x') # E: Cannot redefine 'x' as a type variable
+x = TypeVar('x') # E: Cannot redefine "x" as a type variable
 [out]
 
 [case testTypevarWithType]
@@ -1069,23 +1091,23 @@ t = 1 # E: Invalid assignment target
 [case testRedefineTypevar2]
 from typing import TypeVar
 t = TypeVar('t')
-def t(): pass # E: Name 't' already defined on line 2
+def t(): pass # E: Name "t" already defined on line 2
 [out]
 
 [case testRedefineTypevar3]
 from typing import TypeVar
 t = TypeVar('t')
-class t: pass # E: Name 't' already defined on line 2
+class t: pass # E: Name "t" already defined on line 2
 [out]
 
 [case testRedefineTypevar4]
 from typing import TypeVar
 t = TypeVar('t')
-from typing import Generic as t # E: Name 't' already defined on line 2
+from typing import Generic as t # E: Name "t" already defined on line 2
 [out]
 
 [case testInvalidStrLiteralType]
-def f(x: 'foo'): pass # E: Name 'foo' is not defined
+def f(x: 'foo'): pass # E: Name "foo" is not defined
 [out]
 
 [case testInvalidStrLiteralStrayBrace]
@@ -1123,7 +1145,7 @@ from typing import overload
 def dec(x): pass
 @dec
 def f(): pass
-@dec  # E: Name 'f' already defined on line 3
+@dec  # E: Name "f" already defined on line 3
 def f(): pass
 [out]
 
@@ -1147,8 +1169,8 @@ class A:
     def h(): pass
 [builtins fixtures/staticmethod.pyi]
 [out]
-main:2: error: 'staticmethod' used with a non-method
-main:6: error: 'staticmethod' used with a non-method
+main:2: error: "staticmethod" used with a non-method
+main:6: error: "staticmethod" used with a non-method
 
 [case testClassmethodAndNonMethod]
 import typing
@@ -1160,12 +1182,12 @@ class A:
     def h(): pass
 [builtins fixtures/classmethod.pyi]
 [out]
-main:2: error: 'classmethod' used with a non-method
-main:6: error: 'classmethod' used with a non-method
+main:2: error: "classmethod" used with a non-method
+main:6: error: "classmethod" used with a non-method
 
 [case testNonMethodProperty]
 import typing
-@property  # E: 'property' used with a non-method
+@property  # E: "property" used with a non-method
 def f() -> int: pass
 [builtins fixtures/property.pyi]
 [out]
@@ -1220,7 +1242,7 @@ class A:
 import typing
 def f() -> None:
     import x
-    import y as x # E: Name 'x' already defined (by an import)
+    import y as x # E: Name "x" already defined (by an import)
     x.y
 [file x.py]
 y = 1
@@ -1230,7 +1252,7 @@ y = 1
 [case testImportTwoModulesWithSameNameInGlobalContext]
 import typing
 import x
-import y as x # E: Name 'x' already defined (by an import)
+import y as x # E: Name "x" already defined (by an import)
 x.y
 [file x.py]
 y = 1
@@ -1242,7 +1264,7 @@ import typing
 def f() -> List[int]: pass
 [builtins fixtures/list.pyi]
 [out]
-main:2: error: Name 'List' is not defined
+main:2: error: Name "List" is not defined
 main:2: note: Did you forget to import it from "typing"? (Suggestion: "from typing import List")
 
 [case testInvalidWithTarget]
@@ -1263,45 +1285,33 @@ def f() -> None:
     f() = 1  # type: int
 [out]
 main:3: error: can't assign to function call
+[out version>=3.10]
+main:3: error: can't assign to function call here. Maybe you meant '==' instead of '='?
 
 [case testInvalidReferenceToAttributeOfOuterClass]
 class A:
     class X: pass
     class B:
-        y = X  # E: Name 'X' is not defined
+        y = X  # E: Name "X" is not defined
 [out]
 
 [case testStubPackage]
 from m import x
-from m import y # E: Module 'm' has no attribute 'y'
+from m import y # E: Module "m" has no attribute "y"
 [file m/__init__.pyi]
 x = 1
 [out]
 
 [case testStubPackageSubModule]
 from m import x
-from m import y # E: Module 'm' has no attribute 'y'
+from m import y # E: Module "m" has no attribute "y"
 from m.m2 import y
-from m.m2 import z # E: Module 'm.m2' has no attribute 'z'
+from m.m2 import z # E: Module "m.m2" has no attribute "z"
 [file m/__init__.pyi]
 x = 1
 [file m/m2.pyi]
 y = 1
 [out]
-
-[case testMissingStubForStdLibModule]
-import __dummy_stdlib1
-[out]
-main:1: error: No library stub file for standard library module '__dummy_stdlib1'
-main:1: note: (Stub files are from https://github.com/python/typeshed)
-
-[case testMissingStubForTwoModules]
-import __dummy_stdlib1
-import __dummy_stdlib2
-[out]
-main:1: error: No library stub file for standard library module '__dummy_stdlib1'
-main:1: note: (Stub files are from https://github.com/python/typeshed)
-main:2: error: No library stub file for standard library module '__dummy_stdlib2'
 
 [case testListComprehensionSpecialScoping]
 class A:
@@ -1310,8 +1320,8 @@ class A:
     z = 1
     [x for i in z if y]
 [out]
-main:5: error: Name 'x' is not defined
-main:5: error: Name 'y' is not defined
+main:5: error: Name "x" is not defined
+main:5: error: Name "y" is not defined
 
 [case testTypeRedeclarationNoSpuriousWarnings]
 from typing import Tuple
@@ -1321,12 +1331,12 @@ a = ('spam', 'spam', 'eggs', 'spam')  # type: Tuple[str]
 [builtins fixtures/tuple.pyi]
 
 [out]
-main:3: error: Name 'a' already defined on line 2
-main:4: error: Name 'a' already defined on line 2
+main:3: error: Name "a" already defined on line 2
+main:4: error: Name "a" already defined on line 2
 
 [case testDuplicateDefFromImport]
 from m import A
-class A:  # E: Name 'A' already defined (possibly by an import)
+class A:  # E: Name "A" already defined (possibly by an import)
     pass
 [file m.py]
 class A:
@@ -1340,7 +1350,7 @@ def dec(x: Any) -> Any:
 @dec
 def f() -> None:
     pass
-@dec  # E: Name 'f' already defined on line 4
+@dec  # E: Name "f" already defined on line 4
 def f() -> None:
     pass
 [out]
@@ -1357,7 +1367,7 @@ if 1:
     def f(x: Any) -> None:
         pass
 else:
-    def f(x: str) -> None:  # E: Name 'f' already defined on line 3
+    def f(x: str) -> None:  # E: Name "f" already defined on line 3
         pass
 [out]
 
@@ -1366,7 +1376,7 @@ from typing import NamedTuple
 N = NamedTuple('N', [('a', int),
                      ('b', str)])
 
-class N:  # E: Name 'N' already defined on line 2
+class N:  # E: Name "N" already defined on line 2
     pass
 [builtins fixtures/tuple.pyi]
 [out]
@@ -1375,7 +1385,7 @@ class N:  # E: Name 'N' already defined on line 2
 from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 
-class Point:  # E: Name 'Point' already defined on line 2
+class Point:  # E: Name "Point" already defined on line 2
     pass
 [builtins fixtures/dict.pyi]
 
@@ -1384,14 +1394,14 @@ class Point:  # E: Name 'Point' already defined on line 2
 [case testTypeVarClassDup]
 from typing import TypeVar
 T = TypeVar('T')
-class T: ...  # E: Name 'T' already defined on line 2
+class T: ...  # E: Name "T" already defined on line 2
 
 [out]
 
 [case testAliasDup]
 from typing import List
 A = List[int]
-class A: ... # E: Name 'A' already defined on line 2
+class A: ... # E: Name "A" already defined on line 2
 
 [builtins fixtures/list.pyi]
 [out]
@@ -1416,10 +1426,11 @@ def g() -> None:
 [out]
 
 [case testParamSpec]
+# flags: --wip-pep-612
 from typing_extensions import ParamSpec
 
 TParams = ParamSpec('TParams')
-TP = ParamSpec('?')  # E: String argument 1 '?' to ParamSpec(...) does not match variable name 'TP'
+TP = ParamSpec('?')  # E: String argument 1 "?" to ParamSpec(...) does not match variable name "TP"
 TP2: int = ParamSpec('TP2')  # E: Cannot declare the type of a parameter specification
 
 [out]

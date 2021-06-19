@@ -12,6 +12,7 @@ class function: pass
 
 property = object()  # Dummy definition
 
+class dict: pass
 class int: pass
 class str: pass
 class bytes: pass

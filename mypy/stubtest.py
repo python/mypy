@@ -265,7 +265,7 @@ def verify_typeinfo(
 
 
 def _verify_static_class_methods(
-    stub: nodes.FuncItem, runtime: types.FunctionType, object_path: List[str]
+    stub: nodes.FuncBase, runtime: Any, object_path: List[str]
 ) -> Iterator[str]:
     if stub.name in ("__new__", "__init_subclass__", "__class_getitem__"):
         # Special cased by Python, so don't bother checking
@@ -377,6 +377,15 @@ def _verify_arg_default_value(
             )
 
 
+def maybe_strip_cls(name: str, args: List[nodes.Argument]) -> List[nodes.Argument]:
+    if name in ("__init_subclass__", "__class_getitem__"):
+        # These are implicitly classmethods. If the stub chooses not to have @classmethod, we
+        # should remove the cls argument
+        if args[0].variable.name == "cls":
+            return args[1:]
+    return args
+
+
 class Signature(Generic[T]):
     def __init__(self) -> None:
         self.pos = []  # type: List[T]
@@ -428,7 +437,8 @@ class Signature(Generic[T]):
     @staticmethod
     def from_funcitem(stub: nodes.FuncItem) -> "Signature[nodes.Argument]":
         stub_sig = Signature()  # type: Signature[nodes.Argument]
-        for stub_arg in stub.arguments:
+        stub_args = maybe_strip_cls(stub.name, stub.arguments)
+        for stub_arg in stub_args:
             if stub_arg.kind in (nodes.ARG_POS, nodes.ARG_OPT):
                 stub_sig.pos.append(stub_arg)
             elif stub_arg.kind in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT):
@@ -476,7 +486,8 @@ class Signature(Generic[T]):
         all_args = {}  # type: Dict[str, List[Tuple[nodes.Argument, int]]]
         for func in map(_resolve_funcitem_from_decorator, stub.items):
             assert func is not None
-            for index, arg in enumerate(func.arguments):
+            args = maybe_strip_cls(stub.name, func.arguments)
+            for index, arg in enumerate(args):
                 # For positional-only args, we allow overloads to have different names for the same
                 # argument. To accomplish this, we just make up a fake index-based name.
                 name = (
@@ -635,18 +646,20 @@ def _verify_signature(
 
 @verify.register(nodes.FuncItem)
 def verify_funcitem(
-    stub: nodes.FuncItem, runtime: MaybeMissing[types.FunctionType], object_path: List[str]
+    stub: nodes.FuncItem, runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
     if isinstance(runtime, Missing):
         yield Error(object_path, "is not present at runtime", stub, runtime)
         return
+
     if (
         not isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType))
         and not isinstance(runtime, (types.MethodType, types.BuiltinMethodType))
         and not inspect.ismethoddescriptor(runtime)
     ):
         yield Error(object_path, "is not a function", stub, runtime)
-        return
+        if not callable(runtime):
+            return
 
     for message in _verify_static_class_methods(stub, runtime, object_path):
         yield Error(object_path, "is inconsistent, " + message, stub, runtime)
@@ -657,13 +670,6 @@ def verify_funcitem(
         # inspect.signature throws sometimes
         # catch RuntimeError because of https://bugs.python.org/issue39504
         return
-
-    if stub.name in ("__init_subclass__", "__class_getitem__"):
-        # These are implicitly classmethods. If the stub chooses not to have @classmethod, we
-        # should remove the cls argument
-        if stub.arguments[0].variable.name == "cls":
-            stub = copy.copy(stub)
-            stub.arguments = stub.arguments[1:]
 
     stub_sig = Signature.from_funcitem(stub)
     runtime_sig = Signature.from_inspect_signature(signature)
@@ -729,6 +735,18 @@ def verify_overloadedfuncdef(
     if stub.is_property:
         # We get here in cases of overloads from property.setter
         return
+
+    if (
+        not isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType))
+        and not isinstance(runtime, (types.MethodType, types.BuiltinMethodType))
+        and not inspect.ismethoddescriptor(runtime)
+    ):
+        yield Error(object_path, "is not a function", stub, runtime)
+        if not callable(runtime):
+            return
+
+    for message in _verify_static_class_methods(stub, runtime, object_path):
+        yield Error(object_path, "is inconsistent, " + message, stub, runtime)
 
     try:
         signature = inspect.signature(runtime)
@@ -999,7 +1017,9 @@ def build_stubs(modules: List[str], options: Options, find_submodules: bool = Fa
     """
     data_dir = mypy.build.default_data_dir()
     search_path = mypy.modulefinder.compute_search_paths([], options, data_dir)
-    find_module_cache = mypy.modulefinder.FindModuleCache(search_path)
+    find_module_cache = mypy.modulefinder.FindModuleCache(
+        search_path, fscache=None, options=options
+    )
 
     all_modules = []
     sources = []
@@ -1019,11 +1039,18 @@ def build_stubs(modules: List[str], options: Options, find_submodules: bool = Fa
     try:
         res = mypy.build.build(sources=sources, options=options)
     except mypy.errors.CompileError as e:
-        output = [_style("error: ", color="red", bold=True), "failed mypy compile.\n", str(e)]
+        output = [
+            _style("error: ", color="red", bold=True),
+            "not checking stubs due to failed mypy compile:\n",
+            str(e),
+        ]
         print("".join(output))
         raise RuntimeError from e
     if res.errors:
-        output = [_style("error: ", color="red", bold=True), "failed mypy build.\n"]
+        output = [
+            _style("error: ", color="red", bold=True),
+            "not checking stubs due to mypy build errors:\n",
+        ]
         print("".join(output) + "\n".join(res.errors))
         raise RuntimeError
 
@@ -1040,27 +1067,31 @@ def get_stub(module: str) -> Optional[nodes.MypyFile]:
 
 def get_typeshed_stdlib_modules(custom_typeshed_dir: Optional[str]) -> List[str]:
     """Returns a list of stdlib modules in typeshed (for current Python version)."""
-    # This snippet is based on code in mypy.modulefinder.default_lib_path
+    stdlib_py_versions = mypy.modulefinder.load_stdlib_py_versions(custom_typeshed_dir)
+    packages = set()
+    # Typeshed doesn't cover Python 3.5.
+    if sys.version_info < (3, 6):
+        version_info = (3, 6)
+    else:
+        version_info = sys.version_info[0:2]
+    for module, versions in stdlib_py_versions.items():
+        minver, maxver = versions
+        if version_info >= minver and (maxver is None or version_info <= maxver):
+            packages.add(module)
+
     if custom_typeshed_dir:
         typeshed_dir = Path(custom_typeshed_dir)
     else:
-        typeshed_dir = Path(mypy.build.default_data_dir())
-        if (typeshed_dir / "stubs-auto").exists():
-            typeshed_dir /= "stubs-auto"
-        typeshed_dir /= "typeshed"
-
-    versions = ["2and3", "3"]
-    for minor in range(sys.version_info.minor + 1):
-        versions.append("3.{}".format(minor))
+        typeshed_dir = Path(mypy.build.default_data_dir()) / "typeshed"
+    stdlib_dir = typeshed_dir / "stdlib"
 
     modules = []
-    for version in versions:
-        base = typeshed_dir / "stdlib" / version
-        if base.exists():
-            for path in base.rglob("*.pyi"):
-                if path.stem == "__init__":
-                    path = path.parent
-                modules.append(".".join(path.relative_to(base).parts[:-1] + (path.stem,)))
+    for path in stdlib_dir.rglob("*.pyi"):
+        if path.stem == "__init__":
+            path = path.parent
+        module = ".".join(path.relative_to(stdlib_dir).parts[:-1] + (path.stem,))
+        if module.split(".")[0] in packages:
+            modules.append(module)
     return sorted(modules)
 
 

@@ -932,16 +932,22 @@ MypyFile:1(
         NameExpr(z)))))
 
 [case testNotAsBinaryOp]
-x not y # E: invalid syntax
+x not y
 [out]
+main:1: error: invalid syntax
+[out version>=3.10]
+main:1: error: invalid syntax. Perhaps you forgot a comma?
 
 [case testNotIs]
 x not is y # E: invalid syntax
 [out]
 
 [case testBinaryNegAsBinaryOp]
-1 ~ 2 # E: invalid syntax
+1 ~ 2
 [out]
+main:1: error: invalid syntax
+[out version>=3.10]
+main:1: error: invalid syntax. Perhaps you forgot a comma?
 
 [case testDictionaryExpression]
 {}

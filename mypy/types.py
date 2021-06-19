@@ -3,7 +3,7 @@
 import copy
 import sys
 from abc import abstractmethod
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Set, Optional, Union, Iterable, NamedTuple,
@@ -275,6 +275,19 @@ class ProperType(Type):
 
     Every type except TypeAliasType must inherit from this type.
     """
+
+
+class TypeGuardType(ProperType):
+    """Only used by find_instance_check() etc."""
+    def __init__(self, type_guard: Type):
+        super().__init__(line=type_guard.line, column=type_guard.column)
+        self.type_guard = type_guard
+
+    def __repr__(self) -> str:
+        return "TypeGuard({})".format(self.type_guard)
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_type_guard_type(self)
 
 
 class TypeVarId:
@@ -1005,6 +1018,7 @@ class CallableType(FunctionLike):
                                 # tools that consume mypy ASTs
                  'def_extras',  # Information about original definition we want to serialize.
                                 # This is used for more detailed error messages.
+                 'type_guard',  # T, if -> TypeGuard[T] (ret_type is bool in this case).
                  )
 
     def __init__(self,
@@ -1024,6 +1038,7 @@ class CallableType(FunctionLike):
                  from_type_type: bool = False,
                  bound_args: Sequence[Optional[Type]] = (),
                  def_extras: Optional[Dict[str, Any]] = None,
+                 type_guard: Optional[Type] = None,
                  ) -> None:
         super().__init__(line, column)
         assert len(arg_types) == len(arg_kinds) == len(arg_names)
@@ -1058,6 +1073,7 @@ class CallableType(FunctionLike):
                                not definition.is_static else None}
         else:
             self.def_extras = {}
+        self.type_guard = type_guard
 
     def copy_modified(self,
                       arg_types: Bogus[Sequence[Type]] = _dummy,
@@ -1075,7 +1091,9 @@ class CallableType(FunctionLike):
                       special_sig: Bogus[Optional[str]] = _dummy,
                       from_type_type: Bogus[bool] = _dummy,
                       bound_args: Bogus[List[Optional[Type]]] = _dummy,
-                      def_extras: Bogus[Dict[str, Any]] = _dummy) -> 'CallableType':
+                      def_extras: Bogus[Dict[str, Any]] = _dummy,
+                      type_guard: Bogus[Optional[Type]] = _dummy,
+                      ) -> 'CallableType':
         return CallableType(
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,
             arg_kinds=arg_kinds if arg_kinds is not _dummy else self.arg_kinds,
@@ -1094,6 +1112,7 @@ class CallableType(FunctionLike):
             from_type_type=from_type_type if from_type_type is not _dummy else self.from_type_type,
             bound_args=bound_args if bound_args is not _dummy else self.bound_args,
             def_extras=def_extras if def_extras is not _dummy else dict(self.def_extras),
+            type_guard=type_guard if type_guard is not _dummy else self.type_guard,
         )
 
     def var_arg(self) -> Optional[FormalArgument]:
@@ -1269,6 +1288,7 @@ class CallableType(FunctionLike):
                 'bound_args': [(None if t is None else t.serialize())
                                for t in self.bound_args],
                 'def_extras': dict(self.def_extras),
+                'type_guard': self.type_guard.serialize() if self.type_guard is not None else None,
                 }
 
     @classmethod
@@ -1286,7 +1306,9 @@ class CallableType(FunctionLike):
                             implicit=data['implicit'],
                             bound_args=[(None if t is None else deserialize_type(t))
                                         for t in data['bound_args']],
-                            def_extras=data['def_extras']
+                            def_extras=data['def_extras'],
+                            type_guard=(deserialize_type(data['type_guard'])
+                                        if data['type_guard'] is not None else None),
                             )
 
 
@@ -1722,13 +1744,18 @@ class StarType(ProperType):
 class UnionType(ProperType):
     """The union type Union[T1, ..., Tn] (at least one type argument)."""
 
-    __slots__ = ('items',)
+    __slots__ = ('items', 'is_evaluated', 'uses_pep604_syntax')
 
-    def __init__(self, items: Sequence[Type], line: int = -1, column: int = -1) -> None:
+    def __init__(self, items: Sequence[Type], line: int = -1, column: int = -1,
+                 is_evaluated: bool = True, uses_pep604_syntax: bool = False) -> None:
         super().__init__(line, column)
         self.items = flatten_nested_unions(items)
         self.can_be_true = any(item.can_be_true for item in items)
         self.can_be_false = any(item.can_be_false for item in items)
+        # is_evaluated should be set to false for type comments and string literals
+        self.is_evaluated = is_evaluated
+        # uses_pep604_syntax is True if Union uses OR syntax (X | Y)
+        self.uses_pep604_syntax = uses_pep604_syntax
 
     def __hash__(self) -> int:
         return hash(frozenset(self.items))
@@ -2092,7 +2119,10 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         s = '({})'.format(s)
 
         if not isinstance(get_proper_type(t.ret_type), NoneType):
-            s += ' -> {}'.format(t.ret_type.accept(self))
+            if t.type_guard is not None:
+                s += ' -> TypeGuard[{}]'.format(t.type_guard.accept(self))
+            else:
+                s += ' -> {}'.format(t.ret_type.accept(self))
 
         if t.variables:
             vs = []
@@ -2155,6 +2185,9 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     def visit_union_type(self, t: UnionType) -> str:
         s = self.list_str(t.items)
         return 'Union[{}]'.format(s)
+
+    def visit_type_guard_type(self, t: TypeGuardType) -> str:
+        return 'TypeGuard[{}]'.format(t.type_guard.accept(self))
 
     def visit_partial_type(self, t: PartialType) -> str:
         if t.type is None:

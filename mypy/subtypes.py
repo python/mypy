@@ -4,7 +4,7 @@ from typing import Any, List, Optional, Callable, Tuple, Iterator, Set, Union, c
 from typing_extensions import Final
 
 from mypy.types import (
-    Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneType,
+    Type, AnyType, TypeGuardType, UnboundType, TypeVisitor, FormalArgument, NoneType,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
     FunctionLike, TypeOfAny, LiteralType, get_proper_type, TypeAliasType
@@ -121,6 +121,18 @@ def _is_subtype(left: Type, right: Type,
                                             ignore_declared_variance=ignore_declared_variance,
                                             ignore_promotions=ignore_promotions)
                                  for item in right.items)
+        # Recombine rhs literal types, to make an enum type a subtype
+        # of a union of all enum items as literal types. Only do it if
+        # the previous check didn't succeed, since recombining can be
+        # expensive.
+        if not is_subtype_of_item and isinstance(left, Instance) and left.type.is_enum:
+            right = UnionType(mypy.typeops.try_contracting_literals_in_union(right.items))
+            is_subtype_of_item = any(is_subtype(orig_left, item,
+                                                ignore_type_params=ignore_type_params,
+                                                ignore_pos_arg_names=ignore_pos_arg_names,
+                                                ignore_declared_variance=ignore_declared_variance,
+                                                ignore_promotions=ignore_promotions)
+                                     for item in right.items)
         # However, if 'left' is a type variable T, T might also have
         # an upper bound which is itself a union. This case will be
         # handled below by the SubtypeVisitor. We have to check both
@@ -463,6 +475,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_union_type(self, left: UnionType) -> bool:
         return all(self._is_subtype(item, self.orig_right) for item in left.items)
 
+    def visit_type_guard_type(self, left: TypeGuardType) -> bool:
+        raise RuntimeError("TypeGuard should not appear here")
+
     def visit_partial_type(self, left: PartialType) -> bool:
         # This is indeterminate as we don't really know the complete type yet.
         raise RuntimeError
@@ -522,6 +537,14 @@ def is_protocol_implementation(left: Instance, right: Instance,
     assert right.type.is_protocol
     # We need to record this check to generate protocol fine-grained dependencies.
     TypeState.record_protocol_subtype_check(left.type, right.type)
+    # nominal subtyping currently ignores '__init__' and '__new__' signatures
+    members_not_to_check = {'__init__', '__new__'}
+    # Trivial check that circumvents the bug described in issue 9771:
+    if left.type.is_protocol:
+        members_right = set(right.type.protocol_members) - members_not_to_check
+        members_left = set(left.type.protocol_members) - members_not_to_check
+        if not members_right.issubset(members_left):
+            return False
     assuming = right.type.assuming_proper if proper_subtype else right.type.assuming
     for (l, r) in reversed(assuming):
         if (mypy.sametypes.is_same_type(l, left)
@@ -529,8 +552,7 @@ def is_protocol_implementation(left: Instance, right: Instance,
             return True
     with pop_on_exit(assuming, left, right):
         for member in right.type.protocol_members:
-            # nominal subtyping currently ignores '__init__' and '__new__' signatures
-            if member in ('__init__', '__new__'):
+            if member in members_not_to_check:
                 continue
             ignore_names = member != '__call__'  # __call__ can be passed kwargs
             # The third argument below indicates to what self type is bound.
@@ -589,7 +611,7 @@ def find_member(name: str,
                 is_operator: bool = False) -> Optional[Type]:
     """Find the type of member by 'name' in 'itype's TypeInfo.
 
-    Fin the member type after applying type arguments from 'itype', and binding
+    Find the member type after applying type arguments from 'itype', and binding
     'self' to 'subtype'. Return None if member was not found.
     """
     # TODO: this code shares some logic with checkmember.analyze_member_access,
@@ -1354,6 +1376,14 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
 
     def visit_union_type(self, left: UnionType) -> bool:
         return all([self._is_proper_subtype(item, self.orig_right) for item in left.items])
+
+    def visit_type_guard_type(self, left: TypeGuardType) -> bool:
+        if isinstance(self.right, TypeGuardType):
+            # TypeGuard[bool] is a subtype of TypeGuard[int]
+            return self._is_proper_subtype(left.type_guard, self.right.type_guard)
+        else:
+            # TypeGuards aren't a subtype of anything else for now (but see #10489)
+            return False
 
     def visit_partial_type(self, left: PartialType) -> bool:
         # TODO: What's the right thing to do here?

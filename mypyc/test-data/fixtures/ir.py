@@ -20,6 +20,7 @@ class object:
 class type:
     def __init__(self, o: object) -> None: ...
     __name__ : str
+    __annotations__: Dict[str, Any]
 
 class ellipsis: pass
 
@@ -33,6 +34,7 @@ class int:
     def __add__(self, n: int) -> int: pass
     def __sub__(self, n: int) -> int: pass
     def __mul__(self, n: int) -> int: pass
+    def __pow__(self, n: int, modulo: Optional[int] = None) -> int: pass
     def __floordiv__(self, x: int) -> int: pass
     def __mod__(self, x: int) -> int: pass
     def __neg__(self) -> int: pass
@@ -75,6 +77,7 @@ class str:
     def upper(self) -> str: pass
     def startswith(self, x: str, start: int=..., end: int=...) -> bool: pass
     def endswith(self, x: str, start: int=..., end: int=...) -> bool: pass
+    def replace(self, old: str, new: str, maxcount: Optional[int] = None) -> str: pass
 
 class float:
     def __init__(self, x: object) -> None: pass
@@ -82,6 +85,7 @@ class float:
     def __sub__(self, n: float) -> float: pass
     def __mul__(self, n: float) -> float: pass
     def __truediv__(self, n: float) -> float: pass
+    def __neg__(self) -> float: pass
 
 class complex:
     def __init__(self, x: object, y: object = None) -> None: pass
@@ -89,6 +93,7 @@ class complex:
     def __sub__(self, n: complex) -> complex: pass
     def __mul__(self, n: complex) -> complex: pass
     def __truediv__(self, n: complex) -> complex: pass
+    def __neg__(self) -> complex: pass
 
 class bytes:
     def __init__(self, x: object) -> None: pass
@@ -143,6 +148,9 @@ class list(Generic[T], Sequence[T], Iterable[T]):
     def extend(self, l: Iterable[T]) -> None: pass
     def insert(self, i: int, x: T) -> None: pass
     def sort(self) -> None: pass
+    def reverse(self) -> None: pass
+    def remove(self, o: T) -> None: pass
+    def index(self, o: T) -> int: pass
 
 class dict(Mapping[K, V]):
     @overload
@@ -168,6 +176,8 @@ class dict(Mapping[K, V]):
     def values(self) -> Iterable[V]: pass
     def items(self) -> Iterable[Tuple[K, V]]: pass
     def clear(self) -> None: pass
+    def copy(self) -> Dict[K, V]: pass
+    def setdefault(self, k: K, v: Optional[V] = None) -> Optional[V]: pass
 
 class set(Generic[T]):
     def __init__(self, i: Optional[Iterable[T]] = None) -> None: pass
@@ -182,6 +192,12 @@ class set(Generic[T]):
     def __or__(self, s: Set[S]) -> Set[Union[T, S]]: ...
 
 class slice: pass
+
+class range(Iterable[int]):
+    def __init__(self, x: int, y: int = ..., z: int = ...) -> None: pass
+    def __iter__(self) -> Iterator[int]: pass
+    def __len__(self) -> int: pass
+    def __next__(self) -> int: pass
 
 class property:
     def __init__(self, fget: Optional[Callable[[Any], Any]] = ...,
@@ -213,6 +229,8 @@ class ValueError(Exception): pass
 
 class AttributeError(Exception): pass
 
+class ImportError(Exception): pass
+
 class NameError(Exception): pass
 
 class LookupError(Exception): pass
@@ -235,7 +253,6 @@ def id(o: object) -> int: pass
 # This type is obviously wrong but the test stubs don't have Sized anymore
 def len(o: object) -> int: pass
 def print(*object) -> None: pass
-def range(x: int, y: int = ..., z: int = ...) -> Iterator[int]: pass
 def isinstance(x: object, t: object) -> bool: pass
 def iter(i: Iterable[T]) -> Iterator[T]: pass
 @overload
@@ -251,6 +268,8 @@ def zip(x: Iterable[T], y: Iterable[S]) -> Iterator[Tuple[T, S]]: ...
 @overload
 def zip(x: Iterable[T], y: Iterable[S], z: Iterable[V]) -> Iterator[Tuple[T, S, V]]: ...
 def eval(e: str) -> Any: ...
+def abs(x: float) -> float: ...
+def exit() -> None: ...
 
 # Dummy definitions.
 class classmethod: pass

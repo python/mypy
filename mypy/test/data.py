@@ -95,7 +95,7 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
             reprocessed = [] if item.arg is None else [t.strip() for t in item.arg.split(',')]
             targets[passnum] = reprocessed
         elif item.id == 'delete':
-            # File to delete during a multi-step test case
+            # File/directory to delete during a multi-step test case
             assert item.arg is not None
             m = re.match(r'(.*)\.([0-9]+)$', item.arg)
             assert m, 'Invalid delete section: {}'.format(item.arg)
@@ -104,19 +104,43 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
             full = join(base_path, m.group(1))
             deleted_paths.setdefault(num, set()).add(full)
         elif re.match(r'out[0-9]*$', item.id):
-            if item.arg == 'skip-path-normalization':
-                normalize_output = False
-
-            tmp_output = [expand_variables(line) for line in item.data]
-            if os.path.sep == '\\' and normalize_output:
-                tmp_output = [fix_win_path(line) for line in tmp_output]
-            if item.id == 'out' or item.id == 'out1':
-                output = tmp_output
+            if item.arg is None:
+                args = []
             else:
-                passnum = int(item.id[len('out'):])
-                assert passnum > 1
-                output2[passnum] = tmp_output
-            out_section_missing = False
+                args = item.arg.split(",")
+
+            version_check = True
+            for arg in args:
+                if arg == 'skip-path-normalization':
+                    normalize_output = False
+                if arg.startswith("version"):
+                    if arg[7:9] != ">=":
+                        raise ValueError(
+                            "{}, line {}: Only >= version checks are currently supported".format(
+                                case.file, item.line
+                            )
+                        )
+                    version_str = arg[9:]
+                    try:
+                        version = tuple(int(x) for x in version_str.split("."))
+                    except ValueError:
+                        raise ValueError(
+                            '{}, line {}: "{}" is not a valid python version'.format(
+                                case.file, item.line, version_str))
+                    if not sys.version_info >= version:
+                        version_check = False
+
+            if version_check:
+                tmp_output = [expand_variables(line) for line in item.data]
+                if os.path.sep == '\\' and normalize_output:
+                    tmp_output = [fix_win_path(line) for line in tmp_output]
+                if item.id == 'out' or item.id == 'out1':
+                    output = tmp_output
+                else:
+                    passnum = int(item.id[len('out'):])
+                    assert passnum > 1
+                    output2[passnum] = tmp_output
+                out_section_missing = False
         elif item.id == 'triggered' and item.arg is None:
             triggered = item.data
         else:
@@ -149,7 +173,7 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
     case.input = input
     case.output = output
     case.output2 = output2
-    case.lastline = item.line
+    case.last_line = case.line + item.line + len(item.data) - 2
     case.files = files
     case.output_files = output_files
     case.expected_stale_modules = stale_modules
@@ -185,7 +209,7 @@ class DataDrivenTestCase(pytest.Item):
     normalize_output = True
 
     # Extra attributes used by some tests.
-    lastline = None  # type: int
+    last_line = None  # type: int
     output_files = None  # type: List[Tuple[str, str]] # Path and contents for output files
     deleted_paths = None  # type: Dict[int, Set[str]]  # Mapping run number -> paths
     triggered = None  # type: List[str]  # Active triggers (one line per incremental step)
@@ -199,6 +223,7 @@ class DataDrivenTestCase(pytest.Item):
                  only_when: str,
                  platform: Optional[str],
                  skip: bool,
+                 xfail: bool,
                  data: str,
                  line: int) -> None:
         super().__init__(name, parent)
@@ -210,6 +235,7 @@ class DataDrivenTestCase(pytest.Item):
                 or (platform == 'posix' and sys.platform == 'win32')):
             skip = True
         self.skip = skip
+        self.xfail = xfail
         self.data = data
         self.line = line
         self.old_cwd = None  # type: Optional[str]
@@ -218,6 +244,9 @@ class DataDrivenTestCase(pytest.Item):
     def runtest(self) -> None:
         if self.skip:
             pytest.skip()
+        # TODO: add a better error message for when someone uses skip and xfail at the same time
+        elif self.xfail:
+            self.add_marker(pytest.mark.xfail)
         suite = self.parent.obj()
         suite.setup()
         try:
@@ -528,17 +557,20 @@ def split_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
     """
     with open(file, encoding='utf-8') as f:
         data = f.read()
+    # number of groups in the below regex
+    NUM_GROUPS = 7
     cases = re.split(r'^\[case ([a-zA-Z_0-9]+)'
                      r'(-writescache)?'
                      r'(-only_when_cache|-only_when_nocache)?'
                      r'(-posix|-windows)?'
                      r'(-skip)?'
+                     r'(-xfail)?'
                      r'\][ \t]*$\n',
                      data,
                      flags=re.DOTALL | re.MULTILINE)
     line_no = cases[0].count('\n') + 1
-    for i in range(1, len(cases), 6):
-        name, writescache, only_when, platform_flag, skip, data = cases[i:i + 6]
+    for i in range(1, len(cases), NUM_GROUPS):
+        name, writescache, only_when, platform_flag, skip, xfail, data = cases[i:i + NUM_GROUPS]
         platform = platform_flag[1:] if platform_flag else None
         yield DataDrivenTestCase.from_parent(
             parent=parent,
@@ -549,6 +581,7 @@ def split_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
             only_when=only_when,
             platform=platform,
             skip=bool(skip),
+            xfail=bool(xfail),
             data=data,
             line=line_no,
         )

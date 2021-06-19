@@ -23,7 +23,7 @@ from mypy.fscache import FileSystemCache
 from mypy.errors import CompileError
 from mypy.errorcodes import error_codes
 from mypy.options import Options, BuildType
-from mypy.config_parser import parse_version, parse_config_file
+from mypy.config_parser import get_config_module_names, parse_version, parse_config_file
 from mypy.split_namespace import SplitNamespace
 
 from mypy.version import __version__
@@ -67,38 +67,34 @@ def main(script_path: Optional[str],
     sources, options = process_options(args, stdout=stdout, stderr=stderr,
                                        fscache=fscache)
 
-    messages = []
     formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
 
-    def flush_errors(new_messages: List[str], serious: bool) -> None:
-        if options.pretty:
-            new_messages = formatter.fit_in_terminal(new_messages)
-        messages.extend(new_messages)
-        f = stderr if serious else stdout
-        for msg in new_messages:
-            if options.color_output:
-                msg = formatter.colorize(msg)
-            f.write(msg + '\n')
-        f.flush()
+    if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
+        # Since --install-types performs user input, we want regular stdout and stderr.
+        fail("error: --install-types not supported in this mode of running mypy", stderr, options)
 
-    serious = False
-    blockers = False
-    res = None
-    try:
-        # Keep a dummy reference (res) for memory profiling below, as otherwise
-        # the result could be freed.
-        res = build.build(sources, options, None, flush_errors, fscache, stdout, stderr)
-    except CompileError as e:
-        blockers = True
-        if not e.use_stdout:
-            serious = True
-    if options.warn_unused_configs and options.unused_configs and not options.incremental:
-        print("Warning: unused section(s) in %s: %s" %
-              (options.config_file,
-               ", ".join("[mypy-%s]" % glob for glob in options.per_module_options.keys()
-                         if glob in options.unused_configs)),
-              file=stderr)
-    maybe_write_junit_xml(time.time() - t0, serious, messages, options)
+    if options.non_interactive and not options.install_types:
+        fail("error: --non-interactive is only supported with --install-types", stderr, options)
+
+    if options.install_types and not options.incremental:
+        fail("error: --install-types not supported with incremental mode disabled",
+             stderr, options)
+
+    if options.install_types and not sources:
+        install_types(options.cache_dir, formatter, non_interactive=options.non_interactive)
+        return
+
+    res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
+
+    if options.non_interactive:
+        missing_pkgs = read_types_packages_to_install(options.cache_dir, after_run=True)
+        if missing_pkgs:
+            # Install missing type packages and rerun build.
+            install_types(options.cache_dir, formatter, after_run=True, non_interactive=True)
+            fscache.flush()
+            print()
+            res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
+        show_messages(messages, stderr, formatter, options)
 
     if MEM_PROFILE:
         from mypy.memprofile import print_memory_profile
@@ -119,6 +115,15 @@ def main(script_path: Optional[str],
         else:
             stdout.write(formatter.format_success(len(sources), options.color_output) + '\n')
         stdout.flush()
+
+    if options.install_types and not options.non_interactive:
+        result = install_types(options.cache_dir, formatter, after_run=True,
+                               non_interactive=False)
+        if result:
+            print()
+            print("note: Run mypy again for up-to-date results with installed types")
+            code = 2
+
     if options.fast_exit:
         # Exit without freeing objects -- it's faster.
         #
@@ -131,6 +136,62 @@ def main(script_path: Optional[str],
     list([res])
 
 
+def run_build(sources: List[BuildSource],
+              options: Options,
+              fscache: FileSystemCache,
+              t0: float,
+              stdout: TextIO,
+              stderr: TextIO) -> Tuple[Optional[build.BuildResult], List[str], bool]:
+    formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
+
+    messages = []
+
+    def flush_errors(new_messages: List[str], serious: bool) -> None:
+        if options.pretty:
+            new_messages = formatter.fit_in_terminal(new_messages)
+        messages.extend(new_messages)
+        if options.non_interactive:
+            # Collect messages and possibly show them later.
+            return
+        f = stderr if serious else stdout
+        show_messages(new_messages, f, formatter, options)
+
+    serious = False
+    blockers = False
+    res = None
+    try:
+        # Keep a dummy reference (res) for memory profiling afterwards, as otherwise
+        # the result could be freed.
+        res = build.build(sources, options, None, flush_errors, fscache, stdout, stderr)
+    except CompileError as e:
+        blockers = True
+        if not e.use_stdout:
+            serious = True
+    if (options.warn_unused_configs
+            and options.unused_configs
+            and not options.incremental
+            and not options.non_interactive):
+        print("Warning: unused section(s) in %s: %s" %
+              (options.config_file,
+              get_config_module_names(options.config_file,
+                                      [glob for glob in options.per_module_options.keys()
+                                      if glob in options.unused_configs])),
+              file=stderr)
+    maybe_write_junit_xml(time.time() - t0, serious, messages, options)
+    return res, messages, blockers
+
+
+def show_messages(messages: List[str],
+                  f: TextIO,
+                  formatter: util.FancyFormatter,
+                  options: Options) -> None:
+    for msg in messages:
+        if options.color_output:
+            msg = formatter.colorize(msg)
+        f.write(msg + '\n')
+    f.flush()
+
+
 # Make the help output a little less jarring.
 class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
     def __init__(self, prog: str) -> None:
@@ -141,7 +202,7 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
             # Assume we want to manually format the text
             return super()._fill_text(text, width, indent)
         else:
-            # Assume we want argparse to manage wrapping, indentating, and
+            # Assume we want argparse to manage wrapping, indenting, and
             # formatting the text for us.
             return argparse.HelpFormatter._fill_text(self, text, width, indent)
 
@@ -235,17 +296,17 @@ recursively traverse any provided folders to find .py files:
 
 For more information on getting started, see:
 
-- http://mypy.readthedocs.io/en/latest/getting_started.html
+- https://mypy.readthedocs.io/en/stable/getting_started.html
 
 For more details on both running mypy and using the flags below, see:
 
-- http://mypy.readthedocs.io/en/latest/running_mypy.html
-- http://mypy.readthedocs.io/en/latest/command_line.html
+- https://mypy.readthedocs.io/en/stable/running_mypy.html
+- https://mypy.readthedocs.io/en/stable/command_line.html
 
 You can also use a config file to configure mypy instead of using
 command line flags. For more details, see:
 
-- http://mypy.readthedocs.io/en/latest/config_file.html
+- https://mypy.readthedocs.io/en/stable/config_file.html
 """  # type: Final
 
 FOOTER = """Environment variables:
@@ -439,7 +500,8 @@ def process_options(args: List[str],
         help="Configuration file, must have a [mypy] section "
              "(defaults to {})".format(', '.join(defaults.CONFIG_FILES)))
     add_invertible_flag('--warn-unused-configs', default=False, strict_flag=True,
-                        help="Warn about unused '[mypy-<pattern>]' config sections",
+                        help="Warn about unused '[mypy-<pattern>]' or '[[tool.mypy.overrides]]' "
+                             "config sections",
                         group=config_group)
 
     imports_group = parser.add_argument_group(
@@ -544,7 +606,7 @@ def process_options(args: List[str],
         title='None and Optional handling',
         description="Adjust how values of type 'None' are handled. For more context on "
                     "how mypy handles values of type 'None', see: "
-                    "http://mypy.readthedocs.io/en/latest/kinds_of_types.html#no-strict-optional")
+                    "https://mypy.readthedocs.io/en/stable/kinds_of_types.html#no-strict-optional")
     add_invertible_flag('--no-implicit-optional', default=False, strict_flag=True,
                         help="Don't assume arguments with default values of None are Optional",
                         group=none_group)
@@ -648,6 +710,8 @@ def process_options(args: List[str],
     add_invertible_flag('--show-absolute-path', default=False,
                         help="Show absolute paths to files",
                         group=error_group)
+    error_group.add_argument('--soft-error-limit', default=defaults.MANY_ERRORS_THRESHOLD,
+                             type=int, dest="many_errors_threshold", help=argparse.SUPPRESS)
 
     incremental_group = parser.add_argument_group(
         title='Incremental mode',
@@ -655,7 +719,7 @@ def process_options(args: List[str],
                     "Mypy caches type information about modules into a cache to "
                     "let you speed up future invocations of mypy. Also see "
                     "mypy's daemon mode: "
-                    "mypy.readthedocs.io/en/latest/mypy_daemon.html#mypy-daemon")
+                    "mypy.readthedocs.io/en/stable/mypy_daemon.html#mypy-daemon")
     incremental_group.add_argument(
         '-i', '--incremental', action='store_true',
         help=argparse.SUPPRESS)
@@ -731,6 +795,14 @@ def process_options(args: List[str],
         '--scripts-are-modules', action='store_true',
         help="Script x becomes module x instead of __main__")
 
+    add_invertible_flag('--install-types', default=False, strict_flag=False,
+                        help="Install detected missing library stub packages using pip",
+                        group=other_group)
+    add_invertible_flag('--non-interactive', default=False, strict_flag=False,
+                        help=("Install stubs without asking for confirmation and hide " +
+                              "errors, with --install-types"),
+                        group=other_group, inverse="--interactive")
+
     if server_options:
         # TODO: This flag is superfluous; remove after a short transition (2018-03-16)
         other_group.add_argument(
@@ -780,12 +852,27 @@ def process_options(args: List[str],
     # Must be followed by another flag or by '--' (and then only file args may follow).
     parser.add_argument('--cache-map', nargs='+', dest='special-opts:cache_map',
                         help=argparse.SUPPRESS)
+    # PEP 612 support is a work in progress, hide it from users
+    parser.add_argument('--wip-pep-612', action="store_true", help=argparse.SUPPRESS)
 
     # options specifying code to check
     code_group = parser.add_argument_group(
         title="Running code",
         description="Specify the code you want to type check. For more details, see "
-                    "mypy.readthedocs.io/en/latest/running_mypy.html#running-mypy")
+                    "mypy.readthedocs.io/en/stable/running_mypy.html#running-mypy")
+    add_invertible_flag(
+        '--explicit-package-bases', default=False,
+        help="Use current directory and MYPYPATH to determine module names of files passed",
+        group=code_group)
+    code_group.add_argument(
+        "--exclude",
+        metavar="PATTERN",
+        default="",
+        help=(
+            "Regular expression to match file names, directory names or paths which mypy should "
+            "ignore while recursively discovering files to check, e.g. --exclude '/setup\\.py$'"
+        )
+    )
     code_group.add_argument(
         '-m', '--module', action='append', metavar='MODULE',
         default=[],
@@ -832,6 +919,7 @@ def process_options(args: List[str],
     environ_cache_dir = os.getenv('MYPY_CACHE_DIR', '')
     if environ_cache_dir.strip():
         options.cache_dir = environ_cache_dir
+    options.cache_dir = os.path.expanduser(options.cache_dir)
 
     # Parse command line for real, using a split namespace.
     special_opts = argparse.Namespace()
@@ -848,9 +936,9 @@ def process_options(args: List[str],
     if special_opts.no_executable or options.no_site_packages:
         options.python_executable = None
 
-    # Paths listed in the config file will be ignored if any paths are passed on
-    # the command line.
-    if options.files and not special_opts.files:
+    # Paths listed in the config file will be ignored if any paths, modules or packages
+    # are passed on the command line.
+    if options.files and not (special_opts.files or special_opts.packages or special_opts.modules):
         special_opts.files = options.files
 
     # Check for invalid argument combinations.
@@ -858,10 +946,15 @@ def process_options(args: List[str],
         code_methods = sum(bool(c) for c in [special_opts.modules + special_opts.packages,
                                              special_opts.command,
                                              special_opts.files])
-        if code_methods == 0:
+        if code_methods == 0 and not options.install_types:
             parser.error("Missing target module, package, files, or command.")
         elif code_methods > 1:
             parser.error("May only specify one of: module/package, files, or command.")
+    if options.explicit_package_bases and not options.namespace_packages:
+        parser.error(
+            "Can only use --explicit-package-bases with --namespace-packages, since otherwise "
+            "examining __init__.py's is sufficient to determine module names for files"
+        )
 
     # Check for overlapping `--always-true` and `--always-false` flags.
     overlap = set(options.always_true) & set(options.always_false)
@@ -930,7 +1023,7 @@ def process_options(args: List[str],
                                    ())
         targets = []
         # TODO: use the same cache that the BuildManager will
-        cache = FindModuleCache(search_paths, fscache, options, special_opts.packages)
+        cache = FindModuleCache(search_paths, fscache, options)
         for p in special_opts.packages:
             if os.sep in p or os.altsep and os.altsep in p:
                 fail("Package name '{}' cannot have a slash in it.".format(p),
@@ -980,12 +1073,12 @@ def process_package_roots(fscache: Optional[FileSystemCache],
         # Empty package root is always okay.
         if root:
             root = os.path.relpath(root)  # Normalize the heck out of it.
+            if not root.endswith(os.sep):
+                root = root + os.sep
             if root.startswith(dotdotslash):
                 parser.error("Package root cannot be above current directory: %r" % root)
             if root in trivial_paths:
                 root = ''
-            elif not root.endswith(os.sep):
-                root = root + os.sep
         package_root.append(root)
     options.package_root = package_root
     # Pass the package root on the the filesystem cache.
@@ -1026,3 +1119,49 @@ def fail(msg: str, stderr: TextIO, options: Options) -> None:
     stderr.write('%s\n' % msg)
     maybe_write_junit_xml(0.0, serious=True, messages=[msg], options=options)
     sys.exit(2)
+
+
+def read_types_packages_to_install(cache_dir: str, after_run: bool) -> List[str]:
+    if not os.path.isdir(cache_dir):
+        if not after_run:
+            sys.stderr.write(
+                "error: Can't determine which types to install with no files to check " +
+                "(and no cache from previous mypy run)\n"
+            )
+        else:
+            sys.stderr.write(
+                "error: --install-types failed (no mypy cache directory)\n"
+            )
+        sys.exit(2)
+    fnam = build.missing_stubs_file(cache_dir)
+    if not os.path.isfile(fnam):
+        # No missing stubs.
+        return []
+    with open(fnam) as f:
+        return [line.strip() for line in f.readlines()]
+
+
+def install_types(cache_dir: str,
+                  formatter: util.FancyFormatter,
+                  *,
+                  after_run: bool = False,
+                  non_interactive: bool = False) -> bool:
+    """Install stub packages using pip if some missing stubs were detected."""
+    packages = read_types_packages_to_install(cache_dir, after_run)
+    if not packages:
+        # If there are no missing stubs, generate no output.
+        return False
+    if after_run and not non_interactive:
+        print()
+    print('Installing missing stub packages:')
+    cmd = [sys.executable, '-m', 'pip', 'install'] + packages
+    print(formatter.style(' '.join(cmd), 'none', bold=True))
+    print()
+    if not non_interactive:
+        x = input('Install? [yN] ')
+        if not x.strip() or not x.lower().startswith('y'):
+            print(formatter.style('mypy: Skipping installation', 'red', bold=True))
+            sys.exit(2)
+        print()
+    subprocess.run(cmd)
+    return True

@@ -157,6 +157,15 @@ def check_bitwise(x: int, y: int) -> None:
             check_or(ll, rr)
             check_xor(ll, rr)
 
+[case testIsinstanceIntAndNotBool]
+def test_isinstance_int_and_not_bool(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+[file driver.py]
+from native import test_isinstance_int_and_not_bool
+assert test_isinstance_int_and_not_bool(True) == False
+assert test_isinstance_int_and_not_bool(1) == True
+
+
 SHIFT = 30
 DIGIT0a = 615729753
 DIGIT0b = 832796681
@@ -300,3 +309,22 @@ def test_left_shift() -> None:
             assert False
         except Exception:
             pass
+
+def is_true(x: int) -> bool:
+    if x:
+        return True
+    else:
+        return False
+
+def is_false(x: int) -> bool:
+    if not x:
+        return True
+    else:
+        return False
+
+def test_int_as_bool() -> None:
+    assert not is_true(0)
+    assert is_false(0)
+    for x in 1, 55, -1, -7, 1 << 50, 1 << 101, -(1 << 50), -(1 << 101):
+        assert is_true(x)
+        assert not is_false(x)

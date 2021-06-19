@@ -2,6 +2,7 @@
 
 import os
 import re
+import shutil
 import sys
 
 from typing import Dict, List, Set, Tuple
@@ -25,6 +26,7 @@ from mypy.semanal_main import core_modules
 # List of files that contain test case descriptions.
 typecheck_files = [
     'check-basic.test',
+    'check-union-or-syntax.test',
     'check-callable.test',
     'check-classes.test',
     'check-statements.test',
@@ -65,7 +67,6 @@ typecheck_files = [
     'check-selftype.test',
     'check-python2.test',
     'check-columns.test',
-    'check-future.test',
     'check-functions.test',
     'check-tuples.test',
     'check-expressions.test',
@@ -91,6 +92,10 @@ typecheck_files = [
     'check-errorcodes.test',
     'check-annotated.test',
     'check-parameter-specification.test',
+    'check-generic-alias.test',
+    'check-typeguard.test',
+    'check-functools.test',
+    'check-singledispatch.test',
 ]
 
 # Tests that use Python 3.8-only AST features (like expression-scoped ignores):
@@ -101,7 +106,7 @@ if sys.version_info >= (3, 9):
 
 # Special tests for platforms with case-insensitive filesystems.
 if sys.platform in ('darwin', 'win32'):
-    typecheck_files.append('check-modules-case.test')
+    typecheck_files.extend(['check-modules-case.test'])
 
 
 class TypeCheckSuite(DataSuite):
@@ -156,9 +161,13 @@ class TypeCheckSuite(DataSuite):
                     # Modify/create file
                     copy_and_fudge_mtime(op.source_path, op.target_path)
                 else:
-                    # Delete file
-                    # Use retries to work around potential flakiness on Windows (AppVeyor).
+                    # Delete file/directory
                     path = op.path
+                    if os.path.isdir(path):
+                        # Sanity check to avoid unexpected deletions
+                        assert path.startswith('tmp')
+                        shutil.rmtree(path)
+                    # Use retries to work around potential flakiness on Windows (AppVeyor).
                     retry_on_error(lambda: os.remove(path))
 
         # Parse options after moving files (in case mypy.ini is being moved).
@@ -341,7 +350,7 @@ class TypeCheckSuite(DataSuite):
             module_names = m.group(1)
             out = []
             search_paths = SearchPaths((test_temp_dir,), (), (), ())
-            cache = FindModuleCache(search_paths)
+            cache = FindModuleCache(search_paths, fscache=None, options=None)
             for module_name in module_names.split(' '):
                 path = cache.find_module(module_name)
                 assert isinstance(path, str), "Can't find ad hoc case file: %s" % module_name

@@ -8,7 +8,7 @@ from mypyc.ir.rtypes import (
 )
 
 from mypyc.primitives.registry import (
-    c_custom_op, c_method_op, c_function_op, c_binary_op, load_address_op, ERR_NEG_INT
+    custom_op, method_op, function_op, binary_op, load_address_op, ERR_NEG_INT
 )
 
 # Get the 'dict' type object.
@@ -17,8 +17,42 @@ load_address_op(
     type=object_rprimitive,
     src='PyDict_Type')
 
+# Construct an empty dictionary.
+dict_new_op = custom_op(
+    arg_types=[],
+    return_type=dict_rprimitive,
+    c_function_name='PyDict_New',
+    error_kind=ERR_MAGIC)
+
+# Construct a dictionary from keys and values.
+# Positional argument is the number of key-value pairs
+# Variable arguments are (key1, value1, ..., keyN, valueN).
+dict_build_op = custom_op(
+    arg_types=[c_pyssize_t_rprimitive],
+    return_type=dict_rprimitive,
+    c_function_name='CPyDict_Build',
+    error_kind=ERR_MAGIC,
+    var_arg_type=object_rprimitive)
+
+# Construct a dictionary from another dictionary.
+function_op(
+    name='builtins.dict',
+    arg_types=[dict_rprimitive],
+    return_type=dict_rprimitive,
+    c_function_name='PyDict_Copy',
+    error_kind=ERR_MAGIC,
+    priority=2)
+
+# Generic one-argument dict constructor: dict(obj)
+function_op(
+    name='builtins.dict',
+    arg_types=[object_rprimitive],
+    return_type=dict_rprimitive,
+    c_function_name='CPyDict_FromAny',
+    error_kind=ERR_MAGIC)
+
 # dict[key]
-dict_get_item_op = c_method_op(
+dict_get_item_op = method_op(
     name='__getitem__',
     arg_types=[dict_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
@@ -26,7 +60,7 @@ dict_get_item_op = c_method_op(
     error_kind=ERR_MAGIC)
 
 # dict[key] = value
-dict_set_item_op = c_method_op(
+dict_set_item_op = method_op(
     name='__setitem__',
     arg_types=[dict_rprimitive, object_rprimitive, object_rprimitive],
     return_type=c_int_rprimitive,
@@ -34,7 +68,7 @@ dict_set_item_op = c_method_op(
     error_kind=ERR_NEG_INT)
 
 # key in dict
-c_binary_op(
+binary_op(
     name='in',
     arg_types=[object_rprimitive, dict_rprimitive],
     return_type=c_int_rprimitive,
@@ -44,7 +78,7 @@ c_binary_op(
     ordering=[1, 0])
 
 # dict1.update(dict2)
-dict_update_op = c_method_op(
+dict_update_op = method_op(
     name='update',
     arg_types=[dict_rprimitive, dict_rprimitive],
     return_type=c_int_rprimitive,
@@ -54,14 +88,14 @@ dict_update_op = c_method_op(
 
 # Operation used for **value in dict displays.
 # This is mostly like dict.update(obj), but has customized error handling.
-dict_update_in_display_op = c_custom_op(
+dict_update_in_display_op = custom_op(
     arg_types=[dict_rprimitive, dict_rprimitive],
     return_type=c_int_rprimitive,
     c_function_name='CPyDict_UpdateInDisplay',
     error_kind=ERR_NEG_INT)
 
 # dict.update(obj)
-c_method_op(
+method_op(
     name='update',
     arg_types=[dict_rprimitive, object_rprimitive],
     return_type=c_int_rprimitive,
@@ -69,7 +103,7 @@ c_method_op(
     error_kind=ERR_NEG_INT)
 
 # dict.get(key, default)
-c_method_op(
+method_op(
     name='get',
     arg_types=[dict_rprimitive, object_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
@@ -77,49 +111,32 @@ c_method_op(
     error_kind=ERR_MAGIC)
 
 # dict.get(key)
-c_method_op(
+method_op(
     name='get',
     arg_types=[dict_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
     c_function_name='CPyDict_GetWithNone',
     error_kind=ERR_MAGIC)
 
-# Construct an empty dictionary.
-dict_new_op = c_custom_op(
-    arg_types=[],
-    return_type=dict_rprimitive,
-    c_function_name='PyDict_New',
+# dict.setdefault(key, default)
+method_op(
+    name='setdefault',
+    arg_types=[dict_rprimitive, object_rprimitive, object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='CPyDict_SetDefault',
     error_kind=ERR_MAGIC)
 
-# Construct a dictionary from keys and values.
-# Positional argument is the number of key-value pairs
-# Variable arguments are (key1, value1, ..., keyN, valueN).
-dict_build_op = c_custom_op(
-    arg_types=[c_pyssize_t_rprimitive],
-    return_type=dict_rprimitive,
-    c_function_name='CPyDict_Build',
-    error_kind=ERR_MAGIC,
-    var_arg_type=object_rprimitive)
-
-# Construct a dictionary from another dictionary.
-c_function_op(
-    name='builtins.dict',
-    arg_types=[dict_rprimitive],
-    return_type=dict_rprimitive,
-    c_function_name='PyDict_Copy',
-    error_kind=ERR_MAGIC,
-    priority=2)
-
-# Generic one-argument dict constructor: dict(obj)
-c_function_op(
-    name='builtins.dict',
-    arg_types=[object_rprimitive],
-    return_type=dict_rprimitive,
-    c_function_name='CPyDict_FromAny',
+# dict.setdefault(key)
+method_op(
+    name='setdefault',
+    arg_types=[dict_rprimitive, object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='CPyDict_SetDefaultWithNone',
+    is_borrowed=True,
     error_kind=ERR_MAGIC)
 
 # dict.keys()
-c_method_op(
+method_op(
     name='keys',
     arg_types=[dict_rprimitive],
     return_type=object_rprimitive,
@@ -127,7 +144,7 @@ c_method_op(
     error_kind=ERR_MAGIC)
 
 # dict.values()
-c_method_op(
+method_op(
     name='values',
     arg_types=[dict_rprimitive],
     return_type=object_rprimitive,
@@ -135,79 +152,95 @@ c_method_op(
     error_kind=ERR_MAGIC)
 
 # dict.items()
-c_method_op(
+method_op(
     name='items',
     arg_types=[dict_rprimitive],
     return_type=object_rprimitive,
     c_function_name='CPyDict_ItemsView',
     error_kind=ERR_MAGIC)
 
+# dict.clear()
+method_op(
+    name='clear',
+    arg_types=[dict_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name='CPyDict_Clear',
+    error_kind=ERR_FALSE)
+
+# dict.copy()
+method_op(
+    name='copy',
+    arg_types=[dict_rprimitive],
+    return_type=dict_rprimitive,
+    c_function_name='CPyDict_Copy',
+    error_kind=ERR_MAGIC)
+
 # list(dict.keys())
-dict_keys_op = c_custom_op(
+dict_keys_op = custom_op(
     arg_types=[dict_rprimitive],
     return_type=list_rprimitive,
     c_function_name='CPyDict_Keys',
     error_kind=ERR_MAGIC)
 
 # list(dict.values())
-dict_values_op = c_custom_op(
+dict_values_op = custom_op(
     arg_types=[dict_rprimitive],
     return_type=list_rprimitive,
     c_function_name='CPyDict_Values',
     error_kind=ERR_MAGIC)
 
 # list(dict.items())
-dict_items_op = c_custom_op(
+dict_items_op = custom_op(
     arg_types=[dict_rprimitive],
     return_type=list_rprimitive,
     c_function_name='CPyDict_Items',
     error_kind=ERR_MAGIC)
 
 # PyDict_Next() fast iteration
-dict_key_iter_op = c_custom_op(
+dict_key_iter_op = custom_op(
     arg_types=[dict_rprimitive],
     return_type=object_rprimitive,
     c_function_name='CPyDict_GetKeysIter',
     error_kind=ERR_MAGIC)
 
-dict_value_iter_op = c_custom_op(
+dict_value_iter_op = custom_op(
     arg_types=[dict_rprimitive],
     return_type=object_rprimitive,
     c_function_name='CPyDict_GetValuesIter',
     error_kind=ERR_MAGIC)
 
-dict_item_iter_op = c_custom_op(
+dict_item_iter_op = custom_op(
     arg_types=[dict_rprimitive],
     return_type=object_rprimitive,
     c_function_name='CPyDict_GetItemsIter',
     error_kind=ERR_MAGIC)
 
-dict_next_key_op = c_custom_op(
+dict_next_key_op = custom_op(
     arg_types=[object_rprimitive, int_rprimitive],
     return_type=dict_next_rtuple_single,
     c_function_name='CPyDict_NextKey',
     error_kind=ERR_NEVER)
 
-dict_next_value_op = c_custom_op(
+dict_next_value_op = custom_op(
     arg_types=[object_rprimitive, int_rprimitive],
     return_type=dict_next_rtuple_single,
     c_function_name='CPyDict_NextValue',
     error_kind=ERR_NEVER)
 
-dict_next_item_op = c_custom_op(
+dict_next_item_op = custom_op(
     arg_types=[object_rprimitive, int_rprimitive],
     return_type=dict_next_rtuple_pair,
     c_function_name='CPyDict_NextItem',
     error_kind=ERR_NEVER)
 
 # check that len(dict) == const during iteration
-dict_check_size_op = c_custom_op(
+dict_check_size_op = custom_op(
     arg_types=[dict_rprimitive, int_rprimitive],
     return_type=bit_rprimitive,
     c_function_name='CPyDict_CheckSize',
     error_kind=ERR_FALSE)
 
-dict_size_op = c_custom_op(
+dict_size_op = custom_op(
     arg_types=[dict_rprimitive],
     return_type=c_pyssize_t_rprimitive,
     c_function_name='PyDict_Size',

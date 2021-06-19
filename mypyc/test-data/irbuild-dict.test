@@ -52,7 +52,7 @@ def f(x):
     r1, r2 :: object
     r3, d :: dict
 L0:
-    r0 = load_global CPyStatic_unicode_1 :: static
+    r0 = ''
     r1 = box(short_int, 2)
     r2 = box(short_int, 4)
     r3 = CPyDict_Build(2, r1, r2, r0, x)
@@ -145,7 +145,7 @@ def increment(d):
     r5 :: int
     r6 :: bool
     r7 :: object
-    k, r8 :: str
+    r8, k :: str
     r9, r10, r11 :: object
     r12 :: int32
     r13, r14, r15 :: bit
@@ -194,7 +194,7 @@ def f(x, y):
     r6 :: int32
     r7 :: bit
 L0:
-    r0 = load_global CPyStatic_unicode_3 :: static  ('z')
+    r0 = 'z'
     r1 = box(short_int, 4)
     r2 = CPyDict_Build(1, x, r1)
     r3 = CPyDict_UpdateInDisplay(r2, y)
@@ -223,7 +223,7 @@ def print_dict_methods(d1, d2):
     r5 :: int
     r6 :: bool
     r7 :: object
-    v, r8 :: int
+    r8, v :: int
     r9 :: object
     r10 :: int32
     r11 :: bit
@@ -312,3 +312,41 @@ L0:
     r0 = load_address PyDict_Type
     x = r0
     return 1
+
+[case testDictClear]
+from typing import Dict
+def f(d: Dict[int, int]) -> None:
+    return d.clear()
+[out]
+def f(d):
+    d :: dict
+    r0 :: bit
+L0:
+    r0 = CPyDict_Clear(d)
+    return 1
+
+[case testDictCopy]
+from typing import Dict
+def f(d: Dict[int, int]) -> Dict[int, int]:
+    return d.copy()
+[out]
+def f(d):
+    d, r0 :: dict
+L0:
+    r0 = CPyDict_Copy(d)
+    return r0
+
+[case testDictSetdefault]
+from typing import Dict
+def f(d: Dict[object, object]) -> object:
+    return d.setdefault('a', 'b')
+[out]
+def f(d):
+    d :: dict
+    r0, r1 :: str
+    r2 :: object
+L0:
+    r0 = 'a'
+    r1 = 'b'
+    r2 = CPyDict_SetDefault(d, r0, r1)
+    return r2

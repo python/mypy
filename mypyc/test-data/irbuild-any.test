@@ -62,7 +62,7 @@ L0:
     a = r4
     r5 = unbox(int, a)
     n = r5
-    r6 = load_global CPyStatic_unicode_6 :: static  ('a')
+    r6 = 'a'
     r7 = box(int, n)
     r8 = PyObject_SetAttr(a, r6, r7)
     r9 = r8 >= 0 :: signed
@@ -122,10 +122,11 @@ L0:
     r11 = PyList_New(2)
     r12 = box(int, n)
     r13 = get_element_ptr r11 ob_item :: PyListObject
-    r14 = load_mem r13, r11 :: ptr*
-    set_mem r14, a, r11 :: builtins.object*
+    r14 = load_mem r13 :: ptr*
+    set_mem r14, a :: builtins.object*
     r15 = r14 + WORD_SIZE*1
-    set_mem r15, r12, r11 :: builtins.object*
+    set_mem r15, r12 :: builtins.object*
+    keep_alive r11
     return 1
 def f3(a, n):
     a :: object
@@ -166,12 +167,12 @@ L3:
     a = r0
     if b goto L4 else goto L5 :: bool
 L4:
-    r3 = box(int, n)
-    r2 = r3
+    r2 = box(int, n)
+    r3 = r2
     goto L6
 L5:
-    r2 = a
+    r3 = a
 L6:
-    r4 = unbox(int, r2)
+    r4 = unbox(int, r3)
     n = r4
     return 1

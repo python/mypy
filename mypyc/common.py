@@ -1,5 +1,5 @@
 import sys
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 import sys
 
 from typing_extensions import Final
@@ -19,7 +19,6 @@ TEMP_ATTR_NAME = '__mypyc_temp__'  # type: Final
 LAMBDA_NAME = '__mypyc_lambda__'  # type: Final
 PROPSET_PREFIX = '__mypyc_setter__'  # type: Final
 SELF_NAME = '__mypyc_self__'  # type: Final
-INT_PREFIX = '__tmp_literal_int_'  # type: Final
 
 # Max short int we accept as a literal is based on 32-bit platforms,
 # so that we can just always emit the same code.
@@ -54,6 +53,7 @@ MAX_LITERAL_SHORT_INT = (sys.maxsize >> 1 if not IS_MIXED_32_64_BIT_BUILD
 RUNTIME_C_FILES = [
     'init.c',
     'getargs.c',
+    'getargsfast.c',
     'int_ops.c',
     'list_ops.c',
     'dict_ops.c',
@@ -64,6 +64,9 @@ RUNTIME_C_FILES = [
     'misc_ops.c',
     'generic_ops.c',
 ]  # type: Final
+
+
+JsonDict = Dict[str, Any]
 
 
 def decorator_helper_name(func_name: str) -> str:
@@ -84,4 +87,16 @@ def short_name(name: str) -> str:
     return name
 
 
-JsonDict = Dict[str, Any]
+def use_fastcall(capi_version: Tuple[int, int]) -> bool:
+    # We can use METH_FASTCALL for faster wrapper functions on Python 3.7+.
+    return capi_version >= (3, 7)
+
+
+def use_vectorcall(capi_version: Tuple[int, int]) -> bool:
+    # We can use vectorcalls to make calls on Python 3.8+ (PEP 590).
+    return capi_version >= (3, 8)
+
+
+def use_method_vectorcall(capi_version: Tuple[int, int]) -> bool:
+    # We can use a dedicated vectorcall API to call methods on Python 3.9+.
+    return capi_version >= (3, 9)

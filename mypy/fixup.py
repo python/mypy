@@ -9,7 +9,7 @@ from mypy.nodes import (
     TypeVarExpr, ClassDef, Block, TypeAlias,
 )
 from mypy.types import (
-    CallableType, Instance, Overloaded, TupleType, TypedDictType,
+    CallableType, Instance, Overloaded, TupleType, TypeGuardType, TypedDictType,
     TypeVarType, UnboundType, UnionType, TypeVisitor, LiteralType,
     TypeType, NOT_READY, TypeAliasType, AnyType, TypeOfAny, TypeVarDef
 )
@@ -192,6 +192,8 @@ class TypeFixer(TypeVisitor[None]):
         for arg in ct.bound_args:
             if arg:
                 arg.accept(self)
+        if ct.type_guard is not None:
+            ct.type_guard.accept(self)
 
     def visit_overloaded(self, t: Overloaded) -> None:
         for ct in t.items():
@@ -251,6 +253,9 @@ class TypeFixer(TypeVisitor[None]):
         if ut.items:
             for it in ut.items:
                 it.accept(self)
+
+    def visit_type_guard_type(self, t: TypeGuardType) -> None:
+        t.type_guard.accept(self)
 
     def visit_void(self, o: Any) -> None:
         pass  # Nothing to descend into.
