@@ -328,7 +328,7 @@ def translate_dict_setdefault(
             and isinstance(callee, MemberExpr)):
         # Special case for dict.setdefault
         # We would only construct default collection when needed. The dict_setdefault_spec_init_op
-        # would check whether the dict contains the key and would construct empty collection only once.
+        # checks whether the dict contains the key and would construct empty collection only once.
         # This specializer works for the following cases:
         #     d.setdefault(key, set()).add(value)
         #     d.setdefault(key, []).add(value)
