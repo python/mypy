@@ -3597,8 +3597,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             object_type = None  # type: Optional[Type]
             if fullname is None and isinstance(d, MemberExpr) and d.expr in self.type_map:
                 object_type = self.type_map[d.expr]
-                if fullname is None and object_type is not None:
-                    fullname = self.expr_checker.method_fullname(object_type, d.name)
+                fullname = self.expr_checker.method_fullname(object_type, d.name)
             self.check_for_untyped_decorator(e.func, dec, d)
             sig, t2 = self.expr_checker.check_call(dec, [temp],
                                                    [nodes.ARG_POS], e,
