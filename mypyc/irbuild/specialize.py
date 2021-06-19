@@ -326,13 +326,13 @@ def translate_dict_setdefault(
     if (len(expr.args) == 2
             and expr.arg_kinds == [ARG_POS, ARG_POS]
             and isinstance(callee, MemberExpr)):
-        # Special case for dict.setdefault
-        # We would only construct default collection when needed. The dict_setdefault_spec_init_op
-        # checks whether the dict contains the key and would construct empty collection only once.
-        # This specializer works for the following cases:
+        # Special case for dict.setdefault which would only construct default empty
+        # collection when needed. The dict_setdefault_spec_init_op checks whether
+        # the dict contains the key and would construct the empty collection only once.
+        # For example, this specializer works for the following cases:
         #     d.setdefault(key, set()).add(value)
-        #     d.setdefault(key, []).add(value)
-        #     d.setdefault(key, {}).add(value)
+        #     d.setdefault(key, []).append(value)
+        #     d.setdefault(key, {})[inner_key] = inner_val
         arg = expr.args[1]
         if isinstance(arg, ListExpr):
             if len(arg.items):
