@@ -3,7 +3,8 @@
 from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_FALSE
 from mypyc.ir.rtypes import (
     bool_rprimitive, object_rprimitive, str_rprimitive, object_pointer_rprimitive,
-    int_rprimitive, dict_rprimitive, c_int_rprimitive, bit_rprimitive, c_pyssize_t_rprimitive
+    int_rprimitive, dict_rprimitive, c_int_rprimitive, bit_rprimitive, c_pyssize_t_rprimitive,
+    list_rprimitive,
 )
 from mypyc.primitives.registry import (
     function_op, custom_op, load_address_op, ERR_NEG_INT
@@ -14,6 +15,12 @@ load_address_op(
     name='builtins.bool',
     type=object_rprimitive,
     src='PyBool_Type')
+
+# Get the 'range' type object.
+load_address_op(
+    name='builtins.range',
+    type=object_rprimitive,
+    src='PyRange_Type')
 
 # Get the boxed Python 'None' object
 none_object_op = load_address_op(
@@ -106,6 +113,24 @@ import_op = custom_op(
     return_type=object_rprimitive,
     c_function_name='PyImport_Import',
     error_kind=ERR_MAGIC)
+
+# Import with extra arguments (used in from import handling)
+import_extra_args_op = custom_op(
+    arg_types=[str_rprimitive, dict_rprimitive, dict_rprimitive,
+               list_rprimitive, c_int_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='PyImport_ImportModuleLevelObject',
+    error_kind=ERR_MAGIC
+)
+
+# Import-from helper op
+import_from_op = custom_op(
+    arg_types=[object_rprimitive, str_rprimitive,
+               str_rprimitive, str_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='CPyImport_ImportFrom',
+    error_kind=ERR_MAGIC
+)
 
 # Get the sys.modules dictionary
 get_module_dict_op = custom_op(

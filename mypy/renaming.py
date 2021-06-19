@@ -334,7 +334,7 @@ class VariableRenameVisitor(TraverserVisitor):
         """Reject redefinition of variables in the innermost loop.
 
         If there is an early exit from a loop, there may be ambiguity about which
-        value may escpae the loop. Example where this matters:
+        value may escape the loop. Example where this matters:
 
           while f():
               x = 0

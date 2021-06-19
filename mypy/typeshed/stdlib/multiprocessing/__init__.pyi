@@ -1,6 +1,7 @@
 import sys
+from collections.abc import Callable, Iterable
 from logging import Logger
-from multiprocessing import connection, pool, sharedctypes, synchronize
+from multiprocessing import connection, context, pool, synchronize
 from multiprocessing.context import (
     AuthenticationError as AuthenticationError,
     BaseContext,
@@ -14,10 +15,12 @@ from multiprocessing.context import (
 from multiprocessing.managers import SyncManager
 from multiprocessing.process import active_children as active_children, current_process as current_process
 
-# These are technically functions that return instances of these Queue classes. See #4313 for discussion
+# These are technically functions that return instances of these Queue classes.
+# Using them as annotations is deprecated. Either use imports from
+# multiprocessing.queues or the aliases defined below. See #4266 for discussion.
 from multiprocessing.queues import JoinableQueue as JoinableQueue, Queue as Queue, SimpleQueue as SimpleQueue
 from multiprocessing.spawn import freeze_support as freeze_support
-from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple, Union, overload
+from typing import Any, Optional, Union, overload
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 8):
@@ -26,33 +29,51 @@ if sys.version_info >= (3, 8):
 if sys.platform != "win32":
     from multiprocessing.context import ForkContext, ForkServerContext
 
+# The following type aliases can be used to annotate the return values of
+# the corresponding functions. They are not defined at runtime.
+#
+# from multiprocessing import Lock
+# from typing import TYPE_CHECKING
+# if TYPE_CHECKING:
+#     from multiprocessing import _LockType
+# lock: _LockType = Lock()
+
+_QueueType = Queue
+_SimpleQueueType = SimpleQueue
+_JoinableQueueType = JoinableQueue
+_BarrierType = synchronize.Barrier
+_BoundedSemaphoreType = synchronize.BoundedSemaphore
+_ConditionType = synchronize.Condition
+_EventType = synchronize.Event
+_LockType = synchronize.Lock
+_RLockType = synchronize.RLock
+_SemaphoreType = synchronize.Semaphore
+
 # N.B. The functions below are generated at runtime by partially applying
 # multiprocessing.context.BaseContext's methods, so the two signatures should
 # be identical (modulo self).
 
 # Sychronization primitives
 _LockLike = Union[synchronize.Lock, synchronize.RLock]
+RawValue = context._default_context.RawValue
+RawArray = context._default_context.RawArray
+Value = context._default_context.Value
+Array = context._default_context.Array
 
-def Barrier(parties: int, action: Optional[Callable[..., Any]] = ..., timeout: Optional[float] = ...) -> synchronize.Barrier: ...
-def BoundedSemaphore(value: int = ...) -> synchronize.BoundedSemaphore: ...
-def Condition(lock: Optional[_LockLike] = ...) -> synchronize.Condition: ...
-def Event() -> synchronize.Event: ...
-def Lock() -> synchronize.Lock: ...
-def RLock() -> synchronize.RLock: ...
-def Semaphore(value: int = ...) -> synchronize.Semaphore: ...
-def Pipe(duplex: bool = ...) -> Tuple[connection.Connection, connection.Connection]: ...
+def Barrier(parties: int, action: Optional[Callable[..., Any]] = ..., timeout: Optional[float] = ...) -> _BarrierType: ...
+def BoundedSemaphore(value: int = ...) -> _BoundedSemaphoreType: ...
+def Condition(lock: Optional[_LockLike] = ...) -> _ConditionType: ...
+def Event() -> _EventType: ...
+def Lock() -> _LockType: ...
+def RLock() -> _RLockType: ...
+def Semaphore(value: int = ...) -> _SemaphoreType: ...
+def Pipe(duplex: bool = ...) -> tuple[connection.Connection, connection.Connection]: ...
 def Pool(
     processes: Optional[int] = ...,
     initializer: Optional[Callable[..., Any]] = ...,
     initargs: Iterable[Any] = ...,
     maxtasksperchild: Optional[int] = ...,
 ) -> pool.Pool: ...
-
-# Functions Array and Value are copied from context.pyi.
-# See https://github.com/python/typeshed/blob/ac234f25927634e06d9c96df98d72d54dd80dfc4/stdlib/2and3/turtle.pyi#L284-L291
-# for rationale
-def Array(typecode_or_type: Any, size_or_initializer: Union[int, Sequence[Any]], *, lock: bool = ...) -> sharedctypes._Array: ...
-def Value(typecode_or_type: Any, *args: Any, lock: bool = ...) -> sharedctypes._Value: ...
 
 # ----- multiprocessing function stubs -----
 def allow_connection_pickling() -> None: ...
@@ -61,8 +82,8 @@ def get_logger() -> Logger: ...
 def log_to_stderr(level: Optional[Union[str, int]] = ...) -> Logger: ...
 def Manager() -> SyncManager: ...
 def set_executable(executable: str) -> None: ...
-def set_forkserver_preload(module_names: List[str]) -> None: ...
-def get_all_start_methods() -> List[str]: ...
+def set_forkserver_preload(module_names: list[str]) -> None: ...
+def get_all_start_methods() -> list[str]: ...
 def get_start_method(allow_none: bool = ...) -> Optional[str]: ...
 def set_start_method(method: str, force: Optional[bool] = ...) -> None: ...
 

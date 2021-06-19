@@ -20,9 +20,9 @@ from mypyc.ir.ops import (
     Assign, Unreachable, RaiseStandardError, LoadErrorValue, BasicBlock, TupleGet, Value, Register,
     Branch, NO_TRACEBACK_LINE_NO
 )
-from mypyc.ir.rtypes import exc_rtuple
+from mypyc.ir.rtypes import RInstance, exc_rtuple
 from mypyc.primitives.generic_ops import py_delattr_op
-from mypyc.primitives.misc_ops import type_op
+from mypyc.primitives.misc_ops import type_op, import_from_op
 from mypyc.primitives.exc_ops import (
     raise_exception_op, reraise_exception_op, error_catch_op, exc_matches_op, restore_exc_info_op,
     get_exc_value_op, keep_propagating_op, get_exc_info_op
@@ -165,28 +165,27 @@ def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:
     module_state = builder.graph[builder.module_name]
     if module_state.ancestors is not None and module_state.ancestors:
         module_package = module_state.ancestors[0]
+    elif builder.module_path.endswith("__init__.py"):
+        module_package = builder.module_name
     else:
         module_package = ''
 
     id = importlib.util.resolve_name('.' * node.relative + node.id, module_package)
 
-    builder.gen_import(id, node.line)
-    module = builder.load_module(id)
+    globals = builder.load_globals_dict()
+    imported_names = [name for name, _ in node.names]
+    module = builder.gen_import_from(id, globals, imported_names, node.line)
 
     # Copy everything into our module's dict.
     # Note that we miscompile import from inside of functions here,
     # since that case *shouldn't* load it into the globals dict.
     # This probably doesn't matter much and the code runs basically right.
-    globals = builder.load_globals_dict()
     for name, maybe_as_name in node.names:
-        # If one of the things we are importing is a module,
-        # import it as a module also.
-        fullname = id + '.' + name
-        if fullname in builder.graph or fullname in module_state.suppressed:
-            builder.gen_import(fullname, node.line)
-
         as_name = maybe_as_name or name
-        obj = builder.py_get_attr(module, name, node.line)
+        obj = builder.call_c(import_from_op,
+                             [module, builder.load_str(id),
+                              builder.load_str(name), builder.load_str(as_name)],
+                             node.line)
         builder.gen_method_call(
             globals, '__setitem__', [builder.load_str(as_name), obj],
             result_type=None, line=node.line)
@@ -242,6 +241,9 @@ def transform_while_stmt(builder: IRBuilder, s: WhileStmt) -> None:
 
 
 def transform_for_stmt(builder: IRBuilder, s: ForStmt) -> None:
+    if s.is_async:
+        builder.error('async for is unimplemented', s.line)
+
     def body() -> None:
         builder.accept(s.body)
 
@@ -610,6 +612,9 @@ def transform_with(builder: IRBuilder,
 
 
 def transform_with_stmt(builder: IRBuilder, o: WithStmt) -> None:
+    if o.is_async:
+        builder.error('async with is unimplemented', o.line)
+
     # Generate separate logic for each expr in it, left to right
     def generate(i: int) -> None:
         if i >= len(o.expr):
@@ -658,6 +663,13 @@ def transform_del_item(builder: IRBuilder, target: AssignmentTarget, line: int) 
             line=line
         )
     elif isinstance(target, AssignmentTargetAttr):
+        if isinstance(target.obj_type, RInstance):
+            cl = target.obj_type.class_ir
+            if not cl.is_deletable(target.attr):
+                builder.error('"{}" cannot be deleted'.format(target.attr), line)
+                builder.note(
+                    'Using "__deletable__ = ' +
+                    '[\'<attr>\']" in the class body enables "del obj.<attr>"', line)
         key = builder.load_str(target.attr)
         builder.call_c(py_delattr_op, [target.obj, key], line)
     elif isinstance(target, AssignmentTargetRegister):

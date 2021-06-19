@@ -1,5 +1,4 @@
 import mimetools
-import ssl
 from typing import Any, Dict, Optional, Protocol
 
 class HTTPMessage(mimetools.Message):

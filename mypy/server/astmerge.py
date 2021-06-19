@@ -59,7 +59,7 @@ from mypy.types import (
     Type, SyntheticTypeVisitor, Instance, AnyType, NoneType, CallableType, ErasedType, DeletedType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
     Overloaded, TypeVarDef, TypeList, CallableArgument, EllipsisType, StarType, LiteralType,
-    RawExpressionType, PartialType, PlaceholderType, TypeAliasType
+    RawExpressionType, PartialType, PlaceholderType, TypeAliasType, TypeGuardType
 )
 from mypy.util import get_prefix, replace_object_state
 from mypy.typestate import TypeState
@@ -388,6 +388,9 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
 
     def visit_deleted_type(self, typ: DeletedType) -> None:
         pass
+
+    def visit_type_guard_type(self, typ: TypeGuardType) -> None:
+        raise RuntimeError
 
     def visit_partial_type(self, typ: PartialType) -> None:
         raise RuntimeError

@@ -331,41 +331,45 @@ break
 def f():
   break
 [out]
-main:1: error: 'break' outside loop
-main:3: error: 'break' outside loop
+main:1: error: "break" outside loop
+main:3: error: "break" outside loop
 
 [case testContinueOutsideLoop]
 continue
 def f():
   continue
 [out]
-main:1: error: 'continue' outside loop
-main:3: error: 'continue' outside loop
+main:1: error: "continue" outside loop
+main:3: error: "continue" outside loop
 
 [case testReturnOutsideFunction]
 def f(): pass
 return
 return 1
 [out]
-main:2: error: 'return' outside function
-main:3: error: 'return' outside function
+main:2: error: "return" outside function
+main:3: error: "return" outside function
 
 [case testYieldOutsideFunction]
 yield 1
 yield
 [out]
-main:1: error: 'yield' outside function
-main:2: error: 'yield' outside function
+main:1: error: "yield" outside function
+main:2: error: "yield" outside function
 
 [case testInvalidLvalues1]
 1 = 1
 [out]
 main:1: error: can't assign to literal
+[out version>=3.10]
+main:1: error: can't assign to literal here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues2]
 (1) = 1
 [out]
 main:1: error: can't assign to literal
+[out version>=3.10]
+main:1: error: can't assign to literal here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues3]
 (1, 1) = 1
@@ -404,26 +408,36 @@ main:3: error: can't assign to literal
 x + x = 1
 [out]
 main:1: error: can't assign to operator
+[out version>=3.10]
+main:1: error: can't assign to expression here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues11]
 -x = 1
 [out]
 main:1: error: can't assign to operator
+[out version>=3.10]
+main:1: error: can't assign to expression here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues12]
 1.1 = 1
 [out]
 main:1: error: can't assign to literal
+[out version>=3.10]
+main:1: error: can't assign to literal here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues13]
 'x' = 1
 [out]
 main:1: error: can't assign to literal
+[out version>=3.10]
+main:1: error: can't assign to literal here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalues14]
 x() = 1
 [out]
 main:1: error: can't assign to function call
+[out version>=3.10]
+main:1: error: can't assign to function call here. Maybe you meant '==' instead of '='?
 
 [case testTwoStarExpressions]
 a, *b, *c = 1
@@ -480,8 +494,11 @@ del x(1)  # E: can't delete function call
 
 [case testInvalidDel2]
 x = 1
-del x + 1 # E: can't delete operator
+del x + 1
 [out]
+main:2: error: cannot delete operator
+[out version>=3.10]
+main:2: error: cannot delete expression
 
 [case testInvalidDel3]
 del z     # E: Name "z" is not defined
@@ -516,8 +533,8 @@ class c(Generic[t]):
     def f(self) -> None: x = t
 def f(y: t): x = t
 [out]
-main:4: error: 't' is a type variable and only valid in type context
-main:5: error: 't' is a type variable and only valid in type context
+main:4: error: "t" is a type variable and only valid in type context
+main:5: error: "t" is a type variable and only valid in type context
 
 [case testMissingSelf]
 import typing
@@ -758,7 +775,7 @@ class A(Generic[t]):
 [out]
 
 [case testTestExtendPrimitives]
-class C(bool): pass # E: 'bool' is not a valid base class
+class C(bool): pass # E: "bool" is not a valid base class
 class A(int): pass # ok
 class B(float): pass # ok
 class D(str): pass # ok
@@ -812,14 +829,14 @@ cast(str[str], None) # E: "str" expects no type arguments, but 1 given
 
 [case testInvalidNumberOfArgsToCast]
 from typing import cast
-cast(str) # E: 'cast' expects 2 arguments
-cast(str, None, None) # E: 'cast' expects 2 arguments
+cast(str) # E: "cast" expects 2 arguments
+cast(str, None, None) # E: "cast" expects 2 arguments
 [out]
 
 [case testInvalidKindsOfArgsToCast]
 from typing import cast
-cast(str, *None) # E: 'cast' must be called with 2 positional arguments
-cast(str, target=None) # E: 'cast' must be called with 2 positional arguments
+cast(str, *None) # E: "cast" must be called with 2 positional arguments
+cast(str, target=None) # E: "cast" must be called with 2 positional arguments
 [out]
 
 [case testInvalidAnyCall]
@@ -851,7 +868,7 @@ from abc import abstractmethod
 @abstractmethod
 def foo(): pass
 [out]
-main:3: error: 'abstractmethod' used with a non-method
+main:3: error: "abstractmethod" used with a non-method
 
 [case testAbstractNestedFunction]
 import typing
@@ -860,7 +877,7 @@ def g() -> None:
   @abstractmethod
   def foo(): pass
 [out]
-main:4: error: 'abstractmethod' used with a non-method
+main:4: error: "abstractmethod" used with a non-method
 
 [case testInvalidTypeDeclaration]
 import typing
@@ -868,6 +885,8 @@ def f(): pass
 f() = 1 # type: int
 [out]
 main:3: error: can't assign to function call
+[out version>=3.10]
+main:3: error: can't assign to function call here. Maybe you meant '==' instead of '='?
 
 [case testIndexedAssignmentWithTypeDeclaration]
 import typing
@@ -941,8 +960,11 @@ x, y = 1, 2 # type: int # E: Tuple type expected for multiple variables
 
 [case testInvalidLvalueWithExplicitType]
 a = 1
-a() = None # type: int  # E: can't assign to function call
+a() = None # type: int
 [out]
+main:2: error: cannot assign to function call
+[out version>=3.10]
+main:2: error: cannot assign to function call here. Maybe you meant '==' instead of '='?
 
 [case testInvalidLvalueWithExplicitType2]
 a = 1
@@ -1147,8 +1169,8 @@ class A:
     def h(): pass
 [builtins fixtures/staticmethod.pyi]
 [out]
-main:2: error: 'staticmethod' used with a non-method
-main:6: error: 'staticmethod' used with a non-method
+main:2: error: "staticmethod" used with a non-method
+main:6: error: "staticmethod" used with a non-method
 
 [case testClassmethodAndNonMethod]
 import typing
@@ -1160,12 +1182,12 @@ class A:
     def h(): pass
 [builtins fixtures/classmethod.pyi]
 [out]
-main:2: error: 'classmethod' used with a non-method
-main:6: error: 'classmethod' used with a non-method
+main:2: error: "classmethod" used with a non-method
+main:6: error: "classmethod" used with a non-method
 
 [case testNonMethodProperty]
 import typing
-@property  # E: 'property' used with a non-method
+@property  # E: "property" used with a non-method
 def f() -> int: pass
 [builtins fixtures/property.pyi]
 [out]
@@ -1263,6 +1285,8 @@ def f() -> None:
     f() = 1  # type: int
 [out]
 main:3: error: can't assign to function call
+[out version>=3.10]
+main:3: error: can't assign to function call here. Maybe you meant '==' instead of '='?
 
 [case testInvalidReferenceToAttributeOfOuterClass]
 class A:

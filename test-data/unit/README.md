@@ -23,7 +23,7 @@ Add the test in this format anywhere in the file:
     b: str = 5  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
     zzz: int
-    zzz: str  # E: Name 'zzz' already defined
+    zzz: str  # E: Name "zzz" already defined
 
 - no code here is executed, just type checked
 - optional `# flags: ` indicates which flags to use for this unit test

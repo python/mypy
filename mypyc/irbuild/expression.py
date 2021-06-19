@@ -196,10 +196,12 @@ def translate_refexpr_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) 
     # they check that everything in arg_kinds is ARG_POS.
 
     # If there is a specializer for this function, try calling it.
+    # We would return the first successful one.
     if callee.fullname and (callee.fullname, None) in specializers:
-        val = specializers[callee.fullname, None](builder, expr, callee)
-        if val is not None:
-            return val
+        for specializer in specializers[callee.fullname, None]:
+            val = specializer(builder, expr, callee)
+            if val is not None:
+                return val
 
     # Gen the argument values
     arg_values = [builder.accept(arg) for arg in expr.args]
@@ -256,10 +258,12 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
         receiver_typ = builder.node_type(callee.expr)
 
         # If there is a specializer for this method name/type, try calling it.
+        # We would return the first successful one.
         if (callee.name, receiver_typ) in specializers:
-            val = specializers[callee.name, receiver_typ](builder, expr, callee)
-            if val is not None:
-                return val
+            for specializer in specializers[callee.name, receiver_typ]:
+                val = specializer(builder, expr, callee)
+                if val is not None:
+                    return val
 
         obj = builder.accept(callee.expr)
         args = [builder.accept(arg) for arg in expr.args]
@@ -655,14 +659,21 @@ def _visit_display(builder: IRBuilder,
 
 
 def transform_list_comprehension(builder: IRBuilder, o: ListComprehension) -> Value:
+    if any(o.generator.is_async):
+        builder.error('async comprehensions are unimplemented', o.line)
     return translate_list_comprehension(builder, o.generator)
 
 
 def transform_set_comprehension(builder: IRBuilder, o: SetComprehension) -> Value:
+    if any(o.generator.is_async):
+        builder.error('async comprehensions are unimplemented', o.line)
     return translate_set_comprehension(builder, o.generator)
 
 
 def transform_dictionary_comprehension(builder: IRBuilder, o: DictionaryComprehension) -> Value:
+    if any(o.is_async):
+        builder.error('async comprehensions are unimplemented', o.line)
+
     d = builder.call_c(dict_new_op, [], o.line)
     loop_params = list(zip(o.indices, o.sequences, o.condlists))
 
@@ -692,6 +703,9 @@ def transform_slice_expr(builder: IRBuilder, expr: SliceExpr) -> Value:
 
 
 def transform_generator_expr(builder: IRBuilder, o: GeneratorExpr) -> Value:
+    if any(o.is_async):
+        builder.error('async comprehensions are unimplemented', o.line)
+
     builder.warning('Treating generator comprehension as list', o.line)
     return builder.call_c(
         iter_op, [translate_list_comprehension(builder, o)], o.line

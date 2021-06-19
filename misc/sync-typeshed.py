@@ -1,4 +1,4 @@
-"""Sync stdlib stubs from typeshed.
+"""Sync stdlib stubs (and a few other files) from typeshed.
 
 Usage:
 
@@ -37,11 +37,19 @@ def update_typeshed(typeshed_dir: str, commit: Optional[str]) -> str:
     if commit:
         subprocess.run(['git', 'checkout', commit], check=True, cwd=typeshed_dir)
     commit = git_head_commit(typeshed_dir)
-    stub_dir = os.path.join('mypy', 'typeshed', 'stdlib')
+    stdlib_dir = os.path.join('mypy', 'typeshed', 'stdlib')
     # Remove existing stubs.
-    shutil.rmtree(stub_dir)
+    shutil.rmtree(stdlib_dir)
     # Copy new stdlib stubs.
-    shutil.copytree(os.path.join(typeshed_dir, 'stdlib'), stub_dir)
+    shutil.copytree(os.path.join(typeshed_dir, 'stdlib'), stdlib_dir)
+    # Copy mypy_extensions stubs. We don't want to use a stub package, since it's
+    # treated specially by mypy and we make assumptions about what's there.
+    stubs_dir = os.path.join('mypy', 'typeshed', 'stubs')
+    shutil.rmtree(stubs_dir)
+    os.makedirs(stubs_dir)
+    shutil.copytree(os.path.join(typeshed_dir, 'stubs', 'mypy-extensions'),
+                    os.path.join(stubs_dir, 'mypy-extensions'))
+    shutil.copy(os.path.join(typeshed_dir, 'LICENSE'), os.path.join('mypy', 'typeshed'))
     return commit
 
 
@@ -62,7 +70,7 @@ def main() -> None:
     )
     args = parser.parse_args()
     check_state()
-    print('Update contents of mypy/typeshed/stdlib from typeshed? [yN] ', end='')
+    print('Update contents of mypy/typeshed from typeshed? [yN] ', end='')
     answer = input()
     if answer.lower() != 'y':
         sys.exit('Aborting')

@@ -437,7 +437,7 @@ main:14: error: Enum() with tuple or list expects strings or (name, value) pairs
 main:15: error: Enum() with tuple or list expects strings or (name, value) pairs
 main:16: error: IntEnum() with tuple or list expects strings or (name, value) pairs
 main:17: error: Enum() with dict literal requires string literals
-main:18: error: Unexpected keyword argument 'keyword'
+main:18: error: Unexpected keyword argument "keyword"
 main:19: error: Unexpected arguments to Enum()
 main:20: error: Unexpected arguments to Enum()
 main:22: error: "Type[W]" has no attribute "c"
@@ -1349,3 +1349,14 @@ b: Literal[E.A, E.B] = e  # E: Incompatible types in assignment (expression has 
 c: Literal[E.A, E.C] = e  # E: Incompatible types in assignment (expression has type "E", variable has type "Union[Literal[E.A], Literal[E.C]]")
 b = a  # E: Incompatible types in assignment (expression has type "Union[Literal[E.A], Literal[E.B], Literal[E.C]]", variable has type "Union[Literal[E.A], Literal[E.B]]")
 [builtins fixtures/bool.pyi]
+
+[case testIntEnumWithNewTypeValue]
+from typing import NewType
+from enum import IntEnum
+
+N = NewType("N", int)
+
+class E(IntEnum):
+    A = N(0)
+
+reveal_type(E.A.value) # N: Revealed type is "__main__.N"

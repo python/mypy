@@ -2,7 +2,7 @@
 
 import os
 from abc import abstractmethod
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 from collections import defaultdict
 from typing import (
     Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, Callable, Sequence, Iterator
@@ -608,6 +608,8 @@ class FuncItem(FuncBase):
                  'expanded',  # Variants of function with type variables with values expanded
                  )
 
+    __deletable__ = ('arguments', 'max_pos', 'min_args')
+
     def __init__(self,
                  arguments: List[Argument],
                  body: 'Block',
@@ -797,7 +799,7 @@ VAR_FLAGS = [
     'is_self', 'is_initialized_in_class', 'is_staticmethod',
     'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import',
     'is_classvar', 'is_abstract_var', 'is_final', 'final_unset_in_class', 'final_set_in_init',
-    'explicit_self_type', 'is_ready',
+    'explicit_self_type', 'is_ready', 'from_module_getattr',
 ]  # type: Final
 
 
@@ -1735,9 +1737,9 @@ class OpExpr(Expression):
     right = None  # type: Expression
     # Inferred type for the operator method type (when relevant).
     method_type = None  # type: Optional[mypy.types.Type]
-    # Is the right side going to be evaluated every time?
+    # Per static analysis only: Is the right side going to be evaluated every time?
     right_always = False
-    # Is the right side unreachable?
+    # Per static analysis only: Is the right side unreachable?
     right_unreachable = False
 
     def __init__(self, op: str, left: Expression, right: Expression) -> None:
@@ -2348,6 +2350,7 @@ class TypeInfo(SymbolNode):
     is_protocol = False                    # Is this a protocol class?
     runtime_protocol = False               # Does this protocol support isinstance checks?
     abstract_attributes = None  # type: List[str]
+    deletable_attributes = None  # type: List[str]  # Used by mypyc only
 
     # The attributes 'assuming' and 'assuming_proper' represent structural subtype matrices.
     #
@@ -2450,6 +2453,7 @@ class TypeInfo(SymbolNode):
         self._fullname = defn.fullname
         self.is_abstract = False
         self.abstract_attributes = []
+        self.deletable_attributes = []
         self.assuming = []
         self.assuming_proper = []
         self.inferring = []
@@ -2796,15 +2800,18 @@ class TypeAlias(SymbolNode):
         itself an alias), while the second cannot be subscripted because of
         Python runtime limitation.
     line and column: Line an column on the original alias definition.
+    eager: If True, immediately expand alias when referred to (useful for aliases
+        within functions that can't be looked up from the symbol table)
     """
     __slots__ = ('target', '_fullname', 'alias_tvars', 'no_args', 'normalized',
-                 'line', 'column', '_is_recursive')
+                 'line', 'column', '_is_recursive', 'eager')
 
     def __init__(self, target: 'mypy.types.Type', fullname: str, line: int, column: int,
                  *,
                  alias_tvars: Optional[List[str]] = None,
                  no_args: bool = False,
-                 normalized: bool = False) -> None:
+                 normalized: bool = False,
+                 eager: bool = False) -> None:
         self._fullname = fullname
         self.target = target
         if alias_tvars is None:
@@ -2815,6 +2822,7 @@ class TypeAlias(SymbolNode):
         # This attribute is manipulated by TypeAliasType. If non-None,
         # it is the cached value.
         self._is_recursive = None  # type: Optional[bool]
+        self.eager = eager
         super().__init__(line, column)
 
     @property
@@ -3076,7 +3084,9 @@ class SymbolTableNode:
                         and fullname != prefix + '.' + name
                         and not (isinstance(self.node, Var)
                                  and self.node.from_module_getattr)):
-                    assert not isinstance(self.node, PlaceholderNode)
+                    assert not isinstance(self.node, PlaceholderNode), (
+                        'Definition of {} is unexpectedly incomplete'.format(fullname)
+                    )
                     data['cross_ref'] = fullname
                     return data
             data['node'] = self.node.serialize()

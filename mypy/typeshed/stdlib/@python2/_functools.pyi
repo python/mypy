@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, Iterable, Optional, Tuple, TypeVar, overload
+from typing import Any, Callable, Dict, Iterable, Tuple, TypeVar, overload
 
 _T = TypeVar("_T")
 _S = TypeVar("_S")

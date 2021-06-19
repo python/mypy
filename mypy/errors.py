@@ -1,7 +1,7 @@
 import os.path
 import sys
 import traceback
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 from collections import defaultdict
 
 from typing import Tuple, List, TypeVar, Set, Dict, Optional, TextIO, Callable
@@ -10,7 +10,7 @@ from typing_extensions import Final
 from mypy.scope import Scope
 from mypy.options import Options
 from mypy.version import __version__ as mypy_version
-from mypy.errorcodes import ErrorCode
+from mypy.errorcodes import ErrorCode, IMPORT
 from mypy import errorcodes as codes
 from mypy.util import DEFAULT_SOURCE_OFFSET, is_typeshed_file
 
@@ -64,6 +64,10 @@ class ErrorInfo:
 
     # Fine-grained incremental target where this was reported
     target = None  # type: Optional[str]
+
+    # If True, don't show this message in output, but still record the error (needed
+    # by mypy daemon)
+    hidden = False
 
     def __init__(self,
                  import_ctx: List[Tuple[str, int]],
@@ -158,6 +162,10 @@ class Errors:
     target_module = None  # type: Optional[str]
     scope = None  # type: Optional[Scope]
 
+    # Have we seen an import-related error so far? If yes, we filter out other messages
+    # in some cases to avoid reporting huge numbers of errors.
+    seen_import_error = False
+
     def __init__(self,
                  show_error_context: bool = False,
                  show_column_numbers: bool = False,
@@ -166,7 +174,8 @@ class Errors:
                  read_source: Optional[Callable[[str], Optional[List[str]]]] = None,
                  show_absolute_path: bool = False,
                  enabled_error_codes: Optional[Set[ErrorCode]] = None,
-                 disabled_error_codes: Optional[Set[ErrorCode]] = None) -> None:
+                 disabled_error_codes: Optional[Set[ErrorCode]] = None,
+                 many_errors_threshold: int = -1) -> None:
         self.show_error_context = show_error_context
         self.show_column_numbers = show_column_numbers
         self.show_error_codes = show_error_codes
@@ -176,6 +185,7 @@ class Errors:
         self.read_source = read_source
         self.enabled_error_codes = enabled_error_codes or set()
         self.disabled_error_codes = disabled_error_codes or set()
+        self.many_errors_threshold = many_errors_threshold
         self.initialize()
 
     def initialize(self) -> None:
@@ -189,6 +199,7 @@ class Errors:
         self.only_once_messages = set()
         self.scope = None
         self.target_module = None
+        self.seen_import_error = False
 
     def reset(self) -> None:
         self.initialize()
@@ -201,12 +212,14 @@ class Errors:
                      self.read_source,
                      self.show_absolute_path,
                      self.enabled_error_codes,
-                     self.disabled_error_codes)
+                     self.disabled_error_codes,
+                     self.many_errors_threshold)
         new.file = self.file
         new.import_ctx = self.import_ctx[:]
         new.function_or_member = self.function_or_member[:]
         new.target_module = self.target_module
         new.scope = self.scope
+        new.seen_import_error = self.seen_import_error
         return new
 
     def total_errors(self) -> int:
@@ -330,6 +343,8 @@ class Errors:
         if file not in self.error_info_map:
             self.error_info_map[file] = []
         self.error_info_map[file].append(info)
+        if info.code is IMPORT:
+            self.seen_import_error = True
 
     def add_error_info(self, info: ErrorInfo) -> None:
         file, line, end_line = info.origin
@@ -354,7 +369,51 @@ class Errors:
             if info.message in self.only_once_messages:
                 return
             self.only_once_messages.add(info.message)
+        if self.seen_import_error and info.code is not IMPORT and self.has_many_errors():
+            # Missing stubs can easily cause thousands of errors about
+            # Any types, especially when upgrading to mypy 0.900,
+            # which no longer bundles third-party library stubs. Avoid
+            # showing too many errors to make it easier to see
+            # import-related errors.
+            info.hidden = True
+            self.report_hidden_errors(info)
         self._add_error_info(file, info)
+
+    def has_many_errors(self) -> bool:
+        if self.many_errors_threshold < 0:
+            return False
+        if len(self.error_info_map) >= self.many_errors_threshold:
+            return True
+        if sum(len(errors)
+               for errors in self.error_info_map.values()) >= self.many_errors_threshold:
+            return True
+        return False
+
+    def report_hidden_errors(self, info: ErrorInfo) -> None:
+        message = (
+            '(Skipping most remaining errors due to unresolved imports or missing stubs; ' +
+            'fix these first)'
+        )
+        if message in self.only_once_messages:
+            return
+        self.only_once_messages.add(message)
+        new_info = ErrorInfo(
+            import_ctx=info.import_ctx,
+            file=info.file,
+            module=info.module,
+            typ=None,
+            function_or_member=None,
+            line=info.line,
+            column=info.line,
+            severity='note',
+            message=message,
+            code=None,
+            blocker=False,
+            only_once=True,
+            origin=info.origin,
+            target=info.target,
+        )
+        self._add_error_info(info.origin[0], new_info)
 
     def is_ignored_error(self, line: int, info: ErrorInfo, ignores: Dict[int, List[str]]) -> bool:
         if info.blocker:
@@ -396,7 +455,7 @@ class Errors:
             for line in set(ignored_lines) - self.used_ignored_lines[file]:
                 # Don't use report since add_error_info will ignore the error!
                 info = ErrorInfo(self.import_context(), file, self.current_module(), None,
-                                 None, line, -1, 'error', "unused 'type: ignore' comment",
+                                 None, line, -1, 'error', 'unused "type: ignore" comment',
                                  None, False, False)
                 self._add_error_info(file, info)
 
@@ -453,6 +512,7 @@ class Errors:
         severity 'error').
         """
         a = []  # type: List[str]
+        error_info = [info for info in error_info if not info.hidden]
         errors = self.render_messages(self.sort_messages(error_info))
         errors = self.remove_duplicates(errors)
         for file, line, column, severity, message, code in errors:

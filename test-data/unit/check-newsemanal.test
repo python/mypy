@@ -1764,6 +1764,38 @@ strict_optional = True
 \[mypy-b]
 strict_optional = False
 
+
+[case testNewAnalyzerTypeArgBoundCheckWithStrictOptionalPyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+import a
+
+[file b.py]
+from typing import TypeVar, Generic
+
+x: C[None]
+y: C[str]  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+z: C[int]
+
+T = TypeVar('T', bound=int)
+class C(Generic[T]):
+    pass
+
+[file a.py]
+from b import C
+
+x: C[None]  # E: Type argument "None" of "C" must be a subtype of "builtins.int"
+y: C[str]  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+z: C[int]
+
+[file pyproject.toml]
+\[[tool.mypy.overrides]]
+module = 'a'
+strict_optional = true
+\[[tool.mypy.overrides]]
+module = 'b'
+strict_optional = false
+
+
 [case testNewAnalyzerProperty]
 class A:
     @property
@@ -1970,7 +2002,7 @@ class G(Generic[T]): pass
 
 t: Tuple[G[B], G[C]] # E: Type argument "__main__.B" of "G" must be a subtype of "__main__.A" \
                      # E: Type argument "__main__.C" of "G" must be a subtype of "__main__.A"
-reveal_type(t.__iter__) # N: Revealed type is "def () -> typing.Iterator[__main__.G*[__main__.B]]"
+reveal_type(t.__iter__) # N: Revealed type is "def () -> typing.Iterator[builtins.object*]"
 [builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerClassKeywordsForward]

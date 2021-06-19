@@ -7,6 +7,7 @@ import sys
 import tempfile
 import textwrap
 import unittest
+from pathlib import Path
 from typing import Any, Callable, Iterator, List, Optional
 
 import mypy.stubtest
@@ -83,7 +84,9 @@ def run_stubtest(
                 use_builtins_fixtures=True
             )
 
-        return output.getvalue()
+        module_path = Path(os.getcwd()) / TEST_MODULE_NAME
+        # remove cwd as it's not available from outside
+        return output.getvalue().replace(str(module_path), TEST_MODULE_NAME)
 
 
 class Case:
@@ -831,7 +834,6 @@ class StubtestMiscUnit(unittest.TestCase):
         assert "builtins" in stdlib
         assert "os" in stdlib
         assert "os.path" in stdlib
-        assert "mypy_extensions" not in stdlib
         assert "asyncio" in stdlib
         assert ("dataclasses" in stdlib) == (sys.version_info >= (3, 7))
 

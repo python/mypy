@@ -26,7 +26,7 @@ break
 ==== Errors flushed ====
 a.py:1: error: Unsupported operand types for + ("int" and "str")
 ==== Errors flushed ====
-b.py:2: error: 'break' outside loop
+b.py:2: error: "break" outside loop
 
 [case testCycles]
 import a

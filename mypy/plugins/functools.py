@@ -26,7 +26,7 @@ def functools_total_ordering_maker_callback(ctx: mypy.plugin.ClassDefContext,
                                             auto_attribs_default: bool = False) -> None:
     """Add dunder methods to classes decorated with functools.total_ordering."""
     if ctx.api.options.python_version < (3,):
-        ctx.api.fail('"functools.total_ordering" is not supported in Python 2', ctx.reason)
+        # This plugin is not supported in Python 2 mode (it's a no-op).
         return
 
     comparison_methods = _analyze_class(ctx)

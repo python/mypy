@@ -1,5 +1,5 @@
 import sys
-from _typeshed import AnyPath, StrPath, SupportsWrite
+from _typeshed import StrOrBytesPath, StrPath, SupportsWrite
 from typing import (
     AbstractSet,
     Any,
@@ -30,7 +30,7 @@ _converters = Dict[str, _converter]
 _T = TypeVar("_T")
 
 if sys.version_info >= (3, 7):
-    _Path = AnyPath
+    _Path = StrOrBytesPath
 else:
     _Path = StrPath
 

@@ -375,3 +375,37 @@ class alias(AST):
 class withitem(AST):
     context_expr: expr
     optional_vars: Optional[expr]
+
+if sys.version_info >= (3, 10):
+    class Match(stmt):
+        subject: expr
+        cases: typing.List[match_case]
+    class pattern(AST): ...
+    # Without the alias, Pyright complains variables named pattern are recursively defined
+    _pattern = pattern
+    class match_case(AST):
+        pattern: _pattern
+        guard: Optional[expr]
+        body: typing.List[stmt]
+    class MatchValue(pattern):
+        value: expr
+    class MatchSingleton(pattern):
+        value: Optional[bool]
+    class MatchSequence(pattern):
+        patterns: typing.List[pattern]
+    class MatchStar(pattern):
+        name: Optional[_identifier]
+    class MatchMapping(pattern):
+        keys: typing.List[expr]
+        patterns: typing.List[pattern]
+        rest: Optional[_identifier]
+    class MatchClass(pattern):
+        cls: expr
+        patterns: typing.List[pattern]
+        kwd_attrs: typing.List[_identifier]
+        kwd_patterns: typing.List[pattern]
+    class MatchAs(pattern):
+        pattern: Optional[_pattern]
+        name: Optional[_identifier]
+    class MatchOr(pattern):
+        patterns: typing.List[pattern]

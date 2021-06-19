@@ -474,3 +474,12 @@ with A() as x:
     reveal_type(x) # N: Revealed type is "builtins.int"
 with B() as x:
     x = 0 # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+
+[case testRedefineModuleAsException]
+import typing
+try:
+    pass
+except Exception as typing:
+    pass
+[builtins fixtures/exception.pyi]

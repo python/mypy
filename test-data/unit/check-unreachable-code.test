@@ -615,6 +615,27 @@ if MYPY or mypy_only:
     pass
 [builtins fixtures/ops.pyi]
 
+[case testSemanticAnalysisFalseButTypeNarrowingTrue]
+# flags: --always-false COMPILE_TIME_FALSE
+from typing import Literal
+
+indeterminate: bool
+COMPILE_TIME_FALSE: Literal[True]  # type-narrowing: mapped in 'if' only
+a = COMPILE_TIME_FALSE or indeterminate
+reveal_type(a)  # N: Revealed type is "builtins.bool"
+b = indeterminate or COMPILE_TIME_FALSE
+reveal_type(b)  # N: Revealed type is "Union[builtins.bool, Literal[True]]"
+[typing fixtures/typing-medium.pyi]
+
+[case testSemanticAnalysisTrueButTypeNarrowingFalse]
+# flags: --always-true COMPILE_TIME_TRUE
+indeterminate: bool
+COMPILE_TIME_TRUE: None  # type narrowed to `else` only
+a = COMPILE_TIME_TRUE or indeterminate
+reveal_type(a)  # N: Revealed type is "None"
+b = indeterminate or COMPILE_TIME_TRUE
+reveal_type(b)  # N: Revealed type is "Union[builtins.bool, None]"
+
 [case testConditionalAssertWithoutElse]
 import typing
 
@@ -908,6 +929,7 @@ def foo() -> bool: ...
 lst = [1, 2, 3, 4]
 
 a = True or foo()                        # E: Right operand of "or" is never evaluated
+b = 42 or False                          # E: Right operand of "or" is never evaluated
 d = False and foo()                      # E: Right operand of "and" is never evaluated
 e = True or (True or (True or foo()))    # E: Right operand of "or" is never evaluated
 f = (True or foo()) or (True or foo())   # E: Right operand of "or" is never evaluated
@@ -1338,3 +1360,18 @@ def test_untyped_fn(obj):
 
     assert obj.prop is False
     reveal_type(obj.prop)  # E: Statement is unreachable
+
+[case testConditionalTypeVarException]
+# every part of this test case was necessary to trigger the crash
+import sys
+from typing import TypeVar
+
+T = TypeVar("T", int, str)
+
+def f(t: T) -> None:
+    if sys.platform == "lol":
+        try:
+            pass
+        except BaseException as e:
+            pass
+[builtins fixtures/dict.pyi]

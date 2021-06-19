@@ -3,7 +3,7 @@
 import copy
 import sys
 from abc import abstractmethod
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Set, Optional, Union, Iterable, NamedTuple,
@@ -270,7 +270,14 @@ class TypeAliasType(Type):
             self.line, self.column)
 
 
-class TypeGuardType(Type):
+class ProperType(Type):
+    """Not a type alias.
+
+    Every type except TypeAliasType must inherit from this type.
+    """
+
+
+class TypeGuardType(ProperType):
     """Only used by find_instance_check() etc."""
     def __init__(self, type_guard: Type):
         super().__init__(line=type_guard.line, column=type_guard.column)
@@ -279,12 +286,8 @@ class TypeGuardType(Type):
     def __repr__(self) -> str:
         return "TypeGuard({})".format(self.type_guard)
 
-
-class ProperType(Type):
-    """Not a type alias.
-
-    Every type except TypeAliasType must inherit from this type.
-    """
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_type_guard_type(self)
 
 
 class TypeVarId:
@@ -1271,8 +1274,6 @@ class CallableType(FunctionLike):
     def serialize(self) -> JsonDict:
         # TODO: As an optimization, leave out everything related to
         # generic functions for non-generic functions.
-        assert (self.type_guard is None
-                or isinstance(get_proper_type(self.type_guard), Instance)), str(self.type_guard)
         return {'.class': 'CallableType',
                 'arg_types': [t.serialize() for t in self.arg_types],
                 'arg_kinds': self.arg_kinds,
@@ -2184,6 +2185,9 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     def visit_union_type(self, t: UnionType) -> str:
         s = self.list_str(t.items)
         return 'Union[{}]'.format(s)
+
+    def visit_type_guard_type(self, t: TypeGuardType) -> str:
+        return 'TypeGuard[{}]'.format(t.type_guard.accept(self))
 
     def visit_partial_type(self, t: PartialType) -> str:
         if t.type is None:

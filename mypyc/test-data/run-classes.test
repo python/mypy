@@ -27,6 +27,7 @@ class D:
     pass
 [file driver.py]
 from native import C
+from testutil import assertRaises
 
 c = C()
 assert not hasattr(c, 'x')
@@ -42,11 +43,13 @@ print(c.x)
 assert hasattr(c, 'x')
 assert hasattr(c, 'y')
 assert not hasattr(c, 'z')
-del c.x
-assert not hasattr(c, 'x')
+with assertRaises(AttributeError, "'C' object attribute 'x' cannot be deleted"):
+    del c.x
+assert hasattr(c, 'x')
 assert hasattr(c, 'y')
-del c.y
-assert not hasattr(c, 'y')
+with assertRaises(AttributeError, "'C' object attribute 'y' cannot be deleted"):
+    del c.y
+assert hasattr(c, 'y')
 c.x = 10**30+2
 print(c.x)
 assert hasattr(c, 'x')
@@ -56,6 +59,121 @@ assert hasattr(c, 'x')
 1000000000000000000000000000000
 1000000000000000000000000000001
 1000000000000000000000000000002
+
+[case testClassWithDeletableAttributes]
+from typing import Any, cast
+from testutil import assertRaises
+
+class C:
+    __deletable__ = ['x', 'y']
+    x: int
+    y: int
+    z: int
+
+def test_delete() -> None:
+    c = C()
+    c.x = 1
+    c.y = 2
+    c.z = 3
+    del c.x
+    del c.y
+    assert c.z == 3
+    with assertRaises(AttributeError):
+        c.x
+    with assertRaises(AttributeError):
+        c.y
+
+def test_delete_any() -> None:
+    c: Any = C()
+    c.x = 1
+    c.y = 2
+    c.z = 3
+    del c.x
+    del c.y
+    with assertRaises(AttributeError, "'C' object attribute 'z' cannot be deleted"):
+        del c.z
+    assert c.z == 3
+    with assertRaises(AttributeError):
+        c.x
+    with assertRaises(AttributeError):
+        c.y
+
+class Base:
+    __deletable__ = ['a']
+    a: int
+    b: int
+
+class Deriv(Base):
+    __deletable__ = ('c',)
+    c: str
+    d: str
+
+def test_delete_with_inheritance() -> None:
+    d = Deriv()
+    d.a = 0
+    d.b = 1
+    d.c = 'X'
+    d.d = 'Y'
+    del d.a
+    with assertRaises(AttributeError):
+        d.a
+    del d.c
+    with assertRaises(AttributeError):
+        d.c
+    assert d.b == 1
+    assert d.d == 'Y'
+
+def test_delete_with_inheritance_any() -> None:
+    d: Any = Deriv()
+    d.a = 0
+    d.b = 1
+    d.c = 'X'
+    d.d = 'Y'
+    del d.a
+    with assertRaises(AttributeError):
+        d.a
+    del d.c
+    with assertRaises(AttributeError):
+        d.c
+    with assertRaises(AttributeError):
+        del d.b
+    assert d.b == 1
+    with assertRaises(AttributeError):
+        del d.d
+    assert d.d == 'Y'
+
+def decorator(cls):
+    return cls
+
+@decorator
+class NonExt:
+    x: int
+    y: int
+
+    # No effect in a non-native class
+    __deletable__ = ['x']
+
+def test_non_ext() -> None:
+    n = NonExt()
+    n.x = 2
+    n.y = 3
+    del n.x
+    del n.y
+    with assertRaises(AttributeError):
+        n.x
+    with assertRaises(AttributeError):
+        n.y
+
+def test_non_ext_any() -> None:
+    n: Any = NonExt()
+    n.x = 2
+    n.y = 3
+    del n.x
+    del n.y
+    with assertRaises(AttributeError):
+        n.x
+    with assertRaises(AttributeError):
+        n.y
 
 [case testNonExtMisc]
 from typing import Any, overload

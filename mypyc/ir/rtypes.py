@@ -276,10 +276,12 @@ c_int_rprimitive = int32_rprimitive
 
 if IS_32_BIT_PLATFORM:
     c_size_t_rprimitive = uint32_rprimitive
-    c_pyssize_t_rprimitive = int32_rprimitive
+    c_pyssize_t_rprimitive = RPrimitive('native_int', is_unboxed=True, is_refcounted=False,
+                              ctype='int32_t', size=4)
 else:
     c_size_t_rprimitive = uint64_rprimitive
-    c_pyssize_t_rprimitive = int64_rprimitive
+    c_pyssize_t_rprimitive = RPrimitive('native_int', is_unboxed=True, is_refcounted=False,
+                              ctype='int64_t', size=8)
 
 # Low level pointer, represented as integer in C backends
 pointer_rprimitive = RPrimitive('ptr', is_unboxed=True, is_refcounted=False,
@@ -324,6 +326,10 @@ str_rprimitive = RPrimitive('builtins.str', is_unboxed=False, is_refcounted=True
 tuple_rprimitive = RPrimitive('builtins.tuple', is_unboxed=False,
                               is_refcounted=True)  # type: Final
 
+# Python range object.
+range_rprimitive = RPrimitive('builtins.range', is_unboxed=False,
+                              is_refcounted=True)  # type: Final
+
 
 def is_tagged(rtype: RType) -> bool:
     return rtype is int_rprimitive or rtype is short_int_rprimitive
@@ -338,11 +344,13 @@ def is_short_int_rprimitive(rtype: RType) -> bool:
 
 
 def is_int32_rprimitive(rtype: RType) -> bool:
-    return rtype is int32_rprimitive
+    return (rtype is int32_rprimitive or
+            (rtype is c_pyssize_t_rprimitive and rtype._ctype == 'int32_t'))
 
 
 def is_int64_rprimitive(rtype: RType) -> bool:
-    return rtype is int64_rprimitive
+    return (rtype is int64_rprimitive or
+            (rtype is c_pyssize_t_rprimitive and rtype._ctype == 'int64_t'))
 
 
 def is_uint32_rprimitive(rtype: RType) -> bool:
@@ -399,6 +407,10 @@ def is_str_rprimitive(rtype: RType) -> bool:
 
 def is_tuple_rprimitive(rtype: RType) -> bool:
     return isinstance(rtype, RPrimitive) and rtype.name == 'builtins.tuple'
+
+
+def is_range_rprimitive(rtype: RType) -> bool:
+    return isinstance(rtype, RPrimitive) and rtype.name == 'builtins.range'
 
 
 def is_sequence_rprimitive(rtype: RType) -> bool:
@@ -801,5 +813,5 @@ PySetObject = RStruct(
 PyListObject = RStruct(
     name='PyListObject',
     names=['ob_base', 'ob_item', 'allocated'],
-    types=[PyObject, pointer_rprimitive, c_pyssize_t_rprimitive]
+    types=[PyVarObject, pointer_rprimitive, c_pyssize_t_rprimitive]
 )

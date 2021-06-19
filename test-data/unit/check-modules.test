@@ -1054,7 +1054,7 @@ import mod
 [file mod.py]
 [builtins fixtures/module.pyi]
 [out]
-tmp/main.py:1: error: Import of 'mod' ignored
+tmp/main.py:1: error: Import of "mod" ignored
 tmp/main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 
 [case testAncestorSuppressedWhileAlmostSilent]
@@ -1064,7 +1064,7 @@ tmp/main.py:1: note: (Using --follow-imports=error, module not passed on command
 [file foo/__init__.py]
 [builtins fixtures/module.pyi]
 [out]
-tmp/foo/bar.py: error: Ancestor package 'foo' ignored
+tmp/foo/bar.py: error: Ancestor package "foo" ignored
 tmp/foo/bar.py: note: (Using --follow-imports=error, submodule passed on command line)
 
 [case testStubImportNonStubWhileSilent]
@@ -2392,6 +2392,44 @@ ignore_missing_imports = True
 main:3: error: Cannot find implementation or library stub for module named "a.b.d"
 main:3: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
+
+[case testModuleGetattrInit10PyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+import a.b.c  # silenced
+import a.b.d  # error
+
+[file a/__init__.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: ...
+
+[file a/b/__init__.pyi]
+# empty (i.e. complete subpackage)
+
+[file pyproject.toml]
+\[tool.mypy]
+\[[tool.mypy.overrides]]
+module = 'a.b.c'
+ignore_missing_imports = true
+
+[builtins fixtures/module.pyi]
+
+[out]
+main:3: error: Cannot find implementation or library stub for module named "a.b.d"
+main:3: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+
+[case testMultipleModulesInOverridePyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+import a
+import b
+
+[file pyproject.toml]
+\[tool.mypy]
+\[[tool.mypy.overrides]]
+module = ['a', 'b']
+ignore_missing_imports = true
+
+
 [case testIndirectFromImportWithinCycleUsedAsBaseClass]
 import a
 [file a.py]
@@ -2649,6 +2687,30 @@ z = 0
 \[mypy]
 mypy_path = tmp/xx, tmp/yy
 
+
+[case testNamespacePackageWithMypyPathPyProjectTOML]
+# flags: --namespace-packages --config-file tmp/pyproject.toml
+from foo.bax import x
+from foo.bay import y
+from foo.baz import z
+reveal_type(x)  # N: Revealed type is "builtins.int"
+reveal_type(y)  # N: Revealed type is "builtins.int"
+reveal_type(z)  # N: Revealed type is "builtins.int"
+
+[file xx/foo/bax.py]
+x = 0
+
+[file yy/foo/bay.py]
+y = 0
+
+[file foo/baz.py]
+z = 0
+
+[file pyproject.toml]
+\[tool.mypy]
+mypy_path = ["tmp/xx", "tmp/yy"]
+
+
 [case testClassicPackageIgnoresEarlierNamespacePackage]
 # flags: --namespace-packages --config-file tmp/mypy.ini
 from foo.bar import y
@@ -2881,3 +2943,167 @@ def f(x: str) -> None: ...
 [file mypy.ini]
 \[mypy]
 mypy_path = tmp/xx
+
+[case testImportCycleSpecialCase2]
+import m
+
+[file m.pyi]
+from f import F
+class M: pass
+
+[file f.pyi]
+from m import M
+
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+
+class W(Generic[T]): ...
+
+class F(M):
+    A = W[int]
+    x: C
+    class C(W[F.A]): ...
+
+[case testImportCycleSpecialCase3]
+import f
+
+[file m.pyi]
+from f import F
+class M: pass
+
+[file f.pyi]
+from m import M
+
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+
+class F(M):
+    x: C
+    class C: ...
+
+[case testLimitLegacyStubErrorVolume]
+# flags: --disallow-any-expr --soft-error-limit=5
+import certifi # E: Cannot find implementation or library stub for module named "certifi" \
+               # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # N: (Skipping most remaining errors due to unresolved imports or missing stubs; fix these first)
+certifi.x
+certifi.x
+certifi.x
+certifi.x
+
+[case testDoNotLimitErrorVolumeIfNotImportErrors]
+# flags: --disallow-any-expr --soft-error-limit=5
+def f(): pass
+certifi = f()  # E: Expression has type "Any"
+1()  # E: "int" not callable
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+1()  # E: "int" not callable
+
+[case testDoNotLimitImportErrorVolume]
+# flags: --disallow-any-expr --soft-error-limit=3
+import xyz1  # E: Cannot find implementation or library stub for module named "xyz1" \
+             # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+import xyz2  # E: Cannot find implementation or library stub for module named "xyz2"
+import xyz3  # E: Cannot find implementation or library stub for module named "xyz3"
+import xyz4  # E: Cannot find implementation or library stub for module named "xyz4"
+
+[case testUnlimitedStubErrorVolume]
+# flags: --disallow-any-expr --soft-error-limit=-1
+import certifi # E: Cannot find implementation or library stub for module named "certifi" \
+               # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+certifi.x  # E: Expression has type "Any"
+
+[case testIgnoreErrorFromMissingStubs1]
+# flags: --config-file tmp/pyproject.toml
+import certifi
+from foobar1 import x
+import foobar2
+[file pyproject.toml]
+\[tool.mypy]
+ignore_missing_imports = true
+\[[tool.mypy.overrides]]
+module = "certifi"
+ignore_missing_imports = true
+\[[tool.mypy.overrides]]
+module = "foobar1"
+ignore_missing_imports = true
+
+[case testIgnoreErrorFromMissingStubs2]
+# flags: --config-file tmp/pyproject.toml
+import certifi
+from foobar1 import x
+import foobar2  # E: Cannot find implementation or library stub for module named "foobar2" \
+                # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+[file pyproject.toml]
+\[tool.mypy]
+ignore_missing_imports = false
+\[[tool.mypy.overrides]]
+module = "certifi"
+ignore_missing_imports = true
+\[[tool.mypy.overrides]]
+module = "foobar1"
+ignore_missing_imports = true
+
+[case testIgnoreErrorFromGoogleCloud]
+# flags: --ignore-missing-imports
+import google.cloud
+from google.cloud import x
+
+[case testErrorFromGoogleCloud]
+import google.cloud
+from google.cloud import x
+[out]
+main:1: error: Cannot find implementation or library stub for module named "google.cloud"
+main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+main:1: error: Cannot find implementation or library stub for module named "google"

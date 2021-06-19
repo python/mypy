@@ -782,13 +782,13 @@ divmod(f, d)  # E: Unsupported operand types for divmod ("float" and "Decimal")
 reveal_type(divmod(d, d))  # N: Revealed type is "Tuple[__main__.Decimal, __main__.Decimal]"
 
 # Now some bad calls
-divmod()  # E: 'divmod' expects 2 arguments \
+divmod()  # E: "divmod" expects 2 arguments \
           # E: Missing positional arguments "_x", "_y" in call to "divmod"
-divmod(7)  # E: 'divmod' expects 2 arguments \
+divmod(7)  # E: "divmod" expects 2 arguments \
            # E: Missing positional argument "_y" in call to "divmod"
-divmod(7, 8, 9)  # E: 'divmod' expects 2 arguments \
+divmod(7, 8, 9)  # E: "divmod" expects 2 arguments \
                  # E: Too many arguments for "divmod"
-divmod(_x=7, _y=9)  # E: 'divmod' must be called with 2 positional arguments
+divmod(_x=7, _y=9)  # E: "divmod" must be called with 2 positional arguments
 
 divmod('foo', 'foo')  # E: Unsupported left operand type for divmod ("str")
 divmod(i, 'foo')  # E: Unsupported operand types for divmod ("int" and "str")
@@ -1219,14 +1219,14 @@ a = None # type: Any
 [typing fixtures/typing-medium.pyi]
 
 [case testStringInterpolationInvalidPlaceholder]
-'%W' % 1  # E: Unsupported format character 'W'
-'%b' % 1  # E: Format character 'b' is only supported on bytes patterns
+'%W' % 1  # E: Unsupported format character "W"
+'%b' % 1  # E: Format character "b" is only supported on bytes patterns
 
 [case testStringInterPolationPython2]
 # flags: --python-version 2.7
-b'%b' % 1  # E: Format character 'b' is only supported in Python 3.5 and later
+b'%b' % 1  # E: Format character "b" is only supported in Python 3.5 and later
 b'%s' % 1
-b'%a' % 1  # E: Format character 'a' is only supported in Python 3
+b'%a' % 1  # E: Format character "a" is only supported in Python 3
 
 [case testBytesInterpolationBefore35]
 # flags: --python-version 3.4
@@ -1295,7 +1295,7 @@ b'%(x)s' % {b'x': b'data'}
 [case testStringInterpolationMappingKeys]
 '%()d' % {'': 2}
 '%(a)d' % {'a': 1, 'b': 2, 'c': 3}
-'%(q)d' % {'a': 1, 'b': 2, 'c': 3}  # E: Key 'q' not found in mapping
+'%(q)d' % {'a': 1, 'b': 2, 'c': 3}  # E: Key "q" not found in mapping
 '%(a)d %%' % {'a': 1}
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -1529,8 +1529,8 @@ x: Union[Good, Bad]
 '{:s}'.format(42)
 '{:s}'.format('yes')
 
-'{:z}'.format('what')  # E: Unsupported format character 'z'
-'{:Z}'.format('what')  # E: Unsupported format character 'Z'
+'{:z}'.format('what')  # E: Unsupported format character "z"
+'{:Z}'.format('what')  # E: Unsupported format character "Z"
 [builtins fixtures/primitives.pyi]
 
 [case testFormatCallFormatTypesChar]

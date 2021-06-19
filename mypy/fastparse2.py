@@ -698,7 +698,7 @@ class ASTConverter:
             elif isinstance(item.name, Name):
                 vs.append(self.set_line(NameExpr(item.name.id), item))
             else:
-                self.fail("Sorry, `except <expr>, <anything but a name>` is not supported",
+                self.fail('Sorry, "except <expr>, <anything but a name>" is not supported',
                           item.lineno, item.col_offset)
                 vs.append(None)
         types = [self.visit(h.type) for h in handlers]

@@ -1,4 +1,3 @@
-import sys
 from types import ModuleType, TracebackType
 from typing import Any, List, Optional, TextIO, Type, Union, overload
 from typing_extensions import Literal
@@ -31,28 +30,17 @@ class WarningMessage:
     lineno: int
     file: Optional[TextIO]
     line: Optional[str]
-    if sys.version_info >= (3, 6):
-        source: Optional[Any]
-        def __init__(
-            self,
-            message: Union[Warning, str],
-            category: Type[Warning],
-            filename: str,
-            lineno: int,
-            file: Optional[TextIO] = ...,
-            line: Optional[str] = ...,
-            source: Optional[Any] = ...,
-        ) -> None: ...
-    else:
-        def __init__(
-            self,
-            message: Union[Warning, str],
-            category: Type[Warning],
-            filename: str,
-            lineno: int,
-            file: Optional[TextIO] = ...,
-            line: Optional[str] = ...,
-        ) -> None: ...
+    source: Optional[Any]
+    def __init__(
+        self,
+        message: Union[Warning, str],
+        category: Type[Warning],
+        filename: str,
+        lineno: int,
+        file: Optional[TextIO] = ...,
+        line: Optional[str] = ...,
+        source: Optional[Any] = ...,
+    ) -> None: ...
 
 class catch_warnings:
     @overload

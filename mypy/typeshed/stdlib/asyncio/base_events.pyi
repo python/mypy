@@ -65,7 +65,7 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
     def create_future(self) -> Future[Any]: ...
     # Tasks methods
     if sys.version_info >= (3, 8):
-        def create_task(self, coro: Union[Awaitable[_T], Generator[Any, None, _T]], *, name: Optional[str] = ...) -> Task[_T]: ...
+        def create_task(self, coro: Union[Awaitable[_T], Generator[Any, None, _T]], *, name: object = ...) -> Task[_T]: ...
     else:
         def create_task(self, coro: Union[Awaitable[_T], Generator[Any, None, _T]]) -> Task[_T]: ...
     def set_task_factory(
@@ -315,9 +315,9 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
         protocol_factory: _ProtocolFactory,
         cmd: Union[bytes, str],
         *,
-        stdin: Any = ...,
-        stdout: Any = ...,
-        stderr: Any = ...,
+        stdin: Union[int, IO[Any], None] = ...,
+        stdout: Union[int, IO[Any], None] = ...,
+        stderr: Union[int, IO[Any], None] = ...,
         universal_newlines: Literal[False] = ...,
         shell: Literal[True] = ...,
         bufsize: Literal[0] = ...,
@@ -329,10 +329,16 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
     async def subprocess_exec(
         self,
         protocol_factory: _ProtocolFactory,
+        program: Any,
         *args: Any,
-        stdin: Any = ...,
-        stdout: Any = ...,
-        stderr: Any = ...,
+        stdin: Union[int, IO[Any], None] = ...,
+        stdout: Union[int, IO[Any], None] = ...,
+        stderr: Union[int, IO[Any], None] = ...,
+        universal_newlines: Literal[False] = ...,
+        shell: Literal[True] = ...,
+        bufsize: Literal[0] = ...,
+        encoding: None = ...,
+        errors: None = ...,
         **kwargs: Any,
     ) -> _TransProtPair: ...
     def add_reader(self, fd: FileDescriptorLike, callback: Callable[..., Any], *args: Any) -> None: ...

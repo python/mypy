@@ -1,4 +1,3 @@
-import collections
 from typing import Any, Iterable, List, MutableSequence, Optional, Sequence, Text, Tuple, TypeVar, Union, overload
 
 _UST = TypeVar("_UST", bound=UserString)

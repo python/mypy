@@ -12,7 +12,7 @@ generator comprehensions as the argument.
 See comment below for more documentation.
 """
 
-from typing import Callable, Optional, Dict, Tuple
+from typing import Callable, Optional, Dict, Tuple, List
 
 from mypy.nodes import CallExpr, RefExpr, MemberExpr, TupleExpr, GeneratorExpr, ARG_POS
 from mypy.types import AnyType, TypeOfAny
@@ -47,14 +47,18 @@ Specializer = Callable[['IRBuilder', CallExpr, RefExpr], Optional[Value]]
 #
 # Specializers can operate on methods as well, and are keyed on the
 # name and RType in that case.
-specializers = {}  # type: Dict[Tuple[str, Optional[RType]], Specializer]
+specializers = {}  # type: Dict[Tuple[str, Optional[RType]], List[Specializer]]
 
 
 def specialize_function(
         name: str, typ: Optional[RType] = None) -> Callable[[Specializer], Specializer]:
-    """Decorator to register a function as being a specializer."""
+    """Decorator to register a function as being a specializer.
+
+    There may exist multiple specializers for one function. When translating method
+    calls, the earlier appended specializer has higher priority.
+    """
     def wrapper(f: Specializer) -> Specializer:
-        specializers[name, typ] = f
+        specializers.setdefault((name, typ), []).append(f)
         return f
     return wrapper
 
@@ -81,7 +85,7 @@ def translate_len(
             return Integer(len(expr_rtype.types))
         else:
             obj = builder.accept(expr.args[0])
-            return builder.builtin_len(obj, -1)
+            return builder.builtin_len(obj, expr.line)
     return None
 
 
@@ -93,19 +97,6 @@ def dict_methods_fast_path(
     if not (len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]):
         return None
     arg = expr.args[0]
-
-    # Special case for simplest list comprehension, for example
-    #     list(x for x in tmp_list)
-    # TODO: The following code should be moved to a new function after
-    #       supporting multiple specialize functions
-    if not isinstance(callee, MemberExpr) and isinstance(arg, GeneratorExpr):
-        val = sequence_from_generator_preallocate_helper(
-            builder, arg,
-            empty_op_llbuilder=builder.builder.new_list_op_with_length,
-            set_item_op=new_list_set_item_op)
-        if val is not None:
-            return val
-
     if not (isinstance(arg, CallExpr) and not arg.args
             and isinstance(arg.callee, MemberExpr)):
         return None
@@ -124,6 +115,38 @@ def dict_methods_fast_path(
         return builder.call_c(dict_values_op, [obj], expr.line)
     else:
         return builder.call_c(dict_items_op, [obj], expr.line)
+
+
+@specialize_function('builtins.list')
+def translate_list_from_generator_call(
+        builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+    # Special case for simplest list comprehension, for example
+    #     list(f(x) for x in other_list/other_tuple)
+    # translate_list_comprehension() would take care of other cases if this fails.
+    if (len(expr.args) == 1
+            and expr.arg_kinds[0] == ARG_POS
+            and isinstance(expr.args[0], GeneratorExpr)):
+        return sequence_from_generator_preallocate_helper(
+            builder, expr.args[0],
+            empty_op_llbuilder=builder.builder.new_list_op_with_length,
+            set_item_op=new_list_set_item_op)
+    return None
+
+
+@specialize_function('builtins.tuple')
+def translate_tuple_from_generator_call(
+        builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+    # Special case for simplest tuple creation from a generator, for example
+    #     tuple(f(x) for x in other_list/other_tuple)
+    # translate_safe_generator_call() would take care of other cases if this fails.
+    if (len(expr.args) == 1
+            and expr.arg_kinds[0] == ARG_POS
+            and isinstance(expr.args[0], GeneratorExpr)):
+        return sequence_from_generator_preallocate_helper(
+            builder, expr.args[0],
+            empty_op_llbuilder=builder.builder.new_tuple_with_length,
+            set_item_op=new_tuple_set_item_op)
+    return None
 
 
 @specialize_function('builtins.set')
@@ -164,14 +187,6 @@ def translate_safe_generator_call(
                     + [builder.accept(arg) for arg in expr.args[1:]]),
                 builder.node_type(expr), expr.line, expr.arg_kinds, expr.arg_names)
         else:
-            if len(expr.args) == 1 and callee.fullname == "builtins.tuple":
-                val = sequence_from_generator_preallocate_helper(
-                    builder, expr.args[0],
-                    empty_op_llbuilder=builder.builder.new_tuple_with_length,
-                    set_item_op=new_tuple_set_item_op)
-                if val is not None:
-                    return val
-
             return builder.call_refexpr_with_args(
                 expr, callee,
                 ([translate_list_comprehension(builder, expr.args[0])]

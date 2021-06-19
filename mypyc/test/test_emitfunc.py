@@ -2,7 +2,7 @@ import unittest
 
 from typing import List, Optional
 
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 
 from mypy.test.helpers import assert_string_arrays_equal
 

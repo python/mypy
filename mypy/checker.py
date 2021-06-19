@@ -1731,6 +1731,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if not defn.has_incompatible_baseclass:
                 # Otherwise we've already found errors; more errors are not useful
                 self.check_multiple_inheritance(typ)
+            self.check_final_deletable(typ)
 
             if defn.decorators:
                 sig = type_object_type(defn.info, self.named_type)  # type: Type
@@ -1756,6 +1757,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # that completely swap out the type.  (e.g. Callable[[Type[A]], Type[B]])
         if typ.is_protocol and typ.defn.type_vars:
             self.check_protocol_variance(defn)
+
+    def check_final_deletable(self, typ: TypeInfo) -> None:
+        # These checks are only for mypyc. Only perform some checks that are easier
+        # to implement here than in mypyc.
+        for attr in typ.deletable_attributes:
+            node = typ.names.get(attr)
+            if node and isinstance(node.node, Var) and node.node.is_final:
+                self.fail(message_registry.CANNOT_MAKE_DELETABLE_FINAL, node.node)
 
     def check_init_subclass(self, defn: ClassDef) -> None:
         """Check that keywords in a class definition are valid arguments for __init_subclass__().
@@ -1927,8 +1936,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.cant_override_final(name, base2.name, ctx)
         if is_final_node(first.node):
             self.check_if_final_var_override_writable(name, second.node, ctx)
-        # __slots__ is special and the type can vary across class hierarchy.
-        if name == '__slots__':
+        # __slots__ and __deletable__ are special and the type can vary across class hierarchy.
+        if name in ('__slots__', '__deletable__'):
             ok = True
         if not ok:
             self.msg.base_class_definitions_incompatible(name, base1, base2,
@@ -1996,10 +2005,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(s.expr, EllipsisExpr):
                 return True
             elif isinstance(s.expr, CallExpr):
-                self.expr_checker.msg.disable_errors()
-                typ = get_proper_type(self.expr_checker.accept(
-                    s.expr, allow_none_return=True, always_allow_any=True))
-                self.expr_checker.msg.enable_errors()
+                with self.expr_checker.msg.disable_errors():
+                    typ = get_proper_type(self.expr_checker.accept(
+                        s.expr, allow_none_return=True, always_allow_any=True))
 
                 if isinstance(typ, UninhabitedType):
                     return True
@@ -2189,7 +2197,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if op != '=' and (typ.type.fullname, op) not in self.partial_type_augmented_ops:
                 return
             # TODO: some logic here duplicates the None partial type counterpart
-            #       inlined in check_assignment(), see # 8043.
+            #       inlined in check_assignment(), see #8043.
             partial_types = self.find_partial_types(var)
             if partial_types is None:
                 return
@@ -2237,6 +2245,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # is __slots__, where it is allowed for any child class to
                 # redefine it.
                 if lvalue_node.name == "__slots__" and base.fullname != "builtins.object":
+                    continue
+                # We don't care about the type of "__deletable__".
+                if lvalue_node.name == "__deletable__":
                     continue
 
                 if is_private(lvalue_node.name):
@@ -2797,7 +2808,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         index_lvalue = None
         inferred = None
 
-        if self.is_definition(lvalue):
+        if self.is_definition(lvalue) and (
+            not isinstance(lvalue, NameExpr) or isinstance(lvalue.node, Var)
+        ):
             if isinstance(lvalue, NameExpr):
                 inferred = cast(Var, lvalue.node)
                 assert isinstance(inferred, Var)
@@ -2906,7 +2919,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return True
 
     def is_valid_defaultdict_partial_value_type(self, t: ProperType) -> bool:
-        """Check if t can be used as the basis for a partial defaultddict value type.
+        """Check if t can be used as the basis for a partial defaultdict value type.
 
         Examples:
 
@@ -3051,14 +3064,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # For non-overloaded setters, the result should be type-checked like a regular assignment.
         # Hence, we first only try to infer the type by using the rvalue as type context.
         type_context = rvalue
-        self.msg.disable_errors()
-        _, inferred_dunder_set_type = self.expr_checker.check_call(
-            dunder_set_type,
-            [TempNode(instance_type, context=context), type_context],
-            [nodes.ARG_POS, nodes.ARG_POS],
-            context, object_type=attribute_type,
-            callable_name=callable_name)
-        self.msg.enable_errors()
+        with self.msg.disable_errors():
+            _, inferred_dunder_set_type = self.expr_checker.check_call(
+                dunder_set_type,
+                [TempNode(instance_type, context=context), type_context],
+                [nodes.ARG_POS, nodes.ARG_POS],
+                context, object_type=attribute_type,
+                callable_name=callable_name)
 
         # And now we in fact type check the call, to show errors related to wrong arguments
         # count, etc., replacing the type context for non-overloaded setters only.
@@ -3421,7 +3433,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 source = ('(exception variable "{}", which we do not '
                                           'accept outside except: blocks even in '
                                           'python 2)'.format(var.name))
-                            cast(Var, var.node).type = DeletedType(source=source)
+                            if isinstance(var.node, Var):
+                                var.node.type = DeletedType(source=source)
                             self.binder.cleanse(var)
             if s.else_body:
                 self.accept(s.else_body)
@@ -5097,7 +5110,7 @@ def gen_unique_name(base: str, table: SymbolTable) -> str:
 def is_true_literal(n: Expression) -> bool:
     """Returns true if this expression is the 'True' literal/keyword."""
     return (refers_to_fullname(n, 'builtins.True')
-            or isinstance(n, IntExpr) and n.value == 1)
+            or isinstance(n, IntExpr) and n.value != 0)
 
 
 def is_false_literal(n: Expression) -> bool:

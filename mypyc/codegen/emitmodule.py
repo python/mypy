@@ -5,7 +5,7 @@
 
 import os
 import json
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 from typing import List, Tuple, Dict, Iterable, Set, TypeVar, Optional
 
 from mypy.nodes import MypyFile
@@ -406,6 +406,10 @@ def compile_modules_to_c(
     # Construct a map from modules to what group they belong to
     group_map = {source.module: lib_name for group, lib_name in groups for source in group}
     mapper = Mapper(group_map)
+
+    # Sometimes when we call back into mypy, there might be errors.
+    # We don't want to crash when that happens.
+    result.manager.errors.set_file('<mypyc>', module=None, scope=None)
 
     modules = compile_modules_to_ir(result, mapper, compiler_options, errors)
     ctext = compile_ir_to_c(groups, modules, result, mapper, compiler_options)
@@ -874,6 +878,7 @@ class GroupGenerator:
             declaration = 'PyObject *CPyInit_{}(void)'.format(exported_name(module_name))
         emitter.emit_lines(declaration,
                            '{')
+        emitter.emit_line('PyObject* modname = NULL;')
         # Store the module reference in a static and return it when necessary.
         # This is separate from the *global* reference to the module that will
         # be populated when it is imported by a compiled module. We want that
@@ -888,35 +893,50 @@ class GroupGenerator:
 
         emitter.emit_lines('{} = PyModule_Create(&{}module);'.format(module_static, module_prefix),
                            'if (unlikely({} == NULL))'.format(module_static),
-                           '    return NULL;')
+                           '    goto fail;')
         emitter.emit_line(
-            'PyObject *modname = PyObject_GetAttrString((PyObject *){}, "__name__");'.format(
+            'modname = PyObject_GetAttrString((PyObject *){}, "__name__");'.format(
                 module_static))
 
         module_globals = emitter.static_name('globals', module_name)
         emitter.emit_lines('{} = PyModule_GetDict({});'.format(module_globals, module_static),
                            'if (unlikely({} == NULL))'.format(module_globals),
-                           '    return NULL;')
+                           '    goto fail;')
 
         # HACK: Manually instantiate generated classes here
+        type_structs = []  # type: List[str]
         for cl in module.classes:
+            type_struct = emitter.type_struct_name(cl)
+            type_structs.append(type_struct)
             if cl.is_generated:
-                type_struct = emitter.type_struct_name(cl)
                 emitter.emit_lines(
                     '{t} = (PyTypeObject *)CPyType_FromTemplate('
                     '(PyObject *){t}_template, NULL, modname);'
                     .format(t=type_struct))
                 emitter.emit_lines('if (unlikely(!{}))'.format(type_struct),
-                                   '    return NULL;')
+                                   '    goto fail;')
 
         emitter.emit_lines('if (CPyGlobalsInit() < 0)',
-                           '    return NULL;')
+                           '    goto fail;')
 
         self.generate_top_level_call(module, emitter)
 
         emitter.emit_lines('Py_DECREF(modname);')
 
         emitter.emit_line('return {};'.format(module_static))
+        emitter.emit_lines('fail:',
+                           'Py_CLEAR({});'.format(module_static),
+                           'Py_CLEAR(modname);')
+        for name, typ in module.final_names:
+            static_name = emitter.static_name(name, module_name)
+            emitter.emit_dec_ref(static_name, typ, is_xdec=True)
+            undef = emitter.c_undefined_value(typ)
+            emitter.emit_line('{} = {};'.format(static_name, undef))
+        # the type objects returned from CPyType_FromTemplate are all new references
+        # so we have to decref them
+        for t in type_structs:
+            emitter.emit_line('Py_CLEAR({});'.format(t))
+        emitter.emit_line('return NULL;')
         emitter.emit_line('}')
 
     def generate_top_level_call(self, module: ModuleIR, emitter: Emitter) -> None:
@@ -927,7 +947,7 @@ class GroupGenerator:
                 emitter.emit_lines(
                     'char result = {}();'.format(emitter.native_function_name(fn.decl)),
                     'if (result == 2)',
-                    '    return NULL;',
+                    '    goto fail;',
                 )
                 break
 

@@ -1,4 +1,4 @@
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 import re
 import pprint
 import sys
@@ -82,6 +82,8 @@ class Options:
         self.no_silence_site_packages = False
         self.no_site_packages = False
         self.ignore_missing_imports = False
+        # Is ignore_missing_imports set in a per-module section
+        self.ignore_missing_imports_per_module = False
         self.follow_imports = 'normal'  # normal|silent|skip|error
         # Whether to respect the follow_imports setting even for stub files.
         # Intended to be used for disabling specific stubs.
@@ -141,7 +143,7 @@ class Options:
         # Warn about unused '# type: ignore' comments
         self.warn_unused_ignores = False
 
-        # Warn about unused '[mypy-<pattern>] config sections
+        # Warn about unused '[mypy-<pattern>]'  or '[[tool.mypy.overrides]]' config sections
         self.warn_unused_configs = False
 
         # Files in which to ignore all non-fatal errors
@@ -295,6 +297,13 @@ class Options:
         self.show_absolute_path = False  # type: bool
         # Install missing stub packages if True
         self.install_types = False
+        # Install missing stub packages in non-interactive mode (don't prompt for
+        # confirmation, and don't show any errors)
+        self.non_interactive = False
+        # When we encounter errors that may cause many additional errors,
+        # skip most errors after this many messages have been reported.
+        # -1 means unlimited.
+        self.many_errors_threshold = defaults.MANY_ERRORS_THRESHOLD
 
     # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property
@@ -321,6 +330,10 @@ class Options:
         replace_object_state(new_options, self, copy_dict=True)
         for key, value in changes.items():
             setattr(new_options, key, value)
+        if changes.get("ignore_missing_imports"):
+            # This is the only option for which a per-module and a global
+            # option sometimes beheave differently.
+            new_options.ignore_missing_imports_per_module = True
         return new_options
 
     def build_per_module_cache(self) -> None:

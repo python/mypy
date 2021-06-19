@@ -362,7 +362,12 @@ def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef) -> None:
                     and isinstance(stmt.lvalues[0], NameExpr)
                     and not is_class_var(stmt.lvalues[0])
                     and not isinstance(stmt.rvalue, TempNode)):
-                if stmt.lvalues[0].name == '__slots__':
+                name = stmt.lvalues[0].name
+                if name == '__slots__':
+                    continue
+
+                if name == '__deletable__':
+                    check_deletable_declaration(builder, cls, stmt.line)
                     continue
 
                 # Skip type annotated assignments in dataclasses
@@ -396,6 +401,22 @@ def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef) -> None:
     builder.add(Return(builder.true()))
 
     builder.leave_method()
+
+
+def check_deletable_declaration(builder: IRBuilder, cl: ClassIR, line: int) -> None:
+    for attr in cl.deletable:
+        if attr not in cl.attributes:
+            if not cl.has_attr(attr):
+                builder.error('Attribute "{}" not defined'.format(attr), line)
+                continue
+            for base in cl.mro:
+                if attr in base.property_types:
+                    builder.error('Cannot make property "{}" deletable'.format(attr), line)
+                    break
+            else:
+                _, base = cl.attr_details(attr)
+                builder.error(('Attribute "{}" not defined in "{}" ' +
+                               '(defined in "{}")').format(attr, cl.name, base.name), line)
 
 
 def create_ne_from_eq(builder: IRBuilder, cdef: ClassDef) -> None:
