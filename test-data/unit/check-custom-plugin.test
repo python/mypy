@@ -786,18 +786,11 @@ plugins=<ROOT>/test-data/unit/plugins/function_sig_hook.py
 
 [case testPluginCalledCorrectlyWhenMethodInDecorator]
 # flags: --config-file tmp/mypy.ini
-from typing import overload, TypeVar, Callable
+from typing import TypeVar, Callable
 
 T = TypeVar('T')
 class Foo:
-    @overload
     def a(self, x: Callable[[], T]) -> Callable[[], T]: ...
-
-    @overload
-    def a(self, x: str) -> None: ...
-
-    def a(self, x):
-        pass
 
 b = Foo()
 
@@ -813,18 +806,11 @@ plugins=<ROOT>/test-data/unit/plugins/method_in_decorator.py
 
 [case testPluginMethodHookMethodAssignedToVariableInDecorator-xfail]
 # flags: --config-file tmp/mypy.ini
-from typing import overload, TypeVar, Callable
+from typing import TypeVar, Callable
 
 T = TypeVar('T')
 class Foo:
-    @overload
     def a(self, x: Callable[[], T]) -> Callable[[], T]: ...
-
-    @overload
-    def a(self, x: str) -> None: ...
-
-    def a(self, x):
-        pass
 
 b = Foo()
 
