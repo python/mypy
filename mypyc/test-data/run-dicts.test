@@ -272,6 +272,14 @@ def test_dict_empty_collection_setdefault() -> None:
     assert d2['b'] == {'aa': 2, 'bb': 3}
     assert d2.setdefault('c', {'cc': 1}) == {'cc': 1}
 
+    d3: Dict[str, Set[str]] = {'a': set('a')}
+    assert d3.setdefault('a', set()) == {'a'}
+    assert d3.setdefault('b', set()) == set()
+    d3.setdefault('b', set()).add('b')
+    d3.setdefault('b', set()).add('c')
+    assert d3['b'] == {'b', 'c'}
+    assert d3.setdefault('c', set('d')) == {'d'}
+
 [case testDictToBool]
 from typing import Dict, List
 
