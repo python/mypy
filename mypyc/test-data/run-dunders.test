@@ -574,6 +574,8 @@ def test_unannotated_add_and_radd_1() -> None:
 
 def test_unannotated_radd() -> None:
     assert 'x' + G() == 'a'
+    with assertRaises(TypeError, "unsupported operand type(s) for +: 'int' and 'G'"):
+        1 + G()
 
 class H:
     def __add__(self, x):
@@ -582,19 +584,66 @@ class H:
         return NotImplemented
 
     def __radd__(self, x):
-        if isinstance(x, H):
-            return 11
-        elif isinstance(x, str):
+        if isinstance(x, str):
             return 22
         return NotImplemented
 
 def test_unannotated_add_and_radd_2() -> None:
     h = H()
     assert h + 5 == 6
-    assert h + h == 11
     assert 'x' + h == 22
+    with assertRaises(TypeError, "unsupported operand type(s) for +: 'int' and 'H'"):
+        1 + h
 
 # TODO: Inheritance
+
+[case testDifferentReverseDunders]
+class C:
+    # __radd__ and __rsub__ are tested elsewhere
+
+    def __rmul__(self, x):
+        return 1
+
+    def __rtruediv__(self, x):
+        return 2
+
+    def __rmod__(self, x):
+        return 3
+
+    def __rfloordiv__(self, x):
+        return 4
+
+    def __rlshift__(self, x):
+        return 5
+
+    def __rrshift__(self, x):
+        return 6
+
+    def __rand__(self, x):
+        return 7
+
+    def __ror__(self, x):
+        return 8
+
+    def __rxor__(self, x):
+        return 9
+
+    def __rmatmul__(self, x):
+        return 10
+
+def test_reverse_dunders() -> None:
+    x = 0
+    c = C()
+    assert x * c == 1
+    assert x / c == 2
+    assert x % c == 3
+    assert x // c == 4
+    assert x << c == 5
+    assert x >> c == 6
+    assert x & c == 7
+    assert x | c == 8
+    assert x ^ c == 9
+    assert x @ c == 10
 
 [case testDundersInplace]
 from typing import Any
