@@ -391,7 +391,7 @@ class Emitter:
                   typ: RType,
                   *,
                   declare_dest: bool = False,
-                  error: ErrorHandler = AssignHandler(),
+                  error: Optional[ErrorHandler] = None,
                   raise_exception: bool = True,
                   optional: bool = False,
                   src_type: Optional[RType] = None,
@@ -417,6 +417,7 @@ class Emitter:
             raise_exception: If True, also raise TypeError on failure
             likely: If the cast is likely to succeed (can be False for unions)
         """
+        error = error or AssignHandler()
         if isinstance(error, AssignHandler):
             handle_error = '%s = NULL;' % dest
         elif isinstance(error, GotoHandler):
@@ -628,7 +629,7 @@ class Emitter:
                    typ: RType,
                    *,
                    declare_dest: bool = False,
-                   error: ErrorHandler = AssignHandler(),
+                   error: Optional[ErrorHandler] = None,
                    raise_exception: bool = True,
                    optional: bool = False,
                    borrow: bool = False) -> None:
@@ -650,6 +651,7 @@ class Emitter:
             borrow: If True, create a borrowed reference
 
         """
+        error = error or AssignHandler()
         # TODO: Verify refcount handling.
         if isinstance(error, AssignHandler):
             failure = '%s = %s;' % (dest, self.c_error_value(typ))

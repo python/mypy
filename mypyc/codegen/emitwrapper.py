@@ -273,7 +273,8 @@ def generate_dunder_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
 def generate_bin_op_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     """Generates a wrapper for a native binary dunder method.
 
-    This also handles reverse methods (e.g. __radd__).
+    The same wrapper that handles the forward method (e.g. __add__) also handles
+    the corresponding reverse method (e.g. __radd__), if defined.
 
     Both arguments and the return value are PyObject *.
     """
@@ -693,7 +694,7 @@ def generate_wrapper_core(fn: FuncIR,
 def generate_arg_check(name: str,
                        typ: RType,
                        emitter: Emitter,
-                       error: ErrorHandler = AssignHandler(),
+                       error: Optional[ErrorHandler] = None,
                        *,
                        optional: bool = False,
                        raise_exception: bool = True) -> None:
@@ -703,6 +704,7 @@ def generate_arg_check(name: str,
     a value of name arg_{} (unboxed if necessary). For each primitive a runtime
     check ensures the correct type.
     """
+    error = error or AssignHandler()
     if typ.is_unboxed:
         # Borrow when unboxing to avoid reference count manipulation.
         emitter.emit_unbox('obj_{}'.format(name),
