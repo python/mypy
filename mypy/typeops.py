@@ -388,11 +388,11 @@ def make_simplified_union(items: Sequence[Type],
     return UnionType.make_union(simplified_set, line, column)
 
 
-def get_type_special_method_bool_ret_type(t: Type) -> Optional[Type]:
+def _get_type_special_method_bool_ret_type(t: Type) -> Optional[Type]:
     t = get_proper_type(t)
 
     if isinstance(t, Instance):
-        bool_method = t.type.names.get("__bool__", None)
+        bool_method = t.type.get("__bool__")
         if bool_method:
             callee = get_proper_type(bool_method.type)
             if isinstance(callee, CallableType):
@@ -419,7 +419,7 @@ def true_only(t: Type) -> ProperType:
         can_be_true_items = [item for item in new_items if item.can_be_true]
         return make_simplified_union(can_be_true_items, line=t.line, column=t.column)
     else:
-        ret_type = get_type_special_method_bool_ret_type(t)
+        ret_type = _get_type_special_method_bool_ret_type(t)
 
         if ret_type and ret_type.can_be_false and not ret_type.can_be_true:
             new_t = copy_type(t)
@@ -454,7 +454,7 @@ def false_only(t: Type) -> ProperType:
         can_be_false_items = [item for item in new_items if item.can_be_false]
         return make_simplified_union(can_be_false_items, line=t.line, column=t.column)
     else:
-        ret_type = get_type_special_method_bool_ret_type(t)
+        ret_type = _get_type_special_method_bool_ret_type(t)
 
         if ret_type and ret_type.can_be_true and not ret_type.can_be_false:
             new_t = copy_type(t)
