@@ -63,7 +63,7 @@ from mypyc.primitives.misc_ops import (
 )
 from mypyc.primitives.int_ops import int_comparison_op_mapping
 from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
-from mypyc.primitives.str_ops import unicode_compare, str_check_if_true
+from mypyc.primitives.str_ops import unicode_compare, str_check_if_true, str_size_op
 from mypyc.primitives.set_ops import new_set_op
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.subtype import is_subtype
@@ -1127,6 +1127,13 @@ class LowLevelIRBuilder:
                                IntOp.LEFT_SHIFT, line)
         elif is_dict_rprimitive(typ):
             size_value = self.call_c(dict_size_op, [val], line)
+            if use_pyssize_t:
+                return size_value
+            offset = Integer(1, c_pyssize_t_rprimitive, line)
+            return self.int_op(short_int_rprimitive, size_value, offset,
+                               IntOp.LEFT_SHIFT, line)
+        elif is_str_rprimitive(typ):
+            size_value = self.call_c(str_size_op, [val], line)
             if use_pyssize_t:
                 return size_value
             offset = Integer(1, c_pyssize_t_rprimitive, line)
