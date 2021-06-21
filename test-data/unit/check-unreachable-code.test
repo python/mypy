@@ -939,10 +939,6 @@ def bar() -> None: pass
 -- the custom sys.platform cannot be mapped to platform.system().
 -- Only sys.platform (darwin, linux, win32) can be mapped to
 -- platform.system() (Darwin, Linux, Windows).
---
--- mypy will not report an error here even though
--- the assert will fail at runtime and foo has no attribute
--- "bar". It is recommended to use sys.platform if possible!
 # flags: --platform lol
 import foo
 foo.bar()  # No error
