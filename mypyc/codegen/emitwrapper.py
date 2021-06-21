@@ -13,7 +13,7 @@ or methods in a single compilation unit.
 from typing import List, Optional, Sequence
 
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_NAMED_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2
-from mypy.operators import op_methods_to_symbols, reverse_op_methods
+from mypy.operators import op_methods_to_symbols, reverse_op_methods, reverse_op_method_names
 
 from mypyc.common import PREFIX, NATIVE_PREFIX, DUNDER_PREFIX, use_vectorcall
 from mypyc.codegen.emit import Emitter, ErrorHandler, GotoHandler, AssignHandler, ReturnHandler
@@ -284,7 +284,7 @@ def generate_bin_op_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     wrapper_name = gen.wrapper_name()
 
     gen.emit_header()
-    if fn.name not in reverse_op_methods and fn.name in reverse_op_methods.values():
+    if fn.name not in reverse_op_methods and fn.name in reverse_op_method_names:
         # There's only a reverse operator method.
         generate_bin_op_reverse_only_wrapper(cl, fn, emitter, gen)
     else:
