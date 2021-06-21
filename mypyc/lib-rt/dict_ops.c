@@ -82,9 +82,11 @@ PyObject *CPyDict_SetDefaultWithNone(PyObject *dict, PyObject *key) {
 
 PyObject *CPyDict_SetDefaultWithEmptyDatatype(PyObject *dict, PyObject *key,
                                               int data_type) {
-    PyObject *res = CPyDict_GetItem(dict, key);
+    PyObject *res = PyDict_GetItemWithError(dict, key);
     if (!res) {
-        PyErr_Clear();
+        if (PyErr_Occurred()) {
+            return NULL;
+        }
         PyObject *new_obj;
         if (data_type == 1) {
             new_obj = PyList_New(0);
@@ -101,6 +103,7 @@ PyObject *CPyDict_SetDefaultWithEmptyDatatype(PyObject *dict, PyObject *key,
             return new_obj;
         }
     } else {
+        Py_INCREF(res);
         return res;
     }
 }
