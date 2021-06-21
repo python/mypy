@@ -14,7 +14,10 @@ See comment below for more documentation.
 
 from typing import Callable, Optional, Dict, Tuple, List
 
-from mypy.nodes import CallExpr, RefExpr, MemberExpr, TupleExpr, GeneratorExpr, ARG_POS
+from mypy.nodes import (
+    CallExpr, RefExpr, MemberExpr, NameExpr, TupleExpr, GeneratorExpr,
+    ListExpr, DictExpr, ARG_POS
+)
 from mypy.types import AnyType, TypeOfAny
 
 from mypyc.ir.ops import (
@@ -22,9 +25,11 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
-    bool_rprimitive, is_dict_rprimitive
+    bool_rprimitive, is_dict_rprimitive, c_int_rprimitive
 )
-from mypyc.primitives.dict_ops import dict_keys_op, dict_values_op, dict_items_op
+from mypyc.primitives.dict_ops import (
+    dict_keys_op, dict_values_op, dict_items_op, dict_setdefault_spec_init_op
+)
 from mypyc.primitives.list_ops import new_list_set_item_op
 from mypyc.primitives.tuple_ops import new_tuple_set_item_op
 from mypyc.irbuild.builder import IRBuilder
@@ -312,4 +317,42 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
         irs = builder.flatten_classes(expr.args[1])
         if irs is not None:
             return builder.builder.isinstance_helper(builder.accept(expr.args[0]), irs, expr.line)
+    return None
+
+
+@specialize_function('setdefault', dict_rprimitive)
+def translate_dict_setdefault(
+        builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+    if (len(expr.args) == 2
+            and expr.arg_kinds == [ARG_POS, ARG_POS]
+            and isinstance(callee, MemberExpr)):
+        # Special case for dict.setdefault which would only construct default empty
+        # collection when needed. The dict_setdefault_spec_init_op checks whether
+        # the dict contains the key and would construct the empty collection only once.
+        # For example, this specializer works for the following cases:
+        #     d.setdefault(key, set()).add(value)
+        #     d.setdefault(key, []).append(value)
+        #     d.setdefault(key, {})[inner_key] = inner_val
+        arg = expr.args[1]
+        if isinstance(arg, ListExpr):
+            if len(arg.items):
+                return None
+            data_type = Integer(1, c_int_rprimitive, expr.line)
+        elif isinstance(arg, DictExpr):
+            if len(arg.items):
+                return None
+            data_type = Integer(2, c_int_rprimitive, expr.line)
+        elif (isinstance(arg, CallExpr) and isinstance(arg.callee, NameExpr)
+                and arg.callee.fullname == 'builtins.set'):
+            if len(arg.args):
+                return None
+            data_type = Integer(3, c_int_rprimitive, expr.line)
+        else:
+            return None
+
+        callee_dict = builder.accept(callee.expr)
+        key_val = builder.accept(expr.args[0])
+        return builder.call_c(dict_setdefault_spec_init_op,
+                              [callee_dict, key_val, data_type],
+                              expr.line)
     return None
