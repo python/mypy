@@ -477,7 +477,8 @@ def test_errors() -> None:
     try:
         'x' + a
     except TypeError as e:
-        assert str(e) == 'can only concatenate str (not "C") to str'
+        assert str(e) in ('can only concatenate str (not "C") to str',
+                          'must be str, not C')
     else:
         assert False
 
