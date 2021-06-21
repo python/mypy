@@ -266,8 +266,10 @@ class VariableRenameVisitor(TraverserVisitor):
         self.block_id += 1
         self.blocks.append(self.block_id)
         self.block_loop_depth[self.block_id] = self.loop_depth
-        yield
-        self.blocks.pop()
+        try:
+            yield
+        finally:
+            self.blocks.pop()
 
     @contextmanager
     def enter_try(self) -> Iterator[None]:
