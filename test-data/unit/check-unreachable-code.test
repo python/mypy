@@ -338,6 +338,36 @@ foo() + 0
 [builtins fixtures/ops.pyi]
 [out]
 
+[case testPlatformSystem1]
+import platform
+if platform.system() == 'fictional':
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+foo() + ''
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testPlatformSystem2]
+import platform
+if platform.system() != 'fictional':
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+foo() + 0
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testPlatformSystemNegated]
+import platform
+if not (platform.system() == 'fictional'):
+    def foo() -> int: return 0
+else:
+    def foo() -> str: return ''
+foo() + 0
+[builtins fixtures/ops.pyi]
+[out]
+
 [case testSysVersionInfoClass]
 import sys
 if sys.version_info < (3, 5):
@@ -464,6 +494,76 @@ x = 1
 [builtins fixtures/ops.pyi]
 [out]
 
+[case testPlatformSystemInMethod1]
+import platform
+class C:
+    def foo(self) -> None:
+        if platform.system() != 'fictional':
+            x = ''
+        else:
+            x = 0
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testPlatformSystemInFunctionImport1]
+import platform
+def foo() -> None:
+    if platform.system() != 'fictional':
+        import a
+    else:
+        import b as a
+    a.x
+[file a.py]
+x = 1
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testPlatformSystemInFunctionImport2]
+import platform
+def foo() -> None:
+    if platform.system() == 'fictional':
+        import b as a
+    else:
+        import a
+    a.x
+[file a.py]
+x = 1
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testPlatformSystemInFunctionImport3]
+from typing import Callable
+import platform
+
+def idf(x: Callable[[], None]) -> Callable[[], None]: return x
+
+@idf
+def foo() -> None:
+    if platform.system() == 'fictional':
+        import b as a
+    else:
+        import a
+    a.x
+[file a.py]
+x = 1
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testPlatformSystemInMethodImport2]
+import platform
+class A:
+    def foo(self) -> None:
+        if platform.system() == 'fictional':
+            import b as a
+        else:
+            import a
+        a.x
+[file a.py]
+x = 1
+[builtins fixtures/ops.pyi]
+[out]
+
 [case testCustomSysVersionInfo]
 # flags: --python-version 3.5
 import sys
@@ -519,6 +619,28 @@ reveal_type(x)  # N: Revealed type is "builtins.str"
 [builtins fixtures/ops.pyi]
 [out]
 
+[case testCustomPlatformSystem1]
+# flags: --platform linux
+import platform
+if platform.system() == 'Linux':
+    x = "foo"
+else:
+    x = 3
+reveal_type(x)  # N: Revealed type is "builtins.str"
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testCustomPlatformSystem2]
+# flags: --platform win32
+import platform
+if platform.system() == 'Linux':
+    x = "foo"
+else:
+    x = 3
+reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/ops.pyi]
+[out]
+
 [case testShortCircuitInExpression]
 import typing
 def make() -> bool: pass
@@ -543,7 +665,7 @@ reveal_type(h)  # N: Revealed type is "builtins.bool"
 [builtins fixtures/ops.pyi]
 [out]
 
-[case testShortCircuitAndWithConditionalAssignment]
+[case testShortCircuitAndWithConditionalAssignment1]
 # flags: --platform linux
 import sys
 
@@ -561,7 +683,25 @@ else:
 reveal_type(y)  # N: Revealed type is "builtins.int"
 [builtins fixtures/ops.pyi]
 
-[case testShortCircuitOrWithConditionalAssignment]
+[case testShortCircuitAndWithConditionalAssignment2]
+# flags: --platform linux
+import platform
+
+def f(): pass
+PY2 = f()
+if PY2 and platform.system() == 'Linux':
+    x = 'foo'
+else:
+    x = 3
+reveal_type(x)  # N: Revealed type is "builtins.int"
+if platform.system() == 'Linux' and PY2:
+    y = 'foo'
+else:
+    y = 3
+reveal_type(y)  # N: Revealed type is "builtins.int"
+[builtins fixtures/ops.pyi]
+
+[case testShortCircuitOrWithConditionalAssignment1]
 # flags: --platform linux
 import sys
 
@@ -579,7 +719,25 @@ else:
 reveal_type(y)  # N: Revealed type is "builtins.str"
 [builtins fixtures/ops.pyi]
 
-[case testShortCircuitNoEvaluation]
+[case testShortCircuitOrWithConditionalAssignment2]
+# flags: --platform linux
+import platform
+
+def f(): pass
+PY2 = f()
+if PY2 or platform.system() == 'Linux':
+    x = 'foo'
+else:
+    x = 3
+reveal_type(x)  # N: Revealed type is "builtins.str"
+if platform.system() == 'Linux' or PY2:
+    y = 'foo'
+else:
+    y = 3
+reveal_type(y)  # N: Revealed type is "builtins.str"
+[builtins fixtures/ops.pyi]
+
+[case testShortCircuitNoEvaluation1]
 # flags: --platform linux --always-false COMPILE_TIME_FALSE
 import sys
 
@@ -612,6 +770,20 @@ if not MYPY:
 if not MYPY and mypy_only:
     pass
 if MYPY or mypy_only:
+    pass
+[builtins fixtures/ops.pyi]
+
+[case testShortCircuitNoEvaluation2]
+# flags: --platform linux --always-false COMPILE_TIME_FALSE
+import platform
+
+if platform.system() == 'Darwin':
+    mac_only = 'junk'
+
+# `mac_only` should not be evaluated
+if platform.system() == 'Darwin' and mac_only:
+    pass
+if platform.system() == 'Linux' or mac_only:
     pass
 [builtins fixtures/ops.pyi]
 
@@ -727,6 +899,13 @@ assert NOPE
 reveal_type('')  # No error here :-)
 [builtins fixtures/ops.pyi]
 
+[case testUnreachableAfterToplevelAssert5]
+import platform
+reveal_type(0)  # N: Revealed type is "Literal[0]?"
+assert platform.system() == 'lol'
+reveal_type('')  # No error here :-)
+[builtins fixtures/ops.pyi]
+
 [case testUnreachableAfterToplevelAssertImport]
 import foo
 foo.bar()  # E: "object" has no attribute "bar"
@@ -746,10 +925,46 @@ assert sys.platform == 'lol'
 def bar() -> None: pass
 [builtins fixtures/ops.pyi]
 
-[case testUnreachableAfterToplevelAssertNotInsideIf]
+[case testUnreachableAfterToplevelAssertImport3]
+import foo
+foo.bar()  # E: Module has no attribute "bar"
+[file foo.py]
+import platform
+assert platform.system() == 'lol'
+def bar() -> None: pass
+[builtins fixtures/ops.pyi]
+
+[case testUnreachableAfterToplevelAssertImport4]
+-- The truth value of the assert statement is unknown since
+-- the custom sys.platform cannot be mapped to platform.system().
+-- Only sys.platform (darwin, linux, win32) can be mapped to
+-- platform.system() (Darwin, Linux, Windows).
+--
+-- mypy will not report an error here even though
+-- the assert will fail at runtime and foo has no attribute
+-- "bar". It is recommended to use sys.platform if possible!
+# flags: --platform lol
+import foo
+foo.bar()  # No error
+[file foo.py]
+import platform
+assert platform.system() == 'lol'
+def bar() -> None: pass
+[builtins fixtures/ops.pyi]
+
+[case testUnreachableAfterToplevelAssertNotInsideIf1]
 import sys
 if sys.version_info[0] >= 2:
     assert sys.platform == 'lol'
+    reveal_type('')  # N: Revealed type is "Literal['']?"
+reveal_type('')  # N: Revealed type is "Literal['']?"
+[builtins fixtures/ops.pyi]
+
+[case testUnreachableAfterToplevelAssertNotInsideIf2]
+import sys
+import platform
+if sys.version_info[0] >= 2:
+    assert platform.system() == 'lol'
     reveal_type('')  # N: Revealed type is "Literal['']?"
 reveal_type('')  # N: Revealed type is "Literal['']?"
 [builtins fixtures/ops.pyi]
@@ -833,6 +1048,7 @@ def baz(x: int) -> int:
 [case testUnreachableFlagIgnoresSemanticAnalysisUnreachable]
 # flags: --warn-unreachable --python-version 3.7 --platform win32 --always-false FOOBAR
 import sys
+import platform
 from typing import TYPE_CHECKING
 
 x: int
@@ -852,6 +1068,16 @@ else:
     reveal_type(x)  # N: Revealed type is "builtins.int"
 
 if sys.platform == 'win32':
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+else:
+    reveal_type(x)
+
+if platform.system() == 'Darwin':
+    reveal_type(x)
+else:
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+
+if platform.system() == 'Windows':
     reveal_type(x)  # N: Revealed type is "builtins.int"
 else:
     reveal_type(x)
@@ -1364,7 +1590,7 @@ def test_untyped_fn(obj):
     assert obj.prop is False
     reveal_type(obj.prop)  # E: Statement is unreachable
 
-[case testConditionalTypeVarException]
+[case testConditionalTypeVarException1]
 # every part of this test case was necessary to trigger the crash
 import sys
 from typing import TypeVar
@@ -1378,3 +1604,47 @@ def f(t: T) -> None:
         except BaseException as e:
             pass
 [builtins fixtures/dict.pyi]
+
+[case testConditionalTypeVarException2]
+import platform
+from typing import TypeVar
+
+T = TypeVar("T", int, str)
+
+def f(t: T) -> None:
+    if platform.system() == "lol":
+        try:
+            pass
+        except BaseException as e:
+            pass
+[builtins fixtures/dict.pyi]
+
+[case testSysPlatformToPlatformSystem1]
+# flags: --platform darwin
+import platform
+a = 0
+if platform.system() == 'Darwin':
+    a = 1
+else:
+    a = "error"
+[builtins fixtures/ops.pyi]
+
+[case testSysPlatformToPlatformSystem2]
+# flags: --platform linux
+import platform
+a = 0
+if platform.system() == 'Linux':
+    a = 1
+else:
+    a = "error"
+[builtins fixtures/ops.pyi]
+
+[case testSysPlatformToPlatformSystem3]
+# flags: --platform win32
+import platform
+a = 0
+if platform.system() == 'Windows':
+    a = 1
+else:
+    a = "error"
+[builtins fixtures/ops.pyi]
