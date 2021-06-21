@@ -95,13 +95,47 @@ def make_module_translation_map(names: List[str]) -> Dict[str, str]:
         for suffix in candidate_suffixes(name):
             num_instances[suffix] = num_instances.get(suffix, 0) + 1
     result = {}
-    for name in names:
+    possibly_ambiguous_suffixes = set()  # type: Set[str]
+    # Find suffixes from logest to shortest, so that in the case of module
+    # names like "bla" and "bla.bla", we will not prematurely claim the
+    # "bla." suffix for the "bla.bla" module, leaving no candidates for
+    # the "bla" module.
+    for name in sorted(names, key=lambda name: len(name), reverse=True):
+        # First, try to find a suffix, preferring those that are not possibly
+        # ambiguous given other selections that were already made. If we have
+        # "foo.bar" and "biz.bar", we would prefer to return suffixes
+        # "foo.bar." and "biz.bar.", not "foo.bar." and "bar." as the second
+        # is ambiguous even if it is unique
         for suffix in candidate_suffixes(name):
-            if num_instances[suffix] == 1:
+            if num_instances[suffix] == 1 and suffix not in possibly_ambiguous_suffixes:
                 result[name] = suffix
                 break
         else:
-            assert False, names
+            # Try again, allowing ambiguous names, in the instance we have
+            # something like "foo.foo" and "foo".
+            for suffix in candidate_suffixes(name):
+                if num_instances[suffix] == 1:
+                    result[name] = suffix
+                    break
+            else:
+                assert False, names
+
+        # Since we assigned a suffix to this module successfully,
+        # remove the instance counts for all of its candidates so
+        # that any other modules that must use a suffix which was
+        # a possible (but not chosen) suffix for this module can
+        # claim them. However, track those removed suffixes so
+        # that we can favor less ambiguous suffixes over those which
+        # might be ambiguous.
+        for suffix in candidate_suffixes(name):
+            if not suffix or suffix == result[name]:
+                # Don't decrease counts on the null suffix. This
+                # should be reserved for only compiling a single
+                # module. Also don't decrease the count on the
+                # suffix we used so we never reuse it.
+                continue
+            num_instances[suffix] -= 1
+            possibly_ambiguous_suffixes.add(suffix)
     return result
 
 

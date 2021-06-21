@@ -28,6 +28,16 @@ class TestNameGen(unittest.TestCase):
                                                   'fu.bar': 'fu.bar.',
                                                   'foo.baz': 'baz.'}
 
+    def test_possibly_ambiguous_translation_map(self) -> None:
+        assert make_module_translation_map(
+            ['test', 'test.test', 'test.module', 'test.module.file']
+        ) == {
+            'test': 'test.',
+            'test.test': 'test.test.',
+            'test.module': 'module.',
+            'test.module.file': 'file.',
+        }
+
     def test_name_generator(self) -> None:
         g = NameGenerator([['foo', 'foo.zar']])
         assert g.private_name('foo', 'f') == 'foo___f'
