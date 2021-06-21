@@ -75,28 +75,26 @@ class VariableRenameVisitor(TraverserVisitor):
         This is the main entry point to this class.
         """
         self.clear()
-        with self.enter_scope(FILE):
-            with self.enter_block():
-                for d in file_node.defs:
-                    d.accept(self)
+        with self.enter_scope(FILE), self.enter_block():
+            for d in file_node.defs:
+                d.accept(self)
 
     def visit_func_def(self, fdef: FuncDef) -> None:
         # Conservatively do not allow variable defined before a function to
         # be redefined later, since function could refer to either definition.
         self.reject_redefinition_of_vars_in_scope()
 
-        with self.enter_scope(FUNCTION):
-            with self.enter_block():
-                for arg in fdef.arguments:
-                    name = arg.variable.name
-                    # 'self' can't be redefined since it's special as it allows definition of
-                    # attributes. 'cls' can't be used to define attributes so we can ignore it.
-                    can_be_redefined = name != 'self'  # TODO: Proper check
-                    self.record_assignment(arg.variable.name, can_be_redefined)
-                    self.handle_arg(name)
+        with self.enter_scope(FUNCTION), self.enter_block():
+            for arg in fdef.arguments:
+                name = arg.variable.name
+                # 'self' can't be redefined since it's special as it allows definition of
+                # attributes. 'cls' can't be used to define attributes so we can ignore it.
+                can_be_redefined = name != 'self'  # TODO: Proper check
+                self.record_assignment(arg.variable.name, can_be_redefined)
+                self.handle_arg(name)
 
-                for stmt in fdef.body.body:
-                    stmt.accept(self)
+            for stmt in fdef.body.body:
+                stmt.accept(self)
 
     def visit_class_def(self, cdef: ClassDef) -> None:
         self.reject_redefinition_of_vars_in_scope()
