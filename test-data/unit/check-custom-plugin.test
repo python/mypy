@@ -803,24 +803,3 @@ reveal_type(f())  # N: Revealed type is "builtins.str"
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/method_in_decorator.py
-
-[case testPluginMethodHookMethodAssignedToVariableInDecorator-xfail]
-# flags: --config-file tmp/mypy.ini
-from typing import TypeVar, Callable
-
-T = TypeVar('T')
-class Foo:
-    def a(self, x: Callable[[], T]) -> Callable[[], T]: ...
-
-b = Foo()
-
-meth = b.a
-@meth
-def f() -> None:
-    pass
-
-reveal_type(f())  # N: Revealed type is "builtins.str"
-
-[file mypy.ini]
-\[mypy]
-plugins=<ROOT>/test-data/unit/plugins/method_in_decorator.py
