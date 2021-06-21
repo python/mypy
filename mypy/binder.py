@@ -5,7 +5,7 @@ from typing import Dict, List, Set, Iterator, Union, Optional, Tuple, cast
 from typing_extensions import DefaultDict
 
 from mypy.types import (
-    Type, AnyType, PartialType, UnionType, TypeOfAny, NoneType, get_proper_type
+    Type, AnyType, PartialType, UnionType, TypeOfAny, NoneType, TypeGuardType, get_proper_type
 )
 from mypy.subtypes import is_subtype
 from mypy.join import join_simple
@@ -202,7 +202,9 @@ class ConditionalTypeBinder:
             else:
                 for other in resulting_values[1:]:
                     assert other is not None
-                    type = join_simple(self.declarations[key], type, other)
+                    # Ignore the error about using get_proper_type().
+                    if not isinstance(other, TypeGuardType):  # type: ignore[misc]
+                        type = join_simple(self.declarations[key], type, other)
             if current_value is None or not is_same_type(type, current_value):
                 self._put(key, type)
                 changed = True
