@@ -903,6 +903,20 @@ Miscellaneous
         selection of third-party package stubs, instead of having
         them installed separately.
 
+.. option:: --non-interactive
+
+   When used together with :option:`--install-types <mypy
+   --install-types>`, this causes mypy to install all suggested stub
+   packages using pip without asking for confirmation, and then
+   continues to perform type checking using the installed stubs, if
+   some files or modules are provided to type check.
+
+   This is implemented as up to two mypy runs internally. The first run
+   is used to find missing stub packages, and output is shown from
+   this run only if no missing stub packages were found. If missing
+   stub packages were found, they are installed and then another run
+   is performed.
+
 .. option:: --junit-xml JUNIT_XML
 
     Causes mypy to generate a JUnit XML test result document with
