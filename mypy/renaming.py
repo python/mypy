@@ -274,14 +274,18 @@ class VariableRenameVisitor(TraverserVisitor):
     @contextmanager
     def enter_try(self) -> Iterator[None]:
         self.disallow_redef_depth += 1
-        yield
-        self.disallow_redef_depth -= 1
+        try:
+            yield
+        finally:
+            self.disallow_redef_depth -= 1
 
     @contextmanager
     def enter_loop(self) -> Iterator[None]:
         self.loop_depth += 1
-        yield
-        self.loop_depth -= 1
+        try:
+            yield
+        finally:
+            self.loop_depth -= 1
 
     def current_block(self) -> int:
         return self.blocks[-1]
@@ -292,11 +296,13 @@ class VariableRenameVisitor(TraverserVisitor):
         self.refs.append({})
         self.num_reads.append({})
         self.scope_kinds.append(kind)
-        yield
-        self.flush_refs()
-        self.var_blocks.pop()
-        self.num_reads.pop()
-        self.scope_kinds.pop()
+        try:
+            yield
+        finally:
+            self.flush_refs()
+            self.var_blocks.pop()
+            self.num_reads.pop()
+            self.scope_kinds.pop()
 
     def is_nested(self) -> int:
         return len(self.var_blocks) > 1
