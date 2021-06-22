@@ -136,7 +136,7 @@ str_check_if_true = custom_op(
     error_kind=ERR_NEVER,
 )
 
-str_size_op = custom_op(
+str_ssize_t_size_op = custom_op(
     arg_types=[str_rprimitive],
     return_type=c_pyssize_t_rprimitive,
     c_function_name='PyUnicode_GET_LENGTH',

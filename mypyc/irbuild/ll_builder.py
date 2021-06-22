@@ -51,7 +51,7 @@ from mypyc.primitives.tuple_ops import (
     list_tuple_op, new_tuple_op, new_tuple_with_length_op
 )
 from mypyc.primitives.dict_ops import (
-    dict_update_in_display_op, dict_new_op, dict_build_op, dict_size_op
+    dict_update_in_display_op, dict_new_op, dict_build_op, dict_ssize_t_size_op
 )
 from mypyc.primitives.generic_ops import (
     py_getattr_op, py_call_op, py_call_with_kwargs_op, py_method_call_op,
@@ -63,7 +63,9 @@ from mypyc.primitives.misc_ops import (
 )
 from mypyc.primitives.int_ops import int_comparison_op_mapping
 from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
-from mypyc.primitives.str_ops import unicode_compare, str_check_if_true, str_size_op
+from mypyc.primitives.str_ops import (
+    unicode_compare, str_check_if_true, str_ssize_t_size_op
+)
 from mypyc.primitives.set_ops import new_set_op
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.subtype import is_subtype
@@ -982,10 +984,11 @@ class LowLevelIRBuilder:
             zero = Integer(0, short_int_rprimitive)
             self.compare_tagged_condition(value, zero, '!=', true, false, value.line)
             return
-        elif is_same_type(value.type, str_rprimitive):
-            value = self.call_c(str_check_if_true, [value], value.line)
+        # elif is_same_type(value.type, str_rprimitive):
+        #     value = self.call_c(str_check_if_true, [value], value.line)
         elif (is_same_type(value.type, list_rprimitive)
-                or is_same_type(value.type, dict_rprimitive)):
+                or is_same_type(value.type, dict_rprimitive)
+                or is_same_type(value.type, str_rprimitive)):
             length = self.builtin_len(value, value.line)
             zero = Integer(0)
             value = self.binary_op(length, zero, '!=', value.line)
@@ -1126,14 +1129,14 @@ class LowLevelIRBuilder:
             return self.int_op(short_int_rprimitive, size_value, offset,
                                IntOp.LEFT_SHIFT, line)
         elif is_dict_rprimitive(typ):
-            size_value = self.call_c(dict_size_op, [val], line)
+            size_value = self.call_c(dict_ssize_t_size_op, [val], line)
             if use_pyssize_t:
                 return size_value
             offset = Integer(1, c_pyssize_t_rprimitive, line)
             return self.int_op(short_int_rprimitive, size_value, offset,
                                IntOp.LEFT_SHIFT, line)
         elif is_str_rprimitive(typ):
-            size_value = self.call_c(str_size_op, [val], line)
+            size_value = self.call_c(str_ssize_t_size_op, [val], line)
             if use_pyssize_t:
                 return size_value
             offset = Integer(1, c_pyssize_t_rprimitive, line)

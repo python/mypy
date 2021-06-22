@@ -148,14 +148,17 @@ def is_true(x: str) -> bool:
 [out]
 def is_true(x):
     x :: str
-    r0 :: bit
+    r0 :: native_int
+    r1 :: short_int
+    r2 :: bit
 L0:
-    r0 = CPyStr_IsTrue(x)
-    if r0 goto L1 else goto L2 :: bool
+    r0 = PyUnicode_GET_LENGTH(x)
+    r1 = r0 << 1
+    r2 = r1 != 0
+    if r2 goto L1 else goto L2 :: bool
 L1:
     return 1
 L2:
     return 0
 L3:
     unreachable
-
