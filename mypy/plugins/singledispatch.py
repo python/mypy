@@ -76,11 +76,17 @@ def call_singledispatch_function_callback(ctx: MethodSigContext) -> CallableType
     # TODO: find a way to get the type of the first argument with the public API
     # (expr_checker probably isn't part of the public API)
     passed_type = cast(TypeChecker, ctx.api).expr_checker.accept(first_arg)
+    fallback = metadata['fallback']
     for func in metadata['registered']:
         if func.arg_types:
             sig_type = func.arg_types[0]
             if is_subtype(passed_type, sig_type):
-                # TODO: Should error messages relating to registered functions use fallback's name
-                # or registered name?
-                return func
-    return metadata['fallback']
+                # use the fallback's name so that error messages say that the arguments to
+                # the fallback are incorrect (instead of saying arguments to the registered
+                # implementation are incorrect)
+                if fallback.name is not None:
+                    signature_used = func.with_name(fallback.name)
+                else:
+                    signature_used = func
+                return signature_used
+    return fallback
