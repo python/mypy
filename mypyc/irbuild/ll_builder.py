@@ -984,11 +984,10 @@ class LowLevelIRBuilder:
             zero = Integer(0, short_int_rprimitive)
             self.compare_tagged_condition(value, zero, '!=', true, false, value.line)
             return
-        # elif is_same_type(value.type, str_rprimitive):
-        #     value = self.call_c(str_check_if_true, [value], value.line)
+        elif is_same_type(value.type, str_rprimitive):
+            value = self.call_c(str_check_if_true, [value], value.line)
         elif (is_same_type(value.type, list_rprimitive)
-                or is_same_type(value.type, dict_rprimitive)
-                or is_same_type(value.type, str_rprimitive)):
+                or is_same_type(value.type, dict_rprimitive)):
             length = self.builtin_len(value, value.line)
             zero = Integer(0)
             value = self.binary_op(length, zero, '!=', value.line)
@@ -1119,39 +1118,28 @@ class LowLevelIRBuilder:
         Return c_pyssize_t if use_pyssize_t is true (unshifted).
         """
         typ = val.type
+        size_value = None
         if is_list_rprimitive(typ) or is_tuple_rprimitive(typ):
             elem_address = self.add(GetElementPtr(val, PyVarObject, 'ob_size'))
             size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
             self.add(KeepAlive([val]))
-            if use_pyssize_t:
-                return size_value
-            offset = Integer(1, c_pyssize_t_rprimitive, line)
-            return self.int_op(short_int_rprimitive, size_value, offset,
-                               IntOp.LEFT_SHIFT, line)
-        elif is_dict_rprimitive(typ):
-            size_value = self.call_c(dict_ssize_t_size_op, [val], line)
-            if use_pyssize_t:
-                return size_value
-            offset = Integer(1, c_pyssize_t_rprimitive, line)
-            return self.int_op(short_int_rprimitive, size_value, offset,
-                               IntOp.LEFT_SHIFT, line)
-        elif is_str_rprimitive(typ):
-            size_value = self.call_c(str_ssize_t_size_op, [val], line)
-            if use_pyssize_t:
-                return size_value
-            offset = Integer(1, c_pyssize_t_rprimitive, line)
-            return self.int_op(short_int_rprimitive, size_value, offset,
-                               IntOp.LEFT_SHIFT, line)
         elif is_set_rprimitive(typ):
             elem_address = self.add(GetElementPtr(val, PySetObject, 'used'))
             size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
             self.add(KeepAlive([val]))
+        elif is_dict_rprimitive(typ):
+            size_value = self.call_c(dict_ssize_t_size_op, [val], line)
+        elif is_str_rprimitive(typ):
+            size_value = self.call_c(str_ssize_t_size_op, [val], line)
+
+        if size_value is not None:
             if use_pyssize_t:
                 return size_value
             offset = Integer(1, c_pyssize_t_rprimitive, line)
             return self.int_op(short_int_rprimitive, size_value, offset,
                                IntOp.LEFT_SHIFT, line)
-        elif isinstance(typ, RInstance):
+
+        if isinstance(typ, RInstance):
             # TODO: Support use_pyssize_t
             assert not use_pyssize_t
             length = self.gen_method_call(val, '__len__', [], int_rprimitive, line)
@@ -1165,12 +1153,12 @@ class LowLevelIRBuilder:
             self.add(Unreachable())
             self.activate_block(ok)
             return length
+
+        # generic case
+        if use_pyssize_t:
+            return self.call_c(generic_ssize_t_len_op, [val], line)
         else:
-            # generic case
-            if use_pyssize_t:
-                return self.call_c(generic_ssize_t_len_op, [val], line)
-            else:
-                return self.call_c(generic_len_op, [val], line)
+            return self.call_c(generic_len_op, [val], line)
 
     def new_tuple(self, items: List[Value], line: int) -> Value:
         size = Integer(len(items), c_pyssize_t_rprimitive)  # type: Value
