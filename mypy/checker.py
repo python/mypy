@@ -3596,10 +3596,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             fullname = None
             if isinstance(d, RefExpr):
                 fullname = d.fullname
+            # if this is a expression like @b.a where b is an object, get the type of b
+            # so we can pass it the method hook in the plugins
+            object_type = None  # type: Optional[Type]
+            if fullname is None and isinstance(d, MemberExpr) and d.expr in self.type_map:
+                object_type = self.type_map[d.expr]
+                fullname = self.expr_checker.method_fullname(object_type, d.name)
             self.check_for_untyped_decorator(e.func, dec, d)
             sig, t2 = self.expr_checker.check_call(dec, [temp],
                                                    [nodes.ARG_POS], e,
-                                                   callable_name=fullname)
+                                                   callable_name=fullname,
+                                                   object_type=object_type)
         self.check_untyped_after_decorator(sig, e.func)
         sig = set_callable_name(sig, e.func)
         e.var.type = sig
