@@ -1,4 +1,4 @@
-[case testIncorrectDispatchArgumentWhenDoesntMatchFallback-xfail]
+[case testIncorrectDispatchArgumentWhenDoesntMatchFallback]
 from functools import singledispatch
 
 class A: pass
@@ -11,7 +11,7 @@ def fun(arg: A) -> None:
 def fun_b(arg: B) -> None:
     pass
 
-fun(1) # E: Argument 1 to "fun" has incompatible type "int"; expected "__main__.A"
+fun(1) # E: Argument 1 to "fun" has incompatible type "int"; expected "A"
 
 # probably won't be required after singledispatch is special cased
 [builtins fixtures/args.pyi]
@@ -31,7 +31,7 @@ def _(arg: int) -> None:
 
 [builtins fixtures/args.pyi]
 
-[case testCheckNonDispatchArgumentsWithTypeAlwaysTheSame-xfail]
+[case testCheckNonDispatchArgumentsWithTypeAlwaysTheSame]
 from functools import singledispatch
 
 @singledispatch
@@ -43,14 +43,14 @@ def g(arg: str, arg2: str) -> None:
     pass
 
 f(1, 'a') 
-f(1, 5) # E: Argument 2 to "fun" has incompatible type "int"; expected "str"
+f(1, 5) # E: Argument 2 to "f" has incompatible type "int"; expected "str"
 
 f('b', 'a')
-f('b', 1) # E: Argument 2 to "fun" has incompatible type "int"; expected "str"
+f('b', 1) # E: Argument 2 to "f" has incompatible type "int"; expected "str"
 
 [builtins fixtures/args.pyi]
 
-[case testCheckNonDispatchArgumentsUsingMoreSpecificTypeInSpecializedVersion-xfail]
+[case testCheckNonDispatchArgumentsUsingMoreSpecificTypeInSpecializedVersion]
 from functools import singledispatch
 
 class A: pass
@@ -67,7 +67,7 @@ def g(arg: str, arg2: B) -> None:
 f(1, A()) 
 f(1, B())
 
-f('b', A()) # E: Argument 2 to "fun" has incompatible type "__main__.A"; expected "__main__.B"
+f('b', A()) # E: Argument 2 to "f" has incompatible type "A"; expected "B"
 f('b', B())
 
 [builtins fixtures/args.pyi]
@@ -116,7 +116,7 @@ def g(arg: int) -> None: # E: Argument to register "str" is incompatible with ty
 
 [builtins fixtures/args.pyi]
 
-[case testMoreSpecificGenericNonDispatchArgumentInImplementations-xfail]
+[case testMoreSpecificGenericNonDispatchArgumentInImplementations]
 from functools import singledispatch
 from typing import TypeVar, Optional, Any, Type
 
@@ -137,9 +137,9 @@ def h(arg: str, arg2: Alias[Type[Any]]) -> None:
     pass
 
 f((3, 5), 'a')
-f(1, 'a') # E: Argument 2 to "f" has incompatible type "str"; expected "Union[int, None]"
+f(1, 'a') # E: Argument 2 to "f" has incompatible type "str"; expected "Optional[int]"
 
-f('a', 'a') # E: Argument 2 to "f" has incompatible type "str"; expected "Union[Type[Any], None]"
+f('a', 'a') # E: Argument 2 to "f" has incompatible type "str"; expected "Optional[Type[Any]]"
 f('a', str)
 f('a', int)
 f('a', None)
