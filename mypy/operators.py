@@ -66,6 +66,8 @@ reverse_op_methods = {
     '__le__': '__ge__',
 }  # type: Final
 
+reverse_op_method_names = set(reverse_op_methods.values())  # type: Final
+
 # Suppose we have some class A. When we do A() + A(), Python will only check
 # the output of A().__add__(A()) and skip calling the __radd__ method entirely.
 # This shortcut is used only for the following methods:
