@@ -783,3 +783,23 @@ reveal_type(dynamic_signature(1))  # N: Revealed type is "builtins.int"
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/function_sig_hook.py
+
+[case testPluginCalledCorrectlyWhenMethodInDecorator]
+# flags: --config-file tmp/mypy.ini
+from typing import TypeVar, Callable
+
+T = TypeVar('T')
+class Foo:
+    def a(self, x: Callable[[], T]) -> Callable[[], T]: ...
+
+b = Foo()
+
+@b.a
+def f() -> None:
+    pass
+
+reveal_type(f())  # N: Revealed type is "builtins.str"
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/method_in_decorator.py
