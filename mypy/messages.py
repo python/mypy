@@ -28,12 +28,12 @@ from mypy.types import (
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.nodes import (
-    TypeInfo, Context, MypyFile, op_methods, op_methods_to_symbols,
-    FuncDef, reverse_builtin_aliases,
+    TypeInfo, Context, MypyFile, FuncDef, reverse_builtin_aliases,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
     CallExpr, IndexExpr, StrExpr, SymbolTable, TempNode
 )
+from mypy.operators import op_methods, op_methods_to_symbols
 from mypy.subtypes import (
     is_subtype, find_member, get_member_flags,
     IS_SETTABLE, IS_CLASSVAR, IS_CLASS_OR_STATIC,

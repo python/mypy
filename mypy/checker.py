@@ -27,6 +27,7 @@ from mypy.nodes import (
     is_final_node,
     ARG_NAMED)
 from mypy import nodes
+from mypy import operators
 from mypy.literals import literal, literal_hash, Key
 from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any
 from mypy.types import (
@@ -1026,13 +1027,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if self.options.python_version[0] == 2 and method_name == '__div__':
             return True
         else:
-            return method_name in nodes.reverse_op_methods
+            return method_name in operators.reverse_op_methods
 
     def is_reverse_op_method(self, method_name: str) -> bool:
         if self.options.python_version[0] == 2 and method_name == '__rdiv__':
             return True
         else:
-            return method_name in nodes.reverse_op_method_set
+            return method_name in operators.reverse_op_method_set
 
     def check_for_missing_annotations(self, fdef: FuncItem) -> None:
         # Check for functions with unspecified/not fully specified types.
@@ -1188,7 +1189,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if self.options.python_version[0] == 2 and reverse_name == '__rdiv__':
             forward_name = '__div__'
         else:
-            forward_name = nodes.normal_from_reverse_op[reverse_name]
+            forward_name = operators.normal_from_reverse_op[reverse_name]
         forward_inst = get_proper_type(reverse_type.arg_types[1])
         if isinstance(forward_inst, TypeVarType):
             forward_inst = get_proper_type(forward_inst.upper_bound)
@@ -1327,7 +1328,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         They cannot arbitrarily overlap with __add__.
         """
         method = defn.name
-        if method not in nodes.inplace_operator_methods:
+        if method not in operators.inplace_operator_methods:
             return
         typ = bind_self(self.function_type(defn))
         cls = defn.info
@@ -1447,7 +1448,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # (__init__, __new__, __init_subclass__ are special).
                 if self.check_method_override_for_base_with_name(defn, name, base):
                     return True
-                if name in nodes.inplace_operator_methods:
+                if name in operators.inplace_operator_methods:
                     # Figure out the name of the corresponding operator method.
                     method = '__' + name[3:]
                     # An inplace operator method such as __iadd__ might not be
@@ -5529,9 +5530,9 @@ def infer_operator_assignment_method(typ: Type, operator: str) -> Tuple[bool, st
     depending on which method is supported by the type.
     """
     typ = get_proper_type(typ)
-    method = nodes.op_methods[operator]
+    method = operators.op_methods[operator]
     if isinstance(typ, Instance):
-        if operator in nodes.ops_with_inplace_method:
+        if operator in operators.ops_with_inplace_method:
             inplace_method = '__i' + method[2:]
             if typ.type.has_readable_member(inplace_method):
                 return True, inplace_method

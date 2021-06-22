@@ -46,7 +46,8 @@ for op, funcname in [('+', 'PyNumber_Add'),
                      ('>>', 'PyNumber_Rshift'),
                      ('&', 'PyNumber_And'),
                      ('^', 'PyNumber_Xor'),
-                     ('|', 'PyNumber_Or')]:
+                     ('|', 'PyNumber_Or'),
+                     ('@', 'PyNumber_MatrixMultiply')]:
     binary_op(name=op,
               arg_types=[object_rprimitive, object_rprimitive],
               return_type=object_rprimitive,
