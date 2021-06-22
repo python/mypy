@@ -230,10 +230,14 @@ class FindModuleCache:
             elif not plausible_match and (self.fscache.isdir(dir_path)
                                           or self.fscache.isfile(dir_path + ".py")):
                 plausible_match = True
-        if (is_legacy_bundled_package(components[0], self.python_major_ver)
-                or is_legacy_bundled_package('.'.join(components[:2]), self.python_major_ver)):
+        if is_legacy_bundled_package(components[0], self.python_major_ver):
+            if (len(components) == 1
+                    or (self.find_module(components[0]) is
+                        ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED)):
+                return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
+        if is_legacy_bundled_package('.'.join(components[:2]), self.python_major_ver):
             return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
-        elif plausible_match:
+        if plausible_match:
             return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS
         else:
             return ModuleNotFoundReason.NOT_FOUND
