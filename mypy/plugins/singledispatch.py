@@ -84,7 +84,6 @@ def create_singledispatch_function_callback(ctx: FunctionContext) -> Type:
 def singledispatch_register_callback(ctx: MethodContext) -> Type:
     # TODO: support passing class to register as argument (and add tests for that)
     if isinstance(ctx.type, Instance):
-        metadata = get_singledispatch_info(ctx.type)
         # TODO: check that there's only one argument
         first_arg_type = get_proper_type(get_first_arg(ctx.arg_types))
         if isinstance(first_arg_type, (CallableType, Overloaded)) and first_arg_type.is_type_obj():
@@ -102,10 +101,22 @@ def singledispatch_register_callback(ctx: MethodContext) -> Type:
             return register_callable
         elif isinstance(first_arg_type, CallableType):
             # TODO: do more checking for registered functions
-            metadata['registered'].add(first_arg_type)
+            register_function(ctx.type, first_arg_type)
 
     # register doesn't modify the function it's used on
     return ctx.default_return_type
+
+
+def register_function(singledispatch_obj: Instance, func: Type,
+                      register_arg: Optional[Type] = None) -> None:
+
+    expanded_func = get_proper_type(func)
+    if not isinstance(expanded_func, CallableType):
+        return
+    metadata = get_singledispatch_info(singledispatch_obj)
+    # TODO: use register_arg
+    # Should we store the expanded or unexpanded function?
+    metadata['registered'].add(expanded_func)
 
 
 def rename_func(func: CallableType, new_name: CallableType) -> CallableType:
