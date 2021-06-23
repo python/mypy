@@ -11,7 +11,6 @@ generator comprehensions as the argument.
 
 See comment below for more documentation.
 """
-import re
 
 from typing import Callable, Optional, Dict, Tuple, List
 
