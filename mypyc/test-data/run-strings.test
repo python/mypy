@@ -192,7 +192,7 @@ def test_format_method() -> None:
     assert s3 == "Eric! Hi!"
     s4 = "{}, Hi, {}".format(name, name)
     assert s4 == "Eric, Hi, Eric"
-    s5 = "Hi! {}".format(name}
+    s5 = "Hi! {}".format(name)
     assert s5 == "Hi! Eric"
     s6 = "Hi, I'm {}. I'm {}.".format(name, age)
     assert s6 == "Hi, I'm Eric. I'm 14."
