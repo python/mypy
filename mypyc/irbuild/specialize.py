@@ -25,7 +25,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
-    bool_rprimitive, is_dict_rprimitive, c_int_rprimitive
+    bool_rprimitive, is_dict_rprimitive, c_int_rprimitive, object_rprimitive
 )
 from mypyc.primitives.dict_ops import (
     dict_keys_op, dict_values_op, dict_items_op, dict_setdefault_spec_init_op
@@ -366,17 +366,36 @@ def translate_str_format(
         # TODO
         # Only consider simplest situation here
         format_str = callee.expr.value
-        if format_str.count("{") != format_str.count("{}"):
+        if not str_format_check_helper(format_str):
             return None
 
         literals = [builder.load_str(x) for x in format_str.split("{}")]
         variables = [builder.call_c(str_op, [builder.accept(x)], expr.line) for x in expr.args]
 
+        # Allocate space for the parameter list of CPyStr_Build().
         result_len = len(literals) + len(variables)
-        result_list: List[Value] = [] * (result_len + 1)
+        result_list: List[Value] = [Integer(0, c_int_rprimitive)] * (result_len + 1)
 
+        # The first parameter is the total size of the following PyObject* merged from
+        # two lists alternatively.
         result_list[0] = Integer(result_len, c_int_rprimitive, expr.line)
         result_list[1::2] = literals
         result_list[2::2] = variables
         return builder.call_c(str_build_op, result_list, expr.line)
     return None
+
+
+# A helper function for checking whether the format_str can be optimized by
+# translate_str_format().
+def str_format_check_helper(format_str: str) -> bool:
+    prev = ''
+    for c in format_str:
+        if (c == '{' and prev == '{'
+                or c == '}' and prev == '}'):
+            prev = ''
+            continue
+        if (c == '}' and prev != '{'
+                or prev == '{' and c != '}'):
+            return False
+        prev = c
+    return True

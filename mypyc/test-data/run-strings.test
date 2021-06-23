@@ -184,15 +184,13 @@ def test_str_to_bool() -> None:
 def test_format_method() -> None:
     name = "Eric"
     age = 14
-    s1 = "Hello, {}!".format(name)
-    assert s1 == "Hello, Eric!"
-    s2 = "{}".format(name)
-    assert s2 == "Eric"
-    s3 = "{}! Hi!".format(name)
-    assert s3 == "Eric! Hi!"
-    s4 = "{}, Hi, {}".format(name, name)
-    assert s4 == "Eric, Hi, Eric"
-    s5 = "Hi! {}".format(name)
-    assert s5 == "Hi! Eric"
-    s6 = "Hi, I'm {}. I'm {}.".format(name, age)
-    assert s6 == "Hi, I'm Eric. I'm 14."
+
+    assert "Hello, {}!".format(name) == "Hello, Eric!"
+    assert "{}".format(name) == "Eric"
+    assert "{}! Hi!".format(name) == "Eric! Hi!"
+    assert "{}, Hi, {}".format(name, name) == "Eric, Hi, Eric"
+    assert "Hi! {}".format(name) == "Hi! Eric"
+    assert "Hi, I'm {}. I'm {}.".format(name, age) == "Hi, I'm Eric. I'm 14."
+
+    assert "{{}}{}".format(name) == "{}Eric"
+    assert "Hi! {{{}}}".format(name) == "Hi! {Eric}"
