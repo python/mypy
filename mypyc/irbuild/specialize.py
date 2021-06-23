@@ -11,12 +11,13 @@ generator comprehensions as the argument.
 
 See comment below for more documentation.
 """
+import re
 
 from typing import Callable, Optional, Dict, Tuple, List
 
 from mypy.nodes import (
     CallExpr, RefExpr, MemberExpr, NameExpr, TupleExpr, GeneratorExpr,
-    ListExpr, DictExpr, ARG_POS
+    ListExpr, DictExpr, StrExpr, ARG_POS
 )
 from mypy.types import AnyType, TypeOfAny
 
@@ -32,6 +33,7 @@ from mypyc.primitives.dict_ops import (
 )
 from mypyc.primitives.list_ops import new_list_set_item_op
 from mypyc.primitives.tuple_ops import new_tuple_set_item_op
+from mypyc.primitives.str_ops import str_op, str_build_op
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import (
     translate_list_comprehension, translate_set_comprehension,
@@ -354,5 +356,30 @@ def translate_dict_setdefault(
         key_val = builder.accept(expr.args[0])
         return builder.call_c(dict_setdefault_spec_init_op,
                               [callee_dict, key_val, data_type],
+                              expr.line)
+    return None
+
+
+@specialize_function('format', str_rprimitive)
+def translate_str_format(
+        builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+    if isinstance(callee, MemberExpr) and isinstance(callee.expr, StrExpr):
+        # TODO
+        # Only consider simplest situation here
+        format_str = callee.expr.value
+        if format_str.count("{") != format_str.count("{}"):
+            return
+
+        literals = [builder.load_str(x) for x in format_str.split("{}")]
+        variables = [builder.call_c(str_op, [builder.accept(x)], expr.line) for x in expr.args]
+
+        result_len = len(literals) + len(variables)
+        result_list = [None] * result_len
+
+        result_list[::2] = literals
+        result_list[1::2] = variables
+
+        return builder.call_c(str_build_op,
+                              [Integer(result_len, c_int_rprimitive)] + result_list,
                               expr.line)
     return None

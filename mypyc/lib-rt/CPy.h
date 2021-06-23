@@ -384,6 +384,7 @@ static inline char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {
 // Str operations
 
 
+PyObject *CPyStr_Build(int len, ...);
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
 PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split);
 PyObject *CPyStr_Replace(PyObject *str, PyObject *old_substr, PyObject *new_substr, CPyTagged max_replace);
