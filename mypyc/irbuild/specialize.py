@@ -367,18 +367,16 @@ def translate_str_format(
         # Only consider simplest situation here
         format_str = callee.expr.value
         if format_str.count("{") != format_str.count("{}"):
-            return
+            return None
 
         literals = [builder.load_str(x) for x in format_str.split("{}")]
         variables = [builder.call_c(str_op, [builder.accept(x)], expr.line) for x in expr.args]
 
         result_len = len(literals) + len(variables)
-        result_list = [None] * result_len
+        result_list: List[Value] = [] * (result_len + 1)
 
-        result_list[::2] = literals
-        result_list[1::2] = variables
-
-        return builder.call_c(str_build_op,
-                              [Integer(result_len, c_int_rprimitive)] + result_list,
-                              expr.line)
+        result_list[0] = Integer(result_len, c_int_rprimitive, expr.line)
+        result_list[1::2] = literals
+        result_list[2::2] = variables
+        return builder.call_c(str_build_op, result_list, expr.line)
     return None
