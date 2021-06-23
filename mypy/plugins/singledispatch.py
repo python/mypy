@@ -108,6 +108,15 @@ def singledispatch_register_callback(ctx: MethodContext) -> Type:
     return ctx.default_return_type
 
 
+def rename_func(func: CallableType, new_name: CallableType) -> CallableType:
+    """Return a new CallableType that is `function` with the name of `new_name`"""
+    if new_name.name is not None:
+        signature_used = func.with_name(new_name.name)
+    else:
+        signature_used = func
+    return signature_used
+
+
 def call_singledispatch_function_callback(ctx: MethodSigContext) -> CallableType:
     if not isinstance(ctx.type, Instance):
         return ctx.default_signature
@@ -126,9 +135,5 @@ def call_singledispatch_function_callback(ctx: MethodSigContext) -> CallableType
                 # use the fallback's name so that error messages say that the arguments to
                 # the fallback are incorrect (instead of saying arguments to the registered
                 # implementation are incorrect)
-                if fallback.name is not None:
-                    signature_used = func.with_name(fallback.name)
-                else:
-                    signature_used = func
-                return signature_used
+                return rename_func(func, fallback)
     return fallback
