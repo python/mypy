@@ -1,7 +1,11 @@
+from mypy.plugins.common import add_method_to_class_with_function_type
+from mypy.nodes import ARG_POS, Argument, Block, ClassDef, SymbolTable, TypeInfo, Var
 from mypy.checker import TypeChecker
 from mypy.subtypes import is_subtype
-from mypy.types import CallableType, Instance, Type, get_proper_type
-from mypy.plugin import FunctionContext, MethodContext, MethodSigContext
+from mypy.types import (
+    AnyType, CallableType, Instance, NoneType, Overloaded, Type, TypeOfAny, get_proper_type
+)
+from mypy.plugin import CheckerPluginInterface, FunctionContext, MethodContext, MethodSigContext
 from typing import List, Optional, Set, TypeVar, cast
 from typing_extensions import TypedDict
 
@@ -10,6 +14,11 @@ SingledispatchInfo = TypedDict('SingledispatchInfo', {
     # use a set to make sure we don't add the same function multiple times if the register
     # callback gets called multiple times
     'registered': Set[CallableType],
+})
+
+RegisterCallableInfo = TypedDict('RegisterCallableInfo', {
+    'register_type': Type,
+    'singledispatch_obj': Instance,
 })
 
 SINGLEDISPATCH_TYPE = 'functools._SingleDispatchCallable'
@@ -30,6 +39,26 @@ def get_first_arg(args: List[List[T]]) -> Optional[T]:
     if args and args[0]:
         return args[0][0]
     return None
+
+
+REGISTER_RETURN_CLASS = 'SingleDispatchRegisterCallable'
+
+
+def make_fake_register_class_instance(api: CheckerPluginInterface) -> Instance:
+    defn = ClassDef(REGISTER_RETURN_CLASS, Block([]))
+    defn.fullname = 'functools.{}'.format(REGISTER_RETURN_CLASS)
+    info = TypeInfo(SymbolTable(), defn, "functools")
+    obj_type = api.named_generic_type('builtins.object', []).type
+    info.bases = [Instance(obj_type, [])]
+    info.mro = [info, obj_type]
+    defn.info = info
+
+    function_type = api.named_generic_type('builtins.function', [])
+
+    func_arg = Argument(Var('name'), AnyType(TypeOfAny.implementation_artifact), None, ARG_POS)
+    add_method_to_class_with_function_type(function_type, defn, '__call__', [func_arg], NoneType())
+
+    return Instance(info, [])
 
 
 def create_singledispatch_function_callback(ctx: FunctionContext) -> Type:
@@ -58,7 +87,20 @@ def singledispatch_register_callback(ctx: MethodContext) -> Type:
         metadata = get_singledispatch_info(ctx.type)
         # TODO: check that there's only one argument
         first_arg_type = get_proper_type(get_first_arg(ctx.arg_types))
-        if isinstance(first_arg_type, CallableType):
+        if isinstance(first_arg_type, (CallableType, Overloaded)) and first_arg_type.is_type_obj():
+            # HACK: We receieved a class as an argument to register. We need to be able
+            # to access the function that register is being applied to, and the typeshed definition
+            # of register has it return a generic Callable, so we create a new
+            # SingleDispatchRegisterCallable class, define a __call__ method, and then add a
+            # plugin hook for that.
+            register_callable = make_fake_register_class_instance(ctx.api)
+            register_metadata = {
+                'register_type': first_arg_type,
+                'singledispatch_obj': ctx.type
+            }  # type: RegisterCallableInfo
+            register_callable.type.metadata[METADATA_KEY] = register_metadata  # type: ignore
+            return register_callable
+        elif isinstance(first_arg_type, CallableType):
             # TODO: do more checking for registered functions
             metadata['registered'].add(first_arg_type)
 
