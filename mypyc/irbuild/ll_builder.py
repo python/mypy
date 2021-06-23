@@ -1094,8 +1094,6 @@ class LowLevelIRBuilder:
                         args: List[Value],
                         line: int,
                         result_type: Optional[RType] = None) -> Optional[Value]:
-        # TODO: this function is very similar to matching_primitive_op
-        # we should remove the old one or refactor both them into only as we move forward
         matching = None  # type: Optional[CFunctionDescription]
         for desc in candidates:
             if len(desc.arg_types) != len(args):
