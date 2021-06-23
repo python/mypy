@@ -7,7 +7,7 @@ from mypy.nodes import (
 from mypy.plugin import ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy.semanal import set_callable_name
 from mypy.types import (
-    CallableType, Overloaded, Type, TypeVarDef, deserialize_type, get_proper_type,
+    CallableType, Instance, Overloaded, Type, TypeVarDef, deserialize_type, get_proper_type,
 )
 from mypy.typevars import fill_typevars
 from mypy.util import get_unique_redefinition_name
@@ -113,6 +113,27 @@ def add_method_to_class(
 ) -> None:
     """Adds a new method to a class definition.
     """
+    function_type = api.named_type('__builtins__.function')
+    add_method_to_class_with_function_type(function_type,
+                    cls=cls,
+                    name=name,
+                    args=args,
+                    return_type=return_type,
+                    self_type=self_type,
+                    tvar_def=tvar_def)
+
+
+def add_method_to_class_with_function_type(
+    function_type: Instance,
+    cls: ClassDef,
+    name: str,
+    args: List[Argument],
+    return_type: Type,
+    self_type: Optional[Type] = None,
+    tvar_def: Optional[TypeVarDef] = None,
+) -> None:
+    """Add a method to the given class, using `function_type` as the fallback for the created
+    method (which will probably just be builtins.function)"""
     info = cls.info
 
     # First remove any previously generated methods with the same name
@@ -123,7 +144,6 @@ def add_method_to_class(
             cls.defs.body.remove(sym.node)
 
     self_type = self_type or fill_typevars(info)
-    function_type = api.named_type('__builtins__.function')
 
     args = [Argument(Var('self'), self_type, None, ARG_POS)] + args
     arg_types, arg_names, arg_kinds = [], [], []
