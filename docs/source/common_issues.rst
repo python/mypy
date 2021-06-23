@@ -14,7 +14,7 @@ Can't install mypy using pip
 
 If installation fails, you've probably hit one of these issues:
 
-* Mypy needs Python 3.5 or later to run.
+* Mypy needs Python 3.6 or later to run.
 * You may have to run pip like this:
   ``python3 -m pip install mypy``.
 
@@ -428,8 +428,8 @@ More specifically, mypy will understand the use of :py:data:`sys.version_info` a
    import sys
 
    # Distinguishing between different versions of Python:
-   if sys.version_info >= (3, 5):
-       # Python 3.5+ specific definitions and imports
+   if sys.version_info >= (3, 8):
+       # Python 3.8+ specific definitions and imports
    elif sys.version_info[0] >= 3:
        # Python 3 specific definitions and imports
    else:

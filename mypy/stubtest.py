@@ -38,17 +38,7 @@ class Missing:
 MISSING = Missing()
 
 T = TypeVar("T")
-if sys.version_info >= (3, 5, 3):
-    MaybeMissing = Union[T, Missing]
-else:
-    # work around a bug in 3.5.2 and earlier's typing.py
-    class MaybeMissingMeta(type):
-        def __getitem__(self, arg: Any) -> Any:
-            return Union[arg, Missing]
-
-    class MaybeMissing(metaclass=MaybeMissingMeta):  # type: ignore
-        pass
-
+MaybeMissing = Union[T, Missing]
 
 _formatter = FancyFormatter(sys.stdout, sys.stderr, False)
 
@@ -1069,7 +1059,7 @@ def get_typeshed_stdlib_modules(custom_typeshed_dir: Optional[str]) -> List[str]
     """Returns a list of stdlib modules in typeshed (for current Python version)."""
     stdlib_py_versions = mypy.modulefinder.load_stdlib_py_versions(custom_typeshed_dir)
     packages = set()
-    # Typeshed doesn't cover Python 3.5.
+    # Typeshed's minimum supported Python 3 is Python 3.6
     if sys.version_info < (3, 6):
         version_info = (3, 6)
     else:
