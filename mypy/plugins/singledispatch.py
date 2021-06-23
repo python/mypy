@@ -119,6 +119,19 @@ def register_function(singledispatch_obj: Instance, func: Type,
     metadata['registered'].add(expanded_func)
 
 
+def call_singledispatch_function_after_register_argument(ctx: MethodContext) -> Type:
+    """Called on the function after passing a type to register"""
+    register_callable = ctx.type
+    if isinstance(register_callable, Instance):
+        metadata = cast(RegisterCallableInfo, register_callable.type.metadata[METADATA_KEY])
+        func = get_first_arg(ctx.arg_types)
+        if func is not None:
+            register_arg = metadata['register_type']
+            singledispatch_obj = metadata['singledispatch_obj']
+            register_function(singledispatch_obj, func, register_arg)
+    return ctx.default_return_type
+
+
 def rename_func(func: CallableType, new_name: CallableType) -> CallableType:
     """Return a new CallableType that is `function` with the name of `new_name`"""
     if new_name.name is not None:

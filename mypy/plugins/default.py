@@ -78,6 +78,8 @@ class DefaultPlugin(Plugin):
             return path_open_callback
         elif fullname == '{}.register'.format(singledispatch.SINGLEDISPATCH_TYPE):
             return singledispatch.singledispatch_register_callback
+        elif fullname == 'functools.{}.__call__'.format(singledispatch.REGISTER_RETURN_CLASS):
+            return singledispatch.call_singledispatch_function_after_register_argument
         return None
 
     def get_attribute_hook(self, fullname: str
