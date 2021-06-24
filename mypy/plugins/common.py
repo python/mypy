@@ -111,16 +111,17 @@ def add_method_to_class(
         self_type: Optional[Type] = None,
         tvar_def: Optional[TypeVarDef] = None,
 ) -> None:
-    """Adds a new method to a class definition.
-    """
+    """Adds a new method to a class definition."""
     function_type = api.named_type('__builtins__.function')
-    add_method_to_class_with_function_type(function_type,
-                    cls=cls,
-                    name=name,
-                    args=args,
-                    return_type=return_type,
-                    self_type=self_type,
-                    tvar_def=tvar_def)
+    add_method_to_class_with_function_type(
+        function_type,
+        cls=cls,
+        name=name,
+        args=args,
+        return_type=return_type,
+        self_type=self_type,
+        tvar_def=tvar_def,
+    )
 
 
 def add_method_to_class_with_function_type(
