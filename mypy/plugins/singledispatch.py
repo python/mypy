@@ -6,7 +6,7 @@ from mypy.types import (
     AnyType, CallableType, Instance, NoneType, Overloaded, Type, TypeOfAny, get_proper_type
 )
 from mypy.plugin import CheckerPluginInterface, FunctionContext, MethodContext, MethodSigContext
-from typing import Dict, List, Optional, Sequence, TypeVar, cast
+from typing import Dict, List, NamedTuple, Optional, Sequence, TypeVar, cast
 from typing_extensions import Final, TypedDict
 
 SingledispatchInfo = TypedDict('SingledispatchInfo', {
@@ -17,6 +17,10 @@ SingledispatchInfo = TypedDict('SingledispatchInfo', {
     'registered': Dict[Type, CallableType],
 })
 
+RegisterCallableInfo = NamedTuple('RegisterCallableInfo', [
+    ('register_type', Type),
+    ('singledispatch_obj', Instance),
+])
 
 SINGLEDISPATCH_TYPE = 'functools._SingleDispatchCallable'
 
@@ -99,9 +103,10 @@ def singledispatch_register_callback(ctx: MethodContext) -> Type:
             # is_subtype doesn't work when the right type is Overloaded, so we need the
             # actual type
             register_type = first_arg_type.items()[0].ret_type
+            type_args = RegisterCallableInfo(register_type, ctx.type)
             register_callable = make_fake_register_class_instance(
                 ctx.api,
-                [register_type, ctx.type]
+                type_args
             )
             return register_callable
         elif isinstance(first_arg_type, CallableType):
@@ -141,10 +146,10 @@ def call_singledispatch_function_after_register_argument(ctx: MethodContext) -> 
     """Called on the function after passing a type to register"""
     register_callable = ctx.type
     if isinstance(register_callable, Instance):
-        register_arg, singledispatch_obj = register_callable.args
+        type_args = cast(RegisterCallableInfo, register_callable.args)
         func = get_first_arg(ctx.arg_types)
         if func is not None:
-            register_function(singledispatch_obj, func, register_arg)
+            register_function(type_args.singledispatch_obj, func, type_args.register_type)
     return ctx.default_return_type
 
 
