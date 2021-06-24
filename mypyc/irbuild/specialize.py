@@ -370,6 +370,9 @@ def translate_str_format(
         if not can_optimize_format(format_str):
             return None
 
+        format_str = format_str.replace("{{", "{")
+        format_str = format_str.replace("}}", "}")
+
         literals = format_str.split("{}")
         variables = [builder.accept(x) if is_str_rprimitive(builder.node_type(x))
                      else builder.call_c(str_op, [builder.accept(x)], expr.line)
