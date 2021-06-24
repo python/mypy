@@ -17,10 +17,6 @@ SingledispatchInfo = TypedDict('SingledispatchInfo', {
     'registered': Dict[Type, CallableType],
 })
 
-RegisterCallableInfo = TypedDict('RegisterCallableInfo', {
-    'register_type': Type,
-    'singledispatch_obj': Instance,
-})
 
 SINGLEDISPATCH_TYPE = 'functools._SingleDispatchCallable'
 
@@ -50,7 +46,9 @@ REGISTER_RETURN_CLASS = '_SingleDispatchRegisterCallable'
 
 REGISTER_CALLABLE_CALL_METHOD = 'functools.{}.__call__'.format(REGISTER_RETURN_CLASS)  # type: Final
 
-def make_fake_register_class_instance(api: CheckerPluginInterface) -> Instance:
+
+def make_fake_register_class_instance(api: CheckerPluginInterface, type_args: Sequence[Type]
+                                      ) -> Instance:
     defn = ClassDef(REGISTER_RETURN_CLASS, Block([]))
     defn.fullname = 'functools.{}'.format(REGISTER_RETURN_CLASS)
     info = TypeInfo(SymbolTable(), defn, "functools")
@@ -64,7 +62,7 @@ def make_fake_register_class_instance(api: CheckerPluginInterface) -> Instance:
     func_arg = Argument(Var('name'), AnyType(TypeOfAny.implementation_artifact), None, ARG_POS)
     add_method_to_class_with_function_type(function_type, defn, '__call__', [func_arg], NoneType())
 
-    return Instance(info, [])
+    return Instance(info, type_args)
 
 
 def create_singledispatch_function_callback(ctx: FunctionContext) -> Type:
@@ -101,12 +99,10 @@ def singledispatch_register_callback(ctx: MethodContext) -> Type:
             # is_subtype doesn't work when the right type is Overloaded, so we need the
             # actual type
             register_type = first_arg_type.items()[0].ret_type
-            register_callable = make_fake_register_class_instance(ctx.api)
-            register_metadata = {
-                'register_type': register_type,
-                'singledispatch_obj': ctx.type
-            }  # type: RegisterCallableInfo
-            register_callable.type.metadata[METADATA_KEY] = register_metadata  # type: ignore
+            register_callable = make_fake_register_class_instance(
+                ctx.api,
+                [register_type, ctx.type]
+            )
             return register_callable
         elif isinstance(first_arg_type, CallableType):
             # TODO: do more checking for registered functions
@@ -145,11 +141,9 @@ def call_singledispatch_function_after_register_argument(ctx: MethodContext) -> 
     """Called on the function after passing a type to register"""
     register_callable = ctx.type
     if isinstance(register_callable, Instance):
-        metadata = cast(RegisterCallableInfo, register_callable.type.metadata[METADATA_KEY])
+        register_arg, singledispatch_obj = register_callable.args
         func = get_first_arg(ctx.arg_types)
         if func is not None:
-            register_arg = metadata['register_type']
-            singledispatch_obj = metadata['singledispatch_obj']
             register_function(singledispatch_obj, func, register_arg)
     return ctx.default_return_type
 
