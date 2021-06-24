@@ -6,14 +6,15 @@ from mypy.types import (
     AnyType, CallableType, Instance, NoneType, Overloaded, Type, TypeOfAny, get_proper_type
 )
 from mypy.plugin import CheckerPluginInterface, FunctionContext, MethodContext, MethodSigContext
-from typing import List, Optional, Set, TypeVar, cast
+from typing import Dict, List, Optional, TypeVar, cast
 from typing_extensions import TypedDict
 
 SingledispatchInfo = TypedDict('SingledispatchInfo', {
     'fallback': CallableType,
-    # use a set to make sure we don't add the same function multiple times if the register
-    # callback gets called multiple times
-    'registered': Set[CallableType],
+    # dict of dispatch type to the registered function
+    # dispatch type is stored separately from function because the dispatch type might be different
+    # from the type of the first argument if a type is passed as an argument to register
+    'registered': Dict[Type, CallableType],
 })
 
 RegisterCallableInfo = TypedDict('RegisterCallableInfo', {
@@ -68,7 +69,7 @@ def create_singledispatch_function_callback(ctx: FunctionContext) -> Type:
         # TODO: support using type as argument to register
         metadata = {
             'fallback': func_type,
-            'registered': set()
+            'registered': {}
         }  # type: SingledispatchInfo
 
         # singledispatch returns an instance of functools._SingleDispatchCallable according to
@@ -82,7 +83,6 @@ def create_singledispatch_function_callback(ctx: FunctionContext) -> Type:
 
 
 def singledispatch_register_callback(ctx: MethodContext) -> Type:
-    # TODO: support passing class to register as argument (and add tests for that)
     if isinstance(ctx.type, Instance):
         # TODO: check that there's only one argument
         first_arg_type = get_proper_type(get_first_arg(ctx.arg_types))
@@ -92,9 +92,13 @@ def singledispatch_register_callback(ctx: MethodContext) -> Type:
             # of register has it return a generic Callable, so we create a new
             # SingleDispatchRegisterCallable class, define a __call__ method, and then add a
             # plugin hook for that.
+
+            # is_subtype doesn't work when the right type is Overloaded, so we need the
+            # actual type
+            register_type = first_arg_type.items()[0].ret_type
             register_callable = make_fake_register_class_instance(ctx.api)
             register_metadata = {
-                'register_type': first_arg_type,
+                'register_type': register_type,
                 'singledispatch_obj': ctx.type
             }  # type: RegisterCallableInfo
             register_callable.type.metadata[METADATA_KEY] = register_metadata  # type: ignore
@@ -110,13 +114,26 @@ def singledispatch_register_callback(ctx: MethodContext) -> Type:
 def register_function(singledispatch_obj: Instance, func: Type,
                       register_arg: Optional[Type] = None) -> None:
 
-    expanded_func = get_proper_type(func)
-    if not isinstance(expanded_func, CallableType):
+    func = get_proper_type(func)
+    if not isinstance(func, CallableType):
         return
     metadata = get_singledispatch_info(singledispatch_obj)
-    # TODO: use register_arg
-    # Should we store the expanded or unexpanded function?
-    metadata['registered'].add(expanded_func)
+    dispatch_type = get_dispatch_type(func, register_arg)
+    if dispatch_type is None:
+        # TODO: report an error here that singledispatch requires at least one argument
+        # (might want to do the error reporting in get_dispatch_type)
+        return
+    # TODO: report an error if we're overwriting another function (which would happen if multiple
+    # registered functions have the same dispatch type)
+    metadata['registered'][dispatch_type] = func
+
+
+def get_dispatch_type(func: CallableType, register_arg: Optional[Type]) -> Optional[Type]:
+    if register_arg is not None:
+        return register_arg
+    if func.arg_types:
+        return func.arg_types[0]
+    return None
 
 
 def call_singledispatch_function_after_register_argument(ctx: MethodContext) -> Type:
@@ -152,12 +169,10 @@ def call_singledispatch_function_callback(ctx: MethodSigContext) -> CallableType
     # (expr_checker probably isn't part of the public API)
     passed_type = cast(TypeChecker, ctx.api).expr_checker.accept(first_arg)
     fallback = metadata['fallback']
-    for func in metadata['registered']:
-        if func.arg_types:
-            sig_type = func.arg_types[0]
-            if is_subtype(passed_type, sig_type):
-                # use the fallback's name so that error messages say that the arguments to
-                # the fallback are incorrect (instead of saying arguments to the registered
-                # implementation are incorrect)
-                return rename_func(func, fallback)
+    for dispatch_type, func in metadata['registered'].items():
+        if is_subtype(passed_type, dispatch_type):
+            # use the fallback's name so that error messages say that the arguments to
+            # the fallback are incorrect (instead of saying arguments to the registered
+            # implementation are incorrect)
+            return rename_func(func, fallback)
     return fallback
