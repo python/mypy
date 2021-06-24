@@ -25,7 +25,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
-    bool_rprimitive, is_dict_rprimitive, c_int_rprimitive
+    bool_rprimitive, is_dict_rprimitive, c_int_rprimitive, is_str_rprimitive
 )
 from mypyc.primitives.dict_ops import (
     dict_keys_op, dict_values_op, dict_items_op, dict_setdefault_spec_init_op
@@ -38,7 +38,6 @@ from mypyc.irbuild.for_helpers import (
     translate_list_comprehension, translate_set_comprehension,
     comprehension_helper, sequence_from_generator_preallocate_helper
 )
-
 
 # Specializers are attempted before compiling the arguments to the
 # function.  Specializers can return None to indicate that they failed
@@ -63,9 +62,11 @@ def specialize_function(
     There may exist multiple specializers for one function. When translating method
     calls, the earlier appended specializer has higher priority.
     """
+
     def wrapper(f: Specializer) -> Specializer:
         specializers.setdefault((name, typ), []).append(f)
         return f
+
     return wrapper
 
 
@@ -190,13 +191,13 @@ def translate_safe_generator_call(
             return builder.gen_method_call(
                 builder.accept(callee.expr), callee.name,
                 ([translate_list_comprehension(builder, expr.args[0])]
-                    + [builder.accept(arg) for arg in expr.args[1:]]),
+                 + [builder.accept(arg) for arg in expr.args[1:]]),
                 builder.node_type(expr), expr.line, expr.arg_kinds, expr.arg_names)
         else:
             return builder.call_refexpr_with_args(
                 expr, callee,
                 ([translate_list_comprehension(builder, expr.args[0])]
-                    + [builder.accept(arg) for arg in expr.args[1:]]))
+                 + [builder.accept(arg) for arg in expr.args[1:]]))
     return None
 
 
@@ -344,7 +345,7 @@ def translate_dict_setdefault(
                 return None
             data_type = Integer(2, c_int_rprimitive, expr.line)
         elif (isinstance(arg, CallExpr) and isinstance(arg.callee, NameExpr)
-                and arg.callee.fullname == 'builtins.set'):
+              and arg.callee.fullname == 'builtins.set'):
             if len(arg.args):
                 return None
             data_type = Integer(3, c_int_rprimitive, expr.line)
@@ -362,32 +363,37 @@ def translate_dict_setdefault(
 @specialize_function('format', str_rprimitive)
 def translate_str_format(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-    if isinstance(callee, MemberExpr) and isinstance(callee.expr, StrExpr):
-        # TODO
-        # Only consider simplest situation here
+    if (isinstance(callee, MemberExpr) and isinstance(callee.expr, StrExpr)
+            and expr.arg_kinds.count(ARG_POS) == len(expr.arg_kinds)):
+
         format_str = callee.expr.value
-        if not str_format_check_helper(format_str):
+        if not can_optimize_format(format_str):
             return None
 
-        literals = [builder.load_str(x) for x in format_str.split("{}")]
-        variables = [builder.call_c(str_op, [builder.accept(x)], expr.line) for x in expr.args]
-
-        # Allocate space for the parameter list of CPyStr_Build().
-        result_len = len(literals) + len(variables)
-        result_list: List[Value] = [Integer(0, c_int_rprimitive)] * (result_len + 1)
+        literals = format_str.split("{}")
+        variables = [builder.accept(x) if is_str_rprimitive(builder.node_type(x))
+                     else builder.call_c(str_op, [builder.accept(x)], expr.line)
+                     for x in expr.args]
 
         # The first parameter is the total size of the following PyObject* merged from
         # two lists alternatively.
-        result_list[0] = Integer(result_len, c_int_rprimitive, expr.line)
-        result_list[1::2] = literals
-        result_list[2::2] = variables
+        result_list: List[Value] = [Integer(0, c_int_rprimitive)]
+        for a, b in zip(literals, variables):
+            if a:
+                result_list.append(builder.load_str(a))
+            result_list.append(b)
+        # The str.split() always generates one more element
+        if literals[-1]:
+            result_list.append(builder.load_str(literals[-1]))
+
+        result_list[0] = Integer(len(result_list) - 1, c_int_rprimitive)
         return builder.call_c(str_build_op, result_list, expr.line)
     return None
 
 
-# A helper function for checking whether the format_str can be optimized by
-# translate_str_format().
-def str_format_check_helper(format_str: str) -> bool:
+def can_optimize_format(format_str: str) -> bool:
+    # TODO
+    # Only empty brackets can be optimized
     prev = ''
     for c in format_str:
         if (c == '{' and prev == '{'
