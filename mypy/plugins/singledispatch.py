@@ -6,7 +6,7 @@ from mypy.types import (
     AnyType, CallableType, Instance, NoneType, Overloaded, Type, TypeOfAny, get_proper_type
 )
 from mypy.plugin import CheckerPluginInterface, FunctionContext, MethodContext, MethodSigContext
-from typing import Dict, List, Optional, TypeVar, cast
+from typing import Dict, List, Optional, Sequence, TypeVar, cast
 from typing_extensions import Final, TypedDict
 
 SingledispatchInfo = TypedDict('SingledispatchInfo', {
