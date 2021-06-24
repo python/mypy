@@ -194,3 +194,6 @@ def test_format_method() -> None:
 
     assert "{{}}{}".format(name) == "{}Eric"
     assert "Hi! {{{}}}".format(name) == "Hi! {Eric}"
+    assert "Hi! {{ {}".format(name) == "Hi! { Eric"
+    assert "Hi! {{ {} }}}}".format(name) == "Hi! { Eric }}"
+
