@@ -1091,7 +1091,7 @@ def _load_json_file(file: str, manager: BuildManager,
         manager.trace(log_success + data.rstrip())
     try:
         result = json.loads(data)
-    except ValueError:  # TODO: JSONDecodeError in 3.5
+    except json.JSONDecodeError:
         manager.errors.set_file(file, None)
         manager.errors.report(-1, -1,
                               "Error reading JSON file;"

@@ -12,7 +12,7 @@ may not make much sense otherwise.
 Installing and running mypy
 ***************************
 
-Mypy requires Python 3.5 or later to run.  Once you've
+Mypy requires Python 3.6 or later to run.  Once you've
 `installed Python 3 <https://www.python.org/downloads/>`_,
 install mypy using pip:
 
