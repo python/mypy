@@ -50,7 +50,7 @@ class DefaultPlugin(Plugin):
             return typed_dict_delitem_signature_callback
         elif fullname == 'ctypes.Array.__setitem__':
             return ctypes.array_setitem_callback
-        elif fullname == '{}.__call__'.format(singledispatch.SINGLEDISPATCH_TYPE):
+        elif fullname == singledispatch.SINGLEDISPATCH_CALLABLE_CALL_METHOD:
             return singledispatch.call_singledispatch_function_callback
         return None
 
@@ -76,9 +76,9 @@ class DefaultPlugin(Plugin):
             return ctypes.array_iter_callback
         elif fullname == 'pathlib.Path.open':
             return path_open_callback
-        elif fullname == '{}.register'.format(singledispatch.SINGLEDISPATCH_TYPE):
+        elif fullname == singledispatch.SINGLEDISPATCH_REGISTER_METHOD:
             return singledispatch.singledispatch_register_callback
-        elif fullname == 'functools.{}.__call__'.format(singledispatch.REGISTER_RETURN_CLASS):
+        elif fullname == singledispatch.REGISTER_CALLABLE_CALL_METHOD:
             return singledispatch.call_singledispatch_function_after_register_argument
         return None
 

@@ -7,7 +7,7 @@ from mypy.types import (
 )
 from mypy.plugin import CheckerPluginInterface, FunctionContext, MethodContext, MethodSigContext
 from typing import Dict, List, Optional, TypeVar, cast
-from typing_extensions import TypedDict
+from typing_extensions import Final, TypedDict
 
 SingledispatchInfo = TypedDict('SingledispatchInfo', {
     'fallback': CallableType,
@@ -27,6 +27,10 @@ SINGLEDISPATCH_TYPE = 'functools._SingleDispatchCallable'
 # key that we use for everything we store in TypeInfo metadata
 METADATA_KEY = 'singledispatch'
 
+SINGLEDISPATCH_REGISTER_METHOD = '{}.register'.format(SINGLEDISPATCH_TYPE)  # type: Final
+
+SINGLEDISPATCH_CALLABLE_CALL_METHOD = '{}.__call__'.format(SINGLEDISPATCH_TYPE)  # type: Final
+
 
 def get_singledispatch_info(typ: Instance) -> 'SingledispatchInfo':
     return typ.type.metadata[METADATA_KEY]  # type: ignore
@@ -44,6 +48,7 @@ def get_first_arg(args: List[List[T]]) -> Optional[T]:
 
 REGISTER_RETURN_CLASS = 'SingleDispatchRegisterCallable'
 
+REGISTER_CALLABLE_CALL_METHOD = 'functools.{}.__call__'.format(REGISTER_RETURN_CLASS)  # type: Final
 
 def make_fake_register_class_instance(api: CheckerPluginInterface) -> Instance:
     defn = ClassDef(REGISTER_RETURN_CLASS, Block([]))
