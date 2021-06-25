@@ -200,3 +200,11 @@ def test_format_method() -> None:
     assert "Hi! {{{}}}".format(name) == "Hi! {Eric}"
     assert "Hi! {{ {}".format(name) == "Hi! { Eric"
     assert "Hi! {{ {} }}}}".format(name) == "Hi! { Eric }}"
+
+    assert "My name is {name}, I'm {age}.".format(name=name, age=age) == "My name is Eric, I'm 14."
+    assert "My name is {A}, I'm {B}.".format(A=name, B=age) == "My name is Eric, I'm 14."
+    assert "My name is {}, I'm {B}.".format(name, B=age) == "My name is Eric, I'm 14."
+    try:
+        "My name is {A}, I'm {}.".format(A=name, age)
+    except SyntaxError:
+        pass
