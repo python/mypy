@@ -1,4 +1,4 @@
-from mypy.plugins.common import add_method_to_class_with_function_type
+from mypy.plugins.common import add_method_to_class
 from mypy.nodes import ARG_POS, Argument, Block, ClassDef, SymbolTable, TypeInfo, Var
 from mypy.checker import TypeChecker
 from mypy.subtypes import is_subtype
@@ -63,10 +63,8 @@ def make_fake_register_class_instance(api: CheckerPluginInterface, type_args: Se
     info.mro = [info, obj_type]
     defn.info = info
 
-    function_type = api.named_generic_type('builtins.function', [])
-
     func_arg = Argument(Var('name'), AnyType(TypeOfAny.implementation_artifact), None, ARG_POS)
-    add_method_to_class_with_function_type(function_type, defn, '__call__', [func_arg], NoneType())
+    add_method_to_class(api, defn, '__call__', [func_arg], NoneType())
 
     return Instance(info, type_args)
 
