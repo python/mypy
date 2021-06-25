@@ -209,7 +209,7 @@ def get_possible_impls(passed_type: Type, registered: Dict[Type, CallableType],
             impls.extend(get_possible_impls(item, registered, fallback))
         return impls
     else:
-        for dispatch_type, func, in registered.items():
+        for dispatch_type, func in registered.items():
             # TODO: search in the order that singledispatch would (starting with implementations
             # that have the same class as the passed type and going up the mro) - This might pick
             # a more general implementation than would get picked by singledispatch
