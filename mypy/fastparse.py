@@ -509,11 +509,12 @@ class ASTConverter:
                     and len(stmt.body[0].body) == 1
                     and isinstance(
                         stmt.body[0].body[0], (Decorator, OverloadedFuncDef))
-                    and infer_reachability_of_if_statement(
+                    and infer_reachability_of_if_statement(  # type: ignore[func-returns-value]
                         stmt, self.options
-                    ) is None  # type: ignore[func-returns-value]
+                    ) is None
                     and stmt.body[0].is_unreachable is False
                 ):
+                    current_overload = []
                     current_overload_name = stmt.body[0].body[0].name
                     last_if_stmt = stmt
                     last_if_overload = stmt.body[0].body[0]
@@ -526,6 +527,8 @@ class ASTConverter:
             ret.append(current_overload[0])
         elif len(current_overload) > 1:
             ret.append(OverloadedFuncDef(current_overload))
+        elif last_if_stmt is not None:
+            ret.append(last_if_stmt)
         return ret
 
     def in_method_scope(self) -> bool:
