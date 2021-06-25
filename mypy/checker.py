@@ -296,7 +296,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             assert not self.current_node_deferred
 
-            all_ = self.globals.get('__all__')
+            all_ = self.globals.get('__all__') if self.globals else None
             if all_ is not None and all_.type is not None:
                 all_node = all_.node
                 assert all_node is not None
