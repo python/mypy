@@ -30,7 +30,7 @@ class function: pass
 class int:
     def __bool__(self) -> bool: pass
 class float: pass
-class str: pass
+class str(Sequence[str]): pass
 class bool(int): pass
 
 property = object() # Dummy definition.

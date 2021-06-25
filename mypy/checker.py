@@ -3998,13 +3998,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if not state.strict_optional:
             return  # if everything can be None, all bets are off
         if self._is_truthy_instance(t):
-            self.msg.note(
+            self.msg.fail(
                 '{} which does not implement __bool__ or __len__ '
                 'so it will always be true in boolean context'.format(self._format_expr_name(expr, t)), expr,
                 code=codes.IMPLICIT_BOOL,
             )
-        elif isinstance(t, UnionType) and all(self._is_truthy_instance(t) for t in t.items):
-            self.msg.note(
+        elif isinstance(t, FunctionLike):
+            self.msg.fail(
+                f'function "{t}" will always be true in boolean context', expr,
+                code=codes.IMPLICIT_BOOL,
+            )
+        elif isinstance(t, UnionType) and all(self._is_truthy_instance(t) or isinstance(t, FunctionLike) for t in t.items):
+            self.msg.fail(
                 "{} none of which implement __bool__ or __len__ "
                 "so it will always be true in boolean context".format(self._format_expr_name(expr, t)), expr,
                 code=codes.IMPLICIT_BOOL,
