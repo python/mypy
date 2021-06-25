@@ -3984,10 +3984,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(node, RefExpr):
             return f'"{node.fullname}" has type "{t}"'
         elif isinstance(node, CallExpr):
-            if isinstance(node.callee, RefExpr):
+            if isinstance(node.callee, MemberExpr):
+                return f'"{node.callee.name}" returns "{t}"'
+            elif isinstance(node.callee, RefExpr) and node.callee.fullname:
                 return f'"{node.callee.fullname}" returns "{t}"'
-            else:
-                return f'call returns "{t}"'
+            return f'call returns "{t}"'
         else:
             return f'expression has type "{t}"'
 
