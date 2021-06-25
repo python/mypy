@@ -2860,8 +2860,8 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
             # they will be taken care of during fine grained update. See also
             # comment about this in `State.__init__()`.
             added = []
-        for dep in (st.ancestors or []) + (dependencies or []) + (st.suppressed or []):
-            ignored = dep in st.suppressed_set and dep not in entry_points if st.suppressed_set else []
+        for dep in st.ancestors + dependencies + (st.suppressed or []):
+            ignored = (dep in st.suppressed_set if st.suppressed_set else False) and (dep not in entry_points)
             if ignored and dep not in added:
                 manager.missing_modules.add(dep)
             elif dep not in graph:
