@@ -1837,6 +1837,7 @@ class State:
         if path and source is None and self.manager.fscache.isdir(path):
             source = ''
         self.source = source
+        self.excluded = False
         if path and source is None and self.manager.cache_enabled:
             self.meta = find_cache_meta(self.id, path, manager)
             # TODO: Get mtime if not cached.
@@ -2008,6 +2009,9 @@ class State:
 
         if matches_exclude(
                 self.path, manager.options.exclude, manager.fscache, manager.options.verbosity >= 2):
+            # What can we do here that makes mypy completely ignore this file?
+            self.excluded = True
+            self.tree = MypyFile([], [])
             return False
 
         # Can we reuse a previously parsed AST? This avoids redundant work in daemon.

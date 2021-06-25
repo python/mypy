@@ -163,6 +163,8 @@ def process_top_levels(graph: 'Graph', scc: List[str], patches: Patches) -> None
     # Initialize ASTs and symbol tables.
     for id in scc:
         state = graph[id]
+        # if state.excluded:
+        #    continue
         assert state.tree is not None
         state.manager.semantic_analyzer.prepare_file(state.tree)
 
@@ -195,6 +197,8 @@ def process_top_levels(graph: 'Graph', scc: List[str], patches: Patches) -> None
         while worklist:
             next_id = worklist.pop()
             state = graph[next_id]
+            if state.excluded:
+                continue
             assert state.tree is not None
             deferred, incomplete, progress = semantic_analyze_target(next_id, state,
                                                                      state.tree,
@@ -216,9 +220,12 @@ def process_top_levels(graph: 'Graph', scc: List[str], patches: Patches) -> None
 def process_functions(graph: 'Graph', scc: List[str], patches: Patches) -> None:
     # Process functions.
     for module in scc:
-        tree = graph[module].tree
+        state = graph[module]
+        if state.excluded:
+            continue
+        tree = state.tree
         assert tree is not None
-        analyzer = graph[module].manager.semantic_analyzer
+        analyzer = state.manager.semantic_analyzer
         # In principle, functions can be processed in arbitrary order,
         # but _methods_ must be processed in the order they are defined,
         # because some features (most notably partial types) depend on
@@ -351,6 +358,8 @@ def semantic_analyze_target(target: str,
 def check_type_arguments(graph: 'Graph', scc: List[str], errors: Errors) -> None:
     for module in scc:
         state = graph[module]
+        if state.excluded:
+            continue
         assert state.tree
         analyzer = TypeArgumentAnalyzer(errors,
                                         state.options,
@@ -384,7 +393,10 @@ def check_type_arguments_in_targets(targets: List[FineGrainedDeferredNode], stat
 
 def calculate_class_properties(graph: 'Graph', scc: List[str], errors: Errors) -> None:
     for module in scc:
-        tree = graph[module].tree
+        state = graph[module]
+        if state.excluded:
+            continue
+        tree = state.tree
         assert tree
         for _, node, _ in tree.local_definitions():
             if isinstance(node.node, TypeInfo):
@@ -393,7 +405,7 @@ def calculate_class_properties(graph: 'Graph', scc: List[str], errors: Errors) -
                     calculate_class_abstract_status(node.node, tree.is_stub, errors)
                     check_protocol_status(node.node, errors)
                     calculate_class_vars(node.node)
-                    add_type_promotion(node.node, tree.names, graph[module].options)
+                    add_type_promotion(node.node, tree.names, state.options)
 
 
 def check_blockers(graph: 'Graph', scc: List[str]) -> None:
