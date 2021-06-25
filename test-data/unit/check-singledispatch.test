@@ -196,3 +196,28 @@ f('a', 1)
 f('a', 'b')
 
 [builtins fixtures/args.pyi]
+
+[case testMultiplePossibleImplementationsForKnownType]
+from functools import singledispatch
+from typing import Union
+
+class A: pass
+class B(A): pass
+class C: pass
+
+@singledispatch
+def f(arg: A) -> None:
+    pass
+
+@f.register
+def g(arg: B) -> None:
+    pass
+
+@f.register
+def h(arg: C) -> None:
+    pass
+
+x: Union[B, C]
+f(x)
+
+[builtins fixtures/args.pyi]
