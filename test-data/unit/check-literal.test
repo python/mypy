@@ -3294,7 +3294,7 @@ q: Union[Truth, NoAnswerSpecified]
 if q:
     reveal_type(q)  # N: Revealed type is "Union[__main__.Truth, __main__.NoAnswerSpecified]"
 else:
-    reveal_type(q)  # E: Statement is unreachable
+    reveal_type(q)  # N: Revealed type is "__main__.NoAnswerSpecified"
 
 w: Union[Truth, AlsoTruth]
 
