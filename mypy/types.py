@@ -842,14 +842,6 @@ class Instance(ProperType):
         # Literal context.
         self.last_known_value = last_known_value
 
-        if (
-            self.type and
-            not self.type.has_readable_member('__bool__') and
-            not self.type.has_readable_member('__len__')
-        ):
-            self.can_be_true = True
-            self.can_be_false = False
-
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_instance(self)
 

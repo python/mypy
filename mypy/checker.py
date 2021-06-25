@@ -3971,6 +3971,25 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         return None, {}
 
+    @staticmethod
+    def _is_truthy_instance(t: Type) -> bool:
+        return (
+            isinstance(t, Instance) and
+            t.type and
+            not t.type.has_readable_member('__bool__') and
+            not t.type.has_readable_member('__len__')
+        )
+
+    def _check_for_truthy_type(self, t: Type, node: Node) -> None:
+        if self._is_truthy_instance(t):
+            self.msg.note(
+                "{} has type '{}' which does not implement __bool__ or __len__ "
+                "so it will always be truthy in boolean context".format(node, t), node)
+        elif isinstance(t, UnionType) and all(self._is_truthy_instance(t) for t in t.items):
+            self.msg.note(
+                "{} has type '{}' where none of the members implement __bool__ or __len__ "
+                "so it will always be truthy in boolean context".format(node, t), node)
+
     def find_type_equals_check(self, node: ComparisonExpr, expr_indices: List[int]
                                ) -> Tuple[TypeMap, TypeMap]:
         """Narrow types based on any checks of the type ``type(x) == T``
@@ -4073,30 +4092,30 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         elif is_false_literal(node):
             return None, {}
         elif isinstance(node, CallExpr):
-            if len(node.args) == 0:
-                return {}, {}
-            expr = collapse_walrus(node.args[0])
-            if refers_to_fullname(node.callee, 'builtins.isinstance'):
-                if len(node.args) != 2:  # the error will be reported elsewhere
-                    return {}, {}
-                if literal(expr) == LITERAL_TYPE:
-                    return self.conditional_type_map_with_intersection(
-                        expr,
-                        type_map[expr],
-                        get_isinstance_type(node.args[1], type_map),
-                    )
-            elif refers_to_fullname(node.callee, 'builtins.issubclass'):
-                if len(node.args) != 2:  # the error will be reported elsewhere
-                    return {}, {}
-                if literal(expr) == LITERAL_TYPE:
-                    return self.infer_issubclass_maps(node, expr, type_map)
-            elif refers_to_fullname(node.callee, 'builtins.callable'):
-                if len(node.args) != 1:  # the error will be reported elsewhere
-                    return {}, {}
-                if literal(expr) == LITERAL_TYPE:
-                    vartype = type_map[expr]
-                    return self.conditional_callable_type_map(expr, vartype)
-            elif isinstance(node.callee, RefExpr):
+            if len(node.args) > 0:
+                expr = collapse_walrus(node.args[0])
+                if refers_to_fullname(node.callee, 'builtins.isinstance'):
+                    if len(node.args) != 2:  # the error will be reported elsewhere
+                        return {}, {}
+                    if literal(expr) == LITERAL_TYPE:
+                        return self.conditional_type_map_with_intersection(
+                            expr,
+                            type_map[expr],
+                            get_isinstance_type(node.args[1], type_map),
+                        )
+                elif refers_to_fullname(node.callee, 'builtins.issubclass'):
+                    if len(node.args) != 2:  # the error will be reported elsewhere
+                        return {}, {}
+                    if literal(expr) == LITERAL_TYPE:
+                        return self.infer_issubclass_maps(node, expr, type_map)
+                elif refers_to_fullname(node.callee, 'builtins.callable'):
+                    if len(node.args) != 1:  # the error will be reported elsewhere
+                        return {}, {}
+                    if literal(expr) == LITERAL_TYPE:
+                        vartype = type_map[expr]
+                        return self.conditional_callable_type_map(expr, vartype)
+
+            if isinstance(node.callee, RefExpr):
                 if node.callee.type_guard is not None:
                     # TODO: Follow keyword args or *args, **kwargs
                     if node.arg_kinds[0] != nodes.ARG_POS:
@@ -4104,6 +4123,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         return {}, {}
                     if literal(expr) == LITERAL_TYPE:
                         return {expr: TypeGuardType(node.callee.type_guard)}, {}
+
+            self._check_for_truthy_type(type_map[node], node)
+
+            return {}, {}
         elif isinstance(node, ComparisonExpr):
             # Step 1: Obtain the types of each operand and whether or not we can
             # narrow their types. (For example, we shouldn't try narrowing the
@@ -4255,6 +4278,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Restrict the type of the variable to True-ish/False-ish in the if and else branches
             # respectively
             vartype = type_map[node]
+            self._check_for_truthy_type(vartype, node)
             if_type = true_only(vartype)  # type: Type
             else_type = false_only(vartype)  # type: Type
             ref = node  # type: Expression
