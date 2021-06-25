@@ -29,8 +29,10 @@ class tuple(Generic[T]): pass
 class function: pass
 class int:
     def __bool__(self) -> bool: pass
-class float: pass
-class str(Sequence[str]): pass
+class float:
+    def __bool__(self) -> bool: pass
+class str:
+    def __len__(self) -> bool: pass
 class bool(int): pass
 
 property = object() # Dummy definition.
