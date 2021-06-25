@@ -4000,11 +4000,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if self._is_truthy_instance(t):
             self.msg.note(
                 '{} which does not implement __bool__ or __len__ '
-                'so it will always be truthy in boolean context'.format(self._format_expr_name(expr, t)), expr)
+                'so it will always be truthy in boolean context'.format(self._format_expr_name(expr, t)), expr,
+                code=codes.IMPLICIT_BOOL,
+            )
         elif isinstance(t, UnionType) and all(self._is_truthy_instance(t) for t in t.items):
             self.msg.note(
                 "{} none of which implement __bool__ or __len__ "
-                "so it will always be truthy in boolean context".format(self._format_expr_name(expr, t)), expr)
+                "so it will always be truthy in boolean context".format(self._format_expr_name(expr, t)), expr,
+                code=codes.IMPLICIT_BOOL,
+            )
 
     def find_type_equals_check(self, node: ComparisonExpr, expr_indices: List[int]
                                ) -> Tuple[TypeMap, TypeMap]:

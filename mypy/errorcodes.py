@@ -117,6 +117,12 @@ REDUNDANT_EXPR = ErrorCode(
     "Warn about redundant expressions",
     'General',
     default_enabled=False)  # type: Final
+IMPLICIT_BOOL = ErrorCode(
+    'implicit-bool',
+    "Warn when an expression whose type does not implement __bool__ or __len__ is used in boolean context "
+    "since it would always evaluate as true",
+    'General',
+    default_enabled=False)  # type: Final
 NAME_MATCH = ErrorCode(
     'name-match', "Check that type definition has consistent naming", 'General')  # type: Final
 
