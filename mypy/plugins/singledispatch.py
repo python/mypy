@@ -3,7 +3,8 @@ from mypy.nodes import ARG_POS, Argument, Block, ClassDef, SymbolTable, TypeInfo
 from mypy.checker import TypeChecker
 from mypy.subtypes import is_subtype
 from mypy.types import (
-    AnyType, CallableType, Instance, NoneType, Overloaded, Type, TypeOfAny, get_proper_type
+    AnyType, CallableType, Instance, NoneType, Overloaded, Type, TypeOfAny, get_proper_type,
+    UnionType
 )
 from mypy.plugin import CheckerPluginInterface, FunctionContext, MethodContext, MethodSigContext
 from typing import Dict, List, NamedTuple, Optional, Sequence, TypeVar, cast
@@ -14,6 +15,8 @@ SingledispatchInfo = TypedDict('SingledispatchInfo', {
     # dict of dispatch type to the registered function
     # dispatch type is stored separately from function because the dispatch type might be different
     # from the type of the first argument if a type is passed as an argument to register
+    # TODO: use Instance for register type because register requires register type to be subclass
+    # of type
     'registered': Dict[Type, CallableType],
 })
 
@@ -173,10 +176,43 @@ def call_singledispatch_function_callback(ctx: MethodSigContext) -> CallableType
     # (expr_checker probably isn't part of the public API)
     passed_type = cast(TypeChecker, ctx.api).expr_checker.accept(first_arg)
     fallback = metadata['fallback']
-    for dispatch_type, func in metadata['registered'].items():
-        if is_subtype(passed_type, dispatch_type):
-            # use the fallback's name so that error messages say that the arguments to
-            # the fallback are incorrect (instead of saying arguments to the registered
-            # implementation are incorrect)
-            return rename_func(func, fallback)
-    return fallback
+
+    # Find all possible implementations that may get called based on the passed type
+    impls = get_possible_impls(passed_type, metadata['registered'], fallback)
+
+    # use the fallback's name so that error messages say that the arguments to
+    # the fallback are incorrect (instead of saying arguments to the registered
+    # implementation are incorrect)
+    possible_impls = list(rename_func(func, fallback) for func in impls)
+    if len(possible_impls) > 1:
+        # the type signature technically says we're returning CallableType, but returning
+        # Overloaded seems to work fine and there doesn't appear to be a better way of telling
+        # mypy that there are multiple possible functions that could get used
+        return Overloaded(possible_impls)  # type: ignore
+    elif len(possible_impls) == 1:
+        return possible_impls[0]
+    else:
+        # we should have at least included the fallback in possible_impls even if none of the
+        # other registered implementations matched
+        assert False, 'should have at least one singledispatch implementation'
+
+
+def get_possible_impls(passed_type: Type, registered: Dict[Type, CallableType],
+                       fallback: CallableType) -> List[CallableType]:
+    """Get all possible registered implementations that could get called"""
+    passed_type = get_proper_type(passed_type)
+    impls = []
+    if isinstance(passed_type, UnionType):
+        for item in passed_type.relevant_items():
+            impls.extend(get_possible_impls(item, registered, fallback))
+        return impls
+    else:
+        for dispatch_type, func, in registered.items():
+            # TODO: search in the order that singledispatch would (starting with implementations
+            # that have the same class as the passed type and going up the mro) - This might pick
+            # a more general implementation than would get picked by singledispatch
+            if is_subtype(passed_type, dispatch_type):
+                impls.append(func)
+                return impls
+        impls.append(fallback)
+    return impls
