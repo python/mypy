@@ -4134,9 +4134,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if literal(expr) == LITERAL_TYPE:
                         vartype = type_map[expr]
                         return self.conditional_callable_type_map(expr, vartype)
-
-            if isinstance(node.callee, RefExpr):
-                if node.callee.type_guard is not None:
+                elif isinstance(node.callee, RefExpr) and node.callee.type_guard is not None:
                     # TODO: Follow keyword args or *args, **kwargs
                     if node.arg_kinds[0] != nodes.ARG_POS:
                         self.fail("Type guard requires positional argument", node)
