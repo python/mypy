@@ -148,7 +148,7 @@ def call_singledispatch_function_after_register_argument(ctx: MethodContext) -> 
     """Called on the function after passing a type to register"""
     register_callable = ctx.type
     if isinstance(register_callable, Instance):
-        type_args = cast(RegisterCallableInfo, register_callable.args)
+        type_args = RegisterCallableInfo(*register_callable.args)  # type: ignore
         func = get_first_arg(ctx.arg_types)
         if func is not None:
             register_function(type_args.singledispatch_obj, func, type_args.register_type)
