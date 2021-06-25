@@ -3980,15 +3980,28 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             not t.type.has_readable_member('__len__')
         )
 
-    def _check_for_truthy_type(self, t: Type, node: Node) -> None:
+    def _format_expr_name(self, node: Node, t: Type):
+        if isinstance(node, RefExpr):
+            return f'"{node.fullname}" has type "{t}"'
+        elif isinstance(node, CallExpr):
+            if isinstance(node.callee, RefExpr):
+                return f'"{node.callee.fullname}" returns "{t}"'
+            else:
+                return f'call returns "{t}"'
+        else:
+            return f'expression has type "{t}"'
+
+    def _check_for_truthy_type(self, t: Type, expr: Expression) -> None:
+        if not state.strict_optional:
+            return  # if everything can be None, all bets are off
         if self._is_truthy_instance(t):
             self.msg.note(
-                "{} has type '{}' which does not implement __bool__ or __len__ "
-                "so it will always be truthy in boolean context".format(node, t), node)
+                '{} which does not implement __bool__ or __len__ '
+                'so it will always be truthy in boolean context'.format(self._format_expr_name(expr, t)), expr)
         elif isinstance(t, UnionType) and all(self._is_truthy_instance(t) for t in t.items):
             self.msg.note(
-                "{} has type '{}' where none of the members implement __bool__ or __len__ "
-                "so it will always be truthy in boolean context".format(node, t), node)
+                "{} none of which implement __bool__ or __len__ "
+                "so it will always be truthy in boolean context".format(self._format_expr_name(expr, t)), expr)
 
     def find_type_equals_check(self, node: ComparisonExpr, expr_indices: List[int]
                                ) -> Tuple[TypeMap, TypeMap]:
