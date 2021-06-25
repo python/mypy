@@ -747,7 +747,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             arg_names: Optional[Sequence[Optional[str]]],
             hook: Callable[
                 [List[List[Expression]], CallableType],
-                CallableType,
+                FunctionLike,
             ]) -> FunctionLike:
         """Helper to apply a signature hook for either a function or method"""
         if isinstance(callee, CallableType):
@@ -775,7 +775,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self, callee: FunctionLike, args: List[Expression],
             arg_kinds: List[int], context: Context,
             arg_names: Optional[Sequence[Optional[str]]],
-            signature_hook: Callable[[FunctionSigContext], CallableType]) -> FunctionLike:
+            signature_hook: Callable[[FunctionSigContext], FunctionLike]) -> FunctionLike:
         """Apply a plugin hook that may infer a more precise signature for a function."""
         return self.apply_signature_hook(
             callee, args, arg_kinds, arg_names,
@@ -786,7 +786,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self, callee: FunctionLike, args: List[Expression],
             arg_kinds: List[int], context: Context,
             arg_names: Optional[Sequence[Optional[str]]], object_type: Type,
-            signature_hook: Callable[[MethodSigContext], CallableType]) -> FunctionLike:
+            signature_hook: Callable[[MethodSigContext], FunctionLike]) -> FunctionLike:
         """Apply a plugin hook that may infer a more precise signature for a method."""
         pobject_type = get_proper_type(object_type)
         return self.apply_signature_hook(
