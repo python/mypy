@@ -372,8 +372,8 @@ def translate_str_format(
 
         format_str = format_str.replace("{{", "{")
         format_str = format_str.replace("}}", "}")
-
         literals = format_str.split("{}")
+
         variables = [builder.accept(x) if is_str_rprimitive(builder.node_type(x))
                      else builder.call_c(str_op, [builder.accept(x)], expr.line)
                      for x in expr.args]
@@ -388,6 +388,12 @@ def translate_str_format(
         # The str.split() always generates one more element
         if literals[-1]:
             result_list.append(builder.load_str(literals[-1]))
+
+        # Special case for empty string and literal string
+        if len(result_list) == 1:
+            return builder.load_str("")
+        if not variables and len(result_list) == 2:
+            return result_list[1]
 
         result_list[0] = Integer(len(result_list) - 1, c_int_rprimitive)
         return builder.call_c(str_build_op, result_list, expr.line)
