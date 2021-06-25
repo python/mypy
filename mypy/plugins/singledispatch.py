@@ -73,10 +73,10 @@ def make_fake_register_class_instance(api: CheckerPluginInterface, type_args: Se
 
 
 def create_singledispatch_function_callback(ctx: FunctionContext) -> Type:
+    """Called for functools.singledispatch"""
     # TODO: check that there's only one argument
     func_type = get_proper_type(get_first_arg(ctx.arg_types))
     if isinstance(func_type, CallableType):
-        # TODO: support using type as argument to register
         metadata = {
             'fallback': func_type,
             'registered': {}
@@ -93,6 +93,7 @@ def create_singledispatch_function_callback(ctx: FunctionContext) -> Type:
 
 
 def singledispatch_register_callback(ctx: MethodContext) -> Type:
+    """Called for functools._SingleDispatchCallable.register"""
     if isinstance(ctx.type, Instance):
         # TODO: check that there's only one argument
         first_arg_type = get_proper_type(get_first_arg(ctx.arg_types))
@@ -166,6 +167,7 @@ def rename_func(func: CallableType, new_name: CallableType) -> CallableType:
 
 
 def call_singledispatch_function_callback(ctx: MethodSigContext) -> CallableType:
+    """Called for functools._SingleDispatchCallable.__call__"""
     if not isinstance(ctx.type, Instance):
         return ctx.default_signature
     metadata = get_singledispatch_info(ctx.type)
