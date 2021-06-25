@@ -3981,7 +3981,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         )
 
     def _format_expr_name(self, node: Node, t: Type):
-        if isinstance(node, RefExpr):
+        if isinstance(node, MemberExpr):
+            return f'member "{node.name}" has type "{t}"'
+        elif isinstance(node, RefExpr) and node.fullname:
             return f'"{node.fullname}" has type "{t}"'
         elif isinstance(node, CallExpr):
             if isinstance(node.callee, MemberExpr):
