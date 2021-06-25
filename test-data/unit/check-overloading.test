@@ -5339,3 +5339,160 @@ def register(cls: Any) -> Any: return None
 x = register(Foo)
 reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
+
+[case testOverloadIfBasic]
+# flags: --always-true True
+from typing import overload, Any
+
+class A: ...
+class B: ...
+
+@overload
+def f1(g: int) -> A: ...
+if True:
+    @overload
+    def f1(g: str) -> B: ...
+def f1(g: Any) -> Any: ...
+reveal_type(f1(42))  # N: Revealed type is "__main__.A"
+reveal_type(f1("Hello"))  # N: Revealed type is "__main__.B"
+
+@overload
+def f2(g: int) -> A: ...
+@overload
+def f2(g: bytes) -> A: ...
+if not True:
+    @overload
+    def f2(g: str) -> B: ...
+def f2(g: Any) -> Any: ...
+reveal_type(f2(42))  # N: Revealed type is "__main__.A"
+reveal_type(f2("Hello"))  # E: No overload variant of "f2" matches argument type "str" \
+                          # N: Possible overload variants: \
+                          # N:     def f2(g: int) -> A \
+                          # N:     def f2(g: bytes) -> A \
+                          # N: Revealed type is "Any"
+
+[case testOverloadIfSysVersion]
+# flags: --python-version 3.9
+from typing import overload, Any
+import sys
+
+class A: ...
+class B: ...
+
+@overload
+def f1(g: int) -> A: ...
+if sys.version_info >= (3, 9):
+    @overload
+    def f1(g: str) -> B: ...
+def f1(g: Any) -> Any: ...
+reveal_type(f1(42))  # N: Revealed type is "__main__.A"
+reveal_type(f1("Hello"))  # N: Revealed type is "__main__.B"
+
+@overload
+def f2(g: int) -> A: ...
+@overload
+def f2(g: bytes) -> A: ...
+if sys.version_info >= (3, 10):
+    @overload
+    def f2(g: str) -> B: ...
+def f2(g: Any) -> Any: ...
+reveal_type(f2(42))  # N: Revealed type is "__main__.A"
+reveal_type(f2("Hello"))  # E: No overload variant of "f2" matches argument type "str" \
+                          # N: Possible overload variants: \
+                          # N:     def f2(g: int) -> A \
+                          # N:     def f2(g: bytes) -> A \
+                          # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
+
+[case testOverloadIfMatching]
+from typing import overload, Any
+
+class A: ...
+class B: ...
+class C: ...
+
+@overload
+def f1(g: int) -> A: ...
+if True:
+    # Some comment
+    @overload
+    def f1(g: str) -> B: ...
+def f1(g: Any) -> Any: ...
+reveal_type(f1(42))  # N: Revealed type is "__main__.A"
+reveal_type(f1("Hello"))  # N: Revealed type is "__main__.B"
+
+@overload
+def f2(g: int) -> A: ...
+if True:
+    @overload
+    def f2(g: bytes) -> B: ...
+    @overload
+    def f2(g: str) -> C: ...
+def f2(g: Any) -> Any: ...
+reveal_type(f2(42))  # N: Revealed type is "__main__.A"
+reveal_type(f2("Hello"))  # N: Revealed type is "__main__.C"
+
+@overload
+def f3(g: int) -> A: ...
+@overload
+def f3(g: str) -> B: ...
+if True:
+    def f3(g: Any) -> Any: ...
+reveal_type(f3(42))  # N: Revealed type is "__main__.A"
+reveal_type(f3("Hello"))  # N: Revealed type is "__main__.B"
+
+if True:
+    @overload
+    def f4(g: int) -> A: ...
+@overload
+def f4(g: str) -> B: ...
+def f4(g: Any) -> Any: ...
+reveal_type(f4(42))  # N: Revealed type is "__main__.A"
+reveal_type(f4("Hello"))  # N: Revealed type is "__main__.B"
+
+if True:
+    # Some comment
+    @overload
+    def f5(g: int) -> A: ...
+    @overload
+    def f5(g: str) -> B: ...
+def f5(g: Any) -> Any: ...
+reveal_type(f5(42))  # N: Revealed type is "__main__.A"
+reveal_type(f5("Hello"))  # N: Revealed type is "__main__.B"
+
+[case testOverloadIfNotMatching]
+from typing import overload, Any
+
+class A: ...
+class B: ...
+class C: ...
+
+@overload  # E: An overloaded function outside a stub file must have an implementation
+def f1(g: int) -> A: ...
+@overload
+def f1(g: bytes) -> B: ...
+if True:
+    @overload  # E: Name "f1" already defined on line 7 \
+               # E: Single overload definition, multiple required
+    def f1(g: str) -> C: ...
+    pass  # Some other action
+def f1(g: Any) -> Any: ...  # E: Name "f1" already defined on line 7
+reveal_type(f1(42))  # N: Revealed type is "__main__.A"
+reveal_type(f1("Hello"))  # E: No overload variant of "f1" matches argument type "str" \
+                          # N: Possible overload variants: \
+                          # N:     def f1(g: int) -> A \
+                          # N:     def f1(g: bytes) -> B \
+                          # N: Revealed type is "Any"
+
+if True:
+    pass  # Some other action
+    @overload  # E: Single overload definition, multiple required
+    def f2(g: int) -> A: ...
+@overload  # E: Name "f2" already defined on line 21
+def f2(g: bytes) -> B: ...
+@overload
+def f2(g: str) -> C: ...
+def f2(g: Any) -> Any: ...
+reveal_type(f2(42))  # N: Revealed type is "__main__.A"
+reveal_type(f2("Hello"))  # N: Revealed type is "__main__.A" \
+                          # E: Argument 1 to "f2" has incompatible type "str"; expected "int"

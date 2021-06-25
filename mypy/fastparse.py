@@ -39,7 +39,7 @@ from mypy import defaults
 from mypy import message_registry, errorcodes as codes
 from mypy.errors import Errors
 from mypy.options import Options
-from mypy.reachability import mark_block_unreachable
+from mypy.reachability import infer_reachability_of_if_statement, mark_block_unreachable
 
 try:
     # pull this into a final variable to make mypyc be quiet about the
@@ -447,12 +447,50 @@ class ASTConverter:
         ret: List[Statement] = []
         current_overload: List[OverloadPart] = []
         current_overload_name: Optional[str] = None
+        last_if_stmt: Optional[IfStmt] = None
+        last_if_overload: Optional[Union[Decorator, OverloadedFuncDef]] = None
         for stmt in stmts:
             if (current_overload_name is not None
                     and isinstance(stmt, (Decorator, FuncDef))
                     and stmt.name == current_overload_name):
+                if last_if_overload is not None:
+                    if isinstance(last_if_overload, OverloadedFuncDef):
+                        current_overload.extend(last_if_overload.items)
+                    else:
+                        current_overload.append(last_if_overload)
+                    last_if_stmt, last_if_overload = None, None
                 current_overload.append(stmt)
+            elif (
+                current_overload_name is not None
+                and isinstance(stmt, IfStmt)
+                and len(stmt.body[0].body) == 1
+                and isinstance(
+                    stmt.body[0].body[0], (Decorator, FuncDef, OverloadedFuncDef))
+                and stmt.body[0].body[0].name == current_overload_name
+            ):
+                # IfStmt only contains stmts relevant to current_overload.
+                # Check if stmts are reachable and add them to current_overload,
+                # otherwise skip IfStmt to allow subsequent overload
+                # or function definitions.
+                infer_reachability_of_if_statement(stmt, self.options)
+                if stmt.body[0].is_unreachable is True:
+                    continue
+                if last_if_overload is not None:
+                    if isinstance(last_if_overload, OverloadedFuncDef):
+                        current_overload.extend(last_if_overload.items)
+                    else:
+                        current_overload.append(last_if_overload)
+                    last_if_stmt, last_if_overload = None, None
+                    last_if_overload = None
+                if isinstance(stmt.body[0].body[0], OverloadedFuncDef):
+                    current_overload.extend(stmt.body[0].body[0].items)
+                else:
+                    current_overload.append(stmt.body[0].body[0])
             else:
+                if last_if_stmt is not None:
+                    ret.append(last_if_stmt)
+                    last_if_stmt, last_if_overload = None, None
+
                 if len(current_overload) == 1:
                     ret.append(current_overload[0])
                 elif len(current_overload) > 1:
@@ -466,6 +504,19 @@ class ASTConverter:
                 if isinstance(stmt, Decorator) and not unnamed_function(stmt.name):
                     current_overload = [stmt]
                     current_overload_name = stmt.name
+                elif (
+                    isinstance(stmt, IfStmt)
+                    and len(stmt.body[0].body) == 1
+                    and isinstance(
+                        stmt.body[0].body[0], (Decorator, OverloadedFuncDef))
+                    and infer_reachability_of_if_statement(
+                        stmt, self.options
+                    ) is None  # type: ignore[func-returns-value]
+                    and stmt.body[0].is_unreachable is False
+                ):
+                    current_overload_name = stmt.body[0].body[0].name
+                    last_if_stmt = stmt
+                    last_if_overload = stmt.body[0].body[0]
                 else:
                     current_overload = []
                     current_overload_name = None
