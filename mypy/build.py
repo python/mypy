@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 from mypy.fixup import fixup_module
 from mypy.modulefinder import (
     BuildSource, compute_search_paths, FindModuleCache, SearchPaths, ModuleSearchResult,
-    ModuleNotFoundReason
+    ModuleNotFoundReason, matches_exclude
 )
 from mypy.nodes import Expression
 from mypy.options import Options
@@ -1885,8 +1885,9 @@ class State:
                 raise ModuleNotFound
 
             # Parse the file (and then some) to get the dependencies.
-            self.parse_file()
-            self.compute_dependencies()
+            parsed = self.parse_file()
+            if parsed:
+                self.compute_dependencies()
 
     @property
     def xmeta(self) -> CacheMeta:
@@ -2001,9 +2002,13 @@ class State:
         """
         if self.tree is not None:
             # The file was already parsed (in __init__()).
-            return
+            return True
 
         manager = self.manager
+
+        if matches_exclude(
+                self.path, manager.options.exclude, manager.fscache, manager.options.verbosity >= 2):
+            return False
 
         # Can we reuse a previously parsed AST? This avoids redundant work in daemon.
         cached = self.id in manager.ast_cache
@@ -2071,6 +2076,7 @@ class State:
         self.check_blockers()
 
         manager.ast_cache[self.id] = (self.tree, self.early_errors)
+        return True
 
     def parse_inline_configuration(self, source: str) -> None:
         """Check for inline mypy: options directive and parse them."""
@@ -2841,20 +2847,21 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
         # - In this case A's cached *direct* dependencies are still valid
         #   (since direct dependencies reflect the imports found in the source)
         #   but A's cached *indirect* dependency on C is wrong.
-        dependencies = [dep for dep in st.dependencies if st.priorities.get(dep) != PRI_INDIRECT]
+        dependencies = [dep for dep in st.dependencies if st.priorities.get(dep) != PRI_INDIRECT] \
+            if st.dependencies else []
         if not manager.use_fine_grained_cache():
             # TODO: Ideally we could skip here modules that appeared in st.suppressed
             # because they are not in build with `follow-imports=skip`.
             # This way we could avoid overhead of cloning options in `State.__init__()`
             # below to get the option value. This is quite minor performance loss however.
-            added = [dep for dep in st.suppressed if find_module_simple(dep, manager)]
+            added = [dep for dep in st.suppressed if find_module_simple(dep, manager)] if st.suppressed else []
         else:
             # During initial loading we don't care about newly added modules,
             # they will be taken care of during fine grained update. See also
             # comment about this in `State.__init__()`.
             added = []
-        for dep in st.ancestors + dependencies + st.suppressed:
-            ignored = dep in st.suppressed_set and dep not in entry_points
+        for dep in (st.ancestors or []) + (dependencies or []) + (st.suppressed or []):
+            ignored = dep in st.suppressed_set and dep not in entry_points if st.suppressed_set else []
             if ignored and dep not in added:
                 manager.missing_modules.add(dep)
             elif dep not in graph:
@@ -2887,7 +2894,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                     assert newst.id not in graph, newst.id
                     graph[newst.id] = newst
                     new.append(newst)
-            if dep in graph and dep in st.suppressed_set:
+            if dep in graph and st.suppressed_set and dep in st.suppressed_set:
                 # Previously suppressed file is now visible
                 st.add_dependency(dep)
     manager.plugin.set_modules(manager.modules)
@@ -2930,7 +2937,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         fresh = not stale_scc
         deps = set()
         for id in scc:
-            deps.update(graph[id].dependencies)
+            deps.update(graph[id].dependencies or [])
         deps -= ascc
         stale_deps = {id for id in deps if id in graph and not graph[id].is_interface_fresh()}
         fresh = fresh and not stale_deps
@@ -3185,7 +3192,7 @@ def deps_filtered(graph: Graph, vertices: AbstractSet[str], id: str, pri_max: in
     state = graph[id]
     return [dep
             for dep in state.dependencies
-            if dep in vertices and state.priorities.get(dep, PRI_HIGH) < pri_max]
+            if dep in vertices and state.priorities.get(dep, PRI_HIGH) < pri_max] if state.dependencies else []
 
 
 def strongly_connected_components(vertices: AbstractSet[str],
