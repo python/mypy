@@ -163,8 +163,8 @@ def process_top_levels(graph: 'Graph', scc: List[str], patches: Patches) -> None
     # Initialize ASTs and symbol tables.
     for id in scc:
         state = graph[id]
-        # if state.excluded:
-        #    continue
+        if state.excluded:
+           continue
         assert state.tree is not None
         state.manager.semantic_analyzer.prepare_file(state.tree)
 
