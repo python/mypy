@@ -221,3 +221,51 @@ x: Union[B, C]
 f(x)
 
 [builtins fixtures/args.pyi]
+
+[case testOnePartOfUnionDoesNotHaveCorrespondingImplementation]
+from functools import singledispatch
+from typing import Union
+
+class A: pass
+class B(A): pass
+class C: pass
+
+@singledispatch
+def f(arg: A) -> None:
+    pass
+
+@f.register
+def g(arg: B) -> None:
+    pass
+
+@f.register
+def h(arg: C) -> None:
+    pass
+
+x: Union[B, C, int]
+# TODO: improve this error message (ideally it would point out that there's no implementation
+# for int)
+f(x)  # E: Argument 1 to "f" has incompatible type "Union[B, C, int]"; expected "B"
+
+[builtins fixtures/args.pyi]
+
+[case testABCUsedAsType]
+from functools import singledispatch
+from collections.abc import Mapping
+
+@singledispatch
+def f(arg, arg2: str) -> None:
+    pass
+
+@f.register
+def g(arg: Mapping, arg2: int) -> None:
+    pass
+
+f({"a": "b"}, 4)
+f({"a": "b"}, 'a') # E: Argument 2 to "f" has incompatible type "str"; expected "int"
+f('a', 1) # E: Argument 2 to "f" has incompatible type "int"; expected "str"
+f('a', 'a')
+
+[builtins fixtures/args.pyi]
+[builtins fixtures/list.pyi]
+[builtins fixtures/dict.pyi]
