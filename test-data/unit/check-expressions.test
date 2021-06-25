@@ -378,8 +378,7 @@ if int():
     d = d or c # E: Incompatible types in assignment (expression has type "C", variable has type "D")
 class C:
     def __bool__(self) -> bool: pass
-class D(C):
-    def __bool__(self) -> bool: pass
+class D(C): pass
 [builtins fixtures/bool.pyi]
 
 [case testInOperator]
