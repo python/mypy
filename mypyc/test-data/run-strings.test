@@ -182,6 +182,10 @@ def test_str_to_bool() -> None:
 [case testStringFormatting]
 
 def test_format_method() -> None:
+
+    assert "".format() == ""
+    assert "abc".format() == "abc"
+
     name = "Eric"
     age = 14
 
@@ -196,4 +200,3 @@ def test_format_method() -> None:
     assert "Hi! {{{}}}".format(name) == "Hi! {Eric}"
     assert "Hi! {{ {}".format(name) == "Hi! { Eric"
     assert "Hi! {{ {} }}}}".format(name) == "Hi! { Eric }}"
-
