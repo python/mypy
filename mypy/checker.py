@@ -3980,16 +3980,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             not t.type.has_readable_member('__len__')
         )
 
-    def _format_expr_name(self, node: Node, t: Type):
-        if isinstance(node, MemberExpr):
-            return f'member "{node.name}" has type "{t}"'
-        elif isinstance(node, RefExpr) and node.fullname:
-            return f'"{node.fullname}" has type "{t}"'
-        elif isinstance(node, CallExpr):
-            if isinstance(node.callee, MemberExpr):
-                return f'"{node.callee.name}" returns "{t}"'
-            elif isinstance(node.callee, RefExpr) and node.callee.fullname:
-                return f'"{node.callee.fullname}" returns "{t}"'
+    def _format_expr_name(self, expr: Expression, t: Type):
+        if isinstance(expr, MemberExpr):
+            return f'member "{expr.name}" has type "{t}"'
+        elif isinstance(expr, RefExpr) and expr.fullname:
+            return f'"{expr.fullname}" has type "{t}"'
+        elif isinstance(expr, CallExpr):
+            if isinstance(expr.callee, MemberExpr):
+                return f'"{expr.callee.name}" returns "{t}"'
+            elif isinstance(expr.callee, RefExpr) and expr.callee.fullname:
+                return f'"{expr.callee.fullname}" returns "{t}"'
             return f'call returns "{t}"'
         else:
             return f'expression has type "{t}"'
