@@ -167,7 +167,7 @@ class TypeTranslator(TypeVisitor[Type]):
         return t
 
     def visit_instance(self, t: Instance) -> Type:
-        last_known_value = None  # type: Optional[LiteralType]
+        last_known_value: Optional[LiteralType] = None
         if t.last_known_value is not None:
             raw_last_known_value = t.last_known_value.accept(self)
             assert isinstance(raw_last_known_value, LiteralType)  # type: ignore
@@ -232,7 +232,7 @@ class TypeTranslator(TypeVisitor[Type]):
         return variables
 
     def visit_overloaded(self, t: Overloaded) -> Type:
-        items = []  # type: List[CallableType]
+        items: List[CallableType] = []
         for item in t.items():
             new = item.accept(self)
             assert isinstance(new, CallableType)  # type: ignore
@@ -269,7 +269,7 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         self.strategy = strategy
         # Keep track of the type aliases already visited. This is needed to avoid
         # infinite recursion on types like A = Union[int, List[A]].
-        self.seen_aliases = set()  # type: Set[TypeAliasType]
+        self.seen_aliases: Set[TypeAliasType] = set()
 
     def visit_unbound_type(self, t: UnboundType) -> T:
         return self.query_types(t.args)
@@ -350,7 +350,7 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         Use the strategy to combine the results.
         Skip type aliases already visited types to avoid infinite recursion.
         """
-        res = []  # type: List[T]
+        res: List[T] = []
         for t in types:
             if isinstance(t, TypeAliasType):
                 # Avoid infinite recursion for recursive type aliases.

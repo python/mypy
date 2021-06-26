@@ -62,8 +62,8 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
     # apply here, and are handled in a different way.
     if ir.is_ext_class:
         # If the class is not decorated, generate an extension class for it.
-        type_obj = allocate_class(builder, cdef)  # type: Optional[Value]
-        non_ext = None  # type: Optional[NonExtClassInfo]
+        type_obj: Optional[Value] = allocate_class(builder, cdef)
+        non_ext: Optional[NonExtClassInfo] = None
         dataclass_non_ext = dataclass_non_ext_info(builder, cdef)
     else:
         non_ext_bases = populate_non_ext_bases(builder, cdef)
@@ -77,7 +77,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
         dataclass_non_ext = None
         type_obj = None
 
-    attrs_to_cache = []  # type: List[Tuple[Lvalue, RType]]
+    attrs_to_cache: List[Tuple[Lvalue, RType]] = []
 
     for stmt in cdef.defs.body:
         if isinstance(stmt, OverloadedFuncDef) and stmt.is_property:
@@ -202,10 +202,10 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
 
 # Mypy uses these internally as base classes of TypedDict classes. These are
 # lies and don't have any runtime equivalent.
-MAGIC_TYPED_DICT_CLASSES = (
+MAGIC_TYPED_DICT_CLASSES: Final[Tuple[str, ...]] = (
     'typing._TypedDict',
     'typing_extensions._TypedDict',
-)  # type: Final[Tuple[str, ...]]
+)
 
 
 def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:

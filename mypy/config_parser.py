@@ -102,7 +102,7 @@ def check_follow_imports(choice: str) -> str:
 # sufficient, and we don't have to do anything here.  This table
 # exists to specify types for values initialized to None or container
 # types.
-ini_config_types = {
+ini_config_types: Final[Dict[str, _INI_PARSER_CALLABLE]] = {
     'python_version': parse_version,
     'strict_optional_whitelist': lambda s: s.split(),
     'custom_typing_module': str,
@@ -125,10 +125,10 @@ ini_config_types = {
     'cache_dir': expand_path,
     'python_executable': expand_path,
     'strict': bool,
-}  # type: Final[Dict[str, _INI_PARSER_CALLABLE]]
+}
 
 # Reuse the ini_config_types and overwrite the diff
-toml_config_types = ini_config_types.copy()  # type: Final[Dict[str, _INI_PARSER_CALLABLE]]
+toml_config_types: Final[Dict[str, _INI_PARSER_CALLABLE]] = ini_config_types.copy()
 toml_config_types.update({
     'python_version': lambda s: parse_version(str(s)),
     'strict_optional_whitelist': try_split,
@@ -158,7 +158,7 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
     stderr = stderr or sys.stderr
 
     if filename is not None:
-        config_files = (filename,)  # type: Tuple[str, ...]
+        config_files: Tuple[str, ...] = (filename,)
     else:
         config_files = tuple(map(os.path.expanduser, defaults.CONFIG_FILES))
 
@@ -176,7 +176,7 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
                 if 'mypy' not in toml_data:
                     continue
                 toml_data = OrderedDict({'mypy': toml_data['mypy']})
-                parser = destructure_overrides(toml_data)  # type: MutableMapping[str, Any]
+                parser: MutableMapping[str, Any] = destructure_overrides(toml_data)
                 config_types = toml_config_types
             else:
                 config_parser.read(config_file)
@@ -336,8 +336,8 @@ def parse_section(prefix: str, template: Options,
 
     Returns a dict of option values encountered, and a dict of report directories.
     """
-    results = {}  # type: Dict[str, object]
-    report_dirs = {}  # type: Dict[str, str]
+    results: Dict[str, object] = {}
+    report_dirs: Dict[str, str] = {}
     for key in section:
         invert = False
         options_key = key
@@ -380,7 +380,7 @@ def parse_section(prefix: str, template: Options,
                 else:
                     continue
             ct = type(dv)
-        v = None  # type: Any
+        v: Any = None
         try:
             if ct is bool:
                 if isinstance(section, dict):
@@ -443,7 +443,7 @@ def split_directive(s: str) -> Tuple[List[str], List[str]]:
 
     Returns the parts and a list of error messages."""
     parts = []
-    cur = []  # type: List[str]
+    cur: List[str] = []
     errors = []
     i = 0
     while i < len(s):
@@ -499,7 +499,7 @@ def parse_mypy_comments(
     generated.
     """
 
-    errors = []  # type: List[Tuple[int, str]]
+    errors: List[Tuple[int, str]] = []
     sections = {}
 
     for lineno, line in args:

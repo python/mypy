@@ -125,7 +125,7 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
         return ('Binary', e.op, literal_hash(e.left), literal_hash(e.right))
 
     def visit_comparison_expr(self, e: ComparisonExpr) -> Key:
-        rest = tuple(e.operators)  # type: Any
+        rest: Any = tuple(e.operators)
         rest += tuple(literal_hash(o) for o in e.operands)
         return ('Comparison',) + rest
 
@@ -134,7 +134,7 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
 
     def seq_expr(self, e: Union[ListExpr, TupleExpr, SetExpr], name: str) -> Optional[Key]:
         if all(literal(x) == LITERAL_YES for x in e.items):
-            rest = tuple(literal_hash(x) for x in e.items)  # type: Any
+            rest: Any = tuple(literal_hash(x) for x in e.items)
             return (name,) + rest
         return None
 
@@ -143,8 +143,8 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
 
     def visit_dict_expr(self, e: DictExpr) -> Optional[Key]:
         if all(a and literal(a) == literal(b) == LITERAL_YES for a, b in e.items):
-            rest = tuple((literal_hash(a) if a else None, literal_hash(b))
-                         for a, b in e.items)  # type: Any
+            rest: Any = tuple((literal_hash(a) if a else None, literal_hash(b))
+                         for a, b in e.items)
             return ('Dict',) + rest
         return None
 
@@ -241,4 +241,4 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
         return None
 
 
-_hasher = _Hasher()  # type: Final
+_hasher: Final = _Hasher()

@@ -25,30 +25,30 @@ class PreBuildVisitor(TraverserVisitor):
         # Dict from a function to symbols defined directly in the
         # function that are used as non-local (free) variables within a
         # nested function.
-        self.free_variables = {}  # type: Dict[FuncItem, Set[SymbolNode]]
+        self.free_variables: Dict[FuncItem, Set[SymbolNode]] = {}
 
         # Intermediate data structure used to find the function where
         # a SymbolNode is declared. Initially this may point to a
         # function nested inside the function with the declaration,
         # but we'll eventually update this to refer to the function
         # with the declaration.
-        self.symbols_to_funcs = {}  # type: Dict[SymbolNode, FuncItem]
+        self.symbols_to_funcs: Dict[SymbolNode, FuncItem] = {}
 
         # Stack representing current function nesting.
-        self.funcs = []  # type: List[FuncItem]
+        self.funcs: List[FuncItem] = []
 
         # All property setters encountered so far.
-        self.prop_setters = set()  # type: Set[FuncDef]
+        self.prop_setters: Set[FuncDef] = set()
 
         # A map from any function that contains nested functions to
         # a set of all the functions that are nested within it.
-        self.encapsulating_funcs = {}  # type: Dict[FuncItem, List[FuncItem]]
+        self.encapsulating_funcs: Dict[FuncItem, List[FuncItem]] = {}
 
         # Map nested function to its parent/encapsulating function.
-        self.nested_funcs = {}  # type: Dict[FuncItem, FuncItem]
+        self.nested_funcs: Dict[FuncItem, FuncItem] = {}
 
         # Map function to its non-special decorators.
-        self.funcs_to_decorators = {}  # type: Dict[FuncDef, List[Expression]]
+        self.funcs_to_decorators: Dict[FuncDef, List[Expression]] = {}
 
     def visit_decorator(self, dec: Decorator) -> None:
         if dec.decorators:

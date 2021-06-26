@@ -46,7 +46,7 @@ def get_cfg(blocks: List[BasicBlock]) -> CFG:
          basic block index -> (successors blocks, predecesssor blocks)
     """
     succ_map = {}
-    pred_map = {}  # type: Dict[BasicBlock, List[BasicBlock]]
+    pred_map: Dict[BasicBlock, List[BasicBlock]] = {}
     exits = set()
     for block in blocks:
 
@@ -480,8 +480,8 @@ def run_analysis(blocks: List[BasicBlock],
 
     # Calculate kill and gen sets for entire basic blocks.
     for block in blocks:
-        gen = set()  # type: Set[T]
-        kill = set()  # type: Set[T]
+        gen: Set[T] = set()
+        kill: Set[T] = set()
         ops = block.ops
         if backward:
             ops = list(reversed(ops))
@@ -497,8 +497,8 @@ def run_analysis(blocks: List[BasicBlock],
     if not backward:
         worklist = worklist[::-1]  # Reverse for a small performance improvement
     workset = set(worklist)
-    before = {}  # type: Dict[BasicBlock, Set[T]]
-    after = {}  # type: Dict[BasicBlock, Set[T]]
+    before: Dict[BasicBlock, Set[T]] = {}
+    after: Dict[BasicBlock, Set[T]] = {}
     for block in blocks:
         if kind == MAYBE_ANALYSIS:
             before[block] = set()
@@ -520,7 +520,7 @@ def run_analysis(blocks: List[BasicBlock],
         label = worklist.pop()
         workset.remove(label)
         if pred_map[label]:
-            new_before = None  # type: Union[Set[T], None]
+            new_before: Union[Set[T], None] = None
             for pred in pred_map[label]:
                 if new_before is None:
                     new_before = set(after[pred])
@@ -541,12 +541,12 @@ def run_analysis(blocks: List[BasicBlock],
         after[label] = new_after
 
     # Run algorithm for each basic block to generate opcode-level sets.
-    op_before = {}  # type: Dict[Tuple[BasicBlock, int], Set[T]]
-    op_after = {}  # type: Dict[Tuple[BasicBlock, int], Set[T]]
+    op_before: Dict[Tuple[BasicBlock, int], Set[T]] = {}
+    op_after: Dict[Tuple[BasicBlock, int], Set[T]] = {}
     for block in blocks:
         label = block
         cur = before[label]
-        ops_enum = enumerate(block.ops)  # type: Iterator[Tuple[int, Op]]
+        ops_enum: Iterator[Tuple[int, Op]] = enumerate(block.ops)
         if backward:
             ops_enum = reversed(list(ops_enum))
         for idx, op in ops_enum:

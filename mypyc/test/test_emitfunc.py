@@ -37,7 +37,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     """Test generation of fragments of C from individual IR ops."""
 
     def setUp(self) -> None:
-        self.registers = []  # type: List[Register]
+        self.registers: List[Register] = []
 
         def add_local(name: str, rtype: RType) -> Register:
             reg = Register(rtype, name)

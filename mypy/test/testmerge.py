@@ -49,7 +49,7 @@ class ASTMergeSuite(DataSuite):
         super().setup()
         self.str_conv = StrConv(show_ids=True)
         assert self.str_conv.id_mapper is not None
-        self.id_mapper = self.str_conv.id_mapper  # type: IdMapper
+        self.id_mapper: IdMapper = self.str_conv.id_mapper
         self.type_str_conv = TypeStrVisitor(self.id_mapper)
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:

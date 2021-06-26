@@ -198,7 +198,7 @@ def gen_func_item(builder: IRBuilder,
 
     # TODO: do something about abstract methods.
 
-    func_reg = None  # type: Optional[Value]
+    func_reg: Optional[Value] = None
 
     # We treat lambdas as always being nested because we always generate
     # a class for lambdas, no matter where they are. (It would probably also
@@ -255,7 +255,7 @@ def gen_func_item(builder: IRBuilder,
     # them even if they are declared after the nested function's definition.
     # Note that this is done before visiting the body of this function.
 
-    env_for_func = builder.fn_info  # type: Union[FuncInfo, ImplicitClass]
+    env_for_func: Union[FuncInfo, ImplicitClass] = builder.fn_info
     if builder.fn_info.is_generator:
         env_for_func = builder.fn_info.generator_class
     elif builder.fn_info.is_nested or builder.fn_info.in_non_ext:
@@ -319,7 +319,7 @@ def gen_func_ir(builder: IRBuilder,
     also returns the register containing the instance of the
     corresponding callable class.
     """
-    func_reg = None  # type: Optional[Value]
+    func_reg: Optional[Value] = None
     if fn_info.is_nested or fn_info.in_non_ext:
         func_ir = add_call_to_callable_class(builder, args, blocks, sig, fn_info)
         add_get_to_callable_class(builder, fn_info)

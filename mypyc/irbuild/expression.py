@@ -147,7 +147,7 @@ def transform_super_expr(builder: IRBuilder, o: SuperExpr) -> Value:
         ir = builder.mapper.type_to_ir[o.info]
         iter_env = iter(builder.builder.args)
         # Grab first argument
-        vself = next(iter_env)  # type: Value
+        vself: Value = next(iter_env)
         if builder.fn_info.is_generator:
             # grab sixth argument (see comment in translate_super_method_call)
             self_targ = list(builder.symtables[-1].values())[6]
@@ -313,7 +313,7 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
 
     if decl.kind != FUNC_STATICMETHOD:
         # Grab first argument
-        vself = builder.self()  # type: Value
+        vself: Value = builder.self()
         if decl.kind == FUNC_CLASSMETHOD:
             vself = builder.call_c(type_op, [vself], expr.line)
         elif builder.fn_info.is_generator:
@@ -460,7 +460,7 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
                 builder.types[expr] = bool_type
                 exprs.append(expr)
 
-            or_expr = exprs.pop(0)  # type: Expression
+            or_expr: Expression = exprs.pop(0)
             for expr in exprs:
                 or_expr = OpExpr(bin_op, or_expr, expr)
                 builder.types[or_expr] = bool_type
@@ -637,7 +637,7 @@ def _visit_display(builder: IRBuilder,
         else:
             accepted_items.append((False, builder.accept(item)))
 
-    result = None  # type: Union[Value, None]
+    result: Union[Value, None] = None
     initial_items = []
     for starred, value in accepted_items:
         if result is None and not starred and is_list:

@@ -45,7 +45,7 @@ def add_handler_block(ir: FuncIR) -> BasicBlock:
 def split_blocks_at_errors(blocks: List[BasicBlock],
                            default_error_handler: BasicBlock,
                            func_name: Optional[str]) -> List[BasicBlock]:
-    new_blocks = []  # type: List[BasicBlock]
+    new_blocks: List[BasicBlock] = []
 
     # First split blocks on ops that may raise.
     for block in blocks:
@@ -60,7 +60,7 @@ def split_blocks_at_errors(blocks: List[BasicBlock],
         block.error_handler = None
 
         for op in ops:
-            target = op  # type: Value
+            target: Value = op
             cur_block.ops.append(op)
             if isinstance(op, RegisterOp) and op.error_kind != ERR_NEVER:
                 # Split

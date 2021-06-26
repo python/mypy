@@ -10,7 +10,7 @@ from mypy.modulefinder import BuildSource, PYTHON_EXTENSIONS, mypy_path, matches
 from mypy.fscache import FileSystemCache
 from mypy.options import Options
 
-PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)  # type: Final
+PY_EXTENSIONS: Final = tuple(PYTHON_EXTENSIONS)
 
 
 class InvalidSourceList(Exception):
@@ -101,7 +101,7 @@ class SourceFinder:
     def find_sources_in_dir(self, path: str) -> List[BuildSource]:
         sources = []
 
-        seen = set()  # type: Set[str]
+        seen: Set[str] = set()
         names = sorted(self.fscache.listdir(path), key=keyfunc)
         for name in names:
             # Skip certain names altogether

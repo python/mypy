@@ -16,9 +16,9 @@ class SamplesSuite(Suite):
             run_mypy(mypy_args + [f])
 
     def test_stdlibsamples(self) -> None:
-        seen = set()  # type: Set[str]
+        seen: Set[str] = set()
         stdlibsamples_dir = os.path.join('test-data', 'stdlib-samples', '3.2', 'test')
-        modules = []  # type: List[str]
+        modules: List[str] = []
         for f in find_files(stdlibsamples_dir, prefix='test_', suffix='.py'):
             if f not in seen:
                 seen.add(f)

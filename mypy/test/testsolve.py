@@ -115,7 +115,7 @@ class SolveSuite(Suite):
                      constraints: List[Constraint],
                      results: List[Union[None, Type, Tuple[Type, Type]]],
                      ) -> None:
-        res = []  # type: List[Optional[Type]]
+        res: List[Optional[Type]] = []
         for r in results:
             if isinstance(r, tuple):
                 res.append(r[0])

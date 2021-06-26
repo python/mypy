@@ -18,8 +18,7 @@ if MYPY:
     from typing import List
 
 
-def getsitepackages():
-    # type: () -> List[str]
+def getsitepackages() -> List[str]:
     if hasattr(site, 'getusersitepackages') and hasattr(site, 'getsitepackages'):
         user_dir = site.getusersitepackages()
         return site.getsitepackages() + [user_dir]

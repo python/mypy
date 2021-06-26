@@ -155,7 +155,7 @@ def generate_wrapper_function(fn: FuncIR,
     cleanups = ['CPy_DECREF(obj_{});'.format(arg.name)
                 for arg in groups[ARG_STAR] + groups[ARG_STAR2]]
 
-    arg_ptrs = []  # type: List[str]
+    arg_ptrs: List[str] = []
     if groups[ARG_STAR] or groups[ARG_STAR2]:
         arg_ptrs += ['&obj_{}'.format(groups[ARG_STAR][0].name) if groups[ARG_STAR] else 'NULL']
         arg_ptrs += ['&obj_{}'.format(groups[ARG_STAR2][0].name) if groups[ARG_STAR2] else 'NULL']
@@ -234,7 +234,7 @@ def generate_legacy_wrapper_function(fn: FuncIR,
     cleanups = ['CPy_DECREF(obj_{});'.format(arg.name)
                 for arg in groups[ARG_STAR] + groups[ARG_STAR2]]
 
-    arg_ptrs = []  # type: List[str]
+    arg_ptrs: List[str] = []
     if groups[ARG_STAR] or groups[ARG_STAR2]:
         arg_ptrs += ['&obj_{}'.format(groups[ARG_STAR][0].name) if groups[ARG_STAR] else 'NULL']
         arg_ptrs += ['&obj_{}'.format(groups[ARG_STAR2][0].name) if groups[ARG_STAR2] else 'NULL']
@@ -742,8 +742,8 @@ class WrapperGenerator:
     def __init__(self, cl: ClassIR, emitter: Emitter) -> None:
         self.cl = cl
         self.emitter = emitter
-        self.cleanups = []  # type: List[str]
-        self.optional_args = []  # type: List[RuntimeArg]
+        self.cleanups: List[str] = []
+        self.optional_args: List[RuntimeArg] = []
         self.traceback_code = ''
 
     def set_target(self, fn: FuncIR) -> None:
