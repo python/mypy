@@ -351,7 +351,7 @@ additional stubs using pip (see :ref:`fix-missing-imports` and
 :ref:`installed-packages` for the details). For example, you can install
 the stubs for the ``requests`` package like this:
 
-.. code-block::
+.. code-block:: shell
 
   python3 -m pip install types-requests
 
