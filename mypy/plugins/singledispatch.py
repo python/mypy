@@ -6,7 +6,7 @@ from mypy.checker import TypeChecker
 from mypy.subtypes import is_subtype
 from mypy.types import (
     AnyType, CallableType, Instance, NoneType, Overloaded, Type, TypeOfAny, get_proper_type,
-    UnionType
+    UnionType, FunctionLike
 )
 from mypy.plugin import CheckerPluginInterface, FunctionContext, MethodContext, MethodSigContext
 from typing import Dict, List, NamedTuple, Optional, Sequence, TypeVar, cast
@@ -199,7 +199,7 @@ def rename_func(func: CallableType, new_name: CallableType) -> CallableType:
     return signature_used
 
 
-def call_singledispatch_function_callback(ctx: MethodSigContext) -> CallableType:
+def call_singledispatch_function_callback(ctx: MethodSigContext) -> FunctionLike:
     """Called for functools._SingleDispatchCallable.__call__"""
     if not isinstance(ctx.type, Instance):
         return ctx.default_signature
@@ -223,7 +223,7 @@ def call_singledispatch_function_callback(ctx: MethodSigContext) -> CallableType
         # the type signature technically says we're returning CallableType, but returning
         # Overloaded seems to work fine and there doesn't appear to be a better way of telling
         # mypy that there are multiple possible functions that could get used
-        return Overloaded(possible_impls)  # type: ignore
+        return Overloaded(possible_impls)
     elif len(possible_impls) == 1:
         return possible_impls[0]
     else:

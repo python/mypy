@@ -9,7 +9,7 @@ from mypy.plugin import (
 )
 from mypy.plugins.common import try_getting_str_literals
 from mypy.types import (
-    Type, Instance, AnyType, TypeOfAny, CallableType, NoneType, TypedDictType,
+    FunctionLike, Type, Instance, AnyType, TypeOfAny, CallableType, NoneType, TypedDictType,
     TypeVarDef, TypeVarType, TPDICT_FB_NAMES, get_proper_type, LiteralType
 )
 from mypy.subtypes import is_subtype
@@ -35,7 +35,7 @@ class DefaultPlugin(Plugin):
         return None
 
     def get_method_signature_hook(self, fullname: str
-                                  ) -> Optional[Callable[[MethodSigContext], CallableType]]:
+                                  ) -> Optional[Callable[[MethodSigContext], FunctionLike]]:
         from mypy.plugins import ctypes, singledispatch
 
         if fullname == 'typing.Mapping.get':
