@@ -269,3 +269,24 @@ f('a', 'a')
 [builtins fixtures/args.pyi]
 [builtins fixtures/list.pyi]
 [builtins fixtures/dict.pyi]
+
+[case testIncorrectArgumentsInSingledispatchFunctionDefinition]
+from functools import singledispatch
+
+@singledispatch
+def f() -> None: # E: Singledispatch function requires at least one argument
+    pass
+
+@singledispatch
+def g(**kwargs) -> None: # E: First argument to singledispatch function must be a positional argument
+    pass
+
+@singledispatch
+def h(*, x) -> None: # E: First argument to singledispatch function must be a positional argument
+    pass
+
+@singledispatch
+def i(*, x=1) -> None: # E: First argument to singledispatch function must be a positional argument
+    pass
+
+[builtins fixtures/args.pyi]
