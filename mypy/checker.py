@@ -154,33 +154,33 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     # Are we type checking a stub?
     is_stub = False
     # Error message reporter
-    errors: Errors = None
+    errors: Errors
     # Utility for generating messages
-    msg: MessageBuilder = None
+    msg: MessageBuilder
     # Types of type checked nodes
-    type_map: Dict[Expression, Type] = None
+    type_map: Dict[Expression, Type]
 
     # Helper for managing conditional types
-    binder: ConditionalTypeBinder = None
+    binder: ConditionalTypeBinder
     # Helper for type checking expressions
-    expr_checker: mypy.checkexpr.ExpressionChecker = None
+    expr_checker: mypy.checkexpr.ExpressionChecker
 
-    tscope: Scope = None
-    scope: CheckerScope = None
+    tscope: Scope
+    scope: CheckerScope
     # Stack of function return types
-    return_types: List[Type] = None
+    return_types: List[Type]
     # Flags; true for dynamically typed functions
-    dynamic_funcs: List[bool] = None
+    dynamic_funcs: List[bool]
     # Stack of collections of variables with partial types
-    partial_types: List[PartialTypeScope] = None
+    partial_types: List[PartialTypeScope]
     # Vars for which partial type errors are already reported
     # (to avoid logically duplicate errors with different error context).
-    partial_reported: Set[Var] = None
-    globals: SymbolTable = None
-    modules: Dict[str, MypyFile] = None
+    partial_reported: Set[Var]
+    globals: SymbolTable
+    modules: Dict[str, MypyFile]
     # Nodes that couldn't be checked because some types weren't available. We'll run
     # another pass and try these again.
-    deferred_nodes: List[DeferredNode] = None
+    deferred_nodes: List[DeferredNode]
     # Type checking pass number (0 = first pass)
     pass_num = 0
     # Last pass number to take
@@ -192,7 +192,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     is_typeshed_stub = False
     # Should strict Optional-related errors be suppressed in this file?
     suppress_none_errors = False  # TODO: Get it from options instead
-    options: Options = None
+    options: Options
     # Used for collecting inferred attribute types so that they can be checked
     # for consistency.
     inferred_attribute_types: Optional[Dict[Var, Type]] = None
@@ -201,11 +201,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     # The set of all dependencies (suppressed or not) that this module accesses, either
     # directly or indirectly.
-    module_refs: Set[str] = None
+    module_refs: Set[str]
 
     # Plugin that provides special type checking rules for specific library
     # functions such as open(), etc.
-    plugin: Plugin = None
+    plugin: Plugin
 
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile], options: Options,
                  tree: MypyFile, path: str, plugin: Plugin) -> None:
@@ -5600,7 +5600,7 @@ def is_node_static(node: Optional[Node]) -> Optional[bool]:
 
 class CheckerScope:
     # We keep two stacks combined, to maintain the relative order
-    stack: List[Union[TypeInfo, FuncItem, MypyFile]] = None
+    stack: List[Union[TypeInfo, FuncItem, MypyFile]]
 
     def __init__(self, module: MypyFile) -> None:
         self.stack = [module]

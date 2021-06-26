@@ -28,9 +28,9 @@ class Constraint:
     It can be either T <: type or T :> type (T is a type variable).
     """
 
-    type_var: TypeVarId = None
+    type_var: TypeVarId
     op = 0           # SUBTYPE_OF or SUPERTYPE_OF
-    target: Type = None
+    target: Type
 
     def __init__(self, type_var: TypeVarId, op: int, target: Type) -> None:
         self.type_var = type_var
@@ -268,7 +268,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
 
     # The type that is compared against a template
     # TODO: The value may be None. Is that actually correct?
-    actual: ProperType = None
+    actual: ProperType
 
     def __init__(self, actual: ProperType, direction: int) -> None:
         # Direction must be SUBTYPE_OF or SUPERTYPE_OF.

@@ -146,14 +146,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     """
 
     # Some services are provided by a TypeChecker instance.
-    chk: mypy.checker.TypeChecker = None
+    chk: mypy.checker.TypeChecker
     # This is shared with TypeChecker, but stored also here for convenience.
-    msg: MessageBuilder = None
+    msg: MessageBuilder
     # Type context for type inference
-    type_context: List[Optional[Type]] = None
+    type_context: List[Optional[Type]]
 
-    strfrm_checker: StringFormatterChecker = None
-    plugin: Plugin = None
+    strfrm_checker: StringFormatterChecker
+    plugin: Plugin
 
     def __init__(self,
                  chk: 'mypy.checker.TypeChecker',

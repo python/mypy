@@ -1724,7 +1724,7 @@ class State:
     case path is None.  Otherwise source is None and path isn't.
     """
 
-    manager: BuildManager = None
+    manager: BuildManager
     order_counter: ClassVar[int] = 0
     order: int = None  # Order in which modules were encountered
     id: str = None  # Fully qualified module name
@@ -1745,16 +1745,16 @@ class State:
     dependencies_set: Set[str] = None  # The same but as a set for deduplication purposes
     suppressed: List[str] = None  # Suppressed/missing dependencies
     suppressed_set: Set[str] = None  # Suppressed/missing dependencies
-    priorities: Dict[str, int] = None
+    priorities: Dict[str, int]
 
     # Map each dependency to the line number where it is first imported
-    dep_line_map: Dict[str, int] = None
+    dep_line_map: Dict[str, int]
 
     # Parent package, its parent, etc.
     ancestors: Optional[List[str]] = None
 
     # List of (path, line number) tuples giving context for import
-    import_context: List[Tuple[str, int]] = None
+    import_context: List[Tuple[str, int]]
 
     # The State from which this module was imported, if any
     caller_state: Optional[State] = None
@@ -1769,7 +1769,7 @@ class State:
     interface_hash: str = ""
 
     # Options, specialized for this file
-    options: Options = None
+    options: Options
 
     # Whether to ignore all errors
     ignore_all = False
@@ -1779,7 +1779,7 @@ class State:
 
     # Errors reported before semantic analysis, to allow fine-grained
     # mode to keep reporting them.
-    early_errors: List[ErrorInfo] = None
+    early_errors: List[ErrorInfo]
 
     # Type checker used for checking this file.  Use type_checker() for
     # access and to construct this on demand.

@@ -188,9 +188,9 @@ class DataDrivenTestCase(pytest.Item):
     """Holds parsed data-driven test cases, and handles directory setup and teardown."""
 
     # Override parent member type
-    parent: DataSuiteCollector = None
+    parent: DataSuiteCollector
 
-    input: List[str] = None
+    input: List[str]
     output: List[str] = None  # Output for the first pass
     output2: Dict[int, List[str]] = None  # Output for runs 2+, indexed by run number
 
@@ -199,17 +199,17 @@ class DataDrivenTestCase(pytest.Item):
     line = 0
 
     # (file path, file content) tuples
-    files: List[Tuple[str, str]] = None
-    expected_stale_modules: Dict[int, Set[str]] = None
-    expected_rechecked_modules: Dict[int, Set[str]] = None
-    expected_fine_grained_targets: Dict[int, List[str]] = None
+    files: List[Tuple[str, str]]
+    expected_stale_modules: Dict[int, Set[str]]
+    expected_rechecked_modules: Dict[int, Set[str]]
+    expected_fine_grained_targets: Dict[int, List[str]]
 
     # Whether or not we should normalize the output to standardize things like
     # forward vs backward slashes in file paths for Windows vs Linux.
     normalize_output = True
 
     # Extra attributes used by some tests.
-    last_line: int = None
+    last_line: int
     output_files: List[Tuple[str, str]] = None # Path and contents for output files
     deleted_paths: Dict[int, Set[str]] = None  # Mapping run number -> paths
     triggered: List[str] = None  # Active triggers (one line per incremental step)
@@ -354,7 +354,7 @@ class TestItem:
     arg: Optional[str] = ''
 
     # Text data, array of 8-bit strings
-    data: List[str] = None
+    data: List[str]
 
     file = ''
     line = 0  # Line number in file
@@ -626,7 +626,7 @@ def has_stable_flags(testcase: DataDrivenTestCase) -> bool:
 
 class DataSuite:
     # option fields - class variables
-    files: List[str] = None
+    files: List[str]
 
     base_path = test_temp_dir
 

@@ -344,7 +344,7 @@ class TypeVarId:
 class TypeVarLikeDef(mypy.nodes.Context):
     name = ''  # Name (may be qualified)
     fullname = ''  # Fully qualified name
-    id: TypeVarId = None
+    id: TypeVarId
 
     def __init__(
         self, name: str, fullname: str, id: Union[TypeVarId, int], line: int = -1, column: int = -1
@@ -370,7 +370,7 @@ class TypeVarLikeDef(mypy.nodes.Context):
 class TypeVarDef(TypeVarLikeDef):
     """Definition of a single type variable."""
     values: List[Type] = None  # Value restriction, empty list if no restriction
-    upper_bound: Type = None
+    upper_bound: Type
     variance: int = INVARIANT
 
     def __init__(self, name: str, fullname: str, id: Union[TypeVarId, int], values: List[Type],
@@ -535,7 +535,7 @@ class CallableArgument(ProperType):
 
     Note that this is a synthetic type for helping parse ASTs, not a real type.
     """
-    typ: Type = None
+    typ: Type
     name: Optional[str] = None
     constructor: Optional[str] = None
 
@@ -563,7 +563,7 @@ class TypeList(ProperType):
     types before they are processed into Callable types.
     """
 
-    items: List[Type] = None
+    items: List[Type]
 
     def __init__(self, items: List[Type], line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
@@ -1388,8 +1388,8 @@ class TupleType(ProperType):
         implicit: If True, derived from a tuple expression (t,....) instead of Tuple[t, ...]
     """
 
-    items: List[Type] = None
-    partial_fallback: Instance = None
+    items: List[Type]
+    partial_fallback: Instance
     implicit = False
 
     def __init__(self, items: List[Type], fallback: Instance, line: int = -1,
@@ -1464,8 +1464,8 @@ class TypedDictType(ProperType):
     """
 
     items: OrderedDict[str, Type] = None  # item_name -> item_type
-    required_keys: Set[str] = None
-    fallback: Instance = None
+    required_keys: Set[str]
+    fallback: Instance
 
     def __init__(self, items: 'OrderedDict[str, Type]', required_keys: Set[str],
                  fallback: Instance, line: int = -1, column: int = -1) -> None:
@@ -1727,7 +1727,7 @@ class StarType(ProperType):
     This is not a real type but a syntactic AST construct.
     """
 
-    type: Type = None
+    type: Type
 
     def __init__(self, type: Type, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
@@ -1834,7 +1834,7 @@ class PartialType(ProperType):
 
     # None for the 'None' partial type; otherwise a generic class
     type: Optional[mypy.nodes.TypeInfo] = None
-    var: mypy.nodes.Var = None
+    var: mypy.nodes.Var
     # For partial defaultdict[K, V], the type V (K is unknown). If V is generic,
     # the type argument is Any and will be replaced later.
     value_type: Optional[Instance] = None
@@ -1898,7 +1898,7 @@ class TypeType(ProperType):
 
     # This can't be everything, but it can be a class reference,
     # a generic class instance, a union, Any, a type variable...
-    item: ProperType = None
+    item: ProperType
 
     def __init__(self, item: Bogus[Union[Instance, AnyType, TypeVarType, TupleType, NoneType,
                                          CallableType]], *,

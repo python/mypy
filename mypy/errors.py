@@ -23,7 +23,7 @@ class ErrorInfo:
 
     # Description of a sequence of imports that refer to the source file
     # related to this error. Each item is a (path, line number) tuple.
-    import_ctx: List[Tuple[str, int]] = None
+    import_ctx: List[Tuple[str, int]]
 
     # The path to source file that was the source of this error.
     file = ''
@@ -60,7 +60,7 @@ class ErrorInfo:
 
     # Actual origin of the error message as tuple (path, line number, end line number)
     # If end line number is unknown, use line number.
-    origin: Tuple[str, int, int] = None
+    origin: Tuple[str, int, int]
 
     # Fine-grained incremental target where this was reported
     target: Optional[str] = None
@@ -120,13 +120,13 @@ class Errors:
     # Map from files to generated error messages. Is an OrderedDict so
     # that it can be used to order messages based on the order the
     # files were processed.
-    error_info_map: Dict[str, List[ErrorInfo]] = None
+    error_info_map: Dict[str, List[ErrorInfo]]
 
     # Files that we have reported the errors for
-    flushed_files: Set[str] = None
+    flushed_files: Set[str]
 
     # Current error context: nested import context/stack, as a list of (path, line) pairs.
-    import_ctx: List[Tuple[str, int]] = None
+    import_ctx: List[Tuple[str, int]]
 
     # Path name prefix that is removed from all paths, if set.
     ignore_prefix: Optional[str] = None
@@ -136,16 +136,16 @@ class Errors:
 
     # Ignore some errors on these lines of each file
     # (path -> line -> error-codes)
-    ignored_lines: Dict[str, Dict[int, List[str]]] = None
+    ignored_lines: Dict[str, Dict[int, List[str]]]
 
     # Lines on which an error was actually ignored.
-    used_ignored_lines: Dict[str, Set[int]] = None
+    used_ignored_lines: Dict[str, Set[int]]
 
     # Files where all errors should be ignored.
-    ignored_files: Set[str] = None
+    ignored_files: Set[str]
 
     # Collection of reported only_once messages.
-    only_once_messages: Set[str] = None
+    only_once_messages: Set[str]
 
     # Set to True to show "In function "foo":" messages.
     show_error_context: bool = False
@@ -727,7 +727,7 @@ class CompileError(Exception):
 
     """
 
-    messages: List[str] = None
+    messages: List[str]
     use_stdout = False
     # Can be set in case there was a module with a blocking error
     module_with_blocker: Optional[str] = None

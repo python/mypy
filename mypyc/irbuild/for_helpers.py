@@ -600,8 +600,8 @@ class ForDictionaryCommon(ForGenerator):
     since they may override some iteration methods in subtly incompatible manner.
     The fallback logic is implemented in CPy.h via dynamic type check.
     """
-    dict_next_op: ClassVar[CFunctionDescription] = None
-    dict_iter_op: ClassVar[CFunctionDescription] = None
+    dict_next_op: ClassVar[CFunctionDescription]
+    dict_iter_op: ClassVar[CFunctionDescription]
 
     def need_cleanup(self) -> bool:
         # Technically, a dict subclass can raise an unrelated exception

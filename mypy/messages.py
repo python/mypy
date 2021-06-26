@@ -99,9 +99,9 @@ class MessageBuilder:
 
     # Report errors using this instance. It knows about the current file and
     # import context.
-    errors: Errors = None
+    errors: Errors
 
-    modules: Dict[str, MypyFile] = None
+    modules: Dict[str, MypyFile]
 
     # Number of times errors have been disabled.
     disable_count = 0

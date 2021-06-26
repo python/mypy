@@ -42,7 +42,7 @@ class IPCBase:
     and writing.
     """
 
-    connection: _IPCHandle = None
+    connection: _IPCHandle
 
     def __init__(self, name: str, timeout: Optional[float]) -> None:
         self.name = name

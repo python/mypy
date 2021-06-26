@@ -38,18 +38,18 @@ T = TypeVar('T')
 class RType:
     """Abstract base class for runtime types (erased, only concrete; no generics)."""
 
-    name: str = None
+    name: str
     # If True, the type has a special unboxed representation. If False, the
     # type is represented as PyObject *. Even if True, the representation
     # may contain pointers.
     is_unboxed = False
     # This is the C undefined value for this type. It's used for initialization
     # if there's no value yet, and for function return value on error/exception.
-    c_undefined: str = None
+    c_undefined: str
     # If unboxed: does the unboxed version use reference counting?
     is_refcounted = True
     # C type; use Emitter.ctype() to access
-    _ctype: str = None
+    _ctype: str
 
     @abstractmethod
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:

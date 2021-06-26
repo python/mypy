@@ -211,9 +211,9 @@ class CheckerPluginInterface:
     docstrings in checker.py for more details.
     """
 
-    msg: MessageBuilder = None
+    msg: MessageBuilder
     options: Options = None
-    path: str = None
+    path: str
 
     # Type context for type inference
     @property
@@ -243,11 +243,11 @@ class SemanticAnalyzerPluginInterface:
     # TODO: clean-up lookup functions.
     """
 
-    modules: Dict[str, MypyFile] = None
+    modules: Dict[str, MypyFile]
     # Options for current file.
     options: Options = None
-    cur_mod_id: str = None
-    msg: MessageBuilder = None
+    cur_mod_id: str
+    msg: MessageBuilder
 
     @abstractmethod
     def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:

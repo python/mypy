@@ -159,30 +159,30 @@ class SemanticAnalyzer(NodeVisitor[None],
     __deletable__ = ['patches', 'options', 'cur_mod_node']
 
     # Module name space
-    modules: Dict[str, MypyFile] = None
+    modules: Dict[str, MypyFile]
     # Global name space for current module
-    globals: SymbolTable = None
+    globals: SymbolTable
     # Names declared using "global" (separate set for each scope)
-    global_decls: List[Set[str]] = None
+    global_decls: List[Set[str]]
     # Names declated using "nonlocal" (separate set for each scope)
-    nonlocal_decls: List[Set[str]] = None
+    nonlocal_decls: List[Set[str]]
     # Local names of function scopes; None for non-function scopes.
-    locals: List[Optional[SymbolTable]] = None
+    locals: List[Optional[SymbolTable]]
     # Whether each scope is a comprehension scope.
-    is_comprehension_stack: List[bool] = None
+    is_comprehension_stack: List[bool]
     # Nested block depths of scopes
-    block_depth: List[int] = None
+    block_depth: List[int]
     # TypeInfo of directly enclosing class (or None)
     type: Optional[TypeInfo] = None
     # Stack of outer classes (the second tuple item contains tvars).
-    type_stack: List[Optional[TypeInfo]] = None
+    type_stack: List[Optional[TypeInfo]]
     # Type variables bound by the current scope, be it class or function
-    tvar_scope: TypeVarLikeScope = None
+    tvar_scope: TypeVarLikeScope
     # Per-module options
     options: Options = None
 
     # Stack of functions being analyzed
-    function_stack: List[FuncItem] = None
+    function_stack: List[FuncItem]
 
     # Set to True if semantic analysis defines a name, or replaces a
     # placeholder definition. If some iteration makes no progress,
@@ -203,9 +203,9 @@ class SemanticAnalyzer(NodeVisitor[None],
     #
     # Note that a star import adds a special name '*' to the set, this blocks
     # adding _any_ names in the current file.
-    missing_names: List[Set[str]] = None
+    missing_names: List[Set[str]]
     # Callbacks that will be called after semantic analysis to tweak things.
-    patches: List[Tuple[int, Callable[[], None]]] = None
+    patches: List[Tuple[int, Callable[[], None]]]
     loop_depth = 0         # Depth of breakable loops
     cur_mod_id = ''        # Current module id (or None) (phase 2)
     _is_stub_file = False   # Are we analyzing a stub file?
@@ -216,7 +216,7 @@ class SemanticAnalyzer(NodeVisitor[None],
     errors: Errors = None     # Keeps track of generated errors
     plugin: Plugin = None     # Mypy plugin for special casing of library features
     statement: Optional[Statement] = None  # Statement/definition being analyzed
-    future_import_flags: Set[str] = None
+    future_import_flags: Set[str]
 
     # Mapping from 'async def' function definitions to their return type wrapped as a
     # 'Coroutine[Any, Any, T]'. Used to keep track of whether a function definition's
