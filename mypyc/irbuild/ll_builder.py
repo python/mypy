@@ -14,7 +14,8 @@ from typing import (
 
 from typing_extensions import Final
 
-from mypy.nodes import ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, op_methods
+from mypy.nodes import ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2
+from mypy.operators import op_methods
 from mypy.types import AnyType, TypeOfAny
 from mypy.checkexpr import map_actuals_to_formals
 
@@ -857,13 +858,23 @@ class LowLevelIRBuilder:
         return self.int_op(value.type, value, mask, IntOp.XOR, line)
 
     def unary_op(self,
-                 lreg: Value,
+                 value: Value,
                  expr_op: str,
                  line: int) -> Value:
-        if (is_bool_rprimitive(lreg.type) or is_bit_rprimitive(lreg.type)) and expr_op == 'not':
-            return self.unary_not(lreg, line)
+        typ = value.type
+        if (is_bool_rprimitive(typ) or is_bit_rprimitive(typ)) and expr_op == 'not':
+            return self.unary_not(value, line)
+        if isinstance(typ, RInstance):
+            if expr_op == '-':
+                method = '__neg__'
+            elif expr_op == '~':
+                method = '__invert__'
+            else:
+                method = ''
+            if method and typ.class_ir.has_method(method):
+                return self.gen_method_call(value, method, [], None, line)
         call_c_ops_candidates = unary_ops.get(expr_op, [])
-        target = self.matching_call_c(call_c_ops_candidates, [lreg], line)
+        target = self.matching_call_c(call_c_ops_candidates, [value], line)
         assert target, 'Unsupported unary operation: %s' % expr_op
         return target
 
@@ -1083,8 +1094,6 @@ class LowLevelIRBuilder:
                         args: List[Value],
                         line: int,
                         result_type: Optional[RType] = None) -> Optional[Value]:
-        # TODO: this function is very similar to matching_primitive_op
-        # we should remove the old one or refactor both them into only as we move forward
         matching = None  # type: Optional[CFunctionDescription]
         for desc in candidates:
             if len(desc.arg_types) != len(args):

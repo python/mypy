@@ -542,6 +542,8 @@ int CPyStatics_Initialize(PyObject **statics,
                           const double *complex_numbers,
                           const int *tuples);
 PyObject *CPy_Super(PyObject *builtins, PyObject *self);
+PyObject *CPy_CallReverseOpMethod(PyObject *left, PyObject *right, const char *op,
+                                  const char *method);
 
 PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
                                PyObject *import_name, PyObject *as_name);

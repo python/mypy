@@ -127,7 +127,9 @@ from mypy.nodes import (
     Expression, Context, ClassDef, SymbolTableNode, MypyFile, CallExpr
 )
 from mypy.tvar_scope import TypeVarLikeScope
-from mypy.types import Type, Instance, CallableType, TypeList, UnboundType, ProperType
+from mypy.types import (
+    Type, Instance, CallableType, TypeList, UnboundType, ProperType, FunctionLike
+)
 from mypy.messages import MessageBuilder
 from mypy.options import Options
 from mypy.lookup import lookup_fully_qualified
@@ -544,7 +546,7 @@ class Plugin(CommonPluginApi):
         return None
 
     def get_function_signature_hook(self, fullname: str
-                                    ) -> Optional[Callable[[FunctionSigContext], CallableType]]:
+                                    ) -> Optional[Callable[[FunctionSigContext], FunctionLike]]:
         """Adjust the signature of a function.
 
         This method is called before type checking a function call. Plugin
@@ -577,7 +579,7 @@ class Plugin(CommonPluginApi):
         return None
 
     def get_method_signature_hook(self, fullname: str
-                                  ) -> Optional[Callable[[MethodSigContext], CallableType]]:
+                                  ) -> Optional[Callable[[MethodSigContext], FunctionLike]]:
         """Adjust the signature of a method.
 
         This method is called before type checking a method call. Plugin
@@ -748,7 +750,7 @@ class ChainedPlugin(Plugin):
         return self._find_hook(lambda plugin: plugin.get_type_analyze_hook(fullname))
 
     def get_function_signature_hook(self, fullname: str
-                                    ) -> Optional[Callable[[FunctionSigContext], CallableType]]:
+                                    ) -> Optional[Callable[[FunctionSigContext], FunctionLike]]:
         return self._find_hook(lambda plugin: plugin.get_function_signature_hook(fullname))
 
     def get_function_hook(self, fullname: str
@@ -756,7 +758,7 @@ class ChainedPlugin(Plugin):
         return self._find_hook(lambda plugin: plugin.get_function_hook(fullname))
 
     def get_method_signature_hook(self, fullname: str
-                                  ) -> Optional[Callable[[MethodSigContext], CallableType]]:
+                                  ) -> Optional[Callable[[MethodSigContext], FunctionLike]]:
         return self._find_hook(lambda plugin: plugin.get_method_signature_hook(fullname))
 
     def get_method_hook(self, fullname: str

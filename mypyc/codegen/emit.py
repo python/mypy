@@ -89,6 +89,28 @@ class EmitterContext:
         self.literals = Literals()
 
 
+class ErrorHandler:
+    """Describes handling errors in unbox/cast operations."""
+
+
+class AssignHandler(ErrorHandler):
+    """Assign an error value on error."""
+
+
+class GotoHandler(ErrorHandler):
+    """Goto label on error."""
+
+    def __init__(self, label: str) -> None:
+        self.label = label
+
+
+class ReturnHandler(ErrorHandler):
+    """Return a constant value on error."""
+
+    def __init__(self, value: str) -> None:
+        self.value = value
+
+
 class Emitter:
     """Helper for C code generation."""
 
@@ -363,8 +385,15 @@ class Emitter:
             return '%s or None' % self.pretty_name(value_type)
         return str(typ)
 
-    def emit_cast(self, src: str, dest: str, typ: RType, declare_dest: bool = False,
-                  custom_message: Optional[str] = None, optional: bool = False,
+    def emit_cast(self,
+                  src: str,
+                  dest: str,
+                  typ: RType,
+                  *,
+                  declare_dest: bool = False,
+                  error: Optional[ErrorHandler] = None,
+                  raise_exception: bool = True,
+                  optional: bool = False,
                   src_type: Optional[RType] = None,
                   likely: bool = True) -> None:
         """Emit code for casting a value of given type.
@@ -373,21 +402,34 @@ class Emitter:
         operates on boxed versions.  This is necessary to properly
         handle types such as Optional[int] in compatibility glue.
 
-        Assign NULL (error value) to dest if the value has an incompatible type.
+        By default, assign NULL (error value) to dest if the value has
+        an incompatible type and raise TypeError. These can be customized
+        using 'error' and 'raise_exception'.
 
-        Always copy/steal the reference in src.
+        Always copy/steal the reference in 'src'.
 
         Args:
             src: Name of source C variable
             dest: Name of target C variable
             typ: Type of value
             declare_dest: If True, also declare the variable 'dest'
+            error: What happens on error
+            raise_exception: If True, also raise TypeError on failure
             likely: If the cast is likely to succeed (can be False for unions)
         """
-        if custom_message is not None:
-            err = custom_message
+        error = error or AssignHandler()
+        if isinstance(error, AssignHandler):
+            handle_error = '%s = NULL;' % dest
+        elif isinstance(error, GotoHandler):
+            handle_error = 'goto %s;' % error.label
         else:
-            err = 'CPy_TypeError("{}", {});'.format(self.pretty_name(typ), src)
+            assert isinstance(error, ReturnHandler)
+            handle_error = 'return %s;' % error.value
+        if raise_exception:
+            raise_exc = 'CPy_TypeError("{}", {}); '.format(self.pretty_name(typ), src)
+            err = raise_exc + handle_error
+        else:
+            err = handle_error
 
         # Special case casting *from* optional
         if src_type and is_optional_type(src_type) and not is_object_rprimitive(typ):
@@ -404,7 +446,6 @@ class Emitter:
                     '    {} = {};'.format(dest, src),
                     'else {',
                     err,
-                    '{} = NULL;'.format(dest),
                     '}')
                 return
 
@@ -440,7 +481,6 @@ class Emitter:
                 '    {} = {};'.format(dest, src),
                 'else {',
                 err,
-                '{} = NULL;'.format(dest),
                 '}')
         elif is_tuple_rprimitive(typ):
             if declare_dest:
@@ -454,7 +494,6 @@ class Emitter:
                 '    {} = {};'.format(dest, src),
                 'else {',
                 err,
-                '{} = NULL;'.format(dest),
                 '}')
         elif isinstance(typ, RInstance):
             if declare_dest:
@@ -482,7 +521,6 @@ class Emitter:
                 '    {} = {};'.format(dest, src),
                 'else {',
                 err,
-                '{} = NULL;'.format(dest),
                 '}')
         elif is_none_rprimitive(typ):
             if declare_dest:
@@ -496,7 +534,6 @@ class Emitter:
                 '    {} = {};'.format(dest, src),
                 'else {',
                 err,
-                '{} = NULL;'.format(dest),
                 '}')
         elif is_object_rprimitive(typ):
             if declare_dest:
@@ -513,8 +550,14 @@ class Emitter:
         else:
             assert False, 'Cast not implemented: %s' % typ
 
-    def emit_union_cast(self, src: str, dest: str, typ: RUnion, declare_dest: bool,
-                        err: str, optional: bool, src_type: Optional[RType]) -> None:
+    def emit_union_cast(self,
+                        src: str,
+                        dest: str,
+                        typ: RUnion,
+                        declare_dest: bool,
+                        err: str,
+                        optional: bool,
+                        src_type: Optional[RType]) -> None:
         """Emit cast to a union type.
 
         The arguments are similar to emit_cast.
@@ -532,7 +575,7 @@ class Emitter:
                            dest,
                            item,
                            declare_dest=False,
-                           custom_message='',
+                           raise_exception=False,
                            optional=False,
                            likely=False)
             self.emit_line('if ({} != NULL) goto {};'.format(dest, good_label))
@@ -564,7 +607,7 @@ class Emitter:
                            dest,
                            item,
                            declare_dest=False,
-                           custom_message='',
+                           raise_exception=False,
                            optional=False)
             self.emit_line('if ({} == NULL) goto {};'.format(dest, out_label))
 
@@ -580,31 +623,46 @@ class Emitter:
         elif optional:
             self.emit_line('else {')
 
-    def emit_unbox(self, src: str, dest: str, typ: RType, custom_failure: Optional[str] = None,
-                   declare_dest: bool = False, borrow: bool = False,
-                   optional: bool = False) -> None:
+    def emit_unbox(self,
+                   src: str,
+                   dest: str,
+                   typ: RType,
+                   *,
+                   declare_dest: bool = False,
+                   error: Optional[ErrorHandler] = None,
+                   raise_exception: bool = True,
+                   optional: bool = False,
+                   borrow: bool = False) -> None:
         """Emit code for unboxing a value of given type (from PyObject *).
 
-        Evaluate C code in 'failure' if the value has an incompatible type.
+        By default, assing error value to dest if the value has an
+        incompatible type and raise TypeError. These can be customized
+        using 'error' and 'raise_exception'.
 
-        Always generate a new reference.
+        Generate a new reference unless 'borrow' is True.
 
         Args:
             src: Name of source C variable
             dest: Name of target C variable
             typ: Type of value
-            failure: What happens on error
             declare_dest: If True, also declare the variable 'dest'
+            error: What happens on error
+            raise_exception: If True, also raise TypeError on failure
             borrow: If True, create a borrowed reference
+
         """
+        error = error or AssignHandler()
         # TODO: Verify refcount handling.
-        raise_exc = 'CPy_TypeError("{}", {});'.format(self.pretty_name(typ), src)
-        if custom_failure is not None:
-            failure = [raise_exc,
-                       custom_failure]
+        if isinstance(error, AssignHandler):
+            failure = '%s = %s;' % (dest, self.c_error_value(typ))
+        elif isinstance(error, GotoHandler):
+            failure = 'goto %s;' % error.label
         else:
-            failure = [raise_exc,
-                       '%s = %s;' % (dest, self.c_error_value(typ))]
+            assert isinstance(error, ReturnHandler)
+            failure = 'return %s;' % error.value
+        if raise_exception:
+            raise_exc = 'CPy_TypeError("{}", {}); '.format(self.pretty_name(typ), src)
+            failure = raise_exc + failure
         if is_int_rprimitive(typ) or is_short_int_rprimitive(typ):
             if declare_dest:
                 self.emit_line('CPyTagged {};'.format(dest))
@@ -615,7 +673,7 @@ class Emitter:
             else:
                 self.emit_line('    {} = CPyTagged_FromObject({});'.format(dest, src))
             self.emit_line('else {')
-            self.emit_lines(*failure)
+            self.emit_line(failure)
             self.emit_line('}')
         elif is_bool_rprimitive(typ) or is_bit_rprimitive(typ):
             # Whether we are borrowing or not makes no difference.
@@ -623,7 +681,7 @@ class Emitter:
                 self.emit_line('char {};'.format(dest))
             self.emit_arg_check(src, dest, typ, '(unlikely(!PyBool_Check({}))) {{'.format(src),
                                 optional)
-            self.emit_lines(*failure)
+            self.emit_line(failure)
             self.emit_line('} else')
             conversion = '{} == Py_True'.format(src)
             self.emit_line('    {} = {};'.format(dest, conversion))
@@ -633,7 +691,7 @@ class Emitter:
                 self.emit_line('char {};'.format(dest))
             self.emit_arg_check(src, dest, typ, '(unlikely({} != Py_None)) {{'.format(src),
                                 optional)
-            self.emit_lines(*failure)
+            self.emit_line(failure)
             self.emit_line('} else')
             self.emit_line('    {} = 1;'.format(dest))
         elif isinstance(typ, RTuple):
@@ -655,7 +713,7 @@ class Emitter:
             # self.emit_arg_check(src, dest, typ,
             #     '(!PyTuple_Check({}) || PyTuple_Size({}) != {}) {{'.format(
             #         src, src, len(typ.types)), optional)
-            self.emit_lines(*failure)  # TODO: Decrease refcount?
+            self.emit_line(failure)  # TODO: Decrease refcount?
             self.emit_line('} else {')
             if not typ.types:
                 self.emit_line('{}.empty_struct_error_flag = 0;'.format(dest))
@@ -666,7 +724,12 @@ class Emitter:
                 temp2 = self.temp_name()
                 # Unbox or check the item.
                 if item_type.is_unboxed:
-                    self.emit_unbox(temp, temp2, item_type, custom_failure, declare_dest=True,
+                    self.emit_unbox(temp,
+                                    temp2,
+                                    item_type,
+                                    raise_exception=raise_exception,
+                                    error=error,
+                                    declare_dest=True,
                                     borrow=borrow)
                 else:
                     if not borrow:
