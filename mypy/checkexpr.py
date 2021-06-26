@@ -146,7 +146,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     """
 
     # Some services are provided by a TypeChecker instance.
-    chk: mypy.checker.TypeChecker
+    chk: "mypy.checker.TypeChecker"
     # This is shared with TypeChecker, but stored also here for convenience.
     msg: MessageBuilder
     # Type context for type inference

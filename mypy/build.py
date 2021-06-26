@@ -1757,7 +1757,7 @@ class State:
     import_context: List[Tuple[str, int]]
 
     # The State from which this module was imported, if any
-    caller_state: Optional[State] = None
+    caller_state: Optional["State"] = None
 
     # If caller_state is set, the line number in the caller where the import occurred
     caller_line = 0

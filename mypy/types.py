@@ -1463,7 +1463,7 @@ class TypedDictType(ProperType):
     TODO: The fallback structure is perhaps overly complicated.
     """
 
-    items: OrderedDict[str, Type] = None  # item_name -> item_type
+    items: "OrderedDict[str, Type]"  # item_name -> item_type
     required_keys: Set[str]
     fallback: Instance
 

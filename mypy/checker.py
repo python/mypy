@@ -166,7 +166,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     expr_checker: mypy.checkexpr.ExpressionChecker
 
     tscope: Scope
-    scope: CheckerScope
+    scope: "CheckerScope"
     # Stack of function return types
     return_types: List[Type]
     # Flags; true for dynamically typed functions

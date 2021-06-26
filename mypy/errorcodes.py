@@ -8,9 +8,9 @@ from typing_extensions import Final
 
 
 # All created error codes are implicitly stored in this list.
-all_error_codes: List[ErrorCode] = []
+all_error_codes: List["ErrorCode"] = []
 
-error_codes: Dict[str, ErrorCode] = {}
+error_codes: Dict[str, "ErrorCode"] = {}
 
 
 class ErrorCode:

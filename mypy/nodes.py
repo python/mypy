@@ -251,9 +251,9 @@ class MypyFile(SymbolNode):
     alias_deps: DefaultDict[str, Set[str]]
     # Is there a UTF-8 BOM at the start?
     is_bom = False
-    names: SymbolTable
+    names: "SymbolTable"
     # All import nodes within the file (also ones within functions etc.)
-    imports: List[ImportBase]
+    imports: List["ImportBase"]
     # Lines on which to ignore certain errors when checking.
     # If the value is empty, ignore all errors; otherwise, the list contains all
     # error codes to ignore.
@@ -342,7 +342,7 @@ class ImportBase(Statement):
     #
     #     x = 1
     #     from m import x   <-- add assignment representing "x = m.x"
-    assignments: List[AssignmentStmt]
+    assignments: List["AssignmentStmt"]
 
     def __init__(self) -> None:
         super().__init__()
@@ -743,7 +743,7 @@ class Decorator(SymbolNode, Statement):
     # Some decorators are removed by semanal, keep the original here.
     original_decorators: List[Expression]
     # TODO: This is mostly used for the type; consider replacing with a 'type' attribute
-    var: Var                     # Represents the decorated function obj
+    var: "Var"                     # Represents the decorated function obj
     is_overload = False
 
     def __init__(self, func: FuncDef, decorators: List[Expression],
@@ -917,16 +917,16 @@ class ClassDef(Statement):
 
     name: str       # Name of the class without module prefix
     fullname: Bogus[str]   # Fully qualified name of the class
-    defs: Block
-    type_vars: List[mypy.types.TypeVarDef]
+    defs: "Block"
+    type_vars: List["mypy.types.TypeVarDef"]
     # Base class expressions (not semantically analyzed -- can be arbitrary expressions)
     base_type_exprs: List[Expression]
     # Special base classes like Generic[...] get moved here during semantic analysis
     removed_base_type_exprs: List[Expression]
-    info: TypeInfo  # Related TypeInfo
+    info: "TypeInfo"  # Related TypeInfo
     metaclass: Optional[Expression] = None
     decorators: List[Expression]
-    keywords: OrderedDict[str, Expression]
+    keywords: "OrderedDict[str, Expression]"
     analyzed: Optional[Expression] = None
     has_incompatible_baseclass = False
 
@@ -1047,9 +1047,9 @@ class AssignmentStmt(Statement):
     # This is a TempNode if and only if no rvalue (x: t).
     rvalue: Expression
     # Declared type in a comment, may be None.
-    type: Optional[mypy.types.Type] = None
+    type: Optional["mypy.types.Type"] = None
     # Original, not semantically analyzed type in annotation (used for reprocessing)
-    unanalyzed_type: Optional[mypy.types.Type] = None
+    unanalyzed_type: Optional["mypy.types.Type"] = None
     # This indicates usage of PEP 526 type annotation syntax in assignment.
     new_syntax: bool = False
     # Does this assignment define a type alias?
@@ -1111,13 +1111,13 @@ class ForStmt(Statement):
     # Index variables
     index: Lvalue
     # Type given by type comments for index, can be None
-    index_type: Optional[mypy.types.Type] = None
+    index_type: "Optional[mypy.types.Type]" = None
     # Original, not semantically analyzed type in annotation (used for reprocessing)
-    unanalyzed_index_type: Optional[mypy.types.Type] = None
+    unanalyzed_index_type: "Optional[mypy.types.Type]" = None
     # Inferred iterable item type
-    inferred_item_type: Optional[mypy.types.Type] = None
+    inferred_item_type: "Optional[mypy.types.Type]" = None
     # Inferred iterator type
-    inferred_iterator_type: Optional[mypy.types.Type] = None
+    inferred_iterator_type: "Optional[mypy.types.Type]" = None
     # Expression to iterate
     expr: Expression
     body: Block
@@ -1226,7 +1226,7 @@ class TryStmt(Statement):
     body: Block = None                # Try body
     # Plain 'except:' also possible
     types: List[Optional[Expression]] = None    # Except type expressions
-    vars: List[Optional[NameExpr]] = None     # Except variable names
+    vars: List[Optional["NameExpr"]] = None     # Except variable names
     handlers: List[Block] = None      # Except bodies
     else_body: Optional[Block] = None
     finally_body: Optional[Block] = None
@@ -1251,9 +1251,9 @@ class WithStmt(Statement):
     expr: List[Expression]
     target: List[Optional[Lvalue]]
     # Type given by type comments for target, can be None
-    unanalyzed_type: Optional[mypy.types.Type] = None
+    unanalyzed_type: "Optional[mypy.types.Type]" = None
     # Semantically analyzed types from type comment (TypeList type expanded)
-    analyzed_types: List[mypy.types.Type]
+    analyzed_types: List["mypy.types.Type"]
     body: Block
     is_async = False  # True if `async with ...` (PEP 492, Python 3.5)
 
@@ -1471,7 +1471,7 @@ class RefExpr(Expression):
         # Is this expression appears as an rvalue of a valid type alias definition?
         self.is_alias_rvalue = False
         # Cache type guard from callable_type.type_guard
-        self.type_guard: Optional[mypy.types.Type] = None
+        self.type_guard: "Optional[mypy.types.Type]" = None
 
 
 class NameExpr(RefExpr):
@@ -1591,10 +1591,10 @@ class IndexExpr(Expression):
     base: Expression
     index: Expression
     # Inferred __getitem__ method type
-    method_type: Optional[mypy.types.Type] = None
+    method_type: "Optional[mypy.types.Type]" = None
     # If not None, this is actually semantically a type application
     # Class[type, ...] or a type alias initializer.
-    analyzed: Union[TypeApplication, TypeAliasExpr, None]
+    analyzed: Union["TypeApplication", "TypeAliasExpr", None]
 
     def __init__(self, base: Expression, index: Expression) -> None:
         super().__init__()
@@ -1612,7 +1612,7 @@ class UnaryExpr(Expression):
     op = ''
     expr: Expression
     # Inferred operator method type
-    method_type: Optional[mypy.types.Type] = None
+    method_type: "Optional[mypy.types.Type]" = None
 
     def __init__(self, op: str, expr: Expression) -> None:
         super().__init__()
@@ -1642,7 +1642,7 @@ class OpExpr(Expression):
     left: Expression
     right: Expression
     # Inferred type for the operator method type (when relevant).
-    method_type: Optional[mypy.types.Type] = None
+    method_type: "Optional[mypy.types.Type]" = None
     # Per static analysis only: Is the right side going to be evaluated every time?
     right_always = False
     # Per static analysis only: Is the right side unreachable?
@@ -1664,7 +1664,7 @@ class ComparisonExpr(Expression):
     operators: List[str]
     operands: List[Expression]
     # Inferred type for the operator methods (when relevant; None for 'is').
-    method_types: List[Optional[mypy.types.Type]]
+    method_types: List["Optional[mypy.types.Type]"]
 
     def __init__(self, operators: List[str], operands: List[Expression]) -> None:
         super().__init__()
@@ -1709,7 +1709,7 @@ class CastExpr(Expression):
     """Cast expression cast(type, expr)."""
 
     expr: Expression
-    type: mypy.types.Type
+    type: "mypy.types.Type"
 
     def __init__(self, expr: Expression, typ: 'mypy.types.Type') -> None:
         super().__init__()
@@ -1744,8 +1744,8 @@ class SuperExpr(Expression):
     """Expression super().name"""
 
     name = ''
-    info: Optional[TypeInfo] = None  # Type that contains this super expression
-    call: CallExpr = None  # The expression super(...)
+    info: Optional["TypeInfo"] = None  # Type that contains this super expression
+    call: CallExpr  # The expression super(...)
 
     def __init__(self, name: str, call: CallExpr) -> None:
         super().__init__()
@@ -1939,7 +1939,7 @@ class TypeApplication(Expression):
     """Type application expr[type, ...]"""
 
     expr: Expression
-    types: List[mypy.types.Type]
+    types: List["mypy.types.Type"]
 
     def __init__(self, expr: Expression, types: List['mypy.types.Type']) -> None:
         super().__init__()
@@ -1970,7 +1970,7 @@ class TypeVarLikeExpr(SymbolNode, Expression):
     _fullname = ''
     # Upper bound: only subtypes of upper_bound are valid as values. By default
     # this is 'object', meaning no restriction.
-    upper_bound: mypy.types.Type
+    upper_bound: "mypy.types.Type"
     # Variance of the type variable. Invariant is the default.
     # TypeVar(..., covariant=True) defines a covariant type variable.
     # TypeVar(..., contravariant=True) defines a contravariant type
@@ -2008,7 +2008,7 @@ class TypeVarExpr(TypeVarLikeExpr):
     """
     # Value restriction: only types in the list are valid as values. If the
     # list is empty, there is no restriction.
-    values: List[mypy.types.Type]
+    values: List["mypy.types.Type"]
 
     def __init__(self, name: str, fullname: str,
                  values: List['mypy.types.Type'],
@@ -2067,7 +2067,7 @@ class TypeAliasExpr(Expression):
     """Type alias expression (rvalue)."""
 
     # The target type.
-    type: mypy.types.Type
+    type: "mypy.types.Type"
     # Names of unbound type variables used to define the alias
     tvars: List[str]
     # Whether this alias was defined in bare form. Used to distinguish
@@ -2093,7 +2093,7 @@ class NamedTupleExpr(Expression):
 
     # The class representation of this named tuple (its tuple_type attribute contains
     # the tuple item types)
-    info: TypeInfo
+    info: "TypeInfo"
     is_typed = False  # whether this class was created with typing.NamedTuple
 
     def __init__(self, info: 'TypeInfo', is_typed: bool = False) -> None:
@@ -2109,7 +2109,7 @@ class TypedDictExpr(Expression):
     """Typed dict expression TypedDict(...)."""
 
     # The class representation of this typed dict
-    info: TypeInfo
+    info: "TypeInfo"
 
     def __init__(self, info: 'TypeInfo') -> None:
         super().__init__()
@@ -2123,7 +2123,7 @@ class EnumCallExpr(Expression):
     """Named tuple expression Enum('name', 'val1 val2 ...')."""
 
     # The class representation of this enumerated type
-    info: TypeInfo
+    info: "TypeInfo"
     # The item names (for debugging)
     items: List[str]
     values: List[Optional[Expression]]
@@ -2142,7 +2142,7 @@ class EnumCallExpr(Expression):
 class PromoteExpr(Expression):
     """Ducktype class decorator expression _promote(...)."""
 
-    type: mypy.types.Type
+    type: "mypy.types.Type"
 
     def __init__(self, type: 'mypy.types.Type') -> None:
         super().__init__()
@@ -2156,9 +2156,9 @@ class NewTypeExpr(Expression):
     """NewType expression NewType(...)."""
     name: str
     # The base type (the second argument to NewType)
-    old_type: Optional[mypy.types.Type] = None
+    old_type: "Optional[mypy.types.Type]" = None
     # The synthesized class representing the new type (inherits old_type)
-    info: Optional[TypeInfo] = None
+    info: Optional["TypeInfo"] = None
 
     def __init__(self, name: str, old_type: 'Optional[mypy.types.Type]', line: int,
                  column: int) -> None:
@@ -2196,7 +2196,7 @@ class TempNode(Expression):
     some fixed type.
     """
 
-    type: mypy.types.Type
+    type: "mypy.types.Type"
     # Is this TempNode used to indicate absence of a right hand side in an annotated assignment?
     # (e.g. for 'x: int' the rvalue is TempNode(AnyType(TypeOfAny.special_form), no_rhs=True))
     no_rhs: bool = False
@@ -2239,24 +2239,24 @@ class TypeInfo(SymbolNode):
     # information is also in the fullname, but is harder to extract in the
     # case of nested class definitions.
     module_name: str
-    defn: ClassDef = None          # Corresponding ClassDef
+    defn: ClassDef  # Corresponding ClassDef
     # Method Resolution Order: the order of looking up attributes. The first
     # value always to refers to this class.
-    mro: List[TypeInfo]
+    mro: List["TypeInfo"]
     # Used to stash the names of the mro classes temporarily between
     # deserialization and fixup. See deserialize() for why.
     _mro_refs: Optional[List[str]] = None
     bad_mro = False  # Could not construct full MRO
 
-    declared_metaclass: Optional[mypy.types.Instance] = None
-    metaclass_type: Optional[mypy.types.Instance] = None
+    declared_metaclass: Optional["mypy.types.Instance"] = None
+    metaclass_type: Optional["mypy.types.Instance"] = None
 
-    names: SymbolTable = None      # Names defined directly in this type
+    names: "SymbolTable"  # Names defined directly in this type
     is_abstract = False                    # Does the class have any abstract attributes?
     is_protocol = False                    # Is this a protocol class?
     runtime_protocol = False               # Does this protocol support isinstance checks?
     abstract_attributes: List[str]
-    deletable_attributes: List[str] = None  # Used by mypyc only
+    deletable_attributes: List[str]  # Used by mypyc only
 
     # The attributes 'assuming' and 'assuming_proper' represent structural subtype matrices.
     #
@@ -2278,8 +2278,8 @@ class TypeInfo(SymbolNode):
     # If concurrent/parallel type checking will be added in future,
     # then there should be one matrix per thread/process to avoid false negatives
     # during the type checking phase.
-    assuming: List[Tuple[mypy.types.Instance, mypy.types.Instance]]
-    assuming_proper: List[Tuple[mypy.types.Instance, mypy.types.Instance]]
+    assuming: List[Tuple["mypy.types.Instance", "mypy.types.Instance"]]
+    assuming_proper: List[Tuple["mypy.types.Instance", "mypy.types.Instance"]]
     # Ditto for temporary 'inferring' stack of recursive constraint inference.
     # It contains Instance's of protocol types that appeared as an argument to
     # constraints.infer_constraints(). We need 'inferring' to avoid infinite recursion for
@@ -2289,7 +2289,7 @@ class TypeInfo(SymbolNode):
     # since this would require to pass them in many dozens of calls. In particular,
     # there is a dependency infer_constraint -> is_subtype -> is_callable_subtype ->
     # -> infer_constraints.
-    inferring: List[mypy.types.Instance]
+    inferring: List["mypy.types.Instance"]
     # 'inferring' and 'assuming' can't be made sets, since we need to use
     # is_same_type to correctly treat unions.
 
@@ -2309,27 +2309,27 @@ class TypeInfo(SymbolNode):
     type_vars: List[str]
 
     # Direct base classes.
-    bases: List[mypy.types.Instance]
+    bases: List["mypy.types.Instance"]
 
     # Another type which this type will be treated as a subtype of,
     # even though it's not a subclass in Python.  The non-standard
     # `@_promote` decorator introduces this, and there are also
     # several builtin examples, in particular `int` -> `float`.
-    _promote: Optional[mypy.types.Type] = None
+    _promote: Optional["mypy.types.Type"] = None
 
     # Representation of a Tuple[...] base class, if the class has any
     # (e.g., for named tuples). If this is not None, the actual Type
     # object used for this class is not an Instance but a TupleType;
     # the corresponding Instance is set as the fallback type of the
     # tuple type.
-    tuple_type: Optional[mypy.types.TupleType] = None
+    tuple_type: Optional["mypy.types.TupleType"] = None
 
     # Is this a named tuple type?
     is_named_tuple = False
 
     # If this class is defined by the TypedDict type constructor,
     # then this is not None.
-    typeddict_type: Optional[mypy.types.TypedDictType] = None
+    typeddict_type: Optional["mypy.types.TypedDictType"] = None
 
     # Is this a newtype type?
     is_newtype = False
