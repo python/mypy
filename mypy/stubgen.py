@@ -215,17 +215,17 @@ class StubSource:
 
 # What was generated previously in the stub file. We keep track of these to generate
 # nicely formatted output (add empty line between non-empty classes, for example).
-EMPTY: Final = 'EMPTY'
-FUNC: Final = 'FUNC'
-CLASS: Final = 'CLASS'
-EMPTY_CLASS: Final = 'EMPTY_CLASS'
-VAR: Final = 'VAR'
-NOT_IN_ALL: Final = 'NOT_IN_ALL'
+EMPTY: Final = "EMPTY"
+FUNC: Final = "FUNC"
+CLASS: Final = "CLASS"
+EMPTY_CLASS: Final = "EMPTY_CLASS"
+VAR: Final = "VAR"
+NOT_IN_ALL: Final = "NOT_IN_ALL"
 
 # Indicates that we failed to generate a reasonable output
 # for a given node. These should be manually replaced by a user.
 
-ERROR_MARKER: Final = '<ERROR>'
+ERROR_MARKER: Final = "<ERROR>"
 
 
 class AnnotationPrinter(TypeStrVisitor):

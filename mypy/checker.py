@@ -1827,10 +1827,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         object_type = Instance(info.mro[-1], [])
         tvars = info.defn.type_vars
         for i, tvar in enumerate(tvars):
-            up_args: List[Type] = [object_type if i == j else AnyType(TypeOfAny.special_form)
-                       for j, _ in enumerate(tvars)]
-            down_args: List[Type] = [UninhabitedType() if i == j else AnyType(TypeOfAny.special_form)
-                         for j, _ in enumerate(tvars)]
+            up_args: List[Type] = [
+                object_type if i == j else AnyType(TypeOfAny.special_form)
+                for j, _ in enumerate(tvars)
+            ]
+            down_args: List[Type] = [
+                UninhabitedType() if i == j else AnyType(TypeOfAny.special_form)
+                for j, _ in enumerate(tvars)
+            ]
             up, down = Instance(info, up_args), Instance(info, down_args)
             # TODO: add advanced variance checks for recursive protocols
             if is_subtype(down, up, ignore_declared_variance=True):
@@ -2629,8 +2633,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         for binder.
         """
         self.no_partial_types = True
-        transposed: Tuple[List[Type], ...] = tuple([] for _ in
-                           self.flatten_lvalues(lvalues))
+        transposed: Tuple[List[Type], ...] = tuple([] for _ in self.flatten_lvalues(lvalues))
         # Notify binder that we want to defer bindings and instead collect types.
         with self.binder.accumulate_type_assignments() as assignments:
             for item in rvalue_type.items:
@@ -5809,9 +5812,7 @@ def group_comparison_operands(pairwise_comparisons: Iterable[Tuple[str, Expressi
     This function is currently only used to assist with type-narrowing refinements
     and is extracted out to a helper function so we can unit test it.
     """
-    groups: Dict[str, DisjointDict[Key, int]] = {
-        op: DisjointDict() for op in operators_to_group
-    }
+    groups: Dict[str, DisjointDict[Key, int]] = {op: DisjointDict() for op in operators_to_group}
 
     simplified_operator_list: List[Tuple[str, List[int]]] = []
     last_operator: Optional[str] = None

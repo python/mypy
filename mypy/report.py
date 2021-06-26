@@ -33,15 +33,17 @@ try:
 except ImportError:
     LXML_INSTALLED = False
 
-type_of_any_name_map: Final[collections.OrderedDict[int, str]] = collections.OrderedDict([
-    (TypeOfAny.unannotated, "Unannotated"),
-    (TypeOfAny.explicit, "Explicit"),
-    (TypeOfAny.from_unimported_type, "Unimported"),
-    (TypeOfAny.from_omitted_generics, "Omitted Generics"),
-    (TypeOfAny.from_error, "Error"),
-    (TypeOfAny.special_form, "Special Form"),
-    (TypeOfAny.implementation_artifact, "Implementation Artifact"),
-])
+type_of_any_name_map: Final[collections.OrderedDict[int, str]] = collections.OrderedDict(
+    [
+        (TypeOfAny.unannotated, "Unannotated"),
+        (TypeOfAny.explicit, "Explicit"),
+        (TypeOfAny.from_unimported_type, "Unimported"),
+        (TypeOfAny.from_omitted_generics, "Omitted Generics"),
+        (TypeOfAny.from_error, "Error"),
+        (TypeOfAny.special_form, "Special Form"),
+        (TypeOfAny.implementation_artifact, "Implementation Artifact"),
+    ]
+)
 
 ReporterClasses = Dict[str, Tuple[Callable[['Reports', str], 'AbstractReporter'], bool]]
 
@@ -173,12 +175,12 @@ class LineCountReporter(AbstractReporter):
                                        annotated_funcs, total_funcs)
 
     def on_finish(self) -> None:
-        counts: List[Tuple[Tuple[int, int, int, int], str]] = sorted(((c, p) for p, c in self.counts.items()),
-                        reverse=True)
-        total_counts = tuple(sum(c[i] for c, p in counts)
-                             for i in range(4))
-        with open(os.path.join(self.output_dir, 'linecount.txt'), 'w') as f:
-            f.write('{:7} {:7} {:6} {:6} total\n'.format(*total_counts))
+        counts: List[Tuple[Tuple[int, int, int, int], str]] = sorted(
+            ((c, p) for p, c in self.counts.items()), reverse=True
+        )
+        total_counts = tuple(sum(c[i] for c, p in counts) for i in range(4))
+        with open(os.path.join(self.output_dir, "linecount.txt"), "w") as f:
+            f.write("{:7} {:7} {:6} {:6} total\n".format(*total_counts))
             for c, p in counts:
                 f.write('{:7} {:7} {:6} {:6} {}\n'.format(
                     c[0], c[1], c[2], c[3], p))
@@ -450,8 +452,7 @@ class MemoryXmlReporter(AbstractReporter):
     # XML doesn't like control characters, but they are sometimes
     # legal in source code (e.g. comments, string literals).
     # Tabs (#x09) are allowed in XML content.
-    control_fixer: Final = str.maketrans(
-        ''.join(chr(i) for i in range(32) if i != 9), '?' * 31)
+    control_fixer: Final = str.maketrans("".join(chr(i) for i in range(32) if i != 9), "?" * 31)
 
     def on_file(self,
                 tree: MypyFile,

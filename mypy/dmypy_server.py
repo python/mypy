@@ -127,7 +127,7 @@ else:
 
 # Server code.
 
-CONNECTION_NAME: Final = 'dmypy'
+CONNECTION_NAME: Final = "dmypy"
 
 
 def process_start_options(flags: List[str], allow_sources: bool) -> Options:
@@ -868,7 +868,7 @@ class Server:
 # Misc utilities.
 
 
-MiB: Final = 2**20
+MiB: Final = 2 ** 20
 
 
 def get_meminfo() -> Dict[str, Any]:

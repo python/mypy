@@ -143,9 +143,10 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
 
     def visit_dict_expr(self, e: DictExpr) -> Optional[Key]:
         if all(a and literal(a) == literal(b) == LITERAL_YES for a, b in e.items):
-            rest: Any = tuple((literal_hash(a) if a else None, literal_hash(b))
-                         for a, b in e.items)
-            return ('Dict',) + rest
+            rest: Any = tuple(
+                (literal_hash(a) if a else None, literal_hash(b)) for a, b in e.items
+            )
+            return ("Dict",) + rest
         return None
 
     def visit_tuple_expr(self, e: TupleExpr) -> Optional[Key]:

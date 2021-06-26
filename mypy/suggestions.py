@@ -144,9 +144,7 @@ class ArgUseFinder(TraverserVisitor):
     """
     def __init__(self, func: FuncDef, typemap: Dict[Expression, Type]) -> None:
         self.typemap = typemap
-        self.arg_types: Dict[SymbolNode, List[Type]] = {
-            arg.variable: [] for arg in func.arguments
-        }
+        self.arg_types: Dict[SymbolNode, List[Type]] = {arg.variable: [] for arg in func.arguments}
 
     def visit_call_expr(self, o: CallExpr) -> None:
         if not any(isinstance(e, RefExpr) and e.node in self.arg_types for e in o.args):

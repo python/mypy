@@ -45,9 +45,9 @@ def get_package_properties(package_id: str) -> ModuleProperties:
         package = importlib.import_module(package_id)
     except BaseException as e:
         raise InspectError(str(e)) from e
-    name = getattr(package, '__name__', package_id)
-    file = getattr(package, '__file__', None)
-    path: Optional[List[str]] = getattr(package, '__path__', None)
+    name = getattr(package, "__name__", package_id)
+    file = getattr(package, "__file__", None)
+    path: Optional[List[str]] = getattr(package, "__path__", None)
     if not isinstance(path, list):
         path = None
     pkg_all = getattr(package, '__all__', None)

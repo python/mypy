@@ -1140,8 +1140,8 @@ def target_from_node(module: str,
             return '%s.%s' % (module, node.name)
 
 
-if sys.platform != 'win32':
-    INIT_SUFFIXES: Final = ('/__init__.py', '/__init__.pyi')
+if sys.platform != "win32":
+    INIT_SUFFIXES: Final = ("/__init__.py", "/__init__.pyi")
 else:
     INIT_SUFFIXES: Final = (
         os.sep + '__init__.py',

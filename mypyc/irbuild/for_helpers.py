@@ -600,6 +600,7 @@ class ForDictionaryCommon(ForGenerator):
     since they may override some iteration methods in subtly incompatible manner.
     The fallback logic is implemented in CPy.h via dynamic type check.
     """
+
     dict_next_op: ClassVar[CFunctionDescription]
     dict_iter_op: ClassVar[CFunctionDescription]
 
@@ -733,7 +734,8 @@ class ForRange(ForGenerator):
         self.index_reg = builder.maybe_spill_assignable(index_reg)
         # Initialize loop index to 0. Assert that the index target is assignable.
         self.index_target: Union[Register, AssignmentTarget] = builder.get_assignment_target(
-            self.index)
+            self.index
+        )
         builder.assign(self.index_target, builder.read(self.index_reg, self.line), self.line)
 
     def gen_condition(self) -> None:
@@ -774,7 +776,8 @@ class ForInfiniteCounter(ForGenerator):
         zero = Integer(0)
         self.index_reg = builder.maybe_spill_assignable(zero)
         self.index_target: Union[Register, AssignmentTarget] = builder.get_assignment_target(
-            self.index)
+            self.index
+        )
         builder.assign(self.index_target, zero, self.line)
 
     def gen_step(self) -> None:

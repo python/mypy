@@ -383,6 +383,7 @@ def load_plugins_from_config(
     plugins (for cache validation).
     """
     import importlib
+
     snapshot: Dict[str, str] = {}
 
     if not options.config_file:
@@ -861,13 +862,13 @@ def deps_to_json(x: Dict[str, Set[str]]) -> str:
 
 
 # File for storing metadata about all the fine-grained dependency caches
-DEPS_META_FILE: Final = '@deps.meta.json'
+DEPS_META_FILE: Final = "@deps.meta.json"
 # File for storing fine-grained dependencies that didn't a parent in the build
-DEPS_ROOT_FILE: Final = '@root.deps.json'
+DEPS_ROOT_FILE: Final = "@root.deps.json"
 
 # The name of the fake module used to store fine-grained dependencies that
 # have no other place to go.
-FAKE_ROOT_MODULE: Final = '@root'
+FAKE_ROOT_MODULE: Final = "@root"
 
 
 def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
@@ -990,7 +991,7 @@ def generate_deps_for_cache(manager: BuildManager,
     return rdeps
 
 
-PLUGIN_SNAPSHOT_FILE: Final = '@plugins_snapshot.json'
+PLUGIN_SNAPSHOT_FILE: Final = "@plugins_snapshot.json"
 
 
 def write_plugins_snapshot(manager: BuildManager) -> None:

@@ -40,13 +40,8 @@ attr_class_makers: Final = {
 attr_dataclass_makers: Final = {
     'attr.dataclass',
 }
-attr_frozen_makers: Final = {
-    'attr.frozen'
-}
-attr_define_makers: Final = {
-    'attr.define',
-    'attr.mutable'
-}
+attr_frozen_makers: Final = {"attr.frozen"}
+attr_define_makers: Final = {"attr.define", "attr.mutable"}
 attr_attrib_makers: Final = {
     'attr.ib',
     'attr.attrib',
@@ -54,7 +49,7 @@ attr_attrib_makers: Final = {
     'attr.field',
 }
 
-SELF_TVAR_NAME: Final = '_AT'
+SELF_TVAR_NAME: Final = "_AT"
 
 
 class Converter:

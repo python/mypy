@@ -85,8 +85,8 @@ N = TypeVar('N', bound=Node)
 MISSING_FALLBACK: Final = FakeInfo("fallback can't be filled out until semanal")
 _dummy_fallback: Final = Instance(MISSING_FALLBACK, [], -1)
 
-TYPE_COMMENT_SYNTAX_ERROR: Final = 'syntax error in type comment'
-TYPE_COMMENT_AST_ERROR: Final = 'invalid type comment'
+TYPE_COMMENT_SYNTAX_ERROR: Final = "syntax error in type comment"
+TYPE_COMMENT_AST_ERROR: Final = "invalid type comment"
 
 
 def parse(source: Union[str, bytes],
@@ -144,7 +144,7 @@ class ASTConverter:
                  options: Options,
                  errors: Errors) -> None:
         # 'C' for class, 'F' for function
-        self.class_and_function_stack: List[Literal['C', 'F']] = []
+        self.class_and_function_stack: List[Literal["C", "F"]] = []
         self.imports: List[ImportBase] = []
 
         self.options = options

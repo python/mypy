@@ -664,6 +664,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 
 def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     from mypy.join import join_types
+
     arg_types: List[Type] = []
     for i in range(len(t.arg_types)):
         arg_types.append(join_types(t.arg_types[i], s.arg_types[i]))

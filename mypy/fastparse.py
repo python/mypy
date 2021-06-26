@@ -125,7 +125,7 @@ N = TypeVar('N', bound=Node)
 MISSING_FALLBACK: Final = FakeInfo("fallback can't be filled out until semanal")
 _dummy_fallback: Final = Instance(MISSING_FALLBACK, [], -1)
 
-TYPE_COMMENT_SYNTAX_ERROR: Final = 'syntax error in type comment'
+TYPE_COMMENT_SYNTAX_ERROR: Final = "syntax error in type comment"
 
 INVALID_TYPE_IGNORE: Final = 'Invalid "type: ignore" comment'
 
@@ -294,7 +294,7 @@ class ASTConverter:
                  is_stub: bool,
                  errors: Errors) -> None:
         # 'C' for class, 'F' for function
-        self.class_and_function_stack: List[Literal['C', 'F']] = []
+        self.class_and_function_stack: List[Literal["C", "F"]] = []
         self.imports: List[ImportBase] = []
 
         self.options = options
@@ -1525,7 +1525,7 @@ class TypeConverter:
         # this method doesn't actually ever run.) We can't just do
         # an attribute access with a `# type: ignore` because it would be
         # unused on < 3.8.
-        kind: str = getattr(n, 'kind')  # noqa
+        kind: str = getattr(n, "kind")  # noqa
 
         if 'u' in kind or self.assume_str_is_unicode:
             return parse_type_string(n.s, 'builtins.unicode', self.line, n.col_offset,

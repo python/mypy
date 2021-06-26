@@ -4,26 +4,26 @@ import sys
 
 from typing_extensions import Final
 
-PREFIX: Final = 'CPyPy_' # Python wrappers
-NATIVE_PREFIX: Final = 'CPyDef_' # Native functions etc.
-DUNDER_PREFIX: Final = 'CPyDunder_' # Wrappers for exposing dunder methods to the API
-REG_PREFIX: Final = 'cpy_r_' # Registers
-STATIC_PREFIX: Final = 'CPyStatic_' # Static variables (for literals etc.)
-TYPE_PREFIX: Final = 'CPyType_' # Type object struct
-MODULE_PREFIX: Final = 'CPyModule_' # Cached modules
-ATTR_PREFIX: Final = '_' # Attributes
+PREFIX: Final = "CPyPy_"  # Python wrappers
+NATIVE_PREFIX: Final = "CPyDef_"  # Native functions etc.
+DUNDER_PREFIX: Final = "CPyDunder_"  # Wrappers for exposing dunder methods to the API
+REG_PREFIX: Final = "cpy_r_"  # Registers
+STATIC_PREFIX: Final = "CPyStatic_"  # Static variables (for literals etc.)
+TYPE_PREFIX: Final = "CPyType_"  # Type object struct
+MODULE_PREFIX: Final = "CPyModule_"  # Cached modules
+ATTR_PREFIX: Final = "_"  # Attributes
 
-ENV_ATTR_NAME: Final = '__mypyc_env__'
-NEXT_LABEL_ATTR_NAME: Final = '__mypyc_next_label__'
-TEMP_ATTR_NAME: Final = '__mypyc_temp__'
-LAMBDA_NAME: Final = '__mypyc_lambda__'
-PROPSET_PREFIX: Final = '__mypyc_setter__'
-SELF_NAME: Final = '__mypyc_self__'
+ENV_ATTR_NAME: Final = "__mypyc_env__"
+NEXT_LABEL_ATTR_NAME: Final = "__mypyc_next_label__"
+TEMP_ATTR_NAME: Final = "__mypyc_temp__"
+LAMBDA_NAME: Final = "__mypyc_lambda__"
+PROPSET_PREFIX: Final = "__mypyc_setter__"
+SELF_NAME: Final = "__mypyc_self__"
 
 # Max short int we accept as a literal is based on 32-bit platforms,
 # so that we can just always emit the same code.
 
-TOP_LEVEL_NAME: Final = '__top_level__' # Special function representing module top level
+TOP_LEVEL_NAME: Final = "__top_level__"  # Special function representing module top level
 
 # Maximal number of subclasses for a class to trigger fast path in isinstance() checks.
 FAST_ISINSTANCE_MAX_SUBCLASSES: Final = 2
@@ -37,7 +37,7 @@ PLATFORM_SIZE = 4 if IS_32_BIT_PLATFORM else 8
 # wheels (for an unknown reason).
 #
 # Note that we use "in ['darwin']" because of https://github.com/mypyc/mypyc/issues/761.
-IS_MIXED_32_64_BIT_BUILD: Final = sys.platform in ['darwin'] and sys.version_info < (3, 6)
+IS_MIXED_32_64_BIT_BUILD: Final = sys.platform in ["darwin"] and sys.version_info < (3, 6)
 
 # Maximum value for a short tagged integer.
 MAX_SHORT_INT: Final = sys.maxsize >> 1
@@ -46,8 +46,7 @@ MAX_SHORT_INT: Final = sys.maxsize >> 1
 #
 # Note: Assume that the compiled code uses the same bit width as mypyc, except for
 #       Python 3.5 on macOS.
-MAX_LITERAL_SHORT_INT: Final = (sys.maxsize >> 1 if not IS_MIXED_32_64_BIT_BUILD
-                         else 2**30 - 1)
+MAX_LITERAL_SHORT_INT: Final = sys.maxsize >> 1 if not IS_MIXED_32_64_BIT_BUILD else 2 ** 30 - 1
 
 # Runtime C library files
 RUNTIME_C_FILES: Final = [

@@ -97,10 +97,12 @@ node_kinds: Final = {
 inverse_node_kinds: Final = {_kind: _name for _name, _kind in node_kinds.items()}
 
 
-implicit_module_attrs: Final = {'__name__': '__builtins__.str',
-                         '__doc__': None,  # depends on Python version, see semanal.py
-                         '__file__': '__builtins__.str',
-                         '__package__': '__builtins__.str'}
+implicit_module_attrs: Final = {
+    "__name__": "__builtins__.str",
+    "__doc__": None,  # depends on Python version, see semanal.py
+    "__file__": "__builtins__.str",
+    "__package__": "__builtins__.str",
+}
 
 
 # These aliases exist because built-in class objects are not subscriptable.
@@ -138,8 +140,7 @@ reverse_builtin_aliases: Final = {
     'builtins.frozenset': 'typing.FrozenSet',
 }
 
-_nongen_builtins: Final = {'builtins.tuple': 'typing.Tuple',
-                    'builtins.enumerate': ''}
+_nongen_builtins: Final = {"builtins.tuple": "typing.Tuple", "builtins.enumerate": ""}
 _nongen_builtins.update((name, alias) for alias, name in type_aliases.items())
 # Drop OrderedDict from this for backward compatibility
 del _nongen_builtins['collections.OrderedDict']
@@ -150,9 +151,11 @@ def get_nongen_builtins(python_version: Tuple[int, int]) -> Dict[str, str]:
     return _nongen_builtins if python_version < (3, 9) else {}
 
 
-RUNTIME_PROTOCOL_DECOS: Final = ('typing.runtime_checkable',
-                          'typing_extensions.runtime',
-                          'typing_extensions.runtime_checkable')
+RUNTIME_PROTOCOL_DECOS: Final = (
+    "typing.runtime_checkable",
+    "typing_extensions.runtime",
+    "typing_extensions.runtime_checkable",
+)
 
 
 class Node(Context):
@@ -352,7 +355,7 @@ class ImportBase(Statement):
 class Import(ImportBase):
     """import m [as n]"""
 
-    ids: List[Tuple[str, Optional[str]]]     # (module id, as id)
+    ids: List[Tuple[str, Optional[str]]]  # (module id, as id)
 
     def __init__(self, ids: List[Tuple[str, Optional[str]]]) -> None:
         super().__init__()
@@ -381,6 +384,7 @@ class ImportFrom(ImportBase):
 
 class ImportAll(ImportBase):
     """from m import *"""
+
     id: str
     relative: int
     # NOTE: Only filled and used by old semantic analyzer.
@@ -431,9 +435,7 @@ class ImportedName(SymbolNode):
         return 'ImportedName(%s)' % self.target_fullname
 
 
-FUNCBASE_FLAGS: Final = [
-    'is_property', 'is_class', 'is_static', 'is_final'
-]
+FUNCBASE_FLAGS: Final = ["is_property", "is_class", "is_static", "is_final"]
 
 
 class FuncBase(Node):
@@ -738,12 +740,12 @@ class Decorator(SymbolNode, Statement):
     A single Decorator object can include any number of function decorators.
     """
 
-    func: FuncDef                # Decorated function
-    decorators: List[Expression] # Decorators (may be empty)
+    func: FuncDef  # Decorated function
+    decorators: List[Expression]  # Decorators (may be empty)
     # Some decorators are removed by semanal, keep the original here.
     original_decorators: List[Expression]
     # TODO: This is mostly used for the type; consider replacing with a 'type' attribute
-    var: "Var"                     # Represents the decorated function obj
+    var: "Var"  # Represents the decorated function obj
     is_overload = False
 
     def __init__(self, func: FuncDef, decorators: List[Expression],
@@ -839,7 +841,7 @@ class Var(SymbolNode):
         self._fullname = cast('Bogus[str]', None)  # Name with module prefix
         # TODO: Should be Optional[TypeInfo]
         self.info = VAR_NO_INFO
-        self.type: Optional[mypy.types.Type] = type # Declared or inferred type, or None
+        self.type: Optional[mypy.types.Type] = type  # Declared or inferred type, or None
         # Is this the first argument to an ordinary method (usually "self")?
         self.is_self = False
         self.is_ready = True  # If inferred, is the inferred type available?
@@ -889,12 +891,13 @@ class Var(SymbolNode):
     def serialize(self) -> JsonDict:
         # TODO: Leave default values out?
         # NOTE: Sometimes self.is_ready is False here, but we don't care.
-        data: JsonDict = {'.class': 'Var',
-                'name': self._name,
-                'fullname': self._fullname,
-                'type': None if self.type is None else self.type.serialize(),
-                'flags': get_flags(self, VAR_FLAGS),
-                }
+        data: JsonDict = {
+            ".class": "Var",
+            "name": self._name,
+            "fullname": self._fullname,
+            "type": None if self.type is None else self.type.serialize(),
+            "flags": get_flags(self, VAR_FLAGS),
+        }
         if self.final_value is not None:
             data['final_value'] = self.final_value
         return data
@@ -915,7 +918,7 @@ class Var(SymbolNode):
 class ClassDef(Statement):
     """Class definition"""
 
-    name: str       # Name of the class without module prefix
+    name: str  # Name of the class without module prefix
     fullname: Bogus[str] = None  # type: ignore # Fully qualified name of the class
     defs: "Block"
     type_vars: List["mypy.types.TypeVarDef"]
@@ -1022,6 +1025,7 @@ class Block(Statement):
 
 class ExpressionStmt(Statement):
     """An expression as a statement, such as print(s)."""
+
     expr: Expression
 
     def __init__(self, expr: Expression) -> None:
@@ -1223,11 +1227,11 @@ class RaiseStmt(Statement):
 
 
 class TryStmt(Statement):
-    body: Block                # Try body
+    body: Block  # Try body
     # Plain 'except:' also possible
-    types: List[Optional[Expression]]    # Except type expressions
-    vars: List[Optional["NameExpr"]]     # Except variable names
-    handlers: List[Block]      # Except bodies
+    types: List[Optional[Expression]]  # Except type expressions
+    vars: List[Optional["NameExpr"]]  # Except variable names
+    handlers: List[Block]  # Except bodies
     else_body: Optional[Block] = None
     finally_body: Optional[Block] = None
 
@@ -2154,6 +2158,7 @@ class PromoteExpr(Expression):
 
 class NewTypeExpr(Expression):
     """NewType expression NewType(...)."""
+
     name: str
     # The base type (the second argument to NewType)
     old_type: Optional["mypy.types.Type"] = None
@@ -2488,7 +2493,7 @@ class TypeInfo(SymbolNode):
         """Return a string dump of the contents of the TypeInfo."""
         if not str_conv:
             str_conv = mypy.strconv.StrConv()
-        base: str = ''
+        base: str = ""
 
         def type_str(typ: 'mypy.types.Type') -> str:
             if type_str_conv:
@@ -2615,9 +2620,9 @@ class FakeInfo(TypeInfo):
         raise AssertionError(object.__getattribute__(self, 'msg'))
 
 
-VAR_NO_INFO: Final[TypeInfo] = FakeInfo('Var is lacking info')
-CLASSDEF_NO_INFO: Final[TypeInfo] = FakeInfo('ClassDef is lacking info')
-FUNC_NO_INFO: Final[TypeInfo] = FakeInfo('FuncBase for non-methods lack info')
+VAR_NO_INFO: Final[TypeInfo] = FakeInfo("Var is lacking info")
+CLASSDEF_NO_INFO: Final[TypeInfo] = FakeInfo("ClassDef is lacking info")
+FUNC_NO_INFO: Final[TypeInfo] = FakeInfo("FuncBase for non-methods lack info")
 
 
 class TypeAlias(SymbolNode):
@@ -2740,15 +2745,16 @@ class TypeAlias(SymbolNode):
         return self._fullname
 
     def serialize(self) -> JsonDict:
-        data: JsonDict = {'.class': 'TypeAlias',
-                'fullname': self._fullname,
-                'target': self.target.serialize(),
-                'alias_tvars': self.alias_tvars,
-                'no_args': self.no_args,
-                'normalized': self.normalized,
-                'line': self.line,
-                'column': self.column
-                }
+        data: JsonDict = {
+            ".class": "TypeAlias",
+            "fullname": self._fullname,
+            "target": self.target.serialize(),
+            "alias_tvars": self.alias_tvars,
+            "no_args": self.no_args,
+            "normalized": self.normalized,
+            "line": self.line,
+            "column": self.column,
+        }
         return data
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
@@ -2969,9 +2975,10 @@ class SymbolTableNode:
           prefix: full name of the containing module or class; or None
           name: name of this object relative to the containing object
         """
-        data: JsonDict = {'.class': 'SymbolTableNode',
-                'kind': node_kinds[self.kind],
-                }
+        data: JsonDict = {
+            ".class": "SymbolTableNode",
+            "kind": node_kinds[self.kind],
+        }
         if self.module_hidden:
             data['module_hidden'] = True
         if not self.module_public:
@@ -3048,7 +3055,7 @@ class SymbolTable(Dict[str, SymbolTableNode]):
                             for key, node in self.items()])
 
     def serialize(self, fullname: str) -> JsonDict:
-        data: JsonDict = {'.class': 'SymbolTable'}
+        data: JsonDict = {".class": "SymbolTable"}
         for key, value in self.items():
             # Skip __builtins__: it's a reference to the builtins
             # module that gets added to every module by

@@ -159,11 +159,19 @@ def generate_c_function_stub(module: ModuleType,
 
     ret_type = 'None' if name == '__init__' and class_name else 'Any'
 
-    if (name in ('__new__', '__init__') and name not in sigs and class_name and
-            class_name in class_sigs):
-        inferred: Optional[List[FunctionSig]] = [FunctionSig(name=name,
-                                args=infer_arg_sig_from_anon_docstring(class_sigs[class_name]),
-                                ret_type=ret_type)]
+    if (
+        name in ("__new__", "__init__")
+        and name not in sigs
+        and class_name
+        and class_name in class_sigs
+    ):
+        inferred: Optional[List[FunctionSig]] = [
+            FunctionSig(
+                name=name,
+                args=infer_arg_sig_from_anon_docstring(class_sigs[class_name]),
+                ret_type=ret_type,
+            )
+        ]
     else:
         docstr = getattr(obj, '__doc__', None)
         inferred = infer_sig_from_docstring(docstr, name)
@@ -310,7 +318,7 @@ def generate_c_type_stub(module: ModuleType,
     """
     # typeshed gives obj.__dict__ the not quite correct type Dict[str, Any]
     # (it could be a mappingproxy!), which makes mypyc mad, so obfuscate it.
-    obj_dict: Mapping[str, Any] = getattr(obj, '__dict__')  # noqa
+    obj_dict: Mapping[str, Any] = getattr(obj, "__dict__")  # noqa
     items = sorted(obj_dict.items(), key=lambda x: method_name_sort_key(x[0]))
     methods: List[str] = []
     types: List[str] = []

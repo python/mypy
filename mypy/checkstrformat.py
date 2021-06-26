@@ -95,24 +95,37 @@ def compile_new_format_re(custom_spec: bool) -> Pattern[str]:
 FORMAT_RE: Final = compile_format_re()
 FORMAT_RE_NEW: Final = compile_new_format_re(False)
 FORMAT_RE_NEW_CUSTOM: Final = compile_new_format_re(True)
-DUMMY_FIELD_NAME: Final = '__dummy_name__'
+DUMMY_FIELD_NAME: Final = "__dummy_name__"
 
 # Format types supported by str.format() for builtin classes.
-SUPPORTED_TYPES_NEW: Final = {'b', 'c', 'd', 'e', 'E', 'f', 'F',
-                       'g', 'G', 'n', 'o', 's', 'x', 'X', '%'}
+SUPPORTED_TYPES_NEW: Final = {
+    "b",
+    "c",
+    "d",
+    "e",
+    "E",
+    "f",
+    "F",
+    "g",
+    "G",
+    "n",
+    "o",
+    "s",
+    "x",
+    "X",
+    "%",
+}
 
 # Types that require either int or float.
-NUMERIC_TYPES_OLD: Final = {'d', 'i', 'o', 'u', 'x', 'X',
-                     'e', 'E', 'f', 'F', 'g', 'G'}
-NUMERIC_TYPES_NEW: Final = {'b', 'd', 'o', 'e', 'E', 'f', 'F',
-                     'g', 'G', 'n', 'x', 'X', '%'}
+NUMERIC_TYPES_OLD: Final = {"d", "i", "o", "u", "x", "X", "e", "E", "f", "F", "g", "G"}
+NUMERIC_TYPES_NEW: Final = {"b", "d", "o", "e", "E", "f", "F", "g", "G", "n", "x", "X", "%"}
 
 # These types accept _only_ int.
-REQUIRE_INT_OLD: Final = {'o', 'x', 'X'}
-REQUIRE_INT_NEW: Final = {'b', 'd', 'o', 'x', 'X'}
+REQUIRE_INT_OLD: Final = {"o", "x", "X"}
+REQUIRE_INT_NEW: Final = {"b", "d", "o", "x", "X"}
 
 # These types fall back to SupportsFloat with % (other fall back to SupportsInt)
-FLOAT_TYPES: Final = {'e', 'E', 'f', 'F', 'g', 'G'}
+FLOAT_TYPES: Final = {"e", "E", "f", "F", "g", "G"}
 
 
 class ConversionSpecifier:
@@ -518,9 +531,10 @@ class StringFormatterChecker:
 
         # This is a bit of a dirty trick, but it looks like this is the simplest way.
         temp_errors = self.msg.clean_copy().errors
-        dummy = DUMMY_FIELD_NAME + spec.field[len(spec.key):]
-        temp_ast: Node = parse(dummy, fnam='<format>', module=None,
-                         options=self.chk.options, errors=temp_errors)
+        dummy = DUMMY_FIELD_NAME + spec.field[len(spec.key) :]
+        temp_ast: Node = parse(
+            dummy, fnam="<format>", module=None, options=self.chk.options, errors=temp_errors
+        )
         if temp_errors.is_errors():
             self.msg.fail('Syntax error in format specifier "{}"'.format(spec.field),
                           ctx, code=codes.STRING_FORMATTING)

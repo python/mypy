@@ -140,7 +140,7 @@ FUTURE_IMPORTS: Final = {
 
 # Special cased built-in classes that are needed for basic functionality and need to be
 # available very early on.
-CORE_BUILTIN_CLASSES: Final = ['object', 'bool', 'function']
+CORE_BUILTIN_CLASSES: Final = ["object", "bool", "function"]
 
 
 # Used for tracking incomplete references
@@ -213,8 +213,8 @@ class SemanticAnalyzer(NodeVisitor[None],
     imports: Set[str]  # Imported modules (during phase 2 analysis)
     # Note: some imports (and therefore dependencies) might
     # not be found in phase 1, for example due to * imports.
-    errors: Errors     # Keeps track of generated errors
-    plugin: Plugin     # Mypy plugin for special casing of library features
+    errors: Errors  # Keeps track of generated errors
+    plugin: Plugin  # Mypy plugin for special casing of library features
     statement: Optional[Statement] = None  # Statement/definition being analyzed
     future_import_flags: Set[str]
 
@@ -247,7 +247,9 @@ class SemanticAnalyzer(NodeVisitor[None],
         # analyzed in several iterations until all names are resolved. We need to save
         # the local namespaces for the top level function and all nested functions between
         # these iterations. See also semanal_main.process_top_level_function().
-        self.saved_locals: Dict[Union[FuncItem, GeneratorExpr, DictionaryComprehension], SymbolTable] = {}
+        self.saved_locals: Dict[
+            Union[FuncItem, GeneratorExpr, DictionaryComprehension], SymbolTable
+        ] = {}
         self.imports = set()
         self.type = None
         self.type_stack = []
@@ -418,7 +420,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             # unicode docstrings should be accepted in Python 2
             if name == '__doc__':
                 if self.options.python_version >= (3, 0):
-                    typ: Type = UnboundType('__builtins__.str')
+                    typ: Type = UnboundType("__builtins__.str")
                 else:
                     typ = UnionType([UnboundType('__builtins__.str'),
                                      UnboundType('__builtins__.unicode')])

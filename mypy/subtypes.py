@@ -701,7 +701,8 @@ def find_node_type(node: Union[Var, FuncBase], itype: Instance, subtype: Type) -
 
     if isinstance(node, FuncBase):
         typ: Optional[Type] = mypy.typeops.function_type(
-            node, fallback=Instance(itype.type.mro[-1], []))
+            node, fallback=Instance(itype.type.mro[-1], [])
+        )
     else:
         typ = node.type
     typ = get_proper_type(typ)

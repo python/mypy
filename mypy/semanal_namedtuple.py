@@ -26,15 +26,26 @@ from mypy.util import get_unique_redefinition_name
 
 # Matches "_prohibited" in typing.py, but adds __annotations__, which works at runtime but can't
 # easily be supported in a static checker.
-NAMEDTUPLE_PROHIBITED_NAMES: Final = ('__new__', '__init__', '__slots__', '__getnewargs__',
-                               '_fields', '_field_defaults', '_field_types',
-                               '_make', '_replace', '_asdict', '_source',
-                               '__annotations__')
+NAMEDTUPLE_PROHIBITED_NAMES: Final = (
+    "__new__",
+    "__init__",
+    "__slots__",
+    "__getnewargs__",
+    "_fields",
+    "_field_defaults",
+    "_field_types",
+    "_make",
+    "_replace",
+    "_asdict",
+    "_source",
+    "__annotations__",
+)
 
-NAMEDTUP_CLASS_ERROR: Final = ('Invalid statement in NamedTuple definition; '
-                        'expected "field_name: field_type [= default]"')
+NAMEDTUP_CLASS_ERROR: Final = (
+    "Invalid statement in NamedTuple definition; " 'expected "field_name: field_type [= default]"'
+)
 
-SELF_TVAR_NAME: Final = '_NT'
+SELF_TVAR_NAME: Final = "_NT"
 
 
 class NamedTupleAnalyzer:

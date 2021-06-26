@@ -328,9 +328,7 @@ def construct_groups(
     """
 
     if separate is True:
-        groups: emitmodule.Groups = [
-            ([source], None) for source in sources
-        ]
+        groups: emitmodule.Groups = [([source], None) for source in sources]
     elif isinstance(separate, list):
         groups = []
         used_sources = set()

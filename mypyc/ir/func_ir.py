@@ -220,7 +220,7 @@ class FuncIR:
         )
 
 
-INVALID_FUNC_DEF: Final = FuncDef('<INVALID_FUNC_DEF>', [], Block([]))
+INVALID_FUNC_DEF: Final = FuncDef("<INVALID_FUNC_DEF>", [], Block([]))
 
 
 def all_values(args: List[Register], blocks: List[BasicBlock]) -> List[Value]:

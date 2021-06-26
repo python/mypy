@@ -11,12 +11,14 @@ method_descriptor_type: Final = type(object.__dir__)
 method_wrapper_type: Final = type(object().__ne__)
 wrapper_descriptor_type: Final = type(object.__ne__)
 
-FUNCTION_TYPES: Final = (types.BuiltinFunctionType,
-                  types.FunctionType,
-                  types.MethodType,
-                  method_descriptor_type,
-                  wrapper_descriptor_type,
-                  method_wrapper_type)
+FUNCTION_TYPES: Final = (
+    types.BuiltinFunctionType,
+    types.FunctionType,
+    types.MethodType,
+    method_descriptor_type,
+    wrapper_descriptor_type,
+    method_wrapper_type,
+)
 
 ATTR_BLACKLIST: Final = {
     '__doc__',

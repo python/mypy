@@ -17,7 +17,7 @@ class TestEmitter(unittest.TestCase):
         assert emitter.label(BasicBlock(4)) == 'CPyL4'
 
     def test_reg(self) -> None:
-        names: Dict[Value, str] = {self.n: 'n'}
+        names: Dict[Value, str] = {self.n: "n"}
         emitter = Emitter(self.context, names)
         assert emitter.reg(self.n) == 'cpy_r_n'
 

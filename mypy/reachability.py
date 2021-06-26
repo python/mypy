@@ -27,13 +27,14 @@ inverted_truth_mapping: Final = {
     MYPY_FALSE: MYPY_TRUE,
 }
 
-reverse_op: Final = {"==": "==",
-              "!=": "!=",
-              "<":  ">",
-              ">":  "<",
-              "<=": ">=",
-              ">=": "<=",
-              }
+reverse_op: Final = {
+    "==": "==",
+    "!=": "!=",
+    "<": ">",
+    ">": "<",
+    "<=": ">=",
+    ">=": "<=",
+}
 
 
 def infer_reachability_of_if_statement(s: IfStmt, options: Options) -> None:

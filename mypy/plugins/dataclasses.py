@@ -25,7 +25,7 @@ dataclass_makers: Final = {
     'dataclasses.dataclass',
 }
 
-SELF_TVAR_NAME: Final = '_DT'
+SELF_TVAR_NAME: Final = "_DT"
 
 
 class DataclassAttribute:
@@ -300,8 +300,8 @@ class DataclassTransformer:
             # Each class depends on the set of attributes in its dataclass ancestors.
             ctx.api.add_plugin_dependency(make_wildcard_trigger(info.fullname))
 
-            for data in info.metadata['dataclass']['attributes']:
-                name: str = data['name']
+            for data in info.metadata["dataclass"]["attributes"]:
+                name: str = data["name"]
                 if name not in known_attrs:
                     attr = DataclassAttribute.deserialize(info, data, ctx.api)
                     attr.expand_typevar_from_subtype(ctx.cls.info)

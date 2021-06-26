@@ -713,6 +713,7 @@ class StubgencSuite(unittest.TestCase):
     def test_generate_c_type_inheritance_builtin_type(self) -> None:
         class TestClass(type):
             pass
+
         output: List[str] = []
         imports: List[str] = []
         mod = ModuleType('module', '')
@@ -727,6 +728,7 @@ class StubgencSuite(unittest.TestCase):
                 test(self: TestClass, arg0: int)
                 """
                 pass
+
         output: List[str] = []
         imports: List[str] = []
         mod = ModuleType(TestClass.__module__, '')
@@ -742,6 +744,7 @@ class StubgencSuite(unittest.TestCase):
                 test(self: TestClass, arg0: str = "")
                 """
                 pass
+
         output: List[str] = []
         imports: List[str] = []
         mod = ModuleType(TestClass.__module__, '')
@@ -759,6 +762,7 @@ class StubgencSuite(unittest.TestCase):
             test(arg0: argparse.Action)
             """
             pass
+
         output: List[str] = []
         imports: List[str] = []
         mod = ModuleType(self.__module__, '')
@@ -777,6 +781,7 @@ class StubgencSuite(unittest.TestCase):
             test(arg0: argparse.Action)
             """
             pass
+
         output: List[str] = []
         imports: List[str] = []
         mod = ModuleType('argparse', '')
@@ -791,6 +796,7 @@ class StubgencSuite(unittest.TestCase):
             test(arg0: str) -> argparse.Action
             """
             pass
+
         output: List[str] = []
         imports: List[str] = []
         mod = ModuleType(self.__module__, '')
@@ -807,6 +813,7 @@ class StubgencSuite(unittest.TestCase):
             test(arg0: str) -> argparse.Action
             """
             pass
+
         output: List[str] = []
         imports: List[str] = []
         mod = ModuleType('argparse', '')
@@ -835,6 +842,7 @@ class StubgencSuite(unittest.TestCase):
                 test(self: TestClass, arg0: List[int])
                 """
                 pass
+
         output: List[str] = []
         imports: List[str] = []
         mod = ModuleType(TestClass.__module__, '')
@@ -850,6 +858,7 @@ class StubgencSuite(unittest.TestCase):
                 test(self: TestClass, arg0: Dict[str, int])
                 """
                 pass
+
         output: List[str] = []
         imports: List[str] = []
         mod = ModuleType(TestClass.__module__, '')
@@ -865,6 +874,7 @@ class StubgencSuite(unittest.TestCase):
                 test(self: TestClass, arg0: Dict[str, List[int]])
                 """
                 pass
+
         output: List[str] = []
         imports: List[str] = []
         mod = ModuleType(TestClass.__module__, '')
@@ -880,6 +890,7 @@ class StubgencSuite(unittest.TestCase):
                 test(self: TestClass, arg0: Dict[argparse.Action, int])
                 """
                 pass
+
         output: List[str] = []
         imports: List[str] = []
         mod = ModuleType(TestClass.__module__, '')
@@ -895,6 +906,7 @@ class StubgencSuite(unittest.TestCase):
                 test(self: TestClass, arg0: Dict[str, argparse.Action])
                 """
                 pass
+
         output: List[str] = []
         imports: List[str] = []
         mod = ModuleType(TestClass.__module__, '')
@@ -915,6 +927,7 @@ class StubgencSuite(unittest.TestCase):
                 2. __init__(self: TestClass, arg0: str, arg1: str) -> None
                 """
                 pass
+
         output: List[str] = []
         imports: List[str] = []
         mod = ModuleType(TestClass.__module__, '')

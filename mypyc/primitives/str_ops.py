@@ -72,10 +72,12 @@ method_op(
 
 # str.split(...)
 str_split_types: List[RType] = [str_rprimitive, str_rprimitive, int_rprimitive]
-str_split_functions = ['PyUnicode_Split', 'PyUnicode_Split', 'CPyStr_Split']
-str_split_constants: List[List[Tuple[int, RType]]] = [[(0, pointer_rprimitive), (-1, c_int_rprimitive)],
-                       [(-1, c_int_rprimitive)],
-                       []]
+str_split_functions = ["PyUnicode_Split", "PyUnicode_Split", "CPyStr_Split"]
+str_split_constants: List[List[Tuple[int, RType]]] = [
+    [(0, pointer_rprimitive), (-1, c_int_rprimitive)],
+    [(-1, c_int_rprimitive)],
+    [],
+]
 for i in range(len(str_split_types)):
     method_op(
         name='split',

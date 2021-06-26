@@ -23,8 +23,7 @@ except ImportError:
 
 T = TypeVar('T')
 
-ENCODING_RE: Final = \
-    re.compile(br'([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)')
+ENCODING_RE: Final = re.compile(br"([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)")
 
 DEFAULT_SOURCE_OFFSET: Final = 4
 DEFAULT_COLUMNS: Final = 80
@@ -40,8 +39,12 @@ MINIMUM_WIDTH = 20
 MINIMUM_WINDOWS_MAJOR_VT100 = 10
 MINIMUM_WINDOWS_BUILD_VT100 = 10586
 
-default_python2_interpreter: Final = \
-    ['python2', 'python', '/usr/bin/python', 'C:\\Python27\\python.exe']
+default_python2_interpreter: Final = [
+    "python2",
+    "python",
+    "/usr/bin/python",
+    "C:\\Python27\\python.exe",
+]
 
 
 def split_module_names(mod_name: str) -> List[str]:

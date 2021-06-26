@@ -93,8 +93,12 @@ MAX_UNIONS: Final = 5
 
 # Types considered safe for comparisons with --strict-equality due to known behaviour of __eq__.
 # NOTE: All these types are subtypes of AbstractSet.
-OVERLAPPING_TYPES_WHITELIST: Final = ['builtins.set', 'builtins.frozenset',
-                               'typing.KeysView', 'typing.ItemsView']
+OVERLAPPING_TYPES_WHITELIST: Final = [
+    "builtins.set",
+    "builtins.frozenset",
+    "typing.KeysView",
+    "typing.ItemsView",
+]
 
 
 class TooManyUnions(Exception):
@@ -590,14 +594,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return None
 
     # Types and methods that can be used to infer partial types.
-    item_args: ClassVar[Dict[str, List[str]]] = {'builtins.list': ['append'],
-                 'builtins.set': ['add', 'discard'],
-                 }
-    container_args: ClassVar[Dict[str, Dict[str, List[str]]]] = {'builtins.list': {'extend': ['builtins.list']},
-                      'builtins.dict': {'update': ['builtins.dict']},
-                      'collections.OrderedDict': {'update': ['builtins.dict']},
-                      'builtins.set': {'update': ['builtins.set', 'builtins.list']},
-                      }
+    item_args: ClassVar[Dict[str, List[str]]] = {
+        "builtins.list": ["append"],
+        "builtins.set": ["add", "discard"],
+    }
+    container_args: ClassVar[Dict[str, Dict[str, List[str]]]] = {
+        "builtins.list": {"extend": ["builtins.list"]},
+        "builtins.dict": {"update": ["builtins.dict"]},
+        "collections.OrderedDict": {"update": ["builtins.dict"]},
+        "builtins.set": {"update": ["builtins.set", "builtins.list"]},
+    }
 
     def try_infer_partial_type(self, e: CallExpr) -> None:
         """Try to make partial type precise from a call."""
@@ -3051,9 +3057,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 value_types.append(value_type)
         return make_simplified_union(value_types)
 
-    def visit_enum_index_expr(self, enum_type: TypeInfo, index: Expression,
-                              context: Context) -> Type:
-        string_type: Type = self.named_type('builtins.str')
+    def visit_enum_index_expr(
+        self, enum_type: TypeInfo, index: Expression, context: Context
+    ) -> Type:
+        string_type: Type = self.named_type("builtins.str")
         if self.chk.options.python_version[0] < 3:
             string_type = UnionType.make_union([string_type,
                                                 self.named_type('builtins.unicode')])

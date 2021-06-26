@@ -43,13 +43,13 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
     out_section_missing = case.suite.required_out_section
     normalize_output = True
 
-    files: List[Tuple[str, str]] = [] # path and contents
-    output_files: List[Tuple[str, str]] = [] # path and contents for output files
+    files: List[Tuple[str, str]] = []  # path and contents
+    output_files: List[Tuple[str, str]] = []  # path and contents for output files
     output: List[str] = []  # Regular output errors
     output2: Dict[int, List[str]] = {}  # Output errors for incremental, runs 2+
     deleted_paths: Dict[int, Set[str]] = {}  # from run number of paths
     stale_modules: Dict[int, Set[str]] = {}  # from run number to module names
-    rechecked_modules: Dict[ int, Set[str]] = {}  # from run number module names
+    rechecked_modules: Dict[int, Set[str]] = {}  # from run number module names
     triggered: List[str] = []  # Active triggers (one line per incremental step)
     targets: Dict[int, List[str]] = {}  # Fine-grained targets (per fine-grained update)
 
@@ -210,7 +210,7 @@ class DataDrivenTestCase(pytest.Item):
 
     # Extra attributes used by some tests.
     last_line: int
-    output_files: List[Tuple[str, str]] # Path and contents for output files
+    output_files: List[Tuple[str, str]]  # Path and contents for output files
     deleted_paths: Dict[int, Set[str]]  # Mapping run number -> paths
     triggered: List[str]  # Active triggers (one line per incremental step)
 
@@ -253,7 +253,7 @@ class DataDrivenTestCase(pytest.Item):
             suite.run_case(self)
         except Exception:
             # As a debugging aid, support copying the contents of the tmp directory somewhere
-            save_dir: Optional[str] = self.config.getoption('--save-failures-to', None)
+            save_dir: Optional[str] = self.config.getoption("--save-failures-to", None)
             if save_dir:
                 assert self.tmpdir is not None
                 target_dir = os.path.join(save_dir, os.path.basename(self.tmpdir.name))
@@ -350,8 +350,8 @@ class TestItem:
       .. data ..
     """
 
-    id = ''
-    arg: Optional[str] = ''
+    id = ""
+    arg: Optional[str] = ""
 
     # Text data, array of 8-bit strings
     data: List[str]

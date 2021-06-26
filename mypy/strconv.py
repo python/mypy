@@ -405,8 +405,8 @@ class StrConv(NodeVisitor[str]):
             elif kind == mypy.nodes.ARG_STAR2:
                 extra.append(('DictVarArg', [o.args[i]]))
             else:
-                raise RuntimeError('unknown kind %d' % kind)
-        a: List[Any] = [o.callee, ('Args', args)]
+                raise RuntimeError("unknown kind %d" % kind)
+        a: List[Any] = [o.callee, ("Args", args)]
         return self.dump(a + extra, o)
 
     def visit_op_expr(self, o: 'mypy.nodes.OpExpr') -> str:
@@ -456,6 +456,7 @@ class StrConv(NodeVisitor[str]):
 
     def visit_type_var_expr(self, o: 'mypy.nodes.TypeVarExpr') -> str:
         import mypy.types
+
         a: List[Any] = []
         if o.variance == mypy.nodes.COVARIANT:
             a += ['Variance(COVARIANT)']
@@ -469,6 +470,7 @@ class StrConv(NodeVisitor[str]):
 
     def visit_paramspec_expr(self, o: 'mypy.nodes.ParamSpecExpr') -> str:
         import mypy.types
+
         a: List[Any] = []
         if o.variance == mypy.nodes.COVARIANT:
             a += ['Variance(COVARIANT)']

@@ -440,7 +440,7 @@ class OperandComparisonGroupingSuite(Suite):
         assignable_combinations: List[Dict[int, NameExpr]] = [
             {}, {0: x0}, {1: x1}, {0: x0, 1: x1},
         ]
-        to_group_by: List[Set[str]] = [set(), {'=='}, {'is'}]
+        to_group_by: List[Set[str]] = [set(), {"=="}, {"is"}]
 
         for combo in assignable_combinations:
             for operators in to_group_by:

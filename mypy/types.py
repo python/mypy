@@ -68,14 +68,18 @@ if TYPE_CHECKING:
     )
 
 # Supported names of TypedDict type constructors.
-TPDICT_NAMES: Final = ('typing.TypedDict',
-                'typing_extensions.TypedDict',
-                'mypy_extensions.TypedDict')
+TPDICT_NAMES: Final = (
+    "typing.TypedDict",
+    "typing_extensions.TypedDict",
+    "mypy_extensions.TypedDict",
+)
 
 # Supported fallback instance type names for TypedDict types.
-TPDICT_FB_NAMES: Final = ('typing._TypedDict',
-                   'typing_extensions._TypedDict',
-                   'mypy_extensions._TypedDict')
+TPDICT_FB_NAMES: Final = (
+    "typing._TypedDict",
+    "typing_extensions._TypedDict",
+    "mypy_extensions._TypedDict",
+)
 
 # A placeholder used for Bogus[...] parameters
 _dummy: Final[Any] = object()
@@ -245,9 +249,11 @@ class TypeAliasType(Type):
 
     def serialize(self) -> JsonDict:
         assert self.alias is not None
-        data: JsonDict = {'.class': 'TypeAliasType',
-                'type_ref': self.alias.fullname,
-                'args': [arg.serialize() for arg in self.args]}
+        data: JsonDict = {
+            ".class": "TypeAliasType",
+            "type_ref": self.alias.fullname,
+            "args": [arg.serialize() for arg in self.args],
+        }
         return data
 
     @classmethod
@@ -369,6 +375,7 @@ class TypeVarLikeDef(mypy.nodes.Context):
 
 class TypeVarDef(TypeVarLikeDef):
     """Definition of a single type variable."""
+
     values: List[Type]  # Value restriction, empty list if no restriction
     upper_bound: Type
     variance: int = INVARIANT
@@ -535,6 +542,7 @@ class CallableArgument(ProperType):
 
     Note that this is a synthetic type for helping parse ASTs, not a real type.
     """
+
     typ: Type
     name: Optional[str] = None
     constructor: Optional[str] = None
@@ -752,7 +760,7 @@ class DeletedType(ProperType):
     These can be used as lvalues but not rvalues.
     """
 
-    source: Optional[str] = ''  # May be None; name that generated this value
+    source: Optional[str] = ""  # May be None; name that generated this value
 
     def __init__(self, source: Optional[str] = None, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
@@ -772,7 +780,7 @@ class DeletedType(ProperType):
 
 
 # Fake TypeInfo to be used as a placeholder during Instance de-serialization.
-NOT_READY: Final = mypy.nodes.FakeInfo('De-serialization failure: TypeInfo not fixed')
+NOT_READY: Final = mypy.nodes.FakeInfo("De-serialization failure: TypeInfo not fixed")
 
 
 class Instance(ProperType):
@@ -860,10 +868,11 @@ class Instance(ProperType):
         type_ref = self.type.fullname
         if not self.args and not self.last_known_value:
             return type_ref
-        data: JsonDict = {'.class': 'Instance',
-                }
-        data['type_ref'] = type_ref
-        data['args'] = [arg.serialize() for arg in self.args]
+        data: JsonDict = {
+            ".class": "Instance",
+        }
+        data["type_ref"] = type_ref
+        data["args"] = [arg.serialize() for arg in self.args]
         if self.last_known_value is not None:
             data['last_known_value'] = self.last_known_value.serialize()
         return data

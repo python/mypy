@@ -609,13 +609,13 @@ class SetAttr(RegisterOp):
 
 
 # Default name space for statics, variables
-NAMESPACE_STATIC: Final = 'static'
+NAMESPACE_STATIC: Final = "static"
 
 # Static namespace for pointers to native type objects
-NAMESPACE_TYPE: Final = 'type'
+NAMESPACE_TYPE: Final = "type"
 
 # Namespace for modules
-NAMESPACE_MODULE: Final = 'module'
+NAMESPACE_MODULE: Final = "module"
 
 
 class LoadStatic(RegisterOp):
@@ -809,12 +809,12 @@ class RaiseStandardError(RegisterOp):
 
     error_kind = ERR_FALSE
 
-    VALUE_ERROR: Final = 'ValueError'
-    ASSERTION_ERROR: Final = 'AssertionError'
-    STOP_ITERATION: Final = 'StopIteration'
-    UNBOUND_LOCAL_ERROR: Final = 'UnboundLocalError'
-    RUNTIME_ERROR: Final = 'RuntimeError'
-    NAME_ERROR: Final = 'NameError'
+    VALUE_ERROR: Final = "ValueError"
+    ASSERTION_ERROR: Final = "AssertionError"
+    STOP_ITERATION: Final = "StopIteration"
+    UNBOUND_LOCAL_ERROR: Final = "UnboundLocalError"
+    RUNTIME_ERROR: Final = "RuntimeError"
+    NAME_ERROR: Final = "NameError"
 
     def __init__(self, class_name: str, value: Optional[Union[str, Value]], line: int) -> None:
         super().__init__(line)

@@ -14,8 +14,8 @@ from mypy.errorcodes import ErrorCode, IMPORT
 from mypy import errorcodes as codes
 from mypy.util import DEFAULT_SOURCE_OFFSET, is_typeshed_file
 
-T = TypeVar('T')
-allowed_duplicates: Final = ['@overload', 'Got:', 'Expected:']
+T = TypeVar("T")
+allowed_duplicates: Final = ["@overload", "Got:", "Expected:"]
 
 
 class ErrorInfo:
@@ -32,10 +32,10 @@ class ErrorInfo:
     module: Optional[str] = None
 
     # The name of the type in which this error is located at.
-    type: Optional[str] = ''   # Unqualified, may be None
+    type: Optional[str] = ""  # Unqualified, may be None
 
     # The name of the function or member in which this error is located at.
-    function_or_member: Optional[str] = ''   # Unqualified, may be None
+    function_or_member: Optional[str] = ""  # Unqualified, may be None
 
     # The line number related to this error within file.
     line = 0     # -1 if unknown
@@ -132,7 +132,7 @@ class Errors:
     ignore_prefix: Optional[str] = None
 
     # Path to current file.
-    file: str = ''
+    file: str = ""
 
     # Ignore some errors on these lines of each file
     # (path -> line -> error-codes)

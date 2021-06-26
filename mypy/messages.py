@@ -1350,9 +1350,11 @@ class MessageBuilder:
         # note:     method, attr
         MAX_ITEMS = 2  # Maximum number of conflicts, missing members, and overloads shown
         # List of special situations where we don't want to report additional problems
-        exclusions: Dict[type, List[str]] = {TypedDictType: ['typing.Mapping'],
-                      TupleType: ['typing.Iterable', 'typing.Sequence'],
-                      Instance: []}
+        exclusions: Dict[type, List[str]] = {
+            TypedDictType: ["typing.Mapping"],
+            TupleType: ["typing.Iterable", "typing.Sequence"],
+            Instance: [],
+        }
         if supertype.type.fullname in exclusions[type(subtype)]:
             return
         if any(isinstance(tp, UninhabitedType) for tp in get_proper_types(supertype.args)):

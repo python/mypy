@@ -18,8 +18,9 @@ from mypy.messages import MessageBuilder
 from mypy.errorcodes import ErrorCode
 from mypy import errorcodes as codes
 
-TPDICT_CLASS_ERROR: Final = ('Invalid statement in TypedDict definition; '
-                      'expected "field_name: field_type"')
+TPDICT_CLASS_ERROR: Final = (
+    "Invalid statement in TypedDict definition; " 'expected "field_name: field_type"'
+)
 
 
 class TypedDictAnalyzer:

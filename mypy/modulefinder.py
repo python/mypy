@@ -33,9 +33,9 @@ SearchPaths = NamedTuple(
 OnePackageDir = Tuple[str, bool]
 PackageDirs = List[OnePackageDir]
 
-PYTHON_EXTENSIONS: Final = ['.pyi', '.py']
+PYTHON_EXTENSIONS: Final = [".pyi", ".py"]
 
-PYTHON2_STUB_DIR: Final = '@python2'
+PYTHON2_STUB_DIR: Final = "@python2"
 
 
 # TODO: Consider adding more reasons here?
