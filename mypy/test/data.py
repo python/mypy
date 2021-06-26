@@ -188,7 +188,7 @@ class DataDrivenTestCase(pytest.Item):
     """Holds parsed data-driven test cases, and handles directory setup and teardown."""
 
     # Override parent member type
-    parent: DataSuiteCollector
+    parent: "DataSuiteCollector"
 
     input: List[str]
     output: List[str]  # Output for the first pass
