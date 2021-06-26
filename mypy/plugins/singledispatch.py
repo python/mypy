@@ -1,5 +1,7 @@
 from mypy.plugins.common import add_method_to_class
-from mypy.nodes import ARG_POS, Argument, Block, ClassDef, SymbolTable, TypeInfo, Var
+from mypy.nodes import (
+    ARG_POS, Argument, Block, ClassDef, SymbolTable, TypeInfo, Var, ARG_STAR, ARG_OPT, Context
+)
 from mypy.checker import TypeChecker
 from mypy.subtypes import is_subtype
 from mypy.types import (
@@ -72,6 +74,22 @@ def make_fake_register_class_instance(api: CheckerPluginInterface, type_args: Se
     return Instance(info, type_args)
 
 
+def fail(ctx: FunctionContext, msg: str, context: Optional[Context]) -> None:
+    """Emit an error message.
+
+    This tries to emit an error message at the location specified by `context`, falling back to the
+    location specified by `ctx.context`. This is helpful when the only context information about
+    where you want to put the error message may be None (like it is for `CallableType.definition`)
+    and falling back to the location of the calling function is fine."""
+    # TODO: figure out if there is some more reliable way of getting context information, so this
+    # function isn't necessary
+    if context is not None:
+        err_context = context
+    else:
+        err_context = ctx.context
+    ctx.api.fail(msg, err_context)
+
+
 def create_singledispatch_function_callback(ctx: FunctionContext) -> Type:
     """Called for functools.singledispatch"""
     func_type = get_proper_type(get_first_arg(ctx.arg_types))
@@ -80,6 +98,22 @@ def create_singledispatch_function_callback(ctx: FunctionContext) -> Type:
             'fallback': func_type,
             'registered': {}
         }  # type: SingledispatchInfo
+
+        if len(func_type.arg_kinds) < 1:
+            fail(
+                ctx,
+                'Singledispatch function requires at least one argument',
+                func_type.definition,
+            )
+            return ctx.default_return_type
+
+        elif func_type.arg_kinds[0] not in (ARG_POS, ARG_OPT, ARG_STAR):
+            fail(
+                ctx,
+                'First argument to singledispatch function must be a positional argument',
+                func_type.definition,
+            )
+            return ctx.default_return_type
 
         # singledispatch returns an instance of functools._SingleDispatchCallable according to
         # typeshed
