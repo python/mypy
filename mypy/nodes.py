@@ -916,7 +916,7 @@ class ClassDef(Statement):
     """Class definition"""
 
     name: str       # Name of the class without module prefix
-    fullname: Bogus[str] = None   # Fully qualified name of the class
+    fullname: Bogus[str] = None  # type: ignore # Fully qualified name of the class
     defs: "Block"
     type_vars: List["mypy.types.TypeVarDef"]
     # Base class expressions (not semantically analyzed -- can be arbitrary expressions)
@@ -2234,7 +2234,7 @@ class TypeInfo(SymbolNode):
     the appropriate number of arguments.
     """
 
-    _fullname: Bogus[str] = None          # Fully qualified name
+    _fullname: Bogus[str] = None  # type: ignore  # Fully qualified name
     # Fully qualified name for the module this type was defined in. This
     # information is also in the fullname, but is harder to extract in the
     # case of nested class definitions.
