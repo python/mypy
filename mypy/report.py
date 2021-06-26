@@ -33,7 +33,7 @@ try:
 except ImportError:
     LXML_INSTALLED = False
 
-type_of_any_name_map: Final[collections.OrderedDict[int, str]] = collections.OrderedDict(
+type_of_any_name_map: Final["collections.OrderedDict[int, str]"] = collections.OrderedDict(
     [
         (TypeOfAny.unannotated, "Unannotated"),
         (TypeOfAny.explicit, "Explicit"),
