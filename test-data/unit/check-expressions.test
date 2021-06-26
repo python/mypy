@@ -434,18 +434,18 @@ class D(Iterable[A]):
 [builtins fixtures/bool.pyi]
 
 [case testNonBooleanContainsReturnValue]
-a, b, c = None, None, None # type: (A, bool, int)
+a, b, c = None, None, None # type: (A, bool, str)
 if int():
     b = a not in a
 if int():
     b = a in a
 if int():
-    c = a not in a  # E: Incompatible types in assignment (expression has type "bool", variable has type "int")
+    c = a not in a  # E: Incompatible types in assignment (expression has type "bool", variable has type "str")
 if int():
-    c = a in a  # E: Incompatible types in assignment (expression has type "bool", variable has type "int")
+    c = a in a  # E: Incompatible types in assignment (expression has type "bool", variable has type "str")
 
 class A:
-  def __contains__(self, x: 'A') -> int: pass
+  def __contains__(self, x: 'A') -> str: pass
 [builtins fixtures/bool.pyi]
 
 [case testInWithInvalidArgs]

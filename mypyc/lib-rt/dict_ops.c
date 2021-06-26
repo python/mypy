@@ -80,6 +80,35 @@ PyObject *CPyDict_SetDefaultWithNone(PyObject *dict, PyObject *key) {
     return CPyDict_SetDefault(dict, key, Py_None);
 }
 
+PyObject *CPyDict_SetDefaultWithEmptyDatatype(PyObject *dict, PyObject *key,
+                                              int data_type) {
+    PyObject *res = CPyDict_GetItem(dict, key);
+    if (!res) {
+        // CPyDict_GetItem() would generates an PyExc_KeyError
+        // when key is not found.
+        PyErr_Clear();
+
+        PyObject *new_obj;
+        if (data_type == 1) {
+            new_obj = PyList_New(0);
+        } else if (data_type == 2) {
+            new_obj = PyDict_New();
+        } else if (data_type == 3) {
+            new_obj = PySet_New(NULL);
+        } else {
+            return NULL;
+        }
+
+        if (CPyDict_SetItem(dict, key, new_obj) == -1) {
+            return NULL;
+        } else {
+            return new_obj;
+        }
+    } else {
+        return res;
+    }
+}
+
 int CPyDict_SetItem(PyObject *dict, PyObject *key, PyObject *value) {
     if (PyDict_CheckExact(dict)) {
         return PyDict_SetItem(dict, key, value);

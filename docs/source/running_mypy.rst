@@ -182,10 +182,21 @@ mypy run. You can also use your normal mypy command line with the
 extra :option:`--install-types <mypy --install-types>` option to
 install missing stubs at the end of the run (if any were found).
 
-You can also get this message if the stubs only support Python 3 and
-your target Python version is Python 2, or vice versa. In this case
-follow instructions in
-:ref:`missing-type-hints-for-third-party-library`.
+Use :option:`--install-types <mypy --install-types>` with
+:option:`--non-interactive <mypy --non-interactive>`  to install all suggested
+stub packages without asking for confirmation, *and* type check your
+code, in a single command:
+
+.. code-block:: text
+
+   mypy --install-types --non-interactive src/
+
+This can be useful in Continuous Integration jobs if you'd prefer not
+to manage stub packages manually. This is somewhat slower than
+explicitly installing stubs before running mypy, since it may type
+check your code twice -- the first time to find the missing stubs, and
+the second time to type check your code properly after mypy has
+installed the stubs.
 
 .. _missing-type-hints-for-third-party-library:
 

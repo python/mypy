@@ -1,4 +1,5 @@
-from typing import Dict, List
+from contextlib import contextmanager
+from typing import Dict, Iterator, List
 from typing_extensions import Final
 
 from mypy.nodes import (
@@ -74,61 +75,47 @@ class VariableRenameVisitor(TraverserVisitor):
         This is the main entry point to this class.
         """
         self.clear()
-        self.enter_scope(FILE)
-        self.enter_block()
-
-        for d in file_node.defs:
-            d.accept(self)
-
-        self.leave_block()
-        self.leave_scope()
+        with self.enter_scope(FILE), self.enter_block():
+            for d in file_node.defs:
+                d.accept(self)
 
     def visit_func_def(self, fdef: FuncDef) -> None:
         # Conservatively do not allow variable defined before a function to
         # be redefined later, since function could refer to either definition.
         self.reject_redefinition_of_vars_in_scope()
 
-        self.enter_scope(FUNCTION)
-        self.enter_block()
+        with self.enter_scope(FUNCTION), self.enter_block():
+            for arg in fdef.arguments:
+                name = arg.variable.name
+                # 'self' can't be redefined since it's special as it allows definition of
+                # attributes. 'cls' can't be used to define attributes so we can ignore it.
+                can_be_redefined = name != 'self'  # TODO: Proper check
+                self.record_assignment(arg.variable.name, can_be_redefined)
+                self.handle_arg(name)
 
-        for arg in fdef.arguments:
-            name = arg.variable.name
-            # 'self' can't be redefined since it's special as it allows definition of
-            # attributes. 'cls' can't be used to define attributes so we can ignore it.
-            can_be_redefined = name != 'self'  # TODO: Proper check
-            self.record_assignment(arg.variable.name, can_be_redefined)
-            self.handle_arg(name)
-
-        for stmt in fdef.body.body:
-            stmt.accept(self)
-
-        self.leave_block()
-        self.leave_scope()
+            for stmt in fdef.body.body:
+                stmt.accept(self)
 
     def visit_class_def(self, cdef: ClassDef) -> None:
         self.reject_redefinition_of_vars_in_scope()
-        self.enter_scope(CLASS)
-        super().visit_class_def(cdef)
-        self.leave_scope()
+        with self.enter_scope(CLASS):
+            super().visit_class_def(cdef)
 
     def visit_block(self, block: Block) -> None:
-        self.enter_block()
-        super().visit_block(block)
-        self.leave_block()
+        with self.enter_block():
+            super().visit_block(block)
 
     def visit_while_stmt(self, stmt: WhileStmt) -> None:
-        self.enter_loop()
-        super().visit_while_stmt(stmt)
-        self.leave_loop()
+        with self.enter_loop():
+            super().visit_while_stmt(stmt)
 
     def visit_for_stmt(self, stmt: ForStmt) -> None:
         stmt.expr.accept(self)
         self.analyze_lvalue(stmt.index, True)
         # Also analyze as non-lvalue so that every for loop index variable is assumed to be read.
         stmt.index.accept(self)
-        self.enter_loop()
-        stmt.body.accept(self)
-        self.leave_loop()
+        with self.enter_loop():
+            stmt.body.accept(self)
         if stmt.else_body:
             stmt.else_body.accept(self)
 
@@ -142,9 +129,8 @@ class VariableRenameVisitor(TraverserVisitor):
         # Variables defined by a try statement get special treatment in the
         # type checker which allows them to be always redefined, so no need to
         # do renaming here.
-        self.enter_try()
-        super().visit_try_stmt(stmt)
-        self.leave_try()
+        with self.enter_try():
+            super().visit_try_stmt(stmt)
 
     def visit_with_stmt(self, stmt: WithStmt) -> None:
         for expr in stmt.expr:
@@ -275,40 +261,48 @@ class VariableRenameVisitor(TraverserVisitor):
         self.blocks = []
         self.var_blocks = []
 
-    def enter_block(self) -> None:
+    @contextmanager
+    def enter_block(self) -> Iterator[None]:
         self.block_id += 1
         self.blocks.append(self.block_id)
         self.block_loop_depth[self.block_id] = self.loop_depth
+        try:
+            yield
+        finally:
+            self.blocks.pop()
 
-    def leave_block(self) -> None:
-        self.blocks.pop()
-
-    def enter_try(self) -> None:
+    @contextmanager
+    def enter_try(self) -> Iterator[None]:
         self.disallow_redef_depth += 1
+        try:
+            yield
+        finally:
+            self.disallow_redef_depth -= 1
 
-    def leave_try(self) -> None:
-        self.disallow_redef_depth -= 1
-
-    def enter_loop(self) -> None:
+    @contextmanager
+    def enter_loop(self) -> Iterator[None]:
         self.loop_depth += 1
-
-    def leave_loop(self) -> None:
-        self.loop_depth -= 1
+        try:
+            yield
+        finally:
+            self.loop_depth -= 1
 
     def current_block(self) -> int:
         return self.blocks[-1]
 
-    def enter_scope(self, kind: int) -> None:
+    @contextmanager
+    def enter_scope(self, kind: int) -> Iterator[None]:
         self.var_blocks.append({})
         self.refs.append({})
         self.num_reads.append({})
         self.scope_kinds.append(kind)
-
-    def leave_scope(self) -> None:
-        self.flush_refs()
-        self.var_blocks.pop()
-        self.num_reads.pop()
-        self.scope_kinds.pop()
+        try:
+            yield
+        finally:
+            self.flush_refs()
+            self.var_blocks.pop()
+            self.num_reads.pop()
+            self.scope_kinds.pop()
 
     def is_nested(self) -> int:
         return len(self.var_blocks) > 1

@@ -36,6 +36,7 @@ from mypy.nodes import (
 )
 from mypy.literals import literal
 from mypy import nodes
+from mypy import operators
 import mypy.checker
 from mypy import types
 from mypy.sametypes import is_same_type
@@ -746,7 +747,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             arg_names: Optional[Sequence[Optional[str]]],
             hook: Callable[
                 [List[List[Expression]], CallableType],
-                CallableType,
+                FunctionLike,
             ]) -> FunctionLike:
         """Helper to apply a signature hook for either a function or method"""
         if isinstance(callee, CallableType):
@@ -774,7 +775,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self, callee: FunctionLike, args: List[Expression],
             arg_kinds: List[int], context: Context,
             arg_names: Optional[Sequence[Optional[str]]],
-            signature_hook: Callable[[FunctionSigContext], CallableType]) -> FunctionLike:
+            signature_hook: Callable[[FunctionSigContext], FunctionLike]) -> FunctionLike:
         """Apply a plugin hook that may infer a more precise signature for a function."""
         return self.apply_signature_hook(
             callee, args, arg_kinds, arg_names,
@@ -785,7 +786,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self, callee: FunctionLike, args: List[Expression],
             arg_kinds: List[int], context: Context,
             arg_names: Optional[Sequence[Optional[str]]], object_type: Type,
-            signature_hook: Callable[[MethodSigContext], CallableType]) -> FunctionLike:
+            signature_hook: Callable[[MethodSigContext], FunctionLike]) -> FunctionLike:
         """Apply a plugin hook that may infer a more precise signature for a method."""
         pobject_type = get_proper_type(object_type)
         return self.apply_signature_hook(
@@ -2169,7 +2170,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     if right_radd_method is None:
                         return self.concat_tuples(proper_left_type, proper_right_type)
 
-        if e.op in nodes.op_methods:
+        if e.op in operators.op_methods:
             method = self.get_operator_method(e.op)
             result, method_type = self.check_op(method, left_type, e.right, e,
                                                 allow_reverse=True)
@@ -2234,7 +2235,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     self.msg.dangerous_comparison(left_type, cont_type, 'container', e)
                 else:
                     self.msg.add_errors(local_errors)
-            elif operator in nodes.op_methods:
+            elif operator in operators.op_methods:
                 method = self.get_operator_method(operator)
                 err_count = self.msg.errors.total_errors()
                 sub_result, method_type = self.check_op(method, left_type, right, e,
@@ -2362,7 +2363,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # TODO also check for "from __future__ import division"
             return '__div__'
         else:
-            return nodes.op_methods[op]
+            return operators.op_methods[op]
 
     def check_method_call_by_name(self,
                                   method: str,
@@ -2537,7 +2538,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # which records tuples containing the method, base type, and the argument.
 
         bias_right = is_proper_subtype(right_type, left_type)
-        if op_name in nodes.op_methods_that_shortcut and is_same_type(left_type, right_type):
+        if op_name in operators.op_methods_that_shortcut and is_same_type(left_type, right_type):
             # When we do "A() + A()", for example, Python will only call the __add__ method,
             # never the __radd__ method.
             #
@@ -2575,8 +2576,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # When running Python 2, we might also try calling the __cmp__ method.
 
         is_python_2 = self.chk.options.python_version[0] == 2
-        if is_python_2 and op_name in nodes.ops_falling_back_to_cmp:
-            cmp_method = nodes.comparison_fallback_method
+        if is_python_2 and op_name in operators.ops_falling_back_to_cmp:
+            cmp_method = operators.comparison_fallback_method
             left_cmp_op = lookup_operator(cmp_method, left_type)
             right_cmp_op = lookup_operator(cmp_method, right_type)
 
@@ -2760,7 +2761,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if method == '__div__' and self.chk.options.python_version[0] == 2:
             return '__rdiv__'
         else:
-            return nodes.reverse_op_methods[method]
+            return operators.reverse_op_methods[method]
 
     def check_boolean_op(self, e: OpExpr, context: Context) -> Type:
         """Type check a boolean operation ('and' or 'or')."""
@@ -2776,10 +2777,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         assert e.op in ('and', 'or')  # Checked by visit_op_expr
 
-        left_map: mypy.checker.TypeMap
-        right_map: mypy.checker.TypeMap
         if e.right_always:
-            left_map, right_map = None, {}
+            left_map, right_map = None, {}  # type: mypy.checker.TypeMap, mypy.checker.TypeMap
         elif e.right_unreachable:
             left_map, right_map = {}, None
         elif e.op == 'and':
@@ -2867,7 +2866,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if op == 'not':
             result = self.bool_type()  # type: Type
         else:
-            method = nodes.unary_op_methods[op]
+            method = operators.unary_op_methods[op]
             result, method_type = self.check_method_call_by_name(method, operand_type, [], [], e)
             e.method_type = method_type
         return result
@@ -4533,9 +4532,9 @@ def is_operator_method(fullname: Optional[str]) -> bool:
         return False
     short_name = fullname.split('.')[-1]
     return (
-        short_name in nodes.op_methods.values() or
-        short_name in nodes.reverse_op_methods.values() or
-        short_name in nodes.unary_op_methods.values())
+        short_name in operators.op_methods.values() or
+        short_name in operators.reverse_op_methods.values() or
+        short_name in operators.unary_op_methods.values())
 
 
 def get_partial_instance_type(t: Optional[Type]) -> Optional[PartialType]:

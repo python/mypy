@@ -27,6 +27,7 @@ from mypy.nodes import (
     is_final_node,
     ARG_NAMED)
 from mypy import nodes
+from mypy import operators
 from mypy.literals import literal, literal_hash, Key
 from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any
 from mypy.types import (
@@ -1026,13 +1027,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if self.options.python_version[0] == 2 and method_name == '__div__':
             return True
         else:
-            return method_name in nodes.reverse_op_methods
+            return method_name in operators.reverse_op_methods
 
     def is_reverse_op_method(self, method_name: str) -> bool:
         if self.options.python_version[0] == 2 and method_name == '__rdiv__':
             return True
         else:
-            return method_name in nodes.reverse_op_method_set
+            return method_name in operators.reverse_op_method_set
 
     def check_for_missing_annotations(self, fdef: FuncItem) -> None:
         # Check for functions with unspecified/not fully specified types.
@@ -1188,7 +1189,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if self.options.python_version[0] == 2 and reverse_name == '__rdiv__':
             forward_name = '__div__'
         else:
-            forward_name = nodes.normal_from_reverse_op[reverse_name]
+            forward_name = operators.normal_from_reverse_op[reverse_name]
         forward_inst = get_proper_type(reverse_type.arg_types[1])
         if isinstance(forward_inst, TypeVarType):
             forward_inst = get_proper_type(forward_inst.upper_bound)
@@ -1327,7 +1328,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         They cannot arbitrarily overlap with __add__.
         """
         method = defn.name
-        if method not in nodes.inplace_operator_methods:
+        if method not in operators.inplace_operator_methods:
             return
         typ = bind_self(self.function_type(defn))
         cls = defn.info
@@ -1447,7 +1448,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # (__init__, __new__, __init_subclass__ are special).
                 if self.check_method_override_for_base_with_name(defn, name, base):
                     return True
-                if name in nodes.inplace_operator_methods:
+                if name in operators.inplace_operator_methods:
                     # Figure out the name of the corresponding operator method.
                     method = '__' + name[3:]
                     # An inplace operator method such as __iadd__ might not be
@@ -1984,7 +1985,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.accept(s)
 
     def should_report_unreachable_issues(self) -> bool:
-        return (self.options.warn_unreachable
+        return (self.in_checked_function()
+                and self.options.warn_unreachable
                 and not self.binder.is_unreachable_warning_suppressed())
 
     def is_raising_or_empty(self, s: Statement) -> bool:
@@ -2706,8 +2708,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                            reinferred_rvalue_type, context,
                                                            infer_lvalue_type)
                     return
-                if isinstance(reinferred_rvalue_type, AnyType) and self.current_node_deferred:
-                    # Doing more inference in deferred nodes can be hard, so give up for now.
+                if isinstance(reinferred_rvalue_type, AnyType):
+                    # We can get Any if the current node is
+                    # deferred. Doing more inference in deferred nodes
+                    # is hard, so give up for now.  We can also get
+                    # here if reinferring types above changes the
+                    # inferred return type for an overloaded function
+                    # to be ambiguous.
                     return
                 assert isinstance(reinferred_rvalue_type, TupleType)
                 rvalue_type = reinferred_rvalue_type
@@ -2807,7 +2814,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         index_lvalue = None
         inferred = None
 
-        if self.is_definition(lvalue):
+        if self.is_definition(lvalue) and (
+            not isinstance(lvalue, NameExpr) or isinstance(lvalue.node, Var)
+        ):
             if isinstance(lvalue, NameExpr):
                 inferred = cast(Var, lvalue.node)
                 assert isinstance(inferred, Var)
@@ -3430,7 +3439,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 source = ('(exception variable "{}", which we do not '
                                           'accept outside except: blocks even in '
                                           'python 2)'.format(var.name))
-                            cast(Var, var.node).type = DeletedType(source=source)
+                            if isinstance(var.node, Var):
+                                var.node.type = DeletedType(source=source)
                             self.binder.cleanse(var)
             if s.else_body:
                 self.accept(s.else_body)
@@ -3592,10 +3602,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             fullname = None
             if isinstance(d, RefExpr):
                 fullname = d.fullname
+            # if this is a expression like @b.a where b is an object, get the type of b
+            # so we can pass it the method hook in the plugins
+            object_type = None  # type: Optional[Type]
+            if fullname is None and isinstance(d, MemberExpr) and d.expr in self.type_map:
+                object_type = self.type_map[d.expr]
+                fullname = self.expr_checker.method_fullname(object_type, d.name)
             self.check_for_untyped_decorator(e.func, dec, d)
             sig, t2 = self.expr_checker.check_call(dec, [temp],
                                                    [nodes.ARG_POS], e,
-                                                   callable_name=fullname)
+                                                   callable_name=fullname,
+                                                   object_type=object_type)
         self.check_untyped_after_decorator(sig, e.func)
         sig = set_callable_name(sig, e.func)
         e.var.type = sig
@@ -5518,9 +5535,9 @@ def infer_operator_assignment_method(typ: Type, operator: str) -> Tuple[bool, st
     depending on which method is supported by the type.
     """
     typ = get_proper_type(typ)
-    method = nodes.op_methods[operator]
+    method = operators.op_methods[operator]
     if isinstance(typ, Instance):
-        if operator in nodes.ops_with_inplace_method:
+        if operator in operators.ops_with_inplace_method:
             inplace_method = '__i' + method[2:]
             if typ.type.has_readable_member(inplace_method):
                 return True, inplace_method

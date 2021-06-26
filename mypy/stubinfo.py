@@ -62,7 +62,7 @@ legacy_bundled_packages = {
     'orjson': StubInfo('types-orjson', py_version=3),
     'paramiko': StubInfo('types-paramiko'),
     'pathlib2': StubInfo('types-pathlib2', py_version=2),
-    'pkg_resources': StubInfo('types-pkg_resources', py_version=3),
+    'pkg_resources': StubInfo('types-setuptools', py_version=3),
     'polib': StubInfo('types-polib'),
     'pycurl': StubInfo('types-pycurl'),
     'pymssql': StubInfo('types-pymssql', py_version=2),
