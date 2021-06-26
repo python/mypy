@@ -169,7 +169,7 @@ class RPrimitive(RType):
     """
 
     # Map from primitive names to primitive types and is used by deserialization
-    primitive_map: ClassVar[Dict[str, RPrimitive]] = {}
+    primitive_map: ClassVar[Dict[str, "RPrimitive"]] = {}
 
     def __init__(self,
                  name: str,
