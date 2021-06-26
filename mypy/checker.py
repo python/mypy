@@ -3975,12 +3975,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def _is_truthy_instance(t: Type) -> bool:
         return (
             isinstance(t, Instance) and
-            t.type and
+            bool(t.type) and
             not t.type.has_readable_member('__bool__') and
             not t.type.has_readable_member('__len__')
         )
 
-    def _format_expr_name(self, expr: Expression, t: Type):
+    def _format_expr_name(self, expr: Expression, t: Type) -> str:
         if isinstance(expr, MemberExpr):
             return f'member "{expr.name}" has type "{t}"'
         elif isinstance(expr, RefExpr) and expr.fullname:
