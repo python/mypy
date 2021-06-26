@@ -191,8 +191,8 @@ class DataDrivenTestCase(pytest.Item):
     parent: DataSuiteCollector
 
     input: List[str]
-    output: List[str] = None  # Output for the first pass
-    output2: Dict[int, List[str]] = None  # Output for runs 2+, indexed by run number
+    output: List[str]  # Output for the first pass
+    output2: Dict[int, List[str]]  # Output for runs 2+, indexed by run number
 
     # full path of test suite
     file = ''
@@ -210,9 +210,9 @@ class DataDrivenTestCase(pytest.Item):
 
     # Extra attributes used by some tests.
     last_line: int
-    output_files: List[Tuple[str, str]] = None # Path and contents for output files
-    deleted_paths: Dict[int, Set[str]] = None  # Mapping run number -> paths
-    triggered: List[str] = None  # Active triggers (one line per incremental step)
+    output_files: List[Tuple[str, str]] # Path and contents for output files
+    deleted_paths: Dict[int, Set[str]]  # Mapping run number -> paths
+    triggered: List[str]  # Active triggers (one line per incremental step)
 
     def __init__(self,
                  parent: 'DataSuiteCollector',

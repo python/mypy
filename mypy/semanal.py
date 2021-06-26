@@ -179,7 +179,7 @@ class SemanticAnalyzer(NodeVisitor[None],
     # Type variables bound by the current scope, be it class or function
     tvar_scope: TypeVarLikeScope
     # Per-module options
-    options: Options = None
+    options: Options
 
     # Stack of functions being analyzed
     function_stack: List[FuncItem]
@@ -210,11 +210,11 @@ class SemanticAnalyzer(NodeVisitor[None],
     cur_mod_id = ''        # Current module id (or None) (phase 2)
     _is_stub_file = False   # Are we analyzing a stub file?
     _is_typeshed_stub_file = False  # Are we analyzing a typeshed stub file?
-    imports: Set[str] = None  # Imported modules (during phase 2 analysis)
+    imports: Set[str]  # Imported modules (during phase 2 analysis)
     # Note: some imports (and therefore dependencies) might
     # not be found in phase 1, for example due to * imports.
-    errors: Errors = None     # Keeps track of generated errors
-    plugin: Plugin = None     # Mypy plugin for special casing of library features
+    errors: Errors     # Keeps track of generated errors
+    plugin: Plugin     # Mypy plugin for special casing of library features
     statement: Optional[Statement] = None  # Statement/definition being analyzed
     future_import_flags: Set[str]
 

@@ -1726,11 +1726,11 @@ class State:
 
     manager: BuildManager
     order_counter: ClassVar[int] = 0
-    order: int = None  # Order in which modules were encountered
-    id: str = None  # Fully qualified module name
+    order: int  # Order in which modules were encountered
+    id: str  # Fully qualified module name
     path: Optional[str] = None  # Path to module source
     abspath: Optional[str] = None  # Absolute path to module source
-    xpath: str = None  # Path or '<string>'
+    xpath: str  # Path or '<string>'
     source: Optional[str] = None  # Module source code
     source_hash: Optional[str] = None  # Hash calculated based on the source code
     meta_source_hash: Optional[str] = None  # Hash of the source given in the meta, if any
@@ -1741,10 +1741,10 @@ class State:
     # prevent duplicates and the list because I am afraid of changing the order of
     # iteration over dependencies.
     # They should be managed with add_dependency and suppress_dependency.
-    dependencies: List[str] = None  # Modules directly imported by the module
-    dependencies_set: Set[str] = None  # The same but as a set for deduplication purposes
-    suppressed: List[str] = None  # Suppressed/missing dependencies
-    suppressed_set: Set[str] = None  # Suppressed/missing dependencies
+    dependencies: List[str]  # Modules directly imported by the module
+    dependencies_set: Set[str]  # The same but as a set for deduplication purposes
+    suppressed: List[str]  # Suppressed/missing dependencies
+    suppressed_set: Set[str]  # Suppressed/missing dependencies
     priorities: Dict[str, int]
 
     # Map each dependency to the line number where it is first imported

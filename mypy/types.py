@@ -369,7 +369,7 @@ class TypeVarLikeDef(mypy.nodes.Context):
 
 class TypeVarDef(TypeVarLikeDef):
     """Definition of a single type variable."""
-    values: List[Type] = None  # Value restriction, empty list if no restriction
+    values: List[Type]  # Value restriction, empty list if no restriction
     upper_bound: Type
     variance: int = INVARIANT
 
@@ -1321,7 +1321,7 @@ class Overloaded(FunctionLike):
     implementation.
     """
 
-    _items: List[CallableType] = None  # Must not be empty
+    _items: List[CallableType]  # Must not be empty
 
     def __init__(self, items: List[CallableType]) -> None:
         super().__init__(items[0].line, items[0].column)

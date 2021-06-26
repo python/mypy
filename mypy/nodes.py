@@ -916,7 +916,7 @@ class ClassDef(Statement):
     """Class definition"""
 
     name: str       # Name of the class without module prefix
-    fullname: Bogus[str]   # Fully qualified name of the class
+    fullname: Bogus[str] = None   # Fully qualified name of the class
     defs: "Block"
     type_vars: List["mypy.types.TypeVarDef"]
     # Base class expressions (not semantically analyzed -- can be arbitrary expressions)
@@ -1111,13 +1111,13 @@ class ForStmt(Statement):
     # Index variables
     index: Lvalue
     # Type given by type comments for index, can be None
-    index_type: "Optional[mypy.types.Type]" = None
+    index_type: Optional["mypy.types.Type"] = None
     # Original, not semantically analyzed type in annotation (used for reprocessing)
-    unanalyzed_index_type: "Optional[mypy.types.Type]" = None
+    unanalyzed_index_type: Optional["mypy.types.Type"] = None
     # Inferred iterable item type
-    inferred_item_type: "Optional[mypy.types.Type]" = None
+    inferred_item_type: Optional["mypy.types.Type"] = None
     # Inferred iterator type
-    inferred_iterator_type: "Optional[mypy.types.Type]" = None
+    inferred_iterator_type: Optional["mypy.types.Type"] = None
     # Expression to iterate
     expr: Expression
     body: Block
@@ -1223,11 +1223,11 @@ class RaiseStmt(Statement):
 
 
 class TryStmt(Statement):
-    body: Block = None                # Try body
+    body: Block                # Try body
     # Plain 'except:' also possible
-    types: List[Optional[Expression]] = None    # Except type expressions
-    vars: List[Optional["NameExpr"]] = None     # Except variable names
-    handlers: List[Block] = None      # Except bodies
+    types: List[Optional[Expression]]    # Except type expressions
+    vars: List[Optional["NameExpr"]]     # Except variable names
+    handlers: List[Block]      # Except bodies
     else_body: Optional[Block] = None
     finally_body: Optional[Block] = None
 
@@ -1251,7 +1251,7 @@ class WithStmt(Statement):
     expr: List[Expression]
     target: List[Optional[Lvalue]]
     # Type given by type comments for target, can be None
-    unanalyzed_type: "Optional[mypy.types.Type]" = None
+    unanalyzed_type: Optional["mypy.types.Type"] = None
     # Semantically analyzed types from type comment (TypeList type expanded)
     analyzed_types: List["mypy.types.Type"]
     body: Block
@@ -1471,7 +1471,7 @@ class RefExpr(Expression):
         # Is this expression appears as an rvalue of a valid type alias definition?
         self.is_alias_rvalue = False
         # Cache type guard from callable_type.type_guard
-        self.type_guard: "Optional[mypy.types.Type]" = None
+        self.type_guard: Optional["mypy.types.Type"] = None
 
 
 class NameExpr(RefExpr):
@@ -1591,7 +1591,7 @@ class IndexExpr(Expression):
     base: Expression
     index: Expression
     # Inferred __getitem__ method type
-    method_type: "Optional[mypy.types.Type]" = None
+    method_type: Optional["mypy.types.Type"] = None
     # If not None, this is actually semantically a type application
     # Class[type, ...] or a type alias initializer.
     analyzed: Union["TypeApplication", "TypeAliasExpr", None]
@@ -1612,7 +1612,7 @@ class UnaryExpr(Expression):
     op = ''
     expr: Expression
     # Inferred operator method type
-    method_type: "Optional[mypy.types.Type]" = None
+    method_type: Optional["mypy.types.Type"] = None
 
     def __init__(self, op: str, expr: Expression) -> None:
         super().__init__()
@@ -1642,7 +1642,7 @@ class OpExpr(Expression):
     left: Expression
     right: Expression
     # Inferred type for the operator method type (when relevant).
-    method_type: "Optional[mypy.types.Type]" = None
+    method_type: Optional["mypy.types.Type"] = None
     # Per static analysis only: Is the right side going to be evaluated every time?
     right_always = False
     # Per static analysis only: Is the right side unreachable?
@@ -1664,7 +1664,7 @@ class ComparisonExpr(Expression):
     operators: List[str]
     operands: List[Expression]
     # Inferred type for the operator methods (when relevant; None for 'is').
-    method_types: List["Optional[mypy.types.Type]"]
+    method_types: List[Optional["mypy.types.Type"]]
 
     def __init__(self, operators: List[str], operands: List[Expression]) -> None:
         super().__init__()
@@ -2156,7 +2156,7 @@ class NewTypeExpr(Expression):
     """NewType expression NewType(...)."""
     name: str
     # The base type (the second argument to NewType)
-    old_type: "Optional[mypy.types.Type]" = None
+    old_type: Optional["mypy.types.Type"] = None
     # The synthesized class representing the new type (inherits old_type)
     info: Optional["TypeInfo"] = None
 

@@ -57,7 +57,7 @@ def freshen_function_type_vars(callee: F) -> F:
 class ExpandTypeVisitor(TypeVisitor[Type]):
     """Visitor that substitutes type variables with values."""
 
-    variables: Mapping[TypeVarId, Type] = None  # TypeVar id -> TypeVar value
+    variables: Mapping[TypeVarId, Type]  # TypeVar id -> TypeVar value
 
     def __init__(self, variables: Mapping[TypeVarId, Type]) -> None:
         self.variables = variables

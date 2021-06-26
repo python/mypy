@@ -148,7 +148,7 @@ class TypeAnalyzerPluginInterface:
     # This might be different from Plugin.options (that contains default/global options)
     # if there are per-file options in the config. This applies to all other interfaces
     # in this file.
-    options: Options = None
+    options: Options
 
     @abstractmethod
     def fail(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
@@ -191,7 +191,7 @@ class CommonPluginApi:
     # Global mypy options.
     # Per-file options can be only accessed on various
     # XxxPluginInterface classes.
-    options: Options = None
+    options: Options
 
     @abstractmethod
     def lookup_fully_qualified(self, fullname: str) -> Optional[SymbolTableNode]:
@@ -212,7 +212,7 @@ class CheckerPluginInterface:
     """
 
     msg: MessageBuilder
-    options: Options = None
+    options: Options
     path: str
 
     # Type context for type inference
@@ -245,7 +245,7 @@ class SemanticAnalyzerPluginInterface:
 
     modules: Dict[str, MypyFile]
     # Options for current file.
-    options: Options = None
+    options: Options
     cur_mod_id: str
     msg: MessageBuilder
 
