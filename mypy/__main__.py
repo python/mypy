@@ -17,6 +17,8 @@ def console_entry() -> None:
         devnull = os.open(os.devnull, os.O_WRONLY)
         os.dup2(devnull, sys.stdout.fileno())
         sys.exit(2)
+    except KeyboardInterrupt:
+        sys.exit(2)
 
 
 if __name__ == '__main__':
