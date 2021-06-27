@@ -172,7 +172,7 @@ def test_module(module_name: str) -> Iterator[Error]:
 
 @singledispatch
 def verify(
-    stub: nodes.Node, runtime: MaybeMissing[Any], object_path: List[str]
+    stub: MaybeMissing[nodes.Node], runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
     """Entry point for comparing a stub to a runtime object.
 
