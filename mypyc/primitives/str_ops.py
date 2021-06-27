@@ -10,7 +10,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.primitives.registry import (
     method_op, binary_op, function_op,
-    load_address_op, custom_op
+    load_address_op, custom_op, ERR_NEG_INT
 )
 
 
@@ -139,6 +139,5 @@ str_check_if_true = custom_op(
 str_ssize_t_size_op = custom_op(
     arg_types=[str_rprimitive],
     return_type=c_pyssize_t_rprimitive,
-    c_function_name='PyUnicode_GET_LENGTH',
-    error_kind=ERR_NEVER)
-
+    c_function_name='CPyStr_Size_size_t',
+    error_kind=ERR_NEG_INT)
