@@ -169,13 +169,14 @@ def register_function(ctx: PluginContext, singledispatch_obj: Instance, func: Ty
         # TODO: report an error here that singledispatch requires at least one argument
         # (might want to do the error reporting in get_dispatch_type)
         return
+    fallback = metadata['fallback']
 
-    fallback_dispatch_type = func.arg_types[0]
+    fallback_dispatch_type = fallback.arg_types[0]
     if not is_subtype(dispatch_type, fallback_dispatch_type):
 
         fail(ctx, 'Dispatch type {} must be subtype of fallback function first argument {}'.format(
                 format_type(dispatch_type), format_type(fallback_dispatch_type)
-            ), ctx.context)
+            ), func.definition)
         return
     # TODO: report an error if we're overwriting another function (which would happen if multiple
     # registered functions have the same dispatch type)
