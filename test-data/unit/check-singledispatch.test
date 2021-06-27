@@ -290,3 +290,24 @@ def i(*, x=1) -> None: # E: First argument to singledispatch function must be a 
     pass
 
 [builtins fixtures/args.pyi]
+
+[case testDispatchTypeIsNotASubtypeOfFallbackFirstArgument]
+from functools import singledispatch
+
+class A: pass
+class B(A): pass
+class C: pass
+
+@singledispatch
+def f(arg: A) -> None:
+    pass
+
+@f.register
+def g(arg: B) -> None:
+    pass
+
+@f.register
+def h(arg: C) -> None: # E: Dispatch type "C" must be subtype of fallback function first argument "A"
+    pass
+
+[builtins fixtures/args.pyi]
