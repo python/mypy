@@ -1,15 +1,15 @@
+from mypy.messages import format_type
 from mypy.plugins.common import add_method_to_class
 from mypy.nodes import (
     ARG_POS, Argument, Block, ClassDef, SymbolTable, TypeInfo, Var, ARG_STAR, ARG_OPT, Context
 )
-from mypy.checker import TypeChecker
 from mypy.subtypes import is_subtype
 from mypy.types import (
     AnyType, CallableType, Instance, NoneType, Overloaded, Type, TypeOfAny, get_proper_type,
-    UnionType, FunctionLike
+    FunctionLike
 )
 from mypy.plugin import CheckerPluginInterface, FunctionContext, MethodContext, MethodSigContext
-from typing import Dict, List, NamedTuple, Optional, Sequence, TypeVar, cast
+from typing import Dict, List, NamedTuple, Optional, Sequence, TypeVar, Union
 from typing_extensions import Final, TypedDict
 
 SingledispatchInfo = TypedDict('SingledispatchInfo', {
@@ -74,7 +74,10 @@ def make_fake_register_class_instance(api: CheckerPluginInterface, type_args: Se
     return Instance(info, type_args)
 
 
-def fail(ctx: FunctionContext, msg: str, context: Optional[Context]) -> None:
+PluginContext = Union[FunctionContext, MethodContext]
+
+
+def fail(ctx: PluginContext, msg: str, context: Optional[Context]) -> None:
     """Emit an error message.
 
     This tries to emit an error message at the location specified by `context`, falling back to the
@@ -148,13 +151,13 @@ def singledispatch_register_callback(ctx: MethodContext) -> Type:
         return register_callable
     elif isinstance(first_arg_type, CallableType):
         # TODO: do more checking for registered functions
-        register_function(ctx.type, first_arg_type)
+        register_function(ctx, ctx.type, first_arg_type)
 
     # register doesn't modify the function it's used on
     return ctx.default_return_type
 
 
-def register_function(singledispatch_obj: Instance, func: Type,
+def register_function(ctx: PluginContext, singledispatch_obj: Instance, func: Type,
                       register_arg: Optional[Type] = None) -> None:
 
     func = get_proper_type(func)
@@ -165,6 +168,14 @@ def register_function(singledispatch_obj: Instance, func: Type,
     if dispatch_type is None:
         # TODO: report an error here that singledispatch requires at least one argument
         # (might want to do the error reporting in get_dispatch_type)
+        return
+
+    fallback_dispatch_type = func.arg_types[0]
+    if not is_subtype(dispatch_type, fallback_dispatch_type):
+
+        fail(ctx, 'Dispatch type {} must be subtype of fallback function first argument {}'.format(
+                format_type(dispatch_type), format_type(fallback_dispatch_type)
+            ), ctx.context)
         return
     # TODO: report an error if we're overwriting another function (which would happen if multiple
     # registered functions have the same dispatch type)
@@ -186,7 +197,7 @@ def call_singledispatch_function_after_register_argument(ctx: MethodContext) -> 
         type_args = RegisterCallableInfo(*register_callable.args)  # type: ignore
         func = get_first_arg(ctx.arg_types)
         if func is not None:
-            register_function(type_args.singledispatch_obj, func, type_args.register_type)
+            register_function(ctx, type_args.singledispatch_obj, func, type_args.register_type)
     return ctx.default_return_type
 
 
@@ -204,50 +215,4 @@ def call_singledispatch_function_callback(ctx: MethodSigContext) -> FunctionLike
     if not isinstance(ctx.type, Instance):
         return ctx.default_signature
     metadata = get_singledispatch_info(ctx.type)
-    first_arg = get_first_arg(ctx.args)
-    if first_arg is None:
-        return ctx.default_signature
-    # TODO: find a way to get the type of the first argument with the public API
-    # (expr_checker probably isn't part of the public API)
-    passed_type = cast(TypeChecker, ctx.api).expr_checker.accept(first_arg)
-    fallback = metadata['fallback']
-
-    # Find all possible implementations that may get called based on the passed type
-    impls = get_possible_impls(passed_type, metadata['registered'], fallback)
-
-    # use the fallback's name so that error messages say that the arguments to
-    # the fallback are incorrect (instead of saying arguments to the registered
-    # implementation are incorrect)
-    possible_impls = list(rename_func(func, fallback) for func in impls)
-    if len(possible_impls) > 1:
-        # the type signature technically says we're returning CallableType, but returning
-        # Overloaded seems to work fine and there doesn't appear to be a better way of telling
-        # mypy that there are multiple possible functions that could get used
-        return Overloaded(possible_impls)
-    elif len(possible_impls) == 1:
-        return possible_impls[0]
-    else:
-        # we should have at least included the fallback in possible_impls even if none of the
-        # other registered implementations matched
-        assert False, 'should have at least one singledispatch implementation'
-
-
-def get_possible_impls(passed_type: Type, registered: Dict[Type, CallableType],
-                       fallback: CallableType) -> List[CallableType]:
-    """Get all possible registered implementations that could get called"""
-    passed_type = get_proper_type(passed_type)
-    impls = []
-    if isinstance(passed_type, UnionType):
-        for item in passed_type.relevant_items():
-            impls.extend(get_possible_impls(item, registered, fallback))
-        return impls
-    else:
-        for dispatch_type, func in registered.items():
-            # TODO: search in the order that singledispatch would (starting with implementations
-            # that have the same class as the passed type and going up the mro) - This might pick
-            # a more general implementation than would get picked by singledispatch
-            if is_subtype(passed_type, dispatch_type):
-                impls.append(func)
-                return impls
-        impls.append(fallback)
-    return impls
+    return metadata['fallback']
