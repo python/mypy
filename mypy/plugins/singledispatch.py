@@ -9,18 +9,13 @@ from mypy.types import (
     FunctionLike
 )
 from mypy.plugin import CheckerPluginInterface, FunctionContext, MethodContext, MethodSigContext
-from typing import Dict, List, NamedTuple, Optional, Sequence, TypeVar, Union
-from typing_extensions import Final, TypedDict
+from typing import List, NamedTuple, Optional, Sequence, TypeVar, Union
+from typing_extensions import Final
 
-SingledispatchInfo = TypedDict('SingledispatchInfo', {
-    'fallback': CallableType,
-    # dict of dispatch type to the registered function
-    # dispatch type is stored separately from function because the dispatch type might be different
-    # from the type of the first argument if a type is passed as an argument to register
-    # TODO: use Instance for register type because register requires register type to be subclass
-    # of type
-    'registered': Dict[Type, CallableType],
-})
+SingledispatchTypeVars = NamedTuple('SingledispatchTypeVars', [
+    ('return_type', Type),
+    ('fallback', CallableType),
+])
 
 RegisterCallableInfo = NamedTuple('RegisterCallableInfo', [
     ('register_type', Type),
@@ -37,8 +32,8 @@ SINGLEDISPATCH_REGISTER_METHOD = '{}.register'.format(SINGLEDISPATCH_TYPE)  # ty
 SINGLEDISPATCH_CALLABLE_CALL_METHOD = '{}.__call__'.format(SINGLEDISPATCH_TYPE)  # type: Final
 
 
-def get_singledispatch_info(typ: Instance) -> 'SingledispatchInfo':
-    return typ.type.metadata[METADATA_KEY]  # type: ignore
+def get_singledispatch_info(typ: Instance) -> SingledispatchTypeVars:
+    return SingledispatchTypeVars(*typ.args)  # type: ignore
 
 
 T = TypeVar('T')
@@ -97,10 +92,6 @@ def create_singledispatch_function_callback(ctx: FunctionContext) -> Type:
     """Called for functools.singledispatch"""
     func_type = get_proper_type(get_first_arg(ctx.arg_types))
     if isinstance(func_type, CallableType):
-        metadata = {
-            'fallback': func_type,
-            'registered': {}
-        }  # type: SingledispatchInfo
 
         if len(func_type.arg_kinds) < 1:
             fail(
@@ -122,8 +113,7 @@ def create_singledispatch_function_callback(ctx: FunctionContext) -> Type:
         # typeshed
         singledispatch_obj = get_proper_type(ctx.default_return_type)
         assert isinstance(singledispatch_obj, Instance)
-        # mypy shows an error when assigning TypedDict to a regular dict
-        singledispatch_obj.type.metadata[METADATA_KEY] = metadata  # type: ignore
+        singledispatch_obj.args += (func_type,)
 
     return ctx.default_return_type
 
@@ -169,7 +159,7 @@ def register_function(ctx: PluginContext, singledispatch_obj: Instance, func: Ty
         # TODO: report an error here that singledispatch requires at least one argument
         # (might want to do the error reporting in get_dispatch_type)
         return
-    fallback = metadata['fallback']
+    fallback = metadata.fallback
 
     fallback_dispatch_type = fallback.arg_types[0]
     if not is_subtype(dispatch_type, fallback_dispatch_type):
@@ -178,9 +168,6 @@ def register_function(ctx: PluginContext, singledispatch_obj: Instance, func: Ty
                 format_type(dispatch_type), format_type(fallback_dispatch_type)
             ), func.definition)
         return
-    # TODO: report an error if we're overwriting another function (which would happen if multiple
-    # registered functions have the same dispatch type)
-    metadata['registered'][dispatch_type] = func
 
 
 def get_dispatch_type(func: CallableType, register_arg: Optional[Type]) -> Optional[Type]:
@@ -216,4 +203,4 @@ def call_singledispatch_function_callback(ctx: MethodSigContext) -> FunctionLike
     if not isinstance(ctx.type, Instance):
         return ctx.default_signature
     metadata = get_singledispatch_info(ctx.type)
-    return metadata['fallback']
+    return metadata.fallback
