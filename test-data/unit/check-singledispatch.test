@@ -67,23 +67,6 @@ def g(arg: int) -> None:
 
 [builtins fixtures/args.pyi]
 
-[case testMultipleImplementationsHaveSameDispatchTypes-xfail]
-from functools import singledispatch
-
-@singledispatch
-def f(arg) -> None: 
-    pass
-
-@f.register
-def g(arg: int) -> None: # E: singledispatch implementation 2 will never be used: implementation 3's dispatch type is the same
-    pass
-
-@f.register
-def h(arg: int) -> None:
-    pass
-
-[builtins fixtures/args.pyi]
-    
 [case testRegisterHasDifferentTypeThanTypeSignature-xfail]
 from functools import singledispatch
 
