@@ -243,3 +243,24 @@ def h(arg: C) -> None: # E: Dispatch type "C" must be subtype of fallback functi
     pass
 
 [builtins fixtures/args.pyi]
+
+[case testMultipleSingledispatchFunctionsIntermixed]
+from functools import singledispatch
+
+class A: pass
+class B(A): pass
+class C: pass
+
+@singledispatch
+def f(arg: A) -> None:
+    pass
+
+@singledispatch
+def h(arg: C) -> None:
+    pass
+
+@f.register
+def g(arg: B) -> None:
+    pass
+
+[builtins fixtures/args.pyi]
