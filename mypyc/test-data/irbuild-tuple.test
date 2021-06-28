@@ -367,37 +367,41 @@ L0:
 def test():
     r0, source :: str
     r1 :: native_int
-    r2 :: tuple
-    r3 :: short_int
-    r4 :: native_int
-    r5 :: short_int
+    r2 :: bit
+    r3 :: tuple
+    r4 :: short_int
+    r5 :: native_int
     r6 :: bit
-    r7, x, r8 :: str
-    r9 :: bit
-    r10 :: short_int
+    r7 :: short_int
+    r8 :: bit
+    r9, x, r10 :: str
+    r11 :: bit
+    r12 :: short_int
     a :: tuple
 L0:
     r0 = 'abc'
     source = r0
     r1 = PyUnicode_GET_LENGTH(source)
-    r2 = PyTuple_New(r1)
-    r3 = 0
+    r2 = r1 >= 0 :: signed
+    r3 = PyTuple_New(r1)
+    r4 = 0
 L1:
-    r4 = PyUnicode_GET_LENGTH(source)
-    r5 = r4 << 1
-    r6 = r3 < r5 :: signed
-    if r6 goto L2 else goto L4 :: bool
+    r5 = PyUnicode_GET_LENGTH(source)
+    r6 = r5 >= 0 :: signed
+    r7 = r5 << 1
+    r8 = r4 < r7 :: signed
+    if r8 goto L2 else goto L4 :: bool
 L2:
-    r7 = CPyStr_GetItem(source, r3)
-    x = r7
-    r8 = f2(x)
-    r9 = CPySequenceTuple_SetItemUnsafe(r2, r3, r8)
+    r9 = CPyStr_GetItem(source, r4)
+    x = r9
+    r10 = f2(x)
+    r11 = CPySequenceTuple_SetItemUnsafe(r3, r4, r10)
 L3:
-    r10 = r3 + 2
-    r3 = r10
+    r12 = r4 + 2
+    r4 = r12
     goto L1
 L4:
-    a = r2
+    a = r3
     return 1
 
 [case testTupleBuiltFromVariableLengthTuple]
