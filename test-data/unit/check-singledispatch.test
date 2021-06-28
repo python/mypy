@@ -34,41 +34,22 @@ def _(arg: int) -> None:
 [case testCheckNonDispatchArgumentsWithTypeAlwaysTheSame]
 from functools import singledispatch
 
-@singledispatch
-def f(arg: int, arg2: str) -> None:
-    pass
-
-@f.register
-def g(arg: str, arg2: str) -> None:
-    pass
-
-f(1, 'a') 
-f(1, 5) # E: Argument 2 to "f" has incompatible type "int"; expected "str"
-
-f('b', 'a')
-f('b', 1) # E: Argument 2 to "f" has incompatible type "int"; expected "str"
-
-[builtins fixtures/args.pyi]
-
-[case testCheckNonDispatchArgumentsUsingMoreSpecificTypeInSpecializedVersion]
-from functools import singledispatch
-
 class A: pass
 class B(A): pass
 
 @singledispatch
-def f(arg: int, arg2: A) -> None:
+def f(arg: A, arg2: str) -> None:
     pass
 
 @f.register
-def g(arg: str, arg2: B) -> None:
+def g(arg: B, arg2: str) -> None:
     pass
 
-f(1, A()) 
-f(1, B())
+f(A(), 'a')
+f(A(), 5) # E: Argument 2 to "f" has incompatible type "int"; expected "str"
 
-f('b', A()) # E: Argument 2 to "f" has incompatible type "A"; expected "B"
-f('b', B())
+f(B(), 'a')
+f(B(), 1) # E: Argument 2 to "f" has incompatible type "int"; expected "str"
 
 [builtins fixtures/args.pyi]
 
@@ -116,36 +97,6 @@ def g(arg: int) -> None: # E: Argument to register "str" is incompatible with ty
 
 [builtins fixtures/args.pyi]
 
-[case testMoreSpecificGenericNonDispatchArgumentInImplementations]
-from functools import singledispatch
-from typing import TypeVar, Optional, Any, Type
-
-T = TypeVar('T')
-
-Alias = Optional[T]
-
-@singledispatch
-def f(arg, arg2: Alias[Any]) -> None: 
-    pass
-
-@f.register
-def g(arg: int, arg2: Alias[int]) -> None:
-    pass
-
-@f.register
-def h(arg: str, arg2: Alias[Type[Any]]) -> None:
-    pass
-
-f((3, 5), 'a')
-f(1, 'a') # E: Argument 2 to "f" has incompatible type "str"; expected "Optional[int]"
-
-f('a', 'a') # E: Argument 2 to "f" has incompatible type "str"; expected "Optional[Type[Any]]"
-f('a', str)
-f('a', int)
-f('a', None)
-
-[builtins fixtures/args.pyi]
-
 [case testDispatchBasedOnTypeAnnotationsRequires37-xfail]
 # flags: --python-version 3.6
 # the docs for singledispatch say that register didn't accept type annotations until python 3.7
@@ -164,17 +115,11 @@ def g(arg: int) -> None: # E: Singledispatch based on type annotations is only s
 from functools import singledispatch
 
 @singledispatch
-def f(arg, arg2) -> None:
+def f(arg: int) -> None:
     pass
-@f.register(int)
-def g(arg, arg2: str) -> None:
+@f.register(str)
+def g(arg) -> None: # E: Dispatch type "str" must be subtype of fallback function first argument "int"
     pass
-
-f(1, 1) # E: Argument 2 to "f" has incompatible type "int"; expected "str"
-f(1, 'a')
-
-f('a', 1)
-f('a', 'b')
 
 [builtins fixtures/args.pyi]
 
@@ -183,17 +128,11 @@ from functools import singledispatch
 class A: pass
 
 @singledispatch
-def f(arg, arg2) -> None:
+def f(arg: int) -> None:
     pass
 @f.register(A)
-def g(arg, arg2: str) -> None:
+def g(arg) -> None: # E: Dispatch type "A" must be subtype of fallback function first argument "int"
     pass
-
-f(A(), 1) # E: Argument 2 to "f" has incompatible type "int"; expected "str"
-f(A(), 'a')
-
-f('a', 1)
-f('a', 'b')
 
 [builtins fixtures/args.pyi]
 
@@ -206,7 +145,7 @@ class B(A): pass
 class C: pass
 
 @singledispatch
-def f(arg: A) -> None:
+def f(arg: Union[A, C]) -> None:
     pass
 
 @f.register
@@ -231,7 +170,7 @@ class B(A): pass
 class C: pass
 
 @singledispatch
-def f(arg: A) -> None:
+def f(arg: Union[A, C]) -> None:
     pass
 
 @f.register
@@ -243,28 +182,21 @@ def h(arg: C) -> None:
     pass
 
 x: Union[B, C, int]
-# TODO: improve this error message (ideally it would point out that there's no implementation
-# for int)
-f(x)  # E: Argument 1 to "f" has incompatible type "Union[B, C, int]"; expected "B"
+f(x)  # E: Argument 1 to "f" has incompatible type "Union[B, C, int]"; expected "Union[A, C]"
 
 [builtins fixtures/args.pyi]
 
-[case testABCUsedAsType]
+[case testABCAllowedAsDispatchType]
 from functools import singledispatch
 from collections.abc import Mapping
 
 @singledispatch
-def f(arg, arg2: str) -> None:
+def f(arg) -> None:
     pass
 
 @f.register
-def g(arg: Mapping, arg2: int) -> None:
+def g(arg: Mapping) -> None:
     pass
-
-f({"a": "b"}, 4)
-f({"a": "b"}, 'a') # E: Argument 2 to "f" has incompatible type "str"; expected "int"
-f('a', 1) # E: Argument 2 to "f" has incompatible type "int"; expected "str"
-f('a', 'a')
 
 [builtins fixtures/args.pyi]
 [builtins fixtures/list.pyi]
