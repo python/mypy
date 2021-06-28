@@ -38,7 +38,7 @@ class TypeState:
     # was done in strict optional mode and of the specific *kind* of subtyping relationship,
     # which we represent as an arbitrary hashable tuple.
     # We need the caches, since subtype checks for structural types are very slow.
-    _subtype_caches = {}  # type: Final[SubtypeCache]
+    _subtype_caches: Final[SubtypeCache] = {}
 
     # This contains protocol dependencies generated after running a full build,
     # or after an update. These dependencies are special because:
@@ -51,7 +51,7 @@ class TypeState:
     # A blocking error will be generated in this case, since we can't proceed safely.
     # For the description of kinds of protocol dependencies and corresponding examples,
     # see _snapshot_protocol_deps.
-    proto_deps = {}  # type: ClassVar[Optional[Dict[str, Set[str]]]]
+    proto_deps: ClassVar[Optional[Dict[str, Set[str]]]] = {}
 
     # Protocols (full names) a given class attempted to implement.
     # Used to calculate fine grained protocol dependencies and optimize protocol
@@ -59,13 +59,13 @@ class TypeState:
     # of type a.A to a function expecting something compatible with protocol p.P,
     # we'd have 'a.A' -> {'p.P', ...} in the map. This map is flushed after every incremental
     # update.
-    _attempted_protocols = {}  # type: Final[Dict[str, Set[str]]]
+    _attempted_protocols: Final[Dict[str, Set[str]]] = {}
     # We also snapshot protocol members of the above protocols. For example, if we pass
     # a value of type a.A to a function expecting something compatible with Iterable, we'd have
     # 'a.A' -> {'__iter__', ...} in the map. This map is also flushed after every incremental
     # update. This map is needed to only generate dependencies like <a.A.__iter__> -> <a.A>
     # instead of a wildcard to avoid unnecessarily invalidating classes.
-    _checked_against_members = {}  # type: Final[Dict[str, Set[str]]]
+    _checked_against_members: Final[Dict[str, Set[str]]] = {}
     # TypeInfos that appeared as a left type (subtype) in a subtype check since latest
     # dependency snapshot update. This is an optimisation for fine grained mode; during a full
     # run we only take a dependency snapshot at the very end, so this set will contain all
@@ -73,16 +73,16 @@ class TypeState:
     # dependencies generated from (typically) few TypeInfos that were subtype-checked
     # (i.e. appeared as r.h.s. in an assignment or an argument in a function call in
     # a re-checked target) during the update.
-    _rechecked_types = set()  # type: Final[Set[TypeInfo]]
+    _rechecked_types: Final[Set[TypeInfo]] = set()
 
     # The two attributes below are assumption stacks for subtyping relationships between
     # recursive type aliases. Normally, one would pass type assumptions as an additional
     # arguments to is_subtype(), but this would mean updating dozens of related functions
     # threading this through all callsites (see also comment for TypeInfo.assuming).
-    _assuming = []  # type: Final[List[Tuple[TypeAliasType, TypeAliasType]]]
-    _assuming_proper = []  # type: Final[List[Tuple[TypeAliasType, TypeAliasType]]]
+    _assuming: Final[List[Tuple[TypeAliasType, TypeAliasType]]] = []
+    _assuming_proper: Final[List[Tuple[TypeAliasType, TypeAliasType]]] = []
     # Ditto for inference of generic constraints against recursive type aliases.
-    _inferring = []  # type: Final[List[TypeAliasType]]
+    _inferring: Final[List[TypeAliasType]] = []
 
     # N.B: We do all of the accesses to these properties through
     # TypeState, instead of making these classmethods and accessing
@@ -187,7 +187,7 @@ class TypeState:
         proper subtype checks, and calculating meets and joins, if this involves calling
         'subtypes.is_protocol_implementation').
         """
-        deps = {}  # type: Dict[str, Set[str]]
+        deps: Dict[str, Set[str]] = {}
         for info in TypeState._rechecked_types:
             for attr in TypeState._checked_against_members[info.fullname]:
                 # The need for full MRO here is subtle, during an update, base classes of

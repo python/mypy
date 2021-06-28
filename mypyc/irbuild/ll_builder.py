@@ -77,7 +77,7 @@ DictEntry = Tuple[Optional[Value], Value]
 
 
 # From CPython
-PY_VECTORCALL_ARGUMENTS_OFFSET = 1 << (PLATFORM_SIZE * 8 - 1)  # type: Final
+PY_VECTORCALL_ARGUMENTS_OFFSET: Final = 1 << (PLATFORM_SIZE * 8 - 1)
 
 
 class LowLevelIRBuilder:
@@ -90,10 +90,10 @@ class LowLevelIRBuilder:
         self.current_module = current_module
         self.mapper = mapper
         self.options = options
-        self.args = []  # type: List[Register]
-        self.blocks = []  # type: List[BasicBlock]
+        self.args: List[Register] = []
+        self.blocks: List[BasicBlock] = []
         # Stack of except handler entry blocks
-        self.error_handlers = [None]  # type: List[Optional[BasicBlock]]
+        self.error_handlers: List[Optional[BasicBlock]] = [None]
 
     # Basic operations
 
@@ -277,7 +277,7 @@ class LowLevelIRBuilder:
         assert arg_names is not None
 
         pos_arg_values = []
-        kw_arg_key_value_pairs = []  # type: List[DictEntry]
+        kw_arg_key_value_pairs: List[DictEntry] = []
         star_arg_values = []
         for value, kind, name in zip(arg_values, arg_kinds, arg_names):
             if kind == ARG_POS:
@@ -879,9 +879,9 @@ class LowLevelIRBuilder:
         return target
 
     def make_dict(self, key_value_pairs: Sequence[DictEntry], line: int) -> Value:
-        result = None  # type: Union[Value, None]
-        keys = []  # type: List[Value]
-        values = []  # type: List[Value]
+        result: Union[Value, None] = None
+        keys: List[Value] = []
+        values: List[Value] = []
         for key, value in key_value_pairs:
             if key is not None:
                 # key:value
@@ -1094,7 +1094,7 @@ class LowLevelIRBuilder:
                         args: List[Value],
                         line: int,
                         result_type: Optional[RType] = None) -> Optional[Value]:
-        matching = None  # type: Optional[CFunctionDescription]
+        matching: Optional[CFunctionDescription] = None
         for desc in candidates:
             if len(desc.arg_types) != len(args):
                 continue
@@ -1172,7 +1172,7 @@ class LowLevelIRBuilder:
                 return self.call_c(generic_len_op, [val], line)
 
     def new_tuple(self, items: List[Value], line: int) -> Value:
-        size = Integer(len(items), c_pyssize_t_rprimitive)  # type: Value
+        size: Value = Integer(len(items), c_pyssize_t_rprimitive)
         return self.call_c(new_tuple_op, [size] + items, line)
 
     def new_tuple_with_length(self, length: Value, line: int) -> Value:
@@ -1338,7 +1338,7 @@ class LowLevelIRBuilder:
         # keys and values should have the same number of items
         size = len(keys)
         if size > 0:
-            size_value = Integer(size, c_pyssize_t_rprimitive)  # type: Value
+            size_value: Value = Integer(size, c_pyssize_t_rprimitive)
             # merge keys and values
             items = [i for t in list(zip(keys, values)) for i in t]
             return self.call_c(dict_build_op, [size_value] + items, line)

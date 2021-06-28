@@ -7,7 +7,7 @@ from mypy.nodes import FakeInfo, SymbolNode, Var, Decorator, FuncDef
 from mypy.server.objgraph import get_reachable_graph, get_path
 
 # If True, print more verbose output on failure.
-DUMP_MISMATCH_NODES = False  # type: Final
+DUMP_MISMATCH_NODES: Final = False
 
 
 def check_consistency(o: object) -> None:
@@ -19,7 +19,7 @@ def check_consistency(o: object) -> None:
     reachable = list(seen.values())
     syms = [x for x in reachable if isinstance(x, SymbolNode)]
 
-    m = {}  # type: Dict[str, SymbolNode]
+    m: Dict[str, SymbolNode] = {}
     for sym in syms:
         if isinstance(sym, FakeInfo):
             continue

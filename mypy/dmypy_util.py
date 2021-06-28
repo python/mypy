@@ -10,7 +10,7 @@ from typing_extensions import Final
 
 from mypy.ipc import IPCBase
 
-DEFAULT_STATUS_FILE = '.dmypy.json'  # type: Final
+DEFAULT_STATUS_FILE: Final = ".dmypy.json"
 
 
 def receive(connection: IPCBase) -> Any:

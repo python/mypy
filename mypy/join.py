@@ -22,7 +22,7 @@ from mypy import meet
 
 class InstanceJoiner:
     def __init__(self) -> None:
-        self.seen_instances = []  # type: List[Tuple[Instance, Instance]]
+        self.seen_instances: List[Tuple[Instance, Instance]] = []
 
     def join_instances(self, t: Instance, s: Instance) -> ProperType:
         if (t, s) in self.seen_instances or (s, t) in self.seen_instances:
@@ -36,13 +36,13 @@ class InstanceJoiner:
             # potentially different arguments).
 
             # Combine type arguments.
-            args = []  # type: List[Type]
+            args: List[Type] = []
             # N.B: We use zip instead of indexing because the lengths might have
             # mismatches during daemon reprocessing.
             for ta, sa, type_var in zip(t.args, s.args, t.type.defn.type_vars):
                 ta_proper = get_proper_type(ta)
                 sa_proper = get_proper_type(sa)
-                new_type = None  # type: Optional[Type]
+                new_type: Optional[Type] = None
                 if isinstance(ta_proper, AnyType):
                     new_type = AnyType(TypeOfAny.from_another_any, ta_proper)
                 elif isinstance(sa_proper, AnyType):
@@ -69,7 +69,7 @@ class InstanceJoiner:
                         return object_from_instance(t)
                 assert new_type is not None
                 args.append(new_type)
-            result = Instance(t.type, args)  # type: ProperType
+            result: ProperType = Instance(t.type, args)
         elif t.type.bases and is_subtype_ignoring_tvars(t, s):
             result = self.join_instances_via_supertype(t, s)
         else:
@@ -91,7 +91,7 @@ class InstanceJoiner:
         # Compute the "best" supertype of t when joined with s.
         # The definition of "best" may evolve; for now it is the one with
         # the longest MRO.  Ties are broken by using the earlier base.
-        best = None  # type: Optional[ProperType]
+        best: Optional[ProperType] = None
         for base in t.type.bases:
             mapped = map_instance_to_supertype(t, base.type)
             res = self.join_instances(mapped, s)
@@ -254,7 +254,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             if self.instance_joiner is None:
                 self.instance_joiner = InstanceJoiner()
             nominal = self.instance_joiner.join_instances(t, self.s)
-            structural = None  # type: Optional[Instance]
+            structural: Optional[Instance] = None
             if t.type.is_protocol and is_protocol_implementation(self.s, t):
                 structural = t
             elif self.s.type.is_protocol and is_protocol_implementation(t, self.s):
@@ -335,7 +335,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         #       Ov([Any, int] -> Any, [Any, int] -> Any)
         #
         # TODO: Consider more cases of callable subtyping.
-        result = []  # type: List[CallableType]
+        result: List[CallableType] = []
         s = self.s
         if isinstance(s, FunctionLike):
             # The interesting case where both types are function types.
@@ -378,7 +378,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
                                                        mypy.typeops.tuple_fallback(t))
             assert isinstance(fallback, Instance)
             if self.s.length() == t.length():
-                items = []  # type: List[Type]
+                items: List[Type] = []
                 for i in range(t.length()):
                     items.append(self.join(t.items[i], self.s.items[i]))
                 return TupleType(items, fallback)
@@ -481,7 +481,8 @@ def is_similar_callables(t: CallableType, s: CallableType) -> bool:
 
 def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     from mypy.meet import meet_types
-    arg_types = []  # type: List[Type]
+
+    arg_types: List[Type] = []
     for i in range(len(t.arg_types)):
         arg_types.append(meet_types(t.arg_types[i], s.arg_types[i]))
     # TODO in combine_similar_callables also applies here (names and kinds)
@@ -499,7 +500,7 @@ def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
 
 
 def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:
-    arg_types = []  # type: List[Type]
+    arg_types: List[Type] = []
     for i in range(len(t.arg_types)):
         arg_types.append(join_types(t.arg_types[i], s.arg_types[i]))
     # TODO kinds and argument names

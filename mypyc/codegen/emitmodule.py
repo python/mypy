@@ -97,7 +97,7 @@ class MypycPlugin(Plugin):
     def __init__(
             self, options: Options, compiler_options: CompilerOptions, groups: Groups) -> None:
         super().__init__(options)
-        self.group_map = {}  # type: Dict[str, Tuple[Optional[str], List[str]]]
+        self.group_map: Dict[str, Tuple[Optional[str], List[str]]] = {}
         for sources, name in groups:
             modules = sorted(source.module for source in sources)
             for id in modules:
@@ -280,7 +280,7 @@ def compile_ir_to_c(
 
     # Generate C code for each compilation group. Each group will be
     # compiled into a separate extension module.
-    ctext = {}  # type: Dict[Optional[str], List[Tuple[str, str]]]
+    ctext: Dict[Optional[str], List[Tuple[str, str]]] = {}
     for group_sources, group_name in groups:
         group_modules = [(source.module, modules[source.module]) for source in group_sources
                          if source.module in modules]
@@ -478,7 +478,7 @@ class GroupGenerator:
         self.names = names
         # Initializations of globals to simple values that we can't
         # do statically because the windows loader is bad.
-        self.simple_inits = []  # type: List[Tuple[str, str]]
+        self.simple_inits: List[Tuple[str, str]] = []
         self.group_name = group_name
         self.use_shared_lib = group_name is not None
         self.compiler_options = compiler_options
@@ -904,7 +904,7 @@ class GroupGenerator:
                            '    goto fail;')
 
         # HACK: Manually instantiate generated classes here
-        type_structs = []  # type: List[str]
+        type_structs: List[str] = []
         for cl in module.classes:
             type_struct = emitter.type_struct_name(cl)
             type_structs.append(type_struct)
@@ -961,7 +961,7 @@ class GroupGenerator:
         This runs in O(V + E).
         """
         result = []
-        marked_declarations = OrderedDict()  # type: Dict[str, MarkedDeclaration]
+        marked_declarations: Dict[str, MarkedDeclaration] = OrderedDict()
         for k, v in self.context.declarations.items():
             marked_declarations[k] = MarkedDeclaration(v, False)
 
@@ -1050,7 +1050,7 @@ class GroupGenerator:
 def sort_classes(classes: List[Tuple[str, ClassIR]]) -> List[Tuple[str, ClassIR]]:
     mod_name = {ir: name for name, ir in classes}
     irs = [ir for _, ir in classes]
-    deps = OrderedDict()  # type: Dict[ClassIR, Set[ClassIR]]
+    deps: Dict[ClassIR, Set[ClassIR]] = OrderedDict()
     for ir in irs:
         if ir not in deps:
             deps[ir] = set()
@@ -1070,7 +1070,7 @@ def toposort(deps: Dict[T, Set[T]]) -> List[T]:
     This runs in O(V + E).
     """
     result = []
-    visited = set()  # type: Set[T]
+    visited: Set[T] = set()
 
     def visit(item: T) -> None:
         if item in visited:
@@ -1123,7 +1123,7 @@ def c_array_initializer(components: List[str]) -> str:
     If the result is long, split it into multiple lines.
     """
     res = []
-    current = []  # type: List[str]
+    current: List[str] = []
     cur_len = 0
     for c in components:
         if not current or cur_len + 2 + len(c) < 70:

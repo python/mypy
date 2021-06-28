@@ -148,7 +148,7 @@ class TypeAnalyzerPluginInterface:
     # This might be different from Plugin.options (that contains default/global options)
     # if there are per-file options in the config. This applies to all other interfaces
     # in this file.
-    options = None  # type: Options
+    options: Options
 
     @abstractmethod
     def fail(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
@@ -191,7 +191,7 @@ class CommonPluginApi:
     # Global mypy options.
     # Per-file options can be only accessed on various
     # XxxPluginInterface classes.
-    options = None  # type: Options
+    options: Options
 
     @abstractmethod
     def lookup_fully_qualified(self, fullname: str) -> Optional[SymbolTableNode]:
@@ -211,9 +211,9 @@ class CheckerPluginInterface:
     docstrings in checker.py for more details.
     """
 
-    msg = None  # type: MessageBuilder
-    options = None  # type: Options
-    path = None  # type: str
+    msg: MessageBuilder
+    options: Options
+    path: str
 
     # Type context for type inference
     @property
@@ -243,11 +243,11 @@ class SemanticAnalyzerPluginInterface:
     # TODO: clean-up lookup functions.
     """
 
-    modules = None  # type: Dict[str, MypyFile]
+    modules: Dict[str, MypyFile]
     # Options for current file.
-    options = None  # type: Options
-    cur_mod_id = None  # type: str
-    msg = None  # type: MessageBuilder
+    options: Options
+    cur_mod_id: str
+    msg: MessageBuilder
 
     @abstractmethod
     def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
@@ -477,7 +477,7 @@ class Plugin(CommonPluginApi):
         # This can't be set in __init__ because it is executed too soon in build.py.
         # Therefore, build.py *must* set it later before graph processing starts
         # by calling set_modules().
-        self._modules = None  # type: Optional[Dict[str, MypyFile]]
+        self._modules: Optional[Dict[str, MypyFile]] = None
 
     def set_modules(self, modules: Dict[str, MypyFile]) -> None:
         self._modules = modules

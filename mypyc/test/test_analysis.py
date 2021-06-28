@@ -45,7 +45,7 @@ class TestAnalysis(MypycDataSuite):
                     exceptions.insert_exception_handling(fn)
                     actual.extend(format_func(fn))
                     cfg = dataflow.get_cfg(fn.blocks)
-                    args = set(fn.arg_regs)  # type: Set[Value]
+                    args: Set[Value] = set(fn.arg_regs)
                     name = testcase.name
                     if name.endswith('_MaybeDefined'):
                         # Forward, maybe

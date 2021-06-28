@@ -26,15 +26,26 @@ from mypy.util import get_unique_redefinition_name
 
 # Matches "_prohibited" in typing.py, but adds __annotations__, which works at runtime but can't
 # easily be supported in a static checker.
-NAMEDTUPLE_PROHIBITED_NAMES = ('__new__', '__init__', '__slots__', '__getnewargs__',
-                               '_fields', '_field_defaults', '_field_types',
-                               '_make', '_replace', '_asdict', '_source',
-                               '__annotations__')  # type: Final
+NAMEDTUPLE_PROHIBITED_NAMES: Final = (
+    "__new__",
+    "__init__",
+    "__slots__",
+    "__getnewargs__",
+    "_fields",
+    "_field_defaults",
+    "_field_types",
+    "_make",
+    "_replace",
+    "_asdict",
+    "_source",
+    "__annotations__",
+)
 
-NAMEDTUP_CLASS_ERROR = ('Invalid statement in NamedTuple definition; '
-                        'expected "field_name: field_type [= default]"')  # type: Final
+NAMEDTUP_CLASS_ERROR: Final = (
+    "Invalid statement in NamedTuple definition; " 'expected "field_name: field_type [= default]"'
+)
 
-SELF_TVAR_NAME = '_NT'  # type: Final
+SELF_TVAR_NAME: Final = "_NT"
 
 
 class NamedTupleAnalyzer:
@@ -87,9 +98,9 @@ class NamedTupleAnalyzer:
             return [], [], {}
         if len(defn.base_type_exprs) > 1:
             self.fail('NamedTuple should be a single base', defn)
-        items = []  # type: List[str]
-        types = []  # type: List[Type]
-        default_items = {}  # type: Dict[str, Expression]
+        items: List[str] = []
+        types: List[Type] = []
+        default_items: Dict[str, Expression] = {}
         for stmt in defn.defs.body:
             if not isinstance(stmt, AssignmentStmt):
                 # Still allow pass or ... (for empty namedtuples).
@@ -256,7 +267,7 @@ class NamedTupleAnalyzer:
         if len(args) < 2:
             self.fail("Too few arguments for namedtuple()", call)
             return None
-        defaults = []  # type: List[Expression]
+        defaults: List[Expression] = []
         if len(args) > 2:
             # Typed namedtuple doesn't support additional arguments.
             if fullname == 'typing.NamedTuple':
@@ -284,7 +295,7 @@ class NamedTupleAnalyzer:
                 "namedtuple() expects a string literal as the first argument", call)
             return None
         typename = cast(Union[StrExpr, BytesExpr, UnicodeExpr], call.args[0]).value
-        types = []  # type: List[Type]
+        types: List[Type] = []
         if not isinstance(args[1], (ListExpr, TupleExpr)):
             if (fullname == 'collections.namedtuple'
                     and isinstance(args[1], (StrExpr, BytesExpr, UnicodeExpr))):
@@ -331,8 +342,8 @@ class NamedTupleAnalyzer:
 
         Return (names, types, defaults, whether types are all ready), or None if error occurred.
         """
-        items = []  # type: List[str]
-        types = []  # type: List[Type]
+        items: List[str] = []
+        types: List[Type] = []
         for item in nodes:
             if isinstance(item, TupleExpr):
                 if len(item.items) != 2:

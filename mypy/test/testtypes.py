@@ -494,7 +494,7 @@ class TypeOpsSuite(Suite):
         argument types a1, ... an and return type r and type arguments
         vars.
         """
-        tv = []  # type: List[TypeVarDef]
+        tv: List[TypeVarDef] = []
         n = -1
         for v in vars:
             tv.append(TypeVarDef(v, v, n, [], self.fx.o))

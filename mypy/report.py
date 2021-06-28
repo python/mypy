@@ -33,26 +33,28 @@ try:
 except ImportError:
     LXML_INSTALLED = False
 
-type_of_any_name_map = collections.OrderedDict([
-    (TypeOfAny.unannotated, "Unannotated"),
-    (TypeOfAny.explicit, "Explicit"),
-    (TypeOfAny.from_unimported_type, "Unimported"),
-    (TypeOfAny.from_omitted_generics, "Omitted Generics"),
-    (TypeOfAny.from_error, "Error"),
-    (TypeOfAny.special_form, "Special Form"),
-    (TypeOfAny.implementation_artifact, "Implementation Artifact"),
-])  # type: Final[collections.OrderedDict[int, str]]
+type_of_any_name_map: Final["collections.OrderedDict[int, str]"] = collections.OrderedDict(
+    [
+        (TypeOfAny.unannotated, "Unannotated"),
+        (TypeOfAny.explicit, "Explicit"),
+        (TypeOfAny.from_unimported_type, "Unimported"),
+        (TypeOfAny.from_omitted_generics, "Omitted Generics"),
+        (TypeOfAny.from_error, "Error"),
+        (TypeOfAny.special_form, "Special Form"),
+        (TypeOfAny.implementation_artifact, "Implementation Artifact"),
+    ]
+)
 
 ReporterClasses = Dict[str, Tuple[Callable[['Reports', str], 'AbstractReporter'], bool]]
 
-reporter_classes = {}  # type: Final[ReporterClasses]
+reporter_classes: Final[ReporterClasses] = {}
 
 
 class Reports:
     def __init__(self, data_dir: str, report_dirs: Dict[str, str]) -> None:
         self.data_dir = data_dir
-        self.reporters = []  # type: List[AbstractReporter]
-        self.named_reporters = {}  # type: Dict[str, AbstractReporter]
+        self.reporters: List[AbstractReporter] = []
+        self.named_reporters: Dict[str, AbstractReporter] = {}
 
         for report_type, report_dir in sorted(report_dirs.items()):
             self.add_report(report_type, report_dir)
@@ -145,7 +147,7 @@ class FuncCounterVisitor(TraverserVisitor):
 class LineCountReporter(AbstractReporter):
     def __init__(self, reports: Reports, output_dir: str) -> None:
         super().__init__(reports, output_dir)
-        self.counts = {}  # type: Dict[str, Tuple[int, int, int, int]]
+        self.counts: Dict[str, Tuple[int, int, int, int]] = {}
 
     def on_file(self,
                 tree: MypyFile,
@@ -173,12 +175,12 @@ class LineCountReporter(AbstractReporter):
                                        annotated_funcs, total_funcs)
 
     def on_finish(self) -> None:
-        counts = sorted(((c, p) for p, c in self.counts.items()),
-                        reverse=True)  # type: List[Tuple[Tuple[int, int, int, int], str]]
-        total_counts = tuple(sum(c[i] for c, p in counts)
-                             for i in range(4))
-        with open(os.path.join(self.output_dir, 'linecount.txt'), 'w') as f:
-            f.write('{:7} {:7} {:6} {:6} total\n'.format(*total_counts))
+        counts: List[Tuple[Tuple[int, int, int, int], str]] = sorted(
+            ((c, p) for p, c in self.counts.items()), reverse=True
+        )
+        total_counts = tuple(sum(c[i] for c, p in counts) for i in range(4))
+        with open(os.path.join(self.output_dir, "linecount.txt"), "w") as f:
+            f.write("{:7} {:7} {:6} {:6} total\n".format(*total_counts))
             for c, p in counts:
                 f.write('{:7} {:7} {:6} {:6} {}\n'.format(
                     c[0], c[1], c[2], c[3], p))
@@ -192,8 +194,8 @@ class AnyExpressionsReporter(AbstractReporter):
 
     def __init__(self, reports: Reports, output_dir: str) -> None:
         super().__init__(reports, output_dir)
-        self.counts = {}  # type: Dict[str, Tuple[int, int]]
-        self.any_types_counter = {}  # type: Dict[str, typing.Counter[int]]
+        self.counts: Dict[str, Tuple[int, int]] = {}
+        self.any_types_counter: Dict[str, typing.Counter[int]] = {}
 
     def on_file(self,
                 tree: MypyFile,
@@ -256,7 +258,7 @@ class AnyExpressionsReporter(AbstractReporter):
             total_coverage = (float(total_expr - total_any) / float(total_expr)) * 100
 
         column_names = ["Name", "Anys", "Exprs", "Coverage"]
-        rows = []  # type: List[List[str]]
+        rows: List[List[str]] = []
         for filename in sorted(self.counts):
             (num_any, num_total) = self.counts[filename]
             coverage = (float(num_total - num_any) / float(num_total)) * 100
@@ -267,14 +269,14 @@ class AnyExpressionsReporter(AbstractReporter):
         self._write_out_report('any-exprs.txt', column_names, rows, total_row)
 
     def _report_types_of_anys(self) -> None:
-        total_counter = collections.Counter()  # type: typing.Counter[int]
+        total_counter: typing.Counter[int] = collections.Counter()
         for counter in self.any_types_counter.values():
             for any_type, value in counter.items():
                 total_counter[any_type] += value
         file_column_name = "Name"
         total_row_name = "Total"
         column_names = [file_column_name] + list(type_of_any_name_map.values())
-        rows = []  # type: List[List[str]]
+        rows: List[List[str]] = []
         for filename, counter in self.any_types_counter.items():
             rows.append([filename] + [str(counter[typ]) for typ in type_of_any_name_map])
         rows.sort(key=lambda x: x[0])
@@ -389,7 +391,7 @@ class LineCoverageReporter(AbstractReporter):
 
     def __init__(self, reports: Reports, output_dir: str) -> None:
         super().__init__(reports, output_dir)
-        self.lines_covered = {}  # type: Dict[str, List[int]]
+        self.lines_covered: Dict[str, List[int]] = {}
 
     def on_file(self,
                 tree: MypyFile,
@@ -444,14 +446,13 @@ class MemoryXmlReporter(AbstractReporter):
         self.css_html_path = os.path.join(reports.data_dir, 'xml', 'mypy-html.css')
         xsd_path = os.path.join(reports.data_dir, 'xml', 'mypy.xsd')
         self.schema = etree.XMLSchema(etree.parse(xsd_path))
-        self.last_xml = None  # type: Optional[Any]
-        self.files = []  # type: List[FileInfo]
+        self.last_xml: Optional[Any] = None
+        self.files: List[FileInfo] = []
 
     # XML doesn't like control characters, but they are sometimes
     # legal in source code (e.g. comments, string literals).
     # Tabs (#x09) are allowed in XML content.
-    control_fixer = str.maketrans(
-        ''.join(chr(i) for i in range(32) if i != 9), '?' * 31)  # type: Final
+    control_fixer: Final = str.maketrans("".join(chr(i) for i in range(32) if i != 9), "?" * 31)
 
     def on_file(self,
                 tree: MypyFile,
@@ -501,7 +502,7 @@ class MemoryXmlReporter(AbstractReporter):
     def _get_any_info_for_line(visitor: stats.StatisticsVisitor, lineno: int) -> str:
         if lineno in visitor.any_line_map:
             result = "Any Types on this line: "
-            counter = collections.Counter()  # type: typing.Counter[int]
+            counter: typing.Counter[int] = collections.Counter()
             for typ in visitor.any_line_map[lineno]:
                 counter[typ.type_of_any] += 1
             for any_type, occurrences in counter.items():
@@ -548,8 +549,8 @@ class CoberturaPackage(object):
 
     def __init__(self, name: str) -> None:
         self.name = name
-        self.classes = {}  # type: Dict[str, Any]
-        self.packages = {}  # type: Dict[str, CoberturaPackage]
+        self.classes: Dict[str, Any] = {}
+        self.packages: Dict[str, CoberturaPackage] = {}
         self.total_lines = 0
         self.covered_lines = 0
 
@@ -811,7 +812,7 @@ class LinePrecisionReporter(AbstractReporter):
 
     def __init__(self, reports: Reports, output_dir: str) -> None:
         super().__init__(reports, output_dir)
-        self.files = []  # type: List[FileInfo]
+        self.files: List[FileInfo] = []
 
     def on_file(self,
                 tree: MypyFile,

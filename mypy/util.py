@@ -23,11 +23,10 @@ except ImportError:
 
 T = TypeVar('T')
 
-ENCODING_RE = \
-    re.compile(br'([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)')  # type: Final
+ENCODING_RE: Final = re.compile(br"([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)")
 
-DEFAULT_SOURCE_OFFSET = 4  # type: Final
-DEFAULT_COLUMNS = 80  # type: Final
+DEFAULT_SOURCE_OFFSET: Final = 4
+DEFAULT_COLUMNS: Final = 80
 
 # At least this number of columns will be shown on each side of
 # error location when printing source code snippet.
@@ -40,8 +39,12 @@ MINIMUM_WIDTH = 20
 MINIMUM_WINDOWS_MAJOR_VT100 = 10
 MINIMUM_WINDOWS_BUILD_VT100 = 10586
 
-default_python2_interpreter = \
-    ['python2', 'python', '/usr/bin/python', 'C:\\Python27\\python.exe']  # type: Final
+default_python2_interpreter: Final = [
+    "python2",
+    "python",
+    "/usr/bin/python",
+    "C:\\Python27\\python.exe",
+]
 
 
 def split_module_names(mod_name: str) -> List[str]:
@@ -65,7 +68,7 @@ def module_prefix(modules: Iterable[str], target: str) -> Optional[str]:
 
 
 def split_target(modules: Iterable[str], target: str) -> Optional[Tuple[str, str]]:
-    remaining = []  # type: List[str]
+    remaining: List[str] = []
     while True:
         if target in modules:
             return target, '.'.join(remaining)
@@ -193,7 +196,7 @@ def get_mypy_comments(source: str) -> List[Tuple[int, str]]:
     return results
 
 
-_python2_interpreter = None  # type: Optional[str]
+_python2_interpreter: Optional[str] = None
 
 
 def try_find_python2_interpreter() -> Optional[str]:
@@ -214,28 +217,28 @@ def try_find_python2_interpreter() -> Optional[str]:
     return None
 
 
-PASS_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
+PASS_TEMPLATE: Final = """<?xml version="1.0" encoding="utf-8"?>
 <testsuite errors="0" failures="0" name="mypy" skips="0" tests="1" time="{time:.3f}">
   <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
   </testcase>
 </testsuite>
-"""  # type: Final
+"""
 
-FAIL_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
+FAIL_TEMPLATE: Final = """<?xml version="1.0" encoding="utf-8"?>
 <testsuite errors="0" failures="1" name="mypy" skips="0" tests="1" time="{time:.3f}">
   <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
     <failure message="mypy produced messages">{text}</failure>
   </testcase>
 </testsuite>
-"""  # type: Final
+"""
 
-ERROR_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
+ERROR_TEMPLATE: Final = """<?xml version="1.0" encoding="utf-8"?>
 <testsuite errors="1" failures="0" name="mypy" skips="0" tests="1" time="{time:.3f}">
   <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
     <error message="mypy produced errors">{text}</error>
   </testcase>
 </testsuite>
-"""  # type: Final
+"""
 
 
 def write_junit_xml(dt: float, serious: bool, messages: List[str], path: str,
@@ -269,7 +272,7 @@ class IdMapper:
     """
 
     def __init__(self) -> None:
-        self.id_map = {}  # type: Dict[object, int]
+        self.id_map: Dict[object, int] = {}
         self.next_id = 0
 
     def id(self, o: object) -> int:
@@ -311,7 +314,7 @@ def correct_relative_import(cur_mod_id: str,
     return cur_mod_id + (("." + target) if target else ""), ok
 
 
-fields_cache = {}  # type: Final[Dict[Type[object], List[str]]]
+fields_cache: Final[Dict[Type[object], List[str]]] = {}
 
 
 def get_class_descriptors(cls: 'Type[object]') -> Sequence[str]:
@@ -408,7 +411,7 @@ def count_stats(errors: List[str]) -> Tuple[int, int]:
 def split_words(msg: str) -> List[str]:
     """Split line of text into words (but not within quoted groups)."""
     next_word = ''
-    res = []  # type: List[str]
+    res: List[str] = []
     allow_break = True
     for c in msg:
         if c == ' ' and allow_break:
@@ -451,7 +454,7 @@ def soft_wrap(msg: str, max_len: int, first_offset: int,
     """
     words = split_words(msg)
     next_line = words.pop(0)
-    lines = []  # type: List[str]
+    lines: List[str] = []
     while words:
         next_word = words.pop(0)
         max_line_len = max_len - num_indent if lines else max_len - first_offset

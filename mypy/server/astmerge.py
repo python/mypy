@@ -103,7 +103,7 @@ def replacement_map_from_symbol_table(
     the given module prefix. Don't recurse into other modules accessible through the symbol
     table.
     """
-    replacements = {}  # type: Dict[SymbolNode, SymbolNode]
+    replacements: Dict[SymbolNode, SymbolNode] = {}
     for name, node in old.items():
         if (name in new and (node.kind == MDEF
                              or node.node and get_prefix(node.node.fullname) == prefix)):

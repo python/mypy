@@ -146,8 +146,7 @@ CREATE TABLE IF NOT EXISTS files (
 CREATE INDEX IF NOT EXISTS path_idx on files(path);
 '''
 # No migrations yet
-MIGRATIONS = [
-]  # type: List[str]
+MIGRATIONS: List[str] = []
 
 
 def connect_db(db_file: str) -> 'sqlite3.Connection':

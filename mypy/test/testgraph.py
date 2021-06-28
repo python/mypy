@@ -22,16 +22,13 @@ class GraphSuite(Suite):
         b = frozenset({'B'})
         c = frozenset({'C'})
         d = frozenset({'D'})
-        data = {a: {b, c}, b: {d}, c: {d}}  # type: Dict[AbstractSet[str], Set[AbstractSet[str]]]
+        data: Dict[AbstractSet[str], Set[AbstractSet[str]]] = {a: {b, c}, b: {d}, c: {d}}
         res = list(topsort(data))
         assert_equal(res, [{d}, {b, c}, {a}])
 
     def test_scc(self) -> None:
-        vertices = {'A', 'B', 'C', 'D'}
-        edges = {'A': ['B', 'C'],
-                 'B': ['C'],
-                 'C': ['B', 'D'],
-                 'D': []}  # type: Dict[str, List[str]]
+        vertices = {"A", "B", "C", "D"}
+        edges: Dict[str, List[str]] = {"A": ["B", "C"], "B": ["C"], "C": ["B", "D"], "D": []}
         sccs = set(frozenset(x) for x in strongly_connected_components(vertices, edges))
         assert_equal(sccs,
                      {frozenset({'A'}),

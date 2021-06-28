@@ -29,10 +29,10 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
     def visit_goto(self, op: Goto) -> str:
         return self.format('goto %l', op.label)
 
-    branch_op_names = {
+    branch_op_names: Final = {
         Branch.BOOL: ('%r', 'bool'),
         Branch.IS_ERROR: ('is_error(%r)', ''),
-    }  # type: Final
+    }
 
     def visit_branch(self, op: Branch) -> str:
         fmt, typ = self.branch_op_names[op.op]
@@ -275,7 +275,7 @@ def format_blocks(blocks: List[BasicBlock],
     for i, block in enumerate(blocks):
         block.label = i
 
-    handler_map = {}  # type: Dict[BasicBlock, List[BasicBlock]]
+    handler_map: Dict[BasicBlock, List[BasicBlock]] = {}
     for b in blocks:
         if b.error_handler:
             handler_map.setdefault(b.error_handler, []).append(b)
@@ -333,7 +333,7 @@ def generate_names_for_ir(args: List[Register], blocks: List[BasicBlock]) -> Dic
     Give names such as 'r5' to temp values in IR which are useful when
     pretty-printing or generating C. Ensure generated names are unique.
     """
-    names = {}  # type: Dict[Value, str]
+    names: Dict[Value, str] = {}
     used_names = set()
 
     temp_index = 0

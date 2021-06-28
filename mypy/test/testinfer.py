@@ -202,7 +202,7 @@ class MapActualsToFormalsSuite(Suite):
 def expand_caller_kinds(kinds_or_names: List[Union[int, str]]
                         ) -> Tuple[List[int], List[Optional[str]]]:
     kinds = []
-    names = []  # type: List[Optional[str]]
+    names: List[Optional[str]] = []
     for k in kinds_or_names:
         if isinstance(k, str):
             kinds.append(ARG_NAMED)
@@ -216,7 +216,7 @@ def expand_caller_kinds(kinds_or_names: List[Union[int, str]]
 def expand_callee_kinds(kinds_and_names: List[Union[int, Tuple[int, str]]]
                         ) -> Tuple[List[int], List[Optional[str]]]:
     kinds = []
-    names = []  # type: List[Optional[str]]
+    names: List[Optional[str]] = []
     for v in kinds_and_names:
         if isinstance(v, tuple):
             kinds.append(v[0])
@@ -287,7 +287,7 @@ class OperandDisjointDictSuite(Suite):
 class OperandComparisonGroupingSuite(Suite):
     """Test cases for checker.group_comparison_operands."""
     def literal_keymap(self, assignable_operands: Dict[int, NameExpr]) -> Dict[int, Key]:
-        output = {}  # type: Dict[int, Key]
+        output: Dict[int, Key] = {}
         for index, expr in assignable_operands.items():
             output[index] = ('FakeExpr', expr.name)
         return output
@@ -437,10 +437,10 @@ class OperandComparisonGroupingSuite(Suite):
         single_comparison = [('==', x0, x1)]
         expected_output = [('==', [0, 1])]
 
-        assignable_combinations = [
+        assignable_combinations: List[Dict[int, NameExpr]] = [
             {}, {0: x0}, {1: x1}, {0: x0, 1: x1},
-        ]  # type: List[Dict[int, NameExpr]]
-        to_group_by = [set(), {'=='}, {'is'}]  # type: List[Set[str]]
+        ]
+        to_group_by: List[Set[str]] = [set(), {"=="}, {"is"}]
 
         for combo in assignable_combinations:
             for operators in to_group_by:

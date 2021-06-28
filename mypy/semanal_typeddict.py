@@ -18,8 +18,9 @@ from mypy.messages import MessageBuilder
 from mypy.errorcodes import ErrorCode
 from mypy import errorcodes as codes
 
-TPDICT_CLASS_ERROR = ('Invalid statement in TypedDict definition; '
-                      'expected "field_name: field_type"')  # type: Final
+TPDICT_CLASS_ERROR: Final = (
+    "Invalid statement in TypedDict definition; " 'expected "field_name: field_type"'
+)
 
 
 class TypedDictAnalyzer:
@@ -72,7 +73,7 @@ class TypedDictAnalyzer:
                    not self.is_typeddict(expr) for expr in defn.base_type_exprs):
                 self.fail("All bases of a new TypedDict must be TypedDict types", defn)
             typeddict_bases = list(filter(self.is_typeddict, defn.base_type_exprs))
-            keys = []  # type: List[str]
+            keys: List[str] = []
             types = []
             required_keys = set()
 
@@ -121,8 +122,8 @@ class TypedDictAnalyzer:
          * List of types for each key
          * Set of required keys
         """
-        fields = []  # type: List[str]
-        types = []  # type: List[Type]
+        fields: List[str] = []
+        types: List[Type] = []
         for stmt in defn.defs.body:
             if not isinstance(stmt, AssignmentStmt):
                 # Still allow pass or ... (for empty TypedDict's).
@@ -156,7 +157,7 @@ class TypedDictAnalyzer:
                 elif not isinstance(stmt.rvalue, TempNode):
                     # x: int assigns rvalue to TempNode(AnyType())
                     self.fail('Right hand side values are not supported in TypedDict', stmt)
-        total = True  # type: Optional[bool]
+        total: Optional[bool] = True
         if 'total' in defn.keywords:
             total = self.api.parse_bool(defn.keywords['total'])
             if total is None:
@@ -243,7 +244,7 @@ class TypedDictAnalyzer:
         if not isinstance(args[1], DictExpr):
             return self.fail_typeddict_arg(
                 "TypedDict() expects a dictionary literal as the second argument", call)
-        total = True  # type: Optional[bool]
+        total: Optional[bool] = True
         if len(args) == 3:
             total = self.api.parse_bool(call.args[2])
             if total is None:
@@ -275,8 +276,8 @@ class TypedDictAnalyzer:
         Return names, types, was there an error. If some type is not ready, return None.
         """
         seen_keys = set()
-        items = []  # type: List[str]
-        types = []  # type: List[Type]
+        items: List[str] = []
+        types: List[Type] = []
         for (field_name_expr, field_type_expr) in dict_items:
             if isinstance(field_name_expr, (StrExpr, BytesExpr, UnicodeExpr)):
                 key = field_name_expr.value

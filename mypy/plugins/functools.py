@@ -45,7 +45,7 @@ def functools_total_ordering_maker_callback(ctx: mypy.plugin.ClassDefContext,
 
     other_type = _find_other_type(root_method)
     bool_type = ctx.api.named_type('__builtins__.bool')
-    ret_type = bool_type  # type: Type
+    ret_type: Type = bool_type
     if root_method.type.ret_type != ctx.api.named_type('__builtins__.bool'):
         proper_ret_type = get_proper_type(root_method.type.ret_type)
         if not (isinstance(proper_ret_type, UnboundType)
@@ -84,7 +84,7 @@ def _find_other_type(method: _MethodInfo) -> Type:
 def _analyze_class(ctx: mypy.plugin.ClassDefContext) -> Dict[str, Optional[_MethodInfo]]:
     """Analyze the class body, its parents, and return the comparison methods found."""
     # Traverse the MRO and collect ordering methods.
-    comparison_methods = {}  # type: Dict[str, Optional[_MethodInfo]]
+    comparison_methods: Dict[str, Optional[_MethodInfo]] = {}
     # Skip object because total_ordering does not use methods from object
     for cls in ctx.cls.info.mro[:-1]:
         for name in _ORDERING_METHODS:

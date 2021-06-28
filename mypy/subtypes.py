@@ -26,9 +26,9 @@ from mypy.typestate import TypeState, SubtypeKind
 from mypy import state
 
 # Flags for detected protocol members
-IS_SETTABLE = 1  # type: Final
-IS_CLASSVAR = 2  # type: Final
-IS_CLASS_OR_STATIC = 3  # type: Final
+IS_SETTABLE: Final = 1
+IS_CLASSVAR: Final = 2
+IS_CLASS_OR_STATIC: Final = 3
 
 TypeParameterChecker = Callable[[Type, Type, int], bool]
 
@@ -700,8 +700,9 @@ def find_node_type(node: Union[Var, FuncBase], itype: Instance, subtype: Type) -
     from mypy.typeops import bind_self
 
     if isinstance(node, FuncBase):
-        typ = mypy.typeops.function_type(
-            node, fallback=Instance(itype.type.mro[-1], []))  # type: Optional[Type]
+        typ: Optional[Type] = mypy.typeops.function_type(
+            node, fallback=Instance(itype.type.mro[-1], [])
+        )
     else:
         typ = node.type
     typ = get_proper_type(typ)
@@ -728,7 +729,7 @@ def non_method_protocol_members(tp: TypeInfo) -> List[str]:
     """Find all non-callable members of a protocol."""
 
     assert tp.is_protocol
-    result = []  # type: List[str]
+    result: List[str] = []
     anytype = AnyType(TypeOfAny.special_form)
     instance = Instance(tp, [anytype] * len(tp.defn.type_vars))
 
@@ -1081,7 +1082,7 @@ def unify_generic_callable(type: CallableType, target: CallableType,
     if return_constraint_direction is None:
         return_constraint_direction = mypy.constraints.SUBTYPE_OF
 
-    constraints = []  # type: List[mypy.constraints.Constraint]
+    constraints: List[mypy.constraints.Constraint] = []
     for arg_type, target_arg_type in zip(type.arg_types, target.arg_types):
         c = mypy.constraints.infer_constraints(
             arg_type, target_arg_type, mypy.constraints.SUPERTYPE_OF)

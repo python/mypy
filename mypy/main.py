@@ -28,8 +28,8 @@ from mypy.split_namespace import SplitNamespace
 
 from mypy.version import __version__
 
-orig_stat = os.stat  # type: Final
-MEM_PROFILE = False  # type: Final  # If True, dump memory profile
+orig_stat: Final = os.stat
+MEM_PROFILE: Final = False  # If True, dump memory profile
 
 
 def stat_proxy(path: str) -> os.stat_result:
@@ -208,11 +208,11 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
 
 
 # Define pairs of flag prefixes with inverse meaning.
-flag_prefix_pairs = [
+flag_prefix_pairs: Final = [
     ('allow', 'disallow'),
     ('show', 'hide'),
-]  # type: Final
-flag_prefix_map = {}  # type: Final[Dict[str, str]]
+]
+flag_prefix_map: Final[Dict[str, str]] = {}
 for a, b in flag_prefix_pairs:
     flag_prefix_map[a] = b
     flag_prefix_map[b] = a
@@ -282,11 +282,11 @@ def infer_python_executable(options: Options,
     options.python_executable = python_executable
 
 
-HEADER = """%(prog)s [-h] [-v] [-V] [more options; see below]
-            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]"""  # type: Final
+HEADER: Final = """%(prog)s [-h] [-v] [-V] [more options; see below]
+            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]"""
 
 
-DESCRIPTION = """
+DESCRIPTION: Final = """
 Mypy is a program that will type check your Python code.
 
 Pass in any files or folders you want to type check. Mypy will
@@ -307,11 +307,11 @@ You can also use a config file to configure mypy instead of using
 command line flags. For more details, see:
 
 - https://mypy.readthedocs.io/en/stable/config_file.html
-"""  # type: Final
+"""
 
-FOOTER = """Environment variables:
+FOOTER: Final = """Environment variables:
   Define MYPYPATH for additional module search path entries.
-  Define MYPY_CACHE_DIR to override configuration cache_dir path."""  # type: Final
+  Define MYPY_CACHE_DIR to override configuration cache_dir path."""
 
 
 class CapturableArgumentParser(argparse.ArgumentParser):
@@ -434,8 +434,8 @@ def process_options(args: List[str],
                                       stdout=stdout,
                                       stderr=stderr)
 
-    strict_flag_names = []  # type: List[str]
-    strict_flag_assignments = []  # type: List[Tuple[str, bool]]
+    strict_flag_names: List[str] = []
+    strict_flag_assignments: List[Tuple[str, bool]] = []
 
     def add_invertible_flag(flag: str,
                             *,

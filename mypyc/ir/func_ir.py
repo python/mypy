@@ -66,9 +66,9 @@ class FuncSignature:
         )
 
 
-FUNC_NORMAL = 0  # type: Final
-FUNC_STATICMETHOD = 1  # type: Final
-FUNC_CLASSMETHOD = 2  # type: Final
+FUNC_NORMAL: Final = 0
+FUNC_STATICMETHOD: Final = 1
+FUNC_CLASSMETHOD: Final = 2
 
 
 class FuncDecl:
@@ -94,7 +94,7 @@ class FuncDecl:
         self.is_prop_setter = is_prop_setter
         self.is_prop_getter = is_prop_getter
         if class_name is None:
-            self.bound_sig = None  # type: Optional[FuncSignature]
+            self.bound_sig: Optional[FuncSignature] = None
         else:
             if kind == FUNC_STATICMETHOD:
                 self.bound_sig = sig
@@ -220,7 +220,7 @@ class FuncIR:
         )
 
 
-INVALID_FUNC_DEF = FuncDef('<INVALID_FUNC_DEF>', [], Block([]))  # type: Final
+INVALID_FUNC_DEF: Final = FuncDef("<INVALID_FUNC_DEF>", [], Block([]))
 
 
 def all_values(args: List[Register], blocks: List[BasicBlock]) -> List[Value]:
@@ -228,7 +228,7 @@ def all_values(args: List[Register], blocks: List[BasicBlock]) -> List[Value]:
 
     This omits registers that are only read.
     """
-    values = list(args)  # type: List[Value]
+    values: List[Value] = list(args)
     seen_registers = set(args)
 
     for block in blocks:
@@ -254,7 +254,7 @@ def all_values(args: List[Register], blocks: List[BasicBlock]) -> List[Value]:
 
 def all_values_full(args: List[Register], blocks: List[BasicBlock]) -> List[Value]:
     """Return set of all values that are initialized or accessed."""
-    values = list(args)  # type: List[Value]
+    values: List[Value] = list(args)
     seen_registers = set(args)
 
     for block in blocks:

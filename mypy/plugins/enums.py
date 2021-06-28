@@ -19,15 +19,13 @@ from mypy.nodes import TypeInfo
 
 # Note: 'enum.EnumMeta' is deliberately excluded from this list. Classes that directly use
 # enum.EnumMeta do not necessarily automatically have the 'name' and 'value' attributes.
-ENUM_PREFIXES = {'enum.Enum', 'enum.IntEnum', 'enum.Flag', 'enum.IntFlag'}  # type: Final
-ENUM_NAME_ACCESS = (
-    {'{}.name'.format(prefix) for prefix in ENUM_PREFIXES}
-    | {'{}._name_'.format(prefix) for prefix in ENUM_PREFIXES}
-)  # type: Final
-ENUM_VALUE_ACCESS = (
-    {'{}.value'.format(prefix) for prefix in ENUM_PREFIXES}
-    | {'{}._value_'.format(prefix) for prefix in ENUM_PREFIXES}
-)  # type: Final
+ENUM_PREFIXES: Final = {"enum.Enum", "enum.IntEnum", "enum.Flag", "enum.IntFlag"}
+ENUM_NAME_ACCESS: Final = {"{}.name".format(prefix) for prefix in ENUM_PREFIXES} | {
+    "{}._name_".format(prefix) for prefix in ENUM_PREFIXES
+}
+ENUM_VALUE_ACCESS: Final = {"{}.value".format(prefix) for prefix in ENUM_PREFIXES} | {
+    "{}._value_".format(prefix) for prefix in ENUM_PREFIXES
+}
 
 
 def enum_name_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:

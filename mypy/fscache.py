@@ -41,7 +41,7 @@ class FileSystemCache:
     def __init__(self) -> None:
         # The package root is not flushed with the caches.
         # It is set by set_package_root() below.
-        self.package_root = []  # type: List[str]
+        self.package_root: List[str] = []
         self.flush()
 
     def set_package_root(self, package_root: List[str]) -> None:
@@ -49,16 +49,16 @@ class FileSystemCache:
 
     def flush(self) -> None:
         """Start another transaction and empty all caches."""
-        self.stat_cache = {}  # type: Dict[str, os.stat_result]
-        self.stat_error_cache = {}  # type: Dict[str, OSError]
-        self.listdir_cache = {}  # type: Dict[str, List[str]]
-        self.listdir_error_cache = {}  # type: Dict[str, OSError]
-        self.isfile_case_cache = {}  # type: Dict[str, bool]
-        self.exists_case_cache = {}  # type: Dict[str, bool]
-        self.read_cache = {}  # type: Dict[str, bytes]
-        self.read_error_cache = {}  # type: Dict[str, Exception]
-        self.hash_cache = {}  # type: Dict[str, str]
-        self.fake_package_cache = set()  # type: Set[str]
+        self.stat_cache: Dict[str, os.stat_result] = {}
+        self.stat_error_cache: Dict[str, OSError] = {}
+        self.listdir_cache: Dict[str, List[str]] = {}
+        self.listdir_error_cache: Dict[str, OSError] = {}
+        self.isfile_case_cache: Dict[str, bool] = {}
+        self.exists_case_cache: Dict[str, bool] = {}
+        self.read_cache: Dict[str, bytes] = {}
+        self.read_error_cache: Dict[str, Exception] = {}
+        self.hash_cache: Dict[str, str] = {}
+        self.fake_package_cache: Set[str] = set()
 
     def stat(self, path: str) -> os.stat_result:
         if path in self.stat_cache:
@@ -144,7 +144,7 @@ class FileSystemCache:
         # Get stat result as a sequence so we can modify it.
         # (Alas, typeshed's os.stat_result is not a sequence yet.)
         tpl = tuple(st)  # type: ignore[arg-type, var-annotated]
-        seq = list(tpl)  # type: List[float]
+        seq: List[float] = list(tpl)
         seq[stat.ST_MODE] = stat.S_IFREG | 0o444
         seq[stat.ST_INO] = 1
         seq[stat.ST_NLINK] = 1

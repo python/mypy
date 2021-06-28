@@ -20,12 +20,12 @@ from mypy.types import (
 from mypy.server.trigger import make_wildcard_trigger
 
 # The set of decorators that generate dataclasses.
-dataclass_makers = {
+dataclass_makers: Final = {
     'dataclass',
     'dataclasses.dataclass',
-}  # type: Final
+}
 
-SELF_TVAR_NAME = '_DT'  # type: Final
+SELF_TVAR_NAME: Final = "_DT"
 
 
 class DataclassAttribute:
@@ -213,8 +213,8 @@ class DataclassTransformer:
         # First, collect attributes belonging to the current class.
         ctx = self._ctx
         cls = self._ctx.cls
-        attrs = []  # type: List[DataclassAttribute]
-        known_attrs = set()  # type: Set[str]
+        attrs: List[DataclassAttribute] = []
+        known_attrs: Set[str] = set()
         for stmt in cls.defs.body:
             # Any assignment that doesn't use the new type declaration
             # syntax can be ignored out of hand.
@@ -300,8 +300,8 @@ class DataclassTransformer:
             # Each class depends on the set of attributes in its dataclass ancestors.
             ctx.api.add_plugin_dependency(make_wildcard_trigger(info.fullname))
 
-            for data in info.metadata['dataclass']['attributes']:
-                name = data['name']  # type: str
+            for data in info.metadata["dataclass"]["attributes"]:
+                name: str = data["name"]
                 if name not in known_attrs:
                     attr = DataclassAttribute.deserialize(info, data, ctx.api)
                     attr.expand_typevar_from_subtype(ctx.cls.info)

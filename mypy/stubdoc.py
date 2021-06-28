@@ -17,8 +17,8 @@ from typing_extensions import Final
 Sig = Tuple[str, str]
 
 
-_TYPE_RE = re.compile(r'^[a-zA-Z_][\w\[\], ]*(\.[a-zA-Z_][\w\[\], ]*)*$')  # type: Final
-_ARG_NAME_RE = re.compile(r'\**[A-Za-z_][A-Za-z0-9_]*$')  # type: Final
+_TYPE_RE: Final = re.compile(r"^[a-zA-Z_][\w\[\], ]*(\.[a-zA-Z_][\w\[\], ]*)*$")
+_ARG_NAME_RE: Final = re.compile(r"\**[A-Za-z_][A-Za-z0-9_]*$")
 
 
 def is_valid_type(s: str) -> bool:
@@ -60,13 +60,13 @@ FunctionSig = NamedTuple('FunctionSig', [
 
 
 # States of the docstring parser.
-STATE_INIT = 1  # type: Final
-STATE_FUNCTION_NAME = 2  # type: Final
-STATE_ARGUMENT_LIST = 3  # type: Final
-STATE_ARGUMENT_TYPE = 4  # type: Final
-STATE_ARGUMENT_DEFAULT = 5  # type: Final
-STATE_RETURN_VALUE = 6  # type: Final
-STATE_OPEN_BRACKET = 7  # type: Final  # For generic types.
+STATE_INIT: Final = 1
+STATE_FUNCTION_NAME: Final = 2
+STATE_ARGUMENT_LIST: Final = 3
+STATE_ARGUMENT_TYPE: Final = 4
+STATE_ARGUMENT_DEFAULT: Final = 5
+STATE_RETURN_VALUE: Final = 6
+STATE_OPEN_BRACKET: Final = 7  # For generic types.
 
 
 class DocStringParser:
@@ -77,14 +77,14 @@ class DocStringParser:
         self.function_name = function_name
         self.state = [STATE_INIT]
         self.accumulator = ""
-        self.arg_type = None  # type: Optional[str]
+        self.arg_type: Optional[str] = None
         self.arg_name = ""
-        self.arg_default = None  # type: Optional[str]
+        self.arg_default: Optional[str] = None
         self.ret_type = "Any"
         self.found = False
-        self.args = []  # type: List[ArgSig]
+        self.args: List[ArgSig] = []
         # Valid signatures found so far.
-        self.signatures = []  # type: List[FunctionSig]
+        self.signatures: List[FunctionSig] = []
 
     def add_token(self, token: tokenize.TokenInfo) -> None:
         """Process next token from the token stream."""
@@ -303,7 +303,7 @@ def parse_signature(sig: str) -> Optional[Tuple[str,
 def build_signature(positional: Sequence[str],
                     optional: Sequence[str]) -> str:
     """Build function signature from lists of positional and optional argument names."""
-    args = []  # type: MutableSequence[str]
+    args: MutableSequence[str] = []
     args.extend(positional)
     for arg in optional:
         if arg.startswith('*'):
@@ -342,7 +342,7 @@ def parse_all_signatures(lines: Sequence[str]) -> Tuple[List[Sig],
 
 def find_unique_signatures(sigs: Sequence[Sig]) -> List[Sig]:
     """Remove names with duplicate found signatures."""
-    sig_map = {}  # type: MutableMapping[str, List[str]]
+    sig_map: MutableMapping[str, List[str]] = {}
     for name, sig in sigs:
         sig_map.setdefault(name, []).append(sig)
 

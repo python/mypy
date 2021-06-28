@@ -30,8 +30,8 @@ class Mapper:
 
     def __init__(self, group_map: Dict[str, Optional[str]]) -> None:
         self.group_map = group_map
-        self.type_to_ir = {}  # type: Dict[TypeInfo, ClassIR]
-        self.func_to_decl = {}  # type: Dict[SymbolNode, FuncDecl]
+        self.type_to_ir: Dict[TypeInfo, ClassIR] = {}
+        self.func_to_decl: Dict[SymbolNode, FuncDecl] = {}
 
     def type_to_rtype(self, typ: Optional[Type]) -> RType:
         if typ is None:

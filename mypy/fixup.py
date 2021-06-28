@@ -28,7 +28,7 @@ def fixup_module(tree: MypyFile, modules: Dict[str, MypyFile],
 
 # TODO: Fix up .info when deserializing, i.e. much earlier.
 class NodeFixer(NodeVisitor[None]):
-    current_info = None  # type: Optional[TypeInfo]
+    current_info: Optional[TypeInfo] = None
 
     def __init__(self, modules: Dict[str, MypyFile], allow_missing: bool) -> None:
         self.modules = modules
@@ -306,7 +306,7 @@ def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str,
     return lookup_fully_qualified(name, modules, raise_on_missing=not allow_missing)
 
 
-_SUGGESTION = "<missing {}: *should* have gone away during fine-grained update>"  # type: Final
+_SUGGESTION: Final = "<missing {}: *should* have gone away during fine-grained update>"
 
 
 def missing_info(modules: Dict[str, MypyFile]) -> TypeInfo:

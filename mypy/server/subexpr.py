@@ -20,7 +20,7 @@ def get_subexpressions(node: Node) -> List[Expression]:
 
 class SubexpressionFinder(TraverserVisitor):
     def __init__(self) -> None:
-        self.expressions = []  # type: List[Expression]
+        self.expressions: List[Expression] = []
 
     def visit_int_expr(self, o: Expression) -> None:
         self.add(o)

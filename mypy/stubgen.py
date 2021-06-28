@@ -96,32 +96,32 @@ from mypy.moduleinspect import ModuleInspect
 
 
 # Common ways of naming package containing vendored modules.
-VENDOR_PACKAGES = [
+VENDOR_PACKAGES: Final = [
     'packages',
     'vendor',
     'vendored',
     '_vendor',
     '_vendored_packages',
-]  # type: Final
+]
 
 # Avoid some file names that are unnecessary or likely to cause trouble (\n for end of path).
-BLACKLIST = [
+BLACKLIST: Final = [
     '/six.py\n',  # Likely vendored six; too dynamic for us to handle
     '/vendored/',  # Vendored packages
     '/vendor/',  # Vendored packages
     '/_vendor/',
     '/_vendored_packages/',
-]  # type: Final
+]
 
 # Special-cased names that are implicitly exported from the stub (from m import y as y).
-EXTRA_EXPORTED = {
+EXTRA_EXPORTED: Final = {
     'pyasn1_modules.rfc2437.univ',
     'pyasn1_modules.rfc2459.char',
     'pyasn1_modules.rfc2459.univ',
-}  # type: Final
+}
 
 # These names should be omitted from generated stubs.
-IGNORED_DUNDERS = {
+IGNORED_DUNDERS: Final = {
     '__all__',
     '__author__',
     '__version__',
@@ -137,10 +137,10 @@ IGNORED_DUNDERS = {
     '__getstate__',
     '__setstate__',
     '__slots__',
-}  # type: Final
+}
 
 # These methods are expected to always return a non-trivial value.
-METHODS_WITH_RETURN_VALUE = {
+METHODS_WITH_RETURN_VALUE: Final = {
     '__ne__',
     '__eq__',
     '__lt__',
@@ -149,7 +149,7 @@ METHODS_WITH_RETURN_VALUE = {
     '__ge__',
     '__hash__',
     '__iter__',
-}  # type: Final
+}
 
 
 class Options:
@@ -202,7 +202,7 @@ class StubSource:
                  runtime_all: Optional[List[str]] = None) -> None:
         self.source = BuildSource(path, module, None)
         self.runtime_all = runtime_all
-        self.ast = None  # type: Optional[MypyFile]
+        self.ast: Optional[MypyFile] = None
 
     @property
     def module(self) -> str:
@@ -215,17 +215,17 @@ class StubSource:
 
 # What was generated previously in the stub file. We keep track of these to generate
 # nicely formatted output (add empty line between non-empty classes, for example).
-EMPTY = 'EMPTY'  # type: Final
-FUNC = 'FUNC'  # type: Final
-CLASS = 'CLASS'  # type: Final
-EMPTY_CLASS = 'EMPTY_CLASS'  # type: Final
-VAR = 'VAR'  # type: Final
-NOT_IN_ALL = 'NOT_IN_ALL'  # type: Final
+EMPTY: Final = "EMPTY"
+FUNC: Final = "FUNC"
+CLASS: Final = "CLASS"
+EMPTY_CLASS: Final = "EMPTY_CLASS"
+VAR: Final = "VAR"
+NOT_IN_ALL: Final = "NOT_IN_ALL"
 
 # Indicates that we failed to generate a reasonable output
 # for a given node. These should be manually replaced by a user.
 
-ERROR_MARKER = '<ERROR>'  # type: Final
+ERROR_MARKER: Final = "<ERROR>"
 
 
 class AnnotationPrinter(TypeStrVisitor):
@@ -298,7 +298,7 @@ class AliasPrinter(NodeVisitor[str]):
         return node.name
 
     def visit_member_expr(self, o: MemberExpr) -> str:
-        node = o  # type: Expression
+        node: Expression = o
         trailer = ''
         while isinstance(node, MemberExpr):
             trailer = '.' + node.name + trailer
@@ -337,27 +337,27 @@ class ImportTracker:
         #     'import m' ==> module_for['m'] == None
         #     'import pkg.m' ==> module_for['pkg.m'] == None
         #                    ==> module_for['pkg'] == None
-        self.module_for = {}  # type: Dict[str, Optional[str]]
+        self.module_for: Dict[str, Optional[str]] = {}
 
         # direct_imports['foo'] is the module path used when the name 'foo' was added to the
         # namespace.
         #   import foo.bar.baz  ==> direct_imports['foo'] == 'foo.bar.baz'
         #                       ==> direct_imports['foo.bar'] == 'foo.bar.baz'
         #                       ==> direct_imports['foo.bar.baz'] == 'foo.bar.baz'
-        self.direct_imports = {}  # type: Dict[str, str]
+        self.direct_imports: Dict[str, str] = {}
 
         # reverse_alias['foo'] is the name that 'foo' had originally when imported with an
         # alias; examples
         #     'import numpy as np' ==> reverse_alias['np'] == 'numpy'
         #     'import foo.bar as bar' ==> reverse_alias['bar'] == 'foo.bar'
         #     'from decimal import Decimal as D' ==> reverse_alias['D'] == 'Decimal'
-        self.reverse_alias = {}  # type: Dict[str, str]
+        self.reverse_alias: Dict[str, str] = {}
 
         # required_names is the set of names that are actually used in a type annotation
-        self.required_names = set()  # type: Set[str]
+        self.required_names: Set[str] = set()
 
         # Names that should be reexported if they come from another module
-        self.reexports = set()  # type: Set[str]
+        self.reexports: Set[str] = set()
 
     def add_import_from(self, module: str, names: List[Tuple[str, Optional[str]]]) -> None:
         for name, alias in names:
@@ -405,7 +405,7 @@ class ImportTracker:
         # To summarize multiple names imported from a same module, we collect those
         # in the `module_map` dictionary, mapping a module path to the list of names that should
         # be imported from it. the names can also be alias in the form 'original as alias'
-        module_map = defaultdict(list)  # type: Mapping[str, List[str]]
+        module_map: Mapping[str, List[str]] = defaultdict(list)
 
         for name in sorted(self.required_names):
             # If we haven't seen this name in an import statement, ignore it
@@ -452,7 +452,7 @@ class DefinitionFinder(mypy.traverser.TraverserVisitor):
 
     def __init__(self) -> None:
         # Short names of things defined at the top level.
-        self.names = set()  # type: Set[str]
+        self.names: Set[str] = set()
 
     def visit_class_def(self, o: ClassDef) -> None:
         # Don't recurse into classes, as we only keep track of top-level definitions.
@@ -476,7 +476,7 @@ class ReferenceFinder(mypy.mixedtraverser.MixedTraverserVisitor):
 
     def __init__(self) -> None:
         # Short names of things defined at the top level.
-        self.refs = set()  # type: Set[str]
+        self.refs: Set[str] = set()
 
     def visit_block(self, block: Block) -> None:
         if not block.is_unreachable:
@@ -518,16 +518,16 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                  export_less: bool = False) -> None:
         # Best known value of __all__.
         self._all_ = _all_
-        self._output = []  # type: List[str]
-        self._decorators = []  # type: List[str]
-        self._import_lines = []  # type: List[str]
+        self._output: List[str] = []
+        self._decorators: List[str] = []
+        self._import_lines: List[str] = []
         # Current indent level (indent is hardcoded to 4 spaces).
         self._indent = ''
         # Stack of defined variables (per scope).
-        self._vars = [[]]  # type: List[List[str]]
+        self._vars: List[List[str]] = [[]]
         # What was generated previously in the stub file.
         self._state = EMPTY
-        self._toplevel_names = []  # type: List[str]
+        self._toplevel_names: List[str] = []
         self._pyversion = pyversion
         self._include_private = include_private
         self.import_tracker = ImportTracker()
@@ -541,9 +541,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         for name in _all_ or ():
             if name not in IGNORED_DUNDERS:
                 self.import_tracker.reexport(name)
-        self.defined_names = set()  # type: Set[str]
+        self.defined_names: Set[str] = set()
         # Short names of methods defined in the body of the current class
-        self.method_names = set()  # type: Set[str]
+        self.method_names: Set[str] = set()
 
     def visit_mypy_file(self, o: MypyFile) -> None:
         self.module = o.fullname  # Current module being processed
@@ -613,7 +613,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.clear_decorators()
         self.add("%s%sdef %s(" % (self._indent, 'async ' if o.is_coroutine else '', o.name))
         self.record_name(o.name)
-        args = []  # type: List[str]
+        args: List[str] = []
         for i, arg_ in enumerate(o.arguments):
             var = arg_.variable
             kind = arg_.kind
@@ -794,7 +794,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
     def visit_class_def(self, o: ClassDef) -> None:
         self.method_names = find_method_names(o.defs.body)
-        sep = None  # type: Optional[int]
+        sep: Optional[int] = None
         if not self._indent and self._state != EMPTY:
             sep = len(self._output)
             self.add('\n')
@@ -832,7 +832,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
     def get_base_types(self, cdef: ClassDef) -> List[str]:
         """Get list of base classes for a class."""
-        base_types = []  # type: List[str]
+        base_types: List[str] = []
         for base in cdef.base_type_exprs:
             if isinstance(base, NameExpr):
                 if base.name != 'object':
@@ -868,7 +868,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             if isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
                 items = lvalue.items
                 if isinstance(o.unanalyzed_type, TupleType):  # type: ignore
-                    annotations = o.unanalyzed_type.items  # type: Iterable[Optional[Type]]
+                    annotations: Iterable[Optional[Type]] = o.unanalyzed_type.items
                 else:
                     annotations = [None] * len(items)
             else:
@@ -986,7 +986,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.add_import_line('from %s%s import *\n' % ('.' * o.relative, o.id))
 
     def visit_import_from(self, o: ImportFrom) -> None:
-        exported_names = set()  # type: Set[str]
+        exported_names: Set[str] = set()
         import_names = []
         module, relative = translate_module_name(o.id, o.relative)
         if self.module:
@@ -1211,7 +1211,7 @@ def find_method_names(defs: List[Statement]) -> Set[str]:
 
 class SelfTraverser(mypy.traverser.TraverserVisitor):
     def __init__(self) -> None:
-        self.results = []  # type: List[Tuple[str, Expression]]
+        self.results: List[Tuple[str, Expression]] = []
 
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
         lvalue = o.lvalues[0]
@@ -1268,7 +1268,7 @@ def collect_build_targets(options: Options, mypy_opts: MypyOptions) -> Tuple[Lis
                                                         options.packages,
                                                         options.search_path,
                                                         options.pyversion)
-            c_modules = []  # type: List[StubSource]
+            c_modules: List[StubSource] = []
         else:
             # Using imports is the default, since we can also find C modules.
             py_modules, c_modules = find_module_paths_using_imports(options.modules,
@@ -1303,8 +1303,8 @@ def find_module_paths_using_imports(modules: List[str],
     This function uses runtime Python imports to get the information.
     """
     with ModuleInspect() as inspect:
-        py_modules = []  # type: List[StubSource]
-        c_modules = []  # type: List[StubSource]
+        py_modules: List[StubSource] = []
+        c_modules: List[StubSource] = []
         found = list(walk_packages(inspect, packages, verbose))
         modules = modules + found
         modules = [mod
@@ -1378,7 +1378,7 @@ def find_module_paths_using_search(modules: List[str], packages: List[str],
     This is used if user passes --no-import, and will not find C modules.
     Exit if some of the modules or packages can't be found.
     """
-    result = []  # type: List[StubSource]
+    result: List[StubSource] = []
     typeshed_path = default_lib_path(mypy.build.default_data_dir(), pyversion, None)
     search_paths = SearchPaths(('.',) + tuple(search_path), (), (), tuple(typeshed_path))
     cache = FindModuleCache(search_paths, fscache=None, options=None)
@@ -1495,8 +1495,8 @@ def collect_docs_signatures(doc_dir: str) -> Tuple[Dict[str, str], Dict[str, str
     Return a tuple (function signatures, class signatures).
     Currently only used for C modules.
     """
-    all_sigs = []  # type: List[Sig]
-    all_class_sigs = []  # type: List[Sig]
+    all_sigs: List[Sig] = []
+    all_class_sigs: List[Sig] = []
     for path in glob.glob('%s/*.rst' % doc_dir):
         with open(path) as f:
             loc_sigs, loc_class_sigs = parse_all_signatures(f.readlines())

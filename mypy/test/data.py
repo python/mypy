@@ -43,15 +43,15 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
     out_section_missing = case.suite.required_out_section
     normalize_output = True
 
-    files = []  # type: List[Tuple[str, str]] # path and contents
-    output_files = []  # type: List[Tuple[str, str]] # path and contents for output files
-    output = []  # type: List[str]  # Regular output errors
-    output2 = {}  # type: Dict[int, List[str]]  # Output errors for incremental, runs 2+
-    deleted_paths = {}  # type: Dict[int, Set[str]]  # from run number of paths
-    stale_modules = {}  # type: Dict[int, Set[str]]  # from run number to module names
-    rechecked_modules = {}  # type: Dict[ int, Set[str]]  # from run number module names
-    triggered = []  # type: List[str]  # Active triggers (one line per incremental step)
-    targets = {}  # type: Dict[int, List[str]]  # Fine-grained targets (per fine-grained update)
+    files: List[Tuple[str, str]] = []  # path and contents
+    output_files: List[Tuple[str, str]] = []  # path and contents for output files
+    output: List[str] = []  # Regular output errors
+    output2: Dict[int, List[str]] = {}  # Output errors for incremental, runs 2+
+    deleted_paths: Dict[int, Set[str]] = {}  # from run number of paths
+    stale_modules: Dict[int, Set[str]] = {}  # from run number to module names
+    rechecked_modules: Dict[int, Set[str]] = {}  # from run number module names
+    triggered: List[str] = []  # Active triggers (one line per incremental step)
+    targets: Dict[int, List[str]] = {}  # Fine-grained targets (per fine-grained update)
 
     # Process the parsed items. Each item has a header of form [id args],
     # optionally followed by lines of text.
@@ -188,31 +188,31 @@ class DataDrivenTestCase(pytest.Item):
     """Holds parsed data-driven test cases, and handles directory setup and teardown."""
 
     # Override parent member type
-    parent = None  # type: DataSuiteCollector
+    parent: "DataSuiteCollector"
 
-    input = None  # type: List[str]
-    output = None  # type: List[str]  # Output for the first pass
-    output2 = None  # type: Dict[int, List[str]]  # Output for runs 2+, indexed by run number
+    input: List[str]
+    output: List[str]  # Output for the first pass
+    output2: Dict[int, List[str]]  # Output for runs 2+, indexed by run number
 
     # full path of test suite
     file = ''
     line = 0
 
     # (file path, file content) tuples
-    files = None  # type: List[Tuple[str, str]]
-    expected_stale_modules = None  # type: Dict[int, Set[str]]
-    expected_rechecked_modules = None  # type: Dict[int, Set[str]]
-    expected_fine_grained_targets = None  # type: Dict[int, List[str]]
+    files: List[Tuple[str, str]]
+    expected_stale_modules: Dict[int, Set[str]]
+    expected_rechecked_modules: Dict[int, Set[str]]
+    expected_fine_grained_targets: Dict[int, List[str]]
 
     # Whether or not we should normalize the output to standardize things like
     # forward vs backward slashes in file paths for Windows vs Linux.
     normalize_output = True
 
     # Extra attributes used by some tests.
-    last_line = None  # type: int
-    output_files = None  # type: List[Tuple[str, str]] # Path and contents for output files
-    deleted_paths = None  # type: Dict[int, Set[str]]  # Mapping run number -> paths
-    triggered = None  # type: List[str]  # Active triggers (one line per incremental step)
+    last_line: int
+    output_files: List[Tuple[str, str]]  # Path and contents for output files
+    deleted_paths: Dict[int, Set[str]]  # Mapping run number -> paths
+    triggered: List[str]  # Active triggers (one line per incremental step)
 
     def __init__(self,
                  parent: 'DataSuiteCollector',
@@ -238,8 +238,8 @@ class DataDrivenTestCase(pytest.Item):
         self.xfail = xfail
         self.data = data
         self.line = line
-        self.old_cwd = None  # type: Optional[str]
-        self.tmpdir = None  # type: Optional[tempfile.TemporaryDirectory[str]]
+        self.old_cwd: Optional[str] = None
+        self.tmpdir: Optional[tempfile.TemporaryDirectory[str]] = None
 
     def runtest(self) -> None:
         if self.skip:
@@ -253,7 +253,7 @@ class DataDrivenTestCase(pytest.Item):
             suite.run_case(self)
         except Exception:
             # As a debugging aid, support copying the contents of the tmp directory somewhere
-            save_dir = self.config.getoption('--save-failures-to', None)  # type: Optional[str]
+            save_dir: Optional[str] = self.config.getoption("--save-failures-to", None)
             if save_dir:
                 assert self.tmpdir is not None
                 target_dir = os.path.join(save_dir, os.path.basename(self.tmpdir.name))
@@ -312,7 +312,7 @@ class DataDrivenTestCase(pytest.Item):
 
         Defaults to having two steps if there aern't any operations.
         """
-        steps = {}  # type: Dict[int, List[FileOperation]]
+        steps: Dict[int, List[FileOperation]] = {}
         for path, _ in self.files:
             m = re.match(r'.*\.([0-9]+)$', path)
             if m:
@@ -350,11 +350,11 @@ class TestItem:
       .. data ..
     """
 
-    id = ''
-    arg = ''  # type: Optional[str]
+    id = ""
+    arg: Optional[str] = ""
 
     # Text data, array of 8-bit strings
-    data = None  # type: List[str]
+    data: List[str]
 
     file = ''
     line = 0  # Line number in file
@@ -371,11 +371,11 @@ def parse_test_data(raw_data: str, name: str) -> List[TestItem]:
     """Parse a list of lines that represent a sequence of test items."""
 
     lines = ['', '[case ' + name + ']'] + raw_data.split('\n')
-    ret = []  # type: List[TestItem]
-    data = []  # type: List[str]
+    ret: List[TestItem] = []
+    data: List[str] = []
 
-    id = None  # type: Optional[str]
-    arg = None  # type: Optional[str]
+    id: Optional[str] = None
+    arg: Optional[str] = None
 
     i = 0
     i0 = 0
@@ -419,7 +419,7 @@ def strip_list(l: List[str]) -> List[str]:
     lines from the end of the array.
     """
 
-    r = []  # type: List[str]
+    r: List[str] = []
     for s in l:
         # Strip spaces at end of line
         r.append(re.sub(r'\s+$', '', s))
@@ -431,7 +431,7 @@ def strip_list(l: List[str]) -> List[str]:
 
 
 def collapse_line_continuation(l: List[str]) -> List[str]:
-    r = []  # type: List[str]
+    r: List[str] = []
     cont = False
     for s in l:
         ss = re.sub(r'\\$', '', s)
@@ -593,7 +593,7 @@ class DataSuiteCollector(pytest.Class):
         """Called by pytest on each of the object returned from pytest_pycollect_makeitem"""
 
         # obj is the object for which pytest_pycollect_makeitem returned self.
-        suite = self.obj  # type: DataSuite
+        suite: DataSuite = self.obj
         for f in suite.files:
             yield from split_test_cases(self, suite, os.path.join(suite.data_prefix, f))
 
@@ -626,7 +626,7 @@ def has_stable_flags(testcase: DataDrivenTestCase) -> bool:
 
 class DataSuite:
     # option fields - class variables
-    files = None  # type: List[str]
+    files: List[str]
 
     base_path = test_temp_dir
 

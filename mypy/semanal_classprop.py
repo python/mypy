@@ -17,17 +17,17 @@ from mypy.options import Options
 # These add extra ad-hoc edges to the subtyping relation. For example,
 # int is considered a subtype of float, even though there is no
 # subclass relationship.
-TYPE_PROMOTIONS = {
+TYPE_PROMOTIONS: Final = {
     'builtins.int': 'float',
     'builtins.float': 'complex',
-}  # type: Final
+}
 
 # Hard coded type promotions for Python 3.
 #
 # Note that the bytearray -> bytes promotion is a little unsafe
 # as some functions only accept bytes objects. Here convenience
 # trumps safety.
-TYPE_PROMOTIONS_PYTHON3 = TYPE_PROMOTIONS.copy()  # type: Final
+TYPE_PROMOTIONS_PYTHON3: Final = TYPE_PROMOTIONS.copy()
 TYPE_PROMOTIONS_PYTHON3.update({
     'builtins.bytearray': 'bytes',
     'builtins.memoryview': 'bytes',
@@ -38,7 +38,7 @@ TYPE_PROMOTIONS_PYTHON3.update({
 # These promotions are unsafe, but we are doing them anyway
 # for convenience and also for Python 3 compatibility
 # (bytearray -> str).
-TYPE_PROMOTIONS_PYTHON2 = TYPE_PROMOTIONS.copy()  # type: Final
+TYPE_PROMOTIONS_PYTHON2: Final = TYPE_PROMOTIONS.copy()
 TYPE_PROMOTIONS_PYTHON2.update({
     'builtins.str': 'unicode',
     'builtins.bytearray': 'str',
@@ -55,9 +55,9 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
     """
     if typ.typeddict_type:
         return  # TypedDict can't be abstract
-    concrete = set()  # type: Set[str]
-    abstract = []  # type: List[str]
-    abstract_in_this_class = []  # type: List[str]
+    concrete: Set[str] = set()
+    abstract: List[str] = []
+    abstract_in_this_class: List[str] = []
     if typ.is_newtype:
         # Special case: NewTypes are considered as always non-abstract, so they can be used as:
         #     Config = NewType('Config', Mapping[str, str])
@@ -73,7 +73,7 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
                 # different items have a different abstract status, there
                 # should be an error reported elsewhere.
                 if node.items:  # can be empty for invalid overloads
-                    func = node.items[0]  # type: Optional[Node]
+                    func: Optional[Node] = node.items[0]
                 else:
                     func = None
             else:
@@ -152,7 +152,7 @@ def add_type_promotion(info: TypeInfo, module_names: SymbolTable, options: Optio
     This includes things like 'int' being compatible with 'float'.
     """
     defn = info.defn
-    promote_target = None  # type: Optional[Type]
+    promote_target: Optional[Type] = None
     for decorator in defn.decorators:
         if isinstance(decorator, CallExpr):
             analyzed = decorator.analyzed

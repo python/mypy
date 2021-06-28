@@ -4,7 +4,7 @@ from typing_extensions import Final
 
 
 # Map from binary operator id to related method name (in Python 3).
-op_methods = {
+op_methods: Final = {
     '+': '__add__',
     '-': '__sub__',
     '*': '__mul__',
@@ -26,24 +26,34 @@ op_methods = {
     '>': '__gt__',
     '<=': '__le__',
     'in': '__contains__',
-}  # type: Final
+}
 
-op_methods_to_symbols = {v: k for (k, v) in op_methods.items()}  # type: Final
+op_methods_to_symbols: Final = {v: k for (k, v) in op_methods.items()}
 op_methods_to_symbols['__div__'] = '/'
 
-comparison_fallback_method = '__cmp__'  # type: Final
-ops_falling_back_to_cmp = {'__ne__', '__eq__',
-                           '__lt__', '__le__',
-                           '__gt__', '__ge__'}  # type: Final
+comparison_fallback_method: Final = "__cmp__"
+ops_falling_back_to_cmp: Final = {"__ne__", "__eq__", "__lt__", "__le__", "__gt__", "__ge__"}
 
 
-ops_with_inplace_method = {
-    '+', '-', '*', '/', '%', '//', '**', '@', '&', '|', '^', '<<', '>>'}  # type: Final
+ops_with_inplace_method: Final = {
+    "+",
+    "-",
+    "*",
+    "/",
+    "%",
+    "//",
+    "**",
+    "@",
+    "&",
+    "|",
+    "^",
+    "<<",
+    ">>",
+}
 
-inplace_operator_methods = set(
-    '__i' + op_methods[op][2:] for op in ops_with_inplace_method)  # type: Final
+inplace_operator_methods: Final = set("__i" + op_methods[op][2:] for op in ops_with_inplace_method)
 
-reverse_op_methods = {
+reverse_op_methods: Final = {
     '__add__': '__radd__',
     '__sub__': '__rsub__',
     '__mul__': '__rmul__',
@@ -64,14 +74,14 @@ reverse_op_methods = {
     '__ge__': '__le__',
     '__gt__': '__lt__',
     '__le__': '__ge__',
-}  # type: Final
+}
 
-reverse_op_method_names = set(reverse_op_methods.values())  # type: Final
+reverse_op_method_names: Final = set(reverse_op_methods.values())
 
 # Suppose we have some class A. When we do A() + A(), Python will only check
 # the output of A().__add__(A()) and skip calling the __radd__ method entirely.
 # This shortcut is used only for the following methods:
-op_methods_that_shortcut = {
+op_methods_that_shortcut: Final = {
     '__add__',
     '__sub__',
     '__mul__',
@@ -87,13 +97,13 @@ op_methods_that_shortcut = {
     '__xor__',
     '__lshift__',
     '__rshift__',
-}  # type: Final
+}
 
-normal_from_reverse_op = dict((m, n) for n, m in reverse_op_methods.items())  # type: Final
-reverse_op_method_set = set(reverse_op_methods.values())  # type: Final
+normal_from_reverse_op: Final = dict((m, n) for n, m in reverse_op_methods.items())
+reverse_op_method_set: Final = set(reverse_op_methods.values())
 
-unary_op_methods = {
+unary_op_methods: Final = {
     '-': '__neg__',
     '+': '__pos__',
     '~': '__invert__',
-}  # type: Final
+}

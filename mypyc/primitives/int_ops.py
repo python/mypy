@@ -155,11 +155,11 @@ int_less_than_ = custom_op(
 
 # Provide mapping from textual op to short int's op variant and boxed int's description.
 # Note that these are not complete implementations and require extra IR.
-int_comparison_op_mapping = {
+int_comparison_op_mapping: Dict[str, IntComparisonOpDescription] = {
     '==': IntComparisonOpDescription(ComparisonOp.EQ, int_equal_, False, False),
     '!=': IntComparisonOpDescription(ComparisonOp.NEQ, int_equal_, True, False),
     '<': IntComparisonOpDescription(ComparisonOp.SLT, int_less_than_, False, False),
     '<=': IntComparisonOpDescription(ComparisonOp.SLE, int_less_than_, True, True),
     '>': IntComparisonOpDescription(ComparisonOp.SGT, int_less_than_, False, True),
     '>=': IntComparisonOpDescription(ComparisonOp.SGE, int_less_than_, True, False),
-}  # type: Dict[str, IntComparisonOpDescription]
+}

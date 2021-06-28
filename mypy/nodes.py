@@ -24,7 +24,7 @@ class Context:
     def __init__(self, line: int = -1, column: int = -1) -> None:
         self.line = line
         self.column = column
-        self.end_line = None  # type: Optional[int]
+        self.end_line: Optional[int] = None
 
     def set_line(self,
                  target: Union['Context', int],
@@ -70,42 +70,44 @@ JsonDict = Dict[str, Any]
 #
 # TODO rename to use more descriptive names
 
-LDEF = 0  # type: Final
-GDEF = 1  # type: Final
-MDEF = 2  # type: Final
+LDEF: Final = 0
+GDEF: Final = 1
+MDEF: Final = 2
 
 # Placeholder for a name imported via 'from ... import'. Second phase of
 # semantic will replace this the actual imported reference. This is
 # needed so that we can detect whether a name has been imported during
 # XXX what?
-UNBOUND_IMPORTED = 3  # type: Final
+UNBOUND_IMPORTED: Final = 3
 
 # RevealExpr node kinds
-REVEAL_TYPE = 0  # type: Final
-REVEAL_LOCALS = 1  # type: Final
+REVEAL_TYPE: Final = 0
+REVEAL_LOCALS: Final = 1
 
-LITERAL_YES = 2  # type: Final
-LITERAL_TYPE = 1  # type: Final
-LITERAL_NO = 0  # type: Final
+LITERAL_YES: Final = 2
+LITERAL_TYPE: Final = 1
+LITERAL_NO: Final = 0
 
-node_kinds = {
+node_kinds: Final = {
     LDEF: 'Ldef',
     GDEF: 'Gdef',
     MDEF: 'Mdef',
     UNBOUND_IMPORTED: 'UnboundImported',
-}  # type: Final
-inverse_node_kinds = {_kind: _name for _name, _kind in node_kinds.items()}  # type: Final
+}
+inverse_node_kinds: Final = {_kind: _name for _name, _kind in node_kinds.items()}
 
 
-implicit_module_attrs = {'__name__': '__builtins__.str',
-                         '__doc__': None,  # depends on Python version, see semanal.py
-                         '__file__': '__builtins__.str',
-                         '__package__': '__builtins__.str'}  # type: Final
+implicit_module_attrs: Final = {
+    "__name__": "__builtins__.str",
+    "__doc__": None,  # depends on Python version, see semanal.py
+    "__file__": "__builtins__.str",
+    "__package__": "__builtins__.str",
+}
 
 
 # These aliases exist because built-in class objects are not subscriptable.
 # For example `list[int]` fails at runtime. Instead List[int] should be used.
-type_aliases = {
+type_aliases: Final = {
     'typing.List': 'builtins.list',
     'typing.Dict': 'builtins.dict',
     'typing.Set': 'builtins.set',
@@ -115,11 +117,11 @@ type_aliases = {
     'typing.DefaultDict': 'collections.defaultdict',
     'typing.Deque': 'collections.deque',
     'typing.OrderedDict': 'collections.OrderedDict',
-}  # type: Final
+}
 
 # This keeps track of the oldest supported Python version where the corresponding
 # alias source is available.
-type_aliases_source_versions = {
+type_aliases_source_versions: Final = {
     'typing.List': (2, 7),
     'typing.Dict': (2, 7),
     'typing.Set': (2, 7),
@@ -129,17 +131,16 @@ type_aliases_source_versions = {
     'typing.DefaultDict': (2, 7),
     'typing.Deque': (2, 7),
     'typing.OrderedDict': (3, 7),
-}  # type: Final
+}
 
-reverse_builtin_aliases = {
+reverse_builtin_aliases: Final = {
     'builtins.list': 'typing.List',
     'builtins.dict': 'typing.Dict',
     'builtins.set': 'typing.Set',
     'builtins.frozenset': 'typing.FrozenSet',
-}  # type: Final
+}
 
-_nongen_builtins = {'builtins.tuple': 'typing.Tuple',
-                    'builtins.enumerate': ''}  # type: Final
+_nongen_builtins: Final = {"builtins.tuple": "typing.Tuple", "builtins.enumerate": ""}
 _nongen_builtins.update((name, alias) for alias, name in type_aliases.items())
 # Drop OrderedDict from this for backward compatibility
 del _nongen_builtins['collections.OrderedDict']
@@ -150,9 +151,11 @@ def get_nongen_builtins(python_version: Tuple[int, int]) -> Dict[str, str]:
     return _nongen_builtins if python_version < (3, 9) else {}
 
 
-RUNTIME_PROTOCOL_DECOS = ('typing.runtime_checkable',
-                          'typing_extensions.runtime',
-                          'typing_extensions.runtime_checkable')  # type: Final
+RUNTIME_PROTOCOL_DECOS: Final = (
+    "typing.runtime_checkable",
+    "typing_extensions.runtime",
+    "typing_extensions.runtime_checkable",
+)
 
 
 class Node(Context):
@@ -242,22 +245,22 @@ class MypyFile(SymbolNode):
     """The abstract syntax tree of a single source file."""
 
     # Fully qualified module name
-    _fullname = None  # type: Bogus[str]
+    _fullname: Bogus[str]
     # Path to the file (empty string if not known)
     path = ''
     # Top-level definitions and statements
-    defs = None  # type: List[Statement]
+    defs: List[Statement]
     # Type alias dependencies as mapping from target to set of alias full names
-    alias_deps = None  # type: DefaultDict[str, Set[str]]
+    alias_deps: DefaultDict[str, Set[str]]
     # Is there a UTF-8 BOM at the start?
     is_bom = False
-    names = None  # type: SymbolTable
+    names: "SymbolTable"
     # All import nodes within the file (also ones within functions etc.)
-    imports = None  # type: List[ImportBase]
+    imports: List["ImportBase"]
     # Lines on which to ignore certain errors when checking.
     # If the value is empty, ignore all errors; otherwise, the list contains all
     # error codes to ignore.
-    ignored_lines = None  # type: Dict[int, List[str]]
+    ignored_lines: Dict[int, List[str]]
     # Is this file represented by a stub file (.pyi)?
     is_stub = False
     # Is this loaded from the cache and thus missing the actual body of the file?
@@ -267,7 +270,7 @@ class MypyFile(SymbolNode):
     # module errors in addition to missing attribute errors.
     is_partial_stub_package = False
     # Plugin-created dependencies
-    plugin_deps = None  # type: Dict[str, Set[str]]
+    plugin_deps: Dict[str, Set[str]]
 
     def __init__(self,
                  defs: List[Statement],
@@ -342,7 +345,7 @@ class ImportBase(Statement):
     #
     #     x = 1
     #     from m import x   <-- add assignment representing "x = m.x"
-    assignments = None  # type: List[AssignmentStmt]
+    assignments: List["AssignmentStmt"]
 
     def __init__(self) -> None:
         super().__init__()
@@ -352,7 +355,7 @@ class ImportBase(Statement):
 class Import(ImportBase):
     """import m [as n]"""
 
-    ids = None  # type: List[Tuple[str, Optional[str]]]     # (module id, as id)
+    ids: List[Tuple[str, Optional[str]]]  # (module id, as id)
 
     def __init__(self, ids: List[Tuple[str, Optional[str]]]) -> None:
         super().__init__()
@@ -365,9 +368,9 @@ class Import(ImportBase):
 class ImportFrom(ImportBase):
     """from m import x [as y], ..."""
 
-    id = None  # type: str
-    relative = None  # type: int
-    names = None  # type: List[Tuple[str, Optional[str]]]  # Tuples (name, as name)
+    id: str
+    relative: int
+    names: List[Tuple[str, Optional[str]]]  # Tuples (name, as name)
 
     def __init__(self, id: str, relative: int, names: List[Tuple[str, Optional[str]]]) -> None:
         super().__init__()
@@ -381,10 +384,11 @@ class ImportFrom(ImportBase):
 
 class ImportAll(ImportBase):
     """from m import *"""
-    id = None  # type: str
-    relative = None  # type: int
+
+    id: str
+    relative: int
     # NOTE: Only filled and used by old semantic analyzer.
-    imported_names = None  # type: List[str]
+    imported_names: List[str]
 
     def __init__(self, id: str, relative: int) -> None:
         super().__init__()
@@ -431,9 +435,7 @@ class ImportedName(SymbolNode):
         return 'ImportedName(%s)' % self.target_fullname
 
 
-FUNCBASE_FLAGS = [
-    'is_property', 'is_class', 'is_static', 'is_final'
-]  # type: Final
+FUNCBASE_FLAGS: Final = ["is_property", "is_class", "is_static", "is_final"]
 
 
 class FuncBase(Node):
@@ -464,9 +466,9 @@ class FuncBase(Node):
         super().__init__()
         # Type signature. This is usually CallableType or Overloaded, but it can be
         # something else for decorated functions.
-        self.type = None  # type: Optional[mypy.types.ProperType]
+        self.type: Optional[mypy.types.ProperType] = None
         # Original, not semantically analyzed type (used for reprocessing)
-        self.unanalyzed_type = None  # type: Optional[mypy.types.ProperType]
+        self.unanalyzed_type: Optional[mypy.types.ProperType] = None
         # If method, reference to TypeInfo
         # TODO: Type should be Optional[TypeInfo]
         self.info = FUNC_NO_INFO
@@ -500,9 +502,9 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
     Overloaded variants must be consecutive in the source file.
     """
 
-    items = None  # type: List[OverloadPart]
-    unanalyzed_items = None  # type: List[OverloadPart]
-    impl = None  # type: Optional[OverloadPart]
+    items: List[OverloadPart]
+    unanalyzed_items: List[OverloadPart]
+    impl: Optional[OverloadPart] = None
 
     def __init__(self, items: List['OverloadPart']) -> None:
         super().__init__()
@@ -583,10 +585,10 @@ class Argument(Node):
         self.variable.set_line(self.line, self.column, self.end_line)
 
 
-FUNCITEM_FLAGS = FUNCBASE_FLAGS + [
+FUNCITEM_FLAGS: Final = FUNCBASE_FLAGS + [
     'is_overload', 'is_generator', 'is_coroutine', 'is_async_generator',
     'is_awaitable_coroutine',
-]  # type: Final
+]
 
 
 class FuncItem(FuncBase):
@@ -617,7 +619,7 @@ class FuncItem(FuncBase):
         super().__init__()
         self.arguments = arguments
         self.arg_names = [arg.variable.name for arg in self.arguments]
-        self.arg_kinds = [arg.kind for arg in self.arguments]  # type: List[int]
+        self.arg_kinds: List[int] = [arg.kind for arg in self.arguments]
         self.max_pos = self.arg_kinds.count(ARG_POS) + self.arg_kinds.count(ARG_OPT)
         self.body = body
         self.type = typ
@@ -627,7 +629,7 @@ class FuncItem(FuncBase):
         self.is_coroutine = False
         self.is_async_generator = False
         self.is_awaitable_coroutine = False
-        self.expanded = []  # type: List[FuncItem]
+        self.expanded: List[FuncItem] = []
 
         self.min_args = 0
         for i in range(len(self.arguments)):
@@ -649,9 +651,9 @@ class FuncItem(FuncBase):
         return self.type is None
 
 
-FUNCDEF_FLAGS = FUNCITEM_FLAGS + [
+FUNCDEF_FLAGS: Final = FUNCITEM_FLAGS + [
     'is_decorated', 'is_conditional', 'is_abstract',
-]  # type: Final
+]
 
 
 class FuncDef(FuncItem, SymbolNode, Statement):
@@ -679,7 +681,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         self.is_abstract = False
         self.is_final = False
         # Original conditional definition
-        self.original_def = None  # type: Union[None, FuncDef, Var, Decorator]
+        self.original_def: Union[None, FuncDef, Var, Decorator] = None
 
     @property
     def name(self) -> str:
@@ -738,12 +740,12 @@ class Decorator(SymbolNode, Statement):
     A single Decorator object can include any number of function decorators.
     """
 
-    func = None  # type: FuncDef                # Decorated function
-    decorators = None  # type: List[Expression] # Decorators (may be empty)
+    func: FuncDef  # Decorated function
+    decorators: List[Expression]  # Decorators (may be empty)
     # Some decorators are removed by semanal, keep the original here.
-    original_decorators = None  # type: List[Expression]
+    original_decorators: List[Expression]
     # TODO: This is mostly used for the type; consider replacing with a 'type' attribute
-    var = None  # type: Var                     # Represents the decorated function obj
+    var: "Var"  # Represents the decorated function obj
     is_overload = False
 
     def __init__(self, func: FuncDef, decorators: List[Expression],
@@ -795,12 +797,12 @@ class Decorator(SymbolNode, Statement):
         return dec
 
 
-VAR_FLAGS = [
+VAR_FLAGS: Final = [
     'is_self', 'is_initialized_in_class', 'is_staticmethod',
     'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import',
     'is_classvar', 'is_abstract_var', 'is_final', 'final_unset_in_class', 'final_set_in_init',
     'explicit_self_type', 'is_ready', 'from_module_getattr',
-]  # type: Final
+]
 
 
 class Var(SymbolNode):
@@ -839,7 +841,7 @@ class Var(SymbolNode):
         self._fullname = cast('Bogus[str]', None)  # Name with module prefix
         # TODO: Should be Optional[TypeInfo]
         self.info = VAR_NO_INFO
-        self.type = type  # type: Optional[mypy.types.Type] # Declared or inferred type, or None
+        self.type: Optional[mypy.types.Type] = type  # Declared or inferred type, or None
         # Is this the first argument to an ordinary method (usually "self")?
         self.is_self = False
         self.is_ready = True  # If inferred, is the inferred type available?
@@ -860,7 +862,7 @@ class Var(SymbolNode):
         # If constant value is a simple literal,
         # store the literal value (unboxed) for the benefit of
         # tools like mypyc.
-        self.final_value = None  # type: Optional[Union[int, float, bool, str]]
+        self.final_value: Optional[Union[int, float, bool, str]] = None
         # Where the value was set (only for class attributes)
         self.final_unset_in_class = False
         self.final_set_in_init = False
@@ -889,12 +891,13 @@ class Var(SymbolNode):
     def serialize(self) -> JsonDict:
         # TODO: Leave default values out?
         # NOTE: Sometimes self.is_ready is False here, but we don't care.
-        data = {'.class': 'Var',
-                'name': self._name,
-                'fullname': self._fullname,
-                'type': None if self.type is None else self.type.serialize(),
-                'flags': get_flags(self, VAR_FLAGS),
-                }  # type: JsonDict
+        data: JsonDict = {
+            ".class": "Var",
+            "name": self._name,
+            "fullname": self._fullname,
+            "type": None if self.type is None else self.type.serialize(),
+            "flags": get_flags(self, VAR_FLAGS),
+        }
         if self.final_value is not None:
             data['final_value'] = self.final_value
         return data
@@ -915,19 +918,19 @@ class Var(SymbolNode):
 class ClassDef(Statement):
     """Class definition"""
 
-    name = None  # type: str       # Name of the class without module prefix
-    fullname = None  # type: Bogus[str]   # Fully qualified name of the class
-    defs = None  # type: Block
-    type_vars = None  # type: List[mypy.types.TypeVarDef]
+    name: str  # Name of the class without module prefix
+    fullname: Bogus[str] = None  # type: ignore # Fully qualified name of the class
+    defs: "Block"
+    type_vars: List["mypy.types.TypeVarDef"]
     # Base class expressions (not semantically analyzed -- can be arbitrary expressions)
-    base_type_exprs = None  # type: List[Expression]
+    base_type_exprs: List[Expression]
     # Special base classes like Generic[...] get moved here during semantic analysis
-    removed_base_type_exprs = None  # type: List[Expression]
-    info = None  # type: TypeInfo  # Related TypeInfo
-    metaclass = None  # type: Optional[Expression]
-    decorators = None  # type: List[Expression]
-    keywords = None  # type: OrderedDict[str, Expression]
-    analyzed = None  # type: Optional[Expression]
+    removed_base_type_exprs: List[Expression]
+    info: "TypeInfo"  # Related TypeInfo
+    metaclass: Optional[Expression] = None
+    decorators: List[Expression]
+    keywords: "OrderedDict[str, Expression]"
+    analyzed: Optional[Expression] = None
     has_incompatible_baseclass = False
 
     def __init__(self,
@@ -977,7 +980,7 @@ class ClassDef(Statement):
 class GlobalDecl(Statement):
     """Declaration global x, y, ..."""
 
-    names = None  # type: List[str]
+    names: List[str]
 
     def __init__(self, names: List[str]) -> None:
         super().__init__()
@@ -990,7 +993,7 @@ class GlobalDecl(Statement):
 class NonlocalDecl(Statement):
     """Declaration nonlocal x, y, ..."""
 
-    names = None  # type: List[str]
+    names: List[str]
 
     def __init__(self, names: List[str]) -> None:
         super().__init__()
@@ -1022,7 +1025,8 @@ class Block(Statement):
 
 class ExpressionStmt(Statement):
     """An expression as a statement, such as print(s)."""
-    expr = None  # type: Expression
+
+    expr: Expression
 
     def __init__(self, expr: Expression) -> None:
         super().__init__()
@@ -1043,15 +1047,15 @@ class AssignmentStmt(Statement):
     An lvalue can be NameExpr, TupleExpr, ListExpr, MemberExpr, or IndexExpr.
     """
 
-    lvalues = None  # type: List[Lvalue]
+    lvalues: List[Lvalue]
     # This is a TempNode if and only if no rvalue (x: t).
-    rvalue = None  # type: Expression
+    rvalue: Expression
     # Declared type in a comment, may be None.
-    type = None  # type: Optional[mypy.types.Type]
+    type: Optional["mypy.types.Type"] = None
     # Original, not semantically analyzed type in annotation (used for reprocessing)
-    unanalyzed_type = None  # type: Optional[mypy.types.Type]
+    unanalyzed_type: Optional["mypy.types.Type"] = None
     # This indicates usage of PEP 526 type annotation syntax in assignment.
-    new_syntax = False  # type: bool
+    new_syntax: bool = False
     # Does this assignment define a type alias?
     is_alias_def = False
     # Is this a final definition?
@@ -1079,8 +1083,8 @@ class OperatorAssignmentStmt(Statement):
     """Operator assignment statement such as x += 1"""
 
     op = ''
-    lvalue = None  # type: Lvalue
-    rvalue = None  # type: Expression
+    lvalue: Lvalue
+    rvalue: Expression
 
     def __init__(self, op: str, lvalue: Lvalue, rvalue: Expression) -> None:
         super().__init__()
@@ -1093,9 +1097,9 @@ class OperatorAssignmentStmt(Statement):
 
 
 class WhileStmt(Statement):
-    expr = None  # type: Expression
-    body = None  # type: Block
-    else_body = None  # type: Optional[Block]
+    expr: Expression
+    body: Block
+    else_body: Optional[Block] = None
 
     def __init__(self, expr: Expression, body: Block, else_body: Optional[Block]) -> None:
         super().__init__()
@@ -1109,19 +1113,19 @@ class WhileStmt(Statement):
 
 class ForStmt(Statement):
     # Index variables
-    index = None  # type: Lvalue
+    index: Lvalue
     # Type given by type comments for index, can be None
-    index_type = None  # type: Optional[mypy.types.Type]
+    index_type: Optional["mypy.types.Type"] = None
     # Original, not semantically analyzed type in annotation (used for reprocessing)
-    unanalyzed_index_type = None  # type: Optional[mypy.types.Type]
+    unanalyzed_index_type: Optional["mypy.types.Type"] = None
     # Inferred iterable item type
-    inferred_item_type = None  # type: Optional[mypy.types.Type]
+    inferred_item_type: Optional["mypy.types.Type"] = None
     # Inferred iterator type
-    inferred_iterator_type = None  # type: Optional[mypy.types.Type]
+    inferred_iterator_type: Optional["mypy.types.Type"] = None
     # Expression to iterate
-    expr = None  # type: Expression
-    body = None  # type: Block
-    else_body = None  # type: Optional[Block]
+    expr: Expression
+    body: Block
+    else_body: Optional[Block] = None
     is_async = False  # True if `async for ...` (PEP 492, Python 3.5)
 
     def __init__(self,
@@ -1143,7 +1147,7 @@ class ForStmt(Statement):
 
 
 class ReturnStmt(Statement):
-    expr = None  # type: Optional[Expression]
+    expr: Optional[Expression] = None
 
     def __init__(self, expr: Optional[Expression]) -> None:
         super().__init__()
@@ -1154,8 +1158,8 @@ class ReturnStmt(Statement):
 
 
 class AssertStmt(Statement):
-    expr = None  # type: Expression
-    msg = None  # type: Optional[Expression]
+    expr: Expression
+    msg: Optional[Expression] = None
 
     def __init__(self, expr: Expression, msg: Optional[Expression] = None) -> None:
         super().__init__()
@@ -1167,7 +1171,7 @@ class AssertStmt(Statement):
 
 
 class DelStmt(Statement):
-    expr = None  # type: Lvalue
+    expr: Lvalue
 
     def __init__(self, expr: Lvalue) -> None:
         super().__init__()
@@ -1193,9 +1197,9 @@ class PassStmt(Statement):
 
 
 class IfStmt(Statement):
-    expr = None  # type: List[Expression]
-    body = None  # type: List[Block]
-    else_body = None  # type: Optional[Block]
+    expr: List[Expression]
+    body: List[Block]
+    else_body: Optional[Block] = None
 
     def __init__(self, expr: List[Expression], body: List[Block],
                  else_body: Optional[Block]) -> None:
@@ -1210,8 +1214,8 @@ class IfStmt(Statement):
 
 class RaiseStmt(Statement):
     # Plain 'raise' is a valid statement.
-    expr = None  # type: Optional[Expression]
-    from_expr = None  # type: Optional[Expression]
+    expr: Optional[Expression] = None
+    from_expr: Optional[Expression] = None
 
     def __init__(self, expr: Optional[Expression], from_expr: Optional[Expression]) -> None:
         super().__init__()
@@ -1223,13 +1227,13 @@ class RaiseStmt(Statement):
 
 
 class TryStmt(Statement):
-    body = None  # type: Block                # Try body
+    body: Block  # Try body
     # Plain 'except:' also possible
-    types = None  # type: List[Optional[Expression]]    # Except type expressions
-    vars = None  # type: List[Optional[NameExpr]]     # Except variable names
-    handlers = None  # type: List[Block]      # Except bodies
-    else_body = None  # type: Optional[Block]
-    finally_body = None  # type: Optional[Block]
+    types: List[Optional[Expression]]  # Except type expressions
+    vars: List[Optional["NameExpr"]]  # Except variable names
+    handlers: List[Block]  # Except bodies
+    else_body: Optional[Block] = None
+    finally_body: Optional[Block] = None
 
     def __init__(self, body: Block, vars: List['Optional[NameExpr]'],
                  types: List[Optional[Expression]],
@@ -1248,13 +1252,13 @@ class TryStmt(Statement):
 
 
 class WithStmt(Statement):
-    expr = None  # type: List[Expression]
-    target = None  # type: List[Optional[Lvalue]]
+    expr: List[Expression]
+    target: List[Optional[Lvalue]]
     # Type given by type comments for target, can be None
-    unanalyzed_type = None  # type: Optional[mypy.types.Type]
+    unanalyzed_type: Optional["mypy.types.Type"] = None
     # Semantically analyzed types from type comment (TypeList type expanded)
-    analyzed_types = None  # type: List[mypy.types.Type]
-    body = None  # type: Block
+    analyzed_types: List["mypy.types.Type"]
+    body: Block
     is_async = False  # True if `async with ...` (PEP 492, Python 3.5)
 
     def __init__(self, expr: List[Expression], target: List[Optional[Lvalue]],
@@ -1273,10 +1277,10 @@ class WithStmt(Statement):
 class PrintStmt(Statement):
     """Python 2 print statement"""
 
-    args = None  # type: List[Expression]
+    args: List[Expression]
     newline = False
     # The file-like target object (given using >>).
-    target = None  # type: Optional[Expression]
+    target: Optional[Expression] = None
 
     def __init__(self,
                  args: List[Expression],
@@ -1294,9 +1298,9 @@ class PrintStmt(Statement):
 class ExecStmt(Statement):
     """Python 2 exec statement"""
 
-    expr = None  # type: Expression
-    globals = None  # type: Optional[Expression]
-    locals = None  # type: Optional[Expression]
+    expr: Expression
+    globals: Optional[Expression] = None
+    locals: Optional[Expression] = None
 
     def __init__(self, expr: Expression,
                  globals: Optional[Expression],
@@ -1434,7 +1438,7 @@ class EllipsisExpr(Expression):
 class StarExpr(Expression):
     """Star expression"""
 
-    expr = None  # type: Expression
+    expr: Expression
 
     def __init__(self, expr: Expression) -> None:
         super().__init__()
@@ -1456,11 +1460,11 @@ class RefExpr(Expression):
     def __init__(self) -> None:
         super().__init__()
         # LDEF/GDEF/MDEF/... (None if not available)
-        self.kind = None  # type: Optional[int]
+        self.kind: Optional[int] = None
         # Var, FuncDef or TypeInfo that describes this
-        self.node = None  # type: Optional[SymbolNode]
+        self.node: Optional[SymbolNode] = None
         # Fully qualified name (or name if not global)
-        self.fullname = None  # type: Optional[str]
+        self.fullname: Optional[str] = None
         # Does this define a new name?
         self.is_new_def = False
         # Does this define a new name with inferred type?
@@ -1471,7 +1475,7 @@ class RefExpr(Expression):
         # Is this expression appears as an rvalue of a valid type alias definition?
         self.is_alias_rvalue = False
         # Cache type guard from callable_type.type_guard
-        self.type_guard = None  # type: Optional[mypy.types.Type]
+        self.type_guard: Optional["mypy.types.Type"] = None
 
 
 class NameExpr(RefExpr):
@@ -1506,7 +1510,7 @@ class MemberExpr(RefExpr):
         self.name = name
         # The variable node related to a definition through 'self.x = <initializer>'.
         # The nodes of other kinds of member expressions are resolved during type checking.
-        self.def_var = None  # type: Optional[Var]
+        self.def_var: Optional[Var] = None
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_member_expr(self)
@@ -1515,17 +1519,17 @@ class MemberExpr(RefExpr):
 # Kinds of arguments
 
 # Positional argument
-ARG_POS = 0  # type: Final
+ARG_POS: Final = 0
 # Positional, optional argument (functions only, not calls)
-ARG_OPT = 1  # type: Final
+ARG_OPT: Final = 1
 # *arg argument
-ARG_STAR = 2  # type: Final
+ARG_STAR: Final = 2
 # Keyword argument x=y in call, or keyword-only function arg
-ARG_NAMED = 3  # type: Final
+ARG_NAMED: Final = 3
 # **arg argument
-ARG_STAR2 = 4  # type: Final
+ARG_STAR2: Final = 4
 # In an argument list, keyword-only and also optional
-ARG_NAMED_OPT = 5  # type: Final
+ARG_NAMED_OPT: Final = 5
 
 
 class CallExpr(Expression):
@@ -1551,7 +1555,7 @@ class CallExpr(Expression):
         self.args = args
         self.arg_kinds = arg_kinds  # ARG_ constants
         # Each name can be None if not a keyword argument.
-        self.arg_names = arg_names  # type: List[Optional[str]]
+        self.arg_names: List[Optional[str]] = arg_names
         # If not None, the node that represents the meaning of the CallExpr. For
         # cast(...) this is a CastExpr.
         self.analyzed = analyzed
@@ -1561,7 +1565,7 @@ class CallExpr(Expression):
 
 
 class YieldFromExpr(Expression):
-    expr = None  # type: Expression
+    expr: Expression
 
     def __init__(self, expr: Expression) -> None:
         super().__init__()
@@ -1572,7 +1576,7 @@ class YieldFromExpr(Expression):
 
 
 class YieldExpr(Expression):
-    expr = None  # type: Optional[Expression]
+    expr: Optional[Expression] = None
 
     def __init__(self, expr: Optional[Expression]) -> None:
         super().__init__()
@@ -1588,13 +1592,13 @@ class IndexExpr(Expression):
     Also wraps type application such as List[int] as a special form.
     """
 
-    base = None  # type: Expression
-    index = None  # type: Expression
+    base: Expression
+    index: Expression
     # Inferred __getitem__ method type
-    method_type = None  # type: Optional[mypy.types.Type]
+    method_type: Optional["mypy.types.Type"] = None
     # If not None, this is actually semantically a type application
     # Class[type, ...] or a type alias initializer.
-    analyzed = None  # type: Union[TypeApplication, TypeAliasExpr, None]
+    analyzed: Union["TypeApplication", "TypeAliasExpr", None]
 
     def __init__(self, base: Expression, index: Expression) -> None:
         super().__init__()
@@ -1610,9 +1614,9 @@ class UnaryExpr(Expression):
     """Unary operation"""
 
     op = ''
-    expr = None  # type: Expression
+    expr: Expression
     # Inferred operator method type
-    method_type = None  # type: Optional[mypy.types.Type]
+    method_type: Optional["mypy.types.Type"] = None
 
     def __init__(self, op: str, expr: Expression) -> None:
         super().__init__()
@@ -1639,10 +1643,10 @@ class OpExpr(Expression):
     which have specific nodes)."""
 
     op = ''
-    left = None  # type: Expression
-    right = None  # type: Expression
+    left: Expression
+    right: Expression
     # Inferred type for the operator method type (when relevant).
-    method_type = None  # type: Optional[mypy.types.Type]
+    method_type: Optional["mypy.types.Type"] = None
     # Per static analysis only: Is the right side going to be evaluated every time?
     right_always = False
     # Per static analysis only: Is the right side unreachable?
@@ -1661,10 +1665,10 @@ class OpExpr(Expression):
 class ComparisonExpr(Expression):
     """Comparison expression (e.g. a < b > c < d)."""
 
-    operators = None  # type: List[str]
-    operands = None  # type: List[Expression]
+    operators: List[str]
+    operands: List[Expression]
     # Inferred type for the operator methods (when relevant; None for 'is').
-    method_types = None  # type: List[Optional[mypy.types.Type]]
+    method_types: List[Optional["mypy.types.Type"]]
 
     def __init__(self, operators: List[str], operands: List[Expression]) -> None:
         super().__init__()
@@ -1689,9 +1693,9 @@ class SliceExpr(Expression):
     This is only valid as index in index expressions.
     """
 
-    begin_index = None  # type: Optional[Expression]
-    end_index = None  # type: Optional[Expression]
-    stride = None  # type: Optional[Expression]
+    begin_index: Optional[Expression] = None
+    end_index: Optional[Expression] = None
+    stride: Optional[Expression] = None
 
     def __init__(self, begin_index: Optional[Expression],
                  end_index: Optional[Expression],
@@ -1708,8 +1712,8 @@ class SliceExpr(Expression):
 class CastExpr(Expression):
     """Cast expression cast(type, expr)."""
 
-    expr = None  # type: Expression
-    type = None  # type: mypy.types.Type
+    expr: Expression
+    type: "mypy.types.Type"
 
     def __init__(self, expr: Expression, typ: 'mypy.types.Type') -> None:
         super().__init__()
@@ -1723,9 +1727,9 @@ class CastExpr(Expression):
 class RevealExpr(Expression):
     """Reveal type expression reveal_type(expr) or reveal_locals() expression."""
 
-    expr = None  # type: Optional[Expression]
-    kind = 0  # type: int
-    local_nodes = None  # type: Optional[List[Var]]
+    expr: Optional[Expression] = None
+    kind: int = 0
+    local_nodes: Optional[List[Var]] = None
 
     def __init__(
             self, kind: int,
@@ -1744,8 +1748,8 @@ class SuperExpr(Expression):
     """Expression super().name"""
 
     name = ''
-    info = None  # type: Optional[TypeInfo]  # Type that contains this super expression
-    call = None  # type: CallExpr  # The expression super(...)
+    info: Optional["TypeInfo"] = None  # Type that contains this super expression
+    call: CallExpr  # The expression super(...)
 
     def __init__(self, name: str, call: CallExpr) -> None:
         super().__init__()
@@ -1780,7 +1784,7 @@ class LambdaExpr(FuncItem, Expression):
 class ListExpr(Expression):
     """List literal expression [...]."""
 
-    items = None  # type: List[Expression]
+    items: List[Expression]
 
     def __init__(self, items: List[Expression]) -> None:
         super().__init__()
@@ -1793,7 +1797,7 @@ class ListExpr(Expression):
 class DictExpr(Expression):
     """Dictionary literal expression {key: value, ...}."""
 
-    items = None  # type: List[Tuple[Optional[Expression], Expression]]
+    items: List[Tuple[Optional[Expression], Expression]]
 
     def __init__(self, items: List[Tuple[Optional[Expression], Expression]]) -> None:
         super().__init__()
@@ -1808,7 +1812,7 @@ class TupleExpr(Expression):
 
     Also lvalue sequences (..., ...) and [..., ...]"""
 
-    items = None  # type: List[Expression]
+    items: List[Expression]
 
     def __init__(self, items: List[Expression]) -> None:
         super().__init__()
@@ -1821,7 +1825,7 @@ class TupleExpr(Expression):
 class SetExpr(Expression):
     """Set literal expression {value, ...}."""
 
-    items = None  # type: List[Expression]
+    items: List[Expression]
 
     def __init__(self, items: List[Expression]) -> None:
         super().__init__()
@@ -1834,11 +1838,11 @@ class SetExpr(Expression):
 class GeneratorExpr(Expression):
     """Generator expression ... for ... in ... [ for ...  in ... ] [ if ... ]."""
 
-    left_expr = None  # type: Expression
-    sequences = None  # type: List[Expression]
-    condlists = None  # type: List[List[Expression]]
-    is_async = None  # type: List[bool]
-    indices = None  # type: List[Lvalue]
+    left_expr: Expression
+    sequences: List[Expression]
+    condlists: List[List[Expression]]
+    is_async: List[bool]
+    indices: List[Lvalue]
 
     def __init__(self, left_expr: Expression, indices: List[Lvalue],
                  sequences: List[Expression], condlists: List[List[Expression]],
@@ -1857,7 +1861,7 @@ class GeneratorExpr(Expression):
 class ListComprehension(Expression):
     """List comprehension (e.g. [x + 1 for x in a])"""
 
-    generator = None  # type: GeneratorExpr
+    generator: GeneratorExpr
 
     def __init__(self, generator: GeneratorExpr) -> None:
         super().__init__()
@@ -1870,7 +1874,7 @@ class ListComprehension(Expression):
 class SetComprehension(Expression):
     """Set comprehension (e.g. {x + 1 for x in a})"""
 
-    generator = None  # type: GeneratorExpr
+    generator: GeneratorExpr
 
     def __init__(self, generator: GeneratorExpr) -> None:
         super().__init__()
@@ -1883,12 +1887,12 @@ class SetComprehension(Expression):
 class DictionaryComprehension(Expression):
     """Dictionary comprehension (e.g. {k: v for k, v in a}"""
 
-    key = None  # type: Expression
-    value = None  # type: Expression
-    sequences = None  # type: List[Expression]
-    condlists = None  # type: List[List[Expression]]
-    is_async = None  # type: List[bool]
-    indices = None  # type: List[Lvalue]
+    key: Expression
+    value: Expression
+    sequences: List[Expression]
+    condlists: List[List[Expression]]
+    is_async: List[bool]
+    indices: List[Lvalue]
 
     def __init__(self, key: Expression, value: Expression, indices: List[Lvalue],
                  sequences: List[Expression], condlists: List[List[Expression]],
@@ -1908,9 +1912,9 @@ class DictionaryComprehension(Expression):
 class ConditionalExpr(Expression):
     """Conditional expression (e.g. x if y else z)"""
 
-    cond = None  # type: Expression
-    if_expr = None  # type: Expression
-    else_expr = None  # type: Expression
+    cond: Expression
+    if_expr: Expression
+    else_expr: Expression
 
     def __init__(self, cond: Expression, if_expr: Expression, else_expr: Expression) -> None:
         super().__init__()
@@ -1925,7 +1929,7 @@ class ConditionalExpr(Expression):
 class BackquoteExpr(Expression):
     """Python 2 expression `...`."""
 
-    expr = None  # type: Expression
+    expr: Expression
 
     def __init__(self, expr: Expression) -> None:
         super().__init__()
@@ -1938,8 +1942,8 @@ class BackquoteExpr(Expression):
 class TypeApplication(Expression):
     """Type application expr[type, ...]"""
 
-    expr = None  # type: Expression
-    types = None  # type: List[mypy.types.Type]
+    expr: Expression
+    types: List["mypy.types.Type"]
 
     def __init__(self, expr: Expression, types: List['mypy.types.Type']) -> None:
         super().__init__()
@@ -1959,9 +1963,9 @@ class TypeApplication(Expression):
 #
 # If T is contravariant in Foo[T], Foo[object] is a subtype of
 # Foo[int], but not vice versa.
-INVARIANT = 0  # type: Final
-COVARIANT = 1  # type: Final
-CONTRAVARIANT = 2  # type: Final
+INVARIANT: Final = 0
+COVARIANT: Final = 1
+CONTRAVARIANT: Final = 2
 
 
 class TypeVarLikeExpr(SymbolNode, Expression):
@@ -1970,7 +1974,7 @@ class TypeVarLikeExpr(SymbolNode, Expression):
     _fullname = ''
     # Upper bound: only subtypes of upper_bound are valid as values. By default
     # this is 'object', meaning no restriction.
-    upper_bound = None  # type: mypy.types.Type
+    upper_bound: "mypy.types.Type"
     # Variance of the type variable. Invariant is the default.
     # TypeVar(..., covariant=True) defines a covariant type variable.
     # TypeVar(..., contravariant=True) defines a contravariant type
@@ -2008,7 +2012,7 @@ class TypeVarExpr(TypeVarLikeExpr):
     """
     # Value restriction: only types in the list are valid as values. If the
     # list is empty, there is no restriction.
-    values = None  # type: List[mypy.types.Type]
+    values: List["mypy.types.Type"]
 
     def __init__(self, name: str, fullname: str,
                  values: List['mypy.types.Type'],
@@ -2067,15 +2071,15 @@ class TypeAliasExpr(Expression):
     """Type alias expression (rvalue)."""
 
     # The target type.
-    type = None  # type: mypy.types.Type
+    type: "mypy.types.Type"
     # Names of unbound type variables used to define the alias
-    tvars = None  # type: List[str]
+    tvars: List[str]
     # Whether this alias was defined in bare form. Used to distinguish
     # between
     #     A = List
     # and
     #     A = List[Any]
-    no_args = False  # type: bool
+    no_args: bool = False
 
     def __init__(self, node: 'TypeAlias') -> None:
         super().__init__()
@@ -2093,7 +2097,7 @@ class NamedTupleExpr(Expression):
 
     # The class representation of this named tuple (its tuple_type attribute contains
     # the tuple item types)
-    info = None  # type: TypeInfo
+    info: "TypeInfo"
     is_typed = False  # whether this class was created with typing.NamedTuple
 
     def __init__(self, info: 'TypeInfo', is_typed: bool = False) -> None:
@@ -2109,7 +2113,7 @@ class TypedDictExpr(Expression):
     """Typed dict expression TypedDict(...)."""
 
     # The class representation of this typed dict
-    info = None  # type: TypeInfo
+    info: "TypeInfo"
 
     def __init__(self, info: 'TypeInfo') -> None:
         super().__init__()
@@ -2123,10 +2127,10 @@ class EnumCallExpr(Expression):
     """Named tuple expression Enum('name', 'val1 val2 ...')."""
 
     # The class representation of this enumerated type
-    info = None  # type: TypeInfo
+    info: "TypeInfo"
     # The item names (for debugging)
-    items = None  # type: List[str]
-    values = None  # type: List[Optional[Expression]]
+    items: List[str]
+    values: List[Optional[Expression]]
 
     def __init__(self, info: 'TypeInfo', items: List[str],
                  values: List[Optional[Expression]]) -> None:
@@ -2142,7 +2146,7 @@ class EnumCallExpr(Expression):
 class PromoteExpr(Expression):
     """Ducktype class decorator expression _promote(...)."""
 
-    type = None  # type: mypy.types.Type
+    type: "mypy.types.Type"
 
     def __init__(self, type: 'mypy.types.Type') -> None:
         super().__init__()
@@ -2154,11 +2158,12 @@ class PromoteExpr(Expression):
 
 class NewTypeExpr(Expression):
     """NewType expression NewType(...)."""
-    name = None  # type: str
+
+    name: str
     # The base type (the second argument to NewType)
-    old_type = None  # type: Optional[mypy.types.Type]
+    old_type: Optional["mypy.types.Type"] = None
     # The synthesized class representing the new type (inherits old_type)
-    info = None  # type: Optional[TypeInfo]
+    info: Optional["TypeInfo"] = None
 
     def __init__(self, name: str, old_type: 'Optional[mypy.types.Type]', line: int,
                  column: int) -> None:
@@ -2175,7 +2180,7 @@ class NewTypeExpr(Expression):
 class AwaitExpr(Expression):
     """Await expression (await ...)."""
 
-    expr = None  # type: Expression
+    expr: Expression
 
     def __init__(self, expr: Expression) -> None:
         super().__init__()
@@ -2196,10 +2201,10 @@ class TempNode(Expression):
     some fixed type.
     """
 
-    type = None  # type: mypy.types.Type
+    type: "mypy.types.Type"
     # Is this TempNode used to indicate absence of a right hand side in an annotated assignment?
     # (e.g. for 'x: int' the rvalue is TempNode(AnyType(TypeOfAny.special_form), no_rhs=True))
-    no_rhs = False  # type: bool
+    no_rhs: bool = False
 
     def __init__(self,
                  typ: 'mypy.types.Type',
@@ -2234,29 +2239,29 @@ class TypeInfo(SymbolNode):
     the appropriate number of arguments.
     """
 
-    _fullname = None  # type: Bogus[str]          # Fully qualified name
+    _fullname: Bogus[str] = None  # type: ignore  # Fully qualified name
     # Fully qualified name for the module this type was defined in. This
     # information is also in the fullname, but is harder to extract in the
     # case of nested class definitions.
-    module_name = None  # type: str
-    defn = None  # type: ClassDef          # Corresponding ClassDef
+    module_name: str
+    defn: ClassDef  # Corresponding ClassDef
     # Method Resolution Order: the order of looking up attributes. The first
     # value always to refers to this class.
-    mro = None  # type: List[TypeInfo]
+    mro: List["TypeInfo"]
     # Used to stash the names of the mro classes temporarily between
     # deserialization and fixup. See deserialize() for why.
-    _mro_refs = None  # type: Optional[List[str]]
+    _mro_refs: Optional[List[str]] = None
     bad_mro = False  # Could not construct full MRO
 
-    declared_metaclass = None  # type: Optional[mypy.types.Instance]
-    metaclass_type = None  # type: Optional[mypy.types.Instance]
+    declared_metaclass: Optional["mypy.types.Instance"] = None
+    metaclass_type: Optional["mypy.types.Instance"] = None
 
-    names = None  # type: SymbolTable      # Names defined directly in this type
+    names: "SymbolTable"  # Names defined directly in this type
     is_abstract = False                    # Does the class have any abstract attributes?
     is_protocol = False                    # Is this a protocol class?
     runtime_protocol = False               # Does this protocol support isinstance checks?
-    abstract_attributes = None  # type: List[str]
-    deletable_attributes = None  # type: List[str]  # Used by mypyc only
+    abstract_attributes: List[str]
+    deletable_attributes: List[str]  # Used by mypyc only
 
     # The attributes 'assuming' and 'assuming_proper' represent structural subtype matrices.
     #
@@ -2278,8 +2283,8 @@ class TypeInfo(SymbolNode):
     # If concurrent/parallel type checking will be added in future,
     # then there should be one matrix per thread/process to avoid false negatives
     # during the type checking phase.
-    assuming = None  # type: List[Tuple[mypy.types.Instance, mypy.types.Instance]]
-    assuming_proper = None  # type: List[Tuple[mypy.types.Instance, mypy.types.Instance]]
+    assuming: List[Tuple["mypy.types.Instance", "mypy.types.Instance"]]
+    assuming_proper: List[Tuple["mypy.types.Instance", "mypy.types.Instance"]]
     # Ditto for temporary 'inferring' stack of recursive constraint inference.
     # It contains Instance's of protocol types that appeared as an argument to
     # constraints.infer_constraints(). We need 'inferring' to avoid infinite recursion for
@@ -2289,7 +2294,7 @@ class TypeInfo(SymbolNode):
     # since this would require to pass them in many dozens of calls. In particular,
     # there is a dependency infer_constraint -> is_subtype -> is_callable_subtype ->
     # -> infer_constraints.
-    inferring = None  # type: List[mypy.types.Instance]
+    inferring: List["mypy.types.Instance"]
     # 'inferring' and 'assuming' can't be made sets, since we need to use
     # is_same_type to correctly treat unions.
 
@@ -2306,30 +2311,30 @@ class TypeInfo(SymbolNode):
     # Information related to type annotations.
 
     # Generic type variable names (full names)
-    type_vars = None  # type: List[str]
+    type_vars: List[str]
 
     # Direct base classes.
-    bases = None  # type: List[mypy.types.Instance]
+    bases: List["mypy.types.Instance"]
 
     # Another type which this type will be treated as a subtype of,
     # even though it's not a subclass in Python.  The non-standard
     # `@_promote` decorator introduces this, and there are also
     # several builtin examples, in particular `int` -> `float`.
-    _promote = None  # type: Optional[mypy.types.Type]
+    _promote: Optional["mypy.types.Type"] = None
 
     # Representation of a Tuple[...] base class, if the class has any
     # (e.g., for named tuples). If this is not None, the actual Type
     # object used for this class is not an Instance but a TupleType;
     # the corresponding Instance is set as the fallback type of the
     # tuple type.
-    tuple_type = None  # type: Optional[mypy.types.TupleType]
+    tuple_type: Optional["mypy.types.TupleType"] = None
 
     # Is this a named tuple type?
     is_named_tuple = False
 
     # If this class is defined by the TypedDict type constructor,
     # then this is not None.
-    typeddict_type = None  # type: Optional[mypy.types.TypedDictType]
+    typeddict_type: Optional["mypy.types.TypedDictType"] = None
 
     # Is this a newtype type?
     is_newtype = False
@@ -2339,13 +2344,13 @@ class TypeInfo(SymbolNode):
 
     # This is a dictionary that will be serialized and un-serialized as is.
     # It is useful for plugins to add their data to save in the cache.
-    metadata = None  # type: Dict[str, JsonDict]
+    metadata: Dict[str, JsonDict]
 
-    FLAGS = [
+    FLAGS: Final = [
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
         'is_newtype', 'is_protocol', 'runtime_protocol', 'is_final',
         'is_intersection',
-    ]  # type: Final
+    ]
 
     def __init__(self, names: 'SymbolTable', defn: ClassDef, module_name: str) -> None:
         """Initialize a TypeInfo."""
@@ -2402,7 +2407,7 @@ class TypeInfo(SymbolNode):
     def protocol_members(self) -> List[str]:
         # Protocol members are names of all attributes/methods defined in a protocol
         # and in all its supertypes (except for 'object').
-        members = set()  # type: Set[str]
+        members: Set[str] = set()
         assert self.mro, "This property can be only accessed after MRO is (re-)calculated"
         for base in self.mro[:-1]:  # we skip "object" since everyone implements it
             if base.is_protocol:
@@ -2488,7 +2493,7 @@ class TypeInfo(SymbolNode):
         """Return a string dump of the contents of the TypeInfo."""
         if not str_conv:
             str_conv = mypy.strconv.StrConv()
-        base = ''  # type: str
+        base: str = ""
 
         def type_str(typ: 'mypy.types.Type') -> str:
             if type_str_conv:
@@ -2615,9 +2620,9 @@ class FakeInfo(TypeInfo):
         raise AssertionError(object.__getattribute__(self, 'msg'))
 
 
-VAR_NO_INFO = FakeInfo('Var is lacking info')  # type: Final[TypeInfo]
-CLASSDEF_NO_INFO = FakeInfo('ClassDef is lacking info')  # type: Final[TypeInfo]
-FUNC_NO_INFO = FakeInfo('FuncBase for non-methods lack info')  # type: Final[TypeInfo]
+VAR_NO_INFO: Final[TypeInfo] = FakeInfo("Var is lacking info")
+CLASSDEF_NO_INFO: Final[TypeInfo] = FakeInfo("ClassDef is lacking info")
+FUNC_NO_INFO: Final[TypeInfo] = FakeInfo("FuncBase for non-methods lack info")
 
 
 class TypeAlias(SymbolNode):
@@ -2727,7 +2732,7 @@ class TypeAlias(SymbolNode):
         self.normalized = normalized
         # This attribute is manipulated by TypeAliasType. If non-None,
         # it is the cached value.
-        self._is_recursive = None  # type: Optional[bool]
+        self._is_recursive: Optional[bool] = None
         self.eager = eager
         super().__init__(line, column)
 
@@ -2740,15 +2745,16 @@ class TypeAlias(SymbolNode):
         return self._fullname
 
     def serialize(self) -> JsonDict:
-        data = {'.class': 'TypeAlias',
-                'fullname': self._fullname,
-                'target': self.target.serialize(),
-                'alias_tvars': self.alias_tvars,
-                'no_args': self.no_args,
-                'normalized': self.normalized,
-                'line': self.line,
-                'column': self.column
-                }  # type: JsonDict
+        data: JsonDict = {
+            ".class": "TypeAlias",
+            "fullname": self._fullname,
+            "target": self.target.serialize(),
+            "alias_tvars": self.alias_tvars,
+            "no_args": self.no_args,
+            "normalized": self.normalized,
+            "line": self.line,
+            "column": self.column,
+        }
         return data
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
@@ -2923,7 +2929,7 @@ class SymbolTableNode:
         self.module_public = module_public
         self.implicit = implicit
         self.module_hidden = module_hidden
-        self.cross_ref = None  # type: Optional[str]
+        self.cross_ref: Optional[str] = None
         self.plugin_generated = plugin_generated
         self.no_serialize = no_serialize
 
@@ -2969,9 +2975,10 @@ class SymbolTableNode:
           prefix: full name of the containing module or class; or None
           name: name of this object relative to the containing object
         """
-        data = {'.class': 'SymbolTableNode',
-                'kind': node_kinds[self.kind],
-                }  # type: JsonDict
+        data: JsonDict = {
+            ".class": "SymbolTableNode",
+            "kind": node_kinds[self.kind],
+        }
         if self.module_hidden:
             data['module_hidden'] = True
         if not self.module_public:
@@ -3028,7 +3035,7 @@ class SymbolTable(Dict[str, SymbolTableNode]):
     """
 
     def __str__(self) -> str:
-        a = []  # type: List[str]
+        a: List[str] = []
         for key, value in self.items():
             # Filter out the implicit import of builtins.
             if isinstance(value, SymbolTableNode):
@@ -3048,7 +3055,7 @@ class SymbolTable(Dict[str, SymbolTableNode]):
                             for key, node in self.items()])
 
     def serialize(self, fullname: str) -> JsonDict:
-        data = {'.class': 'SymbolTable'}  # type: JsonDict
+        data: JsonDict = {".class": "SymbolTable"}
         for key, value in self.items():
             # Skip __builtins__: it's a reference to the builtins
             # module that gets added to every module by
@@ -3084,7 +3091,7 @@ def get_member_expr_fullname(expr: MemberExpr) -> Optional[str]:
     Return a string of form foo.bar, foo.bar.baz, or similar, or None if the
     argument cannot be represented in this form.
     """
-    initial = None  # type: Optional[str]
+    initial: Optional[str] = None
     if isinstance(expr.expr, NameExpr):
         initial = expr.expr.name
     elif isinstance(expr.expr, MemberExpr):
@@ -3094,12 +3101,12 @@ def get_member_expr_fullname(expr: MemberExpr) -> Optional[str]:
     return '{}.{}'.format(initial, expr.name)
 
 
-deserialize_map = {
+deserialize_map: Final = {
     key: obj.deserialize
     for key, obj in globals().items()
     if type(obj) is not FakeInfo
     and isinstance(obj, type) and issubclass(obj, SymbolNode) and obj is not SymbolNode
-}  # type: Final
+}
 
 
 def check_arg_kinds(arg_kinds: List[int], nodes: List[T], fail: Callable[[str, T], None]) -> None:
@@ -3138,7 +3145,7 @@ def check_arg_kinds(arg_kinds: List[int], nodes: List[T], fail: Callable[[str, T
 
 def check_arg_names(names: Sequence[Optional[str]], nodes: List[T], fail: Callable[[str, T], None],
                     description: str = 'function definition') -> None:
-    seen_names = set()  # type: Set[Optional[str]]
+    seen_names: Set[Optional[str]] = set()
     for name, node in zip(names, nodes):
         if name is not None and name in seen_names:
             fail('Duplicate argument "{}" in {}'.format(name, description), node)

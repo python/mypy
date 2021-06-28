@@ -23,8 +23,8 @@ if sys.platform == 'win32':
     _IPCHandle = int
 
     kernel32 = ctypes.windll.kernel32
-    DisconnectNamedPipe = kernel32.DisconnectNamedPipe  # type: Callable[[_IPCHandle], int]
-    FlushFileBuffers = kernel32.FlushFileBuffers  # type: Callable[[_IPCHandle], int]
+    DisconnectNamedPipe: Callable[[_IPCHandle], int] = kernel32.DisconnectNamedPipe
+    FlushFileBuffers: Callable[[_IPCHandle], int] = kernel32.FlushFileBuffers
 else:
     import socket
     _IPCHandle = socket.socket
@@ -42,7 +42,7 @@ class IPCBase:
     and writing.
     """
 
-    connection = None  # type: _IPCHandle
+    connection: _IPCHandle
 
     def __init__(self, name: str, timeout: Optional[float]) -> None:
         self.name = name
@@ -175,7 +175,7 @@ class IPCClient(IPCBase):
 
 class IPCServer(IPCBase):
 
-    BUFFER_SIZE = 2**16  # type: Final
+    BUFFER_SIZE: Final = 2 ** 16
 
     def __init__(self, name: str, timeout: Optional[float] = None) -> None:
         if sys.platform == 'win32':

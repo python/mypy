@@ -7,7 +7,7 @@ from mypyc.ir.rtypes import RType, RInstance, object_rprimitive
 class AssignmentTarget:
     """Abstract base class for assignment targets during IR building."""
 
-    type = object_rprimitive  # type: RType
+    type: RType = object_rprimitive
 
 
 class AssignmentTargetRegister(AssignmentTarget):
@@ -40,7 +40,7 @@ class AssignmentTargetAttr(AssignmentTarget):
         self.attr = attr
         if isinstance(obj.type, RInstance) and obj.type.class_ir.has_attr(attr):
             # Native attribute reference
-            self.obj_type = obj.type  # type: RType
+            self.obj_type: RType = obj.type
             self.type = obj.type.attr_type(attr)
         else:
             # Python attribute reference

@@ -14,8 +14,8 @@ from mypy.errorcodes import ErrorCode, IMPORT
 from mypy import errorcodes as codes
 from mypy.util import DEFAULT_SOURCE_OFFSET, is_typeshed_file
 
-T = TypeVar('T')
-allowed_duplicates = ['@overload', 'Got:', 'Expected:']  # type: Final
+T = TypeVar("T")
+allowed_duplicates: Final = ["@overload", "Got:", "Expected:"]
 
 
 class ErrorInfo:
@@ -23,19 +23,19 @@ class ErrorInfo:
 
     # Description of a sequence of imports that refer to the source file
     # related to this error. Each item is a (path, line number) tuple.
-    import_ctx = None  # type: List[Tuple[str, int]]
+    import_ctx: List[Tuple[str, int]]
 
     # The path to source file that was the source of this error.
     file = ''
 
     # The fully-qualified id of the source module for this error.
-    module = None  # type: Optional[str]
+    module: Optional[str] = None
 
     # The name of the type in which this error is located at.
-    type = ''  # type: Optional[str]   # Unqualified, may be None
+    type: Optional[str] = ""  # Unqualified, may be None
 
     # The name of the function or member in which this error is located at.
-    function_or_member = ''  # type: Optional[str]   # Unqualified, may be None
+    function_or_member: Optional[str] = ""  # Unqualified, may be None
 
     # The line number related to this error within file.
     line = 0     # -1 if unknown
@@ -50,7 +50,7 @@ class ErrorInfo:
     message = ''
 
     # The error code.
-    code = None  # type: Optional[ErrorCode]
+    code: Optional[ErrorCode] = None
 
     # If True, we should halt build after the file that generated this error.
     blocker = False
@@ -60,10 +60,10 @@ class ErrorInfo:
 
     # Actual origin of the error message as tuple (path, line number, end line number)
     # If end line number is unknown, use line number.
-    origin = None  # type: Tuple[str, int, int]
+    origin: Tuple[str, int, int]
 
     # Fine-grained incremental target where this was reported
-    target = None  # type: Optional[str]
+    target: Optional[str] = None
 
     # If True, don't show this message in output, but still record the error (needed
     # by mypy daemon)
@@ -120,47 +120,47 @@ class Errors:
     # Map from files to generated error messages. Is an OrderedDict so
     # that it can be used to order messages based on the order the
     # files were processed.
-    error_info_map = None  # type: Dict[str, List[ErrorInfo]]
+    error_info_map: Dict[str, List[ErrorInfo]]
 
     # Files that we have reported the errors for
-    flushed_files = None  # type: Set[str]
+    flushed_files: Set[str]
 
     # Current error context: nested import context/stack, as a list of (path, line) pairs.
-    import_ctx = None  # type: List[Tuple[str, int]]
+    import_ctx: List[Tuple[str, int]]
 
     # Path name prefix that is removed from all paths, if set.
-    ignore_prefix = None  # type: Optional[str]
+    ignore_prefix: Optional[str] = None
 
     # Path to current file.
-    file = ''  # type: str
+    file: str = ""
 
     # Ignore some errors on these lines of each file
     # (path -> line -> error-codes)
-    ignored_lines = None  # type: Dict[str, Dict[int, List[str]]]
+    ignored_lines: Dict[str, Dict[int, List[str]]]
 
     # Lines on which an error was actually ignored.
-    used_ignored_lines = None  # type: Dict[str, Set[int]]
+    used_ignored_lines: Dict[str, Set[int]]
 
     # Files where all errors should be ignored.
-    ignored_files = None  # type: Set[str]
+    ignored_files: Set[str]
 
     # Collection of reported only_once messages.
-    only_once_messages = None  # type: Set[str]
+    only_once_messages: Set[str]
 
     # Set to True to show "In function "foo":" messages.
-    show_error_context = False  # type: bool
+    show_error_context: bool = False
 
     # Set to True to show column numbers in error messages.
-    show_column_numbers = False  # type: bool
+    show_column_numbers: bool = False
 
     # Set to True to show absolute file paths in error messages.
-    show_absolute_path = False  # type: bool
+    show_absolute_path: bool = False
 
     # State for keeping track of the current fine-grained incremental mode target.
     # (See mypy.server.update for more about targets.)
     # Current module id.
-    target_module = None  # type: Optional[str]
-    scope = None  # type: Optional[Scope]
+    target_module: Optional[str] = None
+    scope: Optional[Scope] = None
 
     # Have we seen an import-related error so far? If yes, we filter out other messages
     # in some cases to avoid reporting huge numbers of errors.
@@ -511,7 +511,7 @@ class Errors:
         is True also append a relevant trimmed source code line (only for
         severity 'error').
         """
-        a = []  # type: List[str]
+        a: List[str] = []
         error_info = [info for info in error_info if not info.hidden]
         errors = self.render_messages(self.sort_messages(error_info))
         errors = self.remove_duplicates(errors)
@@ -595,10 +595,10 @@ class Errors:
         The path item may be None. If the line item is negative, the
         line number is not defined for the tuple.
         """
-        result = []  # type: List[ErrorTuple]
-        prev_import_context = []  # type: List[Tuple[str, int]]
-        prev_function_or_member = None  # type: Optional[str]
-        prev_type = None  # type: Optional[str]
+        result: List[ErrorTuple] = []
+        prev_import_context: List[Tuple[str, int]] = []
+        prev_function_or_member: Optional[str] = None
+        prev_type: Optional[str] = None
 
         for e in errors:
             # Report module import context, if different from previous message.
@@ -666,7 +666,7 @@ class Errors:
         context by line number, but otherwise retain the general
         ordering of the messages.
         """
-        result = []  # type: List[ErrorInfo]
+        result: List[ErrorInfo] = []
         i = 0
         while i < len(errors):
             i0 = i
@@ -684,7 +684,7 @@ class Errors:
 
     def remove_duplicates(self, errors: List[ErrorTuple]) -> List[ErrorTuple]:
         """Remove duplicates from a sorted error list."""
-        res = []  # type: List[ErrorTuple]
+        res: List[ErrorTuple] = []
         i = 0
         while i < len(errors):
             dup = False
@@ -727,10 +727,10 @@ class CompileError(Exception):
 
     """
 
-    messages = None  # type: List[str]
+    messages: List[str]
     use_stdout = False
     # Can be set in case there was a module with a blocking error
-    module_with_blocker = None  # type: Optional[str]
+    module_with_blocker: Optional[str] = None
 
     def __init__(self,
                  messages: List[str],
