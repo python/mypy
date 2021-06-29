@@ -3551,7 +3551,9 @@ class Baz:
     def __init__(self):
         self.x = 'lol'  # type: str
 [out]
+tmp/c.py:3: note: By default the bodies of functions without signature annotations are not type checked, consider using "--check-untyped-defs"
 [out2]
+tmp/c.py:3: note: By default the bodies of functions without signature annotations are not type checked, consider using "--check-untyped-defs"
 tmp/a.py:3: error: Unsupported operand types for + ("int" and "str")
 
 [case testIncrementalWithIgnoresTwice]

@@ -2976,11 +2976,11 @@ def g() -> None:
 import typing
 
 def f():
-    bar = []  # type: typing.List[int]
+    bar = []  # type: typing.List[int]  # N: By default the bodies of functions without signature annotations are not type checked, consider using "--check-untyped-defs"
 
     def foo():
         nonlocal bar
-        bar = []  # type: typing.List[int]
+        bar = []  # type: typing.List[int]  # N: By default the bodies of functions without signature annotations are not type checked, consider using "--check-untyped-defs"
 
 def g() -> None:
     bar = []  # type: typing.List[int]

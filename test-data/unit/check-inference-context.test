@@ -814,7 +814,7 @@ if int():
 from typing import List
 class A:
   def __init__(self):
-    self.x = [] # type: List[int]
+    self.x = [] # type: List[int]  # N: By default the bodies of functions without signature annotations are not type checked, consider using "--check-untyped-defs"
 a = A()
 a.x = []
 a.x = [1]

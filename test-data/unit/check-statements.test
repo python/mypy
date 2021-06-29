@@ -1792,6 +1792,6 @@ def foo() -> None:
 
 def foo2():
     global bar2
-    bar2 = []  # type: List[str]
+    bar2 = []  # type: List[str]  # N: By default the bodies of functions without signature annotations are not type checked, consider using "--check-untyped-defs"
     bar2
 [builtins fixtures/list.pyi]
