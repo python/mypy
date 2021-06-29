@@ -247,3 +247,45 @@ def g(arg: B) -> None:
     pass
 
 [builtins fixtures/args.pyi]
+
+[case testAnyInConstructorArgsWithClassPassedToRegister]
+from functools import singledispatch
+from typing import Any
+
+class Base: pass
+class ConstExpr:
+    def __init__(self, **kwargs: Any) -> None: pass
+
+@singledispatch
+def f(arg: Base) -> ConstExpr:
+    pass
+
+@f.register(ConstExpr)
+def g(arg: ConstExpr) -> ConstExpr: # E: Dispatch type "ConstExpr" must be subtype of fallback function first argument "Base"
+    pass
+
+
+[builtins fixtures/args.pyi]
+
+[case testRegisteredImplementationUsedBeforeDefinition]
+from functools import singledispatch
+from typing import Union
+
+class Node: pass
+class MypyFile(Node): pass
+class Missing: pass
+
+@singledispatch
+def f(a: Union[Node, Missing]) -> None:
+    pass
+
+@f.register
+def g(a: MypyFile) -> None:
+    x: Missing
+    f(x)
+
+@f.register
+def h(a: Missing) -> None:
+    pass
+
+[builtins fixtures/args.pyi]
