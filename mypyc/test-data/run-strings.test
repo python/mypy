@@ -263,38 +263,17 @@ def test_fstring_python_doc() -> None:
 
     today = datetime(year=2017, month=1, day=27)
     assert f"{today:%B %d, %Y}" == 'January 27, 2017'  # using date format specifier
-    # if is_py38:
-    #    assert f"{today=:%B %d, %Y}" == 'today=January 27, 2017' # using date format specifier and debugging
 
     number = 1024
     assert f"{number:#0x}" == '0x400' # using integer format specifier
 
-    # if is_py38:
-    #    foo = "bar"
-    #    assert f"{ foo = }" == " foo = 'bar'" # preserves whitespace
-
-    #    line = "The mill's closed"
-    #    assert f"{line = }" == 'line = "The mill\'s closed"'
-    #    assert f"{line = :20}" == "line = The mill's closed   "
-    #    assert f"{line = !r:20}" == 'line = "The mill\'s closed" '
-
-#[file driver.py]
-#import sys
-#from native import test_fstring_python_doc
-
-#if sys.version_info[:2] >= (3, 8):
-#    test_fstring_python_doc(True)
-#else:
-#    test_fstring_python_doc(False)
-
 [case testStringFormatMethod]
 from typing import Tuple
 
-def test_format_method_literals() -> None:
+def test_format_method_basics() -> None:
     assert "".format() == ""
     assert "abc".format() == "abc"
 
-def test_format_method_placeholders() -> None:
     name = "Eric"
     age = 14
     assert "My name is {name}, I'm {age}.".format(name=name, age=age) == "My name is Eric, I'm 14."
@@ -309,6 +288,13 @@ def test_format_method_numbers() -> None:
     assert s == 'int: 36893488147419103232;  hex: 20000000000000000;  oct: 4000000000000000000000;  bin: 100000000000000000000000000000000000000000000000000000000000000000'
     s = 'int: {0:d};  hex: {0:x};  oct: {0:o};  bin: {0:b}'.format(-num)
     assert s == 'int: -36893488147419103232;  hex: -20000000000000000;  oct: -4000000000000000000000;  bin: -100000000000000000000000000000000000000000000000000000000000000000'
+
+    large_num = 2**65
+    assert 'number: {}'.format(large_num) == 'number: 36893488147419103232'
+    neg_num = -3
+    assert 'negative integer: {}'.format(neg_num) == 'negative integer: -3'
+    assert 'negative integer: {}'.format(-large_num) == 'negative integer: -36893488147419103232'
+
 
 class Point:
     def __init__(self, x, y):
