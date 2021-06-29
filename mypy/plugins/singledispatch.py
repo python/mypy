@@ -25,9 +25,6 @@ class RegisterCallableInfo(NamedTuple):
 
 SINGLEDISPATCH_TYPE = 'functools._SingleDispatchCallable'
 
-# key that we use for everything we store in TypeInfo metadata
-METADATA_KEY = 'singledispatch'
-
 SINGLEDISPATCH_REGISTER_METHOD = '{}.register'.format(SINGLEDISPATCH_TYPE)  # type: Final
 
 SINGLEDISPATCH_CALLABLE_CALL_METHOD = '{}.__call__'.format(SINGLEDISPATCH_TYPE)  # type: Final
