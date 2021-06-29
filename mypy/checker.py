@@ -2058,6 +2058,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 and self.scope.active_class() is not None):
             self.fail(message_registry.DEPENDENT_FINAL_IN_CLASS_BODY, s)
 
+        if s.was_annotated and not self.in_checked_function():
+            self.msg.annotation_in_unchecked_function(context=s)
+
     def check_assignment(self, lvalue: Lvalue, rvalue: Expression, infer_lvalue_type: bool = True,
                          new_syntax: bool = False) -> None:
         """Type check a single assignment: lvalue = rvalue."""

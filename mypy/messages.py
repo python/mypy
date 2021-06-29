@@ -1584,6 +1584,10 @@ class MessageBuilder:
                 'Consider adding [builtins fixtures/{}] to your test description'.format(
                     SUGGESTED_TEST_FIXTURES[fullname]), ctx)
 
+    def annotation_in_unchecked_function(self, context: Context) -> None:
+        self.note('By default the bodies of functions without signature annotations ' +
+                  'are not type checked, consider using "--check-untyped-defs"', context)
+
 
 def quote_type_string(type_string: str) -> str:
     """Quotes a type representation for use in messages."""

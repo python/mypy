@@ -615,7 +615,8 @@ class ASTConverter:
         typ = self.translate_type_comment(n, n.type_comment)
         stmt = AssignmentStmt(self.translate_expr_list(n.targets),
                               self.visit(n.value),
-                              type=typ)
+                              type=typ,
+                              was_annotated=(typ is not None))
         return self.set_line(stmt, n)
 
     # AugAssign(expr target, operator op, expr value)

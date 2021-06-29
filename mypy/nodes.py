@@ -1054,6 +1054,8 @@ class AssignmentStmt(Statement):
     type: Optional["mypy.types.Type"] = None
     # Original, not semantically analyzed type in annotation (used for reprocessing)
     unanalyzed_type: Optional["mypy.types.Type"] = None
+    # Was a type annotation provided (either a type comment or PEP 526 style).
+    was_annotated: bool = False
     # This indicates usage of PEP 526 type annotation syntax in assignment.
     new_syntax: bool = False
     # Does this assignment define a type alias?
@@ -1067,12 +1069,14 @@ class AssignmentStmt(Statement):
     is_final_def = False
 
     def __init__(self, lvalues: List[Lvalue], rvalue: Expression,
-                 type: 'Optional[mypy.types.Type]' = None, new_syntax: bool = False) -> None:
+                 type: 'Optional[mypy.types.Type]' = None, was_annotated: bool = False,
+                 new_syntax: bool = False) -> None:
         super().__init__()
         self.lvalues = lvalues
         self.rvalue = rvalue
         self.type = type
         self.unanalyzed_type = type
+        self.was_annotated = was_annotated or new_syntax  # new_syntax implies was_annotated
         self.new_syntax = new_syntax
 
     def accept(self, visitor: StatementVisitor[T]) -> T:

@@ -764,7 +764,8 @@ class ASTConverter:
         lvalues = self.translate_expr_list(n.targets)
         rvalue = self.visit(n.value)
         typ = self.translate_type_comment(n, n.type_comment)
-        s = AssignmentStmt(lvalues, rvalue, type=typ, new_syntax=False)
+        s = AssignmentStmt(lvalues, rvalue, type=typ,
+                           was_annotated=(typ is not None), new_syntax=False)
         return self.set_line(s, n)
 
     # AnnAssign(expr target, expr annotation, expr? value, int simple)
@@ -779,7 +780,8 @@ class ASTConverter:
         typ = TypeConverter(self.errors, line=line).visit(n.annotation)
         assert typ is not None
         typ.column = n.annotation.col_offset
-        s = AssignmentStmt([self.visit(n.target)], rvalue, type=typ, new_syntax=True)
+        s = AssignmentStmt([self.visit(n.target)], rvalue, type=typ,
+                           was_annotated=True, new_syntax=True)
         return self.set_line(s, n)
 
     # AugAssign(expr target, operator op, expr value)
