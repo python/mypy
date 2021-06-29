@@ -192,7 +192,7 @@ def create_indirect_imported_name(file_node: MypyFile,
         file_node.is_package_init_file())
     if not ok:
         return None
-    target_name = '%s.%s' % (target_module, imported_name)
+    target_name = f'{target_module}.{imported_name}'
     link = ImportedName(target_name)
     # Use GDEF since this refers to a module-level definition.
     return SymbolTableNode(GDEF, link)
@@ -208,7 +208,7 @@ def set_callable_name(sig: Type, fdef: FuncDef) -> ProperType:
             else:
                 class_name = fdef.info.name
             return sig.with_name(
-                '{} of {}'.format(fdef.name, class_name))
+                f'{fdef.name} of {class_name}')
         else:
             return sig.with_name(fdef.name)
     else:

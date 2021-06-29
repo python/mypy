@@ -425,7 +425,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                     typ = UnionType([UnboundType('__builtins__.str'),
                                      UnboundType('__builtins__.unicode')])
             else:
-                assert t is not None, 'type should be specified for {}'.format(name)
+                assert t is not None, f'type should be specified for {name}'
                 typ = UnboundType(t)
 
             existing = file_node.names.get(name)
@@ -861,7 +861,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             elif isinstance(item, FuncDef):
                 inner = item
             else:
-                assert False, "The 'item' variable is an unexpected type: {}".format(type(item))
+                assert False, f"The 'item' variable is an unexpected type: {type(item)}"
             class_status.append(inner.is_class)
             static_status.append(inner.is_static)
 
@@ -871,7 +871,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             elif isinstance(defn.impl, FuncDef):
                 inner = defn.impl
             else:
-                assert False, "Unexpected impl type: {}".format(type(defn.impl))
+                assert False, f"Unexpected impl type: {type(defn.impl)}"
             class_status.append(inner.is_class)
             static_status.append(inner.is_static)
 
@@ -906,7 +906,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                     self.fail("Decorated property not supported", item)
                 item.func.accept(self)
             else:
-                self.fail('Unexpected definition for property "{}"'.format(first_item.func.name),
+                self.fail(f'Unexpected definition for property "{first_item.func.name}"',
                           item)
                 deleted_items.append(i + 1)
         for i in reversed(deleted_items):
@@ -1473,7 +1473,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 else:
                     msg = 'Invalid base class'
                 if name:
-                    msg += ' "{}"'.format(name)
+                    msg += f' "{name}"'
                 self.fail(msg, base_expr)
                 is_error = True
                 continue
@@ -1507,7 +1507,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             elif isinstance(base, AnyType):
                 if self.options.disallow_subclassing_any:
                     if isinstance(base_expr, (NameExpr, MemberExpr)):
-                        msg = 'Class cannot subclass "{}" (has type "Any")'.format(base_expr.name)
+                        msg = f'Class cannot subclass "{base_expr.name}" (has type "Any")'
                     else:
                         msg = 'Class cannot subclass value of type "Any"'
                     self.fail(msg, base_expr)
@@ -1516,12 +1516,12 @@ class SemanticAnalyzer(NodeVisitor[None],
                 msg = 'Invalid base class'
                 name = self.get_name_repr_of_expr(base_expr)
                 if name:
-                    msg += ' "{}"'.format(name)
+                    msg += f' "{name}"'
                 self.fail(msg, base_expr)
                 info.fallback_to_any = True
             if self.options.disallow_any_unimported and has_any_from_unimported_type(base):
                 if isinstance(base_expr, (NameExpr, MemberExpr)):
-                    prefix = "Base type {}".format(base_expr.name)
+                    prefix = f"Base type {base_expr.name}"
                 else:
                     prefix = "Base type"
                 self.msg.unimported_type_becomes_any(prefix, base, base_expr)
@@ -1870,7 +1870,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             # is incomplete. Defer the current target.
             self.mark_incomplete(imported_id, context)
             return
-        message = 'Module "{}" has no attribute "{}"'.format(import_id, source_id)
+        message = f'Module "{import_id}" has no attribute "{source_id}"'
         # Suggest alternatives, if any match is found.
         module = self.modules.get(import_id)
         if module:
@@ -1882,7 +1882,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 matches = best_matches(source_id, alternatives)[:3]
                 if matches:
                     suggestion = "; maybe {}?".format(pretty_seq(matches, "or"))
-                    message += "{}".format(suggestion)
+                    message += f"{suggestion}"
         self.fail(message, context, code=codes.ATTR_DEFINED)
         self.add_unknown_imported_symbol(
             imported_id, context, target_name=None, module_public=module_public,
@@ -1891,7 +1891,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
         if import_id == 'typing':
             # The user probably has a missing definition in a test fixture. Let's verify.
-            fullname = 'builtins.{}'.format(source_id.lower())
+            fullname = f'builtins.{source_id.lower()}'
             if (self.lookup_fully_qualified_or_none(fullname) is None and
                     fullname in SUGGESTED_TEST_FIXTURES):
                 # Yes. Generate a helpful note.
@@ -2973,7 +2973,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         if self.options.disallow_any_unimported:
             for idx, constraint in enumerate(values, start=1):
                 if has_any_from_unimported_type(constraint):
-                    prefix = "Constraint {}".format(idx)
+                    prefix = f"Constraint {idx}"
                     self.msg.unimported_type_becomes_any(prefix, constraint, s)
 
             if has_any_from_unimported_type(upper_bound):
@@ -3014,11 +3014,11 @@ class SemanticAnalyzer(NodeVisitor[None],
             call.callee.name if isinstance(call.callee, NameExpr) else call.callee.fullname
         )
         if len(call.args) < 1:
-            self.fail("Too few arguments for {}()".format(typevarlike_type), context)
+            self.fail(f"Too few arguments for {typevarlike_type}()", context)
             return False
         if (not isinstance(call.args[0], (StrExpr, BytesExpr, UnicodeExpr))
                 or not call.arg_kinds[0] == ARG_POS):
-            self.fail("{}() expects a string literal as first argument".format(typevarlike_type),
+            self.fail(f"{typevarlike_type}() expects a string literal as first argument",
                       context)
             return False
         elif call.args[0].value != name:
@@ -3110,7 +3110,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                           context)
                 return None
             else:
-                self.fail('Unexpected argument to TypeVar(): "{}"'.format(param_name), context)
+                self.fail(f'Unexpected argument to TypeVar(): "{param_name}"', context)
                 return None
 
         if covariant and contravariant:
@@ -3277,7 +3277,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             # If the rval and all lvals are not all of the same length, zip will just ignore
             # extra elements, so no error will be raised here; mypy will later complain
             # about the length mismatch in type-checking.
-            elementwise_assignments = zip(rval.items, *[v.items for v in seq_lvals])
+            elementwise_assignments = zip(rval.items, *(v.items for v in seq_lvals))
             for rv, *lvs in elementwise_assignments:
                 self.process_module_assignment(lvs, rv, ctx)
         elif isinstance(rval, RefExpr):
@@ -3515,7 +3515,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.statement = g
         for name in g.names:
             if name in self.nonlocal_decls[-1]:
-                self.fail('Name "{}" is nonlocal and global'.format(name), g)
+                self.fail(f'Name "{name}" is nonlocal and global', g)
             self.global_decls[-1].add(name)
 
     def visit_nonlocal_decl(self, d: NonlocalDecl) -> None:
@@ -3528,14 +3528,14 @@ class SemanticAnalyzer(NodeVisitor[None],
                     if table is not None and name in table:
                         break
                 else:
-                    self.fail('No binding for nonlocal "{}" found'.format(name), d)
+                    self.fail(f'No binding for nonlocal "{name}" found', d)
 
                 if self.locals[-1] is not None and name in self.locals[-1]:
                     self.fail('Name "{}" is already defined in local '
                               'scope before nonlocal declaration'.format(name), d)
 
                 if name in self.global_decls[-1]:
-                    self.fail('Name "{}" is nonlocal and global'.format(name), d)
+                    self.fail(f'Name "{name}" is nonlocal and global', d)
                 self.nonlocal_decls[-1].add(name)
 
     def visit_print_stmt(self, s: PrintStmt) -> None:
@@ -4492,9 +4492,9 @@ class SemanticAnalyzer(NodeVisitor[None],
         symbol.no_serialize = True
         while True:
             if i == 1:
-                new_name = '{}-redefinition'.format(name)
+                new_name = f'{name}-redefinition'
             else:
-                new_name = '{}-redefinition{}'.format(name, i)
+                new_name = f'{name}-redefinition{i}'
             existing = names.get(new_name)
             if existing is None:
                 names[new_name] = symbol
@@ -4673,7 +4673,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.defer(ctx)
 
     def cannot_resolve_name(self, name: str, kind: str, ctx: Context) -> None:
-        self.fail('Cannot resolve {} "{}" (possible cyclic definition)'.format(kind, name), ctx)
+        self.fail(f'Cannot resolve {kind} "{name}" (possible cyclic definition)', ctx)
 
     def qualified_name(self, name: str) -> str:
         if self.type is not None:
@@ -4771,9 +4771,9 @@ class SemanticAnalyzer(NodeVisitor[None],
         if name in self.globals:
             prev_is_overloaded = isinstance(self.globals[name], OverloadedFuncDef)
             if is_overloaded_func and prev_is_overloaded:
-                self.fail("Nonconsecutive overload {} found".format(name), ctx)
+                self.fail(f"Nonconsecutive overload {name} found", ctx)
             elif prev_is_overloaded:
-                self.fail("Definition of '{}' missing 'overload'".format(name), ctx)
+                self.fail(f"Definition of '{name}' missing 'overload'", ctx)
             else:
                 self.name_already_defined(name, ctx, self.globals[name])
 
@@ -4791,12 +4791,12 @@ class SemanticAnalyzer(NodeVisitor[None],
             # later on. Defer current target.
             self.record_incomplete_ref()
             return
-        message = 'Name "{}" is not defined'.format(name)
+        message = f'Name "{name}" is not defined'
         self.fail(message, ctx, code=codes.NAME_DEFINED)
 
-        if 'builtins.{}'.format(name) in SUGGESTED_TEST_FIXTURES:
+        if f'builtins.{name}' in SUGGESTED_TEST_FIXTURES:
             # The user probably has a missing definition in a test fixture. Let's verify.
-            fullname = 'builtins.{}'.format(name)
+            fullname = f'builtins.{name}'
             if self.lookup_fully_qualified_or_none(fullname) is None:
                 # Yes. Generate a helpful note.
                 self.msg.add_fixture_note(fullname, ctx)
@@ -4810,7 +4810,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             for name in TYPES_FOR_UNIMPORTED_HINTS
         }
         for module in modules_with_unimported_hints:
-            fullname = '{}.{}'.format(module, name).lower()
+            fullname = f'{module}.{name}'.lower()
             if fullname not in lowercased:
                 continue
             # User probably forgot to import these types.
@@ -4840,10 +4840,10 @@ class SemanticAnalyzer(NodeVisitor[None],
         elif node and node.line != -1 and self.is_local_name(node.fullname):
             # TODO: Using previous symbol node may give wrong line. We should use
             #       the line number where the binding was established instead.
-            extra_msg = ' on line {}'.format(node.line)
+            extra_msg = f' on line {node.line}'
         else:
             extra_msg = ' (possibly by an import)'
-        self.fail('{} "{}" already defined{}'.format(noun, unmangle(name), extra_msg), ctx,
+        self.fail(f'{noun} "{unmangle(name)}" already defined{extra_msg}', ctx,
                   code=codes.NO_REDEF)
 
     def name_already_defined(self,
@@ -5000,7 +5000,7 @@ class SemanticAnalyzer(NodeVisitor[None],
     def report_hang(self) -> None:
         print('Deferral trace:')
         for mod, line in self.deferral_debug_context:
-            print('    {}:{}'.format(mod, line))
+            print(f'    {mod}:{line}')
         self.errors.report(-1, -1,
                            'INTERNAL ERROR: maximum semantic analysis iteration count reached',
                            blocker=True)

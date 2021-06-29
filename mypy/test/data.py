@@ -17,13 +17,15 @@ from mypy.test.config import test_data_prefix, test_temp_dir, PREFIX
 root_dir = os.path.normpath(PREFIX)
 
 # File modify/create operation: copy module contents from source_path.
-UpdateFile = NamedTuple('UpdateFile', [('module', str),
-                                       ('source_path', str),
-                                       ('target_path', str)])
+class UpdateFile(NamedTuple):
+    module: str
+    source_path: str
+    target_path: str
 
 # File delete operation: delete module file.
-DeleteFile = NamedTuple('DeleteFile', [('module', str),
-                                       ('path', str)])
+class DeleteFile(NamedTuple):
+    module: str
+    path: str
 
 FileOperation = Union[UpdateFile, DeleteFile]
 
@@ -98,9 +100,9 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
             # File/directory to delete during a multi-step test case
             assert item.arg is not None
             m = re.match(r'(.*)\.([0-9]+)$', item.arg)
-            assert m, 'Invalid delete section: {}'.format(item.arg)
+            assert m, f'Invalid delete section: {item.arg}'
             num = int(m.group(2))
-            assert num >= 2, "Can't delete during step {}".format(num)
+            assert num >= 2, f"Can't delete during step {num}"
             full = join(base_path, m.group(1))
             deleted_paths.setdefault(num, set()).add(full)
         elif re.match(r'out[0-9]*$', item.id):
@@ -257,7 +259,7 @@ class DataDrivenTestCase(pytest.Item):
             if save_dir:
                 assert self.tmpdir is not None
                 target_dir = os.path.join(save_dir, os.path.basename(self.tmpdir.name))
-                print("Copying data from test {} to {}".format(self.name, target_dir))
+                print(f"Copying data from test {self.name} to {target_dir}")
                 if not os.path.isabs(target_dir):
                     assert self.old_cwd
                     target_dir = os.path.join(self.old_cwd, target_dir)
@@ -301,7 +303,7 @@ class DataDrivenTestCase(pytest.Item):
             self.parent._prunetraceback(excinfo)
             excrepr = excinfo.getrepr(style='short')
 
-        return "data: {}:{}:\n{}".format(self.file, self.line, excrepr)
+        return f"data: {self.file}:{self.line}:\n{excrepr}"
 
     def find_steps(self) -> List[List[FileOperation]]:
         """Return a list of descriptions of file operations for each incremental step.
@@ -472,7 +474,7 @@ def expand_errors(input: List[str], output: List[str], fnam: str) -> None:
                 message = message.replace('\\#', '#')  # adds back escaped # character
                 if col is None:
                     output.append(
-                        '{}:{}: {}: {}'.format(fnam, i + 1, severity, message))
+                        f'{fnam}:{i + 1}: {severity}: {message}')
                 else:
                     output.append('{}:{}:{}: {}: {}'.format(
                         fnam, i + 1, col, severity, message))

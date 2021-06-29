@@ -92,22 +92,15 @@ FineGrainedDeferredNodeType = Union[FuncDef, MypyFile, OverloadedFuncDef]
 # In normal mode one can defer functions and methods (also decorated and/or overloaded)
 # and lambda expressions. Nested functions can't be deferred -- only top-level functions
 # and methods of classes not defined within a function can be deferred.
-DeferredNode = NamedTuple(
-    'DeferredNode',
-    [
-        ('node', DeferredNodeType),
-        ('active_typeinfo', Optional[TypeInfo]),  # And its TypeInfo (for semantic analysis
-                                                  # self type handling)
-    ])
+class DeferredNode(NamedTuple):
+    node: DeferredNodeType
+    active_typeinfo: Optional[TypeInfo]
 
 # Same as above, but for fine-grained mode targets. Only top-level functions/methods
 # and module top levels are allowed as such.
-FineGrainedDeferredNode = NamedTuple(
-    'FineGrainedDeferredNode',
-    [
-        ('node', FineGrainedDeferredNodeType),
-        ('active_typeinfo', Optional[TypeInfo]),
-    ])
+class FineGrainedDeferredNode(NamedTuple):
+    node: FineGrainedDeferredNodeType
+    active_typeinfo: Optional[TypeInfo]
 
 # Data structure returned by find_isinstance_check representing
 # information learned from the truth or falsehood of a condition.  The
@@ -127,20 +120,17 @@ TypeMap = Optional[Dict[Expression, Type]]
 
 # An object that represents either a precise type or a type with an upper bound;
 # it is important for correct type inference with isinstance.
-TypeRange = NamedTuple(
-    'TypeRange',
-    [
-        ('item', Type),
-        ('is_upper_bound', bool),  # False => precise type
-    ])
+class TypeRange(NamedTuple):
+    item: Type
+    is_upper_bound: bool
 
 # Keeps track of partial types in a single scope. In fine-grained incremental
 # mode partial types initially defined at the top level cannot be completed in
 # a function, and we use the 'is_function' attribute to enforce this.
-PartialTypeScope = NamedTuple('PartialTypeScope', [('map', Dict[Var, Context]),
-                                                   ('is_function', bool),
-                                                   ('is_local', bool),
-                                                   ])
+class PartialTypeScope(NamedTuple):
+    map: Dict[Var, Context]
+    is_function: bool
+    is_local: bool
 
 
 class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
@@ -841,7 +831,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 self.msg.unimported_type_becomes_any("Return type", ret_type, fdef)
                             for idx, arg_type in enumerate(fdef.type.arg_types):
                                 if has_any_from_unimported_type(arg_type):
-                                    prefix = "Argument {} to \"{}\"".format(idx + 1, fdef.name)
+                                    prefix = f"Argument {idx + 1} to \"{fdef.name}\""
                                     self.msg.unimported_type_becomes_any(prefix, arg_type, fdef)
                     check_for_explicit_any(fdef.type, self.options, self.is_typeshed_stub,
                                            self.msg, context=fdef)
@@ -1011,9 +1001,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             name = arg.variable.name
             msg = 'Incompatible default for '
             if name.startswith('__tuple_arg_'):
-                msg += "tuple argument {}".format(name[12:])
+                msg += f"tuple argument {name[12:]}"
             else:
-                msg += 'argument "{}"'.format(name)
+                msg += f'argument "{name}"'
             self.check_simple_assignment(
                 arg.variable.type,
                 arg.initializer,
@@ -2521,7 +2511,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             else:
                                 self.fail("Contiguous iterable with same type expected", context)
                     else:
-                        self.fail("Invalid type '{}' for *expr (iterable expected)".format(typs),
+                        self.fail(f"Invalid type '{typs}' for *expr (iterable expected)",
                              context)
                 else:
                     rvalues.append(rval)
@@ -3007,8 +2997,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.msg.deleted_as_lvalue(lvalue_type, context)
             elif lvalue_type:
                 self.check_subtype(rvalue_type, lvalue_type, context, msg,
-                                   '{} has type'.format(rvalue_name),
-                                   '{} has type'.format(lvalue_name), code=code)
+                                   f'{rvalue_name} has type',
+                                   f'{lvalue_name} has type', code=code)
             return rvalue_type
 
     def check_member_assignment(self, instance_type: Type, attribute_type: Type,
@@ -3801,7 +3791,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # because it can have dots in it.
         pretty_names_list = pretty_seq(format_type_distinctly(*base_classes, bare=True), "and")
         names_list = pretty_seq([x.type.name for x in base_classes], "and")
-        short_name = '<subclass of {}>'.format(names_list)
+        short_name = f'<subclass of {names_list}>'
         full_name = gen_unique_name(short_name, curr_module.names)
 
         old_msg = self.msg
@@ -3844,7 +3834,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # have a valid fullname and a corresponding entry in a symbol table. We generate
         # a unique name inside the symbol table of the current module.
         cur_module = cast(MypyFile, self.scope.stack[0])
-        gen_name = gen_unique_name("<callable subtype of {}>".format(typ.type.name),
+        gen_name = gen_unique_name(f"<callable subtype of {typ.type.name}>",
                                    cur_module.names)
 
         # Synthesize a fake TypeInfo
@@ -4770,7 +4760,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 table = cast(MypyFile, b.node).names
                 if name in table:
                     return table[name]
-            raise KeyError('Failed lookup: {}'.format(name))
+            raise KeyError(f'Failed lookup: {name}')
 
     def lookup_qualified(self, name: str) -> SymbolTableNode:
         if '.' not in name:
@@ -5234,7 +5224,7 @@ def and_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
     # arbitrarily give precedence to m2. (In the future, we could use
     # an intersection type.)
     result = m2.copy()
-    m2_keys = set(literal_hash(n2) for n2 in m2)
+    m2_keys = {literal_hash(n2) for n2 in m2}
     for n1 in m1:
         if literal_hash(n1) not in m2_keys:
             result[n1] = m1[n1]
@@ -5897,7 +5887,7 @@ def is_static(func: Union[FuncBase, Decorator]) -> bool:
         return is_static(func.func)
     elif isinstance(func, FuncBase):
         return func.is_static
-    assert False, "Unexpected func type: {}".format(type(func))
+    assert False, f"Unexpected func type: {type(func)}"
 
 
 def is_subtype_no_promote(left: Type, right: Type) -> bool:

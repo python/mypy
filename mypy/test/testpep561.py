@@ -56,7 +56,7 @@ def virtualenv(
         proc = subprocess.run([sys.executable,
                                '-m',
                                'virtualenv',
-                               '-p{}'.format(python_executable),
+                               f'-p{python_executable}',
                                venv_dir], cwd=os.getcwd(), stdout=PIPE, stderr=PIPE)
         if proc.returncode != 0:
             err = proc.stdout.decode('utf-8') + proc.stderr.decode('utf-8')
@@ -75,7 +75,7 @@ def install_package(pkg: str,
     working_dir = os.path.join(package_path, pkg)
     with tempfile.TemporaryDirectory() as dir:
         if use_pip:
-            install_cmd = [python_executable, '-m', 'pip', 'install', '-b', '{}'.format(dir)]
+            install_cmd = [python_executable, '-m', 'pip', 'install', '-b', f'{dir}']
             if editable:
                 install_cmd.append('-e')
             install_cmd.append('.')
@@ -128,11 +128,11 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
                 program = testcase.name + '.py'
                 with open(program, 'w', encoding='utf-8') as f:
                     for s in testcase.input:
-                        f.write('{}\n'.format(s))
+                        f.write(f'{s}\n')
                 cmd_line.append(program)
             cmd_line.extend(['--no-incremental', '--no-error-summary'])
             if python_executable != sys.executable:
-                cmd_line.append('--python-executable={}'.format(python_executable))
+                cmd_line.append(f'--python-executable={python_executable}')
             if testcase.files != []:
                 for name, content in testcase.files:
                     if 'mypy.ini' in name:
@@ -199,14 +199,14 @@ def test_mypy_path_is_respected() -> None:
             mypy_config_path = os.path.join(temp_dir, 'mypy.ini')
             with open(mypy_config_path, 'w') as mypy_file:
                 mypy_file.write('[mypy]\n')
-                mypy_file.write('mypy_path = ./{}\n'.format(packages))
+                mypy_file.write(f'mypy_path = ./{packages}\n')
 
             with virtualenv() as venv:
                 venv_dir, python_executable = venv
 
                 cmd_line_args = []
                 if python_executable != sys.executable:
-                    cmd_line_args.append('--python-executable={}'.format(python_executable))
+                    cmd_line_args.append(f'--python-executable={python_executable}')
                 cmd_line_args.extend(['--config-file', mypy_config_path,
                                       '--package', pkg_name])
 

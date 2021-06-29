@@ -19,7 +19,9 @@ _ORDERING_METHODS = {
 }
 
 
-_MethodInfo = NamedTuple('_MethodInfo', [('is_static', bool), ('type', CallableType)])
+class _MethodInfo(NamedTuple):
+    is_static: bool
+    type: CallableType
 
 
 def functools_total_ordering_maker_callback(ctx: mypy.plugin.ClassDefContext,

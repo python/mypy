@@ -77,7 +77,7 @@ def assert_string_arrays_equal(expected: List[str], actual: List[str],
             if i >= len(actual) or expected[i] != actual[i]:
                 if first_diff < 0:
                     first_diff = i
-                sys.stderr.write('  {:<45} (diff)'.format(expected[i]))
+                sys.stderr.write(f'  {expected[i]:<45} (diff)')
             else:
                 e = expected[i]
                 sys.stderr.write('  ' + e[:width])
@@ -94,7 +94,7 @@ def assert_string_arrays_equal(expected: List[str], actual: List[str],
 
         for j in range(num_skip_start, len(actual) - num_skip_end):
             if j >= len(expected) or expected[j] != actual[j]:
-                sys.stderr.write('  {:<45} (diff)'.format(actual[j]))
+                sys.stderr.write(f'  {actual[j]:<45} (diff)')
             else:
                 a = actual[j]
                 sys.stderr.write('  ' + a[:width])
@@ -215,8 +215,8 @@ def show_align_message(s1: str, s2: str) -> None:
         extra = '...'
 
     # Write a chunk of both lines, aligned.
-    sys.stderr.write('  E: {}{}\n'.format(s1[:maxw], extra))
-    sys.stderr.write('  A: {}{}\n'.format(s2[:maxw], extra))
+    sys.stderr.write(f'  E: {s1[:maxw]}{extra}\n')
+    sys.stderr.write(f'  A: {s2[:maxw]}{extra}\n')
     # Write an indicator character under the different columns.
     sys.stderr.write('     ')
     for j in range(min(maxw, max(len(s1), len(s2)))):
@@ -366,7 +366,7 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
     options = Options()
     flags = re.search('# flags: (.*)$', program_text, flags=re.MULTILINE)
     if incremental_step > 1:
-        flags2 = re.search('# flags{}: (.*)$'.format(incremental_step), program_text,
+        flags2 = re.search(f'# flags{incremental_step}: (.*)$', program_text,
                            flags=re.MULTILINE)
         if flags2:
             flags = flags2
@@ -433,7 +433,7 @@ def check_test_output_files(testcase: DataDrivenTestCase,
             raise AssertionError(
                 'Expected file {} was not produced by test case{}'.format(
                     path, ' on step %d' % step if testcase.output2 else ''))
-        with open(path, 'r', encoding='utf8') as output_file:
+        with open(path, encoding='utf8') as output_file:
             actual_output_content = output_file.read().splitlines()
         normalized_output = normalize_file_output(actual_output_content,
                                                   os.path.abspath(test_temp_dir))

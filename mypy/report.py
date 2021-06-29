@@ -131,8 +131,7 @@ def should_skip_path(path: str) -> bool:
 def iterate_python_lines(path: str) -> Iterator[Tuple[int, str]]:
     """Return an iterator over (line number, line text) from a Python file."""
     with tokenize.open(path) as input_file:
-        for line_info in enumerate(input_file, 1):
-            yield line_info
+        yield from enumerate(input_file, 1)
 
 
 class FuncCounterVisitor(TraverserVisitor):
@@ -262,10 +261,10 @@ class AnyExpressionsReporter(AbstractReporter):
         for filename in sorted(self.counts):
             (num_any, num_total) = self.counts[filename]
             coverage = (float(num_total - num_any) / float(num_total)) * 100
-            coverage_str = '{:.2f}%'.format(coverage)
+            coverage_str = f'{coverage:.2f}%'
             rows.append([filename, str(num_any), str(num_total), coverage_str])
         rows.sort(key=lambda x: x[0])
-        total_row = ["Total", str(total_any), str(total_expr), '{:.2f}%'.format(total_coverage)]
+        total_row = ["Total", str(total_any), str(total_expr), f'{total_coverage:.2f}%']
         self._write_out_report('any-exprs.txt', column_names, rows, total_row)
 
     def _report_types_of_anys(self) -> None:
@@ -506,7 +505,7 @@ class MemoryXmlReporter(AbstractReporter):
             for typ in visitor.any_line_map[lineno]:
                 counter[typ.type_of_any] += 1
             for any_type, occurrences in counter.items():
-                result += "\n{} (x{})".format(type_of_any_name_map[any_type], occurrences)
+                result += f"\n{type_of_any_name_map[any_type]} (x{occurrences})"
             return result
         else:
             return "No Anys on this line!"
@@ -541,10 +540,10 @@ def get_line_rate(covered_lines: int, total_lines: int) -> str:
     if total_lines == 0:
         return str(1.0)
     else:
-        return '{:.4f}'.format(covered_lines / total_lines)
+        return f'{covered_lines / total_lines:.4f}'
 
 
-class CoberturaPackage(object):
+class CoberturaPackage:
     """Container for XML and statistics mapping python modules to Cobertura package."""
 
     def __init__(self, name: str) -> None:

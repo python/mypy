@@ -412,7 +412,7 @@ class NamedTupleAnalyzer:
             var.info = info
             var.is_initialized_in_class = is_initialized_in_class
             var.is_property = is_property
-            var._fullname = '%s.%s' % (info.fullname, var.name)
+            var._fullname = f'{info.fullname}.{var.name}'
             info.names[var.name] = SymbolTableNode(MDEF, var)
 
         fields = [Var(item, typ) for item, typ in zip(items, types)]
@@ -519,7 +519,7 @@ class NamedTupleAnalyzer:
                     continue
                 ctx = named_tuple_info.names[prohibited].node
                 assert ctx is not None
-                self.fail('Cannot overwrite NamedTuple attribute "{}"'.format(prohibited),
+                self.fail(f'Cannot overwrite NamedTuple attribute "{prohibited}"',
                           ctx)
 
         # Restore the names in the original symbol table. This ensures that the symbol

@@ -64,14 +64,14 @@ def run_stubtest(
     with use_tmp_dir():
         with open("builtins.pyi", "w") as f:
             f.write(stubtest_builtins_stub)
-        with open("{}.pyi".format(TEST_MODULE_NAME), "w") as f:
+        with open(f"{TEST_MODULE_NAME}.pyi", "w") as f:
             f.write(stub)
-        with open("{}.py".format(TEST_MODULE_NAME), "w") as f:
+        with open(f"{TEST_MODULE_NAME}.py", "w") as f:
             f.write(runtime)
         if config_file:
-            with open("{}_config.ini".format(TEST_MODULE_NAME), "w") as f:
+            with open(f"{TEST_MODULE_NAME}_config.ini", "w") as f:
                 f.write(config_file)
-            options = options + ["--mypy-config-file", "{}_config.ini".format(TEST_MODULE_NAME)]
+            options = options + ["--mypy-config-file", f"{TEST_MODULE_NAME}_config.ini"]
         if sys.path[0] != ".":
             sys.path.insert(0, ".")
         if TEST_MODULE_NAME in sys.modules:
@@ -110,7 +110,7 @@ def collect_cases(fn: Callable[..., Iterator[Case]]) -> Callable[..., None]:
         for c in cases:
             if c.error is None:
                 continue
-            expected_error = "{}.{}".format(TEST_MODULE_NAME, c.error)
+            expected_error = f"{TEST_MODULE_NAME}.{c.error}"
             assert expected_error not in expected_errors, (
                 "collect_cases merges cases into a single stubtest invocation; we already "
                 "expect an error for {}".format(expected_error)
@@ -761,7 +761,7 @@ class StubtestMiscUnit(unittest.TestCase):
         allowlist = tempfile.NamedTemporaryFile(mode="w+", delete=False)
         try:
             with allowlist:
-                allowlist.write("{}.bad  # comment\n# comment".format(TEST_MODULE_NAME))
+                allowlist.write(f"{TEST_MODULE_NAME}.bad  # comment\n# comment")
 
             output = run_stubtest(
                 stub="def bad(number: int, text: str) -> None: ...",
@@ -772,7 +772,7 @@ class StubtestMiscUnit(unittest.TestCase):
 
             # test unused entry detection
             output = run_stubtest(stub="", runtime="", options=["--allowlist", allowlist.name])
-            assert output == "note: unused allowlist entry {}.bad\n".format(TEST_MODULE_NAME)
+            assert output == f"note: unused allowlist entry {TEST_MODULE_NAME}.bad\n"
 
             output = run_stubtest(
                 stub="",
@@ -783,7 +783,7 @@ class StubtestMiscUnit(unittest.TestCase):
 
             # test regex matching
             with open(allowlist.name, mode="w+") as f:
-                f.write("{}.b.*\n".format(TEST_MODULE_NAME))
+                f.write(f"{TEST_MODULE_NAME}.b.*\n")
                 f.write("(unused_missing)?\n")
                 f.write("unused.*\n")
 

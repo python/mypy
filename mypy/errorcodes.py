@@ -25,7 +25,7 @@ class ErrorCode:
         error_codes[code] = self
 
     def __str__(self) -> str:
-        return '<ErrorCode {}>'.format(self.code)
+        return f'<ErrorCode {self.code}>'
 
 
 ATTR_DEFINED: Final = ErrorCode("attr-defined", "Check that attribute exists", "General")

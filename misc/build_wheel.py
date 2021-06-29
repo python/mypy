@@ -40,7 +40,7 @@ def create_environ(python_version: str) -> Dict[str, str]:
     """Set up environment variables for cibuildwheel."""
     env = os.environ.copy()
 
-    env['CIBW_BUILD'] = "cp{}-*".format(python_version)
+    env['CIBW_BUILD'] = f"cp{python_version}-*"
 
     # Don't build 32-bit wheels
     env['CIBW_SKIP'] = "*-manylinux_i686 *-win32"

@@ -193,7 +193,7 @@ def generate_c(sources: List[BuildSource],
 
     t1 = time.time()
     if compiler_options.verbose:
-        print("Parsed and typechecked in {:.3f}s".format(t1 - t0))
+        print(f"Parsed and typechecked in {t1 - t0:.3f}s")
 
     if not messages and result:
         errors = Errors()
@@ -205,7 +205,7 @@ def generate_c(sources: List[BuildSource],
 
     t2 = time.time()
     if compiler_options.verbose:
-        print("Compiled to C in {:.3f}s".format(t2 - t1))
+        print(f"Compiled to C in {t2 - t1:.3f}s")
 
     # ... you know, just in case.
     if options.junit_xml:
@@ -297,7 +297,7 @@ def write_file(path: str, contents: str) -> None:
     try:
         with open(path, 'rb') as f:
             old_contents: Optional[bytes] = f.read()
-    except IOError:
+    except OSError:
         old_contents = None
     if old_contents != encoded_contents:
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -504,7 +504,7 @@ def mypycify(
     cflags: List[str] = []
     if compiler.compiler_type == 'unix':
         cflags += [
-            '-O{}'.format(opt_level), '-Werror', '-Wno-unused-function', '-Wno-unused-label',
+            f'-O{opt_level}', '-Werror', '-Wno-unused-function', '-Wno-unused-label',
             '-Wno-unreachable-code', '-Wno-unused-variable',
             '-Wno-unused-command-line-argument', '-Wno-unknown-warning-option',
         ]
@@ -515,7 +515,7 @@ def mypycify(
         if opt_level == '3':
             opt_level = '2'
         cflags += [
-            '/O{}'.format(opt_level),
+            f'/O{opt_level}',
             '/wd4102',  # unreferenced label
             '/wd4101',  # unreferenced local variable
             '/wd4146',  # negating unsigned int

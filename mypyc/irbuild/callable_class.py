@@ -45,7 +45,7 @@ def setup_callable_class(builder: IRBuilder) -> None:
     #     else:
     #         def foo():          ---->    foo_obj_0()
     #             return False
-    name = base_name = '{}_obj'.format(builder.fn_info.namespaced_name())
+    name = base_name = f'{builder.fn_info.namespaced_name()}_obj'
     count = 0
     while name in builder.callable_class_names:
         name = base_name + '_' + str(count)

@@ -69,7 +69,7 @@ JsonDict = Dict[str, Any]
 
 
 def decorator_helper_name(func_name: str) -> str:
-    return '__mypyc_{}_decorator_helper__'.format(func_name)
+    return f'__mypyc_{func_name}_decorator_helper__'
 
 
 def shared_lib_name(group_name: str) -> str:
@@ -77,7 +77,7 @@ def shared_lib_name(group_name: str) -> str:
 
     (This just adds a suffix to the final component.)
     """
-    return '{}__mypyc'.format(group_name)
+    return f'{group_name}__mypyc'
 
 
 def short_name(name: str) -> str:

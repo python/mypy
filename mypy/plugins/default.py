@@ -38,13 +38,13 @@ class DefaultPlugin(Plugin):
 
         if fullname == 'typing.Mapping.get':
             return typed_dict_get_signature_callback
-        elif fullname in set(n + '.setdefault' for n in TPDICT_FB_NAMES):
+        elif fullname in {n + '.setdefault' for n in TPDICT_FB_NAMES}:
             return typed_dict_setdefault_signature_callback
-        elif fullname in set(n + '.pop' for n in TPDICT_FB_NAMES):
+        elif fullname in {n + '.pop' for n in TPDICT_FB_NAMES}:
             return typed_dict_pop_signature_callback
-        elif fullname in set(n + '.update' for n in TPDICT_FB_NAMES):
+        elif fullname in {n + '.update' for n in TPDICT_FB_NAMES}:
             return typed_dict_update_signature_callback
-        elif fullname in set(n + '.__delitem__' for n in TPDICT_FB_NAMES):
+        elif fullname in {n + '.__delitem__' for n in TPDICT_FB_NAMES}:
             return typed_dict_delitem_signature_callback
         elif fullname == 'ctypes.Array.__setitem__':
             return ctypes.array_setitem_callback
@@ -60,11 +60,11 @@ class DefaultPlugin(Plugin):
             return int_pow_callback
         elif fullname == 'builtins.int.__neg__':
             return int_neg_callback
-        elif fullname in set(n + '.setdefault' for n in TPDICT_FB_NAMES):
+        elif fullname in {n + '.setdefault' for n in TPDICT_FB_NAMES}:
             return typed_dict_setdefault_callback
-        elif fullname in set(n + '.pop' for n in TPDICT_FB_NAMES):
+        elif fullname in {n + '.pop' for n in TPDICT_FB_NAMES}:
             return typed_dict_pop_callback
-        elif fullname in set(n + '.__delitem__' for n in TPDICT_FB_NAMES):
+        elif fullname in {n + '.__delitem__' for n in TPDICT_FB_NAMES}:
             return typed_dict_delitem_callback
         elif fullname == 'ctypes.Array.__getitem__':
             return ctypes.array_getitem_callback

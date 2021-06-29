@@ -46,25 +46,25 @@ from mypyc.ir.rtypes import RType
 ERR_NEG_INT: Final = 10
 
 
-CFunctionDescription = NamedTuple(
-    'CFunctionDescription',  [('name', str),
-                              ('arg_types', List[RType]),
-                              ('return_type', RType),
-                              ('var_arg_type', Optional[RType]),
-                              ('truncated_type', Optional[RType]),
-                              ('c_function_name', str),
-                              ('error_kind', int),
-                              ('steals', StealsDescription),
-                              ('is_borrowed', bool),
-                              ('ordering', Optional[List[int]]),
-                              ('extra_int_constants', List[Tuple[int, RType]]),
-                              ('priority', int)])
+class CFunctionDescription(NamedTuple):
+    name: str
+    arg_types: List[RType]
+    return_type: RType
+    var_arg_type: Optional[RType]
+    truncated_type: Optional[RType]
+    c_function_name: str
+    error_kind: int
+    steals: StealsDescription
+    is_borrowed: bool
+    ordering: Optional[List[int]]
+    extra_int_constants: List[Tuple[int, RType]]
+    priority: int
 
 # A description for C load operations including LoadGlobal and LoadAddress
-LoadAddressDescription = NamedTuple(
-    'LoadAddressDescription',     [('name', str),
-                                   ('type', RType),
-                                   ('src', str)])  # name of the target to load
+class LoadAddressDescription(NamedTuple):
+    name: str
+    type: RType
+    src: str
 
 
 # CallC op for method call(such as 'str.join')

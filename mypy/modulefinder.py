@@ -21,13 +21,11 @@ from mypy.stubinfo import is_legacy_bundled_package
 from mypy import sitepkgs
 
 # Paths to be searched in find_module().
-SearchPaths = NamedTuple(
-    'SearchPaths',
-    [('python_path', Tuple[str, ...]),  # where user code is found
-     ('mypy_path', Tuple[str, ...]),  # from $MYPYPATH or config variable
-     ('package_path', Tuple[str, ...]),  # from get_site_packages_dirs()
-     ('typeshed_path', Tuple[str, ...]),  # paths in typeshed
-     ])
+class SearchPaths(NamedTuple):
+    python_path: Tuple[str, ...]
+    mypy_path: Tuple[str, ...]
+    package_path: Tuple[str, ...]
+    typeshed_path: Tuple[str, ...]
 
 # Package dirs are a two-tuple of path to search and whether to verify the module
 OnePackageDir = Tuple[str, bool]
@@ -101,7 +99,7 @@ class BuildSource:
         self.base_dir = base_dir  # Directory where the package is rooted (e.g. 'xxx/yyy')
 
     def __repr__(self) -> str:
-        return 'BuildSource(path=%r, module=%r, has_text=%s, base_dir=%r)' % (
+        return 'BuildSource(path={!r}, module={!r}, has_text={}, base_dir={!r})'.format(
             self.path,
             self.module,
             self.text is not None,
@@ -434,7 +432,7 @@ class FindModuleCache:
         if os.path.isfile(metadata_fnam):
             # Delay import for a possible minor performance win.
             import toml
-            with open(metadata_fnam, 'r') as f:
+            with open(metadata_fnam) as f:
                 metadata = toml.load(f)
             if self.python_major_ver == 2:
                 return bool(metadata.get('python2', False))
@@ -502,7 +500,7 @@ def matches_exclude(subpath: str, exclude: str, fscache: FileSystemCache, verbos
         subpath_str += "/"
     if re.search(exclude, subpath_str):
         if verbose:
-            print("TRACE: Excluding {}".format(subpath_str), file=sys.stderr)
+            print(f"TRACE: Excluding {subpath_str}", file=sys.stderr)
         return True
     return False
 
@@ -513,7 +511,7 @@ def verify_module(fscache: FileSystemCache, id: str, path: str, prefix: str) -> 
         path = os.path.dirname(path)
     for i in range(id.count('.')):
         path = os.path.dirname(path)
-        if not any(fscache.isfile_case(os.path.join(path, '__init__{}'.format(extension)),
+        if not any(fscache.isfile_case(os.path.join(path, f'__init__{extension}'),
                                        prefix)
                    for extension in PYTHON_EXTENSIONS):
             return False
@@ -527,7 +525,7 @@ def highest_init_level(fscache: FileSystemCache, id: str, path: str, prefix: str
     level = 0
     for i in range(id.count('.')):
         path = os.path.dirname(path)
-        if any(fscache.isfile_case(os.path.join(path, '__init__{}'.format(extension)),
+        if any(fscache.isfile_case(os.path.join(path, f'__init__{extension}'),
                                    prefix)
                for extension in PYTHON_EXTENSIONS):
             level = i + 1
@@ -576,7 +574,7 @@ def default_lib_path(data_dir: str,
         path.append('/usr/local/lib/mypy')
     if not path:
         print("Could not resolve typeshed subdirectories. Your mypy install is broken.\n"
-              "Python executable is located at {0}.\nMypy located at {1}".format(
+              "Python executable is located at {}.\nMypy located at {}".format(
                   sys.executable, data_dir), file=sys.stderr)
         sys.exit(1)
     return path
@@ -626,7 +624,7 @@ def _parse_pth_file(dir: str, pth_filename: str) -> Iterator[str]:
 
     pth_file = os.path.join(dir, pth_filename)
     try:
-        f = open(pth_file, "r")
+        f = open(pth_file)
     except OSError:
         return
     with f:
@@ -741,7 +739,7 @@ def compute_search_paths(sources: List[BuildSource],
         if (site_dir in mypypath or
                 any(p.startswith(site_dir + os.path.sep) for p in mypypath) or
                 os.path.altsep and any(p.startswith(site_dir + os.path.altsep) for p in mypypath)):
-            print("{} is in the MYPYPATH. Please remove it.".format(site_dir), file=sys.stderr)
+            print(f"{site_dir} is in the MYPYPATH. Please remove it.", file=sys.stderr)
             print("See https://mypy.readthedocs.io/en/stable/running_mypy.html"
                   "#how-mypy-handles-imports for more info", file=sys.stderr)
             sys.exit(1)

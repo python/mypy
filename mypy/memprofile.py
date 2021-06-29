@@ -73,7 +73,7 @@ def print_memory_profile(run_gc: bool = True) -> None:
     if run_gc:
         gc.collect()
     freqs, memuse = collect_memory_stats()
-    print('%7s  %7s  %7s  %s' % ('Freq', 'Size(k)', 'AvgSize', 'Type'))
+    print('{:>7}  {:>7}  {:>7}  {}'.format('Freq', 'Size(k)', 'AvgSize', 'Type'))
     print('-------------------------------------------')
     totalmem = 0
     i = 0
@@ -94,7 +94,7 @@ def find_recursive_objects(objs: List[object]) -> None:
     We use this since gc.get_objects() does not return objects without pointers
     in them such as strings.
     """
-    seen = set(id(o) for o in objs)
+    seen = {id(o) for o in objs}
 
     def visit(o: object) -> None:
         if id(o) not in seen:

@@ -266,7 +266,7 @@ class TestRun(MypycDataSuite):
 
         # Assert that an output file got created
         suffix = 'pyd' if sys.platform == 'win32' else 'so'
-        assert glob.glob('native.*.{}'.format(suffix))
+        assert glob.glob(f'native.*.{suffix}')
 
         driver_path = 'driver.py'
         if not os.path.isfile(driver_path):
@@ -312,7 +312,7 @@ class TestRun(MypycDataSuite):
                 msg = 'Invalid output'
                 expected = testcase.output
             else:
-                msg = 'Invalid output (step {})'.format(incremental_step)
+                msg = f'Invalid output (step {incremental_step})'
                 expected = testcase.output2.get(incremental_step, [])
 
             if not expected:

@@ -1,4 +1,3 @@
-from __future__ import print_function
 """This file is used to find the site packages of a Python executable, which may be Python 2.
 
 This file MUST remain compatible with Python 2. Since we cannot make any assumptions about the
