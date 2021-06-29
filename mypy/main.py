@@ -1009,6 +1009,11 @@ def process_options(args: List[str],
 
         process_cache_map(parser, special_opts, options)
 
+    # An explicitly specified cache_fine_grained implies local_partial_types
+    # (because otherwise the cache is not compatiable with dmypy)
+    if options.cache_fine_grained:
+        options.local_partial_types = True
+
     # Let logical_deps imply cache_fine_grained (otherwise the former is useless).
     if options.logical_deps:
         options.cache_fine_grained = True
