@@ -149,15 +149,45 @@ def test_str_to_bool() -> None:
         assert is_true(x)
         assert not is_false(x)
 
-[case testFormattedStringLiterals]
+[case testFStrings]
 import decimal
 from datetime import datetime
 
 var = 'mypyc'
 num = 20
 
-def test_fstring_simple() -> None:
+def test_fstring_basics() -> None:
     assert f'Hello {var}, this is a test' == "Hello mypyc, this is a test"
+
+    large_num = 2**65
+    assert f'number: {large_num}' == 'number: 36893488147419103232'
+    neg_num = -3
+    assert f'negative integer: {neg_num}' == 'negative integer: -3'
+    assert f'negative integer: {-large_num}' == 'negative integer: -36893488147419103232'
+
+    bool_var1 = True
+    bool_var2 = False
+    assert f'bool: {bool_var1}, {bool_var2}' == 'bool: True, False'
+
+    x = bytes([1, 2, 3, 4])
+    # assert f'bytes: {x}' == "bytes: b'\\x01\\x02\\x03\\x04'"
+    # error: On Python 3 '{}'.format(b'abc') produces "b'abc'", not 'abc';
+    #        use '{!r}'.format(b'abc') if this is desired behavior
+
+
+
+def test_fstring_escape() -> None:
+    assert f"{'inside'}" == 'inside'
+    assert f'{"inside"}' == 'inside'
+    assert f"""inside""" == 'inside'
+    assert f'''inside''' == 'inside'
+    assert f"\"{'inside'}\"" == '"inside"'
+    assert f'\'{"inside"}\'' == "'inside'"
+
+    assert f'{{10}}' == '{10}'
+    assert f'{{10 + 10}}' == '{10 + 10}'
+    assert f'{{{10 + 10}}}' == '{20}'
+    assert f'{{{{10 + 10}}}}' == '{{10 + 10}}'
 
 def test_fstring_conversion() -> None:
     assert f'Hello {var!r}' == "Hello 'mypyc'"
@@ -183,6 +213,9 @@ def test_fstring_align() -> None:
 
 def test_fstring_multi() -> None:
     assert f'Hello {var}, hello again {var}' == "Hello mypyc, hello again mypyc"
+    a = 'py'
+    s = f'my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}'
+    assert s == 'mypymypymypymypymypymypymypymypymypymypymypymypymypymypymypymypymypymypymypymypymypymypymypymypy'
 
 def test_fstring_python_doc() -> None:
     name = "Fred"
@@ -196,18 +229,29 @@ def test_fstring_python_doc() -> None:
 
     today = datetime(year=2017, month=1, day=27)
     assert f"{today:%B %d, %Y}" == 'January 27, 2017'  # using date format specifier
-    # assert f"{today=:%B %d, %Y}" == 'today=January 27, 2017' # using date format specifier and debugging
+    # if is_py38:
+    #    assert f"{today=:%B %d, %Y}" == 'today=January 27, 2017' # using date format specifier and debugging
 
     number = 1024
     assert f"{number:#0x}" == '0x400' # using integer format specifier
 
-    foo = "bar"
-    # assert f"{ foo = }" == " foo = 'bar'" # preserves whitespace
+    # if is_py38:
+    #    foo = "bar"
+    #    assert f"{ foo = }" == " foo = 'bar'" # preserves whitespace
 
-    line = "The mill's closed"
-    # assert f"{line = }" == 'line = "The mill\'s closed"'
-    # assert f"{line = :20}" == "line = The mill's closed   "
-    # assert f"{line = !r:20}" == 'line = "The mill\'s closed" '
+    #    line = "The mill's closed"
+    #    assert f"{line = }" == 'line = "The mill\'s closed"'
+    #    assert f"{line = :20}" == "line = The mill's closed   "
+    #    assert f"{line = !r:20}" == 'line = "The mill\'s closed" '
+
+#[file driver.py]
+#import sys
+#from native import test_fstring_python_doc
+
+#if sys.version_info[:2] >= (3, 8):
+#    test_fstring_python_doc(True)
+#else:
+#    test_fstring_python_doc(False)
 
 [case testStringFormatMethod]
 from typing import Tuple
@@ -222,6 +266,15 @@ def test_format_method_placeholders() -> None:
     assert "My name is {name}, I'm {age}.".format(name=name, age=age) == "My name is Eric, I'm 14."
     assert "My name is {A}, I'm {B}.".format(A=name, B=age) == "My name is Eric, I'm 14."
     assert "My name is {}, I'm {B}.".format(name, B=age) == "My name is Eric, I'm 14."
+
+def test_format_method_numbers() -> None:
+    s = 'int: {0:d};  hex: {0:x};  oct: {0:o};  bin: {0:b}'.format(-233)
+    assert s == 'int: -233;  hex: -e9;  oct: -351;  bin: -11101001'
+    num = 2**65
+    s = 'int: {0:d};  hex: {0:x};  oct: {0:o};  bin: {0:b}'.format(num)
+    assert s == 'int: 36893488147419103232;  hex: 20000000000000000;  oct: 4000000000000000000000;  bin: 100000000000000000000000000000000000000000000000000000000000000000'
+    s = 'int: {0:d};  hex: {0:x};  oct: {0:o};  bin: {0:b}'.format(-num)
+    assert s == 'int: -36893488147419103232;  hex: -20000000000000000;  oct: -4000000000000000000000;  bin: -100000000000000000000000000000000000000000000000000000000000000000'
 
 class Point:
     def __init__(self, x, y):
@@ -268,9 +321,9 @@ def test_format_method_python_doc() -> None:
     assert '{:-f}; {:-f}'.format(3.14, -3.14) == '3.140000; -3.140000' # show only the minus -- same as '{:f}; {:f}'
 
     # Replacing %x and %o and converting the value to different bases:
-    s = "int: {0:d};  hex: {0:x};  oct: {0:o};  bin: {0:b}".format(42) # format also supports binary numbers
+    s = 'int: {0:d};  hex: {0:x};  oct: {0:o};  bin: {0:b}'.format(42) # format also supports binary numbers
     assert s == 'int: 42;  hex: 2a;  oct: 52;  bin: 101010'
-    s = "int: {0:d};  hex: {0:#x};  oct: {0:#o};  bin: {0:#b}".format(42) # with 0x, 0o, or 0b as prefix:
+    s = 'int: {0:d};  hex: {0:#x};  oct: {0:#o};  bin: {0:#b}'.format(42) # with 0x, 0o, or 0b as prefix:
     assert s == 'int: 42;  hex: 0x2a;  oct: 0o52;  bin: 0b101010'
 
     # Using the comma as a thousands separator:
