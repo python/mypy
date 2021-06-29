@@ -174,7 +174,37 @@ def test_fstring_basics() -> None:
     # error: On Python 3 '{}'.format(b'abc') produces "b'abc'", not 'abc';
     #        use '{!r}'.format(b'abc') if this is desired behavior
 
+    float_num = 123.4
+    assert f'{float_num}' == '123.4'
+    assert f'{float_num:.2f}' == '123.40'
+    assert f'{float_num:.5f}' == '123.40000'
+    assert f'{float_num:>10.2f}' == '    123.40'
+    assert f'{float_num:>10.5f}' == ' 123.40000'
+    assert f'{float_num:>010.5f}' == '0123.40000'
+    assert f'{float_num:>015.5f}' == '000000123.40000'
+    assert f'{float_num:e}' == '1.234000e+02'
 
+    large_float = 1.23e30
+    large_float2 = 1234123412341234123400000000000000000
+    small_float = 1.23e-20
+    assert f'{small_float}, {large_float}, {large_float2}' == '1.23e-20, 1.23e+30, 1234123412341234123400000000000000000'
+    nan_num = float('nan')
+    inf_num = float('inf')
+    assert f'{nan_num}, {inf_num}' == 'nan, inf'
+
+class A:
+    def __init__(self, name, age):
+        self.name = name
+        self.age = age
+
+    def __repr__(self):
+        return f"{self.name} is {self.age} years old."
+
+def test_fstring_datatype() -> None:
+    u = A('John Doe', 14)
+    assert f'{u}' == 'John Doe is 14 years old.'
+    d = {'name': 'John Doe', 'age': 14}
+    assert f'{d}' == "{'name': 'John Doe', 'age': 14}"
 
 def test_fstring_escape() -> None:
     assert f"{'inside'}" == 'inside'
@@ -201,6 +231,10 @@ def test_fstring_conversion() -> None:
     tmp_str = """this
     is a new line."""
     assert f'Test: {tmp_str!a}' == "Test: 'this\\n    is a new line.'"
+
+    s = 'test: āĀēĒčČ..šŠūŪžŽ'
+    assert f'{s}' == 'test: āĀēĒčČ..šŠūŪžŽ'
+    assert f'{s!a}' == "'test: \\u0101\\u0100\\u0113\\u0112\\u010d\\u010c..\\u0161\\u0160\\u016b\\u016a\\u017e\\u017d'"
 
     assert f'Hello {var!s}' == "Hello mypyc"
     assert f'Hello {num!s}' == "Hello 20"
