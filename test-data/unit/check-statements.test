@@ -1795,3 +1795,43 @@ def foo2():
     bar2 = []  # type: List[str]  # N: By default the bodies of functions without signature annotations are not type checked, consider using "--check-untyped-defs"
     bar2
 [builtins fixtures/list.pyi]
+
+
+-- Annotated assignment statement
+-- -------------------
+
+
+[case testUnannotatedFunctionWithAnnotatedStatements]
+def foo():
+    a = 1   # type: int  # N: By default the bodies of functions without signature annotations are not type checked, consider using "--check-untyped-defs"
+    b = ''  # type: int  # N: By default the bodies of functions without signature annotations are not type checked, consider using "--check-untyped-defs"
+
+[case testUnannotatedFunctionWithAnnotatedStatementsAndFlag]
+# flags: --check-untyped-defs
+def foo() -> None:
+    a = 1   # type: int
+    b = ''  # type: int  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testAnnotatedFunctionWithAnnotatedStatements]
+def foo() -> None:
+    a = 1   # type: int
+    b = ''  # type: int  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testUnannotatedFunctionWithNewSyntaxAnnotatedStatements]
+def foo():
+    a: int = 1   # N: By default the bodies of functions without signature annotations are not type checked, consider using "--check-untyped-defs"
+    b: int = ''  # N: By default the bodies of functions without signature annotations are not type checked, consider using "--check-untyped-defs"
+    c: bool      # N: By default the bodies of functions without signature annotations are not type checked, consider using "--check-untyped-defs"
+
+[case testUnannotatedFunctionWithNewSyntaxAnnotatedStatementsAndFlag]
+# flags: --check-untyped-defs
+def foo() -> None:
+    a: int = 1
+    b: int = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    c: bool
+
+[case testAnnotatedFunctionWithNewSyntaxAnnotatedStatements]
+def foo() -> None:
+    a: int = 1
+    b: int = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    c: bool
