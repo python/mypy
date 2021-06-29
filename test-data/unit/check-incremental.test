@@ -3682,9 +3682,11 @@ x = 0
 [file mypy.ini]
 \[mypy]
 cache_fine_grained = True
+local_partial_types = True
 [file mypy.ini.2]
 \[mypy]
 cache_fine_grained = False
+local_partial_types = True
 -- Nothing should get rechecked
 [rechecked]
 [stale]
