@@ -12,16 +12,15 @@ from mypy.plugin import CheckerPluginInterface, FunctionContext, MethodContext, 
 from typing import List, NamedTuple, Optional, Sequence, TypeVar, Union
 from typing_extensions import Final
 
+SingledispatchTypeVars = NamedTuple('SingledispatchTypeVars', [
+    ('return_type', Type),
+    ('fallback', CallableType),
+])
 
-class SingledispatchTypeVars(NamedTuple):
-    return_type: Type
-    fallback: CallableType
-
-
-class RegisterCallableInfo(NamedTuple):
-    register_type: Type
-    singledispatch_obj: Instance
-
+RegisterCallableInfo = NamedTuple('RegisterCallableInfo', [
+    ('register_type', Type),
+    ('singledispatch_obj', Instance),
+])
 
 SINGLEDISPATCH_TYPE = 'functools._SingleDispatchCallable'
 
