@@ -550,20 +550,17 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.path = o.path
         self.defined_names = find_defined_names(o)
         self.referenced_names = find_referenced_names(o)
-        typing_imports = ["Any", "Optional", "TypeVar"]
-        for t in typing_imports:
-            if t not in self.defined_names:
-                alias = None
-            else:
-                alias = '_' + t
-            self.import_tracker.add_import_from("typing", [(t, alias)])
-        abc_imports = ["Generator"]
-        for t in abc_imports:
-            if t not in self.defined_names:
-                alias = None
-            else:
-                alias = '_' + t
-            self.import_tracker.add_import_from("collections.abc", [(t, alias)])
+        known_imports = {
+            "typing": ["Any", "Optional", "TypeVar"],
+            "collections.abc": ["Generator"],
+        }
+        for pkg, imports in known_imports.items():
+            for t in imports:
+                if t not in self.defined_names:
+                    alias = None
+                else:
+                    alias = '_' + t
+                self.import_tracker.add_import_from(pkg, [(t, alias)])
         super().visit_mypy_file(o)
         undefined_names = [name for name in self._all_ or []
                            if name not in self._toplevel_names]
