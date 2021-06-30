@@ -678,9 +678,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 if in_assignment:
                     self.add_typing_import('Any')
                     send_name = 'Any'
-                if has_return_statement(o):
-                    self.add_typing_import('Any')
-                    return_name = 'Any'
+            if has_return_statement(o):
+                self.add_typing_import('Any')
+                return_name = 'Any'
             generator_name = self.typing_name('Generator')
             retname = f'{generator_name}[{yield_name}, {send_name}, {return_name}]'
         elif not has_return_statement(o) and not is_abstract:
