@@ -177,7 +177,7 @@ class dict(Mapping[K, V]):
     def items(self) -> Iterable[Tuple[K, V]]: pass
     def clear(self) -> None: pass
     def copy(self) -> Dict[K, V]: pass
-    def setdefault(self, k: K, v: Optional[V] = None) -> Optional[V]: pass
+    def setdefault(self, key: K, val: V = ...) -> V: pass
 
 class set(Generic[T]):
     def __init__(self, i: Optional[Iterable[T]] = None) -> None: pass
@@ -270,9 +270,11 @@ def zip(x: Iterable[T], y: Iterable[S], z: Iterable[V]) -> Iterator[Tuple[T, S, 
 def eval(e: str) -> Any: ...
 def abs(x: float) -> float: ...
 def exit() -> None: ...
+def repr(o: object) -> str: ...
+def ascii(o: object) -> str: ...
 
 # Dummy definitions.
 class classmethod: pass
 class staticmethod: pass
 
-NotImplemented = ...  # type: Any
+NotImplemented: Any = ...

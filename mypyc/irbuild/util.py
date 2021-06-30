@@ -60,7 +60,7 @@ def get_mypyc_attr_call(d: Expression) -> Optional[CallExpr]:
 
 def get_mypyc_attrs(stmt: Union[ClassDef, Decorator]) -> Dict[str, Any]:
     """Collect all the mypyc_attr attributes on a class definition or a function."""
-    attrs = {}  # type: Dict[str, Any]
+    attrs: Dict[str, Any] = {}
     for dec in stmt.decorators:
         d = get_mypyc_attr_call(dec)
         if d:

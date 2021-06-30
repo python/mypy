@@ -119,7 +119,7 @@ method_op(
     error_kind=ERR_MAGIC)
 
 # dict.setdefault(key, default)
-method_op(
+dict_setdefault_op = method_op(
     name='setdefault',
     arg_types=[dict_rprimitive, object_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
@@ -133,6 +133,16 @@ method_op(
     return_type=object_rprimitive,
     c_function_name='CPyDict_SetDefaultWithNone',
     is_borrowed=True,
+    error_kind=ERR_MAGIC)
+
+# dict.setdefault(key, empty tuple/list/set)
+# The third argument marks the data type of the second argument.
+#     1: list    2: dict    3: set
+# Other number would lead to an error.
+dict_setdefault_spec_init_op = custom_op(
+    arg_types=[dict_rprimitive, object_rprimitive, c_int_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='CPyDict_SetDefaultWithEmptyDatatype',
     error_kind=ERR_MAGIC)
 
 # dict.keys()

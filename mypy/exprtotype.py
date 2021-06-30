@@ -37,7 +37,7 @@ def expr_to_unanalyzed_type(expr: Expression, _parent: Optional[Expression] = No
     """
     # The `parent` parameter is used in recursive calls to provide context for
     # understanding whether an CallableArgument is ok.
-    name = None  # type: Optional[str]
+    name: Optional[str] = None
     if isinstance(expr, NameExpr):
         name = expr.name
         if name == 'True':
@@ -96,7 +96,7 @@ def expr_to_unanalyzed_type(expr: Expression, _parent: Optional[Expression] = No
         # Go through the constructor args to get its name and type.
         name = None
         default_type = AnyType(TypeOfAny.unannotated)
-        typ = default_type  # type: Type
+        typ: Type = default_type
         for i, arg in enumerate(expr.args):
             if expr.arg_names[i] is not None:
                 if expr.arg_names[i] == "name":

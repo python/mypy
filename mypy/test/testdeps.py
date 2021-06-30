@@ -49,7 +49,7 @@ class GetDependenciesSuite(DataSuite):
             if not a:
                 a = ['Unknown compile error (likely syntax error in test case or fixture)']
         else:
-            deps = defaultdict(set)  # type: DefaultDict[str, Set[str]]
+            deps: DefaultDict[str, Set[str]] = defaultdict(set)
             for module in files:
                 if module in dumped_modules or dump_all and module not in ('abc',
                                                                            'typing',

@@ -5,8 +5,8 @@ import os
 import os.path
 import sys
 
-if sys.version_info < (3, 5, 0):
-    sys.stderr.write("ERROR: You need Python 3.5 or later to use mypy.\n")
+if sys.version_info < (3, 6, 0):
+    sys.stderr.write("ERROR: You need Python 3.6 or later to use mypy.\n")
     exit(1)
 
 # we'll import stuff from the source tree, let's ensure is on the sys path
@@ -162,7 +162,6 @@ classifiers = [
     'Intended Audience :: Developers',
     'License :: OSI Approved :: MIT License',
     'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.5',
     'Programming Language :: Python :: 3.6',
     'Programming Language :: Python :: 3.7',
     'Programming Language :: Python :: 3.8',
@@ -198,7 +197,7 @@ setup(name='mypy',
                         ],
       # Same here.
       extras_require={'dmypy': 'psutil >= 4.0', 'python2': 'typed_ast >= 1.4.0, < 1.5.0'},
-      python_requires=">=3.5",
+      python_requires=">=3.6",
       include_package_data=True,
       project_urls={
           'News': 'http://mypy-lang.org/news.html',

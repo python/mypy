@@ -50,12 +50,12 @@ def insert_ref_count_opcodes(ir: FuncIR) -> None:
     values = all_values(ir.arg_regs, ir.blocks)
 
     borrowed = {value for value in values if value.is_borrowed}
-    args = set(ir.arg_regs)  # type: Set[Value]
+    args: Set[Value] = set(ir.arg_regs)
     live = analyze_live_regs(ir.blocks, cfg)
     borrow = analyze_borrowed_arguments(ir.blocks, cfg, borrowed)
     defined = analyze_must_defined_regs(ir.blocks, cfg, args, values)
     ordering = make_value_ordering(ir)
-    cache = {}  # type: BlockCache
+    cache: BlockCache = {}
     for block in ir.blocks[:]:
         if isinstance(block.ops[-1], (Branch, Goto)):
             insert_branch_inc_and_decrefs(block,
@@ -92,7 +92,7 @@ def transform_block(block: BasicBlock,
                     pre_borrow: 'AnalysisDict[Value]',
                     post_must_defined: 'AnalysisDict[Value]') -> None:
     old_ops = block.ops
-    ops = []  # type: List[Op]
+    ops: List[Op] = []
     for i, op in enumerate(old_ops):
         key = (block, i)
 
@@ -249,7 +249,7 @@ def make_value_ordering(ir: FuncIR) -> Dict[Value, int]:
     This omits registers that are only ever read.
     """
     # TODO: Never initialized values??
-    result = {}  # type: Dict[Value, int]
+    result: Dict[Value, int] = {}
     n = 0
 
     for arg in ir.arg_regs:

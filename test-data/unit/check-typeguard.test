@@ -82,6 +82,7 @@ def is_str_list(a: List[object]) -> TypeGuard[List[str]]: pass
 def main(a: List[object]):
     if is_str_list(a):
         reveal_type(a)  # N: Revealed type is "builtins.list[builtins.str]"
+    reveal_type(a)  # N: Revealed type is "builtins.list[builtins.object]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardUnionIn]
@@ -91,6 +92,7 @@ def is_foo(a: Union[int, str]) -> TypeGuard[str]: pass
 def main(a: Union[str, int]) -> None:
     if is_foo(a):
         reveal_type(a)  # N: Revealed type is "builtins.str"
+    reveal_type(a)  # N: Revealed type is "Union[builtins.str, builtins.int]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardUnionOut]
@@ -315,3 +317,50 @@ def coverage(obj: Any) -> bool:
         return True
     return False
 [builtins fixtures/classmethod.pyi]
+
+[case testAssignToTypeGuardedVariable1]
+from typing_extensions import TypeGuard
+
+class A: pass
+class B(A): pass
+
+def guard(a: A) -> TypeGuard[B]:
+    pass
+
+a = A()
+if not guard(a):
+    a = A()
+[builtins fixtures/tuple.pyi]
+
+[case testAssignToTypeGuardedVariable2]
+from typing_extensions import TypeGuard
+
+class A: pass
+class B: pass
+
+def guard(a: A) -> TypeGuard[B]:
+    pass
+
+a = A()
+if not guard(a):
+    a = A()
+[builtins fixtures/tuple.pyi]
+
+[case testAssignToTypeGuardedVariable3]
+from typing_extensions import TypeGuard
+
+class A: pass
+class B: pass
+
+def guard(a: A) -> TypeGuard[B]:
+    pass
+
+a = A()
+if guard(a):
+    reveal_type(a)  # N: Revealed type is "__main__.B"
+    a = B()  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    reveal_type(a)  # N: Revealed type is "__main__.B"
+    a = A()
+    reveal_type(a)  # N: Revealed type is "__main__.A"
+reveal_type(a)  # N: Revealed type is "__main__.A"
+[builtins fixtures/tuple.pyi]

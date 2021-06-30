@@ -344,6 +344,7 @@ PyObject *CPyDict_Get(PyObject *dict, PyObject *key, PyObject *fallback);
 PyObject *CPyDict_GetWithNone(PyObject *dict, PyObject *key);
 PyObject *CPyDict_SetDefault(PyObject *dict, PyObject *key, PyObject *value);
 PyObject *CPyDict_SetDefaultWithNone(PyObject *dict, PyObject *key);
+PyObject *CPyDict_SetDefaultWithEmptyDatatype(PyObject *dict, PyObject *key, int data_type);
 PyObject *CPyDict_Build(Py_ssize_t size, ...);
 int CPyDict_Update(PyObject *dict, PyObject *stuff);
 int CPyDict_UpdateInDisplay(PyObject *dict, PyObject *stuff);
@@ -541,6 +542,8 @@ int CPyStatics_Initialize(PyObject **statics,
                           const double *complex_numbers,
                           const int *tuples);
 PyObject *CPy_Super(PyObject *builtins, PyObject *self);
+PyObject *CPy_CallReverseOpMethod(PyObject *left, PyObject *right, const char *op,
+                                  const char *method);
 
 PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
                                PyObject *import_name, PyObject *as_name);

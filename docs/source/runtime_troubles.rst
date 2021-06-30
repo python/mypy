@@ -94,12 +94,6 @@ Since code inside ``if TYPE_CHECKING:`` is not executed at runtime, it provides
 a convenient way to tell mypy something without the code being evaluated at
 runtime. This is most useful for resolving :ref:`import cycles <import-cycles>`.
 
-.. note::
-
-   Python 3.5.1 and below don't have :py:data:`~typing.TYPE_CHECKING`. An
-   alternative is to define a constant named ``MYPY`` that has the value
-   ``False`` at runtime. Mypy considers it to be ``True`` when type checking.
-
 Class name forward references
 -----------------------------
 

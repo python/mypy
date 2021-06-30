@@ -47,36 +47,6 @@ assert match('', 'abc') == (False, False)
 [case testStringOps]
 from typing import List, Optional
 
-var = 'mypyc'
-
-num = 20
-
-def test_fstring_simple() -> None:
-    f1 = f'Hello {var}, this is a test'
-    assert f1 == "Hello mypyc, this is a test"
-
-def test_fstring_conversion() -> None:
-    f2 = f'Hello {var!r}'
-    assert f2 == "Hello 'mypyc'"
-    f3 = f'Hello {var!a}'
-    assert f3 == "Hello 'mypyc'"
-    f4 = f'Hello {var!s}'
-    assert f4 == "Hello mypyc"
-
-def test_fstring_align() -> None:
-    f5 = f'Hello {var:>20}'
-    assert f5 == "Hello                mypyc"
-    f6 = f'Hello {var!r:>20}'
-    assert f6 == "Hello              'mypyc'"
-    f7 = f'Hello {var:>{num}}'
-    assert f7 == "Hello                mypyc"
-    f8 = f'Hello {var!r:>{num}}'
-    assert f8 == "Hello              'mypyc'"
-
-def test_fstring_multi() -> None:
-    f9 = f'Hello {var}, hello again {var}'
-    assert f9 == "Hello mypyc, hello again mypyc"
-
 def do_split(s: str, sep: Optional[str] = None, max_split: Optional[int] = None) -> List[str]:
     if sep is not None:
         if max_split is not None:
@@ -178,3 +148,237 @@ def test_str_to_bool() -> None:
     for x in 'a', 'foo', 'bar', 'some string':
         assert is_true(x)
         assert not is_false(x)
+
+[case testFStrings]
+import decimal
+from datetime import datetime
+
+var = 'mypyc'
+num = 20
+
+def test_fstring_basics() -> None:
+    assert f'Hello {var}, this is a test' == "Hello mypyc, this is a test"
+
+    large_num = 2**65
+    assert f'number: {large_num}' == 'number: 36893488147419103232'
+    neg_num = -3
+    assert f'negative integer: {neg_num}' == 'negative integer: -3'
+    assert f'negative integer: {-large_num}' == 'negative integer: -36893488147419103232'
+
+    bool_var1 = True
+    bool_var2 = False
+    assert f'bool: {bool_var1}, {bool_var2}' == 'bool: True, False'
+
+    x = bytes([1, 2, 3, 4])
+    # assert f'bytes: {x}' == "bytes: b'\\x01\\x02\\x03\\x04'"
+    # error: On Python 3 '{}'.format(b'abc') produces "b'abc'", not 'abc';
+    #        use '{!r}'.format(b'abc') if this is desired behavior
+
+    float_num = 123.4
+    assert f'{float_num}' == '123.4'
+    assert f'{float_num:.2f}' == '123.40'
+    assert f'{float_num:.5f}' == '123.40000'
+    assert f'{float_num:>10.2f}' == '    123.40'
+    assert f'{float_num:>10.5f}' == ' 123.40000'
+    assert f'{float_num:>010.5f}' == '0123.40000'
+    assert f'{float_num:>015.5f}' == '000000123.40000'
+    assert f'{float_num:e}' == '1.234000e+02'
+
+    large_float = 1.23e30
+    large_float2 = 1234123412341234123400000000000000000
+    small_float = 1.23e-20
+    assert f'{small_float}, {large_float}, {large_float2}' == '1.23e-20, 1.23e+30, 1234123412341234123400000000000000000'
+    nan_num = float('nan')
+    inf_num = float('inf')
+    assert f'{nan_num}, {inf_num}' == 'nan, inf'
+
+class A:
+    def __init__(self, name, age):
+        self.name = name
+        self.age = age
+
+    def __repr__(self):
+        return f"{self.name} is {self.age} years old."
+
+def test_fstring_datatype() -> None:
+    u = A('John Doe', 14)
+    assert f'{u}' == 'John Doe is 14 years old.'
+    d = {'name': 'John Doe', 'age': 14}
+    assert f'{d}' == "{'name': 'John Doe', 'age': 14}"
+
+def test_fstring_escape() -> None:
+    assert f"{'inside'}" == 'inside'
+    assert f'{"inside"}' == 'inside'
+    assert f"""inside""" == 'inside'
+    assert f'''inside''' == 'inside'
+    assert f"\"{'inside'}\"" == '"inside"'
+    assert f'\'{"inside"}\'' == "'inside'"
+
+    assert f'{{10}}' == '{10}'
+    assert f'{{10 + 10}}' == '{10 + 10}'
+    assert f'{{{10 + 10}}}' == '{20}'
+    assert f'{{{{10 + 10}}}}' == '{{10 + 10}}'
+
+def test_fstring_conversion() -> None:
+    assert f'Hello {var!r}' == "Hello 'mypyc'"
+    # repr() is equivalent to !r
+    assert f'Hello {repr(var)}' == "Hello 'mypyc'"
+
+    assert f'Hello {var!a}' == "Hello 'mypyc'"
+    # ascii() is equivalent to !a
+    assert f'Hello {ascii(var)}' == "Hello 'mypyc'"
+
+    tmp_str = """this
+    is a new line."""
+    assert f'Test: {tmp_str!a}' == "Test: 'this\\n    is a new line.'"
+
+    s = 'test: āĀēĒčČ..šŠūŪžŽ'
+    assert f'{s}' == 'test: āĀēĒčČ..šŠūŪžŽ'
+    assert f'{s!a}' == "'test: \\u0101\\u0100\\u0113\\u0112\\u010d\\u010c..\\u0161\\u0160\\u016b\\u016a\\u017e\\u017d'"
+
+    assert f'Hello {var!s}' == "Hello mypyc"
+    assert f'Hello {num!s}' == "Hello 20"
+
+def test_fstring_align() -> None:
+    assert f'Hello {var:>20}' == "Hello                mypyc"
+    assert f'Hello {var!r:>20}' == "Hello              'mypyc'"
+    assert f'Hello {var:>{num}}' == "Hello                mypyc"
+    assert f'Hello {var!r:>{num}}' == "Hello              'mypyc'"
+
+def test_fstring_multi() -> None:
+    assert f'Hello {var}, hello again {var}' == "Hello mypyc, hello again mypyc"
+    a = 'py'
+    s = f'my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}my{a}'
+    assert s == 'mypymypymypymypymypymypymypymypymypymypymypymypymypymypymypymypymypymypymypymypymypymypymypymypy'
+
+def test_fstring_python_doc() -> None:
+    name = "Fred"
+    assert f"He said his name is {name!r}." == "He said his name is 'Fred'."
+    assert f"He said his name is {repr(name)}." == "He said his name is 'Fred'."
+
+    width = 10
+    precision = 4
+    value = decimal.Decimal("12.34567")
+    assert f"result: {value:{width}.{precision}}" == 'result:      12.35' # nested field
+
+    today = datetime(year=2017, month=1, day=27)
+    assert f"{today:%B %d, %Y}" == 'January 27, 2017'  # using date format specifier
+
+    number = 1024
+    assert f"{number:#0x}" == '0x400' # using integer format specifier
+
+[case testStringFormatMethod]
+from typing import Tuple
+
+def test_format_method_basics() -> None:
+    assert "".format() == ""
+    assert "abc".format() == "abc"
+
+    name = "Eric"
+    age = 14
+    assert "My name is {name}, I'm {age}.".format(name=name, age=age) == "My name is Eric, I'm 14."
+    assert "My name is {A}, I'm {B}.".format(A=name, B=age) == "My name is Eric, I'm 14."
+    assert "My name is {}, I'm {B}.".format(name, B=age) == "My name is Eric, I'm 14."
+
+def test_format_method_numbers() -> None:
+    s = 'int: {0:d};  hex: {0:x};  oct: {0:o};  bin: {0:b}'.format(-233)
+    assert s == 'int: -233;  hex: -e9;  oct: -351;  bin: -11101001'
+    num = 2**65
+    s = 'int: {0:d};  hex: {0:x};  oct: {0:o};  bin: {0:b}'.format(num)
+    assert s == 'int: 36893488147419103232;  hex: 20000000000000000;  oct: 4000000000000000000000;  bin: 100000000000000000000000000000000000000000000000000000000000000000'
+    s = 'int: {0:d};  hex: {0:x};  oct: {0:o};  bin: {0:b}'.format(-num)
+    assert s == 'int: -36893488147419103232;  hex: -20000000000000000;  oct: -4000000000000000000000;  bin: -100000000000000000000000000000000000000000000000000000000000000000'
+
+    large_num = 2**65
+    assert 'number: {}'.format(large_num) == 'number: 36893488147419103232'
+    neg_num = -3
+    assert 'negative integer: {}'.format(neg_num) == 'negative integer: -3'
+    assert 'negative integer: {}'.format(-large_num) == 'negative integer: -36893488147419103232'
+
+
+class Point:
+    def __init__(self, x, y):
+        self.x, self.y = x, y
+    def __str__(self):
+        return 'Point({self.x}, {self.y})'.format(self=self)
+
+# Format examples from Python doc
+# https://docs.python.org/3/library/string.html#formatexamples
+def test_format_method_python_doc() -> None:
+    # Accessing arguments by position:
+    assert '{0}, {1}, {2}'.format('a', 'b', 'c') == 'a, b, c'
+    assert '{}, {}, {}'.format('a', 'b', 'c') == 'a, b, c'
+    assert '{2}, {1}, {0}'.format('a', 'b', 'c') == 'c, b, a'
+    assert '{2}, {1}, {0}'.format(*'abc') == 'c, b, a'        # unpacking argument sequence
+    # assert '{0}{1}{0}'.format('abra', 'cad') = 'abracadabra'  # arguments' indices can be repeated
+
+    # Accessing arguments by name:
+    s = 'Coordinates: {latitude}, {longitude}'.format(latitude='37.24N', longitude='-115.81W')
+    assert s == 'Coordinates: 37.24N, -115.81W'
+    coord = {'latitude': '37.24N', 'longitude': '-115.81W'}
+    assert 'Coordinates: {latitude}, {longitude}'.format(**coord) == 'Coordinates: 37.24N, -115.81W'
+
+    # Accessing arguments’ attributes:
+    assert str(Point(4, 2)) == "Point(4, 2)"
+
+    # Accessing arguments’ items:
+    coord2 = (3, 5)
+    assert 'X: {0[0]};  Y: {0[1]}'.format(coord2) == 'X: 3;  Y: 5'
+
+    # Replacing %s and %r:
+    s = "repr() shows quotes: {!r}; str() doesn't: {!s}".format('test1', 'test2')
+    assert s == "repr() shows quotes: 'test1'; str() doesn't: test2"
+
+    # Aligning the text and specifying a width:
+    assert '{:<30}'.format('left aligned') == 'left aligned                  '
+    assert '{:>30}'.format('right aligned') == '                 right aligned'
+    assert '{:^30}'.format('centered') == '           centered           '
+    assert '{:*^30}'.format('centered') == '***********centered***********' # use '*' as a fill char
+
+    # Replacing %+f, %-f, and % f and specifying a sign:
+    assert '{:+f}; {:+f}'.format(3.14, -3.14) == '+3.140000; -3.140000' # show it always
+    assert '{: f}; {: f}'.format(3.14, -3.14) == ' 3.140000; -3.140000' # show a space for positive numbers
+    assert '{:-f}; {:-f}'.format(3.14, -3.14) == '3.140000; -3.140000' # show only the minus -- same as '{:f}; {:f}'
+
+    # Replacing %x and %o and converting the value to different bases:
+    s = 'int: {0:d};  hex: {0:x};  oct: {0:o};  bin: {0:b}'.format(42) # format also supports binary numbers
+    assert s == 'int: 42;  hex: 2a;  oct: 52;  bin: 101010'
+    s = 'int: {0:d};  hex: {0:#x};  oct: {0:#o};  bin: {0:#b}'.format(42) # with 0x, 0o, or 0b as prefix:
+    assert s == 'int: 42;  hex: 0x2a;  oct: 0o52;  bin: 0b101010'
+
+    # Using the comma as a thousands separator:
+    assert '{:,}'.format(1234567890) == '1,234,567,890'
+
+    # Expressing a percentage:
+    points = 19.0
+    total = 22.0
+    assert 'Correct answers: {:.2%}'.format(points/total) == 'Correct answers: 86.36%'
+
+    # Using type-specific formatting:
+    import datetime
+    d = datetime.datetime(2010, 7, 4, 12, 15, 58)
+    assert '{:%Y-%m-%d %H:%M:%S}'.format(d) == '2010-07-04 12:15:58'
+
+    # Nesting arguments and more complex examples:
+    tmp_strs = []
+    for align, text in zip('<^>', ['left', 'center', 'right']):
+        tmp_strs.append('{0:{fill}{align}16}'.format(text, fill=align, align=align))
+    assert tmp_strs == ['left<<<<<<<<<<<<', '^^^^^center^^^^^', '>>>>>>>>>>>right']
+
+    octets = [192, 168, 0, 1]
+    assert '{:02X}{:02X}{:02X}{:02X}'.format(*octets) == 'C0A80001'
+
+    width = 5
+    tmp_strs = []
+    for num in range(5,12):
+        tmp_str = ""
+        for base in 'dXob':
+            tmp_str += ('{0:{width}{base}}'.format(num, base=base, width=width))
+        tmp_strs.append(tmp_str)
+    assert tmp_strs == ['    5    5    5  101',\
+                        '    6    6    6  110',\
+                        '    7    7    7  111',\
+                        '    8    8   10 1000',\
+                        '    9    9   11 1001',\
+                        '   10    A   12 1010',\
+                        '   11    B   13 1011']

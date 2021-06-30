@@ -63,8 +63,8 @@ class BasicBlock:
 
     def __init__(self, label: int = -1) -> None:
         self.label = label
-        self.ops = []  # type: List[Op]
-        self.error_handler = None  # type: Optional[BasicBlock]
+        self.ops: List[Op] = []
+        self.error_handler: Optional[BasicBlock] = None
 
     @property
     def terminated(self) -> bool:
@@ -77,13 +77,13 @@ class BasicBlock:
 
 
 # Never generates an exception
-ERR_NEVER = 0  # type: Final
+ERR_NEVER: Final = 0
 # Generates magic value (c_error_value) based on target RType on exception
-ERR_MAGIC = 1  # type: Final
+ERR_MAGIC: Final = 1
 # Generates false (bool) on exception
-ERR_FALSE = 2  # type: Final
+ERR_FALSE: Final = 2
 # Always fails
-ERR_ALWAYS = 3  # type: Final
+ERR_ALWAYS: Final = 3
 
 # Hack: using this line number for an op will suppress it in tracebacks
 NO_TRACEBACK_LINE_NO = -10000
@@ -108,7 +108,7 @@ class Value:
     # Source line number (-1 for no/unknown line)
     line = -1
     # Type of the value or the result of the operation
-    type = void_rtype  # type: RType
+    type: RType = void_rtype
     is_borrowed = False
 
     @property
@@ -197,7 +197,7 @@ class Op(Value):
         return []
 
     def unique_sources(self) -> List[Value]:
-        result = []  # type: List[Value]
+        result: List[Value] = []
         for reg in self.sources():
             if reg not in result:
                 result.append(reg)
@@ -300,8 +300,8 @@ class Branch(ControlOp):
     # Branch ops never raise an exception.
     error_kind = ERR_NEVER
 
-    BOOL = 100  # type: Final
-    IS_ERROR = 101  # type: Final
+    BOOL: Final = 100
+    IS_ERROR: Final = 101
 
     def __init__(self,
                  value: Value,
@@ -323,7 +323,7 @@ class Branch(ControlOp):
         # If True, the condition is negated
         self.negated = False
         # If not None, the true label should generate a traceback entry (func name, line number)
-        self.traceback_entry = None  # type: Optional[Tuple[str, int]]
+        self.traceback_entry: Optional[Tuple[str, int]] = None
         # If True, the condition is expected to be usually False (for optimization purposes)
         self.rare = rare
 
@@ -399,7 +399,7 @@ class RegisterOp(Op):
 
     error_kind = -1  # Can this raise exception and how is it signalled; one of ERR_*
 
-    _type = None  # type: Optional[RType]
+    _type: Optional[RType] = None
 
     def __init__(self, line: int) -> None:
         super().__init__(line)
@@ -609,13 +609,13 @@ class SetAttr(RegisterOp):
 
 
 # Default name space for statics, variables
-NAMESPACE_STATIC = 'static'  # type: Final
+NAMESPACE_STATIC: Final = "static"
 
 # Static namespace for pointers to native type objects
-NAMESPACE_TYPE = 'type'  # type: Final
+NAMESPACE_TYPE: Final = "type"
 
 # Namespace for modules
-NAMESPACE_MODULE = 'module'  # type: Final
+NAMESPACE_MODULE: Final = "module"
 
 
 class LoadStatic(RegisterOp):
@@ -809,12 +809,12 @@ class RaiseStandardError(RegisterOp):
 
     error_kind = ERR_FALSE
 
-    VALUE_ERROR = 'ValueError'  # type: Final
-    ASSERTION_ERROR = 'AssertionError'  # type: Final
-    STOP_ITERATION = 'StopIteration'  # type: Final
-    UNBOUND_LOCAL_ERROR = 'UnboundLocalError'  # type: Final
-    RUNTIME_ERROR = 'RuntimeError'  # type: Final
-    NAME_ERROR = 'NameError'  # type: Final
+    VALUE_ERROR: Final = "ValueError"
+    ASSERTION_ERROR: Final = "AssertionError"
+    STOP_ITERATION: Final = "StopIteration"
+    UNBOUND_LOCAL_ERROR: Final = "UnboundLocalError"
+    RUNTIME_ERROR: Final = "RuntimeError"
+    NAME_ERROR: Final = "NameError"
 
     def __init__(self, class_name: str, value: Optional[Union[str, Value]], line: int) -> None:
         super().__init__(line)
@@ -950,20 +950,20 @@ class IntOp(RegisterOp):
     error_kind = ERR_NEVER
 
     # Arithmetic ops
-    ADD = 0  # type: Final
-    SUB = 1  # type: Final
-    MUL = 2  # type: Final
-    DIV = 3  # type: Final
-    MOD = 4  # type: Final
+    ADD: Final = 0
+    SUB: Final = 1
+    MUL: Final = 2
+    DIV: Final = 3
+    MOD: Final = 4
 
     # Bitwise ops
-    AND = 200  # type: Final
-    OR = 201  # type: Final
-    XOR = 202  # type: Final
-    LEFT_SHIFT = 203  # type: Final
-    RIGHT_SHIFT = 204  # type: Final
+    AND: Final = 200
+    OR: Final = 201
+    XOR: Final = 202
+    LEFT_SHIFT: Final = 203
+    RIGHT_SHIFT: Final = 204
 
-    op_str = {
+    op_str: Final = {
         ADD: '+',
         SUB: '-',
         MUL: '*',
@@ -974,7 +974,7 @@ class IntOp(RegisterOp):
         XOR: '^',
         LEFT_SHIFT: '<<',
         RIGHT_SHIFT: '>>',
-    }  # type: Final
+    }
 
     def __init__(self, type: RType, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
         super().__init__(line)
@@ -1007,18 +1007,18 @@ class ComparisonOp(RegisterOp):
     error_kind = ERR_NEVER
 
     # S for signed and U for unsigned
-    EQ = 100  # type: Final
-    NEQ = 101  # type: Final
-    SLT = 102  # type: Final
-    SGT = 103  # type: Final
-    SLE = 104  # type: Final
-    SGE = 105  # type: Final
-    ULT = 106  # type: Final
-    UGT = 107  # type: Final
-    ULE = 108  # type: Final
-    UGE = 109  # type: Final
+    EQ: Final = 100
+    NEQ: Final = 101
+    SLT: Final = 102
+    SGT: Final = 103
+    SLE: Final = 104
+    SGE: Final = 105
+    ULT: Final = 106
+    UGT: Final = 107
+    ULE: Final = 108
+    UGE: Final = 109
 
-    op_str = {
+    op_str: Final = {
         EQ: '==',
         NEQ: '!=',
         SLT: '<',
@@ -1029,7 +1029,7 @@ class ComparisonOp(RegisterOp):
         UGT: '>',
         ULE: '<=',
         UGE: '>=',
-    }  # type: Final
+    }
 
     def __init__(self, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
         super().__init__(line)

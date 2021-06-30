@@ -758,3 +758,44 @@ class Foo(Generic[T]):
 
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
+
+[case testAwaitOverloadSpecialCase]
+from typing import Any, Awaitable, Iterable, overload, Tuple, List, TypeVar, Generic
+
+T = TypeVar("T")
+FT = TypeVar("FT", bound='Future[Any]')
+
+class Future(Awaitable[T], Iterable[T]):
+    pass
+
+class Task(Future[T]):
+    pass
+
+@overload
+def wait(fs: Iterable[FT]) -> Future[Tuple[List[FT], List[FT]]]: ...  \
+    # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def wait(fs: Iterable[Awaitable[T]]) -> Future[Tuple[List[Task[T]], List[Task[T]]]]: ...
+def wait(fs: Any) -> Any:
+    pass
+
+async def imprecise1(futures: Iterable[Task[Any]]) -> None:
+    done: Any
+    pending: Any
+    done, pending = await wait(futures)
+    reveal_type(done)  # N: Revealed type is "Any"
+
+async def imprecise2(futures: Iterable[Awaitable[Any]]) -> None:
+    done, pending = await wait(futures)
+    reveal_type(done)  # N: Revealed type is "builtins.list[__main__.Task[Any]]"
+
+async def precise1(futures: Iterable[Future[int]]) -> None:
+    done, pending = await wait(futures)
+    reveal_type(done)  # N: Revealed type is "builtins.list[__main__.Future[builtins.int]]"
+
+async def precise2(futures: Iterable[Awaitable[int]]) -> None:
+    done, pending = await wait(futures)
+    reveal_type(done)  # N: Revealed type is "builtins.list[__main__.Task[builtins.int]]"
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]

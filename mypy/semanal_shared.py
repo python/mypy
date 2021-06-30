@@ -22,7 +22,7 @@ from mypy import join
 # (after the main pass):
 
 # Fix fallbacks (does joins)
-PRIORITY_FALLBACKS = 1  # type: Final
+PRIORITY_FALLBACKS: Final = 1
 
 
 @trait

@@ -21,7 +21,7 @@ class TypeVarLikeScope:
           prohibited: Type variables that aren't strictly in scope exactly,
                       but can't be bound because they're part of an outer class's scope.
         """
-        self.scope = {}  # type: Dict[str, TypeVarLikeDef]
+        self.scope: Dict[str, TypeVarLikeDef] = {}
         self.parent = parent
         self.func_id = 0
         self.class_id = 0
@@ -33,7 +33,7 @@ class TypeVarLikeScope:
 
     def get_function_scope(self) -> 'Optional[TypeVarLikeScope]':
         """Get the nearest parent that's a function scope, not a class scope"""
-        it = self  # type: Optional[TypeVarLikeScope]
+        it: Optional[TypeVarLikeScope] = self
         while it is not None and it.is_class_scope:
             it = it.parent
         return it
@@ -63,7 +63,7 @@ class TypeVarLikeScope:
             self.func_id -= 1
             i = self.func_id
         if isinstance(tvar_expr, TypeVarExpr):
-            tvar_def = TypeVarDef(
+            tvar_def: TypeVarLikeDef = TypeVarDef(
                 name,
                 tvar_expr.fullname,
                 i,
@@ -72,7 +72,7 @@ class TypeVarLikeScope:
                 variance=tvar_expr.variance,
                 line=tvar_expr.line,
                 column=tvar_expr.column
-            )  # type: TypeVarLikeDef
+            )
         elif isinstance(tvar_expr, ParamSpecExpr):
             tvar_def = ParamSpecDef(
                 name,
