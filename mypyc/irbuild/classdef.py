@@ -219,7 +219,11 @@ def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
     for cls in cdef.info.mro[1:]:
         if cls.fullname == 'builtins.object':
             continue
-        if is_named_tuple and cls.fullname in ('typing.Sequence', 'typing.Iterable'):
+        if is_named_tuple and cls.fullname in ('typing.Sequence',
+                                               'typing.Iterable',
+                                               'typing.Collection',
+                                               'typing.Reversible',
+                                               'typing.Container'):
             # HAX: Synthesized base classes added by mypy don't exist at runtime, so skip them.
             #      This could break if they were added explicitly, though...
             continue
