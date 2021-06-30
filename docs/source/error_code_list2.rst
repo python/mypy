@@ -223,6 +223,7 @@ Warn when an expression whose type does not implement __bool__ or __len__ is use
 since it would always evaluate as true.
 
 .. code-block:: python
+
     class Foo:
       pass
     foo = Foo()
