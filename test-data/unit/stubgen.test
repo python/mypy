@@ -971,11 +971,14 @@ def all() -> Generator[Any, Any, Any]: ...
 [case testFunctionYieldsNone]
 def f():
     yield
+def g():
+    yield None
 
 [out]
 from collections.abc import Generator
 
 def f() -> Generator[None, None, None]: ...
+def g() -> Generator[None, None, None]: ...
 
 [case testGeneratorAlreadyDefined]
 class Generator:

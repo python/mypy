@@ -672,7 +672,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             send_name = 'None'
             return_name = 'None'
             for expr, in_assignment in all_yield_expressions(o):
-                if expr.expr is not None:
+                if expr.expr is not None and not self.is_none_expr(expr.expr):
                     self.add_typing_import('Any')
                     yield_name = 'Any'
                 if in_assignment:
@@ -692,6 +692,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.add(', '.join(args))
         self.add("){}: ...\n".format(retfield))
         self._state = FUNC
+
+    def is_none_expr(self, expr: Expression) -> bool:
+        return isinstance(expr, NameExpr) and expr.name == "None"
 
     def visit_decorator(self, o: Decorator) -> None:
         if self.is_private_name(o.func.name, o.func.fullname):
