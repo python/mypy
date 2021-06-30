@@ -280,7 +280,11 @@ def test_format_method_basics() -> None:
     assert "My name is {A}, I'm {B}.".format(A=name, B=age) == "My name is Eric, I'm 14."
     assert "My name is {}, I'm {B}.".format(name, B=age) == "My name is Eric, I'm 14."
 
-def test_format_method_brackets() -> None:
+    bool_var1 = True
+    bool_var2 = False
+    assert 'bool: {}, {}'.format(bool_var1, bool_var2) == 'bool: True, False'
+
+def test_format_method_empty_braces() -> None:
     name = "Eric"
     age = 14
     
@@ -291,6 +295,8 @@ def test_format_method_brackets() -> None:
     assert "Hi! {}".format(name) == "Hi! Eric"
     assert "Hi, I'm {}. I'm {}.".format(name, age) == "Hi, I'm Eric. I'm 14."
 
+    assert "{{}}".format() == "{}"
+    assert "{{{{}}}}".format() == "{{}}"
     assert "{{}}{}".format(name) == "{}Eric"
     assert "Hi! {{{}}}".format(name) == "Hi! {Eric}"
     assert "Hi! {{ {}".format(name) == "Hi! { Eric"
@@ -310,6 +316,14 @@ def test_format_method_numbers() -> None:
     neg_num = -3
     assert 'negative integer: {}'.format(neg_num) == 'negative integer: -3'
     assert 'negative integer: {}'.format(-large_num) == 'negative integer: -36893488147419103232'
+
+    large_float = 1.23e30
+    large_float2 = 1234123412341234123400000000000000000
+    small_float = 1.23e-20
+    assert '{}, {}, {}'.format(small_float, large_float, large_float2) == '1.23e-20, 1.23e+30, 1234123412341234123400000000000000000'
+    nan_num = float('nan')
+    inf_num = float('inf')
+    assert '{}, {}'.format(nan_num, inf_num) == 'nan, inf'
 
 
 class Point:

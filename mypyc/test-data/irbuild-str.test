@@ -159,7 +159,7 @@ L2:
 L3:
     unreachable
 
-[case testStrFormatMethod]
+[case testStringFormatMethod]
 def f(s: str, num: int) -> str:
     return "Hi! I'm {}, and I'm {} years old.".format(s, num)
 [out]

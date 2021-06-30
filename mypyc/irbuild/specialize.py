@@ -370,9 +370,7 @@ def translate_str_format(
         if not can_optimize_format(format_str):
             return None
 
-        format_str = format_str.replace("{{", "{")
-        format_str = format_str.replace("}}", "}")
-        literals = format_str.split("{}")
+        literals = split_braces(format_str)
 
         variables = [builder.accept(x) if is_str_rprimitive(builder.node_type(x))
                      else builder.call_c(str_op, [builder.accept(x)], expr.line)
@@ -385,7 +383,7 @@ def translate_str_format(
             if a:
                 result_list.append(builder.load_str(a))
             result_list.append(b)
-        # The str.split() always generates one more element
+        # The split_braces() always generates one more element
         if literals[-1]:
             result_list.append(builder.load_str(literals[-1]))
 
@@ -402,7 +400,7 @@ def translate_str_format(
 
 def can_optimize_format(format_str: str) -> bool:
     # TODO
-    # Only empty brackets can be optimized
+    # Only empty braces can be optimized
     prev = ''
     for c in format_str:
         if (c == '{' and prev == '{'
@@ -414,3 +412,33 @@ def can_optimize_format(format_str: str) -> bool:
             return False
         prev = c
     return True
+
+
+def split_braces(format_str: str) -> List[str]:
+    # This function can only be called after format_str pass can_optimize_format()
+    tmp_str = ''
+    ret_list = []
+    prev = ''
+    for c in format_str:
+        # There are three cases: {, }, others
+        #     when c is '}': prev is '{' -> match empty braces
+        #                            '}' -> merge into one } in literal
+        #                            others -> pass
+        #          c is '{': prev is '{' -> merge into one { in literal
+        #                            '}' -> pass
+        #                            others -> pass
+        #          c is others: add c into literal
+        if c == '}':
+            if prev == '{':
+                ret_list.append(tmp_str)
+                tmp_str = ''
+            elif prev == '}':
+                tmp_str += '}'
+        elif c == '{':
+            if prev == '{':
+                tmp_str += '{'
+        else:
+            tmp_str += c
+        prev = c
+    ret_list.append(tmp_str)
+    return ret_list
