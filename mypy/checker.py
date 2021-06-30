@@ -3996,39 +3996,60 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             not t.type.has_readable_member('__len__')
         )
 
-    def _format_expr_name(self, expr: Expression, t: Type) -> str:
-        if isinstance(expr, MemberExpr):
-            return f'member "{expr.name}" has type "{t}"'
-        elif isinstance(expr, RefExpr) and expr.fullname:
-            return f'"{expr.fullname}" has type "{t}"'
-        elif isinstance(expr, CallExpr):
-            if isinstance(expr.callee, MemberExpr):
-                return f'"{expr.callee.name}" returns "{t}"'
-            elif isinstance(expr.callee, RefExpr) and expr.callee.fullname:
-                return f'"{expr.callee.fullname}" returns "{t}"'
-            return f'call returns "{t}"'
-        else:
-            return f'expression has type "{t}"'
+    def _is_truthy_type(self, t: ProperType) -> bool:
+        return (
+            (
+                isinstance(t, Instance) and
+                bool(t.type) and
+                not t.type.has_readable_member('__bool__') and
+                not t.type.has_readable_member('__len__')
+            )
+            or isinstance(t, FunctionLike)
+            or (
+                isinstance(t, UnionType) and
+                all(self._is_truthy_type(t) for t in get_proper_types(t.items))
+            )
+        )
 
     def _check_for_truthy_type(self, t: Type, expr: Expression) -> None:
-        t = get_proper_type(t)
         if not state.strict_optional:
             return  # if everything can be None, all bets are off
-        if self._is_truthy_instance(t):
-            self.msg.fail(
-                '{} which does not implement __bool__ or __len__ '
-                'so it will always be true in boolean context'.format(self._format_expr_name(expr, t)), expr,
-                code=codes.IMPLICIT_BOOL,
-            )
-        elif isinstance(t, FunctionLike):
+
+        t = get_proper_type(t)
+        if not self._is_truthy_type(t):
+            return
+
+        def format_expr_type() -> str:
+            if isinstance(expr, MemberExpr):
+                return f'member "{expr.name}" has type "{t}"'
+            elif isinstance(expr, RefExpr) and expr.fullname:
+                return f'"{expr.fullname}" has type "{t}"'
+            elif isinstance(expr, CallExpr):
+                if isinstance(expr.callee, MemberExpr):
+                    return f'"{expr.callee.name}" returns "{t}"'
+                elif isinstance(expr.callee, RefExpr) and expr.callee.fullname:
+                    return f'"{expr.callee.fullname}" returns "{t}"'
+                return f'call returns "{t}"'
+            else:
+                return f'expression has type "{t}"'
+
+        if isinstance(t, FunctionLike):
             self.msg.fail(
                 f'function "{t}" will always be true in boolean context', expr,
                 code=codes.IMPLICIT_BOOL,
             )
-        elif isinstance(t, UnionType) and all(self._is_truthy_instance(t) or isinstance(t, FunctionLike) for t in get_proper_types(t.items)):
+        elif isinstance(t, UnionType):
             self.msg.fail(
-                "{} none of which implement __bool__ or __len__ "
-                "so it will always be true in boolean context".format(self._format_expr_name(expr, t)), expr,
+                f"{format_expr_type()} none of which implement __bool__ or __len__ "
+                "so it will always be true in boolean context",
+                expr,
+                code=codes.IMPLICIT_BOOL,
+            )
+        else:
+            self.msg.fail(
+                f'{format_expr_type()} which does not implement __bool__ or __len__ '
+                'so it will always be true in boolean context',
+                expr,
                 code=codes.IMPLICIT_BOOL,
             )
 
