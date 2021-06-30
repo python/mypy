@@ -551,7 +551,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.defined_names = find_defined_names(o)
         self.referenced_names = find_referenced_names(o)
         known_imports = {
-            "typing": ["Any", "Optional", "TypeVar"],
+            "typing": ["Any", "TypeVar"],
             "collections.abc": ["Generator"],
         }
         for pkg, imports in known_imports.items():
