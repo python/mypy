@@ -110,5 +110,8 @@ bool CPyStr_IsTrue(PyObject *obj) {
 }
 
 Py_ssize_t CPyStr_Size_size_t(PyObject *str) {
-     return PyUnicode_GET_LENGTH(str);
+    if (PyUnicode_READY(str) != -1) {
+        return PyUnicode_GET_LENGTH(str);
+    }
+    return -1;
 }
