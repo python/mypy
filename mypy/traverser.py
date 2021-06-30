@@ -365,7 +365,7 @@ class YieldCollector(FuncCollectorBase):
         self.in_assignment = False
         self.yield_expressions: List[Tuple[YieldExpr, bool]] = []
 
-    def visit_assignment_stmt(self, stmt) -> None:
+    def visit_assignment_stmt(self, stmt: AssignmentStmt) -> None:
         self.in_assignment = True
         super().visit_assignment_stmt(stmt)
         self.in_assignment = False
