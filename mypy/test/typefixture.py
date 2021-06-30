@@ -64,10 +64,8 @@ class TypeFixture:
                                               variances=[COVARIANT])   # class tuple
         self.type_typei = self.make_type_info('builtins.type')         # class type
         self.bool_type_info = self.make_type_info('builtins.bool')
-        self._add_bool_dunder(self.bool_type_info)
         self.functioni = self.make_type_info('builtins.function')  # function TODO
         self.ai = self.make_type_info('A', mro=[self.oi])              # class A
-        self._add_bool_dunder(self.ai)
         self.bi = self.make_type_info('B', mro=[self.ai, self.oi])     # class B(A)
         self.ci = self.make_type_info('C', mro=[self.ai, self.oi])     # class C(A)
         self.di = self.make_type_info('D', mro=[self.oi])              # class D
@@ -168,6 +166,9 @@ class TypeFixture:
         self.type_d = TypeType.make_normalized(self.d)
         self.type_t = TypeType.make_normalized(self.t)
         self.type_any = TypeType.make_normalized(self.anyt)
+
+        self._add_bool_dunder(self.bool_type_info)
+        self._add_bool_dunder(self.ai)
 
     def _add_bool_dunder(self, type_info: TypeInfo) -> None:
         signature = CallableType([], [], [], Instance(self.bool_type_info, []), self.function)
