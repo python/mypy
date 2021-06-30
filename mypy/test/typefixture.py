@@ -170,7 +170,7 @@ class TypeFixture:
         self.type_any = TypeType.make_normalized(self.anyt)
 
     def _add_bool_dunder(self, type_info: TypeInfo) -> None:
-        signature = CallableType([], [], [], Instance(self.bool_type_info, []), None)
+        signature = CallableType([], [], [], Instance(self.bool_type_info, []), self.function)
         bool_func = FuncDef('__bool__', [], Block([]))
         bool_func.type = set_callable_name(signature, bool_func)
         type_info.names[bool_func.name] = SymbolTableNode(MDEF, bool_func)

@@ -3988,7 +3988,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return None, {}
 
     @staticmethod
-    def _is_truthy_instance(t: Type) -> bool:
+    def _is_truthy_instance(t: ProperType) -> bool:
         return (
             isinstance(t, Instance) and
             bool(t.type) and
@@ -4011,6 +4011,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return f'expression has type "{t}"'
 
     def _check_for_truthy_type(self, t: Type, expr: Expression) -> None:
+        t = get_proper_type(t)
         if not state.strict_optional:
             return  # if everything can be None, all bets are off
         if self._is_truthy_instance(t):
@@ -4024,7 +4025,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 f'function "{t}" will always be true in boolean context', expr,
                 code=codes.IMPLICIT_BOOL,
             )
-        elif isinstance(t, UnionType) and all(self._is_truthy_instance(t) or isinstance(t, FunctionLike) for t in t.items):
+        elif isinstance(t, UnionType) and all(self._is_truthy_instance(t) or isinstance(t, FunctionLike) for t in get_proper_types(t.items)):
             self.msg.fail(
                 "{} none of which implement __bool__ or __len__ "
                 "so it will always be true in boolean context".format(self._format_expr_name(expr, t)), expr,
