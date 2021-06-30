@@ -4199,17 +4199,23 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return known_type
 
 
-def has_any_type(t: Type) -> bool:
+def has_any_type(t: Type, ignore_in_type_obj: bool = False) -> bool:
     """Whether t contains an Any type"""
-    return t.accept(HasAnyType())
+    return t.accept(HasAnyType(ignore_in_type_obj))
 
 
 class HasAnyType(types.TypeQuery[bool]):
-    def __init__(self) -> None:
+    def __init__(self, ignore_in_type_obj: bool) -> None:
         super().__init__(any)
+        self.ignore_in_type_obj = ignore_in_type_obj
 
     def visit_any(self, t: AnyType) -> bool:
         return t.type_of_any != TypeOfAny.special_form  # special forms are not real Any types
+
+    def visit_callable_type(self, t: CallableType) -> bool:
+        if self.ignore_in_type_obj and t.is_type_obj():
+            return False
+        return super().visit_callable_type(t)
 
 
 def has_coroutine_decorator(t: Type) -> bool:
@@ -4408,7 +4414,10 @@ def any_causes_overload_ambiguity(items: List[CallableType],
     ]
 
     for arg_idx, arg_type in enumerate(arg_types):
-        if has_any_type(arg_type):
+        # We ignore Anys in type object callables as ambiguity
+        # creators, since that can lead to falsely claiming ambiguity
+        # for overloads between Type and Callable.
+        if has_any_type(arg_type, ignore_in_type_obj=True):
             matching_formals_unfiltered = [(item_idx, lookup[arg_idx])
                                            for item_idx, lookup in enumerate(actual_to_formal)
                                            if lookup[arg_idx]]
