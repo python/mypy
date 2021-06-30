@@ -124,8 +124,7 @@ REDUNDANT_EXPR: Final = ErrorCode(
 )
 IMPLICIT_BOOL: Final = ErrorCode(
     'implicit-bool',
-    "Warn when an expression whose type does not implement __bool__ or __len__ is used in boolean context "
-    "since it would always evaluate as true",
+    "Warn about potential use of implicit bool (that always returns true)",
     'General',
     default_enabled=False
 )
