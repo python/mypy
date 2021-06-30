@@ -223,7 +223,7 @@ class TypeFixture:
                 module_name = '__main__'
 
         if typevars:
-            v = []  # type: List[TypeVarDef]
+            v: List[TypeVarDef] = []
             for id, n in enumerate(typevars, 1):
                 if variances:
                     variance = variances[id - 1]

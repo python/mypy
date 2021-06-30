@@ -148,7 +148,7 @@ from mypy.server.trigger import make_trigger, WILDCARD_TAG
 from mypy.util import module_prefix, split_target
 from mypy.typestate import TypeState
 
-MAX_ITER = 1000  # type: Final
+MAX_ITER: Final = 1000
 
 SENSITIVE_INTERNAL_MODULES = tuple(core_modules) + ("mypy_extensions", "typing_extensions")
 
@@ -173,22 +173,22 @@ class FineGrainedBuildManager:
         self.previous_targets_with_errors = manager.errors.targets()
         self.previous_messages = result.errors[:]
         # Module, if any, that had blocking errors in the last run as (id, path) tuple.
-        self.blocking_error = None  # type: Optional[Tuple[str, str]]
+        self.blocking_error: Optional[Tuple[str, str]] = None
         # Module that we haven't processed yet but that are known to be stale.
-        self.stale = []  # type: List[Tuple[str, str]]
+        self.stale: List[Tuple[str, str]] = []
         # Disable the cache so that load_graph doesn't try going back to disk
         # for the cache.
         self.manager.cache_enabled = False
 
         # Some hints to the test suite about what is going on:
         # Active triggers during the last update
-        self.triggered = []  # type: List[str]
+        self.triggered: List[str] = []
         # Modules passed to update during the last update
-        self.changed_modules = []  # type: List[Tuple[str, str]]
+        self.changed_modules: List[Tuple[str, str]] = []
         # Modules processed during the last update
-        self.updated_modules = []  # type: List[str]
+        self.updated_modules: List[str] = []
         # Targets processed during last update (for testing only).
-        self.processed_targets = []  # type: List[str]
+        self.processed_targets: List[str] = []
 
     def update(self,
                changed_modules: List[Tuple[str, str]],
@@ -383,7 +383,7 @@ class FineGrainedBuildManager:
 
         t0 = time.time()
         # Record symbol table snapshot of old version the changed module.
-        old_snapshots = {}  # type: Dict[str, Dict[str, SnapshotItem]]
+        old_snapshots: Dict[str, Dict[str, SnapshotItem]] = {}
         if module in manager.modules:
             snapshot = snapshot_symbol_table(module, manager.modules[module].names)
             old_snapshots[module] = snapshot
@@ -439,7 +439,7 @@ def find_unloaded_deps(manager: BuildManager, graph: Dict[str, State],
     dependencies.)
     """
     worklist = list(initial)
-    seen = set()  # type: Set[str]
+    seen: Set[str] = set()
     unloaded = []
     while worklist:
         node = worklist.pop()
@@ -566,7 +566,7 @@ def update_module_isolated(module: str,
             elif id in graph:
                 del graph[id]
 
-    new_modules = []  # type: List[State]
+    new_modules: List[State] = []
     try:
         if module in graph:
             del graph[module]
@@ -613,7 +613,7 @@ def update_module_isolated(module: str,
         return BlockedUpdate(module, path, remaining_modules, err.messages)
 
     # Merge old and new ASTs.
-    new_modules_dict = {module: state.tree}  # type: Dict[str, Optional[MypyFile]]
+    new_modules_dict: Dict[str, Optional[MypyFile]] = {module: state.tree}
     replace_modules_with_new_variants(manager, graph, {orig_module: orig_tree}, new_modules_dict)
 
     t1 = time.time()
@@ -687,7 +687,7 @@ def delete_module(module_id: str,
 
 
 def dedupe_modules(modules: List[Tuple[str, str]]) -> List[Tuple[str, str]]:
-    seen = set()  # type: Set[str]
+    seen: Set[str] = set()
     result = []
     for id, path in modules:
         if id not in seen:
@@ -719,7 +719,7 @@ def calculate_active_triggers(manager: BuildManager,
     For example, if only the signature of function m.f is different in the new
     symbol table, return {'<m.f>'}.
     """
-    names = set()  # type: Set[str]
+    names: Set[str] = set()
     for id in new_modules:
         snapshot1 = old_snapshots.get(id)
         if snapshot1 is None:
@@ -798,7 +798,7 @@ def propagate_changes_using_dependencies(
     """
 
     num_iter = 0
-    remaining_modules = []  # type: List[Tuple[str, str]]
+    remaining_modules: List[Tuple[str, str]] = []
 
     # Propagate changes until nothing visible has changed during the last
     # iteration.
@@ -856,11 +856,11 @@ def find_targets_recursive(
      * Dictionary from module id to a set of stale targets.
      * A set of module ids for unparsed modules with stale targets.
     """
-    result = {}  # type: Dict[str, Set[FineGrainedDeferredNode]]
+    result: Dict[str, Set[FineGrainedDeferredNode]] = {}
     worklist = triggers
-    processed = set()  # type: Set[str]
-    stale_protos = set()  # type: Set[TypeInfo]
-    unloaded_files = set()  # type: Set[str]
+    processed: Set[str] = set()
+    stale_protos: Set[TypeInfo] = set()
+    unloaded_files: Set[str] = set()
 
     # Find AST nodes corresponding to each target.
     #
@@ -950,7 +950,7 @@ def reprocess_nodes(manager: BuildManager,
                 manager.errors.add_error_info(info)
 
     # Strip semantic analysis information.
-    saved_attrs = {}  # type: SavedAttributes
+    saved_attrs: SavedAttributes = {}
     for deferred in nodes:
         processed_targets.append(deferred.node.fullname)
         strip_target(deferred.node, saved_attrs)
@@ -1055,8 +1055,8 @@ def lookup_target(manager: BuildManager,
         components = rest.split('.')
     else:
         components = []
-    node = modules[module]  # type: Optional[SymbolNode]
-    file = None  # type: Optional[MypyFile]
+    node: Optional[SymbolNode] = modules[module]
+    file: Optional[MypyFile] = None
     active_class = None
     for c in components:
         if isinstance(node, TypeInfo):
@@ -1086,7 +1086,7 @@ def lookup_target(manager: BuildManager,
             not_found()
             return [], None
         result = [FineGrainedDeferredNode(file, None)]
-        stale_info = None  # type: Optional[TypeInfo]
+        stale_info: Optional[TypeInfo] = None
         if node.is_protocol:
             stale_info = node
         for name, symnode in node.names.items():
@@ -1140,15 +1140,15 @@ def target_from_node(module: str,
             return '%s.%s' % (module, node.name)
 
 
-if sys.platform != 'win32':
-    INIT_SUFFIXES = ('/__init__.py', '/__init__.pyi')  # type: Final
+if sys.platform != "win32":
+    INIT_SUFFIXES: Final = ("/__init__.py", "/__init__.pyi")
 else:
-    INIT_SUFFIXES = (
+    INIT_SUFFIXES: Final = (
         os.sep + '__init__.py',
         os.sep + '__init__.pyi',
         os.altsep + '__init__.py',
         os.altsep + '__init__.pyi',
-    )  # type: Final
+    )
 
 
 def refresh_suppressed_submodules(

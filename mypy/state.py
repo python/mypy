@@ -6,7 +6,7 @@ from typing import Optional, Tuple, Iterator
 
 # Value varies by file being processed
 strict_optional = False
-find_occurrences = None  # type: Optional[Tuple[str, str]]
+find_occurrences: Optional[Tuple[str, str]] = None
 
 
 @contextmanager

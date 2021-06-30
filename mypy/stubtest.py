@@ -38,17 +38,7 @@ class Missing:
 MISSING = Missing()
 
 T = TypeVar("T")
-if sys.version_info >= (3, 5, 3):
-    MaybeMissing = Union[T, Missing]
-else:
-    # work around a bug in 3.5.2 and earlier's typing.py
-    class MaybeMissingMeta(type):
-        def __getitem__(self, arg: Any) -> Any:
-            return Union[arg, Missing]
-
-    class MaybeMissing(metaclass=MaybeMissingMeta):  # type: ignore
-        pass
-
+MaybeMissing = Union[T, Missing]
 
 _formatter = FancyFormatter(sys.stdout, sys.stderr, False)
 
@@ -107,7 +97,7 @@ class Error:
             return _style(self.object_desc, bold=True) + " " + self.message
 
         stub_line = None
-        stub_file = None  # type: None
+        stub_file: None = None
         if not isinstance(self.stub_object, Missing):
             stub_line = self.stub_object.line
         # TODO: Find a way of getting the stub file
@@ -182,7 +172,7 @@ def test_module(module_name: str) -> Iterator[Error]:
 
 @singledispatch
 def verify(
-    stub: nodes.Node, runtime: MaybeMissing[Any], object_path: List[str]
+    stub: MaybeMissing[nodes.Node], runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
     """Entry point for comparing a stub to a runtime object.
 
@@ -226,8 +216,10 @@ def verify_mypyfile(
     to_check.difference_update({"__file__", "__doc__", "__name__", "__builtins__", "__package__"})
 
     for entry in sorted(to_check):
+        stub_to_verify = stub.names[entry].node if entry in stub.names else MISSING
+        assert stub_to_verify is not None
         yield from verify(
-            stub.names[entry].node if entry in stub.names else MISSING,
+            stub_to_verify,
             getattr(runtime, entry, MISSING),
             object_path + [entry],
         )
@@ -257,8 +249,10 @@ def verify_typeinfo(
         mangled_entry = entry
         if entry.startswith("__") and not entry.endswith("__"):
             mangled_entry = "_{}{}".format(stub.name, entry)
+        stub_to_verify = next((t.names[entry].node for t in stub.mro if entry in t.names), MISSING)
+        assert stub_to_verify is not None
         yield from verify(
-            next((t.names[entry].node for t in stub.mro if entry in t.names), MISSING),
+            stub_to_verify,
             getattr(runtime, mangled_entry, MISSING),
             object_path + [entry],
         )
@@ -388,10 +382,10 @@ def maybe_strip_cls(name: str, args: List[nodes.Argument]) -> List[nodes.Argumen
 
 class Signature(Generic[T]):
     def __init__(self) -> None:
-        self.pos = []  # type: List[T]
-        self.kwonly = {}  # type: Dict[str, T]
-        self.varpos = None  # type: Optional[T]
-        self.varkw = None  # type: Optional[T]
+        self.pos: List[T] = []
+        self.kwonly: Dict[str, T] = {}
+        self.varpos: Optional[T] = None
+        self.varkw: Optional[T] = None
 
     def __str__(self) -> str:
         def get_name(arg: Any) -> str:
@@ -436,7 +430,7 @@ class Signature(Generic[T]):
 
     @staticmethod
     def from_funcitem(stub: nodes.FuncItem) -> "Signature[nodes.Argument]":
-        stub_sig = Signature()  # type: Signature[nodes.Argument]
+        stub_sig: Signature[nodes.Argument] = Signature()
         stub_args = maybe_strip_cls(stub.name, stub.arguments)
         for stub_arg in stub_args:
             if stub_arg.kind in (nodes.ARG_POS, nodes.ARG_OPT):
@@ -453,7 +447,7 @@ class Signature(Generic[T]):
 
     @staticmethod
     def from_inspect_signature(signature: inspect.Signature) -> "Signature[inspect.Parameter]":
-        runtime_sig = Signature()  # type: Signature[inspect.Parameter]
+        runtime_sig: Signature[inspect.Parameter] = Signature()
         for runtime_arg in signature.parameters.values():
             if runtime_arg.kind in (
                 inspect.Parameter.POSITIONAL_ONLY,
@@ -483,7 +477,7 @@ class Signature(Generic[T]):
         # For most dunder methods, just assume all args are positional-only
         assume_positional_only = is_dunder(stub.name, exclude_special=True)
 
-        all_args = {}  # type: Dict[str, List[Tuple[nodes.Argument, int]]]
+        all_args: Dict[str, List[Tuple[nodes.Argument, int]]] = {}
         for func in map(_resolve_funcitem_from_decorator, stub.items):
             assert func is not None
             args = maybe_strip_cls(stub.name, func.arguments)
@@ -527,7 +521,7 @@ class Signature(Generic[T]):
                 return nodes.ARG_OPT if is_pos else nodes.ARG_NAMED_OPT
             return nodes.ARG_POS if is_pos else nodes.ARG_NAMED
 
-        sig = Signature()  # type: Signature[nodes.Argument]
+        sig: Signature[nodes.Argument] = Signature()
         for arg_name in sorted(all_args, key=get_position):
             # example_arg_name gives us a real name (in case we had a fake index-based name)
             example_arg_name = all_args[arg_name][0][0].variable.name
@@ -839,7 +833,7 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> Optional[nodes.
         # anything else when running on typeshed's stdlib.
         return None
 
-    func = dec.func  # type: nodes.FuncItem
+    func: nodes.FuncItem = dec.func
     for decorator in dec.original_decorators:
         resulting_func = apply_decorator_to_funcitem(decorator, func)
         if resulting_func is None:
@@ -999,7 +993,7 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
         return fallback
 
 
-_all_stubs = {}  # type: Dict[str, nodes.MypyFile]
+_all_stubs: Dict[str, nodes.MypyFile] = {}
 
 
 def build_stubs(modules: List[str], options: Options, find_submodules: bool = False) -> List[str]:
@@ -1069,7 +1063,7 @@ def get_typeshed_stdlib_modules(custom_typeshed_dir: Optional[str]) -> List[str]
     """Returns a list of stdlib modules in typeshed (for current Python version)."""
     stdlib_py_versions = mypy.modulefinder.load_stdlib_py_versions(custom_typeshed_dir)
     packages = set()
-    # Typeshed doesn't cover Python 3.5.
+    # Typeshed's minimum supported Python 3 is Python 3.6
     if sys.version_info < (3, 6):
         version_info = (3, 6)
     else:

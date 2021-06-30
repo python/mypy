@@ -59,7 +59,7 @@ def build_ir(modules: List[MypyFile],
 
     build_type_map(mapper, modules, graph, types, options, errors)
 
-    result = OrderedDict()  # type: ModuleIRs
+    result: ModuleIRs = OrderedDict()
 
     # Generate IR for all modules.
     class_irs = []

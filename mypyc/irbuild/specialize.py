@@ -52,7 +52,7 @@ Specializer = Callable[['IRBuilder', CallExpr, RefExpr], Optional[Value]]
 #
 # Specializers can operate on methods as well, and are keyed on the
 # name and RType in that case.
-specializers = {}  # type: Dict[Tuple[str, Optional[RType]], List[Specializer]]
+specializers: Dict[Tuple[str, Optional[RType]], List[Specializer]] = {}
 
 
 def specialize_function(

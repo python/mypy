@@ -18,8 +18,8 @@ from mypy.nodes import COVARIANT, CONTRAVARIANT
 from mypy.argmap import ArgTypeExpander
 from mypy.typestate import TypeState
 
-SUBTYPE_OF = 0  # type: Final
-SUPERTYPE_OF = 1  # type: Final
+SUBTYPE_OF: Final = 0
+SUPERTYPE_OF: Final = 1
 
 
 class Constraint:
@@ -28,9 +28,9 @@ class Constraint:
     It can be either T <: type or T :> type (T is a type variable).
     """
 
-    type_var = None  # type: TypeVarId
+    type_var: TypeVarId
     op = 0           # SUBTYPE_OF or SUPERTYPE_OF
-    target = None    # type: Type
+    target: Type
 
     def __init__(self, type_var: TypeVarId, op: int, target: Type) -> None:
         self.type_var = type_var
@@ -51,7 +51,7 @@ def infer_constraints_for_callable(
 
     Return a list of constraints.
     """
-    constraints = []  # type: List[Constraint]
+    constraints: List[Constraint] = []
     mapper = ArgTypeExpander()
 
     for i, actuals in enumerate(formal_to_actual):
@@ -268,7 +268,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
 
     # The type that is compared against a template
     # TODO: The value may be None. Is that actually correct?
-    actual = None  # type: ProperType
+    actual: ProperType
 
     def __init__(self, actual: ProperType, direction: int) -> None:
         # Direction must be SUBTYPE_OF or SUPERTYPE_OF.
@@ -314,7 +314,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
 
     def visit_instance(self, template: Instance) -> List[Constraint]:
         original_actual = actual = self.actual
-        res = []  # type: List[Constraint]
+        res: List[Constraint] = []
         if isinstance(actual, (CallableType, Overloaded)) and template.type.is_protocol:
             if template.type.protocol_members == ['__call__']:
                 # Special case: a generic callback protocol
@@ -448,7 +448,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             cactual = self.actual
             # FIX verify argument counts
             # FIX what if one of the functions is generic
-            res = []  # type: List[Constraint]
+            res: List[Constraint] = []
 
             # We can't infer constraints from arguments if the template is Callable[..., T] (with
             # literal '...').
@@ -500,7 +500,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     def visit_tuple_type(self, template: TupleType) -> List[Constraint]:
         actual = self.actual
         if isinstance(actual, TupleType) and len(actual.items) == len(template.items):
-            res = []  # type: List[Constraint]
+            res: List[Constraint] = []
             for i in range(len(template.items)):
                 res.extend(infer_constraints(template.items[i],
                                              actual.items[i],
@@ -514,7 +514,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     def visit_typeddict_type(self, template: TypedDictType) -> List[Constraint]:
         actual = self.actual
         if isinstance(actual, TypedDictType):
-            res = []  # type: List[Constraint]
+            res: List[Constraint] = []
             # NOTE: Non-matching keys are ignored. Compatibility is checked
             #       elsewhere so this shouldn't be unsafe.
             for (item_name, template_item_type, actual_item_type) in template.zip(actual):
@@ -538,13 +538,13 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         assert False, "This should be never called, got {}".format(template)
 
     def infer_against_any(self, types: Iterable[Type], any_type: AnyType) -> List[Constraint]:
-        res = []  # type: List[Constraint]
+        res: List[Constraint] = []
         for t in types:
             res.extend(infer_constraints(t, any_type, self.direction))
         return res
 
     def visit_overloaded(self, template: Overloaded) -> List[Constraint]:
-        res = []  # type: List[Constraint]
+        res: List[Constraint] = []
         for t in template.items():
             res.extend(infer_constraints(t, self.actual, self.direction))
         return res

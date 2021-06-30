@@ -21,7 +21,6 @@ def fib(n: int) -> int:
         return 1
     else:
         return fib(n - 1) + fib(n - 2)
-    return 0  # TODO: This should be unnecessary
 [file driver.py]
 from native import fib
 print(fib(0))

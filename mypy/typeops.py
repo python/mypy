@@ -94,7 +94,7 @@ def type_object_type_from_function(signature: FunctionLike,
     signature = bind_self(signature, original_type=default_self, is_classmethod=is_new)
     signature = cast(FunctionLike, map_type_from_supertype(signature, info, def_info))
 
-    special_sig = None  # type: Optional[str]
+    special_sig: Optional[str] = None
     if def_info.fullname == 'builtins.dict':
         # Special signature!
         special_sig = 'dict'
@@ -104,7 +104,7 @@ def type_object_type_from_function(signature: FunctionLike,
     else:
         # Overloaded __init__/__new__.
         assert isinstance(signature, Overloaded)
-        items = []  # type: List[CallableType]
+        items: List[CallableType] = []
         for item, orig_self in zip(signature.items(), orig_self_types):
             items.append(class_callable(item, info, fallback, special_sig, is_new, orig_self))
         return Overloaded(items)
@@ -114,7 +114,7 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
                    special_sig: Optional[str],
                    is_new: bool, orig_self_type: Optional[Type] = None) -> CallableType:
     """Create a type object type based on the signature of __init__."""
-    variables = []  # type: List[TypeVarLikeDef]
+    variables: List[TypeVarLikeDef] = []
     variables.extend(info.defn.type_vars)
     variables.extend(init_type.variables)
 
@@ -130,7 +130,7 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
         # if it is actually returning a subtype of what we would return otherwise.
         and is_subtype(explicit_type, default_ret_type, ignore_type_params=True)
     ):
-        ret_type = explicit_type  # type: Type
+        ret_type: Type = explicit_type
     else:
         ret_type = default_ret_type
 
@@ -229,7 +229,7 @@ def bind_self(method: F, original_type: Optional[Type] = None, is_classmethod: b
         return cast(F, func)
     self_param_type = get_proper_type(func.arg_types[0])
 
-    variables = []  # type: Sequence[TypeVarLikeDef]
+    variables: Sequence[TypeVarLikeDef] = []
     if func.variables and supported_self_type(self_param_type):
         if original_type is None:
             # TODO: type check method override (see #7861).
@@ -337,7 +337,7 @@ def make_simplified_union(items: Sequence[Type],
     """
     items = get_proper_types(items)
     while any(isinstance(typ, UnionType) for typ in items):
-        all_items = []  # type: List[ProperType]
+        all_items: List[ProperType] = []
         for typ in items:
             if isinstance(typ, UnionType):
                 all_items.extend(get_proper_types(typ.items))
@@ -347,13 +347,13 @@ def make_simplified_union(items: Sequence[Type],
 
     from mypy.subtypes import is_proper_subtype
 
-    removed = set()  # type: Set[int]
+    removed: Set[int] = set()
 
     # Avoid slow nested for loop for Union of Literal of strings (issue #9169)
     if all((isinstance(item, LiteralType) and
             item.fallback.type.fullname == 'builtins.str')
            for item in items):
-        seen = set()    # type: Set[str]
+        seen: Set[str] = set()
         for index, item in enumerate(items):
             assert isinstance(item, LiteralType)
             assert isinstance(item.value, str)
@@ -525,7 +525,7 @@ def callable_type(fdef: FuncItem, fallback: Instance,
                   ret_type: Optional[Type] = None) -> CallableType:
     # TODO: somewhat unfortunate duplication with prepare_method_signature in semanal
     if fdef.info and not fdef.is_static and fdef.arg_names:
-        self_type = fill_typevars(fdef.info)  # type: Type
+        self_type: Type = fill_typevars(fdef.info)
         if fdef.is_class or fdef.name == '__new__':
             self_type = TypeType.make_normalized(self_type)
         args = [self_type] + [AnyType(TypeOfAny.unannotated)] * (len(fdef.arg_names)-1)
@@ -600,13 +600,13 @@ def try_getting_literals_from_type(typ: Type,
     typ = get_proper_type(typ)
 
     if isinstance(typ, Instance) and typ.last_known_value is not None:
-        possible_literals = [typ.last_known_value]  # type: List[Type]
+        possible_literals: List[Type] = [typ.last_known_value]
     elif isinstance(typ, UnionType):
         possible_literals = list(typ.items)
     else:
         possible_literals = [typ]
 
-    literals = []  # type: List[T]
+    literals: List[T] = []
     for lit in get_proper_types(possible_literals):
         if isinstance(lit, LiteralType) and lit.fallback.type.fullname == target_fullname:
             val = lit.value
@@ -725,7 +725,7 @@ def try_contracting_literals_in_union(types: Sequence[Type]) -> List[ProperType]
     this function will return Color.
     """
     proper_types = [get_proper_type(typ) for typ in types]
-    sum_types = {}  # type: Dict[str, Tuple[Set[Any], List[int]]]
+    sum_types: Dict[str, Tuple[Set[Any], List[int]]] = {}
     marked_for_deletion = set()
     for idx, typ in enumerate(proper_types):
         if isinstance(typ, LiteralType):

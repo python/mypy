@@ -129,7 +129,7 @@ class EnumCallAnalyzer:
             return self.fail_enum_call_arg(
                 "%s() expects a string literal as the first argument" % class_name, call)
         items = []
-        values = []  # type: List[Optional[Expression]]
+        values: List[Optional[Expression]] = []
         if isinstance(names, (StrExpr, UnicodeExpr)):
             fields = names.value
             for field in fields.replace(',', ' ').split():
