@@ -84,7 +84,10 @@ def transform_decorator(builder: IRBuilder, dec: Decorator) -> None:
         decorated_func = load_decorated_func(builder, dec.func, func_reg)
         builder.assign(get_func_target(builder, dec.func), decorated_func, dec.func.line)
         func_reg = decorated_func
-    else:
+    # If the prebuild pass didn't put this function in the function to decorators map (for example
+    # if this is a registered singledispatch implementation with no other decorators), we should
+    # treat this function as a regular function, not a decorated function
+    elif dec.func in builder.fdefs_to_decorators:
         # Obtain the the function name in order to construct the name of the helper function.
         name = dec.func.fullname.split('.')[-1]
         helper_name = decorator_helper_name(name)
