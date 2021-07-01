@@ -628,6 +628,23 @@ def gen_glue(builder: IRBuilder, sig: FuncSignature, target: FuncIR,
         return gen_glue_method(builder, sig, target, cls, base, fdef.line, do_py_ops)
 
 
+class ArgInfo(NamedTuple):
+    args: List[Value]
+    arg_names: List[Optional[str]]
+    arg_kinds: List[int]
+
+
+def get_args(builder: IRBuilder, rt_args: Sequence[RuntimeArg], line: int) -> ArgInfo:
+    # The environment operates on Vars, so we make some up
+    fake_vars = [(Var(arg.name), arg.type) for arg in rt_args]
+    args = [builder.read(builder.add_local_reg(var, type, is_arg=True), line)
+            for var, type in fake_vars]
+    arg_names = [arg.name if arg.kind in (ARG_NAMED, ARG_NAMED_OPT) else None
+                 for arg in rt_args]
+    arg_kinds = [concrete_arg_kind(arg.kind) for arg in rt_args]
+    return ArgInfo(args, arg_names, arg_kinds)
+
+
 def gen_glue_method(builder: IRBuilder, sig: FuncSignature, target: FuncIR,
                     cls: ClassIR, base: ClassIR, line: int,
                     do_pycall: bool,
@@ -664,13 +681,8 @@ def gen_glue_method(builder: IRBuilder, sig: FuncSignature, target: FuncIR,
     if target.decl.kind == FUNC_NORMAL:
         rt_args[0] = RuntimeArg(sig.args[0].name, RInstance(cls))
 
-    # The environment operates on Vars, so we make some up
-    fake_vars = [(Var(arg.name), arg.type) for arg in rt_args]
-    args = [builder.read(builder.add_local_reg(var, type, is_arg=True), line)
-            for var, type in fake_vars]
-    arg_names = [arg.name if arg.kind in (ARG_NAMED, ARG_NAMED_OPT) else None
-                 for arg in rt_args]
-    arg_kinds = [concrete_arg_kind(arg.kind) for arg in rt_args]
+    arg_info = get_args(builder, rt_args, line)
+    args, arg_kinds, arg_names = arg_info.args, arg_info.arg_kinds, arg_info.arg_names
 
     if do_pycall:
         retval = builder.builder.py_method_call(
