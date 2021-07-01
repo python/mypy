@@ -273,6 +273,7 @@ from typing import Tuple
 def test_format_method_basics() -> None:
     assert ''.format() == ''
     assert 'abc'.format() == 'abc'
+    assert '{}{}'.format(1, 2) == '12'
 
     name = 'Eric'
     age = 14
@@ -325,6 +326,21 @@ def test_format_method_numbers() -> None:
     inf_num = float('inf')
     assert '{}, {}'.format(nan_num, inf_num) == 'nan, inf'
 
+def format_args(*args: int) -> str:
+    return 'x{}y{}'.format(*args)
+def format_kwargs(**kwargs: int) -> str:
+    return 'c{x}d{y}'.format(**kwargs)
+def format_args_self(*args: int) -> str:
+    return '{}'.format(args)
+def format_kwargs_self(**kwargs: int) -> str:
+    return '{}'.format(kwargs)
+
+def test_format_method_args() -> None:
+    assert format_args(10, 2) == 'x10y2'
+    assert format_args_self(10, 2) == '(10, 2)'
+    assert format_kwargs(x=10, y=2) == 'c10d2'
+    assert format_kwargs(x=10, y=2, z=1) == 'c10d2'
+    assert format_kwargs_self(x=10, y=2, z=1) == "{'x': 10, 'y': 2, 'z': 1}"
 
 class Point:
     def __init__(self, x, y):
