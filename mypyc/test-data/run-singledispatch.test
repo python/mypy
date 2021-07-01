@@ -2,7 +2,7 @@
 # Most of these tests are marked as xfails because mypyc doesn't support singledispatch yet
 # (These tests will be re-enabled when mypyc supports singledispatch)
 
-[case testSpecializedImplementationUsed-xfail]
+[case testSpecializedImplementationUsed]
 from functools import singledispatch
 
 @singledispatch
@@ -17,7 +17,7 @@ def test_specialize() -> None:
     assert fun('a')
     assert not fun(3)
 
-[case testSubclassesOfExpectedTypeUseSpecialized-xfail]
+[case testSubclassesOfExpectedTypeUseSpecialized]
 from functools import singledispatch
 class A: pass
 class B(A): pass
@@ -76,7 +76,7 @@ def test_singledispatch() -> None:
     assert fun('a') == 'str'
     assert fun({'a': 'b'}) == 'default'
 
-[case testCanRegisterCompiledClasses-xfail]
+[case testCanRegisterCompiledClasses]
 from functools import singledispatch
 class A: pass
 
@@ -136,7 +136,9 @@ def fun_specialized(arg: int) -> bool:
 def test_singledispatch() -> None:
     assert fun_specialized('a')
 
-[case testTypeAnnotationsDisagreeWithRegisterArgument-xfail]
+# TODO: remove this test when type annotations and register arguments disagreeing becomes a
+# mypy error
+[case testTypeAnnotationsDisagreeWithRegisterArgument]
 from functools import singledispatch
 
 @singledispatch
