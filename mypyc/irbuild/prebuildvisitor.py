@@ -1,7 +1,9 @@
-from typing import Dict, List, Set
+from typing import DefaultDict, Dict, List, NamedTuple, Set, Optional, Tuple
+from collections import defaultdict
 
 from mypy.nodes import (
-    Decorator, Expression, FuncDef, FuncItem, LambdaExpr, NameExpr, SymbolNode, Var, MemberExpr
+    Decorator, Expression, FuncDef, FuncItem, LambdaExpr, NameExpr, SymbolNode, Var, MemberExpr,
+    CallExpr, RefExpr, TypeInfo
 )
 from mypy.traverser import TraverserVisitor
 
@@ -50,6 +52,10 @@ class PreBuildVisitor(TraverserVisitor):
         # Map function to its non-special decorators.
         self.funcs_to_decorators: Dict[FuncDef, List[Expression]] = {}
 
+        # Map of main singledispatch function to list of registered implementations
+        self.singledispatch_impls: DefaultDict[
+            FuncDef, List[Tuple[TypeInfo, FuncDef]]] = defaultdict(list)
+
     def visit_decorator(self, dec: Decorator) -> None:
         if dec.decorators:
             # Only add the function being decorated if there exist
@@ -63,6 +69,20 @@ class PreBuildVisitor(TraverserVisitor):
                 # Property setters are not treated as decorated methods.
                 self.prop_setters.add(dec.func)
             else:
+                removed: List[int] = []
+                for i, d in enumerate(dec.decorators):
+                    impl = get_singledispatch_register_call_info(d)
+                    if impl is not None:
+                        self.singledispatch_impls[impl.singledispatch_func].append(
+                            (impl.dispatch_type, dec.func))
+                        removed.append(i)
+                for i in reversed(removed):
+                    del dec.decorators[i]
+                # if the only decorators are register calls, we shouldn't treat this
+                # as a decorated function because there aren't any decorators to apply
+                if not dec.decorators:
+                    return
+
                 self.funcs_to_decorators[dec.func] = dec.decorators
         super().visit_decorator(dec)
 
@@ -141,3 +161,25 @@ class PreBuildVisitor(TraverserVisitor):
         # and mark is as a non-local symbol within that function.
         func = self.symbols_to_funcs[symbol]
         self.free_variables.setdefault(func, set()).add(symbol)
+
+class RegisteredImpl(NamedTuple):
+    singledispatch_func: FuncDef
+    dispatch_type: TypeInfo
+
+def get_singledispatch_register_call_info(decorator: Expression) -> Optional[RegisteredImpl]:
+    # @fun.register(complex)
+    # def g(arg): ...
+    if (isinstance(decorator, CallExpr) and len(decorator.args) == 1
+            and isinstance(decorator.args[0], RefExpr)):
+        callee = decorator.callee
+        dispatch_type = decorator.args[0].node
+        if not isinstance(dispatch_type, TypeInfo):
+            return None
+
+        if (isinstance(callee, MemberExpr) and callee.name == 'register'
+                and isinstance(callee.expr, NameExpr)):
+            expr = callee.expr
+            node = expr.node
+            if isinstance(node, Decorator):
+                return RegisteredImpl(node.func, dispatch_type)
+    return None
