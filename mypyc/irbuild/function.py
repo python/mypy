@@ -10,11 +10,11 @@ as an environment containing non-local variables, is stored in the
 instance of the callable class.
 """
 
-from typing import Optional, List, Tuple, Union, Dict
+from typing import NamedTuple, Optional, List, Sequence, Tuple, Union, Dict
 
 from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, Decorator, Var, YieldFromExpr, AwaitExpr, YieldExpr,
-    FuncItem, LambdaExpr, SymbolNode, ARG_NAMED, ARG_NAMED_OPT
+    FuncItem, LambdaExpr, SymbolNode, ARG_NAMED, ARG_NAMED_OPT, TypeInfo
 )
 from mypy.types import CallableType, get_proper_type
 
@@ -28,7 +28,9 @@ from mypyc.ir.func_ir import (
 )
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.primitives.generic_ops import py_setattr_op, next_raw_op, iter_op
-from mypyc.primitives.misc_ops import check_stop_op, yield_from_except_op, coro_op, send_op
+from mypyc.primitives.misc_ops import (
+    check_stop_op, yield_from_except_op, coro_op, send_op, slow_isinstance_op
+)
 from mypyc.primitives.dict_ops import dict_set_item_op
 from mypyc.common import SELF_NAME, LAMBDA_NAME, decorator_helper_name
 from mypyc.sametype import is_same_method_signature
@@ -209,6 +211,7 @@ def gen_func_item(builder: IRBuilder,
     is_nested = fitem in builder.nested_fitems or isinstance(fitem, LambdaExpr)
     contains_nested = fitem in builder.encapsulating_funcs.keys()
     is_decorated = fitem in builder.fdefs_to_decorators
+    is_singledispatch = fitem in builder.singledispatch_impls
     in_non_ext = False
     class_name = None
     if cdef:
@@ -217,7 +220,8 @@ def gen_func_item(builder: IRBuilder,
         class_name = cdef.name
 
     builder.enter(FuncInfo(fitem, name, class_name, gen_func_ns(builder),
-                           is_nested, contains_nested, is_decorated, in_non_ext))
+                           is_nested, contains_nested, is_decorated, in_non_ext,
+                           is_singledispatch))
 
     # Functions that contain nested functions need an environment class to store variables that
     # are free in their nested functions. Generator functions need an environment class to
@@ -249,6 +253,9 @@ def gen_func_item(builder: IRBuilder,
 
     if builder.fn_info.contains_nested and not builder.fn_info.is_generator:
         finalize_env_class(builder)
+
+    if builder.fn_info.is_singledispatch:
+        add_singledispatch_registered_impls(builder)
 
     builder.ret_types[-1] = sig.ret_type
 
@@ -754,3 +761,34 @@ def get_func_target(builder: IRBuilder, fdef: FuncDef) -> AssignmentTarget:
         return builder.lookup(fdef)
 
     return builder.add_local_reg(fdef, object_rprimitive)
+
+
+def check_if_isinstance(builder: IRBuilder, obj: Value, typ: TypeInfo, line: int) -> Value:
+    if typ in builder.mapper.type_to_ir:
+        class_ir = builder.mapper.type_to_ir[typ]
+        return builder.builder.isinstance_native(obj, class_ir, line)
+    else:
+        class_obj = builder.load_module_attr_by_fullname(typ.fullname, line)
+        return builder.call_c(slow_isinstance_op, [obj, class_obj], line)
+
+
+def add_singledispatch_registered_impls(builder: IRBuilder) -> None:
+    fitem = builder.fn_info.fitem
+    assert isinstance(fitem, FuncDef)
+    impls = builder.singledispatch_impls[fitem]
+    line = fitem.line
+    for dispatch_type, impl in impls:
+        func_decl = builder.mapper.func_to_decl[impl]
+        call_impl, next_impl = BasicBlock(), BasicBlock()
+        arg_info = get_args(builder, func_decl.sig.args, line)
+        should_call_impl = check_if_isinstance(builder, arg_info.args[0], dispatch_type, line)
+        builder.add_bool_branch(should_call_impl, call_impl, next_impl)
+
+        # Call the registered implementation
+        builder.activate_block(call_impl)
+
+        ret_val = builder.builder.call(
+            func_decl, arg_info.args, arg_info.arg_kinds, arg_info.arg_names, line
+        )
+        builder.nonlocal_control[-1].gen_return(builder, ret_val, line)
+        builder.activate_block(next_impl)
