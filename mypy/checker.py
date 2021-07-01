@@ -4146,39 +4146,38 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         elif is_false_literal(node):
             return None, {}
         elif isinstance(node, CallExpr):
-            if len(node.args) > 0:
-                expr = collapse_walrus(node.args[0])
-                if refers_to_fullname(node.callee, 'builtins.isinstance'):
-                    if len(node.args) != 2:  # the error will be reported elsewhere
-                        return {}, {}
-                    if literal(expr) == LITERAL_TYPE:
-                        return self.conditional_type_map_with_intersection(
-                            expr,
-                            type_map[expr],
-                            get_isinstance_type(node.args[1], type_map),
-                        )
-                elif refers_to_fullname(node.callee, 'builtins.issubclass'):
-                    if len(node.args) != 2:  # the error will be reported elsewhere
-                        return {}, {}
-                    if literal(expr) == LITERAL_TYPE:
-                        return self.infer_issubclass_maps(node, expr, type_map)
-                elif refers_to_fullname(node.callee, 'builtins.callable'):
-                    if len(node.args) != 1:  # the error will be reported elsewhere
-                        return {}, {}
-                    if literal(expr) == LITERAL_TYPE:
-                        vartype = type_map[expr]
-                        return self.conditional_callable_type_map(expr, vartype)
-                elif isinstance(node.callee, RefExpr) and node.callee.type_guard is not None:
+            self._check_for_truthy_type(type_map[node], node)
+            if len(node.args) == 0:
+                return {}, {}
+            expr = collapse_walrus(node.args[0])
+            if refers_to_fullname(node.callee, 'builtins.isinstance'):
+                if len(node.args) != 2:  # the error will be reported elsewhere
+                    return {}, {}
+                if literal(expr) == LITERAL_TYPE:
+                    return self.conditional_type_map_with_intersection(
+                        expr,
+                        type_map[expr],
+                        get_isinstance_type(node.args[1], type_map),
+                    )
+            elif refers_to_fullname(node.callee, 'builtins.issubclass'):
+                if len(node.args) != 2:  # the error will be reported elsewhere
+                    return {}, {}
+                if literal(expr) == LITERAL_TYPE:
+                    return self.infer_issubclass_maps(node, expr, type_map)
+            elif refers_to_fullname(node.callee, 'builtins.callable'):
+                if len(node.args) != 1:  # the error will be reported elsewhere
+                    return {}, {}
+                if literal(expr) == LITERAL_TYPE:
+                    vartype = type_map[expr]
+                    return self.conditional_callable_type_map(expr, vartype)
+            elif isinstance(node.callee, RefExpr):
+                if node.callee.type_guard is not None:
                     # TODO: Follow keyword args or *args, **kwargs
                     if node.arg_kinds[0] != nodes.ARG_POS:
                         self.fail("Type guard requires positional argument", node)
                         return {}, {}
                     if literal(expr) == LITERAL_TYPE:
                         return {expr: TypeGuardType(node.callee.type_guard)}, {}
-
-            self._check_for_truthy_type(type_map[node], node)
-
-            return {}, {}
         elif isinstance(node, ComparisonExpr):
             # Step 1: Obtain the types of each operand and whether or not we can
             # narrow their types. (For example, we shouldn't try narrowing the
