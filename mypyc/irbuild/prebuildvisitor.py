@@ -185,6 +185,10 @@ def get_singledispatch_register_call_info(decorator: Expression, func: FuncDef
     # @fun.register
     # def g(arg: int): ...
     elif isinstance(decorator, MemberExpr):
+        # we don't know if this is a register call yet, so we can't be sure that the function
+        # actually has arguments
+        if not func.arguments:
+            return None
         arg_type = get_proper_type(func.arguments[0].variable.type)
         if not isinstance(arg_type, Instance):
             return None
