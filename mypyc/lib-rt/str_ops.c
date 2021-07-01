@@ -102,8 +102,16 @@ PyObject *CPyStr_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
     }
     return CPyObject_GetSlice(obj, start, end);
 }
+
 /* Check if the given string is true (i.e. it's length isn't zero) */
 bool CPyStr_IsTrue(PyObject *obj) {
     Py_ssize_t length = PyUnicode_GET_LENGTH(obj);
     return length != 0;
+}
+
+Py_ssize_t CPyStr_Size_size_t(PyObject *str) {
+    if (PyUnicode_READY(str) != -1) {
+        return PyUnicode_GET_LENGTH(str);
+    }
+    return -1;
 }

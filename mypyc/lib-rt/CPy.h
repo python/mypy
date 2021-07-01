@@ -392,6 +392,7 @@ PyObject *CPyStr_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
 bool CPyStr_Startswith(PyObject *self, PyObject *subobj);
 bool CPyStr_Endswith(PyObject *self, PyObject *subobj);
 bool CPyStr_IsTrue(PyObject *obj);
+Py_ssize_t CPyStr_Size_size_t(PyObject *str);
 
 
 // Set operations

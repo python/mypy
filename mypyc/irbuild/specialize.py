@@ -126,7 +126,7 @@ def dict_methods_fast_path(
 def translate_list_from_generator_call(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
     # Special case for simplest list comprehension, for example
-    #     list(f(x) for x in other_list/other_tuple)
+    #     list(f(x) for x in some_list/some_tuple/some_str)
     # translate_list_comprehension() would take care of other cases if this fails.
     if (len(expr.args) == 1
             and expr.arg_kinds[0] == ARG_POS
@@ -142,7 +142,7 @@ def translate_list_from_generator_call(
 def translate_tuple_from_generator_call(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
     # Special case for simplest tuple creation from a generator, for example
-    #     tuple(f(x) for x in other_list/other_tuple)
+    #     tuple(f(x) for x in some_list/some_tuple/some_str)
     # translate_safe_generator_call() would take care of other cases if this fails.
     if (len(expr.args) == 1
             and expr.arg_kinds[0] == ARG_POS
