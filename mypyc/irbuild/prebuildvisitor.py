@@ -1,3 +1,4 @@
+from mypy.types import Instance, get_proper_type
 from typing import DefaultDict, Dict, List, NamedTuple, Set, Optional, Tuple
 from collections import defaultdict
 
@@ -71,7 +72,7 @@ class PreBuildVisitor(TraverserVisitor):
             else:
                 removed: List[int] = []
                 for i, d in enumerate(dec.decorators):
-                    impl = get_singledispatch_register_call_info(d)
+                    impl = get_singledispatch_register_call_info(d, dec.func)
                     if impl is not None:
                         self.singledispatch_impls[impl.singledispatch_func].append(
                             (impl.dispatch_type, dec.func))
@@ -168,7 +169,8 @@ class RegisteredImpl(NamedTuple):
     dispatch_type: TypeInfo
 
 
-def get_singledispatch_register_call_info(decorator: Expression) -> Optional[RegisteredImpl]:
+def get_singledispatch_register_call_info(decorator: Expression, func: FuncDef
+                                          ) -> Optional[RegisteredImpl]:
     # @fun.register(complex)
     # def g(arg): ...
     if (isinstance(decorator, CallExpr) and len(decorator.args) == 1
@@ -180,6 +182,14 @@ def get_singledispatch_register_call_info(decorator: Expression) -> Optional[Reg
 
         if isinstance(callee, MemberExpr):
             return registered_impl_from_possible_register_call(callee, dispatch_type)
+    # @fun.register
+    # def g(arg: int): ...
+    elif isinstance(decorator, MemberExpr):
+        arg_type = get_proper_type(func.arguments[0].variable.type)
+        if not isinstance(arg_type, Instance):
+            return None
+        info = arg_type.type
+        return registered_impl_from_possible_register_call(decorator, info)
     return None
 
 
