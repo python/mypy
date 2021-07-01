@@ -3987,15 +3987,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         return None, {}
 
-    @staticmethod
-    def _is_truthy_instance(t: ProperType) -> bool:
-        return (
-            isinstance(t, Instance) and
-            bool(t.type) and
-            not t.type.has_readable_member('__bool__') and
-            not t.type.has_readable_member('__len__')
-        )
-
     def _is_truthy_type(self, t: ProperType) -> bool:
         return (
             (
