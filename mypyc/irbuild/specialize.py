@@ -407,8 +407,8 @@ def can_optimize_format(format_str: str) -> bool:
                 or c == '}' and prev == '}'):
             prev = ''
             continue
-        if (c == '}' and prev != '{'
-                or prev == '{' and c != '}'):
+        if (prev != '' and (c == '}' and prev != '{'
+                            or prev == '{' and c != '}')):
             return False
         prev = c
     return True
@@ -428,17 +428,25 @@ def split_braces(format_str: str) -> List[str]:
         #                            '}' -> pass
         #                            others -> pass
         #          c is others: add c into literal
+        clear_prev = True
         if c == '}':
             if prev == '{':
                 ret_list.append(tmp_str)
                 tmp_str = ''
             elif prev == '}':
                 tmp_str += '}'
+            else:
+                clear_prev = False
         elif c == '{':
             if prev == '{':
                 tmp_str += '{'
+            else:
+                clear_prev = False
         else:
             tmp_str += c
+            clear_prev = False
         prev = c
+        if clear_prev:
+            prev = ''
     ret_list.append(tmp_str)
     return ret_list
