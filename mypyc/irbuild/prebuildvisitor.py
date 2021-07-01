@@ -162,9 +162,11 @@ class PreBuildVisitor(TraverserVisitor):
         func = self.symbols_to_funcs[symbol]
         self.free_variables.setdefault(func, set()).add(symbol)
 
+
 class RegisteredImpl(NamedTuple):
     singledispatch_func: FuncDef
     dispatch_type: TypeInfo
+
 
 def get_singledispatch_register_call_info(decorator: Expression) -> Optional[RegisteredImpl]:
     # @fun.register(complex)
