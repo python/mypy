@@ -289,3 +289,17 @@ def h(a: Missing) -> None:
     pass
 
 [builtins fixtures/args.pyi]
+
+[case testCallingRegisteredImplDirectlyWorksCorrectly]
+from functools import singledispatch
+@singledispatch
+def fun(arg) -> bool:
+    pass
+
+@fun.register(int)
+def fun_specialized(arg) -> bool:
+    pass
+
+fun_specialized(1)
+
+[builtins fixtures/args.pyi]
