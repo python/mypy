@@ -3868,7 +3868,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         # ...or directly.
         else:
             n = self.lookup_type_node(base)
-            if n and n.fullname in get_nongen_builtins(self.options.python_version):
+            if (n and n.fullname in get_nongen_builtins(self.options.python_version) and
+                    not self.is_stub_file):
                 self.fail(no_subscript_builtin_alias(n.fullname, propose_alt=False), expr)
 
     def analyze_type_application_args(self, expr: IndexExpr) -> Optional[List[Type]]:
