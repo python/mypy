@@ -250,7 +250,7 @@ dict_check_size_op = custom_op(
     c_function_name='CPyDict_CheckSize',
     error_kind=ERR_FALSE)
 
-dict_size_op = custom_op(
+dict_ssize_t_size_op = custom_op(
     arg_types=[dict_rprimitive],
     return_type=c_pyssize_t_rprimitive,
     c_function_name='PyDict_Size',

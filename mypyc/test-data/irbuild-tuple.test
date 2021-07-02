@@ -350,14 +350,13 @@ L4:
     return 1
 
 
-[case testTupleBuiltFromList2]
+[case testTupleBuiltFromStr]
 def f2(val: str) -> str:
     return val + "f2"
 
 def test() -> None:
-    source = ["a", "b", "c"]
+    source = "abc"
     a = tuple(f2(x) for x in source)
-    print(a)
 [out]
 def f2(val):
     val, r0, r1 :: str
@@ -366,70 +365,44 @@ L0:
     r1 = PyUnicode_Concat(val, r0)
     return r1
 def test():
-    r0, r1, r2 :: str
-    r3 :: list
-    r4, r5, r6, r7 :: ptr
-    source :: list
-    r8 :: ptr
-    r9 :: native_int
-    r10 :: tuple
-    r11 :: short_int
-    r12 :: ptr
-    r13 :: native_int
-    r14 :: short_int
-    r15 :: bit
-    r16 :: object
-    r17, x, r18 :: str
-    r19 :: bit
-    r20 :: short_int
+    r0, source :: str
+    r1 :: native_int
+    r2 :: bit
+    r3 :: tuple
+    r4 :: short_int
+    r5 :: native_int
+    r6 :: bit
+    r7 :: short_int
+    r8 :: bit
+    r9, x, r10 :: str
+    r11 :: bit
+    r12 :: short_int
     a :: tuple
-    r21 :: object
-    r22 :: str
-    r23, r24 :: object
 L0:
-    r0 = 'a'
-    r1 = 'b'
-    r2 = 'c'
-    r3 = PyList_New(3)
-    r4 = get_element_ptr r3 ob_item :: PyListObject
-    r5 = load_mem r4 :: ptr*
-    set_mem r5, r0 :: builtins.object*
-    r6 = r5 + WORD_SIZE*1
-    set_mem r6, r1 :: builtins.object*
-    r7 = r5 + WORD_SIZE*2
-    set_mem r7, r2 :: builtins.object*
-    keep_alive r3
-    source = r3
-    r8 = get_element_ptr source ob_size :: PyVarObject
-    r9 = load_mem r8 :: native_int*
-    keep_alive source
-    r10 = PyTuple_New(r9)
-    r11 = 0
+    r0 = 'abc'
+    source = r0
+    r1 = CPyStr_Size_size_t(source)
+    r2 = r1 >= 0 :: signed
+    r3 = PyTuple_New(r1)
+    r4 = 0
 L1:
-    r12 = get_element_ptr source ob_size :: PyVarObject
-    r13 = load_mem r12 :: native_int*
-    keep_alive source
-    r14 = r13 << 1
-    r15 = r11 < r14 :: signed
-    if r15 goto L2 else goto L4 :: bool
+    r5 = CPyStr_Size_size_t(source)
+    r6 = r5 >= 0 :: signed
+    r7 = r5 << 1
+    r8 = r4 < r7 :: signed
+    if r8 goto L2 else goto L4 :: bool
 L2:
-    r16 = CPyList_GetItemUnsafe(source, r11)
-    r17 = cast(str, r16)
-    x = r17
-    r18 = f2(x)
-    r19 = CPySequenceTuple_SetItemUnsafe(r10, r11, r18)
+    r9 = CPyStr_GetItem(source, r4)
+    x = r9
+    r10 = f2(x)
+    r11 = CPySequenceTuple_SetItemUnsafe(r3, r4, r10)
 L3:
-    r20 = r11 + 2
-    r11 = r20
+    r12 = r4 + 2
+    r4 = r12
     goto L1
 L4:
-    a = r10
-    r21 = builtins :: module
-    r22 = 'print'
-    r23 = CPyObject_GetAttr(r21, r22)
-    r24 = PyObject_CallFunctionObjArgs(r23, a, 0)
+    a = r3
     return 1
-
 
 [case testTupleBuiltFromVariableLengthTuple]
 from typing import Tuple

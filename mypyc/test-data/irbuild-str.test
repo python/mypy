@@ -201,4 +201,3 @@ L0:
     r17 = CPyStr_Build(6, r14, r9, r15, r11, r16, r13)
     s3 = r17
     return 1
-
