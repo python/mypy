@@ -49,8 +49,8 @@ any operations on the result. For example:
     y.whatever()  # Type check OK (runtime error)
 
 
-User-defined typeguards
-***********************
+User-Defined Type Guards
+************************
 
 MyPy supports User-Defined Type Guards
 (`PEP-647 <https://www.python.org/dev/peps/pep-0647/>`_).
@@ -151,6 +151,10 @@ Functions that return ``TypeGuard``s can accept extra arguments:
 
   def is_set_of(val: Set[Any], type: Type[_T]) -> TypeGuard[Set[_T]]:
       return all(isinstance(x, type) for x in val)
+
+  items: Set[Any]
+  if is_set_of(items, str):
+      reveal_type(items)  # Set[str]
 
 TypeGuards as methods
 ---------------------
