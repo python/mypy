@@ -140,7 +140,7 @@ Generic TypeGuards
 Typeguards with parameters
 --------------------------
 
-Functions that return ``TypeGuard``s can accept extra arguments:
+Type guard functions can accept extra arguments:
 
 .. code-block:: python
 
