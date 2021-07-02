@@ -25,7 +25,8 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
-    bool_rprimitive, is_dict_rprimitive, c_int_rprimitive, is_str_rprimitive
+    bool_rprimitive, is_dict_rprimitive, c_int_rprimitive, is_str_rprimitive,
+    c_pyssize_t_rprimitive
 )
 from mypyc.primitives.dict_ops import (
     dict_keys_op, dict_values_op, dict_items_op, dict_setdefault_spec_init_op
@@ -378,7 +379,7 @@ def translate_str_format(
 
         # The first parameter is the total size of the following PyObject* merged from
         # two lists alternatively.
-        result_list: List[Value] = [Integer(0, c_int_rprimitive)]
+        result_list: List[Value] = [Integer(0, c_pyssize_t_rprimitive)]
         for a, b in zip(literals, variables):
             if a:
                 result_list.append(builder.load_str(a))
@@ -393,7 +394,7 @@ def translate_str_format(
         if not variables and len(result_list) == 2:
             return result_list[1]
 
-        result_list[0] = Integer(len(result_list) - 1, c_int_rprimitive)
+        result_list[0] = Integer(len(result_list) - 1, c_pyssize_t_rprimitive)
         return builder.call_c(str_build_op, result_list, expr.line)
     return None
 

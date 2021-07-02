@@ -43,18 +43,64 @@ PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
     }
 }
 
-PyObject *CPyStr_Build(int len, ...) {
-    int i;
+// A simplification of _PyUnicode_JoinArray()
+PyObject *CPyStr_Build(Py_ssize_t len, ...) {
+    Py_ssize_t i;
     va_list args;
+
+    // Calculate the total amount of space
+    Py_ssize_t sz = 0;
+    Py_UCS4 maxchar = 0;
+
     va_start(args, len);
+    for (i = 0; i < len; i++) {
+        PyObject *item = va_arg(args, PyObject *);
+        if (!PyUnicode_Check(item)) {
+            PyErr_Format(PyExc_TypeError,
+                         "sequence item %zd: expected str instance,"
+                         " %.80s found",
+                         i, Py_TYPE(item)->tp_name);
+            return NULL;
+        }
+        if (PyUnicode_READY(item) == -1)
+            return NULL;
 
-    PyObject *res = PyUnicode_FromObject(va_arg(args, PyObject *));
-    for (i = 1; i < len; i++) {
-        PyObject *str = va_arg(args, PyObject *);
-        PyUnicode_Append(&res, str);
+        Py_ssize_t add_sz = PyUnicode_GET_LENGTH(item);
+        Py_UCS4 item_maxchar = PyUnicode_MAX_CHAR_VALUE(item);
+        maxchar = Py_MAX(maxchar, item_maxchar);
+
+        if (add_sz + sz > (Py_ssize_t)PY_SSIZE_T_MAX) {
+            PyErr_SetString(PyExc_OverflowError,
+                            "join() result is too long for a Python string");
+            return NULL;
+        }
+        sz += add_sz;
     }
-
     va_end(args);
+
+    // Construct the string
+    PyObject *res = PyUnicode_New(sz, maxchar);
+    if (res == NULL)
+        return NULL;
+
+    unsigned char *res_data = PyUnicode_1BYTE_DATA(res);
+    unsigned int kind = PyUnicode_KIND(res);
+
+    va_start(args, len);
+    for (i = 0; i < len; ++i) {
+        PyObject *item = va_arg(args, PyObject *);
+        Py_ssize_t itemlen = PyUnicode_GET_LENGTH(item);
+        if (itemlen != 0) {
+            memcpy(res_data,
+                   PyUnicode_DATA(item),
+                   kind * itemlen);
+            res_data += kind * itemlen;
+        }
+    }
+    va_end(args);
+
+    assert(res_data == PyUnicode_1BYTE_DATA(res) + kind * PyUnicode_GET_LENGTH(res));
+    assert(_PyUnicode_CheckConsistency(res, 1));
     return res;
 }
 
