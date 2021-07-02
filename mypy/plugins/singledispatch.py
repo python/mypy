@@ -5,8 +5,7 @@ from mypy.nodes import (
 )
 from mypy.subtypes import is_subtype
 from mypy.types import (
-    AnyType, CallableType, Instance, NoneType, Overloaded, Type, TypeOfAny, get_proper_type,
-    FunctionLike
+    AnyType, CallableType, Instance, Overloaded, Type, TypeOfAny, get_proper_type, FunctionLike
 )
 from mypy.plugin import CheckerPluginInterface, FunctionContext, MethodContext, MethodSigContext
 from typing import List, NamedTuple, Optional, Sequence, TypeVar, Union
