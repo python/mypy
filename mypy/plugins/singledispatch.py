@@ -50,8 +50,8 @@ REGISTER_CALLABLE_CALL_METHOD = 'functools.{}.__call__'.format(
 )  # type: Final
 
 
-def make_fake_register_class_instance(api: CheckerPluginInterface, type_args: Sequence[Type]
-                                      ) -> Instance:
+def make_fake_register_class_instance(api: CheckerPluginInterface, type_args: Sequence[Type],
+                                      default_ret_type: Type) -> Instance:
     defn = ClassDef(REGISTER_RETURN_CLASS, Block([]))
     defn.fullname = 'functools.{}'.format(REGISTER_RETURN_CLASS)
     info = TypeInfo(SymbolTable(), defn, "functools")
@@ -61,7 +61,12 @@ def make_fake_register_class_instance(api: CheckerPluginInterface, type_args: Se
     defn.info = info
 
     func_arg = Argument(Var('name'), AnyType(TypeOfAny.implementation_artifact), None, ARG_POS)
-    add_method_to_class(api, defn, '__call__', [func_arg], NoneType())
+
+    default_ret_type = get_proper_type(default_ret_type)
+    assert isinstance(default_ret_type, CallableType)
+    # The return type of the __call__ method is what will replace the function being registered,
+    # which would be the default return type of the function we're analyzing right now
+    add_method_to_class(api, defn, '__call__', [func_arg], default_ret_type.ret_type)
 
     return Instance(info, type_args)
 
@@ -133,7 +138,8 @@ def singledispatch_register_callback(ctx: MethodContext) -> Type:
         type_args = RegisterCallableInfo(register_type, ctx.type)
         register_callable = make_fake_register_class_instance(
             ctx.api,
-            type_args
+            type_args,
+            ctx.default_return_type
         )
         return register_callable
     elif isinstance(first_arg_type, CallableType):
