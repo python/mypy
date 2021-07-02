@@ -239,3 +239,18 @@ t09: tuple[int, ...] = (1, 2, 3)
 from typing import Tuple
 t10: Tuple[int, ...] = t09
 [builtins fixtures/tuple.pyi]
+
+[case testTypeAliasWithBuiltinTuple]
+# flags: --python-version 3.9
+
+A = tuple[int, ...]
+a: A = ()
+b: A = (1, 2, 3)
+c: A = ('x', 'y')  # E: Incompatible types in assignment (expression has type "Tuple[str, str]", variable has type "Tuple[int, ...]")
+
+B = tuple[int, str]
+x: B = (1, 'x')
+y: B = ('x', 1)  # E: Incompatible types in assignment (expression has type "Tuple[str, int]", variable has type "Tuple[int, str]")
+
+reveal_type(tuple[int, ...]()) # N: Revealed type is "builtins.tuple[builtins.int*]"
+[builtins fixtures/tuple.pyi]

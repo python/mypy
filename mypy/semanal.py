@@ -76,7 +76,7 @@ from mypy.nodes import (
     get_nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
     REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_source_versions,
     EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement, AssignmentExpr,
-    ParamSpecExpr
+    ParamSpecExpr, EllipsisExpr
 )
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.typevars import fill_typevars
@@ -91,7 +91,8 @@ from mypy.types import (
     FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
     TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType,
-    get_proper_type, get_proper_types, TypeAliasType)
+    get_proper_type, get_proper_types, TypeAliasType
+)
 from mypy.typeops import function_type
 from mypy.type_visitor import TypeQuery
 from mypy.nodes import implicit_module_attrs
@@ -3883,6 +3884,9 @@ class SemanticAnalyzer(NodeVisitor[None],
         types: List[Type] = []
         if isinstance(index, TupleExpr):
             items = index.items
+            is_tuple = isinstance(expr.base, RefExpr) and expr.base.fullname == 'builtins.tuple'
+            if is_tuple and items and isinstance(items[-1], EllipsisExpr):
+                items = items[:-1]
         else:
             items = [index]
         for item in items:
