@@ -21,7 +21,7 @@ load_address_op(
     src='PyUnicode_Type')
 
 # str(obj)
-function_op(
+str_op = function_op(
     name='builtins.str',
     arg_types=[object_rprimitive],
     return_type=str_rprimitive,
@@ -42,6 +42,14 @@ method_op(
     return_type=str_rprimitive,
     c_function_name='PyUnicode_Join',
     error_kind=ERR_MAGIC
+)
+
+str_build_op = custom_op(
+    arg_types=[c_int_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name='CPyStr_Build',
+    error_kind=ERR_MAGIC,
+    var_arg_type=str_rprimitive
 )
 
 # str.startswith(str)

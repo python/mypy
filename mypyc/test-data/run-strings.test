@@ -198,7 +198,7 @@ class A:
         self.age = age
 
     def __repr__(self):
-        return f"{self.name} is {self.age} years old."
+        return f'{self.name} is {self.age} years old.'
 
 def test_fstring_datatype() -> None:
     u = A('John Doe', 14)
@@ -236,8 +236,8 @@ def test_fstring_conversion() -> None:
     assert f'{s}' == 'test: āĀēĒčČ..šŠūŪžŽ'
     assert f'{s!a}' == "'test: \\u0101\\u0100\\u0113\\u0112\\u010d\\u010c..\\u0161\\u0160\\u016b\\u016a\\u017e\\u017d'"
 
-    assert f'Hello {var!s}' == "Hello mypyc"
-    assert f'Hello {num!s}' == "Hello 20"
+    assert f'Hello {var!s}' == 'Hello mypyc'
+    assert f'Hello {num!s}' == 'Hello 20'
 
 def test_fstring_align() -> None:
     assert f'Hello {var:>20}' == "Hello                mypyc"
@@ -252,33 +252,56 @@ def test_fstring_multi() -> None:
     assert s == 'mypymypymypymypymypymypymypymypymypymypymypymypymypymypymypymypymypymypymypymypymypymypymypymypy'
 
 def test_fstring_python_doc() -> None:
-    name = "Fred"
+    name = 'Fred'
     assert f"He said his name is {name!r}." == "He said his name is 'Fred'."
     assert f"He said his name is {repr(name)}." == "He said his name is 'Fred'."
 
     width = 10
     precision = 4
-    value = decimal.Decimal("12.34567")
-    assert f"result: {value:{width}.{precision}}" == 'result:      12.35' # nested field
+    value = decimal.Decimal('12.34567')
+    assert f'result: {value:{width}.{precision}}' == 'result:      12.35' # nested field
 
     today = datetime(year=2017, month=1, day=27)
-    assert f"{today:%B %d, %Y}" == 'January 27, 2017'  # using date format specifier
+    assert f'{today:%B %d, %Y}' == 'January 27, 2017'  # using date format specifier
 
     number = 1024
-    assert f"{number:#0x}" == '0x400' # using integer format specifier
+    assert f'{number:#0x}' == '0x400' # using integer format specifier
 
 [case testStringFormatMethod]
 from typing import Tuple
 
 def test_format_method_basics() -> None:
-    assert "".format() == ""
-    assert "abc".format() == "abc"
+    assert ''.format() == ''
+    assert 'abc'.format() == 'abc'
+    assert '{}{}'.format(1, 2) == '12'
 
-    name = "Eric"
+    name = 'Eric'
     age = 14
     assert "My name is {name}, I'm {age}.".format(name=name, age=age) == "My name is Eric, I'm 14."
     assert "My name is {A}, I'm {B}.".format(A=name, B=age) == "My name is Eric, I'm 14."
     assert "My name is {}, I'm {B}.".format(name, B=age) == "My name is Eric, I'm 14."
+
+    bool_var1 = True
+    bool_var2 = False
+    assert 'bool: {}, {}'.format(bool_var1, bool_var2) == 'bool: True, False'
+
+def test_format_method_empty_braces() -> None:
+    name = 'Eric'
+    age = 14
+    
+    assert 'Hello, {}!'.format(name) == 'Hello, Eric!'
+    assert '{}'.format(name) == 'Eric'
+    assert '{}! Hi!'.format(name) == 'Eric! Hi!'
+    assert '{}, Hi, {}'.format(name, name) == 'Eric, Hi, Eric'
+    assert 'Hi! {}'.format(name) == 'Hi! Eric'
+    assert "Hi, I'm {}. I'm {}.".format(name, age) == "Hi, I'm Eric. I'm 14."
+
+    assert '{{}}'.format() == '{}'
+    assert '{{{{}}}}'.format() == '{{}}'
+    assert '{{}}{}'.format(name) == '{}Eric'
+    assert 'Hi! {{{}}}'.format(name) == 'Hi! {Eric}'
+    assert 'Hi! {{ {}'.format(name) == 'Hi! { Eric'
+    assert 'Hi! {{ {} }}}}'.format(name) == 'Hi! { Eric }}'
 
 def test_format_method_numbers() -> None:
     s = 'int: {0:d};  hex: {0:x};  oct: {0:o};  bin: {0:b}'.format(-233)
@@ -295,6 +318,29 @@ def test_format_method_numbers() -> None:
     assert 'negative integer: {}'.format(neg_num) == 'negative integer: -3'
     assert 'negative integer: {}'.format(-large_num) == 'negative integer: -36893488147419103232'
 
+    large_float = 1.23e30
+    large_float2 = 1234123412341234123400000000000000000
+    small_float = 1.23e-20
+    assert '{}, {}, {}'.format(small_float, large_float, large_float2) == '1.23e-20, 1.23e+30, 1234123412341234123400000000000000000'
+    nan_num = float('nan')
+    inf_num = float('inf')
+    assert '{}, {}'.format(nan_num, inf_num) == 'nan, inf'
+
+def format_args(*args: int) -> str:
+    return 'x{}y{}'.format(*args)
+def format_kwargs(**kwargs: int) -> str:
+    return 'c{x}d{y}'.format(**kwargs)
+def format_args_self(*args: int) -> str:
+    return '{}'.format(args)
+def format_kwargs_self(**kwargs: int) -> str:
+    return '{}'.format(kwargs)
+
+def test_format_method_args() -> None:
+    assert format_args(10, 2) == 'x10y2'
+    assert format_args_self(10, 2) == '(10, 2)'
+    assert format_kwargs(x=10, y=2) == 'c10d2'
+    assert format_kwargs(x=10, y=2, z=1) == 'c10d2'
+    assert format_kwargs_self(x=10, y=2, z=1) == "{'x': 10, 'y': 2, 'z': 1}"
 
 class Point:
     def __init__(self, x, y):
@@ -319,7 +365,7 @@ def test_format_method_python_doc() -> None:
     assert 'Coordinates: {latitude}, {longitude}'.format(**coord) == 'Coordinates: 37.24N, -115.81W'
 
     # Accessing arguments’ attributes:
-    assert str(Point(4, 2)) == "Point(4, 2)"
+    assert str(Point(4, 2)) == 'Point(4, 2)'
 
     # Accessing arguments’ items:
     coord2 = (3, 5)
@@ -371,7 +417,7 @@ def test_format_method_python_doc() -> None:
     width = 5
     tmp_strs = []
     for num in range(5,12):
-        tmp_str = ""
+        tmp_str = ''
         for base in 'dXob':
             tmp_str += ('{0:{width}{base}}'.format(num, base=base, width=width))
         tmp_strs.append(tmp_str)

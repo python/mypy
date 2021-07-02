@@ -43,6 +43,21 @@ PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
     }
 }
 
+PyObject *CPyStr_Build(int len, ...) {
+    int i;
+    va_list args;
+    va_start(args, len);
+
+    PyObject *res = PyUnicode_FromObject(va_arg(args, PyObject *));
+    for (i = 1; i < len; i++) {
+        PyObject *str = va_arg(args, PyObject *);
+        PyUnicode_Append(&res, str);
+    }
+
+    va_end(args);
+    return res;
+}
+
 PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split)
 {
     Py_ssize_t temp_max_split = CPyTagged_AsSsize_t(max_split);

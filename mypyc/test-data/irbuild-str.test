@@ -158,3 +158,46 @@ L2:
     return 0
 L3:
     unreachable
+
+[case testStringFormatMethod]
+def f(s: str, num: int) -> None:
+    s1 = "Hi! I'm {}, and I'm {} years old.".format(s, num)
+    s2 = ''.format()
+    s3 = 'abc'.format()
+    s3 = '}}{}{{{}}}{{{}'.format(num, num, num)
+[out]
+def f(s, num):
+    s :: str
+    num :: int
+    r0 :: object
+    r1, r2, r3, r4, r5, s1, r6, s2, r7, s3 :: str
+    r8 :: object
+    r9 :: str
+    r10 :: object
+    r11 :: str
+    r12 :: object
+    r13, r14, r15, r16, r17 :: str
+L0:
+    r0 = box(int, num)
+    r1 = PyObject_Str(r0)
+    r2 = "Hi! I'm "
+    r3 = ", and I'm "
+    r4 = ' years old.'
+    r5 = CPyStr_Build(5, r2, s, r3, r1, r4)
+    s1 = r5
+    r6 = ''
+    s2 = r6
+    r7 = 'abc'
+    s3 = r7
+    r8 = box(int, num)
+    r9 = PyObject_Str(r8)
+    r10 = box(int, num)
+    r11 = PyObject_Str(r10)
+    r12 = box(int, num)
+    r13 = PyObject_Str(r12)
+    r14 = '}'
+    r15 = '{'
+    r16 = '}{'
+    r17 = CPyStr_Build(6, r14, r9, r15, r11, r16, r13)
+    s3 = r17
+    return 1

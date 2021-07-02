@@ -16,7 +16,7 @@ from typing import Callable, Optional, Dict, Tuple, List
 
 from mypy.nodes import (
     CallExpr, RefExpr, MemberExpr, NameExpr, TupleExpr, GeneratorExpr,
-    ListExpr, DictExpr, ARG_POS
+    ListExpr, DictExpr, StrExpr, ARG_POS
 )
 from mypy.types import AnyType, TypeOfAny
 
@@ -25,19 +25,19 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
-    bool_rprimitive, is_dict_rprimitive, c_int_rprimitive
+    bool_rprimitive, is_dict_rprimitive, c_int_rprimitive, is_str_rprimitive
 )
 from mypyc.primitives.dict_ops import (
     dict_keys_op, dict_values_op, dict_items_op, dict_setdefault_spec_init_op
 )
 from mypyc.primitives.list_ops import new_list_set_item_op
 from mypyc.primitives.tuple_ops import new_tuple_set_item_op
+from mypyc.primitives.str_ops import str_op, str_build_op
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import (
     translate_list_comprehension, translate_set_comprehension,
     comprehension_helper, sequence_from_generator_preallocate_helper
 )
-
 
 # Specializers are attempted before compiling the arguments to the
 # function.  Specializers can return None to indicate that they failed
@@ -62,9 +62,11 @@ def specialize_function(
     There may exist multiple specializers for one function. When translating method
     calls, the earlier appended specializer has higher priority.
     """
+
     def wrapper(f: Specializer) -> Specializer:
         specializers.setdefault((name, typ), []).append(f)
         return f
+
     return wrapper
 
 
@@ -189,13 +191,13 @@ def translate_safe_generator_call(
             return builder.gen_method_call(
                 builder.accept(callee.expr), callee.name,
                 ([translate_list_comprehension(builder, expr.args[0])]
-                    + [builder.accept(arg) for arg in expr.args[1:]]),
+                 + [builder.accept(arg) for arg in expr.args[1:]]),
                 builder.node_type(expr), expr.line, expr.arg_kinds, expr.arg_names)
         else:
             return builder.call_refexpr_with_args(
                 expr, callee,
                 ([translate_list_comprehension(builder, expr.args[0])]
-                    + [builder.accept(arg) for arg in expr.args[1:]]))
+                 + [builder.accept(arg) for arg in expr.args[1:]]))
     return None
 
 
@@ -343,7 +345,7 @@ def translate_dict_setdefault(
                 return None
             data_type = Integer(2, c_int_rprimitive, expr.line)
         elif (isinstance(arg, CallExpr) and isinstance(arg.callee, NameExpr)
-                and arg.callee.fullname == 'builtins.set'):
+              and arg.callee.fullname == 'builtins.set'):
             if len(arg.args):
                 return None
             data_type = Integer(3, c_int_rprimitive, expr.line)
@@ -356,3 +358,95 @@ def translate_dict_setdefault(
                               [callee_dict, key_val, data_type],
                               expr.line)
     return None
+
+
+@specialize_function('format', str_rprimitive)
+def translate_str_format(
+        builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+    if (isinstance(callee, MemberExpr) and isinstance(callee.expr, StrExpr)
+            and expr.arg_kinds.count(ARG_POS) == len(expr.arg_kinds)):
+
+        format_str = callee.expr.value
+        if not can_optimize_format(format_str):
+            return None
+
+        literals = split_braces(format_str)
+
+        variables = [builder.accept(x) if is_str_rprimitive(builder.node_type(x))
+                     else builder.call_c(str_op, [builder.accept(x)], expr.line)
+                     for x in expr.args]
+
+        # The first parameter is the total size of the following PyObject* merged from
+        # two lists alternatively.
+        result_list: List[Value] = [Integer(0, c_int_rprimitive)]
+        for a, b in zip(literals, variables):
+            if a:
+                result_list.append(builder.load_str(a))
+            result_list.append(b)
+        # The split_braces() always generates one more element
+        if literals[-1]:
+            result_list.append(builder.load_str(literals[-1]))
+
+        # Special case for empty string and literal string
+        if len(result_list) == 1:
+            return builder.load_str("")
+        if not variables and len(result_list) == 2:
+            return result_list[1]
+
+        result_list[0] = Integer(len(result_list) - 1, c_int_rprimitive)
+        return builder.call_c(str_build_op, result_list, expr.line)
+    return None
+
+
+def can_optimize_format(format_str: str) -> bool:
+    # TODO
+    # Only empty braces can be optimized
+    prev = ''
+    for c in format_str:
+        if (c == '{' and prev == '{'
+                or c == '}' and prev == '}'):
+            prev = ''
+            continue
+        if (prev != '' and (c == '}' and prev != '{'
+                            or prev == '{' and c != '}')):
+            return False
+        prev = c
+    return True
+
+
+def split_braces(format_str: str) -> List[str]:
+    # This function can only be called after format_str pass can_optimize_format()
+    tmp_str = ''
+    ret_list = []
+    prev = ''
+    for c in format_str:
+        # There are three cases: {, }, others
+        #     when c is '}': prev is '{' -> match empty braces
+        #                            '}' -> merge into one } in literal
+        #                            others -> pass
+        #          c is '{': prev is '{' -> merge into one { in literal
+        #                            '}' -> pass
+        #                            others -> pass
+        #          c is others: add c into literal
+        clear_prev = True
+        if c == '}':
+            if prev == '{':
+                ret_list.append(tmp_str)
+                tmp_str = ''
+            elif prev == '}':
+                tmp_str += '}'
+            else:
+                clear_prev = False
+        elif c == '{':
+            if prev == '{':
+                tmp_str += '{'
+            else:
+                clear_prev = False
+        else:
+            tmp_str += c
+            clear_prev = False
+        prev = c
+        if clear_prev:
+            prev = ''
+    ret_list.append(tmp_str)
+    return ret_list
