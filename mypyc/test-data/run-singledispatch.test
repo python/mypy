@@ -136,23 +136,6 @@ def fun_specialized(arg: int) -> bool:
 def test_singledispatch() -> None:
     assert fun_specialized('a')
 
-# TODO: remove this test when type annotations and register arguments disagreeing becomes a
-# mypy error
-[case testTypeAnnotationsDisagreeWithRegisterArgument]
-from functools import singledispatch
-
-@singledispatch
-def fun(arg) -> bool:
-    return False
-
-@fun.register(int)
-def fun_specialized(arg: str) -> bool:
-    return True
-
-def test_singledispatch() -> None:
-    assert fun(3) # type: ignore
-    assert not fun('a')
-
 [case testNoneIsntATypeWhenUsedAsArgumentToRegister-xfail]
 from functools import singledispatch
 
