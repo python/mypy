@@ -777,10 +777,11 @@ def add_singledispatch_registered_impls(builder: IRBuilder) -> None:
     assert isinstance(fitem, FuncDef)
     impls = builder.singledispatch_impls[fitem]
     line = fitem.line
+    current_func_decl = builder.mapper.func_to_decl[fitem]
+    arg_info = get_args(builder, current_func_decl.sig.args, line)
     for dispatch_type, impl in impls:
         func_decl = builder.mapper.func_to_decl[impl]
         call_impl, next_impl = BasicBlock(), BasicBlock()
-        arg_info = get_args(builder, func_decl.sig.args, line)
         should_call_impl = check_if_isinstance(builder, arg_info.args[0], dispatch_type, line)
         builder.add_bool_branch(should_call_impl, call_impl, next_impl)
 

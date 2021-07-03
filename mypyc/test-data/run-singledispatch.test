@@ -387,3 +387,18 @@ def test_verify() -> None:
     assert verify_list(MypyFile(), 5, ['a', 'b']) == ['in TypeInfo', 'hello']
     assert verify_list(TypeInfo(), str, ['a', 'b']) == ['in TypeInfo', 'hello']
     assert verify_list(TypeVarExpr(), 'a', ['x', 'y']) == ['x', 'y']
+
+[case testArgsInRegisteredImplNamedDifferentlyFromMainFunction]
+from functools import singledispatch
+
+@singledispatch
+def f(a) -> bool:
+    return False
+
+@f.register
+def g(b: int) -> bool:
+    return True
+
+def test_singledispatch():
+    assert f(5)
+    assert not f('a')
