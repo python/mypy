@@ -402,3 +402,40 @@ def g(b: int) -> bool:
 def test_singledispatch():
     assert f(5)
     assert not f('a')
+
+[case testKeywordArguments]
+from functools import singledispatch
+
+@singledispatch
+def f(arg, *, kwarg: bool = False) -> bool:
+    return not kwarg
+
+@f.register
+def g(arg: int, *, kwarg: bool = True) -> bool:
+    return kwarg
+
+def test_keywords():
+    assert f('a')
+    assert f('a', kwarg=False)
+    assert not f('a', kwarg=True)
+
+    assert f(1)
+    assert f(1, kwarg=True)
+    assert not f(1, kwarg=False)
+
+[case testGeneratorAndMultipleTypesOfIterable-xfail]
+from functools import singledispatch
+from typing import *
+
+@singledispatch
+def f(arg: Any) -> Iterable[int]:
+    yield 1
+
+@f.register
+def g(arg: str) -> Iterable[int]:
+    return [0]
+
+def test_iterables():
+    assert f(1) != [1]
+    assert list(f(1)) == [1]
+    assert f('a') == [0]
