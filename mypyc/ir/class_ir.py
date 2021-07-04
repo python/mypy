@@ -105,49 +105,49 @@ class ClassIR:
         # If this a subclass of some built-in python class, the name
         # of the object for that class. We currently only support this
         # in a few ad-hoc cases.
-        self.builtin_base = None  # type: Optional[str]
+        self.builtin_base: Optional[str] = None
         # Default empty constructor
         self.ctor = FuncDecl(name, None, module_name, FuncSignature([], RInstance(self)))
 
-        self.attributes = OrderedDict()  # type: OrderedDict[str, RType]
+        self.attributes: OrderedDict[str, RType] = OrderedDict()
         # Deletable attributes
-        self.deletable = []  # type: List[str]
+        self.deletable: List[str] = []
         # We populate method_types with the signatures of every method before
         # we generate methods, and we rely on this information being present.
-        self.method_decls = OrderedDict()  # type: OrderedDict[str, FuncDecl]
+        self.method_decls: OrderedDict[str, FuncDecl] = OrderedDict()
         # Map of methods that are actually present in an extension class
-        self.methods = OrderedDict()  # type: OrderedDict[str, FuncIR]
+        self.methods: OrderedDict[str, FuncIR] = OrderedDict()
         # Glue methods for boxing/unboxing when a class changes the type
         # while overriding a method. Maps from (parent class overrided, method)
         # to IR of glue method.
-        self.glue_methods = OrderedDict()  # type: Dict[Tuple[ClassIR, str], FuncIR]
+        self.glue_methods: Dict[Tuple[ClassIR, str], FuncIR] = OrderedDict()
 
         # Properties are accessed like attributes, but have behavior like method calls.
         # They don't belong in the methods dictionary, since we don't want to expose them to
         # Python's method API. But we want to put them into our own vtable as methods, so that
         # they are properly handled and overridden. The property dictionary values are a tuple
         # containing a property getter and an optional property setter.
-        self.properties = OrderedDict()  # type: OrderedDict[str, Tuple[FuncIR, Optional[FuncIR]]]
+        self.properties: OrderedDict[str, Tuple[FuncIR, Optional[FuncIR]]] = OrderedDict()
         # We generate these in prepare_class_def so that we have access to them when generating
         # other methods and properties that rely on these types.
-        self.property_types = OrderedDict()  # type: OrderedDict[str, RType]
+        self.property_types: OrderedDict[str, RType] = OrderedDict()
 
-        self.vtable = None  # type: Optional[Dict[str, int]]
-        self.vtable_entries = []  # type: VTableEntries
-        self.trait_vtables = OrderedDict()  # type: OrderedDict[ClassIR, VTableEntries]
+        self.vtable: Optional[Dict[str, int]] = None
+        self.vtable_entries: VTableEntries = []
+        self.trait_vtables: OrderedDict[ClassIR, VTableEntries] = OrderedDict()
         # N.B: base might not actually quite be the direct base.
         # It is the nearest concrete base, but we allow a trait in between.
-        self.base = None  # type: Optional[ClassIR]
-        self.traits = []  # type: List[ClassIR]
+        self.base: Optional[ClassIR] = None
+        self.traits: List[ClassIR] = []
         # Supply a working mro for most generated classes. Real classes will need to
         # fix it up.
-        self.mro = [self]  # type: List[ClassIR]
+        self.mro: List[ClassIR] = [self]
         # base_mro is the chain of concrete (non-trait) ancestors
-        self.base_mro = [self]  # type: List[ClassIR]
+        self.base_mro: List[ClassIR] = [self]
 
         # Direct subclasses of this class (use subclasses() to also incude non-direct ones)
         # None if separate compilation prevents this from working
-        self.children = []  # type: Optional[List[ClassIR]]
+        self.children: Optional[List[ClassIR]] = []
 
     @property
     def fullname(self) -> str:

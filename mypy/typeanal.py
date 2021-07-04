@@ -35,7 +35,7 @@ from mypy import nodes, message_registry, errorcodes as codes
 
 T = TypeVar('T')
 
-type_constructors = {
+type_constructors: Final = {
     'typing.Callable',
     'typing.Optional',
     'typing.Tuple',
@@ -45,22 +45,22 @@ type_constructors = {
     'typing_extensions.Literal',
     'typing.Annotated',
     'typing_extensions.Annotated',
-}  # type: Final
+}
 
-ARG_KINDS_BY_CONSTRUCTOR = {
+ARG_KINDS_BY_CONSTRUCTOR: Final = {
     'mypy_extensions.Arg': ARG_POS,
     'mypy_extensions.DefaultArg': ARG_OPT,
     'mypy_extensions.NamedArg': ARG_NAMED,
     'mypy_extensions.DefaultNamedArg': ARG_NAMED_OPT,
     'mypy_extensions.VarArg': ARG_STAR,
     'mypy_extensions.KwArg': ARG_STAR2,
-}  # type: Final
+}
 
-GENERIC_STUB_NOT_AT_RUNTIME_TYPES = {
+GENERIC_STUB_NOT_AT_RUNTIME_TYPES: Final = {
     'queue.Queue',
     'builtins._PathLike',
     'asyncio.futures.Future',
-}  # type: Final
+}
 
 
 def analyze_type_alias(node: Expression,
@@ -114,9 +114,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     """
 
     # Is this called from an untyped function definition?
-    in_dynamic_func = False  # type: bool
+    in_dynamic_func: bool = False
     # Is this called from global scope?
-    global_scope = True  # type: bool
+    global_scope: bool = True
 
     def __init__(self,
                  api: SemanticAnalyzerCoreInterface,
@@ -157,7 +157,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.options = options
         self.is_typeshed_stub = is_typeshed_stub
         # Names of type aliases encountered while analysing a type will be collected here.
-        self.aliases_used = set()  # type: Set[str]
+        self.aliases_used: Set[str] = set()
 
     def visit_unbound_type(self, t: UnboundType, defining_literal: bool = False) -> Type:
         typ = self.visit_unbound_type_nonoptional(t, defining_literal)
@@ -458,7 +458,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # to make sure there are no remaining semanal-only types, then give up.
         t = t.copy_modified(args=self.anal_array(t.args))
         # TODO: Move this message building logic to messages.py.
-        notes = []  # type: List[str]
+        notes: List[str] = []
         if isinstance(sym.node, Var):
             notes.append('See https://mypy.readthedocs.io/en/'
                          'stable/common_issues.html#variables-vs-type-aliases')
@@ -756,9 +756,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def analyze_callable_args(self, arglist: TypeList) -> Optional[Tuple[List[Type],
                                                                          List[int],
                                                                          List[Optional[str]]]]:
-        args = []   # type: List[Type]
-        kinds = []  # type: List[int]
-        names = []  # type: List[Optional[str]]
+        args: List[Type] = []
+        kinds: List[int] = []
+        names: List[Optional[str]] = []
         for arg in arglist.items:
             if isinstance(arg, CallableArgument):
                 args.append(arg.typ)
@@ -795,7 +795,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             self.fail('Literal[...] must have at least one parameter', t)
             return AnyType(TypeOfAny.from_error)
 
-        output = []  # type: List[Type]
+        output: List[Type] = []
         for i, arg in enumerate(t.args):
             analyzed_types = self.analyze_literal_param(i + 1, arg, t)
             if analyzed_types is None:
@@ -897,8 +897,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def infer_type_variables(self,
                              type: CallableType) -> List[Tuple[str, TypeVarLikeExpr]]:
         """Return list of unique type variables referred to in a callable."""
-        names = []  # type: List[str]
-        tvars = []  # type: List[TypeVarLikeExpr]
+        names: List[str] = []
+        tvars: List[TypeVarLikeExpr] = []
         for arg in type.arg_types:
             for name, tvar_expr in arg.accept(
                 TypeVarLikeQuery(self.lookup_qualified, self.tvar_scope)
@@ -934,7 +934,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Do not define a new type variable if already defined in scope.
         typevars = [(name, tvar) for name, tvar in typevars
                     if not self.is_defined_type_var(name, defn)]
-        defs = []  # type: List[TypeVarLikeDef]
+        defs: List[TypeVarLikeDef] = []
         for name, tvar in typevars:
             if not self.tvar_scope.allow_binding(tvar.fullname):
                 self.fail('Type variable "{}" is bound by an outer class'.format(name), defn)
@@ -952,7 +952,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return self.tvar_scope.get_binding(tvar_node) is not None
 
     def anal_array(self, a: Iterable[Type], nested: bool = True) -> List[Type]:
-        res = []  # type: List[Type]
+        res: List[Type] = []
         for t in a:
             res.append(self.anal_type(t, nested))
         return res
@@ -1069,7 +1069,7 @@ def fix_instance(t: Instance, fail: MsgCallback, note: MsgCallback,
     """
     if len(t.args) == 0:
         if use_generic_error:
-            fullname = None  # type: Optional[str]
+            fullname: Optional[str] = None
         else:
             fullname = t.type.fullname
         any_type = get_omitted_any(disallow_any, fail, note, t, python_version, fullname,
@@ -1168,8 +1168,8 @@ def set_any_tvars(node: TypeAlias,
 
 def remove_dups(tvars: Iterable[T]) -> List[T]:
     # Get unique elements in order of appearance
-    all_tvars = set()  # type: Set[T]
-    new_tvars = []  # type: List[T]
+    all_tvars: Set[T] = set()
+    new_tvars: List[T] = []
     for t in tvars:
         if t not in all_tvars:
             new_tvars.append(t)
@@ -1289,7 +1289,7 @@ class CollectAnyTypesQuery(TypeQuery[List[AnyType]]):
 
     @classmethod
     def combine_lists_strategy(cls, it: Iterable[List[AnyType]]) -> List[AnyType]:
-        result = []  # type: List[AnyType]
+        result: List[AnyType] = []
         for l in it:
             result.extend(l)
         return result

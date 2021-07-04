@@ -38,18 +38,18 @@ T = TypeVar('T')
 class RType:
     """Abstract base class for runtime types (erased, only concrete; no generics)."""
 
-    name = None  # type: str
+    name: str
     # If True, the type has a special unboxed representation. If False, the
     # type is represented as PyObject *. Even if True, the representation
     # may contain pointers.
     is_unboxed = False
     # This is the C undefined value for this type. It's used for initialization
     # if there's no value yet, and for function return value on error/exception.
-    c_undefined = None  # type: str
+    c_undefined: str
     # If unboxed: does the unboxed version use reference counting?
     is_refcounted = True
     # C type; use Emitter.ctype() to access
-    _ctype = None  # type: str
+    _ctype: str
 
     @abstractmethod
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
@@ -151,7 +151,7 @@ class RVoid(RType):
 
 
 # Singleton instance of RVoid
-void_rtype = RVoid()  # type: Final
+void_rtype: Final = RVoid()
 
 
 class RPrimitive(RType):
@@ -169,7 +169,7 @@ class RPrimitive(RType):
     """
 
     # Map from primitive names to primitive types and is used by deserialization
-    primitive_map = {}  # type: ClassVar[Dict[str, RPrimitive]]
+    primitive_map: ClassVar[Dict[str, "RPrimitive"]] = {}
 
     def __init__(self,
                  name: str,
@@ -232,12 +232,12 @@ class RPrimitive(RType):
 # little as possible, as generic ops are typically slow. Other types,
 # including other primitive types and RInstance, are usually much
 # faster.
-object_rprimitive = RPrimitive('builtins.object', is_unboxed=False,
-                               is_refcounted=True)  # type: Final
+object_rprimitive: Final = RPrimitive("builtins.object", is_unboxed=False, is_refcounted=True)
 
 # represents a low level pointer of an object
-object_pointer_rprimitive = RPrimitive('object_ptr', is_unboxed=False,
-                               is_refcounted=False, ctype='PyObject **')  # type: Final
+object_pointer_rprimitive: Final = RPrimitive(
+    "object_ptr", is_unboxed=False, is_refcounted=False, ctype="PyObject **"
+)
 
 # Arbitrary-precision integer (corresponds to Python 'int'). Small
 # enough values are stored unboxed, while large integers are
@@ -251,25 +251,31 @@ object_pointer_rprimitive = RPrimitive('object_ptr', is_unboxed=False,
 #
 # This cannot represent a subclass of int. An instance of a subclass
 # of int is coerced to the corresponding 'int' value.
-int_rprimitive = RPrimitive('builtins.int', is_unboxed=True, is_refcounted=True,
-                            ctype='CPyTagged')  # type: Final
+int_rprimitive: Final = RPrimitive(
+    "builtins.int", is_unboxed=True, is_refcounted=True, ctype="CPyTagged"
+)
 
 # An unboxed integer. The representation is the same as for unboxed
 # int_rprimitive (shifted left by one). These can be used when an
 # integer is known to be small enough to fit size_t (CPyTagged).
-short_int_rprimitive = RPrimitive('short_int', is_unboxed=True, is_refcounted=False,
-                                  ctype='CPyTagged')  # type: Final
+short_int_rprimitive: Final = RPrimitive(
+    "short_int", is_unboxed=True, is_refcounted=False, ctype="CPyTagged"
+)
 
 # Low level integer types (correspond to C integer types)
 
-int32_rprimitive = RPrimitive('int32', is_unboxed=True, is_refcounted=False,
-                              ctype='int32_t', size=4)  # type: Final
-int64_rprimitive = RPrimitive('int64', is_unboxed=True, is_refcounted=False,
-                              ctype='int64_t', size=8)  # type: Final
-uint32_rprimitive = RPrimitive('uint32', is_unboxed=True, is_refcounted=False,
-                               ctype='uint32_t', size=4)  # type: Final
-uint64_rprimitive = RPrimitive('uint64', is_unboxed=True, is_refcounted=False,
-                               ctype='uint64_t', size=8)  # type: Final
+int32_rprimitive: Final = RPrimitive(
+    "int32", is_unboxed=True, is_refcounted=False, ctype="int32_t", size=4
+)
+int64_rprimitive: Final = RPrimitive(
+    "int64", is_unboxed=True, is_refcounted=False, ctype="int64_t", size=8
+)
+uint32_rprimitive: Final = RPrimitive(
+    "uint32", is_unboxed=True, is_refcounted=False, ctype="uint32_t", size=4
+)
+uint64_rprimitive: Final = RPrimitive(
+    "uint64", is_unboxed=True, is_refcounted=False, ctype="uint64_t", size=8
+)
 
 # The C 'int' type
 c_int_rprimitive = int32_rprimitive
@@ -284,51 +290,50 @@ else:
                               ctype='int64_t', size=8)
 
 # Low level pointer, represented as integer in C backends
-pointer_rprimitive = RPrimitive('ptr', is_unboxed=True, is_refcounted=False,
-                                ctype='CPyPtr')  # type: Final
+pointer_rprimitive: Final = RPrimitive("ptr", is_unboxed=True, is_refcounted=False, ctype="CPyPtr")
 
 # Floats are represent as 'float' PyObject * values. (In the future
 # we'll likely switch to a more efficient, unboxed representation.)
-float_rprimitive = RPrimitive('builtins.float', is_unboxed=False,
-                              is_refcounted=True)  # type: Final
+float_rprimitive: Final = RPrimitive("builtins.float", is_unboxed=False, is_refcounted=True)
 
 # An unboxed Python bool value. This actually has three possible values
 # (0 -> False, 1 -> True, 2 -> error). If you only need True/False, use
 # bit_rprimitive instead.
-bool_rprimitive = RPrimitive('builtins.bool', is_unboxed=True, is_refcounted=False,
-                             ctype='char', size=1)  # type: Final
+bool_rprimitive: Final = RPrimitive(
+    "builtins.bool", is_unboxed=True, is_refcounted=False, ctype="char", size=1
+)
 
 # A low-level boolean value with two possible values: 0 and 1. Any
 # other value results in undefined behavior. Undefined or error values
 # are not supported.
-bit_rprimitive = RPrimitive('bit', is_unboxed=True, is_refcounted=False,
-                            ctype='char', size=1)  # type: Final
+bit_rprimitive: Final = RPrimitive(
+    "bit", is_unboxed=True, is_refcounted=False, ctype="char", size=1
+)
 
 # The 'None' value. The possible values are 0 -> None and 2 -> error.
-none_rprimitive = RPrimitive('builtins.None', is_unboxed=True, is_refcounted=False,
-                             ctype='char', size=1)  # type: Final
+none_rprimitive: Final = RPrimitive(
+    "builtins.None", is_unboxed=True, is_refcounted=False, ctype="char", size=1
+)
 
 # Python list object (or an instance of a subclass of list).
-list_rprimitive = RPrimitive('builtins.list', is_unboxed=False, is_refcounted=True)  # type: Final
+list_rprimitive: Final = RPrimitive("builtins.list", is_unboxed=False, is_refcounted=True)
 
 # Python dict object (or an instance of a subclass of dict).
-dict_rprimitive = RPrimitive('builtins.dict', is_unboxed=False, is_refcounted=True)  # type: Final
+dict_rprimitive: Final = RPrimitive("builtins.dict", is_unboxed=False, is_refcounted=True)
 
 # Python set object (or an instance of a subclass of set).
-set_rprimitive = RPrimitive('builtins.set', is_unboxed=False, is_refcounted=True)  # type: Final
+set_rprimitive: Final = RPrimitive("builtins.set", is_unboxed=False, is_refcounted=True)
 
 # Python str object. At the C layer, str is referred to as unicode
 # (PyUnicode).
-str_rprimitive = RPrimitive('builtins.str', is_unboxed=False, is_refcounted=True)  # type: Final
+str_rprimitive: Final = RPrimitive("builtins.str", is_unboxed=False, is_refcounted=True)
 
 # Tuple of an arbitrary length (corresponds to Tuple[t, ...], with
 # explicit '...').
-tuple_rprimitive = RPrimitive('builtins.tuple', is_unboxed=False,
-                              is_refcounted=True)  # type: Final
+tuple_rprimitive: Final = RPrimitive("builtins.tuple", is_unboxed=False, is_refcounted=True)
 
 # Python range object.
-range_rprimitive = RPrimitive('builtins.range', is_unboxed=False,
-                              is_refcounted=True)  # type: Final
+range_rprimitive: Final = RPrimitive("builtins.range", is_unboxed=False, is_refcounted=True)
 
 
 def is_tagged(rtype: RType) -> bool:

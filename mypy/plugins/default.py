@@ -9,7 +9,7 @@ from mypy.plugin import (
 )
 from mypy.plugins.common import try_getting_str_literals
 from mypy.types import (
-    Type, Instance, AnyType, TypeOfAny, CallableType, NoneType, TypedDictType,
+    FunctionLike, Type, Instance, AnyType, TypeOfAny, CallableType, NoneType, TypedDictType,
     TypeVarDef, TypeVarType, TPDICT_FB_NAMES, get_proper_type, LiteralType
 )
 from mypy.subtypes import is_subtype
@@ -22,7 +22,7 @@ class DefaultPlugin(Plugin):
 
     def get_function_hook(self, fullname: str
                           ) -> Optional[Callable[[FunctionContext], Type]]:
-        from mypy.plugins import ctypes
+        from mypy.plugins import ctypes, singledispatch
 
         if fullname == 'contextlib.contextmanager':
             return contextmanager_callback
@@ -30,11 +30,13 @@ class DefaultPlugin(Plugin):
             return open_callback
         elif fullname == 'ctypes.Array':
             return ctypes.array_constructor_callback
+        elif fullname == 'functools.singledispatch':
+            return singledispatch.create_singledispatch_function_callback
         return None
 
     def get_method_signature_hook(self, fullname: str
-                                  ) -> Optional[Callable[[MethodSigContext], CallableType]]:
-        from mypy.plugins import ctypes
+                                  ) -> Optional[Callable[[MethodSigContext], FunctionLike]]:
+        from mypy.plugins import ctypes, singledispatch
 
         if fullname == 'typing.Mapping.get':
             return typed_dict_get_signature_callback
@@ -48,11 +50,13 @@ class DefaultPlugin(Plugin):
             return typed_dict_delitem_signature_callback
         elif fullname == 'ctypes.Array.__setitem__':
             return ctypes.array_setitem_callback
+        elif fullname == singledispatch.SINGLEDISPATCH_CALLABLE_CALL_METHOD:
+            return singledispatch.call_singledispatch_function_callback
         return None
 
     def get_method_hook(self, fullname: str
                         ) -> Optional[Callable[[MethodContext], Type]]:
-        from mypy.plugins import ctypes
+        from mypy.plugins import ctypes, singledispatch
 
         if fullname == 'typing.Mapping.get':
             return typed_dict_get_callback
@@ -72,6 +76,10 @@ class DefaultPlugin(Plugin):
             return ctypes.array_iter_callback
         elif fullname == 'pathlib.Path.open':
             return path_open_callback
+        elif fullname == singledispatch.SINGLEDISPATCH_REGISTER_METHOD:
+            return singledispatch.singledispatch_register_callback
+        elif fullname == singledispatch.REGISTER_CALLABLE_CALL_METHOD:
+            return singledispatch.call_singledispatch_function_after_register_argument
         return None
 
     def get_attribute_hook(self, fullname: str
@@ -237,7 +245,7 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
         if keys is None:
             return ctx.default_return_type
 
-        output_types = []  # type: List[Type]
+        output_types: List[Type] = []
         for key in keys:
             value_type = get_proper_type(ctx.type.items.get(key))
             if value_type is None:

@@ -43,7 +43,7 @@ from mypyc.ir.rtypes import RType
 
 # Error kind for functions that return negative integer on exception. This
 # is only used for primitives. We translate it away during IR building.
-ERR_NEG_INT = 10  # type: Final
+ERR_NEG_INT: Final = 10
 
 
 CFunctionDescription = NamedTuple(
@@ -68,18 +68,18 @@ LoadAddressDescription = NamedTuple(
 
 
 # CallC op for method call(such as 'str.join')
-method_call_ops = {}  # type: Dict[str, List[CFunctionDescription]]
+method_call_ops: Dict[str, List[CFunctionDescription]] = {}
 
 # CallC op for top level function call(such as 'builtins.list')
-function_ops = {}  # type: Dict[str, List[CFunctionDescription]]
+function_ops: Dict[str, List[CFunctionDescription]] = {}
 
 # CallC op for binary ops
-binary_ops = {}  # type: Dict[str, List[CFunctionDescription]]
+binary_ops: Dict[str, List[CFunctionDescription]] = {}
 
 # CallC op for unary ops
-unary_ops = {}  # type: Dict[str, List[CFunctionDescription]]
+unary_ops: Dict[str, List[CFunctionDescription]] = {}
 
-builtin_names = {}  # type: Dict[str, Tuple[RType, str]]
+builtin_names: Dict[str, Tuple[RType, str]] = {}
 
 
 def method_op(name: str,

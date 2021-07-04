@@ -132,7 +132,7 @@ class TryFinallyNonlocalControl(NonlocalControl):
 
     def __init__(self, target: BasicBlock) -> None:
         self.target = target
-        self.ret_reg = None  # type: Optional[Register]
+        self.ret_reg: Optional[Register] = None
 
     def gen_break(self, builder: 'IRBuilder', line: int) -> None:
         builder.error("break inside try/finally block is unimplemented", line)

@@ -29,18 +29,18 @@ class FuncInfo:
         self.ns = namespace
         # Callable classes implement the '__call__' method, and are used to represent functions
         # that are nested inside of other functions.
-        self._callable_class = None  # type: Optional[ImplicitClass]
+        self._callable_class: Optional[ImplicitClass] = None
         # Environment classes are ClassIR instances that contain attributes representing the
         # variables in the environment of the function they correspond to. Environment classes are
         # generated for functions that contain nested functions.
-        self._env_class = None  # type: Optional[ClassIR]
+        self._env_class: Optional[ClassIR] = None
         # Generator classes implement the '__next__' method, and are used to represent generators
         # returned by generator functions.
-        self._generator_class = None  # type: Optional[GeneratorClass]
+        self._generator_class: Optional[GeneratorClass] = None
         # Environment class registers are the local registers associated with instances of an
         # environment class, used for getting and setting attributes. curr_env_reg is the register
         # associated with the current environment.
-        self._curr_env_reg = None  # type: Optional[Value]
+        self._curr_env_reg: Optional[Value] = None
         # These are flags denoting whether a given function is nested, contains a nested function,
         # is decorated, or is within a non-extension class.
         self.is_nested = is_nested
@@ -107,13 +107,13 @@ class ImplicitClass:
         # The ClassIR instance associated with this class.
         self.ir = ir
         # The register associated with the 'self' instance for this generator class.
-        self._self_reg = None  # type: Optional[Value]
+        self._self_reg: Optional[Value] = None
         # Environment class registers are the local registers associated with instances of an
         # environment class, used for getting and setting attributes. curr_env_reg is the register
         # associated with the current environment. prev_env_reg is the self.__mypyc_env__ field
         # associated with the previous environment.
-        self._curr_env_reg = None  # type: Optional[Value]
-        self._prev_env_reg = None  # type: Optional[Value]
+        self._curr_env_reg: Optional[Value] = None
+        self._prev_env_reg: Optional[Value] = None
 
     @property
     def self_reg(self) -> Value:
@@ -150,20 +150,20 @@ class GeneratorClass(ImplicitClass):
         super().__init__(ir)
         # This register holds the label number that the '__next__' function should go to the next
         # time it is called.
-        self._next_label_reg = None  # type: Optional[Value]
-        self._next_label_target = None  # type: Optional[AssignmentTarget]
+        self._next_label_reg: Optional[Value] = None
+        self._next_label_target: Optional[AssignmentTarget] = None
 
         # These registers hold the error values for the generator object for the case that the
         # 'throw' function is called.
-        self.exc_regs = None  # type: Optional[Tuple[Value, Value, Value]]
+        self.exc_regs: Optional[Tuple[Value, Value, Value]] = None
 
         # Holds the arg passed to send
-        self.send_arg_reg = None  # type: Optional[Value]
+        self.send_arg_reg: Optional[Value] = None
 
         # The switch block is used to decide which instruction to go using the value held in the
         # next-label register.
         self.switch_block = BasicBlock()
-        self.continuation_blocks = []  # type: List[BasicBlock]
+        self.continuation_blocks: List[BasicBlock] = []
 
     @property
     def next_label_reg(self) -> Value:

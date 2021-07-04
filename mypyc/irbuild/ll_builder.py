@@ -52,7 +52,7 @@ from mypyc.primitives.tuple_ops import (
     list_tuple_op, new_tuple_op, new_tuple_with_length_op
 )
 from mypyc.primitives.dict_ops import (
-    dict_update_in_display_op, dict_new_op, dict_build_op, dict_size_op
+    dict_update_in_display_op, dict_new_op, dict_build_op, dict_ssize_t_size_op
 )
 from mypyc.primitives.generic_ops import (
     py_getattr_op, py_call_op, py_call_with_kwargs_op, py_method_call_op,
@@ -64,7 +64,9 @@ from mypyc.primitives.misc_ops import (
 )
 from mypyc.primitives.int_ops import int_comparison_op_mapping
 from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
-from mypyc.primitives.str_ops import unicode_compare, str_check_if_true
+from mypyc.primitives.str_ops import (
+    unicode_compare, str_check_if_true, str_ssize_t_size_op
+)
 from mypyc.primitives.set_ops import new_set_op
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.subtype import is_subtype
@@ -77,7 +79,7 @@ DictEntry = Tuple[Optional[Value], Value]
 
 
 # From CPython
-PY_VECTORCALL_ARGUMENTS_OFFSET = 1 << (PLATFORM_SIZE * 8 - 1)  # type: Final
+PY_VECTORCALL_ARGUMENTS_OFFSET: Final = 1 << (PLATFORM_SIZE * 8 - 1)
 
 
 class LowLevelIRBuilder:
@@ -90,10 +92,10 @@ class LowLevelIRBuilder:
         self.current_module = current_module
         self.mapper = mapper
         self.options = options
-        self.args = []  # type: List[Register]
-        self.blocks = []  # type: List[BasicBlock]
+        self.args: List[Register] = []
+        self.blocks: List[BasicBlock] = []
         # Stack of except handler entry blocks
-        self.error_handlers = [None]  # type: List[Optional[BasicBlock]]
+        self.error_handlers: List[Optional[BasicBlock]] = [None]
 
     # Basic operations
 
@@ -277,7 +279,7 @@ class LowLevelIRBuilder:
         assert arg_names is not None
 
         pos_arg_values = []
-        kw_arg_key_value_pairs = []  # type: List[DictEntry]
+        kw_arg_key_value_pairs: List[DictEntry] = []
         star_arg_values = []
         for value, kind, name in zip(arg_values, arg_kinds, arg_names):
             if kind == ARG_POS:
@@ -879,9 +881,9 @@ class LowLevelIRBuilder:
         return target
 
     def make_dict(self, key_value_pairs: Sequence[DictEntry], line: int) -> Value:
-        result = None  # type: Union[Value, None]
-        keys = []  # type: List[Value]
-        values = []  # type: List[Value]
+        result: Union[Value, None] = None
+        keys: List[Value] = []
+        values: List[Value] = []
         for key, value in key_value_pairs:
             if key is not None:
                 # key:value
@@ -1094,7 +1096,7 @@ class LowLevelIRBuilder:
                         args: List[Value],
                         line: int,
                         result_type: Optional[RType] = None) -> Optional[Value]:
-        matching = None  # type: Optional[CFunctionDescription]
+        matching: Optional[CFunctionDescription] = None
         for desc in candidates:
             if len(desc.arg_types) != len(args):
                 continue
@@ -1125,32 +1127,28 @@ class LowLevelIRBuilder:
         Return c_pyssize_t if use_pyssize_t is true (unshifted).
         """
         typ = val.type
+        size_value = None
         if is_list_rprimitive(typ) or is_tuple_rprimitive(typ):
             elem_address = self.add(GetElementPtr(val, PyVarObject, 'ob_size'))
             size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
             self.add(KeepAlive([val]))
-            if use_pyssize_t:
-                return size_value
-            offset = Integer(1, c_pyssize_t_rprimitive, line)
-            return self.int_op(short_int_rprimitive, size_value, offset,
-                               IntOp.LEFT_SHIFT, line)
-        elif is_dict_rprimitive(typ):
-            size_value = self.call_c(dict_size_op, [val], line)
-            if use_pyssize_t:
-                return size_value
-            offset = Integer(1, c_pyssize_t_rprimitive, line)
-            return self.int_op(short_int_rprimitive, size_value, offset,
-                               IntOp.LEFT_SHIFT, line)
         elif is_set_rprimitive(typ):
             elem_address = self.add(GetElementPtr(val, PySetObject, 'used'))
             size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
             self.add(KeepAlive([val]))
+        elif is_dict_rprimitive(typ):
+            size_value = self.call_c(dict_ssize_t_size_op, [val], line)
+        elif is_str_rprimitive(typ):
+            size_value = self.call_c(str_ssize_t_size_op, [val], line)
+
+        if size_value is not None:
             if use_pyssize_t:
                 return size_value
             offset = Integer(1, c_pyssize_t_rprimitive, line)
             return self.int_op(short_int_rprimitive, size_value, offset,
                                IntOp.LEFT_SHIFT, line)
-        elif isinstance(typ, RInstance):
+
+        if isinstance(typ, RInstance):
             # TODO: Support use_pyssize_t
             assert not use_pyssize_t
             length = self.gen_method_call(val, '__len__', [], int_rprimitive, line)
@@ -1164,15 +1162,15 @@ class LowLevelIRBuilder:
             self.add(Unreachable())
             self.activate_block(ok)
             return length
+
+        # generic case
+        if use_pyssize_t:
+            return self.call_c(generic_ssize_t_len_op, [val], line)
         else:
-            # generic case
-            if use_pyssize_t:
-                return self.call_c(generic_ssize_t_len_op, [val], line)
-            else:
-                return self.call_c(generic_len_op, [val], line)
+            return self.call_c(generic_len_op, [val], line)
 
     def new_tuple(self, items: List[Value], line: int) -> Value:
-        size = Integer(len(items), c_pyssize_t_rprimitive)  # type: Value
+        size: Value = Integer(len(items), c_pyssize_t_rprimitive)
         return self.call_c(new_tuple_op, [size] + items, line)
 
     def new_tuple_with_length(self, length: Value, line: int) -> Value:
@@ -1338,7 +1336,7 @@ class LowLevelIRBuilder:
         # keys and values should have the same number of items
         size = len(keys)
         if size > 0:
-            size_value = Integer(size, c_pyssize_t_rprimitive)  # type: Value
+            size_value: Value = Integer(size, c_pyssize_t_rprimitive)
             # merge keys and values
             items = [i for t in list(zip(keys, values)) for i in t]
             return self.call_c(dict_build_op, [size_value] + items, line)

@@ -75,7 +75,7 @@ class EmitterContext:
         self.group_name = group_name
         self.group_map = group_map or {}
         # Groups that this group depends on
-        self.group_deps = set()  # type: Set[str]
+        self.group_deps: Set[str] = set()
 
         # The map below is used for generating declarations and
         # definitions at the top of the C file. The main idea is that they can
@@ -84,7 +84,7 @@ class EmitterContext:
         # A map of a C identifier to whatever the C identifier declares. Currently this is
         # used for declaring structs and the key corresponds to the name of the struct.
         # The declaration contains the body of the struct.
-        self.declarations = OrderedDict()  # type: Dict[str, HeaderDeclaration]
+        self.declarations: Dict[str, HeaderDeclaration] = OrderedDict()
 
         self.literals = Literals()
 
@@ -123,7 +123,7 @@ class Emitter:
         self.capi_version = capi_version or sys.version_info[:2]
         self.names = context.names
         self.value_names = value_names or {}
-        self.fragments = []  # type: List[str]
+        self.fragments: List[str] = []
         self._indent = 0
 
     # Low-level operations

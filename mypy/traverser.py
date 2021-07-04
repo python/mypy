@@ -321,7 +321,7 @@ def has_return_statement(fdef: FuncBase) -> bool:
 
 class ReturnCollector(TraverserVisitor):
     def __init__(self) -> None:
-        self.return_statements = []  # type: List[ReturnStmt]
+        self.return_statements: List[ReturnStmt] = []
         self.inside_func = False
 
     def visit_func_def(self, defn: FuncDef) -> None:

@@ -194,7 +194,7 @@ def array_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
     """Callback to provide an accurate type for ctypes.Array.value."""
     et = _get_array_element_type(ctx.type)
     if et is not None:
-        types = []  # type: List[Type]
+        types: List[Type] = []
         for tp in union_items(et):
             if isinstance(tp, AnyType):
                 types.append(AnyType(TypeOfAny.from_another_any, source_any=tp))
@@ -215,7 +215,7 @@ def array_raw_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
     """Callback to provide an accurate type for ctypes.Array.raw."""
     et = _get_array_element_type(ctx.type)
     if et is not None:
-        types = []  # type: List[Type]
+        types: List[Type] = []
         for tp in union_items(et):
             if (isinstance(tp, AnyType)
                     or isinstance(tp, Instance) and tp.type.fullname == 'ctypes.c_char'):

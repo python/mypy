@@ -4,31 +4,31 @@ import sys
 
 from typing_extensions import Final
 
-PREFIX = 'CPyPy_'  # type: Final # Python wrappers
-NATIVE_PREFIX = 'CPyDef_'  # type: Final # Native functions etc.
-DUNDER_PREFIX = 'CPyDunder_'  # type: Final # Wrappers for exposing dunder methods to the API
-REG_PREFIX = 'cpy_r_'  # type: Final # Registers
-STATIC_PREFIX = 'CPyStatic_'  # type: Final # Static variables (for literals etc.)
-TYPE_PREFIX = 'CPyType_'  # type: Final # Type object struct
-MODULE_PREFIX = 'CPyModule_'  # type: Final # Cached modules
-ATTR_PREFIX = '_'  # type: Final # Attributes
+PREFIX: Final = "CPyPy_"  # Python wrappers
+NATIVE_PREFIX: Final = "CPyDef_"  # Native functions etc.
+DUNDER_PREFIX: Final = "CPyDunder_"  # Wrappers for exposing dunder methods to the API
+REG_PREFIX: Final = "cpy_r_"  # Registers
+STATIC_PREFIX: Final = "CPyStatic_"  # Static variables (for literals etc.)
+TYPE_PREFIX: Final = "CPyType_"  # Type object struct
+MODULE_PREFIX: Final = "CPyModule_"  # Cached modules
+ATTR_PREFIX: Final = "_"  # Attributes
 
-ENV_ATTR_NAME = '__mypyc_env__'  # type: Final
-NEXT_LABEL_ATTR_NAME = '__mypyc_next_label__'  # type: Final
-TEMP_ATTR_NAME = '__mypyc_temp__'  # type: Final
-LAMBDA_NAME = '__mypyc_lambda__'  # type: Final
-PROPSET_PREFIX = '__mypyc_setter__'  # type: Final
-SELF_NAME = '__mypyc_self__'  # type: Final
+ENV_ATTR_NAME: Final = "__mypyc_env__"
+NEXT_LABEL_ATTR_NAME: Final = "__mypyc_next_label__"
+TEMP_ATTR_NAME: Final = "__mypyc_temp__"
+LAMBDA_NAME: Final = "__mypyc_lambda__"
+PROPSET_PREFIX: Final = "__mypyc_setter__"
+SELF_NAME: Final = "__mypyc_self__"
 
 # Max short int we accept as a literal is based on 32-bit platforms,
 # so that we can just always emit the same code.
 
-TOP_LEVEL_NAME = '__top_level__'  # type: Final # Special function representing module top level
+TOP_LEVEL_NAME: Final = "__top_level__"  # Special function representing module top level
 
 # Maximal number of subclasses for a class to trigger fast path in isinstance() checks.
-FAST_ISINSTANCE_MAX_SUBCLASSES = 2  # type: Final
+FAST_ISINSTANCE_MAX_SUBCLASSES: Final = 2
 
-IS_32_BIT_PLATFORM = sys.maxsize < (1 << 31)  # type: Final
+IS_32_BIT_PLATFORM: Final = sys.maxsize < (1 << 31)
 
 PLATFORM_SIZE = 4 if IS_32_BIT_PLATFORM else 8
 
@@ -37,20 +37,19 @@ PLATFORM_SIZE = 4 if IS_32_BIT_PLATFORM else 8
 # wheels (for an unknown reason).
 #
 # Note that we use "in ['darwin']" because of https://github.com/mypyc/mypyc/issues/761.
-IS_MIXED_32_64_BIT_BUILD = sys.platform in ['darwin'] and sys.version_info < (3, 6)  # type: Final
+IS_MIXED_32_64_BIT_BUILD: Final = sys.platform in ["darwin"] and sys.version_info < (3, 6)
 
 # Maximum value for a short tagged integer.
-MAX_SHORT_INT = sys.maxsize >> 1  # type: Final
+MAX_SHORT_INT: Final = sys.maxsize >> 1
 
 # Maximum value for a short tagged integer represented as a C integer literal.
 #
 # Note: Assume that the compiled code uses the same bit width as mypyc, except for
 #       Python 3.5 on macOS.
-MAX_LITERAL_SHORT_INT = (sys.maxsize >> 1 if not IS_MIXED_32_64_BIT_BUILD
-                         else 2**30 - 1)  # type: Final
+MAX_LITERAL_SHORT_INT: Final = sys.maxsize >> 1 if not IS_MIXED_32_64_BIT_BUILD else 2 ** 30 - 1
 
 # Runtime C library files
-RUNTIME_C_FILES = [
+RUNTIME_C_FILES: Final = [
     'init.c',
     'getargs.c',
     'getargsfast.c',
@@ -63,7 +62,7 @@ RUNTIME_C_FILES = [
     'exc_ops.c',
     'misc_ops.c',
     'generic_ops.c',
-]  # type: Final
+]
 
 
 JsonDict = Dict[str, Any]

@@ -128,7 +128,7 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> Dict[str, Sna
     things defined in other modules are represented just by the names of
     the targets.
     """
-    result = {}  # type: Dict[str, SnapshotItem]
+    result: Dict[str, SnapshotItem] = {}
     for name, symbol in table.items():
         node = symbol.node
         # TODO: cross_ref?

@@ -33,9 +33,9 @@ SearchPaths = NamedTuple(
 OnePackageDir = Tuple[str, bool]
 PackageDirs = List[OnePackageDir]
 
-PYTHON_EXTENSIONS = ['.pyi', '.py']  # type: Final
+PYTHON_EXTENSIONS: Final = [".pyi", ".py"]
 
-PYTHON2_STUB_DIR = '@python2'  # type: Final
+PYTHON2_STUB_DIR: Final = "@python2"
 
 
 # TODO: Consider adding more reasons here?
@@ -127,10 +127,10 @@ class FindModuleCache:
         self.fscache = fscache or FileSystemCache()
         # Cache for get_toplevel_possibilities:
         # search_paths -> (toplevel_id -> list(package_dirs))
-        self.initial_components = {}  # type: Dict[Tuple[str, ...], Dict[str, List[str]]]
+        self.initial_components: Dict[Tuple[str, ...], Dict[str, List[str]]] = {}
         # Cache find_module: id -> result
-        self.results = {}  # type: Dict[str, ModuleSearchResult]
-        self.ns_ancestors = {}  # type: Dict[str, str]
+        self.results: Dict[str, ModuleSearchResult] = {}
+        self.ns_ancestors: Dict[str, str] = {}
         self.options = options
         custom_typeshed_dir = None
         if options:
@@ -174,7 +174,7 @@ class FindModuleCache:
             return self.initial_components[lib_path].get(id, [])
 
         # Enumerate all the files in the directories on lib_path and produce the map
-        components = {}  # type: Dict[str, List[str]]
+        components: Dict[str, List[str]] = {}
         for dir in lib_path:
             try:
                 contents = self.fscache.listdir(dir)
@@ -276,8 +276,8 @@ class FindModuleCache:
 
         # We have two sets of folders so that we collect *all* stubs folders and
         # put them in the front of the search path
-        third_party_inline_dirs = []  # type: PackageDirs
-        third_party_stubs_dirs = []  # type: PackageDirs
+        third_party_inline_dirs: PackageDirs = []
+        third_party_stubs_dirs: PackageDirs = []
         found_possible_third_party_missing_type_hints = False
         need_installed_stubs = False
         # Third-party stub/typed packages
@@ -461,7 +461,7 @@ class FindModuleCache:
         # calls find_module, which will handle the preference between packages, pyi and py.
         # Another difference is it doesn't handle nested search paths / package roots.
 
-        seen = set()  # type: Set[str]
+        seen: Set[str] = set()
         names = sorted(self.fscache.listdir(package_path))
         for name in names:
             # Skip certain names altogether
@@ -545,7 +545,7 @@ def default_lib_path(data_dir: str,
                      pyversion: Tuple[int, int],
                      custom_typeshed_dir: Optional[str]) -> List[str]:
     """Return default standard library search paths."""
-    path = []  # type: List[str]
+    path: List[str] = []
 
     if custom_typeshed_dir:
         typeshed_dir = os.path.join(custom_typeshed_dir, "stdlib")
@@ -607,7 +607,7 @@ def get_site_packages_dirs(python_executable: Optional[str]) -> Tuple[List[str],
 
 def expand_site_packages(site_packages: List[str]) -> Tuple[List[str], List[str]]:
     """Expands .pth imports in site-packages directories"""
-    egg_dirs = []  # type: List[str]
+    egg_dirs: List[str] = []
     for dir in site_packages:
         if not os.path.isdir(dir):
             continue
@@ -697,7 +697,7 @@ def compute_search_paths(sources: List[BuildSource],
         lib_path.appendleft(os.path.join(root_dir, 'test-data', 'unit', 'lib-stub'))
     # alt_lib_path is used by some tests to bypass the normal lib_path mechanics.
     # If we don't have one, grab directories of source files.
-    python_path = []  # type: List[str]
+    python_path: List[str] = []
     if not alt_lib_path:
         for source in sources:
             # Include directory of the program file in the module search path.

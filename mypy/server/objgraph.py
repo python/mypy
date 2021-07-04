@@ -7,46 +7,48 @@ import types
 from typing import List, Dict, Iterator, Tuple, Mapping
 from typing_extensions import Final
 
-method_descriptor_type = type(object.__dir__)  # type: Final
-method_wrapper_type = type(object().__ne__)  # type: Final
-wrapper_descriptor_type = type(object.__ne__)  # type: Final
+method_descriptor_type: Final = type(object.__dir__)
+method_wrapper_type: Final = type(object().__ne__)
+wrapper_descriptor_type: Final = type(object.__ne__)
 
-FUNCTION_TYPES = (types.BuiltinFunctionType,
-                  types.FunctionType,
-                  types.MethodType,
-                  method_descriptor_type,
-                  wrapper_descriptor_type,
-                  method_wrapper_type)  # type: Final
+FUNCTION_TYPES: Final = (
+    types.BuiltinFunctionType,
+    types.FunctionType,
+    types.MethodType,
+    method_descriptor_type,
+    wrapper_descriptor_type,
+    method_wrapper_type,
+)
 
-ATTR_BLACKLIST = {
+ATTR_BLACKLIST: Final = {
     '__doc__',
     '__name__',
     '__class__',
     '__dict__',
-}  # type: Final
+}
 
 # Instances of these types can't have references to other objects
-ATOMIC_TYPE_BLACKLIST = {
+ATOMIC_TYPE_BLACKLIST: Final = {
     bool,
     int,
     float,
     str,
     type(None),
     object,
-}  # type: Final
+}
 
 # Don't look at most attributes of these types
-COLLECTION_TYPE_BLACKLIST = {
+COLLECTION_TYPE_BLACKLIST: Final = {
     list,
     set,
     dict,
     tuple,
-}  # type: Final
+}
 
 # Don't return these objects
-TYPE_BLACKLIST = {
+TYPE_BLACKLIST: Final = {
     weakref.ReferenceType,
-}  # type: Final
+}
 
 
 def isproperty(o: object, attr: str) -> bool:
