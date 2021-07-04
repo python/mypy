@@ -22,7 +22,8 @@ class FuncInfo:
                  is_nested: bool = False,
                  contains_nested: bool = False,
                  is_decorated: bool = False,
-                 in_non_ext: bool = False) -> None:
+                 in_non_ext: bool = False,
+                 is_singledispatch: bool = False) -> None:
         self.fitem = fitem
         self.name = name if not is_decorated else decorator_helper_name(name)
         self.class_name = class_name
@@ -47,6 +48,7 @@ class FuncInfo:
         self.contains_nested = contains_nested
         self.is_decorated = is_decorated
         self.in_non_ext = in_non_ext
+        self.is_singledispatch = is_singledispatch
 
         # TODO: add field for ret_type: RType = none_rprimitive
 

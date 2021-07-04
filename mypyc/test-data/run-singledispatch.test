@@ -2,7 +2,7 @@
 # Most of these tests are marked as xfails because mypyc doesn't support singledispatch yet
 # (These tests will be re-enabled when mypyc supports singledispatch)
 
-[case testSpecializedImplementationUsed-xfail]
+[case testSpecializedImplementationUsed]
 from functools import singledispatch
 
 @singledispatch
@@ -17,7 +17,7 @@ def test_specialize() -> None:
     assert fun('a')
     assert not fun(3)
 
-[case testSubclassesOfExpectedTypeUseSpecialized-xfail]
+[case testSubclassesOfExpectedTypeUseSpecialized]
 from functools import singledispatch
 class A: pass
 class B(A): pass
@@ -76,7 +76,7 @@ def test_singledispatch() -> None:
     assert fun('a') == 'str'
     assert fun({'a': 'b'}) == 'default'
 
-[case testCanRegisterCompiledClasses-xfail]
+[case testCanRegisterCompiledClasses]
 from functools import singledispatch
 class A: pass
 
@@ -135,21 +135,6 @@ def fun_specialized(arg: int) -> bool:
 
 def test_singledispatch() -> None:
     assert fun_specialized('a')
-
-[case testTypeAnnotationsDisagreeWithRegisterArgument-xfail]
-from functools import singledispatch
-
-@singledispatch
-def fun(arg) -> bool:
-    return False
-
-@fun.register(int)
-def fun_specialized(arg: str) -> bool:
-    return True
-
-def test_singledispatch() -> None:
-    assert fun(3) # type: ignore
-    assert not fun('a')
 
 [case testNoneIsntATypeWhenUsedAsArgumentToRegister-xfail]
 from functools import singledispatch
@@ -385,3 +370,55 @@ def test_verify() -> None:
     assert verify_list(MypyFile(), 5, ['a', 'b']) == ['in TypeInfo', 'hello']
     assert verify_list(TypeInfo(), str, ['a', 'b']) == ['in TypeInfo', 'hello']
     assert verify_list(TypeVarExpr(), 'a', ['x', 'y']) == ['x', 'y']
+
+[case testArgsInRegisteredImplNamedDifferentlyFromMainFunction]
+from functools import singledispatch
+
+@singledispatch
+def f(a) -> bool:
+    return False
+
+@f.register
+def g(b: int) -> bool:
+    return True
+
+def test_singledispatch():
+    assert f(5)
+    assert not f('a')
+
+[case testKeywordArguments-xfail]
+from functools import singledispatch
+
+@singledispatch
+def f(arg, *, kwarg: bool = False) -> bool:
+    return not kwarg
+
+@f.register
+def g(arg: int, *, kwarg: bool = True) -> bool:
+    return kwarg
+
+def test_keywords():
+    assert f('a')
+    assert f('a', kwarg=False)
+    assert not f('a', kwarg=True)
+
+    assert f(1)
+    assert f(1, kwarg=True)
+    assert not f(1, kwarg=False)
+
+[case testGeneratorAndMultipleTypesOfIterable-xfail]
+from functools import singledispatch
+from typing import *
+
+@singledispatch
+def f(arg: Any) -> Iterable[int]:
+    yield 1
+
+@f.register
+def g(arg: str) -> Iterable[int]:
+    return [0]
+
+def test_iterables():
+    assert f(1) != [1]
+    assert list(f(1)) == [1]
+    assert f('a') == [0]

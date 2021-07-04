@@ -141,7 +141,7 @@ get_module_dict_op = custom_op(
     is_borrowed=True)
 
 # isinstance(obj, cls)
-function_op(
+slow_isinstance_op = function_op(
     name='builtins.isinstance',
     arg_types=[object_rprimitive, object_rprimitive],
     return_type=c_int_rprimitive,

@@ -10,11 +10,11 @@ as an environment containing non-local variables, is stored in the
 instance of the callable class.
 """
 
-from typing import Optional, List, Tuple, Union, Dict
+from typing import NamedTuple, Optional, List, Sequence, Tuple, Union, Dict
 
 from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, Decorator, Var, YieldFromExpr, AwaitExpr, YieldExpr,
-    FuncItem, LambdaExpr, SymbolNode, ARG_NAMED, ARG_NAMED_OPT
+    FuncItem, LambdaExpr, SymbolNode, ARG_NAMED, ARG_NAMED_OPT, TypeInfo
 )
 from mypy.types import CallableType, get_proper_type
 
@@ -28,7 +28,9 @@ from mypyc.ir.func_ir import (
 )
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.primitives.generic_ops import py_setattr_op, next_raw_op, iter_op
-from mypyc.primitives.misc_ops import check_stop_op, yield_from_except_op, coro_op, send_op
+from mypyc.primitives.misc_ops import (
+    check_stop_op, yield_from_except_op, coro_op, send_op, slow_isinstance_op
+)
 from mypyc.primitives.dict_ops import dict_set_item_op
 from mypyc.common import SELF_NAME, LAMBDA_NAME, decorator_helper_name
 from mypyc.sametype import is_same_method_signature
@@ -84,7 +86,10 @@ def transform_decorator(builder: IRBuilder, dec: Decorator) -> None:
         decorated_func = load_decorated_func(builder, dec.func, func_reg)
         builder.assign(get_func_target(builder, dec.func), decorated_func, dec.func.line)
         func_reg = decorated_func
-    else:
+    # If the prebuild pass didn't put this function in the function to decorators map (for example
+    # if this is a registered singledispatch implementation with no other decorators), we should
+    # treat this function as a regular function, not a decorated function
+    elif dec.func in builder.fdefs_to_decorators:
         # Obtain the the function name in order to construct the name of the helper function.
         name = dec.func.fullname.split('.')[-1]
         helper_name = decorator_helper_name(name)
@@ -206,6 +211,7 @@ def gen_func_item(builder: IRBuilder,
     is_nested = fitem in builder.nested_fitems or isinstance(fitem, LambdaExpr)
     contains_nested = fitem in builder.encapsulating_funcs.keys()
     is_decorated = fitem in builder.fdefs_to_decorators
+    is_singledispatch = fitem in builder.singledispatch_impls
     in_non_ext = False
     class_name = None
     if cdef:
@@ -214,7 +220,8 @@ def gen_func_item(builder: IRBuilder,
         class_name = cdef.name
 
     builder.enter(FuncInfo(fitem, name, class_name, gen_func_ns(builder),
-                           is_nested, contains_nested, is_decorated, in_non_ext))
+                           is_nested, contains_nested, is_decorated, in_non_ext,
+                           is_singledispatch))
 
     # Functions that contain nested functions need an environment class to store variables that
     # are free in their nested functions. Generator functions need an environment class to
@@ -246,6 +253,9 @@ def gen_func_item(builder: IRBuilder,
 
     if builder.fn_info.contains_nested and not builder.fn_info.is_generator:
         finalize_env_class(builder)
+
+    if builder.fn_info.is_singledispatch:
+        add_singledispatch_registered_impls(builder)
 
     builder.ret_types[-1] = sig.ret_type
 
@@ -628,6 +638,23 @@ def gen_glue(builder: IRBuilder, sig: FuncSignature, target: FuncIR,
         return gen_glue_method(builder, sig, target, cls, base, fdef.line, do_py_ops)
 
 
+class ArgInfo(NamedTuple):
+    args: List[Value]
+    arg_names: List[Optional[str]]
+    arg_kinds: List[int]
+
+
+def get_args(builder: IRBuilder, rt_args: Sequence[RuntimeArg], line: int) -> ArgInfo:
+    # The environment operates on Vars, so we make some up
+    fake_vars = [(Var(arg.name), arg.type) for arg in rt_args]
+    args = [builder.read(builder.add_local_reg(var, type, is_arg=True), line)
+            for var, type in fake_vars]
+    arg_names = [arg.name if arg.kind in (ARG_NAMED, ARG_NAMED_OPT) else None
+                 for arg in rt_args]
+    arg_kinds = [concrete_arg_kind(arg.kind) for arg in rt_args]
+    return ArgInfo(args, arg_names, arg_kinds)
+
+
 def gen_glue_method(builder: IRBuilder, sig: FuncSignature, target: FuncIR,
                     cls: ClassIR, base: ClassIR, line: int,
                     do_pycall: bool,
@@ -664,13 +691,8 @@ def gen_glue_method(builder: IRBuilder, sig: FuncSignature, target: FuncIR,
     if target.decl.kind == FUNC_NORMAL:
         rt_args[0] = RuntimeArg(sig.args[0].name, RInstance(cls))
 
-    # The environment operates on Vars, so we make some up
-    fake_vars = [(Var(arg.name), arg.type) for arg in rt_args]
-    args = [builder.read(builder.add_local_reg(var, type, is_arg=True), line)
-            for var, type in fake_vars]
-    arg_names = [arg.name if arg.kind in (ARG_NAMED, ARG_NAMED_OPT) else None
-                 for arg in rt_args]
-    arg_kinds = [concrete_arg_kind(arg.kind) for arg in rt_args]
+    arg_info = get_args(builder, rt_args, line)
+    args, arg_kinds, arg_names = arg_info.args, arg_info.arg_kinds, arg_info.arg_names
 
     if do_pycall:
         retval = builder.builder.py_method_call(
@@ -739,3 +761,35 @@ def get_func_target(builder: IRBuilder, fdef: FuncDef) -> AssignmentTarget:
         return builder.lookup(fdef)
 
     return builder.add_local_reg(fdef, object_rprimitive)
+
+
+def check_if_isinstance(builder: IRBuilder, obj: Value, typ: TypeInfo, line: int) -> Value:
+    if typ in builder.mapper.type_to_ir:
+        class_ir = builder.mapper.type_to_ir[typ]
+        return builder.builder.isinstance_native(obj, class_ir, line)
+    else:
+        class_obj = builder.load_module_attr_by_fullname(typ.fullname, line)
+        return builder.call_c(slow_isinstance_op, [obj, class_obj], line)
+
+
+def add_singledispatch_registered_impls(builder: IRBuilder) -> None:
+    fitem = builder.fn_info.fitem
+    assert isinstance(fitem, FuncDef)
+    impls = builder.singledispatch_impls[fitem]
+    line = fitem.line
+    current_func_decl = builder.mapper.func_to_decl[fitem]
+    arg_info = get_args(builder, current_func_decl.sig.args, line)
+    for dispatch_type, impl in impls:
+        func_decl = builder.mapper.func_to_decl[impl]
+        call_impl, next_impl = BasicBlock(), BasicBlock()
+        should_call_impl = check_if_isinstance(builder, arg_info.args[0], dispatch_type, line)
+        builder.add_bool_branch(should_call_impl, call_impl, next_impl)
+
+        # Call the registered implementation
+        builder.activate_block(call_impl)
+
+        ret_val = builder.builder.call(
+            func_decl, arg_info.args, arg_info.arg_kinds, arg_info.arg_names, line
+        )
+        builder.nonlocal_control[-1].gen_return(builder, ret_val, line)
+        builder.activate_block(next_impl)
