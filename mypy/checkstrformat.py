@@ -92,27 +92,40 @@ def compile_new_format_re(custom_spec: bool) -> Pattern[str]:
     return re.compile(field + conversion + format_spec)
 
 
-FORMAT_RE = compile_format_re()  # type: Final
-FORMAT_RE_NEW = compile_new_format_re(False)  # type: Final
-FORMAT_RE_NEW_CUSTOM = compile_new_format_re(True)  # type: Final
-DUMMY_FIELD_NAME = '__dummy_name__'  # type: Final
+FORMAT_RE: Final = compile_format_re()
+FORMAT_RE_NEW: Final = compile_new_format_re(False)
+FORMAT_RE_NEW_CUSTOM: Final = compile_new_format_re(True)
+DUMMY_FIELD_NAME: Final = "__dummy_name__"
 
 # Format types supported by str.format() for builtin classes.
-SUPPORTED_TYPES_NEW = {'b', 'c', 'd', 'e', 'E', 'f', 'F',
-                       'g', 'G', 'n', 'o', 's', 'x', 'X', '%'}  # type: Final
+SUPPORTED_TYPES_NEW: Final = {
+    "b",
+    "c",
+    "d",
+    "e",
+    "E",
+    "f",
+    "F",
+    "g",
+    "G",
+    "n",
+    "o",
+    "s",
+    "x",
+    "X",
+    "%",
+}
 
 # Types that require either int or float.
-NUMERIC_TYPES_OLD = {'d', 'i', 'o', 'u', 'x', 'X',
-                     'e', 'E', 'f', 'F', 'g', 'G'}  # type: Final
-NUMERIC_TYPES_NEW = {'b', 'd', 'o', 'e', 'E', 'f', 'F',
-                     'g', 'G', 'n', 'x', 'X', '%'}  # type: Final
+NUMERIC_TYPES_OLD: Final = {"d", "i", "o", "u", "x", "X", "e", "E", "f", "F", "g", "G"}
+NUMERIC_TYPES_NEW: Final = {"b", "d", "o", "e", "E", "f", "F", "g", "G", "n", "x", "X", "%"}
 
 # These types accept _only_ int.
-REQUIRE_INT_OLD = {'o', 'x', 'X'}  # type: Final
-REQUIRE_INT_NEW = {'b', 'd', 'o', 'x', 'X'}  # type: Final
+REQUIRE_INT_OLD: Final = {"o", "x", "X"}
+REQUIRE_INT_NEW: Final = {"b", "d", "o", "x", "X"}
 
 # These types fall back to SupportsFloat with % (other fall back to SupportsInt)
-FLOAT_TYPES = {'e', 'E', 'f', 'F', 'g', 'G'}  # type: Final
+FLOAT_TYPES: Final = {"e", "E", "f", "F", "g", "G"}
 
 
 class ConversionSpecifier:
@@ -170,11 +183,11 @@ class StringFormatterChecker:
     """
 
     # Some services are provided by a TypeChecker instance.
-    chk = None  # type: mypy.checker.TypeChecker
+    chk: "mypy.checker.TypeChecker"
     # This is shared with TypeChecker, but stored also here for convenience.
-    msg = None  # type: MessageBuilder
+    msg: MessageBuilder
     # Some services are provided by a ExpressionChecker instance.
-    exprchk = None  # type: mypy.checkexpr.ExpressionChecker
+    exprchk: "mypy.checkexpr.ExpressionChecker"
 
     def __init__(self,
                  exprchk: 'mypy.checkexpr.ExpressionChecker',
@@ -227,7 +240,7 @@ class StringFormatterChecker:
         if top_targets is None:
             return None
 
-        result = []  # type: List[ConversionSpecifier]
+        result: List[ConversionSpecifier] = []
         for target in top_targets:
             match = FORMAT_RE_NEW.fullmatch(target)
             if match:
@@ -337,7 +350,7 @@ class StringFormatterChecker:
                     continue
             # Adjust expected and actual types.
             if not spec.type:
-                expected_type = AnyType(TypeOfAny.special_form)  # type: Optional[Type]
+                expected_type: Optional[Type] = AnyType(TypeOfAny.special_form)
             else:
                 assert isinstance(call.callee, MemberExpr)
                 if isinstance(call.callee.expr, (StrExpr, UnicodeExpr)):
@@ -403,8 +416,8 @@ class StringFormatterChecker:
 
         In case of an error use TempNode(AnyType).
         """
-        result = []  # type: List[Expression]
-        used = set()  # type: Set[Expression]
+        result: List[Expression] = []
+        used: Set[Expression] = set()
         for key in keys:
             if key.isdecimal():
                 expr = self.get_expr_by_position(int(key), call)
@@ -519,8 +532,9 @@ class StringFormatterChecker:
         # This is a bit of a dirty trick, but it looks like this is the simplest way.
         temp_errors = self.msg.clean_copy().errors
         dummy = DUMMY_FIELD_NAME + spec.field[len(spec.key):]
-        temp_ast = parse(dummy, fnam='<format>', module=None,
-                         options=self.chk.options, errors=temp_errors)  # type: Node
+        temp_ast: Node = parse(
+            dummy, fnam="<format>", module=None, options=self.chk.options, errors=temp_errors
+        )
         if temp_errors.is_errors():
             self.msg.fail('Syntax error in format specifier "{}"'.format(spec.field),
                           ctx, code=codes.STRING_FORMATTING)
@@ -622,7 +636,7 @@ class StringFormatterChecker:
             assert False
 
     def parse_conversion_specifiers(self, format: str) -> List[ConversionSpecifier]:
-        specifiers = []  # type: List[ConversionSpecifier]
+        specifiers: List[ConversionSpecifier] = []
         for parens_key, key, flags, width, precision, type in FORMAT_RE.findall(format):
             if parens_key == '':
                 key = None
@@ -653,7 +667,7 @@ class StringFormatterChecker:
             return
 
         rhs_type = get_proper_type(self.accept(replacements))
-        rep_types = []  # type: List[Type]
+        rep_types: List[Type] = []
         if isinstance(rhs_type, TupleType):
             rep_types = rhs_type.items
         elif isinstance(rhs_type, AnyType):
@@ -698,7 +712,7 @@ class StringFormatterChecker:
         if (isinstance(replacements, DictExpr) and
                 all(isinstance(k, (StrExpr, BytesExpr, UnicodeExpr))
                     for k, v in replacements.items)):
-            mapping = {}  # type: Dict[str, Type]
+            mapping: Dict[str, Type] = {}
             for k, v in replacements.items:
                 if self.chk.options.python_version >= (3, 0) and isinstance(expr, BytesExpr):
                     # Special case: for bytes formatting keys must be bytes.
@@ -761,7 +775,7 @@ class StringFormatterChecker:
     def build_replacement_checkers(self, specifiers: List[ConversionSpecifier],
                                    context: Context, expr: FormatStringExpr
                                    ) -> Optional[List[Checkers]]:
-        checkers = []  # type: List[Checkers]
+        checkers: List[Checkers] = []
         for specifier in specifiers:
             checker = self.replacement_checkers(specifier, context, expr)
             if checker is None:
@@ -775,7 +789,7 @@ class StringFormatterChecker:
         of the right type for the specifier. The first functions take a node and checks
         its type in the right type context. The second function just checks a type.
         """
-        checkers = []  # type: List[Checkers]
+        checkers: List[Checkers] = []
 
         if specifier.width == '*':
             checkers.append(self.checkers_for_star(context))

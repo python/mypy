@@ -34,7 +34,7 @@ def wrapper_slot(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
 SlotGenerator = Callable[[ClassIR, FuncIR, Emitter], str]
 SlotTable = Mapping[str, Tuple[str, SlotGenerator]]
 
-SLOT_DEFS = {
+SLOT_DEFS: SlotTable = {
     '__init__': ('tp_init', lambda c, t, e: generate_init_for_class(c, t, e)),
     '__call__': ('tp_call', lambda c, t, e: generate_call_wrapper(c, t, e)),
     '__str__': ('tp_str', native_slot),
@@ -43,20 +43,20 @@ SLOT_DEFS = {
     '__iter__': ('tp_iter', native_slot),
     '__hash__': ('tp_hash', generate_hash_wrapper),
     '__get__': ('tp_descr_get', generate_get_wrapper),
-}  # type: SlotTable
+}
 
-AS_MAPPING_SLOT_DEFS = {
+AS_MAPPING_SLOT_DEFS: SlotTable = {
     '__getitem__': ('mp_subscript', generate_dunder_wrapper),
     '__setitem__': ('mp_ass_subscript', generate_set_del_item_wrapper),
     '__delitem__': ('mp_ass_subscript', generate_set_del_item_wrapper),
     '__len__': ('mp_length', generate_len_wrapper),
-}  # type: SlotTable
+}
 
-AS_SEQUENCE_SLOT_DEFS = {
+AS_SEQUENCE_SLOT_DEFS: SlotTable = {
     '__contains__': ('sq_contains', generate_contains_wrapper),
-}  # type: SlotTable
+}
 
-AS_NUMBER_SLOT_DEFS = {
+AS_NUMBER_SLOT_DEFS: SlotTable = {
     '__bool__': ('nb_bool', generate_bool_wrapper),
     '__neg__': ('nb_negative', generate_dunder_wrapper),
     '__invert__': ('nb_invert', generate_dunder_wrapper),
@@ -98,13 +98,13 @@ AS_NUMBER_SLOT_DEFS = {
     '__ior__': ('nb_inplace_or', generate_dunder_wrapper),
     '__ixor__': ('nb_inplace_xor', generate_dunder_wrapper),
     '__imatmul__': ('nb_inplace_matrix_multiply', generate_dunder_wrapper),
-}  # type: SlotTable
+}
 
-AS_ASYNC_SLOT_DEFS = {
+AS_ASYNC_SLOT_DEFS: SlotTable = {
     '__await__': ('am_await', native_slot),
     '__aiter__': ('am_aiter', native_slot),
     '__anext__': ('am_anext', native_slot),
-}  # type: SlotTable
+}
 
 SIDE_TABLES = [
     ('as_mapping', 'PyMappingMethods', AS_MAPPING_SLOT_DEFS),
@@ -140,8 +140,8 @@ def slot_key(attr: str) -> str:
 
 
 def generate_slots(cl: ClassIR, table: SlotTable, emitter: Emitter) -> Dict[str, str]:
-    fields = OrderedDict()  # type: Dict[str, str]
-    generated = {}  # type: Dict[str, str]
+    fields: Dict[str, str] = OrderedDict()
+    generated: Dict[str, str] = {}
     # Sort for determinism on Python 3.5
     for name, (slot, generator) in sorted(table.items(), key=lambda x: slot_key(x[0])):
         method_cls = cl.get_method_and_class(name)
@@ -199,7 +199,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     methods_name = '{}_methods'.format(name_prefix)
     vtable_setup_name = '{}_trait_vtable_setup'.format(name_prefix)
 
-    fields = OrderedDict()  # type: Dict[str, str]
+    fields: Dict[str, str] = OrderedDict()
     fields['tp_name'] = '"{}"'.format(name)
 
     generate_full = not cl.is_trait and not cl.builtin_base
@@ -294,9 +294,9 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         emit_line()
 
         if cl.allow_interpreted_subclasses:
-            shadow_vtable_name = generate_vtables(
+            shadow_vtable_name: Optional[str] = generate_vtables(
                 cl, vtable_setup_name + "_shadow", vtable_name + "_shadow", emitter, shadow=True
-            )  # type: Optional[str]
+            )
             emit_line()
         else:
             shadow_vtable_name = None
@@ -352,8 +352,8 @@ def setter_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
 
 
 def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
-    seen_attrs = set()  # type: Set[Tuple[str, RType]]
-    lines = []  # type: List[str]
+    seen_attrs: Set[Tuple[str, RType]] = set()
+    lines: List[str] = []
     lines += ['typedef struct {',
               'PyObject_HEAD',
               'CPyVTableItem *vtable;']

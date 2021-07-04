@@ -16,9 +16,9 @@ class Scope:
     """Track which target we are processing at any given time."""
 
     def __init__(self) -> None:
-        self.module = None  # type: Optional[str]
-        self.classes = []  # type: List[TypeInfo]
-        self.function = None  # type: Optional[FuncBase]
+        self.module: Optional[str] = None
+        self.classes: List[TypeInfo] = []
+        self.function: Optional[FuncBase] = None
         # Number of nested scopes ignored (that don't get their own separate targets)
         self.ignored = 0
 

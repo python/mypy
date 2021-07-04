@@ -43,7 +43,7 @@ from mypy.util import unmangle
 from mypy.errorcodes import ErrorCode
 from mypy import message_registry, errorcodes as codes
 
-TYPES_FOR_UNIMPORTED_HINTS = {
+TYPES_FOR_UNIMPORTED_HINTS: Final = {
     'typing.Any',
     'typing.Callable',
     'typing.Dict',
@@ -56,23 +56,23 @@ TYPES_FOR_UNIMPORTED_HINTS = {
     'typing.TypeVar',
     'typing.Union',
     'typing.cast',
-}  # type: Final
+}
 
 
-ARG_CONSTRUCTOR_NAMES = {
+ARG_CONSTRUCTOR_NAMES: Final = {
     ARG_POS: "Arg",
     ARG_OPT: "DefaultArg",
     ARG_NAMED: "NamedArg",
     ARG_NAMED_OPT: "DefaultNamedArg",
     ARG_STAR: "VarArg",
     ARG_STAR2: "KwArg",
-}  # type: Final
+}
 
 
 # Map from the full name of a missing definition to the test fixture (under
 # test-data/unit/fixtures/) that provides the definition. This is used for
 # generating better error messages when running mypy tests only.
-SUGGESTED_TEST_FIXTURES = {
+SUGGESTED_TEST_FIXTURES: Final = {
     'builtins.list': 'list.pyi',
     'builtins.dict': 'dict.pyi',
     'builtins.set': 'set.pyi',
@@ -83,7 +83,7 @@ SUGGESTED_TEST_FIXTURES = {
     'builtins.isinstance': 'isinstancelist.pyi',
     'builtins.property': 'property.pyi',
     'builtins.classmethod': 'classmethod.pyi',
-}  # type: Final
+}
 
 
 class MessageBuilder:
@@ -99,9 +99,9 @@ class MessageBuilder:
 
     # Report errors using this instance. It knows about the current file and
     # import context.
-    errors = None  # type: Errors
+    errors: Errors
 
-    modules = None  # type: Dict[str, MypyFile]
+    modules: Dict[str, MypyFile]
 
     # Number of times errors have been disabled.
     disable_count = 0
@@ -463,7 +463,7 @@ class MessageBuilder:
 
         msg = ''
         code = codes.MISC
-        notes = []  # type: List[str]
+        notes: List[str] = []
         if callee_name == '<list>':
             name = callee_name[1:-1]
             n -= 1
@@ -691,7 +691,7 @@ class MessageBuilder:
 
     def does_not_return_value(self, callee_type: Optional[Type], context: Context) -> None:
         """Report an error about use of an unusable type."""
-        name = None  # type: Optional[str]
+        name: Optional[str] = None
         callee_type = get_proper_type(callee_type)
         if isinstance(callee_type, FunctionLike):
             name = callable_name(callee_type)
@@ -1350,9 +1350,11 @@ class MessageBuilder:
         # note:     method, attr
         MAX_ITEMS = 2  # Maximum number of conflicts, missing members, and overloads shown
         # List of special situations where we don't want to report additional problems
-        exclusions = {TypedDictType: ['typing.Mapping'],
-                      TupleType: ['typing.Iterable', 'typing.Sequence'],
-                      Instance: []}  # type: Dict[type, List[str]]
+        exclusions: Dict[type, List[str]] = {
+            TypedDictType: ["typing.Mapping"],
+            TupleType: ["typing.Iterable", "typing.Sequence"],
+            Instance: [],
+        }
         if supertype.type.fullname in exclusions[type(subtype)]:
             return
         if any(isinstance(tp, UninhabitedType) for tp in get_proper_types(supertype.args)):
@@ -1633,7 +1635,7 @@ def format_type_inner(typ: Type,
             return '{}[{}]'.format(alias, ', '.join(items))
         else:
             # There are type arguments. Convert the arguments to strings.
-            a = []  # type: List[str]
+            a: List[str] = []
             for arg in itype.args:
                 a.append(format(arg))
             s = ', '.join(a)
@@ -1752,7 +1754,7 @@ def collect_all_instances(t: Type) -> List[Instance]:
 
 class CollectAllInstancesQuery(TypeTraverserVisitor):
     def __init__(self) -> None:
-        self.instances = []  # type: List[Instance]
+        self.instances: List[Instance] = []
 
     def visit_instance(self, t: Instance) -> None:
         self.instances.append(t)
@@ -1765,7 +1767,7 @@ def find_type_overlaps(*types: Type) -> Set[str]:
     This is used to ensure that distinct types with the same short name are printed
     with their fullname.
     """
-    d = {}  # type: Dict[str, Set[str]]
+    d: Dict[str, Set[str]] = {}
     for type in types:
         for inst in collect_all_instances(type):
             d.setdefault(inst.type.name, set()).add(inst.type.fullname)
@@ -1773,7 +1775,7 @@ def find_type_overlaps(*types: Type) -> Set[str]:
         if 'typing.{}'.format(shortname) in TYPES_FOR_UNIMPORTED_HINTS:
             d[shortname].add('typing.{}'.format(shortname))
 
-    overlaps = set()  # type: Set[str]
+    overlaps: Set[str] = set()
     for fullnames in d.values():
         if len(fullnames) > 1:
             overlaps.update(fullnames)
@@ -1917,7 +1919,7 @@ def get_missing_protocol_members(left: Instance, right: Instance) -> List[str]:
     (i.e. completely missing) in 'left'.
     """
     assert right.type.is_protocol
-    missing = []  # type: List[str]
+    missing: List[str] = []
     for member in right.type.protocol_members:
         if not find_member(member, left, left):
             missing.append(member)
@@ -1929,7 +1931,7 @@ def get_conflict_protocol_types(left: Instance, right: Instance) -> List[Tuple[s
     Return them as a list of ('member', 'got', 'expected').
     """
     assert right.type.is_protocol
-    conflicts = []  # type: List[Tuple[str, Type, Type]]
+    conflicts: List[Tuple[str, Type, Type]] = []
     for member in right.type.protocol_members:
         if member in ('__init__', '__new__'):
             continue
@@ -1952,7 +1954,7 @@ def get_bad_protocol_flags(left: Instance, right: Instance
     'left' and 'right'.
     """
     assert right.type.is_protocol
-    all_flags = []  # type: List[Tuple[str, Set[int], Set[int]]]
+    all_flags: List[Tuple[str, Set[int], Set[int]]] = []
     for member in right.type.protocol_members:
         if find_member(member, left, left):
             item = (member,
@@ -2055,9 +2057,9 @@ def temp_message_builder() -> MessageBuilder:
 
 
 # For hard-coding suggested missing member alternatives.
-COMMON_MISTAKES = {
+COMMON_MISTAKES: Final[Dict[str, Sequence[str]]] = {
     'add': ('append', 'extend'),
-}  # type: Final[Dict[str, Sequence[str]]]
+}
 
 
 def best_matches(current: str, options: Iterable[str]) -> List[str]:

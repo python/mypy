@@ -13,27 +13,28 @@ from mypy.traverser import TraverserVisitor
 from mypy.literals import literal
 
 # Inferred truth value of an expression.
-ALWAYS_TRUE = 1  # type: Final
-MYPY_TRUE = 2  # type: Final  # True in mypy, False at runtime
-ALWAYS_FALSE = 3  # type: Final
-MYPY_FALSE = 4  # type: Final  # False in mypy, True at runtime
-TRUTH_VALUE_UNKNOWN = 5  # type: Final
+ALWAYS_TRUE: Final = 1
+MYPY_TRUE: Final = 2  # True in mypy, False at runtime
+ALWAYS_FALSE: Final = 3
+MYPY_FALSE: Final = 4  # False in mypy, True at runtime
+TRUTH_VALUE_UNKNOWN: Final = 5
 
-inverted_truth_mapping = {
+inverted_truth_mapping: Final = {
     ALWAYS_TRUE: ALWAYS_FALSE,
     ALWAYS_FALSE: ALWAYS_TRUE,
     TRUTH_VALUE_UNKNOWN: TRUTH_VALUE_UNKNOWN,
     MYPY_TRUE: MYPY_FALSE,
     MYPY_FALSE: MYPY_TRUE,
-}  # type: Final
+}
 
-reverse_op = {"==": "==",
-              "!=": "!=",
-              "<":  ">",
-              ">":  "<",
-              "<=": ">=",
-              ">=": "<=",
-              }  # type: Final
+reverse_op: Final = {
+    "==": "==",
+    "!=": "!=",
+    "<": ">",
+    ">": "<",
+    "<=": ">=",
+    ">=": "<=",
+}
 
 
 def infer_reachability_of_if_statement(s: IfStmt, options: Options) -> None:

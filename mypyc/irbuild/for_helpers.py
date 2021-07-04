@@ -16,7 +16,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, is_short_int_rprimitive, is_list_rprimitive, is_sequence_rprimitive,
-    is_tuple_rprimitive, is_dict_rprimitive,
+    is_tuple_rprimitive, is_dict_rprimitive, is_str_rprimitive,
     RTuple, short_int_rprimitive, int_rprimitive
 )
 from mypyc.primitives.registry import CFunctionDescription
@@ -164,7 +164,8 @@ def sequence_from_generator_preallocate_helper(
     """
     if len(gen.sequences) == 1 and len(gen.indices) == 1 and len(gen.condlists[0]) == 0:
         rtype = builder.node_type(gen.sequences[0])
-        if is_list_rprimitive(rtype) or is_tuple_rprimitive(rtype):
+        if (is_list_rprimitive(rtype) or is_tuple_rprimitive(rtype)
+                or is_str_rprimitive(rtype)):
             sequence = builder.accept(gen.sequences[0])
             length = builder.builder.builtin_len(sequence, gen.line, use_pyssize_t=True)
             target_op = empty_op_llbuilder(length, gen.line)
@@ -318,7 +319,7 @@ def make_for_loop_generator(builder: IRBuilder,
             # seem worth the hassle of supporting dynamically determining which
             # direction of comparison to do.
             if len(expr.args) == 1:
-                start_reg = Integer(0)  # type: Value
+                start_reg: Value = Integer(0)
                 end_reg = builder.accept(expr.args[0])
             else:
                 start_reg = builder.accept(expr.args[0])
@@ -377,7 +378,7 @@ def make_for_loop_generator(builder: IRBuilder,
         if (is_dict_rprimitive(rtype)
                 and expr.callee.name in ('keys', 'values', 'items')):
             expr_reg = builder.accept(expr.callee.expr)
-            for_dict_type = None  # type: Optional[Type[ForGenerator]]
+            for_dict_type: Optional[Type[ForGenerator]] = None
             if expr.callee.name == 'keys':
                 target_type = builder.get_dict_key_type(expr.callee.expr)
                 for_dict_type = ForDictionaryKeys
@@ -530,7 +531,7 @@ class ForSequence(ForGenerator):
         # environment class.
         self.expr_target = builder.maybe_spill(expr_reg)
         if not reverse:
-            index_reg = Integer(0)  # type: Value
+            index_reg: Value = Integer(0)
         else:
             index_reg = builder.binary_op(self.load_len(self.expr_target),
                                           Integer(1), '-', self.line)
@@ -600,8 +601,9 @@ class ForDictionaryCommon(ForGenerator):
     since they may override some iteration methods in subtly incompatible manner.
     The fallback logic is implemented in CPy.h via dynamic type check.
     """
-    dict_next_op = None  # type: ClassVar[CFunctionDescription]
-    dict_iter_op = None  # type: ClassVar[CFunctionDescription]
+
+    dict_next_op: ClassVar[CFunctionDescription]
+    dict_iter_op: ClassVar[CFunctionDescription]
 
     def need_cleanup(self) -> bool:
         # Technically, a dict subclass can raise an unrelated exception
@@ -732,8 +734,9 @@ class ForRange(ForGenerator):
         builder.assign(index_reg, start_reg, -1)
         self.index_reg = builder.maybe_spill_assignable(index_reg)
         # Initialize loop index to 0. Assert that the index target is assignable.
-        self.index_target = builder.get_assignment_target(
-            self.index)  # type: Union[Register, AssignmentTarget]
+        self.index_target: Union[Register, AssignmentTarget] = builder.get_assignment_target(
+            self.index
+        )
         builder.assign(self.index_target, builder.read(self.index_reg, self.line), self.line)
 
     def gen_condition(self) -> None:
@@ -773,8 +776,9 @@ class ForInfiniteCounter(ForGenerator):
         # initialize this register along with the loop index to 0.
         zero = Integer(0)
         self.index_reg = builder.maybe_spill_assignable(zero)
-        self.index_target = builder.get_assignment_target(
-            self.index)  # type: Union[Register, AssignmentTarget]
+        self.index_target: Union[Register, AssignmentTarget] = builder.get_assignment_target(
+            self.index
+        )
         builder.assign(self.index_target, zero, self.line)
 
     def gen_step(self) -> None:
@@ -846,7 +850,7 @@ class ForZip(ForGenerator):
         # Condition check will require multiple basic blocks, since there will be
         # multiple conditions to check.
         self.cond_blocks = [BasicBlock() for _ in range(len(indexes) - 1)] + [self.body_block]
-        self.gens = []  # type: List[ForGenerator]
+        self.gens: List[ForGenerator] = []
         for index, expr, next_block in zip(indexes, exprs, self.cond_blocks):
             gen = make_for_loop_generator(
                 self.builder,

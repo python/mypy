@@ -71,7 +71,7 @@ def semantic_analysis_for_scc(graph: 'Graph', scc: List[str], errors: Errors) ->
     The scc will be processed roughly in the order the modules are included
     in the list.
     """
-    patches = []  # type: Patches
+    patches: Patches = []
     # Note that functions can't define new module-level attributes
     # using 'global x', since module top levels are fully processed
     # before functions. This limitation is unlikely to go away soon.
@@ -116,7 +116,7 @@ def semantic_analysis_for_targets(
     defined on self) removed by AST stripper that may need to be reintroduced
     here.  They must be added before any methods are analyzed.
     """
-    patches = []  # type: Patches
+    patches: Patches = []
     if any(isinstance(n.node, MypyFile) for n in nodes):
         # Process module top level first (if needed).
         process_top_levels(graph, [state.id], patches)
@@ -190,7 +190,7 @@ def process_top_levels(graph: 'Graph', scc: List[str], patches: Patches) -> None
         if final_iteration:
             # Give up. It's impossible to bind all names.
             state.manager.incomplete_namespaces.clear()
-        all_deferred = []  # type: List[str]
+        all_deferred: List[str] = []
         any_progress = False
         while worklist:
             next_id = worklist.pop()
@@ -289,7 +289,7 @@ TargetInfo = Tuple[str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], 
 
 def get_all_leaf_targets(file: MypyFile) -> List[TargetInfo]:
     """Return all leaf targets in a symbol table (module-level and methods)."""
-    result = []  # type: List[TargetInfo]
+    result: List[TargetInfo] = []
     for fullname, node, active_type in file.local_definitions():
         if isinstance(node.node, (FuncDef, OverloadedFuncDef, Decorator)):
             result.append((fullname, node.node, active_type))
@@ -373,7 +373,7 @@ def check_type_arguments_in_targets(targets: List[FineGrainedDeferredNode], stat
     with state.wrap_context():
         with strict_optional_set(state.options.strict_optional):
             for target in targets:
-                func = None  # type: Optional[Union[FuncDef, OverloadedFuncDef]]
+                func: Optional[Union[FuncDef, OverloadedFuncDef]] = None
                 if isinstance(target.node, (FuncDef, OverloadedFuncDef)):
                     func = target.node
                 saved = (state.id, target.active_typeinfo, func)  # module, class, function

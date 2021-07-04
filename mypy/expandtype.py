@@ -23,7 +23,7 @@ def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
     if not instance.args:
         return typ
     else:
-        variables = {}  # type: Dict[TypeVarId, Type]
+        variables: Dict[TypeVarId, Type] = {}
         for binder, arg in zip(instance.type.defn.type_vars, instance.args):
             variables[binder.id] = arg
         return expand_type(typ, variables)
@@ -38,7 +38,7 @@ def freshen_function_type_vars(callee: F) -> F:
         if not callee.is_generic():
             return cast(F, callee)
         tvdefs = []
-        tvmap = {}  # type: Dict[TypeVarId, Type]
+        tvmap: Dict[TypeVarId, Type] = {}
         for v in callee.variables:
             # TODO(shantanu): fix for ParamSpecDef
             assert isinstance(v, TypeVarDef)
@@ -57,7 +57,7 @@ def freshen_function_type_vars(callee: F) -> F:
 class ExpandTypeVisitor(TypeVisitor[Type]):
     """Visitor that substitutes type variables with values."""
 
-    variables = None  # type: Mapping[TypeVarId, Type]  # TypeVar id -> TypeVar value
+    variables: Mapping[TypeVarId, Type]  # TypeVar id -> TypeVar value
 
     def __init__(self, variables: Mapping[TypeVarId, Type]) -> None:
         self.variables = variables
@@ -102,7 +102,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
                                            if t.type_guard is not None else None))
 
     def visit_overloaded(self, t: Overloaded) -> Type:
-        items = []  # type: List[CallableType]
+        items: List[CallableType] = []
         for item in t.items():
             new_item = item.accept(self)
             assert isinstance(new_item, ProperType)
@@ -145,7 +145,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         return t.copy_modified(args=self.expand_types(t.args))
 
     def expand_types(self, types: Iterable[Type]) -> List[Type]:
-        a = []  # type: List[Type]
+        a: List[Type] = []
         for t in types:
             a.append(t.accept(self))
         return a

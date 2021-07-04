@@ -230,9 +230,9 @@ class FineGrainedSuite(DataSuite):
         else:
             new_messages = self.run_check(server, sources)
 
-        updated = []  # type: List[str]
-        changed = []  # type: List[str]
-        targets = []  # type: List[str]
+        updated: List[str] = []
+        changed: List[str] = []
+        targets: List[str] = []
         triggered = []
         if server.fine_grained_manager:
             if CHECK_CONSISTENCY:
@@ -309,7 +309,7 @@ class FineGrainedSuite(DataSuite):
                                                allow_empty_dir=True)
 
     def maybe_suggest(self, step: int, server: Server, src: str, tmp_dir: str) -> List[str]:
-        output = []  # type: List[str]
+        output: List[str] = []
         targets = self.get_suggest(src, step)
         for flags, target in targets:
             json = '--json' in flags

@@ -32,29 +32,24 @@ from mypy.server.trigger import make_wildcard_trigger
 KW_ONLY_PYTHON_2_UNSUPPORTED = "kw_only is not supported in Python 2"
 
 # The names of the different functions that create classes or arguments.
-attr_class_makers = {
+attr_class_makers: Final = {
     'attr.s',
     'attr.attrs',
     'attr.attributes',
-}  # type: Final
-attr_dataclass_makers = {
+}
+attr_dataclass_makers: Final = {
     'attr.dataclass',
-}  # type: Final
-attr_frozen_makers = {
-    'attr.frozen'
-}  # type: Final
-attr_define_makers = {
-    'attr.define',
-    'attr.mutable'
-}  # type: Final
-attr_attrib_makers = {
+}
+attr_frozen_makers: Final = {"attr.frozen"}
+attr_define_makers: Final = {"attr.define", "attr.mutable"}
+attr_attrib_makers: Final = {
     'attr.ib',
     'attr.attrib',
     'attr.attr',
     'attr.field',
-}  # type: Final
+}
 
-SELF_TVAR_NAME = '_AT'  # type: Final
+SELF_TVAR_NAME: Final = "_AT"
 
 
 class Converter:
@@ -98,7 +93,7 @@ class Attribute:
                 converter = ctx.api.lookup_qualified(self.converter.name, self.info, True)
 
             # Get the type of the converter.
-            converter_type = None  # type: Optional[Type]
+            converter_type: Optional[Type] = None
             if converter and isinstance(converter.node, TypeInfo):
                 from mypy.checkmember import type_object_type  # To avoid import cycle.
                 converter_type = type_object_type(converter.node, ctx.api.builtin_type)
@@ -112,7 +107,7 @@ class Attribute:
             if isinstance(converter_type, CallableType) and converter_type.arg_types:
                 init_type = ctx.api.anal_type(converter_type.arg_types[0])
             elif isinstance(converter_type, Overloaded):
-                types = []  # type: List[Type]
+                types: List[Type] = []
                 for item in converter_type.items():
                     # Walk the overloads looking for methods that can accept one argument.
                     num_arg_types = len(item.arg_types)
@@ -340,7 +335,7 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext',
     auto_attribs=None means we'll detect which mode to use.
     kw_only=True means that all attributes created here will be keyword only args in __init__.
     """
-    own_attrs = OrderedDict()  # type: OrderedDict[str, Attribute]
+    own_attrs: OrderedDict[str, Attribute] = OrderedDict()
     if auto_attribs is None:
         auto_attribs = _detect_auto_attribs(ctx)
 
@@ -627,8 +622,8 @@ def _parse_assignments(
         lvalue: Expression,
         stmt: AssignmentStmt) -> Tuple[List[NameExpr], List[Expression]]:
     """Convert a possibly complex assignment expression into lists of lvalues and rvalues."""
-    lvalues = []  # type: List[NameExpr]
-    rvalues = []  # type: List[Expression]
+    lvalues: List[NameExpr] = []
+    rvalues: List[Expression] = []
     if isinstance(lvalue, (TupleExpr, ListExpr)):
         if all(isinstance(item, NameExpr) for item in lvalue.items):
             lvalues = cast(List[NameExpr], lvalue.items)

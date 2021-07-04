@@ -152,7 +152,7 @@ def update_testcase_output(testcase: DataDrivenTestCase, output: List[str]) -> N
         data_lines = f.read().splitlines()
     test = '\n'.join(data_lines[testcase.line:testcase.last_line])
 
-    mapping = {}  # type: Dict[str, List[str]]
+    mapping: Dict[str, List[str]] = {}
     for old, new in zip(testcase.output, output):
         PREFIX = 'error:'
         ind = old.find(PREFIX)

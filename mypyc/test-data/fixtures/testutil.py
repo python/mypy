@@ -20,7 +20,7 @@ V = TypeVar('V')
 def run_generator(gen: Generator[T, V, U],
                   inputs: Optional[List[V]] = None,
                   p: bool = False) -> Tuple[Sequence[T], Union[U, str]]:
-    res = []  # type: List[T]
+    res: List[T] = []
     i = -1
     while True:
         try:

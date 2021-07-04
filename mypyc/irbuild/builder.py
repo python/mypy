@@ -87,20 +87,20 @@ class IRBuilder:
                  options: CompilerOptions) -> None:
         self.builder = LowLevelIRBuilder(current_module, mapper, options)
         self.builders = [self.builder]
-        self.symtables = [OrderedDict()]  # type: List[OrderedDict[SymbolNode, SymbolTarget]]
-        self.runtime_args = [[]]  # type: List[List[RuntimeArg]]
-        self.function_name_stack = []  # type: List[str]
-        self.class_ir_stack = []  # type: List[ClassIR]
+        self.symtables: List[OrderedDict[SymbolNode, SymbolTarget]] = [OrderedDict()]
+        self.runtime_args: List[List[RuntimeArg]] = [[]]
+        self.function_name_stack: List[str] = []
+        self.class_ir_stack: List[ClassIR] = []
 
         self.current_module = current_module
         self.mapper = mapper
         self.types = types
         self.graph = graph
-        self.ret_types = []  # type: List[RType]
-        self.functions = []  # type: List[FuncIR]
-        self.classes = []  # type: List[ClassIR]
-        self.final_names = []  # type: List[Tuple[str, RType]]
-        self.callable_class_names = set()  # type: Set[str]
+        self.ret_types: List[RType] = []
+        self.functions: List[FuncIR] = []
+        self.classes: List[ClassIR] = []
+        self.final_names: List[Tuple[str, RType]] = []
+        self.callable_class_names: Set[str] = set()
         self.options = options
 
         # These variables keep track of the number of lambdas, implicit indices, and implicit
@@ -124,17 +124,17 @@ class IRBuilder:
         # be generated) is stored in that FuncInfo instance. When the function is done being
         # generated, its corresponding FuncInfo is popped off the stack.
         self.fn_info = FuncInfo(INVALID_FUNC_DEF, '', '')
-        self.fn_infos = [self.fn_info]  # type: List[FuncInfo]
+        self.fn_infos: List[FuncInfo] = [self.fn_info]
 
         # This list operates as a stack of constructs that modify the
         # behavior of nonlocal control flow constructs.
-        self.nonlocal_control = []  # type: List[NonlocalControl]
+        self.nonlocal_control: List[NonlocalControl] = []
 
         self.errors = errors
         # Notionally a list of all of the modules imported by the
         # module being compiled, but stored as an OrderedDict so we
         # can also do quick lookups.
-        self.imports = OrderedDict()  # type: OrderedDict[str, None]
+        self.imports: OrderedDict[str, None] = OrderedDict()
 
     # High-level control
 
@@ -486,7 +486,7 @@ class IRBuilder:
             return AssignmentTargetAttr(obj, lvalue.name)
         elif isinstance(lvalue, TupleExpr):
             # Multiple assignment a, ..., b = e
-            star_idx = None  # type: Optional[int]
+            star_idx: Optional[int] = None
             lvalues = []
             for idx, item in enumerate(lvalue.items):
                 targ = self.get_assignment_target(item)
@@ -757,7 +757,7 @@ class IRBuilder:
 
         from mypy.join import join_types
         if isinstance(iterable, TupleType):
-            joined = UninhabitedType()  # type: Type
+            joined: Type = UninhabitedType()
             for item in iterable.items:
                 joined = join_types(joined, item)
             return joined
@@ -942,7 +942,7 @@ class IRBuilder:
                     return [ir]
             return None
         else:
-            res = []  # type: List[ClassIR]
+            res: List[ClassIR] = []
             for item in arg.items:
                 if isinstance(item, (RefExpr, TupleExpr)):
                     item_part = self.flatten_classes(item)

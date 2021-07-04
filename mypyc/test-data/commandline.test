@@ -24,6 +24,7 @@ for x in [a, b, p, p.q]:
 import b
 import c
 from p import s
+from typing import NamedTuple
 
 print('<a>', ord('A') == 65)  # Test full builtins
 
@@ -41,6 +42,11 @@ class B:
 print('<a>', f(5).x)
 print('<c>', c.foo())
 assert s.bar(10) == 20
+
+class NT(NamedTuple):
+    x: int
+
+print(NT(2))
 
 [file b.py]
 import a
@@ -79,6 +85,7 @@ def bar(x: int) -> int:
 <a> True
 <a> 5
 <c> 10
+NT(x=2)
 <main> 16
 
 -- This test is here so we can turn it on when we get nervous about

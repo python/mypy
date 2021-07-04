@@ -70,6 +70,8 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
                                       for x in narrowed.relevant_items()])
     elif isinstance(narrowed, AnyType):
         return narrowed
+    elif isinstance(narrowed, TypeVarType) and is_subtype(narrowed.upper_bound, declared):
+        return narrowed
     elif isinstance(declared, TypeType) and isinstance(narrowed, TypeType):
         return TypeType.make_normalized(narrow_declared_type(declared.item, narrowed.item))
     elif (isinstance(declared, TypeType)
@@ -444,7 +446,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 
     def visit_union_type(self, t: UnionType) -> ProperType:
         if isinstance(self.s, UnionType):
-            meets = []  # type: List[Type]
+            meets: List[Type] = []
             for x in t.items:
                 for y in self.s.items:
                     meets.append(meet_types(x, y))
@@ -493,7 +495,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                 if is_subtype(t, self.s) or is_subtype(self.s, t):
                     # Combine type arguments. We could have used join below
                     # equivalently.
-                    args = []  # type: List[Type]
+                    args: List[Type] = []
                     # N.B: We use zip instead of indexing because the lengths might have
                     # mismatches during daemon reprocessing.
                     for ta, sia in zip(t.args, si.args):
@@ -580,7 +582,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 
     def visit_tuple_type(self, t: TupleType) -> ProperType:
         if isinstance(self.s, TupleType) and self.s.length() == t.length():
-            items = []  # type: List[Type]
+            items: List[Type] = []
             for i in range(t.length()):
                 items.append(self.meet(t.items[i], self.s.items[i]))
             # TODO: What if the fallbacks are different?
@@ -600,7 +602,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                 if (not is_equivalent(l, r) or
                         (name in t.required_keys) != (name in self.s.required_keys)):
                     return self.default(self.s)
-            item_list = []  # type: List[Tuple[str, Type]]
+            item_list: List[Tuple[str, Type]] = []
             for (item_name, s_item_type, t_item_type) in self.s.zipall(t):
                 if s_item_type is not None:
                     item_list.append((item_name, s_item_type))
@@ -664,7 +666,8 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 
 def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     from mypy.join import join_types
-    arg_types = []  # type: List[Type]
+
+    arg_types: List[Type] = []
     for i in range(len(t.arg_types)):
         arg_types.append(join_types(t.arg_types[i], s.arg_types[i]))
     # TODO in combine_similar_callables also applies here (names and kinds)

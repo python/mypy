@@ -50,3 +50,18 @@ from native import Node, make, pairs
 assert pairs(make([1,2,3])) == [(1,2), (2,3)]
 assert pairs(make([1])) == []
 assert pairs(make([])) == []
+
+[case testFStrings]
+from datetime import datetime
+
+def test_fstring_equal_sign() -> None:
+    today = datetime(year=2017, month=1, day=27)
+    assert f"{today=:%B %d, %Y}" == 'today=January 27, 2017' # using date format specifier and debugging
+
+    foo = "bar"
+    assert f"{ foo = }" == " foo = 'bar'" # preserves whitespace
+
+    line = "The mill's closed"
+    assert f"{line = }" == 'line = "The mill\'s closed"'
+    assert f"{line = :20}" == "line = The mill's closed   "
+    assert f"{line = !r:20}" == 'line = "The mill\'s closed" '

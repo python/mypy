@@ -10,9 +10,9 @@ from mypy.nodes import (
 from mypy.traverser import TraverserVisitor
 
 # Scope kinds
-FILE = 0  # type: Final
-FUNCTION = 1  # type: Final
-CLASS = 2  # type: Final
+FILE: Final = 0
+FUNCTION: Final = 1
+CLASS: Final = 2
 
 
 class VariableRenameVisitor(TraverserVisitor):
@@ -54,20 +54,20 @@ class VariableRenameVisitor(TraverserVisitor):
         # Number of surrounding loop statements
         self.loop_depth = 0
         # Map block id to loop depth.
-        self.block_loop_depth = {}  # type: Dict[int, int]
+        self.block_loop_depth: Dict[int, int] = {}
         # Stack of block ids being processed.
-        self.blocks = []  # type: List[int]
+        self.blocks: List[int] = []
         # List of scopes; each scope maps short (unqualified) name to block id.
-        self.var_blocks = []  # type: List[Dict[str, int]]
+        self.var_blocks: List[Dict[str, int]] = []
 
         # References to variables that we may need to rename. List of
         # scopes; each scope is a mapping from name to list of collections
         # of names that refer to the same logical variable.
-        self.refs = []  # type: List[Dict[str, List[List[NameExpr]]]]
+        self.refs: List[Dict[str, List[List[NameExpr]]]] = []
         # Number of reads of the most recent definition of a variable (per scope)
-        self.num_reads = []  # type: List[Dict[str, int]]
+        self.num_reads: List[Dict[str, int]] = []
         # Kinds of nested scopes (FILE, FUNCTION or CLASS)
-        self.scope_kinds = []  # type: List[int]
+        self.scope_kinds: List[int] = []
 
     def visit_mypy_file(self, file_node: MypyFile) -> None:
         """Rename variables within a file.
