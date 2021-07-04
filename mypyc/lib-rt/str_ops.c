@@ -43,6 +43,21 @@ PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
     }
 }
 
+PyObject *CPyStr_Build(int len, ...) {
+    int i;
+    va_list args;
+    va_start(args, len);
+
+    PyObject *res = PyUnicode_FromObject(va_arg(args, PyObject *));
+    for (i = 1; i < len; i++) {
+        PyObject *str = va_arg(args, PyObject *);
+        PyUnicode_Append(&res, str);
+    }
+
+    va_end(args);
+    return res;
+}
+
 PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split)
 {
     Py_ssize_t temp_max_split = CPyTagged_AsSsize_t(max_split);
@@ -102,8 +117,16 @@ PyObject *CPyStr_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
     }
     return CPyObject_GetSlice(obj, start, end);
 }
+
 /* Check if the given string is true (i.e. it's length isn't zero) */
 bool CPyStr_IsTrue(PyObject *obj) {
     Py_ssize_t length = PyUnicode_GET_LENGTH(obj);
     return length != 0;
+}
+
+Py_ssize_t CPyStr_Size_size_t(PyObject *str) {
+    if (PyUnicode_READY(str) != -1) {
+        return PyUnicode_GET_LENGTH(str);
+    }
+    return -1;
 }

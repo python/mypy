@@ -139,13 +139,19 @@ def singledispatch_register_callback(ctx: MethodContext) -> Type:
     elif isinstance(first_arg_type, CallableType):
         # TODO: do more checking for registered functions
         register_function(ctx, ctx.type, first_arg_type)
+        # The typeshed stubs for register say that the function returned is Callable[..., T], even
+        # though the function returned is the same as the one passed in. We return the type of the
+        # function so that mypy can properly type check cases where the registered function is used
+        # directly (instead of through singledispatch)
+        return first_arg_type
 
-    # register doesn't modify the function it's used on
+    # fallback in case we don't recognize the arguments
     return ctx.default_return_type
 
 
 def register_function(ctx: PluginContext, singledispatch_obj: Instance, func: Type,
                       register_arg: Optional[Type] = None) -> None:
+    """Register a function"""
 
     func = get_proper_type(func)
     if not isinstance(func, CallableType):
@@ -165,6 +171,7 @@ def register_function(ctx: PluginContext, singledispatch_obj: Instance, func: Ty
                 format_type(dispatch_type), format_type(fallback_dispatch_type)
             ), func.definition)
         return
+    return
 
 
 def get_dispatch_type(func: CallableType, register_arg: Optional[Type]) -> Optional[Type]:
@@ -183,6 +190,8 @@ def call_singledispatch_function_after_register_argument(ctx: MethodContext) -> 
         func = get_first_arg(ctx.arg_types)
         if func is not None:
             register_function(ctx, type_args.singledispatch_obj, func, type_args.register_type)
+            # see call to register_function in the callback for register
+            return func
     return ctx.default_return_type
 
 

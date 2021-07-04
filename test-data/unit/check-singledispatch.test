@@ -289,3 +289,28 @@ def h(a: Missing) -> None:
     pass
 
 [builtins fixtures/args.pyi]
+
+[case testIncorrectArgumentTypeWhenCallingRegisteredImplDirectly]
+from functools import singledispatch
+
+@singledispatch
+def f(arg, arg2: str) -> bool:
+    return False
+
+@f.register
+def g(arg: int, arg2: str) -> bool:
+    pass
+
+@f.register(str)
+def h(arg, arg2: str) -> bool:
+    pass
+
+g('a', 'a') # E: Argument 1 to "g" has incompatible type "str"; expected "int"
+g(1, 1) # E: Argument 2 to "g" has incompatible type "int"; expected "str"
+
+# don't show errors for incorrect first argument here, because there's no type annotation for the
+# first argument
+h(1, 'a')
+h('a', 1) # E: Argument 2 to "h" has incompatible type "int"; expected "str"
+
+[builtins fixtures/args.pyi]
