@@ -279,4 +279,6 @@ A = list[int]
 a: A
 B = list[list[int]]
 b: B
+class C(list[int]):
+    pass
 [builtins fixtures/list.pyi]
