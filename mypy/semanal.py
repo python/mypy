@@ -3886,7 +3886,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         if isinstance(index, TupleExpr):
             items = index.items
             is_tuple = isinstance(expr.base, RefExpr) and expr.base.fullname == 'builtins.tuple'
-            if is_tuple and items and isinstance(items[-1], EllipsisExpr):
+            if is_tuple and len(items) == 2 and isinstance(items[-1], EllipsisExpr):
                 items = items[:-1]
         else:
             items = [index]
