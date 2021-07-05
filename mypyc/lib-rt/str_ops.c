@@ -68,11 +68,12 @@ PyObject *CPyStr_Build(Py_ssize_t len, ...) {
         if (PyUnicode_READY(item) == -1)
             return NULL;
 
-        Py_ssize_t add_sz = PyUnicode_GET_LENGTH(item);
+        size_t add_sz = PyUnicode_GET_LENGTH(item);
         Py_UCS4 item_maxchar = PyUnicode_MAX_CHAR_VALUE(item);
         maxchar = Py_MAX(maxchar, item_maxchar);
 
-        if (add_sz + sz > (Py_ssize_t)PY_SSIZE_T_MAX) {
+        // Using size_t to avoid overflow during arithmetic calculation
+        if (add_sz > (size_t)(PY_SSIZE_T_MAX - sz)) {
             PyErr_SetString(PyExc_OverflowError,
                             "join() result is too long for a Python string");
             return NULL;
