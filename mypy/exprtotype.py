@@ -80,7 +80,10 @@ def expr_to_unanalyzed_type(expr: Expression,
             return base
         else:
             raise TypeTranslationError()
-    elif isinstance(expr, OpExpr) and expr.op == '|' and options.python_version >= (3, 10):
+    elif (isinstance(expr, OpExpr)
+          and expr.op == '|'
+          and options
+          and options.python_version >= (3, 10)):
         return UnionType([expr_to_unanalyzed_type(expr.left, options),
                           expr_to_unanalyzed_type(expr.right, options)])
     elif isinstance(expr, CallExpr) and isinstance(_parent, ListExpr):
