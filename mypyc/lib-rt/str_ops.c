@@ -48,9 +48,12 @@ PyObject *CPyStr_Build(Py_ssize_t len, ...) {
     Py_ssize_t i;
     va_list args;
 
-    // Calculate the total amount of space
+    // Calculate the total amount of space and check
+    // whether all components have the same kind.
     Py_ssize_t sz = 0;
     Py_UCS4 maxchar = 0;
+    int use_memcpy = 1; // Use memcpy by default
+    PyObject *last_obj = NULL;
 
     va_start(args, len);
     for (i = 0; i < len; i++) {
@@ -75,6 +78,14 @@ PyObject *CPyStr_Build(Py_ssize_t len, ...) {
             return NULL;
         }
         sz += add_sz;
+
+        // If these strings have different kind, we would call
+        // _PyUnicode_FastCopyCharacters() in the following part.
+        if (use_memcpy && last_obj != NULL) {
+            if (PyUnicode_KIND(last_obj) != PyUnicode_KIND(item))
+                use_memcpy = 0;
+        }
+        last_obj = item;
     }
     va_end(args);
 
@@ -83,23 +94,37 @@ PyObject *CPyStr_Build(Py_ssize_t len, ...) {
     if (res == NULL)
         return NULL;
 
-    unsigned char *res_data = PyUnicode_1BYTE_DATA(res);
-    unsigned int kind = PyUnicode_KIND(res);
+    if (use_memcpy) {
+        unsigned char *res_data = PyUnicode_1BYTE_DATA(res);
+        unsigned int kind = PyUnicode_KIND(res);
 
-    va_start(args, len);
-    for (i = 0; i < len; ++i) {
-        PyObject *item = va_arg(args, PyObject *);
-        Py_ssize_t itemlen = PyUnicode_GET_LENGTH(item);
-        if (itemlen != 0) {
-            memcpy(res_data,
-                   PyUnicode_DATA(item),
-                   kind * itemlen);
-            res_data += kind * itemlen;
+        va_start(args, len);
+        for (i = 0; i < len; ++i) {
+            PyObject *item = va_arg(args, PyObject *);
+            Py_ssize_t itemlen = PyUnicode_GET_LENGTH(item);
+            if (itemlen != 0) {
+                memcpy(res_data, PyUnicode_DATA(item), kind * itemlen);
+                res_data += kind * itemlen;
+            }
         }
-    }
-    va_end(args);
+        va_end(args);
+        assert(res_data == PyUnicode_1BYTE_DATA(res) + kind * PyUnicode_GET_LENGTH(res));
+    } else {
+        Py_ssize_t res_offset = 0;
 
-    assert(res_data == PyUnicode_1BYTE_DATA(res) + kind * PyUnicode_GET_LENGTH(res));
+        va_start(args, len);
+        for (i = 0; i < len; ++i) {
+            PyObject *item = va_arg(args, PyObject *);
+            Py_ssize_t itemlen = PyUnicode_GET_LENGTH(item);
+            if (itemlen != 0) {
+                _PyUnicode_FastCopyCharacters(res, res_offset, item, 0, itemlen);
+                res_offset += itemlen;
+            }
+        }
+        va_end(args);
+        assert(res_offset == PyUnicode_GET_LENGTH(res));
+    }
+
     assert(_PyUnicode_CheckConsistency(res, 1));
     return res;
 }
