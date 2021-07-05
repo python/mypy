@@ -96,10 +96,22 @@ reveal_type(y)  # N: Revealed type is "Union[builtins.int, builtins.str]"
 
 [case testUnionOrSyntaxWithTypeAliasWorking]
 # flags: --python-version 3.10
-from typing import Union
-T = Union[int, str]
+T = int | str
 x: T
 reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+S = list[int] | str | None
+y: S
+reveal_type(y)  # N: Revealed type is "Union[builtins.list[builtins.int], builtins.str, None]"
+U = str | None
+z: U
+reveal_type(z)  # N: Revealed type is "Union[builtins.str, None]"
+
+def f(): pass
+
+X = int | str | f()
+b: X  # E: Variable "__main__.X" is not valid as a type \
+    # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+[builtins fixtures/type.pyi]
 
 
 [case testUnionOrSyntaxWithTypeAliasNotAllowed]
@@ -131,3 +143,17 @@ x: int | None  # E: X | Y syntax for unions requires Python 3.10
 from lib import x
 [file lib.pyi]
 x: int | None
+
+
+[case testUnionOrSyntaxInMiscRuntimeContexts]
+# flags: --python-version 3.10
+from typing import cast
+
+class C(list[int | None]):
+    pass
+
+def f() -> object: pass
+
+reveal_type(cast(str | None, f()))  # N: Revealed type is "Union[builtins.str, None]"
+reveal_type(list[str | None]())  # N: Revealed type is "builtins.list[Union[builtins.str, None]]"
+[builtins fixtures/type.pyi]

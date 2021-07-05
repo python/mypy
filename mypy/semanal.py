@@ -2101,7 +2101,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             return self.should_wait_rhs(rv.callee)
         return False
 
-    def can_be_type_alias(self, rv: Expression) -> bool:
+    def can_be_type_alias(self, rv: Expression, allow_none: bool = False) -> bool:
         """Is this a valid r.h.s. for an alias definition?
 
         Note: this function should be only called for expressions where self.should_wait_rhs()
@@ -2112,6 +2112,13 @@ class SemanticAnalyzer(NodeVisitor[None],
         if isinstance(rv, IndexExpr) and self.is_type_ref(rv.base, bare=False):
             return True
         if self.is_none_alias(rv):
+            return True
+        if allow_none and isinstance(rv, NameExpr) and rv.fullname == 'builtins.None':
+            return True
+        if (isinstance(rv, OpExpr)
+                and rv.op == '|'
+                and self.can_be_type_alias(rv.left, allow_none=True)
+                and self.can_be_type_alias(rv.right, allow_none=True)):
             return True
         return False
 

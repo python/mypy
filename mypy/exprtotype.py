@@ -4,13 +4,13 @@ from typing import Optional
 
 from mypy.nodes import (
     Expression, NameExpr, MemberExpr, IndexExpr, RefExpr, TupleExpr, IntExpr, FloatExpr, UnaryExpr,
-    ComplexExpr, ListExpr, StrExpr, BytesExpr, UnicodeExpr, EllipsisExpr, CallExpr,
+    ComplexExpr, ListExpr, StrExpr, BytesExpr, UnicodeExpr, EllipsisExpr, CallExpr, OpExpr,
     get_member_expr_fullname
 )
 from mypy.fastparse import parse_type_string
 from mypy.types import (
     Type, UnboundType, TypeList, EllipsisType, AnyType, CallableArgument, TypeOfAny,
-    RawExpressionType, ProperType
+    RawExpressionType, ProperType, UnionType
 )
 
 
@@ -150,5 +150,8 @@ def expr_to_unanalyzed_type(expr: Expression, _parent: Optional[Expression] = No
         return RawExpressionType(None, 'builtins.complex', line=expr.line, column=expr.column)
     elif isinstance(expr, EllipsisExpr):
         return EllipsisType(expr.line)
+    elif isinstance(expr, OpExpr) and expr.op == '|':
+        return UnionType([expr_to_unanalyzed_type(expr.left),
+                          expr_to_unanalyzed_type(expr.right)])
     else:
         raise TypeTranslationError()
