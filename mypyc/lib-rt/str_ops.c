@@ -43,7 +43,7 @@ PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
     }
 }
 
-// A simplification of _PyUnicode_JoinArray()
+// A simplification of _PyUnicode_JoinArray() from CPython 3.9.6
 PyObject *CPyStr_Build(Py_ssize_t len, ...) {
     Py_ssize_t i;
     va_list args;
