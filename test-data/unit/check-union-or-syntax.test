@@ -114,11 +114,26 @@ b: X  # E: Variable "__main__.X" is not valid as a type \
 [builtins fixtures/type.pyi]
 
 
-[case testUnionOrSyntaxWithTypeAliasNotAllowed]
+[case testUnionOrSyntaxWithinRuntimeContextNotAllowed]
 # flags: --python-version 3.9
 from __future__ import annotations
-T = int | str  # E: Unsupported left operand type for | ("Type[int]")
+from typing import List
+T = int | str  # E: Invalid type alias: expression is not a valid type \
+               # E: Unsupported left operand type for | ("Type[int]")
+class C(List[int | str]):  # E: Type expected within [...] \
+                           # E: Invalid base class "List"
+    pass
+C()
 [builtins fixtures/tuple.pyi]
+
+
+[case testUnionOrSyntaxWithinRuntimeContextNotAllowed2]
+# flags: --python-version 3.9
+from __future__ import annotations
+from typing import cast
+cast(str | int, 'x')  # E: Cast target is not a type
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
 
 
 [case testUnionOrSyntaxInComment]
