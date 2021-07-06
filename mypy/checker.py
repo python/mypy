@@ -2075,6 +2075,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     accept_items(e.left)
                     accept_items(e.right)
                 else:
+                    # Nested union types have been converted to type context
+                    # in semantic analysis (such as in 'list[int | str]'),
+                    # so we don't need to deal with them here.
                     self.expr_checker.accept(e)
 
             accept_items(s.rvalue)

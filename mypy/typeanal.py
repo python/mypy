@@ -141,8 +141,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.allow_tuple_literal = allow_tuple_literal
         # Positive if we are analyzing arguments of another (outer) type
         self.nesting_level = 0
-        # Should we allow unnormalized types like `list[int]`
-        # (currently allowed in stubs)?
+        # Should we allow new type syntax when targeting older Python versions
+        # like 'list[int]' or 'X | Y' (allowed in stubs)?
         self.allow_new_syntax = allow_new_syntax
         # Should we accept unbound type variables (always OK in aliases)?
         self.allow_unbound_tvars = allow_unbound_tvars or defining_alias
