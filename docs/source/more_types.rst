@@ -297,8 +297,8 @@ return type by using overloads like so:
 
 Sometimes default values of function arguments don't have an effect on its
 overload.  In these cases it is best practice to only specify them once in the
-function signature and use `...` ellipsis as a placeholder for the defaults in
-the overloads:
+function signature and use ``...`` ellipsis as a placeholder for the defaults
+in the overloads:
 
 .. code-block:: python
 
