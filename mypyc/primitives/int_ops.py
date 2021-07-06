@@ -53,7 +53,7 @@ function_op(
     error_kind=ERR_MAGIC)
 
 # str(n) on ints
-function_op(
+int_to_str_op = function_op(
     name='builtins.str',
     arg_types=[int_rprimitive],
     return_type=str_rprimitive,
