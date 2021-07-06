@@ -295,6 +295,25 @@ return type by using overloads like so:
    subtypes, you can use a :ref:`value restriction
    <type-variable-value-restriction>`.
 
+Sometimes default values of function arguments don't have an effect on its
+overload.  In these cases it is best practice to only specify them once in the
+function signature and use `...` ellipsis as a placeholder for the defaults in
+the overloads:
+
+.. code-block:: python
+
+    from typing import overload
+
+    class M: ...
+
+    @overload
+    def get_model(model_or_pk: M, flag: bool = ...) -> M: ...
+    @overload
+    def get_model(model_or_pk: int, flag: bool = ...) -> M | None: ...
+
+    def get_model(model_or_pk: int | M, flag: bool = True) -> M | None:
+        ...
+
 
 Runtime behavior
 ----------------
