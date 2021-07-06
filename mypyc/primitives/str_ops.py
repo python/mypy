@@ -45,7 +45,7 @@ method_op(
 )
 
 str_build_op = custom_op(
-    arg_types=[c_int_rprimitive],
+    arg_types=[c_pyssize_t_rprimitive],
     return_type=str_rprimitive,
     c_function_name='CPyStr_Build',
     error_kind=ERR_MAGIC,

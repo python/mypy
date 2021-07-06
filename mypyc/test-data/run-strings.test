@@ -271,6 +271,10 @@ def test_fstring_python_doc() -> None:
 from typing import Tuple
 
 def test_format_method_basics() -> None:
+    x = str()
+    assert 'x{}'.format(x) == 'x'
+    assert 'ā{}'.format(x) == 'ā'
+    assert '😀{}'.format(x) == '😀'
     assert ''.format() == ''
     assert 'abc'.format() == 'abc'
     assert '{}{}'.format(1, 2) == '12'
@@ -341,6 +345,16 @@ def test_format_method_args() -> None:
     assert format_kwargs(x=10, y=2) == 'c10d2'
     assert format_kwargs(x=10, y=2, z=1) == 'c10d2'
     assert format_kwargs_self(x=10, y=2, z=1) == "{'x': 10, 'y': 2, 'z': 1}"
+
+def test_format_method_different_kind() -> None:
+    s1 = "Literal['😀']"
+    assert 'Revealed type is {}'.format(s1) == "Revealed type is Literal['😀']"
+    s2 = "Revealed type is"
+    assert "{} Literal['😀']".format(s2) == "Revealed type is Literal['😀']"
+    s3 = "测试："
+    assert "{}{} {}".format(s3, s2, s1) == "测试：Revealed type is Literal['😀']"
+    assert "Test: {}{}".format(s3, s1) == "Test: 测试：Literal['😀']"
+    assert "Test: {}{}".format(s3, s2) == "Test: 测试：Revealed type is"
 
 class Point:
     def __init__(self, x, y):
