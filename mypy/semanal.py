@@ -1267,7 +1267,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.analyze_type_expr(base_expr)
 
             try:
-                base = expr_to_unanalyzed_type(base_expr, self.options)
+                base = self.expr_to_unanalyzed_type(base_expr)
             except TypeTranslationError:
                 # This error will be caught later.
                 continue
@@ -1373,7 +1373,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         for i, base_expr in enumerate(base_type_exprs):
             if i not in removed:
                 try:
-                    base = expr_to_unanalyzed_type(base_expr, self.options)
+                    base = self.expr_to_unanalyzed_type(base_expr)
                 except TypeTranslationError:
                     # This error will be caught later.
                     continue
@@ -2507,7 +2507,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                                  self.plugin,
                                  self.options,
                                  self.is_typeshed_stub_file,
-                                 allow_unnormalized=self.is_stub_file,
+                                 allow_new_syntax=self.is_stub_file,
                                  allow_placeholder=allow_placeholder,
                                  in_dynamic_func=dynamic,
                                  global_scope=global_scope)
@@ -3202,7 +3202,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         result: List[Type] = []
         for node in items:
             try:
-                analyzed = self.anal_type(expr_to_unanalyzed_type(node, self.options),
+                analyzed = self.anal_type(self.expr_to_unanalyzed_type(node),
                                           allow_placeholder=True)
                 if analyzed is None:
                     # Type variables are special: we need to place them in the symbol table
@@ -3645,7 +3645,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 return
             # Translate first argument to an unanalyzed type.
             try:
-                target = expr_to_unanalyzed_type(expr.args[0], self.options)
+                target = self.expr_to_unanalyzed_type(expr.args[0])
             except TypeTranslationError:
                 self.fail('Cast target is not a type', expr)
                 return
@@ -3703,7 +3703,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 return
             # Translate first argument to an unanalyzed type.
             try:
-                target = expr_to_unanalyzed_type(expr.args[0], self.options)
+                target = self.expr_to_unanalyzed_type(expr.args[0])
             except TypeTranslationError:
                 self.fail('Argument 1 to _promote is not a type', expr)
                 return
@@ -3899,7 +3899,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             items = [index]
         for item in items:
             try:
-                typearg = expr_to_unanalyzed_type(item, self.options)
+                typearg = self.expr_to_unanalyzed_type(item)
             except TypeTranslationError:
                 self.fail('Type expected within [...]', expr)
                 return None
@@ -4206,7 +4206,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def lookup_type_node(self, expr: Expression) -> Optional[SymbolTableNode]:
         try:
-            t = expr_to_unanalyzed_type(expr, self.options)
+            t = self.expr_to_unanalyzed_type(expr)
         except TypeTranslationError:
             return None
         if isinstance(t, UnboundType):
@@ -4926,7 +4926,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             assert info.tuple_type, "NamedTuple without tuple type"
             fallback = Instance(info, [])
             return TupleType(info.tuple_type.items, fallback=fallback)
-        typ = expr_to_unanalyzed_type(expr, self.options)
+        typ = self.expr_to_unanalyzed_type(expr)
         return self.anal_type(typ, report_invalid_types=report_invalid_types,
                               allow_placeholder=allow_placeholder)
 
@@ -4956,11 +4956,14 @@ class SemanticAnalyzer(NodeVisitor[None],
                             allow_unbound_tvars=allow_unbound_tvars,
                             allow_tuple_literal=allow_tuple_literal,
                             report_invalid_types=report_invalid_types,
-                            allow_unnormalized=self.is_stub_file,
+                            allow_new_syntax=self.is_stub_file,
                             allow_placeholder=allow_placeholder)
         tpan.in_dynamic_func = bool(self.function_stack and self.function_stack[-1].is_dynamic())
         tpan.global_scope = not self.type and not self.function_stack
         return tpan
+
+    def expr_to_unanalyzed_type(self, node: Expression) -> ProperType:
+        return expr_to_unanalyzed_type(node, self.options, self.is_stub_file)
 
     def anal_type(self,
                   typ: Type, *,

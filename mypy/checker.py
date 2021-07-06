@@ -2023,13 +2023,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         Handle all kinds of assignment statements (simple, indexed, multiple).
         """
-        with self.enter_final_context(s.is_final_def):
-            self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None, s.new_syntax)
-
-        if s.is_alias_def:
-            # We do this mostly for compatibility with old semantic analyzer.
-            # TODO: should we get rid of this?
-            self.store_type(s.lvalues[-1], self.expr_checker.accept(s.rvalue))
+        if not (s.is_alias_def and self.is_stub):
+            with self.enter_final_context(s.is_final_def):
+                self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None, s.new_syntax)
 
         if (s.type is not None and
                 self.options.disallow_any_unimported and
