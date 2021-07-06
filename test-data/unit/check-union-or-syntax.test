@@ -155,3 +155,17 @@ def f() -> object: pass
 reveal_type(cast(str | None, f()))  # N: Revealed type is "Union[builtins.str, None]"
 reveal_type(list[str | None]())  # N: Revealed type is "builtins.list[Union[builtins.str, None]]"
 [builtins fixtures/type.pyi]
+
+[case testUnionOrSyntaxRuntimeContextInStubFile]
+import lib
+reveal_type(lib.x)  # N: Revealed type is "Union[builtins.int, builtins.list[builtins.str], None]"
+reveal_type(lib.y)  # N: Revealed type is "builtins.list[Union[builtins.int, None]]"
+
+[file lib.pyi]
+A = int | list[str] | None
+x: A
+B = list[int | None]
+y: B
+class C(list[int | None]):
+    pass
+[builtins fixtures/list.pyi]
