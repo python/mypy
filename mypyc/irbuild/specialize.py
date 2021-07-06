@@ -451,3 +451,39 @@ def split_braces(format_str: str) -> List[str]:
             prev = ''
     ret_list.append(tmp_str)
     return ret_list
+
+@specialize_function('join', str_rprimitive)
+def translate_fstring(
+        builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+    # Special case for f-string, which is translated into str.join() in mypy AST.
+    # This specializer optimizes simplest f-strings which don't contain any
+    # format operation.
+    if expr.arg_kinds == [ARG_POS] and isinstance(expr.args[0], ListExpr):
+        for item in expr.args[0].items:
+            if isinstance(item, StrExpr):
+                continue
+            elif isinstance(item, CallExpr):
+                if item.callee.name != 'format':
+                    return None
+                if item.callee.expr.value != '{:{}}':
+                    return None
+                if not isinstance(item.args[1], StrExpr) or item.args[1].value != '':
+                    return None
+            else:
+                return None
+
+        result_list: List[Value] = [Integer(0, c_pyssize_t_rprimitive)]
+        for item in expr.args[0].items:
+            if isinstance(item, StrExpr):
+                result_list.append(builder.accept(item))
+            elif isinstance(item, CallExpr):
+                result_list.append(builder.call_c(str_op,
+                                                  [builder.accept(item.args[0])],
+                                                  expr.line))
+
+        if len(result_list) == 1:
+            return builder.load_str("")
+
+        result_list[0] = Integer(len(result_list) - 1, c_pyssize_t_rprimitive)
+        return builder.call_c(str_build_op, result_list, expr.line)
+    return None
