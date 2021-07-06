@@ -126,3 +126,11 @@ class Meta:
 x = Annotated[int, Meta()]
 reveal_type(x)  # N: Revealed type is "def () -> builtins.int"
 [builtins fixtures/tuple.pyi]
+
+[case testAnnotatedStringLiteralInFunc]
+from typing_extensions import Annotated
+
+def f(a: Annotated[str, "metadata"]):
+    pass
+reveal_type(f)  # N: Revealed type is "def (a: builtins.str) -> Any"
+[builtins fixtures/tuple.pyi]
