@@ -2028,9 +2028,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None, s.new_syntax)
 
         if s.is_alias_def:
-            # We do this mostly for compatibility with old semantic analyzer.
-            # TODO: should we get rid of this?
-            self.store_type(s.lvalues[-1], self.expr_checker.accept(s.rvalue))
+            self.check_type_alias_rvalue(s)
 
         if (s.type is not None and
                 self.options.disallow_any_unimported and
@@ -2058,6 +2056,26 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if (s.is_final_def and s.type and not has_no_typevars(s.type)
                 and self.scope.active_class() is not None):
             self.fail(message_registry.DEPENDENT_FINAL_IN_CLASS_BODY, s)
+
+    def check_type_alias_rvalue(self, s: AssignmentStmt) -> None:
+        if not (self.is_stub and isinstance(s.rvalue, OpExpr) and s.rvalue.op == '|'):
+            # We do this mostly for compatibility with old semantic analyzer.
+            # TODO: should we get rid of this?
+            alias_type = self.expr_checker.accept(s.rvalue)
+        else:
+            # Avoid type checking 'X | Y' in stubs, since there can be errors
+            # on older Python targets.
+            alias_type = AnyType(TypeOfAny.special_form)
+
+            def accept_items(e: Expression) -> None:
+                if isinstance(e, OpExpr) and e.op == '|':
+                    accept_items(e.left)
+                    accept_items(e.right)
+                else:
+                    self.expr_checker.accept(e)
+
+            accept_items(s.rvalue)
+        self.store_type(s.lvalues[-1], alias_type)
 
     def check_assignment(self, lvalue: Lvalue, rvalue: Expression, infer_lvalue_type: bool = True,
                          new_syntax: bool = False) -> None:
