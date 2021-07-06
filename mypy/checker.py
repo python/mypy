@@ -2023,6 +2023,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         Handle all kinds of assignment statements (simple, indexed, multiple).
         """
+        # Avoid type checking type aliases in stubs to avoid false
+        # positives about modern type syntax available in stubs such
+        # as X | Y.
         if not (s.is_alias_def and self.is_stub):
             with self.enter_final_context(s.is_final_def):
                 self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None, s.new_syntax)
