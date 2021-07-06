@@ -3154,7 +3154,7 @@ def foo(arg: Type[Any]):
 from typing import Type, Any
 def foo(arg: Type[Any]):
     reveal_type(arg.__str__)  # N: Revealed type is "def () -> builtins.str"
-    reveal_type(arg.mro())  # N: Revealed type is "builtins.list[builtins.type]"
+    reveal_type(arg.mro())  # N: Revealed type is "builtins.list[builtins.type[Any]]"
 [builtins fixtures/type.pyi]
 [out]
 

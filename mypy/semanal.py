@@ -1267,7 +1267,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.analyze_type_expr(base_expr)
 
             try:
-                base = expr_to_unanalyzed_type(base_expr)
+                base = expr_to_unanalyzed_type(base_expr, self.options)
             except TypeTranslationError:
                 # This error will be caught later.
                 continue
@@ -1373,7 +1373,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         for i, base_expr in enumerate(base_type_exprs):
             if i not in removed:
                 try:
-                    base = expr_to_unanalyzed_type(base_expr)
+                    base = expr_to_unanalyzed_type(base_expr, self.options)
                 except TypeTranslationError:
                     # This error will be caught later.
                     continue
@@ -2101,7 +2101,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             return self.should_wait_rhs(rv.callee)
         return False
 
-    def can_be_type_alias(self, rv: Expression) -> bool:
+    def can_be_type_alias(self, rv: Expression, allow_none: bool = False) -> bool:
         """Is this a valid r.h.s. for an alias definition?
 
         Note: this function should be only called for expressions where self.should_wait_rhs()
@@ -2112,6 +2112,13 @@ class SemanticAnalyzer(NodeVisitor[None],
         if isinstance(rv, IndexExpr) and self.is_type_ref(rv.base, bare=False):
             return True
         if self.is_none_alias(rv):
+            return True
+        if allow_none and isinstance(rv, NameExpr) and rv.fullname == 'builtins.None':
+            return True
+        if (isinstance(rv, OpExpr)
+                and rv.op == '|'
+                and self.can_be_type_alias(rv.left, allow_none=True)
+                and self.can_be_type_alias(rv.right, allow_none=True)):
             return True
         return False
 
@@ -3195,7 +3202,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         result: List[Type] = []
         for node in items:
             try:
-                analyzed = self.anal_type(expr_to_unanalyzed_type(node),
+                analyzed = self.anal_type(expr_to_unanalyzed_type(node, self.options),
                                           allow_placeholder=True)
                 if analyzed is None:
                     # Type variables are special: we need to place them in the symbol table
@@ -3638,7 +3645,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 return
             # Translate first argument to an unanalyzed type.
             try:
-                target = expr_to_unanalyzed_type(expr.args[0])
+                target = expr_to_unanalyzed_type(expr.args[0], self.options)
             except TypeTranslationError:
                 self.fail('Cast target is not a type', expr)
                 return
@@ -3696,7 +3703,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 return
             # Translate first argument to an unanalyzed type.
             try:
-                target = expr_to_unanalyzed_type(expr.args[0])
+                target = expr_to_unanalyzed_type(expr.args[0], self.options)
             except TypeTranslationError:
                 self.fail('Argument 1 to _promote is not a type', expr)
                 return
@@ -3892,7 +3899,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             items = [index]
         for item in items:
             try:
-                typearg = expr_to_unanalyzed_type(item)
+                typearg = expr_to_unanalyzed_type(item, self.options)
             except TypeTranslationError:
                 self.fail('Type expected within [...]', expr)
                 return None
@@ -4199,7 +4206,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def lookup_type_node(self, expr: Expression) -> Optional[SymbolTableNode]:
         try:
-            t = expr_to_unanalyzed_type(expr)
+            t = expr_to_unanalyzed_type(expr, self.options)
         except TypeTranslationError:
             return None
         if isinstance(t, UnboundType):
@@ -4919,7 +4926,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             assert info.tuple_type, "NamedTuple without tuple type"
             fallback = Instance(info, [])
             return TupleType(info.tuple_type.items, fallback=fallback)
-        typ = expr_to_unanalyzed_type(expr)
+        typ = expr_to_unanalyzed_type(expr, self.options)
         return self.anal_type(typ, report_invalid_types=report_invalid_types,
                               allow_placeholder=allow_placeholder)
 

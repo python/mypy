@@ -80,7 +80,7 @@ def analyze_type_alias(node: Expression,
     Return None otherwise. 'node' must have been semantically analyzed.
     """
     try:
-        type = expr_to_unanalyzed_type(node)
+        type = expr_to_unanalyzed_type(node, options)
     except TypeTranslationError:
         api.fail('Invalid type alias: expression is not a valid type', node)
         return None
