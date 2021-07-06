@@ -5363,6 +5363,12 @@ def flatten_types(t: Type) -> List[Type]:
 
 def get_isinstance_type(expr: Expression,
                         type_map: Dict[Expression, Type]) -> Optional[List[TypeRange]]:
+    if isinstance(expr, OpExpr) and expr.op == '|':
+        left = get_isinstance_type(expr.left, type_map)
+        right = get_isinstance_type(expr.right, type_map)
+        if left is None or right is None:
+            return None
+        return left + right
     all_types = get_proper_types(flatten_types(type_map[expr]))
     types: List[TypeRange] = []
     for typ in all_types:

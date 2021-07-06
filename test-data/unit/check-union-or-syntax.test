@@ -169,3 +169,30 @@ y: B
 class C(list[int | None]):
     pass
 [builtins fixtures/list.pyi]
+
+[case testUnionOrSyntaxInIsinstance]
+# flags: --python-version 3.10
+class C: pass
+
+def f(x: int | str | C) -> None:
+    if isinstance(x, int | str):
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.C"
+
+def g(x: int | str | tuple[int, str] | C) -> None:
+    if isinstance(x, int | str | tuple):
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str, Tuple[builtins.int, builtins.str]]"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.C"
+[builtins fixtures/isinstance_python3_10.pyi]
+
+[case testUnionOrSyntaxInIsinstanceNotSupported]
+# flags: --python-version 3.9
+from typing import Union
+def f(x: Union[int, str, None]) -> None:
+    if isinstance(x, int | str): # E: Unsupported left operand type for | ("Type[int]")
+        reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+    else:
+        reveal_type(x)  # N: Revealed type is "None"
+[builtins fixtures/isinstance.pyi]
