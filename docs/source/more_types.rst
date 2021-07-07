@@ -295,10 +295,10 @@ return type by using overloads like so:
    subtypes, you can use a :ref:`value restriction
    <type-variable-value-restriction>`.
 
-Sometimes default values of function arguments don't have an effect on its
-overload.  In these cases it is best practice to only specify them once in the
-function signature and use ``...`` ellipsis as a placeholder for the defaults
-in the overloads:
+The default values of a function's arguments don't affect its signature, only
+the absence or presence of a default value does. So in order to reduce
+redundancy in definitions it's possible to replace default values in
+overload definitions with `...` as a placeholder.
 
 .. code-block:: python
 
