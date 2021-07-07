@@ -245,7 +245,7 @@ L0:
     r18 = get_element_ptr r17 ob_item :: PyListObject
     r19 = load_mem r18 :: ptr*
     set_mem r19, r8 :: builtins.object*
-    r20 = r19 + 8
+    r20 = r19 + WORD_SIZE*1
     set_mem r20, r16 :: builtins.object*
     keep_alive r17
     r21 = PyUnicode_Join(r7, r17)
