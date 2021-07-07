@@ -25,8 +25,8 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
-    bool_rprimitive, c_int_rprimitive, c_pyssize_t_rprimitive,
-    is_dict_rprimitive, is_int_rprimitive, is_str_rprimitive
+    bool_rprimitive, c_int_rprimitive, c_pyssize_t_rprimitive, is_dict_rprimitive,
+    is_int_rprimitive, is_str_rprimitive, is_short_int_rprimitive
 )
 from mypyc.primitives.int_ops import int_to_str_op
 from mypyc.primitives.dict_ops import (
@@ -377,9 +377,10 @@ def translate_str_format(
         # Convert variables to strings
         variables = []
         for x in expr.args:
-            if is_str_rprimitive(builder.node_type(x)):
+            node_type = builder.node_type(x)
+            if is_str_rprimitive(node_type):
                 var_str = builder.accept(x)
-            elif is_int_rprimitive(builder.node_type(x)):
+            elif is_int_rprimitive(node_type) or is_short_int_rprimitive(node_type):
                 var_str = builder.call_c(int_to_str_op, [builder.accept(x)], expr.line)
             else:
                 var_str = builder.call_c(str_op, [builder.accept(x)], expr.line)
