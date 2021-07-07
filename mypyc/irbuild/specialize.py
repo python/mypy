@@ -452,6 +452,7 @@ def split_braces(format_str: str) -> List[str]:
     ret_list.append(tmp_str)
     return ret_list
 
+
 @specialize_function('join', str_rprimitive)
 def translate_fstring(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
@@ -463,9 +464,9 @@ def translate_fstring(
             if isinstance(item, StrExpr):
                 continue
             elif isinstance(item, CallExpr):
-                if item.callee.name != 'format':
-                    return None
-                if item.callee.expr.value != '{:{}}':
+                if (not isinstance(item.callee, MemberExpr)
+                        or item.callee.name != 'format'
+                        or item.callee.expr.value != '{:{}}'):
                     return None
                 if not isinstance(item.args[1], StrExpr) or item.args[1].value != '':
                     return None
