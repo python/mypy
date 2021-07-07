@@ -465,9 +465,12 @@ def translate_fstring(
                 continue
             elif isinstance(item, CallExpr):
                 if (not isinstance(item.callee, MemberExpr)
-                        or item.callee.name != 'format'
+                        or item.callee.name != 'format'):
+                    return None
+                elif (not isinstance(item.callee.expr, StrExpr)
                         or item.callee.expr.value != '{:{}}'):
                     return None
+
                 if not isinstance(item.args[1], StrExpr) or item.args[1].value != '':
                     return None
             else:
