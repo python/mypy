@@ -20,6 +20,7 @@ Operators
 ---------
 
 * ``tup[n]`` (integer index)
+* ``tup[n:m]``, ``tup[n:]``, ``tup[:m]`` (slicing)
 
 Statements
 ----------

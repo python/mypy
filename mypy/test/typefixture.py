@@ -7,7 +7,7 @@ from typing import List, Optional, Tuple
 
 from mypy.types import (
     Type, TypeVarType, AnyType, NoneType, Instance, CallableType, TypeVarDef, TypeType,
-    UninhabitedType, TypeOfAny, TypeAliasType, UnionType
+    UninhabitedType, TypeOfAny, TypeAliasType, UnionType, LiteralType
 )
 from mypy.nodes import (
     TypeInfo, ClassDef, Block, ARG_POS, ARG_OPT, ARG_STAR, SymbolTable,
@@ -129,6 +129,7 @@ class TypeFixture:
         self.gtf2 = Instance(self.gi, [self.tf2])    # G[T`-2]
         self.gs = Instance(self.gi, [self.s])        # G[S]
         self.gdyn = Instance(self.gi, [self.anyt])    # G[Any]
+        self.gn = Instance(self.gi, [NoneType()])    # G[None]
 
         self.g2a = Instance(self.g2i, [self.a])      # G2[A]
 
@@ -145,9 +146,17 @@ class TypeFixture:
         self.hbb = Instance(self.hi, [self.b, self.b])    # H[B, B]
         self.hts = Instance(self.hi, [self.t, self.s])    # H[T, S]
         self.had = Instance(self.hi, [self.a, self.d])    # H[A, D]
+        self.hao = Instance(self.hi, [self.a, self.o])    # H[A, object]
 
         self.lsta = Instance(self.std_listi, [self.a])  # List[A]
         self.lstb = Instance(self.std_listi, [self.b])  # List[B]
+
+        self.lit1 = LiteralType(1, self.a)
+        self.lit2 = LiteralType(2, self.a)
+        self.lit3 = LiteralType("foo", self.d)
+        self.lit1_inst = Instance(self.ai, [], last_known_value=self.lit1)
+        self.lit2_inst = Instance(self.ai, [], last_known_value=self.lit2)
+        self.lit3_inst = Instance(self.di, [], last_known_value=self.lit3)
 
         self.type_a = TypeType.make_normalized(self.a)
         self.type_b = TypeType.make_normalized(self.b)
@@ -214,7 +223,7 @@ class TypeFixture:
                 module_name = '__main__'
 
         if typevars:
-            v = []  # type: List[TypeVarDef]
+            v: List[TypeVarDef] = []
             for id, n in enumerate(typevars, 1):
                 if variances:
                     variance = variances[id - 1]

@@ -246,14 +246,6 @@ command.
 .. TODO: Add similar sections about go to definition, find usages, and
    reveal type when added, and then move this to a separate file.
 
-Limitations
-***********
-
-* You have to use either the :option:`--follow-imports=error <mypy --follow-imports>` or
-  the :option:`--follow-imports=skip <mypy --follow-imports>` option because of an implementation
-  limitation. This can be defined
-  through the command line or through a
-  :ref:`configuration file <config-file>`.
 
 .. _watchman: https://facebook.github.io/watchman/
 .. _watchdog: https://pypi.org/project/watchdog/

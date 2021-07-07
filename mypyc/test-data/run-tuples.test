@@ -97,6 +97,7 @@ assert f(Sub(3, 2)) == 3
 
 [case testTupleOps]
 from typing import Tuple, List, Any, Optional
+from typing_extensions import Final
 
 def f() -> Tuple[()]:
     return ()
@@ -156,3 +157,51 @@ def foo(x: bool, y: bool) -> Tuple[Optional[A], bool]:
     z = lol()
 
     return None if y else z, x
+
+def test_slicing() -> None:
+    # Use dummy adds to avoid constant folding
+    zero = int()
+    two = zero + 2
+    s: Tuple[str, ...] = ("f", "o", "o", "b", "a", "r")
+    assert s[two:] == ("o", "b", "a", "r")
+    assert s[:two] == ("f", "o")
+    assert s[two:-two] == ("o", "b")
+    assert s[two:two] == ()
+    assert s[two:two + 1] == ("o",)
+    assert s[-two:] == ("a", "r")
+    assert s[:-two] == ("f", "o", "o", "b")
+    assert s[:] == ("f", "o", "o", "b", "a", "r")
+    assert s[two:333] == ("o", "b", "a", "r")
+    assert s[333:two] == ()
+    assert s[two:-333] == ()
+    assert s[-333:two] == ("f", "o")
+    long_int: int = 1000 * 1000 * 1000 * 1000 * 1000 * 1000 * 1000
+    assert s[1:long_int] == ("o", "o", "b", "a", "r")
+    assert s[long_int:] == ()
+    assert s[-long_int:-1] == ("f", "o", "o", "b", "a")
+
+def f8(val: int) -> bool:
+    return val % 2 == 0
+
+def test_sequence_generator() -> None:
+    source_list = [1, 2, 3]
+    a = tuple(f8(x) for x in source_list)
+    assert a == (False, True, False)
+
+    source_tuple: Tuple[int, ...] = (1, 2, 3)
+    a = tuple(f8(x) for x in source_tuple)
+    assert a == (False, True, False)
+
+    source_fixed_length_tuple = (1, 2, 3, 4)
+    a = tuple(f8(x) for x in source_fixed_length_tuple)
+    assert a == (False, True, False, True)
+
+    source_str = 'abbc'
+    b = tuple('s:' + x for x in source_str)
+    assert b == ('s:a', 's:b', 's:b', 's:c')
+
+TUPLE: Final[Tuple[str, ...]] = ('x', 'y')
+
+def test_final_boxed_tuple() -> None:
+    t = TUPLE
+    assert t == ('x', 'y')

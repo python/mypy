@@ -54,6 +54,8 @@ def build_type_map(mapper: Mapper,
         class_ir = ClassIR(cdef.name, module.fullname, is_trait(cdef),
                            is_abstract=cdef.info.is_abstract)
         class_ir.is_ext_class = is_extension_class(cdef)
+        if class_ir.is_ext_class:
+            class_ir.deletable = cdef.info.deletable_attributes[:]
         # If global optimizations are disabled, turn of tracking of class children
         if not options.global_opts:
             class_ir.children = None
@@ -179,7 +181,7 @@ def prepare_class_def(path: str, module_name: str, cdef: ClassDef,
 
         if isinstance(node.node, Var):
             assert node.node.type, "Class member %s missing type" % name
-            if not node.node.is_classvar and name != '__slots__':
+            if not node.node.is_classvar and name not in ('__slots__', '__deletable__'):
                 ir.attributes[name] = mapper.type_to_rtype(node.node.type)
         elif isinstance(node.node, (FuncDef, Decorator)):
             prepare_method_def(ir, module_name, cdef, mapper, node.node)

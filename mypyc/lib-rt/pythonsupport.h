@@ -389,4 +389,18 @@ _CPyDictView_New(PyObject *dict, PyTypeObject *type)
 }
 #endif
 
+#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >=10
+static int
+_CPyObject_HasAttrId(PyObject *v, _Py_Identifier *name) {
+    PyObject *tmp = NULL;
+    int result = _PyObject_LookupAttrId(v, name, &tmp);
+    if (tmp) {
+        Py_DECREF(tmp);
+    }
+    return result;
+}
+#else
+#define _CPyObject_HasAttrId _PyObject_HasAttrId
+#endif
+
 #endif

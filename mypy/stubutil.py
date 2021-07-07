@@ -247,11 +247,11 @@ def remove_misplaced_type_comments(source: Union[str, bytes]) -> Union[str, byte
 def common_dir_prefix(paths: List[str]) -> str:
     if not paths:
         return '.'
-    cur = os.path.dirname(paths[0])
+    cur = os.path.dirname(os.path.normpath(paths[0]))
     for path in paths[1:]:
         while True:
-            path = os.path.dirname(path)
-            if (cur + '/').startswith(path + '/'):
+            path = os.path.dirname(os.path.normpath(path))
+            if (cur + os.sep).startswith(path + os.sep):
                 cur = path
                 break
     return cur or '.'

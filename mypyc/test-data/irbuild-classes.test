@@ -40,22 +40,28 @@ def f() -> int:
 def f():
     r0, c :: __main__.C
     r1 :: bool
-    r2, a :: list
-    r3 :: object
-    r4, d :: __main__.C
-    r5, r6 :: int
+    r2 :: list
+    r3, r4 :: ptr
+    a :: list
+    r5 :: object
+    r6, d :: __main__.C
+    r7, r8 :: int
 L0:
     r0 = C()
     c = r0
     c.x = 10; r1 = is_error
-    r2 = [c]
+    r2 = PyList_New(1)
+    r3 = get_element_ptr r2 ob_item :: PyListObject
+    r4 = load_mem r3 :: ptr*
+    set_mem r4, c :: builtins.object*
+    keep_alive r2
     a = r2
-    r3 = CPyList_GetItemShort(a, 0)
-    r4 = cast(__main__.C, r3)
-    d = r4
-    r5 = d.x
-    r6 = CPyTagged_Add(r5, 2)
-    return r6
+    r5 = CPyList_GetItemShort(a, 0)
+    r6 = cast(__main__.C, r5)
+    d = r6
+    r7 = d.x
+    r8 = CPyTagged_Add(r7, 2)
+    return r8
 
 [case testMethodCall]
 class A:
@@ -78,7 +84,7 @@ def g(a):
     r0 :: str
     r1 :: int
 L0:
-    r0 = load_global CPyStatic_unicode_4 :: static  ('hi')
+    r0 = 'hi'
     r1 = a.f(2, r0)
     return 1
 
@@ -110,7 +116,7 @@ def Node.length(self):
     self :: __main__.Node
     r0 :: union[__main__.Node, None]
     r1 :: object
-    r2, r3 :: bool
+    r2, r3 :: bit
     r4 :: union[__main__.Node, None]
     r5 :: __main__.Node
     r6, r7 :: int
@@ -282,170 +288,200 @@ class D(C, S, Generic[T]):
 [out]
 def __top_level__():
     r0, r1 :: object
-    r2 :: bool
+    r2 :: bit
     r3 :: str
-    r4, r5, r6 :: object
-    r7 :: bool
-    r8 :: str
-    r9, r10 :: object
-    r11 :: dict
+    r4 :: object
+    r5 :: dict
+    r6, r7 :: str
+    r8 :: list
+    r9, r10, r11 :: ptr
     r12 :: str
     r13 :: object
-    r14 :: str
-    r15 :: int32
-    r16 :: str
+    r14, r15, r16 :: str
     r17 :: object
     r18 :: str
     r19 :: int32
-    r20, r21 :: object
-    r22 :: bool
-    r23 :: str
-    r24, r25 :: object
-    r26 :: dict
-    r27 :: str
-    r28 :: object
+    r20 :: bit
+    r21, r22, r23 :: str
+    r24 :: object
+    r25 :: str
+    r26 :: int32
+    r27 :: bit
+    r28 :: dict
     r29 :: str
-    r30 :: int32
-    r31 :: str
-    r32 :: dict
+    r30 :: list
+    r31, r32 :: ptr
     r33 :: str
-    r34, r35 :: object
-    r36 :: dict
-    r37 :: str
-    r38 :: int32
-    r39 :: object
-    r40 :: str
-    r41, r42 :: object
-    r43 :: bool
+    r34 :: object
+    r35, r36, r37 :: str
+    r38 :: object
+    r39 :: str
+    r40 :: int32
+    r41 :: bit
+    r42 :: str
+    r43 :: dict
     r44 :: str
-    r45 :: tuple
-    r46 :: int32
+    r45, r46 :: object
     r47 :: dict
     r48 :: str
     r49 :: int32
-    r50 :: object
-    r51 :: str
-    r52, r53 :: object
-    r54 :: str
-    r55 :: tuple
-    r56 :: int32
-    r57 :: dict
-    r58 :: str
-    r59 :: int32
-    r60, r61 :: object
-    r62 :: dict
-    r63 :: str
+    r50 :: bit
+    r51 :: object
+    r52 :: str
+    r53, r54 :: object
+    r55 :: bool
+    r56 :: str
+    r57 :: tuple
+    r58 :: int32
+    r59 :: bit
+    r60 :: dict
+    r61 :: str
+    r62 :: int32
+    r63 :: bit
     r64 :: object
-    r65 :: dict
-    r66 :: str
-    r67, r68 :: object
+    r65 :: str
+    r66, r67 :: object
+    r68 :: str
     r69 :: tuple
-    r70 :: str
-    r71, r72 :: object
-    r73 :: bool
-    r74, r75 :: str
-    r76 :: tuple
-    r77 :: int32
+    r70 :: int32
+    r71 :: bit
+    r72 :: dict
+    r73 :: str
+    r74 :: int32
+    r75 :: bit
+    r76, r77 :: object
     r78 :: dict
     r79 :: str
-    r80 :: int32
+    r80 :: object
+    r81 :: dict
+    r82 :: str
+    r83, r84 :: object
+    r85 :: tuple
+    r86 :: str
+    r87, r88 :: object
+    r89 :: bool
+    r90, r91 :: str
+    r92 :: tuple
+    r93 :: int32
+    r94 :: bit
+    r95 :: dict
+    r96 :: str
+    r97 :: int32
+    r98 :: bit
 L0:
     r0 = builtins :: module
     r1 = load_address _Py_NoneStruct
     r2 = r0 != r1
     if r2 goto L2 else goto L1 :: bool
 L1:
-    r3 = load_global CPyStatic_unicode_0 :: static  ('builtins')
+    r3 = 'builtins'
     r4 = PyImport_Import(r3)
     builtins = r4 :: module
 L2:
-    r5 = typing :: module
-    r6 = load_address _Py_NoneStruct
-    r7 = r5 != r6
-    if r7 goto L4 else goto L3 :: bool
-L3:
-    r8 = load_global CPyStatic_unicode_1 :: static  ('typing')
-    r9 = PyImport_Import(r8)
-    typing = r9 :: module
-L4:
-    r10 = typing :: module
-    r11 = __main__.globals :: static
-    r12 = load_global CPyStatic_unicode_2 :: static  ('TypeVar')
-    r13 = CPyObject_GetAttr(r10, r12)
-    r14 = load_global CPyStatic_unicode_2 :: static  ('TypeVar')
-    r15 = CPyDict_SetItem(r11, r14, r13)
-    r16 = load_global CPyStatic_unicode_3 :: static  ('Generic')
-    r17 = CPyObject_GetAttr(r10, r16)
-    r18 = load_global CPyStatic_unicode_3 :: static  ('Generic')
-    r19 = CPyDict_SetItem(r11, r18, r17)
-    r20 = mypy_extensions :: module
-    r21 = load_address _Py_NoneStruct
-    r22 = r20 != r21
-    if r22 goto L6 else goto L5 :: bool
-L5:
-    r23 = load_global CPyStatic_unicode_4 :: static  ('mypy_extensions')
-    r24 = PyImport_Import(r23)
-    mypy_extensions = r24 :: module
-L6:
-    r25 = mypy_extensions :: module
-    r26 = __main__.globals :: static
-    r27 = load_global CPyStatic_unicode_5 :: static  ('trait')
-    r28 = CPyObject_GetAttr(r25, r27)
-    r29 = load_global CPyStatic_unicode_5 :: static  ('trait')
-    r30 = CPyDict_SetItem(r26, r29, r28)
-    r31 = load_global CPyStatic_unicode_6 :: static  ('T')
-    r32 = __main__.globals :: static
-    r33 = load_global CPyStatic_unicode_2 :: static  ('TypeVar')
-    r34 = CPyDict_GetItem(r32, r33)
-    r35 = PyObject_CallFunctionObjArgs(r34, r31, 0)
-    r36 = __main__.globals :: static
-    r37 = load_global CPyStatic_unicode_6 :: static  ('T')
-    r38 = CPyDict_SetItem(r36, r37, r35)
-    r39 = <error> :: object
-    r40 = load_global CPyStatic_unicode_7 :: static  ('__main__')
-    r41 = __main__.C_template :: type
-    r42 = pytype_from_template(r41, r39, r40)
-    r43 = C_trait_vtable_setup()
-    r44 = load_global CPyStatic_unicode_8 :: static  ('__mypyc_attrs__')
-    r45 = PyTuple_Pack(0)
-    r46 = PyObject_SetAttr(r42, r44, r45)
-    __main__.C = r42 :: type
+    r5 = __main__.globals :: static
+    r6 = 'TypeVar'
+    r7 = 'Generic'
+    r8 = PyList_New(2)
+    r9 = get_element_ptr r8 ob_item :: PyListObject
+    r10 = load_mem r9 :: ptr*
+    set_mem r10, r6 :: builtins.object*
+    r11 = r10 + WORD_SIZE*1
+    set_mem r11, r7 :: builtins.object*
+    keep_alive r8
+    r12 = 'typing'
+    r13 = PyImport_ImportModuleLevelObject(r12, r5, 0, r8, 0)
+    typing = r13 :: module
+    r14 = 'typing'
+    r15 = 'TypeVar'
+    r16 = 'TypeVar'
+    r17 = CPyImport_ImportFrom(r13, r14, r15, r16)
+    r18 = 'TypeVar'
+    r19 = CPyDict_SetItem(r5, r18, r17)
+    r20 = r19 >= 0 :: signed
+    r21 = 'typing'
+    r22 = 'Generic'
+    r23 = 'Generic'
+    r24 = CPyImport_ImportFrom(r13, r21, r22, r23)
+    r25 = 'Generic'
+    r26 = CPyDict_SetItem(r5, r25, r24)
+    r27 = r26 >= 0 :: signed
+    r28 = __main__.globals :: static
+    r29 = 'trait'
+    r30 = PyList_New(1)
+    r31 = get_element_ptr r30 ob_item :: PyListObject
+    r32 = load_mem r31 :: ptr*
+    set_mem r32, r29 :: builtins.object*
+    keep_alive r30
+    r33 = 'mypy_extensions'
+    r34 = PyImport_ImportModuleLevelObject(r33, r28, 0, r30, 0)
+    mypy_extensions = r34 :: module
+    r35 = 'mypy_extensions'
+    r36 = 'trait'
+    r37 = 'trait'
+    r38 = CPyImport_ImportFrom(r34, r35, r36, r37)
+    r39 = 'trait'
+    r40 = CPyDict_SetItem(r28, r39, r38)
+    r41 = r40 >= 0 :: signed
+    r42 = 'T'
+    r43 = __main__.globals :: static
+    r44 = 'TypeVar'
+    r45 = CPyDict_GetItem(r43, r44)
+    r46 = PyObject_CallFunctionObjArgs(r45, r42, 0)
     r47 = __main__.globals :: static
-    r48 = load_global CPyStatic_unicode_9 :: static  ('C')
-    r49 = CPyDict_SetItem(r47, r48, r42)
-    r50 = <error> :: object
-    r51 = load_global CPyStatic_unicode_7 :: static  ('__main__')
-    r52 = __main__.S_template :: type
-    r53 = pytype_from_template(r52, r50, r51)
-    r54 = load_global CPyStatic_unicode_8 :: static  ('__mypyc_attrs__')
-    r55 = PyTuple_Pack(0)
-    r56 = PyObject_SetAttr(r53, r54, r55)
-    __main__.S = r53 :: type
-    r57 = __main__.globals :: static
-    r58 = load_global CPyStatic_unicode_10 :: static  ('S')
-    r59 = CPyDict_SetItem(r57, r58, r53)
-    r60 = __main__.C :: type
-    r61 = __main__.S :: type
-    r62 = __main__.globals :: static
-    r63 = load_global CPyStatic_unicode_3 :: static  ('Generic')
-    r64 = CPyDict_GetItem(r62, r63)
-    r65 = __main__.globals :: static
-    r66 = load_global CPyStatic_unicode_6 :: static  ('T')
-    r67 = CPyDict_GetItem(r65, r66)
-    r68 = PyObject_GetItem(r64, r67)
-    r69 = PyTuple_Pack(3, r60, r61, r68)
-    r70 = load_global CPyStatic_unicode_7 :: static  ('__main__')
-    r71 = __main__.D_template :: type
-    r72 = pytype_from_template(r71, r69, r70)
-    r73 = D_trait_vtable_setup()
-    r74 = load_global CPyStatic_unicode_8 :: static  ('__mypyc_attrs__')
-    r75 = load_global CPyStatic_unicode_11 :: static  ('__dict__')
-    r76 = PyTuple_Pack(1, r75)
-    r77 = PyObject_SetAttr(r72, r74, r76)
-    __main__.D = r72 :: type
+    r48 = 'T'
+    r49 = CPyDict_SetItem(r47, r48, r46)
+    r50 = r49 >= 0 :: signed
+    r51 = <error> :: object
+    r52 = '__main__'
+    r53 = __main__.C_template :: type
+    r54 = CPyType_FromTemplate(r53, r51, r52)
+    r55 = C_trait_vtable_setup()
+    r56 = '__mypyc_attrs__'
+    r57 = PyTuple_Pack(0)
+    r58 = PyObject_SetAttr(r54, r56, r57)
+    r59 = r58 >= 0 :: signed
+    __main__.C = r54 :: type
+    r60 = __main__.globals :: static
+    r61 = 'C'
+    r62 = CPyDict_SetItem(r60, r61, r54)
+    r63 = r62 >= 0 :: signed
+    r64 = <error> :: object
+    r65 = '__main__'
+    r66 = __main__.S_template :: type
+    r67 = CPyType_FromTemplate(r66, r64, r65)
+    r68 = '__mypyc_attrs__'
+    r69 = PyTuple_Pack(0)
+    r70 = PyObject_SetAttr(r67, r68, r69)
+    r71 = r70 >= 0 :: signed
+    __main__.S = r67 :: type
+    r72 = __main__.globals :: static
+    r73 = 'S'
+    r74 = CPyDict_SetItem(r72, r73, r67)
+    r75 = r74 >= 0 :: signed
+    r76 = __main__.C :: type
+    r77 = __main__.S :: type
     r78 = __main__.globals :: static
-    r79 = load_global CPyStatic_unicode_12 :: static  ('D')
-    r80 = CPyDict_SetItem(r78, r79, r72)
+    r79 = 'Generic'
+    r80 = CPyDict_GetItem(r78, r79)
+    r81 = __main__.globals :: static
+    r82 = 'T'
+    r83 = CPyDict_GetItem(r81, r82)
+    r84 = PyObject_GetItem(r80, r83)
+    r85 = PyTuple_Pack(3, r76, r77, r84)
+    r86 = '__main__'
+    r87 = __main__.D_template :: type
+    r88 = CPyType_FromTemplate(r87, r85, r86)
+    r89 = D_trait_vtable_setup()
+    r90 = '__mypyc_attrs__'
+    r91 = '__dict__'
+    r92 = PyTuple_Pack(1, r91)
+    r93 = PyObject_SetAttr(r88, r90, r92)
+    r94 = r93 >= 0 :: signed
+    __main__.D = r88 :: type
+    r95 = __main__.globals :: static
+    r96 = 'D'
+    r97 = CPyDict_SetItem(r95, r96, r88)
+    r98 = r97 >= 0 :: signed
     return 1
 
 [case testIsInstance]
@@ -460,18 +496,23 @@ def f(x: A) -> B:
 def f(x):
     x :: __main__.A
     r0 :: object
-    r1 :: bool
-    r2, r3 :: __main__.B
+    r1 :: ptr
+    r2 :: object
+    r3 :: bit
+    r4, r5 :: __main__.B
 L0:
     r0 = __main__.B :: type
-    r1 = type_is x, r0
-    if r1 goto L1 else goto L2 :: bool
+    r1 = get_element_ptr x ob_type :: PyObject
+    r2 = load_mem r1 :: builtins.object*
+    keep_alive x
+    r3 = r2 == r0
+    if r3 goto L1 else goto L2 :: bool
 L1:
-    r2 = cast(__main__.B, x)
-    return r2
+    r4 = cast(__main__.B, x)
+    return r4
 L2:
-    r3 = B()
-    return r3
+    r5 = B()
+    return r5
 
 [case testIsInstanceTuple]
 from typing import Union
@@ -488,30 +529,41 @@ def f(x: R) -> Union[A, B]:
 def f(x):
     x :: __main__.R
     r0 :: object
-    r1, r2 :: bool
-    r3 :: object
+    r1 :: ptr
+    r2 :: object
+    r3 :: bit
     r4 :: bool
-    r5 :: union[__main__.A, __main__.B]
-    r6 :: __main__.A
+    r5 :: object
+    r6 :: ptr
+    r7 :: object
+    r8 :: bit
+    r9 :: union[__main__.A, __main__.B]
+    r10 :: __main__.A
 L0:
     r0 = __main__.A :: type
-    r1 = type_is x, r0
-    if r1 goto L1 else goto L2 :: bool
+    r1 = get_element_ptr x ob_type :: PyObject
+    r2 = load_mem r1 :: builtins.object*
+    keep_alive x
+    r3 = r2 == r0
+    if r3 goto L1 else goto L2 :: bool
 L1:
-    r2 = r1
+    r4 = r3
     goto L3
 L2:
-    r3 = __main__.B :: type
-    r4 = type_is x, r3
-    r2 = r4
+    r5 = __main__.B :: type
+    r6 = get_element_ptr x ob_type :: PyObject
+    r7 = load_mem r6 :: builtins.object*
+    keep_alive x
+    r8 = r7 == r5
+    r4 = r8
 L3:
-    if r2 goto L4 else goto L5 :: bool
+    if r4 goto L4 else goto L5 :: bool
 L4:
-    r5 = cast(union[__main__.A, __main__.B], x)
-    return r5
+    r9 = cast(union[__main__.A, __main__.B], x)
+    return r9
 L5:
-    r6 = A()
-    return r6
+    r10 = A()
+    return r10
 
 [case testIsInstanceFewSubclasses]
 class R: pass
@@ -524,30 +576,41 @@ def f(x: object) -> R:
 [out]
 def f(x):
     x, r0 :: object
-    r1, r2 :: bool
-    r3 :: object
+    r1 :: ptr
+    r2 :: object
+    r3 :: bit
     r4 :: bool
-    r5 :: __main__.R
-    r6 :: __main__.A
+    r5 :: object
+    r6 :: ptr
+    r7 :: object
+    r8 :: bit
+    r9 :: __main__.R
+    r10 :: __main__.A
 L0:
     r0 = __main__.A :: type
-    r1 = type_is x, r0
-    if r1 goto L1 else goto L2 :: bool
+    r1 = get_element_ptr x ob_type :: PyObject
+    r2 = load_mem r1 :: builtins.object*
+    keep_alive x
+    r3 = r2 == r0
+    if r3 goto L1 else goto L2 :: bool
 L1:
-    r2 = r1
+    r4 = r3
     goto L3
 L2:
-    r3 = __main__.R :: type
-    r4 = type_is x, r3
-    r2 = r4
+    r5 = __main__.R :: type
+    r6 = get_element_ptr x ob_type :: PyObject
+    r7 = load_mem r6 :: builtins.object*
+    keep_alive x
+    r8 = r7 == r5
+    r4 = r8
 L3:
-    if r2 goto L4 else goto L5 :: bool
+    if r4 goto L4 else goto L5 :: bool
 L4:
-    r5 = cast(__main__.R, x)
-    return r5
+    r9 = cast(__main__.R, x)
+    return r9
 L5:
-    r6 = A()
-    return r6
+    r10 = A()
+    return r10
 
 [case testIsInstanceFewSubclassesTrait]
 from mypy_extensions import trait
@@ -564,30 +627,41 @@ def f(x: object) -> R:
 [out]
 def f(x):
     x, r0 :: object
-    r1, r2 :: bool
-    r3 :: object
+    r1 :: ptr
+    r2 :: object
+    r3 :: bit
     r4 :: bool
-    r5 :: __main__.R
-    r6 :: __main__.A
+    r5 :: object
+    r6 :: ptr
+    r7 :: object
+    r8 :: bit
+    r9 :: __main__.R
+    r10 :: __main__.A
 L0:
     r0 = __main__.A :: type
-    r1 = type_is x, r0
-    if r1 goto L1 else goto L2 :: bool
+    r1 = get_element_ptr x ob_type :: PyObject
+    r2 = load_mem r1 :: builtins.object*
+    keep_alive x
+    r3 = r2 == r0
+    if r3 goto L1 else goto L2 :: bool
 L1:
-    r2 = r1
+    r4 = r3
     goto L3
 L2:
-    r3 = __main__.C :: type
-    r4 = type_is x, r3
-    r2 = r4
+    r5 = __main__.C :: type
+    r6 = get_element_ptr x ob_type :: PyObject
+    r7 = load_mem r6 :: builtins.object*
+    keep_alive x
+    r8 = r7 == r5
+    r4 = r8
 L3:
-    if r2 goto L4 else goto L5 :: bool
+    if r4 goto L4 else goto L5 :: bool
 L4:
-    r5 = cast(__main__.R, x)
-    return r5
+    r9 = cast(__main__.R, x)
+    return r9
 L5:
-    r6 = A()
-    return r6
+    r10 = A()
+    return r10
 
 [case testIsInstanceManySubclasses]
 class R: pass
@@ -607,7 +681,7 @@ def f(x):
     r3 :: __main__.B
 L0:
     r0 = __main__.R :: type
-    r1 = isinstance x, r0
+    r1 = CPy_TypeCheck(x, r0)
     if r1 goto L1 else goto L2 :: bool
 L1:
     r2 = cast(__main__.R, x)
@@ -736,7 +810,7 @@ def f():
     r3 :: int
 L0:
     r0 = __main__.A :: type
-    r1 = load_global CPyStatic_unicode_6 :: static  ('x')
+    r1 = 'x'
     r2 = CPyObject_GetAttr(r0, r1)
     r3 = unbox(int, r2)
     return r3
@@ -754,13 +828,13 @@ def f2(a: A, b: A) -> bool:
 [out]
 def f(a, b):
     a, b :: __main__.A
-    r0 :: bool
+    r0 :: bit
 L0:
     r0 = a == b
     return r0
 def f2(a, b):
     a, b :: __main__.A
-    r0 :: bool
+    r0 :: bit
 L0:
     r0 = a != b
     return r0
@@ -792,23 +866,25 @@ def Base.__eq__(self, other):
 L0:
     r0 = box(bool, 0)
     return r0
-def Base.__ne__(self, rhs):
-    self :: __main__.Base
+def Base.__ne__(__mypyc_self__, rhs):
+    __mypyc_self__ :: __main__.Base
     rhs, r0, r1 :: object
-    r2 :: bool
+    r2 :: bit
     r3 :: int32
-    r4 :: bool
-    r5 :: object
+    r4 :: bit
+    r5 :: bool
+    r6 :: object
 L0:
-    r0 = self.__eq__(rhs)
+    r0 = __mypyc_self__.__eq__(rhs)
     r1 = load_address _Py_NotImplementedStruct
     r2 = r0 == r1
     if r2 goto L2 else goto L1 :: bool
 L1:
     r3 = PyObject_Not(r0)
-    r4 = truncate r3: int32 to builtins.bool
-    r5 = box(bool, r4)
-    return r5
+    r4 = r3 >= 0 :: signed
+    r5 = truncate r3: int32 to builtins.bool
+    r6 = box(bool, r5)
+    return r6
 L2:
     return r1
 def Derived.__eq__(self, other):
@@ -900,7 +976,7 @@ def fOpt2(a, b):
     r1 :: object
     r2 :: bool
 L0:
-    r0 = load_global CPyStatic_unicode_1 :: static  ('__ne__')
+    r0 = '__ne__'
     r1 = CPyObject_CallMethodObjArgs(a, r0, b, 0)
     r2 = unbox(bool, r1)
     return r2
@@ -910,23 +986,25 @@ def Derived.__eq__(self, other):
 L0:
     r0 = box(bool, 1)
     return r0
-def Derived.__ne__(self, rhs):
-    self :: __main__.Derived
+def Derived.__ne__(__mypyc_self__, rhs):
+    __mypyc_self__ :: __main__.Derived
     rhs, r0, r1 :: object
-    r2 :: bool
+    r2 :: bit
     r3 :: int32
-    r4 :: bool
-    r5 :: object
+    r4 :: bit
+    r5 :: bool
+    r6 :: object
 L0:
-    r0 = self.__eq__(rhs)
+    r0 = __mypyc_self__.__eq__(rhs)
     r1 = load_address _Py_NotImplementedStruct
     r2 = r0 == r1
     if r2 goto L2 else goto L1 :: bool
 L1:
     r3 = PyObject_Not(r0)
-    r4 = truncate r3: int32 to builtins.bool
-    r5 = box(bool, r4)
-    return r5
+    r4 = r3 >= 0 :: signed
+    r5 = truncate r3: int32 to builtins.bool
+    r6 = box(bool, r5)
+    return r6
 L2:
     return r1
 
@@ -969,7 +1047,7 @@ def B.__mypyc_defaults_setup(__mypyc_self__):
 L0:
     __mypyc_self__.x = 20; r0 = is_error
     r1 = __main__.globals :: static
-    r2 = load_global CPyStatic_unicode_9 :: static  ('LOL')
+    r2 = 'LOL'
     r3 = CPyDict_GetItem(r1, r2)
     r4 = cast(str, r3)
     __mypyc_self__.y = r4; r5 = is_error
@@ -989,8 +1067,10 @@ def foo(x: WelpDict) -> None:
 def foo(x):
     x :: dict
     r0 :: int32
+    r1 :: bit
 L0:
     r0 = CPyDict_Update(x, x)
+    r1 = r0 >= 0 :: signed
     return 1
 
 [case testNoSpuriousLinearity]
@@ -999,3 +1079,68 @@ class A(B): pass
 class B(C): pass
 class C: pass
 [out]
+
+[case testDeletableSemanticAnalysis]
+class Err1:
+    __deletable__ = 'x'  # E: "__deletable__" must be initialized with a list or tuple expression
+class Err2:
+    __deletable__ = [
+        1  # E: Invalid "__deletable__" item; string literal expected
+    ]
+class Err3:
+    __deletable__ = ['x', ['y'], 'z']  # E: Invalid "__deletable__" item; string literal expected
+class Err4:
+    __deletable__ = (1,)  # E: Invalid "__deletable__" item; string literal expected
+a = ['x']
+class Err5:
+    __deletable__ = a  # E: "__deletable__" must be initialized with a list or tuple expression
+
+class Ok1:
+    __deletable__ = ('x',)
+    x: int
+class Ok2:
+    __deletable__ = ['x']
+    x: int
+
+[case testInvalidDeletableAttribute]
+class NotDeletable:
+    __deletable__ = ['x']
+    x: int
+    y: int
+
+def g(o: NotDeletable) -> None:
+    del o.x
+    del o.y  # E: "y" cannot be deleted \
+             # N: Using "__deletable__ = ['<attr>']" in the class body enables "del obj.<attr>"
+
+class Base:
+    x: int
+
+class Deriv(Base):
+    __deletable__ = ['x']  # E: Attribute "x" not defined in "Deriv" (defined in "Base")
+
+class UndefinedDeletable:
+    __deletable__ = ['x']  # E: Attribute "x" not defined
+
+class DeletableProperty:
+    __deletable__ = ['prop']  # E: Cannot make property "prop" deletable
+
+    @property
+    def prop(self) -> int:
+        return 5
+
+[case testFinalDeletable]
+from typing import Final
+
+class DeletableFinal1:
+    x: Final[int]  # E: Deletable attribute cannot be final
+
+    __deletable__ = ['x']
+
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+class DeletableFinal2:
+    X: Final = 0  # E: Deletable attribute cannot be final
+
+    __deletable__ = ['X']

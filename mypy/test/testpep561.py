@@ -35,7 +35,9 @@ dne("abc")
 
 
 class PEP561Suite(DataSuite):
-    files = ['pep561.test']
+    files = [
+        'pep561.test',
+    ]
 
     def run_case(self, test_case: DataDrivenTestCase) -> None:
         test_pep561(test_case)
@@ -120,11 +122,15 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
             old_dir = os.getcwd()
             os.chdir(venv_dir)
         try:
-            program = testcase.name + '.py'
-            with open(program, 'w', encoding='utf-8') as f:
-                for s in testcase.input:
-                    f.write('{}\n'.format(s))
-            cmd_line = mypy_args + [program, '--no-incremental', '--no-error-summary']
+            cmd_line = list(mypy_args)
+            has_program = not ('-p' in cmd_line or '--package' in cmd_line)
+            if has_program:
+                program = testcase.name + '.py'
+                with open(program, 'w', encoding='utf-8') as f:
+                    for s in testcase.input:
+                        f.write('{}\n'.format(s))
+                cmd_line.append(program)
+            cmd_line.extend(['--no-incremental', '--no-error-summary'])
             if python_executable != sys.executable:
                 cmd_line.append('--python-executable={}'.format(python_executable))
             if testcase.files != []:
@@ -132,10 +138,14 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
                     if 'mypy.ini' in name:
                         with open('mypy.ini', 'w') as m:
                             m.write(content)
+                    elif 'pyproject.toml' in name:
+                        with open('pyproject.toml', 'w') as m:
+                            m.write(content)
             output = []
             # Type check the module
             out, err, returncode = mypy.api.run(cmd_line)
-            os.remove(program)
+            if has_program:
+                os.remove(program)
             # split lines, remove newlines, and remove directory of test case
             for line in (out + err).splitlines():
                 if line.startswith(test_temp_dir + os.sep):

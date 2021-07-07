@@ -41,7 +41,7 @@ class B:
 class A(B):
   def __init__(self) -> None:
     super().__init__(B(None)) # E: Argument 1 to "__init__" of "B" has incompatible type "B"; expected "A"
-    super().__init__()       # E: Too few arguments for "__init__" of "B"
+    super().__init__()       # E: Missing positional argument "x" in call to "__init__" of "B"
     super().__init__(A())
 [out]
 
@@ -77,7 +77,7 @@ class C(A, B):
         super().f()
         super().g(1)
         super().f(1) # E: Too many arguments for "f" of "A"
-        super().g() # E: Too few arguments for "g" of "B"
+        super().g() # E: Missing positional argument "x" in call to "g" of "B"
         super().not_there() # E: "not_there" undefined in superclass
 [out]
 
@@ -96,7 +96,7 @@ B(1)
 B(1, 'x')
 [builtins fixtures/__new__.pyi]
 
-reveal_type(C.a)  # N: Revealed type is 'Any'
+reveal_type(C.a)  # N: Revealed type is "Any"
 [out]
 
 [case testSuperWithUnknownBase]
@@ -121,9 +121,9 @@ class B:
     def f(self) -> None: pass
 class C(B):
     def h(self, x) -> None:
-        reveal_type(super(x, x).f) # N: Revealed type is 'def ()'
-        reveal_type(super(C, x).f) # N: Revealed type is 'def ()'
-        reveal_type(super(C, type(x)).f) # N: Revealed type is 'def (self: __main__.B)'
+        reveal_type(super(x, x).f) # N: Revealed type is "def ()"
+        reveal_type(super(C, x).f) # N: Revealed type is "def ()"
+        reveal_type(super(C, type(x)).f) # N: Revealed type is "def (self: __main__.B)"
 
 [case testSuperInUnannotatedMethod]
 class C:
@@ -141,10 +141,10 @@ class B(A):
 
     @classmethod
     def g(cls, x) -> None:
-        reveal_type(super(cls, x).f) # N: Revealed type is 'def () -> builtins.object'
+        reveal_type(super(cls, x).f) # N: Revealed type is "def () -> builtins.object"
 
     def h(self, t: Type[B]) -> None:
-        reveal_type(super(t, self).f) # N: Revealed type is 'def () -> builtins.object'
+        reveal_type(super(t, self).f) # N: Revealed type is "def () -> builtins.object"
 [builtins fixtures/classmethod.pyi]
 
 [case testSuperWithTypeTypeAsSecondArgument]
@@ -168,7 +168,7 @@ class C(B):
     def f(self) -> int: pass
 
     def g(self: T) -> T:
-        reveal_type(super(C, self).f) # N: Revealed type is 'def () -> builtins.float'
+        reveal_type(super(C, self).f) # N: Revealed type is "def () -> builtins.float"
         return self
 
 [case testSuperWithTypeVarValues1]
@@ -328,7 +328,7 @@ class B:
     def f(self) -> None: pass
 class C(B):
     def h(self) -> None:
-        super(x, y).f # E: Name 'x' is not defined # E: Name 'y' is not defined
+        super(x, y).f # E: Name "x" is not defined # E: Name "y" is not defined
 
 [case testTypeErrorInSuperArg]
 class B:

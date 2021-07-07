@@ -4,7 +4,7 @@ from typing_extensions import Final
 """Shared logic between our three mypy parser files."""
 
 
-_NON_BINARY_MAGIC_METHODS = {
+_NON_BINARY_MAGIC_METHODS: Final = {
     "__abs__",
     "__call__",
     "__complex__",
@@ -37,16 +37,16 @@ _NON_BINARY_MAGIC_METHODS = {
     "__setitem__",
     "__str__",
     "__unicode__",
-}  # type: Final
+}
 
-MAGIC_METHODS_ALLOWING_KWARGS = {
+MAGIC_METHODS_ALLOWING_KWARGS: Final = {
     "__init__",
     "__init_subclass__",
     "__new__",
     "__call__",
-}  # type: Final
+}
 
-BINARY_MAGIC_METHODS = {
+BINARY_MAGIC_METHODS: Final = {
     "__add__",
     "__and__",
     "__cmp__",
@@ -61,16 +61,19 @@ BINARY_MAGIC_METHODS = {
     "__idiv__",
     "__ifloordiv__",
     "__ilshift__",
+    "__imatmul__",
     "__imod__",
     "__imul__",
     "__ior__",
     "__ipow__",
     "__irshift__",
     "__isub__",
+    "__itruediv__",
     "__ixor__",
     "__le__",
     "__lshift__",
     "__lt__",
+    "__matmul__",
     "__mod__",
     "__mul__",
     "__ne__",
@@ -81,6 +84,7 @@ BINARY_MAGIC_METHODS = {
     "__rdiv__",
     "__rfloordiv__",
     "__rlshift__",
+    "__rmatmul__",
     "__rmod__",
     "__rmul__",
     "__ror__",
@@ -88,16 +92,18 @@ BINARY_MAGIC_METHODS = {
     "__rrshift__",
     "__rshift__",
     "__rsub__",
+    "__rtruediv__",
     "__rxor__",
     "__sub__",
+    "__truediv__",
     "__xor__",
-}  # type: Final
+}
 
 assert not (_NON_BINARY_MAGIC_METHODS & BINARY_MAGIC_METHODS)
 
-MAGIC_METHODS = _NON_BINARY_MAGIC_METHODS | BINARY_MAGIC_METHODS  # type: Final
+MAGIC_METHODS: Final = _NON_BINARY_MAGIC_METHODS | BINARY_MAGIC_METHODS
 
-MAGIC_METHODS_POS_ARGS_ONLY = MAGIC_METHODS - MAGIC_METHODS_ALLOWING_KWARGS  # type: Final
+MAGIC_METHODS_POS_ARGS_ONLY: Final = MAGIC_METHODS - MAGIC_METHODS_ALLOWING_KWARGS
 
 
 def special_function_elide_names(name: str) -> bool:

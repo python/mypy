@@ -8,11 +8,6 @@ from mypy.nodes import (
     ARG_OPT, GDEF
 )
 
-from mypyc.ir.ops import Environment, AssignmentTargetRegister
-from mypyc.ir.rtypes import RInstance
-from mypyc.ir.class_ir import ClassIR
-from mypyc.common import SELF_NAME
-
 
 def is_trait_decorator(d: Expression) -> bool:
     return isinstance(d, RefExpr) and d.fullname == 'mypy_extensions.trait'
@@ -65,7 +60,7 @@ def get_mypyc_attr_call(d: Expression) -> Optional[CallExpr]:
 
 def get_mypyc_attrs(stmt: Union[ClassDef, Decorator]) -> Dict[str, Any]:
     """Collect all the mypyc_attr attributes on a class definition or a function."""
-    attrs = {}  # type: Dict[str, Any]
+    attrs: Dict[str, Any] = {}
     for dec in stmt.decorators:
         d = get_mypyc_attr_call(dec)
         if d:
@@ -87,7 +82,11 @@ def is_extension_class(cdef: ClassDef) -> bool:
         for d in cdef.decorators
     ):
         return False
-    elif (cdef.info.metaclass_type and cdef.info.metaclass_type.type.fullname not in (
+    if cdef.info.typeddict_type:
+        return False
+    if cdef.info.is_named_tuple:
+        return False
+    if (cdef.info.metaclass_type and cdef.info.metaclass_type.type.fullname not in (
             'abc.ABCMeta', 'typing.TypingMeta', 'typing.GenericMeta')):
         return False
     return True
@@ -129,9 +128,3 @@ def is_constant(e: Expression) -> bool:
             or (isinstance(e, RefExpr) and e.kind == GDEF
                 and (e.fullname in ('builtins.True', 'builtins.False', 'builtins.None')
                      or (isinstance(e.node, Var) and e.node.is_final))))
-
-
-def add_self_to_env(environment: Environment, cls: ClassIR) -> AssignmentTargetRegister:
-    return environment.add_local_reg(
-        Var(SELF_NAME), RInstance(cls), is_arg=True
-    )

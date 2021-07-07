@@ -11,19 +11,20 @@ non-locals is via an instance of an environment class. Example:
             # allow accessing 'x'
             return x + 2
 
-        x + 1  # Modify the attribute
+        x = x + 1  # Modify the attribute
         return g()
 """
 
-from typing import Optional, Union
+from typing import Dict, Optional, Union
 
 from mypy.nodes import FuncDef, SymbolNode
 
 from mypyc.common import SELF_NAME, ENV_ATTR_NAME
-from mypyc.ir.ops import Call, GetAttr, SetAttr, Value, Environment, AssignmentTargetAttr
+from mypyc.ir.ops import Call, GetAttr, SetAttr, Value
 from mypyc.ir.rtypes import RInstance, object_rprimitive
 from mypyc.ir.class_ir import ClassIR
-from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.builder import IRBuilder, SymbolTarget
+from mypyc.irbuild.targets import AssignmentTargetAttr
 from mypyc.irbuild.context import FuncInfo, ImplicitClass, GeneratorClass
 
 
@@ -106,7 +107,9 @@ def load_env_registers(builder: IRBuilder) -> None:
             setup_func_for_recursive_call(builder, fitem, fn_info.callable_class)
 
 
-def load_outer_env(builder: IRBuilder, base: Value, outer_env: Environment) -> Value:
+def load_outer_env(builder: IRBuilder,
+                   base: Value,
+                   outer_env: Dict[SymbolNode, SymbolTarget]) -> Value:
     """Load the environment class for a given base into a register.
 
     Additionally, iterates through all of the SymbolNode and
@@ -121,10 +124,10 @@ def load_outer_env(builder: IRBuilder, base: Value, outer_env: Environment) -> V
     env = builder.add(GetAttr(base, ENV_ATTR_NAME, builder.fn_info.fitem.line))
     assert isinstance(env.type, RInstance), '{} must be of type RInstance'.format(env)
 
-    for symbol, target in outer_env.symtable.items():
+    for symbol, target in outer_env.items():
         env.type.class_ir.attributes[symbol.name] = target.type
         symbol_target = AssignmentTargetAttr(env, symbol.name)
-        builder.environment.add_target(symbol, symbol_target)
+        builder.add_target(symbol, symbol_target)
 
     return env
 
@@ -136,7 +139,7 @@ def load_outer_envs(builder: IRBuilder, base: ImplicitClass) -> None:
     # FuncInfo instance's prev_env_reg field.
     if index > 1:
         # outer_env = builder.fn_infos[index].environment
-        outer_env = builder.builders[index].environment
+        outer_env = builder.symtables[index]
         if isinstance(base, GeneratorClass):
             base.prev_env_reg = load_outer_env(builder, base.curr_env_reg, outer_env)
         else:
@@ -147,7 +150,7 @@ def load_outer_envs(builder: IRBuilder, base: ImplicitClass) -> None:
     # Load the remaining outer environments into registers.
     while index > 1:
         # outer_env = builder.fn_infos[index].environment
-        outer_env = builder.builders[index].environment
+        outer_env = builder.symtables[index]
         env_reg = load_outer_env(builder, env_reg, outer_env)
         index -= 1
 
@@ -160,7 +163,7 @@ def add_args_to_env(builder: IRBuilder,
     if local:
         for arg in fn_info.fitem.arguments:
             rtype = builder.type_to_rtype(arg.variable.type)
-            builder.environment.add_local_reg(arg.variable, rtype, is_arg=True)
+            builder.add_local_reg(arg.variable, rtype, is_arg=True)
     else:
         for arg in fn_info.fitem.arguments:
             if is_free_variable(builder, arg.variable) or fn_info.is_generator:
@@ -192,7 +195,7 @@ def setup_func_for_recursive_call(builder: IRBuilder, fdef: FuncDef, base: Impli
     # Obtain the instance of the callable class representing the FuncDef, and add it to the
     # current environment.
     val = builder.add(GetAttr(prev_env_reg, fdef.name, -1))
-    target = builder.environment.add_local_reg(fdef, object_rprimitive)
+    target = builder.add_local_reg(fdef, object_rprimitive)
     builder.assign(target, val, -1)
 
 

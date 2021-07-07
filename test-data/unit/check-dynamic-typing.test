@@ -362,7 +362,7 @@ a = None # type: A
 g = None # type: Callable[[], None]
 h = None # type: Callable[[A], None]
 
-f()     # E: Too few arguments for "f"
+f()     # E: Missing positional argument "x" in call to "f"
 f(x, x) # E: Too many arguments for "f"
 if int():
     g = f   # E: Incompatible types in assignment (expression has type "Callable[[Any], Any]", variable has type "Callable[[], None]")
@@ -417,7 +417,7 @@ g3 = None # type: Callable[[A, A, A], None]
 g4 = None # type: Callable[[A, A, A, A], None]
 
 f01(a, a)       # E: Too many arguments for "f01"
-f13()           # E: Too few arguments for "f13"
+f13()           # E: Missing positional argument "x" in call to "f13"
 f13(a, a, a, a) # E: Too many arguments for "f13"
 if int():
     g2 = f01 # E: Incompatible types in assignment (expression has type "Callable[[Any], Any]", variable has type "Callable[[A, A], None]")
@@ -537,7 +537,7 @@ class A:
 from typing import Any
 o = None # type: Any
 def f(x, *a): pass
-f() # E: Too few arguments for "f"
+f() # E: Missing positional argument "x" in call to "f"
 f(o)
 f(o, o)
 f(o, o, o)
@@ -554,7 +554,7 @@ f1 = None # type: Callable[[A], A]
 f2 = None # type: Callable[[A, A], A]
 a = None # type: A
 
-A(a)   # E: Too few arguments for "A"
+A(a)   # E: Missing positional argument "b" in call to "A"
 if int():
     f1 = A # E: Incompatible types in assignment (expression has type "Type[A]", variable has type "Callable[[A], A]")
 

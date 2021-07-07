@@ -35,7 +35,7 @@ from mypy.typestate import reset_global_state
 from mypy.version import __version__
 from mypy.util import FancyFormatter, count_stats
 
-MEM_PROFILE = False  # type: Final  # If True, dump memory profile after initialization
+MEM_PROFILE: Final = False  # If True, dump memory profile after initialization
 
 if sys.platform == 'win32':
     from subprocess import STARTUPINFO
@@ -55,8 +55,8 @@ if sys.platform == 'win32':
         It also pickles the options to be unpickled by mypy.
         """
         command = [sys.executable, '-m', 'mypy.dmypy', '--status-file', status_file, 'daemon']
-        pickeled_options = pickle.dumps((options.snapshot(), timeout, log_file))
-        command.append('--options-data="{}"'.format(base64.b64encode(pickeled_options).decode()))
+        pickled_options = pickle.dumps((options.snapshot(), timeout, log_file))
+        command.append('--options-data="{}"'.format(base64.b64encode(pickled_options).decode()))
         info = STARTUPINFO()
         info.dwFlags = 0x1  # STARTF_USESHOWWINDOW aka use wShowWindow's value
         info.wShowWindow = 0  # SW_HIDE aka make the window invisible
@@ -127,7 +127,7 @@ else:
 
 # Server code.
 
-CONNECTION_NAME = 'dmypy'  # type: Final
+CONNECTION_NAME: Final = "dmypy"
 
 
 def process_start_options(flags: List[str], allow_sources: bool) -> Options:
@@ -144,6 +144,14 @@ def process_start_options(flags: List[str], allow_sources: bool) -> Options:
     if options.follow_imports not in ('skip', 'error', 'normal'):
         sys.exit("dmypy: follow-imports=silent not supported")
     return options
+
+
+def ignore_suppressed_imports(module: str) -> bool:
+    """Can we skip looking for newly unsuppressed imports to module?"""
+    # Various submodules of 'encodings' can be suppressed, since it
+    # uses module-level '__getattr__'. Skip them since there are many
+    # of them, and following imports to them is kind of pointless.
+    return module.startswith('encodings.')
 
 
 ModulePathPair = Tuple[str, str]
@@ -164,7 +172,7 @@ class Server:
         # Snapshot the options info before we muck with it, to detect changes
         self.options_snapshot = options.snapshot()
         self.timeout = timeout
-        self.fine_grained_manager = None  # type: Optional[FineGrainedBuildManager]
+        self.fine_grained_manager: Optional[FineGrainedBuildManager] = None
 
         if os.path.isfile(status_file):
             os.unlink(status_file)
@@ -208,7 +216,7 @@ class Server:
             while True:
                 with server:
                     data = receive(server)
-                    resp = {}  # type: Dict[str, Any]
+                    resp: Dict[str, Any] = {}
                     if 'command' not in data:
                         resp = {'error': "No command found in request"}
                     else:
@@ -267,7 +275,7 @@ class Server:
 
     def cmd_status(self, fswatcher_dump_file: Optional[str] = None) -> Dict[str, object]:
         """Return daemon status."""
-        res = {}  # type: Dict[str, object]
+        res: Dict[str, object] = {}
         res.update(get_meminfo())
         if fswatcher_dump_file:
             data = self.fswatcher.dump_file_data() if hasattr(self, 'fswatcher') else {}
@@ -365,7 +373,7 @@ class Server:
             assert remove is None and update is None
             messages = self.fine_grained_increment_follow_imports(sources)
         res = self.increment_output(messages, sources, is_tty, terminal_width)
-        self.fscache.flush()
+        self.flush_caches()
         self.update_stats(res)
         return res
 
@@ -384,9 +392,14 @@ class Server:
             else:
                 messages = self.fine_grained_increment_follow_imports(sources)
             res = self.increment_output(messages, sources, is_tty, terminal_width)
-        self.fscache.flush()
+        self.flush_caches()
         self.update_stats(res)
         return res
+
+    def flush_caches(self) -> None:
+        self.fscache.flush()
+        if self.fine_grained_manager:
+            self.fine_grained_manager.flush_cache()
 
     def update_stats(self, res: Dict[str, Any]) -> None:
         if self.fine_grained_manager:
@@ -442,6 +455,8 @@ class Server:
                     FileData(st_mtime=float(meta.mtime), st_size=meta.size, hash=meta.hash))
 
             changed, removed = self.find_changed(sources)
+            changed += self.find_added_suppressed(self.fine_grained_manager.graph, set(),
+                                                  self.fine_grained_manager.manager.search_paths)
 
             # Find anything that has had its dependency list change
             for state in self.fine_grained_manager.graph.values():
@@ -505,6 +520,8 @@ class Server:
             # Use the remove/update lists to update fswatcher.
             # This avoids calling stat() for unchanged files.
             changed, removed = self.update_changed(sources, remove or [], update or [])
+        changed += self.find_added_suppressed(self.fine_grained_manager.graph, set(),
+                                              manager.search_paths)
         manager.search_paths = compute_search_paths(sources, manager.options, manager.data_dir)
         t1 = time.time()
         manager.log("fine-grained increment: find_changed: {:.3f}s".format(t1 - t0))
@@ -620,11 +637,11 @@ class Server:
 
         fix_module_deps(graph)
 
-        # Store current file state as side effect
-        self.fswatcher.find_changed()
-
         self.previous_sources = find_all_sources_in_build(graph)
         self.update_sources(self.previous_sources)
+
+        # Store current file state as side effect
+        self.fswatcher.find_changed()
 
         t5 = time.time()
 
@@ -700,12 +717,21 @@ class Server:
         Return suppressed, added modules.
         """
         all_suppressed = set()
-        for module, state in graph.items():
+        for state in graph.values():
             all_suppressed |= state.suppressed_set
 
         # Filter out things that shouldn't actually be considered suppressed.
+        #
         # TODO: Figure out why these are treated as suppressed
-        all_suppressed = {module for module in all_suppressed if module not in graph}
+        all_suppressed = {module
+                          for module in all_suppressed
+                          if module not in graph and not ignore_suppressed_imports(module)}
+
+        # Optimization: skip top-level packages that are obviously not
+        # there, to avoid calling the relatively slow find_module()
+        # below too many times.
+        packages = {module.split('.', 1)[0] for module in all_suppressed}
+        packages = filter_out_missing_top_level_packages(packages, search_paths, self.fscache)
 
         # TODO: Namespace packages
 
@@ -714,8 +740,15 @@ class Server:
         found = []
 
         for module in all_suppressed:
-            result = finder.find_module(module)
+            top_level_pkg = module.split('.', 1)[0]
+            if top_level_pkg not in packages:
+                # Fast path: non-existent top-level package
+                continue
+            result = finder.find_module(module, fast_path=True)
             if isinstance(result, str) and module not in seen:
+                # When not following imports, we only follow imports to .pyi files.
+                if not self.following_imports() and not result.endswith('.pyi'):
+                    continue
                 found.append((module, result))
                 seen.add(module)
 
@@ -738,12 +771,12 @@ class Server:
             messages = self.formatter.fit_in_terminal(messages,
                                                       fixed_terminal_width=terminal_width)
         if self.options.error_summary:
-            summary = None  # type: Optional[str]
+            summary: Optional[str] = None
             if messages:
                 n_errors, n_files = count_stats(messages)
                 if n_errors:
                     summary = self.formatter.format_error(n_errors, n_files, n_sources,
-                                                          use_color)
+                                                          use_color=use_color)
             else:
                 summary = self.formatter.format_success(n_sources, use_color)
             if summary:
@@ -824,7 +857,7 @@ class Server:
                 out += "\n"
             return {'out': out, 'err': "", 'status': 0}
         finally:
-            self.fscache.flush()
+            self.flush_caches()
 
     def cmd_hang(self) -> Dict[str, object]:
         """Hang for 100 seconds, as a debug hack."""
@@ -835,11 +868,11 @@ class Server:
 # Misc utilities.
 
 
-MiB = 2**20  # type: Final
+MiB: Final = 2 ** 20
 
 
 def get_meminfo() -> Dict[str, Any]:
-    res = {}  # type: Dict[str, Any]
+    res: Dict[str, Any] = {}
     try:
         import psutil  # type: ignore  # It's not in typeshed yet
     except ImportError:
@@ -894,3 +927,42 @@ def fix_module_deps(graph: mypy.build.Graph) -> None:
         state.dependencies_set = set(new_dependencies)
         state.suppressed = new_suppressed
         state.suppressed_set = set(new_suppressed)
+
+
+def filter_out_missing_top_level_packages(packages: Set[str],
+                                          search_paths: SearchPaths,
+                                          fscache: FileSystemCache) -> Set[str]:
+    """Quickly filter out obviously missing top-level packages.
+
+    Return packages with entries that can't be found removed.
+
+    This is approximate: some packages that aren't actually valid may be
+    included. However, all potentially valid packages must be returned.
+    """
+    # Start with a empty set and add all potential top-level packages.
+    found = set()
+    paths = (
+        search_paths.python_path + search_paths.mypy_path + search_paths.package_path +
+        search_paths.typeshed_path
+    )
+    paths += tuple(os.path.join(p, '@python2') for p in search_paths.typeshed_path)
+    for p in paths:
+        try:
+            entries = fscache.listdir(p)
+        except Exception:
+            entries = []
+        for entry in entries:
+            # The code is hand-optimized for mypyc since this may be somewhat
+            # performance-critical.
+            if entry.endswith('.py'):
+                entry = entry[:-3]
+            elif entry.endswith('.pyi'):
+                entry = entry[:-4]
+            elif entry.endswith('-stubs'):
+                # Possible PEP 561 stub package
+                entry = entry[:-6]
+                if entry.endswith('-python2'):
+                    entry = entry[:-8]
+            if entry in packages:
+                found.add(entry)
+    return found
