@@ -73,7 +73,7 @@ def normalise_package_base(root: str) -> str:
 def get_explicit_package_bases(options: Options) -> Optional[List[str]]:
     """Returns explicit package bases to use if the option is enabled, or None if disabled.
 
-    We currently use MYPYPATH and the current directory as the package bases. In the future,
+    We currently use MYPYPATH or the current directory as the package bases. In the future,
     when --namespace-packages is the default could also use the values passed with the
     --package-root flag, see #9632.
 
@@ -82,7 +82,7 @@ def get_explicit_package_bases(options: Options) -> Optional[List[str]]:
     """
     if not options.explicit_package_bases:
         return None
-    roots = mypy_path() + options.mypy_path + [os.getcwd()]
+    roots = mypy_path() + options.mypy_path or [os.getcwd()]
     return [normalise_package_base(root) for root in roots]
 
 

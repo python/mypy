@@ -162,7 +162,8 @@ def run_build(sources: List[BuildSource],
     try:
         # Keep a dummy reference (res) for memory profiling afterwards, as otherwise
         # the result could be freed.
-        res = build.build(sources, options, None, flush_errors, fscache, stdout, stderr)
+        alt_lib_path = "" if options.explicit_package_bases else None
+        res = build.build(sources, options, alt_lib_path, flush_errors, fscache, stdout, stderr)
     except CompileError as e:
         blockers = True
         if not e.use_stdout:
@@ -862,7 +863,7 @@ def process_options(args: List[str],
                     "mypy.readthedocs.io/en/stable/running_mypy.html#running-mypy")
     add_invertible_flag(
         '--explicit-package-bases', default=False,
-        help="Use current directory and MYPYPATH to determine module names of files passed",
+        help="Use current directory or MYPYPATH to determine module names of files passed",
         group=code_group)
     code_group.add_argument(
         "--exclude",

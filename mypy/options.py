@@ -93,7 +93,7 @@ class Options:
         # multiple directories. This flag affects both import discovery and the association of
         # input files/modules/packages to the relevant file and fully qualified module name.
         self.namespace_packages = False
-        # Use current directory and MYPYPATH to determine fully qualified module names of files
+        # Use current directory or MYPYPATH to determine fully qualified module names of files
         # passed by automatically considering their subdirectories as packages. This is only
         # relevant if namespace packages are enabled, since otherwise examining __init__.py's is
         # sufficient to determine module names for files. As a possible alternative, add a single

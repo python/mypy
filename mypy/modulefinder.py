@@ -698,7 +698,7 @@ def compute_search_paths(sources: List[BuildSource],
     # alt_lib_path is used by some tests to bypass the normal lib_path mechanics.
     # If we don't have one, grab directories of source files.
     python_path: List[str] = []
-    if not alt_lib_path:
+    if alt_lib_path is None:
         for source in sources:
             # Include directory of the program file in the module search path.
             if source.base_dir:
