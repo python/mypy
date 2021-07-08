@@ -459,7 +459,8 @@ def translate_fstring(
     # Special case for f-string, which is translated into str.join() in mypy AST.
     # This specializer optimizes simplest f-strings which don't contain any
     # format operation.
-    if expr.arg_kinds == [ARG_POS] and isinstance(expr.args[0], ListExpr):
+    if (isinstance(callee.expr, StrExpr) and callee.expr.value == ''
+            and expr.arg_kinds == [ARG_POS] and isinstance(expr.args[0], ListExpr)):
         for item in expr.args[0].items:
             if isinstance(item, StrExpr):
                 continue
@@ -478,7 +479,7 @@ def translate_fstring(
 
         result_list: List[Value] = [Integer(0, c_pyssize_t_rprimitive)]
         for item in expr.args[0].items:
-            if isinstance(item, StrExpr):
+            if isinstance(item, StrExpr) and item.value != '':
                 result_list.append(builder.accept(item))
             elif isinstance(item, CallExpr):
                 result_list.append(builder.call_c(str_op,

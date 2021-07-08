@@ -149,6 +149,14 @@ def test_str_to_bool() -> None:
         assert is_true(x)
         assert not is_false(x)
 
+def test_str_join() -> None:
+    var = 'mypyc'
+    num = 10
+    assert ''.join(['a', 'b', '{}'.format(var), 'c']) == 'abmypycc'
+    assert ''.join(['a', 'b', '{:{}}'.format(var, ''), 'c']) == 'abmypycc'
+    assert ''.join(['a', 'b', '{:{}}'.format(var, '>10'), 'c']) == 'ab     mypycc'
+    assert ''.join(['a', 'b', '{:{}}'.format(var, '>{}'.format(num)), 'c']) == 'ab     mypycc'
+
 [case testFStrings]
 import decimal
 from datetime import datetime
@@ -355,6 +363,13 @@ def test_format_method_different_kind() -> None:
     assert "{}{} {}".format(s3, s2, s1) == "测试：Revealed type is Literal['😀']"
     assert "Test: {}{}".format(s3, s1) == "Test: 测试：Literal['😀']"
     assert "Test: {}{}".format(s3, s2) == "Test: 测试：Revealed type is"
+
+def test_format_method_nested() -> None:
+    var = 'mypyc'
+    num = 10
+    assert '{:{}}'.format(var, '') == 'mypyc'
+    assert '{:{}}'.format(var, '>10') == '     mypyc'
+    assert '{:{}}'.format(var, '>{}'.format(num)) == '     mypyc'
 
 class Point:
     def __init__(self, x, y):
