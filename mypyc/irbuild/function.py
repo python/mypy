@@ -779,10 +779,19 @@ def add_singledispatch_registered_impls(builder: IRBuilder) -> None:
     line = fitem.line
     current_func_decl = builder.mapper.func_to_decl[fitem]
     arg_info = get_args(builder, current_func_decl.sig.args, line)
+
+    def gen_func_call_and_return(func_name: str) -> None:
+        func = builder.load_global_str(func_name, line)
+        # TODO: don't pass optional arguments if they weren't passed to this function
+        ret_val = builder.builder.py_call(
+            func, arg_info.args, line, arg_info.arg_kinds, arg_info.arg_names
+        )
+        coerced = builder.coerce(ret_val, current_func_decl.sig.ret_type, line)
+        builder.nonlocal_control[-1].gen_return(builder, coerced, line)
+
     # Reverse the list of registered implementations so we use the implementations defined later
     # if there are multiple overlapping implementations
     for dispatch_type, impl in reversed(impls):
-        func_decl = builder.mapper.func_to_decl[impl]
         call_impl, next_impl = BasicBlock(), BasicBlock()
         should_call_impl = check_if_isinstance(builder, arg_info.args[0], dispatch_type, line)
         builder.add_bool_branch(should_call_impl, call_impl, next_impl)
@@ -790,8 +799,5 @@ def add_singledispatch_registered_impls(builder: IRBuilder) -> None:
         # Call the registered implementation
         builder.activate_block(call_impl)
 
-        ret_val = builder.builder.call(
-            func_decl, arg_info.args, arg_info.arg_kinds, arg_info.arg_names, line
-        )
-        builder.nonlocal_control[-1].gen_return(builder, ret_val, line)
+        gen_func_call_and_return(impl.name)
         builder.activate_block(next_impl)
