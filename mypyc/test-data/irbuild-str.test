@@ -191,3 +191,56 @@ L0:
     s3 = r13
     return 1
 
+[case testFStrings]
+def f(var: str, num: int) -> None:
+    s1 = f"Hi! I'm {var}. I am {num} years old."
+    s2 = f'Hello {var:>{num}}'
+    s3 = f''
+    s4 = f'abc'
+[out]
+def f(var, num):
+    var :: str
+    num :: int
+    r0, r1, r2 :: str
+    r3 :: object
+    r4, r5, r6, s1, r7, r8, r9, r10 :: str
+    r11 :: object
+    r12, r13, r14 :: str
+    r15 :: object
+    r16 :: str
+    r17 :: list
+    r18, r19, r20 :: ptr
+    r21, s2, r22, s3, r23, s4 :: str
+L0:
+    r0 = "Hi! I'm "
+    r1 = PyObject_Str(var)
+    r2 = '. I am '
+    r3 = box(int, num)
+    r4 = PyObject_Str(r3)
+    r5 = ' years old.'
+    r6 = CPyStr_Build(5, r0, r1, r2, r4, r5)
+    s1 = r6
+    r7 = ''
+    r8 = 'Hello '
+    r9 = '{:{}}'
+    r10 = '>'
+    r11 = box(int, num)
+    r12 = PyObject_Str(r11)
+    r13 = CPyStr_Build(2, r10, r12)
+    r14 = 'format'
+    r15 = CPyObject_CallMethodObjArgs(r9, r14, var, r13, 0)
+    r16 = cast(str, r15)
+    r17 = PyList_New(2)
+    r18 = get_element_ptr r17 ob_item :: PyListObject
+    r19 = load_mem r18 :: ptr*
+    set_mem r19, r8 :: builtins.object*
+    r20 = r19 + WORD_SIZE*1
+    set_mem r20, r16 :: builtins.object*
+    keep_alive r17
+    r21 = PyUnicode_Join(r7, r17)
+    s2 = r21
+    r22 = ''
+    s3 = r22
+    r23 = 'abc'
+    s4 = r23
+    return 1

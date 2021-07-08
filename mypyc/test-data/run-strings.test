@@ -192,6 +192,21 @@ def test_fstring_basics() -> None:
     inf_num = float('inf')
     assert f'{nan_num}, {inf_num}' == 'nan, inf'
 
+# F-strings would be translated into ''.join[string literals, format method call, ...] in mypy AST.
+# Currently we are using a str.join specializer for f-string speed up. We might not cover all cases
+# and the rest ones should fall back to a normal str.join method call.
+# TODO: Once we have a new pipeline for f-strings, this test case can be moved to testStringOps.
+def test_str_join() -> None:
+    var = 'mypyc'
+    num = 10
+    assert ''.join(['a', 'b', '{}'.format(var), 'c']) == 'abmypycc'
+    assert ''.join(['a', 'b', '{:{}}'.format(var, ''), 'c']) == 'abmypycc'
+    assert ''.join(['a', 'b', '{:{}}'.format(var, '>10'), 'c']) == 'ab     mypycc'
+    assert ''.join(['a', 'b', '{:{}}'.format(var, '>{}'.format(num)), 'c']) == 'ab     mypycc'
+    assert var.join(['a', '{:{}}'.format(var, ''), 'b']) == 'amypycmypycmypycb'
+    assert ','.join(['a', '{:{}}'.format(var, ''), 'b']) == 'a,mypyc,b'
+    assert ''.join(['x', var]) == 'xmypyc'
+
 class A:
     def __init__(self, name, age):
         self.name = name
@@ -355,6 +370,13 @@ def test_format_method_different_kind() -> None:
     assert "{}{} {}".format(s3, s2, s1) == "测试：Revealed type is Literal['😀']"
     assert "Test: {}{}".format(s3, s1) == "Test: 测试：Literal['😀']"
     assert "Test: {}{}".format(s3, s2) == "Test: 测试：Revealed type is"
+
+def test_format_method_nested() -> None:
+    var = 'mypyc'
+    num = 10
+    assert '{:{}}'.format(var, '') == 'mypyc'
+    assert '{:{}}'.format(var, '>10') == '     mypyc'
+    assert '{:{}}'.format(var, '>{}'.format(num)) == '     mypyc'
 
 class Point:
     def __init__(self, x, y):
