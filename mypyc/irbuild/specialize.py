@@ -459,7 +459,8 @@ def translate_fstring(
     # Special case for f-string, which is translated into str.join() in mypy AST.
     # This specializer optimizes simplest f-strings which don't contain any
     # format operation.
-    if (isinstance(callee.expr, StrExpr) and callee.expr.value == ''
+    if (isinstance(callee, MemberExpr)
+            and isinstance(callee.expr, StrExpr) and callee.expr.value == ''
             and expr.arg_kinds == [ARG_POS] and isinstance(expr.args[0], ListExpr)):
         for item in expr.args[0].items:
             if isinstance(item, StrExpr):
