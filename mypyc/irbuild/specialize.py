@@ -25,9 +25,10 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
-    bool_rprimitive, is_dict_rprimitive, c_int_rprimitive, is_str_rprimitive,
-    c_pyssize_t_rprimitive
+    bool_rprimitive, c_int_rprimitive, c_pyssize_t_rprimitive, is_dict_rprimitive,
+    is_int_rprimitive, is_str_rprimitive, is_short_int_rprimitive
 )
+from mypyc.primitives.int_ops import int_to_str_op
 from mypyc.primitives.dict_ops import (
     dict_keys_op, dict_values_op, dict_items_op, dict_setdefault_spec_init_op
 )
@@ -373,9 +374,17 @@ def translate_str_format(
 
         literals = split_braces(format_str)
 
-        variables = [builder.accept(x) if is_str_rprimitive(builder.node_type(x))
-                     else builder.call_c(str_op, [builder.accept(x)], expr.line)
-                     for x in expr.args]
+        # Convert variables to strings
+        variables = []
+        for x in expr.args:
+            node_type = builder.node_type(x)
+            if is_str_rprimitive(node_type):
+                var_str = builder.accept(x)
+            elif is_int_rprimitive(node_type) or is_short_int_rprimitive(node_type):
+                var_str = builder.call_c(int_to_str_op, [builder.accept(x)], expr.line)
+            else:
+                var_str = builder.call_c(str_op, [builder.accept(x)], expr.line)
+            variables.append(var_str)
 
         # The first parameter is the total size of the following PyObject* merged from
         # two lists alternatively.

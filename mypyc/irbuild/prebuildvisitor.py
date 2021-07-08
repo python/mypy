@@ -70,21 +70,25 @@ class PreBuildVisitor(TraverserVisitor):
                 # Property setters are not treated as decorated methods.
                 self.prop_setters.add(dec.func)
             else:
+                decorators_to_store = dec.decorators.copy()
                 removed: List[int] = []
-                for i, d in enumerate(dec.decorators):
+                for i, d in enumerate(decorators_to_store):
                     impl = get_singledispatch_register_call_info(d, dec.func)
                     if impl is not None:
                         self.singledispatch_impls[impl.singledispatch_func].append(
                             (impl.dispatch_type, dec.func))
                         removed.append(i)
+                # calling register on a function that tries to dispatch based on type annotations
+                # raises a TypeError because compiled functions don't have an __annotations__
+                # attribute
                 for i in reversed(removed):
-                    del dec.decorators[i]
+                    del decorators_to_store[i]
                 # if the only decorators are register calls, we shouldn't treat this
                 # as a decorated function because there aren't any decorators to apply
-                if not dec.decorators:
+                if not decorators_to_store:
                     return
 
-                self.funcs_to_decorators[dec.func] = dec.decorators
+                self.funcs_to_decorators[dec.func] = decorators_to_store
         super().visit_decorator(dec)
 
     def visit_func_def(self, fdef: FuncItem) -> None:

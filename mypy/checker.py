@@ -2023,13 +2023,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         Handle all kinds of assignment statements (simple, indexed, multiple).
         """
-        with self.enter_final_context(s.is_final_def):
-            self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None, s.new_syntax)
+        # Avoid type checking type aliases in stubs to avoid false
+        # positives about modern type syntax available in stubs such
+        # as X | Y.
+        if not (s.is_alias_def and self.is_stub):
+            with self.enter_final_context(s.is_final_def):
+                self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None, s.new_syntax)
 
         if s.is_alias_def:
-            # We do this mostly for compatibility with old semantic analyzer.
-            # TODO: should we get rid of this?
-            self.store_type(s.lvalues[-1], self.expr_checker.accept(s.rvalue))
+            self.check_type_alias_rvalue(s)
 
         if (s.type is not None and
                 self.options.disallow_any_unimported and
@@ -2057,6 +2059,29 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if (s.is_final_def and s.type and not has_no_typevars(s.type)
                 and self.scope.active_class() is not None):
             self.fail(message_registry.DEPENDENT_FINAL_IN_CLASS_BODY, s)
+
+    def check_type_alias_rvalue(self, s: AssignmentStmt) -> None:
+        if not (self.is_stub and isinstance(s.rvalue, OpExpr) and s.rvalue.op == '|'):
+            # We do this mostly for compatibility with old semantic analyzer.
+            # TODO: should we get rid of this?
+            alias_type = self.expr_checker.accept(s.rvalue)
+        else:
+            # Avoid type checking 'X | Y' in stubs, since there can be errors
+            # on older Python targets.
+            alias_type = AnyType(TypeOfAny.special_form)
+
+            def accept_items(e: Expression) -> None:
+                if isinstance(e, OpExpr) and e.op == '|':
+                    accept_items(e.left)
+                    accept_items(e.right)
+                else:
+                    # Nested union types have been converted to type context
+                    # in semantic analysis (such as in 'list[int | str]'),
+                    # so we don't need to deal with them here.
+                    self.expr_checker.accept(e)
+
+            accept_items(s.rvalue)
+        self.store_type(s.lvalues[-1], alias_type)
 
     def check_assignment(self, lvalue: Lvalue, rvalue: Expression, infer_lvalue_type: bool = True,
                          new_syntax: bool = False) -> None:
@@ -5338,6 +5363,12 @@ def flatten_types(t: Type) -> List[Type]:
 
 def get_isinstance_type(expr: Expression,
                         type_map: Dict[Expression, Type]) -> Optional[List[TypeRange]]:
+    if isinstance(expr, OpExpr) and expr.op == '|':
+        left = get_isinstance_type(expr.left, type_map)
+        right = get_isinstance_type(expr.right, type_map)
+        if left is None or right is None:
+            return None
+        return left + right
     all_types = get_proper_types(flatten_types(type_map[expr]))
     types: List[TypeRange] = []
     for typ in all_types:
