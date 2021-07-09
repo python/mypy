@@ -626,11 +626,11 @@ class FuncItem(FuncBase):
         self.body: 'Block' = body
         self.type = typ
         self.unanalyzed_type = typ
-        self.is_overload = False
+        self.is_overload: bool = False
         self.is_generator: bool = False
-        self.is_coroutine = False
-        self.is_async_generator = False
-        self.is_awaitable_coroutine = False
+        self.is_coroutine: bool = False
+        self.is_async_generator: bool = False
+        self.is_awaitable_coroutine: bool = False
         self.expanded: List[FuncItem] = []
 
         self.min_args = 0
@@ -1534,8 +1534,8 @@ class ArgKind(Enum):
     # In an argument list, keyword-only and also optional
     ARG_NAMED_OPT = 5
 
-    def is_normal(self) -> bool:
-        return self != ARG_STAR and self != ARG_STAR2
+    def is_star(self) -> bool:
+        return self == ARG_STAR or self == ARG_STAR2
 
 
 ARG_POS: Final = ArgKind.ARG_POS

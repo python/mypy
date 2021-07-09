@@ -1377,7 +1377,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     argname = callee.arg_names[i] or "?"
                     messages.missing_named_argument(callee, context, argname)
                 ok = False
-            elif kind.is_normal() and is_duplicate_mapping(
+            elif not kind.is_star() and is_duplicate_mapping(
                     formal_to_actual[i], actual_types, actual_kinds):
                 if (self.chk.in_checked_function() or
                         isinstance(get_proper_type(actual_types[formal_to_actual[i][0]]),
