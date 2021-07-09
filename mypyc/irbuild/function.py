@@ -53,6 +53,8 @@ from mypyc.irbuild.env_class import (
     setup_func_for_recursive_call
 )
 
+from mypyc.primitives.registry import builtin_names
+
 
 # Top-level transform functions
 
@@ -782,7 +784,11 @@ def check_if_isinstance(builder: IRBuilder, obj: Value, typ: TypeInfo, line: int
         class_ir = builder.mapper.type_to_ir[typ]
         return builder.builder.isinstance_native(obj, class_ir, line)
     else:
-        class_obj = builder.load_module_attr_by_fullname(typ.fullname, line)
+        if typ.fullname in builtin_names:
+            builtin_addr_type, src = builtin_names[typ.fullname]
+            class_obj = builder.add(LoadAddress(builtin_addr_type, src, line))
+        else:
+            class_obj = builder.load_global_str(typ.name, line)
         return builder.call_c(slow_isinstance_op, [obj, class_obj], line)
 
 
