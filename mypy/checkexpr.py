@@ -1364,18 +1364,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         # Check for too many or few values for formals.
         for i, kind in enumerate(callee.arg_kinds):
-            if kind == nodes.ARG_POS and (not formal_to_actual[i] and
-                                          not is_unexpected_arg_error):
-                # No actual for a mandatory positional formal.
+            if kind.is_required() and not formal_to_actual[i] and not is_unexpected_arg_error:
+                # No actual for a mandatory formal
                 if messages:
-                    messages.too_few_arguments(callee, context, actual_names)
-                ok = False
-            elif kind == nodes.ARG_NAMED and (not formal_to_actual[i] and
-                                              not is_unexpected_arg_error):
-                # No actual for a mandatory named formal
-                if messages:
-                    argname = callee.arg_names[i] or "?"
-                    messages.missing_named_argument(callee, context, argname)
+                    if kind.is_positional():
+                        messages.too_few_arguments(callee, context, actual_names)
+                    else:
+                        argname = callee.arg_names[i] or "?"
+                        messages.missing_named_argument(callee, context, argname)
                 ok = False
             elif not kind.is_star() and is_duplicate_mapping(
                     formal_to_actual[i], actual_types, actual_kinds):
