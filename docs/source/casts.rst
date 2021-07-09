@@ -70,7 +70,7 @@ Let's have a look at the regular ``bool`` example:
     """Determines whether all objects in the list are strings"""
     return all(isinstance(x, str) for x in val)
 
-  def func1(val: List[object]):
+  def func1(val: List[object]) -> None:
       if is_str_list(val):
           reveal_type(val)  # List[object]
           print(" ".join(val)) # Error: invalid type
