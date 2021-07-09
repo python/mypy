@@ -14,9 +14,8 @@ from typing_extensions import ClassVar, Final, TYPE_CHECKING, overload
 import mypy.nodes
 from mypy import state
 from mypy.nodes import (
-    INVARIANT, SymbolNode, ArgKind,
-    ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
-    FuncDef,
+    INVARIANT, SymbolNode, FuncDef,
+    ArgKind, ARG_POS, ARG_STAR, ARG_STAR2,
 )
 from mypy.util import IdMapper
 from mypy.bogus_type import Bogus
@@ -1178,8 +1177,7 @@ class CallableType(FunctionLike):
         This takes into account *arg and **kwargs but excludes keyword-only args."""
         if self.is_var_arg or self.is_kw_arg:
             return sys.maxsize
-        blacklist = (ARG_NAMED, ARG_NAMED_OPT)
-        return len([kind not in blacklist for kind in self.arg_kinds])
+        return sum([kind.is_positional() for kind in self.arg_kinds])
 
     def formal_arguments(self, include_star_args: bool = False) -> Iterator[FormalArgument]:
         """Yields the formal arguments corresponding to this callable, ignoring *arg and **kwargs.
@@ -1192,12 +1190,12 @@ class CallableType(FunctionLike):
         done_with_positional = False
         for i in range(len(self.arg_types)):
             kind = self.arg_kinds[i]
-            if kind in (ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT):
+            if kind.is_named() or kind.is_star():
                 done_with_positional = True
-            if not include_star_args and kind in (ARG_STAR, ARG_STAR2):
+            if not include_star_args and kind.is_star():
                 continue
 
-            required = kind in (ARG_POS, ARG_NAMED)
+            required = kind.is_required()
             pos = None if done_with_positional else i
             yield FormalArgument(
                 self.arg_names[i],
@@ -1212,13 +1210,13 @@ class CallableType(FunctionLike):
         for i, (arg_name, kind, typ) in enumerate(
                 zip(self.arg_names, self.arg_kinds, self.arg_types)):
             # No more positional arguments after these.
-            if kind in (ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT):
+            if kind.is_named() or kind.is_star():
                 seen_star = True
-            if kind == ARG_STAR or kind == ARG_STAR2:
+            if kind.is_star():
                 continue
             if arg_name == name:
                 position = None if seen_star else i
-                return FormalArgument(name, position, typ, kind in (ARG_POS, ARG_NAMED))
+                return FormalArgument(name, position, typ, kind.is_required())
         return self.try_synthesizing_arg_from_kwarg(name)
 
     def argument_by_position(self, position: Optional[int]) -> Optional[FormalArgument]:
@@ -1231,7 +1229,7 @@ class CallableType(FunctionLike):
             self.arg_kinds[position],
             self.arg_types[position],
         )
-        if kind in (ARG_POS, ARG_OPT):
+        if kind.is_positional():
             return FormalArgument(name, position, typ, kind == ARG_POS)
         else:
             return self.try_synthesizing_arg_from_vararg(position)
@@ -2112,7 +2110,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         for i in range(len(t.arg_types)):
             if s != '':
                 s += ', '
-            if t.arg_kinds[i] in (ARG_NAMED, ARG_NAMED_OPT) and not bare_asterisk:
+            if t.arg_kinds[i].is_named() and not bare_asterisk:
                 s += '*, '
                 bare_asterisk = True
             if t.arg_kinds[i] == ARG_STAR:
@@ -2123,7 +2121,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             if name:
                 s += name + ': '
             s += t.arg_types[i].accept(self)
-            if t.arg_kinds[i] in (ARG_OPT, ARG_NAMED_OPT):
+            if t.arg_kinds[i].is_optional():
                 s += ' ='
 
         s = '({})'.format(s)

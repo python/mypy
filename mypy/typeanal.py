@@ -778,7 +778,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     assert found.fullname is not None
                     kind = ARG_KINDS_BY_CONSTRUCTOR[found.fullname]
                     kinds.append(kind)
-                    if arg.name is not None and kind in {ARG_STAR, ARG_STAR2}:
+                    if arg.name is not None and kind.is_star():
                         self.fail("{} arguments should not have names".format(
                             arg.constructor), arg)
                         return None
