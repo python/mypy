@@ -165,7 +165,7 @@ class SemanticAnalyzer(NodeVisitor[None],
     globals: SymbolTable
     # Names declared using "global" (separate set for each scope)
     global_decls: List[Set[str]]
-    # Names declated using "nonlocal" (separate set for each scope)
+    # Names declared using "nonlocal" (separate set for each scope)
     nonlocal_decls: List[Set[str]]
     # Local names of function scopes; None for non-function scopes.
     locals: List[Optional[SymbolTable]]
@@ -823,7 +823,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         """Generate error about missing overload implementation (only if needed)."""
         if not self.is_stub_file:
             if self.type and self.type.is_protocol and not self.is_func_scope():
-                # An overloded protocol method doesn't need an implementation.
+                # An overloaded protocol method doesn't need an implementation.
                 for item in defn.items:
                     if isinstance(item, Decorator):
                         item.func.is_abstract = True
@@ -2293,7 +2293,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         """Strip Final[...] if present in an assignment.
 
         This is done to invoke type inference during type checking phase for this
-        assignment. Also, Final[...] desn't affect type in any way -- it is rather an
+        assignment. Also, Final[...] doesn't affect type in any way -- it is rather an
         access qualifier for given `Var`.
 
         Also perform various consistency checks.
@@ -4142,7 +4142,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             return line_diff > 0
 
     def is_overloaded_item(self, node: SymbolNode, statement: Statement) -> bool:
-        """Check whehter the function belongs to the overloaded variants"""
+        """Check whether the function belongs to the overloaded variants"""
         if isinstance(node, OverloadedFuncDef) and isinstance(statement, FuncDef):
             in_items = statement in {item.func if isinstance(item, Decorator)
                                      else item for item in node.items}
