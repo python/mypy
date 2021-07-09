@@ -167,7 +167,7 @@ Method can also serve as the ``TypeGuard``:
       def is_valid(self, instance: object) -> TypeGuard[str]:
           return isinstance(instance, str)
 
-  def func(to_validate: object):
+  def func(to_validate: object) -> None:
       if StrValidator().is_valid(to_validate):
           reveal_type(to_validate)  # Revealed type is "builtins.str"
 
