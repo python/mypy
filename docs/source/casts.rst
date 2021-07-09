@@ -159,7 +159,7 @@ Type guard functions can accept extra arguments:
 TypeGuards as methods
 ---------------------
 
-Method can also serve as the ``TypeGuard``:
+ A method can also serve as the ``TypeGuard``:
 
 .. code-block:: python
 
