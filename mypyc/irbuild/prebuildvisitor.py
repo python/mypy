@@ -77,27 +77,27 @@ class PreBuildVisitor(TraverserVisitor):
             else:
                 decorators_to_store = dec.decorators.copy()
                 removed: List[int] = []
-                found_register = False
-                # reverse the list of decorators so we check them from bottom to top, which lets us
-                # tell if we've seen register decorators and have later found non-register
-                # decorators
-                for i, d in enumerate(reversed(decorators_to_store)):
+                # the index of the last non-register decorator before finding a register decorator
+                # when going through decorators from top to bottom
+                last_non_register: Optional[int] = None
+                for i, d in enumerate(decorators_to_store):
                     impl = get_singledispatch_register_call_info(d, dec.func)
                     if impl is not None:
                         self.singledispatch_impls[impl.singledispatch_func].append(
                             (impl.dispatch_type, dec.func))
                         removed.append(i)
-                        found_register = True
-                    elif found_register:
-                        # found a non-register decorator after a register decorator, which we don't
-                        # support because we'd have to make a copy of the function before calling
-                        # the decorator so that we can call it later, which complicates the
-                        # implementation for something that is probably not commonly used
-                        self.errors.error(
-                            "Calling decorator after registering function not supported",
-                            self.current_file.path,
-                            d.line,
-                        )
+                        if last_non_register is not None:
+                            # found a register decorator after a non-register decorator, which we
+                            # don't support because we'd have to make a copy of the function before
+                            # calling the decorator so that we can call it later, which complicates
+                            # the implementation for something that is probably not commonly used
+                            self.errors.error(
+                                "Calling decorator after registering function not supported",
+                                self.current_file.path,
+                                decorators_to_store[last_non_register].line,
+                            )
+                    else:
+                        last_non_register = i
                 # calling register on a function that tries to dispatch based on type annotations
                 # raises a TypeError because compiled functions don't have an __annotations__
                 # attribute
