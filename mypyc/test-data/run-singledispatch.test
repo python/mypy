@@ -34,7 +34,7 @@ def test_specialize() -> None:
     assert fun(B())
     assert fun(A())
 
-[case testSuperclassImplementationNotUsedWhenSubclassHasImplementation-xfail]
+[case testSuperclassImplementationNotUsedWhenSubclassHasImplementation]
 from functools import singledispatch
 class A: pass
 class B(A): pass
@@ -122,15 +122,15 @@ def test_singledispatch() -> None:
     assert fun(0)
     assert not fun('a')
 
-[case testRegisterDoesntChangeFunction-xfail]
+[case testRegisterDoesntChangeFunction]
 from functools import singledispatch
 
 @singledispatch
 def fun(arg) -> bool:
     return False
 
-@fun.register
-def fun_specialized(arg: int) -> bool:
+@fun.register(int)
+def fun_specialized(arg) -> bool:
     return True
 
 def test_singledispatch() -> None:
@@ -182,25 +182,6 @@ def fun_specialized(arg: Mapping) -> bool:
 def test_singledispatch() -> None:
     assert not fun(1)
     assert fun({'a': 'b'})
-
-[case testArgumentDoesntMatchTypeOfAnySpecializedImplementationsOrDefaultImplementation-xfail]
-from functools import singledispatch
-class A: pass
-class B(A): pass
-
-@singledispatch
-def fun(arg: A) -> bool:
-    return False
-
-@fun.register
-def fun_specialized(arg: B) -> bool:
-    return True
-
-def test_singledispatch() -> None:
-    assert fun(B())
-    assert fun(A())
-    assert not fun([1, 2])
-
 
 [case testSingleDispatchMethod-xfail]
 from functools import singledispatchmethod
@@ -390,23 +371,23 @@ def test_singledispatch():
 from functools import singledispatch
 
 @singledispatch
-def f(arg, *, kwarg: bool = False) -> bool:
-    return not kwarg
+def f(arg, *, kwarg: int = 0) -> int:
+    return kwarg + 10
 
 @f.register
-def g(arg: int, *, kwarg: bool = True) -> bool:
-    return kwarg
+def g(arg: int, *, kwarg: int = 5) -> int:
+    return kwarg - 10
 
 def test_keywords():
-    assert f('a')
-    assert f('a', kwarg=False)
-    assert not f('a', kwarg=True)
+    assert f('a') == 10
+    assert f('a', kwarg=3) == 13
+    assert f('a', kwarg=7) == 17
 
-    assert f(1)
-    assert f(1, kwarg=True)
-    assert not f(1, kwarg=False)
+    assert f(1) == -5
+    assert f(1, kwarg=4) == -6
+    assert f(1, kwarg=6) == -4
 
-[case testGeneratorAndMultipleTypesOfIterable-xfail]
+[case testGeneratorAndMultipleTypesOfIterable]
 from functools import singledispatch
 from typing import *
 
@@ -422,3 +403,77 @@ def test_iterables():
     assert f(1) != [1]
     assert list(f(1)) == [1]
     assert f('a') == [0]
+
+[case testRegisterUsedAtSameTimeAsOtherDecorators]
+from functools import singledispatch
+from typing import TypeVar
+
+class A: pass
+class B: pass
+
+T = TypeVar('T')
+
+def decorator1(f: T) -> T:
+    return f
+
+def decorator2(f: T) -> T:
+    return f
+
+@singledispatch
+def f(arg) -> int:
+    return 0
+
+@decorator1
+@f.register
+def g(arg: int) -> int:
+    return 1
+
+@f.register
+@decorator1
+def h(arg: str) -> int:
+    return 2
+
+@decorator2
+@f.register
+@decorator1
+def i(arg: A) -> int:
+    return 3
+
+def test_singledispatch():
+    assert f(1) == 1
+    assert f('a') == 2
+    assert f(A()) == 3
+    assert f(B()) == 0
+
+[case testDecoratorModifiesFunction]
+from functools import singledispatch
+from typing import Callable, Any
+
+class A: pass
+
+def decorator(f: Callable[[Any], int]) -> Callable[[Any], int]:
+    def wrapper(x) -> int:
+        return f(x) * 7
+    return wrapper
+
+@singledispatch
+def f(arg) -> int:
+    return 10
+
+@decorator
+@f.register
+def g(arg: int) -> int:
+    return 3
+
+@f.register
+@decorator
+def h(arg: str) -> int:
+    return 5
+
+
+def test_singledispatch():
+    # should be registered before decorator is run
+    assert f(1) == 3
+    # should be registered after decorator is run
+    assert f('a') == 35
+    assert f(A()) == 10
