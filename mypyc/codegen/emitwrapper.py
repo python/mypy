@@ -10,9 +10,9 @@ The wrappers aren't used for most calls between two native functions
 or methods in a single compilation unit.
 """
 
-from typing import List, Optional, Sequence
+from typing import List, Dict, Optional, Sequence
 
-from mypy.nodes import ARG_POS, ARG_OPT, ARG_NAMED_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2
+from mypy.nodes import ArgKind, ARG_POS, ARG_OPT, ARG_NAMED_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2
 from mypy.operators import op_methods_to_symbols, reverse_op_methods, reverse_op_method_names
 
 from mypyc.common import PREFIX, NATIVE_PREFIX, DUNDER_PREFIX, use_vectorcall
@@ -75,12 +75,12 @@ def generate_traceback_code(fn: FuncIR,
     return traceback_code
 
 
-def make_arg_groups(args: List[RuntimeArg]) -> List[List[RuntimeArg]]:
+def make_arg_groups(args: List[RuntimeArg]) -> Dict[ArgKind, List[RuntimeArg]]:
     """Group arguments by kind."""
-    return [[arg for arg in args if arg.kind == k] for k in range(ARG_NAMED_OPT + 1)]
+    return {k: [arg for arg in args if arg.kind == k] for k in ArgKind}
 
 
-def reorder_arg_groups(groups: List[List[RuntimeArg]]) -> List[RuntimeArg]:
+def reorder_arg_groups(groups: Dict[ArgKind, List[RuntimeArg]]) -> List[RuntimeArg]:
     """Reorder argument groups to match their order in a format string."""
     return groups[ARG_POS] + groups[ARG_OPT] + groups[ARG_NAMED_OPT] + groups[ARG_NAMED]
 
@@ -90,7 +90,7 @@ def make_static_kwlist(args: List[RuntimeArg]) -> str:
     return 'static const char * const kwlist[] = {{{}0}};'.format(arg_names)
 
 
-def make_format_string(func_name: Optional[str], groups: List[List[RuntimeArg]]) -> str:
+def make_format_string(func_name: Optional[str], groups: Dict[ArgKind, List[RuntimeArg]]) -> str:
     """Return a format string that specifies the accepted arguments.
 
     The format string is an extended subset of what is supported by

@@ -29,7 +29,7 @@ from mypy.types import (
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.nodes import (
     TypeInfo, Context, MypyFile, FuncDef, reverse_builtin_aliases,
-    ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
+    ArgKind, ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
     CallExpr, IndexExpr, StrExpr, SymbolTable, TempNode
 )
@@ -397,7 +397,7 @@ class MessageBuilder:
                               m: int,
                               callee: CallableType,
                               arg_type: Type,
-                              arg_kind: int,
+                              arg_kind: ArgKind,
                               object_type: Optional[Type],
                               context: Context,
                               outer_context: Context) -> Optional[ErrorCode]:

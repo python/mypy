@@ -61,7 +61,7 @@ class StrConv(NodeVisitor[str]):
         args: List[Union[mypy.nodes.Var, Tuple[str, List[mypy.nodes.Node]]]] = []
         extra: List[Tuple[str, List[mypy.nodes.Var]]] = []
         for arg in o.arguments:
-            kind: int = arg.kind
+            kind: mypy.nodes.ArgKind = arg.kind
             if kind in (mypy.nodes.ARG_POS, mypy.nodes.ARG_NAMED):
                 args.append(arg.variable)
             elif kind in (mypy.nodes.ARG_OPT, mypy.nodes.ARG_NAMED_OPT):
@@ -405,7 +405,7 @@ class StrConv(NodeVisitor[str]):
             elif kind == mypy.nodes.ARG_STAR2:
                 extra.append(('DictVarArg', [o.args[i]]))
             else:
-                raise RuntimeError("unknown kind %d" % kind)
+                raise RuntimeError("unknown kind %s" % kind)
         a: List[Any] = [o.callee, ("Args", args)]
         return self.dump(a + extra, o)
 

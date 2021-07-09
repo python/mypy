@@ -37,7 +37,7 @@ from mypy.types import (
 )
 from mypy.build import State, Graph
 from mypy.nodes import (
-    ARG_STAR, ARG_NAMED, ARG_STAR2, ARG_NAMED_OPT, FuncDef, MypyFile, SymbolTable,
+    ArgKind, ARG_STAR, ARG_NAMED, ARG_STAR2, ARG_NAMED_OPT, FuncDef, MypyFile, SymbolTable,
     Decorator, RefExpr,
     SymbolNode, TypeInfo, Expression, ReturnStmt, CallExpr,
     reverse_builtin_aliases,
@@ -70,7 +70,7 @@ Callsite = NamedTuple(
     'Callsite',
     [('path', str),
      ('line', int),
-     ('arg_kinds', List[List[int]]),
+     ('arg_kinds', List[List[ArgKind]]),
      ('callee_arg_names', List[Optional[str]]),
      ('arg_names', List[List[Optional[str]]]),
      ('arg_types', List[List[Type]])])
@@ -468,7 +468,7 @@ class SuggestionEngine:
         return self.pyannotate_signature(mod, is_method, best)
 
     def format_args(self,
-                    arg_kinds: List[List[int]],
+                    arg_kinds: List[List[ArgKind]],
                     arg_names: List[List[Optional[str]]],
                     arg_types: List[List[Type]]) -> str:
         args: List[str] = []

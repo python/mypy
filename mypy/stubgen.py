@@ -290,7 +290,7 @@ class AliasPrinter(NodeVisitor[str]):
             elif kind == ARG_NAMED:
                 args.append('{}={}'.format(name, arg.accept(self)))
             else:
-                raise ValueError("Unknown argument kind %d in call" % kind)
+                raise ValueError("Unknown argument kind %s in call" % kind)
         return "{}({})".format(callee, ", ".join(args))
 
     def visit_name_expr(self, node: NameExpr) -> str:

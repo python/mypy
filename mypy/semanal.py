@@ -67,7 +67,7 @@ from mypy.nodes import (
     SymbolTableNode, ListComprehension, GeneratorExpr,
     LambdaExpr, MDEF, Decorator, SetExpr, TypeVarExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
-    ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, type_aliases,
+    ComparisonExpr, StarExpr, ArgKind, ARG_POS, ARG_NAMED, type_aliases,
     YieldFromExpr, NamedTupleExpr, NonlocalDecl, SymbolNode,
     SetComprehension, DictionaryComprehension, TypeAlias, TypeAliasExpr,
     YieldExpr, ExecStmt, BackquoteExpr, ImportBase, AwaitExpr,
@@ -3054,7 +3054,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def process_typevar_parameters(self, args: List[Expression],
                                    names: List[Optional[str]],
-                                   kinds: List[int],
+                                   kinds: List[ArgKind],
                                    num_values: int,
                                    context: Context) -> Optional[Tuple[int, Type]]:
         has_values = (num_values > 0)

@@ -502,7 +502,7 @@ class Signature(Generic[T]):
                 ]
                 return mypy.typeops.make_simplified_union([t for t in all_types if t])
 
-        def get_kind(arg_name: str) -> int:
+        def get_kind(arg_name: str) -> nodes.ArgKind:
             kinds = {arg.kind for arg, _ in all_args[arg_name]}
             if nodes.ARG_STAR in kinds:
                 return nodes.ARG_STAR

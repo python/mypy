@@ -4,8 +4,8 @@ from typing import Dict, Any, Union, Optional
 
 from mypy.nodes import (
     ClassDef, FuncDef, Decorator, OverloadedFuncDef, StrExpr, CallExpr, RefExpr, Expression,
-    IntExpr, FloatExpr, Var, TupleExpr, UnaryExpr, BytesExpr, ARG_NAMED, ARG_NAMED_OPT, ARG_POS,
-    ARG_OPT, GDEF
+    IntExpr, FloatExpr, Var, TupleExpr, UnaryExpr, BytesExpr,
+    ArgKind, ARG_NAMED, ARG_NAMED_OPT, ARG_POS, ARG_OPT, GDEF,
 )
 
 
@@ -101,7 +101,7 @@ def get_func_def(op: Union[FuncDef, Decorator, OverloadedFuncDef]) -> FuncDef:
     return op
 
 
-def concrete_arg_kind(kind: int) -> int:
+def concrete_arg_kind(kind: ArgKind) -> ArgKind:
     """Find the concrete version of an arg kind that is being passed."""
     if kind == ARG_OPT:
         return ARG_POS

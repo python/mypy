@@ -14,7 +14,8 @@ from typing_extensions import ClassVar, Final, TYPE_CHECKING, overload
 import mypy.nodes
 from mypy import state
 from mypy.nodes import (
-    INVARIANT, SymbolNode, ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
+    INVARIANT, SymbolNode, ArgKind,
+    ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
     FuncDef,
 )
 from mypy.util import IdMapper
@@ -1032,7 +1033,7 @@ class CallableType(FunctionLike):
 
     def __init__(self,
                  arg_types: Sequence[Type],
-                 arg_kinds: List[int],
+                 arg_kinds: List[ArgKind],
                  arg_names: Sequence[Optional[str]],
                  ret_type: Type,
                  fallback: Instance,
@@ -1086,7 +1087,7 @@ class CallableType(FunctionLike):
 
     def copy_modified(self,
                       arg_types: Bogus[Sequence[Type]] = _dummy,
-                      arg_kinds: Bogus[List[int]] = _dummy,
+                      arg_kinds: Bogus[List[ArgKind]] = _dummy,
                       arg_names: Bogus[List[Optional[str]]] = _dummy,
                       ret_type: Bogus[Type] = _dummy,
                       fallback: Bogus[Instance] = _dummy,
@@ -1285,7 +1286,7 @@ class CallableType(FunctionLike):
         # generic functions for non-generic functions.
         return {'.class': 'CallableType',
                 'arg_types': [t.serialize() for t in self.arg_types],
-                'arg_kinds': self.arg_kinds,
+                'arg_kinds': [int(x.value) for x in self.arg_kinds],
                 'arg_names': self.arg_names,
                 'ret_type': self.ret_type.serialize(),
                 'fallback': self.fallback.serialize(),
@@ -1305,7 +1306,7 @@ class CallableType(FunctionLike):
         assert data['.class'] == 'CallableType'
         # TODO: Set definition to the containing SymbolNode?
         return CallableType([deserialize_type(t) for t in data['arg_types']],
-                            data['arg_kinds'],
+                            [ArgKind(x) for x in data['arg_kinds']],
                             data['arg_names'],
                             deserialize_type(data['ret_type']),
                             Instance.deserialize(data['fallback']),

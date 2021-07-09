@@ -3,7 +3,7 @@
 from typing import List, Optional, Sequence
 from typing_extensions import Final
 
-from mypy.nodes import FuncDef, Block, ARG_POS, ARG_OPT, ARG_NAMED_OPT
+from mypy.nodes import FuncDef, Block, ArgKind, ARG_POS, ARG_OPT, ARG_NAMED_OPT
 
 from mypyc.common import JsonDict
 from mypyc.ir.ops import (
@@ -19,7 +19,7 @@ class RuntimeArg:
     Argument kind is one of ARG_* constants defined in mypy.nodes.
     """
 
-    def __init__(self, name: str, typ: RType, kind: int = ARG_POS) -> None:
+    def __init__(self, name: str, typ: RType, kind: ArgKind = ARG_POS) -> None:
         self.name = name
         self.type = typ
         self.kind = kind
@@ -32,14 +32,14 @@ class RuntimeArg:
         return 'RuntimeArg(name=%s, type=%s, optional=%r)' % (self.name, self.type, self.optional)
 
     def serialize(self) -> JsonDict:
-        return {'name': self.name, 'type': self.type.serialize(), 'kind': self.kind}
+        return {'name': self.name, 'type': self.type.serialize(), 'kind': int(self.kind.value)}
 
     @classmethod
     def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> 'RuntimeArg':
         return RuntimeArg(
             data['name'],
             deserialize_type(data['type'], ctx),
-            data['kind'],
+            ArgKind(data['kind']),
         )
 
 

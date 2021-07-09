@@ -2,7 +2,7 @@
 
 from typing import Dict, Optional
 
-from mypy.nodes import FuncDef, TypeInfo, SymbolNode, ARG_STAR, ARG_STAR2
+from mypy.nodes import FuncDef, TypeInfo, SymbolNode, ArgKind, ARG_STAR, ARG_STAR2
 from mypy.types import (
     Instance, Type, CallableType, LiteralType, TypedDictType, UnboundType, PartialType,
     UninhabitedType, Overloaded, UnionType, TypeType, AnyType, NoneTyp, TupleType, TypeVarType,
@@ -110,7 +110,7 @@ class Mapper:
         # actually show up, so anything else is a bug somewhere.
         assert False, 'unexpected type %s' % type(typ)
 
-    def get_arg_rtype(self, typ: Type, kind: int) -> RType:
+    def get_arg_rtype(self, typ: Type, kind: ArgKind) -> RType:
         if kind == ARG_STAR:
             return tuple_rprimitive
         elif kind == ARG_STAR2:

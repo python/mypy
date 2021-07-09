@@ -36,7 +36,7 @@ from mypy.nodes import (
     UnaryExpr, LambdaExpr, ComparisonExpr, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
     Expression, Statement, BackquoteExpr, PrintStmt, ExecStmt,
-    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2, OverloadPart, check_arg_names,
+    ArgKind, ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2, OverloadPart, check_arg_names,
     FakeInfo,
 )
 from mypy.types import (
@@ -923,7 +923,7 @@ class ASTConverter:
     # keyword = (identifier? arg, expr value)
     def visit_Call(self, n: Call) -> CallExpr:
         arg_types: List[ast27.expr] = []
-        arg_kinds: List[int] = []
+        arg_kinds: List[ArgKind] = []
         signature: List[Optional[str]] = []
 
         args = n.args
