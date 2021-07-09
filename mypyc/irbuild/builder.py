@@ -19,7 +19,8 @@ from mypy.build import Graph
 from mypy.nodes import (
     MypyFile, SymbolNode, Statement, OpExpr, IntExpr, NameExpr, LDEF, Var, UnaryExpr,
     CallExpr, IndexExpr, Expression, MemberExpr, RefExpr, Lvalue, TupleExpr,
-    TypeInfo, Decorator, OverloadedFuncDef, StarExpr, ComparisonExpr, GDEF, ARG_POS, ARG_NAMED
+    TypeInfo, Decorator, OverloadedFuncDef, StarExpr, ComparisonExpr, GDEF,
+    ArgKind, ARG_POS, ARG_NAMED,
 )
 from mypy.types import (
     Type, Instance, TupleType, UninhabitedType, get_proper_type
@@ -238,7 +239,7 @@ class IRBuilder:
                 function: Value,
                 arg_values: List[Value],
                 line: int,
-                arg_kinds: Optional[List[int]] = None,
+                arg_kinds: Optional[List[ArgKind]] = None,
                 arg_names: Optional[Sequence[Optional[str]]] = None) -> Value:
         return self.builder.py_call(function, arg_values, line, arg_kinds, arg_names)
 
@@ -254,7 +255,7 @@ class IRBuilder:
                         arg_values: List[Value],
                         result_type: Optional[RType],
                         line: int,
-                        arg_kinds: Optional[List[int]] = None,
+                        arg_kinds: Optional[List[ArgKind]] = None,
                         arg_names: Optional[List[Optional[str]]] = None) -> Value:
         return self.builder.gen_method_call(
             base, name, arg_values, result_type, line, arg_kinds, arg_names
@@ -1013,7 +1014,7 @@ class IRBuilder:
             self_type = RInstance(class_ir)
         self.add_argument(SELF_NAME, self_type)
 
-    def add_argument(self, var: Union[str, Var], typ: RType, kind: int = ARG_POS) -> Register:
+    def add_argument(self, var: Union[str, Var], typ: RType, kind: ArgKind = ARG_POS) -> Register:
         """Declare an argument in the current function.
 
         You should use this instead of directly calling add_local() in new code.

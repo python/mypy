@@ -8,9 +8,9 @@ from mypy.types import (
 from mypy import nodes
 
 
-def map_actuals_to_formals(actual_kinds: List[int],
+def map_actuals_to_formals(actual_kinds: List[nodes.ArgKind],
                            actual_names: Optional[Sequence[Optional[str]]],
-                           formal_kinds: List[int],
+                           formal_kinds: List[nodes.ArgKind],
                            formal_names: Sequence[Optional[str]],
                            actual_arg_type: Callable[[int],
                                                      Type]) -> List[List[int]]:
@@ -99,9 +99,9 @@ def map_actuals_to_formals(actual_kinds: List[int],
     return formal_to_actual
 
 
-def map_formals_to_actuals(actual_kinds: List[int],
+def map_formals_to_actuals(actual_kinds: List[nodes.ArgKind],
                            actual_names: Optional[Sequence[Optional[str]]],
-                           formal_kinds: List[int],
+                           formal_kinds: List[nodes.ArgKind],
                            formal_names: List[Optional[str]],
                            actual_arg_type: Callable[[int],
                                                      Type]) -> List[List[int]]:
@@ -149,9 +149,9 @@ class ArgTypeExpander:
 
     def expand_actual_type(self,
                            actual_type: Type,
-                           actual_kind: int,
+                           actual_kind: nodes.ArgKind,
                            formal_name: Optional[str],
-                           formal_kind: int) -> Type:
+                           formal_kind: nodes.ArgKind) -> Type:
         """Return the actual (caller) type(s) of a formal argument with the given kinds.
 
         If the actual argument is a tuple *args, return the next individual tuple item that

@@ -14,7 +14,7 @@ from typing import (
 
 from typing_extensions import Final
 
-from mypy.nodes import ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2
+from mypy.nodes import ArgKind, ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2
 from mypy.operators import op_methods
 from mypy.types import AnyType, TypeOfAny
 from mypy.checkexpr import map_actuals_to_formals
@@ -259,7 +259,7 @@ class LowLevelIRBuilder:
                 function: Value,
                 arg_values: List[Value],
                 line: int,
-                arg_kinds: Optional[List[int]] = None,
+                arg_kinds: Optional[List[ArgKind]] = None,
                 arg_names: Optional[Sequence[Optional[str]]] = None) -> Value:
         """Call a Python function (non-native and slow).
 
@@ -317,7 +317,7 @@ class LowLevelIRBuilder:
                         function: Value,
                         arg_values: List[Value],
                         line: int,
-                        arg_kinds: Optional[List[int]] = None,
+                        arg_kinds: Optional[List[ArgKind]] = None,
                         arg_names: Optional[Sequence[Optional[str]]] = None) -> Optional[Value]:
         """Call function using the vectorcall API if possible.
 
@@ -365,7 +365,7 @@ class LowLevelIRBuilder:
                        method_name: str,
                        arg_values: List[Value],
                        line: int,
-                       arg_kinds: Optional[List[int]],
+                       arg_kinds: Optional[List[ArgKind]],
                        arg_names: Optional[Sequence[Optional[str]]]) -> Value:
         """Call a Python method (non-native and slow)."""
         if use_method_vectorcall(self.options.capi_version):
@@ -389,7 +389,7 @@ class LowLevelIRBuilder:
                                method_name: str,
                                arg_values: List[Value],
                                line: int,
-                               arg_kinds: Optional[List[int]],
+                               arg_kinds: Optional[List[ArgKind]],
                                arg_names: Optional[Sequence[Optional[str]]]) -> Optional[Value]:
         """Call method using the vectorcall API if possible.
 
@@ -423,7 +423,7 @@ class LowLevelIRBuilder:
     def call(self,
              decl: FuncDecl,
              args: Sequence[Value],
-             arg_kinds: List[int],
+             arg_kinds: List[ArgKind],
              arg_names: Sequence[Optional[str]],
              line: int) -> Value:
         """Call a native function."""
@@ -434,7 +434,7 @@ class LowLevelIRBuilder:
 
     def native_args_to_positional(self,
                                   args: Sequence[Value],
-                                  arg_kinds: List[int],
+                                  arg_kinds: List[ArgKind],
                                   arg_names: Sequence[Optional[str]],
                                   sig: FuncSignature,
                                   line: int) -> List[Value]:
@@ -482,7 +482,7 @@ class LowLevelIRBuilder:
                         arg_values: List[Value],
                         result_type: Optional[RType],
                         line: int,
-                        arg_kinds: Optional[List[int]] = None,
+                        arg_kinds: Optional[List[ArgKind]] = None,
                         arg_names: Optional[List[Optional[str]]] = None) -> Value:
         """Generate either a native or Python method call."""
         # If arg_kinds contains values other than arg_pos and arg_named, then fallback to
@@ -533,7 +533,7 @@ class LowLevelIRBuilder:
                           arg_values: List[Value],
                           return_rtype: Optional[RType],
                           line: int,
-                          arg_kinds: Optional[List[int]],
+                          arg_kinds: Optional[List[ArgKind]],
                           arg_names: Optional[List[Optional[str]]]) -> Value:
         """Generate a method call with a union type for the object."""
         # Union method call needs a return_rtype for the type of the output register.
@@ -1344,7 +1344,7 @@ class LowLevelIRBuilder:
             return self.call_c(dict_new_op, [], line)
 
 
-def num_positional_args(arg_values: List[Value], arg_kinds: Optional[List[int]]) -> int:
+def num_positional_args(arg_values: List[Value], arg_kinds: Optional[List[ArgKind]]) -> int:
     if arg_kinds is None:
         return len(arg_values)
     num_pos = 0
