@@ -1,10 +1,11 @@
+from mypyc.errors import Errors
 from mypy.types import Instance, get_proper_type
 from typing import DefaultDict, Dict, List, NamedTuple, Set, Optional, Tuple
 from collections import defaultdict
 
 from mypy.nodes import (
     Decorator, Expression, FuncDef, FuncItem, LambdaExpr, NameExpr, SymbolNode, Var, MemberExpr,
-    CallExpr, RefExpr, TypeInfo
+    CallExpr, RefExpr, TypeInfo, MypyFile
 )
 from mypy.traverser import TraverserVisitor
 
@@ -23,7 +24,7 @@ class PreBuildVisitor(TraverserVisitor):
     The main IR build pass uses this information.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, errors: Errors, current_file: MypyFile) -> None:
         super().__init__()
         # Dict from a function to symbols defined directly in the
         # function that are used as non-local (free) variables within a
@@ -57,6 +58,10 @@ class PreBuildVisitor(TraverserVisitor):
         self.singledispatch_impls: DefaultDict[
             FuncDef, List[Tuple[TypeInfo, FuncDef]]] = defaultdict(list)
 
+        self.errors: Errors = errors
+
+        self.current_file: MypyFile = current_file
+
     def visit_decorator(self, dec: Decorator) -> None:
         if dec.decorators:
             # Only add the function being decorated if there exist
@@ -72,12 +77,27 @@ class PreBuildVisitor(TraverserVisitor):
             else:
                 decorators_to_store = dec.decorators.copy()
                 removed: List[int] = []
-                for i, d in enumerate(decorators_to_store):
+                found_register = False
+                # reverse the list of decorators so we check them from bottom to top, which lets us
+                # tell if we've seen register decorators and have later found non-register
+                # decorators
+                for i, d in enumerate(reversed(decorators_to_store)):
                     impl = get_singledispatch_register_call_info(d, dec.func)
                     if impl is not None:
                         self.singledispatch_impls[impl.singledispatch_func].append(
                             (impl.dispatch_type, dec.func))
                         removed.append(i)
+                        found_register = True
+                    elif found_register:
+                        # found a non-register decorator after a register decorator, which we don't
+                        # support because we'd have to make a copy of the function before calling
+                        # the decorator so that we can call it later, which complicates the
+                        # implementation for something that is probably not commonly used
+                        self.errors.error(
+                            "Calling decorator after registering function not supported",
+                            self.current_file.path,
+                            d.line,
+                        )
                 # calling register on a function that tries to dispatch based on type annotations
                 # raises a TypeError because compiled functions don't have an __annotations__
                 # attribute
