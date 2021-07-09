@@ -290,7 +290,8 @@ class TypedDictAnalyzer:
                 self.fail_typeddict_arg("Invalid TypedDict() field name", name_context)
                 return [], [], False
             try:
-                type = expr_to_unanalyzed_type(field_type_expr)
+                type = expr_to_unanalyzed_type(field_type_expr, self.options,
+                                               self.api.is_stub_file)
             except TypeTranslationError:
                 self.fail_typeddict_arg('Invalid field type', field_type_expr)
                 return [], [], False

@@ -76,7 +76,7 @@ from mypy.nodes import (
     get_nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
     REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_source_versions,
     EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement, AssignmentExpr,
-    ParamSpecExpr
+    ParamSpecExpr, EllipsisExpr
 )
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.typevars import fill_typevars
@@ -91,7 +91,8 @@ from mypy.types import (
     FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
     TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType,
-    get_proper_type, get_proper_types, TypeAliasType)
+    get_proper_type, get_proper_types, TypeAliasType
+)
 from mypy.typeops import function_type
 from mypy.type_visitor import TypeQuery
 from mypy.nodes import implicit_module_attrs
@@ -1266,7 +1267,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.analyze_type_expr(base_expr)
 
             try:
-                base = expr_to_unanalyzed_type(base_expr)
+                base = self.expr_to_unanalyzed_type(base_expr)
             except TypeTranslationError:
                 # This error will be caught later.
                 continue
@@ -1372,7 +1373,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         for i, base_expr in enumerate(base_type_exprs):
             if i not in removed:
                 try:
-                    base = expr_to_unanalyzed_type(base_expr)
+                    base = self.expr_to_unanalyzed_type(base_expr)
                 except TypeTranslationError:
                     # This error will be caught later.
                     continue
@@ -2100,7 +2101,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             return self.should_wait_rhs(rv.callee)
         return False
 
-    def can_be_type_alias(self, rv: Expression) -> bool:
+    def can_be_type_alias(self, rv: Expression, allow_none: bool = False) -> bool:
         """Is this a valid r.h.s. for an alias definition?
 
         Note: this function should be only called for expressions where self.should_wait_rhs()
@@ -2111,6 +2112,13 @@ class SemanticAnalyzer(NodeVisitor[None],
         if isinstance(rv, IndexExpr) and self.is_type_ref(rv.base, bare=False):
             return True
         if self.is_none_alias(rv):
+            return True
+        if allow_none and isinstance(rv, NameExpr) and rv.fullname == 'builtins.None':
+            return True
+        if (isinstance(rv, OpExpr)
+                and rv.op == '|'
+                and self.can_be_type_alias(rv.left, allow_none=True)
+                and self.can_be_type_alias(rv.right, allow_none=True)):
             return True
         return False
 
@@ -2499,7 +2507,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                                  self.plugin,
                                  self.options,
                                  self.is_typeshed_stub_file,
-                                 allow_unnormalized=self.is_stub_file,
+                                 allow_new_syntax=self.is_stub_file,
                                  allow_placeholder=allow_placeholder,
                                  in_dynamic_func=dynamic,
                                  global_scope=global_scope)
@@ -3194,7 +3202,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         result: List[Type] = []
         for node in items:
             try:
-                analyzed = self.anal_type(expr_to_unanalyzed_type(node),
+                analyzed = self.anal_type(self.expr_to_unanalyzed_type(node),
                                           allow_placeholder=True)
                 if analyzed is None:
                     # Type variables are special: we need to place them in the symbol table
@@ -3637,7 +3645,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 return
             # Translate first argument to an unanalyzed type.
             try:
-                target = expr_to_unanalyzed_type(expr.args[0])
+                target = self.expr_to_unanalyzed_type(expr.args[0])
             except TypeTranslationError:
                 self.fail('Cast target is not a type', expr)
                 return
@@ -3695,7 +3703,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 return
             # Translate first argument to an unanalyzed type.
             try:
-                target = expr_to_unanalyzed_type(expr.args[0])
+                target = self.expr_to_unanalyzed_type(expr.args[0])
             except TypeTranslationError:
                 self.fail('Argument 1 to _promote is not a type', expr)
                 return
@@ -3867,7 +3875,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         # ...or directly.
         else:
             n = self.lookup_type_node(base)
-            if n and n.fullname in get_nongen_builtins(self.options.python_version):
+            if (n and n.fullname in get_nongen_builtins(self.options.python_version) and
+                    not self.is_stub_file):
                 self.fail(no_subscript_builtin_alias(n.fullname, propose_alt=False), expr)
 
     def analyze_type_application_args(self, expr: IndexExpr) -> Optional[List[Type]]:
@@ -3883,11 +3892,14 @@ class SemanticAnalyzer(NodeVisitor[None],
         types: List[Type] = []
         if isinstance(index, TupleExpr):
             items = index.items
+            is_tuple = isinstance(expr.base, RefExpr) and expr.base.fullname == 'builtins.tuple'
+            if is_tuple and len(items) == 2 and isinstance(items[-1], EllipsisExpr):
+                items = items[:-1]
         else:
             items = [index]
         for item in items:
             try:
-                typearg = expr_to_unanalyzed_type(item)
+                typearg = self.expr_to_unanalyzed_type(item)
             except TypeTranslationError:
                 self.fail('Type expected within [...]', expr)
                 return None
@@ -4194,7 +4206,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def lookup_type_node(self, expr: Expression) -> Optional[SymbolTableNode]:
         try:
-            t = expr_to_unanalyzed_type(expr)
+            t = self.expr_to_unanalyzed_type(expr)
         except TypeTranslationError:
             return None
         if isinstance(t, UnboundType):
@@ -4914,7 +4926,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             assert info.tuple_type, "NamedTuple without tuple type"
             fallback = Instance(info, [])
             return TupleType(info.tuple_type.items, fallback=fallback)
-        typ = expr_to_unanalyzed_type(expr)
+        typ = self.expr_to_unanalyzed_type(expr)
         return self.anal_type(typ, report_invalid_types=report_invalid_types,
                               allow_placeholder=allow_placeholder)
 
@@ -4944,11 +4956,14 @@ class SemanticAnalyzer(NodeVisitor[None],
                             allow_unbound_tvars=allow_unbound_tvars,
                             allow_tuple_literal=allow_tuple_literal,
                             report_invalid_types=report_invalid_types,
-                            allow_unnormalized=self.is_stub_file,
+                            allow_new_syntax=self.is_stub_file,
                             allow_placeholder=allow_placeholder)
         tpan.in_dynamic_func = bool(self.function_stack and self.function_stack[-1].is_dynamic())
         tpan.global_scope = not self.type and not self.function_stack
         return tpan
+
+    def expr_to_unanalyzed_type(self, node: Expression) -> ProperType:
+        return expr_to_unanalyzed_type(node, self.options, self.is_stub_file)
 
     def anal_type(self,
                   typ: Type, *,

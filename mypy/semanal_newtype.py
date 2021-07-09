@@ -160,7 +160,7 @@ class NewTypeAnalyzer:
         # Check second argument
         msg = "Argument 2 to NewType(...) must be a valid type"
         try:
-            unanalyzed_type = expr_to_unanalyzed_type(args[1])
+            unanalyzed_type = expr_to_unanalyzed_type(args[1], self.options, self.api.is_stub_file)
         except TypeTranslationError:
             self.fail(msg, context)
             return None, False

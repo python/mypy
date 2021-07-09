@@ -25,8 +25,10 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
-    bool_rprimitive, is_dict_rprimitive, c_int_rprimitive, is_str_rprimitive
+    bool_rprimitive, c_int_rprimitive, c_pyssize_t_rprimitive, is_dict_rprimitive,
+    is_int_rprimitive, is_str_rprimitive, is_short_int_rprimitive
 )
+from mypyc.primitives.int_ops import int_to_str_op
 from mypyc.primitives.dict_ops import (
     dict_keys_op, dict_values_op, dict_items_op, dict_setdefault_spec_init_op
 )
@@ -372,13 +374,21 @@ def translate_str_format(
 
         literals = split_braces(format_str)
 
-        variables = [builder.accept(x) if is_str_rprimitive(builder.node_type(x))
-                     else builder.call_c(str_op, [builder.accept(x)], expr.line)
-                     for x in expr.args]
+        # Convert variables to strings
+        variables = []
+        for x in expr.args:
+            node_type = builder.node_type(x)
+            if is_str_rprimitive(node_type):
+                var_str = builder.accept(x)
+            elif is_int_rprimitive(node_type) or is_short_int_rprimitive(node_type):
+                var_str = builder.call_c(int_to_str_op, [builder.accept(x)], expr.line)
+            else:
+                var_str = builder.call_c(str_op, [builder.accept(x)], expr.line)
+            variables.append(var_str)
 
         # The first parameter is the total size of the following PyObject* merged from
         # two lists alternatively.
-        result_list: List[Value] = [Integer(0, c_int_rprimitive)]
+        result_list: List[Value] = [Integer(0, c_pyssize_t_rprimitive)]
         for a, b in zip(literals, variables):
             if a:
                 result_list.append(builder.load_str(a))
@@ -393,7 +403,7 @@ def translate_str_format(
         if not variables and len(result_list) == 2:
             return result_list[1]
 
-        result_list[0] = Integer(len(result_list) - 1, c_int_rprimitive)
+        result_list[0] = Integer(len(result_list) - 1, c_pyssize_t_rprimitive)
         return builder.call_c(str_build_op, result_list, expr.line)
     return None
 
@@ -450,3 +460,45 @@ def split_braces(format_str: str) -> List[str]:
             prev = ''
     ret_list.append(tmp_str)
     return ret_list
+
+
+@specialize_function('join', str_rprimitive)
+def translate_fstring(
+        builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+    # Special case for f-string, which is translated into str.join() in mypy AST.
+    # This specializer optimizes simplest f-strings which don't contain any
+    # format operation.
+    if (isinstance(callee, MemberExpr)
+            and isinstance(callee.expr, StrExpr) and callee.expr.value == ''
+            and expr.arg_kinds == [ARG_POS] and isinstance(expr.args[0], ListExpr)):
+        for item in expr.args[0].items:
+            if isinstance(item, StrExpr):
+                continue
+            elif isinstance(item, CallExpr):
+                if (not isinstance(item.callee, MemberExpr)
+                        or item.callee.name != 'format'):
+                    return None
+                elif (not isinstance(item.callee.expr, StrExpr)
+                        or item.callee.expr.value != '{:{}}'):
+                    return None
+
+                if not isinstance(item.args[1], StrExpr) or item.args[1].value != '':
+                    return None
+            else:
+                return None
+
+        result_list: List[Value] = [Integer(0, c_pyssize_t_rprimitive)]
+        for item in expr.args[0].items:
+            if isinstance(item, StrExpr) and item.value != '':
+                result_list.append(builder.accept(item))
+            elif isinstance(item, CallExpr):
+                result_list.append(builder.call_c(str_op,
+                                                  [builder.accept(item.args[0])],
+                                                  expr.line))
+
+        if len(result_list) == 1:
+            return builder.load_str("")
+
+        result_list[0] = Integer(len(result_list) - 1, c_pyssize_t_rprimitive)
+        return builder.call_c(str_build_op, result_list, expr.line)
+    return None

@@ -357,6 +357,11 @@ class SemanticAnalyzerPluginInterface:
         """Is this the final iteration of semantic analysis?"""
         raise NotImplementedError
 
+    @property
+    @abstractmethod
+    def is_stub_file(self) -> bool:
+        raise NotImplementedError
+
 
 # A context for querying for configuration data about a module for
 # cache invalidation purposes.
