@@ -260,7 +260,7 @@ def all_values_full(args: List[Register], blocks: List[BasicBlock]) -> List[Valu
     for block in blocks:
         for op in block.ops:
             for source in op.sources():
-                # Look for unitialized registers that are accessed. Ignore
+                # Look for uninitialized registers that are accessed. Ignore
                 # non-registers since we don't allow ops outside basic blocks.
                 if isinstance(source, Register) and source not in seen_registers:
                     values.append(source)

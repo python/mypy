@@ -155,7 +155,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
                            non_ext_class
                        ], cdef.line)
 
-        # Cache any cachable class attributes
+        # Cache any cacheable class attributes
         cache_class_attrs(builder, attrs_to_cache, cdef)
 
 
