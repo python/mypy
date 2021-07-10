@@ -134,6 +134,7 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
             index = builder.builder.load_int(fields.index(expr.name))
             return builder.gen_method_call(obj, '__getitem__', [index], rtype, expr.line)
 
+    # Report error if accessing an instance attribute through class object.
     if isinstance(expr.expr, RefExpr):
         node = expr.expr.node
         if isinstance(typ, TypeType) and isinstance(typ.item, Instance):
