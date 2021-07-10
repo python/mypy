@@ -354,7 +354,7 @@ def test_verify() -> None:
     assert verify_list(MypyFile(), 5, ['a', 'b']) == ['in TypeInfo', 'hello']
     assert verify_list(TypeInfo(), str, ['a', 'b']) == ['in TypeInfo', 'hello']
     assert verify_list(TypeVarExpr(), 'a', ['x', 'y']) == []
-    
+
 
 [case testArgsInRegisteredImplNamedDifferentlyFromMainFunction]
 from functools import singledispatch
