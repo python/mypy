@@ -339,7 +339,7 @@ the former has type hints and the latter does not. We run
 :option:`mypy -m mycode.foo <mypy -m>` and mypy discovers that ``mycode.foo`` imports
 ``mycode.bar``.
 
-How do we want mypy to type check ``mycode.bar``? Mypy's behavior here is
+How do we want mypy to type check ``mycode.bar``? Mypy's behaviour here is
 configurable -- although we **strongly recommend** using the default --
 by using the :option:`--follow-imports <mypy --follow-imports>` flag. This flag
 accepts one of four string values:
