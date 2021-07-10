@@ -247,6 +247,8 @@ o = Overload()
 assert get(o, "test") == "test"
 assert o.get(20) == 20
 
+assert get_class_var() == 'xy'
+
 [case testEnum]
 from enum import Enum
 
@@ -260,8 +262,6 @@ class TestEnum(Enum):
         return 3
 
 assert TestEnum.test() == 3
-
-assert get_class_var() == 'xy'
 
 [file other.py]
 # Force a multi-module test to make sure we can compile multi-file with
