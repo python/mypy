@@ -14,7 +14,7 @@ from mypy.nodes import (
     AssignmentExpr,
     Var, RefExpr, MypyFile, TypeInfo, TypeApplication, LDEF, ARG_POS
 )
-from mypy.types import TupleType, get_proper_type, Instance
+from mypy.types import TupleType, Instance, TypeType, get_proper_type
 
 from mypyc.common import MAX_SHORT_INT
 from mypyc.ir.ops import (
@@ -136,11 +136,16 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
 
     if isinstance(expr.expr, RefExpr):
         node = expr.expr.node
+        if isinstance(typ, TypeType) and isinstance(typ.item, Instance):
+            node = typ.item.type
         if isinstance(node, TypeInfo):
             class_ir = builder.mapper.type_to_ir.get(node)
             if class_ir is not None and class_ir.is_ext_class:
                 sym = node.get(expr.name)
-                if sym is not None and isinstance(sym.node, Var) and not sym.node.is_classvar:
+                if (sym is not None
+                        and isinstance(sym.node, Var)
+                        and not sym.node.is_classvar
+                        and not sym.node.is_final):
                     builder.error(
                         'Cannot access instance attribute "{}" through class object'.format(
                             expr.name),

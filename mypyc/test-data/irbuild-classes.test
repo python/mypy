@@ -1146,7 +1146,7 @@ class DeletableFinal2:
     __deletable__ = ['X']
 
 [case testNeedAnnotateClassVar]
-from typing import Final, ClassVar
+from typing import Final, ClassVar, Type
 
 class C:
     a = 'A'
@@ -1171,3 +1171,14 @@ def f() -> None:
          # N: (Hint: Use "x: Final = ..." or "x: ClassVar = ..." to define a class attribute)
     D.f
     D.c
+
+def g(c: Type[C], d: Type[D]) -> None:
+    c.a  # E: Cannot access instance attribute "a" through class object \
+         # N: (Hint: Use "x: Final = ..." or "x: ClassVar = ..." to define a class attribute)
+    c.f
+    c.c
+
+    d.a  # E: Cannot access instance attribute "a" through class object \
+         # N: (Hint: Use "x: Final = ..." or "x: ClassVar = ..." to define a class attribute)
+    d.f
+    d.c
