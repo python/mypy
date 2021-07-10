@@ -14,7 +14,7 @@ from mypy.nodes import (
     AssignmentExpr,
     Var, RefExpr, MypyFile, TypeInfo, TypeApplication, LDEF, ARG_POS
 )
-from mypy.types import TupleType, get_proper_type, Instance
+from mypy.types import TupleType, Instance, TypeType, ProperType, get_proper_type
 
 from mypyc.common import MAX_SHORT_INT
 from mypyc.ir.ops import (
@@ -133,7 +133,39 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
         if expr.name in fields:
             index = builder.builder.load_int(fields.index(expr.name))
             return builder.gen_method_call(obj, '__getitem__', [index], rtype, expr.line)
+
+    check_instance_attribute_access_through_class(builder, expr, typ)
+
     return builder.builder.get_attr(obj, expr.name, rtype, expr.line)
+
+
+def check_instance_attribute_access_through_class(builder: IRBuilder,
+                                                  expr: MemberExpr,
+                                                  typ: Optional[ProperType]) -> None:
+    """Report error if accessing an instance attribute through class object."""
+    if isinstance(expr.expr, RefExpr):
+        node = expr.expr.node
+        if isinstance(typ, TypeType) and isinstance(typ.item, Instance):
+            # TODO: Handle other item types
+            node = typ.item.type
+        if isinstance(node, TypeInfo):
+            class_ir = builder.mapper.type_to_ir.get(node)
+            if class_ir is not None and class_ir.is_ext_class:
+                sym = node.get(expr.name)
+                if (sym is not None
+                        and isinstance(sym.node, Var)
+                        and not sym.node.is_classvar
+                        and not sym.node.is_final):
+                    builder.error(
+                        'Cannot access instance attribute "{}" through class object'.format(
+                            expr.name),
+                        expr.line
+                    )
+                    builder.note(
+                        '(Hint: Use "x: Final = ..." or "x: ClassVar = ..." to define '
+                        'a class attribute)',
+                        expr.line
+                    )
 
 
 def transform_super_expr(builder: IRBuilder, o: SuperExpr) -> Value:

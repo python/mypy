@@ -225,8 +225,15 @@ class Overload:
 def get(c: Overload, s: str) -> str:
     return c.get(s)
 
+@decorator
+class Var:
+    x = 'xy'
+
+def get_class_var() -> str:
+    return Var.x
+
 [file driver.py]
-from native import A, Overload, get
+from native import A, Overload, get, get_class_var
 a = A()
 assert a.a == 1
 assert a.b == 2
@@ -239,6 +246,8 @@ assert A.constant() == 4
 o = Overload()
 assert get(o, "test") == "test"
 assert o.get(20) == 20
+
+assert get_class_var() == 'xy'
 
 [case testEnum]
 from enum import Enum
