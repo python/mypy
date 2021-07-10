@@ -602,10 +602,12 @@ class ASTConverter:
                                          AnyType(TypeOfAny.unannotated),
                                          _dummy_fallback)
 
-        func_def = FuncDef(n.name,
-                       args,
-                       self.as_required_block(n.body, lineno),
-                       func_type)
+        func_def = FuncDef(
+            n.name,
+            args,
+            self.as_required_block(n.body, lineno),
+            func_type,
+            num_pos_only=len(posonlyargs))
         if isinstance(func_def.type, CallableType):
             # semanal.py does some in-place modifications we want to avoid
             func_def.unanalyzed_type = func_def.type.copy_modified()
@@ -992,8 +994,10 @@ class ASTConverter:
         body.lineno = n.body.lineno
         body.col_offset = n.body.col_offset
 
+        num_pos_only = len(getattr(n.args, "posonlyargs", []))
         e = LambdaExpr(self.transform_args(n.args, n.lineno),
-                       self.as_required_block([body], n.lineno))
+                       self.as_required_block([body], n.lineno),
+                       num_pos_only=num_pos_only)
         e.set_line(n.lineno, n.col_offset)  # Overrides set_line -- can't use self.set_line
         return e
 

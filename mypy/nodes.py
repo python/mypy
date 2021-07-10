@@ -598,6 +598,7 @@ class FuncItem(FuncBase):
     __slots__ = ('arguments',  # Note that can be None if deserialized (type is a lie!)
                  'arg_names',  # Names of arguments
                  'arg_kinds',  # Kinds of arguments
+                 'num_pos_only',  # Number of positional only args
                  'min_args',  # Minimum number of arguments
                  'max_pos',  # Maximum number of positional arguments, -1 if no explicit
                              # limit (*args not included)
@@ -616,11 +617,13 @@ class FuncItem(FuncBase):
     def __init__(self,
                  arguments: List[Argument],
                  body: 'Block',
-                 typ: 'Optional[mypy.types.FunctionLike]' = None) -> None:
+                 typ: 'Optional[mypy.types.FunctionLike]' = None,
+                 num_pos_only: int = 0) -> None:
         super().__init__()
         self.arguments = arguments
         self.arg_names = [arg.variable.name for arg in self.arguments]
         self.arg_kinds: List[ArgKind] = [arg.kind for arg in self.arguments]
+        self.num_pos_only = num_pos_only
         self.max_pos: int = (
             self.arg_kinds.count(ARG_POS) + self.arg_kinds.count(ARG_OPT))
         self.body: 'Block' = body
@@ -675,8 +678,9 @@ class FuncDef(FuncItem, SymbolNode, Statement):
                  name: str,              # Function name
                  arguments: List[Argument],
                  body: 'Block',
-                 typ: 'Optional[mypy.types.FunctionLike]' = None) -> None:
-        super().__init__(arguments, body, typ)
+                 typ: 'Optional[mypy.types.FunctionLike]' = None,
+                 num_pos_only: int = 0) -> None:
+        super().__init__(arguments, body, typ, num_pos_only)
         self._name = name
         self.is_decorated = False
         self.is_conditional = False  # Defined conditionally (within block)?

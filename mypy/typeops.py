@@ -564,7 +564,8 @@ def callable_type(fdef: FuncItem, fallback: Instance,
     return CallableType(
         args,
         fdef.arg_kinds,
-        [None if argument_elide_name(n) else n for n in fdef.arg_names],
+        [None if argument_elide_name(n) or i < fdef.num_pos_only else n
+         for i, n in enumerate(fdef.arg_names)],
         ret_type or AnyType(TypeOfAny.unannotated),
         fallback,
         name=fdef.name,
