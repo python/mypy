@@ -325,7 +325,7 @@ class LowLevelIRBuilder:
         API should be used instead.
         """
         # We can do this if all args are positional or named (no *args or **kwargs).
-        if arg_kinds is None or all(kind in (ARG_POS, ARG_NAMED) for kind in arg_kinds):
+        if arg_kinds is None or all(not kind.is_star() for kind in arg_kinds):
             if arg_values:
                 # Create a C array containing all arguments as boxed values.
                 array = Register(RArray(object_rprimitive, len(arg_values)))
@@ -396,7 +396,7 @@ class LowLevelIRBuilder:
         Return the return value if successful. Return None if a non-vectorcall
         API should be used instead.
         """
-        if arg_kinds is None or all(kind in (ARG_POS, ARG_NAMED) for kind in arg_kinds):
+        if arg_kinds is None or all(not kind.is_star() for kind in arg_kinds):
             method_name_reg = self.load_str(method_name)
             array = Register(RArray(object_rprimitive, len(arg_values) + 1))
             self_arg = self.coerce(obj, object_rprimitive, line)
@@ -485,10 +485,8 @@ class LowLevelIRBuilder:
                         arg_kinds: Optional[List[ArgKind]] = None,
                         arg_names: Optional[List[Optional[str]]] = None) -> Value:
         """Generate either a native or Python method call."""
-        # If arg_kinds contains values other than arg_pos and arg_named, then fallback to
-        # Python method call.
-        if (arg_kinds is not None
-                and not all(kind in (ARG_POS, ARG_NAMED) for kind in arg_kinds)):
+        # If we have *args, then fallback to Python method call.
+        if (arg_kinds is not None and any(kind.is_star() for kind in arg_kinds)):
             return self.py_method_call(base, name, arg_values, base.line, arg_kinds, arg_names)
 
         # If the base type is one of ours, do a MethodCall

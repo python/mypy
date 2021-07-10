@@ -32,7 +32,7 @@ from mypy.nodes import (
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
     TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, SymbolNode, PlaceholderNode,
     ParamSpecExpr,
-    ArgKind, ARG_POS, ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, LITERAL_TYPE, REVEAL_TYPE,
+    ArgKind, ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, LITERAL_TYPE, REVEAL_TYPE,
 )
 from mypy.literals import literal
 from mypy import nodes
@@ -1111,7 +1111,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         for i, actuals in enumerate(formal_to_actual):
             for ai in actuals:
-                if arg_kinds[ai] not in (nodes.ARG_STAR, nodes.ARG_STAR2):
+                if not arg_kinds[ai].is_star():
                     res[ai] = self.accept(args[ai], callee.arg_types[i])
 
         # Fill in the rest of the argument types.
@@ -1364,18 +1364,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         # Check for too many or few values for formals.
         for i, kind in enumerate(callee.arg_kinds):
-            if kind == nodes.ARG_POS and (not formal_to_actual[i] and
-                                          not is_unexpected_arg_error):
-                # No actual for a mandatory positional formal.
+            if kind.is_required() and not formal_to_actual[i] and not is_unexpected_arg_error:
+                # No actual for a mandatory formal
                 if messages:
-                    messages.too_few_arguments(callee, context, actual_names)
-                ok = False
-            elif kind == nodes.ARG_NAMED and (not formal_to_actual[i] and
-                                              not is_unexpected_arg_error):
-                # No actual for a mandatory named formal
-                if messages:
-                    argname = callee.arg_names[i] or "?"
-                    messages.missing_named_argument(callee, context, argname)
+                    if kind.is_positional():
+                        messages.too_few_arguments(callee, context, actual_names)
+                    else:
+                        argname = callee.arg_names[i] or "?"
+                        messages.missing_named_argument(callee, context, argname)
                 ok = False
             elif not kind.is_star() and is_duplicate_mapping(
                     formal_to_actual[i], actual_types, actual_kinds):
@@ -1385,7 +1381,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     if messages:
                         messages.duplicate_argument_value(callee, i, context)
                     ok = False
-            elif (kind in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT) and formal_to_actual[i] and
+            elif (kind.is_named() and formal_to_actual[i] and
                   actual_kinds[formal_to_actual[i][0]] not in [nodes.ARG_NAMED, nodes.ARG_STAR2]):
                 # Positional argument when expecting a keyword argument.
                 if messages:
@@ -1925,7 +1921,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             for i, (new_kind, target_kind) in enumerate(zip(new_kinds, target.arg_kinds)):
                 if new_kind == target_kind:
                     continue
-                elif new_kind in (ARG_POS, ARG_OPT) and target_kind in (ARG_POS, ARG_OPT):
+                elif new_kind.is_positional() and target_kind.is_positional():
                     new_kinds[i] = ARG_POS
                 else:
                     too_complex = True

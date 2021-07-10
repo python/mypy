@@ -14,7 +14,7 @@ from typing import NamedTuple, Optional, List, Sequence, Tuple, Union, Dict
 
 from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, Decorator, Var, YieldFromExpr, AwaitExpr, YieldExpr,
-    FuncItem, LambdaExpr, SymbolNode, ArgKind, ARG_NAMED, ARG_NAMED_OPT, TypeInfo
+    FuncItem, LambdaExpr, SymbolNode, ArgKind, TypeInfo
 )
 from mypy.types import CallableType, get_proper_type
 
@@ -649,7 +649,7 @@ def get_args(builder: IRBuilder, rt_args: Sequence[RuntimeArg], line: int) -> Ar
     fake_vars = [(Var(arg.name), arg.type) for arg in rt_args]
     args = [builder.read(builder.add_local_reg(var, type, is_arg=True), line)
             for var, type in fake_vars]
-    arg_names = [arg.name if arg.kind in (ARG_NAMED, ARG_NAMED_OPT) else None
+    arg_names = [arg.name if arg.kind.is_named() else None
                  for arg in rt_args]
     arg_kinds = [concrete_arg_kind(arg.kind) for arg in rt_args]
     return ArgInfo(args, arg_names, arg_kinds)

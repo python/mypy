@@ -1,7 +1,7 @@
 from mypy.messages import format_type
 from mypy.plugins.common import add_method_to_class
 from mypy.nodes import (
-    ARG_POS, Argument, Block, ClassDef, SymbolTable, TypeInfo, Var, ARG_STAR, ARG_OPT, Context
+    ARG_POS, Argument, Block, ClassDef, SymbolTable, TypeInfo, Var, Context
 )
 from mypy.subtypes import is_subtype
 from mypy.types import (
@@ -98,7 +98,7 @@ def create_singledispatch_function_callback(ctx: FunctionContext) -> Type:
             )
             return ctx.default_return_type
 
-        elif func_type.arg_kinds[0] not in (ARG_POS, ARG_OPT, ARG_STAR):
+        elif not func_type.arg_kinds[0].is_positional(star=True):
             fail(
                 ctx,
                 'First argument to singledispatch function must be a positional argument',

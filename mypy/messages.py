@@ -1711,12 +1711,12 @@ def format_type_inner(typ: Type,
             for arg_name, arg_type, arg_kind in zip(
                     func.arg_names, func.arg_types, func.arg_kinds):
                 if (arg_kind == ARG_POS and arg_name is None
-                        or verbosity == 0 and arg_kind in (ARG_POS, ARG_OPT)):
+                        or verbosity == 0 and arg_kind.is_positional()):
 
                     arg_strings.append(format(arg_type))
                 else:
                     constructor = ARG_CONSTRUCTOR_NAMES[arg_kind]
-                    if arg_kind in (ARG_STAR, ARG_STAR2) or arg_name is None:
+                    if arg_kind.is_star() or arg_name is None:
                         arg_strings.append("{}({})".format(
                             constructor,
                             format(arg_type)))
@@ -1849,7 +1849,7 @@ def pretty_callable(tp: CallableType) -> str:
     for i in range(len(tp.arg_types)):
         if s:
             s += ', '
-        if tp.arg_kinds[i] in (ARG_NAMED, ARG_NAMED_OPT) and not asterisk:
+        if tp.arg_kinds[i].is_named() and not asterisk:
             s += '*, '
             asterisk = True
         if tp.arg_kinds[i] == ARG_STAR:
@@ -1861,7 +1861,7 @@ def pretty_callable(tp: CallableType) -> str:
         if name:
             s += name + ': '
         s += format_type_bare(tp.arg_types[i])
-        if tp.arg_kinds[i] in (ARG_OPT, ARG_NAMED_OPT):
+        if tp.arg_kinds[i].is_optional():
             s += ' = ...'
 
     # If we got a "special arg" (i.e: self, cls, etc...), prepend it to the arg list
