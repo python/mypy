@@ -413,37 +413,21 @@ class B: pass
 
 T = TypeVar('T')
 
-def decorator1(f: T) -> T:
-    return f
-
-def decorator2(f: T) -> T:
+def decorator(f: T) -> T:
     return f
 
 @singledispatch
 def f(arg) -> int:
     return 0
 
-@decorator1
 @f.register
-def g(arg: int) -> int:
-    return 1
-
-@f.register
-@decorator1
+@decorator
 def h(arg: str) -> int:
     return 2
 
-@decorator2
-@f.register
-@decorator1
-def i(arg: A) -> int:
-    return 3
-
 def test_singledispatch():
-    assert f(1) == 1
+    assert f(1) == 0
     assert f('a') == 2
-    assert f(A()) == 3
-    assert f(B()) == 0
 
 [case testDecoratorModifiesFunction]
 from functools import singledispatch
@@ -460,11 +444,6 @@ def decorator(f: Callable[[Any], int]) -> Callable[[Any], int]:
 def f(arg) -> int:
     return 10
 
-@decorator
-@f.register
-def g(arg: int) -> int:
-    return 3
-
 @f.register
 @decorator
 def h(arg: str) -> int:
@@ -472,8 +451,5 @@ def h(arg: str) -> int:
 
 
 def test_singledispatch():
-    # should be registered before decorator is run
-    assert f(1) == 3
-    # should be registered after decorator is run
     assert f('a') == 35
     assert f(A()) == 10

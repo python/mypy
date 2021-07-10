@@ -108,6 +108,7 @@ def f(x: int) -> int:
 from typing import List, Any, AsyncIterable
 from typing_extensions import Final
 from mypy_extensions import trait, mypyc_attr
+from functools import singledispatch
 
 def busted(b: bool) -> None:
     for i in range(1, 10, 0):  # E: range() step can't be zero
@@ -219,3 +220,23 @@ async def async_with() -> None:
 
 async def async_generators() -> AsyncIterable[int]:
     yield 1  # E: async generators are unimplemented
+
+@singledispatch
+def a(arg) -> None:
+    pass
+
+@decorator # E: Calling decorator after registering function not supported
+@a.register
+def g(arg: int) -> None:
+    pass
+
+@a.register
+@decorator
+def h(arg: str) -> None:
+    pass
+
+@decorator
+@decorator # E: Calling decorator after registering function not supported
+@a.register
+def i(arg: Foo) -> None:
+    pass
