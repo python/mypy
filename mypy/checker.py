@@ -1685,7 +1685,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if not emitted_msg:
                 # Fall back to generic incompatibility message.
                 self.msg.signature_incompatible_with_supertype(
-                    name, name_in_super, supertype, node)
+                    name, name_in_super, supertype, node, original=original, override=override)
             if op_method_wider_note:
                 self.note("Overloaded operator methods can't have wider argument types"
                           " in overrides", node, code=codes.OVERRIDE)

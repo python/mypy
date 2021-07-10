@@ -31,7 +31,7 @@ from mypy.nodes import (
     TypeInfo, Context, MypyFile, FuncDef, reverse_builtin_aliases,
     ArgKind, ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
-    CallExpr, IndexExpr, StrExpr, SymbolTable, TempNode
+    CallExpr, IndexExpr, StrExpr, SymbolTable, TempNode, SYMBOL_FUNCBASE_TYPES
 )
 from mypy.operators import op_methods, op_methods_to_symbols
 from mypy.subtypes import (
@@ -164,7 +164,8 @@ class MessageBuilder:
                code: Optional[ErrorCode] = None,
                file: Optional[str] = None,
                origin: Optional[Context] = None,
-               offset: int = 0) -> None:
+               offset: int = 0,
+               allow_dups: bool = False) -> None:
         """Report an error or note (unless disabled)."""
         if origin is not None:
             end_line = origin.end_line
@@ -177,8 +178,7 @@ class MessageBuilder:
                                context.get_column() if context else -1,
                                msg, severity=severity, file=file, offset=offset,
                                origin_line=origin.get_line() if origin else None,
-                               end_line=end_line,
-                               code=code)
+                               end_line=end_line, code=code, allow_dups=allow_dups)
 
     def fail(self,
              msg: str,
@@ -186,9 +186,11 @@ class MessageBuilder:
              *,
              code: Optional[ErrorCode] = None,
              file: Optional[str] = None,
-             origin: Optional[Context] = None) -> None:
+             origin: Optional[Context] = None,
+             allow_dups: bool = False) -> None:
         """Report an error message (unless disabled)."""
-        self.report(msg, context, 'error', code=code, file=file, origin=origin)
+        self.report(msg, context, 'error', code=code, file=file,
+                    origin=origin, allow_dups=allow_dups)
 
     def note(self,
              msg: str,
@@ -196,19 +198,21 @@ class MessageBuilder:
              file: Optional[str] = None,
              origin: Optional[Context] = None,
              offset: int = 0,
+             allow_dups: bool = False,
              *,
              code: Optional[ErrorCode] = None) -> None:
         """Report a note (unless disabled)."""
         self.report(msg, context, 'note', file=file, origin=origin,
-                    offset=offset, code=code)
+                    offset=offset, allow_dups=allow_dups, code=code)
 
     def note_multiline(self, messages: str, context: Context, file: Optional[str] = None,
                        origin: Optional[Context] = None, offset: int = 0,
+                       allow_dups: bool = False,
                        code: Optional[ErrorCode] = None) -> None:
         """Report as many notes as lines in the message (unless disabled)."""
         for msg in messages.splitlines():
             self.report(msg, context, 'note', file=file, origin=origin,
-                        offset=offset, code=code)
+                        offset=offset, allow_dups=allow_dups, code=code)
 
     #
     # Specific operations
@@ -784,11 +788,58 @@ class MessageBuilder:
         self.note(note_template.format(supertype), context, code=codes.OVERRIDE)
 
     def signature_incompatible_with_supertype(
-            self, name: str, name_in_super: str, supertype: str,
-            context: Context) -> None:
+            self, name: str, name_in_super: str, supertype: str, context: Context,
+            original: Optional[FunctionLike] = None,
+            override: Optional[FunctionLike] = None) -> None:
+        code = codes.OVERRIDE
         target = self.override_target(name, name_in_super, supertype)
         self.fail('Signature of "{}" incompatible with {}'.format(
-            name, target), context, code=codes.OVERRIDE)
+            name, target), context, code=code)
+
+        INCLUDE_DECORATOR = True  # Include @classmethod and @staticmethod decorators, if any
+        ALLOW_DUPS = True  # Allow duplicate notes, needed when signatures are duplicates
+        MAX_ITEMS = 3  # Display a max of three items for Overloaded types
+        ALIGN_OFFSET = 1  # One space, to account for the difference between error and note
+        OFFSET = 4  # Four spaces, so that notes will look like this:
+        # error: Signature of "f" incompatible with supertype "A"
+        # note:      Superclass:
+        # note:          def f(self) -> str
+        # note:      Subclass:
+        # note:          def f(self, x: str) -> None
+        if original is not None and isinstance(original, (CallableType, Overloaded)) \
+                and override is not None and isinstance(override, (CallableType, Overloaded)):
+            self.note('Superclass:', context, offset=ALIGN_OFFSET + OFFSET, code=code)
+            self.pretty_callable_or_overload(original, context, offset=ALIGN_OFFSET + 2 * OFFSET,
+                                            add_class_or_static_decorator=INCLUDE_DECORATOR,
+                                            overload_max_items=MAX_ITEMS, allow_dups=ALLOW_DUPS,
+                                            code=code)
+
+            self.note('Subclass:', context, offset=ALIGN_OFFSET + OFFSET, code=code)
+            self.pretty_callable_or_overload(override, context, offset=ALIGN_OFFSET + 2 * OFFSET,
+                                            add_class_or_static_decorator=INCLUDE_DECORATOR,
+                                            overload_max_items=MAX_ITEMS, allow_dups=ALLOW_DUPS,
+                                            code=code)
+
+    def pretty_callable_or_overload(self,
+                                    tp: Union[CallableType, Overloaded],
+                                    context: Context,
+                                    *,
+                                    offset: int = 0,
+                                    add_class_or_static_decorator: bool = False,
+                                    overload_max_items: int = 1,
+                                    allow_dups: bool = False,
+                                    code: Optional[ErrorCode] = None) -> None:
+        if isinstance(tp, CallableType):
+            if add_class_or_static_decorator:
+                decorator = pretty_class_or_static_decorator(tp)
+                if decorator is not None:
+                    self.note(decorator, context, offset=offset, allow_dups=allow_dups, code=code)
+            self.note(pretty_callable(tp), context,
+                      offset=offset, allow_dups=allow_dups, code=code)
+        elif isinstance(tp, Overloaded):
+            self.pretty_overload(tp, context, offset, overload_max_items,
+                                 add_class_or_static_decorator=add_class_or_static_decorator,
+                                 allow_dups=allow_dups, code=code)
 
     def argument_incompatible_with_supertype(
             self, arg_num: int, name: str, type_name: Optional[str],
@@ -1409,13 +1460,13 @@ class MessageBuilder:
                         self.note(pretty_callable(exp), context, offset=2 * OFFSET, code=code)
                     else:
                         assert isinstance(exp, Overloaded)
-                        self.pretty_overload(exp, context, OFFSET, MAX_ITEMS, code=code)
+                        self.pretty_overload(exp, context, 2 * OFFSET, MAX_ITEMS, code=code)
                     self.note('Got:', context, offset=OFFSET, code=code)
                     if isinstance(got, CallableType):
                         self.note(pretty_callable(got), context, offset=2 * OFFSET, code=code)
                     else:
                         assert isinstance(got, Overloaded)
-                        self.pretty_overload(got, context, OFFSET, MAX_ITEMS, code=code)
+                        self.pretty_overload(got, context, 2 * OFFSET, MAX_ITEMS, code=code)
             self.print_more(conflict_types, context, OFFSET, MAX_ITEMS, code=code)
 
         # Report flag conflicts (i.e. settable vs read-only etc.)
@@ -1449,14 +1500,23 @@ class MessageBuilder:
                         offset: int,
                         max_items: int,
                         *,
+                        add_class_or_static_decorator: bool = False,
+                        allow_dups: bool = False,
                         code: Optional[ErrorCode] = None) -> None:
         for item in tp.items()[:max_items]:
-            self.note('@overload', context, offset=2 * offset, code=code)
-            self.note(pretty_callable(item), context, offset=2 * offset, code=code)
+            self.note('@overload', context, offset=offset, allow_dups=allow_dups, code=code)
+
+            if add_class_or_static_decorator:
+                decorator = pretty_class_or_static_decorator(item)
+                if decorator is not None:
+                    self.note(decorator, context, offset=offset, allow_dups=allow_dups, code=code)
+
+            self.note(pretty_callable(item), context,
+                      offset=offset, allow_dups=allow_dups, code=code)
         left = len(tp.items()) - max_items
         if left > 0:
             msg = '<{} more overload{} not shown>'.format(left, plural_s(left))
-            self.note(msg, context, offset=2 * offset, code=code)
+            self.note(msg, context, offset=offset, allow_dups=allow_dups, code=code)
 
     def pretty_overload_matches(self,
                                 targets: List[CallableType],
@@ -1839,6 +1899,16 @@ def format_type_distinctly(*types: Type, bare: bool = False) -> Tuple[str, ...]:
         return tuple(quote_type_string(s) for s in strs)
 
 
+def pretty_class_or_static_decorator(tp: CallableType) -> Optional[str]:
+    """Return @classmethod or @staticmethod, if any, for the given callable type."""
+    if tp.definition is not None and isinstance(tp.definition, SYMBOL_FUNCBASE_TYPES):
+        if tp.definition.is_class:
+            return '@classmethod'
+        if tp.definition.is_static:
+            return '@staticmethod'
+    return None
+
+
 def pretty_callable(tp: CallableType) -> str:
     """Return a nice easily-readable representation of a callable type.
     For example:
@@ -1883,7 +1953,12 @@ def pretty_callable(tp: CallableType) -> str:
     else:
         s = '({})'.format(s)
 
-    s += ' -> ' + format_type_bare(tp.ret_type)
+    s += ' -> '
+    if tp.type_guard is not None:
+        s += 'TypeGuard[{}]'.format(format_type_bare(tp.type_guard))
+    else:
+        s += format_type_bare(tp.ret_type)
+
     if tp.variables:
         tvars = []
         for tvar in tp.variables:

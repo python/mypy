@@ -37,7 +37,13 @@ class B(A):
     def f(self, *, b: str, a: int) -> None: pass
 
 class C(A):
-    def f(self, *, b: int, a: str) -> None: pass # E: Signature of "f" incompatible with supertype "A"
+    def f(self, *, b: int, a: str) -> None: pass  # Fail
+[out]
+main:10: error: Signature of "f" incompatible with supertype "A"
+main:10: note:      Superclass:
+main:10: note:          def f(self, *, a: int, b: str) -> None
+main:10: note:      Subclass:
+main:10: note:          def f(self, *, b: int, a: str) -> None
 
 [case testPositionalOverridingArgumentNameInsensitivity]
 import typing
@@ -62,8 +68,13 @@ class A(object):
     def f(self, a: int, b: str) -> None: pass
 
 class B(A):
-    def f(self, b: int, a: str) -> None: pass # E: Signature of "f" incompatible with supertype "A"
-
+    def f(self, b: int, a: str) -> None: pass  # Fail
+[out]
+main:7: error: Signature of "f" incompatible with supertype "A"
+main:7: note:      Superclass:
+main:7: note:          def f(self, a: int, b: str) -> None
+main:7: note:      Subclass:
+main:7: note:          def f(self, b: int, a: str) -> None
 
 [case testSubtypingFunctionTypes]
 from typing import Callable

@@ -58,6 +58,9 @@ class ErrorInfo:
     # Only report this particular messages once per program.
     only_once = False
 
+    # Do not remove duplicate copies of this message (ignored if only_once is True).
+    allow_dups = False
+
     # Actual origin of the error message as tuple (path, line number, end line number)
     # If end line number is unknown, use line number.
     origin: Tuple[str, int, int]
@@ -82,6 +85,7 @@ class ErrorInfo:
                  code: Optional[ErrorCode],
                  blocker: bool,
                  only_once: bool,
+                 allow_dups: bool,
                  origin: Optional[Tuple[str, int, int]] = None,
                  target: Optional[str] = None) -> None:
         self.import_ctx = import_ctx
@@ -96,17 +100,19 @@ class ErrorInfo:
         self.code = code
         self.blocker = blocker
         self.only_once = only_once
+        self.allow_dups = allow_dups
         self.origin = origin or (file, line, line)
         self.target = target
 
 
 # Type used internally to represent errors:
-#   (path, line, column, severity, message, code)
+#   (path, line, column, severity, message, allow_dups, code)
 ErrorTuple = Tuple[Optional[str],
                    int,
                    int,
                    str,
                    str,
+                   bool,
                    Optional[ErrorCode]]
 
 
@@ -290,6 +296,7 @@ class Errors:
                severity: str = 'error',
                file: Optional[str] = None,
                only_once: bool = False,
+               allow_dups: bool = False,
                origin_line: Optional[int] = None,
                offset: int = 0,
                end_line: Optional[int] = None) -> None:
@@ -304,6 +311,7 @@ class Errors:
             severity: 'error' or 'note'
             file: if non-None, override current file as context
             only_once: if True, only report this exact message once per build
+            allow_dups: if True, allow duplicate copies of this message (ignored if only_once)
             origin_line: if non-None, override current context as origin
             end_line: if non-None, override current context as end
         """
@@ -333,7 +341,7 @@ class Errors:
 
         info = ErrorInfo(self.import_context(), file, self.current_module(), type,
                          function, line, column, severity, message, code,
-                         blocker, only_once,
+                         blocker, only_once, allow_dups,
                          origin=(self.file, origin_line, end_line),
                          target=self.current_target())
         self.add_error_info(info)
@@ -410,6 +418,7 @@ class Errors:
             code=None,
             blocker=False,
             only_once=True,
+            allow_dups=False,
             origin=info.origin,
             target=info.target,
         )
@@ -456,7 +465,7 @@ class Errors:
                 # Don't use report since add_error_info will ignore the error!
                 info = ErrorInfo(self.import_context(), file, self.current_module(), None,
                                  None, line, -1, 'error', 'unused "type: ignore" comment',
-                                 None, False, False)
+                                 None, False, False, False)
                 self._add_error_info(file, info)
 
     def num_messages(self) -> int:
@@ -515,7 +524,7 @@ class Errors:
         error_info = [info for info in error_info if not info.hidden]
         errors = self.render_messages(self.sort_messages(error_info))
         errors = self.remove_duplicates(errors)
-        for file, line, column, severity, message, code in errors:
+        for file, line, column, severity, message, allow_dups, code in errors:
             s = ''
             if file is not None:
                 if self.show_column_numbers and line >= 0 and column >= 0:
@@ -590,7 +599,7 @@ class Errors:
                         errors: List[ErrorInfo]) -> List[ErrorTuple]:
         """Translate the messages into a sequence of tuples.
 
-        Each tuple is of form (path, line, col, severity, message, code).
+        Each tuple is of form (path, line, col, severity, message, allow_dups, code).
         The rendered sequence includes information about error contexts.
         The path item may be None. If the line item is negative, the
         line number is not defined for the tuple.
@@ -619,7 +628,8 @@ class Errors:
                     # Remove prefix to ignore from path (if present) to
                     # simplify path.
                     path = remove_path_prefix(path, self.ignore_prefix)
-                    result.append((None, -1, -1, 'note', fmt.format(path, line), None))
+                    result.append((None, -1, -1, 'note',
+                                   fmt.format(path, line), e.allow_dups, None))
                     i -= 1
 
             file = self.simplify_path(e.file)
@@ -631,27 +641,27 @@ class Errors:
                     e.type != prev_type):
                 if e.function_or_member is None:
                     if e.type is None:
-                        result.append((file, -1, -1, 'note', 'At top level:', None))
+                        result.append((file, -1, -1, 'note', 'At top level:', e.allow_dups, None))
                     else:
                         result.append((file, -1, -1, 'note', 'In class "{}":'.format(
-                            e.type), None))
+                            e.type), e.allow_dups, None))
                 else:
                     if e.type is None:
                         result.append((file, -1, -1, 'note',
                                        'In function "{}":'.format(
-                                           e.function_or_member), None))
+                                           e.function_or_member), e.allow_dups, None))
                     else:
                         result.append((file, -1, -1, 'note',
                                        'In member "{}" of class "{}":'.format(
-                                           e.function_or_member, e.type), None))
+                                           e.function_or_member, e.type), e.allow_dups, None))
             elif e.type != prev_type:
                 if e.type is None:
-                    result.append((file, -1, -1, 'note', 'At top level:', None))
+                    result.append((file, -1, -1, 'note', 'At top level:', e.allow_dups, None))
                 else:
                     result.append((file, -1, -1, 'note',
-                                   'In class "{}":'.format(e.type), None))
+                                   'In class "{}":'.format(e.type), e.allow_dups, None))
 
-            result.append((file, e.line, e.column, e.severity, e.message, e.code))
+            result.append((file, e.line, e.column, e.severity, e.message, e.allow_dups, e.code))
 
             prev_import_context = e.import_ctx
             prev_function_or_member = e.function_or_member
@@ -691,23 +701,25 @@ class Errors:
             # Use slightly special formatting for member conflicts reporting.
             conflicts_notes = False
             j = i - 1
-            while j >= 0 and errors[j][0] == errors[i][0]:
-                if errors[j][4].strip() == 'Got:':
-                    conflicts_notes = True
-                j -= 1
-            j = i - 1
-            while (j >= 0 and errors[j][0] == errors[i][0] and
-                    errors[j][1] == errors[i][1]):
-                if (errors[j][3] == errors[i][3] and
-                        # Allow duplicate notes in overload conflicts reporting.
-                        not ((errors[i][3] == 'note' and
-                              errors[i][4].strip() in allowed_duplicates)
-                             or (errors[i][4].strip().startswith('def ') and
-                                 conflicts_notes)) and
-                        errors[j][4] == errors[i][4]):  # ignore column
-                    dup = True
-                    break
-                j -= 1
+            # Find duplicates, unless duplicates are allowed.
+            if not errors[i][5]:
+                while j >= 0 and errors[j][0] == errors[i][0]:
+                    if errors[j][4].strip() == 'Got:':
+                        conflicts_notes = True
+                    j -= 1
+                j = i - 1
+                while (j >= 0 and errors[j][0] == errors[i][0] and
+                        errors[j][1] == errors[i][1]):
+                    if (errors[j][3] == errors[i][3] and
+                            # Allow duplicate notes in overload conflicts reporting.
+                            not ((errors[i][3] == 'note' and
+                                errors[i][4].strip() in allowed_duplicates)
+                                or (errors[i][4].strip().startswith('def ') and
+                                    conflicts_notes)) and
+                            errors[j][4] == errors[i][4]):  # ignore column
+                        dup = True
+                        break
+                    j -= 1
             if not dup:
                 res.append(errors[i])
             i += 1
