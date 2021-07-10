@@ -635,7 +635,7 @@ class Emitter:
                    borrow: bool = False) -> None:
         """Emit code for unboxing a value of given type (from PyObject *).
 
-        By default, assing error value to dest if the value has an
+        By default, assign error value to dest if the value has an
         incompatible type and raise TypeError. These can be customized
         using 'error' and 'raise_exception'.
 

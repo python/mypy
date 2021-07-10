@@ -614,7 +614,7 @@ class RStruct(RType):
         return visitor.visit_rstruct(self)
 
     def __str__(self) -> str:
-        # if not tuple(unamed structs)
+        # if not tuple(unnamed structs)
         return '%s{%s}' % (self.name, ', '.join(name + ":" + str(typ)
                                                 for name, typ in zip(self.names, self.types)))
 

@@ -448,7 +448,7 @@ MUST_ANALYSIS = 0
 MAYBE_ANALYSIS = 1
 
 
-# TODO the return type of this function is too complicated. Abtract it into its
+# TODO the return type of this function is too complicated. Abstract it into its
 # own class.
 
 def run_analysis(blocks: List[BasicBlock],

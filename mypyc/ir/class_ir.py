@@ -145,7 +145,7 @@ class ClassIR:
         # base_mro is the chain of concrete (non-trait) ancestors
         self.base_mro: List[ClassIR] = [self]
 
-        # Direct subclasses of this class (use subclasses() to also incude non-direct ones)
+        # Direct subclasses of this class (use subclasses() to also include non-direct ones)
         # None if separate compilation prevents this from working
         self.children: Optional[List[ClassIR]] = []
 

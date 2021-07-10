@@ -55,7 +55,7 @@ def use_custom_builtins(builtins_path: str, testcase: DataDrivenTestCase) -> Ite
         shutil.copyfile(builtins_path, builtins)
         default_builtins = True
 
-    # Actually peform the test case.
+    # Actually perform the test case.
     try:
         yield None
     finally:
@@ -76,7 +76,7 @@ def perform_test(func: Callable[[DataDrivenTestCase], None],
         shutil.copyfile(builtins_path, builtins)
         default_builtins = True
 
-    # Actually peform the test case.
+    # Actually perform the test case.
     func(testcase)
 
     if default_builtins:
