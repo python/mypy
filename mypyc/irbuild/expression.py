@@ -14,14 +14,14 @@ from mypy.nodes import (
     AssignmentExpr,
     Var, RefExpr, MypyFile, TypeInfo, TypeApplication, LDEF, ARG_POS
 )
-from mypy.types import TupleType, Instance, TypeType, get_proper_type
+from mypy.types import TupleType, Instance, TypeType, ProperType, get_proper_type
 
 from mypyc.common import MAX_SHORT_INT
 from mypyc.ir.ops import (
     Value, Register, TupleGet, TupleSet, BasicBlock, Assign, LoadAddress, RaiseStandardError
 )
 from mypyc.ir.rtypes import (
-    RTuple, RInstance, object_rprimitive, is_none_rprimitive, int_rprimitive, is_int_rprimitive
+    RTuple, object_rprimitive, is_none_rprimitive, int_rprimitive, is_int_rprimitive
 )
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.primitives.registry import CFunctionDescription, builtin_names
@@ -134,7 +134,15 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
             index = builder.builder.load_int(fields.index(expr.name))
             return builder.gen_method_call(obj, '__getitem__', [index], rtype, expr.line)
 
-    # Report error if accessing an instance attribute through class object.
+    check_instance_attribute_access_through_class(builder, expr, typ)
+
+    return builder.builder.get_attr(obj, expr.name, rtype, expr.line)
+
+
+def check_instance_attribute_access_through_class(builder: IRBuilder,
+                                                  expr: MemberExpr,
+                                                  typ: Optional[ProperType]) -> None:
+    """Report error if accessing an instance attribute through class object."""
     if isinstance(expr.expr, RefExpr):
         node = expr.expr.node
         if isinstance(typ, TypeType) and isinstance(typ.item, Instance):
@@ -158,10 +166,6 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
                         'a class attribute)',
                         expr.line
                     )
-    if isinstance(typ, RInstance) and obj.type.class_ir.is_ext_class:
-        assert False, typ
-
-    return builder.builder.get_attr(obj, expr.name, rtype, expr.line)
 
 
 def transform_super_expr(builder: IRBuilder, o: SuperExpr) -> Value:
