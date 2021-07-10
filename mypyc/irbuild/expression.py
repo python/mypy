@@ -137,6 +137,7 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     if isinstance(expr.expr, RefExpr):
         node = expr.expr.node
         if isinstance(typ, TypeType) and isinstance(typ.item, Instance):
+            # TODO: Handle other item types
             node = typ.item.type
         if isinstance(node, TypeInfo):
             class_ir = builder.mapper.type_to_ir.get(node)
