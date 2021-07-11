@@ -318,15 +318,10 @@ def gen_func_item(builder: IRBuilder,
     if is_singledispatch:
         # add the generated main singledispatch function
         builder.functions.append(func_ir)
-        # create a dispatch function (a function that checks the first argument type and dispatches
-        # to the correct implementation)
-        builder.enter()
+        # create the dispatch function
         assert isinstance(fitem, FuncDef)
-        generate_singledispatch_dispatch_function(builder, fn_info.name, fitem)
-        args, _, blocks, _, fn_info = builder.leave()
         dispatch_name = decorator_helper_name(name) if is_decorated else name
-        func_decl = FuncDecl(dispatch_name, None, builder.module_name, sig)
-        dispatch_func_ir = FuncIR(func_decl, args, blocks)
+        dispatch_func_ir = gen_dispatch_func_ir(builder, fitem, fn_info.name, dispatch_name, sig)
         return dispatch_func_ir, None
 
     return (func_ir, func_reg)
@@ -825,3 +820,21 @@ def generate_singledispatch_dispatch_function(
         builder.activate_block(next_impl)
 
     gen_func_call_and_return(main_singledispatch_function_name)
+
+
+def gen_dispatch_func_ir(
+    builder: IRBuilder,
+    fitem: FuncDef,
+    main_func_name: str,
+    dispatch_name: str,
+    sig: FuncSignature,
+) -> FuncIR:
+    """Create a dispatch function (a function that checks the first argument type and dispatches
+    to the correct implementation)
+    """
+    builder.enter()
+    generate_singledispatch_dispatch_function(builder, main_func_name, fitem)
+    args, _, blocks, _, fn_info = builder.leave()
+    func_decl = FuncDecl(dispatch_name, None, builder.module_name, sig)
+    dispatch_func_ir = FuncIR(func_decl, args, blocks)
+    return dispatch_func_ir
