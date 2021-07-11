@@ -91,7 +91,7 @@ from mypy.visitor import NodeVisitor
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.build import build
 from mypy.errors import CompileError, Errors
-from mypy.traverser import has_return_statement
+from mypy.traverser import all_yield_expressions, has_return_statement, has_yield_expression
 from mypy.moduleinspect import ModuleInspect
 
 
@@ -550,13 +550,17 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.path = o.path
         self.defined_names = find_defined_names(o)
         self.referenced_names = find_referenced_names(o)
-        typing_imports = ["Any", "Optional", "TypeVar"]
-        for t in typing_imports:
-            if t not in self.defined_names:
-                alias = None
-            else:
-                alias = '_' + t
-            self.import_tracker.add_import_from("typing", [(t, alias)])
+        known_imports = {
+            "typing": ["Any", "TypeVar"],
+            "collections.abc": ["Generator"],
+        }
+        for pkg, imports in known_imports.items():
+            for t in imports:
+                if t not in self.defined_names:
+                    alias = None
+                else:
+                    alias = '_' + t
+                self.import_tracker.add_import_from(pkg, [(t, alias)])
         super().visit_mypy_file(o)
         undefined_names = [name for name in self._all_ or []
                            if name not in self._toplevel_names]
@@ -661,6 +665,23 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             # Always assume abstract methods return Any unless explicitly annotated. Also
             # some dunder methods should not have a None return type.
             retname = None  # implicit Any
+        elif has_yield_expression(o):
+            self.add_abc_import('Generator')
+            yield_name = 'None'
+            send_name = 'None'
+            return_name = 'None'
+            for expr, in_assignment in all_yield_expressions(o):
+                if expr.expr is not None and not self.is_none_expr(expr.expr):
+                    self.add_typing_import('Any')
+                    yield_name = 'Any'
+                if in_assignment:
+                    self.add_typing_import('Any')
+                    send_name = 'Any'
+            if has_return_statement(o):
+                self.add_typing_import('Any')
+                return_name = 'Any'
+            generator_name = self.typing_name('Generator')
+            retname = f'{generator_name}[{yield_name}, {send_name}, {return_name}]'
         elif not has_return_statement(o) and not is_abstract:
             retname = 'None'
         retfield = ''
@@ -670,6 +691,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.add(', '.join(args))
         self.add("){}: ...\n".format(retfield))
         self._state = FUNC
+
+    def is_none_expr(self, expr: Expression) -> bool:
+        return isinstance(expr, NameExpr) and expr.name == "None"
 
     def visit_decorator(self, o: Decorator) -> None:
         if self.is_private_name(o.func.name, o.func.fullname):
@@ -1100,6 +1124,14 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
     def add_typing_import(self, name: str) -> None:
         """Add a name to be imported from typing, unless it's imported already.
+
+        The import will be internal to the stub.
+        """
+        name = self.typing_name(name)
+        self.import_tracker.require_name(name)
+
+    def add_abc_import(self, name: str) -> None:
+        """Add a name to be imported from collections.abc, unless it's imported already.
 
         The import will be internal to the stub.
         """

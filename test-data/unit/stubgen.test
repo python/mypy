@@ -944,6 +944,56 @@ def f(): ...
 [out]
 def f() -> None: ...
 
+[case testFunctionYields]
+def f():
+    yield 123
+def g():
+    x = yield
+def h1():
+    yield
+    return
+def h2():
+    yield
+    return "abc"
+def all():
+    x = yield 123
+    return "abc"
+[out]
+from collections.abc import Generator
+from typing import Any
+
+def f() -> Generator[Any, None, None]: ...
+def g() -> Generator[None, Any, None]: ...
+def h1() -> Generator[None, None, None]: ...
+def h2() -> Generator[None, None, Any]: ...
+def all() -> Generator[Any, Any, Any]: ...
+
+[case testFunctionYieldsNone]
+def f():
+    yield
+def g():
+    yield None
+
+[out]
+from collections.abc import Generator
+
+def f() -> Generator[None, None, None]: ...
+def g() -> Generator[None, None, None]: ...
+
+[case testGeneratorAlreadyDefined]
+class Generator:
+    pass
+
+def f():
+    yield 123
+[out]
+from collections.abc import Generator as _Generator
+from typing import Any
+
+class Generator: ...
+
+def f() -> _Generator[Any, None, None]: ...
+
 [case testCallable]
 from typing import Callable
 
