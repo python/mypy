@@ -209,8 +209,7 @@ def f(var, num):
     r15 :: object
     r16 :: str
     r17 :: list
-    r18, r19, r20 :: ptr
-    r21, s2, r22, s3, r23, s4 :: str
+    r18, s2, r19, s3, r20, s4 :: str
 L0:
     r0 = "Hi! I'm "
     r1 = PyObject_Str(var)
@@ -230,17 +229,12 @@ L0:
     r14 = 'format'
     r15 = CPyObject_CallMethodObjArgs(r9, r14, var, r13, 0)
     r16 = cast(str, r15)
-    r17 = PyList_New(2)
-    r18 = get_element_ptr r17 ob_item :: PyListObject
-    r19 = load_mem r18 :: ptr*
-    set_mem r19, r8 :: builtins.object*
-    r20 = r19 + WORD_SIZE*1
-    set_mem r20, r16 :: builtins.object*
-    keep_alive r17
-    r21 = PyUnicode_Join(r7, r17)
-    s2 = r21
-    r22 = ''
-    s3 = r22
-    r23 = 'abc'
-    s4 = r23
+    r17 = CPyList_Build(2, r8, r16)
+    r18 = PyUnicode_Join(r7, r17)
+    s2 = r18
+    r19 = ''
+    s3 = r19
+    r20 = 'abc'
+    s4 = r20
     return 1
+

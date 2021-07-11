@@ -98,31 +98,23 @@ def f(x: Sequence[int], y: Sequence[int]) -> Tuple[int, ...]:
     return (1, 2, *x, *y, 3)
 [out]
 def f(x, y):
-    x, y :: object
-    r0 :: list
-    r1, r2 :: object
-    r3, r4, r5 :: ptr
-    r6, r7, r8 :: object
-    r9 :: int32
-    r10 :: bit
-    r11 :: tuple
+    x, y, r0, r1 :: object
+    r2 :: list
+    r3, r4, r5 :: object
+    r6 :: int32
+    r7 :: bit
+    r8 :: tuple
 L0:
-    r0 = PyList_New(2)
-    r1 = box(short_int, 2)
-    r2 = box(short_int, 4)
-    r3 = get_element_ptr r0 ob_item :: PyListObject
-    r4 = load_mem r3 :: ptr*
-    set_mem r4, r1 :: builtins.object*
-    r5 = r4 + WORD_SIZE*1
-    set_mem r5, r2 :: builtins.object*
-    keep_alive r0
-    r6 = CPyList_Extend(r0, x)
-    r7 = CPyList_Extend(r0, y)
-    r8 = box(short_int, 6)
-    r9 = PyList_Append(r0, r8)
-    r10 = r9 >= 0 :: signed
-    r11 = PyList_AsTuple(r0)
-    return r11
+    r0 = box(short_int, 2)
+    r1 = box(short_int, 4)
+    r2 = CPyList_Build(2, r0, r1)
+    r3 = CPyList_Extend(r2, x)
+    r4 = CPyList_Extend(r2, y)
+    r5 = box(short_int, 6)
+    r6 = PyList_Append(r2, r5)
+    r7 = r6 >= 0 :: signed
+    r8 = PyList_AsTuple(r2)
+    return r8
 
 [case testTupleFor]
 from typing import Tuple, List
@@ -289,66 +281,55 @@ L2:
 L3:
     return r4
 def test():
-    r0 :: list
-    r1, r2, r3 :: object
-    r4, r5, r6, r7 :: ptr
-    source :: list
+    r0, r1, r2 :: object
+    r3, source :: list
+    r4 :: ptr
+    r5 :: native_int
+    r6 :: tuple
+    r7 :: short_int
     r8 :: ptr
     r9 :: native_int
-    r10 :: tuple
-    r11 :: short_int
-    r12 :: ptr
-    r13 :: native_int
-    r14 :: short_int
-    r15 :: bit
-    r16 :: object
-    r17, x :: int
-    r18 :: bool
-    r19 :: object
-    r20 :: bit
-    r21 :: short_int
+    r10 :: short_int
+    r11 :: bit
+    r12 :: object
+    r13, x :: int
+    r14 :: bool
+    r15 :: object
+    r16 :: bit
+    r17 :: short_int
     a :: tuple
 L0:
-    r0 = PyList_New(3)
-    r1 = box(short_int, 2)
-    r2 = box(short_int, 4)
-    r3 = box(short_int, 6)
-    r4 = get_element_ptr r0 ob_item :: PyListObject
-    r5 = load_mem r4 :: ptr*
-    set_mem r5, r1 :: builtins.object*
-    r6 = r5 + WORD_SIZE*1
-    set_mem r6, r2 :: builtins.object*
-    r7 = r5 + WORD_SIZE*2
-    set_mem r7, r3 :: builtins.object*
-    keep_alive r0
-    source = r0
+    r0 = box(short_int, 2)
+    r1 = box(short_int, 4)
+    r2 = box(short_int, 6)
+    r3 = CPyList_Build(3, r0, r1, r2)
+    source = r3
+    r4 = get_element_ptr source ob_size :: PyVarObject
+    r5 = load_mem r4 :: native_int*
+    keep_alive source
+    r6 = PyTuple_New(r5)
+    r7 = 0
+L1:
     r8 = get_element_ptr source ob_size :: PyVarObject
     r9 = load_mem r8 :: native_int*
     keep_alive source
-    r10 = PyTuple_New(r9)
-    r11 = 0
-L1:
-    r12 = get_element_ptr source ob_size :: PyVarObject
-    r13 = load_mem r12 :: native_int*
-    keep_alive source
-    r14 = r13 << 1
-    r15 = r11 < r14 :: signed
-    if r15 goto L2 else goto L4 :: bool
+    r10 = r9 << 1
+    r11 = r7 < r10 :: signed
+    if r11 goto L2 else goto L4 :: bool
 L2:
-    r16 = CPyList_GetItemUnsafe(source, r11)
-    r17 = unbox(int, r16)
-    x = r17
-    r18 = f(x)
-    r19 = box(bool, r18)
-    r20 = CPySequenceTuple_SetItemUnsafe(r10, r11, r19)
+    r12 = CPyList_GetItemUnsafe(source, r7)
+    r13 = unbox(int, r12)
+    x = r13
+    r14 = f(x)
+    r15 = box(bool, r14)
+    r16 = CPySequenceTuple_SetItemUnsafe(r6, r7, r15)
 L3:
-    r21 = r11 + 2
-    r11 = r21
+    r17 = r7 + 2
+    r7 = r17
     goto L1
 L4:
-    a = r10
+    a = r6
     return 1
-
 
 [case testTupleBuiltFromStr]
 def f2(val: str) -> str:
