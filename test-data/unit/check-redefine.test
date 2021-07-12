@@ -559,3 +559,13 @@ def f(arg):
 @dec2
 def _(arg):
     pass
+
+[case testOverwritingImportedFunctionThatWasAliasedAsUnderscore]
+from a import f as _
+
+def _(arg: str) -> str: # E: Name "_" already defined (possibly by an import)
+    return arg
+
+[file a.py]
+def f(s: str) -> str:
+    return s
