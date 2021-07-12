@@ -16,7 +16,7 @@ fun(1) # E: Argument 1 to "fun" has incompatible type "int"; expected "A"
 # probably won't be required after singledispatch is special cased
 [builtins fixtures/args.pyi]
 
-[case testMultipleUnderscoreFunctionsIsntError-xfail]
+[case testMultipleUnderscoreFunctionsIsntError]
 from functools import singledispatch
 
 @singledispatch
