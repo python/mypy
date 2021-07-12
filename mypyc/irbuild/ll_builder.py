@@ -24,7 +24,7 @@ from mypyc.ir.ops import (
     GetAttr, LoadStatic, MethodCall, CallC, Truncate, LoadLiteral, AssignMulti,
     RaiseStandardError, Unreachable, LoadErrorValue,
     NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, IntOp, GetElementPtr,
-    LoadMem, ComparisonOp, LoadAddress, TupleGet, SetMem, KeepAlive, ERR_NEVER, ERR_FALSE
+    LoadMem, ComparisonOp, LoadAddress, TupleGet, KeepAlive, ERR_NEVER, ERR_FALSE
 )
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, RArray, optional_value_type, int_rprimitive, float_rprimitive,
@@ -32,7 +32,7 @@ from mypyc.ir.rtypes import (
     c_pyssize_t_rprimitive, is_short_int_rprimitive, is_tagged, PyVarObject, short_int_rprimitive,
     is_list_rprimitive, is_tuple_rprimitive, is_dict_rprimitive, is_set_rprimitive, PySetObject,
     none_rprimitive, RTuple, is_bool_rprimitive, is_str_rprimitive, c_int_rprimitive,
-    pointer_rprimitive, PyObject, PyListObject, bit_rprimitive, is_bit_rprimitive,
+    pointer_rprimitive, PyObject, bit_rprimitive, is_bit_rprimitive,
     object_pointer_rprimitive, c_size_t_rprimitive, dict_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
@@ -927,8 +927,8 @@ class LowLevelIRBuilder:
         return self.call_c(new_list_op, [length], line)
 
     def new_list_op(self, values: List[Value], line: int) -> Value:
-        length = Integer(len(values), c_pyssize_t_rprimitive, line)
-        return self.call_c(list_build_op, [length] + values, line)
+        length: List[Value] = [Integer(len(values), c_pyssize_t_rprimitive, line)]
+        return self.call_c(list_build_op, length + values, line)
 
     def new_set_op(self, values: List[Value], line: int) -> Value:
         return self.call_c(new_set_op, values, line)
