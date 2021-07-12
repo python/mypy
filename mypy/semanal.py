@@ -666,6 +666,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         """
         if isinstance(new, Decorator):
             new = new.func
+        if isinstance(previous, (FuncDef, Decorator)) and new.name == previous.name == "_":
+            return True
         if isinstance(previous, (FuncDef, Var, Decorator)) and new.is_conditional:
             new.original_def = previous
             return True
