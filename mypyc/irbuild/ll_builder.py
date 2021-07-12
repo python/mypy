@@ -637,6 +637,10 @@ class LowLevelIRBuilder:
             if value is not None:
                 return value
 
+        # Special case for string formatting
+        if is_str_rprimitive(ltype) and isinstance(rtype, RTuple) and op == '%':
+            return self.translate_str_format_percent_sign(lreg, rreg, line)
+
         # Special case various ops
         if op in ('is', 'is not'):
             return self.translate_is_op(lreg, rreg, op, line)
@@ -654,6 +658,10 @@ class LowLevelIRBuilder:
         target = self.matching_call_c(call_c_ops_candidates, [lreg, rreg], line)
         assert target, 'Unsupported binary operation: %s' % op
         return target
+
+    def translate_str_format_percent_sign(self, lhs: Value, rhs: Value, line: int) -> Value:
+        call_c_ops_candidates = binary_ops.get('%', [])
+        return self.matching_call_c(call_c_ops_candidates, [lhs, rhs], line)
 
     def check_tagged_short_int(self, val: Value, line: int, negated: bool = False) -> Value:
         """Check if a tagged integer is a short integer.
