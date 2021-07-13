@@ -52,7 +52,7 @@ any operations on the result. For example:
 User-Defined Type Guards
 ************************
 
-MyPy supports User-Defined Type Guards
+Mypy supports User-Defined Type Guards
 (`PEP-647 <https://www.python.org/dev/peps/pep-0647/>`_).
 
 What's a type guard?
