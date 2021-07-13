@@ -72,7 +72,7 @@ Let's have a look at the regular ``bool`` example:
   def func1(val: List[object]) -> None:
       if is_str_list(val):
           reveal_type(val)  # Reveals List[object]
-          print(" ".join(val)) # Error: invalid type
+          print(" ".join(val)) # Error: incompatible type
 
 The same example with ``TypeGuard``:
 
