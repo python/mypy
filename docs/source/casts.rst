@@ -104,8 +104,8 @@ to the type specified as the first type parameter (``List[str]``).
     def f(value: str) -> TypeGuard[int]:
         return True
 
-  It was noted that without enforcing strict narrowing,
-  it would be possible to break type safety.
+  Note: since strict narrowing is not enforced, it's easy
+  to break type safety.
 
   However, there are many ways a determined or uninformed developer can
   subvert type safety -- most commonly by using cast or Any.
