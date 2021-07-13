@@ -53,7 +53,7 @@ def insert_ref_count_opcodes(ir: FuncIR) -> None:
     args: Set[Value] = set(ir.arg_regs)
     live = analyze_live_regs(ir.blocks, cfg)
     borrow = analyze_borrowed_arguments(ir.blocks, cfg, borrowed)
-    defined = analyze_must_defined_regs(ir.blocks, cfg, args, values)
+    defined = analyze_must_defined_regs(ir.blocks, cfg, args, values, strict_errors=True)
     ordering = make_value_ordering(ir)
     cache: BlockCache = {}
     for block in ir.blocks[:]:
