@@ -16,8 +16,8 @@ PyObject *CPyList_Build(Py_ssize_t len, ...) {
     va_list args;
     va_start(args, len);
     for (i = 0; i < len; i++) {
+        // Steals the reference
         PyObject *value = va_arg(args, PyObject *);
-        Py_INCREF(value);
         PyList_SET_ITEM(res, i, value);
     }
     va_end(args);

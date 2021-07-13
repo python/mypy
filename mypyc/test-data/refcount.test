@@ -548,8 +548,6 @@ L0:
     r0 = box(short_int, 0)
     r1 = box(short_int, 2)
     r2 = CPyList_Build(2, r0, r1)
-    dec_ref r0
-    dec_ref r1
     a = r2
     dec_ref a
     return 0
@@ -621,7 +619,6 @@ def f():
 L0:
     r0 = C()
     r1 = CPyList_Build(1, r0)
-    dec_ref r0
     a = r1
     r2 = CPyList_GetItemShort(a, 0)
     dec_ref a

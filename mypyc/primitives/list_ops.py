@@ -35,7 +35,8 @@ list_build_op = custom_op(
     return_type=list_rprimitive,
     c_function_name='CPyList_Build',
     error_kind=ERR_MAGIC,
-    var_arg_type=object_rprimitive)
+    var_arg_type=object_rprimitive,
+    steals=True)
 
 # list[index] (for an integer index)
 list_get_item_op = method_op(
