@@ -79,7 +79,7 @@ The same example with ``TypeGuard``:
 .. code-block:: python
 
   from typing import List
-  from typing import TypeGuard  # use `typing_extensions` for `python<3.10`
+  from typing import TypeGuard  # use `typing_extensions` for Python 3.9 and below
 
   def is_str_list(val: List[object]) -> TypeGuard[List[str]]:
       """Determines whether all objects in the list are strings"""
