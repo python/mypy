@@ -55,8 +55,7 @@ User-Defined Type Guards
 Mypy supports User-Defined Type Guards
 (:pep:`647`).
 
-What's a type guard?
-It is a way for programs to influence conditional
+A type guard is a way for programs to influence conditional
 type narrowing employed by a type checker based on runtime checks.
 
 Basically, a ``TypeGuard`` is a "smart" alias for a ``bool`` type.
