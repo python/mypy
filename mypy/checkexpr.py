@@ -334,7 +334,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 and callee_type.implicit):
             self.msg.untyped_function_call(callee_type, e)
 
-        if isinstance(callee_type, CallableType) and callee_type.name == "_":
+        if (isinstance(callee_type, CallableType)
+                and not callee_type.is_type_obj()
+                and callee_type.name == "_"):
             self.msg.underscore_function_call(e)
             return AnyType(TypeOfAny.from_error)
 
