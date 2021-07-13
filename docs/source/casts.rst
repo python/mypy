@@ -53,7 +53,7 @@ User-Defined Type Guards
 ************************
 
 Mypy supports User-Defined Type Guards
-(`PEP-647 <https://www.python.org/dev/peps/pep-0647/>`_).
+(:pep:`647`).
 
 What's a type guard?
 It is a way for programs to influence conditional
