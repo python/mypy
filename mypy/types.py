@@ -1077,7 +1077,7 @@ class CallableType(FunctionLike):
             # after serialization, but it is useful in error messages.
             # TODO: decide how to add more info here (file, line, column)
             # without changing interface hash.
-            self.def_extras = {'first_arg': definition.arg_names[0]
+            self.def_extras = {'first_arg': definition.arguments[0].variable.name
                                if definition.arg_names and definition.info and
                                not definition.is_static else None}
         else:

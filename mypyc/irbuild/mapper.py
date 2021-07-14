@@ -133,8 +133,8 @@ class Mapper:
             else:
                 ret = object_rprimitive
 
-        args = [RuntimeArg(arg_name, arg_type, arg_kind)
-                for arg_name, arg_kind, arg_type in zip(fdef.arg_names, fdef.arg_kinds, arg_types)]
+        args = [RuntimeArg(arg.variable.name, arg_type, arg.kind)
+                for arg, arg_type in zip(fdef.arguments, arg_types)]
 
         # We force certain dunder methods to return objects to support letting them
         # return NotImplemented. It also avoids some pointless boxing and unboxing,
