@@ -34,7 +34,7 @@ from mypyc.primitives.misc_ops import (
 from mypyc.primitives.dict_ops import dict_set_item_op
 from mypyc.common import SELF_NAME, LAMBDA_NAME, decorator_helper_name
 from mypyc.sametype import is_same_method_signature
-from mypyc.irbuild.util import concrete_arg_kind, is_constant
+from mypyc.irbuild.util import is_constant
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.irbuild.targets import AssignmentTarget
 from mypyc.irbuild.statement import transform_try_except
@@ -660,9 +660,10 @@ def get_args(builder: IRBuilder, rt_args: Sequence[RuntimeArg], line: int) -> Ar
     fake_vars = [(Var(arg.name), arg.type) for arg in rt_args]
     args = [builder.read(builder.add_local_reg(var, type, is_arg=True), line)
             for var, type in fake_vars]
-    arg_names = [arg.name if arg.kind.is_named() else None
+    arg_names = [arg.name
+                 if arg.kind.is_named() or (arg.kind.is_optional() and not arg.pos_only) else None
                  for arg in rt_args]
-    arg_kinds = [concrete_arg_kind(arg.kind) for arg in rt_args]
+    arg_kinds = [arg.kind for arg in rt_args]
     return ArgInfo(args, arg_names, arg_kinds)
 
 
@@ -705,9 +706,24 @@ def gen_glue_method(builder: IRBuilder, sig: FuncSignature, target: FuncIR,
     arg_info = get_args(builder, rt_args, line)
     args, arg_kinds, arg_names = arg_info.args, arg_info.arg_kinds, arg_info.arg_names
 
+    # We can do a passthrough *args/**kwargs with a native call, but if the
+    # args need to get distributed out to arguments, we just let python handle it
+    if (
+        any(kind.is_star() for kind in arg_kinds)
+        and any(not arg.kind.is_star() for arg in target.decl.sig.args)
+    ):
+        do_pycall = True
+
     if do_pycall:
+        if target.decl.kind == FUNC_STATICMETHOD:
+            # FIXME: this won't work if we can do interpreted subclasses
+            first = builder.builder.get_native_type(cls)
+            st = 0
+        else:
+            first = args[0]
+            st = 1
         retval = builder.builder.py_method_call(
-            args[0], target.name, args[1:], line, arg_kinds[1:], arg_names[1:])
+            first, target.name, args[st:], line, arg_kinds[st:], arg_names[st:])
     else:
         retval = builder.builder.call(target.decl, args, arg_kinds, arg_names, line)
     retval = builder.coerce(retval, sig.ret_type, line)

@@ -371,7 +371,7 @@ def test_singledispatch():
     assert f(5)
     assert not f('a')
 
-[case testKeywordArguments-xfail]
+[case testKeywordArguments]
 from functools import singledispatch
 
 @singledispatch

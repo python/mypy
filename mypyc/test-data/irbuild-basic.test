@@ -1748,10 +1748,10 @@ def g():
     r6, r7 :: dict
     r8 :: str
     r9 :: object
-    r10 :: tuple
-    r11 :: dict
-    r12 :: int32
-    r13 :: bit
+    r10 :: dict
+    r11 :: int32
+    r12 :: bit
+    r13 :: tuple
     r14 :: object
     r15 :: tuple[int, int, int]
 L0:
@@ -1765,11 +1765,11 @@ L0:
     r7 = __main__.globals :: static
     r8 = 'f'
     r9 = CPyDict_GetItem(r7, r8)
-    r10 = PyTuple_Pack(0)
-    r11 = PyDict_New()
-    r12 = CPyDict_UpdateInDisplay(r11, r6)
-    r13 = r12 >= 0 :: signed
-    r14 = PyObject_Call(r9, r10, r11)
+    r10 = PyDict_New()
+    r11 = CPyDict_UpdateInDisplay(r10, r6)
+    r12 = r11 >= 0 :: signed
+    r13 = PyTuple_Pack(0)
+    r14 = PyObject_Call(r9, r13, r10)
     r15 = unbox(tuple[int, int, int], r14)
     return r15
 def h():
@@ -1777,11 +1777,12 @@ def h():
     r2, r3 :: object
     r4, r5 :: dict
     r6 :: str
-    r7, r8 :: object
-    r9 :: tuple
-    r10 :: dict
-    r11 :: int32
-    r12 :: bit
+    r7 :: object
+    r8 :: dict
+    r9 :: int32
+    r10 :: bit
+    r11 :: object
+    r12 :: tuple
     r13 :: object
     r14 :: tuple[int, int, int]
 L0:
@@ -1793,12 +1794,12 @@ L0:
     r5 = __main__.globals :: static
     r6 = 'f'
     r7 = CPyDict_GetItem(r5, r6)
-    r8 = box(short_int, 2)
-    r9 = PyTuple_Pack(1, r8)
-    r10 = PyDict_New()
-    r11 = CPyDict_UpdateInDisplay(r10, r4)
-    r12 = r11 >= 0 :: signed
-    r13 = PyObject_Call(r7, r9, r10)
+    r8 = PyDict_New()
+    r9 = CPyDict_UpdateInDisplay(r8, r4)
+    r10 = r9 >= 0 :: signed
+    r11 = box(short_int, 2)
+    r12 = PyTuple_Pack(1, r11)
+    r13 = PyObject_Call(r7, r12, r8)
     r14 = unbox(tuple[int, int, int], r13)
     return r14
 
