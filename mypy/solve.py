@@ -39,15 +39,9 @@ def solve_constraints(vars: List[TypeVarId], constraints: List[Constraint],
         # targets do not have constraint references.
         for c in cmap.get(tvar, []):
             if c.op == SUPERTYPE_OF:
-                if bottom is None:
-                    bottom = c.target
-                else:
-                    bottom = join_types(bottom, c.target)
+                bottom = c.target if bottom is None else join_types(bottom, c.target)
             else:
-                if top is None:
-                    top = c.target
-                else:
-                    top = meet_types(top, c.target)
+                top = c.target if top is None else meet_types(top, c.target)
 
         top = get_proper_type(top)
         bottom = get_proper_type(bottom)
