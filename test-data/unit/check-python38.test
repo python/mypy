@@ -195,8 +195,13 @@ def f(p1: bytes, p2: float, /) -> None:
 [case testPEP570Unannotated]
 def f(arg, /): ...
 g = lambda arg, /: arg
+def h(arg=0, /): ...
+i = lambda arg=0, /: arg
+
 f(arg=0)  # E: Unexpected keyword argument "arg" for "f"
 g(arg=0)  # E: Unexpected keyword argument "arg"
+h(arg=0)  # E: Unexpected keyword argument "arg" for "h"
+i(arg=0)  # E: Unexpected keyword argument "arg"
 
 [case testWalrus]
 # flags: --strict-optional
