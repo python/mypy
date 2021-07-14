@@ -236,7 +236,18 @@ class DefinedVisitor(BaseAnalysisVisitor):
     Note that this only deals with registers and not temporaries, on
     the assumption that we never access temporaries when they might be
     undefined.
+
+    If strict_errors is True, then we regard any use of LoadErrorValue
+    as making a register undefined. Otherwise we only do if
+    `undefines` is set on the error value.
+
+    This lets us only consider the things we care about during
+    uninitialized variable checking while capturing all possibly
+    undefined things for refcounting.
     """
+
+    def __init__(self, strict_errors: bool = False) -> None:
+        self.strict_errors = strict_errors
 
     def visit_branch(self, op: Branch) -> GenAndKill:
         return set(), set()
@@ -252,7 +263,8 @@ class DefinedVisitor(BaseAnalysisVisitor):
 
     def visit_assign(self, op: Assign) -> GenAndKill:
         # Loading an error value may undefine the register.
-        if isinstance(op.src, LoadErrorValue) and op.src.undefines:
+        if (isinstance(op.src, LoadErrorValue)
+                and (op.src.undefines or self.strict_errors)):
             return set(), {op.dest}
         else:
             return {op.dest}, set()
@@ -284,7 +296,8 @@ def analyze_must_defined_regs(
         blocks: List[BasicBlock],
         cfg: CFG,
         initial_defined: Set[Value],
-        regs: Iterable[Value]) -> AnalysisResult[Value]:
+        regs: Iterable[Value],
+        strict_errors: bool = False) -> AnalysisResult[Value]:
     """Calculate always defined registers at each CFG location.
 
     This analysis can work before exception insertion, since it is a
@@ -296,7 +309,7 @@ def analyze_must_defined_regs(
     """
     return run_analysis(blocks=blocks,
                         cfg=cfg,
-                        gen_and_kill=DefinedVisitor(),
+                        gen_and_kill=DefinedVisitor(strict_errors=strict_errors),
                         initial=initial_defined,
                         backward=False,
                         kind=MUST_ANALYSIS,
