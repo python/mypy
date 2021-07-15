@@ -132,7 +132,11 @@ class FuncDecl:
         return self.module_name + '.' + self.shortname
 
     def cname(self, names: NameGenerator) -> str:
-        return names.private_name(self.module_name, self.shortname)
+        if self.name == "_":
+            partial_name = "{}.{}".format(self.shortname, self.line)
+        else:
+            partial_name = self.shortname
+        return names.private_name(self.module_name, partial_name)
 
     def serialize(self) -> JsonDict:
         return {
