@@ -101,6 +101,19 @@ class FuncDecl:
             else:
                 self.bound_sig = FuncSignature(sig.args[1:], sig.ret_type)
 
+        # this is optional because this will be set to the line number when the corresponding
+        # FuncIR is created
+        self._line: Optional[int] = None
+
+    @property
+    def line(self) -> int:
+        assert self._line is not None
+        return self._line
+
+    @line.setter
+    def line(self, line: int) -> None:
+        self._line = line
+
     @staticmethod
     def compute_shortname(class_name: Optional[str], name: str) -> str:
         return class_name + '.' + name if class_name else name
@@ -162,11 +175,15 @@ class FuncIR:
         self.arg_regs = arg_regs
         # Body of the function
         self.blocks = blocks
-        self.line = line
+        self.decl.line = line
         # The name that should be displayed for tracebacks that
         # include this function. Function will be omitted from
         # tracebacks if None.
         self.traceback_name = traceback_name
+
+    @property
+    def line(self) -> int:
+        return self.decl.line
 
     @property
     def args(self) -> Sequence[RuntimeArg]:
