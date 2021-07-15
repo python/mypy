@@ -143,6 +143,7 @@ class FuncDecl:
             'kind': self.kind,
             'is_prop_setter': self.is_prop_setter,
             'is_prop_getter': self.is_prop_getter,
+            'line': self.line
         }
 
     @staticmethod
