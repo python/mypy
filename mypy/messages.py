@@ -705,6 +705,9 @@ class MessageBuilder:
         else:
             self.fail('Function does not return a value', context, code=codes.FUNC_RETURNS_VALUE)
 
+    def underscore_function_call(self, context: Context) -> None:
+        self.fail('Calling function named "_" is not allowed', context)
+
     def deleted_as_rvalue(self, typ: DeletedType, context: Context) -> None:
         """Report an error about using an deleted type as an rvalue."""
         if typ.source is None:

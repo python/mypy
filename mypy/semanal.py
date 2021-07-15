@@ -666,6 +666,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         """
         if isinstance(new, Decorator):
             new = new.func
+        if isinstance(previous, (FuncDef, Decorator)) and new.name == previous.name == "_":
+            return True
         if isinstance(previous, (FuncDef, Var, Decorator)) and new.is_conditional:
             new.original_def = previous
             return True
@@ -810,7 +812,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 else:
                     self.fail("The implementation for an overloaded function "
                               "must come last", defn.items[idx])
-        else:
+        elif defn.name != "_":
             for idx in non_overload_indexes[1:]:
                 self.name_already_defined(defn.name, defn.items[idx], defn.items[0])
             if defn.impl:

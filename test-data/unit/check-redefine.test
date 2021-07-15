@@ -483,3 +483,89 @@ try:
 except Exception as typing:
     pass
 [builtins fixtures/exception.pyi]
+
+[case testRedefiningUnderscoreFunctionIsntAnError]
+def _(arg):
+    pass
+
+def _(arg):
+    pass
+
+[case testTypeErrorsInUnderscoreFunctionsReported]
+def _(arg: str):
+    x = arg + 1 # E: Unsupported left operand type for + ("str")
+
+def _(arg: int) -> int:
+    return 'a' # E: Incompatible return value type (got "str", expected "int")
+
+[case testCallingUnderscoreFunctionIsNotAllowed]
+def _(arg: str) -> None:
+    pass
+
+def _(arg: int) -> int:
+    return arg
+
+_('a') # E: Calling function named "_" is not allowed
+
+y = _(5) # E: Calling function named "_" is not allowed
+
+[case testFunctionStillTypeCheckedWhenAliasedAsUnderscoreDuringImport]
+from a import f as _
+
+_(1) # E: Argument 1 to "f" has incompatible type "int"; expected "str"
+reveal_type(_('a')) # N: Revealed type is "builtins.str"
+
+[file a.py]
+def f(arg: str) -> str:
+    return arg
+
+[case testCallToFunctionStillTypeCheckedWhenAssignedToUnderscoreVariable]
+from a import g
+_ = g
+
+_('a') # E: Argument 1 has incompatible type "str"; expected "int"
+reveal_type(_(1)) # N: Revealed type is "builtins.int"
+
+[file a.py]
+def g(arg: int) -> int:
+    return arg
+
+[case testRedefiningUnderscoreFunctionWithDecoratorWithUnderscoreFunctionsNextToEachOther]
+def dec(f):
+    return f
+
+@dec
+def _(arg):
+    pass
+
+@dec
+def _(arg):
+    pass
+
+[case testRedefiningUnderscoreFunctionWithDecoratorInDifferentPlaces]
+def dec(f):
+    return f
+
+def dec2(f):
+    return f
+
+@dec
+def _(arg):
+    pass
+
+def f(arg):
+    pass
+
+@dec2
+def _(arg):
+    pass
+
+[case testOverwritingImportedFunctionThatWasAliasedAsUnderscore]
+from a import f as _
+
+def _(arg: str) -> str: # E: Name "_" already defined (possibly by an import)
+    return arg
+
+[file a.py]
+def f(s: str) -> str:
+    return s
