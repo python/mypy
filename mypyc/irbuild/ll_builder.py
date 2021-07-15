@@ -9,12 +9,12 @@ level---it has *no knowledge* of mypy types or expressions.
 """
 
 from typing import (
-    Callable, List, Tuple, Optional, Union, Sequence, cast
+    Callable, List, Tuple, Optional, Sequence
 )
 
 from typing_extensions import Final
 
-from mypy.nodes import ArgKind, ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2
+from mypy.nodes import ArgKind, ARG_POS, ARG_STAR, ARG_STAR2
 from mypy.operators import op_methods
 from mypy.types import AnyType, TypeOfAny
 from mypy.checkexpr import map_actuals_to_formals
@@ -73,6 +73,7 @@ from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type
 from mypyc.irbuild.mapper import Mapper
 from mypyc.options import CompilerOptions
+from mypyc.irbuild.util import concrete_arg_kind
 
 
 DictEntry = Tuple[Optional[Value], Value]
@@ -178,6 +179,34 @@ class LowLevelIRBuilder:
             return tmp
         return src
 
+    def coerce_nullable(self, src: Value, target_type: RType, line: int) -> Value:
+        """Generate a coercion from a potentially null value."""
+        if (
+            src.type.is_unboxed == target_type.is_unboxed
+            and (
+                (target_type.is_unboxed and is_runtime_subtype(src.type, target_type))
+                or (not target_type.is_unboxed and is_subtype(src.type, target_type))
+            )
+        ):
+            return src
+
+        target = Register(target_type)
+
+        valid, invalid, out = BasicBlock(), BasicBlock(), BasicBlock()
+        self.add(Branch(src, invalid, valid, Branch.IS_ERROR))
+
+        self.activate_block(valid)
+        coerced = self.coerce(src, target_type, line)
+        self.add(Assign(target, coerced, line))
+        self.goto(out)
+
+        self.activate_block(invalid)
+        error = self.add(LoadErrorValue(target_type))
+        self.add(Assign(target, error, line))
+
+        self.goto_and_activate(out)
+        return target
+
     # Attribute access
 
     def get_attr(self, obj: Value, attr: str, result_type: RType, line: int) -> Value:
@@ -255,6 +284,197 @@ class LowLevelIRBuilder:
 
     # Calls
 
+    def _construct_varargs(self,
+                           args: Sequence[Tuple[Value, ArgKind, Optional[str]]],
+                           line: int,
+                           *,
+                           has_star: bool,
+                           has_star2: bool) -> Tuple[Optional[Value], Optional[Value]]:
+        """Construct *args and **kwargs from a collection of arguments
+
+        This is pretty complicated, and almost all of the complication here stems from
+        one of two things (but mostly the second):
+          * The handling of ARG_STAR/ARG_STAR2. We want to create as much of the args/kwargs
+            values in one go as we can, so we collect values until our hand is forced, and
+            then we emit creation of the list/tuple, and expand it from there if needed.
+
+          * Support potentially nullable argument values. This has very narrow applicability,
+            as this will never be done by our compiled Python code, but is critically used
+            by gen_glue_method when generating glue methods to mediate between the function
+            signature of a parent class and its subclasses.
+
+            For named-only arguments, this is quite simple: if it is
+            null, don't put it in the dict.
+
+            For positional-or-named arguments, things are much more complicated.
+              * First, anything that was passed as a positional arg
+                must be forwarded along as a positional arg. It *must
+                not* be converted to a named arg. This is because mypy
+                does not enforce that positional-or-named arguments
+                have the same name in subclasses, and it is not
+                uncommon for code to have different names in
+                subclasses (a bunch of mypy's visitors do this, for
+                example!). This is arguably a bug in both mypy and code doing
+                this, and they ought to be using positional-only arguments, but
+                positional-only arguments are new and ugly.
+
+              * On the flip side, we're willing to accept the
+                infelicity of sometimes turning an argument that was
+                passed by keyword into a positional argument. It's wrong,
+                but it's very marginal, and avoiding it would require passing
+                a bitmask of which arguments were named with every function call,
+                or something similar.
+                (See some discussion of this in testComplicatedArgs)
+
+            Thus, our strategy for positional-or-named arguments is to
+            always pass them as positional, except in the one
+            situation where we can not, and where we can be absolutely
+            sure they were passed by name: when an *earlier*
+            positional argument was missing its value.
+
+            This means that if we have a method `f(self, x: int=..., y: object=...)`:
+              * x and y present:      args=(x, y), kwargs={}
+              * x present, y missing: args=(x,),   kwargs={}
+              * x missing, y present: args=(),     kwargs={'y': y}
+
+            To implement this, when we have multiple optional
+            positional arguments, we maintain a flag in a register
+            that tracks whether an argument has been missing, and for
+            each such optional argument (except the first), we check
+            the flag to determine whether to append the argument to
+            the *args list or add it to the **kwargs dict. What a
+            mess!
+
+            This is what really makes everything here such a tangle;
+            otherwise the *args and **kwargs code could be separated.
+
+        The arguments has_star and has_star2 indicate whether the target function
+        takes an ARG_STAR and ARG_STAR2 argument, respectively.
+        (These will always be true when making a pycall, and be based
+        on the actual target signature for a native call.)
+        """
+
+        star_result: Optional[Value] = None
+        star2_result: Optional[Value] = None
+        # We aggregate values that need to go into *args and **kwargs
+        # in these lists. Once all arguments are processed (in the
+        # happiest case), or we encounter an ARG_STAR/ARG_STAR2 or a
+        # nullable arg, then we create the list and/or dict.
+        star_values: List[Value] = []
+        star2_keys: List[Value] = []
+        star2_values: List[Value] = []
+
+        seen_empty_reg: Optional[Register] = None
+
+        for value, kind, name in args:
+            if kind == ARG_STAR:
+                if star_result is None:
+                    star_result = self.new_list_op(star_values, line)
+                self.call_c(list_extend_op, [star_result, value], line)
+            elif kind == ARG_STAR2:
+                if star2_result is None:
+                    star2_result = self._create_dict(star2_keys, star2_values, line)
+
+                self.call_c(
+                    dict_update_in_display_op,
+                    [star2_result, value],
+                    line=line
+                )
+            else:
+                nullable = kind.is_optional()
+                maybe_pos = kind.is_positional() and has_star
+                maybe_named = kind.is_named() or (kind.is_optional() and name and has_star2)
+
+                # If the argument is nullable, we need to create the
+                # relevant args/kwargs objects so that we can
+                # conditionally modify them.
+                if nullable:
+                    if maybe_pos and star_result is None:
+                        star_result = self.new_list_op(star_values, line)
+                    if maybe_named and star2_result is None:
+                        star2_result = self._create_dict(star2_keys, star2_values, line)
+
+                # Easy cases: just collect the argument.
+                if maybe_pos and star_result is None:
+                    star_values.append(value)
+                    continue
+
+                if maybe_named and star2_result is None:
+                    assert name is not None
+                    key = self.load_str(name)
+                    star2_keys.append(key)
+                    star2_values.append(value)
+                    continue
+
+                # OK, anything that is nullable or *after* a nullable arg needs to be here
+                # TODO: We could try harder to avoid creating basic blocks in the common case
+                new_seen_empty_reg = seen_empty_reg
+
+                out = BasicBlock()
+                if nullable:
+                    # If this is the first nullable positional arg we've seen, create
+                    # a register to track whether anything has been null.
+                    # (We won't *check* the register until the next argument, though.)
+                    if maybe_pos and not seen_empty_reg:
+                        new_seen_empty_reg = Register(bool_rprimitive)
+                        self.add(Assign(new_seen_empty_reg, self.false(), line))
+
+                    skip = BasicBlock() if maybe_pos else out
+                    keep = BasicBlock()
+                    self.add(Branch(value, skip, keep, Branch.IS_ERROR))
+                    self.activate_block(keep)
+
+                # If this could be positional or named and we /might/ have seen a missing
+                # positional arg, then we need to compile *both* a positional and named
+                # version! What a pain!
+                if maybe_pos and maybe_named and seen_empty_reg:
+                    pos_block, named_block = BasicBlock(), BasicBlock()
+                    self.add(Branch(seen_empty_reg, named_block, pos_block, Branch.BOOL))
+                else:
+                    pos_block = named_block = BasicBlock()
+                    self.goto(pos_block)
+
+                if maybe_pos:
+                    self.activate_block(pos_block)
+                    assert star_result
+                    self.translate_special_method_call(
+                        star_result, 'append', [value], result_type=None, line=line)
+                    self.goto(out)
+
+                if maybe_named and (not maybe_pos or seen_empty_reg):
+                    self.activate_block(named_block)
+                    assert name is not None
+                    key = self.load_str(name)
+                    assert star2_result
+                    self.translate_special_method_call(
+                        star2_result, '__setitem__', [key, value], result_type=None, line=line)
+                    self.goto(out)
+
+                if nullable and maybe_pos and new_seen_empty_reg:
+                    assert skip is not out
+                    self.activate_block(skip)
+                    self.add(Assign(new_seen_empty_reg, self.true(), line))
+                    self.goto(out)
+
+                self.activate_block(out)
+
+                seen_empty_reg = new_seen_empty_reg
+
+        assert not (star_result or star_values) or has_star
+        assert not (star2_result or star2_values) or has_star2
+        if has_star:
+            # If we managed to make it this far without creating a
+            # *args list, then we can directly create a
+            # tuple. Otherwise create the tuple from the list.
+            if star_result is None:
+                star_result = self.new_tuple(star_values, line)
+            else:
+                star_result = self.call_c(list_tuple_op, [star_result], line)
+        if has_star2 and star2_result is None:
+            star2_result = self._create_dict(star2_keys, star2_values, line)
+
+        return star_result, star2_result
+
     def py_call(self,
                 function: Value,
                 arg_values: List[Value],
@@ -278,37 +498,10 @@ class LowLevelIRBuilder:
         # Otherwise fallback to py_call_with_kwargs_op.
         assert arg_names is not None
 
-        pos_arg_values = []
-        kw_arg_key_value_pairs: List[DictEntry] = []
-        star_arg_values = []
-        for value, kind, name in zip(arg_values, arg_kinds, arg_names):
-            if kind == ARG_POS:
-                pos_arg_values.append(value)
-            elif kind == ARG_NAMED:
-                assert name is not None
-                key = self.load_str(name)
-                kw_arg_key_value_pairs.append((key, value))
-            elif kind == ARG_STAR:
-                star_arg_values.append(value)
-            elif kind == ARG_STAR2:
-                # NOTE: mypy currently only supports a single ** arg, but python supports multiple.
-                # This code supports multiple primarily to make the logic easier to follow.
-                kw_arg_key_value_pairs.append((None, value))
-            else:
-                assert False, ("Argument kind should not be possible:", kind)
-
-        if len(star_arg_values) == 0:
-            # We can directly construct a tuple if there are no star args.
-            pos_args_tuple = self.new_tuple(pos_arg_values, line)
-        else:
-            # Otherwise we construct a list and call extend it with the star args, since tuples
-            # don't have an extend method.
-            pos_args_list = self.new_list_op(pos_arg_values, line)
-            for star_arg_value in star_arg_values:
-                self.call_c(list_extend_op, [pos_args_list, star_arg_value], line)
-            pos_args_tuple = self.call_c(list_tuple_op, [pos_args_list], line)
-
-        kw_args_dict = self.make_dict(kw_arg_key_value_pairs, line)
+        pos_args_tuple, kw_args_dict = self._construct_varargs(
+            list(zip(arg_values, arg_kinds, arg_names)), line, has_star=True, has_star2=True
+        )
+        assert pos_args_tuple and kw_args_dict
 
         return self.call_c(
             py_call_with_kwargs_op, [function, pos_args_tuple, kw_args_dict], line)
@@ -324,8 +517,9 @@ class LowLevelIRBuilder:
         Return the return value if successful. Return None if a non-vectorcall
         API should be used instead.
         """
-        # We can do this if all args are positional or named (no *args or **kwargs).
-        if arg_kinds is None or all(not kind.is_star() for kind in arg_kinds):
+        # We can do this if all args are positional or named (no *args or **kwargs, not optional).
+        if arg_kinds is None or all(not kind.is_star() and not kind.is_optional()
+                                    for kind in arg_kinds):
             if arg_values:
                 # Create a C array containing all arguments as boxed values.
                 array = Register(RArray(object_rprimitive, len(arg_values)))
@@ -396,7 +590,8 @@ class LowLevelIRBuilder:
         Return the return value if successful. Return None if a non-vectorcall
         API should be used instead.
         """
-        if arg_kinds is None or all(not kind.is_star() for kind in arg_kinds):
+        if arg_kinds is None or all(not kind.is_star() and not kind.is_optional()
+                                    for kind in arg_kinds):
             method_name_reg = self.load_str(method_name)
             array = Register(RArray(object_rprimitive, len(arg_values) + 1))
             self_arg = self.coerce(obj, object_rprimitive, line)
@@ -449,11 +644,25 @@ class LowLevelIRBuilder:
 
         sig_arg_kinds = [arg.kind for arg in sig.args]
         sig_arg_names = [arg.name for arg in sig.args]
-        formal_to_actual = map_actuals_to_formals(arg_kinds,
+        concrete_kinds = [concrete_arg_kind(arg_kind) for arg_kind in arg_kinds]
+        formal_to_actual = map_actuals_to_formals(concrete_kinds,
                                                   arg_names,
                                                   sig_arg_kinds,
                                                   sig_arg_names,
                                                   lambda n: AnyType(TypeOfAny.special_form))
+
+        # First scan for */** and construct those
+        has_star = has_star2 = False
+        star_arg_entries = []
+        for lst, arg in zip(formal_to_actual, sig.args):
+            if arg.kind.is_star():
+                star_arg_entries.extend([(args[i], arg_kinds[i], arg_names[i]) for i in lst])
+            has_star = has_star or arg.kind == ARG_STAR
+            has_star2 = has_star2 or arg.kind == ARG_STAR2
+
+        star_arg, star2_arg = self._construct_varargs(
+            star_arg_entries, line, has_star=has_star, has_star2=has_star2
+        )
 
         # Flatten out the arguments, loading error values for default
         # arguments, constructing tuples/dicts for star args, and
@@ -462,17 +671,22 @@ class LowLevelIRBuilder:
         for lst, arg in zip(formal_to_actual, sig.args):
             output_arg = None
             if arg.kind == ARG_STAR:
-                items = [args[i] for i in lst]
-                output_arg = self.new_tuple(items, line)
+                assert star_arg
+                output_arg = star_arg
             elif arg.kind == ARG_STAR2:
-                dict_entries = [(self.load_str(cast(str, arg_names[i])), args[i])
-                                for i in lst]
-                output_arg = self.make_dict(dict_entries, line)
+                assert star2_arg
+                output_arg = star2_arg
             elif not lst:
                 output_arg = self.add(LoadErrorValue(arg.type, is_borrowed=True))
             else:
-                output_arg = args[lst[0]]
-            output_args.append(self.coerce(output_arg, arg.type, line))
+                base_arg = args[lst[0]]
+
+                if arg_kinds[lst[0]].is_optional():
+                    output_arg = self.coerce_nullable(base_arg, arg.type, line)
+                else:
+                    output_arg = self.coerce(base_arg, arg.type, line)
+
+            output_args.append(output_arg)
 
         return output_args
 
@@ -619,11 +833,7 @@ class LowLevelIRBuilder:
         return self.add(LoadStatic(object_rprimitive, name, module, NAMESPACE_TYPE))
 
     # Other primitive operations
-    def binary_op(self,
-                  lreg: Value,
-                  rreg: Value,
-                  op: str,
-                  line: int) -> Value:
+    def binary_op(self, lreg: Value, rreg: Value, op: str, line: int) -> Value:
         ltype = lreg.type
         rtype = rreg.type
 
@@ -879,7 +1089,7 @@ class LowLevelIRBuilder:
         return target
 
     def make_dict(self, key_value_pairs: Sequence[DictEntry], line: int) -> Value:
-        result: Union[Value, None] = None
+        result: Optional[Value] = None
         keys: List[Value] = []
         values: List[Value] = []
         for key, value in key_value_pairs:

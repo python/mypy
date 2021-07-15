@@ -997,11 +997,11 @@ b(B())
 
 [case testMethodOverrideDefault2]
 class A:
-    def foo(self, *, x: int = 0) -> None:
+    def foo(self, *, x: int = -1) -> None:
         pass
-    def bar(self, *, x: int = 0, y: int = 0) -> None:
+    def bar(self, *, x: int = -1, y: int = -1) -> None:
         pass
-    def baz(self, x: int = 0) -> None:
+    def baz(self, x: int = -1) -> None:
         pass
 class B(A):
     def foo(self, *, y: int = 0, x: int = 0) -> None:
@@ -1079,6 +1079,152 @@ a(B())
 B
 1 0
 10
+
+[case testMethodOverrideDefault4]
+class Foo:
+    def f(self, x: int=20, *, z: int=10) -> None:
+        pass
+
+class Bar(Foo):
+    def f(self, *args: int, **kwargs: int) -> None:
+        print("stuff", args, kwargs)
+
+z: Foo = Bar()
+z.f(1, z=50)
+z.f()
+
+[out]
+stuff (1,) {'z': 50}
+stuff () {}
+
+[case testMethodOverrideDefault5]
+from testutil import make_python_function
+from mypy_extensions import mypyc_attr
+from typing import TypeVar, Any
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Foo:
+    def f(self, x: int=20, *, z: int=10) -> None:
+        print("Foo", x, z)
+
+@make_python_function
+def baz_f(self: Any, *args: int, **kwargs: int) -> None:
+    print("Baz", args, kwargs)
+
+# Make an "interpreted" subtype of Foo
+type2: Any = type
+Bar = type2('Bar', (Foo,), {})
+Baz = type2('Baz', (Foo,), {'f': baz_f})
+
+y: Foo = Bar()
+y.f(1, z=2)
+y.f()
+
+z: Foo = Baz()
+z.f(1, z=2)
+z.f()
+
+[out]
+Foo 1 2
+Foo 20 10
+Baz (1,) {'z': 2}
+Baz () {}
+
+[case testMethodOverrideDefault6]
+from typing import Optional
+
+class Foo:
+    def f(self, x: int=20) -> None:
+        pass
+
+class Bar(Foo):
+    def f(self, x: Optional[int]=None) -> None:
+        print(x)
+
+z: Foo = Bar()
+z.f(1)
+z.f()
+
+[out]
+1
+None
+
+[case testMethodOverrideDefault7]
+from typing import TypeVar, Any
+
+class Foo:
+    def f(self, x: int, *args: int, **kwargs: int) -> None:
+        print("Foo", x, args, kwargs)
+
+class Bar(Foo):
+    def f(self, *args: int, **kwargs: int) -> None:
+        print("Bar", args, kwargs)
+
+z: Foo = Bar()
+z.f(1, z=2)
+z.f(1, 2, 3)
+# z.f(x=5)  # Not tested because we (knowingly) do the wrong thing and pass it as positional
+
+[out]
+Bar (1,) {'z': 2}
+Bar (1, 2, 3) {}
+--Bar () {'x': 5}
+
+[case testMethodOverrideDefault8]
+from typing import TypeVar, Any
+
+class Foo:
+    def f(self, *args: int, **kwargs: int) -> None:
+        print("Foo", args, kwargs)
+
+class Bar(Foo):
+    def f(self, x: int = 10, *args: int, **kwargs: int) -> None:
+        print("Bar", x, args, kwargs)
+
+z: Foo = Bar()
+z.f(1, z=2)
+z.f(1, 2, 3)
+z.f()
+
+[out]
+Bar 1 () {'z': 2}
+Bar 1 (2, 3) {}
+Bar 10 () {}
+
+[case testMethodOverrideDefault9]
+from testutil import make_python_function
+from mypy_extensions import mypyc_attr
+from typing import TypeVar, Any
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Foo:
+    def f(self, x: int=20, y: int=40) -> None:
+        print("Foo", x, y)
+
+# This sort of argument renaming is dodgy and not really sound but we
+# shouldn't break it when they aren't actually used by name...
+# (They *ought* to be positional only!)
+@make_python_function
+def baz_f(self, a: int=30, y: int=50) -> None:
+    print("Baz", a, y)
+
+# Make an "interpreted" subtype of Foo
+type2: Any = type
+Baz = type2('Baz', (Foo,), {'f': baz_f})
+
+z: Foo = Baz()
+z.f()
+z.f(y=1)
+z.f(1, 2)
+# Not tested because we don't (and probably won't) match cpython here
+# from testutil import assertRaises
+# with assertRaises(TypeError):
+#     z.f(x=7)
+
+[out]
+Baz 30 50
+Baz 30 1
+Baz 1 2
 
 [case testOverride]
 class A:

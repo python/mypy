@@ -1092,6 +1092,7 @@ assert kwonly4(y=2, x=1) == (1, 2)
 # varargs tests
 assert varargs1() == ()
 assert varargs1(1, 2, 3) == (1, 2, 3)
+assert varargs1(1, *[2, 3, 4], 5, *[6, 7, 8], 9) == (1, 2, 3, 4, 5, 6, 7, 8, 9)
 assert varargs2(1, 2, 3) == ((1, 2, 3), {})
 assert varargs2(1, 2, 3, x=4) == ((1, 2, 3), {'x': 4})
 assert varargs2(x=4) == ((), {'x': 4})
