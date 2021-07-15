@@ -198,6 +198,12 @@ g = lambda arg, /: arg
 def h(arg=0, /): ...
 i = lambda arg=0, /: arg
 
+f(1)
+g(1)
+h()
+h(1)
+i()
+i(1)
 f(arg=0)  # E: Unexpected keyword argument "arg" for "f"
 g(arg=0)  # E: Unexpected keyword argument "arg"
 h(arg=0)  # E: Unexpected keyword argument "arg" for "h"

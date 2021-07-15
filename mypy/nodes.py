@@ -600,7 +600,6 @@ class FuncItem(FuncBase):
     __slots__ = ('arguments',  # Note that can be None if deserialized (type is a lie!)
                  'arg_names',  # Names of arguments
                  'arg_kinds',  # Kinds of arguments
-                 'num_pos_only',  # Number of positional only args
                  'min_args',  # Minimum number of arguments
                  'max_pos',  # Maximum number of positional arguments, -1 if no explicit
                              # limit (*args not included)
