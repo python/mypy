@@ -1939,9 +1939,9 @@ def pretty_callable(tp: CallableType) -> str:
 
     # If we got a "special arg" (i.e: self, cls, etc...), prepend it to the arg list
     if isinstance(tp.definition, FuncDef) and tp.definition.name is not None:
-        definition_args = tp.definition.arg_names
+        definition_args = [arg.variable.name for arg in tp.definition.arguments]
         if definition_args and tp.arg_names != definition_args \
-                and len(definition_args) > 0:
+                and len(definition_args) > 0 and definition_args[0]:
             if s:
                 s = ', ' + s
             s = definition_args[0] + s

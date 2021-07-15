@@ -2759,7 +2759,7 @@ t = Test()
 t.crash = 'test'  # E: "Test" has no attribute "crash"
 
 class A:
-    def __setattr__(self): ...  # E: Invalid signature "def (self: __main__.A) -> Any" for "__setattr__"
+    def __setattr__(self): ...  # E: Invalid signature "def (__main__.A) -> Any" for "__setattr__"
 a = A()
 a.test = 4  # E: "A" has no attribute "test"
 

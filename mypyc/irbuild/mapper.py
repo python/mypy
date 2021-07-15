@@ -133,8 +133,21 @@ class Mapper:
             else:
                 ret = object_rprimitive
 
+        # mypyc FuncSignatures (unlike mypy types) want to have a name
+        # present even when the argument is position only, since it is
+        # the sole way that FuncDecl arguments are tracked. This is
+        # generally fine except in some cases (like for computing
+        # init_sig) we need to produce FuncSignatures from a
+        # deserialized FuncDef that lacks arguments. We won't ever
+        # need to use those inside of a FuncIR, so we just make up
+        # some crap.
+        if hasattr(fdef, 'arguments'):
+            arg_names = [arg.variable.name for arg in fdef.arguments]
+        else:
+            arg_names = [name or '' for name in fdef.arg_names]
+
         args = [RuntimeArg(arg_name, arg_type, arg_kind)
-                for arg_name, arg_kind, arg_type in zip(fdef.arg_names, fdef.arg_kinds, arg_types)]
+                for arg_name, arg_kind, arg_type in zip(arg_names, fdef.arg_kinds, arg_types)]
 
         # We force certain dunder methods to return objects to support letting them
         # return NotImplemented. It also avoids some pointless boxing and unboxing,
