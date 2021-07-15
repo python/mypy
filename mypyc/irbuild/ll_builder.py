@@ -656,7 +656,7 @@ class LowLevelIRBuilder:
         star_arg_entries = []
         for lst, arg in zip(formal_to_actual, sig.args):
             if arg.kind.is_star():
-                star_arg_entries.extend((args[i], arg_kinds[i], arg_names[i]) for i in lst)
+                star_arg_entries.extend([(args[i], arg_kinds[i], arg_names[i]) for i in lst])
             has_star = has_star or arg.kind == ARG_STAR
             has_star2 = has_star2 or arg.kind == ARG_STAR2
 
