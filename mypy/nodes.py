@@ -1,5 +1,6 @@
 """Abstract syntax tree node classes (i.e. parse tree)."""
 
+from mypyc.common import get_id_from_name
 import os
 from enum import Enum
 from abc import abstractmethod
@@ -688,6 +689,11 @@ class FuncDef(FuncItem, SymbolNode, Statement):
     @property
     def name(self) -> str:
         return self._name
+
+    @property
+    def id(self) -> str:
+        assert isinstance(self.fullname, str)
+        return get_id_from_name(self.name, self.fullname, self.line)
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_func_def(self)

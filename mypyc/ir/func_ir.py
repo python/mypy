@@ -5,7 +5,7 @@ from typing_extensions import Final
 
 from mypy.nodes import FuncDef, Block, ArgKind, ARG_POS
 
-from mypyc.common import JsonDict
+from mypyc.common import JsonDict, get_id_from_name
 from mypyc.ir.ops import (
     DeserMaps, BasicBlock, Value, Register, Assign, AssignMulti, ControlOp, LoadAddress
 )
@@ -114,6 +114,11 @@ class FuncDecl:
     def line(self, line: int) -> None:
         self._line = line
 
+    @property
+    def id(self) -> str:
+        assert self.line is not None
+        return get_id_from_name(self.name, self.fullname, self.line)
+
     @staticmethod
     def compute_shortname(class_name: Optional[str], name: str) -> str:
         return class_name + '.' + name if class_name else name
@@ -141,8 +146,9 @@ class FuncDecl:
         }
 
     @staticmethod
-    def get_name_from_json(f: JsonDict) -> str:
-        return f['module_name'] + '.' + FuncDecl.compute_shortname(f['class_name'], f['name'])
+    def get_id_from_json(f: JsonDict) -> str:
+        fullname = f['module_name'] + '.' + FuncDecl.compute_shortname(f['class_name'], f['name'])
+        return get_id_from_name(f['name'], fullname, f['line'])
 
     @classmethod
     def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> 'FuncDecl':
@@ -208,6 +214,10 @@ class FuncIR:
     @property
     def fullname(self) -> str:
         return self.decl.fullname
+
+    @property
+    def id(self) -> str:
+        return self.decl.id
 
     def cname(self, names: NameGenerator) -> str:
         return self.decl.cname(names)

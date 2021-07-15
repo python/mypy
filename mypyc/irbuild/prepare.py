@@ -95,7 +95,7 @@ def load_type_map(mapper: 'Mapper',
 
     for module in modules:
         for func in get_module_func_defs(module):
-            mapper.func_to_decl[func] = deser_ctx.functions[func.fullname].decl
+            mapper.func_to_decl[func] = deser_ctx.functions[func.id].decl
 
 
 def get_module_func_defs(module: MypyFile) -> Iterable[FuncDef]:
