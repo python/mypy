@@ -78,7 +78,11 @@ class Bar(Foo):
 z: Foo = Bar()
 z.f(1, z=50)
 z.f()
+z.f(1)
+z.f(z=50)
 
 [out]
 stuff (1,) {'z': 50}
 stuff () {}
+stuff (1,) {}
+stuff () {'z': 50}
