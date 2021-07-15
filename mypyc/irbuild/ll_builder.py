@@ -347,6 +347,11 @@ class LowLevelIRBuilder:
 
             This is what really makes everything here such a tangle;
             otherwise the *args and **kwargs code could be separated.
+
+        The arguments has_star and has_star2 indicate whether the target function
+        takes an ARG_STAR and ARG_STAR2 argument, respectively.
+        (These will always be true when making a pycall, and be based
+        on the actual target signature for a native call.)
         """
 
         star_result: Optional[Value] = None
@@ -455,6 +460,8 @@ class LowLevelIRBuilder:
 
                 seen_empty_reg = new_seen_empty_reg
 
+        assert not (star_result or star_values) or has_star
+        assert not (star2_result or star2_values) or has_star2
         if has_star:
             # If we managed to make it this far without creating a
             # *args list, then we can directly create a
@@ -649,8 +656,7 @@ class LowLevelIRBuilder:
         star_arg_entries = []
         for lst, arg in zip(formal_to_actual, sig.args):
             if arg.kind.is_star():
-                for i in lst:
-                    star_arg_entries.append((args[i], arg_kinds[i], arg_names[i]))
+                star_arg_entries.extend((args[i], arg_kinds[i], arg_names[i]) for i in lst)
             has_star = has_star or arg.kind == ARG_STAR
             has_star2 = has_star2 or arg.kind == ARG_STAR2
 
