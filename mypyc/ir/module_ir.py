@@ -39,7 +39,7 @@ class ModuleIR:
         return ModuleIR(
             data['fullname'],
             data['imports'],
-            [ctx.functions[FuncDecl.get_id_from_json(f['decl'])] for f in data['functions']],
+            [ctx.functions[FuncDecl.get_id_from_json(f)] for f in data['functions']],
             [ClassIR.deserialize(c, ctx) for c in data['classes']],
             [(k, deserialize_type(t, ctx)) for k, t in data['final_names']],
         )

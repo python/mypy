@@ -147,13 +147,16 @@ class FuncDecl:
             'kind': self.kind,
             'is_prop_setter': self.is_prop_setter,
             'is_prop_getter': self.is_prop_getter,
-            'line': self.line
         }
 
+    # TODO: move this to FuncIR?
     @staticmethod
-    def get_id_from_json(f: JsonDict) -> str:
-        fullname = f['module_name'] + '.' + FuncDecl.compute_shortname(f['class_name'], f['name'])
-        return get_id_from_name(f['name'], fullname, f['line'])
+    def get_id_from_json(func_ir: JsonDict) -> str:
+        """Get the id from the serialized FuncIR associated with this FuncDecl"""
+        decl = func_ir['decl']
+        shortname = FuncDecl.compute_shortname(decl['class_name'], decl['name'])
+        fullname = decl['module_name'] + '.' + shortname
+        return get_id_from_name(decl['name'], fullname, func_ir['line'])
 
     @classmethod
     def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> 'FuncDecl':
