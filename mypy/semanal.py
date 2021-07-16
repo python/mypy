@@ -812,7 +812,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 else:
                     self.fail("The implementation for an overloaded function "
                               "must come last", defn.items[idx])
-        elif defn.name != "_":
+        else:
             for idx in non_overload_indexes[1:]:
                 self.name_already_defined(defn.name, defn.items[idx], defn.items[0])
             if defn.impl:

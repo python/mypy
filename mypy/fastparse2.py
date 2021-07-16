@@ -313,7 +313,7 @@ class ASTConverter:
                 elif len(current_overload) > 1:
                     ret.append(OverloadedFuncDef(current_overload))
 
-                if isinstance(stmt, Decorator):
+                if isinstance(stmt, Decorator) and stmt.name != "_":
                     current_overload = [stmt]
                     current_overload_name = stmt.name
                 else:
