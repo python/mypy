@@ -237,7 +237,7 @@ def test_singledispatchmethod() -> None:
     assert x.fun('a') == 'str'
     assert x.fun([1, 2]) == 'default'
 
-[case testSingledispatchTreeSumAndEqual-xfail]
+[case testSingledispatchTreeSumAndEqual]
 from functools import singledispatch
 
 class Tree:
@@ -289,7 +289,7 @@ def test_sum_and_equal():
     tree2 = build(5)
     tree2.right.right.right.value = 10
     assert calc_sum(tree) == 57
-    assert calc_sum(tree2) == 62
+    assert calc_sum(tree2) == 65
     assert equal(tree, tree)
     assert not equal(tree, tree2)
     tree3 = build(4)
