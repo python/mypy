@@ -5,7 +5,7 @@ from typing_extensions import Final
 
 from mypy.nodes import FuncDef, Block, ArgKind, ARG_POS
 
-from mypyc.common import JsonDict, get_id_from_name
+from mypyc.common import JsonDict, get_id_from_name, short_id_from_name
 from mypyc.ir.ops import (
     DeserMaps, BasicBlock, Value, Register, Assign, AssignMulti, ControlOp, LoadAddress
 )
@@ -132,10 +132,7 @@ class FuncDecl:
         return self.module_name + '.' + self.shortname
 
     def cname(self, names: NameGenerator) -> str:
-        if self.name == "_":
-            partial_name = "{}.{}".format(self.shortname, self.line)
-        else:
-            partial_name = self.shortname
+        partial_name = short_id_from_name(self.name, self.shortname, self.line)
         return names.private_name(self.module_name, partial_name)
 
     def serialize(self) -> JsonDict:

@@ -112,3 +112,11 @@ def get_id_from_name(name: str, fullname: str, line: int) -> str:
         return "{}.{}".format(fullname, line)
     else:
         return fullname
+
+
+def short_id_from_name(func_name: str, shortname: str, line: int) -> str:
+    if func_name == "_":
+        partial_name = "{}.{}".format(shortname, line)
+    else:
+        partial_name = shortname
+    return partial_name
