@@ -23,7 +23,7 @@ from mypyc.irbuild.main import build_ir
 from mypyc.irbuild.prepare import load_type_map
 from mypyc.irbuild.mapper import Mapper
 from mypyc.common import (
-    PREFIX, TOP_LEVEL_NAME, MODULE_PREFIX, RUNTIME_C_FILES, use_fastcall,
+    PREFIX, TOP_LEVEL_NAME, MODULE_PREFIX, RUNTIME_C_FILES, short_id_from_name, use_fastcall,
     use_vectorcall, shared_lib_name,
 )
 from mypyc.codegen.cstring import c_string_initializer
@@ -842,6 +842,7 @@ class GroupGenerator:
         for fn in module.functions:
             if fn.class_name is not None or fn.name == TOP_LEVEL_NAME:
                 continue
+            name = short_id_from_name(fn.name, fn.decl.shortname, fn.line)
             if is_fastcall_supported(fn, emitter.capi_version):
                 flag = 'METH_FASTCALL'
             else:
@@ -849,7 +850,7 @@ class GroupGenerator:
             emitter.emit_line(
                 ('{{"{name}", (PyCFunction){prefix}{cname}, {flag} | METH_KEYWORDS, '
                  'NULL /* docstring */}},').format(
-                     name=fn.name,
+                     name=name,
                      cname=fn.cname(emitter.names),
                      prefix=PREFIX,
                      flag=flag))
