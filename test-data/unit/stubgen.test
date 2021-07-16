@@ -594,6 +594,28 @@ class X(NamedTuple):
     a: Any
     b: Any
 
+[case testNamedtupleAltSyntaxUsingComma]
+from collections import namedtuple, xx
+X = namedtuple('X', 'a,    b')
+xx
+[out]
+from typing import Any, NamedTuple
+
+class X(NamedTuple):
+    a: Any
+    b: Any
+
+[case testNamedtupleAltSyntaxUsingMultipleCommas]
+from collections import namedtuple, xx
+X = namedtuple('X', 'a,,   b')
+xx
+[out]
+from typing import Any, NamedTuple
+
+class X(NamedTuple):
+    a: Any
+    b: Any
+
 [case testNamedtupleWithUnderscore]
 from collections import namedtuple as _namedtuple
 def f(): ...
