@@ -655,7 +655,6 @@ class LowLevelIRBuilder:
         assert target, 'Unsupported binary operation: %s' % op
         return target
 
-
     def check_tagged_short_int(self, val: Value, line: int, negated: bool = False) -> Value:
         """Check if a tagged integer is a short integer.
 

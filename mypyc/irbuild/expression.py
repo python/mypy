@@ -598,8 +598,11 @@ def translate_str_format_percent_sign(builder: IRBuilder,
         return join_formatted_strings(builder, literals, variables, format_expr.line)
     else:
         call_c_ops_candidates = binary_ops.get('%', [])
-        return builder.builder.matching_call_c(call_c_ops_candidates,
-                                               [format_expr, rhs], format_expr.line)
+        ret = builder.builder.matching_call_c(call_c_ops_candidates,
+                                              [builder.accept(format_expr), builder.accept(rhs)],
+                                              format_expr.line)
+        assert ret is not None
+        return ret
 
 
 # Literals

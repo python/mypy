@@ -14,12 +14,12 @@ def tokenizer_printf_style(format_str: str) -> Tuple[List[str], List[str]]:
     # https://docs.python.org/3/library/stdtypes.html#old-string-formatting
     pattern = re.compile(r"""
         (
-        %                                # Start sign                                            
+        %                                # Start sign
         (?:\((?P<key>[^)]*)\))?          # Optional: Mapping key
-        (?P<flag>[-+#0 ]+)?              # Optional: Conversion flags 
+        (?P<flag>[-+#0 ]+)?              # Optional: Conversion flags
         (?P<width>\d+|\*)?               # Optional: Minimum field width
         (?:\.(?P<precision>\d+|\*))?     # Optional: Precision
-        [hlL]?                           # Optional: Length modifier, Ignored  
+        [hlL]?                           # Optional: Length modifier, Ignored
         (?P<type>[diouxXeEfFgGcrsa])     # Conversion type
         | %%)
         """, re.VERBOSE)
