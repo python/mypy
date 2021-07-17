@@ -1,5 +1,5 @@
 import sys
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Optional, Tuple
 import sys
 
 from typing_extensions import Final
@@ -114,8 +114,9 @@ def get_id_from_name(name: str, fullname: str, line: int) -> str:
         return fullname
 
 
-def short_id_from_name(func_name: str, shortname: str, line: int) -> str:
+def short_id_from_name(func_name: str, shortname: str, line: Optional[int]) -> str:
     if func_name == "_":
+        assert line is not None
         partial_name = "{}.{}".format(shortname, line)
     else:
         partial_name = shortname
