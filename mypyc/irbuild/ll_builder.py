@@ -466,7 +466,6 @@ class LowLevelIRBuilder:
         # coercing everything to the expected type.
         output_args = []
         for lst, arg in zip(formal_to_actual, sig.args):
-            output_arg = None
             if arg.kind == ARG_STAR:
                 items = [args[i] for i in lst]
                 output_arg = self.new_tuple(items, line)
@@ -492,7 +491,7 @@ class LowLevelIRBuilder:
                         arg_names: Optional[List[Optional[str]]] = None) -> Value:
         """Generate either a native or Python method call."""
         # If we have *args, then fallback to Python method call.
-        if (arg_kinds is not None and any(kind.is_star() for kind in arg_kinds)):
+        if arg_kinds is not None and any(kind.is_star() for kind in arg_kinds):
             return self.py_method_call(base, name, arg_values, base.line, arg_kinds, arg_names)
 
         # If the base type is one of ours, do a MethodCall
@@ -558,7 +557,7 @@ class LowLevelIRBuilder:
 
     def true(self) -> Value:
         """Load unboxed True value (type: bool_rprimitive)."""
-        return Integer(1,  bool_rprimitive)
+        return Integer(1, bool_rprimitive)
 
     def false(self) -> Value:
         """Load unboxed False value (type: bool_rprimitive)."""
@@ -804,7 +803,7 @@ class LowLevelIRBuilder:
             return result
         length = len(lhs.type.types)
         false_assign, true_assign, out = BasicBlock(), BasicBlock(), BasicBlock()
-        check_blocks = [BasicBlock() for i in range(length)]
+        check_blocks = [BasicBlock() for _ in range(length)]
         lhs_items = [self.add(TupleGet(lhs, i, line)) for i in range(length)]
         rhs_items = [self.add(TupleGet(rhs, i, line)) for i in range(length)]
 
@@ -933,12 +932,11 @@ class LowLevelIRBuilder:
         return self.call_c(new_list_op, [length], line)
 
     def new_list_op(self, values: List[Value], line: int) -> Value:
+        length: List[Value] = [Integer(len(values), c_pyssize_t_rprimitive, line)]
         if len(values) >= LIST_BUILDING_EXPANSION_THRESHOLD:
-            length: List[Value] = [Integer(len(values), c_pyssize_t_rprimitive, line)]
             return self.call_c(list_build_op, length + values, line)
         else:
-            length = Integer(len(values), c_pyssize_t_rprimitive, line)
-            result_list = self.call_c(new_list_op, [length], line)
+            result_list = self.call_c(new_list_op, length, line)
             if len(values) == 0:
                 return result_list
             args = [self.coerce(item, object_rprimitive, line) for item in values]
@@ -974,7 +972,7 @@ class LowLevelIRBuilder:
         # Having actual Phi nodes would be really nice here!
         target = Register(expr_type)
         # left_body takes the value of the left side, right_body the right
-        left_body, right_body, next = BasicBlock(), BasicBlock(), BasicBlock()
+        left_body, right_body, next_block = BasicBlock(), BasicBlock(), BasicBlock()
         # true_body is taken if the left is true, false_body if it is false.
         # For 'and' the value is the right side if the left is true, and for 'or'
         # it is the right side if the left is false.
@@ -987,15 +985,15 @@ class LowLevelIRBuilder:
         self.activate_block(left_body)
         left_coerced = self.coerce(left_value, expr_type, line)
         self.add(Assign(target, left_coerced))
-        self.goto(next)
+        self.goto(next_block)
 
         self.activate_block(right_body)
         right_value = right()
         right_coerced = self.coerce(right_value, expr_type, line)
         self.add(Assign(target, right_coerced))
-        self.goto(next)
+        self.goto(next_block)
 
-        self.activate_block(next)
+        self.activate_block(next_block)
         return target
 
     def add_bool_branch(self, value: Value, true: BasicBlock, false: BasicBlock) -> None:
