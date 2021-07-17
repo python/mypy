@@ -968,6 +968,10 @@ assert onearg(*t) == 2
 d = {'x': 5}
 assert onearg(**d) == 6
 
+# Test a bogus call to twoargs before any correct calls are made
+with assertRaises(TypeError, "twoargs() missing required argument 'x' (pos 1)"):
+    twoargs()
+
 assert twoargs(5, 'foo') == 8
 assert twoargs(4, y='foo') == 7
 assert twoargs(y='foo', x=7) == 10
@@ -1002,6 +1006,8 @@ with assertRaises(TypeError, "onearg() missing required argument 'x' (pos 1)"):
 with assertRaises(TypeError, "onearg() takes at most 1 argument (2 given)"):
     onearg(1, y=1)
 
+with assertRaises(TypeError, "twoargs() missing required argument 'x' (pos 1)"):
+    twoargs()
 with assertRaises(TypeError, "twoargs() missing required argument 'y' (pos 2)"):
     twoargs(1)
 with assertRaises(TypeError, 'twoargs() takes at most 2 arguments (3 given)'):
