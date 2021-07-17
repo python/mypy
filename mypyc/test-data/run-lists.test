@@ -88,10 +88,11 @@ def test_append() -> None:
     assert l == [1, 2, 10, 3, 4, 5]
 
 def test_pop_last() -> None:
-    l = [1, 2, 10, 3, 4, 5]
+    l = [1, 2, 10, 3, 4, 5, 7, 8, 9, 100]
     l.pop()
     l.pop()
-    assert l == [1, 2, 10, 3]
+    l.pop()
+    assert l == [1, 2, 10, 3, 4, 5, 7]
 
 def test_pop_index() -> None:
     l = [1, 2, 10, 3]

@@ -93,28 +93,28 @@ L0:
     x = r0
     return 1
 
-[case testListMultiply]
+[case testNewListTenItems]
 from typing import List
-def f(a: List[int]) -> None:
-    b = a * 2
-    b = 3 * [4]
+def f() -> None:
+    x: List[str] = ['a', 'b', 'c', 'd', 'e',
+                    'f', 'g', 'h', 'i', 'j']
 [out]
-def f(a):
-    a, r0, b, r1 :: list
-    r2 :: object
-    r3, r4 :: ptr
-    r5 :: list
+def f():
+    r0, r1, r2, r3, r4, r5, r6, r7, r8, r9 :: str
+    r10, x :: list
 L0:
-    r0 = CPySequence_Multiply(a, 4)
-    b = r0
-    r1 = PyList_New(1)
-    r2 = box(short_int, 8)
-    r3 = get_element_ptr r1 ob_item :: PyListObject
-    r4 = load_mem r3 :: ptr*
-    set_mem r4, r2 :: builtins.object*
-    keep_alive r1
-    r5 = CPySequence_RMultiply(6, r1)
-    b = r5
+    r0 = 'a'
+    r1 = 'b'
+    r2 = 'c'
+    r3 = 'd'
+    r4 = 'e'
+    r5 = 'f'
+    r6 = 'g'
+    r7 = 'h'
+    r8 = 'i'
+    r9 = 'j'
+    r10 = CPyList_Build(10, r0, r1, r2, r3, r4, r5, r6, r7, r8, r9)
+    x = r10
     return 1
 
 [case testListLen]
