@@ -24,7 +24,7 @@ from mypyc.ir.ops import (
     GetAttr, LoadStatic, MethodCall, CallC, Truncate, LoadLiteral, AssignMulti,
     RaiseStandardError, Unreachable, LoadErrorValue,
     NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, IntOp, GetElementPtr,
-    LoadMem, ComparisonOp, LoadAddress, TupleGet, KeepAlive, ERR_NEVER, ERR_FALSE
+    LoadMem, ComparisonOp, LoadAddress, TupleGet, KeepAlive, ERR_NEVER, ERR_FALSE, SetMem
 )
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, RArray, optional_value_type, int_rprimitive, float_rprimitive,
@@ -33,7 +33,7 @@ from mypyc.ir.rtypes import (
     is_list_rprimitive, is_tuple_rprimitive, is_dict_rprimitive, is_set_rprimitive, PySetObject,
     none_rprimitive, RTuple, is_bool_rprimitive, is_str_rprimitive, c_int_rprimitive,
     pointer_rprimitive, PyObject, bit_rprimitive, is_bit_rprimitive,
-    object_pointer_rprimitive, c_size_t_rprimitive, dict_rprimitive
+    object_pointer_rprimitive, c_size_t_rprimitive, dict_rprimitive, PyListObject
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -77,6 +77,12 @@ from mypyc.options import CompilerOptions
 
 DictEntry = Tuple[Optional[Value], Value]
 
+# If the number of items is less than the threshold when initializing
+# a list, we would inline the generate IR using SetMem and expanded
+# for-loop. Otherwise, we would call `list_build_op` for larger lists.
+# TODO: The threshold is a randomly chosen number which needs further
+#       study on real-world projects for a better balance.
+LIST_BUILDING_EXPANSION_THRESHOLD = 10
 
 # From CPython
 PY_VECTORCALL_ARGUMENTS_OFFSET: Final = 1 << (PLATFORM_SIZE * 8 - 1)
@@ -927,8 +933,27 @@ class LowLevelIRBuilder:
         return self.call_c(new_list_op, [length], line)
 
     def new_list_op(self, values: List[Value], line: int) -> Value:
-        length: List[Value] = [Integer(len(values), c_pyssize_t_rprimitive, line)]
-        return self.call_c(list_build_op, length + values, line)
+        if len(values) >= LIST_BUILDING_EXPANSION_THRESHOLD:
+            length: List[Value] = [Integer(len(values), c_pyssize_t_rprimitive, line)]
+            return self.call_c(list_build_op, length + values, line)
+        else:
+            length = Integer(len(values), c_pyssize_t_rprimitive, line)
+            result_list = self.call_c(new_list_op, [length], line)
+            if len(values) == 0:
+                return result_list
+            args = [self.coerce(item, object_rprimitive, line) for item in values]
+            ob_item_ptr = self.add(GetElementPtr(result_list, PyListObject, 'ob_item', line))
+            ob_item_base = self.add(LoadMem(pointer_rprimitive, ob_item_ptr, line))
+            for i in range(len(values)):
+                if i == 0:
+                    item_address = ob_item_base
+                else:
+                    offset = Integer(PLATFORM_SIZE * i, c_pyssize_t_rprimitive, line)
+                    item_address = self.add(IntOp(pointer_rprimitive, ob_item_base, offset,
+                                                  IntOp.ADD, line))
+                self.add(SetMem(object_rprimitive, item_address, args[i], line))
+            self.add(KeepAlive([result_list]))
+            return result_list
 
     def new_set_op(self, values: List[Value], line: int) -> Value:
         return self.call_c(new_set_op, values, line)

@@ -397,9 +397,10 @@ def f3(d, flag):
     r0 :: str
     r1 :: object
     r2 :: str
-    r3 :: object
-    r4 :: list
-    r5, r6 :: object
+    r3 :: list
+    r4 :: object
+    r5, r6 :: ptr
+    r7, r8 :: object
 L0:
     if flag goto L1 else goto L2 :: bool
 L1:
@@ -408,13 +409,17 @@ L1:
     return r1
 L2:
     r2 = 'a'
-    r3 = box(short_int, 2)
-    r4 = CPyList_Build(1, r3)
-    r5 = CPyDict_SetDefault(d, r2, r4)
-    return r5
+    r3 = PyList_New(1)
+    r4 = box(short_int, 2)
+    r5 = get_element_ptr r3 ob_item :: PyListObject
+    r6 = load_mem r5 :: ptr*
+    set_mem r6, r4 :: builtins.object*
+    keep_alive r3
+    r7 = CPyDict_SetDefault(d, r2, r3)
+    return r7
 L3:
-    r6 = box(None, 1)
-    return r6
+    r8 = box(None, 1)
+    return r8
 def f4(d, flag):
     d :: dict
     flag :: bool
