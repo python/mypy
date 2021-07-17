@@ -3,6 +3,7 @@
 import argparse
 from gettext import gettext
 import os
+import pathlib
 import subprocess
 import sys
 import time
@@ -81,7 +82,8 @@ def main(script_path: Optional[str],
              stderr, options)
 
     if options.install_types and not sources:
-        install_types(options.cache_dir, formatter, non_interactive=options.non_interactive)
+        install_types(options.cache_dir, formatter, non_interactive=options.non_interactive,
+                      prefix=options.prefix)
         return
 
     res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
@@ -118,7 +120,7 @@ def main(script_path: Optional[str],
 
     if options.install_types and not options.non_interactive:
         result = install_types(options.cache_dir, formatter, after_run=True,
-                               non_interactive=False)
+                               non_interactive=False, prefix=options.prefix)
         if result:
             print()
             print("note: Run mypy again for up-to-date results with installed types")
@@ -1018,6 +1020,15 @@ def process_options(args: List[str],
     if options.logical_deps:
         options.cache_fine_grained = True
 
+    # Determine if mypy is installed in a non-default prefix
+    try:
+        mypy_sitepkgs_path = pathlib.Path(__file__).resolve().parents[1]  # <sitepkgs>/mypy/main.py
+    except IndexError:
+        pass
+    else:
+        if not util.is_default_sitepkgs(mypy_sitepkgs_path):
+            options.prefix = util.get_sitepkgs_prefix(mypy_sitepkgs_path)
+
     # Set target.
     if special_opts.modules + special_opts.packages:
         options.build_type = BuildType.MODULE
@@ -1150,7 +1161,8 @@ def install_types(cache_dir: str,
                   formatter: util.FancyFormatter,
                   *,
                   after_run: bool = False,
-                  non_interactive: bool = False) -> bool:
+                  non_interactive: bool = False,
+                  prefix: Optional[pathlib.Path] = None) -> bool:
     """Install stub packages using pip if some missing stubs were detected."""
     packages = read_types_packages_to_install(cache_dir, after_run)
     if not packages:
@@ -1158,8 +1170,12 @@ def install_types(cache_dir: str,
         return False
     if after_run and not non_interactive:
         print()
+    prefix_opt = []
+    # Install types within the same prefix as mypy
+    if prefix is not None:
+        prefix_opt = ['--prefix', str(prefix.resolve())]
     print('Installing missing stub packages:')
-    cmd = [sys.executable, '-m', 'pip', 'install'] + packages
+    cmd = [sys.executable, '-m', 'pip', 'install'] + prefix_opt + packages
     print(formatter.style(' '.join(cmd), 'none', bold=True))
     print()
     if not non_interactive:

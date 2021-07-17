@@ -8,6 +8,7 @@ import collections
 import functools
 import os
 import re
+import site
 import subprocess
 import sys
 from enum import Enum
@@ -721,6 +722,11 @@ def compute_search_paths(sources: List[BuildSource],
 
     # Start with a MYPYPATH environment variable at the front of the mypy_path, if defined.
     mypypath = mypy_path()
+
+    # Push the non-default mypy prefix site-packages at the back, if any
+    if options.prefix is not None:
+        prefix_sitepkgs, = site.getsitepackages([str(options.prefix.resolve())])
+        mypypath.append(prefix_sitepkgs)
 
     # Add a config-defined mypy path.
     mypypath.extend(options.mypy_path)
