@@ -571,28 +571,30 @@ def translate_str_format_percent_sign(builder: IRBuilder,
                                       rhs: Expression) -> Value:
     literals, conversion_types = tokenizer_printf_style(format_expr.value)
     variables = []
-    flag = True
     if isinstance(rhs, TupleExpr):
         raw_variables = rhs.items
     elif isinstance(rhs, RefExpr):
         raw_variables = [rhs]
     else:
-        raw_variables, flag = [], False
+        raw_variables = []
 
-    for typ, var in zip(conversion_types, raw_variables):
-        node_type = builder.node_type(var)
-        if typ == '%d' and (is_int_rprimitive(node_type)
-                            or is_short_int_rprimitive(node_type)):
-            var_str = builder.call_c(int_to_str_op, [builder.accept(var)], format_expr.line)
-        elif typ == '%s':
-            if is_str_rprimitive(node_type):
-                var_str = builder.accept(var)
+    flag = (len(conversion_types) == len(raw_variables))
+
+    if flag:
+        for typ, var in zip(conversion_types, raw_variables):
+            node_type = builder.node_type(var)
+            if typ == '%d' and (is_int_rprimitive(node_type)
+                                or is_short_int_rprimitive(node_type)):
+                var_str = builder.call_c(int_to_str_op, [builder.accept(var)], format_expr.line)
+            elif typ == '%s':
+                if is_str_rprimitive(node_type):
+                    var_str = builder.accept(var)
+                else:
+                    var_str = builder.call_c(str_op, [builder.accept(var)], format_expr.line)
             else:
-                var_str = builder.call_c(str_op, [builder.accept(var)], format_expr.line)
-        else:
-            flag = False
-            break
-        variables.append(var_str)
+                flag = False
+                break
+            variables.append(var_str)
 
     if flag:
         return join_formatted_strings(builder, literals, variables, format_expr.line)

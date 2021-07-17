@@ -151,11 +151,16 @@ def test_str_to_bool() -> None:
 
 [case testCStyleStringFormatting]
 [typing fixtures/typing-full.pyi]
+from typing import Tuple
+
 var = 'mypyc'
 num = 20
 
 def test_basics() -> None:
     assert 'Hello %s, this is a test' % var == "Hello mypyc, this is a test"
+    assert 'Hello %s %d, this is a test' % (var, num) == "Hello mypyc 20, this is a test"
+    t: Tuple[str, int] = (var, num)
+    assert 'Hello %s %d, this is a test' % t == "Hello mypyc 20, this is a test"
 
     large_num = 2**65
     assert 'number: %d' % large_num == 'number: 36893488147419103232'
