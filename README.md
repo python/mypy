@@ -83,7 +83,7 @@ Mypy can be installed using pip:
 
     $ python3 -m pip install -U mypy
 
-If you want to run the latest version of the code, you can install from git:
+If you want to run the latest version of the code, you can install it from git:
 
     $ python3 -m pip install -U git+git://github.com/python/mypy.git
 
@@ -129,7 +129,7 @@ Mypy can also be set up as a pre-commit hook using [pre-commit mirrors-mypy].
 Web site and documentation
 --------------------------
 
-Documentation and additional information is available at the web site:
+Documentation and additional information are available at the website:
 
   http://www.mypy-lang.org/
 
@@ -179,7 +179,7 @@ modules from the command line.
     $ python3 -m virtualenv env
 
 
-Quick start for contributing to mypy
+Quickstart for contributing to mypy
 ------------------------------------
 
 If you want to contribute, first clone the mypy git repository:
