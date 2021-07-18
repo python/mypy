@@ -1,3 +1,4 @@
+from mypy.util import unnamed_function
 import sys
 from typing import Dict, Any, Optional, Tuple
 import sys
@@ -108,14 +109,14 @@ def get_id_from_name(name: str, fullname: str, line: int) -> str:
     a dictionary key. This is usually the fullname of the function, but this is different in that
     it handles the case where the function is named '_', in which case multiple different functions
     could have the same name."""
-    if name == "_":
+    if unnamed_function(name):
         return "{}.{}".format(fullname, line)
     else:
         return fullname
 
 
 def short_id_from_name(func_name: str, shortname: str, line: Optional[int]) -> str:
-    if func_name == "_":
+    if unnamed_function(func_name):
         assert line is not None
         partial_name = "{}.{}".format(shortname, line)
     else:

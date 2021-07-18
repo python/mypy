@@ -1,3 +1,4 @@
+from mypy.util import unnamed_function
 import re
 import sys
 import warnings
@@ -460,7 +461,7 @@ class ASTConverter:
                 # most of mypy/mypyc assumes that all the functions in an OverloadedFuncDef are
                 # related, but multiple underscore functions next to each other aren't necessarily
                 # related
-                if isinstance(stmt, Decorator) and stmt.name != "_":
+                if isinstance(stmt, Decorator) and not unnamed_function(stmt.name):
                     current_overload = [stmt]
                     current_overload_name = stmt.name
                 else:
