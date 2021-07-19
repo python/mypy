@@ -450,9 +450,8 @@ def can_optimize_format(format_str: str) -> bool:
 
 
 def split_braces(format_str: str) -> List[str]:
-    """This function can only be called after format_str passes
-    'can_optimize_format()'.
-    """
+    # This function can only be called after format_str passes
+    # 'can_optimize_format()'.
     tmp_str = ''
     ret_list = []
     prev = ''
