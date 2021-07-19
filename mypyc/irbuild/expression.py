@@ -573,14 +573,14 @@ def translate_str_format_percent_sign(builder: IRBuilder,
     variables = []
     if isinstance(rhs, TupleExpr):
         raw_variables = rhs.items
-    elif isinstance(rhs, RefExpr):
+    elif isinstance(rhs, Expression):
         raw_variables = [rhs]
     else:
         raw_variables = []
 
-    flag = (len(conversion_types) == len(raw_variables))
+    is_conversion_matched = (len(conversion_types) == len(raw_variables))
 
-    if flag:
+    if is_conversion_matched:
         for typ, var in zip(conversion_types, raw_variables):
             node_type = builder.node_type(var)
             if typ == '%d' and (is_int_rprimitive(node_type)
@@ -592,18 +592,18 @@ def translate_str_format_percent_sign(builder: IRBuilder,
                 else:
                     var_str = builder.call_c(str_op, [builder.accept(var)], format_expr.line)
             else:
-                flag = False
+                is_conversion_matched = False
                 break
             variables.append(var_str)
 
-    if flag:
+    if is_conversion_matched:
         return join_formatted_strings(builder, literals, variables, format_expr.line)
     else:
         call_c_ops_candidates = binary_ops.get('%', [])
         ret = builder.builder.matching_call_c(call_c_ops_candidates,
                                               [builder.accept(format_expr), builder.accept(rhs)],
                                               format_expr.line)
-        assert ret is not None
+        assert ret is not None, 'Cannot use binary op % at line {}'.format(format_expr.line)
         return ret
 
 
