@@ -917,6 +917,8 @@ def process_options(args: List[str],
 
     # Override cache_dir if provided in the environment
     environ_cache_dir = os.getenv('MYPY_CACHE_DIR', '')
+    if not environ_cache_dir:
+        environ_cache_dir = os.getenv('PYTHONPYCACHEPREFIX', '')
     if environ_cache_dir.strip():
         options.cache_dir = environ_cache_dir
     options.cache_dir = os.path.expanduser(options.cache_dir)
