@@ -61,8 +61,9 @@ def specialize_function(
         name: str, typ: Optional[RType] = None) -> Callable[[Specializer], Specializer]:
     """Decorator to register a function as being a specializer.
 
-    There may exist multiple specializers for one function. When translating method
-    calls, the earlier appended specializer has higher priority.
+    There may exist multiple specializers for one function. When
+    translating method calls, the earlier appended specializer has
+    higher priority.
     """
 
     def wrapper(f: Specializer) -> Specializer:
@@ -74,7 +75,6 @@ def specialize_function(
 
 @specialize_function('builtins.globals')
 def translate_globals(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-    # Special case builtins.globals
     if len(expr.args) == 0:
         return builder.load_globals_dict()
     return None
@@ -83,13 +83,12 @@ def translate_globals(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Op
 @specialize_function('builtins.len')
 def translate_len(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-    # Special case builtins.len
     if (len(expr.args) == 1
             and expr.arg_kinds == [ARG_POS]):
         expr_rtype = builder.node_type(expr.args[0])
         if isinstance(expr_rtype, RTuple):
-            # len() of fixed-length tuple can be trivially determined statically,
-            # though we still need to evaluate it.
+            # len() of fixed-length tuple can be trivially determined
+            # statically, though we still need to evaluate it.
             builder.accept(expr.args[0])
             return Integer(len(expr_rtype.types))
         else:
@@ -101,8 +100,12 @@ def translate_len(
 @specialize_function('builtins.list')
 def dict_methods_fast_path(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-    # Specialize a common case when list() is called on a dictionary view
-    # method call, for example foo = list(bar.keys()).
+    """Specialize a common case when list() is called on a dictionary
+    view method call.
+
+    For example:
+        foo = list(bar.keys())
+    """
     if not (len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]):
         return None
     arg = expr.args[0]
@@ -116,8 +119,9 @@ def dict_methods_fast_path(
         return None
 
     obj = builder.accept(base)
-    # Note that it is not safe to use fast methods on dict subclasses, so
-    # the corresponding helpers in CPy.h fallback to (inlined) generic logic.
+    # Note that it is not safe to use fast methods on dict subclasses,
+    # so the corresponding helpers in CPy.h fallback to (inlined)
+    # generic logic.
     if attr == 'keys':
         return builder.call_c(dict_keys_op, [obj], expr.line)
     elif attr == 'values':
@@ -129,9 +133,13 @@ def dict_methods_fast_path(
 @specialize_function('builtins.list')
 def translate_list_from_generator_call(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-    # Special case for simplest list comprehension, for example
-    #     list(f(x) for x in some_list/some_tuple/some_str)
-    # translate_list_comprehension() would take care of other cases if this fails.
+    """Special case for simplest list comprehension.
+
+    For example:
+        list(f(x) for x in some_list/some_tuple/some_str)
+    'translate_list_comprehension()' would take care of other cases
+    if this fails.
+    """
     if (len(expr.args) == 1
             and expr.arg_kinds[0] == ARG_POS
             and isinstance(expr.args[0], GeneratorExpr)):
@@ -145,9 +153,13 @@ def translate_list_from_generator_call(
 @specialize_function('builtins.tuple')
 def translate_tuple_from_generator_call(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-    # Special case for simplest tuple creation from a generator, for example
-    #     tuple(f(x) for x in some_list/some_tuple/some_str)
-    # translate_safe_generator_call() would take care of other cases if this fails.
+    """Special case for simplest tuple creation from a generator.
+
+    For example:
+        tuple(f(x) for x in some_list/some_tuple/some_str)
+    'translate_safe_generator_call()' would take care of other cases
+    if this fails.
+    """
     if (len(expr.args) == 1
             and expr.arg_kinds[0] == ARG_POS
             and isinstance(expr.args[0], GeneratorExpr)):
@@ -161,8 +173,11 @@ def translate_tuple_from_generator_call(
 @specialize_function('builtins.set')
 def translate_set_from_generator_call(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-    # Special case for set creation from a generator：
-    #     set(f(...) for ... in iterator/nested_generators...)
+    """Special case for set creation from a generator.
+
+    For example:
+        set(f(...) for ... in iterator/nested_generators...)
+    """
     if (len(expr.args) == 1
             and expr.arg_kinds[0] == ARG_POS
             and isinstance(expr.args[0], GeneratorExpr)):
@@ -184,8 +199,9 @@ def translate_set_from_generator_call(
 @specialize_function('update', set_rprimitive)
 def translate_safe_generator_call(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-    # Special cases for things that consume iterators where we know we
-    # can safely compile a generator into a list.
+    """Special cases for things that consume iterators where we know we
+    can safely compile a generator into a list.
+    """
     if (len(expr.args) > 0
             and expr.arg_kinds[0] == ARG_POS
             and isinstance(expr.args[0], GeneratorExpr)):
@@ -254,23 +270,26 @@ def any_all_helper(builder: IRBuilder,
 @specialize_function('attr.Factory')
 def translate_dataclasses_field_call(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-    # Special case for 'dataclasses.field' and 'attr.Factory' function calls
-    # because the results of such calls are typechecked by mypy using the types
-    # of the arguments to their respective functions, resulting in attempted
-    # coercions by mypyc that throw a runtime error.
+    """Special case for 'dataclasses.field' and 'attr.Factory'
+    function calls because the results of such calls are type-checked
+    by mypy using the types of the arguments to their respective
+    functions, resulting in attempted coercions by mypyc that throw a
+    runtime error.
+    """
     builder.types[expr] = AnyType(TypeOfAny.from_error)
     return None
 
 
 @specialize_function('builtins.next')
 def translate_next_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-    # Special case for calling next() on a generator expression, an
-    # idiom that shows up some in mypy.
-    #
-    # For example, next(x for x in l if x.id == 12, None) will
-    # generate code that searches l for an element where x.id == 12
-    # and produce the first such object, or None if no such element
-    # exists.
+    """Special case for calling next() on a generator expression, an
+    idiom that shows up some in mypy.
+
+    For example, next(x for x in l if x.id == 12, None) will
+    generate code that searches l for an element where x.id == 12
+    and produce the first such object, or None if no such element
+    exists.
+    """
     if not (expr.arg_kinds in ([ARG_POS], [ARG_POS, ARG_POS])
             and isinstance(expr.args[0], GeneratorExpr)):
         return None
@@ -309,13 +328,15 @@ def translate_next_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> 
 
 @specialize_function('builtins.isinstance')
 def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+    """Special case for builtins.isinstance.
+
+    Prevent coercions on the thing we are checking the instance of -
+    there is no need to coerce something to a new type before checking
+    what type it is, and the coercion could lead to bugs.
+    """
     if (len(expr.args) == 2
             and expr.arg_kinds == [ARG_POS, ARG_POS]
             and isinstance(expr.args[1], (RefExpr, TupleExpr))):
-        # Special case for builtins.isinstance
-        # Prevent coercions on the thing we are checking the instance of - there is no need to
-        # coerce something to a new type before checking what type it is, and the coercion could
-        # lead to bugs.
         builder.types[expr.args[0]] = AnyType(TypeOfAny.from_error)
 
         irs = builder.flatten_classes(expr.args[1])
@@ -327,16 +348,20 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
 @specialize_function('setdefault', dict_rprimitive)
 def translate_dict_setdefault(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+    """Special case for 'dict.setdefault' which would only construct
+    default empty collection when needed.
+
+    The dict_setdefault_spec_init_op checks whether the dict contains
+    the key and would construct the empty collection only once.
+
+    For example, this specializer works for the following cases:
+         d.setdefault(key, set()).add(value)
+         d.setdefault(key, []).append(value)
+         d.setdefault(key, {})[inner_key] = inner_val
+    """
     if (len(expr.args) == 2
             and expr.arg_kinds == [ARG_POS, ARG_POS]
             and isinstance(callee, MemberExpr)):
-        # Special case for dict.setdefault which would only construct default empty
-        # collection when needed. The dict_setdefault_spec_init_op checks whether
-        # the dict contains the key and would construct the empty collection only once.
-        # For example, this specializer works for the following cases:
-        #     d.setdefault(key, set()).add(value)
-        #     d.setdefault(key, []).append(value)
-        #     d.setdefault(key, {})[inner_key] = inner_val
         arg = expr.args[1]
         if isinstance(arg, ListExpr):
             if len(arg.items):
@@ -386,8 +411,8 @@ def translate_str_format(
                 var_str = builder.call_c(str_op, [builder.accept(x)], expr.line)
             variables.append(var_str)
 
-        # The first parameter is the total size of the following PyObject* merged from
-        # two lists alternatively.
+        # The first parameter is the total size of the following
+        # PyObject* merged from two lists alternatively.
         result_list: List[Value] = [Integer(0, c_pyssize_t_rprimitive)]
         for a, b in zip(literals, variables):
             if a:
@@ -425,7 +450,8 @@ def can_optimize_format(format_str: str) -> bool:
 
 
 def split_braces(format_str: str) -> List[str]:
-    # This function can only be called after format_str pass can_optimize_format()
+    # This function can only be called after format_str passes
+    # 'can_optimize_format()'.
     tmp_str = ''
     ret_list = []
     prev = ''
@@ -465,9 +491,12 @@ def split_braces(format_str: str) -> List[str]:
 @specialize_function('join', str_rprimitive)
 def translate_fstring(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-    # Special case for f-string, which is translated into str.join() in mypy AST.
-    # This specializer optimizes simplest f-strings which don't contain any
-    # format operation.
+    """Special case for f-string, which is translated into str.join()
+    in mypy AST.
+
+    This specializer optimizes simplest f-strings which don't contain
+    any format operation.
+    """
     if (isinstance(callee, MemberExpr)
             and isinstance(callee.expr, StrExpr) and callee.expr.value == ''
             and expr.arg_kinds == [ARG_POS] and isinstance(expr.args[0], ListExpr)):
