@@ -192,6 +192,23 @@ def f(p1: bytes, p2: float, /) -> None:
     reveal_type(p1)  # N: Revealed type is "builtins.bytes"
     reveal_type(p2)  # N: Revealed type is "builtins.float"
 
+[case testPEP570Unannotated]
+def f(arg, /): ...
+g = lambda arg, /: arg
+def h(arg=0, /): ...
+i = lambda arg=0, /: arg
+
+f(1)
+g(1)
+h()
+h(1)
+i()
+i(1)
+f(arg=0)  # E: Unexpected keyword argument "arg" for "f"
+g(arg=0)  # E: Unexpected keyword argument "arg"
+h(arg=0)  # E: Unexpected keyword argument "arg" for "h"
+i(arg=0)  # E: Unexpected keyword argument "arg"
+
 [case testWalrus]
 # flags: --strict-optional
 from typing import NamedTuple, Optional, List
@@ -206,7 +223,7 @@ while b := "x":
 l = [y2 := 1, y2 + 2, y2 + 3]
 reveal_type(y2)  # N: Revealed type is "builtins.int"
 reveal_type(l)  # N: Revealed type is "builtins.list[builtins.int*]"
- 
+
 filtered_data = [y3 for x in l if (y3 := a) is not None]
 reveal_type(filtered_data)  # N: Revealed type is "builtins.list[builtins.int*]"
 reveal_type(y3)  # N: Revealed type is "builtins.int"

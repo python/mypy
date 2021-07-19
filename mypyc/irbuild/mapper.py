@@ -122,10 +122,12 @@ class Mapper:
         if isinstance(fdef.type, CallableType):
             arg_types = [self.get_arg_rtype(typ, kind)
                          for typ, kind in zip(fdef.type.arg_types, fdef.type.arg_kinds)]
+            arg_pos_onlys = [name is None for name in fdef.type.arg_names]
             ret = self.type_to_rtype(fdef.type.ret_type)
         else:
             # Handle unannotated functions
             arg_types = [object_rprimitive for arg in fdef.arguments]
+            arg_pos_onlys = [arg.pos_only for arg in fdef.arguments]
             # We at least know the return type for __init__ methods will be None.
             is_init_method = fdef.name == '__init__' and bool(fdef.info)
             if is_init_method:
@@ -133,8 +135,22 @@ class Mapper:
             else:
                 ret = object_rprimitive
 
-        args = [RuntimeArg(arg_name, arg_type, arg_kind)
-                for arg_name, arg_kind, arg_type in zip(fdef.arg_names, fdef.arg_kinds, arg_types)]
+        # mypyc FuncSignatures (unlike mypy types) want to have a name
+        # present even when the argument is position only, since it is
+        # the sole way that FuncDecl arguments are tracked. This is
+        # generally fine except in some cases (like for computing
+        # init_sig) we need to produce FuncSignatures from a
+        # deserialized FuncDef that lacks arguments. We won't ever
+        # need to use those inside of a FuncIR, so we just make up
+        # some crap.
+        if hasattr(fdef, 'arguments'):
+            arg_names = [arg.variable.name for arg in fdef.arguments]
+        else:
+            arg_names = [name or '' for name in fdef.arg_names]
+
+        args = [RuntimeArg(arg_name, arg_type, arg_kind, arg_pos_only)
+                for arg_name, arg_kind, arg_type, arg_pos_only
+                in zip(arg_names, fdef.arg_kinds, arg_types, arg_pos_onlys)]
 
         # We force certain dunder methods to return objects to support letting them
         # return NotImplemented. It also avoids some pointless boxing and unboxing,

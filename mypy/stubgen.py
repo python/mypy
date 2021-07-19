@@ -926,7 +926,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if self._state != EMPTY:
             self.add('\n')
         if isinstance(rvalue.args[1], StrExpr):
-            items = rvalue.args[1].value.split(" ")
+            items = rvalue.args[1].value.replace(',', ' ').split()
         elif isinstance(rvalue.args[1], (ListExpr, TupleExpr)):
             list_items = cast(List[StrExpr], rvalue.args[1].items)
             items = [item.value for item in list_items]

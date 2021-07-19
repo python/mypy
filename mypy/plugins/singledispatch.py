@@ -29,8 +29,10 @@ SINGLEDISPATCH_REGISTER_METHOD = '{}.register'.format(SINGLEDISPATCH_TYPE)  # ty
 SINGLEDISPATCH_CALLABLE_CALL_METHOD = '{}.__call__'.format(SINGLEDISPATCH_TYPE)  # type: Final
 
 
-def get_singledispatch_info(typ: Instance) -> SingledispatchTypeVars:
-    return SingledispatchTypeVars(*typ.args)  # type: ignore
+def get_singledispatch_info(typ: Instance) -> Optional[SingledispatchTypeVars]:
+    if len(typ.args) == 2:
+        return SingledispatchTypeVars(*typ.args)  # type: ignore
+    return None
 
 
 T = TypeVar('T')
@@ -157,6 +159,10 @@ def register_function(ctx: PluginContext, singledispatch_obj: Instance, func: Ty
     if not isinstance(func, CallableType):
         return
     metadata = get_singledispatch_info(singledispatch_obj)
+    if metadata is None:
+        # if we never added the fallback to the type variables, we already reported an error, so
+        # just don't do anything here
+        return
     dispatch_type = get_dispatch_type(func, register_arg)
     if dispatch_type is None:
         # TODO: report an error here that singledispatch requires at least one argument
@@ -209,4 +215,6 @@ def call_singledispatch_function_callback(ctx: MethodSigContext) -> FunctionLike
     if not isinstance(ctx.type, Instance):
         return ctx.default_signature
     metadata = get_singledispatch_info(ctx.type)
+    if metadata is None:
+        return ctx.default_signature
     return metadata.fallback

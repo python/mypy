@@ -522,14 +522,13 @@ class ASTConverter:
 
         lineno = n.lineno
         args = self.transform_args(n.args, lineno, no_type_check=no_type_check)
-
-        posonlyargs = [arg.arg for arg in getattr(n.args, "posonlyargs", [])]
-        arg_kinds = [arg.kind for arg in args]
-        arg_names: List[Optional[str]] = [arg.variable.name for arg in args]
-        arg_names = [None if argument_elide_name(name) or name in posonlyargs else name
-                     for name in arg_names]
         if special_function_elide_names(n.name):
-            arg_names = [None] * len(arg_names)
+            for arg in args:
+                arg.pos_only = True
+
+        arg_kinds = [arg.kind for arg in args]
+        arg_names = [None if arg.pos_only else arg.variable.name for arg in args]
+
         arg_types: List[Optional[Type]] = []
         if no_type_check:
             arg_types = [None] * len(args)
@@ -602,10 +601,11 @@ class ASTConverter:
                                          AnyType(TypeOfAny.unannotated),
                                          _dummy_fallback)
 
-        func_def = FuncDef(n.name,
-                       args,
-                       self.as_required_block(n.body, lineno),
-                       func_type)
+        func_def = FuncDef(
+            n.name,
+            args,
+            self.as_required_block(n.body, lineno),
+            func_type)
         if isinstance(func_def.type, CallableType):
             # semanal.py does some in-place modifications we want to avoid
             func_def.unanalyzed_type = func_def.type.copy_modified()
@@ -660,17 +660,20 @@ class ASTConverter:
                        ) -> List[Argument]:
         new_args = []
         names: List[ast3.arg] = []
-        args_args = getattr(args, "posonlyargs", cast(List[ast3.arg], [])) + args.args
+        posonlyargs = getattr(args, "posonlyargs", cast(List[ast3.arg], []))
+        args_args = posonlyargs + args.args
         args_defaults = args.defaults
         num_no_defaults = len(args_args) - len(args_defaults)
         # positional arguments without defaults
-        for a in args_args[:num_no_defaults]:
-            new_args.append(self.make_argument(a, None, ARG_POS, no_type_check))
+        for i, a in enumerate(args_args[:num_no_defaults]):
+            pos_only = i < len(posonlyargs)
+            new_args.append(self.make_argument(a, None, ARG_POS, no_type_check, pos_only))
             names.append(a)
 
         # positional arguments with defaults
-        for a, d in zip(args_args[num_no_defaults:], args_defaults):
-            new_args.append(self.make_argument(a, d, ARG_OPT, no_type_check))
+        for i, (a, d) in enumerate(zip(args_args[num_no_defaults:], args_defaults)):
+            pos_only = num_no_defaults + i < len(posonlyargs)
+            new_args.append(self.make_argument(a, d, ARG_OPT, no_type_check, pos_only))
             names.append(a)
 
         # *arg
@@ -697,7 +700,7 @@ class ASTConverter:
         return new_args
 
     def make_argument(self, arg: ast3.arg, default: Optional[ast3.expr], kind: ArgKind,
-                      no_type_check: bool) -> Argument:
+                      no_type_check: bool, pos_only: bool = False) -> Argument:
         if no_type_check:
             arg_type = None
         else:
@@ -710,7 +713,10 @@ class ASTConverter:
                 arg_type = TypeConverter(self.errors, line=arg.lineno).visit(annotation)
             else:
                 arg_type = self.translate_type_comment(arg, type_comment)
-        return Argument(Var(arg.arg), arg_type, self.visit(default), kind)
+        if argument_elide_name(arg.arg):
+            pos_only = True
+
+        return Argument(Var(arg.arg), arg_type, self.visit(default), kind, pos_only)
 
     def fail_arg(self, msg: str, arg: ast3.arg) -> None:
         self.fail(msg, arg.lineno, arg.col_offset)

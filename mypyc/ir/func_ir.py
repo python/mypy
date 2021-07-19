@@ -19,20 +19,24 @@ class RuntimeArg:
     Argument kind is one of ARG_* constants defined in mypy.nodes.
     """
 
-    def __init__(self, name: str, typ: RType, kind: ArgKind = ARG_POS) -> None:
+    def __init__(
+            self, name: str, typ: RType, kind: ArgKind = ARG_POS, pos_only: bool = False) -> None:
         self.name = name
         self.type = typ
         self.kind = kind
+        self.pos_only = pos_only
 
     @property
     def optional(self) -> bool:
         return self.kind.is_optional()
 
     def __repr__(self) -> str:
-        return 'RuntimeArg(name=%s, type=%s, optional=%r)' % (self.name, self.type, self.optional)
+        return 'RuntimeArg(name=%s, type=%s, optional=%r, pos_only=%r)' % (
+            self.name, self.type, self.optional, self.pos_only)
 
     def serialize(self) -> JsonDict:
-        return {'name': self.name, 'type': self.type.serialize(), 'kind': int(self.kind.value)}
+        return {'name': self.name, 'type': self.type.serialize(), 'kind': int(self.kind.value),
+                'pos_only': self.pos_only}
 
     @classmethod
     def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> 'RuntimeArg':
@@ -40,6 +44,7 @@ class RuntimeArg:
             data['name'],
             deserialize_type(data['type'], ctx),
             ArgKind(data['kind']),
+            data['pos_only'],
         )
 
 

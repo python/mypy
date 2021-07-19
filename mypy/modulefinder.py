@@ -433,9 +433,9 @@ class FindModuleCache:
         metadata_fnam = os.path.join(stub_dir, 'METADATA.toml')
         if os.path.isfile(metadata_fnam):
             # Delay import for a possible minor performance win.
-            import toml
-            with open(metadata_fnam, 'r') as f:
-                metadata = toml.load(f)
+            import tomli
+            with open(metadata_fnam, 'r', encoding="utf-8") as f:
+                metadata = tomli.load(f)
             if self.python_major_ver == 2:
                 return bool(metadata.get('python2', False))
             else:

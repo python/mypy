@@ -561,18 +561,20 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
 class Argument(Node):
     """A single argument in a FuncItem."""
 
-    __slots__ = ('variable', 'type_annotation', 'initializer', 'kind')
+    __slots__ = ('variable', 'type_annotation', 'initializer', 'kind', 'pos_only')
 
     def __init__(self,
                  variable: 'Var',
                  type_annotation: 'Optional[mypy.types.Type]',
                  initializer: Optional[Expression],
-                 kind: 'ArgKind') -> None:
+                 kind: 'ArgKind',
+                 pos_only: bool = False) -> None:
         super().__init__()
         self.variable = variable
         self.type_annotation = type_annotation
         self.initializer = initializer
         self.kind = kind  # must be an ARG_* constant
+        self.pos_only = pos_only
 
     def set_line(self,
                  target: Union[Context, int],
@@ -619,7 +621,7 @@ class FuncItem(FuncBase):
                  typ: 'Optional[mypy.types.FunctionLike]' = None) -> None:
         super().__init__()
         self.arguments = arguments
-        self.arg_names = [arg.variable.name for arg in self.arguments]
+        self.arg_names = [None if arg.pos_only else arg.variable.name for arg in arguments]
         self.arg_kinds: List[ArgKind] = [arg.kind for arg in self.arguments]
         self.max_pos: int = (
             self.arg_kinds.count(ARG_POS) + self.arg_kinds.count(ARG_OPT))

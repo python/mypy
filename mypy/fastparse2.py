@@ -369,12 +369,12 @@ class ASTConverter:
         converter = TypeConverter(self.errors, line=lineno, override_column=n.col_offset,
                                   assume_str_is_unicode=self.unicode_literals)
         args, decompose_stmts = self.transform_args(n.args, lineno)
+        if special_function_elide_names(n.name):
+            for arg in args:
+                arg.pos_only = True
 
         arg_kinds = [arg.kind for arg in args]
-        arg_names: List[Optional[str]] = [arg.variable.name for arg in args]
-        arg_names = [None if argument_elide_name(name) else name for name in arg_names]
-        if special_function_elide_names(n.name):
-            arg_names = [None] * len(arg_names)
+        arg_names = [None if arg.pos_only else arg.variable.name for arg in args]
 
         arg_types: List[Optional[Type]] = []
         type_comment = n.type_comment
@@ -517,6 +517,10 @@ class ASTConverter:
                                 converter)
             new_args.append(Argument(Var(n.kwarg), typ, None, ARG_STAR2))
             names.append(n.kwarg)
+
+        for arg in new_args:
+            if argument_elide_name(arg.variable.name):
+                arg.pos_only = True
 
         # We don't have any context object to give, but we have closed around the line num
         def fail_arg(msg: str, arg: None) -> None:

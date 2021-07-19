@@ -34,7 +34,7 @@ from mypyc.primitives.misc_ops import (
 from mypyc.primitives.dict_ops import dict_set_item_op
 from mypyc.common import SELF_NAME, LAMBDA_NAME, decorator_helper_name
 from mypyc.sametype import is_same_method_signature
-from mypyc.irbuild.util import concrete_arg_kind, is_constant
+from mypyc.irbuild.util import is_constant
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.irbuild.targets import AssignmentTarget
 from mypyc.irbuild.statement import transform_try_except
@@ -52,6 +52,8 @@ from mypyc.irbuild.env_class import (
     setup_env_class, load_outer_envs, load_env_registers, finalize_env_class,
     setup_func_for_recursive_call
 )
+
+from mypyc.primitives.registry import builtin_names
 
 
 # Top-level transform functions
@@ -219,9 +221,12 @@ def gen_func_item(builder: IRBuilder,
         in_non_ext = not ir.is_ext_class
         class_name = cdef.name
 
-    builder.enter(FuncInfo(fitem, name, class_name, gen_func_ns(builder),
-                           is_nested, contains_nested, is_decorated, in_non_ext,
-                           is_singledispatch))
+    if is_singledispatch:
+        func_name = '__mypyc_singledispatch_main_function_{}__'.format(name)
+    else:
+        func_name = name
+    builder.enter(FuncInfo(fitem, func_name, class_name, gen_func_ns(builder),
+                           is_nested, contains_nested, is_decorated, in_non_ext))
 
     # Functions that contain nested functions need an environment class to store variables that
     # are free in their nested functions. Generator functions need an environment class to
@@ -253,9 +258,6 @@ def gen_func_item(builder: IRBuilder,
 
     if builder.fn_info.contains_nested and not builder.fn_info.is_generator:
         finalize_env_class(builder)
-
-    if builder.fn_info.is_singledispatch:
-        add_singledispatch_registered_impls(builder)
 
     builder.ret_types[-1] = sig.ret_type
 
@@ -312,6 +314,15 @@ def gen_func_item(builder: IRBuilder,
     # Evaluate argument defaults in the surrounding scope, since we
     # calculate them *once* when the function definition is evaluated.
     calculate_arg_defaults(builder, fn_info, func_reg, symtable)
+
+    if is_singledispatch:
+        # add the generated main singledispatch function
+        builder.functions.append(func_ir)
+        # create the dispatch function
+        assert isinstance(fitem, FuncDef)
+        dispatch_name = decorator_helper_name(name) if is_decorated else name
+        dispatch_func_ir = gen_dispatch_func_ir(builder, fitem, fn_info.name, dispatch_name, sig)
+        return dispatch_func_ir, None
 
     return (func_ir, func_reg)
 
@@ -649,9 +660,10 @@ def get_args(builder: IRBuilder, rt_args: Sequence[RuntimeArg], line: int) -> Ar
     fake_vars = [(Var(arg.name), arg.type) for arg in rt_args]
     args = [builder.read(builder.add_local_reg(var, type, is_arg=True), line)
             for var, type in fake_vars]
-    arg_names = [arg.name if arg.kind.is_named() else None
+    arg_names = [arg.name
+                 if arg.kind.is_named() or (arg.kind.is_optional() and not arg.pos_only) else None
                  for arg in rt_args]
-    arg_kinds = [concrete_arg_kind(arg.kind) for arg in rt_args]
+    arg_kinds = [arg.kind for arg in rt_args]
     return ArgInfo(args, arg_names, arg_kinds)
 
 
@@ -694,9 +706,24 @@ def gen_glue_method(builder: IRBuilder, sig: FuncSignature, target: FuncIR,
     arg_info = get_args(builder, rt_args, line)
     args, arg_kinds, arg_names = arg_info.args, arg_info.arg_kinds, arg_info.arg_names
 
+    # We can do a passthrough *args/**kwargs with a native call, but if the
+    # args need to get distributed out to arguments, we just let python handle it
+    if (
+        any(kind.is_star() for kind in arg_kinds)
+        and any(not arg.kind.is_star() for arg in target.decl.sig.args)
+    ):
+        do_pycall = True
+
     if do_pycall:
+        if target.decl.kind == FUNC_STATICMETHOD:
+            # FIXME: this won't work if we can do interpreted subclasses
+            first = builder.builder.get_native_type(cls)
+            st = 0
+        else:
+            first = args[0]
+            st = 1
         retval = builder.builder.py_method_call(
-            args[0], target.name, args[1:], line, arg_kinds[1:], arg_names[1:])
+            first, target.name, args[st:], line, arg_kinds[st:], arg_names[st:])
     else:
         retval = builder.builder.call(target.decl, args, arg_kinds, arg_names, line)
     retval = builder.coerce(retval, sig.ret_type, line)
@@ -768,19 +795,36 @@ def check_if_isinstance(builder: IRBuilder, obj: Value, typ: TypeInfo, line: int
         class_ir = builder.mapper.type_to_ir[typ]
         return builder.builder.isinstance_native(obj, class_ir, line)
     else:
-        class_obj = builder.load_module_attr_by_fullname(typ.fullname, line)
+        if typ.fullname in builtin_names:
+            builtin_addr_type, src = builtin_names[typ.fullname]
+            class_obj = builder.add(LoadAddress(builtin_addr_type, src, line))
+        else:
+            class_obj = builder.load_global_str(typ.name, line)
         return builder.call_c(slow_isinstance_op, [obj, class_obj], line)
 
 
-def add_singledispatch_registered_impls(builder: IRBuilder) -> None:
-    fitem = builder.fn_info.fitem
-    assert isinstance(fitem, FuncDef)
+def generate_singledispatch_dispatch_function(
+    builder: IRBuilder,
+    main_singledispatch_function_name: str,
+    fitem: FuncDef,
+) -> None:
     impls = builder.singledispatch_impls[fitem]
     line = fitem.line
     current_func_decl = builder.mapper.func_to_decl[fitem]
     arg_info = get_args(builder, current_func_decl.sig.args, line)
-    for dispatch_type, impl in impls:
-        func_decl = builder.mapper.func_to_decl[impl]
+
+    def gen_func_call_and_return(func_name: str) -> None:
+        func = builder.load_global_str(func_name, line)
+        # TODO: don't pass optional arguments if they weren't passed to this function
+        ret_val = builder.builder.py_call(
+            func, arg_info.args, line, arg_info.arg_kinds, arg_info.arg_names
+        )
+        coerced = builder.coerce(ret_val, current_func_decl.sig.ret_type, line)
+        builder.nonlocal_control[-1].gen_return(builder, coerced, line)
+
+    # Reverse the list of registered implementations so we use the implementations defined later
+    # if there are multiple overlapping implementations
+    for dispatch_type, impl in reversed(impls):
         call_impl, next_impl = BasicBlock(), BasicBlock()
         should_call_impl = check_if_isinstance(builder, arg_info.args[0], dispatch_type, line)
         builder.add_bool_branch(should_call_impl, call_impl, next_impl)
@@ -788,8 +832,25 @@ def add_singledispatch_registered_impls(builder: IRBuilder) -> None:
         # Call the registered implementation
         builder.activate_block(call_impl)
 
-        ret_val = builder.builder.call(
-            func_decl, arg_info.args, arg_info.arg_kinds, arg_info.arg_names, line
-        )
-        builder.nonlocal_control[-1].gen_return(builder, ret_val, line)
+        gen_func_call_and_return(impl.name)
         builder.activate_block(next_impl)
+
+    gen_func_call_and_return(main_singledispatch_function_name)
+
+
+def gen_dispatch_func_ir(
+    builder: IRBuilder,
+    fitem: FuncDef,
+    main_func_name: str,
+    dispatch_name: str,
+    sig: FuncSignature,
+) -> FuncIR:
+    """Create a dispatch function (a function that checks the first argument type and dispatches
+    to the correct implementation)
+    """
+    builder.enter()
+    generate_singledispatch_dispatch_function(builder, main_func_name, fitem)
+    args, _, blocks, _, fn_info = builder.leave()
+    func_decl = FuncDecl(dispatch_name, None, builder.module_name, sig)
+    dispatch_func_ir = FuncIR(func_decl, args, blocks)
+    return dispatch_func_ir

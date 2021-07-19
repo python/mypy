@@ -705,6 +705,9 @@ class MessageBuilder:
         else:
             self.fail('Function does not return a value', context, code=codes.FUNC_RETURNS_VALUE)
 
+    def underscore_function_call(self, context: Context) -> None:
+        self.fail('Calling function named "_" is not allowed', context)
+
     def deleted_as_rvalue(self, typ: DeletedType, context: Context) -> None:
         """Report an error about using an deleted type as an rvalue."""
         if typ.source is None:
@@ -1936,9 +1939,9 @@ def pretty_callable(tp: CallableType) -> str:
 
     # If we got a "special arg" (i.e: self, cls, etc...), prepend it to the arg list
     if isinstance(tp.definition, FuncDef) and tp.definition.name is not None:
-        definition_args = tp.definition.arg_names
+        definition_args = [arg.variable.name for arg in tp.definition.arguments]
         if definition_args and tp.arg_names != definition_args \
-                and len(definition_args) > 0:
+                and len(definition_args) > 0 and definition_args[0]:
             if s:
                 s = ', ' + s
             s = definition_args[0] + s
