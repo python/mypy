@@ -56,7 +56,7 @@ def test_specialize() -> None:
     assert fun(B())
     assert not fun(A())
 
-[case testMultipleUnderscoreFunctionsIsntError-xfail]
+[case testMultipleUnderscoreFunctionsIsntError]
 from functools import singledispatch
 
 @singledispatch
@@ -71,9 +71,17 @@ def _(arg: str) -> str:
 def _(arg: int) -> str:
     return 'int'
 
+# extra function to make sure all 3 underscore functions aren't treated as one OverloadedFuncDef
+def a(b): pass
+
+@fun.register
+def _(arg: list) -> str:
+    return 'list'
+
 def test_singledispatch() -> None:
     assert fun(0) == 'int'
     assert fun('a') == 'str'
+    assert fun([1, 2]) == 'list'
     assert fun({'a': 'b'}) == 'default'
 
 [case testCanRegisterCompiledClasses]
@@ -229,7 +237,7 @@ def test_singledispatchmethod() -> None:
     assert x.fun('a') == 'str'
     assert x.fun([1, 2]) == 'default'
 
-[case testSingledispatchTreeSumAndEqual-xfail]
+[case testSingledispatchTreeSumAndEqual]
 from functools import singledispatch
 
 class Tree:
@@ -281,7 +289,7 @@ def test_sum_and_equal():
     tree2 = build(5)
     tree2.right.right.right.value = 10
     assert calc_sum(tree) == 57
-    assert calc_sum(tree2) == 62
+    assert calc_sum(tree2) == 65
     assert equal(tree, tree)
     assert not equal(tree, tree2)
     tree3 = build(4)

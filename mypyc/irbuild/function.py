@@ -32,7 +32,7 @@ from mypyc.primitives.misc_ops import (
     check_stop_op, yield_from_except_op, coro_op, send_op, slow_isinstance_op
 )
 from mypyc.primitives.dict_ops import dict_set_item_op
-from mypyc.common import SELF_NAME, LAMBDA_NAME, decorator_helper_name
+from mypyc.common import SELF_NAME, LAMBDA_NAME, decorator_helper_name, short_id_from_name
 from mypyc.sametype import is_same_method_signature
 from mypyc.irbuild.util import is_constant
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
@@ -832,7 +832,10 @@ def generate_singledispatch_dispatch_function(
         # Call the registered implementation
         builder.activate_block(call_impl)
 
-        gen_func_call_and_return(impl.name)
+        # The shortname of a function is just '{class}.{func_name}', and we don't support
+        # singledispatchmethod yet, so that is always the same as the function name
+        name = short_id_from_name(impl.name, impl.name, impl.line)
+        gen_func_call_and_return(name)
         builder.activate_block(next_impl)
 
     gen_func_call_and_return(main_singledispatch_function_name)

@@ -14,6 +14,7 @@ of redundancy is because the Python 2 AST and the Python 3 AST nodes belong to t
 different class hierarchies, which made it difficult to write a shared visitor between the
 two in a typesafe way.
 """
+from mypy.util import unnamed_function
 import sys
 import warnings
 
@@ -313,7 +314,7 @@ class ASTConverter:
                 elif len(current_overload) > 1:
                     ret.append(OverloadedFuncDef(current_overload))
 
-                if isinstance(stmt, Decorator):
+                if isinstance(stmt, Decorator) and not unnamed_function(stmt.name):
                     current_overload = [stmt]
                     current_overload_name = stmt.name
                 else:

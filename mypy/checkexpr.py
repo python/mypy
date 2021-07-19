@@ -1,5 +1,6 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
+from mypy.util import unnamed_function
 from mypy.backports import OrderedDict, nullcontext
 from contextlib import contextmanager
 import itertools
@@ -336,7 +337,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if (isinstance(callee_type, CallableType)
                 and not callee_type.is_type_obj()
-                and callee_type.name == "_"):
+                and unnamed_function(callee_type.name)):
             self.msg.underscore_function_call(e)
             return AnyType(TypeOfAny.from_error)
 

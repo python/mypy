@@ -285,12 +285,12 @@ class ClassIR:
             'attributes': [(k, t.serialize()) for k, t in self.attributes.items()],
             # We try to serialize a name reference, but if the decl isn't in methods
             # then we can't be sure that will work so we serialize the whole decl.
-            'method_decls': [(k, d.fullname if k in self.methods else d.serialize())
+            'method_decls': [(k, d.id if k in self.methods else d.serialize())
                              for k, d in self.method_decls.items()],
             # We serialize method fullnames out and put methods in a separate dict
-            'methods': [(k, m.fullname) for k, m in self.methods.items()],
+            'methods': [(k, m.id) for k, m in self.methods.items()],
             'glue_methods': [
-                ((cir.fullname, k), m.fullname)
+                ((cir.fullname, k), m.id)
                 for (cir, k), m in self.glue_methods.items()
             ],
 
@@ -383,8 +383,8 @@ def serialize_vtable_entry(entry: VTableMethod) -> JsonDict:
         '.class': 'VTableMethod',
         'cls': entry.cls.fullname,
         'name': entry.name,
-        'method': entry.method.decl.fullname,
-        'shadow_method': entry.shadow_method.decl.fullname if entry.shadow_method else None,
+        'method': entry.method.decl.id,
+        'shadow_method': entry.shadow_method.decl.id if entry.shadow_method else None,
     }
 
 
