@@ -26,7 +26,6 @@ Other supported values for platform: linux, windows
 import argparse
 import os
 import subprocess
-import sys
 from typing import Dict
 
 # Clang package we use on Linux

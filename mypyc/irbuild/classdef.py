@@ -75,8 +75,6 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
         non_ext_anns = builder.call_c(dict_new_op, [], cdef.line)
         non_ext = NonExtClassInfo(non_ext_dict, non_ext_bases, non_ext_anns, non_ext_metaclass)
         dataclass_non_ext = None
-        type_obj = None
-
     attrs_to_cache: List[Tuple[Lvalue, RType]] = []
 
     for stmt in cdef.defs.body:
