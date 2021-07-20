@@ -244,3 +244,40 @@ L0:
     r23 = 'abc'
     s4 = r23
     return 1
+
+[case testCStyleStringFormatting]
+def f(var: str, num: int) -> None:
+    s1 = "Hi! I'm %s." % var
+    s2 = "I am %d years old." % num
+    s3 = "Hi! I'm %s. I am %d years old." % (var, num)
+    s4 = "Float: %f" % num
+[typing fixtures/typing-full.pyi]
+[out]
+def f(var, num):
+    var :: str
+    num :: int
+    r0, r1, r2, s1, r3, r4, r5, r6, s2, r7, r8, r9, r10, r11, s3, r12 :: str
+    r13, r14 :: object
+    r15, s4 :: str
+L0:
+    r0 = "Hi! I'm "
+    r1 = '.'
+    r2 = CPyStr_Build(3, r0, var, r1)
+    s1 = r2
+    r3 = CPyTagged_Str(num)
+    r4 = 'I am '
+    r5 = ' years old.'
+    r6 = CPyStr_Build(3, r4, r3, r5)
+    s2 = r6
+    r7 = CPyTagged_Str(num)
+    r8 = "Hi! I'm "
+    r9 = '. I am '
+    r10 = ' years old.'
+    r11 = CPyStr_Build(5, r8, var, r9, r7, r10)
+    s3 = r11
+    r12 = 'Float: %f'
+    r13 = box(int, num)
+    r14 = PyNumber_Remainder(r12, r13)
+    r15 = cast(str, r14)
+    s4 = r15
+    return 1

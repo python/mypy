@@ -28,6 +28,7 @@ from mypyc.ir.rtypes import (
     bool_rprimitive, c_int_rprimitive, c_pyssize_t_rprimitive, is_dict_rprimitive,
     is_int_rprimitive, is_str_rprimitive, is_short_int_rprimitive
 )
+from mypyc.irbuild.format_str_tokenizer import join_formatted_strings
 from mypyc.primitives.int_ops import int_to_str_op
 from mypyc.primitives.dict_ops import (
     dict_keys_op, dict_values_op, dict_items_op, dict_setdefault_spec_init_op
@@ -411,25 +412,7 @@ def translate_str_format(
                 var_str = builder.call_c(str_op, [builder.accept(x)], expr.line)
             variables.append(var_str)
 
-        # The first parameter is the total size of the following
-        # PyObject* merged from two lists alternatively.
-        result_list: List[Value] = [Integer(0, c_pyssize_t_rprimitive)]
-        for a, b in zip(literals, variables):
-            if a:
-                result_list.append(builder.load_str(a))
-            result_list.append(b)
-        # The split_braces() always generates one more element
-        if literals[-1]:
-            result_list.append(builder.load_str(literals[-1]))
-
-        # Special case for empty string and literal string
-        if len(result_list) == 1:
-            return builder.load_str("")
-        if not variables and len(result_list) == 2:
-            return result_list[1]
-
-        result_list[0] = Integer(len(result_list) - 1, c_pyssize_t_rprimitive)
-        return builder.call_c(str_build_op, result_list, expr.line)
+        return join_formatted_strings(builder, literals, variables, expr.line)
     return None
 
 

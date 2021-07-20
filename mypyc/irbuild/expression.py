@@ -21,18 +21,20 @@ from mypyc.ir.ops import (
     Value, Register, TupleGet, TupleSet, BasicBlock, Assign, LoadAddress, RaiseStandardError
 )
 from mypyc.ir.rtypes import (
-    RTuple, object_rprimitive, is_none_rprimitive, int_rprimitive, is_int_rprimitive
+    RTuple, object_rprimitive, is_none_rprimitive, int_rprimitive, is_int_rprimitive,
+    is_str_rprimitive, is_short_int_rprimitive
 )
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
-from mypyc.primitives.registry import CFunctionDescription, builtin_names
+from mypyc.irbuild.format_str_tokenizer import tokenizer_printf_style, join_formatted_strings
+from mypyc.primitives.registry import CFunctionDescription, builtin_names, binary_ops
 from mypyc.primitives.generic_ops import iter_op
 from mypyc.primitives.misc_ops import new_slice_op, ellipsis_op, type_op, get_module_dict_op
 from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
 from mypyc.primitives.tuple_ops import list_tuple_op, tuple_slice_op
 from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op, dict_get_item_op
 from mypyc.primitives.set_ops import set_add_op, set_update_op
-from mypyc.primitives.str_ops import str_slice_op
-from mypyc.primitives.int_ops import int_comparison_op_mapping
+from mypyc.primitives.str_ops import str_slice_op, str_op
+from mypyc.primitives.int_ops import int_comparison_op_mapping, int_to_str_op
 from mypyc.irbuild.specialize import specializers
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import (
@@ -379,6 +381,11 @@ def transform_unary_expr(builder: IRBuilder, expr: UnaryExpr) -> Value:
 def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
     if expr.op in ('and', 'or'):
         return builder.shortcircuit_expr(expr)
+
+    # Special case for string formatting
+    if expr.op == '%' and isinstance(expr.left, StrExpr):
+        return translate_str_format_percent_sign(builder, expr.left, expr.right)
+
     return builder.binary_op(
         builder.accept(expr.left), builder.accept(expr.right), expr.op, expr.line
     )
@@ -557,6 +564,47 @@ def transform_basic_comparison(builder: IRBuilder,
     if negate:
         target = builder.unary_op(target, 'not', line)
     return target
+
+
+def translate_str_format_percent_sign(builder: IRBuilder,
+                                      format_expr: StrExpr,
+                                      rhs: Expression) -> Value:
+    literals, conversion_types = tokenizer_printf_style(format_expr.value)
+    variables = []
+    if isinstance(rhs, TupleExpr):
+        raw_variables = rhs.items
+    elif isinstance(rhs, Expression):
+        raw_variables = [rhs]
+    else:
+        raw_variables = []
+
+    is_conversion_matched = (len(conversion_types) == len(raw_variables))
+
+    if is_conversion_matched:
+        for typ, var in zip(conversion_types, raw_variables):
+            node_type = builder.node_type(var)
+            if typ == '%d' and (is_int_rprimitive(node_type)
+                                or is_short_int_rprimitive(node_type)):
+                var_str = builder.call_c(int_to_str_op, [builder.accept(var)], format_expr.line)
+            elif typ == '%s':
+                if is_str_rprimitive(node_type):
+                    var_str = builder.accept(var)
+                else:
+                    var_str = builder.call_c(str_op, [builder.accept(var)], format_expr.line)
+            else:
+                is_conversion_matched = False
+                break
+            variables.append(var_str)
+
+    if is_conversion_matched:
+        return join_formatted_strings(builder, literals, variables, format_expr.line)
+    else:
+        call_c_ops_candidates = binary_ops.get('%', [])
+        ret = builder.builder.matching_call_c(call_c_ops_candidates,
+                                              [builder.accept(format_expr), builder.accept(rhs)],
+                                              format_expr.line)
+        assert ret is not None, 'Cannot use binary op % at line {}'.format(format_expr.line)
+        return ret
 
 
 # Literals
