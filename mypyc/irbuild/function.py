@@ -10,7 +10,7 @@ as an environment containing non-local variables, is stored in the
 instance of the callable class.
 """
 
-from typing import NamedTuple, Optional, List, Sequence, Tuple, Union, Dict
+from typing import Iterable, NamedTuple, Optional, List, Sequence, Tuple, Union, Dict
 
 from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, Decorator, Var, YieldFromExpr, AwaitExpr, YieldExpr,
@@ -822,9 +822,10 @@ def generate_singledispatch_dispatch_function(
         coerced = builder.coerce(ret_val, current_func_decl.sig.ret_type, line)
         builder.nonlocal_control[-1].gen_return(builder, coerced, line)
 
-    # Reverse the list of registered implementations so we use the implementations defined later
-    # if there are multiple overlapping implementations
-    for dispatch_type, impl in reversed(impls):
+    # Sort the list of implementations so that we check any subclasses before we check the classes
+    # they inherit from, to better match singledispatch's behavior of going through the argument's
+    # MRO, and using the first implementation it finds
+    for dispatch_type, impl in sort_with_subclasses_first(impls):
         call_impl, next_impl = BasicBlock(), BasicBlock()
         should_call_impl = check_if_isinstance(builder, arg_info.args[0], dispatch_type, line)
         builder.add_bool_branch(should_call_impl, call_impl, next_impl)
@@ -857,3 +858,24 @@ def gen_dispatch_func_ir(
     func_decl = FuncDecl(dispatch_name, None, builder.module_name, sig)
     dispatch_func_ir = FuncIR(func_decl, args, blocks)
     return dispatch_func_ir
+
+
+def sort_with_subclasses_first(
+    impls: List[Tuple[TypeInfo, FuncDef]]
+) -> Iterable[Tuple[TypeInfo, FuncDef]]:
+    def is_subclass(typ1: TypeInfo, typ2: TypeInfo) -> bool:
+        return typ2 in typ1.mro
+    dispatch_types: List[TypeInfo] = []
+    funcs: List[FuncDef] = []
+    for typ, impl in impls:
+        # If this type is a subclass of anything we've seen previously, put it in the front so it
+        # gets checked first
+        if any(is_subclass(typ, prev_type) for prev_type in dispatch_types):
+            dispatch_types.insert(0, typ)
+            funcs.insert(0, impl)
+        # Otherwise, this type isn't related to any of the other dispatch types, so we can just put
+        # it at the back
+        else:
+            dispatch_types.append(typ)
+            funcs.append(impl)
+    return zip(dispatch_types, funcs)
