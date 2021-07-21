@@ -6,8 +6,7 @@ import subprocess
 from subprocess import PIPE
 import sys
 import tempfile
-import venv
-from typing import Tuple, List, Generator
+from typing import Tuple, List, Iterator
 
 import mypy.api
 from mypy.test.config import package_path
@@ -44,15 +43,19 @@ class PEP561Suite(DataSuite):
 
 
 @contextmanager
-def virtualenv(
-                python_executable: str = sys.executable
-                ) -> Generator[Tuple[str, str], None, None]:
+def virtualenv(python_executable: str = sys.executable) -> Iterator[Tuple[str, str]]:
     """Context manager that creates a virtualenv in a temporary directory
 
     Returns the path to the created Python executable
     """
     with tempfile.TemporaryDirectory() as venv_dir:
-        venv.create(venv_dir, with_pip=True, clear=True)
+        proc = subprocess.run(
+            [python_executable, '-m', 'venv', venv_dir],
+            cwd=os.getcwd(), stdout=PIPE, stderr=PIPE
+        )
+        if proc.returncode != 0:
+            err = proc.stdout.decode('utf-8') + proc.stderr.decode('utf-8')
+            raise Exception("Failed to create venv.\n" + err)
         if sys.platform == 'win32':
             yield venv_dir, os.path.abspath(os.path.join(venv_dir, 'Scripts', 'python'))
         else:
