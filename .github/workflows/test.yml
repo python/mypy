@@ -40,7 +40,7 @@ jobs:
         python-version: ${{ matrix.python }}
         architecture: ${{ matrix.arch }}
     - name: install tox
-      run: pip install --upgrade 'setuptools!=50' 'virtualenv<20' tox==3.20.1
+      run: pip install --upgrade 'setuptools!=50' 'virtualenv<16.7.11' tox==3.20.1
     - name: setup tox environment
       run: tox -e ${{ matrix.toxenv }} --notest
     - name: test
