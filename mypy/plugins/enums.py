@@ -10,7 +10,7 @@ Note that this file does *not* contain all special-cased logic related to enums:
 we actually bake some of it directly in to the semantic analysis layer (see
 semanal_enum.py).
 """
-from typing import Iterable, Optional, TypeVar
+from typing import Iterable, Optional, Sequence, TypeVar, cast
 from typing_extensions import Final
 
 import mypy.plugin  # To avoid circular imports.
@@ -186,7 +186,7 @@ def enum_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
                 proper_type is not None and is_equivalent(proper_type, underlying_type)
                 for proper_type in proper_types)
             if all_equivalent_types:
-                return make_simplified_union(proper_types)
+                return make_simplified_union(cast(Sequence[Type], proper_types))
         return ctx.default_attr_type
 
     assert isinstance(ctx.type, Instance)

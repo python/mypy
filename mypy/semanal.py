@@ -2393,7 +2393,9 @@ class SemanticAnalyzer(NodeVisitor[None],
                 #
                 # will fail with `AttributeError: Cannot reassign members.`
                 # That's why we need to replicate this.
-                if isinstance(lval, NameExpr) and isinstance(self.type, TypeInfo) and self.type.is_enum:
+                if (isinstance(lval, NameExpr) and
+                        isinstance(self.type, TypeInfo) and
+                        self.type.is_enum):
                     cur_node = self.type.names.get(lval.name, None)
                     if (cur_node and isinstance(cur_node.node, Var) and
                             not (isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs)):
