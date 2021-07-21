@@ -6,11 +6,11 @@ import subprocess
 from subprocess import PIPE
 import sys
 import tempfile
+import venv
 from typing import Tuple, List, Generator
 
 import mypy.api
 from mypy.test.config import package_path
-from mypy.util import try_find_python2_interpreter
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.config import test_temp_dir
 from mypy.test.helpers import assert_string_arrays_equal
@@ -49,18 +49,10 @@ def virtualenv(
                 ) -> Generator[Tuple[str, str], None, None]:
     """Context manager that creates a virtualenv in a temporary directory
 
-    returns the path to the created Python executable"""
-    # Sadly, we need virtualenv, as the Python 3 venv module does not support creating a venv
-    # for Python 2, and Python 2 does not have its own venv.
+    Returns the path to the created Python executable
+    """
     with tempfile.TemporaryDirectory() as venv_dir:
-        proc = subprocess.run([sys.executable,
-                               '-m',
-                               'virtualenv',
-                               '-p{}'.format(python_executable),
-                               venv_dir], cwd=os.getcwd(), stdout=PIPE, stderr=PIPE)
-        if proc.returncode != 0:
-            err = proc.stdout.decode('utf-8') + proc.stderr.decode('utf-8')
-            raise Exception("Failed to create venv. Do you have virtualenv installed?\n" + err)
+        venv.create(venv_dir, with_pip=True, clear=True)
         if sys.platform == 'win32':
             yield venv_dir, os.path.abspath(os.path.join(venv_dir, 'Scripts', 'python'))
         else:
@@ -96,12 +88,7 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
        sys.base_prefix != sys.prefix):
         pytest.skip()
     assert testcase.old_cwd is not None, "test was not properly set up"
-    if 'python2' in testcase.name.lower():
-        python = try_find_python2_interpreter()
-        if python is None:
-            pytest.skip()
-    else:
-        python = sys.executable
+    python = sys.executable
     assert python is not None, "Should be impossible"
     pkgs, pip_args = parse_pkgs(testcase.input[0])
     mypy_args = parse_mypy_args(testcase.input[1])
