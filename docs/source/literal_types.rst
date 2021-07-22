@@ -292,7 +292,8 @@ in other programming languages.
 Exhaustive checks
 *****************
 
-One may want to check that some code covers all possible ``Literal`` cases, example:
+One may want to check that some code covers all possible ``Literal`` or ``Enum`` cases, 
+example:
 
 .. code-block:: python
 
@@ -327,7 +328,7 @@ However, if you want to have exhaustive check, you need to guard it properly:
 
   PossibleValues = Literal['one', 'two']
 
-  def assert_exhaustive(value: NoReturn) -> NoReturn:
+  def assert_never(value: NoReturn) -> NoReturn:
       # This also works in runtime as well:
       assert False, 'This code should never be reached, got: {0}'.format(value)
 
@@ -336,7 +337,7 @@ However, if you want to have exhaustive check, you need to guard it properly:
           return True
       elif x == 'two':
           return False
-      assert_exhaustive(x)
+      assert_never(x)
 
 In this case, when adding new values to ``PossibleValues``:
 
@@ -353,9 +354,7 @@ Mypy will cover you:
           return True
       elif x == 'two':
           return False
-      assert_exhaustive(x)  # E: Argument 1 to "assert_exhaustive" has incompatible type "Literal['three']"; expected "NoReturn"
-
-This technique works with ``Enum`` values as well.
+      assert_never(x)  # E: Argument 1 to "assert_exhaustive" has incompatible type "Literal['three']"; expected "NoReturn"
 
 Limitations
 ***********
