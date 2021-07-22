@@ -24,7 +24,7 @@ from mypyc.ir.ops import (
     GetAttr, LoadStatic, MethodCall, CallC, Truncate, LoadLiteral, AssignMulti,
     RaiseStandardError, Unreachable, LoadErrorValue,
     NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, IntOp, GetElementPtr,
-    LoadMem, ComparisonOp, LoadAddress, TupleGet, SetMem, KeepAlive, ERR_NEVER, ERR_FALSE
+    LoadMem, ComparisonOp, LoadAddress, TupleGet, KeepAlive, ERR_NEVER, ERR_FALSE, SetMem
 )
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, RArray, optional_value_type, int_rprimitive, float_rprimitive,
@@ -32,8 +32,8 @@ from mypyc.ir.rtypes import (
     c_pyssize_t_rprimitive, is_short_int_rprimitive, is_tagged, PyVarObject, short_int_rprimitive,
     is_list_rprimitive, is_tuple_rprimitive, is_dict_rprimitive, is_set_rprimitive, PySetObject,
     none_rprimitive, RTuple, is_bool_rprimitive, is_str_rprimitive, c_int_rprimitive,
-    pointer_rprimitive, PyObject, PyListObject, bit_rprimitive, is_bit_rprimitive,
-    object_pointer_rprimitive, c_size_t_rprimitive, dict_rprimitive
+    pointer_rprimitive, PyObject, bit_rprimitive, is_bit_rprimitive,
+    object_pointer_rprimitive, c_size_t_rprimitive, dict_rprimitive, PyListObject
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -46,7 +46,7 @@ from mypyc.primitives.registry import (
     binary_ops, unary_ops, ERR_NEG_INT
 )
 from mypyc.primitives.list_ops import (
-    list_extend_op, new_list_op
+    list_extend_op, new_list_op, list_build_op
 )
 from mypyc.primitives.tuple_ops import (
     list_tuple_op, new_tuple_op, new_tuple_with_length_op
@@ -78,6 +78,12 @@ from mypyc.irbuild.util import concrete_arg_kind
 
 DictEntry = Tuple[Optional[Value], Value]
 
+# If the number of items is less than the threshold when initializing
+# a list, we would inline the generate IR using SetMem and expanded
+# for-loop. Otherwise, we would call `list_build_op` for larger lists.
+# TODO: The threshold is a randomly chosen number which needs further
+#       study on real-world projects for a better balance.
+LIST_BUILDING_EXPANSION_THRESHOLD = 10
 
 # From CPython
 PY_VECTORCALL_ARGUMENTS_OFFSET: Final = 1 << (PLATFORM_SIZE * 8 - 1)
@@ -669,7 +675,6 @@ class LowLevelIRBuilder:
         # coercing everything to the expected type.
         output_args = []
         for lst, arg in zip(formal_to_actual, sig.args):
-            output_arg = None
             if arg.kind == ARG_STAR:
                 assert star_arg
                 output_arg = star_arg
@@ -700,7 +705,7 @@ class LowLevelIRBuilder:
                         arg_names: Optional[List[Optional[str]]] = None) -> Value:
         """Generate either a native or Python method call."""
         # If we have *args, then fallback to Python method call.
-        if (arg_kinds is not None and any(kind.is_star() for kind in arg_kinds)):
+        if arg_kinds is not None and any(kind.is_star() for kind in arg_kinds):
             return self.py_method_call(base, name, arg_values, base.line, arg_kinds, arg_names)
 
         # If the base type is one of ours, do a MethodCall
@@ -766,7 +771,7 @@ class LowLevelIRBuilder:
 
     def true(self) -> Value:
         """Load unboxed True value (type: bool_rprimitive)."""
-        return Integer(1,  bool_rprimitive)
+        return Integer(1, bool_rprimitive)
 
     def false(self) -> Value:
         """Load unboxed False value (type: bool_rprimitive)."""
@@ -1008,7 +1013,7 @@ class LowLevelIRBuilder:
             return result
         length = len(lhs.type.types)
         false_assign, true_assign, out = BasicBlock(), BasicBlock(), BasicBlock()
-        check_blocks = [BasicBlock() for i in range(length)]
+        check_blocks = [BasicBlock() for _ in range(length)]
         lhs_items = [self.add(TupleGet(lhs, i, line)) for i in range(length)]
         rhs_items = [self.add(TupleGet(rhs, i, line)) for i in range(length)]
 
@@ -1137,8 +1142,15 @@ class LowLevelIRBuilder:
         return self.call_c(new_list_op, [length], line)
 
     def new_list_op(self, values: List[Value], line: int) -> Value:
-        length = Integer(len(values), c_pyssize_t_rprimitive, line)
-        result_list = self.call_c(new_list_op, [length], line)
+        length: List[Value] = [Integer(len(values), c_pyssize_t_rprimitive, line)]
+        if len(values) >= LIST_BUILDING_EXPANSION_THRESHOLD:
+            return self.call_c(list_build_op, length + values, line)
+
+        # If the length of the list is less than the threshold,
+        # LIST_BUILDING_EXPANSION_THRESHOLD, we directly expand the
+        # for-loop and inline the SetMem operation, which is faster
+        # than list_build_op, however generates more code.
+        result_list = self.call_c(new_list_op, length, line)
         if len(values) == 0:
             return result_list
         args = [self.coerce(item, object_rprimitive, line) for item in values]
@@ -1174,7 +1186,7 @@ class LowLevelIRBuilder:
         # Having actual Phi nodes would be really nice here!
         target = Register(expr_type)
         # left_body takes the value of the left side, right_body the right
-        left_body, right_body, next = BasicBlock(), BasicBlock(), BasicBlock()
+        left_body, right_body, next_block = BasicBlock(), BasicBlock(), BasicBlock()
         # true_body is taken if the left is true, false_body if it is false.
         # For 'and' the value is the right side if the left is true, and for 'or'
         # it is the right side if the left is false.
@@ -1187,15 +1199,15 @@ class LowLevelIRBuilder:
         self.activate_block(left_body)
         left_coerced = self.coerce(left_value, expr_type, line)
         self.add(Assign(target, left_coerced))
-        self.goto(next)
+        self.goto(next_block)
 
         self.activate_block(right_body)
         right_value = right()
         right_coerced = self.coerce(right_value, expr_type, line)
         self.add(Assign(target, right_coerced))
-        self.goto(next)
+        self.goto(next_block)
 
-        self.activate_block(next)
+        self.activate_block(next_block)
         return target
 
     def add_bool_branch(self, value: Value, true: BasicBlock, false: BasicBlock) -> None:
