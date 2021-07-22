@@ -862,20 +862,40 @@ def gen_dispatch_func_ir(
 
 def sort_with_subclasses_first(
     impls: List[Tuple[TypeInfo, FuncDef]]
-) -> Iterable[Tuple[TypeInfo, FuncDef]]:
-    def is_subclass(typ1: TypeInfo, typ2: TypeInfo) -> bool:
-        return typ2 in typ1.mro
-    dispatch_types: List[TypeInfo] = []
-    funcs: List[FuncDef] = []
+) -> List[Tuple[TypeInfo, FuncDef]]:
+    def is_related(typ1: TypeInfo, typ2: TypeInfo) -> bool:
+        return typ2 in typ1.mro or typ2 in typ1.mro
+
+    def overlapping_with_related_impl_list(typ: TypeInfo, func: FuncDef) -> bool:
+        """Place the dispatch type and registered function in the correct related_types list
+
+        Returns True if the type and function were placed in a related_types list, and False if
+        they weren't
+        """
+        for group in related_types:
+            if any(is_related(prev_type, typ) for prev_type, _ in group):
+                group.append((typ, func))
+                return True
+        for i, (prev_type, impl) in enumerate(unrelated_types):
+            if is_related(typ, prev_type):
+                related_types.append([(prev_type, impl), (typ, func)])
+                del unrelated_types[i]
+                return True
+        return False
+
+    # a list of impls with dispatch types that are unrelated (none of the dispatch types overlap)
+    unrelated_types: List[Tuple[TypeInfo, FuncDef]] = []
+    # each inner list of impls is a collection of impls that have overlapping dispatch types
+    related_types: List[List[Tuple[TypeInfo, FuncDef]]] = []
     for typ, impl in impls:
-        # If this type is a subclass of anything we've seen previously, put it in the front so it
-        # gets checked first
-        if any(is_subclass(typ, prev_type) for prev_type in dispatch_types):
-            dispatch_types.insert(0, typ)
-            funcs.insert(0, impl)
-        # Otherwise, this type isn't related to any of the other dispatch types, so we can just put
-        # it at the back
-        else:
-            dispatch_types.append(typ)
-            funcs.append(impl)
-    return zip(dispatch_types, funcs)
+        if not overlapping_with_related_impl_list(typ, impl):
+            unrelated_types.append((typ, impl))
+    sorted_impls = unrelated_types
+    for group in related_types:
+        # Classes with the longest MRO should be checked first because they have more superclasses,
+        # meaning they are probably subclasses of classes with shorter MROs
+        # TODO: check if that's always true (especially when dealing with multiple classes having a
+        # common base class)
+        group.sort(key=lambda impl: len(impl[0].mro), reverse=True)
+        sorted_impls.extend(group)
+    return sorted_impls
