@@ -354,7 +354,7 @@ Mypy will cover you:
           return True
       elif x == 'two':
           return False
-      assert_never(x)  # E: Argument 1 to "assert_exhaustive" has incompatible type "Literal['three']"; expected "NoReturn"
+      assert_never(x)  # E: Argument 1 to "assert_never" has incompatible type "Literal['three']"; expected "NoReturn"
 
 Limitations
 ***********
