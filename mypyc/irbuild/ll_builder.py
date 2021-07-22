@@ -935,23 +935,27 @@ class LowLevelIRBuilder:
         length: List[Value] = [Integer(len(values), c_pyssize_t_rprimitive, line)]
         if len(values) >= LIST_BUILDING_EXPANSION_THRESHOLD:
             return self.call_c(list_build_op, length + values, line)
-        else:
-            result_list = self.call_c(new_list_op, length, line)
-            if len(values) == 0:
-                return result_list
-            args = [self.coerce(item, object_rprimitive, line) for item in values]
-            ob_item_ptr = self.add(GetElementPtr(result_list, PyListObject, 'ob_item', line))
-            ob_item_base = self.add(LoadMem(pointer_rprimitive, ob_item_ptr, line))
-            for i in range(len(values)):
-                if i == 0:
-                    item_address = ob_item_base
-                else:
-                    offset = Integer(PLATFORM_SIZE * i, c_pyssize_t_rprimitive, line)
-                    item_address = self.add(IntOp(pointer_rprimitive, ob_item_base, offset,
-                                                  IntOp.ADD, line))
-                self.add(SetMem(object_rprimitive, item_address, args[i], line))
-            self.add(KeepAlive([result_list]))
+
+        # If the length of the list is less than the threshold,
+        # LIST_BUILDING_EXPANSION_THRESHOLD, we directly expand the
+        # for-loop and inline the SetMem operation, which is faster
+        # than list_build_op, however generates more code.
+        result_list = self.call_c(new_list_op, length, line)
+        if len(values) == 0:
             return result_list
+        args = [self.coerce(item, object_rprimitive, line) for item in values]
+        ob_item_ptr = self.add(GetElementPtr(result_list, PyListObject, 'ob_item', line))
+        ob_item_base = self.add(LoadMem(pointer_rprimitive, ob_item_ptr, line))
+        for i in range(len(values)):
+            if i == 0:
+                item_address = ob_item_base
+            else:
+                offset = Integer(PLATFORM_SIZE * i, c_pyssize_t_rprimitive, line)
+                item_address = self.add(IntOp(pointer_rprimitive, ob_item_base, offset,
+                                              IntOp.ADD, line))
+            self.add(SetMem(object_rprimitive, item_address, args[i], line))
+        self.add(KeepAlive([result_list]))
+        return result_list
 
     def new_set_op(self, values: List[Value], line: int) -> Value:
         return self.call_c(new_set_op, values, line)

@@ -117,22 +117,29 @@ L0:
     x = r10
     return 1
 
-[case testListLen]
+[case testListMultiply]
 from typing import List
-def f(a: List[int]) -> int:
-    return len(a)
+def f(a: List[int]) -> None:
+    b = a * 2
+    b = 3 * [4]
 [out]
 def f(a):
-    a :: list
-    r0 :: ptr
-    r1 :: native_int
-    r2 :: short_int
+    a, r0, b, r1 :: list
+    r2 :: object
+    r3, r4 :: ptr
+    r5 :: list
 L0:
-    r0 = get_element_ptr a ob_size :: PyVarObject
-    r1 = load_mem r0 :: native_int*
-    keep_alive a
-    r2 = r1 << 1
-    return r2
+    r0 = CPySequence_Multiply(a, 4)
+    b = r0
+    r1 = PyList_New(1)
+    r2 = box(short_int, 8)
+    r3 = get_element_ptr r1 ob_item :: PyListObject
+    r4 = load_mem r3 :: ptr*
+    set_mem r4, r2 :: builtins.object*
+    keep_alive r1
+    r5 = CPySequence_RMultiply(6, r1)
+    b = r5
+    return 1
 
 [case testListAppend]
 from typing import List
