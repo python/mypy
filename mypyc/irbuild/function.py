@@ -10,7 +10,7 @@ as an environment containing non-local variables, is stored in the
 instance of the callable class.
 """
 
-from typing import Iterable, NamedTuple, Optional, List, Sequence, Tuple, Union, Dict
+from typing import NamedTuple, Optional, List, Sequence, Tuple, Union, Dict
 
 from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, Decorator, Var, YieldFromExpr, AwaitExpr, YieldExpr,
