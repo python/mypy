@@ -141,6 +141,23 @@ L0:
     b = r5
     return 1
 
+[case testListLen]
+from typing import List
+def f(a: List[int]) -> int:
+    return len(a)
+[out]
+def f(a):
+    a :: list
+    r0 :: ptr
+    r1 :: native_int
+    r2 :: short_int
+L0:
+    r0 = get_element_ptr a ob_size :: PyVarObject
+    r1 = load_mem r0 :: native_int*
+    keep_alive a
+    r2 = r1 << 1
+    return r2
+
 [case testListAppend]
 from typing import List
 def f(a: List[int], x: int) -> None:
