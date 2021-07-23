@@ -5,11 +5,12 @@ from typing import List, Tuple
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     RType, object_rprimitive, str_rprimitive, int_rprimitive, list_rprimitive,
-    c_int_rprimitive, pointer_rprimitive, bool_rprimitive, bit_rprimitive
+    c_int_rprimitive, pointer_rprimitive, bool_rprimitive, bit_rprimitive,
+    c_pyssize_t_rprimitive
 )
 from mypyc.primitives.registry import (
     method_op, binary_op, function_op,
-    load_address_op, custom_op
+    load_address_op, custom_op, ERR_NEG_INT
 )
 
 
@@ -20,7 +21,7 @@ load_address_op(
     src='PyUnicode_Type')
 
 # str(obj)
-function_op(
+str_op = function_op(
     name='builtins.str',
     arg_types=[object_rprimitive],
     return_type=str_rprimitive,
@@ -41,6 +42,14 @@ method_op(
     return_type=str_rprimitive,
     c_function_name='PyUnicode_Join',
     error_kind=ERR_MAGIC
+)
+
+str_build_op = custom_op(
+    arg_types=[c_pyssize_t_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name='CPyStr_Build',
+    error_kind=ERR_MAGIC,
+    var_arg_type=str_rprimitive
 )
 
 # str.startswith(str)
@@ -89,7 +98,7 @@ for i in range(len(str_split_types)):
 
 # str1 += str2
 #
-# PyUnicodeAppend makes an effort to reuse the LHS when the refcount
+# PyUnicode_Append makes an effort to reuse the LHS when the refcount
 # is 1. This is super dodgy but oh well, the interpreter does it.
 binary_op(name='+=',
           arg_types=[str_rprimitive, str_rprimitive],
@@ -116,7 +125,7 @@ method_op(
     name='replace',
     arg_types=[str_rprimitive, str_rprimitive, str_rprimitive],
     return_type=str_rprimitive,
-    c_function_name="PyUnicode_Replace",
+    c_function_name='PyUnicode_Replace',
     error_kind=ERR_MAGIC,
     extra_int_constants=[(-1, c_int_rprimitive)])
 
@@ -125,13 +134,19 @@ method_op(
     name='replace',
     arg_types=[str_rprimitive, str_rprimitive, str_rprimitive, int_rprimitive],
     return_type=str_rprimitive,
-    c_function_name="CPyStr_Replace",
+    c_function_name='CPyStr_Replace',
     error_kind=ERR_MAGIC)
 
 # check if a string is true (isn't an empty string)
 str_check_if_true = custom_op(
     arg_types=[str_rprimitive],
     return_type=bit_rprimitive,
-    c_function_name="CPyStr_IsTrue",
+    c_function_name='CPyStr_IsTrue',
     error_kind=ERR_NEVER,
 )
+
+str_ssize_t_size_op = custom_op(
+    arg_types=[str_rprimitive],
+    return_type=c_pyssize_t_rprimitive,
+    c_function_name='CPyStr_Size_size_t',
+    error_kind=ERR_NEG_INT)

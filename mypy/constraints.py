@@ -14,7 +14,7 @@ import mypy.subtypes
 import mypy.sametypes
 import mypy.typeops
 from mypy.erasetype import erase_typevars
-from mypy.nodes import COVARIANT, CONTRAVARIANT
+from mypy.nodes import COVARIANT, CONTRAVARIANT, ArgKind
 from mypy.argmap import ArgTypeExpander
 from mypy.typestate import TypeState
 
@@ -45,7 +45,7 @@ class Constraint:
 
 
 def infer_constraints_for_callable(
-        callee: CallableType, arg_types: Sequence[Optional[Type]], arg_kinds: List[int],
+        callee: CallableType, arg_types: Sequence[Optional[Type]], arg_kinds: List[ArgKind],
         formal_to_actual: List[List[int]]) -> List[Constraint]:
     """Infer type variable constraints for a callable and actual arguments.
 

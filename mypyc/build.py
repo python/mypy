@@ -494,7 +494,7 @@ def mypycify(
     setup_mypycify_vars()
 
     # Create a compiler object so we can make decisions based on what
-    # compiler is being used. typeshed is missing some attribues on the
+    # compiler is being used. typeshed is missing some attributes on the
     # compiler object so we give it type Any
     compiler: Any = ccompiler.new_compiler()
     sysconfig.customize_compiler(compiler)

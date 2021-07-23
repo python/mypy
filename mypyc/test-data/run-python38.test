@@ -65,3 +65,24 @@ def test_fstring_equal_sign() -> None:
     assert f"{line = }" == 'line = "The mill\'s closed"'
     assert f"{line = :20}" == "line = The mill's closed   "
     assert f"{line = !r:20}" == 'line = "The mill\'s closed" '
+
+[case testMethodOverrideDefaultPosOnly1]
+class Foo:
+    def f(self, x: int=20, /, *, z: int=10) -> None:
+        pass
+
+class Bar(Foo):
+    def f(self, *args: int, **kwargs: int) -> None:
+        print("stuff", args, kwargs)
+
+z: Foo = Bar()
+z.f(1, z=50)
+z.f()
+z.f(1)
+z.f(z=50)
+
+[out]
+stuff (1,) {'z': 50}
+stuff () {}
+stuff (1,) {}
+stuff () {'z': 50}

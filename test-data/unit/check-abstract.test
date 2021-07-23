@@ -442,9 +442,13 @@ class I(metaclass=ABCMeta):
     def g(self, x): pass
 class A(I):
     def f(self, x): pass
-    def g(self, x, y) -> None: pass \
-        # E: Signature of "g" incompatible with supertype "I"
+    def g(self, x, y) -> None: pass  # Fail
 [out]
+main:10: error: Signature of "g" incompatible with supertype "I"
+main:10: note:      Superclass:
+main:10: note:          def g(x: Any) -> Any
+main:10: note:      Subclass:
+main:10: note:          def g(self, x: Any, y: Any) -> None
 
 [case testAbstractClassWithAllDynamicTypes2]
 from abc import abstractmethod, ABCMeta

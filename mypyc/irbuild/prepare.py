@@ -26,7 +26,7 @@ from mypyc.ir.func_ir import (
     FuncDecl, FuncSignature, RuntimeArg, FUNC_NORMAL, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
 )
 from mypyc.ir.class_ir import ClassIR
-from mypyc.common import PROPSET_PREFIX
+from mypyc.common import PROPSET_PREFIX, get_id_from_name
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.util import (
     get_func_def, is_dataclass, is_trait, is_extension_class, get_mypyc_attrs
@@ -95,7 +95,8 @@ def load_type_map(mapper: 'Mapper',
 
     for module in modules:
         for func in get_module_func_defs(module):
-            mapper.func_to_decl[func] = deser_ctx.functions[func.fullname].decl
+            func_id = get_id_from_name(func.name, func.fullname, func.line)
+            mapper.func_to_decl[func] = deser_ctx.functions[func_id].decl
 
 
 def get_module_func_defs(module: MypyFile) -> Iterable[FuncDef]:

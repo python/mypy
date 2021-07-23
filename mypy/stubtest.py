@@ -334,7 +334,7 @@ def _verify_arg_default_value(
 ) -> Iterator[str]:
     """Checks whether argument default values are compatible."""
     if runtime_arg.default != inspect.Parameter.empty:
-        if stub_arg.kind not in (nodes.ARG_OPT, nodes.ARG_NAMED_OPT):
+        if stub_arg.kind.is_required():
             yield (
                 'runtime argument "{}" has a default value but stub argument does not'.format(
                     runtime_arg.name
@@ -363,7 +363,7 @@ def _verify_arg_default_value(
                     )
                 )
     else:
-        if stub_arg.kind in (nodes.ARG_OPT, nodes.ARG_NAMED_OPT):
+        if stub_arg.kind.is_optional():
             yield (
                 'stub argument "{}" has a default value but runtime argument does not'.format(
                     stub_arg.variable.name
@@ -406,7 +406,7 @@ class Signature(Generic[T]):
             if isinstance(arg, inspect.Parameter):
                 return arg.default != inspect.Parameter.empty
             if isinstance(arg, nodes.Argument):
-                return arg.kind in (nodes.ARG_OPT, nodes.ARG_NAMED_OPT)
+                return arg.kind.is_optional()
             raise AssertionError
 
         def get_desc(arg: Any) -> str:
@@ -433,9 +433,9 @@ class Signature(Generic[T]):
         stub_sig: Signature[nodes.Argument] = Signature()
         stub_args = maybe_strip_cls(stub.name, stub.arguments)
         for stub_arg in stub_args:
-            if stub_arg.kind in (nodes.ARG_POS, nodes.ARG_OPT):
+            if stub_arg.kind.is_positional():
                 stub_sig.pos.append(stub_arg)
-            elif stub_arg.kind in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT):
+            elif stub_arg.kind.is_named():
                 stub_sig.kwonly[stub_arg.variable.name] = stub_arg
             elif stub_arg.kind == nodes.ARG_STAR:
                 stub_sig.varpos = stub_arg
@@ -502,7 +502,7 @@ class Signature(Generic[T]):
                 ]
                 return mypy.typeops.make_simplified_union([t for t in all_types if t])
 
-        def get_kind(arg_name: str) -> int:
+        def get_kind(arg_name: str) -> nodes.ArgKind:
             kinds = {arg.kind for arg, _ in all_args[arg_name]}
             if nodes.ARG_STAR in kinds:
                 return nodes.ARG_STAR
@@ -531,9 +531,9 @@ class Signature(Generic[T]):
                 initializer=None,
                 kind=get_kind(arg_name),
             )
-            if arg.kind in (nodes.ARG_POS, nodes.ARG_OPT):
+            if arg.kind.is_positional():
                 sig.pos.append(arg)
-            elif arg.kind in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT):
+            elif arg.kind.is_named():
                 sig.kwonly[arg.variable.name] = arg
             elif arg.kind == nodes.ARG_STAR:
                 sig.varpos = arg

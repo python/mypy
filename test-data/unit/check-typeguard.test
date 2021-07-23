@@ -294,8 +294,14 @@ from typing_extensions import TypeGuard
 class C:
     def is_float(self, a: object) -> TypeGuard[float]: pass
 class D(C):
-    def is_float(self, a: object) -> bool: pass  # E: Signature of "is_float" incompatible with supertype "C"
+    def is_float(self, a: object) -> bool: pass  # Fail
 [builtins fixtures/tuple.pyi]
+[out]
+main:5: error: Signature of "is_float" incompatible with supertype "C"
+main:5: note:      Superclass:
+main:5: note:          def is_float(self, a: object) -> TypeGuard[float]
+main:5: note:      Subclass:
+main:5: note:          def is_float(self, a: object) -> bool
 
 [case testTypeGuardInAnd]
 from typing import Any

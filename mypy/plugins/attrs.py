@@ -552,7 +552,7 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
     type_arg = _get_argument(rvalue, 'type')
     if type_arg and not init_type:
         try:
-            un_type = expr_to_unanalyzed_type(type_arg)
+            un_type = expr_to_unanalyzed_type(type_arg, ctx.api.options, ctx.api.is_stub_file)
         except TypeTranslationError:
             ctx.api.fail('Invalid argument to type', type_arg)
         else:

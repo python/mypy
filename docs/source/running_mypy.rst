@@ -307,7 +307,7 @@ this error, try:
     or by using the ``MYPYPATH`` environment variable.
 
     Note: if the module you are trying to import is actually a *submodule* of
-    some package, you should specific the directory containing the *entire* package.
+    some package, you should specify the directory containing the *entire* package.
     For example, suppose you are trying to add the module ``foo.bar.baz``
     which is located at ``~/foo-project/src/foo/bar/baz.py``. In this case,
     you must run ``mypy ~/foo-project/src`` (or set the ``MYPYPATH`` to

@@ -10,7 +10,7 @@ from abc import abstractmethod, ABCMeta
 
 class GenericMeta(type): pass
 
-cast = 0
+def cast(t, o): ...
 overload = 0
 Any = 0
 Union = 0

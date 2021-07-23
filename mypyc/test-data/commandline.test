@@ -24,6 +24,7 @@ for x in [a, b, p, p.q]:
 import b
 import c
 from p import s
+from typing import NamedTuple
 
 print('<a>', ord('A') == 65)  # Test full builtins
 
@@ -41,6 +42,11 @@ class B:
 print('<a>', f(5).x)
 print('<c>', c.foo())
 assert s.bar(10) == 20
+
+class NT(NamedTuple):
+    x: int
+
+print(NT(2))
 
 [file b.py]
 import a
@@ -79,6 +85,7 @@ def bar(x: int) -> int:
 <a> True
 <a> 5
 <c> 10
+NT(x=2)
 <main> 16
 
 -- This test is here so we can turn it on when we get nervous about
@@ -101,6 +108,7 @@ def f(x: int) -> int:
 from typing import List, Any, AsyncIterable
 from typing_extensions import Final
 from mypy_extensions import trait, mypyc_attr
+from functools import singledispatch
 
 def busted(b: bool) -> None:
     for i in range(1, 10, 0):  # E: range() step can't be zero
@@ -212,3 +220,23 @@ async def async_with() -> None:
 
 async def async_generators() -> AsyncIterable[int]:
     yield 1  # E: async generators are unimplemented
+
+@singledispatch
+def a(arg) -> None:
+    pass
+
+@decorator # E: Calling decorator after registering function not supported
+@a.register
+def g(arg: int) -> None:
+    pass
+
+@a.register
+@decorator
+def h(arg: str) -> None:
+    pass
+
+@decorator
+@decorator # E: Calling decorator after registering function not supported
+@a.register
+def i(arg: Foo) -> None:
+    pass

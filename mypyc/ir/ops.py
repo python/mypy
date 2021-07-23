@@ -1332,7 +1332,7 @@ class OpVisitor(Generic[T]):
 # we might need to reference.
 #
 # Because of these references, we need to maintain maps from class
-# names to ClassIRs and func names to FuncIRs.
+# names to ClassIRs and func IDs to FuncIRs.
 #
 # These are tracked in a DeserMaps which is passed to every
 # deserialization function.

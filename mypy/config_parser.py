@@ -1,5 +1,4 @@
 import argparse
-from collections import OrderedDict
 import configparser
 import glob as fileglob
 from io import StringIO
@@ -7,9 +6,9 @@ import os
 import re
 import sys
 
-import toml
+import tomli
 from typing import (Any, Callable, Dict, List, Mapping, MutableMapping,  Optional, Sequence,
-                    TextIO, Tuple, Union, cast)
+                    TextIO, Tuple, Union)
 from typing_extensions import Final
 
 from mypy import defaults
@@ -169,20 +168,20 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
             continue
         try:
             if is_toml(config_file):
-                toml_data = cast("OrderedDict[str, Any]",
-                                 toml.load(config_file, _dict=OrderedDict))
+                with open(config_file, encoding="utf-8") as f:
+                    toml_data = tomli.load(f)
                 # Filter down to just mypy relevant toml keys
                 toml_data = toml_data.get('tool', {})
                 if 'mypy' not in toml_data:
                     continue
-                toml_data = OrderedDict({'mypy': toml_data['mypy']})
+                toml_data = {'mypy': toml_data['mypy']}
                 parser: MutableMapping[str, Any] = destructure_overrides(toml_data)
                 config_types = toml_config_types
             else:
                 config_parser.read(config_file)
                 parser = config_parser
                 config_types = ini_config_types
-        except (toml.TomlDecodeError, configparser.Error, ConfigTOMLValueError) as err:
+        except (tomli.TOMLDecodeError, configparser.Error, ConfigTOMLValueError) as err:
             print("%s: %s" % (config_file, err), file=stderr)
         else:
             if config_file in defaults.SHARED_CONFIG_FILES and 'mypy' not in parser:
@@ -252,7 +251,7 @@ def is_toml(filename: str) -> bool:
     return filename.lower().endswith('.toml')
 
 
-def destructure_overrides(toml_data: "OrderedDict[str, Any]") -> "OrderedDict[str, Any]":
+def destructure_overrides(toml_data: Dict[str, Any]) -> Dict[str, Any]:
     """Take the new [[tool.mypy.overrides]] section array in the pyproject.toml file,
     and convert it back to a flatter structure that the existing config_parser can handle.
 

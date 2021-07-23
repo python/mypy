@@ -21,7 +21,7 @@ from mypy.types import (
 
 from mypy.nodes import (
     TypeInfo, Context, SymbolTableNode, Var, Expression,
-    get_nongen_builtins, check_arg_names, check_arg_kinds, ARG_POS, ARG_NAMED,
+    get_nongen_builtins, check_arg_names, check_arg_kinds, ArgKind, ARG_POS, ARG_NAMED,
     ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr, TypeVarLikeExpr, ParamSpecExpr,
     TypeAlias, PlaceholderNode, SYMBOL_FUNCBASE_TYPES, Decorator, MypyFile
 )
@@ -69,7 +69,7 @@ def analyze_type_alias(node: Expression,
                        plugin: Plugin,
                        options: Options,
                        is_typeshed_stub: bool,
-                       allow_unnormalized: bool = False,
+                       allow_new_syntax: bool = False,
                        allow_placeholder: bool = False,
                        in_dynamic_func: bool = False,
                        global_scope: bool = True) -> Optional[Tuple[Type, Set[str]]]:
@@ -80,12 +80,12 @@ def analyze_type_alias(node: Expression,
     Return None otherwise. 'node' must have been semantically analyzed.
     """
     try:
-        type = expr_to_unanalyzed_type(node)
+        type = expr_to_unanalyzed_type(node, options, allow_new_syntax)
     except TypeTranslationError:
         api.fail('Invalid type alias: expression is not a valid type', node)
         return None
     analyzer = TypeAnalyser(api, tvar_scope, plugin, options, is_typeshed_stub,
-                            allow_unnormalized=allow_unnormalized, defining_alias=True,
+                            allow_new_syntax=allow_new_syntax, defining_alias=True,
                             allow_placeholder=allow_placeholder)
     analyzer.in_dynamic_func = in_dynamic_func
     analyzer.global_scope = global_scope
@@ -126,7 +126,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                  is_typeshed_stub: bool, *,
                  defining_alias: bool = False,
                  allow_tuple_literal: bool = False,
-                 allow_unnormalized: bool = False,
+                 allow_new_syntax: bool = False,
                  allow_unbound_tvars: bool = False,
                  allow_placeholder: bool = False,
                  report_invalid_types: bool = True) -> None:
@@ -141,9 +141,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.allow_tuple_literal = allow_tuple_literal
         # Positive if we are analyzing arguments of another (outer) type
         self.nesting_level = 0
-        # Should we allow unnormalized types like `list[int]`
-        # (currently allowed in stubs)?
-        self.allow_unnormalized = allow_unnormalized
+        # Should we allow new type syntax when targeting older Python versions
+        # like 'list[int]' or 'X | Y' (allowed in stubs)?
+        self.allow_new_syntax = allow_new_syntax
         # Should we accept unbound type variables (always OK in aliases)?
         self.allow_unbound_tvars = allow_unbound_tvars or defining_alias
         # If false, record incomplete ref if we generate PlaceholderType.
@@ -199,7 +199,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return hook(AnalyzeTypeContext(t, t, self))
             if (fullname in get_nongen_builtins(self.options.python_version)
                     and t.args and
-                    not self.allow_unnormalized and
+                    not self.allow_new_syntax and
                     not self.api.is_future_flag_set("annotations")):
                 self.fail(no_subscript_builtin_alias(fullname,
                                                      propose_alt=not self.defining_alias), t)
@@ -281,7 +281,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return AnyType(TypeOfAny.from_error)
         elif (fullname == 'typing.Tuple' or
              (fullname == 'builtins.tuple' and (self.options.python_version >= (3, 9) or
-                                                self.api.is_future_flag_set('annotations')))):
+                                                self.api.is_future_flag_set('annotations') or
+                                                self.allow_new_syntax))):
             # Tuple is special because it is involved in builtin import cycle
             # and may be not ready when used.
             sym = self.api.lookup_fully_qualified_or_none('builtins.tuple')
@@ -754,10 +755,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return ret.accept(self)
 
     def analyze_callable_args(self, arglist: TypeList) -> Optional[Tuple[List[Type],
-                                                                         List[int],
+                                                                         List[ArgKind],
                                                                          List[Optional[str]]]]:
         args: List[Type] = []
-        kinds: List[int] = []
+        kinds: List[ArgKind] = []
         names: List[Optional[str]] = []
         for arg in arglist.items:
             if isinstance(arg, CallableArgument):
@@ -777,7 +778,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     assert found.fullname is not None
                     kind = ARG_KINDS_BY_CONSTRUCTOR[found.fullname]
                     kinds.append(kind)
-                    if arg.name is not None and kind in {ARG_STAR, ARG_STAR2}:
+                    if arg.name is not None and kind.is_star():
                         self.fail("{} arguments should not have names".format(
                             arg.constructor), arg)
                         return None

@@ -10,11 +10,14 @@ as an environment containing non-local variables, is stored in the
 instance of the callable class.
 """
 
-from typing import Optional, List, Tuple, Union, Dict
+from mypy.build import topsort
+from typing import (
+    NamedTuple, Optional, List, Sequence, Tuple, Union, Dict, Iterator,
+)
 
 from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, Decorator, Var, YieldFromExpr, AwaitExpr, YieldExpr,
-    FuncItem, LambdaExpr, SymbolNode, ARG_NAMED, ARG_NAMED_OPT
+    FuncItem, LambdaExpr, SymbolNode, ArgKind, TypeInfo
 )
 from mypy.types import CallableType, get_proper_type
 
@@ -28,11 +31,13 @@ from mypyc.ir.func_ir import (
 )
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.primitives.generic_ops import py_setattr_op, next_raw_op, iter_op
-from mypyc.primitives.misc_ops import check_stop_op, yield_from_except_op, coro_op, send_op
+from mypyc.primitives.misc_ops import (
+    check_stop_op, yield_from_except_op, coro_op, send_op, slow_isinstance_op
+)
 from mypyc.primitives.dict_ops import dict_set_item_op
-from mypyc.common import SELF_NAME, LAMBDA_NAME, decorator_helper_name
+from mypyc.common import SELF_NAME, LAMBDA_NAME, decorator_helper_name, short_id_from_name
 from mypyc.sametype import is_same_method_signature
-from mypyc.irbuild.util import concrete_arg_kind, is_constant
+from mypyc.irbuild.util import is_constant
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.irbuild.targets import AssignmentTarget
 from mypyc.irbuild.statement import transform_try_except
@@ -50,6 +55,8 @@ from mypyc.irbuild.env_class import (
     setup_env_class, load_outer_envs, load_env_registers, finalize_env_class,
     setup_func_for_recursive_call
 )
+
+from mypyc.primitives.registry import builtin_names
 
 
 # Top-level transform functions
@@ -84,7 +91,10 @@ def transform_decorator(builder: IRBuilder, dec: Decorator) -> None:
         decorated_func = load_decorated_func(builder, dec.func, func_reg)
         builder.assign(get_func_target(builder, dec.func), decorated_func, dec.func.line)
         func_reg = decorated_func
-    else:
+    # If the prebuild pass didn't put this function in the function to decorators map (for example
+    # if this is a registered singledispatch implementation with no other decorators), we should
+    # treat this function as a regular function, not a decorated function
+    elif dec.func in builder.fdefs_to_decorators:
         # Obtain the the function name in order to construct the name of the helper function.
         name = dec.func.fullname.split('.')[-1]
         helper_name = decorator_helper_name(name)
@@ -206,6 +216,7 @@ def gen_func_item(builder: IRBuilder,
     is_nested = fitem in builder.nested_fitems or isinstance(fitem, LambdaExpr)
     contains_nested = fitem in builder.encapsulating_funcs.keys()
     is_decorated = fitem in builder.fdefs_to_decorators
+    is_singledispatch = fitem in builder.singledispatch_impls
     in_non_ext = False
     class_name = None
     if cdef:
@@ -213,7 +224,11 @@ def gen_func_item(builder: IRBuilder,
         in_non_ext = not ir.is_ext_class
         class_name = cdef.name
 
-    builder.enter(FuncInfo(fitem, name, class_name, gen_func_ns(builder),
+    if is_singledispatch:
+        func_name = '__mypyc_singledispatch_main_function_{}__'.format(name)
+    else:
+        func_name = name
+    builder.enter(FuncInfo(fitem, func_name, class_name, gen_func_ns(builder),
                            is_nested, contains_nested, is_decorated, in_non_ext))
 
     # Functions that contain nested functions need an environment class to store variables that
@@ -302,6 +317,15 @@ def gen_func_item(builder: IRBuilder,
     # Evaluate argument defaults in the surrounding scope, since we
     # calculate them *once* when the function definition is evaluated.
     calculate_arg_defaults(builder, fn_info, func_reg, symtable)
+
+    if is_singledispatch:
+        # add the generated main singledispatch function
+        builder.functions.append(func_ir)
+        # create the dispatch function
+        assert isinstance(fitem, FuncDef)
+        dispatch_name = decorator_helper_name(name) if is_decorated else name
+        dispatch_func_ir = gen_dispatch_func_ir(builder, fitem, fn_info.name, dispatch_name, sig)
+        return dispatch_func_ir, None
 
     return (func_ir, func_reg)
 
@@ -628,6 +652,24 @@ def gen_glue(builder: IRBuilder, sig: FuncSignature, target: FuncIR,
         return gen_glue_method(builder, sig, target, cls, base, fdef.line, do_py_ops)
 
 
+class ArgInfo(NamedTuple):
+    args: List[Value]
+    arg_names: List[Optional[str]]
+    arg_kinds: List[ArgKind]
+
+
+def get_args(builder: IRBuilder, rt_args: Sequence[RuntimeArg], line: int) -> ArgInfo:
+    # The environment operates on Vars, so we make some up
+    fake_vars = [(Var(arg.name), arg.type) for arg in rt_args]
+    args = [builder.read(builder.add_local_reg(var, type, is_arg=True), line)
+            for var, type in fake_vars]
+    arg_names = [arg.name
+                 if arg.kind.is_named() or (arg.kind.is_optional() and not arg.pos_only) else None
+                 for arg in rt_args]
+    arg_kinds = [arg.kind for arg in rt_args]
+    return ArgInfo(args, arg_names, arg_kinds)
+
+
 def gen_glue_method(builder: IRBuilder, sig: FuncSignature, target: FuncIR,
                     cls: ClassIR, base: ClassIR, line: int,
                     do_pycall: bool,
@@ -664,17 +706,27 @@ def gen_glue_method(builder: IRBuilder, sig: FuncSignature, target: FuncIR,
     if target.decl.kind == FUNC_NORMAL:
         rt_args[0] = RuntimeArg(sig.args[0].name, RInstance(cls))
 
-    # The environment operates on Vars, so we make some up
-    fake_vars = [(Var(arg.name), arg.type) for arg in rt_args]
-    args = [builder.read(builder.add_local_reg(var, type, is_arg=True), line)
-            for var, type in fake_vars]
-    arg_names = [arg.name if arg.kind in (ARG_NAMED, ARG_NAMED_OPT) else None
-                 for arg in rt_args]
-    arg_kinds = [concrete_arg_kind(arg.kind) for arg in rt_args]
+    arg_info = get_args(builder, rt_args, line)
+    args, arg_kinds, arg_names = arg_info.args, arg_info.arg_kinds, arg_info.arg_names
+
+    # We can do a passthrough *args/**kwargs with a native call, but if the
+    # args need to get distributed out to arguments, we just let python handle it
+    if (
+        any(kind.is_star() for kind in arg_kinds)
+        and any(not arg.kind.is_star() for arg in target.decl.sig.args)
+    ):
+        do_pycall = True
 
     if do_pycall:
+        if target.decl.kind == FUNC_STATICMETHOD:
+            # FIXME: this won't work if we can do interpreted subclasses
+            first = builder.builder.get_native_type(cls)
+            st = 0
+        else:
+            first = args[0]
+            st = 1
         retval = builder.builder.py_method_call(
-            args[0], target.name, args[1:], line, arg_kinds[1:], arg_names[1:])
+            first, target.name, args[st:], line, arg_kinds[st:], arg_names[st:])
     else:
         retval = builder.builder.call(target.decl, args, arg_kinds, arg_names, line)
     retval = builder.coerce(retval, sig.ret_type, line)
@@ -739,3 +791,87 @@ def get_func_target(builder: IRBuilder, fdef: FuncDef) -> AssignmentTarget:
         return builder.lookup(fdef)
 
     return builder.add_local_reg(fdef, object_rprimitive)
+
+
+def check_if_isinstance(builder: IRBuilder, obj: Value, typ: TypeInfo, line: int) -> Value:
+    if typ in builder.mapper.type_to_ir:
+        class_ir = builder.mapper.type_to_ir[typ]
+        return builder.builder.isinstance_native(obj, class_ir, line)
+    else:
+        if typ.fullname in builtin_names:
+            builtin_addr_type, src = builtin_names[typ.fullname]
+            class_obj = builder.add(LoadAddress(builtin_addr_type, src, line))
+        else:
+            class_obj = builder.load_global_str(typ.name, line)
+        return builder.call_c(slow_isinstance_op, [obj, class_obj], line)
+
+
+def generate_singledispatch_dispatch_function(
+    builder: IRBuilder,
+    main_singledispatch_function_name: str,
+    fitem: FuncDef,
+) -> None:
+    impls = builder.singledispatch_impls[fitem]
+    line = fitem.line
+    current_func_decl = builder.mapper.func_to_decl[fitem]
+    arg_info = get_args(builder, current_func_decl.sig.args, line)
+
+    def gen_func_call_and_return(func_name: str) -> None:
+        func = builder.load_global_str(func_name, line)
+        # TODO: don't pass optional arguments if they weren't passed to this function
+        ret_val = builder.builder.py_call(
+            func, arg_info.args, line, arg_info.arg_kinds, arg_info.arg_names
+        )
+        coerced = builder.coerce(ret_val, current_func_decl.sig.ret_type, line)
+        builder.nonlocal_control[-1].gen_return(builder, coerced, line)
+
+    # Sort the list of implementations so that we check any subclasses before we check the classes
+    # they inherit from, to better match singledispatch's behavior of going through the argument's
+    # MRO, and using the first implementation it finds
+    for dispatch_type, impl in sort_with_subclasses_first(impls):
+        call_impl, next_impl = BasicBlock(), BasicBlock()
+        should_call_impl = check_if_isinstance(builder, arg_info.args[0], dispatch_type, line)
+        builder.add_bool_branch(should_call_impl, call_impl, next_impl)
+
+        # Call the registered implementation
+        builder.activate_block(call_impl)
+
+        # The shortname of a function is just '{class}.{func_name}', and we don't support
+        # singledispatchmethod yet, so that is always the same as the function name
+        name = short_id_from_name(impl.name, impl.name, impl.line)
+        gen_func_call_and_return(name)
+        builder.activate_block(next_impl)
+
+    gen_func_call_and_return(main_singledispatch_function_name)
+
+
+def gen_dispatch_func_ir(
+    builder: IRBuilder,
+    fitem: FuncDef,
+    main_func_name: str,
+    dispatch_name: str,
+    sig: FuncSignature,
+) -> FuncIR:
+    """Create a dispatch function (a function that checks the first argument type and dispatches
+    to the correct implementation)
+    """
+    builder.enter()
+    generate_singledispatch_dispatch_function(builder, main_func_name, fitem)
+    args, _, blocks, _, fn_info = builder.leave()
+    func_decl = FuncDecl(dispatch_name, None, builder.module_name, sig)
+    dispatch_func_ir = FuncIR(func_decl, args, blocks)
+    return dispatch_func_ir
+
+
+def sort_with_subclasses_first(
+    impls: List[Tuple[TypeInfo, FuncDef]]
+) -> Iterator[Tuple[TypeInfo, FuncDef]]:
+
+    # graph with edges pointing from every class to their subclasses
+    graph = {typ: set(typ.mro[1:]) for typ, _ in impls}
+
+    dispatch_types = topsort(graph)
+    impl_dict = {typ: func for typ, func in impls}
+
+    for group in reversed(list(dispatch_types)):
+        yield from ((typ, impl_dict[typ]) for typ in group if typ in impl_dict)

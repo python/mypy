@@ -66,7 +66,7 @@ def build_ir(modules: List[MypyFile],
 
     for module in modules:
         # First pass to determine free symbols.
-        pbv = PreBuildVisitor()
+        pbv = PreBuildVisitor(errors, module)
         module.accept(pbv)
 
         # Construct and configure builder objects (cyclic runtime dependency).

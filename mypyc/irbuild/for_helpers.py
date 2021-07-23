@@ -16,7 +16,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, is_short_int_rprimitive, is_list_rprimitive, is_sequence_rprimitive,
-    is_tuple_rprimitive, is_dict_rprimitive,
+    is_tuple_rprimitive, is_dict_rprimitive, is_str_rprimitive,
     RTuple, short_int_rprimitive, int_rprimitive
 )
 from mypyc.primitives.registry import CFunctionDescription
@@ -164,7 +164,8 @@ def sequence_from_generator_preallocate_helper(
     """
     if len(gen.sequences) == 1 and len(gen.indices) == 1 and len(gen.condlists[0]) == 0:
         rtype = builder.node_type(gen.sequences[0])
-        if is_list_rprimitive(rtype) or is_tuple_rprimitive(rtype):
+        if (is_list_rprimitive(rtype) or is_tuple_rprimitive(rtype)
+                or is_str_rprimitive(rtype)):
             sequence = builder.accept(gen.sequences[0])
             length = builder.builder.builtin_len(sequence, gen.line, use_pyssize_t=True)
             target_op = empty_op_llbuilder(length, gen.line)
@@ -497,7 +498,7 @@ class ForIterable(ForGenerator):
 
     def gen_cleanup(self) -> None:
         # We set the branch to go here if the conditional evaluates to true. If
-        # an exception was raised during the loop, then err_reg wil be set to
+        # an exception was raised during the loop, then err_reg will be set to
         # True. If no_err_occurred_op returns False, then the exception will be
         # propagated using the ERR_FALSE flag.
         self.builder.call_c(no_err_occurred_op, [], self.line)

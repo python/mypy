@@ -75,8 +75,6 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
         non_ext_anns = builder.call_c(dict_new_op, [], cdef.line)
         non_ext = NonExtClassInfo(non_ext_dict, non_ext_bases, non_ext_anns, non_ext_metaclass)
         dataclass_non_ext = None
-        type_obj = None
-
     attrs_to_cache: List[Tuple[Lvalue, RType]] = []
 
     for stmt in cdef.defs.body:
@@ -155,7 +153,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
                            non_ext_class
                        ], cdef.line)
 
-        # Cache any cachable class attributes
+        # Cache any cacheable class attributes
         cache_class_attrs(builder, attrs_to_cache, cdef)
 
 
@@ -219,7 +217,11 @@ def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
     for cls in cdef.info.mro[1:]:
         if cls.fullname == 'builtins.object':
             continue
-        if is_named_tuple and cls.fullname in ('typing.Sequence', 'typing.Iterable'):
+        if is_named_tuple and cls.fullname in ('typing.Sequence',
+                                               'typing.Iterable',
+                                               'typing.Collection',
+                                               'typing.Reversible',
+                                               'typing.Container'):
             # HAX: Synthesized base classes added by mypy don't exist at runtime, so skip them.
             #      This could break if they were added explicitly, though...
             continue

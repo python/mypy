@@ -356,7 +356,7 @@ class NamedTupleAnalyzer:
                     self.fail("Invalid NamedTuple() field name", item)
                     return None
                 try:
-                    type = expr_to_unanalyzed_type(type_node)
+                    type = expr_to_unanalyzed_type(type_node, self.options, self.api.is_stub_file)
                 except TypeTranslationError:
                     self.fail('Invalid field type', type_node)
                     return None
