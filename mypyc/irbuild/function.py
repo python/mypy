@@ -869,13 +869,9 @@ def sort_with_subclasses_first(
 ) -> Iterator[Tuple[TypeInfo, FuncDef]]:
 
     # graph with edges pointing from every class to their subclasses
-    graph: DefaultDict[TypeInfo, Set[TypeInfo]] = defaultdict(set)
-    for impl in impls:
-        typ, _ = impl
-        for t in typ.mro[1:]:
-            graph[typ].add(t)
+    graph = {typ: set(typ.mro[1:]) for typ, _ in impls}
 
-    dispatch_types = topsort(dict(graph))
+    dispatch_types = topsort(graph)
     impl_dict = {typ: func for typ, func in impls}
 
     for group in reversed(list(dispatch_types)):
