@@ -10,10 +10,9 @@ as an environment containing non-local variables, is stored in the
 instance of the callable class.
 """
 
-from collections import defaultdict
 from mypy.build import topsort
 from typing import (
-    NamedTuple, Optional, List, Sequence, Tuple, Union, Dict, DefaultDict, Iterator, Set,
+    NamedTuple, Optional, List, Sequence, Tuple, Union, Dict, Iterator,
 )
 
 from mypy.nodes import (
