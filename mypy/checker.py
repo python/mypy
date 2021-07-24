@@ -2093,7 +2093,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     inst.type.slots and
                     name not in inst.type.slots):
                 self.fail(
-                    'Trying to assing name "{}" that is not in "__slots__" of type "{}"'.format(
+                    'Trying to assign name "{}" that is not in "__slots__" of type "{}"'.format(
                         name, inst.type.fullname,
                     ),
                     lvalue,

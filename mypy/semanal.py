@@ -3366,9 +3366,9 @@ class SemanticAnalyzer(NodeVisitor[None],
                 )
                 return
 
-            rvalue: List[Expression] = [rvalue] if isinstance(
-                rvalue, StrExpr,
-            ) else rvalue.items  # type: ignore
+            rvalue: List[Expression] = [s.rvalue] if isinstance(
+                s.rvalue, StrExpr,
+            ) else s.rvalue.items
             slots = []
             for item in rvalue:
                 if isinstance(item, StrExpr):
@@ -3376,7 +3376,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 else:
                     self.fail('Invalid "__slots__" item; string literal expected', item)
 
-            # We need to copy all slots for super types:
+            # We need to copy all slots from super types:
             for super_type in self.type.mro[1:]:
                 slots.extend(super_type.slots)
             self.type.slots = set(slots)
