@@ -2038,6 +2038,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.process_module_assignment(s.lvalues, s.rvalue, s)
         self.process__all__(s)
         self.process__deletable__(s)
+        self.process__slots__(s)
 
     def analyze_identity_global_assignment(self, s: AssignmentStmt) -> bool:
         """Special case 'X = X' in global scope.
@@ -3352,6 +3353,33 @@ class SemanticAnalyzer(NodeVisitor[None],
                     attrs.append(item.value)
             assert self.type
             self.type.deletable_attributes = attrs
+
+    def process__slots__(self, s: AssignmentStmt) -> None:
+        if (isinstance(self.type, TypeInfo) and
+                len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr) and
+                s.lvalues[0].name == '__slots__' and s.lvalues[0].kind == MDEF):
+
+            if not isinstance(s.rvalue, (StrExpr, ListExpr, TupleExpr)):
+                self.fail(
+                    '"__slots__" must be initialized with a list, string, or tuple expression',
+                    s,
+                )
+                return
+
+            rvalue: List[Expression] = [rvalue] if isinstance(
+                rvalue, StrExpr,
+            ) else rvalue.items  # type: ignore
+            slots = []
+            for item in rvalue:
+                if isinstance(item, StrExpr):
+                    slots.append(item.value)
+                else:
+                    self.fail('Invalid "__slots__" item; string literal expected', item)
+
+            # We need to copy all slots for super types:
+            for super_type in self.type.mro[1:]:
+                slots.extend(super_type.slots)
+            self.type.slots = set(slots)
 
     #
     # Misc statements

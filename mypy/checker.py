@@ -2086,6 +2086,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_assignment(self, lvalue: Lvalue, rvalue: Expression, infer_lvalue_type: bool = True,
                          new_syntax: bool = False) -> None:
         """Type check a single assignment: lvalue = rvalue."""
+        if isinstance(lvalue, MemberExpr) and lvalue.node:
+            name = lvalue.node.name
+            inst = self.expr_checker.accept(lvalue.expr)
+            if (isinstance(inst, Instance) and
+                    inst.type.slots and
+                    name not in inst.type.slots):
+                self.fail(
+                    'Trying to assing name "{}" that is not in "__slots__" of type "{}"'.format(
+                        name, inst.type.fullname,
+                    ),
+                    lvalue,
+                )
+
         if isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
             self.check_assignment_to_multiple_lvalues(lvalue.items, rvalue, rvalue,
                                                       infer_lvalue_type)

@@ -2298,6 +2298,7 @@ class TypeInfo(SymbolNode):
     runtime_protocol = False               # Does this protocol support isinstance checks?
     abstract_attributes: List[str]
     deletable_attributes: List[str]  # Used by mypyc only
+    slots: Set[str]
 
     # The attributes 'assuming' and 'assuming_proper' represent structural subtype matrices.
     #
@@ -2401,6 +2402,7 @@ class TypeInfo(SymbolNode):
         self.is_abstract = False
         self.abstract_attributes = []
         self.deletable_attributes = []
+        self.slots = set()
         self.assuming = []
         self.assuming_proper = []
         self.inferring = []
