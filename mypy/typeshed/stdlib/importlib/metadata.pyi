@@ -2,11 +2,15 @@ import abc
 import pathlib
 import sys
 from _typeshed import StrPath
+from collections.abc import Mapping
 from email.message import Message
 from importlib.abc import MetaPathFinder
 from os import PathLike
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple, overload
+
+if sys.version_info >= (3, 10):
+    def packages_distributions() -> Mapping[str, List[str]]: ...
 
 if sys.version_info >= (3, 8):
     class PackageNotFoundError(ModuleNotFoundError): ...

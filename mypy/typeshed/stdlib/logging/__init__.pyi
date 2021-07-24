@@ -2,16 +2,19 @@ import sys
 import threading
 from _typeshed import StrPath, SupportsWrite
 from collections.abc import Callable, Iterable, Mapping, MutableMapping, Sequence
+from io import TextIOWrapper
 from string import Template
 from time import struct_time
 from types import FrameType, TracebackType
-from typing import IO, Any, ClassVar, Optional, Pattern, Tuple, Type, Union
+from typing import Any, ClassVar, Generic, Optional, Pattern, TextIO, Tuple, Type, TypeVar, Union, overload
+from typing_extensions import Literal
 
 _SysExcInfoType = Union[Tuple[Type[BaseException], BaseException, Optional[TracebackType]], Tuple[None, None, None]]
 _ExcInfoType = Union[None, bool, _SysExcInfoType, BaseException]
 _ArgsType = Union[Tuple[Any, ...], Mapping[str, Any]]
 _FilterType = Union[Filter, Callable[[LogRecord], int]]
 _Level = Union[int, str]
+_FormatStyle = Literal["%", "{", "$"]
 
 raiseExceptions: bool
 logThreads: bool
@@ -300,10 +303,10 @@ class Formatter:
 
     if sys.version_info >= (3, 8):
         def __init__(
-            self, fmt: Optional[str] = ..., datefmt: Optional[str] = ..., style: str = ..., validate: bool = ...
+            self, fmt: Optional[str] = ..., datefmt: Optional[str] = ..., style: _FormatStyle = ..., validate: bool = ...
         ) -> None: ...
     else:
-        def __init__(self, fmt: Optional[str] = ..., datefmt: Optional[str] = ..., style: str = ...) -> None: ...
+        def __init__(self, fmt: Optional[str] = ..., datefmt: Optional[str] = ..., style: _FormatStyle = ...) -> None: ...
     def format(self, record: LogRecord) -> str: ...
     def formatTime(self, record: LogRecord, datefmt: Optional[str] = ...) -> str: ...
     def formatException(self, ei: _SysExcInfoType) -> str: ...
@@ -325,7 +328,9 @@ class Filter:
     def filter(self, record: LogRecord) -> bool: ...
 
 class LogRecord:
-    args: _ArgsType
+    # args can be set to None by logging.handlers.QueueHandler
+    # (see https://bugs.python.org/issue44473)
+    args: _ArgsType | None
     asctime: str
     created: float
     exc_info: Optional[_SysExcInfoType]
@@ -354,7 +359,7 @@ class LogRecord:
         pathname: str,
         lineno: int,
         msg: Any,
-        args: _ArgsType,
+        args: _ArgsType | None,
         exc_info: Optional[_SysExcInfoType],
         func: Optional[str] = ...,
         sinfo: Optional[str] = ...,
@@ -362,14 +367,14 @@ class LogRecord:
     def getMessage(self) -> str: ...
 
 class LoggerAdapter:
-    logger: Logger
+    logger: Logger | LoggerAdapter
     manager: Manager  # undocumented
     if sys.version_info >= (3, 10):
         extra: Optional[Mapping[str, Any]]
-        def __init__(self, logger: Logger, extra: Optional[Mapping[str, Any]]) -> None: ...
+        def __init__(self, logger: Logger | LoggerAdapter, extra: Optional[Mapping[str, Any]]) -> None: ...
     else:
         extra: Mapping[str, Any]
-        def __init__(self, logger: Logger, extra: Mapping[str, Any]) -> None: ...
+        def __init__(self, logger: Logger | LoggerAdapter, extra: Mapping[str, Any]) -> None: ...
     def process(self, msg: Any, kwargs: MutableMapping[str, Any]) -> tuple[Any, MutableMapping[str, Any]]: ...
     if sys.version_info >= (3, 8):
         def debug(
@@ -701,14 +706,30 @@ def addLevelName(level: int, levelName: str) -> None: ...
 def getLevelName(level: _Level) -> Any: ...
 def makeLogRecord(dict: Mapping[str, Any]) -> LogRecord: ...
 
-if sys.version_info >= (3, 8):
+if sys.version_info >= (3, 9):
     def basicConfig(
         *,
         filename: Optional[StrPath] = ...,
         filemode: str = ...,
         format: str = ...,
         datefmt: Optional[str] = ...,
-        style: str = ...,
+        style: _FormatStyle = ...,
+        level: Optional[_Level] = ...,
+        stream: Optional[SupportsWrite[str]] = ...,
+        handlers: Optional[Iterable[Handler]] = ...,
+        force: Optional[bool] = ...,
+        encoding: Optional[str] = ...,
+        errors: Optional[str] = ...,
+    ) -> None: ...
+
+elif sys.version_info >= (3, 8):
+    def basicConfig(
+        *,
+        filename: Optional[StrPath] = ...,
+        filemode: str = ...,
+        format: str = ...,
+        datefmt: Optional[str] = ...,
+        style: _FormatStyle = ...,
         level: Optional[_Level] = ...,
         stream: Optional[SupportsWrite[str]] = ...,
         handlers: Optional[Iterable[Handler]] = ...,
@@ -722,7 +743,7 @@ else:
         filemode: str = ...,
         format: str = ...,
         datefmt: Optional[str] = ...,
-        style: str = ...,
+        style: _FormatStyle = ...,
         level: Optional[_Level] = ...,
         stream: Optional[SupportsWrite[str]] = ...,
         handlers: Optional[Iterable[Handler]] = ...,
@@ -733,33 +754,33 @@ def setLoggerClass(klass: Type[Logger]) -> None: ...
 def captureWarnings(capture: bool) -> None: ...
 def setLogRecordFactory(factory: Callable[..., LogRecord]) -> None: ...
 
-lastResort: Optional[StreamHandler]
+lastResort: StreamHandler[Any] | None
 
-class StreamHandler(Handler):
-    stream: SupportsWrite[str]  # undocumented
+_StreamT = TypeVar("_StreamT", bound=SupportsWrite[str])
+
+class StreamHandler(Handler, Generic[_StreamT]):
+    stream: _StreamT  # undocumented
     terminator: str
-    def __init__(self, stream: Optional[SupportsWrite[str]] = ...) -> None: ...
+    @overload
+    def __init__(self: StreamHandler[TextIO], stream: None = ...) -> None: ...
+    @overload
+    def __init__(self: StreamHandler[_StreamT], stream: _StreamT) -> None: ...
     if sys.version_info >= (3, 7):
-        def setStream(self, stream: SupportsWrite[str]) -> Optional[SupportsWrite[str]]: ...
+        def setStream(self, stream: _StreamT) -> _StreamT | None: ...
 
-class FileHandler(StreamHandler):
+class FileHandler(StreamHandler[TextIOWrapper]):
     baseFilename: str  # undocumented
     mode: str  # undocumented
-    encoding: Optional[str]  # undocumented
+    encoding: str | None  # undocumented
     delay: bool  # undocumented
     if sys.version_info >= (3, 9):
-        errors: Optional[str]  # undocumented
+        errors: str | None  # undocumented
         def __init__(
-            self,
-            filename: StrPath,
-            mode: str = ...,
-            encoding: Optional[str] = ...,
-            delay: bool = ...,
-            errors: Optional[str] = ...,
+            self, filename: StrPath, mode: str = ..., encoding: str | None = ..., delay: bool = ..., errors: str | None = ...
         ) -> None: ...
     else:
-        def __init__(self, filename: StrPath, mode: str = ..., encoding: Optional[str] = ..., delay: bool = ...) -> None: ...
-    def _open(self) -> IO[Any]: ...
+        def __init__(self, filename: StrPath, mode: str = ..., encoding: str | None = ..., delay: bool = ...) -> None: ...
+    def _open(self) -> TextIOWrapper: ...  # undocumented
 
 class NullHandler(Handler): ...
 
