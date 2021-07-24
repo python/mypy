@@ -36,6 +36,7 @@ class DataclassAttribute:
             column: int,
             type: Optional[Type],
             info: TypeInfo,
+            kw_only: bool,
     ) -> None:
         self.name = name
         self.is_in_init = is_in_init
@@ -45,6 +46,7 @@ class DataclassAttribute:
         self.column = column
         self.type = type
         self.info = info
+        self.kw_only = kw_only
 
     def to_argument(self) -> Argument:
         return Argument(
@@ -74,6 +76,8 @@ class DataclassAttribute:
         cls, info: TypeInfo, data: JsonDict, api: SemanticAnalyzerPluginInterface
     ) -> 'DataclassAttribute':
         data = data.copy()
+        if data.get('kw_only') is None:
+            data['kw_only'] = False
         typ = deserialize_and_fixup_type(data.pop('type'), api)
         return cls(type=typ, info=info, **data)
 
@@ -211,6 +215,7 @@ class DataclassTransformer:
         cls = self._ctx.cls
         attrs: List[DataclassAttribute] = []
         known_attrs: Set[str] = set()
+        kw_only = _get_decorator_bool_argument(ctx, 'kw_only', False)
         for stmt in cls.defs.body:
             # Any assignment that doesn't use the new type declaration
             # syntax can be ignored out of hand.
@@ -247,6 +252,10 @@ class DataclassTransformer:
                 is_init_var = True
                 node.type = node_type.args[0]
 
+            if (isinstance(node_type, Instance) and
+                    node_type.type.fullname == 'dataclasses._KW_ONLY_TYPE'):
+                kw_only = True
+
             has_field_call, field_args = _collect_field_args(stmt.rvalue)
 
             is_in_init_param = field_args.get('init')
@@ -270,6 +279,13 @@ class DataclassTransformer:
                 # on self in the generated __init__(), not in the class body.
                 sym.implicit = True
 
+            is_kw_only = kw_only
+            # Use the kw_only field arg if it is provided. Otherwise use the
+            # kw_only value from the decorator parameter.
+            field_kw_only_param = field_args.get('kw_only')
+            if field_kw_only_param is not None:
+                is_kw_only = bool(ctx.api.parse_bool(field_kw_only_param))
+
             known_attrs.add(lhs.name)
             attrs.append(DataclassAttribute(
                 name=lhs.name,
@@ -280,6 +296,7 @@ class DataclassTransformer:
                 column=stmt.column,
                 type=sym.type,
                 info=cls.info,
+                kw_only=is_kw_only,
             ))
 
         # Next, collect attributes belonging to any class in the MRO
@@ -319,10 +336,10 @@ class DataclassTransformer:
         # arguments that have a default.
         found_default = False
         for attr in all_attrs:
-            # If we find any attribute that is_in_init but that
+            # If we find any attribute that is_in_init, not kw_only, and that
             # doesn't have a default after one that does have one,
             # then that's an error.
-            if found_default and attr.is_in_init and not attr.has_default:
+            if found_default and attr.is_in_init and not attr.has_default and not attr.kw_only:
                 # If the issue comes from merging different classes, report it
                 # at the class definition point.
                 context = (Context(line=attr.line, column=attr.column) if attr in attrs

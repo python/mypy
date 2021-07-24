@@ -225,7 +225,7 @@ class Person:
     name: str
     age: int = field(init=None)  # E: No overload variant of "field" matches argument type "None" \
                                  # N: Possible overload variant: \
-                                 # N:     def field(*, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ...) -> Any \
+                                 # N:     def field(*, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> Any \
                                  # N:     <2 more non-matching overloads not shown>
 
 [builtins fixtures/list.pyi]
@@ -308,6 +308,63 @@ from dataclasses import dataclass
 class Application:
     name: str = 'Unnamed'
     rating: int  # E: Attributes without a default cannot follow attributes with one
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassesOrderingKwOnly]
+# flags: --python-version 3.10
+from dataclasses import dataclass
+
+@dataclass(kw_only=True)
+class Application:
+    name: str = 'Unnamed'
+    rating: int
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassesOrderingKwOnlyOnField]
+# flags: --python-version 3.10
+from dataclasses import dataclass, field
+
+@dataclass
+class Application:
+    name: str = 'Unnamed'
+    rating: int = field(kw_only=True)
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassesOrderingKwOnlyOnFieldFalse]
+# flags: --python-version 3.10
+from dataclasses import dataclass, field
+
+@dataclass
+class Application:
+    name: str = 'Unnamed'
+    rating: int = field(kw_only=False)  # E: Attributes without a default cannot follow attributes with one 
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassesOrderingKwOnlyWithSentinel]
+# flags: --python-version 3.10
+from dataclasses import dataclass, KW_ONLY
+
+@dataclass
+class Application:
+    _: KW_ONLY
+    name: str = 'Unnamed'
+    rating: int
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassesOrderingKwOnlyWithSentinelAndFieldOverride]
+# flags: --python-version 3.10
+from dataclasses import dataclass, field, KW_ONLY
+
+@dataclass
+class Application:
+    _: KW_ONLY
+    name: str = 'Unnamed'
+    rating: int = field(kw_only=False)  # E: Attributes without a default cannot follow attributes with one 
 
 [builtins fixtures/list.pyi]
 
