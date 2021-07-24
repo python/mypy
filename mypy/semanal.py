@@ -3172,11 +3172,15 @@ class SemanticAnalyzer(NodeVisitor[None],
         # PEP 612 reserves the right to define bound, covariant and contravariant arguments to
         # ParamSpec in a later PEP. If and when that happens, we should do something
         # on the lines of process_typevar_parameters
-        paramspec_var = ParamSpecExpr(
-            name, self.qualified_name(name), self.object_type(), INVARIANT
-        )
-        paramspec_var.line = call.line
-        call.analyzed = paramspec_var
+
+        if not call.analyzed:
+            paramspec_var = ParamSpecExpr(
+                name, self.qualified_name(name), self.object_type(), INVARIANT
+            )
+            paramspec_var.line = call.line
+            call.analyzed = paramspec_var
+        else:
+            assert isinstance(call.analyzed, ParamSpecExpr)
         self.add_symbol(name, call.analyzed, s)
         return True
 
