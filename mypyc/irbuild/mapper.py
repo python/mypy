@@ -12,7 +12,7 @@ from mypy.types import (
 from mypyc.ir.rtypes import (
     RType, RUnion, RTuple, RInstance, object_rprimitive, dict_rprimitive, tuple_rprimitive,
     none_rprimitive, int_rprimitive, float_rprimitive, str_rprimitive, bool_rprimitive,
-    list_rprimitive, set_rprimitive, range_rprimitive
+    list_rprimitive, set_rprimitive, range_rprimitive, bytes_rprimitive
 )
 from mypyc.ir.func_ir import FuncSignature, FuncDecl, RuntimeArg
 from mypyc.ir.class_ir import ClassIR
@@ -43,10 +43,12 @@ class Mapper:
                 return int_rprimitive
             elif typ.type.fullname == 'builtins.float':
                 return float_rprimitive
-            elif typ.type.fullname == 'builtins.str':
-                return str_rprimitive
             elif typ.type.fullname == 'builtins.bool':
                 return bool_rprimitive
+            elif typ.type.fullname == 'builtins.str':
+                return str_rprimitive
+            elif typ.type.fullname == 'builtins.bytes':
+                return bytes_rprimitive
             elif typ.type.fullname == 'builtins.list':
                 return list_rprimitive
             # Dict subclasses are at least somewhat common and we
