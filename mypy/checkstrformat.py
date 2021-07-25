@@ -893,7 +893,7 @@ class StringFormatterChecker:
             # Python 3 doesn't support b'%c' % str
             if not (self.chk.options.python_version >= (3, 0)
                     and isinstance(format_expr, BytesExpr)):
-                if isinstance(expr, (StrExpr, BytesExpr)) and len(cast(StrExpr, expr).value) != 1:
+                if isinstance(expr, (StrExpr, BytesExpr)) and len(expr.value) != 1:
                     self.msg.requires_int_or_char(context)
             check_type(type)
 
