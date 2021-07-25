@@ -3386,7 +3386,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 # We have a special treatment of `dict` with possible `{**kwargs}` usage.
                 # In this case we consider all `__slots__` to be non-concrete.
                 for key, _ in s.rvalue.items:
-                    if key is not None:
+                    if concrete_slots and key is not None:
                         rvalue.append(key)
                     else:
                         concrete_slots = False
@@ -3394,12 +3394,14 @@ class SemanticAnalyzer(NodeVisitor[None],
             slots = []
             for item in rvalue:
                 # Special case for `'__dict__'` value:
-                # when specified it will still allows any attribute assignment
+                # when specified it will still allow any attribute assignment.
                 if isinstance(item, StrExpr) and item.value != '__dict__':
                     slots.append(item.value)
                 else:
                     concrete_slots = False
             if not concrete_slots:
+                # Some slot items are dynamic, we don't want any false positives,
+                # so, we just pretend that this type does not have any slots at all.
                 return
 
             # We need to copy all slots from super types:
