@@ -4870,6 +4870,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         and not permissive):
                     var.type = NoneType()
                 else:
+                    if is_class:
+                        # Special case: possibly super-type defines the type for us?
+                        parent_type = self.get_defined_in_base_class(var)
+                        if parent_type is not None:
+                            var.type = parent_type
+                            self.partial_reported.add(var)
                     if var not in self.partial_reported and not permissive:
                         self.msg.need_annotation_for_var(var, context, self.options.python_version)
                         self.partial_reported.add(var)
@@ -4925,6 +4931,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if var.info.fallback_to_any:
                 return True
         return False
+
+    def get_defined_in_base_class(self, var: Var) -> Optional[Type]:
+        if var.info:
+            for base in var.info.mro[1:]:
+                found = base.get(var.name)
+                if found is not None:
+                    return found.type
+        return None
 
     def find_partial_types(self, var: Var) -> Optional[Dict[Var, Context]]:
         """Look for an active partial type scope containing variable.

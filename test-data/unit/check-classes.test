@@ -972,6 +972,39 @@ x = C.x
 [out]
 main:2: error: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 
+[case testAccessingClassAttributeWithTypeInferenceWithSuperType]
+from typing import List
+class P:
+    x: List[int]
+class C(P):
+    x = []
+reveal_type(C.x)  # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/list.pyi]
+
+[case testAccessingClassAttributeWithTypeInferenceWithMixinType]
+from typing import List
+class P:
+    pass
+class M:
+    x: List[int]
+class C(P, M):
+    x = []
+reveal_type(C.x)  # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/list.pyi]
+
+[case testClassAttributeWithTypeInferenceInvalidType]
+from typing import List
+class P:
+    x: List[int]
+class C(P):
+    x = ['a']  # E: List item 0 has incompatible type "str"; expected "int"
+[builtins fixtures/list.pyi]
+
+[case testClassSlotsAttributeWithTypeInference]
+class P:
+    __slots__ = []
+[builtins fixtures/list.pyi]
+
 [case testAccessingGenericClassAttribute]
 from typing import Generic, TypeVar
 T = TypeVar('T')
