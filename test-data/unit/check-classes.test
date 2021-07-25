@@ -1000,11 +1000,6 @@ class C(P):
     x = ['a']  # E: List item 0 has incompatible type "str"; expected "int"
 [builtins fixtures/list.pyi]
 
-[case testClassSlotsAttributeWithTypeInference]
-class P:
-    __slots__ = []
-[builtins fixtures/list.pyi]
-
 [case testAccessingGenericClassAttribute]
 from typing import Generic, TypeVar
 T = TypeVar('T')

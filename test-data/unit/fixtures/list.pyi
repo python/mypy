@@ -1,11 +1,10 @@
 # Builtins stub used in list-related test cases.
 
-from typing import TypeVar, Generic, Iterable, Iterator, Union, Sequence, overload
+from typing import TypeVar, Generic, Iterable, Iterator, Sequence, overload
 
 T = TypeVar('T')
 
 class object:
-    __slots__: Union['str', Iterable['str']]
     def __init__(self) -> None: pass
 
 class type: pass
