@@ -120,6 +120,20 @@ b._two = 2  # E: "B" has no attribute "_two"
 [builtins fixtures/tuple.pyi]
 
 
+[case testSlotsAssignmentWithSlottedSuperButNoChildSlots]
+class A:
+    __slots__ = ("a",)
+class B(A):
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 1
+
+b = B()
+b.a = 1
+b.b = 2
+[builtins fixtures/tuple.pyi]
+
+
 [case testSlotsAssignmentWithoutSuperSlots]
 class A:
     pass  # no slots
