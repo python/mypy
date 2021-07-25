@@ -209,3 +209,11 @@ a.b = 2
 a.c = 3
 a.d = 4  # E: "A" has no attribute "d"
 [builtins fixtures/tuple.pyi]
+
+
+[case testSlotsAssignmentMultipleLeftValues]
+class A:
+    __slots__ = ("a", "b")
+    def __init__(self) -> None:
+        self.a, self.b, self.c = (1, 2, 3)  # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.A"
+[builtins fixtures/tuple.pyi]

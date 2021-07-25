@@ -2088,7 +2088,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Type check a single assignment: lvalue = rvalue."""
         if isinstance(lvalue, MemberExpr) and lvalue.node:
             name = lvalue.node.name
-            inst = self.expr_checker.accept(lvalue.expr)
+            inst = get_proper_type(self.expr_checker.accept(lvalue.expr))
             if (isinstance(inst, Instance) and
                     inst.type.slots is not None and
                     name not in inst.type.slots):
