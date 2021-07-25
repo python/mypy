@@ -3355,29 +3355,56 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.type.deletable_attributes = attrs
 
     def process__slots__(self, s: AssignmentStmt) -> None:
+        """
+        Processing ``__slots__`` if defined in type.
+
+        See: https://docs.python.org/3/reference/datamodel.html#slots
+        """
+        # Later we can support `__slots__` defined as `__slots__ = other = ('a', 'b')`
         if (isinstance(self.type, TypeInfo) and
                 len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr) and
                 s.lvalues[0].name == '__slots__' and s.lvalues[0].kind == MDEF):
 
-            if not isinstance(s.rvalue, (StrExpr, ListExpr, TupleExpr)):
-                self.fail(
-                    '"__slots__" must be initialized with a list, string, or tuple expression',
-                    s,
-                )
+            # We understand `__slots__` defined as string, tuple, list, set, and dict:
+            if not isinstance(s.rvalue, (StrExpr, ListExpr, TupleExpr, SetExpr, DictExpr)):
+                # For example, `__slots__` can be defined as a variable,
+                # we don't support it for now.
                 return
 
-            rvalue: List[Expression] = [s.rvalue] if isinstance(
-                s.rvalue, StrExpr,
-            ) else s.rvalue.items
+            if any(p.slots is None for p in self.type.mro[1:-1]):
+                # At least one type in mro (excluding `self` and `object`)
+                # does not have concrete `__slots__` defined. Ignoring.
+                return
+
+            concrete_slots = True
+            rvalue: List[Expression] = []
+            if isinstance(s.rvalue, StrExpr):
+                rvalue.append(s.rvalue)
+            elif isinstance(s.rvalue, (ListExpr, TupleExpr, SetExpr)):
+                rvalue.extend(s.rvalue.items)
+            else:
+                # We have a special treatment of `dict` with possible `{**kwargs}` usage.
+                # In this case we consider all `__slots__` to be non-concrete.
+                for key, _ in s.rvalue.items:
+                    if key is not None:
+                        rvalue.append(key)
+                    else:
+                        concrete_slots = False
+
             slots = []
             for item in rvalue:
-                if isinstance(item, StrExpr):
+                # Special case for `'__dict__'` value:
+                # when specified it will still allows any attribute assignment
+                if isinstance(item, StrExpr) and item.value != '__dict__':
                     slots.append(item.value)
                 else:
-                    self.fail('Invalid "__slots__" item; string literal expected', item)
+                    concrete_slots = False
+            if not concrete_slots:
+                return
 
             # We need to copy all slots from super types:
-            for super_type in self.type.mro[1:]:
+            for super_type in self.type.mro[1:-1]:
+                assert super_type.slots is not None
                 slots.extend(super_type.slots)
             self.type.slots = set(slots)
 

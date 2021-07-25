@@ -2090,7 +2090,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             name = lvalue.node.name
             inst = self.expr_checker.accept(lvalue.expr)
             if (isinstance(inst, Instance) and
-                    inst.type.slots and
+                    inst.type.slots is not None and
                     name not in inst.type.slots):
                 self.fail(
                     'Trying to assign name "{}" that is not in "__slots__" of type "{}"'.format(
