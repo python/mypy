@@ -1,14 +1,31 @@
 [case testSlotsDefinitionWithStrAndListAndTuple]
 class A:
     __slots__ = "a"
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2  # E: Trying to assign name "b" that is not in "__slots__" of type "__main__.A"
+
 class B:
     __slots__ = ("a", "b")
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+        self.c = 3  # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.B"
+
 class C:
     __slots__ = ['c']
+    def __init__(self) -> None:
+        self.a = 1  # E: Trying to assign name "a" that is not in "__slots__" of type "__main__.C"
+        self.c = 3
 
 class WithVariable:
     __fields__ = ['a', 'b']
     __slots__ = __fields__
+
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+        self.c = 3
 [builtins fixtures/tuple.pyi]
 [builtins fixtures/list.pyi]
 
@@ -88,16 +105,31 @@ a.missing = 2  # E: "A" has no attribute "missing"
 class A:
     __slots__ = ("a",)
 class B(A):
-    __slots__ = ("b",)
+    __slots__ = ("b", "c")
 
     def __init__(self) -> None:
         self.a = 1
+        self.b = 2
         self._one = 1  # E: Trying to assign name "_one" that is not in "__slots__" of type "__main__.B"
 
 b = B()
 b.a = 1
-b.b = 2  # E: "B" has no attribute "b"
+b.b = 2
+b.c = 3  # E: "B" has no attribute "c"
 b._two = 2  # E: "B" has no attribute "_two"
+[builtins fixtures/tuple.pyi]
+
+
+[case testSlotsAssignmentWithSuperDuplicateSlots]
+class A:
+    __slots__ = ("a",)
+class B(A):
+    __slots__ = ("a", "b",)
+
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+        self._one = 1  # E: Trying to assign name "_one" that is not in "__slots__" of type "__main__.B"
 [builtins fixtures/tuple.pyi]
 
 
