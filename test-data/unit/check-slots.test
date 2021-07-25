@@ -137,16 +137,18 @@ class B(A):
 class A:
     __slots__ = ("a",)
 class Mixin:
-    __slots__ = ()
+    __slots__ = ("m",)
 class B(A, Mixin):
     __slots__ = ("b",)
 
     def __init__(self) -> None:
         self.a = 1
+        self.m = 2
         self._one = 1  # E: Trying to assign name "_one" that is not in "__slots__" of type "__main__.B"
 
 b = B()
 b.a = 1
+b.m = 2
 b.b = 2  # E: "B" has no attribute "b"
 b._two = 2  # E: "B" has no attribute "_two"
 [builtins fixtures/tuple.pyi]

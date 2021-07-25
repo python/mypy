@@ -2298,7 +2298,7 @@ class TypeInfo(SymbolNode):
     runtime_protocol = False               # Does this protocol support isinstance checks?
     abstract_attributes: List[str]
     deletable_attributes: List[str]  # Used by mypyc only
-    # Does this type has concrete `__slots__` defined?
+    # Does this type have concrete `__slots__` defined?
     # If class does not have `__slots__` defined then it is `None`,
     # if it has empty `__slots__` then it is an empty set.
     slots: Optional[Set[str]]
