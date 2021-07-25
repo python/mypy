@@ -786,7 +786,7 @@ class StringFormatterChecker:
     def replacement_checkers(self, specifier: ConversionSpecifier, context: Context,
                              expr: FormatStringExpr) -> Optional[List[Checkers]]:
         """Returns a list of tuples of two functions that check whether a replacement is
-        of the right type for the specifier. The first functions take a node and checks
+        of the right type for the specifier. The first function takes a node and checks
         its type in the right type context. The second function just checks a type.
         """
         checkers: List[Checkers] = []
@@ -874,11 +874,11 @@ class StringFormatterChecker:
 
     def checkers_for_c_type(self, type: str,
                             context: Context,
-                            expr: FormatStringExpr) -> Optional[Checkers]:
+                            format_expr: FormatStringExpr) -> Optional[Checkers]:
         """Returns a tuple of check functions that check whether, respectively,
         a node or a type is compatible with 'type' that is a character type.
         """
-        expected_type = self.conversion_type(type, context, expr)
+        expected_type = self.conversion_type(type, context, format_expr)
         if expected_type is None:
             return None
 
@@ -889,8 +889,12 @@ class StringFormatterChecker:
         def check_expr(expr: Expression) -> None:
             """int, or str with length 1"""
             type = self.accept(expr, expected_type)
-            if isinstance(expr, (StrExpr, BytesExpr)) and len(cast(StrExpr, expr).value) != 1:
-                self.msg.requires_int_or_char(context)
+            # TODO: Use the same the error message when incompatible types match %c
+            # Python 3 doesn't support b'%c' % str
+            if not (self.chk.options.python_version >= (3, 0)
+                    and isinstance(format_expr, BytesExpr)):
+                if isinstance(expr, (StrExpr, BytesExpr)) and len(expr.value) != 1:
+                    self.msg.requires_int_or_char(context)
             check_type(type)
 
         return check_expr, check_type
@@ -939,9 +943,12 @@ class StringFormatterChecker:
                         numeric_types.append(self.named_type('typing.SupportsInt'))
             return UnionType.make_union(numeric_types)
         elif p in ['c']:
-            return UnionType([self.named_type('builtins.int'),
-                              self.named_type('builtins.float'),
-                              self.named_type('builtins.str')])
+            if isinstance(expr, BytesExpr):
+                return UnionType([self.named_type('builtins.int'),
+                                  self.named_type('builtins.bytes')])
+            else:
+                return UnionType([self.named_type('builtins.int'),
+                                  self.named_type('builtins.str')])
         else:
             self.msg.unsupported_placeholder(p, context)
             return None
