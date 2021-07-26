@@ -22,14 +22,21 @@ to_list = function_op(
     arg_types=[object_rprimitive],
     return_type=list_rprimitive,
     c_function_name='PySequence_List',
-    error_kind=ERR_MAGIC,
-)
+    error_kind=ERR_MAGIC)
 
 new_list_op = custom_op(
     arg_types=[c_pyssize_t_rprimitive],
     return_type=list_rprimitive,
     c_function_name='PyList_New',
     error_kind=ERR_MAGIC)
+
+list_build_op = custom_op(
+    arg_types=[c_pyssize_t_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name='CPyList_Build',
+    error_kind=ERR_MAGIC,
+    var_arg_type=object_rprimitive,
+    steals=True)
 
 # list[index] (for an integer index)
 list_get_item_op = method_op(

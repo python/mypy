@@ -18,7 +18,7 @@ from typing_extensions import Final
 from mypy.fscache import FileSystemCache
 from mypy.options import Options
 from mypy.stubinfo import is_legacy_bundled_package
-from mypy import sitepkgs
+from mypy import pyinfo
 
 # Paths to be searched in find_module().
 SearchPaths = NamedTuple(
@@ -583,6 +583,27 @@ def default_lib_path(data_dir: str,
 
 
 @functools.lru_cache(maxsize=None)
+def get_prefixes(python_executable: Optional[str]) -> Tuple[str, str]:
+    """Get the sys.base_prefix and sys.prefix for the given python.
+
+    This runs a subprocess call to get the prefix paths of the given Python executable.
+    To avoid repeatedly calling a subprocess (which can be slow!) we
+    lru_cache the results.
+    """
+    if python_executable is None:
+        return '', ''
+    elif python_executable == sys.executable:
+        # Use running Python's package dirs
+        return pyinfo.getprefixes()
+    else:
+        # Use subprocess to get the package directory of given Python
+        # executable
+        return ast.literal_eval(
+            subprocess.check_output([python_executable, pyinfo.__file__, 'getprefixes'],
+            stderr=subprocess.PIPE).decode())
+
+
+@functools.lru_cache(maxsize=None)
 def get_site_packages_dirs(python_executable: Optional[str]) -> Tuple[List[str], List[str]]:
     """Find package directories for given python.
 
@@ -595,12 +616,12 @@ def get_site_packages_dirs(python_executable: Optional[str]) -> Tuple[List[str],
         return [], []
     elif python_executable == sys.executable:
         # Use running Python's package dirs
-        site_packages = sitepkgs.getsitepackages()
+        site_packages = pyinfo.getsitepackages()
     else:
         # Use subprocess to get the package directory of given Python
         # executable
         site_packages = ast.literal_eval(
-            subprocess.check_output([python_executable, sitepkgs.__file__],
+            subprocess.check_output([python_executable, pyinfo.__file__, 'getsitepackages'],
             stderr=subprocess.PIPE).decode())
     return expand_site_packages(site_packages)
 
@@ -736,6 +757,8 @@ def compute_search_paths(sources: List[BuildSource],
         mypypath = add_py2_mypypath_entries(mypypath)
 
     egg_dirs, site_packages = get_site_packages_dirs(options.python_executable)
+    base_prefix, prefix = get_prefixes(options.python_executable)
+    is_venv = base_prefix != prefix
     for site_dir in site_packages:
         assert site_dir not in lib_path
         if (site_dir in mypypath or
@@ -745,7 +768,7 @@ def compute_search_paths(sources: List[BuildSource],
             print("See https://mypy.readthedocs.io/en/stable/running_mypy.html"
                   "#how-mypy-handles-imports for more info", file=sys.stderr)
             sys.exit(1)
-        elif site_dir in python_path:
+        elif site_dir in python_path and (is_venv and not site_dir.startswith(prefix)):
             print("{} is in the PYTHONPATH. Please change directory"
                   " so it is not.".format(site_dir),
                   file=sys.stderr)

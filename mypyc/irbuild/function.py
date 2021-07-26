@@ -10,7 +10,10 @@ as an environment containing non-local variables, is stored in the
 instance of the callable class.
 """
 
-from typing import NamedTuple, Optional, List, Sequence, Tuple, Union, Dict
+from mypy.build import topsort
+from typing import (
+    NamedTuple, Optional, List, Sequence, Tuple, Union, Dict, Iterator,
+)
 
 from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, Decorator, Var, YieldFromExpr, AwaitExpr, YieldExpr,
@@ -822,9 +825,10 @@ def generate_singledispatch_dispatch_function(
         coerced = builder.coerce(ret_val, current_func_decl.sig.ret_type, line)
         builder.nonlocal_control[-1].gen_return(builder, coerced, line)
 
-    # Reverse the list of registered implementations so we use the implementations defined later
-    # if there are multiple overlapping implementations
-    for dispatch_type, impl in reversed(impls):
+    # Sort the list of implementations so that we check any subclasses before we check the classes
+    # they inherit from, to better match singledispatch's behavior of going through the argument's
+    # MRO, and using the first implementation it finds
+    for dispatch_type, impl in sort_with_subclasses_first(impls):
         call_impl, next_impl = BasicBlock(), BasicBlock()
         should_call_impl = check_if_isinstance(builder, arg_info.args[0], dispatch_type, line)
         builder.add_bool_branch(should_call_impl, call_impl, next_impl)
@@ -857,3 +861,17 @@ def gen_dispatch_func_ir(
     func_decl = FuncDecl(dispatch_name, None, builder.module_name, sig)
     dispatch_func_ir = FuncIR(func_decl, args, blocks)
     return dispatch_func_ir
+
+
+def sort_with_subclasses_first(
+    impls: List[Tuple[TypeInfo, FuncDef]]
+) -> Iterator[Tuple[TypeInfo, FuncDef]]:
+
+    # graph with edges pointing from every class to their subclasses
+    graph = {typ: set(typ.mro[1:]) for typ, _ in impls}
+
+    dispatch_types = topsort(graph)
+    impl_dict = {typ: func for typ, func in impls}
+
+    for group in reversed(list(dispatch_types)):
+        yield from ((typ, impl_dict[typ]) for typ in group if typ in impl_dict)

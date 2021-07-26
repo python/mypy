@@ -465,3 +465,50 @@ def h(arg: str) -> int:
 def test_singledispatch():
     assert f('a') == 35
     assert f(A()) == 10
+
+[case testMoreSpecificTypeBeforeLessSpecificType]
+from functools import singledispatch
+class A: pass
+class B(A): pass
+
+@singledispatch
+def f(arg) -> str:
+    return 'default'
+
+@f.register
+def g(arg: B) -> str:
+    return 'b'
+
+@f.register
+def h(arg: A) -> str:
+    return 'a'
+
+def test_singledispatch():
+    assert f(B()) == 'b'
+    assert f(A()) == 'a'
+    assert f(5) == 'default'
+
+[case testMultipleRelatedClassesBeingRegistered]
+from functools import singledispatch
+
+class A: pass
+class B(A): pass
+class C(B): pass
+
+@singledispatch
+def f(arg) -> str: return 'default'
+
+@f.register
+def _(arg: A) -> str: return 'a'
+
+@f.register
+def _(arg: C) -> str: return 'c'
+
+@f.register
+def _(arg: B) -> str: return 'b'
+
+def test_singledispatch():
+    assert f(A()) == 'a'
+    assert f(B()) == 'b'
+    assert f(C()) == 'c'
+    assert f(1) == 'default'
