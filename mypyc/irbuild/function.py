@@ -845,6 +845,8 @@ def generate_singledispatch_dispatch_function(
     # We're doing this in a separate pass over the implementations because that avoids the
     # complexity and code size implications of generating this import before every call to a
     # registered implementation that might need this imported
+    # TODO: avoid adding imports if we use native calls for all of the registered implementations
+    # in a module (once we add support for using native calls for registered implementations)
     for _, impl in impls:
         module_name = impl.fullname.rsplit('.')[0]
         if module_name not in builder.imports:
