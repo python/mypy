@@ -992,14 +992,23 @@ class C(P, M):
 reveal_type(C.x)  # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
 
-[case testAccessingClassAttributeWithTypeInferenceWithMixinTypeConflict]
+[case testClassAttributeWithTypeInferenceInvalidType]
+from typing import List
+class P:
+    x: List[int]
+class C(P):
+    x = ['a']  # E: List item 0 has incompatible type "str"; expected "int"
+[builtins fixtures/list.pyi]
+
+case testAccessingClassAttributeWithTypeInferenceWithMixinTypeConflict]
 from typing import List
 class P:
     x: List[int]
 class M:
     x: List[str]
 class C(P, M):
-    x = []  # E: Incompatible types in assignment (expression has type "List[int]", base class "M" defined the type as "List[str]")
+    x = []  # This hides subclassing issue, but that's how it is for now
+
 reveal_type(C.x)  # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
 
@@ -1008,14 +1017,6 @@ class P:
     ...
 class C(P):
     x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
-[builtins fixtures/list.pyi]
-
-[case testClassAttributeWithTypeInferenceInvalidType]
-from typing import List
-class P:
-    x: List[int]
-class C(P):
-    x = ['a']  # E: List item 0 has incompatible type "str"; expected "int"
 [builtins fixtures/list.pyi]
 
 [case testAccessingGenericClassAttribute]

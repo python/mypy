@@ -2091,7 +2091,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                       infer_lvalue_type)
         else:
             self.try_infer_partial_generic_type_from_assignment(lvalue, rvalue, '=')
-            self.try_infer_partial_generic_type_from_super(lvalue, rvalue)
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
             # If we're assigning to __getattr__ or similar methods, check that the signature is
             # valid.
@@ -2241,42 +2240,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             elif isinstance(rvalue_type, AnyType):
                 var.type = fill_typevars_with_any(typ.type)
                 del partial_types[var]
-
-    def try_infer_partial_generic_type_from_super(self, lvalue: Lvalue,
-                                                  rvalue: Expression) -> None:
-        """Try to infer a precise type for partial generic type from super types.
-
-        Example where this happens:
-
-            class P:
-                x: List[int]
-
-            class C(P):
-                x = []  # Infer List[int] as type of 'x'
-
-        """
-        var = None
-        if (isinstance(lvalue, NameExpr)
-                and isinstance(lvalue.node, Var)
-                and lvalue.node.type is None):
-            var = lvalue.node
-            self.infer_partial_type(var, lvalue,
-                                    get_proper_type(self.expr_checker.accept(rvalue)))
-
-        if var is not None:
-            partial_types = self.find_partial_types(var)
-            if partial_types is None:
-                return
-
-            parent_type = self.get_defined_in_base_class(var)
-            if parent_type is not None:
-                parent_type = get_proper_type(parent_type)
-                if is_valid_inferred_type(parent_type):
-                    self.set_inferred_type(var, lvalue, parent_type)
-                    if isinstance(lvalue, RefExpr):
-                        # We need this to escape another round of inference:
-                        lvalue.is_inferred_def = False
-                    del partial_types[var]
 
     def check_compatibility_all_supers(self, lvalue: RefExpr, lvalue_type: Optional[Type],
                                        rvalue: Expression) -> bool:
@@ -4907,6 +4870,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         and not permissive):
                     var.type = NoneType()
                 else:
+                    if is_class:
+                        # Special case: possibly super-type defines the type for us?
+                        parent_type = self.get_defined_in_base_class(var)
+                        if parent_type is not None:
+                            var.type = parent_type
+                            self.partial_reported.add(var)
                     if var not in self.partial_reported and not permissive:
                         self.msg.need_annotation_for_var(var, context, self.options.python_version)
                         self.partial_reported.add(var)
