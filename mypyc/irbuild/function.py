@@ -871,9 +871,9 @@ def generate_singledispatch_dispatch_function(
 
     # We don't pass fullname here because getting the fullname of the main generated singledispatch
     # function isn't easy, and we don't need it because the fullname is only needed for making sure
-    # we load the function from another module instead of the globals dict if it's defined in another
-    # module, which will never be true for the main singledispatch function (it's always generated
-    # in the same module as the dispatch function)
+    # we load the function from another module instead of the globals dict if it's defined in
+    # another module, which will never be true for the main singledispatch function (it's always
+    # generated in the same module as the dispatch function)
     gen_func_call_and_return(main_singledispatch_function_name)
 
 
