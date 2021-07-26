@@ -2261,7 +2261,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 and lvalue.node.type is None):
             var = lvalue.node
             self.infer_partial_type(var, lvalue,
-                                    self.expr_checker.accept(rvalue))
+                                    get_proper_type(self.expr_checker.accept(rvalue)))
 
         if var is not None:
             partial_types = self.find_partial_types(var)
@@ -2269,12 +2269,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 return
 
             parent_type = self.get_defined_in_base_class(var)
-            if parent_type is not None and is_valid_inferred_type(parent_type):
-                self.set_inferred_type(var, lvalue, parent_type)
-                if isinstance(lvalue, RefExpr):
-                    # We need this to escape another round of inference:
-                    lvalue.is_inferred_def = False
-                del partial_types[var]
+            if parent_type is not None:
+                parent_type = get_proper_type(parent_type)
+                if is_valid_inferred_type(parent_type):
+                    self.set_inferred_type(var, lvalue, parent_type)
+                    if isinstance(lvalue, RefExpr):
+                        # We need this to escape another round of inference:
+                        lvalue.is_inferred_def = False
+                    del partial_types[var]
 
     def check_compatibility_all_supers(self, lvalue: RefExpr, lvalue_type: Optional[Type],
                                        rvalue: Expression) -> bool:
