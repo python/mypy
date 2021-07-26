@@ -1019,6 +1019,11 @@ foo.py:4: error: unexpected EOF while parsing
 Command 'suggest' is only valid after a 'check' command (that produces no parse errors)
 ==
 foo.py:4: error: unexpected EOF while parsing
+[out version>=3.10]
+foo.py:4: error: '(' was never closed
+Command 'suggest' is only valid after a 'check' command (that produces no parse errors)
+==
+foo.py:4: error: '(' was never closed
 -- )
 
 [case testSuggestRefine]

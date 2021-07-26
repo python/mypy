@@ -8,9 +8,9 @@ from mypy.types import (
 from mypy import nodes
 
 
-def map_actuals_to_formals(actual_kinds: List[int],
+def map_actuals_to_formals(actual_kinds: List[nodes.ArgKind],
                            actual_names: Optional[Sequence[Optional[str]]],
-                           formal_kinds: List[int],
+                           formal_kinds: List[nodes.ArgKind],
                            formal_names: Sequence[Optional[str]],
                            actual_arg_type: Callable[[int],
                                                      Type]) -> List[List[int]]:
@@ -23,14 +23,13 @@ def map_actuals_to_formals(actual_kinds: List[int],
     argument type with the given index.
     """
     nformals = len(formal_kinds)
-    formal_to_actual = [[] for i in range(nformals)]  # type: List[List[int]]
-    ambiguous_actual_kwargs = []  # type: List[int]
+    formal_to_actual: List[List[int]] = [[] for i in range(nformals)]
+    ambiguous_actual_kwargs: List[int] = []
     fi = 0
     for ai, actual_kind in enumerate(actual_kinds):
         if actual_kind == nodes.ARG_POS:
             if fi < nformals:
-                if formal_kinds[fi] in [nodes.ARG_POS, nodes.ARG_OPT,
-                                        nodes.ARG_NAMED, nodes.ARG_NAMED_OPT]:
+                if not formal_kinds[fi].is_star():
                     formal_to_actual[fi].append(ai)
                     fi += 1
                 elif formal_kinds[fi] == nodes.ARG_STAR:
@@ -52,14 +51,14 @@ def map_actuals_to_formals(actual_kinds: List[int],
                 # Assume that it is an iterable (if it isn't, there will be
                 # an error later).
                 while fi < nformals:
-                    if formal_kinds[fi] in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT, nodes.ARG_STAR2):
+                    if formal_kinds[fi].is_named(star=True):
                         break
                     else:
                         formal_to_actual[fi].append(ai)
                     if formal_kinds[fi] == nodes.ARG_STAR:
                         break
                     fi += 1
-        elif actual_kind in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT):
+        elif actual_kind.is_named():
             assert actual_names is not None, "Internal error: named kinds without names given"
             name = actual_names[ai]
             if name in formal_names:
@@ -99,9 +98,9 @@ def map_actuals_to_formals(actual_kinds: List[int],
     return formal_to_actual
 
 
-def map_formals_to_actuals(actual_kinds: List[int],
+def map_formals_to_actuals(actual_kinds: List[nodes.ArgKind],
                            actual_names: Optional[Sequence[Optional[str]]],
-                           formal_kinds: List[int],
+                           formal_kinds: List[nodes.ArgKind],
                            formal_names: List[Optional[str]],
                            actual_arg_type: Callable[[int],
                                                      Type]) -> List[List[int]]:
@@ -112,7 +111,7 @@ def map_formals_to_actuals(actual_kinds: List[int],
                                               formal_names,
                                               actual_arg_type)
     # Now reverse the mapping.
-    actual_to_formal = [[] for _ in actual_kinds]  # type: List[List[int]]
+    actual_to_formal: List[List[int]] = [[] for _ in actual_kinds]
     for formal, actuals in enumerate(formal_to_actual):
         for actual in actuals:
             actual_to_formal[actual].append(formal)
@@ -145,13 +144,13 @@ class ArgTypeExpander:
         # Next tuple *args index to use.
         self.tuple_index = 0
         # Keyword arguments in TypedDict **kwargs used.
-        self.kwargs_used = set()  # type: Set[str]
+        self.kwargs_used: Set[str] = set()
 
     def expand_actual_type(self,
                            actual_type: Type,
-                           actual_kind: int,
+                           actual_kind: nodes.ArgKind,
                            formal_name: Optional[str],
-                           formal_kind: int) -> Type:
+                           formal_kind: nodes.ArgKind) -> Type:
         """Return the actual (caller) type(s) of a formal argument with the given kinds.
 
         If the actual argument is a tuple *args, return the next individual tuple item that

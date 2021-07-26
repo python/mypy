@@ -13,6 +13,8 @@ jobs:
   mypy_primer:
     name: Run
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       matrix:
         shard-index: [0, 1, 2]
@@ -48,10 +50,20 @@ jobs:
             --num-shards 3 --shard-index ${{ matrix.shard-index }} \
             --debug \
             --output concise \
-            | tee diff.txt
+            | tee diff_${{ matrix.shard-index }}.txt
           ) || [ $? -eq 1 ]
       - name: Upload mypy_primer diff
         uses: actions/upload-artifact@v2
         with:
-          name: mypy_primer_diff_${{ matrix.shard-index }}
-          path: diff.txt
+          name: mypy_primer_diffs
+          path: diff_${{ matrix.shard-index }}.txt
+      - if: ${{ matrix.shard-index }} == 0
+        name: Save PR number
+        run: |
+          echo ${{ github.event.pull_request.number }} | tee pr_number.txt
+      - if: ${{ matrix.shard-index }} == 0
+        name: Upload PR number
+        uses: actions/upload-artifact@v2
+        with:
+          name: mypy_primer_diffs
+          path: pr_number.txt

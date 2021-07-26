@@ -26,7 +26,7 @@ from mypyc.ir.func_ir import (
     FuncDecl, FuncSignature, RuntimeArg, FUNC_NORMAL, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
 )
 from mypyc.ir.class_ir import ClassIR
-from mypyc.common import PROPSET_PREFIX
+from mypyc.common import PROPSET_PREFIX, get_id_from_name
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.util import (
     get_func_def, is_dataclass, is_trait, is_extension_class, get_mypyc_attrs
@@ -54,6 +54,8 @@ def build_type_map(mapper: Mapper,
         class_ir = ClassIR(cdef.name, module.fullname, is_trait(cdef),
                            is_abstract=cdef.info.is_abstract)
         class_ir.is_ext_class = is_extension_class(cdef)
+        if class_ir.is_ext_class:
+            class_ir.deletable = cdef.info.deletable_attributes[:]
         # If global optimizations are disabled, turn of tracking of class children
         if not options.global_opts:
             class_ir.children = None
@@ -93,7 +95,8 @@ def load_type_map(mapper: 'Mapper',
 
     for module in modules:
         for func in get_module_func_defs(module):
-            mapper.func_to_decl[func] = deser_ctx.functions[func.fullname].decl
+            func_id = get_id_from_name(func.name, func.fullname, func.line)
+            mapper.func_to_decl[func] = deser_ctx.functions[func_id].decl
 
 
 def get_module_func_defs(module: MypyFile) -> Iterable[FuncDef]:
@@ -179,7 +182,7 @@ def prepare_class_def(path: str, module_name: str, cdef: ClassDef,
 
         if isinstance(node.node, Var):
             assert node.node.type, "Class member %s missing type" % name
-            if not node.node.is_classvar and name != '__slots__':
+            if not node.node.is_classvar and name not in ('__slots__', '__deletable__'):
                 ir.attributes[name] = mapper.type_to_rtype(node.node.type)
         elif isinstance(node.node, (FuncDef, Decorator)):
             prepare_method_def(ir, module_name, cdef, mapper, node.node)

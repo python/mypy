@@ -72,12 +72,12 @@ class NewTypeAnalyzer:
         # Create the corresponding class definition if the aliased type is subtypeable
         if isinstance(old_type, TupleType):
             newtype_class_info = self.build_newtype_typeinfo(name, old_type,
-                                                             old_type.partial_fallback)
+                                                             old_type.partial_fallback, s.line)
             newtype_class_info.tuple_type = old_type
         elif isinstance(old_type, Instance):
             if old_type.type.is_protocol:
                 self.fail("NewType cannot be used with protocol classes", s)
-            newtype_class_info = self.build_newtype_typeinfo(name, old_type, old_type)
+            newtype_class_info = self.build_newtype_typeinfo(name, old_type, old_type, s.line)
         else:
             if old_type is not None:
                 message = "Argument 2 to NewType(...) must be subclassable (got {})"
@@ -85,7 +85,7 @@ class NewTypeAnalyzer:
             # Otherwise the error was already reported.
             old_type = AnyType(TypeOfAny.from_error)
             object_type = self.api.named_type('__builtins__.object')
-            newtype_class_info = self.build_newtype_typeinfo(name, old_type, object_type)
+            newtype_class_info = self.build_newtype_typeinfo(name, old_type, object_type, s.line)
             newtype_class_info.fallback_to_any = True
 
         check_for_explicit_any(old_type, self.options, self.api.is_typeshed_stub_file, self.msg,
@@ -127,7 +127,7 @@ class NewTypeAnalyzer:
             # Give a better error message than generic "Name already defined".
             if (existing and
                     not isinstance(existing.node, PlaceholderNode) and not s.rvalue.analyzed):
-                self.fail("Cannot redefine '%s' as a NewType" % name, s)
+                self.fail('Cannot redefine "%s" as a NewType' % name, s)
 
             # This dummy NewTypeExpr marks the call as sufficiently analyzed; it will be
             # overwritten later with a fully complete NewTypeExpr if there are no other
@@ -153,14 +153,14 @@ class NewTypeAnalyzer:
             self.fail("Argument 1 to NewType(...) must be a string literal", context)
             has_failed = True
         elif args[0].value != name:
-            msg = "String argument 1 '{}' to NewType(...) does not match variable name '{}'"
+            msg = 'String argument 1 "{}" to NewType(...) does not match variable name "{}"'
             self.fail(msg.format(args[0].value, name), context)
             has_failed = True
 
         # Check second argument
         msg = "Argument 2 to NewType(...) must be a valid type"
         try:
-            unanalyzed_type = expr_to_unanalyzed_type(args[1])
+            unanalyzed_type = expr_to_unanalyzed_type(args[1], self.options, self.api.is_stub_file)
         except TypeTranslationError:
             self.fail(msg, context)
             return None, False
@@ -181,8 +181,9 @@ class NewTypeAnalyzer:
 
         return None if has_failed else old_type, should_defer
 
-    def build_newtype_typeinfo(self, name: str, old_type: Type, base_type: Instance) -> TypeInfo:
-        info = self.api.basic_new_typeinfo(name, base_type)
+    def build_newtype_typeinfo(self, name: str, old_type: Type, base_type: Instance,
+                               line: int) -> TypeInfo:
+        info = self.api.basic_new_typeinfo(name, base_type, line)
         info.is_newtype = True
 
         # Add __init__ method

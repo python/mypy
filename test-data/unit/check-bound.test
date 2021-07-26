@@ -55,7 +55,7 @@ class C(Generic[T]):
 c1 = None # type: C[None]
 c1.get()
 d = c1.get()
-reveal_type(d)  # N: Revealed type is 'None'
+reveal_type(d)  # N: Revealed type is "None"
 
 
 [case testBoundAny]
@@ -82,7 +82,7 @@ def f(g: Callable[[], T]) -> T:
 def h() -> None: pass
 f(h)
 a = f(h)
-reveal_type(a)  # N: Revealed type is 'None'
+reveal_type(a)  # N: Revealed type is "None"
 
 
 [case testBoundInheritance]
@@ -177,7 +177,7 @@ class A(NamedTuple):
 
 T = TypeVar('T', bound=A)
 def f(x: Type[T]) -> None:
-    reveal_type(x.foo)  # N: Revealed type is 'def ()'
+    reveal_type(x.foo)  # N: Revealed type is "def ()"
     x.foo()
 [builtins fixtures/classmethod.pyi]
 

@@ -703,7 +703,7 @@ MypyFile:1(
 
 [case testInvalidTupleType]
 from typing import Tuple
-t = None # type: Tuple[int, str, ...] # E: Unexpected '...'
+t = None # type: Tuple[int, str, ...] # E: Unexpected "..."
 [builtins fixtures/tuple.pyi]
 [out]
 

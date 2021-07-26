@@ -188,9 +188,9 @@ from typing import Any
 x = 5  # type: Any
 
 if callable(x):
-    reveal_type(x)  # N: Revealed type is 'Any'
+    reveal_type(x)  # N: Revealed type is "Any"
 else:
-    reveal_type(x)  # N: Revealed type is 'Any'
+    reveal_type(x)  # N: Revealed type is "Any"
 [builtins fixtures/callable.pyi]
 
 [case testCallableCallableClasses]
@@ -217,9 +217,9 @@ if not callable(b):
     5 + 'test'
 
 if callable(c):
-    reveal_type(c)  # N: Revealed type is '__main__.B'
+    reveal_type(c)  # N: Revealed type is "__main__.B"
 else:
-    reveal_type(c)  # N: Revealed type is '__main__.A'
+    reveal_type(c)  # N: Revealed type is "__main__.A"
 
 [builtins fixtures/callable.pyi]
 
@@ -230,9 +230,9 @@ T = Union[Union[int, Callable[[], int]], Union[str, Callable[[], str]]]
 
 def f(t: T) -> None:
     if callable(t):
-        reveal_type(t())  # N: Revealed type is 'Union[builtins.int, builtins.str]'
+        reveal_type(t())  # N: Revealed type is "Union[builtins.int, builtins.str]"
     else:
-        reveal_type(t)  # N: Revealed type is 'Union[builtins.int, builtins.str]'
+        reveal_type(t)  # N: Revealed type is "Union[builtins.int, builtins.str]"
 
 [builtins fixtures/callable.pyi]
 
@@ -256,11 +256,11 @@ T = TypeVar('T', int, Callable[[], int], Union[str, Callable[[], str]])
 
 def f(t: T) -> None:
     if callable(t):
-        reveal_type(t())  # N: Revealed type is 'Any'  \
-            # N: Revealed type is 'builtins.int'  \
-            # N: Revealed type is 'builtins.str'
+        reveal_type(t())  # N: Revealed type is "Any"  \
+            # N: Revealed type is "builtins.int"  \
+            # N: Revealed type is "builtins.str"
     else:
-        reveal_type(t)  # N: Revealed type is 'builtins.int*'  # N: Revealed type is 'builtins.str'
+        reveal_type(t)  # N: Revealed type is "builtins.int*"  # N: Revealed type is "builtins.str"
 
 [builtins fixtures/callable.pyi]
 
@@ -356,7 +356,7 @@ def f(o: object) -> None:
         o(1,2,3)
         1 + 'boom'  # E: Unsupported operand types for + ("int" and "str")
         o('hi') + 12
-        reveal_type(o)  # N: Revealed type is '__main__.<callable subtype of object>'
+        reveal_type(o)  # N: Revealed type is "__main__.<callable subtype of object>"
 
 [builtins fixtures/callable.pyi]
 
@@ -468,9 +468,9 @@ def f() -> int:
 fn = f  # type: Union[None, Callable[[], int]]
 
 if callable(fn):
-    reveal_type(fn) # N: Revealed type is 'def () -> builtins.int'
+    reveal_type(fn) # N: Revealed type is "def () -> builtins.int"
 else:
-    reveal_type(fn) # N: Revealed type is 'None'
+    reveal_type(fn) # N: Revealed type is "None"
 
 [builtins fixtures/callable.pyi]
 
@@ -478,9 +478,9 @@ else:
 # flags: --python-version 3.7
 from __future__ import annotations
 
-reveal_type(type)  # N: Revealed type is 'def (x: Any) -> builtins.type'
+reveal_type(type)  # N: Revealed type is "def (x: Any) -> builtins.type"
 _TYPE = type
-reveal_type(_TYPE)  # N: Revealed type is 'def (x: Any) -> builtins.type'
+reveal_type(_TYPE)  # N: Revealed type is "def (x: Any) -> builtins.type"
 _TYPE('bar')
 
 [builtins fixtures/callable.pyi]

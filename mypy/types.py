@@ -3,7 +3,7 @@
 import copy
 import sys
 from abc import abstractmethod
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Set, Optional, Union, Iterable, NamedTuple,
@@ -14,8 +14,8 @@ from typing_extensions import ClassVar, Final, TYPE_CHECKING, overload
 import mypy.nodes
 from mypy import state
 from mypy.nodes import (
-    INVARIANT, SymbolNode, ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
-    FuncDef,
+    INVARIANT, SymbolNode, FuncDef,
+    ArgKind, ARG_POS, ARG_STAR, ARG_STAR2,
 )
 from mypy.util import IdMapper
 from mypy.bogus_type import Bogus
@@ -68,17 +68,21 @@ if TYPE_CHECKING:
     )
 
 # Supported names of TypedDict type constructors.
-TPDICT_NAMES = ('typing.TypedDict',
-                'typing_extensions.TypedDict',
-                'mypy_extensions.TypedDict')  # type: Final
+TPDICT_NAMES: Final = (
+    "typing.TypedDict",
+    "typing_extensions.TypedDict",
+    "mypy_extensions.TypedDict",
+)
 
 # Supported fallback instance type names for TypedDict types.
-TPDICT_FB_NAMES = ('typing._TypedDict',
-                   'typing_extensions._TypedDict',
-                   'mypy_extensions._TypedDict')  # type: Final
+TPDICT_FB_NAMES: Final = (
+    "typing._TypedDict",
+    "typing_extensions._TypedDict",
+    "mypy_extensions._TypedDict",
+)
 
 # A placeholder used for Bogus[...] parameters
-_dummy = object()  # type: Final[Any]
+_dummy: Final[Any] = object()
 
 
 class TypeOfAny:
@@ -86,27 +90,27 @@ class TypeOfAny:
     This class describes different types of Any. Each 'Any' can be of only one type at a time.
     """
     # Was this Any type inferred without a type annotation?
-    unannotated = 1  # type: Final
+    unannotated: Final = 1
     # Does this Any come from an explicit type annotation?
-    explicit = 2  # type: Final
+    explicit: Final = 2
     # Does this come from an unfollowed import? See --disallow-any-unimported option
-    from_unimported_type = 3  # type: Final
+    from_unimported_type: Final = 3
     # Does this Any type come from omitted generics?
-    from_omitted_generics = 4  # type: Final
+    from_omitted_generics: Final = 4
     # Does this Any come from an error?
-    from_error = 5  # type: Final
+    from_error: Final = 5
     # Is this a type that can't be represented in mypy's type system? For instance, type of
     # call to NewType...). Even though these types aren't real Anys, we treat them as such.
     # Also used for variables named '_'.
-    special_form = 6  # type: Final
+    special_form: Final = 6
     # Does this Any come from interaction with another Any?
-    from_another_any = 7  # type: Final
+    from_another_any: Final = 7
     # Does this Any come from an implementation limitation/bug?
-    implementation_artifact = 8  # type: Final
+    implementation_artifact: Final = 8
     # Does this Any come from use in the suggestion engine?  This is
     # used to ignore Anys inserted by the suggestion engine when
     # generating constraints.
-    suggestion_engine = 9  # type: Final
+    suggestion_engine: Final = 9
 
 
 def deserialize_type(data: Union[JsonDict, str]) -> 'Type':
@@ -172,7 +176,7 @@ class TypeAliasType(Type):
                  line: int = -1, column: int = -1) -> None:
         self.alias = alias
         self.args = args
-        self.type_ref = None  # type: Optional[str]
+        self.type_ref: Optional[str] = None
         super().__init__(line, column)
 
     def _expand_once(self) -> Type:
@@ -245,15 +249,17 @@ class TypeAliasType(Type):
 
     def serialize(self) -> JsonDict:
         assert self.alias is not None
-        data = {'.class': 'TypeAliasType',
-                'type_ref': self.alias.fullname,
-                'args': [arg.serialize() for arg in self.args]}  # type: JsonDict
+        data: JsonDict = {
+            ".class": "TypeAliasType",
+            "type_ref": self.alias.fullname,
+            "args": [arg.serialize() for arg in self.args],
+        }
         return data
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'TypeAliasType':
         assert data['.class'] == 'TypeAliasType'
-        args = []  # type: List[Type]
+        args: List[Type] = []
         if 'args' in data:
             args_list = data['args']
             assert isinstance(args_list, list)
@@ -270,7 +276,14 @@ class TypeAliasType(Type):
             self.line, self.column)
 
 
-class TypeGuardType(Type):
+class ProperType(Type):
+    """Not a type alias.
+
+    Every type except TypeAliasType must inherit from this type.
+    """
+
+
+class TypeGuardType(ProperType):
     """Only used by find_instance_check() etc."""
     def __init__(self, type_guard: Type):
         super().__init__(line=type_guard.line, column=type_guard.column)
@@ -279,12 +292,8 @@ class TypeGuardType(Type):
     def __repr__(self) -> str:
         return "TypeGuard({})".format(self.type_guard)
 
-
-class ProperType(Type):
-    """Not a type alias.
-
-    Every type except TypeAliasType must inherit from this type.
-    """
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_type_guard_type(self)
 
 
 class TypeVarId:
@@ -299,14 +308,14 @@ class TypeVarId:
     # function type variables.
 
     # Metavariables are allocated unique ids starting from 1.
-    raw_id = 0  # type: int
+    raw_id: int = 0
 
     # Level of the variable in type inference. Currently either 0 for
     # declared types, or 1 for type inference metavariables.
-    meta_level = 0  # type: int
+    meta_level: int = 0
 
     # Class variable used for allocating fresh ids for metavariables.
-    next_raw_id = 1  # type: ClassVar[int]
+    next_raw_id: ClassVar[int] = 1
 
     def __init__(self, raw_id: int, meta_level: int = 0) -> None:
         self.raw_id = raw_id
@@ -341,7 +350,7 @@ class TypeVarId:
 class TypeVarLikeDef(mypy.nodes.Context):
     name = ''  # Name (may be qualified)
     fullname = ''  # Fully qualified name
-    id = None  # type: TypeVarId
+    id: TypeVarId
 
     def __init__(
         self, name: str, fullname: str, id: Union[TypeVarId, int], line: int = -1, column: int = -1
@@ -366,9 +375,10 @@ class TypeVarLikeDef(mypy.nodes.Context):
 
 class TypeVarDef(TypeVarLikeDef):
     """Definition of a single type variable."""
-    values = None  # type: List[Type]  # Value restriction, empty list if no restriction
-    upper_bound = None  # type: Type
-    variance = INVARIANT  # type: int
+
+    values: List[Type]  # Value restriction, empty list if no restriction
+    upper_bound: Type
+    variance: int = INVARIANT
 
     def __init__(self, name: str, fullname: str, id: Union[TypeVarId, int], values: List[Type],
                  upper_bound: Type, variance: int = INVARIANT, line: int = -1,
@@ -532,9 +542,10 @@ class CallableArgument(ProperType):
 
     Note that this is a synthetic type for helping parse ASTs, not a real type.
     """
-    typ = None          # type: Type
-    name = None         # type: Optional[str]
-    constructor = None  # type: Optional[str]
+
+    typ: Type
+    name: Optional[str] = None
+    constructor: Optional[str] = None
 
     def __init__(self, typ: Type, name: Optional[str], constructor: Optional[str],
                  line: int = -1, column: int = -1) -> None:
@@ -560,7 +571,7 @@ class TypeList(ProperType):
     types before they are processed into Callable types.
     """
 
-    items = None  # type: List[Type]
+    items: List[Type]
 
     def __init__(self, items: List[Type], line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
@@ -749,7 +760,7 @@ class DeletedType(ProperType):
     These can be used as lvalues but not rvalues.
     """
 
-    source = ''  # type: Optional[str]  # May be None; name that generated this value
+    source: Optional[str] = ""  # May be None; name that generated this value
 
     def __init__(self, source: Optional[str] = None, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
@@ -769,7 +780,7 @@ class DeletedType(ProperType):
 
 
 # Fake TypeInfo to be used as a placeholder during Instance de-serialization.
-NOT_READY = mypy.nodes.FakeInfo('De-serialization failure: TypeInfo not fixed')  # type: Final
+NOT_READY: Final = mypy.nodes.FakeInfo("De-serialization failure: TypeInfo not fixed")
 
 
 class Instance(ProperType):
@@ -786,7 +797,7 @@ class Instance(ProperType):
         super().__init__(line, column)
         self.type = typ
         self.args = tuple(args)
-        self.type_ref = None  # type: Optional[str]
+        self.type_ref: Optional[str] = None
 
         # True if result of type variable substitution
         self.erased = erased
@@ -857,10 +868,11 @@ class Instance(ProperType):
         type_ref = self.type.fullname
         if not self.args and not self.last_known_value:
             return type_ref
-        data = {'.class': 'Instance',
-                }  # type: JsonDict
-        data['type_ref'] = type_ref
-        data['args'] = [arg.serialize() for arg in self.args]
+        data: JsonDict = {
+            ".class": "Instance",
+        }
+        data["type_ref"] = type_ref
+        data["args"] = [arg.serialize() for arg in self.args]
         if self.last_known_value is not None:
             data['last_known_value'] = self.last_known_value.serialize()
         return data
@@ -872,7 +884,7 @@ class Instance(ProperType):
             inst.type_ref = data
             return inst
         assert data['.class'] == 'Instance'
-        args = []  # type: List[Type]
+        args: List[Type] = []
         if 'args' in data:
             args_list = data['args']
             assert isinstance(args_list, list)
@@ -912,14 +924,14 @@ class TypeVarType(ProperType):
     def __init__(self, binder: TypeVarDef, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
         self.name = binder.name  # Name of the type variable (for messages and debugging)
-        self.fullname = binder.fullname  # type: str
-        self.id = binder.id  # type: TypeVarId
+        self.fullname: str = binder.fullname
+        self.id: TypeVarId = binder.id
         # Value restriction, empty list if no restriction
-        self.values = binder.values  # type: List[Type]
+        self.values: List[Type] = binder.values
         # Upper bound for values
-        self.upper_bound = binder.upper_bound  # type: Type
+        self.upper_bound: Type = binder.upper_bound
         # See comments in TypeVarDef for more about variance.
-        self.variance = binder.variance  # type: int
+        self.variance: int = binder.variance
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_var(self)
@@ -1020,7 +1032,7 @@ class CallableType(FunctionLike):
 
     def __init__(self,
                  arg_types: Sequence[Type],
-                 arg_kinds: List[int],
+                 arg_kinds: List[ArgKind],
                  arg_names: Sequence[Optional[str]],
                  ret_type: Type,
                  fallback: Instance,
@@ -1065,7 +1077,7 @@ class CallableType(FunctionLike):
             # after serialization, but it is useful in error messages.
             # TODO: decide how to add more info here (file, line, column)
             # without changing interface hash.
-            self.def_extras = {'first_arg': definition.arg_names[0]
+            self.def_extras = {'first_arg': definition.arguments[0].variable.name
                                if definition.arg_names and definition.info and
                                not definition.is_static else None}
         else:
@@ -1074,7 +1086,7 @@ class CallableType(FunctionLike):
 
     def copy_modified(self,
                       arg_types: Bogus[Sequence[Type]] = _dummy,
-                      arg_kinds: Bogus[List[int]] = _dummy,
+                      arg_kinds: Bogus[List[ArgKind]] = _dummy,
                       arg_names: Bogus[List[Optional[str]]] = _dummy,
                       ret_type: Bogus[Type] = _dummy,
                       fallback: Bogus[Instance] = _dummy,
@@ -1165,8 +1177,7 @@ class CallableType(FunctionLike):
         This takes into account *arg and **kwargs but excludes keyword-only args."""
         if self.is_var_arg or self.is_kw_arg:
             return sys.maxsize
-        blacklist = (ARG_NAMED, ARG_NAMED_OPT)
-        return len([kind not in blacklist for kind in self.arg_kinds])
+        return sum([kind.is_positional() for kind in self.arg_kinds])
 
     def formal_arguments(self, include_star_args: bool = False) -> Iterator[FormalArgument]:
         """Yields the formal arguments corresponding to this callable, ignoring *arg and **kwargs.
@@ -1179,12 +1190,12 @@ class CallableType(FunctionLike):
         done_with_positional = False
         for i in range(len(self.arg_types)):
             kind = self.arg_kinds[i]
-            if kind in (ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT):
+            if kind.is_named() or kind.is_star():
                 done_with_positional = True
-            if not include_star_args and kind in (ARG_STAR, ARG_STAR2):
+            if not include_star_args and kind.is_star():
                 continue
 
-            required = kind in (ARG_POS, ARG_NAMED)
+            required = kind.is_required()
             pos = None if done_with_positional else i
             yield FormalArgument(
                 self.arg_names[i],
@@ -1199,13 +1210,13 @@ class CallableType(FunctionLike):
         for i, (arg_name, kind, typ) in enumerate(
                 zip(self.arg_names, self.arg_kinds, self.arg_types)):
             # No more positional arguments after these.
-            if kind in (ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT):
+            if kind.is_named() or kind.is_star():
                 seen_star = True
-            if kind == ARG_STAR or kind == ARG_STAR2:
+            if kind.is_star():
                 continue
             if arg_name == name:
                 position = None if seen_star else i
-                return FormalArgument(name, position, typ, kind in (ARG_POS, ARG_NAMED))
+                return FormalArgument(name, position, typ, kind.is_required())
         return self.try_synthesizing_arg_from_kwarg(name)
 
     def argument_by_position(self, position: Optional[int]) -> Optional[FormalArgument]:
@@ -1218,7 +1229,7 @@ class CallableType(FunctionLike):
             self.arg_kinds[position],
             self.arg_types[position],
         )
-        if kind in (ARG_POS, ARG_OPT):
+        if kind.is_positional():
             return FormalArgument(name, position, typ, kind == ARG_POS)
         else:
             return self.try_synthesizing_arg_from_vararg(position)
@@ -1246,7 +1257,7 @@ class CallableType(FunctionLike):
         return bool(self.variables)
 
     def type_var_ids(self) -> List[TypeVarId]:
-        a = []  # type: List[TypeVarId]
+        a: List[TypeVarId] = []
         for tv in self.variables:
             a.append(tv.id)
         return a
@@ -1271,11 +1282,9 @@ class CallableType(FunctionLike):
     def serialize(self) -> JsonDict:
         # TODO: As an optimization, leave out everything related to
         # generic functions for non-generic functions.
-        assert (self.type_guard is None
-                or isinstance(get_proper_type(self.type_guard), Instance)), str(self.type_guard)
         return {'.class': 'CallableType',
                 'arg_types': [t.serialize() for t in self.arg_types],
-                'arg_kinds': self.arg_kinds,
+                'arg_kinds': [int(x.value) for x in self.arg_kinds],
                 'arg_names': self.arg_names,
                 'ret_type': self.ret_type.serialize(),
                 'fallback': self.fallback.serialize(),
@@ -1295,7 +1304,7 @@ class CallableType(FunctionLike):
         assert data['.class'] == 'CallableType'
         # TODO: Set definition to the containing SymbolNode?
         return CallableType([deserialize_type(t) for t in data['arg_types']],
-                            data['arg_kinds'],
+                            [ArgKind(x) for x in data['arg_kinds']],
                             data['arg_names'],
                             deserialize_type(data['ret_type']),
                             Instance.deserialize(data['fallback']),
@@ -1320,7 +1329,7 @@ class Overloaded(FunctionLike):
     implementation.
     """
 
-    _items = None  # type: List[CallableType]  # Must not be empty
+    _items: List[CallableType]  # Must not be empty
 
     def __init__(self, items: List[CallableType]) -> None:
         super().__init__(items[0].line, items[0].column)
@@ -1344,7 +1353,7 @@ class Overloaded(FunctionLike):
         return self._items[0].type_object()
 
     def with_name(self, name: str) -> 'Overloaded':
-        ni = []  # type: List[CallableType]
+        ni: List[CallableType] = []
         for it in self._items:
             ni.append(it.with_name(name))
         return Overloaded(ni)
@@ -1387,8 +1396,8 @@ class TupleType(ProperType):
         implicit: If True, derived from a tuple expression (t,....) instead of Tuple[t, ...]
     """
 
-    items = None  # type: List[Type]
-    partial_fallback = None  # type: Instance
+    items: List[Type]
+    partial_fallback: Instance
     implicit = False
 
     def __init__(self, items: List[Type], fallback: Instance, line: int = -1,
@@ -1462,9 +1471,9 @@ class TypedDictType(ProperType):
     TODO: The fallback structure is perhaps overly complicated.
     """
 
-    items = None  # type: OrderedDict[str, Type]  # item_name -> item_type
-    required_keys = None  # type: Set[str]
-    fallback = None  # type: Instance
+    items: "OrderedDict[str, Type]"  # item_name -> item_type
+    required_keys: Set[str]
+    fallback: Instance
 
     def __init__(self, items: 'OrderedDict[str, Type]', required_keys: Set[str],
                  fallback: Instance, line: int = -1, column: int = -1) -> None:
@@ -1726,7 +1735,7 @@ class StarType(ProperType):
     This is not a real type but a syntactic AST construct.
     """
 
-    type = None  # type: Type
+    type: Type
 
     def __init__(self, type: Type, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
@@ -1832,11 +1841,11 @@ class PartialType(ProperType):
     """
 
     # None for the 'None' partial type; otherwise a generic class
-    type = None  # type: Optional[mypy.nodes.TypeInfo]
-    var = None  # type: mypy.nodes.Var
+    type: Optional[mypy.nodes.TypeInfo] = None
+    var: mypy.nodes.Var
     # For partial defaultdict[K, V], the type V (K is unknown). If V is generic,
     # the type argument is Any and will be replaced later.
-    value_type = None  # type: Optional[Instance]
+    value_type: Optional[Instance] = None
 
     def __init__(self,
                  type: 'Optional[mypy.nodes.TypeInfo]',
@@ -1897,7 +1906,7 @@ class TypeType(ProperType):
 
     # This can't be everything, but it can be a class reference,
     # a generic class instance, a union, Any, a type variable...
-    item = None  # type: ProperType
+    item: ProperType
 
     def __init__(self, item: Bogus[Union[Instance, AnyType, TypeVarType, TupleType, NoneType,
                                          CallableType]], *,
@@ -2101,7 +2110,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         for i in range(len(t.arg_types)):
             if s != '':
                 s += ', '
-            if t.arg_kinds[i] in (ARG_NAMED, ARG_NAMED_OPT) and not bare_asterisk:
+            if t.arg_kinds[i].is_named() and not bare_asterisk:
                 s += '*, '
                 bare_asterisk = True
             if t.arg_kinds[i] == ARG_STAR:
@@ -2112,7 +2121,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             if name:
                 s += name + ': '
             s += t.arg_types[i].accept(self)
-            if t.arg_kinds[i] in (ARG_OPT, ARG_NAMED_OPT):
+            if t.arg_kinds[i].is_optional():
                 s += ' ='
 
         s = '({})'.format(s)
@@ -2184,6 +2193,9 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     def visit_union_type(self, t: UnionType) -> str:
         s = self.list_str(t.items)
         return 'Union[{}]'.format(s)
+
+    def visit_type_guard_type(self, t: TypeGuardType) -> str:
+        return 'TypeGuard[{}]'.format(t.type_guard.accept(self))
 
     def visit_partial_type(self, t: PartialType) -> str:
         if t.type is None:
@@ -2320,7 +2332,7 @@ def flatten_nested_unions(types: Iterable[Type],
     # This and similar functions on unions can cause infinite recursion
     # if passed a "pathological" alias like A = Union[int, A] or similar.
     # TODO: ban such aliases in semantic analyzer.
-    flat_items = []  # type: List[Type]
+    flat_items: List[Type] = []
     if handle_type_alias_type:
         types = get_proper_types(types)
     for tp in types:
@@ -2378,10 +2390,10 @@ def is_literal_type(typ: ProperType, fallback_fullname: str, value: LiteralValue
     return typ.value == value
 
 
-names = globals().copy()  # type: Final
+names: Final = globals().copy()
 names.pop('NOT_READY', None)
-deserialize_map = {
+deserialize_map: Final = {
     key: obj.deserialize
     for key, obj in names.items()
     if isinstance(obj, type) and issubclass(obj, Type) and obj is not Type
-}  # type: Final
+}

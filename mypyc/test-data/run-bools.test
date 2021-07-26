@@ -65,3 +65,14 @@ def test_bitwise_xor() -> None:
     assert t == False
     f ^= f
     assert f == False
+
+[case testIsinstanceBool]
+def test_isinstance_bool() -> None:
+    a = True
+    b = 1.0
+    c = 1
+    d = False
+    assert isinstance(a, bool) == True
+    assert isinstance(b, bool) == False
+    assert isinstance(c, bool) == False
+    assert isinstance(d, bool) == True

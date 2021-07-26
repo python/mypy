@@ -319,7 +319,8 @@ def get(o):
 L0:
     r0 = __main__.A :: type
     r1 = get_element_ptr o ob_type :: PyObject
-    r2 = load_mem r1, o :: builtins.object*
+    r2 = load_mem r1 :: builtins.object*
+    keep_alive o
     r3 = r2 == r0
     if r3 goto L1 else goto L2 :: bool
 L1:
@@ -341,7 +342,7 @@ def set(o, s):
     r1 :: int32
     r2 :: bit
 L0:
-    r0 = load_global CPyStatic_unicode_5 :: static  ('a')
+    r0 = 'a'
     r1 = PyObject_SetAttr(o, r0, s)
     r2 = r1 >= 0 :: signed
     return 1
@@ -397,7 +398,8 @@ def g(o):
 L0:
     r0 = __main__.A :: type
     r1 = get_element_ptr o ob_type :: PyObject
-    r2 = load_mem r1, o :: builtins.object*
+    r2 = load_mem r1 :: builtins.object*
+    keep_alive o
     r3 = r2 == r0
     if r3 goto L1 else goto L2 :: bool
 L1:
@@ -409,7 +411,8 @@ L1:
 L2:
     r8 = __main__.B :: type
     r9 = get_element_ptr o ob_type :: PyObject
-    r10 = load_mem r9, o :: builtins.object*
+    r10 = load_mem r9 :: builtins.object*
+    keep_alive o
     r11 = r10 == r8
     if r11 goto L3 else goto L4 :: bool
 L3:
@@ -461,7 +464,8 @@ def f(o):
 L0:
     r0 = __main__.A :: type
     r1 = get_element_ptr o ob_type :: PyObject
-    r2 = load_mem r1, o :: builtins.object*
+    r2 = load_mem r1 :: builtins.object*
+    keep_alive o
     r3 = r2 == r0
     if r3 goto L1 else goto L2 :: bool
 L1:
@@ -471,7 +475,7 @@ L1:
     goto L3
 L2:
     r7 = o
-    r8 = load_global CPyStatic_unicode_7 :: static  ('x')
+    r8 = 'x'
     r9 = CPyObject_GetAttr(r7, r8)
     r10 = unbox(int, r9)
     r6 = r10
@@ -492,7 +496,8 @@ def g(o):
 L0:
     r0 = __main__.A :: type
     r1 = get_element_ptr o ob_type :: PyObject
-    r2 = load_mem r1, o :: builtins.object*
+    r2 = load_mem r1 :: builtins.object*
+    keep_alive o
     r3 = r2 == r0
     if r3 goto L1 else goto L2 :: bool
 L1:
@@ -502,7 +507,7 @@ L1:
     goto L3
 L2:
     r7 = o
-    r8 = load_global CPyStatic_unicode_7 :: static  ('x')
+    r8 = 'x'
     r9 = CPyObject_GetAttr(r7, r8)
     r10 = unbox(int, r9)
     r6 = r10
@@ -530,8 +535,9 @@ def f(o):
     r2, r3 :: object
 L0:
     r0 = o
-    r1 = load_global CPyStatic_unicode_6 :: static  ('x')
+    r1 = 'x'
     r2 = CPyObject_GetAttr(r0, r1)
     r3 = r2
 L1:
     return 1
+

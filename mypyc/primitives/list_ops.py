@@ -22,14 +22,21 @@ to_list = function_op(
     arg_types=[object_rprimitive],
     return_type=list_rprimitive,
     c_function_name='PySequence_List',
-    error_kind=ERR_MAGIC,
-)
+    error_kind=ERR_MAGIC)
 
 new_list_op = custom_op(
     arg_types=[c_pyssize_t_rprimitive],
     return_type=list_rprimitive,
     c_function_name='PyList_New',
     error_kind=ERR_MAGIC)
+
+list_build_op = custom_op(
+    arg_types=[c_pyssize_t_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name='CPyList_Build',
+    error_kind=ERR_MAGIC,
+    var_arg_type=object_rprimitive,
+    steals=True)
 
 # list[index] (for an integer index)
 list_get_item_op = method_op(
@@ -62,6 +69,15 @@ list_set_item_op = method_op(
     arg_types=[list_rprimitive, int_rprimitive, object_rprimitive],
     return_type=bit_rprimitive,
     c_function_name='CPyList_SetItem',
+    error_kind=ERR_FALSE,
+    steals=[False, False, True])
+
+# PyList_SET_ITEM does no error checking,
+# and should only be used to fill in brand new lists.
+new_list_set_item_op = custom_op(
+    arg_types=[list_rprimitive, int_rprimitive, object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name='CPyList_SetItemUnsafe',
     error_kind=ERR_FALSE,
     steals=[False, False, True])
 
@@ -128,6 +144,22 @@ method_op(
     return_type=c_int_rprimitive,
     c_function_name='PyList_Reverse',
     error_kind=ERR_NEG_INT)
+
+# list.remove(obj)
+method_op(
+    name='remove',
+    arg_types=[list_rprimitive, object_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name='CPyList_Remove',
+    error_kind=ERR_NEG_INT)
+
+# list.index(obj)
+method_op(
+    name='index',
+    arg_types=[list_rprimitive, object_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name='CPyList_Index',
+    error_kind=ERR_MAGIC)
 
 # list * int
 binary_op(

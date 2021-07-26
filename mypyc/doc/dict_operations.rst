@@ -43,6 +43,8 @@ Methods
 * ``d.keys()``
 * ``d.values()``
 * ``d.items()``
+* ``d.copy()``
+* ``d.clear()``
 * ``d1.update(d2: dict)``
 * ``d.update(x: Iterable)``
 

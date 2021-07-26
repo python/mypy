@@ -55,12 +55,12 @@ class TransformVisitor(NodeVisitor[Node]):
         self.test_only = False
         # There may be multiple references to a Var node. Keep track of
         # Var translations using a dictionary.
-        self.var_map = {}  # type: Dict[Var, Var]
+        self.var_map: Dict[Var, Var] = {}
         # These are uninitialized placeholder nodes used temporarily for nested
         # functions while we are transforming a top-level function. This maps an
         # untransformed node to a placeholder (which will later become the
         # transformed node).
-        self.func_placeholder_map = {}  # type: Dict[FuncDef, FuncDef]
+        self.func_placeholder_map: Dict[FuncDef, FuncDef] = {}
 
     def visit_mypy_file(self, node: MypyFile) -> MypyFile:
         assert self.test_only, "This visitor should not be used for whole files."
@@ -596,7 +596,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return [self.duplicate_name(name) for name in names]
 
     def optional_names(self, names: Iterable[Optional[NameExpr]]) -> List[Optional[NameExpr]]:
-        result = []  # type: List[Optional[NameExpr]]
+        result: List[Optional[NameExpr]] = []
         for name in names:
             if name:
                 result.append(self.duplicate_name(name))

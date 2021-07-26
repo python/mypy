@@ -295,6 +295,25 @@ return type by using overloads like so:
    subtypes, you can use a :ref:`value restriction
    <type-variable-value-restriction>`.
 
+The default values of a function's arguments don't affect its signature, only
+the absence or presence of a default value does. So in order to reduce
+redundancy it's possible to replace default values in overload definitions with
+`...` as a placeholder.
+
+.. code-block:: python
+
+    from typing import overload
+
+    class M: ...
+
+    @overload
+    def get_model(model_or_pk: M, flag: bool = ...) -> M: ...
+    @overload
+    def get_model(model_or_pk: int, flag: bool = ...) -> M | None: ...
+
+    def get_model(model_or_pk: int | M, flag: bool = True) -> M | None:
+        ...
+
 
 Runtime behavior
 ----------------
@@ -1019,8 +1038,8 @@ Keys that aren't required are shown with a ``?`` in error messages:
 
 .. code-block:: python
 
-   # Revealed type is 'TypedDict('GuiOptions', {'language'?: builtins.str,
-   #                                            'color'?: builtins.str})'
+   # Revealed type is "TypedDict('GuiOptions', {'language'?: builtins.str,
+   #                                            'color'?: builtins.str})"
    reveal_type(options)
 
 Totality also affects structural compatibility. You can't use a partial
