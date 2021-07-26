@@ -807,6 +807,22 @@ def check_if_isinstance(builder: IRBuilder, obj: Value, typ: TypeInfo, line: int
         return builder.call_c(slow_isinstance_op, [obj, class_obj], line)
 
 
+def load_func(builder: IRBuilder, func_name: str, fullname: Optional[str], line: int) -> Value:
+    if fullname is not None and not fullname.startswith(builder.current_module):
+        # we're calling a function in a different module
+
+        # We can't use load_module_attr_by_fullname here because we need to load the function using
+        # func_name, not the name specified by fullname (which can be different for underscore
+        # function)
+        module = fullname.rsplit('.')[0]
+        loaded_module = builder.load_module(module)
+
+        func = builder.py_get_attr(loaded_module, func_name, line)
+    else:
+        func = builder.load_global_str(func_name, line)
+    return func
+
+
 def generate_singledispatch_dispatch_function(
     builder: IRBuilder,
     main_singledispatch_function_name: str,
@@ -817,14 +833,24 @@ def generate_singledispatch_dispatch_function(
     current_func_decl = builder.mapper.func_to_decl[fitem]
     arg_info = get_args(builder, current_func_decl.sig.args, line)
 
-    def gen_func_call_and_return(func_name: str) -> None:
-        func = builder.load_global_str(func_name, line)
-        # TODO: don't pass optional arguments if they weren't passed to this function
+    def gen_func_call_and_return(func_name: str, fullname: Optional[str] = None) -> None:
+        func = load_func(builder, func_name, fullname, line)
         ret_val = builder.builder.py_call(
             func, arg_info.args, line, arg_info.arg_kinds, arg_info.arg_names
         )
         coerced = builder.coerce(ret_val, current_func_decl.sig.ret_type, line)
         builder.nonlocal_control[-1].gen_return(builder, coerced, line)
+
+    # Add all necessary imports of other modules that have registered functions in other modules
+    # We're doing this in a separate pass over the implementations because that avoids the
+    # complexity and code size implications of generating this import before every call to a
+    # registered implementation that might need this imported
+    for _, impl in impls:
+        module_name = impl.fullname.rsplit('.')[0]
+        if module_name not in builder.imports:
+            # We need to generate an import here because the module needs to be imported before we
+            # try loading the function from it
+            builder.gen_import(module_name, line)
 
     # Sort the list of implementations so that we check any subclasses before we check the classes
     # they inherit from, to better match singledispatch's behavior of going through the argument's
@@ -840,9 +866,14 @@ def generate_singledispatch_dispatch_function(
         # The shortname of a function is just '{class}.{func_name}', and we don't support
         # singledispatchmethod yet, so that is always the same as the function name
         name = short_id_from_name(impl.name, impl.name, impl.line)
-        gen_func_call_and_return(name)
+        gen_func_call_and_return(name, fullname=impl.fullname)
         builder.activate_block(next_impl)
 
+    # We don't pass fullname here because getting the fullname of the main generated singledispatch
+    # function isn't easy, and we don't need it because the fullname is only needed for making sure
+    # we load the function from another module instead of the globals dict if it's defined in another
+    # module, which will never be true for the main singledispatch function (it's always generated
+    # in the same module as the dispatch function)
     gen_func_call_and_return(main_singledispatch_function_name)
 
 
