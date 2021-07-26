@@ -40,7 +40,7 @@ from mypy.subtypes import is_subtype
 from mypy.parse import parse
 
 FormatStringExpr = Union[StrExpr, BytesExpr, UnicodeExpr]
-Checkers = Tuple[Callable[[Expression], bool], Callable[[Type], None]]
+Checkers = Tuple[Callable[[Expression], None], Callable[[Type], bool]]
 MatchMap = Dict[Tuple[int, int], Match[str]]  # span -> match
 
 
