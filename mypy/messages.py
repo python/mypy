@@ -963,7 +963,7 @@ class MessageBuilder:
 
     def requires_int_or_single_byte(self, context: Context,
                                     format_call: bool = False) -> None:
-        self.fail('"{}c" requires an integer in range(256) or a single byte' \
+        self.fail('"{}c" requires an integer in range(256) or a single byte'
                   .format(':' if format_call else '%'),
                   context, code=codes.STRING_FORMATTING)
 
