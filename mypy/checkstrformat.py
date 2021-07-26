@@ -50,14 +50,14 @@ def compile_format_re() -> Pattern[str]:
     See https://docs.python.org/3/library/stdtypes.html#printf-style-string-formatting
     The regexp is intentionally a bit wider to report better errors.
     """
-    key_re = r'(\(([^()]*)\))?'  # (optional) parenthesised sequence of characters.
-    flags_re = r'([#0\-+ ]*)'  # (optional) sequence of flags.
-    width_re = r'(\*|[1-9][0-9]*)?'  # (optional) minimum field width (* or numbers).
-    precision_re = r'(?:\.(\*|[0-9]+)?)?'  # (optional) . followed by * of numbers.
-    length_mod_re = r'[hlL]?'  # (optional) length modifier (unused).
-    type_re = r'(.)?'  # conversion type.
+    key_re = r'(\((?P<key>[^)]*)\))?' # (optional) parenthesised sequence of characters.
+    flags_re = r'(?P<flag>[#0\-+ ]*)' # (optional) sequence of flags.
+    width_re = r'(?P<width>[1-9][0-9]*|\*)?' # (optional) minimum field width (* or numbers).
+    precision_re = r'(?:\.(?P<precision>\*|\d+)?)?' # (optional) . followed by * of numbers.
+    length_mod_re = r'[hlL]?' # (optional) length modifier (unused).
+    type_re = r'(?P<type>.)?' # conversion type.
     format_re = '%' + key_re + flags_re + width_re + precision_re + length_mod_re + type_re
-    return re.compile(format_re)
+    return re.compile('({})'.format(format_re))
 
 
 def compile_new_format_re(custom_spec: bool) -> Pattern[str]:
@@ -133,7 +133,8 @@ class ConversionSpecifier:
                  flags: str, width: str, precision: str, type: str,
                  format_spec: Optional[str] = None,
                  conversion: Optional[str] = None,
-                 field: Optional[str] = None) -> None:
+                 field: Optional[str] = None,
+                 whole_seq: Optional[str] = None) -> None:
         self.key = key
         self.flags = flags
         self.width = width
@@ -147,6 +148,7 @@ class ConversionSpecifier:
         # Full formatted expression (i.e. key plus following attributes and/or indexes).
         # Used only for str.format() calls.
         self.field = field
+        self.whole_seq = whole_seq
 
     @classmethod
     def from_match(cls, match_obj: Match[str],
@@ -637,10 +639,12 @@ class StringFormatterChecker:
 
     def parse_conversion_specifiers(self, format: str) -> List[ConversionSpecifier]:
         specifiers: List[ConversionSpecifier] = []
-        for parens_key, key, flags, width, precision, type in FORMAT_RE.findall(format):
+        for whole_seq, parens_key, key, flags, width, precision, type \
+                in FORMAT_RE.findall(format):
             if parens_key == '':
                 key = None
-            specifiers.append(ConversionSpecifier(key, flags, width, precision, type))
+            specifiers.append(ConversionSpecifier(key, flags, width, precision, type,
+                                                  whole_seq=whole_seq))
         return specifiers
 
     def analyze_conversion_specifiers(self, specifiers: List[ConversionSpecifier],
