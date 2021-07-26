@@ -992,6 +992,24 @@ class C(P, M):
 reveal_type(C.x)  # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
 
+[case testAccessingClassAttributeWithTypeInferenceWithMixinTypeConflict]
+from typing import List
+class P:
+    x: List[int]
+class M:
+    x: List[str]
+class C(P, M):
+    x = []  # E: Incompatible types in assignment (expression has type "List[int]", base class "M" defined the type as "List[str]")
+reveal_type(C.x)  # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/list.pyi]
+
+[case testClassAttributeWithTypeInferenceNoParentType]
+class P:
+    ...
+class C(P):
+    x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
+[builtins fixtures/list.pyi]
+
 [case testClassAttributeWithTypeInferenceInvalidType]
 from typing import List
 class P:
