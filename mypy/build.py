@@ -21,7 +21,7 @@ import sys
 import time
 import types
 
-from typing import (AbstractSet, Any, Dict, Iterator, List, Sequence,
+from typing import (AbstractSet, Any, Dict, Iterator, List, Sequence, Collection,
                     Mapping, NamedTuple, Optional, Set, Tuple, Union, Callable, TextIO)
 from typing_extensions import ClassVar, Final, TYPE_CHECKING
 from mypy_extensions import TypedDict
@@ -3152,13 +3152,16 @@ def sorted_components(graph: Graph,
     This works for a subset of the full dependency graph too;
     dependencies that aren't present in graph.keys() are ignored.
     """
+    def sort_vertices(vertices: Collection[str]) -> List[str]:
+        return sorted(vertices, key=lambda id: -graph[id].order)
+
     # Compute SCCs.
     if vertices is None:
         vertices = set(graph)
-    edges = {id: deps_filtered(graph, vertices, id, pri_max) for id in vertices}
+    edges = {id: sort_vertices(deps_filtered(graph, vertices, id, pri_max)) for id in vertices}
     # Sort the vertices by reversed State.order; this is not deeply important, but
     # it makes error messages come out in the order the tests expect.
-    sorted_vertices = sorted(vertices, key=lambda id: -graph[id].order)
+    sorted_vertices = sort_vertices(vertices)
     # Note that strongly_connected_components returns SCCs already topologically sorted.
     return list(strongly_connected_components(sorted_vertices, edges))
 
