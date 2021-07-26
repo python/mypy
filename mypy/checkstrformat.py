@@ -888,12 +888,12 @@ class StringFormatterChecker:
             # it has exact one char or one single byte.
             if check_type(type):
                 # Python 3 doesn't support b'%c' % str
-                if (self.chk.options.python_version >= (3, 0) and isinstance(format_expr, BytesExpr)
+                if (self.chk.options.python_version >= (3, 0)
+                        and isinstance(format_expr, BytesExpr)
                         and isinstance(expr, BytesExpr) and len(expr.value) != 1):
                     self.msg.requires_int_or_single_byte(context)
-                    return
                 # In Python 2, b'%c' is the same as '%c'
-                if isinstance(expr, (StrExpr, BytesExpr)) and len(expr.value) != 1:
+                elif isinstance(expr, (StrExpr, BytesExpr)) and len(expr.value) != 1:
                     self.msg.requires_int_or_char(context)
 
         return check_expr, check_type
