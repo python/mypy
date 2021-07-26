@@ -24,6 +24,8 @@ def tokenizer_printf_style(format_str: str) -> Tuple[List[str], List[ConversionS
 
     for m in re.finditer(FORMAT_RE, format_str):
         whole_seq, parens_key, key, flags, width, precision, conversion_type = m.groups()
+        if parens_key == '':
+            key = None
         specifiers.append(ConversionSpecifier(key, flags, width, precision,
                                               conversion_type, whole_seq=whole_seq))
 
