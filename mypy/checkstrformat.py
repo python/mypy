@@ -40,7 +40,7 @@ from mypy.subtypes import is_subtype
 from mypy.parse import parse
 
 FormatStringExpr = Union[StrExpr, BytesExpr, UnicodeExpr]
-Checkers = Tuple[Callable[[Expression], None], Callable[[Type], None]]
+Checkers = Tuple[Callable[[Expression], None], Callable[[Type], bool]]
 MatchMap = Dict[Tuple[int, int], Match[str]]  # span -> match
 
 
@@ -98,23 +98,8 @@ FORMAT_RE_NEW_CUSTOM: Final = compile_new_format_re(True)
 DUMMY_FIELD_NAME: Final = "__dummy_name__"
 
 # Format types supported by str.format() for builtin classes.
-SUPPORTED_TYPES_NEW: Final = {
-    "b",
-    "c",
-    "d",
-    "e",
-    "E",
-    "f",
-    "F",
-    "g",
-    "G",
-    "n",
-    "o",
-    "s",
-    "x",
-    "X",
-    "%",
-}
+SUPPORTED_TYPES_NEW: Final = {"b", "c", "d", "e", "E", "f", "F",
+                              "g", "G", "n", "o", "s", "x", "X", "%"}
 
 # Types that require either int or float.
 NUMERIC_TYPES_OLD: Final = {"d", "i", "o", "u", "x", "X", "e", "E", "f", "F", "g", "G"}
@@ -786,7 +771,7 @@ class StringFormatterChecker:
     def replacement_checkers(self, specifier: ConversionSpecifier, context: Context,
                              expr: FormatStringExpr) -> Optional[List[Checkers]]:
         """Returns a list of tuples of two functions that check whether a replacement is
-        of the right type for the specifier. The first functions take a node and checks
+        of the right type for the specifier. The first function takes a node and checks
         its type in the right type context. The second function just checks a type.
         """
         checkers: List[Checkers] = []
@@ -813,10 +798,10 @@ class StringFormatterChecker:
         """
         expected = self.named_type('builtins.int')
 
-        def check_type(type: Type) -> None:
+        def check_type(type: Type) -> bool:
             expected = self.named_type('builtins.int')
-            self.chk.check_subtype(type, expected, context, '* wants int',
-                                   code=codes.STRING_FORMATTING)
+            return self.chk.check_subtype(type, expected, context, '* wants int',
+                                          code=codes.STRING_FORMATTING)
 
         def check_expr(expr: Expression) -> None:
             type = self.accept(expr, expected)
@@ -824,11 +809,11 @@ class StringFormatterChecker:
 
         return check_expr, check_type
 
-    def check_placeholder_type(self, typ: Type, expected_type: Type, context: Context) -> None:
-        self.chk.check_subtype(typ, expected_type, context,
-                               message_registry.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
-                               'expression has type', 'placeholder has type',
-                               code=codes.STRING_FORMATTING)
+    def check_placeholder_type(self, typ: Type, expected_type: Type, context: Context) -> bool:
+        return self.chk.check_subtype(typ, expected_type, context,
+                                      message_registry.INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION,
+                                      'expression has type', 'placeholder has type',
+                                      code=codes.STRING_FORMATTING)
 
     def checkers_for_regular_type(self, type: str,
                                   context: Context,
@@ -840,11 +825,12 @@ class StringFormatterChecker:
         if expected_type is None:
             return None
 
-        def check_type(typ: Type) -> None:
+        def check_type(typ: Type) -> bool:
             assert expected_type is not None
-            self.check_placeholder_type(typ, expected_type, context)
-            if type == 's':
-                self.check_s_special_cases(expr, typ, context)
+            ret = self.check_placeholder_type(typ, expected_type, context)
+            if ret and type == 's':
+                ret = self.check_s_special_cases(expr, typ, context)
+            return ret
 
         def check_expr(expr: Expression) -> None:
             type = self.accept(expr, expected_type)
@@ -852,7 +838,7 @@ class StringFormatterChecker:
 
         return check_expr, check_type
 
-    def check_s_special_cases(self, expr: FormatStringExpr, typ: Type, context: Context) -> None:
+    def check_s_special_cases(self, expr: FormatStringExpr, typ: Type, context: Context) -> bool:
         """Additional special cases for %s in bytes vs string context."""
         if isinstance(expr, StrExpr):
             # Couple special cases for string formatting.
@@ -862,6 +848,7 @@ class StringFormatterChecker:
                         "On Python 3 '%s' % b'abc' produces \"b'abc'\", not 'abc'; "
                         "use '%r' % b'abc' if this is desired behavior",
                         context, code=codes.STR_BYTES_PY3)
+                    return False
             if self.chk.options.python_version < (3, 0):
                 if has_type_component(typ, 'builtins.unicode'):
                     self.unicode_upcast = True
@@ -871,27 +858,43 @@ class StringFormatterChecker:
                 if has_type_component(typ, 'builtins.str'):
                     self.msg.fail("On Python 3 b'%s' requires bytes, not string", context,
                                   code=codes.STRING_FORMATTING)
+                    return False
+        return True
 
     def checkers_for_c_type(self, type: str,
                             context: Context,
-                            expr: FormatStringExpr) -> Optional[Checkers]:
+                            format_expr: FormatStringExpr) -> Optional[Checkers]:
         """Returns a tuple of check functions that check whether, respectively,
         a node or a type is compatible with 'type' that is a character type.
         """
-        expected_type = self.conversion_type(type, context, expr)
+        expected_type = self.conversion_type(type, context, format_expr)
         if expected_type is None:
             return None
 
-        def check_type(type: Type) -> None:
+        def check_type(type: Type) -> bool:
             assert expected_type is not None
-            self.check_placeholder_type(type, expected_type, context)
+            if self.chk.options.python_version >= (3, 0) and isinstance(format_expr, BytesExpr):
+                err_msg = '"%c" requires an integer in range(256) or a single byte'
+            else:
+                err_msg = '"%c" requires int or char'
+            return self.chk.check_subtype(type, expected_type, context, err_msg,
+                                          'expression has type',
+                                          code=codes.STRING_FORMATTING)
 
         def check_expr(expr: Expression) -> None:
             """int, or str with length 1"""
             type = self.accept(expr, expected_type)
-            if isinstance(expr, (StrExpr, BytesExpr)) and len(cast(StrExpr, expr).value) != 1:
-                self.msg.requires_int_or_char(context)
-            check_type(type)
+            # We need further check with expr to make sure that
+            # it has exact one char or one single byte.
+            if check_type(type):
+                # Python 3 doesn't support b'%c' % str
+                if (self.chk.options.python_version >= (3, 0)
+                        and isinstance(format_expr, BytesExpr)
+                        and isinstance(expr, BytesExpr) and len(expr.value) != 1):
+                    self.msg.requires_int_or_single_byte(context)
+                # In Python 2, b'%c' is the same as '%c'
+                elif isinstance(expr, (StrExpr, BytesExpr)) and len(expr.value) != 1:
+                    self.msg.requires_int_or_char(context)
 
         return check_expr, check_type
 
@@ -939,9 +942,12 @@ class StringFormatterChecker:
                         numeric_types.append(self.named_type('typing.SupportsInt'))
             return UnionType.make_union(numeric_types)
         elif p in ['c']:
-            return UnionType([self.named_type('builtins.int'),
-                              self.named_type('builtins.float'),
-                              self.named_type('builtins.str')])
+            if isinstance(expr, BytesExpr):
+                return UnionType([self.named_type('builtins.int'),
+                                  self.named_type('builtins.bytes')])
+            else:
+                return UnionType([self.named_type('builtins.int'),
+                                  self.named_type('builtins.str')])
         else:
             self.msg.unsupported_placeholder(p, context)
             return None

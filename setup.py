@@ -201,5 +201,7 @@ setup(name='mypy',
       include_package_data=True,
       project_urls={
           'News': 'http://mypy-lang.org/news.html',
+          'Documentation': 'https://mypy.readthedocs.io/en/stable/introduction.html',
+          'Repository': 'https://github.com/python/mypy',
       },
       )
