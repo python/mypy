@@ -303,3 +303,6 @@ def prepare_non_ext_class_def(path: str, module_name: str, cdef: ClassDef,
     ):
         errors.error(
             "Non-extension classes may not inherit from extension classes", path, cdef.line)
+
+
+RegisterImplInfo = Tuple[TypeInfo, FuncDef]

@@ -10,6 +10,7 @@ as an environment containing non-local variables, is stored in the
 instance of the callable class.
 """
 
+from mypyc.irbuild.prepare import RegisterImplInfo
 from mypy.build import topsort
 from typing import (
     NamedTuple, Optional, List, Sequence, Tuple, Union, Dict, Iterator,
@@ -864,8 +865,8 @@ def gen_dispatch_func_ir(
 
 
 def sort_with_subclasses_first(
-    impls: List[Tuple[TypeInfo, FuncDef]]
-) -> Iterator[Tuple[TypeInfo, FuncDef]]:
+    impls: List[RegisterImplInfo]
+) -> Iterator[RegisterImplInfo]:
 
     # graph with edges pointing from every class to their subclasses
     graph = {typ: set(typ.mro[1:]) for typ, _ in impls}
