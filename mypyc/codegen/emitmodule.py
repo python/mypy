@@ -152,7 +152,9 @@ class MypycPlugin(Plugin):
 
     def get_additional_deps(self, file: MypyFile) -> List[Tuple[int, str, int]]:
         # Report dependency on modules in the module's group
-        return [(10, id, -1) for id in self.group_map.get(file.fullname, (None, []))[1]]
+        # Report a very low priority, because we don't want it to impact
+        # processing order.
+        return [(90, id, -1) for id in self.group_map.get(file.fullname, (None, []))[1]]
 
 
 def parse_and_typecheck(
