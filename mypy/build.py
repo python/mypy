@@ -21,8 +21,8 @@ import sys
 import time
 import types
 
-from typing import (AbstractSet, Any, Dict, Iterable, Iterator, List, Sequence,
-                    Mapping, NamedTuple, Optional, Set, Tuple, TypeVar, Union, Callable, TextIO)
+from typing import (AbstractSet, Any, Dict, Iterator, List, Sequence, Collection,
+                    Mapping, NamedTuple, Optional, Set, Tuple, Union, Callable, TextIO)
 from typing_extensions import ClassVar, Final, TYPE_CHECKING
 from mypy_extensions import TypedDict
 
@@ -37,6 +37,7 @@ from mypy.util import (
     DecodeError, decode_python_encoding, is_sub_path, get_mypy_comments, module_prefix,
     read_py_file, hash_digest, is_typeshed_file, is_stub_package_file, get_top_two_prefixes
 )
+from mypy.graphutil import strongly_connected_components
 if TYPE_CHECKING:
     from mypy.report import Reports  # Avoid unconditional slow import
 from mypy.fixup import fixup_module
@@ -3058,7 +3059,7 @@ def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> 
     dozen) and in the worst case we just carry out the same algorithm
     for finding SCCs N times.  Thus the complexity is no worse than
     the complexity of the original SCC-finding algorithm -- see
-    strongly_connected_components() below for a reference.
+    strongly_connected_components() for a reference.
     """
     if len(ascc) == 1:
         return [s for s in ascc]
@@ -3151,32 +3152,18 @@ def sorted_components(graph: Graph,
     This works for a subset of the full dependency graph too;
     dependencies that aren't present in graph.keys() are ignored.
     """
+    def sort_vertices(vertices: Collection[str]) -> List[str]:
+        return sorted(vertices, key=lambda id: -graph[id].order)
+
     # Compute SCCs.
     if vertices is None:
         vertices = set(graph)
-    edges = {id: deps_filtered(graph, vertices, id, pri_max) for id in vertices}
-    sccs = list(strongly_connected_components(vertices, edges))
-    # Topsort.
-    sccsmap = {id: frozenset(scc) for scc in sccs for id in scc}
-    data: Dict[AbstractSet[str], Set[AbstractSet[str]]] = {}
-    for scc in sccs:
-        deps: Set[AbstractSet[str]] = set()
-        for id in scc:
-            deps.update(sccsmap[x] for x in deps_filtered(graph, vertices, id, pri_max))
-        data[frozenset(scc)] = deps
-    res = []
-    for ready in topsort(data):
-        # Sort the sets in ready by reversed smallest State.order.  Examples:
-        #
-        # - If ready is [{x}, {y}], x.order == 1, y.order == 2, we get
-        #   [{y}, {x}].
-        #
-        # - If ready is [{a, b}, {c, d}], a.order == 1, b.order == 3,
-        #   c.order == 2, d.order == 4, the sort keys become [1, 2]
-        #   and the result is [{c, d}, {a, b}].
-        res.extend(sorted(ready,
-                          key=lambda scc: -min(graph[id].order for id in scc)))
-    return res
+    edges = {id: sort_vertices(deps_filtered(graph, vertices, id, pri_max)) for id in vertices}
+    # Sort the vertices by reversed State.order; this is not deeply important, but
+    # it makes error messages come out in the order the tests expect.
+    sorted_vertices = sort_vertices(vertices)
+    # Note that strongly_connected_components returns SCCs already topologically sorted.
+    return list(strongly_connected_components(sorted_vertices, edges))
 
 
 def deps_filtered(graph: Graph, vertices: AbstractSet[str], id: str, pri_max: int) -> List[str]:
@@ -3187,101 +3174,6 @@ def deps_filtered(graph: Graph, vertices: AbstractSet[str], id: str, pri_max: in
     return [dep
             for dep in state.dependencies
             if dep in vertices and state.priorities.get(dep, PRI_HIGH) < pri_max]
-
-
-def strongly_connected_components(vertices: AbstractSet[str],
-                                  edges: Dict[str, List[str]]) -> Iterator[Set[str]]:
-    """Compute Strongly Connected Components of a directed graph.
-
-    Args:
-      vertices: the labels for the vertices
-      edges: for each vertex, gives the target vertices of its outgoing edges
-
-    Returns:
-      An iterator yielding strongly connected components, each
-      represented as a set of vertices.  Each input vertex will occur
-      exactly once; vertices not part of a SCC are returned as
-      singleton sets.
-
-    From http://code.activestate.com/recipes/578507/.
-    """
-    identified: Set[str] = set()
-    stack: List[str] = []
-    index: Dict[str, int] = {}
-    boundaries: List[int] = []
-
-    def dfs(v: str) -> Iterator[Set[str]]:
-        index[v] = len(stack)
-        stack.append(v)
-        boundaries.append(index[v])
-
-        for w in edges[v]:
-            if w not in index:
-                yield from dfs(w)
-            elif w not in identified:
-                while index[w] < boundaries[-1]:
-                    boundaries.pop()
-
-        if boundaries[-1] == index[v]:
-            boundaries.pop()
-            scc = set(stack[index[v]:])
-            del stack[index[v]:]
-            identified.update(scc)
-            yield scc
-
-    for v in vertices:
-        if v not in index:
-            yield from dfs(v)
-
-
-T = TypeVar("T")
-
-
-def topsort(data: Dict[T, Set[T]]) -> Iterable[Set[T]]:
-    """Topological sort.
-
-    Args:
-      data: A map from vertices to all vertices that it has an edge
-            connecting it to.  NOTE: This data structure
-            is modified in place -- for normalization purposes,
-            self-dependencies are removed and entries representing
-            orphans are added.
-
-    Returns:
-      An iterator yielding sets of vertices that have an equivalent
-      ordering.
-
-    Example:
-      Suppose the input has the following structure:
-
-        {A: {B, C}, B: {D}, C: {D}}
-
-      This is normalized to:
-
-        {A: {B, C}, B: {D}, C: {D}, D: {}}
-
-      The algorithm will yield the following values:
-
-        {D}
-        {B, C}
-        {A}
-
-    From http://code.activestate.com/recipes/577413/.
-    """
-    # TODO: Use a faster algorithm?
-    for k, v in data.items():
-        v.discard(k)  # Ignore self dependencies.
-    for item in set.union(*data.values()) - set(data.keys()):
-        data[item] = set()
-    while True:
-        ready = {item for item, dep in data.items() if not dep}
-        if not ready:
-            break
-        yield ready
-        data = {item: (dep - ready)
-                for item, dep in data.items()
-                if item not in ready}
-    assert not data, "A cyclic dependency exists amongst %r" % data
 
 
 def missing_stubs_file(cache_dir: str) -> str:

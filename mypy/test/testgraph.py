@@ -1,12 +1,13 @@
 """Test cases for graph processing code in build.py."""
 
 import sys
-from typing import AbstractSet, Dict, Set, List
+from typing import Dict, List
 
 from mypy.test.helpers import assert_equal, Suite
 from mypy.build import BuildManager, State, BuildSourceSet
 from mypy.modulefinder import SearchPaths
-from mypy.build import topsort, strongly_connected_components, sorted_components, order_ascc
+from mypy.graphutil import strongly_connected_components
+from mypy.build import order_ascc, sorted_components
 from mypy.version import __version__
 from mypy.options import Options
 from mypy.report import Reports
@@ -17,23 +18,14 @@ from mypy.fscache import FileSystemCache
 
 class GraphSuite(Suite):
 
-    def test_topsort(self) -> None:
-        a = frozenset({'A'})
-        b = frozenset({'B'})
-        c = frozenset({'C'})
-        d = frozenset({'D'})
-        data: Dict[AbstractSet[str], Set[AbstractSet[str]]] = {a: {b, c}, b: {d}, c: {d}}
-        res = list(topsort(data))
-        assert_equal(res, [{d}, {b, c}, {a}])
-
     def test_scc(self) -> None:
-        vertices = {"A", "B", "C", "D"}
+        vertices = ["A", "B", "C", "D"]
         edges: Dict[str, List[str]] = {"A": ["B", "C"], "B": ["C"], "C": ["B", "D"], "D": []}
-        sccs = set(frozenset(x) for x in strongly_connected_components(vertices, edges))
+        sccs = [frozenset(x) for x in strongly_connected_components(vertices, edges)]
         assert_equal(sccs,
-                     {frozenset({'A'}),
+                     [frozenset({'D'}),
                       frozenset({'B', 'C'}),
-                      frozenset({'D'})})
+                      frozenset({'A'})])
 
     def _make_manager(self) -> BuildManager:
         errors = Errors()

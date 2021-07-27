@@ -10,7 +10,6 @@ as an environment containing non-local variables, is stored in the
 instance of the callable class.
 """
 
-from mypy.build import topsort
 from typing import (
     NamedTuple, Optional, List, Sequence, Tuple, Union, Dict, Iterator,
 )
@@ -20,6 +19,7 @@ from mypy.nodes import (
     FuncItem, LambdaExpr, SymbolNode, ArgKind, TypeInfo
 )
 from mypy.types import CallableType, get_proper_type
+from mypy.graphutil import toposort
 
 from mypyc.ir.ops import (
     BasicBlock, Value,  Register, Return, SetAttr, Integer, GetAttr, Branch, InitStatic,
@@ -866,12 +866,10 @@ def gen_dispatch_func_ir(
 def sort_with_subclasses_first(
     impls: List[Tuple[TypeInfo, FuncDef]]
 ) -> Iterator[Tuple[TypeInfo, FuncDef]]:
-
     # graph with edges pointing from every class to their subclasses
     graph = {typ: set(typ.mro[1:]) for typ, _ in impls}
 
-    dispatch_types = topsort(graph)
+    dispatch_types = reversed(list(toposort(graph)))
     impl_dict = {typ: func for typ, func in impls}
 
-    for group in reversed(list(dispatch_types)):
-        yield from ((typ, impl_dict[typ]) for typ in group if typ in impl_dict)
+    return ((typ, impl_dict[typ]) for typ in dispatch_types if typ in impl_dict)

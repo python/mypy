@@ -6,7 +6,7 @@
 import os
 import json
 from mypy.backports import OrderedDict
-from typing import List, Tuple, Dict, Iterable, Set, TypeVar, Optional
+from typing import List, Tuple, Dict, Iterable, Set, Optional
 
 from mypy.nodes import MypyFile
 from mypy.build import (
@@ -18,6 +18,7 @@ from mypy.options import Options
 from mypy.plugin import Plugin, ReportConfigContext
 from mypy.fscache import FileSystemCache
 from mypy.util import hash_digest
+from mypy.graphutil import toposort
 
 from mypyc.irbuild.main import build_ir
 from mypyc.irbuild.prepare import load_type_map
@@ -73,13 +74,6 @@ Groups = List[Group]
 
 # A list of (file name, file contents) pairs.
 FileContents = List[Tuple[str, str]]
-
-
-class MarkedDeclaration:
-    """Add a mark, useful for topological sort."""
-    def __init__(self, declaration: HeaderDeclaration, mark: bool) -> None:
-        self.declaration = declaration
-        self.mark = False
 
 
 class MypycPlugin(Plugin):
@@ -158,7 +152,9 @@ class MypycPlugin(Plugin):
 
     def get_additional_deps(self, file: MypyFile) -> List[Tuple[int, str, int]]:
         # Report dependency on modules in the module's group
-        return [(10, id, -1) for id in self.group_map.get(file.fullname, (None, []))[1]]
+        # Report a very low priority, because we don't want it to impact
+        # processing order.
+        return [(90, id, -1) for id in self.group_map.get(file.fullname, (None, []))[1]]
 
 
 def parse_and_typecheck(
@@ -957,30 +953,13 @@ class GroupGenerator:
 
         Declarations can require other declarations to come prior in C (such as declaring structs).
         In order to guarantee that the C output will compile the declarations will thus need to
-        be properly ordered. This simple DFS guarantees that we have a proper ordering.
-
-        This runs in O(V + E).
+        be properly ordered. We topo sort to fix this.
         """
-        result = []
-        marked_declarations: Dict[str, MarkedDeclaration] = OrderedDict()
-        for k, v in self.context.declarations.items():
-            marked_declarations[k] = MarkedDeclaration(v, False)
-
-        def _toposort_visit(name: str) -> None:
-            decl = marked_declarations[name]
-            if decl.mark:
-                return
-
-            for child in decl.declaration.dependencies:
-                _toposort_visit(child)
-
-            result.append(decl.declaration)
-            decl.mark = True
-
-        for name, marked_declaration in marked_declarations.items():
-            _toposort_visit(name)
-
-        return result
+        decl_graph = {
+            v: {self.context.declarations[dep] for dep in v.dependencies}
+            for k, v in self.context.declarations.items()
+        }
+        return list(toposort(decl_graph))
 
     def declare_global(self, type_spaced: str, name: str,
                        *,
@@ -1060,33 +1039,6 @@ def sort_classes(classes: List[Tuple[str, ClassIR]]) -> List[Tuple[str, ClassIR]
         deps[ir].update(ir.traits)
     sorted_irs = toposort(deps)
     return [(mod_name[ir], ir) for ir in sorted_irs]
-
-
-T = TypeVar('T')
-
-
-def toposort(deps: Dict[T, Set[T]]) -> List[T]:
-    """Topologically sort a dict from item to dependencies.
-
-    This runs in O(V + E).
-    """
-    result = []
-    visited: Set[T] = set()
-
-    def visit(item: T) -> None:
-        if item in visited:
-            return
-
-        for child in deps[item]:
-            visit(child)
-
-        result.append(item)
-        visited.add(item)
-
-    for item in deps:
-        visit(item)
-
-    return result
 
 
 def is_fastcall_supported(fn: FuncIR, capi_version: Tuple[int, int]) -> bool:
