@@ -11,13 +11,14 @@ the missing bits, such as function bodies (basic blocks).
 Also build a mapping from mypy TypeInfos to ClassIR objects.
 """
 
-from typing import List, Dict, Iterable, Optional, Union
+from typing import List, Dict, Iterable, Optional, Union, DefaultDict, NamedTuple, Tuple
 
 from mypy.nodes import (
     MypyFile, TypeInfo, FuncDef, ClassDef, Decorator, OverloadedFuncDef, MemberExpr, Var,
-    Expression, SymbolNode, ARG_STAR, ARG_STAR2
+    Expression, SymbolNode, ARG_STAR, ARG_STAR2, CallExpr, Decorator, Expression, FuncDef,
+    MemberExpr, MypyFile, NameExpr, RefExpr, TypeInfo,
 )
-from mypy.types import Type
+from mypy.types import Type, Instance, get_proper_type
 from mypy.build import Graph
 
 from mypyc.ir.ops import DeserMaps
@@ -34,6 +35,8 @@ from mypyc.irbuild.util import (
 from mypyc.errors import Errors
 from mypyc.options import CompilerOptions
 from mypyc.crash import catch_errors
+from collections import defaultdict
+from mypy.traverser import TraverserVisitor
 
 
 def build_type_map(mapper: Mapper,
@@ -303,3 +306,113 @@ def prepare_non_ext_class_def(path: str, module_name: str, cdef: ClassDef,
     ):
         errors.error(
             "Non-extension classes may not inherit from extension classes", path, cdef.line)
+
+
+RegisterImplInfo = Tuple[TypeInfo, FuncDef]
+
+
+class SingledispatchInfo(NamedTuple):
+    singledispatch_impls: Dict[FuncDef, List[RegisterImplInfo]]
+    decorators_to_remove: Dict[FuncDef, List[int]]
+
+
+def find_singledispatch_register_impls(
+    modules: List[MypyFile],
+    errors: Errors,
+) -> SingledispatchInfo:
+    visitor = SingledispatchVisitor(errors)
+    for module in modules:
+        visitor.current_path = module.path
+        module.accept(visitor)
+    return SingledispatchInfo(visitor.singledispatch_impls, visitor.decorators_to_remove)
+
+
+class SingledispatchVisitor(TraverserVisitor):
+    current_path: str
+
+    def __init__(self, errors: Errors) -> None:
+        super().__init__()
+
+        # Map of main singledispatch function to list of registered implementations
+        self.singledispatch_impls: DefaultDict[FuncDef, List[RegisterImplInfo]] = defaultdict(list)
+
+        # Map of decorated function to the indices of any register decorators
+        self.decorators_to_remove: Dict[FuncDef, List[int]] = {}
+
+        self.errors: Errors = errors
+
+    def visit_decorator(self, dec: Decorator) -> None:
+        if dec.decorators:
+            decorators_to_store = dec.decorators.copy()
+            register_indices: List[int] = []
+            # the index of the last non-register decorator before finding a register decorator
+            # when going through decorators from top to bottom
+            last_non_register: Optional[int] = None
+            for i, d in enumerate(decorators_to_store):
+                impl = get_singledispatch_register_call_info(d, dec.func)
+                if impl is not None:
+                    self.singledispatch_impls[impl.singledispatch_func].append(
+                        (impl.dispatch_type, dec.func))
+                    register_indices.append(i)
+                    if last_non_register is not None:
+                        # found a register decorator after a non-register decorator, which we
+                        # don't support because we'd have to make a copy of the function before
+                        # calling the decorator so that we can call it later, which complicates
+                        # the implementation for something that is probably not commonly used
+                        self.errors.error(
+                            "Calling decorator after registering function not supported",
+                            self.current_path,
+                            decorators_to_store[last_non_register].line,
+                        )
+                else:
+                    last_non_register = i
+
+            if register_indices:
+                # calling register on a function that tries to dispatch based on type annotations
+                # raises a TypeError because compiled functions don't have an __annotations__
+                # attribute
+                self.decorators_to_remove[dec.func] = register_indices
+
+        super().visit_decorator(dec)
+
+
+class RegisteredImpl(NamedTuple):
+    singledispatch_func: FuncDef
+    dispatch_type: TypeInfo
+
+
+def get_singledispatch_register_call_info(decorator: Expression, func: FuncDef
+                                          ) -> Optional[RegisteredImpl]:
+    # @fun.register(complex)
+    # def g(arg): ...
+    if (isinstance(decorator, CallExpr) and len(decorator.args) == 1
+            and isinstance(decorator.args[0], RefExpr)):
+        callee = decorator.callee
+        dispatch_type = decorator.args[0].node
+        if not isinstance(dispatch_type, TypeInfo):
+            return None
+
+        if isinstance(callee, MemberExpr):
+            return registered_impl_from_possible_register_call(callee, dispatch_type)
+    # @fun.register
+    # def g(arg: int): ...
+    elif isinstance(decorator, MemberExpr):
+        # we don't know if this is a register call yet, so we can't be sure that the function
+        # actually has arguments
+        if not func.arguments:
+            return None
+        arg_type = get_proper_type(func.arguments[0].variable.type)
+        if not isinstance(arg_type, Instance):
+            return None
+        info = arg_type.type
+        return registered_impl_from_possible_register_call(decorator, info)
+    return None
+
+
+def registered_impl_from_possible_register_call(expr: MemberExpr, dispatch_type: TypeInfo
+                                                ) -> Optional[RegisteredImpl]:
+    if expr.name == 'register' and isinstance(expr.expr, NameExpr):
+        node = expr.expr.node
+        if isinstance(node, Decorator):
+            return RegisteredImpl(node.func, dispatch_type)
+    return None
