@@ -653,11 +653,7 @@ def verify_funcitem(
         yield Error(object_path, "is not present at runtime", stub, runtime)
         return
 
-    if (
-        not isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType))
-        and not isinstance(runtime, (types.MethodType, types.BuiltinMethodType))
-        and not inspect.ismethoddescriptor(runtime)
-    ):
+    if not is_probably_a_function(runtime):
         yield Error(object_path, "is not a function", stub, runtime)
         if not callable(runtime):
             return
@@ -665,11 +661,8 @@ def verify_funcitem(
     for message in _verify_static_class_methods(stub, runtime, object_path):
         yield Error(object_path, "is inconsistent, " + message, stub, runtime)
 
-    try:
-        signature = inspect.signature(runtime)
-    except (ValueError, RuntimeError):
-        # inspect.signature throws sometimes
-        # catch RuntimeError because of https://bugs.python.org/issue39504
+    signature = safe_inspect_signature(runtime)
+    if not signature:
         return
 
     stub_sig = Signature.from_funcitem(stub)
@@ -737,11 +730,7 @@ def verify_overloadedfuncdef(
         # We get here in cases of overloads from property.setter
         return
 
-    if (
-        not isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType))
-        and not isinstance(runtime, (types.MethodType, types.BuiltinMethodType))
-        and not inspect.ismethoddescriptor(runtime)
-    ):
+    if not is_probably_a_function(runtime):
         yield Error(object_path, "is not a function", stub, runtime)
         if not callable(runtime):
             return
@@ -749,9 +738,8 @@ def verify_overloadedfuncdef(
     for message in _verify_static_class_methods(stub, runtime, object_path):
         yield Error(object_path, "is inconsistent, " + message, stub, runtime)
 
-    try:
-        signature = inspect.signature(runtime)
-    except ValueError:
+    signature = safe_inspect_signature(runtime)
+    if not signature:
         return
 
     stub_sig = Signature.from_overloadedfuncdef(stub)
@@ -888,6 +876,24 @@ def is_dunder(name: str, exclude_special: bool = False) -> bool:
     return name.startswith("__") and name.endswith("__")
 
 
+def is_probably_a_function(runtime: Any) -> bool:
+    return (
+        isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType))
+        or isinstance(runtime, (types.MethodType, types.BuiltinMethodType))
+        or (inspect.ismethoddescriptor(runtime) and callable(runtime))
+    )
+
+
+def safe_inspect_signature(runtime: Any) -> Optional[inspect.Signature]:
+    try:
+        return inspect.signature(runtime)
+    except (ValueError, RuntimeError, TypeError):
+        # inspect.signature throws sometimes
+        # catch RuntimeError because of https://bugs.python.org/issue39504
+        # catch TypeError because of https://github.com/python/typeshed/pull/5762
+        return None
+
+
 def is_subtype_helper(left: mypy.types.Type, right: mypy.types.Type) -> bool:
     """Checks whether ``left`` is a subtype of ``right``."""
     left = mypy.types.get_proper_type(left)
@@ -930,8 +936,8 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
         type_info = builtins.names["function"].node
         assert isinstance(type_info, nodes.TypeInfo)
         fallback = mypy.types.Instance(type_info, [anytype()])
-        try:
-            signature = inspect.signature(runtime)
+        signature = safe_inspect_signature(runtime)
+        if signature:
             arg_types = []
             arg_kinds = []
             arg_names = []
@@ -953,7 +959,7 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
                     arg_kinds.append(nodes.ARG_STAR2)
                 else:
                     raise AssertionError
-        except ValueError:
+        else:
             arg_types = [anytype(), anytype()]
             arg_kinds = [nodes.ARG_STAR, nodes.ARG_STAR2]
             arg_names = [None, None]
