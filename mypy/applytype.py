@@ -19,6 +19,8 @@ def get_target_type(
     skip_unsatisfied: bool
 ) -> Optional[Type]:
     # TODO(shantanu): fix for ParamSpecDef
+    if not isinstance(tvar, TypeVarDef):
+        return None
     assert isinstance(tvar, TypeVarDef)
     values = get_proper_types(tvar.values)
     if values:

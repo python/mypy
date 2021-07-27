@@ -41,6 +41,8 @@ def freshen_function_type_vars(callee: F) -> F:
         tvmap: Dict[TypeVarId, Type] = {}
         for v in callee.variables:
             # TODO(shantanu): fix for ParamSpecDef
+            if not isinstance(v, TypeVarDef):
+                continue
             assert isinstance(v, TypeVarDef)
             tvdef = TypeVarDef.new_unification_variable(v)
             tvdefs.append(tvdef)
