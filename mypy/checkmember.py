@@ -194,7 +194,13 @@ def analyze_instance_member_access(name: str,
         mx.msg.note("Occurrence of '{}.{}'".format(*state.find_occurrences), mx.context)
 
     # Look up the member. First look up the method dictionary.
-    method = info.get_method(name)
+    method = None
+    if info.name == 'ModuleType':
+        node = mx.module_symbol_table[name].node
+        if isinstance(node, FuncBase):
+            method = node
+    else:
+        method = info.get_method(name)
     if method:
         if method.is_property:
             assert isinstance(method, OverloadedFuncDef)
@@ -342,8 +348,13 @@ def analyze_member_var_access(name: str,
 
     original_type is the type of E in the expression E.var
     """
-    # It was not a method. Try looking up a variable.
-    v = lookup_member_var_or_accessor(info, name, mx.is_lvalue)
+    # It was not a method. Try looking up a variable. If the info is a
+    # module, we directly read the node from the member context.
+    if info.name == 'ModuleType':
+        v = mx.module_symbol_table[name].node
+        v.info = info
+    else:
+        v = lookup_member_var_or_accessor(info, name, mx.is_lvalue)
 
     vv = v
     if isinstance(vv, Decorator):
@@ -369,13 +380,15 @@ def analyze_member_var_access(name: str,
         v.info = info
 
     if isinstance(v, Var):
-        implicit = info[name].implicit
-
         # An assignment to final attribute is always an error,
         # independently of types.
         if mx.is_lvalue and not mx.chk.get_final_context():
             check_final_member(name, info, mx.msg, mx.context)
 
+        if info.name == 'ModuleType':
+            implicit = mx.module_symbol_table[name].implicit
+        else:
+            implicit = info[name].implicit
         return analyze_var(name, v, itype, info, mx, implicit=implicit)
     elif isinstance(v, FuncDef):
         assert False, "Did not expect a function"

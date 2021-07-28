@@ -1504,11 +1504,15 @@ c: Union[Tuple[str, int], Tuple[str, int, str]] = ('A', 1)
 [builtins fixtures/primitives.pyi]
 
 [case testFormatCallMatchingPositional]
+import m
 '{}'.format(positional='no')  # E: Cannot find replacement for positional format specifier 0 \
                               # E: Not all arguments converted during string formatting
 '{.x}, {}, {}'.format(1, 'two', 'three')  # E: "int" has no attribute "x"
 'Reverse {2.x}, {1}, {0}'.format(1, 2, 'three')  # E: "str" has no attribute "x"
 ''.format(1, 2)  # E: Not all arguments converted during string formatting
+'{0.ss}'.format(m)
+[file m.py]
+ss = 'a'
 [builtins fixtures/primitives.pyi]
 
 [case testFormatCallMatchingNamed]
