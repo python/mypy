@@ -13,7 +13,7 @@ implementation simple.
 import re
 
 from typing import (
-    cast, List, Tuple, Dict, Callable, Union, Optional, Pattern, Match, Set, Any
+    cast, List, Tuple, Dict, Callable, Union, Optional, Pattern, Match, Set
 )
 from typing_extensions import Final, TYPE_CHECKING
 
