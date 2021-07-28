@@ -96,6 +96,9 @@ class complex:
     def __neg__(self) -> complex: pass
 
 class bytes:
+    @overload
+    def __init__(self) -> None: pass
+    @overload
     def __init__(self, x: object) -> None: pass
     def __add__(self, x: bytes) -> bytes: pass
     def __eq__(self, x: object) -> bool: pass
