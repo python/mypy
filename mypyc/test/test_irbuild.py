@@ -34,6 +34,7 @@ files = [
     'irbuild-unreachable.test',
     'irbuild-isinstance.test',
     'irbuild-dunders.test',
+    'irbuild-singledispatch.test',
 ]
 
 
