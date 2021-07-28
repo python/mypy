@@ -216,6 +216,16 @@ def any_constraints(options: List[Optional[List[Constraint]]], eager: bool) -> L
         # TODO: More generally, if a given (variable, direction) pair appears in
         #       every option, combine the bounds with meet/join.
         return valid_options[0]
+    elif len(valid_options) > 1:
+        # Drop constraints that only refer to "Any" and try again. This way Any types
+        # in unions don't interfere with type inference.
+        narrowed_options = [option
+                            for option in valid_options
+                            if not (option and
+                                    all(isinstance(get_proper_type(c.target), AnyType)
+                                        for c in option))]
+        if len(narrowed_options) < len(valid_options):
+            return any_constraints([option for option in narrowed_options], eager)
 
     # Otherwise, there are either no valid options or multiple, inconsistent valid
     # options. Give up and deduce nothing.
