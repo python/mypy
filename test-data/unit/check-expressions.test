@@ -1278,11 +1278,52 @@ b'%a' % 3
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-medium.pyi]
 
-[case testStringInterpolationC]
+[case testStringInterPolationCPython2]
+# flags: --py2 --no-strict-optional
 '%c' % 1
+'%c' % 1.0   # E: "%c" requires int or char (expression has type "float")
 '%c' % 's'
-'%c' % ''  # E: "%c" requires int or char
+'%c' % ''    # E: "%c" requires int or char
 '%c' % 'ab'  # E: "%c" requires int or char
+'%c' % b'a'
+'%c' % b''   # E: "%c" requires int or char
+'%c' % b'ab' # E: "%c" requires int or char
+[builtins_py2 fixtures/python2.pyi]
+
+[case testStringInterpolationC]
+# flags: --python-version 3.6
+'%c' % 1
+'%c' % 1.0   # E: "%c" requires int or char (expression has type "float")
+'%c' % 's'
+'%c' % ''    # E: "%c" requires int or char
+'%c' % 'ab'  # E: "%c" requires int or char
+'%c' % b'a'  # E: "%c" requires int or char (expression has type "bytes")
+'%c' % b''   # E: "%c" requires int or char (expression has type "bytes")
+'%c' % b'ab' # E: "%c" requires int or char (expression has type "bytes")
+[builtins fixtures/primitives.pyi]
+
+[case testBytesInterPolationCPython2]
+# flags: --py2 --no-strict-optional
+b'%c' % 1
+b'%c' % 1.0   # E: "%c" requires int or char (expression has type "float")
+b'%c' % 's'
+b'%c' % ''    # E: "%c" requires int or char
+b'%c' % 'ab'  # E: "%c" requires int or char
+b'%c' % b'a'
+b'%c' % b''   # E: "%c" requires int or char
+b'%c' % b'aa' # E: "%c" requires int or char
+[builtins_py2 fixtures/python2.pyi]
+
+[case testBytesInterpolationC]
+# flags: --python-version 3.6
+b'%c' % 1
+b'%c' % 1.0   # E: "%c" requires an integer in range(256) or a single byte (expression has type "float")
+b'%c' % 's'   # E: "%c" requires an integer in range(256) or a single byte (expression has type "str")
+b'%c' % ''    # E: "%c" requires an integer in range(256) or a single byte (expression has type "str")
+b'%c' % 'ab'  # E: "%c" requires an integer in range(256) or a single byte (expression has type "str")
+b'%c' % b'a'
+b'%c' % b''   # E: "%c" requires an integer in range(256) or a single byte
+b'%c' % b'aa' # E: "%c" requires an integer in range(256) or a single byte
 [builtins fixtures/primitives.pyi]
 
 [case testStringInterpolationMappingTypes]
@@ -1540,7 +1581,7 @@ x: Union[Good, Bad]
 
 class C:
     ...
-'{:c}'.format(C())  # E: Incompatible types in string interpolation (expression has type "C", placeholder has type "Union[int, float, str]")
+'{:c}'.format(C())  # E: Incompatible types in string interpolation (expression has type "C", placeholder has type "Union[int, str]")
 x: str
 '{:c}'.format(x)
 [builtins fixtures/primitives.pyi]

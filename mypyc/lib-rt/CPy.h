@@ -318,6 +318,7 @@ PyObject *CPyObject_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
 // List operations
 
 
+PyObject *CPyList_Build(Py_ssize_t len, ...);
 PyObject *CPyList_GetItem(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemUnsafe(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index);
@@ -384,7 +385,7 @@ static inline char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {
 // Str operations
 
 
-PyObject *CPyStr_Build(int len, ...);
+PyObject *CPyStr_Build(Py_ssize_t len, ...);
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
 PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split);
 PyObject *CPyStr_Replace(PyObject *str, PyObject *old_substr, PyObject *new_substr, CPyTagged max_replace);

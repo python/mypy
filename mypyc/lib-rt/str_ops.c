@@ -43,18 +43,90 @@ PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
     }
 }
 
-PyObject *CPyStr_Build(int len, ...) {
-    int i;
+// A simplification of _PyUnicode_JoinArray() from CPython 3.9.6
+PyObject *CPyStr_Build(Py_ssize_t len, ...) {
+    Py_ssize_t i;
     va_list args;
-    va_start(args, len);
 
-    PyObject *res = PyUnicode_FromObject(va_arg(args, PyObject *));
-    for (i = 1; i < len; i++) {
-        PyObject *str = va_arg(args, PyObject *);
-        PyUnicode_Append(&res, str);
+    // Calculate the total amount of space and check
+    // whether all components have the same kind.
+    Py_ssize_t sz = 0;
+    Py_UCS4 maxchar = 0;
+    int use_memcpy = 1; // Use memcpy by default
+    PyObject *last_obj = NULL;
+
+    va_start(args, len);
+    for (i = 0; i < len; i++) {
+        PyObject *item = va_arg(args, PyObject *);
+        if (!PyUnicode_Check(item)) {
+            PyErr_Format(PyExc_TypeError,
+                         "sequence item %zd: expected str instance,"
+                         " %.80s found",
+                         i, Py_TYPE(item)->tp_name);
+            return NULL;
+        }
+        if (PyUnicode_READY(item) == -1)
+            return NULL;
+
+        size_t add_sz = PyUnicode_GET_LENGTH(item);
+        Py_UCS4 item_maxchar = PyUnicode_MAX_CHAR_VALUE(item);
+        maxchar = Py_MAX(maxchar, item_maxchar);
+
+        // Using size_t to avoid overflow during arithmetic calculation
+        if (add_sz > (size_t)(PY_SSIZE_T_MAX - sz)) {
+            PyErr_SetString(PyExc_OverflowError,
+                            "join() result is too long for a Python string");
+            return NULL;
+        }
+        sz += add_sz;
+
+        // If these strings have different kind, we would call
+        // _PyUnicode_FastCopyCharacters() in the following part.
+        if (use_memcpy && last_obj != NULL) {
+            if (PyUnicode_KIND(last_obj) != PyUnicode_KIND(item))
+                use_memcpy = 0;
+        }
+        last_obj = item;
+    }
+    va_end(args);
+
+    // Construct the string
+    PyObject *res = PyUnicode_New(sz, maxchar);
+    if (res == NULL)
+        return NULL;
+
+    if (use_memcpy) {
+        unsigned char *res_data = PyUnicode_1BYTE_DATA(res);
+        unsigned int kind = PyUnicode_KIND(res);
+
+        va_start(args, len);
+        for (i = 0; i < len; ++i) {
+            PyObject *item = va_arg(args, PyObject *);
+            Py_ssize_t itemlen = PyUnicode_GET_LENGTH(item);
+            if (itemlen != 0) {
+                memcpy(res_data, PyUnicode_DATA(item), kind * itemlen);
+                res_data += kind * itemlen;
+            }
+        }
+        va_end(args);
+        assert(res_data == PyUnicode_1BYTE_DATA(res) + kind * PyUnicode_GET_LENGTH(res));
+    } else {
+        Py_ssize_t res_offset = 0;
+
+        va_start(args, len);
+        for (i = 0; i < len; ++i) {
+            PyObject *item = va_arg(args, PyObject *);
+            Py_ssize_t itemlen = PyUnicode_GET_LENGTH(item);
+            if (itemlen != 0) {
+                _PyUnicode_FastCopyCharacters(res, res_offset, item, 0, itemlen);
+                res_offset += itemlen;
+            }
+        }
+        va_end(args);
+        assert(res_offset == PyUnicode_GET_LENGTH(res));
     }
 
-    va_end(args);
+    assert(_PyUnicode_CheckConsistency(res, 1));
     return res;
 }
 

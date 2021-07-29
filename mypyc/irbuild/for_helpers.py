@@ -498,7 +498,7 @@ class ForIterable(ForGenerator):
 
     def gen_cleanup(self) -> None:
         # We set the branch to go here if the conditional evaluates to true. If
-        # an exception was raised during the loop, then err_reg wil be set to
+        # an exception was raised during the loop, then err_reg will be set to
         # True. If no_err_occurred_op returns False, then the exception will be
         # propagated using the ERR_FALSE flag.
         self.builder.call_c(no_err_occurred_op, [], self.line)

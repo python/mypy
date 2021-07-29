@@ -1076,3 +1076,16 @@ try:
 # should fail with AssertionError due to `assert False` in other function
 except AssertionError:
     pass
+
+[case testRepeatedUnderscoreFunctions]
+def _(arg): pass
+def _(arg): pass
+
+[case testUnderscoreFunctionsInMethods]
+
+class A:
+    def _(arg): pass
+    def _(arg): pass
+class B(A):
+    def _(arg): pass
+    def _(arg): pass

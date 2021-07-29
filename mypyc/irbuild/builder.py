@@ -11,6 +11,7 @@ example, expressions are transformed in mypyc.irbuild.expression and
 functions are transformed in mypyc.irbuild.function.
 """
 
+from mypyc.irbuild.prepare import RegisterImplInfo
 from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any
 from typing_extensions import overload
 from mypy.backports import OrderedDict
@@ -19,7 +20,8 @@ from mypy.build import Graph
 from mypy.nodes import (
     MypyFile, SymbolNode, Statement, OpExpr, IntExpr, NameExpr, LDEF, Var, UnaryExpr,
     CallExpr, IndexExpr, Expression, MemberExpr, RefExpr, Lvalue, TupleExpr,
-    TypeInfo, Decorator, OverloadedFuncDef, StarExpr, ComparisonExpr, GDEF, ARG_POS, ARG_NAMED
+    TypeInfo, Decorator, OverloadedFuncDef, StarExpr, ComparisonExpr, GDEF,
+    ArgKind, ARG_POS, ARG_NAMED, FuncDef,
 )
 from mypy.types import (
     Type, Instance, TupleType, UninhabitedType, get_proper_type
@@ -84,7 +86,8 @@ class IRBuilder:
                  mapper: Mapper,
                  pbv: PreBuildVisitor,
                  visitor: IRVisitor,
-                 options: CompilerOptions) -> None:
+                 options: CompilerOptions,
+                 singledispatch_impls: Dict[FuncDef, List[RegisterImplInfo]]) -> None:
         self.builder = LowLevelIRBuilder(current_module, mapper, options)
         self.builders = [self.builder]
         self.symtables: List[OrderedDict[SymbolNode, SymbolTarget]] = [OrderedDict()]
@@ -115,6 +118,7 @@ class IRBuilder:
         self.encapsulating_funcs = pbv.encapsulating_funcs
         self.nested_fitems = pbv.nested_funcs.keys()
         self.fdefs_to_decorators = pbv.funcs_to_decorators
+        self.singledispatch_impls = singledispatch_impls
 
         self.visitor = visitor
 
@@ -237,7 +241,7 @@ class IRBuilder:
                 function: Value,
                 arg_values: List[Value],
                 line: int,
-                arg_kinds: Optional[List[int]] = None,
+                arg_kinds: Optional[List[ArgKind]] = None,
                 arg_names: Optional[Sequence[Optional[str]]] = None) -> Value:
         return self.builder.py_call(function, arg_values, line, arg_kinds, arg_names)
 
@@ -253,7 +257,7 @@ class IRBuilder:
                         arg_values: List[Value],
                         result_type: Optional[RType],
                         line: int,
-                        arg_kinds: Optional[List[int]] = None,
+                        arg_kinds: Optional[List[ArgKind]] = None,
                         arg_names: Optional[List[Optional[str]]] = None) -> Value:
         return self.builder.gen_method_call(
             base, name, arg_values, result_type, line, arg_kinds, arg_names
@@ -1012,7 +1016,7 @@ class IRBuilder:
             self_type = RInstance(class_ir)
         self.add_argument(SELF_NAME, self_type)
 
-    def add_argument(self, var: Union[str, Var], typ: RType, kind: int = ARG_POS) -> Register:
+    def add_argument(self, var: Union[str, Var], typ: RType, kind: ArgKind = ARG_POS) -> Register:
         """Declare an argument in the current function.
 
         You should use this instead of directly calling add_local() in new code.

@@ -721,3 +721,7 @@ def is_stub_package_file(file: str) -> bool:
         return False
     return any(component.endswith('-stubs')
                for component in os.path.abspath(file).split(os.sep))
+
+
+def unnamed_function(name: Optional[str]) -> bool:
+    return name is not None and name == "_"

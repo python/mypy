@@ -1003,22 +1003,36 @@ class Parent:
     @overload
     def f(self, x: B) -> B: ...
 class Child1(Parent):
-    @overload                           # E: Signature of "f" incompatible with supertype "Parent" \
-                                        # N: Overload variants must be defined in the same order as they are in "Parent"
+    @overload                           # Fail
     def f(self, x: A) -> B: ...
     @overload
     def f(self, x: int) -> int: ...
 class Child2(Parent):
-    @overload                           # E: Signature of "f" incompatible with supertype "Parent" \
-                                        # N: Overload variants must be defined in the same order as they are in "Parent"
+    @overload                           # Fail
     def f(self, x: B) -> C: ...
     @overload
     def f(self, x: int) -> int: ...
 class Child3(Parent):
-    @overload                           # E: Signature of "f" incompatible with supertype "Parent"
+    @overload                           # Fail
     def f(self, x: B) -> A: ...
     @overload
     def f(self, x: int) -> int: ...
+[out]
+tmp/foo.pyi:13: error: Signature of "f" incompatible with supertype "Parent"
+tmp/foo.pyi:13: note: Overload variants must be defined in the same order as they are in "Parent"
+tmp/foo.pyi:18: error: Signature of "f" incompatible with supertype "Parent"
+tmp/foo.pyi:18: note: Overload variants must be defined in the same order as they are in "Parent"
+tmp/foo.pyi:23: error: Signature of "f" incompatible with supertype "Parent"
+tmp/foo.pyi:23: note:      Superclass:
+tmp/foo.pyi:23: note:          @overload
+tmp/foo.pyi:23: note:          def f(self, x: int) -> int
+tmp/foo.pyi:23: note:          @overload
+tmp/foo.pyi:23: note:          def f(self, x: B) -> B
+tmp/foo.pyi:23: note:      Subclass:
+tmp/foo.pyi:23: note:          @overload
+tmp/foo.pyi:23: note:          def f(self, x: B) -> A
+tmp/foo.pyi:23: note:          @overload
+tmp/foo.pyi:23: note:          def f(self, x: int) -> int
 
 [case testOverrideOverloadedMethodWithMoreGeneralArgumentTypes]
 from foo import *
@@ -1054,12 +1068,12 @@ class A:
     @overload
     def f(self, x: str) -> str: return ''
 class B(A):
-    @overload
+    @overload  # Fail
     def f(self, x: IntSub) -> int: return 0
     @overload
     def f(self, x: str) -> str: return ''
 class C(A):
-    @overload
+    @overload  # Fail
     def f(self, x: int) -> int: return 0
     @overload
     def f(self, x: StrSub) -> str: return ''
@@ -1070,7 +1084,27 @@ class D(A):
     def f(self, x: str) -> str: return ''
 [out]
 tmp/foo.pyi:12: error: Signature of "f" incompatible with supertype "A"
+tmp/foo.pyi:12: note:      Superclass:
+tmp/foo.pyi:12: note:          @overload
+tmp/foo.pyi:12: note:          def f(self, x: int) -> int
+tmp/foo.pyi:12: note:          @overload
+tmp/foo.pyi:12: note:          def f(self, x: str) -> str
+tmp/foo.pyi:12: note:      Subclass:
+tmp/foo.pyi:12: note:          @overload
+tmp/foo.pyi:12: note:          def f(self, x: IntSub) -> int
+tmp/foo.pyi:12: note:          @overload
+tmp/foo.pyi:12: note:          def f(self, x: str) -> str
 tmp/foo.pyi:17: error: Signature of "f" incompatible with supertype "A"
+tmp/foo.pyi:17: note:      Superclass:
+tmp/foo.pyi:17: note:          @overload
+tmp/foo.pyi:17: note:          def f(self, x: int) -> int
+tmp/foo.pyi:17: note:          @overload
+tmp/foo.pyi:17: note:          def f(self, x: str) -> str
+tmp/foo.pyi:17: note:      Subclass:
+tmp/foo.pyi:17: note:          @overload
+tmp/foo.pyi:17: note:          def f(self, x: int) -> int
+tmp/foo.pyi:17: note:          @overload
+tmp/foo.pyi:17: note:          def f(self, x: StrSub) -> str
 
 [case testOverloadingAndDucktypeCompatibility]
 from foo import *
@@ -1983,14 +2017,14 @@ class ParentWithTypedImpl:
     def f(self, arg: Union[int, str]) -> Union[int, str]: ...
 
 class Child1(ParentWithTypedImpl):
-    @overload # E: Signature of "f" incompatible with supertype "ParentWithTypedImpl"
+    @overload  # Fail
     def f(self, arg: int) -> int: ...
     @overload
     def f(self, arg: StrSub) -> str: ...
     def f(self, arg: Union[int, StrSub]) -> Union[int, str]: ...
 
 class Child2(ParentWithTypedImpl):
-    @overload # E: Signature of "f" incompatible with supertype "ParentWithTypedImpl"
+    @overload  # Fail
     def f(self, arg: int) -> int: ...
     @overload
     def f(self, arg: StrSub) -> str: ...
@@ -2004,20 +2038,65 @@ class ParentWithDynamicImpl:
     def f(self, arg: Any) -> Any: ...
 
 class Child3(ParentWithDynamicImpl):
-    @overload # E: Signature of "f" incompatible with supertype "ParentWithDynamicImpl"
+    @overload  # Fail
     def f(self, arg: int) -> int: ...
     @overload
     def f(self, arg: StrSub) -> str: ...
     def f(self, arg: Union[int, StrSub]) -> Union[int, str]: ...
 
 class Child4(ParentWithDynamicImpl):
-    @overload # E: Signature of "f" incompatible with supertype "ParentWithDynamicImpl"
+    @overload  # Fail
     def f(self, arg: int) -> int: ...
     @overload
     def f(self, arg: StrSub) -> str: ...
     def f(self, arg: Any) -> Any: ...
 
 [builtins fixtures/tuple.pyi]
+[out]
+main:13: error: Signature of "f" incompatible with supertype "ParentWithTypedImpl"
+main:13: note:      Superclass:
+main:13: note:          @overload
+main:13: note:          def f(self, arg: int) -> int
+main:13: note:          @overload
+main:13: note:          def f(self, arg: str) -> str
+main:13: note:      Subclass:
+main:13: note:          @overload
+main:13: note:          def f(self, arg: int) -> int
+main:13: note:          @overload
+main:13: note:          def f(self, arg: StrSub) -> str
+main:20: error: Signature of "f" incompatible with supertype "ParentWithTypedImpl"
+main:20: note:      Superclass:
+main:20: note:          @overload
+main:20: note:          def f(self, arg: int) -> int
+main:20: note:          @overload
+main:20: note:          def f(self, arg: str) -> str
+main:20: note:      Subclass:
+main:20: note:          @overload
+main:20: note:          def f(self, arg: int) -> int
+main:20: note:          @overload
+main:20: note:          def f(self, arg: StrSub) -> str
+main:34: error: Signature of "f" incompatible with supertype "ParentWithDynamicImpl"
+main:34: note:      Superclass:
+main:34: note:          @overload
+main:34: note:          def f(self, arg: int) -> int
+main:34: note:          @overload
+main:34: note:          def f(self, arg: str) -> str
+main:34: note:      Subclass:
+main:34: note:          @overload
+main:34: note:          def f(self, arg: int) -> int
+main:34: note:          @overload
+main:34: note:          def f(self, arg: StrSub) -> str
+main:41: error: Signature of "f" incompatible with supertype "ParentWithDynamicImpl"
+main:41: note:      Superclass:
+main:41: note:          @overload
+main:41: note:          def f(self, arg: int) -> int
+main:41: note:          @overload
+main:41: note:          def f(self, arg: str) -> str
+main:41: note:      Subclass:
+main:41: note:          @overload
+main:41: note:          def f(self, arg: int) -> int
+main:41: note:          @overload
+main:41: note:          def f(self, arg: StrSub) -> str
 
 [case testOverloadAnyIsConsideredValidReturnSubtype]
 from typing import Any, overload, Optional
@@ -4060,7 +4139,7 @@ class Parent:
     def foo(cls, x): pass
 
 class BadChild(Parent):
-    @overload  # E: Signature of "foo" incompatible with supertype "Parent"
+    @overload                           # Fail
     @classmethod
     def foo(cls, x: C) -> int: ...
 
@@ -4084,6 +4163,22 @@ class GoodChild(Parent):
     def foo(cls, x): pass
 
 [builtins fixtures/classmethod.pyi]
+[out]
+main:20: error: Signature of "foo" incompatible with supertype "Parent"
+main:20: note:      Superclass:
+main:20: note:          @overload
+main:20: note:          @classmethod
+main:20: note:          def foo(cls, x: B) -> int
+main:20: note:          @overload
+main:20: note:          @classmethod
+main:20: note:          def foo(cls, x: str) -> str
+main:20: note:      Subclass:
+main:20: note:          @overload
+main:20: note:          @classmethod
+main:20: note:          def foo(cls, x: C) -> int
+main:20: note:          @overload
+main:20: note:          @classmethod
+main:20: note:          def foo(cls, x: str) -> str
 
 [case testOverloadClassMethodMixingInheritance]
 from typing import overload
@@ -4101,7 +4196,7 @@ class BadParent:
     def foo(cls, x): pass
 
 class BadChild(BadParent):
-    @overload                           # E: Signature of "foo" incompatible with supertype "BadParent"
+    @overload                           # Fail
     def foo(cls, x: int) -> int: ...
 
     @overload
@@ -4131,6 +4226,20 @@ class GoodChild(GoodParent):
     def foo(cls, x): pass
 
 [builtins fixtures/classmethod.pyi]
+[out]
+main:16: error: Signature of "foo" incompatible with supertype "BadParent"
+main:16: note:      Superclass:
+main:16: note:          @overload
+main:16: note:          @classmethod
+main:16: note:          def foo(cls, x: int) -> int
+main:16: note:          @overload
+main:16: note:          @classmethod
+main:16: note:          def foo(cls, x: str) -> str
+main:16: note:      Subclass:
+main:16: note:          @overload
+main:16: note:          def foo(cls, x: int) -> int
+main:16: note:          @overload
+main:16: note:          def foo(cls, x: str) -> str
 
 [case testOverloadClassMethodImplementation]
 from typing import overload, Union
@@ -4268,7 +4377,7 @@ class Parent:
     def foo(x): pass
 
 class BadChild(Parent):
-    @overload  # E: Signature of "foo" incompatible with supertype "Parent"
+    @overload                       # Fail
     @staticmethod
     def foo(x: C) -> int: ...
 
@@ -4292,6 +4401,22 @@ class GoodChild(Parent):
     def foo(x): pass
 
 [builtins fixtures/staticmethod.pyi]
+[out]
+main:20: error: Signature of "foo" incompatible with supertype "Parent"
+main:20: note:      Superclass:
+main:20: note:          @overload
+main:20: note:          @staticmethod
+main:20: note:          def foo(x: B) -> int
+main:20: note:          @overload
+main:20: note:          @staticmethod
+main:20: note:          def foo(x: str) -> str
+main:20: note:      Subclass:
+main:20: note:          @overload
+main:20: note:          @staticmethod
+main:20: note:          def foo(x: C) -> int
+main:20: note:          @overload
+main:20: note:          @staticmethod
+main:20: note:          def foo(x: str) -> str
 
 [case testOverloadStaticMethodMixingInheritance]
 from typing import overload
@@ -4309,7 +4434,7 @@ class BadParent:
     def foo(x): pass
 
 class BadChild(BadParent):
-    @overload                            # E: Signature of "foo" incompatible with supertype "BadParent"
+    @overload                            # Fail
     def foo(self, x: int) -> int: ...
 
     @overload
@@ -4339,6 +4464,20 @@ class GoodChild(GoodParent):
     def foo(x): pass
 
 [builtins fixtures/staticmethod.pyi]
+[out]
+main:16: error: Signature of "foo" incompatible with supertype "BadParent"
+main:16: note:      Superclass:
+main:16: note:          @overload
+main:16: note:          @staticmethod
+main:16: note:          def foo(x: int) -> int
+main:16: note:          @overload
+main:16: note:          @staticmethod
+main:16: note:          def foo(x: str) -> str
+main:16: note:      Subclass:
+main:16: note:          @overload
+main:16: note:          def foo(self, x: int) -> int
+main:16: note:          @overload
+main:16: note:          def foo(self, x: str) -> str
 
 [case testOverloadStaticMethodImplementation]
 from typing import overload, Union
@@ -4624,8 +4763,7 @@ class A:
 
 # This is unsafe override because of the problem below
 class B(A):
-     @overload  # E: Signature of "__add__" incompatible with supertype "A" \
-                # N: Overloaded operator methods can't have wider argument types in overrides
+     @overload                                  # Fail
      def __add__(self, x : 'Other') -> 'B' : ...
      @overload
      def __add__(self, x : 'A') -> 'A': ...
@@ -4645,10 +4783,20 @@ class Other:
             return NotImplemented
 
 actually_b: A = B()
-reveal_type(actually_b + Other())  # N: Revealed type is "__main__.Other"
+reveal_type(actually_b + Other())               # Note
 # Runtime type is B, this is why we report the error on overriding.
 [builtins fixtures/isinstance.pyi]
 [out]
+main:12: error: Signature of "__add__" incompatible with supertype "A"
+main:12: note:      Superclass:
+main:12: note:          def __add__(self, A) -> A
+main:12: note:      Subclass:
+main:12: note:          @overload
+main:12: note:          def __add__(self, Other) -> B
+main:12: note:          @overload
+main:12: note:          def __add__(self, A) -> A
+main:12: note: Overloaded operator methods cannot have wider argument types in overrides
+main:32: note: Revealed type is "__main__.Other"
 
 [case testOverloadErrorMessageManyMatches]
 from typing import overload

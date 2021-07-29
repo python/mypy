@@ -37,7 +37,7 @@ from mypy.types import (
 )
 from mypy.build import State, Graph
 from mypy.nodes import (
-    ARG_STAR, ARG_NAMED, ARG_STAR2, ARG_NAMED_OPT, FuncDef, MypyFile, SymbolTable,
+    ArgKind, ARG_STAR, ARG_STAR2, FuncDef, MypyFile, SymbolTable,
     Decorator, RefExpr,
     SymbolNode, TypeInfo, Expression, ReturnStmt, CallExpr,
     reverse_builtin_aliases,
@@ -70,7 +70,7 @@ Callsite = NamedTuple(
     'Callsite',
     [('path', str),
      ('line', int),
-     ('arg_kinds', List[List[int]]),
+     ('arg_kinds', List[List[ArgKind]]),
      ('callee_arg_names', List[Optional[str]]),
      ('arg_names', List[List[Optional[str]]]),
      ('arg_types', List[List[Type]])])
@@ -468,7 +468,7 @@ class SuggestionEngine:
         return self.pyannotate_signature(mod, is_method, best)
 
     def format_args(self,
-                    arg_kinds: List[List[int]],
+                    arg_kinds: List[List[ArgKind]],
                     arg_names: List[List[Optional[str]]],
                     arg_types: List[List[Type]]) -> str:
         args: List[str] = []
@@ -479,7 +479,7 @@ class SuggestionEngine:
                     arg = '*' + arg
                 elif kind == ARG_STAR2:
                     arg = '**' + arg
-                elif kind in (ARG_NAMED, ARG_NAMED_OPT):
+                elif kind.is_named():
                     if name:
                         arg = "%s=%s" % (name, arg)
             args.append(arg)
@@ -763,8 +763,7 @@ def any_score_callable(t: CallableType, is_method: bool, ignore_return: bool) ->
 
 def is_tricky_callable(t: CallableType) -> bool:
     """Is t a callable that we need to put a ... in for syntax reasons?"""
-    return t.is_ellipsis_args or any(
-        k in (ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT) for k in t.arg_kinds)
+    return t.is_ellipsis_args or any(k.is_star() or k.is_named() for k in t.arg_kinds)
 
 
 class TypeFormatter(TypeStrVisitor):
