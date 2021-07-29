@@ -3,46 +3,37 @@
 import re
 from typing import List, Tuple
 
+from mypy.checkstrformat import (
+    FORMAT_RE, ConversionSpecifier
+)
 from mypyc.ir.ops import Value, Integer
 from mypyc.ir.rtypes import c_pyssize_t_rprimitive
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.primitives.str_ops import str_build_op
 
-# printf-style String Formatting:
-# https://docs.python.org/3/library/stdtypes.html#old-string-formatting
-printf_style_pattern = re.compile(r"""
-    (
-    %                                # Start sign
-    (?:\((?P<key>[^)]*)\))?          # Optional: Mapping key
-    (?P<flag>[-+#0 ]+)?              # Optional: Conversion flags
-    (?P<width>\d+|\*)?               # Optional: Minimum field width
-    (?:\.(?P<precision>\d+|\*))?     # Optional: Precision
-    [hlL]?                           # Optional: Length modifier, Ignored
-    (?P<type>[diouxXeEfFgGcrsa])     # Conversion type
-    | %%)
-    """, re.VERBOSE)
 
-
-def tokenizer_printf_style(format_str: str) -> Tuple[List[str], List[str]]:
+def tokenizer_printf_style(format_str: str) -> Tuple[List[str], List[ConversionSpecifier]]:
     """Tokenize a printf-style format string using regex.
 
     Return:
         A list of string literals and a list of conversion operations
     """
-    literals = []
-    format_ops = []
+    literals: List[str] = []
+    specifiers: List[ConversionSpecifier] = []
     last_end = 0
 
-    for m in re.finditer(printf_style_pattern, format_str):
+    for m in re.finditer(FORMAT_RE, format_str):
+        whole_seq, parens_key, key, flags, width, precision, conversion_type = m.groups()
+        specifiers.append(ConversionSpecifier(conversion_type, key, flags, width, precision,
+                                              whole_seq=whole_seq))
+
         cur_start = m.start(1)
-        format_tmp = m.group(1)
         literals.append(format_str[last_end:cur_start])
-        format_ops.append(format_tmp)
-        last_end = cur_start + len(format_tmp)
+        last_end = cur_start + len(whole_seq)
 
     literals.append(format_str[last_end:])
 
-    return literals, format_ops
+    return literals, specifiers
 
 
 def join_formatted_strings(builder: IRBuilder, literals: List[str],
