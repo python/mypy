@@ -833,11 +833,21 @@ def generate_singledispatch_dispatch_function(
     current_func_decl = builder.mapper.func_to_decl[fitem]
     arg_info = get_args(builder, current_func_decl.sig.args, line)
 
-    def gen_func_call_and_return(func_name: str, fullname: Optional[str] = None) -> None:
-        func = load_func(builder, func_name, fullname, line)
-        ret_val = builder.builder.py_call(
-            func, arg_info.args, line, arg_info.arg_kinds, arg_info.arg_names
-        )
+    def gen_func_call_and_return(
+        func_name: str,
+        fdef: FuncDef,
+        fullname: Optional[str] = None
+    ) -> None:
+        if is_decorated(builder, fdef):
+            func = load_func(builder, func_name, fullname, line)
+            ret_val = builder.builder.py_call(
+                func, arg_info.args, line, arg_info.arg_kinds, arg_info.arg_names
+            )
+        else:
+            func_decl = builder.mapper.func_to_decl[fdef]
+            ret_val = builder.builder.call(
+                func_decl, arg_info.args, arg_info.arg_kinds, arg_info.arg_names, line
+            )
         coerced = builder.coerce(ret_val, current_func_decl.sig.ret_type, line)
         builder.nonlocal_control[-1].gen_return(builder, coerced, line)
 
@@ -845,9 +855,9 @@ def generate_singledispatch_dispatch_function(
     # We're doing this in a separate pass over the implementations because that avoids the
     # complexity and code size implications of generating this import before every call to a
     # registered implementation that might need this imported
-    # TODO: avoid adding imports if we use native calls for all of the registered implementations
-    # in a module (once we add support for using native calls for registered implementations)
     for _, impl in impls:
+        if not is_decorated(builder, impl):
+            continue
         module_name = impl.fullname.rsplit('.')[0]
         if module_name not in builder.imports:
             # We need to generate an import here because the module needs to be imported before we
@@ -868,7 +878,7 @@ def generate_singledispatch_dispatch_function(
         # The shortname of a function is just '{class}.{func_name}', and we don't support
         # singledispatchmethod yet, so that is always the same as the function name
         name = short_id_from_name(impl.name, impl.name, impl.line)
-        gen_func_call_and_return(name, fullname=impl.fullname)
+        gen_func_call_and_return(name, impl, fullname=impl.fullname)
         builder.activate_block(next_impl)
 
     # We don't pass fullname here because getting the fullname of the main generated singledispatch
@@ -876,7 +886,7 @@ def generate_singledispatch_dispatch_function(
     # we load the function from another module instead of the globals dict if it's defined in
     # another module, which will never be true for the main singledispatch function (it's always
     # generated in the same module as the dispatch function)
-    gen_func_call_and_return(main_singledispatch_function_name)
+    gen_func_call_and_return(main_singledispatch_function_name, fitem)
 
 
 def gen_dispatch_func_ir(
