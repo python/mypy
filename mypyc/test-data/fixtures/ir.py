@@ -106,6 +106,14 @@ class bytes:
     def __getitem__(self, i: int) -> int: pass
     def join(self, x: Iterable[object]) -> bytes: pass
 
+class bytearray:
+    @overload
+    def __init__(self) -> None: pass
+    @overload
+    def __init__(self, x: object) -> None: pass
+    @overload
+    def __init__(self, string: str, encoding: str, err: str = ...) -> None: pass
+
 class bool(int):
     def __init__(self, o: object = ...) -> None: ...
     @overload
