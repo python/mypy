@@ -1,7 +1,7 @@
 from mypy.messages import format_type
 from mypy.plugins.common import add_method_to_class
 from mypy.nodes import (
-    ARG_POS, Argument, Block, ClassDef, SymbolTable, TypeInfo, Var, ARG_STAR, ARG_OPT, Context
+    ARG_POS, Argument, Block, ClassDef, SymbolTable, TypeInfo, Var, Context
 )
 from mypy.subtypes import is_subtype
 from mypy.types import (
@@ -29,8 +29,10 @@ SINGLEDISPATCH_REGISTER_METHOD = '{}.register'.format(SINGLEDISPATCH_TYPE)  # ty
 SINGLEDISPATCH_CALLABLE_CALL_METHOD = '{}.__call__'.format(SINGLEDISPATCH_TYPE)  # type: Final
 
 
-def get_singledispatch_info(typ: Instance) -> SingledispatchTypeVars:
-    return SingledispatchTypeVars(*typ.args)  # type: ignore
+def get_singledispatch_info(typ: Instance) -> Optional[SingledispatchTypeVars]:
+    if len(typ.args) == 2:
+        return SingledispatchTypeVars(*typ.args)  # type: ignore
+    return None
 
 
 T = TypeVar('T')
@@ -98,7 +100,7 @@ def create_singledispatch_function_callback(ctx: FunctionContext) -> Type:
             )
             return ctx.default_return_type
 
-        elif func_type.arg_kinds[0] not in (ARG_POS, ARG_OPT, ARG_STAR):
+        elif not func_type.arg_kinds[0].is_positional(star=True):
             fail(
                 ctx,
                 'First argument to singledispatch function must be a positional argument',
@@ -157,6 +159,10 @@ def register_function(ctx: PluginContext, singledispatch_obj: Instance, func: Ty
     if not isinstance(func, CallableType):
         return
     metadata = get_singledispatch_info(singledispatch_obj)
+    if metadata is None:
+        # if we never added the fallback to the type variables, we already reported an error, so
+        # just don't do anything here
+        return
     dispatch_type = get_dispatch_type(func, register_arg)
     if dispatch_type is None:
         # TODO: report an error here that singledispatch requires at least one argument
@@ -209,4 +215,6 @@ def call_singledispatch_function_callback(ctx: MethodSigContext) -> FunctionLike
     if not isinstance(ctx.type, Instance):
         return ctx.default_signature
     metadata = get_singledispatch_info(ctx.type)
+    if metadata is None:
+        return ctx.default_signature
     return metadata.fallback

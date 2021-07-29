@@ -14,7 +14,7 @@ import mypy.subtypes
 import mypy.sametypes
 import mypy.typeops
 from mypy.erasetype import erase_typevars
-from mypy.nodes import COVARIANT, CONTRAVARIANT
+from mypy.nodes import COVARIANT, CONTRAVARIANT, ArgKind
 from mypy.argmap import ArgTypeExpander
 from mypy.typestate import TypeState
 
@@ -45,7 +45,7 @@ class Constraint:
 
 
 def infer_constraints_for_callable(
-        callee: CallableType, arg_types: Sequence[Optional[Type]], arg_kinds: List[int],
+        callee: CallableType, arg_types: Sequence[Optional[Type]], arg_kinds: List[ArgKind],
         formal_to_actual: List[List[int]]) -> List[Constraint]:
     """Infer type variable constraints for a callable and actual arguments.
 
@@ -216,6 +216,16 @@ def any_constraints(options: List[Optional[List[Constraint]]], eager: bool) -> L
         # TODO: More generally, if a given (variable, direction) pair appears in
         #       every option, combine the bounds with meet/join.
         return valid_options[0]
+    elif len(valid_options) > 1:
+        # Drop constraints that only refer to "Any" and try again. This way Any types
+        # in unions don't interfere with type inference.
+        narrowed_options = [option
+                            for option in valid_options
+                            if not (option and
+                                    all(isinstance(get_proper_type(c.target), AnyType)
+                                        for c in option))]
+        if len(narrowed_options) < len(valid_options):
+            return any_constraints([option for option in narrowed_options], eager)
 
     # Otherwise, there are either no valid options or multiple, inconsistent valid
     # options. Give up and deduce nothing.

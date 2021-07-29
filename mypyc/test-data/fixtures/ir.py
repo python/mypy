@@ -96,10 +96,14 @@ class complex:
     def __neg__(self) -> complex: pass
 
 class bytes:
+    @overload
+    def __init__(self) -> None: pass
+    @overload
     def __init__(self, x: object) -> None: pass
-    def __add__(self, x: object) -> bytes: pass
-    def __eq__(self, x:object) -> bool:pass
+    def __add__(self, x: bytes) -> bytes: pass
+    def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
+    def __getitem__(self, i: int) -> int: pass
     def join(self, x: Iterable[object]) -> bytes: pass
 
 class bool(int):

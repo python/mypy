@@ -1,6 +1,7 @@
 """Abstract syntax tree node classes (i.e. parse tree)."""
 
 import os
+from enum import Enum
 from abc import abstractmethod
 from mypy.backports import OrderedDict
 from collections import defaultdict
@@ -560,18 +561,20 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
 class Argument(Node):
     """A single argument in a FuncItem."""
 
-    __slots__ = ('variable', 'type_annotation', 'initializer', 'kind')
+    __slots__ = ('variable', 'type_annotation', 'initializer', 'kind', 'pos_only')
 
     def __init__(self,
                  variable: 'Var',
                  type_annotation: 'Optional[mypy.types.Type]',
                  initializer: Optional[Expression],
-                 kind: int) -> None:
+                 kind: 'ArgKind',
+                 pos_only: bool = False) -> None:
         super().__init__()
         self.variable = variable
         self.type_annotation = type_annotation
         self.initializer = initializer
         self.kind = kind  # must be an ARG_* constant
+        self.pos_only = pos_only
 
     def set_line(self,
                  target: Union[Context, int],
@@ -618,17 +621,18 @@ class FuncItem(FuncBase):
                  typ: 'Optional[mypy.types.FunctionLike]' = None) -> None:
         super().__init__()
         self.arguments = arguments
-        self.arg_names = [arg.variable.name for arg in self.arguments]
-        self.arg_kinds: List[int] = [arg.kind for arg in self.arguments]
-        self.max_pos = self.arg_kinds.count(ARG_POS) + self.arg_kinds.count(ARG_OPT)
-        self.body = body
+        self.arg_names = [None if arg.pos_only else arg.variable.name for arg in arguments]
+        self.arg_kinds: List[ArgKind] = [arg.kind for arg in self.arguments]
+        self.max_pos: int = (
+            self.arg_kinds.count(ARG_POS) + self.arg_kinds.count(ARG_OPT))
+        self.body: 'Block' = body
         self.type = typ
         self.unanalyzed_type = typ
-        self.is_overload = False
-        self.is_generator = False
-        self.is_coroutine = False
-        self.is_async_generator = False
-        self.is_awaitable_coroutine = False
+        self.is_overload: bool = False
+        self.is_generator: bool = False
+        self.is_coroutine: bool = False
+        self.is_async_generator: bool = False
+        self.is_awaitable_coroutine: bool = False
         self.expanded: List[FuncItem] = []
 
         self.min_args = 0
@@ -701,7 +705,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
                 'name': self._name,
                 'fullname': self._fullname,
                 'arg_names': self.arg_names,
-                'arg_kinds': self.arg_kinds,
+                'arg_kinds': [int(x.value) for x in self.arg_kinds],
                 'type': None if self.type is None else self.type.serialize(),
                 'flags': get_flags(self, FUNCDEF_FLAGS),
                 # TODO: Do we need expanded, original_def?
@@ -721,7 +725,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         set_flags(ret, data['flags'])
         # NOTE: ret.info is set in the fixup phase.
         ret.arg_names = data['arg_names']
-        ret.arg_kinds = data['arg_kinds']
+        ret.arg_kinds = [ArgKind(x) for x in data['arg_kinds']]
         # Leave these uninitialized so that future uses will trigger an error
         del ret.arguments
         del ret.max_pos
@@ -1522,18 +1526,50 @@ class MemberExpr(RefExpr):
 
 # Kinds of arguments
 
-# Positional argument
-ARG_POS: Final = 0
-# Positional, optional argument (functions only, not calls)
-ARG_OPT: Final = 1
-# *arg argument
-ARG_STAR: Final = 2
-# Keyword argument x=y in call, or keyword-only function arg
-ARG_NAMED: Final = 3
-# **arg argument
-ARG_STAR2: Final = 4
-# In an argument list, keyword-only and also optional
-ARG_NAMED_OPT: Final = 5
+class ArgKind(Enum):
+    # Positional argument
+    ARG_POS = 0
+    # Positional, optional argument (functions only, not calls)
+    ARG_OPT = 1
+    # *arg argument
+    ARG_STAR = 2
+    # Keyword argument x=y in call, or keyword-only function arg
+    ARG_NAMED = 3
+    # **arg argument
+    ARG_STAR2 = 4
+    # In an argument list, keyword-only and also optional
+    ARG_NAMED_OPT = 5
+
+    def is_positional(self, star: bool = False) -> bool:
+        return (
+            self == ARG_POS
+            or self == ARG_OPT
+            or (star and self == ARG_STAR)
+        )
+
+    def is_named(self, star: bool = False) -> bool:
+        return (
+            self == ARG_NAMED
+            or self == ARG_NAMED_OPT
+            or (star and self == ARG_STAR2)
+        )
+
+    def is_required(self) -> bool:
+        return self == ARG_POS or self == ARG_NAMED
+
+    def is_optional(self) -> bool:
+        return self == ARG_OPT or self == ARG_NAMED_OPT
+
+    def is_star(self) -> bool:
+        return self == ARG_STAR or self == ARG_STAR2
+
+
+ARG_POS: Final = ArgKind.ARG_POS
+ARG_OPT: Final = ArgKind.ARG_OPT
+ARG_STAR: Final = ArgKind.ARG_STAR
+ARG_NAMED: Final = ArgKind.ARG_NAMED
+ARG_STAR2: Final = ArgKind.ARG_STAR2
+ARG_NAMED_OPT: Final = ArgKind.ARG_NAMED_OPT
 
 
 class CallExpr(Expression):
@@ -1548,7 +1584,7 @@ class CallExpr(Expression):
     def __init__(self,
                  callee: Expression,
                  args: List[Expression],
-                 arg_kinds: List[int],
+                 arg_kinds: List[ArgKind],
                  arg_names: List[Optional[str]],
                  analyzed: Optional[Expression] = None) -> None:
         super().__init__()
@@ -3113,7 +3149,8 @@ deserialize_map: Final = {
 }
 
 
-def check_arg_kinds(arg_kinds: List[int], nodes: List[T], fail: Callable[[str, T], None]) -> None:
+def check_arg_kinds(
+        arg_kinds: List[ArgKind], nodes: List[T], fail: Callable[[str, T], None]) -> None:
     is_var_arg = False
     is_kw_arg = False
     seen_named = False

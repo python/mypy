@@ -22,7 +22,7 @@ import time
 import types
 
 from typing import (AbstractSet, Any, Dict, Iterable, Iterator, List, Sequence,
-                    Mapping, NamedTuple, Optional, Set, Tuple, Union, Callable, TextIO)
+                    Mapping, NamedTuple, Optional, Set, Tuple, TypeVar, Union, Callable, TextIO)
 from typing_extensions import ClassVar, Final, TYPE_CHECKING
 from mypy_extensions import TypedDict
 
@@ -3234,21 +3234,22 @@ def strongly_connected_components(vertices: AbstractSet[str],
             yield from dfs(v)
 
 
-def topsort(data: Dict[AbstractSet[str],
-                       Set[AbstractSet[str]]]) -> Iterable[Set[AbstractSet[str]]]:
+T = TypeVar("T")
+
+
+def topsort(data: Dict[T, Set[T]]) -> Iterable[Set[T]]:
     """Topological sort.
 
     Args:
-      data: A map from SCCs (represented as frozen sets of strings) to
-            sets of SCCs, its dependencies.  NOTE: This data structure
+      data: A map from vertices to all vertices that it has an edge
+            connecting it to.  NOTE: This data structure
             is modified in place -- for normalization purposes,
             self-dependencies are removed and entries representing
             orphans are added.
 
     Returns:
-      An iterator yielding sets of SCCs that have an equivalent
-      ordering.  NOTE: The algorithm doesn't care about the internal
-      structure of SCCs.
+      An iterator yielding sets of vertices that have an equivalent
+      ordering.
 
     Example:
       Suppose the input has the following structure:

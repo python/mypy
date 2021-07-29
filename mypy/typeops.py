@@ -22,7 +22,6 @@ from mypy.nodes import (
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance, expand_type
-from mypy.sharedparse import argument_elide_name
 
 from mypy.typevars import fill_typevars
 
@@ -564,7 +563,7 @@ def callable_type(fdef: FuncItem, fallback: Instance,
     return CallableType(
         args,
         fdef.arg_kinds,
-        [None if argument_elide_name(n) else n for n in fdef.arg_names],
+        fdef.arg_names,
         ret_type or AnyType(TypeOfAny.unannotated),
         fallback,
         name=fdef.name,

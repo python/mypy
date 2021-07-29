@@ -725,18 +725,28 @@ import typing
 class B:
     def f(self, x, y): pass
 class A(B):
-    def f(self, x: 'A') -> None: # E: Signature of "f" incompatible with supertype "B"
+    def f(self, x: 'A') -> None:  # Fail
         pass
 [out]
+main:5: error: Signature of "f" incompatible with supertype "B"
+main:5: note:      Superclass:
+main:5: note:          def f(x: Any, y: Any) -> Any
+main:5: note:      Subclass:
+main:5: note:          def f(self, x: A) -> None
 
 [case testInvalidOverrideArgumentCountWithImplicitSignature3]
 import typing
 class B:
     def f(self, x: A) -> None: pass
 class A(B):
-    def f(self, x, y) -> None: # E: Signature of "f" incompatible with supertype "B"
+    def f(self, x, y) -> None:  # Fail
         x()
 [out]
+main:5: error: Signature of "f" incompatible with supertype "B"
+main:5: note:      Superclass:
+main:5: note:          def f(self, x: A) -> None
+main:5: note:      Subclass:
+main:5: note:          def f(self, x: Any, y: Any) -> None
 
 [case testInvalidOverrideWithImplicitSignatureAndClassMethod1]
 class B:

@@ -21,7 +21,7 @@ from mypy.types import (
 
 from mypy.nodes import (
     TypeInfo, Context, SymbolTableNode, Var, Expression,
-    get_nongen_builtins, check_arg_names, check_arg_kinds, ARG_POS, ARG_NAMED,
+    get_nongen_builtins, check_arg_names, check_arg_kinds, ArgKind, ARG_POS, ARG_NAMED,
     ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr, TypeVarLikeExpr, ParamSpecExpr,
     TypeAlias, PlaceholderNode, SYMBOL_FUNCBASE_TYPES, Decorator, MypyFile
 )
@@ -755,10 +755,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return ret.accept(self)
 
     def analyze_callable_args(self, arglist: TypeList) -> Optional[Tuple[List[Type],
-                                                                         List[int],
+                                                                         List[ArgKind],
                                                                          List[Optional[str]]]]:
         args: List[Type] = []
-        kinds: List[int] = []
+        kinds: List[ArgKind] = []
         names: List[Optional[str]] = []
         for arg in arglist.items:
             if isinstance(arg, CallableArgument):
@@ -778,7 +778,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     assert found.fullname is not None
                     kind = ARG_KINDS_BY_CONSTRUCTOR[found.fullname]
                     kinds.append(kind)
-                    if arg.name is not None and kind in {ARG_STAR, ARG_STAR2}:
+                    if arg.name is not None and kind.is_star():
                         self.fail("{} arguments should not have names".format(
                             arg.constructor), arg)
                         return None

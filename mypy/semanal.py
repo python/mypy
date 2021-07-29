@@ -67,7 +67,7 @@ from mypy.nodes import (
     SymbolTableNode, ListComprehension, GeneratorExpr,
     LambdaExpr, MDEF, Decorator, SetExpr, TypeVarExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
-    ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, type_aliases,
+    ComparisonExpr, StarExpr, ArgKind, ARG_POS, ARG_NAMED, type_aliases,
     YieldFromExpr, NamedTupleExpr, NonlocalDecl, SymbolNode,
     SetComprehension, DictionaryComprehension, TypeAlias, TypeAliasExpr,
     YieldExpr, ExecStmt, BackquoteExpr, ImportBase, AwaitExpr,
@@ -107,7 +107,9 @@ from mypy.plugin import (
     Plugin, ClassDefContext, SemanticAnalyzerPluginInterface,
     DynamicClassDefContext
 )
-from mypy.util import correct_relative_import, unmangle, module_prefix, is_typeshed_file
+from mypy.util import (
+    correct_relative_import, unmangle, module_prefix, is_typeshed_file, unnamed_function,
+)
 from mypy.scope import Scope
 from mypy.semanal_shared import (
     SemanticAnalyzerInterface, set_callable_name, calculate_tuple_fallback, PRIORITY_FALLBACKS
@@ -165,7 +167,7 @@ class SemanticAnalyzer(NodeVisitor[None],
     globals: SymbolTable
     # Names declared using "global" (separate set for each scope)
     global_decls: List[Set[str]]
-    # Names declated using "nonlocal" (separate set for each scope)
+    # Names declared using "nonlocal" (separate set for each scope)
     nonlocal_decls: List[Set[str]]
     # Local names of function scopes; None for non-function scopes.
     locals: List[Optional[SymbolTable]]
@@ -666,6 +668,12 @@ class SemanticAnalyzer(NodeVisitor[None],
         """
         if isinstance(new, Decorator):
             new = new.func
+        if (
+            isinstance(previous, (FuncDef, Decorator))
+            and unnamed_function(new.name)
+            and unnamed_function(previous.name)
+        ):
+            return True
         if isinstance(previous, (FuncDef, Var, Decorator)) and new.is_conditional:
             new.original_def = previous
             return True
@@ -823,7 +831,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         """Generate error about missing overload implementation (only if needed)."""
         if not self.is_stub_file:
             if self.type and self.type.is_protocol and not self.is_func_scope():
-                # An overloded protocol method doesn't need an implementation.
+                # An overloaded protocol method doesn't need an implementation.
                 for item in defn.items:
                     if isinstance(item, Decorator):
                         item.func.is_abstract = True
@@ -2293,7 +2301,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         """Strip Final[...] if present in an assignment.
 
         This is done to invoke type inference during type checking phase for this
-        assignment. Also, Final[...] desn't affect type in any way -- it is rather an
+        assignment. Also, Final[...] doesn't affect type in any way -- it is rather an
         access qualifier for given `Var`.
 
         Also perform various consistency checks.
@@ -3054,7 +3062,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def process_typevar_parameters(self, args: List[Expression],
                                    names: List[Optional[str]],
-                                   kinds: List[int],
+                                   kinds: List[ArgKind],
                                    num_values: int,
                                    context: Context) -> Optional[Tuple[int, Type]]:
         has_values = (num_values > 0)
@@ -3164,11 +3172,15 @@ class SemanticAnalyzer(NodeVisitor[None],
         # PEP 612 reserves the right to define bound, covariant and contravariant arguments to
         # ParamSpec in a later PEP. If and when that happens, we should do something
         # on the lines of process_typevar_parameters
-        paramspec_var = ParamSpecExpr(
-            name, self.qualified_name(name), self.object_type(), INVARIANT
-        )
-        paramspec_var.line = call.line
-        call.analyzed = paramspec_var
+
+        if not call.analyzed:
+            paramspec_var = ParamSpecExpr(
+                name, self.qualified_name(name), self.object_type(), INVARIANT
+            )
+            paramspec_var.line = call.line
+            call.analyzed = paramspec_var
+        else:
+            assert isinstance(call.analyzed, ParamSpecExpr)
         self.add_symbol(name, call.analyzed, s)
         return True
 
@@ -4142,7 +4154,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             return line_diff > 0
 
     def is_overloaded_item(self, node: SymbolNode, statement: Statement) -> bool:
-        """Check whehter the function belongs to the overloaded variants"""
+        """Check whether the function belongs to the overloaded variants"""
         if isinstance(node, OverloadedFuncDef) and isinstance(statement, FuncDef):
             in_items = statement in {item.func if isinstance(item, Decorator)
                                      else item for item in node.items}

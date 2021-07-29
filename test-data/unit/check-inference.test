@@ -2751,12 +2751,6 @@ def foo() -> None:
         pass
     _().method()  # E: "_" has no attribute "method"
 
-[case testUnusedTargetNotDef]
-def foo() -> None:
-    def _() -> int:
-        pass
-    _() + ''  # E: Unsupported operand types for + ("int" and "str")
-
 [case testUnusedTargetForLoop]
 def f() -> None:
     a = [(0, '', 0)]

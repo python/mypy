@@ -124,7 +124,7 @@ from typing import Any, Callable, List, Tuple, Optional, NamedTuple, TypeVar, Di
 from mypy_extensions import trait, mypyc_attr
 
 from mypy.nodes import (
-    Expression, Context, ClassDef, SymbolTableNode, MypyFile, CallExpr
+    Expression, Context, ClassDef, SymbolTableNode, MypyFile, CallExpr, ArgKind
 )
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.types import (
@@ -167,7 +167,7 @@ class TypeAnalyzerPluginInterface:
 
     @abstractmethod
     def analyze_callable_args(self, arglist: TypeList) -> Optional[Tuple[List[Type],
-                                                                         List[int],
+                                                                         List[ArgKind],
                                                                          List[Optional[str]]]]:
         """Find types, kinds, and names of arguments from extended callable syntax."""
         raise NotImplementedError
@@ -389,8 +389,8 @@ FunctionSigContext = NamedTuple(
 # callback at least sometimes can infer a more precise type.
 FunctionContext = NamedTuple(
     'FunctionContext', [
-        ('arg_types', List[List[Type]]),   # List of actual caller types for each formal argument
-        ('arg_kinds', List[List[int]]),    # Ditto for argument kinds, see nodes.ARG_* constants
+        ('arg_types', List[List[Type]]),     # List of actual caller types for each formal argument
+        ('arg_kinds', List[List[ArgKind]]),  # Ditto for argument kinds, see nodes.ARG_* constants
         # Names of formal parameters from the callee definition,
         # these will be sufficient in most cases.
         ('callee_arg_names', List[Optional[str]]),
@@ -427,7 +427,7 @@ MethodContext = NamedTuple(
         ('type', ProperType),              # Base object type for method call
         ('arg_types', List[List[Type]]),   # List of actual caller types for each formal argument
         # see FunctionContext for details about names and kinds
-        ('arg_kinds', List[List[int]]),
+        ('arg_kinds', List[List[ArgKind]]),
         ('callee_arg_names', List[Optional[str]]),
         ('arg_names', List[List[Optional[str]]]),
         ('default_return_type', Type),     # Return type inferred by mypy

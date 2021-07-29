@@ -39,7 +39,7 @@ class ModuleIR:
         return ModuleIR(
             data['fullname'],
             data['imports'],
-            [ctx.functions[FuncDecl.get_name_from_json(f['decl'])] for f in data['functions']],
+            [ctx.functions[FuncDecl.get_id_from_json(f)] for f in data['functions']],
             [ClassIR.deserialize(c, ctx) for c in data['classes']],
             [(k, deserialize_type(t, ctx)) for k, t in data['final_names']],
         )
@@ -72,9 +72,9 @@ def deserialize_modules(data: Dict[str, JsonDict], ctx: DeserMaps) -> Dict[str, 
         # to the class deserialization.
         for method in mod['functions']:
             func = FuncIR.deserialize(method, ctx)
-            assert func.decl.fullname not in ctx.functions, (
+            assert func.decl.id not in ctx.functions, (
                 "Method %s already in map" % func.decl.fullname)
-            ctx.functions[func.decl.fullname] = func
+            ctx.functions[func.decl.id] = func
 
     return {k: ModuleIR.deserialize(v, ctx) for k, v in data.items()}
 

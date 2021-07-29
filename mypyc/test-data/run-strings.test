@@ -149,6 +149,53 @@ def test_str_to_bool() -> None:
         assert is_true(x)
         assert not is_false(x)
 
+[case testCStyleStringFormatting]
+[typing fixtures/typing-full.pyi]
+from typing import Tuple
+
+var = 'mypyc'
+num = 20
+
+def test_basics() -> None:
+    assert 'Hello %s, this is a test' % var == "Hello mypyc, this is a test"
+    assert 'Hello %s %d, this is a test' % (var, num) == "Hello mypyc 20, this is a test"
+    t: Tuple[str, int] = (var, num)
+    assert 'Hello %s %d, this is a test' % t == "Hello mypyc 20, this is a test"
+
+    large_num = 2**65
+    assert 'number: %d' % large_num == 'number: 36893488147419103232'
+    neg_num = -3
+    assert 'negative integer: %d' % neg_num == 'negative integer: -3'
+    assert 'negative integer: %d' % (-large_num) == 'negative integer: -36893488147419103232'
+
+    bool_var1 = True
+    bool_var2 = False
+    assert 'bool: %s, %s' % (bool_var1, bool_var2) == 'bool: True, False'
+
+    float_num = 123.4
+    assert '%f' % float_num == '123.400000'
+    assert '%.2f' % float_num == '123.40'
+    assert '%.5f' % float_num == '123.40000'
+    assert '%10.2f' % float_num == '    123.40'
+    assert '%10.5f' % float_num == ' 123.40000'
+    assert '%010.5f' % float_num == '0123.40000'
+    assert '%015.5f' % float_num == '000000123.40000'
+    assert '%e' % float_num == '1.234000e+02'
+    large_float = 1.23e30
+    large_float2 = 1234123412341234123400000000000000000
+    small_float = 1.23e-20
+    assert '%f, %f, %f' % (small_float, large_float, large_float2) == \
+           '0.000000, 1229999999999999959718843908096.000000, 1234123412341234169005079998930878464.000000'
+    assert '%s, %s, %s' % (small_float, large_float, large_float2) == \
+           '1.23e-20, 1.23e+30, 1234123412341234123400000000000000000'
+    assert '%d, %d, %d' % (small_float, large_float, large_float2) == \
+           '0, 1229999999999999959718843908096, 1234123412341234123400000000000000000'
+
+    nan_num = float('nan')
+    inf_num = float('inf')
+    assert '%s, %s' % (nan_num, inf_num) == 'nan, inf'
+    assert '%f, %f' % (nan_num, inf_num) == 'nan, inf'
+
 [case testFStrings]
 import decimal
 from datetime import datetime
