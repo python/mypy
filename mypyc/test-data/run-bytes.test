@@ -70,3 +70,9 @@ def test_init() -> None:
     brr4 = bytearray('string', 'utf-8')
     assert brr4 == bytearray(b'string')
     assert brr4 == b'string'
+
+def f(b: bytes) -> bool:
+    return True
+
+def test_bytearray_passed_into_bytes() -> None:
+    assert f(bytearray(3))
