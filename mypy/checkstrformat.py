@@ -114,7 +114,7 @@ FLOAT_TYPES: Final = {"e", "E", "f", "F", "g", "G"}
 
 
 class ConversionSpecifier:
-    def __init__(self, type: str,
+    def __init__(self, type: str, whole_seq: str,
                  key: Optional[str],
                  flags: Optional[str],
                  width: Optional[str],
@@ -122,9 +122,10 @@ class ConversionSpecifier:
                  format_spec: Optional[str] = None,
                  conversion: Optional[str] = None,
                  field: Optional[str] = None,
-                 whole_seq: Optional[str] = None,
                  start_pos: int = -1) -> None:
         self.type = type
+        self.whole_seq = whole_seq
+
         self.key = key
         self.flags = flags
         self.width = width
@@ -139,7 +140,6 @@ class ConversionSpecifier:
         # Used only for str.format() calls.
         self.field = field
 
-        self.whole_seq = whole_seq
         self.start_pos = start_pos
 
     @classmethod
@@ -147,7 +147,7 @@ class ConversionSpecifier:
                    non_standard_spec: bool = False) -> 'ConversionSpecifier':
         """Construct specifier from match object resulted from parsing str.format() call."""
         if non_standard_spec:
-            spec = cls(type='',
+            spec = cls(type='', whole_seq=match.group(),
                        key=match.group('key'),
                        flags='', width='', precision='',
                        format_spec=match.group('format_spec'),
@@ -157,6 +157,7 @@ class ConversionSpecifier:
             return spec
         # Replace unmatched optional groups with empty matches (for convenience).
         return cls(type=match.group('type') or '',
+                   whole_seq=match.group(),
                    key=match.group('key'),
                    flags=match.group('flags') or '',
                    width=match.group('width') or '',
@@ -176,8 +177,9 @@ def parse_conversion_specifiers(format_str: str) -> List[ConversionSpecifier]:
     specifiers: List[ConversionSpecifier] = []
     for m in re.finditer(FORMAT_RE, format_str):
         whole_seq, parens_key, key, flags, width, precision, conversion_type = m.groups()
-        specifiers.append(ConversionSpecifier(conversion_type, key, flags, width, precision,
-                                              whole_seq=whole_seq, start_pos=m.start()))
+        specifiers.append(ConversionSpecifier(conversion_type, whole_seq,
+                                              key, flags, width, precision,
+                                              start_pos=m.start()))
     return specifiers
 
 
