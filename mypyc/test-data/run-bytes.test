@@ -53,3 +53,29 @@ def test_len() -> None:
     b = b'foo' + bytes()
     assert len(b) == 3
     assert len(bytes()) == 0
+
+[case testBytearrayBasics]
+from typing import Any
+
+def test_init() -> None:
+    brr1: bytes = bytearray(3)
+    assert brr1 == bytearray(b'\x00\x00\x00')
+    assert brr1 == b'\x00\x00\x00'
+    l = [10, 20, 30, 40]
+    brr2: bytes = bytearray(l)
+    assert brr2 == bytearray(b'\n\x14\x1e(')
+    assert brr2 == b'\n\x14\x1e('
+    brr3: bytes = bytearray(range(5))
+    assert brr3 == bytearray(b'\x00\x01\x02\x03\x04')
+    assert brr3 == b'\x00\x01\x02\x03\x04'
+    brr4: bytes = bytearray('string', 'utf-8')
+    assert brr4 == bytearray(b'string')
+    assert brr4 == b'string'
+
+def f(b: bytes) -> bool:
+    return True
+
+def test_bytearray_passed_into_bytes() -> None:
+    assert f(bytearray(3))
+    brr1: Any = bytearray()
+    assert f(brr1)
