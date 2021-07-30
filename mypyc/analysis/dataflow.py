@@ -53,13 +53,8 @@ def get_cfg(blocks: List[BasicBlock]) -> CFG:
         assert not any(isinstance(op, ControlOp) for op in block.ops[:-1]), (
             "Control-flow ops must be at the end of blocks")
 
-        last = block.ops[-1]
-        if isinstance(last, Branch):
-            succ = [last.true, last.false]
-        elif isinstance(last, Goto):
-            succ = [last.label]
-        else:
-            succ = []
+        succ = list(block.terminator.targets())
+        if not succ:
             exits.add(block)
 
         # Errors can occur anywhere inside a block, which means that
@@ -104,12 +99,8 @@ def cleanup_cfg(blocks: List[BasicBlock]) -> None:
     while changed:
         # First collapse any jumps to basic block that only contain a goto
         for block in blocks:
-            term = block.ops[-1]
-            if isinstance(term, Goto):
-                term.label = get_real_target(term.label)
-            elif isinstance(term, Branch):
-                term.true = get_real_target(term.true)
-                term.false = get_real_target(term.false)
+            for i, tgt in enumerate(block.terminator.targets()):
+                block.terminator.set_target(i, get_real_target(tgt))
 
         # Then delete any blocks that have no predecessors
         changed = False
