@@ -122,12 +122,14 @@ class ConversionSpecifier:
                  format_spec: Optional[str] = None,
                  conversion: Optional[str] = None,
                  field: Optional[str] = None,
-                 whole_seq: Optional[str] = None) -> None:
+                 whole_seq: Optional[str] = None,
+                 start_pos: int = -1) -> None:
         self.type = type
         self.key = key
         self.flags = flags
         self.width = width
         self.precision = precision
+
         # Used only for str.format() calls (it may be custom for types with __format__()).
         self.format_spec = format_spec
         self.non_standard_format_spec = False
@@ -136,7 +138,9 @@ class ConversionSpecifier:
         # Full formatted expression (i.e. key plus following attributes and/or indexes).
         # Used only for str.format() calls.
         self.field = field
+
         self.whole_seq = whole_seq
+        self.start_pos = start_pos
 
     @classmethod
     def from_match(cls, match: Match[str],
@@ -166,6 +170,112 @@ class ConversionSpecifier:
 
     def has_star(self) -> bool:
         return self.width == '*' or self.precision == '*'
+
+
+def parse_conversion_specifiers(format_str: str) -> List[ConversionSpecifier]:
+    specifiers: List[ConversionSpecifier] = []
+    for m in re.finditer(FORMAT_RE, format_str):
+        whole_seq, parens_key, key, flags, width, precision, conversion_type = m.groups()
+        specifiers.append(ConversionSpecifier(conversion_type, key, flags, width, precision,
+                                              whole_seq=whole_seq, start_pos=m.start()))
+    return specifiers
+
+
+def parse_format_value(format_value: str, ctx: Context, msg: MessageBuilder,
+                       nested: bool = False) -> Optional[List[ConversionSpecifier]]:
+    """Parse format string into list of conversion specifiers.
+
+    The specifiers may be nested (two levels maximum), in this case they are ordered as
+    '{0:{1}}, {2:{3}{4}}'. Return None in case of an error.
+    """
+    top_targets = find_non_escaped_targets(format_value, ctx, msg)
+    if top_targets is None:
+        return None
+
+    result: List[ConversionSpecifier] = []
+    for target in top_targets:
+        match = FORMAT_RE_NEW.fullmatch(target)
+        if match:
+            conv_spec = ConversionSpecifier.from_match(match)
+        else:
+            custom_match = FORMAT_RE_NEW_CUSTOM.fullmatch(target)
+            if custom_match:
+                conv_spec = ConversionSpecifier.from_match(custom_match,
+                                                           non_standard_spec=True)
+            else:
+                msg.fail('Invalid conversion specifier in format string',
+                         ctx, code=codes.STRING_FORMATTING)
+                return None
+
+        if conv_spec.key and ('{' in conv_spec.key or '}' in conv_spec.key):
+            msg.fail('Conversion value must not contain { or }',
+                     ctx, code=codes.STRING_FORMATTING)
+            return None
+        result.append(conv_spec)
+
+        # Parse nested conversions that are allowed in format specifier.
+        if (conv_spec.format_spec and conv_spec.non_standard_format_spec and
+                ('{' in conv_spec.format_spec or '}' in conv_spec.format_spec)):
+            if nested:
+                msg.fail('Formatting nesting must be at most two levels deep',
+                         ctx, code=codes.STRING_FORMATTING)
+                return None
+            sub_conv_specs = parse_format_value(conv_spec.format_spec, ctx, msg,
+                                                nested=True)
+            if sub_conv_specs is None:
+                return None
+            result.extend(sub_conv_specs)
+    return result
+
+
+def find_non_escaped_targets(format_value: str, ctx: Context,
+                             msg: MessageBuilder) -> Optional[List[str]]:
+    """Return list of raw (un-parsed) format specifiers in format string.
+
+    Format specifiers don't include enclosing braces. We don't use regexp for
+    this because they don't work well with nested/repeated patterns
+    (both greedy and non-greedy), and these are heavily used internally for
+    representation of f-strings.
+
+    Return None in case of an error.
+    """
+    result = []
+    next_spec = ''
+    pos = 0
+    nesting = 0
+    while pos < len(format_value):
+        c = format_value[pos]
+        if not nesting:
+            # Skip any paired '{{' and '}}', enter nesting on '{', report error on '}'.
+            if c == '{':
+                if pos < len(format_value) - 1 and format_value[pos + 1] == '{':
+                    pos += 1
+                else:
+                    nesting = 1
+            if c == '}':
+                if pos < len(format_value) - 1 and format_value[pos + 1] == '}':
+                    pos += 1
+                else:
+                    msg.fail('Invalid conversion specifier in format string:'
+                             ' unexpected }', ctx, code=codes.STRING_FORMATTING)
+                    return None
+        else:
+            # Adjust nesting level, then either continue adding chars or move on.
+            if c == '{':
+                nesting += 1
+            if c == '}':
+                nesting -= 1
+            if nesting:
+                next_spec += c
+            else:
+                result.append(next_spec)
+                next_spec = ''
+        pos += 1
+    if nesting:
+        msg.fail('Invalid conversion specifier in format string:'
+                 ' unmatched {', ctx, code=codes.STRING_FORMATTING)
+        return None
+    return result
 
 
 class StringFormatterChecker:
@@ -214,106 +324,12 @@ class StringFormatterChecker:
             - 's' must not accept bytes
             - non-empty flags are only allowed for numeric types
         """
-        conv_specs = self.parse_format_value(format_value, call)
+        conv_specs = parse_format_value(format_value, call, self.msg)
         if conv_specs is None:
             return
         if not self.auto_generate_keys(conv_specs, call):
             return
         self.check_specs_in_format_call(call, conv_specs, format_value)
-
-    def parse_format_value(self, format_value: str, ctx: Context,
-                           nested: bool = False) -> Optional[List[ConversionSpecifier]]:
-        """Parse format string into list of conversion specifiers.
-
-        The specifiers may be nested (two levels maximum), in this case they are ordered as
-        '{0:{1}}, {2:{3}{4}}'. Return None in case of an error.
-        """
-        top_targets = self.find_non_escaped_targets(format_value, ctx)
-        if top_targets is None:
-            return None
-
-        result: List[ConversionSpecifier] = []
-        for target in top_targets:
-            match = FORMAT_RE_NEW.fullmatch(target)
-            if match:
-                conv_spec = ConversionSpecifier.from_match(match)
-            else:
-                custom_match = FORMAT_RE_NEW_CUSTOM.fullmatch(target)
-                if custom_match:
-                    conv_spec = ConversionSpecifier.from_match(custom_match,
-                                                               non_standard_spec=True)
-                else:
-                    self.msg.fail('Invalid conversion specifier in format string',
-                                  ctx, code=codes.STRING_FORMATTING)
-                    return None
-
-            if conv_spec.key and ('{' in conv_spec.key or '}' in conv_spec.key):
-                self.msg.fail('Conversion value must not contain { or }',
-                              ctx, code=codes.STRING_FORMATTING)
-                return None
-            result.append(conv_spec)
-
-            # Parse nested conversions that are allowed in format specifier.
-            if (conv_spec.format_spec and conv_spec.non_standard_format_spec and
-                    ('{' in conv_spec.format_spec or '}' in conv_spec.format_spec)):
-                if nested:
-                    self.msg.fail('Formatting nesting must be at most two levels deep',
-                                  ctx, code=codes.STRING_FORMATTING)
-                    return None
-                sub_conv_specs = self.parse_format_value(conv_spec.format_spec, ctx=ctx,
-                                                         nested=True)
-                if sub_conv_specs is None:
-                    return None
-                result.extend(sub_conv_specs)
-        return result
-
-    def find_non_escaped_targets(self, format_value: str, ctx: Context) -> Optional[List[str]]:
-        """Return list of raw (un-parsed) format specifiers in format string.
-
-        Format specifiers don't include enclosing braces. We don't use regexp for
-        this because they don't work well with nested/repeated patterns
-        (both greedy and non-greedy), and these are heavily used internally for
-        representation of f-strings.
-
-        Return None in case of an error.
-        """
-        result = []
-        next_spec = ''
-        pos = 0
-        nesting = 0
-        while pos < len(format_value):
-            c = format_value[pos]
-            if not nesting:
-                # Skip any paired '{{' and '}}', enter nesting on '{', report error on '}'.
-                if c == '{':
-                    if pos < len(format_value) - 1 and format_value[pos + 1] == '{':
-                        pos += 1
-                    else:
-                        nesting = 1
-                if c == '}':
-                    if pos < len(format_value) - 1 and format_value[pos + 1] == '}':
-                        pos += 1
-                    else:
-                        self.msg.fail('Invalid conversion specifier in format string:'
-                                      ' unexpected }', ctx, code=codes.STRING_FORMATTING)
-                        return None
-            else:
-                # Adjust nesting level, then either continue adding chars or move on.
-                if c == '{':
-                    nesting += 1
-                if c == '}':
-                    nesting -= 1
-                if nesting:
-                    next_spec += c
-                else:
-                    result.append(next_spec)
-                    next_spec = ''
-            pos += 1
-        if nesting:
-            self.msg.fail('Invalid conversion specifier in format string:'
-                          ' unmatched {', ctx, code=codes.STRING_FORMATTING)
-            return None
-        return result
 
     def check_specs_in_format_call(self, call: CallExpr,
                                    specs: List[ConversionSpecifier], format_value: str) -> None:
@@ -601,7 +617,7 @@ class StringFormatterChecker:
         expression: str % replacements.
         """
         self.exprchk.accept(expr)
-        specifiers = self.parse_conversion_specifiers(expr.value)
+        specifiers = parse_conversion_specifiers(expr.value)
         has_mapping_keys = self.analyze_conversion_specifiers(specifiers, expr)
         if isinstance(expr, BytesExpr) and (3, 0) <= self.chk.options.python_version < (3, 5):
             self.msg.fail('Bytes formatting is only supported in Python 3.5 and later',
@@ -626,16 +642,6 @@ class StringFormatterChecker:
             return self.named_type('builtins.str')
         else:
             assert False
-
-    def parse_conversion_specifiers(self, format: str) -> List[ConversionSpecifier]:
-        specifiers: List[ConversionSpecifier] = []
-        for whole_seq, parens_key, key, flags, width, precision, type \
-                in FORMAT_RE.findall(format):
-            if parens_key == '':
-                key = None
-            specifiers.append(ConversionSpecifier(type, key, flags, width, precision,
-                                                  whole_seq=whole_seq))
-        return specifiers
 
     def analyze_conversion_specifiers(self, specifiers: List[ConversionSpecifier],
                                       context: Context) -> Optional[bool]:
