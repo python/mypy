@@ -745,6 +745,7 @@ class StringFormatterChecker:
                     self.msg.key_not_in_mapping(specifier.key, replacements)
                     return
                 rep_type = mapping[specifier.key]
+                assert specifier.conv_type is not None
                 expected_type = self.conversion_type(specifier.conv_type, replacements, expr)
                 if expected_type is None:
                     return
@@ -809,12 +810,13 @@ class StringFormatterChecker:
             checkers.append(self.checkers_for_star(context))
         if specifier.precision == '*':
             checkers.append(self.checkers_for_star(context))
+
         if specifier.conv_type == 'c':
             c = self.checkers_for_c_type(specifier.conv_type, context, expr)
             if c is None:
                 return None
             checkers.append(c)
-        elif specifier.conv_type != '%':
+        elif specifier.conv_type is not None and specifier.conv_type != '%':
             c = self.checkers_for_regular_type(specifier.conv_type, context, expr)
             if c is None:
                 return None
@@ -844,20 +846,20 @@ class StringFormatterChecker:
                                       'expression has type', 'placeholder has type',
                                       code=codes.STRING_FORMATTING)
 
-    def checkers_for_regular_type(self, type: str,
+    def checkers_for_regular_type(self, conv_type: str,
                                   context: Context,
                                   expr: FormatStringExpr) -> Optional[Checkers]:
         """Returns a tuple of check functions that check whether, respectively,
         a node or a type is compatible with 'type'. Return None in case of an error.
         """
-        expected_type = self.conversion_type(type, context, expr)
+        expected_type = self.conversion_type(conv_type, context, expr)
         if expected_type is None:
             return None
 
         def check_type(typ: Type) -> bool:
             assert expected_type is not None
             ret = self.check_placeholder_type(typ, expected_type, context)
-            if ret and type == 's':
+            if ret and conv_type == 's':
                 ret = self.check_s_special_cases(expr, typ, context)
             return ret
 
