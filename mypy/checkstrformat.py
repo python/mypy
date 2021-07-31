@@ -51,13 +51,13 @@ def compile_format_re() -> Pattern[str]:
     The regexp is intentionally a bit wider to report better errors.
     """
     key_re = r'(\((?P<key>[^)]*)\))?'  # (optional) parenthesised sequence of characters.
-    flags_re = r'(?P<flag>[#0\-+ ]*)'  # (optional) sequence of flags.
+    flags_re = r'(?P<flags>[#0\-+ ]*)'  # (optional) sequence of flags.
     width_re = r'(?P<width>[1-9][0-9]*|\*)?'  # (optional) minimum field width (* or numbers).
     precision_re = r'(?:\.(?P<precision>\*|[0-9]+)?)?'  # (optional) . followed by * of numbers.
     length_mod_re = r'[hlL]?'  # (optional) length modifier (unused).
     type_re = r'(?P<type>.)?'  # conversion type.
     format_re = '%' + key_re + flags_re + width_re + precision_re + length_mod_re + type_re
-    return re.compile('({})'.format(format_re))
+    return re.compile(format_re)
 
 
 def compile_new_format_re(custom_spec: bool) -> Pattern[str]:
@@ -114,22 +114,27 @@ FLOAT_TYPES: Final = {"e", "E", "f", "F", "g", "G"}
 
 
 class ConversionSpecifier:
-    def __init__(self, type: str, whole_seq: str,
-                 key: Optional[str],
-                 flags: Optional[str],
-                 width: Optional[str],
-                 precision: Optional[str],
+    def __init__(self, whole_seq: str,
+                 start_pos: int = -1,
+                 conv_type: Optional[str] = None,
+                 key: Optional[str] = None,
+                 flags: Optional[str] = None,
+                 width: Optional[str] = None,
+                 precision: Optional[str] = None,
                  format_spec: Optional[str] = None,
                  conversion: Optional[str] = None,
-                 field: Optional[str] = None,
-                 start_pos: int = -1) -> None:
-        self.type = type
-        self.whole_seq = whole_seq
+                 field: Optional[str] = None) -> None:
 
+        self.whole_seq = whole_seq
+        self.start_pos = start_pos
+
+        self.conv_type = conv_type
         self.key = key
-        self.flags = flags
-        self.width = width
-        self.precision = precision
+
+        # Replace unmatched optional groups with empty matches (for convenience).
+        self.flags = flags or ''
+        self.width = width or ''
+        self.precision = precision or ''
 
         # Used only for str.format() calls (it may be custom for types with __format__()).
         self.format_spec = format_spec
@@ -140,14 +145,14 @@ class ConversionSpecifier:
         # Used only for str.format() calls.
         self.field = field
 
-        self.start_pos = start_pos
-
     @classmethod
-    def from_match(cls, match: Match[str],
-                   non_standard_spec: bool = False) -> 'ConversionSpecifier':
+    def from_match_format_call(cls, match: Match[str],
+                               non_standard_spec: bool = False) -> 'ConversionSpecifier':
         """Construct specifier from match object resulted from parsing str.format() call."""
         if non_standard_spec:
-            spec = cls(type='', whole_seq=match.group(),
+            spec = cls(whole_seq=match.group(),
+                       start_pos=match.start(),
+                       conv_type='',
                        key=match.group('key'),
                        flags='', width='', precision='',
                        format_spec=match.group('format_spec'),
@@ -155,16 +160,26 @@ class ConversionSpecifier:
                        field=match.group('field'))
             spec.non_standard_format_spec = True
             return spec
-        # Replace unmatched optional groups with empty matches (for convenience).
-        return cls(type=match.group('type') or '',
-                   whole_seq=match.group(),
+        return cls(whole_seq=match.group(),
+                   start_pos=match.start(),
+                   conv_type=match.group('type'),
                    key=match.group('key'),
-                   flags=match.group('flags') or '',
-                   width=match.group('width') or '',
-                   precision=match.group('precision') or '',
+                   flags=match.group('flags'),
+                   width=match.group('width'),
+                   precision=match.group('precision'),
                    format_spec=match.group('format_spec'),
                    conversion=match.group('conversion'),
                    field=match.group('field'))
+
+    @classmethod
+    def from_match_c_style(cls, match: Match[str]) -> 'ConversionSpecifier':
+        return cls(whole_seq=match.group(),
+                   start_pos=match.start(),
+                   conv_type=match.group('type'),
+                   key=match.group('key'),
+                   flags=match.group('flags'),
+                   width=match.group('width'),
+                   precision=match.group('precision'))
 
     def has_key(self) -> bool:
         return self.key is not None
@@ -176,10 +191,7 @@ class ConversionSpecifier:
 def parse_conversion_specifiers(format_str: str) -> List[ConversionSpecifier]:
     specifiers: List[ConversionSpecifier] = []
     for m in re.finditer(FORMAT_RE, format_str):
-        whole_seq, parens_key, key, flags, width, precision, conversion_type = m.groups()
-        specifiers.append(ConversionSpecifier(conversion_type, whole_seq,
-                                              key, flags, width, precision,
-                                              start_pos=m.start()))
+        specifiers.append(ConversionSpecifier.from_match_c_style(m))
     return specifiers
 
 
@@ -198,12 +210,12 @@ def parse_format_value(format_value: str, ctx: Context, msg: MessageBuilder,
     for target in top_targets:
         match = FORMAT_RE_NEW.fullmatch(target)
         if match:
-            conv_spec = ConversionSpecifier.from_match(match)
+            conv_spec = ConversionSpecifier.from_match_format_call(match)
         else:
             custom_match = FORMAT_RE_NEW_CUSTOM.fullmatch(target)
             if custom_match:
-                conv_spec = ConversionSpecifier.from_match(custom_match,
-                                                           non_standard_spec=True)
+                conv_spec = ConversionSpecifier.from_match_format_call(
+                    custom_match, non_standard_spec=True)
             else:
                 msg.fail('Invalid conversion specifier in format string',
                          ctx, code=codes.STRING_FORMATTING)
@@ -359,7 +371,7 @@ class StringFormatterChecker:
                                   call, code=codes.STRING_FORMATTING)
                     continue
             # Adjust expected and actual types.
-            if not spec.type:
+            if not spec.conv_type:
                 expected_type: Optional[Type] = AnyType(TypeOfAny.special_form)
             else:
                 assert isinstance(call.callee, MemberExpr)
@@ -367,7 +379,7 @@ class StringFormatterChecker:
                     format_str = call.callee.expr
                 else:
                     format_str = StrExpr(format_value)
-                expected_type = self.conversion_type(spec.type, call, format_str,
+                expected_type = self.conversion_type(spec.conv_type, call, format_str,
                                                      format_call=True)
             if spec.conversion is not None:
                 # If the explicit conversion is given, then explicit conversion is called _first_.
@@ -394,7 +406,7 @@ class StringFormatterChecker:
                                       repl: Expression, actual_type: Type,
                                       expected_type: Type) -> None:
         # TODO: try refactoring to combine this logic with % formatting.
-        if spec.type == 'c':
+        if spec.conv_type == 'c':
             if isinstance(repl, (StrExpr, BytesExpr)) and len(repl.value) != 1:
                 self.msg.requires_int_or_char(call, format_call=True)
             c_typ = get_proper_type(self.chk.type_map[repl])
@@ -403,7 +415,7 @@ class StringFormatterChecker:
             if isinstance(c_typ, LiteralType) and isinstance(c_typ.value, str):
                 if len(c_typ.value) != 1:
                     self.msg.requires_int_or_char(call, format_call=True)
-        if (not spec.type or spec.type == 's') and not spec.conversion:
+        if (not spec.conv_type or spec.conv_type == 's') and not spec.conversion:
             if self.chk.options.python_version >= (3, 0):
                 if (has_type_component(actual_type, 'builtins.bytes') and
                         not custom_special_method(actual_type, '__str__')):
@@ -414,8 +426,8 @@ class StringFormatterChecker:
         if spec.flags:
             numeric_types = UnionType([self.named_type('builtins.int'),
                                        self.named_type('builtins.float')])
-            if (spec.type and spec.type not in NUMERIC_TYPES_NEW or
-                    not spec.type and not is_subtype(actual_type, numeric_types) and
+            if (spec.conv_type and spec.conv_type not in NUMERIC_TYPES_NEW or
+                    not spec.conv_type and not is_subtype(actual_type, numeric_types) and
                     not custom_special_method(actual_type, '__format__')):
                 self.msg.fail('Numeric flags are only allowed for numeric types', call,
                               code=codes.STRING_FORMATTING)
@@ -650,7 +662,7 @@ class StringFormatterChecker:
         has_star = any(specifier.has_star() for specifier in specifiers)
         has_key = any(specifier.has_key() for specifier in specifiers)
         all_have_keys = all(
-            specifier.has_key() or specifier.type == '%' for specifier in specifiers
+            specifier.has_key() or specifier.conv_type == '%' for specifier in specifiers
         )
 
         if has_key and has_star:
@@ -725,7 +737,7 @@ class StringFormatterChecker:
                 mapping[key_str] = self.accept(v)
 
             for specifier in specifiers:
-                if specifier.type == '%':
+                if specifier.conv_type == '%':
                     # %% is allowed in mappings, no checking is required
                     continue
                 assert specifier.key is not None
@@ -733,7 +745,7 @@ class StringFormatterChecker:
                     self.msg.key_not_in_mapping(specifier.key, replacements)
                     return
                 rep_type = mapping[specifier.key]
-                expected_type = self.conversion_type(specifier.type, replacements, expr)
+                expected_type = self.conversion_type(specifier.conv_type, replacements, expr)
                 if expected_type is None:
                     return
                 self.chk.check_subtype(rep_type, expected_type, replacements,
@@ -741,7 +753,7 @@ class StringFormatterChecker:
                                        'expression has type',
                                        'placeholder with key \'%s\' has type' % specifier.key,
                                        code=codes.STRING_FORMATTING)
-                if specifier.type == 's':
+                if specifier.conv_type == 's':
                     self.check_s_special_cases(expr, rep_type, expr)
         else:
             rep_type = self.accept(replacements)
@@ -797,13 +809,13 @@ class StringFormatterChecker:
             checkers.append(self.checkers_for_star(context))
         if specifier.precision == '*':
             checkers.append(self.checkers_for_star(context))
-        if specifier.type == 'c':
-            c = self.checkers_for_c_type(specifier.type, context, expr)
+        if specifier.conv_type == 'c':
+            c = self.checkers_for_c_type(specifier.conv_type, context, expr)
             if c is None:
                 return None
             checkers.append(c)
-        elif specifier.type != '%':
-            c = self.checkers_for_regular_type(specifier.type, context, expr)
+        elif specifier.conv_type != '%':
+            c = self.checkers_for_regular_type(specifier.conv_type, context, expr)
             if c is None:
                 return None
             checkers.append(c)
