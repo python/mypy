@@ -254,6 +254,10 @@ section of the command line docs.
     ``error``.  For explanations see the discussion for the
     :option:`--follow-imports <mypy --follow-imports>` command line flag.
 
+    Using this option in a per-module section (potentially with a wildcard,
+    as described at the top of this page) is a good way to prevent mypy from
+    checking portions of your code.
+
     If this option is used in a per-module section, the module name should
     match the name of the *imported* module, not the module containing the
     import statement.
@@ -924,10 +928,10 @@ Instead of using a ``mypy.ini`` file, a ``pyproject.toml`` file (as specified by
 
   * Boolean values should be all lower case
 
-Please see the `TOML Documentation`_ for more details and information on 
+Please see the `TOML Documentation`_ for more details and information on
 what is allowed in a ``toml`` file. See `PEP 518`_ for more information on the layout
 and structure of the ``pyproject.toml`` file.
-  
+
 Example ``pyproject.toml``
 **************************
 
