@@ -1,0 +1,40 @@
+[case testBytesBasics]
+def f(s: str) -> None:
+    a = bytes()
+    b = bytes(s)
+[out]
+def f(s):
+    s :: str
+    r0, r1 :: object
+    r2, a, r3, b :: bytes
+L0:
+    r0 = load_address PyBytes_Type
+    r1 = PyObject_CallFunctionObjArgs(r0, 0)
+    r2 = cast(bytes, r1)
+    a = r2
+    r3 = PyBytes_FromObject(s)
+    b = r3
+    return 1
+
+[case testBytearrayBasics]
+def f(s: str) -> None:
+    a = bytearray()
+    b = bytearray(s)
+[out]
+def f(s):
+    s :: str
+    r0 :: object
+    r1 :: str
+    r2, r3, a :: object
+    r4 :: bytes
+    b :: object
+L0:
+    r0 = builtins :: module
+    r1 = 'bytearray'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = PyObject_CallFunctionObjArgs(r2, 0)
+    a = r3
+    r4 = PyByteArray_FromObject(s)
+    b = r4
+    return 1
+
