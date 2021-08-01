@@ -624,7 +624,7 @@ class StringFormatterChecker:
                                                      spec=spec, ctx=ctx)
 
     # TODO: In Python 3, the bytes formatting has a more restricted set of options
-    # compared to string formatting.
+    #       compared to string formatting.
     def check_str_interpolation(self,
                                 expr: FormatStringExpr,
                                 replacements: Expression) -> Type:
