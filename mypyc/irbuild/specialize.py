@@ -404,6 +404,8 @@ def translate_str_format(
             and expr.arg_kinds.count(ARG_POS) == len(expr.arg_kinds)):
         format_str = callee.expr.value
         specifiers = parse_format_value(format_str, EMPTY_CONTEXT, EMPTY_MSG)
+        assert specifiers is not None
+
         literals = []
         last_pos = 0
         for spec in specifiers:
