@@ -226,7 +226,7 @@ def gen_func_item(builder: IRBuilder,
         class_name = cdef.name
 
     if is_singledispatch:
-        func_name = '__mypyc_singledispatch_main_function_{}__'.format(name)
+        func_name = singledispatch_main_func_name(name)
     else:
         func_name = name
     builder.enter(FuncInfo(fitem, func_name, class_name, gen_func_ns(builder),
@@ -919,3 +919,6 @@ def sort_with_subclasses_first(
 
     for group in reversed(list(dispatch_types)):
         yield from ((typ, impl_dict[typ]) for typ in group if typ in impl_dict)
+
+def singledispatch_main_func_name(orig_name: str) -> str:
+    return '__mypyc_singledispatch_main_function_{}__'.format(orig_name)
