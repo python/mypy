@@ -58,7 +58,9 @@ for full details, see :ref:`running-mypy`.
     For instance, to avoid discovering any files named `setup.py` you could
     pass ``--exclude '/setup\.py$'``. Similarly, you can ignore discovering
     directories with a given name by e.g. ``--exclude /build/`` or
-    those matching a subpath with ``--exclude /project/vendor/``.
+    those matching a subpath with ``--exclude /project/vendor/``. In adition,
+    to ignore multiple file or directory names, you can combine expressions
+    with ``|`` and pass e.g ``--exclude '/setup\.py$|/build/'``.
 
     Note that this flag only affects recursive discovery, that is, when mypy is
     discovering files within a directory tree or submodules of a package to
