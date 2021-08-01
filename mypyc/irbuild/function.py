@@ -24,19 +24,21 @@ from mypy.types import CallableType, get_proper_type
 
 from mypyc.ir.ops import (
     BasicBlock, Value,  Register, Return, SetAttr, Integer, GetAttr, Branch, InitStatic,
-    LoadAddress
+    LoadAddress, LoadLiteral, Unbox, Unreachable,
 )
-from mypyc.ir.rtypes import object_rprimitive, RInstance, object_pointer_rprimitive
+from mypyc.ir.rtypes import (
+    object_rprimitive, RInstance, object_pointer_rprimitive, dict_rprimitive, int_rprimitive,
+)
 from mypyc.ir.func_ir import (
     FuncIR, FuncSignature, RuntimeArg, FuncDecl, FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FUNC_NORMAL
 )
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.primitives.generic_ops import py_setattr_op, next_raw_op, iter_op
 from mypyc.primitives.misc_ops import (
-    check_stop_op, yield_from_except_op, coro_op, send_op, slow_isinstance_op
+    check_stop_op, yield_from_except_op, coro_op, send_op
 )
 from mypyc.primitives.dict_ops import dict_set_item_op
-from mypyc.common import SELF_NAME, LAMBDA_NAME, decorator_helper_name, short_id_from_name
+from mypyc.common import SELF_NAME, LAMBDA_NAME, decorator_helper_name
 from mypyc.sametype import is_same_method_signature
 from mypyc.irbuild.util import is_constant
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
@@ -58,6 +60,7 @@ from mypyc.irbuild.env_class import (
 )
 
 from mypyc.primitives.registry import builtin_names
+from mypyc.primitives.int_ops import int_equal_
 
 
 # Top-level transform functions
@@ -794,17 +797,18 @@ def get_func_target(builder: IRBuilder, fdef: FuncDef) -> AssignmentTarget:
     return builder.add_local_reg(fdef, object_rprimitive)
 
 
-def check_if_isinstance(builder: IRBuilder, obj: Value, typ: TypeInfo, line: int) -> Value:
+def load_type(builder: IRBuilder, typ: TypeInfo, line: int) -> Value:
+    # TODO: refactor check_if_isinstance to use this instead of copying code
     if typ in builder.mapper.type_to_ir:
         class_ir = builder.mapper.type_to_ir[typ]
-        return builder.builder.isinstance_native(obj, class_ir, line)
+        class_obj = builder.builder.get_native_type(class_ir)
+    elif typ.fullname in builtin_names:
+        builtin_addr_type, src = builtin_names[typ.fullname]
+        class_obj = builder.add(LoadAddress(builtin_addr_type, src, line))
     else:
-        if typ.fullname in builtin_names:
-            builtin_addr_type, src = builtin_names[typ.fullname]
-            class_obj = builder.add(LoadAddress(builtin_addr_type, src, line))
-        else:
-            class_obj = builder.load_global_str(typ.name, line)
-        return builder.call_c(slow_isinstance_op, [obj, class_obj], line)
+        class_obj = builder.load_global_str(typ.name, line)
+
+    return class_obj
 
 
 def load_func(builder: IRBuilder, func_name: str, fullname: Optional[str], line: int) -> Value:
@@ -833,60 +837,51 @@ def generate_singledispatch_dispatch_function(
     current_func_decl = builder.mapper.func_to_decl[fitem]
     arg_info = get_args(builder, current_func_decl.sig.args, line)
 
-    def gen_func_call_and_return(
-        func_name: str,
-        fdef: FuncDef,
-        fullname: Optional[str] = None
-    ) -> None:
-        if is_decorated(builder, fdef):
-            func = load_func(builder, func_name, fullname, line)
-            ret_val = builder.builder.py_call(
-                func, arg_info.args, line, arg_info.arg_kinds, arg_info.arg_names
-            )
-        else:
-            func_decl = builder.mapper.func_to_decl[fdef]
-            ret_val = builder.builder.call(
-                func_decl, arg_info.args, arg_info.arg_kinds, arg_info.arg_names, line
-            )
+    def gen_native_func_call_and_return(fdef: FuncDef) -> None:
+        func_decl = builder.mapper.func_to_decl[fdef]
+        ret_val = builder.builder.call(
+            func_decl, arg_info.args, arg_info.arg_kinds, arg_info.arg_names, line
+        )
         coerced = builder.coerce(ret_val, current_func_decl.sig.ret_type, line)
         builder.nonlocal_control[-1].gen_return(builder, coerced, line)
 
-    # Add all necessary imports of other modules that have registered functions in other modules
-    # We're doing this in a separate pass over the implementations because that avoids the
-    # complexity and code size implications of generating this import before every call to a
-    # registered implementation that might need this imported
-    for _, impl in impls:
-        if not is_decorated(builder, impl):
-            continue
-        module_name = impl.fullname.rsplit('.')[0]
-        if module_name not in builder.imports:
-            # We need to generate an import here because the module needs to be imported before we
-            # try loading the function from it
-            builder.gen_import(module_name, line)
+    registry = load_singledispatch_registry(builder, main_singledispatch_function_name, line)
+    find_impl = builder.load_module_attr_by_fullname('functools._find_impl', line)
+    # FIXME: should pass type of first argument to _find_impl, not first argument itself
+    impl_to_use = builder.py_call(find_impl, [arg_info.args[0], registry], line)
 
-    # Sort the list of implementations so that we check any subclasses before we check the classes
-    # they inherit from, to better match singledispatch's behavior of going through the argument's
-    # MRO, and using the first implementation it finds
-    for dispatch_type, impl in sort_with_subclasses_first(impls):
+    typ, src = builtin_names['builtins.int']
+    int_type_obj = builder.add(LoadAddress(typ, src, line))
+    is_int = builder.builder.type_is_op(impl_to_use, int_type_obj, line)
+
+    native_call, non_native_call = BasicBlock(), BasicBlock()
+    builder.add_bool_branch(is_int, native_call, non_native_call)
+    builder.activate_block(native_call)
+
+    passed_id = builder.add(Unbox(impl_to_use, int_rprimitive, line))
+
+    native_impls = (impl for dispatch_type, impl in impls if not is_decorated(builder, impl))
+    for i, impl in enumerate(native_impls):
         call_impl, next_impl = BasicBlock(), BasicBlock()
-        should_call_impl = check_if_isinstance(builder, arg_info.args[0], dispatch_type, line)
+
+        current_id = builder.load_int(i)
+        should_call_impl = builder.call_c(int_equal_, [passed_id, current_id], line)
         builder.add_bool_branch(should_call_impl, call_impl, next_impl)
 
         # Call the registered implementation
         builder.activate_block(call_impl)
 
-        # The shortname of a function is just '{class}.{func_name}', and we don't support
-        # singledispatchmethod yet, so that is always the same as the function name
-        name = short_id_from_name(impl.name, impl.name, impl.line)
-        gen_func_call_and_return(name, impl, fullname=impl.fullname)
+        gen_native_func_call_and_return(impl)
         builder.activate_block(next_impl)
 
-    # We don't pass fullname here because getting the fullname of the main generated singledispatch
-    # function isn't easy, and we don't need it because the fullname is only needed for making sure
-    # we load the function from another module instead of the globals dict if it's defined in
-    # another module, which will never be true for the main singledispatch function (it's always
-    # generated in the same module as the dispatch function)
-    gen_func_call_and_return(main_singledispatch_function_name, fitem)
+    # We've already handled all the possible integer IDs, so we should never get here
+    builder.add(Unreachable())
+
+    builder.activate_block(non_native_call)
+    ret_val = builder.py_call(
+        impl_to_use, arg_info.args, line, arg_info.arg_kinds, arg_info.arg_names
+    )
+    builder.nonlocal_control[-1].gen_return(builder, ret_val, line)
 
 
 def gen_dispatch_func_ir(
@@ -899,6 +894,7 @@ def gen_dispatch_func_ir(
     """Create a dispatch function (a function that checks the first argument type and dispatches
     to the correct implementation)
     """
+    # initialize_singledispatch_dispatch_dictionary(builder, fitem, main_func_name)
     builder.enter()
     generate_singledispatch_dispatch_function(builder, main_func_name, fitem)
     args, _, blocks, _, fn_info = builder.leave()
@@ -919,6 +915,56 @@ def sort_with_subclasses_first(
 
     for group in reversed(list(dispatch_types)):
         yield from ((typ, impl_dict[typ]) for typ in group if typ in impl_dict)
+
+
+def load_singledispatch_registry(builder: IRBuilder, main_func_name: str, line: int) -> Value:
+    func_obj = builder.load_global_str(main_func_name, line)
+    return builder.builder.get_attr(func_obj, 'registry', dict_rprimitive, line)
+
+
+def initialize_all_singledispatch_dictionaries(builder: IRBuilder) -> None:
+    singledispatch_funcs = builder.singledispatch_impls.keys()
+    for func in singledispatch_funcs:
+        main_func_name = singledispatch_main_func_name(func.name)
+        initialize_singledispatch_dispatch_dictionary(builder, func, main_func_name)
+
+
+def initialize_singledispatch_dispatch_dictionary(
+    builder: IRBuilder,
+    fitem: FuncDef,
+    main_func_name: str
+) -> None:
+    # TODO: move some of this to initialize_all_singledispatch_dictionaries
+    line = fitem.line
+    # dispatch_func_name = decorator_helper_name(fitem.name)
+    func_obj = builder.load_global_str(fitem.name, line)
+
+    impls = builder.singledispatch_impls[fitem]
+    native_impls = []
+
+    register_func = builder.builder.get_attr(func_obj, 'register', object_rprimitive, line)
+
+    for dispatch_type, impl in impls:
+        if is_decorated(builder, impl):
+            module_name = impl.fullname.rsplit('.')[0]
+            if module_name not in builder.imports:
+                # We need to generate an import here because the module needs to be imported before
+                # we try loading the function from it
+                builder.gen_import(module_name, line)
+            # store the actual callable object in the dict
+            loaded_impl = load_func(builder, impl.name, impl.fullname, line)
+            loaded_type = load_type(builder, dispatch_type, line)
+
+            builder.py_call(register_func, [loaded_type, loaded_impl], line)
+        else:
+            # create a new list and generate those setitem calls all at once so we can use the
+            # index as the integer ID
+            native_impls.append((dispatch_type, impl))
+    for i, (typ, func) in enumerate(native_impls):
+        loaded_type = load_type(builder, typ, line)
+        func_id = builder.add(LoadLiteral(i, object_rprimitive))
+        builder.py_call(register_func, [loaded_type, func_id], line)
+
 
 def singledispatch_main_func_name(orig_name: str) -> str:
     return '__mypyc_singledispatch_main_function_{}__'.format(orig_name)
