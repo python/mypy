@@ -858,8 +858,25 @@ def verify_decorator(
 def verify_typealias(
     stub: nodes.TypeAlias, runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
-    if False:
-        yield None
+    if isinstance(runtime, Missing):
+        # ignore type aliases that don't have a runtime counterpart
+        return
+    if isinstance(stub.target, mypy.types.Instance):
+        yield from verify(stub.target.type, runtime, object_path)
+        return
+    if isinstance(stub.target, mypy.types.UnionType):
+        if not getattr(runtime, "__origin__", None) is Union:
+            yield Error(object_path, "is not a Union", stub, runtime)
+        # could check Union contents here...
+        return
+    if isinstance(stub.target, mypy.types.TupleType):
+        if not tuple in getattr(runtime, "__mro__", ()):
+            yield Error(object_path, "is not a subclass of tuple", stub, runtime)
+        # could check Tuple contents here...
+        return
+    if isinstance(stub.target, mypy.types.AnyType):
+        return
+    yield Error(object_path, "is not a recognised type alias", stub, runtime)
 
 
 SPECIAL_DUNDERS = ("__init__", "__new__", "__call__", "__init_subclass__", "__class_getitem__")
@@ -887,10 +904,11 @@ def is_probably_a_function(runtime: Any) -> bool:
 def safe_inspect_signature(runtime: Any) -> Optional[inspect.Signature]:
     try:
         return inspect.signature(runtime)
-    except (ValueError, RuntimeError, TypeError):
-        # inspect.signature throws sometimes
+    except Exception:
+        # inspect.signature throws ValueError all the time
         # catch RuntimeError because of https://bugs.python.org/issue39504
         # catch TypeError because of https://github.com/python/typeshed/pull/5762
+        # catch AttributeError because of inspect.signature(_curses.window.border)
         return None
 
 
