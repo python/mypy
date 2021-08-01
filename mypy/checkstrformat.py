@@ -146,12 +146,12 @@ class ConversionSpecifier:
         self.field = field
 
     @classmethod
-    def from_match_format_call(cls, match: Match[str],
+    def from_match_format_call(cls, match: Match[str], start_pos: int = -1,
                                non_standard_spec: bool = False) -> 'ConversionSpecifier':
         """Construct specifier from match object resulted from parsing str.format() call."""
         if non_standard_spec:
             spec = cls(whole_seq=match.group(),
-                       start_pos=match.start(),
+                       start_pos=start_pos,
                        conv_type='',
                        key=match.group('key'),
                        flags='', width='', precision='',
@@ -161,7 +161,7 @@ class ConversionSpecifier:
             spec.non_standard_format_spec = True
             return spec
         return cls(whole_seq=match.group(),
-                   start_pos=match.start(),
+                   start_pos=start_pos,
                    conv_type=match.group('type'),
                    key=match.group('key'),
                    flags=match.group('flags'),
@@ -189,6 +189,7 @@ class ConversionSpecifier:
 
 
 def parse_conversion_specifiers(format_str: str) -> List[ConversionSpecifier]:
+    """Parse c-printf-style format string into list of conversion specifiers."""
     specifiers: List[ConversionSpecifier] = []
     for m in re.finditer(FORMAT_RE, format_str):
         specifiers.append(ConversionSpecifier.from_match_c_style(m))
@@ -207,15 +208,15 @@ def parse_format_value(format_value: str, ctx: Context, msg: MessageBuilder,
         return None
 
     result: List[ConversionSpecifier] = []
-    for target in top_targets:
+    for target, start_pos in top_targets:
         match = FORMAT_RE_NEW.fullmatch(target)
         if match:
-            conv_spec = ConversionSpecifier.from_match_format_call(match)
+            conv_spec = ConversionSpecifier.from_match_format_call(match, start_pos)
         else:
             custom_match = FORMAT_RE_NEW_CUSTOM.fullmatch(target)
             if custom_match:
                 conv_spec = ConversionSpecifier.from_match_format_call(
-                    custom_match, non_standard_spec=True)
+                    custom_match, start_pos, non_standard_spec=True)
             else:
                 msg.fail('Invalid conversion specifier in format string',
                          ctx, code=codes.STRING_FORMATTING)
@@ -243,7 +244,7 @@ def parse_format_value(format_value: str, ctx: Context, msg: MessageBuilder,
 
 
 def find_non_escaped_targets(format_value: str, ctx: Context,
-                             msg: MessageBuilder) -> Optional[List[str]]:
+                             msg: MessageBuilder) -> Optional[List[Tuple[str, int]]]:
     """Return list of raw (un-parsed) format specifiers in format string.
 
     Format specifiers don't include enclosing braces. We don't use regexp for
@@ -282,7 +283,7 @@ def find_non_escaped_targets(format_value: str, ctx: Context,
             if nesting:
                 next_spec += c
             else:
-                result.append(next_spec)
+                result.append((next_spec, pos - len(next_spec)))
                 next_spec = ''
         pos += 1
     if nesting:
