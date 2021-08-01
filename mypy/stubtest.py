@@ -861,20 +861,21 @@ def verify_typealias(
     if isinstance(runtime, Missing):
         # ignore type aliases that don't have a runtime counterpart
         return
-    if isinstance(stub.target, mypy.types.Instance):
-        yield from verify(stub.target.type, runtime, object_path)
+    stub_target = mypy.types.get_proper_type(stub.target)
+    if isinstance(stub_target, mypy.types.Instance):
+        yield from verify(stub_target.type, runtime, object_path)
         return
-    if isinstance(stub.target, mypy.types.UnionType):
+    if isinstance(stub_target, mypy.types.UnionType):
         if not getattr(runtime, "__origin__", None) is Union:
             yield Error(object_path, "is not a Union", stub, runtime)
         # could check Union contents here...
         return
-    if isinstance(stub.target, mypy.types.TupleType):
-        if not tuple in getattr(runtime, "__mro__", ()):
+    if isinstance(stub_target, mypy.types.TupleType):
+        if tuple not in getattr(runtime, "__mro__", ()):
             yield Error(object_path, "is not a subclass of tuple", stub, runtime)
         # could check Tuple contents here...
         return
-    if isinstance(stub.target, mypy.types.AnyType):
+    if isinstance(stub_target, mypy.types.AnyType):
         return
     yield Error(object_path, "is not a recognised type alias", stub, runtime)
 
