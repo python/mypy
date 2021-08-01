@@ -543,3 +543,31 @@ def f(arg) -> int:
 @f.register
 def g(arg: B) -> int:
     return 1
+
+[case testOrderCanOnlyBeDeterminedFromMRONotIsinstanceChecks]
+from mypy_extensions import trait
+from functools import singledispatch
+
+@trait
+class A: pass
+@trait
+class B: pass
+class AB(A, B): pass
+class BA(B, A): pass
+
+@singledispatch
+def f(arg) -> str:
+    return "default"
+    pass
+
+@f.register
+def fa(arg: A) -> str:
+    return "a"
+
+@f.register
+def fb(arg: B) -> str:
+    return "b"
+
+def test_singledispatch():
+    assert f(AB()) == "a"
+    assert f(BA()) == "b"
