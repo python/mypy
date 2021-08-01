@@ -2277,25 +2277,40 @@ class SemanticAnalyzer(NodeVisitor[None],
                                 is_final=s.is_final_def)
 
     def apply_dynamic_class_hook(self, s: AssignmentStmt) -> None:
-        if len(s.lvalues) > 1:
+        if not isinstance(s.rvalue, CallExpr):
             return
-        lval = s.lvalues[0]
-        if not isinstance(lval, NameExpr) or not isinstance(s.rvalue, CallExpr):
-            return
-        call = s.rvalue
-        fname = None
-        if isinstance(call.callee, RefExpr):
-            fname = call.callee.fullname
-        # check if method call
-        if fname is None and isinstance(call.callee, MemberExpr):
-            callee_expr = call.callee.expr
-            if isinstance(callee_expr, RefExpr) and callee_expr.fullname:
-                method_name = call.callee.name
-                fname = callee_expr.fullname + '.' + method_name
-        if fname:
-            hook = self.plugin.get_dynamic_class_hook(fname)
-            if hook:
-                hook(DynamicClassDefContext(call, lval.name, self))
+
+        from .traverser import TraverserVisitor
+
+        class CallExprVisitor(TraverserVisitor):
+            analyzer: SemanticAnalyzer
+
+            def __init__(self, analyzer: SemanticAnalyzer) -> None:
+                super().__init__()
+                self.analyzer = analyzer
+
+            def visit_call_expr(self, call: CallExpr) -> None:
+                fname = None
+                if isinstance(call.callee, RefExpr):
+                    fname = call.callee.fullname
+                # check if method call
+                if fname is None and isinstance(call.callee, MemberExpr):
+                    callee_expr = call.callee.expr
+                    if isinstance(callee_expr, RefExpr) and callee_expr.fullname:
+                        method_name = call.callee.name
+                        fname = callee_expr.fullname + '.' + method_name
+                if fname:
+                    for lval in s.lvalues:
+                        if not isinstance(lval, NameExpr):
+                            continue
+                        hook = self.analyzer.plugin.get_dynamic_class_hook(fname)
+                        if hook:
+                            hook(DynamicClassDefContext(call, lval.name, self.analyzer))
+
+                super().visit_call_expr(call)
+
+        visitor = CallExprVisitor(analyzer=self)
+        s.accept(visitor)
 
     def unwrap_final(self, s: AssignmentStmt) -> bool:
         """Strip Final[...] if present in an assignment.
