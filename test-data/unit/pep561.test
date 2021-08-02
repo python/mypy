@@ -60,7 +60,7 @@ from typedpkg import dne
 a = ex([''])
 reveal_type(a)
 [out]
-testTypedPkgStubs.py:3: error: Module 'typedpkg' has no attribute 'dne'
+testTypedPkgStubs.py:3: error: Module "typedpkg" has no attribute "dne"
 testTypedPkgStubs.py:5: note: Revealed type is "builtins.list[builtins.str]"
 
 [case testStubPrecedence]
@@ -79,7 +79,7 @@ from typedpkg import dne
 a = ex([''])
 reveal_type(a)
 [out]
-testTypedPkgStubs_python2.py:3: error: Module 'typedpkg' has no attribute 'dne'
+testTypedPkgStubs_python2.py:3: error: Module "typedpkg" has no attribute "dne"
 testTypedPkgStubs_python2.py:5: note: Revealed type is "builtins.list[builtins.str]"
 
 [case testTypedPkgSimple_python2]

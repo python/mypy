@@ -738,7 +738,7 @@ class A:
 
     def f(self, x: Optional['A']) -> None:
         assert x
-        lambda: (self.y, x.a) # E: Cannot determine type of 'y'
+        lambda: (self.y, x.a) # E: Cannot determine type of "y"
         self.y = int()
 [builtins fixtures/isinstancelist.pyi]
 

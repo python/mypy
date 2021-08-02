@@ -25,7 +25,7 @@ reveal_type(x)  # N: Revealed type is "builtins.int"
 
 [case testAnnotatedBadType]
 from typing_extensions import Annotated
-x: Annotated[XXX, ...]  # E: Name 'XXX' is not defined
+x: Annotated[XXX, ...]  # E: Name "XXX" is not defined
 reveal_type(x)  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 
@@ -56,7 +56,7 @@ reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
 
 [case testAnnotatedNestedBadType]
 from typing_extensions import Annotated
-x: Annotated[Annotated[XXX, ...], ...]  # E: Name 'XXX' is not defined
+x: Annotated[Annotated[XXX, ...], ...]  # E: Name "XXX" is not defined
 reveal_type(x)  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 
@@ -73,7 +73,7 @@ reveal_type(x)  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 
 [case testAnnotatedNoImport]
-x: Annotated[int, ...]  # E: Name 'Annotated' is not defined
+x: Annotated[int, ...]  # E: Name "Annotated" is not defined
 reveal_type(x)  # N: Revealed type is "Any"
 
 [case testAnnotatedDifferentName]

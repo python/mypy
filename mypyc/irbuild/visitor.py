@@ -95,7 +95,7 @@ class IRBuilderVisitor(IRVisitor):
     # This gets passed to all the implementations and contains all the
     # state and many helpers. The attribute is initialized outside
     # this class since this class and IRBuilder form a reference loop.
-    builder = None  # type: IRBuilder
+    builder: IRBuilder
 
     def visit_mypy_file(self, mypyfile: MypyFile) -> None:
         assert False, "use transform_mypy_file instead"

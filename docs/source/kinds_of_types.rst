@@ -329,7 +329,7 @@ will complain about the possible ``None`` value. You can use
 
 When initializing a variable as ``None``, ``None`` is usually an
 empty place-holder value, and the actual value has a different type.
-This is why you need to annotate an attribute in a cases like the class
+This is why you need to annotate an attribute in cases like the class
 ``Resource`` above:
 
 .. code-block:: python

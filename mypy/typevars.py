@@ -11,7 +11,7 @@ def fill_typevars(typ: TypeInfo) -> Union[Instance, TupleType]:
 
     For a generic G type with parameters T1, .., Tn, return G[T1, ..., Tn].
     """
-    tvs = []  # type: List[Type]
+    tvs: List[Type] = []
     # TODO: why do we need to keep both typ.type_vars and typ.defn.type_vars?
     for i in range(len(typ.defn.type_vars)):
         tv = typ.defn.type_vars[i]

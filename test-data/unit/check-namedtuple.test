@@ -567,7 +567,7 @@ C.A  # E: "Type[C]" has no attribute "A"
 from typing import NamedTuple
 def f() -> None:
     A = NamedTuple('A', [('x', int)])
-A  # E: Name 'A' is not defined
+A  # E: Name "A" is not defined
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleForwardAsUpperBound]
@@ -967,9 +967,9 @@ Type1 = NamedTuple('Type1', [('foo', foo)])  # E: Function "b.foo" is not valid 
 from typing import NamedTuple
 from collections import namedtuple
 
-A = NamedTuple('X', [('a', int)])  # E: First argument to namedtuple() should be 'A', not 'X'
-B = namedtuple('X', ['a'])         # E: First argument to namedtuple() should be 'B', not 'X'
+A = NamedTuple('X', [('a', int)])  # E: First argument to namedtuple() should be "A", not "X"
+B = namedtuple('X', ['a'])         # E: First argument to namedtuple() should be "B", not "X"
 
-C = NamedTuple('X', [('a', 'Y')])  # E: First argument to namedtuple() should be 'C', not 'X'
+C = NamedTuple('X', [('a', 'Y')])  # E: First argument to namedtuple() should be "C", not "X"
 class Y: ...
 [builtins fixtures/tuple.pyi]

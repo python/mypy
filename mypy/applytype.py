@@ -75,7 +75,7 @@ def apply_generic_arguments(
     types = get_proper_types(orig_types)
 
     # Create a map from type variable id to target type.
-    id_to_type = {}  # type: Dict[TypeVarId, Type]
+    id_to_type: Dict[TypeVarId, Type] = {}
 
     for tvar, type in zip(tvars, types):
         assert not isinstance(type, PartialType), "Internal error: must never apply partial type"

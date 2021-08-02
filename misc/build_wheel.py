@@ -3,7 +3,7 @@
 The main GitHub workflow where this script is used:
 https://github.com/mypyc/mypy_mypyc-wheels/blob/master/.github/workflows/build.yml
 
-This uses cibuildwheel (https://github.com/joerick/cibuildwheel) to
+This uses cibuildwheel (https://github.com/pypa/cibuildwheel) to
 build the wheels.
 
 Usage:
@@ -26,7 +26,6 @@ Other supported values for platform: linux, windows
 import argparse
 import os
 import subprocess
-import sys
 from typing import Dict
 
 # Clang package we use on Linux

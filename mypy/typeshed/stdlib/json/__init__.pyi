@@ -55,3 +55,4 @@ def load(
     object_pairs_hook: Optional[Callable[[List[Tuple[Any, Any]]], Any]] = ...,
     **kwds: Any,
 ) -> Any: ...
+def detect_encoding(b: bytes) -> str: ...  # undocumented

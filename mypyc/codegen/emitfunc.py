@@ -105,7 +105,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.source_path = source_path
         self.module_name = module_name
         self.literals = emitter.context.literals
-        self.next_block = None  # type: Optional[BasicBlock]
+        self.next_block: Optional[BasicBlock] = None
 
     def temp_name(self) -> str:
         return self.emitter.temp_name()
@@ -327,11 +327,11 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 '{} = 1;'.format(dest),
             )
 
-    PREFIX_MAP = {
+    PREFIX_MAP: Final = {
         NAMESPACE_STATIC: STATIC_PREFIX,
         NAMESPACE_TYPE: TYPE_PREFIX,
         NAMESPACE_MODULE: MODULE_PREFIX,
-    }  # type: Final
+    }
 
     def visit_load_static(self, op: LoadStatic) -> None:
         dest = self.reg(op)
@@ -383,7 +383,6 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         rtype = op.receiver_type
         class_ir = rtype.class_ir
         name = op.method
-        method_idx = rtype.method_index(name)
         method = rtype.class_ir.get_method(name)
         assert method is not None
 
@@ -406,6 +405,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 dest, lib, NATIVE_PREFIX, method.cname(self.names), args))
         else:
             # Call using vtable.
+            method_idx = rtype.method_index(name)
             self.emit_line('{}CPY_GET_METHOD{}({}, {}, {}, {}, {})({}); /* {} */'.format(
                 dest, version, obj, self.emitter.type_struct_name(rtype.class_ir),
                 method_idx, rtype.struct_name(self.names), mtype, args, op.method))

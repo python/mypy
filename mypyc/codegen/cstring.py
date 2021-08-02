@@ -23,7 +23,7 @@ import string
 from typing_extensions import Final
 
 
-CHAR_MAP = ['\\{:03o}'.format(i) for i in range(256)]  # type: Final
+CHAR_MAP: Final = ["\\{:03o}".format(i) for i in range(256)]
 
 # It is safe to use string.printable as it always uses the C locale.
 for c in string.printable:

@@ -105,7 +105,18 @@ def indentsize(line: str) -> int: ...
 #
 # Introspecting callables with the Signature object
 #
-def signature(obj: Callable[..., Any], *, follow_wrapped: bool = ...) -> Signature: ...
+if sys.version_info >= (3, 10):
+    def signature(
+        obj: Callable[..., Any],
+        *,
+        follow_wrapped: bool = ...,
+        globals: Optional[Mapping[str, Any]] = ...,
+        locals: Optional[Mapping[str, Any]] = ...,
+        eval_str: bool = ...,
+    ) -> Signature: ...
+
+else:
+    def signature(obj: Callable[..., Any], *, follow_wrapped: bool = ...) -> Signature: ...
 
 class Signature:
     def __init__(self, parameters: Optional[Sequence[Parameter]] = ..., *, return_annotation: Any = ...) -> None: ...
@@ -119,8 +130,29 @@ class Signature:
     def bind(self, *args: Any, **kwargs: Any) -> BoundArguments: ...
     def bind_partial(self, *args: Any, **kwargs: Any) -> BoundArguments: ...
     def replace(self, *, parameters: Optional[Sequence[Parameter]] = ..., return_annotation: Any = ...) -> Signature: ...
-    @classmethod
-    def from_callable(cls, obj: Callable[..., Any], *, follow_wrapped: bool = ...) -> Signature: ...
+    if sys.version_info >= (3, 10):
+        @classmethod
+        def from_callable(
+            cls,
+            obj: Callable[..., Any],
+            *,
+            follow_wrapped: bool = ...,
+            globals: Optional[Mapping[str, Any]] = ...,
+            locals: Optional[Mapping[str, Any]] = ...,
+            eval_str: bool = ...,
+        ) -> Signature: ...
+    else:
+        @classmethod
+        def from_callable(cls, obj: Callable[..., Any], *, follow_wrapped: bool = ...) -> Signature: ...
+
+if sys.version_info >= (3, 10):
+    def get_annotations(
+        obj: Union[Callable[..., Any], Type[Any], ModuleType],
+        *,
+        globals: Optional[Mapping[str, Any]] = ...,
+        locals: Optional[Mapping[str, Any]] = ...,
+        eval_str: bool = ...,
+    ) -> Dict[str, Any]: ...
 
 # The name is the same as the enum's name in CPython
 class _ParameterKind(enum.IntEnum):
@@ -165,7 +197,8 @@ class BoundArguments:
 # TODO: The actual return type should be List[_ClassTreeItem] but mypy doesn't
 # seem to be supporting this at the moment:
 # _ClassTreeItem = Union[List[_ClassTreeItem], Tuple[type, Tuple[type, ...]]]
-def getclasstree(classes: List[type], unique: bool = ...) -> Any: ...
+def getclasstree(classes: List[type], unique: bool = ...) -> List[Any]: ...
+def walktree(classes: List[type], children: Dict[Type[Any], List[type]], parent: Optional[Type[Any]]) -> List[Any]: ...
 
 class ArgSpec(NamedTuple):
     args: List[str]
@@ -307,3 +340,6 @@ class Attribute(NamedTuple):
     object: _Object
 
 def classify_class_attrs(cls: type) -> List[Attribute]: ...
+
+if sys.version_info >= (3, 9):
+    class ClassFoundException(Exception): ...

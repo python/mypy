@@ -197,7 +197,7 @@ class A: pass
 [file m.py.2]
 [out]
 ==
-main:3: error: Name 'm.A' is not defined
+main:3: error: Name "m.A" is not defined
 
 [case testTwoIncrementalSteps]
 import m
@@ -1602,7 +1602,7 @@ class C:
 [out]
 main:7: error: "A" has no attribute "x"
 ==
-main:3: error: Name 'm.C' is not defined
+main:3: error: Name "m.C" is not defined
 
 [case testBaseClassOfNestedClassDeleted]
 import m
@@ -1620,7 +1620,7 @@ class C:
 [out]
 main:8: error: "B" has no attribute "x"
 ==
-main:4: error: Name 'm.C' is not defined
+main:4: error: Name "m.C" is not defined
 
 [case testImportQualifiedModuleName]
 import a
@@ -1645,7 +1645,7 @@ def f() -> None: pass
 [file a.py.2]
 [out]
 ==
-main:2: error: Module 'a' has no attribute 'f'
+main:2: error: Module "a" has no attribute "f"
 
 [case testTypeVarRefresh]
 from typing import TypeVar
@@ -1656,7 +1656,7 @@ def f() -> None: pass
 [file a.py.2]
 [out]
 ==
-main:2: error: Module 'a' has no attribute 'f'
+main:2: error: Module "a" has no attribute "f"
 
 [case testRefreshTyping]
 from typing import Sized
@@ -1695,7 +1695,7 @@ def f() -> None: pass
 [builtins fixtures/tuple.pyi]
 [out]
 ==
-main:2: error: Module 'a' has no attribute 'f'
+main:2: error: Module "a" has no attribute "f"
 
 [case testModuleLevelAttributeRefresh]
 from typing import Callable
@@ -1707,7 +1707,7 @@ def f() -> None: pass
 [file a.py.2]
 [out]
 ==
-main:2: error: Module 'a' has no attribute 'f'
+main:2: error: Module "a" has no attribute "f"
 
 [case testClassBodyRefresh]
 from a import f
@@ -1722,7 +1722,7 @@ f = 1
 [file a.py.2]
 [out]
 ==
-main:1: error: Module 'a' has no attribute 'f'
+main:1: error: Module "a" has no attribute "f"
 
 [case testDecoratedMethodRefresh]
 from typing import Iterator, Callable, List
@@ -2022,11 +2022,11 @@ class A:
 class A:
     def foo(self) -> int: pass
 [out]
-a.py:3: error: Name 'nothing' is not defined
+a.py:3: error: Name "nothing" is not defined
 ==
-a.py:3: error: Name 'nothing' is not defined
+a.py:3: error: Name "nothing" is not defined
 ==
-a.py:3: error: Name 'nothing' is not defined
+a.py:3: error: Name "nothing" is not defined
 ==
 
 [case testPreviousErrorInMethodSemanalPass3]
@@ -2588,7 +2588,7 @@ class A: pass
 class A: pass
 [out]
 ==
-main:2: error: Module 'a' has no attribute 'A'
+main:2: error: Module "a" has no attribute "A"
 ==
 
 [case testRefreshGenericAndFailInPass3]
@@ -3050,7 +3050,7 @@ class M(type):
     pass
 [out]
 ==
-a.py:3: error: Inconsistent metaclass structure for 'D'
+a.py:3: error: Inconsistent metaclass structure for "D"
 
 [case testFineMetaclassDeclaredUpdate]
 import a
@@ -3066,7 +3066,7 @@ class M(type): pass
 class M2(type): pass
 [out]
 ==
-a.py:3: error: Inconsistent metaclass structure for 'D'
+a.py:3: error: Inconsistent metaclass structure for "D"
 
 [case testFineMetaclassRemoveFromClass]
 import a
@@ -3128,7 +3128,7 @@ M = 1
 class M(type):
     pass
 [out]
-a.py:2: error: Invalid metaclass 'b.M'
+a.py:2: error: Invalid metaclass "b.M"
 ==
 
 [case testFixedAttrOnAddedMetaclass]
@@ -3205,7 +3205,7 @@ class M(type):
 whatever: int
 [out]
 ==
-b.py:2: error: Name 'c.M' is not defined
+b.py:2: error: Name "c.M" is not defined
 a.py:3: error: "Type[B]" has no attribute "x"
 
 [case testFixMissingMetaclass]
@@ -3224,7 +3224,7 @@ whatever: int
 class M(type):
     x: int
 [out]
-b.py:2: error: Name 'c.M' is not defined
+b.py:2: error: Name "c.M" is not defined
 a.py:3: error: "Type[B]" has no attribute "x"
 ==
 
@@ -3241,7 +3241,7 @@ class M(type):
 M = 1
 [out]
 ==
-a.py:2: error: Invalid metaclass 'b.M'
+a.py:2: error: Invalid metaclass "b.M"
 
 [case testRefreshGenericSubclass]
 from typing import Generic, TypeVar
@@ -3400,7 +3400,7 @@ class C: pass
 [file a.py.2]
 [out]
 ==
-main:1: error: Module 'a' has no attribute 'C'
+main:1: error: Module "a" has no attribute "C"
 
 [case testRefreshSubclassNestedInFunction2]
 from a import C
@@ -3916,7 +3916,7 @@ A = int
 import a
 x: a.A
 [out]
-b.py:2: error: Name 'a.A' is not defined
+b.py:2: error: Name "a.A" is not defined
 ==
 
 [case testAliasFineDeleted]
@@ -3929,7 +3929,7 @@ import a
 x: a.A
 [out]
 ==
-b.py:2: error: Name 'a.A' is not defined
+b.py:2: error: Name "a.A" is not defined
 
 [case testAliasFineClassToAlias]
 import b
@@ -3975,7 +3975,7 @@ def f(x: A[int]):
 [builtins fixtures/dict.pyi]
 [out]
 ==
-b.py:4: error: Name 'a.B' is not defined
+b.py:4: error: Name "a.B" is not defined
 
 [case testAliasFineTargetDeleted]
 import c
@@ -3992,7 +3992,7 @@ def f(x: b.B):
     pass
 [out]
 ==
-c.py:2: error: Name 'b.B' is not defined
+c.py:2: error: Name "b.B" is not defined
 
 [case testAliasFineClassInFunction]
 import b
@@ -5090,7 +5090,7 @@ class B:
 [out]
 a.py:2: error: Value of type variable "T" of function cannot be "int"
 ==
-c.py:3: error: Name 'd.B' is not defined
+c.py:3: error: Name "d.B" is not defined
 
 [case testGenericFineCallableToNonGeneric]
 import a
@@ -6370,7 +6370,7 @@ class C:
     x: int
 [out]
 ==
-a.py:2: error: Cannot instantiate abstract class 'C' with abstract attribute 'x'
+a.py:2: error: Cannot instantiate abstract class "C" with abstract attribute "x"
 ==
 
 [case testInvalidateProtocolViaSuperClass]
@@ -7128,11 +7128,13 @@ class C:
 ==
 mod.py:9: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
-[case testOverloadedMethodSupertype]
+[case testOverloadedMethodSupertype-only_when_cache]
+-- Different cache/no-cache tests because
+-- CallableType.def_extras.first_arg differs ("self"/None)
 from typing import overload, Any
 import b
 class Child(b.Parent):
-    @overload
+    @overload                           # Fail
     def f(self, arg: int) -> int: ...
     @overload
     def f(self, arg: str) -> str: ...
@@ -7158,6 +7160,59 @@ class Parent:
 [out]
 ==
 main:4: error: Signature of "f" incompatible with supertype "Parent"
+main:4: note:      Superclass:
+main:4: note:          @overload
+main:4: note:          def f(self, arg: int) -> int
+main:4: note:          @overload
+main:4: note:          def f(self, arg: str) -> C
+main:4: note:      Subclass:
+main:4: note:          @overload
+main:4: note:          def f(self, arg: int) -> int
+main:4: note:          @overload
+main:4: note:          def f(self, arg: str) -> str
+
+[case testOverloadedMethodSupertype-only_when_nocache]
+-- Different cache/no-cache tests because
+-- CallableType.def_extras.first_arg differs ("self"/None)
+from typing import overload, Any
+import b
+class Child(b.Parent):
+    @overload                           # Fail
+    def f(self, arg: int) -> int: ...
+    @overload
+    def f(self, arg: str) -> str: ...
+    def f(self, arg: Any) -> Any: ...
+[file b.py]
+from typing import overload, Any
+class C: pass
+class Parent:
+    @overload
+    def f(self, arg: int) -> int: ...
+    @overload
+    def f(self, arg: str) -> str: ...
+    def f(self, arg: Any) -> Any: ...
+[file b.py.2]
+from typing import overload, Any
+class C: pass
+class Parent:
+    @overload
+    def f(self, arg: int) -> int: ...
+    @overload
+    def f(self, arg: str) -> C: ...
+    def f(self, arg: Any) -> Any: ...
+[out]
+==
+main:4: error: Signature of "f" incompatible with supertype "Parent"
+main:4: note:      Superclass:
+main:4: note:          @overload
+main:4: note:          def f(self, arg: int) -> int
+main:4: note:          @overload
+main:4: note:          def f(self, arg: str) -> C
+main:4: note:      Subclass:
+main:4: note:          @overload
+main:4: note:          def f(arg: int) -> int
+main:4: note:          @overload
+main:4: note:          def f(arg: str) -> str
 
 [case testOverloadedInitSupertype]
 import a
@@ -7665,7 +7720,7 @@ class C:
     def g(self) -> None: pass
 [out]
 ==
-main:2: error: Cannot instantiate abstract class 'D' with abstract attribute 'g'
+main:2: error: Cannot instantiate abstract class "D" with abstract attribute "g"
 ==
 
 [case testMakeClassAbstract]
@@ -7681,7 +7736,7 @@ class C:
     def f(self) -> None: pass
 [out]
 ==
-main:2: error: Cannot instantiate abstract class 'C' with abstract attribute 'f'
+main:2: error: Cannot instantiate abstract class "C" with abstract attribute "f"
 
 [case testMakeMethodNoLongerAbstract1]
 [file z.py]
@@ -7845,8 +7900,8 @@ from b import A
 [builtins fixtures/list.pyi]
 [out]
 ==
-a.py:4: error: Module 'b' has no attribute 'A'
-a.py:4: error: Name 'A' already defined on line 3
+a.py:4: error: Module "b" has no attribute "A"
+a.py:4: error: Name "A" already defined on line 3
 
 -- the order of errors is different with cache
 [case testImportOnTopOfAlias2]
@@ -7887,9 +7942,9 @@ def a():
 def a():
     pass
 [out]
-b.py:5: error: Name 'a' already defined on line 2
+b.py:5: error: Name "a" already defined on line 2
 ==
-b.py:5: error: Name 'a' already defined on line 2
+b.py:5: error: Name "a" already defined on line 2
 
 [case testFakeOverloadCrash2]
 
@@ -7923,19 +7978,19 @@ def bar(x: T) -> T:
     pass
 x = 1
 [out]
-a.py:1: error: Name 'TypeVar' is not defined
+a.py:1: error: Name "TypeVar" is not defined
 a.py:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import TypeVar")
 a.py:7: error: Variable "a.T" is not valid as a type
 a.py:7: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
-a.py:10: error: Name 'bar' already defined on line 6
+a.py:10: error: Name "bar" already defined on line 6
 a.py:11: error: Variable "a.T" is not valid as a type
 a.py:11: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 ==
-a.py:1: error: Name 'TypeVar' is not defined
+a.py:1: error: Name "TypeVar" is not defined
 a.py:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import TypeVar")
 a.py:7: error: Variable "a.T" is not valid as a type
 a.py:7: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
-a.py:10: error: Name 'bar' already defined on line 6
+a.py:10: error: Name "bar" already defined on line 6
 a.py:11: error: Variable "a.T" is not valid as a type
 a.py:11: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
@@ -7968,7 +8023,7 @@ class A: pass
 [builtins fixtures/list.pyi]
 [out]
 ==
-main:4: error: Name 'm.A' is not defined
+main:4: error: Name "m.A" is not defined
 
 [case testIdLikeDecoForwardCrash]
 import b
@@ -8309,7 +8364,9 @@ class D:
 ==
 a.py:3: error: Cannot override final attribute "meth" (previously declared in base class "C")
 
-[case testFinalBodyReprocessedAndStillFinalOverloaded]
+[case testFinalBodyReprocessedAndStillFinalOverloaded-only_when_cache]
+-- Different cache/no-cache tests because
+-- CallableType.def_extras.first_arg differs ("self"/None)
 import a
 [file a.py]
 from c import C
@@ -8346,6 +8403,60 @@ class D:
 ==
 a.py:3: error: Cannot override final attribute "meth" (previously declared in base class "C")
 a.py:3: error: Signature of "meth" incompatible with supertype "C"
+a.py:3: note:      Superclass:
+a.py:3: note:          @overload
+a.py:3: note:          def meth(self, x: int) -> int
+a.py:3: note:          @overload
+a.py:3: note:          def meth(self, x: str) -> str
+a.py:3: note:      Subclass:
+a.py:3: note:          def meth(self) -> None
+
+[case testFinalBodyReprocessedAndStillFinalOverloaded-only_when_nocache]
+-- Different cache/no-cache tests because
+-- CallableType.def_extras.first_arg differs ("self"/None)
+import a
+[file a.py]
+from c import C
+class A:
+    def meth(self) -> None: ...
+
+[file a.py.3]
+from c import C
+class A(C):
+    def meth(self) -> None: ...
+
+[file c.py]
+from typing import final, overload, Union
+from d import D
+
+class C:
+    @overload
+    def meth(self, x: int) -> int: ...
+    @overload
+    def meth(self, x: str) -> str: ...
+    @final
+    def meth(self, x: Union[int, str]) -> Union[int, str]:
+        D(int())
+        return x
+[file d.py]
+class D:
+    def __init__(self, x: int) -> None: ...
+[file d.py.2]
+from typing import Optional
+class D:
+    def __init__(self, x: Optional[int]) -> None: ...
+[out]
+==
+==
+a.py:3: error: Cannot override final attribute "meth" (previously declared in base class "C")
+a.py:3: error: Signature of "meth" incompatible with supertype "C"
+a.py:3: note:      Superclass:
+a.py:3: note:          @overload
+a.py:3: note:          def meth(x: int) -> int
+a.py:3: note:          @overload
+a.py:3: note:          def meth(x: str) -> str
+a.py:3: note:      Subclass:
+a.py:3: note:          def meth(self) -> None
 
 [case testIfMypyUnreachableClass]
 from a import x
@@ -9176,7 +9287,7 @@ x = 42
 def good() -> None: ...
 [out]
 ==
-a.py:1: error: Module 'b' has no attribute 'bad'
+a.py:1: error: Module "b" has no attribute "bad"
 
 [case testFileAddedAndImported2]
 # flags: --ignore-missing-imports --follow-imports=skip
@@ -9193,7 +9304,7 @@ x = 42
 def good() -> None: ...
 [out]
 ==
-a.py:1: error: Module 'b' has no attribute 'bad'
+a.py:1: error: Module "b" has no attribute "bad"
 
 [case testTypedDictCrashFallbackAfterDeletedMeet]
 # flags: --ignore-missing-imports

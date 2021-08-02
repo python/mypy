@@ -29,8 +29,8 @@ class FileSystemWatcher:
 
     def __init__(self, fs: FileSystemCache) -> None:
         self.fs = fs
-        self._paths = set()  # type: Set[str]
-        self._file_data = {}  # type: Dict[str, Optional[FileData]]
+        self._paths: Set[str] = set()
+        self._file_data: Dict[str, Optional[FileData]] = {}
 
     def dump_file_data(self) -> Dict[str, Tuple[float, int, str]]:
         return {k: v for k, v in self._file_data.items() if v is not None}

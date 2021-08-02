@@ -1,4 +1,5 @@
 import sys
+from _typeshed import StrPath
 from typing import Any, AsyncIterator, Awaitable, Callable, Iterable, Optional, Tuple, Union
 
 from . import events, protocols, transports
@@ -36,9 +37,7 @@ async def start_server(
 
 if sys.platform != "win32":
     if sys.version_info >= (3, 7):
-        from os import PathLike
-
-        _PathType = Union[str, PathLike[str]]
+        _PathType = StrPath
     else:
         _PathType = str
     async def open_unix_connection(
@@ -53,7 +52,8 @@ if sys.platform != "win32":
         **kwds: Any,
     ) -> events.AbstractServer: ...
 
-class FlowControlMixin(protocols.Protocol): ...
+class FlowControlMixin(protocols.Protocol):
+    def __init__(self, loop: Optional[events.AbstractEventLoop] = ...) -> None: ...
 
 class StreamReaderProtocol(FlowControlMixin, protocols.Protocol):
     def __init__(

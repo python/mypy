@@ -254,7 +254,7 @@ def f() -> None:
     x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
     reveal_type(x) # N: Revealed type is "def () -> Any"
     y = 1
-    def y(): pass # E: Name 'y' already defined on line 6
+    def y(): pass # E: Name "y" already defined on line 6
 
 [case testCannotRedefineVarAsClass]
 # flags: --allow-redefinition
@@ -263,7 +263,7 @@ def f() -> None:
     x = 1 # E: Cannot assign to a type \
           # E: Incompatible types in assignment (expression has type "int", variable has type "Type[x]")
     y = 1
-    class y: pass # E: Name 'y' already defined on line 5
+    class y: pass # E: Name "y" already defined on line 5
 
 [case testRedefineVarAsTypeVar]
 # flags: --allow-redefinition
@@ -274,7 +274,7 @@ def f() -> None:
     reveal_type(x) # N: Revealed type is "builtins.int"
     y = 1
     # NOTE: '"int" not callable' is due to test stubs
-    y = TypeVar('y')  # E: Cannot redefine 'y' as a type variable \
+    y = TypeVar('y')  # E: Cannot redefine "y" as a type variable \
                       # E: "int" not callable
     def h(a: y) -> y: return a # E: Variable "y" is not valid as a type \
                                # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
@@ -285,7 +285,7 @@ def f() -> None:
     import typing as m
     m = 1 # E: Incompatible types in assignment (expression has type "int", variable has type Module)
     n = 1
-    import typing as n # E: Name 'n' already defined on line 5
+    import typing as n # E: Name "n" already defined on line 5
 [builtins fixtures/module.pyi]
 
 [case testRedefineLocalWithTypeAnnotation]
@@ -305,9 +305,9 @@ def h() -> None:
     x = 1
     reveal_type(x) # N: Revealed type is "builtins.int"
     x: object
-    x: object = '' # E: Name 'x' already defined on line 16
+    x: object = '' # E: Name "x" already defined on line 16
 def farg(x: int) -> None:
-    x: str = '' # E: Name 'x' already defined on line 18
+    x: str = '' # E: Name "x" already defined on line 18
 def farg2(x: int) -> None:
     x: str = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
@@ -474,3 +474,98 @@ with A() as x:
     reveal_type(x) # N: Revealed type is "builtins.int"
 with B() as x:
     x = 0 # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+
+[case testRedefineModuleAsException]
+import typing
+try:
+    pass
+except Exception as typing:
+    pass
+[builtins fixtures/exception.pyi]
+
+[case testRedefiningUnderscoreFunctionIsntAnError]
+def _(arg):
+    pass
+
+def _(arg):
+    pass
+
+[case testTypeErrorsInUnderscoreFunctionsReported]
+def _(arg: str):
+    x = arg + 1 # E: Unsupported left operand type for + ("str")
+
+def _(arg: int) -> int:
+    return 'a' # E: Incompatible return value type (got "str", expected "int")
+
+[case testCallingUnderscoreFunctionIsNotAllowed]
+def _(arg: str) -> None:
+    pass
+
+def _(arg: int) -> int:
+    return arg
+
+_('a') # E: Calling function named "_" is not allowed
+
+y = _(5) # E: Calling function named "_" is not allowed
+
+[case testFunctionStillTypeCheckedWhenAliasedAsUnderscoreDuringImport]
+from a import f as _
+
+_(1) # E: Argument 1 to "f" has incompatible type "int"; expected "str"
+reveal_type(_('a')) # N: Revealed type is "builtins.str"
+
+[file a.py]
+def f(arg: str) -> str:
+    return arg
+
+[case testCallToFunctionStillTypeCheckedWhenAssignedToUnderscoreVariable]
+from a import g
+_ = g
+
+_('a') # E: Argument 1 has incompatible type "str"; expected "int"
+reveal_type(_(1)) # N: Revealed type is "builtins.int"
+
+[file a.py]
+def g(arg: int) -> int:
+    return arg
+
+[case testRedefiningUnderscoreFunctionWithDecoratorWithUnderscoreFunctionsNextToEachOther]
+def dec(f):
+    return f
+
+@dec
+def _(arg):
+    pass
+
+@dec
+def _(arg):
+    pass
+
+[case testRedefiningUnderscoreFunctionWithDecoratorInDifferentPlaces]
+def dec(f):
+    return f
+
+def dec2(f):
+    return f
+
+@dec
+def _(arg):
+    pass
+
+def f(arg):
+    pass
+
+@dec2
+def _(arg):
+    pass
+
+[case testOverwritingImportedFunctionThatWasAliasedAsUnderscore]
+from a import f as _
+
+def _(arg: str) -> str: # E: Name "_" already defined (possibly by an import)
+    return arg
+
+[file a.py]
+def f(s: str) -> str:
+    return s

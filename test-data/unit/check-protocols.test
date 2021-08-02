@@ -393,7 +393,7 @@ class P(C, Protocol): # E: All bases of a protocol must be protocols
 class P2(P, D, Protocol): # E: All bases of a protocol must be protocols
     pass
 
-P2() # E: Cannot instantiate abstract class 'P2' with abstract attribute 'attr'
+P2() # E: Cannot instantiate abstract class "P2" with abstract attribute "attr"
 p: P2
 reveal_type(p.attr) # N: Revealed type is "builtins.int"
 
@@ -886,6 +886,47 @@ x: P1 = A() # E: Incompatible types in assignment (expression has type "A", vari
             # N:     attr1: expected "P2", got "B"
 [builtins fixtures/property.pyi]
 
+[case testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771]
+from typing import cast, Protocol, TypeVar, Union
+
+T1 = TypeVar("T1", covariant=True)
+T2 = TypeVar("T2")
+
+class P1(Protocol[T1]):
+    def b(self) -> int: ...
+    def a(self, other: "P1[T2]") -> T1: ...
+
+class P2(Protocol[T1]):
+    def a(self, other: Union[P1[T2], "P2[T2]"]) -> T1: ...
+
+p11: P1 = cast(P1, 1)
+p12: P1 = cast(P2, 1)   # E
+p21: P2 = cast(P1, 1)
+p22: P2 = cast(P2, 1)   # E
+[out]
+main:14: error: Incompatible types in assignment (expression has type "P2[Any]", variable has type "P1[Any]")
+main:14: note: "P2" is missing following "P1" protocol member:
+main:14: note:     b
+main:15: error: Incompatible types in assignment (expression has type "P1[Any]", variable has type "P2[Any]")
+main:15: note: Following member(s) of "P1[Any]" have conflicts:
+main:15: note:     Expected:
+main:15: note:         def [T2] a(self, other: Union[P1[T2], P2[T2]]) -> Any
+main:15: note:     Got:
+main:15: note:         def [T2] a(self, other: P1[T2]) -> Any
+
+[case testHashable]
+
+from typing import Hashable, Iterable
+
+def f(x: Hashable) -> None:
+    pass
+
+def g(x: Iterable[str]) -> None:
+    f(x)   # E: Argument 1 to "f" has incompatible type "Iterable[str]"; expected "Hashable"
+
+[builtins fixtures/object_hashable.pyi]
+[typing fixtures/typing-full.pyi]
+
 -- FIXME: things like this should work
 [case testWeirdRecursiveInferenceForProtocols-skip]
 from typing import Protocol, TypeVar, Generic
@@ -917,7 +958,7 @@ class P(Protocol):
 class A(P):
     pass
 
-A() # E: Cannot instantiate abstract class 'A' with abstract attribute 'meth'
+A() # E: Cannot instantiate abstract class "A" with abstract attribute "meth"
 
 class C(A):
     def meth(self) -> int:
@@ -938,7 +979,7 @@ class P(Protocol):
 class A(P):
     pass
 
-A() # E: Cannot instantiate abstract class 'A' with abstract attribute 'attr'
+A() # E: Cannot instantiate abstract class "A" with abstract attribute "attr"
 
 class C(A):
     attr: int
@@ -1114,7 +1155,7 @@ class P(Protocol):
     def meth(self, x: str) -> bytes: pass
 class C(P):
     pass
-C() # E: Cannot instantiate abstract class 'C' with abstract attribute 'meth'
+C() # E: Cannot instantiate abstract class "C" with abstract attribute "meth"
 
 [case testCanUseOverloadedImplementationsInProtocols]
 from typing import overload, Protocol, Union

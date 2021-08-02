@@ -2573,3 +2573,101 @@ if issubclass(x, B):
 else:
     reveal_type(x)        # N: Revealed type is "Type[__main__.A]"
 [builtins fixtures/isinstance.pyi]
+
+[case testTypeEqualsCheck]
+from typing import Any
+
+y: Any
+if type(y) == int:
+    reveal_type(y) # N: Revealed type is "builtins.int"
+
+
+[case testMultipleTypeEqualsCheck]
+from typing import Any
+
+x: Any
+y: Any
+if type(x) == type(y) == int:
+    reveal_type(y) # N: Revealed type is "builtins.int"
+    reveal_type(x) # N: Revealed type is "builtins.int"
+
+[case testTypeEqualsCheckUsingIs]
+from typing import Any
+
+y: Any
+if type(y) is int:
+    reveal_type(y) # N: Revealed type is "builtins.int"
+
+[case testTypeEqualsNarrowingUnionWithElse]
+from typing import Union
+
+x: Union[int, str]
+if type(x) is int:
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+else:
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+[case testTypeEqualsMultipleTypesShouldntNarrow]
+# make sure we don't do any narrowing if there are multiple types being compared
+
+from typing import Union
+
+x: Union[int, str]
+if type(x) == int == str:
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+else:
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+# mypy shows an error about "Unsupported left operand type for !=" if we don't include this
+[builtins fixtures/typing-medium.pyi]
+# mypy thinks int isn't defined unless we include this
+[builtins fixtures/primitives.pyi]
+[case testTypeNotEqualsCheck]
+from typing import Union
+
+x: Union[int, str]
+if type(x) != int:
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+else:
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+
+# mypy shows an error about "Unsupported left operand type for !=" if we don't include this
+[builtins fixtures/typing-medium.pyi]
+# mypy thinks int isn't defined unless we include this
+[builtins fixtures/primitives.pyi]
+
+[case testTypeNotEqualsCheckUsingIsNot]
+from typing import Union
+
+x: Union[int, str]
+if type(x) is not int:
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+else:
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+
+[case testNarrowInElseCaseIfFinal]
+from typing import final, Union
+@final
+class C:
+    pass
+class D:
+    pass
+
+x: Union[C, D]
+if type(x) is C:
+    reveal_type(x)  # N: Revealed type is "__main__.C"
+else:
+    reveal_type(x)  # N: Revealed type is "__main__.D"
+[case testNarrowInIfCaseIfFinalUsingIsNot]
+from typing import final, Union
+@final
+class C:
+    pass
+class D:
+    pass
+
+x: Union[C, D]
+if type(x) is not C:
+    reveal_type(x)  # N: Revealed type is "__main__.D"
+else:
+    reveal_type(x)  # N: Revealed type is "__main__.C"

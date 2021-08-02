@@ -2,14 +2,15 @@
 
 from typing import Optional, List, Tuple, Dict, Callable, Mapping, Set
 
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 
 from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX, use_fastcall
-from mypyc.codegen.emit import Emitter, HeaderDeclaration
+from mypyc.codegen.emit import Emitter, HeaderDeclaration, ReturnHandler
 from mypyc.codegen.emitfunc import native_function_header
 from mypyc.codegen.emitwrapper import (
     generate_dunder_wrapper, generate_hash_wrapper, generate_richcompare_wrapper,
-    generate_bool_wrapper, generate_get_wrapper,
+    generate_bool_wrapper, generate_get_wrapper, generate_len_wrapper,
+    generate_set_del_item_wrapper, generate_contains_wrapper, generate_bin_op_wrapper
 )
 from mypyc.ir.rtypes import RType, RTuple, object_rprimitive
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
@@ -33,7 +34,7 @@ def wrapper_slot(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
 SlotGenerator = Callable[[ClassIR, FuncIR, Emitter], str]
 SlotTable = Mapping[str, Tuple[str, SlotGenerator]]
 
-SLOT_DEFS = {
+SLOT_DEFS: SlotTable = {
     '__init__': ('tp_init', lambda c, t, e: generate_init_for_class(c, t, e)),
     '__call__': ('tp_call', lambda c, t, e: generate_call_wrapper(c, t, e)),
     '__str__': ('tp_str', native_slot),
@@ -42,24 +43,72 @@ SLOT_DEFS = {
     '__iter__': ('tp_iter', native_slot),
     '__hash__': ('tp_hash', generate_hash_wrapper),
     '__get__': ('tp_descr_get', generate_get_wrapper),
-}  # type: SlotTable
+}
 
-AS_MAPPING_SLOT_DEFS = {
+AS_MAPPING_SLOT_DEFS: SlotTable = {
     '__getitem__': ('mp_subscript', generate_dunder_wrapper),
-}  # type: SlotTable
+    '__setitem__': ('mp_ass_subscript', generate_set_del_item_wrapper),
+    '__delitem__': ('mp_ass_subscript', generate_set_del_item_wrapper),
+    '__len__': ('mp_length', generate_len_wrapper),
+}
 
-AS_NUMBER_SLOT_DEFS = {
+AS_SEQUENCE_SLOT_DEFS: SlotTable = {
+    '__contains__': ('sq_contains', generate_contains_wrapper),
+}
+
+AS_NUMBER_SLOT_DEFS: SlotTable = {
     '__bool__': ('nb_bool', generate_bool_wrapper),
-}  # type: SlotTable
+    '__neg__': ('nb_negative', generate_dunder_wrapper),
+    '__invert__': ('nb_invert', generate_dunder_wrapper),
+    '__int__': ('nb_int', generate_dunder_wrapper),
+    '__float__': ('nb_float', generate_dunder_wrapper),
+    '__add__': ('nb_add', generate_bin_op_wrapper),
+    '__radd__': ('nb_add', generate_bin_op_wrapper),
+    '__sub__': ('nb_subtract', generate_bin_op_wrapper),
+    '__rsub__': ('nb_subtract', generate_bin_op_wrapper),
+    '__mul__': ('nb_multiply', generate_bin_op_wrapper),
+    '__rmul__': ('nb_multiply', generate_bin_op_wrapper),
+    '__mod__': ('nb_remainder', generate_bin_op_wrapper),
+    '__rmod__': ('nb_remainder', generate_bin_op_wrapper),
+    '__truediv__': ('nb_true_divide', generate_bin_op_wrapper),
+    '__rtruediv__': ('nb_true_divide', generate_bin_op_wrapper),
+    '__floordiv__': ('nb_floor_divide', generate_bin_op_wrapper),
+    '__rfloordiv__': ('nb_floor_divide', generate_bin_op_wrapper),
+    '__lshift__': ('nb_lshift', generate_bin_op_wrapper),
+    '__rlshift__': ('nb_lshift', generate_bin_op_wrapper),
+    '__rshift__': ('nb_rshift', generate_bin_op_wrapper),
+    '__rrshift__': ('nb_rshift', generate_bin_op_wrapper),
+    '__and__': ('nb_and', generate_bin_op_wrapper),
+    '__rand__': ('nb_and', generate_bin_op_wrapper),
+    '__or__': ('nb_or', generate_bin_op_wrapper),
+    '__ror__': ('nb_or', generate_bin_op_wrapper),
+    '__xor__': ('nb_xor', generate_bin_op_wrapper),
+    '__rxor__': ('nb_xor', generate_bin_op_wrapper),
+    '__matmul__': ('nb_matrix_multiply', generate_bin_op_wrapper),
+    '__rmatmul__': ('nb_matrix_multiply', generate_bin_op_wrapper),
+    '__iadd__': ('nb_inplace_add', generate_dunder_wrapper),
+    '__isub__': ('nb_inplace_subtract', generate_dunder_wrapper),
+    '__imul__': ('nb_inplace_multiply', generate_dunder_wrapper),
+    '__imod__': ('nb_inplace_remainder', generate_dunder_wrapper),
+    '__itruediv__': ('nb_inplace_true_divide', generate_dunder_wrapper),
+    '__ifloordiv__': ('nb_inplace_floor_divide', generate_dunder_wrapper),
+    '__ilshift__': ('nb_inplace_lshift', generate_dunder_wrapper),
+    '__irshift__': ('nb_inplace_rshift', generate_dunder_wrapper),
+    '__iand__': ('nb_inplace_and', generate_dunder_wrapper),
+    '__ior__': ('nb_inplace_or', generate_dunder_wrapper),
+    '__ixor__': ('nb_inplace_xor', generate_dunder_wrapper),
+    '__imatmul__': ('nb_inplace_matrix_multiply', generate_dunder_wrapper),
+}
 
-AS_ASYNC_SLOT_DEFS = {
+AS_ASYNC_SLOT_DEFS: SlotTable = {
     '__await__': ('am_await', native_slot),
     '__aiter__': ('am_aiter', native_slot),
     '__anext__': ('am_anext', native_slot),
-}  # type: SlotTable
+}
 
 SIDE_TABLES = [
     ('as_mapping', 'PyMappingMethods', AS_MAPPING_SLOT_DEFS),
+    ('as_sequence', 'PySequenceMethods', AS_SEQUENCE_SLOT_DEFS),
     ('as_number', 'PyNumberMethods', AS_NUMBER_SLOT_DEFS),
     ('as_async', 'PyAsyncMethods', AS_ASYNC_SLOT_DEFS),
 ]
@@ -80,13 +129,31 @@ def generate_call_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
         return wrapper_slot(cl, fn, emitter)
 
 
+def slot_key(attr: str) -> str:
+    """Map dunder method name to sort key.
+
+    Sort reverse operator methods and __delitem__ after others ('x' > '_').
+    """
+    if (attr.startswith('__r') and attr != '__rshift__') or attr == '__delitem__':
+        return 'x' + attr
+    return attr
+
+
 def generate_slots(cl: ClassIR, table: SlotTable, emitter: Emitter) -> Dict[str, str]:
-    fields = OrderedDict()  # type: Dict[str, str]
+    fields: Dict[str, str] = OrderedDict()
+    generated: Dict[str, str] = {}
     # Sort for determinism on Python 3.5
-    for name, (slot, generator) in sorted(table.items()):
+    for name, (slot, generator) in sorted(table.items(), key=lambda x: slot_key(x[0])):
         method_cls = cl.get_method_and_class(name)
         if method_cls and (method_cls[1] == cl or name in ALWAYS_FILL):
-            fields[slot] = generator(cl, method_cls[0], emitter)
+            if slot in generated:
+                # Reuse previously generated wrapper.
+                fields[slot] = generated[slot]
+            else:
+                # Generate new wrapper.
+                name = generator(cl, method_cls[0], emitter)
+                fields[slot] = name
+                generated[slot] = name
 
     return fields
 
@@ -132,7 +199,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     methods_name = '{}_methods'.format(name_prefix)
     vtable_setup_name = '{}_trait_vtable_setup'.format(name_prefix)
 
-    fields = OrderedDict()  # type: Dict[str, str]
+    fields: Dict[str, str] = OrderedDict()
     fields['tp_name'] = '"{}"'.format(name)
 
     generate_full = not cl.is_trait and not cl.builtin_base
@@ -227,9 +294,9 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         emit_line()
 
         if cl.allow_interpreted_subclasses:
-            shadow_vtable_name = generate_vtables(
+            shadow_vtable_name: Optional[str] = generate_vtables(
                 cl, vtable_setup_name + "_shadow", vtable_name + "_shadow", emitter, shadow=True
-            )  # type: Optional[str]
+            )
             emit_line()
         else:
             shadow_vtable_name = None
@@ -285,8 +352,8 @@ def setter_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
 
 
 def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
-    seen_attrs = set()  # type: Set[Tuple[str, RType]]
-    lines = []  # type: List[str]
+    seen_attrs: Set[Tuple[str, RType]] = set()
+    lines: List[str] = []
     lines += ['typedef struct {',
               'PyObject_HEAD',
               'CPyVTableItem *vtable;']
@@ -801,14 +868,26 @@ def generate_setter(cl: ClassIR,
         setter_name(cl, attr, emitter.names),
         cl.struct_name(emitter.names)))
     emitter.emit_line('{')
+
+    deletable = cl.is_deletable(attr)
+    if not deletable:
+        emitter.emit_line('if (value == NULL) {')
+        emitter.emit_line('PyErr_SetString(PyExc_AttributeError,')
+        emitter.emit_line('    "{} object attribute {} cannot be deleted");'.format(repr(cl.name),
+                                                                                    repr(attr)))
+        emitter.emit_line('return -1;')
+        emitter.emit_line('}')
+
     if rtype.is_refcounted:
         attr_expr = 'self->{}'.format(attr_field)
         emitter.emit_undefined_attr_check(rtype, attr_expr, '!=')
         emitter.emit_dec_ref('self->{}'.format(attr_field), rtype)
         emitter.emit_line('}')
-    emitter.emit_line('if (value != NULL) {')
+
+    if deletable:
+        emitter.emit_line('if (value != NULL) {')
     if rtype.is_unboxed:
-        emitter.emit_unbox('value', 'tmp', rtype, custom_failure='return -1;', declare_dest=True)
+        emitter.emit_unbox('value', 'tmp', rtype, error=ReturnHandler('-1'), declare_dest=True)
     elif is_same_type(rtype, object_rprimitive):
         emitter.emit_line('PyObject *tmp = value;')
     else:
@@ -817,8 +896,10 @@ def generate_setter(cl: ClassIR,
                            '    return -1;')
     emitter.emit_inc_ref('tmp', rtype)
     emitter.emit_line('self->{} = tmp;'.format(attr_field))
-    emitter.emit_line('} else')
-    emitter.emit_line('    self->{} = {};'.format(attr_field, emitter.c_undefined_value(rtype)))
+    if deletable:
+        emitter.emit_line('} else')
+        emitter.emit_line('    self->{} = {};'.format(attr_field,
+                                                      emitter.c_undefined_value(rtype)))
     emitter.emit_line('return 0;')
     emitter.emit_line('}')
 
@@ -855,7 +936,7 @@ def generate_property_setter(cl: ClassIR,
         cl.struct_name(emitter.names)))
     emitter.emit_line('{')
     if arg_type.is_unboxed:
-        emitter.emit_unbox('value', 'tmp', arg_type, custom_failure='return -1;',
+        emitter.emit_unbox('value', 'tmp', arg_type, error=ReturnHandler('-1'),
                            declare_dest=True)
         emitter.emit_line('{}{}((PyObject *) self, tmp);'.format(
                           NATIVE_PREFIX,

@@ -268,7 +268,7 @@ def analyze_type_type_member_access(name: str,
     item = None
     fallback = mx.builtin_type('builtins.type')
     ignore_messages = mx.msg.copy()
-    ignore_messages.disable_errors()
+    ignore_messages.disable_errors().__enter__()
     if isinstance(typ.item, Instance):
         item = typ.item
     elif isinstance(typ.item, AnyType):
@@ -522,13 +522,24 @@ def instance_alias_type(alias: TypeAlias,
 
     As usual, we first erase any unbound type variables to Any.
     """
-    target = get_proper_type(alias.target)  # type: Type
+    target: Type = get_proper_type(alias.target)
     assert isinstance(get_proper_type(target),
                       Instance), "Must be called only with aliases to classes"
     target = get_proper_type(set_any_tvars(alias, alias.line, alias.column))
     assert isinstance(target, Instance)
     tp = type_object_type(target.type, builtin_type)
     return expand_type_by_instance(tp, target)
+
+
+def is_instance_var(var: Var, info: TypeInfo) -> bool:
+    """Return if var is an instance variable according to PEP 526."""
+    return (
+        # check the type_info node is the var (not a decorated function, etc.)
+        var.name in info.names and info.names[var.name].node is var
+        and not var.is_classvar
+        # variables without annotations are treated as classvar
+        and not var.is_inferred
+    )
 
 
 def analyze_var(name: str,
@@ -557,9 +568,14 @@ def analyze_var(name: str,
         if mx.is_lvalue and var.is_classvar:
             mx.msg.cant_assign_to_classvar(name, mx.context)
         t = get_proper_type(expand_type_by_instance(typ, itype))
-        result = t  # type: Type
+        result: Type = t
         typ = get_proper_type(typ)
-        if var.is_initialized_in_class and isinstance(typ, FunctionLike) and not typ.is_type_obj():
+        if (
+            var.is_initialized_in_class
+            and not is_instance_var(var, info)
+            and isinstance(typ, FunctionLike)
+            and not typ.is_type_obj()
+        ):
             if mx.is_lvalue:
                 if var.is_property:
                     if not var.is_settable_property:
@@ -730,7 +746,7 @@ def analyze_class_attribute_access(itype: Instance,
 
         # Find the class where method/variable was defined.
         if isinstance(node.node, Decorator):
-            super_info = node.node.var.info  # type: Optional[TypeInfo]
+            super_info: Optional[TypeInfo] = node.node.var.info
         elif isinstance(node.node, (Var, SYMBOL_FUNCBASE_TYPES)):
             super_info = node.node.info
         else:
@@ -931,7 +947,7 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
 
     fallback = info.metaclass_type or builtin_type('builtins.type')
     if init_index < new_index:
-        method = init_method.node  # type: Union[FuncBase, Decorator]
+        method: Union[FuncBase, Decorator] = init_method.node
         is_new = False
     elif init_index > new_index:
         method = new_method.node

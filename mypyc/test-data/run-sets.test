@@ -6,10 +6,16 @@ def instantiateLiteral() -> Set[int]:
     return {1, 2, 3, 5, 8}
 
 def fromIterator() -> List[Set[int]]:
-    x = set([1, 3, 5])
-    y = set((1, 3, 5))
-    z = set({1: '1', 3: '3', 5: '5'})
-    return [x, y, z]
+    a = set([1, 3, 5])
+    b = set((1, 3, 5))
+    c = set({1: '1', 3: '3', 5: '5'})
+    d = set(x for x in range(1, 6, 2))
+    e = set((x for x in range(1, 6, 2)))
+    return [a, b, c, d, e]
+
+def fromIterator2() -> Set[int]:
+    tmp_list = [1, 2, 3, 4, 5]
+    return set((x + 1) for x in ((y * 10) for y in (z for z in tmp_list if z < 4)))
 
 def addIncrementing(s : Set[int]) -> None:
     for a in [1, 2, 3]:
@@ -54,6 +60,10 @@ from native import fromIterator
 sets = fromIterator()
 for s in sets:
     assert s == {1, 3, 5}
+
+from native import fromIterator2
+s = fromIterator2()
+assert s == {11, 21, 31}
 
 from native import addIncrementing
 s = set()

@@ -6,12 +6,13 @@ from mypy.constraints import (
     infer_constraints, infer_constraints_for_callable, SUBTYPE_OF, SUPERTYPE_OF
 )
 from mypy.types import Type, TypeVarId, CallableType
+from mypy.nodes import ArgKind
 from mypy.solve import solve_constraints
 
 
 def infer_function_type_arguments(callee_type: CallableType,
                                   arg_types: Sequence[Optional[Type]],
-                                  arg_kinds: List[int],
+                                  arg_kinds: List[ArgKind],
                                   formal_to_actual: List[List[int]],
                                   strict: bool = True) -> List[Optional[Type]]:
     """Infer the type arguments of a generic function.

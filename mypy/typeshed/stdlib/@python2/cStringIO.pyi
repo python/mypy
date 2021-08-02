@@ -1,5 +1,4 @@
 from abc import ABCMeta
-from types import TracebackType
 from typing import IO, Iterable, Iterator, List, Optional, Union, overload
 
 # This class isn't actually abstract, but you can't instantiate it

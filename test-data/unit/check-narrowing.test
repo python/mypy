@@ -439,7 +439,7 @@ if weird_mixture["key"] is Key.B:       # E: Invalid tuple index type (actual ty
 else:
     reveal_type(weird_mixture)          # N: Revealed type is "Union[TypedDict('__main__.KeyedTypedDict', {'key': Literal[__main__.Key.B]}), Tuple[Literal[__main__.Key.C], fallback=__main__.KeyedNamedTuple]]"
 
-if weird_mixture[0] is Key.B:           # E: TypedDict key must be a string literal; expected one of ('key')
+if weird_mixture[0] is Key.B:           # E: TypedDict key must be a string literal; expected one of ("key")
     reveal_type(weird_mixture)          # N: Revealed type is "Union[TypedDict('__main__.KeyedTypedDict', {'key': Literal[__main__.Key.B]}), Tuple[Literal[__main__.Key.C], fallback=__main__.KeyedNamedTuple]]"
 else:
     reveal_type(weird_mixture)          # N: Revealed type is "Union[TypedDict('__main__.KeyedTypedDict', {'key': Literal[__main__.Key.B]}), Tuple[Literal[__main__.Key.C], fallback=__main__.KeyedNamedTuple]]"
@@ -1029,3 +1029,67 @@ else:
     reveal_type(str_or_bool_literal)  # N: Revealed type is "Union[Literal[False], Literal[True]]"
 
 [builtins fixtures/primitives.pyi]
+
+[case testNarrowingTypedDictUsingEnumLiteral]
+# flags: --python-version 3.6
+from typing import Union
+from typing_extensions import TypedDict, Literal
+from enum import Enum
+
+class E(Enum):
+    FOO = "a"
+    BAR = "b"
+
+class Foo(TypedDict):
+    tag: Literal[E.FOO]
+    x: int
+
+class Bar(TypedDict):
+    tag: Literal[E.BAR]
+    y: int
+
+def f(d: Union[Foo, Bar]) -> None:
+    assert d['tag'] == E.FOO
+    d['x']
+    reveal_type(d)  # N: Revealed type is "TypedDict('__main__.Foo', {'tag': Literal[__main__.E.FOO], 'x': builtins.int})"
+[builtins fixtures/dict.pyi]
+
+[case testNarrowingUsingMetaclass]
+# flags: --strict-optional
+from typing import Type
+
+class M(type):
+    pass
+
+class C: pass
+
+def f(t: Type[C]) -> None:
+    if type(t) is M:
+        reveal_type(t)  # N: Revealed type is "Type[__main__.C]"
+    else:
+        reveal_type(t)  # N: Revealed type is "Type[__main__.C]"
+    if type(t) is not M:
+        reveal_type(t)  # N: Revealed type is "Type[__main__.C]"
+    else:
+        reveal_type(t)  # N: Revealed type is "Type[__main__.C]"
+    reveal_type(t)  # N: Revealed type is "Type[__main__.C]"
+
+[case testNarrowingUsingTypeVar]
+# flags: --strict-optional
+from typing import Type, TypeVar
+
+class A: pass
+class B(A): pass
+
+T = TypeVar("T", bound=A)
+
+def f(t: Type[T], a: A, b: B) -> None:
+    if type(a) is t:
+        reveal_type(a)  # N: Revealed type is "T`-1"
+    else:
+        reveal_type(a)  # N: Revealed type is "__main__.A"
+
+    if type(b) is t:
+        reveal_type(b)  # N: Revealed type is "<nothing>"
+    else:
+        reveal_type(b)  # N: Revealed type is "__main__.B"

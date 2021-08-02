@@ -106,7 +106,7 @@ class SSLProtocol(protocols.Protocol):
             loop: events.AbstractEventLoop,
             app_protocol: protocols.BaseProtocol,
             sslcontext: ssl.SSLContext,
-            waiter: futures.Future,
+            waiter: futures.Future[Any],
             server_side: bool = ...,
             server_hostname: Optional[str] = ...,
             call_connection_made: bool = ...,

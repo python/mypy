@@ -1,21 +1,25 @@
 from __future__ import print_function
-"""This file is used to find the site packages of a Python executable, which may be Python 2.
+"""Utilities to find the site and prefix information of a Python executable, which may be Python 2.
 
 This file MUST remain compatible with Python 2. Since we cannot make any assumptions about the
 Python being executed, this module should not use *any* dependencies outside of the standard
 library found in Python 2. This file is run each mypy run, so it should be kept as fast as
 possible.
 """
+import site
+import sys
 
 if __name__ == '__main__':
-    import sys
     sys.path = sys.path[1:]  # we don't want to pick up mypy.types
-
-import site
 
 MYPY = False
 if MYPY:
-    from typing import List
+    from typing import List, Tuple
+
+
+def getprefixes():
+    # type: () -> Tuple[str, str]
+    return sys.base_prefix, sys.prefix
 
 
 def getsitepackages():
@@ -29,4 +33,10 @@ def getsitepackages():
 
 
 if __name__ == '__main__':
-    print(repr(getsitepackages()))
+    if sys.argv[-1] == 'getsitepackages':
+        print(repr(getsitepackages()))
+    elif sys.argv[-1] == 'getprefixes':
+        print(repr(getprefixes()))
+    else:
+        print("ERROR: incorrect argument to pyinfo.py.", file=sys.stderr)
+        sys.exit(1)

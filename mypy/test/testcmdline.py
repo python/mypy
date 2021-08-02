@@ -24,6 +24,7 @@ python3_path = sys.executable
 # Files containing test case descriptions.
 cmdline_files = [
     'cmdline.test',
+    'cmdline.pyproject.test',
     'reports.test',
     'envvars.test',
 ]

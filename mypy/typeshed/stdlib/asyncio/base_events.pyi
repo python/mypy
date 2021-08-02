@@ -21,7 +21,19 @@ _ProtocolFactory = Callable[[], BaseProtocol]
 _SSLContext = Union[bool, None, ssl.SSLContext]
 _TransProtPair = Tuple[BaseTransport, BaseProtocol]
 
-class Server(AbstractServer): ...
+class Server(AbstractServer):
+    if sys.version_info >= (3, 7):
+        def __init__(
+            self,
+            loop: AbstractEventLoop,
+            sockets: List[socket],
+            protocol_factory: _ProtocolFactory,
+            ssl_context: _SSLContext,
+            backlog: int,
+            ssl_handshake_timeout: Optional[float],
+        ) -> None: ...
+    else:
+        def __init__(self, loop: AbstractEventLoop, sockets: List[socket]) -> None: ...
 
 class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
     def run_forever(self) -> None: ...
@@ -53,7 +65,7 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
     def create_future(self) -> Future[Any]: ...
     # Tasks methods
     if sys.version_info >= (3, 8):
-        def create_task(self, coro: Union[Awaitable[_T], Generator[Any, None, _T]], *, name: Optional[str] = ...) -> Task[_T]: ...
+        def create_task(self, coro: Union[Awaitable[_T], Generator[Any, None, _T]], *, name: object = ...) -> Task[_T]: ...
     else:
         def create_task(self, coro: Union[Awaitable[_T], Generator[Any, None, _T]]) -> Task[_T]: ...
     def set_task_factory(
@@ -184,7 +196,7 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
         ) -> _TransProtPair: ...
     if sys.version_info >= (3, 7):
         async def sock_sendfile(
-            self, sock: socket, file: IO[bytes], offset: int = ..., count: Optional[int] = ..., *, fallback: bool = ...
+            self, sock: socket, file: IO[bytes], offset: int = ..., count: Optional[int] = ..., *, fallback: Optional[bool] = ...
         ) -> int: ...
         @overload
         async def create_server(
@@ -303,9 +315,9 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
         protocol_factory: _ProtocolFactory,
         cmd: Union[bytes, str],
         *,
-        stdin: Any = ...,
-        stdout: Any = ...,
-        stderr: Any = ...,
+        stdin: Union[int, IO[Any], None] = ...,
+        stdout: Union[int, IO[Any], None] = ...,
+        stderr: Union[int, IO[Any], None] = ...,
         universal_newlines: Literal[False] = ...,
         shell: Literal[True] = ...,
         bufsize: Literal[0] = ...,
@@ -317,10 +329,16 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
     async def subprocess_exec(
         self,
         protocol_factory: _ProtocolFactory,
+        program: Any,
         *args: Any,
-        stdin: Any = ...,
-        stdout: Any = ...,
-        stderr: Any = ...,
+        stdin: Union[int, IO[Any], None] = ...,
+        stdout: Union[int, IO[Any], None] = ...,
+        stderr: Union[int, IO[Any], None] = ...,
+        universal_newlines: Literal[False] = ...,
+        shell: Literal[True] = ...,
+        bufsize: Literal[0] = ...,
+        encoding: None = ...,
+        errors: None = ...,
         **kwargs: Any,
     ) -> _TransProtPair: ...
     def add_reader(self, fd: FileDescriptorLike, callback: Callable[..., Any], *args: Any) -> None: ...
@@ -341,7 +359,7 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
         def sock_accept(self, sock: socket) -> Future[Tuple[socket, _RetAddress]]: ...
     # Signal handling.
     def add_signal_handler(self, sig: int, callback: Callable[..., Any], *args: Any) -> None: ...
-    def remove_signal_handler(self, sig: int) -> None: ...
+    def remove_signal_handler(self, sig: int) -> bool: ...
     # Error handlers.
     def set_exception_handler(self, handler: Optional[_ExceptionHandler]) -> None: ...
     def get_exception_handler(self) -> Optional[_ExceptionHandler]: ...

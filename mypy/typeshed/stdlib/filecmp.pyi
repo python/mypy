@@ -1,44 +1,29 @@
 import sys
-from typing import Any, AnyStr, Callable, Dict, Generic, Iterable, List, Optional, Sequence, Text, Tuple, Union
-
-if sys.version_info >= (3, 6):
-    from os import PathLike
+from _typeshed import StrOrBytesPath
+from os import PathLike
+from typing import Any, AnyStr, Callable, Dict, Generic, Iterable, List, Optional, Sequence, Tuple, Union
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
 
 DEFAULT_IGNORES: List[str]
 
-if sys.version_info >= (3, 6):
-    def cmp(
-        f1: Union[bytes, Text, PathLike[AnyStr]], f2: Union[bytes, Text, PathLike[AnyStr]], shallow: Union[int, bool] = ...
-    ) -> bool: ...
-    def cmpfiles(
-        a: Union[AnyStr, PathLike[AnyStr]],
-        b: Union[AnyStr, PathLike[AnyStr]],
-        common: Iterable[AnyStr],
-        shallow: Union[int, bool] = ...,
-    ) -> Tuple[List[AnyStr], List[AnyStr], List[AnyStr]]: ...
-
-else:
-    def cmp(f1: Union[bytes, Text], f2: Union[bytes, Text], shallow: Union[int, bool] = ...) -> bool: ...
-    def cmpfiles(
-        a: AnyStr, b: AnyStr, common: Iterable[AnyStr], shallow: Union[int, bool] = ...
-    ) -> Tuple[List[AnyStr], List[AnyStr], List[AnyStr]]: ...
+def cmp(f1: StrOrBytesPath, f2: StrOrBytesPath, shallow: Union[int, bool] = ...) -> bool: ...
+def cmpfiles(
+    a: Union[AnyStr, PathLike[AnyStr]],
+    b: Union[AnyStr, PathLike[AnyStr]],
+    common: Iterable[AnyStr],
+    shallow: Union[int, bool] = ...,
+) -> Tuple[List[AnyStr], List[AnyStr], List[AnyStr]]: ...
 
 class dircmp(Generic[AnyStr]):
-    if sys.version_info >= (3, 6):
-        def __init__(
-            self,
-            a: Union[AnyStr, PathLike[AnyStr]],
-            b: Union[AnyStr, PathLike[AnyStr]],
-            ignore: Optional[Sequence[AnyStr]] = ...,
-            hide: Optional[Sequence[AnyStr]] = ...,
-        ) -> None: ...
-    else:
-        def __init__(
-            self, a: AnyStr, b: AnyStr, ignore: Optional[Sequence[AnyStr]] = ..., hide: Optional[Sequence[AnyStr]] = ...
-        ) -> None: ...
+    def __init__(
+        self,
+        a: Union[AnyStr, PathLike[AnyStr]],
+        b: Union[AnyStr, PathLike[AnyStr]],
+        ignore: Optional[Sequence[AnyStr]] = ...,
+        hide: Optional[Sequence[AnyStr]] = ...,
+    ) -> None: ...
     left: AnyStr
     right: AnyStr
     hide: Sequence[AnyStr]
@@ -69,5 +54,4 @@ class dircmp(Generic[AnyStr]):
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
 
-if sys.version_info >= (3,):
-    def clear_cache() -> None: ...
+def clear_cache() -> None: ...
