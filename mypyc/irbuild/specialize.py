@@ -12,7 +12,8 @@ generator comprehensions as the argument.
 See comment below for more documentation.
 """
 
-from typing import Callable, Optional, Dict, Tuple, List, Final
+from typing import Callable, Optional, Dict, Tuple, List
+from typing_extensions import Final
 
 from mypy.checkstrformat import parse_format_value
 from mypy.errors import Errors
