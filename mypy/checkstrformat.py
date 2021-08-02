@@ -83,8 +83,8 @@ def compile_new_format_re(custom_spec: bool) -> Pattern[str]:
         # This contains sign, flags (sign, # and/or 0), width, grouping (_ or ,) and precision.
         num_spec = r'(?P<flags>[+\- ]?#?0?)(?P<width>\d+)?[_,]?(?P<precision>\.\d+)?'
         # The last element is type.
-        type = r'(?P<type>.)?'  # only some are supported, but we want to give a better error
-        format_spec = r'(?P<format_spec>:' + fill_align + num_spec + type + r')?'
+        conv_type = r'(?P<type>.)?'  # only some are supported, but we want to give a better error
+        format_spec = r'(?P<format_spec>:' + fill_align + num_spec + conv_type + r')?'
     else:
         # Custom types can define their own form_spec using __format__().
         format_spec = r'(?P<format_spec>:.*)?'
@@ -114,72 +114,30 @@ FLOAT_TYPES: Final = {"e", "E", "f", "F", "g", "G"}
 
 
 class ConversionSpecifier:
-    def __init__(self, whole_seq: str,
+    def __init__(self, match: Match[str],
                  start_pos: int = -1,
-                 conv_type: Optional[str] = None,
-                 key: Optional[str] = None,
-                 flags: Optional[str] = None,
-                 width: Optional[str] = None,
-                 precision: Optional[str] = None,
-                 format_spec: Optional[str] = None,
-                 conversion: Optional[str] = None,
-                 field: Optional[str] = None) -> None:
+                 non_standard_format_spec: bool = False) -> None:
 
-        self.whole_seq = whole_seq
+        self.whole_seq = match.group()
         self.start_pos = start_pos
 
-        self.conv_type = conv_type
-        self.key = key
+        m_dict = match.groupdict()
+        self.key = m_dict.get('key')
 
         # Replace unmatched optional groups with empty matches (for convenience).
-        self.flags = flags or ''
-        self.width = width or ''
-        self.precision = precision or ''
+        self.conv_type = m_dict.get('type', '')
+        self.flags = m_dict.get('flags', '')
+        self.width = m_dict.get('width', '')
+        self.precision = m_dict.get('precision', '')
 
         # Used only for str.format() calls (it may be custom for types with __format__()).
-        self.format_spec = format_spec
-        self.non_standard_format_spec = False
+        self.format_spec = m_dict.get('format_spec')
+        self.non_standard_format_spec = non_standard_format_spec
         # Used only for str.format() calls.
-        self.conversion = conversion
+        self.conversion = m_dict.get('conversion')
         # Full formatted expression (i.e. key plus following attributes and/or indexes).
         # Used only for str.format() calls.
-        self.field = field
-
-    @classmethod
-    def from_match_format_call(cls, match: Match[str], start_pos: int = -1,
-                               non_standard_spec: bool = False) -> 'ConversionSpecifier':
-        """Construct specifier from match object resulted from parsing str.format() call."""
-        if non_standard_spec:
-            spec = cls(whole_seq=match.group(),
-                       start_pos=start_pos,
-                       conv_type='',
-                       key=match.group('key'),
-                       flags='', width='', precision='',
-                       format_spec=match.group('format_spec'),
-                       conversion=match.group('conversion'),
-                       field=match.group('field'))
-            spec.non_standard_format_spec = True
-            return spec
-        return cls(whole_seq=match.group(),
-                   start_pos=start_pos,
-                   conv_type=match.group('type'),
-                   key=match.group('key'),
-                   flags=match.group('flags'),
-                   width=match.group('width'),
-                   precision=match.group('precision'),
-                   format_spec=match.group('format_spec'),
-                   conversion=match.group('conversion'),
-                   field=match.group('field'))
-
-    @classmethod
-    def from_match_c_style(cls, match: Match[str]) -> 'ConversionSpecifier':
-        return cls(whole_seq=match.group(),
-                   start_pos=match.start(),
-                   conv_type=match.group('type'),
-                   key=match.group('key'),
-                   flags=match.group('flags'),
-                   width=match.group('width'),
-                   precision=match.group('precision'))
+        self.field = m_dict.get('field')
 
     def has_key(self) -> bool:
         return self.key is not None
@@ -192,7 +150,7 @@ def parse_conversion_specifiers(format_str: str) -> List[ConversionSpecifier]:
     """Parse c-printf-style format string into list of conversion specifiers."""
     specifiers: List[ConversionSpecifier] = []
     for m in re.finditer(FORMAT_RE, format_str):
-        specifiers.append(ConversionSpecifier.from_match_c_style(m))
+        specifiers.append(ConversionSpecifier(m, start_pos=m.start()))
     return specifiers
 
 
@@ -211,12 +169,13 @@ def parse_format_value(format_value: str, ctx: Context, msg: MessageBuilder,
     for target, start_pos in top_targets:
         match = FORMAT_RE_NEW.fullmatch(target)
         if match:
-            conv_spec = ConversionSpecifier.from_match_format_call(match, start_pos)
+            conv_spec = ConversionSpecifier(match, start_pos=start_pos)
         else:
             custom_match = FORMAT_RE_NEW_CUSTOM.fullmatch(target)
             if custom_match:
-                conv_spec = ConversionSpecifier.from_match_format_call(
-                    custom_match, start_pos, non_standard_spec=True)
+                conv_spec = ConversionSpecifier(
+                    custom_match, start_pos=start_pos,
+                    non_standard_format_spec=True)
             else:
                 msg.fail('Invalid conversion specifier in format string',
                          ctx, code=codes.STRING_FORMATTING)
