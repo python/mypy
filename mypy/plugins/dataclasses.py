@@ -127,7 +127,8 @@ class DataclassTransformer:
             add_method(
                 ctx,
                 '__init__',
-                args=[attr.to_argument() for attr in attributes if attr.is_in_init],
+                args=[attr.to_argument() for attr in attributes if attr.is_in_init
+                      and not self._is_kw_only_type(attr.type)],
                 return_type=NoneType(),
             )
 
@@ -253,8 +254,7 @@ class DataclassTransformer:
                 is_init_var = True
                 node.type = node_type.args[0]
 
-            if (isinstance(node_type, Instance) and
-                    node_type.type.fullname == 'dataclasses._KW_ONLY_TYPE'):
+            if self._is_kw_only_type(node_type):
                 kw_only = True
 
             has_field_call, field_args = _collect_field_args(stmt.rvalue)
@@ -390,6 +390,15 @@ class DataclassTransformer:
                 var.is_settable_property = True
                 var._fullname = info.fullname + '.' + var.name
                 info.names[var.name] = SymbolTableNode(MDEF, var)
+
+    def _is_kw_only_type(self, node: Optional[Type]) -> bool:
+        """Checks if the type of the node is the KW_ONLY sentinel value."""
+        if node is None:
+            return False
+        node_type = get_proper_type(node)
+        if not isinstance(node_type, Instance):
+            return False
+        return node_type.type.fullname == 'dataclasses._KW_ONLY_TYPE'
 
 
 def dataclass_class_maker_callback(ctx: ClassDefContext) -> None:

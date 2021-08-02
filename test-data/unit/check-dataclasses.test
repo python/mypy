@@ -384,6 +384,8 @@ class D(Base):
     z: str
     a: str = "a"
 
+D("Hello", "World")
+
 [builtins fixtures/list.pyi]
 
 [case testDataclassesClassmethods]
