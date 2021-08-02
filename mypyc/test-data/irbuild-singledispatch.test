@@ -1,0 +1,47 @@
+[case testNativeCallsUsedInDispatchFunction]
+from functools import singledispatch
+@singledispatch
+def f(arg) -> bool:
+    return False
+
+@f.register
+def g(arg: int) -> bool:
+    return True
+[out]
+def __mypyc___mypyc_singledispatch_main_function_f___decorator_helper__(arg):
+    arg :: object
+L0:
+    return 0
+def __mypyc_f_decorator_helper__(arg):
+    arg, r0 :: object
+    r1 :: int32
+    r2 :: bit
+    r3 :: bool
+    r4 :: int
+    r5 :: bool
+    r6 :: dict
+    r7 :: str
+    r8, r9 :: object
+    r10 :: bool
+L0:
+    r0 = load_address PyLong_Type
+    r1 = PyObject_IsInstance(arg, r0)
+    r2 = r1 >= 0 :: signed
+    r3 = truncate r1: int32 to builtins.bool
+    if r3 goto L1 else goto L2 :: bool
+L1:
+    r4 = unbox(int, arg)
+    r5 = g(r4)
+    return r5
+L2:
+    r6 = __main__.globals :: static
+    r7 = '__mypyc___mypyc_singledispatch_main_function_f___decorator_helper__'
+    r8 = CPyDict_GetItem(r6, r7)
+    r9 = PyObject_CallFunctionObjArgs(r8, arg, 0)
+    r10 = unbox(bool, r9)
+    return r10
+def g(arg):
+    arg :: int
+L0:
+    return 1
+

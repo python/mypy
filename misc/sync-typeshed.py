@@ -8,7 +8,6 @@ By default, sync to the latest typeshed commit.
 """
 
 import argparse
-import glob
 import os
 import shutil
 import subprocess

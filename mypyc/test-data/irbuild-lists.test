@@ -93,6 +93,30 @@ L0:
     x = r0
     return 1
 
+[case testNewListTenItems]
+from typing import List
+def f() -> None:
+    x: List[str] = ['a', 'b', 'c', 'd', 'e',
+                    'f', 'g', 'h', 'i', 'j']
+[out]
+def f():
+    r0, r1, r2, r3, r4, r5, r6, r7, r8, r9 :: str
+    r10, x :: list
+L0:
+    r0 = 'a'
+    r1 = 'b'
+    r2 = 'c'
+    r3 = 'd'
+    r4 = 'e'
+    r5 = 'f'
+    r6 = 'g'
+    r7 = 'h'
+    r8 = 'i'
+    r9 = 'j'
+    r10 = CPyList_Build(10, r0, r1, r2, r3, r4, r5, r6, r7, r8, r9)
+    x = r10
+    return 1
+
 [case testListMultiply]
 from typing import List
 def f(a: List[int]) -> None:

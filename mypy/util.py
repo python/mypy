@@ -1,6 +1,6 @@
 """Utility functions with no non-trivial dependencies."""
 
-from mypy import sitepkgs
+from mypy import pyinfo
 import os
 import pathlib
 import re
@@ -724,6 +724,10 @@ def is_stub_package_file(file: str) -> bool:
                for component in os.path.abspath(file).split(os.sep))
 
 
+def unnamed_function(name: Optional[str]) -> bool:
+    return name is not None and name == "_"
+
+
 def get_sitepkgs_prefix(path: pathlib.Path) -> Optional[pathlib.Path]:
     if path.name != "site-packages":
         return None
@@ -738,7 +742,7 @@ def get_sitepkgs_prefix(path: pathlib.Path) -> Optional[pathlib.Path]:
 
 
 def is_default_sitepkgs(path: pathlib.Path) -> bool:
-    return path.resolve() in (pathlib.Path(sp).resolve() for sp in sitepkgs.getsitepackages())
+    return path.resolve() in (pathlib.Path(sp).resolve() for sp in pyinfo.getsitepackages())
 
 
 def is_same_sitepkgs_as_mypy(file: str) -> bool:

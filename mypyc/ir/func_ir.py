@@ -5,7 +5,7 @@ from typing_extensions import Final
 
 from mypy.nodes import FuncDef, Block, ArgKind, ARG_POS
 
-from mypyc.common import JsonDict
+from mypyc.common import JsonDict, get_id_from_name, short_id_from_name
 from mypyc.ir.ops import (
     DeserMaps, BasicBlock, Value, Register, Assign, AssignMulti, ControlOp, LoadAddress
 )
@@ -106,6 +106,24 @@ class FuncDecl:
             else:
                 self.bound_sig = FuncSignature(sig.args[1:], sig.ret_type)
 
+        # this is optional because this will be set to the line number when the corresponding
+        # FuncIR is created
+        self._line: Optional[int] = None
+
+    @property
+    def line(self) -> int:
+        assert self._line is not None
+        return self._line
+
+    @line.setter
+    def line(self, line: int) -> None:
+        self._line = line
+
+    @property
+    def id(self) -> str:
+        assert self.line is not None
+        return get_id_from_name(self.name, self.fullname, self.line)
+
     @staticmethod
     def compute_shortname(class_name: Optional[str], name: str) -> str:
         return class_name + '.' + name if class_name else name
@@ -119,7 +137,8 @@ class FuncDecl:
         return self.module_name + '.' + self.shortname
 
     def cname(self, names: NameGenerator) -> str:
-        return names.private_name(self.module_name, self.shortname)
+        partial_name = short_id_from_name(self.name, self.shortname, self._line)
+        return names.private_name(self.module_name, partial_name)
 
     def serialize(self) -> JsonDict:
         return {
@@ -132,9 +151,14 @@ class FuncDecl:
             'is_prop_getter': self.is_prop_getter,
         }
 
+    # TODO: move this to FuncIR?
     @staticmethod
-    def get_name_from_json(f: JsonDict) -> str:
-        return f['module_name'] + '.' + FuncDecl.compute_shortname(f['class_name'], f['name'])
+    def get_id_from_json(func_ir: JsonDict) -> str:
+        """Get the id from the serialized FuncIR associated with this FuncDecl"""
+        decl = func_ir['decl']
+        shortname = FuncDecl.compute_shortname(decl['class_name'], decl['name'])
+        fullname = decl['module_name'] + '.' + shortname
+        return get_id_from_name(decl['name'], fullname, func_ir['line'])
 
     @classmethod
     def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> 'FuncDecl':
@@ -167,11 +191,15 @@ class FuncIR:
         self.arg_regs = arg_regs
         # Body of the function
         self.blocks = blocks
-        self.line = line
+        self.decl.line = line
         # The name that should be displayed for tracebacks that
         # include this function. Function will be omitted from
         # tracebacks if None.
         self.traceback_name = traceback_name
+
+    @property
+    def line(self) -> int:
+        return self.decl.line
 
     @property
     def args(self) -> Sequence[RuntimeArg]:
@@ -196,6 +224,10 @@ class FuncIR:
     @property
     def fullname(self) -> str:
         return self.decl.fullname
+
+    @property
+    def id(self) -> str:
+        return self.decl.id
 
     def cname(self, names: NameGenerator) -> str:
         return self.decl.cname(names)

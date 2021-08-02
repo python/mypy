@@ -86,7 +86,7 @@ if USE_MYPYC:
     MYPYC_BLACKLIST = tuple(os.path.join('mypy', x) for x in (
         # Need to be runnable as scripts
         '__main__.py',
-        'sitepkgs.py',
+        'pyinfo.py',
         os.path.join('dmypy', '__main__.py'),
 
         # Uses __getattr__/__setattr__
@@ -201,5 +201,7 @@ setup(name='mypy',
       include_package_data=True,
       project_urls={
           'News': 'http://mypy-lang.org/news.html',
+          'Documentation': 'https://mypy.readthedocs.io/en/stable/introduction.html',
+          'Repository': 'https://github.com/python/mypy',
       },
       )

@@ -75,6 +75,25 @@ print(primes(13))
 \[0, 0, 1, 1]
 \[0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1]
 
+[case testListBuild]
+def test_list_build() -> None:
+    # Currently LIST_BUILDING_EXPANSION_THRESHOLD equals to 10
+    # long list built by list_build_op
+    l1 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    l1.pop()
+    l1.append(100)
+    assert l1 == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 100]
+    # short list built by Setmem
+    l2 = [1, 2]
+    l2.append(3)
+    l2.pop()
+    l2.pop()
+    assert l2 == [1]
+    # empty list
+    l3 = []
+    l3.append('a')
+    assert l3 == ['a']
+
 [case testListPrims]
 from typing import List
 

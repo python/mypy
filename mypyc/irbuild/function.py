@@ -10,7 +10,11 @@ as an environment containing non-local variables, is stored in the
 instance of the callable class.
 """
 
-from typing import NamedTuple, Optional, List, Sequence, Tuple, Union, Dict
+from mypyc.irbuild.prepare import RegisterImplInfo
+from mypy.build import topsort
+from typing import (
+    NamedTuple, Optional, List, Sequence, Tuple, Union, Dict, Iterator,
+)
 
 from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, Decorator, Var, YieldFromExpr, AwaitExpr, YieldExpr,
@@ -32,7 +36,7 @@ from mypyc.primitives.misc_ops import (
     check_stop_op, yield_from_except_op, coro_op, send_op, slow_isinstance_op
 )
 from mypyc.primitives.dict_ops import dict_set_item_op
-from mypyc.common import SELF_NAME, LAMBDA_NAME, decorator_helper_name
+from mypyc.common import SELF_NAME, LAMBDA_NAME, decorator_helper_name, short_id_from_name
 from mypyc.sametype import is_same_method_signature
 from mypyc.irbuild.util import is_constant
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
@@ -803,6 +807,22 @@ def check_if_isinstance(builder: IRBuilder, obj: Value, typ: TypeInfo, line: int
         return builder.call_c(slow_isinstance_op, [obj, class_obj], line)
 
 
+def load_func(builder: IRBuilder, func_name: str, fullname: Optional[str], line: int) -> Value:
+    if fullname is not None and not fullname.startswith(builder.current_module):
+        # we're calling a function in a different module
+
+        # We can't use load_module_attr_by_fullname here because we need to load the function using
+        # func_name, not the name specified by fullname (which can be different for underscore
+        # function)
+        module = fullname.rsplit('.')[0]
+        loaded_module = builder.load_module(module)
+
+        func = builder.py_get_attr(loaded_module, func_name, line)
+    else:
+        func = builder.load_global_str(func_name, line)
+    return func
+
+
 def generate_singledispatch_dispatch_function(
     builder: IRBuilder,
     main_singledispatch_function_name: str,
@@ -813,18 +833,41 @@ def generate_singledispatch_dispatch_function(
     current_func_decl = builder.mapper.func_to_decl[fitem]
     arg_info = get_args(builder, current_func_decl.sig.args, line)
 
-    def gen_func_call_and_return(func_name: str) -> None:
-        func = builder.load_global_str(func_name, line)
-        # TODO: don't pass optional arguments if they weren't passed to this function
-        ret_val = builder.builder.py_call(
-            func, arg_info.args, line, arg_info.arg_kinds, arg_info.arg_names
-        )
+    def gen_func_call_and_return(
+        func_name: str,
+        fdef: FuncDef,
+        fullname: Optional[str] = None
+    ) -> None:
+        if is_decorated(builder, fdef):
+            func = load_func(builder, func_name, fullname, line)
+            ret_val = builder.builder.py_call(
+                func, arg_info.args, line, arg_info.arg_kinds, arg_info.arg_names
+            )
+        else:
+            func_decl = builder.mapper.func_to_decl[fdef]
+            ret_val = builder.builder.call(
+                func_decl, arg_info.args, arg_info.arg_kinds, arg_info.arg_names, line
+            )
         coerced = builder.coerce(ret_val, current_func_decl.sig.ret_type, line)
         builder.nonlocal_control[-1].gen_return(builder, coerced, line)
 
-    # Reverse the list of registered implementations so we use the implementations defined later
-    # if there are multiple overlapping implementations
-    for dispatch_type, impl in reversed(impls):
+    # Add all necessary imports of other modules that have registered functions in other modules
+    # We're doing this in a separate pass over the implementations because that avoids the
+    # complexity and code size implications of generating this import before every call to a
+    # registered implementation that might need this imported
+    for _, impl in impls:
+        if not is_decorated(builder, impl):
+            continue
+        module_name = impl.fullname.rsplit('.')[0]
+        if module_name not in builder.imports:
+            # We need to generate an import here because the module needs to be imported before we
+            # try loading the function from it
+            builder.gen_import(module_name, line)
+
+    # Sort the list of implementations so that we check any subclasses before we check the classes
+    # they inherit from, to better match singledispatch's behavior of going through the argument's
+    # MRO, and using the first implementation it finds
+    for dispatch_type, impl in sort_with_subclasses_first(impls):
         call_impl, next_impl = BasicBlock(), BasicBlock()
         should_call_impl = check_if_isinstance(builder, arg_info.args[0], dispatch_type, line)
         builder.add_bool_branch(should_call_impl, call_impl, next_impl)
@@ -832,10 +875,18 @@ def generate_singledispatch_dispatch_function(
         # Call the registered implementation
         builder.activate_block(call_impl)
 
-        gen_func_call_and_return(impl.name)
+        # The shortname of a function is just '{class}.{func_name}', and we don't support
+        # singledispatchmethod yet, so that is always the same as the function name
+        name = short_id_from_name(impl.name, impl.name, impl.line)
+        gen_func_call_and_return(name, impl, fullname=impl.fullname)
         builder.activate_block(next_impl)
 
-    gen_func_call_and_return(main_singledispatch_function_name)
+    # We don't pass fullname here because getting the fullname of the main generated singledispatch
+    # function isn't easy, and we don't need it because the fullname is only needed for making sure
+    # we load the function from another module instead of the globals dict if it's defined in
+    # another module, which will never be true for the main singledispatch function (it's always
+    # generated in the same module as the dispatch function)
+    gen_func_call_and_return(main_singledispatch_function_name, fitem)
 
 
 def gen_dispatch_func_ir(
@@ -854,3 +905,17 @@ def gen_dispatch_func_ir(
     func_decl = FuncDecl(dispatch_name, None, builder.module_name, sig)
     dispatch_func_ir = FuncIR(func_decl, args, blocks)
     return dispatch_func_ir
+
+
+def sort_with_subclasses_first(
+    impls: List[RegisterImplInfo]
+) -> Iterator[RegisterImplInfo]:
+
+    # graph with edges pointing from every class to their subclasses
+    graph = {typ: set(typ.mro[1:]) for typ, _ in impls}
+
+    dispatch_types = topsort(graph)
+    impl_dict = {typ: func for typ, func in impls}
+
+    for group in reversed(list(dispatch_types)):
+        yield from ((typ, impl_dict[typ]) for typ in group if typ in impl_dict)

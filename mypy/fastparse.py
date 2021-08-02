@@ -1,3 +1,4 @@
+from mypy.util import unnamed_function
 import re
 import sys
 import warnings
@@ -455,7 +456,12 @@ class ASTConverter:
                 elif len(current_overload) > 1:
                     ret.append(OverloadedFuncDef(current_overload))
 
-                if isinstance(stmt, Decorator):
+                # If we have multiple decorated functions named "_" next to each, we want to treat
+                # them as a series of regular FuncDefs instead of one OverloadedFuncDef because
+                # most of mypy/mypyc assumes that all the functions in an OverloadedFuncDef are
+                # related, but multiple underscore functions next to each other aren't necessarily
+                # related
+                if isinstance(stmt, Decorator) and not unnamed_function(stmt.name):
                     current_overload = [stmt]
                     current_overload_name = stmt.name
                 else:

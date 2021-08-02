@@ -961,6 +961,12 @@ class MessageBuilder:
         self.fail('String interpolation contains both stars and mapping keys', context,
                   code=codes.STRING_FORMATTING)
 
+    def requires_int_or_single_byte(self, context: Context,
+                                    format_call: bool = False) -> None:
+        self.fail('"{}c" requires an integer in range(256) or a single byte'
+                  .format(':' if format_call else '%'),
+                  context, code=codes.STRING_FORMATTING)
+
     def requires_int_or_char(self, context: Context,
                              format_call: bool = False) -> None:
         self.fail('"{}c" requires int or char'.format(':' if format_call else '%'),

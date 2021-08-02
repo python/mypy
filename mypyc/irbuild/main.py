@@ -36,7 +36,7 @@ from mypyc.ir.module_ir import ModuleIR, ModuleIRs
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FuncSignature
 from mypyc.irbuild.prebuildvisitor import PreBuildVisitor
 from mypyc.irbuild.vtable import compute_vtable
-from mypyc.irbuild.prepare import build_type_map
+from mypyc.irbuild.prepare import build_type_map, find_singledispatch_register_impls
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.visitor import IRBuilderVisitor
 from mypyc.irbuild.mapper import Mapper
@@ -58,6 +58,7 @@ def build_ir(modules: List[MypyFile],
     """Build IR for a set of modules that have been type-checked by mypy."""
 
     build_type_map(mapper, modules, graph, types, options, errors)
+    singledispatch_info = find_singledispatch_register_impls(modules, errors)
 
     result: ModuleIRs = OrderedDict()
 
@@ -66,13 +67,14 @@ def build_ir(modules: List[MypyFile],
 
     for module in modules:
         # First pass to determine free symbols.
-        pbv = PreBuildVisitor(errors, module)
+        pbv = PreBuildVisitor(errors, module, singledispatch_info.decorators_to_remove)
         module.accept(pbv)
 
         # Construct and configure builder objects (cyclic runtime dependency).
         visitor = IRBuilderVisitor()
         builder = IRBuilder(
-            module.fullname, types, graph, errors, mapper, pbv, visitor, options
+            module.fullname, types, graph, errors, mapper, pbv, visitor, options,
+            singledispatch_info.singledispatch_impls,
         )
         visitor.builder = builder
 

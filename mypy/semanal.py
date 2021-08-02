@@ -107,7 +107,9 @@ from mypy.plugin import (
     Plugin, ClassDefContext, SemanticAnalyzerPluginInterface,
     DynamicClassDefContext
 )
-from mypy.util import correct_relative_import, unmangle, module_prefix, is_typeshed_file
+from mypy.util import (
+    correct_relative_import, unmangle, module_prefix, is_typeshed_file, unnamed_function,
+)
 from mypy.scope import Scope
 from mypy.semanal_shared import (
     SemanticAnalyzerInterface, set_callable_name, calculate_tuple_fallback, PRIORITY_FALLBACKS
@@ -666,7 +668,11 @@ class SemanticAnalyzer(NodeVisitor[None],
         """
         if isinstance(new, Decorator):
             new = new.func
-        if isinstance(previous, (FuncDef, Decorator)) and new.name == previous.name == "_":
+        if (
+            isinstance(previous, (FuncDef, Decorator))
+            and unnamed_function(new.name)
+            and unnamed_function(previous.name)
+        ):
             return True
         if isinstance(previous, (FuncDef, Var, Decorator)) and new.is_conditional:
             new.original_def = previous
@@ -812,7 +818,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 else:
                     self.fail("The implementation for an overloaded function "
                               "must come last", defn.items[idx])
-        elif defn.name != "_":
+        else:
             for idx in non_overload_indexes[1:]:
                 self.name_already_defined(defn.name, defn.items[idx], defn.items[0])
             if defn.impl:
@@ -3166,11 +3172,15 @@ class SemanticAnalyzer(NodeVisitor[None],
         # PEP 612 reserves the right to define bound, covariant and contravariant arguments to
         # ParamSpec in a later PEP. If and when that happens, we should do something
         # on the lines of process_typevar_parameters
-        paramspec_var = ParamSpecExpr(
-            name, self.qualified_name(name), self.object_type(), INVARIANT
-        )
-        paramspec_var.line = call.line
-        call.analyzed = paramspec_var
+
+        if not call.analyzed:
+            paramspec_var = ParamSpecExpr(
+                name, self.qualified_name(name), self.object_type(), INVARIANT
+            )
+            paramspec_var.line = call.line
+            call.analyzed = paramspec_var
+        else:
+            assert isinstance(call.analyzed, ParamSpecExpr)
         self.add_symbol(name, call.analyzed, s)
         return True
 
