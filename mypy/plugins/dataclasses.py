@@ -337,6 +337,8 @@ class DataclassTransformer:
         # Ensure that arguments without a default don't follow
         # arguments that have a default.
         found_default = False
+        # Ensure that the KW_ONLY sentinel is only provided once
+        found_kw_sentinel = False
         for attr in all_attrs:
             # If we find any attribute that is_in_init, not kw_only, and that
             # doesn't have a default after one that does have one,
@@ -352,6 +354,14 @@ class DataclassTransformer:
                 )
 
             found_default = found_default or (attr.has_default and attr.is_in_init)
+            if found_kw_sentinel and self._is_kw_only_type(attr.type):
+                context = (Context(line=attr.line, column=attr.column) if attr in attrs
+                           else ctx.cls)
+                ctx.api.fail(
+                    'There may not be more than one field with the KW_ONLY type',
+                    context,
+                )
+            found_kw_sentinel = found_kw_sentinel or self._is_kw_only_type(attr.type)
 
         return all_attrs
 

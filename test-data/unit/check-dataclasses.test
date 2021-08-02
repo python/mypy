@@ -386,6 +386,18 @@ class D(Base):
 
 D("Hello", "World")
 
+[case testDataclassesOrderingKwOnlyWithMultipleSentinel]
+# flags: --python-version 3.10
+from dataclasses import dataclass, field, KW_ONLY
+
+@dataclass
+class Base:
+    x: str
+    _: KW_ONLY
+    y: int = 0
+    __: KW_ONLY  # E: There may not be more than one field with the KW_ONLY type
+    w: int = 1
+
 [builtins fixtures/list.pyi]
 
 [case testDataclassesClassmethods]
