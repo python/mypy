@@ -69,6 +69,7 @@ class DataclassAttribute:
             'line': self.line,
             'column': self.column,
             'type': self.type.serialize(),
+            'kw_only': self.kw_only,
         }
 
     @classmethod
@@ -331,6 +332,7 @@ class DataclassTransformer:
                             super_attrs.append(attr)
                             break
             all_attrs = super_attrs + all_attrs
+            all_attrs.sort(key=lambda a: a.kw_only)
 
         # Ensure that arguments without a default don't follow
         # arguments that have a default.

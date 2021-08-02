@@ -368,6 +368,24 @@ class Application:
 
 [builtins fixtures/list.pyi]
 
+[case testDataclassesOrderingKwOnlyWithSentinelAndSubclass]
+# flags: --python-version 3.10
+from dataclasses import dataclass, field, KW_ONLY
+
+@dataclass
+class Base:
+    x: str
+    _: KW_ONLY
+    y: int = 0
+    w: int = 1
+
+@dataclass
+class D(Base):
+    z: str
+    a: str = "a"
+
+[builtins fixtures/list.pyi]
+
 [case testDataclassesClassmethods]
 # flags: --python-version 3.7
 from dataclasses import dataclass
