@@ -4,6 +4,7 @@ import sys
 import os
 
 from mypy.main import main
+from mypy.util import FancyFormatter
 
 
 def console_entry() -> None:
@@ -18,6 +19,11 @@ def console_entry() -> None:
         os.dup2(devnull, sys.stdout.fileno())
         sys.exit(2)
     except KeyboardInterrupt:
+        formatter = FancyFormatter(sys.stdout, sys.stderr, False)
+        msg = " KeybordInterrupt called by user. Abort!\n"
+        sys.stdout.write(formatter.style(msg, color="red", bold=True))
+        sys.stdout.flush()
+        sys.stderr.flush()
         sys.exit(2)
 
 
