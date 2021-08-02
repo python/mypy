@@ -915,6 +915,7 @@ class Instance(ProperType):
     def has_readable_member(self, name: str) -> bool:
         return self.type.has_readable_member(name)
 
+
 class FunctionLike(ProperType):
     """Abstract base class for function types."""
 
