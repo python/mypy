@@ -13,10 +13,14 @@ See comment below for more documentation.
 """
 
 from typing import Callable, Optional, Dict, Tuple, List
+from typing_extensions import Final
 
+from mypy.checkstrformat import parse_format_value
+from mypy.errors import Errors
+from mypy.messages import MessageBuilder
 from mypy.nodes import (
     CallExpr, RefExpr, MemberExpr, NameExpr, TupleExpr, GeneratorExpr,
-    ListExpr, DictExpr, StrExpr, ARG_POS
+    ListExpr, DictExpr, StrExpr, ARG_POS, Context
 )
 from mypy.types import AnyType, TypeOfAny
 
@@ -388,17 +392,37 @@ def translate_dict_setdefault(
     return None
 
 
+# The empty Context as an argument for parse_format_value().
+# It wouldn't be used since the code has passed the type-checking.
+EMPTY_CONTEXT: Final = Context()
+
+
 @specialize_function('format', str_rprimitive)
 def translate_str_format(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
     if (isinstance(callee, MemberExpr) and isinstance(callee.expr, StrExpr)
             and expr.arg_kinds.count(ARG_POS) == len(expr.arg_kinds)):
-
         format_str = callee.expr.value
-        if not can_optimize_format(format_str):
+
+        # Creates an empty MessageBuilder here.
+        # It wouldn't be used since the code has passed the type-checking.
+        specifiers = parse_format_value(format_str, EMPTY_CONTEXT,
+                                        MessageBuilder(Errors(), {}))
+        if specifiers is None:
             return None
 
-        literals = split_braces(format_str)
+        literals = []
+        last_pos = 0
+        for spec in specifiers:
+            # Only empty curly brace is allowed
+            if spec.whole_seq:
+                return None
+            literals.append(format_str[last_pos:spec.start_pos-1])
+            last_pos = spec.start_pos + len(spec.whole_seq) + 1
+        literals.append(format_str[last_pos:])
+
+        # Deal with escaped {{
+        literals = [x.replace('{{', '{').replace('}}', '}') for x in literals]
 
         # Convert variables to strings
         variables = []
@@ -414,61 +438,6 @@ def translate_str_format(
 
         return join_formatted_strings(builder, literals, variables, expr.line)
     return None
-
-
-def can_optimize_format(format_str: str) -> bool:
-    # TODO
-    # Only empty braces can be optimized
-    prev = ''
-    for c in format_str:
-        if (c == '{' and prev == '{'
-                or c == '}' and prev == '}'):
-            prev = ''
-            continue
-        if (prev != '' and (c == '}' and prev != '{'
-                            or prev == '{' and c != '}')):
-            return False
-        prev = c
-    return True
-
-
-def split_braces(format_str: str) -> List[str]:
-    # This function can only be called after format_str passes
-    # 'can_optimize_format()'.
-    tmp_str = ''
-    ret_list = []
-    prev = ''
-    for c in format_str:
-        # There are three cases: {, }, others
-        #     when c is '}': prev is '{' -> match empty braces
-        #                            '}' -> merge into one } in literal
-        #                            others -> pass
-        #          c is '{': prev is '{' -> merge into one { in literal
-        #                            '}' -> pass
-        #                            others -> pass
-        #          c is others: add c into literal
-        clear_prev = True
-        if c == '}':
-            if prev == '{':
-                ret_list.append(tmp_str)
-                tmp_str = ''
-            elif prev == '}':
-                tmp_str += '}'
-            else:
-                clear_prev = False
-        elif c == '{':
-            if prev == '{':
-                tmp_str += '{'
-            else:
-                clear_prev = False
-        else:
-            tmp_str += c
-            clear_prev = False
-        prev = c
-        if clear_prev:
-            prev = ''
-    ret_list.append(tmp_str)
-    return ret_list
 
 
 @specialize_function('join', str_rprimitive)
