@@ -12,14 +12,14 @@ generator comprehensions as the argument.
 See comment below for more documentation.
 """
 
-from typing import Callable, Optional, Dict, Tuple, List
+from typing import Callable, Optional, Dict, Tuple, List, Final
 
 from mypy.checkstrformat import parse_format_value
 from mypy.errors import Errors
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
     CallExpr, RefExpr, MemberExpr, NameExpr, TupleExpr, GeneratorExpr,
-    ListExpr, DictExpr, StrExpr, ARG_POS, Context, MypyFile
+    ListExpr, DictExpr, StrExpr, ARG_POS, Context
 )
 from mypy.types import AnyType, TypeOfAny
 
@@ -393,8 +393,8 @@ def translate_dict_setdefault(
 
 # The empty Context and MessageBuilder for parse_format_value().
 # They wouldn't be used since the code has passed the type-checking.
-EMPTY_CONTEXT = Context()
-EMPTY_MSG = MessageBuilder(Errors(), {'': MypyFile([], [])})
+EMPTY_CONTEXT: Final = Context()
+EMPTY_MSG: Final = MessageBuilder(Errors(), {})
 
 
 @specialize_function('format', str_rprimitive)
@@ -404,7 +404,8 @@ def translate_str_format(
             and expr.arg_kinds.count(ARG_POS) == len(expr.arg_kinds)):
         format_str = callee.expr.value
         specifiers = parse_format_value(format_str, EMPTY_CONTEXT, EMPTY_MSG)
-        assert specifiers is not None
+        if specifiers is None:
+            return None
 
         literals = []
         last_pos = 0
