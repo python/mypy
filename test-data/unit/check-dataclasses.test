@@ -320,6 +320,8 @@ class Application:
     name: str = 'Unnamed'
     rating: int
 
+Application(rating=5)
+
 [builtins fixtures/list.pyi]
 
 [case testDataclassesOrderingKwOnlyOnField]
@@ -330,6 +332,8 @@ from dataclasses import dataclass, field
 class Application:
     name: str = 'Unnamed'
     rating: int = field(kw_only=True)
+
+Application(rating=5)
 
 [builtins fixtures/list.pyi]
 
@@ -353,6 +357,8 @@ class Application:
     _: KW_ONLY
     name: str = 'Unnamed'
     rating: int
+
+Application(rating=5)
 
 [builtins fixtures/list.pyi]
 
