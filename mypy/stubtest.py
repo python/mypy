@@ -867,17 +867,22 @@ def verify_typealias(
         return
     if isinstance(stub_target, mypy.types.UnionType):
         if not getattr(runtime, "__origin__", None) is Union:
-            yield Error(object_path, "is not a Union", stub, runtime)
+            yield Error(object_path, "is not a Union", stub, runtime, stub_desc=str(stub_target))
         # could check Union contents here...
         return
     if isinstance(stub_target, mypy.types.TupleType):
         if tuple not in getattr(runtime, "__mro__", ()):
-            yield Error(object_path, "is not a subclass of tuple", stub, runtime)
+            yield Error(
+                object_path, "is not a subclass of tuple", stub, runtime,
+                stub_desc=str(stub_target)
+            )
         # could check Tuple contents here...
         return
     if isinstance(stub_target, mypy.types.AnyType):
         return
-    yield Error(object_path, "is not a recognised type alias", stub, runtime)
+    yield Error(
+        object_path, "is not a recognised type alias", stub, runtime, stub_desc=str(stub_target)
+    )
 
 
 SPECIAL_DUNDERS = ("__init__", "__new__", "__call__", "__init_subclass__", "__class_getitem__")
