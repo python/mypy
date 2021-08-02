@@ -10,10 +10,8 @@ as an environment containing non-local variables, is stored in the
 instance of the callable class.
 """
 
-from mypyc.irbuild.prepare import RegisterImplInfo
-from mypy.build import topsort
 from typing import (
-    NamedTuple, Optional, List, Sequence, Tuple, Union, Dict, Iterator,
+    NamedTuple, Optional, List, Sequence, Tuple, Union, Dict,
 )
 
 from mypy.nodes import (
@@ -901,20 +899,6 @@ def gen_dispatch_func_ir(
     func_decl = FuncDecl(dispatch_name, None, builder.module_name, sig)
     dispatch_func_ir = FuncIR(func_decl, args, blocks)
     return dispatch_func_ir
-
-
-def sort_with_subclasses_first(
-    impls: List[RegisterImplInfo]
-) -> Iterator[RegisterImplInfo]:
-
-    # graph with edges pointing from every class to their subclasses
-    graph = {typ: set(typ.mro[1:]) for typ, _ in impls}
-
-    dispatch_types = topsort(graph)
-    impl_dict = {typ: func for typ, func in impls}
-
-    for group in reversed(list(dispatch_types)):
-        yield from ((typ, impl_dict[typ]) for typ in group if typ in impl_dict)
 
 
 def load_singledispatch_registry(builder: IRBuilder, main_func_name: str, line: int) -> Value:
