@@ -1,6 +1,6 @@
 # Test cases for strings (compile and run)
 
-[case testStr]
+[case testStrBasics]
 from typing import Tuple
 def f() -> str:
     return 'some string'
@@ -511,3 +511,28 @@ def test_format_method_python_doc() -> None:
                         '    9    9   11 1001',\
                         '   10    A   12 1010',\
                         '   11    B   13 1011']
+
+[case testUnicodeEncodeDecode]
+
+# https://docs.python.org/3/howto/unicode.html
+
+def test_chr() -> None:
+    assert chr(57344) == '\ue000'
+
+def test_ord() -> None:
+    assert ord('\ue000') == 57344
+    s = "a\xac\u1234\u20ac\U00008000"
+    # ^^^^ two-digit hex escape
+    #   ^^^^^^ four-digit Unicode escape
+    #           ^^^^^^^^^^ eight-digit Unicode escape
+    l1 = [ord(c) for c in s]
+    assert l1 == [97, 172, 4660, 8364, 32768]
+    u = 'abcdé'
+    assert ord(u[-1]) == 233
+
+def test_decode() -> None:
+    assert b'\x80abc'.decode("utf-8", "replace") == '\ufffdabc'
+    assert b'\x80abc'.decode("utf-8", "backslashreplace") == '\\x80abc'
+    assert b'\x80abc'.decode("utf-8", "ignore") == 'abc'
+
+
