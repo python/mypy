@@ -391,10 +391,9 @@ def translate_dict_setdefault(
     return None
 
 
-# The empty Context and MessageBuilder for parse_format_value().
-# They wouldn't be used since the code has passed the type-checking.
+# The empty Context as an argument for parse_format_value().
+# It wouldn't be used since the code has passed the type-checking.
 EMPTY_CONTEXT: Final = Context()
-EMPTY_MSG: Final = MessageBuilder(Errors(), {})
 
 
 @specialize_function('format', str_rprimitive)
@@ -403,7 +402,11 @@ def translate_str_format(
     if (isinstance(callee, MemberExpr) and isinstance(callee.expr, StrExpr)
             and expr.arg_kinds.count(ARG_POS) == len(expr.arg_kinds)):
         format_str = callee.expr.value
-        specifiers = parse_format_value(format_str, EMPTY_CONTEXT, EMPTY_MSG)
+
+        # Creates an empty MessageBuilder here.
+        # It wouldn't be used since the code has passed the type-checking.
+        specifiers = parse_format_value(format_str, EMPTY_CONTEXT,
+                                        MessageBuilder(Errors(), {}))
         if specifiers is None:
             return None
 
