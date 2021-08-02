@@ -2552,6 +2552,61 @@ if isinstance(foo, Ambiguous):
     reveal_type(foo.x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/isinstance.pyi]
 
+[case testIsInstanceWithNonSubsetOverlap]
+from typing import Union
+class A: pass
+class B: pass
+class C: pass
+
+x: Union[A, B, C]
+if isinstance(x, (A, B)):
+    reveal_type(x)  # N: Revealed type is "Union[__main__.A, __main__.B]"
+    if isinstance(x, (B, C)):
+        # This is the key clause of the test.
+        # Avoid a regression to "Union[__main__.B, __main__.C]" because
+        # we know that x is not C.
+        reveal_type(x)  # N: Revealed type is "__main__.B"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+else:
+    reveal_type(x)  # N: Revealed type is "__main__.C"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceWithTypeVar]
+from typing import Any, TypeVar, Union
+
+T = TypeVar("T", bound=Any)
+U = TypeVar("U", bound=Union[float, int])
+V = TypeVar("V")
+
+def f(x: T) -> None:
+    if isinstance(x, int):
+        x + 1
+def g(y: U) -> None:
+    if isinstance(y, int):
+        y + 1
+def h(z: V) -> None:
+    if isinstance(z, int):
+        z + 1
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceWithTypeVarAndSubclass]
+from typing import Any, TypeVar, Union
+
+class A: pass
+class B(A): pass
+
+T = TypeVar("T", bound=A)
+U = TypeVar("U", bound=B)
+
+def f(x: T) -> None:
+    if isinstance(x, B):
+        reveal_type(x)  # N: Revealed type is "__main__.B"
+def g(y: U) -> None:
+    if isinstance(y, A):
+        reveal_type(y)  # N: Revealed type is "U`-1"
+[builtins fixtures/isinstance.pyi]
+
 [case testIsSubclassAdHocIntersection]
 # flags: --warn-unreachable
 from typing import Type

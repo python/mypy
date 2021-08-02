@@ -71,7 +71,9 @@ from mypy.visitor import NodeVisitor
 from mypy.join import join_types
 from mypy.treetransform import TransformVisitor
 from mypy.binder import ConditionalTypeBinder, get_declaration
-from mypy.meet import is_overlapping_erased_types, is_overlapping_types
+from mypy.meet import (
+    is_overlapping_erased_types, is_overlapping_types, narrow_declared_type
+)
 from mypy.options import Options
 from mypy.plugin import Plugin, CheckerPluginInterface
 from mypy.sharedparse import BINARY_MAGIC_METHODS
@@ -5130,7 +5132,8 @@ def conditional_type_map(expr: Expression,
                                           for type_range in proposed_type_ranges
                                           if not type_range.is_upper_bound])
                 remaining_type = restrict_subtype_away(current_type, proposed_precise_type)
-                return {expr: proposed_type}, {expr: remaining_type}
+                narrowed_proposed_type = narrow_declared_type(current_type, proposed_type)
+                return {expr: narrowed_proposed_type}, {expr: remaining_type}
         else:
             return {expr: proposed_type}, {}
     else:
