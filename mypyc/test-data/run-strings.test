@@ -518,6 +518,18 @@ def test_format_method_python_doc() -> None:
 
 def test_chr() -> None:
     assert chr(57344) == '\ue000'
+    assert chr(0) == '\x00'
+    try:
+        chr(-1)
+        assert False
+    except ValueError:
+        pass
+    try:
+        chr(1114112)
+        assert False
+    except ValueError:
+        pass
+    assert chr(1114111) == '\U0010ffff'
 
 def test_ord() -> None:
     assert ord('\ue000') == 57344
@@ -529,6 +541,12 @@ def test_ord() -> None:
     assert l1 == [97, 172, 4660, 8364, 32768]
     u = 'abcdé'
     assert ord(u[-1]) == 233
+    assert ord(b'a') == 97
+    try:
+        ord('aa')
+        assert False
+    except TypeError:
+        pass
 
 def test_decode() -> None:
     assert "\N{GREEK CAPITAL LETTER DELTA}" == '\u0394'
@@ -540,6 +558,7 @@ def test_decode() -> None:
 
 def test_encode() -> None:
     u = chr(40960) + 'abcd' + chr(1972)
+    assert u.encode() == b'\xea\x80\x80abcd\xde\xb4'
     assert u.encode('utf-8') == b'\xea\x80\x80abcd\xde\xb4'
     try:
         u.encode('ascii')
@@ -551,3 +570,4 @@ def test_encode() -> None:
     assert u.encode('ascii', 'xmlcharrefreplace') == b'&#40960;abcd&#1972;'
     assert u.encode('ascii', 'backslashreplace') == b'\\ua000abcd\\u07b4'
     assert u.encode('ascii', 'namereplace') == b'\\N{YI SYLLABLE IT}abcd\\u07b4'
+    assert 'pythön!'.encode() == b'pyth\xc3\xb6n!'
