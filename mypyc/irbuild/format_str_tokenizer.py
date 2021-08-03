@@ -1,10 +1,15 @@
 """Tokenizers for three string formatting methods"""
 
-from typing import List, Tuple
+from typing import List, Tuple, Optional
+from typing_extensions import Final
 
 from mypy.checkstrformat import (
-    ConversionSpecifier, parse_conversion_specifiers
+    parse_format_value, ConversionSpecifier, parse_conversion_specifiers
 )
+from mypy.errors import Errors
+from mypy.messages import MessageBuilder
+from mypy.nodes import Context
+
 from mypyc.ir.ops import Value, Integer
 from mypyc.ir.rtypes import c_pyssize_t_rprimitive
 from mypyc.irbuild.builder import IRBuilder
@@ -27,6 +32,42 @@ def tokenizer_printf_style(format_str: str) -> Tuple[List[str], List[ConversionS
         last_end = cur_start + len(spec.whole_seq)
     literals.append(format_str[last_end:])
 
+    return literals, specifiers
+
+
+# The empty Context as an argument for parse_format_value().
+# It wouldn't be used since the code has passed the type-checking.
+EMPTY_CONTEXT: Final = Context()
+
+
+def tokenizer_format_call(
+        format_str: str) -> Optional[Tuple[List[str], List[ConversionSpecifier]]]:
+    """Tokenize a str.format() format string.
+
+    The core function parse_format_value() is shared with mypy.
+    However, this function
+
+    Return:
+        A list of string literals and a list of conversion operations.
+        Return None if it cannot parse the string.
+    """
+    # Creates an empty MessageBuilder here.
+    # It wouldn't be used since the code has passed the type-checking.
+    specifiers = parse_format_value(format_str, EMPTY_CONTEXT,
+                                    MessageBuilder(Errors(), {}))
+    if specifiers is None:
+        return None
+
+    literals: List[str] = []
+    last_end = 0
+    for spec in specifiers:
+        # Skip { and }
+        literals.append(format_str[last_end:spec.start_pos - 1])
+        last_end = spec.start_pos + len(spec.whole_seq) + 1
+    literals.append(format_str[last_end:])
+
+    # Deal with escaped {{
+    literals = [x.replace('{{', '{').replace('}}', '}') for x in literals]
     return literals, specifiers
 
 

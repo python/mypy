@@ -13,14 +13,10 @@ See comment below for more documentation.
 """
 
 from typing import Callable, Optional, Dict, Tuple, List
-from typing_extensions import Final
 
-from mypy.checkstrformat import parse_format_value
-from mypy.errors import Errors
-from mypy.messages import MessageBuilder
 from mypy.nodes import (
     CallExpr, RefExpr, MemberExpr, NameExpr, TupleExpr, GeneratorExpr,
-    ListExpr, DictExpr, StrExpr, ARG_POS, Context
+    ListExpr, DictExpr, StrExpr, ARG_POS
 )
 from mypy.types import AnyType, TypeOfAny
 
@@ -32,7 +28,9 @@ from mypyc.ir.rtypes import (
     bool_rprimitive, c_int_rprimitive, c_pyssize_t_rprimitive, is_dict_rprimitive,
     is_int_rprimitive, is_str_rprimitive, is_short_int_rprimitive
 )
-from mypyc.irbuild.format_str_tokenizer import join_formatted_strings
+from mypyc.irbuild.format_str_tokenizer import (
+    tokenizer_format_call, join_formatted_strings
+)
 from mypyc.primitives.int_ops import int_to_str_op
 from mypyc.primitives.dict_ops import (
     dict_keys_op, dict_values_op, dict_items_op, dict_setdefault_spec_init_op
@@ -392,37 +390,18 @@ def translate_dict_setdefault(
     return None
 
 
-# The empty Context as an argument for parse_format_value().
-# It wouldn't be used since the code has passed the type-checking.
-EMPTY_CONTEXT: Final = Context()
-
-
 @specialize_function('format', str_rprimitive)
 def translate_str_format(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
     if (isinstance(callee, MemberExpr) and isinstance(callee.expr, StrExpr)
             and expr.arg_kinds.count(ARG_POS) == len(expr.arg_kinds)):
         format_str = callee.expr.value
+        literals, specifiers = tokenizer_format_call(format_str)
 
-        # Creates an empty MessageBuilder here.
-        # It wouldn't be used since the code has passed the type-checking.
-        specifiers = parse_format_value(format_str, EMPTY_CONTEXT,
-                                        MessageBuilder(Errors(), {}))
-        if specifiers is None:
-            return None
-
-        literals = []
-        last_pos = 0
         for spec in specifiers:
             # Only empty curly brace is allowed
             if spec.whole_seq:
                 return None
-            literals.append(format_str[last_pos:spec.start_pos-1])
-            last_pos = spec.start_pos + len(spec.whole_seq) + 1
-        literals.append(format_str[last_pos:])
-
-        # Deal with escaped {{
-        literals = [x.replace('{{', '{').replace('}}', '}') for x in literals]
 
         # Convert variables to strings
         variables = []
