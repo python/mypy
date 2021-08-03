@@ -1,22 +1,36 @@
 [case testBytesBasics]
-def f(num: int) -> None:
-    a = bytes()
-    b = bytes(num)
+def f(num: int, l: list, d: dict, s: str) -> None:
+    b1 = bytes()
+    b2 = bytes(num)
+    b3 = bytes(l)
+    b4 = bytes(d)
+    b5 = bytes(s)
 [out]
-def f(num):
+def f(num, l, d, s):
     num :: int
+    l :: list
+    d :: dict
+    s :: str
     r0, r1 :: object
-    r2, a :: bytes
-    r3 :: object
-    r4, b :: bytes
+    r2, b1 :: bytes
+    r3, r4, r5 :: object
+    r6, b2, r7, b3, r8, b4, r9, b5 :: bytes
 L0:
     r0 = load_address PyBytes_Type
     r1 = PyObject_CallFunctionObjArgs(r0, 0)
     r2 = cast(bytes, r1)
-    a = r2
-    r3 = box(int, num)
-    r4 = PyBytes_FromObject(r3)
-    b = r4
+    b1 = r2
+    r3 = load_address PyBytes_Type
+    r4 = box(int, num)
+    r5 = PyObject_CallFunctionObjArgs(r3, r4, 0)
+    r6 = cast(bytes, r5)
+    b2 = r6
+    r7 = PyBytes_FromObject(l)
+    b3 = r7
+    r8 = PyBytes_FromObject(d)
+    b4 = r8
+    r9 = PyBytes_FromObject(s)
+    b5 = r9
     return 1
 
 [case testBytearrayBasics]
