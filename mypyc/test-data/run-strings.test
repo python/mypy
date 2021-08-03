@@ -513,12 +513,13 @@ def test_format_method_python_doc() -> None:
                         '   11    B   13 1011']
 
 [case testUnicodeEncodeDecode]
-
-# https://docs.python.org/3/howto/unicode.html
+# Some test cases are from https://docs.python.org/3/howto/unicode.html
 
 def test_chr() -> None:
     assert chr(57344) == '\ue000'
     assert chr(0) == '\x00'
+    assert chr(65) == 'A'
+    assert chr(150) == '\x96'
     try:
         chr(-1)
         assert False
@@ -530,6 +531,8 @@ def test_chr() -> None:
     except ValueError:
         pass
     assert chr(1114111) == '\U0010ffff'
+    x = 100
+    assert chr(x + int()) == 'd'
 
 def test_ord() -> None:
     assert ord('\ue000') == 57344
@@ -542,6 +545,9 @@ def test_ord() -> None:
     u = 'abcdé'
     assert ord(u[-1]) == 233
     assert ord(b'a') == 97
+    assert ord(b'a' + bytes()) == 97
+    u2 = '\U0010ffff'
+    assert ord(u2) == 1114111
     try:
         ord('aa')
         assert False
