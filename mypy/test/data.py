@@ -594,6 +594,10 @@ class DataSuiteCollector(pytest.Class):
 
         # obj is the object for which pytest_pycollect_makeitem returned self.
         suite: DataSuite = self.obj
+
+        assert os.path.isdir(suite.data_prefix), \
+            'Test data prefix ({}) not set correctly'.format(suite.data_prefix)
+
         for f in suite.files:
             yield from split_test_cases(self, suite, os.path.join(suite.data_prefix, f))
 
