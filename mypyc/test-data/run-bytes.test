@@ -34,8 +34,8 @@ def test_bytes_init() -> None:
     assert b3 == b'foo'
     b4 = bytes(b'aaa')
     assert b4 == b'aaa'
-    # b5 = bytes(5)
-    # assert b5 == b'\x00\x00\x00\x00\x00'
+    b5 = bytes(5)
+    assert b5 == b'\x00\x00\x00\x00\x00'
     try:
         bytes('x')
         assert False
