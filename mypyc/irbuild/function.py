@@ -22,7 +22,7 @@ from mypy.types import CallableType, get_proper_type
 
 from mypyc.ir.ops import (
     BasicBlock, Value,  Register, Return, SetAttr, Integer, GetAttr, Branch, InitStatic,
-    LoadAddress, LoadLiteral, Unbox, Unreachable,
+    LoadAddress, LoadLiteral, Unbox, Unreachable, LoadStatic,
 )
 from mypyc.ir.rtypes import (
     object_rprimitive, RInstance, object_pointer_rprimitive, dict_rprimitive, int_rprimitive,
@@ -842,7 +842,7 @@ def generate_singledispatch_dispatch_function(
         coerced = builder.coerce(ret_val, current_func_decl.sig.ret_type, line)
         builder.nonlocal_control[-1].gen_return(builder, coerced, line)
 
-    registry = load_singledispatch_registry(builder, main_singledispatch_function_name, line)
+    registry = load_singledispatch_registry(builder, fitem, line)
     find_impl = builder.load_module_attr_by_fullname('functools._find_impl', line)
     # FIXME: should pass type of first argument to _find_impl, not first argument itself
     impl_to_use = builder.py_call(find_impl, [arg_info.args[0], registry], line)
@@ -906,9 +906,9 @@ def gen_dispatch_func_ir(
     return dispatch_func_ir
 
 
-def load_singledispatch_registry(builder: IRBuilder, main_func_name: str, line: int) -> Value:
-    func_obj = builder.load_global_str(main_func_name, line)
-    return builder.builder.get_attr(func_obj, 'registry', dict_rprimitive, line)
+def load_singledispatch_registry(builder: IRBuilder, fitem: FuncDef, line: int) -> Value:
+    name = get_registry_identifier(fitem)
+    return builder.add(LoadStatic(dict_rprimitive, name, builder.module_name, line=line))
 
 
 def initialize_all_singledispatch_dictionaries(builder: IRBuilder) -> None:
@@ -923,15 +923,14 @@ def initialize_singledispatch_dispatch_dictionary(
     fitem: FuncDef,
     main_func_name: str
 ) -> None:
-    # TODO: move some of this to initialize_all_singledispatch_dictionaries
     line = fitem.line
-    # dispatch_func_name = decorator_helper_name(fitem.name)
-    func_obj = builder.load_global_str(fitem.name, line)
+    func_obj = load_func(builder, main_func_name, fitem.fullname, line)
 
     impls = builder.singledispatch_impls[fitem]
     native_impls = []
 
-    register_func = builder.builder.get_attr(func_obj, 'register', object_rprimitive, line)
+    loaded_object_type = builder.load_module_attr_by_fullname('builtins.object', line)
+    registry_dict = builder.builder.make_dict([(loaded_object_type, func_obj)], line)
 
     for dispatch_type, impl in impls:
         if is_decorated(builder, impl):
@@ -944,7 +943,7 @@ def initialize_singledispatch_dispatch_dictionary(
             loaded_impl = load_func(builder, impl.name, impl.fullname, line)
             loaded_type = load_type(builder, dispatch_type, line)
 
-            builder.py_call(register_func, [loaded_type, loaded_impl], line)
+            builder.call_c(dict_set_item_op, [registry_dict, loaded_type, loaded_impl], line)
         else:
             # create a new list and generate those setitem calls all at once so we can use the
             # index as the integer ID
@@ -952,7 +951,15 @@ def initialize_singledispatch_dispatch_dictionary(
     for i, (typ, func) in enumerate(native_impls):
         loaded_type = load_type(builder, typ, line)
         func_id = builder.add(LoadLiteral(i, object_rprimitive))
-        builder.py_call(register_func, [loaded_type, func_id], line)
+        builder.call_c(dict_set_item_op, [registry_dict, loaded_type, func_id], line)
+
+    name = get_registry_identifier(fitem)
+
+    # HACK: reuse the final_names list to make sure that the registry dict gets declared as a
+    # static variable in the backend, even though this isn't a final variable
+    builder.final_names.append((name, dict_rprimitive))
+    init_static = InitStatic(registry_dict, name, builder.module_name, line=line)
+    builder.add(init_static)
 
 
 def singledispatch_main_func_name(orig_name: str) -> str:
