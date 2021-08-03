@@ -531,8 +531,23 @@ def test_ord() -> None:
     assert ord(u[-1]) == 233
 
 def test_decode() -> None:
+    assert "\N{GREEK CAPITAL LETTER DELTA}" == '\u0394'
+    assert "\u0394" == "\u0394"
+    assert "\U00000394" == '\u0394'
     assert b'\x80abc'.decode("utf-8", "replace") == '\ufffdabc'
     assert b'\x80abc'.decode("utf-8", "backslashreplace") == '\\x80abc'
     assert b'\x80abc'.decode("utf-8", "ignore") == 'abc'
 
-
+def test_encode() -> None:
+    u = chr(40960) + 'abcd' + chr(1972)
+    assert u.encode('utf-8') == b'\xea\x80\x80abcd\xde\xb4'
+    try:
+        u.encode('ascii')
+        assert False
+    except UnicodeEncodeError:
+        pass
+    assert u.encode('ascii', 'ignore') == b'abcd'
+    assert u.encode('ascii', 'replace') == b'?abcd?'
+    assert u.encode('ascii', 'xmlcharrefreplace') == b'&#40960;abcd&#1972;'
+    assert u.encode('ascii', 'backslashreplace') == b'\\ua000abcd\\u07b4'
+    assert u.encode('ascii', 'namereplace') == b'\\N{YI SYLLABLE IT}abcd\\u07b4'

@@ -74,10 +74,11 @@ class str:
     def strip (self, item: str) -> str: pass
     def join(self, x: Iterable[str]) -> str: pass
     def format(self, *args: Any, **kwargs: Any) -> str: ...
-    def upper(self) -> str: pass
-    def startswith(self, x: str, start: int=..., end: int=...) -> bool: pass
-    def endswith(self, x: str, start: int=..., end: int=...) -> bool: pass
-    def replace(self, old: str, new: str, maxcount: Optional[int] = None) -> str: pass
+    def upper(self) -> str: ...
+    def startswith(self, x: str, start: int=..., end: int=...) -> bool: ...
+    def endswith(self, x: str, start: int=..., end: int=...) -> bool: ...
+    def replace(self, old: str, new: str, maxcount: int=...) -> str: ...
+    def encode(self, x: str, y: str=...) -> bytes: ...
 
 class float:
     def __init__(self, x: object) -> None: pass
@@ -253,6 +254,8 @@ class KeyError(LookupError): pass
 class IndexError(LookupError): pass
 
 class RuntimeError(Exception): pass
+
+class UnicodeEncodeError(RuntimeError): pass
 
 class NotImplementedError(RuntimeError): pass
 
