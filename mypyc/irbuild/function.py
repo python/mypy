@@ -58,7 +58,6 @@ from mypyc.irbuild.env_class import (
 )
 
 from mypyc.primitives.registry import builtin_names
-from mypyc.primitives.int_ops import int_equal_
 
 
 # Top-level transform functions
@@ -863,8 +862,14 @@ def generate_singledispatch_dispatch_function(
         call_impl, next_impl = BasicBlock(), BasicBlock()
 
         current_id = builder.load_int(i)
-        should_call_impl = builder.call_c(int_equal_, [passed_id, current_id], line)
-        builder.add_bool_branch(should_call_impl, call_impl, next_impl)
+        builder.builder.compare_tagged_condition(
+            passed_id,
+            current_id,
+            '==',
+            call_impl,
+            next_impl,
+            line,
+        )
 
         # Call the registered implementation
         builder.activate_block(call_impl)
