@@ -4,8 +4,8 @@ from mypy.types import (
     Type, Instance, CallableType, TypeGuardType, TypeVisitor, UnboundType, AnyType,
     NoneType, TypeVarType, Overloaded, TupleType, TypedDictType, UnionType,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId,
-    FunctionLike, TypeVarDef, LiteralType, get_proper_type, ProperType,
-    TypeAliasType, ParamSpecDef
+    FunctionLike, TypeVarType, LiteralType, get_proper_type, ProperType,
+    TypeAliasType, ParamSpecType
 )
 
 
@@ -38,17 +38,17 @@ def freshen_function_type_vars(callee: F) -> F:
     if isinstance(callee, CallableType):
         if not callee.is_generic():
             return cast(F, callee)
-        tvdefs = []
+        tvs = []
         tvmap: Dict[TypeVarId, Type] = {}
         for v in callee.variables:
-            # TODO(shantanu): fix for ParamSpecDef
-            if isinstance(v, ParamSpecDef):
+            # TODO(shantanu): fix for ParamSpecType
+            if isinstance(v, ParamSpecType):
                 continue
-            assert isinstance(v, TypeVarDef)
-            tvdef = TypeVarDef.new_unification_variable(v)
-            tvdefs.append(tvdef)
-            tvmap[v.id] = TypeVarType(tvdef)
-        fresh = cast(CallableType, expand_type(callee, tvmap)).copy_modified(variables=tvdefs)
+            assert isinstance(v, TypeVarType)
+            tv = TypeVarType.new_unification_variable(v)
+            tvs.append(tv)
+            tvmap[v.id] = tv
+        fresh = cast(CallableType, expand_type(callee, tvmap)).copy_modified(variables=tvs)
         return cast(F, fresh)
     else:
         assert isinstance(callee, Overloaded)
