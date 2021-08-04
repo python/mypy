@@ -18,6 +18,10 @@ _T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)
 _T_contra = TypeVar("_T_contra", contravariant=True)
 
+# Use for "self" annotations:
+#   def __enter__(self: Self) -> Self: ...
+Self = TypeVar("Self")  # noqa Y001
+
 # stable
 class IdentityFunction(Protocol):
     def __call__(self, __x: _T) -> _T: ...
@@ -57,7 +61,6 @@ class SupportsItemAccess(SupportsGetItem[_KT_contra, _VT], Protocol[_KT_contra, 
 StrPath = Union[str, PathLike[str]]  # stable
 BytesPath = Union[bytes, PathLike[bytes]]  # stable
 StrOrBytesPath = Union[str, bytes, PathLike[str], PathLike[bytes]]  # stable
-AnyPath = StrOrBytesPath  # obsolete, will be removed soon
 
 OpenTextModeUpdating = Literal[
     "r+",

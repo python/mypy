@@ -1,5 +1,5 @@
 import sys
-from _typeshed import StrOrBytesPath
+from _typeshed import Self, StrOrBytesPath
 from types import TracebackType
 from typing import IO, Any, AnyStr, Callable, Generic, Mapping, Optional, Sequence, Tuple, Type, TypeVar, Union, overload
 from typing_extensions import Literal
@@ -34,7 +34,6 @@ if sys.platform == "win32":
 else:
     _ENV = Union[Mapping[bytes, StrOrBytesPath], Mapping[str, StrOrBytesPath]]
 
-_S = TypeVar("_S")
 _T = TypeVar("_T")
 
 class CompletedProcess(Generic[_T]):
@@ -1007,7 +1006,7 @@ class Popen(Generic[AnyStr]):
     def send_signal(self, sig: int) -> None: ...
     def terminate(self) -> None: ...
     def kill(self) -> None: ...
-    def __enter__(self: _S) -> _S: ...
+    def __enter__(self: Self) -> Self: ...
     def __exit__(
         self, type: Optional[Type[BaseException]], value: Optional[BaseException], traceback: Optional[TracebackType]
     ) -> None: ...
