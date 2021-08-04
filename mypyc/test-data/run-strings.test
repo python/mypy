@@ -149,7 +149,7 @@ def test_str_to_bool() -> None:
         assert is_true(x)
         assert not is_false(x)
 
-[case testCStyleStringFormatting]
+[case testStringFormattingCStyle]
 [typing fixtures/typing-full.pyi]
 from typing import Tuple
 
