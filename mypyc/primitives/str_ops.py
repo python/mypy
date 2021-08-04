@@ -29,11 +29,46 @@ str_op = function_op(
     error_kind=ERR_MAGIC)
 
 # str1 + str2
-binary_op(name='+',
-          arg_types=[str_rprimitive, str_rprimitive],
-          return_type=str_rprimitive,
-          c_function_name='PyUnicode_Concat',
-          error_kind=ERR_MAGIC)
+binary_op(
+    name='+',
+    arg_types=[str_rprimitive, str_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name='PyUnicode_Concat',
+    error_kind=ERR_MAGIC)
+
+# str1 += str2
+#
+# PyUnicode_Append makes an effort to reuse the LHS when the refcount
+# is 1. This is super dodgy but oh well, the interpreter does it.
+binary_op(
+    name='+=',
+    arg_types=[str_rprimitive, str_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name='CPyStr_Append',
+    error_kind=ERR_MAGIC,
+    steals=[True, False])
+
+unicode_compare = custom_op(
+    arg_types=[str_rprimitive, str_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name='PyUnicode_Compare',
+    error_kind=ERR_NEVER)
+
+# str[index] (for an int index)
+method_op(
+    name='__getitem__',
+    arg_types=[str_rprimitive, int_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name='CPyStr_GetItem',
+    error_kind=ERR_MAGIC
+)
+
+# str[begin:end]
+str_slice_op = custom_op(
+    arg_types=[str_rprimitive, int_rprimitive, int_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='CPyStr_GetSlice',
+    error_kind=ERR_MAGIC)
 
 # str.join(obj)
 method_op(
@@ -70,15 +105,6 @@ method_op(
     error_kind=ERR_NEVER
 )
 
-# str[index] (for an int index)
-method_op(
-    name='__getitem__',
-    arg_types=[str_rprimitive, int_rprimitive],
-    return_type=str_rprimitive,
-    c_function_name='CPyStr_GetItem',
-    error_kind=ERR_MAGIC
-)
-
 # str.split(...)
 str_split_types: List[RType] = [str_rprimitive, str_rprimitive, int_rprimitive]
 str_split_functions = ["PyUnicode_Split", "PyUnicode_Split", "CPyStr_Split"]
@@ -95,30 +121,6 @@ for i in range(len(str_split_types)):
         c_function_name=str_split_functions[i],
         extra_int_constants=str_split_constants[i],
         error_kind=ERR_MAGIC)
-
-# str1 += str2
-#
-# PyUnicode_Append makes an effort to reuse the LHS when the refcount
-# is 1. This is super dodgy but oh well, the interpreter does it.
-binary_op(name='+=',
-          arg_types=[str_rprimitive, str_rprimitive],
-          return_type=str_rprimitive,
-          c_function_name='CPyStr_Append',
-          error_kind=ERR_MAGIC,
-          steals=[True, False])
-
-unicode_compare = custom_op(
-    arg_types=[str_rprimitive, str_rprimitive],
-    return_type=c_int_rprimitive,
-    c_function_name='PyUnicode_Compare',
-    error_kind=ERR_NEVER)
-
-# str[begin:end]
-str_slice_op = custom_op(
-    arg_types=[str_rprimitive, int_rprimitive, int_rprimitive],
-    return_type=object_rprimitive,
-    c_function_name='CPyStr_GetSlice',
-    error_kind=ERR_MAGIC)
 
 # str.replace(old, new)
 method_op(
