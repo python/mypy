@@ -32,11 +32,11 @@ class ModuleFinderSuite(Suite):
         )
         options = Options()
         options.namespace_packages = True
-        self.fmc_ns = FindModuleCache(self.search_paths, options=options)
+        self.fmc_ns = FindModuleCache(self.search_paths, fscache=None, options=options)
 
         options = Options()
         options.namespace_packages = False
-        self.fmc_nons = FindModuleCache(self.search_paths, options=options)
+        self.fmc_nons = FindModuleCache(self.search_paths, fscache=None, options=options)
 
     def test__no_namespace_packages__nsx(self) -> None:
         """
@@ -159,11 +159,11 @@ class ModuleFinderSitePackagesSuite(Suite):
         )
         options = Options()
         options.namespace_packages = True
-        self.fmc_ns = FindModuleCache(self.search_paths, options=options)
+        self.fmc_ns = FindModuleCache(self.search_paths, fscache=None, options=options)
 
         options = Options()
         options.namespace_packages = False
-        self.fmc_nons = FindModuleCache(self.search_paths, options=options)
+        self.fmc_nons = FindModuleCache(self.search_paths, fscache=None, options=options)
 
     def path(self, *parts: str) -> str:
         return os.path.join(self.package_dir, *parts)

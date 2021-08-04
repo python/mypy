@@ -1,14 +1,24 @@
-// Int primitive operations
+// Int primitive operations (tagged arbitrary-precision integers)
 //
 // These are registered in mypyc.primitives.int_ops.
 
 #include <Python.h>
 #include "CPy.h"
 
+#ifndef _WIN32
+// On 64-bit Linux and macOS, ssize_t and long are both 64 bits, and
+// PyLong_FromLong is faster than PyLong_FromSsize_t, so use the faster one
+#define CPyLong_FromSsize_t PyLong_FromLong
+#else
+// On 64-bit Windows, ssize_t is 64 bits but long is 32 bits, so we
+// can't use the above trick
+#define CPyLong_FromSsize_t PyLong_FromSsize_t
+#endif
+
 CPyTagged CPyTagged_FromSsize_t(Py_ssize_t value) {
     // We use a Python object if the value shifted left by 1 is too
     // large for Py_ssize_t
-    if (CPyTagged_TooBig(value)) {
+    if (unlikely(CPyTagged_TooBig(value))) {
         PyObject *object = PyLong_FromSsize_t(value);
         return ((CPyTagged)object) | CPY_INT_TAG;
     } else {
@@ -20,7 +30,7 @@ CPyTagged CPyTagged_FromObject(PyObject *object) {
     int overflow;
     // The overflow check knows about CPyTagged's width
     Py_ssize_t value = CPyLong_AsSsize_tAndOverflow(object, &overflow);
-    if (overflow != 0) {
+    if (unlikely(overflow != 0)) {
         Py_INCREF(object);
         return ((CPyTagged)object) | CPY_INT_TAG;
     } else {
@@ -32,7 +42,7 @@ CPyTagged CPyTagged_StealFromObject(PyObject *object) {
     int overflow;
     // The overflow check knows about CPyTagged's width
     Py_ssize_t value = CPyLong_AsSsize_tAndOverflow(object, &overflow);
-    if (overflow != 0) {
+    if (unlikely(overflow != 0)) {
         return ((CPyTagged)object) | CPY_INT_TAG;
     } else {
         Py_DECREF(object);
@@ -44,7 +54,7 @@ CPyTagged CPyTagged_BorrowFromObject(PyObject *object) {
     int overflow;
     // The overflow check knows about CPyTagged's width
     Py_ssize_t value = CPyLong_AsSsize_tAndOverflow(object, &overflow);
-    if (overflow != 0) {
+    if (unlikely(overflow != 0)) {
         return ((CPyTagged)object) | CPY_INT_TAG;
     } else {
         return value << 1;
@@ -53,11 +63,11 @@ CPyTagged CPyTagged_BorrowFromObject(PyObject *object) {
 
 PyObject *CPyTagged_AsObject(CPyTagged x) {
     PyObject *value;
-    if (CPyTagged_CheckLong(x)) {
+    if (unlikely(CPyTagged_CheckLong(x))) {
         value = CPyTagged_LongAsObject(x);
         Py_INCREF(value);
     } else {
-        value = PyLong_FromSsize_t(CPyTagged_ShortAsSsize_t(x));
+        value = CPyLong_FromSsize_t(CPyTagged_ShortAsSsize_t(x));
         if (value == NULL) {
             CPyError_OutOfMemory();
         }
@@ -67,10 +77,10 @@ PyObject *CPyTagged_AsObject(CPyTagged x) {
 
 PyObject *CPyTagged_StealAsObject(CPyTagged x) {
     PyObject *value;
-    if (CPyTagged_CheckLong(x)) {
+    if (unlikely(CPyTagged_CheckLong(x))) {
         value = CPyTagged_LongAsObject(x);
     } else {
-        value = PyLong_FromSsize_t(CPyTagged_ShortAsSsize_t(x));
+        value = CPyLong_FromSsize_t(CPyTagged_ShortAsSsize_t(x));
         if (value == NULL) {
             CPyError_OutOfMemory();
         }
@@ -79,7 +89,7 @@ PyObject *CPyTagged_StealAsObject(CPyTagged x) {
 }
 
 Py_ssize_t CPyTagged_AsSsize_t(CPyTagged x) {
-    if (CPyTagged_CheckShort(x)) {
+    if (likely(CPyTagged_CheckShort(x))) {
         return CPyTagged_ShortAsSsize_t(x);
     } else {
         return PyLong_AsSsize_t(CPyTagged_LongAsObject(x));
@@ -88,21 +98,21 @@ Py_ssize_t CPyTagged_AsSsize_t(CPyTagged x) {
 
 CPy_NOINLINE
 void CPyTagged_IncRef(CPyTagged x) {
-    if (CPyTagged_CheckLong(x)) {
+    if (unlikely(CPyTagged_CheckLong(x))) {
         Py_INCREF(CPyTagged_LongAsObject(x));
     }
 }
 
 CPy_NOINLINE
 void CPyTagged_DecRef(CPyTagged x) {
-    if (CPyTagged_CheckLong(x)) {
+    if (unlikely(CPyTagged_CheckLong(x))) {
         Py_DECREF(CPyTagged_LongAsObject(x));
     }
 }
 
 CPy_NOINLINE
 void CPyTagged_XDecRef(CPyTagged x) {
-    if (CPyTagged_CheckLong(x)) {
+    if (unlikely(CPyTagged_CheckLong(x))) {
         Py_XDECREF(CPyTagged_LongAsObject(x));
     }
 }
@@ -125,9 +135,9 @@ CPyTagged CPyTagged_Negate(CPyTagged num) {
 
 CPyTagged CPyTagged_Add(CPyTagged left, CPyTagged right) {
     // TODO: Use clang/gcc extension __builtin_saddll_overflow instead.
-    if (CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right)) {
+    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
         CPyTagged sum = left + right;
-        if (!CPyTagged_IsAddOverflow(sum, left, right)) {
+        if (likely(!CPyTagged_IsAddOverflow(sum, left, right))) {
             return sum;
         }
     }
@@ -144,9 +154,9 @@ CPyTagged CPyTagged_Add(CPyTagged left, CPyTagged right) {
 
 CPyTagged CPyTagged_Subtract(CPyTagged left, CPyTagged right) {
     // TODO: Use clang/gcc extension __builtin_saddll_overflow instead.
-    if (CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right)) {
+    if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
         CPyTagged diff = left - right;
-        if (!CPyTagged_IsSubtractOverflow(diff, left, right)) {
+        if (likely(!CPyTagged_IsSubtractOverflow(diff, left, right))) {
             return diff;
         }
     }

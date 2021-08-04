@@ -469,7 +469,7 @@ def request(status_file: str, command: str, *, timeout: Optional[int] = None,
     raised OSError.  This covers cases such as connection refused or
     closed prematurely as well as invalid JSON received.
     """
-    response = {}  # type: Dict[str, str]
+    response: Dict[str, str] = {}
     args = dict(kwds)
     args['command'] = command
     # Tell the server whether this request was initiated from a human-facing terminal,

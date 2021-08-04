@@ -114,8 +114,8 @@ A simple CI script could look something like this:
 
 .. code-block:: text
 
-    python3 -m pip install mypy==0.600  # Pinned version avoids surprises
-    scripts/mypy  # Runs with the correct options
+    python3 -m pip install mypy==0.790  # Pinned version avoids surprises
+    scripts/mypy  # Run the mypy runner script you set up
 
 Annotate widely imported modules
 --------------------------------
@@ -145,8 +145,7 @@ Automate annotation of legacy code
 
 There are tools for automatically adding draft annotations
 based on type profiles collected at runtime.  Tools include
-:doc:`monkeytype:index` (Python 3) and `PyAnnotate`_
-(type comments only).
+:doc:`monkeytype:index` (Python 3) and `PyAnnotate`_.
 
 A simple approach is to collect types from test runs. This may work
 well if your test coverage is good (and if your tests aren't very
@@ -169,12 +168,11 @@ for further speedups.
 Introduce stricter options
 --------------------------
 
-Mypy is very configurable. Once you get started with static typing,
-you may want to explore the various
-strictness options mypy provides to
-catch more bugs. For example, you can ask mypy to require annotations
-for all functions in certain modules to avoid accidentally introducing
-code that won't be type checked. Refer to :ref:`command-line` for the
-details.
+Mypy is very configurable. Once you get started with static typing, you may want
+to explore the various strictness options mypy provides to catch more bugs. For
+example, you can ask mypy to require annotations for all functions in certain
+modules to avoid accidentally introducing code that won't be type checked using
+:confval:`disallow_untyped_defs`, or type check code without annotations as well
+with :confval:`check_untyped_defs`. Refer to :ref:`config-file` for the details.
 
 .. _PyAnnotate: https://github.com/dropbox/pyannotate

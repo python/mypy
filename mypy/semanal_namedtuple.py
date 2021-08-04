@@ -8,7 +8,7 @@ from typing import Tuple, List, Dict, Mapping, Optional, Union, cast, Iterator
 from typing_extensions import Final
 
 from mypy.types import (
-    Type, TupleType, AnyType, TypeOfAny, TypeVarDef, CallableType, TypeType, TypeVarType,
+    Type, TupleType, AnyType, TypeOfAny, CallableType, TypeType, TypeVarType,
     UnboundType,
 )
 from mypy.semanal_shared import (
@@ -26,15 +26,26 @@ from mypy.util import get_unique_redefinition_name
 
 # Matches "_prohibited" in typing.py, but adds __annotations__, which works at runtime but can't
 # easily be supported in a static checker.
-NAMEDTUPLE_PROHIBITED_NAMES = ('__new__', '__init__', '__slots__', '__getnewargs__',
-                               '_fields', '_field_defaults', '_field_types',
-                               '_make', '_replace', '_asdict', '_source',
-                               '__annotations__')  # type: Final
+NAMEDTUPLE_PROHIBITED_NAMES: Final = (
+    "__new__",
+    "__init__",
+    "__slots__",
+    "__getnewargs__",
+    "_fields",
+    "_field_defaults",
+    "_field_types",
+    "_make",
+    "_replace",
+    "_asdict",
+    "_source",
+    "__annotations__",
+)
 
-NAMEDTUP_CLASS_ERROR = ('Invalid statement in NamedTuple definition; '
-                        'expected "field_name: field_type [= default]"')  # type: Final
+NAMEDTUP_CLASS_ERROR: Final = (
+    "Invalid statement in NamedTuple definition; " 'expected "field_name: field_type [= default]"'
+)
 
-SELF_TVAR_NAME = '_NT'  # type: Final
+SELF_TVAR_NAME: Final = "_NT"
 
 
 class NamedTupleAnalyzer:
@@ -87,9 +98,9 @@ class NamedTupleAnalyzer:
             return [], [], {}
         if len(defn.base_type_exprs) > 1:
             self.fail('NamedTuple should be a single base', defn)
-        items = []  # type: List[str]
-        types = []  # type: List[Type]
-        default_items = {}  # type: Dict[str, Expression]
+        items: List[str] = []
+        types: List[Type] = []
+        default_items: Dict[str, Expression] = {}
         for stmt in defn.defs.body:
             if not isinstance(stmt, AssignmentStmt):
                 # Still allow pass or ... (for empty namedtuples).
@@ -256,7 +267,7 @@ class NamedTupleAnalyzer:
         if len(args) < 2:
             self.fail("Too few arguments for namedtuple()", call)
             return None
-        defaults = []  # type: List[Expression]
+        defaults: List[Expression] = []
         if len(args) > 2:
             # Typed namedtuple doesn't support additional arguments.
             if fullname == 'typing.NamedTuple':
@@ -284,7 +295,7 @@ class NamedTupleAnalyzer:
                 "namedtuple() expects a string literal as the first argument", call)
             return None
         typename = cast(Union[StrExpr, BytesExpr, UnicodeExpr], call.args[0]).value
-        types = []  # type: List[Type]
+        types: List[Type] = []
         if not isinstance(args[1], (ListExpr, TupleExpr)):
             if (fullname == 'collections.namedtuple'
                     and isinstance(args[1], (StrExpr, BytesExpr, UnicodeExpr))):
@@ -331,8 +342,8 @@ class NamedTupleAnalyzer:
 
         Return (names, types, defaults, whether types are all ready), or None if error occurred.
         """
-        items = []  # type: List[str]
-        types = []  # type: List[Type]
+        items: List[str] = []
+        types: List[Type] = []
         for item in nodes:
             if isinstance(item, TupleExpr):
                 if len(item.items) != 2:
@@ -345,7 +356,7 @@ class NamedTupleAnalyzer:
                     self.fail("Invalid NamedTuple() field name", item)
                     return None
                 try:
-                    type = expr_to_unanalyzed_type(type_node)
+                    type = expr_to_unanalyzed_type(type_node, self.options, self.api.is_stub_file)
                 except TypeTranslationError:
                     self.fail('Invalid field type', type_node)
                     return None
@@ -382,7 +393,7 @@ class NamedTupleAnalyzer:
         iterable_type = self.api.named_type_or_none('typing.Iterable', [implicit_any])
         function_type = self.api.named_type('__builtins__.function')
 
-        info = self.api.basic_new_typeinfo(name, fallback)
+        info = self.api.basic_new_typeinfo(name, fallback, line)
         info.is_named_tuple = True
         tuple_base = TupleType(types, fallback)
         info.tuple_type = tuple_base
@@ -421,9 +432,9 @@ class NamedTupleAnalyzer:
         add_field(Var('__annotations__', ordereddictype), is_initialized_in_class=True)
         add_field(Var('__doc__', strtype), is_initialized_in_class=True)
 
-        tvd = TypeVarDef(SELF_TVAR_NAME, info.fullname + '.' + SELF_TVAR_NAME,
+        tvd = TypeVarType(SELF_TVAR_NAME, info.fullname + '.' + SELF_TVAR_NAME,
                          -1, [], info.tuple_type)
-        selftype = TypeVarType(tvd)
+        selftype = tvd
 
         def add_method(funcname: str,
                        ret: Type,

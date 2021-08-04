@@ -71,17 +71,17 @@ class C: pass
 [case testListWithStarExpr]
 (x, *a) = [1, 2, 3]
 a = [1, *[2, 3]]
-reveal_type(a)  # N: Revealed type is 'builtins.list[builtins.int*]'
+reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int*]"
 b = [0, *a]
-reveal_type(b)  # N: Revealed type is 'builtins.list[builtins.int*]'
+reveal_type(b)  # N: Revealed type is "builtins.list[builtins.int*]"
 c = [*a, 0]
-reveal_type(c)  # N: Revealed type is 'builtins.list[builtins.int*]'
+reveal_type(c)  # N: Revealed type is "builtins.list[builtins.int*]"
 [builtins fixtures/list.pyi]
 
 [case testComprehensionShadowBinder]
 # flags: --strict-optional
 def foo(x: object) -> None:
     if isinstance(x, str):
-        [reveal_type(x) for x in [1, 2, 3]]  # N: Revealed type is 'builtins.int*'
+        [reveal_type(x) for x in [1, 2, 3]]  # N: Revealed type is "builtins.int*"
 
 [builtins fixtures/isinstancelist.pyi]

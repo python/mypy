@@ -184,17 +184,7 @@ Quick start for contributing to mypy
 
 If you want to contribute, first clone the mypy git repository:
 
-    $ git clone --recurse-submodules https://github.com/python/mypy.git
-
-If you've already cloned the repo without `--recurse-submodules`,
-you need to pull in the typeshed repo as follows:
-
-    $ git submodule init
-    $ git submodule update
-
-Either way you should now have a subdirectory `typeshed` inside your mypy repo,
-your folders tree should be like `mypy/mypy/typeshed`, containing a
-clone of the typeshed repo (`https://github.com/python/typeshed`).
+    $ git clone https://github.com/python/mypy.git
 
 From the mypy directory, use pip to install mypy:
 
@@ -209,22 +199,8 @@ the above as root. For example, in Ubuntu:
 Now you can use the `mypy` program just as above.  In case of trouble
 see "Troubleshooting" above.
 
-> NOTE: Installing with sudo can be a security risk, please try with flag `--user` first.
-    $ python3 -m pip install --user -U . 
-
-Working with the git version of mypy
-------------------------------------
-
-mypy contains a submodule, "typeshed". See https://github.com/python/typeshed.
-This submodule contains types for the Python standard library.
-
-Due to the way git submodules work, you'll have to do
-```
-  git submodule update mypy/typeshed
-```
-whenever you change branches, merge, rebase, or pull.
-
-(It's possible to automate this: Search Google for "git hook update submodule")
+> NOTE: Installing with sudo can be a security risk. Please try with the `--user` flag first.
+    $ python3 -m pip install --user -U .
 
 
 Tests
@@ -244,7 +220,8 @@ Development status
 ------------------
 
 Mypy is beta software, but it has already been used in production
-for several years at Dropbox, and it has an extensive test suite.
+for several years at Dropbox and in many other organizations, and
+it has an extensive test suite.
 
 See [the roadmap](ROADMAP.md) if you are interested in plans for the
 future.

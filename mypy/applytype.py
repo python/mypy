@@ -5,21 +5,23 @@ import mypy.sametypes
 from mypy.expandtype import expand_type
 from mypy.types import (
     Type, TypeVarId, TypeVarType, CallableType, AnyType, PartialType, get_proper_types,
-    TypeVarDef, TypeVarLikeDef, ProperType
+    TypeVarLikeType, ProperType, ParamSpecType
 )
 from mypy.nodes import Context
 
 
 def get_target_type(
-    tvar: TypeVarLikeDef,
+    tvar: TypeVarLikeType,
     type: ProperType,
     callable: CallableType,
     report_incompatible_typevar_value: Callable[[CallableType, Type, str, Context], None],
     context: Context,
     skip_unsatisfied: bool
 ) -> Optional[Type]:
-    # TODO(shantanu): fix for ParamSpecDef
-    assert isinstance(tvar, TypeVarDef)
+    # TODO(shantanu): fix for ParamSpecType
+    if isinstance(tvar, ParamSpecType):
+        return None
+    assert isinstance(tvar, TypeVarType)
     values = get_proper_types(tvar.values)
     if values:
         if isinstance(type, AnyType):
@@ -75,7 +77,7 @@ def apply_generic_arguments(
     types = get_proper_types(orig_types)
 
     # Create a map from type variable id to target type.
-    id_to_type = {}  # type: Dict[TypeVarId, Type]
+    id_to_type: Dict[TypeVarId, Type] = {}
 
     for tvar, type in zip(tvars, types):
         assert not isinstance(type, PartialType), "Internal error: must never apply partial type"

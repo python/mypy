@@ -173,6 +173,8 @@ For example:
        ...
        yield timer()
 
+**get_function_signature_hook** is used to adjust the signature of a function.
+
 **get_method_hook()** is the same as ``get_function_hook()`` but for methods
 instead of module level functions.
 
@@ -202,14 +204,13 @@ to match runtime behaviour:
 
 .. code-block:: python
 
-   from lib import customize
+   from dataclasses import dataclass
 
-   @customize
-   class UserDefined:
-       pass
+   @dataclass  # built-in plugin adds `__init__` method here
+   class User:
+       name: str
 
-   var = UserDefined
-   var.customized  # mypy can understand this using a plugin
+   user = User(name='example')  # mypy can understand this using a plugin
 
 **get_metaclass_hook()** is similar to above, but for metaclasses.
 

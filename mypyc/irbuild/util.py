@@ -4,14 +4,9 @@ from typing import Dict, Any, Union, Optional
 
 from mypy.nodes import (
     ClassDef, FuncDef, Decorator, OverloadedFuncDef, StrExpr, CallExpr, RefExpr, Expression,
-    IntExpr, FloatExpr, Var, TupleExpr, UnaryExpr, BytesExpr, ARG_NAMED, ARG_NAMED_OPT, ARG_POS,
-    ARG_OPT, GDEF
+    IntExpr, FloatExpr, Var, TupleExpr, UnaryExpr, BytesExpr,
+    ArgKind, ARG_NAMED, ARG_NAMED_OPT, ARG_POS, ARG_OPT, GDEF,
 )
-
-from mypyc.ir.ops import Environment, AssignmentTargetRegister
-from mypyc.ir.rtypes import RInstance
-from mypyc.ir.class_ir import ClassIR
-from mypyc.common import SELF_NAME
 
 
 def is_trait_decorator(d: Expression) -> bool:
@@ -65,7 +60,7 @@ def get_mypyc_attr_call(d: Expression) -> Optional[CallExpr]:
 
 def get_mypyc_attrs(stmt: Union[ClassDef, Decorator]) -> Dict[str, Any]:
     """Collect all the mypyc_attr attributes on a class definition or a function."""
-    attrs = {}  # type: Dict[str, Any]
+    attrs: Dict[str, Any] = {}
     for dec in stmt.decorators:
         d = get_mypyc_attr_call(dec)
         if d:
@@ -87,7 +82,11 @@ def is_extension_class(cdef: ClassDef) -> bool:
         for d in cdef.decorators
     ):
         return False
-    elif (cdef.info.metaclass_type and cdef.info.metaclass_type.type.fullname not in (
+    if cdef.info.typeddict_type:
+        return False
+    if cdef.info.is_named_tuple:
+        return False
+    if (cdef.info.metaclass_type and cdef.info.metaclass_type.type.fullname not in (
             'abc.ABCMeta', 'typing.TypingMeta', 'typing.GenericMeta')):
         return False
     return True
@@ -102,7 +101,7 @@ def get_func_def(op: Union[FuncDef, Decorator, OverloadedFuncDef]) -> FuncDef:
     return op
 
 
-def concrete_arg_kind(kind: int) -> int:
+def concrete_arg_kind(kind: ArgKind) -> ArgKind:
     """Find the concrete version of an arg kind that is being passed."""
     if kind == ARG_OPT:
         return ARG_POS
@@ -129,9 +128,3 @@ def is_constant(e: Expression) -> bool:
             or (isinstance(e, RefExpr) and e.kind == GDEF
                 and (e.fullname in ('builtins.True', 'builtins.False', 'builtins.None')
                      or (isinstance(e.node, Var) and e.node.is_final))))
-
-
-def add_self_to_env(environment: Environment, cls: ClassIR) -> AssignmentTargetRegister:
-    return environment.add_local_reg(
-        Var(SELF_NAME), RInstance(cls), is_arg=True
-    )
