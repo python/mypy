@@ -964,3 +964,7 @@ def initialize_singledispatch_dispatch_dictionary(
 
 def singledispatch_main_func_name(orig_name: str) -> str:
     return '__mypyc_singledispatch_main_function_{}__'.format(orig_name)
+
+
+def get_registry_identifier(fitem: FuncDef) -> str:
+    return f'__mypyc_singledispatch_registry_{fitem.fullname}__'
