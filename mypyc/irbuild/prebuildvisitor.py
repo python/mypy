@@ -1,11 +1,9 @@
 from mypyc.errors import Errors
-from mypy.types import Instance, get_proper_type
-from typing import DefaultDict, Dict, List, NamedTuple, Set, Optional, Tuple
-from collections import defaultdict
+from typing import Dict, List, Set
 
 from mypy.nodes import (
     Decorator, Expression, FuncDef, FuncItem, LambdaExpr, NameExpr, SymbolNode, Var, MemberExpr,
-    CallExpr, RefExpr, TypeInfo, MypyFile
+    MypyFile
 )
 from mypy.traverser import TraverserVisitor
 
@@ -24,7 +22,12 @@ class PreBuildVisitor(TraverserVisitor):
     The main IR build pass uses this information.
     """
 
-    def __init__(self, errors: Errors, current_file: MypyFile) -> None:
+    def __init__(
+        self,
+        errors: Errors,
+        current_file: MypyFile,
+        decorators_to_remove: Dict[FuncDef, List[int]],
+    ) -> None:
         super().__init__()
         # Dict from a function to symbols defined directly in the
         # function that are used as non-local (free) variables within a
@@ -54,9 +57,8 @@ class PreBuildVisitor(TraverserVisitor):
         # Map function to its non-special decorators.
         self.funcs_to_decorators: Dict[FuncDef, List[Expression]] = {}
 
-        # Map of main singledispatch function to list of registered implementations
-        self.singledispatch_impls: DefaultDict[
-            FuncDef, List[Tuple[TypeInfo, FuncDef]]] = defaultdict(list)
+        # Map function to indices of decorators to remove
+        self.decorators_to_remove: Dict[FuncDef, List[int]] = decorators_to_remove
 
         self.errors: Errors = errors
 
@@ -76,37 +78,15 @@ class PreBuildVisitor(TraverserVisitor):
                 self.prop_setters.add(dec.func)
             else:
                 decorators_to_store = dec.decorators.copy()
-                removed: List[int] = []
-                # the index of the last non-register decorator before finding a register decorator
-                # when going through decorators from top to bottom
-                last_non_register: Optional[int] = None
-                for i, d in enumerate(decorators_to_store):
-                    impl = get_singledispatch_register_call_info(d, dec.func)
-                    if impl is not None:
-                        self.singledispatch_impls[impl.singledispatch_func].append(
-                            (impl.dispatch_type, dec.func))
-                        removed.append(i)
-                        if last_non_register is not None:
-                            # found a register decorator after a non-register decorator, which we
-                            # don't support because we'd have to make a copy of the function before
-                            # calling the decorator so that we can call it later, which complicates
-                            # the implementation for something that is probably not commonly used
-                            self.errors.error(
-                                "Calling decorator after registering function not supported",
-                                self.current_file.path,
-                                decorators_to_store[last_non_register].line,
-                            )
-                    else:
-                        last_non_register = i
-                # calling register on a function that tries to dispatch based on type annotations
-                # raises a TypeError because compiled functions don't have an __annotations__
-                # attribute
-                for i in reversed(removed):
-                    del decorators_to_store[i]
-                # if the only decorators are register calls, we shouldn't treat this
-                # as a decorated function because there aren't any decorators to apply
-                if not decorators_to_store:
-                    return
+                if dec.func in self.decorators_to_remove:
+                    to_remove = self.decorators_to_remove[dec.func]
+
+                    for i in reversed(to_remove):
+                        del decorators_to_store[i]
+                    # if all of the decorators are removed, we shouldn't treat this as a decorated
+                    # function because there aren't any decorators to apply
+                    if not decorators_to_store:
+                        return
 
                 self.funcs_to_decorators[dec.func] = decorators_to_store
         super().visit_decorator(dec)
@@ -186,45 +166,3 @@ class PreBuildVisitor(TraverserVisitor):
         # and mark is as a non-local symbol within that function.
         func = self.symbols_to_funcs[symbol]
         self.free_variables.setdefault(func, set()).add(symbol)
-
-
-class RegisteredImpl(NamedTuple):
-    singledispatch_func: FuncDef
-    dispatch_type: TypeInfo
-
-
-def get_singledispatch_register_call_info(decorator: Expression, func: FuncDef
-                                          ) -> Optional[RegisteredImpl]:
-    # @fun.register(complex)
-    # def g(arg): ...
-    if (isinstance(decorator, CallExpr) and len(decorator.args) == 1
-            and isinstance(decorator.args[0], RefExpr)):
-        callee = decorator.callee
-        dispatch_type = decorator.args[0].node
-        if not isinstance(dispatch_type, TypeInfo):
-            return None
-
-        if isinstance(callee, MemberExpr):
-            return registered_impl_from_possible_register_call(callee, dispatch_type)
-    # @fun.register
-    # def g(arg: int): ...
-    elif isinstance(decorator, MemberExpr):
-        # we don't know if this is a register call yet, so we can't be sure that the function
-        # actually has arguments
-        if not func.arguments:
-            return None
-        arg_type = get_proper_type(func.arguments[0].variable.type)
-        if not isinstance(arg_type, Instance):
-            return None
-        info = arg_type.type
-        return registered_impl_from_possible_register_call(decorator, info)
-    return None
-
-
-def registered_impl_from_possible_register_call(expr: MemberExpr, dispatch_type: TypeInfo
-                                                ) -> Optional[RegisteredImpl]:
-    if expr.name == 'register' and isinstance(expr.expr, NameExpr):
-        node = expr.expr.node
-        if isinstance(node, Decorator):
-            return RegisteredImpl(node.func, dispatch_type)
-    return None

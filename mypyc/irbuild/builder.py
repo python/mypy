@@ -11,6 +11,7 @@ example, expressions are transformed in mypyc.irbuild.expression and
 functions are transformed in mypyc.irbuild.function.
 """
 
+from mypyc.irbuild.prepare import RegisterImplInfo
 from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any
 from typing_extensions import overload
 from mypy.backports import OrderedDict
@@ -20,7 +21,7 @@ from mypy.nodes import (
     MypyFile, SymbolNode, Statement, OpExpr, IntExpr, NameExpr, LDEF, Var, UnaryExpr,
     CallExpr, IndexExpr, Expression, MemberExpr, RefExpr, Lvalue, TupleExpr,
     TypeInfo, Decorator, OverloadedFuncDef, StarExpr, ComparisonExpr, GDEF,
-    ArgKind, ARG_POS, ARG_NAMED,
+    ArgKind, ARG_POS, ARG_NAMED, FuncDef,
 )
 from mypy.types import (
     Type, Instance, TupleType, UninhabitedType, get_proper_type
@@ -85,7 +86,8 @@ class IRBuilder:
                  mapper: Mapper,
                  pbv: PreBuildVisitor,
                  visitor: IRVisitor,
-                 options: CompilerOptions) -> None:
+                 options: CompilerOptions,
+                 singledispatch_impls: Dict[FuncDef, List[RegisterImplInfo]]) -> None:
         self.builder = LowLevelIRBuilder(current_module, mapper, options)
         self.builders = [self.builder]
         self.symtables: List[OrderedDict[SymbolNode, SymbolTarget]] = [OrderedDict()]
@@ -116,7 +118,7 @@ class IRBuilder:
         self.encapsulating_funcs = pbv.encapsulating_funcs
         self.nested_fitems = pbv.nested_funcs.keys()
         self.fdefs_to_decorators = pbv.funcs_to_decorators
-        self.singledispatch_impls = pbv.singledispatch_impls
+        self.singledispatch_impls = singledispatch_impls
 
         self.visitor = visitor
 
