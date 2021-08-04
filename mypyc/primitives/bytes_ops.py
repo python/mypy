@@ -5,8 +5,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive, bytes_rprimitive, list_rprimitive, dict_rprimitive,
     str_rprimitive, RUnion
 )
-from mypyc.primitives.registry import load_address_op, function_op
-
+from mypyc.primitives.registry import load_address_op, function_op, binary_op
 
 # Get the 'bytes' type object.
 load_address_op(
@@ -29,3 +28,13 @@ function_op(
     return_type=bytes_rprimitive,
     c_function_name='PyByteArray_FromObject',
     error_kind=ERR_MAGIC)
+
+# bytes + bytes
+# bytearray + bytearray
+binary_op(
+    name='+',
+    arg_types=[bytes_rprimitive, bytes_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name='CPyBytes_Concat',
+    error_kind=ERR_MAGIC,
+    steals=[True, False])

@@ -62,3 +62,12 @@ L0:
     c = r6
     return 1
 
+[case testBytesOps]
+def f1(a: bytes, b: bytes) -> bytes:
+    return a + b
+[out]
+def f1(a, b):
+    a, b, r0 :: bytes
+L0:
+    r0 = CPyBytes_Concat(a, b)
+    return r0
