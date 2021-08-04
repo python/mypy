@@ -3277,15 +3277,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Used for list and set expressions, as well as for tuples
         # containing star expressions that don't refer to a
         # Tuple. (Note: "lst" stands for list-set-tuple. :-)
-        tvdef = TypeVarType('T', 'T', -1, [], self.object_type())
+        tv = TypeVarType('T', 'T', -1, [], self.object_type())
         constructor = CallableType(
-            [tvdef],
+            [tv],
             [nodes.ARG_STAR],
             [None],
-            self.chk.named_generic_type(fullname, [tvdef]),
+            self.chk.named_generic_type(fullname, [tv]),
             self.named_type('builtins.function'),
             name=tag,
-            variables=[tvdef])
+            variables=[tv])
         out = self.check_call(constructor,
                               [(i.expr if isinstance(i, StarExpr) else i)
                                for i in items],
@@ -3434,8 +3434,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     tup.column = value.column
                 args.append(tup)
         # Define type variables (used in constructors below).
-        ktdef = TypeVarType('KT', 'KT', -1, [], self.object_type())
-        vtdef = TypeVarType('VT', 'VT', -2, [], self.object_type())
+        kt = TypeVarType('KT', 'KT', -1, [], self.object_type())
+        vt = TypeVarType('VT', 'VT', -2, [], self.object_type())
         rv = None
         # Call dict(*args), unless it's empty and stargs is not.
         if args or not stargs:
@@ -3443,13 +3443,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             #
             #   def <unnamed>(*v: Tuple[kt, vt]) -> Dict[kt, vt]: ...
             constructor = CallableType(
-                [TupleType([ktdef, vtdef], self.named_type('builtins.tuple'))],
+                [TupleType([kt, vt], self.named_type('builtins.tuple'))],
                 [nodes.ARG_STAR],
                 [None],
-                self.chk.named_generic_type('builtins.dict', [ktdef, vtdef]),
+                self.chk.named_generic_type('builtins.dict', [kt, vt]),
                 self.named_type('builtins.function'),
                 name='<dict>',
-                variables=[ktdef, vtdef])
+                variables=[kt, vt])
             rv = self.check_call(constructor, args, [nodes.ARG_POS] * len(args), e)[0]
         else:
             # dict(...) will be called below.
@@ -3460,13 +3460,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             for arg in stargs:
                 if rv is None:
                     constructor = CallableType(
-                        [self.chk.named_generic_type('typing.Mapping', [ktdef, vtdef])],
+                        [self.chk.named_generic_type('typing.Mapping', [kt, vt])],
                         [nodes.ARG_POS],
                         [None],
-                        self.chk.named_generic_type('builtins.dict', [ktdef, vtdef]),
+                        self.chk.named_generic_type('builtins.dict', [kt, vt]),
                         self.named_type('builtins.function'),
                         name='<list>',
-                        variables=[ktdef, vtdef])
+                        variables=[kt, vt])
                     rv = self.check_call(constructor, [arg], [nodes.ARG_POS], arg)[0]
                 else:
                     self.check_method_call_by_name('update', rv, [arg], [nodes.ARG_POS], arg)
@@ -3756,8 +3756,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             # Infer the type of the list comprehension by using a synthetic generic
             # callable type.
-            tvdef = TypeVarType('T', 'T', -1, [], self.object_type())
-            tv_list: List[Type] = [tvdef]
+            tv = TypeVarType('T', 'T', -1, [], self.object_type())
+            tv_list: List[Type] = [tv]
             constructor = CallableType(
                 tv_list,
                 [nodes.ARG_POS],
@@ -3765,7 +3765,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 self.chk.named_generic_type(type_name, tv_list + additional_args),
                 self.chk.named_type('builtins.function'),
                 name=id_for_messages,
-                variables=[tvdef])
+                variables=[tv])
             return self.check_call(constructor,
                                 [gen.left_expr], [nodes.ARG_POS], gen)[0]
 

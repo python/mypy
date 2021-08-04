@@ -8,6 +8,7 @@ from mypy.types import (
     TypeAliasType, ParamSpecType
 )
 
+
 def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type:
     """Substitute any type variable references in a type given by a type
     environment.
