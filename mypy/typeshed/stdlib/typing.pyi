@@ -700,7 +700,6 @@ def NewType(name: str, tp: Type[_T]) -> Type[_T]: ...
 def type_check_only(func_or_cls: _F) -> _F: ...
 
 if sys.version_info >= (3, 7):
-    from types import CodeType
     class ForwardRef:
         __forward_arg__: str
         __forward_code__: CodeType
