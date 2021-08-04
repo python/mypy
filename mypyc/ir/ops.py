@@ -75,6 +75,12 @@ class BasicBlock:
         """
         return bool(self.ops) and isinstance(self.ops[-1], ControlOp)
 
+    @property
+    def terminator(self) -> 'ControlOp':
+        """The terminator operation of the block."""
+        assert bool(self.ops) and isinstance(self.ops[-1], ControlOp)
+        return self.ops[-1]
+
 
 # Never generates an exception
 ERR_NEVER: Final = 0
@@ -260,12 +266,15 @@ class AssignMulti(Op):
 
 
 class ControlOp(Op):
-    """Control flow operation.
+    """Control flow operation."""
 
-    This is Basically just for class hierarchy organization.
+    def targets(self) -> Sequence[BasicBlock]:
+        """Get all basic block targets of the control operation."""
+        return ()
 
-    We could plausibly have a targets() method if we wanted.
-    """
+    def set_target(self, i: int, new: BasicBlock) -> None:
+        """Update a basic block target."""
+        raise AssertionError("Invalid set_target({}, {})".format(self, i))
 
 
 class Goto(ControlOp):
@@ -276,6 +285,13 @@ class Goto(ControlOp):
     def __init__(self, label: BasicBlock, line: int = -1) -> None:
         super().__init__(line)
         self.label = label
+
+    def targets(self) -> Sequence[BasicBlock]:
+        return (self.label,)
+
+    def set_target(self, i: int, new: BasicBlock) -> None:
+        assert i == 0
+        self.label = new
 
     def __repr__(self) -> str:
         return '<Goto %s>' % self.label.label
@@ -326,6 +342,16 @@ class Branch(ControlOp):
         self.traceback_entry: Optional[Tuple[str, int]] = None
         # If True, the condition is expected to be usually False (for optimization purposes)
         self.rare = rare
+
+    def targets(self) -> Sequence[BasicBlock]:
+        return (self.true, self.false)
+
+    def set_target(self, i: int, new: BasicBlock) -> None:
+        assert i == 0 or i == 1
+        if i == 0:
+            self.true = new
+        elif i == 1:
+            self.false = new
 
     def sources(self) -> List[Value]:
         return [self.value]
