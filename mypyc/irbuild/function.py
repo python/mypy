@@ -246,7 +246,15 @@ def gen_func_item(builder: IRBuilder,
         # Do a first-pass and generate a function that just returns a generator object.
         gen_generator_func(builder)
         args, _, blocks, ret_type, fn_info = builder.leave()
-        func_ir, func_reg = gen_func_ir(builder, args, blocks, sig, fn_info, cdef)
+        func_ir, func_reg = gen_func_ir(
+            builder,
+            args,
+            blocks,
+            sig,
+            fn_info,
+            cdef,
+            is_singledispatch,
+        )
 
         # Re-enter the FuncItem and visit the body of the function this time.
         builder.enter(fn_info)
@@ -313,7 +321,15 @@ def gen_func_item(builder: IRBuilder,
         add_methods_to_generator_class(
             builder, fn_info, sig, args, blocks, fitem.is_coroutine)
     else:
-        func_ir, func_reg = gen_func_ir(builder, args, blocks, sig, fn_info, cdef)
+        func_ir, func_reg = gen_func_ir(
+            builder,
+            args,
+            blocks,
+            sig,
+            fn_info,
+            cdef,
+            is_singledispatch,
+        )
 
     # Evaluate argument defaults in the surrounding scope, since we
     # calculate them *once* when the function definition is evaluated.
@@ -336,7 +352,8 @@ def gen_func_ir(builder: IRBuilder,
                 blocks: List[BasicBlock],
                 sig: FuncSignature,
                 fn_info: FuncInfo,
-                cdef: Optional[ClassDef]) -> Tuple[FuncIR, Optional[Value]]:
+                cdef: Optional[ClassDef],
+                is_singledispatch_main_func: bool = False) -> Tuple[FuncIR, Optional[Value]]:
     """Generate the FuncIR for a function.
 
     This takes the basic blocks and function info of a particular
@@ -352,7 +369,7 @@ def gen_func_ir(builder: IRBuilder,
     else:
         assert isinstance(fn_info.fitem, FuncDef)
         func_decl = builder.mapper.func_to_decl[fn_info.fitem]
-        if fn_info.is_decorated:
+        if fn_info.is_decorated or is_singledispatch_main_func:
             class_name = None if cdef is None else cdef.name
             func_decl = FuncDecl(fn_info.name, class_name, builder.module_name, sig,
                                  func_decl.kind,
