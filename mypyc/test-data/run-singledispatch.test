@@ -114,7 +114,7 @@ def test_singledispatch() -> None:
     assert fun(1)
     assert not fun('a')
 
-[case testUseRegisterAsAFunction]
+[case testUseRegisterAsAFunction-xfail]
 from functools import singledispatch
 
 @singledispatch
@@ -145,7 +145,7 @@ def test_singledispatch() -> None:
     assert fun_specialized('a')
 
 # TODO: turn this into a mypy error
-[case testNoneIsntATypeWhenUsedAsArgumentToRegister]
+[case testNoneIsntATypeWhenUsedAsArgumentToRegister-xfail]
 from functools import singledispatch
 
 @singledispatch
