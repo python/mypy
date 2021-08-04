@@ -1258,7 +1258,7 @@ class CallableType(FunctionLike):
                             deserialize_type(data['ret_type']),
                             Instance.deserialize(data['fallback']),
                             name=data['name'],
-                            variables=[TypeVarType.deserialize(v) for v in data['variables']],
+                            variables=[cast(TypeVarLikeType, deserialize_type(v)) for v in data['variables']],
                             is_ellipsis_args=data['is_ellipsis_args'],
                             implicit=data['implicit'],
                             bound_args=[(None if t is None else deserialize_type(t))
