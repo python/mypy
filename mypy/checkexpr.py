@@ -1637,8 +1637,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                  callable_name=callable_name,
                                  object_type=object_type)
         if union_interrupted:
-            self.chk.fail("Not all union combinations were tried"
-                          " because there are too many unions", context)
+            self.chk.fail(message_registry.TOO_MANY_UNION_COMBINATIONS, context)
         return result
 
     def plausible_overload_call_targets(self,
@@ -3644,7 +3643,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return AnyType(TypeOfAny.unannotated)
         elif len(e.call.args) == 0:
             if self.chk.options.python_version[0] == 2:
-                self.chk.fail(message_registry.TOO_FEW_ARGS_FOR_SUPER, e, code=codes.CALL_ARG)
+                self.chk.fail(message_registry.TOO_FEW_ARGS_FOR_SUPER, e)
                 return AnyType(TypeOfAny.from_error)
             elif not e.info:
                 # This has already been reported by the semantic analyzer.
