@@ -21,12 +21,12 @@ class ArgKindsPlugin(Plugin):
 
 
 def extract_arg_kinds_from_function(ctx: FunctionContext) -> Type:
-    ctx.api.fail(str(ctx.arg_kinds), ctx.context)
+    ctx.api.fail(str([[x.value for x in y] for y in ctx.arg_kinds]), ctx.context)
     return ctx.default_return_type
 
 
 def extract_arg_kinds_from_method(ctx: MethodContext) -> Type:
-    ctx.api.fail(str(ctx.arg_kinds), ctx.context)
+    ctx.api.fail(str([[x.value for x in y] for y in ctx.arg_kinds]), ctx.context)
     return ctx.default_return_type
 
 

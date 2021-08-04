@@ -3,11 +3,11 @@
 from typing import List, Optional, Sequence
 from typing_extensions import Final
 
-from mypy.nodes import FuncDef, Block, ARG_POS, ARG_OPT, ARG_NAMED_OPT
+from mypy.nodes import FuncDef, Block, ArgKind, ARG_POS
 
-from mypyc.common import JsonDict
+from mypyc.common import JsonDict, get_id_from_name, short_id_from_name
 from mypyc.ir.ops import (
-    DeserMaps, BasicBlock, Value, Register, Assign, ControlOp, LoadAddress
+    DeserMaps, BasicBlock, Value, Register, Assign, AssignMulti, ControlOp, LoadAddress
 )
 from mypyc.ir.rtypes import RType, deserialize_type
 from mypyc.namegen import NameGenerator
@@ -19,27 +19,32 @@ class RuntimeArg:
     Argument kind is one of ARG_* constants defined in mypy.nodes.
     """
 
-    def __init__(self, name: str, typ: RType, kind: int = ARG_POS) -> None:
+    def __init__(
+            self, name: str, typ: RType, kind: ArgKind = ARG_POS, pos_only: bool = False) -> None:
         self.name = name
         self.type = typ
         self.kind = kind
+        self.pos_only = pos_only
 
     @property
     def optional(self) -> bool:
-        return self.kind == ARG_OPT or self.kind == ARG_NAMED_OPT
+        return self.kind.is_optional()
 
     def __repr__(self) -> str:
-        return 'RuntimeArg(name=%s, type=%s, optional=%r)' % (self.name, self.type, self.optional)
+        return 'RuntimeArg(name=%s, type=%s, optional=%r, pos_only=%r)' % (
+            self.name, self.type, self.optional, self.pos_only)
 
     def serialize(self) -> JsonDict:
-        return {'name': self.name, 'type': self.type.serialize(), 'kind': self.kind}
+        return {'name': self.name, 'type': self.type.serialize(), 'kind': int(self.kind.value),
+                'pos_only': self.pos_only}
 
     @classmethod
     def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> 'RuntimeArg':
         return RuntimeArg(
             data['name'],
             deserialize_type(data['type'], ctx),
-            data['kind'],
+            ArgKind(data['kind']),
+            data['pos_only'],
         )
 
 
@@ -66,9 +71,9 @@ class FuncSignature:
         )
 
 
-FUNC_NORMAL = 0  # type: Final
-FUNC_STATICMETHOD = 1  # type: Final
-FUNC_CLASSMETHOD = 2  # type: Final
+FUNC_NORMAL: Final = 0
+FUNC_STATICMETHOD: Final = 1
+FUNC_CLASSMETHOD: Final = 2
 
 
 class FuncDecl:
@@ -94,12 +99,30 @@ class FuncDecl:
         self.is_prop_setter = is_prop_setter
         self.is_prop_getter = is_prop_getter
         if class_name is None:
-            self.bound_sig = None  # type: Optional[FuncSignature]
+            self.bound_sig: Optional[FuncSignature] = None
         else:
             if kind == FUNC_STATICMETHOD:
                 self.bound_sig = sig
             else:
                 self.bound_sig = FuncSignature(sig.args[1:], sig.ret_type)
+
+        # this is optional because this will be set to the line number when the corresponding
+        # FuncIR is created
+        self._line: Optional[int] = None
+
+    @property
+    def line(self) -> int:
+        assert self._line is not None
+        return self._line
+
+    @line.setter
+    def line(self, line: int) -> None:
+        self._line = line
+
+    @property
+    def id(self) -> str:
+        assert self.line is not None
+        return get_id_from_name(self.name, self.fullname, self.line)
 
     @staticmethod
     def compute_shortname(class_name: Optional[str], name: str) -> str:
@@ -114,7 +137,8 @@ class FuncDecl:
         return self.module_name + '.' + self.shortname
 
     def cname(self, names: NameGenerator) -> str:
-        return names.private_name(self.module_name, self.shortname)
+        partial_name = short_id_from_name(self.name, self.shortname, self._line)
+        return names.private_name(self.module_name, partial_name)
 
     def serialize(self) -> JsonDict:
         return {
@@ -127,9 +151,14 @@ class FuncDecl:
             'is_prop_getter': self.is_prop_getter,
         }
 
+    # TODO: move this to FuncIR?
     @staticmethod
-    def get_name_from_json(f: JsonDict) -> str:
-        return f['module_name'] + '.' + FuncDecl.compute_shortname(f['class_name'], f['name'])
+    def get_id_from_json(func_ir: JsonDict) -> str:
+        """Get the id from the serialized FuncIR associated with this FuncDecl"""
+        decl = func_ir['decl']
+        shortname = FuncDecl.compute_shortname(decl['class_name'], decl['name'])
+        fullname = decl['module_name'] + '.' + shortname
+        return get_id_from_name(decl['name'], fullname, func_ir['line'])
 
     @classmethod
     def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> 'FuncDecl':
@@ -162,11 +191,15 @@ class FuncIR:
         self.arg_regs = arg_regs
         # Body of the function
         self.blocks = blocks
-        self.line = line
+        self.decl.line = line
         # The name that should be displayed for tracebacks that
         # include this function. Function will be omitted from
         # tracebacks if None.
         self.traceback_name = traceback_name
+
+    @property
+    def line(self) -> int:
+        return self.decl.line
 
     @property
     def args(self) -> Sequence[RuntimeArg]:
@@ -191,6 +224,10 @@ class FuncIR:
     @property
     def fullname(self) -> str:
         return self.decl.fullname
+
+    @property
+    def id(self) -> str:
+        return self.decl.id
 
     def cname(self, names: NameGenerator) -> str:
         return self.decl.cname(names)
@@ -220,7 +257,7 @@ class FuncIR:
         )
 
 
-INVALID_FUNC_DEF = FuncDef('<INVALID_FUNC_DEF>', [], Block([]))  # type: Final
+INVALID_FUNC_DEF: Final = FuncDef("<INVALID_FUNC_DEF>", [], Block([]))
 
 
 def all_values(args: List[Register], blocks: List[BasicBlock]) -> List[Value]:
@@ -228,13 +265,13 @@ def all_values(args: List[Register], blocks: List[BasicBlock]) -> List[Value]:
 
     This omits registers that are only read.
     """
-    values = list(args)  # type: List[Value]
+    values: List[Value] = list(args)
     seen_registers = set(args)
 
     for block in blocks:
         for op in block.ops:
             if not isinstance(op, ControlOp):
-                if isinstance(op, Assign):
+                if isinstance(op, (Assign, AssignMulti)):
                     if op.dest not in seen_registers:
                         values.append(op.dest)
                         seen_registers.add(op.dest)
@@ -254,19 +291,19 @@ def all_values(args: List[Register], blocks: List[BasicBlock]) -> List[Value]:
 
 def all_values_full(args: List[Register], blocks: List[BasicBlock]) -> List[Value]:
     """Return set of all values that are initialized or accessed."""
-    values = list(args)  # type: List[Value]
+    values: List[Value] = list(args)
     seen_registers = set(args)
 
     for block in blocks:
         for op in block.ops:
             for source in op.sources():
-                # Look for unitialized registers that are accessed. Ignore
+                # Look for uninitialized registers that are accessed. Ignore
                 # non-registers since we don't allow ops outside basic blocks.
                 if isinstance(source, Register) and source not in seen_registers:
                     values.append(source)
                     seen_registers.add(source)
             if not isinstance(op, ControlOp):
-                if isinstance(op, Assign):
+                if isinstance(op, (Assign, AssignMulti)):
                     if op.dest not in seen_registers:
                         values.append(op.dest)
                         seen_registers.add(op.dest)

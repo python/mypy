@@ -28,7 +28,7 @@ from mypyc.analysis.dataflow import (
 )
 from mypyc.ir.ops import (
     BasicBlock, Assign, RegisterOp, DecRef, IncRef, Branch, Goto,  Op, ControlOp, Value, Register,
-    LoadAddress
+    LoadAddress, Integer, KeepAlive
 )
 from mypyc.ir.func_ir import FuncIR, all_values
 
@@ -50,12 +50,12 @@ def insert_ref_count_opcodes(ir: FuncIR) -> None:
     values = all_values(ir.arg_regs, ir.blocks)
 
     borrowed = {value for value in values if value.is_borrowed}
-    args = set(ir.arg_regs)  # type: Set[Value]
+    args: Set[Value] = set(ir.arg_regs)
     live = analyze_live_regs(ir.blocks, cfg)
     borrow = analyze_borrowed_arguments(ir.blocks, cfg, borrowed)
-    defined = analyze_must_defined_regs(ir.blocks, cfg, args, values)
+    defined = analyze_must_defined_regs(ir.blocks, cfg, args, values, strict_errors=True)
     ordering = make_value_ordering(ir)
-    cache = {}  # type: BlockCache
+    cache: BlockCache = {}
     for block in ir.blocks[:]:
         if isinstance(block.ops[-1], (Branch, Goto)):
             insert_branch_inc_and_decrefs(block,
@@ -77,7 +77,7 @@ def is_maybe_undefined(post_must_defined: Set[Value], src: Value) -> bool:
 
 def maybe_append_dec_ref(ops: List[Op], dest: Value,
                          defined: 'AnalysisDict[Value]', key: Tuple[BasicBlock, int]) -> None:
-    if dest.type.is_refcounted:
+    if dest.type.is_refcounted and not isinstance(dest, Integer):
         ops.append(DecRef(dest, is_xdec=is_maybe_undefined(defined[key], dest)))
 
 
@@ -92,7 +92,7 @@ def transform_block(block: BasicBlock,
                     pre_borrow: 'AnalysisDict[Value]',
                     post_must_defined: 'AnalysisDict[Value]') -> None:
     old_ops = block.ops
-    ops = []  # type: List[Op]
+    ops: List[Op] = []
     for i, op in enumerate(old_ops):
         key = (block, i)
 
@@ -111,7 +111,9 @@ def transform_block(block: BasicBlock,
                     assert isinstance(op, Assign)
                     maybe_append_dec_ref(ops, dest, post_must_defined, key)
 
-        ops.append(op)
+        # Strip KeepAlive. Its only purpose is to help with this transform.
+        if not isinstance(op, KeepAlive):
+            ops.append(op)
 
         # Control ops don't have any space to insert ops after them, so
         # their inc/decrefs get inserted by insert_branch_inc_and_decrefs.
@@ -247,7 +249,7 @@ def make_value_ordering(ir: FuncIR) -> Dict[Value, int]:
     This omits registers that are only ever read.
     """
     # TODO: Never initialized values??
-    result = {}  # type: Dict[Value, int]
+    result: Dict[Value, int] = {}
     n = 0
 
     for arg in ir.arg_regs:

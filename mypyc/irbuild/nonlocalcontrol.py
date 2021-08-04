@@ -132,7 +132,7 @@ class TryFinallyNonlocalControl(NonlocalControl):
 
     def __init__(self, target: BasicBlock) -> None:
         self.target = target
-        self.ret_reg = None  # type: Optional[Register]
+        self.ret_reg: Optional[Register] = None
 
     def gen_break(self, builder: 'IRBuilder', line: int) -> None:
         builder.error("break inside try/finally block is unimplemented", line)
@@ -176,14 +176,6 @@ class FinallyNonlocalControl(CleanupNonlocalControl):
         self.saved = saved
 
     def gen_cleanup(self, builder: 'IRBuilder', line: int) -> None:
-        # Do an error branch on the return value register, which
-        # may be undefined. This will allow it to be properly
-        # decrefed if it is not null. This is kind of a hack.
-        if self.ret_reg:
-            target = BasicBlock()
-            builder.add(Branch(self.ret_reg, target, target, Branch.IS_ERROR))
-            builder.activate_block(target)
-
         # Restore the old exc_info
         target, cleanup = BasicBlock(), BasicBlock()
         builder.add(Branch(self.saved, target, cleanup, Branch.IS_ERROR))

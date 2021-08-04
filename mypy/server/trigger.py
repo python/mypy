@@ -5,7 +5,7 @@ from typing_extensions import Final
 # Used as a suffix for triggers to handle "from m import *" dependencies (see also
 # make_wildcard_trigger)
 
-WILDCARD_TAG = '[wildcard]'  # type: Final
+WILDCARD_TAG: Final = "[wildcard]"
 
 
 def make_trigger(name: str) -> str:

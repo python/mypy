@@ -1,6 +1,6 @@
 """Semantic analysis of TypedDict definitions."""
 
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 from typing import Optional, List, Set, Tuple
 from typing_extensions import Final
 
@@ -18,8 +18,9 @@ from mypy.messages import MessageBuilder
 from mypy.errorcodes import ErrorCode
 from mypy import errorcodes as codes
 
-TPDICT_CLASS_ERROR = ('Invalid statement in TypedDict definition; '
-                      'expected "field_name: field_type"')  # type: Final
+TPDICT_CLASS_ERROR: Final = (
+    "Invalid statement in TypedDict definition; " 'expected "field_name: field_type"'
+)
 
 
 class TypedDictAnalyzer:
@@ -60,7 +61,8 @@ class TypedDictAnalyzer:
                 fields, types, required_keys = self.analyze_typeddict_classdef_fields(defn)
                 if fields is None:
                     return True, None  # Defer
-                info = self.build_typeddict_typeinfo(defn.name, fields, types, required_keys)
+                info = self.build_typeddict_typeinfo(defn.name, fields, types, required_keys,
+                                                     defn.line)
                 defn.analyzed = TypedDictExpr(info)
                 defn.analyzed.line = defn.line
                 defn.analyzed.column = defn.column
@@ -71,7 +73,7 @@ class TypedDictAnalyzer:
                    not self.is_typeddict(expr) for expr in defn.base_type_exprs):
                 self.fail("All bases of a new TypedDict must be TypedDict types", defn)
             typeddict_bases = list(filter(self.is_typeddict, defn.base_type_exprs))
-            keys = []  # type: List[str]
+            keys: List[str] = []
             types = []
             required_keys = set()
 
@@ -97,7 +99,7 @@ class TypedDictAnalyzer:
             keys.extend(new_keys)
             types.extend(new_types)
             required_keys.update(new_required_keys)
-            info = self.build_typeddict_typeinfo(defn.name, keys, types, required_keys)
+            info = self.build_typeddict_typeinfo(defn.name, keys, types, required_keys, defn.line)
             defn.analyzed = TypedDictExpr(info)
             defn.analyzed.line = defn.line
             defn.analyzed.column = defn.column
@@ -120,8 +122,8 @@ class TypedDictAnalyzer:
          * List of types for each key
          * Set of required keys
         """
-        fields = []  # type: List[str]
-        types = []  # type: List[Type]
+        fields: List[str] = []
+        types: List[Type] = []
         for stmt in defn.defs.body:
             if not isinstance(stmt, AssignmentStmt):
                 # Still allow pass or ... (for empty TypedDict's).
@@ -155,7 +157,7 @@ class TypedDictAnalyzer:
                 elif not isinstance(stmt.rvalue, TempNode):
                     # x: int assigns rvalue to TempNode(AnyType())
                     self.fail('Right hand side values are not supported in TypedDict', stmt)
-        total = True  # type: Optional[bool]
+        total: Optional[bool] = True
         if 'total' in defn.keywords:
             total = self.api.parse_bool(defn.keywords['total'])
             if total is None:
@@ -196,17 +198,17 @@ class TypedDictAnalyzer:
         name, items, types, total, ok = res
         if not ok:
             # Error. Construct dummy return value.
-            info = self.build_typeddict_typeinfo('TypedDict', [], [], set())
+            info = self.build_typeddict_typeinfo('TypedDict', [], [], set(), call.line)
         else:
             if var_name is not None and name != var_name:
                 self.fail(
-                    "First argument '{}' to TypedDict() does not match variable name '{}'".format(
+                    'First argument "{}" to TypedDict() does not match variable name "{}"'.format(
                         name, var_name), node, code=codes.NAME_MATCH)
             if name != var_name or is_func_scope:
                 # Give it a unique name derived from the line number.
                 name += '@' + str(call.line)
             required_keys = set(items) if total else set()
-            info = self.build_typeddict_typeinfo(name, items, types, required_keys)
+            info = self.build_typeddict_typeinfo(name, items, types, required_keys, call.line)
             info.line = node.line
             # Store generated TypeInfo under both names, see semanal_namedtuple for more details.
             if name != var_name or is_func_scope:
@@ -242,7 +244,7 @@ class TypedDictAnalyzer:
         if not isinstance(args[1], DictExpr):
             return self.fail_typeddict_arg(
                 "TypedDict() expects a dictionary literal as the second argument", call)
-        total = True  # type: Optional[bool]
+        total: Optional[bool] = True
         if len(args) == 3:
             total = self.api.parse_bool(call.args[2])
             if total is None:
@@ -274,8 +276,8 @@ class TypedDictAnalyzer:
         Return names, types, was there an error. If some type is not ready, return None.
         """
         seen_keys = set()
-        items = []  # type: List[str]
-        types = []  # type: List[Type]
+        items: List[str] = []
+        types: List[Type] = []
         for (field_name_expr, field_type_expr) in dict_items:
             if isinstance(field_name_expr, (StrExpr, BytesExpr, UnicodeExpr)):
                 key = field_name_expr.value
@@ -288,7 +290,8 @@ class TypedDictAnalyzer:
                 self.fail_typeddict_arg("Invalid TypedDict() field name", name_context)
                 return [], [], False
             try:
-                type = expr_to_unanalyzed_type(field_type_expr)
+                type = expr_to_unanalyzed_type(field_type_expr, self.options,
+                                               self.api.is_stub_file)
             except TypeTranslationError:
                 self.fail_typeddict_arg('Invalid field type', field_type_expr)
                 return [], [], False
@@ -305,13 +308,14 @@ class TypedDictAnalyzer:
 
     def build_typeddict_typeinfo(self, name: str, items: List[str],
                                  types: List[Type],
-                                 required_keys: Set[str]) -> TypeInfo:
+                                 required_keys: Set[str],
+                                 line: int) -> TypeInfo:
         # Prefer typing then typing_extensions if available.
         fallback = (self.api.named_type_or_none('typing._TypedDict', []) or
                     self.api.named_type_or_none('typing_extensions._TypedDict', []) or
                     self.api.named_type_or_none('mypy_extensions._TypedDict', []))
         assert fallback is not None
-        info = self.api.basic_new_typeinfo(name, fallback)
+        info = self.api.basic_new_typeinfo(name, fallback, line)
         info.typeddict_type = TypedDictType(OrderedDict(zip(items, types)), required_keys,
                                             fallback)
         return info

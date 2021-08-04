@@ -11,15 +11,17 @@ example, expressions are transformed in mypyc.irbuild.expression and
 functions are transformed in mypyc.irbuild.function.
 """
 
+from mypyc.irbuild.prepare import RegisterImplInfo
 from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any
 from typing_extensions import overload
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 
 from mypy.build import Graph
 from mypy.nodes import (
     MypyFile, SymbolNode, Statement, OpExpr, IntExpr, NameExpr, LDEF, Var, UnaryExpr,
     CallExpr, IndexExpr, Expression, MemberExpr, RefExpr, Lvalue, TupleExpr,
-    TypeInfo, Decorator, OverloadedFuncDef, StarExpr, ComparisonExpr, GDEF, ARG_POS, ARG_NAMED
+    TypeInfo, Decorator, OverloadedFuncDef, StarExpr, ComparisonExpr, GDEF,
+    ArgKind, ARG_POS, ARG_NAMED, FuncDef,
 )
 from mypy.types import (
     Type, Instance, TupleType, UninhabitedType, get_proper_type
@@ -35,7 +37,7 @@ from mypyc.ir.ops import (
     SetAttr, LoadStatic, InitStatic, NAMESPACE_MODULE, RaiseStandardError
 )
 from mypyc.ir.rtypes import (
-    RType, RTuple, RInstance, int_rprimitive, dict_rprimitive,
+    RType, RTuple, RInstance, c_int_rprimitive, int_rprimitive, dict_rprimitive,
     none_rprimitive, is_none_rprimitive, object_rprimitive, is_object_rprimitive,
     str_rprimitive, is_tagged, is_list_rprimitive, is_tuple_rprimitive, c_pyssize_t_rprimitive
 )
@@ -45,7 +47,9 @@ from mypyc.primitives.registry import CFunctionDescription, function_ops
 from mypyc.primitives.list_ops import to_list, list_pop_last, list_get_item_unsafe_op
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import py_setattr_op, iter_op, next_op
-from mypyc.primitives.misc_ops import import_op, check_unpack_count_op
+from mypyc.primitives.misc_ops import (
+    import_op, check_unpack_count_op, get_module_dict_op, import_extra_args_op
+)
 from mypyc.crash import catch_errors
 from mypyc.options import CompilerOptions
 from mypyc.errors import Errors
@@ -82,23 +86,24 @@ class IRBuilder:
                  mapper: Mapper,
                  pbv: PreBuildVisitor,
                  visitor: IRVisitor,
-                 options: CompilerOptions) -> None:
-        self.builder = LowLevelIRBuilder(current_module, mapper)
+                 options: CompilerOptions,
+                 singledispatch_impls: Dict[FuncDef, List[RegisterImplInfo]]) -> None:
+        self.builder = LowLevelIRBuilder(current_module, mapper, options)
         self.builders = [self.builder]
-        self.symtables = [OrderedDict()]  # type: List[OrderedDict[SymbolNode, SymbolTarget]]
-        self.runtime_args = [[]]  # type: List[List[RuntimeArg]]
-        self.function_name_stack = []  # type: List[str]
-        self.class_ir_stack = []  # type: List[ClassIR]
+        self.symtables: List[OrderedDict[SymbolNode, SymbolTarget]] = [OrderedDict()]
+        self.runtime_args: List[List[RuntimeArg]] = [[]]
+        self.function_name_stack: List[str] = []
+        self.class_ir_stack: List[ClassIR] = []
 
         self.current_module = current_module
         self.mapper = mapper
         self.types = types
         self.graph = graph
-        self.ret_types = []  # type: List[RType]
-        self.functions = []  # type: List[FuncIR]
-        self.classes = []  # type: List[ClassIR]
-        self.final_names = []  # type: List[Tuple[str, RType]]
-        self.callable_class_names = set()  # type: Set[str]
+        self.ret_types: List[RType] = []
+        self.functions: List[FuncIR] = []
+        self.classes: List[ClassIR] = []
+        self.final_names: List[Tuple[str, RType]] = []
+        self.callable_class_names: Set[str] = set()
         self.options = options
 
         # These variables keep track of the number of lambdas, implicit indices, and implicit
@@ -113,6 +118,7 @@ class IRBuilder:
         self.encapsulating_funcs = pbv.encapsulating_funcs
         self.nested_fitems = pbv.nested_funcs.keys()
         self.fdefs_to_decorators = pbv.funcs_to_decorators
+        self.singledispatch_impls = singledispatch_impls
 
         self.visitor = visitor
 
@@ -122,17 +128,17 @@ class IRBuilder:
         # be generated) is stored in that FuncInfo instance. When the function is done being
         # generated, its corresponding FuncInfo is popped off the stack.
         self.fn_info = FuncInfo(INVALID_FUNC_DEF, '', '')
-        self.fn_infos = [self.fn_info]  # type: List[FuncInfo]
+        self.fn_infos: List[FuncInfo] = [self.fn_info]
 
         # This list operates as a stack of constructs that modify the
         # behavior of nonlocal control flow constructs.
-        self.nonlocal_control = []  # type: List[NonlocalControl]
+        self.nonlocal_control: List[NonlocalControl] = []
 
         self.errors = errors
         # Notionally a list of all of the modules imported by the
         # module being compiled, but stored as an OrderedDict so we
         # can also do quick lookups.
-        self.imports = OrderedDict()  # type: OrderedDict[str, None]
+        self.imports: OrderedDict[str, None] = OrderedDict()
 
     # High-level control
 
@@ -191,11 +197,11 @@ class IRBuilder:
     def py_get_attr(self, obj: Value, attr: str, line: int) -> Value:
         return self.builder.py_get_attr(obj, attr, line)
 
-    def load_static_unicode(self, value: str) -> Value:
-        return self.builder.load_static_unicode(value)
+    def load_str(self, value: str) -> Value:
+        return self.builder.load_str(value)
 
-    def load_static_int(self, value: int) -> Value:
-        return self.builder.load_static_int(value)
+    def load_int(self, value: int) -> Value:
+        return self.builder.load_int(value)
 
     def unary_op(self, lreg: Value, expr_op: str, line: int) -> Value:
         return self.builder.unary_op(lreg, expr_op, line)
@@ -235,7 +241,7 @@ class IRBuilder:
                 function: Value,
                 arg_values: List[Value],
                 line: int,
-                arg_kinds: Optional[List[int]] = None,
+                arg_kinds: Optional[List[ArgKind]] = None,
                 arg_names: Optional[Sequence[Optional[str]]] = None) -> Value:
         return self.builder.py_call(function, arg_values, line, arg_kinds, arg_names)
 
@@ -251,7 +257,7 @@ class IRBuilder:
                         arg_values: List[Value],
                         result_type: Optional[RType],
                         line: int,
-                        arg_kinds: Optional[List[int]] = None,
+                        arg_kinds: Optional[List[ArgKind]] = None,
                         arg_names: Optional[List[Optional[str]]] = None) -> Value:
         return self.builder.gen_method_call(
             base, name, arg_values, result_type, line, arg_kinds, arg_names
@@ -283,21 +289,66 @@ class IRBuilder:
     def add_to_non_ext_dict(self, non_ext: NonExtClassInfo,
                             key: str, val: Value, line: int) -> None:
         # Add an attribute entry into the class dict of a non-extension class.
-        key_unicode = self.load_static_unicode(key)
+        key_unicode = self.load_str(key)
         self.call_c(dict_set_item_op, [non_ext.dict, key_unicode, val], line)
+
+    def gen_import_from(self, id: str, globals_dict: Value,
+                        imported: List[str], line: int) -> Value:
+        self.imports[id] = None
+
+        null_dict = Integer(0, dict_rprimitive, line)
+        names_to_import = self.new_list_op([self.load_str(name) for name in imported], line)
+        zero_int = Integer(0, c_int_rprimitive, line)
+        value = self.call_c(
+            import_extra_args_op,
+            [self.load_str(id), globals_dict, null_dict, names_to_import, zero_int],
+            line,
+        )
+        self.add(InitStatic(value, id, namespace=NAMESPACE_MODULE))
+        return value
 
     def gen_import(self, id: str, line: int) -> None:
         self.imports[id] = None
 
         needs_import, out = BasicBlock(), BasicBlock()
+        self.check_if_module_loaded(id, line, needs_import, out)
+
+        self.activate_block(needs_import)
+        value = self.call_c(import_op, [self.load_str(id)], line)
+        self.add(InitStatic(value, id, namespace=NAMESPACE_MODULE))
+        self.goto_and_activate(out)
+
+    def check_if_module_loaded(self, id: str, line: int,
+                               needs_import: BasicBlock, out: BasicBlock) -> None:
+        """Generate code that checks if the module `id` has been loaded yet.
+
+        Arguments:
+            id: name of module to check if imported
+            line: line number that the import occurs on
+            needs_import: the BasicBlock that is run if the module has not been loaded yet
+            out: the BasicBlock that is run if the module has already been loaded"""
         first_load = self.load_module(id)
         comparison = self.translate_is_op(first_load, self.none_object(), 'is not', line)
         self.add_bool_branch(comparison, out, needs_import)
 
-        self.activate_block(needs_import)
-        value = self.call_c(import_op, [self.load_static_unicode(id)], line)
-        self.add(InitStatic(value, id, namespace=NAMESPACE_MODULE))
-        self.goto_and_activate(out)
+    def get_module(self, module: str, line: int) -> Value:
+        # Python 3.7 has a nice 'PyImport_GetModule' function that we can't use :(
+        mod_dict = self.call_c(get_module_dict_op, [], line)
+        # Get module object from modules dict.
+        return self.call_c(dict_get_item_op,
+                           [mod_dict, self.load_str(module)], line)
+
+    def get_module_attr(self, module: str, attr: str, line: int) -> Value:
+        """Look up an attribute of a module without storing it in the local namespace.
+
+        For example, get_module_attr('typing', 'TypedDict', line) results in
+        the value of 'typing.TypedDict'.
+
+        Import the module if needed.
+        """
+        self.gen_import(module, line)
+        module_obj = self.get_module(module, line)
+        return self.py_get_attr(module_obj, attr, line)
 
     def assign_if_null(self, target: Register,
                        get_val: Callable[[], Value], line: int) -> None:
@@ -345,8 +396,12 @@ class IRBuilder:
         # Currently the stack always has at least two items: dummy and top-level.
         return len(self.fn_infos) <= 2
 
-    def init_final_static(self, lvalue: Lvalue, rvalue_reg: Value,
-                          class_name: Optional[str] = None) -> None:
+    def init_final_static(self,
+                          lvalue: Lvalue,
+                          rvalue_reg: Value,
+                          class_name: Optional[str] = None,
+                          *,
+                          type_override: Optional[RType] = None) -> None:
         assert isinstance(lvalue, NameExpr)
         assert isinstance(lvalue.node, Var)
         if lvalue.node.final_value is None:
@@ -355,8 +410,9 @@ class IRBuilder:
             else:
                 name = '{}.{}'.format(class_name, lvalue.name)
             assert name is not None, "Full name not set for variable"
-            self.final_names.append((name, rvalue_reg.type))
-            self.add(InitStatic(rvalue_reg, name, self.module_name))
+            coerced = self.coerce(rvalue_reg, type_override or self.node_type(lvalue), lvalue.line)
+            self.final_names.append((name, coerced.type))
+            self.add(InitStatic(coerced, name, self.module_name))
 
     def load_final_static(self, fullname: str, typ: RType, line: int,
                           error_name: Optional[str] = None) -> Value:
@@ -378,13 +434,13 @@ class IRBuilder:
         elif isinstance(val, int):
             # TODO: take care of negative integer initializers
             # (probably easier to fix this in mypy itself).
-            return self.builder.load_static_int(val)
+            return self.builder.load_int(val)
         elif isinstance(val, float):
-            return self.builder.load_static_float(val)
+            return self.builder.load_float(val)
         elif isinstance(val, str):
-            return self.builder.load_static_unicode(val)
+            return self.builder.load_str(val)
         elif isinstance(val, bytes):
-            return self.builder.load_static_bytes(val)
+            return self.builder.load_bytes(val)
         else:
             assert False, "Unsupported final literal value"
 
@@ -419,7 +475,7 @@ class IRBuilder:
                     return self.lookup(symbol)
             elif lvalue.kind == GDEF:
                 globals_dict = self.load_globals_dict()
-                name = self.load_static_unicode(lvalue.name)
+                name = self.load_str(lvalue.name)
                 return AssignmentTargetIndex(globals_dict, name)
             else:
                 assert False, lvalue.kind
@@ -434,7 +490,7 @@ class IRBuilder:
             return AssignmentTargetAttr(obj, lvalue.name)
         elif isinstance(lvalue, TupleExpr):
             # Multiple assignment a, ..., b = e
-            star_idx = None  # type: Optional[int]
+            star_idx: Optional[int] = None
             lvalues = []
             for idx, item in enumerate(lvalue.items):
                 targ = self.get_assignment_target(item)
@@ -484,7 +540,7 @@ class IRBuilder:
                 rvalue_reg = self.coerce(rvalue_reg, target.type, line)
                 self.add(SetAttr(target.obj, target.attr, rvalue_reg, line))
             else:
-                key = self.load_static_unicode(target.attr)
+                key = self.load_str(target.attr)
                 boxed_reg = self.builder.box(rvalue_reg)
                 self.call_c(py_setattr_op, [target.obj, key, boxed_reg], line)
         elif isinstance(target, AssignmentTargetIndex):
@@ -519,7 +575,7 @@ class IRBuilder:
         values = []
         for i in range(len(target.items)):
             item = target.items[i]
-            index = self.builder.load_static_int(i)
+            index = self.builder.load_int(i)
             if is_list_rprimitive(rvalue.type):
                 item_value = self.call_c(list_get_item_unsafe_op, [rvalue, index], line)
             else:
@@ -705,7 +761,7 @@ class IRBuilder:
 
         from mypy.join import join_types
         if isinstance(iterable, TupleType):
-            joined = UninhabitedType()  # type: Type
+            joined: Type = UninhabitedType()
             for item in iterable.items:
                 joined = join_types(joined, item)
             return joined
@@ -890,7 +946,7 @@ class IRBuilder:
                     return [ir]
             return None
         else:
-            res = []  # type: List[ClassIR]
+            res: List[ClassIR] = []
             for item in arg.items:
                 if isinstance(item, (RefExpr, TupleExpr)):
                     item_part = self.flatten_classes(item)
@@ -904,7 +960,7 @@ class IRBuilder:
     def enter(self, fn_info: Union[FuncInfo, str] = '') -> None:
         if isinstance(fn_info, str):
             fn_info = FuncInfo(name=fn_info)
-        self.builder = LowLevelIRBuilder(self.current_module, self.mapper)
+        self.builder = LowLevelIRBuilder(self.current_module, self.mapper, self.options)
         self.builders.append(self.builder)
         self.symtables.append(OrderedDict())
         self.runtime_args.append([])
@@ -960,7 +1016,7 @@ class IRBuilder:
             self_type = RInstance(class_ir)
         self.add_argument(SELF_NAME, self_type)
 
-    def add_argument(self, var: Union[str, Var], typ: RType, kind: int = ARG_POS) -> Register:
+    def add_argument(self, var: Union[str, Var], typ: RType, kind: ArgKind = ARG_POS) -> Register:
         """Declare an argument in the current function.
 
         You should use this instead of directly calling add_local() in new code.
@@ -1074,7 +1130,7 @@ class IRBuilder:
 
     def load_global_str(self, name: str, line: int) -> Value:
         _globals = self.load_globals_dict()
-        reg = self.load_static_unicode(name)
+        reg = self.load_str(name)
         return self.call_c(dict_get_item_op, [_globals, reg], line)
 
     def load_globals_dict(self) -> Value:
@@ -1094,6 +1150,9 @@ class IRBuilder:
 
     def error(self, msg: str, line: int) -> None:
         self.errors.error(msg, self.module_path, line)
+
+    def note(self, msg: str, line: int) -> None:
+        self.errors.note(msg, self.module_path, line)
 
 
 def gen_arg_defaults(builder: IRBuilder) -> None:

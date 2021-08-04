@@ -14,6 +14,7 @@ on specified sources.
 
 import os
 import re
+import shutil
 
 from typing import List, Dict, Any, Tuple, Union, cast
 
@@ -158,7 +159,7 @@ class FineGrainedSuite(DataSuite):
             options.follow_imports = 'error'
 
         for name, _ in testcase.files:
-            if 'mypy.ini' in name:
+            if 'mypy.ini' in name or 'pyproject.toml' in name:
                 parse_config_file(options, lambda: None, name)
                 break
 
@@ -215,8 +216,13 @@ class FineGrainedSuite(DataSuite):
                 # Modify/create file
                 copy_and_fudge_mtime(op.source_path, op.target_path)
             else:
-                # Delete file
-                os.remove(op.path)
+                # Delete file/directory
+                if os.path.isdir(op.path):
+                    # Sanity check to avoid unexpected deletions
+                    assert op.path.startswith('tmp')
+                    shutil.rmtree(op.path)
+                else:
+                    os.remove(op.path)
         sources = self.parse_sources(main_src, step, options)
 
         if step <= num_regular_incremental_steps:
@@ -224,9 +230,9 @@ class FineGrainedSuite(DataSuite):
         else:
             new_messages = self.run_check(server, sources)
 
-        updated = []  # type: List[str]
-        changed = []  # type: List[str]
-        targets = []  # type: List[str]
+        updated: List[str] = []
+        changed: List[str] = []
+        targets: List[str] = []
         triggered = []
         if server.fine_grained_manager:
             if CHECK_CONSISTENCY:
@@ -303,7 +309,7 @@ class FineGrainedSuite(DataSuite):
                                                allow_empty_dir=True)
 
     def maybe_suggest(self, step: int, server: Server, src: str, tmp_dir: str) -> List[str]:
-        output = []  # type: List[str]
+        output: List[str] = []
         targets = self.get_suggest(src, step)
         for flags, target in targets:
             json = '--json' in flags

@@ -21,7 +21,7 @@ initialized within the class. Mypy infers the types of attributes:
 
    a = A(1)
    a.x = 2  # OK!
-   a.y = 3  # Error: 'A' has no attribute 'y'
+   a.y = 3  # Error: "A" has no attribute "y"
 
 This is a bit like each class having an implicitly defined
 :py:data:`__slots__ <object.__slots__>` attribute. This is only enforced during type
@@ -126,12 +126,6 @@ particular attribute should not be set on instances:
   a = A()
   a.x = 1  # Error: Cannot assign to class variable "x" via instance
   print(a.x)  # OK -- can be read through an instance
-
-.. note::
-
-   If you need to support Python 3 versions 3.5.2 or earlier, you have
-   to import ``ClassVar`` from ``typing_extensions`` instead (available on
-   PyPI). If you use Python 2.7, you can import it from ``typing``.
 
 It's not necessary to annotate all class variables using
 :py:data:`~typing.ClassVar`. An attribute without the :py:data:`~typing.ClassVar` annotation can

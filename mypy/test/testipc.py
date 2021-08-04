@@ -23,7 +23,7 @@ def server(msg: str, q: 'Queue[str]') -> None:
 
 class IPCTests(TestCase):
     def test_transaction_large(self) -> None:
-        queue = Queue()  # type: Queue[str]
+        queue: Queue[str] = Queue()
         msg = 't' * 200000  # longer than the max read size of 100_000
         p = Process(target=server, args=(msg, queue), daemon=True)
         p.start()
@@ -36,7 +36,7 @@ class IPCTests(TestCase):
         p.join()
 
     def test_connect_twice(self) -> None:
-        queue = Queue()  # type: Queue[str]
+        queue: Queue[str] = Queue()
         msg = 'this is a test message'
         p = Process(target=server, args=(msg, queue), daemon=True)
         p.start()

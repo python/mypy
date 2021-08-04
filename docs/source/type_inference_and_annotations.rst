@@ -78,7 +78,7 @@ without some help:
 
 .. code-block:: python
 
-   l = []  # Error: Need type annotation for 'l'
+   l = []  # Error: Need type annotation for "l"
 
 In these cases you can give the type explicitly using a type annotation:
 
@@ -162,7 +162,7 @@ in the following statement:
     def foo(arg: List[int]) -> None:
         print('Items:', ', '.join(arg))
 
-    a = []  # Error: Need type annotation for 'a'
+    a = []  # Error: Need type annotation for "a"
     foo(a)
 
 Working around the issue is easy by adding a type annotation:

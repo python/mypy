@@ -6,8 +6,8 @@ Mypyc compiles Python modules to C extensions. It uses standard Python
 <https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html>`_ to
 generate fast code.
 
-The compiled language is a strict, statically typed Python variant.
-It restricts the use of some dynamic Python features to gain performance,
+The compiled language is a strict, *gradually typed* Python variant. It
+restricts the use of some dynamic Python features to gain performance,
 but it's mostly compatible with standard Python.
 
 Mypyc uses `mypy <http://www.mypy-lang.org/>`_ to perform type
@@ -16,46 +16,21 @@ checking and type inference. Most type system features in the stdlib
 supported.
 
 Compiled modules can import arbitrary Python modules and third-party
-libraries.
+libraries. You can compile anything from a single performance-critical
+module to your entire codebase. You can run the modules you compile
+also as normal, interpreted Python modules.
 
-You can run the modules you compile also as normal, interpreted Python
-modules.
-
-You can roughly expect speedups like these (2x improvement means half the
-runtime):
-
-* Existing code with type annotations often gets **1.5x to 5x** faster.
-
-* Code tuned for mypyc can be **5x to 15x** faster.
-
-There is no simple answer to how fast your code will be when compiled.
-You should try it out!
+Existing code with type annotations is often **1.5x to 5x** faster
+when compiled. Code tuned for mypyc can be **5x to 10x** faster.
 
 Mypyc currently aims to speed up non-numeric code, such as server
-applications. We also use mypyc to compile mypyc, of course!
+applications. Mypyc is also used to compile itself (and mypy).
 
-Motivation
+Why mypyc?
 ----------
 
-Though Python has been successful without a good performance story
-for non-numeric code, speed still matters:
-
-1. Users prefer more efficient and responsive software and libraries.
-
-2. You need less hardware to run your server application and save money.
-
-3. You'll waste less time waiting for your tests and jobs to finish.
-
-4. Faster code correlates with less energy use and is better for the
-   environment.
-
-Perks
------
-
-**Easy to get started.** Compiled code looks and behaves like normal
-Python code. You get the benefits of static typing while using the
-syntax, libraries and idioms you (and millions of developers) already
-know.
+**Easy to get started.** Compiled code has the look and feel of
+regular Python code. Mypyc supports familiar Python syntax and idioms.
 
 **Expressive types.** Mypyc fully supports standard Python type hints.
 Mypyc has local type inference, generics, optional types, tuple types,
@@ -63,17 +38,17 @@ union types, and more. Type hints act as machine-checked
 documentation, making code not only faster but also easier to
 understand and modify.
 
+**Python ecosystem.** Mypyc runs on top of CPython, the
+standard Python implementation. You can use any third-party libraries,
+including C extensions, installed with pip. Mypyc uses only valid Python
+syntax, so all Python editors and IDEs work perfectly.
+
 **Fast program startup.** Mypyc uses ahead-of-time compilation, so
 compilation does not slow down program startup. Slow program startup
-is a common problem with JIT compilers.
+is a common issue with JIT compilers.
 
-**Python ecosystem supported.** Mypyc runs on top of CPython, the
-standard Python implementation. Code can freely use standard library
-features. Use pip to install any third-party libraries you need,
-including C extensions.
-
-**Migration path for existing Python code.** Existing Python code
-often requires only minor changes to compile using mypyc.
+**Migration path for existing code.** Existing Python code often
+requires only minor changes to compile using mypyc.
 
 **Waiting for compilation is optional.** Compiled code also runs as
 normal Python code. You can use interpreted Python during development,
@@ -81,22 +56,23 @@ with familiar and fast workflows.
 
 **Runtime type safety.** Mypyc protects you from segfaults and memory
 corruption. Any unexpected runtime type safety violation is a bug in
-mypyc.
+mypyc. Runtime values are checked against type annotations. (Without
+mypyc, type annotations are ignored at runtime.)
 
 **Find errors statically.** Mypyc uses mypy for static type checking
-that will catch many bugs. This saves time you'd otherwise spend
-debugging.
+that helps catch many bugs.
 
 Use cases
 ---------
 
-**Fix performance bottlenecks.** Often most time is spent in a few
+**Fix only performance bottlenecks.** Often most time is spent in a few
 Python modules or functions. Add type annotations and compile these
 modules for easy performance gains.
 
-**Compile it all.** During development you use interpreted mode, for a
-quick edit-run cycle. In releases all non-test code is compiled. This
-is how mypy got a *4x performance improvement* over interpreted Python.
+**Compile it all.** During development you can use interpreted mode,
+for a quick edit-run cycle. In releases all non-test code is compiled.
+This is how mypy achieved a 4x performance improvement over interpreted
+Python.
 
 **Take advantage of existing type hints.** If you already use type
 annotations in your code, adopting mypyc will be easier. You've already
@@ -110,6 +86,33 @@ performance while staying in the comfort of Python.
 for a Python developer. With mypyc you may get performance similar to
 the original C, with the convenience of Python.
 
+Differences from Cython
+-----------------------
+
+Mypyc targets many similar use cases as Cython. Mypyc does many things
+differently, however:
+
+* No need to use non-standard syntax, such as ``cpdef``, or extra
+  decorators to get good performance. Clean, normal-looking
+  type-annotated Python code can be fast without language extensions.
+  This makes it practical to compile entire codebases without a
+  developer productivity hit.
+
+* Mypyc has first-class support for features in the ``typing`` module,
+  such as tuple types, union types and generics.
+
+* Mypyc has powerful type inference, provided by mypy. Variable type
+  annotations are not needed for optimal performance.
+
+* Mypyc fully integrates with mypy for robust and seamless static type
+  checking.
+
+* Mypyc performs strict enforcement of type annotations at runtime,
+  resulting in better runtime type safety and easier debugging.
+
+Unlike Cython, mypyc doesn't directly support interfacing with C libraries
+or speeding up numeric code.
+
 How does it work
 ----------------
 
@@ -120,6 +123,8 @@ Mypyc uses several techniques to produce fast code:
 
 * Mypyc enforces type annotations (and type comments) at runtime,
   raising ``TypeError`` if runtime values don't match annotations.
+  Value types only need to be checked in the boundaries between
+  dynamic and static typing.
 
 * Compiled code uses optimized, type-specific primitives.
 
@@ -140,6 +145,6 @@ Mypyc uses several techniques to produce fast code:
 Development status
 ------------------
 
-Mypyc is currently *alpha software*. It's only recommended for
+Mypyc is currently alpha software. It's only recommended for
 production use cases with careful testing, and if you are willing to
 contribute fixes or to work around issues you will encounter.

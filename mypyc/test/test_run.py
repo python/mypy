@@ -36,6 +36,7 @@ files = [
     'run-floats.test',
     'run-bools.test',
     'run-strings.test',
+    'run-bytes.test',
     'run-tuples.test',
     'run-lists.test',
     'run-dicts.test',
@@ -50,7 +51,11 @@ files = [
     'run-multimodule.test',
     'run-bench.test',
     'run-mypy-sim.test',
+    'run-dunders.test',
+    'run-singledispatch.test'
 ]
+if sys.version_info >= (3, 7):
+    files.append('run-python37.test')
 if sys.version_info >= (3, 8):
     files.append('run-python38.test')
 
