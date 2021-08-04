@@ -5,7 +5,7 @@ import time
 import shutil
 import contextlib
 
-from typing import List, Iterable, Dict, Tuple, Callable, Any, Optional, Iterator
+from typing import List, Iterable, Dict, Tuple, Callable, Any, Iterator
 
 from mypy import defaults
 import mypy.api as api
@@ -50,6 +50,7 @@ def assert_string_arrays_equal(expected: List[str], actual: List[str],
 
     Display any differences in a human-readable form.
     """
+    __tracebackhide__ = True
 
     actual = clean_up(actual)
     actual = [line.replace("can't", "cannot") for line in actual]
@@ -151,7 +152,7 @@ def update_testcase_output(testcase: DataDrivenTestCase, output: List[str]) -> N
         data_lines = f.read().splitlines()
     test = '\n'.join(data_lines[testcase.line:testcase.last_line])
 
-    mapping = {}  # type: Dict[str, List[str]]
+    mapping: Dict[str, List[str]] = {}
     for old, new in zip(testcase.output, output):
         PREFIX = 'error:'
         ind = old.find(PREFIX)
@@ -326,18 +327,6 @@ def retry_on_error(func: Callable[[], Any], max_wait: float = 1.0) -> None:
                 raise
             time.sleep(wait_time)
 
-# TODO: assert_true and assert_false are redundant - use plain assert
-
-
-def assert_true(b: bool, msg: Optional[str] = None) -> None:
-    if not b:
-        raise AssertionError(msg)
-
-
-def assert_false(b: bool, msg: Optional[str] = None) -> None:
-    if b:
-        raise AssertionError(msg)
-
 
 def good_repr(obj: object) -> str:
     if isinstance(obj, str):
@@ -352,6 +341,7 @@ def good_repr(obj: object) -> str:
 
 
 def assert_equal(a: object, b: object, fmt: str = '{} != {}') -> None:
+    __tracebackhide__ = True
     if a != b:
         raise AssertionError(fmt.format(good_repr(a), good_repr(b)))
 
@@ -364,6 +354,7 @@ def typename(t: type) -> str:
 
 
 def assert_type(typ: type, value: object) -> None:
+    __tracebackhide__ = True
     if type(value) != typ:
         raise AssertionError('Invalid type {}, expected {}'.format(
             typename(type(value)), typename(typ)))

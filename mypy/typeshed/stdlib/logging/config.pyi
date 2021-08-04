@@ -1,5 +1,5 @@
 import sys
-from _typeshed import AnyPath, StrPath
+from _typeshed import StrOrBytesPath, StrPath
 from collections.abc import Callable
 from configparser import RawConfigParser
 from threading import Thread
@@ -11,7 +11,7 @@ else:
     from typing_extensions import Literal
 
 if sys.version_info >= (3, 7):
-    _Path = AnyPath
+    _Path = StrOrBytesPath
 else:
     _Path = StrPath
 

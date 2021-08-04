@@ -1,7 +1,5 @@
 import sys
-from typing import AnyStr, List, Optional, Text, Type, Union
-
-_EitherStr = Union[bytes, Text]
+from typing import AnyStr, List, Optional, Type
 
 class PyCompileError(Exception):
     exc_type_name: str
@@ -39,14 +37,9 @@ elif sys.version_info >= (3, 7):
         invalidation_mode: Optional[PycInvalidationMode] = ...,
     ) -> Optional[AnyStr]: ...
 
-elif sys.version_info >= (3, 2):
+else:
     def compile(
         file: AnyStr, cfile: Optional[AnyStr] = ..., dfile: Optional[AnyStr] = ..., doraise: bool = ..., optimize: int = ...
     ) -> Optional[AnyStr]: ...
 
-else:
-    def compile(
-        file: _EitherStr, cfile: Optional[_EitherStr] = ..., dfile: Optional[_EitherStr] = ..., doraise: bool = ...
-    ) -> None: ...
-
-def main(args: Optional[List[Text]] = ...) -> int: ...
+def main(args: Optional[List[str]] = ...) -> int: ...

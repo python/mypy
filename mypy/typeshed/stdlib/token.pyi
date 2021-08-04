@@ -26,8 +26,6 @@ GREATER: int
 EQUAL: int
 DOT: int
 PERCENT: int
-if sys.version_info < (3,):
-    BACKQUOTE: int
 LBRACE: int
 RBRACE: int
 EQEQUAL: int
@@ -53,16 +51,11 @@ DOUBLESTAREQUAL: int
 DOUBLESLASH: int
 DOUBLESLASHEQUAL: int
 AT: int
-if sys.version_info >= (3,):
-    RARROW: int
-    ELLIPSIS: int
-if sys.version_info >= (3, 5):
-    ATEQUAL: int
-    if sys.version_info < (3, 7):
-        # These were removed in Python 3.7 but added back in Python 3.8
-        AWAIT: int
-        ASYNC: int
-if sys.version_info >= (3, 8):
+RARROW: int
+ELLIPSIS: int
+ATEQUAL: int
+if sys.version_info < (3, 7) or sys.version_info >= (3, 8):
+    # These were removed in Python 3.7 but added back in Python 3.8
     AWAIT: int
     ASYNC: int
 OP: int

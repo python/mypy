@@ -1,4 +1,3 @@
-import sys
 import types
 import unittest
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple, Type, Union
@@ -24,8 +23,7 @@ REPORT_UDIFF: int
 REPORT_CDIFF: int
 REPORT_NDIFF: int
 REPORT_ONLY_FIRST_FAILURE: int
-if sys.version_info >= (3, 4):
-    FAIL_FAST: int
+FAIL_FAST: int
 
 REPORTING_FLAGS: int
 
@@ -189,11 +187,7 @@ class SkipDocTestCase(DocTestCase):
     def test_skip(self) -> None: ...
     def shortDescription(self) -> str: ...
 
-if sys.version_info >= (3, 4):
-    class _DocTestSuite(unittest.TestSuite): ...
-
-else:
-    _DocTestSuite = unittest.TestSuite
+class _DocTestSuite(unittest.TestSuite): ...
 
 def DocTestSuite(
     module: Union[None, str, types.ModuleType] = ...,

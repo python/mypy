@@ -1,13 +1,8 @@
 import array
-import itertools
-import sys
 import threading
 import weakref
-from multiprocessing import TimeoutError, cpu_count
-from multiprocessing.dummy.connection import Pipe
 from Queue import Queue
-from threading import BoundedSemaphore, Event, Lock, RLock, Semaphore
-from typing import Any, List, Optional, Type
+from typing import Any, List, Optional
 
 class DummyProcess(threading.Thread):
     _children: weakref.WeakKeyDictionary[Any, Any]

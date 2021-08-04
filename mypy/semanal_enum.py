@@ -114,7 +114,7 @@ class EnumCallAnalyzer:
         valid_name = [None, 'value', 'names', 'module', 'qualname', 'type', 'start']
         for arg_name in call.arg_names:
             if arg_name not in valid_name:
-                self.fail_enum_call_arg("Unexpected keyword argument '{}'".format(arg_name), call)
+                self.fail_enum_call_arg('Unexpected keyword argument "{}"'.format(arg_name), call)
         value, names = None, None
         for arg_name, arg in zip(call.arg_names, args):
             if arg_name == 'value':
@@ -129,7 +129,7 @@ class EnumCallAnalyzer:
             return self.fail_enum_call_arg(
                 "%s() expects a string literal as the first argument" % class_name, call)
         items = []
-        values = []  # type: List[Optional[Expression]]
+        values: List[Optional[Expression]] = []
         if isinstance(names, (StrExpr, UnicodeExpr)):
             fields = names.value
             for field in fields.replace(',', ' ').split():

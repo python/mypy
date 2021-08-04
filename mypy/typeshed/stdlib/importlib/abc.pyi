@@ -1,6 +1,6 @@
 import sys
 import types
-from _typeshed import AnyPath
+from _typeshed import StrOrBytesPath
 from abc import ABCMeta, abstractmethod
 from importlib.machinery import ModuleSpec
 from typing import IO, Any, Iterator, Mapping, Optional, Protocol, Sequence, Tuple, Union
@@ -73,9 +73,9 @@ class FileLoader(ResourceLoader, ExecutionLoader, metaclass=ABCMeta):
 if sys.version_info >= (3, 7):
     class ResourceReader(metaclass=ABCMeta):
         @abstractmethod
-        def open_resource(self, resource: AnyPath) -> IO[bytes]: ...
+        def open_resource(self, resource: StrOrBytesPath) -> IO[bytes]: ...
         @abstractmethod
-        def resource_path(self, resource: AnyPath) -> str: ...
+        def resource_path(self, resource: StrOrBytesPath) -> str: ...
         @abstractmethod
         def is_resource(self, name: str) -> bool: ...
         @abstractmethod

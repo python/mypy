@@ -312,3 +312,448 @@ def test_native_del_item_override() -> None:
     assert a.key == 10 and a.value == 12
     del a[16]
     assert a.key == 18
+
+[case testDundersNumber]
+from typing import Any
+
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def __neg__(self) -> int:
+        return self.x + 1
+
+    def __invert__(self) -> int:
+        return self.x + 2
+
+    def __int__(self) -> int:
+        return self.x + 3
+
+    def __float__(self) -> float:
+        return float(self.x + 4)
+
+def test_unary_dunders_generic() -> None:
+    a: Any = C(10)
+
+    assert -a == 11
+    assert ~a == 12
+    assert int(a) == 13
+    assert float(a) == 14.0
+
+def test_unary_dunders_native() -> None:
+    c = C(10)
+
+    assert -c == 11
+    assert ~c == 12
+    assert int(c) == 13
+    assert float(c) == 14.0
+
+[case testDundersBinarySimple]
+from typing import Any
+
+class C:
+    def __init__(self) -> None:
+        self.x = 5
+
+    def __add__(self, y: int) -> int:
+        return self.x + y
+
+    def __sub__(self, y: int) -> int:
+        return self.x - y
+
+    def __mul__(self, y: int) -> int:
+        return self.x * y
+
+    def __mod__(self, y: int) -> int:
+        return self.x % y
+
+    def __lshift__(self, y: int) -> int:
+        return self.x << y
+
+    def __rshift__(self, y: int) -> int:
+        return self.x >> y
+
+    def __and__(self, y: int) -> int:
+        return self.x & y
+
+    def __or__(self, y: int) -> int:
+        return self.x | y
+
+    def __xor__(self, y: int) -> int:
+        return self.x ^ y
+
+    def __matmul__(self, y: int) -> int:
+        return self.x + y + 10
+
+    def __truediv__(self, y: int) -> int:
+        return self.x + y + 20
+
+    def __floordiv__(self, y: int) -> int:
+        return self.x + y + 30
+
+def test_generic() -> None:
+    a: Any = C()
+    assert a + 3 == 8
+    assert a - 3 == 2
+    assert a * 5 == 25
+    assert a % 2 == 1
+    assert a << 4 == 80
+    assert a >> 0 == 5
+    assert a >> 1 == 2
+    assert a & 1 == 1
+    assert a | 3 == 7
+    assert a ^ 3 == 6
+    assert a @ 3 == 18
+    assert a / 2 == 27
+    assert a // 2 == 37
+
+def test_native() -> None:
+    c = C()
+    assert c + 3 == 8
+    assert c - 3 == 2
+
+def test_error() -> None:
+    a: Any = C()
+    try:
+        a + 'x'
+    except TypeError as e:
+        assert str(e) == "unsupported operand type(s) for +: 'C' and 'str'"
+    else:
+        assert False
+    try:
+        a - 'x'
+    except TypeError as e:
+        assert str(e) == "unsupported operand type(s) for -: 'C' and 'str'"
+    else:
+        assert False
+
+[case testDundersBinaryReverse]
+from typing import Any
+
+class C:
+    def __init__(self) -> None:
+        self.x = 5
+
+    def __add__(self, y: int) -> int:
+        return self.x + y
+
+    def __radd__(self, y: int) -> int:
+        return self.x + y + 1
+
+    def __sub__(self, y: int) -> int:
+        return self.x - y
+
+    def __rsub__(self, y: int) -> int:
+        return self.x - y - 1
+
+def test_generic() -> None:
+    a: Any = C()
+    assert a + 3 == 8
+    assert 4 + a == 10
+    assert a - 3 == 2
+    assert 4 - a == 0
+
+def test_native() -> None:
+    c = C()
+    assert c + 3 == 8
+    assert 4 + c == 10
+    assert c - 3 == 2
+    assert 4 - c == 0
+
+def test_errors() -> None:
+    a: Any = C()
+    try:
+        a + 'x'
+    except TypeError as e:
+        assert str(e) == "unsupported operand type(s) for +: 'C' and 'str'"
+    else:
+        assert False
+    try:
+        a - 'x'
+    except TypeError as e:
+        assert str(e) == "unsupported operand type(s) for -: 'C' and 'str'"
+    else:
+        assert False
+    try:
+        'x' + a
+    except TypeError as e:
+        assert str(e) in ('can only concatenate str (not "C") to str',
+                          'must be str, not C')
+    else:
+        assert False
+
+class F:
+    def __add__(self, x: int) -> int:
+        return 5
+
+class G:
+    def __add__(self, x: int) -> int:
+        return 33
+
+    def __radd__(self, x: F) -> int:
+        return 6
+
+def test_type_mismatch_fall_back_to_reverse() -> None:
+    assert F() + G() == 6
+
+[case testDundersBinaryNotImplemented]
+from typing import Any, Union
+from testutil import assertRaises
+
+class C:
+    def __init__(self, v: int) -> None:
+        self.v = v
+
+    def __add__(self, y: int) -> Union[int, Any]:
+        if y == 1:
+            return self.v
+        return NotImplemented
+
+def test_any_add() -> None:
+    a: Any = C(4)
+    assert a + 1 == 4
+    try:
+        a + 2
+    except TypeError:
+        pass
+    else:
+        assert False
+
+class D:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def __add__(self, e: E) -> Union[int, Any]:
+        if e.x == 1:
+            return 2
+        return NotImplemented
+
+class E:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def __radd__(self, d: D) -> Union[int, Any]:
+        if d.x == 3:
+            return 4
+        return NotImplemented
+
+def test_any_radd() -> None:
+    d1: Any = D(1)
+    d3: Any = D(3)
+    e1: Any = E(1)
+    e3: Any = E(3)
+    assert d1 + e1 == 2
+    assert d3 + e1 == 2
+    assert d3 + e3 == 4
+
+class F:
+    def __init__(self, v):
+        self.v = v
+
+    def __add__(self, x):
+        if isinstance(x, int):
+            return self.v + x
+        return NotImplemented
+
+class G:
+    def __radd__(self, x):
+        if isinstance(x, F):
+            return x.v + 1
+        if isinstance(x, str):
+            return 'a'
+        return NotImplemented
+
+def test_unannotated_add() -> None:
+    o = F(4)
+    assert o + 5 == 9
+    with assertRaises(TypeError, "unsupported operand type(s) for +: 'F' and 'str'"):
+        o + 'x'
+
+def test_unannotated_add_and_radd_1() -> None:
+    o = F(4)
+    assert o + G() == 5
+
+def test_unannotated_radd() -> None:
+    assert 'x' + G() == 'a'
+    with assertRaises(TypeError, "unsupported operand type(s) for +: 'int' and 'G'"):
+        1 + G()
+
+class H:
+    def __add__(self, x):
+        if isinstance(x, int):
+            return x + 1
+        return NotImplemented
+
+    def __radd__(self, x):
+        if isinstance(x, str):
+            return 22
+        return NotImplemented
+
+def test_unannotated_add_and_radd_2() -> None:
+    h = H()
+    assert h + 5 == 6
+    assert 'x' + h == 22
+    with assertRaises(TypeError, "unsupported operand type(s) for +: 'int' and 'H'"):
+        1 + h
+
+# TODO: Inheritance
+
+[case testDifferentReverseDunders]
+class C:
+    # __radd__ and __rsub__ are tested elsewhere
+
+    def __rmul__(self, x):
+        return 1
+
+    def __rtruediv__(self, x):
+        return 2
+
+    def __rmod__(self, x):
+        return 3
+
+    def __rfloordiv__(self, x):
+        return 4
+
+    def __rlshift__(self, x):
+        return 5
+
+    def __rrshift__(self, x):
+        return 6
+
+    def __rand__(self, x):
+        return 7
+
+    def __ror__(self, x):
+        return 8
+
+    def __rxor__(self, x):
+        return 9
+
+    def __rmatmul__(self, x):
+        return 10
+
+def test_reverse_dunders() -> None:
+    x = 0
+    c = C()
+    assert x * c == 1
+    assert x / c == 2
+    assert x % c == 3
+    assert x // c == 4
+    assert x << c == 5
+    assert x >> c == 6
+    assert x & c == 7
+    assert x | c == 8
+    assert x ^ c == 9
+    assert x @ c == 10
+
+[case testDundersInplace]
+from typing import Any
+from testutil import assertRaises
+
+class C:
+    def __init__(self) -> None:
+        self.x = 5
+
+    def __iadd__(self, y: int) -> C:
+        self.x += y
+        return self
+
+    def __isub__(self, y: int) -> C:
+        self.x -= y
+        return self
+
+    def __imul__(self, y: int) -> C:
+        self.x *= y
+        return self
+
+    def __imod__(self, y: int) -> C:
+        self.x %= y
+        return self
+
+    def __itruediv__(self, y: int) -> C:
+        self.x += y + 10
+        return self
+
+    def __ifloordiv__(self, y: int) -> C:
+        self.x += y + 20
+        return self
+
+    def __ilshift__(self, y: int) -> C:
+        self.x <<= y
+        return self
+
+    def __irshift__(self, y: int) -> C:
+        self.x >>= y
+        return self
+
+    def __iand__(self, y: int) -> C:
+        self.x &= y
+        return self
+
+    def __ior__(self, y: int) -> C:
+        self.x |= y
+        return self
+
+    def __ixor__(self, y: int) -> C:
+        self.x ^= y
+        return self
+
+    def __imatmul__(self, y: int) -> C:
+        self.x += y + 5
+        return self
+
+def test_generic_1() -> None:
+    c: Any = C()
+    c += 3
+    assert c.x == 8
+    c -= 5
+    assert c.x == 3
+    c *= 3
+    assert c.x == 9
+    c %= 4
+    assert c.x == 1
+    c /= 5
+    assert c.x == 16
+    c //= 4
+    assert c.x == 40
+
+def test_generic_2() -> None:
+    c: Any = C()
+    c <<= 4
+    assert c.x == 80
+    c >>= 3
+    assert c.x == 10
+    c &= 3
+    assert c.x == 2
+    c |= 6
+    assert c.x == 6
+    c ^= 12
+    assert c.x == 10
+    c @= 3
+    assert c.x == 18
+
+def test_native() -> None:
+    c = C()
+    c += 3
+    assert c.x == 8
+    c -= 5
+    assert c.x == 3
+    c *= 3
+    assert c.x == 9
+
+def test_error() -> None:
+    c: Any = C()
+    with assertRaises(TypeError, "int object expected; got str"):
+        c += 'x'
+
+class BadInplaceAdd:
+    def __init__(self):
+        self.x = 0
+
+    def __iadd__(self, x):
+        self.x += x
+
+def test_in_place_operator_returns_none() -> None:
+    o = BadInplaceAdd()
+    with assertRaises(TypeError, "native.BadInplaceAdd object expected; got None"):
+        o += 5

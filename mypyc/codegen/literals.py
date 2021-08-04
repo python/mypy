@@ -9,7 +9,7 @@ LiteralValue = Union[str, bytes, int, bool, float, complex, Tuple[object, ...], 
 
 
 # Some literals are singletons and handled specially (None, False and True)
-NUM_SINGLETONS = 3  # type: Final
+NUM_SINGLETONS: Final = 3
 
 
 class Literals:
@@ -17,12 +17,12 @@ class Literals:
 
     def __init__(self) -> None:
         # Each dict maps value to literal index (0, 1, ...)
-        self.str_literals = {}  # type: Dict[str, int]
-        self.bytes_literals = {}  # type: Dict[bytes, int]
-        self.int_literals = {}  # type: Dict[int, int]
-        self.float_literals = {}  # type: Dict[float, int]
-        self.complex_literals = {}  # type: Dict[complex, int]
-        self.tuple_literals = {}  # type: Dict[Tuple[object, ...], int]
+        self.str_literals: Dict[str, int] = {}
+        self.bytes_literals: Dict[bytes, int] = {}
+        self.int_literals: Dict[int, int] = {}
+        self.float_literals: Dict[float, int] = {}
+        self.complex_literals: Dict[complex, int] = {}
+        self.tuple_literals: Dict[Tuple[object, ...], int] = {}
 
     def record_literal(self, value: LiteralValue) -> None:
         """Ensure that the literal value is available in generated code."""
@@ -146,7 +146,7 @@ def _encode_str_values(values: Dict[str, int]) -> List[bytes]:
     for value, index in values.items():
         value_by_index[index] = value
     result = []
-    line = []  # type: List[bytes]
+    line: List[bytes] = []
     line_len = 0
     for i in range(len(values)):
         value = value_by_index[i]
@@ -169,7 +169,7 @@ def _encode_bytes_values(values: Dict[bytes, int]) -> List[bytes]:
     for value, index in values.items():
         value_by_index[index] = value
     result = []
-    line = []  # type: List[bytes]
+    line: List[bytes] = []
     line_len = 0
     for i in range(len(values)):
         value = value_by_index[i]
@@ -216,7 +216,7 @@ def _encode_int_values(values: Dict[int, int]) -> List[bytes]:
     for value, index in values.items():
         value_by_index[index] = value
     result = []
-    line = []  # type: List[bytes]
+    line: List[bytes] = []
     line_len = 0
     for i in range(len(values)):
         value = value_by_index[i]

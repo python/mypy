@@ -1,6 +1,6 @@
 import sys
+from _typeshed import StrPath
 from http.client import HTTPResponse
-from os import PathLike
 from typing import Dict, Iterable, Iterator, Optional, Sequence, Tuple, TypeVar, Union, overload
 from urllib.request import Request
 
@@ -26,7 +26,7 @@ class FileCookieJar(CookieJar):
     delayload: bool
     if sys.version_info >= (3, 8):
         def __init__(
-            self, filename: Optional[Union[str, PathLike[str]]] = ..., delayload: bool = ..., policy: Optional[CookiePolicy] = ...
+            self, filename: Optional[StrPath] = ..., delayload: bool = ..., policy: Optional[CookiePolicy] = ...
         ) -> None: ...
     else:
         def __init__(

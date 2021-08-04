@@ -10,7 +10,6 @@ from typing import (
     NamedTuple,
     Optional,
     Sequence,
-    Text,
     Tuple,
     TypeVar,
     Union,
@@ -21,14 +20,7 @@ if sys.version_info >= (3, 9):
     from types import GenericAlias
 
 _T = TypeVar("_T")
-
-if sys.version_info >= (3,):
-    _StrType = Text
-else:
-    # Aliases can't point to type vars, so we need to redeclare AnyStr
-    _StrType = TypeVar("_StrType", Text, bytes)
-
-_JunkCallback = Union[Callable[[Text], bool], Callable[[str], bool]]
+_JunkCallback = Union[Callable[[str], bool], Callable[[str], bool]]
 
 class Match(NamedTuple):
     a: int
@@ -69,33 +61,33 @@ def get_close_matches(
 
 class Differ:
     def __init__(self, linejunk: Optional[_JunkCallback] = ..., charjunk: Optional[_JunkCallback] = ...) -> None: ...
-    def compare(self, a: Sequence[_StrType], b: Sequence[_StrType]) -> Iterator[_StrType]: ...
+    def compare(self, a: Sequence[str], b: Sequence[str]) -> Iterator[str]: ...
 
-def IS_LINE_JUNK(line: _StrType, pat: Any = ...) -> bool: ...  # pat is undocumented
-def IS_CHARACTER_JUNK(ch: _StrType, ws: _StrType = ...) -> bool: ...  # ws is undocumented
+def IS_LINE_JUNK(line: str, pat: Any = ...) -> bool: ...  # pat is undocumented
+def IS_CHARACTER_JUNK(ch: str, ws: str = ...) -> bool: ...  # ws is undocumented
 def unified_diff(
-    a: Sequence[_StrType],
-    b: Sequence[_StrType],
-    fromfile: _StrType = ...,
-    tofile: _StrType = ...,
-    fromfiledate: _StrType = ...,
-    tofiledate: _StrType = ...,
+    a: Sequence[str],
+    b: Sequence[str],
+    fromfile: str = ...,
+    tofile: str = ...,
+    fromfiledate: str = ...,
+    tofiledate: str = ...,
     n: int = ...,
-    lineterm: _StrType = ...,
-) -> Iterator[_StrType]: ...
+    lineterm: str = ...,
+) -> Iterator[str]: ...
 def context_diff(
-    a: Sequence[_StrType],
-    b: Sequence[_StrType],
-    fromfile: _StrType = ...,
-    tofile: _StrType = ...,
-    fromfiledate: _StrType = ...,
-    tofiledate: _StrType = ...,
+    a: Sequence[str],
+    b: Sequence[str],
+    fromfile: str = ...,
+    tofile: str = ...,
+    fromfiledate: str = ...,
+    tofiledate: str = ...,
     n: int = ...,
-    lineterm: _StrType = ...,
-) -> Iterator[_StrType]: ...
+    lineterm: str = ...,
+) -> Iterator[str]: ...
 def ndiff(
-    a: Sequence[_StrType], b: Sequence[_StrType], linejunk: Optional[_JunkCallback] = ..., charjunk: Optional[_JunkCallback] = ...
-) -> Iterator[_StrType]: ...
+    a: Sequence[str], b: Sequence[str], linejunk: Optional[_JunkCallback] = ..., charjunk: Optional[_JunkCallback] = ...
+) -> Iterator[str]: ...
 
 class HtmlDiff(object):
     def __init__(
@@ -105,49 +97,36 @@ class HtmlDiff(object):
         linejunk: Optional[_JunkCallback] = ...,
         charjunk: Optional[_JunkCallback] = ...,
     ) -> None: ...
-    if sys.version_info >= (3, 5):
-        def make_file(
-            self,
-            fromlines: Sequence[_StrType],
-            tolines: Sequence[_StrType],
-            fromdesc: _StrType = ...,
-            todesc: _StrType = ...,
-            context: bool = ...,
-            numlines: int = ...,
-            *,
-            charset: str = ...,
-        ) -> _StrType: ...
-    else:
-        def make_file(
-            self,
-            fromlines: Sequence[_StrType],
-            tolines: Sequence[_StrType],
-            fromdesc: _StrType = ...,
-            todesc: _StrType = ...,
-            context: bool = ...,
-            numlines: int = ...,
-        ) -> _StrType: ...
-    def make_table(
+    def make_file(
         self,
-        fromlines: Sequence[_StrType],
-        tolines: Sequence[_StrType],
-        fromdesc: _StrType = ...,
-        todesc: _StrType = ...,
+        fromlines: Sequence[str],
+        tolines: Sequence[str],
+        fromdesc: str = ...,
+        todesc: str = ...,
         context: bool = ...,
         numlines: int = ...,
-    ) -> _StrType: ...
+        *,
+        charset: str = ...,
+    ) -> str: ...
+    def make_table(
+        self,
+        fromlines: Sequence[str],
+        tolines: Sequence[str],
+        fromdesc: str = ...,
+        todesc: str = ...,
+        context: bool = ...,
+        numlines: int = ...,
+    ) -> str: ...
 
-def restore(delta: Iterable[_StrType], which: int) -> Iterator[_StrType]: ...
-
-if sys.version_info >= (3, 5):
-    def diff_bytes(
-        dfunc: Callable[[Sequence[str], Sequence[str], str, str, str, str, int, str], Iterator[str]],
-        a: Sequence[bytes],
-        b: Sequence[bytes],
-        fromfile: bytes = ...,
-        tofile: bytes = ...,
-        fromfiledate: bytes = ...,
-        tofiledate: bytes = ...,
-        n: int = ...,
-        lineterm: bytes = ...,
-    ) -> Iterator[bytes]: ...
+def restore(delta: Iterable[str], which: int) -> Iterator[str]: ...
+def diff_bytes(
+    dfunc: Callable[[Sequence[str], Sequence[str], str, str, str, str, int, str], Iterator[str]],
+    a: Sequence[bytes],
+    b: Sequence[bytes],
+    fromfile: bytes = ...,
+    tofile: bytes = ...,
+    fromfiledate: bytes = ...,
+    tofiledate: bytes = ...,
+    n: int = ...,
+    lineterm: bytes = ...,
+) -> Iterator[bytes]: ...

@@ -437,7 +437,7 @@ main:14: error: Enum() with tuple or list expects strings or (name, value) pairs
 main:15: error: Enum() with tuple or list expects strings or (name, value) pairs
 main:16: error: IntEnum() with tuple or list expects strings or (name, value) pairs
 main:17: error: Enum() with dict literal requires string literals
-main:18: error: Unexpected keyword argument 'keyword'
+main:18: error: Unexpected keyword argument "keyword"
 main:19: error: Unexpected arguments to Enum()
 main:20: error: Unexpected arguments to Enum()
 main:22: error: "Type[W]" has no attribute "c"

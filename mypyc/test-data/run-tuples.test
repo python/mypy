@@ -196,6 +196,10 @@ def test_sequence_generator() -> None:
     a = tuple(f8(x) for x in source_fixed_length_tuple)
     assert a == (False, True, False, True)
 
+    source_str = 'abbc'
+    b = tuple('s:' + x for x in source_str)
+    assert b == ('s:a', 's:b', 's:b', 's:c')
+
 TUPLE: Final[Tuple[str, ...]] = ('x', 'y')
 
 def test_final_boxed_tuple() -> None:

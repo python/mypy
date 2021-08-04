@@ -13,19 +13,16 @@ from mypy.plugins.common import (
     add_method, _get_decorator_bool_argument, deserialize_and_fixup_type,
 )
 from mypy.typeops import map_type_from_supertype
-from mypy.types import (
-    Type, Instance, NoneType, TypeVarDef, TypeVarType, CallableType,
-    get_proper_type
-)
+from mypy.types import Type, Instance, NoneType, TypeVarType, CallableType, get_proper_type
 from mypy.server.trigger import make_wildcard_trigger
 
 # The set of decorators that generate dataclasses.
-dataclass_makers = {
+dataclass_makers: Final = {
     'dataclass',
     'dataclasses.dataclass',
-}  # type: Final
+}
 
-SELF_TVAR_NAME = '_DT'  # type: Final
+SELF_TVAR_NAME: Final = "_DT"
 
 
 class DataclassAttribute:
@@ -146,12 +143,11 @@ class DataclassTransformer:
                 # Like for __eq__ and __ne__, we want "other" to match
                 # the self type.
                 obj_type = ctx.api.named_type('__builtins__.object')
-                order_tvar_def = TypeVarDef(SELF_TVAR_NAME, info.fullname + '.' + SELF_TVAR_NAME,
+                order_tvar_def = TypeVarType(SELF_TVAR_NAME, info.fullname + '.' + SELF_TVAR_NAME,
                                             -1, [], obj_type)
-                order_other_type = TypeVarType(order_tvar_def)
                 order_return_type = ctx.api.named_type('__builtins__.bool')
                 order_args = [
-                    Argument(Var('other', order_other_type), order_other_type, None, ARG_POS)
+                    Argument(Var('other', order_tvar_def), order_tvar_def, None, ARG_POS)
                 ]
 
                 existing_method = info.get(method_name)
@@ -167,7 +163,7 @@ class DataclassTransformer:
                     method_name,
                     args=order_args,
                     return_type=order_return_type,
-                    self_type=order_other_type,
+                    self_type=order_tvar_def,
                     tvar_def=order_tvar_def,
                 )
 
@@ -213,8 +209,8 @@ class DataclassTransformer:
         # First, collect attributes belonging to the current class.
         ctx = self._ctx
         cls = self._ctx.cls
-        attrs = []  # type: List[DataclassAttribute]
-        known_attrs = set()  # type: Set[str]
+        attrs: List[DataclassAttribute] = []
+        known_attrs: Set[str] = set()
         for stmt in cls.defs.body:
             # Any assignment that doesn't use the new type declaration
             # syntax can be ignored out of hand.
@@ -300,8 +296,8 @@ class DataclassTransformer:
             # Each class depends on the set of attributes in its dataclass ancestors.
             ctx.api.add_plugin_dependency(make_wildcard_trigger(info.fullname))
 
-            for data in info.metadata['dataclass']['attributes']:
-                name = data['name']  # type: str
+            for data in info.metadata["dataclass"]["attributes"]:
+                name: str = data["name"]
                 if name not in known_attrs:
                     attr = DataclassAttribute.deserialize(info, data, ctx.api)
                     attr.expand_typevar_from_subtype(ctx.cls.info)

@@ -1,11 +1,9 @@
 [case testBasicParamSpec]
-# flags: --wip-pep-612
 from typing_extensions import ParamSpec
 P = ParamSpec('P')
 [builtins fixtures/tuple.pyi]
 
 [case testParamSpecLocations]
-# flags: --wip-pep-612
 from typing import Callable, List
 from typing_extensions import ParamSpec, Concatenate
 P = ParamSpec('P')
@@ -28,4 +26,27 @@ def foo5(x: Callable[[int, str], P]) -> None: ...  # E: Invalid location for Par
 
 def foo6(x: Callable[[P], int]) -> None: ...  # E: Invalid location for ParamSpec "P" \
                                               # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
+[builtins fixtures/tuple.pyi]
+
+[case testParamSpecTemporaryAnyBehaviour]
+# This is a test of mypy's temporary behaviour in lieu of full support for ParamSpec
+from typing import Callable, List, Iterator, TypeVar
+from typing_extensions import ParamSpec
+P = ParamSpec('P')
+T = TypeVar('T')
+
+def changes_return_type_to_str(x: Callable[P, int]) -> Callable[P, str]: ...
+
+def returns_int(a: str, b: bool) -> int: ...
+
+reveal_type(changes_return_type_to_str(returns_int))  # N: Revealed type is "def (*Any, **Any) -> builtins.str"
+
+def tmpcontextmanagerlike(x: Callable[P, Iterator[T]]) -> Callable[P, List[T]]: ...
+
+@tmpcontextmanagerlike
+def whatever(x: int) -> Iterator[int]:
+    yield x
+
+reveal_type(whatever)  # N: Revealed type is "def (*Any, **Any) -> builtins.list[builtins.int*]"
+reveal_type(whatever(217))  # N: Revealed type is "builtins.list[builtins.int*]"
 [builtins fixtures/tuple.pyi]

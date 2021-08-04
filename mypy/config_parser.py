@@ -1,5 +1,4 @@
 import argparse
-from collections import OrderedDict
 import configparser
 import glob as fileglob
 from io import StringIO
@@ -7,9 +6,9 @@ import os
 import re
 import sys
 
-import toml
+import tomli
 from typing import (Any, Callable, Dict, List, Mapping, MutableMapping,  Optional, Sequence,
-                    TextIO, Tuple, Union, cast)
+                    TextIO, Tuple, Union)
 from typing_extensions import Final
 
 from mypy import defaults
@@ -102,7 +101,7 @@ def check_follow_imports(choice: str) -> str:
 # sufficient, and we don't have to do anything here.  This table
 # exists to specify types for values initialized to None or container
 # types.
-ini_config_types = {
+ini_config_types: Final[Dict[str, _INI_PARSER_CALLABLE]] = {
     'python_version': parse_version,
     'strict_optional_whitelist': lambda s: s.split(),
     'custom_typing_module': str,
@@ -125,10 +124,10 @@ ini_config_types = {
     'cache_dir': expand_path,
     'python_executable': expand_path,
     'strict': bool,
-}  # type: Final[Dict[str, _INI_PARSER_CALLABLE]]
+}
 
 # Reuse the ini_config_types and overwrite the diff
-toml_config_types = ini_config_types.copy()  # type: Final[Dict[str, _INI_PARSER_CALLABLE]]
+toml_config_types: Final[Dict[str, _INI_PARSER_CALLABLE]] = ini_config_types.copy()
 toml_config_types.update({
     'python_version': lambda s: parse_version(str(s)),
     'strict_optional_whitelist': try_split,
@@ -158,7 +157,7 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
     stderr = stderr or sys.stderr
 
     if filename is not None:
-        config_files = (filename,)  # type: Tuple[str, ...]
+        config_files: Tuple[str, ...] = (filename,)
     else:
         config_files = tuple(map(os.path.expanduser, defaults.CONFIG_FILES))
 
@@ -169,20 +168,20 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
             continue
         try:
             if is_toml(config_file):
-                toml_data = cast("OrderedDict[str, Any]",
-                                 toml.load(config_file, _dict=OrderedDict))
+                with open(config_file, encoding="utf-8") as f:
+                    toml_data = tomli.load(f)
                 # Filter down to just mypy relevant toml keys
                 toml_data = toml_data.get('tool', {})
                 if 'mypy' not in toml_data:
                     continue
-                toml_data = OrderedDict({'mypy': toml_data['mypy']})
-                parser = destructure_overrides(toml_data)  # type: MutableMapping[str, Any]
+                toml_data = {'mypy': toml_data['mypy']}
+                parser: MutableMapping[str, Any] = destructure_overrides(toml_data)
                 config_types = toml_config_types
             else:
                 config_parser.read(config_file)
                 parser = config_parser
                 config_types = ini_config_types
-        except (toml.TomlDecodeError, configparser.Error, ConfigTOMLValueError) as err:
+        except (tomli.TOMLDecodeError, configparser.Error, ConfigTOMLValueError) as err:
             print("%s: %s" % (config_file, err), file=stderr)
         else:
             if config_file in defaults.SHARED_CONFIG_FILES and 'mypy' not in parser:
@@ -252,7 +251,7 @@ def is_toml(filename: str) -> bool:
     return filename.lower().endswith('.toml')
 
 
-def destructure_overrides(toml_data: "OrderedDict[str, Any]") -> "OrderedDict[str, Any]":
+def destructure_overrides(toml_data: Dict[str, Any]) -> Dict[str, Any]:
     """Take the new [[tool.mypy.overrides]] section array in the pyproject.toml file,
     and convert it back to a flatter structure that the existing config_parser can handle.
 
@@ -336,8 +335,8 @@ def parse_section(prefix: str, template: Options,
 
     Returns a dict of option values encountered, and a dict of report directories.
     """
-    results = {}  # type: Dict[str, object]
-    report_dirs = {}  # type: Dict[str, str]
+    results: Dict[str, object] = {}
+    report_dirs: Dict[str, str] = {}
     for key in section:
         invert = False
         options_key = key
@@ -380,7 +379,7 @@ def parse_section(prefix: str, template: Options,
                 else:
                     continue
             ct = type(dv)
-        v = None  # type: Any
+        v: Any = None
         try:
             if ct is bool:
                 if isinstance(section, dict):
@@ -443,7 +442,7 @@ def split_directive(s: str) -> Tuple[List[str], List[str]]:
 
     Returns the parts and a list of error messages."""
     parts = []
-    cur = []  # type: List[str]
+    cur: List[str] = []
     errors = []
     i = 0
     while i < len(s):
@@ -499,7 +498,7 @@ def parse_mypy_comments(
     generated.
     """
 
-    errors = []  # type: List[Tuple[int, str]]
+    errors: List[Tuple[int, str]] = []
     sections = {}
 
     for lineno, line in args:
@@ -525,9 +524,9 @@ def parse_mypy_comments(
             errors.append((lineno, "Reports not supported in inline configuration"))
         if strict_found:
             errors.append((lineno,
-                           "Setting 'strict' not supported in inline configuration: specify it in "
-                           "a configuration file instead, or set individual inline flags "
-                           "(see 'mypy -h' for the list of flags enabled in strict mode)"))
+                           'Setting "strict" not supported in inline configuration: specify it in '
+                           'a configuration file instead, or set individual inline flags '
+                           '(see "mypy -h" for the list of flags enabled in strict mode)'))
 
         sections.update(new_sections)
 

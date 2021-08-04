@@ -1,10 +1,7 @@
-import datetime
-import ssl
 from _typeshed import StrPath
 from logging import FileHandler, Handler, LogRecord
-from Queue import Queue
 from socket import SocketKind, SocketType
-from typing import Any, Callable, ClassVar, Dict, List, Optional, Tuple, Union
+from typing import Any, ClassVar, Dict, List, Optional, Tuple, Union
 
 DEFAULT_TCP_LOGGING_PORT: int
 DEFAULT_UDP_LOGGING_PORT: int

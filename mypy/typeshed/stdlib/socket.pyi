@@ -1,5 +1,6 @@
 import sys
-from typing import Any, BinaryIO, Iterable, List, Optional, Text, TextIO, Tuple, TypeVar, Union, overload
+from enum import IntEnum, IntFlag
+from typing import Any, BinaryIO, Iterable, List, Optional, TextIO, Tuple, TypeVar, Union, overload
 from typing_extensions import Literal
 
 # ----- Constants -----
@@ -13,8 +14,7 @@ from typing_extensions import Literal
 # Constants defined by Python (i.e. not OS constants re-exported from C)
 has_ipv6: bool
 SocketType: Any
-if sys.version_info >= (3,):
-    SocketIO: Any
+SocketIO: Any
 
 # Re-exported errno
 EAGAIN: int
@@ -35,7 +35,7 @@ SOCK_RAW: SocketKind
 SOCK_RDM: SocketKind
 SOCK_SEQPACKET: SocketKind
 
-if sys.platform == "linux" and sys.version_info >= (3,):
+if sys.platform == "linux":
     SOCK_CLOEXEC: SocketKind
     SOCK_NONBLOCK: SocketKind
 
@@ -268,7 +268,7 @@ if sys.version_info >= (3, 7):
 
 # Specifically-documented constants
 
-if sys.platform == "linux" and sys.version_info >= (3,):
+if sys.platform == "linux":
     AF_CAN: AddressFamily
     PF_CAN: int
     SOL_CAN_BASE: int
@@ -361,7 +361,7 @@ if sys.platform == "linux":
     PACKET_OTHERHOST: int
     PACKET_OUTGOING: int
 
-if sys.platform == "linux" and sys.version_info >= (3,):
+if sys.platform == "linux":
     AF_RDS: AddressFamily
     PF_RDS: int
     SOL_RDS: int
@@ -387,8 +387,7 @@ if sys.platform == "linux" and sys.version_info >= (3,):
 if sys.platform == "win32":
     SIO_RCVALL: int
     SIO_KEEPALIVE_VALS: int
-    if sys.version_info >= (3, 6):
-        SIO_LOOPBACK_FAST_PATH: int
+    SIO_LOOPBACK_FAST_PATH: int
     RCVALL_IPLEVEL: int
     RCVALL_MAX: int
     RCVALL_OFF: int
@@ -422,7 +421,7 @@ if sys.platform == "linux":
     TIPC_WITHDRAWN: int
     TIPC_ZONE_SCOPE: int
 
-if sys.platform == "linux" and sys.version_info >= (3, 6):
+if sys.platform == "linux":
     AF_ALG: AddressFamily
     SOL_ALG: int
     ALG_OP_DECRYPT: int
@@ -451,13 +450,12 @@ AF_LINK: AddressFamily  # Availability: BSD, macOS
 
 # BDADDR_* and HCI_* listed with other bluetooth constants below
 
-if sys.version_info >= (3, 6):
-    SO_DOMAIN: int
-    SO_PASSSEC: int
-    SO_PEERSEC: int
-    SO_PROTOCOL: int
-    TCP_CONGESTION: int
-    TCP_USER_TIMEOUT: int
+SO_DOMAIN: int
+SO_PASSSEC: int
+SO_PEERSEC: int
+SO_PROTOCOL: int
+TCP_CONGESTION: int
+TCP_USER_TIMEOUT: int
 
 if sys.platform == "linux" and sys.version_info >= (3, 8):
     AF_QIPCRTR: AddressFamily
@@ -506,90 +504,76 @@ if sys.platform == "darwin":
     SYSPROTO_CONTROL: int
 
 # enum versions of above flags
-if sys.version_info >= (3, 4):
-    from enum import IntEnum
-    class AddressFamily(IntEnum):
-        AF_UNIX: int
-        AF_INET: int
-        AF_INET6: int
-        AF_AAL5: int
-        AF_ALG: int
-        AF_APPLETALK: int
-        AF_ASH: int
-        AF_ATMPVC: int
-        AF_ATMSVC: int
-        AF_AX25: int
-        AF_BLUETOOTH: int
-        AF_BRIDGE: int
-        AF_CAN: int
-        AF_DECnet: int
-        AF_ECONET: int
-        AF_IPX: int
-        AF_IRDA: int
-        AF_KEY: int
-        AF_LINK: int
-        AF_LLC: int
-        AF_NETBEUI: int
-        AF_NETLINK: int
-        AF_NETROM: int
-        AF_PACKET: int
-        AF_PPPOX: int
-        AF_QIPCRTR: int
-        AF_RDS: int
-        AF_ROSE: int
-        AF_ROUTE: int
-        AF_SECURITY: int
-        AF_SNA: int
-        AF_SYSTEM: int
-        AF_TIPC: int
-        AF_UNSPEC: int
-        AF_VSOCK: int
-        AF_WANPIPE: int
-        AF_X25: int
-    class SocketKind(IntEnum):
-        SOCK_STREAM: int
-        SOCK_DGRAM: int
-        SOCK_RAW: int
-        SOCK_RDM: int
-        SOCK_SEQPACKET: int
-        SOCK_CLOEXEC: int
-        SOCK_NONBLOCK: int
+class AddressFamily(IntEnum):
+    AF_UNIX: int
+    AF_INET: int
+    AF_INET6: int
+    AF_AAL5: int
+    AF_ALG: int
+    AF_APPLETALK: int
+    AF_ASH: int
+    AF_ATMPVC: int
+    AF_ATMSVC: int
+    AF_AX25: int
+    AF_BLUETOOTH: int
+    AF_BRIDGE: int
+    AF_CAN: int
+    AF_DECnet: int
+    AF_ECONET: int
+    AF_IPX: int
+    AF_IRDA: int
+    AF_KEY: int
+    AF_LINK: int
+    AF_LLC: int
+    AF_NETBEUI: int
+    AF_NETLINK: int
+    AF_NETROM: int
+    AF_PACKET: int
+    AF_PPPOX: int
+    AF_QIPCRTR: int
+    AF_RDS: int
+    AF_ROSE: int
+    AF_ROUTE: int
+    AF_SECURITY: int
+    AF_SNA: int
+    AF_SYSTEM: int
+    AF_TIPC: int
+    AF_UNSPEC: int
+    AF_VSOCK: int
+    AF_WANPIPE: int
+    AF_X25: int
 
-else:
-    AddressFamily = int
-    SocketKind = int
+class SocketKind(IntEnum):
+    SOCK_STREAM: int
+    SOCK_DGRAM: int
+    SOCK_RAW: int
+    SOCK_RDM: int
+    SOCK_SEQPACKET: int
+    SOCK_CLOEXEC: int
+    SOCK_NONBLOCK: int
 
-if sys.version_info >= (3, 6):
-    from enum import IntFlag
-    class AddressInfo(IntFlag):
-        AI_ADDRCONFIG: int
-        AI_ALL: int
-        AI_CANONNAME: int
-        AI_NUMERICHOST: int
-        AI_NUMERICSERV: int
-        AI_PASSIVE: int
-        AI_V4MAPPED: int
-    class MsgFlag(IntFlag):
-        MSG_CTRUNC: int
-        MSG_DONTROUTE: int
-        MSG_DONTWAIT: int
-        MSG_EOR: int
-        MSG_OOB: int
-        MSG_PEEK: int
-        MSG_TRUNC: int
-        MSG_WAITALL: int
+class AddressInfo(IntFlag):
+    AI_ADDRCONFIG: int
+    AI_ALL: int
+    AI_CANONNAME: int
+    AI_NUMERICHOST: int
+    AI_NUMERICSERV: int
+    AI_PASSIVE: int
+    AI_V4MAPPED: int
 
-else:
-    AddressInfo = int
-    MsgFlag = int
+class MsgFlag(IntFlag):
+    MSG_CTRUNC: int
+    MSG_DONTROUTE: int
+    MSG_DONTWAIT: int
+    MSG_EOR: int
+    MSG_OOB: int
+    MSG_PEEK: int
+    MSG_TRUNC: int
+    MSG_WAITALL: int
 
 # ----- Exceptions -----
 
-if sys.version_info < (3,):
-    class error(IOError): ...
-
-else:
-    error = OSError
+error = OSError
 
 class herror(error):
     def __init__(self, herror: int = ..., string: str = ...) -> None: ...
@@ -617,13 +601,9 @@ class socket:
     family: int
     type: int
     proto: int
-
-    if sys.version_info < (3,):
-        def __init__(self, family: int = ..., type: int = ..., proto: int = ...) -> None: ...
-    else:
-        def __init__(self, family: int = ..., type: int = ..., proto: int = ..., fileno: Optional[int] = ...) -> None: ...
-        def __enter__(self: _SelfT) -> _SelfT: ...
-        def __exit__(self, *args: Any) -> None: ...
+    def __init__(self, family: int = ..., type: int = ..., proto: int = ..., fileno: Optional[int] = ...) -> None: ...
+    def __enter__(self: _SelfT) -> _SelfT: ...
+    def __exit__(self, *args: Any) -> None: ...
     # --- methods ---
     def accept(self) -> Tuple[socket, _RetAddress]: ...
     def bind(self, address: Union[_Address, bytes]) -> None: ...
@@ -633,8 +613,7 @@ class socket:
     def detach(self) -> int: ...
     def dup(self) -> socket: ...
     def fileno(self) -> int: ...
-    if sys.version_info >= (3, 4):
-        def get_inheritable(self) -> bool: ...
+    def get_inheritable(self) -> bool: ...
     def getpeername(self) -> _RetAddress: ...
     def getsockname(self) -> _RetAddress: ...
     @overload
@@ -644,42 +623,34 @@ class socket:
     if sys.version_info >= (3, 7):
         def getblocking(self) -> bool: ...
     def gettimeout(self) -> Optional[float]: ...
-    if sys.platform == "win32" and sys.version_info >= (3, 6):
+    if sys.platform == "win32":
         def ioctl(self, control: int, option: Union[int, Tuple[int, int, int], bool]) -> None: ...
-    elif sys.platform == "win32":
-        def ioctl(self, control: int, option: Union[int, Tuple[int, int, int]]) -> None: ...
-    if sys.version_info >= (3, 5):
-        def listen(self, __backlog: int = ...) -> None: ...
-    else:
-        def listen(self, __backlog: int) -> None: ...
+    def listen(self, __backlog: int = ...) -> None: ...
     # Note that the makefile's documented windows-specific behavior is not represented
-    if sys.version_info >= (3,):
-        # mode strings with duplicates are intentionally excluded
-        @overload
-        def makefile(
-            self,
-            mode: Literal["r", "w", "rw", "wr", ""] = ...,
-            buffering: Optional[int] = ...,
-            *,
-            encoding: Optional[str] = ...,
-            errors: Optional[str] = ...,
-            newline: Optional[str] = ...,
-        ) -> TextIO: ...
-        @overload
-        def makefile(
-            self,
-            mode: Literal["b", "rb", "br", "wb", "bw", "rwb", "rbw", "wrb", "wbr", "brw", "bwr"],
-            buffering: Optional[int] = ...,
-            *,
-            encoding: Optional[str] = ...,
-            errors: Optional[str] = ...,
-            newline: Optional[str] = ...,
-        ) -> BinaryIO: ...
-    else:
-        def makefile(self, mode: unicode = ..., buffering: int = ...) -> BinaryIO: ...
+    # mode strings with duplicates are intentionally excluded
+    @overload
+    def makefile(
+        self,
+        mode: Literal["r", "w", "rw", "wr", ""] = ...,
+        buffering: Optional[int] = ...,
+        *,
+        encoding: Optional[str] = ...,
+        errors: Optional[str] = ...,
+        newline: Optional[str] = ...,
+    ) -> TextIO: ...
+    @overload
+    def makefile(
+        self,
+        mode: Literal["b", "rb", "br", "wb", "bw", "rwb", "rbw", "wrb", "wbr", "brw", "bwr"],
+        buffering: Optional[int] = ...,
+        *,
+        encoding: Optional[str] = ...,
+        errors: Optional[str] = ...,
+        newline: Optional[str] = ...,
+    ) -> BinaryIO: ...
     def recv(self, bufsize: int, flags: int = ...) -> bytes: ...
     def recvfrom(self, bufsize: int, flags: int = ...) -> Tuple[bytes, _RetAddress]: ...
-    if sys.version_info >= (3, 3) and sys.platform != "win32":
+    if sys.platform != "win32":
         def recvmsg(self, __bufsize: int, __ancbufsize: int = ..., __flags: int = ...) -> Tuple[bytes, List[_CMSG], int, Any]: ...
         def recvmsg_into(
             self, __buffers: Iterable[_WriteBuffer], __ancbufsize: int = ..., __flags: int = ...
@@ -692,26 +663,22 @@ class socket:
     def sendto(self, data: bytes, address: _Address) -> int: ...
     @overload
     def sendto(self, data: bytes, flags: int, address: _Address) -> int: ...
-    if sys.version_info >= (3, 3) and sys.platform != "win32":
+    if sys.platform != "win32":
         def sendmsg(
             self, __buffers: Iterable[bytes], __ancdata: Iterable[_CMSG] = ..., __flags: int = ..., __address: _Address = ...
         ) -> int: ...
-    if sys.platform == "linux" and sys.version_info >= (3, 6):
+    if sys.platform == "linux":
         def sendmsg_afalg(
             self, msg: Iterable[bytes] = ..., *, op: int, iv: Any = ..., assoclen: int = ..., flags: int = ...
         ) -> int: ...
-    if sys.version_info >= (3,):
-        def sendfile(self, file: BinaryIO, offset: int = ..., count: Optional[int] = ...) -> int: ...
-        def set_inheritable(self, inheritable: bool) -> None: ...
+    def sendfile(self, file: BinaryIO, offset: int = ..., count: Optional[int] = ...) -> int: ...
+    def set_inheritable(self, inheritable: bool) -> None: ...
     def setblocking(self, flag: bool) -> None: ...
     def settimeout(self, value: Optional[float]) -> None: ...
-    if sys.version_info < (3, 6):
-        def setsockopt(self, level: int, optname: int, value: Union[int, bytes]) -> None: ...
-    else:
-        @overload
-        def setsockopt(self, level: int, optname: int, value: Union[int, bytes]) -> None: ...
-        @overload
-        def setsockopt(self, level: int, optname: int, value: None, optlen: int) -> None: ...
+    @overload
+    def setsockopt(self, level: int, optname: int, value: Union[int, bytes]) -> None: ...
+    @overload
+    def setsockopt(self, level: int, optname: int, value: None, optlen: int) -> None: ...
     if sys.platform == "win32":
         def share(self, process_id: int) -> bytes: ...
     def shutdown(self, how: int) -> None: ...
@@ -724,7 +691,7 @@ if sys.version_info >= (3, 7):
 def create_connection(
     address: Tuple[Optional[str], int],
     timeout: Optional[float] = ...,
-    source_address: Optional[Tuple[Union[bytearray, bytes, Text], int]] = ...,
+    source_address: Optional[Tuple[Union[bytearray, bytes, str], int]] = ...,
 ) -> socket: ...
 
 if sys.version_info >= (3, 8):
@@ -735,30 +702,18 @@ if sys.version_info >= (3, 8):
 
 def fromfd(fd: int, family: int, type: int, proto: int = ...) -> socket: ...
 
-if sys.platform == "win32" and sys.version_info >= (3, 3):
+if sys.platform == "win32":
     def fromshare(info: bytes) -> socket: ...
 
 # the 5th tuple item is an address
-if sys.version_info >= (3,):
-    def getaddrinfo(
-        host: Optional[Union[bytearray, bytes, Text]],
-        port: Union[str, int, None],
-        family: int = ...,
-        type: int = ...,
-        proto: int = ...,
-        flags: int = ...,
-    ) -> List[Tuple[AddressFamily, SocketKind, int, str, Union[Tuple[str, int], Tuple[str, int, int, int]]]]: ...
-
-else:
-    def getaddrinfo(
-        host: Optional[Union[bytearray, bytes, Text]],
-        port: Union[str, int, None],
-        family: int = ...,
-        socktype: int = ...,
-        proto: int = ...,
-        flags: int = ...,
-    ) -> List[Tuple[AddressFamily, SocketKind, int, str, Tuple[Any, ...]]]: ...
-
+def getaddrinfo(
+    host: Optional[Union[bytearray, bytes, str]],
+    port: Union[str, int, None],
+    family: int = ...,
+    type: int = ...,
+    proto: int = ...,
+    flags: int = ...,
+) -> List[Tuple[AddressFamily, SocketKind, int, str, Union[Tuple[str, int], Tuple[str, int, int, int]]]]: ...
 def getfqdn(name: str = ...) -> str: ...
 def gethostbyname(hostname: str) -> str: ...
 def gethostbyname_ex(hostname: str) -> Tuple[str, List[str], List[str]]: ...
@@ -792,18 +747,16 @@ if sys.version_info >= (3, 9):
         ) -> int: ...
         def recv_fds(sock: socket, bufsize: int, maxfds: int, flags: int = ...) -> Tuple[bytes, List[int], int, Any]: ...
 
-if sys.version_info >= (3, 3):
-    def CMSG_LEN(length: int) -> int: ...
-    def CMSG_SPACE(length: int) -> int: ...
-
+def CMSG_LEN(length: int) -> int: ...
+def CMSG_SPACE(length: int) -> int: ...
 def getdefaulttimeout() -> Optional[float]: ...
 def setdefaulttimeout(timeout: Optional[float]) -> None: ...
 
-if sys.version_info >= (3, 3):
-    if sys.platform != "win32":
-        def sethostname(name: str) -> None: ...
-    # Windows added these in 3.8, but didn't have them before
-    if sys.platform != "win32" or sys.version_info >= (3, 8):
-        def if_nameindex() -> List[Tuple[int, str]]: ...
-        def if_nametoindex(name: str) -> int: ...
-        def if_indextoname(index: int) -> str: ...
+if sys.platform != "win32":
+    def sethostname(name: str) -> None: ...
+
+# Windows added these in 3.8, but didn't have them before
+if sys.platform != "win32" or sys.version_info >= (3, 8):
+    def if_nameindex() -> List[Tuple[int, str]]: ...
+    def if_nametoindex(name: str) -> int: ...
+    def if_indextoname(index: int) -> str: ...

@@ -64,7 +64,7 @@ def parse_script(input: List[str]) -> List[List[str]]:
     The remaining lines are expected output.
     """
     steps = []
-    step = []  # type: List[str]
+    step: List[str] = []
     for line in input:
         if line.startswith('$'):
             if step:

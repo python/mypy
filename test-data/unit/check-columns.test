@@ -268,7 +268,11 @@ class B(A):
 class C(A):
     def f(self, x: int) -> int: pass # E:5: Return type "int" of "f" incompatible with return type "None" in supertype "A"
 class D(A):
-    def f(self) -> None: pass # E:5: Signature of "f" incompatible with supertype "A"
+    def f(self) -> None: pass # E:5: Signature of "f" incompatible with supertype "A" \
+                              # N:5:      Superclass: \
+                              # N:5:          def f(self, x: int) -> None \
+                              # N:5:      Subclass: \
+                              # N:5:          def f(self) -> None
 
 [case testColumnMissingTypeParameters]
 # flags: --disallow-any-generics

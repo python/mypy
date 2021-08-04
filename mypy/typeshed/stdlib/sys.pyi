@@ -8,6 +8,7 @@ from typing import (
     AsyncGenerator,
     Callable,
     Dict,
+    FrozenSet,
     List,
     NoReturn,
     Optional,
@@ -60,6 +61,8 @@ maxsize: int
 maxunicode: int
 meta_path: List[_MetaPathFinder]
 modules: Dict[str, ModuleType]
+if sys.version_info >= (3, 10):
+    orig_argv: List[str]
 path: List[str]
 path_hooks: List[Any]  # TODO precise type; function, path to finder
 path_importer_cache: Dict[str, Optional[PathEntryFinder]]
@@ -74,6 +77,8 @@ ps2: str
 stdin: TextIO
 stdout: TextIO
 stderr: TextIO
+if sys.version_info >= (3, 10):
+    stdlib_module_names: FrozenSet[str]
 __stdin__: TextIO
 __stdout__: TextIO
 __stderr__: TextIO

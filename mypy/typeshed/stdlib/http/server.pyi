@@ -1,7 +1,7 @@
 import email.message
 import socketserver
 import sys
-from os import PathLike
+from _typeshed import StrPath
 from typing import Any, ClassVar, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 class HTTPServer(socketserver.TCPServer):
@@ -57,7 +57,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             request: bytes,
             client_address: Tuple[str, int],
             server: socketserver.BaseServer,
-            directory: Optional[Union[str, PathLike[str]]] = ...,
+            directory: Optional[StrPath] = ...,
         ) -> None: ...
     else:
         def __init__(self, request: bytes, client_address: Tuple[str, int], server: socketserver.BaseServer) -> None: ...
