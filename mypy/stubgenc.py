@@ -50,15 +50,15 @@ def generate_stub_for_c_module(module_name: str,
     subdir = os.path.dirname(target)
     if subdir and not os.path.isdir(subdir):
         os.makedirs(subdir)
-    imports = []  # type: List[str]
-    functions = []  # type: List[str]
+    imports: List[str] = []
+    functions: List[str] = []
     done = set()
     items = sorted(module.__dict__.items(), key=lambda x: x[0])
     for name, obj in items:
         if is_c_function(obj):
             generate_c_function_stub(module, name, obj, functions, imports=imports, sigs=sigs)
             done.add(name)
-    types = []  # type: List[str]
+    types: List[str] = []
     for name, obj in items:
         if name.startswith('__') and name.endswith('__'):
             continue
@@ -159,17 +159,27 @@ def generate_c_function_stub(module: ModuleType,
 
     ret_type = 'None' if name == '__init__' and class_name else 'Any'
 
-    if (name in ('__new__', '__init__') and name not in sigs and class_name and
-            class_name in class_sigs):
-        inferred = [FunctionSig(name=name,
-                                args=infer_arg_sig_from_anon_docstring(class_sigs[class_name]),
-                                ret_type=ret_type)]  # type: Optional[List[FunctionSig]]
+    if (
+        name in ("__new__", "__init__")
+        and name not in sigs
+        and class_name
+        and class_name in class_sigs
+    ):
+        inferred: Optional[List[FunctionSig]] = [
+            FunctionSig(
+                name=name,
+                args=infer_arg_sig_from_anon_docstring(class_sigs[class_name]),
+                ret_type=ret_type,
+            )
+        ]
     else:
         docstr = getattr(obj, '__doc__', None)
         inferred = infer_sig_from_docstring(docstr, name)
-        if inferred and is_pybind11_overloaded_function_docstring(docstr, name):
-            # Remove pybind11 umbrella (*args, **kwargs) for overloaded functions
-            del inferred[-1]
+        if inferred:
+            assert docstr is not None
+            if is_pybind11_overloaded_function_docstring(docstr, name):
+                # Remove pybind11 umbrella (*args, **kwargs) for overloaded functions
+                del inferred[-1]
         if not inferred:
             if class_name and name not in sigs:
                 inferred = [FunctionSig(name, args=infer_method_sig(name), ret_type=ret_type)]
@@ -308,14 +318,14 @@ def generate_c_type_stub(module: ModuleType,
     """
     # typeshed gives obj.__dict__ the not quite correct type Dict[str, Any]
     # (it could be a mappingproxy!), which makes mypyc mad, so obfuscate it.
-    obj_dict = getattr(obj, '__dict__')  # type: Mapping[str, Any]  # noqa
+    obj_dict: Mapping[str, Any] = getattr(obj, "__dict__")  # noqa
     items = sorted(obj_dict.items(), key=lambda x: method_name_sort_key(x[0]))
-    methods = []  # type: List[str]
-    types = []  # type: List[str]
-    static_properties = []  # type: List[str]
-    rw_properties = []  # type: List[str]
-    ro_properties = []  # type: List[str]
-    done = set()  # type: Set[str]
+    methods: List[str] = []
+    types: List[str] = []
+    static_properties: List[str] = []
+    rw_properties: List[str] = []
+    ro_properties: List[str] = []
+    done: Set[str] = set()
     for attr, value in items:
         if is_c_method(value) or is_c_classmethod(value):
             done.add(attr)
@@ -363,7 +373,7 @@ def generate_c_type_stub(module: ModuleType,
     # remove the class itself
     all_bases = all_bases[1:]
     # Remove base classes of other bases as redundant.
-    bases = []  # type: List[type]
+    bases: List[type] = []
     for base in all_bases:
         if not any(issubclass(b, base) for b in bases):
             bases.append(base)
@@ -429,7 +439,7 @@ def is_skipped_attribute(attr: str) -> bool:
 
 
 def infer_method_sig(name: str) -> List[ArgSig]:
-    args = None  # type: Optional[List[ArgSig]]
+    args: Optional[List[ArgSig]] = None
     if name.startswith('__') and name.endswith('__'):
         name = name[2:-2]
         if name in ('hash', 'iter', 'next', 'sizeof', 'copy', 'deepcopy', 'reduce', 'getinitargs',

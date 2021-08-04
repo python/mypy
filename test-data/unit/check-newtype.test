@@ -338,7 +338,7 @@ a = 3  # type: UserId  # E: Incompatible types in assignment (expression has typ
 from typing import NewType
 class A: pass
 B = NewType('B', A)
-class C(B): pass  # E: Cannot subclass NewType
+class C(B): pass  # E: Cannot subclass "NewType"
 [out]
 
 [case testCannotUseNewTypeWithProtocols]

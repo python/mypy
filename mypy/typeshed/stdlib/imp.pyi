@@ -1,6 +1,6 @@
-import os
 import types
 from _typeshed import StrPath
+from os import PathLike
 from typing import IO, Any, List, Optional, Protocol, Tuple, TypeVar, Union
 
 from _imp import (
@@ -57,7 +57,7 @@ def load_module(name: str, file: Optional[_FileLike], filename: str, details: Tu
 
 # IO[Any] is a TextIOWrapper if name is a .py file, and a FileIO otherwise.
 def find_module(
-    name: str, path: Union[None, List[str], List[os.PathLike[str]], List[StrPath]] = ...
+    name: str, path: Union[None, List[str], List[PathLike[str]], List[StrPath]] = ...
 ) -> Tuple[IO[Any], str, Tuple[str, str, int]]: ...
 def reload(module: types.ModuleType) -> types.ModuleType: ...
 def init_builtin(name: str) -> Optional[types.ModuleType]: ...

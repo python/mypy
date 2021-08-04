@@ -1,4 +1,3 @@
-import sys
 from array import array
 from typing import Any, Optional, Union
 
@@ -18,9 +17,8 @@ Z_HUFFMAN_ONLY: int
 Z_NO_FLUSH: int
 Z_RLE: int
 Z_SYNC_FLUSH: int
-if sys.version_info >= (3,):
-    DEF_BUF_SIZE: int
-    ZLIB_RUNTIME_VERSION: str
+DEF_BUF_SIZE: int
+ZLIB_RUNTIME_VERSION: str
 
 class error(Exception): ...
 
@@ -32,35 +30,16 @@ class _Compress:
 class _Decompress:
     unused_data: bytes
     unconsumed_tail: bytes
-    if sys.version_info >= (3,):
-        eof: bool
+    eof: bool
     def decompress(self, data: bytes, max_length: int = ...) -> bytes: ...
     def flush(self, length: int = ...) -> bytes: ...
     def copy(self) -> _Decompress: ...
 
 def adler32(__data: bytes, __value: int = ...) -> int: ...
 def compress(__data: bytes, level: int = ...) -> bytes: ...
-
-if sys.version_info >= (3,):
-    def compressobj(
-        level: int = ...,
-        method: int = ...,
-        wbits: int = ...,
-        memLevel: int = ...,
-        strategy: int = ...,
-        zdict: Optional[bytes] = ...,
-    ) -> _Compress: ...
-
-else:
-    def compressobj(
-        level: int = ..., method: int = ..., wbits: int = ..., memlevel: int = ..., strategy: int = ...
-    ) -> _Compress: ...
-
+def compressobj(
+    level: int = ..., method: int = ..., wbits: int = ..., memLevel: int = ..., strategy: int = ..., zdict: Optional[bytes] = ...
+) -> _Compress: ...
 def crc32(__data: Union[array[Any], bytes], __value: int = ...) -> int: ...
 def decompress(__data: bytes, wbits: int = ..., bufsize: int = ...) -> bytes: ...
-
-if sys.version_info >= (3,):
-    def decompressobj(wbits: int = ..., zdict: bytes = ...) -> _Decompress: ...
-
-else:
-    def decompressobj(wbits: int = ...) -> _Decompress: ...
+def decompressobj(wbits: int = ..., zdict: bytes = ...) -> _Decompress: ...

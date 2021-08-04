@@ -182,10 +182,21 @@ mypy run. You can also use your normal mypy command line with the
 extra :option:`--install-types <mypy --install-types>` option to
 install missing stubs at the end of the run (if any were found).
 
-You can also get this message if the stubs only support Python 3 and
-your target Python version is Python 2, or vice versa. In this case
-follow instructions in
-:ref:`missing-type-hints-for-third-party-library`.
+Use :option:`--install-types <mypy --install-types>` with
+:option:`--non-interactive <mypy --non-interactive>`  to install all suggested
+stub packages without asking for confirmation, *and* type check your
+code, in a single command:
+
+.. code-block:: text
+
+   mypy --install-types --non-interactive src/
+
+This can be useful in Continuous Integration jobs if you'd prefer not
+to manage stub packages manually. This is somewhat slower than
+explicitly installing stubs before running mypy, since it may type
+check your code twice -- the first time to find the missing stubs, and
+the second time to type check your code properly after mypy has
+installed the stubs.
 
 .. _missing-type-hints-for-third-party-library:
 
@@ -296,7 +307,7 @@ this error, try:
     or by using the ``MYPYPATH`` environment variable.
 
     Note: if the module you are trying to import is actually a *submodule* of
-    some package, you should specific the directory containing the *entire* package.
+    some package, you should specify the directory containing the *entire* package.
     For example, suppose you are trying to add the module ``foo.bar.baz``
     which is located at ``~/foo-project/src/foo/bar/baz.py``. In this case,
     you must run ``mypy ~/foo-project/src`` (or set the ``MYPYPATH`` to
@@ -348,7 +359,7 @@ accepts one of four string values:
 -   ``error`` behaves in the same way as ``skip`` but is not quite as
     silent -- it will flag the import as an error, like this::
 
-        main.py:1: note: Import of 'mycode.bar' ignored
+        main.py:1: note: Import of "mycode.bar" ignored
         main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 
 If you are starting a new codebase and plan on using type hints from
@@ -372,6 +383,10 @@ a given object has). See :ref:`existing-code` for more recommendations.
 We do not recommend using ``skip`` unless you know what you are doing:
 while this option can be quite powerful, it can also cause many
 hard-to-debug errors.
+
+Adjusting import following behaviour is often most useful when restricted to
+specific modules. This can be accomplished by setting a per-module
+:confval:`follow_imports` config option.
 
 
 .. _mapping-paths-to-modules:

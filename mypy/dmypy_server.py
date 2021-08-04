@@ -35,7 +35,7 @@ from mypy.typestate import reset_global_state
 from mypy.version import __version__
 from mypy.util import FancyFormatter, count_stats
 
-MEM_PROFILE = False  # type: Final  # If True, dump memory profile after initialization
+MEM_PROFILE: Final = False  # If True, dump memory profile after initialization
 
 if sys.platform == 'win32':
     from subprocess import STARTUPINFO
@@ -127,7 +127,7 @@ else:
 
 # Server code.
 
-CONNECTION_NAME = 'dmypy'  # type: Final
+CONNECTION_NAME: Final = "dmypy"
 
 
 def process_start_options(flags: List[str], allow_sources: bool) -> Options:
@@ -172,7 +172,7 @@ class Server:
         # Snapshot the options info before we muck with it, to detect changes
         self.options_snapshot = options.snapshot()
         self.timeout = timeout
-        self.fine_grained_manager = None  # type: Optional[FineGrainedBuildManager]
+        self.fine_grained_manager: Optional[FineGrainedBuildManager] = None
 
         if os.path.isfile(status_file):
             os.unlink(status_file)
@@ -216,7 +216,7 @@ class Server:
             while True:
                 with server:
                     data = receive(server)
-                    resp = {}  # type: Dict[str, Any]
+                    resp: Dict[str, Any] = {}
                     if 'command' not in data:
                         resp = {'error': "No command found in request"}
                     else:
@@ -275,7 +275,7 @@ class Server:
 
     def cmd_status(self, fswatcher_dump_file: Optional[str] = None) -> Dict[str, object]:
         """Return daemon status."""
-        res = {}  # type: Dict[str, object]
+        res: Dict[str, object] = {}
         res.update(get_meminfo())
         if fswatcher_dump_file:
             data = self.fswatcher.dump_file_data() if hasattr(self, 'fswatcher') else {}
@@ -771,7 +771,7 @@ class Server:
             messages = self.formatter.fit_in_terminal(messages,
                                                       fixed_terminal_width=terminal_width)
         if self.options.error_summary:
-            summary = None  # type: Optional[str]
+            summary: Optional[str] = None
             if messages:
                 n_errors, n_files = count_stats(messages)
                 if n_errors:
@@ -868,11 +868,11 @@ class Server:
 # Misc utilities.
 
 
-MiB = 2**20  # type: Final
+MiB: Final = 2 ** 20
 
 
 def get_meminfo() -> Dict[str, Any]:
-    res = {}  # type: Dict[str, Any]
+    res: Dict[str, Any] = {}
     try:
         import psutil  # type: ignore  # It's not in typeshed yet
     except ImportError:

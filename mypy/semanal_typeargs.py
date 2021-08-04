@@ -31,7 +31,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         self.recurse_into_functions = True
         # Keep track of the type aliases already visited. This is needed to avoid
         # infinite recursion on types like A = Union[int, List[A]].
-        self.seen_aliases = set()  # type: Set[TypeAliasType]
+        self.seen_aliases: Set[TypeAliasType] = set()
 
     def visit_mypy_file(self, o: MypyFile) -> None:
         self.errors.set_file(o.path, o.fullname, scope=self.scope)

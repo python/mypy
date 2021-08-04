@@ -15,7 +15,7 @@ from mypyc.ir.rtypes import (
     str_rprimitive, bit_rprimitive, RType
 )
 from mypyc.primitives.registry import (
-    load_address_op, c_unary_op, CFunctionDescription, function_op, binary_op, custom_op
+    load_address_op, unary_op, CFunctionDescription, function_op, binary_op, custom_op
 )
 
 # These int constructors produce object_rprimitives that then need to be unboxed
@@ -53,7 +53,7 @@ function_op(
     error_kind=ERR_MAGIC)
 
 # str(n) on ints
-function_op(
+int_to_str_op = function_op(
     name='builtins.str',
     arg_types=[int_rprimitive],
     return_type=str_rprimitive,
@@ -114,11 +114,11 @@ int_binary_op('<<=', 'CPyTagged_Lshift', error_kind=ERR_MAGIC)
 
 
 def int_unary_op(name: str, c_function_name: str) -> CFunctionDescription:
-    return c_unary_op(name=name,
-                      arg_type=int_rprimitive,
-                      return_type=int_rprimitive,
-                      c_function_name=c_function_name,
-                      error_kind=ERR_NEVER)
+    return unary_op(name=name,
+                    arg_type=int_rprimitive,
+                    return_type=int_rprimitive,
+                    c_function_name=c_function_name,
+                    error_kind=ERR_NEVER)
 
 
 int_neg_op = int_unary_op('-', 'CPyTagged_Negate')
@@ -155,11 +155,11 @@ int_less_than_ = custom_op(
 
 # Provide mapping from textual op to short int's op variant and boxed int's description.
 # Note that these are not complete implementations and require extra IR.
-int_comparison_op_mapping = {
+int_comparison_op_mapping: Dict[str, IntComparisonOpDescription] = {
     '==': IntComparisonOpDescription(ComparisonOp.EQ, int_equal_, False, False),
     '!=': IntComparisonOpDescription(ComparisonOp.NEQ, int_equal_, True, False),
     '<': IntComparisonOpDescription(ComparisonOp.SLT, int_less_than_, False, False),
     '<=': IntComparisonOpDescription(ComparisonOp.SLE, int_less_than_, True, True),
     '>': IntComparisonOpDescription(ComparisonOp.SGT, int_less_than_, False, True),
     '>=': IntComparisonOpDescription(ComparisonOp.SGE, int_less_than_, True, False),
-}  # type: Dict[str, IntComparisonOpDescription]
+}

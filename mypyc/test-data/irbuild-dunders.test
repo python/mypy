@@ -133,3 +133,58 @@ def f(c):
 L0:
     r0 = c.__delitem__(10)
     return 1
+
+[case testDundersUnary]
+class C:
+    def __neg__(self) -> int:
+        return 1
+
+    def __invert__(self) -> int:
+        return 2
+
+    def __int__(self) -> int:
+        return 3
+
+    def __float__(self) -> float:
+        return 4.0
+
+def f(c: C) -> None:
+    -c
+    ~c
+    int(c)
+    float(c)
+[out]
+def C.__neg__(self):
+    self :: __main__.C
+L0:
+    return 2
+def C.__invert__(self):
+    self :: __main__.C
+L0:
+    return 4
+def C.__int__(self):
+    self :: __main__.C
+L0:
+    return 6
+def C.__float__(self):
+    self :: __main__.C
+    r0 :: float
+L0:
+    r0 = 4.0
+    return r0
+def f(c):
+    c :: __main__.C
+    r0, r1 :: int
+    r2, r3, r4 :: object
+    r5 :: str
+    r6, r7 :: object
+L0:
+    r0 = c.__neg__()
+    r1 = c.__invert__()
+    r2 = load_address PyLong_Type
+    r3 = PyObject_CallFunctionObjArgs(r2, c, 0)
+    r4 = builtins :: module
+    r5 = 'float'
+    r6 = CPyObject_GetAttr(r4, r5)
+    r7 = PyObject_CallFunctionObjArgs(r6, c, 0)
+    return 1

@@ -1,8 +1,6 @@
-from _typeshed import AnyPath, StrPath
+from _typeshed import StrPath
 from threading import Thread
-from typing import IO, Any, Callable, Dict, Optional, Union
-
-from ConfigParser import RawConfigParser
+from typing import IO, Any, Dict, Optional, Union
 
 _Path = StrPath
 

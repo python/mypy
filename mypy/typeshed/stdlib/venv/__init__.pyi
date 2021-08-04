@@ -1,5 +1,5 @@
 import sys
-from _typeshed import AnyPath
+from _typeshed import StrOrBytesPath
 from types import SimpleNamespace
 from typing import Optional, Sequence
 
@@ -32,11 +32,13 @@ class EnvBuilder:
             with_pip: bool = ...,
             prompt: Optional[str] = ...,
         ) -> None: ...
-    def create(self, env_dir: AnyPath) -> None: ...
-    def clear_directory(self, path: AnyPath) -> None: ...  # undocumented
-    def ensure_directories(self, env_dir: AnyPath) -> SimpleNamespace: ...
+    def create(self, env_dir: StrOrBytesPath) -> None: ...
+    def clear_directory(self, path: StrOrBytesPath) -> None: ...  # undocumented
+    def ensure_directories(self, env_dir: StrOrBytesPath) -> SimpleNamespace: ...
     def create_configuration(self, context: SimpleNamespace) -> None: ...
-    def symlink_or_copy(self, src: AnyPath, dst: AnyPath, relative_symlinks_ok: bool = ...) -> None: ...  # undocumented
+    def symlink_or_copy(
+        self, src: StrOrBytesPath, dst: StrOrBytesPath, relative_symlinks_ok: bool = ...
+    ) -> None: ...  # undocumented
     def setup_python(self, context: SimpleNamespace) -> None: ...
     def _setup_pip(self, context: SimpleNamespace) -> None: ...  # undocumented
     def setup_scripts(self, context: SimpleNamespace) -> None: ...
@@ -48,7 +50,7 @@ class EnvBuilder:
 
 if sys.version_info >= (3, 9):
     def create(
-        env_dir: AnyPath,
+        env_dir: StrOrBytesPath,
         system_site_packages: bool = ...,
         clear: bool = ...,
         symlinks: bool = ...,
@@ -59,7 +61,7 @@ if sys.version_info >= (3, 9):
 
 else:
     def create(
-        env_dir: AnyPath,
+        env_dir: StrOrBytesPath,
         system_site_packages: bool = ...,
         clear: bool = ...,
         symlinks: bool = ...,

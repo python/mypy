@@ -2,7 +2,7 @@ import unittest
 
 from typing import List, Optional
 
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 
 from mypy.test.helpers import assert_string_arrays_equal
 
@@ -37,7 +37,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     """Test generation of fragments of C from individual IR ops."""
 
     def setUp(self) -> None:
-        self.registers = []  # type: List[Register]
+        self.registers: List[Register] = []
 
         def add_local(name: str, rtype: RType) -> Register:
             reg = Register(rtype, name)
@@ -236,8 +236,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                          """if (likely(PyLong_Check(cpy_r_m)))
                                 cpy_r_r0 = CPyTagged_FromObject(cpy_r_m);
                             else {
-                                CPy_TypeError("int", cpy_r_m);
-                                cpy_r_r0 = CPY_INT_TAG;
+                                CPy_TypeError("int", cpy_r_m); cpy_r_r0 = CPY_INT_TAG;
                             }
                          """)
 

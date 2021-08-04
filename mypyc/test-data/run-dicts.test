@@ -1,4 +1,4 @@
-# Dict test cases (compile and run)
+# Test cases for dicts (compile and run)
 
 [case testDictStuff]
 from typing import Dict, Any, List, Set, Tuple
@@ -196,7 +196,7 @@ else:
 
 [case testDictMethods]
 from collections import defaultdict
-from typing import Dict, Optional
+from typing import Dict, Optional, List, Set
 
 def test_dict_clear() -> None:
     d = {'a': 1, 'b': 2}
@@ -232,7 +232,7 @@ class MyDict(dict):
             return super().setdefault(k, v) + 10
 
 def test_dict_setdefault() -> None:
-    d: Dict[str, int] = {'a': 1, 'b': 2}
+    d: Dict[str, Optional[int]] = {'a': 1, 'b': 2}
     assert d.setdefault('a', 2) == 1
     assert d.setdefault('b', 2) == 2
     assert d.setdefault('c', 3) == 3
@@ -253,6 +253,32 @@ def test_dict_subclass_setdefault() -> None:
     assert d.setdefault('a') == 1
     assert d.setdefault('e') == None
     assert d.setdefault('e', 100) == 110
+
+def test_dict_empty_collection_setdefault() -> None:
+    d1: Dict[str, List[int]] = {'a': [1, 2, 3]}
+    assert d1.setdefault('a', []) == [1, 2, 3]
+    assert d1.setdefault('b', []) == []
+    assert 'b' in d1
+    d1.setdefault('b', []).append(3)
+    assert d1['b'] == [3]
+    assert d1.setdefault('c', [1]) == [1]
+
+    d2: Dict[str, Dict[str, int]] = {'a': {'a': 1}}
+    assert d2.setdefault('a', {}) == {'a': 1}
+    assert d2.setdefault('b', {}) == {}
+    assert 'b' in d2
+    d2.setdefault('b', {})['aa'] = 2
+    d2.setdefault('b', {})['bb'] = 3
+    assert d2['b'] == {'aa': 2, 'bb': 3}
+    assert d2.setdefault('c', {'cc': 1}) == {'cc': 1}
+
+    d3: Dict[str, Set[str]] = {'a': set('a')}
+    assert d3.setdefault('a', set()) == {'a'}
+    assert d3.setdefault('b', set()) == set()
+    d3.setdefault('b', set()).add('b')
+    d3.setdefault('b', set()).add('c')
+    assert d3['b'] == {'b', 'c'}
+    assert d3.setdefault('c', set('d')) == {'d'}
 
 [case testDictToBool]
 from typing import Dict, List

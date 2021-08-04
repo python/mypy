@@ -17,6 +17,14 @@ load_address_op(
     type=object_rprimitive,
     src='PyDict_Type')
 
+# Construct an empty dictionary via dict().
+function_op(
+    name='builtins.dict',
+    arg_types=[],
+    return_type=dict_rprimitive,
+    c_function_name='PyDict_New',
+    error_kind=ERR_MAGIC)
+
 # Construct an empty dictionary.
 dict_new_op = custom_op(
     arg_types=[],
@@ -119,7 +127,7 @@ method_op(
     error_kind=ERR_MAGIC)
 
 # dict.setdefault(key, default)
-method_op(
+dict_setdefault_op = method_op(
     name='setdefault',
     arg_types=[dict_rprimitive, object_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
@@ -133,6 +141,16 @@ method_op(
     return_type=object_rprimitive,
     c_function_name='CPyDict_SetDefaultWithNone',
     is_borrowed=True,
+    error_kind=ERR_MAGIC)
+
+# dict.setdefault(key, empty tuple/list/set)
+# The third argument marks the data type of the second argument.
+#     1: list    2: dict    3: set
+# Other number would lead to an error.
+dict_setdefault_spec_init_op = custom_op(
+    arg_types=[dict_rprimitive, object_rprimitive, c_int_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='CPyDict_SetDefaultWithEmptyDatatype',
     error_kind=ERR_MAGIC)
 
 # dict.keys()
@@ -240,7 +258,7 @@ dict_check_size_op = custom_op(
     c_function_name='CPyDict_CheckSize',
     error_kind=ERR_FALSE)
 
-dict_size_op = custom_op(
+dict_ssize_t_size_op = custom_op(
     arg_types=[dict_rprimitive],
     return_type=c_pyssize_t_rprimitive,
     c_function_name='PyDict_Size',

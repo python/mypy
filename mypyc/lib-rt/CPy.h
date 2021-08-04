@@ -318,6 +318,7 @@ PyObject *CPyObject_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
 // List operations
 
 
+PyObject *CPyList_Build(Py_ssize_t len, ...);
 PyObject *CPyList_GetItem(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemUnsafe(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index);
@@ -344,6 +345,7 @@ PyObject *CPyDict_Get(PyObject *dict, PyObject *key, PyObject *fallback);
 PyObject *CPyDict_GetWithNone(PyObject *dict, PyObject *key);
 PyObject *CPyDict_SetDefault(PyObject *dict, PyObject *key, PyObject *value);
 PyObject *CPyDict_SetDefaultWithNone(PyObject *dict, PyObject *key);
+PyObject *CPyDict_SetDefaultWithEmptyDatatype(PyObject *dict, PyObject *key, int data_type);
 PyObject *CPyDict_Build(Py_ssize_t size, ...);
 int CPyDict_Update(PyObject *dict, PyObject *stuff);
 int CPyDict_UpdateInDisplay(PyObject *dict, PyObject *stuff);
@@ -383,6 +385,7 @@ static inline char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {
 // Str operations
 
 
+PyObject *CPyStr_Build(Py_ssize_t len, ...);
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
 PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split);
 PyObject *CPyStr_Replace(PyObject *str, PyObject *old_substr, PyObject *new_substr, CPyTagged max_replace);
@@ -391,6 +394,7 @@ PyObject *CPyStr_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
 bool CPyStr_Startswith(PyObject *self, PyObject *subobj);
 bool CPyStr_Endswith(PyObject *self, PyObject *subobj);
 bool CPyStr_IsTrue(PyObject *obj);
+Py_ssize_t CPyStr_Size_size_t(PyObject *str);
 
 
 // Set operations
@@ -541,6 +545,11 @@ int CPyStatics_Initialize(PyObject **statics,
                           const double *complex_numbers,
                           const int *tuples);
 PyObject *CPy_Super(PyObject *builtins, PyObject *self);
+PyObject *CPy_CallReverseOpMethod(PyObject *left, PyObject *right, const char *op,
+                                  const char *method);
+
+PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
+                               PyObject *import_name, PyObject *as_name);
 
 #ifdef __cplusplus
 }

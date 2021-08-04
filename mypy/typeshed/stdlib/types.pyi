@@ -2,7 +2,23 @@ import sys
 import typing
 from importlib.abc import _LoaderProtocol
 from importlib.machinery import ModuleSpec
-from typing import Any, Awaitable, Callable, Dict, Generic, Iterable, Iterator, Mapping, Optional, Tuple, Type, TypeVar, overload
+from typing import (
+    Any,
+    AsyncGenerator,
+    Awaitable,
+    Callable,
+    Dict,
+    Generator,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    overload,
+)
 from typing_extensions import Literal, final
 
 # Note, all classes "defined" here require special handling.
@@ -12,14 +28,15 @@ _T_co = TypeVar("_T_co", covariant=True)
 _T_contra = TypeVar("_T_contra", contravariant=True)
 _KT = TypeVar("_KT")
 _VT = TypeVar("_VT")
+_V_co = TypeVar("_V_co", covariant=True)
 
 class _Cell:
     cell_contents: Any
 
 class FunctionType:
-    __closure__: Optional[Tuple[_Cell, ...]]
+    __closure__: Tuple[_Cell, ...] | None
     __code__: CodeType
-    __defaults__: Optional[Tuple[Any, ...]]
+    __defaults__: Tuple[Any, ...] | None
     __dict__: Dict[str, Any]
     __globals__: Dict[str, Any]
     __name__: str
@@ -30,12 +47,12 @@ class FunctionType:
         self,
         code: CodeType,
         globals: Dict[str, Any],
-        name: Optional[str] = ...,
-        argdefs: Optional[Tuple[object, ...]] = ...,
-        closure: Optional[Tuple[_Cell, ...]] = ...,
+        name: str | None = ...,
+        argdefs: Tuple[object, ...] | None = ...,
+        closure: Tuple[_Cell, ...] | None = ...,
     ) -> None: ...
     def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
-    def __get__(self, obj: Optional[object], type: Optional[type]) -> MethodType: ...
+    def __get__(self, obj: object | None, type: type | None) -> MethodType: ...
 
 LambdaType = FunctionType
 
@@ -142,28 +159,28 @@ class ModuleType:
     __spec__: Optional[ModuleSpec]
     def __init__(self, name: str, doc: Optional[str] = ...) -> None: ...
 
-class GeneratorType:
+class GeneratorType(Generator[_T_co, _T_contra, _V_co]):
     gi_code: CodeType
     gi_frame: FrameType
     gi_running: bool
-    gi_yieldfrom: Optional[GeneratorType]
-    def __iter__(self) -> GeneratorType: ...
-    def __next__(self) -> Any: ...
+    gi_yieldfrom: Optional[GeneratorType[_T_co, _T_contra, Any]]
+    def __iter__(self) -> GeneratorType[_T_co, _T_contra, _V_co]: ...
+    def __next__(self) -> _T_co: ...
     def close(self) -> None: ...
-    def send(self, __arg: Any) -> Any: ...
+    def send(self, __arg: _T_contra) -> _T_co: ...
     @overload
     def throw(
         self, __typ: Type[BaseException], __val: typing.Union[BaseException, object] = ..., __tb: Optional[TracebackType] = ...
-    ) -> Any: ...
+    ) -> _T_co: ...
     @overload
-    def throw(self, __typ: BaseException, __val: None = ..., __tb: Optional[TracebackType] = ...) -> Any: ...
+    def throw(self, __typ: BaseException, __val: None = ..., __tb: Optional[TracebackType] = ...) -> _T_co: ...
 
-class AsyncGeneratorType(Generic[_T_co, _T_contra]):
+class AsyncGeneratorType(AsyncGenerator[_T_co, _T_contra]):
     ag_await: Optional[Awaitable[Any]]
     ag_frame: FrameType
     ag_running: bool
     ag_code: CodeType
-    def __aiter__(self) -> Awaitable[AsyncGeneratorType[_T_co, _T_contra]]: ...
+    def __aiter__(self) -> AsyncGeneratorType[_T_co, _T_contra]: ...
     def __anext__(self) -> Awaitable[_T_co]: ...
     def asend(self, __val: _T_contra) -> Awaitable[_T_co]: ...
     @overload
@@ -205,10 +222,12 @@ class _StaticFunctionType:
     def __get__(self, obj: Optional[object], type: Optional[type]) -> FunctionType: ...
 
 class MethodType:
+    __closure__: Optional[Tuple[_Cell, ...]]  # inherited from the added function
+    __defaults__: Optional[Tuple[Any, ...]]  # inherited from the added function
     __func__: _StaticFunctionType
     __self__: object
-    __name__: str
-    __qualname__: str
+    __name__: str  # inherited from the added function
+    __qualname__: str  # inherited from the added function
     def __init__(self, func: Callable[..., Any], obj: object) -> None: ...
     def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
 
@@ -335,3 +354,5 @@ if sys.version_info >= (3, 10):
     NotImplementedType = _NotImplementedType  # noqa F811 from builtins
     class Union:
         __args__: Tuple[Any, ...]
+        def __or__(self, obj: Any) -> Union: ...
+        def __ror__(self, obj: Any) -> Union: ...

@@ -797,7 +797,7 @@ t + 1
 _program.py:3: error: No overload variant of "__add__" of "tuple" matches argument type "int"
 _program.py:3: note: Possible overload variants:
 _program.py:3: note:     def __add__(self, Tuple[str, ...]) -> Tuple[str, ...]
-_program.py:3: note:     def __add__(self, Tuple[Any, ...]) -> Tuple[Any, ...]
+_program.py:3: note:     def [_T] __add__(self, Tuple[_T, ...]) -> Tuple[Union[str, _T], ...]
 
 [case testMultiplyTupleByIntegerReverse]
 n = 4
@@ -807,7 +807,7 @@ t + 1
 _program.py:3: error: No overload variant of "__add__" of "tuple" matches argument type "int"
 _program.py:3: note: Possible overload variants:
 _program.py:3: note:     def __add__(self, Tuple[str, ...]) -> Tuple[str, ...]
-_program.py:3: note:     def __add__(self, Tuple[Any, ...]) -> Tuple[Any, ...]
+_program.py:3: note:     def [_T] __add__(self, Tuple[_T, ...]) -> Tuple[Union[str, _T], ...]
 
 [case testDictWithKeywordArgs]
 from typing import Dict, Any, List
@@ -1005,7 +1005,7 @@ re.subn(bpat, b'', b'')[0] + b''
 re.subn(bre, lambda m: b'', b'')[0] + b''
 re.subn(bpat, lambda m: b'', b'')[0] + b''
 [out]
-_program.py:7: error: Value of type variable "AnyStr" of "search" cannot be "object"
+_program.py:7: error: Value of type variable "AnyStr" of "search" cannot be "Sequence[object]"
 _program.py:9: error: Cannot infer type argument 1 of "search"
 
 [case testReModuleString]
@@ -1029,7 +1029,7 @@ re.subn(spat, '', '')[0] + ''
 re.subn(sre, lambda m: '', '')[0] + ''
 re.subn(spat, lambda m: '', '')[0] + ''
 [out]
-_program.py:7: error: Value of type variable "AnyStr" of "search" cannot be "object"
+_program.py:7: error: Value of type variable "AnyStr" of "search" cannot be "Sequence[object]"
 _program.py:9: error: Cannot infer type argument 1 of "search"
 
 [case testListSetitemTuple]
@@ -1508,3 +1508,26 @@ x = 0
 [out]
 mypy: "tmp/typing.py" shadows library module "typing"
 note: A user-defined top-level module with name "typing" is not supported
+
+[case testIgnoreImportIfNoPython3StubAvailable]
+# flags: --ignore-missing-imports
+import scribe  # No Python 3 stubs available for scribe
+from scribe import x
+import maxminddb  # Python 3 stubs available for maxminddb
+import foobar_asdf
+[out]
+_testIgnoreImportIfNoPython3StubAvailable.py:4: error: Library stubs not installed for "maxminddb" (or incompatible with Python 3.6)
+_testIgnoreImportIfNoPython3StubAvailable.py:4: note: Hint: "python3 -m pip install types-maxminddb"
+_testIgnoreImportIfNoPython3StubAvailable.py:4: note: (or run "mypy --install-types" to install all missing stub packages)
+_testIgnoreImportIfNoPython3StubAvailable.py:4: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+[case testNoPython3StubAvailable]
+import scribe
+from scribe import x
+import maxminddb
+[out]
+_testNoPython3StubAvailable.py:1: error: Cannot find implementation or library stub for module named "scribe"
+_testNoPython3StubAvailable.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+_testNoPython3StubAvailable.py:3: error: Library stubs not installed for "maxminddb" (or incompatible with Python 3.6)
+_testNoPython3StubAvailable.py:3: note: Hint: "python3 -m pip install types-maxminddb"
+_testNoPython3StubAvailable.py:3: note: (or run "mypy --install-types" to install all missing stub packages)

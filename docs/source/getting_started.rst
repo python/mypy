@@ -12,7 +12,7 @@ may not make much sense otherwise.
 Installing and running mypy
 ***************************
 
-Mypy requires Python 3.5 or later to run.  Once you've
+Mypy requires Python 3.6 or later to run.  Once you've
 `installed Python 3 <https://www.python.org/downloads/>`_,
 install mypy using pip:
 
@@ -351,7 +351,7 @@ additional stubs using pip (see :ref:`fix-missing-imports` and
 :ref:`installed-packages` for the details). For example, you can install
 the stubs for the ``requests`` package like this:
 
-.. code-block::
+.. code-block:: shell
 
   python3 -m pip install types-requests
 

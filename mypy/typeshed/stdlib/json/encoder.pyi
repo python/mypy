@@ -1,5 +1,8 @@
 from typing import Any, Callable, Iterator, Optional, Tuple
 
+def py_encode_basestring(s: str) -> str: ...  # undocumented
+def py_encode_basestring_ascii(s: str) -> str: ...  # undocumented
+
 class JSONEncoder:
     item_separator: str
     key_separator: str

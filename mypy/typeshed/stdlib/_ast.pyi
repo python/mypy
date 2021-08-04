@@ -1,6 +1,7 @@
 import sys
 import typing
 from typing import Any, ClassVar, Optional
+from typing_extensions import Literal
 
 PyCF_ONLY_AST: int
 if sys.version_info >= (3, 8):
@@ -390,7 +391,7 @@ if sys.version_info >= (3, 10):
     class MatchValue(pattern):
         value: expr
     class MatchSingleton(pattern):
-        value: Optional[bool]
+        value: Literal[True, False, None]
     class MatchSequence(pattern):
         patterns: typing.List[pattern]
     class MatchStar(pattern):

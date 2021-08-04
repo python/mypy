@@ -190,7 +190,7 @@ def f() -> None: pass
 # flags: --disallow-subclassing-any
 from typing import Any
 FakeClass = None  # type: Any
-class Foo(FakeClass): pass  # E: Class cannot subclass 'FakeClass' (has type 'Any')
+class Foo(FakeClass): pass  # E: Class cannot subclass "FakeClass" (has type "Any")
 [out]
 
 [case testSubclassingAnyMultipleBaseClasses]
@@ -198,7 +198,7 @@ class Foo(FakeClass): pass  # E: Class cannot subclass 'FakeClass' (has type 'An
 from typing import Any
 FakeClass = None  # type: Any
 class ActualClass: pass
-class Foo(ActualClass, FakeClass): pass  # E: Class cannot subclass 'FakeClass' (has type 'Any')
+class Foo(ActualClass, FakeClass): pass  # E: Class cannot subclass "FakeClass" (has type "Any")
 [out]
 
 [case testSubclassingAnySilentImports]
@@ -213,7 +213,7 @@ class Foo(BaseClass): pass
 class BaseClass: pass
 
 [out]
-tmp/main.py:2: error: Class cannot subclass 'BaseClass' (has type 'Any')
+tmp/main.py:2: error: Class cannot subclass "BaseClass" (has type "Any")
 
 [case testSubclassingAnySilentImports2]
 # flags: --disallow-subclassing-any --follow-imports=skip
@@ -227,7 +227,7 @@ class Foo(ignored_module.BaseClass): pass
 class BaseClass: pass
 
 [out]
-tmp/main.py:2: error: Class cannot subclass 'BaseClass' (has type 'Any')
+tmp/main.py:2: error: Class cannot subclass "BaseClass" (has type "Any")
 
 [case testWarnNoReturnIgnoresTrivialFunctions]
 # flags: --warn-no-return
@@ -461,7 +461,7 @@ x + ""
 [file mod.py]
 deliberate syntax error
 [out]
-main:2: error: Import of 'mod' ignored
+main:2: error: Import of "mod" ignored
 main:2: note: (Using --follow-imports=error, module not passed on command line)
 
 [case testIgnoreMissingImportsFalse]
@@ -871,7 +871,7 @@ main:5: error: Argument 1 to "foo" becomes "Callable[[], Any]" due to an unfollo
 # flags: --ignore-missing-imports --disallow-any-unimported --disallow-subclassing-any
 from typing import Any
 
-class C(Any): # E: Class cannot subclass 'Any' (has type 'Any')
+class C(Any): # E: Class cannot subclass "Any" (has type "Any")
     pass
 
 [case testDisallowImplicitAnyVarDeclaration]
@@ -1479,7 +1479,7 @@ a = 5
 [file other_module_2.py]
 from other_module_1 import a
 [out]
-main:2: error: Module 'other_module_2' does not explicitly export attribute 'a'; implicit reexport disabled
+main:2: error: Module "other_module_2" does not explicitly export attribute "a"; implicit reexport disabled
 
 [case testNoImplicitReexportRespectsAll]
 # flags: --no-implicit-reexport
@@ -1493,7 +1493,7 @@ from other_module_1 import a, b
 __all__ = ('b',)
 [builtins fixtures/tuple.pyi]
 [out]
-main:2: error: Module 'other_module_2' does not explicitly export attribute 'a'; implicit reexport disabled
+main:2: error: Module "other_module_2" does not explicitly export attribute "a"; implicit reexport disabled
 
 [case testNoImplicitReexportStarConsideredImplicit]
 # flags: --no-implicit-reexport
@@ -1503,7 +1503,7 @@ a = 5
 [file other_module_2.py]
 from other_module_1 import *
 [out]
-main:2: error: Module 'other_module_2' does not explicitly export attribute 'a'; implicit reexport disabled
+main:2: error: Module "other_module_2" does not explicitly export attribute "a"; implicit reexport disabled
 
 [case testNoImplicitReexportStarCanBeReexportedWithAll]
 # flags: --no-implicit-reexport
@@ -1517,7 +1517,7 @@ from other_module_1 import *
 __all__ = ('b',)
 [builtins fixtures/tuple.pyi]
 [out]
-main:2: error: Module 'other_module_2' does not explicitly export attribute 'a'; implicit reexport disabled
+main:2: error: Module "other_module_2" does not explicitly export attribute "a"; implicit reexport disabled
 
 [case textNoImplicitReexportSuggestions]
 # flags: --no-implicit-reexport
@@ -1529,7 +1529,7 @@ attr_2 = 6
 [file other_module_2.py]
 from other_module_1 import attr_1, attr_2
 [out]
-main:2: error: Module 'other_module_2' does not explicitly export attribute 'attr_1'; implicit reexport disabled
+main:2: error: Module "other_module_2" does not explicitly export attribute "attr_1"; implicit reexport disabled
 
 [case testNoImplicitReexportMypyIni]
 # flags: --config-file tmp/mypy.ini
@@ -1797,7 +1797,7 @@ from typing import Any
 
 x = None  # type: Any
 
-class ShouldNotBeFine(x): ...  # E: Class cannot subclass 'x' (has type 'Any')
+class ShouldNotBeFine(x): ...  # E: Class cannot subclass "x" (has type "Any")
 
 [file mypy.ini]
 \[mypy]
@@ -1823,7 +1823,7 @@ from typing import Any
 
 x = None  # type: Any
 
-class ShouldNotBeFine(x): ...  # E: Class cannot subclass 'x' (has type 'Any')
+class ShouldNotBeFine(x): ...  # E: Class cannot subclass "x" (has type "Any")
 
 [file pyproject.toml]
 \[tool.mypy]

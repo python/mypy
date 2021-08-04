@@ -62,8 +62,8 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
     # apply here, and are handled in a different way.
     if ir.is_ext_class:
         # If the class is not decorated, generate an extension class for it.
-        type_obj = allocate_class(builder, cdef)  # type: Optional[Value]
-        non_ext = None  # type: Optional[NonExtClassInfo]
+        type_obj: Optional[Value] = allocate_class(builder, cdef)
+        non_ext: Optional[NonExtClassInfo] = None
         dataclass_non_ext = dataclass_non_ext_info(builder, cdef)
     else:
         non_ext_bases = populate_non_ext_bases(builder, cdef)
@@ -75,9 +75,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
         non_ext_anns = builder.call_c(dict_new_op, [], cdef.line)
         non_ext = NonExtClassInfo(non_ext_dict, non_ext_bases, non_ext_anns, non_ext_metaclass)
         dataclass_non_ext = None
-        type_obj = None
-
-    attrs_to_cache = []  # type: List[Tuple[Lvalue, RType]]
+    attrs_to_cache: List[Tuple[Lvalue, RType]] = []
 
     for stmt in cdef.defs.body:
         if isinstance(stmt, OverloadedFuncDef) and stmt.is_property:
@@ -155,7 +153,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
                            non_ext_class
                        ], cdef.line)
 
-        # Cache any cachable class attributes
+        # Cache any cacheable class attributes
         cache_class_attrs(builder, attrs_to_cache, cdef)
 
 
@@ -202,10 +200,10 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
 
 # Mypy uses these internally as base classes of TypedDict classes. These are
 # lies and don't have any runtime equivalent.
-MAGIC_TYPED_DICT_CLASSES = (
+MAGIC_TYPED_DICT_CLASSES: Final[Tuple[str, ...]] = (
     'typing._TypedDict',
     'typing_extensions._TypedDict',
-)  # type: Final[Tuple[str, ...]]
+)
 
 
 def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
@@ -219,7 +217,11 @@ def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
     for cls in cdef.info.mro[1:]:
         if cls.fullname == 'builtins.object':
             continue
-        if is_named_tuple and cls.fullname in ('typing.Sequence', 'typing.Iterable'):
+        if is_named_tuple and cls.fullname in ('typing.Sequence',
+                                               'typing.Iterable',
+                                               'typing.Collection',
+                                               'typing.Reversible',
+                                               'typing.Container'):
             # HAX: Synthesized base classes added by mypy don't exist at runtime, so skip them.
             #      This could break if they were added explicitly, though...
             continue
@@ -362,7 +364,12 @@ def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef) -> None:
                     and isinstance(stmt.lvalues[0], NameExpr)
                     and not is_class_var(stmt.lvalues[0])
                     and not isinstance(stmt.rvalue, TempNode)):
-                if stmt.lvalues[0].name == '__slots__':
+                name = stmt.lvalues[0].name
+                if name == '__slots__':
+                    continue
+
+                if name == '__deletable__':
+                    check_deletable_declaration(builder, cls, stmt.line)
                     continue
 
                 # Skip type annotated assignments in dataclasses
@@ -396,6 +403,22 @@ def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef) -> None:
     builder.add(Return(builder.true()))
 
     builder.leave_method()
+
+
+def check_deletable_declaration(builder: IRBuilder, cl: ClassIR, line: int) -> None:
+    for attr in cl.deletable:
+        if attr not in cl.attributes:
+            if not cl.has_attr(attr):
+                builder.error('Attribute "{}" not defined'.format(attr), line)
+                continue
+            for base in cl.mro:
+                if attr in base.property_types:
+                    builder.error('Cannot make property "{}" deletable'.format(attr), line)
+                    break
+            else:
+                _, base = cl.attr_details(attr)
+                builder.error(('Attribute "{}" not defined in "{}" ' +
+                               '(defined in "{}")').format(attr, cl.name, base.name), line)
 
 
 def create_ne_from_eq(builder: IRBuilder, cdef: ClassDef) -> None:

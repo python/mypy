@@ -14,13 +14,38 @@ nested_scopes: _Feature
 print_function: _Feature
 unicode_literals: _Feature
 with_statement: _Feature
-if sys.version_info >= (3, 0):
-    barry_as_FLUFL: _Feature
-
-if sys.version_info >= (3, 5):
-    generator_stop: _Feature
+barry_as_FLUFL: _Feature
+generator_stop: _Feature
 
 if sys.version_info >= (3, 7):
     annotations: _Feature
 
 all_feature_names: List[str]  # undocumented
+
+if sys.version_info >= (3, 7):
+    __all__ = [
+        "all_feature_names",
+        "absolute_import",
+        "division",
+        "generators",
+        "nested_scopes",
+        "print_function",
+        "unicode_literals",
+        "with_statement",
+        "barry_as_FLUFL",
+        "generator_stop",
+        "annotations",
+    ]
+else:
+    __all__ = [
+        "all_feature_names",
+        "absolute_import",
+        "division",
+        "generators",
+        "nested_scopes",
+        "print_function",
+        "unicode_literals",
+        "with_statement",
+        "barry_as_FLUFL",
+        "generator_stop",
+    ]

@@ -51,8 +51,8 @@ def collect_memory_stats() -> Tuple[Dict[str, int],
                 if isinstance(x, tuple):
                     inferred[id(x)] = '%s (tuple)' % n
 
-    freqs = {}  # type: Dict[str, int]
-    memuse = {}  # type: Dict[str, int]
+    freqs: Dict[str, int] = {}
+    memuse: Dict[str, int] = {}
     for obj in objs:
         if id(obj) in inferred:
             name = inferred[id(obj)]
