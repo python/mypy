@@ -512,7 +512,7 @@ def true_or_false(t: Type) -> ProperType:
 
 def erase_def_to_union_or_bound(tdef: TypeVarLikeDef) -> Type:
     # TODO(shantanu): fix for ParamSpecDef
-    if not isinstance(tdef, TypeVarDef):
+    if isinstance(tdef, ParamSpecDef):
         return AnyType(TypeOfAny.from_error)
     assert isinstance(tdef, TypeVarDef)
     if tdef.values:

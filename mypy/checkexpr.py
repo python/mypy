@@ -4481,7 +4481,7 @@ def merge_typevars_in_callables_by_name(
                 name = tvdef.fullname
                 if name not in unique_typevars:
                     # TODO(shantanu): fix for ParamSpecDef
-                    if not isinstance(tvdef, TypeVarDef):
+                    if isinstance(tvdef, ParamSpecDef):
                         continue
                     assert isinstance(tvdef, TypeVarDef)
                     unique_typevars[name] = TypeVarType(tvdef)
