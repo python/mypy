@@ -1,32 +1,41 @@
 import sys
-from _typeshed import AnyPath, StrPath
+from _typeshed import StrOrBytesPath, StrPath
+from collections.abc import Callable
+from configparser import RawConfigParser
 from threading import Thread
-from typing import IO, Any, Callable, Dict, Optional, Union
+from typing import IO, Any, Optional, Pattern, Union
 
-if sys.version_info >= (3,):
-    from configparser import RawConfigParser
+if sys.version_info >= (3, 8):
+    from typing import Literal
 else:
-    from ConfigParser import RawConfigParser
+    from typing_extensions import Literal
 
 if sys.version_info >= (3, 7):
-    _Path = AnyPath
+    _Path = StrOrBytesPath
 else:
     _Path = StrPath
 
-def dictConfig(config: Dict[str, Any]) -> None: ...
+DEFAULT_LOGGING_CONFIG_PORT: int
+RESET_ERROR: int  # undocumented
+IDENTIFIER: Pattern[str]  # undocumented
 
-if sys.version_info >= (3, 4):
+def dictConfig(config: dict[str, Any]) -> None: ...
+
+if sys.version_info >= (3, 10):
     def fileConfig(
         fname: Union[_Path, IO[str], RawConfigParser],
-        defaults: Optional[Dict[str, str]] = ...,
+        defaults: Optional[dict[str, str]] = ...,
         disable_existing_loggers: bool = ...,
+        encoding: Optional[str] = ...,
     ) -> None: ...
-    def listen(port: int = ..., verify: Optional[Callable[[bytes], Optional[bytes]]] = ...) -> Thread: ...
 
 else:
     def fileConfig(
-        fname: Union[str, IO[str]], defaults: Optional[Dict[str, str]] = ..., disable_existing_loggers: bool = ...
+        fname: Union[_Path, IO[str], RawConfigParser],
+        defaults: Optional[dict[str, str]] = ...,
+        disable_existing_loggers: bool = ...,
     ) -> None: ...
-    def listen(port: int = ...) -> Thread: ...
 
+def valid_ident(s: str) -> Literal[True]: ...  # undocumented
+def listen(port: int = ..., verify: Optional[Callable[[bytes], Optional[bytes]]] = ...) -> Thread: ...
 def stopListening() -> None: ...

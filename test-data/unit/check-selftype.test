@@ -366,7 +366,7 @@ reveal_type(x.f)  # N: Revealed type is "builtins.int"
 [builtins fixtures/property.pyi]
 
 [case testSelfTypeProperSupertypeAttribute]
-from typing import Callable, TypeVar
+from typing import Callable, TypeVar, ClassVar
 class K: pass
 T = TypeVar('T', bound=K)
 class A(K):
@@ -374,8 +374,8 @@ class A(K):
     def g(self: K) -> int: return 0
     @property
     def gt(self: T) -> T: return self
-    f: Callable[[object], int]
-    ft: Callable[[T], T]
+    f: ClassVar[Callable[[object], int]]
+    ft: ClassVar[Callable[[T], T]]
 
 class B(A):
     pass
@@ -392,15 +392,15 @@ reveal_type(B().ft())  # N: Revealed type is "__main__.B*"
 [builtins fixtures/property.pyi]
 
 [case testSelfTypeProperSupertypeAttributeTuple]
-from typing import Callable, TypeVar, Tuple
+from typing import Callable, TypeVar, Tuple, ClassVar
 T = TypeVar('T')
 class A(Tuple[int, int]):
     @property
     def g(self: object) -> int: return 0
     @property
     def gt(self: T) -> T: return self
-    f: Callable[[object], int]
-    ft: Callable[[T], T]
+    f: ClassVar[Callable[[object], int]]
+    ft: ClassVar[Callable[[T], T]]
 
 class B(A):
     pass
@@ -450,7 +450,7 @@ reveal_type(X1.ft())  # N: Revealed type is "Type[__main__.X]"
 [builtins fixtures/property.pyi]
 
 [case testSelfTypeProperSupertypeAttributeGeneric]
-from typing import Callable, TypeVar, Generic
+from typing import Callable, TypeVar, Generic, ClassVar
 Q = TypeVar('Q', covariant=True)
 class K(Generic[Q]):
     q: Q
@@ -460,8 +460,8 @@ class A(K[Q]):
     def g(self: K[object]) -> int: return 0
     @property
     def gt(self: K[T]) -> T: return self.q
-    f: Callable[[object], int]
-    ft: Callable[[T], T]
+    f: ClassVar[Callable[[object], int]]
+    ft: ClassVar[Callable[[T], T]]
 
 class B(A[Q]):
     pass

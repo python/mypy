@@ -1,4 +1,4 @@
-from typing import Any, Callable, Generic, Iterable, Iterator, Optional, Sequence, Tuple, TypeVar, Union, overload
+from typing import Any, Callable, Generic, Iterable, Iterator, Optional, Sequence, Tuple, TypeVar, overload
 
 _T = TypeVar("_T")
 _S = TypeVar("_S")
@@ -38,6 +38,7 @@ _T3 = TypeVar("_T3")
 _T4 = TypeVar("_T4")
 _T5 = TypeVar("_T5")
 _T6 = TypeVar("_T6")
+
 @overload
 def imap(func: Callable[[_T1], _S], iter1: Iterable[_T1]) -> Iterator[_S]: ...
 @overload

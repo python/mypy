@@ -23,13 +23,13 @@ from mypy.fscache import FileSystemCache
 from mypy.errors import CompileError
 from mypy.errorcodes import error_codes
 from mypy.options import Options, BuildType
-from mypy.config_parser import parse_version, parse_config_file
+from mypy.config_parser import get_config_module_names, parse_version, parse_config_file
 from mypy.split_namespace import SplitNamespace
 
 from mypy.version import __version__
 
-orig_stat = os.stat  # type: Final
-MEM_PROFILE = False  # type: Final  # If True, dump memory profile
+orig_stat: Final = os.stat
+MEM_PROFILE: Final = False  # If True, dump memory profile
 
 
 def stat_proxy(path: str) -> os.stat_result:
@@ -67,46 +67,34 @@ def main(script_path: Optional[str],
     sources, options = process_options(args, stdout=stdout, stderr=stderr,
                                        fscache=fscache)
 
-    messages = []
     formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
 
     if options.install_types and (stdout is not sys.stdout or stderr is not sys.stderr):
         # Since --install-types performs user input, we want regular stdout and stderr.
-        fail("--install-types not supported in this mode of running mypy", stderr, options)
+        fail("error: --install-types not supported in this mode of running mypy", stderr, options)
+
+    if options.non_interactive and not options.install_types:
+        fail("error: --non-interactive is only supported with --install-types", stderr, options)
+
+    if options.install_types and not options.incremental:
+        fail("error: --install-types not supported with incremental mode disabled",
+             stderr, options)
 
     if options.install_types and not sources:
-        install_types(options.cache_dir, formatter)
+        install_types(options.cache_dir, formatter, non_interactive=options.non_interactive)
         return
 
-    def flush_errors(new_messages: List[str], serious: bool) -> None:
-        if options.pretty:
-            new_messages = formatter.fit_in_terminal(new_messages)
-        messages.extend(new_messages)
-        f = stderr if serious else stdout
-        for msg in new_messages:
-            if options.color_output:
-                msg = formatter.colorize(msg)
-            f.write(msg + '\n')
-        f.flush()
+    res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
 
-    serious = False
-    blockers = False
-    res = None
-    try:
-        # Keep a dummy reference (res) for memory profiling below, as otherwise
-        # the result could be freed.
-        res = build.build(sources, options, None, flush_errors, fscache, stdout, stderr)
-    except CompileError as e:
-        blockers = True
-        if not e.use_stdout:
-            serious = True
-    if options.warn_unused_configs and options.unused_configs and not options.incremental:
-        print("Warning: unused section(s) in %s: %s" %
-              (options.config_file,
-               ", ".join("[mypy-%s]" % glob for glob in options.per_module_options.keys()
-                         if glob in options.unused_configs)),
-              file=stderr)
-    maybe_write_junit_xml(time.time() - t0, serious, messages, options)
+    if options.non_interactive:
+        missing_pkgs = read_types_packages_to_install(options.cache_dir, after_run=True)
+        if missing_pkgs:
+            # Install missing type packages and rerun build.
+            install_types(options.cache_dir, formatter, after_run=True, non_interactive=True)
+            fscache.flush()
+            print()
+            res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
+        show_messages(messages, stderr, formatter, options)
 
     if MEM_PROFILE:
         from mypy.memprofile import print_memory_profile
@@ -128,9 +116,13 @@ def main(script_path: Optional[str],
             stdout.write(formatter.format_success(len(sources), options.color_output) + '\n')
         stdout.flush()
 
-    if options.install_types:
-        install_types(options.cache_dir, formatter, after_run=True)
-        return
+    if options.install_types and not options.non_interactive:
+        result = install_types(options.cache_dir, formatter, after_run=True,
+                               non_interactive=False)
+        if result:
+            print()
+            print("note: Run mypy again for up-to-date results with installed types")
+            code = 2
 
     if options.fast_exit:
         # Exit without freeing objects -- it's faster.
@@ -144,6 +136,62 @@ def main(script_path: Optional[str],
     list([res])
 
 
+def run_build(sources: List[BuildSource],
+              options: Options,
+              fscache: FileSystemCache,
+              t0: float,
+              stdout: TextIO,
+              stderr: TextIO) -> Tuple[Optional[build.BuildResult], List[str], bool]:
+    formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
+
+    messages = []
+
+    def flush_errors(new_messages: List[str], serious: bool) -> None:
+        if options.pretty:
+            new_messages = formatter.fit_in_terminal(new_messages)
+        messages.extend(new_messages)
+        if options.non_interactive:
+            # Collect messages and possibly show them later.
+            return
+        f = stderr if serious else stdout
+        show_messages(new_messages, f, formatter, options)
+
+    serious = False
+    blockers = False
+    res = None
+    try:
+        # Keep a dummy reference (res) for memory profiling afterwards, as otherwise
+        # the result could be freed.
+        res = build.build(sources, options, None, flush_errors, fscache, stdout, stderr)
+    except CompileError as e:
+        blockers = True
+        if not e.use_stdout:
+            serious = True
+    if (options.warn_unused_configs
+            and options.unused_configs
+            and not options.incremental
+            and not options.non_interactive):
+        print("Warning: unused section(s) in %s: %s" %
+              (options.config_file,
+              get_config_module_names(options.config_file,
+                                      [glob for glob in options.per_module_options.keys()
+                                      if glob in options.unused_configs])),
+              file=stderr)
+    maybe_write_junit_xml(time.time() - t0, serious, messages, options)
+    return res, messages, blockers
+
+
+def show_messages(messages: List[str],
+                  f: TextIO,
+                  formatter: util.FancyFormatter,
+                  options: Options) -> None:
+    for msg in messages:
+        if options.color_output:
+            msg = formatter.colorize(msg)
+        f.write(msg + '\n')
+    f.flush()
+
+
 # Make the help output a little less jarring.
 class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
     def __init__(self, prog: str) -> None:
@@ -154,17 +202,17 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
             # Assume we want to manually format the text
             return super()._fill_text(text, width, indent)
         else:
-            # Assume we want argparse to manage wrapping, indentating, and
+            # Assume we want argparse to manage wrapping, indenting, and
             # formatting the text for us.
             return argparse.HelpFormatter._fill_text(self, text, width, indent)
 
 
 # Define pairs of flag prefixes with inverse meaning.
-flag_prefix_pairs = [
+flag_prefix_pairs: Final = [
     ('allow', 'disallow'),
     ('show', 'hide'),
-]  # type: Final
-flag_prefix_map = {}  # type: Final[Dict[str, str]]
+]
+flag_prefix_map: Final[Dict[str, str]] = {}
 for a, b in flag_prefix_pairs:
     flag_prefix_map[a] = b
     flag_prefix_map[b] = a
@@ -189,8 +237,8 @@ class PythonExecutableInferenceError(Exception):
 def python_executable_prefix(v: str) -> List[str]:
     if sys.platform == 'win32':
         # on Windows, all Python executables are named `python`. To handle this, there
-        # is the `py` launcher, which can be passed a version e.g. `py -3.5`, and it will
-        # execute an installed Python 3.5 interpreter. See also:
+        # is the `py` launcher, which can be passed a version e.g. `py -3.8`, and it will
+        # execute an installed Python 3.8 interpreter. See also:
         # https://docs.python.org/3/using/windows.html#python-launcher-for-windows
         return ['py', '-{}'.format(v)]
     else:
@@ -234,11 +282,11 @@ def infer_python_executable(options: Options,
     options.python_executable = python_executable
 
 
-HEADER = """%(prog)s [-h] [-v] [-V] [more options; see below]
-            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]"""  # type: Final
+HEADER: Final = """%(prog)s [-h] [-v] [-V] [more options; see below]
+            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]"""
 
 
-DESCRIPTION = """
+DESCRIPTION: Final = """
 Mypy is a program that will type check your Python code.
 
 Pass in any files or folders you want to type check. Mypy will
@@ -259,11 +307,11 @@ You can also use a config file to configure mypy instead of using
 command line flags. For more details, see:
 
 - https://mypy.readthedocs.io/en/stable/config_file.html
-"""  # type: Final
+"""
 
-FOOTER = """Environment variables:
+FOOTER: Final = """Environment variables:
   Define MYPYPATH for additional module search path entries.
-  Define MYPY_CACHE_DIR to override configuration cache_dir path."""  # type: Final
+  Define MYPY_CACHE_DIR to override configuration cache_dir path."""
 
 
 class CapturableArgumentParser(argparse.ArgumentParser):
@@ -386,8 +434,8 @@ def process_options(args: List[str],
                                       stdout=stdout,
                                       stderr=stderr)
 
-    strict_flag_names = []  # type: List[str]
-    strict_flag_assignments = []  # type: List[Tuple[str, bool]]
+    strict_flag_names: List[str] = []
+    strict_flag_assignments: List[Tuple[str, bool]] = []
 
     def add_invertible_flag(flag: str,
                             *,
@@ -452,7 +500,8 @@ def process_options(args: List[str],
         help="Configuration file, must have a [mypy] section "
              "(defaults to {})".format(', '.join(defaults.CONFIG_FILES)))
     add_invertible_flag('--warn-unused-configs', default=False, strict_flag=True,
-                        help="Warn about unused '[mypy-<pattern>]' config sections",
+                        help="Warn about unused '[mypy-<pattern>]' or '[[tool.mypy.overrides]]' "
+                             "config sections",
                         group=config_group)
 
     imports_group = parser.add_argument_group(
@@ -661,6 +710,8 @@ def process_options(args: List[str],
     add_invertible_flag('--show-absolute-path', default=False,
                         help="Show absolute paths to files",
                         group=error_group)
+    error_group.add_argument('--soft-error-limit', default=defaults.MANY_ERRORS_THRESHOLD,
+                             type=int, dest="many_errors_threshold", help=argparse.SUPPRESS)
 
     incremental_group = parser.add_argument_group(
         title='Incremental mode',
@@ -747,6 +798,10 @@ def process_options(args: List[str],
     add_invertible_flag('--install-types', default=False, strict_flag=False,
                         help="Install detected missing library stub packages using pip",
                         group=other_group)
+    add_invertible_flag('--non-interactive', default=False, strict_flag=False,
+                        help=("Install stubs without asking for confirmation and hide " +
+                              "errors, with --install-types"),
+                        group=other_group, inverse="--interactive")
 
     if server_options:
         # TODO: This flag is superfluous; remove after a short transition (2018-03-16)
@@ -797,8 +852,6 @@ def process_options(args: List[str],
     # Must be followed by another flag or by '--' (and then only file args may follow).
     parser.add_argument('--cache-map', nargs='+', dest='special-opts:cache_map',
                         help=argparse.SUPPRESS)
-    # PEP 612 support is a work in progress, hide it from users
-    parser.add_argument('--wip-pep-612', action="store_true", help=argparse.SUPPRESS)
 
     # options specifying code to check
     code_group = parser.add_argument_group(
@@ -954,6 +1007,11 @@ def process_options(args: List[str],
 
         process_cache_map(parser, special_opts, options)
 
+    # An explicitly specified cache_fine_grained implies local_partial_types
+    # (because otherwise the cache is not compatiable with dmypy)
+    if options.cache_fine_grained:
+        options.local_partial_types = True
+
     # Let logical_deps imply cache_fine_grained (otherwise the former is useless).
     if options.logical_deps:
         options.cache_fine_grained = True
@@ -1066,29 +1124,47 @@ def fail(msg: str, stderr: TextIO, options: Options) -> None:
     sys.exit(2)
 
 
-def install_types(cache_dir: str,
-                  formatter: util.FancyFormatter,
-                  after_run: bool = False) -> None:
-    """Install stub packages using pip if some missing stubs were detected."""
+def read_types_packages_to_install(cache_dir: str, after_run: bool) -> List[str]:
     if not os.path.isdir(cache_dir):
-        sys.stderr.write(
-            "Error: no mypy cache directory (you must enable incremental mode)\n")
+        if not after_run:
+            sys.stderr.write(
+                "error: Can't determine which types to install with no files to check " +
+                "(and no cache from previous mypy run)\n"
+            )
+        else:
+            sys.stderr.write(
+                "error: --install-types failed (no mypy cache directory)\n"
+            )
         sys.exit(2)
     fnam = build.missing_stubs_file(cache_dir)
     if not os.path.isfile(fnam):
-        # If there are no missing stubs, generate no output.
-        return
+        # No missing stubs.
+        return []
     with open(fnam) as f:
-        packages = [line.strip() for line in f.readlines()]
-    if after_run:
+        return [line.strip() for line in f.readlines()]
+
+
+def install_types(cache_dir: str,
+                  formatter: util.FancyFormatter,
+                  *,
+                  after_run: bool = False,
+                  non_interactive: bool = False) -> bool:
+    """Install stub packages using pip if some missing stubs were detected."""
+    packages = read_types_packages_to_install(cache_dir, after_run)
+    if not packages:
+        # If there are no missing stubs, generate no output.
+        return False
+    if after_run and not non_interactive:
         print()
     print('Installing missing stub packages:')
     cmd = [sys.executable, '-m', 'pip', 'install'] + packages
     print(formatter.style(' '.join(cmd), 'none', bold=True))
     print()
-    x = input('Install? [yN] ')
-    if not x.strip() or not x.lower().startswith('y'):
-        print(formatter.style('mypy: Skipping installation', 'red', bold=True))
-        sys.exit(2)
-    print()
+    if not non_interactive:
+        x = input('Install? [yN] ')
+        if not x.strip() or not x.lower().startswith('y'):
+            print(formatter.style('mypy: Skipping installation', 'red', bold=True))
+            sys.exit(2)
+        print()
     subprocess.run(cmd)
+    return True

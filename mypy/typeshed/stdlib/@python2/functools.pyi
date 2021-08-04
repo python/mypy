@@ -1,10 +1,10 @@
-from abc import ABCMeta, abstractmethod
-from typing import Any, Callable, Dict, Generic, Iterable, Optional, Sequence, Tuple, Type, TypeVar, overload
+from typing import Any, Callable, Dict, Generic, Iterable, Sequence, Tuple, Type, TypeVar, overload
 
 _AnyCallable = Callable[..., Any]
 
 _T = TypeVar("_T")
 _S = TypeVar("_S")
+
 @overload
 def reduce(function: Callable[[_T, _T], _T], sequence: Iterable[_T]) -> _T: ...
 @overload

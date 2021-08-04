@@ -1,4 +1,4 @@
-from typing import Any, Iterable, List, Optional, TextIO, Tuple, TypeVar, Union
+from typing import Any, Iterable, Optional, TextIO, Tuple, TypeVar, Union
 
 _T = TypeVar("_T")
 

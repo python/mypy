@@ -3,7 +3,7 @@ def d(c): ...
 @d
 
 class C: ...
-class C: ...  # E: Name 'C' already defined on line 4
+class C: ...  # E: Name "C" already defined on line 4
 
 [case testDecoratedFunctionLine]
 # flags: --disallow-untyped-defs
@@ -18,7 +18,7 @@ def f(): ...  # E: Function is missing a return type annotation \
 def d(f): ...  # type: ignore
 @d
 # type: ignore
-def f(): ...  # type: ignore  # E: unused 'type: ignore' comment
+def f(): ...  # type: ignore  # E: unused "type: ignore" comment
 
 [case testIgnoreDecoratedFunction2]
 # flags: --disallow-untyped-defs
@@ -91,28 +91,28 @@ def g(x: int): ...
 
 [case testIgnoreScopeUnused1]
 # flags: --warn-unused-ignores
-(  # type: ignore  # E: unused 'type: ignore' comment
-    "IGNORE"  # type: ignore  # E: unused 'type: ignore' comment
-    +  # type: ignore  # E: unused 'type: ignore' comment
+(  # type: ignore  # E: unused "type: ignore" comment
+    "IGNORE"  # type: ignore  # E: unused "type: ignore" comment
+    +  # type: ignore  # E: unused "type: ignore" comment
     0  # type: ignore
-)  # type: ignore  # E: unused 'type: ignore' comment
+)  # type: ignore  # E: unused "type: ignore" comment
 [builtins fixtures/primitives.pyi]
 
 [case testIgnoreScopeUnused2]
 # flags: --warn-unused-ignores
-(  # type: ignore  # E: unused 'type: ignore' comment
+(  # type: ignore  # E: unused "type: ignore" comment
     "IGNORE"
     -  # type: ignore
-    0  # type: ignore  # E: unused 'type: ignore' comment
-)  # type: ignore  # E: unused 'type: ignore' comment
+    0  # type: ignore  # E: unused "type: ignore" comment
+)  # type: ignore  # E: unused "type: ignore" comment
 
 [case testIgnoreScopeUnused3]
 # flags: --warn-unused-ignores
-(  # type: ignore  # E: unused 'type: ignore' comment
+(  # type: ignore  # E: unused "type: ignore" comment
     "IGNORE"
     /
     0  # type: ignore
-)  # type: ignore  # E: unused 'type: ignore' comment
+)  # type: ignore  # E: unused "type: ignore" comment
 
 [case testPEP570ArgTypesMissing]
 # flags: --disallow-untyped-defs
@@ -192,6 +192,23 @@ def f(p1: bytes, p2: float, /) -> None:
     reveal_type(p1)  # N: Revealed type is "builtins.bytes"
     reveal_type(p2)  # N: Revealed type is "builtins.float"
 
+[case testPEP570Unannotated]
+def f(arg, /): ...
+g = lambda arg, /: arg
+def h(arg=0, /): ...
+i = lambda arg=0, /: arg
+
+f(1)
+g(1)
+h()
+h(1)
+i()
+i(1)
+f(arg=0)  # E: Unexpected keyword argument "arg" for "f"
+g(arg=0)  # E: Unexpected keyword argument "arg"
+h(arg=0)  # E: Unexpected keyword argument "arg" for "h"
+i(arg=0)  # E: Unexpected keyword argument "arg"
+
 [case testWalrus]
 # flags: --strict-optional
 from typing import NamedTuple, Optional, List
@@ -206,7 +223,7 @@ while b := "x":
 l = [y2 := 1, y2 + 2, y2 + 3]
 reveal_type(y2)  # N: Revealed type is "builtins.int"
 reveal_type(l)  # N: Revealed type is "builtins.list[builtins.int*]"
- 
+
 filtered_data = [y3 for x in l if (y3 := a) is not None]
 reveal_type(filtered_data)  # N: Revealed type is "builtins.list[builtins.int*]"
 reveal_type(y3)  # N: Revealed type is "builtins.int"
@@ -268,7 +285,7 @@ def f(x: int = (c := 4)) -> int:
     f(x=(y7 := 3))
     reveal_type(y7)  # N: Revealed type is "builtins.int"
 
-    reveal_type((lambda: (y8 := 3) and y8)())  # N: Revealed type is "Literal[3]?"
+    reveal_type((lambda: (y8 := 3) and y8)())  # N: Revealed type is "builtins.int"
     y8  # E: Name "y8" is not defined
 
     y7 = 1.0  # E: Incompatible types in assignment (expression has type "float", variable has type "int")

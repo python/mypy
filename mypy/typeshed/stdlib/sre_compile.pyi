@@ -1,5 +1,5 @@
-import sys
 from sre_constants import (
+    SRE_FLAG_ASCII as SRE_FLAG_ASCII,
     SRE_FLAG_DEBUG as SRE_FLAG_DEBUG,
     SRE_FLAG_DOTALL as SRE_FLAG_DOTALL,
     SRE_FLAG_IGNORECASE as SRE_FLAG_IGNORECASE,
@@ -11,21 +11,13 @@ from sre_constants import (
     SRE_INFO_CHARSET as SRE_INFO_CHARSET,
     SRE_INFO_LITERAL as SRE_INFO_LITERAL,
     SRE_INFO_PREFIX as SRE_INFO_PREFIX,
+    _NamedIntConstant,
 )
 from sre_parse import SubPattern
-from typing import Any, List, Pattern, Tuple, Type, Union
-
-if sys.version_info >= (3,):
-    from sre_constants import SRE_FLAG_ASCII as SRE_FLAG_ASCII
+from typing import Any, List, Pattern, Union
 
 MAXCODE: int
-if sys.version_info < (3, 0):
-    STRING_TYPES: Tuple[Type[str], Type[unicode]]
-    _IsStringType = int
-else:
-    from sre_constants import _NamedIntConstant
-    def dis(code: List[_NamedIntConstant]) -> None: ...
-    _IsStringType = bool
 
-def isstring(obj: Any) -> _IsStringType: ...
+def dis(code: List[_NamedIntConstant]) -> None: ...
+def isstring(obj: Any) -> bool: ...
 def compile(p: Union[str, bytes, SubPattern], flags: int = ...) -> Pattern[Any]: ...

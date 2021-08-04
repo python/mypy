@@ -1,9 +1,75 @@
 from types import TracebackType
-from typing import Iterator, MutableMapping, Optional, Type, Union
+from typing import Iterator, MutableMapping, Optional, Tuple, Type, Union
 from typing_extensions import Literal
 
 _KeyType = Union[str, bytes]
 _ValueType = Union[str, bytes]
+_TFlags = Literal[
+    "r",
+    "w",
+    "c",
+    "n",
+    "rf",
+    "wf",
+    "cf",
+    "nf",
+    "rs",
+    "ws",
+    "cs",
+    "ns",
+    "ru",
+    "wu",
+    "cu",
+    "nu",
+    "rfs",
+    "wfs",
+    "cfs",
+    "nfs",
+    "rfu",
+    "wfu",
+    "cfu",
+    "nfu",
+    "rsf",
+    "wsf",
+    "csf",
+    "nsf",
+    "rsu",
+    "wsu",
+    "csu",
+    "nsu",
+    "ruf",
+    "wuf",
+    "cuf",
+    "nuf",
+    "rus",
+    "wus",
+    "cus",
+    "nus",
+    "rfsu",
+    "wfsu",
+    "cfsu",
+    "nfsu",
+    "rfus",
+    "wfus",
+    "cfus",
+    "nfus",
+    "rsfu",
+    "wsfu",
+    "csfu",
+    "nsfu",
+    "rsuf",
+    "wsuf",
+    "csuf",
+    "nsuf",
+    "rufs",
+    "wufs",
+    "cufs",
+    "nufs",
+    "rusf",
+    "wusf",
+    "cusf",
+    "nusf",
+]
 
 class _Database(MutableMapping[_KeyType, bytes]):
     def close(self) -> None: ...
@@ -18,7 +84,9 @@ class _Database(MutableMapping[_KeyType, bytes]):
         self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
     ) -> None: ...
 
-class error(Exception): ...
+class _error(Exception): ...
+
+error = Tuple[Type[_error], Type[OSError]]
 
 def whichdb(filename: str) -> str: ...
-def open(file: str, flag: Literal["r", "w", "c", "n"] = ..., mode: int = ...) -> _Database: ...
+def open(file: str, flag: _TFlags = ..., mode: int = ...) -> _Database: ...

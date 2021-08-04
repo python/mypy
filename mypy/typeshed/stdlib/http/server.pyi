@@ -1,15 +1,12 @@
 import email.message
 import socketserver
 import sys
-from typing import Any, Callable, ClassVar, Dict, List, Mapping, Optional, Sequence, Tuple, Union
-
-if sys.version_info >= (3, 7):
-    from builtins import _PathLike
+from _typeshed import StrPath
+from typing import Any, ClassVar, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 class HTTPServer(socketserver.TCPServer):
     server_name: str
     server_port: int
-    def __init__(self, server_address: Tuple[str, int], RequestHandlerClass: Callable[..., BaseHTTPRequestHandler]) -> None: ...
 
 if sys.version_info >= (3, 7):
     class ThreadingHTTPServer(socketserver.ThreadingMixIn, HTTPServer):
@@ -60,7 +57,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             request: bytes,
             client_address: Tuple[str, int],
             server: socketserver.BaseServer,
-            directory: Optional[Union[str, _PathLike[str]]] = ...,
+            directory: Optional[StrPath] = ...,
         ) -> None: ...
     else:
         def __init__(self, request: bytes, client_address: Tuple[str, int], server: socketserver.BaseServer) -> None: ...

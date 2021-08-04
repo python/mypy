@@ -967,9 +967,9 @@ Type1 = NamedTuple('Type1', [('foo', foo)])  # E: Function "b.foo" is not valid 
 from typing import NamedTuple
 from collections import namedtuple
 
-A = NamedTuple('X', [('a', int)])  # E: First argument to namedtuple() should be 'A', not 'X'
-B = namedtuple('X', ['a'])         # E: First argument to namedtuple() should be 'B', not 'X'
+A = NamedTuple('X', [('a', int)])  # E: First argument to namedtuple() should be "A", not "X"
+B = namedtuple('X', ['a'])         # E: First argument to namedtuple() should be "B", not "X"
 
-C = NamedTuple('X', [('a', 'Y')])  # E: First argument to namedtuple() should be 'C', not 'X'
+C = NamedTuple('X', [('a', 'Y')])  # E: First argument to namedtuple() should be "C", not "X"
 class Y: ...
 [builtins fixtures/tuple.pyi]

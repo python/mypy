@@ -24,19 +24,19 @@ from mypy.nodes import (
 from mypy.util import correct_relative_import
 from mypy.argmap import map_formals_to_actuals
 
-TYPE_EMPTY = 0  # type: Final
-TYPE_UNANALYZED = 1  # type: Final  # type of non-typechecked code
-TYPE_PRECISE = 2  # type: Final
-TYPE_IMPRECISE = 3  # type: Final
-TYPE_ANY = 4  # type: Final
+TYPE_EMPTY: Final = 0
+TYPE_UNANALYZED: Final = 1  # type of non-typechecked code
+TYPE_PRECISE: Final = 2
+TYPE_IMPRECISE: Final = 3
+TYPE_ANY: Final = 4
 
-precision_names = [
+precision_names: Final = [
     'empty',
     'unanalyzed',
     'precise',
     'imprecise',
     'any',
-]  # type: Final
+]
 
 
 class StatisticsVisitor(TraverserVisitor):
@@ -68,10 +68,10 @@ class StatisticsVisitor(TraverserVisitor):
 
         self.line = -1
 
-        self.line_map = {}  # type: Dict[int, int]
+        self.line_map: Dict[int, int] = {}
 
-        self.type_of_any_counter = Counter()  # type: typing.Counter[int]
-        self.any_line_map = {}  # type: Dict[int, List[AnyType]]
+        self.type_of_any_counter: typing.Counter[int] = Counter()
+        self.any_line_map: Dict[int, List[AnyType]] = {}
 
         # For each scope (top level/function), whether the scope was type checked
         # (annotated function).
@@ -79,7 +79,7 @@ class StatisticsVisitor(TraverserVisitor):
         # TODO: Handle --check-untyped-defs
         self.checked_scopes = [True]
 
-        self.output = []  # type: List[str]
+        self.output: List[str] = []
 
         TraverserVisitor.__init__(self)
 

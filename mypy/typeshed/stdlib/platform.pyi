@@ -1,6 +1,6 @@
 import sys
 
-if sys.version_info < (3, 9):
+if sys.version_info < (3, 8):
     import os
 
     DEV_NULL = os.devnull

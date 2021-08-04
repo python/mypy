@@ -22,6 +22,26 @@ x = 1
 \[mypy]
 mypy_path = tmp/funky_case
 
+
+[case testCaseInsensitivityDirPyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+
+from a import B  # E: Module "a" has no attribute "B"
+from other import x
+reveal_type(x)  # N: Revealed type is "builtins.int"
+
+[file a/__init__.py]
+
+[file a/b/__init__.py]
+
+[file FuNkY_CaSe/other.py]
+x = 1
+
+[file pyproject.toml]
+\[tool.mypy]
+mypy_path = "tmp/funky_case"
+
+
 [case testPreferPackageOverFileCase]
 # flags: --config-file tmp/mypy.ini
 import a
@@ -33,6 +53,22 @@ pass
 [file mypy.ini]
 \[mypy]
 mypy_path = tmp/funky
+
+
+[case testPreferPackageOverFileCasePyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+import a
+
+[file funky/a.py]
+/  # Deliberate syntax error, this file should not be parsed.
+
+[file FuNkY/a/__init__.py]
+pass
+
+[file pyproject.toml]
+\[tool.mypy]
+mypy_path = "tmp/funky"
+
 
 [case testNotPreferPackageOverFileCase]
 import a
@@ -53,6 +89,23 @@ x = ''
 \[mypy]
 mypy_path = tmp/xx, tmp/yy
 
+
+[case testNamespacePackagePickFirstOnMypyPathCasePyProjectTOML]
+# flags: --namespace-packages --config-file tmp/pyproject.toml
+from foo.bar import x
+reveal_type(x)  # N: Revealed type is "builtins.int"
+
+[file XX/foo/bar.py]
+x = 0
+
+[file yy/foo/bar.py]
+x = ''
+
+[file pyproject.toml]
+\[tool.mypy]
+mypy_path = ["tmp/xx", "tmp/yy"]
+
+
 [case testClassicPackageInsideNamespacePackageCase]
 # flags: --namespace-packages --config-file tmp/mypy.ini
 from foo.bar.baz.boo import x
@@ -67,3 +120,23 @@ x = 0
 [file mypy.ini]
 \[mypy]
 mypy_path = TmP/xX, TmP/yY
+
+
+[case testClassicPackageInsideNamespacePackageCasePyProjectTOML]
+# flags: --namespace-packages --config-file tmp/pyproject.toml
+from foo.bar.baz.boo import x
+reveal_type(x)  # N: Revealed type is "builtins.int"
+
+[file xx/foo/bar/baz/boo.py]
+x = ''
+
+[file xx/foo/bar/baz/__init__.py]
+
+[file yy/foo/bar/baz/boo.py]
+x = 0
+
+[file yy/foo/bar/__init__.py]
+
+[file pyproject.toml]
+\[tool.mypy]
+mypy_path = ["TmP/xX", "TmP/yY"]

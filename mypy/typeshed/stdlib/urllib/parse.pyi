@@ -79,32 +79,24 @@ class DefragResultBytes(_DefragResultBase[bytes], _ResultMixinBytes): ...
 class SplitResultBytes(_SplitResultBytesBase, _NetlocResultMixinBytes): ...
 class ParseResultBytes(_ParseResultBytesBase, _NetlocResultMixinBytes): ...
 
-if sys.version_info >= (3, 8):
-    def parse_qs(
-        qs: Optional[AnyStr],
-        keep_blank_values: bool = ...,
-        strict_parsing: bool = ...,
-        encoding: str = ...,
-        errors: str = ...,
-        max_num_fields: Optional[int] = ...,
-    ) -> Dict[AnyStr, List[AnyStr]]: ...
-    def parse_qsl(
-        qs: Optional[AnyStr],
-        keep_blank_values: bool = ...,
-        strict_parsing: bool = ...,
-        encoding: str = ...,
-        errors: str = ...,
-        max_num_fields: Optional[int] = ...,
-    ) -> List[Tuple[AnyStr, AnyStr]]: ...
-
-else:
-    def parse_qs(
-        qs: Optional[AnyStr], keep_blank_values: bool = ..., strict_parsing: bool = ..., encoding: str = ..., errors: str = ...
-    ) -> Dict[AnyStr, List[AnyStr]]: ...
-    def parse_qsl(
-        qs: Optional[AnyStr], keep_blank_values: bool = ..., strict_parsing: bool = ..., encoding: str = ..., errors: str = ...
-    ) -> List[Tuple[AnyStr, AnyStr]]: ...
-
+def parse_qs(
+    qs: Optional[AnyStr],
+    keep_blank_values: bool = ...,
+    strict_parsing: bool = ...,
+    encoding: str = ...,
+    errors: str = ...,
+    max_num_fields: Optional[int] = ...,
+    separator: str = ...,
+) -> Dict[AnyStr, List[AnyStr]]: ...
+def parse_qsl(
+    qs: Optional[AnyStr],
+    keep_blank_values: bool = ...,
+    strict_parsing: bool = ...,
+    encoding: str = ...,
+    errors: str = ...,
+    max_num_fields: Optional[int] = ...,
+    separator: str = ...,
+) -> List[Tuple[AnyStr, AnyStr]]: ...
 @overload
 def quote(string: str, safe: _Str = ..., encoding: Optional[str] = ..., errors: Optional[str] = ...) -> str: ...
 @overload

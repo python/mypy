@@ -615,6 +615,30 @@ if MYPY or mypy_only:
     pass
 [builtins fixtures/ops.pyi]
 
+[case testSemanticAnalysisFalseButTypeNarrowingTrue]
+# flags: --always-false COMPILE_TIME_FALSE
+from typing import Literal
+
+indeterminate: str
+COMPILE_TIME_FALSE: Literal[True]  # type-narrowing: mapped in 'if' only
+a = COMPILE_TIME_FALSE or indeterminate
+reveal_type(a)  # N: Revealed type is "builtins.str"
+b = indeterminate or COMPILE_TIME_FALSE
+reveal_type(b)  # N: Revealed type is "Union[builtins.str, Literal[True]]"
+[typing fixtures/typing-medium.pyi]
+
+[case testSemanticAnalysisTrueButTypeNarrowingFalse]
+# flags: --always-true COMPILE_TIME_TRUE
+from typing import Literal
+
+indeterminate: str
+COMPILE_TIME_TRUE: Literal[False]  # type narrowed to `else` only
+a = COMPILE_TIME_TRUE or indeterminate
+reveal_type(a)  # N: Revealed type is "Literal[False]"
+b = indeterminate or COMPILE_TIME_TRUE
+reveal_type(b)  # N: Revealed type is "Union[builtins.str, Literal[False]]"
+
+[typing fixtures/typing-medium.pyi]
 [case testConditionalAssertWithoutElse]
 import typing
 
@@ -908,6 +932,7 @@ def foo() -> bool: ...
 lst = [1, 2, 3, 4]
 
 a = True or foo()                        # E: Right operand of "or" is never evaluated
+b = 42 or False                          # E: Right operand of "or" is never evaluated
 d = False and foo()                      # E: Right operand of "and" is never evaluated
 e = True or (True or (True or foo()))    # E: Right operand of "or" is never evaluated
 f = (True or foo()) or (True or foo())   # E: Right operand of "or" is never evaluated
@@ -1305,3 +1330,51 @@ async def f_malformed_2() -> int:
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/tuple.pyi]
+
+[case testUnreachableUntypedFunction]
+# flags: --warn-unreachable
+
+def test_untyped_fn(obj):
+    assert obj.prop is True
+
+    obj.update(prop=False)
+    obj.reload()
+
+    assert obj.prop is False
+    reveal_type(obj.prop)
+
+def test_typed_fn(obj) -> None:
+    assert obj.prop is True
+
+    obj.update(prop=False)
+    obj.reload()
+
+    assert obj.prop is False
+    reveal_type(obj.prop)  # E: Statement is unreachable
+
+[case testUnreachableCheckedUntypedFunction]
+# flags: --warn-unreachable --check-untyped-defs
+
+def test_untyped_fn(obj):
+    assert obj.prop is True
+
+    obj.update(prop=False)
+    obj.reload()
+
+    assert obj.prop is False
+    reveal_type(obj.prop)  # E: Statement is unreachable
+
+[case testConditionalTypeVarException]
+# every part of this test case was necessary to trigger the crash
+import sys
+from typing import TypeVar
+
+T = TypeVar("T", int, str)
+
+def f(t: T) -> None:
+    if sys.platform == "lol":
+        try:
+            pass
+        except BaseException as e:
+            pass
+[builtins fixtures/dict.pyi]

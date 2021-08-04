@@ -15,8 +15,6 @@ import os
 import os.path
 import subprocess
 import sys
-import tempfile
-import time
 
 base_path = os.path.join(os.path.dirname(__file__), '..')
 

@@ -10,14 +10,16 @@ The wrappers aren't used for most calls between two native functions
 or methods in a single compilation unit.
 """
 
-from typing import List, Optional
+from typing import List, Dict, Optional, Sequence
 
-from mypy.nodes import ARG_POS, ARG_OPT, ARG_NAMED_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2
+from mypy.nodes import ArgKind, ARG_POS, ARG_OPT, ARG_NAMED_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2
+from mypy.operators import op_methods_to_symbols, reverse_op_methods, reverse_op_method_names
 
 from mypyc.common import PREFIX, NATIVE_PREFIX, DUNDER_PREFIX, use_vectorcall
-from mypyc.codegen.emit import Emitter
+from mypyc.codegen.emit import Emitter, ErrorHandler, GotoHandler, AssignHandler, ReturnHandler
 from mypyc.ir.rtypes import (
-    RType, is_object_rprimitive, is_int_rprimitive, is_bool_rprimitive, object_rprimitive
+    RType, RInstance, is_object_rprimitive, is_int_rprimitive, is_bool_rprimitive,
+    object_rprimitive
 )
 from mypyc.ir.func_ir import FuncIR, RuntimeArg, FUNC_STATICMETHOD
 from mypyc.ir.class_ir import ClassIR
@@ -73,12 +75,12 @@ def generate_traceback_code(fn: FuncIR,
     return traceback_code
 
 
-def make_arg_groups(args: List[RuntimeArg]) -> List[List[RuntimeArg]]:
+def make_arg_groups(args: List[RuntimeArg]) -> Dict[ArgKind, List[RuntimeArg]]:
     """Group arguments by kind."""
-    return [[arg for arg in args if arg.kind == k] for k in range(ARG_NAMED_OPT + 1)]
+    return {k: [arg for arg in args if arg.kind == k] for k in ArgKind}
 
 
-def reorder_arg_groups(groups: List[List[RuntimeArg]]) -> List[RuntimeArg]:
+def reorder_arg_groups(groups: Dict[ArgKind, List[RuntimeArg]]) -> List[RuntimeArg]:
     """Reorder argument groups to match their order in a format string."""
     return groups[ARG_POS] + groups[ARG_OPT] + groups[ARG_NAMED_OPT] + groups[ARG_NAMED]
 
@@ -88,7 +90,7 @@ def make_static_kwlist(args: List[RuntimeArg]) -> str:
     return 'static const char * const kwlist[] = {{{}0}};'.format(arg_names)
 
 
-def make_format_string(func_name: Optional[str], groups: List[List[RuntimeArg]]) -> str:
+def make_format_string(func_name: Optional[str], groups: Dict[ArgKind, List[RuntimeArg]]) -> str:
     """Return a format string that specifies the accepted arguments.
 
     The format string is an extended subset of what is supported by
@@ -153,7 +155,7 @@ def generate_wrapper_function(fn: FuncIR,
     cleanups = ['CPy_DECREF(obj_{});'.format(arg.name)
                 for arg in groups[ARG_STAR] + groups[ARG_STAR2]]
 
-    arg_ptrs = []  # type: List[str]
+    arg_ptrs: List[str] = []
     if groups[ARG_STAR] or groups[ARG_STAR2]:
         arg_ptrs += ['&obj_{}'.format(groups[ARG_STAR][0].name) if groups[ARG_STAR] else 'NULL']
         arg_ptrs += ['&obj_{}'.format(groups[ARG_STAR2][0].name) if groups[ARG_STAR2] else 'NULL']
@@ -232,7 +234,7 @@ def generate_legacy_wrapper_function(fn: FuncIR,
     cleanups = ['CPy_DECREF(obj_{});'.format(arg.name)
                 for arg in groups[ARG_STAR] + groups[ARG_STAR2]]
 
-    arg_ptrs = []  # type: List[str]
+    arg_ptrs: List[str] = []
     if groups[ARG_STAR] or groups[ARG_STAR2]:
         arg_ptrs += ['&obj_{}'.format(groups[ARG_STAR][0].name) if groups[ARG_STAR] else 'NULL']
         arg_ptrs += ['&obj_{}'.format(groups[ARG_STAR2][0].name) if groups[ARG_STAR2] else 'NULL']
@@ -259,16 +261,126 @@ def generate_dunder_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     protocol slot. This specifically means that the arguments are taken as *PyObjects and returned
     as *PyObjects.
     """
-    input_args = ', '.join('PyObject *obj_{}'.format(arg.name) for arg in fn.args)
-    name = '{}{}{}'.format(DUNDER_PREFIX, fn.name, cl.name_prefix(emitter.names))
-    emitter.emit_line('static PyObject *{name}({input_args}) {{'.format(
-        name=name,
-        input_args=input_args,
-    ))
-    generate_wrapper_core(fn, emitter)
-    emitter.emit_line('}')
+    gen = WrapperGenerator(cl, emitter)
+    gen.set_target(fn)
+    gen.emit_header()
+    gen.emit_arg_processing()
+    gen.emit_call()
+    gen.finish()
+    return gen.wrapper_name()
 
-    return name
+
+def generate_bin_op_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    """Generates a wrapper for a native binary dunder method.
+
+    The same wrapper that handles the forward method (e.g. __add__) also handles
+    the corresponding reverse method (e.g. __radd__), if defined.
+
+    Both arguments and the return value are PyObject *.
+    """
+    gen = WrapperGenerator(cl, emitter)
+    gen.set_target(fn)
+    gen.arg_names = ['left', 'right']
+    wrapper_name = gen.wrapper_name()
+
+    gen.emit_header()
+    if fn.name not in reverse_op_methods and fn.name in reverse_op_method_names:
+        # There's only a reverse operator method.
+        generate_bin_op_reverse_only_wrapper(cl, fn, emitter, gen)
+    else:
+        rmethod = reverse_op_methods[fn.name]
+        fn_rev = cl.get_method(rmethod)
+        if fn_rev is None:
+            # There's only a forward operator method.
+            generate_bin_op_forward_only_wrapper(cl, fn, emitter, gen)
+        else:
+            # There's both a forward and a reverse operator method.
+            generate_bin_op_both_wrappers(cl, fn, fn_rev, emitter, gen)
+    return wrapper_name
+
+
+def generate_bin_op_forward_only_wrapper(cl: ClassIR,
+                                         fn: FuncIR,
+                                         emitter: Emitter,
+                                         gen: 'WrapperGenerator') -> None:
+    gen.emit_arg_processing(error=GotoHandler('typefail'), raise_exception=False)
+    gen.emit_call(not_implemented_handler='goto typefail;')
+    gen.emit_error_handling()
+    emitter.emit_label('typefail')
+    # If some argument has an incompatible type, treat this the same as
+    # returning NotImplemented, and try to call the reverse operator method.
+    #
+    # Note that in normal Python you'd instead of an explicit
+    # return of NotImplemented, but it doesn't generally work here
+    # the body won't be executed at all if there is an argument
+    # type check failure.
+    #
+    # The recommended way is to still use a type check in the
+    # body. This will only be used in interpreted mode:
+    #
+    #    def __add__(self, other: int) -> Foo:
+    #        if not isinstance(other, int):
+    #            return NotImplemented
+    #        ...
+    rmethod = reverse_op_methods[fn.name]
+    emitter.emit_line(
+        'return CPy_CallReverseOpMethod(obj_left, obj_right, "{}", "{}");'.format(
+            op_methods_to_symbols[fn.name],
+            rmethod))
+    gen.finish()
+
+
+def generate_bin_op_reverse_only_wrapper(cl: ClassIR,
+                                         fn_rev: FuncIR,
+                                         emitter: Emitter,
+                                         gen: 'WrapperGenerator') -> None:
+    gen.arg_names = ['right', 'left']
+    gen.emit_arg_processing(error=GotoHandler('typefail'), raise_exception=False)
+    gen.emit_call()
+    gen.emit_error_handling()
+    emitter.emit_label('typefail')
+    emitter.emit_line('Py_INCREF(Py_NotImplemented);')
+    emitter.emit_line('return Py_NotImplemented;')
+    gen.finish()
+
+
+def generate_bin_op_both_wrappers(cl: ClassIR,
+                                  fn: FuncIR,
+                                  fn_rev: FuncIR,
+                                  emitter: Emitter,
+                                  gen: 'WrapperGenerator') -> None:
+    # There's both a forward and a reverse operator method. First
+    # check if we should try calling the forward one. If the
+    # argument type check fails, fall back to the reverse method.
+    #
+    # Similar to above, we can't perfectly match Python semantics.
+    # In regular Python code you'd return NotImplemented if the
+    # operand has the wrong type, but in compiled code we'll never
+    # get to execute the type check.
+    emitter.emit_line('if (PyObject_IsInstance(obj_left, (PyObject *){})) {{'.format(
+        emitter.type_struct_name(cl)))
+    gen.emit_arg_processing(error=GotoHandler('typefail'), raise_exception=False)
+    gen.emit_call(not_implemented_handler='goto typefail;')
+    gen.emit_error_handling()
+    emitter.emit_line('}')
+    emitter.emit_label('typefail')
+    emitter.emit_line('if (PyObject_IsInstance(obj_right, (PyObject *){})) {{'.format(
+        emitter.type_struct_name(cl)))
+    gen.set_target(fn_rev)
+    gen.arg_names = ['right', 'left']
+    gen.emit_arg_processing(error=GotoHandler('typefail2'), raise_exception=False)
+    gen.emit_call()
+    gen.emit_error_handling()
+    emitter.emit_line('} else {')
+    emitter.emit_line(
+        'return CPy_CallReverseOpMethod(obj_left, obj_right, "{}", "{}");'.format(
+            op_methods_to_symbols[fn.name],
+            fn_rev.name))
+    emitter.emit_line('}')
+    emitter.emit_label('typefail2')
+    emitter.emit_line('Py_INCREF(Py_NotImplemented);')
+    emitter.emit_line('return Py_NotImplemented;')
+    gen.finish()
 
 
 RICHCOMPARE_OPS = {
@@ -350,6 +462,29 @@ def generate_hash_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     return name
 
 
+def generate_len_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    """Generates a wrapper for native __len__ methods."""
+    name = '{}{}{}'.format(DUNDER_PREFIX, fn.name, cl.name_prefix(emitter.names))
+    emitter.emit_line('static Py_ssize_t {name}(PyObject *self) {{'.format(
+        name=name
+    ))
+    emitter.emit_line('{}retval = {}{}{}(self);'.format(emitter.ctype_spaced(fn.ret_type),
+                                                        emitter.get_group_prefix(fn.decl),
+                                                        NATIVE_PREFIX,
+                                                        fn.cname(emitter.names)))
+    emitter.emit_error_check('retval', fn.ret_type, 'return -1;')
+    if is_int_rprimitive(fn.ret_type):
+        emitter.emit_line('Py_ssize_t val = CPyTagged_AsSsize_t(retval);')
+    else:
+        emitter.emit_line('Py_ssize_t val = PyLong_AsSsize_t(retval);')
+    emitter.emit_dec_ref('retval', fn.ret_type)
+    emitter.emit_line('if (PyErr_Occurred()) return -1;')
+    emitter.emit_line('return val;')
+    emitter.emit_line('}')
+
+    return name
+
+
 def generate_bool_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     """Generates a wrapper for native __bool__ methods."""
     name = '{}{}{}'.format(DUNDER_PREFIX, fn.name, cl.name_prefix(emitter.names))
@@ -370,10 +505,139 @@ def generate_bool_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     return name
 
 
+def generate_del_item_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    """Generates a wrapper for native __delitem__.
+
+    This is only called from a combined __delitem__/__setitem__ wrapper.
+    """
+    name = '{}{}{}'.format(DUNDER_PREFIX, '__delitem__', cl.name_prefix(emitter.names))
+    input_args = ', '.join('PyObject *obj_{}'.format(arg.name) for arg in fn.args)
+    emitter.emit_line('static int {name}({input_args}) {{'.format(
+        name=name,
+        input_args=input_args,
+    ))
+    generate_set_del_item_wrapper_inner(fn, emitter, fn.args)
+    return name
+
+
+def generate_set_del_item_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    """Generates a wrapper for native __setitem__ method (also works for __delitem__).
+
+    This is used with the mapping protocol slot. Arguments are taken as *PyObjects and we
+    return a negative C int on error.
+
+    Create a separate wrapper function for __delitem__ as needed and have the
+    __setitem__ wrapper call it if the value is NULL. Return the name
+    of the outer (__setitem__) wrapper.
+    """
+    method_cls = cl.get_method_and_class('__delitem__')
+    del_name = None
+    if method_cls and method_cls[1] == cl:
+        # Generate a separate wrapper for __delitem__
+        del_name = generate_del_item_wrapper(cl, method_cls[0], emitter)
+
+    args = fn.args
+    if fn.name == '__delitem__':
+        # Add an extra argument for value that we expect to be NULL.
+        args = list(args) + [RuntimeArg('___value', object_rprimitive, ARG_POS)]
+
+    name = '{}{}{}'.format(DUNDER_PREFIX, '__setitem__', cl.name_prefix(emitter.names))
+    input_args = ', '.join('PyObject *obj_{}'.format(arg.name) for arg in args)
+    emitter.emit_line('static int {name}({input_args}) {{'.format(
+        name=name,
+        input_args=input_args,
+    ))
+
+    # First check if this is __delitem__
+    emitter.emit_line('if (obj_{} == NULL) {{'.format(args[2].name))
+    if del_name is not None:
+        # We have a native implementation, so call it
+        emitter.emit_line('return {}(obj_{}, obj_{});'.format(del_name,
+                                                              args[0].name,
+                                                              args[1].name))
+    else:
+        # Try to call superclass method instead
+        emitter.emit_line(
+            'PyObject *super = CPy_Super(CPyModule_builtins, obj_{});'.format(args[0].name))
+        emitter.emit_line('if (super == NULL) return -1;')
+        emitter.emit_line(
+            'PyObject *result = PyObject_CallMethod(super, "__delitem__", "O", obj_{});'.format(
+                args[1].name))
+        emitter.emit_line('Py_DECREF(super);')
+        emitter.emit_line('Py_XDECREF(result);')
+        emitter.emit_line('return result == NULL ? -1 : 0;')
+    emitter.emit_line('}')
+
+    method_cls = cl.get_method_and_class('__setitem__')
+    if method_cls and method_cls[1] == cl:
+        generate_set_del_item_wrapper_inner(fn, emitter, args)
+    else:
+        emitter.emit_line(
+            'PyObject *super = CPy_Super(CPyModule_builtins, obj_{});'.format(args[0].name))
+        emitter.emit_line('if (super == NULL) return -1;')
+        emitter.emit_line('PyObject *result;')
+
+        if method_cls is None and cl.builtin_base is None:
+            msg = "'{}' object does not support item assignment".format(cl.name)
+            emitter.emit_line(
+                'PyErr_SetString(PyExc_TypeError, "{}");'.format(msg))
+            emitter.emit_line('result = NULL;')
+        else:
+            # A base class may have __setitem__
+            emitter.emit_line(
+                'result = PyObject_CallMethod(super, "__setitem__", "OO", obj_{}, obj_{});'.format(
+                    args[1].name, args[2].name))
+        emitter.emit_line('Py_DECREF(super);')
+        emitter.emit_line('Py_XDECREF(result);')
+        emitter.emit_line('return result == NULL ? -1 : 0;')
+        emitter.emit_line('}')
+    return name
+
+
+def generate_set_del_item_wrapper_inner(fn: FuncIR, emitter: Emitter,
+                                        args: Sequence[RuntimeArg]) -> None:
+    for arg in args:
+        generate_arg_check(arg.name, arg.type, emitter, GotoHandler('fail'))
+    native_args = ', '.join('arg_{}'.format(arg.name) for arg in args)
+    emitter.emit_line('{}val = {}{}({});'.format(emitter.ctype_spaced(fn.ret_type),
+                                                 NATIVE_PREFIX,
+                                                 fn.cname(emitter.names),
+                                                 native_args))
+    emitter.emit_error_check('val', fn.ret_type, 'goto fail;')
+    emitter.emit_dec_ref('val', fn.ret_type)
+    emitter.emit_line('return 0;')
+    emitter.emit_label('fail')
+    emitter.emit_line('return -1;')
+    emitter.emit_line('}')
+
+
+def generate_contains_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    """Generates a wrapper for a native __contains__ method."""
+    name = '{}{}{}'.format(DUNDER_PREFIX, fn.name, cl.name_prefix(emitter.names))
+    emitter.emit_line(
+        'static int {name}(PyObject *self, PyObject *obj_item) {{'.
+        format(name=name))
+    generate_arg_check('item', fn.args[1].type, emitter, ReturnHandler('-1'))
+    emitter.emit_line('{}val = {}{}(self, arg_item);'.format(emitter.ctype_spaced(fn.ret_type),
+                                                             NATIVE_PREFIX,
+                                                             fn.cname(emitter.names)))
+    emitter.emit_error_check('val', fn.ret_type, 'return -1;')
+    if is_bool_rprimitive(fn.ret_type):
+        emitter.emit_line('return val;')
+    else:
+        emitter.emit_line('int boolval = PyObject_IsTrue(val);')
+        emitter.emit_dec_ref('val', fn.ret_type)
+        emitter.emit_line('return boolval;')
+    emitter.emit_line('}')
+
+    return name
+
+
 # Helpers
 
 
-def generate_wrapper_core(fn: FuncIR, emitter: Emitter,
+def generate_wrapper_core(fn: FuncIR,
+                          emitter: Emitter,
                           optional_args: Optional[List[RuntimeArg]] = None,
                           arg_names: Optional[List[str]] = None,
                           cleanups: Optional[List[str]] = None,
@@ -388,13 +652,17 @@ def generate_wrapper_core(fn: FuncIR, emitter: Emitter,
     optional_args = optional_args or []
     cleanups = cleanups or []
     use_goto = bool(cleanups or traceback_code)
-    error_code = 'return NULL;' if not use_goto else 'goto fail;'
+    error = ReturnHandler('NULL') if not use_goto else GotoHandler('fail')
 
     arg_names = arg_names or [arg.name for arg in fn.args]
     for arg_name, arg in zip(arg_names, fn.args):
         # Suppress the argument check for *args/**kwargs, since we know it must be right.
         typ = arg.type if arg.kind not in (ARG_STAR, ARG_STAR2) else object_rprimitive
-        generate_arg_check(arg_name, typ, emitter, error_code, arg in optional_args)
+        generate_arg_check(arg_name,
+                           typ,
+                           emitter,
+                           error,
+                           optional=arg in optional_args)
     native_args = ', '.join('arg_{}'.format(arg) for arg in arg_names)
     if fn.ret_type.is_unboxed or use_goto:
         # TODO: The Py_RETURN macros return the correct PyObject * with reference count handling.
@@ -423,18 +691,30 @@ def generate_wrapper_core(fn: FuncIR, emitter: Emitter,
         emitter.emit_lines('return NULL;')
 
 
-def generate_arg_check(name: str, typ: RType, emitter: Emitter,
-                       error_code: str, optional: bool = False) -> None:
+def generate_arg_check(name: str,
+                       typ: RType,
+                       emitter: Emitter,
+                       error: Optional[ErrorHandler] = None,
+                       *,
+                       optional: bool = False,
+                       raise_exception: bool = True) -> None:
     """Insert a runtime check for argument and unbox if necessary.
 
     The object is named PyObject *obj_{}. This is expected to generate
     a value of name arg_{} (unboxed if necessary). For each primitive a runtime
     check ensures the correct type.
     """
+    error = error or AssignHandler()
     if typ.is_unboxed:
         # Borrow when unboxing to avoid reference count manipulation.
-        emitter.emit_unbox('obj_{}'.format(name), 'arg_{}'.format(name), typ,
-                           error_code, declare_dest=True, borrow=True, optional=optional)
+        emitter.emit_unbox('obj_{}'.format(name),
+                           'arg_{}'.format(name),
+                           typ,
+                           declare_dest=True,
+                           raise_exception=raise_exception,
+                           error=error,
+                           borrow=True,
+                           optional=optional)
     elif is_object_rprimitive(typ):
         # Object is trivial since any object is valid
         if optional:
@@ -445,10 +725,129 @@ def generate_arg_check(name: str, typ: RType, emitter: Emitter,
         else:
             emitter.emit_line('PyObject *arg_{} = obj_{};'.format(name, name))
     else:
-        emitter.emit_cast('obj_{}'.format(name), 'arg_{}'.format(name), typ,
-                          declare_dest=True, optional=optional)
-        if optional:
-            emitter.emit_line('if (obj_{} != NULL && arg_{} == NULL) {}'.format(
-                              name, name, error_code))
+        emitter.emit_cast('obj_{}'.format(name),
+                          'arg_{}'.format(name),
+                          typ,
+                          declare_dest=True,
+                          raise_exception=raise_exception,
+                          error=error,
+                          optional=optional)
+
+
+class WrapperGenerator:
+    """Helper that simplifies the generation of wrapper functions."""
+
+    # TODO: Use this for more wrappers
+
+    def __init__(self, cl: ClassIR, emitter: Emitter) -> None:
+        self.cl = cl
+        self.emitter = emitter
+        self.cleanups: List[str] = []
+        self.optional_args: List[RuntimeArg] = []
+        self.traceback_code = ''
+
+    def set_target(self, fn: FuncIR) -> None:
+        """Set the wrapped function.
+
+        It's fine to modify the attributes initialized here later to customize
+        the wrapper function.
+        """
+        self.target_name = fn.name
+        self.target_cname = fn.cname(self.emitter.names)
+        self.arg_names = [arg.name for arg in fn.args]
+        self.args = fn.args[:]
+        self.ret_type = fn.ret_type
+
+    def wrapper_name(self) -> str:
+        """Return the name of the wrapper function."""
+        return '{}{}{}'.format(DUNDER_PREFIX,
+                               self.target_name,
+                               self.cl.name_prefix(self.emitter.names))
+
+    def use_goto(self) -> bool:
+        """Do we use a goto for error handling (instead of straight return)?"""
+        return bool(self.cleanups or self.traceback_code)
+
+    def emit_header(self) -> None:
+        """Emit the function header of the wrapper implementation."""
+        input_args = ', '.join('PyObject *obj_{}'.format(arg) for arg in self.arg_names)
+        self.emitter.emit_line('static PyObject *{name}({input_args}) {{'.format(
+            name=self.wrapper_name(),
+            input_args=input_args,
+        ))
+
+    def emit_arg_processing(self,
+                            error: Optional[ErrorHandler] = None,
+                            raise_exception: bool = True) -> None:
+        """Emit validation and unboxing of arguments."""
+        error = error or self.error()
+        for arg_name, arg in zip(self.arg_names, self.args):
+            # Suppress the argument check for *args/**kwargs, since we know it must be right.
+            typ = arg.type if arg.kind not in (ARG_STAR, ARG_STAR2) else object_rprimitive
+            generate_arg_check(arg_name,
+                               typ,
+                               self.emitter,
+                               error,
+                               raise_exception=raise_exception,
+                               optional=arg in self.optional_args)
+
+    def emit_call(self, not_implemented_handler: str = '') -> None:
+        """Emit call to the wrapper function.
+
+        If not_implemented_handler is non-empty, use this C code to handle
+        a NotImplemented return value (if it's possible based on the return type).
+        """
+        native_args = ', '.join('arg_{}'.format(arg) for arg in self.arg_names)
+        ret_type = self.ret_type
+        emitter = self.emitter
+        if ret_type.is_unboxed or self.use_goto():
+            # TODO: The Py_RETURN macros return the correct PyObject * with reference count
+            #       handling. Are they relevant?
+            emitter.emit_line('{}retval = {}{}({});'.format(emitter.ctype_spaced(ret_type),
+                                                            NATIVE_PREFIX,
+                                                            self.target_cname,
+                                                            native_args))
+            emitter.emit_lines(*self.cleanups)
+            if ret_type.is_unboxed:
+                emitter.emit_error_check('retval', ret_type, 'return NULL;')
+                emitter.emit_box('retval', 'retbox', ret_type, declare_dest=True)
+
+            emitter.emit_line(
+                'return {};'.format('retbox' if ret_type.is_unboxed else 'retval'))
         else:
-            emitter.emit_line('if (arg_{} == NULL) {}'.format(name, error_code))
+            if not_implemented_handler and not isinstance(ret_type, RInstance):
+                # The return value type may overlap with NotImplemented.
+                emitter.emit_line('PyObject *retbox = {}{}({});'.format(NATIVE_PREFIX,
+                                                                        self.target_cname,
+                                                                        native_args))
+                emitter.emit_lines('if (retbox == Py_NotImplemented) {',
+                                   not_implemented_handler,
+                                   '}',
+                                   'return retbox;')
+            else:
+                emitter.emit_line('return {}{}({});'.format(NATIVE_PREFIX,
+                                                            self.target_cname,
+                                                            native_args))
+            # TODO: Tracebacks?
+
+    def error(self) -> ErrorHandler:
+        """Figure out how to deal with errors in the wrapper."""
+        if self.cleanups or self.traceback_code:
+            # We'll have a label at the end with error handling code.
+            return GotoHandler('fail')
+        else:
+            # Nothing special needs to done to handle errors, so just return.
+            return ReturnHandler('NULL')
+
+    def emit_error_handling(self) -> None:
+        """Emit error handling block at the end of the wrapper, if needed."""
+        emitter = self.emitter
+        if self.use_goto():
+            emitter.emit_label('fail')
+            emitter.emit_lines(*self.cleanups)
+            if self.traceback_code:
+                emitter.emit_line(self.traceback_code)
+            emitter.emit_line('return NULL;')
+
+    def finish(self) -> None:
+        self.emitter.emit_line('}')

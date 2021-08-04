@@ -639,16 +639,16 @@ class AnnotationsAsAMethod(NamedTuple):
 
 class ReuseNames(NamedTuple):
     x: int
-    def x(self) -> str:  # E: Name 'x' already defined on line 22
+    def x(self) -> str:  # E: Name "x" already defined on line 22
         return ''
 
     def y(self) -> int:
         return 0
-    y: str  # E: Name 'y' already defined on line 26
+    y: str  # E: Name "y" already defined on line 26
 
 class ReuseCallableNamed(NamedTuple):
     z: Callable[[ReuseNames], int]
-    def z(self) -> int:  # E: Name 'z' already defined on line 31
+    def z(self) -> int:  # E: Name "z" already defined on line 31
         return 0
 
 [builtins fixtures/dict.pyi]

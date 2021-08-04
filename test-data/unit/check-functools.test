@@ -25,12 +25,12 @@ Ord() >= 1  # E: Unsupported operand types for >= ("Ord" and "int")
 
 [case testTotalOrderingLambda]
 from functools import total_ordering
-from typing import Any, Callable
+from typing import Any, Callable, ClassVar
 
 @total_ordering
 class Ord:
-    __eq__: Callable[[Any, object], bool] = lambda self, other: False
-    __lt__: Callable[[Any, "Ord"], bool] = lambda self, other: False
+    __eq__: ClassVar[Callable[[Any, object], bool]] = lambda self, other: False
+    __lt__: ClassVar[Callable[[Any, "Ord"], bool]] = lambda self, other: False
 
 reveal_type(Ord() < Ord())  # N: Revealed type is "builtins.bool"
 reveal_type(Ord() <= Ord())  # N: Revealed type is "builtins.bool"
@@ -107,3 +107,23 @@ Ord() > 1
 Ord() >= 1  # E: Unsupported left operand type for >= ("Ord")
 [builtins fixtures/ops.pyi]
 [builtins fixtures/dict.pyi]
+
+[case testCachedProperty]
+# flags: --python-version 3.8
+from functools import cached_property
+class Parent:
+    @property
+    def f(self) -> str: pass
+class Child(Parent):
+    @cached_property
+    def f(self) -> str: pass
+    @cached_property
+    def g(self) -> int: pass
+    @cached_property
+    def h(self, arg) -> int: pass  # E: Too many arguments
+reveal_type(Parent().f)  # N: Revealed type is "builtins.str"
+reveal_type(Child().f)  # N: Revealed type is "builtins.str"
+reveal_type(Child().g)  # N: Revealed type is "builtins.int"
+Child().f = "Hello World"
+Child().g = "invalid"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/property.pyi]

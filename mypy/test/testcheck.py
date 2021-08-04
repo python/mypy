@@ -95,6 +95,7 @@ typecheck_files = [
     'check-generic-alias.test',
     'check-typeguard.test',
     'check-functools.test',
+    'check-singledispatch.test',
 ]
 
 # Tests that use Python 3.8-only AST features (like expression-scoped ignores):
@@ -105,7 +106,7 @@ if sys.version_info >= (3, 9):
 
 # Special tests for platforms with case-insensitive filesystems.
 if sys.platform in ('darwin', 'win32'):
-    typecheck_files.append('check-modules-case.test')
+    typecheck_files.extend(['check-modules-case.test'])
 
 
 class TypeCheckSuite(DataSuite):

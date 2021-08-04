@@ -4,7 +4,7 @@ from typing import Any, List, Optional, Callable, Tuple, Iterator, Set, Union, c
 from typing_extensions import Final
 
 from mypy.types import (
-    Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneType,
+    Type, AnyType, TypeGuardType, UnboundType, TypeVisitor, FormalArgument, NoneType,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
     FunctionLike, TypeOfAny, LiteralType, get_proper_type, TypeAliasType
@@ -18,7 +18,7 @@ from mypy.erasetype import erase_type
 # import mypy.solve
 from mypy.nodes import (
     FuncBase, Var, Decorator, OverloadedFuncDef, TypeInfo, CONTRAVARIANT, COVARIANT,
-    ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2
+
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance
@@ -26,9 +26,9 @@ from mypy.typestate import TypeState, SubtypeKind
 from mypy import state
 
 # Flags for detected protocol members
-IS_SETTABLE = 1  # type: Final
-IS_CLASSVAR = 2  # type: Final
-IS_CLASS_OR_STATIC = 3  # type: Final
+IS_SETTABLE: Final = 1
+IS_CLASSVAR: Final = 2
+IS_CLASS_OR_STATIC: Final = 3
 
 TypeParameterChecker = Callable[[Type, Type, int], bool]
 
@@ -121,6 +121,18 @@ def _is_subtype(left: Type, right: Type,
                                             ignore_declared_variance=ignore_declared_variance,
                                             ignore_promotions=ignore_promotions)
                                  for item in right.items)
+        # Recombine rhs literal types, to make an enum type a subtype
+        # of a union of all enum items as literal types. Only do it if
+        # the previous check didn't succeed, since recombining can be
+        # expensive.
+        if not is_subtype_of_item and isinstance(left, Instance) and left.type.is_enum:
+            right = UnionType(mypy.typeops.try_contracting_literals_in_union(right.items))
+            is_subtype_of_item = any(is_subtype(orig_left, item,
+                                                ignore_type_params=ignore_type_params,
+                                                ignore_pos_arg_names=ignore_pos_arg_names,
+                                                ignore_declared_variance=ignore_declared_variance,
+                                                ignore_promotions=ignore_promotions)
+                                     for item in right.items)
         # However, if 'left' is a type variable T, T might also have
         # an upper bound which is itself a union. This case will be
         # handled below by the SubtypeVisitor. We have to check both
@@ -463,6 +475,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_union_type(self, left: UnionType) -> bool:
         return all(self._is_subtype(item, self.orig_right) for item in left.items)
 
+    def visit_type_guard_type(self, left: TypeGuardType) -> bool:
+        raise RuntimeError("TypeGuard should not appear here")
+
     def visit_partial_type(self, left: PartialType) -> bool:
         # This is indeterminate as we don't really know the complete type yet.
         raise RuntimeError
@@ -685,8 +700,9 @@ def find_node_type(node: Union[Var, FuncBase], itype: Instance, subtype: Type) -
     from mypy.typeops import bind_self
 
     if isinstance(node, FuncBase):
-        typ = mypy.typeops.function_type(
-            node, fallback=Instance(itype.type.mro[-1], []))  # type: Optional[Type]
+        typ: Optional[Type] = mypy.typeops.function_type(
+            node, fallback=Instance(itype.type.mro[-1], [])
+        )
     else:
         typ = node.type
     typ = get_proper_type(typ)
@@ -713,7 +729,7 @@ def non_method_protocol_members(tp: TypeInfo) -> List[str]:
     """Find all non-callable members of a protocol."""
 
     assert tp.is_protocol
-    result = []  # type: List[str]
+    result: List[str] = []
     anytype = AnyType(TypeOfAny.special_form)
     instance = Instance(tp, [anytype] * len(tp.defn.type_vars))
 
@@ -934,8 +950,8 @@ def is_callable_compatible(left: CallableType, right: CallableType,
 
         i = right_star.pos
         assert i is not None
-        while i < len(left.arg_kinds) and left.arg_kinds[i] in (ARG_POS, ARG_OPT):
-            if allow_partial_overlap and left.arg_kinds[i] == ARG_OPT:
+        while i < len(left.arg_kinds) and left.arg_kinds[i].is_positional():
+            if allow_partial_overlap and left.arg_kinds[i].is_optional():
                 break
 
             left_by_position = left.argument_by_position(i)
@@ -954,7 +970,7 @@ def is_callable_compatible(left: CallableType, right: CallableType,
         right_names = {name for name in right.arg_names if name is not None}
         left_only_names = set()
         for name, kind in zip(left.arg_names, left.arg_kinds):
-            if name is None or kind in (ARG_STAR, ARG_STAR2) or name in right_names:
+            if name is None or kind.is_star() or name in right_names:
                 continue
             left_only_names.add(name)
 
@@ -1066,7 +1082,7 @@ def unify_generic_callable(type: CallableType, target: CallableType,
     if return_constraint_direction is None:
         return_constraint_direction = mypy.constraints.SUBTYPE_OF
 
-    constraints = []  # type: List[mypy.constraints.Constraint]
+    constraints: List[mypy.constraints.Constraint] = []
     for arg_type, target_arg_type in zip(type.arg_types, target.arg_types):
         c = mypy.constraints.infer_constraints(
             arg_type, target_arg_type, mypy.constraints.SUPERTYPE_OF)
@@ -1361,6 +1377,14 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
 
     def visit_union_type(self, left: UnionType) -> bool:
         return all([self._is_proper_subtype(item, self.orig_right) for item in left.items])
+
+    def visit_type_guard_type(self, left: TypeGuardType) -> bool:
+        if isinstance(self.right, TypeGuardType):
+            # TypeGuard[bool] is a subtype of TypeGuard[int]
+            return self._is_proper_subtype(left.type_guard, self.right.type_guard)
+        else:
+            # TypeGuards aren't a subtype of anything else for now (but see #10489)
+            return False
 
     def visit_partial_type(self, left: PartialType) -> bool:
         # TODO: What's the right thing to do here?

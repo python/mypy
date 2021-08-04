@@ -124,10 +124,12 @@ from typing import Any, Callable, List, Tuple, Optional, NamedTuple, TypeVar, Di
 from mypy_extensions import trait, mypyc_attr
 
 from mypy.nodes import (
-    Expression, Context, ClassDef, SymbolTableNode, MypyFile, CallExpr
+    Expression, Context, ClassDef, SymbolTableNode, MypyFile, CallExpr, ArgKind
 )
 from mypy.tvar_scope import TypeVarLikeScope
-from mypy.types import Type, Instance, CallableType, TypeList, UnboundType, ProperType
+from mypy.types import (
+    Type, Instance, CallableType, TypeList, UnboundType, ProperType, FunctionLike
+)
 from mypy.messages import MessageBuilder
 from mypy.options import Options
 from mypy.lookup import lookup_fully_qualified
@@ -146,7 +148,7 @@ class TypeAnalyzerPluginInterface:
     # This might be different from Plugin.options (that contains default/global options)
     # if there are per-file options in the config. This applies to all other interfaces
     # in this file.
-    options = None  # type: Options
+    options: Options
 
     @abstractmethod
     def fail(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
@@ -160,12 +162,12 @@ class TypeAnalyzerPluginInterface:
 
     @abstractmethod
     def analyze_type(self, typ: Type) -> Type:
-        """Ananlyze an unbound type using the default mypy logic."""
+        """Analyze an unbound type using the default mypy logic."""
         raise NotImplementedError
 
     @abstractmethod
     def analyze_callable_args(self, arglist: TypeList) -> Optional[Tuple[List[Type],
-                                                                         List[int],
+                                                                         List[ArgKind],
                                                                          List[Optional[str]]]]:
         """Find types, kinds, and names of arguments from extended callable syntax."""
         raise NotImplementedError
@@ -189,7 +191,7 @@ class CommonPluginApi:
     # Global mypy options.
     # Per-file options can be only accessed on various
     # XxxPluginInterface classes.
-    options = None  # type: Options
+    options: Options
 
     @abstractmethod
     def lookup_fully_qualified(self, fullname: str) -> Optional[SymbolTableNode]:
@@ -209,9 +211,9 @@ class CheckerPluginInterface:
     docstrings in checker.py for more details.
     """
 
-    msg = None  # type: MessageBuilder
-    options = None  # type: Options
-    path = None  # type: str
+    msg: MessageBuilder
+    options: Options
+    path: str
 
     # Type context for type inference
     @property
@@ -241,11 +243,11 @@ class SemanticAnalyzerPluginInterface:
     # TODO: clean-up lookup functions.
     """
 
-    modules = None  # type: Dict[str, MypyFile]
+    modules: Dict[str, MypyFile]
     # Options for current file.
-    options = None  # type: Options
-    cur_mod_id = None  # type: str
-    msg = None  # type: MessageBuilder
+    options: Options
+    cur_mod_id: str
+    msg: MessageBuilder
 
     @abstractmethod
     def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
@@ -355,6 +357,11 @@ class SemanticAnalyzerPluginInterface:
         """Is this the final iteration of semantic analysis?"""
         raise NotImplementedError
 
+    @property
+    @abstractmethod
+    def is_stub_file(self) -> bool:
+        raise NotImplementedError
+
 
 # A context for querying for configuration data about a module for
 # cache invalidation purposes.
@@ -382,8 +389,8 @@ FunctionSigContext = NamedTuple(
 # callback at least sometimes can infer a more precise type.
 FunctionContext = NamedTuple(
     'FunctionContext', [
-        ('arg_types', List[List[Type]]),   # List of actual caller types for each formal argument
-        ('arg_kinds', List[List[int]]),    # Ditto for argument kinds, see nodes.ARG_* constants
+        ('arg_types', List[List[Type]]),     # List of actual caller types for each formal argument
+        ('arg_kinds', List[List[ArgKind]]),  # Ditto for argument kinds, see nodes.ARG_* constants
         # Names of formal parameters from the callee definition,
         # these will be sufficient in most cases.
         ('callee_arg_names', List[Optional[str]]),
@@ -420,7 +427,7 @@ MethodContext = NamedTuple(
         ('type', ProperType),              # Base object type for method call
         ('arg_types', List[List[Type]]),   # List of actual caller types for each formal argument
         # see FunctionContext for details about names and kinds
-        ('arg_kinds', List[List[int]]),
+        ('arg_kinds', List[List[ArgKind]]),
         ('callee_arg_names', List[Optional[str]]),
         ('arg_names', List[List[Optional[str]]]),
         ('default_return_type', Type),     # Return type inferred by mypy
@@ -475,7 +482,7 @@ class Plugin(CommonPluginApi):
         # This can't be set in __init__ because it is executed too soon in build.py.
         # Therefore, build.py *must* set it later before graph processing starts
         # by calling set_modules().
-        self._modules = None  # type: Optional[Dict[str, MypyFile]]
+        self._modules: Optional[Dict[str, MypyFile]] = None
 
     def set_modules(self, modules: Dict[str, MypyFile]) -> None:
         self._modules = modules
@@ -544,7 +551,7 @@ class Plugin(CommonPluginApi):
         return None
 
     def get_function_signature_hook(self, fullname: str
-                                    ) -> Optional[Callable[[FunctionSigContext], CallableType]]:
+                                    ) -> Optional[Callable[[FunctionSigContext], FunctionLike]]:
         """Adjust the signature of a function.
 
         This method is called before type checking a function call. Plugin
@@ -577,7 +584,7 @@ class Plugin(CommonPluginApi):
         return None
 
     def get_method_signature_hook(self, fullname: str
-                                  ) -> Optional[Callable[[MethodSigContext], CallableType]]:
+                                  ) -> Optional[Callable[[MethodSigContext], FunctionLike]]:
         """Adjust the signature of a method.
 
         This method is called before type checking a method call. Plugin
@@ -748,7 +755,7 @@ class ChainedPlugin(Plugin):
         return self._find_hook(lambda plugin: plugin.get_type_analyze_hook(fullname))
 
     def get_function_signature_hook(self, fullname: str
-                                    ) -> Optional[Callable[[FunctionSigContext], CallableType]]:
+                                    ) -> Optional[Callable[[FunctionSigContext], FunctionLike]]:
         return self._find_hook(lambda plugin: plugin.get_function_signature_hook(fullname))
 
     def get_function_hook(self, fullname: str
@@ -756,7 +763,7 @@ class ChainedPlugin(Plugin):
         return self._find_hook(lambda plugin: plugin.get_function_hook(fullname))
 
     def get_method_signature_hook(self, fullname: str
-                                  ) -> Optional[Callable[[MethodSigContext], CallableType]]:
+                                  ) -> Optional[Callable[[MethodSigContext], FunctionLike]]:
         return self._find_hook(lambda plugin: plugin.get_method_signature_hook(fullname))
 
     def get_method_hook(self, fullname: str

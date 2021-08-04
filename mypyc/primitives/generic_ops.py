@@ -15,7 +15,7 @@ from mypyc.ir.rtypes import (
     object_pointer_rprimitive, c_size_t_rprimitive, c_pyssize_t_rprimitive
 )
 from mypyc.primitives.registry import (
-    binary_op, c_unary_op, method_op, function_op, custom_op, ERR_NEG_INT
+    binary_op, unary_op, method_op, function_op, custom_op, ERR_NEG_INT
 )
 
 
@@ -46,7 +46,8 @@ for op, funcname in [('+', 'PyNumber_Add'),
                      ('>>', 'PyNumber_Rshift'),
                      ('&', 'PyNumber_And'),
                      ('^', 'PyNumber_Xor'),
-                     ('|', 'PyNumber_Or')]:
+                     ('|', 'PyNumber_Or'),
+                     ('@', 'PyNumber_MatrixMultiply')]:
     binary_op(name=op,
               arg_types=[object_rprimitive, object_rprimitive],
               return_type=object_rprimitive,
@@ -96,14 +97,14 @@ binary_op(
 for op, funcname in [('-', 'PyNumber_Negative'),
                      ('+', 'PyNumber_Positive'),
                      ('~', 'PyNumber_Invert')]:
-    c_unary_op(name=op,
-               arg_type=object_rprimitive,
-               return_type=object_rprimitive,
-               c_function_name=funcname,
-               error_kind=ERR_MAGIC,
-               priority=0)
+    unary_op(name=op,
+             arg_type=object_rprimitive,
+             return_type=object_rprimitive,
+             c_function_name=funcname,
+             error_kind=ERR_MAGIC,
+             priority=0)
 
-c_unary_op(
+unary_op(
     name='not',
     arg_type=object_rprimitive,
     return_type=c_int_rprimitive,

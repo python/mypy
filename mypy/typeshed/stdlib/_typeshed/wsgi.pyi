@@ -1,27 +1,27 @@
 # Types to support PEP 3333 (WSGI)
 #
-# This module doesn't exist at runtime and neither do the types defined in this
-# file. They are provided for type checking purposes.
+# See the README.md file in this directory for more information.
 
 from sys import _OptExcInfo
-from typing import Any, Callable, Dict, Iterable, List, Optional, Protocol, Text, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Protocol, Tuple
 
+# stable
 class StartResponse(Protocol):
     def __call__(
         self, status: str, headers: List[Tuple[str, str]], exc_info: Optional[_OptExcInfo] = ...
     ) -> Callable[[bytes], Any]: ...
 
-WSGIEnvironment = Dict[Text, Any]
-WSGIApplication = Callable[[WSGIEnvironment, StartResponse], Iterable[bytes]]
+WSGIEnvironment = Dict[str, Any]  # stable
+WSGIApplication = Callable[[WSGIEnvironment, StartResponse], Iterable[bytes]]  # stable
 
-# WSGI input streams per PEP 3333
+# WSGI input streams per PEP 3333, stable
 class InputStream(Protocol):
     def read(self, size: int = ...) -> bytes: ...
     def readline(self, size: int = ...) -> bytes: ...
     def readlines(self, hint: int = ...) -> List[bytes]: ...
     def __iter__(self) -> Iterable[bytes]: ...
 
-# WSGI error streams per PEP 3333
+# WSGI error streams per PEP 3333, stable
 class ErrorStream(Protocol):
     def flush(self) -> None: ...
     def write(self, s: str) -> None: ...

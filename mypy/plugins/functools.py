@@ -2,7 +2,7 @@
 from typing import Dict, NamedTuple, Optional
 
 import mypy.plugin
-from mypy.nodes import ARG_OPT, ARG_POS, ARG_STAR2, Argument, FuncItem, Var
+from mypy.nodes import ARG_POS, ARG_STAR2, Argument, FuncItem, Var
 from mypy.plugins.common import add_method_to_class
 from mypy.types import AnyType, CallableType, get_proper_type, Type, TypeOfAny, UnboundType
 
@@ -26,7 +26,7 @@ def functools_total_ordering_maker_callback(ctx: mypy.plugin.ClassDefContext,
                                             auto_attribs_default: bool = False) -> None:
     """Add dunder methods to classes decorated with functools.total_ordering."""
     if ctx.api.options.python_version < (3,):
-        ctx.api.fail('"functools.total_ordering" is not supported in Python 2', ctx.reason)
+        # This plugin is not supported in Python 2 mode (it's a no-op).
         return
 
     comparison_methods = _analyze_class(ctx)
@@ -45,7 +45,7 @@ def functools_total_ordering_maker_callback(ctx: mypy.plugin.ClassDefContext,
 
     other_type = _find_other_type(root_method)
     bool_type = ctx.api.named_type('__builtins__.bool')
-    ret_type = bool_type  # type: Type
+    ret_type: Type = bool_type
     if root_method.type.ret_type != ctx.api.named_type('__builtins__.bool'):
         proper_ret_type = get_proper_type(root_method.type.ret_type)
         if not (isinstance(proper_ret_type, UnboundType)
@@ -65,7 +65,7 @@ def _find_other_type(method: _MethodInfo) -> Type:
     cur_pos_arg = 0
     other_arg = None
     for arg_kind, arg_type in zip(method.type.arg_kinds, method.type.arg_types):
-        if arg_kind in (ARG_POS, ARG_OPT):
+        if arg_kind.is_positional():
             if cur_pos_arg == first_arg_pos:
                 other_arg = arg_type
                 break
@@ -84,7 +84,7 @@ def _find_other_type(method: _MethodInfo) -> Type:
 def _analyze_class(ctx: mypy.plugin.ClassDefContext) -> Dict[str, Optional[_MethodInfo]]:
     """Analyze the class body, its parents, and return the comparison methods found."""
     # Traverse the MRO and collect ordering methods.
-    comparison_methods = {}  # type: Dict[str, Optional[_MethodInfo]]
+    comparison_methods: Dict[str, Optional[_MethodInfo]] = {}
     # Skip object because total_ordering does not use methods from object
     for cls in ctx.cls.info.mro[:-1]:
         for name in _ORDERING_METHODS:

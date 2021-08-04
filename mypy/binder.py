@@ -5,7 +5,7 @@ from typing import Dict, List, Set, Iterator, Union, Optional, Tuple, cast
 from typing_extensions import DefaultDict
 
 from mypy.types import (
-    Type, AnyType, PartialType, UnionType, TypeOfAny, NoneType, get_proper_type
+    Type, AnyType, PartialType, UnionType, TypeOfAny, NoneType, TypeGuardType, get_proper_type
 )
 from mypy.subtypes import is_subtype
 from mypy.join import join_simple
@@ -32,7 +32,7 @@ class Frame:
     """
 
     def __init__(self) -> None:
-        self.types = {}  # type: Dict[Key, Type]
+        self.types: Dict[Key, Type] = {}
         self.unreachable = False
 
         # Should be set only if we're entering a frame where it's not
@@ -69,7 +69,7 @@ class ConditionalTypeBinder:
     """
     # Stored assignments for situations with tuple/list lvalue and rvalue of union type.
     # This maps an expression to a list of bound types for every item in the union type.
-    type_assignments = None  # type: Optional[Assigns]
+    type_assignments: Optional[Assigns] = None
 
     def __init__(self) -> None:
         # The stack of frames currently used.  These map
@@ -85,21 +85,21 @@ class ConditionalTypeBinder:
         # the end of the frame or by a loop control construct
         # or raised exception. The last element of self.frames
         # has no corresponding element in this list.
-        self.options_on_return = []  # type: List[List[Frame]]
+        self.options_on_return: List[List[Frame]] = []
 
         # Maps literal_hash(expr) to get_declaration(expr)
         # for every expr stored in the binder
-        self.declarations = {}  # type: Dict[Key, Optional[Type]]
+        self.declarations: Dict[Key, Optional[Type]] = {}
         # Set of other keys to invalidate if a key is changed, e.g. x -> {x.a, x[0]}
         # Whenever a new key (e.g. x.a.b) is added, we update this
-        self.dependencies = {}  # type: Dict[Key, Set[Key]]
+        self.dependencies: Dict[Key, Set[Key]] = {}
 
         # Whether the last pop changed the newly top frame on exit
         self.last_pop_changed = False
 
-        self.try_frames = set()  # type: Set[int]
-        self.break_frames = []  # type: List[int]
-        self.continue_frames = []  # type: List[int]
+        self.try_frames: Set[int] = set()
+        self.break_frames: List[int] = []
+        self.continue_frames: List[int] = []
 
     def _add_dependencies(self, key: Key, value: Optional[Key] = None) -> None:
         if value is None:
@@ -202,7 +202,9 @@ class ConditionalTypeBinder:
             else:
                 for other in resulting_values[1:]:
                     assert other is not None
-                    type = join_simple(self.declarations[key], type, other)
+                    # Ignore the error about using get_proper_type().
+                    if not isinstance(other, TypeGuardType):  # type: ignore[misc]
+                        type = join_simple(self.declarations[key], type, other)
             if current_value is None or not is_same_type(type, current_value):
                 self._put(key, type)
                 changed = True

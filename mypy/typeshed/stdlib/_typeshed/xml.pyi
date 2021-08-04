@@ -1,4 +1,4 @@
-# Stub-only types. This module does not exist at runtime.
+# See the README.md file in this directory for more information.
 
 from typing import Any, Optional
 from typing_extensions import Protocol
