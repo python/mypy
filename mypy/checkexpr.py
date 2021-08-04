@@ -18,7 +18,7 @@ from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneType, TypeVarType, TypeGuardType,
     TupleType, TypedDictType, Instance, ErasedType, UnionType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, LiteralType, LiteralValue,
-    is_named_instance, FunctionLike,
+    is_named_instance, FunctionLike, ParamSpecType,
     StarType, is_optional, remove_optional, is_generic_instance, get_proper_type, ProperType,
     get_proper_types, flatten_nested_unions
 )
@@ -4471,14 +4471,16 @@ def merge_typevars_in_callables_by_name(
             target = freshen_function_type_vars(target)
 
             rename = {}  # Dict[TypeVarId, TypeVar]
-            for tvdef in target.variables:
-                name = tvdef.fullname
+            for tv in target.variables:
+                name = tv.fullname
                 if name not in unique_typevars:
                     # TODO(shantanu): fix for ParamSpecType
-                    assert isinstance(tvdef, TypeVarType)
-                    unique_typevars[name] = tvdef
-                    variables.append(tvdef)
-                rename[tvdef.id] = unique_typevars[name]
+                    if isinstance(tv, ParamSpecType):
+                        continue
+                    assert isinstance(tv, TypeVarType)
+                    unique_typevars[name] = tv
+                    variables.append(tv)
+                rename[tv.id] = unique_typevars[name]
 
             target = cast(CallableType, expand_type(target, rename))
         output.append(target)

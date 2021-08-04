@@ -5,8 +5,8 @@ from mypy.types import (
     NoneType, TypeVarType, Overloaded, TupleType, TypedDictType, UnionType,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId,
     FunctionLike, TypeVarType, LiteralType, get_proper_type, ProperType,
-    TypeAliasType)
-
+    TypeAliasType, ParamSpecType
+)
 
 def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type:
     """Substitute any type variable references in a type given by a type
@@ -37,15 +37,17 @@ def freshen_function_type_vars(callee: F) -> F:
     if isinstance(callee, CallableType):
         if not callee.is_generic():
             return cast(F, callee)
-        tvdefs = []
+        tvs = []
         tvmap: Dict[TypeVarId, Type] = {}
         for v in callee.variables:
             # TODO(shantanu): fix for ParamSpecType
+            if isinstance(v, ParamSpecType):
+                continue
             assert isinstance(v, TypeVarType)
-            tvdef = TypeVarType.new_unification_variable(v)
-            tvdefs.append(tvdef)
-            tvmap[v.id] = tvdef
-        fresh = cast(CallableType, expand_type(callee, tvmap)).copy_modified(variables=tvdefs)
+            tv = TypeVarType.new_unification_variable(v)
+            tvs.append(tv)
+            tvmap[v.id] = tv
+        fresh = cast(CallableType, expand_type(callee, tvmap)).copy_modified(variables=tvs)
         return cast(F, fresh)
     else:
         assert isinstance(callee, Overloaded)

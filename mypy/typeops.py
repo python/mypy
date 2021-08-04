@@ -14,7 +14,7 @@ from mypy.types import (
     TupleType, Instance, FunctionLike, Type, CallableType, TypeVarLikeType, Overloaded,
     TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType, TypedDictType,
     AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
-    copy_type, TypeAliasType, TypeQuery
+    copy_type, TypeAliasType, TypeQuery, ParamSpecType
 )
 from mypy.nodes import (
     FuncBase, FuncItem, OverloadedFuncDef, TypeInfo, ARG_STAR, ARG_STAR2, ARG_POS,
@@ -512,6 +512,8 @@ def true_or_false(t: Type) -> ProperType:
 
 def erase_def_to_union_or_bound(tdef: TypeVarLikeType) -> Type:
     # TODO(shantanu): fix for ParamSpecType
+    if isinstance(tdef, ParamSpecType):
+        return AnyType(TypeOfAny.from_error)
     assert isinstance(tdef, TypeVarType)
     if tdef.values:
         return make_simplified_union(tdef.values)

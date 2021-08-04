@@ -1500,12 +1500,11 @@ MypyFile:1(
 
 
 [case testParamSpec]
-# flags: --wip-pep-612
 from typing import ParamSpec
 P = ParamSpec("P")
 [out]
 MypyFile:1(
-  ImportFrom:2(typing, [ParamSpec])
-  AssignmentStmt:3(
+  ImportFrom:1(typing, [ParamSpec])
+  AssignmentStmt:2(
     NameExpr(P* [__main__.P])
-    ParamSpecExpr:3()))
+    ParamSpecExpr:2()))
