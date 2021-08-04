@@ -5,7 +5,7 @@ import mypy.sametypes
 from mypy.expandtype import expand_type
 from mypy.types import (
     Type, TypeVarId, TypeVarType, CallableType, AnyType, PartialType, get_proper_types,
-    TypeVarDef, TypeVarLikeDef, ProperType
+    TypeVarDef, TypeVarLikeDef, ProperType, ParamSpecDef
 )
 from mypy.nodes import Context
 
@@ -19,6 +19,8 @@ def get_target_type(
     skip_unsatisfied: bool
 ) -> Optional[Type]:
     # TODO(shantanu): fix for ParamSpecDef
+    if isinstance(tvar, ParamSpecDef):
+        return None
     assert isinstance(tvar, TypeVarDef)
     values = get_proper_types(tvar.values)
     if values:

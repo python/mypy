@@ -18,7 +18,7 @@ from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneType, TypeGuardType, TypeVarDef,
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, LiteralType, LiteralValue,
-    is_named_instance, FunctionLike,
+    is_named_instance, FunctionLike, ParamSpecDef,
     StarType, is_optional, remove_optional, is_generic_instance, get_proper_type, ProperType,
     get_proper_types, flatten_nested_unions
 )
@@ -4481,6 +4481,8 @@ def merge_typevars_in_callables_by_name(
                 name = tvdef.fullname
                 if name not in unique_typevars:
                     # TODO(shantanu): fix for ParamSpecDef
+                    if isinstance(tvdef, ParamSpecDef):
+                        continue
                     assert isinstance(tvdef, TypeVarDef)
                     unique_typevars[name] = TypeVarType(tvdef)
                     variables.append(tvdef)
