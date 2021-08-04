@@ -99,10 +99,11 @@ inverse_node_kinds: Final = {_kind: _name for _name, _kind in node_kinds.items()
 
 
 implicit_module_attrs: Final = {
-    "__name__": "__builtins__.str",
-    "__doc__": None,  # depends on Python version, see semanal.py
-    "__file__": "__builtins__.str",
-    "__package__": "__builtins__.str",
+    '__name__': '__builtins__.str',
+    '__doc__': None,  # depends on Python version, see semanal.py
+    '__path__': None,  # depends on if the module is a package
+    '__file__': '__builtins__.str',
+    '__package__': '__builtins__.str'
 }
 
 
@@ -921,11 +922,10 @@ class Var(SymbolNode):
 
 class ClassDef(Statement):
     """Class definition"""
-
     name: str  # Name of the class without module prefix
     fullname: Bogus[str] = None  # type: ignore # Fully qualified name of the class
     defs: "Block"
-    type_vars: List["mypy.types.TypeVarDef"]
+    type_vars: List["mypy.types.TypeVarType"]
     # Base class expressions (not semantically analyzed -- can be arbitrary expressions)
     base_type_exprs: List[Expression]
     # Special base classes like Generic[...] get moved here during semantic analysis
@@ -940,7 +940,7 @@ class ClassDef(Statement):
     def __init__(self,
                  name: str,
                  defs: 'Block',
-                 type_vars: Optional[List['mypy.types.TypeVarDef']] = None,
+                 type_vars: Optional[List['mypy.types.TypeVarType']] = None,
                  base_type_exprs: Optional[List[Expression]] = None,
                  metaclass: Optional[Expression] = None,
                  keywords: Optional[List[Tuple[str, Expression]]] = None) -> None:
@@ -975,7 +975,7 @@ class ClassDef(Statement):
         assert data['.class'] == 'ClassDef'
         res = ClassDef(data['name'],
                        Block([]),
-                       [mypy.types.TypeVarDef.deserialize(v) for v in data['type_vars']],
+                       [mypy.types.TypeVarType.deserialize(v) for v in data['type_vars']],
                        )
         res.fullname = data['fullname']
         return res

@@ -1,11 +1,10 @@
+from _typeshed import Self
 from queue import Queue
 from types import TracebackType
-from typing import Any, List, Optional, Tuple, Type, TypeVar, Union
+from typing import Any, List, Optional, Tuple, Type, Union
 
 families: List[None]
 
-_ConnectionT = TypeVar("_ConnectionT", bound=Connection)
-_ListenerT = TypeVar("_ListenerT", bound=Listener)
 _Address = Union[str, Tuple[str, int]]
 
 class Connection(object):
@@ -15,7 +14,7 @@ class Connection(object):
     recv_bytes: Any
     send: Any
     send_bytes: Any
-    def __enter__(self: _ConnectionT) -> _ConnectionT: ...
+    def __enter__(self: Self) -> Self: ...
     def __exit__(
         self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
     ) -> None: ...
@@ -27,7 +26,7 @@ class Listener(object):
     _backlog_queue: Optional[Queue[Any]]
     @property
     def address(self) -> Optional[Queue[Any]]: ...
-    def __enter__(self: _ListenerT) -> _ListenerT: ...
+    def __enter__(self: Self) -> Self: ...
     def __exit__(
         self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
     ) -> None: ...

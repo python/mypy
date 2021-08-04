@@ -1,5 +1,5 @@
 import sys
-from _typeshed import FileDescriptorLike
+from _typeshed import FileDescriptorLike, Self
 from types import TracebackType
 from typing import Any, Iterable, List, Optional, Tuple, Type
 
@@ -101,7 +101,7 @@ if sys.platform != "linux" and sys.platform != "win32":
 if sys.platform == "linux":
     class epoll(object):
         def __init__(self, sizehint: int = ..., flags: int = ...) -> None: ...
-        def __enter__(self) -> epoll: ...
+        def __enter__(self: Self) -> Self: ...
         def __exit__(
             self,
             exc_type: Optional[Type[BaseException]] = ...,

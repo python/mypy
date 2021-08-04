@@ -1,8 +1,8 @@
 import enum
 import socket
 import sys
-from _typeshed import StrPath
-from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Optional, Set, Tuple, Type, Union, overload
+from _typeshed import ReadableBuffer, Self, StrPath, WriteableBuffer
+from typing import Any, Callable, ClassVar, Dict, Iterable, List, NamedTuple, Optional, Set, Tuple, Type, Union, overload
 from typing_extensions import Literal
 
 _PCTRTT = Tuple[Tuple[str, str], ...]
@@ -103,25 +103,48 @@ if sys.platform == "win32":
     def enum_certificates(store_name: str) -> _EnumRetType: ...
     def enum_crls(store_name: str) -> _EnumRetType: ...
 
-CERT_NONE: int
-CERT_OPTIONAL: int
-CERT_REQUIRED: int
+class VerifyMode(enum.IntEnum):
+    CERT_NONE: int
+    CERT_OPTIONAL: int
+    CERT_REQUIRED: int
 
-VERIFY_DEFAULT: int
-VERIFY_CRL_CHECK_LEAF: int
-VERIFY_CRL_CHECK_CHAIN: int
-VERIFY_X509_STRICT: int
-VERIFY_X509_TRUSTED_FIRST: int
+CERT_NONE: VerifyMode
+CERT_OPTIONAL: VerifyMode
+CERT_REQUIRED: VerifyMode
 
-PROTOCOL_SSLv23: int
-PROTOCOL_SSLv2: int
-PROTOCOL_SSLv3: int
-PROTOCOL_TLSv1: int
-PROTOCOL_TLSv1_1: int
-PROTOCOL_TLSv1_2: int
-PROTOCOL_TLS: int
-PROTOCOL_TLS_CLIENT: int
-PROTOCOL_TLS_SERVER: int
+class VerifyFlags(enum.IntFlag):
+    VERIFY_DEFAULT: int
+    VERIFY_CRL_CHECK_LEAF: int
+    VERIFY_CRL_CHECK_CHAIN: int
+    VERIFY_X509_STRICT: int
+    VERIFY_X509_TRUSTED_FIRST: int
+
+VERIFY_DEFAULT: VerifyFlags
+VERIFY_CRL_CHECK_LEAF: VerifyFlags
+VERIFY_CRL_CHECK_CHAIN: VerifyFlags
+VERIFY_X509_STRICT: VerifyFlags
+VERIFY_X509_TRUSTED_FIRST: VerifyFlags
+
+class _SSLMethod(enum.IntEnum):
+    PROTOCOL_SSLv23: int
+    PROTOCOL_SSLv2: int
+    PROTOCOL_SSLv3: int
+    PROTOCOL_TLSv1: int
+    PROTOCOL_TLSv1_1: int
+    PROTOCOL_TLSv1_2: int
+    PROTOCOL_TLS: int
+    PROTOCOL_TLS_CLIENT: int
+    PROTOCOL_TLS_SERVER: int
+
+PROTOCOL_SSLv23: _SSLMethod
+PROTOCOL_SSLv2: _SSLMethod
+PROTOCOL_SSLv3: _SSLMethod
+PROTOCOL_TLSv1: _SSLMethod
+PROTOCOL_TLSv1_1: _SSLMethod
+PROTOCOL_TLSv1_2: _SSLMethod
+PROTOCOL_TLS: _SSLMethod
+PROTOCOL_TLS_CLIENT: _SSLMethod
+PROTOCOL_TLS_SERVER: _SSLMethod
 
 class Options(enum.IntFlag):
     OP_ALL: int
@@ -176,39 +199,72 @@ OPENSSL_VERSION: str
 OPENSSL_VERSION_INFO: Tuple[int, int, int, int, int]
 OPENSSL_VERSION_NUMBER: int
 
-ALERT_DESCRIPTION_HANDSHAKE_FAILURE: int
-ALERT_DESCRIPTION_INTERNAL_ERROR: int
-ALERT_DESCRIPTION_ACCESS_DENIED: int
-ALERT_DESCRIPTION_BAD_CERTIFICATE: int
-ALERT_DESCRIPTION_BAD_CERTIFICATE_HASH_VALUE: int
-ALERT_DESCRIPTION_BAD_CERTIFICATE_STATUS_RESPONSE: int
-ALERT_DESCRIPTION_BAD_RECORD_MAC: int
-ALERT_DESCRIPTION_CERTIFICATE_EXPIRED: int
-ALERT_DESCRIPTION_CERTIFICATE_REVOKED: int
-ALERT_DESCRIPTION_CERTIFICATE_UNKNOWN: int
-ALERT_DESCRIPTION_CERTIFICATE_UNOBTAINABLE: int
-ALERT_DESCRIPTION_CLOSE_NOTIFY: int
-ALERT_DESCRIPTION_DECODE_ERROR: int
-ALERT_DESCRIPTION_DECOMPRESSION_FAILURE: int
-ALERT_DESCRIPTION_DECRYPT_ERROR: int
-ALERT_DESCRIPTION_ILLEGAL_PARAMETER: int
-ALERT_DESCRIPTION_INSUFFICIENT_SECURITY: int
-ALERT_DESCRIPTION_NO_RENEGOTIATION: int
-ALERT_DESCRIPTION_PROTOCOL_VERSION: int
-ALERT_DESCRIPTION_RECORD_OVERFLOW: int
-ALERT_DESCRIPTION_UNEXPECTED_MESSAGE: int
-ALERT_DESCRIPTION_UNKNOWN_CA: int
-ALERT_DESCRIPTION_UNKNOWN_PSK_IDENTITY: int
-ALERT_DESCRIPTION_UNRECOGNIZED_NAME: int
-ALERT_DESCRIPTION_UNSUPPORTED_CERTIFICATE: int
-ALERT_DESCRIPTION_UNSUPPORTED_EXTENSION: int
-ALERT_DESCRIPTION_USER_CANCELLED: int
+class AlertDescription(enum.IntEnum):
+    ALERT_DESCRIPTION_ACCESS_DENIED: int
+    ALERT_DESCRIPTION_BAD_CERTIFICATE: int
+    ALERT_DESCRIPTION_BAD_CERTIFICATE_HASH_VALUE: int
+    ALERT_DESCRIPTION_BAD_CERTIFICATE_STATUS_RESPONSE: int
+    ALERT_DESCRIPTION_BAD_RECORD_MAC: int
+    ALERT_DESCRIPTION_CERTIFICATE_EXPIRED: int
+    ALERT_DESCRIPTION_CERTIFICATE_REVOKED: int
+    ALERT_DESCRIPTION_CERTIFICATE_UNKNOWN: int
+    ALERT_DESCRIPTION_CERTIFICATE_UNOBTAINABLE: int
+    ALERT_DESCRIPTION_CLOSE_NOTIFY: int
+    ALERT_DESCRIPTION_DECODE_ERROR: int
+    ALERT_DESCRIPTION_DECOMPRESSION_FAILURE: int
+    ALERT_DESCRIPTION_DECRYPT_ERROR: int
+    ALERT_DESCRIPTION_HANDSHAKE_FAILURE: int
+    ALERT_DESCRIPTION_ILLEGAL_PARAMETER: int
+    ALERT_DESCRIPTION_INSUFFICIENT_SECURITY: int
+    ALERT_DESCRIPTION_INTERNAL_ERROR: int
+    ALERT_DESCRIPTION_NO_RENEGOTIATION: int
+    ALERT_DESCRIPTION_PROTOCOL_VERSION: int
+    ALERT_DESCRIPTION_RECORD_OVERFLOW: int
+    ALERT_DESCRIPTION_UNEXPECTED_MESSAGE: int
+    ALERT_DESCRIPTION_UNKNOWN_CA: int
+    ALERT_DESCRIPTION_UNKNOWN_PSK_IDENTITY: int
+    ALERT_DESCRIPTION_UNRECOGNIZED_NAME: int
+    ALERT_DESCRIPTION_UNSUPPORTED_CERTIFICATE: int
+    ALERT_DESCRIPTION_UNSUPPORTED_EXTENSION: int
+    ALERT_DESCRIPTION_USER_CANCELLED: int
+
+ALERT_DESCRIPTION_HANDSHAKE_FAILURE: AlertDescription
+ALERT_DESCRIPTION_INTERNAL_ERROR: AlertDescription
+ALERT_DESCRIPTION_ACCESS_DENIED: AlertDescription
+ALERT_DESCRIPTION_BAD_CERTIFICATE: AlertDescription
+ALERT_DESCRIPTION_BAD_CERTIFICATE_HASH_VALUE: AlertDescription
+ALERT_DESCRIPTION_BAD_CERTIFICATE_STATUS_RESPONSE: AlertDescription
+ALERT_DESCRIPTION_BAD_RECORD_MAC: AlertDescription
+ALERT_DESCRIPTION_CERTIFICATE_EXPIRED: AlertDescription
+ALERT_DESCRIPTION_CERTIFICATE_REVOKED: AlertDescription
+ALERT_DESCRIPTION_CERTIFICATE_UNKNOWN: AlertDescription
+ALERT_DESCRIPTION_CERTIFICATE_UNOBTAINABLE: AlertDescription
+ALERT_DESCRIPTION_CLOSE_NOTIFY: AlertDescription
+ALERT_DESCRIPTION_DECODE_ERROR: AlertDescription
+ALERT_DESCRIPTION_DECOMPRESSION_FAILURE: AlertDescription
+ALERT_DESCRIPTION_DECRYPT_ERROR: AlertDescription
+ALERT_DESCRIPTION_ILLEGAL_PARAMETER: AlertDescription
+ALERT_DESCRIPTION_INSUFFICIENT_SECURITY: AlertDescription
+ALERT_DESCRIPTION_NO_RENEGOTIATION: AlertDescription
+ALERT_DESCRIPTION_PROTOCOL_VERSION: AlertDescription
+ALERT_DESCRIPTION_RECORD_OVERFLOW: AlertDescription
+ALERT_DESCRIPTION_UNEXPECTED_MESSAGE: AlertDescription
+ALERT_DESCRIPTION_UNKNOWN_CA: AlertDescription
+ALERT_DESCRIPTION_UNKNOWN_PSK_IDENTITY: AlertDescription
+ALERT_DESCRIPTION_UNRECOGNIZED_NAME: AlertDescription
+ALERT_DESCRIPTION_UNSUPPORTED_CERTIFICATE: AlertDescription
+ALERT_DESCRIPTION_UNSUPPORTED_EXTENSION: AlertDescription
+ALERT_DESCRIPTION_USER_CANCELLED: AlertDescription
 
 class _ASN1Object(NamedTuple):
     nid: int
     shortname: str
     longname: str
     oid: str
+    @classmethod
+    def fromnid(cls: Type[Self], nid: int) -> Self: ...
+    @classmethod
+    def fromname(cls: Type[Self], name: str) -> Self: ...
 
 class Purpose(_ASN1Object, enum.Enum):
     SERVER_AUTH: _ASN1Object
@@ -247,15 +303,20 @@ class SSLSocket(socket.socket):
     def connect(self, addr: Union[socket._Address, bytes]) -> None: ...
     def connect_ex(self, addr: Union[socket._Address, bytes]) -> int: ...
     def recv(self, buflen: int = ..., flags: int = ...) -> bytes: ...
-    def recv_into(self, buffer: socket._WriteBuffer, nbytes: Optional[int] = ..., flags: int = ...) -> int: ...
+    def recv_into(self, buffer: WriteableBuffer, nbytes: Optional[int] = ..., flags: int = ...) -> int: ...
     def recvfrom(self, buflen: int = ..., flags: int = ...) -> tuple[bytes, socket._RetAddress]: ...
     def recvfrom_into(
-        self, buffer: socket._WriteBuffer, nbytes: Optional[int] = ..., flags: int = ...
+        self, buffer: WriteableBuffer, nbytes: Optional[int] = ..., flags: int = ...
     ) -> tuple[int, socket._RetAddress]: ...
+    def send(self, data: ReadableBuffer, flags: int = ...) -> int: ...
+    def sendall(self, data: ReadableBuffer, flags: int = ...) -> None: ...
     @overload
-    def sendto(self, data: bytes, flags_or_addr: socket._Address) -> int: ...
+    def sendto(self, data: ReadableBuffer, flags_or_addr: socket._Address) -> int: ...
     @overload
-    def sendto(self, data: bytes, flags_or_addr: Union[int, socket._Address], addr: Optional[socket._Address] = ...) -> int: ...
+    def sendto(
+        self, data: ReadableBuffer, flags_or_addr: Union[int, socket._Address], addr: Optional[socket._Address] = ...
+    ) -> int: ...
+    def shutdown(self, how: int) -> None: ...
     def read(self, len: int = ..., buffer: Optional[bytearray] = ...) -> bytes: ...
     def write(self, data: bytes) -> int: ...
     def do_handshake(self, block: bool = ...) -> None: ...  # block is undocumented
@@ -291,13 +352,21 @@ if sys.version_info >= (3, 7):
 class SSLContext:
     check_hostname: bool
     options: Options
+    verify_flags: VerifyFlags
+    verify_mode: VerifyMode
+    @property
+    def protocol(self) -> _SSLMethod: ...
+    if sys.version_info >= (3, 7):
+        hostname_checks_common_name: bool
+        maximum_version: TLSVersion
+        minimum_version: TLSVersion
+        sni_callback: Optional[Callable[[SSLObject, str, SSLContext], Union[None, int]]]
+        sslobject_class: ClassVar[Type[SSLObject]]
+        sslsocket_class: ClassVar[Type[SSLSocket]]
     if sys.version_info >= (3, 8):
+        keylog_filename: str
         post_handshake_auth: bool
     def __new__(cls, protocol: int = ..., *args: Any, **kwargs: Any) -> SSLContext: ...
-    @property
-    def protocol(self) -> int: ...
-    verify_flags: int
-    verify_mode: int
     def __init__(self, protocol: int = ...) -> None: ...
     def cert_store_stats(self) -> Dict[str, int]: ...
     def load_cert_chain(
@@ -311,9 +380,6 @@ class SSLContext:
     def set_default_verify_paths(self) -> None: ...
     def set_ciphers(self, __cipherlist: str) -> None: ...
     def set_alpn_protocols(self, alpn_protocols: Iterable[str]) -> None: ...
-    if sys.version_info >= (3, 7):
-        sni_callback: Optional[Callable[[SSLObject, str, SSLContext], Union[None, int]]]
-        sslobject_class: Type[SSLObject]
     def set_npn_protocols(self, npn_protocols: Iterable[str]) -> None: ...
     if sys.version_info >= (3, 7):
         def set_servername_callback(self, server_name_callback: Optional[_SrvnmeCbType]) -> None: ...
@@ -339,10 +405,6 @@ class SSLContext:
         session: Optional[SSLSession] = ...,
     ) -> SSLObject: ...
     def session_stats(self) -> Dict[str, int]: ...
-    if sys.version_info >= (3, 7):
-        hostname_checks_common_name: bool
-        maximum_version: TLSVersion
-        minimum_version: TLSVersion
 
 class SSLObject:
     context: SSLContext
@@ -391,29 +453,26 @@ class SSLSession:
     ticket_lifetime_hint: int
     has_ticket: bool
 
-class VerifyFlags(enum.IntFlag):
-    VERIFY_DEFAULT: int
-    VERIFY_CRL_CHECK_LEAF: int
-    VERIFY_CRL_CHECK_CHAIN: int
-    VERIFY_X509_STRICT: int
-    VERIFY_X509_TRUSTED_FIRST: int
+class SSLErrorNumber(enum.IntEnum):
+    SSL_ERROR_EOF: int
+    SSL_ERROR_INVALID_ERROR_CODE: int
+    SSL_ERROR_SSL: int
+    SSL_ERROR_SYSCALL: int
+    SSL_ERROR_WANT_CONNECT: int
+    SSL_ERROR_WANT_READ: int
+    SSL_ERROR_WANT_WRITE: int
+    SSL_ERROR_WANT_X509_LOOKUP: int
+    SSL_ERROR_ZERO_RETURN: int
 
-class VerifyMode(enum.IntEnum):
-    CERT_NONE: int
-    CERT_OPTIONAL: int
-    CERT_REQUIRED: int
-
-# TODO below documented in cpython but not in docs.python.org
-# taken from python 3.4
-SSL_ERROR_EOF: int
-SSL_ERROR_INVALID_ERROR_CODE: int
-SSL_ERROR_SSL: int
-SSL_ERROR_SYSCALL: int
-SSL_ERROR_WANT_CONNECT: int
-SSL_ERROR_WANT_READ: int
-SSL_ERROR_WANT_WRITE: int
-SSL_ERROR_WANT_X509_LOOKUP: int
-SSL_ERROR_ZERO_RETURN: int
+SSL_ERROR_EOF: SSLErrorNumber  # undocumented
+SSL_ERROR_INVALID_ERROR_CODE: SSLErrorNumber  # undocumented
+SSL_ERROR_SSL: SSLErrorNumber  # undocumented
+SSL_ERROR_SYSCALL: SSLErrorNumber  # undocumented
+SSL_ERROR_WANT_CONNECT: SSLErrorNumber  # undocumented
+SSL_ERROR_WANT_READ: SSLErrorNumber  # undocumented
+SSL_ERROR_WANT_WRITE: SSLErrorNumber  # undocumented
+SSL_ERROR_WANT_X509_LOOKUP: SSLErrorNumber  # undocumented
+SSL_ERROR_ZERO_RETURN: SSLErrorNumber  # undocumented
 
 def get_protocol_name(protocol_code: int) -> str: ...
 

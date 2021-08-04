@@ -55,14 +55,14 @@ def TemporaryFile(
     bufsize: int = ...,
     suffix: Union[bytes, unicode] = ...,
     prefix: Union[bytes, unicode] = ...,
-    dir: Union[bytes, unicode] = ...,
+    dir: Optional[Union[bytes, unicode]] = ...,
 ) -> _TemporaryFileWrapper: ...
 def NamedTemporaryFile(
     mode: Union[bytes, unicode] = ...,
     bufsize: int = ...,
     suffix: Union[bytes, unicode] = ...,
     prefix: Union[bytes, unicode] = ...,
-    dir: Union[bytes, unicode] = ...,
+    dir: Optional[Union[bytes, unicode]] = ...,
     delete: bool = ...,
 ) -> _TemporaryFileWrapper: ...
 def SpooledTemporaryFile(
@@ -71,7 +71,7 @@ def SpooledTemporaryFile(
     buffering: int = ...,
     suffix: Union[bytes, unicode] = ...,
     prefix: Union[bytes, unicode] = ...,
-    dir: Union[bytes, unicode] = ...,
+    dir: Optional[Union[bytes, unicode]] = ...,
 ) -> _TemporaryFileWrapper: ...
 
 class TemporaryDirectory:

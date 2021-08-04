@@ -21,7 +21,7 @@ T = TypeVar('T')
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, TupleType, TypeGuardType, TypedDictType, LiteralType,
     RawExpressionType, Instance, NoneType, TypeType,
-    UnionType, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarLikeDef,
+    UnionType, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarLikeType,
     UnboundType, ErasedType, StarType, EllipsisType, TypeList, CallableArgument,
     PlaceholderType, TypeAliasType, get_proper_type
 )
@@ -228,7 +228,7 @@ class TypeTranslator(TypeVisitor[Type]):
         return TypeGuardType(t.type_guard.accept(self))
 
     def translate_variables(self,
-                            variables: Sequence[TypeVarLikeDef]) -> Sequence[TypeVarLikeDef]:
+                            variables: Sequence[TypeVarLikeType]) -> Sequence[TypeVarLikeType]:
         return variables
 
     def visit_overloaded(self, t: Overloaded) -> Type:

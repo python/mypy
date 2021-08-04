@@ -69,7 +69,7 @@ class _ActionsContainer:
         const: Any = ...,
         default: Any = ...,
         type: Union[Callable[[str], _T], Callable[[str], _T], FileType] = ...,
-        choices: Iterable[_T] = ...,
+        choices: Optional[Iterable[_T]] = ...,
         required: bool = ...,
         help: Optional[str] = ...,
         metavar: Optional[Union[str, Tuple[str, ...]]] = ...,

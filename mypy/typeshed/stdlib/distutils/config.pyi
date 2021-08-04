@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from distutils.cmd import Command
-from typing import ClassVar, List, Optional, Tuple
+from typing import ClassVar
 
 DEFAULT_PYPIRC: str
 
@@ -9,8 +9,8 @@ class PyPIRCCommand(Command):
     DEFAULT_REALM: ClassVar[str]
     repository: None
     realm: None
-    user_options: ClassVar[List[Tuple[str, Optional[str], str]]]
-    boolean_options: ClassVar[List[str]]
+    user_options: ClassVar[list[tuple[str, str | None, str]]]
+    boolean_options: ClassVar[list[str]]
     def initialize_options(self) -> None: ...
     def finalize_options(self) -> None: ...
     @abstractmethod

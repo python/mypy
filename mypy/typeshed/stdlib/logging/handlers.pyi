@@ -5,7 +5,7 @@ import sys
 from _typeshed import StrPath
 from collections.abc import Callable
 from logging import FileHandler, Handler, LogRecord
-from socket import SocketKind, SocketType
+from socket import SocketKind, socket
 from typing import Any, ClassVar, Optional, Pattern, Union
 
 if sys.version_info >= (3, 7):
@@ -120,20 +120,20 @@ class SocketHandler(Handler):
     host: str  # undocumented
     port: Optional[int]  # undocumented
     address: Union[tuple[str, int], str]  # undocumented
-    sock: Optional[SocketType]  # undocumented
+    sock: Optional[socket]  # undocumented
     closeOnError: bool  # undocumented
     retryTime: Optional[float]  # undocumented
     retryStart: float  # undocumented
     retryFactor: float  # undocumented
     retryMax: float  # undocumented
     def __init__(self, host: str, port: Optional[int]) -> None: ...
-    def makeSocket(self, timeout: float = ...) -> SocketType: ...  # timeout is undocumented
+    def makeSocket(self, timeout: float = ...) -> socket: ...  # timeout is undocumented
     def makePickle(self, record: LogRecord) -> bytes: ...
     def send(self, s: bytes) -> None: ...
     def createSocket(self) -> None: ...
 
 class DatagramHandler(SocketHandler):
-    def makeSocket(self) -> SocketType: ...  # type: ignore
+    def makeSocket(self) -> socket: ...  # type: ignore
 
 class SysLogHandler(Handler):
     LOG_EMERG: int

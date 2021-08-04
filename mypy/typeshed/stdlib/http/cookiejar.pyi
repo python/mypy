@@ -1,7 +1,7 @@
 import sys
 from _typeshed import StrPath
 from http.client import HTTPResponse
-from typing import Dict, Iterable, Iterator, Optional, Sequence, Tuple, TypeVar, Union, overload
+from typing import ClassVar, Dict, Iterable, Iterator, Optional, Pattern, Sequence, Tuple, TypeVar, Union, overload
 from urllib.request import Request
 
 _T = TypeVar("_T")
@@ -9,6 +9,12 @@ _T = TypeVar("_T")
 class LoadError(OSError): ...
 
 class CookieJar(Iterable[Cookie]):
+    non_word_re: ClassVar[Pattern[str]] = ...  # undocumented
+    quote_re: ClassVar[Pattern[str]] = ...  # undocumented
+    strict_domain_re: ClassVar[Pattern[str]] = ...  # undocumented
+    domain_re: ClassVar[Pattern[str]] = ...  # undocumented
+    dots_re: ClassVar[Pattern[str]] = ...  # undocumented
+    magic_re: ClassVar[Pattern[str]] = ...  # undocumented
     def __init__(self, policy: Optional[CookiePolicy] = ...) -> None: ...
     def add_cookie_header(self, request: Request) -> None: ...
     def extract_cookies(self, response: HTTPResponse, request: Request) -> None: ...
@@ -18,8 +24,11 @@ class CookieJar(Iterable[Cookie]):
     def set_cookie_if_ok(self, cookie: Cookie, request: Request) -> None: ...
     def clear(self, domain: Optional[str] = ..., path: Optional[str] = ..., name: Optional[str] = ...) -> None: ...
     def clear_session_cookies(self) -> None: ...
+    def clear_expired_cookies(self) -> None: ...  # undocumented
     def __iter__(self) -> Iterator[Cookie]: ...
     def __len__(self) -> int: ...
+    def __repr__(self) -> str: ...
+    def __str__(self) -> str: ...
 
 class FileCookieJar(CookieJar):
     filename: str
@@ -36,7 +45,8 @@ class FileCookieJar(CookieJar):
     def load(self, filename: Optional[str] = ..., ignore_discard: bool = ..., ignore_expires: bool = ...) -> None: ...
     def revert(self, filename: Optional[str] = ..., ignore_discard: bool = ..., ignore_expires: bool = ...) -> None: ...
 
-class MozillaCookieJar(FileCookieJar): ...
+class MozillaCookieJar(FileCookieJar):
+    header: ClassVar[str] = ...  # undocumented
 
 class LWPCookieJar(FileCookieJar):
     def as_lwp_str(self, ignore_discard: bool = ..., ignore_expires: bool = ...) -> str: ...  # undocumented
@@ -58,11 +68,11 @@ class DefaultCookiePolicy(CookiePolicy):
     strict_ns_domain: int
     strict_ns_set_initial_dollar: bool
     strict_ns_set_path: bool
-    DomainStrictNoDots: int
-    DomainStrictNonDomain: int
-    DomainRFC2965Match: int
-    DomainLiberal: int
-    DomainStrict: int
+    DomainStrictNoDots: ClassVar[int]
+    DomainStrictNonDomain: ClassVar[int]
+    DomainRFC2965Match: ClassVar[int]
+    DomainLiberal: ClassVar[int]
+    DomainStrict: ClassVar[int]
     if sys.version_info >= (3, 8):
         def __init__(
             self,
@@ -102,6 +112,18 @@ class DefaultCookiePolicy(CookiePolicy):
     def allowed_domains(self) -> Optional[Tuple[str, ...]]: ...
     def set_allowed_domains(self, allowed_domains: Optional[Sequence[str]]) -> None: ...
     def is_not_allowed(self, domain: str) -> bool: ...
+    def set_ok_version(self, cookie: Cookie, request: Request) -> bool: ...  # undocumented
+    def set_ok_verifiability(self, cookie: Cookie, request: Request) -> bool: ...  # undocumented
+    def set_ok_name(self, cookie: Cookie, request: Request) -> bool: ...  # undocumented
+    def set_ok_path(self, cookie: Cookie, request: Request) -> bool: ...  # undocumented
+    def set_ok_domain(self, cookie: Cookie, request: Request) -> bool: ...  # undocumented
+    def set_ok_port(self, cookie: Cookie, request: Request) -> bool: ...  # undocumented
+    def return_ok_version(self, cookie: Cookie, request: Request) -> bool: ...  # undocumented
+    def return_ok_verifiability(self, cookie: Cookie, request: Request) -> bool: ...  # undocumented
+    def return_ok_secure(self, cookie: Cookie, request: Request) -> bool: ...  # undocumented
+    def return_ok_expires(self, cookie: Cookie, request: Request) -> bool: ...  # undocumented
+    def return_ok_port(self, cookie: Cookie, request: Request) -> bool: ...  # undocumented
+    def return_ok_domain(self, cookie: Cookie, request: Request) -> bool: ...  # undocumented
 
 class Cookie:
     version: Optional[int]
