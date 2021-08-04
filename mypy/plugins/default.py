@@ -10,7 +10,7 @@ from mypy.plugin import (
 from mypy.plugins.common import try_getting_str_literals
 from mypy.types import (
     FunctionLike, Type, Instance, AnyType, TypeOfAny, CallableType, NoneType, TypedDictType,
-    TypeVarDef, TypeVarType, TPDICT_FB_NAMES, get_proper_type, LiteralType
+    TypeVarType, TPDICT_FB_NAMES, get_proper_type, LiteralType
 )
 from mypy.subtypes import is_subtype
 from mypy.typeops import make_simplified_union
@@ -227,8 +227,8 @@ def typed_dict_get_signature_callback(ctx: MethodSigContext) -> CallableType:
             # Tweak the signature to include the value type as context. It's
             # only needed for type inference since there's a union with a type
             # variable that accepts everything.
-            assert isinstance(signature.variables[0], TypeVarDef)
-            tv = TypeVarType(signature.variables[0])
+            tv = signature.variables[0]
+            assert isinstance(tv, TypeVarType)
             return signature.copy_modified(
                 arg_types=[signature.arg_types[0],
                            make_simplified_union([value_type, tv])],
@@ -292,8 +292,8 @@ def typed_dict_pop_signature_callback(ctx: MethodSigContext) -> CallableType:
             # Tweak the signature to include the value type as context. It's
             # only needed for type inference since there's a union with a type
             # variable that accepts everything.
-            assert isinstance(signature.variables[0], TypeVarDef)
-            tv = TypeVarType(signature.variables[0])
+            tv = signature.variables[0]
+            assert isinstance(tv, TypeVarType)
             typ = make_simplified_union([value_type, tv])
             return signature.copy_modified(
                 arg_types=[str_type, typ],

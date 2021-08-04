@@ -6,7 +6,7 @@ It contains class TypeInfos and Type objects.
 from typing import List, Optional, Tuple
 
 from mypy.types import (
-    Type, TypeVarType, AnyType, NoneType, Instance, CallableType, TypeVarDef, TypeType,
+    Type, TypeVarType, AnyType, NoneType, Instance, CallableType, TypeVarType, TypeType,
     UninhabitedType, TypeOfAny, TypeAliasType, UnionType, LiteralType
 )
 from mypy.nodes import (
@@ -30,7 +30,7 @@ class TypeFixture:
 
         def make_type_var(name: str, id: int, values: List[Type], upper_bound: Type,
                           variance: int) -> TypeVarType:
-            return TypeVarType(TypeVarDef(name, name, id, values, upper_bound, variance))
+            return TypeVarType(name, name, id, values, upper_bound, variance)
 
         self.t = make_type_var('T', 1, [], self.o, variance)     # T`1 (type variable)
         self.tf = make_type_var('T', -1, [], self.o, variance)   # T`-1 (type variable)
@@ -223,13 +223,13 @@ class TypeFixture:
                 module_name = '__main__'
 
         if typevars:
-            v: List[TypeVarDef] = []
+            v: List[TypeVarType] = []
             for id, n in enumerate(typevars, 1):
                 if variances:
                     variance = variances[id - 1]
                 else:
                     variance = COVARIANT
-                v.append(TypeVarDef(n, n, id, [], self.o, variance=variance))
+                v.append(TypeVarType(n, n, id, [], self.o, variance=variance))
             class_def.type_vars = v
 
         info = TypeInfo(SymbolTable(), class_def, module_name)
