@@ -14,7 +14,7 @@ from mypy.types import (
     TupleType, Instance, FunctionLike, Type, CallableType, TypeVarDef, TypeVarLikeDef, Overloaded,
     TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType, TypedDictType,
     AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
-    copy_type, TypeAliasType, TypeQuery
+    copy_type, TypeAliasType, TypeQuery, ParamSpecDef
 )
 from mypy.nodes import (
     FuncBase, FuncItem, OverloadedFuncDef, TypeInfo, ARG_STAR, ARG_STAR2, ARG_POS,
