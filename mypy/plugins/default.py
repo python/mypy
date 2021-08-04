@@ -483,7 +483,7 @@ def tuple_mul_callback(ctx: MethodContext) -> Type:
     if not isinstance(ctx.type, TupleType):
         return ctx.default_return_type
 
-    arg_type = ctx.arg_types[0][0]
+    arg_type = get_proper_type(ctx.arg_types[0][0])
     if isinstance(arg_type, Instance) and arg_type.last_known_value is not None:
         value = arg_type.last_known_value.value
         if isinstance(value, int):
