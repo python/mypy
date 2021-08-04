@@ -223,6 +223,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 assert isinstance(tvar_def, TypeVarType)
                 if len(t.args) > 0:
                     self.fail('Type variable "{}" used with arguments'.format(t.name), t)
+                # Change the line number
                 return TypeVarType(
                     tvar_def.name, tvar_def.fullname, tvar_def.id, tvar_def.values,
                     tvar_def.upper_bound, tvar_def.variance, line=t.line, column=t.column,

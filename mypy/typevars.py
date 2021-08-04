@@ -15,6 +15,7 @@ def fill_typevars(typ: TypeInfo) -> Union[Instance, TupleType]:
     # TODO: why do we need to keep both typ.type_vars and typ.defn.type_vars?
     for i in range(len(typ.defn.type_vars)):
         tv = typ.defn.type_vars[i]
+        # Change the line number
         tv = TypeVarType(
             tv.name, tv.fullname, tv.id, tv.values,
             tv.upper_bound, tv.variance, line=-1, column=-1,
