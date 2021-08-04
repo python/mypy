@@ -99,10 +99,11 @@ inverse_node_kinds: Final = {_kind: _name for _name, _kind in node_kinds.items()
 
 
 implicit_module_attrs: Final = {
-    "__name__": "__builtins__.str",
-    "__doc__": None,  # depends on Python version, see semanal.py
-    "__file__": "__builtins__.str",
-    "__package__": "__builtins__.str",
+    '__name__': '__builtins__.str',
+    '__doc__': None,  # depends on Python version, see semanal.py
+    '__path__': None,  # depends on if the module is a package
+    '__file__': '__builtins__.str',
+    '__package__': '__builtins__.str'
 }
 
 
