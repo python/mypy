@@ -915,7 +915,6 @@ def gen_dispatch_func_ir(
     """Create a dispatch function (a function that checks the first argument type and dispatches
     to the correct implementation)
     """
-    # initialize_singledispatch_dispatch_dictionary(builder, fitem, main_func_name)
     builder.enter()
     generate_singledispatch_dispatch_function(builder, main_func_name, fitem)
     args, _, blocks, _, fn_info = builder.leave()
