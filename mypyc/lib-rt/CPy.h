@@ -397,6 +397,10 @@ bool CPyStr_IsTrue(PyObject *obj);
 Py_ssize_t CPyStr_Size_size_t(PyObject *str);
 
 
+// Bytes operations
+
+
+
 // Set operations
 
 

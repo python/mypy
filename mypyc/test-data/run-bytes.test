@@ -24,6 +24,24 @@ try:
 except TypeError:
     pass
 
+[case testBytesInit]
+def test_bytes_init() -> None:
+    b1 = bytes([5])
+    assert b1 == b'\x05'
+    b2 = bytes([5, 10, 12])
+    assert b2 == b'\x05\n\x0c'
+    b3 = bytes(bytearray(b'foo'))
+    assert b3 == b'foo'
+    b4 = bytes(b'aaa')
+    assert b4 == b'aaa'
+    b5 = bytes(5)
+    assert b5 == b'\x00\x00\x00\x00\x00'
+    try:
+        bytes('x')
+        assert False
+    except TypeError:
+        pass
+
 [case testBytesOps]
 def test_indexing() -> None:
     # Use bytes() to avoid constant folding
