@@ -884,7 +884,8 @@ def generate_singledispatch_dispatch_function(
     ret_val = builder.py_call(
         impl_to_use, arg_info.args, line, arg_info.arg_kinds, arg_info.arg_names
     )
-    builder.nonlocal_control[-1].gen_return(builder, ret_val, line)
+    coerced = builder.coerce(ret_val, current_func_decl.sig.ret_type, line)
+    builder.nonlocal_control[-1].gen_return(builder, coerced, line)
 
 
 def gen_dispatch_func_ir(
