@@ -578,6 +578,18 @@ def test_decode() -> None:
     assert b'\x80abc'.decode("utf-8", "replace") == '\ufffdabc'
     assert b'\x80abc'.decode("utf-8", "backslashreplace") == '\\x80abc'
     assert b'\x80abc'.decode("utf-8", "ignore") == 'abc'
+    assert b'\x80abc'.decode("UTF-8", "ignore") == 'abc'
+    assert b'\x80abc'.decode("Utf-8", "ignore") == 'abc'
+    assert b'\x80abc'.decode("utf_8", "ignore") == 'abc'
+    assert b'\x80abc'.decode("latin1", "ignore") == '\x80abc'
+    assert b'\xd2\xbb\xb6\xfe\xc8\xfd'.decode("gbk", "ignore") == '一二三'
+    assert b'\xd2\xbb\xb6\xfe\xc8\xfd'.decode("latin1", "ignore") == 'Ò»¶þÈý'
+    assert b'Z\xc3\xbcrich'.decode("utf-8") == 'Zürich'
+    try:
+        b'Z\xc3\xbcrich'.decode("ascii")
+        assert False
+    except UnicodeDecodeError:
+        pass
 
 def test_encode() -> None:
     u = chr(40960) + 'abcd' + chr(1972)
@@ -589,8 +601,19 @@ def test_encode() -> None:
     except UnicodeEncodeError:
         pass
     assert u.encode('ascii', 'ignore') == b'abcd'
+    assert u.encode('ASCII', 'ignore') == b'abcd'
     assert u.encode('ascii', 'replace') == b'?abcd?'
     assert u.encode('ascii', 'xmlcharrefreplace') == b'&#40960;abcd&#1972;'
     assert u.encode('ascii', 'backslashreplace') == b'\\ua000abcd\\u07b4'
     assert u.encode('ascii', 'namereplace') == b'\\N{YI SYLLABLE IT}abcd\\u07b4'
     assert 'pythön!'.encode() == b'pyth\xc3\xb6n!'
+    assert '一二三'.encode('gbk') == b'\xd2\xbb\xb6\xfe\xc8\xfd'
+    assert u.encode('UTF-8', 'ignore') == b'\xea\x80\x80abcd\xde\xb4'
+    assert u.encode('Utf_8') == b'\xea\x80\x80abcd\xde\xb4'
+    assert u.encode('UTF_8') == b'\xea\x80\x80abcd\xde\xb4'
+    assert u'\u00E1'.encode('latin1') == b'\xe1'
+    try:
+        u.encode('latin1')
+        assert False
+    except UnicodeEncodeError:
+        pass

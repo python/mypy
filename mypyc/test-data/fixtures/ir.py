@@ -106,7 +106,7 @@ class bytes:
     def __ne__(self, x: object) -> bool: ...
     def __getitem__(self, i: int) -> int: ...
     def join(self, x: Iterable[object]) -> bytes: ...
-    def decode(self, x: str, y: str) -> str: ...
+    def decode(self, x: str, y: str=...) -> str: ...
 
 class bytearray:
     @overload
@@ -256,6 +256,8 @@ class IndexError(LookupError): pass
 class RuntimeError(Exception): pass
 
 class UnicodeEncodeError(RuntimeError): pass
+
+class UnicodeDecodeError(RuntimeError): pass
 
 class NotImplementedError(RuntimeError): pass
 
