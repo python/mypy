@@ -812,7 +812,6 @@ def get_func_target(builder: IRBuilder, fdef: FuncDef) -> AssignmentTarget:
 
 
 def load_type(builder: IRBuilder, typ: TypeInfo, line: int) -> Value:
-    # TODO: refactor check_if_isinstance to use this instead of copying code
     if typ in builder.mapper.type_to_ir:
         class_ir = builder.mapper.type_to_ir[typ]
         class_obj = builder.builder.get_native_type(class_ir)
