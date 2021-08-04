@@ -37,6 +37,10 @@ class SupportsDivMod(Protocol[_T_contra, _T_co]):
 class SupportsRDivMod(Protocol[_T_contra, _T_co]):
     def __rdivmod__(self, __other: _T_contra) -> _T_co: ...
 
+class SupportsLenAndGetItem(Protocol[_T_co]):
+    def __len__(self) -> int: ...
+    def __getitem__(self, __k: int) -> _T_co: ...
+
 # Mapping-like protocols
 
 # stable
