@@ -7,6 +7,7 @@ from asyncio.futures import Future
 from asyncio.protocols import BaseProtocol
 from asyncio.tasks import Task
 from asyncio.transports import BaseTransport
+from collections.abc import Iterable
 from socket import AddressFamily, SocketKind, _Address, _RetAddress, socket
 from typing import IO, Any, Awaitable, Callable, Dict, Generator, List, Optional, Sequence, Tuple, TypeVar, Union, overload
 from typing_extensions import Literal
@@ -26,14 +27,22 @@ class Server(AbstractServer):
         def __init__(
             self,
             loop: AbstractEventLoop,
-            sockets: List[socket],
+            sockets: Iterable[socket],
             protocol_factory: _ProtocolFactory,
             ssl_context: _SSLContext,
             backlog: int,
             ssl_handshake_timeout: Optional[float],
         ) -> None: ...
     else:
-        def __init__(self, loop: AbstractEventLoop, sockets: List[socket]) -> None: ...
+        def __init__(self, loop: AbstractEventLoop, sockets: list[socket]) -> None: ...
+    if sys.version_info >= (3, 8):
+        @property
+        def sockets(self) -> Tuple[socket, ...]: ...
+    elif sys.version_info >= (3, 7):
+        @property
+        def sockets(self) -> list[socket]: ...
+    else:
+        sockets: Optional[list[socket]]
 
 class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
     def run_forever(self) -> None: ...

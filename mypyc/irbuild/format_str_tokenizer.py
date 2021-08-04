@@ -1,10 +1,9 @@
 """Tokenizers for three string formatting methods"""
 
-import re
 from typing import List, Tuple
 
 from mypy.checkstrformat import (
-    FORMAT_RE, ConversionSpecifier
+    ConversionSpecifier, parse_conversion_specifiers
 )
 from mypyc.ir.ops import Value, Integer
 from mypyc.ir.rtypes import c_pyssize_t_rprimitive
@@ -19,18 +18,13 @@ def tokenizer_printf_style(format_str: str) -> Tuple[List[str], List[ConversionS
         A list of string literals and a list of conversion operations
     """
     literals: List[str] = []
-    specifiers: List[ConversionSpecifier] = []
+    specifiers: List[ConversionSpecifier] = parse_conversion_specifiers(format_str)
+
     last_end = 0
-
-    for m in re.finditer(FORMAT_RE, format_str):
-        whole_seq, parens_key, key, flags, width, precision, conversion_type = m.groups()
-        specifiers.append(ConversionSpecifier(conversion_type, key, flags, width, precision,
-                                              whole_seq=whole_seq))
-
-        cur_start = m.start(1)
+    for spec in specifiers:
+        cur_start = spec.start_pos
         literals.append(format_str[last_end:cur_start])
-        last_end = cur_start + len(whole_seq)
-
+        last_end = cur_start + len(spec.whole_seq)
     literals.append(format_str[last_end:])
 
     return literals, specifiers

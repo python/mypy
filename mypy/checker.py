@@ -33,7 +33,7 @@ from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any
 from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
     Instance, NoneType, strip_type, TypeType, TypeOfAny,
-    UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
+    UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType,
     is_named_instance, union_items, TypeQuery, LiteralType,
     is_optional, remove_optional, TypeTranslator, StarType, get_proper_type, ProperType,
     get_proper_types, is_literal_type, TypeAliasType, TypeGuardType)
@@ -465,6 +465,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_overlapping_overloads(self, defn: OverloadedFuncDef) -> None:
         # At this point we should have set the impl already, and all remaining
         # items are decorators
+
+        if self.msg.errors.file in self.msg.errors.ignored_files:
+            # This is a little hacky, however, the quadratic check here is really expensive, this
+            # method has no side effects, so we should skip it if we aren't going to report
+            # anything. In some other places we swallow errors in stubs, but this error is very
+            # useful for stubs!
+            return
 
         # Compute some info about the implementation (if it exists) for use below
         impl_type: Optional[CallableType] = None
@@ -1396,7 +1403,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             tvars += defn.info.defn.type_vars or []
         # TODO(shantanu): audit for paramspec
         for tvar in tvars:
-            if isinstance(tvar, TypeVarDef) and tvar.values:
+            if isinstance(tvar, TypeVarType) and tvar.values:
                 subst.append([(tvar.id, value) for value in tvar.values])
         # Make a copy of the function to check for each combination of
         # value restricted type variables. (Except when running mypyc,
@@ -3784,7 +3791,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return cdef, info
 
     def intersect_instances(self,
-                            instances: Sequence[Instance],
+                            instances: Tuple[Instance, Instance],
                             ctx: Context,
                             ) -> Optional[Instance]:
         """Try creating an ad-hoc intersection of the given instances.
@@ -3812,34 +3819,50 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         curr_module = self.scope.stack[0]
         assert isinstance(curr_module, MypyFile)
 
-        base_classes = []
-        for inst in instances:
-            expanded = [inst]
-            if inst.type.is_intersection:
-                expanded = inst.type.bases
+        def _get_base_classes(instances_: Tuple[Instance, Instance]) -> List[Instance]:
+            base_classes_ = []
+            for inst in instances_:
+                expanded = [inst]
+                if inst.type.is_intersection:
+                    expanded = inst.type.bases
 
-            for expanded_inst in expanded:
-                base_classes.append(expanded_inst)
+                for expanded_inst in expanded:
+                    base_classes_.append(expanded_inst)
+            return base_classes_
 
+        def _make_fake_typeinfo_and_full_name(
+                base_classes_: List[Instance],
+                curr_module_: MypyFile,
+        ) -> Tuple[TypeInfo, str]:
+            names_list = pretty_seq([x.type.name for x in base_classes_], "and")
+            short_name = '<subclass of {}>'.format(names_list)
+            full_name_ = gen_unique_name(short_name, curr_module_.names)
+            cdef, info_ = self.make_fake_typeinfo(
+                curr_module_.fullname,
+                full_name_,
+                short_name,
+                base_classes_,
+            )
+            return info_, full_name_
+
+        old_msg = self.msg
+        new_msg = old_msg.clean_copy()
+        self.msg = new_msg
+        base_classes = _get_base_classes(instances)
         # We use the pretty_names_list for error messages but can't
         # use it for the real name that goes into the symbol table
         # because it can have dots in it.
         pretty_names_list = pretty_seq(format_type_distinctly(*base_classes, bare=True), "and")
-        names_list = pretty_seq([x.type.name for x in base_classes], "and")
-        short_name = '<subclass of {}>'.format(names_list)
-        full_name = gen_unique_name(short_name, curr_module.names)
-
-        old_msg = self.msg
-        new_msg = self.msg.clean_copy()
-        self.msg = new_msg
         try:
-            cdef, info = self.make_fake_typeinfo(
-                curr_module.fullname,
-                full_name,
-                short_name,
-                base_classes,
-            )
+            info, full_name = _make_fake_typeinfo_and_full_name(base_classes, curr_module)
             self.check_multiple_inheritance(info)
+            if new_msg.is_errors():
+                # "class A(B, C)" unsafe, now check "class A(C, B)":
+                new_msg = new_msg.clean_copy()
+                self.msg = new_msg
+                base_classes = _get_base_classes(instances[::-1])
+                info, full_name = _make_fake_typeinfo_and_full_name(base_classes, curr_module)
+                self.check_multiple_inheritance(info)
             info.is_intersection = True
         except MroError:
             if self.should_report_unreachable_issues():
@@ -5076,7 +5099,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if not isinstance(v, Instance):
                 return yes_map, no_map
             for t in possible_target_types:
-                intersection = self.intersect_instances([v, t], expr)
+                intersection = self.intersect_instances((v, t), expr)
                 if intersection is None:
                     continue
                 out.append(intersection)
@@ -5497,7 +5520,7 @@ def detach_callable(typ: CallableType) -> CallableType:
     for var in set(all_type_vars):
         if var.fullname not in used_type_var_names:
             continue
-        new_variables.append(TypeVarDef(
+        new_variables.append(TypeVarType(
             name=var.name,
             fullname=var.fullname,
             id=var.id,

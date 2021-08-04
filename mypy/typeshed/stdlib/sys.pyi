@@ -2,6 +2,7 @@ import sys
 from builtins import object as _object
 from importlib.abc import Loader, PathEntryFinder
 from importlib.machinery import ModuleSpec
+from io import TextIOWrapper
 from types import FrameType, ModuleType, TracebackType
 from typing import (
     Any,
@@ -21,6 +22,7 @@ from typing import (
     Union,
     overload,
 )
+from typing_extensions import Literal
 
 _T = TypeVar("_T")
 
@@ -42,7 +44,7 @@ if sys.platform != "win32":
 argv: List[str]
 base_exec_prefix: str
 base_prefix: str
-byteorder: str
+byteorder: Literal["little", "big"]
 builtin_module_names: Sequence[str]  # actually a tuple of strings
 copyright: str
 if sys.platform == "win32":
@@ -79,9 +81,9 @@ stdout: TextIO
 stderr: TextIO
 if sys.version_info >= (3, 10):
     stdlib_module_names: FrozenSet[str]
-__stdin__: TextIO
-__stdout__: TextIO
-__stderr__: TextIO
+__stdin__: TextIOWrapper
+__stdout__: TextIOWrapper
+__stderr__: TextIOWrapper
 tracebacklimit: int
 version: str
 api_version: int

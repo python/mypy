@@ -80,7 +80,7 @@ if sys.platform != "win32":
     SIG_SETMASK = Sigmasks.SIG_SETMASK
 
 _SIGNUM = Union[int, Signals]
-_HANDLER = Union[Callable[[Signals, FrameType], Any], int, Handlers, None]
+_HANDLER = Union[Callable[[int, Optional[FrameType]], Any], int, Handlers, None]
 
 SIGABRT: Signals
 if sys.platform != "win32":

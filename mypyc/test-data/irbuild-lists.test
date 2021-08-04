@@ -70,6 +70,19 @@ L0:
     x = r0
     return 1
 
+[case testNewListEmptyViaFunc]
+from typing import List
+def f() -> None:
+    x: List[int] = list()
+
+[out]
+def f():
+    r0, x :: list
+L0:
+    r0 = PyList_New(0)
+    x = r0
+    return 1
+
 [case testNewListTwoItems]
 from typing import List
 def f() -> None:

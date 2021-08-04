@@ -119,19 +119,19 @@ class HTTPRedirectHandler(BaseHandler):
     max_repeats: ClassVar[int]  # undocumented
     inf_msg: ClassVar[str]  # undocumented
     def redirect_request(
-        self, req: Request, fp: IO[str], code: int, msg: str, headers: Mapping[str, str], newurl: str
+        self, req: Request, fp: IO[bytes], code: int, msg: str, headers: Mapping[str, str], newurl: str
     ) -> Optional[Request]: ...
     def http_error_301(
-        self, req: Request, fp: IO[str], code: int, msg: int, headers: Mapping[str, str]
+        self, req: Request, fp: IO[bytes], code: int, msg: str, headers: Mapping[str, str]
     ) -> Optional[_UrlopenRet]: ...
     def http_error_302(
-        self, req: Request, fp: IO[str], code: int, msg: int, headers: Mapping[str, str]
+        self, req: Request, fp: IO[bytes], code: int, msg: str, headers: Mapping[str, str]
     ) -> Optional[_UrlopenRet]: ...
     def http_error_303(
-        self, req: Request, fp: IO[str], code: int, msg: int, headers: Mapping[str, str]
+        self, req: Request, fp: IO[bytes], code: int, msg: str, headers: Mapping[str, str]
     ) -> Optional[_UrlopenRet]: ...
     def http_error_307(
-        self, req: Request, fp: IO[str], code: int, msg: int, headers: Mapping[str, str]
+        self, req: Request, fp: IO[bytes], code: int, msg: str, headers: Mapping[str, str]
     ) -> Optional[_UrlopenRet]: ...
 
 class HTTPCookieProcessor(BaseHandler):
@@ -179,13 +179,13 @@ class AbstractBasicAuthHandler:
 class HTTPBasicAuthHandler(AbstractBasicAuthHandler, BaseHandler):
     auth_header: ClassVar[str]  # undocumented
     def http_error_401(
-        self, req: Request, fp: IO[str], code: int, msg: int, headers: Mapping[str, str]
+        self, req: Request, fp: IO[bytes], code: int, msg: str, headers: Mapping[str, str]
     ) -> Optional[_UrlopenRet]: ...
 
 class ProxyBasicAuthHandler(AbstractBasicAuthHandler, BaseHandler):
     auth_header: ClassVar[str]
     def http_error_407(
-        self, req: Request, fp: IO[str], code: int, msg: int, headers: Mapping[str, str]
+        self, req: Request, fp: IO[bytes], code: int, msg: str, headers: Mapping[str, str]
     ) -> Optional[_UrlopenRet]: ...
 
 class AbstractDigestAuthHandler:
@@ -201,13 +201,13 @@ class AbstractDigestAuthHandler:
 class HTTPDigestAuthHandler(BaseHandler, AbstractDigestAuthHandler):
     auth_header: ClassVar[str]  # undocumented
     def http_error_401(
-        self, req: Request, fp: IO[str], code: int, msg: int, headers: Mapping[str, str]
+        self, req: Request, fp: IO[bytes], code: int, msg: str, headers: Mapping[str, str]
     ) -> Optional[_UrlopenRet]: ...
 
 class ProxyDigestAuthHandler(BaseHandler, AbstractDigestAuthHandler):
     auth_header: ClassVar[str]  # undocumented
     def http_error_407(
-        self, req: Request, fp: IO[str], code: int, msg: int, headers: Mapping[str, str]
+        self, req: Request, fp: IO[bytes], code: int, msg: str, headers: Mapping[str, str]
     ) -> Optional[_UrlopenRet]: ...
 
 class AbstractHTTPHandler(BaseHandler):  # undocumented
@@ -310,21 +310,21 @@ class FancyURLopener(URLopener):
     def prompt_user_passwd(self, host: str, realm: str) -> Tuple[str, str]: ...
     def get_user_passwd(self, host: str, realm: str, clear_cache: int = ...) -> Tuple[str, str]: ...  # undocumented
     def http_error_301(
-        self, url: str, fp: IO[str], errcode: int, errmsg: str, headers: Mapping[str, str], data: Optional[bytes] = ...
+        self, url: str, fp: IO[bytes], errcode: int, errmsg: str, headers: Mapping[str, str], data: Optional[bytes] = ...
     ) -> Optional[Union[_UrlopenRet, addinfourl]]: ...  # undocumented
     def http_error_302(
-        self, url: str, fp: IO[str], errcode: int, errmsg: str, headers: Mapping[str, str], data: Optional[bytes] = ...
+        self, url: str, fp: IO[bytes], errcode: int, errmsg: str, headers: Mapping[str, str], data: Optional[bytes] = ...
     ) -> Optional[Union[_UrlopenRet, addinfourl]]: ...  # undocumented
     def http_error_303(
-        self, url: str, fp: IO[str], errcode: int, errmsg: str, headers: Mapping[str, str], data: Optional[bytes] = ...
+        self, url: str, fp: IO[bytes], errcode: int, errmsg: str, headers: Mapping[str, str], data: Optional[bytes] = ...
     ) -> Optional[Union[_UrlopenRet, addinfourl]]: ...  # undocumented
     def http_error_307(
-        self, url: str, fp: IO[str], errcode: int, errmsg: str, headers: Mapping[str, str], data: Optional[bytes] = ...
+        self, url: str, fp: IO[bytes], errcode: int, errmsg: str, headers: Mapping[str, str], data: Optional[bytes] = ...
     ) -> Optional[Union[_UrlopenRet, addinfourl]]: ...  # undocumented
     def http_error_401(
         self,
         url: str,
-        fp: IO[str],
+        fp: IO[bytes],
         errcode: int,
         errmsg: str,
         headers: Mapping[str, str],
@@ -334,7 +334,7 @@ class FancyURLopener(URLopener):
     def http_error_407(
         self,
         url: str,
-        fp: IO[str],
+        fp: IO[bytes],
         errcode: int,
         errmsg: str,
         headers: Mapping[str, str],
@@ -345,7 +345,7 @@ class FancyURLopener(URLopener):
         self, url: str, fp: IO[bytes], errcode: int, errmsg: str, headers: Mapping[str, str]
     ) -> addinfourl: ...  # undocumented
     def redirect_internal(
-        self, url: str, fp: IO[str], errcode: int, errmsg: str, headers: Mapping[str, str], data: Optional[bytes]
+        self, url: str, fp: IO[bytes], errcode: int, errmsg: str, headers: Mapping[str, str], data: Optional[bytes]
     ) -> Optional[_UrlopenRet]: ...  # undocumented
     def retry_http_basic_auth(
         self, url: str, realm: str, data: Optional[bytes] = ...

@@ -1,5 +1,13 @@
 import sys
-from _typeshed import OpenBinaryMode, OpenBinaryModeReading, OpenBinaryModeUpdating, OpenBinaryModeWriting, OpenTextMode, StrPath
+from _typeshed import (
+    OpenBinaryMode,
+    OpenBinaryModeReading,
+    OpenBinaryModeUpdating,
+    OpenBinaryModeWriting,
+    OpenTextMode,
+    Self,
+    StrPath,
+)
 from io import BufferedRandom, BufferedReader, BufferedWriter, FileIO, TextIOWrapper
 from os import PathLike, stat_result
 from types import TracebackType
@@ -54,7 +62,7 @@ class PureWindowsPath(PurePath): ...
 
 class Path(PurePath):
     def __new__(cls: Type[_P], *args: StrPath, **kwargs: Any) -> _P: ...
-    def __enter__(self: _P) -> _P: ...
+    def __enter__(self: Self) -> Self: ...
     def __exit__(
         self, exc_type: Optional[Type[BaseException]], exc_value: Optional[BaseException], traceback: Optional[TracebackType]
     ) -> Optional[bool]: ...
