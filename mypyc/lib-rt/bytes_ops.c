@@ -14,6 +14,7 @@ int CPyBytes_Compare(PyObject *left, PyObject *right) {
             return 1;
         }
 
+        // Adapted from cpython internal implementation of bytes_compare.
         Py_ssize_t len = Py_SIZE(left);
         if (Py_SIZE(right) != len) {
             return 0;
