@@ -844,8 +844,8 @@ def generate_singledispatch_dispatch_function(
 
     registry = load_singledispatch_registry(builder, fitem, line)
     find_impl = builder.load_module_attr_by_fullname('functools._find_impl', line)
-    # FIXME: should pass type of first argument to _find_impl, not first argument itself
-    impl_to_use = builder.py_call(find_impl, [arg_info.args[0], registry], line)
+    arg_type = builder.builder.get_type_of_obj(arg_info.args[0], line)
+    impl_to_use = builder.py_call(find_impl, [arg_type, registry], line)
 
     typ, src = builtin_names['builtins.int']
     int_type_obj = builder.add(LoadAddress(typ, src, line))
