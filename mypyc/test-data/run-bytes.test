@@ -17,6 +17,8 @@ assert f(b'123') == b'123'
 assert f(b'\x07 \x0b " \t \x7f \xf0') == b'\x07 \x0b " \t \x7f \xf0'
 assert eq(b'123', b'123')
 assert not eq(b'123', b'1234')
+assert not eq(b'123', b'124')
+assert not eq(b'123', b'223')
 assert neq(b'123', b'1234')
 try:
     f('x')

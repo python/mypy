@@ -33,7 +33,8 @@ from mypyc.ir.rtypes import (
     is_list_rprimitive, is_tuple_rprimitive, is_dict_rprimitive, is_set_rprimitive, PySetObject,
     none_rprimitive, RTuple, is_bool_rprimitive, is_str_rprimitive, c_int_rprimitive,
     pointer_rprimitive, PyObject, PyListObject, bit_rprimitive, is_bit_rprimitive,
-    object_pointer_rprimitive, c_size_t_rprimitive, dict_rprimitive, bytes_rprimitive
+    object_pointer_rprimitive, c_size_t_rprimitive, dict_rprimitive, bytes_rprimitive,
+    is_bytes_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -45,6 +46,7 @@ from mypyc.primitives.registry import (
     method_call_ops, CFunctionDescription, function_ops,
     binary_ops, unary_ops, ERR_NEG_INT
 )
+from mypyc.primitives.bytes_ops import bytes_compare
 from mypyc.primitives.list_ops import (
     list_extend_op, new_list_op, list_build_op
 )
@@ -855,8 +857,12 @@ class LowLevelIRBuilder:
         # Special case various ops
         if op in ('is', 'is not'):
             return self.translate_is_op(lreg, rreg, op, line)
+        # TODO: modify 'str' to use same interface as 'compare_bytes' as it avoids
+        # call to PyErr_Occurred()
         if is_str_rprimitive(ltype) and is_str_rprimitive(rtype) and op in ('==', '!='):
             return self.compare_strings(lreg, rreg, op, line)
+        if is_bytes_rprimitive(ltype) and is_bytes_rprimitive(rtype) and op in ('==', '!='):
+            return self.compare_bytes(lreg, rreg, op, line)
         if is_tagged(ltype) and is_tagged(rtype) and op in int_comparison_op_mapping:
             return self.compare_tagged(lreg, rreg, op, line)
         if is_bool_rprimitive(ltype) and is_bool_rprimitive(rtype) and op in (
@@ -996,6 +1002,12 @@ class LowLevelIRBuilder:
         op_type = ComparisonOp.EQ if op == '==' else ComparisonOp.NEQ
         return self.add(ComparisonOp(compare_result,
                                      Integer(0, c_int_rprimitive), op_type, line))
+
+    def compare_bytes(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
+        compare_result = self.call_c(bytes_compare, [lhs, rhs], line)
+        op_type = ComparisonOp.EQ if op == '==' else ComparisonOp.NEQ
+        return self.add(ComparisonOp(compare_result,
+                                     Integer(1, c_int_rprimitive), op_type, line))
 
     def compare_tuples(self,
                        lhs: Value,
