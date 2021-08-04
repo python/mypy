@@ -37,6 +37,7 @@ from mypyc.options import CompilerOptions
 from mypyc.crash import catch_errors
 from collections import defaultdict
 from mypy.traverser import TraverserVisitor
+from mypy.semanal import refers_to_fullname
 
 
 def build_type_map(mapper: Mapper,
@@ -336,7 +337,7 @@ class SingledispatchVisitor(TraverserVisitor):
         # Map of main singledispatch function to list of registered implementations
         self.singledispatch_impls: DefaultDict[FuncDef, List[RegisterImplInfo]] = defaultdict(list)
 
-        # Map of decorated function to the indices of any register decorators
+        # Map of decorated function to the indices of any decorators to remove
         self.decorators_to_remove: Dict[FuncDef, List[int]] = {}
 
         self.errors: Errors = errors
@@ -344,7 +345,7 @@ class SingledispatchVisitor(TraverserVisitor):
     def visit_decorator(self, dec: Decorator) -> None:
         if dec.decorators:
             decorators_to_store = dec.decorators.copy()
-            register_indices: List[int] = []
+            decorators_to_remove: List[int] = []
             # the index of the last non-register decorator before finding a register decorator
             # when going through decorators from top to bottom
             last_non_register: Optional[int] = None
@@ -353,7 +354,7 @@ class SingledispatchVisitor(TraverserVisitor):
                 if impl is not None:
                     self.singledispatch_impls[impl.singledispatch_func].append(
                         (impl.dispatch_type, dec.func))
-                    register_indices.append(i)
+                    decorators_to_remove.append(i)
                     if last_non_register is not None:
                         # found a register decorator after a non-register decorator, which we
                         # don't support because we'd have to make a copy of the function before
@@ -365,13 +366,15 @@ class SingledispatchVisitor(TraverserVisitor):
                             decorators_to_store[last_non_register].line,
                         )
                 else:
+                    if refers_to_fullname(d, 'functools.singledispatch'):
+                        decorators_to_remove.append(i)
                     last_non_register = i
 
-            if register_indices:
+            if decorators_to_remove:
                 # calling register on a function that tries to dispatch based on type annotations
                 # raises a TypeError because compiled functions don't have an __annotations__
                 # attribute
-                self.decorators_to_remove[dec.func] = register_indices
+                self.decorators_to_remove[dec.func] = decorators_to_remove
 
         super().visit_decorator(dec)
 
