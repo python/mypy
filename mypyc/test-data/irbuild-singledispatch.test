@@ -8,38 +8,56 @@ def f(arg) -> bool:
 def g(arg: int) -> bool:
     return True
 [out]
-def __mypyc___mypyc_singledispatch_main_function_f___decorator_helper__(arg):
+def __mypyc_singledispatch_main_function_f__(arg):
     arg :: object
 L0:
     return 0
-def __mypyc_f_decorator_helper__(arg):
-    arg, r0 :: object
-    r1 :: int32
-    r2 :: bit
-    r3 :: bool
-    r4 :: int
-    r5 :: bool
-    r6 :: dict
-    r7 :: str
-    r8, r9 :: object
-    r10 :: bool
+def f(arg):
+    arg :: object
+    r0 :: dict
+    r1 :: object
+    r2 :: str
+    r3 :: object
+    r4 :: ptr
+    r5, r6, r7 :: object
+    r8 :: ptr
+    r9 :: object
+    r10 :: bit
+    r11 :: int
+    r12 :: bit
+    r13 :: int
+    r14 :: bool
+    r15 :: object
+    r16 :: bool
 L0:
-    r0 = load_address PyLong_Type
-    r1 = PyObject_IsInstance(arg, r0)
-    r2 = r1 >= 0 :: signed
-    r3 = truncate r1: int32 to builtins.bool
-    if r3 goto L1 else goto L2 :: bool
+    r0 = __main__.__mypyc_singledispatch_registry___main__.f__ :: static
+    r1 = functools :: module
+    r2 = '_find_impl'
+    r3 = CPyObject_GetAttr(r1, r2)
+    r4 = get_element_ptr arg ob_type :: PyObject
+    r5 = load_mem r4 :: builtins.object*
+    keep_alive arg
+    r6 = PyObject_CallFunctionObjArgs(r3, r5, r0, 0)
+    r7 = load_address PyLong_Type
+    r8 = get_element_ptr r6 ob_type :: PyObject
+    r9 = load_mem r8 :: builtins.object*
+    keep_alive r6
+    r10 = r9 == r7
+    if r10 goto L1 else goto L4 :: bool
 L1:
-    r4 = unbox(int, arg)
-    r5 = g(r4)
-    return r5
+    r11 = unbox(int, r6)
+    r12 = r11 == 0
+    if r12 goto L2 else goto L3 :: bool
 L2:
-    r6 = __main__.globals :: static
-    r7 = '__mypyc___mypyc_singledispatch_main_function_f___decorator_helper__'
-    r8 = CPyDict_GetItem(r6, r7)
-    r9 = PyObject_CallFunctionObjArgs(r8, arg, 0)
-    r10 = unbox(bool, r9)
-    return r10
+    r13 = unbox(int, arg)
+    r14 = g(r13)
+    return r14
+L3:
+    unreachable
+L4:
+    r15 = PyObject_CallFunctionObjArgs(r6, arg, 0)
+    r16 = unbox(bool, r15)
+    return r16
 def g(arg):
     arg :: int
 L0:
