@@ -328,6 +328,9 @@ set_rprimitive: Final = RPrimitive("builtins.set", is_unboxed=False, is_refcount
 # (PyUnicode).
 str_rprimitive: Final = RPrimitive("builtins.str", is_unboxed=False, is_refcounted=True)
 
+# Python bytes object.
+bytes_rprimitive: Final = RPrimitive('builtins.bytes', is_unboxed=False, is_refcounted=True)
+
 # Tuple of an arbitrary length (corresponds to Tuple[t, ...], with
 # explicit '...').
 tuple_rprimitive: Final = RPrimitive("builtins.tuple", is_unboxed=False, is_refcounted=True)
@@ -408,6 +411,10 @@ def is_set_rprimitive(rtype: RType) -> bool:
 
 def is_str_rprimitive(rtype: RType) -> bool:
     return isinstance(rtype, RPrimitive) and rtype.name == 'builtins.str'
+
+
+def is_bytes_rprimitive(rtype: RType) -> bool:
+    return isinstance(rtype, RPrimitive) and rtype.name == 'builtins.bytes'
 
 
 def is_tuple_rprimitive(rtype: RType) -> bool:

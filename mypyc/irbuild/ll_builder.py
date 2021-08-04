@@ -32,8 +32,8 @@ from mypyc.ir.rtypes import (
     c_pyssize_t_rprimitive, is_short_int_rprimitive, is_tagged, PyVarObject, short_int_rprimitive,
     is_list_rprimitive, is_tuple_rprimitive, is_dict_rprimitive, is_set_rprimitive, PySetObject,
     none_rprimitive, RTuple, is_bool_rprimitive, is_str_rprimitive, c_int_rprimitive,
-    pointer_rprimitive, PyObject, bit_rprimitive, is_bit_rprimitive,
-    object_pointer_rprimitive, c_size_t_rprimitive, dict_rprimitive, PyListObject
+    pointer_rprimitive, PyObject, PyListObject, bit_rprimitive, is_bit_rprimitive,
+    object_pointer_rprimitive, c_size_t_rprimitive, dict_rprimitive, bytes_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -802,7 +802,7 @@ class LowLevelIRBuilder:
 
     def load_bytes(self, value: bytes) -> Value:
         """Load a bytes literal value."""
-        return self.add(LoadLiteral(value, object_rprimitive))
+        return self.add(LoadLiteral(value, bytes_rprimitive))
 
     def load_complex(self, value: complex) -> Value:
         """Load a complex literal value."""

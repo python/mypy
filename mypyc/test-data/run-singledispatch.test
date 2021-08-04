@@ -512,3 +512,34 @@ def test_singledispatch():
     assert f(B()) == 'b'
     assert f(C()) == 'c'
     assert f(1) == 'default'
+
+[case testRegisteredImplementationsInDifferentFiles]
+from other_a import f, A, B, C
+@f.register
+def a(arg: A) -> int:
+    return 2
+
+@f.register
+def _(arg: C) -> int:
+    return 3
+
+def test_singledispatch():
+    assert f(B()) == 1
+    assert f(A()) == 2
+    assert f(C()) == 3
+    assert f(1) == 0
+
+[file other_a.py]
+from functools import singledispatch
+
+class A: pass
+class B(A): pass
+class C(B): pass
+
+@singledispatch
+def f(arg) -> int:
+    return 0
+
+@f.register
+def g(arg: B) -> int:
+    return 1
