@@ -839,7 +839,7 @@ if good_union:
     pass
 
 bad_union: Union[Foo, object] = Foo()
-if bad_union:  # E: "__main__.bad_union" has type "Union[__main__.Foo, builtins.object]" none of which implement __bool__ or __len__ so it will always be true in boolean context  [implicit-bool]
+if bad_union:  # E: "__main__.bad_union" has type "Union[__main__.Foo, builtins.object]" of which no members implement __bool__ or __len__ so it will always be true in boolean context  [implicit-bool]
     pass
 
 def f():
