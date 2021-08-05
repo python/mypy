@@ -57,9 +57,7 @@ def test_indexing() -> None:
 def test_concat() -> None:
     b1 = b'123' + bytes()
     b2 = b'456' + bytes()
-    b3 = b1 + b2
-    assert b3 == b'123456'
-    assert len(b3) == 6
+    assert b1 + b2 == b'123456'
 
 def test_join() -> None:
     seq = (b'1', b'"', b'\xf0')
@@ -93,8 +91,6 @@ def test_basics() -> None:
     assert brr4 == b'string'
     assert len(brr1) == 3
     assert len(brr2) == 4
-    assert len(brr3) == 5
-    assert len(brr4) == 6
 
 def f(b: bytes) -> bool:
     return True
