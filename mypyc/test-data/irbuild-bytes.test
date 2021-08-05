@@ -62,10 +62,8 @@ L0:
     c = r6
     return 1
 
-
 [case testBytesJoin]
 from typing import List
-
 def f(b: List[bytes]) -> bytes:
     return b" ".join(b)
 [out]
@@ -76,3 +74,20 @@ L0:
     r0 = b' '
     r1 = CPyBytes_Join(r0, b)
     return r1
+
+[case testBytesLen]
+def f(b: bytes) -> int:
+    return len(b)
+[out]
+def f(b):
+    b :: bytes
+    r0 :: ptr
+    r1 :: native_int
+    r2 :: short_int
+L0:
+    r0 = get_element_ptr b ob_size :: PyVarObject
+    r1 = load_mem r0 :: native_int*
+    keep_alive b
+    r2 = r1 << 1
+    return r2
+
