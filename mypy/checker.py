@@ -4012,7 +4012,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         def format_expr_type() -> str:
             if isinstance(expr, MemberExpr):
-                return f'member "{expr.name}" has type "{t}"'
+                return f'Member "{expr.name}" has type "{t}"'
             elif isinstance(expr, RefExpr) and expr.fullname:
                 return f'"{expr.fullname}" has type "{t}"'
             elif isinstance(expr, CallExpr):
@@ -4020,18 +4020,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     return f'"{expr.callee.name}" returns "{t}"'
                 elif isinstance(expr.callee, RefExpr) and expr.callee.fullname:
                     return f'"{expr.callee.fullname}" returns "{t}"'
-                return f'call returns "{t}"'
+                return f'Call returns "{t}"'
             else:
-                return f'expression has type "{t}"'
+                return f'Expression has type "{t}"'
 
         if isinstance(t, FunctionLike):
             self.msg.fail(
-                f'function "{t}" will always be true in boolean context', expr,
+                f'Function "{t}" will always be true in boolean context', expr,
                 code=codes.IMPLICIT_BOOL,
             )
         elif isinstance(t, UnionType):
             self.msg.fail(
-                f"{format_expr_type()} none of which implement __bool__ or __len__ "
+                f"{format_expr_type()} of which no members implement __bool__ or __len__ "
                 "so it will always be true in boolean context",
                 expr,
                 code=codes.IMPLICIT_BOOL,
