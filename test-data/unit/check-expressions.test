@@ -323,8 +323,7 @@ if int():
     b = b or a  # E: Incompatible types in assignment (expression has type "Union[bool, A]", variable has type "bool")
 if int():
     b = a or b  # E: Incompatible types in assignment (expression has type "Union[A, bool]", variable has type "bool")
-class A:
-    def __bool__(self) -> bool: pass
+class A: pass
 
 [builtins fixtures/bool.pyi]
 
@@ -376,8 +375,7 @@ if int():
     d = c or d # E: Incompatible types in assignment (expression has type "C", variable has type "D")
 if int():
     d = d or c # E: Incompatible types in assignment (expression has type "C", variable has type "D")
-class C:
-    def __bool__(self) -> bool: pass
+class C: pass
 class D(C): pass
 [builtins fixtures/bool.pyi]
 

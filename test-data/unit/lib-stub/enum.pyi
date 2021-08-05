@@ -35,7 +35,6 @@ def unique(enumeration: _T) -> _T: pass
 
 class Flag(Enum):
     def __or__(self: _T, other: Union[int, _T]) -> _T: pass
-    def __bool__(self) -> bool: ...
 
 
 class IntFlag(int, Flag):

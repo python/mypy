@@ -749,10 +749,8 @@ if int():
 if int():
     b = b or c # E: Incompatible types in assignment (expression has type "Union[List[B], List[C]]", variable has type "List[B]")
 
-class A:
-    def __bool__(self) -> bool: ...
-class B:
-    def __bool__(self) -> bool: ...
+class A: pass
+class B: pass
 class C(B): pass
 [builtins fixtures/list.pyi]
 
