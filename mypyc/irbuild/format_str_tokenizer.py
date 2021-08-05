@@ -12,24 +12,17 @@ from mypy.messages import MessageBuilder
 from mypy.nodes import Context, Expression
 
 from mypyc.ir.ops import Value, Integer
-from mypyc.ir.rtypes import c_pyssize_t_rprimitive
+from mypyc.ir.rtypes import (
+    c_pyssize_t_rprimitive, is_str_rprimitive, is_int_rprimitive, is_short_int_rprimitive
+)
 from mypyc.irbuild.builder import IRBuilder
-from mypyc.primitives.str_ops import str_build_op
+from mypyc.primitives.int_ops import int_to_str_op
+from mypyc.primitives.str_ops import str_build_op, str_op
 
 
-class ConvType(Enum):
+class FormatOp(Enum):
     STR = 's'
     INT = 'd'
-
-
-class FormatOp:
-    is_valid = False
-    conv_type = ConvType.STR
-
-    def __eq__(self, other: 'FormatOp') -> bool:
-        if self.is_valid and other.is_valid:
-            return self.conv_type == other.conv_type
-        return False
 
 
 def tokenizer_printf_style(format_str: str) -> Tuple[List[str], List[ConversionSpecifier]]:
@@ -87,16 +80,18 @@ def tokenizer_format_call(
     return literals, specifiers
 
 
-def convert_expr(builder: IRBuilder, exprs: List[Expression], line: int) -> List[Value]:
+def convert_expr(builder: IRBuilder, format_ops: List[FormatOp],
+                 exprs: List[Expression], line: int) -> List[Value]:
     converted = []
-    for x in exprs:
+    for x, format_op in zip(exprs, format_ops):
         node_type = builder.node_type(x)
-        if is_str_rprimitive(node_type):
-            var_str = builder.accept(x)
-        elif is_int_rprimitive(node_type) or is_short_int_rprimitive(node_type):
-            var_str = builder.call_c(int_to_str_op, [builder.accept(x)], line)
-        else:
-            var_str = builder.call_c(str_op, [builder.accept(x)], line)
+        if format_op == FormatOp.STR:
+            if is_str_rprimitive(node_type):
+                var_str = builder.accept(x)
+            elif is_int_rprimitive(node_type) or is_short_int_rprimitive(node_type):
+                var_str = builder.call_c(int_to_str_op, [builder.accept(x)], line)
+            else:
+                var_str = builder.call_c(str_op, [builder.accept(x)], line)
         converted.append(var_str)
     return converted
 
