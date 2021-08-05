@@ -2,6 +2,7 @@ import datetime
 import logging
 import sys
 import unittest.result
+from _typeshed import Self
 from collections.abc import Set
 from types import TracebackType
 from typing import (
@@ -14,6 +15,7 @@ from typing import (
     Iterable,
     List,
     Mapping,
+    NamedTuple,
     NoReturn,
     Optional,
     Pattern,
@@ -251,9 +253,13 @@ class FunctionTestCase(TestCase):
     ) -> None: ...
     def runTest(self) -> None: ...
 
+class _LoggingWatcher(NamedTuple):
+    records: List[logging.LogRecord]
+    output: List[str]
+
 class _AssertRaisesContext(Generic[_E]):
     exception: _E
-    def __enter__(self) -> _AssertRaisesContext[_E]: ...
+    def __enter__(self: Self) -> Self: ...
     def __exit__(
         self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
     ) -> bool: ...
@@ -265,7 +271,7 @@ class _AssertWarnsContext:
     filename: str
     lineno: int
     warnings: List[WarningMessage]
-    def __enter__(self) -> _AssertWarnsContext: ...
+    def __enter__(self: Self) -> Self: ...
     def __exit__(
         self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
     ) -> None: ...
@@ -275,7 +281,10 @@ class _AssertLogsContext:
     records: List[logging.LogRecord]
     output: List[str]
     def __init__(self, test_case: TestCase, logger_name: str, level: int) -> None: ...
-    def __enter__(self) -> _AssertLogsContext: ...
+    if sys.version_info >= (3, 10):
+        def __enter__(self) -> _LoggingWatcher | None: ...
+    else:
+        def __enter__(self) -> _LoggingWatcher: ...
     def __exit__(
         self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
     ) -> Optional[bool]: ...

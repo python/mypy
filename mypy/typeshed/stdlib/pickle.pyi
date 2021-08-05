@@ -58,6 +58,7 @@ _reducedtype = Union[
 class Pickler:
     fast: bool
     dispatch_table: Mapping[type, Callable[[Any], _reducedtype]]
+    bin: bool  # undocumented
     dispatch: ClassVar[dict[type, Callable[[Unpickler, Any], None]]]  # undocumented, _Pickler only
 
     if sys.version_info >= (3, 8):
@@ -169,6 +170,12 @@ NEWOBJ_EX: bytes
 STACK_GLOBAL: bytes
 MEMOIZE: bytes
 FRAME: bytes
+
+if sys.version_info >= (3, 8):
+    # Protocol 5
+    BYTEARRAY8: bytes
+    NEXT_BUFFER: bytes
+    READONLY_BUFFER: bytes
 
 def encode_long(x: int) -> bytes: ...  # undocumented
 def decode_long(data: bytes) -> int: ...  # undocumented

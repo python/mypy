@@ -1,18 +1,19 @@
 import sys
 from typing import Any, Callable, Dict, Generic, Iterable, List, Mapping, Optional, Tuple, Type, TypeVar, Union, overload
+from typing_extensions import Protocol
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
 
 _T = TypeVar("_T")
+_T_co = TypeVar("_T_co", covariant=True)
 
 class _MISSING_TYPE: ...
 
 MISSING: _MISSING_TYPE
 
 if sys.version_info >= (3, 10):
-    class _KW_ONLY_TYPE: ...
-    KW_ONLY: _KW_ONLY_TYPE
+    class KW_ONLY: ...
 
 @overload
 def asdict(obj: Any) -> Dict[str, Any]: ...
@@ -63,11 +64,15 @@ else:
         *, init: bool = ..., repr: bool = ..., eq: bool = ..., order: bool = ..., unsafe_hash: bool = ..., frozen: bool = ...
     ) -> Callable[[Type[_T]], Type[_T]]: ...
 
+# See https://github.com/python/mypy/issues/10750
+class _DefaultFactory(Protocol[_T_co]):
+    def __call__(self) -> _T_co: ...
+
 class Field(Generic[_T]):
     name: str
     type: Type[_T]
     default: _T
-    default_factory: Callable[[], _T]
+    default_factory: _DefaultFactory[_T]
     repr: bool
     hash: Optional[bool]
     init: bool

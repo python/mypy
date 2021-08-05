@@ -852,8 +852,6 @@ def process_options(args: List[str],
     # Must be followed by another flag or by '--' (and then only file args may follow).
     parser.add_argument('--cache-map', nargs='+', dest='special-opts:cache_map',
                         help=argparse.SUPPRESS)
-    # PEP 612 support is a work in progress, hide it from users
-    parser.add_argument('--wip-pep-612', action="store_true", help=argparse.SUPPRESS)
 
     # options specifying code to check
     code_group = parser.add_argument_group(

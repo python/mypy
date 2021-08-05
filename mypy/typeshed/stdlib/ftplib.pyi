@@ -1,11 +1,9 @@
-from _typeshed import SupportsRead, SupportsReadline
+from _typeshed import Self, SupportsRead, SupportsReadline
 from socket import socket
 from ssl import SSLContext
 from types import TracebackType
-from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, TextIO, Tuple, Type, TypeVar, Union
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, TextIO, Tuple, Type, Union
 from typing_extensions import Literal
-
-_T = TypeVar("_T")
 
 MSG_OOB: int
 FTP_PORT: int
@@ -34,7 +32,7 @@ class FTP:
     lastresp: str
     file: Optional[TextIO]
     encoding: str
-    def __enter__(self: _T) -> _T: ...
+    def __enter__(self: Self) -> Self: ...
     def __exit__(
         self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
     ) -> None: ...

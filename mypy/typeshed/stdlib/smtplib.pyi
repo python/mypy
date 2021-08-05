@@ -1,3 +1,4 @@
+from _typeshed import Self
 from email.message import Message as _Message
 from socket import socket
 from ssl import SSLContext
@@ -75,7 +76,7 @@ class SMTP:
         timeout: float = ...,
         source_address: Optional[_SourceAddress] = ...,
     ) -> None: ...
-    def __enter__(self) -> SMTP: ...
+    def __enter__(self: Self) -> Self: ...
     def __exit__(
         self, exc_type: Optional[Type[BaseException]], exc_value: Optional[BaseException], tb: Optional[TracebackType]
     ) -> None: ...
