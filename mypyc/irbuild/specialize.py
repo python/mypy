@@ -29,7 +29,7 @@ from mypyc.ir.rtypes import (
     is_int_rprimitive, is_str_rprimitive, is_short_int_rprimitive
 )
 from mypyc.irbuild.format_str_tokenizer import (
-    tokenizer_format_call, join_formatted_strings
+    tokenizer_format_call, join_formatted_strings, generate_format_ops, convert_expr
 )
 from mypyc.primitives.int_ops import int_to_str_op
 from mypyc.primitives.dict_ops import (
@@ -395,27 +395,21 @@ def translate_str_format(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
     if (isinstance(callee, MemberExpr) and isinstance(callee.expr, StrExpr)
             and expr.arg_kinds.count(ARG_POS) == len(expr.arg_kinds)):
-        format_str = callee.expr.value
-        literals, specifiers = tokenizer_format_call(format_str)
+        tokens = tokenizer_format_call(callee.expr.value)
+        if tokens is None:
+            return None
+        literals, specifiers = tokens
 
-        for spec in specifiers:
-            # Only empty curly brace is allowed
-            if spec.whole_seq:
-                return None
+        format_ops = generate_format_ops(specifiers)
+        if format_ops is None:
+            return None
 
         # Convert variables to strings
-        variables = []
-        for x in expr.args:
-            node_type = builder.node_type(x)
-            if is_str_rprimitive(node_type):
-                var_str = builder.accept(x)
-            elif is_int_rprimitive(node_type) or is_short_int_rprimitive(node_type):
-                var_str = builder.call_c(int_to_str_op, [builder.accept(x)], expr.line)
-            else:
-                var_str = builder.call_c(str_op, [builder.accept(x)], expr.line)
-            variables.append(var_str)
+        substitutions = convert_expr(builder, format_ops, expr.args, expr.line)
+        if substitutions is None:
+            return None
 
-        return join_formatted_strings(builder, literals, variables, expr.line)
+        return join_formatted_strings(builder, literals, substitutions, expr.line)
     return None
 
 

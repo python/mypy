@@ -80,8 +80,22 @@ def tokenizer_format_call(
     return literals, specifiers
 
 
+def generate_format_ops(specifiers: List[ConversionSpecifier]) -> Optional[List[FormatOp]]:
+    format_ops = []
+    for spec in specifiers:
+        # TODO: Match specifiers instead of using whole_seq
+        if spec.whole_seq == '%s' or spec.whole_seq == '{:{}}':
+            format_op = FormatOp.STR
+        elif spec.whole_seq:
+            return None
+        else:
+            format_op = FormatOp.STR
+        format_ops.append(format_op)
+    return format_ops
+
+
 def convert_expr(builder: IRBuilder, format_ops: List[FormatOp],
-                 exprs: List[Expression], line: int) -> List[Value]:
+                 exprs: List[Expression], line: int) -> Optional[List[Value]]:
     converted = []
     for x, format_op in zip(exprs, format_ops):
         node_type = builder.node_type(x)
@@ -92,7 +106,9 @@ def convert_expr(builder: IRBuilder, format_ops: List[FormatOp],
                 var_str = builder.call_c(int_to_str_op, [builder.accept(x)], line)
             else:
                 var_str = builder.call_c(str_op, [builder.accept(x)], line)
-        converted.append(var_str)
+            converted.append(var_str)
+        else:
+            return None
     return converted
 
 
