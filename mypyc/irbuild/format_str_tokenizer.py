@@ -2,18 +2,34 @@
 
 from typing import List, Tuple, Optional
 from typing_extensions import Final
+from enum import Enum
 
 from mypy.checkstrformat import (
     parse_format_value, ConversionSpecifier, parse_conversion_specifiers
 )
 from mypy.errors import Errors
 from mypy.messages import MessageBuilder
-from mypy.nodes import Context
+from mypy.nodes import Context, Expression
 
 from mypyc.ir.ops import Value, Integer
 from mypyc.ir.rtypes import c_pyssize_t_rprimitive
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.primitives.str_ops import str_build_op
+
+
+class ConvType(Enum):
+    STR = 's'
+    INT = 'd'
+
+
+class FormatOp:
+    is_valid = False
+    conv_type = ConvType.STR
+
+    def __eq__(self, other: 'FormatOp') -> bool:
+        if self.is_valid and other.is_valid:
+            return self.conv_type == other.conv_type
+        return False
 
 
 def tokenizer_printf_style(format_str: str) -> Tuple[List[str], List[ConversionSpecifier]]:
@@ -69,6 +85,20 @@ def tokenizer_format_call(
     # Deal with escaped {{
     literals = [x.replace('{{', '{').replace('}}', '}') for x in literals]
     return literals, specifiers
+
+
+def convert_expr(builder: IRBuilder, exprs: List[Expression], line: int) -> List[Value]:
+    converted = []
+    for x in exprs:
+        node_type = builder.node_type(x)
+        if is_str_rprimitive(node_type):
+            var_str = builder.accept(x)
+        elif is_int_rprimitive(node_type) or is_short_int_rprimitive(node_type):
+            var_str = builder.call_c(int_to_str_op, [builder.accept(x)], line)
+        else:
+            var_str = builder.call_c(str_op, [builder.accept(x)], line)
+        converted.append(var_str)
+    return converted
 
 
 def join_formatted_strings(builder: IRBuilder, literals: List[str],
