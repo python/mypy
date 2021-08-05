@@ -178,9 +178,6 @@ def parse_mypy_args(line: str) -> List[str]:
     return m.group(1).split()
 
 
-@pytest.mark.skipif(sys.platform == 'darwin' and hasattr(sys, 'base_prefix') and
-                    sys.base_prefix != sys.prefix,
-                    reason="Temporarily skip to avoid having a virtualenv within a venv.")
 def test_mypy_path_is_respected() -> None:
     assert False
     packages = 'packages'
