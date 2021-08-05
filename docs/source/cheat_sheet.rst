@@ -3,8 +3,7 @@
 Type hints cheat sheet (Python 2)
 =================================
 
-This document is a quick cheat sheet showing how the
-`PEP 484 <https://www.python.org/dev/peps/pep-0484/>`_ type
+This document is a quick cheat sheet showing how the :pep:`484` type
 language represents various common types in Python 2.
 
 .. note::
@@ -13,6 +12,12 @@ language represents various common types in Python 2.
    because mypy can derive them from the type of the expression.  So
    many of the examples have a dual purpose: show how to write the
    annotation, and show the inferred types.
+
+.. note::
+
+   To check Python 2 code with mypy, you'll need to install mypy with
+   ``pip install 'mypy[python2]'``.
+
 
 
 Built-in types
@@ -112,8 +117,7 @@ Functions
                   body=None    # type: List[str]
                   ):
        # type: (...) -> bool
-       <code>
-
+       ...
 
 When you're puzzled or when things are complicated
 **************************************************
@@ -125,7 +129,7 @@ When you're puzzled or when things are complicated
    # To find out what type mypy infers for an expression anywhere in
    # your program, wrap it in reveal_type().  Mypy will print an error
    # message with the type; remove it again before running the code.
-   reveal_type(1) # -> Revealed type is 'builtins.int'
+   reveal_type(1) # -> Revealed type is "builtins.int"
 
    # Use Union when something could be one of a few types
    x = [3, 5, "test", "fun"]  # type: List[Union[int, str]]
@@ -156,7 +160,7 @@ When you're puzzled or when things are complicated
    a = [4]
    b = cast(List[int], a)  # Passes fine
    c = cast(List[str], a)  # Passes fine (no runtime check)
-   reveal_type(c)  # -> Revealed type is 'builtins.list[builtins.str]'
+   reveal_type(c)  # -> Revealed type is "builtins.list[builtins.str]"
    print c  # -> [4]; the object is not cast
 
    # If you want dynamic attributes on your class, have it override "__setattr__"
@@ -257,3 +261,22 @@ Miscellaneous
            return sys.stdin
        else:
            return sys.stdout
+
+
+Decorators
+**********
+
+Decorator functions can be expressed via generics. See
+:ref:`declaring-decorators` for the more details.
+
+.. code-block:: python
+
+    from typing import Any, Callable, TypeVar
+
+    F = TypeVar('F', bound=Callable[..., Any])
+
+    def bare_decorator(func):  # type: (F) -> F
+        ...
+
+    def decorator_args(url):  # type: (str) -> Callable[[F], F]
+        ...

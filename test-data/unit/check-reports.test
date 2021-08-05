@@ -1,0 +1,356 @@
+[case testReportBasic]
+# flags: --xml-report out
+def f(): pass
+
+def g() -> None: pass
+[outfile out/index.xml]
+<?xml-stylesheet type="text/xsl" href="mypy-html.xslt"?><mypy-report-index name="index"><file module="__main__" name="main" total="4" any="1" empty="2" imprecise="0" precise="1" unanalyzed="0"/></mypy-report-index>
+
+[case testLinePrecisionBasic]
+# flags: --lineprecision-report out
+def f(): pass
+
+def g() -> None:
+    a = 1
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      5        2          0    1      2           0
+
+[case testLinePrecisionImpreciseType]
+# flags: --lineprecision-report out
+def f(x: list) -> None: pass
+[builtins fixtures/list.pyi]
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      2        0          1    0      1           0
+
+[case testLinePrecisionUnanalyzed]
+# flags: --lineprecision-report out
+import sys
+MYPY = False
+if not MYPY:
+    a = 1
+
+def f(x: int) -> None:
+    if isinstance(x, str):
+        b = 1
+        c = 1
+[builtins fixtures/isinstance.pyi]
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__     10        5          0    0      2           3
+
+[case testLinePrecisionEmptyLines]
+# flags: --lineprecision-report out
+def f() -> None:
+    """docstring
+
+    long
+    """
+    x = 0
+
+    # comment
+    y = 0  # comment (non-empty)
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__     10        3          0    0      7           0
+
+[case testLinePrecisionImportFrom]
+# flags: --lineprecision-report out --ignore-missing-imports
+from m import f
+from m import g
+from bad import foo
+from bad import (  # treated as a single line
+    foo2,
+    foo3,
+)
+
+[file m.py]
+def f(): pass
+def g() -> None: pass
+
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      8        2          0    2      4           0
+m             2        1          0    1      0           0
+
+[case testLinePrecisionImport]
+# flags: --lineprecision-report out --ignore-missing-imports
+import m
+import bad
+import m, bad
+
+[file m.py]
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      4        1          0    2      1           0
+m             0        0          0    0      0           0
+
+[case testLinePrecisionStarImport]
+# flags: --lineprecision-report out --ignore-missing-imports
+from m import *
+from bad import *
+
+[file m.py]
+def f(): pass
+def g() -> None: pass
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      3        1          0    1      1           0
+m             2        1          0    1      0           0
+
+[case testLinePrecisionRelativeImport]
+# flags: --lineprecision-report out --ignore-missing-imports
+import a
+
+[file a/__init__.py]
+from .m import f
+from .bad import g
+
+[file a/m.py]
+def f(): pass
+
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      2        1          0    0      1           0
+a             2        1          0    1      0           0
+a.m           1        0          0    1      0           0
+
+[case testLinePrecisionPassStatement]
+# flags: --lineprecision-report out
+def f() -> None:
+    pass
+def g():
+    pass
+class C:
+    pass
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      7        4          0    2      1           0
+
+[case testLinePrecisionBreakAndContinueStatement]
+# flags: --lineprecision-report out
+import a
+import b
+
+[file a.py]
+def f() -> int:
+    while f():
+        break
+    return f()
+def g():
+    while g():
+        break
+
+[file b.py]
+def f() -> int:
+    while f():
+        continue
+    return f()
+def g():
+    while g():
+        continue
+
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      3        2          0    0      1           0
+a             7        4          0    3      0           0
+b             7        4          0    3      0           0
+
+[case testLinePrecisionLiterals]
+# flags: --lineprecision-report out
+import str_lit
+import bytes_lit
+import int_lit
+import float_lit
+import true_lit
+import false_lit
+import none_lit
+import complex_lit
+import dots_lit
+
+[file str_lit.py]
+def f() -> object:
+    return ''
+def g():
+    return ''
+
+[file bytes_lit.py]
+def f() -> object:
+    return b''
+def g():
+    return b''
+
+[file int_lit.py]
+def f() -> object:
+    return 1
+def g():
+    return 1
+
+[file float_lit.py]
+def f() -> object:
+    return 1.1
+def g():
+    return 1.1
+
+[file true_lit.py]
+def f() -> object:
+    return True
+def g():
+    return True
+
+[file false_lit.py]
+def f() -> object:
+    return False
+def g():
+    return False
+
+[file none_lit.py]
+def f() -> object:
+    return None
+def g():
+    return None
+
+[file complex_lit.py]
+def f() -> object:
+    return None
+def g():
+    return None
+
+[file dots_lit.py]
+def f() -> object:
+    return ...
+def g():
+    return ...
+
+[outfile out/lineprecision.txt]
+Name         Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+----------------------------------------------------------------
+__main__        10        9          0    0      1           0
+bytes_lit        4        2          0    2      0           0
+complex_lit      4        2          0    2      0           0
+dots_lit         4        2          0    2      0           0
+false_lit        4        2          0    2      0           0
+float_lit        4        2          0    2      0           0
+int_lit          4        2          0    2      0           0
+none_lit         4        2          0    2      0           0
+str_lit          4        2          0    2      0           0
+true_lit         4        2          0    2      0           0
+
+[case testLinePrecisionUnicodeLiterals_python2]
+# flags: --lineprecision-report out
+def f(): # type: () -> object
+    return u''
+def g():
+    return u''
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      5        2          0    2      1           0
+
+[case testLinePrecisionIfStatement]
+# flags: --lineprecision-report out
+if int():
+    x = 1
+else:  # This is treated as empty
+    x = 2
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      5        3          0    0      2           0
+
+[case testLinePrecisionCallAnyArg]
+# flags: --lineprecision-report out
+from m import f
+def g() -> None:
+    f(1)  # Precise
+    f(1, 2)  # Any
+[file m.py]
+from typing import Any
+def f(x: int, y: Any = 0) -> None:
+    pass
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      5        3          0    1      1           0
+m             3        2          0    1      0           0
+
+[case testLinePrecisionCallImpreciseArg]
+# flags: --lineprecision-report out
+from m import f
+def g() -> None:
+    f(1)  # Precise
+    f(1, [2])  # Imprecise
+[file m.py]
+from typing import List, Any
+def f(x: int, y: List[Any] = []) -> None:
+    pass
+[builtins fixtures/list.pyi]
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      5        3          1    0      1           0
+m             3        2          1    0      0           0
+
+[case testLinePrecisionCallAnyArgWithKeywords]
+# flags: --lineprecision-report out
+from m import f
+def g() -> None:
+    f(x=1)  # Precise
+    f(x=1, z=1)  # Precise
+    f(z=1, x=1)  # Precise
+    f(y=1)  # Any
+    f(y=1, x=1)  # Any
+[file m.py]
+from typing import Any
+def f(x: int = 0, y: Any = 0, z: int = 0) -> None:
+    pass
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      8        5          0    2      1           0
+m             3        2          0    1      0           0
+
+[case testLinePrecisionCallAnyMethodArg]
+# flags: --lineprecision-report out
+from m import C
+def g(c: C) -> None:
+    c.f(1)  # Precise
+    c.f(1, 2)  # Any
+[file m.py]
+from typing import Any
+class C:
+    def f(self, x: int, y: Any = 0) -> None:
+        pass
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      5        3          0    1      1           0
+m             4        3          0    1      0           0
+
+[case testLinePrecisionCallAnyConstructorArg]
+# flags: --lineprecision-report out
+from m import C
+def g() -> None:
+    C(1)  # Precise
+    C(1, 2)  # Any
+[file m.py]
+from typing import Any
+class C:
+    def __init__(self, x: int, y: Any = 0) -> None:
+        pass
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      5        3          0    1      1           0
+m             4        3          0    1      0           0

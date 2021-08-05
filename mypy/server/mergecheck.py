@@ -1,17 +1,13 @@
 """Check for duplicate AST nodes after merge."""
 
 from typing import Dict, List, Tuple
+from typing_extensions import Final
 
-from mypy.nodes import SymbolNode, Var, Decorator, FuncDef
+from mypy.nodes import FakeInfo, SymbolNode, Var, Decorator, FuncDef
 from mypy.server.objgraph import get_reachable_graph, get_path
 
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
-
 # If True, print more verbose output on failure.
-DUMP_MISMATCH_NODES = False  # type: Final
+DUMP_MISMATCH_NODES: Final = False
 
 
 def check_consistency(o: object) -> None:
@@ -23,9 +19,12 @@ def check_consistency(o: object) -> None:
     reachable = list(seen.values())
     syms = [x for x in reachable if isinstance(x, SymbolNode)]
 
-    m = {}  # type: Dict[str, SymbolNode]
+    m: Dict[str, SymbolNode] = {}
     for sym in syms:
-        fn = sym.fullname()
+        if isinstance(sym, FakeInfo):
+            continue
+
+        fn = sym.fullname
         # Skip None names, since they are ambiguous.
         # TODO: Everything should have a proper full name?
         if fn is None:
@@ -37,7 +36,7 @@ def check_consistency(o: object) -> None:
             continue
 
         if fn not in m:
-            m[sym.fullname()] = sym
+            m[sym.fullname] = sym
             continue
 
         # We have trouble and need to decide what to do about it.
@@ -62,7 +61,7 @@ def check_consistency(o: object) -> None:
             print('---')
             print(id(sym2), sym2)
 
-        assert sym.fullname() not in m
+        assert sym.fullname not in m
 
 
 def path_to_str(path: List[Tuple[object, object]]) -> str:
@@ -73,7 +72,7 @@ def path_to_str(path: List[Tuple[object, object]]) -> str:
             result += '[%s]' % repr(attr)
         else:
             if isinstance(obj, Var):
-                result += '.%s(%s:%s)' % (attr, t, obj.name())
+                result += '.%s(%s:%s)' % (attr, t, obj.name)
             elif t in ('BuildManager', 'FineGrainedBuildManager'):
                 # Omit class name for some classes that aren't part of a class
                 # hierarchy since there isn't much ambiguity.

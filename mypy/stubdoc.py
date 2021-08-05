@@ -5,30 +5,37 @@ docstrings and Sphinx docs (.rst files).
 """
 import re
 import io
-import sys
 import contextlib
 import tokenize
 
 from typing import (
     Optional, MutableMapping, MutableSequence, List, Sequence, Tuple, NamedTuple, Any
 )
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
+from typing_extensions import Final
 
 # Type alias for signatures strings in format ('func_name', '(arg, opt_arg=False)').
 Sig = Tuple[str, str]
 
 
+_TYPE_RE: Final = re.compile(r"^[a-zA-Z_][\w\[\], ]*(\.[a-zA-Z_][\w\[\], ]*)*$")
+_ARG_NAME_RE: Final = re.compile(r"\**[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def is_valid_type(s: str) -> bool:
+    """Try to determine whether a string might be a valid type annotation."""
+    if s in ('True', 'False', 'retval'):
+        return False
+    if ',' in s and '[' not in s:
+        return False
+    return _TYPE_RE.match(s) is not None
+
+
 class ArgSig:
     """Signature info for a single argument."""
 
-    _TYPE_RE = re.compile(r'^[a-zA-Z_][\w\[\], ]*(\.[a-zA-Z_][\w\[\], ]*)*$')  # type: Final
-
     def __init__(self, name: str, type: Optional[str] = None, default: bool = False):
         self.name = name
-        if type and not self._TYPE_RE.match(type):
+        if type and not is_valid_type(type):
             raise ValueError("Invalid type: " + type)
         self.type = type
         # Does this argument have a default value?
@@ -53,33 +60,34 @@ FunctionSig = NamedTuple('FunctionSig', [
 
 
 # States of the docstring parser.
-STATE_INIT = 1  # type: Final
-STATE_FUNCTION_NAME = 2  # type: Final
-STATE_ARGUMENT_LIST = 3  # type: Final
-STATE_ARGUMENT_TYPE = 4  # type: Final
-STATE_ARGUMENT_DEFAULT = 5  # type: Final
-STATE_RETURN_VALUE = 6  # type: Final
-STATE_OPEN_BRACKET = 7  # type: Final  # For generic types.
+STATE_INIT: Final = 1
+STATE_FUNCTION_NAME: Final = 2
+STATE_ARGUMENT_LIST: Final = 3
+STATE_ARGUMENT_TYPE: Final = 4
+STATE_ARGUMENT_DEFAULT: Final = 5
+STATE_RETURN_VALUE: Final = 6
+STATE_OPEN_BRACKET: Final = 7  # For generic types.
 
 
 class DocStringParser:
-    """Parse function signstures in documentation."""
+    """Parse function signatures in documentation."""
+
     def __init__(self, function_name: str) -> None:
         # Only search for signatures of function with this name.
         self.function_name = function_name
         self.state = [STATE_INIT]
         self.accumulator = ""
-        self.arg_type = None  # type: Optional[str]
+        self.arg_type: Optional[str] = None
         self.arg_name = ""
-        self.arg_default = None  # type: Optional[str]
+        self.arg_default: Optional[str] = None
         self.ret_type = "Any"
         self.found = False
-        self.args = []  # type: List[ArgSig]
+        self.args: List[ArgSig] = []
         # Valid signatures found so far.
-        self.signatures = []  # type: List[FunctionSig]
+        self.signatures: List[FunctionSig] = []
 
     def add_token(self, token: tokenize.TokenInfo) -> None:
-        """Process next token fro the token stream."""
+        """Process next token from the token stream."""
         if (token.type == tokenize.NAME and token.string == self.function_name and
                 self.state[-1] == STATE_INIT):
             self.state.append(STATE_FUNCTION_NAME)
@@ -132,6 +140,11 @@ class DocStringParser:
                 self.state.pop()
             elif self.state[-1] == STATE_ARGUMENT_LIST:
                 self.arg_name = self.accumulator
+                if not (token.string == ')' and self.accumulator.strip() == '') \
+                        and not _ARG_NAME_RE.match(self.arg_name):
+                    # Invalid argument name.
+                    self.reset()
+                    return
 
             if token.string == ')':
                 self.state.pop()
@@ -155,6 +168,9 @@ class DocStringParser:
         elif (token.type in (tokenize.NEWLINE, tokenize.ENDMARKER) and
               self.state[-1] in (STATE_INIT, STATE_RETURN_VALUE)):
             if self.state[-1] == STATE_RETURN_VALUE:
+                if not is_valid_type(self.accumulator):
+                    self.reset()
+                    return
                 self.ret_type = self.accumulator
                 self.accumulator = ""
                 self.state.pop()
@@ -169,6 +185,12 @@ class DocStringParser:
         else:
             self.accumulator += token.string
 
+    def reset(self) -> None:
+        self.state = [STATE_INIT]
+        self.args = []
+        self.found = False
+        self.accumulator = ""
+
     def get_signatures(self) -> List[FunctionSig]:
         """Return sorted copy of the list of signatures found so far."""
         def has_arg(name: str, signature: FunctionSig) -> bool:
@@ -181,7 +203,7 @@ class DocStringParser:
         return list(sorted(self.signatures, key=lambda x: 1 if args_kwargs(x) else 0))
 
 
-def infer_sig_from_docstring(docstr: str, name: str) -> Optional[List[FunctionSig]]:
+def infer_sig_from_docstring(docstr: Optional[str], name: str) -> Optional[List[FunctionSig]]:
     """Convert function signature to list of TypedFunctionSig
 
     Look for function signatures of function in docstring. Signature is a string of
@@ -202,30 +224,41 @@ def infer_sig_from_docstring(docstr: str, name: str) -> Optional[List[FunctionSi
     state = DocStringParser(name)
     # Return all found signatures, even if there is a parse error after some are found.
     with contextlib.suppress(tokenize.TokenError):
-        for token in tokenize.tokenize(io.BytesIO(docstr.encode('utf-8')).readline):
-            state.add_token(token)
+        try:
+            tokens = tokenize.tokenize(io.BytesIO(docstr.encode('utf-8')).readline)
+            for token in tokens:
+                state.add_token(token)
+        except IndentationError:
+            return None
     sigs = state.get_signatures()
 
     def is_unique_args(sig: FunctionSig) -> bool:
         """return true if function argument names are unique"""
         return len(sig.args) == len(set((arg.name for arg in sig.args)))
 
-    # Warn about invalid signatures
-    invalid_sigs = [sig for sig in sigs if not is_unique_args(sig)]
-    if invalid_sigs:
-        print("Warning: Invalid signatures found:", file=sys.stderr)
-        print("\n".join(str(sig) for sig in invalid_sigs), file=sys.stderr)
-
-    # return only signatures, that have unique argument names. mypy fails on non-uqniue arg names
+    # Return only signatures that have unique argument names. Mypy fails on non-unique arg names.
     return [sig for sig in sigs if is_unique_args(sig)]
 
 
-def infer_arg_sig_from_docstring(docstr: str) -> List[ArgSig]:
+def infer_arg_sig_from_anon_docstring(docstr: str) -> List[ArgSig]:
     """Convert signature in form of "(self: TestClass, arg0: str='ada')" to List[TypedArgList]."""
     ret = infer_sig_from_docstring("stub" + docstr, "stub")
     if ret:
         return ret[0].args
     return []
+
+
+def infer_ret_type_sig_from_docstring(docstr: str, name: str) -> Optional[str]:
+    """Convert signature in form of "func(self: TestClass, arg0) -> int" to their return type."""
+    ret = infer_sig_from_docstring(docstr, name)
+    if ret:
+        return ret[0].ret_type
+    return None
+
+
+def infer_ret_type_sig_from_anon_docstring(docstr: str) -> Optional[str]:
+    """Convert signature in form of "(self: TestClass, arg0) -> int" to their return type."""
+    return infer_ret_type_sig_from_docstring("stub" + docstr.strip(), "stub")
 
 
 def parse_signature(sig: str) -> Optional[Tuple[str,
@@ -270,7 +303,7 @@ def parse_signature(sig: str) -> Optional[Tuple[str,
 def build_signature(positional: Sequence[str],
                     optional: Sequence[str]) -> str:
     """Build function signature from lists of positional and optional argument names."""
-    args = []  # type: MutableSequence[str]
+    args: MutableSequence[str] = []
     args.extend(positional)
     for arg in optional:
         if arg.startswith('*'):
@@ -309,7 +342,7 @@ def parse_all_signatures(lines: Sequence[str]) -> Tuple[List[Sig],
 
 def find_unique_signatures(sigs: Sequence[Sig]) -> List[Sig]:
     """Remove names with duplicate found signatures."""
-    sig_map = {}  # type: MutableMapping[str, List[str]]
+    sig_map: MutableMapping[str, List[str]] = {}
     for name, sig in sigs:
         sig_map.setdefault(name, []).append(sig)
 
@@ -320,7 +353,7 @@ def find_unique_signatures(sigs: Sequence[Sig]) -> List[Sig]:
     return sorted(result)
 
 
-def infer_prop_type_from_docstring(docstr: str) -> Optional[str]:
+def infer_prop_type_from_docstring(docstr: Optional[str]) -> Optional[str]:
     """Check for Google/Numpy style docstring type annotation for a property.
 
     The docstring has the format "<type>: <descriptions>".

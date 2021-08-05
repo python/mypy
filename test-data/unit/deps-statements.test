@@ -681,3 +681,4 @@ class C:
 <m.C.__new__> -> <m.N.__new__>
 <m.C.x> -> <m.N.x>
 <m.C> -> m, m.N
+<m> -> m

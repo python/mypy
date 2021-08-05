@@ -137,6 +137,7 @@ class A(Generic[T]):
 class B(A[S], Generic[T, S]): pass
 class C: pass
 class D: pass
+[builtins fixtures/tuple.pyi]
 
 [case testAccessingMethodInheritedFromGenericTypeInNonGenericType]
 from typing import TypeVar, Generic
@@ -152,6 +153,7 @@ class A(Generic[T]):
     def f(self, a: T) -> None:
         pass
 class B(A[D]): pass
+[builtins fixtures/tuple.pyi]
 
 [case testAccessingMemberVarInheritedFromGenericType]
 from typing import TypeVar, Generic
@@ -170,6 +172,7 @@ b.a = d
 class B(A[S], Generic[T, S]): pass
 class C: pass
 class D: pass
+[builtins fixtures/tuple.pyi]
 
 
 -- Overriding with generic types
@@ -186,7 +189,9 @@ class C: pass
 class D: pass
 class A(B[C]):
     def f(self, a: D) -> None: pass \
-        # E: Argument 1 of "f" is incompatible with supertype "B"; supertype defines the argument type as "C"
+        # E: Argument 1 of "f" is incompatible with supertype "B"; supertype defines the argument type as "C" \
+        # N: This violates the Liskov substitution principle \
+        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
     def g(self, a: C) -> None: pass
 [out]
 
@@ -199,7 +204,9 @@ class B:
     def g(self, a: C) -> None: pass
 class A(B, Generic[T]):
     def f(self, a: T) -> None: pass \
-        # E: Argument 1 of "f" is incompatible with supertype "B"; supertype defines the argument type as "C"
+        # E: Argument 1 of "f" is incompatible with supertype "B"; supertype defines the argument type as "C" \
+        # N: This violates the Liskov substitution principle \
+        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
     def g(self, a: 'C') -> None: pass
 [out]
 
@@ -212,7 +219,9 @@ class B(Generic[T]):
     def g(self, a: T) -> None: pass
 class A(B[S], Generic[T, S]):
     def f(self, a: T) -> None: pass \
-        # E: Argument 1 of "f" is incompatible with supertype "B"; supertype defines the argument type as "S"
+        # E: Argument 1 of "f" is incompatible with supertype "B"; supertype defines the argument type as "S" \
+        # N: This violates the Liskov substitution principle \
+        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
     def g(self, a: S) -> None: pass
 [out]
 
@@ -230,7 +239,9 @@ class C(Generic[T, U, V]):
 class B(C[D, D, T], Generic[T]): pass
 class A(B[S], Generic[T, S]):
     def f(self, a: T) -> None: pass \
-        # E: Argument 1 of "f" is incompatible with supertype "C"; supertype defines the argument type as "S"
+        # E: Argument 1 of "f" is incompatible with supertype "C"; supertype defines the argument type as "S" \
+        # N: This violates the Liskov substitution principle \
+        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
     def g(self, a: S) -> None: pass
 [out]
 
@@ -259,9 +270,14 @@ class A:
 class B(A):
     def f(self, x: List[S], y: List[T]) -> None: pass
 class C(A):
-    def f(self, x: List[T], y: List[T]) -> None: pass # E: Signature of "f" incompatible with supertype "A"
+    def f(self, x: List[T], y: List[T]) -> None: pass  # Fail
 [builtins fixtures/list.pyi]
 [out]
+main:11: error: Signature of "f" incompatible with supertype "A"
+main:11: note:      Superclass:
+main:11: note:          def [T, S] f(self, x: List[T], y: List[S]) -> None
+main:11: note:      Subclass:
+main:11: note:          def [T] f(self, x: List[T], y: List[T]) -> None
 
 [case testOverrideGenericMethodInNonGenericClassGeneralize]
 from typing import TypeVar
@@ -280,8 +296,13 @@ class D(A):
     def f(self, x: T1, y: S) -> None: pass # TODO: This error could be more specific.
 [out]
 main:12: error: Argument 2 of "f" is incompatible with supertype "A"; supertype defines the argument type as "S"
+main:12: note: This violates the Liskov substitution principle
+main:12: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 main:14: error: Signature of "f" incompatible with supertype "A"
-
+main:14: note:      Superclass:
+main:14: note:          def [S] f(self, x: int, y: S) -> None
+main:14: note:      Subclass:
+main:14: note:          def [T1 <: str, S] f(self, x: T1, y: S) -> None
 
 -- Inheritance from generic types with implicit dynamic supertype
 -- --------------------------------------------------------------
@@ -483,6 +504,7 @@ if int():
 class C: pass
 class D: pass
 class E: pass
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testSubtypingWithTypeImplementingGenericABCViaInheritance2-skip]
@@ -516,6 +538,7 @@ class J(Generic[t]): pass
 class X(metaclass=ABCMeta): pass
 class I(X, J[t], Generic[t]): pass
 class A(I[t], Generic[t]): pass
+[builtins fixtures/tuple.pyi]
 
 
 -- Subclassing a generic ABC
@@ -533,7 +556,9 @@ class I(Generic[T]):
     def g(self, a: T) -> None: pass
 class A(I[C]):
     def f(self, a: 'D') -> None: pass \
-        # E: Argument 1 of "f" is incompatible with supertype "I"; supertype defines the argument type as "C"
+        # E: Argument 1 of "f" is incompatible with supertype "I"; supertype defines the argument type as "C" \
+        # N: This violates the Liskov substitution principle \
+        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
     def g(self, a: 'C') -> None: pass
 class C: pass
 class D: pass
@@ -565,10 +590,13 @@ class B(I[C]):
     def g(self, a: 'C', b: Any) -> None: pass
 class A(B):
     def g(self, a: 'C', b: 'C') -> None: pass \
-        # E: Argument 2 of "g" is incompatible with supertype "I"; supertype defines the argument type as "D"
+        # E: Argument 2 of "g" is incompatible with supertype "I"; supertype defines the argument type as "D" \
+        # N: This violates the Liskov substitution principle \
+        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
     def f(self, a: 'C', b: 'C') -> None: pass
 class C: pass
 class D: pass
+[builtins fixtures/tuple.pyi]
 
 [case testSubclassingGenericABCWithDeepHierarchy2]
 from typing import Any, TypeVar, Generic
@@ -581,7 +609,9 @@ class B(I[C]):
     def f(self, a: 'C', b: Any) -> None: pass
 class A(B):
     def f(self, a: 'C', b: 'D') -> None: pass \
-        # E: Argument 2 of "f" is incompatible with supertype "I"; supertype defines the argument type as "C"
+        # E: Argument 2 of "f" is incompatible with supertype "I"; supertype defines the argument type as "C" \
+        # N: This violates the Liskov substitution principle \
+        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 class C: pass
 class D: pass
 [out]
@@ -675,6 +705,7 @@ ia = None # type: I[A]
 
 ia.f(b)  # E: Argument 1 to "f" of "I" has incompatible type "B"; expected "A"
 ia.f(a)
+[builtins fixtures/tuple.pyi]
 
 [case testAccessingInheritedGenericABCMembers]
 from typing import TypeVar, Generic
@@ -691,6 +722,7 @@ ia = None # type: I[A]
 
 ia.f(b)  # E: Argument 1 to "f" of "J" has incompatible type "B"; expected "A"
 ia.f(a)
+[builtins fixtures/tuple.pyi]
 
 
 -- Misc

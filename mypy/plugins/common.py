@@ -1,14 +1,18 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from mypy.nodes import (
-    ARG_POS, MDEF, Argument, Block, CallExpr, Expression, SYMBOL_FUNCBASE_TYPES,
-    FuncDef, PassStmt, RefExpr, SymbolTableNode, Var, StrExpr,
+    ARG_POS, MDEF, Argument, Block, CallExpr, ClassDef, Expression, SYMBOL_FUNCBASE_TYPES,
+    FuncDef, PassStmt, RefExpr, SymbolTableNode, Var, JsonDict,
 )
-from mypy.plugin import ClassDefContext
+from mypy.plugin import CheckerPluginInterface, ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy.semanal import set_callable_name
-from mypy.types import CallableType, Overloaded, Type, TypeVarDef, LiteralType, Instance
+from mypy.types import (
+    CallableType, Overloaded, Type, TypeVarType, deserialize_type, get_proper_type,
+)
 from mypy.typevars import fill_typevars
 from mypy.util import get_unique_redefinition_name
+from mypy.typeops import try_getting_str_literals  # noqa: F401  # Part of public API
+from mypy.fixup import TypeFixer
 
 
 def _get_decorator_bool_argument(
@@ -55,7 +59,7 @@ def _get_argument(call: CallExpr, name: str) -> Optional[Expression]:
     callee_node = call.callee.node
     if (isinstance(callee_node, (Var, SYMBOL_FUNCBASE_TYPES))
             and callee_node.type):
-        callee_node_type = callee_node.type
+        callee_node_type = get_proper_type(callee_node.type)
         if isinstance(callee_node_type, Overloaded):
             # We take the last overload.
             callee_type = callee_node_type.items()[-1]
@@ -84,28 +88,56 @@ def add_method(
         args: List[Argument],
         return_type: Type,
         self_type: Optional[Type] = None,
-        tvar_def: Optional[TypeVarDef] = None,
+        tvar_def: Optional[TypeVarType] = None,
 ) -> None:
-    """Adds a new method to a class.
     """
-    info = ctx.cls.info
+    Adds a new method to a class.
+    Deprecated, use add_method_to_class() instead.
+    """
+    add_method_to_class(ctx.api, ctx.cls,
+                        name=name,
+                        args=args,
+                        return_type=return_type,
+                        self_type=self_type,
+                        tvar_def=tvar_def)
+
+
+def add_method_to_class(
+        api: Union[SemanticAnalyzerPluginInterface, CheckerPluginInterface],
+        cls: ClassDef,
+        name: str,
+        args: List[Argument],
+        return_type: Type,
+        self_type: Optional[Type] = None,
+        tvar_def: Optional[TypeVarType] = None,
+) -> None:
+    """Adds a new method to a class definition."""
+    info = cls.info
 
     # First remove any previously generated methods with the same name
-    # to avoid clashes and problems in new semantic analyzer.
+    # to avoid clashes and problems in the semantic analyzer.
     if name in info.names:
         sym = info.names[name]
         if sym.plugin_generated and isinstance(sym.node, FuncDef):
-            ctx.cls.defs.body.remove(sym.node)
+            cls.defs.body.remove(sym.node)
 
     self_type = self_type or fill_typevars(info)
-    function_type = ctx.api.named_type('__builtins__.function')
+    # TODO: semanal.py and checker.py seem to have subtly different implementations of
+    # named_type/named_generic_type (starting with the fact that we have to use different names
+    # for builtins), so it's easier to just check which one we're dealing with here and pick the
+    # correct function to use than to try to add a named_type method that behaves the same for
+    # both. We should probably combine those implementations at some point.
+    if isinstance(api, SemanticAnalyzerPluginInterface):
+        function_type = api.named_type('__builtins__.function')
+    else:
+        function_type = api.named_generic_type('builtins.function', [])
 
     args = [Argument(Var('self'), self_type, None, ARG_POS)] + args
     arg_types, arg_names, arg_kinds = [], [], []
     for arg in args:
         assert arg.type_annotation, 'All arguments must be fully typed.'
         arg_types.append(arg.type_annotation)
-        arg_names.append(arg.variable.name())
+        arg_names.append(arg.variable.name)
         arg_kinds.append(arg.kind)
 
     signature = CallableType(arg_types, arg_kinds, arg_names, return_type, function_type)
@@ -115,7 +147,7 @@ def add_method(
     func = FuncDef(name, args, Block([PassStmt()]))
     func.info = info
     func.type = set_callable_name(signature, func)
-    func._fullname = info.fullname() + '.' + name
+    func._fullname = info.fullname + '.' + name
     func.line = info.line
 
     # NOTE: we would like the plugin generated node to dominate, but we still
@@ -129,18 +161,9 @@ def add_method(
     info.defn.defs.body.append(func)
 
 
-def try_getting_str_literal(expr: Expression, typ: Type) -> Optional[str]:
-    """If this expression is a string literal, or if the corresponding type
-    is something like 'Literal["some string here"]', returns the underlying
-    string value. Otherwise, returns None."""
-    if isinstance(typ, Instance) and typ.last_known_value is not None:
-        typ = typ.last_known_value
-
-    if isinstance(typ, LiteralType) and typ.fallback.type.fullname() == 'builtins.str':
-        val = typ.value
-        assert isinstance(val, str)
-        return val
-    elif isinstance(expr, StrExpr):
-        return expr.value
-    else:
-        return None
+def deserialize_and_fixup_type(
+    data: Union[str, JsonDict], api: SemanticAnalyzerPluginInterface
+) -> Type:
+    typ = deserialize_type(data)
+    typ.accept(TypeFixer(api.modules, allow_missing=False))
+    return typ

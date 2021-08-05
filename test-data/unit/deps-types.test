@@ -20,6 +20,7 @@ class B: pass
 
 def f(x: Tuple[A, B]) -> None:
     pass
+[builtins fixtures/tuple.pyi]
 [out]
 <m.A> -> <m.f>, m.A, m.f
 <m.B> -> <m.f>, m.B, m.f
@@ -175,6 +176,7 @@ class C(metaclass=M):
 <mod.C.x> -> m.f
 <mod.C> -> <m.f>, m, m.f
 <mod.M.x> -> m.f
+<mod> -> m
 
 [case testMetaclassAttributesDirect]
 from mod import C
@@ -189,6 +191,7 @@ class C(metaclass=M):
 <mod.C.x> -> m.f
 <mod.C> -> m, m.f
 <mod.M.x> -> m.f
+<mod> -> m
 
 [case testMetaclassOperators]
 from mod import C
@@ -207,6 +210,7 @@ class C(metaclass=M):
 <mod.C> -> <m.f>, m, m.f
 <mod.M.__add__> -> m.f
 <mod.M.__radd__> -> m.f
+<mod> -> m
 
 [case testMetaclassOperatorsDirect]
 from mod import C
@@ -224,6 +228,7 @@ class C(metaclass=M):
 <mod.C> -> m, m.f
 <mod.M.__add__> -> m.f
 <mod.M.__radd__> -> m.f
+<mod> -> m
 
 [case testMetaclassDepsDeclared]
 import mod
@@ -234,7 +239,7 @@ class M(type):
     pass
 [out]
 <m.C> -> m.C
-<mod.M> -> <m.C>
+<mod.M> -> <m.C>, m
 <mod> -> m
 
 [case testMetaclassDepsDeclared_python2]
@@ -263,8 +268,8 @@ class M(type):
     pass
 [out]
 <m.func> -> m.func
-<mod.M> -> <m.func>
-<mod> -> m
+<mod.M> -> <m.func>, m.func
+<mod> -> m, m.func
 
 [case testMetaclassAttributes_python2]
 # flags: --py2
@@ -284,6 +289,7 @@ class C:
 <mod.C.x> -> m.f
 <mod.C> -> <m.f>, m, m.f
 <mod.M.x> -> m.f
+<mod> -> m
 
 [case testMetaclassOperatorsDirect_python2]
 # flags: --py2
@@ -304,6 +310,7 @@ class C:
 <mod.C> -> m, m.f
 <mod.M.__add__> -> m.f
 <mod.M.__radd__> -> m.f
+<mod> -> m
 
 -- Type aliases
 
@@ -319,6 +326,7 @@ class I: pass
 <mod.I.__init__> -> m
 <mod.I.__new__> -> m
 <mod.I> -> <m.x>, m
+<mod> -> m
 
 [case testAliasDepsNormalModExtended]
 # __dump_all__
@@ -336,6 +344,7 @@ class I: pass
 <mod.I.__init__> -> a
 <mod.I.__new__> -> a
 <mod.I> -> <m.x>, m, a, mod.I
+<mod> -> a
 
 [case testAliasDepsNormalFunc]
 from mod import I
@@ -349,6 +358,7 @@ class I: pass
 <mod.I.__init__> -> m
 <mod.I.__new__> -> m
 <mod.I> -> <m.f>, m, m.f
+<mod> -> m
 
 [case testAliasDepsNormalFuncExtended]
 # __dump_all__
@@ -366,6 +376,7 @@ class I: pass
 <mod.I.__init__> -> a
 <mod.I.__new__> -> a
 <mod.I> -> <m.f>, m.f, a, mod.I
+<mod> -> a
 
 [case testAliasDepsNormalClass]
 from a import A
@@ -379,6 +390,7 @@ class I: pass
 [out]
 <m.C> -> m.C
 <a.A> -> m
+<a> -> m
 <mod.I> -> <m.C.x>, m
 
 [case testAliasDepsNormalClassBases]
@@ -393,6 +405,7 @@ class I: pass
 [out]
 <m.C> -> m.C
 <a.A> -> m
+<a> -> m
 <mod.I.(abstract)> -> <m.C.__init__>, m
 <mod.I.__init__> -> <m.C.__init__>
 <mod.I.__new__> -> <m.C.__new__>
@@ -417,6 +430,7 @@ class S: pass
 <mod.D> -> <m.x>, m
 <mod.I> -> <m.x>, m
 <mod.S> -> <m.x>, m
+<mod> -> m
 
 [case testAliasDepsGenericFunc]
 from mod import I, S, D
@@ -431,12 +445,13 @@ class D(Generic[T, U]): pass
 class I: pass
 class S: pass
 [out]
-<m.A> -> m.f
+<m.A> -> <m.f>, m.f
 <mod.D.__init__> -> m
 <mod.D.__new__> -> m
 <mod.D> -> <m.f>, m, m.f
 <mod.I> -> <m.f>, m, m.f
 <mod.S> -> <m.f>, m, m.f
+<mod> -> m
 
 [case testAliasDepsGenericFuncExtended]
 import a
@@ -453,7 +468,7 @@ class D(Generic[T, U]): pass
 class I: pass
 class S: pass
 [out]
-<a.A> -> m.f
+<a.A> -> <m.f>, m.f
 <a> -> m
 <mod.D> -> <m.f>, m.f
 <mod.I> -> <m.f>, m.f
@@ -480,6 +495,7 @@ class S: pass
 <mod.I> -> <m.C.x>, m
 <mod.S> -> <m.C.x>, m
 <mod.T> -> m
+<mod> -> m
 
 [case testAliasDepsForwardMod]
 from mod import I
@@ -494,6 +510,7 @@ class I: pass
 <mod.I.__init__> -> m
 <mod.I.__new__> -> m
 <mod.I> -> <m.x>, m
+<mod> -> m
 
 [case testAliasDepsForwardFunc]
 from mod import I
@@ -507,6 +524,7 @@ class I: pass
 <mod.I.__init__> -> m
 <mod.I.__new__> -> m
 <mod.I> -> <m.f>, m, m.f
+<mod> -> m
 
 [case testAliasDepsForwardClass]
 from mod import I
@@ -521,6 +539,7 @@ class I: pass
 <mod.I.__init__> -> m
 <mod.I.__new__> -> m
 <mod.I> -> <m.C.x>, m
+<mod> -> m
 
 [case testAliasDepsChainedMod]
 from mod import I
@@ -536,6 +555,7 @@ class I: pass
 <mod.I.__init__> -> m
 <mod.I.__new__> -> m
 <mod.I> -> <m.x>, m
+<mod> -> m
 
 [case testAliasDepsChainedFunc]
 from mod import I
@@ -551,6 +571,7 @@ class I: pass
 <mod.I.__init__> -> m
 <mod.I.__new__> -> m
 <mod.I> -> <m.f>, m, m.f
+<mod> -> m
 
 [case testAliasDepsChainedFuncExtended]
 import a
@@ -586,6 +607,7 @@ class I: pass
 <mod.I.__init__> -> <m.C.__init__>, m
 <mod.I.__new__> -> <m.C.__new__>, m
 <mod.I> -> m, m.C
+<mod> -> m
 
 [case testAliasDepsNestedMod]
 from mod import I, S, D
@@ -600,7 +622,7 @@ class D(Generic[T, U]): pass
 class I: pass
 class S: pass
 [out]
-<m.A> -> m
+<m.A> -> <m.x>, m
 <m.B> -> m
 <m.x> -> m
 <mod.D.__init__> -> m
@@ -608,6 +630,7 @@ class S: pass
 <mod.D> -> <m.x>, m
 <mod.I> -> <m.x>, m
 <mod.S> -> <m.x>, m
+<mod> -> m
 
 [case testAliasDepsNestedModExtended]
 # __dump_all__
@@ -628,7 +651,7 @@ class S: pass
 [out]
 <m.B> -> m
 <m.x> -> m
-<a.A> -> m
+<a.A> -> <m.x>, m
 <a> -> m
 <mod.D.__init__> -> m, a
 <mod.D.__new__> -> m, a
@@ -637,6 +660,7 @@ class S: pass
 <mod.S> -> <m.x>, m, a, mod.S
 <mod.T> -> mod.D
 <mod.U> -> mod.D
+<mod> -> m, a
 
 [case testAliasDepsNestedFunc]
 from mod import I, S, D
@@ -652,13 +676,14 @@ class D(Generic[T, U]): pass
 class I: pass
 class S: pass
 [out]
-<m.A> -> m
-<m.B> -> m.f
+<m.A> -> <m.f>, m, m.f
+<m.B> -> <m.f>, m.f
 <mod.D.__init__> -> m
 <mod.D.__new__> -> m
 <mod.D> -> <m.f>, m, m.f
 <mod.I> -> <m.f>, m, m.f
 <mod.S> -> <m.f>, m, m.f
+<mod> -> m
 
 [case testAliasDepsNestedFuncExtended]
 # __dump_all__
@@ -678,8 +703,8 @@ class D(Generic[T, U]): pass
 class I: pass
 class S: pass
 [out]
-<m.B> -> m.f
-<a.A> -> m
+<m.B> -> <m.f>, m.f
+<a.A> -> <m.f>, m, m.f
 <a> -> m
 <mod.D.__init__> -> m, a
 <mod.D.__new__> -> m, a
@@ -688,6 +713,7 @@ class S: pass
 <mod.S> -> <m.f>, m, m.f, a, mod.S
 <mod.T> -> mod.D
 <mod.U> -> mod.D
+<mod> -> m, a
 
 [case testAliasDepsNestedFuncDirect]
 from mod import I, S, D
@@ -703,7 +729,7 @@ class D(Generic[T, U]): pass
 class I: pass
 class S: pass
 [out]
-<m.A> -> m.f
+<m.A> -> <m.f>, m.f
 <m.E> -> m.f
 <mod.D.__init__> -> m
 <mod.D.__new__> -> m
@@ -712,6 +738,7 @@ class S: pass
 <mod.S> -> <m.f>, m, m.f
 <mod.T> -> m
 <mod.U> -> m
+<mod> -> m
 
 [case testAliasDepsNestedClass]
 from mod import I, S, D
@@ -727,7 +754,7 @@ class D(Generic[T, U]): pass
 class I: pass
 class S: pass
 [out]
-<m.A> -> m
+<m.A> -> <m.C.x>, m
 <m.B> -> m
 <m.C> -> m.C
 <mod.D.__init__> -> m
@@ -735,6 +762,7 @@ class S: pass
 <mod.D> -> <m.C.x>, m
 <mod.I> -> <m.C.x>, m
 <mod.S> -> <m.C.x>, m
+<mod> -> m
 
 [case testAliasDepsCast]
 from typing import cast
@@ -754,6 +782,7 @@ class S: pass
 <mod.I.__init__> -> m
 <mod.I.__new__> -> m
 <mod.I> -> m, m.fun
+<mod> -> m
 
 [case testAliasDepsRuntime]
 from mod import I, S, D
@@ -776,6 +805,7 @@ class S: pass
 <mod.I.__new__> -> m
 <mod.I> -> <m.x>, m
 <mod.S> -> <m.x>, m
+<mod> -> m
 
 [case testAliasDepsRuntimeExtended]
 # __dump_all__
@@ -805,6 +835,7 @@ class S: pass
 <mod.S> -> <m.x>, m, mod.S
 <mod.T> -> mod.D
 <mod.U> -> mod.D
+<mod> -> m, a
 
 [case testAliasDepsNamedTuple]
 from typing import NamedTuple
@@ -814,12 +845,14 @@ class P(NamedTuple):
     x: A
 [file mod.py]
 class I: pass
+[builtins fixtures/tuple.pyi]
 [out]
 <m.A> -> m
 <m.P> -> m.P
 <mod.I.__init__> -> m
 <mod.I.__new__> -> m
 <mod.I> -> <m.P.x>, <m.P>, m, m.P
+<mod> -> m
 
 [case testAliasDepsNamedTupleFunctional]
 # __dump_all__
@@ -831,12 +864,14 @@ from mod import I
 A = I
 [file mod.py]
 class I: pass
+[builtins fixtures/tuple.pyi]
 [out]
 <a.A> -> m
 <a> -> m
 <mod.I.__init__> -> a
 <mod.I.__new__> -> a
 <mod.I> -> <m.P.x>, <m.P>, m, a, mod.I
+<mod> -> a
 
 [case testAliasDepsTypedDict]
 from mypy_extensions import TypedDict
@@ -853,6 +888,7 @@ class I: pass
 <mod.I.__init__> -> m
 <mod.I.__new__> -> m
 <mod.I> -> <m.P>, m
+<mod> -> m
 
 [case testAliasDepsTypedDictFunctional]
 # __dump_all__
@@ -871,6 +907,7 @@ class I: pass
 <mod.I.__init__> -> a
 <mod.I.__new__> -> a
 <mod.I> -> <m.P>, a, mod.I
+<mod> -> a
 <sys.platform> -> sys
 <sys.version_info> -> sys
 
@@ -888,6 +925,7 @@ class I: pass
 <mod.I.__init__> -> m
 <mod.I.__new__> -> m
 <mod.I> -> <m.f.x>, m, m.f
+<mod> -> m
 
 [case testAliasDepsFromImportUnqualified]
 from a import C
@@ -908,6 +946,7 @@ class D:
 <m.A> -> m.A
 <m.x> -> m
 <a.C> -> m, m.A.meth, m.f
+<a> -> m
 <b.D.__init__> -> m.f
 <b.D.__new__> -> m.f
 <b.D> -> <m.A.meth>, <m.x>, m, m.A.meth
@@ -928,6 +967,7 @@ class B: pass
 <m.A.X> -> m.g
 <m.A> -> <m.f>, m.f, m.g
 <mod.B> -> m
+<mod> -> m
 
 [case testProtocolDepsWildcard]
 # __dump_all__

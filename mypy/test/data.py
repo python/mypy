@@ -5,12 +5,11 @@ import os
 import tempfile
 import posixpath
 import re
-from os import remove, rmdir
 import shutil
 from abc import abstractmethod
 import sys
 
-import pytest  # type: ignore  # no pytest in typeshed
+import pytest
 from typing import List, Tuple, Set, Optional, Iterator, Any, Dict, NamedTuple, Union
 
 from mypy.test.config import test_data_prefix, test_temp_dir, PREFIX
@@ -44,15 +43,15 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
     out_section_missing = case.suite.required_out_section
     normalize_output = True
 
-    files = []  # type: List[Tuple[str, str]] # path and contents
-    output_files = []  # type: List[Tuple[str, str]] # path and contents for output files
-    output = []  # type: List[str]  # Regular output errors
-    output2 = {}  # type: Dict[int, List[str]]  # Output errors for incremental, runs 2+
-    deleted_paths = {}  # type: Dict[int, Set[str]]  # from run number of paths
-    stale_modules = {}  # type: Dict[int, Set[str]]  # from run number to module names
-    rechecked_modules = {}  # type: Dict[ int, Set[str]]  # from run number module names
-    triggered = []  # type: List[str]  # Active triggers (one line per incremental step)
-    targets = {}  # type: Dict[int, List[str]]  # Fine-grained targets (per fine-grained update)
+    files: List[Tuple[str, str]] = []  # path and contents
+    output_files: List[Tuple[str, str]] = []  # path and contents for output files
+    output: List[str] = []  # Regular output errors
+    output2: Dict[int, List[str]] = {}  # Output errors for incremental, runs 2+
+    deleted_paths: Dict[int, Set[str]] = {}  # from run number of paths
+    stale_modules: Dict[int, Set[str]] = {}  # from run number to module names
+    rechecked_modules: Dict[int, Set[str]] = {}  # from run number module names
+    triggered: List[str] = []  # Active triggers (one line per incremental step)
+    targets: Dict[int, List[str]] = {}  # Fine-grained targets (per fine-grained update)
 
     # Process the parsed items. Each item has a header of form [id args],
     # optionally followed by lines of text.
@@ -96,7 +95,7 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
             reprocessed = [] if item.arg is None else [t.strip() for t in item.arg.split(',')]
             targets[passnum] = reprocessed
         elif item.id == 'delete':
-            # File to delete during a multi-step test case
+            # File/directory to delete during a multi-step test case
             assert item.arg is not None
             m = re.match(r'(.*)\.([0-9]+)$', item.arg)
             assert m, 'Invalid delete section: {}'.format(item.arg)
@@ -105,19 +104,43 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
             full = join(base_path, m.group(1))
             deleted_paths.setdefault(num, set()).add(full)
         elif re.match(r'out[0-9]*$', item.id):
-            if item.arg == 'skip-path-normalization':
-                normalize_output = False
-
-            tmp_output = [expand_variables(line) for line in item.data]
-            if os.path.sep == '\\' and normalize_output:
-                tmp_output = [fix_win_path(line) for line in tmp_output]
-            if item.id == 'out' or item.id == 'out1':
-                output = tmp_output
+            if item.arg is None:
+                args = []
             else:
-                passnum = int(item.id[len('out'):])
-                assert passnum > 1
-                output2[passnum] = tmp_output
-            out_section_missing = False
+                args = item.arg.split(",")
+
+            version_check = True
+            for arg in args:
+                if arg == 'skip-path-normalization':
+                    normalize_output = False
+                if arg.startswith("version"):
+                    if arg[7:9] != ">=":
+                        raise ValueError(
+                            "{}, line {}: Only >= version checks are currently supported".format(
+                                case.file, item.line
+                            )
+                        )
+                    version_str = arg[9:]
+                    try:
+                        version = tuple(int(x) for x in version_str.split("."))
+                    except ValueError:
+                        raise ValueError(
+                            '{}, line {}: "{}" is not a valid python version'.format(
+                                case.file, item.line, version_str))
+                    if not sys.version_info >= version:
+                        version_check = False
+
+            if version_check:
+                tmp_output = [expand_variables(line) for line in item.data]
+                if os.path.sep == '\\' and normalize_output:
+                    tmp_output = [fix_win_path(line) for line in tmp_output]
+                if item.id == 'out' or item.id == 'out1':
+                    output = tmp_output
+                else:
+                    passnum = int(item.id[len('out'):])
+                    assert passnum > 1
+                    output2[passnum] = tmp_output
+                out_section_missing = False
         elif item.id == 'triggered' and item.arg is None:
             triggered = item.data
         else:
@@ -150,7 +173,7 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
     case.input = input
     case.output = output
     case.output2 = output2
-    case.lastline = item.line
+    case.last_line = case.line + item.line + len(item.data) - 2
     case.files = files
     case.output_files = output_files
     case.expected_stale_modules = stale_modules
@@ -161,29 +184,35 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
     case.expected_fine_grained_targets = targets
 
 
-class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
+class DataDrivenTestCase(pytest.Item):
     """Holds parsed data-driven test cases, and handles directory setup and teardown."""
 
-    input = None  # type: List[str]
-    output = None  # type: List[str]  # Output for the first pass
-    output2 = None  # type: Dict[int, List[str]]  # Output for runs 2+, indexed by run number
+    # Override parent member type
+    parent: "DataSuiteCollector"
+
+    input: List[str]
+    output: List[str]  # Output for the first pass
+    output2: Dict[int, List[str]]  # Output for runs 2+, indexed by run number
 
     # full path of test suite
     file = ''
     line = 0
 
     # (file path, file content) tuples
-    files = None  # type: List[Tuple[str, str]]
-    expected_stale_modules = None  # type: Dict[int, Set[str]]
-    expected_rechecked_modules = None  # type: Dict[int, Set[str]]
-    expected_fine_grained_targets = None  # type: Dict[int, List[str]]
-
-    # Files/directories to clean up after test case; (is directory, path) tuples
-    clean_up = None  # type: List[Tuple[bool, str]]
+    files: List[Tuple[str, str]]
+    expected_stale_modules: Dict[int, Set[str]]
+    expected_rechecked_modules: Dict[int, Set[str]]
+    expected_fine_grained_targets: Dict[int, List[str]]
 
     # Whether or not we should normalize the output to standardize things like
     # forward vs backward slashes in file paths for Windows vs Linux.
     normalize_output = True
+
+    # Extra attributes used by some tests.
+    last_line: int
+    output_files: List[Tuple[str, str]]  # Path and contents for output files
+    deleted_paths: Dict[int, Set[str]]  # Mapping run number -> paths
+    triggered: List[str]  # Active triggers (one line per incremental step)
 
     def __init__(self,
                  parent: 'DataSuiteCollector',
@@ -194,6 +223,7 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
                  only_when: str,
                  platform: Optional[str],
                  skip: bool,
+                 xfail: bool,
                  data: str,
                  line: int) -> None:
         super().__init__(name, parent)
@@ -205,22 +235,25 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
                 or (platform == 'posix' and sys.platform == 'win32')):
             skip = True
         self.skip = skip
+        self.xfail = xfail
         self.data = data
         self.line = line
-        self.old_cwd = None  # type: Optional[str]
-        self.tmpdir = None  # type: Optional[tempfile.TemporaryDirectory[str]]
-        self.clean_up = []
+        self.old_cwd: Optional[str] = None
+        self.tmpdir: Optional[tempfile.TemporaryDirectory[str]] = None
 
     def runtest(self) -> None:
         if self.skip:
             pytest.skip()
+        # TODO: add a better error message for when someone uses skip and xfail at the same time
+        elif self.xfail:
+            self.add_marker(pytest.mark.xfail)
         suite = self.parent.obj()
         suite.setup()
         try:
             suite.run_case(self)
         except Exception:
             # As a debugging aid, support copying the contents of the tmp directory somewhere
-            save_dir = self.config.getoption('--save-failures-to', None)  # type: Optional[str]
+            save_dir: Optional[str] = self.config.getoption("--save-failures-to", None)
             if save_dir:
                 assert self.tmpdir is not None
                 target_dir = os.path.join(save_dir, os.path.basename(self.tmpdir.name))
@@ -237,88 +270,13 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
         self.tmpdir = tempfile.TemporaryDirectory(prefix='mypy-test-')
         os.chdir(self.tmpdir.name)
         os.mkdir(test_temp_dir)
-        encountered_files = set()
-        self.clean_up = []
-        for paths in self.deleted_paths.values():
-            for path in paths:
-                self.clean_up.append((False, path))
-                encountered_files.add(path)
         for path, content in self.files:
             dir = os.path.dirname(path)
-            for d in self.add_dirs(dir):
-                self.clean_up.append((True, d))
+            os.makedirs(dir, exist_ok=True)
             with open(path, 'w', encoding='utf8') as f:
                 f.write(content)
-            if path not in encountered_files:
-                self.clean_up.append((False, path))
-                encountered_files.add(path)
-            if re.search(r'\.[2-9]$', path):
-                # Make sure new files introduced in the second and later runs are accounted for
-                renamed_path = path[:-2]
-                if renamed_path not in encountered_files:
-                    encountered_files.add(renamed_path)
-                    self.clean_up.append((False, renamed_path))
-        for path, _ in self.output_files:
-            # Create directories for expected output and mark them to be cleaned up at the end
-            # of the test case.
-            dir = os.path.dirname(path)
-            for d in self.add_dirs(dir):
-                self.clean_up.append((True, d))
-            self.clean_up.append((False, path))
-
-    def add_dirs(self, dir: str) -> List[str]:
-        """Add all subdirectories required to create dir.
-
-        Return an array of the created directories in the order of creation.
-        """
-        if dir == '' or os.path.isdir(dir):
-            return []
-        else:
-            dirs = self.add_dirs(os.path.dirname(dir)) + [dir]
-            os.mkdir(dir)
-            return dirs
 
     def teardown(self) -> None:
-        # First remove files.
-        for is_dir, path in reversed(self.clean_up):
-            if not is_dir:
-                try:
-                    remove(path)
-                except FileNotFoundError:
-                    # Breaking early using Ctrl+C may happen before file creation. Also, some
-                    # files may be deleted by a test case.
-                    pass
-        # Then remove directories.
-        for is_dir, path in reversed(self.clean_up):
-            if is_dir:
-                pycache = os.path.join(path, '__pycache__')
-                if os.path.isdir(pycache):
-                    shutil.rmtree(pycache)
-                # As a somewhat nasty hack, ignore any dirs with .mypy_cache in the path,
-                # to allow test cases to intentionally corrupt the cache without provoking
-                # the test suite when there are still files left over.
-                # (Looking at / should be fine on windows because these are paths specified
-                # in the test cases.)
-                if '/.mypy_cache' in path:
-                    continue
-                try:
-                    rmdir(path)
-                except OSError as error:
-                    print(' ** Error removing directory %s -- contents:' % path)
-                    for item in os.listdir(path):
-                        print('  ', item)
-                    # Most likely, there are some files in the
-                    # directory. Use rmtree to nuke the directory, but
-                    # fail the test case anyway, since this seems like
-                    # a bug in a test case -- we shouldn't leave
-                    # garbage lying around. By nuking the directory,
-                    # the next test run hopefully passes.
-                    path = error.filename
-                    # Be defensive -- only call rmtree if we're sure we aren't removing anything
-                    # valuable.
-                    if path.startswith(test_temp_dir + '/') and os.path.isdir(path):
-                        shutil.rmtree(path)
-                    raise
         assert self.old_cwd is not None and self.tmpdir is not None, \
             "test was not properly set up"
         os.chdir(self.old_cwd)
@@ -332,7 +290,7 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
     def reportinfo(self) -> Tuple[str, int, str]:
         return self.file, self.line, self.name
 
-    def repr_failure(self, excinfo: Any) -> str:
+    def repr_failure(self, excinfo: Any, style: Optional[Any] = None) -> str:
         if excinfo.errisinstance(SystemExit):
             # We assume that before doing exit() (which raises SystemExit) we've printed
             # enough context about what happened so that a stack trace is not useful.
@@ -354,7 +312,7 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
 
         Defaults to having two steps if there aern't any operations.
         """
-        steps = {}  # type: Dict[int, List[FileOperation]]
+        steps: Dict[int, List[FileOperation]] = {}
         for path, _ in self.files:
             m = re.match(r'.*\.([0-9]+)$', path)
             if m:
@@ -392,11 +350,11 @@ class TestItem:
       .. data ..
     """
 
-    id = ''
-    arg = ''  # type: Optional[str]
+    id = ""
+    arg: Optional[str] = ""
 
     # Text data, array of 8-bit strings
-    data = None  # type: List[str]
+    data: List[str]
 
     file = ''
     line = 0  # Line number in file
@@ -413,18 +371,18 @@ def parse_test_data(raw_data: str, name: str) -> List[TestItem]:
     """Parse a list of lines that represent a sequence of test items."""
 
     lines = ['', '[case ' + name + ']'] + raw_data.split('\n')
-    ret = []  # type: List[TestItem]
-    data = []  # type: List[str]
+    ret: List[TestItem] = []
+    data: List[str] = []
 
-    id = None  # type: Optional[str]
-    arg = None  # type: Optional[str]
+    id: Optional[str] = None
+    arg: Optional[str] = None
 
     i = 0
     i0 = 0
     while i < len(lines):
         s = lines[i].strip()
 
-        if lines[i].startswith('[') and s.endswith(']') and not s.startswith('[['):
+        if lines[i].startswith('[') and s.endswith(']'):
             if id:
                 data = collapse_line_continuation(data)
                 data = strip_list(data)
@@ -437,7 +395,7 @@ def parse_test_data(raw_data: str, name: str) -> List[TestItem]:
                 arg = id[id.index(' ') + 1:]
                 id = id[:id.index(' ')]
             data = []
-        elif lines[i].startswith('[['):
+        elif lines[i].startswith('\\['):
             data.append(lines[i][1:])
         elif not lines[i].startswith('--'):
             data.append(lines[i])
@@ -461,7 +419,7 @@ def strip_list(l: List[str]) -> List[str]:
     lines from the end of the array.
     """
 
-    r = []  # type: List[str]
+    r: List[str] = []
     for s in l:
         # Strip spaces at end of line
         r.append(re.sub(r'\s+$', '', s))
@@ -473,7 +431,7 @@ def strip_list(l: List[str]) -> List[str]:
 
 
 def collapse_line_continuation(l: List[str]) -> List[str]:
-    r = []  # type: List[str]
+    r: List[str] = []
     cont = False
     for s in l:
         ss = re.sub(r'\\$', '', s)
@@ -566,6 +524,8 @@ def pytest_addoption(parser: Any) -> None:
                     help='Copy the temp directories from failing tests to a target directory')
     group.addoption('--mypy-verbose', action='count',
                     help='Set the verbose flag when creating mypy Options')
+    group.addoption('--mypyc-showc', action='store_true', default=False,
+                    help='Display C code on mypyc test failures')
 
 
 # This function name is special to pytest.  See
@@ -582,7 +542,9 @@ def pytest_pycollect_makeitem(collector: Any, name: str,
             # Non-None result means this obj is a test case.
             # The collect method of the returned DataSuiteCollector instance will be called later,
             # with self.obj being obj.
-            return DataSuiteCollector(name, parent=collector)
+            return DataSuiteCollector.from_parent(  # type: ignore[no-untyped-call]
+                parent=collector, name=name
+            )
     return None
 
 
@@ -595,35 +557,47 @@ def split_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
     """
     with open(file, encoding='utf-8') as f:
         data = f.read()
+    # number of groups in the below regex
+    NUM_GROUPS = 7
     cases = re.split(r'^\[case ([a-zA-Z_0-9]+)'
                      r'(-writescache)?'
                      r'(-only_when_cache|-only_when_nocache)?'
                      r'(-posix|-windows)?'
                      r'(-skip)?'
+                     r'(-xfail)?'
                      r'\][ \t]*$\n',
                      data,
                      flags=re.DOTALL | re.MULTILINE)
     line_no = cases[0].count('\n') + 1
-    for i in range(1, len(cases), 6):
-        name, writescache, only_when, platform_flag, skip, data = cases[i:i + 6]
+    for i in range(1, len(cases), NUM_GROUPS):
+        name, writescache, only_when, platform_flag, skip, xfail, data = cases[i:i + NUM_GROUPS]
         platform = platform_flag[1:] if platform_flag else None
-        yield DataDrivenTestCase(parent, suite, file,
-                                 name=add_test_name_suffix(name, suite.test_name_suffix),
-                                 writescache=bool(writescache),
-                                 only_when=only_when,
-                                 platform=platform,
-                                 skip=bool(skip),
-                                 data=data,
-                                 line=line_no)
+        yield DataDrivenTestCase.from_parent(
+            parent=parent,
+            suite=suite,
+            file=file,
+            name=add_test_name_suffix(name, suite.test_name_suffix),
+            writescache=bool(writescache),
+            only_when=only_when,
+            platform=platform,
+            skip=bool(skip),
+            xfail=bool(xfail),
+            data=data,
+            line=line_no,
+        )
         line_no += data.count('\n') + 1
 
 
-class DataSuiteCollector(pytest.Class):  # type: ignore  # inheriting from Any
-    def collect(self) -> Iterator[pytest.Item]:  # type: ignore
+class DataSuiteCollector(pytest.Class):
+    def collect(self) -> Iterator[pytest.Item]:
         """Called by pytest on each of the object returned from pytest_pycollect_makeitem"""
 
         # obj is the object for which pytest_pycollect_makeitem returned self.
-        suite = self.obj  # type: DataSuite
+        suite: DataSuite = self.obj
+
+        assert os.path.isdir(suite.data_prefix), \
+            'Test data prefix ({}) not set correctly'.format(suite.data_prefix)
+
         for f in suite.files:
             yield from split_test_cases(self, suite, os.path.join(suite.data_prefix, f))
 
@@ -656,7 +630,7 @@ def has_stable_flags(testcase: DataDrivenTestCase) -> bool:
 
 class DataSuite:
     # option fields - class variables
-    files = None  # type: List[str]
+    files: List[str]
 
     base_path = test_temp_dir
 

@@ -65,7 +65,7 @@ possible with the comment syntax:
 
    The best way to think about this is that the type annotation sets the
    type of the variable, not the type of the expression. To force the
-   type of an expression you can use ``cast(<type>, <expression>)``.
+   type of an expression you can use :py:func:`cast(\<type\>, \<expression\>) <typing.cast>`.
 
 Explicit types for collections
 ******************************
@@ -78,7 +78,7 @@ without some help:
 
 .. code-block:: python
 
-   l = []  # Error: Need type annotation for 'l'
+   l = []  # Error: Need type annotation for "l"
 
 In these cases you can give the type explicitly using a type annotation:
 
@@ -114,7 +114,7 @@ assignment could result in non-int values stored in a list of ``int``:
        l.append('x')
        print(k[-1])  # Ouch; a string in List[int]
 
-Other container types like ``Dict`` and ``Set`` behave similarly. We
+Other container types like :py:class:`~typing.Dict` and :py:class:`~typing.Set` behave similarly. We
 will discuss how you can work around this in :ref:`variance`.
 
 You can still run the above program; it prints ``x``. This illustrates
@@ -160,9 +160,9 @@ in the following statement:
 .. code-block:: python
 
     def foo(arg: List[int]) -> None:
-        print(Items: ', '.join(arg))
+        print('Items:', ', '.join(arg))
 
-    a = []  # Error: Need type annotation for 'a'
+    a = []  # Error: Need type annotation for "a"
     foo(a)
 
 Working around the issue is easy by adding a type annotation:
@@ -182,17 +182,17 @@ must give each variable a type separately:
 
 .. code-block:: python
 
-   i, found = 0, False # type: int, bool
+   i, found = 0, False  # type: int, bool
 
 You can optionally use parentheses around the types, assignment targets
 and assigned expression:
 
 .. code-block:: python
 
-   i, found = 0, False # type: (int, bool)      # OK
-   (i, found) = 0, False # type: int, bool      # OK
-   i, found = (0, False) # type: int, bool      # OK
-   (i, found) = (0, False) # type: (int, bool)  # OK
+   i, found = 0, False  # type: (int, bool)      # OK
+   (i, found) = 0, False  # type: int, bool      # OK
+   i, found = (0, False)  # type: int, bool      # OK
+   (i, found) = (0, False)  # type: (int, bool)  # OK
 
 Starred expressions
 *******************

@@ -10,8 +10,10 @@ class object:
 class type: pass
 class tuple(Generic[T]): pass
 class function: pass
-class bool: pass
 class int: pass
+class bool(int): pass
+class float: pass
 class str: pass
 class unicode: pass
 class ellipsis: pass
+class list: pass

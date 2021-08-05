@@ -3,7 +3,7 @@
 Mypy: Optional Static Typing for Python
 =======================================
 
-[![Build Status](https://api.travis-ci.org/python/mypy.svg?branch=master)](https://travis-ci.org/python/mypy)
+[![Build Status](https://api.travis-ci.com/python/mypy.svg?branch=master)](https://travis-ci.com/python/mypy)
 [![Chat at https://gitter.im/python/typing](https://badges.gitter.im/python/typing.svg)](https://gitter.im/python/typing?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
 
@@ -47,7 +47,7 @@ def fib(n: int) -> Iterator[int]:
         yield a
         a, b = b, a + b
 ```
-See [the documentation](http://mypy.readthedocs.io/en/stable/introduction.html) for more examples.
+See [the documentation](https://mypy.readthedocs.io/en/stable/introduction.html) for more examples.
 
 For Python 2.7, the standard annotations are written as comments:
 ```python
@@ -56,7 +56,7 @@ def is_palindrome(s):
     return s == s[::-1]
 ```
 
-See [the documentation for Python 2 support](http://mypy.readthedocs.io/en/latest/python2.html).
+See [the documentation for Python 2 support](https://mypy.readthedocs.io/en/latest/python2.html).
 
 Mypy is in development; some features are missing and there are bugs.
 See 'Development status' below.
@@ -73,7 +73,7 @@ In Ubuntu, Mint and Debian you can install Python 3 like this:
 
 For other Linux flavors, macOS and Windows, packages are available at
 
-  http://www.python.org/getit/
+  https://www.python.org/getit/
 
 
 Quick start
@@ -110,18 +110,20 @@ IDE, Linter Integrations, and Pre-commit
 
 Mypy can be integrated into popular IDEs:
 
-* Vim: [syntastic](https://github.com/vim-syntastic/syntastic) in `.vimrc` add `let g:syntastic_python_checkers=['mypy']`
+* Vim:
+  * Using [Syntastic](https://github.com/vim-syntastic/syntastic): in `~/.vimrc` add
+    `let g:syntastic_python_checkers=['mypy']`
+  * Using [ALE](https://github.com/dense-analysis/ale): should be enabled by default when `mypy` is installed,
+    or can be explicitly enabled by adding `let b:ale_linters = ['mypy']` in `~/vim/ftplugin/python.vim`
 * Emacs: using [Flycheck](https://github.com/flycheck/) and [Flycheck-mypy](https://github.com/lbolla/emacs-flycheck-mypy)
 * Sublime Text: [SublimeLinter-contrib-mypy](https://github.com/fredcallaway/SublimeLinter-contrib-mypy)
 * Atom: [linter-mypy](https://atom.io/packages/linter-mypy)
-* PyCharm: [mypy plugin](https://github.com/dropbox/mypy-PyCharm-plugin) (PyCharm integrates [its own implementation of PEP 484](https://www.jetbrains.com/help/pycharm/type-hinting-in-product.html))
+* PyCharm: [mypy plugin](https://github.com/dropbox/mypy-PyCharm-plugin) (PyCharm integrates
+  [its own implementation of PEP 484](https://www.jetbrains.com/help/pycharm/type-hinting-in-product.html))
 * VS Code: provides [basic integration](https://code.visualstudio.com/docs/python/linting#_mypy) with mypy.
 
-Mypy can also be integrated into [Flake8] using [flake8-mypy], or
-can be set up as a pre-commit hook using [pre-commit mirrors-mypy].
+Mypy can also be set up as a pre-commit hook using [pre-commit mirrors-mypy].
 
-[Flake8]: http://flake8.pycqa.org/
-[flake8-mypy]: https://github.com/ambv/flake8-mypy
 [pre-commit mirrors-mypy]: https://github.com/pre-commit/mirrors-mypy
 
 Web site and documentation
@@ -133,7 +135,7 @@ Documentation and additional information is available at the web site:
 
 Or you can jump straight to the documentation:
 
-  http://mypy.readthedocs.io/
+  https://mypy.readthedocs.io/
 
 
 Troubleshooting
@@ -182,17 +184,7 @@ Quick start for contributing to mypy
 
 If you want to contribute, first clone the mypy git repository:
 
-    $ git clone --recurse-submodules https://github.com/python/mypy.git
-
-If you've already cloned the repo without `--recurse-submodules`,
-you need to pull in the typeshed repo as follows:
-
-    $ git submodule init
-    $ git submodule update
-
-Either way you should now have a subdirectory `typeshed` inside your mypy repo,
-your folders tree should be like `mypy/mypy/typeshed`, containing a
-clone of the typeshed repo (`https://github.com/python/typeshed`).
+    $ git clone https://github.com/python/mypy.git
 
 From the mypy directory, use pip to install mypy:
 
@@ -207,20 +199,8 @@ the above as root. For example, in Ubuntu:
 Now you can use the `mypy` program just as above.  In case of trouble
 see "Troubleshooting" above.
 
-
-Working with the git version of mypy
-------------------------------------
-
-mypy contains a submodule, "typeshed". See http://github.com/python/typeshed.
-This submodule contains types for the Python standard library.
-
-Due to the way git submodules work, you'll have to do
-```
-  git submodule update typeshed
-```
-whenever you change branches, merge, rebase, or pull.
-
-(It's possible to automate this: Search Google for "git hook update submodule")
+> NOTE: Installing with sudo can be a security risk. Please try with the `--user` flag first.
+    $ python3 -m pip install --user -U .
 
 
 Tests
@@ -232,14 +212,16 @@ The basic way to run tests:
     $ python2 -m pip install -U typing
     $ ./runtests.py
 
-For more on the tests, see [Test README.md](test-data/unit/README.md)
+For more on the tests, such as how to write tests and how to control
+which tests to run, see [Test README.md](test-data/unit/README.md).
 
 
 Development status
 ------------------
 
 Mypy is beta software, but it has already been used in production
-for several years at Dropbox, and it has an extensive test suite.
+for several years at Dropbox and in many other organizations, and
+it has an extensive test suite.
 
 See [the roadmap](ROADMAP.md) if you are interested in plans for the
 future.
@@ -248,7 +230,7 @@ future.
 Changelog
 ---------
 
-Follow mypy's updates on the blog: http://mypy-lang.blogspot.com/
+Follow mypy's updates on the blog: https://mypy-lang.blogspot.com/
 
 
 Issue tracker
@@ -264,10 +246,11 @@ in the typing gitter instead: https://gitter.im/python/typing
 Compiled version of mypy
 ------------------------
 
-We have built an compiled version of mypy using the [mypyc
-compiler](https://github.com/mypyc/mypyc) for mypy-annotated Python
-code. It is approximately 4 times faster than interpreted mypy and is
-available (and the default) for 64-bit Windows, macOS, and Linux.
+We have built a compiled version of mypy using the [mypyc
+compiler](https://github.com/python/mypy/tree/master/mypyc) for
+mypy-annotated Python code. It is approximately 4 times faster than
+interpreted mypy and is available (and the default) for 64-bit
+Windows, macOS, and Linux.
 
 To install an interpreted mypy instead, use:
 

@@ -20,7 +20,7 @@ These steps will get you started with mypy on an existing codebase:
 
 5. Write annotations as you modify existing code and write new code
 
-6. Use MonkeyType or PyAnnotate to automatically annotate legacy code
+6. Use :doc:`monkeytype:index` or `PyAnnotate`_ to automatically annotate legacy code
 
 We discuss all of these points in some detail below, and a few optional
 follow-up steps.
@@ -42,8 +42,8 @@ find or that don't have stub files:
 
 .. code-block:: text
 
-    core/config.py:7: error: Cannot find module named 'frobnicate'
-    core/model.py:9: error: Cannot find module named 'acme'
+    core/config.py:7: error: Cannot find implementation or library stub for module named 'frobnicate'
+    core/model.py:9: error: Cannot find implementation or library stub for module named 'acme'
     ...
 
 This is normal, and you can easily ignore these errors. For example,
@@ -114,8 +114,8 @@ A simple CI script could look something like this:
 
 .. code-block:: text
 
-    python3 -m pip install mypy==0.600  # Pinned version avoids surprises
-    scripts/mypy  # Runs with the correct options
+    python3 -m pip install mypy==0.790  # Pinned version avoids surprises
+    scripts/mypy  # Run the mypy runner script you set up
 
 Annotate widely imported modules
 --------------------------------
@@ -145,9 +145,7 @@ Automate annotation of legacy code
 
 There are tools for automatically adding draft annotations
 based on type profiles collected at runtime.  Tools include
-`MonkeyType <https://github.com/Instagram/MonkeyType>`_
-(Python 3) and `PyAnnotate <https://github.com/dropbox/pyannotate>`_
-(type comments only).
+:doc:`monkeytype:index` (Python 3) and `PyAnnotate`_.
 
 A simple approach is to collect types from test runs. This may work
 well if your test coverage is good (and if your tests aren't very
@@ -170,10 +168,11 @@ for further speedups.
 Introduce stricter options
 --------------------------
 
-Mypy is very configurable. Once you get started with static typing,
-you may want to explore the various
-strictness options mypy provides to
-catch more bugs. For example, you can ask mypy to require annotations
-for all functions in certain modules to avoid accidentally introducing
-code that won't be type checked. Refer to :ref:`command-line` for the
-details.
+Mypy is very configurable. Once you get started with static typing, you may want
+to explore the various strictness options mypy provides to catch more bugs. For
+example, you can ask mypy to require annotations for all functions in certain
+modules to avoid accidentally introducing code that won't be type checked using
+:confval:`disallow_untyped_defs`, or type check code without annotations as well
+with :confval:`check_untyped_defs`. Refer to :ref:`config-file` for the details.
+
+.. _PyAnnotate: https://github.com/dropbox/pyannotate

@@ -21,8 +21,13 @@ class Enum(metaclass=EnumMeta):
     _name_: str
     _value_: Any
 
+    # In reality, _generate_next_value_ is python3.6 only and has a different signature.
+    # However, this should be quick and doesn't require additional stubs (e.g. `staticmethod`)
+    def _generate_next_value_(self) -> Any: pass
+
 class IntEnum(int, Enum):
     value: int
+    def __new__(cls: Type[_T], value: Union[int, _T]) -> _T: ...
 
 def unique(enumeration: _T) -> _T: pass
 

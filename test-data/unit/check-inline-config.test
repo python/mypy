@@ -1,56 +1,85 @@
 -- Checks for 'mypy: option' directives inside files
 
 [case testInlineSimple1]
+
 # mypy: disallow-any-generics, no-warn-no-return
 
 from typing import List
-def foo() -> List:  # E: Missing type parameters for generic type
+def foo() -> List:  # E: Missing type parameters for generic type "List"
     20
 
 [builtins fixtures/list.pyi]
 
 [case testInlineSimple2]
+
 # mypy: disallow-any-generics
 # mypy: no-warn-no-return
 
 from typing import List
-def foo() -> List:  # E: Missing type parameters for generic type
+def foo() -> List:  # E: Missing type parameters for generic type "List"
     20
 
 [builtins fixtures/list.pyi]
 
 [case testInlineSimple3]
+
 # mypy: disallow-any-generics=true, warn-no-return=0
 
 from typing import List
-def foo() -> List:  # E: Missing type parameters for generic type
+def foo() -> List:  # E: Missing type parameters for generic type "List"
     20
 
 [builtins fixtures/list.pyi]
 
 
 [case testInlineSimple4]
+
 # mypy: disallow-any-generics = true, warn-no-return = 0
 
 from typing import List
-def foo() -> List:  # E: Missing type parameters for generic type
+def foo() -> List:  # E: Missing type parameters for generic type "List"
     20
 
 [builtins fixtures/list.pyi]
 
 [case testInlineList]
+
 # mypy: disallow-any-generics,always-false="FOO,BAR"
 
 from typing import List
 
-def foo(FOO: bool, BAR: bool) -> List:  # E: Missing type parameters for generic type
+def foo(FOO: bool, BAR: bool) -> List:  # E: Missing type parameters for generic type "List"
     if FOO or BAR:
         1+'lol'
     return []
 
 [builtins fixtures/list.pyi]
 
+[case testInlineInvert1]
+# flags: --disallow-any-generics --allow-untyped-globals
+import a
+[file a.py]
+# mypy: allow-any-generics, disallow-untyped-globals
+
+x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
+
+from typing import List
+def foo() -> List:
+    ...
+
+[builtins fixtures/list.pyi]
+
+[case testInlineInvert2]
+
+import a
+[file a.py]
+# mypy: no-always-true
+
+[out]
+tmp/a.py:1: error: Can not invert non-boolean key always_true
+
 [case testInlineIncremental1]
+
 import a
 [file a.py]
 # mypy: disallow-any-generics, no-warn-no-return
@@ -71,7 +100,7 @@ from typing import List
 def foo() -> List:
     20
 [out]
-tmp/a.py:4: error: Missing type parameters for generic type
+tmp/a.py:4: error: Missing type parameters for generic type "List"
 [out2]
 [out3]
 tmp/a.py:2: error: Missing return statement
@@ -79,6 +108,7 @@ tmp/a.py:2: error: Missing return statement
 [builtins fixtures/list.pyi]
 
 [case testInlineIncremental2]
+
 # flags2: --disallow-any-generics
 import a
 [file a.py]
@@ -93,7 +123,7 @@ def foo() -> List:
 
 [out]
 [out2]
-tmp/a.py:4: error: Missing type parameters for generic type
+tmp/a.py:4: error: Missing type parameters for generic type "List"
 
 [builtins fixtures/list.pyi]
 
@@ -119,7 +149,7 @@ def foo() -> int:
 # mypy: always-true="FOO,BAR
 [out]
 main:1: error: Unrecognized option: invalid_whatever = True
-main:2: error: Unrecognized option: warn_no_return; no_strict_optional = False
+main:2: error: Unrecognized option: no_warn_no_return; no_strict_optional = True
 main:3: error: Unrecognized option: bar = True
 main:4: error: Unterminated quote in configuration comment
 
@@ -127,3 +157,8 @@ main:4: error: Unterminated quote in configuration comment
 # mypy: skip-file
 [out]
 main:1: error: Unrecognized option: skip_file = True
+
+[case testInlineStrict]
+# mypy: strict
+[out]
+main:1: error: Setting "strict" not supported in inline configuration: specify it in a configuration file instead, or set individual inline flags (see "mypy -h" for the list of flags enabled in strict mode)

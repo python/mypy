@@ -2,7 +2,7 @@ from typing import Dict, List
 
 from mypy.expandtype import expand_type
 from mypy.nodes import TypeInfo
-from mypy.types import Type, TypeVarId, Instance, AnyType, TypeOfAny
+from mypy.types import Type, TypeVarId, Instance, AnyType, TypeOfAny, ProperType
 
 
 def map_instance_to_supertype(instance: Instance,
@@ -28,11 +28,11 @@ def map_instance_to_supertypes(instance: Instance,
                                supertype: TypeInfo) -> List[Instance]:
     # FIX: Currently we should only have one supertype per interface, so no
     #      need to return an array
-    result = []  # type: List[Instance]
+    result: List[Instance] = []
     for path in class_derivation_paths(instance.type, supertype):
         types = [instance]
         for sup in path:
-            a = []  # type: List[Instance]
+            a: List[Instance] = []
             for t in types:
                 a.extend(map_instance_to_direct_supertypes(t, sup))
             types = a
@@ -56,7 +56,7 @@ def class_derivation_paths(typ: TypeInfo,
     """
     # FIX: Currently we might only ever have a single path, so this could be
     #      simplified
-    result = []  # type: List[List[TypeInfo]]
+    result: List[List[TypeInfo]] = []
 
     for base in typ.bases:
         btype = base.type
@@ -74,12 +74,13 @@ def map_instance_to_direct_supertypes(instance: Instance,
                                       supertype: TypeInfo) -> List[Instance]:
     # FIX: There should only be one supertypes, always.
     typ = instance.type
-    result = []  # type: List[Instance]
+    result: List[Instance] = []
 
     for b in typ.bases:
         if b.type == supertype:
             env = instance_to_type_environment(instance)
             t = expand_type(b, env)
+            assert isinstance(t, ProperType)
             assert isinstance(t, Instance)
             result.append(t)
 

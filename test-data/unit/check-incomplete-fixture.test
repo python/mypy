@@ -12,19 +12,11 @@ import m
 m.x # E: "object" has no attribute "x"
 [file m.py]
 
-[case testListMissingFromStubs]
-from typing import List
-def f(x: List[int]) -> None: pass
-[out]
-main:1: error: Module 'typing' has no attribute 'List'
-main:1: note: Maybe your test fixture does not define "builtins.list"?
-main:1: note: Consider adding [builtins fixtures/list.pyi] to your test description
-
 [case testDictMissingFromStubs]
 from typing import Dict
 def f(x: Dict[int]) -> None: pass
 [out]
-main:1: error: Module 'typing' has no attribute 'Dict'
+main:1: error: Module "typing" has no attribute "Dict"
 main:1: note: Maybe your test fixture does not define "builtins.dict"?
 main:1: note: Consider adding [builtins fixtures/dict.pyi] to your test description
 
@@ -32,29 +24,21 @@ main:1: note: Consider adding [builtins fixtures/dict.pyi] to your test descript
 from typing import Set
 def f(x: Set[int]) -> None: pass
 [out]
-main:1: error: Module 'typing' has no attribute 'Set'
+main:1: error: Module "typing" has no attribute "Set"
 main:1: note: Maybe your test fixture does not define "builtins.set"?
 main:1: note: Consider adding [builtins fixtures/set.pyi] to your test description
-
-[case testBoolMissingFromStubs]
-# flags: --no-new-semantic-analyzer
-x: bool  # This always works with the new semantic analyzer
-[out]
-main:2: error: Name 'bool' is not defined
-main:2: note: Maybe your test fixture does not define "builtins.bool"?
-main:2: note: Consider adding [builtins fixtures/bool.pyi] to your test description
 
 [case testBaseExceptionMissingFromStubs]
 e: BaseException
 [out]
-main:1: error: Name 'BaseException' is not defined
+main:1: error: Name "BaseException" is not defined
 main:1: note: Maybe your test fixture does not define "builtins.BaseException"?
 main:1: note: Consider adding [builtins fixtures/exception.pyi] to your test description
 
 [case testExceptionMissingFromStubs]
 e: Exception
 [out]
-main:1: error: Name 'Exception' is not defined
+main:1: error: Name "Exception" is not defined
 main:1: note: Maybe your test fixture does not define "builtins.Exception"?
 main:1: note: Consider adding [builtins fixtures/exception.pyi] to your test description
 
@@ -62,28 +46,35 @@ main:1: note: Consider adding [builtins fixtures/exception.pyi] to your test des
 if isinstance(1, int):
     pass
 [out]
-main:1: error: Name 'isinstance' is not defined
+main:1: error: Name "isinstance" is not defined
 main:1: note: Maybe your test fixture does not define "builtins.isinstance"?
 main:1: note: Consider adding [builtins fixtures/isinstancelist.pyi] to your test description
 
-[case testInvalidTupleDefinitionFromStubs]
-from typing import Tuple
-x: Tuple[int, ...]
-x[0]
-for y in x:
-    pass
+[case testTupleMissingFromStubs1]
+tuple()
 [out]
--- These errors are pretty bad, but keeping this test anyway to
--- avoid things getting worse.
-main:3: error: Value of type "Tuple[int, ...]" is not indexable
-main:4: error: "Tuple[int, ...]" has no attribute "__iter__" (not iterable)
+main:1: error: Name "tuple" is not defined
+main:1: note: Maybe your test fixture does not define "builtins.tuple"?
+main:1: note: Consider adding [builtins fixtures/tuple.pyi] to your test description
+main:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import Tuple")
+
+[case testTupleMissingFromStubs2]
+tuple()
+from typing import Tuple
+x: Tuple[int, str]
+[out]
+main:1: error: Name "tuple" is not defined
+main:1: note: Maybe your test fixture does not define "builtins.tuple"?
+main:1: note: Consider adding [builtins fixtures/tuple.pyi] to your test description
+main:1: note: Did you forget to import it from "typing"? (Suggestion: "from typing import Tuple")
+main:3: error: Name "tuple" is not defined
 
 [case testClassmethodMissingFromStubs]
 class A:
     @classmethod
     def f(cls): pass
 [out]
-main:2: error: Name 'classmethod' is not defined
+main:2: error: Name "classmethod" is not defined
 main:2: note: Maybe your test fixture does not define "builtins.classmethod"?
 main:2: note: Consider adding [builtins fixtures/classmethod.pyi] to your test description
 
@@ -92,6 +83,6 @@ class A:
     @property
     def f(self): pass
 [out]
-main:2: error: Name 'property' is not defined
+main:2: error: Name "property" is not defined
 main:2: note: Maybe your test fixture does not define "builtins.property"?
 main:2: note: Consider adding [builtins fixtures/property.pyi] to your test description

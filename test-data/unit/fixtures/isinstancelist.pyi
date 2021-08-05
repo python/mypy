@@ -4,12 +4,14 @@ from typing import (
 
 class object:
     def __init__(self) -> None: pass
+    def __eq__(self, other: object) -> bool: pass
 
 class type:
     def __init__(self, x) -> None: pass
 
 class function: pass
 class ellipsis: pass
+class classmethod: pass
 
 def isinstance(x: object, t: Union[type, Tuple]) -> bool: pass
 def issubclass(x: object, t: Union[type, Tuple]) -> bool: pass

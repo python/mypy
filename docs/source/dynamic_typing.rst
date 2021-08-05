@@ -54,10 +54,10 @@ less effective, unless you are careful.
 Any vs. object
 --------------
 
-The type ``object`` is another type that can have an instance of arbitrary
-type as a value. Unlike ``Any``, ``object`` is an ordinary static type (it
+The type :py:class:`object` is another type that can have an instance of arbitrary
+type as a value. Unlike ``Any``, :py:class:`object` is an ordinary static type (it
 is similar to ``Object`` in Java), and only operations valid for *all*
-types are accepted for ``object`` values. These are all valid:
+types are accepted for :py:class:`object` values. These are all valid:
 
 .. code-block:: python
 
@@ -80,7 +80,7 @@ operations:
         n = 1  # type: int
         n = o         # Error!
 
-You can use ``cast()`` (see chapter :ref:`casts`) or ``isinstance`` to
-go from a general type such as ``object`` to a more specific
-type (subtype) such as ``int``.  ``cast()`` is not needed with
+You can use :py:func:`~typing.cast` (see chapter :ref:`casts`) or :py:func:`isinstance` to
+go from a general type such as :py:class:`object` to a more specific
+type (subtype) such as ``int``.  :py:func:`~typing.cast` is not needed with
 dynamically typed values (values with type ``Any``).

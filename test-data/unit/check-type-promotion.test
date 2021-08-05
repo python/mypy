@@ -23,7 +23,12 @@ f(1)
 
 [case testPromoteBytearrayToByte]
 def f(x: bytes) -> None: pass
-f(bytearray())
+f(bytearray(b''))
+[builtins fixtures/primitives.pyi]
+
+[case testPromoteMemoryviewToBytes]
+def f(x: bytes) -> None: pass
+f(memoryview(b''))
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingDownFromPromoteTargetType]

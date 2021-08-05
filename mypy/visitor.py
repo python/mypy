@@ -2,9 +2,10 @@
 
 from abc import abstractmethod
 from typing import TypeVar, Generic
-from mypy_extensions import trait
+from typing_extensions import TYPE_CHECKING
+from mypy_extensions import trait, mypyc_attr
 
-if False:
+if TYPE_CHECKING:
     # break import cycle only needed for mypy
     import mypy.nodes
 
@@ -13,6 +14,7 @@ T = TypeVar('T')
 
 
 @trait
+@mypyc_attr(allow_interpreted_subclasses=True)
 class ExpressionVisitor(Generic[T]):
     @abstractmethod
     def visit_int_expr(self, o: 'mypy.nodes.IntExpr') -> T:
@@ -91,6 +93,10 @@ class ExpressionVisitor(Generic[T]):
         pass
 
     @abstractmethod
+    def visit_assignment_expr(self, o: 'mypy.nodes.AssignmentExpr') -> T:
+        pass
+
+    @abstractmethod
     def visit_list_expr(self, o: 'mypy.nodes.ListExpr') -> T:
         pass
 
@@ -151,6 +157,10 @@ class ExpressionVisitor(Generic[T]):
         pass
 
     @abstractmethod
+    def visit_paramspec_expr(self, o: 'mypy.nodes.ParamSpecExpr') -> T:
+        pass
+
+    @abstractmethod
     def visit_type_alias_expr(self, o: 'mypy.nodes.TypeAliasExpr') -> T:
         pass
 
@@ -184,6 +194,7 @@ class ExpressionVisitor(Generic[T]):
 
 
 @trait
+@mypyc_attr(allow_interpreted_subclasses=True)
 class StatementVisitor(Generic[T]):
     # Definitions
 
@@ -301,6 +312,7 @@ class StatementVisitor(Generic[T]):
 
 
 @trait
+@mypyc_attr(allow_interpreted_subclasses=True)
 class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
     """Empty base class for parse tree node visitors.
 
@@ -473,6 +485,9 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
     def visit_super_expr(self, o: 'mypy.nodes.SuperExpr') -> T:
         pass
 
+    def visit_assignment_expr(self, o: 'mypy.nodes.AssignmentExpr') -> T:
+        pass
+
     def visit_unary_expr(self, o: 'mypy.nodes.UnaryExpr') -> T:
         pass
 
@@ -519,6 +534,9 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
         pass
 
     def visit_type_var_expr(self, o: 'mypy.nodes.TypeVarExpr') -> T:
+        pass
+
+    def visit_paramspec_expr(self, o: 'mypy.nodes.ParamSpecExpr') -> T:
         pass
 
     def visit_type_alias_expr(self, o: 'mypy.nodes.TypeAliasExpr') -> T:

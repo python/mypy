@@ -1,55 +1,54 @@
 """Find all objects reachable from a root object."""
 
 from collections.abc import Iterable
-from typing import List, Dict, Iterator, Tuple, Mapping
 import weakref
 import types
 
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
+from typing import List, Dict, Iterator, Tuple, Mapping
+from typing_extensions import Final
 
+method_descriptor_type: Final = type(object.__dir__)
+method_wrapper_type: Final = type(object().__ne__)
+wrapper_descriptor_type: Final = type(object.__ne__)
 
-method_descriptor_type = type(object.__dir__)  # type: Final
-method_wrapper_type = type(object().__ne__)  # type: Final
-wrapper_descriptor_type = type(object.__ne__)  # type: Final
+FUNCTION_TYPES: Final = (
+    types.BuiltinFunctionType,
+    types.FunctionType,
+    types.MethodType,
+    method_descriptor_type,
+    wrapper_descriptor_type,
+    method_wrapper_type,
+)
 
-FUNCTION_TYPES = (types.BuiltinFunctionType,
-                  types.FunctionType,
-                  types.MethodType,
-                  method_descriptor_type,
-                  wrapper_descriptor_type,
-                  method_wrapper_type)  # type: Final
-
-ATTR_BLACKLIST = {
+ATTR_BLACKLIST: Final = {
     '__doc__',
     '__name__',
     '__class__',
     '__dict__',
-}  # type: Final
+}
 
 # Instances of these types can't have references to other objects
-ATOMIC_TYPE_BLACKLIST = {
+ATOMIC_TYPE_BLACKLIST: Final = {
     bool,
     int,
     float,
     str,
     type(None),
     object,
-}  # type: Final
+}
 
 # Don't look at most attributes of these types
-COLLECTION_TYPE_BLACKLIST = {
+COLLECTION_TYPE_BLACKLIST: Final = {
     list,
     set,
     dict,
     tuple,
-}  # type: Final
+}
 
 # Don't return these objects
-TYPE_BLACKLIST = {
+TYPE_BLACKLIST: Final = {
     weakref.ReferenceType,
-}  # type: Final
+}
 
 
 def isproperty(o: object, attr: str) -> bool:
@@ -57,12 +56,18 @@ def isproperty(o: object, attr: str) -> bool:
 
 
 def get_edge_candidates(o: object) -> Iterator[Tuple[object, object]]:
+    # use getattr because mypyc expects dict, not mappingproxy
+    if '__getattribute__' in getattr(type(o), '__dict__'):  # noqa
+        return
     if type(o) not in COLLECTION_TYPE_BLACKLIST:
         for attr in dir(o):
-            if attr not in ATTR_BLACKLIST and hasattr(o, attr) and not isproperty(o, attr):
-                e = getattr(o, attr)
-                if not type(e) in ATOMIC_TYPE_BLACKLIST:
-                    yield attr, e
+            try:
+                if attr not in ATTR_BLACKLIST and hasattr(o, attr) and not isproperty(o, attr):
+                    e = getattr(o, attr)
+                    if not type(e) in ATOMIC_TYPE_BLACKLIST:
+                        yield attr, e
+            except AssertionError:
+                pass
     if isinstance(o, Mapping):
         for k, v in o.items():
             yield k, v
@@ -81,7 +86,7 @@ def get_edges(o: object) -> Iterator[Tuple[object, object]]:
                 yield (s, '__closure__'), e.__closure__  # type: ignore
             if hasattr(e, '__self__'):
                 se = e.__self__  # type: ignore
-                if se is not o and se is not type(o):
+                if se is not o and se is not type(o) and hasattr(s, '__self__'):
                     yield s.__self__, se  # type: ignore
         else:
             if not type(e) in TYPE_BLACKLIST:

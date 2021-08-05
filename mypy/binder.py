@@ -1,15 +1,16 @@
-from typing import Dict, List, Set, Iterator, Union, Optional, Tuple, cast
 from contextlib import contextmanager
 from collections import defaultdict
 
-MYPY = False
-if MYPY:
-    from typing import DefaultDict
+from typing import Dict, List, Set, Iterator, Union, Optional, Tuple, cast
+from typing_extensions import DefaultDict
 
-from mypy.types import Type, AnyType, PartialType, UnionType, TypeOfAny, NoneType
+from mypy.types import (
+    Type, AnyType, PartialType, UnionType, TypeOfAny, NoneType, TypeGuardType, get_proper_type
+)
 from mypy.subtypes import is_subtype
 from mypy.join import join_simple
 from mypy.sametypes import is_same_type
+from mypy.erasetype import remove_instance_last_known_values
 from mypy.nodes import Expression, Var, RefExpr
 from mypy.literals import Key, literal, literal_hash, subkeys
 from mypy.nodes import IndexExpr, MemberExpr, NameExpr
@@ -31,14 +32,19 @@ class Frame:
     """
 
     def __init__(self) -> None:
-        self.types = {}  # type: Dict[Key, Type]
+        self.types: Dict[Key, Type] = {}
         self.unreachable = False
 
+        # Should be set only if we're entering a frame where it's not
+        # possible to accurately determine whether or not contained
+        # statements will be unreachable or not.
+        #
+        # Long-term, we should improve mypy to the point where we no longer
+        # need this field.
+        self.suppress_unreachable_warnings = False
 
-if MYPY:
-    # This is the type of stored assignments for union type rvalues.
-    # We use 'if MYPY: ...' since typing-3.5.1 does not have 'DefaultDict'
-    Assigns = DefaultDict[Expression, List[Tuple[Type, Optional[Type]]]]
+
+Assigns = DefaultDict[Expression, List[Tuple[Type, Optional[Type]]]]
 
 
 class ConditionalTypeBinder:
@@ -63,7 +69,7 @@ class ConditionalTypeBinder:
     """
     # Stored assignments for situations with tuple/list lvalue and rvalue of union type.
     # This maps an expression to a list of bound types for every item in the union type.
-    type_assignments = None  # type: Optional[Assigns]
+    type_assignments: Optional[Assigns] = None
 
     def __init__(self) -> None:
         # The stack of frames currently used.  These map
@@ -79,21 +85,21 @@ class ConditionalTypeBinder:
         # the end of the frame or by a loop control construct
         # or raised exception. The last element of self.frames
         # has no corresponding element in this list.
-        self.options_on_return = []  # type: List[List[Frame]]
+        self.options_on_return: List[List[Frame]] = []
 
         # Maps literal_hash(expr) to get_declaration(expr)
         # for every expr stored in the binder
-        self.declarations = {}  # type: Dict[Key, Optional[Type]]
+        self.declarations: Dict[Key, Optional[Type]] = {}
         # Set of other keys to invalidate if a key is changed, e.g. x -> {x.a, x[0]}
         # Whenever a new key (e.g. x.a.b) is added, we update this
-        self.dependencies = {}  # type: Dict[Key, Set[Key]]
+        self.dependencies: Dict[Key, Set[Key]] = {}
 
         # Whether the last pop changed the newly top frame on exit
         self.last_pop_changed = False
 
-        self.try_frames = set()  # type: Set[int]
-        self.break_frames = []  # type: List[int]
-        self.continue_frames = []  # type: List[int]
+        self.try_frames: Set[int] = set()
+        self.break_frames: List[int] = []
+        self.continue_frames: List[int] = []
 
     def _add_dependencies(self, key: Key, value: Optional[Key] = None) -> None:
         if value is None:
@@ -136,6 +142,9 @@ class ConditionalTypeBinder:
     def unreachable(self) -> None:
         self.frames[-1].unreachable = True
 
+    def suppress_unreachable_warnings(self) -> None:
+        self.frames[-1].suppress_unreachable_warnings = True
+
     def get(self, expr: Expression) -> Optional[Type]:
         key = literal_hash(expr)
         assert key is not None, 'Internal error: binder tried to get non-literal'
@@ -145,6 +154,10 @@ class ConditionalTypeBinder:
         # TODO: Copy the value of unreachable into new frames to avoid
         # this traversal on every statement?
         return any(f.unreachable for f in self.frames)
+
+    def is_unreachable_warning_suppressed(self) -> bool:
+        # TODO: See todo in 'is_unreachable'
+        return any(f.suppress_unreachable_warnings for f in self.frames)
 
     def cleanse(self, expr: Expression) -> None:
         """Remove all references to a Node from the binder."""
@@ -181,7 +194,7 @@ class ConditionalTypeBinder:
 
             type = resulting_values[0]
             assert type is not None
-            declaration_type = self.declarations.get(key)
+            declaration_type = get_proper_type(self.declarations.get(key))
             if isinstance(declaration_type, AnyType):
                 # At this point resulting values can't contain None, see continue above
                 if not all(is_same_type(type, cast(Type, t)) for t in resulting_values[1:]):
@@ -189,7 +202,9 @@ class ConditionalTypeBinder:
             else:
                 for other in resulting_values[1:]:
                     assert other is not None
-                    type = join_simple(self.declarations[key], type, other)
+                    # Ignore the error about using get_proper_type().
+                    if not isinstance(other, TypeGuardType):  # type: ignore[misc]
+                        type = join_simple(self.declarations[key], type, other)
             if current_value is None or not is_same_type(type, current_value):
                 self._put(key, type)
                 changed = True
@@ -236,6 +251,13 @@ class ConditionalTypeBinder:
                     type: Type,
                     declared_type: Optional[Type],
                     restrict_any: bool = False) -> None:
+        # We should erase last known value in binder, because if we are using it,
+        # it means that the target is not final, and therefore can't hold a literal.
+        type = remove_instance_last_known_values(type)
+
+        type = get_proper_type(type)
+        declared_type = get_proper_type(declared_type)
+
         if self.type_assignments is not None:
             # We are in a multiassign from union, defer the actual binding,
             # just collect the types.
@@ -260,7 +282,7 @@ class ConditionalTypeBinder:
             # times?
             return
 
-        enclosing_type = self.most_recent_enclosing_type(expr, type)
+        enclosing_type = get_proper_type(self.most_recent_enclosing_type(expr, type))
         if isinstance(enclosing_type, AnyType) and not restrict_any:
             # If x is Any and y is int, after x = y we do not infer that x is int.
             # This could be changed.
@@ -276,15 +298,17 @@ class ConditionalTypeBinder:
         # (See discussion in #3526)
         elif (isinstance(type, AnyType)
               and isinstance(declared_type, UnionType)
-              and any(isinstance(item, NoneType) for item in declared_type.items)
-              and isinstance(self.most_recent_enclosing_type(expr, NoneType()), NoneType)):
+              and any(isinstance(get_proper_type(item), NoneType) for item in declared_type.items)
+              and isinstance(get_proper_type(self.most_recent_enclosing_type(expr, NoneType())),
+                             NoneType)):
             # Replace any Nones in the union type with Any
-            new_items = [type if isinstance(item, NoneType) else item
+            new_items = [type if isinstance(get_proper_type(item), NoneType) else item
                          for item in declared_type.items]
             self.put(expr, UnionType(new_items))
         elif (isinstance(type, AnyType)
               and not (isinstance(declared_type, UnionType)
-                       and any(isinstance(item, AnyType) for item in declared_type.items))):
+                       and any(isinstance(get_proper_type(item), AnyType)
+                               for item in declared_type.items))):
             # Assigning an Any value doesn't affect the type to avoid false negatives, unless
             # there is an Any item in a declared union type.
             self.put(expr, declared_type)
@@ -310,6 +334,7 @@ class ConditionalTypeBinder:
             self._cleanse_key(dep)
 
     def most_recent_enclosing_type(self, expr: BindableExpression, type: Type) -> Optional[Type]:
+        type = get_proper_type(type)
         if isinstance(type, AnyType):
             return get_declaration(expr)
         key = literal_hash(expr)
@@ -402,7 +427,7 @@ class ConditionalTypeBinder:
 
 def get_declaration(expr: BindableExpression) -> Optional[Type]:
     if isinstance(expr, RefExpr) and isinstance(expr.node, Var):
-        type = expr.node.type
+        type = get_proper_type(expr.node.type)
         if not isinstance(type, PartialType):
             return type
     return None
