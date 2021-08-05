@@ -218,3 +218,14 @@ LITERAL_INVALID_PARAMETER: Final = ErrorMessage('Parameter {} of Literal[...] is
 TYPEVAR_BOUND_BY_OUTER_CLASS: Final = ErrorMessage('Type variable "{}" is bound by an outer class')
 TYPE_ARG_COUNT_MISMATCH: Final = ErrorMessage('"{}" expects {}, but {} given', codes.TYPE_ARG)
 TYPE_ALIAS_ARG_COUNT_MISMATCH: Final = ErrorMessage('Bad number of arguments for type alias, expected: {}, given: {}')
+
+# function definitions, from nodes.py
+DUPLICATE_ARGUMENT_IN_X: Final = ErrorMessage('Duplicate argument "{}" in {}')
+POS_ARGS_BEFORE_DEFAULT_NAMED_OR_VARARGS: Final = ErrorMessage("Required positional args may not appear after default, named or var args")
+DEFAULT_ARGS_BEFORE_NAMED_OR_VARARGS: Final = ErrorMessage("Positional default args may not appear after named or var args")
+VAR_ARGS_BEFORE_NAMED_OR_VARARGS: Final = ErrorMessage("Var args may not appear after named or var args")
+KWARGS_MUST_BE_LAST: Final = ErrorMessage("A **kwargs argument must be the last argument")
+MULTIPLE_KWARGS: Final = ErrorMessage("You may only have one **kwargs argument")
+
+# from type_anal_hook.py
+INVALID_SIGNAL_TYPE: Final = ErrorMessage('Invalid "Signal" type (expected "Signal[[t, ...]]")')

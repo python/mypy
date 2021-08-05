@@ -881,11 +881,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def analyze_type(self, t: Type) -> Type:
         return t.accept(self)
 
-    def fail(self, msg: ErrorMessage, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
-        if isinstance(msg, str):
-            self.fail_func(msg, ctx, code=code)
-            return
-
+    def fail(self, msg: ErrorMessage, ctx: Context) -> None:
         self.fail_func(msg.value, ctx, code=msg.code)
 
     def note(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
