@@ -77,7 +77,7 @@ def test_len() -> None:
 [case testBytearrayBasics]
 from typing import Any
 
-def test_init() -> None:
+def test_basics() -> None:
     brr1: bytes = bytearray(3)
     assert brr1 == bytearray(b'\x00\x00\x00')
     assert brr1 == b'\x00\x00\x00'
@@ -91,6 +91,10 @@ def test_init() -> None:
     brr4: bytes = bytearray('string', 'utf-8')
     assert brr4 == bytearray(b'string')
     assert brr4 == b'string'
+    assert len(brr1) == 3
+    assert len(brr2) == 4
+    assert len(brr3) == 5
+    assert len(brr4) == 6
 
 def f(b: bytes) -> bool:
     return True
