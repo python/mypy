@@ -57,7 +57,9 @@ def test_indexing() -> None:
 def test_concat() -> None:
     b1 = b'123' + bytes()
     b2 = b'456' + bytes()
-    assert b1 + b2 == b'123456'
+    b3 = b1 + b2
+    assert b3 == b'123456'
+    assert len(b3) == 6
 
 def test_join() -> None:
     seq = (b'1', b'"', b'\xf0')
