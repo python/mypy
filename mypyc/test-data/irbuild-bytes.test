@@ -62,3 +62,17 @@ L0:
     c = r6
     return 1
 
+
+[case testBytesJoin]
+from typing import List
+
+def f(b: List[bytes]) -> bytes:
+    return b" ".join(b)
+[out]
+def f(b):
+    b :: list
+    r0, r1 :: bytes
+L0:
+    r0 = b' '
+    r1 = CPyBytes_Join(r0, b)
+    return r1

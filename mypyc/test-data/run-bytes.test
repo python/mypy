@@ -97,3 +97,28 @@ def test_bytearray_passed_into_bytes() -> None:
     assert f(bytearray(3))
     brr1: Any = bytearray()
     assert f(brr1)
+
+[case testBytesJoin]
+from typing import Any
+from testutil import assertRaises
+from a import bytes_subclass
+
+def test_bytes_join() -> None:
+    assert b' '.join([b'a', b'b']) == b'a b'
+    assert b' '.join([]) == b''
+
+    x: bytes = bytearray(b' ')
+    assert x.join([b'a', b'b']) == b'a b'
+    assert type(x.join([b'a', b'b'])) == bytearray
+
+    y: bytes = bytes_subclass()
+    assert y.join([]) == b'spook'
+
+    n: Any = 5
+    with assertRaises(TypeError, "can only join an iterable"):
+        assert b' '.join(n)
+
+[file a.py]
+class bytes_subclass(bytes):
+    def join(self, iter):
+        return b'spook'
