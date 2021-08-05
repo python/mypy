@@ -408,7 +408,7 @@ class DataclassTransformer:
         node_type = get_proper_type(node)
         if not isinstance(node_type, Instance):
             return False
-        return node_type.type.fullname == 'dataclasses._KW_ONLY_TYPE'
+        return node_type.type.fullname == 'dataclasses.KW_ONLY'
 
 
 def dataclass_class_maker_callback(ctx: ClassDefContext) -> None:
