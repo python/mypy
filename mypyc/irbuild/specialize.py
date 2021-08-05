@@ -395,7 +395,8 @@ def translate_str_format(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
     if (isinstance(callee, MemberExpr) and isinstance(callee.expr, StrExpr)
             and expr.arg_kinds.count(ARG_POS) == len(expr.arg_kinds)):
-        tokens = tokenizer_format_call(callee.expr.value)
+        format_str = callee.expr.value
+        tokens = tokenizer_format_call(format_str)
         if tokens is None:
             return None
         literals, specifiers = tokens
