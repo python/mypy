@@ -2,7 +2,6 @@
 
 import os
 import re
-import shutil
 import sys
 
 from typing import Dict, List, Set, Tuple
@@ -12,12 +11,12 @@ from mypy.build import Graph
 from mypy.modulefinder import BuildSource, SearchPaths, FindModuleCache
 from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import (
-    DataDrivenTestCase, DataSuite, FileOperation, UpdateFile, module_from_path
+    DataDrivenTestCase, DataSuite, FileOperation, module_from_path
 )
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages, assert_module_equivalence,
-    retry_on_error, update_testcase_output, parse_options,
-    copy_and_fudge_mtime, assert_target_equivalence, check_test_output_files
+    update_testcase_output, parse_options,
+    assert_target_equivalence, check_test_output_files, perform_file_operations,
 )
 from mypy.errors import CompileError
 from mypy.semanal_main import core_modules
@@ -156,19 +155,7 @@ class TypeCheckSuite(DataSuite):
                     break
         elif incremental_step > 1:
             # In runs 2+, copy *.[num] files to * files.
-            for op in operations:
-                if isinstance(op, UpdateFile):
-                    # Modify/create file
-                    copy_and_fudge_mtime(op.source_path, op.target_path)
-                else:
-                    # Delete file/directory
-                    path = op.path
-                    if os.path.isdir(path):
-                        # Sanity check to avoid unexpected deletions
-                        assert path.startswith('tmp')
-                        shutil.rmtree(path)
-                    # Use retries to work around potential flakiness on Windows (AppVeyor).
-                    retry_on_error(lambda: os.remove(path))
+            perform_file_operations(operations)
 
         # Parse options after moving files (in case mypy.ini is being moved).
         options = parse_options(original_program_text, testcase, incremental_step)

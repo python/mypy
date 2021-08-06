@@ -384,6 +384,10 @@ We do not recommend using ``skip`` unless you know what you are doing:
 while this option can be quite powerful, it can also cause many
 hard-to-debug errors.
 
+Adjusting import following behaviour is often most useful when restricted to
+specific modules. This can be accomplished by setting a per-module
+:confval:`follow_imports` config option.
+
 
 .. _mapping-paths-to-modules:
 

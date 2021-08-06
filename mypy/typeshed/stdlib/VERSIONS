@@ -23,7 +23,7 @@ _ast: 2.7-
 _bisect: 2.7-
 _bootlocale: 3.6-3.9
 _codecs: 2.7-
-_collections_abc: 3.6-
+_collections_abc: 3.3-
 _compat_pickle: 3.6-
 _compression: 3.6-
 _csv: 2.7-
@@ -43,6 +43,7 @@ _py_abc: 3.7-
 _pydecimal: 3.6-
 _random: 2.7-
 _sitebuiltins: 3.6-
+_socket: 3.0-  # present in 2.7 at runtime, but not in typeshed
 _stat: 3.6-
 _thread: 2.7-
 _threading_local: 3.6-
@@ -82,6 +83,7 @@ code: 2.7-
 codecs: 2.7-
 codeop: 2.7-
 collections: 2.7-
+collections.abc: 3.3-
 colorsys: 2.7-
 compileall: 2.7-
 concurrent: 3.2-
@@ -135,6 +137,7 @@ imaplib: 2.7-
 imghdr: 2.7-
 imp: 2.7-
 importlib: 2.7-
+importlib.metadata: 3.8-
 importlib.resources: 3.7-
 inspect: 2.7-
 io: 2.7-

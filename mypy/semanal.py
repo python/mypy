@@ -88,7 +88,7 @@ from mypy.messages import (
 from mypy.errorcodes import ErrorCode
 from mypy import message_registry, errorcodes as codes
 from mypy.types import (
-    FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType,
+    FunctionLike, UnboundType, TypeVarType, TupleType, UnionType, StarType,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
     TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType,
     get_proper_type, get_proper_types, TypeAliasType
@@ -427,6 +427,17 @@ class SemanticAnalyzer(NodeVisitor[None],
                 else:
                     typ = UnionType([UnboundType('__builtins__.str'),
                                      UnboundType('__builtins__.unicode')])
+            elif name == '__path__':
+                if not file_node.is_package_init_file():
+                    continue
+                # Need to construct the type ourselves, to avoid issues with __builtins__.list
+                # not being subscriptable or typing.List not getting bound
+                sym = self.lookup_qualified("__builtins__.list", Context())
+                if not sym:
+                    continue
+                node = sym.node
+                assert isinstance(node, TypeInfo)
+                typ = Instance(node, [self.str_type()])
             else:
                 assert t is not None, 'type should be specified for {}'.format(name)
                 typ = UnboundType(t)
@@ -1253,7 +1264,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             defn: ClassDef,
             base_type_exprs: List[Expression],
             context: Context) -> Tuple[List[Expression],
-                                       List[TypeVarDef],
+                                       List[TypeVarType],
                                        bool]:
         """Remove extra base classes such as Generic and infer type vars.
 
@@ -1314,10 +1325,10 @@ class SemanticAnalyzer(NodeVisitor[None],
             # grained incremental mode.
             defn.removed_base_type_exprs.append(defn.base_type_exprs[i])
             del base_type_exprs[i]
-        tvar_defs: List[TypeVarDef] = []
+        tvar_defs: List[TypeVarType] = []
         for name, tvar_expr in declared_tvars:
             tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
-            assert isinstance(tvar_def, TypeVarDef), (
+            assert isinstance(tvar_def, TypeVarType), (
                 "mypy does not currently support ParamSpec use in generic classes"
             )
             tvar_defs.append(tvar_def)
@@ -3151,8 +3162,6 @@ class SemanticAnalyzer(NodeVisitor[None],
         In the future, ParamSpec may accept bounds and variance arguments, in which
         case more aggressive sharing of code with process_typevar_declaration should be pursued.
         """
-        if not self.options.wip_pep_612:
-            return False
         call = self.get_typevarlike_declaration(
             s, ("typing_extensions.ParamSpec", "typing.ParamSpec")
         )

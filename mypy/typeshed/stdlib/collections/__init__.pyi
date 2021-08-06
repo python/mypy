@@ -1,4 +1,5 @@
 import sys
+from _typeshed import Self
 from typing import Any, Dict, Generic, List, NoReturn, Optional, Tuple, Type, TypeVar, Union, overload
 
 if sys.version_info >= (3, 10):
@@ -69,7 +70,7 @@ class UserList(MutableSequence[_T]):
     @overload
     def __getitem__(self, i: int) -> _T: ...
     @overload
-    def __getitem__(self, i: slice) -> MutableSequence[_T]: ...
+    def __getitem__(self: Self, i: slice) -> Self: ...
     @overload
     def __setitem__(self, i: int, o: _T) -> None: ...
     @overload

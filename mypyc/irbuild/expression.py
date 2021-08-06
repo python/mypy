@@ -569,7 +569,8 @@ def transform_basic_comparison(builder: IRBuilder,
 def translate_str_format_percent_sign(builder: IRBuilder,
                                       format_expr: StrExpr,
                                       rhs: Expression) -> Value:
-    literals, conversion_types = tokenizer_printf_style(format_expr.value)
+    literals, conversion_specifiers = tokenizer_printf_style(format_expr.value)
+
     variables = []
     if isinstance(rhs, TupleExpr):
         raw_variables = rhs.items
@@ -578,15 +579,16 @@ def translate_str_format_percent_sign(builder: IRBuilder,
     else:
         raw_variables = []
 
-    is_conversion_matched = (len(conversion_types) == len(raw_variables))
+    is_conversion_matched = (len(conversion_specifiers) == len(raw_variables))
 
     if is_conversion_matched:
-        for typ, var in zip(conversion_types, raw_variables):
+        for specifier, var in zip(conversion_specifiers, raw_variables):
             node_type = builder.node_type(var)
-            if typ == '%d' and (is_int_rprimitive(node_type)
-                                or is_short_int_rprimitive(node_type)):
+            format_type = specifier.whole_seq
+            if format_type == '%d' and (is_int_rprimitive(node_type)
+                                        or is_short_int_rprimitive(node_type)):
                 var_str = builder.call_c(int_to_str_op, [builder.accept(var)], format_expr.line)
-            elif typ == '%s':
+            elif format_type == '%s':
                 if is_str_rprimitive(node_type):
                     var_str = builder.accept(var)
                 else:
