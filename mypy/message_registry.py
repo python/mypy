@@ -272,3 +272,26 @@ ENUM_CALL_EXPECTED_STRINGS_OR_PAIRS: Final = ErrorMessage("{}() with tuple or li
 ENUM_CALL_DICT_EXPECTED_STRING_KEYS: Final = ErrorMessage("{}() with dict literal requires string literals")
 ENUM_CALL_EXPECTED_LITERAL: Final = ErrorMessage("{}() expects a string, tuple, list or dict literal as the second argument")
 ENUM_CALL_ATLEAST_ONE_ITEM: Final = ErrorMessage("{}() needs at least one item")
+
+# NamedTuple
+NAMEDTUPLE_SUPPORTED_ABOVE_PY36: Final = ErrorMessage('NamedTuple class syntax is only supported in Python 3.6')
+NAMEDTUPLE_SINGLE_BASE: Final = ErrorMessage('NamedTuple should be a single base')
+NAMEDTUPLE_CLASS_ERROR: Final = ErrorMessage(
+    "Invalid statement in NamedTuple definition; " 'expected "field_name: field_type [= default]"'
+)
+NAMEDTUPLE_FIELD_NO_UNDERSCORE: Final = ErrorMessage('NamedTuple field name cannot start with an underscore: {}')
+NAMEDTUPLE_FIELD_DEFAULT_AFTER_NONDEFAULT: Final = ErrorMessage('Non-default NamedTuple fields cannot follow default fields')
+NAMEDTUPLE_TOO_FEW_ARGS: Final = ErrorMessage("Too few arguments for namedtuple()")
+NAMEDTUPLE_TOO_MANY_ARGS: Final = ErrorMessage("Too many arguments for namedtuple()")
+NAMEDTUPLE_EXPECTED_LIST_TUPLE_DEFAULTS: Final = ErrorMessage("List or tuple literal expected as the defaults argument to namedtuple()")
+NAMEDTUPLE_UNEXPECTED_ARGS: Final = ErrorMessage("Unexpected arguments to namedtuple()")
+NAMEDTUPLE_ARG_EXPECTED_STRING_LITERAL : Final = ErrorMessage("namedtuple() expects a string literal as the first argument")
+NAMEDTUPLE_ARG_EXPECTED_LIST_TUPLE: Final = ErrorMessage("List or tuple literal expected as the second argument to namedtuple()")
+NAMEDTUPLE_EXPECTED_STRING_LITERAL : Final = ErrorMessage("String literal expected as namedtuple() item")
+NAMEDTUPLE_FIELDS_NO_UNDERSCORE: Final = ErrorMessage("namedtuple() field names cannot start with an underscore: {}")
+NAMEDTUPLE_TOO_MANY_DEFAULTS: Final = ErrorMessage("Too many defaults given in call to namedtuple()")
+NAMEDTUPLE_INVALID_FIELD_DEFINITION: Final = ErrorMessage("Invalid NamedTuple field definition")
+NAMEDTUPLE_INVALID_FIELD_NAME: Final = ErrorMessage("Invalid NamedTuple() field name")
+NAMEDTUPLE_INVALID_FIELD_TYPE: Final = ErrorMessage('Invalid field type')
+NAMEDTUPLE_TUPLE_EXPECTED: Final = ErrorMessage("Tuple expected as NamedTuple() field")
+NAMEDTUPLE_CANNOT_OVERWRITE_ATTRIBUTE: Final = ErrorMessage('Cannot overwrite NamedTuple attribute "{}"')
