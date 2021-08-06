@@ -239,3 +239,24 @@ NEWTYPE_EXPECTS_TWO_ARGS: Final = ErrorMessage("NewType(...) expects exactly two
 NEWTYPE_ARG_STRING_LITERAL: Final = ErrorMessage("Argument 1 to NewType(...) must be a string literal")
 NEWTYPE_ARG_VARNAME_MISMATCH: Final = ErrorMessage('String argument 1 "{}" to NewType(...) does not match variable name "{}"')
 NEWTYPE_ARG_INVALID_TYPE: Final = ErrorMessage("Argument 2 to NewType(...) must be a valid type")
+
+# TypedDict
+TYPEDDICT_BASES_MUST_BE_TYPEDDICTS: Final = ErrorMessage("All bases of a new TypedDict must be TypedDict types")
+TYPEDDICT_OVERWRITE_FIELD_IN_MERGE: Final = ErrorMessage('Overwriting TypedDict field "{}" while merging')
+TYPEDDICT_OVERWRITE_FIELD_IN_EXTEND: Final = ErrorMessage('Overwriting TypedDict field "{}" while extending')
+TYPEDDICT_CLASS_ERROR: Final = ErrorMessage(
+    "Invalid statement in TypedDict definition; " 'expected "field_name: field_type"'
+)
+TYPEDDICT_ARG_NAME_MISMATCH: Final = ErrorMessage('First argument "{}" to TypedDict() does not match variable name "{}"', codes.NAME_MATCH)
+TYPEDDICT_TOO_FEW_ARGS: Final = ErrorMessage("Too few arguments for TypedDict()")
+TYPEDDICT_TOO_MANY_ARGS: Final = ErrorMessage("Too many arguments for TypedDict()")
+TYPEDDICT_UNEXPECTED_ARGS: Final = ErrorMessage("Unexpected arguments to TypedDict()")
+TYPEDDICT_CALL_UNEXPECTED_KWARG: Final = ErrorMessage('Unexpected keyword argument "{}" for "TypedDict"')
+TYPEDDICT_CALL_EXPECTED_STRING_LITERAL: Final = ErrorMessage("TypedDict() expects a string literal as the first argument")
+TYPEDDICT_CALL_EXPECTED_DICT: Final = ErrorMessage("TypedDict() expects a dictionary literal as the second argument")
+TYPEDDICT_RHS_VALUE_UNSUPPORTED: Final = ErrorMessage('Right hand side values are not supported in TypedDict')
+TYPEDDICT_TOTAL_MUST_BE_BOOL: Final = ErrorMessage('TypedDict() "total" argument must be True or False')
+TYPEDDICT_TOTAL_MUST_BE_BOOL_2: Final = ErrorMessage('Value of "total" must be True or False')
+TYPEDDICT_DUPLICATE_KEY: Final = ErrorMessage('Duplicate TypedDict key "{}"')
+TYPEDDICT_INVALID_FIELD_NAME: Final = ErrorMessage("Invalid TypedDict() field name")
+TYPEDDICT_INVALID_FIELD_TYPE: Final = ErrorMessage('Invalid field type')
