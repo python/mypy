@@ -229,3 +229,13 @@ MULTIPLE_KWARGS: Final = ErrorMessage("You may only have one **kwargs argument")
 
 # from type_anal_hook.py
 INVALID_SIGNAL_TYPE: Final = ErrorMessage('Invalid "Signal" type (expected "Signal[[t, ...]]")')
+
+# NewType
+NEWTYPE_USED_WITH_PROTOCOL: Final = ErrorMessage("NewType cannot be used with protocol classes")
+NEWTYPE_ARG_MUST_BE_SUBCLASSABLE: Final = ErrorMessage("Argument 2 to NewType(...) must be subclassable (got {})", codes.VALID_NEWTYPE)
+CANNOT_DECLARE_TYPE_OF_NEWTYPE: Final = ErrorMessage("Cannot declare the type of a NewType declaration")
+CANNOT_REDEFINE_AS_NEWTYPE: Final = ErrorMessage('Cannot redefine "{}" as a NewType')
+NEWTYPE_EXPECTS_TWO_ARGS: Final = ErrorMessage("NewType(...) expects exactly two positional arguments")
+NEWTYPE_ARG_STRING_LITERAL: Final = ErrorMessage("Argument 1 to NewType(...) must be a string literal")
+NEWTYPE_ARG_VARNAME_MISMATCH: Final = ErrorMessage('String argument 1 "{}" to NewType(...) does not match variable name "{}"')
+NEWTYPE_ARG_INVALID_TYPE: Final = ErrorMessage("Argument 2 to NewType(...) must be a valid type")
