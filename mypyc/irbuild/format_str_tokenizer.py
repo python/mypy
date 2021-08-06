@@ -25,6 +25,20 @@ class FormatOp(Enum):
     INT = 'd'
 
 
+def generate_format_ops(specifiers: List[ConversionSpecifier]) -> Optional[List[FormatOp]]:
+    format_ops = []
+    for spec in specifiers:
+        # TODO: Match specifiers instead of using whole_seq
+        if spec.whole_seq == '%s' or spec.whole_seq == '{:{}}':
+            format_op = FormatOp.STR
+        elif spec.whole_seq:
+            return None
+        else:
+            format_op = FormatOp.STR
+        format_ops.append(format_op)
+    return format_ops
+
+
 def tokenizer_printf_style(format_str: str) -> Tuple[List[str], List[ConversionSpecifier]]:
     """Tokenize a printf-style format string using regex.
 
@@ -50,14 +64,16 @@ EMPTY_CONTEXT: Final = Context()
 
 
 def tokenizer_format_call(
-        format_str: str) -> Optional[Tuple[List[str], List[ConversionSpecifier]]]:
+        format_str: str) -> Optional[Tuple[List[str], List[FormatOp]]]:
     """Tokenize a str.format() format string.
 
     The core function parse_format_value() is shared with mypy.
-    However, this function
+    With these specifiers, we then parse the literal substrings
+    of the original format string and convert `ConversionSpecifier`
+    to `FormatOp`.
 
     Return:
-        A list of string literals and a list of conversion operations.
+        A list of string literals and a list of FormatOps.
         Return None if it cannot parse the string.
     """
     # Creates an empty MessageBuilder here.
@@ -65,6 +81,9 @@ def tokenizer_format_call(
     specifiers = parse_format_value(format_str, EMPTY_CONTEXT,
                                     MessageBuilder(Errors(), {}))
     if specifiers is None:
+        return None
+    format_ops = generate_format_ops(specifiers)
+    if format_ops is None:
         return None
 
     literals: List[str] = []
@@ -74,24 +93,10 @@ def tokenizer_format_call(
         literals.append(format_str[last_end:spec.start_pos - 1])
         last_end = spec.start_pos + len(spec.whole_seq) + 1
     literals.append(format_str[last_end:])
-
     # Deal with escaped {{
     literals = [x.replace('{{', '{').replace('}}', '}') for x in literals]
-    return literals, specifiers
 
-
-def generate_format_ops(specifiers: List[ConversionSpecifier]) -> Optional[List[FormatOp]]:
-    format_ops = []
-    for spec in specifiers:
-        # TODO: Match specifiers instead of using whole_seq
-        if spec.whole_seq == '%s' or spec.whole_seq == '{:{}}':
-            format_op = FormatOp.STR
-        elif spec.whole_seq:
-            return None
-        else:
-            format_op = FormatOp.STR
-        format_ops.append(format_op)
-    return format_ops
+    return literals, format_ops
 
 
 def convert_expr(builder: IRBuilder, format_ops: List[FormatOp],
