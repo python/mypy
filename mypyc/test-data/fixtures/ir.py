@@ -115,6 +115,7 @@ class bytearray:
     def __init__(self, x: object) -> None: pass
     @overload
     def __init__(self, string: str, encoding: str, err: str = ...) -> None: pass
+    def __add__(self, s: bytes) -> bytearray: ...
 
 class bool(int):
     def __init__(self, o: object = ...) -> None: ...
