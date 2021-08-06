@@ -400,6 +400,7 @@ Py_ssize_t CPyStr_Size_size_t(PyObject *str);
 // Bytes operations
 
 
+PyObject *CPyBytes_Concat(PyObject *a, PyObject *b);
 PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter);
 
 
