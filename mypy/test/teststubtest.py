@@ -572,6 +572,30 @@ class StubtestUnit(unittest.TestCase):
         )
 
     @collect_cases
+    def test_type_alias(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            class X:
+                def f(self) -> None: ...
+            Y = X
+            """,
+            runtime="""
+            class X:
+                def f(self) -> None: ...
+            class Y: ...
+            """,
+            error="Y.f",
+        )
+        yield Case(
+            stub="""
+            from typing import Tuple
+            A = Tuple[int, str]
+            """,
+            runtime="A = (int, str)",
+            error="A",
+        )
+
+    @collect_cases
     def test_enum(self) -> Iterator[Case]:
         yield Case(
             stub="""

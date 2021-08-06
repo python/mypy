@@ -1426,7 +1426,6 @@ def g() -> None:
 [out]
 
 [case testParamSpec]
-# flags: --wip-pep-612
 from typing_extensions import ParamSpec
 
 TParams = ParamSpec('TParams')

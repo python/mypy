@@ -1,8 +1,9 @@
 import email.message
+import io
 import socketserver
 import sys
-from _typeshed import StrPath
-from typing import Any, ClassVar, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from _typeshed import StrPath, SupportsRead, SupportsWrite
+from typing import Any, AnyStr, BinaryIO, ClassVar, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 class HTTPServer(socketserver.TCPServer):
     server_name: str
@@ -28,6 +29,7 @@ class BaseHTTPRequestHandler(socketserver.StreamRequestHandler):
     protocol_version: str
     MessageClass: type
     responses: Mapping[int, Tuple[str, str]]
+    default_request_version: str  # undocumented
     weekdayname: ClassVar[Sequence[str]] = ...  # Undocumented
     monthname: ClassVar[Sequence[Optional[str]]] = ...  # Undocumented
     def __init__(self, request: bytes, client_address: Tuple[str, int], server: socketserver.BaseServer) -> None: ...
@@ -50,20 +52,29 @@ class BaseHTTPRequestHandler(socketserver.StreamRequestHandler):
     def parse_request(self) -> bool: ...  # Undocumented
 
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
+    server_version: str
     extensions_map: Dict[str, str]
     if sys.version_info >= (3, 7):
         def __init__(
-            self,
-            request: bytes,
-            client_address: Tuple[str, int],
-            server: socketserver.BaseServer,
-            directory: Optional[StrPath] = ...,
+            self, request: bytes, client_address: Tuple[str, int], server: socketserver.BaseServer, directory: str | None = ...
         ) -> None: ...
     else:
         def __init__(self, request: bytes, client_address: Tuple[str, int], server: socketserver.BaseServer) -> None: ...
     def do_GET(self) -> None: ...
     def do_HEAD(self) -> None: ...
+    def send_head(self) -> io.BytesIO | BinaryIO | None: ...  # undocumented
+    def list_directory(self, path: StrPath) -> io.BytesIO | None: ...  # undocumented
+    def translate_path(self, path: str) -> str: ...  # undocumented
+    def copyfile(self, source: SupportsRead[AnyStr], outputfile: SupportsWrite[AnyStr]) -> None: ...  # undocumented
+    def guess_type(self, path: StrPath) -> str: ...  # undocumented
+
+def executable(path: StrPath) -> bool: ...  # undocumented
 
 class CGIHTTPRequestHandler(SimpleHTTPRequestHandler):
     cgi_directories: List[str]
+    have_fork: bool  # undocumented
     def do_POST(self) -> None: ...
+    def is_cgi(self) -> bool: ...  # undocumented
+    def is_executable(self, path: StrPath) -> bool: ...  # undocumented
+    def is_python(self, path: StrPath) -> bool: ...  # undocumented
+    def run_cgi(self) -> None: ...  # undocumented

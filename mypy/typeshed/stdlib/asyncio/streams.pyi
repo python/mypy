@@ -3,6 +3,7 @@ from _typeshed import StrPath
 from typing import Any, AsyncIterator, Awaitable, Callable, Iterable, Optional, Tuple, Union
 
 from . import events, protocols, transports
+from .base_events import Server
 
 _ClientConnectedCallback = Callable[[StreamReader, StreamWriter], Optional[Awaitable[None]]]
 
@@ -33,7 +34,7 @@ async def start_server(
     limit: int = ...,
     ssl_handshake_timeout: Optional[float] = ...,
     **kwds: Any,
-) -> events.AbstractServer: ...
+) -> Server: ...
 
 if sys.platform != "win32":
     if sys.version_info >= (3, 7):
@@ -50,7 +51,7 @@ if sys.platform != "win32":
         loop: Optional[events.AbstractEventLoop] = ...,
         limit: int = ...,
         **kwds: Any,
-    ) -> events.AbstractServer: ...
+    ) -> Server: ...
 
 class FlowControlMixin(protocols.Protocol):
     def __init__(self, loop: Optional[events.AbstractEventLoop] = ...) -> None: ...

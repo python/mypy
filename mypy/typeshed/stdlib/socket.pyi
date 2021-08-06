@@ -1,509 +1,389 @@
 import sys
+from _typeshed import ReadableBuffer, Self, WriteableBuffer
+from collections.abc import Iterable
 from enum import IntEnum, IntFlag
-from typing import Any, BinaryIO, Iterable, List, Optional, TextIO, Tuple, TypeVar, Union, overload
+from io import RawIOBase
+from typing import Any, BinaryIO, Optional, TextIO, TypeVar, Union, overload
 from typing_extensions import Literal
 
-# ----- Constants -----
-# Some socket families are listed in the "Socket families" section of the docs,
-# but not the "Constants" section. These are listed at the end of the list of
-# constants.
-#
-# Besides those and the first few constants listed, the constants are listed in
-# documentation order.
+# Ideally, we'd just do "from _socket import *". Unfortunately, socket
+# overrides some definitions from _socket incompatibly. mypy incorrectly
+# prefers the definitions from _socket over those defined here.
+import _socket
+from _socket import (
+    _FD,
+    CMSG_LEN as CMSG_LEN,
+    CMSG_SPACE as CMSG_SPACE,
+    EAI_ADDRFAMILY as EAI_ADDRFAMILY,
+    EAI_AGAIN as EAI_AGAIN,
+    EAI_BADFLAGS as EAI_BADFLAGS,
+    EAI_BADHINTS as EAI_BADHINTS,
+    EAI_FAIL as EAI_FAIL,
+    EAI_FAMILY as EAI_FAMILY,
+    EAI_MAX as EAI_MAX,
+    EAI_MEMORY as EAI_MEMORY,
+    EAI_NODATA as EAI_NODATA,
+    EAI_NONAME as EAI_NONAME,
+    EAI_OVERFLOW as EAI_OVERFLOW,
+    EAI_PROTOCOL as EAI_PROTOCOL,
+    EAI_SERVICE as EAI_SERVICE,
+    EAI_SOCKTYPE as EAI_SOCKTYPE,
+    EAI_SYSTEM as EAI_SYSTEM,
+    INADDR_ALLHOSTS_GROUP as INADDR_ALLHOSTS_GROUP,
+    INADDR_ANY as INADDR_ANY,
+    INADDR_BROADCAST as INADDR_BROADCAST,
+    INADDR_LOOPBACK as INADDR_LOOPBACK,
+    INADDR_MAX_LOCAL_GROUP as INADDR_MAX_LOCAL_GROUP,
+    INADDR_NONE as INADDR_NONE,
+    INADDR_UNSPEC_GROUP as INADDR_UNSPEC_GROUP,
+    IP_ADD_MEMBERSHIP as IP_ADD_MEMBERSHIP,
+    IP_DEFAULT_MULTICAST_LOOP as IP_DEFAULT_MULTICAST_LOOP,
+    IP_DEFAULT_MULTICAST_TTL as IP_DEFAULT_MULTICAST_TTL,
+    IP_DROP_MEMBERSHIP as IP_DROP_MEMBERSHIP,
+    IP_HDRINCL as IP_HDRINCL,
+    IP_MAX_MEMBERSHIPS as IP_MAX_MEMBERSHIPS,
+    IP_MULTICAST_IF as IP_MULTICAST_IF,
+    IP_MULTICAST_LOOP as IP_MULTICAST_LOOP,
+    IP_MULTICAST_TTL as IP_MULTICAST_TTL,
+    IP_OPTIONS as IP_OPTIONS,
+    IP_RECVDSTADDR as IP_RECVDSTADDR,
+    IP_RECVOPTS as IP_RECVOPTS,
+    IP_RECVRETOPTS as IP_RECVRETOPTS,
+    IP_RETOPTS as IP_RETOPTS,
+    IP_TOS as IP_TOS,
+    IP_TRANSPARENT as IP_TRANSPARENT,
+    IP_TTL as IP_TTL,
+    IPPORT_RESERVED as IPPORT_RESERVED,
+    IPPORT_USERRESERVED as IPPORT_USERRESERVED,
+    IPPROTO_AH as IPPROTO_AH,
+    IPPROTO_BIP as IPPROTO_BIP,
+    IPPROTO_DSTOPTS as IPPROTO_DSTOPTS,
+    IPPROTO_EGP as IPPROTO_EGP,
+    IPPROTO_EON as IPPROTO_EON,
+    IPPROTO_ESP as IPPROTO_ESP,
+    IPPROTO_FRAGMENT as IPPROTO_FRAGMENT,
+    IPPROTO_GGP as IPPROTO_GGP,
+    IPPROTO_GRE as IPPROTO_GRE,
+    IPPROTO_HELLO as IPPROTO_HELLO,
+    IPPROTO_HOPOPTS as IPPROTO_HOPOPTS,
+    IPPROTO_ICMP as IPPROTO_ICMP,
+    IPPROTO_ICMPV6 as IPPROTO_ICMPV6,
+    IPPROTO_IDP as IPPROTO_IDP,
+    IPPROTO_IGMP as IPPROTO_IGMP,
+    IPPROTO_IP as IPPROTO_IP,
+    IPPROTO_IPCOMP as IPPROTO_IPCOMP,
+    IPPROTO_IPIP as IPPROTO_IPIP,
+    IPPROTO_IPV4 as IPPROTO_IPV4,
+    IPPROTO_IPV6 as IPPROTO_IPV6,
+    IPPROTO_MAX as IPPROTO_MAX,
+    IPPROTO_MOBILE as IPPROTO_MOBILE,
+    IPPROTO_ND as IPPROTO_ND,
+    IPPROTO_NONE as IPPROTO_NONE,
+    IPPROTO_PIM as IPPROTO_PIM,
+    IPPROTO_PUP as IPPROTO_PUP,
+    IPPROTO_RAW as IPPROTO_RAW,
+    IPPROTO_ROUTING as IPPROTO_ROUTING,
+    IPPROTO_RSVP as IPPROTO_RSVP,
+    IPPROTO_SCTP as IPPROTO_SCTP,
+    IPPROTO_TCP as IPPROTO_TCP,
+    IPPROTO_TP as IPPROTO_TP,
+    IPPROTO_UDP as IPPROTO_UDP,
+    IPPROTO_VRRP as IPPROTO_VRRP,
+    IPPROTO_XTP as IPPROTO_XTP,
+    IPV6_CHECKSUM as IPV6_CHECKSUM,
+    IPV6_DONTFRAG as IPV6_DONTFRAG,
+    IPV6_DSTOPTS as IPV6_DSTOPTS,
+    IPV6_HOPLIMIT as IPV6_HOPLIMIT,
+    IPV6_HOPOPTS as IPV6_HOPOPTS,
+    IPV6_JOIN_GROUP as IPV6_JOIN_GROUP,
+    IPV6_LEAVE_GROUP as IPV6_LEAVE_GROUP,
+    IPV6_MULTICAST_HOPS as IPV6_MULTICAST_HOPS,
+    IPV6_MULTICAST_IF as IPV6_MULTICAST_IF,
+    IPV6_MULTICAST_LOOP as IPV6_MULTICAST_LOOP,
+    IPV6_NEXTHOP as IPV6_NEXTHOP,
+    IPV6_PATHMTU as IPV6_PATHMTU,
+    IPV6_PKTINFO as IPV6_PKTINFO,
+    IPV6_RECVDSTOPTS as IPV6_RECVDSTOPTS,
+    IPV6_RECVHOPLIMIT as IPV6_RECVHOPLIMIT,
+    IPV6_RECVHOPOPTS as IPV6_RECVHOPOPTS,
+    IPV6_RECVPATHMTU as IPV6_RECVPATHMTU,
+    IPV6_RECVPKTINFO as IPV6_RECVPKTINFO,
+    IPV6_RECVRTHDR as IPV6_RECVRTHDR,
+    IPV6_RECVTCLASS as IPV6_RECVTCLASS,
+    IPV6_RTHDR as IPV6_RTHDR,
+    IPV6_RTHDR_TYPE_0 as IPV6_RTHDR_TYPE_0,
+    IPV6_RTHDRDSTOPTS as IPV6_RTHDRDSTOPTS,
+    IPV6_TCLASS as IPV6_TCLASS,
+    IPV6_UNICAST_HOPS as IPV6_UNICAST_HOPS,
+    IPV6_USE_MIN_MTU as IPV6_USE_MIN_MTU,
+    IPV6_V6ONLY as IPV6_V6ONLY,
+    IPX_TYPE as IPX_TYPE,
+    LOCAL_PEERCRED as LOCAL_PEERCRED,
+    NI_DGRAM as NI_DGRAM,
+    NI_MAXHOST as NI_MAXHOST,
+    NI_MAXSERV as NI_MAXSERV,
+    NI_NAMEREQD as NI_NAMEREQD,
+    NI_NOFQDN as NI_NOFQDN,
+    NI_NUMERICHOST as NI_NUMERICHOST,
+    NI_NUMERICSERV as NI_NUMERICSERV,
+    SCM_CREDENTIALS as SCM_CREDENTIALS,
+    SCM_CREDS as SCM_CREDS,
+    SCM_RIGHTS as SCM_RIGHTS,
+    SHUT_RD as SHUT_RD,
+    SHUT_RDWR as SHUT_RDWR,
+    SHUT_WR as SHUT_WR,
+    SO_ACCEPTCONN as SO_ACCEPTCONN,
+    SO_BINDTODEVICE as SO_BINDTODEVICE,
+    SO_BROADCAST as SO_BROADCAST,
+    SO_DEBUG as SO_DEBUG,
+    SO_DONTROUTE as SO_DONTROUTE,
+    SO_ERROR as SO_ERROR,
+    SO_EXCLUSIVEADDRUSE as SO_EXCLUSIVEADDRUSE,
+    SO_KEEPALIVE as SO_KEEPALIVE,
+    SO_LINGER as SO_LINGER,
+    SO_MARK as SO_MARK,
+    SO_OOBINLINE as SO_OOBINLINE,
+    SO_PASSCRED as SO_PASSCRED,
+    SO_PEERCRED as SO_PEERCRED,
+    SO_PRIORITY as SO_PRIORITY,
+    SO_RCVBUF as SO_RCVBUF,
+    SO_RCVLOWAT as SO_RCVLOWAT,
+    SO_RCVTIMEO as SO_RCVTIMEO,
+    SO_REUSEADDR as SO_REUSEADDR,
+    SO_REUSEPORT as SO_REUSEPORT,
+    SO_SETFIB as SO_SETFIB,
+    SO_SNDBUF as SO_SNDBUF,
+    SO_SNDLOWAT as SO_SNDLOWAT,
+    SO_SNDTIMEO as SO_SNDTIMEO,
+    SO_TYPE as SO_TYPE,
+    SO_USELOOPBACK as SO_USELOOPBACK,
+    SOL_ATALK as SOL_ATALK,
+    SOL_AX25 as SOL_AX25,
+    SOL_HCI as SOL_HCI,
+    SOL_IP as SOL_IP,
+    SOL_IPX as SOL_IPX,
+    SOL_NETROM as SOL_NETROM,
+    SOL_ROSE as SOL_ROSE,
+    SOL_SOCKET as SOL_SOCKET,
+    SOL_TCP as SOL_TCP,
+    SOL_UDP as SOL_UDP,
+    SOMAXCONN as SOMAXCONN,
+    TCP_CORK as TCP_CORK,
+    TCP_DEFER_ACCEPT as TCP_DEFER_ACCEPT,
+    TCP_FASTOPEN as TCP_FASTOPEN,
+    TCP_INFO as TCP_INFO,
+    TCP_KEEPCNT as TCP_KEEPCNT,
+    TCP_KEEPIDLE as TCP_KEEPIDLE,
+    TCP_KEEPINTVL as TCP_KEEPINTVL,
+    TCP_LINGER2 as TCP_LINGER2,
+    TCP_MAXSEG as TCP_MAXSEG,
+    TCP_NODELAY as TCP_NODELAY,
+    TCP_QUICKACK as TCP_QUICKACK,
+    TCP_SYNCNT as TCP_SYNCNT,
+    TCP_WINDOW_CLAMP as TCP_WINDOW_CLAMP,
+    SocketType as SocketType,
+    _Address as _Address,
+    _RetAddress as _RetAddress,
+    dup as dup,
+    error as error,
+    gaierror as gaierror,
+    getdefaulttimeout as getdefaulttimeout,
+    gethostbyaddr as gethostbyaddr,
+    gethostbyname as gethostbyname,
+    gethostbyname_ex as gethostbyname_ex,
+    gethostname as gethostname,
+    getnameinfo as getnameinfo,
+    getprotobyname as getprotobyname,
+    getservbyname as getservbyname,
+    getservbyport as getservbyport,
+    has_ipv6 as has_ipv6,
+    herror as herror,
+    htonl as htonl,
+    htons as htons,
+    inet_aton as inet_aton,
+    inet_ntoa as inet_ntoa,
+    inet_ntop as inet_ntop,
+    inet_pton as inet_pton,
+    ntohl as ntohl,
+    ntohs as ntohs,
+    setdefaulttimeout as setdefaulttimeout,
+    timeout as timeout,
+)
 
-# Constants defined by Python (i.e. not OS constants re-exported from C)
-has_ipv6: bool
-SocketType: Any
-SocketIO: Any
+if sys.version_info >= (3, 7):
+    from _socket import close as close
+if sys.platform != "win32":
+    from _socket import sethostname as sethostname
+if sys.platform != "win32" or sys.version_info >= (3, 8):
+    from _socket import if_indextoname as if_indextoname, if_nameindex as if_nameindex, if_nametoindex as if_nametoindex
+if sys.platform == "linux":
+    from _socket import (
+        ALG_OP_DECRYPT as ALG_OP_DECRYPT,
+        ALG_OP_ENCRYPT as ALG_OP_ENCRYPT,
+        ALG_OP_SIGN as ALG_OP_SIGN,
+        ALG_OP_VERIFY as ALG_OP_VERIFY,
+        ALG_SET_AEAD_ASSOCLEN as ALG_SET_AEAD_ASSOCLEN,
+        ALG_SET_AEAD_AUTHSIZE as ALG_SET_AEAD_AUTHSIZE,
+        ALG_SET_IV as ALG_SET_IV,
+        ALG_SET_KEY as ALG_SET_KEY,
+        ALG_SET_OP as ALG_SET_OP,
+        ALG_SET_PUBKEY as ALG_SET_PUBKEY,
+        CAN_BCM as CAN_BCM,
+        CAN_BCM_RX_CHANGED as CAN_BCM_RX_CHANGED,
+        CAN_BCM_RX_DELETE as CAN_BCM_RX_DELETE,
+        CAN_BCM_RX_READ as CAN_BCM_RX_READ,
+        CAN_BCM_RX_SETUP as CAN_BCM_RX_SETUP,
+        CAN_BCM_RX_STATUS as CAN_BCM_RX_STATUS,
+        CAN_BCM_RX_TIMEOUT as CAN_BCM_RX_TIMEOUT,
+        CAN_BCM_TX_DELETE as CAN_BCM_TX_DELETE,
+        CAN_BCM_TX_EXPIRED as CAN_BCM_TX_EXPIRED,
+        CAN_BCM_TX_READ as CAN_BCM_TX_READ,
+        CAN_BCM_TX_SEND as CAN_BCM_TX_SEND,
+        CAN_BCM_TX_SETUP as CAN_BCM_TX_SETUP,
+        CAN_BCM_TX_STATUS as CAN_BCM_TX_STATUS,
+        CAN_EFF_FLAG as CAN_EFF_FLAG,
+        CAN_EFF_MASK as CAN_EFF_MASK,
+        CAN_ERR_FLAG as CAN_ERR_FLAG,
+        CAN_ERR_MASK as CAN_ERR_MASK,
+        CAN_RAW as CAN_RAW,
+        CAN_RAW_ERR_FILTER as CAN_RAW_ERR_FILTER,
+        CAN_RAW_FD_FRAMES as CAN_RAW_FD_FRAMES,
+        CAN_RAW_FILTER as CAN_RAW_FILTER,
+        CAN_RAW_LOOPBACK as CAN_RAW_LOOPBACK,
+        CAN_RAW_RECV_OWN_MSGS as CAN_RAW_RECV_OWN_MSGS,
+        CAN_RTR_FLAG as CAN_RTR_FLAG,
+        CAN_SFF_MASK as CAN_SFF_MASK,
+        PACKET_BROADCAST as PACKET_BROADCAST,
+        PACKET_FASTROUTE as PACKET_FASTROUTE,
+        PACKET_HOST as PACKET_HOST,
+        PACKET_LOOPBACK as PACKET_LOOPBACK,
+        PACKET_MULTICAST as PACKET_MULTICAST,
+        PACKET_OTHERHOST as PACKET_OTHERHOST,
+        PACKET_OUTGOING as PACKET_OUTGOING,
+        PF_CAN as PF_CAN,
+        PF_PACKET as PF_PACKET,
+        PF_RDS as PF_RDS,
+        RDS_CANCEL_SENT_TO as RDS_CANCEL_SENT_TO,
+        RDS_CMSG_RDMA_ARGS as RDS_CMSG_RDMA_ARGS,
+        RDS_CMSG_RDMA_DEST as RDS_CMSG_RDMA_DEST,
+        RDS_CMSG_RDMA_MAP as RDS_CMSG_RDMA_MAP,
+        RDS_CMSG_RDMA_STATUS as RDS_CMSG_RDMA_STATUS,
+        RDS_CMSG_RDMA_UPDATE as RDS_CMSG_RDMA_UPDATE,
+        RDS_CONG_MONITOR as RDS_CONG_MONITOR,
+        RDS_FREE_MR as RDS_FREE_MR,
+        RDS_GET_MR as RDS_GET_MR,
+        RDS_GET_MR_FOR_DEST as RDS_GET_MR_FOR_DEST,
+        RDS_RDMA_DONTWAIT as RDS_RDMA_DONTWAIT,
+        RDS_RDMA_FENCE as RDS_RDMA_FENCE,
+        RDS_RDMA_INVALIDATE as RDS_RDMA_INVALIDATE,
+        RDS_RDMA_NOTIFY_ME as RDS_RDMA_NOTIFY_ME,
+        RDS_RDMA_READWRITE as RDS_RDMA_READWRITE,
+        RDS_RDMA_SILENT as RDS_RDMA_SILENT,
+        RDS_RDMA_USE_ONCE as RDS_RDMA_USE_ONCE,
+        RDS_RECVERR as RDS_RECVERR,
+        SOL_ALG as SOL_ALG,
+        SOL_CAN_BASE as SOL_CAN_BASE,
+        SOL_CAN_RAW as SOL_CAN_RAW,
+        SOL_RDS as SOL_RDS,
+        SOL_TIPC as SOL_TIPC,
+        TIPC_ADDR_ID as TIPC_ADDR_ID,
+        TIPC_ADDR_NAME as TIPC_ADDR_NAME,
+        TIPC_ADDR_NAMESEQ as TIPC_ADDR_NAMESEQ,
+        TIPC_CFG_SRV as TIPC_CFG_SRV,
+        TIPC_CLUSTER_SCOPE as TIPC_CLUSTER_SCOPE,
+        TIPC_CONN_TIMEOUT as TIPC_CONN_TIMEOUT,
+        TIPC_CRITICAL_IMPORTANCE as TIPC_CRITICAL_IMPORTANCE,
+        TIPC_DEST_DROPPABLE as TIPC_DEST_DROPPABLE,
+        TIPC_HIGH_IMPORTANCE as TIPC_HIGH_IMPORTANCE,
+        TIPC_IMPORTANCE as TIPC_IMPORTANCE,
+        TIPC_LOW_IMPORTANCE as TIPC_LOW_IMPORTANCE,
+        TIPC_MEDIUM_IMPORTANCE as TIPC_MEDIUM_IMPORTANCE,
+        TIPC_NODE_SCOPE as TIPC_NODE_SCOPE,
+        TIPC_PUBLISHED as TIPC_PUBLISHED,
+        TIPC_SRC_DROPPABLE as TIPC_SRC_DROPPABLE,
+        TIPC_SUB_CANCEL as TIPC_SUB_CANCEL,
+        TIPC_SUB_PORTS as TIPC_SUB_PORTS,
+        TIPC_SUB_SERVICE as TIPC_SUB_SERVICE,
+        TIPC_SUBSCR_TIMEOUT as TIPC_SUBSCR_TIMEOUT,
+        TIPC_TOP_SRV as TIPC_TOP_SRV,
+        TIPC_WAIT_FOREVER as TIPC_WAIT_FOREVER,
+        TIPC_WITHDRAWN as TIPC_WITHDRAWN,
+        TIPC_ZONE_SCOPE as TIPC_ZONE_SCOPE,
+    )
+if sys.platform == "linux" and sys.version_info >= (3, 7):
+    from _socket import (
+        CAN_ISOTP as CAN_ISOTP,
+        IOCTL_VM_SOCKETS_GET_LOCAL_CID as IOCTL_VM_SOCKETS_GET_LOCAL_CID,
+        SO_VM_SOCKETS_BUFFER_MAX_SIZE as SO_VM_SOCKETS_BUFFER_MAX_SIZE,
+        SO_VM_SOCKETS_BUFFER_MIN_SIZE as SO_VM_SOCKETS_BUFFER_MIN_SIZE,
+        SO_VM_SOCKETS_BUFFER_SIZE as SO_VM_SOCKETS_BUFFER_SIZE,
+        TCP_NOTSENT_LOWAT as TCP_NOTSENT_LOWAT,
+        VM_SOCKETS_INVALID_VERSION as VM_SOCKETS_INVALID_VERSION,
+        VMADDR_CID_ANY as VMADDR_CID_ANY,
+        VMADDR_CID_HOST as VMADDR_CID_HOST,
+        VMADDR_PORT_ANY as VMADDR_PORT_ANY,
+    )
+if sys.platform == "linux" and sys.version_info >= (3, 8):
+    from _socket import (
+        CAN_BCM_CAN_FD_FRAME as CAN_BCM_CAN_FD_FRAME,
+        CAN_BCM_RX_ANNOUNCE_RESUME as CAN_BCM_RX_ANNOUNCE_RESUME,
+        CAN_BCM_RX_CHECK_DLC as CAN_BCM_RX_CHECK_DLC,
+        CAN_BCM_RX_FILTER_ID as CAN_BCM_RX_FILTER_ID,
+        CAN_BCM_RX_NO_AUTOTIMER as CAN_BCM_RX_NO_AUTOTIMER,
+        CAN_BCM_RX_RTR_FRAME as CAN_BCM_RX_RTR_FRAME,
+        CAN_BCM_SETTIMER as CAN_BCM_SETTIMER,
+        CAN_BCM_STARTTIMER as CAN_BCM_STARTTIMER,
+        CAN_BCM_TX_ANNOUNCE as CAN_BCM_TX_ANNOUNCE,
+        CAN_BCM_TX_COUNTEVT as CAN_BCM_TX_COUNTEVT,
+        CAN_BCM_TX_CP_CAN_ID as CAN_BCM_TX_CP_CAN_ID,
+        CAN_BCM_TX_RESET_MULTI_IDX as CAN_BCM_TX_RESET_MULTI_IDX,
+    )
+if sys.platform == "linux" and sys.version_info >= (3, 9):
+    from _socket import (
+        CAN_J1939 as CAN_J1939,
+        J1939_EE_INFO_NONE as J1939_EE_INFO_NONE,
+        J1939_EE_INFO_TX_ABORT as J1939_EE_INFO_TX_ABORT,
+        J1939_FILTER_MAX as J1939_FILTER_MAX,
+        J1939_IDLE_ADDR as J1939_IDLE_ADDR,
+        J1939_MAX_UNICAST_ADDR as J1939_MAX_UNICAST_ADDR,
+        J1939_NLA_BYTES_ACKED as J1939_NLA_BYTES_ACKED,
+        J1939_NLA_PAD as J1939_NLA_PAD,
+        J1939_NO_ADDR as J1939_NO_ADDR,
+        J1939_NO_NAME as J1939_NO_NAME,
+        J1939_NO_PGN as J1939_NO_PGN,
+        J1939_PGN_ADDRESS_CLAIMED as J1939_PGN_ADDRESS_CLAIMED,
+        J1939_PGN_ADDRESS_COMMANDED as J1939_PGN_ADDRESS_COMMANDED,
+        J1939_PGN_MAX as J1939_PGN_MAX,
+        J1939_PGN_PDU1_MAX as J1939_PGN_PDU1_MAX,
+        J1939_PGN_REQUEST as J1939_PGN_REQUEST,
+        SCM_J1939_DEST_ADDR as SCM_J1939_DEST_ADDR,
+        SCM_J1939_DEST_NAME as SCM_J1939_DEST_NAME,
+        SCM_J1939_ERRQUEUE as SCM_J1939_ERRQUEUE,
+        SCM_J1939_PRIO as SCM_J1939_PRIO,
+        SO_J1939_ERRQUEUE as SO_J1939_ERRQUEUE,
+        SO_J1939_FILTER as SO_J1939_FILTER,
+        SO_J1939_PROMISC as SO_J1939_PROMISC,
+        SO_J1939_SEND_PRIO as SO_J1939_SEND_PRIO,
+    )
+if sys.platform == "win32":
+    from _socket import (
+        RCVALL_IPLEVEL as RCVALL_IPLEVEL,
+        RCVALL_MAX as RCVALL_MAX,
+        RCVALL_OFF as RCVALL_OFF,
+        RCVALL_ON as RCVALL_ON,
+        RCVALL_SOCKETLEVELONLY as RCVALL_SOCKETLEVELONLY,
+        SIO_KEEPALIVE_VALS as SIO_KEEPALIVE_VALS,
+        SIO_LOOPBACK_FAST_PATH as SIO_LOOPBACK_FAST_PATH,
+        SIO_RCVALL as SIO_RCVALL,
+    )
 
-# Re-exported errno
-EAGAIN: int
+_T = TypeVar("_T")
+
+# Re-exported from errno
 EBADF: int
-EINTR: int
+EAGAIN: int
 EWOULDBLOCK: int
 
-# Constants re-exported from C
-
-# Per socketmodule.c, only these three families are portable
-AF_UNIX: AddressFamily
-AF_INET: AddressFamily
-AF_INET6: AddressFamily
-
-SOCK_STREAM: SocketKind
-SOCK_DGRAM: SocketKind
-SOCK_RAW: SocketKind
-SOCK_RDM: SocketKind
-SOCK_SEQPACKET: SocketKind
-
-if sys.platform == "linux":
-    SOCK_CLOEXEC: SocketKind
-    SOCK_NONBLOCK: SocketKind
-
-# Address families not mentioned in the docs
-AF_AAL5: AddressFamily
-AF_APPLETALK: AddressFamily
-AF_ASH: AddressFamily
-AF_ATMPVC: AddressFamily
-AF_ATMSVC: AddressFamily
-AF_AX25: AddressFamily
-AF_BRIDGE: AddressFamily
-AF_DECnet: AddressFamily
-AF_ECONET: AddressFamily
-AF_IPX: AddressFamily
-AF_IRDA: AddressFamily
-AF_KEY: AddressFamily
-AF_LLC: AddressFamily
-AF_NETBEUI: AddressFamily
-AF_NETROM: AddressFamily
-AF_PPPOX: AddressFamily
-AF_ROSE: AddressFamily
-AF_ROUTE: AddressFamily
-AF_SECURITY: AddressFamily
-AF_SNA: AddressFamily
-AF_SYSTEM: AddressFamily
-AF_UNSPEC: AddressFamily
-AF_WANPIPE: AddressFamily
-AF_X25: AddressFamily
-
-# The "many constants" referenced by the docs
-SOMAXCONN: int
-AI_ADDRCONFIG: AddressInfo
-AI_ALL: AddressInfo
-AI_CANONNAME: AddressInfo
-AI_DEFAULT: AddressInfo
-AI_MASK: AddressInfo
-AI_NUMERICHOST: AddressInfo
-AI_NUMERICSERV: AddressInfo
-AI_PASSIVE: AddressInfo
-AI_V4MAPPED: AddressInfo
-AI_V4MAPPED_CFG: AddressInfo
-EAI_ADDRFAMILY: int
-EAI_AGAIN: int
-EAI_BADFLAGS: int
-EAI_BADHINTS: int
-EAI_FAIL: int
-EAI_FAMILY: int
-EAI_MAX: int
-EAI_MEMORY: int
-EAI_NODATA: int
-EAI_NONAME: int
-EAI_OVERFLOW: int
-EAI_PROTOCOL: int
-EAI_SERVICE: int
-EAI_SOCKTYPE: int
-EAI_SYSTEM: int
-INADDR_ALLHOSTS_GROUP: int
-INADDR_ANY: int
-INADDR_BROADCAST: int
-INADDR_LOOPBACK: int
-INADDR_MAX_LOCAL_GROUP: int
-INADDR_NONE: int
-INADDR_UNSPEC_GROUP: int
-IPPORT_RESERVED: int
-IPPORT_USERRESERVED: int
-IPPROTO_AH: int
-IPPROTO_BIP: int
-IPPROTO_DSTOPTS: int
-IPPROTO_EGP: int
-IPPROTO_EON: int
-IPPROTO_ESP: int
-IPPROTO_FRAGMENT: int
-IPPROTO_GGP: int
-IPPROTO_GRE: int
-IPPROTO_HELLO: int
-IPPROTO_HOPOPTS: int
-IPPROTO_ICMP: int
-IPPROTO_ICMPV6: int
-IPPROTO_IDP: int
-IPPROTO_IGMP: int
-IPPROTO_IP: int
-IPPROTO_IPCOMP: int
-IPPROTO_IPIP: int
-IPPROTO_IPV4: int
-IPPROTO_IPV6: int
-IPPROTO_MAX: int
-IPPROTO_MOBILE: int
-IPPROTO_ND: int
-IPPROTO_NONE: int
-IPPROTO_PIM: int
-IPPROTO_PUP: int
-IPPROTO_RAW: int
-IPPROTO_ROUTING: int
-IPPROTO_RSVP: int
-IPPROTO_SCTP: int
-IPPROTO_TCP: int
-IPPROTO_TP: int
-IPPROTO_UDP: int
-IPPROTO_VRRP: int
-IPPROTO_XTP: int
-IPV6_CHECKSUM: int
-IPV6_DONTFRAG: int
-IPV6_DSTOPTS: int
-IPV6_HOPLIMIT: int
-IPV6_HOPOPTS: int
-IPV6_JOIN_GROUP: int
-IPV6_LEAVE_GROUP: int
-IPV6_MULTICAST_HOPS: int
-IPV6_MULTICAST_IF: int
-IPV6_MULTICAST_LOOP: int
-IPV6_NEXTHOP: int
-IPV6_PATHMTU: int
-IPV6_PKTINFO: int
-IPV6_RECVDSTOPTS: int
-IPV6_RECVHOPLIMIT: int
-IPV6_RECVHOPOPTS: int
-IPV6_RECVPATHMTU: int
-IPV6_RECVPKTINFO: int
-IPV6_RECVRTHDR: int
-IPV6_RECVTCLASS: int
-IPV6_RTHDR: int
-IPV6_RTHDRDSTOPTS: int
-IPV6_RTHDR_TYPE_0: int
-IPV6_TCLASS: int
-IPV6_UNICAST_HOPS: int
-IPV6_USE_MIN_MTU: int
-IPV6_V6ONLY: int
-IPX_TYPE: int
-IP_ADD_MEMBERSHIP: int
-IP_DEFAULT_MULTICAST_LOOP: int
-IP_DEFAULT_MULTICAST_TTL: int
-IP_DROP_MEMBERSHIP: int
-IP_HDRINCL: int
-IP_MAX_MEMBERSHIPS: int
-IP_MULTICAST_IF: int
-IP_MULTICAST_LOOP: int
-IP_MULTICAST_TTL: int
-IP_OPTIONS: int
-IP_RECVDSTADDR: int
-IP_RECVOPTS: int
-IP_RECVRETOPTS: int
-IP_RETOPTS: int
-IP_TOS: int
-IP_TRANSPARENT: int
-IP_TTL: int
-LOCAL_PEERCRED: int
-MSG_BCAST: MsgFlag
-MSG_BTAG: MsgFlag
-MSG_CMSG_CLOEXEC: MsgFlag
-MSG_CONFIRM: MsgFlag
-MSG_CTRUNC: MsgFlag
-MSG_DONTROUTE: MsgFlag
-MSG_DONTWAIT: MsgFlag
-MSG_EOF: MsgFlag
-MSG_EOR: MsgFlag
-MSG_ERRQUEUE: MsgFlag
-MSG_ETAG: MsgFlag
-MSG_FASTOPEN: MsgFlag
-MSG_MCAST: MsgFlag
-MSG_MORE: MsgFlag
-MSG_NOSIGNAL: MsgFlag
-MSG_NOTIFICATION: MsgFlag
-MSG_OOB: MsgFlag
-MSG_PEEK: MsgFlag
-MSG_TRUNC: MsgFlag
-MSG_WAITALL: MsgFlag
-NI_DGRAM: int
-NI_MAXHOST: int
-NI_MAXSERV: int
-NI_NAMEREQD: int
-NI_NOFQDN: int
-NI_NUMERICHOST: int
-NI_NUMERICSERV: int
-SCM_CREDENTIALS: int
-SCM_CREDS: int
-SCM_RIGHTS: int
-SHUT_RD: int
-SHUT_RDWR: int
-SHUT_WR: int
-SOL_ATALK: int
-SOL_AX25: int
-SOL_HCI: int
-SOL_IP: int
-SOL_IPX: int
-SOL_NETROM: int
-SOL_ROSE: int
-SOL_SOCKET: int
-SOL_TCP: int
-SOL_UDP: int
-SO_ACCEPTCONN: int
-SO_BINDTODEVICE: int
-SO_BROADCAST: int
-SO_DEBUG: int
-SO_DONTROUTE: int
-SO_ERROR: int
-SO_EXCLUSIVEADDRUSE: int
-SO_KEEPALIVE: int
-SO_LINGER: int
-SO_MARK: int
-SO_OOBINLINE: int
-SO_PASSCRED: int
-SO_PEERCRED: int
-SO_PRIORITY: int
-SO_RCVBUF: int
-SO_RCVLOWAT: int
-SO_RCVTIMEO: int
-SO_REUSEADDR: int
-SO_REUSEPORT: int
-SO_SETFIB: int
-SO_SNDBUF: int
-SO_SNDLOWAT: int
-SO_SNDTIMEO: int
-SO_TYPE: int
-SO_USELOOPBACK: int
-TCP_CORK: int
-TCP_DEFER_ACCEPT: int
-TCP_FASTOPEN: int
-TCP_INFO: int
-TCP_KEEPCNT: int
-TCP_KEEPIDLE: int
-TCP_KEEPINTVL: int
-TCP_LINGER2: int
-TCP_MAXSEG: int
-TCP_NODELAY: int
-TCP_QUICKACK: int
-TCP_SYNCNT: int
-TCP_WINDOW_CLAMP: int
-if sys.version_info >= (3, 7):
-    TCP_NOTSENT_LOWAT: int
-
-# Specifically-documented constants
-
-if sys.platform == "linux":
-    AF_CAN: AddressFamily
-    PF_CAN: int
-    SOL_CAN_BASE: int
-    SOL_CAN_RAW: int
-    CAN_EFF_FLAG: int
-    CAN_EFF_MASK: int
-    CAN_ERR_FLAG: int
-    CAN_ERR_MASK: int
-    CAN_RAW: int
-    CAN_RAW_ERR_FILTER: int
-    CAN_RAW_FILTER: int
-    CAN_RAW_LOOPBACK: int
-    CAN_RAW_RECV_OWN_MSGS: int
-    CAN_RTR_FLAG: int
-    CAN_SFF_MASK: int
-
-    CAN_BCM: int
-    CAN_BCM_TX_SETUP: int
-    CAN_BCM_TX_DELETE: int
-    CAN_BCM_TX_READ: int
-    CAN_BCM_TX_SEND: int
-    CAN_BCM_RX_SETUP: int
-    CAN_BCM_RX_DELETE: int
-    CAN_BCM_RX_READ: int
-    CAN_BCM_TX_STATUS: int
-    CAN_BCM_TX_EXPIRED: int
-    CAN_BCM_RX_STATUS: int
-    CAN_BCM_RX_TIMEOUT: int
-    CAN_BCM_RX_CHANGED: int
-
-    CAN_RAW_FD_FRAMES: int
-
-if sys.platform == "linux" and sys.version_info >= (3, 8):
-    CAN_BCM_SETTIMER: int
-    CAN_BCM_STARTTIMER: int
-    CAN_BCM_TX_COUNTEVT: int
-    CAN_BCM_TX_ANNOUNCE: int
-    CAN_BCM_TX_CP_CAN_ID: int
-    CAN_BCM_RX_FILTER_ID: int
-    CAN_BCM_RX_CHECK_DLC: int
-    CAN_BCM_RX_NO_AUTOTIMER: int
-    CAN_BCM_RX_ANNOUNCE_RESUME: int
-    CAN_BCM_TX_RESET_MULTI_IDX: int
-    CAN_BCM_RX_RTR_FRAME: int
-    CAN_BCM_CAN_FD_FRAME: int
-
-if sys.platform == "linux" and sys.version_info >= (3, 7):
-    CAN_ISOTP: int
-
-if sys.platform == "linux" and sys.version_info >= (3, 9):
-    CAN_J1939: int
-
-    J1939_MAX_UNICAST_ADDR: int
-    J1939_IDLE_ADDR: int
-    J1939_NO_ADDR: int
-    J1939_NO_NAME: int
-    J1939_PGN_REQUEST: int
-    J1939_PGN_ADDRESS_CLAIMED: int
-    J1939_PGN_ADDRESS_COMMANDED: int
-    J1939_PGN_PDU1_MAX: int
-    J1939_PGN_MAX: int
-    J1939_NO_PGN: int
-
-    SO_J1939_FILTER: int
-    SO_J1939_PROMISC: int
-    SO_J1939_SEND_PRIO: int
-    SO_J1939_ERRQUEUE: int
-
-    SCM_J1939_DEST_ADDR: int
-    SCM_J1939_DEST_NAME: int
-    SCM_J1939_PRIO: int
-    SCM_J1939_ERRQUEUE: int
-
-    J1939_NLA_PAD: int
-    J1939_NLA_BYTES_ACKED: int
-
-    J1939_EE_INFO_NONE: int
-    J1939_EE_INFO_TX_ABORT: int
-
-    J1939_FILTER_MAX: int
-
-if sys.platform == "linux":
-    AF_PACKET: AddressFamily
-    PF_PACKET: int
-    PACKET_BROADCAST: int
-    PACKET_FASTROUTE: int
-    PACKET_HOST: int
-    PACKET_LOOPBACK: int
-    PACKET_MULTICAST: int
-    PACKET_OTHERHOST: int
-    PACKET_OUTGOING: int
-
-if sys.platform == "linux":
-    AF_RDS: AddressFamily
-    PF_RDS: int
-    SOL_RDS: int
-    RDS_CANCEL_SENT_TO: int
-    RDS_CMSG_RDMA_ARGS: int
-    RDS_CMSG_RDMA_DEST: int
-    RDS_CMSG_RDMA_MAP: int
-    RDS_CMSG_RDMA_STATUS: int
-    RDS_CMSG_RDMA_UPDATE: int
-    RDS_CONG_MONITOR: int
-    RDS_FREE_MR: int
-    RDS_GET_MR: int
-    RDS_GET_MR_FOR_DEST: int
-    RDS_RDMA_DONTWAIT: int
-    RDS_RDMA_FENCE: int
-    RDS_RDMA_INVALIDATE: int
-    RDS_RDMA_NOTIFY_ME: int
-    RDS_RDMA_READWRITE: int
-    RDS_RDMA_SILENT: int
-    RDS_RDMA_USE_ONCE: int
-    RDS_RECVERR: int
-
-if sys.platform == "win32":
-    SIO_RCVALL: int
-    SIO_KEEPALIVE_VALS: int
-    SIO_LOOPBACK_FAST_PATH: int
-    RCVALL_IPLEVEL: int
-    RCVALL_MAX: int
-    RCVALL_OFF: int
-    RCVALL_ON: int
-    RCVALL_SOCKETLEVELONLY: int
-
-if sys.platform == "linux":
-    AF_TIPC: AddressFamily
-    SOL_TIPC: int
-    TIPC_ADDR_ID: int
-    TIPC_ADDR_NAME: int
-    TIPC_ADDR_NAMESEQ: int
-    TIPC_CFG_SRV: int
-    TIPC_CLUSTER_SCOPE: int
-    TIPC_CONN_TIMEOUT: int
-    TIPC_CRITICAL_IMPORTANCE: int
-    TIPC_DEST_DROPPABLE: int
-    TIPC_HIGH_IMPORTANCE: int
-    TIPC_IMPORTANCE: int
-    TIPC_LOW_IMPORTANCE: int
-    TIPC_MEDIUM_IMPORTANCE: int
-    TIPC_NODE_SCOPE: int
-    TIPC_PUBLISHED: int
-    TIPC_SRC_DROPPABLE: int
-    TIPC_SUBSCR_TIMEOUT: int
-    TIPC_SUB_CANCEL: int
-    TIPC_SUB_PORTS: int
-    TIPC_SUB_SERVICE: int
-    TIPC_TOP_SRV: int
-    TIPC_WAIT_FOREVER: int
-    TIPC_WITHDRAWN: int
-    TIPC_ZONE_SCOPE: int
-
-if sys.platform == "linux":
-    AF_ALG: AddressFamily
-    SOL_ALG: int
-    ALG_OP_DECRYPT: int
-    ALG_OP_ENCRYPT: int
-    ALG_OP_SIGN: int
-    ALG_OP_VERIFY: int
-    ALG_SET_AEAD_ASSOCLEN: int
-    ALG_SET_AEAD_AUTHSIZE: int
-    ALG_SET_IV: int
-    ALG_SET_KEY: int
-    ALG_SET_OP: int
-    ALG_SET_PUBKEY: int
-
-if sys.platform == "linux" and sys.version_info >= (3, 7):
-    AF_VSOCK: AddressFamily
-    IOCTL_VM_SOCKETS_GET_LOCAL_CID: int
-    VMADDR_CID_ANY: int
-    VMADDR_CID_HOST: int
-    VMADDR_PORT_ANY: int
-    SO_VM_SOCKETS_BUFFER_MAX_SIZE: int
-    SO_VM_SOCKETS_BUFFER_SIZE: int
-    SO_VM_SOCKETS_BUFFER_MIN_SIZE: int
-    VM_SOCKETS_INVALID_VERSION: int
-
-AF_LINK: AddressFamily  # Availability: BSD, macOS
-
-# BDADDR_* and HCI_* listed with other bluetooth constants below
-
-SO_DOMAIN: int
-SO_PASSSEC: int
-SO_PEERSEC: int
-SO_PROTOCOL: int
-TCP_CONGESTION: int
-TCP_USER_TIMEOUT: int
-
-if sys.platform == "linux" and sys.version_info >= (3, 8):
-    AF_QIPCRTR: AddressFamily
-
-# Semi-documented constants
-# (Listed under "Socket families" in the docs, but not "Constants")
-
-if sys.platform == "linux":
-    # Netlink is defined by Linux
-    AF_NETLINK: AddressFamily
-    NETLINK_ARPD: int
-    NETLINK_CRYPTO: int
-    NETLINK_DNRTMSG: int
-    NETLINK_FIREWALL: int
-    NETLINK_IP6_FW: int
-    NETLINK_NFLOG: int
-    NETLINK_ROUTE6: int
-    NETLINK_ROUTE: int
-    NETLINK_SKIP: int
-    NETLINK_TAPBASE: int
-    NETLINK_TCPDIAG: int
-    NETLINK_USERSOCK: int
-    NETLINK_W1: int
-    NETLINK_XFRM: int
-
-if sys.platform != "win32" and sys.platform != "darwin":
-    # Linux and some BSD support is explicit in the docs
-    # Windows and macOS do not support in practice
-    AF_BLUETOOTH: AddressFamily
-    BTPROTO_HCI: int
-    BTPROTO_L2CAP: int
-    BTPROTO_RFCOMM: int
-    BTPROTO_SCO: int  # not in FreeBSD
-
-    BDADDR_ANY: str
-    BDADDR_LOCAL: str
-
-    HCI_FILTER: int  # not in NetBSD or DragonFlyBSD
-    # not in FreeBSD, NetBSD, or DragonFlyBSD
-    HCI_TIME_STAMP: int
-    HCI_DATA_DIR: int
-
-if sys.platform == "darwin":
-    # PF_SYSTEM is defined by macOS
-    PF_SYSTEM: int
-    SYSPROTO_CONTROL: int
-
-# enum versions of above flags
 class AddressFamily(IntEnum):
     AF_UNIX: int
     AF_INET: int
@@ -543,6 +423,48 @@ class AddressFamily(IntEnum):
     AF_WANPIPE: int
     AF_X25: int
 
+AF_UNIX: AddressFamily
+AF_INET: AddressFamily
+AF_INET6: AddressFamily
+AF_AAL5: AddressFamily
+AF_APPLETALK: AddressFamily
+AF_ASH: AddressFamily
+AF_ATMPVC: AddressFamily
+AF_ATMSVC: AddressFamily
+AF_AX25: AddressFamily
+AF_BRIDGE: AddressFamily
+AF_DECnet: AddressFamily
+AF_ECONET: AddressFamily
+AF_IPX: AddressFamily
+AF_IRDA: AddressFamily
+AF_KEY: AddressFamily
+AF_LLC: AddressFamily
+AF_NETBEUI: AddressFamily
+AF_NETROM: AddressFamily
+AF_PPPOX: AddressFamily
+AF_ROSE: AddressFamily
+AF_ROUTE: AddressFamily
+AF_SECURITY: AddressFamily
+AF_SNA: AddressFamily
+AF_SYSTEM: AddressFamily
+AF_UNSPEC: AddressFamily
+AF_WANPIPE: AddressFamily
+AF_X25: AddressFamily
+if sys.platform == "linux":
+    AF_CAN: AddressFamily
+    AF_PACKET: AddressFamily
+    AF_RDS: AddressFamily
+    AF_TIPC: AddressFamily
+    AF_ALG: AddressFamily
+    AF_NETLINK: AddressFamily
+    if sys.version_info >= (3, 7):
+        AF_VSOCK: AddressFamily
+    if sys.version_info >= (3, 8):
+        AF_QIPCRTR: AddressFamily
+AF_LINK: AddressFamily  # availability: BSD, macOS
+if sys.platform != "win32" and sys.platform != "darwin":
+    AF_BLUETOOTH: AddressFamily
+
 class SocketKind(IntEnum):
     SOCK_STREAM: int
     SOCK_DGRAM: int
@@ -552,14 +474,14 @@ class SocketKind(IntEnum):
     SOCK_CLOEXEC: int
     SOCK_NONBLOCK: int
 
-class AddressInfo(IntFlag):
-    AI_ADDRCONFIG: int
-    AI_ALL: int
-    AI_CANONNAME: int
-    AI_NUMERICHOST: int
-    AI_NUMERICSERV: int
-    AI_PASSIVE: int
-    AI_V4MAPPED: int
+SOCK_STREAM: SocketKind
+SOCK_DGRAM: SocketKind
+SOCK_RAW: SocketKind
+SOCK_RDM: SocketKind
+SOCK_SEQPACKET: SocketKind
+if sys.platform == "linux":
+    SOCK_CLOEXEC: SocketKind
+    SOCK_NONBLOCK: SocketKind
 
 class MsgFlag(IntFlag):
     MSG_CTRUNC: int
@@ -571,61 +493,62 @@ class MsgFlag(IntFlag):
     MSG_TRUNC: int
     MSG_WAITALL: int
 
-# ----- Exceptions -----
+MSG_BCAST: MsgFlag
+MSG_BTAG: MsgFlag
+MSG_CMSG_CLOEXEC: MsgFlag
+MSG_CONFIRM: MsgFlag
+MSG_CTRUNC: MsgFlag
+MSG_DONTROUTE: MsgFlag
+MSG_DONTWAIT: MsgFlag
+MSG_EOF: MsgFlag
+MSG_EOR: MsgFlag
+MSG_ERRQUEUE: MsgFlag
+MSG_ETAG: MsgFlag
+MSG_FASTOPEN: MsgFlag
+MSG_MCAST: MsgFlag
+MSG_MORE: MsgFlag
+MSG_NOSIGNAL: MsgFlag
+MSG_NOTIFICATION: MsgFlag
+MSG_OOB: MsgFlag
+MSG_PEEK: MsgFlag
+MSG_TRUNC: MsgFlag
+MSG_WAITALL: MsgFlag
 
-error = OSError
+class AddressInfo(IntFlag):
+    AI_ADDRCONFIG: int
+    AI_ALL: int
+    AI_CANONNAME: int
+    AI_NUMERICHOST: int
+    AI_NUMERICSERV: int
+    AI_PASSIVE: int
+    AI_V4MAPPED: int
 
-class herror(error):
-    def __init__(self, herror: int = ..., string: str = ...) -> None: ...
+AI_ADDRCONFIG: AddressInfo
+AI_ALL: AddressInfo
+AI_CANONNAME: AddressInfo
+AI_DEFAULT: AddressInfo
+AI_MASK: AddressInfo
+AI_NUMERICHOST: AddressInfo
+AI_NUMERICSERV: AddressInfo
+AI_PASSIVE: AddressInfo
+AI_V4MAPPED: AddressInfo
+AI_V4MAPPED_CFG: AddressInfo
 
-class gaierror(error):
-    def __init__(self, error: int = ..., string: str = ...) -> None: ...
+if sys.platform == "win32":
+    errorTab: dict[int, str]  # undocumented
 
-class timeout(error):
-    def __init__(self, error: int = ..., string: str = ...) -> None: ...
-
-# ----- Classes -----
-
-# Addresses can be either tuples of varying lengths (AF_INET, AF_INET6,
-# AF_NETLINK, AF_TIPC) or strings (AF_UNIX).
-_Address = Union[Tuple[Any, ...], str]
-_RetAddress = Any
-# TODO Most methods allow bytes as address objects
-
-_WriteBuffer = Union[bytearray, memoryview]
-
-_CMSG = Tuple[int, int, bytes]
-_SelfT = TypeVar("_SelfT", bound=socket)
-
-class socket:
-    family: int
-    type: int
-    proto: int
-    def __init__(self, family: int = ..., type: int = ..., proto: int = ..., fileno: Optional[int] = ...) -> None: ...
-    def __enter__(self: _SelfT) -> _SelfT: ...
-    def __exit__(self, *args: Any) -> None: ...
-    # --- methods ---
-    def accept(self) -> Tuple[socket, _RetAddress]: ...
-    def bind(self, address: Union[_Address, bytes]) -> None: ...
-    def close(self) -> None: ...
-    def connect(self, address: Union[_Address, bytes]) -> None: ...
-    def connect_ex(self, address: Union[_Address, bytes]) -> int: ...
-    def detach(self) -> int: ...
-    def dup(self) -> socket: ...
-    def fileno(self) -> int: ...
-    def get_inheritable(self) -> bool: ...
-    def getpeername(self) -> _RetAddress: ...
-    def getsockname(self) -> _RetAddress: ...
-    @overload
-    def getsockopt(self, level: int, optname: int) -> int: ...
-    @overload
-    def getsockopt(self, level: int, optname: int, buflen: int) -> bytes: ...
-    if sys.version_info >= (3, 7):
-        def getblocking(self) -> bool: ...
-    def gettimeout(self) -> Optional[float]: ...
-    if sys.platform == "win32":
-        def ioctl(self, control: int, option: Union[int, Tuple[int, int, int], bool]) -> None: ...
-    def listen(self, __backlog: int = ...) -> None: ...
+class socket(_socket.socket):
+    def __init__(
+        self,
+        family: Union[AddressFamily, int] = ...,
+        type: Union[SocketKind, int] = ...,
+        proto: int = ...,
+        fileno: Optional[int] = ...,
+    ) -> None: ...
+    def __enter__(self: Self) -> Self: ...
+    def __exit__(self, *args: object) -> None: ...
+    def dup(self: _T) -> _T: ...  # noqa: F811
+    def accept(self) -> tuple[socket, _RetAddress]: ...
     # Note that the makefile's documented windows-specific behavior is not represented
     # mode strings with duplicates are intentionally excluded
     @overload
@@ -648,62 +571,56 @@ class socket:
         errors: Optional[str] = ...,
         newline: Optional[str] = ...,
     ) -> BinaryIO: ...
-    def recv(self, bufsize: int, flags: int = ...) -> bytes: ...
-    def recvfrom(self, bufsize: int, flags: int = ...) -> Tuple[bytes, _RetAddress]: ...
-    if sys.platform != "win32":
-        def recvmsg(self, __bufsize: int, __ancbufsize: int = ..., __flags: int = ...) -> Tuple[bytes, List[_CMSG], int, Any]: ...
-        def recvmsg_into(
-            self, __buffers: Iterable[_WriteBuffer], __ancbufsize: int = ..., __flags: int = ...
-        ) -> Tuple[int, List[_CMSG], int, Any]: ...
-    def recvfrom_into(self, buffer: _WriteBuffer, nbytes: int = ..., flags: int = ...) -> Tuple[int, _RetAddress]: ...
-    def recv_into(self, buffer: _WriteBuffer, nbytes: int = ..., flags: int = ...) -> int: ...
-    def send(self, data: bytes, flags: int = ...) -> int: ...
-    def sendall(self, data: bytes, flags: int = ...) -> None: ...  # return type: None on success
-    @overload
-    def sendto(self, data: bytes, address: _Address) -> int: ...
-    @overload
-    def sendto(self, data: bytes, flags: int, address: _Address) -> int: ...
-    if sys.platform != "win32":
-        def sendmsg(
-            self, __buffers: Iterable[bytes], __ancdata: Iterable[_CMSG] = ..., __flags: int = ..., __address: _Address = ...
-        ) -> int: ...
-    if sys.platform == "linux":
-        def sendmsg_afalg(
-            self, msg: Iterable[bytes] = ..., *, op: int, iv: Any = ..., assoclen: int = ..., flags: int = ...
-        ) -> int: ...
     def sendfile(self, file: BinaryIO, offset: int = ..., count: Optional[int] = ...) -> int: ...
+    @property
+    def family(self) -> AddressFamily: ...  # type: ignore
+    @property
+    def type(self) -> SocketKind: ...  # type: ignore
+    def get_inheritable(self) -> bool: ...
     def set_inheritable(self, inheritable: bool) -> None: ...
-    def setblocking(self, flag: bool) -> None: ...
-    def settimeout(self, value: Optional[float]) -> None: ...
-    @overload
-    def setsockopt(self, level: int, optname: int, value: Union[int, bytes]) -> None: ...
-    @overload
-    def setsockopt(self, level: int, optname: int, value: None, optlen: int) -> None: ...
-    if sys.platform == "win32":
-        def share(self, process_id: int) -> bytes: ...
-    def shutdown(self, how: int) -> None: ...
 
-# ----- Functions -----
+def fromfd(fd: _FD, family: AddressFamily | int, type: SocketKind | int, proto: int = ...) -> socket: ...
 
-if sys.version_info >= (3, 7):
-    def close(fd: int) -> None: ...
-
-def create_connection(
-    address: Tuple[Optional[str], int],
-    timeout: Optional[float] = ...,
-    source_address: Optional[Tuple[Union[bytearray, bytes, str], int]] = ...,
-) -> socket: ...
-
-if sys.version_info >= (3, 8):
-    def create_server(
-        address: _Address, *, family: int = ..., backlog: Optional[int] = ..., reuse_port: bool = ..., dualstack_ipv6: bool = ...
-    ) -> socket: ...
-    def has_dualstack_ipv6() -> bool: ...
-
-def fromfd(fd: int, family: int, type: int, proto: int = ...) -> socket: ...
+if sys.platform != "win32":
+    if sys.version_info >= (3, 9):
+        # flags and address appear to be unused in send_fds and recv_fds
+        def send_fds(
+            sock: socket, buffers: Iterable[bytes], fds: Union[bytes, Iterable[int]], flags: int = ..., address: None = ...
+        ) -> int: ...
+        def recv_fds(sock: socket, bufsize: int, maxfds: int, flags: int = ...) -> tuple[bytes, list[int], int, Any]: ...
 
 if sys.platform == "win32":
     def fromshare(info: bytes) -> socket: ...
+
+if sys.platform == "win32":
+    def socketpair(family: int = ..., type: int = ..., proto: int = ...) -> tuple[socket, socket]: ...
+
+else:
+    def socketpair(  # type: ignore
+        family: Union[int, AddressFamily, None] = ..., type: Union[SocketType, int] = ..., proto: int = ...
+    ) -> tuple[socket, socket]: ...
+
+class SocketIO(RawIOBase):
+    def __init__(self, sock: socket, mode: Literal["r", "w", "rw", "rb", "wb", "rwb"]) -> None: ...
+    def readinto(self, b: WriteableBuffer) -> Optional[int]: ...
+    def write(self, b: ReadableBuffer) -> Optional[int]: ...
+    @property
+    def name(self) -> int: ...  # return value is really "int"
+    @property
+    def mode(self) -> Literal["rb", "wb", "rwb"]: ...
+
+def getfqdn(name: str = ...) -> str: ...
+def create_connection(
+    address: tuple[Optional[str], int],
+    timeout: Optional[float] = ...,  # noqa: F811
+    source_address: Optional[tuple[Union[bytearray, bytes, str], int]] = ...,
+) -> socket: ...
+
+if sys.version_info >= (3, 8):
+    def has_dualstack_ipv6() -> bool: ...
+    def create_server(
+        address: _Address, *, family: int = ..., backlog: Optional[int] = ..., reuse_port: bool = ..., dualstack_ipv6: bool = ...
+    ) -> socket: ...
 
 # the 5th tuple item is an address
 def getaddrinfo(
@@ -713,50 +630,4 @@ def getaddrinfo(
     type: int = ...,
     proto: int = ...,
     flags: int = ...,
-) -> List[Tuple[AddressFamily, SocketKind, int, str, Union[Tuple[str, int], Tuple[str, int, int, int]]]]: ...
-def getfqdn(name: str = ...) -> str: ...
-def gethostbyname(hostname: str) -> str: ...
-def gethostbyname_ex(hostname: str) -> Tuple[str, List[str], List[str]]: ...
-def gethostname() -> str: ...
-def gethostbyaddr(ip_address: str) -> Tuple[str, List[str], List[str]]: ...
-def getnameinfo(sockaddr: Union[Tuple[str, int], Tuple[str, int, int, int]], flags: int) -> Tuple[str, str]: ...
-def getprotobyname(protocolname: str) -> int: ...
-def getservbyname(servicename: str, protocolname: str = ...) -> int: ...
-def getservbyport(port: int, protocolname: str = ...) -> str: ...
-
-if sys.platform == "win32":
-    def socketpair(family: int = ..., type: int = ..., proto: int = ...) -> Tuple[socket, socket]: ...
-
-else:
-    def socketpair(family: Optional[int] = ..., type: int = ..., proto: int = ...) -> Tuple[socket, socket]: ...
-
-def ntohl(x: int) -> int: ...  # param & ret val are 32-bit ints
-def ntohs(x: int) -> int: ...  # param & ret val are 16-bit ints
-def htonl(x: int) -> int: ...  # param & ret val are 32-bit ints
-def htons(x: int) -> int: ...  # param & ret val are 16-bit ints
-def inet_aton(ip_string: str) -> bytes: ...  # ret val 4 bytes in length
-def inet_ntoa(packed_ip: bytes) -> str: ...
-def inet_pton(address_family: int, ip_string: str) -> bytes: ...
-def inet_ntop(address_family: int, packed_ip: bytes) -> str: ...
-
-if sys.version_info >= (3, 9):
-    if sys.platform != "win32":
-        # flags and address appear to be unused in send_fds and recv_fds
-        def send_fds(
-            sock: socket, buffers: Iterable[bytes], fds: Union[bytes, Iterable[int]], flags: int = ..., address: None = ...
-        ) -> int: ...
-        def recv_fds(sock: socket, bufsize: int, maxfds: int, flags: int = ...) -> Tuple[bytes, List[int], int, Any]: ...
-
-def CMSG_LEN(length: int) -> int: ...
-def CMSG_SPACE(length: int) -> int: ...
-def getdefaulttimeout() -> Optional[float]: ...
-def setdefaulttimeout(timeout: Optional[float]) -> None: ...
-
-if sys.platform != "win32":
-    def sethostname(name: str) -> None: ...
-
-# Windows added these in 3.8, but didn't have them before
-if sys.platform != "win32" or sys.version_info >= (3, 8):
-    def if_nameindex() -> List[Tuple[int, str]]: ...
-    def if_nametoindex(name: str) -> int: ...
-    def if_indextoname(index: int) -> str: ...
+) -> list[tuple[AddressFamily, SocketKind, int, str, Union[tuple[str, int], tuple[str, int, int, int]]]]: ...

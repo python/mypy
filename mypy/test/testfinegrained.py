@@ -14,7 +14,6 @@ on specified sources.
 
 import os
 import re
-import shutil
 
 from typing import List, Dict, Any, Tuple, Union, cast
 
@@ -27,8 +26,8 @@ from mypy.test.data import (
     DataDrivenTestCase, DataSuite, UpdateFile, DeleteFile
 )
 from mypy.test.helpers import (
-    assert_string_arrays_equal, parse_options, copy_and_fudge_mtime, assert_module_equivalence,
-    assert_target_equivalence
+    assert_string_arrays_equal, parse_options, assert_module_equivalence,
+    assert_target_equivalence, perform_file_operations,
 )
 from mypy.server.mergecheck import check_consistency
 from mypy.dmypy_util import DEFAULT_STATUS_FILE
@@ -211,18 +210,7 @@ class FineGrainedSuite(DataSuite):
 
         Return (mypy output, triggered targets).
         """
-        for op in operations:
-            if isinstance(op, UpdateFile):
-                # Modify/create file
-                copy_and_fudge_mtime(op.source_path, op.target_path)
-            else:
-                # Delete file/directory
-                if os.path.isdir(op.path):
-                    # Sanity check to avoid unexpected deletions
-                    assert op.path.startswith('tmp')
-                    shutil.rmtree(op.path)
-                else:
-                    os.remove(op.path)
+        perform_file_operations(operations)
         sources = self.parse_sources(main_src, step, options)
 
         if step <= num_regular_incremental_steps:

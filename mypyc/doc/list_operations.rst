@@ -13,6 +13,11 @@ Construct list with specific items:
 
 * ``[item0, ..., itemN]``
 
+Construct empty list:
+
+* ``[]``
+* ``list()``
+
 Construct list from iterable:
 
 * ``list(x: Iterable)``

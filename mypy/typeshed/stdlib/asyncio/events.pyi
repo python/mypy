@@ -1,15 +1,17 @@
 import ssl
 import sys
-from _typeshed import FileDescriptorLike
+from _typeshed import FileDescriptorLike, Self
 from abc import ABCMeta, abstractmethod
-from asyncio.futures import Future
-from asyncio.protocols import BaseProtocol
-from asyncio.tasks import Task
-from asyncio.transports import BaseTransport
-from asyncio.unix_events import AbstractChildWatcher
 from socket import AddressFamily, SocketKind, _Address, _RetAddress, socket
 from typing import IO, Any, Awaitable, Callable, Dict, Generator, List, Optional, Sequence, Tuple, TypeVar, Union, overload
 from typing_extensions import Literal
+
+from .base_events import Server
+from .futures import Future
+from .protocols import BaseProtocol
+from .tasks import Task
+from .transports import BaseTransport
+from .unix_events import AbstractChildWatcher
 
 if sys.version_info >= (3, 7):
     from contextvars import Context
@@ -53,10 +55,9 @@ class TimerHandle(Handle):
         def when(self) -> float: ...
 
 class AbstractServer:
-    sockets: Optional[List[socket]]
     def close(self) -> None: ...
     if sys.version_info >= (3, 7):
-        async def __aenter__(self: _T) -> _T: ...
+        async def __aenter__(self: Self) -> Self: ...
         async def __aexit__(self, *exc: Any) -> None: ...
         def get_loop(self) -> AbstractEventLoop: ...
         def is_serving(self) -> bool: ...
@@ -262,7 +263,7 @@ class AbstractEventLoop(metaclass=ABCMeta):
             reuse_port: Optional[bool] = ...,
             ssl_handshake_timeout: Optional[float] = ...,
             start_serving: bool = ...,
-        ) -> AbstractServer: ...
+        ) -> Server: ...
         @overload
         @abstractmethod
         async def create_server(
@@ -280,7 +281,7 @@ class AbstractEventLoop(metaclass=ABCMeta):
             reuse_port: Optional[bool] = ...,
             ssl_handshake_timeout: Optional[float] = ...,
             start_serving: bool = ...,
-        ) -> AbstractServer: ...
+        ) -> Server: ...
         async def create_unix_connection(
             self,
             protocol_factory: _ProtocolFactory,
@@ -301,7 +302,7 @@ class AbstractEventLoop(metaclass=ABCMeta):
             ssl: _SSLContext = ...,
             ssl_handshake_timeout: Optional[float] = ...,
             start_serving: bool = ...,
-        ) -> AbstractServer: ...
+        ) -> Server: ...
         @abstractmethod
         async def sendfile(
             self,
@@ -339,7 +340,7 @@ class AbstractEventLoop(metaclass=ABCMeta):
             ssl: _SSLContext = ...,
             reuse_address: Optional[bool] = ...,
             reuse_port: Optional[bool] = ...,
-        ) -> AbstractServer: ...
+        ) -> Server: ...
         @overload
         @abstractmethod
         async def create_server(
@@ -355,7 +356,7 @@ class AbstractEventLoop(metaclass=ABCMeta):
             ssl: _SSLContext = ...,
             reuse_address: Optional[bool] = ...,
             reuse_port: Optional[bool] = ...,
-        ) -> AbstractServer: ...
+        ) -> Server: ...
         async def create_unix_connection(
             self,
             protocol_factory: _ProtocolFactory,
@@ -373,7 +374,7 @@ class AbstractEventLoop(metaclass=ABCMeta):
             sock: Optional[socket] = ...,
             backlog: int = ...,
             ssl: _SSLContext = ...,
-        ) -> AbstractServer: ...
+        ) -> Server: ...
     @abstractmethod
     async def create_datagram_endpoint(
         self,

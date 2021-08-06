@@ -1,7 +1,8 @@
 import os
 import sys
+from _typeshed import Self
 from types import TracebackType
-from typing import IO, Any, AnyStr, Generic, Iterable, Iterator, List, Optional, Tuple, Type, TypeVar, Union, overload
+from typing import IO, Any, AnyStr, Generic, Iterable, Iterator, List, Optional, Tuple, Type, Union, overload
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 9):
@@ -12,7 +13,6 @@ TMP_MAX: int
 tempdir: Optional[str]
 template: str
 
-_S = TypeVar("_S")
 _DirT = Union[AnyStr, os.PathLike[AnyStr]]
 
 if sys.version_info >= (3, 8):
@@ -168,7 +168,7 @@ class _TemporaryFileWrapper(Generic[AnyStr], IO[AnyStr]):
     name: str
     delete: bool
     def __init__(self, file: IO[AnyStr], name: str, delete: bool = ...) -> None: ...
-    def __enter__(self) -> _TemporaryFileWrapper[AnyStr]: ...
+    def __enter__(self: Self) -> Self: ...
     def __exit__(
         self, exc: Optional[Type[BaseException]], value: Optional[BaseException], tb: Optional[TracebackType]
     ) -> Optional[bool]: ...
@@ -289,7 +289,7 @@ class SpooledTemporaryFile(IO[AnyStr]):
             dir: Optional[str] = ...,
         ) -> None: ...
     def rollover(self) -> None: ...
-    def __enter__(self: _S) -> _S: ...
+    def __enter__(self: Self) -> Self: ...
     def __exit__(
         self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
     ) -> Optional[bool]: ...
