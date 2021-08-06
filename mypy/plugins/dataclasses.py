@@ -12,16 +12,17 @@ from mypy.plugin import ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
     add_method, _get_decorator_bool_argument, deserialize_and_fixup_type,
 )
-from mypy.types import Type, Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type
+from mypy.typeops import map_type_from_supertype
+from mypy.types import Type, Instance, NoneType, TypeVarType, CallableType, get_proper_type
 from mypy.server.trigger import make_wildcard_trigger
 
 # The set of decorators that generate dataclasses.
-dataclass_makers = {
+dataclass_makers: Final = {
     'dataclass',
     'dataclasses.dataclass',
-}  # type: Final
+}
 
-SELF_TVAR_NAME = '_DT'  # type: Final
+SELF_TVAR_NAME: Final = "_DT"
 
 
 class DataclassAttribute:
@@ -34,6 +35,7 @@ class DataclassAttribute:
             line: int,
             column: int,
             type: Optional[Type],
+            info: TypeInfo,
     ) -> None:
         self.name = name
         self.is_in_init = is_in_init
@@ -42,6 +44,7 @@ class DataclassAttribute:
         self.line = line
         self.column = column
         self.type = type
+        self.info = info
 
     def to_argument(self) -> Argument:
         return Argument(
@@ -72,7 +75,15 @@ class DataclassAttribute:
     ) -> 'DataclassAttribute':
         data = data.copy()
         typ = deserialize_and_fixup_type(data.pop('type'), api)
-        return cls(type=typ, **data)
+        return cls(type=typ, info=info, **data)
+
+    def expand_typevar_from_subtype(self, sub_type: TypeInfo) -> None:
+        """Expands type vars in the context of a subtype when an attribute is inherited
+        from a generic super type."""
+        if not isinstance(self.type, TypeVarType):
+            return
+
+        self.type = map_type_from_supertype(self.type, sub_type, self.info)
 
 
 class DataclassTransformer:
@@ -132,12 +143,11 @@ class DataclassTransformer:
                 # Like for __eq__ and __ne__, we want "other" to match
                 # the self type.
                 obj_type = ctx.api.named_type('__builtins__.object')
-                order_tvar_def = TypeVarDef(SELF_TVAR_NAME, info.fullname + '.' + SELF_TVAR_NAME,
+                order_tvar_def = TypeVarType(SELF_TVAR_NAME, info.fullname + '.' + SELF_TVAR_NAME,
                                             -1, [], obj_type)
-                order_other_type = TypeVarType(order_tvar_def)
                 order_return_type = ctx.api.named_type('__builtins__.bool')
                 order_args = [
-                    Argument(Var('other', order_other_type), order_other_type, None, ARG_POS)
+                    Argument(Var('other', order_tvar_def), order_tvar_def, None, ARG_POS)
                 ]
 
                 existing_method = info.get(method_name)
@@ -153,12 +163,14 @@ class DataclassTransformer:
                     method_name,
                     args=order_args,
                     return_type=order_return_type,
-                    self_type=order_other_type,
+                    self_type=order_tvar_def,
                     tvar_def=order_tvar_def,
                 )
 
         if decorator_arguments['frozen']:
             self._freeze(attributes)
+        else:
+            self._propertize_callables(attributes)
 
         self.reset_init_only_vars(info, attributes)
 
@@ -197,8 +209,8 @@ class DataclassTransformer:
         # First, collect attributes belonging to the current class.
         ctx = self._ctx
         cls = self._ctx.cls
-        attrs = []  # type: List[DataclassAttribute]
-        known_attrs = set()  # type: Set[str]
+        attrs: List[DataclassAttribute] = []
+        known_attrs: Set[str] = set()
         for stmt in cls.defs.body:
             # Any assignment that doesn't use the new type declaration
             # syntax can be ignored out of hand.
@@ -267,6 +279,7 @@ class DataclassTransformer:
                 line=stmt.line,
                 column=stmt.column,
                 type=sym.type,
+                info=cls.info,
             ))
 
         # Next, collect attributes belonging to any class in the MRO
@@ -283,10 +296,11 @@ class DataclassTransformer:
             # Each class depends on the set of attributes in its dataclass ancestors.
             ctx.api.add_plugin_dependency(make_wildcard_trigger(info.fullname))
 
-            for data in info.metadata['dataclass']['attributes']:
-                name = data['name']  # type: str
+            for data in info.metadata["dataclass"]["attributes"]:
+                name: str = data["name"]
                 if name not in known_attrs:
                     attr = DataclassAttribute.deserialize(info, data, ctx.api)
+                    attr.expand_typevar_from_subtype(ctx.cls.info)
                     known_attrs.add(name)
                     super_attrs.append(attr)
                 elif all_attrs:
@@ -337,6 +351,24 @@ class DataclassTransformer:
                 var = attr.to_var()
                 var.info = info
                 var.is_property = True
+                var._fullname = info.fullname + '.' + var.name
+                info.names[var.name] = SymbolTableNode(MDEF, var)
+
+    def _propertize_callables(self, attributes: List[DataclassAttribute]) -> None:
+        """Converts all attributes with callable types to @property methods.
+
+        This avoids the typechecker getting confused and thinking that
+        `my_dataclass_instance.callable_attr(foo)` is going to receive a
+        `self` argument (it is not).
+
+        """
+        info = self._ctx.cls.info
+        for attr in attributes:
+            if isinstance(get_proper_type(attr.type), CallableType):
+                var = attr.to_var()
+                var.info = info
+                var.is_property = True
+                var.is_settable_property = True
                 var._fullname = info.fullname + '.' + var.name
                 info.names[var.name] = SymbolTableNode(MDEF, var)
 

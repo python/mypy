@@ -187,7 +187,7 @@ incorrect control flow or conditional checks that are accidentally always true o
     # mypy: warn-unreachable
 
     def example(x: int) -> None:
-        # Error: Right operand of 'or' is never evaluated  [unreachable]
+        # Error: Right operand of "or" is never evaluated  [unreachable]
         assert isinstance(x, int) or x == 'unused'
 
         return
@@ -205,7 +205,7 @@ mypy generates an error if it thinks that an expression is redundant.
     # mypy: enable-error-code redundant-expr
 
     def example(x: int) -> None:
-        # Error: Left operand of 'and' is always true  [redundant-expr]
+        # Error: Left operand of "and" is always true  [redundant-expr]
         if isinstance(x, int) and x > 0:
             pass
 

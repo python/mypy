@@ -1,6 +1,6 @@
 """Plugin for supporting the attrs library (http://www.attrs.org)"""
 
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 
 from typing import Optional, Dict, List, cast, Tuple, Iterable
 from typing_extensions import Final
@@ -15,14 +15,16 @@ from mypy.nodes import (
     SymbolTableNode, MDEF, JsonDict, OverloadedFuncDef, ARG_NAMED_OPT, ARG_NAMED,
     TypeVarExpr, PlaceholderNode
 )
+from mypy.plugin import SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
-    _get_argument, _get_bool_argument, _get_decorator_bool_argument, add_method
+    _get_argument, _get_bool_argument, _get_decorator_bool_argument, add_method,
+    deserialize_and_fixup_type
 )
 from mypy.types import (
-    Type, AnyType, TypeOfAny, CallableType, NoneType, TypeVarDef, TypeVarType,
+    Type, AnyType, TypeOfAny, CallableType, NoneType, TypeVarType,
     Overloaded, UnionType, FunctionLike, get_proper_type
 )
-from mypy.typeops import make_simplified_union
+from mypy.typeops import make_simplified_union, map_type_from_supertype
 from mypy.typevars import fill_typevars
 from mypy.util import unmangle
 from mypy.server.trigger import make_wildcard_trigger
@@ -30,29 +32,24 @@ from mypy.server.trigger import make_wildcard_trigger
 KW_ONLY_PYTHON_2_UNSUPPORTED = "kw_only is not supported in Python 2"
 
 # The names of the different functions that create classes or arguments.
-attr_class_makers = {
+attr_class_makers: Final = {
     'attr.s',
     'attr.attrs',
     'attr.attributes',
-}  # type: Final
-attr_dataclass_makers = {
+}
+attr_dataclass_makers: Final = {
     'attr.dataclass',
-}  # type: Final
-attr_frozen_makers = {
-    'attr.frozen'
-}  # type: Final
-attr_define_makers = {
-    'attr.define',
-    'attr.mutable'
-}  # type: Final
-attr_attrib_makers = {
+}
+attr_frozen_makers: Final = {"attr.frozen"}
+attr_define_makers: Final = {"attr.define", "attr.mutable"}
+attr_attrib_makers: Final = {
     'attr.ib',
     'attr.attrib',
     'attr.attr',
     'attr.field',
-}  # type: Final
+}
 
-SELF_TVAR_NAME = '_AT'  # type: Final
+SELF_TVAR_NAME: Final = "_AT"
 
 
 class Converter:
@@ -70,7 +67,8 @@ class Attribute:
 
     def __init__(self, name: str, info: TypeInfo,
                  has_default: bool, init: bool, kw_only: bool, converter: Converter,
-                 context: Context) -> None:
+                 context: Context,
+                 init_type: Optional[Type]) -> None:
         self.name = name
         self.info = info
         self.has_default = has_default
@@ -78,11 +76,13 @@ class Attribute:
         self.kw_only = kw_only
         self.converter = converter
         self.context = context
+        self.init_type = init_type
 
     def argument(self, ctx: 'mypy.plugin.ClassDefContext') -> Argument:
         """Return this attribute as an argument to __init__."""
         assert self.init
-        init_type = self.info[self.name].type
+
+        init_type = self.init_type or self.info[self.name].type
 
         if self.converter.name:
             # When a converter is set the init_type is overridden by the first argument
@@ -93,7 +93,7 @@ class Attribute:
                 converter = ctx.api.lookup_qualified(self.converter.name, self.info, True)
 
             # Get the type of the converter.
-            converter_type = None  # type: Optional[Type]
+            converter_type: Optional[Type] = None
             if converter and isinstance(converter.node, TypeInfo):
                 from mypy.checkmember import type_object_type  # To avoid import cycle.
                 converter_type = type_object_type(converter.node, ctx.api.builtin_type)
@@ -107,7 +107,7 @@ class Attribute:
             if isinstance(converter_type, CallableType) and converter_type.arg_types:
                 init_type = ctx.api.anal_type(converter_type.arg_types[0])
             elif isinstance(converter_type, Overloaded):
-                types = []  # type: List[Type]
+                types: List[Type] = []
                 for item in converter_type.items():
                     # Walk the overloads looking for methods that can accept one argument.
                     num_arg_types = len(item.arg_types)
@@ -168,20 +168,33 @@ class Attribute:
             'converter_is_attr_converters_optional': self.converter.is_attr_converters_optional,
             'context_line': self.context.line,
             'context_column': self.context.column,
+            'init_type': self.init_type.serialize() if self.init_type else None,
         }
 
     @classmethod
-    def deserialize(cls, info: TypeInfo, data: JsonDict) -> 'Attribute':
+    def deserialize(cls, info: TypeInfo,
+                    data: JsonDict,
+                    api: SemanticAnalyzerPluginInterface) -> 'Attribute':
         """Return the Attribute that was serialized."""
-        return Attribute(
-            data['name'],
+        raw_init_type = data['init_type']
+        init_type = deserialize_and_fixup_type(raw_init_type, api) if raw_init_type else None
+
+        return Attribute(data['name'],
             info,
             data['has_default'],
             data['init'],
             data['kw_only'],
             Converter(data['converter_name'], data['converter_is_attr_converters_optional']),
-            Context(line=data['context_line'], column=data['context_column'])
-        )
+            Context(line=data['context_line'], column=data['context_column']),
+            init_type)
+
+    def expand_typevar_from_subtype(self, sub_type: TypeInfo) -> None:
+        """Expands type vars in the context of a subtype when an attribute is inherited
+        from a generic super type."""
+        if not isinstance(self.init_type, TypeVarType):
+            return
+
+        self.init_type = map_type_from_supertype(self.init_type, sub_type, self.info)
 
 
 def _determine_eq_order(ctx: 'mypy.plugin.ClassDefContext') -> bool:
@@ -194,7 +207,7 @@ def _determine_eq_order(ctx: 'mypy.plugin.ClassDefContext') -> bool:
     order = _get_decorator_optional_bool_argument(ctx, 'order')
 
     if cmp is not None and any((eq is not None, order is not None)):
-        ctx.api.fail("Don't mix `cmp` with `eq' and `order`", ctx.reason)
+        ctx.api.fail('Don\'t mix "cmp" with "eq" and "order"', ctx.reason)
 
     # cmp takes precedence due to bw-compatibility.
     if cmp is not None:
@@ -208,7 +221,7 @@ def _determine_eq_order(ctx: 'mypy.plugin.ClassDefContext') -> bool:
         order = eq
 
     if eq is False and order is True:
-        ctx.api.fail("eq must be True if order is True", ctx.reason)
+        ctx.api.fail('eq must be True if order is True', ctx.reason)
 
     return order
 
@@ -322,7 +335,7 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext',
     auto_attribs=None means we'll detect which mode to use.
     kw_only=True means that all attributes created here will be keyword only args in __init__.
     """
-    own_attrs = OrderedDict()  # type: OrderedDict[str, Attribute]
+    own_attrs: OrderedDict[str, Attribute] = OrderedDict()
     if auto_attribs is None:
         auto_attribs = _detect_auto_attribs(ctx)
 
@@ -363,7 +376,8 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext',
                 # Only add an attribute if it hasn't been defined before.  This
                 # allows for overwriting attribute definitions by subclassing.
                 if data['name'] not in taken_attr_names:
-                    a = Attribute.deserialize(super_info, data)
+                    a = Attribute.deserialize(super_info, data, ctx.api)
+                    a.expand_typevar_from_subtype(ctx.cls.info)
                     super_attrs.append(a)
                     taken_attr_names.add(a.name)
     attributes = super_attrs + list(own_attrs.values())
@@ -491,7 +505,9 @@ def _attribute_from_auto_attrib(ctx: 'mypy.plugin.ClassDefContext',
     name = unmangle(lhs.name)
     # `x: int` (without equal sign) assigns rvalue to TempNode(AnyType())
     has_rhs = not isinstance(rvalue, TempNode)
-    return Attribute(name, ctx.cls.info, has_rhs, True, kw_only, Converter(), stmt)
+    sym = ctx.cls.info.names.get(name)
+    init_type = sym.type if sym else None
+    return Attribute(name, ctx.cls.info, has_rhs, True, kw_only, Converter(), stmt, init_type)
 
 
 def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
@@ -528,7 +544,7 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
     attr_has_factory = bool(_get_argument(rvalue, 'factory'))
 
     if attr_has_default and attr_has_factory:
-        ctx.api.fail("Can't pass both `default` and `factory`.", rvalue)
+        ctx.api.fail('Can\'t pass both "default" and "factory".', rvalue)
     elif attr_has_factory:
         attr_has_default = True
 
@@ -536,7 +552,7 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
     type_arg = _get_argument(rvalue, 'type')
     if type_arg and not init_type:
         try:
-            un_type = expr_to_unanalyzed_type(type_arg)
+            un_type = expr_to_unanalyzed_type(type_arg, ctx.api.options, ctx.api.is_stub_file)
         except TypeTranslationError:
             ctx.api.fail('Invalid argument to type', type_arg)
         else:
@@ -550,14 +566,15 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
     converter = _get_argument(rvalue, 'converter')
     convert = _get_argument(rvalue, 'convert')
     if convert and converter:
-        ctx.api.fail("Can't pass both `convert` and `converter`.", rvalue)
+        ctx.api.fail('Can\'t pass both "convert" and "converter".', rvalue)
     elif convert:
         ctx.api.fail("convert is deprecated, use converter", rvalue)
         converter = convert
     converter_info = _parse_converter(ctx, converter)
 
     name = unmangle(lhs.name)
-    return Attribute(name, ctx.cls.info, attr_has_default, init, kw_only, converter_info, stmt)
+    return Attribute(name, ctx.cls.info, attr_has_default, init,
+                     kw_only, converter_info, stmt, init_type)
 
 
 def _parse_converter(ctx: 'mypy.plugin.ClassDefContext',
@@ -605,8 +622,8 @@ def _parse_assignments(
         lvalue: Expression,
         stmt: AssignmentStmt) -> Tuple[List[NameExpr], List[Expression]]:
     """Convert a possibly complex assignment expression into lists of lvalues and rvalues."""
-    lvalues = []  # type: List[NameExpr]
-    rvalues = []  # type: List[Expression]
+    lvalues: List[NameExpr] = []
+    rvalues: List[Expression] = []
     if isinstance(lvalue, (TupleExpr, ListExpr)):
         if all(isinstance(item, NameExpr) for item in lvalue.items):
             lvalues = cast(List[NameExpr], lvalue.items)
@@ -626,16 +643,15 @@ def _add_order(ctx: 'mypy.plugin.ClassDefContext', adder: 'MethodAdder') -> None
     #    AT = TypeVar('AT')
     #    def __lt__(self: AT, other: AT) -> bool
     # This way comparisons with subclasses will work correctly.
-    tvd = TypeVarDef(SELF_TVAR_NAME, ctx.cls.info.fullname + '.' + SELF_TVAR_NAME,
+    tvd = TypeVarType(SELF_TVAR_NAME, ctx.cls.info.fullname + '.' + SELF_TVAR_NAME,
                      -1, [], object_type)
-    tvd_type = TypeVarType(tvd)
     self_tvar_expr = TypeVarExpr(SELF_TVAR_NAME, ctx.cls.info.fullname + '.' + SELF_TVAR_NAME,
                                  [], object_type)
     ctx.cls.info.names[SELF_TVAR_NAME] = SymbolTableNode(MDEF, self_tvar_expr)
 
-    args = [Argument(Var('other', tvd_type), tvd_type, None, ARG_POS)]
+    args = [Argument(Var('other', tvd), tvd, None, ARG_POS)]
     for method in ['__lt__', '__le__', '__gt__', '__ge__']:
-        adder.add_method(method, args, bool_type, self_type=tvd_type, tvd=tvd)
+        adder.add_method(method, args, bool_type, self_type=tvd, tvd=tvd)
 
 
 def _make_frozen(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute]) -> None:
@@ -702,7 +718,7 @@ class MethodAdder:
     def add_method(self,
                    method_name: str, args: List[Argument], ret_type: Type,
                    self_type: Optional[Type] = None,
-                   tvd: Optional[TypeVarDef] = None) -> None:
+                   tvd: Optional[TypeVarType] = None) -> None:
         """Add a method: def <method_name>(self, <args>) -> <ret_type>): ... to info.
 
         self_type: The type to use for the self argument or None to use the inferred self type.

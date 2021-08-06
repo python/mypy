@@ -13,6 +13,9 @@ class Errors:
         self._errors.report(line, None, msg, severity='error', file=path)
         self.num_errors += 1
 
+    def note(self, msg: str, path: str, line: int) -> None:
+        self._errors.report(line, None, msg, severity='note', file=path)
+
     def warning(self, msg: str, path: str, line: int) -> None:
         self._errors.report(line, None, msg, severity='warning', file=path)
         self.num_warnings += 1

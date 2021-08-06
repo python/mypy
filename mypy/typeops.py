@@ -5,15 +5,16 @@ NOTE: These must not be accessed from mypy.nodes or mypy.types to avoid import
       since these may assume that MROs are ready.
 """
 
-from typing import cast, Optional, List, Sequence, Set, Iterable, TypeVar
+from typing import cast, Optional, List, Sequence, Set, Iterable, TypeVar, Dict, Tuple, Any
 from typing_extensions import Type as TypingType
+import itertools
 import sys
 
 from mypy.types import (
-    TupleType, Instance, FunctionLike, Type, CallableType, TypeVarDef, TypeVarLikeDef, Overloaded,
+    TupleType, Instance, FunctionLike, Type, CallableType, TypeVarLikeType, Overloaded,
     TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType, TypedDictType,
     AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
-    copy_type, TypeAliasType, TypeQuery
+    copy_type, TypeAliasType, TypeQuery, ParamSpecType
 )
 from mypy.nodes import (
     FuncBase, FuncItem, OverloadedFuncDef, TypeInfo, ARG_STAR, ARG_STAR2, ARG_POS,
@@ -21,7 +22,6 @@ from mypy.nodes import (
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance, expand_type
-from mypy.sharedparse import argument_elide_name
 
 from mypy.typevars import fill_typevars
 
@@ -93,7 +93,7 @@ def type_object_type_from_function(signature: FunctionLike,
     signature = bind_self(signature, original_type=default_self, is_classmethod=is_new)
     signature = cast(FunctionLike, map_type_from_supertype(signature, info, def_info))
 
-    special_sig = None  # type: Optional[str]
+    special_sig: Optional[str] = None
     if def_info.fullname == 'builtins.dict':
         # Special signature!
         special_sig = 'dict'
@@ -103,7 +103,7 @@ def type_object_type_from_function(signature: FunctionLike,
     else:
         # Overloaded __init__/__new__.
         assert isinstance(signature, Overloaded)
-        items = []  # type: List[CallableType]
+        items: List[CallableType] = []
         for item, orig_self in zip(signature.items(), orig_self_types):
             items.append(class_callable(item, info, fallback, special_sig, is_new, orig_self))
         return Overloaded(items)
@@ -113,7 +113,7 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
                    special_sig: Optional[str],
                    is_new: bool, orig_self_type: Optional[Type] = None) -> CallableType:
     """Create a type object type based on the signature of __init__."""
-    variables = []  # type: List[TypeVarLikeDef]
+    variables: List[TypeVarLikeType] = []
     variables.extend(info.defn.type_vars)
     variables.extend(init_type.variables)
 
@@ -129,7 +129,7 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
         # if it is actually returning a subtype of what we would return otherwise.
         and is_subtype(explicit_type, default_ret_type, ignore_type_params=True)
     ):
-        ret_type = explicit_type  # type: Type
+        ret_type: Type = explicit_type
     else:
         ret_type = default_ret_type
 
@@ -228,7 +228,7 @@ def bind_self(method: F, original_type: Optional[Type] = None, is_classmethod: b
         return cast(F, func)
     self_param_type = get_proper_type(func.arg_types[0])
 
-    variables = []  # type: Sequence[TypeVarLikeDef]
+    variables: Sequence[TypeVarLikeType] = []
     if func.variables and supported_self_type(self_param_type):
         if original_type is None:
             # TODO: type check method override (see #7861).
@@ -313,9 +313,21 @@ def callable_corresponding_argument(typ: CallableType,
     return by_name if by_name is not None else by_pos
 
 
+def is_simple_literal(t: ProperType) -> bool:
+    """
+    Whether a type is a simple enough literal to allow for fast Union simplification
+
+    For now this means enum or string
+    """
+    return isinstance(t, LiteralType) and (
+            t.fallback.type.is_enum or t.fallback.type.fullname == 'builtins.str'
+    )
+
+
 def make_simplified_union(items: Sequence[Type],
                           line: int = -1, column: int = -1,
-                          *, keep_erased: bool = False) -> ProperType:
+                          *, keep_erased: bool = False,
+                          contract_literals: bool = True) -> ProperType:
     """Build union type with redundant union items removed.
 
     If only a single item remains, this may return a non-union type.
@@ -335,7 +347,7 @@ def make_simplified_union(items: Sequence[Type],
     """
     items = get_proper_types(items)
     while any(isinstance(typ, UnionType) for typ in items):
-        all_items = []  # type: List[ProperType]
+        all_items: List[ProperType] = []
         for typ in items:
             if isinstance(typ, UnionType):
                 all_items.extend(get_proper_types(typ.items))
@@ -345,46 +357,70 @@ def make_simplified_union(items: Sequence[Type],
 
     from mypy.subtypes import is_proper_subtype
 
-    removed = set()  # type: Set[int]
+    removed: Set[int] = set()
+    seen: Set[Tuple[str, str]] = set()
 
-    # Avoid slow nested for loop for Union of Literal of strings (issue #9169)
-    if all((isinstance(item, LiteralType) and
-            item.fallback.type.fullname == 'builtins.str')
-           for item in items):
-        seen = set()    # type: Set[str]
-        for index, item in enumerate(items):
+    # NB: having a separate fast path for Union of Literal and slow path for other things
+    # would arguably be cleaner, however it breaks down when simplifying the Union of two
+    # different enum types as try_expanding_enum_to_union works recursively and will
+    # trigger intermediate simplifications that would render the fast path useless
+    for i, item in enumerate(items):
+        if i in removed:
+            continue
+        # Avoid slow nested for loop for Union of Literal of strings/enums (issue #9169)
+        if is_simple_literal(item):
             assert isinstance(item, LiteralType)
             assert isinstance(item.value, str)
-            if item.value in seen:
-                removed.add(index)
-            seen.add(item.value)
+            k = (item.value, item.fallback.type.fullname)
+            if k in seen:
+                removed.add(i)
+                continue
 
-    else:
-        for i, ti in enumerate(items):
-            if i in removed: continue
-            # Keep track of the truishness info for deleted subtypes which can be relevant
-            cbt = cbf = False
-            for j, tj in enumerate(items):
-                if i != j and is_proper_subtype(tj, ti, keep_erased_types=keep_erased):
-                    # We found a redundant item in the union.
-                    removed.add(j)
-                    cbt = cbt or tj.can_be_true
-                    cbf = cbf or tj.can_be_false
-            # if deleted subtypes had more general truthiness, use that
-            if not ti.can_be_true and cbt:
-                items[i] = true_or_false(ti)
-            elif not ti.can_be_false and cbf:
-                items[i] = true_or_false(ti)
+            # NB: one would naively expect that it would be safe to skip the slow path
+            # always for literals. One would be sorely mistaken. Indeed, some simplifications
+            # such as that of None/Optional when strict optional is false, do require that we
+            # proceed with the slow path. Thankfully, all literals will have the same subtype
+            # relationship to non-literal types, so we only need to do that walk for the first
+            # literal, which keeps the fast path fast even in the presence of a mixture of
+            # literals and other types.
+            safe_skip = len(seen) > 0
+            seen.add(k)
+            if safe_skip:
+                continue
+        # Keep track of the truishness info for deleted subtypes which can be relevant
+        cbt = cbf = False
+        for j, tj in enumerate(items):
+            # NB: we don't need to check literals as the fast path above takes care of that
+            if (
+                    i != j
+                    and not is_simple_literal(tj)
+                    and is_proper_subtype(tj, item, keep_erased_types=keep_erased)
+                    and is_redundant_literal_instance(item, tj)  # XXX?
+            ):
+                # We found a redundant item in the union.
+                removed.add(j)
+                cbt = cbt or tj.can_be_true
+                cbf = cbf or tj.can_be_false
+        # if deleted subtypes had more general truthiness, use that
+        if not item.can_be_true and cbt:
+            items[i] = true_or_false(item)
+        elif not item.can_be_false and cbf:
+            items[i] = true_or_false(item)
 
     simplified_set = [items[i] for i in range(len(items)) if i not in removed]
+
+    # If more than one literal exists in the union, try to simplify
+    if (contract_literals and sum(isinstance(item, LiteralType) for item in simplified_set) > 1):
+        simplified_set = try_contracting_literals_in_union(simplified_set)
+
     return UnionType.make_union(simplified_set, line, column)
 
 
-def get_type_special_method_bool_ret_type(t: Type) -> Optional[Type]:
+def _get_type_special_method_bool_ret_type(t: Type) -> Optional[Type]:
     t = get_proper_type(t)
 
     if isinstance(t, Instance):
-        bool_method = t.type.names.get("__bool__", None)
+        bool_method = t.type.get("__bool__")
         if bool_method:
             callee = get_proper_type(bool_method.type)
             if isinstance(callee, CallableType):
@@ -411,7 +447,7 @@ def true_only(t: Type) -> ProperType:
         can_be_true_items = [item for item in new_items if item.can_be_true]
         return make_simplified_union(can_be_true_items, line=t.line, column=t.column)
     else:
-        ret_type = get_type_special_method_bool_ret_type(t)
+        ret_type = _get_type_special_method_bool_ret_type(t)
 
         if ret_type and ret_type.can_be_false and not ret_type.can_be_true:
             new_t = copy_type(t)
@@ -446,7 +482,7 @@ def false_only(t: Type) -> ProperType:
         can_be_false_items = [item for item in new_items if item.can_be_false]
         return make_simplified_union(can_be_false_items, line=t.line, column=t.column)
     else:
-        ret_type = get_type_special_method_bool_ret_type(t)
+        ret_type = _get_type_special_method_bool_ret_type(t)
 
         if ret_type and ret_type.can_be_true and not ret_type.can_be_false:
             new_t = copy_type(t)
@@ -474,9 +510,11 @@ def true_or_false(t: Type) -> ProperType:
     return new_t
 
 
-def erase_def_to_union_or_bound(tdef: TypeVarLikeDef) -> Type:
-    # TODO(shantanu): fix for ParamSpecDef
-    assert isinstance(tdef, TypeVarDef)
+def erase_def_to_union_or_bound(tdef: TypeVarLikeType) -> Type:
+    # TODO(shantanu): fix for ParamSpecType
+    if isinstance(tdef, ParamSpecType):
+        return AnyType(TypeOfAny.from_error)
+    assert isinstance(tdef, TypeVarType)
     if tdef.values:
         return make_simplified_union(tdef.values)
     else:
@@ -517,7 +555,7 @@ def callable_type(fdef: FuncItem, fallback: Instance,
                   ret_type: Optional[Type] = None) -> CallableType:
     # TODO: somewhat unfortunate duplication with prepare_method_signature in semanal
     if fdef.info and not fdef.is_static and fdef.arg_names:
-        self_type = fill_typevars(fdef.info)  # type: Type
+        self_type: Type = fill_typevars(fdef.info)
         if fdef.is_class or fdef.name == '__new__':
             self_type = TypeType.make_normalized(self_type)
         args = [self_type] + [AnyType(TypeOfAny.unannotated)] * (len(fdef.arg_names)-1)
@@ -527,7 +565,7 @@ def callable_type(fdef: FuncItem, fallback: Instance,
     return CallableType(
         args,
         fdef.arg_kinds,
-        [None if argument_elide_name(n) else n for n in fdef.arg_names],
+        fdef.arg_names,
         ret_type or AnyType(TypeOfAny.unannotated),
         fallback,
         name=fdef.name,
@@ -592,13 +630,13 @@ def try_getting_literals_from_type(typ: Type,
     typ = get_proper_type(typ)
 
     if isinstance(typ, Instance) and typ.last_known_value is not None:
-        possible_literals = [typ.last_known_value]  # type: List[Type]
+        possible_literals: List[Type] = [typ.last_known_value]
     elif isinstance(typ, UnionType):
         possible_literals = list(typ.items)
     else:
         possible_literals = [typ]
 
-    literals = []  # type: List[T]
+    literals: List[T] = []
     for lit in get_proper_types(possible_literals):
         if isinstance(lit, LiteralType) and lit.fallback.type.fullname == target_fullname:
             val = lit.value
@@ -684,7 +722,7 @@ def try_expanding_enum_to_union(typ: Type, target_fullname: str) -> ProperType:
 
     if isinstance(typ, UnionType):
         items = [try_expanding_enum_to_union(item, target_fullname) for item in typ.items]
-        return make_simplified_union(items)
+        return make_simplified_union(items, contract_literals=False)
     elif isinstance(typ, Instance) and typ.type.is_enum and typ.type.fullname == target_fullname:
         new_items = []
         for name, symbol in typ.type.names.items():
@@ -702,9 +740,38 @@ def try_expanding_enum_to_union(typ: Type, target_fullname: str) -> ProperType:
         # only using CPython, but we might as well for the sake of full correctness.
         if sys.version_info < (3, 7):
             new_items.sort(key=lambda lit: lit.value)
-        return make_simplified_union(new_items)
+        return make_simplified_union(new_items, contract_literals=False)
     else:
         return typ
+
+
+def try_contracting_literals_in_union(types: Sequence[Type]) -> List[ProperType]:
+    """Contracts any literal types back into a sum type if possible.
+
+    Will replace the first instance of the literal with the sum type and
+    remove all others.
+
+    if we call `try_contracting_union(Literal[Color.RED, Color.BLUE, Color.YELLOW])`,
+    this function will return Color.
+    """
+    proper_types = [get_proper_type(typ) for typ in types]
+    sum_types: Dict[str, Tuple[Set[Any], List[int]]] = {}
+    marked_for_deletion = set()
+    for idx, typ in enumerate(proper_types):
+        if isinstance(typ, LiteralType):
+            fullname = typ.fallback.type.fullname
+            if typ.fallback.type.is_enum:
+                if fullname not in sum_types:
+                    sum_types[fullname] = (set(get_enum_values(typ.fallback)), [])
+                literals, indexes = sum_types[fullname]
+                literals.discard(typ.value)
+                indexes.append(idx)
+                if not literals:
+                    first, *rest = indexes
+                    proper_types[first] = typ.fallback
+                    marked_for_deletion |= set(rest)
+    return list(itertools.compress(proper_types, [(i not in marked_for_deletion)
+                                                  for i in range(len(proper_types))]))
 
 
 def coerce_to_literal(typ: Type) -> Type:
@@ -769,4 +836,15 @@ def custom_special_method(typ: Type, name: str, check_all: bool = False) -> bool
         # Avoid false positives in uncertain cases.
         return True
     # TODO: support other types (see ExpressionChecker.has_member())?
+    return False
+
+
+def is_redundant_literal_instance(general: ProperType, specific: ProperType) -> bool:
+    if not isinstance(general, Instance) or general.last_known_value is None:
+        return True
+    if isinstance(specific, Instance) and specific.last_known_value == general.last_known_value:
+        return True
+    if isinstance(specific, UninhabitedType):
+        return True
+
     return False

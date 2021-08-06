@@ -1,0 +1,152 @@
+# Bytes test cases (compile and run)
+
+[case testBytesBasics]
+# Note: Add tests for additional operations to testBytesOps or in a new test case
+
+def f(x: bytes) -> bytes:
+    return x
+
+def eq(a: bytes, b: bytes) -> bool:
+    return a == b
+
+def neq(a: bytes, b: bytes) -> bool:
+    return a != b
+[file driver.py]
+from native import f, eq, neq
+assert f(b'123') == b'123'
+assert f(b'\x07 \x0b " \t \x7f \xf0') == b'\x07 \x0b " \t \x7f \xf0'
+assert eq(b'123', b'123')
+assert not eq(b'123', b'1234')
+assert neq(b'123', b'1234')
+try:
+    f('x')
+    assert False
+except TypeError:
+    pass
+
+[case testBytesInit]
+def test_bytes_init() -> None:
+    b1 = bytes([5])
+    assert b1 == b'\x05'
+    b2 = bytes([5, 10, 12])
+    assert b2 == b'\x05\n\x0c'
+    b3 = bytes(bytearray(b'foo'))
+    assert b3 == b'foo'
+    b4 = bytes(b'aaa')
+    assert b4 == b'aaa'
+    b5 = bytes(5)
+    assert b5 == b'\x00\x00\x00\x00\x00'
+    try:
+        bytes('x')
+        assert False
+    except TypeError:
+        pass
+
+[case testBytesOps]
+def test_indexing() -> None:
+    # Use bytes() to avoid constant folding
+    b = b'asdf' + bytes()
+    assert b[0] == 97
+    assert b[1] == 115
+    assert b[3] == 102
+    assert b[-1] == 102
+    b = b'\xfe\x15' + bytes()
+    assert b[0] == 254
+    assert b[1] == 21
+
+def test_concat() -> None:
+    b1 = b'123' + bytes()
+    b2 = b'456' + bytes()
+    assert b1 + b2 == b'123456'
+    b3 = b1 + b2
+    b3 = b3 + b1
+    assert b3 == b'123456123'
+    assert b1 == b'123'
+    assert b2 == b'456'
+    assert type(b1) == bytes
+    assert type(b2) == bytes
+    assert type(b3) == bytes
+    brr1: bytes = bytearray(3)
+    brr2: bytes = bytearray(range(5))
+    b4 = b1 + brr1
+    assert b4 == b'123\x00\x00\x00'
+    assert type(brr1) == bytearray
+    assert type(b4) == bytes
+    brr3 = brr1 + brr2
+    assert brr3 == bytearray(b'\x00\x00\x00\x00\x01\x02\x03\x04')
+    assert len(brr3) == 8
+    assert type(brr3) == bytearray
+    brr3 = brr3 + bytearray([10])
+    assert brr3 == bytearray(b'\x00\x00\x00\x00\x01\x02\x03\x04\n')
+    b5 = brr2 + b2
+    assert b5 == bytearray(b'\x00\x01\x02\x03\x04456')
+    assert type(b5) == bytearray
+    b5 = b2 + brr2
+    assert b5 == b'456\x00\x01\x02\x03\x04'
+    assert type(b5) == bytes
+
+def test_join() -> None:
+    seq = (b'1', b'"', b'\xf0')
+    assert b'\x07'.join(seq) == b'1\x07"\x07\xf0'
+    assert b', '.join(()) == b''
+    assert b', '.join([bytes() + b'ab']) == b'ab'
+    assert b', '.join([bytes() + b'ab', b'cd']) == b'ab, cd'
+
+def test_len() -> None:
+    # Use bytes() to avoid constant folding
+    b = b'foo' + bytes()
+    assert len(b) == 3
+    assert len(bytes()) == 0
+
+[case testBytearrayBasics]
+from typing import Any
+
+def test_basics() -> None:
+    brr1: bytes = bytearray(3)
+    assert brr1 == bytearray(b'\x00\x00\x00')
+    assert brr1 == b'\x00\x00\x00'
+    l = [10, 20, 30, 40]
+    brr2: bytes = bytearray(l)
+    assert brr2 == bytearray(b'\n\x14\x1e(')
+    assert brr2 == b'\n\x14\x1e('
+    brr3: bytes = bytearray(range(5))
+    assert brr3 == bytearray(b'\x00\x01\x02\x03\x04')
+    assert brr3 == b'\x00\x01\x02\x03\x04'
+    brr4: bytes = bytearray('string', 'utf-8')
+    assert brr4 == bytearray(b'string')
+    assert brr4 == b'string'
+    assert len(brr1) == 3
+    assert len(brr2) == 4
+
+def f(b: bytes) -> bool:
+    return True
+
+def test_bytearray_passed_into_bytes() -> None:
+    assert f(bytearray(3))
+    brr1: Any = bytearray()
+    assert f(brr1)
+
+[case testBytesJoin]
+from typing import Any
+from testutil import assertRaises
+from a import bytes_subclass
+
+def test_bytes_join() -> None:
+    assert b' '.join([b'a', b'b']) == b'a b'
+    assert b' '.join([]) == b''
+
+    x: bytes = bytearray(b' ')
+    assert x.join([b'a', b'b']) == b'a b'
+    assert type(x.join([b'a', b'b'])) == bytearray
+
+    y: bytes = bytes_subclass()
+    assert y.join([]) == b'spook'
+
+    n: Any = 5
+    with assertRaises(TypeError, "can only join an iterable"):
+        assert b' '.join(n)
+
+[file a.py]
+class bytes_subclass(bytes):
+    def join(self, iter):
+        return b'spook'

@@ -1,4 +1,4 @@
-# Dict test cases (compile and run)
+# Test cases for dicts (compile and run)
 
 [case testDictStuff]
 from typing import Dict, Any, List, Set, Tuple
@@ -91,6 +91,7 @@ od.move_to_end(1)
 assert get_content(od) == ([3, 1], [4, 2], [(3, 4), (1, 2)])
 assert get_content_set({1: 2}) == ({1}, {2}, {(1, 2)})
 assert get_content_set(od) == ({1, 3}, {2, 4}, {(1, 2), (3, 4)})
+
 [typing fixtures/typing-full.pyi]
 
 [case testDictIterationMethodsRun]
@@ -192,3 +193,112 @@ else:
 2
 4
 2
+
+[case testDictMethods]
+from collections import defaultdict
+from typing import Dict, Optional, List, Set
+
+def test_dict_clear() -> None:
+    d = {'a': 1, 'b': 2}
+    d.clear()
+    assert d == {}
+    dd: Dict[str, int] = defaultdict(int)
+    dd['a'] = 1
+    dd.clear()
+    assert dd == {}
+
+def test_dict_copy() -> None:
+    d: Dict[str, int] = {}
+    assert d.copy() == d
+    d = {'a': 1, 'b': 2}
+    assert d.copy() == d
+    assert d.copy() is not d
+    dd: Dict[str, int] = defaultdict(int)
+    dd['a'] = 1
+    assert dd.copy() == dd
+    assert isinstance(dd.copy(), defaultdict)
+
+class MyDict(dict):
+    def __init__(self, *args, **kwargs):
+        self.update(*args, **kwargs)
+
+    def setdefault(self, k, v=None):
+        if v is None:
+            if k in self.keys():
+                return self[k]
+            else:
+                return None
+        else:
+            return super().setdefault(k, v) + 10
+
+def test_dict_setdefault() -> None:
+    d: Dict[str, Optional[int]] = {'a': 1, 'b': 2}
+    assert d.setdefault('a', 2) == 1
+    assert d.setdefault('b', 2) == 2
+    assert d.setdefault('c', 3) == 3
+    assert d['a'] == 1
+    assert d['c'] == 3
+    assert d.setdefault('a') == 1
+    assert d.setdefault('e') == None
+    assert d.setdefault('e', 100) == None
+
+def test_dict_subclass_setdefault() -> None:
+    d = MyDict()
+    d['a'] = 1
+    assert d.setdefault('a', 2) == 11
+    assert d.setdefault('b', 2) == 12
+    assert d.setdefault('c', 3) == 13
+    assert d['a'] == 1
+    assert d['c'] == 3
+    assert d.setdefault('a') == 1
+    assert d.setdefault('e') == None
+    assert d.setdefault('e', 100) == 110
+
+def test_dict_empty_collection_setdefault() -> None:
+    d1: Dict[str, List[int]] = {'a': [1, 2, 3]}
+    assert d1.setdefault('a', []) == [1, 2, 3]
+    assert d1.setdefault('b', []) == []
+    assert 'b' in d1
+    d1.setdefault('b', []).append(3)
+    assert d1['b'] == [3]
+    assert d1.setdefault('c', [1]) == [1]
+
+    d2: Dict[str, Dict[str, int]] = {'a': {'a': 1}}
+    assert d2.setdefault('a', {}) == {'a': 1}
+    assert d2.setdefault('b', {}) == {}
+    assert 'b' in d2
+    d2.setdefault('b', {})['aa'] = 2
+    d2.setdefault('b', {})['bb'] = 3
+    assert d2['b'] == {'aa': 2, 'bb': 3}
+    assert d2.setdefault('c', {'cc': 1}) == {'cc': 1}
+
+    d3: Dict[str, Set[str]] = {'a': set('a')}
+    assert d3.setdefault('a', set()) == {'a'}
+    assert d3.setdefault('b', set()) == set()
+    d3.setdefault('b', set()).add('b')
+    d3.setdefault('b', set()).add('c')
+    assert d3['b'] == {'b', 'c'}
+    assert d3.setdefault('c', set('d')) == {'d'}
+
+[case testDictToBool]
+from typing import Dict, List
+
+def is_true(x: dict) -> bool:
+    if x:
+        return True
+    else:
+        return False
+
+def is_false(x: dict) -> bool:
+    if not x:
+        return True
+    else:
+        return False
+
+def test_dict_to_bool() -> None:
+    assert is_false({})
+    assert not is_true({})
+    tmp_list: List[Dict] = [{2: bool}, {'a': 'b'}]
+    for x in tmp_list:
+        assert is_true(x)
+        assert not is_false(x)

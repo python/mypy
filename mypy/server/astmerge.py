@@ -58,8 +58,8 @@ from mypy.traverser import TraverserVisitor
 from mypy.types import (
     Type, SyntheticTypeVisitor, Instance, AnyType, NoneType, CallableType, ErasedType, DeletedType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
-    Overloaded, TypeVarDef, TypeList, CallableArgument, EllipsisType, StarType, LiteralType,
-    RawExpressionType, PartialType, PlaceholderType, TypeAliasType
+    Overloaded, TypeVarType, TypeList, CallableArgument, EllipsisType, StarType, LiteralType,
+    RawExpressionType, PartialType, PlaceholderType, TypeAliasType, TypeGuardType
 )
 from mypy.util import get_prefix, replace_object_state
 from mypy.typestate import TypeState
@@ -103,7 +103,7 @@ def replacement_map_from_symbol_table(
     the given module prefix. Don't recurse into other modules accessible through the symbol
     table.
     """
-    replacements = {}  # type: Dict[SymbolNode, SymbolNode]
+    replacements: Dict[SymbolNode, SymbolNode] = {}
     for name, node in old.items():
         if (name in new and (node.kind == MDEF
                              or node.node and get_prefix(node.node.fullname) == prefix)):
@@ -188,7 +188,7 @@ class NodeReplaceVisitor(TraverserVisitor):
             # Unanalyzed types can have AST node references
             self.fixup_type(node.unanalyzed_type)
 
-    def process_type_var_def(self, tv: TypeVarDef) -> None:
+    def process_type_var_def(self, tv: TypeVarType) -> None:
         for value in tv.values:
             self.fixup_type(value)
         self.fixup_type(tv.upper_bound)
@@ -370,7 +370,7 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
         if typ.fallback is not None:
             typ.fallback.accept(self)
         for tv in typ.variables:
-            if isinstance(tv, TypeVarDef):
+            if isinstance(tv, TypeVarType):
                 tv.upper_bound.accept(self)
                 for value in tv.values:
                     value.accept(self)
@@ -388,6 +388,9 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
 
     def visit_deleted_type(self, typ: DeletedType) -> None:
         pass
+
+    def visit_type_guard_type(self, typ: TypeGuardType) -> None:
+        raise RuntimeError
 
     def visit_partial_type(self, typ: PartialType) -> None:
         raise RuntimeError

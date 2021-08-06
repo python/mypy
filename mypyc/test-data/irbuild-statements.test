@@ -36,31 +36,32 @@ def f(a: int) -> None:
 [out]
 def f(a):
     a, r0, i :: int
-    r1 :: bool
-    r2 :: native_int
-    r3 :: bit
-    r4 :: native_int
-    r5, r6, r7, r8 :: bit
+    r1 :: native_int
+    r2 :: bit
+    r3 :: native_int
+    r4, r5, r6 :: bit
+    r7 :: bool
+    r8 :: bit
     r9 :: int
 L0:
     r0 = 0
     i = r0
 L1:
-    r2 = r0 & 1
-    r3 = r2 == 0
-    r4 = a & 1
-    r5 = r4 == 0
-    r6 = r3 & r5
-    if r6 goto L2 else goto L3 :: bool
+    r1 = r0 & 1
+    r2 = r1 == 0
+    r3 = a & 1
+    r4 = r3 == 0
+    r5 = r2 & r4
+    if r5 goto L2 else goto L3 :: bool
 L2:
-    r7 = r0 < a :: signed
-    r1 = r7
+    r6 = r0 < a :: signed
+    r7 = r6
     goto L4
 L3:
     r8 = CPyTagged_IsLt_(r0, a)
-    r1 = r8
+    r7 = r8
 L4:
-    if r1 goto L5 else goto L7 :: bool
+    if r7 goto L5 else goto L7 :: bool
 L5:
 L6:
     r9 = CPyTagged_Add(r0, 2)
@@ -303,14 +304,15 @@ def f(ls):
     r3 :: short_int
     r4 :: bit
     r5 :: object
-    x, r6, r7 :: int
+    r6, x, r7 :: int
     r8 :: short_int
 L0:
     y = 0
     r0 = 0
 L1:
     r1 = get_element_ptr ls ob_size :: PyVarObject
-    r2 = load_mem r1, ls :: native_int*
+    r2 = load_mem r1 :: native_int*
+    keep_alive ls
     r3 = r2 << 1
     r4 = r0 < r3 :: signed
     if r4 goto L2 else goto L4 :: bool
@@ -344,7 +346,7 @@ def f(d):
     r5 :: int
     r6 :: bool
     r7 :: object
-    key, r8 :: int
+    r8, key :: int
     r9, r10 :: object
     r11 :: int
     r12, r13 :: bit
@@ -396,15 +398,13 @@ def sum_over_even_values(d):
     r5 :: int
     r6 :: bool
     r7 :: object
-    key, r8 :: int
+    r8, key :: int
     r9, r10 :: object
     r11, r12 :: int
-    r13 :: bool
-    r14 :: native_int
-    r15, r16, r17, r18 :: bit
-    r19, r20 :: object
-    r21, r22 :: int
-    r23, r24 :: bit
+    r13 :: bit
+    r14, r15 :: object
+    r16, r17 :: int
+    r18, r19 :: bit
 L0:
     s = 0
     r0 = 0
@@ -416,7 +416,7 @@ L1:
     r5 = r4[1]
     r0 = r5
     r6 = r4[0]
-    if r6 goto L2 else goto L9 :: bool
+    if r6 goto L2 else goto L6 :: bool
 L2:
     r7 = r4[2]
     r8 = unbox(int, r7)
@@ -425,36 +425,81 @@ L2:
     r10 = CPyDict_GetItem(d, r9)
     r11 = unbox(int, r10)
     r12 = CPyTagged_Remainder(r11, 4)
-    r14 = r12 & 1
-    r15 = r14 == 0
-    if r15 goto L3 else goto L4 :: bool
+    r13 = r12 != 0
+    if r13 goto L3 else goto L4 :: bool
 L3:
-    r16 = r12 != 0
-    r13 = r16
     goto L5
 L4:
-    r17 = CPyTagged_IsEq_(r12, 0)
-    r18 = r17 ^ 1
-    r13 = r18
+    r14 = box(int, key)
+    r15 = CPyDict_GetItem(d, r14)
+    r16 = unbox(int, r15)
+    r17 = CPyTagged_Add(s, r16)
+    s = r17
 L5:
-    if r13 goto L6 else goto L7 :: bool
-L6:
-    goto L8
-L7:
-    r19 = box(int, key)
-    r20 = CPyDict_GetItem(d, r19)
-    r21 = unbox(int, r20)
-    r22 = CPyTagged_Add(s, r21)
-    s = r22
-L8:
-    r23 = CPyDict_CheckSize(d, r2)
+    r18 = CPyDict_CheckSize(d, r2)
     goto L1
-L9:
-    r24 = CPy_NoErrOccured()
-L10:
+L6:
+    r19 = CPy_NoErrOccured()
+L7:
     return s
 
-[case testMultipleAssignment]
+[case testMultipleAssignmentWithNoUnpacking]
+from typing import Tuple
+
+def f(x: int, y: int) -> Tuple[int, int]:
+    x, y = y, x
+    return (x, y)
+
+def f2(x: int, y: str, z: float) -> Tuple[float, str, int]:
+    a, b, c = x, y, z
+    return (c, b, a)
+
+def f3(x: int, y: int) -> Tuple[int, int]:
+    [x, y] = [y, x]
+    return (x, y)
+[out]
+def f(x, y):
+    x, y, r0, r1 :: int
+    r2 :: tuple[int, int]
+L0:
+    r0 = y
+    r1 = x
+    x = r0
+    y = r1
+    r2 = (x, y)
+    return r2
+def f2(x, y, z):
+    x :: int
+    y :: str
+    z :: float
+    r0 :: int
+    r1 :: str
+    r2 :: float
+    a :: int
+    b :: str
+    c :: float
+    r3 :: tuple[float, str, int]
+L0:
+    r0 = x
+    r1 = y
+    r2 = z
+    a = r0
+    b = r1
+    c = r2
+    r3 = (c, b, a)
+    return r3
+def f3(x, y):
+    x, y, r0, r1 :: int
+    r2 :: tuple[int, int]
+L0:
+    r0 = y
+    r1 = x
+    x = r0
+    y = r1
+    r2 = (x, y)
+    return r2
+
+[case testMultipleAssignmentBasicUnpacking]
 from typing import Tuple, Any
 
 def from_tuple(t: Tuple[int, str]) -> None:
@@ -465,10 +510,8 @@ def from_any(a: Any) -> None:
 [out]
 def from_tuple(t):
     t :: tuple[int, str]
-    x :: int
-    y :: str
-    r0 :: int
-    r1 :: str
+    r0, x :: int
+    r1, y :: str
 L0:
     r0 = t[0]
     x = r0
@@ -476,32 +519,32 @@ L0:
     y = r1
     return 1
 def from_any(a):
-    a, x, y, r0, r1 :: object
+    a, r0, r1 :: object
     r2 :: bool
-    r3 :: object
+    x, r3 :: object
     r4 :: bool
-    r5 :: object
+    y, r5 :: object
     r6 :: bool
 L0:
     r0 = PyObject_GetIter(a)
     r1 = PyIter_Next(r0)
     if is_error(r1) goto L1 else goto L2
 L1:
-    raise ValueError('not enough values to unpack')
+    r2 = raise ValueError('not enough values to unpack')
     unreachable
 L2:
     x = r1
     r3 = PyIter_Next(r0)
     if is_error(r3) goto L3 else goto L4
 L3:
-    raise ValueError('not enough values to unpack')
+    r4 = raise ValueError('not enough values to unpack')
     unreachable
 L4:
     y = r3
     r5 = PyIter_Next(r0)
     if is_error(r5) goto L6 else goto L5
 L5:
-    raise ValueError('too many values to unpack')
+    r6 = raise ValueError('too many values to unpack')
     unreachable
 L6:
     return 1
@@ -520,10 +563,9 @@ def from_any(a: Any) -> None:
 [out]
 def from_tuple(t):
     t :: tuple[int, object]
-    x :: object
-    y, r0 :: int
-    r1, r2 :: object
-    r3 :: int
+    r0 :: int
+    r1, x, r2 :: object
+    r3, y :: int
 L0:
     r0 = t[0]
     r1 = box(int, r0)
@@ -533,21 +575,19 @@ L0:
     y = r3
     return 1
 def from_any(a):
-    a :: object
-    x :: int
-    y, r0, r1 :: object
+    a, r0, r1 :: object
     r2 :: bool
-    r3 :: int
+    r3, x :: int
     r4 :: object
     r5 :: bool
-    r6 :: object
+    y, r6 :: object
     r7 :: bool
 L0:
     r0 = PyObject_GetIter(a)
     r1 = PyIter_Next(r0)
     if is_error(r1) goto L1 else goto L2
 L1:
-    raise ValueError('not enough values to unpack')
+    r2 = raise ValueError('not enough values to unpack')
     unreachable
 L2:
     r3 = unbox(int, r1)
@@ -555,14 +595,14 @@ L2:
     r4 = PyIter_Next(r0)
     if is_error(r4) goto L3 else goto L4
 L3:
-    raise ValueError('not enough values to unpack')
+    r5 = raise ValueError('not enough values to unpack')
     unreachable
 L4:
     y = r4
     r6 = PyIter_Next(r0)
     if is_error(r6) goto L6 else goto L5
 L5:
-    raise ValueError('too many values to unpack')
+    r7 = raise ValueError('too many values to unpack')
     unreachable
 L6:
     return 1
@@ -581,13 +621,13 @@ def multi_assign(t, a, l):
     t :: tuple[int, tuple[str, object]]
     a :: __main__.A
     l :: list
-    z, r0 :: int
+    r0 :: int
     r1 :: bool
     r2 :: tuple[str, object]
     r3 :: str
     r4 :: bit
     r5 :: object
-    r6 :: int
+    r6, z :: int
 L0:
     r0 = t[0]
     a.x = r0; r1 = is_error
@@ -597,6 +637,43 @@ L0:
     r5 = r2[1]
     r6 = unbox(int, r5)
     z = r6
+    return 1
+
+[case testMultipleAssignmentUnpackFromSequence]
+from typing import List, Tuple
+
+def f(l: List[int], t: Tuple[int, ...]) -> None:
+    x: object
+    y: int
+    x, y = l
+    x, y = t
+[out]
+def f(l, t):
+    l :: list
+    t :: tuple
+    r0 :: int32
+    r1 :: bit
+    r2, r3, x :: object
+    r4, y :: int
+    r5 :: int32
+    r6 :: bit
+    r7, r8 :: object
+    r9 :: int
+L0:
+    r0 = CPySequence_CheckUnpackCount(l, 2)
+    r1 = r0 >= 0 :: signed
+    r2 = CPyList_GetItemUnsafe(l, 0)
+    r3 = CPyList_GetItemUnsafe(l, 2)
+    x = r2
+    r4 = unbox(int, r3)
+    y = r4
+    r5 = CPySequence_CheckUnpackCount(t, 2)
+    r6 = r5 >= 0 :: signed
+    r7 = CPySequenceTuple_GetItem(t, 0)
+    r8 = CPySequenceTuple_GetItem(t, 2)
+    r9 = unbox(int, r8)
+    x = r7
+    y = r9
     return 1
 
 [case testAssert]
@@ -618,7 +695,7 @@ def no_msg(x):
 L0:
     if x goto L2 else goto L1 :: bool
 L1:
-    raise AssertionError
+    r0 = raise AssertionError
     unreachable
 L2:
     return 2
@@ -633,7 +710,7 @@ L0:
     r2 = truncate r0: int32 to builtins.bool
     if r2 goto L2 else goto L1 :: bool
 L1:
-    raise AssertionError('message')
+    r3 = raise AssertionError('message')
     unreachable
 L2:
     return 4
@@ -643,28 +720,24 @@ def complex_msg(x, s):
     r0 :: object
     r1 :: bit
     r2 :: str
-    r3 :: int32
-    r4 :: bit
-    r5 :: bool
-    r6 :: object
-    r7 :: str
-    r8, r9 :: object
+    r3 :: bit
+    r4 :: object
+    r5 :: str
+    r6, r7 :: object
 L0:
     r0 = load_address _Py_NoneStruct
     r1 = x != r0
     if r1 goto L1 else goto L2 :: bool
 L1:
     r2 = cast(str, x)
-    r3 = PyObject_IsTrue(r2)
-    r4 = r3 >= 0 :: signed
-    r5 = truncate r3: int32 to builtins.bool
-    if r5 goto L3 else goto L2 :: bool
+    r3 = CPyStr_IsTrue(r2)
+    if r3 goto L3 else goto L2 :: bool
 L2:
-    r6 = builtins :: module
-    r7 = load_global CPyStatic_unicode_3 :: static  ('AssertionError')
-    r8 = CPyObject_GetAttr(r6, r7)
-    r9 = PyObject_CallFunctionObjArgs(r8, s, 0)
-    CPy_Raise(r9)
+    r4 = builtins :: module
+    r5 = 'AssertionError'
+    r6 = CPyObject_GetAttr(r4, r5)
+    r7 = PyObject_CallFunctionObjArgs(r6, s, 0)
+    CPy_Raise(r7)
     unreachable
 L3:
     return 1
@@ -690,10 +763,11 @@ L0:
     r1 = box(short_int, 2)
     r2 = box(short_int, 4)
     r3 = get_element_ptr r0 ob_item :: PyListObject
-    r4 = load_mem r3, r0 :: ptr*
-    set_mem r4, r1, r0 :: builtins.object*
+    r4 = load_mem r3 :: ptr*
+    set_mem r4, r1 :: builtins.object*
     r5 = r4 + WORD_SIZE*1
-    set_mem r5, r2, r0 :: builtins.object*
+    set_mem r5, r2 :: builtins.object*
+    keep_alive r0
     l = r0
     r6 = box(short_int, 2)
     r7 = PyObject_DelItem(l, r6)
@@ -723,20 +797,21 @@ L0:
     r6 = box(short_int, 12)
     r7 = box(short_int, 14)
     r8 = get_element_ptr r0 ob_item :: PyListObject
-    r9 = load_mem r8, r0 :: ptr*
-    set_mem r9, r1, r0 :: builtins.object*
+    r9 = load_mem r8 :: ptr*
+    set_mem r9, r1 :: builtins.object*
     r10 = r9 + WORD_SIZE*1
-    set_mem r10, r2, r0 :: builtins.object*
+    set_mem r10, r2 :: builtins.object*
     r11 = r9 + WORD_SIZE*2
-    set_mem r11, r3, r0 :: builtins.object*
+    set_mem r11, r3 :: builtins.object*
     r12 = r9 + WORD_SIZE*3
-    set_mem r12, r4, r0 :: builtins.object*
+    set_mem r12, r4 :: builtins.object*
     r13 = r9 + WORD_SIZE*4
-    set_mem r13, r5, r0 :: builtins.object*
+    set_mem r13, r5 :: builtins.object*
     r14 = r9 + WORD_SIZE*5
-    set_mem r14, r6, r0 :: builtins.object*
+    set_mem r14, r6 :: builtins.object*
     r15 = r9 + WORD_SIZE*6
-    set_mem r15, r7, r0 :: builtins.object*
+    set_mem r15, r7 :: builtins.object*
+    keep_alive r0
     l = r0
     r16 = box(short_int, 2)
     r17 = PyObject_DelItem(l, r16)
@@ -765,13 +840,13 @@ def delDict():
     r6 :: int32
     r7 :: bit
 L0:
-    r0 = load_global CPyStatic_unicode_1 :: static  ('one')
-    r1 = load_global CPyStatic_unicode_2 :: static  ('two')
+    r0 = 'one'
+    r1 = 'two'
     r2 = box(short_int, 2)
     r3 = box(short_int, 4)
     r4 = CPyDict_Build(2, r0, r2, r1, r3)
     d = r4
-    r5 = load_global CPyStatic_unicode_1 :: static  ('one')
+    r5 = 'one'
     r6 = PyObject_DelItem(d, r5)
     r7 = r6 >= 0 :: signed
     return 1
@@ -785,18 +860,18 @@ def delDictMultiple():
     r13 :: int32
     r14 :: bit
 L0:
-    r0 = load_global CPyStatic_unicode_1 :: static  ('one')
-    r1 = load_global CPyStatic_unicode_2 :: static  ('two')
-    r2 = load_global CPyStatic_unicode_3 :: static  ('three')
-    r3 = load_global CPyStatic_unicode_4 :: static  ('four')
+    r0 = 'one'
+    r1 = 'two'
+    r2 = 'three'
+    r3 = 'four'
     r4 = box(short_int, 2)
     r5 = box(short_int, 4)
     r6 = box(short_int, 6)
     r7 = box(short_int, 8)
     r8 = CPyDict_Build(4, r0, r4, r1, r5, r2, r6, r3, r7)
     d = r8
-    r9 = load_global CPyStatic_unicode_1 :: static  ('one')
-    r10 = load_global CPyStatic_unicode_4 :: static  ('four')
+    r9 = 'one'
+    r10 = 'four'
     r11 = PyObject_DelItem(d, r9)
     r12 = r11 >= 0 :: signed
     r13 = PyObject_DelItem(d, r10)
@@ -805,6 +880,7 @@ L0:
 
 [case testDelAttribute]
 class Dummy():
+    __deletable__ = ('x', 'y')
     def __init__(self, x: int, y: int) -> None:
         self.x = x
         self.y = y
@@ -831,7 +907,7 @@ def delAttribute():
 L0:
     r0 = Dummy(2, 4)
     dummy = r0
-    r1 = load_global CPyStatic_unicode_3 :: static  ('x')
+    r1 = 'x'
     r2 = PyObject_DelAttr(dummy, r1)
     r3 = r2 >= 0 :: signed
     return 1
@@ -846,10 +922,10 @@ def delAttributeMultiple():
 L0:
     r0 = Dummy(2, 4)
     dummy = r0
-    r1 = load_global CPyStatic_unicode_3 :: static  ('x')
+    r1 = 'x'
     r2 = PyObject_DelAttr(dummy, r1)
     r3 = r2 >= 0 :: signed
-    r4 = load_global CPyStatic_unicode_4 :: static  ('y')
+    r4 = 'y'
     r5 = PyObject_DelAttr(dummy, r4)
     r6 = r5 >= 0 :: signed
     return 1
@@ -874,7 +950,7 @@ def f(a):
     r4 :: short_int
     r5 :: bit
     r6 :: object
-    x, r7, r8 :: int
+    r7, x, r8 :: int
     r9, r10 :: short_int
 L0:
     r0 = 0
@@ -882,7 +958,8 @@ L0:
     r1 = 0
 L1:
     r2 = get_element_ptr a ob_size :: PyVarObject
-    r3 = load_mem r2, a :: native_int*
+    r3 = load_mem r2 :: native_int*
+    keep_alive a
     r4 = r3 << 1
     r5 = r1 < r4 :: signed
     if r5 goto L2 else goto L4 :: bool
@@ -951,7 +1028,7 @@ def f(a, b):
     r4 :: short_int
     r5 :: bit
     r6, r7 :: object
-    x, r8 :: int
+    r8, x :: int
     r9, y :: bool
     r10 :: int32
     r11 :: bit
@@ -963,7 +1040,8 @@ L0:
     r1 = PyObject_GetIter(b)
 L1:
     r2 = get_element_ptr a ob_size :: PyVarObject
-    r3 = load_mem r2, a :: native_int*
+    r3 = load_mem r2 :: native_int*
+    keep_alive a
     r4 = r3 << 1
     r5 = r0 < r4 :: signed
     if r5 goto L2 else goto L7 :: bool
@@ -1004,7 +1082,7 @@ def g(a, b):
     r7, r8 :: bit
     r9, x :: bool
     r10 :: object
-    y, r11 :: int
+    r11, y :: int
     r12, r13 :: short_int
     r14 :: bit
 L0:
@@ -1017,7 +1095,8 @@ L1:
     if is_error(r3) goto L6 else goto L2
 L2:
     r4 = get_element_ptr b ob_size :: PyVarObject
-    r5 = load_mem r4, b :: native_int*
+    r5 = load_mem r4 :: native_int*
+    keep_alive b
     r6 = r5 << 1
     r7 = r1 < r6 :: signed
     if r7 goto L3 else goto L6 :: bool

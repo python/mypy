@@ -1,47 +1,50 @@
 """Intermediate representation of functions."""
-import re
 
-from typing import List, Optional, Sequence, Dict
+from typing import List, Optional, Sequence
 from typing_extensions import Final
 
-from mypy.nodes import FuncDef, Block, ARG_POS, ARG_OPT, ARG_NAMED_OPT
+from mypy.nodes import FuncDef, Block, ArgKind, ARG_POS
 
-from mypyc.common import JsonDict
+from mypyc.common import JsonDict, get_id_from_name, short_id_from_name
 from mypyc.ir.ops import (
-    DeserMaps, Goto, Branch, Return, Unreachable, BasicBlock, Environment
+    DeserMaps, BasicBlock, Value, Register, Assign, AssignMulti, ControlOp, LoadAddress
 )
 from mypyc.ir.rtypes import RType, deserialize_type
-from mypyc.ir.const_int import find_constant_integer_registers
 from mypyc.namegen import NameGenerator
 
 
 class RuntimeArg:
-    """Representation of a function argument in IR.
+    """Description of a function argument in IR.
 
     Argument kind is one of ARG_* constants defined in mypy.nodes.
     """
 
-    def __init__(self, name: str, typ: RType, kind: int = ARG_POS) -> None:
+    def __init__(
+            self, name: str, typ: RType, kind: ArgKind = ARG_POS, pos_only: bool = False) -> None:
         self.name = name
         self.type = typ
         self.kind = kind
+        self.pos_only = pos_only
 
     @property
     def optional(self) -> bool:
-        return self.kind == ARG_OPT or self.kind == ARG_NAMED_OPT
+        return self.kind.is_optional()
 
     def __repr__(self) -> str:
-        return 'RuntimeArg(name=%s, type=%s, optional=%r)' % (self.name, self.type, self.optional)
+        return 'RuntimeArg(name=%s, type=%s, optional=%r, pos_only=%r)' % (
+            self.name, self.type, self.optional, self.pos_only)
 
     def serialize(self) -> JsonDict:
-        return {'name': self.name, 'type': self.type.serialize(), 'kind': self.kind}
+        return {'name': self.name, 'type': self.type.serialize(), 'kind': int(self.kind.value),
+                'pos_only': self.pos_only}
 
     @classmethod
     def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> 'RuntimeArg':
         return RuntimeArg(
             data['name'],
             deserialize_type(data['type'], ctx),
-            data['kind'],
+            ArgKind(data['kind']),
+            data['pos_only'],
         )
 
 
@@ -68,9 +71,9 @@ class FuncSignature:
         )
 
 
-FUNC_NORMAL = 0  # type: Final
-FUNC_STATICMETHOD = 1  # type: Final
-FUNC_CLASSMETHOD = 2  # type: Final
+FUNC_NORMAL: Final = 0
+FUNC_STATICMETHOD: Final = 1
+FUNC_CLASSMETHOD: Final = 2
 
 
 class FuncDecl:
@@ -96,12 +99,30 @@ class FuncDecl:
         self.is_prop_setter = is_prop_setter
         self.is_prop_getter = is_prop_getter
         if class_name is None:
-            self.bound_sig = None  # type: Optional[FuncSignature]
+            self.bound_sig: Optional[FuncSignature] = None
         else:
             if kind == FUNC_STATICMETHOD:
                 self.bound_sig = sig
             else:
                 self.bound_sig = FuncSignature(sig.args[1:], sig.ret_type)
+
+        # this is optional because this will be set to the line number when the corresponding
+        # FuncIR is created
+        self._line: Optional[int] = None
+
+    @property
+    def line(self) -> int:
+        assert self._line is not None
+        return self._line
+
+    @line.setter
+    def line(self, line: int) -> None:
+        self._line = line
+
+    @property
+    def id(self) -> str:
+        assert self.line is not None
+        return get_id_from_name(self.name, self.fullname, self.line)
 
     @staticmethod
     def compute_shortname(class_name: Optional[str], name: str) -> str:
@@ -116,7 +137,8 @@ class FuncDecl:
         return self.module_name + '.' + self.shortname
 
     def cname(self, names: NameGenerator) -> str:
-        return names.private_name(self.module_name, self.shortname)
+        partial_name = short_id_from_name(self.name, self.shortname, self._line)
+        return names.private_name(self.module_name, partial_name)
 
     def serialize(self) -> JsonDict:
         return {
@@ -129,9 +151,14 @@ class FuncDecl:
             'is_prop_getter': self.is_prop_getter,
         }
 
+    # TODO: move this to FuncIR?
     @staticmethod
-    def get_name_from_json(f: JsonDict) -> str:
-        return f['module_name'] + '.' + FuncDecl.compute_shortname(f['class_name'], f['name'])
+    def get_id_from_json(func_ir: JsonDict) -> str:
+        """Get the id from the serialized FuncIR associated with this FuncDecl"""
+        decl = func_ir['decl']
+        shortname = FuncDecl.compute_shortname(decl['class_name'], decl['name'])
+        fullname = decl['module_name'] + '.' + shortname
+        return get_id_from_name(decl['name'], fullname, func_ir['line'])
 
     @classmethod
     def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> 'FuncDecl':
@@ -149,24 +176,30 @@ class FuncDecl:
 class FuncIR:
     """Intermediate representation of a function with contextual information.
 
-    Unlike FuncDecl, this includes the IR of the body (basic blocks) and an
-    environment.
+    Unlike FuncDecl, this includes the IR of the body (basic blocks).
     """
 
     def __init__(self,
                  decl: FuncDecl,
+                 arg_regs: List[Register],
                  blocks: List[BasicBlock],
-                 env: Environment,
                  line: int = -1,
                  traceback_name: Optional[str] = None) -> None:
+        # Declaration of the function, including the signature
         self.decl = decl
+        # Registers for all the arguments to the function
+        self.arg_regs = arg_regs
+        # Body of the function
         self.blocks = blocks
-        self.env = env
-        self.line = line
+        self.decl.line = line
         # The name that should be displayed for tracebacks that
         # include this function. Function will be omitted from
         # tracebacks if None.
         self.traceback_name = traceback_name
+
+    @property
+    def line(self) -> int:
+        return self.decl.line
 
     @property
     def args(self) -> Sequence[RuntimeArg]:
@@ -192,14 +225,21 @@ class FuncIR:
     def fullname(self) -> str:
         return self.decl.fullname
 
+    @property
+    def id(self) -> str:
+        return self.decl.id
+
     def cname(self, names: NameGenerator) -> str:
         return self.decl.cname(names)
 
-    def __str__(self) -> str:
-        return '\n'.join(format_func(self))
+    def __repr__(self) -> str:
+        if self.class_name:
+            return '<FuncIR {}.{}>'.format(self.class_name, self.name)
+        else:
+            return '<FuncIR {}>'.format(self.name)
 
     def serialize(self) -> JsonDict:
-        # We don't include blocks or env in the serialized version
+        # We don't include blocks in the serialized version
         return {
             'decl': self.decl.serialize(),
             'line': self.line,
@@ -211,65 +251,65 @@ class FuncIR:
         return FuncIR(
             FuncDecl.deserialize(data['decl'], ctx),
             [],
-            Environment(),
+            [],
             data['line'],
             data['traceback_name'],
         )
 
 
-INVALID_FUNC_DEF = FuncDef('<INVALID_FUNC_DEF>', [], Block([]))  # type: Final
+INVALID_FUNC_DEF: Final = FuncDef("<INVALID_FUNC_DEF>", [], Block([]))
 
 
-def format_blocks(blocks: List[BasicBlock],
-                  env: Environment,
-                  const_regs: Dict[str, int]) -> List[str]:
-    """Format a list of IR basic blocks into a human-readable form."""
-    # First label all of the blocks
-    for i, block in enumerate(blocks):
-        block.label = i
+def all_values(args: List[Register], blocks: List[BasicBlock]) -> List[Value]:
+    """Return the set of all values that may be initialized in the blocks.
 
-    handler_map = {}  # type: Dict[BasicBlock, List[BasicBlock]]
-    for b in blocks:
-        if b.error_handler:
-            handler_map.setdefault(b.error_handler, []).append(b)
+    This omits registers that are only read.
+    """
+    values: List[Value] = list(args)
+    seen_registers = set(args)
 
-    lines = []
-    for i, block in enumerate(blocks):
-        handler_msg = ''
-        if block in handler_map:
-            labels = sorted(env.format('%l', b.label) for b in handler_map[block])
-            handler_msg = ' (handler for {})'.format(', '.join(labels))
+    for block in blocks:
+        for op in block.ops:
+            if not isinstance(op, ControlOp):
+                if isinstance(op, (Assign, AssignMulti)):
+                    if op.dest not in seen_registers:
+                        values.append(op.dest)
+                        seen_registers.add(op.dest)
+                elif op.is_void:
+                    continue
+                else:
+                    # If we take the address of a register, it might get initialized.
+                    if (isinstance(op, LoadAddress)
+                            and isinstance(op.src, Register)
+                            and op.src not in seen_registers):
+                        values.append(op.src)
+                        seen_registers.add(op.src)
+                    values.append(op)
 
-        lines.append(env.format('%l:%s', block.label, handler_msg))
-        ops = block.ops
-        if (isinstance(ops[-1], Goto) and i + 1 < len(blocks)
-                and ops[-1].label == blocks[i + 1]):
-            # Hide the last goto if it just goes to the next basic block.
-            ops = ops[:-1]
-        # load int registers start with 'i'
-        regex = re.compile(r'\bi[0-9]+\b')
-        for op in ops:
-            if op.name not in const_regs:
-                line = '    ' + op.to_str(env)
-                line = regex.sub(lambda i: str(const_regs[i.group()]) if i.group() in const_regs
-                                 else i.group(), line)
-                lines.append(line)
-
-        if not isinstance(block.ops[-1], (Goto, Branch, Return, Unreachable)):
-            # Each basic block needs to exit somewhere.
-            lines.append('    [MISSING BLOCK EXIT OPCODE]')
-    return lines
+    return values
 
 
-def format_func(fn: FuncIR) -> List[str]:
-    lines = []
-    cls_prefix = fn.class_name + '.' if fn.class_name else ''
-    lines.append('def {}{}({}):'.format(cls_prefix, fn.name,
-                                        ', '.join(arg.name for arg in fn.args)))
-    # compute constants
-    const_regs = find_constant_integer_registers(fn.blocks)
-    for line in fn.env.to_lines(const_regs):
-        lines.append('    ' + line)
-    code = format_blocks(fn.blocks, fn.env, const_regs)
-    lines.extend(code)
-    return lines
+def all_values_full(args: List[Register], blocks: List[BasicBlock]) -> List[Value]:
+    """Return set of all values that are initialized or accessed."""
+    values: List[Value] = list(args)
+    seen_registers = set(args)
+
+    for block in blocks:
+        for op in block.ops:
+            for source in op.sources():
+                # Look for uninitialized registers that are accessed. Ignore
+                # non-registers since we don't allow ops outside basic blocks.
+                if isinstance(source, Register) and source not in seen_registers:
+                    values.append(source)
+                    seen_registers.add(source)
+            if not isinstance(op, ControlOp):
+                if isinstance(op, (Assign, AssignMulti)):
+                    if op.dest not in seen_registers:
+                        values.append(op.dest)
+                        seen_registers.add(op.dest)
+                elif op.is_void:
+                    continue
+                else:
+                    values.append(op)
+
+    return values

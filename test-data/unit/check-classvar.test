@@ -48,7 +48,7 @@ class A:
 A().x
 reveal_type(A().x)
 [out]
-main:5: note: Revealed type is 'builtins.int'
+main:5: note: Revealed type is "builtins.int"
 
 [case testReadingFromSelf]
 from typing import ClassVar
@@ -57,7 +57,7 @@ class A:
     def __init__(self) -> None:
         reveal_type(self.x)
 [out]
-main:5: note: Revealed type is 'builtins.int'
+main:5: note: Revealed type is "builtins.int"
 
 [case testTypecheckSimple]
 from typing import ClassVar
@@ -100,7 +100,7 @@ class A:
     x = None  # type: ClassVar[int]
 reveal_type(A.x)
 [out]
-main:4: note: Revealed type is 'builtins.int'
+main:4: note: Revealed type is "builtins.int"
 
 [case testInfer]
 from typing import ClassVar
@@ -109,7 +109,7 @@ class A:
 y = A.x
 reveal_type(y)
 [out]
-main:5: note: Revealed type is 'builtins.int'
+main:5: note: Revealed type is "builtins.int"
 
 [case testAssignmentOnUnion]
 from typing import ClassVar, Union
@@ -166,7 +166,7 @@ A.x = B()
 reveal_type(A().x)
 [out]
 main:8: error: Incompatible types in assignment (expression has type "B", variable has type "Union[int, str]")
-main:9: note: Revealed type is 'Union[builtins.int, builtins.str]'
+main:9: note: Revealed type is "Union[builtins.int, builtins.str]"
 
 [case testOverrideWithNarrowedUnion]
 from typing import ClassVar, Union
@@ -278,7 +278,7 @@ from typing import ClassVar
 class A:
     x = None  # type: ClassVar[int]
 [out]
-main:2: note: Revealed type is 'builtins.int'
+main:2: note: Revealed type is "builtins.int"
 main:3: error: Cannot assign to class variable "x" via instance
 
 [case testClassVarWithGeneric]
@@ -300,7 +300,7 @@ Bad.x  # E: Access to generic class variables is ambiguous
 
 class Good(A[int]):
     x = 42
-reveal_type(Good.x)  # N: Revealed type is 'builtins.int'
+reveal_type(Good.x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/classmethod.pyi]
 
 [case testClassVarWithNestedGeneric]
@@ -323,5 +323,5 @@ Bad.x  # E: Access to generic class variables is ambiguous
 
 class Good(A[int, str]):
     x = 42
-reveal_type(Good.x)  # N: Revealed type is 'builtins.int'
+reveal_type(Good.x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/classmethod.pyi]

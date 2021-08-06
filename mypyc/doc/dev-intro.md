@@ -199,7 +199,7 @@ Most mypyc test cases are defined in the same format (`.test`) as used
 for test cases for mypy. Look at mypy developer documentation for a
 general overview of how things work. Test cases live under
 `mypyc/test-data/`, and you can run all mypyc tests via `pytest
-mypyc`. If you don't make changes to code under `mypy/`, it's not
+-q mypyc`. If you don't make changes to code under `mypy/`, it's not
 important to regularly run mypy tests during development.
 
 When you create a PR, we have Continuous Integration jobs set up that
