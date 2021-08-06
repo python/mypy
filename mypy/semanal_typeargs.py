@@ -18,6 +18,7 @@ from mypy.errors import Errors
 from mypy.scope import Scope
 from mypy.options import Options
 from mypy.errorcodes import ErrorCode
+from mypy.message_registry import ErrorMessage
 from mypy import message_registry, errorcodes as codes
 
 
@@ -72,17 +73,16 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                 if isinstance(arg, TypeVarType):
                     arg_values = arg.values
                     if not arg_values:
-                        self.fail('Type variable "{}" not valid as type '
-                                  'argument value for "{}"'.format(
-                                      arg.name, info.name), t, code=codes.TYPE_VAR)
+                        self.fail(
+                            message_registry.TYPEVAR_INVALID_TYPE_ARG.format(arg.name, info.name),
+                            t)
                         continue
                 else:
                     arg_values = [arg]
                 self.check_type_var_values(info, arg_values, tvar.name, tvar.values, i + 1, t)
             if not is_subtype(arg, tvar.upper_bound):
-                self.fail('Type argument "{}" of "{}" must be '
-                          'a subtype of "{}"'.format(
-                              arg, info.name, tvar.upper_bound), t, code=codes.TYPE_VAR)
+                self.fail(message_registry.TYPE_ARG_INVALID_SUBTYPE.format(
+                              arg, info.name, tvar.upper_bound), t)
         super().visit_instance(t)
 
     def check_type_var_values(self, type: TypeInfo, actuals: List[Type], arg_name: str,
@@ -92,16 +92,14 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                     not any(is_same_type(actual, value)
                             for value in valids)):
                 if len(actuals) > 1 or not isinstance(actual, Instance):
-                    self.fail('Invalid type argument value for "{}"'.format(
-                        type.name), context, code=codes.TYPE_VAR)
+                    self.fail(message_registry.TYPE_ARG_INVALID_VALUE.format(type.name), context)
                 else:
                     class_name = '"{}"'.format(type.name)
                     actual_type_name = '"{}"'.format(actual.type.name)
                     self.fail(
                         message_registry.INCOMPATIBLE_TYPEVAR_VALUE.format(
                             arg_name, class_name, actual_type_name),
-                        context,
-                        code=codes.TYPE_VAR)
+                        context)
 
-    def fail(self, msg: str, context: Context, *, code: Optional[ErrorCode] = None) -> None:
-        self.errors.report(context.get_line(), context.get_column(), msg, code=code)
+    def fail(self, msg: ErrorMessage, context: Context) -> None:
+        self.errors.report(context.get_line(), context.get_column(), msg.value, code=msg.code)

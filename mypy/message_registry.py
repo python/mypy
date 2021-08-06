@@ -116,7 +116,7 @@ IMPLICIT_GENERIC_ANY_BUILTIN: Final = ErrorMessage(
 )
 
 # TypeVar
-INCOMPATIBLE_TYPEVAR_VALUE: Final = 'Value of type variable "{}" of {} cannot be {}'
+INCOMPATIBLE_TYPEVAR_VALUE: Final = ErrorMessage('Value of type variable "{}" of {} cannot be {}', codes.TYPE_VAR)
 CANNOT_USE_TYPEVAR_AS_EXPRESSION: Final = 'Type variable "{}.{}" cannot be used as an expression'
 
 # Super
@@ -295,3 +295,9 @@ NAMEDTUPLE_INVALID_FIELD_NAME: Final = ErrorMessage("Invalid NamedTuple() field 
 NAMEDTUPLE_INVALID_FIELD_TYPE: Final = ErrorMessage('Invalid field type')
 NAMEDTUPLE_TUPLE_EXPECTED: Final = ErrorMessage("Tuple expected as NamedTuple() field")
 NAMEDTUPLE_CANNOT_OVERWRITE_ATTRIBUTE: Final = ErrorMessage('Cannot overwrite NamedTuple attribute "{}"')
+
+# TypeArgs
+TYPEVAR_INVALID_TYPE_ARG: Final = ErrorMessage('Type variable "{}" not valid as type argument value for "{}"', codes.TYPE_VAR)
+TYPE_ARG_INVALID_SUBTYPE: Final = ErrorMessage('Type argument "{}" of "{}" must be a subtype of "{}"', codes.TYPE_VAR)
+TYPE_ARG_INVALID_VALUE: Final = ErrorMessage('Invalid type argument value for "{}"', codes.TYPE_VAR)
+
