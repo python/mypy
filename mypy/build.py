@@ -1841,15 +1841,15 @@ class State:
         if path:
             self.abspath = os.path.abspath(path)
         self.xpath = path or '<string>'
-        if path and source is None and self.manager.fscache.isdir(path):
-            source = ''
-        self.source = source
-        if path and self.manager.cache_enabled:
+        if path and source is None and self.manager.cache_enabled:
             self.meta = find_cache_meta(self.id, path, manager)
             # TODO: Get mtime if not cached.
             if self.meta is not None:
                 self.interface_hash = self.meta.interface_hash
                 self.meta_source_hash = self.meta.hash
+        if path and source is None and self.manager.fscache.isdir(path):
+            source = ''
+        self.source = source
         self.add_ancestors()
         t0 = time.time()
         self.meta = validate_meta(self.meta, self.id, self.path, self.ignore_all, manager)
