@@ -13,14 +13,10 @@ See comment below for more documentation.
 """
 
 from typing import Callable, Optional, Dict, Tuple, List
-from typing_extensions import Final
 
-from mypy.checkstrformat import parse_format_value
-from mypy.errors import Errors
-from mypy.messages import MessageBuilder
 from mypy.nodes import (
     CallExpr, RefExpr, MemberExpr, NameExpr, TupleExpr, GeneratorExpr,
-    ListExpr, DictExpr, StrExpr, ARG_POS, Context
+    ListExpr, DictExpr, StrExpr, ARG_POS
 )
 from mypy.types import AnyType, TypeOfAny
 
@@ -29,11 +25,11 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
-    bool_rprimitive, c_int_rprimitive, c_pyssize_t_rprimitive, is_dict_rprimitive,
-    is_int_rprimitive, is_str_rprimitive, is_short_int_rprimitive
+    bool_rprimitive, c_int_rprimitive, c_pyssize_t_rprimitive, is_dict_rprimitive
 )
-from mypyc.irbuild.format_str_tokenizer import join_formatted_strings
-from mypyc.primitives.int_ops import int_to_str_op
+from mypyc.irbuild.format_str_tokenizer import (
+    tokenizer_format_call, join_formatted_strings, convert_expr
+)
 from mypyc.primitives.dict_ops import (
     dict_keys_op, dict_values_op, dict_items_op, dict_setdefault_spec_init_op
 )
@@ -392,51 +388,21 @@ def translate_dict_setdefault(
     return None
 
 
-# The empty Context as an argument for parse_format_value().
-# It wouldn't be used since the code has passed the type-checking.
-EMPTY_CONTEXT: Final = Context()
-
-
 @specialize_function('format', str_rprimitive)
 def translate_str_format(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
     if (isinstance(callee, MemberExpr) and isinstance(callee.expr, StrExpr)
             and expr.arg_kinds.count(ARG_POS) == len(expr.arg_kinds)):
         format_str = callee.expr.value
-
-        # Creates an empty MessageBuilder here.
-        # It wouldn't be used since the code has passed the type-checking.
-        specifiers = parse_format_value(format_str, EMPTY_CONTEXT,
-                                        MessageBuilder(Errors(), {}))
-        if specifiers is None:
+        tokens = tokenizer_format_call(format_str)
+        if tokens is None:
             return None
-
-        literals = []
-        last_pos = 0
-        for spec in specifiers:
-            # Only empty curly brace is allowed
-            if spec.whole_seq:
-                return None
-            literals.append(format_str[last_pos:spec.start_pos-1])
-            last_pos = spec.start_pos + len(spec.whole_seq) + 1
-        literals.append(format_str[last_pos:])
-
-        # Deal with escaped {{
-        literals = [x.replace('{{', '{').replace('}}', '}') for x in literals]
-
+        literals, format_ops = tokens
         # Convert variables to strings
-        variables = []
-        for x in expr.args:
-            node_type = builder.node_type(x)
-            if is_str_rprimitive(node_type):
-                var_str = builder.accept(x)
-            elif is_int_rprimitive(node_type) or is_short_int_rprimitive(node_type):
-                var_str = builder.call_c(int_to_str_op, [builder.accept(x)], expr.line)
-            else:
-                var_str = builder.call_c(str_op, [builder.accept(x)], expr.line)
-            variables.append(var_str)
-
-        return join_formatted_strings(builder, literals, variables, expr.line)
+        substitutions = convert_expr(builder, format_ops, expr.args, expr.line)
+        if substitutions is None:
+            return None
+        return join_formatted_strings(builder, literals, substitutions, expr.line)
     return None
 
 
