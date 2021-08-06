@@ -21,11 +21,23 @@ from mypyc.primitives.str_ops import str_build_op, str_op
 
 
 class FormatOp(Enum):
+    """FormatOp represents conversion operations of string formatting during
+    compile time.
+
+    Compare to ConversionSpecifier, FormatOp has fewer attributes.
+    For example, to mark a conversion from any object to string,
+    ConversionSpecifier may have several representations, like '%s', '{}'
+    or '{:{}}'. However, there would only exist one corresponding FormatOp.
+    """
     STR = 's'
     INT = 'd'
 
 
 def generate_format_ops(specifiers: List[ConversionSpecifier]) -> Optional[List[FormatOp]]:
+    """Convert ConversionSpecifier to FormatOp.
+
+    Different ConversionSpecifiers may share a same FormatOp.
+    """
     format_ops = []
     for spec in specifiers:
         # TODO: Match specifiers instead of using whole_seq
@@ -73,7 +85,9 @@ def tokenizer_format_call(
     to `FormatOp`.
 
     Return:
-        A list of string literals and a list of FormatOps.
+        A list of string literals and a list of FormatOps. The literals
+        are interleaved with FormatOps and the length of returned literals
+        should be exactly one more than FormatOps.
         Return None if it cannot parse the string.
     """
     # Creates an empty MessageBuilder here.
@@ -101,6 +115,8 @@ def tokenizer_format_call(
 
 def convert_expr(builder: IRBuilder, format_ops: List[FormatOp],
                  exprs: List[Expression], line: int) -> Optional[List[Value]]:
+    """Convert expressions into string literals with the guidance
+    of FormatOps."""
     converted = []
     for x, format_op in zip(exprs, format_ops):
         node_type = builder.node_type(x)
