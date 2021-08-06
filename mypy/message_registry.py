@@ -260,3 +260,15 @@ TYPEDDICT_TOTAL_MUST_BE_BOOL_2: Final = ErrorMessage('Value of "total" must be T
 TYPEDDICT_DUPLICATE_KEY: Final = ErrorMessage('Duplicate TypedDict key "{}"')
 TYPEDDICT_INVALID_FIELD_NAME: Final = ErrorMessage("Invalid TypedDict() field name")
 TYPEDDICT_INVALID_FIELD_TYPE: Final = ErrorMessage('Invalid field type')
+
+# Enum
+ENUM_ATTRIBUTE_UNSUPPORTED: Final = ErrorMessage("Enum type as attribute is not supported")
+ENUM_CALL_UNEXPECTED_ARGS: Final = ErrorMessage("Unexpected arguments to {}()")
+ENUM_CALL_UNEXPECTED_KWARG: Final = ErrorMessage('Unexpected keyword argument "{}"')
+ENUM_CALL_TOO_MANY_ARGS: Final = ErrorMessage("Too many arguments for {}()")
+ENUM_CALL_TOO_FEW_ARGS: Final = ErrorMessage("Too few arguments for {}()")
+ENUM_CALL_EXPECTED_STRING_LITERAL: Final = ErrorMessage("{}() expects a string literal as the first argument")
+ENUM_CALL_EXPECTED_STRINGS_OR_PAIRS: Final = ErrorMessage("{}() with tuple or list expects strings or (name, value) pairs")
+ENUM_CALL_DICT_EXPECTED_STRING_KEYS: Final = ErrorMessage("{}() with dict literal requires string literals")
+ENUM_CALL_EXPECTED_LITERAL: Final = ErrorMessage("{}() expects a string, tuple, list or dict literal as the second argument")
+ENUM_CALL_ATLEAST_ONE_ITEM: Final = ErrorMessage("{}() needs at least one item")
