@@ -33,7 +33,6 @@ L0:
     b5 = r9
     return 1
 
-
 [case testBytearrayBasics]
 def f(s: str, num: int) -> None:
     a = bytearray()
@@ -63,7 +62,6 @@ L0:
     c = r6
     return 1
 
-
 [case testBytesConcat]
 def f1(a: bytes, b: bytes) -> bytes:
     return a + b
@@ -73,7 +71,6 @@ def f1(a, b):
 L0:
     r0 = CPyBytes_Concat(a, b)
     return r0
-
 
 [case testBytesJoin]
 from typing import List
@@ -87,7 +84,6 @@ L0:
     r0 = b' '
     r1 = CPyBytes_Join(r0, b)
     return r1
-
 
 [case testBytesLen]
 def f(b: bytes) -> int:

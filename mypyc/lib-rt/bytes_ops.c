@@ -15,11 +15,9 @@ PyObject *CPyBytes_Concat(PyObject *a, PyObject *b) {
             memcpy(ret->ob_sval + a_len, ((PyBytesObject *)b)->ob_sval, b_len);
         }
         return (PyObject *)ret;
-    }
-    else if (PyByteArray_Check(a)) {
+    } else if (PyByteArray_Check(a)) {
         return PyByteArray_Concat(a, b);
-    }
-    else {
+    } else {
         PyBytes_Concat(&a, b);
         return a;
     }
