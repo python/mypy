@@ -5563,3 +5563,25 @@ class D:
 [out2]
 tmp/a.py:2: note: Revealed type is "builtins.list[builtins.int]"
 tmp/a.py:3: note: Revealed type is "builtins.list[builtins.str]"
+
+[case testIncrementalNamespacePackage1]
+# flags: --namespace-packages
+import m
+[file m.py]
+from foo.bar import x
+x + 0
+[file foo/bar.py]
+x = 0
+[rechecked]
+[stale]
+
+[case testIncrementalNamespacePackage2]
+# flags: --namespace-packages
+import m
+[file m.py]
+from foo import bar
+bar.x + 0
+[file foo/bar.py]
+x = 0
+[rechecked]
+[stale]

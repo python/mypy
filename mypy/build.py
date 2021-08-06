@@ -751,7 +751,6 @@ class BuildManager:
                             res.append((ancestor_pri, ".".join(ancestors), imp.line))
                 elif isinstance(imp, ImportFrom):
                     cur_id = correct_rel_imp(imp)
-                    pos = len(res)
                     all_are_submodules = True
                     # Also add any imported names that are submodules.
                     pri = import_priority(imp, PRI_MED)
@@ -768,7 +767,10 @@ class BuildManager:
                     # if all of the imports are submodules, do the import at a lower
                     # priority.
                     pri = import_priority(imp, PRI_HIGH if not all_are_submodules else PRI_LOW)
-                    res.insert(pos, ((pri, cur_id, imp.line)))
+                    # The imported module goes in after the
+                    # submodules, for the same namespace related
+                    # reasons discussed in the Import case.
+                    res.append((pri, cur_id, imp.line))
                 elif isinstance(imp, ImportAll):
                     pri = import_priority(imp, PRI_HIGH)
                     res.append((pri, correct_rel_imp(imp), imp.line))
@@ -1317,7 +1319,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
         st = manager.get_stat(path)
     except OSError:
         return None
-    if not stat.S_ISREG(st.st_mode):
+    if not (stat.S_ISREG(st.st_mode) or stat.S_ISDIR(st.st_mode)):
         manager.log('Metadata abandoned for {}: file {} does not exist'.format(id, path))
         return None
 
@@ -1360,7 +1362,11 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
 
         t0 = time.time()
         try:
-            source_hash = manager.fscache.hash_digest(path)
+            # dir means it is a namespace package
+            if stat.S_ISDIR(st.st_mode):
+                source_hash = ''
+            else:
+                source_hash = manager.fscache.hash_digest(path)
         except (OSError, UnicodeDecodeError, DecodeError):
             return None
         manager.add_stats(validate_hash_time=time.time() - t0)
@@ -1835,15 +1841,15 @@ class State:
         if path:
             self.abspath = os.path.abspath(path)
         self.xpath = path or '<string>'
-        if path and source is None and self.manager.fscache.isdir(path):
-            source = ''
-        self.source = source
         if path and source is None and self.manager.cache_enabled:
             self.meta = find_cache_meta(self.id, path, manager)
             # TODO: Get mtime if not cached.
             if self.meta is not None:
                 self.interface_hash = self.meta.interface_hash
                 self.meta_source_hash = self.meta.hash
+        if path and source is None and self.manager.fscache.isdir(path):
+            source = ''
+        self.source = source
         self.add_ancestors()
         t0 = time.time()
         self.meta = validate_meta(self.meta, self.id, self.path, self.ignore_all, manager)
@@ -2038,6 +2044,9 @@ class State:
                     else:
                         err = "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))
                     raise CompileError([err], module_with_blocker=self.id) from decodeerr
+            elif self.path and self.manager.fscache.isdir(self.path):
+                source = ''
+                self.source_hash = ''
             else:
                 assert source is not None
                 self.source_hash = compute_hash(source)
