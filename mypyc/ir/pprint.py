@@ -80,7 +80,8 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return self.format('%r = %r.%s', op, op.obj, op.attr)
 
     def visit_set_attr(self, op: SetAttr) -> str:
-        if op.error_kind == ERR_NEVER:
+        if op.is_init:
+            assert op.error_kind == ERR_NEVER
             # Initialization and direct struct access can never fail
             return self.format('%r.%s = %r', op.obj, op.attr, op.src)
         else:

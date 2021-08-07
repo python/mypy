@@ -637,7 +637,7 @@ class SetAttr(RegisterOp):
         self.is_init = False
 
     def mark_as_initializer(self) -> None:
-        self.init = True
+        self.is_init = True
         self.error_kind = ERR_NEVER
         self.type = void_rtype
 
