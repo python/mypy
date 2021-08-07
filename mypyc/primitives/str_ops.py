@@ -144,13 +144,15 @@ str_check_if_true = custom_op(
     arg_types=[str_rprimitive],
     return_type=bit_rprimitive,
     c_function_name='CPyStr_IsTrue',
-    error_kind=ERR_NEVER)
+    error_kind=ERR_NEVER,
+    run_arbitrary_code=False)
 
 str_ssize_t_size_op = custom_op(
     arg_types=[str_rprimitive],
     return_type=c_pyssize_t_rprimitive,
     c_function_name='CPyStr_Size_size_t',
-    error_kind=ERR_NEG_INT)
+    error_kind=ERR_NEG_INT,
+    run_arbitrary_code=False)
 
 # obj.decode()
 method_op(

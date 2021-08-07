@@ -1297,7 +1297,8 @@ class LowLevelIRBuilder:
             # Handled with an explicit comparison
             error_kind = ERR_NEVER
         target = self.add(CallC(desc.c_function_name, coerced, desc.return_type, desc.steals,
-                                desc.is_borrowed, error_kind, line, var_arg_idx))
+                                desc.is_borrowed, error_kind, line, var_arg_idx,
+                                desc.run_arbitrary_code))
         if desc.error_kind == ERR_NEG_INT:
             comp = ComparisonOp(target,
                                 Integer(0, desc.return_type, line),

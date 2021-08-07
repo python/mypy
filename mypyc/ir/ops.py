@@ -892,7 +892,8 @@ class CallC(RegisterOp):
                  is_borrowed: bool,
                  error_kind: int,
                  line: int,
-                 var_arg_idx: int = -1) -> None:
+                 var_arg_idx: int = -1,
+                 run_arbitrary_code: bool = True) -> None:
         self.error_kind = error_kind
         super().__init__(line)
         self.function_name = function_name
@@ -902,6 +903,11 @@ class CallC(RegisterOp):
         self.is_borrowed = is_borrowed
         # The position of the first variable argument in args (if >= 0)
         self.var_arg_idx = var_arg_idx
+        # If False, this won't call arbitrary functions (except via
+        # __del__) or mutate arbitrary state. This may allow further
+        # optimizations. Note that *many* operations can run arbitrary
+        # code via method overriding -- if unsure, keep this True.
+        self.run_arbitrary_code = run_arbitrary_code
 
     def sources(self) -> List[Value]:
         return self.args

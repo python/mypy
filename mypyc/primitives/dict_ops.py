@@ -23,14 +23,16 @@ function_op(
     arg_types=[],
     return_type=dict_rprimitive,
     c_function_name='PyDict_New',
-    error_kind=ERR_MAGIC)
+    error_kind=ERR_MAGIC,
+    run_arbitrary_code=False)
 
 # Construct an empty dictionary.
 dict_new_op = custom_op(
     arg_types=[],
     return_type=dict_rprimitive,
     c_function_name='PyDict_New',
-    error_kind=ERR_MAGIC)
+    error_kind=ERR_MAGIC,
+    run_arbitrary_code=False)
 
 # Construct a dictionary from keys and values.
 # Positional argument is the number of key-value pairs

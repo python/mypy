@@ -31,13 +31,15 @@ function_op(
     return_type=list_rprimitive,
     c_function_name='PyList_New',
     error_kind=ERR_MAGIC,
-    extra_int_constants=[(0, int_rprimitive)])
+    extra_int_constants=[(0, int_rprimitive)],
+    run_arbitrary_code=False)
 
 new_list_op = custom_op(
     arg_types=[c_pyssize_t_rprimitive],
     return_type=list_rprimitive,
     c_function_name='PyList_New',
-    error_kind=ERR_MAGIC)
+    error_kind=ERR_MAGIC,
+    run_arbitrary_code=False)
 
 list_build_op = custom_op(
     arg_types=[c_pyssize_t_rprimitive],
@@ -45,7 +47,8 @@ list_build_op = custom_op(
     c_function_name='CPyList_Build',
     error_kind=ERR_MAGIC,
     var_arg_type=object_rprimitive,
-    steals=True)
+    steals=True,
+    run_arbitrary_code=False)
 
 # list[index] (for an integer index)
 list_get_item_op = method_op(
@@ -53,7 +56,8 @@ list_get_item_op = method_op(
     arg_types=[list_rprimitive, int_rprimitive],
     return_type=object_rprimitive,
     c_function_name='CPyList_GetItem',
-    error_kind=ERR_MAGIC)
+    error_kind=ERR_MAGIC,
+    run_arbitrary_code=False)
 
 # Version with no int bounds check for when it is known to be short
 method_op(
@@ -62,7 +66,8 @@ method_op(
     return_type=object_rprimitive,
     c_function_name='CPyList_GetItemShort',
     error_kind=ERR_MAGIC,
-    priority=2)
+    priority=2,
+    run_arbitrary_code=False)
 
 # This is unsafe because it assumes that the index is a non-negative short integer
 # that is in-bounds for the list.
@@ -70,7 +75,8 @@ list_get_item_unsafe_op = custom_op(
     arg_types=[list_rprimitive, short_int_rprimitive],
     return_type=object_rprimitive,
     c_function_name='CPyList_GetItemUnsafe',
-    error_kind=ERR_NEVER)
+    error_kind=ERR_NEVER,
+    run_arbitrary_code=False)
 
 # list[index] = obj
 list_set_item_op = method_op(
@@ -79,7 +85,8 @@ list_set_item_op = method_op(
     return_type=bit_rprimitive,
     c_function_name='CPyList_SetItem',
     error_kind=ERR_FALSE,
-    steals=[False, False, True])
+    steals=[False, False, True],
+    run_arbitrary_code=False)
 
 # PyList_SET_ITEM does no error checking,
 # and should only be used to fill in brand new lists.
@@ -88,7 +95,8 @@ new_list_set_item_op = custom_op(
     return_type=bit_rprimitive,
     c_function_name='CPyList_SetItemUnsafe',
     error_kind=ERR_FALSE,
-    steals=[False, False, True])
+    steals=[False, False, True],
+    run_arbitrary_code=False)
 
 # list.append(obj)
 list_append_op = method_op(

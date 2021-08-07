@@ -46,7 +46,8 @@ function_op(
     arg_types=[object_rprimitive],
     return_type=int_rprimitive,
     c_function_name='CPyTagged_Id',
-    error_kind=ERR_NEVER)
+    error_kind=ERR_NEVER,
+    run_arbitrary_code=False)
 
 # Return the result of obj.__await()__ or obj.__iter__() (if no __await__ exists)
 coro_op = custom_op(
