@@ -321,6 +321,13 @@ class Application:
     rating: int
 
 Application(rating=5)
+Application(name='name', rating=5)
+Application()  # E: Missing named argument "rating" for "Application"
+Application('name')  # E: Too many positional arguments for "Application" # E: Missing named argument "rating" for "Application"
+Application('name', 123)  # E: Too many positional arguments for "Application"
+Application('name', rating=123)  # E: Too many positional arguments for "Application"
+Application(name=123, rating='name') # E: Argument "name" to "Application" has incompatible type "int"; expected "str" # E: Argument "rating" to "Application" has incompatible type "str"; expected "int"
+Application(rating='name', name=123) # E: Argument "rating" to "Application" has incompatible type "str"; expected "int" # E: Argument "name" to "Application" has incompatible type "int"; expected "str" 
 
 [builtins fixtures/list.pyi]
 
@@ -334,6 +341,12 @@ class Application:
     rating: int = field(kw_only=True)
 
 Application(rating=5)
+Application('name', rating=123)
+Application(name='name', rating=5)
+Application()  # E: Missing named argument "rating" for "Application"
+Application('name')  # E: Missing named argument "rating" for "Application"
+Application('name', 123)  # E: Too many positional arguments for "Application"
+Application(123, rating='name') # E: Argument 1 to "Application" has incompatible type "int"; expected "str" # E: Argument "rating" to "Application" has incompatible type "str"; expected "int"
 
 [builtins fixtures/list.pyi]
 
@@ -345,6 +358,12 @@ from dataclasses import dataclass, field
 class Application:
     name: str = 'Unnamed'
     rating: int = field(kw_only=False)  # E: Attributes without a default cannot follow attributes with one 
+
+Application(name='name', rating=5)
+Application('name', 123)
+Application('name', rating=123)
+Application()  # E: Missing positional argument "name" in call to "Application"
+Application('name')  # E: Too few arguments for "Application"
 
 [builtins fixtures/list.pyi]
 
@@ -359,6 +378,11 @@ class Application:
     rating: int
 
 Application(rating=5)
+Application(name='name', rating=5)
+Application()  # E: Missing named argument "rating" for "Application"
+Application('name')  # E: Too many positional arguments for "Application" # E: Missing named argument "rating" for "Application"
+Application('name', 123)  # E: Too many positional arguments for "Application"
+Application('name', rating=123)  # E: Too many positional arguments for "Application"
 
 [builtins fixtures/list.pyi]
 
@@ -371,6 +395,12 @@ class Application:
     _: KW_ONLY
     name: str = 'Unnamed'
     rating: int = field(kw_only=False)  # E: Attributes without a default cannot follow attributes with one 
+
+Application(name='name', rating=5)
+Application()  # E: Missing positional argument "name" in call to "Application"
+Application('name')  # E: Too many positional arguments for "Application" # E: Too few arguments for "Application"
+Application('name', 123)  # E: Too many positional arguments for "Application"
+Application('name', rating=123)  # E: Too many positional arguments for "Application"
 
 [builtins fixtures/list.pyi]
 
@@ -391,6 +421,13 @@ class D(Base):
     a: str = "a"
 
 D("Hello", "World")
+D(x="Hello", z="World")
+D("Hello", "World", y=1, w=2, a="b")
+D("Hello")  # E: Missing positional argument "z" in call to "D"
+D()  # E: Missing positional arguments "x", "z" in call to "D"
+D(123, "World")  # E: Argument 1 to "D" has incompatible type "int"; expected "str"
+D("Hello", False)  # E: Argument 2 to "D" has incompatible type "bool"; expected "str"
+D(123, False)  # E: Argument 1 to "D" has incompatible type "int"; expected "str" # E: Argument 2 to "D" has incompatible type "bool"; expected "str"
 
 [case testDataclassesOrderingKwOnlyWithMultipleSentinel]
 # flags: --python-version 3.10

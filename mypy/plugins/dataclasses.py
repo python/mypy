@@ -4,7 +4,7 @@ from typing import Dict, List, Set, Tuple, Optional
 from typing_extensions import Final
 
 from mypy.nodes import (
-    ARG_OPT, ARG_POS, MDEF, Argument, AssignmentStmt, CallExpr,
+    ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_POS, MDEF, Argument, AssignmentStmt, CallExpr,
     Context, Expression, JsonDict, NameExpr, RefExpr,
     SymbolTableNode, TempNode, TypeInfo, Var, TypeVarExpr, PlaceholderNode
 )
@@ -49,11 +49,18 @@ class DataclassAttribute:
         self.kw_only = kw_only
 
     def to_argument(self) -> Argument:
+        arg_kind = ARG_POS
+        if self.kw_only and self.has_default:
+            arg_kind = ARG_NAMED_OPT
+        elif self.kw_only and not self.has_default:
+            arg_kind = ARG_NAMED
+        elif not self.kw_only and self.has_default:
+            arg_kind = ARG_OPT
         return Argument(
             variable=self.to_var(),
             type_annotation=self.type,
             initializer=None,
-            kind=ARG_OPT if self.has_default else ARG_POS,
+            kind=arg_kind,
         )
 
     def to_var(self) -> Var:
