@@ -40,7 +40,7 @@ from mypyc.irbuild.prepare import build_type_map, find_singledispatch_register_i
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.visitor import IRBuilderVisitor
 from mypyc.irbuild.mapper import Mapper
-from mypyc.irbuild.defined import analyze_always_defined_attrs
+from mypyc.analysis.attrdefined import analyze_always_defined_attrs
 
 
 # The stubs for callable contextmanagers are busted so cast it to the
@@ -60,9 +60,6 @@ def build_ir(modules: List[MypyFile],
 
     build_type_map(mapper, modules, graph, types, options, errors)
     singledispatch_info = find_singledispatch_register_impls(modules, errors)
-
-    for info, class_ir in mapper.type_to_ir.items():
-        analyze_always_defined_attrs(info, class_ir, types, mapper)
 
     result: ModuleIRs = OrderedDict()
 
@@ -93,6 +90,8 @@ def build_ir(modules: List[MypyFile],
         )
         result[module.fullname] = module_ir
         class_irs.extend(builder.classes)
+
+    analyze_always_defined_attrs(class_irs)
 
     # Compute vtables.
     for cir in class_irs:

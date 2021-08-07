@@ -1,12 +1,14 @@
 from typing import List, Set, Tuple
 
 from mypyc.ir.ops import (
-    OpVisitor, Register, Goto, Assign, AssignMulti, SetMem, Call, MethodCall, LoadErrorValue,
-    LoadLiteral, GetAttr, SetAttr, LoadStatic, InitStatic, TupleGet, TupleSet, Box, Unbox,
-    Cast, RaiseStandardError, CallC, Truncate, LoadGlobal, IntOp, ComparisonOp, LoadMem,
-    GetElementPtr, LoadAddress, KeepAlive, RegisterOp, BasicBlock
+    Register, Assign, AssignMulti, SetMem, SetAttr, Branch, Return, Unreachable, RegisterOp,
+    BasicBlock
 )
-from mypyc.analysis.dataflow import BaseAnalysisVisitor, AnalysisResult
+from mypyc.ir.class_ir import ClassIR
+from mypyc.analysis.dataflow import (
+    BaseAnalysisVisitor, AnalysisResult, get_cfg, CFG, MAYBE_ANALYSIS, run_analysis
+)
+from mypyc.analysis.defined import analyze_arbitrary_execution
 
 GenAndKill = Tuple[Set[str], Set[str]]
 
@@ -14,6 +16,15 @@ GenAndKill = Tuple[Set[str], Set[str]]
 class AttributeMaybeDefinedVisitor(BaseAnalysisVisitor[str]):
     def __init__(self, self_reg: Register) -> None:
         self.self_reg = self_reg
+
+    def visit_branch(self, op: Branch) -> Tuple[Set[str], Set[str]]:
+        return set(), set()
+
+    def visit_return(self, op: Return) -> Tuple[Set[str], Set[str]]:
+        return set(), set()
+
+    def visit_unreachable(self, op: Unreachable) -> Tuple[Set[str], Set[str]]:
+        return set(), set()
 
     def visit_register_op(self, op: RegisterOp) -> Tuple[Set[str], Set[str]]:
         if isinstance(op, SetAttr) and op.obj is self.self_reg:
@@ -30,9 +41,29 @@ class AttributeMaybeDefinedVisitor(BaseAnalysisVisitor[str]):
         return set(), set()
 
 
+def analyze_maybe_defined_attrs_in_init(blocks: List[BasicBlock],
+                                        self_reg: Register,
+                                        cfg: CFG) -> AnalysisResult[str]:
+    return run_analysis(blocks=blocks,
+                        cfg=cfg,
+                        gen_and_kill=AttributeMaybeDefinedVisitor(self_reg),
+                        initial=set(),
+                        backward=False,
+                        kind=MAYBE_ANALYSIS)
+
+
 class AttributeMaybeUndefinedVisitor(BaseAnalysisVisitor[str]):
     def __init__(self, self_reg: Register) -> None:
         self.self_reg = self_reg
+
+    def visit_branch(self, op: Branch) -> Tuple[Set[str], Set[str]]:
+        return set(), set()
+
+    def visit_return(self, op: Return) -> Tuple[Set[str], Set[str]]:
+        return set(), set()
+
+    def visit_unreachable(self, op: Unreachable) -> Tuple[Set[str], Set[str]]:
+        return set(), set()
 
     def visit_register_op(self, op: RegisterOp) -> Tuple[Set[str], Set[str]]:
         if isinstance(op, SetAttr) and op.obj is self.self_reg:
@@ -49,6 +80,18 @@ class AttributeMaybeUndefinedVisitor(BaseAnalysisVisitor[str]):
         return set(), set()
 
 
+def analyze_maybe_undefined_attrs_in_init(blocks: List[BasicBlock],
+                                          self_reg: Register,
+                                          all_attrs: Set[str],
+                                          cfg: CFG) -> AnalysisResult[str]:
+    return run_analysis(blocks=blocks,
+                        cfg=cfg,
+                        gen_and_kill=AttributeMaybeUndefinedVisitor(self_reg),
+                        initial=all_attrs,
+                        backward=False,
+                        kind=MAYBE_ANALYSIS)
+
+
 def find_always_defined_attributes(blocks: List[BasicBlock],
                                    all_attrs: Set[str],
                                    maybe_defined: AnalysisResult[str],
@@ -57,8 +100,8 @@ def find_always_defined_attributes(blocks: List[BasicBlock],
     attrs = all_attrs.copy()
     for block in blocks:
         for i in range(len(block.ops)):
-            if (block, i) in dirty.after:
-                if (block, i) not in dirty.before:
+            if dirty.after[block, i]:
+                if not dirty.before[block, i]:
                     attrs = attrs & (maybe_defined.before[block, i] -
                                      maybe_undefined.before[block, i])
                 break
@@ -74,3 +117,30 @@ def mark_attr_initialiation_ops(blocks: List[BasicBlock],
                 attr = op.attr
                 if attr not in maybe_defined.before[block, i] and not dirty.after[block, i]:
                     op.mark_as_initializer()
+
+
+def analyze_always_defined_attrs(class_irs: List[ClassIR]) -> None:
+    for cl in class_irs:
+        if (cl.is_trait
+                or cl.inherits_python
+                or cl.allow_interpreted_subclasses
+                or cl.builtin_base is not None
+                or cl.children is None
+                or cl.children != []):
+            # Give up
+            continue
+        m = cl.get_method('__init__')
+        if m is None:
+            continue
+        self_reg = m.arg_regs[0]
+        cfg = get_cfg(m.blocks)
+        dirty = analyze_arbitrary_execution(m.blocks, self_reg, cfg)
+        maybe_defined = analyze_maybe_defined_attrs_in_init(m.blocks, self_reg, cfg)
+        all_attrs = set(cl.attributes)
+        maybe_undefined = analyze_maybe_undefined_attrs_in_init(
+            m.blocks, self_reg, all_attrs=all_attrs, cfg=cfg)
+
+        always_defined = find_always_defined_attributes(
+            m.blocks, all_attrs, maybe_defined, maybe_undefined, dirty)
+
+        cl._always_initialized_attrs = always_defined

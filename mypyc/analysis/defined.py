@@ -1,11 +1,12 @@
-from typing import Tuple, Set
+from typing import List, Set, Tuple
 
 from mypyc.ir.ops import (
     OpVisitor, Register, Goto, Assign, AssignMulti, SetMem, Call, MethodCall, LoadErrorValue,
     LoadLiteral, GetAttr, SetAttr, LoadStatic, InitStatic, TupleGet, TupleSet, Box, Unbox,
     Cast, RaiseStandardError, CallC, Truncate, LoadGlobal, IntOp, ComparisonOp, LoadMem,
-    GetElementPtr, LoadAddress, KeepAlive, Branch, Return, Unreachable, RegisterOp
+    GetElementPtr, LoadAddress, KeepAlive, Branch, Return, Unreachable, RegisterOp, BasicBlock
 )
+from mypyc.analysis.dataflow import MAYBE_ANALYSIS, run_analysis, AnalysisResult, CFG
 
 GenAndKill = Tuple[Set[None], Set[None]]
 
@@ -128,3 +129,14 @@ class ArbitraryExecutionVisitor(OpVisitor[GenAndKill]):
         if any(src is self.self_reg for src in op.sources()):
             return DIRTY
         return CLEAN
+
+
+def analyze_arbitrary_execution(blocks: List[BasicBlock],
+                                self_reg: Register,
+                                cfg: CFG) -> AnalysisResult[None]:
+    return run_analysis(blocks=blocks,
+                        cfg=cfg,
+                        gen_and_kill=ArbitraryExecutionVisitor(self_reg),
+                        initial=set(),
+                        backward=False,
+                        kind=MAYBE_ANALYSIS)
