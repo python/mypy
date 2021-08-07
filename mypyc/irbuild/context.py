@@ -1,8 +1,8 @@
 """Helpers that store information about functions and the related classes."""
 
-from typing import List, Optional, Tuple, Set
+from typing import List, Optional, Tuple
 
-from mypy.nodes import FuncItem, MemberExpr
+from mypy.nodes import FuncItem
 
 from mypyc.ir.ops import Value, BasicBlock
 from mypyc.ir.func_ir import INVALID_FUNC_DEF
