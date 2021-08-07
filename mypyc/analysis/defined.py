@@ -4,7 +4,7 @@ from mypyc.ir.ops import (
     OpVisitor, Register, Goto, Assign, AssignMulti, SetMem, Call, MethodCall, LoadErrorValue,
     LoadLiteral, GetAttr, SetAttr, LoadStatic, InitStatic, TupleGet, TupleSet, Box, Unbox,
     Cast, RaiseStandardError, CallC, Truncate, LoadGlobal, IntOp, ComparisonOp, LoadMem,
-    GetElementPtr, LoadAddress, KeepAlive, RegisterOp
+    GetElementPtr, LoadAddress, KeepAlive, Branch, Return, Unreachable, RegisterOp
 )
 
 GenAndKill = Tuple[Set[None], Set[None]]
@@ -26,7 +26,18 @@ class ArbitraryExecutionVisitor(OpVisitor[GenAndKill]):
     def visit_goto(self, op: Goto) -> GenAndKill:
         return CLEAN
 
+    def visit_branch(self, op: Branch) -> GenAndKill:
+        return CLEAN
+
+    def visit_return(self, op: Return) -> GenAndKill:
+        return DIRTY
+
+    def visit_unreachable(self, op: Unreachable) -> GenAndKill:
+        # TODO
+        return DIRTY
+
     def visit_assign(self, op: Assign) -> GenAndKill:
+        # TODO: what if target is self?
         return CLEAN if op.src is not self.self_reg else DIRTY
 
     def visit_assign_multi(self, op: AssignMulti) -> GenAndKill:
