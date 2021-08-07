@@ -225,7 +225,9 @@ def generate_c(sources: List[BuildSource],
 
     if messages:
         print("\n".join(messages))
-        sys.exit(1)
+        # Sometimes only warnings are emitted, in that case don't hardblock the build.
+        if errors.num_errors:
+            sys.exit(1)
 
     return ctext, '\n'.join(format_modules(modules))
 

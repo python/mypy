@@ -236,7 +236,7 @@ class SemanticAnalyzer(NodeVisitor[None],
     # 'Coroutine[Any, Any, T]'. Used to keep track of whether a function definition's
     # return type has already been wrapped, by checking if the function definition's
     # type is stored in this mapping and that it still matches.
-    wrapped_coro_return_types: Dict[FuncDef, Type] = {}
+    wrapped_coro_return_types: Dict[FuncDef, Type]
 
     def __init__(self,
                  modules: Dict[str, MypyFile],
@@ -294,6 +294,9 @@ class SemanticAnalyzer(NodeVisitor[None],
         # Trace line numbers for every file where deferral happened during analysis of
         # current SCC or top-level function.
         self.deferral_debug_context: List[Tuple[str, int]] = []
+
+        self.future_import_flags: Set[str] = set()
+        self.wrapped_coro_return_types = {}
 
     # mypyc doesn't properly handle implementing an abstractproperty
     # with a regular attribute so we make them properties
