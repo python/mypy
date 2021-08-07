@@ -297,3 +297,43 @@ Base: []
 Derived1: [aa]
 Derived2: []
 Conditionals: [a, b]
+
+[case testAlwaysDefinedStatements]
+from typing import List, Optional
+
+class Return:
+    def __init__(self, x: int) -> None:
+        self.x = x
+        if x > 5:
+            self.y = 1
+            return
+        self.y = 2
+        self.z = x
+
+class While:
+    def __init__(self, x: int) -> None:
+        n = 2
+        while x > 0:
+            n *=2
+            x -= 1
+        self.a = n
+        while x < 5:
+            self.b = 1
+            self.b += 1
+
+class Try:
+    def __init__(self, x: List[int]) -> None:
+        self.a = 0
+        try:
+            self.b = x[0]
+        except:
+            self.c = x
+        self.d = 0
+
+def f() -> None:
+    pass
+
+[out]
+Return: [x, y]
+While: [a]
+Try: [a]
