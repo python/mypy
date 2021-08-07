@@ -1,3 +1,28 @@
+"""Always defined attribute analysis.
+
+An always defined attribute has some statements in __init__ that
+always initialize the attribute when evaluated, and the attribute is
+never read before initialization.
+
+As soon as we encounter something that can execute arbitrary code, we
+must stop inferring always defined attributes, since this code could
+read the attribute values. We only allow a fairly restricted set of
+operations.
+
+We require that __del__ methods don't call gc.get_objects() and then
+access partially initialized objects. Code like this could potentially
+cause a segfault with a null pointer reference:
+
+- enter __init__ of a native class C
+- allocate an empty object (e.g. a list) in __init__
+- cyclic garbage collector runs and calls __del__ that accesses the x
+  attribute of C which has not been initialized -> segfault
+- (if gc would not run) initialize the x attribute to a non-null value
+
+This runs after actual IR building as a separate pass. Since we only
+run this on __init__ methods, this analysis pass will be fairly quick.
+"""
+
 from typing import List, Set, Tuple
 
 from mypyc.ir.ops import (
