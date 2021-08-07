@@ -192,6 +192,7 @@ class Booleans:
         self.b = False
         self.c = not b
         self.d = b or b
+        self.e = b and b
 
 F: Final = 3
 
@@ -199,6 +200,12 @@ class ModuleFinal:
     def __init__(self) -> None:
         self.a = F
         self.b = other.Y
+
+class Literals:
+    def __init__(self) -> None:
+        self.a = 'x'
+        self.b = b'x'
+        self.c = 2.2
 
 def f() -> int:
     return 0
@@ -215,5 +222,78 @@ Collections: [d, l, s]
 Comparisons: [c1, c2, n1, n2, o1, o2]
 BinaryOps: [a, b, c, d, f]
 LocalsAndGlobals: [a]
-Booleans: [a, b, c, d]
+Booleans: [a, b, c, d, e]
 ModuleFinal: [a, b]
+Literals: [a, b, c]
+
+[case testAlwaysDefinedExpressions2]
+from typing import List, Tuple
+
+class C:
+    def __init__(self) -> None:
+        self.x = 0
+
+class AttributeRef:
+    def __init__(self, c: C) -> None:
+        self.aa = c.x
+        self.bb = self.aa
+        if c is not None:
+            self.z = 0
+        self.cc = 0
+        self.dd = self.z
+
+class ListOps:
+    def __init__(self, x: List[int], n: int) -> None:
+        self.a = len(x)
+        self.b = x[n]
+        self.c = [y + 1 for y in x]
+
+class TupleOps:
+    def __init__(self, t: Tuple[int, str]) -> None:
+        x, y = t
+        self.x = x
+        self.y = t[0]
+        s = x, y
+        self.z = s
+
+class IfExpr:
+    def __init__(self, x: int) -> None:
+        self.a = 1 if x < 5 else 2
+
+class Base:
+    def __init__(self, x: int) -> None:
+        # TODO: x should be always defined
+        self.x = x
+
+class Derived1(Base):
+    def __init__(self, y: int) -> None:
+        # TODO: x and bb should also be always defined
+        self.aa = y
+        super().__init__(y)
+        self.bb = y
+
+class Derived2(Base):
+    # TODO: x should be always defined
+    pass
+
+class Conditionals:
+    def __init__(self, b: bool, n: int) -> None:
+        if b:
+            self.a = b
+        else:
+            self.a = not b
+        if not (n == 5 or n >= n + 1):
+            self.b = 2
+        else:
+            self.b = 4
+
+[out]
+C: [x]
+AttributeRef: [aa, bb, cc, dd]
+ListOps: [a, b, c]
+TupleOps: [x, y, z]
+IfExpr: [a]
+Base: []
+Derived1: [aa]
+Derived2: []
+Conditionals: [a, b]
