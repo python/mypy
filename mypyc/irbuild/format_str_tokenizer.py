@@ -51,7 +51,7 @@ def generate_format_ops(specifiers: List[ConversionSpecifier]) -> Optional[List[
     return format_ops
 
 
-def tokenizer_printf_style(format_str: str) -> Tuple[List[str], List[FormatOp]]:
+def tokenizer_printf_style(format_str: str) -> Optional[Tuple[List[str], List[FormatOp]]]:
     """Tokenize a printf-style format string using regex.
 
     Return:

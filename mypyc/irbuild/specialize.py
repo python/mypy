@@ -16,7 +16,7 @@ from typing import Callable, Optional, Dict, Tuple, List
 
 from mypy.nodes import (
     CallExpr, RefExpr, MemberExpr, NameExpr, TupleExpr, GeneratorExpr,
-    ListExpr, DictExpr, StrExpr, ARG_POS
+    ListExpr, DictExpr, StrExpr, ARG_POS, Expression
 )
 from mypy.types import AnyType, TypeOfAny
 
@@ -434,7 +434,7 @@ def translate_fstring(
                 return None
 
         format_ops = []
-        exprs = []
+        exprs: List[Expression] = []
 
         for item in expr.args[0].items:
             if isinstance(item, StrExpr) and item.value != '':
