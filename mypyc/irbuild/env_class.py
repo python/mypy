@@ -126,7 +126,7 @@ def load_outer_env(builder: IRBuilder,
 
     for symbol, target in outer_env.items():
         env.type.class_ir.attributes[symbol.name] = target.type
-        symbol_target = AssignmentTargetAttr(env, symbol.name, is_init=False)
+        symbol_target = AssignmentTargetAttr(env, symbol.name)
         builder.add_target(symbol, symbol_target)
 
     return env

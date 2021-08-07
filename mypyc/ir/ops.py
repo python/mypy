@@ -624,8 +624,7 @@ class SetAttr(RegisterOp):
 
     error_kind = ERR_FALSE
 
-    def __init__(self, obj: Value, attr: str, src: Value, line: int, *,
-                 is_init: bool = False) -> None:
+    def __init__(self, obj: Value, attr: str, src: Value, line: int) -> None:
         super().__init__(line)
         self.obj = obj
         self.attr = attr
@@ -635,10 +634,12 @@ class SetAttr(RegisterOp):
         self.type = bool_rprimitive
         # If True, we can safely assume that the attribute is previously undefined
         # and we don't use a setter
-        self.is_init = is_init
-        if is_init:
-            self.error_kind = ERR_NEVER
-            self.type = void_rtype
+        self.is_init = False
+
+    def mark_as_initializer(self) -> None:
+        self.init = True
+        self.error_kind = ERR_NEVER
+        self.type = void_rtype
 
     def sources(self) -> List[Value]:
         return [self.obj, self.src]

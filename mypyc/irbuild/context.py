@@ -21,8 +21,7 @@ class FuncInfo:
                  is_nested: bool = False,
                  contains_nested: bool = False,
                  is_decorated: bool = False,
-                 in_non_ext: bool = False,
-                 initializers: Optional[Set[MemberExpr]] = None) -> None:
+                 in_non_ext: bool = False) -> None:
         self.fitem = fitem
         self.name = name
         self.class_name = class_name
@@ -47,8 +46,6 @@ class FuncInfo:
         self.contains_nested = contains_nested
         self.is_decorated = is_decorated
         self.in_non_ext = in_non_ext
-        # Member lvalues that always initialize an attribute (previously undefined)
-        self.initializers = initializers
 
         # TODO: add field for ret_type: RType = none_rprimitive
 

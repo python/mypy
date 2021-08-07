@@ -35,11 +35,9 @@ class AssignmentTargetIndex(AssignmentTarget):
 class AssignmentTargetAttr(AssignmentTarget):
     """obj.attr as assignment target"""
 
-    def __init__(self, obj: Value, attr: str, is_init: bool) -> None:
+    def __init__(self, obj: Value, attr: str) -> None:
         self.obj = obj
         self.attr = attr
-        # If True, always initializes a previously undefined attribute
-        self.is_init = is_init
         if isinstance(obj.type, RInstance) and obj.type.class_ir.has_attr(attr):
             # Native attribute reference
             self.obj_type: RType = obj.type
