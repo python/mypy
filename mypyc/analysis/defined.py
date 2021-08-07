@@ -14,6 +14,12 @@ DIRTY: GenAndKill = {None}, {None}
 
 
 class ArbitraryExecutionVisitor(OpVisitor[GenAndKill]):
+    """Analyze whether arbitrary code may have been executed at certain point.
+
+    More formally, the set is not empty if along some path from IR entry point
+    arbitrary code could have been executed.
+    """
+
     def __init__(self, self_reg: Register) -> None:
         self.self_reg = self_reg
 
@@ -59,28 +65,29 @@ class ArbitraryExecutionVisitor(OpVisitor[GenAndKill]):
         return CLEAN
 
     def visit_init_static(self, op: InitStatic) -> GenAndKill:
-        return CLEAN if self.is_safe_register_op(op) else DIRTY
+        return self.check_register_op(op)
 
     def visit_tuple_get(self, op: TupleGet) -> GenAndKill:
         return CLEAN
 
     def visit_tuple_set(self, op: TupleSet) -> GenAndKill:
-        return CLEAN if self.is_safe_register_op(op) else DIRTY
+        return self.check_register_op(op)
 
     def visit_box(self, op: Box) -> GenAndKill:
-        return CLEAN
+        return self.check_register_op(op)
 
     def visit_unbox(self, op: Unbox) -> GenAndKill:
-        return CLEAN
+        return self.check_register_op(op)
 
     def visit_cast(self, op: Cast) -> GenAndKill:
-        return CLEAN if self.is_safe_register_op(op) else DIRTY
+        return self.check_register_op(op)
 
     def visit_raise_standard_error(self, op: RaiseStandardError) -> GenAndKill:
         return CLEAN
 
     def visit_call_c(self, op: CallC) -> GenAndKill:
-        TODO
+        # TODO: Whitelist certain functions
+        return DIRTY
 
     def visit_truncate(self, op: Truncate) -> GenAndKill:
         return CLEAN
@@ -106,5 +113,7 @@ class ArbitraryExecutionVisitor(OpVisitor[GenAndKill]):
     def visit_keep_alive(self, op: KeepAlive) -> GenAndKill:
         return CLEAN
 
-    def is_safe_register_op(self, op: RegisterOp) -> bool:
-        return not any(src is self.self_reg for src in op.sources())
+    def check_register_op(self, op: RegisterOp) -> GenAndKill:
+        if any(src is self.self_reg for src in op.sources()):
+            return DIRTY
+        return CLEAN
