@@ -27,7 +27,7 @@ PyObject *CPyIter_Send(PyObject *iter, PyObject *val)
     if (val == Py_None) {
         return CPyIter_Next(iter);
     } else {
-        return _PyObject_CallMethodIdObjArgs(iter, &PyId_send, val, NULL);
+        return _PyObject_CallMethodIdOneArg(iter, &PyId_send, val);
     }
 }
 
@@ -693,9 +693,9 @@ PyObject *
 CPy_CallReverseOpMethod(PyObject *left,
                         PyObject *right,
                         const char *op,
-                        const char *method) {
+                        _Py_Identifier *method) {
     // Look up reverse method
-    PyObject *m = PyObject_GetAttrString(right, method);
+    PyObject *m = _PyObject_GetAttrId(right, method);
     if (m == NULL) {
         // If reverse method not defined, generate TypeError instead AttributeError
         if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
@@ -704,7 +704,7 @@ CPy_CallReverseOpMethod(PyObject *left,
         return NULL;
     }
     // Call reverse method
-    PyObject *result = PyObject_CallFunction(m, "O", left);
+    PyObject *result = PyObject_CallOneArg(m, left);
     Py_DECREF(m);
     return result;
 }
