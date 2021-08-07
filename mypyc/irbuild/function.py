@@ -11,12 +11,12 @@ instance of the callable class.
 """
 
 from typing import (
-    DefaultDict, NamedTuple, Optional, List, Sequence, Tuple, Union, Dict, Set
+    DefaultDict, NamedTuple, Optional, List, Sequence, Tuple, Union, Dict
 )
 
 from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, Decorator, Var, YieldFromExpr, AwaitExpr, YieldExpr,
-    FuncItem, LambdaExpr, SymbolNode, ArgKind, TypeInfo, MemberExpr
+    FuncItem, LambdaExpr, SymbolNode, ArgKind, TypeInfo
 )
 from mypy.types import CallableType, get_proper_type
 
@@ -366,11 +366,7 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
     # Perform the function of visit_method for methods inside extension classes.
     name = fdef.name
     class_ir = builder.mapper.type_to_ir[cdef.info]
-    func_ir, func_reg = gen_func_item(builder,
-                                      fdef,
-                                      name,
-                                      builder.mapper.fdef_to_sig(fdef),
-                                      cdef)
+    func_ir, func_reg = gen_func_item(builder, fdef, name, builder.mapper.fdef_to_sig(fdef), cdef)
     builder.functions.append(func_ir)
 
     if is_decorated(builder, fdef):

@@ -549,8 +549,7 @@ class IRBuilder:
         elif isinstance(target, AssignmentTargetAttr):
             if isinstance(target.obj_type, RInstance):
                 rvalue_reg = self.coerce(rvalue_reg, target.type, line)
-                op = SetAttr(target.obj, target.attr, rvalue_reg, line)
-                self.add(op)
+                self.add(SetAttr(target.obj, target.attr, rvalue_reg, line))
             else:
                 key = self.load_str(target.attr)
                 boxed_reg = self.builder.box(rvalue_reg)
