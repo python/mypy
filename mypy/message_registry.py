@@ -100,7 +100,7 @@ INVALID_TYPEDDICT_ARGS: Final = ErrorMessage(
 )
 TYPEDDICT_KEY_MUST_BE_STRING_LITERAL: Final = ErrorMessage("Expected TypedDict key to be string literal")
 MALFORMED_ASSERT: Final = ErrorMessage("Assertion is always true, perhaps remove parentheses?")
-DUPLICATE_TYPE_SIGNATURES: Final = "Function has duplicate type signatures"
+DUPLICATE_TYPE_SIGNATURES: Final = ErrorMessage("Function has duplicate type signatures", codes.SYNTAX)
 DESCRIPTOR_SET_NOT_CALLABLE: Final = ErrorMessage("{}.__set__ is not callable")
 DESCRIPTOR_GET_NOT_CALLABLE: Final = "{}.__get__ is not callable"
 MODULE_LEVEL_GETATTRIBUTE: Final = ErrorMessage("__getattribute__ is not valid at the module level")
@@ -301,3 +301,17 @@ TYPEVAR_INVALID_TYPE_ARG: Final = ErrorMessage('Type variable "{}" not valid as 
 TYPE_ARG_INVALID_SUBTYPE: Final = ErrorMessage('Type argument "{}" of "{}" must be a subtype of "{}"', codes.TYPE_VAR)
 TYPE_ARG_INVALID_VALUE: Final = ErrorMessage('Invalid type argument value for "{}"', codes.TYPE_VAR)
 
+# FastParse
+TYPE_COMMENT_SYNTAX_ERROR: Final = ErrorMessage("syntax error in type comment", codes.SYNTAX)
+TYPE_COMMENT_SYNTAX_ERROR_VALUE: Final = ErrorMessage('syntax error in type comment "{}"', codes.SYNTAX)
+INVALID_TYPE_IGNORE: Final = ErrorMessage('Invalid "type: ignore" comment', codes.SYNTAX)
+ELLIPSIS_WITH_OTHER_TYPEARGS: Final = ErrorMessage("Ellipses cannot accompany other argument types in function type signature", codes.SYNTAX)
+TYPE_SIGNATURE_TOO_MANY_ARGS: Final = ErrorMessage('Type signature has too many arguments', codes.SYNTAX)
+TYPE_SIGNATURE_TOO_FEW_ARGS: Final = ErrorMessage('Type signature has too few arguments', codes.SYNTAX)
+ARG_CONSTRUCTOR_NAME_EXPECTED: Final = ErrorMessage("Expected arg constructor name", codes.SYNTAX)
+ARG_CONSTRUCTOR_TOO_MANY_ARGS: Final = ErrorMessage("Too many arguments for argument constructor", codes.SYNTAX)
+MULTIPLE_VALUES_FOR_NAME_KWARG: Final = ErrorMessage('"{}" gets multiple values for keyword argument "name"', codes.SYNTAX)
+MULTIPLE_VALUES_FOR_TYPE_KWARG: Final = ErrorMessage('"{}" gets multiple values for keyword argument "type"', codes.SYNTAX)
+ARG_CONSTRUCTOR_UNEXPECTED_ARG: Final = ErrorMessage('Unexpected argument "{}" for argument constructor', codes.SYNTAX)
+ARG_NAME_EXPECTED_STRING_LITERAL: Final = ErrorMessage('Expected string literal for argument name, got {}', codes.SYNTAX)
+EXCEPT_EXPR_NOTNAME_UNSIPPORTED: Final = ErrorMessage('Sorry, "except <expr>, <anything but a name>" is not supported', codes.SYNTAX)
