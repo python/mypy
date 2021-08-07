@@ -98,7 +98,9 @@ class ArbitraryExecutionVisitor(OpVisitor[GenAndKill]):
         return CLEAN
 
     def visit_call_c(self, op: CallC) -> GenAndKill:
-        # TODO: Whitelist certain functions
+        # Certain hand-picked functions are known to not run arbitrary code.
+        if not op.run_arbitrary_code:
+            return self.check_register_op(op)
         return DIRTY
 
     def visit_truncate(self, op: Truncate) -> GenAndKill:

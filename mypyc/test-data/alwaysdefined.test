@@ -143,7 +143,7 @@ IfConditionalAndNonConditional1: [x]
 IfConditionalAndNonConditional2: []
 
 [case testAlwaysDefinedExpressions]
-from typing import Optional
+from typing import Dict, Set, Optional
 from typing_extensions import Final
 
 import other
@@ -152,10 +152,12 @@ class C: pass
 
 class Collections:
     def __init__(self, x: int) -> None:
-        self.a = [x]
-        self.b = {x}
-        self.c = {'x': x}
-        self.d = [f()]
+        self.l = [x]
+        self.d: Dict[str, str] = {}
+        self.s: Set[int] = set()
+        self.d2 = {'x': x}  # Can call __hash__ and __eq__
+        self.s2 = {x}  # Can call __hash__ and __eq__
+        self.l2 = [f()]
 
 class Comparisons:
     def __init__(self, y: int, c: C, s: str, o: Optional[str]) -> None:
@@ -209,9 +211,9 @@ Y: Final = 3
 
 [out]
 C: []
-Collections: [a, b, c]
+Collections: [d, l, s]
 Comparisons: [c1, c2, n1, n2, o1, o2]
 BinaryOps: [a, b, c, d, f]
 LocalsAndGlobals: [a]
 Booleans: [a, b, c, d]
-ModuleFinal: [a]
+ModuleFinal: [a, b]
