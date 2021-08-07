@@ -337,6 +337,12 @@ class Try:
             self.c = x
         self.d = 0
 
+class Assert:
+    def __init__(self, x: Optional[str], y: int) -> None:
+        assert x is not None
+        assert y < 5
+        self.a = x
+
 def f() -> None:
     pass
 
@@ -344,3 +350,4 @@ def f() -> None:
 Return: [x, y]
 While: [a]
 Try: [a]
+Assert: [a]

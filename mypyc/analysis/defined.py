@@ -34,8 +34,7 @@ class ArbitraryExecutionVisitor(OpVisitor[GenAndKill]):
         return DIRTY
 
     def visit_unreachable(self, op: Unreachable) -> GenAndKill:
-        # TODO
-        return DIRTY
+        return CLEAN
 
     def visit_assign(self, op: Assign) -> GenAndKill:
         # TODO: what if target is self?
