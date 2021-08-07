@@ -180,3 +180,5 @@ def analyze_always_defined_attrs(class_irs: List[ClassIR]) -> None:
             m.blocks, self_reg, all_attrs, maybe_defined, maybe_undefined, dirty)
 
         cl._always_initialized_attrs = always_defined
+
+        mark_attr_initialiation_ops(m.blocks, maybe_defined, dirty)
