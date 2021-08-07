@@ -51,14 +51,17 @@ def generate_format_ops(specifiers: List[ConversionSpecifier]) -> Optional[List[
     return format_ops
 
 
-def tokenizer_printf_style(format_str: str) -> Tuple[List[str], List[ConversionSpecifier]]:
+def tokenizer_printf_style(format_str: str) -> Tuple[List[str], List[FormatOp]]:
     """Tokenize a printf-style format string using regex.
 
     Return:
-        A list of string literals and a list of conversion operations
+        A list of string literals and a list of FormatOps.
     """
     literals: List[str] = []
     specifiers: List[ConversionSpecifier] = parse_conversion_specifiers(format_str)
+    format_ops = generate_format_ops(specifiers)
+    if format_ops is None:
+        return None
 
     last_end = 0
     for spec in specifiers:
@@ -67,7 +70,7 @@ def tokenizer_printf_style(format_str: str) -> Tuple[List[str], List[ConversionS
         last_end = cur_start + len(spec.whole_seq)
     literals.append(format_str[last_end:])
 
-    return literals, specifiers
+    return literals, format_ops
 
 
 # The empty Context as an argument for parse_format_value().
@@ -117,6 +120,9 @@ def convert_expr(builder: IRBuilder, format_ops: List[FormatOp],
                  exprs: List[Expression], line: int) -> Optional[List[Value]]:
     """Convert expressions into string literals with the guidance
     of FormatOps."""
+    if len(format_ops) != len(exprs):
+        return None
+
     converted = []
     for x, format_op in zip(exprs, format_ops):
         node_type = builder.node_type(x)

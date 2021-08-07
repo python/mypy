@@ -25,7 +25,7 @@ from mypyc.ir.rtypes import (
     is_str_rprimitive, is_short_int_rprimitive
 )
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
-from mypyc.irbuild.format_str_tokenizer import tokenizer_printf_style, join_formatted_strings
+from mypyc.irbuild.format_str_tokenizer import tokenizer_printf_style, join_formatted_strings, convert_expr
 from mypyc.primitives.registry import CFunctionDescription, builtin_names, binary_ops
 from mypyc.primitives.generic_ops import iter_op
 from mypyc.primitives.misc_ops import new_slice_op, ellipsis_op, type_op, get_module_dict_op
@@ -569,44 +569,26 @@ def transform_basic_comparison(builder: IRBuilder,
 def translate_str_format_percent_sign(builder: IRBuilder,
                                       format_expr: StrExpr,
                                       rhs: Expression) -> Value:
-    literals, conversion_specifiers = tokenizer_printf_style(format_expr.value)
+    tokens = tokenizer_printf_style(format_expr.value)
+    if tokens is not None:
+        literals, format_ops = tokens
 
-    variables = []
-    if isinstance(rhs, TupleExpr):
-        raw_variables = rhs.items
-    elif isinstance(rhs, Expression):
-        raw_variables = [rhs]
-    else:
-        raw_variables = []
+        exprs = []
+        if isinstance(rhs, TupleExpr):
+            exprs = rhs.items
+        elif isinstance(rhs, Expression):
+            exprs.append(rhs)
 
-    is_conversion_matched = (len(conversion_specifiers) == len(raw_variables))
+        substitutions = convert_expr(builder, format_ops, exprs, format_expr.line)
+        if substitutions is not None:
+            return join_formatted_strings(builder, literals, substitutions, format_expr.line)
 
-    if is_conversion_matched:
-        for specifier, var in zip(conversion_specifiers, raw_variables):
-            node_type = builder.node_type(var)
-            format_type = specifier.whole_seq
-            if format_type == '%d' and (is_int_rprimitive(node_type)
-                                        or is_short_int_rprimitive(node_type)):
-                var_str = builder.call_c(int_to_str_op, [builder.accept(var)], format_expr.line)
-            elif format_type == '%s':
-                if is_str_rprimitive(node_type):
-                    var_str = builder.accept(var)
-                else:
-                    var_str = builder.call_c(str_op, [builder.accept(var)], format_expr.line)
-            else:
-                is_conversion_matched = False
-                break
-            variables.append(var_str)
-
-    if is_conversion_matched:
-        return join_formatted_strings(builder, literals, variables, format_expr.line)
-    else:
-        call_c_ops_candidates = binary_ops.get('%', [])
-        ret = builder.builder.matching_call_c(call_c_ops_candidates,
-                                              [builder.accept(format_expr), builder.accept(rhs)],
-                                              format_expr.line)
-        assert ret is not None, 'Cannot use binary op % at line {}'.format(format_expr.line)
-        return ret
+    call_c_ops_candidates = binary_ops.get('%', [])
+    ret = builder.builder.matching_call_c(call_c_ops_candidates,
+                                          [builder.accept(format_expr), builder.accept(rhs)],
+                                          format_expr.line)
+    assert ret is not None, 'Cannot use binary op % at line {}'.format(format_expr.line)
+    return ret
 
 
 # Literals
