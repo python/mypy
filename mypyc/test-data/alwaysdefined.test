@@ -1,3 +1,10 @@
+-- Test cases for always defined attributes.
+--
+-- If class C has attributes x and y that are always defined, the output will
+-- have a line like this:
+--
+--   C: [x, y]
+
 [case testAlwaysDefinedSimple]
 class C:
     def __init__(self, x: int) -> None:
