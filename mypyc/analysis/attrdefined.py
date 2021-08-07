@@ -1,8 +1,8 @@
 from typing import List, Set, Tuple
 
 from mypyc.ir.ops import (
-    Register, Assign, AssignMulti, SetMem, SetAttr, Branch, Return, Unreachable, RegisterOp,
-    BasicBlock
+    Register, Assign, AssignMulti, SetMem, SetAttr, Branch, Return, Unreachable, GetAttr,
+    RegisterOp, BasicBlock
 )
 from mypyc.ir.class_ir import ClassIR
 from mypyc.analysis.dataflow import (
@@ -93,13 +93,24 @@ def analyze_maybe_undefined_attrs_in_init(blocks: List[BasicBlock],
 
 
 def find_always_defined_attributes(blocks: List[BasicBlock],
+                                   self_reg: Register,
                                    all_attrs: Set[str],
                                    maybe_defined: AnalysisResult[str],
                                    maybe_undefined: AnalysisResult[str],
                                    dirty: AnalysisResult[None]) -> Set[str]:
     attrs = all_attrs.copy()
     for block in blocks:
-        for i in range(len(block.ops)):
+        for i, op in enumerate(block.ops):
+            # If an attribute we read may be undefined, it isn't always defined.
+            if isinstance(op, GetAttr) and op.obj is self_reg:
+                if op.attr in maybe_undefined.before[block, i]:
+                    attrs.discard(op.attr)
+            # If a set attribute may be undefined or defined, don't consider it always defined.
+            if isinstance(op, SetAttr) and op.obj is self_reg:
+                attr = op.attr
+                if (attr in maybe_undefined.before[block, i]
+                        and attr in maybe_defined.before[block, i]):
+                    attrs.discard(attr)
             if dirty.after[block, i]:
                 if not dirty.before[block, i]:
                     attrs = attrs & (maybe_defined.before[block, i] -
@@ -141,6 +152,6 @@ def analyze_always_defined_attrs(class_irs: List[ClassIR]) -> None:
             m.blocks, self_reg, all_attrs=all_attrs, cfg=cfg)
 
         always_defined = find_always_defined_attributes(
-            m.blocks, all_attrs, maybe_defined, maybe_undefined, dirty)
+            m.blocks, self_reg, all_attrs, maybe_defined, maybe_undefined, dirty)
 
         cl._always_initialized_attrs = always_defined
