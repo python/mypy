@@ -182,7 +182,7 @@ class MessageBuilder:
                                end_line=end_line, code=code, allow_dups=allow_dups)
 
     def fail(self,
-             msg: str,
+             msg: ErrorMessage,
              context: Optional[Context],
              *,
              code: Optional[ErrorCode] = None,
@@ -633,15 +633,16 @@ class MessageBuilder:
 
         else:
             msg = 'Too few arguments' + for_function(callee)
-        self.fail(msg, context, code=codes.CALL_ARG)
+        
+        self.fail(ErrorMessage(msg, codes.CALL_ARG), context)
 
     def missing_named_argument(self, callee: CallableType, context: Context, name: str) -> None:
         msg = 'Missing named argument "{}"'.format(name) + for_function(callee)
-        self.fail(msg, context, code=codes.CALL_ARG)
+        self.fail(ErrorMessage(msg, codes.CALL_ARG), context)
 
     def too_many_arguments(self, callee: CallableType, context: Context) -> None:
         msg = 'Too many arguments' + for_function(callee)
-        self.fail(msg, context, code=codes.CALL_ARG)
+        self.fail(ErrorMessage(msg, codes.CALL_ARG), context)
 
     def too_many_arguments_from_typed_dict(self,
                                            callee: CallableType,
@@ -651,16 +652,16 @@ class MessageBuilder:
         for key in arg_type.items:
             if key not in callee.arg_names:
                 msg = 'Extra argument "{}" from **args'.format(key) + for_function(callee)
+                self.fail(ErrorMessage(msg), context)
                 break
         else:
             self.too_many_arguments(callee, context)
-            return
-        self.fail(msg, context)
+        
 
     def too_many_positional_arguments(self, callee: CallableType,
                                       context: Context) -> None:
         msg = 'Too many positional arguments' + for_function(callee)
-        self.fail(msg, context)
+        self.fail(ErrorMessage(msg), context)
 
     def unexpected_keyword_argument(self, callee: CallableType, name: str, arg_type: Type,
                                     context: Context) -> None:
@@ -680,7 +681,7 @@ class MessageBuilder:
             matches = best_matches(name, not_matching_type_args)
         if matches:
             msg += "; did you mean {}?".format(pretty_seq(matches[:3], "or"))
-        self.fail(msg, context, code=codes.CALL_ARG)
+        self.fail(ErrorMessage(msg, codes.CALL_ARG), context)
         module = find_defining_module(self.modules, callee)
         if module:
             assert callee.definition is not None
@@ -692,7 +693,7 @@ class MessageBuilder:
 
     def duplicate_argument_value(self, callee: CallableType, index: int,
                                  context: Context) -> None:
-        self.fail('{} gets multiple values for keyword argument "{}"'.
+        self.fail(message_registry.MULTIPLE_VALUES_FOR_KWARG.
                   format(callable_name(callee) or 'Function', callee.arg_names[index]),
                   context)
 
@@ -703,13 +704,12 @@ class MessageBuilder:
         if isinstance(callee_type, FunctionLike):
             name = callable_name(callee_type)
         if name is not None:
-            self.fail('{} does not return a value'.format(capitalize(name)), context,
-                      code=codes.FUNC_RETURNS_VALUE)
+            self.fail(message_registry.NO_RETURN_VALUE.format(capitalize(name)), context)
         else:
-            self.fail('Function does not return a value', context, code=codes.FUNC_RETURNS_VALUE)
+            self.fail(message_registry.FUNCTION_NO_RETURN_VALUE, context)
 
     def underscore_function_call(self, context: Context) -> None:
-        self.fail('Calling function named "_" is not allowed', context)
+        self.fail(message_registry.UNDERSCORE_FUNCTION_CALL, context)
 
     def deleted_as_rvalue(self, typ: DeletedType, context: Context) -> None:
         """Report an error about using an deleted type as an rvalue."""
@@ -717,7 +717,7 @@ class MessageBuilder:
             s = ""
         else:
             s = ' "{}"'.format(typ.source)
-        self.fail('Trying to read deleted variable{}'.format(s), context)
+        self.fail(message_registry.READING_DELETED_VALUE.format(s), context)
 
     def deleted_as_lvalue(self, typ: DeletedType, context: Context) -> None:
         """Report an error about using an deleted type as an lvalue.
@@ -729,7 +729,7 @@ class MessageBuilder:
             s = ""
         else:
             s = ' "{}"'.format(typ.source)
-        self.fail('Assignment to variable{} outside except: block'.format(s), context)
+        self.fail(message_registry.ASSIGNMENT_OUTSIDE_EXCEPT.format(s), context)
 
     def no_variant_matches_arguments(self,
                                      plausible_targets: List[CallableType],
@@ -747,14 +747,14 @@ class MessageBuilder:
         arg_types_str = ', '.join(format_type(arg) for arg in arg_types)
         num_args = len(arg_types)
         if num_args == 0:
-            self.fail('All overload variants{} require at least one argument'.format(name_str),
-                      context, code=code)
+            msg = 'All overload variants{} require at least one argument'.format(name_str)
+            self.fail(ErrorMessage(msg, code), context)
         elif num_args == 1:
-            self.fail('No overload variant{} matches argument type {}'
-                      .format(name_str, arg_types_str), context, code=code)
+            msg = 'No overload variant{} matches argument type {}'.format(name_str, arg_types_str)
+            self.fail(ErrorMessage(msg, code), context)
         else:
-            self.fail('No overload variant{} matches argument types {}'
-                      .format(name_str, arg_types_str), context, code=code)
+            msg = 'No overload variant{} matches argument types {}'.format(name_str, arg_types_str)
+            self.fail(ErrorMessage(msg, code), context)
 
         self.pretty_overload_matches(plausible_targets, overload, context, offset=2, max_items=2,
                                      code=code)
@@ -763,32 +763,31 @@ class MessageBuilder:
                                       context: Context) -> None:
         if provided < expected:
             if provided == 1:
-                self.fail('Need more than 1 value to unpack ({} expected)'.format(expected),
+                self.fail(message_registry.UNPACK_MORE_THAN_ONE_VALUE_NEEDED.format(expected),
                           context)
             else:
-                self.fail('Need more than {} values to unpack ({} expected)'.format(
+                self.fail(message_registry.UNPACK_TOO_FEW_VALUES.format(
                     provided, expected), context)
         elif provided > expected:
-            self.fail('Too many values to unpack ({} expected, {} provided)'.format(
+            self.fail(message_registry.UNPACK_TOO_MANY_VALUES.format(
                 expected, provided), context)
 
     def unpacking_strings_disallowed(self, context: Context) -> None:
-        self.fail("Unpacking a string is disallowed", context)
+        self.fail(message_registry.UNPACKING_STRINGS_DISALLOWED, context)
 
     def type_not_iterable(self, type: Type, context: Context) -> None:
-        self.fail('"{}" object is not iterable'.format(type), context)
+        self.fail(message_registry.TYPE_NOT_ITERABLE.format(type), context)
 
     def incompatible_operator_assignment(self, op: str,
                                          context: Context) -> None:
-        self.fail('Result type of {} incompatible in assignment'.format(op),
-                  context)
+        self.fail(message_registry.INCOMPATIBLE_OPERATOR_ASSIGNMENT.format(op), context)
 
     def overload_signature_incompatible_with_supertype(
             self, name: str, name_in_super: str, supertype: str,
             overload: Overloaded, context: Context) -> None:
         target = self.override_target(name, name_in_super, supertype)
-        self.fail('Signature of "{}" incompatible with {}'.format(
-            name, target), context, code=codes.OVERRIDE)
+        self.fail(message_registry.OVERLOAD_SIGNATURE_INCOMPATIBLE.format(
+            name, target), context)
 
         note_template = 'Overload variants must be defined in the same order as they are in "{}"'
         self.note(note_template.format(supertype), context, code=codes.OVERRIDE)
@@ -799,7 +798,7 @@ class MessageBuilder:
             override: Optional[FunctionLike] = None) -> None:
         code = codes.OVERRIDE
         target = self.override_target(name, name_in_super, supertype)
-        self.fail('Signature of "{}" incompatible with {}'.format(
+        self.fail(message_registry.SIGNATURE_INCOMPATIBLE_WITH_SUPERTYPE.format(
             name, target), context, code=code)
 
         INCLUDE_DECORATOR = True  # Include @classmethod and @staticmethod decorators, if any
@@ -853,11 +852,9 @@ class MessageBuilder:
             context: Context) -> None:
         target = self.override_target(name, name_in_supertype, supertype)
         arg_type_in_supertype_f = format_type_bare(arg_type_in_supertype)
-        self.fail('Argument {} of "{}" is incompatible with {}; '
-                  'supertype defines the argument type as "{}"'
+        self.fail(message_registry.ARG_INCOMPATIBLE_WITH_SUPERTYPE
                   .format(arg_num, name, target, arg_type_in_supertype_f),
-                  context,
-                  code=codes.OVERRIDE)
+                  context)
         self.note(
             'This violates the Liskov substitution principle',
             context,
@@ -886,10 +883,9 @@ class MessageBuilder:
             context: Context) -> None:
         target = self.override_target(name, name_in_supertype, supertype)
         override_str, original_str = format_type_distinctly(override, original)
-        self.fail('Return type {} of "{}" incompatible with return type {} in {}'
+        self.fail(message_registry.RETURNTYPE_INCOMPATIBLE_WITH_SUPERTYPE
                   .format(override_str, name, original_str, target),
-                  context,
-                  code=codes.OVERRIDE)
+                  context)
 
     def override_target(self, name: str, name_in_super: str,
                         supertype: str) -> str:
@@ -902,40 +898,38 @@ class MessageBuilder:
                                       actual_arg_count: int,
                                       context: Context) -> None:
         if expected_arg_count == 0:
-            self.fail('Type application targets a non-generic function or class',
+            self.fail(message_registry.TYPE_APPLICATION_ON_NON_GENERIC_TYPE,
                       context)
         elif actual_arg_count > expected_arg_count:
-            self.fail('Type application has too many types ({} expected)'
+            self.fail(message_registry.TYPE_APPLICATION_TOO_MANY_TYPES
                       .format(expected_arg_count), context)
         else:
-            self.fail('Type application has too few types ({} expected)'
+            self.fail(message_registry.TYPE_APPLICATION_TOO_FEW_TYPES
                       .format(expected_arg_count), context)
 
     def could_not_infer_type_arguments(self, callee_type: CallableType, n: int,
                                        context: Context) -> None:
         callee_name = callable_name(callee_type)
         if callee_name is not None and n > 0:
-            self.fail('Cannot infer type argument {} of {}'.format(n, callee_name), context)
+            self.fail(message_registry.CANNOT_INFER_TYPE_ARG_NAMED_FUNC.format(n, callee_name), context)
         else:
-            self.fail('Cannot infer function type argument', context)
+            self.fail(message_registry.CANNOT_INFER_TYPE_ARG_FUNC, context)
 
     def invalid_var_arg(self, typ: Type, context: Context) -> None:
-        self.fail('List or tuple expected as variable arguments', context)
+        self.fail(message_registry.INVALID_VAR_ARGS, context)
 
     def invalid_keyword_var_arg(self, typ: Type, is_mapping: bool, context: Context) -> None:
         typ = get_proper_type(typ)
         if isinstance(typ, Instance) and is_mapping:
-            self.fail('Keywords must be strings', context)
+            self.fail(message_registry.KEYWORDS_MUST_BE_STRINGS, context)
         else:
             suffix = ''
             if isinstance(typ, Instance):
                 suffix = ', not {}'.format(format_type(typ))
-            self.fail(
-                'Argument after ** must be a mapping{}'.format(suffix),
-                context, code=codes.ARG_TYPE)
+            self.fail(message_registry.ARG_MUST_BE_MAPPING.format(suffix), context)
 
     def undefined_in_superclass(self, member: str, context: Context) -> None:
-        self.fail('"{}" undefined in superclass'.format(member), context)
+        self.fail(message_registry.MEMBER_UNDEFINED_IN_SUPERCLASS.format(member), context)
 
     def first_argument_for_super_must_be_type(self, actual: Type, context: Context) -> None:
         actual = get_proper_type(actual)
@@ -945,43 +939,37 @@ class MessageBuilder:
             type_str = 'a non-type instance'
         else:
             type_str = format_type(actual)
-        self.fail('Argument 1 for "super" must be a type object; got {}'.format(type_str), context,
-                  code=codes.ARG_TYPE)
+        self.fail(message_registry.SUPER_ARG_EXPECTED_TYPE.format(type_str), context)
 
     def too_few_string_formatting_arguments(self, context: Context) -> None:
-        self.fail('Not enough arguments for format string', context,
-                  code=codes.STRING_FORMATTING)
+        self.fail(message_registry.FORMAT_STR_TOO_FEW_ARGS, context)
 
     def too_many_string_formatting_arguments(self, context: Context) -> None:
-        self.fail('Not all arguments converted during string formatting', context,
-                  code=codes.STRING_FORMATTING)
+        self.fail(message_registry.FORMAT_STR_TOO_MANY_ARGS, context)
 
     def unsupported_placeholder(self, placeholder: str, context: Context) -> None:
-        self.fail('Unsupported format character "%s"' % placeholder, context,
-                  code=codes.STRING_FORMATTING)
+        self.fail(message_registry.FORMAT_STR_UNSUPPORTED_CHAR.format(placeholder), context)
 
     def string_interpolation_with_star_and_key(self, context: Context) -> None:
-        self.fail('String interpolation contains both stars and mapping keys', context,
-                  code=codes.STRING_FORMATTING)
+        self.fail(message_registry.STRING_INTERPOLATION_WITH_STAR_AND_KEY, context)
 
     def requires_int_or_single_byte(self, context: Context,
                                     format_call: bool = False) -> None:
-        self.fail('"{}c" requires an integer in range(256) or a single byte'
+        self.fail(message_registry.FORMAT_STR_INVALID_CHR_CONVERSION_RANGE
                   .format(':' if format_call else '%'),
-                  context, code=codes.STRING_FORMATTING)
+                  context)
 
     def requires_int_or_char(self, context: Context,
                              format_call: bool = False) -> None:
-        self.fail('"{}c" requires int or char'.format(':' if format_call else '%'),
-                  context, code=codes.STRING_FORMATTING)
+        self.fail(message_registry.FORMAT_STR_INVALID_CHR_CONVERSION
+                  .format(':' if format_call else '%'),
+                  context)
 
     def key_not_in_mapping(self, key: str, context: Context) -> None:
-        self.fail('Key "%s" not found in mapping' % key, context,
-                  code=codes.STRING_FORMATTING)
+        self.fail(message_registry.KEY_NOT_IN_MAPPING.format(key), context)
 
     def string_interpolation_mixing_key_and_non_keys(self, context: Context) -> None:
-        self.fail('String interpolation mixes specifier with and without mapping keys', context,
-                  code=codes.STRING_FORMATTING)
+        self.fail(message_registry.FORMAT_STR_MIXED_KEYS_AND_NON_KEYS, context)
 
     def cannot_determine_type(self, name: str, context: Context) -> None:
         self.fail('Cannot determine type of "%s"' % name, context, code=codes.HAS_TYPE)
