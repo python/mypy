@@ -25,11 +25,11 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
-    bool_rprimitive, c_int_rprimitive, c_pyssize_t_rprimitive, is_dict_rprimitive,
-    is_int_rprimitive, is_str_rprimitive, is_short_int_rprimitive
+    bool_rprimitive, c_int_rprimitive, c_pyssize_t_rprimitive, is_dict_rprimitive
 )
-from mypyc.irbuild.format_str_tokenizer import join_formatted_strings
-from mypyc.primitives.int_ops import int_to_str_op
+from mypyc.irbuild.format_str_tokenizer import (
+    tokenizer_format_call, join_formatted_strings, convert_expr
+)
 from mypyc.primitives.dict_ops import (
     dict_keys_op, dict_values_op, dict_items_op, dict_setdefault_spec_init_op
 )
@@ -393,82 +393,17 @@ def translate_str_format(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
     if (isinstance(callee, MemberExpr) and isinstance(callee.expr, StrExpr)
             and expr.arg_kinds.count(ARG_POS) == len(expr.arg_kinds)):
-
         format_str = callee.expr.value
-        if not can_optimize_format(format_str):
+        tokens = tokenizer_format_call(format_str)
+        if tokens is None:
             return None
-
-        literals = split_braces(format_str)
-
+        literals, format_ops = tokens
         # Convert variables to strings
-        variables = []
-        for x in expr.args:
-            node_type = builder.node_type(x)
-            if is_str_rprimitive(node_type):
-                var_str = builder.accept(x)
-            elif is_int_rprimitive(node_type) or is_short_int_rprimitive(node_type):
-                var_str = builder.call_c(int_to_str_op, [builder.accept(x)], expr.line)
-            else:
-                var_str = builder.call_c(str_op, [builder.accept(x)], expr.line)
-            variables.append(var_str)
-
-        return join_formatted_strings(builder, literals, variables, expr.line)
+        substitutions = convert_expr(builder, format_ops, expr.args, expr.line)
+        if substitutions is None:
+            return None
+        return join_formatted_strings(builder, literals, substitutions, expr.line)
     return None
-
-
-def can_optimize_format(format_str: str) -> bool:
-    # TODO
-    # Only empty braces can be optimized
-    prev = ''
-    for c in format_str:
-        if (c == '{' and prev == '{'
-                or c == '}' and prev == '}'):
-            prev = ''
-            continue
-        if (prev != '' and (c == '}' and prev != '{'
-                            or prev == '{' and c != '}')):
-            return False
-        prev = c
-    return True
-
-
-def split_braces(format_str: str) -> List[str]:
-    # This function can only be called after format_str passes
-    # 'can_optimize_format()'.
-    tmp_str = ''
-    ret_list = []
-    prev = ''
-    for c in format_str:
-        # There are three cases: {, }, others
-        #     when c is '}': prev is '{' -> match empty braces
-        #                            '}' -> merge into one } in literal
-        #                            others -> pass
-        #          c is '{': prev is '{' -> merge into one { in literal
-        #                            '}' -> pass
-        #                            others -> pass
-        #          c is others: add c into literal
-        clear_prev = True
-        if c == '}':
-            if prev == '{':
-                ret_list.append(tmp_str)
-                tmp_str = ''
-            elif prev == '}':
-                tmp_str += '}'
-            else:
-                clear_prev = False
-        elif c == '{':
-            if prev == '{':
-                tmp_str += '{'
-            else:
-                clear_prev = False
-        else:
-            tmp_str += c
-            clear_prev = False
-        prev = c
-        if clear_prev:
-            prev = ''
-    ret_list.append(tmp_str)
-    return ret_list
 
 
 @specialize_function('join', str_rprimitive)

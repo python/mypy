@@ -451,8 +451,8 @@ class Emitter:
 
         # TODO: Verify refcount handling.
         if (is_list_rprimitive(typ) or is_dict_rprimitive(typ) or is_set_rprimitive(typ)
-                or is_str_rprimitive(typ) or is_bytes_rprimitive(typ) or is_range_rprimitive(typ)
-                or is_float_rprimitive(typ) or is_int_rprimitive(typ) or is_bool_rprimitive(typ)):
+                or is_str_rprimitive(typ) or is_range_rprimitive(typ) or is_float_rprimitive(typ)
+                or is_int_rprimitive(typ) or is_bool_rprimitive(typ) or is_bit_rprimitive(typ)):
             if declare_dest:
                 self.emit_line('PyObject *{};'.format(dest))
             if is_list_rprimitive(typ):
@@ -463,8 +463,6 @@ class Emitter:
                 prefix = 'PySet'
             elif is_str_rprimitive(typ):
                 prefix = 'PyUnicode'
-            elif is_bytes_rprimitive(typ):
-                prefix = 'PyBytes'
             elif is_range_rprimitive(typ):
                 prefix = 'PyRange'
             elif is_float_rprimitive(typ):
@@ -479,6 +477,18 @@ class Emitter:
             if likely:
                 check = '(likely{})'.format(check)
             self.emit_arg_check(src, dest, typ, check.format(prefix, src), optional)
+            self.emit_lines(
+                '    {} = {};'.format(dest, src),
+                'else {',
+                err,
+                '}')
+        elif is_bytes_rprimitive(typ):
+            if declare_dest:
+                self.emit_line('PyObject *{};'.format(dest))
+            check = '(PyBytes_Check({}) || PyByteArray_Check({}))'
+            if likely:
+                check = '(likely{})'.format(check)
+            self.emit_arg_check(src, dest, typ, check.format(src, src), optional)
             self.emit_lines(
                 '    {} = {};'.format(dest, src),
                 'else {',

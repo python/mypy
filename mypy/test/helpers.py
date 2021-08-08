@@ -5,7 +5,7 @@ import time
 import shutil
 import contextlib
 
-from typing import List, Iterable, Dict, Tuple, Callable, Any, Iterator
+from typing import List, Iterable, Dict, Tuple, Callable, Any, Iterator, Union
 
 from mypy import defaults
 import mypy.api as api
@@ -18,7 +18,9 @@ from unittest import TestCase as Suite  # noqa: F401 (re-exporting)
 
 from mypy.main import process_options
 from mypy.options import Options
-from mypy.test.data import DataDrivenTestCase, fix_cobertura_filename
+from mypy.test.data import (
+    DataDrivenTestCase, fix_cobertura_filename, UpdateFile, DeleteFile
+)
 from mypy.test.config import test_temp_dir
 import mypy.version
 
@@ -421,6 +423,24 @@ def copy_and_fudge_mtime(source_path: str, target_path: str) -> None:
 
     if new_time:
         os.utime(target_path, times=(new_time, new_time))
+
+
+def perform_file_operations(
+        operations: List[Union[UpdateFile, DeleteFile]]) -> None:
+    for op in operations:
+        if isinstance(op, UpdateFile):
+            # Modify/create file
+            copy_and_fudge_mtime(op.source_path, op.target_path)
+        else:
+            # Delete file/directory
+            if os.path.isdir(op.path):
+                # Sanity check to avoid unexpected deletions
+                assert op.path.startswith('tmp')
+                shutil.rmtree(op.path)
+            else:
+                # Use retries to work around potential flakiness on Windows (AppVeyor).
+                path = op.path
+                retry_on_error(lambda: os.remove(path))
 
 
 def check_test_output_files(testcase: DataDrivenTestCase,

@@ -58,6 +58,8 @@ class auto(IntFlag):
     def __new__(cls: Type[_T]) -> _T: ...
 
 class Flag(Enum):
+    name: str | None  # type: ignore
+    value: int
     def __contains__(self: _T, other: _T) -> bool: ...
     def __repr__(self) -> str: ...
     def __str__(self) -> str: ...
@@ -76,7 +78,7 @@ class IntFlag(int, Flag):
     __rand__ = __and__
     __rxor__ = __xor__
 
-if sys.version_info >= (3, 10):
+if sys.version_info >= (3, 11):
     class StrEnum(str, Enum):
         def __new__(cls: Type[_T], value: Union[int, _T]) -> _T: ...
     class FlagBoundary(StrEnum):

@@ -2,7 +2,7 @@ import gzip
 import http.client
 import sys
 import time
-from _typeshed import SupportsRead, SupportsWrite
+from _typeshed import Self, SupportsRead, SupportsWrite
 from datetime import datetime
 from io import BytesIO
 from types import TracebackType
@@ -301,7 +301,7 @@ class ServerProxy:
     def __call__(self, attr: Literal["transport"]) -> Transport: ...
     @overload
     def __call__(self, attr: str) -> Union[Callable[[], None], Transport]: ...
-    def __enter__(self) -> ServerProxy: ...
+    def __enter__(self: Self) -> Self: ...
     def __exit__(
         self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
     ) -> None: ...

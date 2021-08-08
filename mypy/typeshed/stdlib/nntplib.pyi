@@ -2,9 +2,9 @@ import datetime
 import socket
 import ssl
 import sys
-from typing import IO, Any, Dict, Iterable, List, NamedTuple, Optional, Tuple, TypeVar, Union
+from _typeshed import Self
+from typing import IO, Any, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union
 
-_SelfT = TypeVar("_SelfT", bound=_NNTPBase)
 _File = Union[IO[bytes], bytes, str, None]
 
 class NNTPError(Exception):
@@ -46,7 +46,7 @@ class _NNTPBase:
     nntp_implementation: str
     nntp_version: int
     def __init__(self, file: IO[bytes], host: str, readermode: Optional[bool] = ..., timeout: float = ...) -> None: ...
-    def __enter__(self: _SelfT) -> _SelfT: ...
+    def __enter__(self: Self) -> Self: ...
     def __exit__(self, *args: Any) -> None: ...
     def getwelcome(self) -> str: ...
     def getcapabilities(self) -> Dict[str, List[str]]: ...

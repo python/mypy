@@ -1,6 +1,6 @@
 # Test cases for strings (compile and run)
 
-[case testStr]
+[case testStrBasics]
 from typing import Tuple
 def f() -> str:
     return 'some string'
@@ -149,7 +149,7 @@ def test_str_to_bool() -> None:
         assert is_true(x)
         assert not is_false(x)
 
-[case testCStyleStringFormatting]
+[case testStringFormattingCStyle]
 [typing fixtures/typing-full.pyi]
 from typing import Tuple
 
@@ -511,3 +511,109 @@ def test_format_method_python_doc() -> None:
                         '    9    9   11 1001',\
                         '   10    A   12 1010',\
                         '   11    B   13 1011']
+
+[case testChrOrdEncodeDecode]
+# Some test cases are from https://docs.python.org/3/howto/unicode.html
+
+def try_invalid(x: int) -> bool:
+    try:
+        chr(x + int())
+        return False
+    except ValueError:
+        return True
+
+def test_chr() -> None:
+    assert chr(57344) == '\ue000'
+    assert chr(0) == '\x00'
+    assert chr(65) == 'A'
+    assert chr(150) == '\x96'
+    try:
+        chr(-1)
+        assert False
+    except ValueError:
+        pass
+    try:
+        chr(1114112)
+        assert False
+    except ValueError:
+        pass
+    assert chr(1114111) == '\U0010ffff'
+    x = 0
+    assert chr(x + int()) == '\x00'
+    x = 100
+    assert chr(x + int()) == 'd'
+    x = 150
+    assert chr(x + int()) == '\x96'
+    x = 257
+    assert chr(x + int()) == 'ā'
+    x = 65537
+    assert chr(x + int()) == '𐀁'
+    assert try_invalid(-1)
+    assert try_invalid(1114112)
+
+def test_ord() -> None:
+    assert ord('\ue000') == 57344
+    s = "a\xac\u1234\u20ac\U00008000"
+    # ^^^^ two-digit hex escape
+    #   ^^^^^^ four-digit Unicode escape
+    #           ^^^^^^^^^^ eight-digit Unicode escape
+    l1 = [ord(c) for c in s]
+    assert l1 == [97, 172, 4660, 8364, 32768]
+    u = 'abcdé'
+    assert ord(u[-1]) == 233
+    assert ord(b'a') == 97
+    assert ord(b'a' + bytes()) == 97
+    u2 = '\U0010ffff'
+    assert ord(u2) == 1114111
+    try:
+        ord('aa')
+        assert False
+    except TypeError:
+        pass
+
+def test_decode() -> None:
+    assert "\N{GREEK CAPITAL LETTER DELTA}" == '\u0394'
+    assert "\u0394" == "\u0394"
+    assert "\U00000394" == '\u0394'
+    assert b'\x80abc'.decode("utf-8", "replace") == '\ufffdabc'
+    assert b'\x80abc'.decode("utf-8", "backslashreplace") == '\\x80abc'
+    assert b'\x80abc'.decode("utf-8", "ignore") == 'abc'
+    assert b'\x80abc'.decode("UTF-8", "ignore") == 'abc'
+    assert b'\x80abc'.decode("Utf-8", "ignore") == 'abc'
+    assert b'\x80abc'.decode("utf_8", "ignore") == 'abc'
+    assert b'\x80abc'.decode("latin1", "ignore") == '\x80abc'
+    assert b'\xd2\xbb\xb6\xfe\xc8\xfd'.decode("gbk", "ignore") == '一二三'
+    assert b'\xd2\xbb\xb6\xfe\xc8\xfd'.decode("latin1", "ignore") == 'Ò»¶þÈý'
+    assert b'Z\xc3\xbcrich'.decode("utf-8") == 'Zürich'
+    try:
+        b'Z\xc3\xbcrich'.decode("ascii")
+        assert False
+    except UnicodeDecodeError:
+        pass
+
+def test_encode() -> None:
+    u = chr(40960) + 'abcd' + chr(1972)
+    assert u.encode() == b'\xea\x80\x80abcd\xde\xb4'
+    assert u.encode('utf-8') == b'\xea\x80\x80abcd\xde\xb4'
+    try:
+        u.encode('ascii')
+        assert False
+    except UnicodeEncodeError:
+        pass
+    assert u.encode('ascii', 'ignore') == b'abcd'
+    assert u.encode('ASCII', 'ignore') == b'abcd'
+    assert u.encode('ascii', 'replace') == b'?abcd?'
+    assert u.encode('ascii', 'xmlcharrefreplace') == b'&#40960;abcd&#1972;'
+    assert u.encode('ascii', 'backslashreplace') == b'\\ua000abcd\\u07b4'
+    assert u.encode('ascii', 'namereplace') == b'\\N{YI SYLLABLE IT}abcd\\u07b4'
+    assert 'pythön!'.encode() == b'pyth\xc3\xb6n!'
+    assert '一二三'.encode('gbk') == b'\xd2\xbb\xb6\xfe\xc8\xfd'
+    assert u.encode('UTF-8', 'ignore') == b'\xea\x80\x80abcd\xde\xb4'
+    assert u.encode('Utf_8') == b'\xea\x80\x80abcd\xde\xb4'
+    assert u.encode('UTF_8') == b'\xea\x80\x80abcd\xde\xb4'
+    assert u'\u00E1'.encode('latin1') == b'\xe1'
+    try:
+        u.encode('latin1')
+        assert False
+    except UnicodeEncodeError:
+        pass

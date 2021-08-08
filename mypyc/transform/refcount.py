@@ -33,12 +33,13 @@ from mypyc.ir.ops import (
 from mypyc.ir.func_ir import FuncIR, all_values
 
 
-DecIncs = Tuple[Tuple[Tuple[Value, bool], ...], Tuple[Value, ...]]
+Decs = Tuple[Tuple[Value, bool], ...]
+Incs = Tuple[Value, ...]
 
-# A of basic blocks that decrement and increment specific values and
-# then jump to some target block. This lets us cut down on how much
-# code we generate in some circumstances.
-BlockCache = Dict[Tuple[BasicBlock, DecIncs], BasicBlock]
+# A cache of basic blocks that decrement and increment specific values
+# and then jump to some target block. This lets us cut down on how
+# much code we generate in some circumstances.
+BlockCache = Dict[Tuple[BasicBlock, Decs, Incs], BasicBlock]
 
 
 def insert_ref_count_opcodes(ir: FuncIR) -> None:
@@ -161,36 +162,25 @@ def insert_branch_inc_and_decrefs(
     source_live_regs = pre_live[prev_key]
     source_borrowed = post_borrow[prev_key]
     source_defined = post_must_defined[prev_key]
-    if isinstance(block.ops[-1], Branch):
-        branch = block.ops[-1]
+
+    term = block.terminator
+    for i, target in enumerate(term.targets()):
         # HAX: After we've checked against an error value the value we must not touch the
         #      refcount since it will be a null pointer. The correct way to do this would be
         #      to perform data flow analysis on whether a value can be null (or is always
         #      null).
-        if branch.op == Branch.IS_ERROR:
-            omitted = {branch.value}
+        omitted: Iterable[Value]
+        if isinstance(term, Branch) and term.op == Branch.IS_ERROR and i == 0:
+            omitted = (term.value,)
         else:
-            omitted = set()
-        true_decincs = (
-            after_branch_decrefs(
-                branch.true, pre_live, source_defined,
-                source_borrowed, source_live_regs, ordering, omitted),
-            after_branch_increfs(
-                branch.true, pre_live, pre_borrow, source_borrowed, ordering))
-        branch.true = add_block(true_decincs, cache, blocks, branch.true)
+            omitted = ()
 
-        false_decincs = (
-            after_branch_decrefs(
-                branch.false, pre_live, source_defined, source_borrowed, source_live_regs,
-                ordering),
-            after_branch_increfs(
-                branch.false, pre_live, pre_borrow, source_borrowed, ordering))
-        branch.false = add_block(false_decincs, cache, blocks, branch.false)
-    elif isinstance(block.ops[-1], Goto):
-        goto = block.ops[-1]
-        new_decincs = ((), after_branch_increfs(
-            goto.label, pre_live, pre_borrow, source_borrowed, ordering))
-        goto.label = add_block(new_decincs, cache, blocks, goto.label)
+        decs = after_branch_decrefs(
+            target, pre_live, source_defined,
+            source_borrowed, source_live_regs, ordering, omitted)
+        incs = after_branch_increfs(
+            target, pre_live, pre_borrow, source_borrowed, ordering)
+        term.set_target(i, add_block(decs, incs, cache, blocks, target))
 
 
 def after_branch_decrefs(label: BasicBlock,
@@ -199,7 +189,7 @@ def after_branch_decrefs(label: BasicBlock,
                          source_borrowed: Set[Value],
                          source_live_regs: Set[Value],
                          ordering: Dict[Value, int],
-                         omitted: Iterable[Value] = ()) -> Tuple[Tuple[Value, bool], ...]:
+                         omitted: Iterable[Value]) -> Tuple[Tuple[Value, bool], ...]:
     target_pre_live = pre_live[label, 0]
     decref = source_live_regs - target_pre_live - source_borrowed
     if decref:
@@ -224,22 +214,21 @@ def after_branch_increfs(label: BasicBlock,
     return ()
 
 
-def add_block(decincs: DecIncs, cache: BlockCache,
+def add_block(decs: Decs, incs: Incs, cache: BlockCache,
               blocks: List[BasicBlock], label: BasicBlock) -> BasicBlock:
-    decs, incs = decincs
     if not decs and not incs:
         return label
 
     # TODO: be able to share *partial* results
-    if (label, decincs) in cache:
-        return cache[label, decincs]
+    if (label, decs, incs) in cache:
+        return cache[label, decs, incs]
 
     block = BasicBlock()
     blocks.append(block)
     block.ops.extend(DecRef(reg, is_xdec=xdec) for reg, xdec in decs)
     block.ops.extend(IncRef(reg) for reg in incs)
     block.ops.append(Goto(label))
-    cache[label, decincs] = block
+    cache[label, decs, incs] = block
     return block
 
 

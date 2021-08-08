@@ -16,3 +16,4 @@ class float: pass
 class str: pass
 class unicode: pass
 class ellipsis: pass
+class list: pass
