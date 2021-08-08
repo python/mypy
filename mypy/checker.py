@@ -4989,11 +4989,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def fail(self, msg: ErrorMessage, context: Context, *, code: Optional[ErrorCode] = None) -> None:
         """Produce an error message."""
-        if isinstance(msg, str):  # TODO: remove
-            self.msg.fail(msg, context, code=code)
-            return
-
-        self.msg.fail(msg.value, context, code=msg.code)
+        self.msg.fail(msg, context)
 
     def note(self,
              msg: str,
