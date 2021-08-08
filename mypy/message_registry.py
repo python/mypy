@@ -17,6 +17,9 @@ class ErrorMessage:
         self.value = value
         self.code = code
 
+    def __repr__(self) -> str:
+        return '<ErrorMessage "{}">'.format(self.value)
+
     def format(self, *args: object, **kwargs: object) -> "ErrorMessage":
         return ErrorMessage(self.value.format(*args, **kwargs), code=self.code)
 
