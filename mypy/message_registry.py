@@ -337,3 +337,10 @@ UNSUPPORTED_LEFT_OPERAND_TYPE: Final = ErrorMessage('Unsupported left operand ty
 UNTYPED_FUNCTION_CALL: Final = ErrorMessage('Call to untyped function {} in typed context', codes.NO_UNTYPED_CALL)
 INVALID_INDEX_TYPE: Final = ErrorMessage('Invalid index type {} for {}; expected type {}', codes.INDEX)
 TARGET_INCOMPATIBLE_TYPE: Final = ErrorMessage('{} (expression has type {}, target has type {})')
+LIST_ITEM_INCOMPATIBLE_TYPE: Final = ErrorMessage('{} item {} has incompatible type {}; expected {}', codes.LIST_ITEM)
+DICT_ENTRY_INCOMPATIBLE_TYPE: Final = ErrorMessage('{} entry {} has incompatible type {}: {}; expected {}: {}', codes.DICT_ITEM)
+LIST_COMP_INCOMPATIBLE_TYPE: Final = ErrorMessage('List comprehension has incompatible type List[{}]; expected List[{}]')
+SET_COMP_INCOMPATIBLE_TYPE: Final = ErrorMessage('Set comprehension has incompatible type Set[{}]; expected Set[{}]')
+DICT_COMP_INCOMPATIBLE_TYPE: Final = ErrorMessage('{} expression in dictionary comprehension has incompatible type {}; expected type {}')
+GENERATOR_INCOMPATIBLE_TYPE: Final = ErrorMessage('Generator has incompatible item type {}; expected {}')
+

@@ -419,6 +419,8 @@ class MessageBuilder:
         callee_name = callable_name(callee)
         if callee_name is not None:
             name = callee_name
+            target = 'to {} '.format(name)
+
             if callee.bound_args and callee.bound_args[0] is not None:
                 base = format_type(callee.bound_args[0])
             else:
@@ -456,19 +458,15 @@ class MessageBuilder:
                               context, code=codes.ASSIGNMENT)
                     return codes.ASSIGNMENT
 
-            target = 'to {} '.format(name)
-
-        msg = ''
-        code = codes.MISC
-        notes: List[str] = []
         if callee_name == '<list>':
             name = callee_name[1:-1]
             n -= 1
             actual_type_str, expected_type_str = format_type_distinctly(arg_type,
                                                                         callee.arg_types[0])
-            msg = '{} item {} has incompatible type {}; expected {}'.format(
+            msg = message_registry.LIST_ITEM_INCOMPATIBLE_TYPE.format(
                 name.title(), n, actual_type_str, expected_type_str)
-            code = codes.LIST_ITEM
+            self.fail(msg, context)
+            return msg.code
         elif callee_name == '<dict>':
             name = callee_name[1:-1]
             n -= 1
@@ -489,35 +487,43 @@ class MessageBuilder:
                 value_type_str, expected_value_type_str = format_type_distinctly(
                     value_type, expected_value_type)
 
-            msg = '{} entry {} has incompatible type {}: {}; expected {}: {}'.format(
+            msg = message_registry.DICT_ENTRY_INCOMPATIBLE_TYPE.format(
                 name.title(), n, key_type_str, value_type_str,
                 expected_key_type_str, expected_value_type_str)
-            code = codes.DICT_ITEM
+            self.fail(msg, context)
+            return msg.code
         elif callee_name == '<list-comprehension>':
             actual_type_str, expected_type_str = map(strip_quotes,
                                                      format_type_distinctly(arg_type,
                                                                             callee.arg_types[0]))
-            msg = 'List comprehension has incompatible type List[{}]; expected List[{}]'.format(
+            msg = message_registry.LIST_COMP_INCOMPATIBLE_TYPE.format(
                 actual_type_str, expected_type_str)
+            self.fail(msg, context)
+            return msg.code
         elif callee_name == '<set-comprehension>':
             actual_type_str, expected_type_str = map(strip_quotes,
                                                      format_type_distinctly(arg_type,
                                                                             callee.arg_types[0]))
-            msg = 'Set comprehension has incompatible type Set[{}]; expected Set[{}]'.format(
+            msg = message_registry.SET_COMP_INCOMPATIBLE_TYPE.format(
                 actual_type_str, expected_type_str)
+            self.fail(msg, context)
+            return msg.code
         elif callee_name == '<dictionary-comprehension>':
             actual_type_str, expected_type_str = format_type_distinctly(arg_type,
                                                                         callee.arg_types[n - 1])
-            msg = ('{} expression in dictionary comprehension has incompatible type {}; '
-                   'expected type {}').format(
+            msg = message_registry.DICT_COMP_INCOMPATIBLE_TYPE.format(
                 'Key' if n == 1 else 'Value',
                 actual_type_str,
                 expected_type_str)
+            self.fail(msg, context)
         elif callee_name == '<generator>':
             actual_type_str, expected_type_str = format_type_distinctly(arg_type,
                                                                         callee.arg_types[0])
-            msg = 'Generator has incompatible item type {}; expected {}'.format(
+            msg = message_registry.GENERATOR_INCOMPATIBLE_TYPE.format(
                 actual_type_str, expected_type_str)
+            self.fail(msg, context)
+            return msg.code
+
         else:
             try:
                 expected_type = callee.arg_types[m - 1]
@@ -550,11 +556,11 @@ class MessageBuilder:
                     bare=True)
                 arg_label = '"{}"'.format(arg_name)
             if isinstance(outer_context, IndexExpr) and isinstance(outer_context.index, StrExpr):
-                msg = 'Value of "{}" has incompatible type {}; expected {}' .format(
+                msg_str = 'Value of "{}" has incompatible type {}; expected {}' .format(
                     outer_context.index.value, quote_type_string(arg_type_str),
                     quote_type_string(expected_type_str))
             else:
-                msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
+                msg_str = 'Argument {} {}has incompatible type {}; expected {}'.format(
                     arg_label, target, quote_type_string(arg_type_str),
                     quote_type_string(expected_type_str))
             object_type = get_proper_type(object_type)
@@ -567,14 +573,18 @@ class MessageBuilder:
                 expected_types = list(expected_type.items)
             else:
                 expected_types = [expected_type]
+            
+            notes: List[str] = []
             for type in get_proper_types(expected_types):
                 if isinstance(arg_type, Instance) and isinstance(type, Instance):
                     notes = append_invariance_notes(notes, arg_type, type)
-        self.fail(msg, context, code=code)
-        if notes:
-            for note_msg in notes:
-                self.note(note_msg, context, code=code)
-        return code
+
+            msg = ErrorMessage(msg_str, code)
+            self.fail(msg, context)
+            if notes:
+                for note_msg in notes:
+                    self.note(note_msg, context, code=code)
+            return msg.code
 
     def incompatible_argument_note(self,
                                    original_caller_type: ProperType,
