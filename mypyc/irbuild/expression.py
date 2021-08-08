@@ -21,11 +21,12 @@ from mypyc.ir.ops import (
     Value, Register, TupleGet, TupleSet, BasicBlock, Assign, LoadAddress, RaiseStandardError
 )
 from mypyc.ir.rtypes import (
-    RTuple, object_rprimitive, is_none_rprimitive, int_rprimitive, is_int_rprimitive,
-    is_str_rprimitive, is_short_int_rprimitive
+    RTuple, object_rprimitive, is_none_rprimitive, int_rprimitive, is_int_rprimitive
 )
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
-from mypyc.irbuild.format_str_tokenizer import tokenizer_printf_style, join_formatted_strings, convert_expr
+from mypyc.irbuild.format_str_tokenizer import (
+    tokenizer_printf_style, join_formatted_strings, convert_expr
+)
 from mypyc.primitives.registry import CFunctionDescription, builtin_names, binary_ops
 from mypyc.primitives.generic_ops import iter_op
 from mypyc.primitives.misc_ops import new_slice_op, ellipsis_op, type_op, get_module_dict_op
@@ -33,8 +34,8 @@ from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice
 from mypyc.primitives.tuple_ops import list_tuple_op, tuple_slice_op
 from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op, dict_get_item_op
 from mypyc.primitives.set_ops import set_add_op, set_update_op
-from mypyc.primitives.str_ops import str_slice_op, str_op
-from mypyc.primitives.int_ops import int_comparison_op_mapping, int_to_str_op
+from mypyc.primitives.str_ops import str_slice_op
+from mypyc.primitives.int_ops import int_comparison_op_mapping
 from mypyc.irbuild.specialize import specializers
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import (
