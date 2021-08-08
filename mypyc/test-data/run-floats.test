@@ -20,3 +20,9 @@ def test_abs() -> None:
     assert abs(44324.732) == 44324.732
     assert abs(-23.4) == 23.4
     assert abs(-43.44e-4) == 43.44e-4
+
+[case testFloatMin]
+def test_float_min() -> None:
+    x: float = 20.0
+    y: float = 30.0
+    assert min(x, y) == 20.0

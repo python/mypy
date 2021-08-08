@@ -617,3 +617,9 @@ def test_encode() -> None:
         assert False
     except UnicodeEncodeError:
         pass
+
+[case testStringMin]
+def test_str_min() -> None:
+    x: str = 'aaa'
+    y: str = 'bbb'
+    assert min(x, y) == 'aaa'

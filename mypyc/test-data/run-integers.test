@@ -329,13 +329,13 @@ def test_int_as_bool() -> None:
         assert is_true(x)
         assert not is_false(x)
 
-[case testMin]
-def check_min_int() -> None:
+[case testIntMin]
+def test_int_min() -> None:
     x: int = 200
     y: int = 30
     assert min(x, y) == 30
 
-def check_min_int_2() -> None:
+def test_int_min_2() -> None:
     x: int = 30
     y: int = 200
     assert min(x, y) == 30
