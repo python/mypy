@@ -216,17 +216,18 @@ mypy generates an error if it thinks that an expression is redundant.
         [i for i in range(x) if isinstance(i, int)]
 
 
-Check that expression is not implicitly true in boolean context [implicit-bool]
+Check that expression is not implicitly true in boolean context [truthy-bool]
 --------------------------------------------------------------------------------
 
 Warn when an expression whose type does not implement __bool__ or __len__ is used in boolean context
-since it would always evaluate as true.
+since it could always evaluate to true (if one also assumes that no subtype implements __bool__ or
+__len__).
 
 .. code-block:: python
 
     class Foo:
       pass
     foo = Foo()
-    # Error: "foo" has type "Foo" which does not implement __bool__ or __len__ so it will always be true in boolean context
+    # Error: "foo" has type "Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context
     if foo:
        ...

@@ -4026,22 +4026,22 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if isinstance(t, FunctionLike):
             self.msg.fail(
-                f'Function "{t}" will always be true in boolean context', expr,
-                code=codes.IMPLICIT_BOOL,
+                f'Function "{t}" could always be true in boolean context', expr,
+                code=codes.TRUTHY_BOOL,
             )
         elif isinstance(t, UnionType):
             self.msg.fail(
                 f"{format_expr_type()} of which no members implement __bool__ or __len__ "
-                "so it will always be true in boolean context",
+                "so it could always be true in boolean context",
                 expr,
-                code=codes.IMPLICIT_BOOL,
+                code=codes.TRUTHY_BOOL,
             )
         else:
             self.msg.fail(
                 f'{format_expr_type()} which does not implement __bool__ or __len__ '
-                'so it will always be true in boolean context',
+                'so it could always be true in boolean context',
                 expr,
-                code=codes.IMPLICIT_BOOL,
+                code=codes.TRUTHY_BOOL,
             )
 
     def find_type_equals_check(self, node: ComparisonExpr, expr_indices: List[int]

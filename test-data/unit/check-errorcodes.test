@@ -808,14 +808,14 @@ from typing_extensions import TypedDict
 Foo = TypedDict("Bar", {})  # E: First argument "Bar" to TypedDict() does not match variable name "Foo"  [name-match]
 [builtins fixtures/dict.pyi]
 [case testImplicitBool]
-# flags: --enable-error-code implicit-bool
+# flags: --enable-error-code truthy-bool
 from typing import List, Union
 
 class Foo:
     pass
 
 foo = Foo()
-if foo:  # E: "__main__.foo" has type "__main__.Foo" which does not implement __bool__ or __len__ so it will always be true in boolean context  [implicit-bool]
+if foo:  # E: "__main__.foo" has type "__main__.Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
     pass
 
 zero = 0
@@ -839,14 +839,14 @@ if good_union:
     pass
 
 bad_union: Union[Foo, object] = Foo()
-if bad_union:  # E: "__main__.bad_union" has type "Union[__main__.Foo, builtins.object]" of which no members implement __bool__ or __len__ so it will always be true in boolean context  [implicit-bool]
+if bad_union:  # E: "__main__.bad_union" has type "Union[__main__.Foo, builtins.object]" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
     pass
 
 def f():
     pass
-if f:  # E: Function "def () -> Any" will always be true in boolean context  [implicit-bool]
+if f:  # E: Function "def () -> Any" could always be true in boolean context  [truthy-bool]
     pass
-conditional_result = 'foo' if f else 'bar'  # E: Function "def () -> Any" will always be true in boolean context  [implicit-bool]
+conditional_result = 'foo' if f else 'bar'  # E: Function "def () -> Any" could always be true in boolean context  [truthy-bool]
 
 lst: List[int] = []
 if lst:
