@@ -41,6 +41,7 @@ from mypy.subtypes import (
 from mypy.sametypes import is_same_type
 from mypy.util import unmangle
 from mypy.errorcodes import ErrorCode
+from mypy.message_registry import ErrorMessage
 from mypy import message_registry, errorcodes as codes
 
 TYPES_FOR_UNIMPORTED_HINTS: Final = {
@@ -189,7 +190,12 @@ class MessageBuilder:
              origin: Optional[Context] = None,
              allow_dups: bool = False) -> None:
         """Report an error message (unless disabled)."""
-        self.report(msg, context, 'error', code=code, file=file,
+        if isinstance(msg, str):  # TODO: Remove
+            self.report(msg, context, 'error', code=code, file=file,
+                        origin=origin, allow_dups=allow_dups)
+            return
+
+        self.report(msg.value, context, 'error', code=msg.code, file=file,
                     origin=origin, allow_dups=allow_dups)
 
     def note(self,
@@ -249,10 +255,10 @@ class MessageBuilder:
 
         if (isinstance(original_type, Instance) and
                 original_type.type.has_readable_member(member)):
-            self.fail('Member "{}" is not assignable'.format(member), context)
+            self.fail(message_registry.MEMBER_NOT_ASSIGNABLE.format(member), context)
         elif member == '__contains__':
-            self.fail('Unsupported right operand type for in ({})'.format(
-                format_type(original_type)), context, code=codes.OPERATOR)
+            self.fail(message_registry.UNSUPPORTED_OPERAND_FOR_IN.format(
+                format_type(original_type)), context)
         elif member in op_methods.values():
             # Access to a binary operator member (e.g. _add). This case does
             # not handle indexing operations.
@@ -261,36 +267,36 @@ class MessageBuilder:
                     self.unsupported_left_operand(op, original_type, context)
                     break
         elif member == '__neg__':
-            self.fail('Unsupported operand type for unary - ({})'.format(
-                format_type(original_type)), context, code=codes.OPERATOR)
+            self.fail(message_registry.UNSUPPORTED_OPERAND_FOR_UNARY_MINUS.format(
+                format_type(original_type)), context)
         elif member == '__pos__':
-            self.fail('Unsupported operand type for unary + ({})'.format(
-                format_type(original_type)), context, code=codes.OPERATOR)
+            self.fail(message_registry.UNSUPPORTED_OPERAND_FOR_UNARY_PLUS.format(
+                format_type(original_type)), context)
         elif member == '__invert__':
-            self.fail('Unsupported operand type for ~ ({})'.format(
-                format_type(original_type)), context, code=codes.OPERATOR)
+            self.fail(message_registry.UNSUPPORTED_OPERAND_FOR_INVERT.format(
+                format_type(original_type)), context)
         elif member == '__getitem__':
             # Indexed get.
             # TODO: Fix this consistently in format_type
             if isinstance(original_type, CallableType) and original_type.is_type_obj():
-                self.fail('The type {} is not generic and not indexable'.format(
+                self.fail(message_registry.TYPE_NOT_GENERIC_OR_INDEXABLE.format(
                     format_type(original_type)), context)
             else:
-                self.fail('Value of type {} is not indexable'.format(
-                    format_type(original_type)), context, code=codes.INDEX)
+                self.fail(message_registry.TYPE_NOT_INDEXABLE.format(
+                    format_type(original_type)), context)
         elif member == '__setitem__':
             # Indexed set.
-            self.fail('Unsupported target for indexed assignment ({})'.format(
-                format_type(original_type)), context, code=codes.INDEX)
+            self.fail(message_registry.UNSUPPORTED_TARGET_INDEXED_ASSIGNMENT.format(
+                format_type(original_type)), context)
         elif member == '__call__':
             if isinstance(original_type, Instance) and \
                     (original_type.type.fullname == 'builtins.function'):
                 # "'function' not callable" is a confusing error message.
                 # Explain that the problem is that the type of the function is not known.
-                self.fail('Cannot call function of unknown type', context, code=codes.OPERATOR)
+                self.fail(message_registry.CALLING_FUNCTION_OF_UNKNOWN_TYPE, context)
             else:
-                self.fail('{} not callable'.format(format_type(original_type)), context,
-                          code=codes.OPERATOR)
+                self.fail(message_registry.TYPE_NOT_CALLABLE.format(format_type(original_type)),
+                    context)
         else:
             # The non-special case: a missing ordinary attribute.
             extra = ''
@@ -320,21 +326,19 @@ class MessageBuilder:
                         matches = []
                     if matches:
                         self.fail(
-                            '{} has no attribute "{}"; maybe {}?{}'.format(
+                            message_registry.TYPE_HAS_NO_ATTRIBUTE_X_MAYBE_Y.format(
                                 format_type(original_type),
                                 member,
                                 pretty_seq(matches, "or"),
                                 extra,
                             ),
-                            context,
-                            code=codes.ATTR_DEFINED)
+                            context)
                         failed = True
                 if not failed:
                     self.fail(
-                        '{} has no attribute "{}"{}'.format(
+                        message_registry.TYPE_HAS_NO_ATTRIBUTE_X.format(
                             format_type(original_type), member, extra),
-                        context,
-                        code=codes.ATTR_DEFINED)
+                        context)
             elif isinstance(original_type, UnionType):
                 # The checker passes "object" in lieu of "None" for attribute
                 # checks, so we manually convert it back.
@@ -342,18 +346,15 @@ class MessageBuilder:
                 if typ_format == '"object"' and \
                         any(type(item) == NoneType for item in original_type.items):
                     typ_format = '"None"'
-                self.fail('Item {} of {} has no attribute "{}"{}'.format(
-                    typ_format, orig_type_format, member, extra), context,
-                    code=codes.UNION_ATTR)
+                self.fail(message_registry.ITEM_HAS_NO_ATTRIBUTE_X.format(
+                    typ_format, orig_type_format, member, extra), context)
         return AnyType(TypeOfAny.from_error)
 
     def unsupported_operand_types(self,
                                   op: str,
                                   left_type: Any,
                                   right_type: Any,
-                                  context: Context,
-                                  *,
-                                  code: ErrorCode = codes.OPERATOR) -> None:
+                                  context: Context) -> None:
         """Report unsupported operand types for a binary operation.
 
         Types can be Type objects or strings.
@@ -371,29 +372,26 @@ class MessageBuilder:
             right_str = format_type(right_type)
 
         if self.disable_type_names:
-            msg = 'Unsupported operand types for {} (likely involving Union)'.format(op)
+            msg = message_registry.UNSUPPORTED_OPERANDS_LIKELY_UNION.format(op)
         else:
-            msg = 'Unsupported operand types for {} ({} and {})'.format(
-                op, left_str, right_str)
-        self.fail(msg, context, code=code)
+            msg = message_registry.UNSUPPORTED_OPERANDS.format(op, left_str, right_str)
+        self.fail(msg, context)
 
     def unsupported_left_operand(self, op: str, typ: Type,
                                  context: Context) -> None:
         if self.disable_type_names:
-            msg = 'Unsupported left operand type for {} (some union)'.format(op)
+            msg = message_registry.UNSUPPORTED_LEFT_OPERAND_TYPE_UNION.format(op)
         else:
-            msg = 'Unsupported left operand type for {} ({})'.format(
-                op, format_type(typ))
-        self.fail(msg, context, code=codes.OPERATOR)
+            msg = message_registry.UNSUPPORTED_LEFT_OPERAND_TYPE.format(op, format_type(typ))
+        self.fail(msg, context)
 
     def not_callable(self, typ: Type, context: Context) -> Type:
-        self.fail('{} not callable'.format(format_type(typ)), context)
+        self.fail(message_registry.TYPE_NOT_CALLABLE.format(format_type(typ)), context)
         return AnyType(TypeOfAny.from_error)
 
     def untyped_function_call(self, callee: CallableType, context: Context) -> Type:
         name = callable_name(callee) or '(unknown)'
-        self.fail('Call to untyped function {} in typed context'.format(name), context,
-                  code=codes.NO_UNTYPED_CALL)
+        self.fail(message_registry.UNTYPED_FUNCTION_CALL.format(name), context)
         return AnyType(TypeOfAny.from_error)
 
     def incompatible_argument(self,
@@ -432,30 +430,25 @@ class MessageBuilder:
                     if name.startswith('"{}" of'.format(variant)):
                         if op == 'in' or variant != method:
                             # Reversed order of base/argument.
-                            self.unsupported_operand_types(op, arg_type, base,
-                                                           context, code=codes.OPERATOR)
+                            self.unsupported_operand_types(op, arg_type, base, context)
                         else:
-                            self.unsupported_operand_types(op, base, arg_type,
-                                                           context, code=codes.OPERATOR)
+                            self.unsupported_operand_types(op, base, arg_type, context)
                         return codes.OPERATOR
 
             if name.startswith('"__cmp__" of'):
-                self.unsupported_operand_types("comparison", arg_type, base,
-                                               context, code=codes.OPERATOR)
-                return codes.INDEX
+                self.unsupported_operand_types("comparison", arg_type, base, context)
+                return codes.OPERATOR
 
             if name.startswith('"__getitem__" of'):
-                self.invalid_index_type(arg_type, callee.arg_types[n - 1], base, context,
-                                        code=codes.INDEX)
+                self.invalid_index_type(arg_type, callee.arg_types[n - 1], base, context)
                 return codes.INDEX
 
             if name.startswith('"__setitem__" of'):
                 if n == 1:
-                    self.invalid_index_type(arg_type, callee.arg_types[n - 1], base, context,
-                                            code=codes.INDEX)
+                    self.invalid_index_type(arg_type, callee.arg_types[n - 1], base, context)
                     return codes.INDEX
                 else:
-                    msg = '{} (expression has type {}, target has type {})'
+                    msg = message_registry.TARGET_INCOMPATIBLE_TYPE
                     arg_type_str, callee_type_str = format_type_distinctly(arg_type,
                                                                            callee.arg_types[n - 1])
                     self.fail(msg.format(message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
@@ -606,10 +599,10 @@ class MessageBuilder:
                 self.note_call(original_caller_type, call, context, code=code)
 
     def invalid_index_type(self, index_type: Type, expected_type: Type, base_str: str,
-                           context: Context, *, code: ErrorCode) -> None:
+                           context: Context) -> None:
         index_str, expected_str = format_type_distinctly(index_type, expected_type)
-        self.fail('Invalid index type {} for {}; expected type {}'.format(
-            index_str, base_str, expected_str), context, code=code)
+        self.fail(message_registry.INVALID_INDEX_TYPE.format(
+            index_str, base_str, expected_str), context)
 
     def too_few_arguments(self, callee: CallableType, context: Context,
                           argument_names: Optional[Sequence[Optional[str]]]) -> None:
