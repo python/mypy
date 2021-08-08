@@ -347,7 +347,7 @@ class TypeVarId:
         return self.meta_level > 0
 
 
-class TypeVarLikeDef(mypy.nodes.Context):
+class TypeVarLikeType(ProperType):
     name = ''  # Name (may be qualified)
     fullname = ''  # Fully qualified name
     id: TypeVarId
@@ -362,18 +362,15 @@ class TypeVarLikeDef(mypy.nodes.Context):
             id = TypeVarId(id)
         self.id = id
 
-    def __repr__(self) -> str:
-        return self.name
-
     def serialize(self) -> JsonDict:
         raise NotImplementedError
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> 'TypeVarLikeDef':
+    def deserialize(cls, data: JsonDict) -> 'TypeVarLikeType':
         raise NotImplementedError
 
 
-class TypeVarDef(TypeVarLikeDef):
+class TypeVarType(TypeVarLikeType):
     """Definition of a single type variable."""
 
     values: List[Type]  # Value restriction, empty list if no restriction
@@ -390,22 +387,25 @@ class TypeVarDef(TypeVarLikeDef):
         self.variance = variance
 
     @staticmethod
-    def new_unification_variable(old: 'TypeVarDef') -> 'TypeVarDef':
+    def new_unification_variable(old: 'TypeVarType') -> 'TypeVarType':
         new_id = TypeVarId.new(meta_level=1)
-        return TypeVarDef(old.name, old.fullname, new_id, old.values,
+        return TypeVarType(old.name, old.fullname, new_id, old.values,
                           old.upper_bound, old.variance, old.line, old.column)
 
-    def __repr__(self) -> str:
-        if self.values:
-            return '{} in {}'.format(self.name, tuple(self.values))
-        elif not is_named_instance(self.upper_bound, 'builtins.object'):
-            return '{} <: {}'.format(self.name, self.upper_bound)
-        else:
-            return self.name
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_type_var(self)
+
+    def __hash__(self) -> int:
+        return hash(self.id)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, TypeVarType):
+            return NotImplemented
+        return self.id == other.id
 
     def serialize(self) -> JsonDict:
         assert not self.id.is_meta_var()
-        return {'.class': 'TypeVarDef',
+        return {'.class': 'TypeVarType',
                 'name': self.name,
                 'fullname': self.fullname,
                 'id': self.id.raw_id,
@@ -415,33 +415,37 @@ class TypeVarDef(TypeVarLikeDef):
                 }
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> 'TypeVarDef':
-        assert data['.class'] == 'TypeVarDef'
-        return TypeVarDef(data['name'],
-                          data['fullname'],
-                          data['id'],
-                          [deserialize_type(v) for v in data['values']],
-                          deserialize_type(data['upper_bound']),
-                          data['variance'],
-                          )
+    def deserialize(cls, data: JsonDict) -> 'TypeVarType':
+        assert data['.class'] == 'TypeVarType'
+        return TypeVarType(
+            data['name'],
+            data['fullname'],
+            data['id'],
+            [deserialize_type(v) for v in data['values']],
+            deserialize_type(data['upper_bound']),
+            data['variance'],
+        )
 
 
-class ParamSpecDef(TypeVarLikeDef):
+class ParamSpecType(TypeVarLikeType):
     """Definition of a single ParamSpec variable."""
+
+    def __repr__(self) -> str:
+        return self.name
 
     def serialize(self) -> JsonDict:
         assert not self.id.is_meta_var()
         return {
-            '.class': 'ParamSpecDef',
+            '.class': 'ParamSpecType',
             'name': self.name,
             'fullname': self.fullname,
             'id': self.id.raw_id,
         }
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> 'ParamSpecDef':
-        assert data['.class'] == 'ParamSpecDef'
-        return ParamSpecDef(
+    def deserialize(cls, data: JsonDict) -> 'ParamSpecType':
+        assert data['.class'] == 'ParamSpecType'
+        return ParamSpecType(
             data['name'],
             data['fullname'],
             data['id'],
@@ -912,61 +916,6 @@ class Instance(ProperType):
         return self.type.has_readable_member(name)
 
 
-class TypeVarType(ProperType):
-    """A type variable type.
-
-    This refers to either a class type variable (id > 0) or a function
-    type variable (id < 0).
-    """
-
-    __slots__ = ('name', 'fullname', 'id', 'values', 'upper_bound', 'variance')
-
-    def __init__(self, binder: TypeVarDef, line: int = -1, column: int = -1) -> None:
-        super().__init__(line, column)
-        self.name = binder.name  # Name of the type variable (for messages and debugging)
-        self.fullname: str = binder.fullname
-        self.id: TypeVarId = binder.id
-        # Value restriction, empty list if no restriction
-        self.values: List[Type] = binder.values
-        # Upper bound for values
-        self.upper_bound: Type = binder.upper_bound
-        # See comments in TypeVarDef for more about variance.
-        self.variance: int = binder.variance
-
-    def accept(self, visitor: 'TypeVisitor[T]') -> T:
-        return visitor.visit_type_var(self)
-
-    def __hash__(self) -> int:
-        return hash(self.id)
-
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, TypeVarType):
-            return NotImplemented
-        return self.id == other.id
-
-    def serialize(self) -> JsonDict:
-        assert not self.id.is_meta_var()
-        return {'.class': 'TypeVarType',
-                'name': self.name,
-                'fullname': self.fullname,
-                'id': self.id.raw_id,
-                'values': [v.serialize() for v in self.values],
-                'upper_bound': self.upper_bound.serialize(),
-                'variance': self.variance,
-                }
-
-    @classmethod
-    def deserialize(cls, data: JsonDict) -> 'TypeVarType':
-        assert data['.class'] == 'TypeVarType'
-        tvdef = TypeVarDef(data['name'],
-                           data['fullname'],
-                           data['id'],
-                           [deserialize_type(v) for v in data['values']],
-                           deserialize_type(data['upper_bound']),
-                           data['variance'])
-        return TypeVarType(tvdef)
-
-
 class FunctionLike(ProperType):
     """Abstract base class for function types."""
 
@@ -1038,7 +987,7 @@ class CallableType(FunctionLike):
                  fallback: Instance,
                  name: Optional[str] = None,
                  definition: Optional[SymbolNode] = None,
-                 variables: Optional[Sequence[TypeVarLikeDef]] = None,
+                 variables: Optional[Sequence[TypeVarLikeType]] = None,
                  line: int = -1,
                  column: int = -1,
                  is_ellipsis_args: bool = False,
@@ -1092,7 +1041,7 @@ class CallableType(FunctionLike):
                       fallback: Bogus[Instance] = _dummy,
                       name: Bogus[Optional[str]] = _dummy,
                       definition: Bogus[SymbolNode] = _dummy,
-                      variables: Bogus[Sequence[TypeVarLikeDef]] = _dummy,
+                      variables: Bogus[Sequence[TypeVarLikeType]] = _dummy,
                       line: Bogus[int] = _dummy,
                       column: Bogus[int] = _dummy,
                       is_ellipsis_args: Bogus[bool] = _dummy,
@@ -1303,21 +1252,21 @@ class CallableType(FunctionLike):
     def deserialize(cls, data: JsonDict) -> 'CallableType':
         assert data['.class'] == 'CallableType'
         # TODO: Set definition to the containing SymbolNode?
-        return CallableType([deserialize_type(t) for t in data['arg_types']],
-                            [ArgKind(x) for x in data['arg_kinds']],
-                            data['arg_names'],
-                            deserialize_type(data['ret_type']),
-                            Instance.deserialize(data['fallback']),
-                            name=data['name'],
-                            variables=[TypeVarDef.deserialize(v) for v in data['variables']],
-                            is_ellipsis_args=data['is_ellipsis_args'],
-                            implicit=data['implicit'],
-                            bound_args=[(None if t is None else deserialize_type(t))
-                                        for t in data['bound_args']],
-                            def_extras=data['def_extras'],
-                            type_guard=(deserialize_type(data['type_guard'])
-                                        if data['type_guard'] is not None else None),
-                            )
+        return CallableType(
+            [deserialize_type(t) for t in data['arg_types']],
+            [ArgKind(x) for x in data['arg_kinds']],
+            data['arg_names'],
+            deserialize_type(data['ret_type']),
+            Instance.deserialize(data['fallback']),
+            name=data['name'],
+            variables=[cast(TypeVarLikeType, deserialize_type(v)) for v in data['variables']],
+            is_ellipsis_args=data['is_ellipsis_args'],
+            implicit=data['implicit'],
+            bound_args=[(None if t is None else deserialize_type(t)) for t in data['bound_args']],
+            def_extras=data['def_extras'],
+            type_guard=(deserialize_type(data['type_guard'])
+                        if data['type_guard'] is not None else None),
+        )
 
 
 class Overloaded(FunctionLike):
@@ -2135,8 +2084,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         if t.variables:
             vs = []
             for var in t.variables:
-                if isinstance(var, TypeVarDef):
-                    # We reimplement TypeVarDef.__repr__ here in order to support id_mapper.
+                if isinstance(var, TypeVarType):
+                    # We reimplement TypeVarType.__repr__ here in order to support id_mapper.
                     if var.values:
                         vals = '({})'.format(', '.join(val.accept(self) for val in var.values))
                         vs.append('{} in {}'.format(var.name, vals))
@@ -2145,7 +2094,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                     else:
                         vs.append(var.name)
                 else:
-                    # For other TypeVarLikeDefs, just use the repr
+                    # For other TypeVarLikeTypes, just use the repr
                     vs.append(repr(var))
             s = '{} {}'.format('[{}]'.format(', '.join(vs)), s)
 

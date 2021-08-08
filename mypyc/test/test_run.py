@@ -12,11 +12,11 @@ import sys
 from typing import Any, Iterator, List, cast
 
 from mypy import build
-from mypy.test.data import DataDrivenTestCase, UpdateFile
+from mypy.test.data import DataDrivenTestCase
 from mypy.test.config import test_temp_dir
 from mypy.errors import CompileError
 from mypy.options import Options
-from mypy.test.helpers import copy_and_fudge_mtime, assert_module_equivalence
+from mypy.test.helpers import assert_module_equivalence, perform_file_operations
 
 from mypyc.codegen import emitmodule
 from mypyc.options import CompilerOptions
@@ -135,7 +135,8 @@ class TestRun(MypycDataSuite):
             self.run_case_inner(testcase)
 
     def run_case_inner(self, testcase: DataDrivenTestCase) -> None:
-        os.mkdir(WORKDIR)
+        if not os.path.isdir(WORKDIR):  # (one test puts something in build...)
+            os.mkdir(WORKDIR)
 
         text = '\n'.join(testcase.input)
 
@@ -161,16 +162,7 @@ class TestRun(MypycDataSuite):
 
             step += 1
             with chdir_manager('..'):
-                for op in operations:
-                    if isinstance(op, UpdateFile):
-                        # Modify/create file
-                        copy_and_fudge_mtime(op.source_path, op.target_path)
-                    else:
-                        # Delete file
-                        try:
-                            os.remove(op.path)
-                        except FileNotFoundError:
-                            pass
+                perform_file_operations(operations)
             self.run_case_step(testcase, step)
 
     def run_case_step(self, testcase: DataDrivenTestCase, incremental_step: int) -> None:

@@ -242,9 +242,6 @@ class Options:
         # mypy. (Like mypyc.)
         self.preserve_asts = False
 
-        # PEP 612 support is a work in progress, hide it from users
-        self.wip_pep_612 = False
-
         # Paths of user plugins
         self.plugins: List[str] = []
 

@@ -1,6 +1,7 @@
 import _random
 import sys
 from collections.abc import Callable, Iterable, MutableSequence, Sequence, Set
+from fractions import Fraction
 from typing import Any, NoReturn, Optional, Tuple, TypeVar, Union
 
 _T = TypeVar("_T")
@@ -19,9 +20,9 @@ class Random(_random.Random):
     def choices(
         self,
         population: Sequence[_T],
-        weights: Optional[Sequence[float]] = ...,
+        weights: Optional[Sequence[Union[float, Fraction]]] = ...,
         *,
-        cum_weights: Optional[Sequence[float]] = ...,
+        cum_weights: Optional[Sequence[Union[float, Fraction]]] = ...,
         k: int = ...,
     ) -> list[_T]: ...
     def shuffle(self, x: MutableSequence[Any], random: Optional[Callable[[], float]] = ...) -> None: ...

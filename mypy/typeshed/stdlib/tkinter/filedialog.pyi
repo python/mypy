@@ -1,5 +1,7 @@
-from tkinter import Button, Entry, Frame, Listbox, Scrollbar, Toplevel, commondialog
-from typing import Any, ClassVar, Dict, Optional, Tuple
+from _typeshed import StrOrBytesPath
+from tkinter import Button, Entry, Frame, Listbox, Misc, Scrollbar, StringVar, Toplevel, _TkinterSequence, commondialog
+from typing import IO, Any, ClassVar, Dict, Iterable, Optional, Tuple
+from typing_extensions import Literal
 
 dialogstates: Dict[Any, Tuple[Any, Any]]
 
@@ -57,11 +59,75 @@ class SaveAs(_Dialog):
 class Directory(commondialog.Dialog):
     command: ClassVar[str] = ...
 
-def askopenfilename(**options): ...
-def asksaveasfilename(**options): ...
-def askopenfilenames(**options): ...
-def askopenfile(mode: str = ..., **options): ...
-def askopenfiles(mode: str = ..., **options): ...
-def asksaveasfile(mode: str = ..., **options): ...
-def askdirectory(**options): ...
+# TODO: command kwarg available on macos
+def asksaveasfilename(
+    *,
+    confirmoverwrite: bool | None = ...,
+    defaultextension: str | None = ...,
+    filetypes: Iterable[Tuple[str, str] | Tuple[str, _TkinterSequence[str]]] | None = ...,
+    initialdir: StrOrBytesPath | None = ...,
+    initialfile: StrOrBytesPath | None = ...,
+    parent: Misc | None = ...,
+    title: str | None = ...,
+    typevariable: StringVar | str | None = ...,
+) -> str: ...  # can be empty string
+def askopenfilename(
+    *,
+    defaultextension: str | None = ...,
+    filetypes: Iterable[Tuple[str, str] | Tuple[str, _TkinterSequence[str]]] | None = ...,
+    initialdir: StrOrBytesPath | None = ...,
+    initialfile: StrOrBytesPath | None = ...,
+    parent: Misc | None = ...,
+    title: str | None = ...,
+    typevariable: StringVar | str | None = ...,
+) -> str: ...  # can be empty string
+def askopenfilenames(
+    *,
+    defaultextension: str | None = ...,
+    filetypes: Iterable[Tuple[str, str] | Tuple[str, _TkinterSequence[str]]] | None = ...,
+    initialdir: StrOrBytesPath | None = ...,
+    initialfile: StrOrBytesPath | None = ...,
+    parent: Misc | None = ...,
+    title: str | None = ...,
+    typevariable: StringVar | str | None = ...,
+) -> Literal[""] | Tuple[str, ...]: ...
+def askdirectory(
+    *, initialdir: StrOrBytesPath | None = ..., mustexist: bool | None = ..., parent: Misc | None = ..., title: str | None = ...
+) -> str: ...  # can be empty string
+
+# TODO: If someone actually uses these, overload to have the actual return type of open(..., mode)
+def asksaveasfile(
+    mode: str = ...,
+    *,
+    confirmoverwrite: bool | None = ...,
+    defaultextension: str | None = ...,
+    filetypes: Iterable[Tuple[str, str] | Tuple[str, _TkinterSequence[str]]] | None = ...,
+    initialdir: StrOrBytesPath | None = ...,
+    initialfile: StrOrBytesPath | None = ...,
+    parent: Misc | None = ...,
+    title: str | None = ...,
+    typevariable: StringVar | str | None = ...,
+) -> IO[Any] | None: ...
+def askopenfile(
+    mode: str = ...,
+    *,
+    defaultextension: str | None = ...,
+    filetypes: Iterable[Tuple[str, str] | Tuple[str, _TkinterSequence[str]]] | None = ...,
+    initialdir: StrOrBytesPath | None = ...,
+    initialfile: StrOrBytesPath | None = ...,
+    parent: Misc | None = ...,
+    title: str | None = ...,
+    typevariable: StringVar | str | None = ...,
+) -> IO[Any] | None: ...
+def askopenfiles(
+    mode: str = ...,
+    *,
+    defaultextension: str | None = ...,
+    filetypes: Iterable[Tuple[str, str] | Tuple[str, _TkinterSequence[str]]] | None = ...,
+    initialdir: StrOrBytesPath | None = ...,
+    initialfile: StrOrBytesPath | None = ...,
+    parent: Misc | None = ...,
+    title: str | None = ...,
+    typevariable: StringVar | str | None = ...,
+) -> Tuple[IO[Any], ...]: ...  # can be empty tuple
 def test() -> None: ...

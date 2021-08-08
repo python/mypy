@@ -1,7 +1,22 @@
 import sys
-from _typeshed import StrOrBytesPath
+from _typeshed import Self, StrOrBytesPath
 from types import TracebackType
-from typing import IO, Any, AnyStr, Callable, Generic, Mapping, Optional, Sequence, Tuple, Type, TypeVar, Union, overload
+from typing import (
+    IO,
+    Any,
+    AnyStr,
+    Callable,
+    Generic,
+    Iterable,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    overload,
+)
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 9):
@@ -34,7 +49,6 @@ if sys.platform == "win32":
 else:
     _ENV = Union[Mapping[bytes, StrOrBytesPath], Mapping[str, StrOrBytesPath]]
 
-_S = TypeVar("_S")
 _T = TypeVar("_T")
 
 class CompletedProcess(Generic[_T]):
@@ -1007,7 +1021,7 @@ class Popen(Generic[AnyStr]):
     def send_signal(self, sig: int) -> None: ...
     def terminate(self) -> None: ...
     def kill(self) -> None: ...
-    def __enter__(self: _S) -> _S: ...
+    def __enter__(self: Self) -> Self: ...
     def __exit__(
         self, type: Optional[Type[BaseException]], value: Optional[BaseException], traceback: Optional[TracebackType]
     ) -> None: ...
@@ -1017,7 +1031,7 @@ class Popen(Generic[AnyStr]):
 # The result really is always a str.
 def getstatusoutput(cmd: _TXT) -> Tuple[int, str]: ...
 def getoutput(cmd: _TXT) -> str: ...
-def list2cmdline(seq: Sequence[str]) -> str: ...  # undocumented
+def list2cmdline(seq: Iterable[str]) -> str: ...  # undocumented
 
 if sys.platform == "win32":
     class STARTUPINFO:

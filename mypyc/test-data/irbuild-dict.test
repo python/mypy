@@ -42,6 +42,19 @@ L0:
     d = r0
     return 1
 
+[case testNewEmptyDictViaFunc]
+from typing import Dict
+def f() -> None:
+    d: Dict[bool, int] = dict()
+
+[out]
+def f():
+    r0, d :: dict
+L0:
+    r0 = PyDict_New()
+    d = r0
+    return 1
+
 [case testNewDictWithValues]
 def f(x: object) -> None:
     d = {1: 2, '': x}

@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import ClassVar, List, Tuple
 
 class struct_passwd(Tuple[str, str, int, int, str, str, str]):
     pw_name: str
@@ -8,6 +8,10 @@ class struct_passwd(Tuple[str, str, int, int, str, str, str]):
     pw_gecos: str
     pw_dir: str
     pw_shell: str
+
+    n_fields: ClassVar[int]
+    n_sequence_fields: ClassVar[int]
+    n_unnamed_fields: ClassVar[int]
 
 def getpwall() -> List[struct_passwd]: ...
 def getpwuid(__uid: int) -> struct_passwd: ...
