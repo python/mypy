@@ -43,6 +43,8 @@ def generate_format_ops(specifiers: List[ConversionSpecifier]) -> Optional[List[
         # TODO: Match specifiers instead of using whole_seq
         if spec.whole_seq == '%s' or spec.whole_seq == '{:{}}':
             format_op = FormatOp.STR
+        elif spec.whole_seq == '%d':
+            format_op = FormatOp.INT
         elif spec.whole_seq:
             return None
         else:
@@ -133,9 +135,14 @@ def convert_expr(builder: IRBuilder, format_ops: List[FormatOp],
                 var_str = builder.call_c(int_to_str_op, [builder.accept(x)], line)
             else:
                 var_str = builder.call_c(str_op, [builder.accept(x)], line)
-            converted.append(var_str)
+        elif format_op == FormatOp.INT:
+            if is_int_rprimitive(node_type) or is_short_int_rprimitive(node_type):
+                var_str = builder.call_c(int_to_str_op, [builder.accept(x)], line)
+            else:
+                return None
         else:
             return None
+        converted.append(var_str)
     return converted
 
 

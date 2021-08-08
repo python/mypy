@@ -238,7 +238,7 @@ L0:
     s4 = r20
     return 1
 
-[case testCStyleStringFormatting]
+[case testStringFormattingCStyle]
 def f(var: str, num: int) -> None:
     s1 = "Hi! I'm %s." % var
     s2 = "I am %d years old." % num
