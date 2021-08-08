@@ -464,6 +464,3 @@ FORMAT_STR_BYTES_REQUIRED_PY3: Final = ErrorMessage("On Python 3 b'%s' requires 
 FORMAT_STR_INVALID_BYTES_SPECIFIER_PY35: Final = ErrorMessage('Format character "b" is only supported in Python 3.5 and later', codes.STRING_FORMATTING)
 FORMAT_STR_INVALID_BYTES_SPECIFIER: Final = ErrorMessage('Format character "b" is only supported on bytes patterns', codes.STRING_FORMATTING)
 FORMAT_STR_ASCII_SPECIFIER_PY3: Final = ErrorMessage('Format character "a" is only supported in Python 3', codes.STRING_FORMATTING)
-
-# misc
-FIELD_DOES_NOT_EXIST: Final = ErrorMessage("Field does not exist")
