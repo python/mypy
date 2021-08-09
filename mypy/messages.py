@@ -386,7 +386,7 @@ class MessageBuilder:
         self.fail(msg, context)
 
     def not_callable(self, typ: Type, context: Context) -> Type:
-        self.fail(message_registry.TYPE_NOT_CALLABLE.format(format_type(typ)), context)
+        self.fail(message_registry.TYPE_NOT_CALLABLE_2.format(format_type(typ)), context)
         return AnyType(TypeOfAny.from_error)
 
     def untyped_function_call(self, callee: CallableType, context: Context) -> Type:

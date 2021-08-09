@@ -492,6 +492,7 @@ CALLING_FUNCTION_OF_UNKNOWN_TYPE: Final = ErrorMessage(
     "Cannot call function of unknown type", codes.OPERATOR
 )
 TYPE_NOT_CALLABLE: Final = ErrorMessage("{} not callable", codes.OPERATOR)
+TYPE_NOT_CALLABLE_2: Final = ErrorMessage("{} not callable")
 TYPE_HAS_NO_ATTRIBUTE_X_MAYBE_Y: Final = ErrorMessage(
     '{} has no attribute "{}"; maybe {}?{}', codes.ATTR_DEFINED
 )
