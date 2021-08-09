@@ -43,6 +43,8 @@ def test_bytes_init() -> None:
         pass
 
 [case testBytesOps]
+from testutil import assertRaises
+
 def test_indexing() -> None:
     # Use bytes() to avoid constant folding
     b = b'asdf' + bytes()
@@ -50,9 +52,15 @@ def test_indexing() -> None:
     assert b[1] == 115
     assert b[3] == 102
     assert b[-1] == 102
-    b = b'\xfe\x15' + bytes()
-    assert b[0] == 254
-    assert b[1] == 21
+    b = b'\xae\x80\xfe\x15' + bytes()
+    assert b[0] == 174
+    assert b[1] == 128
+    assert b[2] == 254
+    assert b[3] == 21
+    with assertRaises(IndexError, "index out of range"):
+        b[4]
+    with assertRaises(IndexError, "index out of range"):
+        b[-5]
 
 def test_concat() -> None:
     b1 = b'123' + bytes()
@@ -100,6 +108,7 @@ def test_len() -> None:
 
 [case testBytearrayBasics]
 from typing import Any
+from testutil import assertRaises
 
 def test_basics() -> None:
     brr1: bytes = bytearray(3)
@@ -125,6 +134,32 @@ def test_bytearray_passed_into_bytes() -> None:
     assert f(bytearray(3))
     brr1: Any = bytearray()
     assert f(brr1)
+
+def get_item(b: bytes, i: int) -> int:
+    return b[i]
+
+def test_bytearray_indexing() -> None:
+    b = bytearray(b'\xae\x80\xfe\x15')
+    assert b[0] == 174
+    assert b[1] == 128
+    assert get_item(b, 2) == 254
+    assert get_item(b, 3) == 21
+    with assertRaises(IndexError, "index out of range"):
+        get_item(b, 4)
+    with assertRaises(IndexError, "index out of range"):
+        get_item(b, -5)
+    b[0] = 175
+    b[1] = 255
+    b[2] = 128
+    b[-1] = 22
+    assert b[0] == 175
+    assert b[1] == 255
+    assert b[-1] == 22
+    assert b[2] == 128
+    with assertRaises(ValueError, "byte must be in range(0, 256)"):
+        b[0] = -1
+    with assertRaises(ValueError, "byte must be in range(0, 256)"):
+        b[0] = 256
 
 [case testBytesJoin]
 from typing import Any
