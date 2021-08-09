@@ -585,6 +585,8 @@ class MessageBuilder:
                 for note_msg in notes:
                     self.note(note_msg, context, code=code)
             return msg.code
+        
+        return None
 
     def incompatible_argument_note(self,
                                    original_caller_type: ProperType,
