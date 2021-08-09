@@ -401,8 +401,6 @@ Py_ssize_t CPyStr_Size_size_t(PyObject *str);
 
 
 CPyTagged CPyBytes_GetItem(PyObject *o, CPyTagged index);
-CPyTagged CPyBytes_GetItemShort(PyObject *o, CPyTagged index);
-bool CPyByteArray_SetItem(PyObject *o, CPyTagged index, CPyTagged num);
 PyObject *CPyBytes_Concat(PyObject *a, PyObject *b);
 PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter);
 
