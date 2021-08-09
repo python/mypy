@@ -10,6 +10,7 @@ from mypy.types import (
     FunctionLike
 )
 from mypy.plugin import CheckerPluginInterface, FunctionContext, MethodContext, MethodSigContext
+from mypy.message_registry import ErrorMessage
 from typing import List, NamedTuple, Optional, Sequence, TypeVar, Union
 from typing_extensions import Final
 
@@ -72,7 +73,7 @@ def make_fake_register_class_instance(api: CheckerPluginInterface, type_args: Se
 PluginContext = Union[FunctionContext, MethodContext]
 
 
-def fail(ctx: PluginContext, msg: str, context: Optional[Context]) -> None:
+def fail(ctx: PluginContext, msg: ErrorMessage, context: Optional[Context]) -> None:
     """Emit an error message.
 
     This tries to emit an error message at the location specified by `context`, falling back to the
