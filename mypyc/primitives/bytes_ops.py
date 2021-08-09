@@ -6,7 +6,7 @@ from mypyc.ir.rtypes import (
     str_rprimitive, RUnion, int_rprimitive, bit_rprimitive, short_int_rprimitive
 )
 from mypyc.primitives.registry import (
-    load_address_op, function_op, method_op, binary_op, ERR_NEG_INT
+    load_address_op, function_op, method_op, binary_op
 )
 
 # Get the 'bytes' type object.

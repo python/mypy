@@ -69,10 +69,8 @@ def f(a: bytes, i: int) -> int:
 def f(a, i):
     a :: bytes
     i, r0 :: int
-    r1 :: bit
 L0:
     r0 = CPyBytes_GetItem(a, i)
-    r1 = r0 >= 0 :: signed
     return r0
 
 [case testBytesJoin]
