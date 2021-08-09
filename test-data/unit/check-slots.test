@@ -265,3 +265,14 @@ class A:
     def __init__(self) -> None:
         self.a, self.b, self.c = (1, 2, 3)  # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.A"
 [builtins fixtures/tuple.pyi]
+
+
+[case testSlotsAssignmentMultipleAssignments]
+class A:
+    __slots__ = ("a",)
+    def __init__(self) -> None:
+        self.a = self.b = self.c = 1
+[out]
+main:4: error: Trying to assign name "b" that is not in "__slots__" of type "__main__.A"
+main:4: error: Trying to assign name "c" that is not in "__slots__" of type "__main__.A"
+[builtins fixtures/tuple.pyi]
