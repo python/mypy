@@ -6,19 +6,15 @@ ultimately consumed by messages.MessageBuilder.fail(). For more non-trivial mess
 add a method to MessageBuilder and call this instead.
 """
 
-from typing import Optional
+from typing import NamedTuple, Optional
 from typing_extensions import Final
 
 from mypy import errorcodes as codes
 
 
-class ErrorMessage:
-    def __init__(self, value: str, code: Optional[codes.ErrorCode] = None) -> None:
-        self.value = value
-        self.code = code
-
-    def __repr__(self) -> str:
-        return '<ErrorMessage "{}">'.format(self.value)
+class ErrorMessage(NamedTuple):
+    value: str
+    code: Optional[codes.ErrorCode] = None
 
     def format(self, *args: object, **kwargs: object) -> "ErrorMessage":
         return ErrorMessage(self.value.format(*args, **kwargs), code=self.code)
