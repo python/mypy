@@ -876,8 +876,8 @@ def generate_singledispatch_dispatch_function(
 
     passed_id = builder.add(Unbox(impl_to_use, int_rprimitive, line))
 
-    native_impls = builder.singledispatch_native_registers[fitem]
-    for i, impl in enumerate(native_impls):
+    native_ids = get_native_impl_ids(builder, fitem)
+    for impl, i in native_ids.items():
         call_impl, next_impl = BasicBlock(), BasicBlock()
 
         current_id = builder.load_int(i)
@@ -972,17 +972,27 @@ def maybe_insert_into_registry_dict(builder: IRBuilder, fitem: FuncDef) -> None:
         builder.add(init_static)
 
     for singledispatch_func, types in to_register.items():
-        if is_decorated(builder, fitem):
+        # TODO: avoid recomputing the native IDs for all the functions every time we find a new
+        # function
+        native_ids = get_native_impl_ids(builder, singledispatch_func)
+        if fitem not in native_ids:
             to_insert = load_func(builder, fitem.name, fitem.fullname, line)
         else:
             # The length is also the index of the next element that will get added (which will be
             # this function)
-            current_id = len(builder.singledispatch_native_registers[singledispatch_func])
+            current_id = native_ids[fitem]
             load_literal = LoadLiteral(current_id, object_rprimitive)
             to_insert = builder.add(load_literal)
-            builder.singledispatch_native_registers[singledispatch_func].append(fitem)
         # TODO: avoid reloading the registry here if we just created it
         registry = load_singledispatch_registry(builder, singledispatch_func, line)
         for typ in types:
             loaded_type = load_type(builder, typ, line)
             builder.call_c(dict_set_item_op, [registry, loaded_type, to_insert], line)
+
+
+def get_native_impl_ids(builder: IRBuilder, singledispatch_func: FuncDef) -> Dict[FuncDef, int]:
+    """Return a dict of registered implementation to native implementation ID for all
+    implementations
+    """
+    impls = builder.singledispatch_impls[singledispatch_func]
+    return {impl: i for i, (typ, impl) in enumerate(impls) if not is_decorated(builder, impl)}
