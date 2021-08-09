@@ -73,6 +73,16 @@ L0:
     r0 = CPyBytes_GetItem(a, i)
     return r0
 
+[case testBytesConcat]
+def f(a: bytes, b: bytes) -> bytes:
+    return a + b
+[out]
+def f(a, b):
+    a, b, r0 :: bytes
+L0:
+    r0 = CPyBytes_Concat(a, b)
+    return r0
+
 [case testBytesJoin]
 from typing import List
 def f(b: List[bytes]) -> bytes:
