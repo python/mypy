@@ -58,6 +58,32 @@ def test_concat() -> None:
     b1 = b'123' + bytes()
     b2 = b'456' + bytes()
     assert b1 + b2 == b'123456'
+    b3 = b1 + b2
+    b3 = b3 + b1
+    assert b3 == b'123456123'
+    assert b1 == b'123'
+    assert b2 == b'456'
+    assert type(b1) == bytes
+    assert type(b2) == bytes
+    assert type(b3) == bytes
+    brr1: bytes = bytearray(3)
+    brr2: bytes = bytearray(range(5))
+    b4 = b1 + brr1
+    assert b4 == b'123\x00\x00\x00'
+    assert type(brr1) == bytearray
+    assert type(b4) == bytes
+    brr3 = brr1 + brr2
+    assert brr3 == bytearray(b'\x00\x00\x00\x00\x01\x02\x03\x04')
+    assert len(brr3) == 8
+    assert type(brr3) == bytearray
+    brr3 = brr3 + bytearray([10])
+    assert brr3 == bytearray(b'\x00\x00\x00\x00\x01\x02\x03\x04\n')
+    b5 = brr2 + b2
+    assert b5 == bytearray(b'\x00\x01\x02\x03\x04456')
+    assert type(b5) == bytearray
+    b5 = b2 + brr2
+    assert b5 == b'456\x00\x01\x02\x03\x04'
+    assert type(b5) == bytes
 
 def test_join() -> None:
     seq = (b'1', b'"', b'\xf0')

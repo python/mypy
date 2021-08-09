@@ -62,6 +62,16 @@ L0:
     c = r6
     return 1
 
+[case testBytesConcat]
+def f1(a: bytes, b: bytes) -> bytes:
+    return a + b
+[out]
+def f1(a, b):
+    a, b, r0 :: bytes
+L0:
+    r0 = CPyBytes_Concat(a, b)
+    return r0
+
 [case testBytesJoin]
 from typing import List
 def f(b: List[bytes]) -> bytes:
@@ -90,4 +100,3 @@ L0:
     keep_alive b
     r2 = r1 << 1
     return r2
-

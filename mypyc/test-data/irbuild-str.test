@@ -201,51 +201,44 @@ def f(var: str, num: int) -> None:
 def f(var, num):
     var :: str
     num :: int
-    r0, r1, r2 :: str
-    r3 :: object
-    r4, r5, r6, s1, r7, r8, r9, r10 :: str
-    r11 :: object
-    r12, r13, r14 :: str
-    r15 :: object
-    r16 :: str
-    r17 :: list
-    r18, r19, r20 :: ptr
-    r21, s2, r22, s3, r23, s4 :: str
+    r0, r1, r2, r3, r4, s1, r5, r6, r7, r8, r9, r10, r11 :: str
+    r12 :: object
+    r13 :: str
+    r14 :: list
+    r15, r16, r17 :: ptr
+    r18, s2, r19, s3, r20, s4 :: str
 L0:
     r0 = "Hi! I'm "
-    r1 = PyObject_Str(var)
-    r2 = '. I am '
-    r3 = box(int, num)
-    r4 = PyObject_Str(r3)
-    r5 = ' years old.'
-    r6 = CPyStr_Build(5, r0, r1, r2, r4, r5)
-    s1 = r6
-    r7 = ''
-    r8 = 'Hello '
-    r9 = '{:{}}'
-    r10 = '>'
-    r11 = box(int, num)
-    r12 = PyObject_Str(r11)
-    r13 = CPyStr_Build(2, r10, r12)
-    r14 = 'format'
-    r15 = CPyObject_CallMethodObjArgs(r9, r14, var, r13, 0)
-    r16 = cast(str, r15)
-    r17 = PyList_New(2)
-    r18 = get_element_ptr r17 ob_item :: PyListObject
-    r19 = load_mem r18 :: ptr*
-    set_mem r19, r8 :: builtins.object*
-    r20 = r19 + WORD_SIZE*1
-    set_mem r20, r16 :: builtins.object*
-    keep_alive r17
-    r21 = PyUnicode_Join(r7, r17)
-    s2 = r21
-    r22 = ''
-    s3 = r22
-    r23 = 'abc'
-    s4 = r23
+    r1 = '. I am '
+    r2 = CPyTagged_Str(num)
+    r3 = ' years old.'
+    r4 = CPyStr_Build(5, r0, var, r1, r2, r3)
+    s1 = r4
+    r5 = ''
+    r6 = 'Hello '
+    r7 = '{:{}}'
+    r8 = '>'
+    r9 = CPyTagged_Str(num)
+    r10 = CPyStr_Build(2, r8, r9)
+    r11 = 'format'
+    r12 = CPyObject_CallMethodObjArgs(r7, r11, var, r10, 0)
+    r13 = cast(str, r12)
+    r14 = PyList_New(2)
+    r15 = get_element_ptr r14 ob_item :: PyListObject
+    r16 = load_mem r15 :: ptr*
+    set_mem r16, r6 :: builtins.object*
+    r17 = r16 + WORD_SIZE*1
+    set_mem r17, r13 :: builtins.object*
+    keep_alive r14
+    r18 = PyUnicode_Join(r5, r14)
+    s2 = r18
+    r19 = ''
+    s3 = r19
+    r20 = 'abc'
+    s4 = r20
     return 1
 
-[case testCStyleStringFormatting]
+[case testStringFormattingCStyle]
 def f(var: str, num: int) -> None:
     s1 = "Hi! I'm %s." % var
     s2 = "I am %d years old." % num
