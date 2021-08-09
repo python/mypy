@@ -577,6 +577,8 @@ def test_decode() -> None:
     assert "\U00000394" == '\u0394'
     assert b'\x80abc'.decode("utf-8", "replace") == '\ufffdabc'
     assert b'\x80abc'.decode("utf-8", "backslashreplace") == '\\x80abc'
+    assert b'abc'.decode() == 'abc'
+    assert b'abc'.decode('utf-8') == 'abc'
     assert b'\x80abc'.decode("utf-8", "ignore") == 'abc'
     assert b'\x80abc'.decode("UTF-8", "ignore") == 'abc'
     assert b'\x80abc'.decode("Utf-8", "ignore") == 'abc'

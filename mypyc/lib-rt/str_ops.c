@@ -202,3 +202,15 @@ Py_ssize_t CPyStr_Size_size_t(PyObject *str) {
     }
     return -1;
 }
+
+PyObject* CPy_Decode(PyObject *obj, PyObject *encoding, PyObject *errors) {
+    const char *enc = PyUnicode_AsUTF8AndSize(encoding, NULL);
+    const char *err = PyUnicode_AsUTF8AndSize(errors, NULL);
+    if (PyBytes_Check(obj)) {
+        return PyUnicode_Decode(((PyBytesObject *)obj)->ob_sval,
+                                ((PyVarObject *)obj)->ob_size,
+                                enc, err);
+    } else {
+        return PyUnicode_FromEncodedObject(obj, enc, err);
+    }
+}

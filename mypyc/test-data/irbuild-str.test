@@ -281,3 +281,28 @@ L0:
     r15 = cast(str, r14)
     s4 = r15
     return 1
+
+[case testDecode]
+def f(b: bytes) -> None:
+    b.decode()
+    b.decode('utf-8')
+    b.decode('utf-8', 'backslashreplace')
+[out]
+def f(b):
+    b :: bytes
+    r0 :: str
+    r1 :: object
+    r2, r3 :: str
+    r4 :: object
+    r5, r6, r7 :: str
+L0:
+    r0 = 'decode'
+    r1 = CPyObject_CallMethodObjArgs(b, r0, 0)
+    r2 = 'utf-8'
+    r3 = 'decode'
+    r4 = CPyObject_CallMethodObjArgs(b, r3, r2, 0)
+    r5 = 'utf-8'
+    r6 = 'backslashreplace'
+    r7 = CPy_Decode(b, r5, r6)
+    return 1
+
