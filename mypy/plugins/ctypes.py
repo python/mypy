@@ -4,7 +4,7 @@ from typing import List, Optional
 
 # Fully qualified instead of "from mypy.plugin import ..." to avoid circular import problems.
 import mypy.plugin
-from mypy import nodes
+from mypy import message_registry, nodes
 from mypy.maptype import map_instance_to_supertype
 from mypy.messages import format_type
 from mypy.subtypes import is_subtype
@@ -126,16 +126,14 @@ def array_constructor_callback(ctx: 'mypy.plugin.FunctionContext') -> Type:
         for arg_num, (arg_kind, arg_type) in enumerate(zip(ctx.arg_kinds[0], ctx.arg_types[0]), 1):
             if arg_kind == nodes.ARG_POS and not is_subtype(arg_type, allowed):
                 ctx.api.msg.fail(
-                    'Array constructor argument {} of type {}'
-                    ' is not convertible to the array element type {}'
+                    message_registry.CTYPES_INCOMPATIBLE_CONSTRUCTOR_ARG
                     .format(arg_num, format_type(arg_type), format_type(et)), ctx.context)
             elif arg_kind == nodes.ARG_STAR:
                 ty = ctx.api.named_generic_type("typing.Iterable", [allowed])
                 if not is_subtype(arg_type, ty):
                     it = ctx.api.named_generic_type("typing.Iterable", [et])
                     ctx.api.msg.fail(
-                        'Array constructor argument {} of type {}'
-                        ' is not convertible to the array element type {}'
+                        message_registry.CTYPES_INCOMPATIBLE_CONSTRUCTOR_ARG
                         .format(arg_num, format_type(arg_type), format_type(it)), ctx.context)
 
     return ctx.default_return_type
@@ -204,8 +202,7 @@ def array_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
                 types.append(_get_text_type(ctx.api))
             else:
                 ctx.api.msg.fail(
-                    'Array attribute "value" is only available'
-                    ' with element type "c_char" or "c_wchar", not {}'
+                    message_registry.CTYPES_VALUE_WITH_CHAR_OR_WCHAR_ONLY
                     .format(format_type(et)), ctx.context)
         return make_simplified_union(types)
     return ctx.default_attr_type
@@ -222,8 +219,7 @@ def array_raw_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
                 types.append(_get_bytes_type(ctx.api))
             else:
                 ctx.api.msg.fail(
-                    'Array attribute "raw" is only available'
-                    ' with element type "c_char", not {}'
+                    message_registry.CTYPES_RAW_WITH_CHAR_ONLY
                     .format(format_type(et)), ctx.context)
         return make_simplified_union(types)
     return ctx.default_attr_type

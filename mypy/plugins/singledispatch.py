@@ -1,3 +1,4 @@
+from mypy import message_registry
 from mypy.messages import format_type
 from mypy.plugins.common import add_method_to_class
 from mypy.nodes import (
@@ -95,7 +96,7 @@ def create_singledispatch_function_callback(ctx: FunctionContext) -> Type:
         if len(func_type.arg_kinds) < 1:
             fail(
                 ctx,
-                'Singledispatch function requires at least one argument',
+                message_registry.SINGLEDISPATCH_ATLEAST_ONE_ARG,
                 func_type.definition,
             )
             return ctx.default_return_type
@@ -103,7 +104,7 @@ def create_singledispatch_function_callback(ctx: FunctionContext) -> Type:
         elif not func_type.arg_kinds[0].is_positional(star=True):
             fail(
                 ctx,
-                'First argument to singledispatch function must be a positional argument',
+                message_registry.SINGLEDISPATCH_FIRST_ARG_POSITIONAL,
                 func_type.definition,
             )
             return ctx.default_return_type
@@ -173,7 +174,7 @@ def register_function(ctx: PluginContext, singledispatch_obj: Instance, func: Ty
     fallback_dispatch_type = fallback.arg_types[0]
     if not is_subtype(dispatch_type, fallback_dispatch_type):
 
-        fail(ctx, 'Dispatch type {} must be subtype of fallback function first argument {}'.format(
+        fail(ctx, message_registry.DISPATCH_TYPE_FALLBACK_SUBTYPE.format(
                 format_type(dispatch_type), format_type(fallback_dispatch_type)
             ), func.definition)
         return

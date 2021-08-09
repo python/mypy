@@ -924,3 +924,35 @@ NONCONSECUTIVE_OVERLOAD_FOUND: Final = ErrorMessage("Nonconsecutive overload {} 
 DEFINITION_MISSING_OVERLOAD: Final = ErrorMessage("Definition of '{}' missing 'overload'")
 NAME_NOT_DEFINED: Final = ErrorMessage('Name "{}" is not defined', codes.NAME_DEFINED)
 NAME_ALREADY_DEFINED: Final = ErrorMessage('{} "{}" already defined{}', codes.NO_REDEF)
+
+# proper_plugin
+ISINSTANCE_ON_UNEXPANDED_TYPE: Final = ErrorMessage('Never apply isinstance() to unexpanded types; use mypy.types.get_proper_type() first')
+REDUNDANT_GET_PROPER_TYPE: Final = ErrorMessage('Redundant call to get_proper_type()')
+
+# attrs
+CANNOT_DETERMINE_INIT_TYPE: Final = ErrorMessage("Cannot determine __init__ type from converter")
+CMP_WITH_EQ_AND_ORDER: Final = ErrorMessage('Don\'t mix "cmp" with "eq" and "order"')
+EQ_TRUE_IF_ORDER_TRUE: Final = ErrorMessage('eq must be True if order is True')
+ARG_MUST_BE_TRUE_OR_FALSE: Final = ErrorMessage('"{}" argument must be True or False.')
+AUTO_ATTRIBS_UNSUPPORTED_PY2: Final = ErrorMessage("auto_attribs is not supported in Python 2")
+ATTRS_NEWSTYLE_CLASS_ONLY: Final = ErrorMessage("attrs only works with new-style classes")
+KW_ONLY_UNSUPPORTED_PY2: Final = ErrorMessage("kw_only is not supported in Python 2")
+DEFAULT_WITH_FACTORY: Final = ErrorMessage('Can\'t pass both "default" and "factory".')
+TYPE_INVALID_ARG: Final = ErrorMessage('Invalid argument to type')
+NON_DEFAULT_ATTRS_AFTER_DEFAULT: Final = ErrorMessage("Non-default attributes not allowed after default attributes.")
+ATTR_TOO_MANY_NAMES: Final = ErrorMessage("Too many names for one attribute")
+CONVERT_WITH_CONVERTER: Final = ErrorMessage('Can\'t pass both "convert" and "converter".')
+CONVERT_DEPRECATED: Final = ErrorMessage("convert is deprecated, use converter")
+UNSUPPORTED_CONVERTER: Final = ErrorMessage("Unsupported converter, only named functions and types are currently supported")
+
+# plugins
+TOTAL_ORDERING_NO_OPERATOR_DEFINED: Final = ErrorMessage('No ordering operation defined when using "functools.total_ordering": < > <= >=')
+DATACLASS_ORDER_METHODS_DISALLOWED: Final = ErrorMessage('You may not have a custom {} method when order=True')
+DATACLASS_DEFAULT_ATTRS_BEFORE_NON_DEFAULT: Final = ErrorMessage('Attributes without a default cannot follow attributes with one')
+DATACLASS_SINGLE_KW_ONLY_TYPE: Final = ErrorMessage('There may not be more than one field with the KW_ONLY type')
+CTYPES_VALUE_WITH_CHAR_OR_WCHAR_ONLY: Final = ErrorMessage('Array attribute "value" is only available with element type "c_char" or "c_wchar", not {}')
+CTYPES_RAW_WITH_CHAR_ONLY: Final = ErrorMessage('Array attribute "raw" is only available with element type "c_char", not {}')
+CTYPES_INCOMPATIBLE_CONSTRUCTOR_ARG: Final = ErrorMessage('Array constructor argument {} of type {} is not convertible to the array element type {}')
+SINGLEDISPATCH_ATLEAST_ONE_ARG: Final = ErrorMessage('Singledispatch function requires at least one argument')
+SINGLEDISPATCH_FIRST_ARG_POSITIONAL: Final = ErrorMessage('First argument to singledispatch function must be a positional argument')
+DISPATCH_TYPE_FALLBACK_SUBTYPE: Final = ErrorMessage('Dispatch type {} must be subtype of fallback function first argument {}')

@@ -1,4 +1,5 @@
 """Plugin for supporting the functools standard library module."""
+from mypy import message_registry
 from typing import Dict, NamedTuple, Optional
 
 import mypy.plugin
@@ -32,7 +33,7 @@ def functools_total_ordering_maker_callback(ctx: mypy.plugin.ClassDefContext,
     comparison_methods = _analyze_class(ctx)
     if not comparison_methods:
         ctx.api.fail(
-            'No ordering operation defined when using "functools.total_ordering": < > <= >=',
+            message_registry.TOTAL_ORDERING_NO_OPERATOR_DEFINED,
             ctx.reason)
         return
 

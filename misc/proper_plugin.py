@@ -1,3 +1,4 @@
+from mypy import message_registry
 from mypy.plugin import Plugin, FunctionContext
 from mypy.types import (
     Type, Instance, CallableType, UnionType, get_proper_type, ProperType,
@@ -40,8 +41,7 @@ def isinstance_proper_hook(ctx: FunctionContext) -> Type:
                 isinstance(get_proper_type(arg), AnyType) and is_dangerous_target(right)):
             if is_special_target(right):
                 return ctx.default_return_type
-            ctx.api.fail('Never apply isinstance() to unexpanded types;'
-                         ' use mypy.types.get_proper_type() first', ctx.context)
+            ctx.api.fail(message_registry.ISINSTANCE_ON_UNEXPANDED_TYPE, ctx.context)
             ctx.api.note('If you pass on the original type'  # type: ignore[attr-defined]
                          ' after the check, always use its unexpanded version', ctx.context)
     return ctx.default_return_type
@@ -109,7 +109,7 @@ def proper_type_hook(ctx: FunctionContext) -> Type:
             # Minimize amount of spurious errors from overload machinery.
             # TODO: call the hook on the overload as a whole?
             if isinstance(arg_type, (UnionType, Instance)):
-                ctx.api.fail('Redundant call to get_proper_type()', ctx.context)
+                ctx.api.fail(message_registry.REDUNDANT_GET_PROPER_TYPE, ctx.context)
     return ctx.default_return_type
 
 
@@ -122,7 +122,7 @@ def proper_types_hook(ctx: FunctionContext) -> Type:
         item_type = UnionType.make_union([NoneTyp(), proper_type])
         ok_type = ctx.api.named_generic_type('typing.Iterable', [item_type])
         if is_proper_subtype(arg_type, ok_type):
-            ctx.api.fail('Redundant call to get_proper_types()', ctx.context)
+            ctx.api.fail(message_registry.REDUNDANT_GET_PROPER_TYPE, ctx.context)
     return ctx.default_return_type
 
 

@@ -1,5 +1,6 @@
 """Plugin that provides support for dataclasses."""
 
+from mypy import message_registry
 from typing import Dict, List, Set, Tuple, Optional
 from typing_extensions import Final
 
@@ -150,7 +151,7 @@ class DataclassTransformer:
         # Add <, >, <=, >=, but only if the class has an eq method.
         if decorator_arguments['order']:
             if not decorator_arguments['eq']:
-                ctx.api.fail('eq must be True if order is True', ctx.cls)
+                ctx.api.fail(message_registry.EQ_TRUE_IF_ORDER_TRUE, ctx.cls)
 
             for method_name in ['__lt__', '__gt__', '__le__', '__ge__']:
                 # Like for __eq__ and __ne__, we want "other" to match
@@ -167,7 +168,7 @@ class DataclassTransformer:
                 if existing_method is not None and not existing_method.plugin_generated:
                     assert existing_method.node
                     ctx.api.fail(
-                        'You may not have a custom %s method when order=True' % method_name,
+                        message_registry.DATACLASS_ORDER_METHODS_DISALLOWED.format(method_name),
                         existing_method.node,
                     )
 
@@ -356,7 +357,7 @@ class DataclassTransformer:
                 context = (Context(line=attr.line, column=attr.column) if attr in attrs
                            else ctx.cls)
                 ctx.api.fail(
-                    'Attributes without a default cannot follow attributes with one',
+                    message_registry.DATACLASS_DEFAULT_ATTRS_BEFORE_NON_DEFAULT,
                     context,
                 )
 
@@ -365,7 +366,7 @@ class DataclassTransformer:
                 context = (Context(line=attr.line, column=attr.column) if attr in attrs
                            else ctx.cls)
                 ctx.api.fail(
-                    'There may not be more than one field with the KW_ONLY type',
+                    message_registry.DATACLASS_SINGLE_KW_ONLY_TYPE,
                     context,
                 )
             found_kw_sentinel = found_kw_sentinel or self._is_kw_only_type(attr.type)

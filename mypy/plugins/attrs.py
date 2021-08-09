@@ -1,5 +1,6 @@
 """Plugin for supporting the attrs library (http://www.attrs.org)"""
 
+from mypy import message_registry
 from mypy.backports import OrderedDict
 
 from typing import Optional, Dict, List, cast, Tuple, Iterable
@@ -28,8 +29,6 @@ from mypy.typeops import make_simplified_union, map_type_from_supertype
 from mypy.typevars import fill_typevars
 from mypy.util import unmangle
 from mypy.server.trigger import make_wildcard_trigger
-
-KW_ONLY_PYTHON_2_UNSUPPORTED = "kw_only is not supported in Python 2"
 
 # The names of the different functions that create classes or arguments.
 attr_class_makers: Final = {
@@ -127,7 +126,7 @@ class Attribute:
                 init_type = UnionType.make_union([init_type, NoneType()])
 
             if not init_type:
-                ctx.api.fail("Cannot determine __init__ type from converter", self.context)
+                ctx.api.fail(message_registry.CANNOT_DETERMINE_INIT_TYPE, self.context)
                 init_type = AnyType(TypeOfAny.from_error)
         elif self.converter.name == '':
             # This means we had a converter but it's not of a type we can infer.
@@ -207,7 +206,7 @@ def _determine_eq_order(ctx: 'mypy.plugin.ClassDefContext') -> bool:
     order = _get_decorator_optional_bool_argument(ctx, 'order')
 
     if cmp is not None and any((eq is not None, order is not None)):
-        ctx.api.fail('Don\'t mix "cmp" with "eq" and "order"', ctx.reason)
+        ctx.api.fail(message_registry.CMP_WITH_EQ_AND_ORDER, ctx.reason)
 
     # cmp takes precedence due to bw-compatibility.
     if cmp is not None:
@@ -221,7 +220,7 @@ def _determine_eq_order(ctx: 'mypy.plugin.ClassDefContext') -> bool:
         order = eq
 
     if eq is False and order is True:
-        ctx.api.fail('eq must be True if order is True', ctx.reason)
+        ctx.api.fail(message_registry.EQ_TRUE_IF_ORDER_TRUE, ctx.reason)
 
     return order
 
@@ -245,7 +244,7 @@ def _get_decorator_optional_bool_argument(
                     return False
                 if attr_value.fullname == 'builtins.None':
                     return None
-            ctx.api.fail('"{}" argument must be True or False.'.format(name), ctx.reason)
+            ctx.api.fail(message_registry.ARG_MUST_BE_TRUE_OR_FALSE.format(name), ctx.reason)
             return default
         return default
     else:
@@ -277,14 +276,14 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
 
     if ctx.api.options.python_version[0] < 3:
         if auto_attribs:
-            ctx.api.fail("auto_attribs is not supported in Python 2", ctx.reason)
+            ctx.api.fail(message_registry.AUTO_ATTRIBS_UNSUPPORTED_PY2, ctx.reason)
             return
         if not info.defn.base_type_exprs:
             # Note: This will not catch subclassing old-style classes.
-            ctx.api.fail("attrs only works with new-style classes", info.defn)
+            ctx.api.fail(message_registry.ATTRS_NEWSTYLE_CLASS_ONLY, info.defn)
             return
         if kw_only:
-            ctx.api.fail(KW_ONLY_PYTHON_2_UNSUPPORTED, ctx.reason)
+            ctx.api.fail(message_registry.KW_ONLY_UNSUPPORTED_PY2, ctx.reason)
             return
 
     attributes = _analyze_class(ctx, auto_attribs, kw_only)
@@ -399,9 +398,7 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext',
         context = attribute.context if i >= len(super_attrs) else ctx.cls
 
         if not attribute.has_default and last_default:
-            ctx.api.fail(
-                "Non-default attributes not allowed after default attributes.",
-                context)
+            ctx.api.fail(message_registry.NON_DEFAULT_ATTRS_AFTER_DEFAULT, context)
         last_default |= attribute.has_default
 
     return attributes
@@ -524,7 +521,7 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
         return None
 
     if len(stmt.lvalues) > 1:
-        ctx.api.fail("Too many names for one attribute", stmt)
+        ctx.api.fail(message_registry.ATTR_TOO_MANY_NAMES, stmt)
         return None
 
     # This is the type that belongs in the __init__ method for this attrib.
@@ -536,7 +533,7 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
     # See https://github.com/python-attrs/attrs/issues/481 for explanation.
     kw_only |= _get_bool_argument(ctx, rvalue, 'kw_only', False)
     if kw_only and ctx.api.options.python_version[0] < 3:
-        ctx.api.fail(KW_ONLY_PYTHON_2_UNSUPPORTED, stmt)
+        ctx.api.fail(message_registry.KW_ONLY_UNSUPPORTED_PY2, stmt)
         return None
 
     # TODO: Check for attr.NOTHING
@@ -544,7 +541,7 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
     attr_has_factory = bool(_get_argument(rvalue, 'factory'))
 
     if attr_has_default and attr_has_factory:
-        ctx.api.fail('Can\'t pass both "default" and "factory".', rvalue)
+        ctx.api.fail(message_registry.DEFAULT_WITH_FACTORY, rvalue)
     elif attr_has_factory:
         attr_has_default = True
 
@@ -554,7 +551,7 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
         try:
             un_type = expr_to_unanalyzed_type(type_arg, ctx.api.options, ctx.api.is_stub_file)
         except TypeTranslationError:
-            ctx.api.fail('Invalid argument to type', type_arg)
+            ctx.api.fail(message_registry.TYPE_INVALID_ARG, type_arg)
         else:
             init_type = ctx.api.anal_type(un_type)
             if init_type and isinstance(lhs.node, Var) and not lhs.node.type:
@@ -566,9 +563,9 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
     converter = _get_argument(rvalue, 'converter')
     convert = _get_argument(rvalue, 'convert')
     if convert and converter:
-        ctx.api.fail('Can\'t pass both "convert" and "converter".', rvalue)
+        ctx.api.fail(message_registry.CONVERT_WITH_CONVERTER, rvalue)
     elif convert:
-        ctx.api.fail("convert is deprecated, use converter", rvalue)
+        ctx.api.fail(message_registry.CONVERT_DEPRECATED, rvalue)
         converter = convert
     converter_info = _parse_converter(ctx, converter)
 
@@ -605,10 +602,7 @@ def _parse_converter(ctx: 'mypy.plugin.ClassDefContext',
             return argument
 
         # Signal that we have an unsupported converter.
-        ctx.api.fail(
-            "Unsupported converter, only named functions and types are currently supported",
-            converter
-        )
+        ctx.api.fail(message_registry.UNSUPPORTED_CONVERTER, converter)
         return Converter('')
     return Converter(None)
 
