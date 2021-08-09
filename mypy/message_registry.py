@@ -439,8 +439,8 @@ TYPE_COMMENT_SYNTAX_ERROR: Final = ErrorMessage("syntax error in type comment", 
 TYPE_COMMENT_SYNTAX_ERROR_VALUE: Final = ErrorMessage(
     'syntax error in type comment "{}"', codes.SYNTAX
 )
-INVALID_TYPE_IGNORE: Final = ErrorMessage('Invalid "type: ignore" comment')
-INVALID_TYPE_IGNORE_2: Final = ErrorMessage('Invalid "type: ignore" comment', codes.SYNTAX)
+INVALID_TYPE_IGNORE: Final = ErrorMessage('Invalid "type: ignore" comment', codes.SYNTAX)
+INVALID_TYPE_IGNORE_2: Final = ErrorMessage('Invalid "type: ignore" comment')
 ELLIPSIS_WITH_OTHER_TYPEARGS: Final = ErrorMessage(
     "Ellipses cannot accompany other argument types in function type signature", codes.SYNTAX
 )
