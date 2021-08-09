@@ -230,7 +230,7 @@ def parse_type_comment(type_comment: str,
             ignored: Optional[List[str]] = parse_type_ignore_tag(tag)
             if ignored is None:
                 if errors is not None:
-                    err_msg = message_registry.INVALID_TYPE_IGNORE
+                    err_msg = message_registry.INVALID_TYPE_IGNORE_2
                     errors.report(line, column, err_msg.value, code=err_msg.code)
                 else:
                     raise SyntaxError
