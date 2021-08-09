@@ -401,6 +401,10 @@ Py_ssize_t CPyStr_Size_size_t(PyObject *str);
 
 
 
+int CPyBytes_Compare(PyObject *left, PyObject *right);
+
+
+
 // Set operations
 
 
