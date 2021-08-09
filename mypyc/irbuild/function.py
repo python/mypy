@@ -251,13 +251,7 @@ def gen_func_item(builder: IRBuilder,
         gen_generator_func(builder)
         args, _, blocks, ret_type, fn_info = builder.leave()
         func_ir, func_reg = gen_func_ir(
-            builder,
-            args,
-            blocks,
-            sig,
-            fn_info,
-            cdef,
-            is_singledispatch,
+            builder, args, blocks, sig, fn_info, cdef, is_singledispatch,
         )
 
         # Re-enter the FuncItem and visit the body of the function this time.
@@ -326,13 +320,7 @@ def gen_func_item(builder: IRBuilder,
             builder, fn_info, sig, args, blocks, fitem.is_coroutine)
     else:
         func_ir, func_reg = gen_func_ir(
-            builder,
-            args,
-            blocks,
-            sig,
-            fn_info,
-            cdef,
-            is_singledispatch,
+            builder, args, blocks, sig, fn_info, cdef, is_singledispatch,
         )
 
     # Evaluate argument defaults in the surrounding scope, since we
