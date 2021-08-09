@@ -22,7 +22,7 @@ CPyTagged CPyBytes_GetItem(PyObject *o, CPyTagged index) {
         return num << 1;
     } else {
         PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
-        return -1;
+        return CPY_INT_TAG;
     }
 }
 
