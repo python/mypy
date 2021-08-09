@@ -966,8 +966,6 @@ def maybe_insert_into_registry_dict(builder: IRBuilder, fitem: FuncDef) -> None:
         if fitem not in native_ids:
             to_insert = load_func(builder, fitem.name, fitem.fullname, line)
         else:
-            # The length is also the index of the next element that will get added (which will be
-            # this function)
             current_id = native_ids[fitem]
             load_literal = LoadLiteral(current_id, object_rprimitive)
             to_insert = builder.add(load_literal)
