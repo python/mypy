@@ -927,7 +927,8 @@ def gen_dispatch_func_ir(
 
 def load_singledispatch_registry(builder: IRBuilder, fitem: FuncDef, line: int) -> Value:
     name = get_registry_identifier(fitem)
-    return builder.add(LoadStatic(dict_rprimitive, name, builder.module_name, line=line))
+    module_name = fitem.fullname.rsplit('.', maxsplit=1)[0]
+    return builder.add(LoadStatic(dict_rprimitive, name, module_name, line=line))
 
 
 def singledispatch_main_func_name(orig_name: str) -> str:
