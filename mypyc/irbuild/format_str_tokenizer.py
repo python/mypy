@@ -43,6 +43,8 @@ def generate_format_ops(specifiers: List[ConversionSpecifier]) -> Optional[List[
         # TODO: Match specifiers instead of using whole_seq
         if spec.whole_seq == '%s' or spec.whole_seq == '{:{}}':
             format_op = FormatOp.STR
+        elif spec.whole_seq == '%d':
+            format_op = FormatOp.INT
         elif spec.whole_seq:
             return None
         else:
@@ -51,14 +53,17 @@ def generate_format_ops(specifiers: List[ConversionSpecifier]) -> Optional[List[
     return format_ops
 
 
-def tokenizer_printf_style(format_str: str) -> Tuple[List[str], List[ConversionSpecifier]]:
+def tokenizer_printf_style(format_str: str) -> Optional[Tuple[List[str], List[FormatOp]]]:
     """Tokenize a printf-style format string using regex.
 
     Return:
-        A list of string literals and a list of conversion operations
+        A list of string literals and a list of FormatOps.
     """
     literals: List[str] = []
     specifiers: List[ConversionSpecifier] = parse_conversion_specifiers(format_str)
+    format_ops = generate_format_ops(specifiers)
+    if format_ops is None:
+        return None
 
     last_end = 0
     for spec in specifiers:
@@ -67,7 +72,7 @@ def tokenizer_printf_style(format_str: str) -> Tuple[List[str], List[ConversionS
         last_end = cur_start + len(spec.whole_seq)
     literals.append(format_str[last_end:])
 
-    return literals, specifiers
+    return literals, format_ops
 
 
 # The empty Context as an argument for parse_format_value().
@@ -117,6 +122,9 @@ def convert_expr(builder: IRBuilder, format_ops: List[FormatOp],
                  exprs: List[Expression], line: int) -> Optional[List[Value]]:
     """Convert expressions into string literals with the guidance
     of FormatOps."""
+    if len(format_ops) != len(exprs):
+        return None
+
     converted = []
     for x, format_op in zip(exprs, format_ops):
         node_type = builder.node_type(x)
@@ -127,35 +135,48 @@ def convert_expr(builder: IRBuilder, format_ops: List[FormatOp],
                 var_str = builder.call_c(int_to_str_op, [builder.accept(x)], line)
             else:
                 var_str = builder.call_c(str_op, [builder.accept(x)], line)
-            converted.append(var_str)
+        elif format_op == FormatOp.INT:
+            if is_int_rprimitive(node_type) or is_short_int_rprimitive(node_type):
+                var_str = builder.call_c(int_to_str_op, [builder.accept(x)], line)
+            else:
+                return None
         else:
             return None
+        converted.append(var_str)
     return converted
 
 
-def join_formatted_strings(builder: IRBuilder, literals: List[str],
+def join_formatted_strings(builder: IRBuilder, literals: Optional[List[str]],
                            substitutions: List[Value], line: int) -> Value:
     """Merge the list of literals and the list of substitutions
     alternatively using 'str_build_op'.
 
-    Args:
-        builder: IRBuilder
-        literals: The literal substrings of the original format string.
-                  After splitting the original format string, the
-                  length of literals should be exactly one more than
-                  substitutions.
-        substitutions: Result Python strings of each conversion
-        line: line number
+    `substitutions` is the result value of formatting conversions.
+
+    If the `literals` is set to None, we simply join the substitutions;
+    Otherwise, the `literals` is the literal substrings of the original
+    format string and its length should be exactly one more than
+    substitutions.
+
+    For example:
+    (1)    'This is a %s and the value is %d'
+        -> literals: ['This is a ', ' and the value is', '']
+    (2)    '{} and the value is {}'
+        -> literals: ['', ' and the value is', '']
     """
     # The first parameter for str_build_op is the total size of
     # the following PyObject*
     result_list: List[Value] = [Integer(0, c_pyssize_t_rprimitive)]
-    for a, b in zip(literals, substitutions):
-        if a:
-            result_list.append(builder.load_str(a))
-        result_list.append(b)
-    if literals[-1]:
-        result_list.append(builder.load_str(literals[-1]))
+
+    if literals is not None:
+        for a, b in zip(literals, substitutions):
+            if a:
+                result_list.append(builder.load_str(a))
+            result_list.append(b)
+        if literals[-1]:
+            result_list.append(builder.load_str(literals[-1]))
+    else:
+        result_list.extend(substitutions)
 
     # Special case for empty string and literal string
     if len(result_list) == 1:

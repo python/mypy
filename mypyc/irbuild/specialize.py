@@ -16,7 +16,7 @@ from typing import Callable, Optional, Dict, Tuple, List
 
 from mypy.nodes import (
     CallExpr, RefExpr, MemberExpr, NameExpr, TupleExpr, GeneratorExpr,
-    ListExpr, DictExpr, StrExpr, ARG_POS
+    ListExpr, DictExpr, StrExpr, ARG_POS, Expression
 )
 from mypy.types import AnyType, TypeOfAny
 
@@ -25,17 +25,16 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
-    bool_rprimitive, c_int_rprimitive, c_pyssize_t_rprimitive, is_dict_rprimitive
+    bool_rprimitive, c_int_rprimitive, is_dict_rprimitive
 )
 from mypyc.irbuild.format_str_tokenizer import (
-    tokenizer_format_call, join_formatted_strings, convert_expr
+    tokenizer_format_call, join_formatted_strings, convert_expr, FormatOp
 )
 from mypyc.primitives.dict_ops import (
     dict_keys_op, dict_values_op, dict_items_op, dict_setdefault_spec_init_op
 )
 from mypyc.primitives.list_ops import new_list_set_item_op
 from mypyc.primitives.tuple_ops import new_tuple_set_item_op
-from mypyc.primitives.str_ops import str_op, str_build_op
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import (
     translate_list_comprehension, translate_set_comprehension,
@@ -434,18 +433,20 @@ def translate_fstring(
             else:
                 return None
 
-        result_list: List[Value] = [Integer(0, c_pyssize_t_rprimitive)]
+        format_ops = []
+        exprs: List[Expression] = []
+
         for item in expr.args[0].items:
             if isinstance(item, StrExpr) and item.value != '':
-                result_list.append(builder.accept(item))
+                format_ops.append(FormatOp.STR)
+                exprs.append(item)
             elif isinstance(item, CallExpr):
-                result_list.append(builder.call_c(str_op,
-                                                  [builder.accept(item.args[0])],
-                                                  expr.line))
+                format_ops.append(FormatOp.STR)
+                exprs.append(item.args[0])
 
-        if len(result_list) == 1:
-            return builder.load_str("")
+        substitutions = convert_expr(builder, format_ops, exprs, expr.line)
+        if substitutions is None:
+            return None
 
-        result_list[0] = Integer(len(result_list) - 1, c_pyssize_t_rprimitive)
-        return builder.call_c(str_build_op, result_list, expr.line)
+        return join_formatted_strings(builder, None, substitutions, expr.line)
     return None
