@@ -930,55 +930,10 @@ def load_singledispatch_registry(builder: IRBuilder, fitem: FuncDef, line: int) 
     return builder.add(LoadStatic(dict_rprimitive, name, builder.module_name, line=line))
 
 
-def initialize_all_singledispatch_dictionaries(builder: IRBuilder) -> None:
-    singledispatch_funcs = builder.singledispatch_impls.keys()
-    for func in singledispatch_funcs:
-        main_func_name = singledispatch_main_func_name(func.name)
-        initialize_singledispatch_dispatch_dictionary(builder, func, main_func_name)
 
 
-def initialize_singledispatch_dispatch_dictionary(
-    builder: IRBuilder,
-    fitem: FuncDef,
-    main_func_name: str
-) -> None:
-    line = fitem.line
-    func_obj = load_func(builder, main_func_name, fitem.fullname, line)
 
-    impls = builder.singledispatch_impls[fitem]
-    native_impls = []
 
-    loaded_object_type = builder.load_module_attr_by_fullname('builtins.object', line)
-    registry_dict = builder.builder.make_dict([(loaded_object_type, func_obj)], line)
-
-    for dispatch_type, impl in impls:
-        if is_decorated(builder, impl):
-            module_name = impl.fullname.rsplit('.')[0]
-            if module_name not in builder.imports:
-                # We need to generate an import here because the module needs to be imported before
-                # we try loading the function from it
-                builder.gen_import(module_name, line)
-            # store the actual callable object in the dict
-            loaded_impl = load_func(builder, impl.name, impl.fullname, line)
-            loaded_type = load_type(builder, dispatch_type, line)
-
-            builder.call_c(dict_set_item_op, [registry_dict, loaded_type, loaded_impl], line)
-        else:
-            # create a new list and generate those setitem calls all at once so we can use the
-            # index as the integer ID
-            native_impls.append((dispatch_type, impl))
-    for i, (typ, func) in enumerate(native_impls):
-        loaded_type = load_type(builder, typ, line)
-        func_id = builder.add(LoadLiteral(i, object_rprimitive))
-        builder.call_c(dict_set_item_op, [registry_dict, loaded_type, func_id], line)
-
-    name = get_registry_identifier(fitem)
-
-    # HACK: reuse the final_names list to make sure that the registry dict gets declared as a
-    # static variable in the backend, even though this isn't a final variable
-    builder.final_names.append((name, dict_rprimitive))
-    init_static = InitStatic(registry_dict, name, builder.module_name, line=line)
-    builder.add(init_static)
 
 
 def singledispatch_main_func_name(orig_name: str) -> str:
