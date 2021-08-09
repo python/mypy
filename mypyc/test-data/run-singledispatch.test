@@ -571,3 +571,33 @@ def fb(arg: B) -> str:
 def test_singledispatch():
     assert f(AB()) == "a"
     assert f(BA()) == "b"
+
+[case testCallingFunctionBeforeAllImplementationsRegistered]
+from functools import singledispatch
+
+class A: pass
+class B(A): pass
+
+@singledispatch
+def f(arg) -> str:
+    return 'default'
+
+assert f(A()) == 'default'
+assert f(B()) == 'default'
+assert f(1) == 'default'
+
+@f.register
+def g(arg: A) -> str:
+    return 'a'
+
+assert f(A()) == 'a'
+assert f(B()) == 'a'
+assert f(1) == 'default'
+
+@f.register
+def _(arg: B) -> str:
+    return 'b'
+
+assert f(A()) == 'a'
+assert f(B()) == 'b'
+assert f(1) == 'default'
