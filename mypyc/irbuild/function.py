@@ -11,7 +11,7 @@ instance of the callable class.
 """
 
 from typing import (
-    NamedTuple, Optional, List, Sequence, Tuple, Union, Dict,
+    DefaultDict, NamedTuple, Optional, List, Sequence, Tuple, Union, Dict,
 )
 
 from mypy.nodes import (
@@ -35,7 +35,7 @@ from mypyc.primitives.generic_ops import py_setattr_op, next_raw_op, iter_op
 from mypyc.primitives.misc_ops import (
     check_stop_op, yield_from_except_op, coro_op, send_op
 )
-from mypyc.primitives.dict_ops import dict_set_item_op
+from mypyc.primitives.dict_ops import dict_set_item_op, dict_new_op
 from mypyc.common import SELF_NAME, LAMBDA_NAME, decorator_helper_name
 from mypyc.sametype import is_same_method_signature
 from mypyc.irbuild.util import is_constant
@@ -58,6 +58,7 @@ from mypyc.irbuild.env_class import (
 )
 
 from mypyc.primitives.registry import builtin_names
+from collections import defaultdict
 
 
 # Top-level transform functions
@@ -70,6 +71,7 @@ def transform_func_def(builder: IRBuilder, fdef: FuncDef) -> None:
     # current environment or define it if it was not already defined.
     if func_reg:
         builder.assign(get_func_target(builder, fdef), func_reg, fdef.line)
+    maybe_insert_into_registry_dict(builder, fdef)
     builder.functions.append(func_ir)
 
 
@@ -109,6 +111,8 @@ def transform_decorator(builder: IRBuilder, dec: Decorator) -> None:
                     [builder.load_globals_dict(),
                     builder.load_str(dec.func.name), decorated_func],
                     decorated_func.line)
+
+    maybe_insert_into_registry_dict(builder, dec.func)
 
     builder.functions.append(func_ir)
 
@@ -845,7 +849,6 @@ def generate_singledispatch_dispatch_function(
     main_singledispatch_function_name: str,
     fitem: FuncDef,
 ) -> None:
-    impls = builder.singledispatch_impls[fitem]
     line = fitem.line
     current_func_decl = builder.mapper.func_to_decl[fitem]
     arg_info = get_args(builder, current_func_decl.sig.args, line)
@@ -873,7 +876,7 @@ def generate_singledispatch_dispatch_function(
 
     passed_id = builder.add(Unbox(impl_to_use, int_rprimitive, line))
 
-    native_impls = (impl for dispatch_type, impl in impls if not is_decorated(builder, impl))
+    native_impls = builder.singledispatch_native_registers[fitem]
     for i, impl in enumerate(native_impls):
         call_impl, next_impl = BasicBlock(), BasicBlock()
 
@@ -984,3 +987,47 @@ def singledispatch_main_func_name(orig_name: str) -> str:
 
 def get_registry_identifier(fitem: FuncDef) -> str:
     return f'__mypyc_singledispatch_registry_{fitem.fullname}__'
+
+
+def maybe_insert_into_registry_dict(builder: IRBuilder, fitem: FuncDef) -> None:
+    line = fitem.line
+    is_singledispatch_main_func = fitem in builder.singledispatch_impls
+    # dict of singledispatch_func to list of register_types (fitem is the function to register)
+    to_register: DefaultDict[FuncDef, List[TypeInfo]] = defaultdict(list)
+    for main_func, impls in builder.singledispatch_impls.items():
+        for dispatch_type, impl in impls:
+            if fitem == impl:
+                to_register[main_func].append(dispatch_type)
+
+    if not to_register and not is_singledispatch_main_func:
+        return
+
+    if is_singledispatch_main_func:
+        main_func_name = singledispatch_main_func_name(fitem.name)
+        main_func_obj = load_func(builder, main_func_name, fitem.fullname, line)
+
+        loaded_object_type = builder.load_module_attr_by_fullname('builtins.object', line)
+        registry_dict = builder.builder.make_dict([(loaded_object_type, main_func_obj)], line)
+
+        name = get_registry_identifier(fitem)
+        # HACK: reuse the final_names list to make sure that the registry dict gets declared as a
+        # static variable in the backend, even though this isn't a final variable
+        builder.final_names.append((name, dict_rprimitive))
+        init_static = InitStatic(registry_dict, name, builder.module_name, line=line)
+        builder.add(init_static)
+
+    for singledispatch_func, types in to_register.items():
+        if is_decorated(builder, fitem):
+            to_insert = load_func(builder, fitem.name, fitem.fullname, line)
+        else:
+            # The length is also the index of the next element that will get added (which will be
+            # this function)
+            current_id = len(builder.singledispatch_native_registers[singledispatch_func])
+            load_literal = LoadLiteral(current_id, object_rprimitive)
+            to_insert = builder.add(load_literal)
+            builder.singledispatch_native_registers[singledispatch_func].append(fitem)
+        # TODO: avoid reloading the registry here if we just created it
+        registry = load_singledispatch_registry(builder, singledispatch_func, line)
+        for typ in types:
+            loaded_type = load_type(builder, typ, line)
+            builder.call_c(dict_set_item_op, [registry, loaded_type, to_insert], line)

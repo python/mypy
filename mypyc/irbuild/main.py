@@ -20,7 +20,6 @@ For the core of the IR transform implementation, look at build_ir()
 below, mypyc.irbuild.builder, and mypyc.irbuild.visitor.
 """
 
-from mypyc.irbuild.function import initialize_all_singledispatch_dictionaries
 from mypy.backports import OrderedDict
 from typing import List, Dict, Callable, Any, TypeVar, cast
 
@@ -124,12 +123,6 @@ def transform_mypy_file(builder: IRBuilder, mypyfile: MypyFile) -> None:
     # Generate ops.
     for node in mypyfile.defs:
         builder.accept(node)
-
-    # HACK: this needs to happen here because we can only initialize the singledispatch
-    # dictionaries with registered implementations after all decorated functions are stored in the
-    # globals dict, and the code for that is not generated until after we generate the main
-    # singledispatch function
-    initialize_all_singledispatch_dictionaries(builder)
 
     builder.maybe_add_implicit_return()
 
