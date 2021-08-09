@@ -130,8 +130,7 @@ PyObject *CPyStr_Build(Py_ssize_t len, ...) {
     return res;
 }
 
-PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split)
-{
+PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split) {
     Py_ssize_t temp_max_split = CPyTagged_AsSsize_t(max_split);
     if (temp_max_split == -1 && PyErr_Occurred()) {
         PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
@@ -140,8 +139,8 @@ PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split)
     return PyUnicode_Split(str, sep, temp_max_split);
 }
 
-PyObject *CPyStr_Replace(PyObject *str, PyObject *old_substr, PyObject *new_substr, CPyTagged max_replace)
-{
+PyObject *CPyStr_Replace(PyObject *str, PyObject *old_substr,
+                         PyObject *new_substr, CPyTagged max_replace) {
     Py_ssize_t temp_max_replace = CPyTagged_AsSsize_t(max_replace);
     if (temp_max_replace == -1 && PyErr_Occurred()) {
         PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
@@ -203,9 +202,17 @@ Py_ssize_t CPyStr_Size_size_t(PyObject *str) {
     return -1;
 }
 
+#define PyUnicode_UTF8(op)                              \
+    (assert(PyUnicode_Check(op)),                       \
+     assert(PyUnicode_IS_READY(op)),                    \
+     PyUnicode_IS_COMPACT_ASCII(op) ?                   \
+         ((char*)((PyASCIIObject*)(op) + 1)) :          \
+         ((PyCompactUnicodeObject*)(op))->utf8)
+
 PyObject* CPy_Decode(PyObject *obj, PyObject *encoding, PyObject *errors) {
-    const char *enc = PyUnicode_AsUTF8AndSize(encoding, NULL);
-    const char *err = PyUnicode_AsUTF8AndSize(errors, NULL);
+    const char *enc = encoding ? PyUnicode_UTF8(encoding) : NULL;
+    const char *err = errors ? PyUnicode_UTF8(errors) : NULL;
+    // return PyUnicode_FromEncodedObject(obj, enc, err);
     if (PyBytes_Check(obj)) {
         return PyUnicode_Decode(((PyBytesObject *)obj)->ob_sval,
                                 ((PyVarObject *)obj)->ob_size,
