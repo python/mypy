@@ -134,6 +134,7 @@ from mypy.messages import MessageBuilder
 from mypy.options import Options
 from mypy.lookup import lookup_fully_qualified
 from mypy.errorcodes import ErrorCode
+from mypy.message_registry import ErrorMessage
 
 
 @trait
@@ -151,7 +152,7 @@ class TypeAnalyzerPluginInterface:
     options: Options
 
     @abstractmethod
-    def fail(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
+    def fail(self, msg: ErrorMessage, ctx: Context) -> None:
         """Emit an error message at given location."""
         raise NotImplementedError
 
@@ -223,7 +224,7 @@ class CheckerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def fail(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
+    def fail(self, msg: ErrorMessage, ctx: Context) -> None:
         """Emit an error message at given location."""
         raise NotImplementedError
 
@@ -260,8 +261,7 @@ class SemanticAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def fail(self, msg: str, ctx: Context, serious: bool = False, *,
-             blocker: bool = False, code: Optional[ErrorCode] = None) -> None:
+    def fail(self, msg: ErrorMessage, ctx: Context, *, blocker: bool = False) -> None:
         """Emit an error message at given location."""
         raise NotImplementedError
 
