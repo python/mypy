@@ -533,4 +533,4 @@ class NamedTupleAnalyzer:
     # Helpers
 
     def fail(self, msg: ErrorMessage, ctx: Context) -> None:
-        self.api.fail(msg.value, ctx, code=msg.code)
+        self.api.fail(msg, ctx)

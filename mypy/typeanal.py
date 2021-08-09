@@ -83,7 +83,7 @@ def analyze_type_alias(node: Expression,
     try:
         type = expr_to_unanalyzed_type(node, options, allow_new_syntax)
     except TypeTranslationError:
-        api.fail('Invalid type alias: expression is not a valid type', node)
+        api.fail(message_registry.INVALID_TYPE_ALIAS, node)
         return None
     analyzer = TypeAnalyser(api, tvar_scope, plugin, options, is_typeshed_stub,
                             allow_new_syntax=allow_new_syntax, defining_alias=True,
@@ -268,9 +268,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # TODO: Move error message generation to messages.py. We'd first
         #       need access to MessageBuilder here. Also move the similar
         #       message generation logic in semanal.py.
-        self.api.fail(
-            'Cannot resolve name "{}" (possible cyclic definition)'.format(t.name),
-            t)
+        self.api.fail(message_registry.CANNOT_RESOLVE_NAME.format('name', t.name), t)
 
     def try_analyze_special_unbound_type(self, t: UnboundType, fullname: str) -> Optional[Type]:
         """Bind special type that is recognized through magic name such as 'typing.Any'.
@@ -886,7 +884,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return t.accept(self)
 
     def fail(self, msg: ErrorMessage, ctx: Context) -> None:
-        self.fail_func(msg.value, ctx, code=msg.code)
+        self.fail_func(msg, ctx)
 
     def note(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
         self.note_func(msg, ctx, code=code)

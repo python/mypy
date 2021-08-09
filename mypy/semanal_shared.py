@@ -1,6 +1,7 @@
 """Shared definitions used by different parts of semantic analysis."""
 
 from abc import abstractmethod
+from mypy.message_registry import ErrorMessage
 
 from typing import Optional, List, Callable
 from typing_extensions import Final
@@ -46,8 +47,8 @@ class SemanticAnalyzerCoreInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def fail(self, msg: str, ctx: Context, serious: bool = False, *,
-             blocker: bool = False, code: Optional[ErrorCode] = None) -> None:
+    def fail(self, msg: ErrorMessage, ctx: Context, serious: bool = False, *,
+             blocker: bool = False) -> None:
         raise NotImplementedError
 
     @abstractmethod
