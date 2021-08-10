@@ -22,7 +22,7 @@ from mypy.types import CallableType, get_proper_type
 
 from mypyc.ir.ops import (
     BasicBlock, Value,  Register, Return, SetAttr, Integer, GetAttr, Branch, InitStatic,
-    LoadAddress, LoadLiteral, Unbox, Unreachable, LoadStatic,
+    LoadAddress, LoadLiteral, Unbox, Unreachable,
 )
 from mypyc.ir.rtypes import (
     object_rprimitive, RInstance, object_pointer_rprimitive, dict_rprimitive, int_rprimitive,
@@ -940,9 +940,8 @@ def generate_singledispatch_callable_class_ctor(builder: IRBuilder) -> None:
 
 
 def load_singledispatch_registry(builder: IRBuilder, fitem: FuncDef, line: int) -> Value:
-    name = get_registry_identifier(fitem)
-    module_name = fitem.fullname.rsplit('.', maxsplit=1)[0]
-    return builder.add(LoadStatic(dict_rprimitive, name, module_name, line=line))
+    dispatch_func_obj = load_func(builder, fitem.name, fitem.fullname, line)
+    return builder.builder.get_attr(dispatch_func_obj, 'registry', dict_rprimitive, line)
 
 
 def singledispatch_main_func_name(orig_name: str) -> str:
@@ -973,12 +972,10 @@ def maybe_insert_into_registry_dict(builder: IRBuilder, fitem: FuncDef) -> None:
         loaded_object_type = builder.load_module_attr_by_fullname('builtins.object', line)
         registry_dict = builder.builder.make_dict([(loaded_object_type, main_func_obj)], line)
 
-        name = get_registry_identifier(fitem)
-        # HACK: reuse the final_names list to make sure that the registry dict gets declared as a
-        # static variable in the backend, even though this isn't a final variable
-        builder.final_names.append((name, dict_rprimitive))
-        init_static = InitStatic(registry_dict, name, builder.module_name, line=line)
-        builder.add(init_static)
+        dispatch_func_obj = builder.load_global_str(fitem.name, line)
+        builder.call_c(
+            py_setattr_op, [dispatch_func_obj, builder.load_str('registry'), registry_dict], line
+        )
 
     for singledispatch_func, types in to_register.items():
         # TODO: avoid recomputing the native IDs for all the functions every time we find a new
