@@ -26,6 +26,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     object_rprimitive, RInstance, object_pointer_rprimitive, dict_rprimitive, int_rprimitive,
+    bool_rprimitive,
 )
 from mypyc.ir.func_ir import (
     FuncIR, FuncSignature, RuntimeArg, FuncDecl, FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FUNC_NORMAL
@@ -333,8 +334,7 @@ def gen_func_item(builder: IRBuilder,
         # create the dispatch function
         assert isinstance(fitem, FuncDef)
         dispatch_name = decorator_helper_name(name) if is_decorated else name
-        dispatch_func_ir = gen_dispatch_func_ir(builder, fitem, fn_info.name, dispatch_name, sig)
-        return dispatch_func_ir, None
+        return gen_dispatch_func_ir(builder, fitem, fn_info.name, dispatch_name, sig)
 
     return (func_ir, func_reg)
 
@@ -906,16 +906,37 @@ def gen_dispatch_func_ir(
     main_func_name: str,
     dispatch_name: str,
     sig: FuncSignature,
-) -> FuncIR:
+) -> Tuple[FuncIR, Value]:
     """Create a dispatch function (a function that checks the first argument type and dispatches
     to the correct implementation)
     """
-    builder.enter()
+    builder.enter(FuncInfo(fitem, dispatch_name))
+    setup_callable_class(builder)
+    builder.fn_info.callable_class.ir.attributes['registry'] = dict_rprimitive
+    builder.fn_info.callable_class.ir.has_dict = True
+    generate_singledispatch_callable_class_ctor(builder)
+
     generate_singledispatch_dispatch_function(builder, main_func_name, fitem)
     args, _, blocks, _, fn_info = builder.leave()
-    func_decl = FuncDecl(dispatch_name, None, builder.module_name, sig)
-    dispatch_func_ir = FuncIR(func_decl, args, blocks)
-    return dispatch_func_ir
+    dispatch_func_ir = add_call_to_callable_class(builder, args, blocks, sig, fn_info)
+    add_get_to_callable_class(builder, fn_info)
+    func_reg = instantiate_callable_class(builder, fn_info)
+
+    return dispatch_func_ir, func_reg
+
+
+def generate_singledispatch_callable_class_ctor(builder: IRBuilder) -> None:
+    """Create an __init__ that sets registry to an empty dict"""
+    line = -1
+    class_ir = builder.fn_info.callable_class.ir
+    builder.enter_method(class_ir, '__init__', bool_rprimitive)
+    empty_dict = builder.call_c(dict_new_op, [], line)
+    builder.add(SetAttr(builder.self(), 'registry', empty_dict, line))
+    # the generated C code seems to expect that __init__ returns a char, so just return 1
+    builder.add(Return(Integer(1, bool_rprimitive, line), line))
+    builder.leave_method()
+
+
 
 
 def load_singledispatch_registry(builder: IRBuilder, fitem: FuncDef, line: int) -> Value:
