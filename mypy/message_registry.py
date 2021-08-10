@@ -66,9 +66,9 @@ INCOMPATIBLE_TYPES_IN_YIELD_FROM: Final = 'Incompatible types in "yield from"'
 INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION: Final = "Incompatible types in string interpolation"
 MUST_HAVE_NONE_RETURN_TYPE: Final = ErrorMessage('The return type of "{}" must be None')
 INVALID_TUPLE_INDEX_TYPE: Final = "Invalid tuple index type"
-TUPLE_INDEX_OUT_OF_RANGE: Final = ErrorMessage("Tuple index out of range")
+TUPLE_INDEX_OUT_OF_RANGE: Final = "Tuple index out of range"
 INVALID_SLICE_INDEX: Final = "Slice index must be an integer or None"
-CANNOT_INFER_LAMBDA_TYPE: Final = ErrorMessage("Cannot infer type of lambda")
+CANNOT_INFER_LAMBDA_TYPE: Final = "Cannot infer type of lambda"
 CANNOT_ACCESS_INIT: Final = 'Cannot access "__init__" directly'
 NON_INSTANCE_NEW_TYPE: Final = ErrorMessage('"__new__" must return a class instance (got {})')
 INVALID_NEW_TYPE: Final = ErrorMessage('Incompatible return type for "__new__"')
@@ -106,7 +106,7 @@ KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE: Final = (
     'Keyword argument only valid with "str" key type in call to "dict"'
 )
 ALL_MUST_BE_SEQ_STR: Final = ErrorMessage("Type of __all__ must be {}, not {}")
-INVALID_TYPEDDICT_ARGS: Final = ErrorMessage(
+INVALID_TYPEDDICT_ARGS: Final = (
     "Expected keyword arguments, {...}, or dict(...) in TypedDict constructor"
 )
 TYPEDDICT_KEY_MUST_BE_STRING_LITERAL: Final = "Expected TypedDict key to be string literal"
@@ -133,23 +133,17 @@ INCOMPATIBLE_TYPEVAR_VALUE: Final = 'Value of type variable "{}" of {} cannot be
 CANNOT_USE_TYPEVAR_AS_EXPRESSION: Final = 'Type variable "{}.{}" cannot be used as an expression'
 
 # Super
-TOO_MANY_ARGS_FOR_SUPER: Final = ErrorMessage('Too many arguments for "super"')
-TOO_FEW_ARGS_FOR_SUPER: Final = ErrorMessage('Too few arguments for "super"', codes.CALL_ARG)
-SUPER_WITH_SINGLE_ARG_NOT_SUPPORTED: Final = ErrorMessage(
-    '"super" with a single argument not supported'
-)
-UNSUPPORTED_ARG_1_FOR_SUPER: Final = ErrorMessage('Unsupported argument 1 for "super"')
-UNSUPPORTED_ARG_2_FOR_SUPER: Final = ErrorMessage('Unsupported argument 2 for "super"')
-SUPER_VARARGS_NOT_SUPPORTED: Final = ErrorMessage('Varargs not supported with "super"')
-SUPER_POSITIONAL_ARGS_REQUIRED: Final = ErrorMessage('"super" only accepts positional arguments')
-SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1: Final = ErrorMessage(
-    'Argument 2 for "super" not an instance of argument 1'
-)
-TARGET_CLASS_HAS_NO_BASE_CLASS: Final = ErrorMessage("Target class has no base class")
-SUPER_OUTSIDE_OF_METHOD_NOT_SUPPORTED: Final = ErrorMessage(
-    "super() outside of a method is not supported"
-)
-SUPER_ENCLOSING_POSITIONAL_ARGS_REQUIRED: Final = ErrorMessage(
+TOO_MANY_ARGS_FOR_SUPER: Final = 'Too many arguments for "super"'
+TOO_FEW_ARGS_FOR_SUPER: Final = ('Too few arguments for "super"', codes.CALL_ARG)
+SUPER_WITH_SINGLE_ARG_NOT_SUPPORTED: Final = '"super" with a single argument not supported'
+UNSUPPORTED_ARG_1_FOR_SUPER: Final = 'Unsupported argument 1 for "super"'
+UNSUPPORTED_ARG_2_FOR_SUPER: Final = 'Unsupported argument 2 for "super"'
+SUPER_VARARGS_NOT_SUPPORTED: Final = 'Varargs not supported with "super"'
+SUPER_POSITIONAL_ARGS_REQUIRED: Final = '"super" only accepts positional arguments'
+SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1: Final = 'Argument 2 for "super" not an instance of argument 1'
+TARGET_CLASS_HAS_NO_BASE_CLASS: Final = "Target class has no base class"
+SUPER_OUTSIDE_OF_METHOD_NOT_SUPPORTED: Final = "super() outside of a method is not supported"
+SUPER_ENCLOSING_POSITIONAL_ARGS_REQUIRED: Final = (
     "super() requires one or more positional arguments in enclosing function"
 )
 
