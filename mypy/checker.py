@@ -3079,8 +3079,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         dunder_set = attribute_type.type.get_method('__set__')
         if dunder_set is None:
-            self.fail(message_registry.DESCRIPTOR_SET_NOT_CALLABLE.format(attribute_type),
-                          context)
+            self.fail(message_registry.DESCRIPTOR_SET_NOT_CALLABLE.format(attribute_type), context)
             return AnyType(TypeOfAny.from_error), get_type, False
 
         function = function_type(dunder_set, self.named_type('builtins.function'))
