@@ -368,6 +368,10 @@ class SingledispatchVisitor(TraverserVisitor):
                 else:
                     if refers_to_fullname(d, 'functools.singledispatch'):
                         decorators_to_remove.append(i)
+                        # make sure that we still treat the function as a singledispatch function
+                        # even if we don't find any registered implementations (which might happen
+                        # if all registered implementations are registered dynamically)
+                        self.singledispatch_impls.setdefault(dec.func, [])
                     last_non_register = i
 
             if decorators_to_remove:
