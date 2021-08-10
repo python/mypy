@@ -749,7 +749,7 @@ PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func,
         get_type_hints = PyObject_GetAttrString(typing, "get_type_hints");
         PyObject* args[] = {func};
 
-        type_hints = _PyObject_Vectorcall(get_type_hints, args, 1, NULL);
+        type_hints = PyObject_CallOneArg(get_type_hints, func);
         PyObject *argname;
         Py_ssize_t pos = 0;
         if (!PyDict_Next(type_hints, &pos, &argname, &cls)) {
