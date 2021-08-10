@@ -52,6 +52,13 @@ class TestCommandLine(MypycDataSuite):
             if 'ErrorOutput' in testcase.name or cmd.returncode != 0:
                 out += cmd.stdout
 
+            if 'OnlyWarningOutput' in testcase.name:
+                # Strip out setuptools build related output since we're only
+                # interested in the messages emitted during analysis and
+                # transcompilation.
+                messages, _, _ = cmd.stdout.partition(b"running build_ext")
+                out += messages
+
             if cmd.returncode == 0:
                 # Run main program
                 out += subprocess.check_output(
