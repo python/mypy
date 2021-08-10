@@ -726,6 +726,7 @@ PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func,
             // bind cls to the first argument so that register gets called again with both the
             // class and the function
             register_func = PyObject_GetAttrString(singledispatch_func, "register");
+            if (register_func == NULL) goto fail;
             return PyMethod_New(register_func, cls);
         }
         // passed a function
