@@ -57,10 +57,13 @@ def test_indexing() -> None:
     assert b[1] == 128
     assert b[2] == 254
     assert b[3] == 21
+    assert b[-4] == 174
     with assertRaises(IndexError, "index out of range"):
         b[4]
     with assertRaises(IndexError, "index out of range"):
         b[-5]
+    with assertRaises(IndexError, "index out of range"):
+        b[2**56]
 
 def test_concat() -> None:
     b1 = b'123' + bytes()
@@ -135,31 +138,26 @@ def test_bytearray_passed_into_bytes() -> None:
     brr1: Any = bytearray()
     assert f(brr1)
 
-def get_item(b: bytes, i: int) -> int:
-    return b[i]
-
 def test_bytearray_indexing() -> None:
-    b = bytearray(b'\xae\x80\xfe\x15')
+    b: bytes = bytearray(b'\xae\x80\xfe\x15')
     assert b[0] == 174
     assert b[1] == 128
-    assert get_item(b, 2) == 254
-    assert get_item(b, 3) == 21
+    assert b[2] == 254
+    assert b[3] == 21
+    assert b[-4] == 174
     with assertRaises(IndexError, "index out of range"):
-        get_item(b, 4)
+        b[4]
     with assertRaises(IndexError, "index out of range"):
-        get_item(b, -5)
-    b[0] = 175
-    b[1] = 255
-    b[2] = 128
-    b[-1] = 22
-    assert b[0] == 175
-    assert b[1] == 255
-    assert b[-1] == 22
-    assert b[2] == 128
+        b[-5]
+    b2 = bytearray([175, 255, 128, 22])
+    assert b2[0] == 175
+    assert b2[1] == 255
+    assert b2[-1] == 22
+    assert b2[2] == 128
     with assertRaises(ValueError, "byte must be in range(0, 256)"):
-        b[0] = -1
+        b2[0] = -1
     with assertRaises(ValueError, "byte must be in range(0, 256)"):
-        b[0] = 256
+        b2[0] = 256
 
 [case testBytesJoin]
 from typing import Any

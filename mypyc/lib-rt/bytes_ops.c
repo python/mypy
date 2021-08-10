@@ -9,16 +9,14 @@ CPyTagged CPyBytes_GetItem(PyObject *o, CPyTagged index) {
     if (CPyTagged_CheckShort(index)) {
         Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
         Py_ssize_t size = ((PyVarObject *)o)->ob_size;
-        if ((n >= 0 && n >= size) || (n < 0 && n + size < 0)) {
+        if (n < 0)
+            n += size;
+        if (n < 0 || n >= size) {
             PyErr_SetString(PyExc_IndexError, "index out of range");
             return CPY_INT_TAG;
         }
-        if (n < 0)
-            n += size;
-        int num = PyBytes_Check(o) ? ((PyBytesObject *)o)->ob_sval[n]
-                                   : ((PyByteArrayObject *)o)->ob_bytes[n];
-        if (num < 0)
-            num += 256;
+        unsigned char num = PyBytes_Check(o) ? ((PyBytesObject *)o)->ob_sval[n]
+                                             : ((PyByteArrayObject *)o)->ob_bytes[n];
         return num << 1;
     } else {
         PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
