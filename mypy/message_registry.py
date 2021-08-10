@@ -29,10 +29,12 @@ INVALID_TYPE_RAW_ENUM_VALUE: Final = ErrorMessage(
 NO_RETURN_VALUE_EXPECTED: Final = ErrorMessage("No return value expected", codes.RETURN_VALUE)
 MISSING_RETURN_STATEMENT: Final = ErrorMessage("Missing return statement", codes.RETURN)
 INVALID_IMPLICIT_RETURN: Final = ErrorMessage("Implicit return in function which does not return")
-INCOMPATIBLE_RETURN_VALUE_TYPE: Final = "Incompatible return value type"
+INCOMPATIBLE_RETURN_VALUE_TYPE: Final = ErrorMessage(
+    "Incompatible return value type", codes.RETURN_VALUE
+)
 RETURN_VALUE_EXPECTED: Final = ErrorMessage("Return value expected", codes.RETURN_VALUE)
 NO_RETURN_EXPECTED: Final = ErrorMessage("Return statement in function which does not return")
-INVALID_EXCEPTION: Final = "Exception must be derived from BaseException"
+INVALID_EXCEPTION: Final = ErrorMessage("Exception must be derived from BaseException")
 INVALID_EXCEPTION_TYPE: Final = ErrorMessage("Exception type must be derived from BaseException")
 RETURN_IN_ASYNC_GENERATOR: Final = ErrorMessage(
     '"return" with value in async generator is not allowed'
@@ -49,8 +51,8 @@ INVALID_GENERATOR_RETURN_ITEM_TYPE: Final = ErrorMessage(
     " its third type parameter in Python 2"
 )
 YIELD_VALUE_EXPECTED: Final = ErrorMessage("Yield value expected")
-INCOMPATIBLE_TYPES: Final = "Incompatible types"
-INCOMPATIBLE_TYPES_IN_ASSIGNMENT: Final = "Incompatible types in assignment"
+INCOMPATIBLE_TYPES: Final = "Incompatible types"  # TODO: make ErrorMessage
+INCOMPATIBLE_TYPES_IN_ASSIGNMENT: Final = "Incompatible types in assignment"  # TODO: ErrorMessage
 INCOMPATIBLE_REDEFINITION: Final = ErrorMessage("Incompatible redefinition")
 INCOMPATIBLE_TYPES_IN_AWAIT: Final = 'Incompatible types in "await"'
 INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER: Final = (
@@ -71,7 +73,7 @@ INVALID_SLICE_INDEX: Final = "Slice index must be an integer or None"
 CANNOT_INFER_LAMBDA_TYPE: Final = ErrorMessage("Cannot infer type of lambda")
 CANNOT_ACCESS_INIT: Final = ErrorMessage('Cannot access "__init__" directly')
 NON_INSTANCE_NEW_TYPE: Final = ErrorMessage('"__new__" must return a class instance (got {})')
-INVALID_NEW_TYPE: Final = 'Incompatible return type for "__new__"'
+INVALID_NEW_TYPE: Final = ErrorMessage('Incompatible return type for "__new__"')
 BAD_CONSTRUCTOR_TYPE: Final = ErrorMessage("Unsupported decorated constructor type")
 CANNOT_ASSIGN_TO_METHOD: Final = ErrorMessage("Cannot assign to a method", codes.ASSIGNMENT)
 CANNOT_ASSIGN_TO_TYPE: Final = ErrorMessage("Cannot assign to a type")

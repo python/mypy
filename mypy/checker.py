@@ -779,7 +779,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 else:
                     # TODO: Update conditional type binder.
                     self.check_subtype(new_type, orig_type, defn,
-                                       message_registry.INCOMPATIBLE_REDEFINITION.value,
+                                       message_registry.INCOMPATIBLE_REDEFINITION,
                                        'redefinition with type',
                                        'original type')
 
@@ -4678,7 +4678,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                       subtype: Type,
                       supertype: Type,
                       context: Context,
-                      msg: str = message_registry.INCOMPATIBLE_TYPES,
+                      msg: Union[str, ErrorMessage] = message_registry.INCOMPATIBLE_TYPES,
                       subtype_label: Optional[str] = None,
                       supertype_label: Optional[str] = None,
                       *,
@@ -4688,9 +4688,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if is_subtype(subtype, supertype):
             return True
 
+        if isinstance(msg, ErrorMessage):
+            msg_text = msg.value
+            code = msg.code
+        else:
+            msg_text = msg
         subtype = get_proper_type(subtype)
         supertype = get_proper_type(supertype)
-        if self.msg.try_report_long_tuple_assignment_error(subtype, supertype, context, msg,
+        if self.msg.try_report_long_tuple_assignment_error(subtype, supertype, context, msg_text,
                                        subtype_label, supertype_label, code=code):
             return False
         if self.should_suppress_optional_error([subtype]):
@@ -4709,8 +4714,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(subtype, Instance) and isinstance(supertype, Instance):
                 notes = append_invariance_notes([], subtype, supertype)
         if extra_info:
-            msg += ' (' + ', '.join(extra_info) + ')'
-        self.fail(ErrorMessage(msg, code=code), context)
+            msg_text += ' (' + ', '.join(extra_info) + ')'
+
+        self.fail(ErrorMessage(msg_text, code=code), context)
         for note in notes:
             self.msg.note(note, context, code=code)
         if note_msg:
