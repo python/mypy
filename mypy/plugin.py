@@ -136,6 +136,7 @@ from mypy.lookup import lookup_fully_qualified
 from mypy.errorcodes import ErrorCode
 from mypy.message_registry import ErrorMessage
 
+
 @trait
 class TypeAnalyzerPluginInterface:
     """Interface for accessing semantic analyzer functionality in plugins.
