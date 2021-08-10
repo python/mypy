@@ -36,7 +36,7 @@ from mypyc.primitives.generic_ops import py_setattr_op, next_raw_op, iter_op
 from mypyc.primitives.misc_ops import (
     check_stop_op, yield_from_except_op, coro_op, send_op
 )
-from mypyc.primitives.dict_ops import dict_set_item_op
+from mypyc.primitives.dict_ops import dict_set_item_op, dict_new_op
 from mypyc.common import SELF_NAME, LAMBDA_NAME, decorator_helper_name
 from mypyc.sametype import is_same_method_signature
 from mypyc.irbuild.util import is_constant
