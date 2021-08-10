@@ -27,6 +27,7 @@ from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.irbuild.format_str_tokenizer import (
     tokenizer_printf_style, join_formatted_strings, convert_expr
 )
+from mypyc.primitives.bytes_ops import bytes_slice_op
 from mypyc.primitives.registry import CFunctionDescription, builtin_names, binary_ops
 from mypyc.primitives.generic_ops import iter_op
 from mypyc.primitives.misc_ops import new_slice_op, ellipsis_op, type_op, get_module_dict_op
@@ -441,7 +442,7 @@ def try_gen_slice_op(builder: IRBuilder, base: Value, index: SliceExpr) -> Optio
             # Replace missing end index with the largest short integer
             # (a sequence can't be longer).
             end = builder.load_int(MAX_SHORT_INT)
-        candidates = [list_slice_op, tuple_slice_op, str_slice_op]
+        candidates = [list_slice_op, tuple_slice_op, str_slice_op, bytes_slice_op]
         return builder.builder.matching_call_c(candidates, [base, begin, end], index.line)
 
     return None

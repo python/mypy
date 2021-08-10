@@ -23,6 +23,32 @@ PyObject *CPyBytes_Concat(PyObject *a, PyObject *b) {
     }
 }
 
+#define CLAMP(a, b, c) (a < b ? b : (a >= c ? c : a))
+
+PyObject *CPyBytes_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
+    if ((PyBytes_Check(obj) || PyByteArray_Check(obj))
+            && CPyTagged_CheckShort(start) && CPyTagged_CheckShort(end)) {
+        Py_ssize_t startn = CPyTagged_ShortAsSsize_t(start);
+        Py_ssize_t endn = CPyTagged_ShortAsSsize_t(end);
+        Py_ssize_t len = ((PyVarObject *)obj)->ob_size;
+        if (startn < 0) {
+            startn += len;
+        }
+        if (endn < 0) {
+            endn += len;
+        }
+        startn = CLAMP(startn, 0, len);
+        endn = CLAMP(endn, 0, len);
+        Py_ssize_t slice_len = endn - startn;
+        if (PyBytes_Check(obj)) {
+            return PyBytes_FromStringAndSize(PyBytes_AS_STRING(obj) + startn, slice_len);
+        } else {
+            return PyByteArray_FromStringAndSize(PyByteArray_AS_STRING(obj) + startn, slice_len);
+        }
+    }
+    return CPyObject_GetSlice(obj, start, end);
+}
+
 // Like _PyBytes_Join but fallback to dynamic call if 'sep' is not bytes
 // (mostly commonly, for bytearrays)
 PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter) {

@@ -98,6 +98,36 @@ def test_len() -> None:
     assert len(b) == 3
     assert len(bytes()) == 0
 
+[case testBytesSlicing]
+def test_bytes_slicing() -> None:
+    b = b'abcdefg'
+    zero = int()
+    ten = 10 + zero
+    two = 2 + zero
+    five = 5 + zero
+    seven = 7 + zero
+    assert b[:ten] == b'abcdefg'
+    assert b[0:seven] == b'abcdefg'
+    assert b[two:five] == b'cde'
+    assert b[two:two] == b''
+    assert b[-two:-two] == b''
+    assert b[-ten:(-ten+1)] == b''
+    assert b[:-two] == b'abcde'
+    assert b[:two] == b'ab'
+    assert b[:] == b'abcdefg'
+    assert b[-two:] == b'fg'
+    assert b[zero:] == b'abcdefg'
+    assert b[:zero] == b''
+    assert b[-ten:] == b'abcdefg'
+    assert b[-ten:ten] == b'abcdefg'
+    big_int: int = 1000 * 1000 * 1000 * 1000 * 1000 * 1000 * 1000
+    assert b[1:big_int] == b'bcdefg'
+    assert b[big_int:] == b''
+    assert b[-big_int:-1] == b'abcdef'
+    assert type(b[-ten:]) == bytes
+    assert type(b[-big_int:-1]) == bytes
+    assert type(b[:]) == bytes
+
 [case testBytearrayBasics]
 from typing import Any
 
@@ -125,6 +155,36 @@ def test_bytearray_passed_into_bytes() -> None:
     assert f(bytearray(3))
     brr1: Any = bytearray()
     assert f(brr1)
+
+[case testBytearraySlicing]
+def test_bytearray_slicing() -> None:
+    b: bytes = bytearray(b'abcdefg')
+    zero = int()
+    ten = 10 + zero
+    two = 2 + zero
+    five = 5 + zero
+    seven = 7 + zero
+    assert b[:ten] == b'abcdefg'
+    assert b[0:seven] == b'abcdefg'
+    assert b[two:five] == b'cde'
+    assert b[two:two] == b''
+    assert b[-two:-two] == b''
+    assert b[-ten:(-ten+1)] == b''
+    assert b[:-two] == b'abcde'
+    assert b[:two] == b'ab'
+    assert b[:] == b'abcdefg'
+    assert b[-two:] == b'fg'
+    assert b[zero:] == b'abcdefg'
+    assert b[:zero] == b''
+    assert b[-ten:] == b'abcdefg'
+    assert b[-ten:ten] == b'abcdefg'
+    big_int: int = 1000 * 1000 * 1000 * 1000 * 1000 * 1000 * 1000
+    assert b[1:big_int] == b'bcdefg'
+    assert b[big_int:] == b''
+    assert b[-big_int:-1] == b'abcdef'
+    assert type(b[-ten:]) == bytearray
+    assert type(b[-big_int:-1]) == bytearray
+    assert type(b[:]) == bytearray
 
 [case testBytesJoin]
 from typing import Any
