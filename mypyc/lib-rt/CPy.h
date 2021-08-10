@@ -558,6 +558,8 @@ PyObject *CPy_CallReverseOpMethod(PyObject *left, PyObject *right, const char *o
 PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
                                PyObject *import_name, PyObject *as_name);
 
+PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func, PyObject *cls,
+                                             PyObject *func);
 #ifdef __cplusplus
 }
 #endif
