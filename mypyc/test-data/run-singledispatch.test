@@ -649,10 +649,9 @@ def f(arg) -> None:
     pass
 [file register.py]
 from native import f
+from testutil import assertRaises
 
-try:
+with assertRaises(TypeError, 'Invalid first argument to `register()`'):
     @f.register
     def _():
         pass
-except TypeError:
-    pass
