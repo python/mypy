@@ -55,6 +55,7 @@ from mypy.typeops import (
     is_literal_type_like,
 )
 from mypy import message_registry
+from mypy.message_registry import ErrorMessage
 from mypy.subtypes import (
     is_subtype, is_equivalent, is_proper_subtype, is_more_precise,
     restrict_subtype_away, is_subtype_ignoring_tvars, is_callable_compatible,
@@ -4685,7 +4686,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                       subtype: Type,
                       supertype: Type,
                       context: Context,
-                      msg: str = message_registry.INCOMPATIBLE_TYPES,
+                      msg: Union[str, ErrorMessage] = message_registry.INCOMPATIBLE_TYPES,
                       subtype_label: Optional[str] = None,
                       supertype_label: Optional[str] = None,
                       *,
@@ -4695,9 +4696,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if is_subtype(subtype, supertype):
             return True
 
+        if isinstance(msg, ErrorMessage):
+            msg_text = msg.value
+            code = msg.code
+        else:
+            msg_text = msg
         subtype = get_proper_type(subtype)
         supertype = get_proper_type(supertype)
-        if self.msg.try_report_long_tuple_assignment_error(subtype, supertype, context, msg,
+        if self.msg.try_report_long_tuple_assignment_error(subtype, supertype, context, msg_text,
                                        subtype_label, supertype_label, code=code):
             return False
         if self.should_suppress_optional_error([subtype]):
@@ -4716,8 +4722,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(subtype, Instance) and isinstance(supertype, Instance):
                 notes = append_invariance_notes([], subtype, supertype)
         if extra_info:
-            msg += ' (' + ', '.join(extra_info) + ')'
-        self.fail(msg, context, code=code)
+            msg_text += ' (' + ', '.join(extra_info) + ')'
+
+        self.fail(ErrorMessage(msg_text, code=code), context)
         for note in notes:
             self.msg.note(note, context, code=code)
         if note_msg:
@@ -4988,8 +4995,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Create a temporary node with the given, fixed type."""
         return TempNode(t, context=context)
 
-    def fail(self, msg: str, context: Context, *, code: Optional[ErrorCode] = None) -> None:
+    def fail(self, msg: Union[str, ErrorMessage], context: Context, *,
+             code: Optional[ErrorCode] = None) -> None:
         """Produce an error message."""
+        if isinstance(msg, ErrorMessage):
+            self.msg.fail(msg.value, context, code=msg.code)
+            return
         self.msg.fail(msg, context, code=code)
 
     def note(self,

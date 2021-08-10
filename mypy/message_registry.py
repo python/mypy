@@ -6,7 +6,19 @@ ultimately consumed by messages.MessageBuilder.fail(). For more non-trivial mess
 add a method to MessageBuilder and call this instead.
 """
 
+from typing import NamedTuple, Optional
 from typing_extensions import Final
+
+from mypy import errorcodes as codes
+
+
+class ErrorMessage(NamedTuple):
+    value: str
+    code: Optional[codes.ErrorCode] = None
+
+    def format(self, *args: object, **kwargs: object) -> "ErrorMessage":
+        return ErrorMessage(self.value.format(*args, **kwargs), code=self.code)
+
 
 # Invalid types
 INVALID_TYPE_RAW_ENUM_VALUE: Final = "Invalid type: try using Literal[{}.{}] instead?"
@@ -32,11 +44,11 @@ INVALID_GENERATOR_RETURN_ITEM_TYPE: Final = (
     "The return type of a generator function must be None in"
     " its third type parameter in Python 2"
 )
-YIELD_VALUE_EXPECTED: Final = "Yield value expected"
+YIELD_VALUE_EXPECTED: Final = ErrorMessage("Yield value expected")
 INCOMPATIBLE_TYPES: Final = "Incompatible types"
 INCOMPATIBLE_TYPES_IN_ASSIGNMENT: Final = "Incompatible types in assignment"
 INCOMPATIBLE_REDEFINITION: Final = "Incompatible redefinition"
-INCOMPATIBLE_TYPES_IN_AWAIT: Final = 'Incompatible types in "await"'
+INCOMPATIBLE_TYPES_IN_AWAIT: Final = ErrorMessage('Incompatible types in "await"')
 INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER: Final = (
     'Incompatible types in "async with" for "__aenter__"'
 )
@@ -45,14 +57,14 @@ INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT: Final = (
 )
 INCOMPATIBLE_TYPES_IN_ASYNC_FOR: Final = 'Incompatible types in "async for"'
 
-INCOMPATIBLE_TYPES_IN_YIELD: Final = 'Incompatible types in "yield"'
-INCOMPATIBLE_TYPES_IN_YIELD_FROM: Final = 'Incompatible types in "yield from"'
+INCOMPATIBLE_TYPES_IN_YIELD: Final = ErrorMessage('Incompatible types in "yield"')
+INCOMPATIBLE_TYPES_IN_YIELD_FROM: Final = ErrorMessage('Incompatible types in "yield from"')
 INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION: Final = "Incompatible types in string interpolation"
 MUST_HAVE_NONE_RETURN_TYPE: Final = 'The return type of "{}" must be None'
-INVALID_TUPLE_INDEX_TYPE: Final = "Invalid tuple index type"
-TUPLE_INDEX_OUT_OF_RANGE: Final = "Tuple index out of range"
-INVALID_SLICE_INDEX: Final = "Slice index must be an integer or None"
-CANNOT_INFER_LAMBDA_TYPE: Final = "Cannot infer type of lambda"
+INVALID_TUPLE_INDEX_TYPE: Final = ErrorMessage("Invalid tuple index type")
+TUPLE_INDEX_OUT_OF_RANGE: Final = ErrorMessage("Tuple index out of range")
+INVALID_SLICE_INDEX: Final = ErrorMessage("Slice index must be an integer or None")
+CANNOT_INFER_LAMBDA_TYPE: Final = ErrorMessage("Cannot infer type of lambda")
 CANNOT_ACCESS_INIT: Final = 'Cannot access "__init__" directly'
 NON_INSTANCE_NEW_TYPE: Final = '"__new__" must return a class instance (got {})'
 INVALID_NEW_TYPE: Final = 'Incompatible return type for "__new__"'
@@ -75,17 +87,17 @@ FUNCTION_PARAMETER_CANNOT_BE_COVARIANT: Final = (
 )
 INCOMPATIBLE_IMPORT_OF: Final = "Incompatible import of"
 FUNCTION_TYPE_EXPECTED: Final = "Function is missing a type annotation"
-ONLY_CLASS_APPLICATION: Final = "Type application is only supported for generic classes"
+ONLY_CLASS_APPLICATION: Final = ErrorMessage("Type application is only supported for generic classes")
 RETURN_TYPE_EXPECTED: Final = "Function is missing a return type annotation"
 ARGUMENT_TYPE_EXPECTED: Final = "Function is missing a type annotation for one or more arguments"
 KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE: Final = (
     'Keyword argument only valid with "str" key type in call to "dict"'
 )
 ALL_MUST_BE_SEQ_STR: Final = "Type of __all__ must be {}, not {}"
-INVALID_TYPEDDICT_ARGS: Final = (
+INVALID_TYPEDDICT_ARGS: Final = ErrorMessage(
     "Expected keyword arguments, {...}, or dict(...) in TypedDict constructor"
 )
-TYPEDDICT_KEY_MUST_BE_STRING_LITERAL: Final = "Expected TypedDict key to be string literal"
+TYPEDDICT_KEY_MUST_BE_STRING_LITERAL: Final = ErrorMessage("Expected TypedDict key to be string literal")
 MALFORMED_ASSERT: Final = "Assertion is always true, perhaps remove parentheses?"
 DUPLICATE_TYPE_SIGNATURES: Final = "Function has duplicate type signatures"
 DESCRIPTOR_SET_NOT_CALLABLE: Final = "{}.__set__ is not callable"
@@ -107,17 +119,17 @@ INCOMPATIBLE_TYPEVAR_VALUE: Final = 'Value of type variable "{}" of {} cannot be
 CANNOT_USE_TYPEVAR_AS_EXPRESSION: Final = 'Type variable "{}.{}" cannot be used as an expression'
 
 # Super
-TOO_MANY_ARGS_FOR_SUPER: Final = 'Too many arguments for "super"'
-TOO_FEW_ARGS_FOR_SUPER: Final = 'Too few arguments for "super"'
-SUPER_WITH_SINGLE_ARG_NOT_SUPPORTED: Final = '"super" with a single argument not supported'
-UNSUPPORTED_ARG_1_FOR_SUPER: Final = 'Unsupported argument 1 for "super"'
-UNSUPPORTED_ARG_2_FOR_SUPER: Final = 'Unsupported argument 2 for "super"'
-SUPER_VARARGS_NOT_SUPPORTED: Final = 'Varargs not supported with "super"'
-SUPER_POSITIONAL_ARGS_REQUIRED: Final = '"super" only accepts positional arguments'
-SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1: Final = 'Argument 2 for "super" not an instance of argument 1'
-TARGET_CLASS_HAS_NO_BASE_CLASS: Final = "Target class has no base class"
-SUPER_OUTSIDE_OF_METHOD_NOT_SUPPORTED: Final = "super() outside of a method is not supported"
-SUPER_ENCLOSING_POSITIONAL_ARGS_REQUIRED: Final = (
+TOO_MANY_ARGS_FOR_SUPER: Final = ErrorMessage('Too many arguments for "super"')
+TOO_FEW_ARGS_FOR_SUPER: Final = ErrorMessage('Too few arguments for "super"', codes.CALL_ARG)
+SUPER_WITH_SINGLE_ARG_NOT_SUPPORTED: Final = ErrorMessage('"super" with a single argument not supported')
+UNSUPPORTED_ARG_1_FOR_SUPER: Final = ErrorMessage('Unsupported argument 1 for "super"')
+UNSUPPORTED_ARG_2_FOR_SUPER: Final = ErrorMessage('Unsupported argument 2 for "super"')
+SUPER_VARARGS_NOT_SUPPORTED: Final = ErrorMessage('Varargs not supported with "super"')
+SUPER_POSITIONAL_ARGS_REQUIRED: Final = ErrorMessage('"super" only accepts positional arguments')
+SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1: Final = ErrorMessage('Argument 2 for "super" not an instance of argument 1')
+TARGET_CLASS_HAS_NO_BASE_CLASS: Final = ErrorMessage("Target class has no base class")
+SUPER_OUTSIDE_OF_METHOD_NOT_SUPPORTED: Final = ErrorMessage("super() outside of a method is not supported")
+SUPER_ENCLOSING_POSITIONAL_ARGS_REQUIRED: Final = ErrorMessage(
     "super() requires one or more positional arguments in enclosing function"
 )
 
@@ -153,7 +165,8 @@ CANNOT_OVERRIDE_CLASS_VAR: Final = (
 )
 
 # Protocol
-RUNTIME_PROTOCOL_EXPECTED: Final = (
+RUNTIME_PROTOCOL_EXPECTED: Final = ErrorMessage(
     "Only @runtime_checkable protocols can be used with instance and class checks"
 )
-CANNOT_INSTANTIATE_PROTOCOL: Final = 'Cannot instantiate protocol class "{}"'
+CANNOT_INSTANTIATE_PROTOCOL: Final = ErrorMessage('Cannot instantiate protocol class "{}"')
+TOO_MANY_UNION_COMBINATIONS: Final = ErrorMessage("Not all union combinations were tried because there are too many unions") 
