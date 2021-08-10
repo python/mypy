@@ -44,8 +44,8 @@ VAR_ANNOTATED: Final = ErrorCode(
 OVERRIDE: Final = ErrorCode(
     "override", "Check that method override is compatible with base class", "General"
 )
-RETURN: Final = ErrorCode("return", "Check that function always returns a value", "General")
-RETURN_VALUE: Final = ErrorCode(
+RETURN: Final[ErrorCode] = ErrorCode("return", "Check that function always returns a value", "General")
+RETURN_VALUE: Final[ErrorCode] = ErrorCode(
     "return-value", "Check that return value is compatible with signature", "General"
 )
 ASSIGNMENT: Final = ErrorCode(
@@ -94,7 +94,7 @@ EXIT_RETURN: Final = ErrorCode(
 )
 
 # These error codes aren't enabled by default.
-NO_UNTYPED_DEF: Final = ErrorCode(
+NO_UNTYPED_DEF: Final[ErrorCode] = ErrorCode(
     "no-untyped-def", "Check that every function has an annotation", "General"
 )
 NO_UNTYPED_CALL: Final = ErrorCode(
