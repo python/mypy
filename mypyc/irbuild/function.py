@@ -847,7 +847,7 @@ def generate_singledispatch_dispatch_function(
             func_decl, arg_info.args, arg_info.arg_kinds, arg_info.arg_names, line
         )
         coerced = builder.coerce(ret_val, current_func_decl.sig.ret_type, line)
-        builder.nonlocal_control[-1].gen_return(builder, coerced, line)
+        builder.add(Return(coerced))
 
     registry = load_singledispatch_registry(builder, fitem, line)
 
@@ -897,7 +897,7 @@ def generate_singledispatch_dispatch_function(
         impl_to_use, arg_info.args, line, arg_info.arg_kinds, arg_info.arg_names
     )
     coerced = builder.coerce(ret_val, current_func_decl.sig.ret_type, line)
-    builder.nonlocal_control[-1].gen_return(builder, coerced, line)
+    builder.add(Return(coerced))
 
 
 def gen_dispatch_func_ir(
