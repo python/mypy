@@ -153,16 +153,25 @@ str_ssize_t_size_op = custom_op(
     error_kind=ERR_NEG_INT)
 
 # obj.decode()
+method_op(
+    name='decode',
+    arg_types=[bytes_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name='CPy_Decode',
+    error_kind=ERR_MAGIC)
+
 # obj.decode(encoding)
+method_op(
+    name='decode',
+    arg_types=[bytes_rprimitive, str_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name='CPy_DecodeWithEncoding',
+    error_kind=ERR_MAGIC)
+
 # obj.decode(encoding, errors)
-decode_types: List[RType] = [bytes_rprimitive, str_rprimitive, str_rprimitive]
-decode_constants: List[Tuple[int, RType]] = [(0, pointer_rprimitive),
-                                             (0, pointer_rprimitive)]
-for i in range(len(decode_types)):
-    method_op(
-        name='decode',
-        arg_types=decode_types[0:i+1],
-        return_type=str_rprimitive,
-        c_function_name='CPy_Decode',
-        extra_int_constants=decode_constants[0:(len(decode_types)-i-1)],
-        error_kind=ERR_MAGIC)
+method_op(
+    name='decode',
+    arg_types=[bytes_rprimitive, str_rprimitive, str_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name='CPy_DecodeWithErrors',
+    error_kind=ERR_MAGIC)
