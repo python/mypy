@@ -623,3 +623,15 @@ def test_str_min() -> None:
     x: str = 'aaa'
     y: str = 'bbb'
     assert min(x, y) == 'aaa'
+
+class SomeItem:
+    def __init__(self, val: str) -> None:
+        self.val = val
+    
+    def __lt__(self, x: 'SomeItem') -> bool:
+        return self.val < x.val
+
+def test_dunder_min() -> None:
+    x = SomeItem('aaa')
+    y = SomeItem('bbb')
+    assert min(x, y) == 'aaa'
