@@ -34,7 +34,7 @@ from mypyc.ir.func_ir import (
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.primitives.generic_ops import py_setattr_op, next_raw_op, iter_op
 from mypyc.primitives.misc_ops import (
-    check_stop_op, yield_from_except_op, coro_op, send_op
+    check_stop_op, yield_from_except_op, coro_op, send_op, register_function
 )
 from mypyc.primitives.dict_ops import dict_set_item_op, dict_new_op
 from mypyc.common import SELF_NAME, LAMBDA_NAME, decorator_helper_name
@@ -920,6 +920,7 @@ def gen_dispatch_func_ir(
     args, _, blocks, _, fn_info = builder.leave()
     dispatch_func_ir = add_call_to_callable_class(builder, args, blocks, sig, fn_info)
     add_get_to_callable_class(builder, fn_info)
+    add_register_method_to_callable_class(builder, fn_info)
     func_reg = instantiate_callable_class(builder, fn_info)
 
     return dispatch_func_ir, func_reg
@@ -937,6 +938,14 @@ def generate_singledispatch_callable_class_ctor(builder: IRBuilder) -> None:
     builder.leave_method()
 
 
+def add_register_method_to_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
+    line = -1
+    builder.enter_method(fn_info.callable_class.ir, 'register', object_rprimitive)
+    cls_arg = builder.add_argument('cls', object_rprimitive)
+    func_arg = builder.add_argument('func', object_rprimitive, ArgKind.ARG_OPT)
+    ret_val = builder.call_c(register_function, [builder.self(), cls_arg, func_arg], line)
+    builder.add(Return(ret_val, line))
+    builder.leave_method()
 
 
 def load_singledispatch_registry(builder: IRBuilder, fitem: FuncDef, line: int) -> Value:
