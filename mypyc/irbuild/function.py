@@ -89,9 +89,8 @@ def transform_decorator(builder: IRBuilder, dec: Decorator) -> None:
         dec.func.name,
         builder.mapper.fdef_to_sig(dec.func)
     )
-
-    if dec.func in builder.nested_fitems:
-        assert func_reg is not None
+    decorated_func: Optional[Value] = None
+    if func_reg:
         decorated_func = load_decorated_func(builder, dec.func, func_reg)
         builder.assign(get_func_target(builder, dec.func), decorated_func, dec.func.line)
         func_reg = decorated_func
@@ -107,6 +106,7 @@ def transform_decorator(builder: IRBuilder, dec: Decorator) -> None:
         orig_func = builder.load_global_str(helper_name, dec.line)
         decorated_func = load_decorated_func(builder, dec.func, orig_func)
 
+    if decorated_func is not None:
         # Set the callable object representing the decorated function as a global.
         builder.call_c(dict_set_item_op,
                     [builder.load_globals_dict(),
