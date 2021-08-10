@@ -710,8 +710,8 @@ CPy_CallReverseOpMethod(PyObject *left,
 }
 
 PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func,
-                                        PyObject *cls,
-                                        PyObject *func) {
+                                             PyObject *cls,
+                                             PyObject *func) {
     PyObject *registry = PyObject_GetAttrString(singledispatch_func, "registry");
     PyObject *register_func = NULL;
     PyObject *typing = NULL;
