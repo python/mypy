@@ -134,7 +134,7 @@ CANNOT_USE_TYPEVAR_AS_EXPRESSION: Final = 'Type variable "{}.{}" cannot be used 
 
 # Super
 TOO_MANY_ARGS_FOR_SUPER: Final = 'Too many arguments for "super"'
-TOO_FEW_ARGS_FOR_SUPER: Final = ('Too few arguments for "super"', codes.CALL_ARG)
+TOO_FEW_ARGS_FOR_SUPER: Final = 'Too few arguments for "super"'
 SUPER_WITH_SINGLE_ARG_NOT_SUPPORTED: Final = '"super" with a single argument not supported'
 UNSUPPORTED_ARG_1_FOR_SUPER: Final = 'Unsupported argument 1 for "super"'
 UNSUPPORTED_ARG_2_FOR_SUPER: Final = 'Unsupported argument 2 for "super"'
