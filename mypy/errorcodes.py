@@ -44,7 +44,9 @@ VAR_ANNOTATED: Final = ErrorCode(
 OVERRIDE: Final = ErrorCode(
     "override", "Check that method override is compatible with base class", "General"
 )
-RETURN: Final[ErrorCode] = ErrorCode("return", "Check that function always returns a value", "General")
+RETURN: Final[ErrorCode] = ErrorCode(
+    "return", "Check that function always returns a value", "General"
+)
 RETURN_VALUE: Final[ErrorCode] = ErrorCode(
     "return-value", "Check that return value is compatible with signature", "General"
 )
