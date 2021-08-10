@@ -634,7 +634,7 @@ def c(arg: C) -> str:
 from native import f, A, B, C
 from register_impl import a, c
 # We need a custom driver here because register_impl has to be run before we test this (so that the
-# additional implementations are registered) 
+# additional implementations are registered)
 assert f(C()) == 'c'
 assert f(A()) == 'a'
 assert f(B()) == 'b'
