@@ -438,6 +438,13 @@ class SemanticAnalyzer(NodeVisitor[None],
                 node = sym.node
                 assert isinstance(node, TypeInfo)
                 typ = Instance(node, [self.str_type()])
+            elif name == '__annotations__':
+                sym = self.lookup_qualified("__builtins__.dict", Context())
+                if not sym:
+                    continue
+                node = sym.node
+                assert isinstance(node, TypeInfo)
+                typ = Instance(node, [self.str_type(), self.named_type('__builtins__.type')])
             else:
                 assert t is not None, 'type should be specified for {}'.format(name)
                 typ = UnboundType(t)
