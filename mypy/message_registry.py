@@ -87,7 +87,9 @@ FUNCTION_PARAMETER_CANNOT_BE_COVARIANT: Final = (
 )
 INCOMPATIBLE_IMPORT_OF: Final = "Incompatible import of"
 FUNCTION_TYPE_EXPECTED: Final = "Function is missing a type annotation"
-ONLY_CLASS_APPLICATION: Final = ErrorMessage("Type application is only supported for generic classes")
+ONLY_CLASS_APPLICATION: Final = ErrorMessage(
+    "Type application is only supported for generic classes"
+)
 RETURN_TYPE_EXPECTED: Final = "Function is missing a return type annotation"
 ARGUMENT_TYPE_EXPECTED: Final = "Function is missing a type annotation for one or more arguments"
 KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE: Final = (
@@ -97,7 +99,9 @@ ALL_MUST_BE_SEQ_STR: Final = "Type of __all__ must be {}, not {}"
 INVALID_TYPEDDICT_ARGS: Final = ErrorMessage(
     "Expected keyword arguments, {...}, or dict(...) in TypedDict constructor"
 )
-TYPEDDICT_KEY_MUST_BE_STRING_LITERAL: Final = ErrorMessage("Expected TypedDict key to be string literal")
+TYPEDDICT_KEY_MUST_BE_STRING_LITERAL: Final = ErrorMessage(
+    "Expected TypedDict key to be string literal"
+)
 MALFORMED_ASSERT: Final = "Assertion is always true, perhaps remove parentheses?"
 DUPLICATE_TYPE_SIGNATURES: Final = "Function has duplicate type signatures"
 DESCRIPTOR_SET_NOT_CALLABLE: Final = "{}.__set__ is not callable"
@@ -121,14 +125,20 @@ CANNOT_USE_TYPEVAR_AS_EXPRESSION: Final = 'Type variable "{}.{}" cannot be used 
 # Super
 TOO_MANY_ARGS_FOR_SUPER: Final = ErrorMessage('Too many arguments for "super"')
 TOO_FEW_ARGS_FOR_SUPER: Final = ErrorMessage('Too few arguments for "super"', codes.CALL_ARG)
-SUPER_WITH_SINGLE_ARG_NOT_SUPPORTED: Final = ErrorMessage('"super" with a single argument not supported')
+SUPER_WITH_SINGLE_ARG_NOT_SUPPORTED: Final = ErrorMessage(
+    '"super" with a single argument not supported'
+)
 UNSUPPORTED_ARG_1_FOR_SUPER: Final = ErrorMessage('Unsupported argument 1 for "super"')
 UNSUPPORTED_ARG_2_FOR_SUPER: Final = ErrorMessage('Unsupported argument 2 for "super"')
 SUPER_VARARGS_NOT_SUPPORTED: Final = ErrorMessage('Varargs not supported with "super"')
 SUPER_POSITIONAL_ARGS_REQUIRED: Final = ErrorMessage('"super" only accepts positional arguments')
-SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1: Final = ErrorMessage('Argument 2 for "super" not an instance of argument 1')
+SUPER_ARG_2_NOT_INSTANCE_OF_ARG_1: Final = ErrorMessage(
+    'Argument 2 for "super" not an instance of argument 1'
+)
 TARGET_CLASS_HAS_NO_BASE_CLASS: Final = ErrorMessage("Target class has no base class")
-SUPER_OUTSIDE_OF_METHOD_NOT_SUPPORTED: Final = ErrorMessage("super() outside of a method is not supported")
+SUPER_OUTSIDE_OF_METHOD_NOT_SUPPORTED: Final = ErrorMessage(
+    "super() outside of a method is not supported"
+)
 SUPER_ENCLOSING_POSITIONAL_ARGS_REQUIRED: Final = ErrorMessage(
     "super() requires one or more positional arguments in enclosing function"
 )
@@ -169,4 +179,6 @@ RUNTIME_PROTOCOL_EXPECTED: Final = ErrorMessage(
     "Only @runtime_checkable protocols can be used with instance and class checks"
 )
 CANNOT_INSTANTIATE_PROTOCOL: Final = ErrorMessage('Cannot instantiate protocol class "{}"')
-TOO_MANY_UNION_COMBINATIONS: Final = ErrorMessage("Not all union combinations were tried because there are too many unions") 
+TOO_MANY_UNION_COMBINATIONS: Final = ErrorMessage(
+    "Not all union combinations were tried because there are too many unions"
+)
