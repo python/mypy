@@ -62,8 +62,8 @@ def test_indexing() -> None:
         b[4]
     with assertRaises(IndexError, "index out of range"):
         b[-5]
-    b[2**26]
-    b[2**56]
+    with assertRaises(IndexError, "index out of range"):
+        b[2**26]
 
 def test_concat() -> None:
     b1 = b'123' + bytes()
