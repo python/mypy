@@ -119,6 +119,7 @@ def test_bytes_slicing() -> None:
     seven = 7 + zero
     assert b[:ten] == b'abcdefg'
     assert b[0:seven] == b'abcdefg'
+    assert b[0:(len(b)+1)] == b'abcdefg'
     assert b[two:five] == b'cde'
     assert b[two:two] == b''
     assert b[-two:-two] == b''
@@ -131,12 +132,14 @@ def test_bytes_slicing() -> None:
     assert b[:zero] == b''
     assert b[-ten:] == b'abcdefg'
     assert b[-ten:ten] == b'abcdefg'
-    big_int: int = 1000 * 1000 * 1000 * 1000 * 1000 * 1000 * 1000
-    assert b[1:big_int] == b'bcdefg'
-    assert b[big_int:] == b''
-    assert b[-big_int:-1] == b'abcdef'
+    big_ints = [1000 * 1000 * 1000 * 1000 * 1000 * 1000 * 1000, 2**24, 2**63]
+    for big_int in big_ints:
+        assert b[1:big_int] == b'bcdefg'
+        assert b[big_int:] == b''
+        assert b[-big_int:-1] == b'abcdef'
+        assert b[-big_int:big_int] == b'abcdefg'
+        assert type(b[-big_int:-1]) == bytes
     assert type(b[-ten:]) == bytes
-    assert type(b[-big_int:-1]) == bytes
     assert type(b[:]) == bytes
 
 [case testBytearrayBasics]
@@ -190,12 +193,14 @@ def test_bytearray_slicing() -> None:
     assert b[:zero] == b''
     assert b[-ten:] == b'abcdefg'
     assert b[-ten:ten] == b'abcdefg'
-    big_int: int = 1000 * 1000 * 1000 * 1000 * 1000 * 1000 * 1000
-    assert b[1:big_int] == b'bcdefg'
-    assert b[big_int:] == b''
-    assert b[-big_int:-1] == b'abcdef'
+    big_ints = [1000 * 1000 * 1000 * 1000 * 1000 * 1000 * 1000, 2**24, 2**63]
+    for big_int in big_ints:
+        assert b[1:big_int] == b'bcdefg'
+        assert b[big_int:] == b''
+        assert b[-big_int:-1] == b'abcdef'
+        assert b[-big_int:big_int] == b'abcdefg'
+        assert type(b[-big_int:-1]) == bytearray
     assert type(b[-ten:]) == bytearray
-    assert type(b[-big_int:-1]) == bytearray
     assert type(b[:]) == bytearray
 
 [case testBytearrayIndexing]

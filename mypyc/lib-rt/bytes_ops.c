@@ -42,7 +42,9 @@ PyObject *CPyBytes_Concat(PyObject *a, PyObject *b) {
     }
 }
 
-#define CLAMP(a, b, c) (a < b ? b : (a >= c ? c : a))
+static inline Py_ssize_t Clamp(Py_ssize_t a, Py_ssize_t b, Py_ssize_t c) {
+    return a < b ? b : (a >= c ? c : a);
+}
 
 PyObject *CPyBytes_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
     if ((PyBytes_Check(obj) || PyByteArray_Check(obj))
@@ -56,8 +58,8 @@ PyObject *CPyBytes_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
         if (endn < 0) {
             endn += len;
         }
-        startn = CLAMP(startn, 0, len);
-        endn = CLAMP(endn, 0, len);
+        startn = Clamp(startn, 0, len);
+        endn = Clamp(endn, 0, len);
         Py_ssize_t slice_len = endn - startn;
         if (PyBytes_Check(obj)) {
             return PyBytes_FromStringAndSize(PyBytes_AS_STRING(obj) + startn, slice_len);
