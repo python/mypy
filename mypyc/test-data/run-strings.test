@@ -634,4 +634,4 @@ class SomeItem:
 def test_dunder_min() -> None:
     x = SomeItem('aaa')
     y = SomeItem('bbb')
-    assert min(x, y) == 'aaa'
+    assert min(x, y).val == 'aaa'
