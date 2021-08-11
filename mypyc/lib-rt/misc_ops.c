@@ -747,7 +747,6 @@ PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func,
         typing = PyImport_ImportModule("typing");
         if (typing == NULL) goto fail;
         get_type_hints = PyObject_GetAttrString(typing, "get_type_hints");
-        PyObject* args[] = {func};
 
         type_hints = PyObject_CallOneArg(get_type_hints, func);
         PyObject *argname;
