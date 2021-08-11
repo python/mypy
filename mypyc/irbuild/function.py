@@ -22,10 +22,11 @@ from mypy.types import CallableType, get_proper_type
 
 from mypyc.ir.ops import (
     BasicBlock, Value,  Register, Return, SetAttr, Integer, GetAttr, Branch, InitStatic,
-    LoadAddress, LoadLiteral, Unbox, Unreachable, LoadStatic,
+    LoadAddress, LoadLiteral, Unbox, Unreachable,
 )
 from mypyc.ir.rtypes import (
     object_rprimitive, RInstance, object_pointer_rprimitive, dict_rprimitive, int_rprimitive,
+    bool_rprimitive,
 )
 from mypyc.ir.func_ir import (
     FuncIR, FuncSignature, RuntimeArg, FuncDecl, FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FUNC_NORMAL
@@ -33,9 +34,9 @@ from mypyc.ir.func_ir import (
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.primitives.generic_ops import py_setattr_op, next_raw_op, iter_op
 from mypyc.primitives.misc_ops import (
-    check_stop_op, yield_from_except_op, coro_op, send_op
+    check_stop_op, yield_from_except_op, coro_op, send_op, register_function
 )
-from mypyc.primitives.dict_ops import dict_set_item_op
+from mypyc.primitives.dict_ops import dict_set_item_op, dict_new_op
 from mypyc.common import SELF_NAME, LAMBDA_NAME, decorator_helper_name
 from mypyc.sametype import is_same_method_signature
 from mypyc.irbuild.util import is_constant
@@ -88,9 +89,8 @@ def transform_decorator(builder: IRBuilder, dec: Decorator) -> None:
         dec.func.name,
         builder.mapper.fdef_to_sig(dec.func)
     )
-
-    if dec.func in builder.nested_fitems:
-        assert func_reg is not None
+    decorated_func: Optional[Value] = None
+    if func_reg:
         decorated_func = load_decorated_func(builder, dec.func, func_reg)
         builder.assign(get_func_target(builder, dec.func), decorated_func, dec.func.line)
         func_reg = decorated_func
@@ -106,6 +106,7 @@ def transform_decorator(builder: IRBuilder, dec: Decorator) -> None:
         orig_func = builder.load_global_str(helper_name, dec.line)
         decorated_func = load_decorated_func(builder, dec.func, orig_func)
 
+    if decorated_func is not None:
         # Set the callable object representing the decorated function as a global.
         builder.call_c(dict_set_item_op,
                     [builder.load_globals_dict(),
@@ -333,8 +334,7 @@ def gen_func_item(builder: IRBuilder,
         # create the dispatch function
         assert isinstance(fitem, FuncDef)
         dispatch_name = decorator_helper_name(name) if is_decorated else name
-        dispatch_func_ir = gen_dispatch_func_ir(builder, fitem, fn_info.name, dispatch_name, sig)
-        return dispatch_func_ir, None
+        return gen_dispatch_func_ir(builder, fitem, fn_info.name, dispatch_name, sig)
 
     return (func_ir, func_reg)
 
@@ -847,7 +847,7 @@ def generate_singledispatch_dispatch_function(
             func_decl, arg_info.args, arg_info.arg_kinds, arg_info.arg_names, line
         )
         coerced = builder.coerce(ret_val, current_func_decl.sig.ret_type, line)
-        builder.nonlocal_control[-1].gen_return(builder, coerced, line)
+        builder.add(Return(coerced))
 
     registry = load_singledispatch_registry(builder, fitem, line)
 
@@ -897,7 +897,7 @@ def generate_singledispatch_dispatch_function(
         impl_to_use, arg_info.args, line, arg_info.arg_kinds, arg_info.arg_names
     )
     coerced = builder.coerce(ret_val, current_func_decl.sig.ret_type, line)
-    builder.nonlocal_control[-1].gen_return(builder, coerced, line)
+    builder.add(Return(coerced))
 
 
 def gen_dispatch_func_ir(
@@ -906,22 +906,51 @@ def gen_dispatch_func_ir(
     main_func_name: str,
     dispatch_name: str,
     sig: FuncSignature,
-) -> FuncIR:
+) -> Tuple[FuncIR, Value]:
     """Create a dispatch function (a function that checks the first argument type and dispatches
     to the correct implementation)
     """
-    builder.enter()
+    builder.enter(FuncInfo(fitem, dispatch_name))
+    setup_callable_class(builder)
+    builder.fn_info.callable_class.ir.attributes['registry'] = dict_rprimitive
+    builder.fn_info.callable_class.ir.has_dict = True
+    generate_singledispatch_callable_class_ctor(builder)
+
     generate_singledispatch_dispatch_function(builder, main_func_name, fitem)
     args, _, blocks, _, fn_info = builder.leave()
-    func_decl = FuncDecl(dispatch_name, None, builder.module_name, sig)
-    dispatch_func_ir = FuncIR(func_decl, args, blocks)
-    return dispatch_func_ir
+    dispatch_func_ir = add_call_to_callable_class(builder, args, blocks, sig, fn_info)
+    add_get_to_callable_class(builder, fn_info)
+    add_register_method_to_callable_class(builder, fn_info)
+    func_reg = instantiate_callable_class(builder, fn_info)
+
+    return dispatch_func_ir, func_reg
+
+
+def generate_singledispatch_callable_class_ctor(builder: IRBuilder) -> None:
+    """Create an __init__ that sets registry to an empty dict"""
+    line = -1
+    class_ir = builder.fn_info.callable_class.ir
+    builder.enter_method(class_ir, '__init__', bool_rprimitive)
+    empty_dict = builder.call_c(dict_new_op, [], line)
+    builder.add(SetAttr(builder.self(), 'registry', empty_dict, line))
+    # the generated C code seems to expect that __init__ returns a char, so just return 1
+    builder.add(Return(Integer(1, bool_rprimitive, line), line))
+    builder.leave_method()
+
+
+def add_register_method_to_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
+    line = -1
+    builder.enter_method(fn_info.callable_class.ir, 'register', object_rprimitive)
+    cls_arg = builder.add_argument('cls', object_rprimitive)
+    func_arg = builder.add_argument('func', object_rprimitive, ArgKind.ARG_OPT)
+    ret_val = builder.call_c(register_function, [builder.self(), cls_arg, func_arg], line)
+    builder.add(Return(ret_val, line))
+    builder.leave_method()
 
 
 def load_singledispatch_registry(builder: IRBuilder, fitem: FuncDef, line: int) -> Value:
-    name = get_registry_identifier(fitem)
-    module_name = fitem.fullname.rsplit('.', maxsplit=1)[0]
-    return builder.add(LoadStatic(dict_rprimitive, name, module_name, line=line))
+    dispatch_func_obj = load_func(builder, fitem.name, fitem.fullname, line)
+    return builder.builder.get_attr(dispatch_func_obj, 'registry', dict_rprimitive, line)
 
 
 def singledispatch_main_func_name(orig_name: str) -> str:
@@ -952,12 +981,10 @@ def maybe_insert_into_registry_dict(builder: IRBuilder, fitem: FuncDef) -> None:
         loaded_object_type = builder.load_module_attr_by_fullname('builtins.object', line)
         registry_dict = builder.builder.make_dict([(loaded_object_type, main_func_obj)], line)
 
-        name = get_registry_identifier(fitem)
-        # HACK: reuse the final_names list to make sure that the registry dict gets declared as a
-        # static variable in the backend, even though this isn't a final variable
-        builder.final_names.append((name, dict_rprimitive))
-        init_static = InitStatic(registry_dict, name, builder.module_name, line=line)
-        builder.add(init_static)
+        dispatch_func_obj = builder.load_global_str(fitem.name, line)
+        builder.call_c(
+            py_setattr_op, [dispatch_func_obj, builder.load_str('registry'), registry_dict], line
+        )
 
     for singledispatch_func, types in to_register.items():
         # TODO: avoid recomputing the native IDs for all the functions every time we find a new
