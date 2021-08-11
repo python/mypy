@@ -158,20 +158,22 @@ method_op(
     arg_types=[bytes_rprimitive],
     return_type=str_rprimitive,
     c_function_name='CPy_Decode',
-    error_kind=ERR_MAGIC)
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(0, pointer_rprimitive), (0, pointer_rprimitive)])
 
 # obj.decode(encoding)
 method_op(
     name='decode',
     arg_types=[bytes_rprimitive, str_rprimitive],
     return_type=str_rprimitive,
-    c_function_name='CPy_DecodeWithEncoding',
-    error_kind=ERR_MAGIC)
+    c_function_name='CPy_Decode',
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(0, pointer_rprimitive)])
 
 # obj.decode(encoding, errors)
 method_op(
     name='decode',
     arg_types=[bytes_rprimitive, str_rprimitive, str_rprimitive],
     return_type=str_rprimitive,
-    c_function_name='CPy_DecodeWithErrors',
+    c_function_name='CPy_Decode',
     error_kind=ERR_MAGIC)

@@ -201,33 +201,17 @@ Py_ssize_t CPyStr_Size_size_t(PyObject *str) {
     return -1;
 }
 
-PyObject* CPy_Decode(PyObject *obj) {
-    if (PyBytes_Check(obj)) {
-        return PyUnicode_Decode(((PyBytesObject *)obj)->ob_sval,
-                                ((PyVarObject *)obj)->ob_size,
-                                NULL, NULL);
-    } else {
-        return PyUnicode_FromEncodedObject(obj, NULL, NULL);
+PyObject* CPy_Decode(PyObject *obj, PyObject *encoding, PyObject *errors) {
+    const char *enc = NULL;
+    const char *err = NULL;
+    if (encoding) {
+        enc = PyUnicode_AsUTF8AndSize(encoding, NULL);
+        if (!enc) return NULL;
     }
-}
-
-PyObject* CPy_DecodeWithEncoding(PyObject *obj, PyObject *encoding) {
-    const char *enc = PyUnicode_AsUTF8AndSize(encoding, NULL);
-    if (!enc) return NULL;
-    if (PyBytes_Check(obj)) {
-        return PyUnicode_Decode(((PyBytesObject *)obj)->ob_sval,
-                                ((PyVarObject *)obj)->ob_size,
-                                enc, NULL);
-    } else {
-        return PyUnicode_FromEncodedObject(obj, enc, NULL);
+    if (errors) {
+        err = PyUnicode_AsUTF8AndSize(errors, NULL);
+        if (!err) return NULL;
     }
-}
-
-PyObject* CPy_DecodeWithErrors(PyObject *obj, PyObject *encoding, PyObject *errors) {
-    const char *enc = PyUnicode_AsUTF8AndSize(encoding, NULL);
-    if (!enc) return NULL;
-    const char *err = PyUnicode_AsUTF8AndSize(errors, NULL);
-    if (!err) return NULL;
     if (PyBytes_Check(obj)) {
         return PyUnicode_Decode(((PyBytesObject *)obj)->ob_sval,
                                 ((PyVarObject *)obj)->ob_size,

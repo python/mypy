@@ -512,7 +512,7 @@ def test_format_method_python_doc() -> None:
                         '   10    A   12 1010',\
                         '   11    B   13 1011']
 
-[case testChrOrdEncodeDecode]
+[case testChr]
 # Some test cases are from https://docs.python.org/3/howto/unicode.html
 
 def try_invalid(x: int) -> bool:
@@ -551,6 +551,7 @@ def test_chr() -> None:
     assert try_invalid(-1)
     assert try_invalid(1114112)
 
+[case testOrd]
 def test_ord() -> None:
     assert ord('\ue000') == 57344
     s = "a\xac\u1234\u20ac\U00008000"
@@ -571,6 +572,7 @@ def test_ord() -> None:
     except TypeError:
         pass
 
+[case testDecode]
 def test_decode() -> None:
     assert "\N{GREEK CAPITAL LETTER DELTA}" == '\u0394'
     assert "\u0394" == "\u0394"
@@ -598,6 +600,7 @@ def test_decode() -> None:
     assert b.decode('gbk') == '浣犲ソ'
     assert b.decode('latin1') == 'ä½\xa0å¥½'
 
+[case testEncode]
 def test_encode() -> None:
     u = chr(40960) + 'abcd' + chr(1972)
     assert u.encode() == b'\xea\x80\x80abcd\xde\xb4'
