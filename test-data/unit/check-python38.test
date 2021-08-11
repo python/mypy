@@ -52,6 +52,7 @@ f(
     "IGNORE",
 ]
 [builtins fixtures/list.pyi]
+[builtins fixtures/dict.pyi]
 
 [case testIgnoreScopeNested3]
 {
@@ -78,6 +79,7 @@ def g(x: int): ...
     f("ERROR"),  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 )
 [builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
 
 [case testIgnoreScopeNestedOverlapping]
 def f(x: int): ...
@@ -88,6 +90,7 @@ def g(x: int): ...
     ), f("ERROR"),  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 )
 [builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
 
 [case testIgnoreScopeUnused1]
 # flags: --warn-unused-ignores
@@ -399,6 +402,7 @@ def check_partial_list() -> None:
         z.append(3)
     reveal_type(z)  # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
+[builtins fixtures/dict.pyi]
 
 [case testWalrusExpr]
 def func() -> None:
@@ -418,3 +422,4 @@ def main(a: object) -> None:
         reveal_type(x)  # N: Revealed type is "builtins.float"
         reveal_type(a)  # N: Revealed type is "builtins.object"
 [builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
