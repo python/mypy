@@ -767,6 +767,7 @@ PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func,
         goto fail;
     }
 
+    Py_INCREF(func);
     return func;
 
 fail:
