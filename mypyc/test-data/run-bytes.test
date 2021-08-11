@@ -144,7 +144,6 @@ def test_bytes_slicing() -> None:
 
 [case testBytearrayBasics]
 from typing import Any
-from testutil import assertRaises
 
 def test_basics() -> None:
     brr1: bytes = bytearray(3)
@@ -204,6 +203,8 @@ def test_bytearray_slicing() -> None:
     assert type(b[:]) == bytearray
 
 [case testBytearrayIndexing]
+from testutil import assertRaises
+
 def test_bytearray_indexing() -> None:
     b: bytes = bytearray(b'\xae\x80\xfe\x15')
     assert b[0] == 174
