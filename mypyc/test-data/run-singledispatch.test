@@ -114,7 +114,7 @@ def test_singledispatch() -> None:
     assert fun(1)
     assert not fun('a')
 
-[case testUseRegisterAsAFunction-xfail]
+[case testUseRegisterAsAFunction]
 from functools import singledispatch
 
 @singledispatch
@@ -145,7 +145,7 @@ def test_singledispatch() -> None:
     assert fun_specialized('a')
 
 # TODO: turn this into a mypy error
-[case testNoneIsntATypeWhenUsedAsArgumentToRegister-xfail]
+[case testNoneIsntATypeWhenUsedAsArgumentToRegister]
 from functools import singledispatch
 
 @singledispatch
@@ -601,3 +601,57 @@ def _(arg: B) -> str:
 assert f(A()) == 'a'
 assert f(B()) == 'b'
 assert f(1) == 'default'
+
+
+[case testDynamicallyRegisteringFunctionFromInterpretedCode]
+from functools import singledispatch
+
+class A: pass
+class B(A): pass
+class C(B): pass
+class D(C): pass
+
+@singledispatch
+def f(arg) -> str:
+    return "default"
+
+@f.register
+def _(arg: B) -> str:
+    return 'b'
+
+[file register_impl.py]
+from native import f, A, B, C
+
+@f.register(A)
+def a(arg) -> str:
+    return 'a'
+
+@f.register
+def c(arg: C) -> str:
+    return 'c'
+
+[file driver.py]
+from native import f, A, B, C
+from register_impl import a, c
+# We need a custom driver here because register_impl has to be run before we test this (so that the
+# additional implementations are registered)
+assert f(C()) == 'c'
+assert f(A()) == 'a'
+assert f(B()) == 'b'
+assert a(C()) == 'a'
+assert c(A()) == 'c'
+
+[case testMalformedDynamicRegisterCall]
+from functools import singledispatch
+
+@singledispatch
+def f(arg) -> None:
+    pass
+[file register.py]
+from native import f
+from testutil import assertRaises
+
+with assertRaises(TypeError, 'Invalid first argument to `register()`'):
+    @f.register
+    def _():
+        pass
