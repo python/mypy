@@ -369,6 +369,7 @@ if isinstance(x, B):
     pass
 [file mock.py]
 [builtins fixtures/isinstance.pyi]
+[builtins fixtures/dict.pyi]
 [out]
 
 [case testModuleAsTypeNoCrash2]
@@ -387,6 +388,7 @@ x: Any
 f(x)
 [file mock.py]
 [builtins fixtures/isinstance.pyi]
+[builtins fixtures/dict.pyi]
 [out]
 
 [case testPartialTypeComments]
@@ -403,6 +405,7 @@ none = None
 b = none.__bool__()
 reveal_type(b)  # N: Revealed type is "builtins.bool"
 [builtins fixtures/bool.pyi]
+[builtins fixtures/dict.pyi]
 
 [case testAssignmentInvariantNoteForList]
 from typing import List
@@ -412,6 +415,7 @@ y = x # E: Incompatible types in assignment (expression has type "List[int]", va
      # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
      # N: Consider using "Sequence" instead, which is covariant
 [builtins fixtures/list.pyi]
+[builtins fixtures/dict.pyi]
 
 [case testAssignmentInvariantNoteForDict]
 from typing import Dict
