@@ -849,7 +849,8 @@ def generate_singledispatch_dispatch_function(
         coerced = builder.coerce(ret_val, current_func_decl.sig.ret_type, line)
         builder.add(Return(coerced))
 
-    registry = load_singledispatch_registry(builder, fitem, line)
+    dispatch_func_obj = load_func(builder, fitem.name, fitem.fullname, line)
+    registry = load_singledispatch_registry(builder, dispatch_func_obj, line)
 
     # TODO: cache the output of _find_impl - without adding that caching, this implementation is
     # probably slower than the standard library functools implementation because functools caches
@@ -948,8 +949,7 @@ def add_register_method_to_callable_class(builder: IRBuilder, fn_info: FuncInfo)
     builder.leave_method()
 
 
-def load_singledispatch_registry(builder: IRBuilder, fitem: FuncDef, line: int) -> Value:
-    dispatch_func_obj = load_func(builder, fitem.name, fitem.fullname, line)
+def load_singledispatch_registry(builder: IRBuilder, dispatch_func_obj: Value, line: int) -> Value:
     return builder.builder.get_attr(dispatch_func_obj, 'registry', dict_rprimitive, line)
 
 
@@ -997,7 +997,10 @@ def maybe_insert_into_registry_dict(builder: IRBuilder, fitem: FuncDef) -> None:
             load_literal = LoadLiteral(current_id, object_rprimitive)
             to_insert = builder.add(load_literal)
         # TODO: avoid reloading the registry here if we just created it
-        registry = load_singledispatch_registry(builder, singledispatch_func, line)
+        dispatch_func_obj = load_func(
+            builder, singledispatch_func.name, singledispatch_func.fullname, line
+        )
+        registry = load_singledispatch_registry(builder, dispatch_func_obj, line)
         for typ in types:
             loaded_type = load_type(builder, typ, line)
             builder.call_c(dict_set_item_op, [registry, loaded_type, to_insert], line)
