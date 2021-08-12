@@ -36,7 +36,7 @@ from mypyc.primitives.generic_ops import py_setattr_op, next_raw_op, iter_op
 from mypyc.primitives.misc_ops import (
     check_stop_op, yield_from_except_op, coro_op, send_op, register_function
 )
-from mypyc.primitives.dict_ops import dict_set_item_op, dict_new_op
+from mypyc.primitives.dict_ops import dict_set_item_op, dict_new_op, dict_get_item_op
 from mypyc.common import SELF_NAME, LAMBDA_NAME, decorator_helper_name
 from mypyc.sametype import is_same_method_signature
 from mypyc.irbuild.util import is_constant
@@ -852,14 +852,28 @@ def generate_singledispatch_dispatch_function(
     dispatch_func_obj = load_func(builder, fitem.name, fitem.fullname, line)
     registry = load_singledispatch_registry(builder, dispatch_func_obj, line)
 
-    # TODO: cache the output of _find_impl - without adding that caching, this implementation is
-    # probably slower than the standard library functools implementation because functools caches
-    # the output of _find_impl and _find_impl looks like it is very slow
-
-    find_impl = builder.load_module_attr_by_fullname('functools._find_impl', line)
     arg_type = builder.builder.get_type_of_obj(arg_info.args[0], line)
-    impl_to_use = builder.py_call(find_impl, [arg_type, registry], line)
+    dispatch_cache = builder.builder.get_attr(
+        dispatch_func_obj, 'dispatch_cache', dict_rprimitive, line
+    )
+    in_cache = builder.binary_op(arg_type, dispatch_cache, 'in', line)
+    impl_to_use = Register(object_rprimitive)
+    call_find_impl, use_cache, call_func = BasicBlock(), BasicBlock(), BasicBlock()
+    builder.add_bool_branch(in_cache, use_cache, call_find_impl)
 
+    builder.activate_block(use_cache)
+    cached_impl = builder.call_c(dict_get_item_op, [dispatch_cache, arg_type], line)
+    builder.assign(impl_to_use, cached_impl, line)
+    builder.goto(call_func)
+
+    builder.activate_block(call_find_impl)
+    find_impl = builder.load_module_attr_by_fullname('functools._find_impl', line)
+    uncached_impl = builder.py_call(find_impl, [arg_type, registry], line)
+    builder.call_c(dict_set_item_op, [dispatch_cache, arg_type, uncached_impl], line)
+    builder.assign(impl_to_use, uncached_impl, line)
+    builder.goto(call_func)
+
+    builder.activate_block(call_func)
     typ, src = builtin_names['builtins.int']
     int_type_obj = builder.add(LoadAddress(typ, src, line))
     is_int = builder.builder.type_is_op(impl_to_use, int_type_obj, line)
