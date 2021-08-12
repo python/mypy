@@ -62,6 +62,18 @@ L0:
     c = r6
     return 1
 
+[case testBytesSlicing]
+def f(a: bytes, start: int, end: int) -> bytes:
+    return a[start:end]
+[out]
+def f(a, start, end):
+    a :: bytes
+    start, end :: int
+    r0 :: bytes
+L0:
+    r0 = CPyBytes_GetSlice(a, start, end)
+    return r0
+
 [case testBytesIndex]
 def f(a: bytes, i: int) -> int:
     return a[i]
