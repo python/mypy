@@ -102,7 +102,6 @@ X = int | str | f()
 b: X  # E: Variable "__main__.X" is not valid as a type \
     # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 [builtins fixtures/type.pyi]
-[builtins fixtures/dict.pyi]
 
 [case testUnionOrSyntaxWithinRuntimeContextNotAllowed]
 # flags: --python-version 3.9
@@ -156,7 +155,6 @@ def f() -> object: pass
 reveal_type(cast(str | None, f()))  # N: Revealed type is "Union[builtins.str, None]"
 reveal_type(list[str | None]())  # N: Revealed type is "builtins.list[Union[builtins.str, None]]"
 [builtins fixtures/type.pyi]
-[builtins fixtures/dict.pyi]
 
 [case testUnionOrSyntaxRuntimeContextInStubFile]
 import lib
