@@ -842,7 +842,6 @@ def generate_singledispatch_dispatch_function(
     arg_info = get_args(builder, current_func_decl.sig.args, line)
 
     dispatch_func_obj = load_func(builder, fitem.name, fitem.fullname, line)
-    registry = load_singledispatch_registry(builder, dispatch_func_obj, line)
 
     arg_type = builder.builder.get_type_of_obj(arg_info.args[0], line)
     dispatch_cache = builder.builder.get_attr(
@@ -860,6 +859,7 @@ def generate_singledispatch_dispatch_function(
 
     builder.activate_block(call_find_impl)
     find_impl = builder.load_module_attr_by_fullname('functools._find_impl', line)
+    registry = load_singledispatch_registry(builder, dispatch_func_obj, line)
     uncached_impl = builder.py_call(find_impl, [arg_type, registry], line)
     builder.call_c(dict_set_item_op, [dispatch_cache, arg_type, uncached_impl], line)
     builder.assign(impl_to_use, uncached_impl, line)
