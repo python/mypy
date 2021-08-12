@@ -177,3 +177,29 @@ method_op(
     return_type=str_rprimitive,
     c_function_name='CPy_Decode',
     error_kind=ERR_MAGIC)
+
+# str.encode()
+method_op(
+    name='encode',
+    arg_types=[str_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name='CPy_Encode',
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(0, pointer_rprimitive), (0, pointer_rprimitive)])
+
+# str.encode(encoding)
+method_op(
+    name='encode',
+    arg_types=[str_rprimitive, str_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name='CPy_Encode',
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(0, pointer_rprimitive)])
+
+# str.encode(encoding, errors)
+method_op(
+    name='encode',
+    arg_types=[str_rprimitive, str_rprimitive, str_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name='CPy_Encode',
+    error_kind=ERR_MAGIC)

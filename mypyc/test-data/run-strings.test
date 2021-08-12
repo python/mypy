@@ -601,15 +601,17 @@ def test_decode() -> None:
     assert b.decode('latin1') == 'ä½\xa0å¥½'
 
 [case testEncode]
+from testutil import assertRaises
+
 def test_encode() -> None:
     u = chr(40960) + 'abcd' + chr(1972)
     assert u.encode() == b'\xea\x80\x80abcd\xde\xb4'
     assert u.encode('utf-8') == b'\xea\x80\x80abcd\xde\xb4'
-    try:
+    with assertRaises(UnicodeEncodeError):
         u.encode('ascii')
-        assert False
-    except UnicodeEncodeError:
-        pass
+    with assertRaises(LookupError):
+        u.encode('aaa')
+    assert u.encode('utf-8', 'aaaaaa') == b'\xea\x80\x80abcd\xde\xb4'
     assert u.encode('ascii', 'ignore') == b'abcd'
     assert u.encode('ASCII', 'ignore') == b'abcd'
     assert u.encode('ascii', 'replace') == b'?abcd?'
@@ -622,8 +624,5 @@ def test_encode() -> None:
     assert u.encode('Utf_8') == b'\xea\x80\x80abcd\xde\xb4'
     assert u.encode('UTF_8') == b'\xea\x80\x80abcd\xde\xb4'
     assert u'\u00E1'.encode('latin1') == b'\xe1'
-    try:
+    with assertRaises(UnicodeEncodeError):
         u.encode('latin1')
-        assert False
-    except UnicodeEncodeError:
-        pass
