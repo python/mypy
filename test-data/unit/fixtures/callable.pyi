@@ -1,6 +1,8 @@
-from typing import Generic, Tuple, TypeVar, Union
+from typing import Generic, Tuple, TypeVar, Union, Mapping
 
 T = TypeVar('T')
+KT = TypeVar('KT')
+VT = TypeVar('VT')
 
 class object:
     def __init__(self) -> None: pass
@@ -9,6 +11,8 @@ class type:
     def __init__(self, x) -> None: pass
 
 class tuple(Generic[T]): pass
+
+class dict(Mapping[KT, VT]): pass
 
 class function: pass
 
