@@ -186,7 +186,6 @@ def g(x: int | str | tuple[int, str] | C) -> None:
     else:
         reveal_type(x)  # N: Revealed type is "__main__.C"
 [builtins fixtures/isinstance_python3_10.pyi]
-[builtins fixtures/dict.pyi]
 
 [case testUnionOrSyntaxInIsinstanceNotSupported]
 # flags: --python-version 3.9
