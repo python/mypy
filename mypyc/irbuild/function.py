@@ -1023,6 +1023,10 @@ def maybe_insert_into_registry_dict(builder: IRBuilder, fitem: FuncDef) -> None:
         for typ in types:
             loaded_type = load_type(builder, typ, line)
             builder.call_c(dict_set_item_op, [registry, loaded_type, to_insert], line)
+        dispatch_cache = builder.builder.get_attr(
+            dispatch_func_obj, 'dispatch_cache', dict_rprimitive, line
+        )
+        builder.gen_method_call(dispatch_cache, 'clear', [], None, line)
 
 
 def get_native_impl_ids(builder: IRBuilder, singledispatch_func: FuncDef) -> Dict[FuncDef, int]:

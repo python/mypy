@@ -766,6 +766,11 @@ PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func,
         goto fail;
     }
 
+    // clear the cache so we consider the newly added function when dispatching
+    PyObject *dispatch_cache = PyObject_GetAttrString(singledispatch_func, "dispatch_cache");
+    if (dispatch_cache == NULL) goto fail;
+    PyDict_Clear(dispatch_cache);
+
     Py_INCREF(func);
     return func;
 
