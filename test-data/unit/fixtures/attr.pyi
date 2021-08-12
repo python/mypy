@@ -1,5 +1,8 @@
 # Builtins stub used to support @attr.s tests.
-from typing import Union, overload
+from typing import Union, overload, Mapping, TypeVar
+
+_KT = TypeVar('_KT')
+_VT = TypeVar('_VT')
 
 class object:
     def __init__(self) -> None: pass
@@ -25,3 +28,4 @@ class complex:
 class str: pass
 class unicode: pass
 class ellipsis: pass
+class dict(Mapping[_KT, _VT]): pass
