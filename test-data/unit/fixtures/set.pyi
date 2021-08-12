@@ -1,14 +1,17 @@
 # Builtins stub used in set-related test cases.
 
-from typing import TypeVar, Generic, Iterator, Iterable, Set
+from typing import TypeVar, Generic, Iterator, Iterable, Set, Mapping
 
 T = TypeVar('T')
+KT = TypeVar('KT')
+VT = TypeVar('VT')
 
 class object:
     def __init__(self) -> None: pass
 
 class type: pass
 class tuple(Generic[T]): pass
+class dict(Mapping[KT, VT]): pass
 class function: pass
 
 class int: pass
