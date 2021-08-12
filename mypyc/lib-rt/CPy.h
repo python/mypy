@@ -395,7 +395,8 @@ bool CPyStr_Startswith(PyObject *self, PyObject *subobj);
 bool CPyStr_Endswith(PyObject *self, PyObject *subobj);
 bool CPyStr_IsTrue(PyObject *obj);
 Py_ssize_t CPyStr_Size_size_t(PyObject *str);
-PyObject* CPy_Decode(PyObject *obj, PyObject *encoding, PyObject *errors);
+PyObject *CPy_Decode(PyObject *obj, PyObject *encoding, PyObject *errors);
+PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors);
 
 
 // Bytes operations
