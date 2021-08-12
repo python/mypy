@@ -206,4 +206,3 @@ def f(x: Union[int, str, None]) -> None:
     else:
         reveal_type(x)  # N: Revealed type is "None"
 [builtins fixtures/isinstance.pyi]
-[builtins fixtures/dict.pyi]

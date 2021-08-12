@@ -369,7 +369,6 @@ if isinstance(x, B):
     pass
 [file mock.py]
 [builtins fixtures/isinstance.pyi]
-[builtins fixtures/dict.pyi]
 [out]
 
 [case testModuleAsTypeNoCrash2]
@@ -388,7 +387,6 @@ x: Any
 f(x)
 [file mock.py]
 [builtins fixtures/isinstance.pyi]
-[builtins fixtures/dict.pyi]
 [out]
 
 [case testPartialTypeComments]
