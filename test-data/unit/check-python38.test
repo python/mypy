@@ -52,7 +52,6 @@ f(
     "IGNORE",
 ]
 [builtins fixtures/list.pyi]
-[builtins fixtures/dict.pyi]
 
 [case testIgnoreScopeNested3]
 {
@@ -402,7 +401,6 @@ def check_partial_list() -> None:
         z.append(3)
     reveal_type(z)  # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
-[builtins fixtures/dict.pyi]
 
 [case testWalrusExpr]
 def func() -> None:
