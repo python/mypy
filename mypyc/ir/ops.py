@@ -589,7 +589,7 @@ class LoadLiteral(RegisterOp):
     This is used to load a static PyObject * value corresponding to
     a literal of one of the supported types.
 
-    Tuple literals must contain only valid literal values as items.
+    Tuple / frozenset literals must contain only valid literal values as items.
 
     NOTE: You can use this to load boxed (Python) int objects. Use
           Integer to load unboxed, tagged integers or fixed-width,
@@ -606,7 +606,7 @@ class LoadLiteral(RegisterOp):
 
     def __init__(
         self,
-        value: None | str | bytes | bool | int | float | complex | tuple[object, ...],
+        value: None | str | bytes | bool | int | float | complex | tuple[object, ...] | frozenset[object],
         rtype: RType,
     ) -> None:
         self.value = value

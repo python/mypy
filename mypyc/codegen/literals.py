@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, Tuple, Union, cast
+from typing import Any, FrozenSet, List, Tuple, Union, cast
+
 from typing_extensions import Final
 
-# Supported Python literal types. All tuple items must have supported
+# Supported Python literal types. All tuple / frozenset items must have supported
 # literal types as well, but we can't represent the type precisely.
-LiteralValue = Union[str, bytes, int, bool, float, complex, Tuple[object, ...], None]
-
+LiteralValue = Union[str, bytes, int, bool, float, complex, Tuple[object, ...], FrozenSet[object], None]
 
 # Some literals are singletons and handled specially (None, False and True)
 NUM_SINGLETONS: Final = 3
@@ -23,6 +23,7 @@ class Literals:
         self.float_literals: dict[float, int] = {}
         self.complex_literals: dict[complex, int] = {}
         self.tuple_literals: dict[tuple[object, ...], int] = {}
+        self.frozenset_literals: dict[frozenset[object], int] = {}
 
     def record_literal(self, value: LiteralValue) -> None:
         """Ensure that the literal value is available in generated code."""
@@ -55,6 +56,12 @@ class Literals:
                 for item in value:
                     self.record_literal(cast(Any, item))
                 tuple_literals[value] = len(tuple_literals)
+        elif isinstance(value, frozenset):
+            frozenset_literals = self.frozenset_literals
+            if value not in frozenset_literals:
+                for item in value:
+                    self.record_literal(cast(Any, item))
+                frozenset_literals[value] = len(frozenset_literals)
         else:
             assert False, "invalid literal: %r" % value
 
@@ -86,6 +93,9 @@ class Literals:
         n += len(self.complex_literals)
         if isinstance(value, tuple):
             return n + self.tuple_literals[value]
+        n += len(self.tuple_literals)
+        if isinstance(value, frozenset):
+            return n + self.frozenset_literals[value]
         assert False, "invalid literal: %r" % value
 
     def num_literals(self) -> int:
@@ -98,6 +108,7 @@ class Literals:
             + len(self.float_literals)
             + len(self.complex_literals)
             + len(self.tuple_literals)
+            + len(self.frozenset_literals)
         )
 
     # The following methods return the C encodings of literal values
@@ -142,6 +153,25 @@ class Literals:
             for item in value:
                 index = self.literal_index(cast(Any, item))
                 result.append(str(index))
+        return result
+
+    def encoded_frozenset_values(self) -> List[str]:
+        """Encode frozenset values into a C array.
+
+        The format used here is identical to one used by tuples.
+        """
+        values = self.frozenset_literals
+        value_by_index = {index: value for value, index in values.items()}
+        set_count = len(values)
+        result = []
+        result.append(str(set_count))
+        for i in range(set_count):
+            value = value_by_index[i]
+            result.append(str(len(value)))
+            for item in value:
+                index = self.literal_index(cast(Any, item))
+                result.append(str(index))
+
         return result
 
 

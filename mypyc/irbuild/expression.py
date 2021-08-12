@@ -53,6 +53,7 @@ from mypyc.ir.ops import (
     Assign,
     BasicBlock,
     LoadAddress,
+    LoadLiteral,
     RaiseStandardError,
     Register,
     TupleGet,
@@ -61,6 +62,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RTuple,
+    bool_rprimitive,
     int_rprimitive,
     is_int_rprimitive,
     is_list_rprimitive,
@@ -667,6 +669,38 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
                     left = builder.accept(left_expr, can_borrow=borrow_left)
                     right = builder.accept(right_expr, can_borrow=True)
                     return builder.compare_tagged(left, right, first_op, e.line)
+
+    # x in {...}
+    # x not in {...}
+    if (e.operators[0] in ['in', 'not in']
+            and len(e.operators) == 1
+            and isinstance(e.operands[1], SetExpr)):
+        negated = e.operators[0] == 'not in'
+        items = e.operands[1].items
+        if items:
+            # Precalculate a frozenset at module top level and use that instead
+            # of always rebuilding the set literal every evaluation.
+            # NOTE: this only supports set literals which only contain items
+            # which can be literals and aren't containers or sequences.
+            literal_safe = True
+            literal_values: List[Union[str, complex, bytes, int, float, None]] = []
+            for item in items:
+                if isinstance(item, NameExpr) and item.name == 'None':
+                    literal_safe = literal_safe and True
+                    literal_values.append(None)
+                elif isinstance(item, (BytesExpr, StrExpr, IntExpr, FloatExpr, ComplexExpr)):
+                    literal_safe = literal_safe and True
+                    literal_values.append(item.value)
+                else:
+                    literal_safe = False
+            if literal_safe:
+                left_operand = builder.accept(e.operands[0])
+                set_literal = builder.add(LoadLiteral(frozenset(literal_values), set_rprimitive))
+                value = builder.builder.call_c(set_in_op,
+                                               [left_operand, set_literal], e.line, bool_rprimitive)
+                if negated:
+                    value = builder.unary_op(value, 'not', e.line)
+                return value
 
     # TODO: Don't produce an expression when used in conditional context
     # All of the trickiness here is due to support for chained conditionals
