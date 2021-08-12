@@ -841,14 +841,6 @@ def generate_singledispatch_dispatch_function(
     current_func_decl = builder.mapper.func_to_decl[fitem]
     arg_info = get_args(builder, current_func_decl.sig.args, line)
 
-    def gen_native_func_call_and_return(fdef: FuncDef) -> None:
-        func_decl = builder.mapper.func_to_decl[fdef]
-        ret_val = builder.builder.call(
-            func_decl, arg_info.args, arg_info.arg_kinds, arg_info.arg_names, line
-        )
-        coerced = builder.coerce(ret_val, current_func_decl.sig.ret_type, line)
-        builder.add(Return(coerced))
-
     dispatch_func_obj = load_func(builder, fitem.name, fitem.fullname, line)
     registry = load_singledispatch_registry(builder, dispatch_func_obj, line)
 
@@ -874,6 +866,26 @@ def generate_singledispatch_dispatch_function(
     builder.goto(call_func)
 
     builder.activate_block(call_func)
+    gen_calls_to_correct_impl(builder, impl_to_use, arg_info, fitem, line)
+
+
+def gen_calls_to_correct_impl(
+    builder: IRBuilder,
+    impl_to_use: Value,
+    arg_info: ArgInfo,
+    fitem: FuncDef,
+    line: int,
+) -> None:
+    current_func_decl = builder.mapper.func_to_decl[fitem]
+
+    def gen_native_func_call_and_return(fdef: FuncDef) -> None:
+        func_decl = builder.mapper.func_to_decl[fdef]
+        ret_val = builder.builder.call(
+            func_decl, arg_info.args, arg_info.arg_kinds, arg_info.arg_names, line
+        )
+        coerced = builder.coerce(ret_val, current_func_decl.sig.ret_type, line)
+        builder.add(Return(coerced))
+
     typ, src = builtin_names['builtins.int']
     int_type_obj = builder.add(LoadAddress(typ, src, line))
     is_int = builder.builder.type_is_op(impl_to_use, int_type_obj, line)
