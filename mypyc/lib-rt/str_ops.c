@@ -201,7 +201,7 @@ Py_ssize_t CPyStr_Size_size_t(PyObject *str) {
     return -1;
 }
 
-PyObject* CPy_Decode(PyObject *obj, PyObject *encoding, PyObject *errors) {
+PyObject *CPy_Decode(PyObject *obj, PyObject *encoding, PyObject *errors) {
     const char *enc = NULL;
     const char *err = NULL;
     if (encoding) {
@@ -218,5 +218,24 @@ PyObject* CPy_Decode(PyObject *obj, PyObject *encoding, PyObject *errors) {
                                 enc, err);
     } else {
         return PyUnicode_FromEncodedObject(obj, enc, err);
+    }
+}
+
+PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors) {
+    const char *enc = NULL;
+    const char *err = NULL;
+    if (encoding) {
+        enc = PyUnicode_AsUTF8AndSize(encoding, NULL);
+        if (!enc) return NULL;
+    }
+    if (errors) {
+        err = PyUnicode_AsUTF8AndSize(errors, NULL);
+        if (!err) return NULL;
+    }
+    if (PyUnicode_Check(obj)) {
+        return PyUnicode_AsEncodedString(obj, enc, err);
+    } else {
+        PyErr_BadArgument();
+        return NULL;
     }
 }
