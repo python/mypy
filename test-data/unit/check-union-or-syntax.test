@@ -10,7 +10,6 @@ def f(x: int | str) -> int | str:
     return x
 reveal_type(f)  # N: Revealed type is "def (x: Union[builtins.int, builtins.str]) -> Union[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
-[builtins fixtures/dict.pyi]
 
 [case testUnionOrSyntaxWithThreeBuiltinsTypes]
 # flags: --python-version 3.10
@@ -49,7 +48,6 @@ reveal_type(f)  # N: Revealed type is "def (x: Union[__main__.A, __main__.B, __m
 from typing_extensions import Literal
 reveal_type(Literal[4] | str)  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
-[builtins fixtures/dict.pyi]
 
 [case testUnionOrSyntaxWithBadOperator]
 # flags: --python-version 3.10
@@ -117,7 +115,6 @@ class C(List[int | str]):  # E: Type expected within [...] \
     pass
 C()
 [builtins fixtures/tuple.pyi]
-[builtins fixtures/dict.pyi]
 
 [case testUnionOrSyntaxWithinRuntimeContextNotAllowed2]
 # flags: --python-version 3.9
@@ -125,7 +122,6 @@ from __future__ import annotations
 from typing import cast
 cast(str | int, 'x')  # E: Cast target is not a type
 [builtins fixtures/tuple.pyi]
-[builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
 [case testUnionOrSyntaxInComment]
@@ -137,7 +133,6 @@ x = 1  # type: int | str
 from __future__ import annotations
 x: int | None
 [builtins fixtures/tuple.pyi]
-[builtins fixtures/dict.pyi]
 
 [case testUnionOrSyntaxMissingFutureImport]
 # flags: --python-version 3.9

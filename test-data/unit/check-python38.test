@@ -420,4 +420,3 @@ def main(a: object) -> None:
         reveal_type(x)  # N: Revealed type is "builtins.float"
         reveal_type(a)  # N: Revealed type is "builtins.object"
 [builtins fixtures/tuple.pyi]
-[builtins fixtures/dict.pyi]
