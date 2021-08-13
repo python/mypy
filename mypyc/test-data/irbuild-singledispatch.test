@@ -50,85 +50,70 @@ L0:
 def f_obj.__call__(__mypyc_self__, arg):
     __mypyc_self__ :: __main__.f_obj
     arg :: object
-    r0 :: dict
-    r1 :: str
-    r2 :: object
-    r3 :: str
-    r4 :: object
-    r5 :: ptr
-    r6 :: object
-    r7 :: str
-    r8 :: object
-    r9 :: int32
-    r10 :: bit
-    r11 :: bool
-    r12 :: dict
-    r13, r14, r15 :: object
-    r16 :: str
-    r17, r18 :: object
-    r19 :: dict
-    r20 :: int32
-    r21 :: bit
+    r0 :: ptr
+    r1 :: object
+    r2 :: dict
+    r3, r4 :: object
+    r5 :: bit
+    r6, r7 :: object
+    r8 :: str
+    r9 :: object
+    r10 :: dict
+    r11 :: object
+    r12 :: int32
+    r13 :: bit
+    r14 :: object
+    r15 :: ptr
+    r16 :: object
+    r17 :: bit
+    r18 :: int
+    r19 :: bit
+    r20 :: int
+    r21 :: bool
     r22 :: object
-    r23 :: ptr
-    r24 :: object
-    r25 :: bit
-    r26 :: int
-    r27 :: bit
-    r28 :: int
-    r29 :: bool
-    r30 :: object
-    r31 :: bool
+    r23 :: bool
 L0:
-    r0 = __main__.globals :: static
-    r1 = 'f'
-    r2 = CPyDict_GetItem(r0, r1)
-    r3 = 'registry'
-    r4 = CPyObject_GetAttr(r2, r3)
-    r5 = get_element_ptr arg ob_type :: PyObject
-    r6 = load_mem r5 :: builtins.object*
+    r0 = get_element_ptr arg ob_type :: PyObject
+    r1 = load_mem r0 :: builtins.object*
     keep_alive arg
-    r7 = 'dispatch_cache'
-    r8 = CPyObject_GetAttr(r2, r7)
-    r9 = PySequence_Contains(r8, r6)
-    r10 = r9 >= 0 :: signed
-    r11 = truncate r9: int32 to builtins.bool
-    if r11 goto L1 else goto L2 :: bool
+    r2 = __mypyc_self__.dispatch_cache
+    r3 = CPyDict_GetWithNone(r2, r1)
+    r4 = load_address _Py_NoneStruct
+    r5 = r3 != r4
+    if r5 goto L1 else goto L2 :: bool
 L1:
-    r12 = cast(dict, r8)
-    r13 = CPyDict_GetItem(r12, r6)
-    r14 = r13
+    r6 = r3
     goto L3
 L2:
-    r15 = functools :: module
-    r16 = '_find_impl'
-    r17 = CPyObject_GetAttr(r15, r16)
-    r18 = PyObject_CallFunctionObjArgs(r17, r6, r4, 0)
-    r19 = cast(dict, r8)
-    r20 = CPyDict_SetItem(r19, r6, r18)
-    r21 = r20 >= 0 :: signed
-    r14 = r18
+    r7 = functools :: module
+    r8 = '_find_impl'
+    r9 = CPyObject_GetAttr(r7, r8)
+    r10 = __mypyc_self__.registry
+    r11 = PyObject_CallFunctionObjArgs(r9, r1, r10, 0)
+    r12 = CPyDict_SetItem(r2, r1, r11)
+    r13 = r12 >= 0 :: signed
+    r6 = r11
 L3:
-    r22 = load_address PyLong_Type
-    r23 = get_element_ptr r14 ob_type :: PyObject
-    r24 = load_mem r23 :: builtins.object*
-    keep_alive r14
-    r25 = r24 == r22
-    if r25 goto L4 else goto L7 :: bool
+    r14 = load_address PyLong_Type
+    r15 = get_element_ptr r6 ob_type :: PyObject
+    r16 = load_mem r15 :: builtins.object*
+    keep_alive r6
+    r17 = r16 == r14
+    if r17 goto L4 else goto L7 :: bool
 L4:
-    r26 = unbox(int, r14)
-    r27 = r26 == 0
-    if r27 goto L5 else goto L6 :: bool
+    r18 = unbox(int, r6)
+    r19 = r18 == 0
+    if r19 goto L5 else goto L6 :: bool
 L5:
-    r28 = unbox(int, arg)
-    r29 = g(r28)
-    return r29
+    r20 = unbox(int, arg)
+    r21 = g(r20)
+    return r21
 L6:
     unreachable
 L7:
-    r30 = PyObject_CallFunctionObjArgs(r14, arg, 0)
-    r31 = unbox(bool, r30)
-    return r31
+    r22 = PyObject_CallFunctionObjArgs(r6, arg, 0)
+    r23 = unbox(bool, r22)
+    return r23
 def g(arg):
     arg :: int
 L0:
