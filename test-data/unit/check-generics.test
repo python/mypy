@@ -1299,11 +1299,14 @@ a[1], a[2] = a
 
 class A: pass
 [file builtins.py]
-from typing import TypeVar, Generic, Iterable
+from typing import TypeVar, Generic, Iterable, Mapping
 T = TypeVar('T')
+KT = TypeVar('KT')
+VT = TypeVar('VT')
 class object: pass
 class list(Iterable[T]):
   def __setitem__(self, x: int, v: T) -> None: pass
+class dict(Mapping[KT, VT]): pass
 class int: pass
 class type: pass
 class tuple: pass
