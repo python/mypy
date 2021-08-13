@@ -64,12 +64,17 @@ if str():
 class A:
     pass
 [file builtins.py]
+from typing import TypeVar, Mapping
+KT = TypeVar('KT')
+VT = TypeVar('VT')
 class object:
     def __init__(self): pass
 class type: pass
 class function: pass
 class float: pass
 class str: pass
+class int: pass
+class dict(Mapping[KT, VT]): pass
 
 [case testComplexLiteral]
 a = 0.0j
@@ -81,12 +86,17 @@ if str():
 class A:
     pass
 [file builtins.py]
+from typing import TypeVar, Mapping
+KT = TypeVar('KT')
+VT = TypeVar('VT')
 class object:
     def __init__(self): pass
 class type: pass
 class function: pass
 class complex: pass
 class str: pass
+class int: pass
+class dict(Mapping[KT, VT]): pass
 
 [case testBytesLiteral]
 b, a = None, None # type: (bytes, A)
@@ -100,6 +110,9 @@ if str():
     a = b'foo' # E: Incompatible types in assignment (expression has type "bytes", variable has type "A")
 class A: pass
 [file builtins.py]
+from typing import TypeVar, Mapping
+KT = TypeVar('KT')
+VT = TypeVar('VT')
 class object:
     def __init__(self): pass
 class type: pass
@@ -107,6 +120,8 @@ class tuple: pass
 class function: pass
 class bytes: pass
 class str: pass
+class int: pass
+class dict(Mapping[KT, VT]): pass
 
 [case testUnicodeLiteralInPython3]
 s = None  # type: str
@@ -2127,6 +2142,9 @@ if str():
 
 class A: pass
 [file builtins.py]
+from typing import TypeVar, Mapping
+KT = TypeVar('KT')
+VT = TypeVar('VT')
 class object:
     def __init__(self): pass
 class ellipsis:
@@ -2135,6 +2153,8 @@ class ellipsis:
 class type: pass
 class function: pass
 class str: pass
+class int: pass
+class dict(Mapping[KT, VT]): pass
 [out]
 
 
