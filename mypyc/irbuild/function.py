@@ -841,7 +841,7 @@ def generate_singledispatch_dispatch_function(
     current_func_decl = builder.mapper.func_to_decl[fitem]
     arg_info = get_args(builder, current_func_decl.sig.args, line)
 
-    dispatch_func_obj = load_func(builder, fitem.name, fitem.fullname, line)
+    dispatch_func_obj = builder.self()
 
     arg_type = builder.builder.get_type_of_obj(arg_info.args[0], line)
     dispatch_cache = builder.builder.get_attr(
@@ -942,6 +942,7 @@ def gen_dispatch_func_ir(
     builder.fn_info.callable_class.ir.attributes['registry'] = dict_rprimitive
     builder.fn_info.callable_class.ir.attributes['dispatch_cache'] = dict_rprimitive
     builder.fn_info.callable_class.ir.has_dict = True
+    builder.fn_info.callable_class.ir.needs_getseters = True
     generate_singledispatch_callable_class_ctor(builder)
 
     generate_singledispatch_dispatch_function(builder, main_func_name, fitem)
