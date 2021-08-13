@@ -1396,8 +1396,9 @@ import attr
 
 @attr.s
 class A:
-    pass
+    b: int = attr.ib()
+    c: str = attr.ib()
 
-reveal_type(A.__attrs_attrs__)  # N: Revealed type is 'builtins.tuple[attr.Attribute[Any]]'
+reveal_type(A.__attrs_attrs__)  # N: Revealed type is "Tuple[attr.Attribute[builtins.int], attr.Attribute[builtins.str]]"
 
 [builtins fixtures/attr.pyi]
