@@ -1,4 +1,7 @@
-from typing import TypeVar, Tuple, SupportsInt
+from typing import TypeVar, Tuple, SupportsInt, Mapping
+KT = TypeVar('KT')
+VT = TypeVar('VT')
+
 class object:
     def __init__(self): pass
 
@@ -16,6 +19,7 @@ class function: pass
 class str: pass
 class type: pass
 class ellipsis: pass
+class dict(Mapping[KT, VT]): pass
 
 _N = TypeVar('_N', int, float)
 def divmod(_x: _N, _y: _N) -> Tuple[_N, _N]: ...
