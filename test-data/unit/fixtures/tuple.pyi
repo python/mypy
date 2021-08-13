@@ -43,7 +43,9 @@ class list(Sequence[T], Generic[T]):
     def __contains__(self, item: object) -> bool: ...
     def __iter__(self) -> Iterator[T]: ...
 
-class dict(Mapping[KT, VT]): pass
+class dict(Mapping[KT, VT]):
+    def __iter__(self) -> Iterator[KT]: pass
+
 
 def isinstance(x: object, t: type) -> bool: pass
 
