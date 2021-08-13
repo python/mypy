@@ -19,7 +19,8 @@ class str:
 class bytes: pass
 
 class tuple(Generic[T]): pass
-class dict(Mapping[KT, VT]): pass
+class dict(Mapping[KT, VT]):
+    def __iter__(self): pass
 class function: pass
 
 class ellipsis: pass
