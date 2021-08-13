@@ -36,7 +36,7 @@ from mypyc.primitives.generic_ops import py_setattr_op, next_raw_op, iter_op
 from mypyc.primitives.misc_ops import (
     check_stop_op, yield_from_except_op, coro_op, send_op, register_function
 )
-from mypyc.primitives.dict_ops import dict_set_item_op, dict_new_op, dict_get_item_op
+from mypyc.primitives.dict_ops import dict_set_item_op, dict_new_op, dict_get_method_with_none
 from mypyc.common import SELF_NAME, LAMBDA_NAME, decorator_helper_name
 from mypyc.sametype import is_same_method_signature
 from mypyc.irbuild.util import is_constant
@@ -847,14 +847,14 @@ def generate_singledispatch_dispatch_function(
     dispatch_cache = builder.builder.get_attr(
         dispatch_func_obj, 'dispatch_cache', dict_rprimitive, line
     )
-    in_cache = builder.binary_op(arg_type, dispatch_cache, 'in', line)
-    impl_to_use = Register(object_rprimitive)
     call_find_impl, use_cache, call_func = BasicBlock(), BasicBlock(), BasicBlock()
-    builder.add_bool_branch(in_cache, use_cache, call_find_impl)
+    get_result = builder.call_c(dict_get_method_with_none, [dispatch_cache, arg_type], line)
+    is_not_none = builder.translate_is_op(get_result, builder.none_object(), 'is not', line)
+    impl_to_use = Register(object_rprimitive)
+    builder.add_bool_branch(is_not_none, use_cache, call_find_impl)
 
     builder.activate_block(use_cache)
-    cached_impl = builder.call_c(dict_get_item_op, [dispatch_cache, arg_type], line)
-    builder.assign(impl_to_use, cached_impl, line)
+    builder.assign(impl_to_use, get_result, line)
     builder.goto(call_func)
 
     builder.activate_block(call_find_impl)
