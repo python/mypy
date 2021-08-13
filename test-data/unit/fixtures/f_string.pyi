@@ -1,9 +1,11 @@
 # Builtins stub used for format-string-related test cases.
 # We need str and list, and str needs join and format methods.
 
-from typing import TypeVar, Generic, Iterable, Iterator, List, overload
+from typing import TypeVar, Generic, Iterable, Iterator, List, overload, Mapping
 
 T = TypeVar('T')
+KT = TypeVar('KT')
+VT = TypeVar('VT')
 
 class object:
     def __init__(self): pass
@@ -21,6 +23,7 @@ class list(Iterable[T], Generic[T]):
     def append(self, x: T) -> None: pass
 
 class tuple(Generic[T]): pass
+class dict(Mapping[KT, VT]): pass
 
 class function: pass
 class int:
