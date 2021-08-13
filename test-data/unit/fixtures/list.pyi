@@ -12,7 +12,7 @@ class object:
 class type: pass
 class ellipsis: pass
 class dict(Mapping[KT, VT]):
-    def __iter__(self): pass
+    def __iter__(self)-> Iterator[KT]: pass
 
 class list(Sequence[T]):
     @overload
