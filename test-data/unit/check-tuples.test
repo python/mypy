@@ -793,14 +793,17 @@ if int():
     b = s in t
 
 [file builtins.py]
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Mapping
 _T = TypeVar('_T')
+_KT = TypeVar('_KT')
+_VT = TypeVar('_VT')
 class object:
     def __init__(self) -> None: pass
 class tuple(Generic[_T]):
     def __len__(self) -> int: pass
     def __str__(self) -> str: pass
     def __contains__(self, o: object) -> bool: pass
+class dict(Mapping[_KT, _VT]): pass
 class int: pass
 class str: pass
 class bool: pass
