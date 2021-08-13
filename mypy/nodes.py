@@ -104,7 +104,7 @@ implicit_module_attrs: Final = {
     '__path__': None,  # depends on if the module is a package
     '__file__': '__builtins__.str',
     '__package__': '__builtins__.str',
-    "__annotations__": "__builtins__.dict",
+    '__annotations__': '__builtins__.dict',
 }
 
 
