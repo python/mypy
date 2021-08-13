@@ -444,7 +444,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                     continue
                 node = sym.node
                 assert isinstance(node, TypeInfo)
-                typ = Instance(node, [self.str_type(), self.named_type('__builtins__.type')])
+                typ = Instance(node, [self.str_type(), AnyType(TypeOfAny.special_form)])
             else:
                 assert t is not None, 'type should be specified for {}'.format(name)
                 typ = UnboundType(t)
