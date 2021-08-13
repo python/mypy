@@ -4,9 +4,11 @@
 #       enough to handle them.
 
 import types
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic, Mapping
 
 T = TypeVar('T')
+KT = TypeVar('KT')
+VT = TypeVar('VT')
 
 class Any: pass
 
@@ -27,3 +29,4 @@ class tuple(Generic[T]): pass
 class function: pass
 class ellipsis: pass
 class list(Generic[T]): pass
+class dict(Mapping[KT, VT]): pass
