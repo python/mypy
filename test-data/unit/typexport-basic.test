@@ -109,6 +109,9 @@ a = 1 + 2
 2.2 - 3
 1 / 2
 [file builtins.py]
+from typing import TypeVar, Mapping
+KT = TypeVar('KT')
+VT = TypeVar('VT')
 class object:
     def __init__(self) -> None: pass
 class function: pass
@@ -120,6 +123,7 @@ class float:
     def __sub__(self, x: int) -> float: pass
 class type: pass
 class str: pass
+class dict(Mapping[KT, VT]): pass
 [out]
 OpExpr(3) : builtins.int
 OpExpr(4) : builtins.float
@@ -136,6 +140,9 @@ import typing
 8 > 3
 4 < 6 > 2
 [file builtins.py]
+from typing import TypeVar, Mapping
+KT = TypeVar('KT')
+VT = TypeVar('VT')
 class object:
     def __init__(self) -> None: pass
 class int:
@@ -146,6 +153,7 @@ class bool: pass
 class type: pass
 class function: pass
 class str: pass
+class dict(Mapping[KT, VT]): pass
 [out]
 ComparisonExpr(3) : builtins.bool
 ComparisonExpr(4) : builtins.bool
