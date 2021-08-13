@@ -19,6 +19,8 @@ extern "C" {
 } // why isn't emacs smart enough to not indent this
 #endif
 
+#define CPYTHON_LARGE_INT_ERRMSG "Python int too large to convert to C ssize_t"
+
 
 // Naming conventions:
 //
@@ -283,7 +285,7 @@ static inline CPyTagged CPyObject_Size(PyObject *obj) {
 static void CPy_LogGetAttr(const char *method, PyObject *obj, PyObject *attr) {
     PyObject *module = PyImport_ImportModule("getattr_hook");
     if (module) {
-        PyObject *res = PyObject_CallMethod(module, method, "OO", obj, attr);
+        PyObject *res = PyObject_CallMethodObjArgs(module, method, obj, attr, NULL);
         Py_XDECREF(res);
         Py_DECREF(module);
     }
@@ -316,15 +318,19 @@ PyObject *CPyObject_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
 // List operations
 
 
+PyObject *CPyList_Build(Py_ssize_t len, ...);
 PyObject *CPyList_GetItem(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemUnsafe(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index);
 bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value);
+bool CPyList_SetItemUnsafe(PyObject *list, CPyTagged index, PyObject *value);
 PyObject *CPyList_PopLast(PyObject *obj);
 PyObject *CPyList_Pop(PyObject *obj, CPyTagged index);
 CPyTagged CPyList_Count(PyObject *obj, PyObject *value);
 int CPyList_Insert(PyObject *list, CPyTagged index, PyObject *value);
 PyObject *CPyList_Extend(PyObject *o1, PyObject *o2);
+int CPyList_Remove(PyObject *list, PyObject *obj);
+CPyTagged CPyList_Index(PyObject *list, PyObject *obj);
 PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size);
 PyObject *CPySequence_RMultiply(CPyTagged t_size, PyObject *seq);
 PyObject *CPyList_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
@@ -337,6 +343,9 @@ PyObject *CPyDict_GetItem(PyObject *dict, PyObject *key);
 int CPyDict_SetItem(PyObject *dict, PyObject *key, PyObject *value);
 PyObject *CPyDict_Get(PyObject *dict, PyObject *key, PyObject *fallback);
 PyObject *CPyDict_GetWithNone(PyObject *dict, PyObject *key);
+PyObject *CPyDict_SetDefault(PyObject *dict, PyObject *key, PyObject *value);
+PyObject *CPyDict_SetDefaultWithNone(PyObject *dict, PyObject *key);
+PyObject *CPyDict_SetDefaultWithEmptyDatatype(PyObject *dict, PyObject *key, int data_type);
 PyObject *CPyDict_Build(Py_ssize_t size, ...);
 int CPyDict_Update(PyObject *dict, PyObject *stuff);
 int CPyDict_UpdateInDisplay(PyObject *dict, PyObject *stuff);
@@ -349,6 +358,7 @@ PyObject *CPyDict_Keys(PyObject *dict);
 PyObject *CPyDict_Values(PyObject *dict);
 PyObject *CPyDict_Items(PyObject *dict);
 char CPyDict_Clear(PyObject *dict);
+PyObject *CPyDict_Copy(PyObject *dict);
 PyObject *CPyDict_GetKeysIter(PyObject *dict);
 PyObject *CPyDict_GetItemsIter(PyObject *dict);
 PyObject *CPyDict_GetValuesIter(PyObject *dict);
@@ -375,12 +385,27 @@ static inline char CPyDict_CheckSize(PyObject *dict, CPyTagged size) {
 // Str operations
 
 
+PyObject *CPyStr_Build(Py_ssize_t len, ...);
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
 PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split);
+PyObject *CPyStr_Replace(PyObject *str, PyObject *old_substr, PyObject *new_substr, CPyTagged max_replace);
 PyObject *CPyStr_Append(PyObject *o1, PyObject *o2);
 PyObject *CPyStr_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
 bool CPyStr_Startswith(PyObject *self, PyObject *subobj);
 bool CPyStr_Endswith(PyObject *self, PyObject *subobj);
+bool CPyStr_IsTrue(PyObject *obj);
+Py_ssize_t CPyStr_Size_size_t(PyObject *str);
+PyObject *CPy_Decode(PyObject *obj, PyObject *encoding, PyObject *errors);
+PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors);
+
+
+// Bytes operations
+
+
+PyObject *CPyBytes_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
+CPyTagged CPyBytes_GetItem(PyObject *o, CPyTagged index);
+PyObject *CPyBytes_Concat(PyObject *a, PyObject *b);
+PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter);
 
 
 // Set operations
@@ -394,6 +419,7 @@ bool CPySet_Remove(PyObject *set, PyObject *key);
 
 PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index);
 PyObject *CPySequenceTuple_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
+bool CPySequenceTuple_SetItemUnsafe(PyObject *tuple, CPyTagged index, PyObject *value);
 
 
 // Exception operations
@@ -461,6 +487,21 @@ void CPy_AddTraceback(const char *filename, const char *funcname, int line, PyOb
 #define CPy_TRASHCAN_END(op) Py_TRASHCAN_SAFE_END(op)
 #endif
 
+// Tweaked version of _PyArg_Parser in CPython
+typedef struct CPyArg_Parser {
+    const char *format;
+    const char * const *keywords;
+    const char *fname;
+    const char *custom_msg;
+    int pos;               /* number of positional-only arguments */
+    int min;               /* minimal number of arguments */
+    int max;               /* maximal number of positional arguments */
+    int has_required_kws;  /* are there any keyword-only arguments? */
+    int required_kwonly_start;
+    int varargs;           /* does the function accept *args or **kwargs? */
+    PyObject *kwtuple;     /* tuple of keyword parameter names */
+    struct CPyArg_Parser *next;
+} CPyArg_Parser;
 
 // mypy lets ints silently coerce to floats, so a mypyc runtime float
 // might be an int also
@@ -496,10 +537,33 @@ CPyTagged CPyTagged_Id(PyObject *o);
 void CPyDebug_Print(const char *msg);
 void CPy_Init(void);
 int CPyArg_ParseTupleAndKeywords(PyObject *, PyObject *,
-                                 const char *, char **, ...);
+                                 const char *, const char *, const char * const *, ...);
+int CPyArg_ParseStackAndKeywords(PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames,
+                                 CPyArg_Parser *parser, ...);
+int CPyArg_ParseStackAndKeywordsNoArgs(PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames,
+                                       CPyArg_Parser *parser, ...);
+int CPyArg_ParseStackAndKeywordsOneArg(PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames,
+                                       CPyArg_Parser *parser, ...);
+int CPyArg_ParseStackAndKeywordsSimple(PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames,
+                                       CPyArg_Parser *parser, ...);
+
 int CPySequence_CheckUnpackCount(PyObject *sequence, Py_ssize_t expected);
+int CPyStatics_Initialize(PyObject **statics,
+                          const char * const *strings,
+                          const char * const *bytestrings,
+                          const char * const *ints,
+                          const double *floats,
+                          const double *complex_numbers,
+                          const int *tuples);
+PyObject *CPy_Super(PyObject *builtins, PyObject *self);
+PyObject *CPy_CallReverseOpMethod(PyObject *left, PyObject *right, const char *op,
+                                  _Py_Identifier *method);
 
+PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
+                               PyObject *import_name, PyObject *as_name);
 
+PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func, PyObject *cls,
+                                             PyObject *func);
 #ifdef __cplusplus
 }
 #endif

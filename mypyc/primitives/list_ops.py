@@ -22,14 +22,30 @@ to_list = function_op(
     arg_types=[object_rprimitive],
     return_type=list_rprimitive,
     c_function_name='PySequence_List',
+    error_kind=ERR_MAGIC)
+
+# Construct an empty list via list().
+function_op(
+    name='builtins.list',
+    arg_types=[],
+    return_type=list_rprimitive,
+    c_function_name='PyList_New',
     error_kind=ERR_MAGIC,
-)
+    extra_int_constants=[(0, int_rprimitive)])
 
 new_list_op = custom_op(
     arg_types=[c_pyssize_t_rprimitive],
     return_type=list_rprimitive,
     c_function_name='PyList_New',
     error_kind=ERR_MAGIC)
+
+list_build_op = custom_op(
+    arg_types=[c_pyssize_t_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name='CPyList_Build',
+    error_kind=ERR_MAGIC,
+    var_arg_type=object_rprimitive,
+    steals=True)
 
 # list[index] (for an integer index)
 list_get_item_op = method_op(
@@ -62,6 +78,15 @@ list_set_item_op = method_op(
     arg_types=[list_rprimitive, int_rprimitive, object_rprimitive],
     return_type=bit_rprimitive,
     c_function_name='CPyList_SetItem',
+    error_kind=ERR_FALSE,
+    steals=[False, False, True])
+
+# PyList_SET_ITEM does no error checking,
+# and should only be used to fill in brand new lists.
+new_list_set_item_op = custom_op(
+    arg_types=[list_rprimitive, int_rprimitive, object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name='CPyList_SetItemUnsafe',
     error_kind=ERR_FALSE,
     steals=[False, False, True])
 
@@ -129,6 +154,22 @@ method_op(
     c_function_name='PyList_Reverse',
     error_kind=ERR_NEG_INT)
 
+# list.remove(obj)
+method_op(
+    name='remove',
+    arg_types=[list_rprimitive, object_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name='CPyList_Remove',
+    error_kind=ERR_NEG_INT)
+
+# list.index(obj)
+method_op(
+    name='index',
+    arg_types=[list_rprimitive, object_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name='CPyList_Index',
+    error_kind=ERR_MAGIC)
+
 # list * int
 binary_op(
     name='*',
@@ -138,11 +179,12 @@ binary_op(
     error_kind=ERR_MAGIC)
 
 # int * list
-binary_op(name='*',
-          arg_types=[int_rprimitive, list_rprimitive],
-          return_type=list_rprimitive,
-          c_function_name='CPySequence_RMultiply',
-          error_kind=ERR_MAGIC)
+binary_op(
+    name='*',
+    arg_types=[int_rprimitive, list_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name='CPySequence_RMultiply',
+    error_kind=ERR_MAGIC)
 
 # list[begin:end]
 list_slice_op = custom_op(

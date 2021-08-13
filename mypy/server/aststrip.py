@@ -71,7 +71,7 @@ def strip_target(node: Union[MypyFile, FuncDef, OverloadedFuncDef],
 class NodeStripVisitor(TraverserVisitor):
     def __init__(self, saved_class_attrs: SavedAttributes) -> None:
         # The current active class.
-        self.type = None  # type: Optional[TypeInfo]
+        self.type: Optional[TypeInfo] = None
         # This is True at class scope, but not in methods.
         self.is_class_body = False
         # By default, process function definitions. If False, don't -- this is used for

@@ -3,6 +3,8 @@
 
 # stubs
 prune mypy/typeshed
+include mypy/typeshed/LICENSE
+include mypy/typeshed/stdlib/VERSIONS
 recursive-include mypy/typeshed *.pyi
 
 # mypy and mypyc
@@ -28,6 +30,7 @@ graft mypyc/doc
 
 # files necessary for testing sdist
 include mypy-requirements.txt
+include build-requirements.txt
 include test-requirements.txt
 include mypy_self_check.ini
 prune misc

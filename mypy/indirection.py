@@ -19,8 +19,8 @@ class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
     """Returns all module references within a particular type."""
 
     def __init__(self) -> None:
-        self.cache = {}  # type: Dict[types.Type, Set[str]]
-        self.seen_aliases = set()  # type: Set[types.TypeAliasType]
+        self.cache: Dict[types.Type, Set[str]] = {}
+        self.seen_aliases: Set[types.TypeAliasType] = set()
 
     def find_modules(self, typs: Iterable[types.Type]) -> Set[str]:
         self.seen_aliases.clear()
@@ -28,7 +28,7 @@ class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
 
     def _visit(self, typ_or_typs: Union[types.Type, Iterable[types.Type]]) -> Set[str]:
         typs = [typ_or_typs] if isinstance(typ_or_typs, types.Type) else typ_or_typs
-        output = set()  # type: Set[str]
+        output: Set[str] = set()
         for typ in typs:
             if isinstance(typ, types.TypeAliasType):
                 # Avoid infinite recursion for recursive type aliases.
@@ -96,6 +96,9 @@ class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
 
     def visit_union_type(self, t: types.UnionType) -> Set[str]:
         return self._visit(t.items)
+
+    def visit_type_guard_type(self, t: types.TypeGuardType) -> Set[str]:
+        return self._visit(t.type_guard)
 
     def visit_partial_type(self, t: types.PartialType) -> Set[str]:
         return set()
