@@ -421,6 +421,17 @@ class DerivUnsafe(BaseUnsafe):
         self.z = z
         super().__init__(1, 2)  # Calls unknown function
         self.zz = zz
+
+class BaseWithDefault:
+    x = 1
+
+    def __init__(self) -> None:
+        self.y = 1
+
+class DerivedWithDefault(BaseWithDefault):
+    def __init__(self) -> None:
+        super().__init__()
+        self.z = 1
 [out]
 Base: [x]
 Deriv1: [x, y]
@@ -430,3 +441,5 @@ Deriv3: [x]
 Deriv4: [y]
 BaseUnsafe: [x]
 DerivUnsafe: [x, z]
+BaseWithDefault: [x, y]
+DerivedWithDefault: [x, y, z]
