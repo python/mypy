@@ -68,7 +68,7 @@ class A:
 [builtins fixtures/tuple.pyi]
 
 
-[case testSlotsDefinitionMutlipleVars1]
+[case testSlotsDefinitionMultipleVars1]
 class A:
     __slots__ = __fields__ = ("a", "b")
     def __init__(self) -> None:
@@ -78,7 +78,7 @@ class A:
 
 
 
-[case testSlotsDefinitionMutlipleVars2]
+[case testSlotsDefinitionMultipleVars2]
 class A:
     __fields__ = __slots__ = ("a", "b")
     def __init__(self) -> None:
