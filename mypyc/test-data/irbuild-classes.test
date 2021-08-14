@@ -1227,3 +1227,26 @@ def g(c: Type[C], d: Type[D]) -> None:
          # N: (Hint: Use "x: Final = ..." or "x: ClassVar = ..." to define a class attribute)
     d.f
     d.c
+
+[case testSetAttributeWithDefaultInInit]
+class C:
+    s = ''
+
+    def __init__(self, s: str) -> None:
+        self.s = s
+[out]
+def C.__init__(self, s):
+    self :: __main__.C
+    s :: str
+    r0 :: bool
+L0:
+    self.s = s; r0 = is_error
+    return 1
+def C.__mypyc_defaults_setup(__mypyc_self__):
+    __mypyc_self__ :: __main__.C
+    r0 :: str
+    r1 :: bool
+L0:
+    r0 = ''
+    __mypyc_self__.s = r0; r1 = is_error
+    return 1
