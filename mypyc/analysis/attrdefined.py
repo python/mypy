@@ -55,14 +55,19 @@ def analyze_always_defined_attrs(class_irs: List[ClassIR]) -> None:
             continue
         m = cl.get_method('__init__')
         if m is None:
+            cl._always_initialized_attrs = cl.attrs_with_defaults.copy()
             continue
         self_reg = m.arg_regs[0]
         cfg = get_cfg(m.blocks)
         dirty = analyze_arbitrary_execution(m.blocks, self_reg, cfg)
-        maybe_defined = analyze_maybe_defined_attrs_in_init(m.blocks, self_reg, cfg)
+        maybe_defined = analyze_maybe_defined_attrs_in_init(
+            m.blocks, self_reg, cl.attrs_with_defaults, cfg)
         all_attrs = set(cl.attributes)
         maybe_undefined = analyze_maybe_undefined_attrs_in_init(
-            m.blocks, self_reg, all_attrs=all_attrs, cfg=cfg)
+            m.blocks,
+            self_reg,
+            initial_undefined=all_attrs - cl.attrs_with_defaults,
+            cfg=cfg)
 
         always_defined = find_always_defined_attributes(
             m.blocks, self_reg, all_attrs, maybe_defined, maybe_undefined, dirty)
@@ -158,11 +163,12 @@ class AttributeMaybeDefinedVisitor(BaseAnalysisVisitor[str]):
 
 def analyze_maybe_defined_attrs_in_init(blocks: List[BasicBlock],
                                         self_reg: Register,
+                                        attrs_with_defaults: Set[str],
                                         cfg: CFG) -> AnalysisResult[str]:
     return run_analysis(blocks=blocks,
                         cfg=cfg,
                         gen_and_kill=AttributeMaybeDefinedVisitor(self_reg),
-                        initial=set(),
+                        initial=attrs_with_defaults,
                         backward=False,
                         kind=MAYBE_ANALYSIS)
 
@@ -197,11 +203,11 @@ class AttributeMaybeUndefinedVisitor(BaseAnalysisVisitor[str]):
 
 def analyze_maybe_undefined_attrs_in_init(blocks: List[BasicBlock],
                                           self_reg: Register,
-                                          all_attrs: Set[str],
+                                          initial_undefined: Set[str],
                                           cfg: CFG) -> AnalysisResult[str]:
     return run_analysis(blocks=blocks,
                         cfg=cfg,
                         gen_and_kill=AttributeMaybeUndefinedVisitor(self_reg),
-                        initial=all_attrs,
+                        initial=initial_undefined,
                         backward=False,
                         kind=MAYBE_ANALYSIS)

@@ -351,3 +351,17 @@ Return: [x, y]
 While: [a]
 Try: [a]
 Assert: [a]
+
+[case testAlwaysDefinedAttributeDefaults]
+class Basic:
+    x = 0
+
+class ClassBodyAndInit:
+    x = 0
+    s = 'x'
+
+    def __init__(self, n: int) -> None:
+        self.n = 0
+[out]
+Basic: [x]
+ClassBodyAndInit: [n, s, x]
