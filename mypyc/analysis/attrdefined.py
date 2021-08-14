@@ -162,7 +162,7 @@ def attributes_initialized_by_init_call(op: Call) -> Set[str]:
     self_type = op.fn.sig.args[0].type
     assert isinstance(self_type, RInstance)
     cl = self_type.class_ir
-    return {a for a in cl.attributes if cl.is_always_defined(a)}
+    return {a for base in cl.mro for a in base.attributes if base.is_always_defined(a)}
 
 
 class AttributeMaybeDefinedVisitor(BaseAnalysisVisitor[str]):

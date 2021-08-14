@@ -395,6 +395,11 @@ class Deriv2(Base):
         self.y = y
         super().__init__(x)
 
+class Deriv22(Deriv2):
+    def __init__(self, x: int, y: str, z: bool) -> None:
+        super().__init__(x, y)
+        self.z = False
+
 class Deriv3(Base):
     def __init__(self) -> None:
         super().__init__(1)
@@ -420,6 +425,7 @@ class DerivUnsafe(BaseUnsafe):
 Base: [x]
 Deriv1: [x, y]
 Deriv2: [x, y]
+Deriv22: [x, y, z]
 Deriv3: [x]
 Deriv4: [y]
 BaseUnsafe: [x]
