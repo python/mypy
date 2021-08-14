@@ -157,6 +157,9 @@ class ClassIR:
 
         self._always_initialized_attrs: Set[str] = set()
 
+        # If True, __init__ can run unpredictable/arbitrary code.
+        self.init_unknown_code = False
+
     def __repr__(self) -> str:
         return (
             "ClassIR("

@@ -269,18 +269,15 @@ class IfExpr:
 
 class Base:
     def __init__(self, x: int) -> None:
-        # TODO: x should be always defined
         self.x = x
 
 class Derived1(Base):
     def __init__(self, y: int) -> None:
-        # TODO: x and bb should also be always defined
         self.aa = y
         super().__init__(y)
         self.bb = y
 
 class Derived2(Base):
-    # TODO: x should be always defined
     pass
 
 class Conditionals:
@@ -300,9 +297,9 @@ AttributeRef: [aa, bb, cc, dd]
 ListOps: [a, b, c]
 TupleOps: [x, y, z]
 IfExpr: [a]
-Base: []
-Derived1: [aa]
-Derived2: []
+Base: [x]
+Derived1: [aa, bb, x]
+Derived2: [x]
 Conditionals: [a, b]
 
 [case testAlwaysDefinedStatements]
@@ -370,7 +367,6 @@ class AttrWithDefaultAndInit:
         self.x = x
 
 class Base:
-    # TODO: These are always initialized
     x = 0
     y = 1
 
@@ -381,5 +377,50 @@ class Derived(Base):
 Basic: [x]
 ClassBodyAndInit: [n, s, x]
 AttrWithDefaultAndInit: [x]
-Base: []
+Base: [x, y]
 Derived: [x, y, z]
+
+[case testAlwaysDefinedWithInheritance]
+class Base:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+class Deriv1(Base):
+    def __init__(self, x: int, y: str) -> None:
+        super().__init__(x)
+        self.y = y
+
+class Deriv2(Base):
+    def __init__(self, x: int, y: str) -> None:
+        self.y = y
+        super().__init__(x)
+
+class Deriv3(Base):
+    def __init__(self) -> None:
+        super().__init__(1)
+
+class Deriv4(Base):
+    def __init__(self) -> None:
+        self.y = 1
+
+def f(): pass
+
+class BaseUnsafe:
+    def __init__(self, x: int, y: int) -> None:
+        self.x = x
+        f()  # Unknown function
+        self.y = y
+
+class DerivUnsafe(BaseUnsafe):
+    def __init__(self, z: int, zz: int) -> None:
+        self.z = z
+        super().__init__(1, 2)  # Calls unknown function
+        self.zz = zz
+[out]
+Base: [x]
+Deriv1: [x, y]
+Deriv2: [x, y]
+Deriv3: [x]
+Deriv4: [y]
+BaseUnsafe: [x]
+DerivUnsafe: [x, z]

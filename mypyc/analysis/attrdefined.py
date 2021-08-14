@@ -28,8 +28,9 @@ from typing import List, Set, Tuple
 
 from mypyc.ir.ops import (
     Register, Assign, AssignMulti, SetMem, SetAttr, Branch, Return, Unreachable, GetAttr,
-    RegisterOp, BasicBlock
+    Call, RegisterOp, BasicBlock
 )
+from mypyc.ir.rtypes import RInstance
 from mypyc.ir.class_ir import ClassIR
 from mypyc.analysis.dataflow import (
     BaseAnalysisVisitor, AnalysisResult, get_cfg, CFG, MAYBE_ANALYSIS, run_analysis
@@ -44,37 +45,61 @@ def analyze_always_defined_attrs(class_irs: List[ClassIR]) -> None:
 
     This is the main entry point.
     """
+    seen: Set[ClassIR] = set()
     for cl in class_irs:
-        if (cl.is_trait
-                or cl.inherits_python
-                or cl.allow_interpreted_subclasses
-                or cl.builtin_base is not None
-                or cl.children is None
-                or cl.children != []):
-            # Give up
-            continue
-        m = cl.get_method('__init__')
-        if m is None:
-            cl._always_initialized_attrs = cl.attrs_with_defaults.copy()
-            continue
-        self_reg = m.arg_regs[0]
-        cfg = get_cfg(m.blocks)
-        dirty = analyze_arbitrary_execution(m.blocks, self_reg, cfg)
-        maybe_defined = analyze_maybe_defined_attrs_in_init(
-            m.blocks, self_reg, cl.attrs_with_defaults, cfg)
-        all_attrs = set(cl.attributes)
-        maybe_undefined = analyze_maybe_undefined_attrs_in_init(
-            m.blocks,
-            self_reg,
-            initial_undefined=all_attrs - cl.attrs_with_defaults,
-            cfg=cfg)
+        analyze_always_defined_attrs_in_class(cl, seen)
 
-        always_defined = find_always_defined_attributes(
-            m.blocks, self_reg, all_attrs, maybe_defined, maybe_undefined, dirty)
 
-        cl._always_initialized_attrs = always_defined
+def analyze_always_defined_attrs_in_class(cl: ClassIR, seen: Set[ClassIR]) -> None:
+    if cl in seen:
+        return
 
-        mark_attr_initialiation_ops(m.blocks, maybe_defined, dirty)
+    seen.add(cl)
+
+    if (cl.is_trait
+            or cl.inherits_python
+            or cl.allow_interpreted_subclasses
+            or cl.builtin_base is not None
+            or cl.children is None):
+        # Give up
+        return
+
+    for base in cl.mro[1:]:
+        analyze_always_defined_attrs_in_class(base, seen)
+
+    m = cl.get_method('__init__')
+    if m is None:
+        cl._always_initialized_attrs = cl.attrs_with_defaults.copy()
+        return
+    self_reg = m.arg_regs[0]
+    cfg = get_cfg(m.blocks)
+    dirty = analyze_arbitrary_execution(m.blocks, self_reg, cfg)
+    maybe_defined = analyze_maybe_defined_attrs_in_init(
+        m.blocks, self_reg, cl.attrs_with_defaults, cfg)
+    all_attrs: Set[str] = set()
+    for base in cl.mro:
+        all_attrs.update(base.attributes)
+    maybe_undefined = analyze_maybe_undefined_attrs_in_init(
+        m.blocks,
+        self_reg,
+        initial_undefined=all_attrs - cl.attrs_with_defaults,
+        cfg=cfg)
+
+    always_defined = find_always_defined_attributes(
+        m.blocks, self_reg, all_attrs, maybe_defined, maybe_undefined, dirty)
+
+    cl._always_initialized_attrs = always_defined
+
+    mark_attr_initialiation_ops(m.blocks, maybe_defined, dirty)
+
+    # Check if __init__ can run unpredictable code.
+    any_dirty = False
+    for b in m.blocks:
+        for i, op in enumerate(b.ops):
+            if dirty.after[b, i] and not isinstance(op, Return):
+                any_dirty = True
+                break
+    cl.init_unknown_code = any_dirty
 
 
 def find_always_defined_attributes(blocks: List[BasicBlock],
@@ -108,8 +133,8 @@ def find_always_defined_attributes(blocks: List[BasicBlock],
             # afterwards reliably.
             if dirty.after[block, i]:
                 if not dirty.before[block, i]:
-                    attrs = attrs & (maybe_defined.before[block, i] -
-                                     maybe_undefined.before[block, i])
+                    attrs = attrs & (maybe_defined.after[block, i] -
+                                     maybe_undefined.after[block, i])
                 break
     return attrs
 
@@ -133,6 +158,13 @@ def mark_attr_initialiation_ops(blocks: List[BasicBlock],
 GenAndKill = Tuple[Set[str], Set[str]]
 
 
+def attributes_initialized_by_init_call(op: Call) -> Set[str]:
+    self_type = op.fn.sig.args[0].type
+    assert isinstance(self_type, RInstance)
+    cl = self_type.class_ir
+    return {a for a in cl.attributes if cl.is_always_defined(a)}
+
+
 class AttributeMaybeDefinedVisitor(BaseAnalysisVisitor[str]):
     def __init__(self, self_reg: Register) -> None:
         self.self_reg = self_reg
@@ -149,6 +181,8 @@ class AttributeMaybeDefinedVisitor(BaseAnalysisVisitor[str]):
     def visit_register_op(self, op: RegisterOp) -> Tuple[Set[str], Set[str]]:
         if isinstance(op, SetAttr) and op.obj is self.self_reg:
             return {op.attr}, set()
+        if isinstance(op, Call) and op.fn.class_name and op.fn.name == '__init__':
+            return attributes_initialized_by_init_call(op), set()
         return set(), set()
 
     def visit_assign(self, op: Assign) -> Tuple[Set[str], Set[str]]:
@@ -189,6 +223,8 @@ class AttributeMaybeUndefinedVisitor(BaseAnalysisVisitor[str]):
     def visit_register_op(self, op: RegisterOp) -> Tuple[Set[str], Set[str]]:
         if isinstance(op, SetAttr) and op.obj is self.self_reg:
             return set(), {op.attr}
+        if isinstance(op, Call) and op.fn.class_name and op.fn.name == '__init__':
+            return set(), attributes_initialized_by_init_call(op)
         return set(), set()
 
     def visit_assign(self, op: Assign) -> Tuple[Set[str], Set[str]]:

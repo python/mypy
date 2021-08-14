@@ -6,6 +6,7 @@ from mypyc.ir.ops import (
     Cast, RaiseStandardError, CallC, Truncate, LoadGlobal, IntOp, ComparisonOp, LoadMem,
     GetElementPtr, LoadAddress, KeepAlive, Branch, Return, Unreachable, RegisterOp, BasicBlock
 )
+from mypyc.ir.rtypes import RInstance
 from mypyc.analysis.dataflow import MAYBE_ANALYSIS, run_analysis, AnalysisResult, CFG
 
 GenAndKill = Tuple[Set[None], Set[None]]
@@ -47,6 +48,13 @@ class ArbitraryExecutionVisitor(OpVisitor[GenAndKill]):
         return CLEAN
 
     def visit_call(self, op: Call) -> GenAndKill:
+        fn = op.fn
+        if fn.class_name and fn.name == '__init__':
+            self_type = op.fn.sig.args[0].type
+            assert isinstance(self_type, RInstance)
+            cl = self_type.class_ir
+            if not cl.init_unknown_code:
+                return CLEAN
         return DIRTY
 
     def visit_method_call(self, op: MethodCall) -> GenAndKill:
