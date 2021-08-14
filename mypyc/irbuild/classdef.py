@@ -1,7 +1,7 @@
 """Transform class definitions from the mypy AST form to IR."""
 
 from abc import abstractmethod
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Optional, Set, Tuple
 from typing_extensions import Final
 
 from mypy.nodes import (
@@ -214,7 +214,9 @@ class ExtClassBuilder(ClassBuilder):
             self.builder.init_final_static(lvalue, value, self.cdef.name)
 
     def finalize(self, ir: ClassIR) -> None:
-        generate_attr_defaults(self.builder, self.cdef, self.skip_attr_default)
+        attrs_with_defaults, default_assignments = find_attr_initializers(builder, cdef)
+        ir.attrs_with_defaults.update(attrs_with_defaults)
+        generate_attr_defaults_init(builder, cdef, default_assignments)
         create_ne_from_eq(self.builder, self.cdef)
 
 
@@ -524,9 +526,11 @@ def add_non_ext_class_attr(builder: IRBuilder,
             attr_to_cache.append((lvalue, object_rprimitive))
 
 
-def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef,
-                           skip: Optional[Callable[[str, AssignmentStmt], bool]] = None) -> None:
-    """Generate an initialization method for default attr values (from class vars).
+def find_attr_initializers(builder: IRBuilder,
+                           cdef: ClassDef,
+                           skip: Optional[Callable[[str, AssignmentStmt], bool]] = None,
+) -> Tuple[Set[str], List[AssignmentStmt]]:
+    """Find initializers of attributes in a class body.
 
     If provided, the skip arg should be a callable which will return whether
     to skip generating a default for an attribute.  It will be passed the name of
@@ -534,7 +538,9 @@ def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef,
     """
     cls = builder.mapper.type_to_ir[cdef.info]
     if cls.builtin_base:
-        return
+        return set(), []
+
+    attrs_with_defaults = set()
 
     # Pull out all assignments in classes in the mro so we can initialize them
     # TODO: Support nested statements
@@ -558,9 +564,20 @@ def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef,
                 if skip is not None and skip(name, stmt):
                     continue
 
+                attrs_with_defaults.add(name)
                 default_assignments.append(stmt)
 
+    return attrs_with_defaults, default_assignments
+
+
+def generate_attr_defaults_init(builder: IRBuilder,
+                                cdef: ClassDef,
+                                default_assignments: List[AssignmentStmt]) -> None:
+    """Generate an initialization method for default attr values (from class vars)."""
     if not default_assignments:
+        return
+    cls = builder.mapper.type_to_ir[cdef.info]
+    if cls.builtin_base:
         return
 
     with builder.enter_method(cls, '__mypyc_defaults_setup', bool_rprimitive):

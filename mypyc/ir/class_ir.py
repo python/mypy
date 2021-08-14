@@ -152,7 +152,10 @@ class ClassIR:
         # None if separate compilation prevents this from working
         self.children: Optional[List[ClassIR]] = []
 
-        self._always_initialized_attrs = set()  # type: Set[str]
+        # Instance attributes that are initialized in the class body.
+        self.attrs_with_defaults: Set[str] = set()
+
+        self._always_initialized_attrs: Set[str] = set()
 
     def __repr__(self) -> str:
         return (
