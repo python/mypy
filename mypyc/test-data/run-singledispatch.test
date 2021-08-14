@@ -655,3 +655,44 @@ with assertRaises(TypeError, 'Invalid first argument to `register()`'):
     @f.register
     def _():
         pass
+
+[file driver.py]
+import register
+
+[case testCacheClearedWhenNewFunctionRegistered]
+from functools import singledispatch
+
+@singledispatch
+def f(arg) -> str:
+    return 'default'
+
+[file register.py]
+from native import f
+class A: pass
+class B: pass
+class C: pass
+
+# annotated function
+assert f(A()) == 'default'
+@f.register
+def _(arg: A) -> str:
+    return 'a'
+assert f(A()) == 'a'
+
+# type passed as argument
+assert f(B()) == 'default'
+@f.register(B)
+def _(arg: B) -> str:
+    return 'b'
+assert f(B()) == 'b'
+
+# 2 argument form
+assert f(C()) == 'default'
+def c(arg) -> str:
+    return 'c'
+f.register(C, c)
+assert f(C()) == 'c'
+
+
+[file driver.py]
+import register

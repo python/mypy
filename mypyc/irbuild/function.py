@@ -36,7 +36,7 @@ from mypyc.primitives.generic_ops import py_setattr_op, next_raw_op, iter_op
 from mypyc.primitives.misc_ops import (
     check_stop_op, yield_from_except_op, coro_op, send_op, register_function
 )
-from mypyc.primitives.dict_ops import dict_set_item_op, dict_new_op
+from mypyc.primitives.dict_ops import dict_set_item_op, dict_new_op, dict_get_method_with_none
 from mypyc.common import SELF_NAME, LAMBDA_NAME, decorator_helper_name
 from mypyc.sametype import is_same_method_signature
 from mypyc.irbuild.util import is_constant
@@ -841,6 +841,43 @@ def generate_singledispatch_dispatch_function(
     current_func_decl = builder.mapper.func_to_decl[fitem]
     arg_info = get_args(builder, current_func_decl.sig.args, line)
 
+    dispatch_func_obj = builder.self()
+
+    arg_type = builder.builder.get_type_of_obj(arg_info.args[0], line)
+    dispatch_cache = builder.builder.get_attr(
+        dispatch_func_obj, 'dispatch_cache', dict_rprimitive, line
+    )
+    call_find_impl, use_cache, call_func = BasicBlock(), BasicBlock(), BasicBlock()
+    get_result = builder.call_c(dict_get_method_with_none, [dispatch_cache, arg_type], line)
+    is_not_none = builder.translate_is_op(get_result, builder.none_object(), 'is not', line)
+    impl_to_use = Register(object_rprimitive)
+    builder.add_bool_branch(is_not_none, use_cache, call_find_impl)
+
+    builder.activate_block(use_cache)
+    builder.assign(impl_to_use, get_result, line)
+    builder.goto(call_func)
+
+    builder.activate_block(call_find_impl)
+    find_impl = builder.load_module_attr_by_fullname('functools._find_impl', line)
+    registry = load_singledispatch_registry(builder, dispatch_func_obj, line)
+    uncached_impl = builder.py_call(find_impl, [arg_type, registry], line)
+    builder.call_c(dict_set_item_op, [dispatch_cache, arg_type, uncached_impl], line)
+    builder.assign(impl_to_use, uncached_impl, line)
+    builder.goto(call_func)
+
+    builder.activate_block(call_func)
+    gen_calls_to_correct_impl(builder, impl_to_use, arg_info, fitem, line)
+
+
+def gen_calls_to_correct_impl(
+    builder: IRBuilder,
+    impl_to_use: Value,
+    arg_info: ArgInfo,
+    fitem: FuncDef,
+    line: int,
+) -> None:
+    current_func_decl = builder.mapper.func_to_decl[fitem]
+
     def gen_native_func_call_and_return(fdef: FuncDef) -> None:
         func_decl = builder.mapper.func_to_decl[fdef]
         ret_val = builder.builder.call(
@@ -848,16 +885,6 @@ def generate_singledispatch_dispatch_function(
         )
         coerced = builder.coerce(ret_val, current_func_decl.sig.ret_type, line)
         builder.add(Return(coerced))
-
-    registry = load_singledispatch_registry(builder, fitem, line)
-
-    # TODO: cache the output of _find_impl - without adding that caching, this implementation is
-    # probably slower than the standard library functools implementation because functools caches
-    # the output of _find_impl and _find_impl looks like it is very slow
-
-    find_impl = builder.load_module_attr_by_fullname('functools._find_impl', line)
-    arg_type = builder.builder.get_type_of_obj(arg_info.args[0], line)
-    impl_to_use = builder.py_call(find_impl, [arg_type, registry], line)
 
     typ, src = builtin_names['builtins.int']
     int_type_obj = builder.add(LoadAddress(typ, src, line))
@@ -913,7 +940,9 @@ def gen_dispatch_func_ir(
     builder.enter(FuncInfo(fitem, dispatch_name))
     setup_callable_class(builder)
     builder.fn_info.callable_class.ir.attributes['registry'] = dict_rprimitive
+    builder.fn_info.callable_class.ir.attributes['dispatch_cache'] = dict_rprimitive
     builder.fn_info.callable_class.ir.has_dict = True
+    builder.fn_info.callable_class.ir.needs_getseters = True
     generate_singledispatch_callable_class_ctor(builder)
 
     generate_singledispatch_dispatch_function(builder, main_func_name, fitem)
@@ -927,12 +956,16 @@ def gen_dispatch_func_ir(
 
 
 def generate_singledispatch_callable_class_ctor(builder: IRBuilder) -> None:
-    """Create an __init__ that sets registry to an empty dict"""
+    """Create an __init__ that sets registry and dispatch_cache to empty dicts"""
     line = -1
     class_ir = builder.fn_info.callable_class.ir
     builder.enter_method(class_ir, '__init__', bool_rprimitive)
     empty_dict = builder.call_c(dict_new_op, [], line)
     builder.add(SetAttr(builder.self(), 'registry', empty_dict, line))
+    cache_dict = builder.call_c(dict_new_op, [], line)
+    dispatch_cache_str = builder.load_str('dispatch_cache')
+    # use the py_setattr_op instead of SetAttr so that it also gets added to our __dict__
+    builder.call_c(py_setattr_op, [builder.self(), dispatch_cache_str, cache_dict], line)
     # the generated C code seems to expect that __init__ returns a char, so just return 1
     builder.add(Return(Integer(1, bool_rprimitive, line), line))
     builder.leave_method()
@@ -948,8 +981,7 @@ def add_register_method_to_callable_class(builder: IRBuilder, fn_info: FuncInfo)
     builder.leave_method()
 
 
-def load_singledispatch_registry(builder: IRBuilder, fitem: FuncDef, line: int) -> Value:
-    dispatch_func_obj = load_func(builder, fitem.name, fitem.fullname, line)
+def load_singledispatch_registry(builder: IRBuilder, dispatch_func_obj: Value, line: int) -> Value:
     return builder.builder.get_attr(dispatch_func_obj, 'registry', dict_rprimitive, line)
 
 
@@ -997,10 +1029,17 @@ def maybe_insert_into_registry_dict(builder: IRBuilder, fitem: FuncDef) -> None:
             load_literal = LoadLiteral(current_id, object_rprimitive)
             to_insert = builder.add(load_literal)
         # TODO: avoid reloading the registry here if we just created it
-        registry = load_singledispatch_registry(builder, singledispatch_func, line)
+        dispatch_func_obj = load_func(
+            builder, singledispatch_func.name, singledispatch_func.fullname, line
+        )
+        registry = load_singledispatch_registry(builder, dispatch_func_obj, line)
         for typ in types:
             loaded_type = load_type(builder, typ, line)
             builder.call_c(dict_set_item_op, [registry, loaded_type, to_insert], line)
+        dispatch_cache = builder.builder.get_attr(
+            dispatch_func_obj, 'dispatch_cache', dict_rprimitive, line
+        )
+        builder.gen_method_call(dispatch_cache, 'clear', [], None, line)
 
 
 def get_native_impl_ids(builder: IRBuilder, singledispatch_func: FuncDef) -> Dict[FuncDef, int]:
