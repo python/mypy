@@ -89,6 +89,8 @@ def analyze_always_defined_attrs_in_class(cl: ClassIR, seen: Set[ClassIR]) -> No
         m.blocks, self_reg, all_attrs, maybe_defined, maybe_undefined, dirty)
 
     cl._always_initialized_attrs = always_defined
+    if always_defined:
+        print(cl.name, sorted(always_defined))
 
     mark_attr_initialiation_ops(m.blocks, maybe_defined, dirty)
 
