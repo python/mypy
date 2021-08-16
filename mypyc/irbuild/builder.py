@@ -857,6 +857,16 @@ class IRBuilder:
         callee_node = callee.node
         if isinstance(callee_node, OverloadedFuncDef):
             callee_node = callee_node.impl
+        # TODO: use native calls for any decorated functions which have all their decorators
+        # removed, not just singledispatch functions (which we don't do now just in case those
+        # decorated functions are callable classes or cannot be called without the python API for
+        # some other reason)
+        if (
+            isinstance(callee_node, Decorator)
+            and callee_node.func not in self.fdefs_to_decorators
+            and callee_node.func in self.singledispatch_impls
+        ):
+            callee_node = callee_node.func
         if (callee_node is not None
                 and callee.fullname is not None
                 and callee_node in self.mapper.func_to_decl
