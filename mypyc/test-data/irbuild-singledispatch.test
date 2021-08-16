@@ -28,25 +28,6 @@ L0:
     r4 = PyObject_SetAttr(__mypyc_self__, r3, r2)
     r5 = r4 >= 0 :: signed
     return 1
-def f_obj.__get__(__mypyc_self__, instance, owner):
-    __mypyc_self__, instance, owner, r0 :: object
-    r1 :: bit
-    r2 :: object
-L0:
-    r0 = load_address _Py_NoneStruct
-    r1 = instance == r0
-    if r1 goto L1 else goto L2 :: bool
-L1:
-    return __mypyc_self__
-L2:
-    r2 = PyMethod_New(__mypyc_self__, instance)
-    return r2
-def f_obj.register(__mypyc_self__, cls, func):
-    __mypyc_self__ :: __main__.f_obj
-    cls, func, r0 :: object
-L0:
-    r0 = CPySingledispatch_RegisterFunction(__mypyc_self__, cls, func)
-    return r0
 def f_obj.__call__(__mypyc_self__, arg):
     __mypyc_self__ :: __main__.f_obj
     arg :: object
@@ -114,6 +95,37 @@ L7:
     r22 = PyObject_CallFunctionObjArgs(r6, arg, 0)
     r23 = unbox(bool, r22)
     return r23
+def f_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner, r0 :: object
+    r1 :: bit
+    r2 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = instance == r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = PyMethod_New(__mypyc_self__, instance)
+    return r2
+def f_obj.register(__mypyc_self__, cls, func):
+    __mypyc_self__ :: __main__.f_obj
+    cls, func, r0 :: object
+L0:
+    r0 = CPySingledispatch_RegisterFunction(__mypyc_self__, cls, func)
+    return r0
+def f(arg):
+    arg :: object
+    r0 :: dict
+    r1 :: str
+    r2 :: object
+    r3 :: bool
+L0:
+    r0 = __main__.globals :: static
+    r1 = 'f'
+    r2 = CPyDict_GetItem(r0, r1)
+    r3 = f_obj.__call__(r2, arg)
+    return r3
 def g(arg):
     arg :: int
 L0:
