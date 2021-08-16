@@ -1258,7 +1258,7 @@ from dataclasses import dataclass
 class A:
     pass
 
-reveal_type(A.__dataclass_fields__)  # N: Revealed type is 'builtins.dict[builtins.str, dataclasses.Field[Any]]'
+reveal_type(A.__dataclass_fields__)  # N: Revealed type is "builtins.dict[builtins.str, dataclasses.Field[Any]]"
 
 [builtins fixtures/dict.pyi]
 
@@ -1279,6 +1279,8 @@ reveal_type(a.x)  # N: Revealed type is "def (builtins.int) -> builtins.int"
 reveal_type(a.y)  # N: Revealed type is "def (builtins.int) -> builtins.int"
 reveal_type(A.y)  # N: Revealed type is "def (builtins.int) -> builtins.int"
 
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassCallableFieldAssignment]
 # flags: --python-version 3.7
 from dataclasses import dataclass
@@ -1296,3 +1298,5 @@ def x2(s: str) -> str:
 a = A(lambda i:i)
 a.x = x
 a.x = x2 # E: Incompatible types in assignment (expression has type "Callable[[str], str]", variable has type "Callable[[int], int]")
+
+[builtins fixtures/dataclasses.pyi]
