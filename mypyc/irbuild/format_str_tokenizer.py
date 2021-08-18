@@ -239,4 +239,3 @@ def join_formatted_bytes(builder: IRBuilder, literals: List[str],
 
     result_list[0] = Integer(len(result_list) - 1, c_pyssize_t_rprimitive)
     return builder.call_c(bytes_build_op, result_list, line)
-
