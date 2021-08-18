@@ -123,3 +123,36 @@ L0:
     keep_alive b
     r2 = r1 << 1
     return r2
+
+[case testBytesFormatting]
+def f(var: bytes, num: int) -> None:
+    b1 = b'aaaa%bbbbb%s' % (var, var)
+    b2 = b'aaaa%bbbbb%s%d' % (var, var, num)
+    b3 = b'%b' % var
+    b4 = b'%ssss' % var
+[typing fixtures/typing-full.pyi]
+[out]
+def f(var, num):
+    var :: bytes
+    num :: int
+    r0, r1, r2, b1, r3 :: bytes
+    r4 :: tuple[bytes, bytes, int]
+    r5, r6 :: object
+    r7, b2, r8, b3, r9, r10, b4 :: bytes
+L0:
+    r0 = b'aaaa'
+    r1 = b'bbbb'
+    r2 = CPyBytes_Build(4, r0, var, r1, var)
+    b1 = r2
+    r3 = b'aaaa%bbbbb%s%d'
+    r4 = (var, var, num)
+    r5 = box(tuple[bytes, bytes, int], r4)
+    r6 = PyNumber_Remainder(r3, r5)
+    r7 = cast(bytes, r6)
+    b2 = r7
+    r8 = CPyBytes_Build(1, var)
+    b3 = r8
+    r9 = b'sss'
+    r10 = CPyBytes_Build(2, var, r9)
+    b4 = r10
+    return 1

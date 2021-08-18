@@ -80,3 +80,39 @@ PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter) {
         return _PyObject_CallMethodIdOneArg(sep, &PyId_join, iter);
     }
 }
+
+PyObject *CPyBytes_Build(Py_ssize_t len, ...) {
+    Py_ssize_t i;
+    Py_ssize_t sz = 0;
+
+    va_list args;
+    va_start(args, len);
+    for (i = 0; i < len; i++) {
+        PyObject *item = va_arg(args, PyObject *);
+        size_t add_sz = ((PyVarObject *)item)->ob_size;
+        // Using size_t to avoid overflow during arithmetic calculation
+        if (add_sz > (size_t)(PY_SSIZE_T_MAX - sz)) {
+            PyErr_SetString(PyExc_OverflowError,
+                            "join() result is too long for a Python bytes");
+            return NULL;
+        }
+        sz += add_sz;
+    }
+    va_end(args);
+
+    PyBytesObject *ret = (PyBytesObject *)PyBytes_FromStringAndSize(NULL, sz);
+    if (ret != NULL) {
+        char *res_data = ret->ob_sval;
+        va_start(args, len);
+        for (i = 0; i < len; i++) {
+            PyObject *item = va_arg(args, PyObject *);
+            Py_ssize_t item_sz = ((PyVarObject *)item)->ob_size;
+            memcpy(res_data, ((PyBytesObject *)item)->ob_sval, item_sz);
+            res_data += item_sz;
+        }
+        va_end(args);
+        assert(res_data == ret->ob_sval + ((PyVarObject *)ret)->ob_size);
+    }
+
+    return (PyObject *)ret;
+}

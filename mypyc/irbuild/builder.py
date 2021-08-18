@@ -200,6 +200,9 @@ class IRBuilder:
     def load_str(self, value: str) -> Value:
         return self.builder.load_str(value)
 
+    def load_bytes(self, value: bytes) -> Value:
+        return self.builder.load_bytes(value)
+
     def load_int(self, value: int) -> Value:
         return self.builder.load_int(value)
 
