@@ -339,3 +339,8 @@ def test_int_min_2() -> None:
     x: int = 30
     y: int = 200
     assert min(x, y) == 30
+
+def test_int_float_hybrid_min() -> None:
+    x: int = 30
+    y: float = 200.0
+    assert min(x, y) == 30
