@@ -65,6 +65,8 @@ method_op(
     c_function_name='CPyBytes_Join',
     error_kind=ERR_MAGIC)
 
+# Join bytes objects and return a new bytes.
+# The first argument is the total number of the following bytes.
 bytes_build_op = custom_op(
     arg_types=[c_pyssize_t_rprimitive],
     return_type=bytes_rprimitive,

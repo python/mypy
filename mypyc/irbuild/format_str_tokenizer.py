@@ -123,10 +123,10 @@ def tokenizer_format_call(
     return literals, format_ops
 
 
-def convert_expr(builder: IRBuilder, format_ops: List[FormatOp],
-                 exprs: List[Expression], line: int) -> Optional[List[Value]]:
-    """Convert expressions into string literals with the guidance
-    of FormatOps."""
+def convert_format_expr_to_str(builder: IRBuilder, format_ops: List[FormatOp],
+                               exprs: List[Expression], line: int) -> Optional[List[Value]]:
+    """Convert expressions into string literal objects with the guidance
+    of FormatOps. Return None when fails."""
     if len(format_ops) != len(exprs):
         return None
 
@@ -193,10 +193,10 @@ def join_formatted_strings(builder: IRBuilder, literals: Optional[List[str]],
     return builder.call_c(str_build_op, result_list, line)
 
 
-def convert_expr_to_bytes(builder: IRBuilder, format_ops: List[FormatOp],
-                          exprs: List[Expression], line: int) -> Optional[List[Value]]:
-    """Convert expressions into bytes literals with the guidance
-    of FormatOps."""
+def convert_format_expr_to_bytes(builder: IRBuilder, format_ops: List[FormatOp],
+                                 exprs: List[Expression], line: int) -> Optional[List[Value]]:
+    """Convert expressions into bytes literal objects with the guidance
+    of FormatOps. Return None when fails."""
     if len(format_ops) != len(exprs):
         return None
 
@@ -220,7 +220,8 @@ def join_formatted_bytes(builder: IRBuilder, literals: List[str],
     """Merge the list of literals and the list of substitutions
     alternatively using 'bytes_build_op'.
 
-    The literals should only contains ascii literal objects.
+    The literals should only contains ascii literal objects. Otherwise
+    it can't pass the mypy checking.
     """
     result_list: List[Value] = [Integer(0, c_pyssize_t_rprimitive)]
 

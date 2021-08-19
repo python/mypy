@@ -25,8 +25,8 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.irbuild.format_str_tokenizer import (
-    tokenizer_printf_style, join_formatted_strings, convert_expr, convert_expr_to_bytes,
-    join_formatted_bytes
+    tokenizer_printf_style, join_formatted_strings, convert_format_expr_to_str,
+    convert_format_expr_to_bytes, join_formatted_bytes
 )
 from mypyc.primitives.bytes_ops import bytes_slice_op
 from mypyc.primitives.registry import CFunctionDescription, builtin_names
@@ -585,11 +585,11 @@ def translate_printf_style_formatting(builder: IRBuilder,
             exprs.append(rhs)
 
         if isinstance(format_expr, BytesExpr):
-            substitutions = convert_expr_to_bytes(builder, format_ops, exprs, format_expr.line)
+            substitutions = convert_format_expr_to_bytes(builder, format_ops, exprs, format_expr.line)
             if substitutions is not None:
                 return join_formatted_bytes(builder, literals, substitutions, format_expr.line)
         else:
-            substitutions = convert_expr(builder, format_ops, exprs, format_expr.line)
+            substitutions = convert_format_expr_to_str(builder, format_ops, exprs, format_expr.line)
             if substitutions is not None:
                 return join_formatted_strings(builder, literals, substitutions, format_expr.line)
 

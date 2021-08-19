@@ -280,3 +280,19 @@ def test_bytes_formatting_2() -> None:
     assert b'aaa%bbbb%s' % (var, var) == b'aaabbbbbbb'
     assert b'aaa%dbbb%b' % (num, var) == b'aaa10bbbbb'
     assert b'%s%b' % (var, var) == b'bbbb'
+    assert b'%b' % bytes() == b''
+    assert b'%b' % b'' == b''
+
+    assert b'\xff%s' % b'\xff' == b'\xff\xff'
+    assert b'\xe4\xbd\xa0\xe5\xa5\xbd%b' % b'\xe4\xbd\xa0\xe5\xa5\xbd' == \
+        b'\xe4\xbd\xa0\xe5\xa5\xbd\xe4\xbd\xa0\xe5\xa5\xbd'
+    assert b'\xff%b' % '你好'.encode() == b'\xff\xe4\xbd\xa0\xe5\xa5\xbd'
+
+
+class A:
+    def __bytes__(self):
+        return b'aaa'
+
+def test_bytes_dunder() -> None:
+    assert b'%b' % A() == b'aaa'
+    assert b'%s' % A() == b'aaa'
