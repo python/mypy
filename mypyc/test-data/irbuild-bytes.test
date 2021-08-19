@@ -62,11 +62,34 @@ L0:
     c = r6
     return 1
 
+[case testBytesSlicing]
+def f(a: bytes, start: int, end: int) -> bytes:
+    return a[start:end]
+[out]
+def f(a, start, end):
+    a :: bytes
+    start, end :: int
+    r0 :: bytes
+L0:
+    r0 = CPyBytes_GetSlice(a, start, end)
+    return r0
+
+[case testBytesIndex]
+def f(a: bytes, i: int) -> int:
+    return a[i]
+[out]
+def f(a, i):
+    a :: bytes
+    i, r0 :: int
+L0:
+    r0 = CPyBytes_GetItem(a, i)
+    return r0
+
 [case testBytesConcat]
-def f1(a: bytes, b: bytes) -> bytes:
+def f(a: bytes, b: bytes) -> bytes:
     return a + b
 [out]
-def f1(a, b):
+def f(a, b):
     a, b, r0 :: bytes
 L0:
     r0 = CPyBytes_Concat(a, b)

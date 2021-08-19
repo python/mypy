@@ -102,6 +102,9 @@ class ClassIR:
         self.has_dict = False
         # Do we allow interpreted subclasses? Derived from a mypyc_attr.
         self.allow_interpreted_subclasses = False
+        # Does this class need getseters to be generated for its attributes? (getseters are also
+        # added if is_generated is False)
+        self.needs_getseters = False
         # If this a subclass of some built-in python class, the name
         # of the object for that class. We currently only support this
         # in a few ad-hoc cases.
@@ -279,6 +282,7 @@ class ClassIR:
             'inherits_python': self.inherits_python,
             'has_dict': self.has_dict,
             'allow_interpreted_subclasses': self.allow_interpreted_subclasses,
+            'needs_getseters': self.needs_getseters,
             'builtin_base': self.builtin_base,
             'ctor': self.ctor.serialize(),
             # We serialize dicts as lists to ensure order is preserved
@@ -329,6 +333,7 @@ class ClassIR:
         ir.inherits_python = data['inherits_python']
         ir.has_dict = data['has_dict']
         ir.allow_interpreted_subclasses = data['allow_interpreted_subclasses']
+        ir.needs_getseters = data['needs_getseters']
         ir.builtin_base = data['builtin_base']
         ir.ctor = FuncDecl.deserialize(data['ctor'], ctx)
         ir.attributes = OrderedDict(

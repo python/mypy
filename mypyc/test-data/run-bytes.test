@@ -43,6 +43,8 @@ def test_bytes_init() -> None:
         pass
 
 [case testBytesOps]
+from testutil import assertRaises
+
 def test_indexing() -> None:
     # Use bytes() to avoid constant folding
     b = b'asdf' + bytes()
@@ -50,9 +52,18 @@ def test_indexing() -> None:
     assert b[1] == 115
     assert b[3] == 102
     assert b[-1] == 102
-    b = b'\xfe\x15' + bytes()
-    assert b[0] == 254
-    assert b[1] == 21
+    b = b'\xae\x80\xfe\x15' + bytes()
+    assert b[0] == 174
+    assert b[1] == 128
+    assert b[2] == 254
+    assert b[3] == 21
+    assert b[-4] == 174
+    with assertRaises(IndexError, "index out of range"):
+        b[4]
+    with assertRaises(IndexError, "index out of range"):
+        b[-5]
+    with assertRaises(IndexError, "index out of range"):
+        b[2**26]
 
 def test_concat() -> None:
     b1 = b'123' + bytes()
@@ -98,6 +109,39 @@ def test_len() -> None:
     assert len(b) == 3
     assert len(bytes()) == 0
 
+[case testBytesSlicing]
+def test_bytes_slicing() -> None:
+    b = b'abcdefg'
+    zero = int()
+    ten = 10 + zero
+    two = 2 + zero
+    five = 5 + zero
+    seven = 7 + zero
+    assert b[:ten] == b'abcdefg'
+    assert b[0:seven] == b'abcdefg'
+    assert b[0:(len(b)+1)] == b'abcdefg'
+    assert b[two:five] == b'cde'
+    assert b[two:two] == b''
+    assert b[-two:-two] == b''
+    assert b[-ten:(-ten+1)] == b''
+    assert b[:-two] == b'abcde'
+    assert b[:two] == b'ab'
+    assert b[:] == b'abcdefg'
+    assert b[-two:] == b'fg'
+    assert b[zero:] == b'abcdefg'
+    assert b[:zero] == b''
+    assert b[-ten:] == b'abcdefg'
+    assert b[-ten:ten] == b'abcdefg'
+    big_ints = [1000 * 1000 * 1000 * 1000 * 1000 * 1000 * 1000, 2**24, 2**63]
+    for big_int in big_ints:
+        assert b[1:big_int] == b'bcdefg'
+        assert b[big_int:] == b''
+        assert b[-big_int:-1] == b'abcdef'
+        assert b[-big_int:big_int] == b'abcdefg'
+        assert type(b[-big_int:-1]) == bytes
+    assert type(b[-ten:]) == bytes
+    assert type(b[:]) == bytes
+
 [case testBytearrayBasics]
 from typing import Any
 
@@ -125,6 +169,62 @@ def test_bytearray_passed_into_bytes() -> None:
     assert f(bytearray(3))
     brr1: Any = bytearray()
     assert f(brr1)
+
+[case testBytearraySlicing]
+def test_bytearray_slicing() -> None:
+    b: bytes = bytearray(b'abcdefg')
+    zero = int()
+    ten = 10 + zero
+    two = 2 + zero
+    five = 5 + zero
+    seven = 7 + zero
+    assert b[:ten] == b'abcdefg'
+    assert b[0:seven] == b'abcdefg'
+    assert b[two:five] == b'cde'
+    assert b[two:two] == b''
+    assert b[-two:-two] == b''
+    assert b[-ten:(-ten+1)] == b''
+    assert b[:-two] == b'abcde'
+    assert b[:two] == b'ab'
+    assert b[:] == b'abcdefg'
+    assert b[-two:] == b'fg'
+    assert b[zero:] == b'abcdefg'
+    assert b[:zero] == b''
+    assert b[-ten:] == b'abcdefg'
+    assert b[-ten:ten] == b'abcdefg'
+    big_ints = [1000 * 1000 * 1000 * 1000 * 1000 * 1000 * 1000, 2**24, 2**63]
+    for big_int in big_ints:
+        assert b[1:big_int] == b'bcdefg'
+        assert b[big_int:] == b''
+        assert b[-big_int:-1] == b'abcdef'
+        assert b[-big_int:big_int] == b'abcdefg'
+        assert type(b[-big_int:-1]) == bytearray
+    assert type(b[-ten:]) == bytearray
+    assert type(b[:]) == bytearray
+
+[case testBytearrayIndexing]
+from testutil import assertRaises
+
+def test_bytearray_indexing() -> None:
+    b: bytes = bytearray(b'\xae\x80\xfe\x15')
+    assert b[0] == 174
+    assert b[1] == 128
+    assert b[2] == 254
+    assert b[3] == 21
+    assert b[-4] == 174
+    with assertRaises(IndexError, "index out of range"):
+        b[4]
+    with assertRaises(IndexError, "index out of range"):
+        b[-5]
+    b2 = bytearray([175, 255, 128, 22])
+    assert b2[0] == 175
+    assert b2[1] == 255
+    assert b2[-1] == 22
+    assert b2[2] == 128
+    with assertRaises(ValueError, "byte must be in range(0, 256)"):
+        b2[0] = -1
+    with assertRaises(ValueError, "byte must be in range(0, 256)"):
+        b2[0] = 256
 
 [case testBytesJoin]
 from typing import Any
