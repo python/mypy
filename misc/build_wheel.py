@@ -3,7 +3,7 @@
 The main GitHub workflow where this script is used:
 https://github.com/mypyc/mypy_mypyc-wheels/blob/master/.github/workflows/build.yml
 
-This uses cibuildwheel (https://github.com/joerick/cibuildwheel) to
+This uses cibuildwheel (https://github.com/pypa/cibuildwheel) to
 build the wheels.
 
 Usage:
@@ -26,7 +26,6 @@ Other supported values for platform: linux, windows
 import argparse
 import os
 import subprocess
-import sys
 from typing import Dict
 
 # Clang package we use on Linux
@@ -44,6 +43,13 @@ def create_environ(python_version: str) -> Dict[str, str]:
 
     # Don't build 32-bit wheels
     env['CIBW_SKIP'] = "*-manylinux_i686 *-win32"
+
+    # Apple Silicon support
+    # When cross-compiling on Intel, it is not possible to test arm64 and 
+    # the arm64 part of a universal2 wheel. Warnings will be silenced with
+    # following CIBW_TEST_SKIP
+    env['CIBW_ARCHS_MACOS'] = "x86_64 arm64"
+    env['CIBW_TEST_SKIP'] = "*-macosx_arm64"
 
     env['CIBW_BUILD_VERBOSITY'] = '1'
 

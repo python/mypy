@@ -9,7 +9,7 @@ and explains how to get your code running again. Generally speaking, we have
 three tools at our disposal:
 
 * For Python 3.7 through 3.9, use of ``from __future__ import annotations``
-  (:pep:`563`), made the default in Python 3.10 and later
+  (:pep:`563`), made the default in Python 3.11 and later
 * Use of string literal types or type comments
 * Use of ``typing.TYPE_CHECKING``
 
@@ -47,7 +47,7 @@ Future annotations import (PEP 563)
 -----------------------------------
 
 Many of the issues described here are caused by Python trying to evaluate
-annotations. From Python 3.10 on, Python will no longer attempt to evaluate
+annotations. From Python 3.11 on, Python will no longer attempt to evaluate
 function and variable annotations. This behaviour is made available in Python
 3.7 and later through the use of ``from __future__ import annotations``.
 
@@ -94,12 +94,6 @@ Since code inside ``if TYPE_CHECKING:`` is not executed at runtime, it provides
 a convenient way to tell mypy something without the code being evaluated at
 runtime. This is most useful for resolving :ref:`import cycles <import-cycles>`.
 
-.. note::
-
-   Python 3.5.1 and below don't have :py:data:`~typing.TYPE_CHECKING`. An
-   alternative is to define a constant named ``MYPY`` that has the value
-   ``False`` at runtime. Mypy considers it to be ``True`` when type checking.
-
 Class name forward references
 -----------------------------
 
@@ -108,7 +102,7 @@ defined (aka forward reference). Thus this code does not work as expected:
 
 .. code-block:: python
 
-   def f(x: A) -> None: ...  # NameError: name 'A' is not defined
+   def f(x: A) -> None: ...  # NameError: name "A" is not defined
    class A: ...
 
 Starting from Python 3.7, you can add ``from __future__ import annotations`` to
@@ -148,7 +142,7 @@ Sometimes in order to add type annotations you have to add extra
 imports to a module and those imports cause cycles that didn't exist
 before. This can lead to errors at runtime like:
 
-.. code-block::
+.. code-block:: text
 
    ImportError: cannot import name 'b' from partially initialized module 'A' (most likely due to a circular import)
 

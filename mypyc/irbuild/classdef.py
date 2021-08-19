@@ -1,6 +1,7 @@
 """Transform class definitions from the mypy AST form to IR."""
 
-from typing import List, Optional
+from typing import List, Optional, Tuple
+from typing_extensions import Final
 
 from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, PassStmt, AssignmentStmt, NameExpr, StrExpr,
@@ -11,7 +12,7 @@ from mypyc.ir.ops import (
     BasicBlock, Branch, MethodCall, NAMESPACE_TYPE, LoadAddress
 )
 from mypyc.ir.rtypes import (
-    object_rprimitive, bool_rprimitive, dict_rprimitive, is_optional_type,
+    RType, object_rprimitive, bool_rprimitive, dict_rprimitive, is_optional_type,
     is_object_rprimitive, is_none_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
@@ -61,8 +62,8 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
     # apply here, and are handled in a different way.
     if ir.is_ext_class:
         # If the class is not decorated, generate an extension class for it.
-        type_obj = allocate_class(builder, cdef)  # type: Optional[Value]
-        non_ext = None  # type: Optional[NonExtClassInfo]
+        type_obj: Optional[Value] = allocate_class(builder, cdef)
+        non_ext: Optional[NonExtClassInfo] = None
         dataclass_non_ext = dataclass_non_ext_info(builder, cdef)
     else:
         non_ext_bases = populate_non_ext_bases(builder, cdef)
@@ -74,9 +75,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
         non_ext_anns = builder.call_c(dict_new_op, [], cdef.line)
         non_ext = NonExtClassInfo(non_ext_dict, non_ext_bases, non_ext_anns, non_ext_metaclass)
         dataclass_non_ext = None
-        type_obj = None
-
-    attrs_to_cache = []  # type: List[Lvalue]
+    attrs_to_cache: List[Tuple[Lvalue, RType]] = []
 
     for stmt in cdef.defs.body:
         if isinstance(stmt, OverloadedFuncDef) and stmt.is_property:
@@ -84,7 +83,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
                 # properties with both getters and setters in non_extension
                 # classes not supported
                 builder.error("Property setters not supported in non-extension classes",
-                           stmt.line)
+                              stmt.line)
             for item in stmt.items:
                 with builder.catch_errors(stmt.line):
                     transform_method(builder, cdef, non_ext, get_func_def(item))
@@ -105,7 +104,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
             lvalue = stmt.lvalues[0]
             if not isinstance(lvalue, NameExpr):
                 builder.error("Only assignment to variables is supported in class bodies",
-                           stmt.line)
+                              stmt.line)
                 continue
             # We want to collect class variables in a dictionary for both real
             # non-extension classes and fake dataclass ones.
@@ -154,7 +153,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
                            non_ext_class
                        ], cdef.line)
 
-        # Cache any cachable class attributes
+        # Cache any cacheable class attributes
         cache_class_attrs(builder, attrs_to_cache, cdef)
 
 
@@ -168,10 +167,10 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
         tp_bases = builder.add(LoadErrorValue(object_rprimitive, is_borrowed=True))
     modname = builder.load_str(builder.module_name)
     template = builder.add(LoadStatic(object_rprimitive, cdef.name + "_template",
-                                   builder.module_name, NAMESPACE_TYPE))
+                                      builder.module_name, NAMESPACE_TYPE))
     # Create the class
     tp = builder.call_c(pytype_from_template_op,
-                    [template, tp_bases, modname], cdef.line)
+                        [template, tp_bases, modname], cdef.line)
     # Immediately fix up the trait vtables, before doing anything with the class.
     ir = builder.mapper.type_to_ir[cdef.info]
     if not ir.is_trait and not ir.builtin_base:
@@ -190,13 +189,20 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
 
     # Add it to the dict
     builder.call_c(dict_set_item_op,
-                [
-                    builder.load_globals_dict(),
+                   [builder.load_globals_dict(),
                     builder.load_str(cdef.name),
-                    tp,
-                ], cdef.line)
+                    tp],
+                   cdef.line)
 
     return tp
+
+
+# Mypy uses these internally as base classes of TypedDict classes. These are
+# lies and don't have any runtime equivalent.
+MAGIC_TYPED_DICT_CLASSES: Final[Tuple[str, ...]] = (
+    'typing._TypedDict',
+    'typing_extensions._TypedDict',
+)
 
 
 def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
@@ -204,10 +210,19 @@ def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
 
     The tuple is passed to the metaclass constructor.
     """
+    is_named_tuple = cdef.info.is_named_tuple
     ir = builder.mapper.type_to_ir[cdef.info]
     bases = []
     for cls in cdef.info.mro[1:]:
         if cls.fullname == 'builtins.object':
+            continue
+        if is_named_tuple and cls.fullname in ('typing.Sequence',
+                                               'typing.Iterable',
+                                               'typing.Collection',
+                                               'typing.Reversible',
+                                               'typing.Container'):
+            # HAX: Synthesized base classes added by mypy don't exist at runtime, so skip them.
+            #      This could break if they were added explicitly, though...
             continue
         # Add the current class to the base classes list of concrete subclasses
         if cls in builder.mapper.type_to_ir:
@@ -215,8 +230,32 @@ def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
             if base_ir.children is not None:
                 base_ir.children.append(ir)
 
-        base = builder.load_global_str(cls.name, cdef.line)
+        if cls.fullname in MAGIC_TYPED_DICT_CLASSES:
+            # HAX: Mypy internally represents TypedDict classes differently from what
+            #      should happen at runtime. Replace with something that works.
+            module = 'typing'
+            if builder.options.capi_version < (3, 9):
+                name = 'TypedDict'
+                if builder.options.capi_version < (3, 8):
+                    # TypedDict was added to typing in Python 3.8.
+                    module = 'typing_extensions'
+            else:
+                # In Python 3.9 TypedDict is not a real type.
+                name = '_TypedDict'
+            base = builder.get_module_attr(module, name, cdef.line)
+        elif is_named_tuple and cls.fullname == 'builtins.tuple':
+            if builder.options.capi_version < (3, 9):
+                name = 'NamedTuple'
+            else:
+                # This was changed in Python 3.9.
+                name = '_NamedTuple'
+            base = builder.get_module_attr('typing', name, cdef.line)
+        else:
+            base = builder.load_global_str(cls.name, cdef.line)
         bases.append(base)
+        if cls.fullname in MAGIC_TYPED_DICT_CLASSES:
+            # The remaining base classes are synthesized by mypy and should be ignored.
+            break
     return builder.new_tuple(bases, cdef.line)
 
 
@@ -225,6 +264,15 @@ def find_non_ext_metaclass(builder: IRBuilder, cdef: ClassDef, bases: Value) -> 
     if cdef.metaclass:
         declared_metaclass = builder.accept(cdef.metaclass)
     else:
+        if cdef.info.typeddict_type is not None and builder.options.capi_version >= (3, 9):
+            # In Python 3.9, the metaclass for class-based TypedDict is typing._TypedDictMeta.
+            # We can't easily calculate it generically, so special case it.
+            return builder.get_module_attr('typing', '_TypedDictMeta', cdef.line)
+        elif cdef.info.is_named_tuple and builder.options.capi_version >= (3, 9):
+            # In Python 3.9, the metaclass for class-based NamedTuple is typing.NamedTupleMeta.
+            # We can't easily calculate it generically, so special case it.
+            return builder.get_module_attr('typing', 'NamedTupleMeta', cdef.line)
+
         declared_metaclass = builder.add(LoadAddress(type_object_op.type,
                                                      type_object_op.src, cdef.line))
 
@@ -241,8 +289,8 @@ def setup_non_ext_dict(builder: IRBuilder,
     """
     # Check if the metaclass defines a __prepare__ method, and if so, call it.
     has_prepare = builder.call_c(py_hasattr_op,
-                                [metaclass,
-                                builder.load_str('__prepare__')], cdef.line)
+                                 [metaclass,
+                                  builder.load_str('__prepare__')], cdef.line)
 
     non_ext_dict = Register(dict_rprimitive)
 
@@ -269,7 +317,7 @@ def add_non_ext_class_attr(builder: IRBuilder,
                            lvalue: NameExpr,
                            stmt: AssignmentStmt,
                            cdef: ClassDef,
-                           attr_to_cache: List[Lvalue]) -> None:
+                           attr_to_cache: List[Tuple[Lvalue, RType]]) -> None:
     """Add a class attribute to __annotations__ of a non-extension class.
 
     If the attribute is initialized with a value, also add it to __dict__.
@@ -294,7 +342,8 @@ def add_non_ext_class_attr(builder: IRBuilder,
             # Skip "_order_" and "__order__", since Enum will remove it
             and lvalue.name not in ('_order_', '__order__')
         ):
-            attr_to_cache.append(lvalue)
+            # Enum values are always boxed, so use object_rprimitive.
+            attr_to_cache.append((lvalue, object_rprimitive))
 
 
 def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef) -> None:
@@ -314,7 +363,12 @@ def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef) -> None:
                     and isinstance(stmt.lvalues[0], NameExpr)
                     and not is_class_var(stmt.lvalues[0])
                     and not isinstance(stmt.rvalue, TempNode)):
-                if stmt.lvalues[0].name == '__slots__':
+                name = stmt.lvalues[0].name
+                if name == '__slots__':
+                    continue
+
+                if name == '__deletable__':
+                    check_deletable_declaration(builder, cls, stmt.line)
                     continue
 
                 # Skip type annotated assignments in dataclasses
@@ -348,6 +402,22 @@ def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef) -> None:
     builder.add(Return(builder.true()))
 
     builder.leave_method()
+
+
+def check_deletable_declaration(builder: IRBuilder, cl: ClassIR, line: int) -> None:
+    for attr in cl.deletable:
+        if attr not in cl.attributes:
+            if not cl.has_attr(attr):
+                builder.error('Attribute "{}" not defined'.format(attr), line)
+                continue
+            for base in cl.mro:
+                if attr in base.property_types:
+                    builder.error('Cannot make property "{}" deletable'.format(attr), line)
+                    break
+            else:
+                _, base = cl.attr_details(attr)
+                builder.error(('Attribute "{}" not defined in "{}" ' +
+                               '(defined in "{}")').format(attr, cl.name, base.name), line)
 
 
 def create_ne_from_eq(builder: IRBuilder, cdef: ClassDef) -> None:
@@ -419,13 +489,15 @@ def load_decorated_class(builder: IRBuilder, cdef: ClassDef, type_obj: Value) ->
     return dec_class
 
 
-def cache_class_attrs(builder: IRBuilder, attrs_to_cache: List[Lvalue], cdef: ClassDef) -> None:
+def cache_class_attrs(builder: IRBuilder,
+                      attrs_to_cache: List[Tuple[Lvalue, RType]],
+                      cdef: ClassDef) -> None:
     """Add class attributes to be cached to the global cache."""
-    typ = builder.load_native_type_object(cdef.fullname)
-    for lval in attrs_to_cache:
+    typ = builder.load_native_type_object(cdef.info.fullname)
+    for lval, rtype in attrs_to_cache:
         assert isinstance(lval, NameExpr)
         rval = builder.py_get_attr(typ, lval.name, cdef.line)
-        builder.init_final_static(lval, rval, cdef.name)
+        builder.init_final_static(lval, rval, cdef.name, type_override=rtype)
 
 
 def create_mypyc_attrs_tuple(builder: IRBuilder, ir: ClassIR, line: int) -> Value:
@@ -439,8 +511,8 @@ def create_mypyc_attrs_tuple(builder: IRBuilder, ir: ClassIR, line: int) -> Valu
 def finish_non_ext_dict(builder: IRBuilder, non_ext: NonExtClassInfo, line: int) -> None:
     # Add __annotations__ to the class dict.
     builder.call_c(dict_set_item_op,
-                [non_ext.dict, builder.load_str('__annotations__'),
-                non_ext.anns], -1)
+                   [non_ext.dict, builder.load_str('__annotations__'),
+                    non_ext.anns], -1)
 
     # We add a __doc__ attribute so if the non-extension class is decorated with the
     # dataclass decorator, dataclass will not try to look for __text_signature__.

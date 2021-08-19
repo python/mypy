@@ -51,7 +51,7 @@ a = 1
 if int():
     a = 'a' # type: ignore
 if int():
-    a = 2 # type: ignore # E: unused 'type: ignore' comment
+    a = 2 # type: ignore # E: unused "type: ignore" comment
 if int():
     a = 'b' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
@@ -63,8 +63,8 @@ from m import * # type: ignore
 [file m.py]
 pass
 [out]
-main:3: error: unused 'type: ignore' comment
-main:4: error: unused 'type: ignore' comment
+main:3: error: unused "type: ignore" comment
+main:4: error: unused "type: ignore" comment
 
 
 -- No return

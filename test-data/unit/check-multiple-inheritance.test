@@ -238,8 +238,8 @@ class C:
 def dec(f: Callable[..., T]) -> Callable[..., T]:
     return f
 [out]
-main:3: error: Cannot determine type of 'f' in base class 'B'
-main:3: error: Cannot determine type of 'f' in base class 'C'
+main:3: error: Cannot determine type of "f" in base class "B"
+main:3: error: Cannot determine type of "f" in base class "C"
 
 [case testMultipleInheritance_NestedClassesWithSameName]
 class Mixin1:

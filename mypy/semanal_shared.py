@@ -22,7 +22,7 @@ from mypy import join
 # (after the main pass):
 
 # Fix fallbacks (does joins)
-PRIORITY_FALLBACKS = 1  # type: Final
+PRIORITY_FALLBACKS: Final = 1
 
 
 @trait
@@ -122,7 +122,7 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def basic_new_typeinfo(self, name: str, basetype_or_fallback: Instance) -> TypeInfo:
+    def basic_new_typeinfo(self, name: str, basetype_or_fallback: Instance, line: int) -> TypeInfo:
         raise NotImplementedError
 
     @abstractmethod

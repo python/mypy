@@ -89,7 +89,9 @@ from mypy.nodes import (
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
     TupleExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, Block,
     TypeInfo, FuncBase, OverloadedFuncDef, RefExpr, SuperExpr, Var, NamedTupleExpr, TypedDictExpr,
-    LDEF, MDEF, GDEF, TypeAliasExpr, NewTypeExpr, ImportAll, EnumCallExpr, AwaitExpr,
+    LDEF, MDEF, GDEF, TypeAliasExpr, NewTypeExpr, ImportAll, EnumCallExpr, AwaitExpr
+)
+from mypy.operators import (
     op_methods, reverse_op_methods, ops_with_inplace_method, unary_op_methods
 )
 from mypy.traverser import TraverserVisitor
@@ -97,7 +99,8 @@ from mypy.types import (
     Type, Instance, AnyType, NoneType, TypeVisitor, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
     FunctionLike, Overloaded, TypeOfAny, LiteralType, ErasedType, get_proper_type, ProperType,
-    TypeAliasType)
+    TypeAliasType, TypeGuardType
+)
 from mypy.server.trigger import make_trigger, make_wildcard_trigger
 from mypy.util import correct_relative_import
 from mypy.scope import Scope
@@ -162,7 +165,7 @@ class DependencyVisitor(TraverserVisitor):
         # are preserved at alias expansion points in `semanal.py`, stored as an attribute
         # on MypyFile, and then passed here.
         self.alias_deps = alias_deps
-        self.map = {}  # type: Dict[str, Set[str]]
+        self.map: Dict[str, Set[str]] = {}
         self.is_class = False
         self.is_package_init_file = False
         self.options = options
@@ -181,7 +184,7 @@ class DependencyVisitor(TraverserVisitor):
         target = self.scope.current_target()
         if o.type:
             if self.is_class and isinstance(o.type, FunctionLike):
-                signature = bind_self(o.type)  # type: Type
+                signature: Type = bind_self(o.type)
             else:
                 signature = o.type
             for trigger in self.get_type_triggers(signature):
@@ -216,7 +219,7 @@ class DependencyVisitor(TraverserVisitor):
             # then if `dec` is unannotated, then it will "spoil" `func` and consequently
             # all call sites, making them all `Any`.
             for d in o.decorators:
-                tname = None  # type: Optional[str]
+                tname: Optional[str] = None
                 if isinstance(d, RefExpr) and d.fullname is not None:
                     tname = d.fullname
                 if (isinstance(d, CallExpr) and isinstance(d.callee, RefExpr) and
@@ -416,7 +419,7 @@ class DependencyVisitor(TraverserVisitor):
             # then it will make all points of use of `x` unchecked.
             if (isinstance(rvalue, CallExpr) and isinstance(rvalue.callee, RefExpr)
                     and rvalue.callee.fullname is not None):
-                fname = None  # type: Optional[str]
+                fname: Optional[str] = None
                 if isinstance(rvalue.callee.node, TypeInfo):
                     # use actual __init__ as a dependency source
                     init = rvalue.callee.node.get('__init__')
@@ -868,7 +871,7 @@ def get_type_triggers(typ: Type, use_logical_deps: bool) -> List[str]:
 
 class TypeTriggersVisitor(TypeVisitor[List[str]]):
     def __init__(self, use_logical_deps: bool) -> None:
-        self.deps = []  # type: List[str]
+        self.deps: List[str] = []
         self.use_logical_deps = use_logical_deps
 
     def get_type_triggers(self, typ: Type) -> List[str]:
@@ -970,6 +973,9 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
     def visit_uninhabited_type(self, typ: UninhabitedType) -> List[str]:
         return []
 
+    def visit_type_guard_type(self, typ: TypeGuardType) -> List[str]:
+        return typ.type_guard.accept(self)
+
     def visit_union_type(self, typ: UnionType) -> List[str]:
         triggers = []
         for item in typ.items:
@@ -997,7 +1003,7 @@ def dump_all_dependencies(modules: Dict[str, MypyFile],
                           python_version: Tuple[int, int],
                           options: Options) -> None:
     """Generate dependencies for all interesting modules and print them to stdout."""
-    all_deps = {}  # type: Dict[str, Set[str]]
+    all_deps: Dict[str, Set[str]] = {}
     for id, node in modules.items():
         # Uncomment for debugging:
         # print('processing', id)

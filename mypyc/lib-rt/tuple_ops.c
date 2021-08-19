@@ -25,7 +25,7 @@ PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index) {
         Py_INCREF(result);
         return result;
     } else {
-        PyErr_SetString(PyExc_IndexError, "tuple index out of range");
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
         return NULL;
     }
 }
@@ -44,4 +44,18 @@ PyObject *CPySequenceTuple_GetSlice(PyObject *obj, CPyTagged start, CPyTagged en
         return PyTuple_GetSlice(obj, startn, endn);
     }
     return CPyObject_GetSlice(obj, start, end);
+}
+
+// PyTuple_SET_ITEM does no error checking,
+// and should only be used to fill in brand new tuples.
+bool CPySequenceTuple_SetItemUnsafe(PyObject *tuple, CPyTagged index, PyObject *value)
+{
+    if (CPyTagged_CheckShort(index)) {
+        Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
+        PyTuple_SET_ITEM(tuple, n, value);
+        return true;
+    } else {
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        return false;
+    }
 }

@@ -1,8 +1,9 @@
+from _typeshed import Self
 from email.message import Message as _Message
 from socket import socket
 from ssl import SSLContext
 from types import TracebackType
-from typing import Any, Dict, List, Optional, Pattern, Protocol, Sequence, Tuple, Type, Union, overload
+from typing import Any, Dict, Optional, Pattern, Protocol, Sequence, Tuple, Type, Union, overload
 
 _Reply = Tuple[int, bytes]
 _SendErrs = Dict[str, _Reply]
@@ -75,7 +76,7 @@ class SMTP:
         timeout: float = ...,
         source_address: Optional[_SourceAddress] = ...,
     ) -> None: ...
-    def __enter__(self) -> SMTP: ...
+    def __enter__(self: Self) -> Self: ...
     def __exit__(
         self, exc_type: Optional[Type[BaseException]], exc_value: Optional[BaseException], tb: Optional[TracebackType]
     ) -> None: ...
@@ -117,14 +118,14 @@ class SMTP:
         to_addrs: Union[str, Sequence[str]],
         msg: Union[bytes, str],
         mail_options: Sequence[str] = ...,
-        rcpt_options: List[str] = ...,
+        rcpt_options: Sequence[str] = ...,
     ) -> _SendErrs: ...
     def send_message(
         self,
         msg: _Message,
         from_addr: Optional[str] = ...,
         to_addrs: Optional[Union[str, Sequence[str]]] = ...,
-        mail_options: List[str] = ...,
+        mail_options: Sequence[str] = ...,
         rcpt_options: Sequence[str] = ...,
     ) -> _SendErrs: ...
     def close(self) -> None: ...

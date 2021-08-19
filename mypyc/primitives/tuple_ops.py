@@ -4,9 +4,10 @@ Note: Varying-length tuples are represented as boxed Python tuple
 objects, i.e. tuple_rprimitive (RPrimitive), not RTuple.
 """
 
-from mypyc.ir.ops import ERR_MAGIC
+from mypyc.ir.ops import ERR_MAGIC, ERR_FALSE
 from mypyc.ir.rtypes import (
-    tuple_rprimitive, int_rprimitive, list_rprimitive, object_rprimitive, c_pyssize_t_rprimitive
+    tuple_rprimitive, int_rprimitive, list_rprimitive, object_rprimitive,
+    c_pyssize_t_rprimitive, bit_rprimitive
 )
 from mypyc.primitives.registry import method_op, function_op, custom_op
 
@@ -26,6 +27,21 @@ new_tuple_op = custom_op(
     c_function_name='PyTuple_Pack',
     error_kind=ERR_MAGIC,
     var_arg_type=object_rprimitive)
+
+new_tuple_with_length_op = custom_op(
+    arg_types=[c_pyssize_t_rprimitive],
+    return_type=tuple_rprimitive,
+    c_function_name='PyTuple_New',
+    error_kind=ERR_MAGIC)
+
+# PyTuple_SET_ITEM does no error checking,
+# and should only be used to fill in brand new tuples.
+new_tuple_set_item_op = custom_op(
+    arg_types=[tuple_rprimitive, int_rprimitive, object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name='CPySequenceTuple_SetItemUnsafe',
+    error_kind=ERR_FALSE,
+    steals=[False, False, True])
 
 # Construct tuple from a list.
 list_tuple_op = function_op(

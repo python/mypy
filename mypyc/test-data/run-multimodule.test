@@ -780,6 +780,7 @@ assert other_a.foo() == 10
 [file other_a.py]
 def foo() -> int: return 10
 
+[file build/__native_other_a.c]
 
 [delete build/__native_other_a.c.2]
 

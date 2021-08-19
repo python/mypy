@@ -1,6 +1,7 @@
 import sys
 import typing
 from typing import Any, ClassVar, Optional
+from typing_extensions import Literal
 
 PyCF_ONLY_AST: int
 if sys.version_info >= (3, 8):
@@ -25,7 +26,8 @@ class mod(AST): ...
 
 if sys.version_info >= (3, 8):
     class type_ignore(AST): ...
-    class TypeIgnore(type_ignore): ...
+    class TypeIgnore(type_ignore):
+        tag: str
     class FunctionType(mod):
         argtypes: typing.List[expr]
         returns: expr
@@ -374,3 +376,37 @@ class alias(AST):
 class withitem(AST):
     context_expr: expr
     optional_vars: Optional[expr]
+
+if sys.version_info >= (3, 10):
+    class Match(stmt):
+        subject: expr
+        cases: typing.List[match_case]
+    class pattern(AST): ...
+    # Without the alias, Pyright complains variables named pattern are recursively defined
+    _pattern = pattern
+    class match_case(AST):
+        pattern: _pattern
+        guard: Optional[expr]
+        body: typing.List[stmt]
+    class MatchValue(pattern):
+        value: expr
+    class MatchSingleton(pattern):
+        value: Literal[True, False, None]
+    class MatchSequence(pattern):
+        patterns: typing.List[pattern]
+    class MatchStar(pattern):
+        name: Optional[_identifier]
+    class MatchMapping(pattern):
+        keys: typing.List[expr]
+        patterns: typing.List[pattern]
+        rest: Optional[_identifier]
+    class MatchClass(pattern):
+        cls: expr
+        patterns: typing.List[pattern]
+        kwd_attrs: typing.List[_identifier]
+        kwd_patterns: typing.List[pattern]
+    class MatchAs(pattern):
+        pattern: Optional[_pattern]
+        name: Optional[_identifier]
+    class MatchOr(pattern):
+        patterns: typing.List[pattern]

@@ -1,3 +1,4 @@
+from _typeshed import Self
 from email.message import Message
 from types import TracebackType
 from typing import IO, Any, BinaryIO, Callable, Iterable, List, Optional, Tuple, Type, TypeVar
@@ -7,7 +8,7 @@ _AIUT = TypeVar("_AIUT", bound=addbase)
 class addbase(BinaryIO):
     fp: IO[bytes]
     def __init__(self, fp: IO[bytes]) -> None: ...
-    def __enter__(self: _AIUT) -> _AIUT: ...
+    def __enter__(self: Self) -> Self: ...
     def __exit__(
         self, type: Optional[Type[BaseException]], value: Optional[BaseException], traceback: Optional[TracebackType]
     ) -> None: ...

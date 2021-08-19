@@ -6,9 +6,11 @@ __pycache__
 /env*/
 docs/build/
 docs/source/_build
+mypyc/doc/_build
 *.iml
 /out/
 .venv*/
+venv/
 .mypy_cache/
 .incremental_checker_cache.json
 .cache
@@ -43,6 +45,8 @@ htmlcov
 bin/
 lib/
 include/
+.python-version
+pyvenv.cfg
 
 .tox
 pip-wheel-metadata

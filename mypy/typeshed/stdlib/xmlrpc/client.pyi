@@ -2,7 +2,7 @@ import gzip
 import http.client
 import sys
 import time
-from _typeshed import SupportsRead, SupportsWrite
+from _typeshed import Self, SupportsRead, SupportsWrite
 from datetime import datetime
 from io import BytesIO
 from types import TracebackType
@@ -13,11 +13,14 @@ class _SupportsTimeTuple(Protocol):
     def timetuple(self) -> time.struct_time: ...
 
 _DateTimeComparable = Union[DateTime, datetime, str, _SupportsTimeTuple]
-_Marshallable = Union[None, bool, int, float, str, bytes, tuple, list, dict, datetime, DateTime, Binary]
+_Marshallable = Union[None, bool, int, float, str, bytes, Tuple[Any, ...], List[Any], Dict[Any, Any], datetime, DateTime, Binary]
 _XMLDate = Union[int, datetime, Tuple[int, ...], time.struct_time]
 _HostType = Union[Tuple[str, Dict[str, str]], str]
 
 def escape(s: str) -> str: ...  # undocumented
+
+MAXINT: int  # undocumented
+MININT: int  # undocumented
 
 PARSE_ERROR: int  # undocumented
 SERVER_ERROR: int  # undocumented
@@ -47,9 +50,9 @@ class ResponseError(Error): ...
 
 class Fault(Error):
 
-    faultCode: str
+    faultCode: int
     faultString: str
-    def __init__(self, faultCode: str, faultString: str, **extra: Any) -> None: ...
+    def __init__(self, faultCode: int, faultString: str, **extra: Any) -> None: ...
 
 boolean = bool
 Boolean = bool
@@ -298,7 +301,7 @@ class ServerProxy:
     def __call__(self, attr: Literal["transport"]) -> Transport: ...
     @overload
     def __call__(self, attr: str) -> Union[Callable[[], None], Transport]: ...
-    def __enter__(self) -> ServerProxy: ...
+    def __enter__(self: Self) -> Self: ...
     def __exit__(
         self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
     ) -> None: ...

@@ -1,4 +1,4 @@
-from _typeshed import AnyPath
+from _typeshed import StrOrBytesPath
 from types import FrameType, TracebackType
 from typing import IO, Any, Callable, Dict, List, Optional, Tuple, Type
 
@@ -19,7 +19,7 @@ class Hook:  # undocumented
     def __init__(
         self,
         display: int = ...,
-        logdir: Optional[AnyPath] = ...,
+        logdir: Optional[StrOrBytesPath] = ...,
         context: int = ...,
         file: Optional[IO[str]] = ...,
         format: str = ...,
@@ -30,4 +30,4 @@ class Hook:  # undocumented
     def handle(self, info: Optional[_ExcInfo] = ...) -> None: ...
 
 def handler(info: Optional[_ExcInfo] = ...) -> None: ...
-def enable(display: int = ..., logdir: Optional[AnyPath] = ..., context: int = ..., format: str = ...) -> None: ...
+def enable(display: int = ..., logdir: Optional[StrOrBytesPath] = ..., context: int = ..., format: str = ...) -> None: ...

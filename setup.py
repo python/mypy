@@ -5,8 +5,8 @@ import os
 import os.path
 import sys
 
-if sys.version_info < (3, 5, 0):
-    sys.stderr.write("ERROR: You need Python 3.5 or later to use mypy.\n")
+if sys.version_info < (3, 6, 0):
+    sys.stderr.write("ERROR: You need Python 3.6 or later to use mypy.\n")
     exit(1)
 
 # we'll import stuff from the source tree, let's ensure is on the sys path
@@ -86,7 +86,7 @@ if USE_MYPYC:
     MYPYC_BLACKLIST = tuple(os.path.join('mypy', x) for x in (
         # Need to be runnable as scripts
         '__main__.py',
-        'sitepkgs.py',
+        'pyinfo.py',
         os.path.join('dmypy', '__main__.py'),
 
         # Uses __getattr__/__setattr__
@@ -99,8 +99,11 @@ if USE_MYPYC:
         # Also I think there would be problems with how we generate version.py.
         'version.py',
 
-        # Can be removed once we drop support for Python 3.5.2 and lower.
+        # Skip these to reduce the size of the build
         'stubtest.py',
+        'stubgenc.py',
+        'stubdoc.py',
+        'stubutil.py',
     )) + (
         # Don't want to grab this accidentally
         os.path.join('mypyc', 'lib-rt', 'setup.py'),
@@ -159,7 +162,6 @@ classifiers = [
     'Intended Audience :: Developers',
     'License :: OSI Approved :: MIT License',
     'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.5',
     'Programming Language :: Python :: 3.6',
     'Programming Language :: Python :: 3.7',
     'Programming Language :: Python :: 3.8',
@@ -188,18 +190,18 @@ setup(name='mypy',
       classifiers=classifiers,
       cmdclass=cmdclass,
       # When changing this, also update mypy-requirements.txt.
-      install_requires=['typed_ast >= 1.4.0, < 1.5.0',
+      install_requires=["typed_ast >= 1.4.0, < 1.5.0; python_version<'3.8'",
                         'typing_extensions>=3.7.4',
                         'mypy_extensions >= 0.4.3, < 0.5.0',
-                        'types-typing-extensions>=3.7.0',
-                        'types-mypy-extensions>=0.4.0',
-                        'toml',
+                        'tomli>=1.1.0,<1.2.0',
                         ],
       # Same here.
-      extras_require={'dmypy': 'psutil >= 4.0'},
-      python_requires=">=3.5",
+      extras_require={'dmypy': 'psutil >= 4.0', 'python2': 'typed_ast >= 1.4.0, < 1.5.0'},
+      python_requires=">=3.6",
       include_package_data=True,
       project_urls={
           'News': 'http://mypy-lang.org/news.html',
+          'Documentation': 'https://mypy.readthedocs.io/en/stable/introduction.html',
+          'Repository': 'https://github.com/python/mypy',
       },
       )

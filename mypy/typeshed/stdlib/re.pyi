@@ -1,5 +1,6 @@
 import enum
 import sys
+from sre_constants import error as error
 from typing import Any, AnyStr, Callable, Iterator, List, Optional, Tuple, Union, overload
 
 # ----- re variables and constants -----
@@ -50,13 +51,6 @@ if sys.version_info < (3, 7):
     # undocumented
     _pattern_type: type
 
-class error(Exception):
-    msg: str
-    pattern: str
-    pos: Optional[int]
-    lineno: Optional[int]
-    colno: Optional[int]
-
 @overload
 def compile(pattern: AnyStr, flags: _FlagsType = ...) -> Pattern[AnyStr]: ...
 @overload
@@ -76,9 +70,9 @@ def fullmatch(pattern: AnyStr, string: AnyStr, flags: _FlagsType = ...) -> Optio
 @overload
 def fullmatch(pattern: Pattern[AnyStr], string: AnyStr, flags: _FlagsType = ...) -> Optional[Match[AnyStr]]: ...
 @overload
-def split(pattern: AnyStr, string: AnyStr, maxsplit: int = ..., flags: _FlagsType = ...) -> List[AnyStr]: ...
+def split(pattern: AnyStr, string: AnyStr, maxsplit: int = ..., flags: _FlagsType = ...) -> List[Union[AnyStr, Any]]: ...
 @overload
-def split(pattern: Pattern[AnyStr], string: AnyStr, maxsplit: int = ..., flags: _FlagsType = ...) -> List[AnyStr]: ...
+def split(pattern: Pattern[AnyStr], string: AnyStr, maxsplit: int = ..., flags: _FlagsType = ...) -> List[Union[AnyStr, Any]]: ...
 @overload
 def findall(pattern: AnyStr, string: AnyStr, flags: _FlagsType = ...) -> List[Any]: ...
 @overload

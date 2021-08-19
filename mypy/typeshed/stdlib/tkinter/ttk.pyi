@@ -2,8 +2,8 @@ import _tkinter
 import sys
 import tkinter
 from tkinter.font import _FontDescription
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union, overload
-from typing_extensions import Literal
+from typing import Any, Callable, Dict, Optional, Tuple, Union, overload
+from typing_extensions import Literal, TypedDict
 
 def tclobjs_to_py(adict): ...
 def setup_master(master: Optional[Any] = ...): ...
@@ -49,7 +49,7 @@ class Button(Widget):
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: tkinter.Variable = ...,
         underline: int = ...,
         width: Union[int, Literal[""]] = ...,
@@ -68,7 +68,7 @@ class Button(Widget):
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: tkinter.Variable = ...,
         underline: int = ...,
         width: Union[int, Literal[""]] = ...,
@@ -76,7 +76,7 @@ class Button(Widget):
     @overload
     def configure(self, cnf: str) -> Tuple[str, str, str, Any, Any]: ...
     config = configure
-    def invoke(self): ...
+    def invoke(self) -> Any: ...
 
 class Checkbutton(Widget):
     def __init__(
@@ -95,7 +95,7 @@ class Checkbutton(Widget):
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: tkinter.Variable = ...,
         underline: int = ...,
         # Seems like variable can be empty string, but actually setting it to
@@ -119,7 +119,7 @@ class Checkbutton(Widget):
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: tkinter.Variable = ...,
         underline: int = ...,
         variable: tkinter.Variable = ...,
@@ -128,7 +128,7 @@ class Checkbutton(Widget):
     @overload
     def configure(self, cnf: str) -> Tuple[str, str, str, Any, Any]: ...
     config = configure
-    def invoke(self): ...
+    def invoke(self) -> Any: ...
 
 class Entry(Widget, tkinter.Entry):
     def __init__(
@@ -351,7 +351,7 @@ class Label(Widget):
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: tkinter.Variable = ...,
         underline: int = ...,
         width: Union[int, Literal[""]] = ...,
@@ -377,7 +377,7 @@ class Label(Widget):
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: tkinter.Variable = ...,
         underline: int = ...,
         width: Union[int, Literal[""]] = ...,
@@ -404,7 +404,7 @@ class Labelframe(Widget):
         relief: tkinter._Relief = ...,  # undocumented
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         underline: int = ...,
         width: tkinter._ScreenUnits = ...,
     ) -> None: ...
@@ -423,7 +423,7 @@ class Labelframe(Widget):
         relief: tkinter._Relief = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         underline: int = ...,
         width: tkinter._ScreenUnits = ...,
     ) -> Optional[Dict[str, Tuple[str, str, str, Any, Any]]]: ...
@@ -449,7 +449,7 @@ class Menubutton(Widget):
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: tkinter.Variable = ...,
         underline: int = ...,
         width: Union[int, Literal[""]] = ...,
@@ -468,7 +468,7 @@ class Menubutton(Widget):
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: tkinter.Variable = ...,
         underline: int = ...,
         width: Union[int, Literal[""]] = ...,
@@ -582,7 +582,7 @@ class Progressbar(Widget):
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
         value: float = ...,
-        variable: tkinter.DoubleVar = ...,
+        variable: Union[tkinter.IntVar, tkinter.DoubleVar] = ...,
     ) -> None: ...
     @overload
     def configure(
@@ -598,7 +598,7 @@ class Progressbar(Widget):
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
         value: float = ...,
-        variable: tkinter.DoubleVar = ...,
+        variable: Union[tkinter.IntVar, tkinter.DoubleVar] = ...,
     ) -> Optional[Dict[str, Tuple[str, str, str, Any, Any]]]: ...
     @overload
     def configure(self, cnf: str) -> Tuple[str, str, str, Any, Any]: ...
@@ -622,7 +622,7 @@ class Radiobutton(Widget):
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: tkinter.Variable = ...,
         underline: int = ...,
         value: Any = ...,
@@ -642,7 +642,7 @@ class Radiobutton(Widget):
         state: str = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
-        text: str = ...,
+        text: Union[float, str] = ...,
         textvariable: tkinter.Variable = ...,
         underline: int = ...,
         value: Any = ...,
@@ -652,7 +652,7 @@ class Radiobutton(Widget):
     @overload
     def configure(self, cnf: str) -> Tuple[str, str, str, Any, Any]: ...
     config = configure
-    def invoke(self): ...
+    def invoke(self) -> Any: ...
 
 class Scale(Widget, tkinter.Scale):
     def __init__(
@@ -671,7 +671,7 @@ class Scale(Widget, tkinter.Scale):
         takefocus: tkinter._TakeFocusValue = ...,
         to: float = ...,
         value: float = ...,
-        variable: tkinter.DoubleVar = ...,
+        variable: Union[tkinter.IntVar, tkinter.DoubleVar] = ...,
     ) -> None: ...
     @overload  # type: ignore
     def configure(
@@ -688,7 +688,7 @@ class Scale(Widget, tkinter.Scale):
         takefocus: tkinter._TakeFocusValue = ...,
         to: float = ...,
         value: float = ...,
-        variable: tkinter.DoubleVar = ...,
+        variable: Union[tkinter.IntVar, tkinter.DoubleVar] = ...,
     ) -> Optional[Dict[str, Tuple[str, str, str, Any, Any]]]: ...
     @overload
     def configure(self, cnf: str) -> Tuple[str, str, str, Any, Any]: ...
@@ -708,7 +708,7 @@ class Scale(Widget, tkinter.Scale):
         takefocus: tkinter._TakeFocusValue = ...,
         to: float = ...,
         value: float = ...,
-        variable: tkinter.DoubleVar = ...,
+        variable: Union[tkinter.IntVar, tkinter.DoubleVar] = ...,
     ) -> Optional[Dict[str, Tuple[str, str, str, Any, Any]]]: ...
     @overload
     def config(self, cnf: str) -> Tuple[str, str, str, Any, Any]: ...
@@ -871,6 +871,36 @@ if sys.version_info >= (3, 7):
         config = configure  # type: ignore
         def set(self, value: Any) -> None: ...
 
+class _TreeviewItemDict(TypedDict):
+    text: str
+    image: Literal[""] | list[str]  # no idea why it's wrapped in list
+    values: list[Any]
+    open: bool  # actually 0 or 1
+    tags: list[str]
+
+class _TreeviewTagDict(TypedDict):
+    text: str
+    image: Literal[""] | str  # not wrapped in list :D
+    anchor: tkinter._Anchor
+    background: tkinter._Color
+    foreground: tkinter._Color
+
+class _TreeviewHeaderDict(TypedDict):
+    text: str
+    image: list[str]
+    anchor: tkinter._Anchor
+    command: str
+    state: str  # Doesn't seem to appear anywhere else than in these dicts
+
+class _TreeviewColumnDict(TypedDict):
+    width: int
+    minwidth: int
+    stretch: bool  # actually 0 or 1
+    anchor: tkinter._Anchor
+    id: str
+
+_TreeviewColumnId = Union[int, str]  # manual page: "COLUMN IDENTIFIERS"
+
 class Treeview(Widget, tkinter.XView, tkinter.YView):
     def __init__(
         self,
@@ -914,53 +944,158 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
     @overload
     def configure(self, cnf: str) -> Tuple[str, str, str, Any, Any]: ...
     config = configure
-    def bbox(self, item, column: Optional[Any] = ...): ...  # type: ignore
-    def get_children(self, item: Optional[Any] = ...): ...
-    def set_children(self, item, *newchildren): ...
-    def column(self, column, option: Optional[Any] = ..., **kw): ...
-    def delete(self, *items): ...
-    def detach(self, *items): ...
-    def exists(self, item): ...
-    def focus(self, item: Optional[Any] = ...): ...
-    def heading(self, column, option: Optional[Any] = ..., **kw): ...
+    def bbox(self, item, column: _TreeviewColumnId | None = ...) -> Tuple[int, int, int, int] | Literal[""]: ...  # type: ignore
+    def get_children(self, item: str | None = ...) -> Tuple[str, ...]: ...
+    def set_children(self, item: str, *newchildren: str) -> None: ...
+    @overload
+    def column(self, column: _TreeviewColumnId, option: Literal["width", "minwidth"]) -> int: ...
+    @overload
+    def column(self, column: _TreeviewColumnId, option: Literal["stretch"]) -> bool: ...  # actually 0 or 1
+    @overload
+    def column(self, column: _TreeviewColumnId, option: Literal["anchor"]) -> _tkinter.Tcl_Obj: ...
+    @overload
+    def column(self, column: _TreeviewColumnId, option: Literal["id"]) -> str: ...
+    @overload
+    def column(self, column: _TreeviewColumnId, option: str) -> Any: ...
+    @overload
+    def column(
+        self,
+        column: _TreeviewColumnId,
+        option: None = ...,
+        *,
+        width: int = ...,
+        minwidth: int = ...,
+        stretch: bool = ...,
+        anchor: tkinter._Anchor = ...,
+        # id is read-only
+    ) -> _TreeviewColumnDict | None: ...
+    def delete(self, *items: str) -> None: ...
+    def detach(self, *items: str) -> None: ...
+    def exists(self, item: str) -> bool: ...
+    @overload  # type: ignore
+    def focus(self, item: None = ...) -> str: ...  # can return empty string
+    @overload
+    def focus(self, item: str) -> Literal[""]: ...
+    @overload
+    def heading(self, column: _TreeviewColumnId, option: Literal["text"]) -> str: ...
+    @overload
+    def heading(self, column: _TreeviewColumnId, option: Literal["image"]) -> Tuple[str]: ...
+    @overload
+    def heading(self, column: _TreeviewColumnId, option: Literal["anchor"]) -> _tkinter.Tcl_Obj: ...
+    @overload
+    def heading(self, column: _TreeviewColumnId, option: Literal["command"]) -> str: ...
+    @overload
+    def heading(self, column: _TreeviewColumnId, option: str) -> Any: ...
+    @overload
+    def heading(
+        self,
+        column: _TreeviewColumnId,
+        option: None = ...,
+        *,
+        text: str = ...,
+        image: tkinter._ImageSpec = ...,
+        anochor: tkinter._Anchor = ...,
+        command: str | Callable[[], Any] = ...,
+    ) -> _TreeviewHeaderDict | None: ...
     def identify(self, component, x, y): ...
-    def identify_row(self, y): ...
-    def identify_column(self, x): ...
-    def identify_region(self, x, y): ...
-    def identify_element(self, x, y): ...
-    def index(self, item): ...
-    def insert(self, parent, index, iid: Optional[Any] = ..., **kw): ...
-    def item(self, item, option: Optional[Any] = ..., **kw): ...
-    def move(self, item, parent, index): ...
-    reattach: Any
-    def next(self, item): ...
-    def parent(self, item): ...
-    def prev(self, item): ...
-    def see(self, item): ...
+    def identify_row(self, y: int) -> str: ...
+    def identify_column(self, x: int) -> str: ...
+    def identify_region(self, x: int, y: int) -> Literal["heading", "separator", "tree", "cell", "nothing"]: ...
+    def identify_element(self, x: int, y: int) -> str: ...  # don't know what possible return values are
+    def index(self, item: str) -> int: ...
+    def insert(
+        self,
+        parent: str,
+        index: int | Literal["end"],
+        iid: str | None = ...,
+        *,
+        id: str = ...,  # same as iid
+        text: str = ...,
+        image: tkinter._ImageSpec = ...,
+        values: tkinter._TkinterSequence[Any] = ...,
+        open: bool = ...,
+        tags: str | tkinter._TkinterSequence[str] = ...,
+    ) -> str: ...
+    @overload
+    def item(self, item: str, option: Literal["text"]) -> str: ...
+    @overload
+    def item(self, item: str, option: Literal["image"]) -> Literal[""] | Tuple[str]: ...
+    @overload
+    def item(self, item: str, option: Literal["values"]) -> Literal[""] | Tuple[Any, ...]: ...
+    @overload
+    def item(self, item: str, option: Literal["open"]) -> bool: ...  # actually 0 or 1
+    @overload
+    def item(self, item: str, option: Literal["tags"]) -> Literal[""] | Tuple[str, ...]: ...
+    @overload
+    def item(self, item: str, option: str) -> Any: ...
+    @overload
+    def item(
+        self,
+        item: str,
+        option: None = ...,
+        *,
+        text: str = ...,
+        image: tkinter._ImageSpec = ...,
+        values: tkinter._TkinterSequence[Any] = ...,
+        open: bool = ...,
+        tags: str | tkinter._TkinterSequence[str] = ...,
+    ) -> _TreeviewItemDict | None: ...
+    def move(self, item: str, parent: str, index: int) -> None: ...
+    reattach = move
+    def next(self, item: str) -> str: ...  # returning empty string means last item
+    def parent(self, item: str) -> str: ...
+    def prev(self, item: str) -> str: ...  # returning empty string means first item
+    def see(self, item: str) -> None: ...
     if sys.version_info >= (3, 8):
-        def selection(self) -> List[Any]: ...
+        def selection(self) -> Tuple[str, ...]: ...
     else:
-        def selection(self, selop: Optional[Any] = ..., items: Optional[Any] = ...) -> List[Any]: ...
-    def selection_set(self, items): ...
-    def selection_add(self, items): ...
-    def selection_remove(self, items): ...
-    def selection_toggle(self, items): ...
-    def set(self, item, column: Optional[Any] = ..., value: Optional[Any] = ...): ...
+        def selection(self, selop: Optional[Any] = ..., items: Optional[Any] = ...) -> Tuple[str, ...]: ...
+    def selection_set(self, items: str | tkinter._TkinterSequence[str]) -> None: ...
+    def selection_add(self, items: str | tkinter._TkinterSequence[str]) -> None: ...
+    def selection_remove(self, items: str | tkinter._TkinterSequence[str]) -> None: ...
+    def selection_toggle(self, items: str | tkinter._TkinterSequence[str]) -> None: ...
+    @overload
+    def set(self, item: str, column: None = ..., value: None = ...) -> dict[str, Any]: ...
+    @overload
+    def set(self, item: str, column: _TreeviewColumnId, value: None = ...) -> Any: ...
+    @overload
+    def set(self, item: str, column: _TreeviewColumnId, value: Any) -> Literal[""]: ...
     # There's no tag_unbind() or 'add' argument for whatever reason.
     # Also, it's 'callback' instead of 'func' here.
     @overload
     def tag_bind(
-        self,
-        tagname: str,
-        sequence: Optional[str] = ...,
-        callback: Optional[Callable[[tkinter.Event[Treeview]], Optional[Literal["break"]]]] = ...,
+        self, tagname: str, sequence: Optional[str] = ..., callback: Optional[Callable[[tkinter.Event[Treeview]], Any]] = ...
     ) -> str: ...
     @overload
     def tag_bind(self, tagname: str, sequence: Optional[str], callback: str) -> None: ...
     @overload
     def tag_bind(self, tagname: str, *, callback: str) -> None: ...
-    def tag_configure(self, tagname, option: Optional[Any] = ..., **kw): ...
-    def tag_has(self, tagname, item: Optional[Any] = ...): ...
+    @overload
+    def tag_configure(self, tagname: str, option: Literal["text"]) -> str: ...
+    @overload
+    def tag_configure(self, tagname: str, option: Literal["image"]) -> str: ...
+    @overload
+    def tag_configure(self, tagname: str, option: Literal["anchor"]) -> tkinter._Anchor | Literal[""]: ...
+    @overload
+    def tag_configure(self, tagname: str, option: Literal["foreground", "background"]) -> tkinter._Color: ...
+    @overload
+    def tag_configure(self, tagname: str, option: str) -> Any: ...
+    @overload
+    def tag_configure(
+        self,
+        tagname: str,
+        option: None = ...,
+        *,
+        text: str = ...,
+        image: tkinter._ImageSpec = ...,
+        anchor: tkinter._Anchor = ...,
+        background: tkinter._Color = ...,
+        foreground: tkinter._Color = ...,
+    ) -> _TreeviewTagDict | None: ...
+    @overload
+    def tag_has(self, tagname: str, item: None = ...) -> Tuple[str, ...]: ...
+    @overload
+    def tag_has(self, tagname: str, item: str) -> bool: ...
 
 class LabeledScale(Frame):
     label: Any

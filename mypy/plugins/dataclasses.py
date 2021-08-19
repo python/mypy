@@ -7,7 +7,7 @@ from typing_extensions import Final
 
 from mypy.maptype import map_instance_to_supertype
 from mypy.nodes import (
-    ARG_OPT, ARG_POS, MDEF, Argument, AssignmentStmt, CallExpr, Context,
+    ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_POS, MDEF, Argument, AssignmentStmt, CallExpr, Context,
     Expression, JsonDict, NameExpr, RefExpr, SymbolTableNode, TempNode,
     TypeInfo, Var, TypeVarExpr, PlaceholderNode
 )
@@ -20,18 +20,18 @@ from mypy.plugins.common import (
 from mypy.typeops import map_type_from_supertype
 from mypy.type_visitor import TypeTranslator
 from mypy.types import (
-    Instance, NoneType, TypeVarDef, TypeVarType, get_proper_type, Type, TupleType, AnyType,
+    Instance, NoneType, TypeVarType, get_proper_type, Type, TupleType, AnyType,
     TypeOfAny, TypeAliasType,
     CallableType, TypeType)
 from mypy.server.trigger import make_wildcard_trigger, make_trigger
 
 # The set of decorators that generate dataclasses.
-dataclass_makers = {
+dataclass_makers: Final = {
     'dataclass',
     'dataclasses.dataclass',
-}  # type: Final
+}
 
-SELF_TVAR_NAME = '_DT'  # type: Final
+SELF_TVAR_NAME: Final = "_DT"
 
 
 def is_type_dataclass(info: TypeInfo) -> bool:
@@ -49,6 +49,7 @@ class DataclassAttribute:
             column: int,
             type: Optional[Type],
             info: TypeInfo,
+            kw_only: bool,
     ) -> None:
         self.name = name
         self.is_in_init = is_in_init
@@ -58,13 +59,21 @@ class DataclassAttribute:
         self.column = column
         self.type = type
         self.info = info
+        self.kw_only = kw_only
 
     def to_argument(self) -> Argument:
+        arg_kind = ARG_POS
+        if self.kw_only and self.has_default:
+            arg_kind = ARG_NAMED_OPT
+        elif self.kw_only and not self.has_default:
+            arg_kind = ARG_NAMED
+        elif not self.kw_only and self.has_default:
+            arg_kind = ARG_OPT
         return Argument(
             variable=self.to_var(),
             type_annotation=self.type,
             initializer=None,
-            kind=ARG_OPT if self.has_default else ARG_POS,
+            kind=arg_kind,
         )
 
     def to_var(self) -> Var:
@@ -80,6 +89,7 @@ class DataclassAttribute:
             'line': self.line,
             'column': self.column,
             'type': self.type.serialize(),
+            'kw_only': self.kw_only,
         }
 
     @classmethod
@@ -88,6 +98,8 @@ class DataclassAttribute:
             api: Union[SemanticAnalyzerPluginInterface, CheckerPluginInterface]
     ) -> 'DataclassAttribute':
         data = data.copy()
+        if data.get('kw_only') is None:
+            data['kw_only'] = False
         typ = deserialize_and_fixup_type(data.pop('type'), api)
         return cls(type=typ, info=info, **data)
 
@@ -136,7 +148,8 @@ class DataclassTransformer:
             add_method(
                 ctx,
                 '__init__',
-                args=[attr.to_argument() for attr in attributes if attr.is_in_init],
+                args=[attr.to_argument() for attr in attributes if attr.is_in_init
+                      and not self._is_kw_only_type(attr.type)],
                 return_type=NoneType(),
             )
 
@@ -157,12 +170,11 @@ class DataclassTransformer:
                 # Like for __eq__ and __ne__, we want "other" to match
                 # the self type.
                 obj_type = ctx.api.named_type('__builtins__.object')
-                order_tvar_def = TypeVarDef(SELF_TVAR_NAME, info.fullname + '.' + SELF_TVAR_NAME,
+                order_tvar_def = TypeVarType(SELF_TVAR_NAME, info.fullname + '.' + SELF_TVAR_NAME,
                                             -1, [], obj_type)
-                order_other_type = TypeVarType(order_tvar_def)
                 order_return_type = ctx.api.named_type('__builtins__.bool')
                 order_args = [
-                    Argument(Var('other', order_other_type), order_other_type, None, ARG_POS)
+                    Argument(Var('other', order_tvar_def), order_tvar_def, None, ARG_POS)
                 ]
 
                 existing_method = info.get(method_name)
@@ -178,12 +190,14 @@ class DataclassTransformer:
                     method_name,
                     args=order_args,
                     return_type=order_return_type,
-                    self_type=order_other_type,
+                    self_type=order_tvar_def,
                     tvar_def=order_tvar_def,
                 )
 
         if decorator_arguments['frozen']:
             self._freeze(attributes)
+        else:
+            self._propertize_callables(attributes)
 
         self.reset_init_only_vars(info, attributes)
 
@@ -222,8 +236,9 @@ class DataclassTransformer:
         # First, collect attributes belonging to the current class.
         ctx = self._ctx
         cls = self._ctx.cls
-        attrs = []  # type: List[DataclassAttribute]
-        known_attrs = set()  # type: Set[str]
+        attrs: List[DataclassAttribute] = []
+        known_attrs: Set[str] = set()
+        kw_only = _get_decorator_bool_argument(ctx, 'kw_only', False)
         for stmt in cls.defs.body:
             # Any assignment that doesn't use the new type declaration
             # syntax can be ignored out of hand.
@@ -260,6 +275,9 @@ class DataclassTransformer:
                 is_init_var = True
                 node.type = node_type.args[0]
 
+            if self._is_kw_only_type(node_type):
+                kw_only = True
+
             has_field_call, field_args = _collect_field_args(stmt.rvalue)
 
             is_in_init_param = field_args.get('init')
@@ -283,6 +301,13 @@ class DataclassTransformer:
                 # on self in the generated __init__(), not in the class body.
                 sym.implicit = True
 
+            is_kw_only = kw_only
+            # Use the kw_only field arg if it is provided. Otherwise use the
+            # kw_only value from the decorator parameter.
+            field_kw_only_param = field_args.get('kw_only')
+            if field_kw_only_param is not None:
+                is_kw_only = bool(ctx.api.parse_bool(field_kw_only_param))
+
             known_attrs.add(lhs.name)
             attrs.append(DataclassAttribute(
                 name=lhs.name,
@@ -293,6 +318,7 @@ class DataclassTransformer:
                 column=stmt.column,
                 type=sym.type,
                 info=cls.info,
+                kw_only=is_kw_only,
             ))
 
         # Next, collect attributes belonging to any class in the MRO
@@ -309,8 +335,8 @@ class DataclassTransformer:
             # Each class depends on the set of attributes in its dataclass ancestors.
             ctx.api.add_plugin_dependency(make_wildcard_trigger(info.fullname))
 
-            for data in info.metadata['dataclass']['attributes']:
-                name = data['name']  # type: str
+            for data in info.metadata["dataclass"]["attributes"]:
+                name: str = data["name"]
                 if name not in known_attrs:
                     attr = DataclassAttribute.deserialize(info, data, ctx.api)
                     attr.expand_typevar_from_subtype(ctx.cls.info)
@@ -327,15 +353,18 @@ class DataclassTransformer:
                             super_attrs.append(attr)
                             break
             all_attrs = super_attrs + all_attrs
+            all_attrs.sort(key=lambda a: a.kw_only)
 
         # Ensure that arguments without a default don't follow
         # arguments that have a default.
         found_default = False
+        # Ensure that the KW_ONLY sentinel is only provided once
+        found_kw_sentinel = False
         for attr in all_attrs:
-            # If we find any attribute that is_in_init but that
+            # If we find any attribute that is_in_init, not kw_only, and that
             # doesn't have a default after one that does have one,
             # then that's an error.
-            if found_default and attr.is_in_init and not attr.has_default:
+            if found_default and attr.is_in_init and not attr.has_default and not attr.kw_only:
                 # If the issue comes from merging different classes, report it
                 # at the class definition point.
                 context = (Context(line=attr.line, column=attr.column) if attr in attrs
@@ -346,6 +375,14 @@ class DataclassTransformer:
                 )
 
             found_default = found_default or (attr.has_default and attr.is_in_init)
+            if found_kw_sentinel and self._is_kw_only_type(attr.type):
+                context = (Context(line=attr.line, column=attr.column) if attr in attrs
+                           else ctx.cls)
+                ctx.api.fail(
+                    'There may not be more than one field with the KW_ONLY type',
+                    context,
+                )
+            found_kw_sentinel = found_kw_sentinel or self._is_kw_only_type(attr.type)
 
         return all_attrs
 
@@ -366,6 +403,33 @@ class DataclassTransformer:
                 var.is_property = True
                 var._fullname = info.fullname + '.' + var.name
                 info.names[var.name] = SymbolTableNode(MDEF, var)
+
+    def _propertize_callables(self, attributes: List[DataclassAttribute]) -> None:
+        """Converts all attributes with callable types to @property methods.
+
+        This avoids the typechecker getting confused and thinking that
+        `my_dataclass_instance.callable_attr(foo)` is going to receive a
+        `self` argument (it is not).
+
+        """
+        info = self._ctx.cls.info
+        for attr in attributes:
+            if isinstance(get_proper_type(attr.type), CallableType):
+                var = attr.to_var()
+                var.info = info
+                var.is_property = True
+                var.is_settable_property = True
+                var._fullname = info.fullname + '.' + var.name
+                info.names[var.name] = SymbolTableNode(MDEF, var)
+
+    def _is_kw_only_type(self, node: Optional[Type]) -> bool:
+        """Checks if the type of the node is the KW_ONLY sentinel value."""
+        if node is None:
+            return False
+        node_type = get_proper_type(node)
+        if not isinstance(node_type, Instance):
+            return False
+        return node_type.type.fullname == 'dataclasses.KW_ONLY'
 
 
 def dataclass_class_maker_callback(ctx: ClassDefContext) -> None:

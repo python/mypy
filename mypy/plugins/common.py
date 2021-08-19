@@ -9,8 +9,8 @@ from mypy.plugin import ClassDefContext, SemanticAnalyzerPluginInterface, Checke
 from mypy.semanal import set_callable_name
 from mypy.semanal_typeddict import get_anonymous_typeddict_type
 from mypy.types import (
-    CallableType, Overloaded, Type, TypeVarDef, deserialize_type, get_proper_type,
-    TypedDictType
+    CallableType, Overloaded, Type, deserialize_type, get_proper_type,
+    TypedDictType, TypeVarType
 )
 from mypy.typevars import fill_typevars
 from mypy.util import get_unique_redefinition_name
@@ -91,7 +91,7 @@ def add_method(
         args: List[Argument],
         return_type: Type,
         self_type: Optional[Type] = None,
-        tvar_def: Optional[TypeVarDef] = None,
+        tvar_def: Optional[TypeVarType] = None,
 ) -> None:
     """
     Adds a new method to a class.
@@ -106,16 +106,15 @@ def add_method(
 
 
 def add_method_to_class(
-        api: SemanticAnalyzerPluginInterface,
+        api: Union[SemanticAnalyzerPluginInterface, CheckerPluginInterface],
         cls: ClassDef,
         name: str,
         args: List[Argument],
         return_type: Type,
         self_type: Optional[Type] = None,
-        tvar_def: Optional[TypeVarDef] = None,
+        tvar_def: Optional[TypeVarType] = None,
 ) -> None:
-    """Adds a new method to a class definition.
-    """
+    """Adds a new method to a class definition."""
     info = cls.info
 
     # First remove any previously generated methods with the same name
@@ -126,7 +125,15 @@ def add_method_to_class(
             cls.defs.body.remove(sym.node)
 
     self_type = self_type or fill_typevars(info)
-    function_type = api.named_type('__builtins__.function')
+    # TODO: semanal.py and checker.py seem to have subtly different implementations of
+    # named_type/named_generic_type (starting with the fact that we have to use different names
+    # for builtins), so it's easier to just check which one we're dealing with here and pick the
+    # correct function to use than to try to add a named_type method that behaves the same for
+    # both. We should probably combine those implementations at some point.
+    if isinstance(api, SemanticAnalyzerPluginInterface):
+        function_type = api.named_type('__builtins__.function')
+    else:
+        function_type = api.named_generic_type('builtins.function', [])
 
     args = [Argument(Var('self'), self_type, None, ARG_POS)] + args
     arg_types, arg_names, arg_kinds = [], [], []

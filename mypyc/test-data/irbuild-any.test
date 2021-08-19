@@ -122,10 +122,11 @@ L0:
     r11 = PyList_New(2)
     r12 = box(int, n)
     r13 = get_element_ptr r11 ob_item :: PyListObject
-    r14 = load_mem r13, r11 :: ptr*
-    set_mem r14, a, r11 :: builtins.object*
+    r14 = load_mem r13 :: ptr*
+    set_mem r14, a :: builtins.object*
     r15 = r14 + WORD_SIZE*1
-    set_mem r15, r12, r11 :: builtins.object*
+    set_mem r15, r12 :: builtins.object*
+    keep_alive r11
     return 1
 def f3(a, n):
     a :: object

@@ -5,7 +5,7 @@ import time
 import shutil
 import contextlib
 
-from typing import List, Iterable, Dict, Tuple, Callable, Any, Optional, Iterator
+from typing import List, Iterable, Dict, Tuple, Callable, Any, Iterator, Union
 
 from mypy import defaults
 import mypy.api as api
@@ -18,7 +18,9 @@ from unittest import TestCase as Suite  # noqa: F401 (re-exporting)
 
 from mypy.main import process_options
 from mypy.options import Options
-from mypy.test.data import DataDrivenTestCase, fix_cobertura_filename
+from mypy.test.data import (
+    DataDrivenTestCase, fix_cobertura_filename, UpdateFile, DeleteFile
+)
 from mypy.test.config import test_temp_dir
 import mypy.version
 
@@ -50,6 +52,7 @@ def assert_string_arrays_equal(expected: List[str], actual: List[str],
 
     Display any differences in a human-readable form.
     """
+    __tracebackhide__ = True
 
     actual = clean_up(actual)
     actual = [line.replace("can't", "cannot") for line in actual]
@@ -151,7 +154,7 @@ def update_testcase_output(testcase: DataDrivenTestCase, output: List[str]) -> N
         data_lines = f.read().splitlines()
     test = '\n'.join(data_lines[testcase.line:testcase.last_line])
 
-    mapping = {}  # type: Dict[str, List[str]]
+    mapping: Dict[str, List[str]] = {}
     for old, new in zip(testcase.output, output):
         PREFIX = 'error:'
         ind = old.find(PREFIX)
@@ -326,18 +329,6 @@ def retry_on_error(func: Callable[[], Any], max_wait: float = 1.0) -> None:
                 raise
             time.sleep(wait_time)
 
-# TODO: assert_true and assert_false are redundant - use plain assert
-
-
-def assert_true(b: bool, msg: Optional[str] = None) -> None:
-    if not b:
-        raise AssertionError(msg)
-
-
-def assert_false(b: bool, msg: Optional[str] = None) -> None:
-    if b:
-        raise AssertionError(msg)
-
 
 def good_repr(obj: object) -> str:
     if isinstance(obj, str):
@@ -352,6 +343,7 @@ def good_repr(obj: object) -> str:
 
 
 def assert_equal(a: object, b: object, fmt: str = '{} != {}') -> None:
+    __tracebackhide__ = True
     if a != b:
         raise AssertionError(fmt.format(good_repr(a), good_repr(b)))
 
@@ -364,6 +356,7 @@ def typename(t: type) -> str:
 
 
 def assert_type(typ: type, value: object) -> None:
+    __tracebackhide__ = True
     if type(value) != typ:
         raise AssertionError('Invalid type {}, expected {}'.format(
             typename(type(value)), typename(typ)))
@@ -430,6 +423,24 @@ def copy_and_fudge_mtime(source_path: str, target_path: str) -> None:
 
     if new_time:
         os.utime(target_path, times=(new_time, new_time))
+
+
+def perform_file_operations(
+        operations: List[Union[UpdateFile, DeleteFile]]) -> None:
+    for op in operations:
+        if isinstance(op, UpdateFile):
+            # Modify/create file
+            copy_and_fudge_mtime(op.source_path, op.target_path)
+        else:
+            # Delete file/directory
+            if os.path.isdir(op.path):
+                # Sanity check to avoid unexpected deletions
+                assert op.path.startswith('tmp')
+                shutil.rmtree(op.path)
+            else:
+                # Use retries to work around potential flakiness on Windows (AppVeyor).
+                path = op.path
+                retry_on_error(lambda: os.remove(path))
 
 
 def check_test_output_files(testcase: DataDrivenTestCase,

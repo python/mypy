@@ -29,6 +29,7 @@ class GNUTranslations(NullTranslations):
 def find(domain: str, localedir: Optional[StrPath] = ..., languages: Optional[Iterable[str]] = ..., all: bool = ...) -> Any: ...
 
 _T = TypeVar("_T")
+
 @overload
 def translation(
     domain: str,
@@ -52,7 +53,7 @@ def translation(
     domain: str,
     localedir: Optional[StrPath] = ...,
     languages: Optional[Iterable[str]] = ...,
-    class_: Type[_T] = ...,
+    class_: Type[Any] = ...,
     fallback: Literal[True] = ...,
     codeset: Optional[str] = ...,
 ) -> Any: ...
