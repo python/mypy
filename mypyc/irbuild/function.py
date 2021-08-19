@@ -109,9 +109,9 @@ def transform_decorator(builder: IRBuilder, dec: Decorator) -> None:
     if decorated_func is not None:
         # Set the callable object representing the decorated function as a global.
         builder.call_c(dict_set_item_op,
-                    [builder.load_globals_dict(),
-                    builder.load_str(dec.func.name), decorated_func],
-                    decorated_func.line)
+                       [builder.load_globals_dict(),
+                        builder.load_str(dec.func.name), decorated_func],
+                       decorated_func.line)
 
     maybe_insert_into_registry_dict(builder, dec.func)
 
@@ -336,7 +336,7 @@ def gen_func_item(builder: IRBuilder,
         dispatch_name = decorator_helper_name(name) if is_decorated else name
         return gen_dispatch_func_ir(builder, fitem, fn_info.name, dispatch_name, sig)
 
-    return (func_ir, func_reg)
+    return func_ir, func_reg
 
 
 def gen_func_ir(builder: IRBuilder,
@@ -396,12 +396,8 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
         # Set the callable object representing the decorated method as an attribute of the
         # extension class.
         builder.call_c(py_setattr_op,
-                    [
-                        typ,
-                        builder.load_str(name),
-                        decorated_func
-                    ],
-                    fdef.line)
+                       [typ, builder.load_str(name), decorated_func],
+                       fdef.line)
 
     if fdef.is_property:
         # If there is a property setter, it will be processed after the getter,

@@ -18,7 +18,7 @@ from mypyc.common import PROPSET_PREFIX
 # vtable.
 #
 # This makes multiple inheritance tricky, since obviously we cannot be
-# an extension of multiple parent classes. We solve this by requriing
+# an extension of multiple parent classes. We solve this by requiring
 # all but one parent to be "traits", which we can operate on in a
 # somewhat less efficient way. For each trait implemented by a class,
 # we generate a separate vtable for the methods in that trait.
@@ -240,7 +240,7 @@ class ClassIR:
         return res[0] if res else None
 
     def subclasses(self) -> Optional[Set['ClassIR']]:
-        """Return all subclassses of this class, both direct and indirect.
+        """Return all subclasses of this class, both direct and indirect.
 
         Return None if it is impossible to identify all subclasses, for example
         because we are performing separate compilation.
@@ -266,7 +266,7 @@ class ClassIR:
             return None
         concrete = {c for c in subs if not (c.is_trait or c.is_abstract)}
         # We place classes with no children first because they are more likely
-        # to appear in various isinstance() checks. We then sort leafs by name
+        # to appear in various isinstance() checks. We then sort leaves by name
         # to get stable order.
         return sorted(concrete, key=lambda c: (len(c.children or []), c.name))
 

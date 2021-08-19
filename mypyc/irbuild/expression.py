@@ -122,7 +122,7 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     if final is not None:
         fullname, final_var, native = final
         value = builder.emit_load_final(final_var, fullname, final_var.name, native,
-                                     builder.types[expr], expr.line)
+                                        builder.types[expr], expr.line)
         if value is not None:
             return value
 
@@ -223,7 +223,7 @@ def translate_call(builder: IRBuilder, expr: CallExpr, callee: Expression) -> Va
     function = builder.accept(callee)
     args = [builder.accept(arg) for arg in expr.args]
     return builder.py_call(function, args, expr.line,
-                        arg_kinds=expr.arg_kinds, arg_names=expr.arg_names)
+                           arg_kinds=expr.arg_kinds, arg_names=expr.arg_names)
 
 
 def translate_refexpr_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value:
@@ -278,19 +278,19 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
         else:
             obj = builder.accept(callee.expr)
             return builder.gen_method_call(obj,
-                                        callee.name,
-                                        args,
-                                        builder.node_type(expr),
-                                        expr.line,
-                                        expr.arg_kinds,
-                                        expr.arg_names)
+                                           callee.name,
+                                           args,
+                                           builder.node_type(expr),
+                                           expr.line,
+                                           expr.arg_kinds,
+                                           expr.arg_names)
 
     elif builder.is_module_member_expr(callee):
         # Fall back to a PyCall for non-native module calls
         function = builder.accept(callee)
         args = [builder.accept(arg) for arg in expr.args]
         return builder.py_call(function, args, expr.line,
-                            arg_kinds=expr.arg_kinds, arg_names=expr.arg_names)
+                               arg_kinds=expr.arg_kinds, arg_names=expr.arg_names)
     else:
         receiver_typ = builder.node_type(callee.expr)
 
@@ -305,12 +305,12 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
         obj = builder.accept(callee.expr)
         args = [builder.accept(arg) for arg in expr.args]
         return builder.gen_method_call(obj,
-                                    callee.name,
-                                    args,
-                                    builder.node_type(expr),
-                                    expr.line,
-                                    expr.arg_kinds,
-                                    expr.arg_names)
+                                       callee.name,
+                                       args,
+                                       builder.node_type(expr),
+                                       expr.line,
+                                       expr.arg_kinds,
+                                       expr.arg_names)
 
 
 def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: SuperExpr) -> Value:
@@ -452,7 +452,7 @@ def try_gen_slice_op(builder: IRBuilder, base: Value, index: SliceExpr) -> Optio
 
 
 def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Value:
-    if_body, else_body, next = BasicBlock(), BasicBlock(), BasicBlock()
+    if_body, else_body, next_block = BasicBlock(), BasicBlock(), BasicBlock()
 
     builder.process_conditional(expr.cond, if_body, else_body)
     expr_type = builder.node_type(expr)
@@ -463,15 +463,15 @@ def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Val
     true_value = builder.accept(expr.if_expr)
     true_value = builder.coerce(true_value, expr_type, expr.line)
     builder.add(Assign(target, true_value))
-    builder.goto(next)
+    builder.goto(next_block)
 
     builder.activate_block(else_body)
     false_value = builder.accept(expr.else_expr)
     false_value = builder.coerce(false_value, expr_type, expr.line)
     builder.add(Assign(target, false_value))
-    builder.goto(next)
+    builder.goto(next_block)
 
-    builder.activate_block(next)
+    builder.activate_block(next_block)
 
     return target
 
@@ -536,14 +536,14 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
     # assuming that prev contains the value of `ei`.
     def go(i: int, prev: Value) -> Value:
         if i == len(e.operators) - 1:
-            return transform_basic_comparison(builder,
-                e.operators[i], prev, builder.accept(e.operands[i + 1]), e.line)
+            return transform_basic_comparison(
+                builder, e.operators[i], prev, builder.accept(e.operands[i + 1]), e.line)
 
         next = builder.accept(e.operands[i + 1])
         return builder.builder.shortcircuit_helper(
             'and', expr_type,
-            lambda: transform_basic_comparison(builder,
-                e.operators[i], prev, next, e.line),
+            lambda: transform_basic_comparison(
+                builder, e.operators[i], prev, next, e.line),
             lambda: go(i + 1, next),
             e.line)
 
