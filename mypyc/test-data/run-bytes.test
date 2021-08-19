@@ -250,3 +250,51 @@ def test_bytes_join() -> None:
 class bytes_subclass(bytes):
     def join(self, iter):
         return b'spook'
+
+[case testBytesFormatting]
+[typing fixtures/typing-full.pyi]
+from testutil import assertRaises
+
+# https://www.python.org/dev/peps/pep-0461/
+def test_bytes_formatting() -> None:
+    val = 10
+    assert b"%x" % val == b'a'
+    assert b'%4x' % val == b'   a'
+    assert b'%#4x' % val == b' 0xa'
+    assert b'%04X' % val == b'000A'
+
+    assert b'%c' % 48 == b'0'
+    assert b'%c' % b'a' == b'a'
+    assert b'%c%c' % (48, b'a') == b'0a'
+
+    assert b'%b' % b'abc' == b'abc'
+    assert b'%b' % 'some string'.encode('utf8') == b'some string'
+
+    assert b'%a' % 3.14 == b'3.14'
+    assert b'%a' % b'abc' == b"b'abc'"
+    assert b'%a' % 'def' == b"'def'"
+
+def test_bytes_formatting_2() -> None:
+    var = b'bb'
+    num = 10
+    assert b'aaa%bbbb%s' % (var, var) == b'aaabbbbbbb'
+    assert b'aaa%dbbb%b' % (num, var) == b'aaa10bbbbb'
+    assert b'%s%b' % (var, var) == b'bbbb'
+    assert b'%b' % bytes() == b''
+    assert b'%b' % b'' == b''
+
+    assert b'\xff%s' % b'\xff' == b'\xff\xff'
+    assert b'\xff%b' % '你好'.encode() == b'\xff\xe4\xbd\xa0\xe5\xa5\xbd'
+
+    aa = b'\xe4\xbd\xa0\xe5\xa5\xbd%b' % b'\xe4\xbd\xa0\xe5\xa5\xbd'
+    assert aa == b'\xe4\xbd\xa0\xe5\xa5\xbd\xe4\xbd\xa0\xe5\xa5\xbd'
+    assert aa.decode() == '你好你好'
+
+
+class A:
+    def __bytes__(self):
+        return b'aaa'
+
+def test_bytes_dunder() -> None:
+    assert b'%b' % A() == b'aaa'
+    assert b'%s' % A() == b'aaa'

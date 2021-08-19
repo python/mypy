@@ -13,9 +13,11 @@ from mypy.nodes import Context, Expression
 
 from mypyc.ir.ops import Value, Integer
 from mypyc.ir.rtypes import (
-    c_pyssize_t_rprimitive, is_str_rprimitive, is_int_rprimitive, is_short_int_rprimitive
+    c_pyssize_t_rprimitive, is_str_rprimitive, is_int_rprimitive, is_short_int_rprimitive,
+    is_bytes_rprimitive
 )
 from mypyc.irbuild.builder import IRBuilder
+from mypyc.primitives.bytes_ops import bytes_build_op
 from mypyc.primitives.int_ops import int_to_str_op
 from mypyc.primitives.str_ops import str_build_op, str_op
 
@@ -31,6 +33,7 @@ class FormatOp(Enum):
     """
     STR = 's'
     INT = 'd'
+    BYTES = 'b'
 
 
 def generate_format_ops(specifiers: List[ConversionSpecifier]) -> Optional[List[FormatOp]]:
@@ -45,6 +48,8 @@ def generate_format_ops(specifiers: List[ConversionSpecifier]) -> Optional[List[
             format_op = FormatOp.STR
         elif spec.whole_seq == '%d':
             format_op = FormatOp.INT
+        elif spec.whole_seq == '%b':
+            format_op = FormatOp.BYTES
         elif spec.whole_seq:
             return None
         else:
@@ -118,10 +123,10 @@ def tokenizer_format_call(
     return literals, format_ops
 
 
-def convert_expr(builder: IRBuilder, format_ops: List[FormatOp],
-                 exprs: List[Expression], line: int) -> Optional[List[Value]]:
-    """Convert expressions into string literals with the guidance
-    of FormatOps."""
+def convert_format_expr_to_str(builder: IRBuilder, format_ops: List[FormatOp],
+                               exprs: List[Expression], line: int) -> Optional[List[Value]]:
+    """Convert expressions into string literal objects with the guidance
+    of FormatOps. Return None when fails."""
     if len(format_ops) != len(exprs):
         return None
 
@@ -186,3 +191,48 @@ def join_formatted_strings(builder: IRBuilder, literals: Optional[List[str]],
 
     result_list[0] = Integer(len(result_list) - 1, c_pyssize_t_rprimitive)
     return builder.call_c(str_build_op, result_list, line)
+
+
+def convert_format_expr_to_bytes(builder: IRBuilder, format_ops: List[FormatOp],
+                                 exprs: List[Expression], line: int) -> Optional[List[Value]]:
+    """Convert expressions into bytes literal objects with the guidance
+    of FormatOps. Return None when fails."""
+    if len(format_ops) != len(exprs):
+        return None
+
+    converted = []
+    for x, format_op in zip(exprs, format_ops):
+        node_type = builder.node_type(x)
+        # conversion type 's' is an alias of 'b' in bytes formatting
+        if format_op == FormatOp.BYTES or format_op == FormatOp.STR:
+            if is_bytes_rprimitive(node_type):
+                var_bytes = builder.accept(x)
+            else:
+                return None
+        else:
+            return None
+        converted.append(var_bytes)
+    return converted
+
+
+def join_formatted_bytes(builder: IRBuilder, literals: List[str],
+                         substitutions: List[Value], line: int) -> Value:
+    """Merge the list of literals and the list of substitutions
+    alternatively using 'bytes_build_op'."""
+    result_list: List[Value] = [Integer(0, c_pyssize_t_rprimitive)]
+
+    for a, b in zip(literals, substitutions):
+        if a:
+            result_list.append(builder.load_bytes_from_str_literal(a))
+        result_list.append(b)
+    if literals[-1]:
+        result_list.append(builder.load_bytes_from_str_literal(literals[-1]))
+
+    # Special case for empty bytes and literal
+    if len(result_list) == 1:
+        return builder.load_bytes_from_str_literal('')
+    if not substitutions and len(result_list) == 2:
+        return result_list[1]
+
+    result_list[0] = Integer(len(result_list) - 1, c_pyssize_t_rprimitive)
+    return builder.call_c(bytes_build_op, result_list, line)

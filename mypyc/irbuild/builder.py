@@ -200,6 +200,16 @@ class IRBuilder:
     def load_str(self, value: str) -> Value:
         return self.builder.load_str(value)
 
+    def load_bytes_from_str_literal(self, value: str) -> Value:
+        """Load bytes object from a string literal.
+
+        The literal characters of BytesExpr (the characters inside b'')
+        are stored in BytesExpr.value, whose type is 'str' not 'bytes'.
+        Thus we perform a special conversion here.
+        """
+        bytes_value = bytes(value, 'utf8').decode('unicode-escape').encode('raw-unicode-escape')
+        return self.builder.load_bytes(bytes_value)
+
     def load_int(self, value: int) -> Value:
         return self.builder.load_int(value)
 

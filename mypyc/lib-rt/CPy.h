@@ -402,6 +402,7 @@ PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors);
 // Bytes operations
 
 
+PyObject *CPyBytes_Build(Py_ssize_t len, ...);
 PyObject *CPyBytes_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
 CPyTagged CPyBytes_GetItem(PyObject *o, CPyTagged index);
 PyObject *CPyBytes_Concat(PyObject *a, PyObject *b);

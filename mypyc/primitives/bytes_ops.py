@@ -3,7 +3,7 @@
 from mypyc.ir.ops import ERR_MAGIC
 from mypyc.ir.rtypes import (
     object_rprimitive, bytes_rprimitive, list_rprimitive, dict_rprimitive,
-    str_rprimitive, RUnion, int_rprimitive
+    str_rprimitive, RUnion, int_rprimitive, c_pyssize_t_rprimitive
 )
 from mypyc.primitives.registry import (
     load_address_op, function_op, method_op, binary_op, custom_op
@@ -64,3 +64,13 @@ method_op(
     return_type=bytes_rprimitive,
     c_function_name='CPyBytes_Join',
     error_kind=ERR_MAGIC)
+
+# Join bytes objects and return a new bytes.
+# The first argument is the total number of the following bytes.
+bytes_build_op = custom_op(
+    arg_types=[c_pyssize_t_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name='CPyBytes_Build',
+    error_kind=ERR_MAGIC,
+    var_arg_type=bytes_rprimitive
+)
