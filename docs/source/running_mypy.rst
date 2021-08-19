@@ -452,7 +452,7 @@ How mypy determines fully qualified module names depends on if the options
    fully qualified module name.
 
    For example, say your directory tree consists solely of
-   ``src/namespace_pkg/mod.py``. If you run the command following command, mypy
+   ``src/namespace_pkg/mod.py``. If you run the following command, mypy
    will correctly associate ``mod.py`` with ``namespace_pkg.mod``::
 
        $ MYPYPATH=src mypy --namespace-packages --explicit-package-bases .
