@@ -218,19 +218,15 @@ def convert_format_expr_to_bytes(builder: IRBuilder, format_ops: List[FormatOp],
 def join_formatted_bytes(builder: IRBuilder, literals: List[str],
                          substitutions: List[Value], line: int) -> Value:
     """Merge the list of literals and the list of substitutions
-    alternatively using 'bytes_build_op'.
-
-    The literals should only contains ascii literal objects. Otherwise
-    it can't pass the mypy checking.
-    """
+    alternatively using 'bytes_build_op'."""
     result_list: List[Value] = [Integer(0, c_pyssize_t_rprimitive)]
 
     for a, b in zip(literals, substitutions):
         if a:
-            result_list.append(builder.load_bytes(a.encode('ascii')))
+            result_list.append(builder.load_bytes_from_str_literal(a))
         result_list.append(b)
     if literals[-1]:
-        result_list.append(builder.load_bytes(literals[-1].encode('ascii')))
+        result_list.append(builder.load_bytes_from_str_literal(literals[-1]))
 
     # Special case for empty string and literal string
     if len(result_list) == 1:

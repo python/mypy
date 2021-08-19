@@ -585,11 +585,13 @@ def translate_printf_style_formatting(builder: IRBuilder,
             exprs.append(rhs)
 
         if isinstance(format_expr, BytesExpr):
-            substitutions = convert_format_expr_to_bytes(builder, format_ops, exprs, format_expr.line)
+            substitutions = convert_format_expr_to_bytes(builder, format_ops,
+                                                         exprs, format_expr.line)
             if substitutions is not None:
                 return join_formatted_bytes(builder, literals, substitutions, format_expr.line)
         else:
-            substitutions = convert_format_expr_to_str(builder, format_ops, exprs, format_expr.line)
+            substitutions = convert_format_expr_to_str(builder, format_ops,
+                                                       exprs, format_expr.line)
             if substitutions is not None:
                 return join_formatted_strings(builder, literals, substitutions, format_expr.line)
 
@@ -616,8 +618,7 @@ def transform_str_expr(builder: IRBuilder, expr: StrExpr) -> Value:
 
 
 def transform_bytes_expr(builder: IRBuilder, expr: BytesExpr) -> Value:
-    value = bytes(expr.value, 'utf8').decode('unicode-escape').encode('raw-unicode-escape')
-    return builder.builder.load_bytes(value)
+    return builder.load_bytes_from_str_literal(expr.value)
 
 
 def transform_ellipsis(builder: IRBuilder, o: EllipsisExpr) -> Value:
