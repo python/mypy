@@ -191,7 +191,7 @@ def faster_min(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[
     if (len(expr.args) > 0
             and expr.arg_kinds == [ARG_POS, ARG_POS]):
         x, y = builder.accept(expr.args[0]), builder.accept(expr.args[1])
-        result = Register(x.type)
+        result = Register(builder.node_type(expr))
         comparison = builder.binary_op(x, y, '<', expr.line)
         true = BasicBlock()
         false = BasicBlock()
@@ -200,11 +200,11 @@ def faster_min(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[
         builder.add_bool_branch(comparison, true, false)
 
         builder.activate_block(true)
-        builder.add(Assign(result, x))
+        builder.assign(result, builder.coerce(x, result.type, expr.line), expr.line)
         builder.goto(next_block)
 
         builder.activate_block(false)
-        builder.add(Assign(result, y))
+        builder.assign(result, builder.coerce(y, result.type, expr.line), expr.line)
         builder.goto(next_block)
 
         builder.activate_block(next_block)

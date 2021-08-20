@@ -340,7 +340,32 @@ def test_int_min_2() -> None:
     y: int = 200
     assert min(x, y) == 30
 
-def test_int_float_hybrid_min() -> None:
-    x: int = 30
-    y: float = 200.0
-    assert min(x, y) == 30
+def test_int_hybrid_min() -> None:
+    from typing import Any
+
+    x: object = 30
+    y: Any = 20.0
+    assert min(x, y) == 20.0
+
+    u: object = 20
+    v: float = 30.0
+    assert min(u, v) == 20
+
+def test_int_incompatible_min() -> None:
+    x: int = 2
+    y: str = 'aaa'
+    try:
+        print(min(x, y))
+    except TypeError as e:
+        assert str(e) == "'<' not supported between instances of 'int' and 'str'"
+
+def test_int_bool_min() -> None:
+    x: int = 2
+    y: bool = False
+    z: bool = True
+    assert min(x, y) == False
+    assert min(x, z) == True
+
+    u: int = -10
+    assert min(u, y) == -10
+    assert min(u, z) == -10
