@@ -945,4 +945,20 @@ def f14(b: bool, a: Any) -> None:
     else:
         z = None
 
+def f15() -> None:
+    try:
+        z = f2(True)
+    except Exception:
+        z = None
+    reveal_type(z)  # N: Revealed type is "Union[builtins.int, None]"
+
+def f16(z: Any) -> None:
+    for x in z:
+        if x == 0:
+            y = 50
+            break
+    else:
+        y = None
+    reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
+
 [builtins fixtures/exception.pyi]

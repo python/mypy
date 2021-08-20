@@ -418,7 +418,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         Then check the else_body.
         """
         # The outer frame accumulates the results of all iterations
-        with self.binder.frame_context(can_skip=False):
+        with self.binder.frame_context(can_skip=False, conditional_frame=True):
             while True:
                 with self.binder.frame_context(can_skip=True,
                                                break_frame=2, continue_frame=1):
@@ -3472,7 +3472,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # was the top frame on entry.
         with self.binder.frame_context(can_skip=False, fall_through=2, try_frame=try_frame):
             # This frame receives exit via exception, and runs exception handlers
-            with self.binder.frame_context(can_skip=False, fall_through=2):
+            with self.binder.frame_context(can_skip=False, conditional_frame=True, fall_through=2):
                 # Finally, the body of the try statement
                 with self.binder.frame_context(can_skip=False, fall_through=2, try_frame=True):
                     self.accept(s.body)
