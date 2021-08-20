@@ -832,3 +832,93 @@ main:4: error: Argument 1 to "asdf" has incompatible type "List[str]"; expected 
 main:4: note: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance
 main:4: note: Consider using "Sequence" instead, which is covariant
 [builtins fixtures/list.pyi]
+
+[case testOptionalBackwards]
+from typing import Optional
+
+def f1(b: bool) -> Optional[int]:
+    if b:
+        z = 10
+        reveal_type(z)  # N: Revealed type is "builtins.int"
+    else:
+        z = None
+        reveal_type(z)  # N: Revealed type is "None"
+    reveal_type(z)  # N: Revealed type is "Union[builtins.int, None]"
+    return z
+
+def f2(b: bool) -> int:
+    if b:
+        z = 10
+    else:
+        z = None
+    return z  # E: Incompatible return value type (got "Optional[int]", expected "int")
+
+def f3(b: bool) -> int:
+    # XXX: This one is a little questionable! Maybe we *do* want to allow this?
+    z = 10
+    if b:
+        z = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+    return z
+
+def f4() -> Optional[int]:
+    z = 10
+    z = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+
+    return z
+
+def f5() -> None:
+    z = 10
+
+    def f() -> None:
+        nonlocal z
+        z = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+
+def f6(b: bool) -> None:
+    if b:
+        z = 10
+    else:
+        z = 11
+
+    def f() -> None:
+        nonlocal z
+        z = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+
+def f7(b: bool) -> None:
+    if b:
+        z = 10
+    else:
+        z = 11
+
+    z = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+
+def f8(b: bool, c: bool) -> Optional[int]:
+    if b:
+        if c:
+            z = 10
+        else:
+            z = 11
+    else:
+        z = None
+    return z
+
+def f9(b: bool) -> None:
+    if b:
+        z: int = 10
+    else:
+        z = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+
+def f10(b: bool) -> None:
+    z: int
+    if b:
+        z = 10
+    else:
+        z = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+
+
+def f11(b: bool, c: bool) -> None:
+    if b:
+        z = 10
+    elif c:
+        z = 30
+    else:
+        z = None
