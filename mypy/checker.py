@@ -2185,7 +2185,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             lvalue.kind == LDEF and
                             isinstance(lvalue.node, Var) and
                             lvalue.node.type and
-                            lvalue.node in self.var_decl_frames):
+                            lvalue.node in self.var_decl_frames and
+                            not isinstance(get_proper_type(lvalue_type), AnyType)):
                         decl_frame_map = self.var_decl_frames[lvalue.node]
                         # Check if the nearest common ancestor frame for the definition site
                         # and the current site is the enclosing frame of an if/elif/else block.

@@ -834,7 +834,7 @@ main:4: note: Consider using "Sequence" instead, which is covariant
 [builtins fixtures/list.pyi]
 
 [case testOptionalBackwards]
-from typing import Optional
+from typing import Any, Optional
 
 def f1(b: bool) -> Optional[int]:
     if b:
@@ -914,7 +914,6 @@ def f10(b: bool) -> None:
     else:
         z = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
 
-
 def f11(b: bool, c: bool) -> None:
     if b:
         z = 10
@@ -922,3 +921,10 @@ def f11(b: bool, c: bool) -> None:
         z = 30
     else:
         z = None
+
+def f12(b: bool, a: Any) -> None:
+    if b:
+        z = a
+    else:
+        z = None
+    reveal_type(z)  # N: Revealed type is "Any"
