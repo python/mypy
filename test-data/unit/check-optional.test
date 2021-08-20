@@ -928,3 +928,21 @@ def f12(b: bool, a: Any) -> None:
     else:
         z = None
     reveal_type(z)  # N: Revealed type is "Any"
+
+def f13(b: bool, a: Any) -> None:
+    if b:
+        try:
+            z = f2(True)
+        except Exception:
+            raise RuntimeError
+    else:
+        z = None
+
+def f14(b: bool, a: Any) -> None:
+    if b:
+        with a:
+            z = 10
+    else:
+        z = None
+
+[builtins fixtures/exception.pyi]
