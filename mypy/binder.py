@@ -31,11 +31,11 @@ class Frame:
     that were assigned in that frame.
     """
 
-    def __init__(self, id: int) -> None:
+    def __init__(self, id: int, conditional_frame: bool = False) -> None:
         self.id = id
         self.types: Dict[Key, Type] = {}
         self.unreachable = False
-        self.outer_if_frame = False
+        self.conditional_frame = conditional_frame
 
         # Should be set only if we're entering a frame where it's not
         # possible to accurately determine whether or not contained
@@ -117,9 +117,9 @@ class ConditionalTypeBinder:
         for elt in subkeys(key):
             self._add_dependencies(elt, value)
 
-    def push_frame(self) -> Frame:
+    def push_frame(self, conditional_frame: bool = False) -> Frame:
         """Push a new frame into the binder."""
-        f = Frame(self._get_id())
+        f = Frame(self._get_id(), conditional_frame)
         self.frames.append(f)
         self.options_on_return.append([])
         return f
@@ -375,7 +375,7 @@ class ConditionalTypeBinder:
     @contextmanager
     def frame_context(self, *, can_skip: bool, fall_through: int = 1,
                       break_frame: int = 0, continue_frame: int = 0,
-                      outer_if_frame: bool = False,
+                      conditional_frame: bool = False,
                       try_frame: bool = False) -> Iterator[Frame]:
         """Return a context manager that pushes/pops frames on enter/exit.
 
@@ -410,9 +410,7 @@ class ConditionalTypeBinder:
         if try_frame:
             self.try_frames.add(len(self.frames) - 1)
 
-        new_frame = self.push_frame()
-        if outer_if_frame:
-            new_frame.outer_if_frame = True
+        new_frame = self.push_frame(conditional_frame)
         if try_frame:
             # An exception may occur immediately
             self.allow_jump(-1)

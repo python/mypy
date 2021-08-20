@@ -3026,7 +3026,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             var.is_inferred = True
             if var not in self.var_decl_frames:
                 self.var_decl_frames[var] = {
-                    frame.id: frame.outer_if_frame for frame in self.binder.frames}
+                    frame.id: frame.conditional_frame for frame in self.binder.frames}
             if isinstance(lvalue, MemberExpr) and self.inferred_attribute_types is not None:
                 # Store inferred attribute type so that we can check consistency afterwards.
                 if lvalue.def_var is not None:
@@ -3333,7 +3333,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Type check an if statement."""
         # This frame records the knowledge from previous if/elif clauses not being taken.
         # Fall-through to the original frame is handled explicitly in each block.
-        with self.binder.frame_context(can_skip=False, outer_if_frame=True, fall_through=0):
+        with self.binder.frame_context(can_skip=False, conditional_frame=True, fall_through=0):
             for e, b in zip(s.expr, s.body):
                 t = get_proper_type(self.expr_checker.accept(e))
 
