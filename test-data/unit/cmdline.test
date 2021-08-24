@@ -791,7 +791,7 @@ c.py:2: error: Argument 1 to "bar" has incompatible type "str"; expected "int"
 [case testSrcPEP420Packages]
 # cmd: mypy -p anamespace --namespace-packages
 [file mypy.ini]
-\[mypy]]
+\[mypy]
 mypy_path = src
 [file src/setup.cfg]
 [file src/anamespace/foo/__init__.py]
