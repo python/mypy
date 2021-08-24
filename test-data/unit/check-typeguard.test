@@ -370,3 +370,17 @@ if guard(a):
     reveal_type(a)  # N: Revealed type is "__main__.A"
 reveal_type(a)  # N: Revealed type is "__main__.A"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeGuardNestedRestrictionAny]
+from typing_extensions import TypeGuard
+from typing import Any
+
+class A: ...
+def f(x: object) -> TypeGuard[A]: ...
+def g(x: object) -> None: ...
+
+def test(x: Any) -> None:
+    if not(f(x) or x):
+        return
+    g(x)
+[builtins fixtures/tuple.pyi]
