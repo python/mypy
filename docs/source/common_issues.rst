@@ -392,7 +392,7 @@ explicit type cast:
 
 Mypy can't infer the type of ``o`` after the :py:class:`type() <type>` check
 because it only knows about :py:func:`isinstance` (and the latter is better
-style anyway).  We can write the above code without a cast by using
+style anyway). We can write the above code without a cast by using
 :py:func:`isinstance`:
 
 .. code-block:: python
@@ -402,7 +402,23 @@ style anyway).  We can write the above code without a cast by using
            g(o + 1)        # Okay; type of o is inferred as int here
            ...
 
-Type inference in mypy is designed to work well in common cases, to be
+Mypy can also use :py:func:`issubclass` 
+for better type inference when working with types:
+
+.. code-block:: python
+
+   class MyCalcMeta(type):
+       @classmethod
+       def calc(cls) -> int:
+           ...
+
+   def f(o: object) -> None:
+       t = type(o)  # we must use a variable here
+       if issubtype(t, MyCalcMeta):  # `issubtype(type(o), MyCalcMeta)` won't work
+           reveal_type(t)  # Revealed type is "Type[MyCalcMeta]"
+           t.calc()  # Okay
+
+Type inference in Mypy is designed to work well in common cases, to be
 predictable and to let the type checker give useful error
 messages. More powerful type inference strategies often have complex
 and difficult-to-predict failure modes and could result in very
