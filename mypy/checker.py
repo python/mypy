@@ -5307,15 +5307,7 @@ def or_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
     for n1 in m1:
         for n2 in m2:
             if literal_hash(n1) == literal_hash(n2):
-                i1 = m1[n1]
-                i2 = m2[n2]
-                # This is a sketchy hack to prevent TypeGuard from appearing
-                # in nested positions.
-                if isinstance(i1, TypeGuardType):
-                    i1 = i1.type_guard
-                if isinstance(i2, TypeGuardType):
-                    i2 = i2.type_guard
-                result[n1] = make_simplified_union([i1, i2])
+                result[n1] = make_simplified_union([m1[n1], m2[n2]])
     return result
 
 
