@@ -409,6 +409,10 @@ PyObject *CPyBytes_Concat(PyObject *a, PyObject *b);
 PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter);
 
 
+int CPyBytes_Compare(PyObject *left, PyObject *right);
+
+
+
 // Set operations
 
 
