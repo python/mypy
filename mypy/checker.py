@@ -4167,6 +4167,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         self.fail("Type guard requires positional argument", node)
                         return {}, {}
                     if literal(expr) == LITERAL_TYPE:
+                        # Note: we wrap the target type, so that we can special case later.
+                        # Namely, for isinstance() we use a normal meet, while TypeGuard is
+                        # considered "always right" (i.e. even if the types are not overlapping).
+                        # Also note that a care must be taken to unwrap this back at read places
+                        # where we use this to narrow down declared type.
                         return {expr: TypeGuardType(node.callee.type_guard)}, {}
         elif isinstance(node, ComparisonExpr):
             # Step 1: Obtain the types of each operand and whether or not we can
