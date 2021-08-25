@@ -21,8 +21,8 @@ from mypy.plugins.common import (
     deserialize_and_fixup_type
 )
 from mypy.types import (
-    Type, AnyType, TypeOfAny, CallableType, NoneType, TypeVarType,
-    Overloaded, UnionType, FunctionLike, get_proper_type
+    TupleType, Type, AnyType, TypeOfAny, CallableType, NoneType, TypeVarType,
+    Overloaded, UnionType, FunctionLike, get_proper_type,
 )
 from mypy.typeops import make_simplified_union, map_type_from_supertype
 from mypy.typevars import fill_typevars
@@ -299,6 +299,8 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
         if node.type is None and not ctx.api.final_iteration:
             ctx.api.defer()
             return
+
+    _add_attrs_magic_attribute(ctx, raw_attr_types=[info[attr.name].type for attr in attributes])
 
     # Save the attributes so that subclasses can reuse them.
     ctx.cls.info.metadata['attrs'] = {
@@ -701,6 +703,27 @@ def _add_init(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute],
             a.variable.type = AnyType(TypeOfAny.implementation_artifact)
             a.type_annotation = AnyType(TypeOfAny.implementation_artifact)
     adder.add_method('__init__', args, NoneType())
+
+
+def _add_attrs_magic_attribute(ctx: 'mypy.plugin.ClassDefContext',
+                               raw_attr_types: 'List[Optional[Type]]') -> None:
+    attr_name = '__attrs_attrs__'
+    any_type = AnyType(TypeOfAny.explicit)
+    attributes_types: 'List[Type]' = [
+        ctx.api.named_type_or_none('attr.Attribute', [attr_type or any_type]) or any_type
+        for attr_type in raw_attr_types
+    ]
+    fallback_type = ctx.api.named_type('__builtins__.tuple', [
+        ctx.api.named_type_or_none('attr.Attribute', [any_type]) or any_type,
+    ])
+    var = Var(name=attr_name, type=TupleType(attributes_types, fallback=fallback_type))
+    var.info = ctx.cls.info
+    var._fullname = ctx.cls.info.fullname + '.' + attr_name
+    ctx.cls.info.names[attr_name] = SymbolTableNode(
+        kind=MDEF,
+        node=var,
+        plugin_generated=True,
+    )
 
 
 class MethodAdder:

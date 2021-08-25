@@ -123,6 +123,7 @@ def transform_mypy_file(builder: IRBuilder, mypyfile: MypyFile) -> None:
     # Generate ops.
     for node in mypyfile.defs:
         builder.accept(node)
+
     builder.maybe_add_implicit_return()
 
     # Generate special function representing module top level.

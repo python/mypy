@@ -260,11 +260,15 @@ class LowLevelIRBuilder:
             ret = self.shortcircuit_helper('or', bool_rprimitive, lambda: ret, other, line)
         return ret
 
-    def type_is_op(self, obj: Value, type_obj: Value, line: int) -> Value:
+    def get_type_of_obj(self, obj: Value, line: int) -> Value:
         ob_type_address = self.add(GetElementPtr(obj, PyObject, 'ob_type', line))
         ob_type = self.add(LoadMem(object_rprimitive, ob_type_address))
         self.add(KeepAlive([obj]))
-        return self.add(ComparisonOp(ob_type, type_obj, ComparisonOp.EQ, line))
+        return ob_type
+
+    def type_is_op(self, obj: Value, type_obj: Value, line: int) -> Value:
+        typ = self.get_type_of_obj(obj, line)
+        return self.add(ComparisonOp(typ, type_obj, ComparisonOp.EQ, line))
 
     def isinstance_native(self, obj: Value, class_ir: ClassIR, line: int) -> Value:
         """Fast isinstance() check for a native class.

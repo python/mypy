@@ -403,4 +403,16 @@ _CPyObject_HasAttrId(PyObject *v, _Py_Identifier *name) {
 #define _CPyObject_HasAttrId _PyObject_HasAttrId
 #endif
 
+#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION < 9
+// OneArgs and NoArgs functions got added in 3.9
+#define _PyObject_CallMethodIdNoArgs(self, name) \
+    _PyObject_CallMethodIdObjArgs((self), (name), NULL)
+#define _PyObject_CallMethodIdOneArg(self, name, arg) \
+    _PyObject_CallMethodIdObjArgs((self), (name), (arg), NULL)
+#define PyObject_CallNoArgs(callable) \
+    PyObject_CallFunctionObjArgs((callable), NULL)
+#define PyObject_CallOneArg(callable, arg) \
+    PyObject_CallFunctionObjArgs((callable), (arg), NULL)
+#endif
+
 #endif

@@ -1244,7 +1244,7 @@ class MessageBuilder:
             matches = best_matches(item_name, typ.items.keys())
             if matches:
                 self.note("Did you mean {}?".format(
-                    pretty_seq(matches[:3], "or")), context)
+                    pretty_seq(matches[:3], "or")), context, code=codes.TYPEDDICT_ITEM)
 
     def typeddict_context_ambiguous(
             self,

@@ -200,6 +200,16 @@ class IRBuilder:
     def load_str(self, value: str) -> Value:
         return self.builder.load_str(value)
 
+    def load_bytes_from_str_literal(self, value: str) -> Value:
+        """Load bytes object from a string literal.
+
+        The literal characters of BytesExpr (the characters inside b'')
+        are stored in BytesExpr.value, whose type is 'str' not 'bytes'.
+        Thus we perform a special conversion here.
+        """
+        bytes_value = bytes(value, 'utf8').decode('unicode-escape').encode('raw-unicode-escape')
+        return self.builder.load_bytes(bytes_value)
+
     def load_int(self, value: int) -> Value:
         return self.builder.load_int(value)
 
@@ -857,6 +867,16 @@ class IRBuilder:
         callee_node = callee.node
         if isinstance(callee_node, OverloadedFuncDef):
             callee_node = callee_node.impl
+        # TODO: use native calls for any decorated functions which have all their decorators
+        # removed, not just singledispatch functions (which we don't do now just in case those
+        # decorated functions are callable classes or cannot be called without the python API for
+        # some other reason)
+        if (
+            isinstance(callee_node, Decorator)
+            and callee_node.func not in self.fdefs_to_decorators
+            and callee_node.func in self.singledispatch_impls
+        ):
+            callee_node = callee_node.func
         if (callee_node is not None
                 and callee.fullname is not None
                 and callee_node in self.mapper.func_to_decl
