@@ -472,6 +472,17 @@ a['y']  # E: TypedDict "D" has no key "y"  [typeddict-item]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testErrorCodeTypedDictNoteIgnore]
+from typing_extensions import TypedDict
+class A(TypedDict):
+    one_commonpart: int
+    two_commonparts: int
+
+a: A = {'one_commonpart': 1, 'two_commonparts': 2}
+a['other_commonpart'] = 3  # type: ignore[typeddict-item]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testErrorCodeCannotDetermineType]
 y = x  # E: Cannot determine type of "x"  [has-type]
 reveal_type(y)  # N: Revealed type is "Any"

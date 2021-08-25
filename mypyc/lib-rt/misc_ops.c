@@ -27,7 +27,7 @@ PyObject *CPyIter_Send(PyObject *iter, PyObject *val)
     if (val == Py_None) {
         return CPyIter_Next(iter);
     } else {
-        return _PyObject_CallMethodIdObjArgs(iter, &PyId_send, val, NULL);
+        return _PyObject_CallMethodIdOneArg(iter, &PyId_send, val);
     }
 }
 
@@ -693,9 +693,9 @@ PyObject *
 CPy_CallReverseOpMethod(PyObject *left,
                         PyObject *right,
                         const char *op,
-                        const char *method) {
+                        _Py_Identifier *method) {
     // Look up reverse method
-    PyObject *m = PyObject_GetAttrString(right, method);
+    PyObject *m = _PyObject_GetAttrId(right, method);
     if (m == NULL) {
         // If reverse method not defined, generate TypeError instead AttributeError
         if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
@@ -704,7 +704,82 @@ CPy_CallReverseOpMethod(PyObject *left,
         return NULL;
     }
     // Call reverse method
-    PyObject *result = PyObject_CallFunction(m, "O", left);
+    PyObject *result = PyObject_CallOneArg(m, left);
     Py_DECREF(m);
     return result;
+}
+
+PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func,
+                                             PyObject *cls,
+                                             PyObject *func) {
+    PyObject *registry = PyObject_GetAttrString(singledispatch_func, "registry");
+    PyObject *register_func = NULL;
+    PyObject *typing = NULL;
+    PyObject *get_type_hints = NULL;
+    PyObject *type_hints = NULL;
+
+    if (registry == NULL) goto fail;
+    if (func == NULL) {
+        // one argument case
+        if (PyType_Check(cls)) {
+            // passed a class
+            // bind cls to the first argument so that register gets called again with both the
+            // class and the function
+            register_func = PyObject_GetAttrString(singledispatch_func, "register");
+            if (register_func == NULL) goto fail;
+            return PyMethod_New(register_func, cls);
+        }
+        // passed a function
+        PyObject *annotations = PyFunction_GetAnnotations(cls);
+        const char *invalid_first_arg_msg =
+            "Invalid first argument to `register()`: %R. "
+            "Use either `@register(some_class)` or plain `@register` "
+            "on an annotated function.";
+
+        if (annotations == NULL) {
+            PyErr_Format(PyExc_TypeError, invalid_first_arg_msg, cls);
+            goto fail;
+        }
+
+        Py_INCREF(annotations);
+
+        func = cls;
+        typing = PyImport_ImportModule("typing");
+        if (typing == NULL) goto fail;
+        get_type_hints = PyObject_GetAttrString(typing, "get_type_hints");
+
+        type_hints = PyObject_CallOneArg(get_type_hints, func);
+        PyObject *argname;
+        Py_ssize_t pos = 0;
+        if (!PyDict_Next(type_hints, &pos, &argname, &cls)) {
+            // the functools implementation raises the same type error if annotations is an empty dict
+            PyErr_Format(PyExc_TypeError, invalid_first_arg_msg, cls);
+            goto fail;
+        }
+        if (!PyType_Check(cls)) {
+            const char *invalid_annotation_msg = "Invalid annotation for %R. %R is not a class.";
+            PyErr_Format(PyExc_TypeError, invalid_annotation_msg, argname, cls);
+            goto fail;
+        }
+    }
+    if (PyDict_SetItem(registry, cls, func) == -1) {
+        goto fail;
+    }
+
+    // clear the cache so we consider the newly added function when dispatching
+    PyObject *dispatch_cache = PyObject_GetAttrString(singledispatch_func, "dispatch_cache");
+    if (dispatch_cache == NULL) goto fail;
+    PyDict_Clear(dispatch_cache);
+
+    Py_INCREF(func);
+    return func;
+
+fail:
+    Py_XDECREF(registry);
+    Py_XDECREF(register_func);
+    Py_XDECREF(typing);
+    Py_XDECREF(get_type_hints);
+    Py_XDECREF(type_hints);
+    return NULL;
+
 }

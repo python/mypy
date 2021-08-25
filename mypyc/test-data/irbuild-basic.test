@@ -2972,10 +2972,14 @@ def __mypyc_c_decorator_helper__():
     r8 :: str
     r9, r10 :: object
     r11 :: bool
-    r12 :: str
-    r13 :: object
-    r14 :: str
-    r15, r16, r17, r18 :: object
+    r12 :: dict
+    r13 :: str
+    r14 :: int32
+    r15 :: bit
+    r16 :: str
+    r17 :: object
+    r18 :: str
+    r19, r20, r21, r22 :: object
 L0:
     r0 = __mypyc_c_decorator_helper___env()
     r1 = __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj()
@@ -2989,13 +2993,17 @@ L0:
     r9 = CPyDict_GetItem(r7, r8)
     r10 = PyObject_CallFunctionObjArgs(r9, r6, 0)
     r0.d = r10; r11 = is_error
-    r12 = 'c'
-    r13 = builtins :: module
-    r14 = 'print'
-    r15 = CPyObject_GetAttr(r13, r14)
-    r16 = PyObject_CallFunctionObjArgs(r15, r12, 0)
-    r17 = r0.d
-    r18 = PyObject_CallFunctionObjArgs(r17, 0)
+    r12 = __main__.globals :: static
+    r13 = 'd'
+    r14 = CPyDict_SetItem(r12, r13, r10)
+    r15 = r14 >= 0 :: signed
+    r16 = 'c'
+    r17 = builtins :: module
+    r18 = 'print'
+    r19 = CPyObject_GetAttr(r17, r18)
+    r20 = PyObject_CallFunctionObjArgs(r19, r16, 0)
+    r21 = r0.d
+    r22 = PyObject_CallFunctionObjArgs(r21, 0)
     return 1
 def __top_level__():
     r0, r1 :: object
