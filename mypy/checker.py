@@ -4955,6 +4955,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if is_local or not self.options.allow_untyped_globals:
                         self.msg.need_annotation_for_var(node, context,
                                                          self.options.python_version)
+                        self.partial_reported.add(node)
                 else:
                     # Defer the node -- we might get a better type in the outer scope
                     self.handle_cannot_determine_type(node.name, context)
