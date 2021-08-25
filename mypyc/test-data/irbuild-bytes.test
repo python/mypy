@@ -87,3 +87,98 @@ L0:
     r1 = r0 >= 0 :: signed
     r2 = r0 != 1
     return r2
+
+[case testBytesSlicing]
+def f(a: bytes, start: int, end: int) -> bytes:
+    return a[start:end]
+[out]
+def f(a, start, end):
+    a :: bytes
+    start, end :: int
+    r0 :: bytes
+L0:
+    r0 = CPyBytes_GetSlice(a, start, end)
+    return r0
+
+[case testBytesIndex]
+def f(a: bytes, i: int) -> int:
+    return a[i]
+[out]
+def f(a, i):
+    a :: bytes
+    i, r0 :: int
+L0:
+    r0 = CPyBytes_GetItem(a, i)
+    return r0
+
+[case testBytesConcat]
+def f(a: bytes, b: bytes) -> bytes:
+    return a + b
+[out]
+def f(a, b):
+    a, b, r0 :: bytes
+L0:
+    r0 = CPyBytes_Concat(a, b)
+    return r0
+
+[case testBytesJoin]
+from typing import List
+def f(b: List[bytes]) -> bytes:
+    return b" ".join(b)
+[out]
+def f(b):
+    b :: list
+    r0, r1 :: bytes
+L0:
+    r0 = b' '
+    r1 = CPyBytes_Join(r0, b)
+    return r1
+
+[case testBytesLen]
+def f(b: bytes) -> int:
+    return len(b)
+[out]
+def f(b):
+    b :: bytes
+    r0 :: ptr
+    r1 :: native_int
+    r2 :: short_int
+L0:
+    r0 = get_element_ptr b ob_size :: PyVarObject
+    r1 = load_mem r0 :: native_int*
+    keep_alive b
+    r2 = r1 << 1
+    return r2
+
+[case testBytesFormatting]
+def f(var: bytes, num: int) -> None:
+    b1 = b'aaaa%bbbbb%s' % (var, var)
+    b2 = b'aaaa%bbbbb%s%d' % (var, var, num)
+    b3 = b'%b' % var
+    b4 = b'%ssss' % var
+[typing fixtures/typing-full.pyi]
+[out]
+def f(var, num):
+    var :: bytes
+    num :: int
+    r0, r1, r2, b1, r3 :: bytes
+    r4 :: tuple[bytes, bytes, int]
+    r5, r6 :: object
+    r7, b2, r8, b3, r9, r10, b4 :: bytes
+L0:
+    r0 = b'aaaa'
+    r1 = b'bbbb'
+    r2 = CPyBytes_Build(4, r0, var, r1, var)
+    b1 = r2
+    r3 = b'aaaa%bbbbb%s%d'
+    r4 = (var, var, num)
+    r5 = box(tuple[bytes, bytes, int], r4)
+    r6 = PyNumber_Remainder(r3, r5)
+    r7 = cast(bytes, r6)
+    b2 = r7
+    r8 = CPyBytes_Build(1, var)
+    b3 = r8
+    r9 = b'sss'
+    r10 = CPyBytes_Build(2, var, r9)
+    b4 = r10
+    return 1

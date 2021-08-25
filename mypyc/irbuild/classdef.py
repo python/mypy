@@ -83,7 +83,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
                 # properties with both getters and setters in non_extension
                 # classes not supported
                 builder.error("Property setters not supported in non-extension classes",
-                           stmt.line)
+                              stmt.line)
             for item in stmt.items:
                 with builder.catch_errors(stmt.line):
                     transform_method(builder, cdef, non_ext, get_func_def(item))
@@ -104,7 +104,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
             lvalue = stmt.lvalues[0]
             if not isinstance(lvalue, NameExpr):
                 builder.error("Only assignment to variables is supported in class bodies",
-                           stmt.line)
+                              stmt.line)
                 continue
             # We want to collect class variables in a dictionary for both real
             # non-extension classes and fake dataclass ones.
@@ -167,10 +167,10 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
         tp_bases = builder.add(LoadErrorValue(object_rprimitive, is_borrowed=True))
     modname = builder.load_str(builder.module_name)
     template = builder.add(LoadStatic(object_rprimitive, cdef.name + "_template",
-                                   builder.module_name, NAMESPACE_TYPE))
+                                      builder.module_name, NAMESPACE_TYPE))
     # Create the class
     tp = builder.call_c(pytype_from_template_op,
-                    [template, tp_bases, modname], cdef.line)
+                        [template, tp_bases, modname], cdef.line)
     # Immediately fix up the trait vtables, before doing anything with the class.
     ir = builder.mapper.type_to_ir[cdef.info]
     if not ir.is_trait and not ir.builtin_base:
@@ -189,11 +189,10 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
 
     # Add it to the dict
     builder.call_c(dict_set_item_op,
-                [
-                    builder.load_globals_dict(),
+                   [builder.load_globals_dict(),
                     builder.load_str(cdef.name),
-                    tp,
-                ], cdef.line)
+                    tp],
+                   cdef.line)
 
     return tp
 
@@ -290,8 +289,8 @@ def setup_non_ext_dict(builder: IRBuilder,
     """
     # Check if the metaclass defines a __prepare__ method, and if so, call it.
     has_prepare = builder.call_c(py_hasattr_op,
-                                [metaclass,
-                                builder.load_str('__prepare__')], cdef.line)
+                                 [metaclass,
+                                  builder.load_str('__prepare__')], cdef.line)
 
     non_ext_dict = Register(dict_rprimitive)
 
@@ -512,8 +511,8 @@ def create_mypyc_attrs_tuple(builder: IRBuilder, ir: ClassIR, line: int) -> Valu
 def finish_non_ext_dict(builder: IRBuilder, non_ext: NonExtClassInfo, line: int) -> None:
     # Add __annotations__ to the class dict.
     builder.call_c(dict_set_item_op,
-                [non_ext.dict, builder.load_str('__annotations__'),
-                non_ext.anns], -1)
+                   [non_ext.dict, builder.load_str('__annotations__'),
+                    non_ext.anns], -1)
 
     # We add a __doc__ attribute so if the non-extension class is decorated with the
     # dataclass decorator, dataclass will not try to look for __text_signature__.
