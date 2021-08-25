@@ -56,7 +56,11 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
 
     if declared == narrowed:
         return declared
-    if isinstance(declared, UnionType):
+    # Ignore the error about using get_proper_type().
+    if isinstance(narrowed, TypeGuardType):  # type: ignore[misc]
+        # A type guard forces the new type even if it doesn't overlap the old.
+        return narrowed.type_guard
+    elif isinstance(declared, UnionType):
         return make_simplified_union([narrow_declared_type(x, narrowed)
                                       for x in declared.relevant_items()])
     elif not is_overlapping_types(declared, narrowed,
@@ -156,6 +160,11 @@ def is_overlapping_types(left: Type,
     # We should never encounter this type.
     if isinstance(left, PartialType) or isinstance(right, PartialType):
         assert False, "Unexpectedly encountered partial type"
+
+    # Ignore the error about using get_proper_type().
+    if isinstance(left, TypeGuardType) or isinstance(right, TypeGuardType):  # type: ignore[misc]
+        # A type guard forces the new type even if it doesn't overlap the old.
+        return True
 
     # We should also never encounter these types, but it's possible a few
     # have snuck through due to unrelated bugs. For now, we handle these

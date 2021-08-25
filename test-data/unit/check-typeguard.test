@@ -370,3 +370,47 @@ if guard(a):
     reveal_type(a)  # N: Revealed type is "__main__.A"
 reveal_type(a)  # N: Revealed type is "__main__.A"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeGuardNestedRestrictionAny]
+from typing_extensions import TypeGuard
+from typing import Any
+
+class A: ...
+def f(x: object) -> TypeGuard[A]: ...
+def g(x: object) -> None: ...
+
+def test(x: Any) -> None:
+    if not(f(x) or x):
+        return
+    g(reveal_type(x))  # N: Revealed type is "Union[__main__.A, Any]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardNestedRestrictionUnionOther]
+from typing_extensions import TypeGuard
+from typing import Any
+
+class A: ...
+class B: ...
+def f(x: object) -> TypeGuard[A]: ...
+def f2(x: object) -> TypeGuard[B]: ...
+def g(x: object) -> None: ...
+
+def test(x: object) -> None:
+    if not(f(x) or f2(x)):
+        return
+    g(reveal_type(x))  # N: Revealed type is "Union[__main__.A, __main__.B]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardNestedRestrictionUnionIsInstance]
+from typing_extensions import TypeGuard
+from typing import Any, List
+
+class A: ...
+def f(x: List[object]) -> TypeGuard[List[str]]: ...
+def g(x: object) -> None: ...
+
+def test(x: List[object]) -> None:
+    if not(f(x) or isinstance(x, A)):
+        return
+    g(reveal_type(x))  # N: Revealed type is "Union[builtins.list[builtins.str], __main__.<subclass of "list" and "A">]"
+[builtins fixtures/tuple.pyi]
