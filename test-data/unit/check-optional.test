@@ -996,6 +996,29 @@ def f20(b: bool) -> None:
         x = None
     reveal_type(x)  # N: Revealed type is "Any"
 
+def f_unannot(): pass
+
+def f21(b: bool) -> None:
+    if b:
+        x = f_unannot()
+    else:
+        x = None
+    reveal_type(x)  # N: Revealed type is "Any"
+
+def f22(b: bool) -> None:
+    if b:
+        z = 10
+    if not b:
+        z = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+
+def f23(b: bool) -> None:
+    if b:
+        z = 10
+    if b:
+        z = 11
+    else:
+        z = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+
 [builtins fixtures/exception.pyi]
 
 [case testOptionalBackwards2]

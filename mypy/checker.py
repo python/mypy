@@ -203,11 +203,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     # directly or indirectly.
     module_refs: Set[str]
 
-    # A map from variable nodes to a snapshot of the current frames
-    # and whether they are associated with `if` statements. This can
-    # be used to determine if a variable is defined in a different
-    # branch of the same `if` statement.
-    var_decl_frames: Dict[Var, Dict[int, bool]]
+    # A map from variable nodes to a snapshot of the frame ids of the
+    # frames that were active when the variable was declared. This can
+    # be used to determine nearest common ancestor frame of a variable's
+    # declaration and the current frame, which lets us determine if it
+    # was declared in a different branch of the same `if` statement
+    # (if that frame is a conditional_frame).
+    var_decl_frames: Dict[Var, Set[int]]
 
     # Plugin that provides special type checking rules for specific library
     # functions such as open(), etc.
@@ -2193,7 +2195,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         has_if_ancestor = False
                         for frame in reversed(self.binder.frames):
                             if frame.id in decl_frame_map:
-                                has_if_ancestor = decl_frame_map[frame.id]
+                                has_if_ancestor = frame.conditional_frame
                                 break
                         if has_if_ancestor:
                             lvalue_type = make_optional_type(lvalue_type)
@@ -3025,8 +3027,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             var.type = type
             var.is_inferred = True
             if var not in self.var_decl_frames:
-                self.var_decl_frames[var] = {
-                    frame.id: frame.conditional_frame for frame in self.binder.frames}
+                # Used for the hack to improve optional type inference in conditionals
+                self.var_decl_frames[var] = {frame.id for frame in self.binder.frames}
             if isinstance(lvalue, MemberExpr) and self.inferred_attribute_types is not None:
                 # Store inferred attribute type so that we can check consistency afterwards.
                 if lvalue.def_var is not None:
