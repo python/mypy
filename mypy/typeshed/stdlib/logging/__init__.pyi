@@ -706,7 +706,24 @@ def addLevelName(level: int, levelName: str) -> None: ...
 def getLevelName(level: _Level) -> Any: ...
 def makeLogRecord(dict: Mapping[str, Any]) -> LogRecord: ...
 
-if sys.version_info >= (3, 9):
+if sys.version_info >= (3, 11):
+    def basicConfig(
+        *,
+        filename: Optional[StrPath] = ...,
+        filemode: str = ...,
+        format: str = ...,
+        datefmt: Optional[str] = ...,
+        style: _FormatStyle = ...,
+        level: Optional[_Level] = ...,
+        stream: Optional[SupportsWrite[str]] = ...,
+        handlers: Optional[Iterable[Handler]] = ...,
+        force: Optional[bool] = ...,
+        encoding: Optional[str] = ...,
+        errors: Optional[str] = ...,
+        logger: Optional[Union[str, Logger]] = ...,
+    ) -> None: ...
+
+elif sys.version_info >= (3, 9):
     def basicConfig(
         *,
         filename: Optional[StrPath] = ...,

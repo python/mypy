@@ -22,6 +22,10 @@ dmypy.json
 *.egg-info
 *.eggs
 
+# Ctags
+tags
+TAGS
+
 # IDEs
 .idea
 .vscode
