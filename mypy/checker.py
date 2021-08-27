@@ -22,14 +22,14 @@ from mypy.nodes import (
     Context, Decorator, PrintStmt, BreakStmt, PassStmt, ContinueStmt,
     ComparisonExpr, StarExpr, EllipsisExpr, RefExpr, PromoteExpr,
     Import, ImportFrom, ImportAll, ImportBase, TypeAlias,
-    ARG_POS, ARG_STAR, LITERAL_TYPE, MDEF, GDEF,
+    ARG_POS, ARG_STAR, LITERAL_TYPE, LDEF, MDEF, GDEF,
     CONTRAVARIANT, COVARIANT, INVARIANT, TypeVarExpr, AssignmentExpr,
     is_final_node,
     ARG_NAMED)
 from mypy import nodes
 from mypy import operators
 from mypy.literals import literal, literal_hash, Key
-from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any
+from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any, make_optional_type
 from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
     Instance, NoneType, strip_type, TypeType, TypeOfAny,
@@ -203,6 +203,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     # directly or indirectly.
     module_refs: Set[str]
 
+    # A map from variable nodes to a snapshot of the frame ids of the
+    # frames that were active when the variable was declared. This can
+    # be used to determine nearest common ancestor frame of a variable's
+    # declaration and the current frame, which lets us determine if it
+    # was declared in a different branch of the same `if` statement
+    # (if that frame is a conditional_frame).
+    var_decl_frames: Dict[Var, Set[int]]
+
     # Plugin that provides special type checking rules for specific library
     # functions such as open(), etc.
     plugin: Plugin
@@ -229,6 +237,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.dynamic_funcs = []
         self.partial_types = []
         self.partial_reported = set()
+        self.var_decl_frames = {}
         self.deferred_nodes = []
         self.type_map = {}
         self.module_refs = set()
@@ -411,7 +420,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         Then check the else_body.
         """
         # The outer frame accumulates the results of all iterations
-        with self.binder.frame_context(can_skip=False):
+        with self.binder.frame_context(can_skip=False, conditional_frame=True):
             while True:
                 with self.binder.frame_context(can_skip=True,
                                                break_frame=2, continue_frame=1):
@@ -2167,6 +2176,31 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     rvalue_type, lvalue_type, infer_lvalue_type = self.check_member_assignment(
                         instance_type, lvalue_type, rvalue, context=rvalue)
                 else:
+                    # Hacky special case for assigning a literal None
+                    # to a variable defined in a previous if
+                    # branch. When we detect this, we'll go back and
+                    # make the type optional. This is somewhat
+                    # unpleasant, and a generalization of this would
+                    # be an improvement!
+                    if (is_literal_none(rvalue) and
+                            isinstance(lvalue, NameExpr) and
+                            lvalue.kind == LDEF and
+                            isinstance(lvalue.node, Var) and
+                            lvalue.node.type and
+                            lvalue.node in self.var_decl_frames and
+                            not isinstance(get_proper_type(lvalue_type), AnyType)):
+                        decl_frame_map = self.var_decl_frames[lvalue.node]
+                        # Check if the nearest common ancestor frame for the definition site
+                        # and the current site is the enclosing frame of an if/elif/else block.
+                        has_if_ancestor = False
+                        for frame in reversed(self.binder.frames):
+                            if frame.id in decl_frame_map:
+                                has_if_ancestor = frame.conditional_frame
+                                break
+                        if has_if_ancestor:
+                            lvalue_type = make_optional_type(lvalue_type)
+                            self.set_inferred_type(lvalue.node, lvalue, lvalue_type)
+
                     rvalue_type = self.check_simple_assignment(lvalue_type, rvalue, context=rvalue,
                                                                code=codes.ASSIGNMENT)
 
@@ -2992,6 +3026,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if var and not self.current_node_deferred:
             var.type = type
             var.is_inferred = True
+            if var not in self.var_decl_frames:
+                # Used for the hack to improve optional type inference in conditionals
+                self.var_decl_frames[var] = {frame.id for frame in self.binder.frames}
             if isinstance(lvalue, MemberExpr) and self.inferred_attribute_types is not None:
                 # Store inferred attribute type so that we can check consistency afterwards.
                 if lvalue.def_var is not None:
@@ -3298,7 +3335,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Type check an if statement."""
         # This frame records the knowledge from previous if/elif clauses not being taken.
         # Fall-through to the original frame is handled explicitly in each block.
-        with self.binder.frame_context(can_skip=False, fall_through=0):
+        with self.binder.frame_context(can_skip=False, conditional_frame=True, fall_through=0):
             for e, b in zip(s.expr, s.body):
                 t = get_proper_type(self.expr_checker.accept(e))
 
@@ -3437,7 +3474,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # was the top frame on entry.
         with self.binder.frame_context(can_skip=False, fall_through=2, try_frame=try_frame):
             # This frame receives exit via exception, and runs exception handlers
-            with self.binder.frame_context(can_skip=False, fall_through=2):
+            with self.binder.frame_context(can_skip=False, conditional_frame=True, fall_through=2):
                 # Finally, the body of the try statement
                 with self.binder.frame_context(can_skip=False, fall_through=2, try_frame=True):
                     self.accept(s.body)
@@ -4925,6 +4962,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if is_local or not self.options.allow_untyped_globals:
                         self.msg.need_annotation_for_var(node, context,
                                                          self.options.python_version)
+                        self.partial_reported.add(node)
                 else:
                     # Defer the node -- we might get a better type in the outer scope
                     self.handle_cannot_determine_type(node.name, context)

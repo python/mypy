@@ -31,9 +31,11 @@ class Frame:
     that were assigned in that frame.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, id: int, conditional_frame: bool = False) -> None:
+        self.id = id
         self.types: Dict[Key, Type] = {}
         self.unreachable = False
+        self.conditional_frame = conditional_frame
 
         # Should be set only if we're entering a frame where it's not
         # possible to accurately determine whether or not contained
@@ -72,13 +74,15 @@ class ConditionalTypeBinder:
     type_assignments: Optional[Assigns] = None
 
     def __init__(self) -> None:
+        self.next_id = 1
+
         # The stack of frames currently used.  These map
         # literal_hash(expr) -- literals like 'foo.bar' --
         # to types. The last element of this list is the
         # top-most, current frame. Each earlier element
         # records the state as of when that frame was last
         # on top of the stack.
-        self.frames = [Frame()]
+        self.frames = [Frame(self._get_id())]
 
         # For frames higher in the stack, we record the set of
         # Frames that can escape there, either by falling off
@@ -101,6 +105,10 @@ class ConditionalTypeBinder:
         self.break_frames: List[int] = []
         self.continue_frames: List[int] = []
 
+    def _get_id(self) -> int:
+        self.next_id += 1
+        return self.next_id
+
     def _add_dependencies(self, key: Key, value: Optional[Key] = None) -> None:
         if value is None:
             value = key
@@ -109,9 +117,9 @@ class ConditionalTypeBinder:
         for elt in subkeys(key):
             self._add_dependencies(elt, value)
 
-    def push_frame(self) -> Frame:
+    def push_frame(self, conditional_frame: bool = False) -> Frame:
         """Push a new frame into the binder."""
-        f = Frame()
+        f = Frame(self._get_id(), conditional_frame)
         self.frames.append(f)
         self.options_on_return.append([])
         return f
@@ -349,7 +357,7 @@ class ConditionalTypeBinder:
         # so make sure the index is positive
         if index < 0:
             index += len(self.options_on_return)
-        frame = Frame()
+        frame = Frame(self._get_id())
         for f in self.frames[index + 1:]:
             frame.types.update(f.types)
             if f.unreachable:
@@ -367,6 +375,7 @@ class ConditionalTypeBinder:
     @contextmanager
     def frame_context(self, *, can_skip: bool, fall_through: int = 1,
                       break_frame: int = 0, continue_frame: int = 0,
+                      conditional_frame: bool = False,
                       try_frame: bool = False) -> Iterator[Frame]:
         """Return a context manager that pushes/pops frames on enter/exit.
 
@@ -401,7 +410,7 @@ class ConditionalTypeBinder:
         if try_frame:
             self.try_frames.add(len(self.frames) - 1)
 
-        new_frame = self.push_frame()
+        new_frame = self.push_frame(conditional_frame)
         if try_frame:
             # An exception may occur immediately
             self.allow_jump(-1)
