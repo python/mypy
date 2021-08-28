@@ -60,7 +60,7 @@ if sys.version_info >= (3, 10):
 class suppress(ContextManager[None]):
     def __init__(self, *exceptions: Type[BaseException]) -> None: ...
     def __exit__(
-        self, exctype: Optional[Type[BaseException]], excinst: Optional[BaseException], exctb: Optional[TracebackType]
+        self, exctype: Type[BaseException] | None, excinst: BaseException | None, exctb: TracebackType | None
     ) -> bool: ...
 
 class redirect_stdout(ContextManager[_T_io]):
@@ -81,10 +81,7 @@ class ExitStack(ContextManager[ExitStack]):
     def close(self) -> None: ...
     def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self,
-        __exc_type: Optional[Type[BaseException]],
-        __exc_value: Optional[BaseException],
-        __traceback: Optional[TracebackType],
+        self, __exc_type: Type[BaseException] | None, __exc_value: BaseException | None, __traceback: TracebackType | None
     ) -> bool: ...
 
 if sys.version_info >= (3, 7):
@@ -103,10 +100,7 @@ if sys.version_info >= (3, 7):
         def aclose(self) -> Awaitable[None]: ...
         def __aenter__(self: Self) -> Awaitable[Self]: ...
         def __aexit__(
-            self,
-            __exc_type: Optional[Type[BaseException]],
-            __exc_value: Optional[BaseException],
-            __traceback: Optional[TracebackType],
+            self, __exc_type: Type[BaseException] | None, __exc_value: BaseException | None, __traceback: TracebackType | None
         ) -> Awaitable[bool]: ...
 
 if sys.version_info >= (3, 10):

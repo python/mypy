@@ -1,5 +1,4 @@
 import sys
-from typing import Dict
 
 ENDMARKER: int
 NAME: int
@@ -62,7 +61,7 @@ OP: int
 ERRORTOKEN: int
 N_TOKENS: int
 NT_OFFSET: int
-tok_name: Dict[int, str]
+tok_name: dict[int, str]
 if sys.version_info >= (3, 7):
     COMMENT: int
     NL: int
@@ -71,7 +70,7 @@ if sys.version_info >= (3, 8):
     TYPE_COMMENT: int
     TYPE_IGNORE: int
     COLONEQUAL: int
-    EXACT_TOKEN_TYPES: Dict[str, int]
+    EXACT_TOKEN_TYPES: dict[str, int]
 
 def ISTERMINAL(x: int) -> bool: ...
 def ISNONTERMINAL(x: int) -> bool: ...

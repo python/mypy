@@ -1,26 +1,26 @@
 from email.charset import Charset
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, Tuple
 
 class Header:
     def __init__(
         self,
-        s: Union[bytes, str, None] = ...,
-        charset: Union[Charset, str, None] = ...,
-        maxlinelen: Optional[int] = ...,
-        header_name: Optional[str] = ...,
+        s: bytes | str | None = ...,
+        charset: Charset | str | None = ...,
+        maxlinelen: int | None = ...,
+        header_name: str | None = ...,
         continuation_ws: str = ...,
         errors: str = ...,
     ) -> None: ...
-    def append(self, s: Union[bytes, str], charset: Union[Charset, str, None] = ..., errors: str = ...) -> None: ...
-    def encode(self, splitchars: str = ..., maxlinelen: Optional[int] = ..., linesep: str = ...) -> str: ...
+    def append(self, s: bytes | str, charset: Charset | str | None = ..., errors: str = ...) -> None: ...
+    def encode(self, splitchars: str = ..., maxlinelen: int | None = ..., linesep: str = ...) -> str: ...
     def __str__(self) -> str: ...
     def __eq__(self, other: Any) -> bool: ...
     def __ne__(self, other: Any) -> bool: ...
 
-def decode_header(header: Union[Header, str]) -> List[Tuple[bytes, Optional[str]]]: ...
+def decode_header(header: Header | str) -> list[Tuple[bytes, str | None]]: ...
 def make_header(
-    decoded_seq: List[Tuple[bytes, Optional[str]]],
-    maxlinelen: Optional[int] = ...,
-    header_name: Optional[str] = ...,
+    decoded_seq: list[Tuple[bytes, str | None]],
+    maxlinelen: int | None = ...,
+    header_name: str | None = ...,
     continuation_ws: str = ...,
 ) -> Header: ...

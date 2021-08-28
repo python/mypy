@@ -1,6 +1,6 @@
 import types
 from _typeshed import StrPath
-from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple, TypeVar, Union
+from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple, TypeVar
 
 _T = TypeVar("_T")
 _localtrace = Callable[[types.FrameType, str, Any], Callable[..., Any]]
@@ -9,16 +9,16 @@ _fileModuleFunction = Tuple[str, Optional[str], str]
 class CoverageResults:
     def __init__(
         self,
-        counts: Optional[Dict[Tuple[str, int], int]] = ...,
-        calledfuncs: Optional[Dict[_fileModuleFunction, int]] = ...,
-        infile: Optional[StrPath] = ...,
-        callers: Optional[Dict[Tuple[_fileModuleFunction, _fileModuleFunction], int]] = ...,
-        outfile: Optional[StrPath] = ...,
+        counts: Dict[Tuple[str, int], int] | None = ...,
+        calledfuncs: Dict[_fileModuleFunction, int] | None = ...,
+        infile: StrPath | None = ...,
+        callers: Dict[Tuple[_fileModuleFunction, _fileModuleFunction], int] | None = ...,
+        outfile: StrPath | None = ...,
     ) -> None: ...  # undocumented
     def update(self, other: CoverageResults) -> None: ...
-    def write_results(self, show_missing: bool = ..., summary: bool = ..., coverdir: Optional[StrPath] = ...) -> None: ...
+    def write_results(self, show_missing: bool = ..., summary: bool = ..., coverdir: StrPath | None = ...) -> None: ...
     def write_results_file(
-        self, path: StrPath, lines: Sequence[str], lnotab: Any, lines_hit: Mapping[int, int], encoding: Optional[str] = ...
+        self, path: StrPath, lines: Sequence[str], lnotab: Any, lines_hit: Mapping[int, int], encoding: str | None = ...
     ) -> Tuple[int, int]: ...
 
 class Trace:
@@ -30,16 +30,13 @@ class Trace:
         countcallers: int = ...,
         ignoremods: Sequence[str] = ...,
         ignoredirs: Sequence[str] = ...,
-        infile: Optional[StrPath] = ...,
-        outfile: Optional[StrPath] = ...,
+        infile: StrPath | None = ...,
+        outfile: StrPath | None = ...,
         timing: bool = ...,
     ) -> None: ...
-    def run(self, cmd: Union[str, types.CodeType]) -> None: ...
+    def run(self, cmd: str | types.CodeType) -> None: ...
     def runctx(
-        self,
-        cmd: Union[str, types.CodeType],
-        globals: Optional[Mapping[str, Any]] = ...,
-        locals: Optional[Mapping[str, Any]] = ...,
+        self, cmd: str | types.CodeType, globals: Mapping[str, Any] | None = ..., locals: Mapping[str, Any] | None = ...
     ) -> None: ...
     def runfunc(self, func: Callable[..., _T], *args: Any, **kw: Any) -> _T: ...
     def file_module_function_of(self, frame: types.FrameType) -> _fileModuleFunction: ...

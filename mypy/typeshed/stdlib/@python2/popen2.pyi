@@ -1,4 +1,4 @@
-from typing import Any, Iterable, Optional, TextIO, Tuple, TypeVar, Union
+from typing import Any, Iterable, TextIO, Tuple, TypeVar
 
 _T = TypeVar("_T")
 
@@ -8,10 +8,10 @@ class Popen3:
     pid: int
     tochild: TextIO
     fromchild: TextIO
-    childerr: Optional[TextIO]
+    childerr: TextIO | None
     def __init__(self, cmd: Iterable[Any] = ..., capturestderr: bool = ..., bufsize: int = ...) -> None: ...
     def __del__(self) -> None: ...
-    def poll(self, _deadstate: _T = ...) -> Union[int, _T]: ...
+    def poll(self, _deadstate: _T = ...) -> int | _T: ...
     def wait(self) -> int: ...
 
 class Popen4(Popen3):
