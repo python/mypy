@@ -2,7 +2,7 @@ import io
 import sys
 from _typeshed import Self, StrPath
 from types import TracebackType
-from typing import IO, Callable, Dict, Iterable, Iterator, List, Optional, Protocol, Sequence, Tuple, Type, Union, overload
+from typing import IO, Callable, Iterable, Iterator, Protocol, Sequence, Tuple, Type, overload
 from typing_extensions import Literal
 
 _DateTuple = Tuple[int, int, int, int, int, int]
@@ -26,19 +26,19 @@ class _ClosableZipStream(_ZipStream, Protocol):
     def close(self) -> object: ...
 
 class ZipExtFile(io.BufferedIOBase):
-    MAX_N: int = ...
-    MIN_READ_SIZE: int = ...
+    MAX_N: int
+    MIN_READ_SIZE: int
 
     if sys.version_info >= (3, 7):
-        MAX_SEEK_READ: int = ...
+        MAX_SEEK_READ: int
 
-    newlines: Optional[List[bytes]]
+    newlines: list[bytes] | None
     mode: str
     name: str
     if sys.version_info >= (3, 7):
         @overload
         def __init__(
-            self, fileobj: _ClosableZipStream, mode: str, zipinfo: ZipInfo, pwd: Optional[bytes], close_fileobj: Literal[True]
+            self, fileobj: _ClosableZipStream, mode: str, zipinfo: ZipInfo, pwd: bytes | None, close_fileobj: Literal[True]
         ) -> None: ...
         @overload
         def __init__(
@@ -46,18 +46,13 @@ class ZipExtFile(io.BufferedIOBase):
             fileobj: _ClosableZipStream,
             mode: str,
             zipinfo: ZipInfo,
-            pwd: Optional[bytes] = ...,
+            pwd: bytes | None = ...,
             *,
             close_fileobj: Literal[True],
         ) -> None: ...
         @overload
         def __init__(
-            self,
-            fileobj: _ZipStream,
-            mode: str,
-            zipinfo: ZipInfo,
-            pwd: Optional[bytes] = ...,
-            close_fileobj: Literal[False] = ...,
+            self, fileobj: _ZipStream, mode: str, zipinfo: ZipInfo, pwd: bytes | None = ..., close_fileobj: Literal[False] = ...
         ) -> None: ...
     else:
         @overload
@@ -66,7 +61,7 @@ class ZipExtFile(io.BufferedIOBase):
             fileobj: _ClosableZipStream,
             mode: str,
             zipinfo: ZipInfo,
-            decrypter: Optional[Callable[[Sequence[int]], bytes]],
+            decrypter: Callable[[Sequence[int]], bytes] | None,
             close_fileobj: Literal[True],
         ) -> None: ...
         @overload
@@ -75,7 +70,7 @@ class ZipExtFile(io.BufferedIOBase):
             fileobj: _ClosableZipStream,
             mode: str,
             zipinfo: ZipInfo,
-            decrypter: Optional[Callable[[Sequence[int]], bytes]] = ...,
+            decrypter: Callable[[Sequence[int]], bytes] | None = ...,
             *,
             close_fileobj: Literal[True],
         ) -> None: ...
@@ -85,25 +80,25 @@ class ZipExtFile(io.BufferedIOBase):
             fileobj: _ZipStream,
             mode: str,
             zipinfo: ZipInfo,
-            decrypter: Optional[Callable[[Sequence[int]], bytes]] = ...,
+            decrypter: Callable[[Sequence[int]], bytes] | None = ...,
             close_fileobj: Literal[False] = ...,
         ) -> None: ...
-    def read(self, n: Optional[int] = ...) -> bytes: ...
+    def read(self, n: int | None = ...) -> bytes: ...
     def readline(self, limit: int = ...) -> bytes: ...  # type: ignore
     def __repr__(self) -> str: ...
     def peek(self, n: int = ...) -> bytes: ...
-    def read1(self, n: Optional[int]) -> bytes: ...  # type: ignore
+    def read1(self, n: int | None) -> bytes: ...  # type: ignore
 
 class _Writer(Protocol):
     def write(self, __s: str) -> object: ...
 
 class ZipFile:
-    filename: Optional[str]
+    filename: str | None
     debug: int
     comment: bytes
-    filelist: List[ZipInfo]
-    fp: Optional[IO[bytes]]
-    NameToInfo: Dict[str, ZipInfo]
+    filelist: list[ZipInfo]
+    fp: IO[bytes] | None
+    NameToInfo: dict[str, ZipInfo]
     start_dir: int  # undocumented
     compression: int  # undocumented
     compresslevel: int | None  # undocumented
@@ -112,74 +107,72 @@ class ZipFile:
     if sys.version_info >= (3, 8):
         def __init__(
             self,
-            file: Union[StrPath, IO[bytes]],
+            file: StrPath | IO[bytes],
             mode: _ZipFileMode = ...,
             compression: int = ...,
             allowZip64: bool = ...,
-            compresslevel: Optional[int] = ...,
+            compresslevel: int | None = ...,
             *,
             strict_timestamps: bool = ...,
         ) -> None: ...
     elif sys.version_info >= (3, 7):
         def __init__(
             self,
-            file: Union[StrPath, IO[bytes]],
+            file: StrPath | IO[bytes],
             mode: _ZipFileMode = ...,
             compression: int = ...,
             allowZip64: bool = ...,
-            compresslevel: Optional[int] = ...,
+            compresslevel: int | None = ...,
         ) -> None: ...
     else:
         def __init__(
-            self, file: Union[StrPath, IO[bytes]], mode: str = ..., compression: int = ..., allowZip64: bool = ...
+            self, file: StrPath | IO[bytes], mode: str = ..., compression: int = ..., allowZip64: bool = ...
         ) -> None: ...
     def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
+        self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None: ...
     def close(self) -> None: ...
     def getinfo(self, name: str) -> ZipInfo: ...
-    def infolist(self) -> List[ZipInfo]: ...
-    def namelist(self) -> List[str]: ...
+    def infolist(self) -> list[ZipInfo]: ...
+    def namelist(self) -> list[str]: ...
     def open(
-        self, name: Union[str, ZipInfo], mode: Literal["r", "w"] = ..., pwd: Optional[bytes] = ..., *, force_zip64: bool = ...
+        self, name: str | ZipInfo, mode: Literal["r", "w"] = ..., pwd: bytes | None = ..., *, force_zip64: bool = ...
     ) -> IO[bytes]: ...
-    def extract(self, member: Union[str, ZipInfo], path: Optional[StrPath] = ..., pwd: Optional[bytes] = ...) -> str: ...
+    def extract(self, member: str | ZipInfo, path: StrPath | None = ..., pwd: bytes | None = ...) -> str: ...
     def extractall(
-        self, path: Optional[StrPath] = ..., members: Optional[Iterable[str]] = ..., pwd: Optional[bytes] = ...
+        self, path: StrPath | None = ..., members: Iterable[str | ZipInfo] | None = ..., pwd: bytes | None = ...
     ) -> None: ...
-    def printdir(self, file: Optional[_Writer] = ...) -> None: ...
+    def printdir(self, file: _Writer | None = ...) -> None: ...
     def setpassword(self, pwd: bytes) -> None: ...
-    def read(self, name: Union[str, ZipInfo], pwd: Optional[bytes] = ...) -> bytes: ...
-    def testzip(self) -> Optional[str]: ...
+    def read(self, name: str | ZipInfo, pwd: bytes | None = ...) -> bytes: ...
+    def testzip(self) -> str | None: ...
     if sys.version_info >= (3, 7):
         def write(
             self,
             filename: StrPath,
-            arcname: Optional[StrPath] = ...,
-            compress_type: Optional[int] = ...,
-            compresslevel: Optional[int] = ...,
+            arcname: StrPath | None = ...,
+            compress_type: int | None = ...,
+            compresslevel: int | None = ...,
         ) -> None: ...
     else:
-        def write(self, filename: StrPath, arcname: Optional[StrPath] = ..., compress_type: Optional[int] = ...) -> None: ...
+        def write(self, filename: StrPath, arcname: StrPath | None = ..., compress_type: int | None = ...) -> None: ...
     if sys.version_info >= (3, 7):
         def writestr(
             self,
-            zinfo_or_arcname: Union[str, ZipInfo],
-            data: Union[bytes, str],
-            compress_type: Optional[int] = ...,
-            compresslevel: Optional[int] = ...,
+            zinfo_or_arcname: str | ZipInfo,
+            data: bytes | str,
+            compress_type: int | None = ...,
+            compresslevel: int | None = ...,
         ) -> None: ...
     else:
-        def writestr(
-            self, zinfo_or_arcname: Union[str, ZipInfo], data: Union[bytes, str], compress_type: Optional[int] = ...
-        ) -> None: ...
+        def writestr(self, zinfo_or_arcname: str | ZipInfo, data: bytes | str, compress_type: int | None = ...) -> None: ...
 
 class PyZipFile(ZipFile):
     def __init__(
-        self, file: Union[str, IO[bytes]], mode: str = ..., compression: int = ..., allowZip64: bool = ..., optimize: int = ...
+        self, file: str | IO[bytes], mode: str = ..., compression: int = ..., allowZip64: bool = ..., optimize: int = ...
     ) -> None: ...
-    def writepy(self, pathname: str, basename: str = ..., filterfunc: Optional[Callable[[str], bool]] = ...) -> None: ...
+    def writepy(self, pathname: str, basename: str = ..., filterfunc: Callable[[str], bool] | None = ...) -> None: ...
 
 class ZipInfo:
     filename: str
@@ -203,15 +196,15 @@ class ZipInfo:
     def __init__(self, filename: str = ..., date_time: _DateTuple = ...) -> None: ...
     if sys.version_info >= (3, 8):
         @classmethod
-        def from_file(cls, filename: StrPath, arcname: Optional[StrPath] = ..., *, strict_timestamps: bool = ...) -> ZipInfo: ...
+        def from_file(cls, filename: StrPath, arcname: StrPath | None = ..., *, strict_timestamps: bool = ...) -> ZipInfo: ...
     else:
         @classmethod
-        def from_file(cls, filename: StrPath, arcname: Optional[StrPath] = ...) -> ZipInfo: ...
+        def from_file(cls, filename: StrPath, arcname: StrPath | None = ...) -> ZipInfo: ...
     def is_dir(self) -> bool: ...
-    def FileHeader(self, zip64: Optional[bool] = ...) -> bytes: ...
+    def FileHeader(self, zip64: bool | None = ...) -> bytes: ...
 
 class _PathOpenProtocol(Protocol):
-    def __call__(self, mode: str = ..., pwd: Optional[bytes] = ..., *, force_zip64: bool = ...) -> IO[bytes]: ...
+    def __call__(self, mode: str = ..., pwd: bytes | None = ..., *, force_zip64: bool = ...) -> IO[bytes]: ...
 
 if sys.version_info >= (3, 8):
     class Path:
@@ -219,9 +212,9 @@ if sys.version_info >= (3, 8):
         def name(self) -> str: ...
         @property
         def parent(self) -> Path: ...  # undocumented
-        def __init__(self, root: Union[ZipFile, StrPath, IO[bytes]], at: str = ...) -> None: ...
+        def __init__(self, root: ZipFile | StrPath | IO[bytes], at: str = ...) -> None: ...
         if sys.version_info >= (3, 9):
-            def open(self, mode: str = ..., pwd: Optional[bytes] = ..., *, force_zip64: bool = ...) -> IO[bytes]: ...
+            def open(self, mode: str = ..., pwd: bytes | None = ..., *, force_zip64: bool = ...) -> IO[bytes]: ...
         else:
             @property
             def open(self) -> _PathOpenProtocol: ...
@@ -231,9 +224,9 @@ if sys.version_info >= (3, 8):
         def exists(self) -> bool: ...
         def read_text(
             self,
-            encoding: Optional[str] = ...,
-            errors: Optional[str] = ...,
-            newline: Optional[str] = ...,
+            encoding: str | None = ...,
+            errors: str | None = ...,
+            newline: str | None = ...,
             line_buffering: bool = ...,
             write_through: bool = ...,
         ) -> str: ...
@@ -241,7 +234,7 @@ if sys.version_info >= (3, 8):
         def joinpath(self, add: StrPath) -> Path: ...  # undocumented
         def __truediv__(self, add: StrPath) -> Path: ...
 
-def is_zipfile(filename: Union[StrPath, IO[bytes]]) -> bool: ...
+def is_zipfile(filename: StrPath | IO[bytes]) -> bool: ...
 
 ZIP_STORED: int
 ZIP_DEFLATED: int

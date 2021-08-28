@@ -1,6 +1,6 @@
 import sys
 from _typeshed import ReadableBuffer
-from typing import AbstractSet, Optional
+from typing import AbstractSet
 
 class _Hash(object):
     digest_size: int
@@ -47,7 +47,7 @@ algorithms_guaranteed: AbstractSet[str]
 algorithms_available: AbstractSet[str]
 
 def pbkdf2_hmac(
-    hash_name: str, password: ReadableBuffer, salt: ReadableBuffer, iterations: int, dklen: Optional[int] = ...
+    hash_name: str, password: ReadableBuffer, salt: ReadableBuffer, iterations: int, dklen: int | None = ...
 ) -> bytes: ...
 
 class _VarLenHash(object):
@@ -70,10 +70,10 @@ shake_256 = _VarLenHash
 def scrypt(
     password: ReadableBuffer,
     *,
-    salt: Optional[ReadableBuffer] = ...,
-    n: Optional[int] = ...,
-    r: Optional[int] = ...,
-    p: Optional[int] = ...,
+    salt: ReadableBuffer | None = ...,
+    n: int | None = ...,
+    r: int | None = ...,
+    p: int | None = ...,
     maxmem: int = ...,
     dklen: int = ...,
 ) -> bytes: ...

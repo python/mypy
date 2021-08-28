@@ -5,24 +5,7 @@ import sys
 import types
 from _typeshed import Self, WriteableBuffer
 from socket import socket
-from typing import (
-    IO,
-    Any,
-    BinaryIO,
-    Callable,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
-    Mapping,
-    Optional,
-    Protocol,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-    overload,
-)
+from typing import IO, Any, BinaryIO, Callable, Iterable, Iterator, Mapping, Protocol, Tuple, Type, TypeVar, Union, overload
 
 _DataType = Union[bytes, IO[Any], Iterable[bytes], str]
 _T = TypeVar("_T")
@@ -88,7 +71,7 @@ INSUFFICIENT_STORAGE: int
 NOT_EXTENDED: int
 NETWORK_AUTHENTICATION_REQUIRED: int
 
-responses: Dict[int, str]
+responses: dict[int, str]
 
 class HTTPMessage(email.message.Message):
     def getallmatchingheaders(self, name: str) -> list[str]: ...  # undocumented
@@ -103,24 +86,24 @@ class HTTPResponse(io.BufferedIOBase, BinaryIO):
     closed: bool
     status: int
     reason: str
-    def __init__(self, sock: socket, debuglevel: int = ..., method: Optional[str] = ..., url: Optional[str] = ...) -> None: ...
+    def __init__(self, sock: socket, debuglevel: int = ..., method: str | None = ..., url: str | None = ...) -> None: ...
     def peek(self, n: int = ...) -> bytes: ...
-    def read(self, amt: Optional[int] = ...) -> bytes: ...
+    def read(self, amt: int | None = ...) -> bytes: ...
     def read1(self, n: int = ...) -> bytes: ...
     def readinto(self, b: WriteableBuffer) -> int: ...
     def readline(self, limit: int = ...) -> bytes: ...  # type: ignore
     @overload
-    def getheader(self, name: str) -> Optional[str]: ...
+    def getheader(self, name: str) -> str | None: ...
     @overload
-    def getheader(self, name: str, default: _T) -> Union[str, _T]: ...
-    def getheaders(self) -> List[Tuple[str, str]]: ...
+    def getheader(self, name: str, default: _T) -> str | _T: ...
+    def getheaders(self) -> list[Tuple[str, str]]: ...
     def fileno(self) -> int: ...
     def isclosed(self) -> bool: ...
     def __iter__(self) -> Iterator[bytes]: ...
     def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[types.TracebackType]
-    ) -> Optional[bool]: ...
+        self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: types.TracebackType | None
+    ) -> bool | None: ...
     def info(self) -> email.message.Message: ...
     def geturl(self) -> str: ...
     def getcode(self) -> int: ...
@@ -133,22 +116,22 @@ class _HTTPConnectionProtocol(Protocol):
         def __call__(
             self,
             host: str,
-            port: Optional[int] = ...,
+            port: int | None = ...,
             timeout: float = ...,
-            source_address: Optional[Tuple[str, int]] = ...,
+            source_address: Tuple[str, int] | None = ...,
             blocksize: int = ...,
         ) -> HTTPConnection: ...
     else:
         def __call__(
-            self, host: str, port: Optional[int] = ..., timeout: float = ..., source_address: Optional[Tuple[str, int]] = ...
+            self, host: str, port: int | None = ..., timeout: float = ..., source_address: Tuple[str, int] | None = ...
         ) -> HTTPConnection: ...
 
 class HTTPConnection:
-    auto_open: int = ...  # undocumented
-    debuglevel: int = ...
-    default_port: int = ...  # undocumented
-    response_class: Type[HTTPResponse] = ...  # undocumented
-    timeout: Optional[float]
+    auto_open: int  # undocumented
+    debuglevel: int
+    default_port: int  # undocumented
+    response_class: Type[HTTPResponse]  # undocumented
+    timeout: float | None
     host: str
     port: int
     sock: Any
@@ -156,36 +139,26 @@ class HTTPConnection:
         def __init__(
             self,
             host: str,
-            port: Optional[int] = ...,
-            timeout: Optional[float] = ...,
-            source_address: Optional[Tuple[str, int]] = ...,
+            port: int | None = ...,
+            timeout: float | None = ...,
+            source_address: Tuple[str, int] | None = ...,
             blocksize: int = ...,
         ) -> None: ...
     else:
         def __init__(
-            self,
-            host: str,
-            port: Optional[int] = ...,
-            timeout: Optional[float] = ...,
-            source_address: Optional[Tuple[str, int]] = ...,
+            self, host: str, port: int | None = ..., timeout: float | None = ..., source_address: Tuple[str, int] | None = ...
         ) -> None: ...
     def request(
-        self,
-        method: str,
-        url: str,
-        body: Optional[_DataType] = ...,
-        headers: Mapping[str, str] = ...,
-        *,
-        encode_chunked: bool = ...,
+        self, method: str, url: str, body: _DataType | None = ..., headers: Mapping[str, str] = ..., *, encode_chunked: bool = ...
     ) -> None: ...
     def getresponse(self) -> HTTPResponse: ...
     def set_debuglevel(self, level: int) -> None: ...
-    def set_tunnel(self, host: str, port: Optional[int] = ..., headers: Optional[Mapping[str, str]] = ...) -> None: ...
+    def set_tunnel(self, host: str, port: int | None = ..., headers: Mapping[str, str] | None = ...) -> None: ...
     def connect(self) -> None: ...
     def close(self) -> None: ...
     def putrequest(self, method: str, url: str, skip_host: bool = ..., skip_accept_encoding: bool = ...) -> None: ...
     def putheader(self, header: str, *argument: str) -> None: ...
-    def endheaders(self, message_body: Optional[_DataType] = ..., *, encode_chunked: bool = ...) -> None: ...
+    def endheaders(self, message_body: _DataType | None = ..., *, encode_chunked: bool = ...) -> None: ...
     def send(self, data: _DataType) -> None: ...
 
 class HTTPSConnection(HTTPConnection):
@@ -193,28 +166,28 @@ class HTTPSConnection(HTTPConnection):
         def __init__(
             self,
             host: str,
-            port: Optional[int] = ...,
-            key_file: Optional[str] = ...,
-            cert_file: Optional[str] = ...,
-            timeout: Optional[float] = ...,
-            source_address: Optional[Tuple[str, int]] = ...,
+            port: int | None = ...,
+            key_file: str | None = ...,
+            cert_file: str | None = ...,
+            timeout: float | None = ...,
+            source_address: Tuple[str, int] | None = ...,
             *,
-            context: Optional[ssl.SSLContext] = ...,
-            check_hostname: Optional[bool] = ...,
+            context: ssl.SSLContext | None = ...,
+            check_hostname: bool | None = ...,
             blocksize: int = ...,
         ) -> None: ...
     else:
         def __init__(
             self,
             host: str,
-            port: Optional[int] = ...,
-            key_file: Optional[str] = ...,
-            cert_file: Optional[str] = ...,
-            timeout: Optional[float] = ...,
-            source_address: Optional[Tuple[str, int]] = ...,
+            port: int | None = ...,
+            key_file: str | None = ...,
+            cert_file: str | None = ...,
+            timeout: float | None = ...,
+            source_address: Tuple[str, int] | None = ...,
             *,
-            context: Optional[ssl.SSLContext] = ...,
-            check_hostname: Optional[bool] = ...,
+            context: ssl.SSLContext | None = ...,
+            check_hostname: bool | None = ...,
         ) -> None: ...
 
 class HTTPException(Exception): ...
@@ -231,7 +204,9 @@ class UnknownTransferEncoding(HTTPException): ...
 class UnimplementedFileMode(HTTPException): ...
 
 class IncompleteRead(HTTPException):
-    def __init__(self, partial: bytes, expected: Optional[int] = ...) -> None: ...
+    def __init__(self, partial: bytes, expected: int | None = ...) -> None: ...
+    partial: bytes
+    expected: int | None
 
 class ImproperConnectionState(HTTPException): ...
 class CannotSendRequest(ImproperConnectionState): ...

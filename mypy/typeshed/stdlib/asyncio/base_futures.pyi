@@ -1,5 +1,5 @@
 import sys
-from typing import Any, Callable, List, Sequence, Tuple
+from typing import Any, Callable, Sequence, Tuple
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 7):
@@ -19,4 +19,4 @@ if sys.version_info >= (3, 7):
 else:
     def _format_callbacks(cb: Sequence[Callable[[futures.Future[Any]], None]]) -> str: ...  # undocumented
 
-def _future_repr_info(future: futures.Future[Any]) -> List[str]: ...  # undocumented
+def _future_repr_info(future: futures.Future[Any]) -> list[str]: ...  # undocumented

@@ -3,22 +3,7 @@
 import queue
 import sys
 import threading
-from typing import (
-    Any,
-    AnyStr,
-    Callable,
-    ContextManager,
-    Dict,
-    Generic,
-    Iterable,
-    List,
-    Mapping,
-    Optional,
-    Sequence,
-    Tuple,
-    TypeVar,
-    Union,
-)
+from typing import Any, AnyStr, Callable, ContextManager, Generic, Iterable, Mapping, Sequence, Tuple, TypeVar
 
 from .connection import Connection
 from .context import BaseContext
@@ -44,37 +29,31 @@ class Namespace:
 _Namespace = Namespace
 
 class Token(object):
-    typeid: Optional[Union[str, bytes]]
-    address: Tuple[Union[str, bytes], int]
-    id: Optional[Union[str, bytes, int]]
-    def __init__(
-        self, typeid: Optional[Union[bytes, str]], address: Tuple[Union[str, bytes], int], id: Optional[Union[str, bytes, int]]
-    ) -> None: ...
+    typeid: str | bytes | None
+    address: Tuple[str | bytes, int]
+    id: str | bytes | int | None
+    def __init__(self, typeid: bytes | str | None, address: Tuple[str | bytes, int], id: str | bytes | int | None) -> None: ...
     def __repr__(self) -> str: ...
-    def __getstate__(
-        self,
-    ) -> Tuple[Optional[Union[str, bytes]], Tuple[Union[str, bytes], int], Optional[Union[str, bytes, int]]]: ...
-    def __setstate__(
-        self, state: Tuple[Optional[Union[str, bytes]], Tuple[Union[str, bytes], int], Optional[Union[str, bytes, int]]]
-    ) -> None: ...
+    def __getstate__(self) -> Tuple[str | bytes | None, Tuple[str | bytes, int], str | bytes | int | None]: ...
+    def __setstate__(self, state: Tuple[str | bytes | None, Tuple[str | bytes, int], str | bytes | int | None]) -> None: ...
 
 class BaseProxy(object):
-    _address_to_local: Dict[Any, Any]
+    _address_to_local: dict[Any, Any]
     _mutex: Any
     def __init__(
         self,
         token: Any,
         serializer: str,
         manager: Any = ...,
-        authkey: Optional[AnyStr] = ...,
+        authkey: AnyStr | None = ...,
         exposed: Any = ...,
         incref: bool = ...,
         manager_owned: bool = ...,
     ) -> None: ...
-    def __deepcopy__(self, memo: Optional[Any]) -> Any: ...
-    def _callmethod(self, methodname: str, args: Tuple[Any, ...] = ..., kwds: Dict[Any, Any] = ...) -> None: ...
+    def __deepcopy__(self, memo: Any | None) -> Any: ...
+    def _callmethod(self, methodname: str, args: Tuple[Any, ...] = ..., kwds: dict[Any, Any] = ...) -> None: ...
     def _getvalue(self) -> Any: ...
-    def __reduce__(self) -> Tuple[Any, Tuple[Any, Any, str, Dict[Any, Any]]]: ...
+    def __reduce__(self) -> Tuple[Any, Tuple[Any, Any, str, dict[Any, Any]]]: ...
 
 class ValueProxy(BaseProxy, Generic[_T]):
     def get(self) -> _T: ...
@@ -87,36 +66,36 @@ class ValueProxy(BaseProxy, Generic[_T]):
 class Server:
     address: Any
     def __init__(
-        self, registry: Dict[str, Tuple[Callable[..., Any], Any, Any, Any]], address: Any, authkey: bytes, serializer: str
+        self, registry: dict[str, Tuple[Callable[..., Any], Any, Any, Any]], address: Any, authkey: bytes, serializer: str
     ) -> None: ...
     def serve_forever(self) -> None: ...
     def accept_connection(self, c: Connection, name: str) -> None: ...
 
 class BaseManager(ContextManager[BaseManager]):
     def __init__(
-        self,
-        address: Optional[Any] = ...,
-        authkey: Optional[bytes] = ...,
-        serializer: str = ...,
-        ctx: Optional[BaseContext] = ...,
+        self, address: Any | None = ..., authkey: bytes | None = ..., serializer: str = ..., ctx: BaseContext | None = ...
     ) -> None: ...
     def get_server(self) -> Server: ...
     def connect(self) -> None: ...
-    def start(self, initializer: Optional[Callable[..., Any]] = ..., initargs: Iterable[Any] = ...) -> None: ...
+    def start(self, initializer: Callable[..., Any] | None = ..., initargs: Iterable[Any] = ...) -> None: ...
     def shutdown(self) -> None: ...  # only available after start() was called
-    def join(self, timeout: Optional[float] = ...) -> None: ...  # undocumented
+    def join(self, timeout: float | None = ...) -> None: ...  # undocumented
     @property
     def address(self) -> Any: ...
     @classmethod
     def register(
         cls,
         typeid: str,
-        callable: Optional[Callable[..., Any]] = ...,
+        callable: Callable[..., Any] | None = ...,
         proxytype: Any = ...,
-        exposed: Optional[Sequence[str]] = ...,
-        method_to_typeid: Optional[Mapping[str, str]] = ...,
+        exposed: Sequence[str] | None = ...,
+        method_to_typeid: Mapping[str, str] | None = ...,
         create_method: bool = ...,
     ) -> None: ...
+
+# Conflicts with method names
+_dict = dict
+_list = list
 
 class SyncManager(BaseManager, ContextManager[SyncManager]):
     def BoundedSemaphore(self, value: Any = ...) -> threading.BoundedSemaphore: ...
@@ -129,8 +108,8 @@ class SyncManager(BaseManager, ContextManager[SyncManager]):
     def Semaphore(self, value: Any = ...) -> threading.Semaphore: ...
     def Array(self, typecode: Any, sequence: Sequence[_T]) -> Sequence[_T]: ...
     def Value(self, typecode: Any, value: _T) -> ValueProxy[_T]: ...
-    def dict(self, sequence: Mapping[_KT, _VT] = ...) -> Dict[_KT, _VT]: ...
-    def list(self, sequence: Sequence[_T] = ...) -> List[_T]: ...
+    def dict(self, sequence: Mapping[_KT, _VT] = ...) -> _dict[_KT, _VT]: ...
+    def list(self, sequence: Sequence[_T] = ...) -> _list[_T]: ...
 
 class RemoteError(Exception): ...
 
@@ -139,4 +118,4 @@ if sys.version_info >= (3, 8):
     class SharedMemoryManager(BaseManager):
         def get_server(self) -> SharedMemoryServer: ...
         def SharedMemory(self, size: int) -> _SharedMemory: ...
-        def ShareableList(self, sequence: Optional[Iterable[_SLT]]) -> _ShareableList[_SLT]: ...
+        def ShareableList(self, sequence: Iterable[_SLT] | None) -> _ShareableList[_SLT]: ...
