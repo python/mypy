@@ -16,7 +16,7 @@ from mypy.types import (
     CallableType, NoneType, ErasedType, DeletedType, TypeList, TypeVarType, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, TypeGuardType, TypeVarLikeType,
     CallableArgument, TypeQuery, union_items, TypeOfAny, LiteralType, RawExpressionType,
-    PlaceholderType, Overloaded, get_proper_type, TypeAliasType, TypeVarLikeType, ParamSpecType
+    PlaceholderType, Overloaded, get_proper_type, TypeAliasType, TypeVarLikeType, ParamSpecType, SelfType
 )
 
 from mypy.nodes import (
@@ -353,6 +353,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                           " and at least one annotation", t)
                 return AnyType(TypeOfAny.from_error)
             return self.anal_type(t.args[0])
+        elif fullname in ('typing_extensions.Self', 'typing.Self'):
+            try:
+                bound = self.named_type(self.api.type.fullname)
+            except AttributeError:
+                return self.fail("Self is unbound", t)
+            return SelfType(bound, fullname, line=t.line, column=t.column)
         elif self.anal_type_guard_arg(t, fullname) is not None:
             # In most contexts, TypeGuard[...] acts as an alias for bool (ignoring its args)
             return self.named_type('builtins.bool')
@@ -527,6 +533,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def visit_type_var(self, t: TypeVarType) -> Type:
         return t
+
+    def visit_self_type(self, t: SelfType) -> Type:
+        raise
 
     def visit_callable_type(self, t: CallableType, nested: bool = True) -> Type:
         # Every Callable can bind its own type variables, if they're not in the outer scope
@@ -932,7 +941,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 var_node = self.lookup_qualified(var.name, defn)
                 assert var_node, "Binding for function type variable not found within function"
                 var_expr = var_node.node
-                assert isinstance(var_expr, TypeVarLikeExpr)
+                assert isinstance(var_expr, TypeVarLikeExpr), f"got {var.__class__} {var_expr.__class__}"
                 self.tvar_scope.bind_new(var.name, var_expr)
             return fun_type.variables
         typevars = self.infer_type_variables(fun_type)

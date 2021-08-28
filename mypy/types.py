@@ -427,6 +427,31 @@ class TypeVarType(TypeVarLikeType):
         )
 
 
+class SelfType(ProperType):
+    def __init__(self, instance: 'Instance', fullname: str, line: int = -1, column: int = -1) -> None:
+        super().__init__(line, column)
+        self.name = "Self"
+        self.fullname = fullname
+        self.instance: 'Instance' = instance
+        self.line = line
+        self.column = column
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_self_type(self)
+
+    def serialize(self) -> JsonDict:
+        return {
+            '.class': 'SelfType',
+            'fullname': self.fullname,
+            'instance': self.instance.serialize(),
+        }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'SelfType':
+        assert data['.class'] == 'SelfType'
+        return cls(deserialize_type(data['instance']), data['fullname'])
+
+
 class ParamSpecType(TypeVarLikeType):
     """Definition of a single ParamSpec variable."""
 
@@ -963,8 +988,6 @@ class CallableType(FunctionLike):
                  'definition',  # For error messages.  May be None.
                  'variables',  # Type variables for a generic function
                  'is_ellipsis_args',  # Is this Callable[..., t] (with literal '...')?
-                 'is_classmethod_class',  # Is this callable constructed for the benefit
-                                          # of a classmethod's 'cls' argument?
                  'implicit',  # Was this type implicitly generated instead of explicitly
                               # specified by the user?
                  'special_sig',  # Non-None for signatures that require special handling
@@ -1032,6 +1055,7 @@ class CallableType(FunctionLike):
         else:
             self.def_extras = {}
         self.type_guard = type_guard
+        # self.created = __import__('inspect').stack()
 
     def copy_modified(self,
                       arg_types: Bogus[Sequence[Type]] = _dummy,
@@ -2052,6 +2076,9 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         if self.id_mapper and t.upper_bound:
             s += '(upper_bound={})'.format(t.upper_bound.accept(self))
         return s
+
+    def visit_self_type(self, t: SelfType) -> str:
+        return "Self@{}".format(t.instance.accept(self)) if t.instance else "Self@unbound"
 
     def visit_callable_type(self, t: CallableType) -> str:
         s = ''

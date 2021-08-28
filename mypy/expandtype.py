@@ -5,7 +5,7 @@ from mypy.types import (
     NoneType, TypeVarType, Overloaded, TupleType, TypedDictType, UnionType,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId,
     FunctionLike, TypeVarType, LiteralType, get_proper_type, ProperType,
-    TypeAliasType, ParamSpecType
+    TypeAliasType, ParamSpecType, SelfType
 )
 
 
@@ -44,8 +44,11 @@ def freshen_function_type_vars(callee: F) -> F:
             # TODO(shantanu): fix for ParamSpecType
             if isinstance(v, ParamSpecType):
                 continue
-            assert isinstance(v, TypeVarType)
-            tv = TypeVarType.new_unification_variable(v)
+            if isinstance(v, SelfType):
+                tv = v
+            else:
+                assert isinstance(v, TypeVarType)
+                tv = TypeVarType.new_unification_variable(v)
             tvs.append(tv)
             tvmap[v.id] = tv
         fresh = cast(CallableType, expand_type(callee, tvmap)).copy_modified(variables=tvs)
@@ -97,6 +100,9 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
                             column=inst.column, erased=True)
         else:
             return repl
+
+    def visit_self_type(self, t: SelfType) -> Type:
+        return t
 
     def visit_callable_type(self, t: CallableType) -> Type:
         return t.copy_modified(arg_types=self.expand_types(t.arg_types),

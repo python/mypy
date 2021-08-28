@@ -11,7 +11,7 @@ from mypy.nodes import (
 from mypy.types import (
     CallableType, Instance, Overloaded, TupleType, TypeGuardType, TypedDictType,
     TypeVarType, UnboundType, UnionType, TypeVisitor, LiteralType,
-    TypeType, NOT_READY, TypeAliasType, AnyType, TypeOfAny
+    TypeType, NOT_READY, TypeAliasType, AnyType, TypeOfAny, SelfType
 )
 from mypy.visitor import NodeVisitor
 from mypy.lookup import lookup_fully_qualified
@@ -244,6 +244,9 @@ class TypeFixer(TypeVisitor[None]):
                 vt.accept(self)
         if tvt.upper_bound is not None:
             tvt.upper_bound.accept(self)
+
+    def visit_self_type(self, t: SelfType) -> None:
+        return t.instance.accept(self)
 
     def visit_unbound_type(self, o: UnboundType) -> None:
         for a in o.args:

@@ -11,7 +11,7 @@ The visitors are all re-exported from mypy.types and that is how
 other modules refer to them.
 """
 
-from abc import abstractmethod
+from abc import ABCMeta, abstractmethod
 from mypy.backports import OrderedDict
 from typing import Generic, TypeVar, cast, Any, List, Callable, Iterable, Optional, Set, Sequence
 from mypy_extensions import trait, mypyc_attr
@@ -23,13 +23,13 @@ from mypy.types import (
     RawExpressionType, Instance, NoneType, TypeType,
     UnionType, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarLikeType,
     UnboundType, ErasedType, StarType, EllipsisType, TypeList, CallableArgument,
-    PlaceholderType, TypeAliasType, get_proper_type
+    PlaceholderType, TypeAliasType, get_proper_type, SelfType
 )
 
 
 @trait
 @mypyc_attr(allow_interpreted_subclasses=True)
-class TypeVisitor(Generic[T]):
+class TypeVisitor(Generic[T], metaclass=ABCMeta):
     """Visitor class for types (Type subclasses).
 
     The parameter T is the return type of the visit methods.
@@ -61,6 +61,10 @@ class TypeVisitor(Generic[T]):
 
     @abstractmethod
     def visit_type_var(self, t: TypeVarType) -> T:
+        pass
+
+    @abstractmethod
+    def visit_self_type(self, t: SelfType) -> T:
         pass
 
     @abstractmethod
@@ -183,6 +187,9 @@ class TypeTranslator(TypeVisitor[Type]):
     def visit_type_var(self, t: TypeVarType) -> Type:
         return t
 
+    def visit_self_type(self, t: SelfType) -> Type:
+        return t
+
     def visit_partial_type(self, t: PartialType) -> Type:
         return t
 
@@ -297,6 +304,9 @@ class TypeQuery(SyntheticTypeVisitor[T]):
 
     def visit_type_var(self, t: TypeVarType) -> T:
         return self.query_types([t.upper_bound] + t.values)
+
+    def visit_self_type(self, t: SelfType) -> T:
+        return self.strategy([])
 
     def visit_partial_type(self, t: PartialType) -> T:
         return self.strategy([])

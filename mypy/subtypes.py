@@ -7,7 +7,7 @@ from mypy.types import (
     Type, AnyType, TypeGuardType, UnboundType, TypeVisitor, FormalArgument, NoneType,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
-    FunctionLike, TypeOfAny, LiteralType, get_proper_type, TypeAliasType
+    FunctionLike, TypeOfAny, LiteralType, get_proper_type, TypeAliasType, SelfType
 )
 import mypy.applytype
 import mypy.constraints
@@ -250,6 +250,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return False
             return True
         right = self.right
+        if isinstance(right, SelfType):
+            return self._is_subtype(left, right.instance)
         if isinstance(right, TupleType) and mypy.typeops.tuple_fallback(right).type.is_enum:
             return self._is_subtype(left, mypy.typeops.tuple_fallback(right))
         if isinstance(right, Instance):
@@ -304,6 +306,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 mypy.typeops.make_simplified_union(left.values), right):
             return True
         return self._is_subtype(left.upper_bound, self.right)
+
+    def visit_self_type(self, left: SelfType) -> bool:
+        return self._is_subtype(left.instance, self.right)
 
     def visit_callable_type(self, left: CallableType) -> bool:
         right = self.right
@@ -1309,6 +1314,9 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                 mypy.typeops.make_simplified_union(left.values), self.right):
             return True
         return self._is_proper_subtype(left.upper_bound, self.right)
+
+    def visit_self_type(self, t: SelfType) -> bool:
+        return self._is_proper_subtype(t.instance, self.right)
 
     def visit_callable_type(self, left: CallableType) -> bool:
         right = self.right

@@ -5,7 +5,7 @@ from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, NoneType, TypeVarType, Instance, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeOfAny, Overloaded, FunctionLike, LiteralType,
-    ProperType, get_proper_type, get_proper_types, TypeAliasType, TypeGuardType
+    ProperType, get_proper_type, get_proper_types, TypeAliasType, TypeGuardType, SelfType
 )
 from mypy.subtypes import is_equivalent, is_subtype, is_callable_compatible, is_proper_subtype
 from mypy.erasetype import erase_type
@@ -487,6 +487,9 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             return self.s
         else:
             return self.default(self.s)
+
+    def visit_self_type(self, t: SelfType) -> ProperType:
+        return self.meet(self.s, t.instance)
 
     def visit_instance(self, t: Instance) -> ProperType:
         if isinstance(self.s, Instance):

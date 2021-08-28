@@ -91,7 +91,7 @@ from mypy.types import (
     FunctionLike, UnboundType, TypeVarType, TupleType, UnionType, StarType,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
     TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType,
-    get_proper_type, get_proper_types, TypeAliasType
+    get_proper_type, get_proper_types, TypeAliasType, SelfType
 )
 from mypy.typeops import function_type
 from mypy.type_visitor import TypeQuery
@@ -654,19 +654,35 @@ class SemanticAnalyzer(NodeVisitor[None],
     def prepare_method_signature(self, func: FuncDef, info: TypeInfo) -> None:
         """Check basic signature validity and tweak annotation of self/cls argument."""
         # Only non-static methods are special.
-        functype = func.type
         if not func.is_static:
             if func.name in ['__init_subclass__', '__class_getitem__']:
                 func.is_class = True
             if not func.arguments:
                 self.fail('Method must have at least one argument', func)
-            elif isinstance(functype, CallableType):
-                self_type = get_proper_type(functype.arg_types[0])
+            elif isinstance(func.type, CallableType):
+                self_type = get_proper_type(func.type.arg_types[0])
                 if isinstance(self_type, AnyType):
                     leading_type: Type = fill_typevars(info)
                     if func.is_class or func.name == '__new__':
                         leading_type = self.class_type(leading_type)
-                    func.type = replace_implicit_first_type(functype, leading_type)
+                    func.type = replace_implicit_first_type(func.type, leading_type)
+
+                leading_type = func.type.arg_types[0]
+                if not isinstance(leading_type, (Instance, TypeType)):
+                    return
+                self_type = leading_type if not func.is_class else leading_type.item
+                fullname = None
+                # bind any SelfTypes
+                for idx, arg in enumerate(func.type.arg_types):
+                    if self.is_self_type(arg):
+                        if fullname is None:
+                            fullname = self.lookup_qualified(arg.name, arg).node.fullname
+                        func.type.arg_types[idx] = SelfType(self_type, fullname=fullname)
+
+                if self.is_self_type(func.type.ret_type):
+                    if fullname is None:
+                        fullname = self.lookup_qualified(func.type.ret_type.name, func.type.ret_type).node.fullname
+                    func.type.ret_type = SelfType(self_type, fullname=fullname)
 
     def set_original_def(self, previous: Optional[Node], new: Union[FuncDef, Decorator]) -> bool:
         """If 'new' conditionally redefine 'previous', set 'previous' as original
@@ -1559,6 +1575,18 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.set_dummy_mro(defn.info)
             return
         self.calculate_class_mro(defn, self.object_type)
+        return
+        for base in info.mro:
+            for name, type in base.names.items():
+                if isinstance(type, SelfType):  # bind Self
+                    info.names[name] = SelfType(self.named_type(defn.fullname), type.fullname)
+                elif isinstance(type, UnionType):
+                    info.names[name] = UnionType([
+                        item
+                        if not isinstance(item, SelfType)
+                        else SelfType(self.named_type(defn.fullname), type.fullname)
+                        for item in type.items
+                    ])
 
     def configure_tuple_base_class(self,
                                    defn: ClassDef,
@@ -3268,6 +3296,14 @@ class SemanticAnalyzer(NodeVisitor[None],
             return False
         return sym.node.fullname in ('typing.Final', 'typing_extensions.Final')
 
+    def is_self_type(self, typ: Optional[Type]) -> None:
+        if not isinstance(typ, UnboundType):
+            return False
+        sym = self.lookup_qualified(typ.name, typ)
+        if not sym or not sym.node:
+            return False
+        return sym.node.fullname in ('typing.Self', 'typing_extensions.Self')
+
     def fail_invalid_classvar(self, context: Context) -> None:
         self.fail('ClassVar can only be used for assignments in class body', context)
 
@@ -3593,6 +3629,8 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def bind_name_expr(self, expr: NameExpr, sym: SymbolTableNode) -> None:
         """Bind name expression to a symbol table node."""
+        if sym.node.fullname in ('typing.Self', 'typing_extensions.Self') and not self.is_class_scope():
+            self.fail('{} is unbound'.format(expr.name), expr)
         if isinstance(sym.node, TypeVarExpr) and self.tvar_scope.get_binding(sym):
             self.fail('"{}" is a type variable and only valid in type '
                       'context'.format(expr.name), expr)
@@ -5095,12 +5133,14 @@ class HasPlaceholders(TypeQuery[bool]):
         super().__init__(any)
 
     def visit_placeholder_type(self, t: PlaceholderType) -> bool:
+        print("returning true")
         return True
 
 
 def has_placeholder(typ: Type) -> bool:
     """Check if a type contains any placeholder types (recursively)."""
     return typ.accept(HasPlaceholders())
+    return t
 
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:

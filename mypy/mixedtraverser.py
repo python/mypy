@@ -5,7 +5,7 @@ from mypy.nodes import (
     CastExpr, TypeApplication, TypeAliasExpr, TypeVarExpr, TypedDictExpr, NamedTupleExpr,
     PromoteExpr, NewTypeExpr
 )
-from mypy.types import Type
+from mypy.types import Type, SelfType
 from mypy.traverser import TraverserVisitor
 from mypy.typetraverser import TypeTraverserVisitor
 
@@ -40,6 +40,10 @@ class MixedTraverserVisitor(TraverserVisitor, TypeTraverserVisitor):
         o.upper_bound.accept(self)
         for value in o.values:
             value.accept(self)
+
+    def visit_self_type(self, o: SelfType) -> None:
+        super().visit_self_type(o)
+        o.instance.accept(self)
 
     def visit_typeddict_expr(self, o: TypedDictExpr) -> None:
         super().visit_typeddict_expr(o)

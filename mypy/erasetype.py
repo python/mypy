@@ -4,7 +4,7 @@ from mypy.types import (
     Type, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarId, Instance, TypeVarType,
     CallableType, TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType,
     DeletedType, TypeTranslator, UninhabitedType, TypeType, TypeOfAny, LiteralType, ProperType,
-    get_proper_type, TypeAliasType, TypeGuardType
+    get_proper_type, TypeAliasType, TypeGuardType, SelfType
 )
 from mypy.nodes import ARG_STAR, ARG_STAR2
 
@@ -56,6 +56,9 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
 
     def visit_type_var(self, t: TypeVarType) -> ProperType:
         return AnyType(TypeOfAny.special_form)
+
+    def visit_self_type(self, t: SelfType) -> ProperType:
+        return self.visit_instance(t.instance)
 
     def visit_callable_type(self, t: CallableType) -> ProperType:
         # We must preserve the fallback type for overload resolution to work.

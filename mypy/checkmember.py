@@ -6,7 +6,7 @@ from typing_extensions import TYPE_CHECKING
 from mypy.types import (
     Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike,
     TypeVarLikeType, Overloaded, TypeVarType, UnionType, PartialType, TypeOfAny, LiteralType,
-    DeletedType, NoneType, TypeType, has_type_vars, get_proper_type, ProperType
+    DeletedType, NoneType, TypeType, has_type_vars, get_proper_type, ProperType, SelfType
 )
 from mypy.nodes import (
     TypeInfo, FuncBase, Var, FuncDef, SymbolNode, SymbolTable, Context,
@@ -141,6 +141,8 @@ def _analyze_member_access(name: str,
     typ = get_proper_type(typ)
     if isinstance(typ, Instance):
         return analyze_instance_member_access(name, typ, mx, override_info)
+    elif isinstance(typ, SelfType):
+        return analyze_instance_member_access(name, typ.instance, mx, override_info)
     elif isinstance(typ, AnyType):
         # The base object has dynamic type.
         return AnyType(TypeOfAny.from_another_any, source_any=typ)
@@ -457,6 +459,9 @@ def analyze_descriptor_access(instance_type: Type,
     descriptor_type = get_proper_type(descriptor_type)
 
     if isinstance(descriptor_type, UnionType):
+        for idx, item in enumerate(descriptor_type.items):
+            if isinstance(item, SelfType):
+                descriptor_type.items[idx] = instance_type
         # Map the access over union types
         return make_simplified_union([
             analyze_descriptor_access(instance_type, typ, builtin_type,
@@ -465,6 +470,8 @@ def analyze_descriptor_access(instance_type: Type,
         ])
     elif not isinstance(descriptor_type, Instance):
         return descriptor_type
+    elif isinstance(descriptor_type, SelfType):
+        return instance_type
 
     if not descriptor_type.type.has_readable_member('__get__'):
         return descriptor_type
