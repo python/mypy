@@ -414,7 +414,7 @@ for better type inference when working with types:
 
    def f(o: object) -> None:
        t = type(o)  # we must use a variable here
-       if issubtype(t, MyCalcMeta):  # `issubtype(type(o), MyCalcMeta)` won't work
+       if issubclass(t, MyCalcMeta):  # `issubclass(type(o), MyCalcMeta)` won't work
            reveal_type(t)  # Revealed type is "Type[MyCalcMeta]"
            t.calc()  # Okay
 
