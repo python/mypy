@@ -60,7 +60,6 @@ from typing_extensions import Final
 
 import mypy.build
 import mypy.parse
-import mypy.errors
 import mypy.traverser
 import mypy.mixedtraverser
 import mypy.util
