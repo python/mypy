@@ -15,7 +15,7 @@ from mypy.typeanal import (
     make_optional_type,
 )
 from mypy.types import (
-    Type, AnyType, CallableType, Overloaded, NoneType, TypeVarType, TypeGuardType,
+    Type, AnyType, CallableType, Overloaded, NoneType, TypeVarType,
     TupleType, TypedDictType, Instance, ErasedType, UnionType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, LiteralType, LiteralValue,
     is_named_instance, FunctionLike, ParamSpecType,
