@@ -4072,6 +4072,63 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         return None, {}
 
+    def _is_truthy_type(self, t: ProperType) -> bool:
+        return (
+            (
+                isinstance(t, Instance) and
+                bool(t.type) and
+                not t.type.has_readable_member('__bool__') and
+                not t.type.has_readable_member('__len__')
+            )
+            or isinstance(t, FunctionLike)
+            or (
+                isinstance(t, UnionType) and
+                all(self._is_truthy_type(t) for t in get_proper_types(t.items))
+            )
+        )
+
+    def _check_for_truthy_type(self, t: Type, expr: Expression) -> None:
+        if not state.strict_optional:
+            return  # if everything can be None, all bets are off
+
+        t = get_proper_type(t)
+        if not self._is_truthy_type(t):
+            return
+
+        def format_expr_type() -> str:
+            if isinstance(expr, MemberExpr):
+                return f'Member "{expr.name}" has type "{t}"'
+            elif isinstance(expr, RefExpr) and expr.fullname:
+                return f'"{expr.fullname}" has type "{t}"'
+            elif isinstance(expr, CallExpr):
+                if isinstance(expr.callee, MemberExpr):
+                    return f'"{expr.callee.name}" returns "{t}"'
+                elif isinstance(expr.callee, RefExpr) and expr.callee.fullname:
+                    return f'"{expr.callee.fullname}" returns "{t}"'
+                return f'Call returns "{t}"'
+            else:
+                return f'Expression has type "{t}"'
+
+        if isinstance(t, FunctionLike):
+            self.msg.fail(
+                f'Function "{t}" could always be true in boolean context', expr,
+                code=codes.TRUTHY_BOOL,
+            )
+        elif isinstance(t, UnionType):
+            self.msg.fail(
+                f"{format_expr_type()} of which no members implement __bool__ or __len__ "
+                "so it could always be true in boolean context",
+                expr,
+                code=codes.TRUTHY_BOOL,
+            )
+        else:
+            self.msg.fail(
+                f'{format_expr_type()} which does not implement __bool__ or __len__ '
+                'so it could always be true in boolean context',
+                expr,
+                code=codes.TRUTHY_BOOL,
+            )
+
     def find_type_equals_check(self, node: ComparisonExpr, expr_indices: List[int]
                                ) -> Tuple[TypeMap, TypeMap]:
         """Narrow types based on any checks of the type ``type(x) == T``
@@ -4174,6 +4231,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         elif is_false_literal(node):
             return None, {}
         elif isinstance(node, CallExpr):
+            self._check_for_truthy_type(type_map[node], node)
             if len(node.args) == 0:
                 return {}, {}
             expr = collapse_walrus(node.args[0])
@@ -4361,6 +4419,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Restrict the type of the variable to True-ish/False-ish in the if and else branches
             # respectively
             vartype = type_map[node]
+            self._check_for_truthy_type(vartype, node)
             if_type: Type = true_only(vartype)
             else_type: Type = false_only(vartype)
             ref: Expression = node

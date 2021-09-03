@@ -822,3 +822,54 @@ from typing_extensions import TypedDict
 
 Foo = TypedDict("Bar", {})  # E: First argument "Bar" to TypedDict() does not match variable name "Foo"  [name-match]
 [builtins fixtures/dict.pyi]
+[case testTruthyBool]
+# flags: --enable-error-code truthy-bool
+from typing import List, Union
+
+class Foo:
+    pass
+
+foo = Foo()
+if foo:  # E: "__main__.foo" has type "__main__.Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+    pass
+
+zero = 0
+if zero:
+    pass
+
+false = False
+if false:
+    pass
+
+null = None
+if null:
+    pass
+
+s = ''
+if s:
+    pass
+
+good_union: Union[str, int] = 5
+if good_union:
+    pass
+if not good_union:
+    pass
+
+bad_union: Union[Foo, object] = Foo()
+if bad_union:  # E: "__main__.bad_union" has type "Union[__main__.Foo, builtins.object]" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+    pass
+if not bad_union:  # E: "__main__.bad_union" has type "builtins.object" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+    pass
+
+def f():
+    pass
+if f:  # E: Function "def () -> Any" could always be true in boolean context  [truthy-bool]
+    pass
+if not f:  # E: Function "def () -> Any" could always be true in boolean context  [truthy-bool]
+    pass
+conditional_result = 'foo' if f else 'bar'  # E: Function "def () -> Any" could always be true in boolean context  [truthy-bool]
+
+lst: List[int] = []
+if lst:
+    pass
+[builtins fixtures/list.pyi]

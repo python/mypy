@@ -214,3 +214,45 @@ mypy generates an error if it thinks that an expression is redundant.
 
         # Error: If condition in comprehension is always true  [redundant-expr]
         [i for i in range(x) if isinstance(i, int)]
+
+
+Check that expression is not implicitly true in boolean context [truthy-bool]
+-----------------------------------------------------------------------------
+
+Warn when an expression whose type does not implement ``__bool__`` or ``__len__`` is used in boolean context,
+since unless implemented by a sub-type, the expression will always evaluate to true.
+
+.. code-block:: python
+
+    # mypy: enable-error-code truthy-bool
+
+    class Foo:
+      pass
+    foo = Foo()
+    # Error: "foo" has type "Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context
+    if foo:
+       ...
+
+
+This check might falsely imply an error. For example, ``typing.Iterable`` does not implement
+``__len__`` and so this code will be flagged:
+
+.. code-block:: python
+
+    # mypy: enable-error-code truthy-bool
+
+    def transform(items: Iterable[int]) -> List[int]:
+        # Error: "items" has type "typing.Iterable[int]" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+        if not items:
+            return [42]
+        return [x + 1 for x in items]
+
+
+
+If called as ``transform((int(s) for s in []))``, this function would not return ``[42]]`` unlike what the author
+might have intended. Of course it's possible that ``transform`` is only passed ``list`` objects, and so there is
+no error in practice. In such case, it might be prudent to annotate ``items: typing.Sequence[int]``.
+
+This is similar in concept to ensuring that an expression's type implements an expected interface (e.g. ``typing.Sized``),
+except that attempting to invoke an undefined method (e.g. ``__len__``) results in an error,
+while attempting to evaluate an object in boolean context without a concrete implementation results in a truthy value.
