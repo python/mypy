@@ -234,25 +234,26 @@ since unless implemented by a sub-type, the expression will always evaluate to t
        ...
 
 
-This check might falsely imply an error. For example, ``typing.Iterable`` does not implement
+This check might falsely imply an error. For example, ``Iterable`` does not implement
 ``__len__`` and so this code will be flagged:
 
 .. code-block:: python
 
     # mypy: enable-error-code truthy-bool
+    from typing import Iterable
 
-    def transform(items: Iterable[int]) -> List[int]:
-        # Error: "items" has type "typing.Iterable[int]" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+    def transform(items: Iterable[int]) -> Iterable[int]:
+        # Error: "items" has type "Iterable[int]" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
         if not items:
             return [42]
         return [x + 1 for x in items]
 
 
 
-If called as ``transform((int(s) for s in []))``, this function would not return ``[42]]`` unlike what the author
+If called as ``transform((int(s) for s in []))``, this function would not return ``[42]`` unlike what the author
 might have intended. Of course it's possible that ``transform`` is only passed ``list`` objects, and so there is
-no error in practice. In such case, it might be prudent to annotate ``items: typing.Sequence[int]``.
+no error in practice. In such case, it might be prudent to annotate ``items: Sequence[int]``.
 
-This is similar in concept to ensuring that an expression's type implements an expected interface (e.g. ``typing.Sized``),
+This is similar in concept to ensuring that an expression's type implements an expected interface (e.g. ``Sized``),
 except that attempting to invoke an undefined method (e.g. ``__len__``) results in an error,
 while attempting to evaluate an object in boolean context without a concrete implementation results in a truthy value.
