@@ -2930,7 +2930,7 @@ L0:
     r0.g = r2; r4 = is_error
     r5 = r0.g
     return r5
-def __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj.__get__(__mypyc_self__, instance, owner):
+def d_c_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
     r1 :: bit
     r2 :: object
@@ -2943,9 +2943,9 @@ L1:
 L2:
     r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
-def __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj.__call__(__mypyc_self__):
-    __mypyc_self__ :: __main__.__mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj
-    r0 :: __main__.__mypyc_c_decorator_helper___env
+def d_c_obj.__call__(__mypyc_self__):
+    __mypyc_self__ :: __main__.d_c_obj
+    r0 :: __main__.c_env
     r1, d :: object
     r2 :: str
     r3 :: object
@@ -2961,9 +2961,9 @@ L0:
     r5 = CPyObject_GetAttr(r3, r4)
     r6 = PyObject_CallFunctionObjArgs(r5, r2, 0)
     return 1
-def __mypyc_c_decorator_helper__():
-    r0 :: __main__.__mypyc_c_decorator_helper___env
-    r1 :: __main__.__mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj
+def c():
+    r0 :: __main__.c_env
+    r1 :: __main__.d_c_obj
     r2 :: bool
     r3 :: dict
     r4 :: str
@@ -2981,8 +2981,8 @@ def __mypyc_c_decorator_helper__():
     r18 :: str
     r19, r20, r21, r22 :: object
 L0:
-    r0 = __mypyc_c_decorator_helper___env()
-    r1 = __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj()
+    r0 = c_env()
+    r1 = d_c_obj()
     r1.__mypyc_env__ = r0; r2 = is_error
     r3 = __main__.globals :: static
     r4 = 'b'
@@ -3062,7 +3062,7 @@ L2:
     r17 = CPyDict_SetItem(r5, r16, r15)
     r18 = r17 >= 0 :: signed
     r19 = __main__.globals :: static
-    r20 = '__mypyc_c_decorator_helper__'
+    r20 = 'c'
     r21 = CPyDict_GetItem(r19, r20)
     r22 = __main__.globals :: static
     r23 = 'b'
