@@ -367,19 +367,38 @@ above example:
 Complex type tests
 ------------------
 
-Mypy can usually infer the types correctly when using :py:func:`isinstance <isinstance>`
-type tests, but for other kinds of checks you may need to add an
+Mypy can usually infer the types correctly when using :py:func:`isinstance <isinstance>`,
+:py:func:`issubclass <issubclass>`,
+or ``type(obj) is some_class`` type tests,
+and even user-defined type guards,
+but for other kinds of checks you may need to add an
 explicit type cast:
 
 .. code-block:: python
 
-   def f(o: object) -> None:
-       if type(o) is int:
-           o = cast(int, o)
-           g(o + 1)    # This would be an error without the cast
-           ...
-       else:
-           ...
+  from typing import Sequence, cast
+
+  def find_first_str(a: Sequence[object]) -> str:
+      index = next((i for i, s in enumerate(a) if isinstance(s, str)), -1)
+      if index < 0:
+          raise ValueError('No str found')
+
+      found = a[index]  # Has `object` type, despite the fact that we know it is `str`
+      return cast(str, found)  # So, we need an explicit cast to make mypy happy
+      
+Alternatively, you can use ``assert`` statement together with some
+of the supported type inference techniques:
+
+.. code-block:: python
+
+  def find_first_str(a: Sequence[object]) -> str:
+      index = next((i for i, s in enumerate(a) if isinstance(s, str)), -1)
+      if index < 0:
+          raise ValueError('No str found')
+
+      found = a[index]  # Has `object` type, despite the fact that we know it is `str`
+      assert isinstance(found, str)  # Now, `found` will be narrowed to `str` subtype
+      return found  # No need for the explicit `cast()` anymore
 
 .. note::
 
@@ -390,19 +409,11 @@ explicit type cast:
     runtime. The cast above would have been unnecessary if the type of
     ``o`` was ``Any``.
 
-Mypy can't infer the type of ``o`` after the :py:class:`type() <type>` check
-because it only knows about :py:func:`isinstance` (and the latter is better
-style anyway).  We can write the above code without a cast by using
-:py:func:`isinstance`:
+.. note::
 
-.. code-block:: python
+   You can read more about type narrowing techniques here.
 
-   def f(o: object) -> None:
-       if isinstance(o, int):  # Mypy understands isinstance checks
-           g(o + 1)        # Okay; type of o is inferred as int here
-           ...
-
-Type inference in mypy is designed to work well in common cases, to be
+Type inference in Mypy is designed to work well in common cases, to be
 predictable and to let the type checker give useful error
 messages. More powerful type inference strategies often have complex
 and difficult-to-predict failure modes and could result in very
@@ -621,7 +632,7 @@ You can install the latest development version of mypy from source. Clone the
     sudo python3 -m pip install --upgrade .
 
 Variables vs type aliases
------------------------------------
+-------------------------
 
 Mypy has both type aliases and variables with types like ``Type[...]`` and it is important to know their difference.
 
@@ -662,7 +673,7 @@ Mypy has both type aliases and variables with types like ``Type[...]`` and it is
     def fun2(x: tp) -> None: ...  # error: Variable "__main__.tp" is not valid as a type
 
 Incompatible overrides
-------------------------------
+----------------------
 
 It's unsafe to override a method with a more specific argument type,
 as it violates the `Liskov substitution principle
@@ -772,7 +783,6 @@ False:
 
 If you use the :option:`--warn-unreachable <mypy --warn-unreachable>` flag, mypy will generate
 an error about each unreachable code block.
-
 
 Narrowing and inner functions
 -----------------------------
