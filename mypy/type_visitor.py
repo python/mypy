@@ -103,6 +103,7 @@ class TypeVisitor(Generic[T]):
     def visit_type_alias_type(self, t: TypeAliasType) -> T:
         pass
 
+
 @trait
 @mypyc_attr(allow_interpreted_subclasses=True)
 class SyntheticTypeVisitor(TypeVisitor[T]):

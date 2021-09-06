@@ -5,7 +5,7 @@ from typing import Dict, List, Set, Iterator, Union, Optional, Tuple, cast
 from typing_extensions import DefaultDict
 
 from mypy.types import (
-    Type, AnyType, PartialType, UnionType, TypeOfAny, NoneType, TypeGuardedType, get_proper_type
+    Type, AnyType, PartialType, UnionType, TypeOfAny, NoneType, get_proper_type
 )
 from mypy.subtypes import is_subtype
 from mypy.join import join_simple
