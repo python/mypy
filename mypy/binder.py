@@ -5,7 +5,7 @@ from typing import Dict, List, Set, Iterator, Union, Optional, Tuple, cast
 from typing_extensions import DefaultDict
 
 from mypy.types import (
-    Type, AnyType, PartialType, UnionType, TypeOfAny, NoneType, TypeGuardType, get_proper_type
+    Type, AnyType, PartialType, UnionType, TypeOfAny, NoneType, TypeGuardedType, get_proper_type
 )
 from mypy.subtypes import is_subtype
 from mypy.join import join_simple
@@ -444,7 +444,7 @@ def get_declaration(expr: BindableExpression) -> Optional[Type]:
 
 def contains_type_guard(other: Type) -> bool:
     # Ignore the error about using get_proper_type().
-    if isinstance(other, TypeGuardType):  # type: ignore[misc]
+    if isinstance(other, TypeGuardedType):  # type: ignore[misc]
         return True
     other = get_proper_type(other)
     if isinstance(other, UnionType):

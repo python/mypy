@@ -5,7 +5,7 @@ from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, NoneType, TypeVarType, Instance, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeOfAny, Overloaded, FunctionLike, LiteralType,
-    ProperType, get_proper_type, get_proper_types, TypeAliasType, TypeGuardType
+    ProperType, get_proper_type, get_proper_types, TypeAliasType
 )
 from mypy.subtypes import is_equivalent, is_subtype, is_callable_compatible, is_proper_subtype
 from mypy.erasetype import erase_type
@@ -56,11 +56,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
 
     if declared == narrowed:
         return declared
-    # Ignore the error about using get_proper_type().
-    if isinstance(narrowed, TypeGuardType):  # type: ignore[misc]
-        # A type guard forces the new type even if it doesn't overlap the old.
-        return narrowed.type_guard
-    elif isinstance(declared, UnionType):
+    if isinstance(declared, UnionType):
         return make_simplified_union([narrow_declared_type(x, narrowed)
                                       for x in declared.relevant_items()])
     elif not is_overlapping_types(declared, narrowed,
@@ -160,11 +156,6 @@ def is_overlapping_types(left: Type,
     # We should never encounter this type.
     if isinstance(left, PartialType) or isinstance(right, PartialType):
         assert False, "Unexpectedly encountered partial type"
-
-    # Ignore the error about using get_proper_type().
-    if isinstance(left, TypeGuardType) or isinstance(right, TypeGuardType):  # type: ignore[misc]
-        # A type guard forces the new type even if it doesn't overlap the old.
-        return True
 
     # We should also never encounter these types, but it's possible a few
     # have snuck through due to unrelated bugs. For now, we handle these
@@ -655,9 +646,6 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             return self.default(self.s)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
-        assert False, "This should be never called, got {}".format(t)
-
-    def visit_type_guard_type(self, t: TypeGuardType) -> ProperType:
         assert False, "This should be never called, got {}".format(t)
 
     def meet(self, s: Type, t: Type) -> ProperType:
