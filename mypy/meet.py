@@ -2,7 +2,7 @@ from mypy.backports import OrderedDict
 from typing import List, Optional, Tuple, Callable
 
 from mypy.types import (
-    Type, AnyType, TypeVisitor, UnboundType, NoneType, TypeVarType, Instance, CallableType,
+    Type, AnyType, TypeGuardedType, TypeVisitor, UnboundType, NoneType, TypeVarType, Instance, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeOfAny, Overloaded, FunctionLike, LiteralType,
     ProperType, get_proper_type, get_proper_types, TypeAliasType
@@ -51,6 +51,9 @@ def meet_types(s: Type, t: Type) -> ProperType:
 def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     """Return the declared type narrowed down to another type."""
     # TODO: check infinite recursion for aliases here.
+    if isinstance(narrowed, TypeGuardedType):
+        return narrowed.type_guard
+
     declared = get_proper_type(declared)
     narrowed = get_proper_type(narrowed)
 

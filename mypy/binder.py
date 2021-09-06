@@ -210,9 +210,7 @@ class ConditionalTypeBinder:
             else:
                 for other in resulting_values[1:]:
                     assert other is not None
-                    # Ignore the error about using get_proper_type().
-                    if not contains_type_guard(other):
-                        type = join_simple(self.declarations[key], type, other)
+                    type = join_simple(self.declarations[key], type, other)
             if current_value is None or not is_same_type(type, current_value):
                 self._put(key, type)
                 changed = True
@@ -440,13 +438,3 @@ def get_declaration(expr: BindableExpression) -> Optional[Type]:
         if not isinstance(type, PartialType):
             return type
     return None
-
-
-def contains_type_guard(other: Type) -> bool:
-    # Ignore the error about using get_proper_type().
-    if isinstance(other, TypeGuardedType):  # type: ignore[misc]
-        return True
-    other = get_proper_type(other)
-    if isinstance(other, UnionType):
-        return any(contains_type_guard(item) for item in other.relevant_items())
-    return False
