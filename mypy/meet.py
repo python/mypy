@@ -51,7 +51,7 @@ def meet_types(s: Type, t: Type) -> ProperType:
 def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     """Return the declared type narrowed down to another type."""
     # TODO: check infinite recursion for aliases here.
-    if isinstance(narrowed, TypeGuardedType):
+    if isinstance(narrowed, TypeGuardedType):  # type: ignore[misc]
         return narrowed.type_guard
 
     declared = get_proper_type(declared)
