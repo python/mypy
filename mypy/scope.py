@@ -6,6 +6,7 @@ TODO: Use everywhere where we track targets, including in mypy.errors.
 from contextlib import contextmanager
 from typing import List, Optional, Iterator, Tuple
 
+from mypy.backports import nullcontext
 from mypy.nodes import TypeInfo, FuncBase
 
 
@@ -51,18 +52,30 @@ class Scope:
         """Return the current function's short name if it exists"""
         return self.function.name if self.function else None
 
-    def enter_file(self, prefix: str) -> None:
+    @contextmanager
+    def module_scope(self, prefix: str) -> Iterator[None]:
         self.module = prefix
         self.classes = []
         self.function = None
         self.ignored = 0
+        yield
+        assert self.module
+        self.module = None
 
-    def enter_function(self, fdef: FuncBase) -> None:
+    @contextmanager
+    def function_scope(self, fdef: FuncBase) -> Iterator[None]:
         if not self.function:
             self.function = fdef
         else:
             # Nested functions are part of the topmost function target.
             self.ignored += 1
+        yield
+        if self.ignored:
+            # Leave a scope that's included in the enclosing target.
+            self.ignored -= 1
+        else:
+            assert self.function
+            self.function = None
 
     def enter_class(self, info: TypeInfo) -> None:
         """Enter a class target scope."""
@@ -72,21 +85,21 @@ class Scope:
             # Classes within functions are part of the enclosing function target.
             self.ignored += 1
 
-    def leave(self) -> None:
-        """Leave the innermost scope (can be any kind of scope)."""
+    def leave_class(self) -> None:
+        """Leave a class target scope."""
         if self.ignored:
             # Leave a scope that's included in the enclosing target.
             self.ignored -= 1
-        elif self.function:
-            # Function is always the innermost target.
-            self.function = None
-        elif self.classes:
+        else:
+            assert self.classes
             # Leave the innermost class.
             self.classes.pop()
-        else:
-            # Leave module.
-            assert self.module
-            self.module = None
+
+    @contextmanager
+    def class_scope(self, info: TypeInfo) -> Iterator[None]:
+        self.enter_class(info)
+        yield
+        self.leave_class()
 
     def save(self) -> SavedScope:
         """Produce a saved scope that can be entered with saved_scope()"""
@@ -94,31 +107,12 @@ class Scope:
         # We only save the innermost class, which is sufficient since
         # the rest are only needed for when classes are left.
         cls = self.classes[-1] if self.classes else None
-        return (self.module, cls, self.function)
-
-    @contextmanager
-    def function_scope(self, fdef: FuncBase) -> Iterator[None]:
-        self.enter_function(fdef)
-        yield
-        self.leave()
-
-    @contextmanager
-    def class_scope(self, info: TypeInfo) -> Iterator[None]:
-        self.enter_class(info)
-        yield
-        self.leave()
+        return self.module, cls, self.function
 
     @contextmanager
     def saved_scope(self, saved: SavedScope) -> Iterator[None]:
         module, info, function = saved
-        self.enter_file(module)
-        if info:
-            self.enter_class(info)
-        if function:
-            self.enter_function(function)
-        yield
-        if function:
-            self.leave()
-        if info:
-            self.leave()
-        self.leave()
+        with self.module_scope(module):
+            with self.class_scope(info) if info else nullcontext():
+                with self.function_scope(function) if function else nullcontext():
+                    yield

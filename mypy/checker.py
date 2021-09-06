@@ -297,29 +297,26 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.recurse_into_functions = True
         with state.strict_optional_set(self.options.strict_optional):
             self.errors.set_file(self.path, self.tree.fullname, scope=self.tscope)
-            self.tscope.enter_file(self.tree.fullname)
-            with self.enter_partial_types():
-                with self.binder.top_frame_context():
+            with self.tscope.module_scope(self.tree.fullname):
+                with self.enter_partial_types(), self.binder.top_frame_context():
                     for d in self.tree.defs:
                         self.accept(d)
 
-            assert not self.current_node_deferred
+                assert not self.current_node_deferred
 
-            all_ = self.globals.get('__all__')
-            if all_ is not None and all_.type is not None:
-                all_node = all_.node
-                assert all_node is not None
-                seq_str = self.named_generic_type('typing.Sequence',
-                                                [self.named_type('builtins.str')])
-                if self.options.python_version[0] < 3:
+                all_ = self.globals.get('__all__')
+                if all_ is not None and all_.type is not None:
+                    all_node = all_.node
+                    assert all_node is not None
                     seq_str = self.named_generic_type('typing.Sequence',
-                                                    [self.named_type('builtins.unicode')])
-                if not is_subtype(all_.type, seq_str):
-                    str_seq_s, all_s = format_type_distinctly(seq_str, all_.type)
-                    self.fail(message_registry.ALL_MUST_BE_SEQ_STR.format(str_seq_s, all_s),
-                            all_node)
-
-            self.tscope.leave()
+                                                      [self.named_type('builtins.str')])
+                    if self.options.python_version[0] < 3:
+                        seq_str = self.named_generic_type('typing.Sequence',
+                                                          [self.named_type('builtins.unicode')])
+                    if not is_subtype(all_.type, seq_str):
+                        str_seq_s, all_s = format_type_distinctly(seq_str, all_.type)
+                        self.fail(message_registry.ALL_MUST_BE_SEQ_STR.format(str_seq_s, all_s),
+                                  all_node)
 
     def check_second_pass(self,
                           todo: Optional[Sequence[Union[DeferredNode,
@@ -334,25 +331,24 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if not todo and not self.deferred_nodes:
                 return False
             self.errors.set_file(self.path, self.tree.fullname, scope=self.tscope)
-            self.tscope.enter_file(self.tree.fullname)
-            self.pass_num += 1
-            if not todo:
-                todo = self.deferred_nodes
-            else:
-                assert not self.deferred_nodes
-            self.deferred_nodes = []
-            done: Set[Union[DeferredNodeType, FineGrainedDeferredNodeType]] = set()
-            for node, active_typeinfo in todo:
-                if node in done:
-                    continue
-                # This is useful for debugging:
-                # print("XXX in pass %d, class %s, function %s" %
-                #       (self.pass_num, type_name, node.fullname or node.name))
-                done.add(node)
-                with self.tscope.class_scope(active_typeinfo) if active_typeinfo else nothing():
-                    with self.scope.push_class(active_typeinfo) if active_typeinfo else nothing():
-                        self.check_partial(node)
-            self.tscope.leave()
+            with self.tscope.module_scope(self.tree.fullname):
+                self.pass_num += 1
+                if not todo:
+                    todo = self.deferred_nodes
+                else:
+                    assert not self.deferred_nodes
+                self.deferred_nodes = []
+                done: Set[Union[DeferredNodeType, FineGrainedDeferredNodeType]] = set()
+                for node, active_typeinfo in todo:
+                    if node in done:
+                        continue
+                    # This is useful for debugging:
+                    # print("XXX in pass %d, class %s, function %s" %
+                    #       (self.pass_num, type_name, node.fullname or node.name))
+                    done.add(node)
+                    with self.tscope.class_scope(active_typeinfo) if active_typeinfo else nothing():
+                        with self.scope.push_class(active_typeinfo) if active_typeinfo else nothing():
+                            self.check_partial(node)
             return True
 
     def check_partial(self, node: Union[DeferredNodeType, FineGrainedDeferredNodeType]) -> None:
@@ -874,7 +870,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if isinstance(typ.ret_type, TypeVarType):
                     if typ.ret_type.variance == CONTRAVARIANT:
                         self.fail(message_registry.RETURN_TYPE_CANNOT_BE_CONTRAVARIANT,
-                             typ.ret_type)
+                                  typ.ret_type)
 
                 # Check that Generator functions have the appropriate return type.
                 if defn.is_generator:
@@ -992,7 +988,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.accept(item.body)
                 unreachable = self.binder.is_unreachable()
 
-            if (self.options.warn_no_return and not unreachable):
+            if self.options.warn_no_return and not unreachable:
                 if (defn.is_generator or
                         is_named_instance(self.return_types[-1], 'typing.AwaitableGenerator')):
                     return_type = self.get_generator_return_type(self.return_types[-1],
@@ -1083,7 +1079,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                               code=codes.NO_UNTYPED_DEF)
                 elif fdef.is_generator:
                     if is_unannotated_any(self.get_generator_return_type(ret_type,
-                                                                        fdef.is_coroutine)):
+                                                                         fdef.is_coroutine)):
                         self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef,
                                   code=codes.NO_UNTYPED_DEF)
                 elif fdef.is_coroutine and isinstance(ret_type, Instance):
@@ -2641,8 +2637,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                        len(lvalues) - 1, context)
                 return False
         elif rvalue_count != len(lvalues):
-            self.msg.wrong_number_values_to_unpack(rvalue_count,
-                            len(lvalues), context)
+            self.msg.wrong_number_values_to_unpack(rvalue_count, len(lvalues), context)
             return False
         return True
 
@@ -2896,8 +2891,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         elif isinstance(lvalue, IndexExpr):
             index_lvalue = lvalue
         elif isinstance(lvalue, MemberExpr):
-            lvalue_type = self.expr_checker.analyze_ordinary_member_access(lvalue,
-                                                                 True)
+            lvalue_type = self.expr_checker.analyze_ordinary_member_access(lvalue, True)
             self.store_type(lvalue, lvalue_type)
         elif isinstance(lvalue, NameExpr):
             lvalue_type = self.expr_checker.analyze_ref_expr(lvalue, lvalue=True)
@@ -4144,6 +4138,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             """Is expr a call to type with one argument?"""
             return (refers_to_fullname(expr.callee, 'builtins.type')
                     and len(expr.args) == 1)
+
         # exprs that are being passed into type
         exprs_in_type_calls: List[Expression] = []
         # type that is being compared to type(expr)
@@ -4194,6 +4189,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if d is not None:
                     result_map.update(d)
             return result_map
+
         if_map = combine_maps(if_maps)
         # type(x) == T is only true when x has the same type as T, meaning
         # that it can be false if x is an instance of a subclass of T. That means

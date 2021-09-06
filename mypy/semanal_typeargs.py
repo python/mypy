@@ -35,9 +35,8 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
 
     def visit_mypy_file(self, o: MypyFile) -> None:
         self.errors.set_file(o.path, o.fullname, scope=self.scope)
-        self.scope.enter_file(o.fullname)
-        super().visit_mypy_file(o)
-        self.scope.leave()
+        with self.scope.module_scope(o.fullname):
+            super().visit_mypy_file(o)
 
     def visit_func(self, defn: FuncItem) -> None:
         if not self.recurse_into_functions:
