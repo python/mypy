@@ -189,6 +189,9 @@ void CPy_TypeError(const char *expected, PyObject *value) {
     }
 }
 
+// This function is basically exactly the same with _PyTraceback_Add
+// which is available in all the versions we support.
+// We're continuing to use this because we'll probably optimize this later.
 void CPy_AddTraceback(const char *filename, const char *funcname, int line, PyObject *globals) {
     PyObject *exc, *val, *tb;
     PyThreadState *thread_state = PyThreadState_GET();
