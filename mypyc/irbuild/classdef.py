@@ -380,28 +380,25 @@ def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef) -> None:
     if not default_assignments:
         return
 
-    builder.enter_method(cls, '__mypyc_defaults_setup', bool_rprimitive)
+    with builder.enter_method(cls, '__mypyc_defaults_setup', bool_rprimitive):
+        self_var = builder.self()
+        for stmt in default_assignments:
+            lvalue = stmt.lvalues[0]
+            assert isinstance(lvalue, NameExpr)
+            if not stmt.is_final_def and not is_constant(stmt.rvalue):
+                builder.warning('Unsupported default attribute value', stmt.rvalue.line)
 
-    self_var = builder.self()
-    for stmt in default_assignments:
-        lvalue = stmt.lvalues[0]
-        assert isinstance(lvalue, NameExpr)
-        if not stmt.is_final_def and not is_constant(stmt.rvalue):
-            builder.warning('Unsupported default attribute value', stmt.rvalue.line)
+            # If the attribute is initialized to None and type isn't optional,
+            # don't initialize it to anything.
+            attr_type = cls.attr_type(lvalue.name)
+            if isinstance(stmt.rvalue, RefExpr) and stmt.rvalue.fullname == 'builtins.None':
+                if (not is_optional_type(attr_type) and not is_object_rprimitive(attr_type)
+                        and not is_none_rprimitive(attr_type)):
+                    continue
+            val = builder.coerce(builder.accept(stmt.rvalue), attr_type, stmt.line)
+            builder.add(SetAttr(self_var, lvalue.name, val, -1))
 
-        # If the attribute is initialized to None and type isn't optional,
-        # don't initialize it to anything.
-        attr_type = cls.attr_type(lvalue.name)
-        if isinstance(stmt.rvalue, RefExpr) and stmt.rvalue.fullname == 'builtins.None':
-            if (not is_optional_type(attr_type) and not is_object_rprimitive(attr_type)
-                    and not is_none_rprimitive(attr_type)):
-                continue
-        val = builder.coerce(builder.accept(stmt.rvalue), attr_type, stmt.line)
-        builder.add(SetAttr(self_var, lvalue.name, val, -1))
-
-    builder.add(Return(builder.true()))
-
-    builder.leave_method()
+        builder.add(Return(builder.true()))
 
 
 def check_deletable_declaration(builder: IRBuilder, cl: ClassIR, line: int) -> None:
@@ -429,30 +426,28 @@ def create_ne_from_eq(builder: IRBuilder, cdef: ClassDef) -> None:
 
 def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> None:
     """Generate a "__ne__" method from a "__eq__" method. """
-    builder.enter_method(cls, '__ne__', object_rprimitive)
-    rhs_arg = builder.add_argument('rhs', object_rprimitive)
+    with builder.enter_method(cls, '__ne__', object_rprimitive):
+        rhs_arg = builder.add_argument('rhs', object_rprimitive)
 
-    # If __eq__ returns NotImplemented, then __ne__ should also
-    not_implemented_block, regular_block = BasicBlock(), BasicBlock()
-    eqval = builder.add(MethodCall(builder.self(), '__eq__', [rhs_arg], line))
-    not_implemented = builder.add(LoadAddress(not_implemented_op.type,
-                                              not_implemented_op.src, line))
-    builder.add(Branch(
-        builder.translate_is_op(eqval, not_implemented, 'is', line),
-        not_implemented_block,
-        regular_block,
-        Branch.BOOL))
+        # If __eq__ returns NotImplemented, then __ne__ should also
+        not_implemented_block, regular_block = BasicBlock(), BasicBlock()
+        eqval = builder.add(MethodCall(builder.self(), '__eq__', [rhs_arg], line))
+        not_implemented = builder.add(LoadAddress(not_implemented_op.type,
+                                                  not_implemented_op.src, line))
+        builder.add(Branch(
+            builder.translate_is_op(eqval, not_implemented, 'is', line),
+            not_implemented_block,
+            regular_block,
+            Branch.BOOL))
 
-    builder.activate_block(regular_block)
-    retval = builder.coerce(
-        builder.unary_op(eqval, 'not', line), object_rprimitive, line
-    )
-    builder.add(Return(retval))
+        builder.activate_block(regular_block)
+        retval = builder.coerce(
+            builder.unary_op(eqval, 'not', line), object_rprimitive, line
+        )
+        builder.add(Return(retval))
 
-    builder.activate_block(not_implemented_block)
-    builder.add(Return(not_implemented))
-
-    builder.leave_method()
+        builder.activate_block(not_implemented_block)
+        builder.add(Return(not_implemented))
 
 
 def load_non_ext_class(builder: IRBuilder,
