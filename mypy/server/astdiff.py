@@ -339,7 +339,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
         return ('TypeGuardType', snapshot_type(typ.type_guard))
 
     def visit_overloaded(self, typ: Overloaded) -> SnapshotItem:
-        return ('Overloaded', snapshot_types(typ.items()))
+        return ('Overloaded', snapshot_types(typ.items))
 
     def visit_partial_type(self, typ: PartialType) -> SnapshotItem:
         # A partial type is not fully defined, so the result is indeterminate. We shouldn't
