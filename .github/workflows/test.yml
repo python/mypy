@@ -45,3 +45,31 @@ jobs:
       run: tox -e ${{ matrix.toxenv }} --notest
     - name: test
       run: tox -e ${{ matrix.toxenv }} --skip-pkg-install
+
+  build-ubuntu:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.7. 3.8]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          pip install -U pip==20.3.4 setuptools
+          pip install -U 'virtualenv<16.7.11'
+          pip install -U tox==3.20.1
+          python2 -m pip install --user -U typing
+          tox --notest
+      - name: Run tests
+        env:
+          TOXENV: py
+          EXTRA_ARGS: "-n 2"
+          TEST_MYPYC: 0
+          PYTHON_DEBUG_BUILD: 0
+          PYTHON_VERSION: ${{ matrix.python-version }}
+        run: |
+          tox --skip-pkg-install -- $EXTRA_ARGS
