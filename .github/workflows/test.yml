@@ -15,12 +15,13 @@ on:
     - LICENSE
 
 jobs:
-  build:
+  run-tests:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        name: [windows-py37-32, windows-py37-64]
+        name: [windows-py37-32, windows-py37-64,
+               ubuntu-py37-64, ubuntu-py38-64]
         include:
         - name: windows-py37-32
           python: '3.7'
@@ -32,6 +33,16 @@ jobs:
           arch: x64
           os: windows-latest
           toxenv: py37
+        - name: ubuntu-py37-64
+          python: '3.7'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: py
+        - name: ubuntu-py38-64
+          python: '3.8'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: py
 
     steps:
     - uses: actions/checkout@v2
@@ -44,32 +55,6 @@ jobs:
     - name: setup tox environment
       run: tox -e ${{ matrix.toxenv }} --notest
     - name: test
-      run: tox -e ${{ matrix.toxenv }} --skip-pkg-install
-
-  build-ubuntu:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: [3.7. 3.8]
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: |
-          pip install -U pip==20.3.4 setuptools
-          pip install -U 'virtualenv<16.7.11'
-          pip install -U tox==3.20.1
-          python2 -m pip install --user -U typing
-          tox --notest
-      - name: Run tests
-        env:
-          TOXENV: py
-          EXTRA_ARGS: "-n 2"
-          TEST_MYPYC: 0
-          PYTHON_DEBUG_BUILD: 0
-          PYTHON_VERSION: ${{ matrix.python-version }}
-        run: |
-          tox --skip-pkg-install -- $EXTRA_ARGS
+      env:
+        EXTRA_ARGS: "-n 2"
+      run: tox -e ${{ matrix.toxenv }} --skip-pkg-install -- $EXTRA_ARGS
