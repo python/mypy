@@ -203,7 +203,9 @@ class FindModuleCache:
         if id not in self.results:
             top_level = id.partition('.')[0]
             use_typeshed = True
-            if top_level in self.stdlib_py_versions:
+            if id in self.stdlib_py_versions:
+                use_typeshed = self._typeshed_has_version(id)
+            elif top_level in self.stdlib_py_versions:
                 use_typeshed = self._typeshed_has_version(top_level)
             self.results[id] = self._find_module(id, use_typeshed)
             if (not fast_path
