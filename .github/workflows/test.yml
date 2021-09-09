@@ -21,7 +21,8 @@ jobs:
       fail-fast: false
       matrix:
         name: [windows-py37-32, windows-py37-64,
-               ubuntu-py37-64, ubuntu-py38-64]
+               ubuntu-py37-64, ubuntu-py38-64,
+               macos-py36-64]
         include:
         - name: windows-py37-32
           python: '3.7'
@@ -43,18 +44,24 @@ jobs:
           arch: x64
           os: ubuntu-latest
           toxenv: py
-
+        - name: macos-py36-64
+          python: '3.6.3'
+          arch: x64
+          os: macos-latest
+          toxenv: py
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python }}
         architecture: ${{ matrix.arch }}
-    - name: install tox
+    - name: Install tox
       run: pip install --upgrade 'setuptools!=50' 'virtualenv<16.7.11' tox==3.20.1
-    - name: setup tox environment
+    - name: Setup tox environment
       run: tox -e ${{ matrix.toxenv }} --notest
-    - name: test
-      env:
-        EXTRA_ARGS: "-n 2"
-      run: tox -e ${{ matrix.toxenv }} --skip-pkg-install -- $EXTRA_ARGS
+    - name: Test
+      if: ${{ matrix.os != 'macos-latest' }}
+      run: tox -e ${{ matrix.toxenv }} --skip-pkg-install -- "-n 2"
+    - name: Test
+      if: ${{ matrix.os == 'macos-latest' }}
+      run: tox -e ${{ matrix.toxenv }} --skip-pkg-install -- "-n 2 mypyc/test/test_run.py mypyc/test/test_external.py"
