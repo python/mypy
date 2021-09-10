@@ -62,7 +62,7 @@ required to be valid Python syntax. For more details, see :pep:`563`.
     of forward references or generics in:
 
     * :ref:`type aliases <type-aliases>`;
-    * :ref:`casts <casts>`;
+    * :ref:`type narrowing <type-narrowing>`;
     * type definitions (see :py:class:`~typing.TypeVar`, :py:func:`~typing.NewType`, :py:class:`~typing.NamedTuple`);
     * base classes.
 
