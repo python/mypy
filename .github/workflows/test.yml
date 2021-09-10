@@ -40,28 +40,33 @@ jobs:
           arch: x64
           os: ubuntu-latest
           toxenv: py
+          tox_extra_args: "-n 2"
         - name: ubuntu-py38-64
           python: '3.8'
           arch: x64
           os: ubuntu-latest
           toxenv: py
+          tox_extra_args: "-n 2"
         - name: ubuntu-py36-mypyc
           python: '3.6'
           arch: x64
           os: ubuntu-latest
           toxenv: py
-          text_mypyc: 1
+          tox_extra_args: "-n 2"
+          test_mypyc: true
         - name: ubuntu-py39-mypyc
           python: '3.9'
           arch: x64
           os: ubuntu-latest
           toxenv: py
-          text_mypyc: 1
+          tox_extra_args: "-n 2"
+          text_mypyc: true
         - name: macos-py36-64
           python: '3.6'
           arch: x64
           os: macos-latest
           toxenv: py
+          tox_extra_args: "-n 2 mypyc/test/test_run.py mypyc/test/test_external.py"
         - name: type-checking
           python: '3.7'
           arch: x64
@@ -72,6 +77,11 @@ jobs:
           arch: x64
           os: ubuntu-latest
           toxenv: lint
+        - name: docs
+          python: '3.7'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: docs
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-python@v2
@@ -81,15 +91,11 @@ jobs:
     - name: Install tox
       run: pip install --upgrade 'setuptools!=50' 'virtualenv<16.7.11' tox==3.20.1
     - name: Compiled with Mypyc
-      if: ${{ matrix.test_mypyc == 1 }}
+      if: ${{ matrix.test_mypyc }}
       run: |
         pip install -r test-requirements.txt
         CC=clang MYPYC_OPT_LEVEL=0 python3 setup.py --use-mypyc build_ext --inplace
     - name: Setup tox environment
       run: tox -e ${{ matrix.toxenv }} --notest
     - name: Test
-      if: ${{ matrix.os != 'macos-latest' }}
-      run: tox -e ${{ matrix.toxenv }} --skip-pkg-install -- "-n 2"
-    - name: Test
-      if: ${{ matrix.os == 'macos-latest' }}
-      run: tox -e ${{ matrix.toxenv }} --skip-pkg-install -- "-n 2 mypyc/test/test_run.py mypyc/test/test_external.py"
+      run: tox -e ${{ matrix.toxenv }} --skip-pkg-install -- ${{ matrix.tox_extra_args }}
