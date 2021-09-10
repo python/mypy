@@ -26,6 +26,7 @@ jobs:
                ubuntu-py36-mypyc, ubuntu-py39-mypyc,
                macos-py36, ubuntu-py-36-debug-build,
                type-checking, code-style]
+        experimental: [false]
         include:
         - name: windows-py37-32
           python: '3.7'
@@ -50,7 +51,7 @@ jobs:
           toxenv: py
           tox_extra_args: "-n 2"
         - name: ubuntu-pynightly
-          python: 'nightly'
+          python: '3.10-dev'
           arch: x64
           os: ubuntu-latest
           toxenv: py
@@ -93,6 +94,7 @@ jobs:
           arch: x64
           os: ubuntu-latest
           toxenv: lint
+
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-python@v2
