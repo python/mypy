@@ -82,7 +82,6 @@ Test cases for this module live in 'test-data/unit/deps*.test'.
 from typing import Dict, List, Set, Optional, Tuple
 from typing_extensions import DefaultDict
 
-from mypy.backports import nullcontext
 from mypy.checkmember import bind_self
 from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, ClassDef, AssignmentStmt, NameExpr, MemberExpr, Import,
