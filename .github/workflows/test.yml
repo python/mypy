@@ -102,7 +102,7 @@ jobs:
         source $VENV/bin/activate
     - name: Install tox
       run: pip install --upgrade 'setuptools!=50' 'virtualenv<16.7.11' tox==3.20.1
-    - name: Compiled with Mypyc
+    - name: Compiled with mypyc
       if: ${{ matrix.test_mypyc }}
       run: |
         pip install -r test-requirements.txt
