@@ -4713,7 +4713,8 @@ class SemanticAnalyzer(NodeVisitor[None],
             return self.cur_mod_id + '.' + name
 
     @contextmanager
-    def enter(self, function: Union[FuncItem, GeneratorExpr, DictionaryComprehension]) -> None:
+    def enter(self,
+              function: Union[FuncItem, GeneratorExpr, DictionaryComprehension]) -> Iterator[None]:
         """Enter a function, generator or comprehension scope."""
         names = self.saved_locals.setdefault(function, SymbolTable())
         self.locals.append(names)
