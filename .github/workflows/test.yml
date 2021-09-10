@@ -121,7 +121,9 @@ jobs:
       with:
         python-version: '3.10-dev'
     - name: Install tox
-      run: pip install --upgrade 'setuptools!=50' 'virtualenv<16.7.11' tox==3.20.1
+      run: |
+        pip install -U pip==21.2.3 setuptools
+        pip install --upgrade 'setuptools!=50' 'virtualenv<16.7.11' tox==3.20.1
     - name: Setup tox environment
       run: tox -e py --notest
     - name: Test
