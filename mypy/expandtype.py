@@ -53,7 +53,7 @@ def freshen_function_type_vars(callee: F) -> F:
     else:
         assert isinstance(callee, Overloaded)
         fresh_overload = Overloaded([freshen_function_type_vars(item)
-                                     for item in callee.items()])
+                                     for item in callee.items])
         return cast(F, fresh_overload)
 
 
@@ -106,7 +106,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
 
     def visit_overloaded(self, t: Overloaded) -> Type:
         items: List[CallableType] = []
-        for item in t.items():
+        for item in t.items:
             new_item = item.accept(self)
             assert isinstance(new_item, ProperType)
             assert isinstance(new_item, CallableType)

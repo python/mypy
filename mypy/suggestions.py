@@ -604,7 +604,7 @@ class SuggestionEngine:
 
             if not isinstance(typ, FunctionLike):
                 return None
-            for ct in typ.items():
+            for ct in typ.items:
                 if not (len(ct.arg_types) == 1
                         and isinstance(ct.arg_types[0], TypeVarType)
                         and ct.arg_types[0] == ct.ret_type):

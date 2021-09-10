@@ -196,7 +196,7 @@ class TypeFixer(TypeVisitor[None]):
             ct.type_guard.accept(self)
 
     def visit_overloaded(self, t: Overloaded) -> None:
-        for ct in t.items():
+        for ct in t.items:
             ct.accept(self)
 
     def visit_erased_type(self, o: Any) -> None:

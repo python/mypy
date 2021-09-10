@@ -1278,7 +1278,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         reverse_class, reverse_name,
                         forward_base, forward_name, context)
             elif isinstance(forward_item, Overloaded):
-                for item in forward_item.items():
+                for item in forward_item.items:
                     if self.is_unsafe_overlapping_op(item, forward_base, reverse_type):
                         self.msg.operator_method_signatures_overlap(
                             reverse_class, reverse_name,
@@ -1584,7 +1584,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 return tp.arg_types[0]
             return None
         elif isinstance(tp, Overloaded):
-            raw_items = [self.get_op_other_domain(it) for it in tp.items()]
+            raw_items = [self.get_op_other_domain(it) for it in tp.items]
             items = [it for it in raw_items if it]
             if items:
                 return make_simplified_union(items)
@@ -1683,13 +1683,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # (in that order), and if the child swaps the two and does f(str) -> str and
                 # f(int) -> int
                 order = []
-                for child_variant in override.items():
-                    for i, parent_variant in enumerate(original.items()):
+                for child_variant in override.items:
+                    for i, parent_variant in enumerate(original.items):
                         if is_subtype(child_variant, parent_variant):
                             order.append(i)
                             break
 
-                if len(order) == len(original.items()) and order != sorted(order):
+                if len(order) == len(original.items) and order != sorted(order):
                     self.msg.overload_signature_incompatible_with_supertype(
                         name, name_in_super, supertype, override, node)
                     emitted_msg = True
@@ -2431,7 +2431,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                                       OverloadedFuncDef):
                     # Same for properties with setter
                     if base_node.is_property:
-                        base_type = base_type.items()[0].ret_type
+                        base_type = base_type.items[0].ret_type
 
                 return base_type, base_node
 
@@ -3524,7 +3524,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 continue
 
             if isinstance(ttype, FunctionLike):
-                item = ttype.items()[0]
+                item = ttype.items[0]
                 if not item.is_type_obj():
                     self.fail(message_registry.INVALID_EXCEPTION_TYPE, n)
                     return AnyType(TypeOfAny.from_error)
@@ -5496,7 +5496,7 @@ def get_isinstance_type(expr: Expression,
         if isinstance(typ, FunctionLike) and typ.is_type_obj():
             # Type variables may be present -- erase them, which is the best
             # we can do (outside disallowing them here).
-            erased_type = erase_typevars(typ.items()[0].ret_type)
+            erased_type = erase_typevars(typ.items[0].ret_type)
             types.append(TypeRange(erased_type, is_upper_bound=False))
         elif isinstance(typ, TypeType):
             # Type[A] means "any type that is a subtype of A" rather than "precisely type A"
@@ -5669,9 +5669,9 @@ def is_more_general_arg_prefix(t: FunctionLike, s: FunctionLike) -> bool:
                                           ignore_return=True)
     elif isinstance(t, FunctionLike):
         if isinstance(s, FunctionLike):
-            if len(t.items()) == len(s.items()):
+            if len(t.items) == len(s.items):
                 return all(is_same_arg_prefix(items, itemt)
-                           for items, itemt in zip(t.items(), s.items()))
+                           for items, itemt in zip(t.items, s.items))
     return False
 
 
@@ -6034,13 +6034,13 @@ def is_untyped_decorator(typ: Optional[Type]) -> bool:
         method = typ.type.get_method('__call__')
         if method:
             if isinstance(method.type, Overloaded):
-                return any(is_untyped_decorator(item) for item in method.type.items())
+                return any(is_untyped_decorator(item) for item in method.type.items)
             else:
                 return not is_typed_callable(method.type)
         else:
             return False
     elif isinstance(typ, Overloaded):
-        return any(is_untyped_decorator(item) for item in typ.items())
+        return any(is_untyped_decorator(item) for item in typ.items)
     return True
 
 

@@ -911,7 +911,7 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
 
     def visit_overloaded(self, typ: Overloaded) -> List[str]:
         triggers = []
-        for item in typ.items():
+        for item in typ.items:
             triggers.extend(self.get_type_triggers(item))
         return triggers
 

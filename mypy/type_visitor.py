@@ -233,7 +233,7 @@ class TypeTranslator(TypeVisitor[Type]):
 
     def visit_overloaded(self, t: Overloaded) -> Type:
         items: List[CallableType] = []
-        for item in t.items():
+        for item in t.items:
             new = item.accept(self)
             assert isinstance(new, CallableType)  # type: ignore
             items.append(new)
@@ -330,7 +330,7 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return t.type_guard.accept(self)
 
     def visit_overloaded(self, t: Overloaded) -> T:
-        return self.query_types(t.items())
+        return self.query_types(t.items)
 
     def visit_type_type(self, t: TypeType) -> T:
         return t.item.accept(self)
