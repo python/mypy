@@ -114,7 +114,6 @@ jobs:
 
   python-nightly:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-python@v2
@@ -128,6 +127,7 @@ jobs:
       run: tox -e py --notest
     - name: Test
       run: tox -e py --skip-pkg-install -- "-n 2"
+      continue-on-error: true
     - name: Mark as a success
       run: exit 0
 
