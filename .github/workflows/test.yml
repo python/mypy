@@ -1,4 +1,4 @@
-name: main
+name: Run tests
 
 on:
   push:
@@ -15,15 +15,16 @@ on:
     - LICENSE
 
 jobs:
-  run-tests:
+  main:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         name: [windows-py37-32, windows-py37-64,
-               ubuntu-py37-64, ubuntu-py38-64,
-               ubuntu-py36-mypyc, ubuntu-py39-mypyc,
-               macos-py36-64, type-checking, code-style]
+               ubuntu-py37, ubuntu-py38,
+               ubuntu-py37-mypyc, ubuntu-py39-mypyc,
+               macos-py36,
+               type-checking, code-style]
         include:
         - name: windows-py37-32
           python: '3.7'
@@ -35,13 +36,13 @@ jobs:
           arch: x64
           os: windows-latest
           toxenv: py37
-        - name: ubuntu-py37-64
+        - name: ubuntu-py37
           python: '3.7'
           arch: x64
           os: ubuntu-latest
           toxenv: py
           tox_extra_args: "-n 2"
-        - name: ubuntu-py38-64
+        - name: ubuntu-py38
           python: '3.8'
           arch: x64
           os: ubuntu-latest
@@ -60,8 +61,8 @@ jobs:
           os: ubuntu-latest
           toxenv: py
           tox_extra_args: "-n 2"
-          text_mypyc: true
-        - name: macos-py36-64
+          test_mypyc: true
+        - name: macos-py36
           python: '3.6'
           arch: x64
           os: macos-latest
@@ -77,11 +78,6 @@ jobs:
           arch: x64
           os: ubuntu-latest
           toxenv: lint
-        - name: docs
-          python: '3.7'
-          arch: x64
-          os: ubuntu-latest
-          toxenv: docs
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-python@v2
