@@ -128,4 +128,6 @@ jobs:
       run: tox -e py --notest
     - name: Test
       run: tox -e py --skip-pkg-install -- "-n 2"
+    - name: Mark as a success
+      run: exit 0
 
