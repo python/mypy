@@ -17,11 +17,12 @@ on:
 jobs:
   main:
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
       matrix:
         name: [windows-py37-32, windows-py37-64,
-               ubuntu-py37, ubuntu-py38,
+               ubuntu-py37, ubuntu-py38, ubuntu-pynightly,
                ubuntu-py36-mypyc, ubuntu-py39-mypyc,
                macos-py36, ubuntu-py-36-debug-build,
                type-checking, code-style]
@@ -48,6 +49,13 @@ jobs:
           os: ubuntu-latest
           toxenv: py
           tox_extra_args: "-n 2"
+        - name: ubuntu-pynightly
+          python: 'nightly'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: py
+          tox_extra_args: "-n 2"
+          experimental: true
         - name: ubuntu-py36-mypyc
           python: '3.6'
           arch: x64
