@@ -69,7 +69,7 @@ jobs:
           toxenv: py
           tox_extra_args: "-n 2 mypyc/test/test_run.py mypyc/test/test_external.py"
         - name: ubuntu-py-36-debug-build
-          python: '3.6'
+          python: '3.6.8'
           arch: x64
           os: ubuntu-latest
           toxenv: py36
@@ -94,9 +94,10 @@ jobs:
     - name: Debug build
       if: ${{ matrix.debug_build }}
       run: |
+        PYTHONVERSION=${{ matrix.python }}
         PYTHONDIR=~/python-debug/python-$PYTHONVERSION
         VENV=$PYTHONDIR/env
-        misc/build-debug-python.sh $PYTHONVERSION $PYTHONDIR $VENV
+        ./misc/build-debug-python.sh $PYTHONVERSION $PYTHONDIR $VENV
         source $VENV/bin/activate
     - name: Install tox
       run: pip install --upgrade 'setuptools!=50' 'virtualenv<16.7.11' tox==3.20.1
