@@ -4,11 +4,9 @@ Type narrowing
 ==============
 
 This section is dedicated to  several type narrowing
-techniques which are supported by Mypy.
+techniques which are supported by mypy.
 
-What is type narrowing?
-It is an operation of telling type checking that some
-broader type is actually more specific.
+Type narrowing is when you convince a type checker that a broader type is actually more specific, for instance, that an object of type ``Shape`` is actually of the narrower type ``Square``.
 
 
 Type narrowing expressions
@@ -16,31 +14,30 @@ Type narrowing expressions
 
 The simplest way to narrow a type is to use one of the supported expressions:
 
-- :py:func:`type` like in ``type(obj) is int`` will narrow ``obj`` to have ``int`` type
 - :py:func:`isinstance` like in ``isinstance(obj, float)`` will narrow ``obj`` to have ``float`` type
 - :py:func:`issubclass` like in ``issubclass(cls, MyClass)`` will narrow ``cls`` to be ``Type[MyClass]``
+- :py:func:`type` like in ``type(obj) is int`` will narrow ``obj`` to have ``int`` type
 
-It is important to understand that type narrowing happens in a specific context.
-It can be a single ``if`` branch:
+Type narrowing is contextual. For example, based on the condition, mypy will narrow an expression only within an ``if`` branch:
 
 .. code-block:: python
 
   def function(arg: object):
       if isinstance(arg, int):
-          # Type is narrowed for this ``if`` branch context only
+          # Type is narrowed within the ``if`` branch only
           reveal_type(arg)  # Revealed type: "builtins.int"
       elif isinstance(arg, str) or isinstance(arg, bool):
-          # This ``if`` branch has new context for narrowing:
+          # Type is narrowed differently within this ``elif`` branch:
           reveal_type(arg)  # Revealed type: "builtins.str | builtins.bool"
 
-          # Contexts can be nested:
+          # Subsequent narrowing operations will narrow the type further
           if isinstance(arg, bool):
               reveal_type(arg)  # Revealed type: "builtins.bool"
 
-      # In the main context type won't be changed:
+      # Back outside of the ``if`` statement, the type isn't narrowed:
       reveal_type(arg)  # Revealed type: "builtins.object"
 
-We can also use reverse logic as well:
+Mypy understands the implications `return` or exception raising can have for what type an object could be:
 
 .. code-block:: python
 
