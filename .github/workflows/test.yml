@@ -1,4 +1,4 @@
-name: main
+name: Run tests
 
 on:
   push:
@@ -10,17 +10,20 @@ on:
     - '**/*.rst'
     - '**/*.md'
     - .gitignore
-    - .travis.yml
     - CREDITS
     - LICENSE
 
 jobs:
-  build:
+  main:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        name: [windows-py37-32, windows-py37-64]
+        name: [windows-py37-32, windows-py37-64,
+               ubuntu-py37, ubuntu-py38,
+               ubuntu-py36-mypyc, ubuntu-py39-mypyc,
+               macos-py36, ubuntu-py-36-debug-build,
+               type-checking, code-style]
         include:
         - name: windows-py37-32
           python: '3.7'
@@ -32,6 +35,55 @@ jobs:
           arch: x64
           os: windows-latest
           toxenv: py37
+        - name: ubuntu-py37
+          python: '3.7'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: py
+          tox_extra_args: "-n 2"
+        - name: ubuntu-py38
+          python: '3.8'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: py
+          tox_extra_args: "-n 2"
+        - name: ubuntu-py36-mypyc
+          python: '3.6'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: py
+          tox_extra_args: "-n 2"
+          test_mypyc: true
+        - name: ubuntu-py39-mypyc
+          python: '3.9'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: py
+          tox_extra_args: "-n 2"
+          test_mypyc: true
+        - name: macos-py36
+          python: '3.6'
+          arch: x64
+          os: macos-latest
+          toxenv: py
+          tox_extra_args: "-n 2 mypyc/test/test_run.py mypyc/test/test_external.py"
+        - name: ubuntu-py-36-debug-build
+          python: '3.6.8'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: py36
+          tox_extra_args: "-n 2 mypyc/test/test_run.py mypyc/test/test_external.py"
+          debug_build: true
+        - name: type-checking
+          python: '3.7'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: type
+        - name: code-style
+          python: '3.7'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: lint
 
     steps:
     - uses: actions/checkout@v2
@@ -39,9 +91,42 @@ jobs:
       with:
         python-version: ${{ matrix.python }}
         architecture: ${{ matrix.arch }}
-    - name: install tox
+    - name: Debug build
+      if: ${{ matrix.debug_build }}
+      run: |
+        PYTHONVERSION=${{ matrix.python }}
+        PYTHONDIR=~/python-debug/python-$PYTHONVERSION
+        VENV=$PYTHONDIR/env
+        ./misc/build-debug-python.sh $PYTHONVERSION $PYTHONDIR $VENV
+        source $VENV/bin/activate
+    - name: Install tox
       run: pip install --upgrade 'setuptools!=50' 'virtualenv<16.7.11' tox==3.20.1
-    - name: setup tox environment
+    - name: Compiled with mypyc
+      if: ${{ matrix.test_mypyc }}
+      run: |
+        pip install -r test-requirements.txt
+        CC=clang MYPYC_OPT_LEVEL=0 python3 setup.py --use-mypyc build_ext --inplace
+    - name: Setup tox environment
       run: tox -e ${{ matrix.toxenv }} --notest
-    - name: test
-      run: tox -e ${{ matrix.toxenv }} --skip-pkg-install
+    - name: Test
+      run: tox -e ${{ matrix.toxenv }} --skip-pkg-install -- ${{ matrix.tox_extra_args }}
+
+  python-nightly:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: '3.10-dev'
+    - name: Install tox
+      run: |
+        pip install -U pip==21.2.3 setuptools
+        pip install --upgrade 'setuptools!=50' virtualenv==20.4.7 tox==3.20.1
+    - name: Setup tox environment
+      run: tox -e py --notest
+    - name: Test
+      run: tox -e py --skip-pkg-install -- "-n 2"
+      continue-on-error: true
+    - name: Mark as a success
+      run: exit 0
+

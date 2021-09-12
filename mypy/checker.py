@@ -346,8 +346,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # print("XXX in pass %d, class %s, function %s" %
                     #       (self.pass_num, type_name, node.fullname or node.name))
                     done.add(node)
-                    with self.tscope.class_scope(active_typeinfo) if active_typeinfo else nothing():
-                        with self.scope.push_class(active_typeinfo) if active_typeinfo else nothing():
+                    with self.tscope.class_scope(active_typeinfo) if active_typeinfo \
+                            else nothing():
+                        with self.scope.push_class(active_typeinfo) if active_typeinfo \
+                                else nothing():
                             self.check_partial(node)
             return True
 

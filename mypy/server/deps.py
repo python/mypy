@@ -82,7 +82,6 @@ Test cases for this module live in 'test-data/unit/deps*.test'.
 from typing import Dict, List, Set, Optional, Tuple
 from typing_extensions import DefaultDict
 
-from mypy.backports import nullcontext
 from mypy.checkmember import bind_self
 from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, ClassDef, AssignmentStmt, NameExpr, MemberExpr, Import,
@@ -240,8 +239,9 @@ class DependencyVisitor(TraverserVisitor):
             self.is_class = old_is_class
 
     def visit_newtype_expr(self, o: NewTypeExpr) -> None:
-        with self.scope.class_scope(o.info) if o.info else nullcontext():
-            self.process_type_info(o.info)
+        if o.info:
+            with self.scope.class_scope(o.info):
+                self.process_type_info(o.info)
 
     def process_type_info(self, info: TypeInfo) -> None:
         target = self.scope.current_full_target()
