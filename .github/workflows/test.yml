@@ -10,7 +10,6 @@ on:
     - '**/*.rst'
     - '**/*.md'
     - .gitignore
-    - .travis.yml
     - CREDITS
     - LICENSE
 

@@ -9,7 +9,6 @@ on:
     - '**/*.rst'
     - '**/*.md'
     - .gitignore
-    - .travis.yml
     - CREDITS
     - LICENSE
 
@@ -22,4 +21,6 @@ jobs:
         with:
           python-version: '3.7'
       - name: Trigger script
+        env:
+          WHEELS_PUSH_TOKEN: ${{ secrets.WHEELS_PUSH_TOKEN }}
         run: ./misc/trigger_wheel_build.sh
