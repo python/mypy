@@ -188,6 +188,10 @@ def generate_c_function_stub(module: ModuleType,
                                         args=infer_arg_sig_from_anon_docstring(
                                             sigs.get(name, '(*args, **kwargs)')),
                                         ret_type=ret_type)]
+        elif class_name and self_var:
+            args = inferred[0].args
+            if not args or args[0].name != self_var:
+                args.insert(0, ArgSig(name=self_var))
 
     is_overloaded = len(inferred) > 1 if inferred else False
     if is_overloaded:
