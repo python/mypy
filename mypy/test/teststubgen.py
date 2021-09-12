@@ -761,6 +761,19 @@ class StubgencSuite(unittest.TestCase):
         assert_equal(output, ['def test(self, arg0: int) -> Any: ...'])
         assert_equal(imports, [])
 
+    def test_generate_c_type_classmethod(self) -> None:
+        class TestClass:
+            @classmethod
+            def test(cls, arg0: str) -> None:
+                pass
+        output = []  # type: List[str]
+        imports = []  # type: List[str]
+        mod = ModuleType(TestClass.__module__, '')
+        generate_c_function_stub(mod, 'test', TestClass.test, output, imports,
+                                 self_var='cls', class_name='TestClass')
+        assert_equal(output, ['def test(cls, *args, **kwargs) -> Any: ...'])
+        assert_equal(imports, [])
+
     def test_generate_c_type_with_docstring_empty_default(self) -> None:
         class TestClass:
             def test(self, arg0: str = "") -> None:
