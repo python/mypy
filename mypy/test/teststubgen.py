@@ -187,6 +187,8 @@ class StubgenUtilSuite(unittest.TestCase):
     def test_infer_sig_from_docstring(self) -> None:
         assert_equal(infer_sig_from_docstring('\nfunc(x) - y', 'func'),
                      [FunctionSig(name='func', args=[ArgSig(name='x')], ret_type='Any')])
+        assert_equal(infer_sig_from_docstring('\nfunc(x)', 'func'),
+                     [FunctionSig(name='func', args=[ArgSig(name='x')], ret_type='Any')])
 
         assert_equal(infer_sig_from_docstring('\nfunc(x, Y_a=None)', 'func'),
                      [FunctionSig(name='func',
@@ -217,6 +219,13 @@ class StubgenUtilSuite(unittest.TestCase):
         assert_equal(infer_sig_from_docstring('\nfunc(x: int=3)', 'func'),
                      [FunctionSig(name='func', args=[ArgSig(name='x', type='int', default=True)],
                                   ret_type='Any')])
+
+        assert_equal(infer_sig_from_docstring('\nfunc(x=3)', 'func'),
+                     [FunctionSig(name='func', args=[ArgSig(name='x', type=None, default=True)],
+                                  ret_type='Any')])
+
+        assert_equal(infer_sig_from_docstring('\nfunc() -> int', 'func'),
+                     [FunctionSig(name='func', args=[], ret_type='int')])
 
         assert_equal(infer_sig_from_docstring('\nfunc(x: int=3) -> int', 'func'),
                      [FunctionSig(name='func', args=[ArgSig(name='x', type='int', default=True)],
