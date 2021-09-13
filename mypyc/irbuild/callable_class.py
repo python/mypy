@@ -105,8 +105,8 @@ def add_get_to_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
     """Generate the '__get__' method for a callable class."""
     line = fn_info.fitem.line
     with builder.enter_method(
-        fn_info.callable_class.ir, '__get__', object_rprimitive, fn_info,
-        self_type=object_rprimitive):
+            fn_info.callable_class.ir, '__get__', object_rprimitive, fn_info,
+            self_type=object_rprimitive):
         instance = builder.add_argument('instance', object_rprimitive)
         builder.add_argument('owner', object_rprimitive)
 
