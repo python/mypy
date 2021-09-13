@@ -24,8 +24,7 @@ deferral if they can't be satisfied. Initially every module in the SCC
 will be incomplete.
 """
 
-import contextlib
-from typing import List, Tuple, Optional, Union, Callable, Iterator
+from typing import List, Tuple, Optional, Union, Callable
 from typing_extensions import TYPE_CHECKING
 
 from mypy.backports import nullcontext
