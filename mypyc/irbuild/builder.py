@@ -13,7 +13,7 @@ functions are transformed in mypyc.irbuild.function.
 from contextlib import contextmanager
 
 from mypyc.irbuild.prepare import RegisterImplInfo
-from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any
+from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any, Iterator
 from typing_extensions import overload
 from mypy.backports import OrderedDict
 
@@ -1011,8 +1011,8 @@ class IRBuilder:
                      name: str,
                      ret_type: RType,
                      fn_info: Union[FuncInfo, str] = '',
-                     self_type: Optional[RType] = None) -> None:
-        """Generating IR for a method.
+                     self_type: Optional[RType] = None) -> Iterator[None]:
+        """Generate IR for a method.
 
         If the method takes arguments, you should immediately afterwards call
         add_argument() for each non-self argument (self is created implicitly).
