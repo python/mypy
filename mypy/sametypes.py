@@ -159,7 +159,7 @@ class SameTypeVisitor(TypeVisitor[bool]):
 
     def visit_overloaded(self, left: Overloaded) -> bool:
         if isinstance(self.right, Overloaded):
-            return is_same_types(left.items(), self.right.items())
+            return is_same_types(left.items, self.right.items)
         else:
             return False
 

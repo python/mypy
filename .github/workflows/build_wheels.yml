@@ -1,0 +1,26 @@
+name: Build wheels
+
+on:
+  push:
+    branches: [master]
+    tags: ['*']
+    paths-ignore:
+    - 'docs/**'
+    - '**/*.rst'
+    - '**/*.md'
+    - .gitignore
+    - CREDITS
+    - LICENSE
+
+jobs:
+  build-wheels:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.7'
+      - name: Trigger script
+        env:
+          WHEELS_PUSH_TOKEN: ${{ secrets.WHEELS_PUSH_TOKEN }}
+        run: ./misc/trigger_wheel_build.sh
