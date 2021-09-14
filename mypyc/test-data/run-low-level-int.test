@@ -1,0 +1,44 @@
+[case testLowLevelIntBasics]
+from typing import List
+
+MYPY = False
+if MYPY:
+    from mypy_extensions import i64
+
+from testutil import assertRaises
+
+def inc(n: i64) -> i64:
+    return n + 1
+
+def test_inc() -> None:
+    n = 1
+    m = 2
+    assert inc(n) == m
+
+def min_ll(x: i64, y: i64) -> i64:
+    if x < y:
+        return x
+    else:
+        return y
+
+def test_min() -> None:
+    assert min_ll(1, 2) == 1
+    assert min_ll(2, 1) == 1
+    assert min_ll(1, 1) == 1
+
+def get_item(a: List[i64], n: i64) -> i64:
+    return a[n]
+
+def test_get_list_item() -> None:
+    a = [1, 6, -2]
+    assert get_item(a, 0) == 1
+    assert get_item(a, 1) == 6
+    assert get_item(a, 2) == -2
+    assert get_item(a, -1) == -2
+    assert get_item(a, -2) == 6
+    assert get_item(a, -3) == 1
+    with assertRaises(IndexError, "list index out of range"):
+        get_item(a, 3)
+    with assertRaises(IndexError, "list index out of range"):
+        get_item(a, -4)
+    # TODO: Very large/small values and indexes
