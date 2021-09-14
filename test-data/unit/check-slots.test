@@ -68,6 +68,22 @@ class A:
 [builtins fixtures/tuple.pyi]
 
 
+[case testSlotsDefinitionWithClassVar]
+class A:
+    __slots__ = ('a',)
+    b = 4
+
+    def __init__(self) -> None:
+        self.a = 1
+
+        # You cannot override class-level variables, but you can use them:
+        b = self.b
+        self.b = 2  # E: Trying to assign name "b" that is not in "__slots__" of type "__main__.A"
+
+        self.c = 3  # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.A"
+[builtins fixtures/tuple.pyi]
+
+
 [case testSlotsDefinitionMultipleVars1]
 class A:
     __slots__ = __fields__ = ("a", "b")
@@ -75,7 +91,6 @@ class A:
         self.x = 1
         self.y = 2
 [builtins fixtures/tuple.pyi]
-
 
 
 [case testSlotsDefinitionMultipleVars2]

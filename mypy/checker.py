@@ -2086,15 +2086,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_assignment(self, lvalue: Lvalue, rvalue: Expression, infer_lvalue_type: bool = True,
                          new_syntax: bool = False) -> None:
         """Type check a single assignment: lvalue = rvalue."""
-        if isinstance(lvalue, MemberExpr) and lvalue.node:
-            name = lvalue.node.name
+        if isinstance(lvalue, MemberExpr):
             inst = get_proper_type(self.expr_checker.accept(lvalue.expr))
             if (isinstance(inst, Instance) and
                     inst.type.slots is not None and
-                    name not in inst.type.slots):
+                    lvalue.name not in inst.type.slots):
                 self.fail(
                     'Trying to assign name "{}" that is not in "__slots__" of type "{}"'.format(
-                        name, inst.type.fullname,
+                        lvalue.name, inst.type.fullname,
                     ),
                     lvalue,
                 )
