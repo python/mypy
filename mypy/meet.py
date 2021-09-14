@@ -146,6 +146,10 @@ def is_overlapping_types(left: Type,
     If 'prohibit_none_typevar_overlap' is True, we disallow None from overlapping with
     TypeVars (in both strict-optional and non-strict-optional mode).
     """
+    if isinstance(left, TypeGuardedType) or isinstance(right, TypeGuardedType):
+        # A type guard forces the new type even if it doesn't overlap the old.
+        return True
+
     left, right = get_proper_types((left, right))
 
     def _is_overlapping_types(left: Type, right: Type) -> bool:
