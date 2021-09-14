@@ -1512,7 +1512,7 @@ class MessageBuilder:
                         add_class_or_static_decorator: bool = False,
                         allow_dups: bool = False,
                         code: Optional[ErrorCode] = None) -> None:
-        for item in tp.items()[:max_items]:
+        for item in tp.items[:max_items]:
             self.note('@overload', context, offset=offset, allow_dups=allow_dups, code=code)
 
             if add_class_or_static_decorator:
@@ -1522,7 +1522,7 @@ class MessageBuilder:
 
             self.note(pretty_callable(item), context,
                       offset=offset, allow_dups=allow_dups, code=code)
-        left = len(tp.items()) - max_items
+        left = len(tp.items) - max_items
         if left > 0:
             msg = '<{} more overload{} not shown>'.format(left, plural_s(left))
             self.note(msg, context, offset=offset, allow_dups=allow_dups, code=code)
@@ -1535,11 +1535,11 @@ class MessageBuilder:
                                 max_items: int,
                                 code: ErrorCode) -> None:
         if not targets:
-            targets = func.items()
+            targets = func.items
 
         shown = min(max_items, len(targets))
         max_matching = len(targets)
-        max_available = len(func.items())
+        max_available = len(func.items)
 
         # If there are 3 matches but max_items == 2, we might as well show
         # all three items instead of having the 3rd item be an error message.
@@ -1771,7 +1771,7 @@ def format_type_inner(typ: Type,
         if func.is_type_obj():
             # The type of a type object type can be derived from the
             # return type (this always works).
-            return format(TypeType.make_normalized(erase_type(func.items()[0].ret_type)))
+            return format(TypeType.make_normalized(erase_type(func.items[0].ret_type)))
         elif isinstance(func, CallableType):
             return_type = format(func.ret_type)
             if func.is_ellipsis_args:

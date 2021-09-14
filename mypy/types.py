@@ -931,6 +931,7 @@ class FunctionLike(ProperType):
     @abstractmethod
     def type_object(self) -> mypy.nodes.TypeInfo: pass
 
+    @property
     @abstractmethod
     def items(self) -> List['CallableType']: pass
 
@@ -1196,6 +1197,7 @@ class CallableType(FunctionLike):
         else:
             return None
 
+    @property
     def items(self) -> List['CallableType']:
         return [self]
 
@@ -1282,6 +1284,7 @@ class Overloaded(FunctionLike):
         self._items = items
         self.fallback = items[0].fallback
 
+    @property
     def items(self) -> List[CallableType]:
         return self._items
 
@@ -1311,16 +1314,16 @@ class Overloaded(FunctionLike):
         return visitor.visit_overloaded(self)
 
     def __hash__(self) -> int:
-        return hash(tuple(self.items()))
+        return hash(tuple(self.items))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Overloaded):
             return NotImplemented
-        return self.items() == other.items()
+        return self.items == other.items
 
     def serialize(self) -> JsonDict:
         return {'.class': 'Overloaded',
-                'items': [t.serialize() for t in self.items()],
+                'items': [t.serialize() for t in self.items],
                 }
 
     @classmethod
@@ -2101,7 +2104,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
     def visit_overloaded(self, t: Overloaded) -> str:
         a = []
-        for i in t.items():
+        for i in t.items:
             a.append(i.accept(self))
         return 'Overload({})'.format(', '.join(a))
 
@@ -2204,7 +2207,7 @@ def strip_type(typ: Type) -> ProperType:
         return typ.copy_modified(name=None)
     elif isinstance(typ, Overloaded):
         return Overloaded([cast(CallableType, strip_type(item))
-                           for item in typ.items()])
+                           for item in typ.items])
     else:
         return typ
 

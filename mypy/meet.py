@@ -131,7 +131,7 @@ def get_possible_variants(typ: Type) -> List[Type]:
     elif isinstance(typ, Overloaded):
         # Note: doing 'return typ.items()' makes mypy
         # infer a too-specific return type of List[CallableType]
-        return list(typ.items())
+        return list(typ.items)
     else:
         return [typ]
 
@@ -570,8 +570,8 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         # as TypeJoinVisitor.visit_overloaded().
         s = self.s
         if isinstance(s, FunctionLike):
-            if s.items() == t.items():
-                return Overloaded(t.items())
+            if s.items == t.items:
+                return Overloaded(t.items)
             elif is_subtype(s, t):
                 return s
             elif is_subtype(t, s):

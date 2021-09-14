@@ -83,7 +83,7 @@ class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
         return out
 
     def visit_overloaded(self, t: types.Overloaded) -> Set[str]:
-        return self._visit(t.items()) | self._visit(t.fallback)
+        return self._visit(t.items) | self._visit(t.fallback)
 
     def visit_tuple_type(self, t: types.TupleType) -> Set[str]:
         return self._visit(t.items) | self._visit(t.partial_fallback)

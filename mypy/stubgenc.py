@@ -182,12 +182,17 @@ def generate_c_function_stub(module: ModuleType,
                 del inferred[-1]
         if not inferred:
             if class_name and name not in sigs:
-                inferred = [FunctionSig(name, args=infer_method_sig(name), ret_type=ret_type)]
+                inferred = [FunctionSig(name, args=infer_method_sig(name, self_var),
+                                        ret_type=ret_type)]
             else:
                 inferred = [FunctionSig(name=name,
                                         args=infer_arg_sig_from_anon_docstring(
                                             sigs.get(name, '(*args, **kwargs)')),
                                         ret_type=ret_type)]
+        elif class_name and self_var:
+            args = inferred[0].args
+            if not args or args[0].name != self_var:
+                args.insert(0, ArgSig(name=self_var))
 
     is_overloaded = len(inferred) > 1 if inferred else False
     if is_overloaded:
@@ -438,7 +443,7 @@ def is_skipped_attribute(attr: str) -> bool:
             )
 
 
-def infer_method_sig(name: str) -> List[ArgSig]:
+def infer_method_sig(name: str, self_var: Optional[str] = None) -> List[ArgSig]:
     args: Optional[List[ArgSig]] = None
     if name.startswith('__') and name.endswith('__'):
         name = name[2:-2]
@@ -487,4 +492,4 @@ def infer_method_sig(name: str) -> List[ArgSig]:
     if args is None:
         args = [ArgSig(name='*args'),
                 ArgSig(name='**kwargs')]
-    return [ArgSig(name='self')] + args
+    return [ArgSig(name=self_var or 'self')] + args

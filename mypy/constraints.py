@@ -552,7 +552,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
 
     def visit_overloaded(self, template: Overloaded) -> List[Constraint]:
         res: List[Constraint] = []
-        for t in template.items():
+        for t in template.items:
             res.extend(infer_constraints(t, self.actual, self.direction))
         return res
 
@@ -560,7 +560,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         if isinstance(self.actual, CallableType):
             return infer_constraints(template.item, self.actual.ret_type, self.direction)
         elif isinstance(self.actual, Overloaded):
-            return infer_constraints(template.item, self.actual.items()[0].ret_type,
+            return infer_constraints(template.item, self.actual.items[0].ret_type,
                                      self.direction)
         elif isinstance(self.actual, TypeType):
             return infer_constraints(template.item, self.actual.item, self.direction)
@@ -583,7 +583,7 @@ def neg_op(op: int) -> int:
 
 def find_matching_overload_item(overloaded: Overloaded, template: CallableType) -> CallableType:
     """Disambiguate overload item against a template."""
-    items = overloaded.items()
+    items = overloaded.items
     for item in items:
         # Return type may be indeterminate in the template, so ignore it when performing a
         # subtype check.

@@ -76,9 +76,9 @@ def type_object_type_from_function(signature: FunctionLike,
     default_self = fill_typevars(info)
     if not is_new and not info.is_newtype:
         orig_self_types = [(it.arg_types[0] if it.arg_types and it.arg_types[0] != default_self
-                            and it.arg_kinds[0] == ARG_POS else None) for it in signature.items()]
+                            and it.arg_kinds[0] == ARG_POS else None) for it in signature.items]
     else:
-        orig_self_types = [None] * len(signature.items())
+        orig_self_types = [None] * len(signature.items)
 
     # The __init__ method might come from a generic superclass 'def_info'
     # with type variables that do not map identically to the type variables of
@@ -104,7 +104,7 @@ def type_object_type_from_function(signature: FunctionLike,
         # Overloaded __init__/__new__.
         assert isinstance(signature, Overloaded)
         items: List[CallableType] = []
-        for item, orig_self in zip(signature.items(), orig_self_types):
+        for item, orig_self in zip(signature.items, orig_self_types):
             items.append(class_callable(item, info, fallback, special_sig, is_new, orig_self))
         return Overloaded(items)
 
@@ -213,7 +213,7 @@ def bind_self(method: F, original_type: Optional[Type] = None, is_classmethod: b
 
     if isinstance(method, Overloaded):
         return cast(F, Overloaded([bind_self(c, original_type, is_classmethod)
-                                   for c in method.items()]))
+                                   for c in method.items]))
     assert isinstance(method, CallableType)
     func = method
     if not func.arg_types:

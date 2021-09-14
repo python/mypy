@@ -529,36 +529,35 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.errors.set_file(file_node.path, file_node.fullname, scope=scope)
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname
-        scope.enter_file(self.cur_mod_id)
-        self._is_stub_file = file_node.path.lower().endswith('.pyi')
-        self._is_typeshed_stub_file = is_typeshed_file(file_node.path)
-        self.globals = file_node.names
-        self.tvar_scope = TypeVarLikeScope()
+        with scope.module_scope(self.cur_mod_id):
+            self._is_stub_file = file_node.path.lower().endswith('.pyi')
+            self._is_typeshed_stub_file = is_typeshed_file(file_node.path)
+            self.globals = file_node.names
+            self.tvar_scope = TypeVarLikeScope()
 
-        self.named_tuple_analyzer = NamedTupleAnalyzer(options, self)
-        self.typed_dict_analyzer = TypedDictAnalyzer(options, self, self.msg)
-        self.enum_call_analyzer = EnumCallAnalyzer(options, self)
-        self.newtype_analyzer = NewTypeAnalyzer(options, self, self.msg)
+            self.named_tuple_analyzer = NamedTupleAnalyzer(options, self)
+            self.typed_dict_analyzer = TypedDictAnalyzer(options, self, self.msg)
+            self.enum_call_analyzer = EnumCallAnalyzer(options, self)
+            self.newtype_analyzer = NewTypeAnalyzer(options, self, self.msg)
 
-        # Counter that keeps track of references to undefined things potentially caused by
-        # incomplete namespaces.
-        self.num_incomplete_refs = 0
+            # Counter that keeps track of references to undefined things potentially caused by
+            # incomplete namespaces.
+            self.num_incomplete_refs = 0
 
-        if active_type:
-            self.incomplete_type_stack.append(False)
-            scope.enter_class(active_type)
-            self.enter_class(active_type.defn.info)
-            for tvar in active_type.defn.type_vars:
-                self.tvar_scope.bind_existing(tvar)
+            if active_type:
+                self.incomplete_type_stack.append(False)
+                scope.enter_class(active_type)
+                self.enter_class(active_type.defn.info)
+                for tvar in active_type.defn.type_vars:
+                    self.tvar_scope.bind_existing(tvar)
 
-        yield
+            yield
 
-        if active_type:
-            scope.leave()
-            self.leave_class()
-            self.type = None
-            self.incomplete_type_stack.pop()
-        scope.leave()
+            if active_type:
+                scope.leave_class()
+                self.leave_class()
+                self.type = None
+                self.incomplete_type_stack.pop()
         del self.options
 
     #
@@ -970,7 +969,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def check_classvar_in_signature(self, typ: ProperType) -> None:
         if isinstance(typ, Overloaded):
-            for t in typ.items():  # type: ProperType
+            for t in typ.items:  # type: ProperType
                 self.check_classvar_in_signature(t)
             return
         if not isinstance(typ, CallableType):
@@ -5110,7 +5109,7 @@ def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
         return sig.copy_modified(arg_types=[new] + sig.arg_types[1:])
     elif isinstance(sig, Overloaded):
         return Overloaded([cast(CallableType, replace_implicit_first_type(i, new))
-                           for i in sig.items()])
+                           for i in sig.items])
     else:
         assert False
 

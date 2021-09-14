@@ -59,7 +59,7 @@ def infer_decorator_signature_if_simple(dec: Decorator,
             # The outermost decorator always returns the same kind of function,
             # so we know that this is the type of the decorated function.
             orig_sig = function_type(dec.func, analyzer.named_type('__builtins__.function'))
-            sig.name = orig_sig.items()[0].name
+            sig.name = orig_sig.items[0].name
             dec.var.type = sig
 
 

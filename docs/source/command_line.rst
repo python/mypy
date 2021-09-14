@@ -565,8 +565,13 @@ of the above sections.
 
        # This won't re-export the value
        from foo import bar
+
+       # Neither will this
+       from foo import bar as bang
+
        # This will re-export it as bar and allow other modules to import it
        from foo import bar as bar
+
        # This will also re-export bar
        from foo import bar
        __all__ = ['bar']
