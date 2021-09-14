@@ -106,13 +106,20 @@ class A:
 class A:
     __slots__ = ()
     def __init__(self) -> None:
-        self.a = 1  # E: Trying to assign name "a" that is not in "__slots__" of type "__main__.A"
-        self.b = 2  # E: Trying to assign name "b" that is not in "__slots__" of type "__main__.A"
+        self.a = 1
+        self.b = 2
 
 a = A()
 a.a = 1
 a.b = 2
-a.missing = 2  # E: "A" has no attribute "missing"
+a.missing = 2
+[out]
+main:4: error: Trying to assign name "a" that is not in "__slots__" of type "__main__.A"
+main:5: error: Trying to assign name "b" that is not in "__slots__" of type "__main__.A"
+main:8: error: Trying to assign name "a" that is not in "__slots__" of type "__main__.A"
+main:9: error: Trying to assign name "b" that is not in "__slots__" of type "__main__.A"
+main:10: error: Trying to assign name "missing" that is not in "__slots__" of type "__main__.A"
+main:10: error: "A" has no attribute "missing"
 [builtins fixtures/tuple.pyi]
 
 
@@ -125,13 +132,18 @@ class B(A):
     def __init__(self) -> None:
         self.a = 1
         self.b = 2
-        self._one = 1  # E: Trying to assign name "_one" that is not in "__slots__" of type "__main__.B"
+        self._one = 1
 
 b = B()
 b.a = 1
 b.b = 2
-b.c = 3  # E: "B" has no attribute "c"
-b._two = 2  # E: "B" has no attribute "_two"
+b.c = 3
+b._two = 2
+[out]
+main:9: error: Trying to assign name "_one" that is not in "__slots__" of type "__main__.B"
+main:14: error: "B" has no attribute "c"
+main:15: error: Trying to assign name "_two" that is not in "__slots__" of type "__main__.B"
+main:15: error: "B" has no attribute "_two"
 [builtins fixtures/tuple.pyi]
 
 
@@ -148,7 +160,7 @@ class B(A):
 [builtins fixtures/tuple.pyi]
 
 
-[case testSlotsAssignmentWithMixing]
+[case testSlotsAssignmentWithMixin]
 class A:
     __slots__ = ("a",)
 class Mixin:
@@ -159,13 +171,18 @@ class B(A, Mixin):
     def __init__(self) -> None:
         self.a = 1
         self.m = 2
-        self._one = 1  # E: Trying to assign name "_one" that is not in "__slots__" of type "__main__.B"
+        self._one = 1
 
 b = B()
 b.a = 1
 b.m = 2
-b.b = 2  # E: "B" has no attribute "b"
-b._two = 2  # E: "B" has no attribute "_two"
+b.b = 2
+b._two = 2
+[out]
+main:11: error: Trying to assign name "_one" that is not in "__slots__" of type "__main__.B"
+main:16: error: "B" has no attribute "b"
+main:17: error: Trying to assign name "_two" that is not in "__slots__" of type "__main__.B"
+main:17: error: "B" has no attribute "_two"
 [builtins fixtures/tuple.pyi]
 
 
@@ -290,4 +307,71 @@ class A:
 [out]
 main:4: error: Trying to assign name "b" that is not in "__slots__" of type "__main__.A"
 main:4: error: Trying to assign name "c" that is not in "__slots__" of type "__main__.A"
+[builtins fixtures/tuple.pyi]
+
+
+[case testSlotsWithTupleCall]
+class A:
+    # TODO: for now this way of writing tuples are not recognised
+    __slots__ = tuple(("a", "b"))
+
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+        self.missing = 3
+[builtins fixtures/tuple.pyi]
+
+
+[case testSlotsWithListCall]
+class A:
+    # TODO: for now this way of writing lists are not recognised
+    __slots__ = list(("a", "b"))
+
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+        self.missing = 3
+[builtins fixtures/tuple.pyi]
+[builtins fixtures/list.pyi]
+
+
+[case testSlotsWithSetCall]
+class A:
+    # TODO: for now this way of writing sets are not recognised
+    __slots__ = set(("a", "b"))
+
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+        self.missing = 3
+[builtins fixtures/tuple.pyi]
+[builtins fixtures/set.pyi]
+
+
+[case testSlotsWithDictCall]
+class A:
+    # TODO: for now this way of writing dicts are not recognised
+    __slots__ = dict((("a", "docs"), ("b", "docs")))
+
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+        self.missing = 3
+[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+
+
+[case testSlotsWithAny]
+from typing import Any
+
+some_obj: Any
+
+class A:
+    # You can do anything with `Any`:
+    __slots__ = some_obj
+
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+        self.missing = 3
 [builtins fixtures/tuple.pyi]
