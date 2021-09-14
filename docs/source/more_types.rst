@@ -971,7 +971,7 @@ arbitrarily complex types. For example, you can define nested
 ``TypedDict``\s and containers with ``TypedDict`` items.
 Unlike most other types, mypy uses structural compatibility checking
 (or structural subtyping) with ``TypedDict``\s. A ``TypedDict`` object with
-extra items is a compatible with (a subtype of) a narrower
+extra items is compatible with (a subtype of) a narrower
 ``TypedDict``, assuming item types are compatible (*totality* also affects
 subtyping, as discussed below).
 
