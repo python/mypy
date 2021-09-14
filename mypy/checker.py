@@ -2086,18 +2086,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_assignment(self, lvalue: Lvalue, rvalue: Expression, infer_lvalue_type: bool = True,
                          new_syntax: bool = False) -> None:
         """Type check a single assignment: lvalue = rvalue."""
-        if isinstance(lvalue, MemberExpr):
-            inst = get_proper_type(self.expr_checker.accept(lvalue.expr))
-            if (isinstance(inst, Instance) and
-                    inst.type.slots is not None and
-                    lvalue.name not in inst.type.slots):
-                self.fail(
-                    'Trying to assign name "{}" that is not in "__slots__" of type "{}"'.format(
-                        lvalue.name, inst.type.fullname,
-                    ),
-                    lvalue,
-                )
-
+        self.check_assignment_to_slots(lvalue)
         if isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
             self.check_assignment_to_multiple_lvalues(lvalue.items, rvalue, rvalue,
                                                       infer_lvalue_type)
@@ -2529,6 +2518,31 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 break
                 if lv.node.is_final and not is_final_decl:
                     self.msg.cant_assign_to_final(name, lv.node.info is None, s)
+
+    def check_assignment_to_slots(self, lvalue: Lvalue) -> None:
+        if isinstance(lvalue, MemberExpr):
+            inst = get_proper_type(self.expr_checker.accept(lvalue.expr))
+            if not isinstance(inst, Instance):
+                return
+            if inst.type.slots is None:
+                return  # Slots do not exist, we can allow any assignment
+            if lvalue.name in inst.type.slots:
+                return  # We are assigning to an existing slot
+            for base_info in inst.type.mro[:-1]:
+                if base_info.names.get('__setattr__') is not None:
+                    # When type has `__setattr__` defined,
+                    # we can assign any dynamic value.
+                    # We exclude object, because it always has `__setattr__`.
+                    return
+
+            definition = inst.type.get(lvalue.name)
+            if lvalue.node or (definition and isinstance(definition.node, Var)):
+                self.fail(
+                    'Trying to assign name "{}" that is not in "__slots__" of type "{}"'.format(
+                        lvalue.name, inst.type.fullname,
+                    ),
+                    lvalue,
+                )
 
     def check_assignment_to_multiple_lvalues(self, lvalues: List[Lvalue], rvalue: Expression,
                                              context: Context,

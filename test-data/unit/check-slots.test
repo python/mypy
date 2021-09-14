@@ -81,6 +81,8 @@ class A:
         self.b = 2  # E: Trying to assign name "b" that is not in "__slots__" of type "__main__.A"
 
         self.c = 3  # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.A"
+
+A.b = 1
 [builtins fixtures/tuple.pyi]
 
 
@@ -118,7 +120,6 @@ main:4: error: Trying to assign name "a" that is not in "__slots__" of type "__m
 main:5: error: Trying to assign name "b" that is not in "__slots__" of type "__main__.A"
 main:8: error: Trying to assign name "a" that is not in "__slots__" of type "__main__.A"
 main:9: error: Trying to assign name "b" that is not in "__slots__" of type "__main__.A"
-main:10: error: Trying to assign name "missing" that is not in "__slots__" of type "__main__.A"
 main:10: error: "A" has no attribute "missing"
 [builtins fixtures/tuple.pyi]
 
@@ -142,7 +143,6 @@ b._two = 2
 [out]
 main:9: error: Trying to assign name "_one" that is not in "__slots__" of type "__main__.B"
 main:14: error: "B" has no attribute "c"
-main:15: error: Trying to assign name "_two" that is not in "__slots__" of type "__main__.B"
 main:15: error: "B" has no attribute "_two"
 [builtins fixtures/tuple.pyi]
 
@@ -181,7 +181,6 @@ b._two = 2
 [out]
 main:11: error: Trying to assign name "_one" that is not in "__slots__" of type "__main__.B"
 main:16: error: "B" has no attribute "b"
-main:17: error: Trying to assign name "_two" that is not in "__slots__" of type "__main__.B"
 main:17: error: "B" has no attribute "_two"
 [builtins fixtures/tuple.pyi]
 
@@ -237,6 +236,97 @@ b.a = 1
 b.b = 2
 b.missing = 3
 b.extra = 4  # E: "B" has no attribute "extra"
+[builtins fixtures/tuple.pyi]
+
+
+[case testSlotsAssignmentWithExplicitSetattr]
+class A:
+    __slots__ = ("a",)
+
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+
+    def __setattr__(self, k, v) -> None:
+        ...
+
+a = A()
+a.a = 1
+a.b = 2
+a.c = 3
+[builtins fixtures/tuple.pyi]
+
+
+[case testSlotsAssignmentWithParentSetattr]
+class Parent:
+    __slots__ = ()
+
+    def __setattr__(self, k, v) -> None:
+        ...
+
+class A(Parent):
+    __slots__ = ("a",)
+
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+
+a = A()
+a.a = 1
+a.b = 2
+a.c = 3
+[builtins fixtures/tuple.pyi]
+
+
+[case testSlotsAssignmentWithProps]
+class A:
+    __slots__ = ("a",)
+
+    @property
+    def first(self) -> int:
+        ...
+
+    @first.setter
+    def first(self, arg: int) -> None:
+        ...
+
+class B(A):
+    __slots__ = ("b",)
+
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 2
+
+    @property
+    def second(self) -> int:
+        ...
+
+    @second.setter
+    def second(self, arg: int) -> None:
+        ...
+
+b = B()
+b.a = 1
+b.b = 2
+b.first = 1
+b.second = 2
+b.extra = 3  # E: "B" has no attribute "extra"
+[builtins fixtures/tuple.pyi]
+[builtins fixtures/property.pyi]
+
+
+[case testSlotsAssignmentWithMethodReassign]
+class A:
+    __slots__ = ()
+
+    def __init__(self) -> None:
+        self.method = lambda: None  # E: Cannot assign to a method
+
+    def method(self) -> None:
+        ...
+
+a = A()
+a.method = lambda: None  # E: Cannot assign to a method
 [builtins fixtures/tuple.pyi]
 
 
