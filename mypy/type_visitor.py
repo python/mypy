@@ -19,7 +19,7 @@ from mypy_extensions import trait, mypyc_attr
 T = TypeVar('T')
 
 from mypy.types import (
-    Type, AnyType, CallableType, Overloaded, TupleType, TypeGuardType, TypedDictType, LiteralType,
+    Type, AnyType, CallableType, Overloaded, TupleType, TypedDictType, LiteralType,
     RawExpressionType, Instance, NoneType, TypeType,
     UnionType, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarLikeType,
     UnboundType, ErasedType, StarType, EllipsisType, TypeList, CallableArgument,
@@ -101,10 +101,6 @@ class TypeVisitor(Generic[T]):
 
     @abstractmethod
     def visit_type_alias_type(self, t: TypeAliasType) -> T:
-        pass
-
-    @abstractmethod
-    def visit_type_guard_type(self, t: TypeGuardType) -> T:
         pass
 
 
@@ -224,9 +220,6 @@ class TypeTranslator(TypeVisitor[Type]):
     def translate_types(self, types: Iterable[Type]) -> List[Type]:
         return [t.accept(self) for t in types]
 
-    def visit_type_guard_type(self, t: TypeGuardType) -> Type:
-        return TypeGuardType(t.type_guard.accept(self))
-
     def translate_variables(self,
                             variables: Sequence[TypeVarLikeType]) -> Sequence[TypeVarLikeType]:
         return variables
@@ -325,9 +318,6 @@ class TypeQuery(SyntheticTypeVisitor[T]):
 
     def visit_union_type(self, t: UnionType) -> T:
         return self.query_types(t.items)
-
-    def visit_type_guard_type(self, t: TypeGuardType) -> T:
-        return t.type_guard.accept(self)
 
     def visit_overloaded(self, t: Overloaded) -> T:
         return self.query_types(t.items)

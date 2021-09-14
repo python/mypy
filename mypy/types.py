@@ -276,14 +276,7 @@ class TypeAliasType(Type):
             self.line, self.column)
 
 
-class ProperType(Type):
-    """Not a type alias.
-
-    Every type except TypeAliasType must inherit from this type.
-    """
-
-
-class TypeGuardType(ProperType):
+class TypeGuardedType(Type):
     """Only used by find_instance_check() etc."""
     def __init__(self, type_guard: Type):
         super().__init__(line=type_guard.line, column=type_guard.column)
@@ -292,8 +285,12 @@ class TypeGuardType(ProperType):
     def __repr__(self) -> str:
         return "TypeGuard({})".format(self.type_guard)
 
-    def accept(self, visitor: 'TypeVisitor[T]') -> T:
-        return visitor.visit_type_guard_type(self)
+
+class ProperType(Type):
+    """Not a type alias.
+
+    Every type except TypeAliasType must inherit from this type.
+    """
 
 
 class TypeVarId:
@@ -1947,6 +1944,8 @@ def get_proper_type(typ: Optional[Type]) -> Optional[ProperType]:
     """
     if typ is None:
         return None
+    if isinstance(typ, TypeGuardedType):  # type: ignore[misc]
+        typ = typ.type_guard
     while isinstance(typ, TypeAliasType):
         typ = typ._expand_once()
     assert isinstance(typ, ProperType), typ
@@ -2145,9 +2144,6 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     def visit_union_type(self, t: UnionType) -> str:
         s = self.list_str(t.items)
         return 'Union[{}]'.format(s)
-
-    def visit_type_guard_type(self, t: TypeGuardType) -> str:
-        return 'TypeGuard[{}]'.format(t.type_guard.accept(self))
 
     def visit_partial_type(self, t: PartialType) -> str:
         if t.type is None:

@@ -99,7 +99,7 @@ from mypy.types import (
     Type, Instance, AnyType, NoneType, TypeVisitor, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
     FunctionLike, Overloaded, TypeOfAny, LiteralType, ErasedType, get_proper_type, ProperType,
-    TypeAliasType, TypeGuardType
+    TypeAliasType
 )
 from mypy.server.trigger import make_trigger, make_wildcard_trigger
 from mypy.util import correct_relative_import
@@ -966,9 +966,6 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
 
     def visit_uninhabited_type(self, typ: UninhabitedType) -> List[str]:
         return []
-
-    def visit_type_guard_type(self, typ: TypeGuardType) -> List[str]:
-        return typ.type_guard.accept(self)
 
     def visit_union_type(self, typ: UnionType) -> List[str]:
         triggers = []

@@ -14,7 +14,7 @@ from mypy.options import Options
 from mypy.types import (
     Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance, AnyType,
     CallableType, NoneType, ErasedType, DeletedType, TypeList, TypeVarType, SyntheticTypeVisitor,
-    StarType, PartialType, EllipsisType, UninhabitedType, TypeType, TypeGuardType, TypeVarLikeType,
+    StarType, PartialType, EllipsisType, UninhabitedType, TypeType, TypeVarLikeType,
     CallableArgument, TypeQuery, union_items, TypeOfAny, LiteralType, RawExpressionType,
     PlaceholderType, Overloaded, get_proper_type, TypeAliasType, TypeVarLikeType, ParamSpecType
 )
@@ -546,9 +546,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                                   type_guard=special,
                                   )
         return ret
-
-    def visit_type_guard_type(self, t: TypeGuardType) -> Type:
-        return t
 
     def anal_type_guard(self, t: Type) -> Optional[Type]:
         if isinstance(t, UnboundType):
