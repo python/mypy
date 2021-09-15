@@ -139,11 +139,13 @@ b = B()
 b.a = 1
 b.b = 2
 b.c = 3
+b._one = 1
 b._two = 2
 [out]
 main:9: error: Trying to assign name "_one" that is not in "__slots__" of type "__main__.B"
 main:14: error: "B" has no attribute "c"
-main:15: error: "B" has no attribute "_two"
+main:15: error: Trying to assign name "_one" that is not in "__slots__" of type "__main__.B"
+main:16: error: "B" has no attribute "_two"
 [builtins fixtures/tuple.pyi]
 
 
@@ -279,6 +281,10 @@ a.c = 3
 
 
 [case testSlotsAssignmentWithProps]
+from typing import Any
+
+custom_prop: Any
+
 class A:
     __slots__ = ("a",)
 
@@ -296,6 +302,7 @@ class B(A):
     def __init__(self) -> None:
         self.a = 1
         self.b = 2
+        self.c = 3
 
     @property
     def second(self) -> int:
@@ -305,14 +312,59 @@ class B(A):
     def second(self, arg: int) -> None:
         ...
 
+    def get_third(self) -> int:
+        ...
+
+    def set_third(self, arg: int) -> None:
+        ...
+
+    third = custom_prop(get_third, set_third)
+
 b = B()
 b.a = 1
 b.b = 2
+b.c = 3
 b.first = 1
 b.second = 2
-b.extra = 3  # E: "B" has no attribute "extra"
+b.third = 3
+b.extra = 'extra'
+[out]
+main:22: error: Trying to assign name "c" that is not in "__slots__" of type "__main__.B"
+main:43: error: Trying to assign name "c" that is not in "__slots__" of type "__main__.B"
+main:47: error: "B" has no attribute "extra"
 [builtins fixtures/tuple.pyi]
 [builtins fixtures/property.pyi]
+
+
+[case testSlotsAssignmentWithUnionProps]
+from typing import Any, Callable, Union
+
+custom_obj: Any
+
+class custom_property(object):
+    def __set__(self, *args, **kwargs):
+        ...
+
+class A:
+    __slots__ = ("a",)
+
+    def __init__(self) -> None:
+        self.a = 1
+
+    b: custom_property
+    c: Union[Any, custom_property]
+    d: Union[Callable, custom_property]
+    e: Callable
+
+a = A()
+a.a = 1
+a.b = custom_obj
+a.c = custom_obj
+a.d = custom_obj
+a.e = custom_obj
+[out]
+[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
 
 
 [case testSlotsAssignmentWithMethodReassign]
