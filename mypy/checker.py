@@ -2557,6 +2557,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if getattr(lvalue, 'node', None):
             return False  # This is a definition
 
+        typ = get_proper_type(typ)
         if typ is None or isinstance(typ, AnyType):
             return True  # Any can be literally anything, like `@propery`
         if isinstance(typ, Instance):
