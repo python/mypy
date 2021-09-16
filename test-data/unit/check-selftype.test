@@ -802,6 +802,37 @@ class Bad(metaclass=Meta):
 Good.do_x()
 Bad.do_x()  # E: Invalid self argument "Type[Bad]" to attribute function "do_x" with type "Callable[[Type[T]], T]"
 
+[case testSelfTypeProtocolClassmethodMatch]
+from typing import Type, TypeVar, Protocol
+
+T = TypeVar('T')
+
+class HasDoX(Protocol):
+    @classmethod
+    def do_x(cls: Type[T]) -> T:
+        ...
+
+class Good:
+    @classmethod
+    def do_x(cls) -> 'Good':
+        ...
+
+class Bad:
+    @classmethod
+    def do_x(cls) -> Good:
+        ...
+
+good: HasDoX = Good()
+bad: HasDoX = Bad()
+[builtins fixtures/classmethod.pyi]
+[out]
+main:21: error: Incompatible types in assignment (expression has type "Bad", variable has type "HasDoX")
+main:21: note: Following member(s) of "Bad" have conflicts:
+main:21: note:     Expected:
+main:21: note:         def do_x(cls) -> Bad
+main:21: note:     Got:
+main:21: note:         def do_x(cls) -> Good
+
 [case testSelfTypeNotSelfType]
 # Friendlier error messages for common mistakes. See #2950
 class A:
