@@ -441,7 +441,7 @@ raise MyErrorWithDefault(8)
 raise MyErrorWithDefault
 raise MyBaseError  # E: Too few arguments for "MyBaseError"
 raise MyError  # E: Too few arguments for "MyError"
-raise MyKwError  # E: Too few arguments for "MyKwError"
+raise MyKwError  # E: Missing named argument "kwonly" for "MyKwError"
 [builtins fixtures/exception.pyi]
 
 [case testRaiseExceptionType]
