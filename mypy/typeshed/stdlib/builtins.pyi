@@ -9,11 +9,13 @@ from _typeshed import (
     ReadableBuffer,
     Self,
     StrOrBytesPath,
+    SupportsAnext,
     SupportsDivMod,
     SupportsKeysAndGetItem,
     SupportsLenAndGetItem,
     SupportsLessThan,
     SupportsLessThanT,
+    SupportsNext,
     SupportsRDivMod,
     SupportsWrite,
 )
@@ -967,9 +969,9 @@ class _PathLike(Protocol[_AnyStr_co]):
 if sys.version_info >= (3, 10):
     def aiter(__iterable: AsyncIterable[_T]) -> AsyncIterator[_T]: ...
     @overload
-    async def anext(__i: AsyncIterator[_T]) -> _T: ...
+    async def anext(__i: SupportsAnext[_T]) -> _T: ...
     @overload
-    async def anext(__i: AsyncIterator[_T], default: _VT) -> _T | _VT: ...
+    async def anext(__i: SupportsAnext[_T], default: _VT) -> _T | _VT: ...
 
 if sys.version_info >= (3, 8):
     def compile(
@@ -1131,9 +1133,9 @@ def min(__iterable: Iterable[SupportsLessThanT], *, key: None = ..., default: _T
 @overload
 def min(__iterable: Iterable[_T1], *, key: Callable[[_T1], SupportsLessThan], default: _T2) -> _T1 | _T2: ...
 @overload
-def next(__i: Iterator[_T]) -> _T: ...
+def next(__i: SupportsNext[_T]) -> _T: ...
 @overload
-def next(__i: Iterator[_T], default: _VT) -> _T | _VT: ...
+def next(__i: SupportsNext[_T], default: _VT) -> _T | _VT: ...
 def oct(__number: int | SupportsIndex) -> str: ...
 
 _OpenFile = Union[StrOrBytesPath, int]

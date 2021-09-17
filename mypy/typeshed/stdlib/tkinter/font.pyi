@@ -1,3 +1,4 @@
+import _tkinter
 import sys
 import tkinter
 from typing import Any, Tuple, Union, overload
@@ -8,8 +9,16 @@ ROMAN: Literal["roman"]
 BOLD: Literal["bold"]
 ITALIC: Literal["italic"]
 
-# Can contain e.g. nested sequences ('FONT DESCRIPTIONS' in font man page)
-_FontDescription = Union[str, Font, tkinter._TkinterSequence[Any]]
+_FontDescription = Union[
+    # "Helvetica 12"
+    str,
+    # A font object constructed in Python
+    Font,
+    # ("Helvetica", 12, BOLD)
+    tkinter._TkinterSequence[Any],
+    # A font object constructed in Tcl
+    _tkinter.Tcl_Obj,
+]
 
 class _FontDict(TypedDict):
     family: str

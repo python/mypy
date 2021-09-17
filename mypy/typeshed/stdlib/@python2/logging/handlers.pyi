@@ -84,6 +84,7 @@ class SysLogHandler(Handler):
     LOG_LOCAL5: int
     LOG_LOCAL6: int
     LOG_LOCAL7: int
+    address: Tuple[str, int] | str  # undocumented
     unixsocket: bool  # undocumented
     socktype: SocketKind  # undocumented
     facility: int  # undocumented

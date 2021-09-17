@@ -1,4 +1,5 @@
 import sys
+import types
 from datetime import datetime as _datetime
 from email._header_value_parser import (
     AddressList,
@@ -11,7 +12,7 @@ from email._header_value_parser import (
 )
 from email.errors import MessageDefect
 from email.policy import Policy
-from typing import Any, Iterable, Mapping, Tuple, Type
+from typing import Any, Iterable, Tuple, Type
 
 class BaseHeader(str):
     @property
@@ -74,7 +75,7 @@ class MIMEVersionHeader:
 
 class ParameterizedMIMEHeader:
     @property
-    def params(self) -> Mapping[str, Any]: ...
+    def params(self) -> types.MappingProxyType[str, Any]: ...
     @classmethod
     def parse(cls, value: str, kwds: dict[str, Any]) -> None: ...
 
