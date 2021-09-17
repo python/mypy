@@ -185,6 +185,19 @@ p = Point(x=42, y=1337, z='whatever')
 reveal_type(p)  # N: Revealed type is "TypedDict('__main__.Point', {'x': builtins.int, 'y': builtins.int, 'z': Any})"
 [builtins fixtures/dict.pyi]
 
+[case testCannotCreateTypedDictWithClassWithFunctionUsedToCrash]
+# https://github.com/python/mypy/issues/11079
+from typing import TypedDict
+class D(TypedDict):
+    y: int
+    def x(self, key: int):  # E: Invalid statement in TypedDict definition; expected "field_name: field_type"
+        pass
+
+d = D(y=1)
+reveal_type(d)  # N: Revealed type is "TypedDict('__main__.D', {'y': builtins.int})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testCanCreateTypedDictTypeWithUnderscoreItemName]
 from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int, '_fallback': object})
