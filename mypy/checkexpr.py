@@ -3876,20 +3876,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                             allow_none_return: bool = False,
                             is_else: bool = False) -> Type:
         with self.chk.binder.frame_context(can_skip=True, fall_through=0):
-            if is_else and isinstance(node, CallExpr):
+            if map is not None:
+                self.chk.push_type_map(map)
+            if is_else and context is not None and isinstance(node, CallExpr):
                 # When calling a function on the else part,
                 # we can face a generic function with multiple type vars.
                 # When inferecing it, `context` might be used instead of real args.
                 # Usually, we don't want that.
                 # https://github.com/python/mypy/issues/11049
-                context = None
+                if not is_subtype(self.accept(node), context, ignore_type_params=True):
+                    context = None
 
             if map is None:
                 # We still need to type check node, in case we want to
                 # process it for isinstance checks later
                 self.accept(node, type_context=context, allow_none_return=allow_none_return)
                 return UninhabitedType()
-            self.chk.push_type_map(map)
             return self.accept(node, type_context=context, allow_none_return=allow_none_return)
 
     def visit_backquote_expr(self, e: BackquoteExpr) -> Type:

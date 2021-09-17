@@ -2246,6 +2246,30 @@ a = set() if f() else {0}
 a() # E: "Set[int]" not callable
 [builtins fixtures/set.pyi]
 
+[case testUnificationEmptyCustomSetLeft]
+from typing import Set, TypeVar
+T = TypeVar('T')
+class customset(Set[T]): pass
+def f(): pass
+a = customset() if f() else {1}
+a() # E: "Set[int]" not callable
+[builtins fixtures/set.pyi]
+
+[case testUnificationEmptySetRight]
+def f(): pass
+a = {0} if f() else set()
+a() # E: "Set[int]" not callable
+[builtins fixtures/set.pyi]
+
+[case testUnificationEmptyCustomSetRight]
+from typing import Set, TypeVar
+T = TypeVar('T')
+class customset(Set[T]): pass
+def f(): pass
+a = {0} if f() else customset()
+a() # E: "Set[int]" not callable
+[builtins fixtures/set.pyi]
+
 [case testUnificationEmptyDictLeft]
 def f(): pass
 a = {} if f() else {0: 0}
@@ -2298,6 +2322,28 @@ reveal_type(foo(1, "s") if x else 1)  # N: Revealed type is "Union[builtins.int*
 reveal_type(foo(1, "s") if x else "a")  # N: Revealed type is "Union[builtins.int*, builtins.str*]"
 reveal_type(foo("s", 1) if x else 1)  # N: Revealed type is "Union[builtins.str*, builtins.int*]"
 reveal_type(foo("s", 1) if x else "a")  # N: Revealed type is "Union[builtins.str*, builtins.int*]"
+[builtins fixtures/bool.pyi]
+
+[case testConditionalInferenceSelfNarrowingRight]
+from typing import Optional
+
+class C:
+    x: Optional[int]
+    def check(self) -> Optional[int]:
+        return None if self.x is None else self.x.conjugate()
+
+reveal_type(C().check())  # N: Revealed type is "Union[builtins.int, None]"
+[builtins fixtures/bool.pyi]
+
+[case testConditionalInferenceSelfNarrowingLeft]
+from typing import Optional
+
+class C:
+    x: Optional[int]
+    def check(self) -> Optional[int]:
+        return self.x.conjugate() if self.x is not None else None
+
+reveal_type(C().check())  # N: Revealed type is "Union[builtins.int, None]"
 [builtins fixtures/bool.pyi]
 
 [case testMisguidedSetItem]
