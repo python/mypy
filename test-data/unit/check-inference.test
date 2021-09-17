@@ -1975,7 +1975,7 @@ T = TypeVar('T')
 
 class A:
     def f(self) -> None:
-        self.g() # E: Too few arguments for "g" of "A"   
+        self.g() # E: Too few arguments for "g" of "A"
         self.g(1)
     @dec
     def g(self, x: str) -> None: pass
@@ -2269,6 +2269,36 @@ def f(): pass
 a = {0: [0]} if f() else {0: []}
 a() # E: "Dict[int, List[int]]" not callable
 [builtins fixtures/dict.pyi]
+
+[case testConditionalInferenceGenericFunctionRight]
+from typing import TypeVar, Union
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+
+def foo(a: T1, b: T2) -> Union[T1, T2]: pass
+x: bool
+
+reveal_type(1 if x else foo(1, "s"))  # N: Revealed type is "Union[builtins.int*, builtins.str*]"
+reveal_type("a" if x else foo(1, "s"))  # N: Revealed type is "Union[builtins.int*, builtins.str*]"
+reveal_type(1 if x else foo("s", 1))  # N: Revealed type is "Union[builtins.str*, builtins.int*]"
+reveal_type("a" if x else foo("s", 1))  # N: Revealed type is "Union[builtins.str*, builtins.int*]"
+[builtins fixtures/bool.pyi]
+
+[case testConditionalInferenceGenericFunctionLeft]
+from typing import TypeVar, Union
+
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+
+def foo(a: T1, b: T2) -> Union[T1, T2]: pass
+x: bool
+
+reveal_type(foo(1, "s") if x else 1)  # N: Revealed type is "Union[builtins.int*, builtins.str*]"
+reveal_type(foo(1, "s") if x else "a")  # N: Revealed type is "Union[builtins.int*, builtins.str*]"
+reveal_type(foo("s", 1) if x else 1)  # N: Revealed type is "Union[builtins.str*, builtins.int*]"
+reveal_type(foo("s", 1) if x else "a")  # N: Revealed type is "Union[builtins.str*, builtins.int*]"
+[builtins fixtures/bool.pyi]
 
 [case testMisguidedSetItem]
 from typing import Generic, Sequence, TypeVar

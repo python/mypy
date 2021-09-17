@@ -3836,8 +3836,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                            allow_none_return=allow_none_return)
 
         # Analyze the right branch using full type context and store the type
-        full_context_else_type = self.analyze_cond_branch(else_map, e.else_expr, context=ctx,
-                                                          allow_none_return=allow_none_return)
+        full_context_else_type = self.analyze_cond_branch(else_map, e.else_expr,
+                                                          context=ctx,
+                                                          allow_none_return=allow_none_return,
+                                                          is_else=True)
         if not mypy.checker.is_valid_inferred_type(if_type):
             # Analyze the right branch disregarding the left branch.
             else_type = full_context_else_type
@@ -3855,7 +3857,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Analyze the right branch in the context of the left
             # branch's type.
             else_type = self.analyze_cond_branch(else_map, e.else_expr, context=if_type,
-                                                 allow_none_return=allow_none_return)
+                                                 allow_none_return=allow_none_return,
+                                                 is_else=True)
 
         # Only create a union type if the type context is a union, to be mostly
         # compatible with older mypy versions where we always did a join.
@@ -3870,8 +3873,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def analyze_cond_branch(self, map: Optional[Dict[Expression, Type]],
                             node: Expression, context: Optional[Type],
-                            allow_none_return: bool = False) -> Type:
+                            allow_none_return: bool = False,
+                            is_else: bool = False) -> Type:
         with self.chk.binder.frame_context(can_skip=True, fall_through=0):
+            if is_else and isinstance(node, CallExpr):
+                # When calling a function on the else part,
+                # we can face a generic function with multiple type vars.
+                # When inferecing it, `context` might be used instead of real args.
+                # Usually, we don't want that.
+                # https://github.com/python/mypy/issues/11049
+                context = None
+
             if map is None:
                 # We still need to type check node, in case we want to
                 # process it for isinstance checks later
