@@ -304,7 +304,11 @@ class NamedTupleAnalyzer:
                 items = str_expr.value.replace(',', ' ').split()
             else:
                 self.fail(
-                    'List or tuple literal expected as the second argument to "{0}()"'.format(type_name), call)
+                    'List or tuple literal expected as the second argument to "{0}()"'.format(
+                        type_name,
+                    ),
+                    call,
+                )
                 return None
         else:
             listexpr = args[1]
