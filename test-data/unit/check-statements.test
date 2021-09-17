@@ -406,8 +406,7 @@ class MyError(BaseException): pass
 [out]
 main:5: error: Exception must be derived from BaseException
 
-[case testRaiseClassobject]
-import typing
+[case testRaiseClassObject]
 class A: pass
 class MyError(BaseException): pass
 def f(): pass
@@ -416,6 +415,19 @@ raise MyError
 raise A # E: Exception must be derived from BaseException
 raise object # E: Exception must be derived from BaseException
 raise f # E: Exception must be derived from BaseException
+[builtins fixtures/exception.pyi]
+
+[case testRaiseClassObjectCustomInit]
+class MyBaseError(BaseException):
+    def __init__(self, required) -> None:
+        ...
+class MyError(Exception):
+    def __init__(self, required) -> None:
+        ...
+raise MyBaseError(1)
+raise MyError(1)
+raise MyBaseError  # E: Too few arguments for "MyBaseError"
+raise MyError  # E: Too few arguments for "MyError"
 [builtins fixtures/exception.pyi]
 
 [case testRaiseExceptionType]

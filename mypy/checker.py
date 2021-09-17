@@ -3424,6 +3424,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             expected_type.items.append(TupleType([any_type, any_type, any_type], tuple_type))
         self.check_subtype(typ, expected_type, s, message_registry.INVALID_EXCEPTION)
 
+        if isinstance(typ, FunctionLike):
+            # https://github.com/python/mypy/issues/11089
+            self.expr_checker.check_call(typ, [], [], e)
+
     def visit_try_stmt(self, s: TryStmt) -> None:
         """Type check a try statement."""
         # Our enclosing frame will get the result if the try/except falls through.
