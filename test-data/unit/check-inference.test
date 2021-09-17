@@ -2246,18 +2246,18 @@ a = set() if f() else {0}
 a() # E: "Set[int]" not callable
 [builtins fixtures/set.pyi]
 
+[case testUnificationEmptySetRight]
+def f(): pass
+a = {0} if f() else set()
+a() # E: "Set[int]" not callable
+[builtins fixtures/set.pyi]
+
 [case testUnificationEmptyCustomSetLeft]
 from typing import Set, TypeVar
 T = TypeVar('T')
 class customset(Set[T]): pass
 def f(): pass
 a = customset() if f() else {1}
-a() # E: "Set[int]" not callable
-[builtins fixtures/set.pyi]
-
-[case testUnificationEmptySetRight]
-def f(): pass
-a = {0} if f() else set()
 a() # E: "Set[int]" not callable
 [builtins fixtures/set.pyi]
 
