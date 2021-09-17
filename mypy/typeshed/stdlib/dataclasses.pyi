@@ -1,4 +1,5 @@
 import sys
+import types
 from typing import Any, Callable, Generic, Iterable, Mapping, Tuple, Type, TypeVar, overload
 from typing_extensions import Protocol
 
@@ -77,7 +78,7 @@ class Field(Generic[_T]):
     hash: bool | None
     init: bool
     compare: bool
-    metadata: Mapping[Any, Any]
+    metadata: types.MappingProxyType[Any, Any]
     if sys.version_info >= (3, 10):
         kw_only: bool
         def __init__(

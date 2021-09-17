@@ -1,5 +1,6 @@
 import enum
 import sys
+import types
 from _typeshed import Self
 from collections import OrderedDict
 from collections.abc import Awaitable, Callable, Generator, Mapping, Sequence, Set
@@ -120,11 +121,11 @@ class Signature:
     def __init__(self, parameters: Sequence[Parameter] | None = ..., *, return_annotation: Any = ...) -> None: ...
     # TODO: can we be more specific here?
     empty: object
-
-    parameters: Mapping[str, Parameter]
-
+    @property
+    def parameters(self) -> types.MappingProxyType[str, Parameter]: ...
     # TODO: can we be more specific here?
-    return_annotation: Any
+    @property
+    def return_annotation(self) -> Any: ...
     def bind(self, *args: Any, **kwargs: Any) -> BoundArguments: ...
     def bind_partial(self, *args: Any, **kwargs: Any) -> BoundArguments: ...
     def replace(self: Self, *, parameters: Sequence[Parameter] | None = ..., return_annotation: Any = ...) -> Self: ...

@@ -17,7 +17,8 @@ from _csv import (
     unregister_dialect as unregister_dialect,
     writer as writer,
 )
-from typing import Any, Generic, Iterable, Iterator, Mapping, Sequence, Type, TypeVar, overload
+from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
+from typing import Any, Generic, Type, TypeVar, overload
 
 if sys.version_info >= (3, 8):
     from typing import Dict as _DictReadMapping
@@ -78,14 +79,14 @@ class DictReader(Generic[_T], Iterator[_DictReadMapping[_T, str]]):
     def __next__(self) -> _DictReadMapping[_T, str]: ...
 
 class DictWriter(Generic[_T]):
-    fieldnames: Sequence[_T]
+    fieldnames: Collection[_T]
     restval: Any | None
     extrasaction: str
     writer: _writer
     def __init__(
         self,
         f: Any,
-        fieldnames: Sequence[_T],
+        fieldnames: Collection[_T],
         restval: Any | None = ...,
         extrasaction: str = ...,
         dialect: _DialectLike = ...,
