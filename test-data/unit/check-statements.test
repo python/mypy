@@ -424,14 +424,24 @@ class MyBaseError(BaseException):
 class MyError(Exception):
     def __init__(self, required1, required2) -> None:
         ...
+class MyKwError(Exception):
+    def __init__(self, *, kwonly) -> None:
+        ...
+class MyErrorWithDefault(Exception):
+    def __init__(self, optional=1) -> None:
+        ...
 raise BaseException
 raise Exception
 raise BaseException(1)
 raise Exception(2)
 raise MyBaseError(4)
 raise MyError(5, 6)
+raise MyKwError(kwonly=7)
+raise MyErrorWithDefault(8)
+raise MyErrorWithDefault
 raise MyBaseError  # E: Too few arguments for "MyBaseError"
 raise MyError  # E: Too few arguments for "MyError"
+raise MyKwError  # E: Too few arguments for "MyKwError"
 [builtins fixtures/exception.pyi]
 
 [case testRaiseExceptionType]
