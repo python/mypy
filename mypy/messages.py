@@ -335,9 +335,7 @@ class MessageBuilder:
                             format_type(original_type), member, extra),
                         context,
                         code=codes.ATTR_DEFINED)
-            elif isinstance(original_type, UnionType) or (
-                    isinstance(original_type, TypeVarType) and
-                    isinstance(original_type.upper_bound, UnionType)):
+            elif isinstance(original_type, UnionType):
                 # The checker passes "object" in lieu of "None" for attribute
                 # checks, so we manually convert it back.
                 typ_format, orig_type_format = format_type_distinctly(typ, original_type)
@@ -347,6 +345,16 @@ class MessageBuilder:
                 self.fail('Item {} of {} has no attribute "{}"{}'.format(
                     typ_format, orig_type_format, member, extra), context,
                     code=codes.UNION_ATTR)
+            elif isinstance(original_type, TypeVarType):
+                bound = get_proper_type(original_type.upper_bound)
+                if isinstance(bound, UnionType):
+                    typ_fmt, bound_fmt = format_type_distinctly(typ, bound)
+                    original_type_fmt = format_type(original_type)
+                    self.fail(
+                        'Item {} of the upper bound {} of type variable {} has no '
+                        'attribute "{}"{}'.format(
+                            typ_fmt, bound_fmt, original_type_fmt, member, extra),
+                        context, code=codes.UNION_ATTR)
         return AnyType(TypeOfAny.from_error)
 
     def unsupported_operand_types(self,
