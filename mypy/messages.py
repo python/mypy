@@ -335,7 +335,9 @@ class MessageBuilder:
                             format_type(original_type), member, extra),
                         context,
                         code=codes.ATTR_DEFINED)
-            elif isinstance(original_type, UnionType):
+            elif isinstance(original_type, UnionType) or (
+                    isinstance(original_type, TypeVarType) and
+                    isinstance(original_type.upper_bound, UnionType)):
                 # The checker passes "object" in lieu of "None" for attribute
                 # checks, so we manually convert it back.
                 typ_format, orig_type_format = format_type_distinctly(typ, original_type)
