@@ -460,7 +460,11 @@ def _collect_field_args(expr: Expression) -> Tuple[bool, Dict[str, Expression]]:
         # field() only takes keyword arguments.
         args = {}
         for name, arg in zip(expr.arg_names, expr.args):
-            assert name is not None
+            if name is None:
+                # This means that `field` is used with `**` unpacking,
+                # the best we can do for now is not to fail.
+                # TODO: we can infer what's inside `**` and try to collect it.
+                return True, {}
             args[name] = arg
         return True, args
     return False, {}
