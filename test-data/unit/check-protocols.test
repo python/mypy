@@ -2124,7 +2124,7 @@ class B(Protocol):
     def execute(self, stmt: Any, *args: Any, **kwargs: Any) -> None: ...
     def cool(self) -> None: ...
 
-def func1(arg: A) -> None: ...        
+def func1(arg: A) -> None: ...
 def func2(arg: Optional[A]) -> None: ...
 
 x: B
@@ -2647,3 +2647,39 @@ class DataArray(ObjectHashable):
     def f(self, x: Hashable) -> None:
         reveal_type([self, x])  # N: Revealed type is "builtins.list[builtins.object*]"
 [builtins fixtures/tuple.pyi]
+
+
+[case testPartialAttributeNoneType]
+# flags: --no-strict-optional
+from typing import Optional, Protocol, runtime_checkable
+
+@runtime_checkable
+class MyProtocol(Protocol):
+    def is_valid(self) -> bool: ...
+    text: Optional[str]
+
+class MyClass:
+    text = None
+    def is_valid(self) -> bool:
+        reveal_type(self.text)  # N: Revealed type is "None"
+        assert isinstance(self, MyProtocol)
+[builtins fixtures/isinstance.pyi]
+[typing fixtures/typing-full.pyi]
+
+
+[case testPartialAttributeNoneTypeStrictOptional]
+# flags: --strict-optional
+from typing import Optional, Protocol, runtime_checkable
+
+@runtime_checkable
+class MyProtocol(Protocol):
+    def is_valid(self) -> bool: ...
+    text: Optional[str]
+
+class MyClass:
+    text = None
+    def is_valid(self) -> bool:
+        reveal_type(self.text)  # N: Revealed type is "None"
+        assert isinstance(self, MyProtocol)
+[builtins fixtures/isinstance.pyi]
+[typing fixtures/typing-full.pyi]
