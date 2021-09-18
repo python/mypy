@@ -614,7 +614,7 @@ argument is itself generic:
 
 .. code-block:: python
 
-  T = TypeVar('T')
+  T = TypeVar('T', covariant=True)
   S = TypeVar('S')
 
    class Storage(Generic[T]):
