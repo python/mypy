@@ -821,21 +821,24 @@ class Y(Generic[T]):
 [case testTypeVarBoundToUnionAttributeAccess]
 from typing import Union, TypeVar
 
-class U: pass
-class W: pass
+class U:
+    a: float
+class V:
+    b: float
+class W:
+    c: float
 
-T = TypeVar("T", bound=Union[U, W])
+T = TypeVar("T", bound=Union[U, V, W])
 
 def f(x: T) -> None:
-    x.a
-    x.b = 1.0
-    del x.c
+    x.a  # E
+    x.b = 1.0  # E
+    del x.c  # E
 
 [out]
-main:9: error: Item "U" of "T" has no attribute "a"
-main:9: error: Item "W" of "T" has no attribute "a"
-main:10: error: Item "U" of "T" has no attribute "b"
-main:10: error: Item "W" of "T" has no attribute "b"
-main:11: error: Item "U" of "T" has no attribute "c"
-main:11: error: Item "W" of "T" has no attribute "c"
-
+main:13: error: Item "V" of "T" has no attribute "a"
+main:13: error: Item "W" of "T" has no attribute "a"
+main:14: error: Item "U" of "T" has no attribute "b"
+main:14: error: Item "W" of "T" has no attribute "b"
+main:15: error: Item "U" of "T" has no attribute "c"
+main:15: error: Item "V" of "T" has no attribute "c"
