@@ -365,6 +365,30 @@ main.py:6: error: Unsupported operand types for + ("int" and "str")
 main.py:7: error: Module has no attribute "y"
 main.py:8: error: Unsupported operand types for + (Module and "int")
 
+[case testConfigFollowImportsSysPath]
+# cmd: mypy main.py
+[file main.py]
+from a import x
+x + 0
+x + ''  # E
+import a
+a.x + 0
+a.x + ''  # E
+a.y  # E
+a + 0  # E
+[file mypy.ini]
+\[mypy]
+follow_imports = normal
+[file pypath/a/__init__.py]
+x = 0
+x += ''  # Error reported here
+[file pypath/a/py.typed]
+[out]
+main.py:3: error: Unsupported operand types for + ("int" and "str")
+main.py:6: error: Unsupported operand types for + ("int" and "str")
+main.py:7: error: Module has no attribute "y"
+main.py:8: error: Unsupported operand types for + (Module and "int")
+
 [case testConfigFollowImportsSilent]
 # cmd: mypy main.py
 [file main.py]

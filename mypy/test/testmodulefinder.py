@@ -1,16 +1,60 @@
 import os
+from typing import Iterator, List, Tuple
 
 from mypy.options import Options
 from mypy.modulefinder import (
     FindModuleCache,
     SearchPaths,
     ModuleNotFoundReason,
-    expand_site_packages
 )
 
 from mypy.test.helpers import Suite, assert_equal
 from mypy.test.config import package_path
 data_path = os.path.relpath(os.path.join(package_path, "modulefinder"))
+
+
+def expand_site_packages(site_packages: List[str]) -> Tuple[List[str], List[str]]:
+    """Mimic the .pth imports in site-packages directories."""
+    egg_dirs: List[str] = []
+    for dir in site_packages:
+        if not os.path.isdir(dir):
+            continue
+        pth_filenames = sorted(name for name in os.listdir(dir) if name.endswith(".pth"))
+        for pth_filename in pth_filenames:
+            egg_dirs.extend(_parse_pth_file(dir, pth_filename))
+
+    return egg_dirs, site_packages
+
+
+def _parse_pth_file(dir: str, pth_filename: str) -> Iterator[str]:
+    """
+    Mimics a subset of .pth import hook from Lib/site.py
+    See https://github.com/python/cpython/blob/3.5/Lib/site.py#L146-L185
+    """
+
+    pth_file = os.path.join(dir, pth_filename)
+    try:
+        f = open(pth_file, "r")
+    except OSError:
+        return
+    with f:
+        for line in f.readlines():
+            if line.startswith("#"):
+                # Skip comment lines
+                continue
+            if line.startswith(("import ", "import\t")):
+                # import statements in .pth files are not supported
+                continue
+
+            yield _make_abspath(line.rstrip(), dir)
+
+
+def _make_abspath(path: str, root: str) -> str:
+    """Take a path and make it absolute relative to root if not already absolute."""
+    if os.path.isabs(path):
+        return os.path.normpath(path)
+    else:
+        return os.path.join(root, os.path.normpath(path))
 
 
 class ModuleFinderSuite(Suite):
