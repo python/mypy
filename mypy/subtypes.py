@@ -477,7 +477,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
     def visit_partial_type(self, left: PartialType) -> bool:
         # This is indeterminate as we don't really know the complete type yet.
-        raise RuntimeError
+        raise RuntimeError(f'Partial type "{left}" cannot be checked with "issubtype()"')
 
     def visit_type_type(self, left: TypeType) -> bool:
         right = self.right
