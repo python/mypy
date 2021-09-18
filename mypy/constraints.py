@@ -388,7 +388,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             if (template.type.is_protocol and self.direction == SUPERTYPE_OF and
                     # We avoid infinite recursion for structural subtypes by checking
                     # whether this type already appeared in the inference chain.
-                    # This is a conservative way break the inference cycles.
+                    # This is a conservative way to break the inference cycles.
                     # It never produces any "false" constraints but gives up soon
                     # on purely structural inference cycles, see #3829.
                     # Note that we use is_protocol_implementation instead of is_subtype
@@ -444,7 +444,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         for member in protocol.type.protocol_members:
             inst = mypy.subtypes.find_member(member, instance, subtype)
             temp = mypy.subtypes.find_member(member, template, subtype)
-            assert inst is not None and temp is not None
+            if inst is None or temp is None:
+                continue  # See #11020
             # The above is safe since at this point we know that 'instance' is a subtype
             # of (erased) 'template', therefore it defines all protocol members
             res.extend(infer_constraints(temp, inst, self.direction))

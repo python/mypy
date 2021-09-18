@@ -486,6 +486,27 @@ class P2(Protocol[T_co]): # E: Covariant type variable "T_co" used in protocol w
     lst: List[T_co]
 [builtins fixtures/list.pyi]
 
+
+[case testProtocolConstraintsUnsolvableWithContravariant]
+# https://github.com/python/mypy/issues/11020
+from typing import overload, Protocol, TypeVar
+
+I = TypeVar('I')
+V_contra = TypeVar('V_contra', contravariant=True)
+
+class C(Protocol[I]):  # E: Invariant type variable "I" used in protocol where covariant one is expected
+    def __abs__(self: 'C[V_contra]') -> 'C[V_contra]':
+        ...
+
+    @overload
+    def f(self: 'C', q: int) -> int:
+        ...
+    @overload
+    def f(self: 'C[float]', q: float) -> 'C[float]':
+        ...
+[builtins fixtures/bool.pyi]
+
+
 [case testProtocolVarianceWithUnusedVariable]
 from typing import Protocol, TypeVar
 T = TypeVar('T')
@@ -2124,7 +2145,7 @@ class B(Protocol):
     def execute(self, stmt: Any, *args: Any, **kwargs: Any) -> None: ...
     def cool(self) -> None: ...
 
-def func1(arg: A) -> None: ...        
+def func1(arg: A) -> None: ...
 def func2(arg: Optional[A]) -> None: ...
 
 x: B
