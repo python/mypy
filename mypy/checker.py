@@ -3859,9 +3859,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         def _get_base_classes(instances_: Tuple[Instance, Instance]) -> List[Instance]:
             base_classes_ = []
             for inst in instances_:
-                expanded = [inst]
                 if inst.type.is_intersection:
                     expanded = inst.type.bases
+                else:
+                    expanded = [inst]
 
                 for expanded_inst in expanded:
                     base_classes_.append(expanded_inst)
