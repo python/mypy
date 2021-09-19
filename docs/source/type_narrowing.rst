@@ -77,19 +77,20 @@ for better type inference when working with types and metaclasses:
 .. note::
 
   With :option:`--warn-unreachable <mypy --warn-unreachable>`
-  narrowing type for some impossible state will be treated as an error.
+  narrowing types to some impossible state will be treated as an error.
 
   .. code-block:: python
 
      def function(arg: int):
-         # You cannot narrow ``int`` into ``str``:
-         assert isinstance(arg, str)
          # error: Subclass of "int" and "str" cannot exist:
          # would have incompatible method signatures
+         assert isinstance(arg, str)
 
-  The only types that can be narrowed to any others are: ``object`` and ``Any``.
+         # error: Statement is unreachable
+         print("so mypy concludes the assert will always trigger")
 
-  Without ``--warn-unreachable`` you can narrow any type to any other type.
+  Without ``--warn-unreachable`` mypy will simply not check code it deems to be
+  unreachable. See :ref:`unreachable` for more information.
 
   .. code-block:: python
 
@@ -97,8 +98,6 @@ for better type inference when working with types and metaclasses:
      assert isinstance(x, str)
      reveal_type(x)  # Revealed type is "builtins.int"
      print(x + '!')  # Typechecks with `mypy`, but fails in runtime.
-
-  However, this might lead to some unexpected errors in runtime.
 
 
 .. _casts:

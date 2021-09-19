@@ -729,6 +729,8 @@ not necessary:
         def test(self, t: List[int]) -> Sequence[str]:  # type: ignore[override]
             ...
 
+.. _unreachable:
+
 Unreachable code
 ----------------
 
