@@ -1537,9 +1537,9 @@ class TypeConverter:
         # this method doesn't actually ever run.) We can't just do
         # an attribute access with a `# type: ignore` because it would be
         # unused on < 3.8.
-        kind: str = getattr(n, "kind")  # noqa
+        kind: Optional[str] = getattr(n, "kind")  # noqa
 
-        if 'u' in kind or self.assume_str_is_unicode:
+        if (kind is not None and 'u' in kind) or self.assume_str_is_unicode:
             return parse_type_string(n.s, 'builtins.unicode', self.line, n.col_offset,
                                      assume_str_is_unicode=self.assume_str_is_unicode)
         else:
