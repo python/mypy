@@ -1034,6 +1034,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 and is_equivalent(callee.ret_type, self.named_type('builtins.type'))):
             callee = callee.copy_modified(ret_type=TypeType.make_normalized(arg_types[0]))
 
+        # `getattr()` special case:
+        if callable_name == 'builtins.getattr':
+            callee = callee.copy_modified(
+                ret_type=self.analyze_getattr(callee, args, arg_types, arg_kinds, context),
+            )
+
         if callable_node:
             # Store the inferred callable type.
             self.chk.store_type(callable_node, callee)
@@ -2040,6 +2046,41 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self.msg.disable_type_names -= 1
         return (make_simplified_union([res[0] for res in results]),
                 callee)
+
+    def analyze_getattr(self, callee: CallableType,
+                        args: List[Expression],
+                        arg_types: List[Type],
+                        arg_kinds: List[ArgKind],
+                        context: Context) -> Type:
+        if not (2 <= len(arg_types) <= 3):
+            return callee.ret_type  # Invalid usage, reported elsewhere
+
+        attr = try_getting_str_literals(args[1], arg_types[1])
+        if not attr:
+            return callee.ret_type
+
+        self_type = arg_types[0]
+        default = arg_types[2] if len(arg_types) == 3 else None
+        possible_types = []
+
+        for attr_literal in attr:
+            # When default is set, we don't need to report errors,
+            # even when attribute access is invalid.
+            msg = self.msg.clean_copy() if default is not None else self.msg
+            possible_types.append(analyze_member_access(
+                name=attr_literal,
+                typ=self_type,
+                context=context,
+                is_lvalue=False,
+                is_super=False,
+                is_operator=False,
+                msg=msg,
+                original_type=self_type,
+                chk=self.chk,
+            ))
+        if default is not None:
+            possible_types.append(default)
+        return make_simplified_union(possible_types)
 
     def visit_member_expr(self, e: MemberExpr, is_lvalue: bool = False) -> Type:
         """Visit member expression (of form e.id)."""
