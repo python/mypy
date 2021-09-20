@@ -1,0 +1,307 @@
+[case testDynamicGetAttrCallCorrect]
+# flags: --strict-optional
+from typing import Literal, Union
+
+class Some:
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 'b'
+
+s = Some()
+
+reveal_type(s.a)  # N: Revealed type is "builtins.int"
+reveal_type(s.b)  # N: Revealed type is "builtins.str"
+
+reveal_type(getattr(s, 'a'))  # N: Revealed type is "builtins.int"
+reveal_type(getattr(s, 'b'))  # N: Revealed type is "builtins.str"
+
+reveal_type(getattr(s, 'a', 1))  # N: Revealed type is "builtins.int"
+reveal_type(getattr(s, 'b', 'default'))  # N: Revealed type is "builtins.str"
+
+reveal_type(getattr(s, 'a', None))  # N: Revealed type is "Union[builtins.int, None]"
+reveal_type(getattr(s, 'b', None))  # N: Revealed type is "Union[builtins.str, None]"
+reveal_type(getattr(s, 'c', None))  # N: Revealed type is "Union[Any, None]"
+
+a: Literal['a']
+reveal_type(getattr(s, a))  # N: Revealed type is "builtins.int"
+
+ab: Literal['a', 'b']
+reveal_type(getattr(s, ab))  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(getattr(s, ab, None))  # N: Revealed type is "Union[builtins.int, builtins.str, None]"
+
+ab2: Union[Literal['a'], Literal['b']]
+reveal_type(getattr(s, ab2))  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(getattr(s, ab2, None))  # N: Revealed type is "Union[builtins.int, builtins.str, None]"
+
+v: str
+reveal_type(getattr(s, v))  # N: Revealed type is "Any"
+reveal_type(getattr(s, v, None))  # N: Revealed type is "Union[Any, None]"
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/bool.pyi]
+
+
+[case testDynamicGetAttrCallWrong]
+from typing import Literal
+class Some:
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 'b'
+s = Some()
+reveal_type(getattr(s, 'c'))
+c: Literal['c']
+reveal_type(getattr(s, c))
+ac: Literal['a', 'c']
+cd: Literal['c', 'd']
+reveal_type(getattr(s, ac))
+reveal_type(getattr(s, cd))
+[out]
+main:7: error: "Some" has no attribute "c"
+main:7: note: Revealed type is "Any"
+main:9: error: "Some" has no attribute "c"
+main:9: note: Revealed type is "Any"
+main:12: error: "Some" has no attribute "c"
+main:12: note: Revealed type is "Union[builtins.int, Any]"
+main:13: error: "Some" has no attribute "c"
+main:13: error: "Some" has no attribute "d"
+main:13: note: Revealed type is "Any"
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/bool.pyi]
+
+
+[case testDynamicGetAttrInvocationError]
+getattr()
+getattr(1)
+getattr(obj=1, key='a')
+getattr(obj=1, key='a', default=2)
+
+args1 = ('abc', 'wrong', 'tuple', None)
+args2 = (1, 2)
+getattr(*args1, *args2)
+[out]
+main:1: error: All overload variants of "getattr" require at least one argument
+main:1: note: Possible overload variants:
+main:1: note:     def getattr(__o, object, name: str) -> Any
+main:1: note:     def getattr(__o, object, name: str, None) -> Optional[Any]
+main:1: note:     <2 more similar overloads not shown, out of 4 total overloads>
+main:2: error: No overload variant of "getattr" matches argument type "int"
+main:2: note: Possible overload variants:
+main:2: note:     def getattr(__o, object, name: str) -> Any
+main:2: note:     def getattr(__o, object, name: str, None) -> Optional[Any]
+main:2: note:     <2 more similar overloads not shown, out of 4 total overloads>
+main:3: error: No overload variant of "getattr" matches argument types "int", "str"
+main:3: note: Possible overload variants:
+main:3: note:     def getattr(__o, object, name: str) -> Any
+main:3: note:     def getattr(__o, object, name: str, None) -> Optional[Any]
+main:3: note:     <2 more similar overloads not shown, out of 4 total overloads>
+main:4: error: No overload variant of "getattr" matches argument types "int", "str", "int"
+main:4: note: Possible overload variants:
+main:4: note:     def getattr(__o, object, name: str) -> Any
+main:4: note:     def getattr(__o, object, name: str, None) -> Optional[Any]
+main:4: note:     <2 more similar overloads not shown, out of 4 total overloads>
+main:8: error: No overload variant of "getattr" matches argument types "Tuple[str, str, str, None]", "Tuple[int, int]"
+main:8: note: Possible overload variants:
+main:8: note:     def getattr(__o, object, name: str) -> Any
+main:8: note:     def getattr(__o, object, name: str, None) -> Optional[Any]
+main:8: note:     <2 more similar overloads not shown, out of 4 total overloads>
+[builtins fixtures/bool.pyi]
+
+
+[case testDynamicGetAttrWrongTypes]
+getattr('', 1)
+[out]
+main:1: error: No overload variant of "getattr" matches argument types "str", "int"
+main:1: note: Possible overload variant:
+main:1: note:     def getattr(__o, object, name: str) -> Any
+main:1: note:     <3 more non-matching overloads not shown>
+[builtins fixtures/bool.pyi]
+
+
+[case testDynamicGetAttrCallWithGetAttrMethodDefined]
+# flags: --strict-optional
+from typing import Any, Literal
+
+class Some:
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 'b'
+
+    def __getattr__(self, key: str) -> bool:
+        ...
+
+s = Some()
+
+reveal_type(s.a)  # N: Revealed type is "builtins.int"
+reveal_type(s.b)  # N: Revealed type is "builtins.str"
+reveal_type(s.c)  # N: Revealed type is "builtins.bool"
+reveal_type(getattr(s, 'a'))  # N: Revealed type is "builtins.int"
+reveal_type(getattr(s, 'b'))  # N: Revealed type is "builtins.str"
+reveal_type(getattr(s, 'c'))  # N: Revealed type is "builtins.bool"
+reveal_type(getattr(s, 'c', False))  # N: Revealed type is "builtins.bool"
+reveal_type(getattr(s, 'c', None))  # N: Revealed type is "Union[builtins.bool, None]"
+
+a: Literal['a']
+reveal_type(getattr(s, a))  # N: Revealed type is "builtins.int"
+
+c: Literal['c']
+reveal_type(getattr(s, c))  # N: Revealed type is "builtins.bool"
+reveal_type(getattr(s, c, False))  # N: Revealed type is "builtins.bool"
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/bool.pyi]
+
+
+[case testDynamicGetAttrCallWithGetAttributeMethodDefined]
+# flags: --strict-optional
+from typing import Any, Literal
+
+class Some:
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 'b'
+
+    def __getattribute__(self, key: str) -> bool:
+        ...
+
+s = Some()
+
+reveal_type(s.a)  # N: Revealed type is "builtins.int"
+reveal_type(s.b)  # N: Revealed type is "builtins.str"
+reveal_type(s.c)  # N: Revealed type is "builtins.bool"
+reveal_type(getattr(s, 'a'))  # N: Revealed type is "builtins.int"
+reveal_type(getattr(s, 'b'))  # N: Revealed type is "builtins.str"
+reveal_type(getattr(s, 'c'))  # N: Revealed type is "builtins.bool"
+reveal_type(getattr(s, 'c', False))  # N: Revealed type is "builtins.bool"
+reveal_type(getattr(s, 'c', None))  # N: Revealed type is "Union[builtins.bool, None]"
+
+a: Literal['a']
+reveal_type(getattr(s, a))  # N: Revealed type is "builtins.int"
+
+c: Literal['c']
+reveal_type(getattr(s, c))  # N: Revealed type is "builtins.bool"
+reveal_type(getattr(s, c, False))  # N: Revealed type is "builtins.bool"
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/bool.pyi]
+
+
+[case testDynamicGetAttrCallWithGetAttrAndGetAttributeMethodsDefined]
+# flags: --strict-optional
+from typing import Any, Literal
+
+class Some:
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 'b'
+
+    def __getattr__(self, key: str) -> bool:
+        ...
+
+    def __getattribute__(self, key: str) -> bool:
+        ...
+
+s = Some()
+
+reveal_type(s.a)  # N: Revealed type is "builtins.int"
+reveal_type(s.b)  # N: Revealed type is "builtins.str"
+reveal_type(s.c)  # N: Revealed type is "builtins.bool"
+reveal_type(getattr(s, 'a'))  # N: Revealed type is "builtins.int"
+reveal_type(getattr(s, 'b'))  # N: Revealed type is "builtins.str"
+reveal_type(getattr(s, 'c'))  # N: Revealed type is "builtins.bool"
+reveal_type(getattr(s, 'c', False))  # N: Revealed type is "builtins.bool"
+reveal_type(getattr(s, 'c', None))  # N: Revealed type is "Union[builtins.bool, None]"
+
+a: Literal['a']
+reveal_type(getattr(s, a))  # N: Revealed type is "builtins.int"
+
+c: Literal['c']
+reveal_type(getattr(s, c))  # N: Revealed type is "builtins.bool"
+reveal_type(getattr(s, c, False))  # N: Revealed type is "builtins.bool"
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/bool.pyi]
+
+
+[case testDynamicGetAttrCallWithGetAttrAndGetAttributeMethodsConflict]
+# flags: --strict-optional
+from typing import Any, Literal
+
+class Some:
+    def __init__(self) -> None:
+        self.a = 1
+        self.b = 'b'
+
+    def __getattr__(self, key: str) -> type:
+        ...
+
+    def __getattribute__(self, key: str) -> bool:
+        ...
+
+s = Some()
+
+reveal_type(s.a)  # N: Revealed type is "builtins.int"
+reveal_type(s.b)  # N: Revealed type is "builtins.str"
+reveal_type(s.c)  # N: Revealed type is "builtins.bool"
+reveal_type(getattr(s, 'a'))  # N: Revealed type is "builtins.int"
+reveal_type(getattr(s, 'b'))  # N: Revealed type is "builtins.str"
+reveal_type(getattr(s, 'c'))  # N: Revealed type is "builtins.bool"
+reveal_type(getattr(s, 'c', False))  # N: Revealed type is "builtins.bool"
+reveal_type(getattr(s, 'c', None))  # N: Revealed type is "Union[builtins.bool, None]"
+
+a: Literal['a']
+reveal_type(getattr(s, a))  # N: Revealed type is "builtins.int"
+
+c: Literal['c']
+reveal_type(getattr(s, c))  # N: Revealed type is "builtins.bool"
+reveal_type(getattr(s, c, False))  # N: Revealed type is "builtins.bool"
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/bool.pyi]
+
+
+[case testDynamicGetAttrCallWithClassArgAndMethod]
+from typing import Any, Literal
+
+class Some:
+    a = 1
+    def method(self) -> int:
+        return self.a
+
+s = Some()
+
+reveal_type(s.a)  # N: Revealed type is "builtins.int"
+reveal_type(s.method)  # N: Revealed type is "def () -> builtins.int"
+reveal_type(getattr(s, 'a'))  # N: Revealed type is "builtins.int"
+reveal_type(getattr(s, 'method'))  # N: Revealed type is "def () -> builtins.int"
+reveal_type(getattr(s, 'a', 2))  # N: Revealed type is "builtins.int"
+reveal_type(getattr(s, 'method', 2))  # N: Revealed type is "Union[def () -> builtins.int, Literal[2]?]"
+getattr(s, 'b')  # E: "Some" has no attribute "b"
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/bool.pyi]
+
+
+[case testGetAttrCallWithAttributeTypeHookPlugin]
+# flags: --config-file tmp/mypy.ini
+
+from typing import Callable, Literal
+from m import Signal, DerivedSignal
+s: Signal[Callable[[int], None]] = Signal()
+reveal_type(getattr(s, '__call__'))  # N: Revealed type is "def (builtins.int)"
+call: Literal['__call__']
+reveal_type(getattr(s, call))  # N: Revealed type is "def (builtins.int)"
+reveal_type(getattr(s, 'missing', None))  # N: Revealed type is "Union[Any, None]"
+
+ds: DerivedSignal[Callable[[int], None]] = DerivedSignal()
+reveal_type(getattr(ds, '__call__'))  # N: Revealed type is "def (builtins.int)"
+reveal_type(getattr(ds, call))  # N: Revealed type is "def (builtins.int)"
+reveal_type(getattr(ds, 'missing', None))  # N: Revealed type is "Union[Any, None]"
+
+[file m.py]
+from typing import TypeVar, Generic, Callable
+T = TypeVar('T', bound=Callable[..., None])
+class Signal(Generic[T]):
+    __call__: Callable[..., None]  # This type is replaced by the plugin
+
+class DerivedSignal(Signal[T]): ...
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/attrhook.py
+
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/bool.pyi]

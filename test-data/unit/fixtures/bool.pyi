@@ -1,5 +1,5 @@
 # builtins stub used in boolean-related test cases.
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar, overload
 T = TypeVar('T')
 
 class object:
@@ -17,3 +17,12 @@ class str: pass
 class unicode: pass
 class ellipsis: pass
 class list: pass
+
+@overload
+def getattr(__o: object, name: str) -> Any: ...
+@overload
+def getattr(__o: object, name: str, __default: None) -> Any | None: ...
+@overload
+def getattr(__o: object, name: str, __default: bool) -> Any | bool: ...
+@overload
+def getattr(__o: object, name: str, __default: T) -> Any | T: ...
