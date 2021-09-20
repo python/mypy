@@ -33,6 +33,9 @@ ab2: Union[Literal['a'], Literal['b']]
 reveal_type(getattr(s, ab2))  # N: Revealed type is "Union[builtins.int, builtins.str]"
 reveal_type(getattr(s, ab2, None))  # N: Revealed type is "Union[builtins.int, builtins.str, None]"
 
+ac: Literal['a', 'c']
+reveal_type(getattr(s, ac, None))  # N: Revealed type is "Union[builtins.int, Any, None]"
+
 v: str
 reveal_type(getattr(s, v))  # N: Revealed type is "Any"
 reveal_type(getattr(s, v, None))  # N: Revealed type is "Union[Any, None]"
@@ -64,6 +67,20 @@ main:12: note: Revealed type is "Union[builtins.int, Any]"
 main:13: error: "Some" has no attribute "c"
 main:13: error: "Some" has no attribute "d"
 main:13: note: Revealed type is "Any"
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/bool.pyi]
+
+
+[case testDynamicGetAttrCallLiteralNonStr]
+from typing import Literal
+lit_int: Literal[1]
+reveal_type(getattr('a', lit_int))
+[out]
+main:3: error: No overload variant of "getattr" matches argument types "str", "Literal[1]"
+main:3: note: Possible overload variant:
+main:3: note:     def getattr(__o, object, name: str) -> Any
+main:3: note:     <3 more non-matching overloads not shown>
+main:3: note: Revealed type is "Any"
 [typing fixtures/typing-medium.pyi]
 [builtins fixtures/bool.pyi]
 
@@ -280,16 +297,21 @@ getattr(s, 'b')  # E: "Some" has no attribute "b"
 
 from typing import Callable, Literal
 from m import Signal, DerivedSignal
+
+call: Literal['__call__']
+call_or_missing: Literal['__call__', 'missing']
+
 s: Signal[Callable[[int], None]] = Signal()
 reveal_type(getattr(s, '__call__'))  # N: Revealed type is "def (builtins.int)"
-call: Literal['__call__']
 reveal_type(getattr(s, call))  # N: Revealed type is "def (builtins.int)"
 reveal_type(getattr(s, 'missing', None))  # N: Revealed type is "Union[Any, None]"
+reveal_type(getattr(s, call_or_missing, None))  # N: Revealed type is "Union[def (builtins.int), Any, None]"
 
 ds: DerivedSignal[Callable[[int], None]] = DerivedSignal()
 reveal_type(getattr(ds, '__call__'))  # N: Revealed type is "def (builtins.int)"
 reveal_type(getattr(ds, call))  # N: Revealed type is "def (builtins.int)"
 reveal_type(getattr(ds, 'missing', None))  # N: Revealed type is "Union[Any, None]"
+reveal_type(getattr(ds, call_or_missing, None))  # N: Revealed type is "Union[def (builtins.int), Any, None]"
 
 [file m.py]
 from typing import TypeVar, Generic, Callable
