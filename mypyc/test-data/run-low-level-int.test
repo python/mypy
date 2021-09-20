@@ -67,6 +67,45 @@ def test_simple_arithmetic_ops() -> None:
     assert -neg_one == 1
     assert -zero == 0
 
+def test_bitwise_ops() -> None:
+    x: i64 = 7997307308812232241 + int()
+    y: i64 = 4333433528471475340 + int()
+    z: i64 = -2462230749488444526 + int()
+    zero: i64 = int()
+    one: i64 = zero + 1
+    two: i64 = zero + 2
+    neg_one: i64 = -one
+
+    assert x & y == 3179577071592752128
+    assert x & z == 5536089561888850448
+    assert z & z == z
+    assert x & zero == 0
+
+    assert x | y == 9151163765690955453
+    assert x | z == -1013002565062733
+    assert z | z == z
+    assert x | 0 == x
+
+    assert x ^ y == 5971586694098203325
+    assert x ^ z == -5537102564453913181
+    assert z ^ z == 0
+    assert z ^ 0 == z
+
+    assert x << one == -2452129456085087134
+    assert x << two == -4904258912170174268
+    assert z << two == 8597821075755773512
+    assert z << 0 == z
+
+    assert x >> one == 3998653654406116120
+    assert x >> two == 1999326827203058060
+    assert z >> two == -615557687372111132
+    assert z >> 0 == z
+
+    assert ~x == -7997307308812232242
+    assert ~z == 2462230749488444525
+    assert ~zero == -1
+    assert ~neg_one == 0
+
 [case testLowLevelIntErrorValues]
 from typing import Any
 
