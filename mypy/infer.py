@@ -5,23 +5,23 @@ from typing import List, Optional, Sequence, NamedTuple
 from mypy.constraints import (
     infer_constraints, infer_constraints_for_callable, SUBTYPE_OF, SUPERTYPE_OF
 )
-from mypy.types import Type, TypeVarId, CallableType
+from mypy.types import Type, TypeVarId, CallableType, Instance
 from mypy.nodes import ArgKind
 from mypy.solve import solve_constraints
 
 
 class ArgumentInferContext(NamedTuple):
-    """
-    Type argument inference context.
+    """Type argument inference context.
 
     We need this because we pass around ``Mapping`` and ``Iterable`` types.
-    It is required for ``*`` and ``**`` argument parsing.
+    These types are only known by ``TypeChecker`` itself.
+    It is required for ``*`` and ``**`` argument inference.
 
     https://github.com/python/mypy/issues/11144
     """
 
-    mapping_type: Type
-    iterable_type: Type
+    mapping_type: Instance
+    iterable_type: Instance
 
 
 def infer_function_type_arguments(callee_type: CallableType,

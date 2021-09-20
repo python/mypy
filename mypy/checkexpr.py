@@ -1239,9 +1239,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             inferred_args = infer_function_type_arguments(
                 callee_type, pass1_args, arg_kinds, formal_to_actual,
-                context=ArgumentInferContext(
-                    self.chk.named_type('typing.Mapping'),
-                    self.chk.named_type('typing.Iterable')),
+                context=self.argument_infer_context(),
                 strict=self.chk.in_checked_function())
 
             if 2 in arg_pass_nums:
@@ -1304,13 +1302,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         inferred_args = infer_function_type_arguments(
             callee_type, arg_types, arg_kinds, formal_to_actual,
-            context=ArgumentInferContext(
-                self.chk.named_type('typing.Mapping'),
-                self.chk.named_type('typing.Iterable'),
-            ),
+            context=self.argument_infer_context(),
         )
 
         return callee_type, inferred_args
+
+    def argument_infer_context(self) -> ArgumentInferContext:
+        return ArgumentInferContext(
+            self.chk.named_type('typing.Mapping'),
+            self.chk.named_type('typing.Iterable'),
+        )
 
     def get_arg_infer_passes(self, arg_types: List[Type],
                              formal_to_actual: List[List[int]],
@@ -1486,12 +1487,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         messages = messages or self.msg
         check_arg = check_arg or self.check_arg
         # Keep track of consumed tuple *arg items.
-        mapper = ArgTypeExpander(
-            ArgumentInferContext(
-                self.chk.named_type('typing.Mapping'),
-                self.chk.named_type('typing.Iterable'),
-            ),
-        )
+        mapper = ArgTypeExpander(self.argument_infer_context())
         for i, actuals in enumerate(formal_to_actual):
             for actual in actuals:
                 actual_type = arg_types[actual]
