@@ -2660,7 +2660,7 @@ class TypeInfo(SymbolNode):
     # several builtin examples, in particular `int` -> `float`.
     _promote: List["mypy.types.Type"]
 
-    # Low-level integer types can be promoted 'int', and vice versa.
+    # Low-level integer types can be promoted to 'int', and vice versa.
     # This can be used for the other direction. This only supports
     # one-step promotions (e.g., C -> D, not C -> D -> E).
     alt_promote = None  # type: Optional[TypeInfo]
