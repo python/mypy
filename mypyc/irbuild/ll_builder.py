@@ -91,7 +91,7 @@ LIST_BUILDING_EXPANSION_THRESHOLD = 10
 PY_VECTORCALL_ARGUMENTS_OFFSET: Final = 1 << (PLATFORM_SIZE * 8 - 1)
 
 FIXED_WIDTH_INT_BINARY_OPS: Final = {
-    '+', '-', '*', '&', '|', '^', '<<', '>>', '+='
+    '+', '-', '*', '&', '|', '^', '<<', '>>', '+=', '-=', '*=', '&=', '|=', '^=', '<<=', '>>='
 }
 
 
@@ -904,9 +904,8 @@ class LowLevelIRBuilder:
         if isinstance(rtype, RInstance) and op in ('in', 'not in'):
             return self.translate_instance_contains(rreg, lreg, op, line)
         if is_int64_rprimitive(ltype) and op in FIXED_WIDTH_INT_BINARY_OPS:
-            # TODO: More ops
-            if op == '+=':
-                op = '+'
+            if op.endswith('='):
+                op = op[:-1]
             if is_int64_rprimitive(rtype):
                 op_id = IntOp.op_to_id[op]
                 return self.int_op(ltype, lreg, rreg, op_id, line)

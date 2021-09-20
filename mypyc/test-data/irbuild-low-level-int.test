@@ -215,16 +215,25 @@ L4:
 L5:
     return 3
 
-[case testLowLevelIntInplaceAdd]
+[case testLowLevelIntInplaceOperations]
 from mypy_extensions import i64
 
-def f(a: i64) -> i64:
+def add(a: i64) -> i64:
     b = a
     b += 1
     a += b
     return a
+def others(a: i64, b: i64) -> i64:
+    a -= b
+    a *= b
+    a &= b
+    a |= b
+    a ^= b
+    a <<= b
+    a >>= b
+    return a
 [out]
-def f(a):
+def add(a):
     a, b, r0, r1 :: int64
 L0:
     b = a
@@ -232,6 +241,24 @@ L0:
     b = r0
     r1 = a + b
     a = r1
+    return a
+def others(a, b):
+    a, b, r0, r1, r2, r3, r4, r5, r6 :: int64
+L0:
+    r0 = a - b
+    a = r0
+    r1 = a * b
+    a = r1
+    r2 = a & b
+    a = r2
+    r3 = a | b
+    a = r3
+    r4 = a ^ b
+    a = r4
+    r5 = a << b
+    a = r5
+    r6 = a >> b
+    a = r6
     return a
 
 [case testLowLevelIntBitwiseOps]
