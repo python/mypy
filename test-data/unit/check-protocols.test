@@ -525,6 +525,25 @@ x: C = D()  # E: Incompatible types in assignment (expression has type "D", vari
 [builtins fixtures/bool.pyi]
 
 
+[case testProtocolConstraintsUnsolvableWithSelfAnnotation3]
+# https://github.com/python/mypy/issues/11020
+from typing import Protocol, TypeVar
+
+I = TypeVar('I', covariant=True)
+V = TypeVar('V')
+
+class C(Protocol[I]):
+    def g(self: 'C[V]') -> 'C[V]':
+        ...
+
+class D:
+    def g(self) -> D:
+        ...
+
+x: C = D()
+[builtins fixtures/bool.pyi]
+
+
 [case testProtocolVarianceWithUnusedVariable]
 from typing import Protocol, TypeVar
 T = TypeVar('T')
