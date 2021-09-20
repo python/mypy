@@ -91,7 +91,8 @@ LIST_BUILDING_EXPANSION_THRESHOLD = 10
 PY_VECTORCALL_ARGUMENTS_OFFSET: Final = 1 << (PLATFORM_SIZE * 8 - 1)
 
 FIXED_WIDTH_INT_BINARY_OPS: Final = {
-    '+', '-', '*', '&', '|', '^', '<<', '>>', '+=', '-=', '*=', '&=', '|=', '^=', '<<=', '>>='
+    '+', '-', '*', '//', '&', '|', '^', '<<', '>>',
+    '+=', '-=', '*=', '//=', '&=', '|=', '^=', '<<=', '>>=',
 }
 
 
@@ -911,8 +912,12 @@ class LowLevelIRBuilder:
                 return self.int_op(ltype, lreg, rreg, op_id, line)
             if isinstance(rreg, Integer):
                 # TODO: Check what kind of Integer
-                op_id = IntOp.op_to_id[op]
-                return self.int_op(ltype, lreg, Integer(rreg.value >> 1, ltype), op_id, line)
+                if op != '//':
+                    op_id = IntOp.op_to_id[op]
+                else:
+                    op_id = IntOp.DIV
+                return self.fixed_width_int_op(
+                    ltype, lreg, Integer(rreg.value >> 1, ltype), op_id, line)
         elif (is_int64_rprimitive(rtype)
                   and isinstance(lreg, Integer)
                   and op in FIXED_WIDTH_INT_BINARY_OPS):
@@ -921,7 +926,8 @@ class LowLevelIRBuilder:
                 op = '+'
             # TODO: Check what kind of Integer
             op_id = IntOp.op_to_id[op]
-            return self.int_op(rtype, Integer(lreg.value >> 1, rtype), rreg, op_id, line)
+            return self.fixed_width_int_op(
+                rtype, Integer(lreg.value >> 1, rtype), rreg, op_id, line)
 
         call_c_ops_candidates = binary_ops.get(op, [])
         target = self.matching_call_c(call_c_ops_candidates, [lreg, rreg], line)
@@ -1416,7 +1422,48 @@ class LowLevelIRBuilder:
         return None
 
     def int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
+        """Generate a native integer binary op.
+
+        Use native/C semantics, which sometimes differ from Python
+        semantics.
+
+        Args:
+            type: Either int64_rprimitive or int32_rprimitive
+            op: IntOp.* constant (e.g. IntOp.ADD)
+        """
         return self.add(IntOp(type, lhs, rhs, op, line))
+
+    def fixed_width_int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
+        """Generate a binary op using Python fixed-width integer semantics.
+
+        These may differ in overflow/rounding behavior from native/C ops.
+
+        Args:
+            type: Either int64_rprimitive or int32_rprimitive
+            op: IntOp.* constant (e.g. IntOp.ADD)
+        """
+        if op == IntOp.DIV:
+            # Perform floor division (native division truncates)
+            res = Register(type)
+            div = self.int_op(type, lhs, rhs, op, line)
+            self.add(Assign(res, div))
+            neg1 = self.add(ComparisonOp(lhs, Integer(0, type), ComparisonOp.SLT, line))
+            neg2 = self.add(ComparisonOp(rhs, Integer(0, type), ComparisonOp.SLT, line))
+            diff_signs = self.add(ComparisonOp(neg1, neg2, ComparisonOp.EQ, line))
+            tricky, adjust, done = BasicBlock(), BasicBlock(), BasicBlock()
+            self.add(Branch(diff_signs, done, tricky, Branch.BOOL))
+            self.activate_block(tricky)
+            mul = self.int_op(type, res, rhs, IntOp.MUL, line)
+            mul_eq = self.add(ComparisonOp(mul, lhs, ComparisonOp.EQ, line))
+            adjust = BasicBlock()
+            self.add(Branch(mul_eq, done, adjust, Branch.BOOL))
+            self.activate_block(adjust)
+            adj = self.int_op(type, res, Integer(1, type), IntOp.SUB, line)
+            self.add(Assign(res, adj))
+            self.add(Goto(done))
+            self.activate_block(done)
+            return res
+        return self.int_op(type, lhs, rhs, op, line)
 
     def comparison_op(self, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.add(ComparisonOp(lhs, rhs, op, line))

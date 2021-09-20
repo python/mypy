@@ -316,3 +316,32 @@ def unary(a):
 L0:
     r0 = a ^ -1
     return r0
+
+[case testLowLevelIntDivision]
+from mypy_extensions import i64
+
+def constant_divisor(x: i64) -> i64:
+    return x // 7
+[out]
+def constant_divisor(x):
+    x, r0, r1 :: int64
+    r2, r3, r4 :: bit
+    r5 :: int64
+    r6 :: bit
+    r7 :: int64
+L0:
+    r0 = x / 7
+    r1 = r0
+    r2 = x < 0 :: signed
+    r3 = 7 < 0 :: signed
+    r4 = r2 == r3
+    if r4 goto L3 else goto L1 :: bool
+L1:
+    r5 = r1 * 7
+    r6 = r5 == x
+    if r6 goto L3 else goto L2 :: bool
+L2:
+    r7 = r1 - 1
+    r1 = r7
+L3:
+    return r1
