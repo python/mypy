@@ -584,7 +584,7 @@ def f(n: int) -> int:
     return -n
 [out]
 def f(n):
-    n, r0 :: int
+    n :: int
 L0:
     r0 = CPyTagged_Negate(n)
     return r0
