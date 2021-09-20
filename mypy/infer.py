@@ -1,6 +1,6 @@
 """Utilities for type argument inference."""
 
-from typing import List, Optional, Sequence
+from typing import List, Optional, Sequence, NamedTuple
 
 from mypy.constraints import (
     infer_constraints, infer_constraints_for_callable, SUBTYPE_OF, SUPERTYPE_OF
@@ -10,10 +10,25 @@ from mypy.nodes import ArgKind
 from mypy.solve import solve_constraints
 
 
+class ArgumentInferContext(NamedTuple):
+    """
+    Type argument inference context.
+
+    We need this because we pass around ``Mapping`` and ``Iterable`` types.
+    It is required for ``*`` and ``**`` argument parsing.
+
+    https://github.com/python/mypy/issues/11144
+    """
+
+    mapping_type: Type
+    iterable_type: Type
+
+
 def infer_function_type_arguments(callee_type: CallableType,
                                   arg_types: Sequence[Optional[Type]],
                                   arg_kinds: List[ArgKind],
                                   formal_to_actual: List[List[int]],
+                                  context: ArgumentInferContext,
                                   strict: bool = True) -> List[Optional[Type]]:
     """Infer the type arguments of a generic function.
 
@@ -30,7 +45,7 @@ def infer_function_type_arguments(callee_type: CallableType,
     """
     # Infer constraints.
     constraints = infer_constraints_for_callable(
-        callee_type, arg_types, arg_kinds, formal_to_actual)
+        callee_type, arg_types, arg_kinds, formal_to_actual, context)
 
     # Solve constraints.
     type_vars = callee_type.type_var_ids()
