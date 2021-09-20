@@ -85,7 +85,7 @@ def split_blocks_at_errors(blocks: List[BasicBlock],
                     # semantics, using a temporary bool with value false
                     target = Integer(0, bool_rprimitive)
                 elif op.error_kind == ERR_MAGIC_OVERLAPPING:
-                    errvalue = Integer(target.type.c_undefined, rtype=op.type)
+                    errvalue = Integer(int(target.type.c_undefined), rtype=op.type)
                     comp = ComparisonOp(target, errvalue, ComparisonOp.EQ)
                     cur_block.ops.append(comp)
                     new_block2 = BasicBlock()

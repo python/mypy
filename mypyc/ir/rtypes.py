@@ -45,6 +45,8 @@ class RType:
     is_unboxed = False
     # This is the C undefined value for this type. It's used for initialization
     # if there's no value yet, and for function return value on error/exception.
+    #
+    # TODO: This shouldn't be specific to C or a string
     c_undefined: str
     # If unboxed: does the unboxed version use reference counting?
     is_refcounted = True
@@ -196,7 +198,7 @@ class RPrimitive(RType):
         elif ctype in ('int32_t', 'int64_t'):
             # This is basically an arbitrary value that is pretty
             # unlikely to overlap with a real value.
-            self.c_undefined = -113
+            self.c_undefined = '-113'
         elif ctype in ('CPyPtr', 'uint32_t', 'uint64_t'):
             # TODO: For low-level integers, we need to invent an overlapping
             #       error value, similar to int64_t above.
