@@ -487,14 +487,14 @@ class P2(Protocol[T_co]): # E: Covariant type variable "T_co" used in protocol w
 [builtins fixtures/list.pyi]
 
 
-[case testProtocolConstraintsUnsolvableWithContravariant]
+[case testProtocolConstraintsUnsolvableWithSelfAnnotation1]
 # https://github.com/python/mypy/issues/11020
 from typing import overload, Protocol, TypeVar
 
-I = TypeVar('I')
+I = TypeVar('I', covariant=True)
 V_contra = TypeVar('V_contra', contravariant=True)
 
-class C(Protocol[I]):  # E: Invariant type variable "I" used in protocol where covariant one is expected
+class C(Protocol[I]):
     def __abs__(self: 'C[V_contra]') -> 'C[V_contra]':
         ...
 
@@ -504,6 +504,24 @@ class C(Protocol[I]):  # E: Invariant type variable "I" used in protocol where c
     @overload
     def f(self: 'C[float]', q: float) -> 'C[float]':
         ...
+[builtins fixtures/bool.pyi]
+
+
+[case testProtocolConstraintsUnsolvableWithSelfAnnotation2]
+# https://github.com/python/mypy/issues/11020
+from typing import Protocol, TypeVar
+
+I = TypeVar('I', covariant=True)
+V = TypeVar('V')
+
+class C(Protocol[I]):
+    def g(self: 'C[V]') -> 'C[V]':
+        ...
+
+class D:
+    pass
+
+x: C = D()  # E: Incompatible types in assignment (expression has type "D", variable has type "C[Any]")
 [builtins fixtures/bool.pyi]
 
 
