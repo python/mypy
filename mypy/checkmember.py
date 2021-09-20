@@ -383,7 +383,18 @@ def analyze_member_var_access(name: str,
           not mx.is_operator):
         if not mx.is_lvalue:
             for method_name in ('__getattribute__', '__getattr__'):
-                method = info.get_method(method_name)
+                method_node = info.get(method_name)
+
+                # We cannot use `.get_method()` here, because it only returns
+                # `FuncBase` items and ignores `Decorator` based functions.
+                # https://github.com/python/mypy/issues/10409
+                if method_node and isinstance(method_node.node, Decorator):
+                    method = method_node.node.func
+                elif method_node and isinstance(method_node.node, FuncBase):
+                    method = method_node.node
+                else:
+                    method = None
+
                 # __getattribute__ is defined on builtins.object and returns Any, so without
                 # the guard this search will always find object.__getattribute__ and conclude
                 # that the attribute exists
