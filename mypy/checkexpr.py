@@ -2063,12 +2063,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         default = arg_types[2] if len(arg_types) == 3 else None
         possible_types = []
 
-        for literal in attr:
+        for attr_literal in attr:
             # When default is set, we don't need to report errors,
             # even when attribute access is invalid.
             msg = self.msg.clean_copy() if default is not None else self.msg
             possible_types.append(analyze_member_access(
-                name=literal,
+                name=attr_literal,
                 typ=self_type,
                 context=context,
                 is_lvalue=False,
