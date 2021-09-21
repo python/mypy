@@ -19,33 +19,16 @@ Construction
 Operators
 ---------
 
-Arithmetic:
-
-* ``x + y``
-* ``x - y``
-* ``x * y``
-* ``x // y``
-* ``x % y``
-* ``-x``
-
-Comparisons:
-
-* ``x == y``, ``x != y``
-* ``x < y``, ``x <= y``, ``x > y``, ``x >= y``
+* Arithmetic (``+``, ``-``, ``*``, ``//``, ``%``)
+* Bitwise operations (``&``, ``|``, ``^``, ``<<``, ``>>``, ``~``)
+* Comparisons (``==``, ``!=``, ``<``, etc.)
+* Augmented assignment (``x += y``, etc.)
 
 Statements
 ----------
 
 For loop over range:
 
-* ``for x in range(end):``
-* ``for x in range(start, end):``
-* ``for x in range(start, end, step):``
-
-Augmented assignment:
-
-* ``x += y``
-* ``x -= y``
-* ``x *= y``
-* ``x //= y``
-* ``x %= y``
+* ``for x in range(end)``
+* ``for x in range(start, end)``
+* ``for x in range(start, end, step)``

@@ -31,7 +31,15 @@
 // Here just for consistency
 #define CPy_XDECREF(p) Py_XDECREF(p)
 
+// Tagged integer -- our representation of Python 'int' objects.
+// Small enough integers are represented as unboxed integers (shifted
+// left by 1); larger integers (larger than 63 bits on a 64-bit
+// platform) are stored as a tagged pointer (PyObject *)
+// representing a Python int object, with the lowest bit set.
+// Tagged integers are always normalized. A small integer *must not*
+// have the tag bit set.
 typedef size_t CPyTagged;
+
 typedef size_t CPyPtr;
 
 #define CPY_INT_BITS (CHAR_BIT * sizeof(CPyTagged))
@@ -42,6 +50,7 @@ typedef size_t CPyPtr;
 
 typedef PyObject CPyModule;
 
+// Tag bit used for long integers
 #define CPY_INT_TAG 1
 
 typedef void (*CPyVTableItem)(void);

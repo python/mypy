@@ -14,12 +14,12 @@ import mypy.subtypes
 import mypy.sametypes
 import mypy.typeops
 from mypy.erasetype import erase_typevars
-from mypy.nodes import COVARIANT, CONTRAVARIANT
+from mypy.nodes import COVARIANT, CONTRAVARIANT, ArgKind
 from mypy.argmap import ArgTypeExpander
 from mypy.typestate import TypeState
 
-SUBTYPE_OF = 0  # type: Final[int]
-SUPERTYPE_OF = 1  # type: Final[int]
+SUBTYPE_OF: Final = 0
+SUPERTYPE_OF: Final = 1
 
 
 class Constraint:
@@ -28,9 +28,9 @@ class Constraint:
     It can be either T <: type or T :> type (T is a type variable).
     """
 
-    type_var = None  # type: TypeVarId
+    type_var: TypeVarId
     op = 0           # SUBTYPE_OF or SUPERTYPE_OF
-    target = None    # type: Type
+    target: Type
 
     def __init__(self, type_var: TypeVarId, op: int, target: Type) -> None:
         self.type_var = type_var
@@ -45,13 +45,13 @@ class Constraint:
 
 
 def infer_constraints_for_callable(
-        callee: CallableType, arg_types: Sequence[Optional[Type]], arg_kinds: List[int],
+        callee: CallableType, arg_types: Sequence[Optional[Type]], arg_kinds: List[ArgKind],
         formal_to_actual: List[List[int]]) -> List[Constraint]:
     """Infer type variable constraints for a callable and actual arguments.
 
     Return a list of constraints.
     """
-    constraints = []  # type: List[Constraint]
+    constraints: List[Constraint] = []
     mapper = ArgTypeExpander()
 
     for i, actuals in enumerate(formal_to_actual):
@@ -216,6 +216,16 @@ def any_constraints(options: List[Optional[List[Constraint]]], eager: bool) -> L
         # TODO: More generally, if a given (variable, direction) pair appears in
         #       every option, combine the bounds with meet/join.
         return valid_options[0]
+    elif len(valid_options) > 1:
+        # Drop constraints that only refer to "Any" and try again. This way Any types
+        # in unions don't interfere with type inference.
+        narrowed_options = [option
+                            for option in valid_options
+                            if not (option and
+                                    all(isinstance(get_proper_type(c.target), AnyType)
+                                        for c in option))]
+        if len(narrowed_options) < len(valid_options):
+            return any_constraints([option for option in narrowed_options], eager)
 
     # Otherwise, there are either no valid options or multiple, inconsistent valid
     # options. Give up and deduce nothing.
@@ -268,7 +278,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
 
     # The type that is compared against a template
     # TODO: The value may be None. Is that actually correct?
-    actual = None  # type: ProperType
+    actual: ProperType
 
     def __init__(self, actual: ProperType, direction: int) -> None:
         # Direction must be SUBTYPE_OF or SUPERTYPE_OF.
@@ -314,7 +324,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
 
     def visit_instance(self, template: Instance) -> List[Constraint]:
         original_actual = actual = self.actual
-        res = []  # type: List[Constraint]
+        res: List[Constraint] = []
         if isinstance(actual, (CallableType, Overloaded)) and template.type.is_protocol:
             if template.type.protocol_members == ['__call__']:
                 # Special case: a generic callback protocol
@@ -378,7 +388,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             if (template.type.is_protocol and self.direction == SUPERTYPE_OF and
                     # We avoid infinite recursion for structural subtypes by checking
                     # whether this type already appeared in the inference chain.
-                    # This is a conservative way break the inference cycles.
+                    # This is a conservative way to break the inference cycles.
                     # It never produces any "false" constraints but gives up soon
                     # on purely structural inference cycles, see #3829.
                     # Note that we use is_protocol_implementation instead of is_subtype
@@ -388,8 +398,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                             for t in template.type.inferring) and
                     mypy.subtypes.is_protocol_implementation(instance, erased)):
                 template.type.inferring.append(template)
-                self.infer_constraints_from_protocol_members(res, instance, template,
-                                                             original_actual, template)
+                res.extend(self.infer_constraints_from_protocol_members(
+                    instance, template, original_actual, template))
                 template.type.inferring.pop()
                 return res
             elif (instance.type.is_protocol and self.direction == SUBTYPE_OF and
@@ -398,8 +408,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                           for i in instance.type.inferring) and
                   mypy.subtypes.is_protocol_implementation(erased, instance)):
                 instance.type.inferring.append(instance)
-                self.infer_constraints_from_protocol_members(res, instance, template,
-                                                             template, instance)
+                res.extend(self.infer_constraints_from_protocol_members(
+                    instance, template, template, instance))
                 instance.type.inferring.pop()
                 return res
         if isinstance(actual, AnyType):
@@ -422,19 +432,22 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         else:
             return []
 
-    def infer_constraints_from_protocol_members(self, res: List[Constraint],
+    def infer_constraints_from_protocol_members(self,
                                                 instance: Instance, template: Instance,
-                                                subtype: Type, protocol: Instance) -> None:
+                                                subtype: Type, protocol: Instance,
+                                                ) -> List[Constraint]:
         """Infer constraints for situations where either 'template' or 'instance' is a protocol.
 
         The 'protocol' is the one of two that is an instance of protocol type, 'subtype'
         is the type used to bind self during inference. Currently, we just infer constrains for
         every protocol member type (both ways for settable members).
         """
+        res = []
         for member in protocol.type.protocol_members:
             inst = mypy.subtypes.find_member(member, instance, subtype)
             temp = mypy.subtypes.find_member(member, template, subtype)
-            assert inst is not None and temp is not None
+            if inst is None or temp is None:
+                return []  # See #11020
             # The above is safe since at this point we know that 'instance' is a subtype
             # of (erased) 'template', therefore it defines all protocol members
             res.extend(infer_constraints(temp, inst, self.direction))
@@ -442,13 +455,14 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     mypy.subtypes.get_member_flags(member, protocol.type)):
                 # Settable members are invariant, add opposite constraints
                 res.extend(infer_constraints(temp, inst, neg_op(self.direction)))
+        return res
 
     def visit_callable_type(self, template: CallableType) -> List[Constraint]:
         if isinstance(self.actual, CallableType):
             cactual = self.actual
             # FIX verify argument counts
             # FIX what if one of the functions is generic
-            res = []  # type: List[Constraint]
+            res: List[Constraint] = []
 
             # We can't infer constraints from arguments if the template is Callable[..., T] (with
             # literal '...').
@@ -457,7 +471,12 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 for t, a in zip(template.arg_types, cactual.arg_types):
                     # Negate direction due to function argument type contravariance.
                     res.extend(infer_constraints(t, a, neg_op(self.direction)))
-            res.extend(infer_constraints(template.ret_type, cactual.ret_type,
+            template_ret_type, cactual_ret_type = template.ret_type, cactual.ret_type
+            if template.type_guard is not None:
+                template_ret_type = template.type_guard
+            if cactual.type_guard is not None:
+                cactual_ret_type = cactual.type_guard
+            res.extend(infer_constraints(template_ret_type, cactual_ret_type,
                                          self.direction))
             return res
         elif isinstance(self.actual, AnyType):
@@ -495,7 +514,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     def visit_tuple_type(self, template: TupleType) -> List[Constraint]:
         actual = self.actual
         if isinstance(actual, TupleType) and len(actual.items) == len(template.items):
-            res = []  # type: List[Constraint]
+            res: List[Constraint] = []
             for i in range(len(template.items)):
                 res.extend(infer_constraints(template.items[i],
                                              actual.items[i],
@@ -509,7 +528,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     def visit_typeddict_type(self, template: TypedDictType) -> List[Constraint]:
         actual = self.actual
         if isinstance(actual, TypedDictType):
-            res = []  # type: List[Constraint]
+            res: List[Constraint] = []
             # NOTE: Non-matching keys are ignored. Compatibility is checked
             #       elsewhere so this shouldn't be unsafe.
             for (item_name, template_item_type, actual_item_type) in template.zip(actual):
@@ -530,14 +549,14 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         assert False, "This should be never called, got {}".format(template)
 
     def infer_against_any(self, types: Iterable[Type], any_type: AnyType) -> List[Constraint]:
-        res = []  # type: List[Constraint]
+        res: List[Constraint] = []
         for t in types:
             res.extend(infer_constraints(t, any_type, self.direction))
         return res
 
     def visit_overloaded(self, template: Overloaded) -> List[Constraint]:
-        res = []  # type: List[Constraint]
-        for t in template.items():
+        res: List[Constraint] = []
+        for t in template.items:
             res.extend(infer_constraints(t, self.actual, self.direction))
         return res
 
@@ -545,7 +564,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         if isinstance(self.actual, CallableType):
             return infer_constraints(template.item, self.actual.ret_type, self.direction)
         elif isinstance(self.actual, Overloaded):
-            return infer_constraints(template.item, self.actual.items()[0].ret_type,
+            return infer_constraints(template.item, self.actual.items[0].ret_type,
                                      self.direction)
         elif isinstance(self.actual, TypeType):
             return infer_constraints(template.item, self.actual.item, self.direction)
@@ -568,7 +587,7 @@ def neg_op(op: int) -> int:
 
 def find_matching_overload_item(overloaded: Overloaded, template: CallableType) -> CallableType:
     """Disambiguate overload item against a template."""
-    items = overloaded.items()
+    items = overloaded.items
     for item in items:
         # Return type may be indeterminate in the template, so ignore it when performing a
         # subtype check.

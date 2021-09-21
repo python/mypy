@@ -17,8 +17,8 @@ from typing_extensions import Final
 Sig = Tuple[str, str]
 
 
-_TYPE_RE = re.compile(r'^[a-zA-Z_][\w\[\], ]*(\.[a-zA-Z_][\w\[\], ]*)*$')  # type: Final
-_ARG_NAME_RE = re.compile(r'\**[A-Za-z_][A-Za-z0-9_]*$')  # type: Final
+_TYPE_RE: Final = re.compile(r"^[a-zA-Z_][\w\[\], ]*(\.[a-zA-Z_][\w\[\], ]*)*$")
+_ARG_NAME_RE: Final = re.compile(r"\**[A-Za-z_][A-Za-z0-9_]*$")
 
 
 def is_valid_type(s: str) -> bool:
@@ -60,13 +60,13 @@ FunctionSig = NamedTuple('FunctionSig', [
 
 
 # States of the docstring parser.
-STATE_INIT = 1  # type: Final
-STATE_FUNCTION_NAME = 2  # type: Final
-STATE_ARGUMENT_LIST = 3  # type: Final
-STATE_ARGUMENT_TYPE = 4  # type: Final
-STATE_ARGUMENT_DEFAULT = 5  # type: Final
-STATE_RETURN_VALUE = 6  # type: Final
-STATE_OPEN_BRACKET = 7  # type: Final  # For generic types.
+STATE_INIT: Final = 1
+STATE_FUNCTION_NAME: Final = 2
+STATE_ARGUMENT_LIST: Final = 3
+STATE_ARGUMENT_TYPE: Final = 4
+STATE_ARGUMENT_DEFAULT: Final = 5
+STATE_RETURN_VALUE: Final = 6
+STATE_OPEN_BRACKET: Final = 7  # For generic types.
 
 
 class DocStringParser:
@@ -77,14 +77,14 @@ class DocStringParser:
         self.function_name = function_name
         self.state = [STATE_INIT]
         self.accumulator = ""
-        self.arg_type = None  # type: Optional[str]
+        self.arg_type: Optional[str] = None
         self.arg_name = ""
-        self.arg_default = None  # type: Optional[str]
+        self.arg_default: Optional[str] = None
         self.ret_type = "Any"
         self.found = False
-        self.args = []  # type: List[ArgSig]
+        self.args: List[ArgSig] = []
         # Valid signatures found so far.
-        self.signatures = []  # type: List[FunctionSig]
+        self.signatures: List[FunctionSig] = []
 
     def add_token(self, token: tokenize.TokenInfo) -> None:
         """Process next token from the token stream."""
@@ -140,20 +140,24 @@ class DocStringParser:
                 self.state.pop()
             elif self.state[-1] == STATE_ARGUMENT_LIST:
                 self.arg_name = self.accumulator
-                if not _ARG_NAME_RE.match(self.arg_name):
+                if not (token.string == ')' and self.accumulator.strip() == '') \
+                        and not _ARG_NAME_RE.match(self.arg_name):
                     # Invalid argument name.
                     self.reset()
                     return
 
             if token.string == ')':
                 self.state.pop()
-            try:
-                self.args.append(ArgSig(name=self.arg_name, type=self.arg_type,
-                                        default=bool(self.arg_default)))
-            except ValueError:
-                # wrong type, use Any
-                self.args.append(ArgSig(name=self.arg_name, type=None,
-                                        default=bool(self.arg_default)))
+
+            # arg_name is empty when there are no args. e.g. func()
+            if self.arg_name:
+                try:
+                    self.args.append(ArgSig(name=self.arg_name, type=self.arg_type,
+                                            default=bool(self.arg_default)))
+                except ValueError:
+                    # wrong type, use Any
+                    self.args.append(ArgSig(name=self.arg_name, type=None,
+                                            default=bool(self.arg_default)))
             self.arg_name = ""
             self.arg_type = None
             self.arg_default = None
@@ -202,7 +206,7 @@ class DocStringParser:
         return list(sorted(self.signatures, key=lambda x: 1 if args_kwargs(x) else 0))
 
 
-def infer_sig_from_docstring(docstr: str, name: str) -> Optional[List[FunctionSig]]:
+def infer_sig_from_docstring(docstr: Optional[str], name: str) -> Optional[List[FunctionSig]]:
     """Convert function signature to list of TypedFunctionSig
 
     Look for function signatures of function in docstring. Signature is a string of
@@ -235,7 +239,7 @@ def infer_sig_from_docstring(docstr: str, name: str) -> Optional[List[FunctionSi
         """return true if function argument names are unique"""
         return len(sig.args) == len(set((arg.name for arg in sig.args)))
 
-    # Return only signatures that have unique argument names. Mypy fails on non-uniqnue arg names.
+    # Return only signatures that have unique argument names. Mypy fails on non-unique arg names.
     return [sig for sig in sigs if is_unique_args(sig)]
 
 
@@ -247,12 +251,17 @@ def infer_arg_sig_from_anon_docstring(docstr: str) -> List[ArgSig]:
     return []
 
 
-def infer_ret_type_sig_from_anon_docstring(docstr: str) -> Optional[str]:
-    """Convert signature in form of "(self: TestClass, arg0) -> int" to their return type."""
-    ret = infer_sig_from_docstring("stub" + docstr.strip(), "stub")
+def infer_ret_type_sig_from_docstring(docstr: str, name: str) -> Optional[str]:
+    """Convert signature in form of "func(self: TestClass, arg0) -> int" to their return type."""
+    ret = infer_sig_from_docstring(docstr, name)
     if ret:
         return ret[0].ret_type
     return None
+
+
+def infer_ret_type_sig_from_anon_docstring(docstr: str) -> Optional[str]:
+    """Convert signature in form of "(self: TestClass, arg0) -> int" to their return type."""
+    return infer_ret_type_sig_from_docstring("stub" + docstr.strip(), "stub")
 
 
 def parse_signature(sig: str) -> Optional[Tuple[str,
@@ -297,7 +306,7 @@ def parse_signature(sig: str) -> Optional[Tuple[str,
 def build_signature(positional: Sequence[str],
                     optional: Sequence[str]) -> str:
     """Build function signature from lists of positional and optional argument names."""
-    args = []  # type: MutableSequence[str]
+    args: MutableSequence[str] = []
     args.extend(positional)
     for arg in optional:
         if arg.startswith('*'):
@@ -336,7 +345,7 @@ def parse_all_signatures(lines: Sequence[str]) -> Tuple[List[Sig],
 
 def find_unique_signatures(sigs: Sequence[Sig]) -> List[Sig]:
     """Remove names with duplicate found signatures."""
-    sig_map = {}  # type: MutableMapping[str, List[str]]
+    sig_map: MutableMapping[str, List[str]] = {}
     for name, sig in sigs:
         sig_map.setdefault(name, []).append(sig)
 

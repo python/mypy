@@ -429,6 +429,8 @@ support for basic runtime structural checks:
        def __init__(self) -> None:
            self.handles = 1
 
+   def use(handles: int) -> None: ...
+
    mug = Mug()
    if isinstance(mug, Portable):
       use(mug.handles)  # Works statically and at runtime

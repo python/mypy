@@ -5,7 +5,7 @@ from typing import List, Tuple, Dict
 from mypyc.common import JsonDict
 from mypyc.ir.ops import DeserMaps
 from mypyc.ir.rtypes import RType, deserialize_type
-from mypyc.ir.func_ir import FuncIR, FuncDecl, format_func
+from mypyc.ir.func_ir import FuncIR, FuncDecl
 from mypyc.ir.class_ir import ClassIR
 
 
@@ -39,7 +39,7 @@ class ModuleIR:
         return ModuleIR(
             data['fullname'],
             data['imports'],
-            [ctx.functions[FuncDecl.get_name_from_json(f['decl'])] for f in data['functions']],
+            [ctx.functions[FuncDecl.get_id_from_json(f)] for f in data['functions']],
             [ClassIR.deserialize(c, ctx) for c in data['classes']],
             [(k, deserialize_type(t, ctx)) for k, t in data['final_names']],
         )
@@ -72,9 +72,9 @@ def deserialize_modules(data: Dict[str, JsonDict], ctx: DeserMaps) -> Dict[str, 
         # to the class deserialization.
         for method in mod['functions']:
             func = FuncIR.deserialize(method, ctx)
-            assert func.decl.fullname not in ctx.functions, (
+            assert func.decl.id not in ctx.functions, (
                 "Method %s already in map" % func.decl.fullname)
-            ctx.functions[func.decl.fullname] = func
+            ctx.functions[func.decl.id] = func
 
     return {k: ModuleIR.deserialize(v, ctx) for k, v in data.items()}
 
@@ -82,12 +82,3 @@ def deserialize_modules(data: Dict[str, JsonDict], ctx: DeserMaps) -> Dict[str, 
 # ModulesIRs should also always be an *OrderedDict*, but if we
 # declared it that way we would need to put it in quotes everywhere...
 ModuleIRs = Dict[str, ModuleIR]
-
-
-def format_modules(modules: ModuleIRs) -> List[str]:
-    ops = []
-    for module in modules.values():
-        for fn in module.functions:
-            ops.extend(format_func(fn))
-            ops.append('')
-    return ops

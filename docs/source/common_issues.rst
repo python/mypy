@@ -14,7 +14,7 @@ Can't install mypy using pip
 
 If installation fails, you've probably hit one of these issues:
 
-* Mypy needs Python 3.5 or later to run.
+* Mypy needs Python 3.6 or later to run.
 * You may have to run pip like this:
   ``python3 -m pip install mypy``.
 
@@ -210,6 +210,21 @@ checking would require a large number of ``assert foo is not None``
 checks to be inserted, and you want to minimize the number
 of code changes required to get a clean mypy run.
 
+Issues with code at runtime
+---------------------------
+
+Idiomatic use of type annotations can sometimes run up against what a given
+version of Python considers legal code. These can result in some of the
+following errors when trying to run your code:
+
+* ``ImportError`` from circular imports
+* ``NameError: name "X" is not defined`` from forward references
+* ``TypeError: 'type' object is not subscriptable`` from types that are not generic at runtime
+* ``ImportError`` or ``ModuleNotFoundError`` from use of stub definitions not available at runtime
+* ``TypeError: unsupported operand type(s) for |: 'type' and 'type'`` from use of new syntax
+
+For dealing with these, see :ref:`runtime_troubles`.
+
 Mypy runs are slow
 ------------------
 
@@ -352,19 +367,38 @@ above example:
 Complex type tests
 ------------------
 
-Mypy can usually infer the types correctly when using :py:func:`isinstance <isinstance>`
-type tests, but for other kinds of checks you may need to add an
+Mypy can usually infer the types correctly when using :py:func:`isinstance <isinstance>`,
+:py:func:`issubclass <issubclass>`,
+or ``type(obj) is some_class`` type tests,
+and even :ref:`user-defined type guards <type-guards>`,
+but for other kinds of checks you may need to add an
 explicit type cast:
 
 .. code-block:: python
 
-   def f(o: object) -> None:
-       if type(o) is int:
-           o = cast(int, o)
-           g(o + 1)    # This would be an error without the cast
-           ...
-       else:
-           ...
+  from typing import Sequence, cast
+
+  def find_first_str(a: Sequence[object]) -> str:
+      index = next((i for i, s in enumerate(a) if isinstance(s, str)), -1)
+      if index < 0:
+          raise ValueError('No str found')
+
+      found = a[index]  # Has `object` type, despite the fact that we know it is `str`
+      return cast(str, found)  # So, we need an explicit cast to make mypy happy
+
+Alternatively, you can use ``assert`` statement together with some
+of the supported type inference techniques:
+
+.. code-block:: python
+
+  def find_first_str(a: Sequence[object]) -> str:
+      index = next((i for i, s in enumerate(a) if isinstance(s, str)), -1)
+      if index < 0:
+          raise ValueError('No str found')
+
+      found = a[index]  # Has `object` type, despite the fact that we know it is `str`
+      assert isinstance(found, str)  # Now, `found` will be narrowed to `str` subtype
+      return found  # No need for the explicit `cast()` anymore
 
 .. note::
 
@@ -375,19 +409,11 @@ explicit type cast:
     runtime. The cast above would have been unnecessary if the type of
     ``o`` was ``Any``.
 
-Mypy can't infer the type of ``o`` after the :py:class:`type() <type>` check
-because it only knows about :py:func:`isinstance` (and the latter is better
-style anyway).  We can write the above code without a cast by using
-:py:func:`isinstance`:
+.. note::
 
-.. code-block:: python
+   You can read more about type narrowing techniques here.
 
-   def f(o: object) -> None:
-       if isinstance(o, int):  # Mypy understands isinstance checks
-           g(o + 1)        # Okay; type of o is inferred as int here
-           ...
-
-Type inference in mypy is designed to work well in common cases, to be
+Type inference in Mypy is designed to work well in common cases, to be
 predictable and to let the type checker give useful error
 messages. More powerful type inference strategies often have complex
 and difficult-to-predict failure modes and could result in very
@@ -413,8 +439,8 @@ More specifically, mypy will understand the use of :py:data:`sys.version_info` a
    import sys
 
    # Distinguishing between different versions of Python:
-   if sys.version_info >= (3, 5):
-       # Python 3.5+ specific definitions and imports
+   if sys.version_info >= (3, 8):
+       # Python 3.8+ specific definitions and imports
    elif sys.version_info[0] >= 3:
        # Python 3 specific definitions and imports
    else:
@@ -478,7 +504,7 @@ understand how mypy handles a particular piece of code. Example:
 
 .. code-block:: python
 
-   reveal_type((1, 'hello'))  # Revealed type is 'Tuple[builtins.int, builtins.str]'
+   reveal_type((1, 'hello'))  # Revealed type is "Tuple[builtins.int, builtins.str]"
 
 You can also use ``reveal_locals()`` at any line in a file
 to see the types of all local variables at once. Example:
@@ -498,112 +524,6 @@ to see the types of all local variables at once. Example:
    remove any ``reveal_type`` and ``reveal_locals`` calls before you can
    run your code. Both are always available and you don't need to import
    them.
-
-
-.. _import-cycles:
-
-Import cycles
--------------
-
-An import cycle occurs where module A imports module B and module B
-imports module A (perhaps indirectly, e.g. ``A -> B -> C -> A``).
-Sometimes in order to add type annotations you have to add extra
-imports to a module and those imports cause cycles that didn't exist
-before.  If those cycles become a problem when running your program,
-there's a trick: if the import is only needed for type annotations in
-forward references (string literals) or comments, you can write the
-imports inside ``if TYPE_CHECKING:`` so that they are not executed at runtime.
-Example:
-
-File ``foo.py``:
-
-.. code-block:: python
-
-   from typing import List, TYPE_CHECKING
-
-   if TYPE_CHECKING:
-       import bar
-
-   def listify(arg: 'bar.BarClass') -> 'List[bar.BarClass]':
-       return [arg]
-
-File ``bar.py``:
-
-.. code-block:: python
-
-   from typing import List
-   from foo import listify
-
-   class BarClass:
-       def listifyme(self) -> 'List[BarClass]':
-           return listify(self)
-
-.. note::
-
-   The :py:data:`~typing.TYPE_CHECKING` constant defined by the :py:mod:`typing` module
-   is ``False`` at runtime but ``True`` while type checking.
-
-Python 3.5.1 doesn't have :py:data:`~typing.TYPE_CHECKING`. An alternative is
-to define a constant named ``MYPY`` that has the value ``False``
-at runtime. Mypy considers it to be ``True`` when type checking.
-Here's the above example modified to use ``MYPY``:
-
-.. code-block:: python
-
-   from typing import List
-
-   MYPY = False
-   if MYPY:
-       import bar
-
-   def listify(arg: 'bar.BarClass') -> 'List[bar.BarClass]':
-       return [arg]
-
-.. _not-generic-runtime:
-
-Using classes that are generic in stubs but not at runtime
-----------------------------------------------------------
-
-Some classes are declared as generic in stubs, but not at runtime. Examples
-in the standard library include :py:class:`os.PathLike` and :py:class:`queue.Queue`.
-Subscripting such a class will result in a runtime error:
-
-.. code-block:: python
-
-   from queue import Queue
-
-   class Tasks(Queue[str]):  # TypeError: 'type' object is not subscriptable
-       ...
-
-   results: Queue[int] = Queue()  # TypeError: 'type' object is not subscriptable
-
-To avoid these errors while still having precise types you can either use
-string literal types or :py:data:`~typing.TYPE_CHECKING`:
-
-.. code-block:: python
-
-   from queue import Queue
-   from typing import TYPE_CHECKING
-
-   if TYPE_CHECKING:
-       BaseQueue = Queue[str]  # this is only processed by mypy
-   else:
-       BaseQueue = Queue  # this is not seen by mypy but will be executed at runtime.
-
-   class Tasks(BaseQueue):  # OK
-       ...
-
-   results: 'Queue[int]' = Queue()  # OK
-
-If you are running Python 3.7+ you can use ``from __future__ import annotations``
-as a (nicer) alternative to string quotes, read more in :pep:`563`.  For example:
-
-.. code-block:: python
-
-   from __future__ import annotations
-   from queue import Queue
-
-   results: Queue[int] = Queue()  # This works at runtime
 
 .. _silencing-linters:
 
@@ -707,12 +627,12 @@ You can install the latest development version of mypy from source. Clone the
 
 .. code-block:: text
 
-    git clone --recurse-submodules https://github.com/python/mypy.git
+    git clone https://github.com/python/mypy.git
     cd mypy
     sudo python3 -m pip install --upgrade .
 
 Variables vs type aliases
------------------------------------
+-------------------------
 
 Mypy has both type aliases and variables with types like ``Type[...]`` and it is important to know their difference.
 
@@ -753,7 +673,7 @@ Mypy has both type aliases and variables with types like ``Type[...]`` and it is
     def fun2(x: tp) -> None: ...  # error: Variable "__main__.tp" is not valid as a type
 
 Incompatible overrides
-------------------------------
+----------------------
 
 It's unsafe to override a method with a more specific argument type,
 as it violates the `Liskov substitution principle
@@ -809,6 +729,8 @@ not necessary:
         def test(self, t: List[int]) -> Sequence[str]:  # type: ignore[override]
             ...
 
+.. _unreachable:
+
 Unreachable code
 ----------------
 
@@ -863,3 +785,29 @@ False:
 
 If you use the :option:`--warn-unreachable <mypy --warn-unreachable>` flag, mypy will generate
 an error about each unreachable code block.
+
+Narrowing and inner functions
+-----------------------------
+
+Because closures in Python are late-binding (https://docs.python-guide.org/writing/gotchas/#late-binding-closures),
+mypy will not narrow the type of a captured variable in an inner function.
+This is best understood via an example:
+
+.. code-block:: python
+
+    def foo(x: Optional[int]) -> Callable[[], int]:
+        if x is None:
+            x = 5
+        print(x + 1)  # mypy correctly deduces x must be an int here
+        def inner() -> int:
+            return x + 1  # but (correctly) complains about this line
+
+        x = None  # because x could later be assigned None
+        return inner
+
+    inner = foo(5)
+    inner()  # this will raise an error when called
+
+To get this code to type check, you could assign ``y = x`` after ``x`` has been
+narrowed, and use ``y`` in the inner function, or add an assert in the inner
+function.

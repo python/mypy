@@ -60,6 +60,7 @@ def test_transform(testcase: DataDrivenTestCase) -> None:
                     and not os.path.splitext(
                         os.path.basename(f.path))[0].endswith('_')):
                 t = TypeAssertTransformVisitor()
+                t.test_only = True
                 f = t.mypyfile(f)
                 a += str(f).split('\n')
     except CompileError as e:

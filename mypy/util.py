@@ -23,10 +23,10 @@ except ImportError:
 
 T = TypeVar('T')
 
-ENCODING_RE = \
-    re.compile(br'([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)')  # type: Final
+ENCODING_RE: Final = re.compile(br"([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)")
 
-DEFAULT_SOURCE_OFFSET = 4  # type: Final
+DEFAULT_SOURCE_OFFSET: Final = 4
+DEFAULT_COLUMNS: Final = 80
 
 # At least this number of columns will be shown on each side of
 # error location when printing source code snippet.
@@ -39,8 +39,12 @@ MINIMUM_WIDTH = 20
 MINIMUM_WINDOWS_MAJOR_VT100 = 10
 MINIMUM_WINDOWS_BUILD_VT100 = 10586
 
-default_python2_interpreter = \
-    ['python2', 'python', '/usr/bin/python', 'C:\\Python27\\python.exe']  # type: Final
+default_python2_interpreter: Final = [
+    "python2",
+    "python",
+    "/usr/bin/python",
+    "C:\\Python27\\python.exe",
+]
 
 
 def split_module_names(mod_name: str) -> List[str]:
@@ -64,7 +68,7 @@ def module_prefix(modules: Iterable[str], target: str) -> Optional[str]:
 
 
 def split_target(modules: Iterable[str], target: str) -> Optional[Tuple[str, str]]:
-    remaining = []  # type: List[str]
+    remaining: List[str] = []
     while True:
         if target in modules:
             return target, '.'.join(remaining)
@@ -192,7 +196,7 @@ def get_mypy_comments(source: str) -> List[Tuple[int, str]]:
     return results
 
 
-_python2_interpreter = None  # type: Optional[str]
+_python2_interpreter: Optional[str] = None
 
 
 def try_find_python2_interpreter() -> Optional[str]:
@@ -213,28 +217,28 @@ def try_find_python2_interpreter() -> Optional[str]:
     return None
 
 
-PASS_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
+PASS_TEMPLATE: Final = """<?xml version="1.0" encoding="utf-8"?>
 <testsuite errors="0" failures="0" name="mypy" skips="0" tests="1" time="{time:.3f}">
   <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
   </testcase>
 </testsuite>
-"""  # type: Final
+"""
 
-FAIL_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
+FAIL_TEMPLATE: Final = """<?xml version="1.0" encoding="utf-8"?>
 <testsuite errors="0" failures="1" name="mypy" skips="0" tests="1" time="{time:.3f}">
   <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
     <failure message="mypy produced messages">{text}</failure>
   </testcase>
 </testsuite>
-"""  # type: Final
+"""
 
-ERROR_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
+ERROR_TEMPLATE: Final = """<?xml version="1.0" encoding="utf-8"?>
 <testsuite errors="1" failures="0" name="mypy" skips="0" tests="1" time="{time:.3f}">
   <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
     <error message="mypy produced errors">{text}</error>
   </testcase>
 </testsuite>
-"""  # type: Final
+"""
 
 
 def write_junit_xml(dt: float, serious: bool, messages: List[str], path: str,
@@ -268,7 +272,7 @@ class IdMapper:
     """
 
     def __init__(self) -> None:
-        self.id_map = {}  # type: Dict[object, int]
+        self.id_map: Dict[object, int] = {}
         self.next_id = 0
 
     def id(self, o: object) -> int:
@@ -281,6 +285,17 @@ class IdMapper:
 def get_prefix(fullname: str) -> str:
     """Drop the final component of a qualified name (e.g. ('x.y' -> 'x')."""
     return fullname.rsplit('.', 1)[0]
+
+
+def get_top_two_prefixes(fullname: str) -> Tuple[str, str]:
+    """Return one and two component prefixes of a fully qualified name.
+
+    Given 'a.b.c.d', return ('a', 'a.b').
+
+    If fullname has only one component, return (fullname, fullname).
+    """
+    components = fullname.split('.', 3)
+    return components[0], '.'.join(components[:2])
 
 
 def correct_relative_import(cur_mod_id: str,
@@ -299,7 +314,7 @@ def correct_relative_import(cur_mod_id: str,
     return cur_mod_id + (("." + target) if target else ""), ok
 
 
-fields_cache = {}  # type: Final[Dict[Type[object], List[str]]]
+fields_cache: Final[Dict[Type[object], List[str]]] = {}
 
 
 def get_class_descriptors(cls: 'Type[object]') -> Sequence[str]:
@@ -381,13 +396,9 @@ def get_unique_redefinition_name(name: str, existing: Container[str]) -> str:
 def check_python_version(program: str) -> None:
     """Report issues with the Python used to run mypy, dmypy, or stubgen"""
     # Check for known bad Python versions.
-    if sys.version_info[:2] < (3, 5):
-        sys.exit("Running {name} with Python 3.4 or lower is not supported; "
-                 "please upgrade to 3.5 or newer".format(name=program))
-    # this can be deleted once we drop support for 3.5
-    if sys.version_info[:3] == (3, 5, 0):
-        sys.exit("Running {name} with Python 3.5.0 is not supported; "
-                 "please upgrade to 3.5.1 or newer".format(name=program))
+    if sys.version_info[:2] < (3, 6):
+        sys.exit("Running {name} with Python 3.5 or lower is not supported; "
+                 "please upgrade to 3.6 or newer".format(name=program))
 
 
 def count_stats(errors: List[str]) -> Tuple[int, int]:
@@ -400,7 +411,7 @@ def count_stats(errors: List[str]) -> Tuple[int, int]:
 def split_words(msg: str) -> List[str]:
     """Split line of text into words (but not within quoted groups)."""
     next_word = ''
-    res = []  # type: List[str]
+    res: List[str] = []
     allow_break = True
     for c in msg:
         if c == ' ' and allow_break:
@@ -416,7 +427,9 @@ def split_words(msg: str) -> List[str]:
 
 def get_terminal_width() -> int:
     """Get current terminal width if possible, otherwise return the default one."""
-    return int(os.getenv('MYPY_FORCE_TERMINAL_WIDTH', '0')) or shutil.get_terminal_size().columns
+    return (int(os.getenv('MYPY_FORCE_TERMINAL_WIDTH', '0'))
+            or shutil.get_terminal_size().columns
+            or DEFAULT_COLUMNS)
 
 
 def soft_wrap(msg: str, max_len: int, first_offset: int,
@@ -441,7 +454,7 @@ def soft_wrap(msg: str, max_len: int, first_offset: int,
     """
     words = split_words(msg)
     next_line = words.pop(0)
-    lines = []  # type: List[str]
+    lines: List[str] = []
     while words:
         next_word = words.pop(0)
         max_line_len = max_len - num_indent if lines else max_len - first_offset
@@ -625,7 +638,8 @@ class FancyFormatter:
                     self.highlight_quote_groups(msg) + self.style(code, 'yellow'))
         elif ': note:' in error:
             loc, msg = error.split('note:', maxsplit=1)
-            return loc + self.style('note:', 'blue') + self.underline_link(msg)
+            formatted = self.highlight_quote_groups(self.underline_link(msg))
+            return loc + self.style('note:', 'blue') + formatted
         elif error.startswith(' ' * DEFAULT_SOURCE_OFFSET):
             # TODO: detecting source code highlights through an indent can be surprising.
             if '^' not in error:
@@ -677,13 +691,20 @@ class FancyFormatter:
             return msg
         return self.style(msg, 'green', bold=True)
 
-    def format_error(self, n_errors: int, n_files: int, n_sources: int,
-                     use_color: bool = True) -> str:
+    def format_error(
+        self, n_errors: int, n_files: int, n_sources: int, *,
+        blockers: bool = False, use_color: bool = True
+    ) -> str:
         """Format a short summary in case of errors."""
-        msg = 'Found {} error{} in {} file{}' \
-              ' (checked {} source file{})'.format(n_errors, 's' if n_errors != 1 else '',
-                                                   n_files, 's' if n_files != 1 else '',
-                                                   n_sources, 's' if n_sources != 1 else '')
+
+        msg = 'Found {} error{} in {} file{}'.format(
+            n_errors, 's' if n_errors != 1 else '',
+            n_files, 's' if n_files != 1 else ''
+        )
+        if blockers:
+            msg += ' (errors prevented further checking)'
+        else:
+            msg += ' (checked {} source file{})'.format(n_sources, 's' if n_sources != 1 else '')
         if not use_color:
             return msg
         return self.style(msg, 'red', bold=True)
@@ -692,3 +713,15 @@ class FancyFormatter:
 def is_typeshed_file(file: str) -> bool:
     # gross, but no other clear way to tell
     return 'typeshed' in os.path.abspath(file).split(os.sep)
+
+
+def is_stub_package_file(file: str) -> bool:
+    # Use hacky heuristics to check whether file is part of a PEP 561 stub package.
+    if not file.endswith('.pyi'):
+        return False
+    return any(component.endswith('-stubs')
+               for component in os.path.abspath(file).split(os.sep))
+
+
+def unnamed_function(name: Optional[str]) -> bool:
+    return name is not None and name == "_"

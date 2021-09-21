@@ -24,7 +24,7 @@ Displaying error codes
 ----------------------
 
 Error codes are not displayed by default.  Use :option:`--show-error-codes <mypy --show-error-codes>`
-to display error codes. Error codes are shown inside square brackets:
+or config `show_error_codes = True` to display error codes. Error codes are shown inside square brackets:
 
 .. code-block:: text
 

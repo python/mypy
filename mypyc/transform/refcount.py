@@ -27,18 +27,19 @@ from mypyc.analysis.dataflow import (
     AnalysisDict
 )
 from mypyc.ir.ops import (
-    BasicBlock, Assign, RegisterOp, DecRef, IncRef, Branch, Goto, Environment,
-    Op, ControlOp, Value, Register
+    BasicBlock, Assign, RegisterOp, DecRef, IncRef, Branch, Goto,  Op, ControlOp, Value, Register,
+    LoadAddress, Integer, KeepAlive
 )
-from mypyc.ir.func_ir import FuncIR
+from mypyc.ir.func_ir import FuncIR, all_values
 
 
-DecIncs = Tuple[Tuple[Tuple[Value, bool], ...], Tuple[Value, ...]]
+Decs = Tuple[Tuple[Value, bool], ...]
+Incs = Tuple[Value, ...]
 
-# A of basic blocks that decrement and increment specific values and
-# then jump to some target block. This lets us cut down on how much
-# code we generate in some circumstances.
-BlockCache = Dict[Tuple[BasicBlock, DecIncs], BasicBlock]
+# A cache of basic blocks that decrement and increment specific values
+# and then jump to some target block. This lets us cut down on how
+# much code we generate in some circumstances.
+BlockCache = Dict[Tuple[BasicBlock, Decs, Incs], BasicBlock]
 
 
 def insert_ref_count_opcodes(ir: FuncIR) -> None:
@@ -47,13 +48,15 @@ def insert_ref_count_opcodes(ir: FuncIR) -> None:
     This is the entry point to this module.
     """
     cfg = get_cfg(ir.blocks)
-    borrowed = set(reg for reg in ir.env.regs() if reg.is_borrowed)
-    args = set(reg for reg in ir.env.regs() if ir.env.indexes[reg] < len(ir.args))
-    regs = [reg for reg in ir.env.regs() if isinstance(reg, Register)]
+    values = all_values(ir.arg_regs, ir.blocks)
+
+    borrowed = {value for value in values if value.is_borrowed}
+    args: Set[Value] = set(ir.arg_regs)
     live = analyze_live_regs(ir.blocks, cfg)
     borrow = analyze_borrowed_arguments(ir.blocks, cfg, borrowed)
-    defined = analyze_must_defined_regs(ir.blocks, cfg, args, regs)
-    cache = {}  # type: BlockCache
+    defined = analyze_must_defined_regs(ir.blocks, cfg, args, values, strict_errors=True)
+    ordering = make_value_ordering(ir)
+    cache: BlockCache = {}
     for block in ir.blocks[:]:
         if isinstance(block.ops[-1], (Branch, Goto)):
             insert_branch_inc_and_decrefs(block,
@@ -63,15 +66,8 @@ def insert_ref_count_opcodes(ir: FuncIR) -> None:
                                           borrow.before,
                                           borrow.after,
                                           defined.after,
-                                          ir.env)
-        transform_block(block, live.before, live.after, borrow.before, defined.after, ir.env)
-
-    # Find all the xdecs we inserted and note the registers down as
-    # needing to be initialized.
-    for block in ir.blocks:
-        for op in block.ops:
-            if isinstance(op, DecRef) and op.is_xdec:
-                ir.env.vars_needing_init.add(op.src)
+                                          ordering)
+        transform_block(block, live.before, live.after, borrow.before, defined.after)
 
     cleanup_cfg(ir.blocks)
 
@@ -82,7 +78,7 @@ def is_maybe_undefined(post_must_defined: Set[Value], src: Value) -> bool:
 
 def maybe_append_dec_ref(ops: List[Op], dest: Value,
                          defined: 'AnalysisDict[Value]', key: Tuple[BasicBlock, int]) -> None:
-    if dest.type.is_refcounted:
+    if dest.type.is_refcounted and not isinstance(dest, Integer):
         ops.append(DecRef(dest, is_xdec=is_maybe_undefined(defined[key], dest)))
 
 
@@ -95,10 +91,9 @@ def transform_block(block: BasicBlock,
                     pre_live: 'AnalysisDict[Value]',
                     post_live: 'AnalysisDict[Value]',
                     pre_borrow: 'AnalysisDict[Value]',
-                    post_must_defined: 'AnalysisDict[Value]',
-                    env: Environment) -> None:
+                    post_must_defined: 'AnalysisDict[Value]') -> None:
     old_ops = block.ops
-    ops = []  # type: List[Op]
+    ops: List[Op] = []
     for i, op in enumerate(old_ops):
         key = (block, i)
 
@@ -117,7 +112,9 @@ def transform_block(block: BasicBlock,
                     assert isinstance(op, Assign)
                     maybe_append_dec_ref(ops, dest, post_must_defined, key)
 
-        ops.append(op)
+        # Strip KeepAlive. Its only purpose is to help with this transform.
+        if not isinstance(op, KeepAlive):
+            ops.append(op)
 
         # Control ops don't have any space to insert ops after them, so
         # their inc/decrefs get inserted by insert_branch_inc_and_decrefs.
@@ -144,7 +141,7 @@ def insert_branch_inc_and_decrefs(
         pre_borrow: 'AnalysisDict[Value]',
         post_borrow: 'AnalysisDict[Value]',
         post_must_defined: 'AnalysisDict[Value]',
-        env: Environment) -> None:
+        ordering: Dict[Value, int]) -> None:
     """Insert inc_refs and/or dec_refs after a branch/goto.
 
     Add dec_refs for registers that become dead after a branch.
@@ -165,35 +162,25 @@ def insert_branch_inc_and_decrefs(
     source_live_regs = pre_live[prev_key]
     source_borrowed = post_borrow[prev_key]
     source_defined = post_must_defined[prev_key]
-    if isinstance(block.ops[-1], Branch):
-        branch = block.ops[-1]
+
+    term = block.terminator
+    for i, target in enumerate(term.targets()):
         # HAX: After we've checked against an error value the value we must not touch the
         #      refcount since it will be a null pointer. The correct way to do this would be
         #      to perform data flow analysis on whether a value can be null (or is always
         #      null).
-        if branch.op == Branch.IS_ERROR:
-            omitted = {branch.left}
+        omitted: Iterable[Value]
+        if isinstance(term, Branch) and term.op == Branch.IS_ERROR and i == 0:
+            omitted = (term.value,)
         else:
-            omitted = set()
-        true_decincs = (
-            after_branch_decrefs(
-                branch.true, pre_live, source_defined,
-                source_borrowed, source_live_regs, env, omitted),
-            after_branch_increfs(
-                branch.true, pre_live, pre_borrow, source_borrowed, env))
-        branch.true = add_block(true_decincs, cache, blocks, branch.true)
+            omitted = ()
 
-        false_decincs = (
-            after_branch_decrefs(
-                branch.false, pre_live, source_defined, source_borrowed, source_live_regs, env),
-            after_branch_increfs(
-                branch.false, pre_live, pre_borrow, source_borrowed, env))
-        branch.false = add_block(false_decincs, cache, blocks, branch.false)
-    elif isinstance(block.ops[-1], Goto):
-        goto = block.ops[-1]
-        new_decincs = ((), after_branch_increfs(
-            goto.label, pre_live, pre_borrow, source_borrowed, env))
-        goto.label = add_block(new_decincs, cache, blocks, goto.label)
+        decs = after_branch_decrefs(
+            target, pre_live, source_defined,
+            source_borrowed, source_live_regs, ordering, omitted)
+        incs = after_branch_increfs(
+            target, pre_live, pre_borrow, source_borrowed, ordering)
+        term.set_target(i, add_block(decs, incs, cache, blocks, target))
 
 
 def after_branch_decrefs(label: BasicBlock,
@@ -201,13 +188,13 @@ def after_branch_decrefs(label: BasicBlock,
                          source_defined: Set[Value],
                          source_borrowed: Set[Value],
                          source_live_regs: Set[Value],
-                         env: Environment,
-                         omitted: Iterable[Value] = ()) -> Tuple[Tuple[Value, bool], ...]:
+                         ordering: Dict[Value, int],
+                         omitted: Iterable[Value]) -> Tuple[Tuple[Value, bool], ...]:
     target_pre_live = pre_live[label, 0]
     decref = source_live_regs - target_pre_live - source_borrowed
     if decref:
         return tuple((reg, is_maybe_undefined(source_defined, reg))
-                     for reg in sorted(decref, key=lambda r: env.indexes[r])
+                     for reg in sorted(decref, key=lambda r: ordering[r])
                      if reg.type.is_refcounted and reg not in omitted)
     return ()
 
@@ -216,31 +203,62 @@ def after_branch_increfs(label: BasicBlock,
                          pre_live: 'AnalysisDict[Value]',
                          pre_borrow: 'AnalysisDict[Value]',
                          source_borrowed: Set[Value],
-                         env: Environment) -> Tuple[Value, ...]:
+                         ordering: Dict[Value, int]) -> Tuple[Value, ...]:
     target_pre_live = pre_live[label, 0]
     target_borrowed = pre_borrow[label, 0]
     incref = (source_borrowed - target_borrowed) & target_pre_live
     if incref:
         return tuple(reg
-                     for reg in sorted(incref, key=lambda r: env.indexes[r])
+                     for reg in sorted(incref, key=lambda r: ordering[r])
                      if reg.type.is_refcounted)
     return ()
 
 
-def add_block(decincs: DecIncs, cache: BlockCache,
+def add_block(decs: Decs, incs: Incs, cache: BlockCache,
               blocks: List[BasicBlock], label: BasicBlock) -> BasicBlock:
-    decs, incs = decincs
     if not decs and not incs:
         return label
 
     # TODO: be able to share *partial* results
-    if (label, decincs) in cache:
-        return cache[label, decincs]
+    if (label, decs, incs) in cache:
+        return cache[label, decs, incs]
 
     block = BasicBlock()
     blocks.append(block)
     block.ops.extend(DecRef(reg, is_xdec=xdec) for reg, xdec in decs)
     block.ops.extend(IncRef(reg) for reg in incs)
     block.ops.append(Goto(label))
-    cache[label, decincs] = block
+    cache[label, decs, incs] = block
     return block
+
+
+def make_value_ordering(ir: FuncIR) -> Dict[Value, int]:
+    """Create a ordering of values that allows them to be sorted.
+
+    This omits registers that are only ever read.
+    """
+    # TODO: Never initialized values??
+    result: Dict[Value, int] = {}
+    n = 0
+
+    for arg in ir.arg_regs:
+        result[arg] = n
+        n += 1
+
+    for block in ir.blocks:
+        for op in block.ops:
+            if (isinstance(op, LoadAddress)
+                    and isinstance(op.src, Register)
+                    and op.src not in result):
+                # Taking the address of a register allows initialization.
+                result[op.src] = n
+                n += 1
+            if isinstance(op, Assign):
+                if op.dest not in result:
+                    result[op.dest] = n
+                    n += 1
+            elif op not in result:
+                result[op] = n
+                n += 1
+
+    return result

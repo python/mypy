@@ -195,7 +195,7 @@ class SemAnalTypeInfoSuite(DataSuite):
 
 class TypeInfoMap(Dict[str, TypeInfo]):
     def __str__(self) -> str:
-        a = ['TypeInfoMap(']  # type: List[str]
+        a: List[str] = ["TypeInfoMap("]
         for x, y in sorted(self.items()):
             if isinstance(x, str) and (not x.startswith('builtins.') and
                                        not x.startswith('typing.') and

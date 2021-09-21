@@ -8,12 +8,12 @@ annotations are just hints for mypy and don't interfere when running your progra
 You run your program with a standard Python interpreter, and the annotations
 are treated effectively as comments.
 
-Using the Python 3 function annotation syntax (using the :pep:`484` notation) or
-a comment-based annotation syntax for Python 2 code, you will be able to
-efficiently annotate your code and use mypy to check the code for common
-errors. Mypy has a powerful and easy-to-use type system with modern features
-such as type inference, generics, callable types, tuple types,
-union types, and structural subtyping.
+Using the Python 3 annotation syntax (using :pep:`484` and :pep:`526` notation)
+or a comment-based annotation syntax for Python 2 code, you will be able to
+efficiently annotate your code and use mypy to check the code for common errors.
+Mypy has a powerful and easy-to-use type system with modern features such as
+type inference, generics, callable types, tuple types, union types, and
+structural subtyping.
 
 As a developer, you decide how to use mypy in your workflow. You can always
 escape to dynamic typing as mypy's approach to static typing doesn't restrict

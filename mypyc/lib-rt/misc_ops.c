@@ -1,4 +1,4 @@
-// Misc primitive operations
+// Misc primitive operations + C helpers
 //
 // These are registered in mypyc.primitives.misc_ops.
 
@@ -27,7 +27,7 @@ PyObject *CPyIter_Send(PyObject *iter, PyObject *val)
     if (val == Py_None) {
         return CPyIter_Next(iter);
     } else {
-        return _PyObject_CallMethodIdObjArgs(iter, &PyId_send, val, NULL);
+        return _PyObject_CallMethodIdOneArg(iter, &PyId_send, val);
     }
 }
 
@@ -494,4 +494,292 @@ PyObject *CPyTagged_Str(CPyTagged n) {
 void CPyDebug_Print(const char *msg) {
     printf("%s\n", msg);
     fflush(stdout);
+}
+
+int CPySequence_CheckUnpackCount(PyObject *sequence, Py_ssize_t expected) {
+    Py_ssize_t actual = Py_SIZE(sequence);
+    if (unlikely(actual != expected)) {
+        if (actual < expected) {
+            PyErr_Format(PyExc_ValueError, "not enough values to unpack (expected %zd, got %zd)",
+                         expected, actual);
+        } else {
+            PyErr_Format(PyExc_ValueError, "too many values to unpack (expected %zd)", expected);
+        }
+        return -1;
+    }
+    return 0;
+}
+
+// Parse an integer (size_t) encoded as a variable-length binary sequence.
+static const char *parse_int(const char *s, size_t *len) {
+    ssize_t n = 0;
+    while ((unsigned char)*s >= 0x80) {
+        n = (n << 7) + (*s & 0x7f);
+        s++;
+    }
+    n = (n << 7) | *s++;
+    *len = n;
+    return s;
+}
+
+// Initialize static constant array of literal values
+int CPyStatics_Initialize(PyObject **statics,
+                          const char * const *strings,
+                          const char * const *bytestrings,
+                          const char * const *ints,
+                          const double *floats,
+                          const double *complex_numbers,
+                          const int *tuples) {
+    PyObject **result = statics;
+    // Start with some hard-coded values
+    *result++ = Py_None;
+    Py_INCREF(Py_None);
+    *result++ = Py_False;
+    Py_INCREF(Py_False);
+    *result++ = Py_True;
+    Py_INCREF(Py_True);
+    if (strings) {
+        for (; **strings != '\0'; strings++) {
+            size_t num;
+            const char *data = *strings;
+            data = parse_int(data, &num);
+            while (num-- > 0) {
+                size_t len;
+                data = parse_int(data, &len);
+                PyObject *obj = PyUnicode_FromStringAndSize(data, len);
+                if (obj == NULL) {
+                    return -1;
+                }
+                PyUnicode_InternInPlace(&obj);
+                *result++ = obj;
+                data += len;
+            }
+        }
+    }
+    if (bytestrings) {
+        for (; **bytestrings != '\0'; bytestrings++) {
+            size_t num;
+            const char *data = *bytestrings;
+            data = parse_int(data, &num);
+            while (num-- > 0) {
+                size_t len;
+                data = parse_int(data, &len);
+                PyObject *obj = PyBytes_FromStringAndSize(data, len);
+                if (obj == NULL) {
+                    return -1;
+                }
+                *result++ = obj;
+                data += len;
+            }
+        }
+    }
+    if (ints) {
+        for (; **ints != '\0'; ints++) {
+            size_t num;
+            const char *data = *ints;
+            data = parse_int(data, &num);
+            while (num-- > 0) {
+                char *end;
+                PyObject *obj = PyLong_FromString(data, &end, 10);
+                if (obj == NULL) {
+                    return -1;
+                }
+                data = end;
+                data++;
+                *result++ = obj;
+            }
+        }
+    }
+    if (floats) {
+        size_t num = (size_t)*floats++;
+        while (num-- > 0) {
+            PyObject *obj = PyFloat_FromDouble(*floats++);
+            if (obj == NULL) {
+                return -1;
+            }
+            *result++ = obj;
+        }
+    }
+    if (complex_numbers) {
+        size_t num = (size_t)*complex_numbers++;
+        while (num-- > 0) {
+            double real = *complex_numbers++;
+            double imag = *complex_numbers++;
+            PyObject *obj = PyComplex_FromDoubles(real, imag);
+            if (obj == NULL) {
+                return -1;
+            }
+            *result++ = obj;
+        }
+    }
+    if (tuples) {
+        int num = *tuples++;
+        while (num-- > 0) {
+            int num_items = *tuples++;
+            PyObject *obj = PyTuple_New(num_items);
+            if (obj == NULL) {
+                return -1;
+            }
+            int i;
+            for (i = 0; i < num_items; i++) {
+                PyObject *item = statics[*tuples++];
+                Py_INCREF(item);
+                PyTuple_SET_ITEM(obj, i, item);
+            }
+            *result++ = obj;
+        }
+    }
+    return 0;
+}
+
+// Call super(type(self), self)
+PyObject *
+CPy_Super(PyObject *builtins, PyObject *self) {
+    PyObject *super_type = PyObject_GetAttrString(builtins, "super");
+    if (!super_type)
+        return NULL;
+    PyObject *result = PyObject_CallFunctionObjArgs(
+        super_type, (PyObject*)self->ob_type, self, NULL);
+    Py_DECREF(super_type);
+    return result;
+}
+
+// This helper function is a simplification of cpython/ceval.c/import_from()
+PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
+                               PyObject *import_name, PyObject *as_name) {
+    // check if the imported module has an attribute by that name
+    PyObject *x = PyObject_GetAttr(module, import_name);
+    if (x == NULL) {
+        // if not, attempt to import a submodule with that name
+        PyObject *fullmodname = PyUnicode_FromFormat("%U.%U", package_name, import_name);
+        if (fullmodname == NULL) {
+            goto fail;
+        }
+
+        // The following code is a simplification of cpython/import.c/PyImport_GetModule()
+        x = PyObject_GetItem(module, fullmodname);
+        Py_DECREF(fullmodname);
+        if (x == NULL) {
+            goto fail;
+        }
+    }
+    return x;
+
+fail:
+    PyErr_Clear();
+    PyObject *package_path = PyModule_GetFilenameObject(module);
+    PyObject *errmsg = PyUnicode_FromFormat("cannot import name %R from %R (%S)",
+                                            import_name, package_name, package_path);
+    // NULL checks for errmsg and package_name done by PyErr_SetImportError.
+    PyErr_SetImportError(errmsg, package_name, package_path);
+    Py_DECREF(package_path);
+    Py_DECREF(errmsg);
+    return NULL;
+}
+
+// From CPython
+static PyObject *
+CPy_BinopTypeError(PyObject *left, PyObject *right, const char *op) {
+    PyErr_Format(PyExc_TypeError,
+                 "unsupported operand type(s) for %.100s: "
+                 "'%.100s' and '%.100s'",
+                 op,
+                 Py_TYPE(left)->tp_name,
+                 Py_TYPE(right)->tp_name);
+    return NULL;
+}
+
+PyObject *
+CPy_CallReverseOpMethod(PyObject *left,
+                        PyObject *right,
+                        const char *op,
+                        _Py_Identifier *method) {
+    // Look up reverse method
+    PyObject *m = _PyObject_GetAttrId(right, method);
+    if (m == NULL) {
+        // If reverse method not defined, generate TypeError instead AttributeError
+        if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
+            CPy_BinopTypeError(left, right, op);
+        }
+        return NULL;
+    }
+    // Call reverse method
+    PyObject *result = PyObject_CallOneArg(m, left);
+    Py_DECREF(m);
+    return result;
+}
+
+PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func,
+                                             PyObject *cls,
+                                             PyObject *func) {
+    PyObject *registry = PyObject_GetAttrString(singledispatch_func, "registry");
+    PyObject *register_func = NULL;
+    PyObject *typing = NULL;
+    PyObject *get_type_hints = NULL;
+    PyObject *type_hints = NULL;
+
+    if (registry == NULL) goto fail;
+    if (func == NULL) {
+        // one argument case
+        if (PyType_Check(cls)) {
+            // passed a class
+            // bind cls to the first argument so that register gets called again with both the
+            // class and the function
+            register_func = PyObject_GetAttrString(singledispatch_func, "register");
+            if (register_func == NULL) goto fail;
+            return PyMethod_New(register_func, cls);
+        }
+        // passed a function
+        PyObject *annotations = PyFunction_GetAnnotations(cls);
+        const char *invalid_first_arg_msg =
+            "Invalid first argument to `register()`: %R. "
+            "Use either `@register(some_class)` or plain `@register` "
+            "on an annotated function.";
+
+        if (annotations == NULL) {
+            PyErr_Format(PyExc_TypeError, invalid_first_arg_msg, cls);
+            goto fail;
+        }
+
+        Py_INCREF(annotations);
+
+        func = cls;
+        typing = PyImport_ImportModule("typing");
+        if (typing == NULL) goto fail;
+        get_type_hints = PyObject_GetAttrString(typing, "get_type_hints");
+
+        type_hints = PyObject_CallOneArg(get_type_hints, func);
+        PyObject *argname;
+        Py_ssize_t pos = 0;
+        if (!PyDict_Next(type_hints, &pos, &argname, &cls)) {
+            // the functools implementation raises the same type error if annotations is an empty dict
+            PyErr_Format(PyExc_TypeError, invalid_first_arg_msg, cls);
+            goto fail;
+        }
+        if (!PyType_Check(cls)) {
+            const char *invalid_annotation_msg = "Invalid annotation for %R. %R is not a class.";
+            PyErr_Format(PyExc_TypeError, invalid_annotation_msg, argname, cls);
+            goto fail;
+        }
+    }
+    if (PyDict_SetItem(registry, cls, func) == -1) {
+        goto fail;
+    }
+
+    // clear the cache so we consider the newly added function when dispatching
+    PyObject *dispatch_cache = PyObject_GetAttrString(singledispatch_func, "dispatch_cache");
+    if (dispatch_cache == NULL) goto fail;
+    PyDict_Clear(dispatch_cache);
+
+    Py_INCREF(func);
+    return func;
+
+fail:
+    Py_XDECREF(registry);
+    Py_XDECREF(register_func);
+    Py_XDECREF(typing);
+    Py_XDECREF(get_type_hints);
+    Py_XDECREF(type_hints);
+    return NULL;
+
 }

@@ -128,7 +128,7 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> Dict[str, Sna
     things defined in other modules are represented just by the names of
     the targets.
     """
-    result = {}  # type: Dict[str, SnapshotItem]
+    result: Dict[str, SnapshotItem] = {}
     for name, symbol in table.items():
         node = symbol.node
         # TODO: cross_ref?
@@ -213,7 +213,7 @@ def snapshot_definition(node: Optional[SymbolNode],
                  #     x: C[str] <- this is invalid, and needs to be re-checked if `T` changes.
                  # An alternative would be to create both deps: <...> -> C, and <...> -> <C>,
                  # but this currently seems a bit ad hoc.
-                 tuple(snapshot_type(TypeVarType(tdef)) for tdef in node.defn.type_vars),
+                 tuple(snapshot_type(tdef) for tdef in node.defn.type_vars),
                  [snapshot_type(base) for base in node.bases],
                  snapshot_optional_type(node._promote))
         prefix = node.fullname
@@ -336,7 +336,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
         return ('UnionType', normalized)
 
     def visit_overloaded(self, typ: Overloaded) -> SnapshotItem:
-        return ('Overloaded', snapshot_types(typ.items()))
+        return ('Overloaded', snapshot_types(typ.items))
 
     def visit_partial_type(self, typ: PartialType) -> SnapshotItem:
         # A partial type is not fully defined, so the result is indeterminate. We shouldn't

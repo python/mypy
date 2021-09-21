@@ -562,7 +562,7 @@ non-function (e.g. ``my_decorator(1)``) will be rejected.
 Also note that the ``wrapper()`` function is not type-checked. Wrapper
 functions are typically small enough that this is not a big
 problem. This is also the reason for the :py:func:`~typing.cast` call in the
-``return`` statement in ``my_decorator()``. See :ref:`casts`.
+``return`` statement in ``my_decorator()``. See :ref:`casts <casts>`.
 
 .. _decorator-factories:
 
