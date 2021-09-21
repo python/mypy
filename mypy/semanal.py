@@ -2048,6 +2048,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.process_module_assignment(s.lvalues, s.rvalue, s)
         self.process__all__(s)
         self.process__deletable__(s)
+        self.process__slots__(s)
 
     def analyze_identity_global_assignment(self, s: AssignmentStmt) -> bool:
         """Special case 'X = X' in global scope.
@@ -3364,6 +3365,62 @@ class SemanticAnalyzer(NodeVisitor[None],
                     attrs.append(item.value)
             assert self.type
             self.type.deletable_attributes = attrs
+
+    def process__slots__(self, s: AssignmentStmt) -> None:
+        """
+        Processing ``__slots__`` if defined in type.
+
+        See: https://docs.python.org/3/reference/datamodel.html#slots
+        """
+        # Later we can support `__slots__` defined as `__slots__ = other = ('a', 'b')`
+        if (isinstance(self.type, TypeInfo) and
+                len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr) and
+                s.lvalues[0].name == '__slots__' and s.lvalues[0].kind == MDEF):
+
+            # We understand `__slots__` defined as string, tuple, list, set, and dict:
+            if not isinstance(s.rvalue, (StrExpr, ListExpr, TupleExpr, SetExpr, DictExpr)):
+                # For example, `__slots__` can be defined as a variable,
+                # we don't support it for now.
+                return
+
+            if any(p.slots is None for p in self.type.mro[1:-1]):
+                # At least one type in mro (excluding `self` and `object`)
+                # does not have concrete `__slots__` defined. Ignoring.
+                return
+
+            concrete_slots = True
+            rvalue: List[Expression] = []
+            if isinstance(s.rvalue, StrExpr):
+                rvalue.append(s.rvalue)
+            elif isinstance(s.rvalue, (ListExpr, TupleExpr, SetExpr)):
+                rvalue.extend(s.rvalue.items)
+            else:
+                # We have a special treatment of `dict` with possible `{**kwargs}` usage.
+                # In this case we consider all `__slots__` to be non-concrete.
+                for key, _ in s.rvalue.items:
+                    if concrete_slots and key is not None:
+                        rvalue.append(key)
+                    else:
+                        concrete_slots = False
+
+            slots = []
+            for item in rvalue:
+                # Special case for `'__dict__'` value:
+                # when specified it will still allow any attribute assignment.
+                if isinstance(item, StrExpr) and item.value != '__dict__':
+                    slots.append(item.value)
+                else:
+                    concrete_slots = False
+            if not concrete_slots:
+                # Some slot items are dynamic, we don't want any false positives,
+                # so, we just pretend that this type does not have any slots at all.
+                return
+
+            # We need to copy all slots from super types:
+            for super_type in self.type.mro[1:-1]:
+                assert super_type.slots is not None
+                slots.extend(super_type.slots)
+            self.type.slots = set(slots)
 
     #
     # Misc statements
