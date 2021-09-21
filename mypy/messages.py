@@ -762,7 +762,9 @@ class MessageBuilder:
             self.fail('No overload variant{} matches argument types {}'
                       .format(name_str, arg_types_str), context, code=code)
 
-        self.note('Possible overload variant{}:'.format(plural_s(len(overload.items))), context, code=code)
+        self.note(
+            'Possible overload variant{}:'.format(plural_s(len(overload.items))),
+            context, code=code)
         for item in overload.items:
             self.note(pretty_callable(item), context, offset=4, code=code)
 
@@ -811,7 +813,6 @@ class MessageBuilder:
 
         INCLUDE_DECORATOR = True  # Include @classmethod and @staticmethod decorators, if any
         ALLOW_DUPS = True  # Allow duplicate notes, needed when signatures are duplicates
-        MAX_ITEMS = 3  # Display a max of three items for Overloaded types
         ALIGN_OFFSET = 1  # One space, to account for the difference between error and note
         OFFSET = 4  # Four spaces, so that notes will look like this:
         # error: Signature of "f" incompatible with supertype "A"
