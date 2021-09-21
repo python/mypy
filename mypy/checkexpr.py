@@ -3507,7 +3507,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # statement (it can contain tuple unpacking before return).
             with self.chk.scope.push_function(e):
                 # Lambdas can have more than one element in body,
-                # when we add "fiction" AssigmentStatement nodes, like in:
+                # when we add "fictional" AssigmentStatement nodes, like in:
                 # `lambda (a, b): a`
                 for stmt in e.body.body[:-1]:
                     stmt.accept(self.chk)
