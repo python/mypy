@@ -2625,18 +2625,26 @@ T = TypeVar('T', bound=Callable)
 def decorator(f: T) -> T:
     return f
 
-a, b = None, None # type: A, B
+def bad(f: Callable) -> Callable[[int], int]:
+    return f
+
 class A:
     @decorator
     def __getattribute__(self, x: str) -> A:
         return A()
-class B: pass
+class B:
+    @bad  # We test that type will be take from decorated node, not type
+    def __getattribute__(self, x: str) -> A:
+        return A()
 
-a = a.foo
-b = a.bar
+a: A
+b: B
+
+a1: A = a.foo
+b1: B = a.bar  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a2: A = b.baz
+b2: B = b.roo  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 [builtins fixtures/tuple.pyi]
-[out]
-main:16: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testGetattributeSignature]
 class A:
@@ -2673,18 +2681,26 @@ T = TypeVar('T', bound=Callable)
 def decorator(f: T) -> T:
     return f
 
-a, b = None, None # type: A, B
+def bad(f: Callable) -> Callable[[int], int]:
+    return f
+
 class A:
     @decorator
     def __getattr__(self, x: str) -> A:
         return A()
-class B: pass
+class B:
+    @bad  # We test that type will be take from decorated node, not type
+    def __getattr__(self, x: str) -> A:
+        return A()
 
-a = a.foo
-b = a.bar
+a: A
+b: B
+
+a1: A = a.foo
+b1: B = a.bar  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a2: A = b.baz
+b2: B = b.roo  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 [builtins fixtures/tuple.pyi]
-[out]
-main:16: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testGetattrWithGetitem]
 class A:
