@@ -973,3 +973,58 @@ B = namedtuple('X', ['a'])         # E: First argument to namedtuple() should be
 C = NamedTuple('X', [('a', 'Y')])  # E: First argument to namedtuple() should be "C", not "X"
 class Y: ...
 [builtins fixtures/tuple.pyi]
+
+[case testNamedTupleTypeIsASuperTypeOfOtherNamedTuples]
+from typing import Tuple, NamedTuple
+
+class Bar(NamedTuple):
+    name: str = "Bar"
+
+class Baz(NamedTuple):
+    a: str
+    b: str
+
+def print_namedtuple(obj: NamedTuple) -> None:
+    pass
+
+b1: Bar
+b2: Baz
+print_namedtuple(b1)  # ok
+print_namedtuple(b2)  # ok
+
+print_namedtuple(1)  # E: Argument 1 to "print_namedtuple" has incompatible type "int"; expected "NamedTuple"
+print_namedtuple(('bar',))  # E: Argument 1 to "print_namedtuple" has incompatible type "Tuple[str]"; expected "NamedTuple"
+print_namedtuple((1, 2))  # E: Argument 1 to "print_namedtuple" has incompatible type "Tuple[int, int]"; expected "NamedTuple"
+print_namedtuple((b1,))  # E: Argument 1 to "print_namedtuple" has incompatible type "Tuple[Bar]"; expected "NamedTuple"
+t: Tuple[str, ...]
+print_namedtuple(t)  # E: Argument 1 to "print_namedtuple" has incompatible type "Tuple[str, ...]"; expected "NamedTuple"
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testNamedTupleTypeIsASuperTypeOfOtherNamedTuplesReturns]
+from typing import Tuple, NamedTuple
+
+class Bar(NamedTuple):
+    name: int
+
+class Baz(NamedTuple):
+    a: str
+    b: str
+
+def good1() -> NamedTuple:
+    b: Bar
+    return b
+def good2() -> NamedTuple:
+    b: Baz
+    return b
+
+def bad1() -> NamedTuple:
+    return 1  # E: Incompatible return value type (got "int", expected "NamedTuple")
+def bad2() -> NamedTuple:
+    return ()  # E: Incompatible return value type (got "Tuple[]", expected "NamedTuple")
+def bad3() -> NamedTuple:
+    return (1, 2)  # E: Incompatible return value type (got "Tuple[int, int]", expected "NamedTuple")
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
