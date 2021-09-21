@@ -1300,3 +1300,39 @@ a.x = x
 a.x = x2 # E: Incompatible types in assignment (expression has type "Callable[[str], str]", variable has type "Callable[[int], int]")
 
 [builtins fixtures/dataclasses.pyi]
+
+
+[case testDataclassFieldDoesNotFailOnKwargsUnpacking]
+# flags: --python-version 3.7
+# https://github.com/python/mypy/issues/10879
+from dataclasses import dataclass, field
+
+@dataclass
+class Foo:
+    bar: float = field(**{"repr": False})
+[out]
+main:7: error: Unpacking **kwargs in "field()" is not supported
+main:7: error: No overload variant of "field" matches argument type "Dict[str, bool]"
+main:7: note: Possible overload variants:
+main:7: note:     def [_T] field(*, default: _T, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> _T
+main:7: note:     def [_T] field(*, default_factory: Callable[[], _T], init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> _T
+main:7: note:     def field(*, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> Any
+[builtins fixtures/dataclasses.pyi]
+
+
+[case testDataclassFieldWithTypedDictUnpacking]
+# flags: --python-version 3.7
+from dataclasses import dataclass, field
+from typing_extensions import TypedDict
+
+class FieldKwargs(TypedDict):
+    repr: bool
+
+field_kwargs: FieldKwargs = {"repr": False}
+
+@dataclass
+class Foo:
+    bar: float = field(**field_kwargs)  # E: Unpacking **kwargs in "field()" is not supported
+
+reveal_type(Foo(bar=1.5))  # N: Revealed type is "__main__.Foo"
+[builtins fixtures/dataclasses.pyi]

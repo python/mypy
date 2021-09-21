@@ -269,7 +269,7 @@ class DataclassTransformer:
             if self._is_kw_only_type(node_type):
                 kw_only = True
 
-            has_field_call, field_args = _collect_field_args(stmt.rvalue)
+            has_field_call, field_args = _collect_field_args(stmt.rvalue, ctx)
 
             is_in_init_param = field_args.get('init')
             if is_in_init_param is None:
@@ -447,7 +447,8 @@ def dataclass_class_maker_callback(ctx: ClassDefContext) -> None:
     transformer.transform()
 
 
-def _collect_field_args(expr: Expression) -> Tuple[bool, Dict[str, Expression]]:
+def _collect_field_args(expr: Expression,
+                        ctx: ClassDefContext) -> Tuple[bool, Dict[str, Expression]]:
     """Returns a tuple where the first value represents whether or not
     the expression is a call to dataclass.field and the second is a
     dictionary of the keyword arguments that field() was called with.
@@ -460,7 +461,15 @@ def _collect_field_args(expr: Expression) -> Tuple[bool, Dict[str, Expression]]:
         # field() only takes keyword arguments.
         args = {}
         for name, arg in zip(expr.arg_names, expr.args):
-            assert name is not None
+            if name is None:
+                # This means that `field` is used with `**` unpacking,
+                # the best we can do for now is not to fail.
+                # TODO: we can infer what's inside `**` and try to collect it.
+                ctx.api.fail(
+                    'Unpacking **kwargs in "field()" is not supported',
+                    expr,
+                )
+                return True, {}
             args[name] = arg
         return True, args
     return False, {}
