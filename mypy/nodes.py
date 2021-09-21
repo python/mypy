@@ -2684,6 +2684,8 @@ class TypeInfo(SymbolNode):
                 node = cls.names[name].node
                 if isinstance(node, FuncBase):
                     return node
+                elif isinstance(node, Decorator):
+                    return node.func
                 else:
                     return None
         return None
