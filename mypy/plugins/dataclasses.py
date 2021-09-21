@@ -466,7 +466,7 @@ def _collect_field_args(expr: Expression,
                 # the best we can do for now is not to fail.
                 # TODO: we can infer what's inside `**` and try to collect it.
                 ctx.api.fail(
-                    'Unpacking dynamic **kwargs in "field()" is not supported',
+                    'Unpacking **kwargs in "field()" is not supported',
                     expr,
                 )
                 return True, {}

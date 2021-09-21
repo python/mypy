@@ -1311,7 +1311,7 @@ from dataclasses import dataclass, field
 class Foo:
     bar: float = field(**{"repr": False})
 [out]
-main:7: error: Unpacking dynamic **kwargs in "field()" is not supported
+main:7: error: Unpacking **kwargs in "field()" is not supported
 main:7: error: No overload variant of "field" matches argument type "Dict[str, bool]"
 main:7: note: Possible overload variants:
 main:7: note:     def [_T] field(*, default: _T, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> _T
@@ -1332,7 +1332,7 @@ field_kwargs: FieldKwargs = {"repr": False}
 
 @dataclass
 class Foo:
-    bar: float = field(**field_kwargs)  # E: Unpacking dynamic **kwargs in "field()" is not supported
+    bar: float = field(**field_kwargs)  # E: Unpacking **kwargs in "field()" is not supported
 
 reveal_type(Foo(bar=1.5))  # N: Revealed type is "__main__.Foo"
 [builtins fixtures/dataclasses.pyi]
