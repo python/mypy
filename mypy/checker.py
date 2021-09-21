@@ -4675,8 +4675,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             expr = parent_expr
             expr_type = output[parent_expr] = make_simplified_union(new_parent_types)
 
-        return output
-
     def refine_identity_comparison_expression(self,
                                               operands: List[Expression],
                                               operand_types: List[Type],
