@@ -824,14 +824,12 @@ class MessageBuilder:
             self.note('Superclass:', context, offset=ALIGN_OFFSET + OFFSET, code=code)
             self.pretty_callable_or_overload(original, context, offset=ALIGN_OFFSET + 2 * OFFSET,
                                             add_class_or_static_decorator=INCLUDE_DECORATOR,
-                                            overload_max_items=MAX_ITEMS, allow_dups=ALLOW_DUPS,
-                                            code=code)
+                                            allow_dups=ALLOW_DUPS, code=code)
 
             self.note('Subclass:', context, offset=ALIGN_OFFSET + OFFSET, code=code)
             self.pretty_callable_or_overload(override, context, offset=ALIGN_OFFSET + 2 * OFFSET,
                                             add_class_or_static_decorator=INCLUDE_DECORATOR,
-                                            overload_max_items=MAX_ITEMS, allow_dups=ALLOW_DUPS,
-                                            code=code)
+                                            allow_dups=ALLOW_DUPS, code=code)
 
     def pretty_callable_or_overload(self,
                                     tp: Union[CallableType, Overloaded],
@@ -839,7 +837,6 @@ class MessageBuilder:
                                     *,
                                     offset: int = 0,
                                     add_class_or_static_decorator: bool = False,
-                                    overload_max_items: int = 1,
                                     allow_dups: bool = False,
                                     code: Optional[ErrorCode] = None) -> None:
         if isinstance(tp, CallableType):
@@ -850,7 +847,7 @@ class MessageBuilder:
             self.note(pretty_callable(tp), context,
                       offset=offset, allow_dups=allow_dups, code=code)
         elif isinstance(tp, Overloaded):
-            self.pretty_overload(tp, context, offset, overload_max_items,
+            self.pretty_overload(tp, context, offset,
                                  add_class_or_static_decorator=add_class_or_static_decorator,
                                  allow_dups=allow_dups, code=code)
 
