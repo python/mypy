@@ -762,7 +762,9 @@ class MessageBuilder:
             self.fail('No overload variant{} matches argument types {}'
                       .format(name_str, arg_types_str), context, code=code)
 
-        self.pretty_overload_matches(overload, context, offset=2, code=code)
+        self.note('Possible overload variant{}:'.format(plural_s(len(overload.items))), context, code=code)
+        for item in overload.items:
+            self.note(pretty_callable(item), context, offset=4, code=code)
 
     def wrong_number_values_to_unpack(self, provided: int, expected: int,
                                       context: Context) -> None:
@@ -1534,15 +1536,6 @@ class MessageBuilder:
         if left > 0:
             msg = '<{} more overload{} not shown>'.format(left, plural_s(left))
             self.note(msg, context, offset=offset, allow_dups=allow_dups, code=code)
-
-    def pretty_overload_matches(self,
-                                func: Overloaded,
-                                context: Context,
-                                offset: int,
-                                code: ErrorCode) -> None:
-        self.note('Possible overload variant{}:'.format(plural_s(len(func.items))), context, code=code)
-        for item in func.items:
-            self.note(pretty_callable(item), context, offset=2 * offset, code=code)
 
     def print_more(self,
                    conflicts: Sequence[Any],
