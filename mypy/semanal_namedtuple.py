@@ -266,7 +266,7 @@ class NamedTupleAnalyzer:
         # TODO: Share code with check_argument_count in checkexpr.py?
         args = call.args
         if len(args) < 2:
-            self.fail('Too few arguments for "{0}()"'.format(type_name), call)
+            self.fail('Too few arguments for "{}()"'.format(type_name), call)
             return None
         defaults: List[Expression] = []
         if len(args) > 2:
@@ -284,16 +284,16 @@ class NamedTupleAnalyzer:
                     else:
                         self.fail(
                             "List or tuple literal expected as the defaults argument to "
-                            "{0}()".format(type_name),
+                            "{}()".format(type_name),
                             arg
                         )
                     break
         if call.arg_kinds[:2] != [ARG_POS, ARG_POS]:
-            self.fail('Unexpected arguments to "{0}()"'.format(type_name), call)
+            self.fail('Unexpected arguments to "{}()"'.format(type_name), call)
             return None
         if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
             self.fail(
-                '"{0}()" expects a string literal as the first argument'.format(type_name), call)
+                '"{}()" expects a string literal as the first argument'.format(type_name), call)
             return None
         typename = cast(Union[StrExpr, BytesExpr, UnicodeExpr], call.args[0]).value
         types: List[Type] = []
@@ -304,7 +304,7 @@ class NamedTupleAnalyzer:
                 items = str_expr.value.replace(',', ' ').split()
             else:
                 self.fail(
-                    'List or tuple literal expected as the second argument to "{0}()"'.format(
+                    'List or tuple literal expected as the second argument to "{}()"'.format(
                         type_name,
                     ),
                     call,
@@ -333,10 +333,10 @@ class NamedTupleAnalyzer:
             types = [AnyType(TypeOfAny.unannotated) for _ in items]
         underscore = [item for item in items if item.startswith('_')]
         if underscore:
-            self.fail('"{0}()" field names cannot start with an underscore: '.format(type_name)
+            self.fail('"{}()" field names cannot start with an underscore: '.format(type_name)
                       + ', '.join(underscore), call)
         if len(defaults) > len(items):
-            self.fail('Too many defaults given in call to "{0}()"'.format(type_name), call)
+            self.fail('Too many defaults given in call to "{}()"'.format(type_name), call)
             defaults = defaults[:len(items)]
         return items, types, defaults, typename, True
 
