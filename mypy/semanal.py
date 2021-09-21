@@ -2745,7 +2745,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 self.msg.cant_assign_to_final(name, self.type is not None, lvalue)
 
         kind = self.current_symbol_kind()
-        names = self.current_symbol_table()
+        names = self.current_symbol_table(escape_comprehensions=escape_comprehensions)
         existing = names.get(name)
 
         outer = self.is_global_or_nonlocal(name)
