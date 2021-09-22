@@ -4953,6 +4953,18 @@ class SemanticAnalyzer(NodeVisitor[None],
         """Does name look like reference to a definition in the current module?"""
         return self.is_defined_in_current_module(name) or '.' not in name
 
+    def in_checked_function(self) -> bool:
+        """Should we type-check the current function?
+
+        - Yes if --check-untyped-defs is set.
+        - Yes outside functions.
+        - Yes in annotated functions.
+        - No otherwise.
+        """
+        return (self.options.check_untyped_defs
+                or not self.function_stack
+                or not self.function_stack[-1].is_dynamic())
+
     def fail(self,
              msg: str,
              ctx: Context,
@@ -4960,10 +4972,7 @@ class SemanticAnalyzer(NodeVisitor[None],
              *,
              code: Optional[ErrorCode] = None,
              blocker: bool = False) -> None:
-        if (not serious and
-                not self.options.check_untyped_defs and
-                self.function_stack and
-                self.function_stack[-1].is_dynamic()):
+        if not serious and not self.in_checked_function():
             return
         # In case it's a bug and we don't really have context
         assert ctx is not None, msg
@@ -4973,9 +4982,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.fail(msg, ctx, blocker=True)
 
     def note(self, msg: str, ctx: Context, code: Optional[ErrorCode] = None) -> None:
-        if (not self.options.check_untyped_defs and
-                self.function_stack and
-                self.function_stack[-1].is_dynamic()):
+        if not self.in_checked_function():
             return
         self.errors.report(ctx.get_line(), ctx.get_column(), msg, severity='note', code=code)
 
