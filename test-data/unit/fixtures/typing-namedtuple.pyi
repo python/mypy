@@ -11,7 +11,5 @@ class Iterator(Iterable[T_co]): pass
 class Sequence(Iterable[T_co]): pass
 
 class Tuple(Sequence): pass
-class NamedTuple(Tuple): pass
-
-class str: pass
-class int: pass
+class NamedTuple(Tuple):
+    _source: str

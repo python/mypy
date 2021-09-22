@@ -985,7 +985,7 @@ class Baz(NamedTuple):
     b: str
 
 def print_namedtuple(obj: NamedTuple) -> None:
-    pass
+    reveal_type(obj._source)  # N: Revealed type is "builtins.str"
 
 b1: Bar
 b2: Baz
