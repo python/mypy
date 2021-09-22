@@ -266,7 +266,7 @@ else:
 if callable(s3):
     1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
 else:
-    2 + 'b'
+    2 + 'b'  # E: Unsupported operand types for + ("int" and "str")
 if callable(s4):
     1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
 else:
