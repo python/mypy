@@ -213,6 +213,74 @@ class DerivedSignal(Signal[T]): ...
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/attrhook.py
 
+[case testAttributeTypeHookPluginUntypedDecoratedGetattr]
+# flags: --config-file tmp/mypy.ini
+from m import Magic, DerivedMagic
+
+magic = Magic()
+reveal_type(magic.magic_field)  # N: Revealed type is "builtins.str"
+reveal_type(magic.non_magic_method())  # N: Revealed type is "builtins.int"
+reveal_type(magic.non_magic_field)  # N: Revealed type is "builtins.int"
+magic.nonexistent_field  # E: Field does not exist
+reveal_type(magic.fallback_example)  # N: Revealed type is "Any"
+
+derived = DerivedMagic()
+reveal_type(derived.magic_field)  # N: Revealed type is "builtins.str"
+derived.nonexistent_field  # E: Field does not exist
+reveal_type(derived.fallback_example)  # N: Revealed type is "Any"
+
+[file m.py]
+from typing import Any, Callable
+
+def decorator(f):
+    pass
+
+class Magic:
+    # Triggers plugin infrastructure:
+    @decorator
+    def __getattr__(self, x: Any) -> Any: ...
+    def non_magic_method(self) -> int: ...
+    non_magic_field: int
+
+class DerivedMagic(Magic): ...
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/attrhook2.py
+
+[case testAttributeTypeHookPluginDecoratedGetattr]
+# flags: --config-file tmp/mypy.ini
+from m import Magic, DerivedMagic
+
+magic = Magic()
+reveal_type(magic.magic_field)  # N: Revealed type is "builtins.str"
+reveal_type(magic.non_magic_method())  # N: Revealed type is "builtins.int"
+reveal_type(magic.non_magic_field)  # N: Revealed type is "builtins.int"
+magic.nonexistent_field  # E: Field does not exist
+reveal_type(magic.fallback_example)  # N: Revealed type is "builtins.bool"
+
+derived = DerivedMagic()
+reveal_type(derived.magic_field)  # N: Revealed type is "builtins.str"
+derived.nonexistent_field  # E: Field does not exist
+reveal_type(derived.fallback_example)  # N: Revealed type is "builtins.bool"
+
+[file m.py]
+from typing import Any, Callable
+
+def decorator(f: Callable) -> Callable[[Any, str], bool]:
+    pass
+
+class Magic:
+    # Triggers plugin infrastructure:
+    @decorator
+    def __getattr__(self, x: Any) -> Any: ...
+    def non_magic_method(self) -> int: ...
+    non_magic_field: int
+
+class DerivedMagic(Magic): ...
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/attrhook2.py
+
 [case testAttributeHookPluginForDynamicClass]
 # flags: --config-file tmp/mypy.ini
 from m import Magic, DerivedMagic
@@ -223,7 +291,12 @@ reveal_type(magic.non_magic_method())  # N: Revealed type is "builtins.int"
 reveal_type(magic.non_magic_field)  # N: Revealed type is "builtins.int"
 magic.nonexistent_field  # E: Field does not exist
 reveal_type(magic.fallback_example)  # N: Revealed type is "Any"
-reveal_type(DerivedMagic().magic_field)  # N: Revealed type is "builtins.str"
+
+derived = DerivedMagic()
+reveal_type(derived.magic_field)  # N: Revealed type is "builtins.str"
+derived.nonexistent_field  # E: Field does not exist
+reveal_type(magic.fallback_example)  # N: Revealed type is "Any"
+
 [file m.py]
 from typing import Any
 class Magic:
