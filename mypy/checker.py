@@ -4090,9 +4090,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if method and method.type:
                 callables, uncallables = self.partition_by_callable(method.type,
                                                                     unsound_partition=False)
-                if len(callables) and not len(uncallables):
+                if (len(callables)
+                        and (not len(uncallables) or isinstance(uncallables[0], AnyType))):
                     # Only consider the type callable if its __call__ method is
                     # definitely callable.
+                    # We are also fine, when `__call__` has `Any` type,
+                    # for example from untyped decorator or explicit annotation.
                     return [typ], []
 
             if not unsound_partition:
