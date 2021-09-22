@@ -542,7 +542,7 @@ class IRBuilder:
                rvalue_reg: Value,
                line: int) -> None:
         if isinstance(target, Register):
-            self.add(Assign(target, rvalue_reg))
+            self.add(Assign(target, self.coerce(rvalue_reg, target.type, line)))
         elif isinstance(target, AssignmentTargetRegister):
             rvalue_reg = self.coerce(rvalue_reg, target.type, line)
             self.add(Assign(target.register, rvalue_reg))
