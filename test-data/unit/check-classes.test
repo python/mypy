@@ -6158,43 +6158,82 @@ class C:
 [builtins fixtures/bool.pyi]
 
 [case testDecoratedDunderGet]
-from typing import Type, TypeVar, Callable
+from typing import Any, Callable, TypeVar, Type
+
+F = TypeVar('F', bound=Callable)
 T = TypeVar('T')
+
+def decorator(f: F) -> F:
+    return f
+
+def change(f: Callable) -> Callable[..., int]:
+    pass
+
+def untyped(f):
+    return f
 
 class A: ...
 
-def decorator(f: Callable) -> Callable[..., int]:
-    ...
-
-class SubDescr:
+class Descr1:
     @decorator
+    def __get__(self, obj: T, typ: Type[T]) -> A: ...
+class Descr2:
+    @change
+    def __get__(self, obj: T, typ: Type[T]) -> A: ...
+class Descr3:
+    @untyped
     def __get__(self, obj: T, typ: Type[T]) -> A: ...
 
 class C:
-    spec = SubDescr()
+    spec1 = Descr1()
+    spec2 = Descr2()
+    spec3 = Descr3()
 
-reveal_type(C().spec)  # N: Revealed type is "builtins.int"
+c: C
+reveal_type(c.spec1)  # N: Revealed type is "__main__.A"
+reveal_type(c.spec2)  # N: Revealed type is "builtins.int"
+reveal_type(c.spec3)  # N: Revealed type is "Any"
 [builtins fixtures/bool.pyi]
 
 [case testDecoratedDunderSet]
-from typing import Any, TypeVar, Callable
+from typing import Any, Callable, TypeVar, Type
+
+F = TypeVar('F', bound=Callable)
 T = TypeVar('T')
+
+def decorator(f: F) -> F:
+    return f
+
+def change(f: Callable) -> Callable[[Any, Any, int], None]:
+    pass
+
+def untyped(f):
+    return f
 
 class A: ...
 
-def decorator(f: Callable) -> Callable[[Any, Any, int], None]:
-    ...
-
-class SubDescr:
+class Descr1:
     @decorator
+    def __set__(self, obj: T, value: A) -> None: ...
+class Descr2:
+    @change
+    def __set__(self, obj: T, value: A) -> None: ...
+class Descr3:
+    @untyped
     def __set__(self, obj: T, value: A) -> None: ...
 
 class C:
-    spec = SubDescr()
+    spec1 = Descr1()
+    spec2 = Descr2()
+    spec3 = Descr3()
 
 c: C
-c.spec = 1
-c.spec = A()  # E: Incompatible types in assignment (expression has type "A", variable has type "int")
+c.spec1 = A()
+c.spec1 = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "A")
+c.spec2 = A()  # E: Incompatible types in assignment (expression has type "A", variable has type "int")
+c.spec2 = 1
+c.spec3 = A()
+c.spec3 = 1
 [builtins fixtures/bool.pyi]
 
 [case testClassLevelImport]
