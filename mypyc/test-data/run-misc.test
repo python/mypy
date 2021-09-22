@@ -1089,3 +1089,14 @@ class A:
 class B(A):
     def _(arg): pass
     def _(arg): pass
+
+[case testGlobalRedefinition_toplevel]
+# mypy: allow-redefinition
+i = 0
+i += 1
+i = "foo"
+i += i
+i = b"foo"
+
+def test_redefinition() -> None:
+    assert i == b"foo"

@@ -1066,7 +1066,12 @@ class IRBuilder:
             is_arg: is this a function argument
         """
         assert isinstance(symbol, SymbolNode)
-        reg = Register(typ, symbol.name, is_arg=is_arg, line=symbol.line)
+        reg = Register(
+            typ,
+            remangle_redefinition_name(symbol.name),
+            is_arg=is_arg,
+            line=symbol.line,
+        )
         self.symtables[-1][symbol] = AssignmentTargetRegister(reg)
         if is_arg:
             self.builder.args.append(reg)
@@ -1203,3 +1208,14 @@ def gen_arg_defaults(builder: IRBuilder) -> None:
                         GetAttr(builder.fn_info.callable_class.self_reg, name, arg.line))
             assert isinstance(target, AssignmentTargetRegister)
             builder.assign_if_null(target.register, get_default, arg.initializer.line)
+
+
+def remangle_redefinition_name(name: str) -> str:
+    """Remangle names produced by mypy when allow-redefinition is used and a name
+    is used with multiple types within a single block.
+
+    We only need to do this for locals, because the name is used as the name of the register;
+    for globals, the name itself is stored in a register for the purpose of doing dict
+    lookups.
+    """
+    return name.replace("'", "__redef__")
