@@ -323,8 +323,8 @@ Platform configuration
     :type: string
 
     Specifies the Python version used to parse and check the target
-    program.  The string should be in the format ``DIGIT.DIGIT`` --
-    for example ``2.7``.  The default is the version of the Python
+    program.  The string should be in the format ``1.23`` --
+    for example ``3.10``.  The default is the version of the Python
     interpreter used to run mypy.
 
     This option may only be set in the global section (``[mypy]``).
