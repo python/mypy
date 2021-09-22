@@ -1066,7 +1066,12 @@ class IRBuilder:
             is_arg: is this a function argument
         """
         assert isinstance(symbol, SymbolNode)
-        reg = Register(typ, remangle_redefinition_name(symbol.name), is_arg=is_arg, line=symbol.line)
+        reg = Register(
+            typ,
+            remangle_redefinition_name(symbol.name),
+            is_arg=is_arg,
+            line=symbol.line,
+        )
         self.symtables[-1][symbol] = AssignmentTargetRegister(reg)
         if is_arg:
             self.builder.args.append(reg)
