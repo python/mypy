@@ -953,18 +953,17 @@ class SemanticAnalyzer(NodeVisitor[None],
                 a = self.type_analyzer()
                 a.bind_function_type_variables(cast(CallableType, defn.type), defn)
             self.function_stack.append(defn)
-            self.enter(defn)
-            for arg in defn.arguments:
-                self.add_local(arg.variable, defn)
+            with self.enter(defn):
+                for arg in defn.arguments:
+                    self.add_local(arg.variable, defn)
 
-            # The first argument of a non-static, non-class method is like 'self'
-            # (though the name could be different), having the enclosing class's
-            # instance type.
-            if is_method and not defn.is_static and not defn.is_class and defn.arguments:
-                defn.arguments[0].variable.is_self = True
+                # The first argument of a non-static, non-class method is like 'self'
+                # (though the name could be different), having the enclosing class's
+                # instance type.
+                if is_method and not defn.is_static and not defn.is_class and defn.arguments:
+                    defn.arguments[0].variable.is_self = True
 
-            defn.body.accept(self)
-            self.leave()
+                defn.body.accept(self)
             self.function_stack.pop()
 
     def check_classvar_in_signature(self, typ: ProperType) -> None:
@@ -4027,18 +4026,16 @@ class SemanticAnalyzer(NodeVisitor[None],
         expr.generator.accept(self)
 
     def visit_dictionary_comprehension(self, expr: DictionaryComprehension) -> None:
-        self.enter(expr)
-        self.analyze_comp_for(expr)
-        expr.key.accept(self)
-        expr.value.accept(self)
-        self.leave()
+        with self.enter(expr):
+            self.analyze_comp_for(expr)
+            expr.key.accept(self)
+            expr.value.accept(self)
         self.analyze_comp_for_2(expr)
 
     def visit_generator_expr(self, expr: GeneratorExpr) -> None:
-        self.enter(expr)
-        self.analyze_comp_for(expr)
-        expr.left_expr.accept(self)
-        self.leave()
+        with self.enter(expr):
+            self.analyze_comp_for(expr)
+            expr.left_expr.accept(self)
         self.analyze_comp_for_2(expr)
 
     def analyze_comp_for(self, expr: Union[GeneratorExpr,
@@ -4772,7 +4769,9 @@ class SemanticAnalyzer(NodeVisitor[None],
         else:
             return self.cur_mod_id + '.' + name
 
-    def enter(self, function: Union[FuncItem, GeneratorExpr, DictionaryComprehension]) -> None:
+    @contextmanager
+    def enter(self,
+              function: Union[FuncItem, GeneratorExpr, DictionaryComprehension]) -> Iterator[None]:
         """Enter a function, generator or comprehension scope."""
         names = self.saved_locals.setdefault(function, SymbolTable())
         self.locals.append(names)
@@ -4783,14 +4782,15 @@ class SemanticAnalyzer(NodeVisitor[None],
         # -1 since entering block will increment this to 0.
         self.block_depth.append(-1)
         self.missing_names.append(set())
-
-    def leave(self) -> None:
-        self.locals.pop()
-        self.is_comprehension_stack.pop()
-        self.global_decls.pop()
-        self.nonlocal_decls.pop()
-        self.block_depth.pop()
-        self.missing_names.pop()
+        try:
+            yield
+        finally:
+            self.locals.pop()
+            self.is_comprehension_stack.pop()
+            self.global_decls.pop()
+            self.nonlocal_decls.pop()
+            self.block_depth.pop()
+            self.missing_names.pop()
 
     def is_func_scope(self) -> bool:
         return self.locals[-1] is not None

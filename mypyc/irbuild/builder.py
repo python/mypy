@@ -10,9 +10,10 @@ AST node type to code that actually does the bulk of the work. For
 example, expressions are transformed in mypyc.irbuild.expression and
 functions are transformed in mypyc.irbuild.function.
 """
+from contextlib import contextmanager
 
 from mypyc.irbuild.prepare import RegisterImplInfo
-from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any
+from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any, Iterator
 from typing_extensions import overload
 from mypy.backports import OrderedDict
 
@@ -1004,21 +1005,17 @@ class IRBuilder:
         self.fn_info = self.fn_infos[-1]
         return builder.args, runtime_args, builder.blocks, ret_type, fn_info
 
+    @contextmanager
     def enter_method(self,
                      class_ir: ClassIR,
                      name: str,
                      ret_type: RType,
                      fn_info: Union[FuncInfo, str] = '',
-                     self_type: Optional[RType] = None) -> None:
-        """Begin generating IR for a method.
+                     self_type: Optional[RType] = None) -> Iterator[None]:
+        """Generate IR for a method.
 
         If the method takes arguments, you should immediately afterwards call
         add_argument() for each non-self argument (self is created implicitly).
-
-        Call leave_method() to finish the generation of the method.
-
-        You can enter multiple methods at a time. They are maintained in a
-        stack, and leave_method() leaves the topmost one.
 
         Args:
             class_ir: Add method to this class
@@ -1035,6 +1032,18 @@ class IRBuilder:
         if self_type is None:
             self_type = RInstance(class_ir)
         self.add_argument(SELF_NAME, self_type)
+        try:
+            yield
+        finally:
+            arg_regs, args, blocks, ret_type, fn_info = self.leave()
+            sig = FuncSignature(args, ret_type)
+            name = self.function_name_stack.pop()
+            class_ir = self.class_ir_stack.pop()
+            decl = FuncDecl(name, class_ir.name, self.module_name, sig)
+            ir = FuncIR(decl, arg_regs, blocks)
+            class_ir.methods[name] = ir
+            class_ir.method_decls[name] = ir.decl
+            self.functions.append(ir)
 
     def add_argument(self, var: Union[str, Var], typ: RType, kind: ArgKind = ARG_POS) -> Register:
         """Declare an argument in the current function.
@@ -1046,18 +1055,6 @@ class IRBuilder:
         reg = self.add_local(var, typ, is_arg=True)
         self.runtime_args[-1].append(RuntimeArg(var.name, typ, kind))
         return reg
-
-    def leave_method(self) -> None:
-        """Finish the generation of IR for a method."""
-        arg_regs, args, blocks, ret_type, fn_info = self.leave()
-        sig = FuncSignature(args, ret_type)
-        name = self.function_name_stack.pop()
-        class_ir = self.class_ir_stack.pop()
-        decl = FuncDecl(name, class_ir.name, self.module_name, sig)
-        ir = FuncIR(decl, arg_regs, blocks)
-        class_ir.methods[name] = ir
-        class_ir.method_decls[name] = ir.decl
-        self.functions.append(ir)
 
     def lookup(self, symbol: SymbolNode) -> SymbolTarget:
         return self.symtables[-1][symbol]

@@ -10,6 +10,7 @@ from typing import (
 )
 from typing_extensions import Final
 
+from mypy.backports import nullcontext
 from mypy.errors import Errors, report_internal_error
 from mypy.nodes import (
     SymbolTable, Statement, MypyFile, Var, Expression, Lvalue, Node,
@@ -347,9 +348,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     #       (self.pass_num, type_name, node.fullname or node.name))
                     done.add(node)
                     with self.tscope.class_scope(active_typeinfo) if active_typeinfo \
-                            else nothing():
+                            else nullcontext():
                         with self.scope.push_class(active_typeinfo) if active_typeinfo \
-                                else nothing():
+                                else nullcontext():
                             self.check_partial(node)
             return True
 
@@ -5871,11 +5872,6 @@ class CheckerScope:
         self.stack.append(info)
         yield
         self.stack.pop()
-
-
-@contextmanager
-def nothing() -> Iterator[None]:
-    yield
 
 
 TKey = TypeVar('TKey')
