@@ -163,7 +163,7 @@ X(0, 1)  # ok
 X(0, 1, 2)  # E: Too many arguments for "X"
 
 Y = namedtuple('Y', ['x', 'y'], defaults=(1, 2, 3))  # E: Too many defaults given in call to "namedtuple()"
-Z = namedtuple('Z', ['x', 'y'], defaults='not a tuple')  # E: List or tuple literal expected as the defaults argument to namedtuple()  # E: Argument "defaults" to "namedtuple" has incompatible type "str"; expected "Optional[Iterable[Any]]"
+Z = namedtuple('Z', ['x', 'y'], defaults='not a tuple')  # E: List or tuple literal expected as the defaults argument to "namedtuple()"  # E: Argument "defaults" to "namedtuple" has incompatible type "str"; expected "Optional[Iterable[Any]]"
 
 [builtins fixtures/list.pyi]
 
@@ -837,7 +837,6 @@ d.f()
 [builtins fixtures/classmethod.pyi]
 
 [case testTypeNamedTupleCall]
-
 from typing import NamedTuple
 
 Thing = NamedTuple('Thing', [('s', str), ('n', int)])
@@ -849,6 +848,7 @@ class CallableTuple(Thing):
 o = CallableTuple('hello ', 12)
 o()
 [builtins fixtures/tuple.pyi]
+[typing fixtures/namedtuple.pyi]
 
 [case testNamedTupleSubclassMulti]
 from typing import NamedTuple
@@ -944,7 +944,7 @@ from typing import NamedTuple
 
 class A:
     def __init__(self) -> None:
-        self.b = NamedTuple('x', [('s', str), ('n', int)])  # E: NamedTuple type as an attribute is not supported
+        self.b = NamedTuple('x', [('s', str), ('n', int)])  # E: Namedtuples as attributes are not supported
 
 reveal_type(A().b)  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
@@ -967,10 +967,10 @@ Type1 = NamedTuple('Type1', [('foo', foo)])  # E: Function "b.foo" is not valid 
 from typing import NamedTuple
 from collections import namedtuple
 
-A = NamedTuple('X', [('a', int)])  # E: First argument to namedtuple() should be "A", not "X"
-B = namedtuple('X', ['a'])         # E: First argument to namedtuple() should be "B", not "X"
+A = NamedTuple('X', [('a', int)])  # E: First argument to "NamedTuple()" should be "A", not "X"
+B = namedtuple('X', ['a'])         # E: First argument to "namedtuple()" should be "B", not "X"
 
-C = NamedTuple('X', [('a', 'Y')])  # E: First argument to namedtuple() should be "C", not "X"
+C = NamedTuple('X', [('a', 'Y')])  # E: First argument to "NamedTuple()" should be "C", not "X"
 class Y: ...
 [builtins fixtures/tuple.pyi]
 

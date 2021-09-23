@@ -141,87 +141,719 @@ MypyFile:1(
       __main__.N@2)
     PassStmt:2()))
 
+[case testNamedTupleWithNonpositionalArgs]
+from collections import namedtuple
+N = namedtuple(typename='N', field_names=['x'])
+[out]
+MypyFile:1(
+  ImportFrom:1(collections, [namedtuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[Any])))
+[builtins fixtures/tuple.pyi]
+
+-- New correct collections.namedtuple() features
+
+[case testNamedTupleEmpty1]
+from collections import namedtuple
+N = namedtuple(typename='N', field_names=[])
+[out]
+MypyFile:1(
+  ImportFrom:1(collections, [namedtuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[])))
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleEmpty2]
+from collections import namedtuple
+N = namedtuple('N', ())
+[out]
+MypyFile:1(
+  ImportFrom:1(collections, [namedtuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[])))
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleStrFields1]
+from collections import namedtuple
+N = namedtuple('N', 'a   b')
+[out]
+MypyFile:1(
+  ImportFrom:1(collections, [namedtuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[Any, Any])))
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleStrFields2]
+from collections import namedtuple
+N = namedtuple('N', 'a, b')
+[out]
+MypyFile:1(
+  ImportFrom:1(collections, [namedtuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[Any, Any])))
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleStrFields3]
+from collections import namedtuple
+N = namedtuple('N', 'a,b')
+[out]
+MypyFile:1(
+  ImportFrom:1(collections, [namedtuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[Any, Any])))
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleRename1]
+from collections import namedtuple
+N = namedtuple('N', ['raise', '_x', '@a', '@1'], rename=True)
+[out]
+MypyFile:1(
+  ImportFrom:1(collections, [namedtuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[Any, Any, Any, Any])))
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleRename2]
+from collections import namedtuple
+N = namedtuple('N', ['x', 'y'], rename=True)
+N(x=1, y=2)
+[out]
+MypyFile:1(
+  ImportFrom:1(collections, [namedtuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[Any, Any]))
+  ExpressionStmt:3(
+    CallExpr:3(
+      NameExpr(N [__main__.N])
+      Args()
+      KwArgs(
+        x
+        IntExpr(1))
+      KwArgs(
+        y
+        IntExpr(2)))))
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleRename3]
+from collections import namedtuple
+N = namedtuple('N', ['x', 'y'], rename=False)
+N(x=1, y=2)  # Checked during typechecking phase
+[out]
+MypyFile:1(
+  ImportFrom:1(collections, [namedtuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[Any, Any]))
+  ExpressionStmt:3(
+    CallExpr:3(
+      NameExpr(N [__main__.N])
+      Args()
+      KwArgs(
+        x
+        IntExpr(1))
+      KwArgs(
+        y
+        IntExpr(2)))))
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleAllArgs1]
+from collections import namedtuple
+N = namedtuple(typename='N', field_names=['x', 'y'], rename=False, defaults=[])
+[out]
+MypyFile:1(
+  ImportFrom:1(collections, [namedtuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[Any, Any])))
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleAllArgs2]
+from collections import namedtuple
+N = namedtuple(module=None, field_names=['x'], defaults=[], typename='N', rename=False)
+[out]
+MypyFile:1(
+  ImportFrom:1(collections, [namedtuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[Any])))
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleAllArgs3]
+from collections import namedtuple
+N = namedtuple('N', module=None, defaults=[], rename=False, field_names=['x'])
+[out]
+MypyFile:1(
+  ImportFrom:1(collections, [namedtuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[Any])))
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleAllArgs4]
+from typing import Any
+from collections import namedtuple
+module: Any
+N = namedtuple('N', [], defaults=[], rename=False, module=module)
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Any])
+  ImportFrom:2(collections, [namedtuple])
+  AssignmentStmt:3(
+    NameExpr(module [__main__.module])
+    TempNode:3(
+      Any)
+    Any)
+  AssignmentStmt:4(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:4(N, Tuple[])))
+[builtins fixtures/tuple.pyi]
+
+
+-- New correct typing.NamedTuple() features
+
+[case testTypingNamedTupleEmpty1]
+from typing import NamedTuple
+N = NamedTuple('N')
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [NamedTuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[])))
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleEmpty2]
+from typing import NamedTuple
+N = NamedTuple(typename='N')
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [NamedTuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[])))
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleEmpty3]
+from typing import NamedTuple
+N = NamedTuple('N', None)
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [NamedTuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[])))
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleEmpty4]
+from typing import NamedTuple
+N = NamedTuple('N', [])
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [NamedTuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[])))
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleEmpty5]
+from typing import NamedTuple
+N = NamedTuple(fields=(), typename='N')
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [NamedTuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[])))
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleDefinedByKwargs1]
+from typing import NamedTuple
+N = NamedTuple('N', arg=int, other=str)
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [NamedTuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[builtins.int, builtins.str])))
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleDefinedByKwargs2]
+from typing import NamedTuple
+N = NamedTuple(arg=int, fields=None, typename='N')
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [NamedTuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[builtins.int])))
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleDefinedByKwargs3]
+from typing import NamedTuple
+N = NamedTuple('N', None, arg=int)
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [NamedTuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[builtins.int])))
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleDefinedByKwargs4]
+from typing import NamedTuple
+N = NamedTuple(arg=int, typename='N', fields=None)
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [NamedTuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[builtins.int])))
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleDefinedByKwargs5]
+from typing import NamedTuple
+N = NamedTuple(arg1=int, typename='N', arg2=float, fields=None, arg3=bool)
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [NamedTuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[builtins.int, builtins.float, builtins.bool])))
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleDefinedByKwargs6]
+from typing import NamedTuple
+N = NamedTuple(typename='N', field_one=None)
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [NamedTuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[None])))
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleFieldsDef1]
+from typing import NamedTuple
+N = NamedTuple('N', fields=(('a', int),))
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [NamedTuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[builtins.int])))
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleFieldsDef2]
+from typing import NamedTuple
+N = NamedTuple('N', fields=[('a', int)])
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [NamedTuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[builtins.int])))
+[builtins fixtures/tuple.pyi]
+
+
 -- Errors
 
-[case testNamedTupleWithTooFewArguments]
+[case testNamedTupleTypenameAndFieldsBytes]
 from collections import namedtuple
-N = namedtuple('N') # E: Too few arguments for "namedtuple()"
+N = namedtuple(typename=b'N', field_names=[b'x'])  # E: "namedtuple()" expects a string literal as the typename argument
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleTypenameAndFieldsBytes]
+from typing import NamedTuple
+N = NamedTuple(b'N', [(b'x', int)])  # E: "NamedTuple()" expects a string literal as the typename argument
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleWithWrongNonpositionalArgsWrongNames]
+from collections import namedtuple
+N = namedtuple(name='N', field_names=['x'])  # E: "namedtuple()" expects a string literal as the typename argument
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleWithInvalidName]
 from collections import namedtuple
-N = namedtuple(1, ['x']) # E: "namedtuple()" expects a string literal as the first argument
+N = namedtuple(1, ['x']) # E: "namedtuple()" expects a string literal as the typename argument
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleWithInvalidItems]
 from collections import namedtuple
-N = namedtuple('N', 1) # E: List or tuple literal expected as the second argument to "namedtuple()"
+N = namedtuple('N', 1) # E: String, list or tuple literal expected as the field_names argumentto "namedtuple()"
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleWithInvalidItems2]
 from collections import namedtuple
-N = namedtuple('N', ['x', 1]) # E: String literal expected as "namedtuple()" item
+N = namedtuple('N', ['x', 1]) # E: String literal expected as "namedtuple()" field
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleWithUnderscoreItemName]
 from collections import namedtuple
-N = namedtuple('N', ['_fallback']) # E: "namedtuple()" field names cannot start with an underscore: _fallback
-[builtins fixtures/tuple.pyi]
-
--- NOTE: The following code works at runtime but is not yet supported by mypy.
---       Keyword arguments may potentially be supported in the future.
-[case testNamedTupleWithNonpositionalArgs]
-from collections import namedtuple
-N = namedtuple(typename='N', field_names=['x']) # E: Unexpected arguments to "namedtuple()"
-[builtins fixtures/tuple.pyi]
-
-[case testTypingNamedTupleWithTooFewArguments]
-from typing import NamedTuple
-N = NamedTuple('N') # E: Too few arguments for "NamedTuple()"
+N = namedtuple('N', ['_fallback']) # E: Field names cannot start with an underscore: '_fallback'
 [builtins fixtures/tuple.pyi]
 
 [case testTypingNamedTupleWithManyArguments]
 from typing import NamedTuple
-N = NamedTuple('N', [], []) # E: Too many arguments for "NamedTuple()"
+N = NamedTuple('N', [], [])  # this error will be reported during typechecking
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [NamedTuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[])))
 [builtins fixtures/tuple.pyi]
 
 [case testTypingNamedTupleWithInvalidName]
 from typing import NamedTuple
-N = NamedTuple(1, ['x']) # E: "NamedTuple()" expects a string literal as the first argument
+N = NamedTuple(1, ['x']) # E: "NamedTuple()" expects a string literal as the typename argument
 [builtins fixtures/tuple.pyi]
 
 [case testTypingNamedTupleWithInvalidItems]
 from typing import NamedTuple
-N = NamedTuple('N', 1) # E: List or tuple literal expected as the second argument to "NamedTuple()"
+N = NamedTuple('N', 1)  # E: List or tuple literal expected as the fields argumentto "NamedTuple()"
 [builtins fixtures/tuple.pyi]
 
 [case testTypingNamedTupleWithUnderscoreItemName]
 from typing import NamedTuple
-N = NamedTuple('N', [('_fallback', int)]) # E: "NamedTuple()" field names cannot start with an underscore: _fallback
+N = NamedTuple('N', [('_fallback', int)]) # E: Field names cannot start with an underscore: '_fallback'
 [builtins fixtures/tuple.pyi]
 
 [case testTypingNamedTupleWithUnexpectedNames]
 from typing import NamedTuple
-N = NamedTuple(name='N', fields=[]) # E: Unexpected arguments to "NamedTuple()"
+N = NamedTuple(name='N', field=int) # E: "NamedTuple()" expects a string literal as the typename argument
 [builtins fixtures/tuple.pyi]
 
--- NOTE: The following code works at runtime but is not yet supported by mypy.
---       Keyword arguments may potentially be supported in the future.
-[case testNamedTupleWithNonpositionalArgs]
-from collections import namedtuple
-N = namedtuple(typename='N', field_names=['x']) # E: Unexpected arguments to "namedtuple()"
+[case testTypingNamedTupleWithWrongKwargTypes1]
+from typing import NamedTuple
+N = NamedTuple(typename='N', field_one=[])
+[out]
+main:2: error: Bracketed expression "[...]" is not valid as a type
+main:2: note: Did you mean "List[...]"?
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleWithWrongKwargTypes2]
+from typing import NamedTuple
+N = NamedTuple(typename='N', field_one=1)  # E: Invalid type: try using Literal[1] instead?
 [builtins fixtures/tuple.pyi]
 
 [case testInvalidNamedTupleBaseClass]
 from typing import NamedTuple
-class A(NamedTuple('N', [1])): pass # E: Tuple expected as "NamedTuple()" field
+class A(NamedTuple('N', [1])): pass # E: Invalid "NamedTuple" field definition
 class B(A): pass
 [builtins fixtures/tuple.pyi]
 
 [case testInvalidNamedTupleBaseClass2]
-
 class A(NamedTuple('N', [1])): pass
 class B(A): pass
 [out]
-main:2: error: Unsupported dynamic base class "NamedTuple"
-main:2: error: Name "NamedTuple" is not defined
+main:1: error: Unsupported dynamic base class "NamedTuple"
+main:1: error: Name "NamedTuple" is not defined
+
+[case testInvalidNamedTupleTypeName1]
+from collections import namedtuple
+N = namedtuple('X', [])  # E: First argument to "namedtuple()" should be "N", not "X"
+[builtins fixtures/tuple.pyi]
+
+[case testInvalidNamedTupleTypeName2]
+from collections import namedtuple
+N = namedtuple(field_names=[], typename='n')  # E: First argument to "namedtuple()" should be "N", not "n"
+[builtins fixtures/tuple.pyi]
+
+[case testInvalidTypingNamedTupleTypeName1]
+from typing import NamedTuple
+N = NamedTuple('X', [])  # E: First argument to "NamedTuple()" should be "N", not "X"
+[builtins fixtures/tuple.pyi]
+
+[case testInvalidTypingNamedTupleTypeName2]
+from typing import NamedTuple
+N = NamedTuple(typename='n', fields=[])  # E: First argument to "NamedTuple()" should be "N", not "n"
+[builtins fixtures/tuple.pyi]
+
+
+-- New collections.namedtuple errors
+
+[case testNamedTupleWithWrongDefaultArguments1]
+from collections import namedtuple
+N = namedtuple('N', field_names=['x'], defaults=[1, 2])  # E: Got more default values than field names
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleWithWrongDefaultArguments2]
+from collections import namedtuple
+defaults = [1]
+N = namedtuple('N', field_names=['x'], defaults=defaults)  # E: List or tuple literal expected as the defaults argument to "namedtuple()"
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleWithDuplicateFieldname]
+from collections import namedtuple
+N = namedtuple('N', ['x', 'x'])  # E: Encountered duplicate field name: 'x'
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleWithUnderscoredNameField]
+from collections import namedtuple
+N = namedtuple('N', field_names=['a', '_x', '_y'])
+[out]
+main:2: error: Field names cannot start with an underscore: '_x'
+main:2: error: Field names cannot start with an underscore: '_y'
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleWithKeywordTypename1]
+from collections import namedtuple
+try_ = namedtuple('try', field_names=[])
+[out]
+main:2: error: First argument to "namedtuple()" should be "try_", not "try"
+main:2: error: Type names and field names cannot be a keyword: 'try'
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleWithKeywordTypename2]
+from collections import namedtuple
+try_ = namedtuple('try', ['x'])
+[out]
+main:2: error: First argument to "namedtuple()" should be "try_", not "try"
+main:2: error: Type names and field names cannot be a keyword: 'try'
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleWithKeywordNameField]
+from collections import namedtuple
+N = namedtuple('N', field_names=['raise', 'try'])
+[out]
+main:2: error: Type names and field names cannot be a keyword: 'raise'
+main:2: error: Type names and field names cannot be a keyword: 'try'
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleWithInvalidIdentifierTypename1]
+from collections import namedtuple
+a = namedtuple('@a', field_names=[])
+[out]
+main:2: error: First argument to "namedtuple()" should be "a", not "@a"
+main:2: error: Type names and field names must be valid identifiers: '@a'
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleWithInvalidIdentifierTypename2]
+from collections import namedtuple
+a = namedtuple('@a', ['x'])
+[out]
+main:2: error: First argument to "namedtuple()" should be "a", not "@a"
+main:2: error: Type names and field names must be valid identifiers: '@a'
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleWithInvalidNameField]
+from collections import namedtuple
+N = namedtuple('N', field_names=['@a'])  # E: Type names and field names must be valid identifiers: '@a'
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleAllValidationErrors]
+from collections import namedtuple
+N = namedtuple('N', ['@a', '_x', 'break', '@a'], defaults=[1, 2, 3, 4, 5])
+[out]
+main:2: error: Type names and field names must be valid identifiers: '@a'
+main:2: error: Type names and field names cannot be a keyword: 'break'
+main:2: error: Field names cannot start with an underscore: '_x'
+main:2: error: Encountered duplicate field name: '@a'
+main:2: error: Got more default values than field names
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleWithInvalidRenameField]
+from collections import namedtuple
+rename: bool
+N = namedtuple('N', field_names=['a'], rename=rename)  # E: Bool literal expected as the rename argument to "namedtuple()"
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleWithInvalidDefaultsField]
+from typing import List
+from collections import namedtuple
+defaults: List[str]
+N = namedtuple('N', ['a'], defaults=defaults)  # E: List or tuple literal expected as the defaults argument to "namedtuple()"
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleWithInvalidFieldNamesField]
+from typing import List
+from collections import namedtuple
+field_names: List[str]
+N = namedtuple('N', field_names)  # E: String, list or tuple literal expected as the field_names argumentto "namedtuple()"
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleInvalidFieldsRenameFalse1]
+from collections import namedtuple
+N = namedtuple('N', ['_x', '@y', 'try', 'try'], rename=False)
+[out]
+main:2: error: Type names and field names must be valid identifiers: '@y'
+main:2: error: Type names and field names cannot be a keyword: 'try'
+main:2: error: Field names cannot start with an underscore: '_x'
+main:2: error: Encountered duplicate field name: 'try'
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleInvalidFieldsRenameFalse2]
+from collections import namedtuple
+N = namedtuple('N', ['_x'], rename=True)
+N(_x=1)  # checked during typechecking phase
+[out]
+MypyFile:1(
+  ImportFrom:1(collections, [namedtuple])
+  AssignmentStmt:2(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:2(N, Tuple[Any]))
+  ExpressionStmt:3(
+    CallExpr:3(
+      NameExpr(N [__main__.N])
+      Args()
+      KwArgs(
+        _x
+        IntExpr(1)))))
+[builtins fixtures/tuple.pyi]
+
+
+-- New typing.NamedTuple errors
+
+[case testTypingNamedTupleDuplicateField]
+from typing import NamedTuple
+N = NamedTuple('N', [('x', int), ('x', str)])  # E: Encountered duplicate field name: 'x'
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleUnderscoreField1]
+from typing import NamedTuple
+N = NamedTuple('N', _x=int)  # E: Field names cannot start with an underscore: '_x'
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleUnderscoreField2]
+from typing import NamedTuple
+N = NamedTuple('N', (('_x', int),))  # E: Field names cannot start with an underscore: '_x'
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleWithKeywordTypename1]
+from typing import NamedTuple
+try_ = NamedTuple('try')
+[out]
+main:2: error: First argument to "NamedTuple()" should be "try_", not "try"
+main:2: error: Type names and field names cannot be a keyword: 'try'
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleWithKeywordTypename2]
+from typing import NamedTuple
+try_ = NamedTuple('try', x=int)
+[out]
+main:2: error: First argument to "NamedTuple()" should be "try_", not "try"
+main:2: error: Type names and field names cannot be a keyword: 'try'
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleKeywordField]
+from typing import NamedTuple
+N = NamedTuple('N', [('try', int)])  # E: Type names and field names cannot be a keyword: 'try'
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleWithInvalidIdentifierTypename1]
+from typing import NamedTuple
+a = NamedTuple('@a', [])
+[out]
+main:2: error: First argument to "NamedTuple()" should be "a", not "@a"
+main:2: error: Type names and field names must be valid identifiers: '@a'
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleWithInvalidIdentifierTypename2]
+from typing import NamedTuple
+a = NamedTuple('@a', x=int)
+[out]
+main:2: error: First argument to "NamedTuple()" should be "a", not "@a"
+main:2: error: Type names and field names must be valid identifiers: '@a'
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleInvalidIdentifierField]
+from typing import NamedTuple
+N = NamedTuple('N', [('@a', int)])  # E: Type names and field names must be valid identifiers: '@a'
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleAllValidationErrors]
+from typing import NamedTuple
+N = NamedTuple('N', [('@a', int), ('@a', int), ('try', str), ('_x', str)])
+[out]
+main:2: error: Type names and field names must be valid identifiers: '@a'
+main:2: error: Type names and field names cannot be a keyword: 'try'
+main:2: error: Encountered duplicate field name: '@a'
+main:2: error: Field names cannot start with an underscore: '_x'
+[builtins fixtures/tuple.pyi]
+
+
+-- python2 tests, we need to be sure that both `unicode` / `bytes` names work
+
+[case testNamedTuplePython2Bytes]
+# flags: --python-version 2.7
+from collections import namedtuple
+N = namedtuple('N', ['a'])
+[out]
+MypyFile:1(
+  ImportFrom:2(collections, [namedtuple])
+  AssignmentStmt:3(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:3(N, Tuple[Any])))
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTuplePython2Bytes]
+# flags: --python-version 2.7
+from typing import NamedTuple
+N = NamedTuple('N', [('a', int)])
+[out]
+MypyFile:1(
+  ImportFrom:2(typing, [NamedTuple])
+  AssignmentStmt:3(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:3(N, Tuple[builtins.int])))
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTuplePython2Unicode]
+# flags: --python-version 2.7
+from collections import namedtuple
+N = namedtuple(u'N', [u'a'])
+[out]
+MypyFile:1(
+  ImportFrom:2(collections, [namedtuple])
+  AssignmentStmt:3(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:3(N, Tuple[Any])))
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTuplePython2Bytes]
+# flags: --python-version 2.7
+from typing import NamedTuple
+N = NamedTuple(u'N', [(u'a', int)])
+[out]
+MypyFile:1(
+  ImportFrom:2(typing, [NamedTuple])
+  AssignmentStmt:3(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:3(N, Tuple[builtins.int])))
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTuplePython2Future]
+# flags: --python-version 2.7
+from __future__ import unicode_literals
+from collections import namedtuple
+N = namedtuple('N', ['a'])
+[out]
+MypyFile:1(
+  ImportFrom:2(__future__, [unicode_literals])
+  ImportFrom:3(collections, [namedtuple])
+  AssignmentStmt:4(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:4(N, Tuple[Any])))
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTuplePython2Future]
+# flags: --python-version 2.7
+from __future__ import unicode_literals
+from typing import NamedTuple
+N = NamedTuple('N', [('a', int)])
+[out]
+MypyFile:1(
+  ImportFrom:2(__future__, [unicode_literals])
+  ImportFrom:3(typing, [NamedTuple])
+  AssignmentStmt:4(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:4(N, Tuple[builtins.int])))
+[builtins fixtures/tuple.pyi]

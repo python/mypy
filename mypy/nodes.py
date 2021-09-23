@@ -2310,11 +2310,18 @@ class NamedTupleExpr(Expression):
     # The class representation of this named tuple (its tuple_type attribute contains
     # the tuple item types)
     info: "TypeInfo"
+    # We store original expr, if named tuple was created by an inline-call.
+    # We construct it during "semanal" phase and
+    # use it to type check that call is valid during "check" phase.
+    call: Optional[CallExpr]
     is_typed: bool  # whether this class was created with typing.NamedTuple
 
-    def __init__(self, info: 'TypeInfo', is_typed: bool = False) -> None:
+    def __init__(self, info: 'TypeInfo',
+                 call: Optional[CallExpr] = None,
+                 is_typed: bool = False) -> None:
         super().__init__()
         self.info = info
+        self.call = call
         self.is_typed = is_typed
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:

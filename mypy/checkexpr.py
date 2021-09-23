@@ -4181,6 +4181,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return AnyType(TypeOfAny.special_form)
 
     def visit_namedtuple_expr(self, e: NamedTupleExpr) -> Type:
+        if e.call:
+            self.accept(e.call)
         tuple_type = e.info.tuple_type
         if tuple_type:
             if (self.chk.options.disallow_any_unimported and
