@@ -473,7 +473,7 @@ class Errors:
                 if len(codes) > 0 and len(unused_codes) == 0:
                     continue
                 # Don't use report since add_error_info will ignore the error!
-                unused_codes_message = f"[{', '.join(unused_codes)}]" if len(unused_codes) > 0 else ""
+                unused_codes_message = f"[{', '.join(sorted(unused_codes))}]" if len(unused_codes) > 0 else ""
                 info = ErrorInfo(self.import_context(), file, self.current_module(), None,
                                  None, line, -1, 'error', f'unused "type: ignore{unused_codes_message}" comment',
                                  None, False, False, False)
