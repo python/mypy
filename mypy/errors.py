@@ -465,19 +465,20 @@ class Errors:
             ignored_lines = self.ignored_lines[file]
             used_ignored_lines = self.used_ignored_lines[file]
             for line, ignored_codes in ignored_lines.items():
-                used_codes = used_ignored_lines[line]
-                unused_codes = set(ignored_codes) - set(used_codes)
+                used_ignored_codes = used_ignored_lines[line]
+                unused_ignored_codes = set(ignored_codes) - set(used_ignored_codes)
                 # `ignore` is used
-                if len(ignored_codes) == 0 and len(used_codes) > 0:
+                if len(ignored_codes) == 0 and len(used_ignored_codes) > 0:
                     continue
                 # All codes appearing in `ignore[...]` are used
-                if len(ignored_codes) > 0 and len(unused_codes) == 0:
+                if len(ignored_codes) > 0 and len(unused_ignored_codes) == 0:
                     continue
-                # Don't use report since add_error_info will ignore the error!
+                # Display detail only when `ignore[...]` specifies more than one error code
                 unused_codes_message = ""
-                if len(unused_codes) > 0:
-                    unused_codes_message = f"[{', '.join(sorted(unused_codes))}]"
+                if len(ignored_codes) > 1 and len(unused_ignored_codes) > 0:
+                    unused_codes_message = f"[{', '.join(sorted(unused_ignored_codes))}]"
                 message = f'unused "type: ignore{unused_codes_message}" comment'
+                # Don't use report since add_error_info will ignore the error!
                 info = ErrorInfo(self.import_context(), file, self.current_module(), None,
                                  None, line, -1, 'error', message,
                                  None, False, False, False)

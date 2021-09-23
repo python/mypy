@@ -131,6 +131,10 @@ x # type: ignore[name-defined, attr-defined] # E: unused "type: ignore[attr-defi
 # flags: --warn-unused-ignores
 "x".foobar(y) # type: ignore[name-defined, attr-defined, valid-type, xyz] # E: unused "type: ignore[valid-type, xyz]" comment
 
+[case testErrorCodeWarnUnusedIgnores6_NoDetailWhenSingleErrorCode]
+# flags: --warn-unused-ignores
+"x" # type: ignore[name-defined] # E: unused "type: ignore" comment
+
 [case testErrorCodeIgnoreWithExtraSpace]
 x  # type: ignore   [name-defined]
 x2 # type: ignore   [ name-defined ]
