@@ -2,7 +2,7 @@
 
 from typing import List, Tuple, Optional
 from typing_extensions import Final
-from enum import Enum
+from enum import Enum, unique
 
 from mypy.checkstrformat import (
     parse_format_value, ConversionSpecifier, parse_conversion_specifiers
@@ -22,6 +22,7 @@ from mypyc.primitives.int_ops import int_to_str_op
 from mypyc.primitives.str_ops import str_build_op, str_op
 
 
+@unique
 class FormatOp(Enum):
     """FormatOp represents conversion operations of string formatting during
     compile time.
