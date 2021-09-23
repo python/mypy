@@ -471,6 +471,7 @@ def _collect_field_args(expr: Expression,
                     message = '"field()" does not accept positional arguments'
                 ctx.api.fail(message, expr)
                 return True, {}
+            assert name is not None
             args[name] = arg
         return True, args
     return False, {}
