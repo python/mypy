@@ -1,7 +1,7 @@
 """Abstract syntax tree node classes (i.e. parse tree)."""
 
 import os
-from enum import Enum
+from enum import Enum, unique
 from abc import abstractmethod
 from mypy.backports import OrderedDict
 from collections import defaultdict
@@ -1521,7 +1521,7 @@ class MemberExpr(RefExpr):
 
 
 # Kinds of arguments
-
+@unique
 class ArgKind(Enum):
     # Positional argument
     ARG_POS = 0
