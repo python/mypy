@@ -145,7 +145,7 @@ class Errors:
     ignored_lines: Dict[str, Dict[int, List[str]]]
 
     # Lines on which an error was actually ignored.
-    used_ignored_lines: Dict[str, Set[int]]
+    used_ignored_lines: Dict[str, Dict[int, List[str]]]
 
     # Files where all errors should be ignored.
     ignored_files: Set[str]
@@ -200,7 +200,7 @@ class Errors:
         self.import_ctx = []
         self.function_or_member = [None]
         self.ignored_lines = OrderedDict()
-        self.used_ignored_lines = defaultdict(set)
+        self.used_ignored_lines = defaultdict(lambda: defaultdict(list))
         self.ignored_files = set()
         self.only_once_messages = set()
         self.scope = None
@@ -369,7 +369,7 @@ class Errors:
                 for scope_line in range(line, end_line + 1):
                     if self.is_ignored_error(scope_line, info, self.ignored_lines[file]):
                         # Annotation requests us to ignore all errors on this line.
-                        self.used_ignored_lines[file].add(scope_line)
+                        self.used_ignored_lines[file][scope_line].append((info.code or codes.MISC).code)
                         return
             if file in self.ignored_files:
                 return
@@ -461,10 +461,21 @@ class Errors:
     def generate_unused_ignore_errors(self, file: str) -> None:
         ignored_lines = self.ignored_lines[file]
         if not is_typeshed_file(file) and file not in self.ignored_files:
-            for line in set(ignored_lines) - self.used_ignored_lines[file]:
+            ignored_lines = self.ignored_lines[file]
+            used_ignored_lines = self.used_ignored_lines[file]
+            for line, codes in ignored_lines.items():
+                used_codes = used_ignored_lines[line]
+                unused_codes = set(codes) - set(used_codes)
+                # `ignore` is used
+                if len(codes) == 0 and len(used_codes) > 0:
+                    continue
+                # All codes appearing in `ignore[...]` are used
+                if len(codes) > 0 and len(unused_codes) == 0:
+                    continue
                 # Don't use report since add_error_info will ignore the error!
+                unused_codes_message = f"[{', '.join(unused_codes)}]" if len(unused_codes) > 0 else ""
                 info = ErrorInfo(self.import_context(), file, self.current_module(), None,
-                                 None, line, -1, 'error', 'unused "type: ignore" comment',
+                                 None, line, -1, 'error', f'unused "type: ignore{unused_codes_message}" comment',
                                  None, False, False, False)
                 self._add_error_info(file, info)
 
