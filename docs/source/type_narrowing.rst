@@ -17,6 +17,7 @@ The simplest way to narrow a type is to use one of the supported expressions:
 - :py:func:`isinstance` like in ``isinstance(obj, float)`` will narrow ``obj`` to have ``float`` type
 - :py:func:`issubclass` like in ``issubclass(cls, MyClass)`` will narrow ``cls`` to be ``Type[MyClass]``
 - :py:func:`type` like in ``type(obj) is int`` will narrow ``obj`` to have ``int`` type
+- :py:func:`callable` like in ``callable(obj)`` will narrow object to callable type
 
 Type narrowing is contextual. For example, based on the condition, mypy will narrow an expression only within an ``if`` branch:
 
@@ -57,24 +58,6 @@ We can also use ``assert`` to narrow types in the same context:
       assert isinstance(arg, int)
       reveal_type(arg)  # Revealed type: "builtins.int"
 
-Mypy can also use :py:func:`issubclass`
-for better type inference when working with types and metaclasses:
-
-.. code-block:: python
-
-   class MyCalcMeta(type):
-       @classmethod
-       def calc(cls) -> int:
-           ...
-
-   def f(o: object) -> None:
-       t = type(o)  # We must use a variable here
-       reveal_type(t)  # Revealed type is "builtins.type"
-
-       if issubtype(t, MyCalcMeta):  # `issubtype(type(o), MyCalcMeta)` won't work
-           reveal_type(t)  # Revealed type is "Type[MyCalcMeta]"
-           t.calc()  # Okay
-
 .. note::
 
   With :option:`--warn-unreachable <mypy --warn-unreachable>`
@@ -100,6 +83,57 @@ for better type inference when working with types and metaclasses:
      reveal_type(x)  # Revealed type is "builtins.int"
      print(x + '!')  # Typechecks with `mypy`, but fails in runtime.
 
+issubclass
+~~~~~~~~~~
+
+Mypy can also use :py:func:`issubclass`
+for better type inference when working with types and metaclasses:
+
+.. code-block:: python
+
+   class MyCalcMeta(type):
+       @classmethod
+       def calc(cls) -> int:
+           ...
+
+   def f(o: object) -> None:
+       t = type(o)  # We must use a variable here
+       reveal_type(t)  # Revealed type is "builtins.type"
+
+       if issubtype(t, MyCalcMeta):  # `issubtype(type(o), MyCalcMeta)` won't work
+           reveal_type(t)  # Revealed type is "Type[MyCalcMeta]"
+           t.calc()  # Okay
+
+callable
+~~~~~~~~
+
+Mypy knows what types are callable and which ones are not during type checking.
+So, we know what ``callable()`` will return. For example:
+
+.. code-block:: python
+
+  from typing import Callable
+
+  x: Callable[[], int]
+
+  if callable(x):
+      reveal_type(x)  # N: Revealed type is "def () -> builtins.int"
+  else:
+      ...  # Will never be executed and will raise error with `--warn-unreachable`
+
+``callable`` function can even split ``Union`` type
+for callable and non-callable parts:
+
+.. code-block:: python
+
+  from typing import Callable, Union
+
+  x: Union[int, Callable[[], int]]
+
+  if callable(x):
+      reveal_type(x)  # N: Revealed type is "def () -> builtins.int"
+  else:
+      reveal_type(x)  # N: Revealed type is "builtins.int"
 
 .. _casts:
 
