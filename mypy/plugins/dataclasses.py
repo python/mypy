@@ -460,16 +460,18 @@ def _collect_field_args(expr: Expression,
     ):
         # field() only takes keyword arguments.
         args = {}
-        for name, arg in zip(expr.arg_names, expr.args):
-            if name is None:
-                # This means that `field` is used with `**` unpacking,
-                # the best we can do for now is not to fail.
-                # TODO: we can infer what's inside `**` and try to collect it.
-                ctx.api.fail(
-                    'Unpacking **kwargs in "field()" is not supported',
-                    expr,
-                )
+        for name, arg, kind in zip(expr.arg_names, expr.args, expr.arg_kinds):
+            if not kind.is_named():
+                if kind.is_named(star=True):
+                    # This means that `field` is used with `**` unpacking,
+                    # the best we can do for now is not to fail.
+                    # TODO: we can infer what's inside `**` and try to collect it.
+                    message = 'Unpacking **kwargs in "field()" is not supported'
+                else:
+                    message = '"field()" does not accept positional arguments'
+                ctx.api.fail(message, expr)
                 return True, {}
+            assert name is not None
             args[name] = arg
         return True, args
     return False, {}
