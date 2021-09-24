@@ -10,7 +10,7 @@ import os
 import re
 import subprocess
 import sys
-from enum import Enum
+from enum import Enum, unique
 
 from typing import Dict, Iterator, List, NamedTuple, Optional, Set, Tuple, Union
 from typing_extensions import Final
@@ -41,6 +41,7 @@ PYTHON2_STUB_DIR: Final = "@python2"
 # TODO: Consider adding more reasons here?
 # E.g. if we deduce a module would likely be found if the user were
 # to set the --namespace-packages flag.
+@unique
 class ModuleNotFoundReason(Enum):
     # The module was not found: we found neither stubs nor a plausible code
     # implementation (with or without a py.typed file).
@@ -203,7 +204,9 @@ class FindModuleCache:
         if id not in self.results:
             top_level = id.partition('.')[0]
             use_typeshed = True
-            if top_level in self.stdlib_py_versions:
+            if id in self.stdlib_py_versions:
+                use_typeshed = self._typeshed_has_version(id)
+            elif top_level in self.stdlib_py_versions:
                 use_typeshed = self._typeshed_has_version(top_level)
             self.results[id] = self._find_module(id, use_typeshed)
             if (not fast_path

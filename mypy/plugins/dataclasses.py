@@ -13,7 +13,10 @@ from mypy.plugins.common import (
     add_method, _get_decorator_bool_argument, deserialize_and_fixup_type,
 )
 from mypy.typeops import map_type_from_supertype
-from mypy.types import Type, Instance, NoneType, TypeVarType, CallableType, get_proper_type
+from mypy.types import (
+    Type, Instance, NoneType, TypeVarType, CallableType, get_proper_type,
+    AnyType, TypeOfAny,
+)
 from mypy.server.trigger import make_wildcard_trigger
 
 # The set of decorators that generate dataclasses.
@@ -187,6 +190,8 @@ class DataclassTransformer:
 
         self.reset_init_only_vars(info, attributes)
 
+        self._add_dataclass_fields_magic_attribute()
+
         info.metadata['dataclass'] = {
             'attributes': [attr.serialize() for attr in attributes],
             'frozen': decorator_arguments['frozen'],
@@ -264,7 +269,7 @@ class DataclassTransformer:
             if self._is_kw_only_type(node_type):
                 kw_only = True
 
-            has_field_call, field_args = _collect_field_args(stmt.rvalue)
+            has_field_call, field_args = _collect_field_args(stmt.rvalue, ctx)
 
             is_in_init_param = field_args.get('init')
             if is_in_init_param is None:
@@ -417,6 +422,23 @@ class DataclassTransformer:
             return False
         return node_type.type.fullname == 'dataclasses.KW_ONLY'
 
+    def _add_dataclass_fields_magic_attribute(self) -> None:
+        attr_name = '__dataclass_fields__'
+        any_type = AnyType(TypeOfAny.explicit)
+        field_type = self._ctx.api.named_type_or_none('dataclasses.Field', [any_type]) or any_type
+        attr_type = self._ctx.api.named_type('__builtins__.dict', [
+            self._ctx.api.named_type('__builtins__.str'),
+            field_type,
+        ])
+        var = Var(name=attr_name, type=attr_type)
+        var.info = self._ctx.cls.info
+        var._fullname = self._ctx.cls.info.fullname + '.' + attr_name
+        self._ctx.cls.info.names[attr_name] = SymbolTableNode(
+            kind=MDEF,
+            node=var,
+            plugin_generated=True,
+        )
+
 
 def dataclass_class_maker_callback(ctx: ClassDefContext) -> None:
     """Hooks into the class typechecking process to add support for dataclasses.
@@ -425,7 +447,8 @@ def dataclass_class_maker_callback(ctx: ClassDefContext) -> None:
     transformer.transform()
 
 
-def _collect_field_args(expr: Expression) -> Tuple[bool, Dict[str, Expression]]:
+def _collect_field_args(expr: Expression,
+                        ctx: ClassDefContext) -> Tuple[bool, Dict[str, Expression]]:
     """Returns a tuple where the first value represents whether or not
     the expression is a call to dataclass.field and the second is a
     dictionary of the keyword arguments that field() was called with.
@@ -438,7 +461,15 @@ def _collect_field_args(expr: Expression) -> Tuple[bool, Dict[str, Expression]]:
         # field() only takes keyword arguments.
         args = {}
         for name, arg in zip(expr.arg_names, expr.args):
-            assert name is not None
+            if name is None:
+                # This means that `field` is used with `**` unpacking,
+                # the best we can do for now is not to fail.
+                # TODO: we can infer what's inside `**` and try to collect it.
+                ctx.api.fail(
+                    'Unpacking **kwargs in "field()" is not supported',
+                    expr,
+                )
+                return True, {}
             args[name] = arg
         return True, args
     return False, {}

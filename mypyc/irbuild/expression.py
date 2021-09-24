@@ -25,9 +25,11 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.irbuild.format_str_tokenizer import (
-    tokenizer_printf_style, join_formatted_strings, convert_expr
+    tokenizer_printf_style, join_formatted_strings, convert_format_expr_to_str,
+    convert_format_expr_to_bytes, join_formatted_bytes
 )
-from mypyc.primitives.registry import CFunctionDescription, builtin_names, binary_ops
+from mypyc.primitives.bytes_ops import bytes_slice_op
+from mypyc.primitives.registry import CFunctionDescription, builtin_names
 from mypyc.primitives.generic_ops import iter_op
 from mypyc.primitives.misc_ops import new_slice_op, ellipsis_op, type_op, get_module_dict_op
 from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
@@ -120,7 +122,7 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     if final is not None:
         fullname, final_var, native = final
         value = builder.emit_load_final(final_var, fullname, final_var.name, native,
-                                     builder.types[expr], expr.line)
+                                        builder.types[expr], expr.line)
         if value is not None:
             return value
 
@@ -221,7 +223,7 @@ def translate_call(builder: IRBuilder, expr: CallExpr, callee: Expression) -> Va
     function = builder.accept(callee)
     args = [builder.accept(arg) for arg in expr.args]
     return builder.py_call(function, args, expr.line,
-                        arg_kinds=expr.arg_kinds, arg_names=expr.arg_names)
+                           arg_kinds=expr.arg_kinds, arg_names=expr.arg_names)
 
 
 def translate_refexpr_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value:
@@ -276,19 +278,19 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
         else:
             obj = builder.accept(callee.expr)
             return builder.gen_method_call(obj,
-                                        callee.name,
-                                        args,
-                                        builder.node_type(expr),
-                                        expr.line,
-                                        expr.arg_kinds,
-                                        expr.arg_names)
+                                           callee.name,
+                                           args,
+                                           builder.node_type(expr),
+                                           expr.line,
+                                           expr.arg_kinds,
+                                           expr.arg_names)
 
     elif builder.is_module_member_expr(callee):
         # Fall back to a PyCall for non-native module calls
         function = builder.accept(callee)
         args = [builder.accept(arg) for arg in expr.args]
         return builder.py_call(function, args, expr.line,
-                            arg_kinds=expr.arg_kinds, arg_names=expr.arg_names)
+                               arg_kinds=expr.arg_kinds, arg_names=expr.arg_names)
     else:
         receiver_typ = builder.node_type(callee.expr)
 
@@ -303,12 +305,12 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
         obj = builder.accept(callee.expr)
         args = [builder.accept(arg) for arg in expr.args]
         return builder.gen_method_call(obj,
-                                    callee.name,
-                                    args,
-                                    builder.node_type(expr),
-                                    expr.line,
-                                    expr.arg_kinds,
-                                    expr.arg_names)
+                                       callee.name,
+                                       args,
+                                       builder.node_type(expr),
+                                       expr.line,
+                                       expr.arg_kinds,
+                                       expr.arg_names)
 
 
 def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: SuperExpr) -> Value:
@@ -384,8 +386,10 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
         return builder.shortcircuit_expr(expr)
 
     # Special case for string formatting
-    if expr.op == '%' and isinstance(expr.left, StrExpr):
-        return translate_str_format_percent_sign(builder, expr.left, expr.right)
+    if expr.op == '%' and (isinstance(expr.left, StrExpr) or isinstance(expr.left, BytesExpr)):
+        ret = translate_printf_style_formatting(builder, expr.left, expr.right)
+        if ret is not None:
+            return ret
 
     return builder.binary_op(
         builder.accept(expr.left), builder.accept(expr.right), expr.op, expr.line
@@ -441,14 +445,14 @@ def try_gen_slice_op(builder: IRBuilder, base: Value, index: SliceExpr) -> Optio
             # Replace missing end index with the largest short integer
             # (a sequence can't be longer).
             end = builder.load_int(MAX_SHORT_INT)
-        candidates = [list_slice_op, tuple_slice_op, str_slice_op]
+        candidates = [list_slice_op, tuple_slice_op, str_slice_op, bytes_slice_op]
         return builder.builder.matching_call_c(candidates, [base, begin, end], index.line)
 
     return None
 
 
 def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Value:
-    if_body, else_body, next = BasicBlock(), BasicBlock(), BasicBlock()
+    if_body, else_body, next_block = BasicBlock(), BasicBlock(), BasicBlock()
 
     builder.process_conditional(expr.cond, if_body, else_body)
     expr_type = builder.node_type(expr)
@@ -459,15 +463,15 @@ def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Val
     true_value = builder.accept(expr.if_expr)
     true_value = builder.coerce(true_value, expr_type, expr.line)
     builder.add(Assign(target, true_value))
-    builder.goto(next)
+    builder.goto(next_block)
 
     builder.activate_block(else_body)
     false_value = builder.accept(expr.else_expr)
     false_value = builder.coerce(false_value, expr_type, expr.line)
     builder.add(Assign(target, false_value))
-    builder.goto(next)
+    builder.goto(next_block)
 
-    builder.activate_block(next)
+    builder.activate_block(next_block)
 
     return target
 
@@ -532,14 +536,14 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
     # assuming that prev contains the value of `ei`.
     def go(i: int, prev: Value) -> Value:
         if i == len(e.operators) - 1:
-            return transform_basic_comparison(builder,
-                e.operators[i], prev, builder.accept(e.operands[i + 1]), e.line)
+            return transform_basic_comparison(
+                builder, e.operators[i], prev, builder.accept(e.operands[i + 1]), e.line)
 
         next = builder.accept(e.operands[i + 1])
         return builder.builder.shortcircuit_helper(
             'and', expr_type,
-            lambda: transform_basic_comparison(builder,
-                e.operators[i], prev, next, e.line),
+            lambda: transform_basic_comparison(
+                builder, e.operators[i], prev, next, e.line),
             lambda: go(i + 1, next),
             e.line)
 
@@ -567,9 +571,9 @@ def transform_basic_comparison(builder: IRBuilder,
     return target
 
 
-def translate_str_format_percent_sign(builder: IRBuilder,
-                                      format_expr: StrExpr,
-                                      rhs: Expression) -> Value:
+def translate_printf_style_formatting(builder: IRBuilder,
+                                      format_expr: Union[StrExpr, BytesExpr],
+                                      rhs: Expression) -> Optional[Value]:
     tokens = tokenizer_printf_style(format_expr.value)
     if tokens is not None:
         literals, format_ops = tokens
@@ -580,16 +584,18 @@ def translate_str_format_percent_sign(builder: IRBuilder,
         elif isinstance(rhs, Expression):
             exprs.append(rhs)
 
-        substitutions = convert_expr(builder, format_ops, exprs, format_expr.line)
-        if substitutions is not None:
-            return join_formatted_strings(builder, literals, substitutions, format_expr.line)
+        if isinstance(format_expr, BytesExpr):
+            substitutions = convert_format_expr_to_bytes(builder, format_ops,
+                                                         exprs, format_expr.line)
+            if substitutions is not None:
+                return join_formatted_bytes(builder, literals, substitutions, format_expr.line)
+        else:
+            substitutions = convert_format_expr_to_str(builder, format_ops,
+                                                       exprs, format_expr.line)
+            if substitutions is not None:
+                return join_formatted_strings(builder, literals, substitutions, format_expr.line)
 
-    call_c_ops_candidates = binary_ops.get('%', [])
-    ret = builder.builder.matching_call_c(call_c_ops_candidates,
-                                          [builder.accept(format_expr), builder.accept(rhs)],
-                                          format_expr.line)
-    assert ret is not None, 'Cannot use binary op % at line {}'.format(format_expr.line)
-    return ret
+    return None
 
 
 # Literals
@@ -612,8 +618,7 @@ def transform_str_expr(builder: IRBuilder, expr: StrExpr) -> Value:
 
 
 def transform_bytes_expr(builder: IRBuilder, expr: BytesExpr) -> Value:
-    value = bytes(expr.value, 'utf8').decode('unicode-escape').encode('raw-unicode-escape')
-    return builder.builder.load_bytes(value)
+    return builder.load_bytes_from_str_literal(expr.value)
 
 
 def transform_ellipsis(builder: IRBuilder, o: EllipsisExpr) -> Value:

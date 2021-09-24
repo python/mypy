@@ -62,7 +62,7 @@ def _get_argument(call: CallExpr, name: str) -> Optional[Expression]:
         callee_node_type = get_proper_type(callee_node.type)
         if isinstance(callee_node_type, Overloaded):
             # We take the last overload.
-            callee_type = callee_node_type.items()[-1]
+            callee_type = callee_node_type.items[-1]
         elif isinstance(callee_node_type, CallableType):
             callee_type = callee_node_type
 

@@ -8,7 +8,8 @@ from mypyc.sametype import is_same_method_signature
 
 def compute_vtable(cls: ClassIR) -> None:
     """Compute the vtable structure for a class."""
-    if cls.vtable is not None: return
+    if cls.vtable is not None:
+        return
 
     if not cls.is_generated:
         cls.has_dict = any(x.inherits_python for x in cls.mro)

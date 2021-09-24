@@ -6,7 +6,7 @@ from _typeshed import Self, SupportsRead, SupportsWrite
 from datetime import datetime
 from io import BytesIO
 from types import TracebackType
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Protocol, Tuple, Type, Union, overload
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Protocol, Tuple, Type, Union, overload
 from typing_extensions import Literal
 
 class _SupportsTimeTuple(Protocol):
@@ -43,8 +43,8 @@ class ProtocolError(Error):
     url: str
     errcode: int
     errmsg: str
-    headers: Dict[str, str]
-    def __init__(self, url: str, errcode: int, errmsg: str, headers: Dict[str, str]) -> None: ...
+    headers: dict[str, str]
+    def __init__(self, url: str, errcode: int, errmsg: str, headers: dict[str, str]) -> None: ...
 
 class ResponseError(Error): ...
 
@@ -63,7 +63,7 @@ def _strftime(value: _XMLDate) -> str: ...  # undocumented
 class DateTime:
 
     value: str  # undocumented
-    def __init__(self, value: Union[int, str, datetime, time.struct_time, Tuple[int, ...]] = ...) -> None: ...
+    def __init__(self, value: int | str | datetime | time.struct_time | Tuple[int, ...] = ...) -> None: ...
     def __lt__(self, other: _DateTimeComparable) -> bool: ...
     def __le__(self, other: _DateTimeComparable) -> bool: ...
     def __gt__(self, other: _DateTimeComparable) -> bool: ...
@@ -80,7 +80,7 @@ def _datetime_type(data: str) -> datetime: ...  # undocumented
 class Binary:
 
     data: bytes
-    def __init__(self, data: Optional[bytes] = ...) -> None: ...
+    def __init__(self, data: bytes | None = ...) -> None: ...
     def decode(self, data: bytes) -> None: ...
     def encode(self, out: SupportsWrite[str]) -> None: ...
 
@@ -90,22 +90,22 @@ WRAPPERS: Tuple[Type[DateTime], Type[Binary]]  # undocumented
 
 class ExpatParser:  # undocumented
     def __init__(self, target: Unmarshaller) -> None: ...
-    def feed(self, data: Union[str, bytes]) -> None: ...
+    def feed(self, data: str | bytes) -> None: ...
     def close(self) -> None: ...
 
 class Marshaller:
 
-    dispatch: Dict[
+    dispatch: dict[
         Type[Any], Callable[[Marshaller, Any, Callable[[str], Any]], None]
-    ] = ...  # TODO: Replace 'Any' with some kind of binding
+    ]  # TODO: Replace 'Any' with some kind of binding
 
-    memo: Dict[Any, None]
+    memo: dict[Any, None]
     data: None
-    encoding: Optional[str]
+    encoding: str | None
     allow_none: bool
-    def __init__(self, encoding: Optional[str] = ..., allow_none: bool = ...) -> None: ...
-    def dumps(self, values: Union[Fault, Iterable[_Marshallable]]) -> str: ...
-    def __dump(self, value: Union[_Marshallable], write: Callable[[str], Any]) -> None: ...  # undocumented
+    def __init__(self, encoding: str | None = ..., allow_none: bool = ...) -> None: ...
+    def dumps(self, values: Fault | Iterable[_Marshallable]) -> str: ...
+    def __dump(self, value: _Marshallable, write: Callable[[str], Any]) -> None: ...  # undocumented
     def dump_nil(self, value: None, write: Callable[[str], Any]) -> None: ...
     def dump_bool(self, value: bool, write: Callable[[str], Any]) -> None: ...
     def dump_long(self, value: int, write: Callable[[str], Any]) -> None: ...
@@ -122,23 +122,23 @@ class Marshaller:
 
 class Unmarshaller:
 
-    dispatch: Dict[str, Callable[[Unmarshaller, str], None]] = ...
+    dispatch: dict[str, Callable[[Unmarshaller, str], None]]
 
-    _type: Optional[str]
-    _stack: List[_Marshallable]
-    _marks: List[int]
-    _data: List[str]
+    _type: str | None
+    _stack: list[_Marshallable]
+    _marks: list[int]
+    _data: list[str]
     _value: bool
-    _methodname: Optional[str]
+    _methodname: str | None
     _encoding: str
     append: Callable[[Any], None]
     _use_datetime: bool
     _use_builtin_types: bool
     def __init__(self, use_datetime: bool = ..., use_builtin_types: bool = ...) -> None: ...
     def close(self) -> Tuple[_Marshallable, ...]: ...
-    def getmethodname(self) -> Optional[str]: ...
+    def getmethodname(self) -> str | None: ...
     def xml(self, encoding: str, standalone: Any) -> None: ...  # Standalone is ignored
-    def start(self, tag: str, attrs: Dict[str, str]) -> None: ...
+    def start(self, tag: str, attrs: dict[str, str]) -> None: ...
     def data(self, text: str) -> None: ...
     def end(self, tag: str) -> None: ...
     def end_dispatch(self, tag: str, data: str) -> None: ...
@@ -159,42 +159,40 @@ class Unmarshaller:
 
 class _MultiCallMethod:  # undocumented
 
-    __call_list: List[Tuple[str, Tuple[_Marshallable, ...]]]
+    __call_list: list[Tuple[str, Tuple[_Marshallable, ...]]]
     __name: str
-    def __init__(self, call_list: List[Tuple[str, _Marshallable]], name: str) -> None: ...
+    def __init__(self, call_list: list[Tuple[str, _Marshallable]], name: str) -> None: ...
     def __getattr__(self, name: str) -> _MultiCallMethod: ...
     def __call__(self, *args: _Marshallable) -> None: ...
 
 class MultiCallIterator:  # undocumented
 
-    results: List[List[_Marshallable]]
-    def __init__(self, results: List[List[_Marshallable]]) -> None: ...
+    results: list[list[_Marshallable]]
+    def __init__(self, results: list[list[_Marshallable]]) -> None: ...
     def __getitem__(self, i: int) -> _Marshallable: ...
 
 class MultiCall:
 
     __server: ServerProxy
-    __call_list: List[Tuple[str, Tuple[_Marshallable, ...]]]
+    __call_list: list[Tuple[str, Tuple[_Marshallable, ...]]]
     def __init__(self, server: ServerProxy) -> None: ...
     def __getattr__(self, item: str) -> _MultiCallMethod: ...
     def __call__(self) -> MultiCallIterator: ...
 
 # A little white lie
-FastMarshaller: Optional[Marshaller]
-FastParser: Optional[ExpatParser]
-FastUnmarshaller: Optional[Unmarshaller]
+FastMarshaller: Marshaller | None
+FastParser: ExpatParser | None
+FastUnmarshaller: Unmarshaller | None
 
 def getparser(use_datetime: bool = ..., use_builtin_types: bool = ...) -> Tuple[ExpatParser, Unmarshaller]: ...
 def dumps(
-    params: Union[Fault, Tuple[_Marshallable, ...]],
-    methodname: Optional[str] = ...,
-    methodresponse: Optional[bool] = ...,
-    encoding: Optional[str] = ...,
+    params: Fault | Tuple[_Marshallable, ...],
+    methodname: str | None = ...,
+    methodresponse: bool | None = ...,
+    encoding: str | None = ...,
     allow_none: bool = ...,
 ) -> str: ...
-def loads(
-    data: str, use_datetime: bool = ..., use_builtin_types: bool = ...
-) -> Tuple[Tuple[_Marshallable, ...], Optional[str]]: ...
+def loads(data: str, use_datetime: bool = ..., use_builtin_types: bool = ...) -> Tuple[Tuple[_Marshallable, ...], str | None]: ...
 def gzip_encode(data: bytes) -> bytes: ...  # undocumented
 def gzip_decode(data: bytes, max_decode: int = ...) -> bytes: ...  # undocumented
 
@@ -214,15 +212,15 @@ class _Method:  # undocumented
 
 class Transport:
 
-    user_agent: str = ...
-    accept_gzip_encoding: bool = ...
-    encode_threshold: Optional[int] = ...
+    user_agent: str
+    accept_gzip_encoding: bool
+    encode_threshold: int | None
 
     _use_datetime: bool
     _use_builtin_types: bool
-    _connection: Tuple[Optional[_HostType], Optional[http.client.HTTPConnection]]
-    _headers: List[Tuple[str, str]]
-    _extra_headers: List[Tuple[str, str]]
+    _connection: Tuple[_HostType | None, http.client.HTTPConnection | None]
+    _headers: list[Tuple[str, str]]
+    _extra_headers: list[Tuple[str, str]]
 
     if sys.version_info >= (3, 8):
         def __init__(
@@ -235,11 +233,11 @@ class Transport:
         self, host: _HostType, handler: str, request_body: bytes, verbose: bool = ...
     ) -> Tuple[_Marshallable, ...]: ...
     def getparser(self) -> Tuple[ExpatParser, Unmarshaller]: ...
-    def get_host_info(self, host: _HostType) -> Tuple[str, List[Tuple[str, str]], Dict[str, str]]: ...
+    def get_host_info(self, host: _HostType) -> Tuple[str, list[Tuple[str, str]], dict[str, str]]: ...
     def make_connection(self, host: _HostType) -> http.client.HTTPConnection: ...
     def close(self) -> None: ...
     def send_request(self, host: _HostType, handler: str, request_body: bytes, debug: bool) -> http.client.HTTPConnection: ...
-    def send_headers(self, connection: http.client.HTTPConnection, headers: List[Tuple[str, str]]) -> None: ...
+    def send_headers(self, connection: http.client.HTTPConnection, headers: list[Tuple[str, str]]) -> None: ...
     def send_content(self, connection: http.client.HTTPConnection, request_body: bytes) -> None: ...
     def parse_response(self, response: http.client.HTTPResponse) -> Tuple[_Marshallable, ...]: ...
 
@@ -252,10 +250,10 @@ class SafeTransport(Transport):
             use_builtin_types: bool = ...,
             *,
             headers: Iterable[Tuple[str, str]] = ...,
-            context: Optional[Any] = ...,
+            context: Any | None = ...,
         ) -> None: ...
     else:
-        def __init__(self, use_datetime: bool = ..., use_builtin_types: bool = ..., *, context: Optional[Any] = ...) -> None: ...
+        def __init__(self, use_datetime: bool = ..., use_builtin_types: bool = ..., *, context: Any | None = ...) -> None: ...
     def make_connection(self, host: _HostType) -> http.client.HTTPSConnection: ...
 
 class ServerProxy:
@@ -271,28 +269,28 @@ class ServerProxy:
         def __init__(
             self,
             uri: str,
-            transport: Optional[Transport] = ...,
-            encoding: Optional[str] = ...,
+            transport: Transport | None = ...,
+            encoding: str | None = ...,
             verbose: bool = ...,
             allow_none: bool = ...,
             use_datetime: bool = ...,
             use_builtin_types: bool = ...,
             *,
             headers: Iterable[Tuple[str, str]] = ...,
-            context: Optional[Any] = ...,
+            context: Any | None = ...,
         ) -> None: ...
     else:
         def __init__(
             self,
             uri: str,
-            transport: Optional[Transport] = ...,
-            encoding: Optional[str] = ...,
+            transport: Transport | None = ...,
+            encoding: str | None = ...,
             verbose: bool = ...,
             allow_none: bool = ...,
             use_datetime: bool = ...,
             use_builtin_types: bool = ...,
             *,
-            context: Optional[Any] = ...,
+            context: Any | None = ...,
         ) -> None: ...
     def __getattr__(self, name: str) -> _Method: ...
     @overload
@@ -300,10 +298,10 @@ class ServerProxy:
     @overload
     def __call__(self, attr: Literal["transport"]) -> Transport: ...
     @overload
-    def __call__(self, attr: str) -> Union[Callable[[], None], Transport]: ...
+    def __call__(self, attr: str) -> Callable[[], None] | Transport: ...
     def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
+        self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None: ...
     def __close(self) -> None: ...  # undocumented
     def __request(self, methodname: str, params: Tuple[_Marshallable, ...]) -> Tuple[_Marshallable, ...]: ...  # undocumented

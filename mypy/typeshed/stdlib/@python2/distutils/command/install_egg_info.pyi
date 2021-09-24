@@ -1,9 +1,9 @@
 from distutils.cmd import Command
-from typing import ClassVar, List, Optional, Tuple
+from typing import ClassVar, List, Tuple
 
 class install_egg_info(Command):
     description: ClassVar[str]
-    user_options: ClassVar[List[Tuple[str, Optional[str], str]]]
+    user_options: ClassVar[List[Tuple[str, str | None, str]]]
     def initialize_options(self) -> None: ...
     def finalize_options(self) -> None: ...
     def run(self) -> None: ...
