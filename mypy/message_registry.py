@@ -117,6 +117,9 @@ DESCRIPTOR_GET_NOT_CALLABLE: Final = "{}.__get__ is not callable"
 MODULE_LEVEL_GETATTRIBUTE: Final = ErrorMessage(
     "__getattribute__ is not valid at the module level"
 )
+NAME_NOT_IN_SLOTS: Final = ErrorMessage(
+    'Trying to assign name "{}" that is not in "__slots__" of type "{}"'
+)
 
 # Generic
 GENERIC_INSTANCE_VAR_CLASS_ACCESS: Final = (

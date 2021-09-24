@@ -2582,7 +2582,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return
 
         self.fail(
-            'Trying to assign name "{}" that is not in "__slots__" of type "{}"'.format(
+            message_registry.NAME_NOT_IN_SLOTS.format(
                 lvalue.name, inst.type.fullname,
             ),
             lvalue,
