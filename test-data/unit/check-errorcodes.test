@@ -111,6 +111,30 @@ a = 'x'.foobar(b)  # type: ignore[xyz, w, attr-defined]  # E: Name "b" is not de
 a = 'x'.foobar(b) # type: int # type: ignore[name-defined, attr-defined]
 b = 'x'.foobar(b) # type: int # type: ignore[name-defined, xyz]  # E: "str" has no attribute "foobar"  [attr-defined]
 
+[case testErrorCodeWarnUnusedIgnores1]
+# flags: --warn-unused-ignores
+x # type: ignore[name-defined, attr-defined] # E: unused "type: ignore[attr-defined]" comment
+
+[case testErrorCodeWarnUnusedIgnores2]
+# flags: --warn-unused-ignores
+"x".foobar(y) # type: ignore[name-defined, attr-defined]
+
+[case testErrorCodeWarnUnusedIgnores3]
+# flags: --warn-unused-ignores
+"x".foobar(y) # type: ignore[name-defined, attr-defined, xyz] # E: unused "type: ignore[xyz]" comment
+
+[case testErrorCodeWarnUnusedIgnores4]
+# flags: --warn-unused-ignores
+"x".foobar(y) # type: ignore[name-defined, attr-defined, valid-type] # E: unused "type: ignore[valid-type]" comment
+
+[case testErrorCodeWarnUnusedIgnores5]
+# flags: --warn-unused-ignores
+"x".foobar(y) # type: ignore[name-defined, attr-defined, valid-type, xyz] # E: unused "type: ignore[valid-type, xyz]" comment
+
+[case testErrorCodeWarnUnusedIgnores6_NoDetailWhenSingleErrorCode]
+# flags: --warn-unused-ignores
+"x" # type: ignore[name-defined] # E: unused "type: ignore" comment
+
 [case testErrorCodeIgnoreWithExtraSpace]
 x  # type: ignore   [name-defined]
 x2 # type: ignore   [ name-defined ]
