@@ -1398,17 +1398,23 @@ A = NamedTuple('A', [('param', int)])
 B = namedtuple('B', ['param'])
 
 def accepts_named_tuple(arg: NamedTuple):
-    reveal_type(arg._asdict())  # N: Revealed type is "builtins.dict[builtins.str, Any]"
-    reveal_type(arg._fields)  # N: Revealed type is "builtins.tuple[builtins.str]"
-    reveal_type(arg._field_defaults)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
+    reveal_type(arg._asdict())
+    reveal_type(arg._fields)
+    reveal_type(arg._field_defaults)
 
 a = A(1)
 b = B(1)
 
 accepts_named_tuple(a)
 accepts_named_tuple(b)
-accepts_named_tuple(1)  # E: Argument 1 to "accepts_named_tuple" has incompatible type "int"; expected "NamedTuple"
-accepts_named_tuple((1, 2))  # E: Argument 1 to "accepts_named_tuple" has incompatible type "Tuple[int, int]"; expected "NamedTuple"
+accepts_named_tuple(1)
+accepts_named_tuple((1, 2))
+[out]
+_testNamedTupleTypeInheritanceSpecialCase.py:8: note: Revealed type is "collections.OrderedDict[builtins.str, Any]"
+_testNamedTupleTypeInheritanceSpecialCase.py:9: note: Revealed type is "builtins.tuple[builtins.str]"
+_testNamedTupleTypeInheritanceSpecialCase.py:10: note: Revealed type is "builtins.dict[builtins.str, Any]"
+_testNamedTupleTypeInheritanceSpecialCase.py:17: error: Argument 1 to "accepts_named_tuple" has incompatible type "int"; expected "NamedTuple"
+_testNamedTupleTypeInheritanceSpecialCase.py:18: error: Argument 1 to "accepts_named_tuple" has incompatible type "Tuple[int, int]"; expected "NamedTuple"
 
 [case testNewAnalyzerBasicTypeshed_newsemanal]
 from typing import Dict, List, Tuple
