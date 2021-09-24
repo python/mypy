@@ -3884,7 +3884,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # When inferecing it, `context` might be used instead of real args.
                 # Usually, we don't want that.
                 # https://github.com/python/mypy/issues/11049
-                if not is_subtype(self.accept(node), context, ignore_type_params=True):
+                with self.msg.disable_errors():
+                    call_type = self.accept(node)
+                if not is_subtype(call_type, context, ignore_type_params=True):
                     context = None
 
             if map is None:
