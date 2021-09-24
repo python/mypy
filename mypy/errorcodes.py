@@ -122,6 +122,12 @@ UNREACHABLE: Final = ErrorCode(
 REDUNDANT_EXPR: Final = ErrorCode(
     "redundant-expr", "Warn about redundant expressions", "General", default_enabled=False
 )
+TRUTHY_BOOL: Final = ErrorCode(
+    'truthy-bool',
+    "Warn about expressions that could always evaluate to true in boolean contexts",
+    'General',
+    default_enabled=False
+)
 NAME_MATCH: Final = ErrorCode(
     "name-match", "Check that type definition has consistent naming", "General"
 )

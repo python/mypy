@@ -70,10 +70,6 @@ RUNTIME_C_FILES: Final = [
 JsonDict = Dict[str, Any]
 
 
-def decorator_helper_name(func_name: str) -> str:
-    return '__mypyc_{}_decorator_helper__'.format(func_name)
-
-
 def shared_lib_name(group_name: str) -> str:
     """Given a group name, return the actual name of its extension module.
 

@@ -4,23 +4,7 @@ from _typeshed import StrOrBytesPath
 from email.message import Message
 from http.client import HTTPMessage, HTTPResponse, _HTTPConnectionProtocol
 from http.cookiejar import CookieJar
-from typing import (
-    IO,
-    Any,
-    Callable,
-    ClassVar,
-    Dict,
-    List,
-    Mapping,
-    NoReturn,
-    Optional,
-    Pattern,
-    Sequence,
-    Tuple,
-    TypeVar,
-    Union,
-    overload,
-)
+from typing import IO, Any, Callable, ClassVar, Mapping, NoReturn, Pattern, Sequence, Tuple, TypeVar, overload
 from urllib.error import HTTPError
 from urllib.response import addclosehook, addinfourl
 
@@ -28,17 +12,17 @@ _T = TypeVar("_T")
 _UrlopenRet = Any
 
 def urlopen(
-    url: Union[str, Request],
-    data: Optional[bytes] = ...,
-    timeout: Optional[float] = ...,
+    url: str | Request,
+    data: bytes | None = ...,
+    timeout: float | None = ...,
     *,
-    cafile: Optional[str] = ...,
-    capath: Optional[str] = ...,
+    cafile: str | None = ...,
+    capath: str | None = ...,
     cadefault: bool = ...,
-    context: Optional[ssl.SSLContext] = ...,
+    context: ssl.SSLContext | None = ...,
 ) -> _UrlopenRet: ...
 def install_opener(opener: OpenerDirector) -> None: ...
-def build_opener(*handlers: Union[BaseHandler, Callable[[], BaseHandler]]) -> OpenerDirector: ...
+def build_opener(*handlers: BaseHandler | Callable[[], BaseHandler]) -> OpenerDirector: ...
 
 if sys.platform == "win32":
     from nturl2path import pathname2url as pathname2url, url2pathname as url2pathname
@@ -46,15 +30,15 @@ else:
     def url2pathname(pathname: str) -> str: ...
     def pathname2url(pathname: str) -> str: ...
 
-def getproxies() -> Dict[str, str]: ...
-def parse_http_list(s: str) -> List[str]: ...
-def parse_keqv_list(l: List[str]) -> Dict[str, str]: ...
+def getproxies() -> dict[str, str]: ...
+def parse_http_list(s: str) -> list[str]: ...
+def parse_keqv_list(l: list[str]) -> dict[str, str]: ...
 
 if sys.platform == "win32" or sys.platform == "darwin":
-    def proxy_bypass(host: str) -> Any: ...  # Undocumented
+    def proxy_bypass(host: str) -> Any: ...  # undocumented
 
 else:
-    def proxy_bypass(host: str, proxies: Optional[Mapping[str, str]] = ...) -> Any: ...  # Undocumented
+    def proxy_bypass(host: str, proxies: Mapping[str, str] | None = ...) -> Any: ...  # undocumented
 
 class Request:
     @property
@@ -67,20 +51,20 @@ class Request:
     host: str
     origin_req_host: str
     selector: str
-    data: Optional[bytes]
-    headers: Dict[str, str]
-    unredirected_hdrs: Dict[str, str]
+    data: bytes | None
+    headers: dict[str, str]
+    unredirected_hdrs: dict[str, str]
     unverifiable: bool
-    method: Optional[str]
-    timeout: Optional[float]  # Undocumented, only set after __init__() by OpenerDirector.open()
+    method: str | None
+    timeout: float | None  # Undocumented, only set after __init__() by OpenerDirector.open()
     def __init__(
         self,
         url: str,
-        data: Optional[bytes] = ...,
-        headers: Dict[str, str] = ...,
-        origin_req_host: Optional[str] = ...,
+        data: bytes | None = ...,
+        headers: dict[str, str] = ...,
+        origin_req_host: str | None = ...,
         unverifiable: bool = ...,
-        method: Optional[str] = ...,
+        method: str | None = ...,
     ) -> None: ...
     def get_method(self) -> str: ...
     def add_header(self, key: str, val: str) -> None: ...
@@ -90,16 +74,16 @@ class Request:
     def get_full_url(self) -> str: ...
     def set_proxy(self, host: str, type: str) -> None: ...
     @overload
-    def get_header(self, header_name: str) -> Optional[str]: ...
+    def get_header(self, header_name: str) -> str | None: ...
     @overload
-    def get_header(self, header_name: str, default: _T) -> Union[str, _T]: ...
-    def header_items(self) -> List[Tuple[str, str]]: ...
+    def get_header(self, header_name: str, default: _T) -> str | _T: ...
+    def header_items(self) -> list[Tuple[str, str]]: ...
     def has_proxy(self) -> bool: ...
 
 class OpenerDirector:
-    addheaders: List[Tuple[str, str]]
+    addheaders: list[Tuple[str, str]]
     def add_handler(self, handler: BaseHandler) -> None: ...
-    def open(self, fullurl: Union[str, Request], data: Optional[bytes] = ..., timeout: Optional[float] = ...) -> _UrlopenRet: ...
+    def open(self, fullurl: str | Request, data: bytes | None = ..., timeout: float | None = ...) -> _UrlopenRet: ...
     def error(self, proto: str, *args: Any) -> _UrlopenRet: ...
     def close(self) -> None: ...
 
@@ -111,7 +95,7 @@ class BaseHandler:
 
 class HTTPDefaultErrorHandler(BaseHandler):
     def http_error_default(
-        self, req: Request, fp: IO[bytes], code: int, msg: str, hdrs: Mapping[str, str]
+        self, req: Request, fp: IO[bytes], code: int, msg: str, hdrs: HTTPMessage
     ) -> HTTPError: ...  # undocumented
 
 class HTTPRedirectHandler(BaseHandler):
@@ -119,96 +103,80 @@ class HTTPRedirectHandler(BaseHandler):
     max_repeats: ClassVar[int]  # undocumented
     inf_msg: ClassVar[str]  # undocumented
     def redirect_request(
-        self, req: Request, fp: IO[bytes], code: int, msg: str, headers: Mapping[str, str], newurl: str
-    ) -> Optional[Request]: ...
-    def http_error_301(
-        self, req: Request, fp: IO[bytes], code: int, msg: str, headers: Mapping[str, str]
-    ) -> Optional[_UrlopenRet]: ...
-    def http_error_302(
-        self, req: Request, fp: IO[bytes], code: int, msg: str, headers: Mapping[str, str]
-    ) -> Optional[_UrlopenRet]: ...
-    def http_error_303(
-        self, req: Request, fp: IO[bytes], code: int, msg: str, headers: Mapping[str, str]
-    ) -> Optional[_UrlopenRet]: ...
-    def http_error_307(
-        self, req: Request, fp: IO[bytes], code: int, msg: str, headers: Mapping[str, str]
-    ) -> Optional[_UrlopenRet]: ...
+        self, req: Request, fp: IO[bytes], code: int, msg: str, headers: HTTPMessage, newurl: str
+    ) -> Request | None: ...
+    def http_error_301(self, req: Request, fp: IO[bytes], code: int, msg: str, headers: HTTPMessage) -> _UrlopenRet | None: ...
+    def http_error_302(self, req: Request, fp: IO[bytes], code: int, msg: str, headers: HTTPMessage) -> _UrlopenRet | None: ...
+    def http_error_303(self, req: Request, fp: IO[bytes], code: int, msg: str, headers: HTTPMessage) -> _UrlopenRet | None: ...
+    def http_error_307(self, req: Request, fp: IO[bytes], code: int, msg: str, headers: HTTPMessage) -> _UrlopenRet | None: ...
 
 class HTTPCookieProcessor(BaseHandler):
     cookiejar: CookieJar
-    def __init__(self, cookiejar: Optional[CookieJar] = ...) -> None: ...
+    def __init__(self, cookiejar: CookieJar | None = ...) -> None: ...
     def http_request(self, request: Request) -> Request: ...  # undocumented
     def http_response(self, request: Request, response: HTTPResponse) -> HTTPResponse: ...  # undocumented
     def https_request(self, request: Request) -> Request: ...  # undocumented
     def https_response(self, request: Request, response: HTTPResponse) -> HTTPResponse: ...  # undocumented
 
 class ProxyHandler(BaseHandler):
-    def __init__(self, proxies: Optional[Dict[str, str]] = ...) -> None: ...
-    def proxy_open(self, req: Request, proxy: str, type: str) -> Optional[_UrlopenRet]: ...  # undocumented
+    def __init__(self, proxies: dict[str, str] | None = ...) -> None: ...
+    def proxy_open(self, req: Request, proxy: str, type: str) -> _UrlopenRet | None: ...  # undocumented
     # TODO add a method for every (common) proxy protocol
 
 class HTTPPasswordMgr:
-    def add_password(self, realm: str, uri: Union[str, Sequence[str]], user: str, passwd: str) -> None: ...
-    def find_user_password(self, realm: str, authuri: str) -> Tuple[Optional[str], Optional[str]]: ...
+    def add_password(self, realm: str, uri: str | Sequence[str], user: str, passwd: str) -> None: ...
+    def find_user_password(self, realm: str, authuri: str) -> Tuple[str | None, str | None]: ...
     def is_suburi(self, base: str, test: str) -> bool: ...  # undocumented
     def reduce_uri(self, uri: str, default_port: bool = ...) -> str: ...  # undocumented
 
 class HTTPPasswordMgrWithDefaultRealm(HTTPPasswordMgr):
-    def add_password(self, realm: Optional[str], uri: Union[str, Sequence[str]], user: str, passwd: str) -> None: ...
-    def find_user_password(self, realm: Optional[str], authuri: str) -> Tuple[Optional[str], Optional[str]]: ...
+    def add_password(self, realm: str | None, uri: str | Sequence[str], user: str, passwd: str) -> None: ...
+    def find_user_password(self, realm: str | None, authuri: str) -> Tuple[str | None, str | None]: ...
 
 class HTTPPasswordMgrWithPriorAuth(HTTPPasswordMgrWithDefaultRealm):
     def add_password(
-        self, realm: Optional[str], uri: Union[str, Sequence[str]], user: str, passwd: str, is_authenticated: bool = ...
+        self, realm: str | None, uri: str | Sequence[str], user: str, passwd: str, is_authenticated: bool = ...
     ) -> None: ...
-    def update_authenticated(self, uri: Union[str, Sequence[str]], is_authenticated: bool = ...) -> None: ...
+    def update_authenticated(self, uri: str | Sequence[str], is_authenticated: bool = ...) -> None: ...
     def is_authenticated(self, authuri: str) -> bool: ...
 
 class AbstractBasicAuthHandler:
     rx: ClassVar[Pattern[str]]  # undocumented
     passwd: HTTPPasswordMgr
-    add_password: Callable[[str, Union[str, Sequence[str]], str, str], None]
-    def __init__(self, password_mgr: Optional[HTTPPasswordMgr] = ...) -> None: ...
-    def http_error_auth_reqed(self, authreq: str, host: str, req: Request, headers: Mapping[str, str]) -> None: ...
+    add_password: Callable[[str, str | Sequence[str], str, str], None]
+    def __init__(self, password_mgr: HTTPPasswordMgr | None = ...) -> None: ...
+    def http_error_auth_reqed(self, authreq: str, host: str, req: Request, headers: HTTPMessage) -> None: ...
     def http_request(self, req: Request) -> Request: ...  # undocumented
     def http_response(self, req: Request, response: HTTPResponse) -> HTTPResponse: ...  # undocumented
     def https_request(self, req: Request) -> Request: ...  # undocumented
     def https_response(self, req: Request, response: HTTPResponse) -> HTTPResponse: ...  # undocumented
-    def retry_http_basic_auth(self, host: str, req: Request, realm: str) -> Optional[_UrlopenRet]: ...  # undocumented
+    def retry_http_basic_auth(self, host: str, req: Request, realm: str) -> _UrlopenRet | None: ...  # undocumented
 
 class HTTPBasicAuthHandler(AbstractBasicAuthHandler, BaseHandler):
     auth_header: ClassVar[str]  # undocumented
-    def http_error_401(
-        self, req: Request, fp: IO[bytes], code: int, msg: str, headers: Mapping[str, str]
-    ) -> Optional[_UrlopenRet]: ...
+    def http_error_401(self, req: Request, fp: IO[bytes], code: int, msg: str, headers: HTTPMessage) -> _UrlopenRet | None: ...
 
 class ProxyBasicAuthHandler(AbstractBasicAuthHandler, BaseHandler):
     auth_header: ClassVar[str]
-    def http_error_407(
-        self, req: Request, fp: IO[bytes], code: int, msg: str, headers: Mapping[str, str]
-    ) -> Optional[_UrlopenRet]: ...
+    def http_error_407(self, req: Request, fp: IO[bytes], code: int, msg: str, headers: HTTPMessage) -> _UrlopenRet | None: ...
 
 class AbstractDigestAuthHandler:
-    def __init__(self, passwd: Optional[HTTPPasswordMgr] = ...) -> None: ...
+    def __init__(self, passwd: HTTPPasswordMgr | None = ...) -> None: ...
     def reset_retry_count(self) -> None: ...
-    def http_error_auth_reqed(self, auth_header: str, host: str, req: Request, headers: Mapping[str, str]) -> None: ...
-    def retry_http_digest_auth(self, req: Request, auth: str) -> Optional[_UrlopenRet]: ...
+    def http_error_auth_reqed(self, auth_header: str, host: str, req: Request, headers: HTTPMessage) -> None: ...
+    def retry_http_digest_auth(self, req: Request, auth: str) -> _UrlopenRet | None: ...
     def get_cnonce(self, nonce: str) -> str: ...
     def get_authorization(self, req: Request, chal: Mapping[str, str]) -> str: ...
     def get_algorithm_impls(self, algorithm: str) -> Tuple[Callable[[str], str], Callable[[str, str], str]]: ...
-    def get_entity_digest(self, data: Optional[bytes], chal: Mapping[str, str]) -> Optional[str]: ...
+    def get_entity_digest(self, data: bytes | None, chal: Mapping[str, str]) -> str | None: ...
 
 class HTTPDigestAuthHandler(BaseHandler, AbstractDigestAuthHandler):
     auth_header: ClassVar[str]  # undocumented
-    def http_error_401(
-        self, req: Request, fp: IO[bytes], code: int, msg: str, headers: Mapping[str, str]
-    ) -> Optional[_UrlopenRet]: ...
+    def http_error_401(self, req: Request, fp: IO[bytes], code: int, msg: str, headers: HTTPMessage) -> _UrlopenRet | None: ...
 
 class ProxyDigestAuthHandler(BaseHandler, AbstractDigestAuthHandler):
     auth_header: ClassVar[str]  # undocumented
-    def http_error_407(
-        self, req: Request, fp: IO[bytes], code: int, msg: str, headers: Mapping[str, str]
-    ) -> Optional[_UrlopenRet]: ...
+    def http_error_407(self, req: Request, fp: IO[bytes], code: int, msg: str, headers: HTTPMessage) -> _UrlopenRet | None: ...
 
 class AbstractHTTPHandler(BaseHandler):  # undocumented
     def __init__(self, debuglevel: int = ...) -> None: ...
@@ -222,13 +190,13 @@ class HTTPHandler(AbstractHTTPHandler):
 
 class HTTPSHandler(AbstractHTTPHandler):
     def __init__(
-        self, debuglevel: int = ..., context: Optional[ssl.SSLContext] = ..., check_hostname: Optional[bool] = ...
+        self, debuglevel: int = ..., context: ssl.SSLContext | None = ..., check_hostname: bool | None = ...
     ) -> None: ...
     def https_open(self, req: Request) -> HTTPResponse: ...
     def https_request(self, request: Request) -> Request: ...  # undocumented
 
 class FileHandler(BaseHandler):
-    names: ClassVar[Optional[Tuple[str, ...]]]  # undocumented
+    names: ClassVar[Tuple[str, ...] | None]  # undocumented
     def file_open(self, req: Request) -> addinfourl: ...
     def get_names(self) -> Tuple[str, ...]: ...  # undocumented
     def open_local_file(self, req: Request) -> addinfourl: ...  # undocumented
@@ -238,7 +206,7 @@ class DataHandler(BaseHandler):
 
 class ftpwrapper:  # undocumented
     def __init__(
-        self, user: str, passwd: str, host: str, port: int, dirs: str, timeout: Optional[float] = ..., persistent: bool = ...
+        self, user: str, passwd: str, host: str, port: int, dirs: str, timeout: float | None = ..., persistent: bool = ...
     ) -> None: ...
     def close(self) -> None: ...
     def endtransfer(self) -> None: ...
@@ -271,91 +239,87 @@ class HTTPErrorProcessor(BaseHandler):
 
 def urlretrieve(
     url: str,
-    filename: Optional[StrOrBytesPath] = ...,
-    reporthook: Optional[Callable[[int, int, int], None]] = ...,
-    data: Optional[bytes] = ...,
+    filename: StrOrBytesPath | None = ...,
+    reporthook: Callable[[int, int, int], None] | None = ...,
+    data: bytes | None = ...,
 ) -> Tuple[str, HTTPMessage]: ...
 def urlcleanup() -> None: ...
 
 class URLopener:
     version: ClassVar[str]
-    def __init__(self, proxies: Optional[Dict[str, str]] = ..., **x509: str) -> None: ...
-    def open(self, fullurl: str, data: Optional[bytes] = ...) -> _UrlopenRet: ...
-    def open_unknown(self, fullurl: str, data: Optional[bytes] = ...) -> _UrlopenRet: ...
+    def __init__(self, proxies: dict[str, str] | None = ..., **x509: str) -> None: ...
+    def open(self, fullurl: str, data: bytes | None = ...) -> _UrlopenRet: ...
+    def open_unknown(self, fullurl: str, data: bytes | None = ...) -> _UrlopenRet: ...
     def retrieve(
         self,
         url: str,
-        filename: Optional[str] = ...,
-        reporthook: Optional[Callable[[int, int, int], None]] = ...,
-        data: Optional[bytes] = ...,
-    ) -> Tuple[str, Optional[Message]]: ...
+        filename: str | None = ...,
+        reporthook: Callable[[int, int, int], None] | None = ...,
+        data: bytes | None = ...,
+    ) -> Tuple[str, Message | None]: ...
     def addheader(self, *args: Tuple[str, str]) -> None: ...  # undocumented
     def cleanup(self) -> None: ...  # undocumented
     def close(self) -> None: ...  # undocumented
     def http_error(
-        self, url: str, fp: IO[bytes], errcode: int, errmsg: str, headers: Mapping[str, str], data: Optional[bytes] = ...
+        self, url: str, fp: IO[bytes], errcode: int, errmsg: str, headers: HTTPMessage, data: bytes | None = ...
     ) -> _UrlopenRet: ...  # undocumented
     def http_error_default(
-        self, url: str, fp: IO[bytes], errcode: int, errmsg: str, headers: Mapping[str, str]
+        self, url: str, fp: IO[bytes], errcode: int, errmsg: str, headers: HTTPMessage
     ) -> _UrlopenRet: ...  # undocumented
-    def open_data(self, url: str, data: Optional[bytes] = ...) -> addinfourl: ...  # undocumented
+    def open_data(self, url: str, data: bytes | None = ...) -> addinfourl: ...  # undocumented
     def open_file(self, url: str) -> addinfourl: ...  # undocumented
     def open_ftp(self, url: str) -> addinfourl: ...  # undocumented
-    def open_http(self, url: str, data: Optional[bytes] = ...) -> _UrlopenRet: ...  # undocumented
-    def open_https(self, url: str, data: Optional[bytes] = ...) -> _UrlopenRet: ...  # undocumented
+    def open_http(self, url: str, data: bytes | None = ...) -> _UrlopenRet: ...  # undocumented
+    def open_https(self, url: str, data: bytes | None = ...) -> _UrlopenRet: ...  # undocumented
     def open_local_file(self, url: str) -> addinfourl: ...  # undocumented
-    def open_unknown_proxy(self, proxy: str, fullurl: str, data: Optional[bytes] = ...) -> None: ...  # undocumented
+    def open_unknown_proxy(self, proxy: str, fullurl: str, data: bytes | None = ...) -> None: ...  # undocumented
 
 class FancyURLopener(URLopener):
     def prompt_user_passwd(self, host: str, realm: str) -> Tuple[str, str]: ...
     def get_user_passwd(self, host: str, realm: str, clear_cache: int = ...) -> Tuple[str, str]: ...  # undocumented
     def http_error_301(
-        self, url: str, fp: IO[bytes], errcode: int, errmsg: str, headers: Mapping[str, str], data: Optional[bytes] = ...
-    ) -> Optional[Union[_UrlopenRet, addinfourl]]: ...  # undocumented
+        self, url: str, fp: IO[bytes], errcode: int, errmsg: str, headers: HTTPMessage, data: bytes | None = ...
+    ) -> _UrlopenRet | addinfourl | None: ...  # undocumented
     def http_error_302(
-        self, url: str, fp: IO[bytes], errcode: int, errmsg: str, headers: Mapping[str, str], data: Optional[bytes] = ...
-    ) -> Optional[Union[_UrlopenRet, addinfourl]]: ...  # undocumented
+        self, url: str, fp: IO[bytes], errcode: int, errmsg: str, headers: HTTPMessage, data: bytes | None = ...
+    ) -> _UrlopenRet | addinfourl | None: ...  # undocumented
     def http_error_303(
-        self, url: str, fp: IO[bytes], errcode: int, errmsg: str, headers: Mapping[str, str], data: Optional[bytes] = ...
-    ) -> Optional[Union[_UrlopenRet, addinfourl]]: ...  # undocumented
+        self, url: str, fp: IO[bytes], errcode: int, errmsg: str, headers: HTTPMessage, data: bytes | None = ...
+    ) -> _UrlopenRet | addinfourl | None: ...  # undocumented
     def http_error_307(
-        self, url: str, fp: IO[bytes], errcode: int, errmsg: str, headers: Mapping[str, str], data: Optional[bytes] = ...
-    ) -> Optional[Union[_UrlopenRet, addinfourl]]: ...  # undocumented
+        self, url: str, fp: IO[bytes], errcode: int, errmsg: str, headers: HTTPMessage, data: bytes | None = ...
+    ) -> _UrlopenRet | addinfourl | None: ...  # undocumented
     def http_error_401(
         self,
         url: str,
         fp: IO[bytes],
         errcode: int,
         errmsg: str,
-        headers: Mapping[str, str],
-        data: Optional[bytes] = ...,
+        headers: HTTPMessage,
+        data: bytes | None = ...,
         retry: bool = ...,
-    ) -> Optional[_UrlopenRet]: ...  # undocumented
+    ) -> _UrlopenRet | None: ...  # undocumented
     def http_error_407(
         self,
         url: str,
         fp: IO[bytes],
         errcode: int,
         errmsg: str,
-        headers: Mapping[str, str],
-        data: Optional[bytes] = ...,
+        headers: HTTPMessage,
+        data: bytes | None = ...,
         retry: bool = ...,
-    ) -> Optional[_UrlopenRet]: ...  # undocumented
+    ) -> _UrlopenRet | None: ...  # undocumented
     def http_error_default(
-        self, url: str, fp: IO[bytes], errcode: int, errmsg: str, headers: Mapping[str, str]
+        self, url: str, fp: IO[bytes], errcode: int, errmsg: str, headers: HTTPMessage
     ) -> addinfourl: ...  # undocumented
     def redirect_internal(
-        self, url: str, fp: IO[bytes], errcode: int, errmsg: str, headers: Mapping[str, str], data: Optional[bytes]
-    ) -> Optional[_UrlopenRet]: ...  # undocumented
-    def retry_http_basic_auth(
-        self, url: str, realm: str, data: Optional[bytes] = ...
-    ) -> Optional[_UrlopenRet]: ...  # undocumented
-    def retry_https_basic_auth(
-        self, url: str, realm: str, data: Optional[bytes] = ...
-    ) -> Optional[_UrlopenRet]: ...  # undocumented
+        self, url: str, fp: IO[bytes], errcode: int, errmsg: str, headers: HTTPMessage, data: bytes | None
+    ) -> _UrlopenRet | None: ...  # undocumented
+    def retry_http_basic_auth(self, url: str, realm: str, data: bytes | None = ...) -> _UrlopenRet | None: ...  # undocumented
+    def retry_https_basic_auth(self, url: str, realm: str, data: bytes | None = ...) -> _UrlopenRet | None: ...  # undocumented
     def retry_proxy_http_basic_auth(
-        self, url: str, realm: str, data: Optional[bytes] = ...
-    ) -> Optional[_UrlopenRet]: ...  # undocumented
+        self, url: str, realm: str, data: bytes | None = ...
+    ) -> _UrlopenRet | None: ...  # undocumented
     def retry_proxy_https_basic_auth(
-        self, url: str, realm: str, data: Optional[bytes] = ...
-    ) -> Optional[_UrlopenRet]: ...  # undocumented
+        self, url: str, realm: str, data: bytes | None = ...
+    ) -> _UrlopenRet | None: ...  # undocumented

@@ -20,20 +20,6 @@ from mypy.test.helpers import assert_string_arrays_equal, perform_file_operation
 # tests, otherwise mypy will ignore installed third-party packages.
 
 
-_NAMESPACE_PROGRAM = """
-{import_style}
-from typedpkg_ns.ns.dne import dne
-
-af("abc")
-bf(False)
-dne(123)
-
-af(False)
-bf(2)
-dne("abc")
-"""
-
-
 class PEP561Suite(DataSuite):
     files = [
         'pep561.test',

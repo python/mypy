@@ -418,3 +418,9 @@ def main(a: object) -> None:
         reveal_type(x)  # N: Revealed type is "builtins.float"
         reveal_type(a)  # N: Revealed type is "builtins.object"
 [builtins fixtures/tuple.pyi]
+
+[case testWalrusRedefined]
+def foo() -> None:
+    x = 0
+    [x := x + y for y in [1, 2, 3]]
+[builtins fixtures/dict.pyi]

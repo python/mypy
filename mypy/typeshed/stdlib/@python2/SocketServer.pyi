@@ -1,6 +1,6 @@
 import sys
 from socket import SocketType
-from typing import Any, BinaryIO, Callable, ClassVar, List, Optional, Text, Tuple, Union
+from typing import Any, BinaryIO, Callable, ClassVar, List, Text, Tuple, Union
 
 class BaseServer:
     address_family: int
@@ -10,7 +10,7 @@ class BaseServer:
     allow_reuse_address: bool
     request_queue_size: int
     socket_type: int
-    timeout: Optional[float]
+    timeout: float | None
     def __init__(self, server_address: Any, RequestHandlerClass: Callable[..., BaseRequestHandler]) -> None: ...
     def fileno(self) -> int: ...
     def handle_request(self) -> None: ...
@@ -46,22 +46,22 @@ if sys.platform != "win32":
     class UnixStreamServer(BaseServer):
         def __init__(
             self,
-            server_address: Union[Text, bytes],
+            server_address: Text | bytes,
             RequestHandlerClass: Callable[..., BaseRequestHandler],
             bind_and_activate: bool = ...,
         ) -> None: ...
     class UnixDatagramServer(BaseServer):
         def __init__(
             self,
-            server_address: Union[Text, bytes],
+            server_address: Text | bytes,
             RequestHandlerClass: Callable[..., BaseRequestHandler],
             bind_and_activate: bool = ...,
         ) -> None: ...
 
 if sys.platform != "win32":
     class ForkingMixIn:
-        timeout: Optional[float]  # undocumented
-        active_children: Optional[List[int]]  # undocumented
+        timeout: float | None  # undocumented
+        active_children: List[int] | None  # undocumented
         max_children: int  # undocumented
         def collect_children(self) -> None: ...  # undocumented
         def handle_timeout(self) -> None: ...  # undocumented
@@ -99,16 +99,16 @@ class BaseRequestHandler:
     def finish(self) -> None: ...
 
 class StreamRequestHandler(BaseRequestHandler):
-    rbufsize: ClassVar[int]  # Undocumented
-    wbufsize: ClassVar[int]  # Undocumented
-    timeout: ClassVar[Optional[float]]  # Undocumented
-    disable_nagle_algorithm: ClassVar[bool]  # Undocumented
-    connection: SocketType  # Undocumented
+    rbufsize: ClassVar[int]  # undocumented
+    wbufsize: ClassVar[int]  # undocumented
+    timeout: ClassVar[float | None]  # undocumented
+    disable_nagle_algorithm: ClassVar[bool]  # undocumented
+    connection: SocketType  # undocumented
     rfile: BinaryIO
     wfile: BinaryIO
 
 class DatagramRequestHandler(BaseRequestHandler):
-    packet: SocketType  # Undocumented
-    socket: SocketType  # Undocumented
+    packet: SocketType  # undocumented
+    socket: SocketType  # undocumented
     rfile: BinaryIO
     wfile: BinaryIO

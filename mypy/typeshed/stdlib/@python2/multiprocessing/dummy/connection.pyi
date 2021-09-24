@@ -1,5 +1,5 @@
 from Queue import Queue
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Tuple
 
 families: List[None]
 
@@ -15,7 +15,7 @@ class Connection(object):
     def poll(self, timeout=...) -> Any: ...
 
 class Listener(object):
-    _backlog_queue: Optional[Queue[Any]]
+    _backlog_queue: Queue[Any] | None
     address: Any
     def __init__(self, address=..., family=..., backlog=...) -> None: ...
     def accept(self) -> Connection: ...

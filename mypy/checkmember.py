@@ -230,7 +230,7 @@ def analyze_type_callable_member_access(name: str,
                                         mx: MemberContext) -> Type:
     # Class attribute.
     # TODO super?
-    ret_type = typ.items()[0].ret_type
+    ret_type = typ.items[0].ret_type
     assert isinstance(ret_type, ProperType)
     if isinstance(ret_type, TupleType):
         ret_type = tuple_fallback(ret_type)
@@ -251,7 +251,7 @@ def analyze_type_callable_member_access(name: str,
             # See https://github.com/python/mypy/pull/1787 for more info.
             # TODO: do not rely on same type variables being present in all constructor overloads.
             result = analyze_class_attribute_access(ret_type, name, mx,
-                                                    original_vars=typ.items()[0].variables)
+                                                    original_vars=typ.items[0].variables)
             if result:
                 return result
         # Look up from the 'type' type.
@@ -481,7 +481,7 @@ def analyze_descriptor_access(instance_type: Type,
     dunder_get_type = expand_type_by_instance(bound_method, typ)
 
     if isinstance(instance_type, FunctionLike) and instance_type.is_type_obj():
-        owner_type = instance_type.items()[0].ret_type
+        owner_type = instance_type.items[0].ret_type
         instance_type = NoneType()
     elif isinstance(instance_type, TypeType):
         owner_type = instance_type.item
@@ -630,7 +630,7 @@ def freeze_type_vars(member_type: Type) -> None:
         for v in member_type.variables:
             v.id.meta_level = 0
     if isinstance(member_type, Overloaded):
-        for it in member_type.items():
+        for it in member_type.items:
             for v in it.variables:
                 v.id.meta_level = 0
 
@@ -664,7 +664,7 @@ def check_self_arg(functype: FunctionLike,
     original type of 'x' is a union. This is done because several special methods
     treat union types in ad-hoc manner, so we can't use MemberContext.self_type yet.
     """
-    items = functype.items()
+    items = functype.items
     if not items:
         return functype
     new_items = []
@@ -907,7 +907,7 @@ def add_class_tvars(t: ProperType, isuper: Optional[Instance],
         return Overloaded([cast(CallableType, add_class_tvars(item, isuper,
                                                               is_classmethod, original_type,
                                                               original_vars=original_vars))
-                           for item in t.items()])
+                           for item in t.items])
     if isuper is not None:
         t = cast(ProperType, expand_type_by_instance(t, isuper))
     return t

@@ -3,7 +3,7 @@ import sys
 import zlib
 from _typeshed import ReadableBuffer, StrOrBytesPath
 from io import FileIO
-from typing import Any, Optional, Protocol, TextIO, Union, overload
+from typing import Any, Protocol, TextIO, overload
 from typing_extensions import Literal
 
 _ReadBinaryMode = Literal["r", "rb"]
@@ -31,7 +31,7 @@ class _WritableFileobj(Protocol):
 
 @overload
 def open(
-    filename: Union[StrOrBytesPath, _ReadableFileobj],
+    filename: StrOrBytesPath | _ReadableFileobj,
     mode: _ReadBinaryMode = ...,
     compresslevel: int = ...,
     encoding: None = ...,
@@ -40,7 +40,7 @@ def open(
 ) -> GzipFile: ...
 @overload
 def open(
-    filename: Union[StrOrBytesPath, _WritableFileobj],
+    filename: StrOrBytesPath | _WritableFileobj,
     mode: _WriteBinaryMode,
     compresslevel: int = ...,
     encoding: None = ...,
@@ -52,19 +52,19 @@ def open(
     filename: StrOrBytesPath,
     mode: _OpenTextMode,
     compresslevel: int = ...,
-    encoding: Optional[str] = ...,
-    errors: Optional[str] = ...,
-    newline: Optional[str] = ...,
+    encoding: str | None = ...,
+    errors: str | None = ...,
+    newline: str | None = ...,
 ) -> TextIO: ...
 @overload
 def open(
-    filename: Union[StrOrBytesPath, _ReadableFileobj, _WritableFileobj],
+    filename: StrOrBytesPath | _ReadableFileobj | _WritableFileobj,
     mode: str,
     compresslevel: int = ...,
-    encoding: Optional[str] = ...,
-    errors: Optional[str] = ...,
-    newline: Optional[str] = ...,
-) -> Union[GzipFile, TextIO]: ...
+    encoding: str | None = ...,
+    errors: str | None = ...,
+    newline: str | None = ...,
+) -> GzipFile | TextIO: ...
 
 class _PaddedFile:
     file: _ReadableFileobj
@@ -78,19 +78,19 @@ if sys.version_info >= (3, 8):
     class BadGzipFile(OSError): ...
 
 class GzipFile(_compression.BaseStream):
-    myfileobj: Optional[FileIO]
+    myfileobj: FileIO | None
     mode: Literal[1, 2]
     name: str
     compress: zlib._Compress
-    fileobj: Union[_ReadableFileobj, _WritableFileobj]
+    fileobj: _ReadableFileobj | _WritableFileobj
     @overload
     def __init__(
         self,
-        filename: Optional[StrOrBytesPath],
+        filename: StrOrBytesPath | None,
         mode: _ReadBinaryMode,
         compresslevel: int = ...,
-        fileobj: Optional[_ReadableFileobj] = ...,
-        mtime: Optional[float] = ...,
+        fileobj: _ReadableFileobj | None = ...,
+        mtime: float | None = ...,
     ) -> None: ...
     @overload
     def __init__(
@@ -98,17 +98,17 @@ class GzipFile(_compression.BaseStream):
         *,
         mode: _ReadBinaryMode,
         compresslevel: int = ...,
-        fileobj: Optional[_ReadableFileobj] = ...,
-        mtime: Optional[float] = ...,
+        fileobj: _ReadableFileobj | None = ...,
+        mtime: float | None = ...,
     ) -> None: ...
     @overload
     def __init__(
         self,
-        filename: Optional[StrOrBytesPath],
+        filename: StrOrBytesPath | None,
         mode: _WriteBinaryMode,
         compresslevel: int = ...,
-        fileobj: Optional[_WritableFileobj] = ...,
-        mtime: Optional[float] = ...,
+        fileobj: _WritableFileobj | None = ...,
+        mtime: float | None = ...,
     ) -> None: ...
     @overload
     def __init__(
@@ -116,25 +116,25 @@ class GzipFile(_compression.BaseStream):
         *,
         mode: _WriteBinaryMode,
         compresslevel: int = ...,
-        fileobj: Optional[_WritableFileobj] = ...,
-        mtime: Optional[float] = ...,
+        fileobj: _WritableFileobj | None = ...,
+        mtime: float | None = ...,
     ) -> None: ...
     @overload
     def __init__(
         self,
-        filename: Optional[StrOrBytesPath] = ...,
-        mode: Optional[str] = ...,
+        filename: StrOrBytesPath | None = ...,
+        mode: str | None = ...,
         compresslevel: int = ...,
-        fileobj: Union[_ReadableFileobj, _WritableFileobj, None] = ...,
-        mtime: Optional[float] = ...,
+        fileobj: _ReadableFileobj | _WritableFileobj | None = ...,
+        mtime: float | None = ...,
     ) -> None: ...
     @property
     def filename(self) -> str: ...
     @property
-    def mtime(self) -> Optional[int]: ...
+    def mtime(self) -> int | None: ...
     crc: int
     def write(self, data: ReadableBuffer) -> int: ...
-    def read(self, size: Optional[int] = ...) -> bytes: ...
+    def read(self, size: int | None = ...) -> bytes: ...
     def read1(self, size: int = ...) -> bytes: ...
     def peek(self, n: int) -> bytes: ...
     @property
@@ -147,14 +147,14 @@ class GzipFile(_compression.BaseStream):
     def writable(self) -> bool: ...
     def seekable(self) -> bool: ...
     def seek(self, offset: int, whence: int = ...) -> int: ...
-    def readline(self, size: Optional[int] = ...) -> bytes: ...
+    def readline(self, size: int | None = ...) -> bytes: ...
 
 class _GzipReader(_compression.DecompressReader):
     def __init__(self, fp: _ReadableFileobj) -> None: ...
     def read(self, size: int = ...) -> bytes: ...
 
 if sys.version_info >= (3, 8):
-    def compress(data: bytes, compresslevel: int = ..., *, mtime: Optional[float] = ...) -> bytes: ...
+    def compress(data: bytes, compresslevel: int = ..., *, mtime: float | None = ...) -> bytes: ...
 
 else:
     def compress(data: bytes, compresslevel: int = ...) -> bytes: ...

@@ -6,7 +6,7 @@ import array
 import mmap
 import sys
 from os import PathLike
-from typing import AbstractSet, Any, Container, Iterable, Protocol, Tuple, TypeVar, Union
+from typing import AbstractSet, Any, Awaitable, Container, Iterable, Protocol, Tuple, TypeVar, Union
 from typing_extensions import Literal, final
 
 _KT = TypeVar("_KT")
@@ -26,6 +26,14 @@ Self = TypeVar("Self")  # noqa Y001
 class IdentityFunction(Protocol):
     def __call__(self, __x: _T) -> _T: ...
 
+# stable
+class SupportsNext(Protocol[_T_co]):
+    def __next__(self) -> _T_co: ...
+
+# stable
+class SupportsAnext(Protocol[_T_co]):
+    def __anext__(self) -> Awaitable[_T_co]: ...
+
 class SupportsLessThan(Protocol):
     def __lt__(self, __other: Any) -> bool: ...
 
@@ -40,6 +48,9 @@ class SupportsRDivMod(Protocol[_T_contra, _T_co]):
 class SupportsLenAndGetItem(Protocol[_T_co]):
     def __len__(self) -> int: ...
     def __getitem__(self, __k: int) -> _T_co: ...
+
+class SupportsTrunc(Protocol):
+    def __trunc__(self) -> int: ...
 
 # Mapping-like protocols
 

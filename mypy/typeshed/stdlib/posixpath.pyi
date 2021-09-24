@@ -14,14 +14,14 @@ from genericpath import (
     samestat as samestat,
 )
 from os import PathLike
-from typing import AnyStr, Optional, Sequence, Tuple, overload
+from typing import AnyStr, Sequence, Tuple, overload
 
 supports_unicode_filenames: bool
 # aliases (also in os)
 curdir: str
 pardir: str
 sep: str
-altsep: Optional[str]
+altsep: str | None
 extsep: str
 pathsep: str
 defpath: str
@@ -78,9 +78,9 @@ else:
     def realpath(filename: AnyStr) -> AnyStr: ...
 
 @overload
-def relpath(path: BytesPath, start: Optional[BytesPath] = ...) -> bytes: ...
+def relpath(path: BytesPath, start: BytesPath | None = ...) -> bytes: ...
 @overload
-def relpath(path: StrPath, start: Optional[StrPath] = ...) -> str: ...
+def relpath(path: StrPath, start: StrPath | None = ...) -> str: ...
 @overload
 def split(p: PathLike[AnyStr]) -> Tuple[AnyStr, AnyStr]: ...
 @overload

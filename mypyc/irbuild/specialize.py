@@ -28,7 +28,7 @@ from mypyc.ir.rtypes import (
     bool_rprimitive, c_int_rprimitive, is_dict_rprimitive
 )
 from mypyc.irbuild.format_str_tokenizer import (
-    tokenizer_format_call, join_formatted_strings, convert_expr, FormatOp
+    tokenizer_format_call, join_formatted_strings, convert_format_expr_to_str, FormatOp
 )
 from mypyc.primitives.dict_ops import (
     dict_keys_op, dict_values_op, dict_items_op, dict_setdefault_spec_init_op
@@ -398,7 +398,7 @@ def translate_str_format(
             return None
         literals, format_ops = tokens
         # Convert variables to strings
-        substitutions = convert_expr(builder, format_ops, expr.args, expr.line)
+        substitutions = convert_format_expr_to_str(builder, format_ops, expr.args, expr.line)
         if substitutions is None:
             return None
         return join_formatted_strings(builder, literals, substitutions, expr.line)
@@ -444,7 +444,7 @@ def translate_fstring(
                 format_ops.append(FormatOp.STR)
                 exprs.append(item.args[0])
 
-        substitutions = convert_expr(builder, format_ops, exprs, expr.line)
+        substitutions = convert_format_expr_to_str(builder, format_ops, exprs, expr.line)
         if substitutions is None:
             return None
 

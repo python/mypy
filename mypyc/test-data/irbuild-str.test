@@ -274,3 +274,44 @@ L0:
     r15 = cast(str, r14)
     s4 = r15
     return 1
+
+[case testDecode]
+def f(b: bytes) -> None:
+    b.decode()
+    b.decode('utf-8')
+    b.decode('utf-8', 'backslashreplace')
+[out]
+def f(b):
+    b :: bytes
+    r0, r1, r2, r3, r4, r5 :: str
+L0:
+    r0 = CPy_Decode(b, 0, 0)
+    r1 = 'utf-8'
+    r2 = CPy_Decode(b, r1, 0)
+    r3 = 'utf-8'
+    r4 = 'backslashreplace'
+    r5 = CPy_Decode(b, r3, r4)
+    return 1
+
+[case testEncode]
+def f(s: str) -> None:
+    s.encode()
+    s.encode('utf-8')
+    s.encode('ascii', 'backslashreplace')
+[out]
+def f(s):
+    s :: str
+    r0 :: bytes
+    r1 :: str
+    r2 :: bytes
+    r3, r4 :: str
+    r5 :: bytes
+L0:
+    r0 = CPy_Encode(s, 0, 0)
+    r1 = 'utf-8'
+    r2 = CPy_Encode(s, r1, 0)
+    r3 = 'ascii'
+    r4 = 'backslashreplace'
+    r5 = CPy_Encode(s, r3, r4)
+    return 1
+

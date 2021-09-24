@@ -832,3 +832,248 @@ main:4: error: Argument 1 to "asdf" has incompatible type "List[str]"; expected 
 main:4: note: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance
 main:4: note: Consider using "Sequence" instead, which is covariant
 [builtins fixtures/list.pyi]
+
+[case testOptionalBackwards1]
+from typing import Any, Optional
+
+def f1(b: bool) -> Optional[int]:
+    if b:
+        z = 10
+        reveal_type(z)  # N: Revealed type is "builtins.int"
+    else:
+        z = None
+        reveal_type(z)  # N: Revealed type is "None"
+    reveal_type(z)  # N: Revealed type is "Union[builtins.int, None]"
+    return z
+
+def f2(b: bool) -> int:
+    if b:
+        z = 10
+    else:
+        z = None
+    return z  # E: Incompatible return value type (got "Optional[int]", expected "int")
+
+def f3(b: bool) -> int:
+    # XXX: This one is a little questionable! Maybe we *do* want to allow this?
+    z = 10
+    if b:
+        z = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+    return z
+
+def f4() -> Optional[int]:
+    z = 10
+    z = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+
+    return z
+
+def f5() -> None:
+    z = 10
+
+    def f() -> None:
+        nonlocal z
+        z = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+
+def f6(b: bool) -> None:
+    if b:
+        z = 10
+    else:
+        z = 11
+
+    def f() -> None:
+        nonlocal z
+        z = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+
+def f7(b: bool) -> None:
+    if b:
+        z = 10
+    else:
+        z = 11
+
+    z = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+
+def f8(b: bool, c: bool) -> Optional[int]:
+    if b:
+        if c:
+            z = 10
+        else:
+            z = 11
+    else:
+        z = None
+    return z
+
+def f9(b: bool) -> None:
+    if b:
+        z: int = 10
+    else:
+        z = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+
+def f10(b: bool) -> None:
+    z: int
+    if b:
+        z = 10
+    else:
+        z = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+
+def f11(b: bool, c: bool) -> None:
+    if b:
+        z = 10
+    elif c:
+        z = 30
+    else:
+        z = None
+
+def f12(b: bool, a: Any) -> None:
+    if b:
+        z = a
+    else:
+        z = None
+    reveal_type(z)  # N: Revealed type is "Any"
+
+def f13(b: bool, a: Any) -> None:
+    if b:
+        try:
+            z = f2(True)
+        except Exception:
+            raise RuntimeError
+    else:
+        z = None
+
+def f14(b: bool, a: Any) -> None:
+    if b:
+        with a:
+            z = 10
+    else:
+        z = None
+
+def f15() -> None:
+    try:
+        z = f2(True)
+    except Exception:
+        z = None
+    reveal_type(z)  # N: Revealed type is "Union[builtins.int, None]"
+
+def f16(z: Any) -> None:
+    for x in z:
+        if x == 0:
+            y = 50
+            break
+    else:
+        y = None
+    reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
+
+def f17(b: bool, c: bool, d: bool) -> None:
+    if b:
+        z = 2
+    elif c:
+        z = None
+    elif d:
+        z = 3
+    reveal_type(z)  # N: Revealed type is "Union[builtins.int, None]"
+
+def f18(b: bool, c: bool, d: bool) -> None:
+    if b:
+        z = 4
+    else:
+        if c:
+            z = 5
+        else:
+            z = None
+    reveal_type(z)  # N: Revealed type is "Union[builtins.int, None]"
+
+def f19(b: bool, c: bool, d: bool) -> None:
+    if b:
+        z = 5
+    else:
+        z = None
+        if c:
+            z = 6
+    reveal_type(z)  # N: Revealed type is "Union[builtins.int, None]"
+
+def f20(b: bool) -> None:
+    if b:
+        x: Any = 5
+    else:
+        x = None
+    reveal_type(x)  # N: Revealed type is "Any"
+
+def f_unannot(): pass
+
+def f21(b: bool) -> None:
+    if b:
+        x = f_unannot()
+    else:
+        x = None
+    reveal_type(x)  # N: Revealed type is "Any"
+
+def f22(b: bool) -> None:
+    if b:
+        z = 10
+    if not b:
+        z = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+
+def f23(b: bool) -> None:
+    if b:
+        z = 10
+    if b:
+        z = 11
+    else:
+        z = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+
+[builtins fixtures/exception.pyi]
+
+[case testOptionalBackwards2]
+
+def f1(b: bool) -> None:
+    if b:
+        x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
+    else:
+        x = None
+
+def f2(b: bool) -> None:
+    if b:
+        x = []
+        x.append(1)
+    else:
+        x = None
+    reveal_type(x)  # N: Revealed type is "Union[builtins.list[builtins.int], None]"
+
+
+[builtins fixtures/list.pyi]
+
+[case testOptionalBackwards3]
+
+# We don't allow this sort of updating for globals or attributes currently.
+gb: bool
+if gb:
+    Z = 10
+else:
+    Z = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+
+class Foo:
+    def __init__(self, b: bool) -> None:
+        if b:
+            self.x = 5
+        else:
+            self.x = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
+
+    def foo(self) -> None:
+        reveal_type(self.x)  # N: Revealed type is "builtins.int"
+
+[case testOptionalBackwards4]
+from typing import Any, Optional
+
+def f1(b: bool) -> Optional[int]:
+    if b:
+        z = 10
+        reveal_type(z)  # N: Revealed type is "builtins.int"
+    else:
+        # Force the node to get deferred between the two assignments
+        Defer().defer
+        z = None
+        reveal_type(z)  # N: Revealed type is "None"
+    reveal_type(z)  # N: Revealed type is "Union[builtins.int, None]"
+    return z
+
+class Defer:
+    def __init__(self) -> None:
+        self.defer = 10

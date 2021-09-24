@@ -1,5 +1,5 @@
 from types import TracebackType
-from typing import Any, Callable, Dict, NoReturn, Optional, Tuple, Type
+from typing import Any, Callable, Dict, NoReturn, Tuple, Type
 
 error = RuntimeError
 
@@ -13,7 +13,7 @@ class LockType:
     def locked(self) -> bool: ...
     def __enter__(self) -> bool: ...
     def __exit__(
-        self, type: Optional[Type[BaseException]], value: Optional[BaseException], traceback: Optional[TracebackType]
+        self, type: Type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
     ) -> None: ...
 
 def start_new_thread(function: Callable[..., Any], args: Tuple[Any, ...], kwargs: Dict[str, Any] = ...) -> int: ...

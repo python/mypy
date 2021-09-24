@@ -512,7 +512,7 @@ def test_format_method_python_doc() -> None:
                         '   10    A   12 1010',\
                         '   11    B   13 1011']
 
-[case testChrOrdEncodeDecode]
+[case testChr]
 # Some test cases are from https://docs.python.org/3/howto/unicode.html
 
 def try_invalid(x: int) -> bool:
@@ -551,6 +551,7 @@ def test_chr() -> None:
     assert try_invalid(-1)
     assert try_invalid(1114112)
 
+[case testOrd]
 def test_ord() -> None:
     assert ord('\ue000') == 57344
     s = "a\xac\u1234\u20ac\U00008000"
@@ -571,35 +572,46 @@ def test_ord() -> None:
     except TypeError:
         pass
 
+[case testDecode]
 def test_decode() -> None:
     assert "\N{GREEK CAPITAL LETTER DELTA}" == '\u0394'
     assert "\u0394" == "\u0394"
     assert "\U00000394" == '\u0394'
-    assert b'\x80abc'.decode("utf-8", "replace") == '\ufffdabc'
-    assert b'\x80abc'.decode("utf-8", "backslashreplace") == '\\x80abc'
-    assert b'\x80abc'.decode("utf-8", "ignore") == 'abc'
-    assert b'\x80abc'.decode("UTF-8", "ignore") == 'abc'
-    assert b'\x80abc'.decode("Utf-8", "ignore") == 'abc'
-    assert b'\x80abc'.decode("utf_8", "ignore") == 'abc'
-    assert b'\x80abc'.decode("latin1", "ignore") == '\x80abc'
-    assert b'\xd2\xbb\xb6\xfe\xc8\xfd'.decode("gbk", "ignore") == '一二三'
-    assert b'\xd2\xbb\xb6\xfe\xc8\xfd'.decode("latin1", "ignore") == 'Ò»¶þÈý'
+    assert b'\x80abc'.decode('utf-8', 'replace') == '\ufffdabc'
+    assert b'\x80abc'.decode('utf-8', 'backslashreplace') == '\\x80abc'
+    assert b'abc'.decode() == 'abc'
+    assert b'abc'.decode('utf-8') == 'abc'
+    assert b'\x80abc'.decode('utf-8', 'ignore') == 'abc'
+    assert b'\x80abc'.decode('UTF-8', 'ignore') == 'abc'
+    assert b'\x80abc'.decode('Utf-8', 'ignore') == 'abc'
+    assert b'\x80abc'.decode('utf_8', 'ignore') == 'abc'
+    assert b'\x80abc'.decode('latin1', 'ignore') == '\x80abc'
+    assert b'\xd2\xbb\xb6\xfe\xc8\xfd'.decode('gbk', 'ignore') == '一二三'
+    assert b'\xd2\xbb\xb6\xfe\xc8\xfd'.decode('latin1', 'ignore') == 'Ò»¶þÈý'
     assert b'Z\xc3\xbcrich'.decode("utf-8") == 'Zürich'
     try:
-        b'Z\xc3\xbcrich'.decode("ascii")
+        b'Z\xc3\xbcrich'.decode('ascii')
         assert False
     except UnicodeDecodeError:
         pass
+    assert bytearray(range(5)).decode() == '\x00\x01\x02\x03\x04'
+    b = bytearray(b'\xe4\xbd\xa0\xe5\xa5\xbd')
+    assert b.decode() == '你好'
+    assert b.decode('gbk') == '浣犲ソ'
+    assert b.decode('latin1') == 'ä½\xa0å¥½'
+
+[case testEncode]
+from testutil import assertRaises
 
 def test_encode() -> None:
     u = chr(40960) + 'abcd' + chr(1972)
     assert u.encode() == b'\xea\x80\x80abcd\xde\xb4'
     assert u.encode('utf-8') == b'\xea\x80\x80abcd\xde\xb4'
-    try:
+    with assertRaises(UnicodeEncodeError):
         u.encode('ascii')
-        assert False
-    except UnicodeEncodeError:
-        pass
+    with assertRaises(LookupError):
+        u.encode('aaa')
+    assert u.encode('utf-8', 'aaaaaa') == b'\xea\x80\x80abcd\xde\xb4'
     assert u.encode('ascii', 'ignore') == b'abcd'
     assert u.encode('ASCII', 'ignore') == b'abcd'
     assert u.encode('ascii', 'replace') == b'?abcd?'
@@ -612,8 +624,5 @@ def test_encode() -> None:
     assert u.encode('Utf_8') == b'\xea\x80\x80abcd\xde\xb4'
     assert u.encode('UTF_8') == b'\xea\x80\x80abcd\xde\xb4'
     assert u'\u00E1'.encode('latin1') == b'\xe1'
-    try:
+    with assertRaises(UnicodeEncodeError):
         u.encode('latin1')
-        assert False
-    except UnicodeEncodeError:
-        pass
