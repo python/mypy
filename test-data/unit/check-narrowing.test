@@ -1030,6 +1030,26 @@ else:
 
 [builtins fixtures/primitives.pyi]
 
+[case testNarrowingBoolLiteralIdentityCheck]
+x: bool
+if x is False:
+    reveal_type(x)  # N: Revealed type is "Literal[False]"
+else:
+    reveal_type(x)  # N: Revealed type is "Literal[True]"
+
+y: bool
+if y is True:
+    reveal_type(y)  # N: Revealed type is "Literal[True]"
+else:
+    reveal_type(y)  # N: Revealed type is "Literal[False]"
+
+z: bool
+if z:  # TODO: this can be later emulated to be `z is True` in `mypy`
+    reveal_type(z)  # N: Revealed type is "builtins.bool"
+else:
+    reveal_type(z)  # N: Revealed type is "builtins.bool"
+[builtins fixtures/primitives.pyi]
+
 [case testNarrowingTypedDictUsingEnumLiteral]
 # flags: --python-version 3.6
 from typing import Union

@@ -1129,6 +1129,13 @@ def restrict_subtype_away(t: Type, s: Type, *, ignore_promotions: bool = False) 
                      if (isinstance(get_proper_type(item), AnyType) or
                          not covers_at_runtime(item, s, ignore_promotions))]
         return UnionType.make_union(new_items)
+    elif isinstance(t, Instance) and t.type.fullname == 'builtins.bool':
+        # Narrowing `bool` special case.
+        # When we got `bool` and `Literal[True]` / `Literal[False]`
+        # we return the inverse boolean value.
+        if isinstance(s, LiteralType):
+            return LiteralType(False, t) if s.value is True else LiteralType(True, t)
+        return t
     else:
         return t
 
