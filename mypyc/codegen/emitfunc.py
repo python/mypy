@@ -484,14 +484,18 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         lhs_cast = ""
         rhs_cast = ""
         if op.op in (ComparisonOp.SLT, ComparisonOp.SGT, ComparisonOp.SLE, ComparisonOp.SGE):
+            # Always signed comparison op
             lhs_cast = self.emit_signed_int_cast(op.lhs.type)
             rhs_cast = self.emit_signed_int_cast(op.rhs.type)
         elif op.op in (ComparisonOp.ULT, ComparisonOp.UGT, ComparisonOp.ULE, ComparisonOp.UGE):
+            # Always unsigned comparison op
             lhs_cast = self.emit_unsigned_int_cast(op.lhs.type)
             rhs_cast = self.emit_unsigned_int_cast(op.rhs.type)
         elif isinstance(op.lhs, Integer) and op.lhs.value < 0:
+            # Force signed ==/!= with negative operand
             rhs_cast = self.emit_signed_int_cast(op.rhs.type)
         elif isinstance(op.rhs, Integer) and op.rhs.value < 0:
+            # Force signed ==/!= with negative operand
             lhs_cast = self.emit_signed_int_cast(op.lhs.type)
         self.emit_line('%s = %s%s %s %s%s;' % (dest, lhs_cast, lhs,
                                                op.op_str[op.op], rhs_cast, rhs))
@@ -546,7 +550,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 # Avoid overflowing signed 32-bit int
                 s += 'U'
             if val == -(1 << 63):
-                # Avoid overflow C integer literal
+                # Avoid overflowing C integer literal
                 s = '(-9223372036854775807 - 1)'
             return s
         else:
