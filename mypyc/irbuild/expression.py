@@ -432,7 +432,6 @@ def try_constant_fold(builder: IRBuilder, expr: Expression) -> Optional[Value]:
         return builder.load_int(value)
     elif isinstance(value, str):
         return builder.load_str(value)
-    assert value is None
     return None
 
 
