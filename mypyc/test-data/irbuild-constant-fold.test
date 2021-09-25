@@ -168,46 +168,34 @@ L0:
     return 1
 
 [case testIntConstantFoldingBigIntResult_64bit]
-def binary_op() -> None:
+def long_and_short() -> None:
     # Smaller and largest representable short integers
-    short1 =  0x3ffffffffffffff0 + 0xf  # (1 << 63) - 1
-    short2 = -0x3fffffffffffffff - 1    # -(1 << 63)
+    short1 =  0x3ffffffffffffff0 + 0xf  # (1 << 62) - 1
+    short2 = -0x3fffffffffffffff - 1    # -(1 << 62)
+    short3 = -0x4000000000000000
     # Smallest big integers by absolute value
-    big1 = 1 << 63
-    big2 = 18446744073709551616  # 1 << 63
-    big3 = -(1 << 63) - 1
-    big4 = -18446744073709551617  # -(1 << 63) - 1
-def unary_op() -> None:
-    # TODO: This should be constant folded but isn't right now
-    short = -0x4000000000000000
-    big = -0x4000000000000001
+    big1 = 1 << 62
+    big2 = 0x4000000000000000  # 1 << 62
+    big3 = -(1 << 62) - 1
+    big4 = -0x4000000000000001  # -(1 << 62) - 1
+    big5 = 123**41
 [out]
-def binary_op():
-    short1, short2, r0, big1, r1, big2, r2, r3, r4, big3, r5, r6, big4 :: int
+def long_and_short():
+    short1, short2, short3, r0, big1, r1, big2, r2, big3, r3, big4, r4, big5 :: int
 L0:
     short1 = 9223372036854775806
     short2 = -9223372036854775808
-    r0 = CPyTagged_Lshift(2, 126)
-    big1 = r0
-    r1 = object 18446744073709551616
-    big2 = r1
-    r2 = CPyTagged_Lshift(2, 126)
-    r3 = CPyTagged_Negate(r2)
-    r4 = CPyTagged_Subtract(r3, 2)
-    big3 = r4
-    r5 = object 18446744073709551617
-    r6 = CPyTagged_Negate(r5)
-    big4 = r6
-    return 1
-def unary_op():
-    r0, r1, short, r2, r3, big :: int
-L0:
+    short3 = -9223372036854775808
     r0 = object 4611686018427387904
-    r1 = CPyTagged_Negate(r0)
-    short = r1
-    r2 = object 4611686018427387905
-    r3 = CPyTagged_Negate(r2)
-    big = r3
+    big1 = r0
+    r1 = object 4611686018427387904
+    big2 = r1
+    r2 = object -4611686018427387905
+    big3 = r2
+    r3 = object -4611686018427387905
+    big4 = r3
+    r4 = object 48541095000524544750127162673405880068636916264012200797813591925035550682238127143323
+    big5 = r4
     return 1
 
 [case testIntConstantFoldingFinal]
