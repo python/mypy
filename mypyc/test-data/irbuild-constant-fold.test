@@ -209,3 +209,49 @@ L0:
     r3 = CPyTagged_Negate(r2)
     big = r3
     return 1
+
+[case testIntConstantFoldingFinal]
+from typing_extensions import Final
+X: Final = 5
+Y: Final = 2 + 4
+
+def f() -> None:
+    a = X + 1
+    # TODO: Constant fold this as well
+    a = Y + 1
+[out]
+def f():
+    a, r0 :: int
+    r1 :: bool
+    r2 :: int
+L0:
+    a = 12
+    r0 = __main__.Y :: static
+    if is_error(r0) goto L1 else goto L2
+L1:
+    r1 = raise NameError('value for final name "Y" was not set')
+    unreachable
+L2:
+    r2 = CPyTagged_Add(r0, 2)
+    a = r2
+    return 1
+
+[case testIntConstantFoldingClassFinal]
+from typing_extensions import Final
+class C:
+    X: Final = 5
+
+def f() -> None:
+    a = C.X + 1
+[out]
+def C.__mypyc_defaults_setup(__mypyc_self__):
+    __mypyc_self__ :: __main__.C
+    r0 :: bool
+L0:
+    __mypyc_self__.X = 10; r0 = is_error
+    return 1
+def f():
+    a :: int
+L0:
+    a = 12
+    return 1
