@@ -536,10 +536,8 @@ def lol(x):
     r2 :: object
     r3 :: str
     r4 :: object
-    r5 :: bit
-    r6 :: int
-    r7 :: bit
-    r8, r9 :: int
+    r5, r6 :: bit
+    r7, r8 :: int
 L0:
 L1:
     r0 = CPyTagged_Id(x)
@@ -555,9 +553,8 @@ L3:
     r5 = CPy_ExceptionMatches(r4)
     if r5 goto L4 else goto L5 :: bool
 L4:
-    r6 = CPyTagged_Negate(2)
     CPy_RestoreExcInfo(r1)
-    return r6
+    return -2
 L5:
     CPy_Reraise()
     if not 0 goto L8 else goto L6 :: bool
@@ -568,16 +565,16 @@ L7:
     goto L10
 L8:
     CPy_RestoreExcInfo(r1)
-    r7 = CPy_KeepPropagating()
-    if not r7 goto L11 else goto L9 :: bool
+    r6 = CPy_KeepPropagating()
+    if not r6 goto L11 else goto L9 :: bool
 L9:
     unreachable
 L10:
-    r8 = CPyTagged_Add(st, 2)
-    return r8
+    r7 = CPyTagged_Add(st, 2)
+    return r7
 L11:
-    r9 = <error> :: int
-    return r9
+    r8 = <error> :: int
+    return r8
 (0, 0)   {x}                     {x}
 (1, 0)   {x}                     {r0}
 (1, 1)   {r0}                    {st}
@@ -589,20 +586,18 @@ L11:
 (2, 4)   {r1, r4}                {r1, r4}
 (3, 0)   {r1, r4}                {r1, r5}
 (3, 1)   {r1, r5}                {r1}
-(4, 0)   {r1}                    {r1, r6}
-(4, 1)   {r1, r6}                {r6}
-(4, 2)   {r6}                    {}
+(4, 0)   {r1}                    {}
+(4, 1)   {}                      {}
 (5, 0)   {r1}                    {r1}
 (5, 1)   {r1}                    {r1}
 (6, 0)   {}                      {}
 (7, 0)   {r1, st}                {st}
 (7, 1)   {st}                    {st}
 (8, 0)   {r1}                    {}
-(8, 1)   {}                      {r7}
-(8, 2)   {r7}                    {}
+(8, 1)   {}                      {r6}
+(8, 2)   {r6}                    {}
 (9, 0)   {}                      {}
-(10, 0)  {st}                    {r8}
-(10, 1)  {r8}                    {}
-(11, 0)  {}                      {r9}
-(11, 1)  {r9}                    {}
-
+(10, 0)  {st}                    {r7}
+(10, 1)  {r7}                    {}
+(11, 0)  {}                      {r8}
+(11, 1)  {r8}                    {}
