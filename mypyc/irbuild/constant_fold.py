@@ -4,6 +4,7 @@ For example, 3 + 5 can be constant folded into 8.
 """
 
 from typing import Optional, Union
+from typing_extensions import Final
 
 from mypy.nodes import Expression, IntExpr, StrExpr, OpExpr, UnaryExpr, NameExpr, MemberExpr, Var
 from mypyc.irbuild.builder import IRBuilder
@@ -11,9 +12,14 @@ from mypyc.irbuild.builder import IRBuilder
 
 # All possible result types of constant folding
 ConstantValue = Union[int, str]
+CONST_TYPES: Final = (int, str)
 
 
 def constant_fold_expr(builder: IRBuilder, expr: Expression) -> Optional[ConstantValue]:
+    """Return the constant value of an expression for supported operations.
+
+    Return None otherwise.
+    """
     if isinstance(expr, IntExpr):
         return expr.value
     if isinstance(expr, StrExpr):
@@ -22,7 +28,7 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> Optional[Constan
         node = expr.node
         if isinstance(node, Var) and node.is_final:
             value = node.final_value
-            if isinstance(value, int):
+            if isinstance(value, (CONST_TYPES)):
                 return value
     elif isinstance(expr, MemberExpr):
         final = builder.get_final_ref(expr)
@@ -30,7 +36,7 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> Optional[Constan
             fn, final_var, native = final
             if final_var.is_final:
                 value = final_var.final_value
-                if isinstance(value, int):
+                if isinstance(value, (CONST_TYPES)):
                     return value
     elif isinstance(expr, OpExpr):
         left = constant_fold_expr(builder, expr.left)

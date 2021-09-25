@@ -169,7 +169,7 @@ L0:
 
 [case testIntConstantFoldingBigIntResult_64bit]
 def long_and_short() -> None:
-    # Smaller and largest representable short integers
+    # The smallest and largest representable short integers
     short1 =  0x3ffffffffffffff0 + 0xf  # (1 << 62) - 1
     short2 = -0x3fffffffffffffff - 1    # -(1 << 62)
     short3 = -0x4000000000000000
@@ -245,9 +245,13 @@ L0:
     return 1
 
 [case testStrConstantFolding]
+from typing_extensions import Final
+
+S: Final = 'z'
+
 def f() -> None:
     x = 'foo' + 'bar'
-    y = 'x' + 'y' + 'z'
+    y = 'x' + 'y' + S
 [out]
 def f():
     r0, x, r1, y :: str
