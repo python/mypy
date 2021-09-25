@@ -14,6 +14,7 @@ def unary_ops() -> None:
     neg1 = -5
     neg2 = --1
     neg3 = -0
+    pos = +5
     inverted1 = ~0
     inverted2 = ~5
     inverted3 = ~3
@@ -38,11 +39,12 @@ L0:
     rshift0 = 26
     return 1
 def unary_ops():
-    neg1, neg2, neg3, inverted1, inverted2, inverted3 :: int
+    neg1, neg2, neg3, pos, inverted1, inverted2, inverted3 :: int
 L0:
     neg1 = -10
     neg2 = 2
     neg3 = 0
+    pos = 10
     inverted1 = -2
     inverted2 = -12
     inverted3 = -8

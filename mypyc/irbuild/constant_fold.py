@@ -59,4 +59,6 @@ def constant_fold_unary_op(op: str, value: Value) -> Optional[Value]:
             return Integer(-value.value // 2, line=value.line)
         elif op == '~':
             return Integer(~value.value // 2, line=value.line)
+        elif op == '+':
+            return value
     return None
