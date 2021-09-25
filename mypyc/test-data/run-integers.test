@@ -88,8 +88,11 @@ def big_int() -> None:
     d_64_bit = 9223372036854775808
     max_32_bit = 2147483647
     max_31_bit = 1073741823
-    min_62_bit = -4611686018427387904
-    min_63_bit = -9223372036854775808
+    min_signed_63_bit = -4611686018427387904
+    underflow = -4611686018427387905
+    min_signed_64_bit = -9223372036854775808
+    min_signed_31_bit = -1073741824
+    min_signed_32_bit = -2147483648
     print(a_62_bit)
     print(max_62_bit)
     print(b_63_bit)
@@ -98,8 +101,11 @@ def big_int() -> None:
     print(d_64_bit)
     print(max_32_bit)
     print(max_31_bit)
-    print(min_62_bit)
-    print(min_63_bit)
+    print(min_signed_63_bit)
+    print(underflow)
+    print(min_signed_64_bit)
+    print(min_signed_31_bit)
+    print(min_signed_32_bit)
 [file driver.py]
 from native import big_int
 big_int()
@@ -113,7 +119,10 @@ big_int()
 2147483647
 1073741823
 -4611686018427387904
+-4611686018427387905
 -9223372036854775808
+-1073741824
+-2147483648
 
 [case testNeg]
 def neg(x: int) -> int:
