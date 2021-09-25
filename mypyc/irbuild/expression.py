@@ -383,9 +383,7 @@ def transform_unary_expr(builder: IRBuilder, expr: UnaryExpr) -> Value:
     if folded:
         return folded
 
-    value = builder.accept(expr.expr)
-
-    return builder.unary_op(value, expr.op, expr.line)
+    return builder.unary_op(builder.accept(expr.expr), expr.op, expr.line)
 
 
 def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
@@ -402,10 +400,9 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
     if folded:
         return folded
 
-    left = builder.accept(expr.left)
-    right = builder.accept(expr.right)
-
-    return builder.binary_op(left, right, expr.op, expr.line)
+    return builder.binary_op(
+        builder.accept(expr.left), builder.accept(expr.right), expr.op, expr.line
+    )
 
 
 def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
@@ -426,11 +423,16 @@ def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
 
 
 def try_constant_fold(builder: IRBuilder, expr: Expression) -> Optional[Value]:
+    """Return the constant value of an expression if possible.
+
+    Return None otherwise.
+    """
     value = constant_fold_expr(builder, expr)
     if isinstance(value, int):
         return builder.load_int(value)
     elif isinstance(value, str):
         return builder.load_str(value)
+    assert value is None
     return None
 
 
