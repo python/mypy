@@ -175,6 +175,10 @@ def enum_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
             if underlying_type is None:
                 return ctx.default_attr_type
 
+            # At first we try to predice future `value` type if all other items
+            # have the same type. For example, `int`.
+            # If this is the case, we simply return this type.
+            # See https://github.com/python/mypy/pull/9443
             all_same_value_type = all(
                 proper_type is not None and proper_type == underlying_type
                 for proper_type in proper_types)
@@ -182,6 +186,20 @@ def enum_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
                 if underlying_type is not None:
                     return underlying_type
 
+            # But, after we started treating all `Enum` values as `Final`,
+            # we start to inference types in
+            # `item = 1` as `Literal[1]`, not just `int`.
+            # So, for example types in this `Enum` will all be different:
+            #
+            #  class Ordering(IntEnum):
+            #      one = 1
+            #      two = 2
+            #      three = 3
+            #
+            # We will infer three `Literal` types here.
+            # They are not the same, but they are equivalent.
+            # So, we unify them to make sure `.value` prediction still works.
+            # Result will be `Literal[1] | Literal[2] | Literal[3]` for this case.
             all_equivalent_types = all(
                 proper_type is not None and is_equivalent(proper_type, underlying_type)
                 for proper_type in proper_types)

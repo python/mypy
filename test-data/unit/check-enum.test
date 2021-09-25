@@ -1386,3 +1386,10 @@ class Medal(Enum):
 Medal.gold = 0  # E: Cannot assign to final attribute "gold"
 # Same value:
 Medal.silver = 2  # E: Cannot assign to final attribute "silver"
+
+
+[case testEnumFinalValuesCannotRedefineValueProp]
+from enum import Enum
+class Types(Enum):
+    key = 0
+    value = 1  # E: Cannot override writable attribute "value" with a final one
