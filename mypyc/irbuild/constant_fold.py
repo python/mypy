@@ -5,6 +5,7 @@ For example, 3 + 5 can be constant folded into 8.
 
 from typing import Optional
 
+from mypyc.common import MAX_LITERAL_SHORT_INT, MIN_LITERAL_SHORT_INT
 from mypyc.ir.ops import Value, Integer
 from mypyc.ir.rtypes import is_short_int_rprimitive
 
@@ -17,7 +18,8 @@ def constant_fold_binary_op(op: str, left: Value, right: Value) -> Optional[Valu
         and is_short_int_rprimitive(right.type)
     ):
         value = constant_fold_binary_int_op(op, left.value // 2, right.value // 2)
-        if value is not None:
+        # TODO: Also constant fold operations that produce long integers
+        if value is not None and MIN_LITERAL_SHORT_INT <= value <= MAX_LITERAL_SHORT_INT:
             return Integer(value, line=left.line)
     return None
 
