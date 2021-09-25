@@ -5,15 +5,18 @@ For example, 3 + 5 can be constant folded into 8.
 
 from typing import Optional, Union
 
-from mypy.nodes import Expression, IntExpr, OpExpr, UnaryExpr, NameExpr, MemberExpr, Var
+from mypy.nodes import Expression, IntExpr, StrExpr, OpExpr, UnaryExpr, NameExpr, MemberExpr, Var
 from mypyc.irbuild.builder import IRBuilder
 
 
-ConstantValue = Union[int]
+# All possible result types of constant folding
+ConstantValue = Union[int, str]
 
 
 def constant_fold_expr(builder: IRBuilder, expr: Expression) -> Optional[ConstantValue]:
     if isinstance(expr, IntExpr):
+        return expr.value
+    if isinstance(expr, StrExpr):
         return expr.value
     elif isinstance(expr, NameExpr):
         node = expr.node
@@ -34,6 +37,8 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> Optional[Constan
         right = constant_fold_expr(builder, expr.right)
         if isinstance(left, int) and isinstance(right, int):
             return constant_fold_binary_int_op(expr.op, left, right)
+        elif isinstance(left, str) and isinstance(right, str):
+            return constant_fold_binary_str_op(expr.op, left, right)
     elif isinstance(expr, UnaryExpr):
         value = constant_fold_expr(builder, expr.expr)
         if isinstance(value, int):
@@ -79,4 +84,10 @@ def constant_fold_unary_int_op(op: str, value: int) -> Optional[int]:
         return ~value
     elif op == '+':
         return value
+    return None
+
+
+def constant_fold_binary_str_op(op: str, left: str, right: str) -> Optional[str]:
+    if op == '+':
+        return left + right
     return None

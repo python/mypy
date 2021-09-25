@@ -429,6 +429,8 @@ def try_constant_fold(builder: IRBuilder, expr: Expression) -> Optional[Value]:
     value = constant_fold_expr(builder, expr)
     if isinstance(value, int):
         return builder.load_int(value)
+    elif isinstance(value, str):
+        return builder.load_str(value)
     return None
 
 

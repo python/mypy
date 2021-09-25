@@ -243,3 +243,17 @@ def f():
 L0:
     a = 12
     return 1
+
+[case testStrConstantFolding]
+def f() -> None:
+    x = 'foo' + 'bar'
+    y = 'x' + 'y' + 'z'
+[out]
+def f():
+    r0, x, r1, y :: str
+L0:
+    r0 = 'foobar'
+    x = r0
+    r1 = 'xyz'
+    y = r1
+    return 1
