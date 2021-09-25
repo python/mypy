@@ -272,6 +272,10 @@ class NotImplementedError(RuntimeError): pass
 class StopIteration(Exception):
     value: Any
 
+class ArithmeticError(Exception): pass
+
+class ZeroDivisionError(Exception): pass
+
 def any(i: Iterable[T]) -> bool: pass
 def all(i: Iterable[T]) -> bool: pass
 def reversed(object: Sequence[T]) -> Iterator[T]: ...
