@@ -483,14 +483,16 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         rhs = self.reg(op.rhs)
         lhs_cast = ""
         rhs_cast = ""
-        signed_op = {ComparisonOp.SLT, ComparisonOp.SGT, ComparisonOp.SLE, ComparisonOp.SGE}
-        unsigned_op = {ComparisonOp.ULT, ComparisonOp.UGT, ComparisonOp.ULE, ComparisonOp.UGE}
-        if op.op in signed_op:
+        if op.op in (ComparisonOp.SLT, ComparisonOp.SGT, ComparisonOp.SLE, ComparisonOp.SGE):
             lhs_cast = self.emit_signed_int_cast(op.lhs.type)
             rhs_cast = self.emit_signed_int_cast(op.rhs.type)
-        elif op.op in unsigned_op:
+        elif op.op in (ComparisonOp.ULT, ComparisonOp.UGT, ComparisonOp.ULE, ComparisonOp.UGE):
             lhs_cast = self.emit_unsigned_int_cast(op.lhs.type)
             rhs_cast = self.emit_unsigned_int_cast(op.rhs.type)
+        elif isinstance(op.lhs, Integer) and op.lhs.value < 0:
+            rhs_cast = self.emit_signed_int_cast(op.rhs.type)
+        elif isinstance(op.rhs, Integer) and op.rhs.value < 0:
+            lhs_cast = self.emit_signed_int_cast(op.lhs.type)
         self.emit_line('%s = %s%s %s %s%s;' % (dest, lhs_cast, lhs,
                                                op.op_str[op.op], rhs_cast, rhs))
 

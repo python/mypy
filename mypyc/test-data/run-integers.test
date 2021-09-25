@@ -368,3 +368,9 @@ def test_constant_fold() -> None:
         pass
     else:
         assert False, "no exception raised"
+
+    x = int()
+    y = int() - 1
+    assert x == -1 or y != -3
+    assert -1 <= x
+    assert -1 == y
