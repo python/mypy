@@ -44,6 +44,7 @@ from mypyc.irbuild.for_helpers import (
     translate_list_comprehension, translate_set_comprehension,
     comprehension_helper
 )
+from mypyc.irbuild.constant_fold import constant_fold_binary_op, constant_fold_unary_op
 
 
 # Name and attribute references
@@ -378,7 +379,13 @@ def translate_cast_expr(builder: IRBuilder, expr: CastExpr) -> Value:
 
 
 def transform_unary_expr(builder: IRBuilder, expr: UnaryExpr) -> Value:
-    return builder.unary_op(builder.accept(expr.expr), expr.op, expr.line)
+    value = builder.accept(expr.expr)
+
+    folded = constant_fold_unary_op(expr.op, value)
+    if folded:
+        return folded
+
+    return builder.unary_op(value, expr.op, expr.line)
 
 
 def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
@@ -391,9 +398,14 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
         if ret is not None:
             return ret
 
-    return builder.binary_op(
-        builder.accept(expr.left), builder.accept(expr.right), expr.op, expr.line
-    )
+    left = builder.accept(expr.left)
+    right = builder.accept(expr.right)
+
+    folded = constant_fold_binary_op(expr.op, left, right)
+    if folded:
+        return folded
+
+    return builder.binary_op(left, right, expr.op, expr.line)
 
 
 def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
