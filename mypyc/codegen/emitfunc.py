@@ -543,6 +543,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             if val >= (1 << 31):
                 # Avoid overflowing signed 32-bit int
                 s += 'U'
+            if val == -(1 << 63):
+                # Avoid overflow C integer literal
+                s = '(-9223372036854775807 - 1)'
             return s
         else:
             return self.emitter.reg(reg)
