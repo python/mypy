@@ -531,3 +531,6 @@ class A:
 
 [file test.py]
 def foo(s: str) -> None: ...
+
+[case testRevealAnnotations]
+reveal_type(__annotations__)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
