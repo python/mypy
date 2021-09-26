@@ -5,6 +5,7 @@ class BaseProcess:
     name: str
     daemon: bool
     authkey: bytes
+    _identity: Tuple[int, ...]  # undocumented
     def __init__(
         self,
         group: None = ...,
