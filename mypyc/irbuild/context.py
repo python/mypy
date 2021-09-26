@@ -7,7 +7,6 @@ from mypy.nodes import FuncItem
 from mypyc.ir.ops import Value, BasicBlock
 from mypyc.ir.func_ir import INVALID_FUNC_DEF
 from mypyc.ir.class_ir import ClassIR
-from mypyc.common import decorator_helper_name
 from mypyc.irbuild.targets import AssignmentTarget
 
 
@@ -24,7 +23,7 @@ class FuncInfo:
                  is_decorated: bool = False,
                  in_non_ext: bool = False) -> None:
         self.fitem = fitem
-        self.name = name if not is_decorated else decorator_helper_name(name)
+        self.name = name
         self.class_name = class_name
         self.ns = namespace
         # Callable classes implement the '__call__' method, and are used to represent functions

@@ -536,36 +536,35 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.errors.set_file(file_node.path, file_node.fullname, scope=scope)
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname
-        scope.enter_file(self.cur_mod_id)
-        self._is_stub_file = file_node.path.lower().endswith('.pyi')
-        self._is_typeshed_stub_file = is_typeshed_file(file_node.path)
-        self.globals = file_node.names
-        self.tvar_scope = TypeVarLikeScope()
+        with scope.module_scope(self.cur_mod_id):
+            self._is_stub_file = file_node.path.lower().endswith('.pyi')
+            self._is_typeshed_stub_file = is_typeshed_file(file_node.path)
+            self.globals = file_node.names
+            self.tvar_scope = TypeVarLikeScope()
 
-        self.named_tuple_analyzer = NamedTupleAnalyzer(options, self)
-        self.typed_dict_analyzer = TypedDictAnalyzer(options, self, self.msg)
-        self.enum_call_analyzer = EnumCallAnalyzer(options, self)
-        self.newtype_analyzer = NewTypeAnalyzer(options, self, self.msg)
+            self.named_tuple_analyzer = NamedTupleAnalyzer(options, self)
+            self.typed_dict_analyzer = TypedDictAnalyzer(options, self, self.msg)
+            self.enum_call_analyzer = EnumCallAnalyzer(options, self)
+            self.newtype_analyzer = NewTypeAnalyzer(options, self, self.msg)
 
-        # Counter that keeps track of references to undefined things potentially caused by
-        # incomplete namespaces.
-        self.num_incomplete_refs = 0
+            # Counter that keeps track of references to undefined things potentially caused by
+            # incomplete namespaces.
+            self.num_incomplete_refs = 0
 
-        if active_type:
-            self.incomplete_type_stack.append(False)
-            scope.enter_class(active_type)
-            self.enter_class(active_type.defn.info)
-            for tvar in active_type.defn.type_vars:
-                self.tvar_scope.bind_existing(tvar)
+            if active_type:
+                self.incomplete_type_stack.append(False)
+                scope.enter_class(active_type)
+                self.enter_class(active_type.defn.info)
+                for tvar in active_type.defn.type_vars:
+                    self.tvar_scope.bind_existing(tvar)
 
-        yield
+            yield
 
-        if active_type:
-            scope.leave()
-            self.leave_class()
-            self.type = None
-            self.incomplete_type_stack.pop()
-        scope.leave()
+            if active_type:
+                scope.leave_class()
+                self.leave_class()
+                self.type = None
+                self.incomplete_type_stack.pop()
         del self.options
 
     #
@@ -961,23 +960,22 @@ class SemanticAnalyzer(NodeVisitor[None],
                 a = self.type_analyzer()
                 a.bind_function_type_variables(cast(CallableType, defn.type), defn)
             self.function_stack.append(defn)
-            self.enter(defn)
-            for arg in defn.arguments:
-                self.add_local(arg.variable, defn)
+            with self.enter(defn):
+                for arg in defn.arguments:
+                    self.add_local(arg.variable, defn)
 
-            # The first argument of a non-static, non-class method is like 'self'
-            # (though the name could be different), having the enclosing class's
-            # instance type.
-            if is_method and not defn.is_static and not defn.is_class and defn.arguments:
-                defn.arguments[0].variable.is_self = True
+                # The first argument of a non-static, non-class method is like 'self'
+                # (though the name could be different), having the enclosing class's
+                # instance type.
+                if is_method and not defn.is_static and not defn.is_class and defn.arguments:
+                    defn.arguments[0].variable.is_self = True
 
-            defn.body.accept(self)
-            self.leave()
+                defn.body.accept(self)
             self.function_stack.pop()
 
     def check_classvar_in_signature(self, typ: ProperType) -> None:
         if isinstance(typ, Overloaded):
-            for t in typ.items():  # type: ProperType
+            for t in typ.items:  # type: ProperType
                 self.check_classvar_in_signature(t)
             return
         if not isinstance(typ, CallableType):
@@ -2056,6 +2054,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.process_module_assignment(s.lvalues, s.rvalue, s)
         self.process__all__(s)
         self.process__deletable__(s)
+        self.process__slots__(s)
 
     def analyze_identity_global_assignment(self, s: AssignmentStmt) -> bool:
         """Special case 'X = X' in global scope.
@@ -2752,7 +2751,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 self.msg.cant_assign_to_final(name, self.type is not None, lvalue)
 
         kind = self.current_symbol_kind()
-        names = self.current_symbol_table()
+        names = self.current_symbol_table(escape_comprehensions=escape_comprehensions)
         existing = names.get(name)
 
         outer = self.is_global_or_nonlocal(name)
@@ -3373,6 +3372,62 @@ class SemanticAnalyzer(NodeVisitor[None],
             assert self.type
             self.type.deletable_attributes = attrs
 
+    def process__slots__(self, s: AssignmentStmt) -> None:
+        """
+        Processing ``__slots__`` if defined in type.
+
+        See: https://docs.python.org/3/reference/datamodel.html#slots
+        """
+        # Later we can support `__slots__` defined as `__slots__ = other = ('a', 'b')`
+        if (isinstance(self.type, TypeInfo) and
+                len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr) and
+                s.lvalues[0].name == '__slots__' and s.lvalues[0].kind == MDEF):
+
+            # We understand `__slots__` defined as string, tuple, list, set, and dict:
+            if not isinstance(s.rvalue, (StrExpr, ListExpr, TupleExpr, SetExpr, DictExpr)):
+                # For example, `__slots__` can be defined as a variable,
+                # we don't support it for now.
+                return
+
+            if any(p.slots is None for p in self.type.mro[1:-1]):
+                # At least one type in mro (excluding `self` and `object`)
+                # does not have concrete `__slots__` defined. Ignoring.
+                return
+
+            concrete_slots = True
+            rvalue: List[Expression] = []
+            if isinstance(s.rvalue, StrExpr):
+                rvalue.append(s.rvalue)
+            elif isinstance(s.rvalue, (ListExpr, TupleExpr, SetExpr)):
+                rvalue.extend(s.rvalue.items)
+            else:
+                # We have a special treatment of `dict` with possible `{**kwargs}` usage.
+                # In this case we consider all `__slots__` to be non-concrete.
+                for key, _ in s.rvalue.items:
+                    if concrete_slots and key is not None:
+                        rvalue.append(key)
+                    else:
+                        concrete_slots = False
+
+            slots = []
+            for item in rvalue:
+                # Special case for `'__dict__'` value:
+                # when specified it will still allow any attribute assignment.
+                if isinstance(item, StrExpr) and item.value != '__dict__':
+                    slots.append(item.value)
+                else:
+                    concrete_slots = False
+            if not concrete_slots:
+                # Some slot items are dynamic, we don't want any false positives,
+                # so, we just pretend that this type does not have any slots at all.
+                return
+
+            # We need to copy all slots from super types:
+            for super_type in self.type.mro[1:-1]:
+                assert super_type.slots is not None
+                slots.extend(super_type.slots)
+            self.type.slots = set(slots)
+
     #
     # Misc statements
     #
@@ -3978,18 +4033,16 @@ class SemanticAnalyzer(NodeVisitor[None],
         expr.generator.accept(self)
 
     def visit_dictionary_comprehension(self, expr: DictionaryComprehension) -> None:
-        self.enter(expr)
-        self.analyze_comp_for(expr)
-        expr.key.accept(self)
-        expr.value.accept(self)
-        self.leave()
+        with self.enter(expr):
+            self.analyze_comp_for(expr)
+            expr.key.accept(self)
+            expr.value.accept(self)
         self.analyze_comp_for_2(expr)
 
     def visit_generator_expr(self, expr: GeneratorExpr) -> None:
-        self.enter(expr)
-        self.analyze_comp_for(expr)
-        expr.left_expr.accept(self)
-        self.leave()
+        with self.enter(expr):
+            self.analyze_comp_for(expr)
+            expr.left_expr.accept(self)
         self.analyze_comp_for_2(expr)
 
     def analyze_comp_for(self, expr: Union[GeneratorExpr,
@@ -4723,7 +4776,9 @@ class SemanticAnalyzer(NodeVisitor[None],
         else:
             return self.cur_mod_id + '.' + name
 
-    def enter(self, function: Union[FuncItem, GeneratorExpr, DictionaryComprehension]) -> None:
+    @contextmanager
+    def enter(self,
+              function: Union[FuncItem, GeneratorExpr, DictionaryComprehension]) -> Iterator[None]:
         """Enter a function, generator or comprehension scope."""
         names = self.saved_locals.setdefault(function, SymbolTable())
         self.locals.append(names)
@@ -4734,14 +4789,15 @@ class SemanticAnalyzer(NodeVisitor[None],
         # -1 since entering block will increment this to 0.
         self.block_depth.append(-1)
         self.missing_names.append(set())
-
-    def leave(self) -> None:
-        self.locals.pop()
-        self.is_comprehension_stack.pop()
-        self.global_decls.pop()
-        self.nonlocal_decls.pop()
-        self.block_depth.pop()
-        self.missing_names.pop()
+        try:
+            yield
+        finally:
+            self.locals.pop()
+            self.is_comprehension_stack.pop()
+            self.global_decls.pop()
+            self.nonlocal_decls.pop()
+            self.block_depth.pop()
+            self.missing_names.pop()
 
     def is_func_scope(self) -> bool:
         return self.locals[-1] is not None
@@ -4904,6 +4960,18 @@ class SemanticAnalyzer(NodeVisitor[None],
         """Does name look like reference to a definition in the current module?"""
         return self.is_defined_in_current_module(name) or '.' not in name
 
+    def in_checked_function(self) -> bool:
+        """Should we type-check the current function?
+
+        - Yes if --check-untyped-defs is set.
+        - Yes outside functions.
+        - Yes in annotated functions.
+        - No otherwise.
+        """
+        return (self.options.check_untyped_defs
+                or not self.function_stack
+                or not self.function_stack[-1].is_dynamic())
+
     def fail(self,
              msg: str,
              ctx: Context,
@@ -4911,10 +4979,7 @@ class SemanticAnalyzer(NodeVisitor[None],
              *,
              code: Optional[ErrorCode] = None,
              blocker: bool = False) -> None:
-        if (not serious and
-                not self.options.check_untyped_defs and
-                self.function_stack and
-                self.function_stack[-1].is_dynamic()):
+        if not serious and not self.in_checked_function():
             return
         # In case it's a bug and we don't really have context
         assert ctx is not None, msg
@@ -4924,9 +4989,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.fail(msg, ctx, blocker=True)
 
     def note(self, msg: str, ctx: Context, code: Optional[ErrorCode] = None) -> None:
-        if (not self.options.check_untyped_defs and
-                self.function_stack and
-                self.function_stack[-1].is_dynamic()):
+        if not self.in_checked_function():
             return
         self.errors.report(ctx.get_line(), ctx.get_column(), msg, severity='note', code=code)
 
@@ -5117,7 +5180,7 @@ def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
         return sig.copy_modified(arg_types=[new] + sig.arg_types[1:])
     elif isinstance(sig, Overloaded):
         return Overloaded([cast(CallableType, replace_implicit_first_type(i, new))
-                           for i in sig.items()])
+                           for i in sig.items])
     else:
         assert False
 

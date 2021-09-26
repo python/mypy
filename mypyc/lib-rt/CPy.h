@@ -395,13 +395,22 @@ bool CPyStr_Startswith(PyObject *self, PyObject *subobj);
 bool CPyStr_Endswith(PyObject *self, PyObject *subobj);
 bool CPyStr_IsTrue(PyObject *obj);
 Py_ssize_t CPyStr_Size_size_t(PyObject *str);
+PyObject *CPy_Decode(PyObject *obj, PyObject *encoding, PyObject *errors);
+PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors);
 
 
 // Bytes operations
 
 
+PyObject *CPyBytes_Build(Py_ssize_t len, ...);
+PyObject *CPyBytes_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
+CPyTagged CPyBytes_GetItem(PyObject *o, CPyTagged index);
 PyObject *CPyBytes_Concat(PyObject *a, PyObject *b);
 PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter);
+
+
+int CPyBytes_Compare(PyObject *left, PyObject *right);
+
 
 
 // Set operations
@@ -558,6 +567,8 @@ PyObject *CPy_CallReverseOpMethod(PyObject *left, PyObject *right, const char *o
 PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
                                PyObject *import_name, PyObject *as_name);
 
+PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func, PyObject *cls,
+                                             PyObject *func);
 #ifdef __cplusplus
 }
 #endif

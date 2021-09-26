@@ -9,7 +9,7 @@ from asyncio.tasks import Task
 from asyncio.transports import BaseTransport
 from collections.abc import Iterable
 from socket import AddressFamily, SocketKind, _Address, _RetAddress, socket
-from typing import IO, Any, Awaitable, Callable, Dict, Generator, List, Optional, Sequence, Tuple, TypeVar, Union, overload
+from typing import IO, Any, Awaitable, Callable, Dict, Generator, Sequence, Tuple, TypeVar, Union, overload
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 7):
@@ -31,7 +31,7 @@ class Server(AbstractServer):
             protocol_factory: _ProtocolFactory,
             ssl_context: _SSLContext,
             backlog: int,
-            ssl_handshake_timeout: Optional[float],
+            ssl_handshake_timeout: float | None,
         ) -> None: ...
     else:
         def __init__(self, loop: AbstractEventLoop, sockets: list[socket]) -> None: ...
@@ -42,7 +42,7 @@ class Server(AbstractServer):
         @property
         def sockets(self) -> list[socket]: ...
     else:
-        sockets: Optional[list[socket]]
+        sockets: list[socket] | None
 
 class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
     def run_forever(self) -> None: ...
@@ -58,12 +58,12 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
     async def shutdown_asyncgens(self) -> None: ...
     # Methods scheduling callbacks.  All these return Handles.
     if sys.version_info >= (3, 7):
-        def call_soon(self, callback: Callable[..., Any], *args: Any, context: Optional[Context] = ...) -> Handle: ...
+        def call_soon(self, callback: Callable[..., Any], *args: Any, context: Context | None = ...) -> Handle: ...
         def call_later(
-            self, delay: float, callback: Callable[..., Any], *args: Any, context: Optional[Context] = ...
+            self, delay: float, callback: Callable[..., Any], *args: Any, context: Context | None = ...
         ) -> TimerHandle: ...
         def call_at(
-            self, when: float, callback: Callable[..., Any], *args: Any, context: Optional[Context] = ...
+            self, when: float, callback: Callable[..., Any], *args: Any, context: Context | None = ...
         ) -> TimerHandle: ...
     else:
         def call_soon(self, callback: Callable[..., Any], *args: Any) -> Handle: ...
@@ -74,34 +74,23 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
     def create_future(self) -> Future[Any]: ...
     # Tasks methods
     if sys.version_info >= (3, 8):
-        def create_task(self, coro: Union[Awaitable[_T], Generator[Any, None, _T]], *, name: object = ...) -> Task[_T]: ...
+        def create_task(self, coro: Awaitable[_T] | Generator[Any, None, _T], *, name: object = ...) -> Task[_T]: ...
     else:
-        def create_task(self, coro: Union[Awaitable[_T], Generator[Any, None, _T]]) -> Task[_T]: ...
-    def set_task_factory(
-        self, factory: Optional[Callable[[AbstractEventLoop, Generator[Any, None, _T]], Future[_T]]]
-    ) -> None: ...
-    def get_task_factory(self) -> Optional[Callable[[AbstractEventLoop, Generator[Any, None, _T]], Future[_T]]]: ...
+        def create_task(self, coro: Awaitable[_T] | Generator[Any, None, _T]) -> Task[_T]: ...
+    def set_task_factory(self, factory: Callable[[AbstractEventLoop, Generator[Any, None, _T]], Future[_T]] | None) -> None: ...
+    def get_task_factory(self) -> Callable[[AbstractEventLoop, Generator[Any, None, _T]], Future[_T]] | None: ...
     # Methods for interacting with threads
     if sys.version_info >= (3, 7):
-        def call_soon_threadsafe(self, callback: Callable[..., Any], *args: Any, context: Optional[Context] = ...) -> Handle: ...
+        def call_soon_threadsafe(self, callback: Callable[..., Any], *args: Any, context: Context | None = ...) -> Handle: ...
     else:
         def call_soon_threadsafe(self, callback: Callable[..., Any], *args: Any) -> Handle: ...
     def run_in_executor(self, executor: Any, func: Callable[..., _T], *args: Any) -> Future[_T]: ...
     def set_default_executor(self, executor: Any) -> None: ...
     # Network I/O methods returning Futures.
     async def getaddrinfo(
-        self,
-        host: Optional[str],
-        port: Union[str, int, None],
-        *,
-        family: int = ...,
-        type: int = ...,
-        proto: int = ...,
-        flags: int = ...,
-    ) -> List[Tuple[AddressFamily, SocketKind, int, str, Union[Tuple[str, int], Tuple[str, int, int, int]]]]: ...
-    async def getnameinfo(
-        self, sockaddr: Union[Tuple[str, int], Tuple[str, int, int, int]], flags: int = ...
-    ) -> Tuple[str, str]: ...
+        self, host: str | None, port: str | int | None, *, family: int = ..., type: int = ..., proto: int = ..., flags: int = ...
+    ) -> list[Tuple[AddressFamily, SocketKind, int, str, Tuple[str, int] | Tuple[str, int, int, int]]]: ...
+    async def getnameinfo(self, sockaddr: Tuple[str, int] | Tuple[str, int, int, int], flags: int = ...) -> Tuple[str, str]: ...
     if sys.version_info >= (3, 8):
         @overload
         async def create_connection(
@@ -115,11 +104,11 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
             proto: int = ...,
             flags: int = ...,
             sock: None = ...,
-            local_addr: Optional[Tuple[str, int]] = ...,
-            server_hostname: Optional[str] = ...,
-            ssl_handshake_timeout: Optional[float] = ...,
-            happy_eyeballs_delay: Optional[float] = ...,
-            interleave: Optional[int] = ...,
+            local_addr: Tuple[str, int] | None = ...,
+            server_hostname: str | None = ...,
+            ssl_handshake_timeout: float | None = ...,
+            happy_eyeballs_delay: float | None = ...,
+            interleave: int | None = ...,
         ) -> _TransProtPair: ...
         @overload
         async def create_connection(
@@ -134,10 +123,10 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
             flags: int = ...,
             sock: socket,
             local_addr: None = ...,
-            server_hostname: Optional[str] = ...,
-            ssl_handshake_timeout: Optional[float] = ...,
-            happy_eyeballs_delay: Optional[float] = ...,
-            interleave: Optional[int] = ...,
+            server_hostname: str | None = ...,
+            ssl_handshake_timeout: float | None = ...,
+            happy_eyeballs_delay: float | None = ...,
+            interleave: int | None = ...,
         ) -> _TransProtPair: ...
     elif sys.version_info >= (3, 7):
         @overload
@@ -152,9 +141,9 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
             proto: int = ...,
             flags: int = ...,
             sock: None = ...,
-            local_addr: Optional[Tuple[str, int]] = ...,
-            server_hostname: Optional[str] = ...,
-            ssl_handshake_timeout: Optional[float] = ...,
+            local_addr: Tuple[str, int] | None = ...,
+            server_hostname: str | None = ...,
+            ssl_handshake_timeout: float | None = ...,
         ) -> _TransProtPair: ...
         @overload
         async def create_connection(
@@ -169,8 +158,8 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
             flags: int = ...,
             sock: socket,
             local_addr: None = ...,
-            server_hostname: Optional[str] = ...,
-            ssl_handshake_timeout: Optional[float] = ...,
+            server_hostname: str | None = ...,
+            ssl_handshake_timeout: float | None = ...,
         ) -> _TransProtPair: ...
     else:
         @overload
@@ -185,8 +174,8 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
             proto: int = ...,
             flags: int = ...,
             sock: None = ...,
-            local_addr: Optional[Tuple[str, int]] = ...,
-            server_hostname: Optional[str] = ...,
+            local_addr: Tuple[str, int] | None = ...,
+            server_hostname: str | None = ...,
         ) -> _TransProtPair: ...
         @overload
         async def create_connection(
@@ -201,17 +190,17 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
             flags: int = ...,
             sock: socket,
             local_addr: None = ...,
-            server_hostname: Optional[str] = ...,
+            server_hostname: str | None = ...,
         ) -> _TransProtPair: ...
     if sys.version_info >= (3, 7):
         async def sock_sendfile(
-            self, sock: socket, file: IO[bytes], offset: int = ..., count: Optional[int] = ..., *, fallback: Optional[bool] = ...
+            self, sock: socket, file: IO[bytes], offset: int = ..., count: int | None = ..., *, fallback: bool | None = ...
         ) -> int: ...
         @overload
         async def create_server(
             self,
             protocol_factory: _ProtocolFactory,
-            host: Optional[Union[str, Sequence[str]]] = ...,
+            host: str | Sequence[str] | None = ...,
             port: int = ...,
             *,
             family: int = ...,
@@ -219,9 +208,9 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
             sock: None = ...,
             backlog: int = ...,
             ssl: _SSLContext = ...,
-            reuse_address: Optional[bool] = ...,
-            reuse_port: Optional[bool] = ...,
-            ssl_handshake_timeout: Optional[float] = ...,
+            reuse_address: bool | None = ...,
+            reuse_port: bool | None = ...,
+            ssl_handshake_timeout: float | None = ...,
             start_serving: bool = ...,
         ) -> Server: ...
         @overload
@@ -236,9 +225,9 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
             sock: socket = ...,
             backlog: int = ...,
             ssl: _SSLContext = ...,
-            reuse_address: Optional[bool] = ...,
-            reuse_port: Optional[bool] = ...,
-            ssl_handshake_timeout: Optional[float] = ...,
+            reuse_address: bool | None = ...,
+            reuse_port: bool | None = ...,
+            ssl_handshake_timeout: float | None = ...,
             start_serving: bool = ...,
         ) -> Server: ...
         async def connect_accepted_socket(
@@ -247,16 +236,10 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
             sock: socket,
             *,
             ssl: _SSLContext = ...,
-            ssl_handshake_timeout: Optional[float] = ...,
+            ssl_handshake_timeout: float | None = ...,
         ) -> _TransProtPair: ...
         async def sendfile(
-            self,
-            transport: BaseTransport,
-            file: IO[bytes],
-            offset: int = ...,
-            count: Optional[int] = ...,
-            *,
-            fallback: bool = ...,
+            self, transport: BaseTransport, file: IO[bytes], offset: int = ..., count: int | None = ..., *, fallback: bool = ...
         ) -> int: ...
         async def start_tls(
             self,
@@ -265,15 +248,15 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
             sslcontext: ssl.SSLContext,
             *,
             server_side: bool = ...,
-            server_hostname: Optional[str] = ...,
-            ssl_handshake_timeout: Optional[float] = ...,
+            server_hostname: str | None = ...,
+            ssl_handshake_timeout: float | None = ...,
         ) -> BaseTransport: ...
     else:
         @overload
         async def create_server(
             self,
             protocol_factory: _ProtocolFactory,
-            host: Optional[Union[str, Sequence[str]]] = ...,
+            host: str | Sequence[str] | None = ...,
             port: int = ...,
             *,
             family: int = ...,
@@ -281,8 +264,8 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
             sock: None = ...,
             backlog: int = ...,
             ssl: _SSLContext = ...,
-            reuse_address: Optional[bool] = ...,
-            reuse_port: Optional[bool] = ...,
+            reuse_address: bool | None = ...,
+            reuse_port: bool | None = ...,
         ) -> Server: ...
         @overload
         async def create_server(
@@ -296,8 +279,8 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
             sock: socket,
             backlog: int = ...,
             ssl: _SSLContext = ...,
-            reuse_address: Optional[bool] = ...,
-            reuse_port: Optional[bool] = ...,
+            reuse_address: bool | None = ...,
+            reuse_port: bool | None = ...,
         ) -> Server: ...
         async def connect_accepted_socket(
             self, protocol_factory: _ProtocolFactory, sock: socket, *, ssl: _SSLContext = ...
@@ -305,16 +288,16 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
     async def create_datagram_endpoint(
         self,
         protocol_factory: _ProtocolFactory,
-        local_addr: Optional[Tuple[str, int]] = ...,
-        remote_addr: Optional[Tuple[str, int]] = ...,
+        local_addr: Tuple[str, int] | None = ...,
+        remote_addr: Tuple[str, int] | None = ...,
         *,
         family: int = ...,
         proto: int = ...,
         flags: int = ...,
-        reuse_address: Optional[bool] = ...,
-        reuse_port: Optional[bool] = ...,
-        allow_broadcast: Optional[bool] = ...,
-        sock: Optional[socket] = ...,
+        reuse_address: bool | None = ...,
+        reuse_port: bool | None = ...,
+        allow_broadcast: bool | None = ...,
+        sock: socket | None = ...,
     ) -> _TransProtPair: ...
     # Pipes and subprocesses.
     async def connect_read_pipe(self, protocol_factory: _ProtocolFactory, pipe: Any) -> _TransProtPair: ...
@@ -322,11 +305,11 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
     async def subprocess_shell(
         self,
         protocol_factory: _ProtocolFactory,
-        cmd: Union[bytes, str],
+        cmd: bytes | str,
         *,
-        stdin: Union[int, IO[Any], None] = ...,
-        stdout: Union[int, IO[Any], None] = ...,
-        stderr: Union[int, IO[Any], None] = ...,
+        stdin: int | IO[Any] | None = ...,
+        stdout: int | IO[Any] | None = ...,
+        stderr: int | IO[Any] | None = ...,
         universal_newlines: Literal[False] = ...,
         shell: Literal[True] = ...,
         bufsize: Literal[0] = ...,
@@ -340,9 +323,9 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
         protocol_factory: _ProtocolFactory,
         program: Any,
         *args: Any,
-        stdin: Union[int, IO[Any], None] = ...,
-        stdout: Union[int, IO[Any], None] = ...,
-        stderr: Union[int, IO[Any], None] = ...,
+        stdin: int | IO[Any] | None = ...,
+        stdout: int | IO[Any] | None = ...,
+        stderr: int | IO[Any] | None = ...,
         universal_newlines: Literal[False] = ...,
         shell: Literal[True] = ...,
         bufsize: Literal[0] = ...,
@@ -370,8 +353,8 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
     def add_signal_handler(self, sig: int, callback: Callable[..., Any], *args: Any) -> None: ...
     def remove_signal_handler(self, sig: int) -> bool: ...
     # Error handlers.
-    def set_exception_handler(self, handler: Optional[_ExceptionHandler]) -> None: ...
-    def get_exception_handler(self) -> Optional[_ExceptionHandler]: ...
+    def set_exception_handler(self, handler: _ExceptionHandler | None) -> None: ...
+    def get_exception_handler(self) -> _ExceptionHandler | None: ...
     def default_exception_handler(self, context: _Context) -> None: ...
     def call_exception_handler(self, context: _Context) -> None: ...
     # Debug flag management.

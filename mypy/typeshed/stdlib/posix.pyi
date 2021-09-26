@@ -1,6 +1,7 @@
 import sys
-from os import PathLike, stat_result as stat_result
-from typing import Dict, List, NamedTuple, Optional, overload
+from _typeshed import StrOrBytesPath
+from os import PathLike, _ExecEnv, _ExecVArgs, stat_result as stat_result
+from typing import Any, Iterable, NamedTuple, Sequence, Tuple, overload
 
 class uname_result(NamedTuple):
     sysname: str
@@ -158,15 +159,43 @@ XATTR_REPLACE: int
 XATTR_SIZE_MAX: int
 
 @overload
-def listdir(path: Optional[str] = ...) -> List[str]: ...
+def listdir(path: str | None = ...) -> list[str]: ...
 @overload
-def listdir(path: bytes) -> List[bytes]: ...
+def listdir(path: bytes) -> list[bytes]: ...
 @overload
-def listdir(path: int) -> List[str]: ...
+def listdir(path: int) -> list[str]: ...
 @overload
-def listdir(path: PathLike[str]) -> List[str]: ...
+def listdir(path: PathLike[str]) -> list[str]: ...
+
+if sys.platform != "win32" and sys.version_info >= (3, 8):
+    def posix_spawn(
+        path: StrOrBytesPath,
+        argv: _ExecVArgs,
+        env: _ExecEnv,
+        *,
+        file_actions: Sequence[Tuple[Any, ...]] | None = ...,
+        setpgroup: int | None = ...,
+        resetids: bool = ...,
+        setsid: bool = ...,
+        setsigmask: Iterable[int] = ...,
+        setsigdef: Iterable[int] = ...,
+        scheduler: Tuple[Any, sched_param] | None = ...,
+    ) -> int: ...
+    def posix_spawnp(
+        path: StrOrBytesPath,
+        argv: _ExecVArgs,
+        env: _ExecEnv,
+        *,
+        file_actions: Sequence[Tuple[Any, ...]] | None = ...,
+        setpgroup: int | None = ...,
+        resetids: bool = ...,
+        setsid: bool = ...,
+        setsigmask: Iterable[int] = ...,
+        setsigdef: Iterable[int] = ...,
+        scheduler: Tuple[Any, sched_param] | None = ...,
+    ) -> int: ...
 
 if sys.platform == "win32":
-    environ: Dict[str, str]
+    environ: dict[str, str]
 else:
-    environ: Dict[bytes, bytes]
+    environ: dict[bytes, bytes]

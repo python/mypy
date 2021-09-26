@@ -610,6 +610,18 @@ section of the command line docs.
    Prohibit equality checks, identity checks, and container checks between
    non-overlapping types.
 
+.. confval:: strict
+
+    :type: boolean
+    :default: False
+
+   Enable all optional error checking flags.  You can see the list of
+   flags enabled by strict mode in the full :option:`mypy --help`
+   output.
+
+   Note: the exact list of flags enabled by :confval:`strict` may
+   change over time.
+
 
 Configuring error messages
 **************************

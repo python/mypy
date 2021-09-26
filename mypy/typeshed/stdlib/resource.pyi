@@ -1,5 +1,5 @@
 import sys
-from typing import Any, Dict, Tuple, overload
+from typing import Any, Tuple, overload
 
 RLIMIT_AS: int
 RLIMIT_CORE: int
@@ -26,7 +26,7 @@ if sys.platform == "linux":
 _Tuple16 = Tuple[float, float, int, int, int, int, int, int, int, int, int, int, int, int, int, int]
 
 class struct_rusage(_Tuple16):
-    def __new__(cls, sequence: _Tuple16, dict: Dict[str, Any] = ...) -> struct_rusage: ...
+    def __new__(cls, sequence: _Tuple16, dict: dict[str, Any] = ...) -> struct_rusage: ...
     ru_utime: float
     ru_stime: float
     ru_maxrss: int

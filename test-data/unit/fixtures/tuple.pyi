@@ -1,7 +1,11 @@
 # Builtins stub used in tuple-related test cases.
 
-from typing import Iterable, Iterator, TypeVar, Generic, Sequence, Any, overload, Tuple, Mapping
+from typing import Iterable, Iterator, TypeVar, Generic, Sequence, Any, overload, Tuple, Mapping, Type
+from typing import Iterable, Iterator, TypeVar, Generic, Sequence, Any, overload, Tuple, Type
 
+T = TypeVar("T")
+KT = TypeVar('KT')
+VT = TypeVar('VT')
 Tco = TypeVar('Tco', covariant=True)
 
 class object:
@@ -11,6 +15,7 @@ class type:
     def __init__(self, *a: object) -> None: pass
     def __call__(self, *a: object) -> object: pass
 class tuple(Sequence[Tco], Generic[Tco]):
+    def __new__(cls: Type[T], iterable: Iterable[Tco] = ...) -> T: ...
     def __iter__(self) -> Iterator[Tco]: pass
     def __contains__(self, item: object) -> bool: pass
     def __getitem__(self, x: int) -> Tco: pass
@@ -30,10 +35,6 @@ class bool(int): pass
 class str: pass # For convenience
 class bytes: pass
 class unicode: pass
-
-T = TypeVar('T')
-KT = TypeVar('KT')
-VT = TypeVar('VT')
 
 class list(Sequence[T], Generic[T]):
     @overload

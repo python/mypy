@@ -1,7 +1,7 @@
 """Abstract syntax tree node classes (i.e. parse tree)."""
 
 import os
-from enum import Enum
+from enum import Enum, unique
 from abc import abstractmethod
 from mypy.backports import OrderedDict
 from collections import defaultdict
@@ -1522,7 +1522,7 @@ class MemberExpr(RefExpr):
 
 
 # Kinds of arguments
-
+@unique
 class ArgKind(Enum):
     # Positional argument
     ARG_POS = 0
@@ -2299,6 +2299,10 @@ class TypeInfo(SymbolNode):
     runtime_protocol = False               # Does this protocol support isinstance checks?
     abstract_attributes: List[str]
     deletable_attributes: List[str]  # Used by mypyc only
+    # Does this type have concrete `__slots__` defined?
+    # If class does not have `__slots__` defined then it is `None`,
+    # if it has empty `__slots__` then it is an empty set.
+    slots: Optional[Set[str]]
 
     # The attributes 'assuming' and 'assuming_proper' represent structural subtype matrices.
     #
@@ -2402,6 +2406,7 @@ class TypeInfo(SymbolNode):
         self.is_abstract = False
         self.abstract_attributes = []
         self.deletable_attributes = []
+        self.slots = None
         self.assuming = []
         self.assuming_proper = []
         self.inferring = []

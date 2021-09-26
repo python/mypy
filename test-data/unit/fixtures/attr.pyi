@@ -29,3 +29,4 @@ class str: pass
 class unicode: pass
 class ellipsis: pass
 class dict(Mapping[_KT, _VT]): pass
+class tuple: pass

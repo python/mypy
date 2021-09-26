@@ -508,7 +508,7 @@ def mypycify(
             '-Wno-unreachable-code', '-Wno-unused-variable',
             '-Wno-unused-command-line-argument', '-Wno-unknown-warning-option',
         ]
-        if 'gcc' in compiler.compiler[0]:
+        if 'gcc' in compiler.compiler[0] or 'gnu-cc' in compiler.compiler[0]:
             # This flag is needed for gcc but does not exist on clang.
             cflags += ['-Wno-unused-but-set-variable']
     elif compiler.compiler_type == 'msvc':

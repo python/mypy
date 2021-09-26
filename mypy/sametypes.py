@@ -1,7 +1,7 @@
 from typing import Sequence
 
 from mypy.types import (
-    Type, TypeGuardType, UnboundType, AnyType, NoneType, TupleType, TypedDictType,
+    Type, UnboundType, AnyType, NoneType, TupleType, TypedDictType,
     UnionType, CallableType, TypeVarType, Instance, TypeVisitor, ErasedType,
     Overloaded, PartialType, DeletedType, UninhabitedType, TypeType, LiteralType,
     ProperType, get_proper_type, TypeAliasType)
@@ -151,15 +151,9 @@ class SameTypeVisitor(TypeVisitor[bool]):
         else:
             return False
 
-    def visit_type_guard_type(self, left: TypeGuardType) -> bool:
-        if isinstance(self.right, TypeGuardType):
-            return is_same_type(left.type_guard, self.right.type_guard)
-        else:
-            return False
-
     def visit_overloaded(self, left: Overloaded) -> bool:
         if isinstance(self.right, Overloaded):
-            return is_same_types(left.items(), self.right.items())
+            return is_same_types(left.items, self.right.items)
         else:
             return False
 

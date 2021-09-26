@@ -276,14 +276,7 @@ class TypeAliasType(Type):
             self.line, self.column)
 
 
-class ProperType(Type):
-    """Not a type alias.
-
-    Every type except TypeAliasType must inherit from this type.
-    """
-
-
-class TypeGuardType(ProperType):
+class TypeGuardedType(Type):
     """Only used by find_instance_check() etc."""
     def __init__(self, type_guard: Type):
         super().__init__(line=type_guard.line, column=type_guard.column)
@@ -292,8 +285,12 @@ class TypeGuardType(ProperType):
     def __repr__(self) -> str:
         return "TypeGuard({})".format(self.type_guard)
 
-    def accept(self, visitor: 'TypeVisitor[T]') -> T:
-        return visitor.visit_type_guard_type(self)
+
+class ProperType(Type):
+    """Not a type alias.
+
+    Every type except TypeAliasType must inherit from this type.
+    """
 
 
 class TypeVarId:
@@ -934,6 +931,7 @@ class FunctionLike(ProperType):
     @abstractmethod
     def type_object(self) -> mypy.nodes.TypeInfo: pass
 
+    @property
     @abstractmethod
     def items(self) -> List['CallableType']: pass
 
@@ -1199,6 +1197,7 @@ class CallableType(FunctionLike):
         else:
             return None
 
+    @property
     def items(self) -> List['CallableType']:
         return [self]
 
@@ -1285,6 +1284,7 @@ class Overloaded(FunctionLike):
         self._items = items
         self.fallback = items[0].fallback
 
+    @property
     def items(self) -> List[CallableType]:
         return self._items
 
@@ -1314,16 +1314,16 @@ class Overloaded(FunctionLike):
         return visitor.visit_overloaded(self)
 
     def __hash__(self) -> int:
-        return hash(tuple(self.items()))
+        return hash(tuple(self.items))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Overloaded):
             return NotImplemented
-        return self.items() == other.items()
+        return self.items == other.items
 
     def serialize(self) -> JsonDict:
         return {'.class': 'Overloaded',
-                'items': [t.serialize() for t in self.items()],
+                'items': [t.serialize() for t in self.items],
                 }
 
     @classmethod
@@ -1944,6 +1944,8 @@ def get_proper_type(typ: Optional[Type]) -> Optional[ProperType]:
     """
     if typ is None:
         return None
+    if isinstance(typ, TypeGuardedType):  # type: ignore[misc]
+        typ = typ.type_guard
     while isinstance(typ, TypeAliasType):
         typ = typ._expand_once()
     assert isinstance(typ, ProperType), typ
@@ -2102,7 +2104,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
     def visit_overloaded(self, t: Overloaded) -> str:
         a = []
-        for i in t.items():
+        for i in t.items:
             a.append(i.accept(self))
         return 'Overload({})'.format(', '.join(a))
 
@@ -2142,9 +2144,6 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     def visit_union_type(self, t: UnionType) -> str:
         s = self.list_str(t.items)
         return 'Union[{}]'.format(s)
-
-    def visit_type_guard_type(self, t: TypeGuardType) -> str:
-        return 'TypeGuard[{}]'.format(t.type_guard.accept(self))
 
     def visit_partial_type(self, t: PartialType) -> str:
         if t.type is None:
@@ -2208,7 +2207,7 @@ def strip_type(typ: Type) -> ProperType:
         return typ.copy_modified(name=None)
     elif isinstance(typ, Overloaded):
         return Overloaded([cast(CallableType, strip_type(item))
-                           for item in typ.items()])
+                           for item in typ.items])
     else:
         return typ
 

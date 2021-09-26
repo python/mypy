@@ -1,5 +1,6 @@
 import sys
-from typing import Any, Callable, Dict, Generic, Iterable, List, Mapping, Optional, Tuple, Type, TypeVar, Union, overload
+import types
+from typing import Any, Callable, Generic, Iterable, Mapping, Tuple, Type, TypeVar, overload
 from typing_extensions import Protocol
 
 if sys.version_info >= (3, 9):
@@ -16,13 +17,13 @@ if sys.version_info >= (3, 10):
     class KW_ONLY: ...
 
 @overload
-def asdict(obj: Any) -> Dict[str, Any]: ...
+def asdict(obj: Any) -> dict[str, Any]: ...
 @overload
-def asdict(obj: Any, *, dict_factory: Callable[[List[Tuple[str, Any]]], _T]) -> _T: ...
+def asdict(obj: Any, *, dict_factory: Callable[[list[Tuple[str, Any]]], _T]) -> _T: ...
 @overload
 def astuple(obj: Any) -> Tuple[Any, ...]: ...
 @overload
-def astuple(obj: Any, *, tuple_factory: Callable[[List[Any]], _T]) -> _T: ...
+def astuple(obj: Any, *, tuple_factory: Callable[[list[Any]], _T]) -> _T: ...
 
 if sys.version_info >= (3, 10):
     @overload
@@ -74,10 +75,10 @@ class Field(Generic[_T]):
     default: _T
     default_factory: _DefaultFactory[_T]
     repr: bool
-    hash: Optional[bool]
+    hash: bool | None
     init: bool
     compare: bool
-    metadata: Mapping[str, Any]
+    metadata: types.MappingProxyType[Any, Any]
     if sys.version_info >= (3, 10):
         kw_only: bool
         def __init__(
@@ -86,9 +87,9 @@ class Field(Generic[_T]):
             default_factory: Callable[[], _T],
             init: bool,
             repr: bool,
-            hash: Optional[bool],
+            hash: bool | None,
             compare: bool,
-            metadata: Mapping[str, Any],
+            metadata: Mapping[Any, Any],
             kw_only: bool,
         ) -> None: ...
     else:
@@ -98,9 +99,9 @@ class Field(Generic[_T]):
             default_factory: Callable[[], _T],
             init: bool,
             repr: bool,
-            hash: Optional[bool],
+            hash: bool | None,
             compare: bool,
-            metadata: Mapping[str, Any],
+            metadata: Mapping[Any, Any],
         ) -> None: ...
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
@@ -114,9 +115,9 @@ if sys.version_info >= (3, 10):
         default: _T,
         init: bool = ...,
         repr: bool = ...,
-        hash: Optional[bool] = ...,
+        hash: bool | None = ...,
         compare: bool = ...,
-        metadata: Optional[Mapping[str, Any]] = ...,
+        metadata: Mapping[Any, Any] | None = ...,
         kw_only: bool = ...,
     ) -> _T: ...
     @overload
@@ -125,9 +126,9 @@ if sys.version_info >= (3, 10):
         default_factory: Callable[[], _T],
         init: bool = ...,
         repr: bool = ...,
-        hash: Optional[bool] = ...,
+        hash: bool | None = ...,
         compare: bool = ...,
-        metadata: Optional[Mapping[str, Any]] = ...,
+        metadata: Mapping[Any, Any] | None = ...,
         kw_only: bool = ...,
     ) -> _T: ...
     @overload
@@ -135,9 +136,9 @@ if sys.version_info >= (3, 10):
         *,
         init: bool = ...,
         repr: bool = ...,
-        hash: Optional[bool] = ...,
+        hash: bool | None = ...,
         compare: bool = ...,
-        metadata: Optional[Mapping[str, Any]] = ...,
+        metadata: Mapping[Any, Any] | None = ...,
         kw_only: bool = ...,
     ) -> Any: ...
 
@@ -148,9 +149,9 @@ else:
         default: _T,
         init: bool = ...,
         repr: bool = ...,
-        hash: Optional[bool] = ...,
+        hash: bool | None = ...,
         compare: bool = ...,
-        metadata: Optional[Mapping[str, Any]] = ...,
+        metadata: Mapping[Any, Any] | None = ...,
     ) -> _T: ...
     @overload
     def field(
@@ -158,18 +159,18 @@ else:
         default_factory: Callable[[], _T],
         init: bool = ...,
         repr: bool = ...,
-        hash: Optional[bool] = ...,
+        hash: bool | None = ...,
         compare: bool = ...,
-        metadata: Optional[Mapping[str, Any]] = ...,
+        metadata: Mapping[Any, Any] | None = ...,
     ) -> _T: ...
     @overload
     def field(
         *,
         init: bool = ...,
         repr: bool = ...,
-        hash: Optional[bool] = ...,
+        hash: bool | None = ...,
         compare: bool = ...,
-        metadata: Optional[Mapping[str, Any]] = ...,
+        metadata: Mapping[Any, Any] | None = ...,
     ) -> Any: ...
 
 def fields(class_or_instance: Any) -> Tuple[Field[Any], ...]: ...
@@ -189,10 +190,10 @@ class InitVar(Generic[_T]):
 if sys.version_info >= (3, 10):
     def make_dataclass(
         cls_name: str,
-        fields: Iterable[Union[str, Tuple[str, type], Tuple[str, type, Field[Any]]]],
+        fields: Iterable[str | Tuple[str, type] | Tuple[str, type, Field[Any]]],
         *,
         bases: Tuple[type, ...] = ...,
-        namespace: Optional[Dict[str, Any]] = ...,
+        namespace: dict[str, Any] | None = ...,
         init: bool = ...,
         repr: bool = ...,
         eq: bool = ...,
@@ -206,10 +207,10 @@ if sys.version_info >= (3, 10):
 else:
     def make_dataclass(
         cls_name: str,
-        fields: Iterable[Union[str, Tuple[str, type], Tuple[str, type, Field[Any]]]],
+        fields: Iterable[str | Tuple[str, type] | Tuple[str, type, Field[Any]]],
         *,
         bases: Tuple[type, ...] = ...,
-        namespace: Optional[Dict[str, Any]] = ...,
+        namespace: dict[str, Any] | None = ...,
         init: bool = ...,
         repr: bool = ...,
         eq: bool = ...,

@@ -11,4 +11,4 @@ if sys.platform == "win32":
     InstallExecuteSequence: _SequenceType
     InstallUISequence: _SequenceType
 
-    tables: List[str]
+    tables: list[str]

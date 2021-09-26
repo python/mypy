@@ -189,38 +189,9 @@ void CPy_TypeError(const char *expected, PyObject *value) {
     }
 }
 
-// These functions are basically exactly PyCode_NewEmpty and
-// _PyTraceback_Add which are available in all the versions we support.
-// We're continuing to use them because we'll probably optimize them later.
-static PyCodeObject *CPy_CreateCodeObject(const char *filename, const char *funcname, int line) {
-    PyObject *filename_obj = PyUnicode_FromString(filename);
-    PyObject *funcname_obj = PyUnicode_FromString(funcname);
-    PyObject *empty_bytes = PyBytes_FromStringAndSize("", 0);
-    PyObject *empty_tuple = PyTuple_New(0);
-    PyCodeObject *code_obj = NULL;
-    if (filename_obj == NULL || funcname_obj == NULL || empty_bytes == NULL
-        || empty_tuple == NULL) {
-        goto Error;
-    }
-    code_obj = PyCode_New(0, 0, 0, 0, 0,
-                          empty_bytes,
-                          empty_tuple,
-                          empty_tuple,
-                          empty_tuple,
-                          empty_tuple,
-                          empty_tuple,
-                          filename_obj,
-                          funcname_obj,
-                          line,
-                          empty_bytes);
-  Error:
-    Py_XDECREF(empty_bytes);
-    Py_XDECREF(empty_tuple);
-    Py_XDECREF(filename_obj);
-    Py_XDECREF(funcname_obj);
-    return code_obj;
-}
-
+// This function is basically exactly the same with _PyTraceback_Add
+// which is available in all the versions we support.
+// We're continuing to use this because we'll probably optimize this later.
 void CPy_AddTraceback(const char *filename, const char *funcname, int line, PyObject *globals) {
     PyObject *exc, *val, *tb;
     PyThreadState *thread_state = PyThreadState_GET();
@@ -233,7 +204,7 @@ void CPy_AddTraceback(const char *filename, const char *funcname, int line, PyOb
     // FS encoding, which could have a decoder in Python. We don't do
     // that so *that* doesn't apply to us.)
     PyErr_Fetch(&exc, &val, &tb);
-    PyCodeObject *code_obj = CPy_CreateCodeObject(filename, funcname, line);
+    PyCodeObject *code_obj = PyCode_NewEmpty(filename, funcname, line);
     if (code_obj == NULL) {
         goto error;
     }

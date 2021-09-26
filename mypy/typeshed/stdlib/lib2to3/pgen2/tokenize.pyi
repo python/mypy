@@ -1,5 +1,5 @@
 from lib2to3.pgen2.token import *  # noqa
-from typing import Callable, Iterable, Iterator, List, Tuple
+from typing import Callable, Iterable, Iterator, Tuple
 
 _Coord = Tuple[int, int]
 _TokenEater = Callable[[int, str, _Coord, _Coord, str], None]
@@ -11,7 +11,7 @@ class StopTokenizing(Exception): ...
 def tokenize(readline: Callable[[], str], tokeneater: _TokenEater = ...) -> None: ...
 
 class Untokenizer:
-    tokens: List[str]
+    tokens: list[str]
     prev_row: int
     prev_col: int
     def __init__(self) -> None: ...
