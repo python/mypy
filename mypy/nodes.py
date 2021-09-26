@@ -1915,7 +1915,7 @@ class SuperExpr(Expression):
     __slots__ = ('name', 'info', 'call')
 
     name: str
-    info: Optional["TypeInfo"] # Type that contains this super expression
+    info: Optional["TypeInfo"]  # Type that contains this super expression
     call: CallExpr  # The expression super(...)
 
     def __init__(self, name: str, call: CallExpr) -> None:
