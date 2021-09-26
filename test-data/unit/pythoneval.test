@@ -1414,7 +1414,7 @@ def thing(stuff: StuffDict) -> int: ...
 [out]
 _testNewAnalyzerTypedDictInStub_newsemanal.py:2: note: Revealed type is "def (stuff: TypedDict('stub.StuffDict', {'foo': builtins.str, 'bar': builtins.int})) -> builtins.int"
 
-[case testStrictEqualityWhitelist]
+[case testStrictEqualityAllowlist]
 # mypy: strict-equality
 {1} == frozenset({1})
 frozenset({1}) == {1}
@@ -1429,10 +1429,10 @@ frozenset({1}) == [1]  # Error
 {1: 2}.values() == {2}  # Error
 {1: 2}.keys() == [1]  # Error
 [out]
-_testStrictEqualityWhitelist.py:5: error: Non-overlapping equality check (left operand type: "FrozenSet[int]", right operand type: "List[int]")
-_testStrictEqualityWhitelist.py:11: error: Non-overlapping equality check (left operand type: "KeysView[int]", right operand type: "Set[str]")
-_testStrictEqualityWhitelist.py:12: error: Non-overlapping equality check (left operand type: "ValuesView[int]", right operand type: "Set[int]")
-_testStrictEqualityWhitelist.py:13: error: Non-overlapping equality check (left operand type: "KeysView[int]", right operand type: "List[int]")
+_testStrictEqualityAllowlist.py:5: error: Non-overlapping equality check (left operand type: "FrozenSet[int]", right operand type: "List[int]")
+_testStrictEqualityAllowlist.py:11: error: Non-overlapping equality check (left operand type: "_dict_keys[int, int]", right operand type: "Set[str]")
+_testStrictEqualityAllowlist.py:12: error: Non-overlapping equality check (left operand type: "_dict_values[int, int]", right operand type: "Set[int]")
+_testStrictEqualityAllowlist.py:13: error: Non-overlapping equality check (left operand type: "_dict_keys[int, int]", right operand type: "List[int]")
 
 [case testUnreachableWithStdlibContextManagers]
 # mypy: warn-unreachable, strict-optional
