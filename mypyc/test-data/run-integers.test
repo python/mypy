@@ -400,3 +400,30 @@ def test_constant_fold() -> None:
     assert x == -1 or y != -3
     assert -1 <= x
     assert -1 == y
+
+    # Use int() to avoid constant propagation
+    i30 = (1 << 30) + int()
+    assert i30 == 1 << 30
+    i31 = (1 << 31) + int()
+    assert i31 == 1 << 31
+    i32 = (1 << 32) + int()
+    assert i32 == 1 << 32
+    i62 = (1 << 62) + int()
+    assert i62 == 1 << 62
+    i63 = (1 << 63) + int()
+    assert i63 == 1 << 63
+    i64 = (1 << 64) + int()
+    assert i64 == 1 << 64
+
+    n30 = -(1 << 30) + int()
+    assert n30 == -(1 << 30)
+    n31 = -(1 << 31) + int()
+    assert n31 == -(1 << 31)
+    n32 = -(1 << 32) + int()
+    assert n32 == -(1 << 32)
+    n62 = -(1 << 62) + int()
+    assert n62 == -(1 << 62)
+    n63 = -(1 << 63) + int()
+    assert n63 == -(1 << 63)
+    n64 = -(1 << 64) + int()
+    assert n64 == -(1 << 64)
