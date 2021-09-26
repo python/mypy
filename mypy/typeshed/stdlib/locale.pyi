@@ -11,6 +11,8 @@ D_T_FMT: int
 D_FMT: int
 T_FMT: int
 T_FMT_AMPM: int
+AM_STR: int
+PM_STR: int
 
 DAY_1: int
 DAY_2: int
