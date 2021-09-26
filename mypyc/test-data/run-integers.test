@@ -87,7 +87,9 @@ def big_int() -> None:
     max_63_bit = 9223372036854775807
     d_64_bit = 9223372036854775808
     max_32_bit = 2147483647
+    max_32_bit_plus1 = 2147483648
     max_31_bit = 1073741823
+    max_31_bit_plus1 = 1073741824
     neg = -1234567
     min_signed_63_bit = -4611686018427387904
     underflow = -4611686018427387905
@@ -102,8 +104,11 @@ def big_int() -> None:
     print(c_63_bit)
     print(max_63_bit)
     print(d_64_bit)
+    print('==')
     print(max_32_bit)
+    print(max_32_bit_plus1)
     print(max_31_bit)
+    print(max_31_bit_plus1)
     print(neg)
     print(min_signed_63_bit)
     print(underflow)
@@ -122,8 +127,11 @@ big_int()
 9223372036854775806
 9223372036854775807
 9223372036854775808
+==
 2147483647
+2147483648
 1073741823
+1073741824
 -1234567
 -4611686018427387904
 -4611686018427387905
