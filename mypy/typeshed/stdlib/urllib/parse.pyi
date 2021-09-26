@@ -1,17 +1,17 @@
 import sys
-from typing import Any, AnyStr, Callable, Dict, Generic, List, Mapping, NamedTuple, Optional, Sequence, Tuple, Union, overload
+from typing import Any, AnyStr, Callable, Generic, Mapping, NamedTuple, Sequence, Tuple, Union, overload
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
 
 _Str = Union[bytes, str]
 
-uses_relative: List[str]
-uses_netloc: List[str]
-uses_params: List[str]
-non_hierarchical: List[str]
-uses_query: List[str]
-uses_fragment: List[str]
+uses_relative: list[str]
+uses_netloc: list[str]
+uses_params: list[str]
+non_hierarchical: list[str]
+uses_query: list[str]
+uses_fragment: list[str]
 scheme_chars: str
 MAX_CACHE_SIZE: int
 
@@ -25,10 +25,10 @@ class _ResultMixinBytes(_ResultMixinBase[str]):
     def decode(self, encoding: str = ..., errors: str = ...) -> _ResultMixinStr: ...
 
 class _NetlocResultMixinBase(Generic[AnyStr]):
-    username: Optional[AnyStr]
-    password: Optional[AnyStr]
-    hostname: Optional[AnyStr]
-    port: Optional[int]
+    username: AnyStr | None
+    password: AnyStr | None
+    hostname: AnyStr | None
+    port: int | None
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
 
@@ -80,30 +80,30 @@ class SplitResultBytes(_SplitResultBytesBase, _NetlocResultMixinBytes): ...
 class ParseResultBytes(_ParseResultBytesBase, _NetlocResultMixinBytes): ...
 
 def parse_qs(
-    qs: Optional[AnyStr],
+    qs: AnyStr | None,
     keep_blank_values: bool = ...,
     strict_parsing: bool = ...,
     encoding: str = ...,
     errors: str = ...,
-    max_num_fields: Optional[int] = ...,
+    max_num_fields: int | None = ...,
     separator: str = ...,
-) -> Dict[AnyStr, List[AnyStr]]: ...
+) -> dict[AnyStr, list[AnyStr]]: ...
 def parse_qsl(
-    qs: Optional[AnyStr],
+    qs: AnyStr | None,
     keep_blank_values: bool = ...,
     strict_parsing: bool = ...,
     encoding: str = ...,
     errors: str = ...,
-    max_num_fields: Optional[int] = ...,
+    max_num_fields: int | None = ...,
     separator: str = ...,
-) -> List[Tuple[AnyStr, AnyStr]]: ...
+) -> list[Tuple[AnyStr, AnyStr]]: ...
 @overload
-def quote(string: str, safe: _Str = ..., encoding: Optional[str] = ..., errors: Optional[str] = ...) -> str: ...
+def quote(string: str, safe: _Str = ..., encoding: str | None = ..., errors: str | None = ...) -> str: ...
 @overload
 def quote(string: bytes, safe: _Str = ...) -> str: ...
 def quote_from_bytes(bs: bytes, safe: _Str = ...) -> str: ...
 @overload
-def quote_plus(string: str, safe: _Str = ..., encoding: Optional[str] = ..., errors: Optional[str] = ...) -> str: ...
+def quote_plus(string: str, safe: _Str = ..., encoding: str | None = ..., errors: str | None = ...) -> str: ...
 @overload
 def quote_plus(string: bytes, safe: _Str = ...) -> str: ...
 def unquote(string: str, encoding: str = ..., errors: str = ...) -> str: ...
@@ -112,33 +112,31 @@ def unquote_plus(string: str, encoding: str = ..., errors: str = ...) -> str: ..
 @overload
 def urldefrag(url: str) -> DefragResult: ...
 @overload
-def urldefrag(url: Optional[bytes]) -> DefragResultBytes: ...
+def urldefrag(url: bytes | None) -> DefragResultBytes: ...
 def urlencode(
-    query: Union[Mapping[Any, Any], Mapping[Any, Sequence[Any]], Sequence[Tuple[Any, Any]], Sequence[Tuple[Any, Sequence[Any]]]],
+    query: Mapping[Any, Any] | Mapping[Any, Sequence[Any]] | Sequence[Tuple[Any, Any]] | Sequence[Tuple[Any, Sequence[Any]]],
     doseq: bool = ...,
     safe: AnyStr = ...,
     encoding: str = ...,
     errors: str = ...,
     quote_via: Callable[[str, AnyStr, str, str], str] = ...,
 ) -> str: ...
-def urljoin(base: AnyStr, url: Optional[AnyStr], allow_fragments: bool = ...) -> AnyStr: ...
+def urljoin(base: AnyStr, url: AnyStr | None, allow_fragments: bool = ...) -> AnyStr: ...
 @overload
-def urlparse(url: str, scheme: Optional[str] = ..., allow_fragments: bool = ...) -> ParseResult: ...
+def urlparse(url: str, scheme: str | None = ..., allow_fragments: bool = ...) -> ParseResult: ...
 @overload
-def urlparse(url: Optional[bytes], scheme: Optional[bytes] = ..., allow_fragments: bool = ...) -> ParseResultBytes: ...
+def urlparse(url: bytes | None, scheme: bytes | None = ..., allow_fragments: bool = ...) -> ParseResultBytes: ...
 @overload
-def urlsplit(url: str, scheme: Optional[str] = ..., allow_fragments: bool = ...) -> SplitResult: ...
+def urlsplit(url: str, scheme: str | None = ..., allow_fragments: bool = ...) -> SplitResult: ...
 @overload
-def urlsplit(url: Optional[bytes], scheme: Optional[bytes] = ..., allow_fragments: bool = ...) -> SplitResultBytes: ...
+def urlsplit(url: bytes | None, scheme: bytes | None = ..., allow_fragments: bool = ...) -> SplitResultBytes: ...
 @overload
 def urlunparse(
-    components: Tuple[Optional[AnyStr], Optional[AnyStr], Optional[AnyStr], Optional[AnyStr], Optional[AnyStr], Optional[AnyStr]]
+    components: Tuple[AnyStr | None, AnyStr | None, AnyStr | None, AnyStr | None, AnyStr | None, AnyStr | None]
 ) -> AnyStr: ...
 @overload
-def urlunparse(components: Sequence[Optional[AnyStr]]) -> AnyStr: ...
+def urlunparse(components: Sequence[AnyStr | None]) -> AnyStr: ...
 @overload
-def urlunsplit(
-    components: Tuple[Optional[AnyStr], Optional[AnyStr], Optional[AnyStr], Optional[AnyStr], Optional[AnyStr]]
-) -> AnyStr: ...
+def urlunsplit(components: Tuple[AnyStr | None, AnyStr | None, AnyStr | None, AnyStr | None, AnyStr | None]) -> AnyStr: ...
 @overload
-def urlunsplit(components: Sequence[Optional[AnyStr]]) -> AnyStr: ...
+def urlunsplit(components: Sequence[AnyStr | None]) -> AnyStr: ...

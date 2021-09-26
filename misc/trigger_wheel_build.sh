@@ -3,8 +3,8 @@
 # Trigger a build of mypyc compiled mypy wheels by updating the mypy
 # submodule in the git repo that drives those builds.
 
-# $WHEELS_PUSH_TOKEN is stored in travis and is an API token for the
-# mypy-build-bot account.
+# $WHEELS_PUSH_TOKEN is stored in Github Settings and is an API token
+# for the mypy-build-bot account.
 
 git config --global user.email "nobody"
 git config --global user.name "mypy wheels autopush"

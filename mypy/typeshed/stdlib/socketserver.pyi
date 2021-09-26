@@ -2,7 +2,7 @@ import sys
 import types
 from _typeshed import Self
 from socket import socket as _socket
-from typing import Any, BinaryIO, Callable, ClassVar, Optional, Set, Tuple, Type, TypeVar, Union
+from typing import Any, BinaryIO, Callable, ClassVar, Set, Tuple, Type, TypeVar, Union
 
 _T = TypeVar("_T")
 _RequestType = Union[_socket, Tuple[bytes, _socket]]
@@ -16,7 +16,7 @@ class BaseServer:
     allow_reuse_address: bool
     request_queue_size: int
     socket_type: int
-    timeout: Optional[float]
+    timeout: float | None
     def __init__(self, server_address: Any, RequestHandlerClass: Callable[..., BaseRequestHandler]) -> None: ...
     def fileno(self) -> int: ...
     def handle_request(self) -> None: ...
@@ -33,7 +33,7 @@ class BaseServer:
     def verify_request(self, request: _RequestType, client_address: _AddressType) -> bool: ...
     def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[types.TracebackType]
+        self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: types.TracebackType | None
     ) -> None: ...
     def service_actions(self) -> None: ...
     def shutdown_request(self, request: _RequestType) -> None: ...  # undocumented
@@ -73,22 +73,22 @@ if sys.platform != "win32":
     class UnixStreamServer(BaseServer):
         def __init__(
             self,
-            server_address: Union[str, bytes],
+            server_address: str | bytes,
             RequestHandlerClass: Callable[..., BaseRequestHandler],
             bind_and_activate: bool = ...,
         ) -> None: ...
     class UnixDatagramServer(BaseServer):
         def __init__(
             self,
-            server_address: Union[str, bytes],
+            server_address: str | bytes,
             RequestHandlerClass: Callable[..., BaseRequestHandler],
             bind_and_activate: bool = ...,
         ) -> None: ...
 
 if sys.platform != "win32":
     class ForkingMixIn:
-        timeout: Optional[float]  # undocumented
-        active_children: Optional[Set[int]]  # undocumented
+        timeout: float | None  # undocumented
+        active_children: Set[int] | None  # undocumented
         max_children: int  # undocumented
         if sys.version_info >= (3, 7):
             block_on_close: bool
@@ -133,16 +133,16 @@ class BaseRequestHandler:
     def finish(self) -> None: ...
 
 class StreamRequestHandler(BaseRequestHandler):
-    rbufsize: ClassVar[int]  # Undocumented
-    wbufsize: ClassVar[int]  # Undocumented
-    timeout: ClassVar[Optional[float]]  # Undocumented
-    disable_nagle_algorithm: ClassVar[bool]  # Undocumented
-    connection: _socket  # Undocumented
+    rbufsize: ClassVar[int]  # undocumented
+    wbufsize: ClassVar[int]  # undocumented
+    timeout: ClassVar[float | None]  # undocumented
+    disable_nagle_algorithm: ClassVar[bool]  # undocumented
+    connection: _socket  # undocumented
     rfile: BinaryIO
     wfile: BinaryIO
 
 class DatagramRequestHandler(BaseRequestHandler):
-    packet: _socket  # Undocumented
-    socket: _socket  # Undocumented
+    packet: _socket  # undocumented
+    socket: _socket  # undocumented
     rfile: BinaryIO
     wfile: BinaryIO

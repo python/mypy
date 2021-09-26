@@ -1,5 +1,5 @@
 from types import TracebackType
-from typing import Iterator, MutableMapping, Optional, Type, Union
+from typing import Iterator, MutableMapping, Type, Union
 
 _KeyType = Union[str, bytes]
 _ValueType = Union[str, bytes]
@@ -19,7 +19,7 @@ class _Database(MutableMapping[_KeyType, bytes]):
     def __del__(self) -> None: ...
     def __enter__(self) -> _Database: ...
     def __exit__(
-        self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[TracebackType]
+        self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None: ...
 
 def open(file: str, flag: str = ..., mode: int = ...) -> _Database: ...

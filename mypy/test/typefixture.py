@@ -5,13 +5,14 @@ It contains class TypeInfos and Type objects.
 
 from typing import List, Optional, Tuple
 
+from mypy.semanal_shared import set_callable_name
 from mypy.types import (
     Type, TypeVarType, AnyType, NoneType, Instance, CallableType, TypeVarType, TypeType,
     UninhabitedType, TypeOfAny, TypeAliasType, UnionType, LiteralType
 )
 from mypy.nodes import (
-    TypeInfo, ClassDef, Block, ARG_POS, ARG_OPT, ARG_STAR, SymbolTable,
-    COVARIANT, TypeAlias
+    TypeInfo, ClassDef, FuncDef, Block, ARG_POS, ARG_OPT, ARG_STAR, SymbolTable,
+    COVARIANT, TypeAlias, SymbolTableNode, MDEF,
 )
 
 
@@ -62,6 +63,7 @@ class TypeFixture:
                                               typevars=['T'],
                                               variances=[COVARIANT])   # class tuple
         self.type_typei = self.make_type_info('builtins.type')         # class type
+        self.bool_type_info = self.make_type_info('builtins.bool')
         self.functioni = self.make_type_info('builtins.function')  # function TODO
         self.ai = self.make_type_info('A', mro=[self.oi])              # class A
         self.bi = self.make_type_info('B', mro=[self.ai, self.oi])     # class B(A)
@@ -164,6 +166,15 @@ class TypeFixture:
         self.type_d = TypeType.make_normalized(self.d)
         self.type_t = TypeType.make_normalized(self.t)
         self.type_any = TypeType.make_normalized(self.anyt)
+
+        self._add_bool_dunder(self.bool_type_info)
+        self._add_bool_dunder(self.ai)
+
+    def _add_bool_dunder(self, type_info: TypeInfo) -> None:
+        signature = CallableType([], [], [], Instance(self.bool_type_info, []), self.function)
+        bool_func = FuncDef('__bool__', [], Block([]))
+        bool_func.type = set_callable_name(signature, bool_func)
+        type_info.names[bool_func.name] = SymbolTableNode(MDEF, bool_func)
 
     # Helper methods
 

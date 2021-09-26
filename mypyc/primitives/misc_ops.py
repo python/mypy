@@ -214,3 +214,12 @@ check_unpack_count_op = custom_op(
     return_type=c_int_rprimitive,
     c_function_name='CPySequence_CheckUnpackCount',
     error_kind=ERR_NEG_INT)
+
+
+# register an implementation for a singledispatch function
+register_function = custom_op(
+    arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='CPySingledispatch_RegisterFunction',
+    error_kind=ERR_MAGIC,
+)

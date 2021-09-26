@@ -187,9 +187,8 @@ import a
 [out2]
 a.py:1: error: Unsupported operand types for + ("int" and "str")
 
--- Test for issue #9852, among others
-[case testTypedPkgNamespaceRegFromImportTwice-xfail]
-# pkgs: typedpkg, typedpkg_ns
+[case testTypedPkgNamespaceRegFromImportTwice]
+# pkgs: typedpkg_ns
 from typedpkg_ns import ns
 -- dummy should trigger a second iteration
 [file dummy.py.2]

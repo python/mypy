@@ -1,5 +1,5 @@
 import sys
-from typing import AnyStr, List, Optional, Type
+from typing import AnyStr, Type
 
 class PyCompileError(Exception):
     exc_type_name: str
@@ -11,35 +11,35 @@ class PyCompileError(Exception):
 if sys.version_info >= (3, 7):
     import enum
     class PycInvalidationMode(enum.Enum):
-        TIMESTAMP: int = ...
-        CHECKED_HASH: int = ...
-        UNCHECKED_HASH: int = ...
+        TIMESTAMP: int
+        CHECKED_HASH: int
+        UNCHECKED_HASH: int
     def _get_default_invalidation_mode() -> PycInvalidationMode: ...
 
 if sys.version_info >= (3, 8):
     def compile(
         file: AnyStr,
-        cfile: Optional[AnyStr] = ...,
-        dfile: Optional[AnyStr] = ...,
+        cfile: AnyStr | None = ...,
+        dfile: AnyStr | None = ...,
         doraise: bool = ...,
         optimize: int = ...,
-        invalidation_mode: Optional[PycInvalidationMode] = ...,
+        invalidation_mode: PycInvalidationMode | None = ...,
         quiet: int = ...,
-    ) -> Optional[AnyStr]: ...
+    ) -> AnyStr | None: ...
 
 elif sys.version_info >= (3, 7):
     def compile(
         file: AnyStr,
-        cfile: Optional[AnyStr] = ...,
-        dfile: Optional[AnyStr] = ...,
+        cfile: AnyStr | None = ...,
+        dfile: AnyStr | None = ...,
         doraise: bool = ...,
         optimize: int = ...,
-        invalidation_mode: Optional[PycInvalidationMode] = ...,
-    ) -> Optional[AnyStr]: ...
+        invalidation_mode: PycInvalidationMode | None = ...,
+    ) -> AnyStr | None: ...
 
 else:
     def compile(
-        file: AnyStr, cfile: Optional[AnyStr] = ..., dfile: Optional[AnyStr] = ..., doraise: bool = ..., optimize: int = ...
-    ) -> Optional[AnyStr]: ...
+        file: AnyStr, cfile: AnyStr | None = ..., dfile: AnyStr | None = ..., doraise: bool = ..., optimize: int = ...
+    ) -> AnyStr | None: ...
 
-def main(args: Optional[List[str]] = ...) -> int: ...
+def main(args: list[str] | None = ...) -> int: ...

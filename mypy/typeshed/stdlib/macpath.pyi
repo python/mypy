@@ -32,9 +32,9 @@ from posixpath import (
     splitext as splitext,
     supports_unicode_filenames as supports_unicode_filenames,
 )
-from typing import AnyStr, Optional, Tuple, overload
+from typing import AnyStr, Tuple, overload
 
-altsep: Optional[str]
+altsep: str | None
 
 @overload
 def basename(s: PathLike[AnyStr]) -> AnyStr: ...
