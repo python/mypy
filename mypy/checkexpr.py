@@ -538,11 +538,23 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                        kwargs: DictExpr,
                                        context: Context) -> bool:
         validated_kwargs = self.validate_typeddict_kwargs(kwargs=kwargs)
-        if validated_kwargs is not None:
-            return (callee.required_keys <= set(validated_kwargs.keys())
-                <= set(callee.items.keys()))
-        else:
+        # The dict expression keys are statically known - otherwise can't check
+        # it against a TypedDict at all.
+        if validated_kwargs is None:
             return False
+        # The dict expression keys are compatible with this TypedDict.
+        if not (callee.required_keys <= set(validated_kwargs.keys()) <= set(callee.items.keys())):
+            return False
+        # The dict expression value types are compatible with this TypedDict.
+        for (item_name, item_type) in callee.items.items():
+            kwarg = validated_kwargs.get(item_name)
+            if kwarg is None:
+                continue
+            kwarg_type = self.accept(kwarg, item_type, always_allow_any=True)
+            kwarg_type = get_proper_type(kwarg_type)
+            if not is_subtype(kwarg_type, item_type):
+                return False
+        return True
 
     def check_typeddict_call_with_dict(self, callee: TypedDictType,
                                        kwargs: DictExpr,

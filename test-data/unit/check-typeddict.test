@@ -863,6 +863,28 @@ c: Union[A, B] = {'@type': 'a-type', 'a': 'Test'}
 reveal_type(c) # N: Revealed type is "Union[TypedDict('__main__.A', {'@type': Literal['a-type'], 'a': builtins.str}), TypedDict('__main__.B', {'@type': Literal['b-type'], 'b': builtins.int})]"
 [builtins fixtures/tuple.pyi]
 
+[case testTypedDictUnionUnambiguousCaseBasedOnType]
+from typing import Union, Mapping, Any, cast
+from typing_extensions import TypedDict, Literal
+
+A = TypedDict('A', {'@type': Literal['a-type']})
+B = TypedDict('B', {'@type': Literal['b-type']})
+C1 = TypedDict('C1', {'@type': Literal['c-type'], 'extra': int})
+C2 = TypedDict('C2', {'@type': Literal['c-type'], 'extra': str})
+
+x: Union[A, B, C1, C2]
+x = {'@type': 'a-type'}
+reveal_type(x) # N: Revealed type is "TypedDict('__main__.A', {'@type': Literal['a-type']})"
+x = {'@type': 'b-type'}
+reveal_type(x) # N: Revealed type is "TypedDict('__main__.B', {'@type': Literal['b-type']})"
+x = {'@type': 'c-type', 'extra': 10}
+reveal_type(x) # N: Revealed type is "TypedDict('__main__.C1', {'@type': Literal['c-type'], 'extra': builtins.int})"
+x = {'@type': 'c-type', 'extra': 'string'}
+reveal_type(x) # N: Revealed type is "TypedDict('__main__.C2', {'@type': Literal['c-type'], 'extra': builtins.str})"
+
+x = {'@type': 'c-type', 'extra': 10.5} # E: Incompatible types in assignment (expression has type "Dict[str, object]", variable has type "Union[A, B, C1, C2]")
+[builtins fixtures/dict.pyi]
+
 [case testTypedDictUnionAmbiguousCase]
 from typing import Union, Mapping, Any, cast
 from typing_extensions import TypedDict, Literal
