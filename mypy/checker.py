@@ -4473,14 +4473,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if_map = {}
             else_map = {}
 
-            if_assignment_map, else_assignment_map = self.find_isinstance_check_helper(node.target)
+            if_assignment_map, else_assignment_map = self.find_isinstance_check(node.target)
 
             if if_assignment_map is not None:
                 if_map.update(if_assignment_map)
             if else_assignment_map is not None:
                 else_map.update(else_assignment_map)
 
-            if_condition_map, else_condition_map = self.find_isinstance_check_helper(node.value)
+            if_condition_map, else_condition_map = self.find_isinstance_check(node.value)
 
             if if_condition_map is not None:
                 if_map.update(if_condition_map)
@@ -4492,23 +4492,23 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 (None if else_assignment_map is None or else_condition_map is None else else_map),
             )
         elif isinstance(node, OpExpr) and node.op == 'and':
-            left_if_vars, left_else_vars = self.find_isinstance_check_helper(node.left)
-            right_if_vars, right_else_vars = self.find_isinstance_check_helper(node.right)
+            left_if_vars, left_else_vars = self.find_isinstance_check(node.left)
+            right_if_vars, right_else_vars = self.find_isinstance_check(node.right)
 
             # (e1 and e2) is true if both e1 and e2 are true,
             # and false if at least one of e1 and e2 is false.
             return (and_conditional_maps(left_if_vars, right_if_vars),
                     or_conditional_maps(left_else_vars, right_else_vars))
         elif isinstance(node, OpExpr) and node.op == 'or':
-            left_if_vars, left_else_vars = self.find_isinstance_check_helper(node.left)
-            right_if_vars, right_else_vars = self.find_isinstance_check_helper(node.right)
+            left_if_vars, left_else_vars = self.find_isinstance_check(node.left)
+            right_if_vars, right_else_vars = self.find_isinstance_check(node.right)
 
             # (e1 or e2) is true if at least one of e1 or e2 is true,
             # and false if both e1 and e2 are false.
             return (or_conditional_maps(left_if_vars, right_if_vars),
                     and_conditional_maps(left_else_vars, right_else_vars))
         elif isinstance(node, UnaryExpr) and node.op == 'not':
-            left, right = self.find_isinstance_check_helper(node.expr)
+            left, right = self.find_isinstance_check(node.expr)
             return right, left
 
         # Restrict the type of the variable to True-ish/False-ish in the if and else branches
