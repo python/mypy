@@ -303,14 +303,6 @@ class SemanticAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
-        """Lookup a symbol by its fully qualified name.
-
-        Raise an error if not found.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
     def lookup_fully_qualified_or_none(self, name: str) -> Optional[SymbolTableNode]:
         """Lookup a symbol by its fully qualified name.
 

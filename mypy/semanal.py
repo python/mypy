@@ -4362,23 +4362,6 @@ class SemanticAnalyzer(NodeVisitor[None],
             return v
         return None
 
-    def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
-        """Lookup a fully qualified name.
-
-        Assume that the name is defined. This happens in the global namespace --
-        the local module namespace is ignored.
-
-        Note that this doesn't support visibility, module-level __getattr__, or
-        nested classes.
-        """
-        parts = name.split('.')
-        n = self.modules[parts[0]]
-        for i in range(1, len(parts) - 1):
-            next_sym = n.names[parts[i]]
-            assert isinstance(next_sym.node, MypyFile)
-            n = next_sym.node
-        return n.names[parts[-1]]
-
     def lookup_fully_qualified_or_none(self, fullname: str) -> Optional[SymbolTableNode]:
         """Lookup a fully qualified name that refers to a module-level definition.
 
@@ -4403,7 +4386,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         return result
 
     def builtin_type(self, fully_qualified_name: str) -> Instance:
-        sym = self.lookup_fully_qualified(fully_qualified_name)
+        sym = self.lookup_fully_qualified_or_none(fully_qualified_name)
+        assert sym is not None
         node = sym.node
         assert isinstance(node, TypeInfo)
         return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
@@ -4550,7 +4534,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if not (isinstance(new, (FuncDef, Decorator))
                         and self.set_original_def(old, new)):
                     self.name_already_defined(name, context, existing)
-        elif (name not in self.missing_names[-1] and '*' not in self.missing_names[-1]):
+        elif name not in self.missing_names[-1] and '*' not in self.missing_names[-1]:
             names[name] = symbol
             self.progress = True
             return True
