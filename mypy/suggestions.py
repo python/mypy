@@ -649,7 +649,9 @@ class SuggestionEngine:
         return state.tree
 
     def builtin_type(self, s: str) -> Instance:
-        return self.manager.semantic_analyzer.builtin_type(s)
+        ret = self.manager.semantic_analyzer.named_type_or_none(s)
+        assert ret
+        return ret
 
     def json_suggestion(self, mod: str, func_name: str, node: FuncDef,
                         suggestion: PyAnnotateSignature) -> str:

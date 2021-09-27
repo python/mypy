@@ -732,7 +732,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             # This is a property.
             first_item.func.is_overload = True
             self.analyze_property_with_multi_part_definition(defn)
-            typ = function_type(first_item.func, self.builtin_type('builtins.function'))
+            typ = function_type(first_item.func, self.named_type_or_none('builtins.function'))
             assert isinstance(typ, CallableType)
             types = [typ]
         else:
@@ -789,7 +789,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 item.accept(self)
             # TODO: support decorated overloaded functions properly
             if isinstance(item, Decorator):
-                callable = function_type(item.func, self.builtin_type('builtins.function'))
+                callable = function_type(item.func, self.named_type_or_none('builtins.function'))
                 assert isinstance(callable, CallableType)
                 if not any(refers_to_fullname(dec, 'typing.overload')
                            for dec in item.decorators):
@@ -1736,7 +1736,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                     defn.info.metaclass_type.type.fullname == 'builtins.type'):
                 # All protocols and their subclasses have ABCMeta metaclass by default.
                 # TODO: add a metaclass conflict check if there is another metaclass.
-                abc_meta = self.named_type_or_none('abc.ABCMeta', [])
+                abc_meta = self.named_type_or_none('abc.ABCMeta')
                 if abc_meta is not None:  # May be None in tests with incomplete lib-stub.
                     defn.info.metaclass_type = abc_meta
         if defn.info.metaclass_type is None:
@@ -4308,7 +4308,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 gvar = self.create_getattr_var(names['__getattr__'], name, fullname)
                 if gvar:
                     sym = SymbolTableNode(GDEF, gvar)
-            elif self.is_missing_module(fullname):
+            elif fullname in self.missing_modules:
                 # We use the fullname of the original definition so that we can
                 # detect whether two names refer to the same thing.
                 var_type = AnyType(TypeOfAny.from_unimported_type)
@@ -4318,9 +4318,6 @@ class SemanticAnalyzer(NodeVisitor[None],
         elif sym.module_hidden:
             sym = None
         return sym
-
-    def is_missing_module(self, module: str) -> bool:
-        return module in self.missing_modules
 
     def implicit_symbol(self, sym: SymbolTableNode, name: str, parts: List[str],
                         source_type: AnyType) -> SymbolTableNode:
@@ -4385,13 +4382,6 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.record_incomplete_ref()
         return result
 
-    def builtin_type(self, fully_qualified_name: str) -> Instance:
-        sym = self.lookup_fully_qualified(fully_qualified_name)
-        assert sym is not None
-        node = sym.node
-        assert isinstance(node, TypeInfo)
-        return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
-
     def object_type(self) -> Instance:
         return self.named_type('__builtins__.object')
 
@@ -4421,7 +4411,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         if args is not None:
             # TODO: assert len(args) == len(node.defn.type_vars)
             return Instance(node, args)
-        return Instance(node, [AnyType(TypeOfAny.unannotated)] * len(node.defn.type_vars))
+        return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
 
     def lookup_current_scope(self, name: str) -> Optional[SymbolTableNode]:
         if self.locals[-1] is not None:

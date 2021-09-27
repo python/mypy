@@ -24,7 +24,7 @@ def add_info_hook(ctx) -> None:
 
     info = TypeInfo(SymbolTable(), class_def, ctx.api.cur_mod_id)
     class_def.info = info
-    obj = ctx.api.builtin_type('builtins.object')
+    obj = ctx.api.named_type_or_none('builtins.object')
     info.mro = [info, obj.type]
     info.bases = [obj]
     ctx.api.add_symbol_table_node(ctx.name, SymbolTableNode(GDEF, info))
@@ -33,7 +33,7 @@ def add_info_hook(ctx) -> None:
 
 def add_magic_hook(ctx) -> None:
     info = ctx.cls.info
-    str_type = ctx.api.named_type_or_none('builtins.str', [])
+    str_type = ctx.api.named_type_or_none('builtins.str')
     assert str_type is not None
     var = Var('__magic__', str_type)
     var.info = info
