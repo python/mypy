@@ -1,7 +1,7 @@
 import sys
-from typing import Sequence, Text
+from typing import Sequence
 
-def iskeyword(s: Text) -> bool: ...
+def iskeyword(s: str) -> bool: ...
 
 kwlist: Sequence[str]
 

@@ -131,6 +131,14 @@ assert neg(-9223372036854775807) == 9223372036854775807
 assert neg(9223372036854775808) == -9223372036854775808
 assert neg(-9223372036854775808) == 9223372036854775808
 
+[case testIsinstanceIntAndNotBool]
+def test_isinstance_int_and_not_bool(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+[file driver.py]
+from native import test_isinstance_int_and_not_bool
+assert test_isinstance_int_and_not_bool(True) == False
+assert test_isinstance_int_and_not_bool(1) == True
+
 [case testIntOps]
 def check_and(x: int, y: int) -> None:
     # eval() can be trusted to calculate expected result
@@ -156,15 +164,6 @@ def check_bitwise(x: int, y: int) -> None:
             check_and(ll, rr)
             check_or(ll, rr)
             check_xor(ll, rr)
-
-[case testIsinstanceIntAndNotBool]
-def test_isinstance_int_and_not_bool(value: object) -> bool:
-    return isinstance(value, int) and not isinstance(value, bool)
-[file driver.py]
-from native import test_isinstance_int_and_not_bool
-assert test_isinstance_int_and_not_bool(True) == False
-assert test_isinstance_int_and_not_bool(1) == True
-
 
 SHIFT = 30
 DIGIT0a = 615729753
@@ -197,6 +196,10 @@ def test_and_or_xor() -> None:
     check_bitwise(BIG_SHORT, DIGIT0a + DIGIT1a)
     check_bitwise(BIG_SHORT, DIGIT0a + DIGIT1a + DIGIT2a)
     check_bitwise(BIG_SHORT, DIGIT0a + DIGIT1a + DIGIT2a + DIGIT50)
+
+    for x in range(-25, 25):
+        for y in range(-25, 25):
+            check_bitwise(x, y)
 
 def test_bitwise_inplace() -> None:
     # Basic sanity checks; these should use the same code as the non-in-place variants
@@ -328,3 +331,15 @@ def test_int_as_bool() -> None:
     for x in 1, 55, -1, -7, 1 << 50, 1 << 101, -(1 << 50), -(1 << 101):
         assert is_true(x)
         assert not is_false(x)
+
+def test_divide() -> None:
+    for x in range(-100, 100):
+        for y in range(-100, 100):
+            if y != 0:
+                assert x // y == getattr(x, "__floordiv__")(y)
+
+def test_mod() -> None:
+    for x in range(-100, 100):
+        for y in range(-100, 100):
+            if y != 0:
+                assert x % y == getattr(x, "__mod__")(y)

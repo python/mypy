@@ -1,4 +1,4 @@
 import types
-from typing import Optional, Text
+from typing import Text
 
-def import_module(name: Text, package: Optional[Text] = ...) -> types.ModuleType: ...
+def import_module(name: Text, package: Text | None = ...) -> types.ModuleType: ...

@@ -175,3 +175,22 @@ testTypedPkgNamespaceRegImport.py:4: error: Cannot find implementation or librar
 testTypedPkgNamespaceRegImport.py:4: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 testTypedPkgNamespaceRegImport.py:10: error: Argument 1 has incompatible type "bool"; expected "str"
 testTypedPkgNamespaceRegImport.py:11: error: Argument 1 has incompatible type "int"; expected "bool"
+
+-- This is really testing the test framework to make sure incremental works
+[case testPep561TestIncremental]
+# pkgs: typedpkg
+import a
+[file a.py]
+[file a.py.2]
+1 + 'no'
+[out]
+[out2]
+a.py:1: error: Unsupported operand types for + ("int" and "str")
+
+[case testTypedPkgNamespaceRegFromImportTwice]
+# pkgs: typedpkg_ns
+from typedpkg_ns import ns
+-- dummy should trigger a second iteration
+[file dummy.py.2]
+[out]
+[out2]

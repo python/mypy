@@ -72,6 +72,10 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
         interpreter = python3_path
         mypy_cmdline.append('--python-version={}'.format('.'.join(map(str, PYTHON3_VERSION))))
 
+    m = re.search('# flags: (.*)$', '\n'.join(testcase.input), re.MULTILINE)
+    if m:
+        mypy_cmdline.extend(m.group(1).split())
+
     # Write the program to a file.
     program = '_' + testcase.name + '.py'
     program_path = os.path.join(test_temp_dir, program)

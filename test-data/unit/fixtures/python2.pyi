@@ -18,6 +18,8 @@ class unicode:
     def format(self, *args, **kwars) -> unicode: ...
 class bool(int): pass
 
+bytes = str
+
 T = TypeVar('T')
 S = TypeVar('S')
 class list(Iterable[T], Generic[T]):

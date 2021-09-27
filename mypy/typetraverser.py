@@ -63,7 +63,7 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
         self.traverse_types(t.items)
 
     def visit_overloaded(self, t: Overloaded) -> None:
-        self.traverse_types(t.items())
+        self.traverse_types(t.items)
 
     def visit_type_type(self, t: TypeType) -> None:
         t.item.accept(self)

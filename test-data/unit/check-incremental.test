@@ -1789,10 +1789,10 @@ import a
 [file a.py.2]
 //
 [out1]
-main:2: error: Import of 'a' ignored
+main:2: error: Import of "a" ignored
 main:2: note: (Using --follow-imports=error, module not passed on command line)
 [out2]
-main:2: error: Import of 'a' ignored
+main:2: error: Import of "a" ignored
 main:2: note: (Using --follow-imports=error, module not passed on command line)
 
 [case testIncrementalFollowImportsVariable]
@@ -3682,9 +3682,11 @@ x = 0
 [file mypy.ini]
 \[mypy]
 cache_fine_grained = True
+local_partial_types = True
 [file mypy.ini.2]
 \[mypy]
 cache_fine_grained = False
+local_partial_types = True
 -- Nothing should get rechecked
 [rechecked]
 [stale]
@@ -3828,7 +3830,7 @@ class A:
     E = 7
     F: ClassVar[int] = 22
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/dataclasses.pyi]
 [out1]
 [out2]
 
@@ -3861,7 +3863,7 @@ from dataclasses import dataclass
 class A:
     x: int
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/dataclasses.pyi]
 [out1]
 [out2]
 tmp/b.py:8: note: Revealed type is "def (x: builtins.int) -> b.B"
@@ -3906,7 +3908,7 @@ class NoInit:
 class NoCmp:
     x: int
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/dataclasses.pyi]
 [out1]
 [out2]
 tmp/b.py:4: error: Property "x" defined in "Frozen" is read-only
@@ -3961,7 +3963,7 @@ from dataclasses import dataclass
 class A:
     a: int
 
-[builtins fixtures/attr.pyi]
+[builtins fixtures/dataclasses.pyi]
 [out1]
 [out2]
 tmp/b.py:3: note: Revealed type is "def (a: builtins.int) -> a.A"
@@ -4008,7 +4010,7 @@ from dataclasses import dataclass
 class B(A):
     y: int
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/dataclasses.pyi]
 [out1]
 [out2]
 main:3: error: Argument 2 to "B" has incompatible type "str"; expected "int"
@@ -4042,7 +4044,7 @@ from dataclasses import dataclass
 class B(A):
     y: str
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/dataclasses.pyi]
 [out1]
 main:3: error: Argument 2 to "B" has incompatible type "str"; expected "int"
 
@@ -4085,7 +4087,7 @@ from dataclasses import dataclass
 class C(A, B):
     c: bool
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/dataclasses.pyi]
 [out1]
 [out2]
 tmp/c.py:7: error: Incompatible types in assignment (expression has type "bool", base class "B" defined the type as "str")
@@ -4117,7 +4119,7 @@ from dataclasses import dataclass
 class A:
     a: int = 6
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/dataclasses.pyi]
 [out1]
 [out2]
 main:3: error: Argument 1 to "A" has incompatible type "int"; expected "str"
@@ -5561,3 +5563,25 @@ class D:
 [out2]
 tmp/a.py:2: note: Revealed type is "builtins.list[builtins.int]"
 tmp/a.py:3: note: Revealed type is "builtins.list[builtins.str]"
+
+[case testIncrementalNamespacePackage1]
+# flags: --namespace-packages
+import m
+[file m.py]
+from foo.bar import x
+x + 0
+[file foo/bar.py]
+x = 0
+[rechecked]
+[stale]
+
+[case testIncrementalNamespacePackage2]
+# flags: --namespace-packages
+import m
+[file m.py]
+from foo import bar
+bar.x + 0
+[file foo/bar.py]
+x = 0
+[rechecked]
+[stale]

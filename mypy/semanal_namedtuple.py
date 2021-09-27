@@ -8,7 +8,7 @@ from typing import Tuple, List, Dict, Mapping, Optional, Union, cast, Iterator
 from typing_extensions import Final
 
 from mypy.types import (
-    Type, TupleType, AnyType, TypeOfAny, TypeVarDef, CallableType, TypeType, TypeVarType,
+    Type, TupleType, AnyType, TypeOfAny, CallableType, TypeType, TypeVarType,
     UnboundType, LiteralType,
 )
 from mypy.semanal_shared import (
@@ -26,15 +26,26 @@ from mypy.util import get_unique_redefinition_name
 
 # Matches "_prohibited" in typing.py, but adds __annotations__, which works at runtime but can't
 # easily be supported in a static checker.
-NAMEDTUPLE_PROHIBITED_NAMES = ('__new__', '__init__', '__slots__', '__getnewargs__',
-                               '_fields', '_field_defaults', '_field_types',
-                               '_make', '_replace', '_asdict', '_source',
-                               '__annotations__')  # type: Final
+NAMEDTUPLE_PROHIBITED_NAMES: Final = (
+    "__new__",
+    "__init__",
+    "__slots__",
+    "__getnewargs__",
+    "_fields",
+    "_field_defaults",
+    "_field_types",
+    "_make",
+    "_replace",
+    "_asdict",
+    "_source",
+    "__annotations__",
+)
 
-NAMEDTUP_CLASS_ERROR = ('Invalid statement in NamedTuple definition; '
-                        'expected "field_name: field_type [= default]"')  # type: Final
+NAMEDTUP_CLASS_ERROR: Final = (
+    "Invalid statement in NamedTuple definition; " 'expected "field_name: field_type [= default]"'
+)
 
-SELF_TVAR_NAME = '_NT'  # type: Final
+SELF_TVAR_NAME: Final = "_NT"
 
 
 class NamedTupleAnalyzer:
@@ -87,9 +98,9 @@ class NamedTupleAnalyzer:
             return [], [], {}
         if len(defn.base_type_exprs) > 1:
             self.fail('NamedTuple should be a single base', defn)
-        items = []  # type: List[str]
-        types = []  # type: List[Type]
-        default_items = {}  # type: Dict[str, Expression]
+        items: List[str] = []
+        types: List[Type] = []
+        default_items: Dict[str, Expression] = {}
         for stmt in defn.defs.body:
             if not isinstance(stmt, AssignmentStmt):
                 # Still allow pass or ... (for empty namedtuples).
@@ -251,16 +262,17 @@ class NamedTupleAnalyzer:
 
         Return None if the definition didn't typecheck.
         """
+        type_name = 'NamedTuple' if fullname == 'typing.NamedTuple' else 'namedtuple'
         # TODO: Share code with check_argument_count in checkexpr.py?
         args = call.args
         if len(args) < 2:
-            self.fail("Too few arguments for namedtuple()", call)
+            self.fail('Too few arguments for "{}()"'.format(type_name), call)
             return None
-        defaults = []  # type: List[Expression]
+        defaults: List[Expression] = []
         if len(args) > 2:
             # Typed namedtuple doesn't support additional arguments.
             if fullname == 'typing.NamedTuple':
-                self.fail("Too many arguments for NamedTuple()", call)
+                self.fail('Too many arguments for "NamedTuple()"', call)
                 return None
             for i, arg_name in enumerate(call.arg_names[2:], 2):
                 if arg_name == 'defaults':
@@ -272,19 +284,19 @@ class NamedTupleAnalyzer:
                     else:
                         self.fail(
                             "List or tuple literal expected as the defaults argument to "
-                            "namedtuple()",
+                            "{}()".format(type_name),
                             arg
                         )
                     break
         if call.arg_kinds[:2] != [ARG_POS, ARG_POS]:
-            self.fail("Unexpected arguments to namedtuple()", call)
+            self.fail('Unexpected arguments to "{}()"'.format(type_name), call)
             return None
         if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
             self.fail(
-                "namedtuple() expects a string literal as the first argument", call)
+                '"{}()" expects a string literal as the first argument'.format(type_name), call)
             return None
         typename = cast(Union[StrExpr, BytesExpr, UnicodeExpr], call.args[0]).value
-        types = []  # type: List[Type]
+        types: List[Type] = []
         if not isinstance(args[1], (ListExpr, TupleExpr)):
             if (fullname == 'collections.namedtuple'
                     and isinstance(args[1], (StrExpr, BytesExpr, UnicodeExpr))):
@@ -292,7 +304,11 @@ class NamedTupleAnalyzer:
                 items = str_expr.value.replace(',', ' ').split()
             else:
                 self.fail(
-                    "List or tuple literal expected as the second argument to namedtuple()", call)
+                    'List or tuple literal expected as the second argument to "{}()"'.format(
+                        type_name,
+                    ),
+                    call,
+                )
                 return None
         else:
             listexpr = args[1]
@@ -300,7 +316,7 @@ class NamedTupleAnalyzer:
                 # The fields argument contains just names, with implicit Any types.
                 if any(not isinstance(item, (StrExpr, BytesExpr, UnicodeExpr))
                        for item in listexpr.items):
-                    self.fail("String literal expected as namedtuple() item", call)
+                    self.fail('String literal expected as "namedtuple()" item', call)
                     return None
                 items = [cast(Union[StrExpr, BytesExpr, UnicodeExpr], item).value
                          for item in listexpr.items]
@@ -317,10 +333,10 @@ class NamedTupleAnalyzer:
             types = [AnyType(TypeOfAny.unannotated) for _ in items]
         underscore = [item for item in items if item.startswith('_')]
         if underscore:
-            self.fail("namedtuple() field names cannot start with an underscore: "
+            self.fail('"{}()" field names cannot start with an underscore: '.format(type_name)
                       + ', '.join(underscore), call)
         if len(defaults) > len(items):
-            self.fail("Too many defaults given in call to namedtuple()", call)
+            self.fail('Too many defaults given in call to "{}()"'.format(type_name), call)
             defaults = defaults[:len(items)]
         return items, types, defaults, typename, True
 
@@ -331,21 +347,21 @@ class NamedTupleAnalyzer:
 
         Return (names, types, defaults, whether types are all ready), or None if error occurred.
         """
-        items = []  # type: List[str]
-        types = []  # type: List[Type]
+        items: List[str] = []
+        types: List[Type] = []
         for item in nodes:
             if isinstance(item, TupleExpr):
                 if len(item.items) != 2:
-                    self.fail("Invalid NamedTuple field definition", item)
+                    self.fail('Invalid "NamedTuple()" field definition', item)
                     return None
                 name, type_node = item.items
                 if isinstance(name, (StrExpr, BytesExpr, UnicodeExpr)):
                     items.append(name.value)
                 else:
-                    self.fail("Invalid NamedTuple() field name", item)
+                    self.fail('Invalid "NamedTuple()" field name', item)
                     return None
                 try:
-                    type = expr_to_unanalyzed_type(type_node)
+                    type = expr_to_unanalyzed_type(type_node, self.options, self.api.is_stub_file)
                 except TypeTranslationError:
                     self.fail('Invalid field type', type_node)
                     return None
@@ -358,7 +374,7 @@ class NamedTupleAnalyzer:
                     return [], [], [], False
                 types.append(analyzed)
             else:
-                self.fail("Tuple expected as NamedTuple() field", item)
+                self.fail('Tuple expected as "NamedTuple()" field', item)
                 return None
         return items, types, [], True
 
@@ -425,9 +441,9 @@ class NamedTupleAnalyzer:
         add_field(Var('__doc__', strtype), is_initialized_in_class=True)
         add_field(Var('__match_args__', match_args_type), is_initialized_in_class=True)
 
-        tvd = TypeVarDef(SELF_TVAR_NAME, info.fullname + '.' + SELF_TVAR_NAME,
+        tvd = TypeVarType(SELF_TVAR_NAME, info.fullname + '.' + SELF_TVAR_NAME,
                          -1, [], info.tuple_type)
-        selftype = TypeVarType(tvd)
+        selftype = tvd
 
         def add_method(funcname: str,
                        ret: Type,

@@ -7,7 +7,7 @@ operations, including subtype checks.
 
 from typing import List, Optional, Set
 
-from mypy.nodes import TypeInfo, Context, MypyFile, FuncItem, ClassDef, Block
+from mypy.nodes import TypeInfo, Context, MypyFile, FuncItem, ClassDef, Block, FakeInfo
 from mypy.types import (
     Type, Instance, TypeVarType, AnyType, get_proper_types, TypeAliasType, get_proper_type
 )
@@ -31,13 +31,12 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         self.recurse_into_functions = True
         # Keep track of the type aliases already visited. This is needed to avoid
         # infinite recursion on types like A = Union[int, List[A]].
-        self.seen_aliases = set()  # type: Set[TypeAliasType]
+        self.seen_aliases: Set[TypeAliasType] = set()
 
     def visit_mypy_file(self, o: MypyFile) -> None:
         self.errors.set_file(o.path, o.fullname, scope=self.scope)
-        self.scope.enter_file(o.fullname)
-        super().visit_mypy_file(o)
-        self.scope.leave()
+        with self.scope.module_scope(o.fullname):
+            super().visit_mypy_file(o)
 
     def visit_func(self, defn: FuncItem) -> None:
         if not self.recurse_into_functions:
@@ -67,6 +66,8 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         # Type argument counts were checked in the main semantic analyzer pass. We assume
         # that the counts are correct here.
         info = t.type
+        if isinstance(info, FakeInfo):
+            return  # https://github.com/python/mypy/issues/11079
         for (i, arg), tvar in zip(enumerate(t.args), info.defn.type_vars):
             if tvar.values:
                 if isinstance(arg, TypeVarType):

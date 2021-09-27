@@ -239,3 +239,46 @@ t09: tuple[int, ...] = (1, 2, 3)
 from typing import Tuple
 t10: Tuple[int, ...] = t09
 [builtins fixtures/tuple.pyi]
+
+[case testTypeAliasWithBuiltinTuple]
+# flags: --python-version 3.9
+
+A = tuple[int, ...]
+a: A = ()
+b: A = (1, 2, 3)
+c: A = ('x', 'y')  # E: Incompatible types in assignment (expression has type "Tuple[str, str]", variable has type "Tuple[int, ...]")
+
+B = tuple[int, str]
+x: B = (1, 'x')
+y: B = ('x', 1)  # E: Incompatible types in assignment (expression has type "Tuple[str, int]", variable has type "Tuple[int, str]")
+
+reveal_type(tuple[int, ...]())  # N: Revealed type is "builtins.tuple[builtins.int*]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeAliasWithBuiltinTupleInStub]
+# flags: --python-version 3.6
+import m
+reveal_type(m.a)  # N: Revealed type is "builtins.tuple[builtins.int]"
+reveal_type(m.b)  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
+
+[file m.pyi]
+A = tuple[int, ...]
+a: A
+B = tuple[int, str]
+b: B
+[builtins fixtures/tuple.pyi]
+
+[case testTypeAliasWithBuiltinListInStub]
+# flags: --python-version 3.6
+import m
+reveal_type(m.a)  # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(m.b)  # N: Revealed type is "builtins.list[builtins.list[builtins.int]]"
+
+[file m.pyi]
+A = list[int]
+a: A
+B = list[list[int]]
+b: B
+class C(list[int]):
+    pass
+[builtins fixtures/list.pyi]

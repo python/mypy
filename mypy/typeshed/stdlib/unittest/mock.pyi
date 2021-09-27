@@ -1,5 +1,5 @@
 import sys
-from typing import Any, Callable, Generic, Iterable, List, Mapping, Optional, Sequence, Tuple, Type, TypeVar, Union, overload
+from typing import Any, Callable, Generic, Iterable, List, Mapping, Sequence, Tuple, Type, TypeVar, overload
 
 _F = TypeVar("_F", bound=Callable[..., Any])
 _T = TypeVar("_T")
@@ -42,13 +42,13 @@ DEFAULT: Any
 
 class _Call(Tuple[Any, ...]):
     def __new__(
-        cls, value: Any = ..., name: Optional[Any] = ..., parent: Optional[Any] = ..., two: bool = ..., from_kall: bool = ...
+        cls, value: Any = ..., name: Any | None = ..., parent: Any | None = ..., two: bool = ..., from_kall: bool = ...
     ) -> Any: ...
     name: Any
     parent: Any
     from_kall: Any
     def __init__(
-        self, value: Any = ..., name: Optional[Any] = ..., parent: Optional[Any] = ..., two: bool = ..., from_kall: bool = ...
+        self, value: Any = ..., name: Any | None = ..., parent: Any | None = ..., two: bool = ..., from_kall: bool = ...
     ) -> None: ...
     def __eq__(self, other: Any) -> bool: ...
     __ne__: Any
@@ -76,16 +76,16 @@ class NonCallableMock(Base, Any):  # type: ignore
     def __new__(__cls, *args: Any, **kw: Any) -> NonCallableMock: ...
     def __init__(
         self,
-        spec: Union[List[str], object, Type[object], None] = ...,
-        wraps: Optional[Any] = ...,
-        name: Optional[str] = ...,
-        spec_set: Union[List[str], object, Type[object], None] = ...,
-        parent: Optional[NonCallableMock] = ...,
-        _spec_state: Optional[Any] = ...,
+        spec: list[str] | object | Type[object] | None = ...,
+        wraps: Any | None = ...,
+        name: str | None = ...,
+        spec_set: list[str] | object | Type[object] | None = ...,
+        parent: NonCallableMock | None = ...,
+        _spec_state: Any | None = ...,
         _new_name: str = ...,
-        _new_parent: Optional[NonCallableMock] = ...,
+        _new_parent: NonCallableMock | None = ...,
         _spec_as_instance: bool = ...,
-        _eat_self: Optional[bool] = ...,
+        _eat_self: bool | None = ...,
         unsafe: bool = ...,
         **kwargs: Any,
     ) -> None: ...
@@ -96,7 +96,7 @@ class NonCallableMock(Base, Any):  # type: ignore
         def assert_not_called(self) -> None: ...
         def assert_called_once_with(self, *args: Any, **kwargs: Any) -> None: ...
         def _format_mock_failure_message(self, args: Any, kwargs: Any, action: str = ...) -> str: ...
-    elif sys.version_info >= (3, 5):
+    else:
         def assert_called_with(_mock_self, *args: Any, **kwargs: Any) -> None: ...
         def assert_not_called(_mock_self) -> None: ...
         def assert_called_once_with(_mock_self, *args: Any, **kwargs: Any) -> None: ...
@@ -104,7 +104,7 @@ class NonCallableMock(Base, Any):  # type: ignore
     if sys.version_info >= (3, 8):
         def assert_called(self) -> None: ...
         def assert_called_once(self) -> None: ...
-    elif sys.version_info >= (3, 6):
+    else:
         def assert_called(_mock_self) -> None: ...
         def assert_called_once(_mock_self) -> None: ...
     def reset_mock(self, visited: Any = ..., *, return_value: bool = ..., side_effect: bool = ...) -> None: ...
@@ -132,16 +132,16 @@ class CallableMixin(Base):
     side_effect: Any
     def __init__(
         self,
-        spec: Optional[Any] = ...,
-        side_effect: Optional[Any] = ...,
+        spec: Any | None = ...,
+        side_effect: Any | None = ...,
         return_value: Any = ...,
-        wraps: Optional[Any] = ...,
-        name: Optional[Any] = ...,
-        spec_set: Optional[Any] = ...,
-        parent: Optional[Any] = ...,
-        _spec_state: Optional[Any] = ...,
+        wraps: Any | None = ...,
+        name: Any | None = ...,
+        spec_set: Any | None = ...,
+        parent: Any | None = ...,
+        _spec_state: Any | None = ...,
         _new_name: Any = ...,
-        _new_parent: Optional[Any] = ...,
+        _new_parent: Any | None = ...,
         **kwargs: Any,
     ) -> None: ...
     def __call__(_mock_self, *args: Any, **kwargs: Any) -> Any: ...
@@ -168,11 +168,11 @@ class _patch(Generic[_T]):
         getter: Callable[[], Any],
         attribute: str,
         new: _T,
-        spec: Optional[Any],
+        spec: Any | None,
         create: bool,
-        spec_set: Optional[Any],
-        autospec: Optional[Any],
-        new_callable: Optional[Any],
+        spec_set: Any | None,
+        autospec: Any | None,
+        new_callable: Any | None,
         kwargs: Mapping[str, Any],
     ) -> None: ...
     def copy(self) -> _patch[_T]: ...
@@ -204,120 +204,120 @@ class _patcher:
     TEST_PREFIX: str
     dict: Type[_patch_dict]
     if sys.version_info >= (3, 8):
+        # This overload also covers the case, where new==DEFAULT. In this case, the return type is _patch[Any].
+        # Ideally we'd be able to add an overload for it so that the return type is _patch[MagicMock],
+        # but that's impossible with the current type system.
+        @overload
+        def __call__(  # type: ignore
+            self,
+            target: Any,
+            new: _T,
+            spec: Any | None = ...,
+            create: bool = ...,
+            spec_set: Any | None = ...,
+            autospec: Any | None = ...,
+            new_callable: Any | None = ...,
+            **kwargs: Any,
+        ) -> _patch[_T]: ...
         @overload
         def __call__(  # type: ignore
             self,
             target: Any,
             *,
-            spec: Optional[Any] = ...,
+            spec: Any | None = ...,
             create: bool = ...,
-            spec_set: Optional[Any] = ...,
-            autospec: Optional[Any] = ...,
-            new_callable: Optional[Any] = ...,
+            spec_set: Any | None = ...,
+            autospec: Any | None = ...,
+            new_callable: Any | None = ...,
             **kwargs: Any,
-        ) -> _patch[Union[MagicMock, AsyncMock]]: ...
-        # This overload also covers the case, where new==DEFAULT. In this case, the return type is _patch[Any].
-        # Ideally we'd be able to add an overload for it so that the return type is _patch[MagicMock],
-        # but that's impossible with the current type system.
-        @overload
-        def __call__(
-            self,
-            target: Any,
-            new: _T,
-            spec: Optional[Any] = ...,
-            create: bool = ...,
-            spec_set: Optional[Any] = ...,
-            autospec: Optional[Any] = ...,
-            new_callable: Optional[Any] = ...,
-            **kwargs: Any,
-        ) -> _patch[_T]: ...
+        ) -> _patch[MagicMock | AsyncMock]: ...
     else:
         @overload
         def __call__(  # type: ignore
             self,
             target: Any,
-            *,
-            spec: Optional[Any] = ...,
-            create: bool = ...,
-            spec_set: Optional[Any] = ...,
-            autospec: Optional[Any] = ...,
-            new_callable: Optional[Any] = ...,
-            **kwargs: Any,
-        ) -> _patch[MagicMock]: ...
-        @overload
-        def __call__(
-            self,
-            target: Any,
             new: _T,
-            spec: Optional[Any] = ...,
+            spec: Any | None = ...,
             create: bool = ...,
-            spec_set: Optional[Any] = ...,
-            autospec: Optional[Any] = ...,
-            new_callable: Optional[Any] = ...,
+            spec_set: Any | None = ...,
+            autospec: Any | None = ...,
+            new_callable: Any | None = ...,
             **kwargs: Any,
         ) -> _patch[_T]: ...
+        @overload
+        def __call__(  # type: ignore
+            self,
+            target: Any,
+            *,
+            spec: Any | None = ...,
+            create: bool = ...,
+            spec_set: Any | None = ...,
+            autospec: Any | None = ...,
+            new_callable: Any | None = ...,
+            **kwargs: Any,
+        ) -> _patch[MagicMock]: ...
     if sys.version_info >= (3, 8):
         @overload
         def object(  # type: ignore
             self,
             target: Any,
             attribute: str,
-            *,
-            spec: Optional[Any] = ...,
+            new: _T,
+            spec: Any | None = ...,
             create: bool = ...,
-            spec_set: Optional[Any] = ...,
-            autospec: Optional[Any] = ...,
-            new_callable: Optional[Any] = ...,
-            **kwargs: Any,
-        ) -> _patch[Union[MagicMock, AsyncMock]]: ...
-        @overload
-        def object(
-            self,
-            target: Any,
-            attribute: str,
-            new: _T = ...,
-            spec: Optional[Any] = ...,
-            create: bool = ...,
-            spec_set: Optional[Any] = ...,
-            autospec: Optional[Any] = ...,
-            new_callable: Optional[Any] = ...,
+            spec_set: Any | None = ...,
+            autospec: Any | None = ...,
+            new_callable: Any | None = ...,
             **kwargs: Any,
         ) -> _patch[_T]: ...
-    else:
         @overload
         def object(  # type: ignore
             self,
             target: Any,
             attribute: str,
             *,
-            spec: Optional[Any] = ...,
+            spec: Any | None = ...,
             create: bool = ...,
-            spec_set: Optional[Any] = ...,
-            autospec: Optional[Any] = ...,
-            new_callable: Optional[Any] = ...,
+            spec_set: Any | None = ...,
+            autospec: Any | None = ...,
+            new_callable: Any | None = ...,
             **kwargs: Any,
-        ) -> _patch[MagicMock]: ...
+        ) -> _patch[MagicMock | AsyncMock]: ...
+    else:
         @overload
-        def object(
+        def object(  # type: ignore
             self,
             target: Any,
             attribute: str,
-            new: _T = ...,
-            spec: Optional[Any] = ...,
+            new: _T,
+            spec: Any | None = ...,
             create: bool = ...,
-            spec_set: Optional[Any] = ...,
-            autospec: Optional[Any] = ...,
-            new_callable: Optional[Any] = ...,
+            spec_set: Any | None = ...,
+            autospec: Any | None = ...,
+            new_callable: Any | None = ...,
             **kwargs: Any,
         ) -> _patch[_T]: ...
+        @overload
+        def object(  # type: ignore
+            self,
+            target: Any,
+            attribute: str,
+            *,
+            spec: Any | None = ...,
+            create: bool = ...,
+            spec_set: Any | None = ...,
+            autospec: Any | None = ...,
+            new_callable: Any | None = ...,
+            **kwargs: Any,
+        ) -> _patch[MagicMock]: ...
     def multiple(
         self,
         target: Any,
-        spec: Optional[Any] = ...,
+        spec: Any | None = ...,
         create: bool = ...,
-        spec_set: Optional[Any] = ...,
-        autospec: Optional[Any] = ...,
-        new_callable: Optional[Any] = ...,
+        spec_set: Any | None = ...,
+        autospec: Any | None = ...,
+        new_callable: Any | None = ...,
         **kwargs: _T,
     ) -> _patch[_T]: ...
     def stopall(self) -> None: ...
@@ -346,7 +346,7 @@ if sys.version_info >= (3, 8):
         def assert_not_awaited(self) -> None: ...
         def reset_mock(self, *args: Any, **kwargs: Any) -> None: ...
         await_count: int
-        await_args: Optional[_Call]
+        await_args: _Call | None
         await_args_list: _CallList
     class AsyncMagicMixin(MagicMixin):
         def __init__(self, *args: Any, **kw: Any) -> None: ...
@@ -358,7 +358,7 @@ class MagicProxy:
     def __init__(self, name: Any, parent: Any) -> None: ...
     def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
     def create_mock(self) -> Any: ...
-    def __get__(self, obj: Any, _type: Optional[Any] = ...) -> Any: ...
+    def __get__(self, obj: Any, _type: Any | None = ...) -> Any: ...
 
 class _ANY:
     def __eq__(self, other: Any) -> bool: ...
@@ -367,7 +367,7 @@ class _ANY:
 ANY: Any
 
 def create_autospec(
-    spec: Any, spec_set: Any = ..., instance: Any = ..., _parent: Optional[Any] = ..., _name: Optional[Any] = ..., **kwargs: Any
+    spec: Any, spec_set: Any = ..., instance: Any = ..., _parent: Any | None = ..., _name: Any | None = ..., **kwargs: Any
 ) -> Any: ...
 
 class _SpecState:
@@ -381,13 +381,13 @@ class _SpecState:
         self,
         spec: Any,
         spec_set: Any = ...,
-        parent: Optional[Any] = ...,
-        name: Optional[Any] = ...,
-        ids: Optional[Any] = ...,
+        parent: Any | None = ...,
+        name: Any | None = ...,
+        ids: Any | None = ...,
         instance: Any = ...,
     ) -> None: ...
 
-def mock_open(mock: Optional[Any] = ..., read_data: Any = ...) -> Any: ...
+def mock_open(mock: Any | None = ..., read_data: Any = ...) -> Any: ...
 
 PropertyMock = Any
 

@@ -13,9 +13,7 @@ to read a different file instead (see :ref:`config-file-flag`).
 It is important to understand that there is no merging of configuration
 files, as it would lead to ambiguity.  The :option:`--config-file <mypy --config-file>` flag
 has the highest precedence and must be correct; otherwise mypy will report
-an error and exit.  Without command line option, mypy will look for defaults,
-but will use only one of them.  The first one to read is ``mypy.ini``,
-then ``.mypy.ini``, and finally ``setup.cfg``.
+an error and exit.  Without command line option, mypy will look for configuration files in the above mentioned order.
 
 Most flags correspond closely to :ref:`command-line flags
 <command-line>` but there are some differences in flag names and some
@@ -255,6 +253,10 @@ section of the command line docs.
     The four possible values are ``normal``, ``silent``, ``skip`` and
     ``error``.  For explanations see the discussion for the
     :option:`--follow-imports <mypy --follow-imports>` command line flag.
+
+    Using this option in a per-module section (potentially with a wildcard,
+    as described at the top of this page) is a good way to prevent mypy from
+    checking portions of your code.
 
     If this option is used in a per-module section, the module name should
     match the name of the *imported* module, not the module containing the
@@ -608,6 +610,18 @@ section of the command line docs.
    Prohibit equality checks, identity checks, and container checks between
    non-overlapping types.
 
+.. confval:: strict
+
+    :type: boolean
+    :default: False
+
+   Enable all optional error checking flags.  You can see the list of
+   flags enabled by strict mode in the full :option:`mypy --help`
+   output.
+
+   Note: the exact list of flags enabled by :confval:`strict` may
+   change over time.
+
 
 Configuring error messages
 **************************
@@ -906,7 +920,7 @@ Instead of using a ``mypy.ini`` file, a ``pyproject.toml`` file (as specified by
   module = 'packagename'
   ...
 
-* Multi-module specific sections can be moved into a single ``[[tools.mypy.overrides]]`` section with a
+* Multi-module specific sections can be moved into a single ``[[tool.mypy.overrides]]`` section with a
   module property set to an array of modules:
 
   * For example, ``[mypy-packagename,packagename2]`` would become:
@@ -926,10 +940,10 @@ Instead of using a ``mypy.ini`` file, a ``pyproject.toml`` file (as specified by
 
   * Boolean values should be all lower case
 
-Please see the `TOML Documentation`_ for more details and information on 
+Please see the `TOML Documentation`_ for more details and information on
 what is allowed in a ``toml`` file. See `PEP 518`_ for more information on the layout
 and structure of the ``pyproject.toml`` file.
-  
+
 Example ``pyproject.toml``
 **************************
 
