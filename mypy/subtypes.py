@@ -18,7 +18,7 @@ from mypy.erasetype import erase_type
 # import mypy.solve
 from mypy.nodes import (
     FuncBase, Var, Decorator, OverloadedFuncDef, TypeInfo, CONTRAVARIANT, COVARIANT,
-
+    ARG_STAR, ARG_STAR2,
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance
@@ -892,6 +892,14 @@ def is_callable_compatible(left: CallableType, right: CallableType,
     left_star2 = left.kw_arg()
     right_star = right.var_arg()
     right_star2 = right.kw_arg()
+
+    # Treat "def _(*a: Any, **kw: Any) -> X" similarly to "Callable[..., X]"
+    if (
+        right.arg_kinds == [ARG_STAR, ARG_STAR2]
+        and right_star and isinstance(right_star.typ, AnyType)
+        and right_star2 and isinstance(right_star2.typ, AnyType)
+    ):
+        return True
 
     # Match up corresponding arguments and check them for compatibility. In
     # every pair (argL, argR) of corresponding arguments from L and R, argL must
