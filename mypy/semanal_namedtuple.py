@@ -2,28 +2,26 @@
 
 This is conceptually part of mypy.semanal.
 """
-
-import enum
 from copy import copy
 from contextlib import contextmanager
 from keyword import iskeyword
-from typing import Tuple, List, Dict, Mapping, Optional, Union, cast, Iterator
+from typing import Tuple, List, Dict, Mapping, Optional, cast, Iterator
 from typing_extensions import Final
 
 from mypy import errorcodes as codes
 from mypy.types import (
     Type, TupleType, AnyType, TypeOfAny, CallableType, TypeType, TypeVarType,
-    UnboundType, NoneType, TypeList, UninhabitedType, get_proper_type,
+    UnboundType
 )
 from mypy.semanal_shared import (
     SemanticAnalyzerInterface, set_callable_name, calculate_tuple_fallback, PRIORITY_FALLBACKS
 )
 from mypy.nodes import (
-    Var, EllipsisExpr, Argument, StrExpr, BytesExpr, UnicodeExpr, ExpressionStmt, NameExpr,
+    Var, EllipsisExpr, Argument, StrExpr, ExpressionStmt, NameExpr,
     AssignmentStmt, PassStmt, Decorator, FuncBase, ClassDef, Expression, RefExpr, TypeInfo,
     NamedTupleExpr, CallExpr, Context, TupleExpr, ListExpr, SymbolTableNode, FuncDef, Block,
     TempNode, SymbolTable, TypeVarExpr,
-    ArgKind, ARG_POS, ARG_NAMED, ARG_NAMED_OPT, ARG_OPT, MDEF,
+    ArgKind, ARG_POS, ARG_NAMED_OPT, ARG_OPT, MDEF
 )
 from mypy.options import Options
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
@@ -799,10 +797,12 @@ class NamedTupleCallAnalyzer:
         if rename:
             seen = set()
             for index, name in enumerate(field_names):
-                if (not name.isidentifier()
+                if (
+                    not name.isidentifier()
                     or iskeyword(name)
                     or name.startswith('_')
-                    or name in seen):
+                    or name in seen
+                ):
                     field_names[index] = f'_{index}'
                 seen.add(name)
 
