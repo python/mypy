@@ -38,7 +38,7 @@ class SemanticAnalyzerCoreInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def lookup_fully_qualified_or_none(self, name: str) -> Optional[SymbolTableNode]:
+    def lookup_fully_qualified(self, name: str) -> Optional[SymbolTableNode]:
         raise NotImplementedError
 
     @abstractmethod

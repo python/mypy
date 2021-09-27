@@ -303,7 +303,7 @@ class SemanticAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def lookup_fully_qualified_or_none(self, name: str) -> Optional[SymbolTableNode]:
+    def lookup_fully_qualified(self, name: str) -> Optional[SymbolTableNode]:
         """Lookup a symbol by its fully qualified name.
 
         Return None if not found.

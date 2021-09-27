@@ -475,7 +475,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             if name in tree.names and not isinstance(tree.names[name].node, PlaceholderNode):
                 continue
             tag = self.track_incomplete_refs()
-            n = self.lookup_fully_qualified_or_none(target_name)
+            n = self.lookup_fully_qualified(target_name)
             if n:
                 if isinstance(n.node, PlaceholderNode):
                     self.mark_incomplete(name, tree)
@@ -1910,7 +1910,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         if import_id == 'typing':
             # The user probably has a missing definition in a test fixture. Let's verify.
             fullname = 'builtins.{}'.format(source_id.lower())
-            if (self.lookup_fully_qualified_or_none(fullname) is None and
+            if (self.lookup_fully_qualified(fullname) is None and
                     fullname in SUGGESTED_TEST_FIXTURES):
                 # Yes. Generate a helpful note.
                 self.msg.add_fixture_note(fullname, context)
@@ -4362,7 +4362,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             return v
         return None
 
-    def lookup_fully_qualified_or_none(self, fullname: str) -> Optional[SymbolTableNode]:
+    def lookup_fully_qualified(self, fullname: str) -> Optional[SymbolTableNode]:
         """Lookup a fully qualified name that refers to a module-level definition.
 
         Don't assume that the name is defined. This happens in the global namespace --
@@ -4386,7 +4386,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         return result
 
     def builtin_type(self, fully_qualified_name: str) -> Instance:
-        sym = self.lookup_fully_qualified_or_none(fully_qualified_name)
+        sym = self.lookup_fully_qualified(fully_qualified_name)
         assert sym is not None
         node = sym.node
         assert isinstance(node, TypeInfo)
@@ -4410,7 +4410,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def named_type_or_none(self, qualified_name: str,
                            args: Optional[List[Type]] = None) -> Optional[Instance]:
-        sym = self.lookup_fully_qualified_or_none(qualified_name)
+        sym = self.lookup_fully_qualified(qualified_name)
         if not sym or isinstance(sym.node, PlaceholderNode):
             return None
         node = sym.node
@@ -4870,7 +4870,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         if 'builtins.{}'.format(name) in SUGGESTED_TEST_FIXTURES:
             # The user probably has a missing definition in a test fixture. Let's verify.
             fullname = 'builtins.{}'.format(name)
-            if self.lookup_fully_qualified_or_none(fullname) is None:
+            if self.lookup_fully_qualified(fullname) is None:
                 # Yes. Generate a helpful note.
                 self.msg.add_fixture_note(fullname, ctx)
 
