@@ -162,15 +162,14 @@ class VariableRenameVisitor(TraverserVisitor):
 
     def visit_match_stmt(self, s: MatchStmt) -> None:
         for i in range(len(s.patterns)):
-            self.enter_block()
-            s.patterns[i].accept(self)
-            guard = s.guards[i]
-            if guard is not None:
-                guard.accept(self)
-            # We already entered a block, so visit this block's statements directly
-            for stmt in s.bodies[i].body:
-                stmt.accept(self)
-            self.leave_block()
+            with self.enter_block():
+                s.patterns[i].accept(self)
+                guard = s.guards[i]
+                if guard is not None:
+                    guard.accept(self)
+                # We already entered a block, so visit this block's statements directly
+                for stmt in s.bodies[i].body:
+                    stmt.accept(self)
 
     def visit_capture_pattern(self, p: AsPattern) -> None:
         if p.name is not None:
