@@ -896,8 +896,8 @@ def is_callable_compatible(left: CallableType, right: CallableType,
     # Treat "def _(*a: Any, **kw: Any) -> X" similarly to "Callable[..., X]"
     if (
         right.arg_kinds == [ARG_STAR, ARG_STAR2]
-        and right_star and isinstance(right_star.typ, AnyType)
-        and right_star2 and isinstance(right_star2.typ, AnyType)
+        and right_star and isinstance(get_proper_type(right_star.typ), AnyType)
+        and right_star2 and isinstance(get_proper_type(right_star2.typ), AnyType)
     ):
         return True
 
