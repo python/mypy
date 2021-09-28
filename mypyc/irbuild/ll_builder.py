@@ -928,9 +928,6 @@ class LowLevelIRBuilder:
                 op_id = IntOp.op_to_id[op]
             else:
                 op_id = IntOp.DIV
-            # TODO: More ops
-            if op == '+=':
-                op = '+'
             # TODO: Check what kind of Integer
             return self.fixed_width_int_op(
                 rtype, Integer(lreg.value >> 1, rtype), rreg, op_id, line)
