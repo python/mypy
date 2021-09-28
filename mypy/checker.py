@@ -389,8 +389,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.deferred_nodes.append(DeferredNode(node, enclosing_class))
 
     def handle_cannot_determine_type(self, name: str, context: Context) -> None:
-        node = self.scope.top_non_lambda_function()
-        if self.pass_num < self.last_pass and isinstance(node, FuncDef):
+        node = self.scope.top_function()
+        if self.pass_num < self.last_pass and isinstance(node, (FuncDef, LambdaExpr)):
             # Don't report an error yet. Just defer. Note that we don't defer
             # lambdas because they are coupled to the surrounding function
             # through the binder and the inferred type of the lambda, so it

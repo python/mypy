@@ -738,8 +738,11 @@ class A:
 
     def f(self, x: Optional['A']) -> None:
         assert x
-        lambda: (self.y, x.a) # E: Cannot determine type of "y"
+        lambda: (self.y, x.a)
         self.y = int()
+[out]
+main:8: error: Cannot determine type of "y"
+main:8: error: Item "None" of "Optional[A]" has no attribute "a"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testDeferredAndOptionalInferenceSpecialCase]
