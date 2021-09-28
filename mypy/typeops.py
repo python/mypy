@@ -5,7 +5,7 @@ NOTE: These must not be accessed from mypy.nodes or mypy.types to avoid import
       since these may assume that MROs are ready.
 """
 
-from typing import cast, Optional, List, Sequence, Set, Iterable, TypeVar, Dict, Tuple, Any
+from typing import cast, Optional, List, Sequence, Set, Iterable, TypeVar, Dict, Tuple, Any, Union
 from typing_extensions import Type as TypingType
 import itertools
 import sys
@@ -45,6 +45,19 @@ def tuple_fallback(typ: TupleType) -> Instance:
     return Instance(info, [join_type_list(typ.items)])
 
 
+def get_self_type(func: CallableType, default_self: Union[Instance, TupleType]) -> Optional[Type]:
+    if isinstance(get_proper_type(func.ret_type), UninhabitedType):
+        return func.ret_type
+    elif (
+        func.arg_types
+        and func.arg_types[0] != default_self
+        and func.arg_kinds[0] == ARG_POS
+    ):
+        return func.arg_types[0]
+    else:
+        return None
+
+
 def type_object_type_from_function(signature: FunctionLike,
                                    info: TypeInfo,
                                    def_info: TypeInfo,
@@ -57,8 +70,7 @@ def type_object_type_from_function(signature: FunctionLike,
     # classes such as subprocess.Popen.
     default_self = fill_typevars(info)
     if not is_new and not info.is_newtype:
-        orig_self_types = [(it.arg_types[0] if it.arg_types and it.arg_types[0] != default_self
-                            and it.arg_kinds[0] == ARG_POS else None) for it in signature.items]
+        orig_self_types = [get_self_type(it, default_self) for it in signature.items]
     else:
         orig_self_types = [None] * len(signature.items)
 

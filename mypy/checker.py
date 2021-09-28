@@ -870,9 +870,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if isinstance(item, FuncDef):
                     fdef = item
                     # Check if __init__ has an invalid, non-None return type.
-                    if (fdef.info and fdef.name in ('__init__', '__init_subclass__') and
-                            not isinstance(get_proper_type(typ.ret_type), NoneType) and
-                            not self.dynamic_funcs[-1]):
+                    if (
+                        fdef.info
+                        and fdef.name in ('__init__', '__init_subclass__')
+                        and not isinstance(get_proper_type(typ.ret_type), (NoneType, UninhabitedType))
+                        and not self.dynamic_funcs[-1]
+                    ):
                         self.fail(message_registry.MUST_HAVE_NONE_RETURN_TYPE.format(fdef.name),
                                   item)
 
