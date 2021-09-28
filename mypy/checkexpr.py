@@ -2821,14 +2821,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # to be unreachable and therefore any errors found in the right branch
         # should be suppressed.
         with (self.msg.disable_errors() if right_map is None else nullcontext()):
-            # We also need to be have the correct amount of binder frames.
-            # Sometimes it can be missing for unreachable parts.
-            with (
-                self.chk.binder.top_frame_context()
-                if right_map is None and len(self.chk.binder.frames) <= 1
-                else nullcontext()
-            ):
-                right_type = self.analyze_cond_branch(right_map, e.right, left_type)
+            right_type = self.analyze_cond_branch(right_map, e.right, left_type)
 
         if right_map is None:
             # The boolean expression is statically known to be the left value
@@ -3883,7 +3876,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def analyze_cond_branch(self, map: Optional[Dict[Expression, Type]],
                             node: Expression, context: Optional[Type],
                             allow_none_return: bool = False) -> Type:
-        with self.chk.binder.frame_context(can_skip=True, fall_through=0):
+        # We need to be have the correct amount of binder frames.
+        # Sometimes it can be missing for unreachable parts.
+        with (
+            self.chk.binder.frame_context(can_skip=True, fall_through=0)
+            if len(self.chk.binder.frames) > 1
+            else self.chk.binder.top_frame_context()
+        ):
             if map is None:
                 # We still need to type check node, in case we want to
                 # process it for isinstance checks later
