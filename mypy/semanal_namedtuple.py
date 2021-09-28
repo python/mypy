@@ -264,7 +264,7 @@ class NamedTupleAnalyzer:
         # Without this hack we would need to create errors manually in semanal.
         # Which is hard and inconsistent with how other errors are shown.
         # But, with this hack we just inspect the call with typechecker:
-        # this way we can be 100% everything is correct.
+        # this way we can be 100% sure everything is correct.
         call_copy = copy(call)
         call.analyzed = NamedTupleExpr(info, call=call_copy, is_typed=is_typed)
         call.analyzed.set_line(call.line, call.column)
@@ -461,11 +461,16 @@ class NamedTupleCallAnalyzer:
     Returns ``None`` if the definition didn't typecheck.
     """
 
-    # TODO: str type for python2 / python3
-    # TODO: test `NamedTuple('N')` without assignment
+    # TODO: test `NamedTuple('N')` without assignment: just as an expression
 
-    def __init__(self, options: Options, api: SemanticAnalyzerInterface,
-                 call: CallExpr, fullname: str, var_name: Optional[str]) -> None:
+    def __init__(
+        self,
+        options: Options,
+        api: SemanticAnalyzerInterface,
+        call: CallExpr,
+        fullname: str,
+        var_name: Optional[str],
+    ) -> None:
         self._options = options
         self._api = api
         self._call = call

@@ -152,6 +152,30 @@ MypyFile:1(
     NamedTupleExpr:2(N, Tuple[Any])))
 [builtins fixtures/tuple.pyi]
 
+[case testNamedTupleNoArgs]
+# Errors will be reported during typechecking:
+from collections import namedtuple
+N = namedtuple()
+[out]
+MypyFile:1(
+  ImportFrom:2(collections, [namedtuple])
+  AssignmentStmt:3(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:3(N, Tuple[])))
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleNoArgs]
+# Errors will be reported during typechecking:
+from typing import NamedTuple
+N = NamedTuple()
+[out]
+MypyFile:1(
+  ImportFrom:2(typing, [NamedTuple])
+  AssignmentStmt:3(
+    NameExpr(N* [__main__.N])
+    NamedTupleExpr:3(N, Tuple[])))
+[builtins fixtures/tuple.pyi]
+
 -- New correct collections.namedtuple() features
 
 [case testNamedTupleEmpty1]
