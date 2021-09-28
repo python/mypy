@@ -45,5 +45,5 @@ $ make linkcheck
 Documentation on Read The Docs
 ------------------------------
 
-The mypy documentation is hosted on Read The Docs, and the latest version
+The Mypy documentation is hosted on Read The Docs, and the latest version
 can be found at https://mypy.readthedocs.io/en/latest.
