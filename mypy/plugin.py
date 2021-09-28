@@ -311,6 +311,11 @@ class SemanticAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
+    def lookup_fully_qualified_or_none(self, name: str) -> Optional[SymbolTableNode]:
+        """Deprecated: use lookup_fully_qualified instead."""
+        return self.lookup_fully_qualified(name)
+
+    @abstractmethod
     def lookup_qualified(self, name: str, ctx: Context,
                          suppress_errors: bool = False) -> Optional[SymbolTableNode]:
         """Lookup symbol using a name in current scope.
