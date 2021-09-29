@@ -1183,7 +1183,7 @@ xb: bytes
 xs: str
 
 '%s' % xs   # OK
-'%s' % xb   # E: On Python 3 formatting string with "%s" and bytes argument produces result with "b''" prefix, not a regular string; use "%r" if this is desired behavior
+'%s' % xb   # E: On Python 3 formatting "b'abc'" with "%s" produces "b'abc'", not "abc"; use "%r" if this is desired behavior
 '%(name)s' % {'name': b'value'}  # E: On Python 3 formatting "b'abc'" with "%s" produces "b'abc'", not "abc"; use "%r" if this is desired behavior
 [builtins fixtures/primitives.pyi]
 
