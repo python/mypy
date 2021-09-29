@@ -4477,8 +4477,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Restrict the type of the variable to True-ish/False-ish in the if and else branches
             # respectively
 
-            vartype = try_expanding_sum_type_to_union(type_map[node], "builtins.bool")
-            self._check_for_truthy_type(vartype, node)
+            original_vartype = type_map[node]
+            self._check_for_truthy_type(original_vartype, node)
+            vartype = try_expanding_sum_type_to_union(original_vartype, "builtins.bool")
 
             if_type: Type = true_only(vartype)
             else_type: Type = false_only(vartype)
