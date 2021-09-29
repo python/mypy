@@ -41,6 +41,35 @@ x = None # type: X
 [out]
 main:2: error: Name "X" is not defined
 
+[case testInvalidParamSpecType1]
+# flags: --python-version 3.10
+from typing import ParamSpec
+
+P = ParamSpec("P")
+
+class MyFunction(P):
+    ...
+
+a: MyFunction[int]
+[out]
+main:6: error: Invalid location for ParamSpec "P"
+main:6: note: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
+main:9: error: "MyFunction" expects no type arguments, but 1 given
+
+[case testInvalidParamSpecType2]
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+
+class MyFunction(P):
+    ...
+
+a: MyFunction[int]
+[out]
+main:5: error: Invalid location for ParamSpec "P"
+main:5: note: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
+main:8: error: "MyFunction" expects no type arguments, but 1 given
+
 [case testInvalidGenericArg]
 from typing import TypeVar, Generic
 t = TypeVar('t')

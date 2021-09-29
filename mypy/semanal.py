@@ -91,7 +91,7 @@ from mypy.types import (
     FunctionLike, UnboundType, TypeVarType, TupleType, UnionType, StarType,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
     TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType,
-    get_proper_type, get_proper_types, TypeAliasType
+    get_proper_type, get_proper_types, TypeAliasType,
 )
 from mypy.typeops import function_type
 from mypy.type_visitor import TypeQuery
@@ -1326,10 +1326,10 @@ class SemanticAnalyzer(NodeVisitor[None],
         tvar_defs: List[TypeVarType] = []
         for name, tvar_expr in declared_tvars:
             tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
-            assert isinstance(tvar_def, TypeVarType), (
-                "mypy does not currently support ParamSpec use in generic classes"
-            )
-            tvar_defs.append(tvar_def)
+            if isinstance(tvar_def, TypeVarType):
+                # This can also be `ParamSpecType`,
+                # error will be reported elsewhere: #11218
+                tvar_defs.append(tvar_def)
         return base_type_exprs, tvar_defs, is_protocol
 
     def analyze_class_typevar_declaration(
