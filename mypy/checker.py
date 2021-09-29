@@ -4516,7 +4516,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         original_vartype = type_map[node]
         self._check_for_truthy_type(original_vartype, node)
         vartype = try_expanding_sum_type_to_union(original_vartype, "builtins.bool")
-        self._check_for_truthy_type(vartype, node)
+
         if_type = true_only(vartype)  # type: Type
         else_type = false_only(vartype)  # type: Type
         ref = node  # type: Expression
