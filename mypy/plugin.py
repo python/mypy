@@ -302,7 +302,6 @@ class SemanticAnalyzerPluginInterface:
         """Deprecated: use named_type instead."""
         raise NotImplementedError
 
-    @abstractmethod
     def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
         """Lookup a symbol by its fully qualified name.
 
