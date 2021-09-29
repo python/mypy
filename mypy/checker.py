@@ -4885,10 +4885,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if enum_name is not None:
                 expr_type = try_expanding_enum_to_union(expr_type, enum_name)
 
-            # We intentionally use 'conditional_type_map' directly here instead of
+            # We intentionally use 'conditional_types' directly here instead of
             # 'self.conditional_type_map_with_intersection': we only compute ad-hoc
             # intersections when working with pure instances.
-            partial_type_maps.append(conditional_type_map(expr, expr_type, target_type))
+            types = conditional_types(expr_type, target_type)
+            partial_type_maps.append(conditional_types_to_typemaps(expr, *types))
 
         return reduce_conditional_maps(partial_type_maps)
 
@@ -5315,11 +5316,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                expr_type: Type,
                                                type_ranges: Optional[List[TypeRange]],
                                                ) -> Tuple[TypeMap, TypeMap]:
-        # For some reason, doing "yes_map, no_map = conditional_type_maps(...)"
-        # doesn't work: mypyc will decide that 'yes_map' is of type None if we try.
-        initial_maps = conditional_type_map(expr, expr_type, type_ranges)
-        yes_map: TypeMap = initial_maps[0]
-        no_map: TypeMap = initial_maps[1]
+        initial_types = conditional_types(expr_type, type_ranges)
+        yes_map, no_map = conditional_types_to_typemaps(expr, *initial_types)
 
         if yes_map is not None or type_ranges is None:
             return yes_map, no_map
@@ -5366,17 +5364,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return False
 
 
-def conditional_type_map(expr: Expression,
-                         current_type: Optional[Type],
-                         proposed_type_ranges: Optional[List[TypeRange]],
-                         ) -> Tuple[TypeMap, TypeMap]:
-    """Takes in an expression, the current type of the expression, and a
-    proposed type of that expression.
+def conditional_types(current_type: Optional[Type],
+                      proposed_type_ranges: Optional[List[TypeRange]],
+                      ) -> Tuple[Optional[Type], Optional[Type]]:
+    """Takes in the current type and a proposed type of an expression.
 
-    Returns a 2-tuple: The first element is a map from the expression to
-    the proposed type, if the expression can be the proposed type.  The
-    second element is a map from the expression to the type it would hold
-    if it was not the proposed type, if any. None means bot, {} means top"""
+    Returns a 2-tuple: The first element is the proposed type, if the expression
+    can be the proposed type. The second element is the type it would hold
+    if it was not the proposed type, if any. None means top, UninhabitedType means bot"""
     if proposed_type_ranges:
         proposed_items = [type_range.item for type_range in proposed_type_ranges]
         proposed_type = make_simplified_union(proposed_items)
@@ -5385,27 +5380,45 @@ def conditional_type_map(expr: Expression,
                 # We don't really know much about the proposed type, so we shouldn't
                 # attempt to narrow anything. Instead, we broaden the expr to Any to
                 # avoid false positives
-                return {expr: proposed_type}, {}
+                return proposed_type, None
             elif (not any(type_range.is_upper_bound for type_range in proposed_type_ranges)
                and is_proper_subtype(current_type, proposed_type)):
                 # Expression is always of one of the types in proposed_type_ranges
-                return {}, None
+                return None, UninhabitedType()
             elif not is_overlapping_types(current_type, proposed_type,
                                           prohibit_none_typevar_overlap=True):
                 # Expression is never of any type in proposed_type_ranges
-                return None, {}
+                return UninhabitedType(), None
             else:
                 # we can only restrict when the type is precise, not bounded
                 proposed_precise_type = UnionType([type_range.item
                                           for type_range in proposed_type_ranges
                                           if not type_range.is_upper_bound])
                 remaining_type = restrict_subtype_away(current_type, proposed_precise_type)
-                return {expr: proposed_type}, {expr: remaining_type}
+                return proposed_type, remaining_type
         else:
-            return {expr: proposed_type}, {}
+            return proposed_type, None
     else:
         # An isinstance check, but we don't understand the type
-        return {}, {}
+        return None, None
+
+
+def conditional_types_to_typemaps(expr: Expression,
+                                  yes_type: Optional[Type],
+                                  no_type: Optional[Type]
+                                  ) -> Tuple[TypeMap, TypeMap]:
+    maps: List[TypeMap] = []
+    for typ in (yes_type, no_type):
+        proper_type = get_proper_type(typ)
+        if isinstance(proper_type, UninhabitedType):
+            maps.append(None)
+        elif proper_type is None:
+            maps.append({})
+        else:
+            assert typ is not None  # If proper_type is not None type is neither.
+            maps.append({expr: typ})
+
+    return cast(Tuple[TypeMap, TypeMap], tuple(maps))
 
 
 def gen_unique_name(base: str, table: SymbolTable) -> str:
