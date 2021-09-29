@@ -340,8 +340,9 @@ We have several rules when we count classes as "slotted"
 (rules are the same as in CPython):
 
 1. All base classes (except builtin ones) must have explicit ``__slots__`` defined
-2. ``__slots__`` do not have explicit ``'__dict__'`` value defined
+2. ``__slots__`` definition does not have include ``__slots__ = ('__dict__', )``. 
+   Because it allows to set any possible attribute, almost as when no ``__slots__`` is defined
 
-And we have some custom rules as well:
-
-1. All ``__slots__`` must be statically known. For example, no variables, only string literals
+And we have a custom rule:
+all ``__slots__`` must be statically known. 
+For example, no variables: only string literals.
