@@ -4386,8 +4386,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         return result
 
     def builtin_type(self, fully_qualified_name: str) -> Instance:
-        sym = self.lookup_fully_qualified_or_none(fully_qualified_name)
-        assert sym is not None
+        sym = self.lookup_fully_qualified(fully_qualified_name)
         node = sym.node
         assert isinstance(node, TypeInfo)
         return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
@@ -4534,7 +4533,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if not (isinstance(new, (FuncDef, Decorator))
                         and self.set_original_def(old, new)):
                     self.name_already_defined(name, context, existing)
-        elif name not in self.missing_names[-1] and '*' not in self.missing_names[-1]:
+        elif (name not in self.missing_names[-1] and '*' not in self.missing_names[-1]):
             names[name] = symbol
             self.progress = True
             return True

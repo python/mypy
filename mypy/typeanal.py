@@ -132,7 +132,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                  report_invalid_types: bool = True) -> None:
         self.api = api
         self.lookup_qualified = api.lookup_qualified
-        self.lookup_fqn_func = api.lookup_fully_qualified_or_none
+        self.lookup_fqn_func = api.lookup_fully_qualified
         self.fail_func = api.fail
         self.note_func = api.note
         self.tvar_scope = tvar_scope
@@ -666,7 +666,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return TypeType.make_normalized(self.anal_type(t.item), line=t.line)
 
     def visit_placeholder_type(self, t: PlaceholderType) -> Type:
-        n = None if t.fullname is None else self.api.lookup_fully_qualified_or_none(t.fullname)
+        n = None if t.fullname is None else self.api.lookup_fully_qualified(t.fullname)
         if not n or isinstance(n.node, PlaceholderNode):
             self.api.defer()  # Still incomplete
             return t
@@ -1001,7 +1001,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                    line: int = -1,
                    column: int = -1) -> Instance:
         node = self.lookup_fqn_func(fully_qualified_name)
-        assert node is not None
         assert isinstance(node.node, TypeInfo)
         any_type = AnyType(TypeOfAny.special_form)
         return Instance(node.node, args or [any_type] * len(node.node.defn.type_vars),
