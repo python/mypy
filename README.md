@@ -210,7 +210,6 @@ Tests
 The basic way to run tests:
 
     $ pip3 install -r test-requirements.txt
-    $ python2 -m pip install -U typing
     $ ./runtests.py
 
 For more on the tests, such as how to write tests and how to control
