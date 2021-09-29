@@ -10,6 +10,7 @@ from typing import (
 )
 from typing_extensions import Final
 
+from mypy.backports import nullcontext
 from mypy.errors import Errors, report_internal_error
 from mypy.nodes import (
     SymbolTable, Statement, MypyFile, Var, Expression, Lvalue, Node,
@@ -347,9 +348,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     #       (self.pass_num, type_name, node.fullname or node.name))
                     done.add(node)
                     with self.tscope.class_scope(active_typeinfo) if active_typeinfo \
-                            else nothing():
+                            else nullcontext():
                         with self.scope.push_class(active_typeinfo) if active_typeinfo \
-                                else nothing():
+                                else nullcontext():
                             self.check_partial(node)
             return True
 
@@ -388,8 +389,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.deferred_nodes.append(DeferredNode(node, enclosing_class))
 
     def handle_cannot_determine_type(self, name: str, context: Context) -> None:
-        node = self.scope.top_non_lambda_function()
-        if self.pass_num < self.last_pass and isinstance(node, FuncDef):
+        node = self.scope.top_function()
+        if self.pass_num < self.last_pass and isinstance(node, (FuncDef, LambdaExpr)):
             # Don't report an error yet. Just defer. Note that we don't defer
             # lambdas because they are coupled to the surrounding function
             # through the binder and the inferred type of the lambda, so it
@@ -2228,6 +2229,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if not inferred.is_final:
                     rvalue_type = remove_instance_last_known_values(rvalue_type)
                 self.infer_variable_type(inferred, lvalue, rvalue_type, rvalue)
+            self.check_assignment_to_slots(lvalue)
 
     # (type, operator) tuples for augmented assignments supported with partial types
     partial_type_augmented_ops: Final = {
@@ -2556,6 +2558,59 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 break
                 if lv.node.is_final and not is_final_decl:
                     self.msg.cant_assign_to_final(name, lv.node.info is None, s)
+
+    def check_assignment_to_slots(self, lvalue: Lvalue) -> None:
+        if not isinstance(lvalue, MemberExpr):
+            return
+
+        inst = get_proper_type(self.expr_checker.accept(lvalue.expr))
+        if not isinstance(inst, Instance):
+            return
+        if inst.type.slots is None:
+            return  # Slots do not exist, we can allow any assignment
+        if lvalue.name in inst.type.slots:
+            return  # We are assigning to an existing slot
+        for base_info in inst.type.mro[:-1]:
+            if base_info.names.get('__setattr__') is not None:
+                # When type has `__setattr__` defined,
+                # we can assign any dynamic value.
+                # We exclude object, because it always has `__setattr__`.
+                return
+
+        definition = inst.type.get(lvalue.name)
+        if definition is None:
+            # We don't want to duplicate
+            # `"SomeType" has no attribute "some_attr"`
+            # error twice.
+            return
+        if self.is_assignable_slot(lvalue, definition.type):
+            return
+
+        self.fail(
+            'Trying to assign name "{}" that is not in "__slots__" of type "{}"'.format(
+                lvalue.name, inst.type.fullname,
+            ),
+            lvalue,
+        )
+
+    def is_assignable_slot(self, lvalue: Lvalue, typ: Optional[Type]) -> bool:
+        if getattr(lvalue, 'node', None):
+            return False  # This is a definition
+
+        typ = get_proper_type(typ)
+        if typ is None or isinstance(typ, AnyType):
+            return True  # Any can be literally anything, like `@propery`
+        if isinstance(typ, Instance):
+            # When working with instances, we need to know if they contain
+            # `__set__` special method. Like `@property` does.
+            # This makes assigning to properties possible,
+            # even without extra slot spec.
+            return typ.type.get('__set__') is not None
+        if isinstance(typ, FunctionLike):
+            return True  # Can be a property, or some other magic
+        if isinstance(typ, UnionType):
+            return all(self.is_assignable_slot(lvalue, u) for u in typ.items)
+        return False
 
     def check_assignment_to_multiple_lvalues(self, lvalues: List[Lvalue], rvalue: Expression,
                                              context: Context,
@@ -3424,6 +3479,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             expected_type.items.append(TupleType([any_type, any_type, any_type], tuple_type))
         self.check_subtype(typ, expected_type, s, message_registry.INVALID_EXCEPTION)
 
+        if isinstance(typ, FunctionLike):
+            # https://github.com/python/mypy/issues/11089
+            self.expr_checker.check_call(typ, [], [], e)
+
     def visit_try_stmt(self, s: TryStmt) -> None:
         """Type check a try statement."""
         # Our enclosing frame will get the result if the try/except falls through.
@@ -3855,9 +3914,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         def _get_base_classes(instances_: Tuple[Instance, Instance]) -> List[Instance]:
             base_classes_ = []
             for inst in instances_:
-                expanded = [inst]
                 if inst.type.is_intersection:
                     expanded = inst.type.bases
+                else:
+                    expanded = [inst]
 
                 for expanded_inst in expanded:
                     base_classes_.append(expanded_inst)
@@ -4226,12 +4286,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         type_map = self.type_map
         if is_true_literal(node):
             return {}, None
-        elif is_false_literal(node):
+        if is_false_literal(node):
             return None, {}
-        elif isinstance(node, CallExpr):
-            self._check_for_truthy_type(type_map[node], node)
-            if len(node.args) == 0:
-                return {}, {}
+
+        if isinstance(node, CallExpr) and len(node.args) != 0:
             expr = collapse_walrus(node.args[0])
             if refers_to_fullname(node.callee, 'builtins.isinstance'):
                 if len(node.args) != 2:  # the error will be reported elsewhere
@@ -4412,21 +4470,27 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             return reduce_conditional_maps(partial_type_maps)
         elif isinstance(node, AssignmentExpr):
-            return self.find_isinstance_check_helper(node.target)
-        elif isinstance(node, RefExpr):
-            # Restrict the type of the variable to True-ish/False-ish in the if and else branches
-            # respectively
-            vartype = type_map[node]
-            self._check_for_truthy_type(vartype, node)
-            if_type: Type = true_only(vartype)
-            else_type: Type = false_only(vartype)
-            ref: Expression = node
-            if_map = ({ref: if_type} if not isinstance(get_proper_type(if_type), UninhabitedType)
-                      else None)
-            else_map = ({ref: else_type} if not isinstance(get_proper_type(else_type),
-                                                           UninhabitedType)
-                        else None)
-            return if_map, else_map
+            if_map = {}
+            else_map = {}
+
+            if_assignment_map, else_assignment_map = self.find_isinstance_check_helper(node.target)
+
+            if if_assignment_map is not None:
+                if_map.update(if_assignment_map)
+            if else_assignment_map is not None:
+                else_map.update(else_assignment_map)
+
+            if_condition_map, else_condition_map = self.find_isinstance_check_helper(node.value)
+
+            if if_condition_map is not None:
+                if_map.update(if_condition_map)
+            if else_condition_map is not None:
+                else_map.update(else_condition_map)
+
+            return (
+                (None if if_assignment_map is None or if_condition_map is None else if_map),
+                (None if else_assignment_map is None or else_condition_map is None else else_map),
+            )
         elif isinstance(node, OpExpr) and node.op == 'and':
             left_if_vars, left_else_vars = self.find_isinstance_check_helper(node.left)
             right_if_vars, right_else_vars = self.find_isinstance_check_helper(node.right)
@@ -4447,8 +4511,24 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             left, right = self.find_isinstance_check_helper(node.expr)
             return right, left
 
-        # Not a supported isinstance check
-        return {}, {}
+        # Restrict the type of the variable to True-ish/False-ish in the if and else branches
+        # respectively
+        vartype = type_map[node]
+        self._check_for_truthy_type(vartype, node)
+        if_type = true_only(vartype)  # type: Type
+        else_type = false_only(vartype)  # type: Type
+        ref = node  # type: Expression
+        if_map = (
+            {ref: if_type}
+            if not isinstance(get_proper_type(if_type), UninhabitedType)
+            else None
+        )
+        else_map = (
+            {ref: else_type}
+            if not isinstance(get_proper_type(else_type), UninhabitedType)
+            else None
+        )
+        return if_map, else_map
 
     def propagate_up_typemap_info(self,
                                   existing_types: Mapping[Expression, Type],
@@ -4615,8 +4695,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             expr = parent_expr
             expr_type = output[parent_expr] = make_simplified_union(new_parent_types)
-
-        return output
 
     def refine_identity_comparison_expression(self,
                                               operands: List[Expression],
@@ -5814,11 +5892,6 @@ class CheckerScope:
         self.stack.append(info)
         yield
         self.stack.pop()
-
-
-@contextmanager
-def nothing() -> Iterator[None]:
-    yield
 
 
 TKey = TypeVar('TKey')

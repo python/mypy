@@ -2366,6 +2366,19 @@ def f() -> None:
 [out]
 main:3: note: Revealed type is "builtins.int"
 
+[case testLambdaTypedContext]
+def f() -> None:
+    lambda: 'a'.missing()  # E: "str" has no attribute "missing"
+
+[case testLambdaUnypedContext]
+def f():
+    lambda: 'a'.missing()
+
+[case testLambdaCheckUnypedContext]
+# flags: --check-untyped-defs
+def f():
+    lambda: 'a'.missing()  # E: "str" has no attribute "missing"
+
 [case testEqNone]
 None == None
 [builtins fixtures/ops.pyi]

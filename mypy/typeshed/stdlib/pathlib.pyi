@@ -88,6 +88,7 @@ class Path(PurePath):
     def mkdir(self, mode: int = ..., parents: bool = ..., exist_ok: bool = ...) -> None: ...
     # Adapted from builtins.open
     # Text mode: always returns a TextIOWrapper
+    # The Traversable .open in stdlib/importlib/abc.pyi should be kept in sync with this.
     @overload
     def open(
         self,

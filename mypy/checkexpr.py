@@ -94,11 +94,13 @@ MAX_UNIONS: Final = 5
 
 # Types considered safe for comparisons with --strict-equality due to known behaviour of __eq__.
 # NOTE: All these types are subtypes of AbstractSet.
-OVERLAPPING_TYPES_WHITELIST: Final = [
+OVERLAPPING_TYPES_ALLOWLIST: Final = [
     "builtins.set",
     "builtins.frozenset",
     "typing.KeysView",
     "typing.ItemsView",
+    "builtins._dict_keys",
+    "builtins._dict_items",
 ]
 
 
@@ -1632,7 +1634,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 else:
                     code = codes.OPERATOR
                 arg_messages.no_variant_matches_arguments(
-                    plausible_targets, callee, arg_types, context, code=code)
+                    callee, arg_types, context, code=code)
 
         result = self.check_call(target, args, arg_kinds, context, arg_names,
                                  arg_messages=arg_messages,
@@ -2357,8 +2359,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return False
         if isinstance(left, Instance) and isinstance(right, Instance):
             # Special case some builtin implementations of AbstractSet.
-            if (left.type.fullname in OVERLAPPING_TYPES_WHITELIST and
-                    right.type.fullname in OVERLAPPING_TYPES_WHITELIST):
+            if (left.type.fullname in OVERLAPPING_TYPES_ALLOWLIST and
+                    right.type.fullname in OVERLAPPING_TYPES_ALLOWLIST):
                 abstract_set = self.chk.lookup_typeinfo('typing.AbstractSet')
                 left = map_instance_to_supertype(left, abstract_set)
                 right = map_instance_to_supertype(right, abstract_set)
@@ -3506,6 +3508,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Type check everything in the body except for the final return
             # statement (it can contain tuple unpacking before return).
             with self.chk.scope.push_function(e):
+                # Lambdas can have more than one element in body,
+                # when we add "fictional" AssigmentStatement nodes, like in:
+                # `lambda (a, b): a`
                 for stmt in e.body.body[:-1]:
                     stmt.accept(self.chk)
                 # Only type check the return expression, not the return statement.
@@ -3875,7 +3880,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                             node: Expression, context: Optional[Type],
                             allow_none_return: bool = False,
                             is_else: bool = False) -> Type:
-        with self.chk.binder.frame_context(can_skip=True, fall_through=0):
+        # We need to be have the correct amount of binder frames.
+        # Sometimes it can be missing for unreachable left or right parts.
+        with (
+            self.chk.binder.frame_context(can_skip=True, fall_through=0)
+            if len(self.chk.binder.frames) > 1
+            else self.chk.binder.top_frame_context()
+        ):
             if map is not None:
                 self.chk.push_type_map(map)
             if is_else and context is not None and isinstance(node, CallExpr):
@@ -3888,7 +3899,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     call_type = self.accept(node)
                 if not is_subtype(call_type, context, ignore_type_params=True):
                     context = None
-
             if map is None:
                 # We still need to type check node, in case we want to
                 # process it for isinstance checks later

@@ -1,21 +1,10 @@
 import sys
 from _typeshed import Self
+from builtins import _dict_items, _dict_keys, _dict_values
 from typing import Any, Dict, Generic, NoReturn, Tuple, Type, TypeVar, overload
 
 if sys.version_info >= (3, 10):
-    from typing import (
-        Callable,
-        ItemsView,
-        Iterable,
-        Iterator,
-        KeysView,
-        Mapping,
-        MutableMapping,
-        MutableSequence,
-        Reversible,
-        Sequence,
-        ValuesView,
-    )
+    from typing import Callable, Iterable, Iterator, Mapping, MutableMapping, MutableSequence, Reversible, Sequence
 else:
     from _collections_abc import *
 
@@ -23,6 +12,8 @@ _S = TypeVar("_S")
 _T = TypeVar("_T")
 _KT = TypeVar("_KT")
 _VT = TypeVar("_VT")
+_KT_co = TypeVar("_KT_co", covariant=True)
+_VT_co = TypeVar("_VT_co", covariant=True)
 
 # namedtuple is special-cased in the type checker; the initializer is ignored.
 if sys.version_info >= (3, 7):
@@ -247,23 +238,25 @@ class Counter(Dict[_T, int], Generic[_T]):
     def __iand__(self, other: Counter[_T]) -> Counter[_T]: ...
     def __ior__(self, other: Counter[_T]) -> Counter[_T]: ...  # type: ignore
 
-class _OrderedDictKeysView(KeysView[_KT], Reversible[_KT]):
-    def __reversed__(self) -> Iterator[_KT]: ...
+class _OrderedDictKeysView(_dict_keys[_KT_co, _VT_co], Reversible[_KT_co]):
+    def __reversed__(self) -> Iterator[_KT_co]: ...
 
-class _OrderedDictItemsView(ItemsView[_KT, _VT], Reversible[Tuple[_KT, _VT]]):
-    def __reversed__(self) -> Iterator[Tuple[_KT, _VT]]: ...
+class _OrderedDictItemsView(_dict_items[_KT_co, _VT_co], Reversible[Tuple[_KT_co, _VT_co]]):
+    def __reversed__(self) -> Iterator[Tuple[_KT_co, _VT_co]]: ...
 
-class _OrderedDictValuesView(ValuesView[_VT], Reversible[_VT]):
-    def __reversed__(self) -> Iterator[_VT]: ...
+# The generics are the wrong way around because of a mypy limitation
+#  https://github.com/python/mypy/issues/11138
+class _OrderedDictValuesView(_dict_values[_VT_co, _KT_co], Reversible[_VT_co], Generic[_VT_co, _KT_co]):
+    def __reversed__(self) -> Iterator[_VT_co]: ...
 
 class OrderedDict(Dict[_KT, _VT], Reversible[_KT], Generic[_KT, _VT]):
     def popitem(self, last: bool = ...) -> Tuple[_KT, _VT]: ...
     def move_to_end(self, key: _KT, last: bool = ...) -> None: ...
     def copy(self: _S) -> _S: ...
     def __reversed__(self) -> Iterator[_KT]: ...
-    def keys(self) -> _OrderedDictKeysView[_KT]: ...
+    def keys(self) -> _OrderedDictKeysView[_KT, _VT]: ...
     def items(self) -> _OrderedDictItemsView[_KT, _VT]: ...
-    def values(self) -> _OrderedDictValuesView[_VT]: ...
+    def values(self) -> _OrderedDictValuesView[_VT, _KT]: ...
 
 class defaultdict(Dict[_KT, _VT], Generic[_KT, _VT]):
     default_factory: Callable[[], _VT] | None

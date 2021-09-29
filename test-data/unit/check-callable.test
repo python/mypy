@@ -301,6 +301,28 @@ def f(t: T) -> A:
 
 [builtins fixtures/callable.pyi]
 
+[case testCallableTypeVarBoundAndLambdaDefer]
+# See https://github.com/python/mypy/issues/11212
+from typing import Callable, TypeVar
+
+C = TypeVar('C', bound=Callable)
+
+def dec(val: None) -> Callable[[C], C]:
+    def wrapper(f):
+        return f
+    return wrapper
+
+lambda: foo() + 2  # error was here
+
+@dec(None)
+def foo() -> int:
+    return 2
+
+lambda: foo() + 2  # double check
+
+reveal_type(foo() + 2)  # N: Revealed type is "builtins.int"
+[builtins fixtures/callable.pyi]
+
 [case testCallableTypeUnion]
 from abc import ABCMeta, abstractmethod
 from typing import Type, Union

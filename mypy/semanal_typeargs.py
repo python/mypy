@@ -7,7 +7,7 @@ operations, including subtype checks.
 
 from typing import List, Optional, Set
 
-from mypy.nodes import TypeInfo, Context, MypyFile, FuncItem, ClassDef, Block
+from mypy.nodes import TypeInfo, Context, MypyFile, FuncItem, ClassDef, Block, FakeInfo
 from mypy.types import (
     Type, Instance, TypeVarType, AnyType, get_proper_types, TypeAliasType, get_proper_type
 )
@@ -66,6 +66,8 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         # Type argument counts were checked in the main semantic analyzer pass. We assume
         # that the counts are correct here.
         info = t.type
+        if isinstance(info, FakeInfo):
+            return  # https://github.com/python/mypy/issues/11079
         for (i, arg), tvar in zip(enumerate(t.args), info.defn.type_vars):
             if tvar.values:
                 if isinstance(arg, TypeVarType):

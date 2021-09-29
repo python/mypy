@@ -10,7 +10,7 @@ import os
 import re
 import subprocess
 import sys
-from enum import Enum
+from enum import Enum, unique
 
 from typing import Dict, Iterator, List, NamedTuple, Optional, Set, Tuple, Union
 from typing_extensions import Final
@@ -41,6 +41,7 @@ PYTHON2_STUB_DIR: Final = "@python2"
 # TODO: Consider adding more reasons here?
 # E.g. if we deduce a module would likely be found if the user were
 # to set the --namespace-packages flag.
+@unique
 class ModuleNotFoundReason(Enum):
     # The module was not found: we found neither stubs nor a plausible code
     # implementation (with or without a py.typed file).
