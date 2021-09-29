@@ -433,7 +433,7 @@ class AsyncContextManager(Protocol[_T_co]):
         self, exc_type: Type[BaseException] | None, exc_value: BaseException | None, traceback: TracebackType | None
     ) -> Awaitable[bool | None]: ...
 
-class Mapping(_Collection[_KT], Generic[_KT, _VT_co]):
+class Mapping(_Collection[_KT], Generic[_KT, _VT_co]): 
     # TODO: We wish the key type could also be covariant, but that doesn't work,
     # see discussion in https://github.com/python/typing/pull/273.
     @abstractmethod

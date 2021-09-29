@@ -2,6 +2,7 @@
 
 from typing import TYPE_CHECKING, List, Optional, Sequence, Callable, Set
 
+from mypy.maptype import map_instance_to_supertype
 from mypy.types import (
     Type, Instance, TupleType, AnyType, TypeOfAny, TypedDictType, get_proper_type
 )
@@ -173,10 +174,10 @@ class ArgTypeExpander:
         if actual_kind == nodes.ARG_STAR:
             if isinstance(actual_type, Instance) and actual_type.args:
                 if is_subtype(actual_type, self.context.iterable_type):
-                    # TODO: this can be invalid, when generic type has:
-                    # `class Some(Generic[X, Y], Iterable[Y]):`
-                    # https://github.com/python/mypy/issues/11138
-                    return actual_type.args[0]
+                    return map_instance_to_supertype(
+                        actual_type,
+                        self.context.iterable_type.type,
+                    ).args[0]
                 else:
                     # We cannot properly unpack anything other
                     # than `Iterable` type with `*`.
@@ -210,10 +211,10 @@ class ArgTypeExpander:
             ):
                 # Only `Mapping` type can be unpacked with `**`.
                 # Other types will produce an error somewhere else.
-                # TODO: this can be invalid, when generic type has:
-                # `class Some(Generic[A, B, C], Mapping[B, C]):`
-                # https://github.com/python/mypy/issues/11138
-                return actual_type.args[1]
+                return map_instance_to_supertype(
+                    actual_type,
+                    self.context.mapping_type.type,
+                ).args[1]
             else:
                 return AnyType(TypeOfAny.from_error)
         else:
