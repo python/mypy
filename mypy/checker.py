@@ -5317,7 +5317,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                type_ranges: Optional[List[TypeRange]],
                                                ) -> Tuple[TypeMap, TypeMap]:
         initial_types = conditional_types(expr_type, type_ranges)
-        yes_map, no_map = conditional_types_to_typemaps(expr, *initial_types)
+        # For some reason, doing "yes_map, no_map = conditional_types_to_typemaps(...)"
+        # doesn't work: mypyc will decide that 'yes_map' is of type None if we try.
+        initial_maps = conditional_types_to_typemaps(expr, *initial_types)
+        yes_map: TypeMap = initial_maps[0]
+        no_map: TypeMap = initial_maps[1]
 
         if yes_map is not None or type_ranges is None:
             return yes_map, no_map
@@ -5415,7 +5419,7 @@ def conditional_types_to_typemaps(expr: Expression,
         elif proper_type is None:
             maps.append({})
         else:
-            assert typ is not None  # If proper_type is not None type is neither.
+            assert typ is not None  # If proper_type is not None type is neighter.
             maps.append({expr: typ})
 
     return cast(Tuple[TypeMap, TypeMap], tuple(maps))
