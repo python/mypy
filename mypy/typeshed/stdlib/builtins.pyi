@@ -21,7 +21,7 @@ from _typeshed import (
 )
 from ast import AST, mod
 from io import BufferedRandom, BufferedReader, BufferedWriter, FileIO, TextIOWrapper
-from types import CodeType, TracebackType
+from types import CodeType, MappingProxyType, TracebackType
 from typing import (
     IO,
     AbstractSet,
@@ -73,6 +73,8 @@ _T_co = TypeVar("_T_co", covariant=True)
 _T_contra = TypeVar("_T_contra", contravariant=True)
 _KT = TypeVar("_KT")
 _VT = TypeVar("_VT")
+_KT_co = TypeVar("_KT_co", covariant=True)  # Key type covariant containers.
+_VT_co = TypeVar("_VT_co", covariant=True)  # Value type covariant containers.
 _S = TypeVar("_S")
 _T1 = TypeVar("_T1")
 _T2 = TypeVar("_T2")
@@ -787,6 +789,20 @@ class list(MutableSequence[_T], Generic[_T]):
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
 
+class _dict_keys(KeysView[_KT_co], Generic[_KT_co, _VT_co]):
+    if sys.version_info >= (3, 10):
+        mapping: MappingProxyType[_KT_co, _VT_co]
+
+# The generics are the wrong way around because of a mypy limitation
+#  https://github.com/python/mypy/issues/11138
+class _dict_values(ValuesView[_VT_co], Generic[_VT_co, _KT_co]):
+    if sys.version_info >= (3, 10):
+        mapping: MappingProxyType[_KT_co, _VT_co]
+
+class _dict_items(ItemsView[_KT_co, _VT_co], Generic[_KT_co, _VT_co]):
+    if sys.version_info >= (3, 10):
+        mapping: MappingProxyType[_KT_co, _VT_co]
+
 class dict(MutableMapping[_KT, _VT], Generic[_KT, _VT]):
     @overload
     def __init__(self: dict[_KT, _VT]) -> None: ...
@@ -796,6 +812,10 @@ class dict(MutableMapping[_KT, _VT], Generic[_KT, _VT]):
     def __init__(self, map: SupportsKeysAndGetItem[_KT, _VT], **kwargs: _VT) -> None: ...
     @overload
     def __init__(self, iterable: Iterable[Tuple[_KT, _VT]], **kwargs: _VT) -> None: ...
+    # Next overload is for dict(string.split(sep) for string in iterable)
+    # Cannot be Iterable[Sequence[_T]] or otherwise dict(["foo", "bar", "baz"]) is not an error
+    @overload
+    def __init__(self: dict[str, str], iterable: Iterable[list[str]]) -> None: ...
     def __new__(cls: Type[_T1], *args: Any, **kwargs: Any) -> _T1: ...
     def clear(self) -> None: ...
     def copy(self) -> dict[_KT, _VT]: ...
@@ -807,9 +827,9 @@ class dict(MutableMapping[_KT, _VT], Generic[_KT, _VT]):
     def update(self, __m: Iterable[Tuple[_KT, _VT]], **kwargs: _VT) -> None: ...
     @overload
     def update(self, **kwargs: _VT) -> None: ...
-    def keys(self) -> KeysView[_KT]: ...
-    def values(self) -> ValuesView[_VT]: ...
-    def items(self) -> ItemsView[_KT, _VT]: ...
+    def keys(self) -> _dict_keys[_KT, _VT]: ...
+    def values(self) -> _dict_values[_VT, _KT]: ...
+    def items(self) -> _dict_items[_KT, _VT]: ...
     @classmethod
     @overload
     def fromkeys(cls, __iterable: Iterable[_T], __value: None = ...) -> dict[_T, Any | None]: ...

@@ -1320,6 +1320,19 @@ main:7: note:     def [_T] field(*, default_factory: Callable[[], _T], init: boo
 main:7: note:     def field(*, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> Any
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassFieldWithPositionalArguments]
+# flags: --python-version 3.7
+from dataclasses import dataclass, field
+
+@dataclass
+class C:
+    x: int = field(0)  # E: "field()" does not accept positional arguments \
+                       # E: No overload variant of "field" matches argument type "int" \
+                       # N: Possible overload variants: \
+                       # N:     def [_T] field(*, default: _T, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> _T \
+                       # N:     def [_T] field(*, default_factory: Callable[[], _T], init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> _T \
+                       # N:     def field(*, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> Any
+[builtins fixtures/dataclasses.pyi]
 
 [case testDataclassFieldWithTypedDictUnpacking]
 # flags: --python-version 3.7
