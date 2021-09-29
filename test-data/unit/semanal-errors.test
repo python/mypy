@@ -70,7 +70,7 @@ main:5: error: Invalid location for ParamSpec "P"
 main:5: note: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
 main:8: error: "MyFunction" expects no type arguments, but 1 given
 
-[case testInvalidParamSpecType3]
+[case testGenericParamSpec]
 # flags: --python-version 3.10
 from typing import Generic, TypeVar, Callable, ParamSpec
 
