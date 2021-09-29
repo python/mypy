@@ -7285,7 +7285,7 @@ def meth1(self: Any, y: str) -> str: ...
 T = TypeVar("T")
 def meth2(self: Any, y: T) -> T: ...
 
-[case testNoReturn]
+[case testNewAndInitNoReturn]
 from typing import NoReturn
 
 class A:
@@ -7307,7 +7307,7 @@ reveal_type(B())  # N: Revealed type is "<nothing>"
 reveal_type(C())  # N: Revealed type is "<nothing>"
 reveal_type(D())  # N: Revealed type is "<nothing>"
 
-[case testNoReturnOverload]
+[case testOverloadedNewAndInitNoReturn]
 from typing import NoReturn, overload
 
 class A:
