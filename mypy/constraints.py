@@ -164,10 +164,6 @@ def _infer_constraints(template: Type, actual: Type,
         # We infer constraints eagerly -- try to find constraints for a type
         # variable if possible. This seems to help with some real-world
         # use cases.
-        # print(items)
-        # print([infer_constraints_if_possible(template, a_item, direction)
-        #      for a_item in items])
-        # print()
         return any_constraints(
             [infer_constraints_if_possible(template, a_item, direction)
              for a_item in items],
