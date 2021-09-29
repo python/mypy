@@ -120,6 +120,20 @@ MODULE_LEVEL_GETATTRIBUTE: Final = ErrorMessage(
 NAME_NOT_IN_SLOTS: Final = ErrorMessage(
     'Trying to assign name "{}" that is not in "__slots__" of type "{}"'
 )
+TYPE_ALWAYS_TRUE: Final = ErrorMessage(
+    "{} which does not implement __bool__ or __len__ "
+    "so it could always be true in boolean context",
+    code=codes.TRUTHY_BOOL,
+)
+TYPE_ALWAYS_TRUE_UNIONTYPE: Final = ErrorMessage(
+    "{} of which no members implement __bool__ or __len__ "
+    "so it could always be true in boolean context",
+    code=codes.TRUTHY_BOOL,
+)
+FUNCTION_ALWAYS_TRUE: Final = ErrorMessage(
+    'Function "{}" could always be true in boolean context',
+    code=codes.TRUTHY_BOOL,
+)
 
 # Generic
 GENERIC_INSTANCE_VAR_CLASS_ACCESS: Final = (
