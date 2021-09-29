@@ -4961,9 +4961,26 @@ class SemanticAnalyzer(NodeVisitor[None],
         - Yes in annotated functions.
         - No otherwise.
         """
-        return (self.options.check_untyped_defs
-                or not self.function_stack
-                or not self.function_stack[-1].is_dynamic())
+        if self.options.check_untyped_defs or not self.function_stack:
+            return True
+
+        current_index = len(self.function_stack) - 1
+        while current_index >= 0:
+            current_func = self.function_stack[current_index]
+            if (
+                isinstance(current_func, FuncItem)
+                and not isinstance(current_func, LambdaExpr)
+            ):
+                return not current_func.is_dynamic()
+
+            # Special case, `lambda` inherits the "checked" state from its parent.
+            # Because `lambda` itself cannot be annotated.
+            # `lambdas` can be deeply nested, so we try to find at least one other parent.
+            current_index -= 1
+
+        # This means that we only have a stack of `lambda` functions,
+        # no regular functions.
+        return True
 
     def fail(self,
              msg: str,

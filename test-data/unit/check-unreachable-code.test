@@ -1378,3 +1378,15 @@ def f(t: T) -> None:
         except BaseException as e:
             pass
 [builtins fixtures/dict.pyi]
+
+
+[case testUnreachableLiteral]
+# flags: --warn-unreachable
+from typing_extensions import Literal
+
+def nope() -> Literal[False]: ...
+
+def f() -> None:
+    if nope():
+        x = 1  # E: Statement is unreachable
+[builtins fixtures/dict.pyi]
