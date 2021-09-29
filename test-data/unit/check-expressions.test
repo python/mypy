@@ -1184,7 +1184,7 @@ xs: str
 
 '%s' % xs   # OK
 '%s' % xb   # E: On Python 3 formatting string with "%s" and bytes argument produces result with "b''" prefix, not a regular string; use "%r" if this is desired behavior
-'%(name)s' % {'name': b'value'}  # E: On Python 3 formatting string with "%s" and bytes argument produces result with "b''" prefix, not a regular string; use "%r" if this is desired behavior
+'%(name)s' % {'name': b'value'}  # E: On Python 3 formatting "b'abc'" with "%s" produces "b'abc'", not "abc"; use "%r" if this is desired behavior
 [builtins fixtures/primitives.pyi]
 
 [case testStringInterpolationSBytesVsStrResultsPy2]
@@ -1617,21 +1617,21 @@ N = NewType('N', bytes)
 n: N
 
 '{}'.format(a)
-'{}'.format(b)  # E: On Python 3 formatting string with "{}" and bytes argument produces result with "b''" prefix, not a regular string; use "{!r}" if this is desired behavior
-'{}'.format(x)  # E: On Python 3 formatting string with "{}" and bytes argument produces result with "b''" prefix, not a regular string; use "{!r}" if this is desired behavior
-'{}'.format(n)  # E: On Python 3 formatting string with "{}" and bytes argument produces result with "b''" prefix, not a regular string; use "{!r}" if this is desired behavior
+'{}'.format(b)  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior
+'{}'.format(x)  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior
+'{}'.format(n)  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior
 
-f'{b}'  # E: On Python 3 formatting string with "{}" and bytes argument produces result with "b''" prefix, not a regular string; use "{!r}" if this is desired behavior
-f'{x}'  # E: On Python 3 formatting string with "{}" and bytes argument produces result with "b''" prefix, not a regular string; use "{!r}" if this is desired behavior
-f'{n}'  # E: On Python 3 formatting string with "{}" and bytes argument produces result with "b''" prefix, not a regular string; use "{!r}" if this is desired behavior
+f'{b}'  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior
+f'{x}'  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior
+f'{n}'  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior
 
 class C(Generic[B]):
     x: B
     def meth(self) -> None:
-        '{}'.format(self.x)  # E: On Python 3 formatting string with "{}" and bytes argument produces result with "b''" prefix, not a regular string; use "{!r}" if this is desired behavior
+        '{}'.format(self.x)  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior
 
 def func(x: A) -> A:
-    '{}'.format(x)  # E: On Python 3 formatting string with "{}" and bytes argument produces result with "b''" prefix, not a regular string; use "{!r}" if this is desired behavior
+    '{}'.format(x)  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior
     return x
 
 '{!r}'.format(a)
