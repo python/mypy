@@ -1282,10 +1282,10 @@ class WithStmt(Statement):
 
 
 class MatchStmt(Statement):
-    subject = None  # type: Expression
-    patterns = None  # type: List['Pattern']
-    guards = None  # type: List[Optional[Expression]]
-    bodies = None  # type: List[Block]
+    subject: Expression
+    patterns: List['Pattern']
+    guards: List[Optional[Expression]]
+    bodies: List[Block]
 
     def __init__(self, subject: Expression, patterns: List['Pattern'],
                  guards: List[Optional[Expression]], bodies: List[Block]) -> None:

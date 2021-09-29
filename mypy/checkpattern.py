@@ -61,21 +61,21 @@ class PatternChecker(PatternVisitor[PatternType]):
     """
 
     # Some services are provided by a TypeChecker instance.
-    chk = None  # type: mypy.checker.TypeChecker
+    chk: 'mypy.checker.TypeChecker'
     # This is shared with TypeChecker, but stored also here for convenience.
-    msg = None  # type: MessageBuilder
+    msg: MessageBuilder
     # Currently unused
-    plugin = None  # type: Plugin
+    plugin: Plugin
     # The expression being matched against the pattern
-    subject = None  # type: Expression
+    subject: Expression
 
-    subject_type = None  # type: Type
+    subject_type: Type
     # Type of the subject to check the (sub)pattern against
-    type_context = None  # type: List[Type]
+    type_context: List[Type]
 
-    self_match_types = None  # type: List[Type]
+    self_match_types: List[Type]
 
-    non_sequence_match_types = None  # type: List[Type]
+    non_sequence_match_types: List[Type]
 
     def __init__(self,
                  chk: 'mypy.checker.TypeChecker',
@@ -131,7 +131,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         #
         # Check the capture types
         #
-        capture_types = defaultdict(list)  # type: Dict[Var, List[Tuple[Expression, Type]]]
+        capture_types: Dict[Var, List[Tuple[Expression, Type]]] = defaultdict(list)
         # Collect captures from the first subpattern
         for expr, typ in pattern_types[0].captures.items():
             node = get_var(expr)
@@ -146,7 +146,7 @@ class PatternChecker(PatternVisitor[PatternType]):
                 node = get_var(expr)
                 capture_types[node].append((expr, typ))
 
-        captures = {}  # type: Dict[Expression, Type]
+        captures: Dict[Expression, Type] = {}
         for var, capture_list in capture_types.items():
             typ = UninhabitedType()
             for _, other in capture_list:
@@ -163,7 +163,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         return PatternType(specific_typ, {})
 
     def visit_singleton_pattern(self, o: SingletonPattern) -> PatternType:
-        value = o.value  # type: Union[bool, None]
+        value: Union[bool, None] = o.value
         if isinstance(value, bool):
             typ = self.chk.expr_checker.infer_literal_expr_type(value, "builtins.bool")
         elif value is None:
@@ -182,7 +182,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         if not self.can_match_sequence(current_type):
             return early_non_match()
         star_positions = [i for i, p in enumerate(o.patterns) if isinstance(p, StarredPattern)]
-        star_position = None  # type: Optional[int]
+        star_position: Optional[int] = None
         if len(star_positions) == 1:
             star_position = star_positions[0]
         elif len(star_positions) >= 2:
@@ -210,8 +210,8 @@ class PatternChecker(PatternVisitor[PatternType]):
         #
         # match inner patterns
         #
-        contracted_new_inner_types = []  # type: List[Type]
-        captures = {}  # type: Dict[Expression, Type]
+        contracted_new_inner_types: List[Type] = []
+        captures: Dict[Expression, Type] = {}
 
         contracted_inner_types = self.contract_starred_pattern_types(inner_types,
                                                                     star_position,
@@ -233,7 +233,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         # Calculate new type
         #
         if not can_match:
-            new_type = None  # type: Optional[Type]
+            new_type: Optional[Type]
         elif isinstance(current_type, TupleType):
             specific_inner_types = []
             for inner_type, new_inner_type in zip(inner_types, new_inner_types):
@@ -291,7 +291,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         return new_types
 
     def visit_starred_pattern(self, o: StarredPattern) -> PatternType:
-        captures = {}  # type: Dict[Expression, Type]
+        captures: Dict[Expression, Type] = {}
         if o.capture is not None:
             list_type = self.chk.named_generic_type('builtins.list', [self.type_context[-1]])
             captures[o.capture] = list_type
@@ -300,7 +300,7 @@ class PatternChecker(PatternVisitor[PatternType]):
     def visit_mapping_pattern(self, o: MappingPattern) -> PatternType:
         current_type = get_proper_type(self.type_context[-1])
         can_match = True
-        captures = {}  # type: Dict[Expression, Type]
+        captures: Dict[Expression, Type] = {}
         for key, value in zip(o.keys, o.values):
             inner_type = self.get_mapping_item_type(o, current_type, key)
             if inner_type is None:
@@ -328,7 +328,7 @@ class PatternChecker(PatternVisitor[PatternType]):
 
         if can_match:
             # We can't narrow the type here, as Mapping key is invariant.
-            new_type = self.type_context[-1]  # type: Optional[Type]
+            new_type: Optional[Type] = self.type_context[-1]
         else:
             new_type = None
         return PatternType(new_type, captures)
@@ -342,10 +342,8 @@ class PatternChecker(PatternVisitor[PatternType]):
         local_errors.disable_count = 0
         mapping_type = get_proper_type(mapping_type)
         if isinstance(mapping_type, TypedDictType):
-            result = self.chk.expr_checker.visit_typeddict_index_expr(mapping_type,
-                                                                      key,
-                                                                      local_errors=local_errors
-                                                                      )  # type: Optional[Type]
+            result: Optional[Type] = self.chk.expr_checker.visit_typeddict_index_expr(
+                mapping_type, key, local_errors=local_errors)
             # If we can't determine the type statically fall back to treating it as a normal
             # mapping
             if local_errors.is_errors():
@@ -392,7 +390,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             return early_non_match()
         if isinstance(type_info, TypeInfo):
             any_type = AnyType(TypeOfAny.implementation_artifact)
-            typ = Instance(type_info, [any_type] * len(type_info.defn.type_vars))  # type: Type
+            typ: Type = Instance(type_info, [any_type] * len(type_info.defn.type_vars))
         elif isinstance(type_info, TypeAlias):
             typ = type_info.target
         else:
@@ -410,10 +408,10 @@ class PatternChecker(PatternVisitor[PatternType]):
         #
         # Convert positional to keyword patterns
         #
-        keyword_pairs = []  # type: List[Tuple[Optional[str], Pattern]]
-        match_arg_set = set()  # type: Set[str]
+        keyword_pairs: List[Tuple[Optional[str], Pattern]] = []
+        match_arg_set: Set[str] = set()
 
-        captures = {}  # type: Dict[Expression, Type]
+        captures: Dict[Expression, Type] = {}
 
         if len(o.positionals) != 0:
             if self.should_self_match(typ):
@@ -474,7 +472,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         #
         can_match = True
         for keyword, pattern in keyword_pairs:
-            key_type = None  # type: Optional[Type]
+            key_type: Optional[Type] = None
             local_errors = self.msg.clean_copy()
             if keyword is not None:
                 key_type = analyze_member_access(keyword,
@@ -519,7 +517,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         return is_subtype(typ, sequence) or is_subtype(sequence, typ)
 
     def generate_types(self, type_names: List[str]) -> List[Type]:
-        types = []  # type: List[Type]
+        types: List[Type] = []
         for name in type_names:
             try:
                 types.append(self.chk.named_type(name))
@@ -559,7 +557,7 @@ class PatternChecker(PatternVisitor[PatternType]):
 
 
 def get_match_arg_names(typ: TupleType) -> List[Optional[str]]:
-    args = []  # type: List[Optional[str]]
+    args: List[Optional[str]] = []
     for item in typ.items:
         values = try_getting_str_literals_from_type(item)
         if values is None or len(values) != 1:

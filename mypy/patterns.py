@@ -29,8 +29,8 @@ class AlwaysTruePattern(Pattern):
 
 
 class AsPattern(Pattern):
-    pattern = None  # type: Optional[Pattern]
-    name = None  # type: Optional[NameExpr]
+    pattern: Optional[Pattern]
+    name: Optional[NameExpr]
 
     def __init__(self, pattern: Optional[Pattern], name: Optional[NameExpr]) -> None:
         super().__init__()
@@ -42,7 +42,7 @@ class AsPattern(Pattern):
 
 
 class OrPattern(Pattern):
-    patterns = None  # type: List[Pattern]
+    patterns: List[Pattern]
 
     def __init__(self, patterns: List[Pattern]) -> None:
         super().__init__()
@@ -53,7 +53,7 @@ class OrPattern(Pattern):
 
 
 class ValuePattern(Pattern):
-    expr = None  # type: Expression
+    expr: Expression
 
     def __init__(self, expr: Expression):
         super().__init__()
@@ -64,7 +64,7 @@ class ValuePattern(Pattern):
 
 
 class SingletonPattern(Pattern):
-    value = None  # type: Union[bool, None]
+    value: Union[bool, None]
 
     def __init__(self, value: Union[bool, None]):
         super().__init__()
@@ -75,7 +75,7 @@ class SingletonPattern(Pattern):
 
 
 class SequencePattern(Pattern):
-    patterns = None  # type: List[Pattern]
+    patterns: List[Pattern]
 
     def __init__(self, patterns: List[Pattern]):
         super().__init__()
@@ -88,7 +88,7 @@ class SequencePattern(Pattern):
 # TODO: A StarredPattern is only valid within a SequencePattern. This is not guaranteed by our
 # type hierarchy. Should it be?
 class StarredPattern(Pattern):
-    capture = None  # type: Optional[NameExpr]
+    capture: Optional[NameExpr]
 
     def __init__(self, capture: Optional[NameExpr]):
         super().__init__()
@@ -99,9 +99,9 @@ class StarredPattern(Pattern):
 
 
 class MappingPattern(Pattern):
-    keys = None  # type: List[Expression]
-    values = None  # type: List[Pattern]
-    rest = None  # type: Optional[NameExpr]
+    keys: List[Expression]
+    values: List[Pattern]
+    rest: Optional[NameExpr]
 
     def __init__(self, keys: List[Expression], values: List[Pattern],
                  rest: Optional[NameExpr]):
@@ -115,10 +115,10 @@ class MappingPattern(Pattern):
 
 
 class ClassPattern(Pattern):
-    class_ref = None  # type: RefExpr
-    positionals = None  # type: List[Pattern]
-    keyword_keys = None  # type: List[str]
-    keyword_values = None  # type: List[Pattern]
+    class_ref: RefExpr
+    positionals: List[Pattern]
+    keyword_keys: List[str]
+    keyword_values: List[Pattern]
 
     def __init__(self, class_ref: RefExpr, positionals: List[Pattern], keyword_keys: List[str],
                  keyword_values: List[Pattern]):

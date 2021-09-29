@@ -316,7 +316,7 @@ class StrConv(NodeVisitor[str]):
         return self.dump([o.expr, o.globals, o.locals], o)
 
     def visit_match_stmt(self, o: 'mypy.nodes.MatchStmt') -> str:
-        a = [o.subject]  # type: List[Any]
+        a: List[Any] = [o.subject]
         for i in range(len(o.patterns)):
             a.append(('Pattern', [o.patterns[i]]))
             if o.guards[i] is not None:
@@ -569,7 +569,7 @@ class StrConv(NodeVisitor[str]):
         return self.dump([o.capture], o)
 
     def visit_mapping_pattern(self, o: 'mypy.patterns.MappingPattern') -> str:
-        a = []  # type: List[Any]
+        a: List[Any] = []
         for i in range(len(o.keys)):
             a.append(('Key', [o.keys[i]]))
             a.append(('Value', [o.values[i]]))
@@ -578,7 +578,7 @@ class StrConv(NodeVisitor[str]):
         return self.dump(a, o)
 
     def visit_class_pattern(self, o: 'mypy.patterns.ClassPattern') -> str:
-        a = [o.class_ref]  # type: List[Any]
+        a: List[Any] = [o.class_ref]
         if len(o.positionals) > 0:
             a.append(('Positionals', o.positionals))
         for i in range(len(o.keyword_keys)):

@@ -398,7 +398,7 @@ class NamedTupleAnalyzer:
         iterable_type = self.api.named_type_or_none('typing.Iterable', [implicit_any])
         function_type = self.api.named_type('__builtins__.function')
 
-        literals = [LiteralType(item, strtype) for item in items]  # type: List[Type]
+        literals: List[Type] = [LiteralType(item, strtype) for item in items]
         match_args_type = TupleType(literals, basetuple_type)
 
         info = self.api.basic_new_typeinfo(name, fallback, line)
