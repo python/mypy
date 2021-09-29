@@ -218,7 +218,8 @@ def test_fstring_basics() -> None:
 
     x = bytes([1, 2, 3, 4])
     # assert f'bytes: {x}' == "bytes: b'\\x01\\x02\\x03\\x04'"
-    # error: On Python 3 formatting string with "{}" and bytes argument produces result #        with "b''" prefix, not a regular string; use "{!r}" if this is desired behavior
+    # error: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc";
+    #        use "{!r}" if this is desired behavior behavior
 
     float_num = 123.4
     assert f'{float_num}' == '123.4'
