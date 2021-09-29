@@ -3912,6 +3912,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         self.push_type_map(if_map)
                     self.accept(b)
 
+            # This is needed due to a quirk in frame_context. Without it types will stay narrowed after the match.
+            with self.binder.frame_context(can_skip=False, fall_through=2):
+                pass
+
     def infer_names_from_type_maps(self, type_maps: List[TypeMap]) -> None:
         all_captures = defaultdict(list)  # type: Dict[Var, List[Tuple[NameExpr, Type]]]
         for tm in type_maps:
