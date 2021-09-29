@@ -1,5 +1,6 @@
 """Type inference constraints."""
 
+import enum
 from typing import Iterable, List, Optional, Sequence
 from typing_extensions import Final
 
@@ -18,8 +19,15 @@ from mypy.nodes import COVARIANT, CONTRAVARIANT, ArgKind
 from mypy.argmap import ArgTypeExpander
 from mypy.typestate import TypeState
 
-SUBTYPE_OF: Final = 0
-SUPERTYPE_OF: Final = 1
+
+@enum.unique
+class SubType(enum.IntEnum):
+    SUBTYPE_OF = 0
+    SUPERTYPE_OF = 1
+
+
+SUBTYPE_OF: Final = SubType.SUBTYPE_OF
+SUPERTYPE_OF: Final = SubType.SUPERTYPE_OF
 
 
 class Constraint:
@@ -29,10 +37,10 @@ class Constraint:
     """
 
     type_var: TypeVarId
-    op = 0           # SUBTYPE_OF or SUPERTYPE_OF
+    op: SubType
     target: Type
 
-    def __init__(self, type_var: TypeVarId, op: int, target: Type) -> None:
+    def __init__(self, type_var: TypeVarId, op: SubType, target: Type) -> None:
         self.type_var = type_var
         self.op = op
         self.target = target
@@ -69,7 +77,7 @@ def infer_constraints_for_callable(
 
 
 def infer_constraints(template: Type, actual: Type,
-                      direction: int) -> List[Constraint]:
+                      direction: SubType) -> List[Constraint]:
     """Infer type constraints.
 
     Match a template type, which may contain type variable references,
@@ -102,8 +110,7 @@ def infer_constraints(template: Type, actual: Type,
 
 
 def _infer_constraints(template: Type, actual: Type,
-                       direction: int) -> List[Constraint]:
-
+                       direction: SubType) -> List[Constraint]:
     orig_template = template
     template = get_proper_type(template)
     actual = get_proper_type(actual)
@@ -157,6 +164,10 @@ def _infer_constraints(template: Type, actual: Type,
         # We infer constraints eagerly -- try to find constraints for a type
         # variable if possible. This seems to help with some real-world
         # use cases.
+        # print(items)
+        # print([infer_constraints_if_possible(template, a_item, direction)
+        #      for a_item in items])
+        # print()
         return any_constraints(
             [infer_constraints_if_possible(template, a_item, direction)
              for a_item in items],
@@ -175,7 +186,7 @@ def _infer_constraints(template: Type, actual: Type,
 
 
 def infer_constraints_if_possible(template: Type, actual: Type,
-                                  direction: int) -> Optional[List[Constraint]]:
+                                  direction: SubType) -> Optional[List[Constraint]]:
     """Like infer_constraints, but return None if the input relation is
     known to be unsatisfiable, for example if template=List[T] and actual=int.
     (In this case infer_constraints would return [], just like it would for
@@ -280,7 +291,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     # TODO: The value may be None. Is that actually correct?
     actual: ProperType
 
-    def __init__(self, actual: ProperType, direction: int) -> None:
+    def __init__(self, actual: ProperType, direction: SubType) -> None:
         # Direction must be SUBTYPE_OF or SUPERTYPE_OF.
         self.actual = actual
         self.direction = direction
@@ -574,7 +585,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             return []
 
 
-def neg_op(op: int) -> int:
+def neg_op(op: SubType) -> SubType:
     """Map SubtypeOf to SupertypeOf and vice versa."""
 
     if op == SUBTYPE_OF:
