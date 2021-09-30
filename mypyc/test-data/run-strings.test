@@ -218,8 +218,8 @@ def test_fstring_basics() -> None:
 
     x = bytes([1, 2, 3, 4])
     # assert f'bytes: {x}' == "bytes: b'\\x01\\x02\\x03\\x04'"
-    # error: On Python 3 '{}'.format(b'abc') produces "b'abc'", not 'abc';
-    #        use '{!r}'.format(b'abc') if this is desired behavior
+    # error: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc";
+    #        use "{!r}" if this is desired behavior behavior
 
     float_num = 123.4
     assert f'{float_num}' == '123.4'
@@ -354,7 +354,7 @@ def test_format_method_basics() -> None:
 def test_format_method_empty_braces() -> None:
     name = 'Eric'
     age = 14
-    
+
     assert 'Hello, {}!'.format(name) == 'Hello, Eric!'
     assert '{}'.format(name) == 'Eric'
     assert '{}! Hi!'.format(name) == 'Eric! Hi!'
