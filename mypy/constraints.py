@@ -21,7 +21,7 @@ from mypy.typestate import TypeState
 
 
 @enum.unique
-class SubType(enum.IntEnum):
+class SubType(enum.Enum):
     SUBTYPE_OF = 0
     SUPERTYPE_OF = 1
 
