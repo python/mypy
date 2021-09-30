@@ -1,5 +1,4 @@
 from mypy.util import unnamed_function
-import sys
 from typing import Dict, Any, Optional, Tuple
 import sys
 
