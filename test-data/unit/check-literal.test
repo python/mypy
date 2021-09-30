@@ -3325,4 +3325,16 @@ def does_work() -> Tuple[Literal[1]]:
 def also_works() -> Tuple[Literal[1]]:
     x: Tuple[Literal[1]] = (1,)
     return x
+
+def incorrect_return1() -> Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]:
+    if x:
+        return (False, 5)  # E: Incompatible return value type (got "Tuple[bool, int]", expected "Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]")
+    else:
+        return (True, 'oops')  # E: Incompatible return value type (got "Tuple[bool, str]", expected "Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]")
+
+def incorrect_return2() -> Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]:
+    if x:
+        return (bool(), 5)  # E: Incompatible return value type (got "Tuple[bool, int]", expected "Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]")
+    else:
+        return (bool(), 'oops')  # E: Incompatible return value type (got "Tuple[bool, str]", expected "Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]")
 [builtins fixtures/bool.pyi]
