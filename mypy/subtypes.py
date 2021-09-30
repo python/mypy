@@ -1073,7 +1073,7 @@ def flip_compat_check(is_compat: Callable[[Type, Type], bool]) -> Callable[[Type
 
 def unify_generic_callable(type: CallableType, target: CallableType,
                            ignore_return: bool,
-                           return_constraint_direction: Optional[mypy.constraints.SubType] = None,
+                           return_constraint_direction: Optional['mypy.constraints.SubType'] = None,
                            ) -> Optional[CallableType]:
     """Try to unify a generic callable type with another callable type.
 
