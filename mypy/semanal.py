@@ -4362,6 +4362,11 @@ class SemanticAnalyzer(NodeVisitor[None],
             return v
         return None
 
+    def lookup_fully_qualified(self, fullname: str) -> SymbolTableNode:
+        ret = self.lookup_fully_qualified_or_none(fullname)
+        assert ret is not None
+        return ret
+
     def lookup_fully_qualified_or_none(self, fullname: str) -> Optional[SymbolTableNode]:
         """Lookup a fully qualified name that refers to a module-level definition.
 
