@@ -3326,6 +3326,14 @@ def also_works() -> Tuple[Literal[1]]:
     x: Tuple[Literal[1]] = (1,)
     return x
 
+def invalid_literal_value() -> Tuple[Literal[1]]:
+    x: Final = (2,)
+    return x  # E: Incompatible return value type (got "Tuple[int]", expected "Tuple[Literal[1]]")
+
+def invalid_literal_type() -> Tuple[Literal[1]]:
+    x: Final = (True,)
+    return x  # E: Incompatible return value type (got "Tuple[bool]", expected "Tuple[Literal[1]]")
+
 def incorrect_return1() -> Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]:
     if x:
         return (False, 5)  # E: Incompatible return value type (got "Tuple[bool, int]", expected "Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]")
