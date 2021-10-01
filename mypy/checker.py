@@ -4676,8 +4676,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Take each element in the parent union and replay the original lookup procedure
             # to figure out which parents are compatible.
             new_parent_types = []
-            for item in parent_type.items:
-                item = get_proper_type(item)
+            for item in union_items(parent_type):
                 member_type = replay_lookup(item)
                 if member_type is None:
                     # We were unable to obtain the member type. So, we give up on refining this
