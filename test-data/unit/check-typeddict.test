@@ -1681,8 +1681,8 @@ s = ''
 del a[s] # E: Expected TypedDict key to be string literal
 del b[s] # E: Expected TypedDict key to be string literal
 alias = b.__delitem__
-alias('x') # E: Argument 1 has incompatible type "str"; expected "NoReturn"
-alias(s) # E: Argument 1 has incompatible type "str"; expected "NoReturn"
+alias('x')
+alias(s)
 [builtins fixtures/dict.pyi]
 
 [case testPluginUnionsOfTypedDicts]
@@ -2109,7 +2109,7 @@ class TD(TypedDict):
 
 d: TD = {b'foo': 2} # E: Expected TypedDict key to be string literal
 d[b'foo'] = 3 # E: TypedDict key must be a string literal; expected one of ("foo") \
-    # E: Argument 1 has incompatible type "bytes"; expected "str"
+    # E: Argument 1 to "__setitem__" has incompatible type "bytes"; expected "str"
 d[b'foo'] # E: TypedDict key must be a string literal; expected one of ("foo")
 d[3] # E: TypedDict key must be a string literal; expected one of ("foo")
 d[True] # E: TypedDict key must be a string literal; expected one of ("foo")
@@ -2220,5 +2220,40 @@ main:16: error: TypedDict "Foo1" has no key "missing"
 main:16: error: TypedDict "Foo2" has no key "missing"
 main:17: error: Expected TypedDict key to be string literal
 main:17: error: Argument 1 to "__delitem__" has incompatible type "int"; expected "str"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictTypeVarUnionSetItem]
+from typing import TypedDict, Union, TypeVar
+
+F1 = TypeVar('F1', bound='Foo1')
+F2 = TypeVar('F2', bound='Foo2')
+
+class Foo1(TypedDict):
+    z: str
+    a: int
+class Foo2(TypedDict):
+    z: str
+    b: int
+
+def func(foo: Union[F1, F2]):
+    foo["z"] = "a"  # ok
+    foo["z"] = 1
+
+    foo["a"] = 1
+    foo["b"] = 2
+
+    foo["missing"] = 1
+    foo[1] = "m"
+[out]
+main:15: error: Value of "z" has incompatible type "int"; expected "str"
+main:17: error: TypedDict "Foo2" has no key "a"
+main:18: error: TypedDict "Foo1" has no key "b"
+main:20: error: TypedDict "Foo1" has no key "missing"
+main:20: error: TypedDict "Foo2" has no key "missing"
+main:21: error: TypedDict key must be a string literal; expected one of ("z", "a")
+main:21: error: TypedDict key must be a string literal; expected one of ("z", "b")
+main:21: error: Argument 1 to "__setitem__" has incompatible type "int"; expected "str"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]

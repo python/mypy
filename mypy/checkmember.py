@@ -858,7 +858,7 @@ def analyze_enum_class_attribute_access(itype: Instance,
 
 
 def analyze_typeddict_access(name: str, typ: TypedDictType,
-                             mx: MemberContext, override_info: Optional[TypeInfo]) -> bool:
+                             mx: MemberContext, override_info: Optional[TypeInfo]) -> Type:
     if name == '__setitem__':
         # Since we can only get this during `a['key'] = ...`
         # it is safe to assume that the context is `IndexExpr`.
