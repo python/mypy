@@ -337,12 +337,12 @@ otherwise an error will be raised.
   my_album = Album('Songs about Python', 2021)
 
 We have several rules when we count classes as "slotted"
-(rules are the same as in CPython):
+(the rules are the same as in CPython):
 
 1. All base classes (except builtin ones) must have explicit ``__slots__`` defined
-2. ``__slots__`` definition does not have include ``__slots__ = ('__dict__', )``. 
+2. ``__slots__`` must not include ``__dict__``. For example, ``__slots__ = ("__dict__", ...)`` is not valid.
    Because it allows to set any possible attribute, almost as when no ``__slots__`` is defined
 
 And we have a custom rule:
-all ``__slots__`` must be statically known. 
+all values in ``__slots__`` must be statically known. 
 For example, no variables: only string literals.
