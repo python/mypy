@@ -655,6 +655,27 @@ else:
     reveal_type(y["model"])     # N: Revealed type is "Union[TypedDict('__main__.Model1', {'key': Literal['A']}), TypedDict('__main__.Model2', {'key': Literal['B']})]"
 [builtins fixtures/primitives.pyi]
 
+[case testNarrowingExprPropagation]
+from typing import Union
+from typing_extensions import Literal
+
+class A:
+    tag: Literal['A']
+
+class B:
+    tag: Literal['B']
+
+abo: Union[A, B, None]
+
+if abo is not None and abo.tag == "A":
+    reveal_type(abo.tag) # N: Revealed type is "Literal['A']"
+    reveal_type(abo) # N: Revealed type is "__main__.A"
+
+if not (abo is None or abo.tag != "B"):
+    reveal_type(abo.tag) # N: Revealed type is "Literal['B']"
+    reveal_type(abo) # N: Revealed type is "__main__.B"
+[builtins fixtures/primitives.pyi]
+
 [case testNarrowingEqualityFlipFlop]
 # flags: --warn-unreachable --strict-equality
 from typing_extensions import Literal, Final
