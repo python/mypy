@@ -885,6 +885,23 @@ reveal_type(x) # N: Revealed type is "TypedDict('__main__.C2', {'@type': Literal
 x = {'@type': 'c-type', 'extra': 10.5} # E: Incompatible types in assignment (expression has type "Dict[str, object]", variable has type "Union[A, B, C1, C2]")
 [builtins fixtures/dict.pyi]
 
+[case testTypedDictUnionUnambiguousCaseBasedOnTypeWithInference]
+from typing import Union, List
+from typing_extensions import TypedDict
+
+A = TypedDict('A', {'x': str, 'y': List[int]})
+B = TypedDict('B', {'x': int, 'y': List[int]})
+C = TypedDict('C', {'x': int, 'y': List[str]})
+
+ab: Union[A, B]
+ab = {'x': 'str', 'y': []}
+reveal_type(ab) # N: Revealed type is "TypedDict('__main__.A', {'x': builtins.str, 'y': builtins.list[builtins.int]})"
+
+abc: Union[A, B, C]
+abc = {'x': 0, 'y': []} # E: Type of TypedDict is ambiguous, could be any of ("B", "C") \
+                        # E: Incompatible types in assignment (expression has type "Dict[str, object]", variable has type "Union[A, B, C]")
+[builtins fixtures/dict.pyi]
+
 [case testTypedDictUnionAmbiguousCase]
 from typing import Union, Mapping, Any, cast
 from typing_extensions import TypedDict, Literal
