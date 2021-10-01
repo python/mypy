@@ -443,3 +443,7 @@ except KeyError, IndexError:
     pass
 [out]
 file:3: error: invalid syntax
+
+[case testWrongTets]
+@12!--..11@@
+[out]
