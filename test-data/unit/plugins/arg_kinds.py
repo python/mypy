@@ -1,7 +1,4 @@
-import sys
 from typing import Optional, Callable
-
-from mypy.nodes import Context
 from mypy.plugin import Plugin, MethodContext, FunctionContext
 from mypy.types import Type
 
