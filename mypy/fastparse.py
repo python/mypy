@@ -130,7 +130,9 @@ TYPE_COMMENT_SYNTAX_ERROR: Final = "syntax error in type comment"
 
 INVALID_TYPE_IGNORE: Final = 'Invalid "type: ignore" comment'
 
-INVALID_SLICE_ERROR: Final = 'Slice usage in type annotation is invalid, consider using "slice()" or "{}"'
+INVALID_SLICE_ERROR: Final = (
+    'Slice usage in type annotation is invalid, consider using "slice()" or "{}"'
+)
 
 TYPE_IGNORE_PATTERN = re.compile(r'[^#]*#\s*type:\s*ignore\s*(.*)')
 
