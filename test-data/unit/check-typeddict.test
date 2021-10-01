@@ -2122,3 +2122,103 @@ from mypy_extensions import TypedDict
 Foo = TypedDict('Foo', {'camelCaseKey': str})
 value: Foo = {}  # E: Missing key "camelCaseKey" for TypedDict "Foo"
 [builtins fixtures/dict.pyi]
+
+
+[case testTypedDictUnionGetItem]
+from typing import TypedDict, Union
+
+class Foo1(TypedDict):
+    z: str
+    a: int
+class Foo2(TypedDict):
+    z: str
+    b: int
+
+def func(foo: Union[Foo1, Foo2]) -> str:
+    reveal_type(foo["z"])  # ok
+
+    reveal_type(foo["a"])
+    reveal_type(foo["b"])
+    reveal_type(foo["missing"])
+    reveal_type(foo[1])
+
+    return foo["z"]
+[out]
+main:11: note: Revealed type is "builtins.str"
+main:13: note: Revealed type is "Union[builtins.int, Any]"
+main:13: error: TypedDict "Foo2" has no key "a"
+main:14: note: Revealed type is "Union[Any, builtins.int]"
+main:14: error: TypedDict "Foo1" has no key "b"
+main:15: note: Revealed type is "Any"
+main:15: error: TypedDict "Foo1" has no key "missing"
+main:15: error: TypedDict "Foo2" has no key "missing"
+main:16: note: Revealed type is "Any"
+main:16: error: TypedDict key must be a string literal; expected one of ("z", "a")
+main:16: error: TypedDict key must be a string literal; expected one of ("z", "b")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictUnionSetItem]
+from typing import TypedDict, Union
+
+class Foo1(TypedDict):
+    z: str
+    a: int
+class Foo2(TypedDict):
+    z: str
+    b: int
+
+def func(foo: Union[Foo1, Foo2]):
+    foo["z"] = "a"  # ok
+    foo["z"] = 1
+
+    foo["a"] = 1
+    foo["b"] = 2
+
+    foo["missing"] = 1
+    foo[1] = "m"
+[out]
+main:12: error: Value of "z" has incompatible type "int"; expected "str"
+main:14: error: TypedDict "Foo2" has no key "a"
+main:15: error: TypedDict "Foo1" has no key "b"
+main:17: error: TypedDict "Foo1" has no key "missing"
+main:17: error: TypedDict "Foo2" has no key "missing"
+main:18: error: TypedDict key must be a string literal; expected one of ("z", "a")
+main:18: error: TypedDict key must be a string literal; expected one of ("z", "b")
+main:18: error: Argument 1 to "__setitem__" has incompatible type "int"; expected "str"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictUnionDelItem]
+from typing import TypedDict, Union
+
+class Foo1(TypedDict):
+    z: str
+    a: int
+class Foo2(TypedDict):
+    z: str
+    b: int
+
+def func(foo: Union[Foo1, Foo2]):
+    del foo["z"]
+
+    del foo["a"]
+    del foo["b"]
+
+    del foo["missing"]
+    del foo[1]
+[out]
+main:11: error: Key "z" of TypedDict "Foo1" cannot be deleted
+main:11: error: Key "z" of TypedDict "Foo2" cannot be deleted
+main:13: error: Key "a" of TypedDict "Foo1" cannot be deleted
+main:13: error: TypedDict "Foo2" has no key "a"
+main:14: error: TypedDict "Foo1" has no key "b"
+main:14: error: Key "b" of TypedDict "Foo2" cannot be deleted
+main:16: error: TypedDict "Foo1" has no key "missing"
+main:16: error: TypedDict "Foo2" has no key "missing"
+main:17: error: Expected TypedDict key to be string literal
+main:17: error: Argument 1 to "__delitem__" has incompatible type "int"; expected "str"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]

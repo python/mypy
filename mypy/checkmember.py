@@ -12,7 +12,7 @@ from mypy.nodes import (
     TypeInfo, FuncBase, Var, FuncDef, SymbolNode, SymbolTable, Context,
     MypyFile, TypeVarExpr, ARG_POS, ARG_STAR, ARG_STAR2, Decorator,
     OverloadedFuncDef, TypeAlias, TempNode, is_final_node,
-    SYMBOL_FUNCBASE_TYPES,
+    SYMBOL_FUNCBASE_TYPES, IndexExpr
 )
 from mypy.messages import MessageBuilder
 from mypy.maptype import map_instance_to_supertype
@@ -153,9 +153,11 @@ def _analyze_member_access(name: str,
     elif isinstance(typ, TupleType):
         # Actually look up from the fallback instance type.
         return _analyze_member_access(name, tuple_fallback(typ), mx, override_info)
-    elif isinstance(typ, (TypedDictType, LiteralType, FunctionLike)):
+    elif isinstance(typ, (LiteralType, FunctionLike)):
         # Actually look up from the fallback instance type.
         return _analyze_member_access(name, typ.fallback, mx, override_info)
+    elif isinstance(typ, TypedDictType):
+        return analyze_typeddict_access(name, typ, mx, override_info)
     elif isinstance(typ, NoneType):
         return analyze_none_member_access(name, typ, mx)
     elif isinstance(typ, TypeVarType):
@@ -853,6 +855,33 @@ def analyze_enum_class_attribute_access(itype: Instance,
     # are typed, and we really don't want to treat every single Enum value as if it were
     # from type variable substitution. So we reset the 'erased' field here.
     return itype.copy_modified(erased=False, last_known_value=enum_literal)
+
+
+def analyze_typeddict_access(name: str, typ: TypedDictType,
+                             mx: MemberContext, override_info: Optional[TypeInfo]) -> bool:
+    if name == '__setitem__':
+        # Since we can only get this during `a['key'] = ...`
+        # it is safe to assume that the context is `IndexExpr`.
+        assert isinstance(mx.context, IndexExpr)
+        item_type = mx.chk.expr_checker.visit_typeddict_index_expr(typ, mx.context.index)
+        return CallableType(
+            arg_types=[mx.chk.named_type('builtins.str'), item_type],
+            arg_kinds=[ARG_POS, ARG_POS],
+            arg_names=[None, None],
+            ret_type=NoneType(),
+            fallback=mx.chk.named_type('builtins.function'),
+            name=name,
+        )
+    elif name == '__delitem__':
+        return CallableType(
+            arg_types=[mx.chk.named_type('builtins.str')],
+            arg_kinds=[ARG_POS],
+            arg_names=[None],
+            ret_type=NoneType(),
+            fallback=mx.chk.named_type('builtins.function'),
+            name=name,
+        )
+    return _analyze_member_access(name, typ.fallback, mx, override_info)
 
 
 def add_class_tvars(t: ProperType, isuper: Optional[Instance],
