@@ -492,7 +492,7 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
         )
     else:
         bound_method = bind_self(
-            function_type(dunder_get, mx.builtin_type('builtins.function')),
+            function_type(dunder_get, mx.named_type('builtins.function')),
             descriptor_type,
         )
     typ = map_instance_to_supertype(descriptor_type, dunder_get.info)
@@ -634,8 +634,7 @@ def analyze_var(name: str,
     fullname = '{}.{}'.format(var.info.fullname, name)
     hook = mx.chk.plugin.get_attribute_hook(fullname)
     if result and not mx.is_lvalue and not implicit:
-        result = analyze_descriptor_access(mx.original_type, result, mx.named_type,
-                                           mx.msg, mx.context, chk=mx.chk)
+        result = analyze_descriptor_access(result, mx)
     if hook:
         result = hook(AttributeContext(get_proper_type(mx.original_type),
                                        result, mx.context, mx.chk))
@@ -811,8 +810,7 @@ def analyze_class_attribute_access(itype: Instance,
         result = add_class_tvars(t, isuper, is_classmethod,
                                  mx.self_type, original_vars=original_vars)
         if not mx.is_lvalue:
-            result = analyze_descriptor_access(mx.original_type, result, mx.named_type,
-                                               mx.msg, mx.context, chk=mx.chk)
+            result = analyze_descriptor_access(result, mx)
         return result
     elif isinstance(node.node, Var):
         mx.not_ready_callback(name, mx.context)
