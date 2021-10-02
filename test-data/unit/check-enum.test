@@ -1602,7 +1602,6 @@ class NonEmptyEnumMetaSub(EmptyEnumMeta):
 [builtins fixtures/bool.pyi]
 
 [case testEnumFinalSubtypingMethodAndValueSpecialCase]
-from typing import overload
 from enum import Enum, IntEnum, Flag, IntFlag, EnumMeta
 
 class NonEmptyEnum(Enum):
