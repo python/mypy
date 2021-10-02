@@ -4982,9 +4982,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 or not self.dynamic_funcs
                 or not self.dynamic_funcs[-1])
 
-    def lookup(self, name: str, kind: int) -> SymbolTableNode:
+    def lookup(self, name: str) -> SymbolTableNode:
         """Look up a definition from the symbol table with the given name.
-        TODO remove kind argument
         """
         if name in self.globals:
             return self.globals[name]
@@ -4998,7 +4997,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def lookup_qualified(self, name: str) -> SymbolTableNode:
         if '.' not in name:
-            return self.lookup(name, GDEF)  # FIX kind
+            return self.lookup(name)
         else:
             parts = name.split('.')
             n = self.modules[parts[0]]
