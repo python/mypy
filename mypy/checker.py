@@ -1812,11 +1812,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # are just simple names and are present in `TypeInfo`.
             for lvalue in node.lvalues:
                 if not isinstance(lvalue, NameExpr):
-                    break
+                    continue
                 field = defn.info.get(lvalue.name)
                 if field is None or not isinstance(field.node, Var):
-                    break
-            else:
+                    continue
+
                 # Validation passed, continue.
                 is_known, value = mypy.checkexpr.try_getting_statically_known_value(
                     node.rvalue)
@@ -1831,7 +1831,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # It should not hit us hard, because `Enum`s rarely have lots of values.
         errors = []
         seen = []
-        print(known_values)
         for value in known_values:
             if value in seen:
                 errors.append(value)

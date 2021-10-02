@@ -1763,6 +1763,25 @@ class EmptyIntEnum(Enum):  # E: Duplicate value "0" in "EmptyIntEnum" unique enu
     e = int()
 [builtins fixtures/dict.pyi]
 
+[case testEnumUniqueSeveralLValues]
+from enum import Enum, unique
+@unique
+class IntFloatEnum(Enum):  # E: Duplicate value "1" in "IntFloatEnum" unique enum definition
+    x = y = 1
+[builtins fixtures/bool.pyi]
+
+[case testEnumUniqueUnpacking]
+from enum import Enum, unique
+@unique
+class UniqueEnum(Enum):
+    x, y = (1, 2)
+# TODO: should raise, but does not
+# TODO: this should be handled with `Literal` types
+@unique
+class NonUniqueEnum(Enum):
+    x, y = (1, 1)
+[builtins fixtures/bool.pyi]
+
 [case testEnumDuplocateStaticValues]
 from enum import Enum, unique
 
