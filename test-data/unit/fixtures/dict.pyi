@@ -46,7 +46,7 @@ class list(Sequence[T]): # needed by some test cases
     def append(self, item: T) -> None: pass
 
 class tuple(Generic[T]): pass
-class set(Iterable[T]): pass
+class set(): pass
 class function: pass
 class float: pass
 class complex: pass
