@@ -1524,10 +1524,10 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if (
                     base.type.is_enum
                     and base.type.fullname not in (
-                        'enum.Enum', 'enum.IntEnum', 'enum.Flag', 'enum.IntFlag',
-                    )
+                        'enum.Enum', 'enum.IntEnum', 'enum.Flag', 'enum.IntFlag')
                     and base.type.names
-                    and any(not isinstance(n.node, FuncBase) for n in base.type.names.values())
+                    and any(not isinstance(n.node, (FuncBase, Decorator))
+                            for n in base.type.names.values())
                 ):
                     # This means that are trying to subclass a non-default
                     # Enum class, with defined members. This is not possible.

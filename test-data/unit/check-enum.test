@@ -1426,6 +1426,9 @@ class ErrorIntFlagWithoutValue(NonEmptyIntFlag):  # E: Cannot inherit from final
 [case testSubclassingNonFinalEnums]
 from enum import Enum, IntEnum, Flag, IntFlag, EnumMeta
 
+def decorator(func):
+    return func
+
 class EmptyEnum(Enum):
     pass
 class EmptyIntEnum(IntEnum):
@@ -1450,6 +1453,8 @@ class NonEmptyEnumMetaSub(EmptyEnumMeta):
 
 class EmptyEnumSub(EmptyEnum):
     def method(self) -> None: pass
+    @decorator
+    def other(self) -> None: pass
 class EmptyIntEnumSub(EmptyIntEnum):
     def method(self) -> None: pass
 class EmptyFlagSub(EmptyFlag):
@@ -1604,9 +1609,14 @@ class NonEmptyEnumMetaSub(EmptyEnumMeta):
 [case testEnumFinalSubtypingMethodAndValueSpecialCase]
 from enum import Enum, IntEnum, Flag, IntFlag, EnumMeta
 
+def decorator(func):
+    return func
+
 class NonEmptyEnum(Enum):
     x = 1
     def method(self) -> None: pass
+    @decorator
+    def other(self) -> None: pass
 class NonEmptyIntEnum(IntEnum):
     x = 1
     def method(self) -> None: pass
