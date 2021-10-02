@@ -3786,7 +3786,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             expr.analyzed = PromoteExpr(target)
             expr.analyzed.line = expr.line
             expr.analyzed.accept(self)
-        elif refers_to_fullname(expr.callee, 'builtins.dict'):
+        elif isinstance(expr.callee, RefExpr) and expr.callee.fullname == 'builtins.dict':
             expr.analyzed = self.translate_dict_call(expr)
         elif refers_to_fullname(expr.callee, 'builtins.divmod'):
             if not self.check_fixed_args(expr, 2, 'divmod'):

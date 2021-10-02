@@ -659,3 +659,14 @@ reveal_type(w)  # N: Revealed type is "__main__.Out.In"
 reveal_type(x)  # N: Revealed type is "__main__.Out.In.Inner"
 reveal_type(y)  # N: Revealed type is "__main__.Out.In.Inner"
 reveal_type(z)  # N: Revealed type is "__main__.Out.In"
+
+[case testTypeAliasDictNoVarAnnotatedError]
+from typing import Dict
+D = Dict[str, str]
+d = D()
+[builtins fixtures/dict.pyi]
+
+[case testTypeAliasListNoVarAnnotatedError]
+from typing import List
+L = List[str]
+l = L()
