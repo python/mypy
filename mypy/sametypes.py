@@ -4,7 +4,7 @@ from mypy.types import (
     Type, TypeGuardType, UnboundType, AnyType, NoneType, TupleType, TypedDictType,
     UnionType, CallableType, TypeVarType, Instance, TypeVisitor, ErasedType,
     Overloaded, PartialType, DeletedType, UninhabitedType, TypeType, LiteralType,
-    ProperType, get_proper_type, TypeAliasType)
+    ProperType, get_proper_type, TypeAliasType, SelfType)
 from mypy.typeops import tuple_fallback, make_simplified_union
 
 
@@ -95,6 +95,9 @@ class SameTypeVisitor(TypeVisitor[bool]):
     def visit_type_var(self, left: TypeVarType) -> bool:
         return (isinstance(self.right, TypeVarType) and
                 left.id == self.right.id)
+
+    def visit_self_type(self, left: SelfType) -> bool:
+        return isinstance(self.right, SelfType) and self.right.instance == left.instance
 
     def visit_callable_type(self, left: CallableType) -> bool:
         # FIX generics

@@ -5133,7 +5133,6 @@ class HasPlaceholders(TypeQuery[bool]):
         super().__init__(any)
 
     def visit_placeholder_type(self, t: PlaceholderType) -> bool:
-        print("returning true")
         return True
 
 
