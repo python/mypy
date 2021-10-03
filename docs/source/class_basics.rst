@@ -321,8 +321,7 @@ Slots
 
 When a class has explicitly defined
 `__slots__ <https://docs.python.org/3/reference/datamodel.html#slots>`_
-mypy will check that all assigned attributes are listed there,
-otherwise an error will be raised.
+mypy will check that all attributes assigned to are members of `__slots__`.
 
 .. code-block:: python
 
