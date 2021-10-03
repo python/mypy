@@ -2331,7 +2331,7 @@ y: PBad = None  # E: Incompatible types in assignment (expression has type "None
 [out]
 
 [case testOnlyMethodProtocolUsableWithIsSubclass]
-from typing import Protocol, runtime_checkable, Union, Type
+from typing import Protocol, runtime_checkable, Union, Type, overload
 @runtime_checkable
 class P(Protocol):
     def meth(self) -> int:
@@ -2344,6 +2344,41 @@ class C:
     x: str
     def meth(self) -> int:
         pass
+
+class E: pass
+
+cls: Type[Union[C, E]]
+issubclass(cls, PBad)  # E: Only protocols that don't have non-method members can be used with issubclass() \
+                       # N: Protocol "PBad" has non-method member(s): x
+if issubclass(cls, P):
+    reveal_type(cls)  # N: Revealed type is "Type[__main__.C]"
+else:
+    reveal_type(cls)  # N: Revealed type is "Type[__main__.E]"
+[builtins fixtures/isinstance.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+
+[case testProtocolWithOverloadUsableWithIsSubclass]
+from typing import Protocol, runtime_checkable, Union, Type, overload
+@runtime_checkable
+class P(Protocol):
+    @overload
+    def meth(self, x: str) -> int: ...
+    @overload
+    def meth(self, x: int) -> str: ...
+@runtime_checkable
+class PBad(Protocol):
+    x: str
+
+class C:
+    x: str
+    @overload
+    def meth(self, x: str) -> int: ...
+    @overload
+    def meth(self, x: int) -> str: ...
+    def meth(self, x: Union[str, int]) -> Union[int, str]:
+        pass
+
 class E: pass
 
 cls: Type[Union[C, E]]
