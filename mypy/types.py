@@ -7,7 +7,7 @@ from mypy.backports import OrderedDict
 
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Set, Optional, Union, Iterable, NamedTuple,
-    Sequence, Iterator, overload
+    Sequence, Iterator
 )
 from typing_extensions import ClassVar, Final, TYPE_CHECKING, overload
 
