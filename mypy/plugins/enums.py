@@ -175,7 +175,7 @@ def enum_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
             if underlying_type is None:
                 return ctx.default_attr_type
 
-            # At first we try to predice future `value` type if all other items
+            # At first we try to predict future `value` type if all other items
             # have the same type. For example, `int`.
             # If this is the case, we simply return this type.
             # See https://github.com/python/mypy/pull/9443
@@ -187,7 +187,7 @@ def enum_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
                     return underlying_type
 
             # But, after we started treating all `Enum` values as `Final`,
-            # we start to inference types in
+            # we start to infer types in
             # `item = 1` as `Literal[1]`, not just `int`.
             # So, for example types in this `Enum` will all be different:
             #
