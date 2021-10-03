@@ -3761,6 +3761,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         with self.chk.binder.frame_context(can_skip=True, fall_through=0):
             self.check_for_comp(gen)
 
+            # Check `left_expr` to analyze variables introduced by `AssignmentExpr` if any
+            gen.left_expr.accept(self)
+
             # Infer the type of the list comprehension by using a synthetic generic
             # callable type.
             tv = TypeVarType('T', 'T', -1, [], self.object_type())

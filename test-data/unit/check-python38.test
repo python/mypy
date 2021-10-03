@@ -546,3 +546,28 @@ def foo() -> None:
     x = 0
     [x := x + y for y in [1, 2, 3]]
 [builtins fixtures/dict.pyi]
+
+[case testWalrusUndefinedRecursiveReference1]
+(x := x) # E: Cannot determine type of "x"
+
+[case testWalrusUndefinedRecursiveReference2]
+z = [x := x for y in [1, 2, 3]] # E: Cannot determine type of "x"
+
+[case testWalrusUndefinedRecursiveReference3]
+from typing import Any
+
+def f(x: Any) -> None:
+    pass
+
+f(x := x) # E: Cannot determine type of "x"
+
+[case testWalrusUndefinedRecursiveReference4]
+from typing import TypeVar
+
+T = TypeVar("T")
+
+def f(x: T) -> None:
+    pass
+
+# TODO: should be the same error as others?
+f(x := x)
