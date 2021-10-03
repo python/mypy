@@ -1376,8 +1376,14 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
             return self._is_proper_subtype(left.fallback, self.right)
 
     def visit_overloaded(self, left: Overloaded) -> bool:
-        # TODO: What's the right thing to do here?
-        return False
+        if isinstance(self.right, Overloaded):
+            for right_item in self.right.items:
+                if not any(self._is_proper_subtype(left_item, right_item)
+                           for left_item in left.items):
+                    return False
+            return True
+        else:
+            return False
 
     def visit_union_type(self, left: UnionType) -> bool:
         return all([self._is_proper_subtype(item, self.orig_right) for item in left.items])
