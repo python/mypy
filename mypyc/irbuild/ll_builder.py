@@ -844,36 +844,39 @@ class LowLevelIRBuilder:
         return self.add(LoadStatic(object_rprimitive, name, module, NAMESPACE_TYPE))
 
     # Other primitive operations
-    def binary_op(self, lreg: Value, rreg: Value, op: BinOp, line: int) -> Value:
+    def binary_op(self, lreg: Value, rreg: Value, op: str, line: int) -> Value:
+        # We don't use `BinOp` methods here, because some operators might be
+        # containing extra `=` sign, like `^=`.
         ltype = lreg.type
         rtype = rreg.type
+        is_eq_op = op in (BinOp.Eq, BinOp.NotEq)
 
         # Special case tuple comparison here so that nested tuples can be supported
-        if isinstance(ltype, RTuple) and isinstance(rtype, RTuple) and op.is_equality():
-            return self.compare_tuples(lreg, rreg, op, line)
+        if isinstance(ltype, RTuple) and isinstance(rtype, RTuple) and is_eq_op:
+            return self.compare_tuples(lreg, rreg, BinOp(op), line)
 
         # Special case == and != when we can resolve the method call statically
-        if op.is_equality():
-            value = self.translate_eq_cmp(lreg, rreg, op, line)
+        if is_eq_op:
+            value = self.translate_eq_cmp(lreg, rreg, BinOp(op), line)
             if value is not None:
                 return value
 
         # Special case various ops
-        if op.is_identity():
-            return self.translate_is_op(lreg, rreg, op, line)
+        if op in (BinOp.Is, BinOp.IsNot):
+            return self.translate_is_op(lreg, rreg, BinOp(op), line)
         # TODO: modify 'str' to use same interface as 'compare_bytes' as it avoids
         # call to PyErr_Occurred()
-        if is_str_rprimitive(ltype) and is_str_rprimitive(rtype) and op.is_equality():
-            return self.compare_strings(lreg, rreg, op, line)
-        if is_bytes_rprimitive(ltype) and is_bytes_rprimitive(rtype) and op.is_equality():
-            return self.compare_bytes(lreg, rreg, op, line)
+        if is_str_rprimitive(ltype) and is_str_rprimitive(rtype) and is_eq_op:
+            return self.compare_strings(lreg, rreg, BinOp(op), line)
+        if is_bytes_rprimitive(ltype) and is_bytes_rprimitive(rtype) and is_eq_op:
+            return self.compare_bytes(lreg, rreg, BinOp(op), line)
         if is_tagged(ltype) and is_tagged(rtype) and op in int_comparison_op_mapping:
-            return self.compare_tagged(lreg, rreg, op, line)
+            return self.compare_tagged(lreg, rreg, BinOp(op), line)
         if is_bool_rprimitive(ltype) and is_bool_rprimitive(rtype) and op in (
                 '&', '&=', '|', '|=', '^', '^='):
-            return self.bool_bitwise_op(lreg, rreg, BinOp(op.value[0]), line)
-        if isinstance(rtype, RInstance) and op.is_contains():
-            return self.translate_instance_contains(rreg, lreg, op, line)
+            return self.bool_bitwise_op(lreg, rreg, BinOp(op[0]), line)
+        if isinstance(rtype, RInstance) and op in (BinOp.In, BinOp.NotIn):
+            return self.translate_instance_contains(rreg, lreg, BinOp(op), line)
 
         call_c_ops_candidates = binary_ops.get(op, [])
         target = self.matching_call_c(call_c_ops_candidates, [lreg, rreg], line)

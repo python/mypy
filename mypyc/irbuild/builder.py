@@ -218,7 +218,7 @@ class IRBuilder:
     def unary_op(self, lreg: Value, expr_op: str, line: int) -> Value:
         return self.builder.unary_op(lreg, expr_op, line)
 
-    def binary_op(self, lreg: Value, rreg: Value, expr_op: BinOp, line: int) -> Value:
+    def binary_op(self, lreg: Value, rreg: Value, expr_op: str, line: int) -> Value:
         return self.builder.binary_op(lreg, rreg, expr_op, line)
 
     def coerce(self, src: Value, target_type: RType, line: int, force: bool = False) -> Value:
