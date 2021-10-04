@@ -373,7 +373,7 @@ class FindModuleCache:
 
             # In namespace mode, register a potential namespace package
             if self.options and self.options.namespace_packages:
-                if fscache.isdir(base_path) and not has_init:
+                if fscache.exists_case(base_path, dir_prefix) and not has_init:
                     near_misses.append((base_path, dir_prefix))
 
             # No package, look for module.
