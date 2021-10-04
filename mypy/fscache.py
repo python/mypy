@@ -107,6 +107,9 @@ class FileSystemCache:
         dirname, basename = os.path.split(path)
         if basename != '__init__.py':
             return False
+        if not os.path.basename(dirname).isidentifier():
+            # Can't put an __init__.py in a place that's not an identifier
+            return False
         try:
             st = self.stat(dirname)
         except OSError:
