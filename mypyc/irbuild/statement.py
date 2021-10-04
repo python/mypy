@@ -15,7 +15,6 @@ from mypy.nodes import (
     Expression, StrExpr, TempNode, Lvalue, Import, ImportFrom, ImportAll, TupleExpr, ListExpr,
     StarExpr
 )
-from mypy.operators import BinOp
 
 from mypyc.ir.ops import (
     Assign, Unreachable, RaiseStandardError, LoadErrorValue, BasicBlock, TupleGet, Value, Register,

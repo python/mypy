@@ -3895,7 +3895,7 @@ class SemanticAnalyzer(NodeVisitor[None],
     def visit_op_expr(self, expr: OpExpr) -> None:
         expr.left.accept(self)
 
-        if expr.op in (BinOp.And, BinOp.Or):
+        if expr.op.is_boolean():
             inferred = infer_condition_value(expr.left, self.options)
             if ((inferred in (ALWAYS_FALSE, MYPY_FALSE) and expr.op == BinOp.And) or
                     (inferred in (ALWAYS_TRUE, MYPY_TRUE) and expr.op == BinOp.Or)):

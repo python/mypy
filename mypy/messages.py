@@ -440,7 +440,7 @@ class MessageBuilder:
                 for variant in (method, '__r' + method[2:]):
                     # FIX: do not rely on textual formatting
                     if name.startswith('"{}" of'.format(variant)):
-                        if op == BinOp.BitOr or variant != method:
+                        if op == BinOp.In or variant != method:
                             # Reversed order of base/argument.
                             self.unsupported_operand_types(op, arg_type, base,
                                                            context, code=codes.OPERATOR)

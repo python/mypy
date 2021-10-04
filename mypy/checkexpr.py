@@ -2156,7 +2156,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_op_expr(self, e: OpExpr) -> Type:
         """Type check a binary operator expression."""
-        if e.op in (BinOp.And, BinOp.Or):
+        if e.op.is_boolean():
             return self.check_boolean_op(e, e)
         if e.op == BinOp.Mul and isinstance(e.left, ListExpr):
             # Expressions of form [...] * e get special type inference.
