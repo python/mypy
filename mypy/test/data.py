@@ -18,7 +18,7 @@ root_dir = os.path.normpath(PREFIX)
 
 # File modify/create operation: copy module contents from source_path.
 UpdateFile = NamedTuple('UpdateFile', [('module', str),
-                                       ('source_path', str),
+                                       ('content', str),
                                        ('target_path', str)])
 
 # File delete operation: delete module file.
@@ -270,11 +270,35 @@ class DataDrivenTestCase(pytest.Item):
         self.tmpdir = tempfile.TemporaryDirectory(prefix='mypy-test-')
         os.chdir(self.tmpdir.name)
         os.mkdir(test_temp_dir)
+
+        # Precalculate steps for find_steps()
+        steps: Dict[int, List[FileOperation]] = {}
+
         for path, content in self.files:
-            dir = os.path.dirname(path)
-            os.makedirs(dir, exist_ok=True)
-            with open(path, 'w', encoding='utf8') as f:
-                f.write(content)
+            m = re.match(r'.*\.([0-9]+)$', path)
+            if m:
+                # Skip writing subsequent incremental steps - rather
+                # store them as operations.
+                num = int(m.group(1))
+                assert num >= 2
+                target_path = re.sub(r'\.[0-9]+$', '', path)
+                module = module_from_path(target_path)
+                operation = UpdateFile(module, content, target_path)
+                steps.setdefault(num, []).append(operation)
+            else:
+                # Write the first incremental steps
+                dir = os.path.dirname(path)
+                os.makedirs(dir, exist_ok=True)
+                with open(path, 'w', encoding='utf8') as f:
+                    f.write(content)
+
+        for num, paths in self.deleted_paths.items():
+            assert num >= 2
+            for path in paths:
+                module = module_from_path(path)
+                steps.setdefault(num, []).append(DeleteFile(module, path))
+        max_step = max(steps) if steps else 2
+        self.steps = [steps.get(num, []) for num in range(2, max_step + 1)]
 
     def teardown(self) -> None:
         assert self.old_cwd is not None and self.tmpdir is not None, \
@@ -312,23 +336,7 @@ class DataDrivenTestCase(pytest.Item):
 
         Defaults to having two steps if there aern't any operations.
         """
-        steps: Dict[int, List[FileOperation]] = {}
-        for path, _ in self.files:
-            m = re.match(r'.*\.([0-9]+)$', path)
-            if m:
-                num = int(m.group(1))
-                assert num >= 2
-                target_path = re.sub(r'\.[0-9]+$', '', path)
-                module = module_from_path(target_path)
-                operation = UpdateFile(module, path, target_path)
-                steps.setdefault(num, []).append(operation)
-        for num, paths in self.deleted_paths.items():
-            assert num >= 2
-            for path in paths:
-                module = module_from_path(path)
-                steps.setdefault(num, []).append(DeleteFile(module, path))
-        max_step = max(steps) if steps else 2
-        return [steps.get(num, []) for num in range(2, max_step + 1)]
+        return self.steps
 
 
 def module_from_path(path: str) -> str:
