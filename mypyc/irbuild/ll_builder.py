@@ -43,7 +43,7 @@ from mypyc.common import (
     use_method_vectorcall
 )
 from mypyc.primitives.registry import (
-    method_call_ops, CFunctionDescription, function_ops,
+    method_call_ops, CFunctionDescription,
     binary_ops, unary_ops, ERR_NEG_INT
 )
 from mypyc.primitives.bytes_ops import bytes_compare
