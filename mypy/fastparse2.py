@@ -51,6 +51,7 @@ from mypy.fastparse import (
     TYPE_IGNORE_PATTERN, INVALID_TYPE_IGNORE
 )
 from mypy.options import Options
+from mypy.operators import BinOp
 from mypy.reachability import mark_block_unreachable
 
 try:
@@ -258,14 +259,14 @@ class ASTConverter:
         ast27.FloorDiv: '//'
     }
 
-    def from_operator(self, op: ast27.operator) -> str:
+    def from_operator(self, op: ast27.operator) -> BinOp:
         op_name = ASTConverter.op_map.get(type(op))
         if op_name is None:
             raise RuntimeError('Unknown operator ' + str(type(op)))
         elif op_name == '@':
             raise RuntimeError('mypy does not support the MatMult operator')
         else:
-            return op_name
+            return BinOp(op_name)
 
     comp_op_map: Final[Dict[typing.Type[AST], str]] = {
         ast27.Gt: '>',
@@ -280,12 +281,12 @@ class ASTConverter:
         ast27.NotIn: 'not in'
     }
 
-    def from_comp_operator(self, op: ast27.cmpop) -> str:
+    def from_comp_operator(self, op: ast27.cmpop) -> BinOp:
         op_name = ASTConverter.comp_op_map.get(type(op))
         if op_name is None:
             raise RuntimeError('Unknown comparison operator ' + str(type(op)))
         else:
-            return op_name
+            return BinOp(op_name)
 
     def as_block(self, stmts: List[ast27.stmt], lineno: int) -> Optional[Block]:
         b = None
@@ -813,9 +814,9 @@ class ASTConverter:
 
     def group(self, vals: List[Expression], op: str) -> OpExpr:
         if len(vals) == 2:
-            return OpExpr(op, vals[0], vals[1])
+            return OpExpr(BinOp(op), vals[0], vals[1])
         else:
-            return OpExpr(op, vals[0], self.group(vals[1:], op))
+            return OpExpr(BinOp(op), vals[0], self.group(vals[1:], op))
 
     # BinOp(expr left, operator op, expr right)
     def visit_BinOp(self, n: ast27.BinOp) -> OpExpr:
@@ -824,7 +825,7 @@ class ASTConverter:
         if op is None:
             raise RuntimeError('cannot translate BinOp ' + str(type(n.op)))
 
-        e = OpExpr(op, self.visit(n.left), self.visit(n.right))
+        e = OpExpr(BinOp(op), self.visit(n.left), self.visit(n.right))
         return self.set_line(e, n)
 
     # UnaryOp(unaryop op, expr operand)

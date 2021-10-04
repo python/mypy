@@ -103,6 +103,7 @@ from mypy.typeanal import (
 )
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.options import Options
+from mypy.operators import BinOp
 from mypy.plugin import (
     Plugin, ClassDefContext, SemanticAnalyzerPluginInterface,
     DynamicClassDefContext
@@ -2134,7 +2135,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         if allow_none and isinstance(rv, NameExpr) and rv.fullname == 'builtins.None':
             return True
         if (isinstance(rv, OpExpr)
-                and rv.op == '|'
+                and rv.op == BinOp.BitOr
                 and self.can_be_type_alias(rv.left, allow_none=True)
                 and self.can_be_type_alias(rv.right, allow_none=True)):
             return True
@@ -3791,7 +3792,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         elif refers_to_fullname(expr.callee, 'builtins.divmod'):
             if not self.check_fixed_args(expr, 2, 'divmod'):
                 return
-            expr.analyzed = OpExpr('divmod', expr.args[0], expr.args[1])
+            expr.analyzed = OpExpr(BinOp.DivMod, expr.args[0], expr.args[1])
             expr.analyzed.line = expr.line
             expr.analyzed.accept(self)
         else:
@@ -3894,14 +3895,14 @@ class SemanticAnalyzer(NodeVisitor[None],
     def visit_op_expr(self, expr: OpExpr) -> None:
         expr.left.accept(self)
 
-        if expr.op in ('and', 'or'):
+        if expr.op in (BinOp.And, BinOp.Or):
             inferred = infer_condition_value(expr.left, self.options)
-            if ((inferred in (ALWAYS_FALSE, MYPY_FALSE) and expr.op == 'and') or
-                    (inferred in (ALWAYS_TRUE, MYPY_TRUE) and expr.op == 'or')):
+            if ((inferred in (ALWAYS_FALSE, MYPY_FALSE) and expr.op == BinOp.And) or
+                    (inferred in (ALWAYS_TRUE, MYPY_TRUE) and expr.op == BinOp.Or)):
                 expr.right_unreachable = True
                 return
-            elif ((inferred in (ALWAYS_TRUE, MYPY_TRUE) and expr.op == 'and') or
-                    (inferred in (ALWAYS_FALSE, MYPY_FALSE) and expr.op == 'or')):
+            elif ((inferred in (ALWAYS_TRUE, MYPY_TRUE) and expr.op == BinOp.And) or
+                    (inferred in (ALWAYS_FALSE, MYPY_FALSE) and expr.op == BinOp.Or)):
                 expr.right_always = True
 
         expr.right.accept(self)

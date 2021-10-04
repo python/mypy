@@ -32,7 +32,7 @@ from mypy.nodes import (
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
     TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, SymbolNode, PlaceholderNode,
-    ParamSpecExpr,
+    ParamSpecExpr, BinOp,
     ArgKind, ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, LITERAL_TYPE, REVEAL_TYPE,
 )
 from mypy.literals import literal
@@ -2156,12 +2156,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_op_expr(self, e: OpExpr) -> Type:
         """Type check a binary operator expression."""
-        if e.op == 'and' or e.op == 'or':
+        if e.op in (BinOp.And, BinOp.Or):
             return self.check_boolean_op(e, e)
-        if e.op == '*' and isinstance(e.left, ListExpr):
+        if e.op == BinOp.Mul and isinstance(e.left, ListExpr):
             # Expressions of form [...] * e get special type inference.
             return self.check_list_multiply(e)
-        if e.op == '%':
+        if e.op == BinOp.Mod:
             pyversion = self.chk.options.python_version
             if pyversion[0] == 3:
                 if isinstance(e.left, BytesExpr) and pyversion[1] >= 5:
@@ -2174,7 +2174,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         left_type = self.accept(e.left)
 
         proper_left_type = get_proper_type(left_type)
-        if isinstance(proper_left_type, TupleType) and e.op == '+':
+        if isinstance(proper_left_type, TupleType) and e.op == BinOp.Add:
             left_add_method = proper_left_type.partial_fallback.type.get('__add__')
             if left_add_method and left_add_method.fullname == 'builtins.tuple.__add__':
                 proper_right_type = get_proper_type(self.accept(e.right))
@@ -2371,8 +2371,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return False
         return not is_overlapping_types(left, right, ignore_promotions=False)
 
-    def get_operator_method(self, op: str) -> str:
-        if op == '/' and self.chk.options.python_version[0] == 2:
+    def get_operator_method(self, op: BinOp) -> str:
+        if op == BinOp.Div and self.chk.options.python_version[0] == 2:
             # TODO also check for "from __future__ import division"
             return '__div__'
         else:
@@ -2788,15 +2788,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         ctx = self.type_context[-1]
         left_type = self.accept(e.left, ctx)
 
-        assert e.op in ('and', 'or')  # Checked by visit_op_expr
+        assert e.op.is_boolean()  # Checked by visit_op_expr
 
         if e.right_always:
             left_map, right_map = None, {}  # type: mypy.checker.TypeMap, mypy.checker.TypeMap
         elif e.right_unreachable:
             left_map, right_map = {}, None
-        elif e.op == 'and':
+        elif e.op == BinOp.And:
             right_map, left_map = self.chk.find_isinstance_check(e.left)
-        elif e.op == 'or':
+        elif e.op == BinOp.Or:
             left_map, right_map = self.chk.find_isinstance_check(e.left)
 
         # If left_map is None then we know mypy considers the left expression
@@ -2832,10 +2832,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             assert right_map is not None  # find_isinstance_check guarantees this
             return right_type
 
-        if e.op == 'and':
+        if e.op == BinOp.And:
             restricted_left_type = false_only(left_type)
             result_is_left = not left_type.can_be_true
-        elif e.op == 'or':
+        elif e.op == BinOp.Or:
             restricted_left_type = true_only(left_type)
             result_is_left = not left_type.can_be_false
 

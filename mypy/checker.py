@@ -26,7 +26,7 @@ from mypy.nodes import (
     ARG_POS, ARG_STAR, LITERAL_TYPE, LDEF, MDEF, GDEF,
     CONTRAVARIANT, COVARIANT, INVARIANT, TypeVarExpr, AssignmentExpr,
     is_final_node,
-    ARG_NAMED)
+    ARG_NAMED, BinOp)
 from mypy import nodes
 from mypy import operators
 from mypy.literals import literal, literal_hash, Key
@@ -2076,7 +2076,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.fail(message_registry.DEPENDENT_FINAL_IN_CLASS_BODY, s)
 
     def check_type_alias_rvalue(self, s: AssignmentStmt) -> None:
-        if not (self.is_stub and isinstance(s.rvalue, OpExpr) and s.rvalue.op == '|'):
+        if not (self.is_stub and isinstance(s.rvalue, OpExpr) and s.rvalue.op == BinOp.BitOr):
             # We do this mostly for compatibility with old semantic analyzer.
             # TODO: should we get rid of this?
             alias_type = self.expr_checker.accept(s.rvalue)
@@ -2086,7 +2086,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             alias_type = AnyType(TypeOfAny.special_form)
 
             def accept_items(e: Expression) -> None:
-                if isinstance(e, OpExpr) and e.op == '|':
+                if isinstance(e, OpExpr) and e.op == BinOp.BitOr:
                     accept_items(e.left)
                     accept_items(e.right)
                 else:
@@ -4491,7 +4491,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 (None if if_assignment_map is None or if_condition_map is None else if_map),
                 (None if else_assignment_map is None or else_condition_map is None else else_map),
             )
-        elif isinstance(node, OpExpr) and node.op == 'and':
+        elif isinstance(node, OpExpr) and node.op == BinOp.And:
             left_if_vars, left_else_vars = self.find_isinstance_check(node.left)
             right_if_vars, right_else_vars = self.find_isinstance_check(node.right)
 
@@ -4499,7 +4499,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # and false if at least one of e1 and e2 is false.
             return (and_conditional_maps(left_if_vars, right_if_vars),
                     or_conditional_maps(left_else_vars, right_else_vars))
-        elif isinstance(node, OpExpr) and node.op == 'or':
+        elif isinstance(node, OpExpr) and node.op == BinOp.Or:
             left_if_vars, left_else_vars = self.find_isinstance_check(node.left)
             right_if_vars, right_else_vars = self.find_isinstance_check(node.right)
 
@@ -5563,7 +5563,7 @@ def flatten_types(t: Type) -> List[Type]:
 
 def get_isinstance_type(expr: Expression,
                         type_map: Dict[Expression, Type]) -> Optional[List[TypeRange]]:
-    if isinstance(expr, OpExpr) and expr.op == '|':
+    if isinstance(expr, OpExpr) and expr.op == BinOp.BitOr:
         left = get_isinstance_type(expr.left, type_map)
         right = get_isinstance_type(expr.right, type_map)
         if left is None or right is None:
@@ -5762,7 +5762,7 @@ def is_same_arg_prefix(t: CallableType, s: CallableType) -> bool:
                                   ignore_pos_arg_names=True)
 
 
-def infer_operator_assignment_method(typ: Type, operator: str) -> Tuple[bool, str]:
+def infer_operator_assignment_method(typ: Type, operator: BinOp) -> Tuple[bool, str]:
     """Determine if operator assignment on given value type is in-place, and the method name.
 
     For example, if operator is '+', return (True, '__iadd__') or (False, '__add__')

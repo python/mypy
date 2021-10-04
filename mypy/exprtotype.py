@@ -13,6 +13,7 @@ from mypy.types import (
     RawExpressionType, ProperType, UnionType
 )
 from mypy.options import Options
+from mypy.operators import BinOp
 
 
 class TypeTranslationError(Exception):
@@ -86,7 +87,7 @@ def expr_to_unanalyzed_type(expr: Expression,
         else:
             raise TypeTranslationError()
     elif (isinstance(expr, OpExpr)
-          and expr.op == '|'
+          and expr.op == BinOp.BitOr
           and ((options and options.python_version >= (3, 10)) or allow_new_syntax)):
         return UnionType([expr_to_unanalyzed_type(expr.left, options, allow_new_syntax),
                           expr_to_unanalyzed_type(expr.right, options, allow_new_syntax)])

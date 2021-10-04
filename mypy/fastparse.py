@@ -38,6 +38,7 @@ from mypy import defaults
 from mypy import message_registry, errorcodes as codes
 from mypy.errors import Errors
 from mypy.options import Options
+from mypy.operators import BinOp
 from mypy.reachability import mark_block_unreachable
 
 try:
@@ -402,12 +403,12 @@ class ASTConverter:
         ast3.FloorDiv: '//'
     }
 
-    def from_operator(self, op: ast3.operator) -> str:
+    def from_operator(self, op: ast3.operator) -> BinOp:
         op_name = ASTConverter.op_map.get(type(op))
         if op_name is None:
             raise RuntimeError('Unknown operator ' + str(type(op)))
         else:
-            return op_name
+            return BinOp(op_name)
 
     comp_op_map: Final[Dict[typing.Type[AST], str]] = {
         ast3.Gt: '>',
@@ -422,12 +423,12 @@ class ASTConverter:
         ast3.NotIn: 'not in'
     }
 
-    def from_comp_operator(self, op: ast3.cmpop) -> str:
+    def from_comp_operator(self, op: ast3.cmpop) -> BinOp:
         op_name = ASTConverter.comp_op_map.get(type(op))
         if op_name is None:
             raise RuntimeError('Unknown comparison operator ' + str(type(op)))
         else:
-            return op_name
+            return BinOp(op_name)
 
     def as_block(self, stmts: List[ast3.stmt], lineno: int) -> Optional[Block]:
         b = None
@@ -966,9 +967,9 @@ class ASTConverter:
 
     def group(self, op: str, vals: List[Expression], n: ast3.expr) -> OpExpr:
         if len(vals) == 2:
-            e = OpExpr(op, vals[0], vals[1])
+            e = OpExpr(BinOp(op), vals[0], vals[1])
         else:
-            e = OpExpr(op, vals[0], self.group(op, vals[1:], n))
+            e = OpExpr(BinOp(op), vals[0], self.group(op, vals[1:], n))
         return self.set_line(e, n)
 
     # BinOp(expr left, operator op, expr right)
@@ -978,7 +979,7 @@ class ASTConverter:
         if op is None:
             raise RuntimeError('cannot translate BinOp ' + str(type(n.op)))
 
-        e = OpExpr(op, self.visit(n.left), self.visit(n.right))
+        e = OpExpr(BinOp(op), self.visit(n.left), self.visit(n.right))
         return self.set_line(e, n)
 
     # UnaryOp(unaryop op, expr operand)

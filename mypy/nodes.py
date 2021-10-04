@@ -14,7 +14,7 @@ from mypy_extensions import trait
 import mypy.strconv
 from mypy.util import short_type
 from mypy.visitor import NodeVisitor, StatementVisitor, ExpressionVisitor
-
+from mypy.operators import BinOp
 from mypy.bogus_type import Bogus
 
 
@@ -1134,11 +1134,11 @@ class OperatorAssignmentStmt(Statement):
 
     __slots__ = ('op', 'lvalue', 'rvalue')
 
-    op: str  # TODO: Enum?
+    op: BinOp
     lvalue: Lvalue
     rvalue: Expression
 
-    def __init__(self, op: str, lvalue: Lvalue, rvalue: Expression) -> None:
+    def __init__(self, op: BinOp, lvalue: Lvalue, rvalue: Expression) -> None:
         super().__init__()
         self.op = op
         self.lvalue = lvalue
@@ -1796,7 +1796,7 @@ class OpExpr(Expression):
     __slots__ = ('op', 'left', 'right',
                  'method_type', 'right_always', 'right_unreachable')
 
-    op: str  # TODO: Enum?
+    op: BinOp
     left: Expression
     right: Expression
     # Inferred type for the operator method type (when relevant).
@@ -1806,7 +1806,7 @@ class OpExpr(Expression):
     # Per static analysis only: Is the right side unreachable?
     right_unreachable: bool
 
-    def __init__(self, op: str, left: Expression, right: Expression) -> None:
+    def __init__(self, op: BinOp, left: Expression, right: Expression) -> None:
         super().__init__()
         self.op = op
         self.left = left
@@ -1824,18 +1824,18 @@ class ComparisonExpr(Expression):
 
     __slots__ = ('operators', 'operands', 'method_types')
 
-    operators: List[str]
+    operators: List[BinOp]
     operands: List[Expression]
     # Inferred type for the operator methods (when relevant; None for 'is').
     method_types: List[Optional["mypy.types.Type"]]
 
-    def __init__(self, operators: List[str], operands: List[Expression]) -> None:
+    def __init__(self, operators: List[BinOp], operands: List[Expression]) -> None:
         super().__init__()
         self.operators = operators
         self.operands = operands
         self.method_types = []
 
-    def pairwise(self) -> Iterator[Tuple[str, Expression, Expression]]:
+    def pairwise(self) -> Iterator[Tuple[BinOp, Expression, Expression]]:
         """If this comparison expr is "a < b is c == d", yields the sequence
         ("<", a, b), ("is", b, c), ("==", c, d)
         """

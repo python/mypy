@@ -15,6 +15,7 @@ from mypy.nodes import (
     Var, RefExpr, MypyFile, TypeInfo, TypeApplication, LDEF, ARG_POS
 )
 from mypy.types import TupleType, Instance, TypeType, ProperType, get_proper_type
+from mypy.operators import BinOp
 
 from mypyc.common import MAX_SHORT_INT
 from mypyc.ir.ops import (
@@ -382,11 +383,11 @@ def transform_unary_expr(builder: IRBuilder, expr: UnaryExpr) -> Value:
 
 
 def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
-    if expr.op in ('and', 'or'):
+    if expr.op.is_boolean():
         return builder.shortcircuit_expr(expr)
 
     # Special case for string formatting
-    if expr.op == '%' and (isinstance(expr.left, StrExpr) or isinstance(expr.left, BytesExpr)):
+    if expr.op == BinOp.Mod and (isinstance(expr.left, StrExpr) or isinstance(expr.left, BytesExpr)):
         ret = translate_printf_style_formatting(builder, expr.left, expr.right)
         if ret is not None:
             return ret
@@ -551,7 +552,7 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
 
 
 def transform_basic_comparison(builder: IRBuilder,
-                               op: str,
+                               op: BinOp,
                                left: Value,
                                right: Value,
                                line: int) -> Value:
@@ -559,10 +560,10 @@ def transform_basic_comparison(builder: IRBuilder,
             and op in int_comparison_op_mapping.keys()):
         return builder.compare_tagged(left, right, op, line)
     negate = False
-    if op == 'is not':
-        op, negate = 'is', True
-    elif op == 'not in':
-        op, negate = 'in', True
+    if op == BinOp.IsNot:
+        op, negate = BinOp.Is, True
+    elif op == BinOp.NotIn:
+        op, negate = BinOp.in, True
 
     target = builder.binary_op(left, right, op, line)
 

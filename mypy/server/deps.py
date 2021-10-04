@@ -92,7 +92,7 @@ from mypy.nodes import (
     LDEF, MDEF, GDEF, TypeAliasExpr, NewTypeExpr, ImportAll, EnumCallExpr, AwaitExpr
 )
 from mypy.operators import (
-    op_methods, reverse_op_methods, ops_with_inplace_method, unary_op_methods
+    BinOp, op_methods, reverse_op_methods, ops_with_inplace_method, unary_op_methods
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -709,14 +709,14 @@ class DependencyVisitor(TraverserVisitor):
             left = e.operands[i]
             right = e.operands[i + 1]
             self.process_binary_op(op, left, right)
-            if self.python2 and op in ('==', '!=', '<', '<=', '>', '>='):
+            if self.python2 and op.is_numeric_compare():
                 self.add_operator_method_dependency(left, '__cmp__')
                 self.add_operator_method_dependency(right, '__cmp__')
 
-    def process_binary_op(self, op: str, left: Expression, right: Expression) -> None:
+    def process_binary_op(self, op: BinOp, left: Expression, right: Expression) -> None:
         method = op_methods.get(op)
         if method:
-            if op == 'in':
+            if op == BinOp.In:
                 self.add_operator_method_dependency(right, method)
             else:
                 self.add_operator_method_dependency(left, method)

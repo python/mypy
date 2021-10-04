@@ -30,6 +30,7 @@ from mypy.types import (
 from mypy.maptype import map_instance_to_supertype
 from mypy.visitor import ExpressionVisitor, StatementVisitor
 from mypy.util import split_target
+from mypy.operators import BoolOp
 
 from mypyc.common import TEMP_ATTR_NAME, SELF_NAME
 from mypyc.irbuild.prebuildvisitor import PreBuildVisitor
@@ -901,8 +902,8 @@ class IRBuilder:
     # Conditional expressions
 
     def process_conditional(self, e: Expression, true: BasicBlock, false: BasicBlock) -> None:
-        if isinstance(e, OpExpr) and e.op in ['and', 'or']:
-            if e.op == 'and':
+        if isinstance(e, OpExpr) and e.op.is_boolean():
+            if e.op == BitOp.And:
                 # Short circuit 'and' in a conditional context.
                 new = BasicBlock()
                 self.process_conditional(e.left, new, false)

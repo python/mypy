@@ -9,6 +9,7 @@ from mypy.nodes import (
     ImportAll, LITERAL_YES
 )
 from mypy.options import Options
+from mypy.operators import BinOp, reverse_op
 from mypy.traverser import TraverserVisitor
 from mypy.literals import literal
 
@@ -25,15 +26,6 @@ inverted_truth_mapping: Final = {
     TRUTH_VALUE_UNKNOWN: TRUTH_VALUE_UNKNOWN,
     MYPY_TRUE: MYPY_FALSE,
     MYPY_FALSE: MYPY_TRUE,
-}
-
-reverse_op: Final = {
-    "==": "==",
-    "!=": "!=",
-    "<": ">",
-    ">": "<",
-    "<=": ">=",
-    ">=": "<=",
 }
 
 
@@ -87,10 +79,10 @@ def infer_condition_value(expr: Expression, options: Options) -> int:
         name = expr.name
     elif isinstance(expr, MemberExpr):
         name = expr.name
-    elif isinstance(expr, OpExpr) and expr.op in ('and', 'or'):
+    elif isinstance(expr, OpExpr) and expr.op.is_boolean():
         left = infer_condition_value(expr.left, options)
-        if ((left in (ALWAYS_TRUE, MYPY_TRUE) and expr.op == 'and') or
-                (left in (ALWAYS_FALSE, MYPY_FALSE) and expr.op == 'or')):
+        if ((left in (ALWAYS_TRUE, MYPY_TRUE) and expr.op == BinOp.And) or
+                (left in (ALWAYS_FALSE, MYPY_FALSE) and expr.op == BinOp.Or)):
             # Either `True and <other>` or `False or <other>`: the result will
             # always be the right-hand-side.
             return infer_condition_value(expr.right, options)
@@ -134,7 +126,7 @@ def consider_sys_version_info(expr: Expression, pyversion: Tuple[int, ...]) -> i
     if len(expr.operators) > 1:
         return TRUTH_VALUE_UNKNOWN
     op = expr.operators[0]
-    if op not in ('==', '!=', '<=', '>=', '<', '>'):
+    if not op.is_numeric_compare():
         return TRUTH_VALUE_UNKNOWN
 
     index = contains_sys_version_info(expr.operands[0])
@@ -157,7 +149,7 @@ def consider_sys_version_info(expr: Expression, pyversion: Tuple[int, ...]) -> i
             hi = 2
         if 0 <= lo < hi <= 2:
             val = pyversion[lo:hi]
-            if len(val) == len(thing) or len(val) > len(thing) and op not in ('==', '!='):
+            if len(val) == len(thing) or len(val) > len(thing) and not op.is_equality():
                 return fixed_comparison(val, op, thing)
     return TRUTH_VALUE_UNKNOWN
 
@@ -176,7 +168,7 @@ def consider_sys_platform(expr: Expression, platform: str) -> int:
         if len(expr.operators) > 1:
             return TRUTH_VALUE_UNKNOWN
         op = expr.operators[0]
-        if op not in ('==', '!='):
+        if not op.is_equality():
             return TRUTH_VALUE_UNKNOWN
         if not is_sys_attr(expr.operands[0], 'platform'):
             return TRUTH_VALUE_UNKNOWN
@@ -204,19 +196,19 @@ def consider_sys_platform(expr: Expression, platform: str) -> int:
 Targ = TypeVar('Targ', int, str, Tuple[int, ...])
 
 
-def fixed_comparison(left: Targ, op: str, right: Targ) -> int:
+def fixed_comparison(left: Targ, op: BinOp, right: Targ) -> int:
     rmap = {False: ALWAYS_FALSE, True: ALWAYS_TRUE}
-    if op == '==':
+    if op == BinOp.Eq:
         return rmap[left == right]
-    if op == '!=':
+    if op == BinOp.NotEq:
         return rmap[left != right]
-    if op == '<=':
+    if op == BinOp.LtE:
         return rmap[left <= right]
-    if op == '>=':
+    if op == BinOp.GtE:
         return rmap[left >= right]
-    if op == '<':
+    if op == BinOp.Lt:
         return rmap[left < right]
-    if op == '>':
+    if op == BinOp.Gt:
         return rmap[left > right]
     return TRUTH_VALUE_UNKNOWN
 

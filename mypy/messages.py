@@ -33,7 +33,7 @@ from mypy.nodes import (
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
     CallExpr, IndexExpr, StrExpr, SymbolTable, TempNode, SYMBOL_FUNCBASE_TYPES
 )
-from mypy.operators import op_methods, op_methods_to_symbols
+from mypy.operators import BinOp, op_methods, op_methods_to_symbols
 from mypy.subtypes import (
     is_subtype, find_member, get_member_flags,
     IS_SETTABLE, IS_CLASSVAR, IS_CLASS_OR_STATIC,
@@ -437,10 +437,10 @@ class MessageBuilder:
                 base = extract_type(name)
 
             for method, op in op_methods_to_symbols.items():
-                for variant in method, '__r' + method[2:]:
+                for variant in (method, '__r' + method[2:]):
                     # FIX: do not rely on textual formatting
                     if name.startswith('"{}" of'.format(variant)):
-                        if op == 'in' or variant != method:
+                        if op == BinOp.BitOr or variant != method:
                             # Reversed order of base/argument.
                             self.unsupported_operand_types(op, arg_type, base,
                                                            context, code=codes.OPERATOR)
