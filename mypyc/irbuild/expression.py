@@ -387,7 +387,8 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
         return builder.shortcircuit_expr(expr)
 
     # Special case for string formatting
-    if expr.op == BinOp.Mod and (isinstance(expr.left, StrExpr) or isinstance(expr.left, BytesExpr)):
+    if (expr.op == BinOp.Mod
+            and (isinstance(expr.left, StrExpr) or isinstance(expr.left, BytesExpr))):
         ret = translate_printf_style_formatting(builder, expr.left, expr.right)
         if ret is not None:
             return ret
@@ -563,7 +564,7 @@ def transform_basic_comparison(builder: IRBuilder,
     if op == BinOp.IsNot:
         op, negate = BinOp.Is, True
     elif op == BinOp.NotIn:
-        op, negate = BinOp.in, True
+        op, negate = BinOp.In, True
 
     target = builder.binary_op(left, right, op, line)
 
