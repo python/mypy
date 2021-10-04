@@ -214,7 +214,7 @@ class StrConv(NodeVisitor[str]):
         return self.dump(a, o)
 
     def visit_operator_assignment_stmt(self, o: 'mypy.nodes.OperatorAssignmentStmt') -> str:
-        return self.dump([o.op, o.lvalue, o.rvalue], o)
+        return self.dump([o.op.value, o.lvalue, o.rvalue], o)
 
     def visit_while_stmt(self, o: 'mypy.nodes.WhileStmt') -> str:
         a: List[Any] = [o.expr, o.body]
@@ -410,10 +410,10 @@ class StrConv(NodeVisitor[str]):
         return self.dump(a + extra, o)
 
     def visit_op_expr(self, o: 'mypy.nodes.OpExpr') -> str:
-        return self.dump([o.op, o.left, o.right], o)
+        return self.dump([o.op.value, o.left, o.right], o)
 
     def visit_comparison_expr(self, o: 'mypy.nodes.ComparisonExpr') -> str:
-        return self.dump([o.operators, o.operands], o)
+        return self.dump([[op.value for op in o.operators], o.operands], o)
 
     def visit_cast_expr(self, o: 'mypy.nodes.CastExpr') -> str:
         return self.dump([o.expr, o.type], o)

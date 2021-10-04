@@ -122,7 +122,7 @@ def transform_operator_assignment_stmt(builder: IRBuilder, stmt: OperatorAssignm
     rreg = builder.accept(stmt.rvalue)
     # the Python parser strips the '=' from operator assignment statements, so re-add it
     op = stmt.op.value + '='
-    res = builder.binary_op(target_value, rreg, BinOp(op), stmt.line)
+    res = builder.binary_op(target_value, rreg, op, stmt.line)
     # usually operator assignments are done in-place
     # but when target doesn't support that we need to manually assign
     builder.assign(target, res, res.line)
