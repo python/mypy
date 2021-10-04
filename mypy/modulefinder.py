@@ -70,7 +70,10 @@ class ModuleNotFoundReason(Enum):
             notes = ["You may be running mypy in a subpackage, "
                      "mypy should be run on the package root"]
         elif self is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
-            msg = 'Skipping analyzing "{module}": found module but no type hints or library stubs'
+            msg = (
+                'Skipping analyzing "{module}": module is installed, but missing library stubs '
+                'or py.typed marker'
+            )
             notes = [doc_link]
         elif self is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED:
             msg = (
