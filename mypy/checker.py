@@ -30,6 +30,7 @@ from mypy.nodes import (
 from mypy import nodes
 from mypy import operators
 from mypy.literals import literal, literal_hash, Key
+from mypy.lookup import lookup_qualified, lookup_typeinfo
 from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any, make_optional_type
 from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
@@ -4931,14 +4932,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         For example, named_type('builtins.object') produces the 'object' type.
         """
         # Assume that the name refers to a type.
-        sym = self.lookup_qualified(name)
-        node = sym.node
-        if isinstance(node, TypeAlias):
-            assert isinstance(node.target, Instance)  # type: ignore
-            node = node.target.type
-        assert isinstance(node, TypeInfo)
+        info = self.lookup_typeinfo(name)
         any_type = AnyType(TypeOfAny.from_omitted_generics)
-        return Instance(node, [any_type] * len(node.defn.type_vars))
+        return Instance(info, [any_type] * len(info.defn.type_vars))
 
     def named_generic_type(self, name: str, args: List[Type]) -> Instance:
         """Return an instance with the given name and type arguments.
@@ -4951,12 +4947,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # TODO: assert len(args) == len(info.defn.type_vars)
         return Instance(info, args)
 
-    def lookup_typeinfo(self, fullname: str) -> TypeInfo:
-        # Assume that the name refers to a class.
-        sym = self.lookup_qualified(fullname)
-        node = sym.node
-        assert isinstance(node, TypeInfo)
-        return node
+    def lookup_qualified(self, name: str) -> SymbolTableNode:
+        return lookup_qualified(name, self.globals, self.modules)
+
+    def lookup_typeinfo(self, name: str) -> TypeInfo:
+        return lookup_typeinfo(name, self.globals, self.modules)
 
     def type_type(self) -> Instance:
         """Return instance type 'type'."""
@@ -4981,46 +4976,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return (self.options.check_untyped_defs
                 or not self.dynamic_funcs
                 or not self.dynamic_funcs[-1])
-
-    def lookup(self, name: str) -> SymbolTableNode:
-        """Look up a definition from the symbol table with the given name.
-        """
-        if name in self.globals:
-            return self.globals[name]
-        else:
-            b = self.globals.get('__builtins__', None)
-            if b:
-                table = cast(MypyFile, b.node).names
-                if name in table:
-                    return table[name]
-            raise KeyError('Failed lookup: {}'.format(name))
-
-    def lookup_qualified(self, name: str) -> SymbolTableNode:
-        if '.' not in name:
-            return self.lookup(name)
-        else:
-            parts = name.split('.')
-            n = self.modules[parts[0]]
-            for i in range(1, len(parts) - 1):
-                sym = n.names.get(parts[i])
-                assert sym is not None, "Internal error: attempted lookup of unknown name"
-                n = cast(MypyFile, sym.node)
-            last = parts[-1]
-            if last in n.names:
-                return n.names[last]
-            elif len(parts) == 2 and parts[0] == 'builtins':
-                fullname = 'builtins.' + last
-                if fullname in SUGGESTED_TEST_FIXTURES:
-                    suggestion = ", e.g. add '[builtins fixtures/{}]' to your test".format(
-                        SUGGESTED_TEST_FIXTURES[fullname])
-                else:
-                    suggestion = ''
-                raise KeyError("Could not find builtin symbol '{}' (If you are running a "
-                               "test case, use a fixture that "
-                               "defines this symbol{})".format(last, suggestion))
-            else:
-                msg = "Failed qualified lookup: '{}' (fullname = '{}')."
-                raise KeyError(msg.format(last, name))
 
     @contextmanager
     def enter_partial_types(self, *, is_function: bool = False,
