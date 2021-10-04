@@ -1023,7 +1023,7 @@ match m:
 
 
 -- Exhaustiveness --
-[case testUnionNegativeNarrowing]
+[case testUnionNegativeNarrowing-skip]
 from typing import Union
 
 m: Union[str, int]
@@ -1036,7 +1036,7 @@ match m:
         reveal_type(b)  # N: Revealed type is "builtins.int"
         reveal_type(m)  # N: Revealed type is "builtins.int"
 
-[case testOrPatternNegativeNarrowing]
+[case testOrPatternNegativeNarrowing-skip]
 from typing import Union
 
 m: Union[str, bytes, int]
