@@ -339,5 +339,5 @@ Mypy will only check attribute assignments against `__slots__` when the followin
 
 1. All base classes (except builtin ones) must have explicit ``__slots__`` defined (mirrors CPython's behaviour)
 2. ``__slots__`` does not include ``__dict__``, since if ``__slots__`` includes ``__dict__``
-it allows setting any attribute, similar to when ``__slots__`` is not defined (mirrors CPython's behaviour)
+   it allows setting any attribute, similar to when ``__slots__`` is not defined (mirrors CPython's behaviour)
 3. All values in ``__slots__`` must be statically known. For example, no variables: only string literals.
