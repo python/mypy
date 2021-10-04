@@ -218,7 +218,7 @@ class IRBuilder:
     def unary_op(self, lreg: Value, expr_op: str, line: int) -> Value:
         return self.builder.unary_op(lreg, expr_op, line)
 
-    def binary_op(self, lreg: Value, rreg: Value, expr_op: str, line: int) -> Value:
+    def binary_op(self, lreg: Value, rreg: Value, expr_op: BinOp, line: int) -> Value:
         return self.builder.binary_op(lreg, rreg, expr_op, line)
 
     def coerce(self, src: Value, target_type: RType, line: int, force: bool = False) -> Value:
@@ -245,7 +245,7 @@ class IRBuilder:
     def translate_is_op(self,
                         lreg: Value,
                         rreg: Value,
-                        expr_op: str,
+                        expr_op: BinOp,
                         line: int) -> Value:
         return self.builder.translate_is_op(lreg, rreg, expr_op, line)
 
@@ -284,10 +284,10 @@ class IRBuilder:
     def int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.builder.int_op(type, lhs, rhs, op, line)
 
-    def compare_tagged(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
+    def compare_tagged(self, lhs: Value, rhs: Value, op: BinOp, line: int) -> Value:
         return self.builder.compare_tagged(lhs, rhs, op, line)
 
-    def compare_tuples(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
+    def compare_tuples(self, lhs: Value, rhs: Value, op: BinOp, line: int) -> Value:
         return self.builder.compare_tuples(lhs, rhs, op, line)
 
     def builtin_len(self, val: Value, line: int) -> Value:
@@ -340,7 +340,7 @@ class IRBuilder:
             needs_import: the BasicBlock that is run if the module has not been loaded yet
             out: the BasicBlock that is run if the module has already been loaded"""
         first_load = self.load_module(id)
-        comparison = self.translate_is_op(first_load, self.none_object(), 'is not', line)
+        comparison = self.translate_is_op(first_load, self.none_object(), BinOp.IsNot, line)
         self.add_bool_branch(comparison, out, needs_import)
 
     def get_module(self, module: str, line: int) -> Value:
@@ -644,7 +644,7 @@ class IRBuilder:
             iter_list = self.call_c(to_list, [iterator], line)
             iter_list_len = self.builtin_len(iter_list, line)
             post_star_len = Integer(len(post_star_vals))
-            condition = self.binary_op(post_star_len, iter_list_len, '<=', line)
+            condition = self.binary_op(post_star_len, iter_list_len, BinOp.LtE, line)
 
             error_block, ok_block = BasicBlock(), BasicBlock()
             self.add(Branch(condition, ok_block, error_block, Branch.BOOL))
@@ -946,7 +946,7 @@ class IRBuilder:
         if not is_tagged(ltype) or not is_tagged(rtype):
             return False
         op = e.operators[0]
-        if op not in ('==', '!=', '<', '<=', '>', '>='):
+        if not op.is_numeric_compare():
             return False
         left = self.accept(e.operands[0])
         right = self.accept(e.operands[1])

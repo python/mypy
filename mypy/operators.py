@@ -55,6 +55,12 @@ class BinOp(str, enum.Enum):
     def is_equality(self) -> bool:
         return self in {BinOp.Eq, BinOp.NotEq}
 
+    def is_contains(self) -> bool:
+        return self in {BinOp.In, BinOp.NotIn}
+
+    def is_identity(self) -> bool:
+        return self in {BinOp.Is, BinOp.IsNot}
+
 
 # Map reverse binary numberic operators, if possible:
 reverse_op: Final = {

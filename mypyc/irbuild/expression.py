@@ -481,7 +481,7 @@ def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Val
 def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
     # x in (...)/[...]
     # x not in (...)/[...]
-    if (e.operators[0] in ['in', 'not in']
+    if (e.operators[0].is_contains()
             and len(e.operators) == 1
             and isinstance(e.operands[1], (TupleExpr, ListExpr))):
         items = e.operands[1].items
@@ -490,12 +490,12 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
         # x not in y -> x != y[0] and ... and x != y[n]
         # 16 is arbitrarily chosen to limit code size
         if 1 < n_items < 16:
-            if e.operators[0] == 'in':
-                bin_op = 'or'
-                cmp_op = '=='
+            if e.operators[0] == BinOp.In:
+                bin_op = BinOp.Or
+                cmp_op = BinOp.Eq
             else:
-                bin_op = 'and'
-                cmp_op = '!='
+                bin_op = BinOp.And
+                cmp_op = BinOp.NotEq
             lhs = e.operands[0]
             mypy_file = builder.graph['builtins'].tree
             assert mypy_file is not None
@@ -514,16 +514,16 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
         # x in [y]/(y) -> x == y
         # x not in [y]/(y) -> x != y
         elif n_items == 1:
-            if e.operators[0] == 'in':
-                cmp_op = '=='
+            if e.operators[0] == BinOp.In:
+                cmp_op = BinOp.Eq
             else:
-                cmp_op = '!='
+                cmp_op = BinOp.NotEq
             e.operators = [cmp_op]
             e.operands[1] = items[0]
         # x in []/() -> False
         # x not in []/() -> True
         elif n_items == 0:
-            if e.operators[0] == 'in':
+            if e.operators[0] == BinOp.In:
                 return builder.false()
             else:
                 return builder.true()

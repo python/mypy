@@ -11,6 +11,7 @@ mypyc.irbuild.function.
 from typing import List
 
 from mypy.nodes import Var, ARG_OPT
+from mypy.operators import BinOp
 
 from mypyc.common import SELF_NAME, NEXT_LABEL_ATTR_NAME, ENV_ATTR_NAME
 from mypyc.ir.ops import (
@@ -86,7 +87,7 @@ def populate_switch_for_generator_class(builder: IRBuilder) -> None:
     for label, true_block in enumerate(cls.continuation_blocks):
         false_block = BasicBlock()
         comparison = builder.binary_op(
-            cls.next_label_reg, Integer(label), '==', line
+            cls.next_label_reg, Integer(label), BinOp.Eq, line
         )
         builder.add_bool_branch(comparison, true_block, false_block)
         builder.activate_block(false_block)
@@ -109,7 +110,7 @@ def add_raise_exception_blocks_to_generator_class(builder: IRBuilder, line: int)
     # Check to see if an exception was raised.
     error_block = BasicBlock()
     ok_block = BasicBlock()
-    comparison = builder.translate_is_op(exc_type, builder.none_object(), 'is not', line)
+    comparison = builder.translate_is_op(exc_type, builder.none_object(), BinOp.IsNot, line)
     builder.add_bool_branch(comparison, error_block, ok_block)
 
     builder.activate_block(error_block)

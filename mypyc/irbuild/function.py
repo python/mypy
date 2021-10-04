@@ -18,6 +18,7 @@ from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, Decorator, Var, YieldFromExpr, AwaitExpr, YieldExpr,
     FuncItem, LambdaExpr, SymbolNode, ArgKind, TypeInfo
 )
+from mypy.operators import BinOp
 from mypy.types import CallableType, get_proper_type
 
 from mypyc.ir.ops import (
@@ -842,7 +843,7 @@ def generate_singledispatch_dispatch_function(
     )
     call_find_impl, use_cache, call_func = BasicBlock(), BasicBlock(), BasicBlock()
     get_result = builder.call_c(dict_get_method_with_none, [dispatch_cache, arg_type], line)
-    is_not_none = builder.translate_is_op(get_result, builder.none_object(), 'is not', line)
+    is_not_none = builder.translate_is_op(get_result, builder.none_object(), BinOp.IsNot, line)
     impl_to_use = Register(object_rprimitive)
     builder.add_bool_branch(is_not_none, use_cache, call_find_impl)
 
@@ -897,7 +898,7 @@ def gen_calls_to_correct_impl(
         builder.builder.compare_tagged_condition(
             passed_id,
             current_id,
-            '==',
+            BinOp.Eq,
             call_impl,
             next_impl,
             line,

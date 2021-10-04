@@ -7,6 +7,7 @@ from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, PassStmt, AssignmentStmt, NameExpr, StrExpr,
     ExpressionStmt, TempNode, Decorator, Lvalue, RefExpr, is_class_var
 )
+from mypy.operators import BinOp
 from mypyc.ir.ops import (
     Value, Register, Call, LoadErrorValue, LoadStatic, InitStatic, TupleSet, SetAttr, Return,
     BasicBlock, Branch, MethodCall, NAMESPACE_TYPE, LoadAddress
@@ -435,7 +436,7 @@ def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> None:
         not_implemented = builder.add(LoadAddress(not_implemented_op.type,
                                                   not_implemented_op.src, line))
         builder.add(Branch(
-            builder.translate_is_op(eqval, not_implemented, 'is', line),
+            builder.translate_is_op(eqval, not_implemented, BinOp.Is, line),
             not_implemented_block,
             regular_block,
             Branch.BOOL))

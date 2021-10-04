@@ -11,6 +11,7 @@ from typing_extensions import Type, ClassVar
 from mypy.nodes import (
     Lvalue, Expression, TupleExpr, CallExpr, RefExpr, GeneratorExpr, ARG_POS, MemberExpr, TypeAlias
 )
+from mypy.operators import BinOp
 from mypyc.ir.ops import (
     Value, BasicBlock, Integer, Branch, Register, TupleGet, TupleSet, IntOp
 )
@@ -534,7 +535,7 @@ class ForSequence(ForGenerator):
             index_reg: Value = Integer(0)
         else:
             index_reg = builder.binary_op(self.load_len(self.expr_target),
-                                          Integer(1), '-', self.line)
+                                          Integer(1), BinOp.Sub, self.line)
         self.index_target = builder.maybe_spill_assignable(index_reg)
         self.target_type = target_type
 
@@ -548,14 +549,15 @@ class ForSequence(ForGenerator):
             # obviously we still need to check against the length,
             # since it could shrink out from under us.
             comparison = builder.binary_op(builder.read(self.index_target, line),
-                                           Integer(0), '>=', line)
+                                           Integer(0), BinOp.GtE, line)
             second_check = BasicBlock()
             builder.add_bool_branch(comparison, second_check, self.loop_exit)
             builder.activate_block(second_check)
         # For compatibility with python semantics we recalculate the length
         # at every iteration.
         len_reg = self.load_len(self.expr_target)
-        comparison = builder.binary_op(builder.read(self.index_target, line), len_reg, '<', line)
+        comparison = builder.binary_op(builder.read(self.index_target, line),
+                                       len_reg, BinOp.Lt, line)
         builder.add_bool_branch(comparison, self.body_block, self.loop_exit)
 
     def begin_body(self) -> None:
@@ -743,7 +745,7 @@ class ForRange(ForGenerator):
         builder = self.builder
         line = self.line
         # Add loop condition check.
-        cmp = '<' if self.step > 0 else '>'
+        cmp = BinOp.Lt if self.step > 0 else BinOp.Gt
         comparison = builder.binary_op(builder.read(self.index_reg, line),
                                        builder.read(self.end_target, line), cmp, line)
         builder.add_bool_branch(comparison, self.body_block, self.loop_exit)
@@ -762,7 +764,7 @@ class ForRange(ForGenerator):
 
         else:
             new_val = builder.binary_op(
-                builder.read(self.index_reg, line), Integer(self.step), '+', line)
+                builder.read(self.index_reg, line), Integer(self.step), BinOp.Add, line)
         builder.assign(self.index_reg, new_val, line)
         builder.assign(self.index_target, new_val, line)
 

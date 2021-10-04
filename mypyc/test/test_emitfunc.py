@@ -3,6 +3,7 @@ import unittest
 from typing import List, Optional
 
 from mypy.backports import OrderedDict
+from mypy.operators import BinOp
 
 from mypy.test.helpers import assert_string_arrays_equal
 
@@ -102,12 +103,12 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
 
     def test_int_add(self) -> None:
         self.assert_emit_binary_op(
-            '+', self.n, self.m, self.k,
+            BinOp.Add, self.n, self.m, self.k,
             "cpy_r_r0 = CPyTagged_Add(cpy_r_m, cpy_r_k);")
 
     def test_int_sub(self) -> None:
         self.assert_emit_binary_op(
-            '-', self.n, self.m, self.k,
+            BinOp.Sub, self.n, self.m, self.k,
             "cpy_r_r0 = CPyTagged_Subtract(cpy_r_m, cpy_r_k);")
 
     def test_int_neg(self) -> None:
@@ -293,7 +294,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
 
     def test_dict_contains(self) -> None:
         self.assert_emit_binary_op(
-            'in', self.b, self.o, self.d,
+            BinOp.In, self.b, self.o, self.d,
             """cpy_r_r0 = PyDict_Contains(cpy_r_d, cpy_r_o);""")
 
     def test_int_op(self) -> None:
@@ -402,7 +403,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                                    msg='Generated code unexpected')
 
     def assert_emit_binary_op(self,
-                              op: str,
+                              op: BinOp,
                               dest: Value,
                               left: Value,
                               right: Value,

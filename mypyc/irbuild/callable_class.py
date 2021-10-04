@@ -6,6 +6,8 @@ non-local variables defined in outer scopes.
 
 from typing import List
 
+from mypy.operators import BinOp
+
 from mypyc.common import SELF_NAME, ENV_ATTR_NAME
 from mypyc.ir.ops import BasicBlock, Return, Call, SetAttr, Value, Register
 from mypyc.ir.rtypes import RInstance, object_rprimitive
@@ -115,7 +117,7 @@ def add_get_to_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
         # instance method object.
         instance_block, class_block = BasicBlock(), BasicBlock()
         comparison = builder.translate_is_op(
-            builder.read(instance), builder.none_object(), 'is', line
+            builder.read(instance), builder.none_object(), BinOp.Is, line
         )
         builder.add_bool_branch(comparison, class_block, instance_block)
 

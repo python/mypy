@@ -15,7 +15,7 @@ from typing import (
 from typing_extensions import Final
 
 from mypy.nodes import ArgKind, ARG_POS, ARG_STAR, ARG_STAR2
-from mypy.operators import op_methods
+from mypy.operators import BinOp, op_methods
 from mypy.types import AnyType, TypeOfAny
 from mypy.checkexpr import map_actuals_to_formals
 
@@ -844,35 +844,35 @@ class LowLevelIRBuilder:
         return self.add(LoadStatic(object_rprimitive, name, module, NAMESPACE_TYPE))
 
     # Other primitive operations
-    def binary_op(self, lreg: Value, rreg: Value, op: str, line: int) -> Value:
+    def binary_op(self, lreg: Value, rreg: Value, op: BinOp, line: int) -> Value:
         ltype = lreg.type
         rtype = rreg.type
 
         # Special case tuple comparison here so that nested tuples can be supported
-        if isinstance(ltype, RTuple) and isinstance(rtype, RTuple) and op in ('==', '!='):
+        if isinstance(ltype, RTuple) and isinstance(rtype, RTuple) and op.is_equality():
             return self.compare_tuples(lreg, rreg, op, line)
 
         # Special case == and != when we can resolve the method call statically
-        if op in ('==', '!='):
+        if op.is_equality():
             value = self.translate_eq_cmp(lreg, rreg, op, line)
             if value is not None:
                 return value
 
         # Special case various ops
-        if op in ('is', 'is not'):
+        if op.is_identity():
             return self.translate_is_op(lreg, rreg, op, line)
         # TODO: modify 'str' to use same interface as 'compare_bytes' as it avoids
         # call to PyErr_Occurred()
-        if is_str_rprimitive(ltype) and is_str_rprimitive(rtype) and op in ('==', '!='):
+        if is_str_rprimitive(ltype) and is_str_rprimitive(rtype) and op.is_equality():
             return self.compare_strings(lreg, rreg, op, line)
-        if is_bytes_rprimitive(ltype) and is_bytes_rprimitive(rtype) and op in ('==', '!='):
+        if is_bytes_rprimitive(ltype) and is_bytes_rprimitive(rtype) and op.is_equality():
             return self.compare_bytes(lreg, rreg, op, line)
         if is_tagged(ltype) and is_tagged(rtype) and op in int_comparison_op_mapping:
             return self.compare_tagged(lreg, rreg, op, line)
         if is_bool_rprimitive(ltype) and is_bool_rprimitive(rtype) and op in (
                 '&', '&=', '|', '|=', '^', '^='):
-            return self.bool_bitwise_op(lreg, rreg, op[0], line)
-        if isinstance(rtype, RInstance) and op in ('in', 'not in'):
+            return self.bool_bitwise_op(lreg, rreg, BinOp(op.value[0]), line)
+        if isinstance(rtype, RInstance) and op.is_contains():
             return self.translate_instance_contains(rreg, lreg, op, line)
 
         call_c_ops_candidates = binary_ops.get(op, [])
@@ -892,7 +892,7 @@ class LowLevelIRBuilder:
         check = self.comparison_op(bitwise_and, zero, op, line)
         return check
 
-    def compare_tagged(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
+    def compare_tagged(self, lhs: Value, rhs: Value, op: BinOp, line: int) -> Value:
         """Compare two tagged integers using given operator (value context)."""
         # generate fast binary logic ops on short ints
         if is_short_int_rprimitive(lhs.type) and is_short_int_rprimitive(rhs.type):
@@ -901,7 +901,7 @@ class LowLevelIRBuilder:
         result = Register(bool_rprimitive)
         short_int_block, int_block, out = BasicBlock(), BasicBlock(), BasicBlock()
         check_lhs = self.check_tagged_short_int(lhs, line)
-        if op in ("==", "!="):
+        if op.is_equality():
             check = check_lhs
         else:
             # for non-equality logical ops (less/greater than, etc.), need to check both sides
@@ -930,7 +930,7 @@ class LowLevelIRBuilder:
     def compare_tagged_condition(self,
                                  lhs: Value,
                                  rhs: Value,
-                                 op: str,
+                                 op: BinOp,
                                  true: BasicBlock,
                                  false: BasicBlock,
                                  line: int) -> None:
@@ -945,7 +945,7 @@ class LowLevelIRBuilder:
             true: Branch target if comparison is true
             false: Branch target if comparison is false
         """
-        is_eq = op in ("==", "!=")
+        is_eq = op.is_equality()
         if ((is_short_int_rprimitive(lhs.type) and is_short_int_rprimitive(rhs.type))
             or (is_eq and (is_short_int_rprimitive(lhs.type) or
                            is_short_int_rprimitive(rhs.type)))):
@@ -981,7 +981,7 @@ class LowLevelIRBuilder:
         eq = self.comparison_op(lhs, rhs, op_type, line)
         self.add(Branch(eq, true, false, Branch.BOOL))
 
-    def compare_strings(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
+    def compare_strings(self, lhs: Value, rhs: Value, op: BinOp, line: int) -> Value:
         """Compare two strings"""
         compare_result = self.call_c(unicode_compare, [lhs, rhs], line)
         error_constant = Integer(-1, c_int_rprimitive, line)
@@ -1003,25 +1003,25 @@ class LowLevelIRBuilder:
         self.call_c(keep_propagating_op, [], line)
         self.goto(final_compare)
         self.activate_block(final_compare)
-        op_type = ComparisonOp.EQ if op == '==' else ComparisonOp.NEQ
+        op_type = ComparisonOp.EQ if op == BinOp.Eq else ComparisonOp.NEQ
         return self.add(ComparisonOp(compare_result,
                                      Integer(0, c_int_rprimitive), op_type, line))
 
-    def compare_bytes(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
+    def compare_bytes(self, lhs: Value, rhs: Value, op: BinOp, line: int) -> Value:
         compare_result = self.call_c(bytes_compare, [lhs, rhs], line)
-        op_type = ComparisonOp.EQ if op == '==' else ComparisonOp.NEQ
+        op_type = ComparisonOp.EQ if op == BinOp.Eq else ComparisonOp.NEQ
         return self.add(ComparisonOp(compare_result,
                                      Integer(1, c_int_rprimitive), op_type, line))
 
     def compare_tuples(self,
                        lhs: Value,
                        rhs: Value,
-                       op: str,
+                       op: BinOp,
                        line: int = -1) -> Value:
         """Compare two tuples item by item"""
         # type cast to pass mypy check
         assert isinstance(lhs.type, RTuple) and isinstance(rhs.type, RTuple)
-        equal = True if op == '==' else False
+        equal = op == BinOp.Eq
         result = Register(bool_rprimitive)
         # empty tuples
         if len(lhs.type.types) == 0 and len(rhs.type.types) == 0:
@@ -1063,15 +1063,15 @@ class LowLevelIRBuilder:
         self.goto_and_activate(out)
         return result
 
-    def translate_instance_contains(self, inst: Value, item: Value, op: str, line: int) -> Value:
+    def translate_instance_contains(self, inst: Value, item: Value, op: BinOp, line: int) -> Value:
         res = self.gen_method_call(inst, '__contains__', [item], None, line)
         if not is_bool_rprimitive(res.type):
             res = self.call_c(bool_op, [res], line)
-        if op == 'not in':
-            res = self.bool_bitwise_op(res, Integer(1, rtype=bool_rprimitive), '^', line)
+        if op == BinOp.NotIn:
+            res = self.bool_bitwise_op(res, Integer(1, rtype=bool_rprimitive), BinOp.BitXor, line)
         return res
 
-    def bool_bitwise_op(self, lreg: Value, rreg: Value, op: str, line: int) -> Value:
+    def bool_bitwise_op(self, lreg: Value, rreg: Value, op: BinOp, line: int) -> Value:
         if op == '&':
             code = IntOp.AND
         elif op == '|':
@@ -1229,7 +1229,7 @@ class LowLevelIRBuilder:
     def add_bool_branch(self, value: Value, true: BasicBlock, false: BasicBlock) -> None:
         if is_runtime_subtype(value.type, int_rprimitive):
             zero = Integer(0, short_int_rprimitive)
-            self.compare_tagged_condition(value, zero, '!=', true, false, value.line)
+            self.compare_tagged_condition(value, zero, BinOp.NotEq, true, false, value.line)
             return
         elif is_same_type(value.type, str_rprimitive):
             value = self.call_c(str_check_if_true, [value], value.line)
@@ -1237,7 +1237,7 @@ class LowLevelIRBuilder:
                 or is_same_type(value.type, dict_rprimitive)):
             length = self.builtin_len(value, value.line)
             zero = Integer(0)
-            value = self.binary_op(length, zero, '!=', value.line)
+            value = self.binary_op(length, zero, BinOp.NotEq, value.line)
         elif (isinstance(value.type, RInstance) and value.type.class_ir.is_ext_class
                 and value.type.class_ir.has_method('__bool__')):
             # Directly call the __bool__ method on classes that have it.
@@ -1245,7 +1245,7 @@ class LowLevelIRBuilder:
         else:
             value_type = optional_value_type(value.type)
             if value_type is not None:
-                is_none = self.translate_is_op(value, self.none_object(), 'is not', value.line)
+                is_none = self.translate_is_op(value, self.none_object(), BinOp.IsNot, value.line)
                 branch = Branch(is_none, true, false, Branch.BOOL)
                 self.add(branch)
                 always_truthy = False
@@ -1391,7 +1391,7 @@ class LowLevelIRBuilder:
             length = self.gen_method_call(val, '__len__', [], int_rprimitive, line)
             length = self.coerce(length, int_rprimitive, line)
             ok, fail = BasicBlock(), BasicBlock()
-            self.compare_tagged_condition(length, Integer(0), '>=', ok, fail, line)
+            self.compare_tagged_condition(length, Integer(0), BinOp.GtE, ok, fail, line)
             self.activate_block(fail)
             self.add(RaiseStandardError(RaiseStandardError.VALUE_ERROR,
                                         "__len__() should return >= 0",
@@ -1509,7 +1509,7 @@ class LowLevelIRBuilder:
     def translate_eq_cmp(self,
                          lreg: Value,
                          rreg: Value,
-                         expr_op: str,
+                         expr_op: BinOp,
                          line: int) -> Optional[Value]:
         """Add a equality comparison operation.
 
@@ -1539,7 +1539,7 @@ class LowLevelIRBuilder:
 
         if not class_ir.has_method('__eq__'):
             # There's no __eq__ defined, so just use object identity.
-            identity_ref_op = 'is' if expr_op == '==' else 'is not'
+            identity_ref_op = BinOp.Is if expr_op == BinOp.Eq else BinOp.IsNot
             return self.translate_is_op(lreg, rreg, identity_ref_op, line)
 
         return self.gen_method_call(
@@ -1553,14 +1553,14 @@ class LowLevelIRBuilder:
     def translate_is_op(self,
                         lreg: Value,
                         rreg: Value,
-                        expr_op: str,
+                        expr_op: BinOp,
                         line: int) -> Value:
         """Create equality comparison operation between object identities
 
         Args:
             expr_op: either 'is' or 'is not'
         """
-        op = ComparisonOp.EQ if expr_op == 'is' else ComparisonOp.NEQ
+        op = ComparisonOp.EQ if expr_op == BinOp.Is else ComparisonOp.NEQ
         lhs = self.coerce(lreg, object_rprimitive, line)
         rhs = self.coerce(rreg, object_rprimitive, line)
         return self.add(ComparisonOp(lhs, rhs, op, line))

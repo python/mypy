@@ -15,6 +15,7 @@ from mypy.nodes import (
     Expression, StrExpr, TempNode, Lvalue, Import, ImportFrom, ImportAll, TupleExpr, ListExpr,
     StarExpr
 )
+from mypy.operators import BinOp
 
 from mypyc.ir.ops import (
     Assign, Unreachable, RaiseStandardError, LoadErrorValue, BasicBlock, TupleGet, Value, Register,
@@ -120,8 +121,8 @@ def transform_operator_assignment_stmt(builder: IRBuilder, stmt: OperatorAssignm
     target_value = builder.read(target, stmt.line)
     rreg = builder.accept(stmt.rvalue)
     # the Python parser strips the '=' from operator assignment statements, so re-add it
-    op = stmt.op + '='
-    res = builder.binary_op(target_value, rreg, op, stmt.line)
+    op = stmt.op.value + '='
+    res = builder.binary_op(target_value, rreg, BinOp(op), stmt.line)
     # usually operator assignments are done in-place
     # but when target doesn't support that we need to manually assign
     builder.assign(target, res, res.line)
