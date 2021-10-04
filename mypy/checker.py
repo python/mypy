@@ -19,14 +19,12 @@ from mypy.nodes import (
     TupleExpr, ListExpr, ExpressionStmt, ReturnStmt, IfStmt,
     WhileStmt, OperatorAssignmentStmt, WithStmt, AssertStmt,
     RaiseStmt, TryStmt, ForStmt, DelStmt, CallExpr, IntExpr, StrExpr,
-    UnicodeExpr, OpExpr, UnaryExpr, LambdaExpr, TempNode, SymbolTableNode,
-    Context, Decorator, PrintStmt, BreakStmt, PassStmt, ContinueStmt,
+    UnicodeExpr, OpExpr, UnaryExpr, LambdaExpr, TypeVarExpr, AssignmentExpr,
     ComparisonExpr, StarExpr, EllipsisExpr, RefExpr, PromoteExpr,
-    Import, ImportFrom, ImportAll, ImportBase, TypeAlias,
-    ARG_POS, ARG_STAR, LITERAL_TYPE, LDEF, MDEF, GDEF,
-    CONTRAVARIANT, COVARIANT, INVARIANT, TypeVarExpr, AssignmentExpr,
-    is_final_node,
-    ARG_NAMED)
+    TempNode, SymbolTableNode, Context, Decorator, PrintStmt, BreakStmt,
+    PassStmt, ContinueStmt, Import, ImportFrom, ImportAll, ImportBase,
+    ARG_POS, ARG_STAR, ARG_NAMED, LITERAL_TYPE, LDEF, MDEF, GDEF,
+    CONTRAVARIANT, COVARIANT, INVARIANT, is_final_node)
 from mypy import nodes
 from mypy import operators
 from mypy.literals import literal, literal_hash, Key
@@ -42,7 +40,7 @@ from mypy.types import (
 from mypy.sametypes import is_same_type
 from mypy.messages import (
     MessageBuilder, make_inferred_type_note, append_invariance_notes, pretty_seq,
-    format_type, format_type_bare, format_type_distinctly, SUGGESTED_TEST_FIXTURES
+    format_type, format_type_bare, format_type_distinctly
 )
 import mypy.checkexpr
 from mypy.checkmember import (
