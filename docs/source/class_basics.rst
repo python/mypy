@@ -335,13 +335,9 @@ mypy will check that all attributes assigned to are members of `__slots__`.
 
   my_album = Album('Songs about Python', 2021)
 
-We have several rules when we count classes as "slotted"
-(the rules are the same as in CPython):
+Mypy will only check attribute assignments against `__slots__` when the following conditions hold:
 
-1. All base classes (except builtin ones) must have explicit ``__slots__`` defined
-2. ``__slots__`` must not include ``__dict__``. For example, ``__slots__ = ("__dict__", ...)`` is not valid.
-   Because it allows to set any possible attribute, almost as when no ``__slots__`` is defined
-
-And we have a custom rule:
-all values in ``__slots__`` must be statically known. 
-For example, no variables: only string literals.
+1. All base classes (except builtin ones) must have explicit ``__slots__`` defined (mirrors CPython's behaviour)
+2. ``__slots__`` does not include ``__dict__``, since if ``__slots__`` includes ``__dict__``
+it allows setting any attribute, similar to when ``__slots__`` is not defined (mirrors CPython's behaviour)
+3. All values in ``__slots__`` must be statically known. For example, no variables: only string literals.
