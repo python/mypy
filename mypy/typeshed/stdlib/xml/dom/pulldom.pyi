@@ -1,26 +1,44 @@
-from typing import IO, Any, Optional
+from typing import IO, Any, Sequence, Tuple, Union
+from typing_extensions import Literal
+from xml.dom.minidom import Document, DOMImplementation, Element, Text
 from xml.sax.handler import ContentHandler
 from xml.sax.xmlreader import XMLReader
 
-START_ELEMENT: str
-END_ELEMENT: str
-COMMENT: str
-START_DOCUMENT: str
-END_DOCUMENT: str
-PROCESSING_INSTRUCTION: str
-IGNORABLE_WHITESPACE: str
-CHARACTERS: str
+START_ELEMENT: Literal["START_ELEMENT"]
+END_ELEMENT: Literal["END_ELEMENT"]
+COMMENT: Literal["COMMENT"]
+START_DOCUMENT: Literal["START_DOCUMENT"]
+END_DOCUMENT: Literal["END_DOCUMENT"]
+PROCESSING_INSTRUCTION: Literal["PROCESSING_INSTRUCTION"]
+IGNORABLE_WHITESPACE: Literal["IGNORABLE_WHITESPACE"]
+CHARACTERS: Literal["CHARACTERS"]
+
+_DocumentFactory = Union[DOMImplementation, None]
+_Node = Union[Document, Element, Text]
+
+_Event = Tuple[
+    Literal[
+        Literal["START_ELEMENT"],
+        Literal["END_ELEMENT"],
+        Literal["COMMENT"],
+        Literal["START_DOCUMENT"],
+        Literal["END_DOCUMENT"],
+        Literal["PROCESSING_INSTRUCTION"],
+        Literal["IGNORABLE_WHITESPACE"],
+        Literal["CHARACTERS"],
+    ],
+    _Node,
+]
 
 class PullDOM(ContentHandler):
-    document: Optional[Any]
-    documentFactory: Any
+    document: Document | None
+    documentFactory: _DocumentFactory
     firstEvent: Any
     lastEvent: Any
-    elementStack: Any
-    push: Any
-    pending_events: Any
-    def __init__(self, documentFactory: Optional[Any] = ...) -> None: ...
-    def pop(self): ...
+    elementStack: Sequence[Any]
+    pending_events: Sequence[Any]
+    def __init__(self, documentFactory: _DocumentFactory = ...) -> None: ...
+    def pop(self) -> Element: ...
     def setDocumentLocator(self, locator) -> None: ...
     def startPrefixMapping(self, prefix, uri) -> None: ...
     def endPrefixMapping(self, prefix) -> None: ...
@@ -48,12 +66,12 @@ class DOMEventStream:
     bufsize: int
     def __init__(self, stream: IO[bytes], parser: XMLReader, bufsize: int) -> None: ...
     pulldom: Any
-    def reset(self) -> None: ...
     def __getitem__(self, pos): ...
     def __next__(self): ...
     def __iter__(self): ...
-    def expandNode(self, node) -> None: ...
-    def getEvent(self): ...
+    def getEvent(self) -> _Event: ...
+    def expandNode(self, node: _Node) -> None: ...
+    def reset(self) -> None: ...
     def clear(self) -> None: ...
 
 class SAX2DOM(PullDOM):
@@ -65,7 +83,5 @@ class SAX2DOM(PullDOM):
 
 default_bufsize: int
 
-def parse(
-    stream_or_string: str | IO[bytes], parser: Optional[XMLReader] = ..., bufsize: Optional[int] = ...
-) -> DOMEventStream: ...
-def parseString(string: str, parser: Optional[XMLReader] = ...) -> DOMEventStream: ...
+def parse(stream_or_string: str | IO[bytes], parser: XMLReader | None = ..., bufsize: int | None = ...) -> DOMEventStream: ...
+def parseString(string: str, parser: XMLReader | None = ...) -> DOMEventStream: ...

@@ -1,5 +1,5 @@
 from _typeshed import SupportsRead
-from typing import IO, Any, Callable, Dict, List, Optional, Tuple, Type, Union
+from typing import IO, Any, Callable, Tuple, Type
 
 from .decoder import JSONDecodeError as JSONDecodeError, JSONDecoder as JSONDecoder
 from .encoder import JSONEncoder as JSONEncoder
@@ -11,10 +11,10 @@ def dumps(
     ensure_ascii: bool = ...,
     check_circular: bool = ...,
     allow_nan: bool = ...,
-    cls: Optional[Type[JSONEncoder]] = ...,
-    indent: Union[None, int, str] = ...,
-    separators: Optional[Tuple[str, str]] = ...,
-    default: Optional[Callable[[Any], Any]] = ...,
+    cls: Type[JSONEncoder] | None = ...,
+    indent: None | int | str = ...,
+    separators: Tuple[str, str] | None = ...,
+    default: Callable[[Any], Any] | None = ...,
     sort_keys: bool = ...,
     **kwds: Any,
 ) -> str: ...
@@ -26,33 +26,33 @@ def dump(
     ensure_ascii: bool = ...,
     check_circular: bool = ...,
     allow_nan: bool = ...,
-    cls: Optional[Type[JSONEncoder]] = ...,
-    indent: Union[None, int, str] = ...,
-    separators: Optional[Tuple[str, str]] = ...,
-    default: Optional[Callable[[Any], Any]] = ...,
+    cls: Type[JSONEncoder] | None = ...,
+    indent: None | int | str = ...,
+    separators: Tuple[str, str] | None = ...,
+    default: Callable[[Any], Any] | None = ...,
     sort_keys: bool = ...,
     **kwds: Any,
 ) -> None: ...
 def loads(
-    s: Union[str, bytes],
+    s: str | bytes,
     *,
-    cls: Optional[Type[JSONDecoder]] = ...,
-    object_hook: Optional[Callable[[Dict[Any, Any]], Any]] = ...,
-    parse_float: Optional[Callable[[str], Any]] = ...,
-    parse_int: Optional[Callable[[str], Any]] = ...,
-    parse_constant: Optional[Callable[[str], Any]] = ...,
-    object_pairs_hook: Optional[Callable[[List[Tuple[Any, Any]]], Any]] = ...,
+    cls: Type[JSONDecoder] | None = ...,
+    object_hook: Callable[[dict[Any, Any]], Any] | None = ...,
+    parse_float: Callable[[str], Any] | None = ...,
+    parse_int: Callable[[str], Any] | None = ...,
+    parse_constant: Callable[[str], Any] | None = ...,
+    object_pairs_hook: Callable[[list[Tuple[Any, Any]]], Any] | None = ...,
     **kwds: Any,
 ) -> Any: ...
 def load(
-    fp: SupportsRead[Union[str, bytes]],
+    fp: SupportsRead[str | bytes],
     *,
-    cls: Optional[Type[JSONDecoder]] = ...,
-    object_hook: Optional[Callable[[Dict[Any, Any]], Any]] = ...,
-    parse_float: Optional[Callable[[str], Any]] = ...,
-    parse_int: Optional[Callable[[str], Any]] = ...,
-    parse_constant: Optional[Callable[[str], Any]] = ...,
-    object_pairs_hook: Optional[Callable[[List[Tuple[Any, Any]]], Any]] = ...,
+    cls: Type[JSONDecoder] | None = ...,
+    object_hook: Callable[[dict[Any, Any]], Any] | None = ...,
+    parse_float: Callable[[str], Any] | None = ...,
+    parse_int: Callable[[str], Any] | None = ...,
+    parse_constant: Callable[[str], Any] | None = ...,
+    object_pairs_hook: Callable[[list[Tuple[Any, Any]]], Any] | None = ...,
     **kwds: Any,
 ) -> Any: ...
 def detect_encoding(b: bytes) -> str: ...  # undocumented

@@ -24,10 +24,10 @@ deferral if they can't be satisfied. Initially every module in the SCC
 will be incomplete.
 """
 
-import contextlib
-from typing import List, Tuple, Optional, Union, Callable, Iterator
+from typing import List, Tuple, Optional, Union, Callable
 from typing_extensions import TYPE_CHECKING
 
+from mypy.backports import nullcontext
 from mypy.nodes import (
     MypyFile, TypeInfo, FuncDef, Decorator, OverloadedFuncDef, Var
 )
@@ -377,7 +377,7 @@ def check_type_arguments_in_targets(targets: List[FineGrainedDeferredNode], stat
                 if isinstance(target.node, (FuncDef, OverloadedFuncDef)):
                     func = target.node
                 saved = (state.id, target.active_typeinfo, func)  # module, class, function
-                with errors.scope.saved_scope(saved) if errors.scope else nothing():
+                with errors.scope.saved_scope(saved) if errors.scope else nullcontext():
                     analyzer.recurse_into_functions = func is not None
                     target.node.accept(analyzer)
 
@@ -389,7 +389,7 @@ def calculate_class_properties(graph: 'Graph', scc: List[str], errors: Errors) -
         for _, node, _ in tree.local_definitions():
             if isinstance(node.node, TypeInfo):
                 saved = (module, node.node, None)  # module, class, function
-                with errors.scope.saved_scope(saved) if errors.scope else nothing():
+                with errors.scope.saved_scope(saved) if errors.scope else nullcontext():
                     calculate_class_abstract_status(node.node, tree.is_stub, errors)
                     check_protocol_status(node.node, errors)
                     calculate_class_vars(node.node)
@@ -399,8 +399,3 @@ def calculate_class_properties(graph: 'Graph', scc: List[str], errors: Errors) -
 def check_blockers(graph: 'Graph', scc: List[str]) -> None:
     for module in scc:
         graph[module].check_blockers()
-
-
-@contextlib.contextmanager
-def nothing() -> Iterator[None]:
-    yield

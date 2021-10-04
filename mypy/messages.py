@@ -22,7 +22,7 @@ from mypy.erasetype import erase_type
 from mypy.errors import Errors
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType, LiteralType,
-    UnionType, NoneType, AnyType, Overloaded, FunctionLike, DeletedType, TypeType, TypeVarType,
+    UnionType, NoneType, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
     UninhabitedType, TypeOfAny, UnboundType, PartialType, get_proper_type, ProperType,
     get_proper_types
 )
@@ -345,6 +345,16 @@ class MessageBuilder:
                 self.fail('Item {} of {} has no attribute "{}"{}'.format(
                     typ_format, orig_type_format, member, extra), context,
                     code=codes.UNION_ATTR)
+            elif isinstance(original_type, TypeVarType):
+                bound = get_proper_type(original_type.upper_bound)
+                if isinstance(bound, UnionType):
+                    typ_fmt, bound_fmt = format_type_distinctly(typ, bound)
+                    original_type_fmt = format_type(original_type)
+                    self.fail(
+                        'Item {} of the upper bound {} of type variable {} has no '
+                        'attribute "{}"{}'.format(
+                            typ_fmt, bound_fmt, original_type_fmt, member, extra),
+                        context, code=codes.UNION_ATTR)
         return AnyType(TypeOfAny.from_error)
 
     def unsupported_operand_types(self,
@@ -729,7 +739,6 @@ class MessageBuilder:
         self.fail('Assignment to variable{} outside except: block'.format(s), context)
 
     def no_variant_matches_arguments(self,
-                                     plausible_targets: List[CallableType],
                                      overload: Overloaded,
                                      arg_types: List[Type],
                                      context: Context,
@@ -753,8 +762,11 @@ class MessageBuilder:
             self.fail('No overload variant{} matches argument types {}'
                       .format(name_str, arg_types_str), context, code=code)
 
-        self.pretty_overload_matches(plausible_targets, overload, context, offset=2, max_items=2,
-                                     code=code)
+        self.note(
+            'Possible overload variant{}:'.format(plural_s(len(overload.items))),
+            context, code=code)
+        for item in overload.items:
+            self.note(pretty_callable(item), context, offset=4, code=code)
 
     def wrong_number_values_to_unpack(self, provided: int, expected: int,
                                       context: Context) -> None:
@@ -801,7 +813,6 @@ class MessageBuilder:
 
         INCLUDE_DECORATOR = True  # Include @classmethod and @staticmethod decorators, if any
         ALLOW_DUPS = True  # Allow duplicate notes, needed when signatures are duplicates
-        MAX_ITEMS = 3  # Display a max of three items for Overloaded types
         ALIGN_OFFSET = 1  # One space, to account for the difference between error and note
         OFFSET = 4  # Four spaces, so that notes will look like this:
         # error: Signature of "f" incompatible with supertype "A"
@@ -814,14 +825,12 @@ class MessageBuilder:
             self.note('Superclass:', context, offset=ALIGN_OFFSET + OFFSET, code=code)
             self.pretty_callable_or_overload(original, context, offset=ALIGN_OFFSET + 2 * OFFSET,
                                             add_class_or_static_decorator=INCLUDE_DECORATOR,
-                                            overload_max_items=MAX_ITEMS, allow_dups=ALLOW_DUPS,
-                                            code=code)
+                                            allow_dups=ALLOW_DUPS, code=code)
 
             self.note('Subclass:', context, offset=ALIGN_OFFSET + OFFSET, code=code)
             self.pretty_callable_or_overload(override, context, offset=ALIGN_OFFSET + 2 * OFFSET,
                                             add_class_or_static_decorator=INCLUDE_DECORATOR,
-                                            overload_max_items=MAX_ITEMS, allow_dups=ALLOW_DUPS,
-                                            code=code)
+                                            allow_dups=ALLOW_DUPS, code=code)
 
     def pretty_callable_or_overload(self,
                                     tp: Union[CallableType, Overloaded],
@@ -829,7 +838,6 @@ class MessageBuilder:
                                     *,
                                     offset: int = 0,
                                     add_class_or_static_decorator: bool = False,
-                                    overload_max_items: int = 1,
                                     allow_dups: bool = False,
                                     code: Optional[ErrorCode] = None) -> None:
         if isinstance(tp, CallableType):
@@ -840,7 +848,7 @@ class MessageBuilder:
             self.note(pretty_callable(tp), context,
                       offset=offset, allow_dups=allow_dups, code=code)
         elif isinstance(tp, Overloaded):
-            self.pretty_overload(tp, context, offset, overload_max_items,
+            self.pretty_overload(tp, context, offset,
                                  add_class_or_static_decorator=add_class_or_static_decorator,
                                  allow_dups=allow_dups, code=code)
 
@@ -1244,7 +1252,7 @@ class MessageBuilder:
             matches = best_matches(item_name, typ.items.keys())
             if matches:
                 self.note("Did you mean {}?".format(
-                    pretty_seq(matches[:3], "or")), context)
+                    pretty_seq(matches[:3], "or")), context, code=codes.TYPEDDICT_ITEM)
 
     def typeddict_context_ambiguous(
             self,
@@ -1469,13 +1477,13 @@ class MessageBuilder:
                         self.note(pretty_callable(exp), context, offset=2 * OFFSET, code=code)
                     else:
                         assert isinstance(exp, Overloaded)
-                        self.pretty_overload(exp, context, 2 * OFFSET, MAX_ITEMS, code=code)
+                        self.pretty_overload(exp, context, 2 * OFFSET, code=code)
                     self.note('Got:', context, offset=OFFSET, code=code)
                     if isinstance(got, CallableType):
                         self.note(pretty_callable(got), context, offset=2 * OFFSET, code=code)
                     else:
                         assert isinstance(got, Overloaded)
-                        self.pretty_overload(got, context, 2 * OFFSET, MAX_ITEMS, code=code)
+                        self.pretty_overload(got, context, 2 * OFFSET, code=code)
             self.print_more(conflict_types, context, OFFSET, MAX_ITEMS, code=code)
 
         # Report flag conflicts (i.e. settable vs read-only etc.)
@@ -1507,12 +1515,11 @@ class MessageBuilder:
                         tp: Overloaded,
                         context: Context,
                         offset: int,
-                        max_items: int,
                         *,
                         add_class_or_static_decorator: bool = False,
                         allow_dups: bool = False,
                         code: Optional[ErrorCode] = None) -> None:
-        for item in tp.items()[:max_items]:
+        for item in tp.items:
             self.note('@overload', context, offset=offset, allow_dups=allow_dups, code=code)
 
             if add_class_or_static_decorator:
@@ -1522,46 +1529,6 @@ class MessageBuilder:
 
             self.note(pretty_callable(item), context,
                       offset=offset, allow_dups=allow_dups, code=code)
-        left = len(tp.items()) - max_items
-        if left > 0:
-            msg = '<{} more overload{} not shown>'.format(left, plural_s(left))
-            self.note(msg, context, offset=offset, allow_dups=allow_dups, code=code)
-
-    def pretty_overload_matches(self,
-                                targets: List[CallableType],
-                                func: Overloaded,
-                                context: Context,
-                                offset: int,
-                                max_items: int,
-                                code: ErrorCode) -> None:
-        if not targets:
-            targets = func.items()
-
-        shown = min(max_items, len(targets))
-        max_matching = len(targets)
-        max_available = len(func.items())
-
-        # If there are 3 matches but max_items == 2, we might as well show
-        # all three items instead of having the 3rd item be an error message.
-        if shown + 1 == max_matching:
-            shown = max_matching
-
-        self.note('Possible overload variant{}:'.format(plural_s(shown)), context, code=code)
-        for item in targets[:shown]:
-            self.note(pretty_callable(item), context, offset=2 * offset, code=code)
-
-        assert shown <= max_matching <= max_available
-        if shown < max_matching <= max_available:
-            left = max_matching - shown
-            msg = '<{} more similar overload{} not shown, out of {} total overloads>'.format(
-                left, plural_s(left), max_available)
-            self.note(msg, context, offset=2 * offset, code=code)
-        elif shown == max_matching < max_available:
-            left = max_available - shown
-            msg = '<{} more non-matching overload{} not shown>'.format(left, plural_s(left))
-            self.note(msg, context, offset=2 * offset, code=code)
-        else:
-            assert shown == max_matching == max_available
 
     def print_more(self,
                    conflicts: Sequence[Any],
@@ -1771,7 +1738,7 @@ def format_type_inner(typ: Type,
         if func.is_type_obj():
             # The type of a type object type can be derived from the
             # return type (this always works).
-            return format(TypeType.make_normalized(erase_type(func.items()[0].ret_type)))
+            return format(TypeType.make_normalized(erase_type(func.items[0].ret_type)))
         elif isinstance(func, CallableType):
             return_type = format(func.ret_type)
             if func.is_ellipsis_args:

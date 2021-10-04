@@ -262,16 +262,17 @@ class NamedTupleAnalyzer:
 
         Return None if the definition didn't typecheck.
         """
+        type_name = 'NamedTuple' if fullname == 'typing.NamedTuple' else 'namedtuple'
         # TODO: Share code with check_argument_count in checkexpr.py?
         args = call.args
         if len(args) < 2:
-            self.fail("Too few arguments for namedtuple()", call)
+            self.fail('Too few arguments for "{}()"'.format(type_name), call)
             return None
         defaults: List[Expression] = []
         if len(args) > 2:
             # Typed namedtuple doesn't support additional arguments.
             if fullname == 'typing.NamedTuple':
-                self.fail("Too many arguments for NamedTuple()", call)
+                self.fail('Too many arguments for "NamedTuple()"', call)
                 return None
             for i, arg_name in enumerate(call.arg_names[2:], 2):
                 if arg_name == 'defaults':
@@ -283,16 +284,16 @@ class NamedTupleAnalyzer:
                     else:
                         self.fail(
                             "List or tuple literal expected as the defaults argument to "
-                            "namedtuple()",
+                            "{}()".format(type_name),
                             arg
                         )
                     break
         if call.arg_kinds[:2] != [ARG_POS, ARG_POS]:
-            self.fail("Unexpected arguments to namedtuple()", call)
+            self.fail('Unexpected arguments to "{}()"'.format(type_name), call)
             return None
         if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
             self.fail(
-                "namedtuple() expects a string literal as the first argument", call)
+                '"{}()" expects a string literal as the first argument'.format(type_name), call)
             return None
         typename = cast(Union[StrExpr, BytesExpr, UnicodeExpr], call.args[0]).value
         types: List[Type] = []
@@ -303,7 +304,11 @@ class NamedTupleAnalyzer:
                 items = str_expr.value.replace(',', ' ').split()
             else:
                 self.fail(
-                    "List or tuple literal expected as the second argument to namedtuple()", call)
+                    'List or tuple literal expected as the second argument to "{}()"'.format(
+                        type_name,
+                    ),
+                    call,
+                )
                 return None
         else:
             listexpr = args[1]
@@ -311,7 +316,7 @@ class NamedTupleAnalyzer:
                 # The fields argument contains just names, with implicit Any types.
                 if any(not isinstance(item, (StrExpr, BytesExpr, UnicodeExpr))
                        for item in listexpr.items):
-                    self.fail("String literal expected as namedtuple() item", call)
+                    self.fail('String literal expected as "namedtuple()" item', call)
                     return None
                 items = [cast(Union[StrExpr, BytesExpr, UnicodeExpr], item).value
                          for item in listexpr.items]
@@ -328,10 +333,10 @@ class NamedTupleAnalyzer:
             types = [AnyType(TypeOfAny.unannotated) for _ in items]
         underscore = [item for item in items if item.startswith('_')]
         if underscore:
-            self.fail("namedtuple() field names cannot start with an underscore: "
+            self.fail('"{}()" field names cannot start with an underscore: '.format(type_name)
                       + ', '.join(underscore), call)
         if len(defaults) > len(items):
-            self.fail("Too many defaults given in call to namedtuple()", call)
+            self.fail('Too many defaults given in call to "{}()"'.format(type_name), call)
             defaults = defaults[:len(items)]
         return items, types, defaults, typename, True
 
@@ -347,13 +352,13 @@ class NamedTupleAnalyzer:
         for item in nodes:
             if isinstance(item, TupleExpr):
                 if len(item.items) != 2:
-                    self.fail("Invalid NamedTuple field definition", item)
+                    self.fail('Invalid "NamedTuple()" field definition', item)
                     return None
                 name, type_node = item.items
                 if isinstance(name, (StrExpr, BytesExpr, UnicodeExpr)):
                     items.append(name.value)
                 else:
-                    self.fail("Invalid NamedTuple() field name", item)
+                    self.fail('Invalid "NamedTuple()" field name', item)
                     return None
                 try:
                     type = expr_to_unanalyzed_type(type_node, self.options, self.api.is_stub_file)
@@ -369,7 +374,7 @@ class NamedTupleAnalyzer:
                     return [], [], [], False
                 types.append(analyzed)
             else:
-                self.fail("Tuple expected as NamedTuple() field", item)
+                self.fail('Tuple expected as "NamedTuple()" field', item)
                 return None
         return items, types, [], True
 

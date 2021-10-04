@@ -1,6 +1,6 @@
 import sys
 from types import ModuleType
-from typing import Any, Container, Dict, Iterable, List, Optional, Sequence, Set, Tuple, Type, Union
+from typing import Any, Container, Iterable, Sequence, Set, Tuple, Type
 from typing_extensions import Literal
 
 if sys.platform == "win32":
@@ -25,17 +25,17 @@ if sys.platform == "win32":
     class Table:
 
         name: str
-        fields: List[Tuple[int, str, int]]
+        fields: list[Tuple[int, str, int]]
         def __init__(self, name: str) -> None: ...
         def add_field(self, index: int, name: str, type: int) -> None: ...
         def sql(self) -> str: ...
         def create(self, db: _Database) -> None: ...
     class _Unspecified: ...
     def change_sequence(
-        seq: Sequence[Tuple[str, Optional[str], int]],
+        seq: Sequence[Tuple[str, str | None, int]],
         action: str,
-        seqno: Union[int, Type[_Unspecified]] = ...,
-        cond: Union[str, Type[_Unspecified]] = ...,
+        seqno: int | Type[_Unspecified] = ...,
+        cond: str | Type[_Unspecified] = ...,
     ) -> None: ...
     def add_data(db: _Database, table: str, values: Iterable[Tuple[Any, ...]]) -> None: ...
     def add_stream(db: _Database, name: str, path: str) -> None: ...
@@ -48,7 +48,7 @@ if sys.platform == "win32":
     class CAB:
 
         name: str
-        files: List[Tuple[str, str]]
+        files: list[Tuple[str, str]]
         filenames: Set[str]
         index: int
         def __init__(self, name: str) -> None: ...
@@ -63,11 +63,11 @@ if sys.platform == "win32":
         basedir: str
         physical: str
         logical: str
-        component: Optional[str]
+        component: str | None
         short_names: Set[str]
         ids: Set[str]
-        keyfiles: Dict[str, str]
-        componentflags: Optional[int]
+        keyfiles: dict[str, str]
+        componentflags: int | None
         absolute: str
         def __init__(
             self,
@@ -77,21 +77,19 @@ if sys.platform == "win32":
             physical: str,
             _logical: str,
             default: str,
-            componentflags: Optional[int] = ...,
+            componentflags: int | None = ...,
         ) -> None: ...
         def start_component(
             self,
-            component: Optional[str] = ...,
-            feature: Optional[Feature] = ...,
-            flags: Optional[int] = ...,
-            keyfile: Optional[str] = ...,
-            uuid: Optional[str] = ...,
+            component: str | None = ...,
+            feature: Feature | None = ...,
+            flags: int | None = ...,
+            keyfile: str | None = ...,
+            uuid: str | None = ...,
         ) -> None: ...
         def make_short(self, file: str) -> str: ...
-        def add_file(
-            self, file: str, src: Optional[str] = ..., version: Optional[str] = ..., language: Optional[str] = ...
-        ) -> str: ...
-        def glob(self, pattern: str, exclude: Optional[Container[str]] = ...) -> List[str]: ...
+        def add_file(self, file: str, src: str | None = ..., version: str | None = ..., language: str | None = ...) -> str: ...
+        def glob(self, pattern: str, exclude: Container[str] | None = ...) -> list[str]: ...
         def remove_pyc(self) -> None: ...
     class Binary:
 
@@ -109,8 +107,8 @@ if sys.platform == "win32":
             desc: str,
             display: int,
             level: int = ...,
-            parent: Optional[Feature] = ...,
-            directory: Optional[str] = ...,
+            parent: Feature | None = ...,
+            directory: str | None = ...,
             attributes: int = ...,
         ) -> None: ...
         def set_current(self) -> None: ...
@@ -119,7 +117,7 @@ if sys.platform == "win32":
         dlg: Dialog
         name: str
         def __init__(self, dlg: Dialog, name: str) -> None: ...
-        def event(self, event: str, argument: str, condition: str = ..., ordering: Optional[int] = ...) -> None: ...
+        def event(self, event: str, argument: str, condition: str = ..., ordering: int | None = ...) -> None: ...
         def mapping(self, event: str, attribute: str) -> None: ...
         def condition(self, action: str, condition: str) -> None: ...
     class RadioButtonGroup(Control):
@@ -127,7 +125,7 @@ if sys.platform == "win32":
         property: str
         index: int
         def __init__(self, dlg: Dialog, name: str, property: str) -> None: ...
-        def add(self, name: str, x: int, y: int, w: int, h: int, text: str, value: Optional[str] = ...) -> None: ...
+        def add(self, name: str, x: int, y: int, w: int, h: int, text: str, value: str | None = ...) -> None: ...
     class Dialog:
 
         db: _Database
@@ -159,38 +157,20 @@ if sys.platform == "win32":
             w: int,
             h: int,
             attr: int,
-            prop: Optional[str],
-            text: Optional[str],
-            next: Optional[str],
-            help: Optional[str],
+            prop: str | None,
+            text: str | None,
+            next: str | None,
+            help: str | None,
         ) -> Control: ...
-        def text(self, name: str, x: int, y: int, w: int, h: int, attr: int, text: Optional[str]) -> Control: ...
-        def bitmap(self, name: str, x: int, y: int, w: int, h: int, text: Optional[str]) -> Control: ...
+        def text(self, name: str, x: int, y: int, w: int, h: int, attr: int, text: str | None) -> Control: ...
+        def bitmap(self, name: str, x: int, y: int, w: int, h: int, text: str | None) -> Control: ...
         def line(self, name: str, x: int, y: int, w: int, h: int) -> Control: ...
         def pushbutton(
-            self, name: str, x: int, y: int, w: int, h: int, attr: int, text: Optional[str], next: Optional[str]
+            self, name: str, x: int, y: int, w: int, h: int, attr: int, text: str | None, next: str | None
         ) -> Control: ...
         def radiogroup(
-            self,
-            name: str,
-            x: int,
-            y: int,
-            w: int,
-            h: int,
-            attr: int,
-            prop: Optional[str],
-            text: Optional[str],
-            next: Optional[str],
+            self, name: str, x: int, y: int, w: int, h: int, attr: int, prop: str | None, text: str | None, next: str | None
         ) -> RadioButtonGroup: ...
         def checkbox(
-            self,
-            name: str,
-            x: int,
-            y: int,
-            w: int,
-            h: int,
-            attr: int,
-            prop: Optional[str],
-            text: Optional[str],
-            next: Optional[str],
+            self, name: str, x: int, y: int, w: int, h: int, attr: int, prop: str | None, text: str | None, next: str | None
         ) -> Control: ...

@@ -119,7 +119,7 @@ method_op(
     error_kind=ERR_MAGIC)
 
 # dict.get(key)
-method_op(
+dict_get_method_with_none = method_op(
     name='get',
     arg_types=[dict_rprimitive, object_rprimitive],
     return_type=object_rprimitive,

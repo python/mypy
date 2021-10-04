@@ -1,6 +1,6 @@
 import unittest.case
 from types import TracebackType
-from typing import Any, Callable, List, Optional, TextIO, Tuple, Type, TypeVar, Union
+from typing import Any, Callable, TextIO, Tuple, Type, TypeVar, Union
 
 _SysExcInfoType = Union[Tuple[Type[BaseException], BaseException, TracebackType], Tuple[None, None, None]]
 
@@ -10,19 +10,17 @@ _F = TypeVar("_F", bound=Callable[..., Any])
 def failfast(method: _F) -> _F: ...
 
 class TestResult:
-    errors: List[Tuple[unittest.case.TestCase, str]]
-    failures: List[Tuple[unittest.case.TestCase, str]]
-    skipped: List[Tuple[unittest.case.TestCase, str]]
-    expectedFailures: List[Tuple[unittest.case.TestCase, str]]
-    unexpectedSuccesses: List[unittest.case.TestCase]
+    errors: list[Tuple[unittest.case.TestCase, str]]
+    failures: list[Tuple[unittest.case.TestCase, str]]
+    skipped: list[Tuple[unittest.case.TestCase, str]]
+    expectedFailures: list[Tuple[unittest.case.TestCase, str]]
+    unexpectedSuccesses: list[unittest.case.TestCase]
     shouldStop: bool
     testsRun: int
     buffer: bool
     failfast: bool
     tb_locals: bool
-    def __init__(
-        self, stream: Optional[TextIO] = ..., descriptions: Optional[bool] = ..., verbosity: Optional[int] = ...
-    ) -> None: ...
+    def __init__(self, stream: TextIO | None = ..., descriptions: bool | None = ..., verbosity: int | None = ...) -> None: ...
     def printErrors(self) -> None: ...
     def wasSuccessful(self) -> bool: ...
     def stop(self) -> None: ...
@@ -36,6 +34,4 @@ class TestResult:
     def addSkip(self, test: unittest.case.TestCase, reason: str) -> None: ...
     def addExpectedFailure(self, test: unittest.case.TestCase, err: _SysExcInfoType) -> None: ...
     def addUnexpectedSuccess(self, test: unittest.case.TestCase) -> None: ...
-    def addSubTest(
-        self, test: unittest.case.TestCase, subtest: unittest.case.TestCase, err: Optional[_SysExcInfoType]
-    ) -> None: ...
+    def addSubTest(self, test: unittest.case.TestCase, subtest: unittest.case.TestCase, err: _SysExcInfoType | None) -> None: ...

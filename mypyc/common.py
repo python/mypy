@@ -1,5 +1,4 @@
 from mypy.util import unnamed_function
-import sys
 from typing import Dict, Any, Optional, Tuple
 import sys
 
@@ -68,10 +67,6 @@ RUNTIME_C_FILES: Final = [
 
 
 JsonDict = Dict[str, Any]
-
-
-def decorator_helper_name(func_name: str) -> str:
-    return '__mypyc_{}_decorator_helper__'.format(func_name)
 
 
 def shared_lib_name(group_name: str) -> str:

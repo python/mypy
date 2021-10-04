@@ -170,7 +170,7 @@ if x5["key"] is Key.A:
     reveal_type(x5)         # N: Revealed type is "TypedDict('__main__.TypedDict1', {'key': Literal[__main__.Key.A], 'foo': builtins.int})"
 else:
     reveal_type(x5)         # N: Revealed type is "TypedDict('__main__.TypedDict2', {'key': Literal[__main__.Key.B], 'foo': builtins.str})"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/narrowing.pyi]
 
 [case testNarrowingParentWithIsInstanceBasic]
 # flags: --python-version 3.7
@@ -236,7 +236,7 @@ if isinstance(x5["key"], int):
     reveal_type(x5)         # N: Revealed type is "TypedDict('__main__.TypedDict1', {'key': builtins.int})"
 else:
     reveal_type(x5)         # N: Revealed type is "TypedDict('__main__.TypedDict2', {'key': builtins.str})"
-[builtins fixtures/isinstance.pyi]
+[builtins fixtures/narrowing.pyi]
 
 [case testNarrowingParentMultipleKeys]
 # flags: --warn-unreachable
@@ -653,6 +653,27 @@ if y["model"]["key"] == 'C':
 else:
     reveal_type(y)              # N: Revealed type is "Union[TypedDict('__main__.Parent1', {'model': TypedDict('__main__.Model1', {'key': Literal['A']}), 'foo': builtins.int}), TypedDict('__main__.Parent2', {'model': TypedDict('__main__.Model2', {'key': Literal['B']}), 'bar': builtins.str})]"
     reveal_type(y["model"])     # N: Revealed type is "Union[TypedDict('__main__.Model1', {'key': Literal['A']}), TypedDict('__main__.Model2', {'key': Literal['B']})]"
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowingExprPropagation]
+from typing import Union
+from typing_extensions import Literal
+
+class A:
+    tag: Literal['A']
+
+class B:
+    tag: Literal['B']
+
+abo: Union[A, B, None]
+
+if abo is not None and abo.tag == "A":
+    reveal_type(abo.tag) # N: Revealed type is "Literal['A']"
+    reveal_type(abo) # N: Revealed type is "__main__.A"
+
+if not (abo is None or abo.tag != "B"):
+    reveal_type(abo.tag) # N: Revealed type is "Literal['B']"
+    reveal_type(abo) # N: Revealed type is "__main__.B"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingEqualityFlipFlop]
@@ -1093,3 +1114,32 @@ def f(t: Type[T], a: A, b: B) -> None:
         reveal_type(b)  # N: Revealed type is "<nothing>"
     else:
         reveal_type(b)  # N: Revealed type is "__main__.B"
+
+[case testNarrowingNestedUnionOfTypedDicts]
+from typing import Union
+from typing_extensions import Literal, TypedDict
+
+class A(TypedDict):
+    tag: Literal["A"]
+    a: int
+
+class B(TypedDict):
+    tag: Literal["B"]
+    b: int
+
+class C(TypedDict):
+    tag: Literal["C"]
+    c: int
+
+AB = Union[A, B]
+ABC = Union[AB, C]
+abc: ABC
+
+if abc["tag"] == "A":
+    reveal_type(abc) # N: Revealed type is "TypedDict('__main__.A', {'tag': Literal['A'], 'a': builtins.int})"
+elif abc["tag"] == "C":
+    reveal_type(abc) # N: Revealed type is "TypedDict('__main__.C', {'tag': Literal['C'], 'c': builtins.int})"
+else:
+    reveal_type(abc) # N: Revealed type is "TypedDict('__main__.B', {'tag': Literal['B'], 'b': builtins.int})"
+
+[builtins fixtures/primitives.pyi]
