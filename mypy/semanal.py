@@ -4362,22 +4362,10 @@ class SemanticAnalyzer(NodeVisitor[None],
             return v
         return None
 
-    def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
-        """Lookup a fully qualified name.
-
-        Assume that the name is defined. This happens in the global namespace --
-        the local module namespace is ignored.
-
-        Note that this doesn't support visibility, module-level __getattr__, or
-        nested classes.
-        """
-        parts = name.split('.')
-        n = self.modules[parts[0]]
-        for i in range(1, len(parts) - 1):
-            next_sym = n.names[parts[i]]
-            assert isinstance(next_sym.node, MypyFile)
-            n = next_sym.node
-        return n.names[parts[-1]]
+    def lookup_fully_qualified(self, fullname: str) -> SymbolTableNode:
+        ret = self.lookup_fully_qualified_or_none(fullname)
+        assert ret is not None
+        return ret
 
     def lookup_fully_qualified_or_none(self, fullname: str) -> Optional[SymbolTableNode]:
         """Lookup a fully qualified name that refers to a module-level definition.
