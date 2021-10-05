@@ -2893,7 +2893,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                             )
                             manager.errors.report(
                                 -1, 0,
-                                "See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules "
+                                "See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules "  # noqa: E501
                                 "for more info",
                                 severity='note',
                             )
