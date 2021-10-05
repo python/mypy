@@ -5325,7 +5325,7 @@ def conditional_type_map(expr: Expression,
                 return None, {}
             else:
                 # we can only restrict when the type is precise, not bounded
-                proposed_precise_type = UnionType([type_range.item
+                proposed_precise_type = UnionType.make_union([type_range.item
                                           for type_range in proposed_type_ranges
                                           if not type_range.is_upper_bound])
                 remaining_type = restrict_subtype_away(current_type, proposed_precise_type)
