@@ -1147,6 +1147,7 @@ import foo.bar
 1+'x'
 [out]
 src/foo/bar.py: error: Source file found twice under different module names: "src.foo.bar" and "foo.bar"
+src/foo/bar.py: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules for more info
 == Return code: 2
 
 [case testEnableInvalidErrorCode]

@@ -2889,7 +2889,14 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                                 -1, 0,
                                 'Source file found twice under different module names: '
                                 '"{}" and "{}"'.format(seen_files[newst_path].id, newst.id),
-                                blocker=True)
+                                blocker=True,
+                            )
+                            manager.errors.report(
+                                -1, 0,
+                                "See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules "  # noqa: E501
+                                "for more info",
+                                severity='note',
+                            )
                             manager.errors.raise_error()
 
                         seen_files[newst_path] = newst
