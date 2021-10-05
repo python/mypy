@@ -1146,9 +1146,9 @@ else:
 
 
 [case testNarrowingRuntimeCover]
-from typing import List, Union
+from typing import Dict, List, Union
 
-def foo(x: Union[str, List[str]]) -> None:
+def unreachable(x: Union[str, List[str]]) -> None:
     if isinstance(x, str):
         reveal_type(x)  # N: Revealed type is "builtins.str"
     elif isinstance(x, list):
@@ -1156,11 +1156,19 @@ def foo(x: Union[str, List[str]]) -> None:
     else:
         reveal_type(x)  # N: Revealed type is "<nothing>"
 
-def bar(x: Union[str, List[str], List[int], int]) -> None:
+def all_parts_covered(x: Union[str, List[str], List[int], int]) -> None:
     if isinstance(x, str):
         reveal_type(x)  # N: Revealed type is "builtins.str"
     elif isinstance(x, list):
         reveal_type(x)  # N: Revealed type is "Union[builtins.list[builtins.str], builtins.list[builtins.int]]"
     else:
         reveal_type(x)  # N: Revealed type is "builtins.int"
-[builtins fixtures/list.pyi]
+
+def two_type_vars(x: Union[str, Dict[str, int], Dict[bool, object], int]) -> None:
+    if isinstance(x, str):
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    elif isinstance(x, dict):
+        reveal_type(x)  # N: Revealed type is "Union[builtins.dict[builtins.str, builtins.int], builtins.dict[builtins.bool, builtins.object]]"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/dict.pyi]
