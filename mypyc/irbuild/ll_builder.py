@@ -39,8 +39,8 @@ from mypyc.ir.rtypes import (
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.common import (
-    FAST_ISINSTANCE_MAX_SUBCLASSES, MAX_LITERAL_SHORT_INT, PLATFORM_SIZE, use_vectorcall,
-    use_method_vectorcall
+    FAST_ISINSTANCE_MAX_SUBCLASSES, MAX_LITERAL_SHORT_INT, MIN_LITERAL_SHORT_INT, PLATFORM_SIZE,
+    use_vectorcall, use_method_vectorcall
 )
 from mypyc.primitives.registry import (
     method_call_ops, CFunctionDescription,
@@ -789,7 +789,7 @@ class LowLevelIRBuilder:
 
     def load_int(self, value: int) -> Value:
         """Load a tagged (Python) integer literal value."""
-        if abs(value) > MAX_LITERAL_SHORT_INT:
+        if value > MAX_LITERAL_SHORT_INT or value < MIN_LITERAL_SHORT_INT:
             return self.add(LoadLiteral(value, int_rprimitive))
         else:
             return Integer(value)
