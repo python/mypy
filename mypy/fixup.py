@@ -57,7 +57,8 @@ class NodeFixer(NodeVisitor[None]):
             if info.metaclass_type:
                 info.metaclass_type.accept(self.type_fixer)
             if info._mro_refs:
-                info.mro = [lookup_qualified_typeinfo(self.modules, name, self.allow_missing)
+                info.mro = [lookup_fully_qualified_typeinfo(self.modules, name,
+                                                            self.allow_missing)
                             for name in info._mro_refs]
                 info._mro_refs = None
         finally:
@@ -149,7 +150,7 @@ class TypeFixer(TypeVisitor[None]):
         if type_ref is None:
             return  # We've already been here.
         inst.type_ref = None
-        inst.type = lookup_qualified_typeinfo(self.modules, type_ref, self.allow_missing)
+        inst.type = lookup_fully_qualified_typeinfo(self.modules, type_ref, self.allow_missing)
         # TODO: Is this needed or redundant?
         # Also fix up the bases, just in case.
         for base in inst.type.bases:
@@ -165,7 +166,7 @@ class TypeFixer(TypeVisitor[None]):
         if type_ref is None:
             return  # We've already been here.
         t.type_ref = None
-        t.alias = lookup_qualified_alias(self.modules, type_ref, self.allow_missing)
+        t.alias = lookup_fully_qualified_alias(self.modules, type_ref, self.allow_missing)
         for a in t.args:
             a.accept(self)
 
@@ -259,8 +260,8 @@ class TypeFixer(TypeVisitor[None]):
         t.item.accept(self)
 
 
-def lookup_qualified_typeinfo(modules: Dict[str, MypyFile], name: str,
-                              allow_missing: bool) -> TypeInfo:
+def lookup_fully_qualified_typeinfo(modules: Dict[str, MypyFile], name: str,
+                                    allow_missing: bool) -> TypeInfo:
     stnode = lookup_fully_qualified(name, modules, allow_missing)
     node = stnode.node if stnode else None
     if isinstance(node, TypeInfo):
@@ -274,8 +275,8 @@ def lookup_qualified_typeinfo(modules: Dict[str, MypyFile], name: str,
         return missing_info(modules)
 
 
-def lookup_qualified_alias(modules: Dict[str, MypyFile], name: str,
-                           allow_missing: bool) -> TypeAlias:
+def lookup_fully_qualified_alias(modules: Dict[str, MypyFile], name: str,
+                                 allow_missing: bool) -> TypeAlias:
     stnode = lookup_fully_qualified(name, modules, allow_missing)
     node = stnode.node if stnode else None
     if isinstance(node, TypeAlias):
@@ -298,7 +299,7 @@ def missing_info(modules: Dict[str, MypyFile]) -> TypeInfo:
     dummy_def.fullname = suggestion
 
     info = TypeInfo(SymbolTable(), dummy_def, "<missing>")
-    obj_type = lookup_qualified_typeinfo(modules, 'builtins.object', False)
+    obj_type = lookup_fully_qualified_typeinfo(modules, 'builtins.object', False)
     info.bases = [Instance(obj_type, [])]
     info.mro = [info, obj_type]
     return info
