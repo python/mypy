@@ -1,4 +1,5 @@
 from typing import List, Union
+from mypyc.ir.pprint import format_func
 from mypyc.ir.ops import (
     OpVisitor, BasicBlock, Register, Op, ControlOp, Goto, Branch, Return, Unreachable,
     Assign, AssignMulti, LoadErrorValue, LoadLiteral, GetAttr, SetAttr, LoadStatic,
@@ -26,9 +27,6 @@ def check_funcdef(fn: FuncIR) -> List[FnError]:
     """Check a list of basic blocks (e.g. from a function definition) in surrounding
     context (e.g. args).
     """
-    # deal with args later
-    assert not fn.arg_regs
-
     errors = []
 
     for block in fn.blocks:
@@ -44,6 +42,16 @@ def check_funcdef(fn: FuncIR) -> List[FnError]:
             op.accept(op_checker)
 
     return errors + op_checker.errors
+
+
+class IrCheckException(Exception):
+    pass
+
+
+def check_funcdef_and_crash(fn: FuncIR) -> None:
+    errors = check_funcdef(fn)
+    if errors:
+        raise IrCheckException("Internal error: Generated invalid IR: \n" + "\n".join(format_func(fn, [(e.source, e.desc) for e in errors])))
 
 
 class OpChecker(OpVisitor[None]):
@@ -66,92 +74,91 @@ class OpChecker(OpVisitor[None]):
         self.check_control_op_targets(op)
                                                                        
     def visit_return(self, op: Return) -> None:
-        # TODO: check return
         pass
                                                                                  
     def visit_unreachable(self, op: Unreachable) -> None:
-        raise NotImplementedError           
+        pass           
                                            
     def visit_assign(self, op: Assign) -> None:
-        raise NotImplementedError
+        pass
                                         
     def visit_assign_multi(self, op: AssignMulti) -> None:
-        raise NotImplementedError   
+        pass   
                                                                       
     def visit_load_error_value(self, op: LoadErrorValue) -> None:        
-        raise NotImplementedError
+        pass
 
     def visit_load_literal(self, op: LoadLiteral) -> None:
-        raise NotImplementedError
+        pass
 
     def visit_get_attr(self, op: GetAttr) -> None:
-        raise NotImplementedError
+        pass
 
     def visit_set_attr(self, op: SetAttr) -> None:
-        raise NotImplementedError
+        pass
 
     def visit_load_static(self, op: LoadStatic) -> None:
-        raise NotImplementedError
+        pass
 
     def visit_init_static(self, op: InitStatic) -> None:
-        raise NotImplementedError
+        pass
 
     def visit_tuple_get(self, op: TupleGet) -> None:
-        raise NotImplementedError
+        pass
 
     def visit_tuple_set(self, op: TupleSet) -> None:
-        raise NotImplementedError
+        pass
 
     def visit_inc_ref(self, op: IncRef) -> None:
-        raise NotImplementedError
+        pass
 
     def visit_dec_ref(self, op: DecRef) -> None:
-        raise NotImplementedError
+        pass
 
     def visit_call(self, op: Call) -> None:
-        raise NotImplementedError
+        pass
 
     def visit_method_call(self, op: MethodCall) -> None:
-        raise NotImplementedError
+        pass
 
     def visit_cast(self, op: Cast) -> None:
-        raise NotImplementedError
+        pass
 
     def visit_box(self, op: Box) -> None:
-        raise NotImplementedError
+        pass
 
     def visit_unbox(self, op: Unbox) -> None:
-        raise NotImplementedError
+        pass
 
     def visit_raise_standard_error(self, op: RaiseStandardError) -> None:
-        raise NotImplementedError
+        pass
 
     def visit_call_c(self, op: CallC) -> None:
-        raise NotImplementedError
+        pass
 
     def visit_truncate(self, op: Truncate) -> None:
-        raise NotImplementedError
+        pass
 
     def visit_load_global(self, op: LoadGlobal) -> None:
-        raise NotImplementedError
+        pass
 
     def visit_int_op(self, op: IntOp) -> None:
-        raise NotImplementedError
+        pass
 
     def visit_comparison_op(self, op: ComparisonOp) -> None:
-        raise NotImplementedError
+        pass
 
     def visit_load_mem(self, op: LoadMem) -> None:
-        raise NotImplementedError
+        pass
 
     def visit_set_mem(self, op: SetMem) -> None:
-        raise NotImplementedError
+        pass
 
     def visit_get_element_ptr(self, op: GetElementPtr) -> None:
-        raise NotImplementedError
+        pass
 
     def visit_load_address(self, op: LoadAddress) -> None:
-        raise NotImplementedError
+        pass
 
     def visit_keep_alive(self, op: KeepAlive) -> None:
-        raise NotImplementedError
+        pass

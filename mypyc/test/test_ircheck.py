@@ -5,6 +5,7 @@ from mypyc.analysis.ircheck import check_funcdef, FnError
 from mypyc.ir.rtypes import none_rprimitive
 from mypyc.ir.ops import BasicBlock, Op, Return, Integer, Goto
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FuncSignature
+from mypyc.ir.pprint import format_func
 
 
 def assert_has_error(fn: FuncIR, error: FnError) -> None:
@@ -73,3 +74,22 @@ class TestIrcheck(unittest.TestCase):
             blocks=[block_2],
         )
         assert_has_error(fn, FnError(source=goto, desc="Invalid control operation target: 1"))
+
+    def test_pprint(self) -> None:
+        block_1 = self.basic_block([Return(value=NONE_VALUE)])
+        goto = Goto(label=block_1)
+        block_2 = self.basic_block([goto])
+        fn = FuncIR(
+            decl=self.func_decl(name="func_1"),
+            arg_regs=[],
+            # block_1 omitted
+            blocks=[block_2],
+        )
+        errors = [(goto, "Invalid control operation target: 1")]
+        formatted = format_func(fn, errors)
+        assert formatted == [
+            "def func_1():",
+            "L0:",
+            "    goto L1",
+            "  ERR: Invalid control operation target: 1",
+        ]
