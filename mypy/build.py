@@ -69,7 +69,7 @@ from mypy import errorcodes as codes
 DEBUG_FINE_GRAINED: Final = False
 
 # These modules are special and should always come from typeshed.
-CORE_BUILTIN_MODULES = {
+CORE_BUILTIN_MODULES: Final = {
     'builtins',
     'typing',
     'types',
