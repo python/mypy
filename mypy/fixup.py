@@ -74,7 +74,8 @@ class NodeFixer(NodeVisitor[None]):
                 if cross_ref in self.modules:
                     value.node = self.modules[cross_ref]
                 else:
-                    stnode = lookup_fully_qualified(cross_ref, self.modules, self.allow_missing)
+                    stnode = lookup_fully_qualified(cross_ref, self.modules,
+                                                    not self.allow_missing)
                     if stnode is not None:
                         assert stnode.node is not None, (table_fullname + "." + key, cross_ref)
                         value.node = stnode.node
@@ -228,7 +229,7 @@ class TypeFixer(TypeVisitor[None]):
         if tdt.fallback is not None:
             if tdt.fallback.type_ref is not None:
                 if lookup_fully_qualified(tdt.fallback.type_ref, self.modules,
-                                          self.allow_missing) is None:
+                                          not self.allow_missing) is None:
                     # We reject fake TypeInfos for TypedDict fallbacks because
                     # the latter are used in type checking and must be valid.
                     tdt.fallback.type_ref = 'typing._TypedDict'
@@ -262,7 +263,7 @@ class TypeFixer(TypeVisitor[None]):
 
 def lookup_fully_qualified_typeinfo(modules: Dict[str, MypyFile], name: str,
                                     allow_missing: bool) -> TypeInfo:
-    stnode = lookup_fully_qualified(name, modules, allow_missing)
+    stnode = lookup_fully_qualified(name, modules, not allow_missing)
     node = stnode.node if stnode else None
     if isinstance(node, TypeInfo):
         return node
@@ -277,7 +278,7 @@ def lookup_fully_qualified_typeinfo(modules: Dict[str, MypyFile], name: str,
 
 def lookup_fully_qualified_alias(modules: Dict[str, MypyFile], name: str,
                                  allow_missing: bool) -> TypeAlias:
-    stnode = lookup_fully_qualified(name, modules, allow_missing)
+    stnode = lookup_fully_qualified(name, modules, not allow_missing)
     node = stnode.node if stnode else None
     if isinstance(node, TypeAlias):
         return node
@@ -299,7 +300,7 @@ def missing_info(modules: Dict[str, MypyFile]) -> TypeInfo:
     dummy_def.fullname = suggestion
 
     info = TypeInfo(SymbolTable(), dummy_def, "<missing>")
-    obj_type = lookup_fully_qualified_typeinfo(modules, 'builtins.object', False)
+    obj_type = lookup_fully_qualified_typeinfo(modules, 'builtins.object', allow_missing=False)
     info.bases = [Instance(obj_type, [])]
     info.mro = [info, obj_type]
     return info

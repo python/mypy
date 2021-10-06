@@ -87,7 +87,8 @@ class Attribute:
         if self.converter.name:
             # When a converter is set the init_type is overridden by the first argument
             # of the converter method.
-            converter = lookup_fully_qualified(self.converter.name, ctx.api.modules, True)
+            converter = lookup_fully_qualified(self.converter.name, ctx.api.modules,
+                                               raise_on_missing=False)
             if not converter:
                 # The converter may be a local variable. Check there too.
                 converter = ctx.api.lookup_qualified(self.converter.name, self.info, True)
