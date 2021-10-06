@@ -139,18 +139,6 @@ match m:
     case [[1], [True]]:
         reveal_type(m)  # N: Revealed type is "typing.Sequence[typing.Sequence[builtins.int]]"
 
-[case testMultipleNestedSequencePattern]
-# From cpython test_patma.py
-x = [[{0: 0}]]
-match x:
-    case list([({-0-0j: int(real=0+0j, imag=0-0j) | (1) as z},)]):
-        y = 0
-
-reveal_type(x)  # N: Revealed type is "builtins.list[builtins.list*[builtins.dict*[builtins.int*, builtins.int*]]]"
-reveal_type(y)  # N: Revealed type is "builtins.int"
-reveal_type(z)  # N: Revealed type is "builtins.int*"
-[builtins fixtures/dict.pyi]
-
 [case testSequencePatternDoesntNarrowInvariant]
 from typing import List
 m: List[object]
@@ -848,6 +836,18 @@ match m:
     case a(i, j):  # E: Class pattern must be a type. Found "builtins.int"
         reveal_type(i)
         reveal_type(j)
+
+[case testClassPatternNestedGenerics]
+# From cpython test_patma.py
+x = [[{0: 0}]]
+match x:
+    case list([({-0-0j: int(real=0+0j, imag=0-0j) | (1) as z},)]):
+        y = 0
+
+reveal_type(x)  # N: Revealed type is "builtins.list[builtins.list*[builtins.dict*[builtins.int*, builtins.int*]]]"
+reveal_type(y)  # N: Revealed type is "builtins.int"
+reveal_type(z)  # N: Revealed type is "builtins.int*"
+[builtins fixtures/dict.pyi]
 
 [case testNonFinalMatchArgs]
 class A:
