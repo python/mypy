@@ -417,7 +417,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             if self.should_self_match(typ):
                 if len(o.positionals) > 1:
                     self.msg.fail("Too many positional patterns for class pattern", o)
-                pattern_type = self.accept(o.positionals[0], typ)
+                pattern_type = self.accept(o.positionals[0], new_type)
                 if pattern_type.type is None:
                     return pattern_type
                 captures = pattern_type.captures

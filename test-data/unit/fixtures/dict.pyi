@@ -31,8 +31,11 @@ class dict(Mapping[KT, VT]):
     def get(self, k: KT, default: Union[KT, T]) -> Union[VT, T]: pass
     def __len__(self) -> int: ...
 
+class complex: pass
 class int: # for convenience
-    def __add__(self, x: int) -> int: pass
+    def __add__(self, x: Union[int, complex]) -> int: pass
+    def __sub__(self, x: Union[int, complex]) -> int: pass
+    def __neg__(self): pass
 
 class str: pass # for keyword argument key type
 class unicode: pass # needed for py2 docstrings
