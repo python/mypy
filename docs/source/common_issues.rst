@@ -811,3 +811,35 @@ This is best understood via an example:
 To get this code to type check, you could assign ``y = x`` after ``x`` has been
 narrowed, and use ``y`` in the inner function, or add an assert in the inner
 function.
+
+'types' module vs 'typing'
+--------------------------
+
+While these two might sound the same,
+they are created for completely different purposes.
+
+``typing`` is used for type annotations,
+while ``types`` is used to define useful runtime types and primitives.
+
+Types from ``types`` module are not recognised by a type checker,
+here's an example of what you should not do:
+
+.. code-block:: python
+
+    import types
+
+    def a() -> types.NoneType:  # Incompatible return value type (got "None", expected "NoneType")
+        return None
+
+    b: types.FunctionType = a  # Incompatible types in assignment (expression has type "Callable[[], NoneType]", variable has type "FunctionType")
+
+Instead, use ``typing`` module:
+
+.. code-block:: python
+
+    import typing
+
+    def a() -> None:
+        return None
+
+    b: typing.Callable = a  # ok
