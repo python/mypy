@@ -1359,9 +1359,13 @@ class TypeConverter:
             return None
         return self.node_stack[-2]
 
-    def fail(self, msg: str, line: int, column: int) -> None:
+    def fail(self, msg: str, line: int, column: int,
+             blocker: bool = True,
+             code: Optional[codes.ErrorCode] = None) -> None:
+        if code is None:
+            code = codes.SYNTAX
         if self.errors:
-            self.errors.report(line, column, msg, blocker=True, code=codes.SYNTAX)
+            self.errors.report(line, column, msg, blocker=blocker, code=code)
 
     def note(self, msg: str, line: int, column: int) -> None:
         if self.errors:
@@ -1562,12 +1566,14 @@ class TypeConverter:
             if (isinstance(sliceval, ast3.Slice) or
                 (isinstance(sliceval, ast3.Tuple) and
                  any(isinstance(x, ast3.Slice) for x in sliceval.elts))):
-                self.fail(INVALID_SLICE_ERROR, self.line, getattr(n, 'col_offset', -1))
+                self.fail(INVALID_SLICE_ERROR, self.line, getattr(n, 'col_offset', -1),
+                          blocker=False, code=codes.SLICE_SYNTAX)
                 return AnyType(TypeOfAny.from_error)
         else:
             # Python 3.8 or earlier use a different AST structure for subscripts
             if not isinstance(n.slice, Index):
-                self.fail(INVALID_SLICE_ERROR, self.line, getattr(n, 'col_offset', -1))
+                self.fail(INVALID_SLICE_ERROR, self.line, getattr(n, 'col_offset', -1),
+                          blocker=False, code=codes.SLICE_SYNTAX)
                 return AnyType(TypeOfAny.from_error)
             sliceval = n.slice.value
 

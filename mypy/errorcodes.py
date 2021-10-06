@@ -135,6 +135,7 @@ NAME_MATCH: Final = ErrorCode(
 
 # Syntax errors are often blocking.
 SYNTAX: Final = ErrorCode("syntax", "Report syntax errors", "General")
+SLICE_SYNTAX: Final = ErrorCode("slice-syntax", "Report slice syntax errors", "General")
 
 # This is a catch-all for remaining uncategorized errors.
 MISC: Final = ErrorCode("misc", "Miscellaneous other checks", "General")

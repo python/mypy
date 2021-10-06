@@ -897,3 +897,24 @@ lst: List[int] = []
 if lst:
     pass
 [builtins fixtures/list.pyi]
+
+[case testSliceAnnotatedErrorDisabled39]
+# flags: --python-version 3.9 --disable-error-code slice-syntax
+a: Annotated[int, 1:2]
+b: Dict[int, x:y]
+c: Dict[x:y]
+
+reveal_type(a)  # N: Revealed type is "Any"
+reveal_type(b)  # N: Revealed type is "Any"
+reveal_type(c)  # N: Revealed type is "Any"
+
+[case testSliceAnnotatedErrorDisabled38]
+# flags: --python-version 3.8 --disable-error-code slice-syntax
+
+a: Annotated[int, 1:2]
+b: Dict[int, x:y]
+c: Dict[x:y]
+
+reveal_type(a)  # N: Revealed type is "Any"
+reveal_type(b)  # N: Revealed type is "Any"
+reveal_type(c)  # N: Revealed type is "Any"

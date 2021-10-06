@@ -374,6 +374,16 @@ class Errors:
                         return
             if file in self.ignored_files:
                 return
+            if (
+                not self.ignored_lines
+                and info.code
+                and self.is_error_code_enabled(info.code) is False
+            ):
+                # We also might want to ignore some errors during `fastparse`.
+                # At that moment `ignored_lines` might not be ready,
+                # so, we only check for specific error codes.
+                # For example, `Dict[{str: int}]` can be ignored this way.
+                return
         if info.only_once:
             if info.message in self.only_once_messages:
                 return
