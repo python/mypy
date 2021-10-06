@@ -216,8 +216,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     # functions such as open(), etc.
     plugin: Plugin
 
+    # Future flags that we get from semantic analyzer.
+    future_import_flags: Set[str]
+
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile], options: Options,
-                 tree: MypyFile, path: str, plugin: Plugin) -> None:
+                 tree: MypyFile, path: str, plugin: Plugin,
+                 future_import_flags: Set[str]) -> None:
         """Construct a type checker.
 
         Use errors to report type check errors.
@@ -262,6 +266,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # NOTE: we use the context manager to avoid "threading" an additional `is_final_def`
         # argument through various `checker` and `checkmember` functions.
         self._is_final_def = False
+
+        self.future_import_flags = future_import_flags
 
     @property
     def type_context(self) -> List[Optional[Type]]:
