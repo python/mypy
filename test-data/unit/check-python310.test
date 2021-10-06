@@ -303,6 +303,14 @@ match m:
         reveal_type(c)
 [builtins fixtures/list.pyi]
 
+[case testNonMatchingSequencePattern]
+from typing import List
+
+x: List[int]
+match x:
+    case [str()]:
+        pass
+
 -- Mapping Pattern --
 [case testMappingPatternCaptures]
 from typing import Dict

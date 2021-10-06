@@ -232,8 +232,9 @@ class PatternChecker(PatternVisitor[PatternType]):
         #
         # Calculate new type
         #
+        new_type: Optional[Type]
         if not can_match:
-            new_type: Optional[Type]
+            new_type = None
         elif isinstance(current_type, TupleType):
             specific_inner_types = []
             for inner_type, new_inner_type in zip(inner_types, new_inner_types):
