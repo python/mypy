@@ -10,6 +10,7 @@ import os.path
 import re
 from typing import List, Dict, Tuple, Optional, Mapping, Any, Set
 from types import ModuleType
+from typing_extensions import Final
 
 from mypy.moduleinspect import is_c_module
 from mypy.stubdoc import (
@@ -19,7 +20,7 @@ from mypy.stubdoc import (
 )
 
 # Members of the typing module to consider for importing by default.
-_DEFAULT_TYPING_IMPORTS = (
+_DEFAULT_TYPING_IMPORTS: Final = (
     'Any',
     'Callable',
     'ClassVar',

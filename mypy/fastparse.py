@@ -132,7 +132,7 @@ INVALID_TYPE_IGNORE: Final = 'Invalid "type: ignore" comment'
 
 INVALID_SLICE_ERROR: Final = 'Slice usage in type annotation is invalid'
 
-TYPE_IGNORE_PATTERN = re.compile(r'[^#]*#\s*type:\s*ignore\s*(.*)')
+TYPE_IGNORE_PATTERN: Final = re.compile(r'[^#]*#\s*type:\s*ignore\s*(.*)')
 
 
 def parse(source: Union[str, bytes],
