@@ -239,7 +239,7 @@ def contains_int_or_tuple_of_ints(expr: Expression
 def contains_sys_version_info(expr: Expression
                               ) -> Union[None, int, Tuple[Optional[int], Optional[int]]]:
     if is_sys_attr(expr, 'version_info'):
-        return (None, None)  # Same as sys.version_info[:]
+        return None, None  # Same as sys.version_info[:]
     if isinstance(expr, IndexExpr) and is_sys_attr(expr.base, 'version_info'):
         index = expr.index
         if isinstance(index, IntExpr):
@@ -257,7 +257,7 @@ def contains_sys_version_info(expr: Expression
                 if not isinstance(index.end_index, IntExpr):
                     return None
                 end = index.end_index.value
-            return (begin, end)
+            return begin, end
     return None
 
 

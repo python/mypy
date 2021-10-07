@@ -160,7 +160,7 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
 
     def visit_index_expr(self, e: IndexExpr) -> Optional[Key]:
         if literal(e.index) == LITERAL_YES:
-            return ('Index', literal_hash(e.base), literal_hash(e.index))
+            return 'Index', literal_hash(e.base), literal_hash(e.index)
         return None
 
     def visit_assignment_expr(self, e: AssignmentExpr) -> Optional[Key]:
