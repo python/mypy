@@ -3315,7 +3315,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                     if not isinstance(lval, RefExpr):
                         continue
                     # respect explicitly annotated type
-                    if (isinstance(lval.node, Var) and lval.node.type is not None):
+                    if isinstance(lval.node, Var) and lval.node.type is not None:
                         continue
 
                     # We can handle these assignments to locals and to self
@@ -4538,7 +4538,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if not (isinstance(new, (FuncDef, Decorator))
                         and self.set_original_def(old, new)):
                     self.name_already_defined(name, context, existing)
-        elif (name not in self.missing_names[-1] and '*' not in self.missing_names[-1]):
+        elif name not in self.missing_names[-1] and '*' not in self.missing_names[-1]:
             names[name] = symbol
             self.progress = True
             return True

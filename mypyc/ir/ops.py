@@ -344,7 +344,7 @@ class Branch(ControlOp):
         self.rare = rare
 
     def targets(self) -> Sequence[BasicBlock]:
-        return (self.true, self.false)
+        return self.true, self.false
 
     def set_target(self, i: int, new: BasicBlock) -> None:
         assert i == 0 or i == 1

@@ -369,7 +369,7 @@ def gen_func_ir(builder: IRBuilder,
         else:
             func_ir = FuncIR(func_decl, args, blocks,
                              fn_info.fitem.line, traceback_name=fn_info.fitem.name)
-    return (func_ir, func_reg)
+    return func_ir, func_reg
 
 
 def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None:

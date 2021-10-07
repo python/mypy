@@ -410,7 +410,7 @@ def make_simplified_union(items: Sequence[Type],
     simplified_set = [items[i] for i in range(len(items)) if i not in removed]
 
     # If more than one literal exists in the union, try to simplify
-    if (contract_literals and sum(isinstance(item, LiteralType) for item in simplified_set) > 1):
+    if contract_literals and sum(isinstance(item, LiteralType) for item in simplified_set) > 1:
         simplified_set = try_contracting_literals_in_union(simplified_set)
 
     return UnionType.make_union(simplified_set, line, column)
