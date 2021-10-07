@@ -4158,10 +4158,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 return f'Expression has type "{t}"'
 
         if isinstance(t, FunctionLike):
-            self.msg.fail(
-                message_registry.FUNCTION_ALWAYS_TRUE.format(t), expr,
-                code=codes.TRUTHY_BOOL,
-            )
+            self.fail(message_registry.FUNCTION_ALWAYS_TRUE.format(t), expr)
         elif isinstance(t, UnionType):
             self.fail(
                 message_registry.TYPE_ALWAYS_TRUE_UNIONTYPE.format(format_expr_type()),

@@ -679,9 +679,11 @@ class Errors:
                                    'In class "{}":'.format(e.type), e.allow_dups, None))
 
             if isinstance(e.message, ErrorMessage):
-                result.append((file, e.line, e.column, e.severity, e.message.value, e.allow_dups, e.code))
+                result.append(
+                    (file, e.line, e.column, e.severity, e.message.value, e.allow_dups, e.code))
             else:
-                result.append((file, e.line, e.column, e.severity, e.message, e.allow_dups, e.code))
+                result.append(
+                    (file, e.line, e.column, e.severity, e.message, e.allow_dups, e.code))
 
             prev_import_context = e.import_ctx
             prev_function_or_member = e.function_or_member

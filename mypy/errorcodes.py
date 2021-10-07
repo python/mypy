@@ -14,10 +14,9 @@ error_codes: Dict[str, "ErrorCode"] = {}
 
 
 class ErrorCode:
-    def __init__(self, code: str,
-                 description: str,
-                 category: str,
-                 default_enabled: bool = True) -> None:
+    def __init__(
+        self, code: str, description: str, category: str, default_enabled: bool = True
+    ) -> None:
         self.code = code
         self.description = description
         self.category = category
@@ -25,7 +24,7 @@ class ErrorCode:
         error_codes[code] = self
 
     def __str__(self) -> str:
-        return '<ErrorCode {}>'.format(self.code)
+        return "<ErrorCode {}>".format(self.code)
 
 
 ATTR_DEFINED: Final = ErrorCode("attr-defined", "Check that attribute exists", "General")
@@ -100,7 +99,7 @@ NO_UNTYPED_DEF: Final[ErrorCode] = ErrorCode(
     "no-untyped-def", "Check that every function has an annotation", "General"
 )
 NO_UNTYPED_CALL: Final = ErrorCode(
-    'no-untyped-call',
+    "no-untyped-call",
     "Disallow calling functions without type annotations from annotated functions",
     "General",
 )
@@ -125,10 +124,10 @@ REDUNDANT_EXPR: Final = ErrorCode(
     "redundant-expr", "Warn about redundant expressions", "General", default_enabled=False
 )
 TRUTHY_BOOL: Final = ErrorCode(
-    'truthy-bool',
+    "truthy-bool",
     "Warn about expressions that could always evaluate to true in boolean contexts",
-    'General',
-    default_enabled=False
+    "General",
+    default_enabled=False,
 )
 NAME_MATCH: Final = ErrorCode(
     "name-match", "Check that type definition has consistent naming", "General"
