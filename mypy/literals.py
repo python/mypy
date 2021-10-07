@@ -95,37 +95,37 @@ def literal_hash(e: Expression) -> Optional[Key]:
 
 class _Hasher(ExpressionVisitor[Optional[Key]]):
     def visit_int_expr(self, e: IntExpr) -> Key:
-        return ('Literal', e.value)
+        return 'Literal', e.value
 
     def visit_str_expr(self, e: StrExpr) -> Key:
-        return ('Literal', e.value, e.from_python_3)
+        return 'Literal', e.value, e.from_python_3
 
     def visit_bytes_expr(self, e: BytesExpr) -> Key:
-        return ('Literal', e.value)
+        return 'Literal', e.value
 
     def visit_unicode_expr(self, e: UnicodeExpr) -> Key:
-        return ('Literal', e.value)
+        return 'Literal', e.value
 
     def visit_float_expr(self, e: FloatExpr) -> Key:
-        return ('Literal', e.value)
+        return 'Literal', e.value
 
     def visit_complex_expr(self, e: ComplexExpr) -> Key:
-        return ('Literal', e.value)
+        return 'Literal', e.value
 
     def visit_star_expr(self, e: StarExpr) -> Key:
-        return ('Star', literal_hash(e.expr))
+        return 'Star', literal_hash(e.expr)
 
     def visit_name_expr(self, e: NameExpr) -> Key:
         # N.B: We use the node itself as the key, and not the name,
         # because using the name causes issues when there is shadowing
         # (for example, in list comprehensions).
-        return ('Var', e.node)
+        return 'Var', e.node
 
     def visit_member_expr(self, e: MemberExpr) -> Key:
-        return ('Member', literal_hash(e.expr), e.name)
+        return 'Member', literal_hash(e.expr), e.name
 
     def visit_op_expr(self, e: OpExpr) -> Key:
-        return ('Binary', e.op, literal_hash(e.left), literal_hash(e.right))
+        return 'Binary', e.op, literal_hash(e.left), literal_hash(e.right)
 
     def visit_comparison_expr(self, e: ComparisonExpr) -> Key:
         rest: Any = tuple(e.operators)
@@ -133,7 +133,7 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
         return ('Comparison',) + rest
 
     def visit_unary_expr(self, e: UnaryExpr) -> Key:
-        return ('Unary', e.op, literal_hash(e.expr))
+        return 'Unary', e.op, literal_hash(e.expr)
 
     def seq_expr(self, e: Union[ListExpr, TupleExpr, SetExpr], name: str) -> Optional[Key]:
         if all(literal(x) == LITERAL_YES for x in e.items):
