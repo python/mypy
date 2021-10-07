@@ -72,13 +72,19 @@ raise x # E: Exception must be derived from BaseException
 from types import TracebackType
 from typing import Optional
 
+e = None  # type: Optional[TracebackType]
+
+raise BaseException # ok
+raise BaseException(1)  # ok
+raise BaseException, 1  # ok
+raise BaseException, 1, e  # ok
+raise BaseException, 1, None  # ok
+
 raise Exception # ok
 raise Exception(1)  # ok
 raise Exception, 1  # ok
-
-e = None  # type: Optional[TracebackType]
 raise Exception, 1, e  # ok
-raise Exception, 1, None
+raise Exception, 1, None  # ok
 
 raise int, 1  # E: Exception must be derived from BaseException
 raise Exception, 1, 1  # E: Third argument to raise must have "Union[types.TracebackType, None]" type
