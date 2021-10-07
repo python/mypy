@@ -1531,3 +1531,20 @@ _testNoPython3StubAvailable.py:1: note: See https://mypy.readthedocs.io/en/stabl
 _testNoPython3StubAvailable.py:3: error: Library stubs not installed for "maxminddb" (or incompatible with Python 3.6)
 _testNoPython3StubAvailable.py:3: note: Hint: "python3 -m pip install types-maxminddb"
 _testNoPython3StubAvailable.py:3: note: (or run "mypy --install-types" to install all missing stub packages)
+
+[case testRaiseTupleOfThreeOnPython2]
+from types import TracebackType
+from typing import Optional
+
+raise Exception # ok
+raise Exception(1)  # ok
+raise Exception, 1  # ok
+
+e = None  # type: Optional[TracebackType]
+raise Exception, 1, e  # ok
+raise Exception, 1, None
+
+raise int, 1  # E: Exception must be derived from BaseException
+raise Exception, 1, 1  # E: Third argument to raise must have "Union[types.TracebackType, None]" type
+raise int, 1, 1  # E: Exception must be derived from BaseException \
+                 # E: Third argument to raise must have "Union[types.TracebackType, None]" type

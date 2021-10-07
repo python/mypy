@@ -3471,23 +3471,57 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(typ, DeletedType):
             self.msg.deleted_as_rvalue(typ, e)
             return
+
         exc_type = self.named_type('builtins.BaseException')
-        expected_type = UnionType([exc_type, TypeType(exc_type)])
+        expected_type_items = [exc_type, TypeType(exc_type)]
         if optional:
-            expected_type.items.append(NoneType())
-        if self.options.python_version[0] == 2:
+            expected_type_items.append(NoneType())
+
+        if (self.options.python_version[0] == 2
+                and isinstance(typ, TupleType)
+                and len(typ.items) >= 2):
             # allow `raise type, value, traceback`
             # https://docs.python.org/2/reference/simple_stmts.html#the-raise-statement
-            # TODO: Also check tuple item types.
             any_type = AnyType(TypeOfAny.implementation_artifact)
             tuple_type = self.named_type('builtins.tuple')
-            expected_type.items.append(TupleType([any_type, any_type], tuple_type))
-            expected_type.items.append(TupleType([any_type, any_type, any_type], tuple_type))
-        self.check_subtype(typ, expected_type, s, message_registry.INVALID_EXCEPTION)
+
+            # Right now we push all types as `Any`,
+            # because we will type-check `traceback` later.
+            # `msg` is always `Any`.
+            expected_type_items.extend([
+                # `raise Exception, msg` case:
+                TupleType([TypeType(exc_type), any_type], tuple_type),
+                # `raise Exception, msg, traceback` case:
+                TupleType([TypeType(exc_type), any_type, any_type], tuple_type),
+            ])
+
+        self.check_subtype(
+            typ, UnionType.make_union(expected_type_items),
+            s, message_registry.INVALID_EXCEPTION,
+        )
 
         if isinstance(typ, FunctionLike):
             # https://github.com/python/mypy/issues/11089
             self.expr_checker.check_call(typ, [], [], e)
+
+        # `raise Exception, msg, traceback` case
+        if (self.options.python_version[0] == 2
+                and isinstance(typ, TupleType)
+                and len(typ.items) == 3):
+            # Now, we typecheck `traceback` argument it is present.
+            # We do this after the main check for better error message
+            # and better ordering: first about `BaseException` subtype,
+            # then about `traceback` type.
+
+            traceback_type = UnionType.make_union([
+                self.named_type('types.TracebackType'),
+                NoneType(),
+            ])
+            self.check_subtype(
+                typ.items[2],
+                traceback_type, s,
+                'Third argument to raise must have "{}" type'.format(traceback_type),
+            )
 
     def visit_try_stmt(self, s: TryStmt) -> None:
         """Type check a try statement."""
