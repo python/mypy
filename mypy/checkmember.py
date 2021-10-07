@@ -317,8 +317,6 @@ def analyze_union_member_access(name: str, typ: UnionType, mx: MemberContext) ->
 
 
 def analyze_none_member_access(name: str, typ: NoneType, mx: MemberContext) -> Type:
-    if mx.chk.should_suppress_optional_error([typ]):
-        return AnyType(TypeOfAny.from_error)
     is_python_3 = mx.chk.options.python_version[0] >= 3
     # In Python 2 "None" has exactly the same attributes as "object". Python 3 adds a single
     # extra attribute, "__bool__".
@@ -329,6 +327,8 @@ def analyze_none_member_access(name: str, typ: NoneType, mx: MemberContext) -> T
                             arg_names=[],
                             ret_type=literal_false,
                             fallback=mx.named_type('builtins.function'))
+    elif mx.chk.should_suppress_optional_error([typ]):
+        return AnyType(TypeOfAny.from_error)
     else:
         return _analyze_member_access(name, mx.named_type('builtins.object'), mx)
 
