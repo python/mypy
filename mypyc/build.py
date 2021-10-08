@@ -45,7 +45,8 @@ from mypyc.codegen import emitmodule
 if TYPE_CHECKING:
     from distutils.core import Extension  # noqa
 
-from distutils import sysconfig, ccompiler
+import sysconfig
+from distutils import ccompiler
 
 
 def get_extension() -> Type['Extension']:

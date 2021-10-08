@@ -28,7 +28,7 @@ def getsitepackages():
         user_dir = site.getusersitepackages()
         return site.getsitepackages() + [user_dir]
     else:
-        from distutils.sysconfig import get_python_lib
+        from sysconfig import get_python_lib
         return [get_python_lib()]
 
 
