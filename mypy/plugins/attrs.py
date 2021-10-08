@@ -7,7 +7,7 @@ from typing_extensions import Final
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
-from mypy.fixup import lookup_qualified_stnode
+from mypy.lookup import lookup_fully_qualified
 from mypy.nodes import (
     Context, Argument, Var, ARG_OPT, ARG_POS, TypeInfo, AssignmentStmt,
     TupleExpr, ListExpr, NameExpr, CallExpr, RefExpr, FuncDef,
@@ -87,7 +87,8 @@ class Attribute:
         if self.converter.name:
             # When a converter is set the init_type is overridden by the first argument
             # of the converter method.
-            converter = lookup_qualified_stnode(ctx.api.modules, self.converter.name, True)
+            converter = lookup_fully_qualified(self.converter.name, ctx.api.modules,
+                                               raise_on_missing=False)
             if not converter:
                 # The converter may be a local variable. Check there too.
                 converter = ctx.api.lookup_qualified(self.converter.name, self.info, True)
