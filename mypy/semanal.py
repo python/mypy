@@ -2748,6 +2748,13 @@ class SemanticAnalyzer(NodeVisitor[None],
         existing = names.get(name)
 
         outer = self.is_global_or_nonlocal(name)
+        if kind == MDEF and isinstance(self.type, TypeInfo) and self.type.is_enum:
+            # Special case: we need to be sure that `Enum` keys are unique.
+            if existing:
+                self.fail('Attempted to reuse member name "{}" in Enum definition "{}"'.format(
+                    name, self.type.name,
+                ), lvalue)
+
         if (not existing or isinstance(existing.node, PlaceholderNode)) and not outer:
             # Define new variable.
             var = self.make_name_lvalue_var(lvalue, kind, not explicit_type)
