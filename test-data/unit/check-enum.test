@@ -1636,3 +1636,11 @@ class ErrorFlagWithoutValue(NonEmptyFlag):  # E: Cannot inherit from final class
 class ErrorIntFlagWithoutValue(NonEmptyIntFlag):  # E: Cannot inherit from final class "NonEmptyIntFlag"
     pass
 [builtins fixtures/bool.pyi]
+
+[case testFinalEnumWithClassDef]
+from enum import Enum
+
+class A(Enum):
+    class Inner: pass
+class B(A): pass  # E: Cannot inherit from final class "A"
+[builtins fixtures/bool.pyi]
