@@ -102,10 +102,7 @@ jobs:
         ./misc/build-debug-python.sh $PYTHONVERSION $PYTHONDIR $VENV
         source $VENV/bin/activate
     - name: Install tox
-      run: pip install --upgrade 'setuptools!=50' 'virtualenv<16.7.11' tox==3.20.1
-    - name: Upgrade virtualenv
-      if: ${{ matrix.python == '3.10' }}
-      run: pip install --upgrade virtualenv==20.4.7
+      run: pip install --upgrade 'setuptools!=50' 'virtualenv>=20.6.0' tox==3.20.1
     - name: Compiled with mypyc
       if: ${{ matrix.test_mypyc }}
       run: |
