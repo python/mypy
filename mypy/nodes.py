@@ -2305,7 +2305,7 @@ class TypeAliasExpr(Expression):
 class NamedTupleExpr(Expression):
     """Named tuple expression namedtuple(...) or NamedTuple(...)."""
 
-    __slots__ = ('info', 'is_typed')
+    __slots__ = ('info', 'call', 'is_typed')
 
     # The class representation of this named tuple (its tuple_type attribute contains
     # the tuple item types)
