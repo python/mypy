@@ -3483,7 +3483,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         expected_type_items = [exc_type, TypeType(exc_type)]
         if optional:
             # This is used for `x` part in a case like `raise e from x`,
-            # where we allow `raise e from None`. Is not reachable on python2.
+            # where we allow `raise e from None`.
             expected_type_items.append(NoneType())
 
         self.check_subtype(
