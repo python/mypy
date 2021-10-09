@@ -3510,7 +3510,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         exc_type = self.named_type('builtins.BaseException')
 
         if (not s.legacy_mode and (isinstance(typ, TupleType) and typ.items
-                or (isinstance(typ, Instance) and typ.args and typ.type.fullname == 'builtins.tuple'))):
+                or (isinstance(typ, Instance) and typ.args
+                    and typ.type.fullname == 'builtins.tuple'))):
             # `raise (exc, ...)` case:
             item = typ.items[0] if isinstance(typ, TupleType) else typ.args[0]
             self.check_subtype(
