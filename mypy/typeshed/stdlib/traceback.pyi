@@ -146,7 +146,7 @@ class StackSummary(List[FrameSummary]):
     @classmethod
     def extract(
         cls,
-        frame_gen: Generator[Tuple[FrameType, int], None, None],
+        frame_gen: Iterable[Tuple[FrameType, int]],
         *,
         limit: int | None = ...,
         lookup_lines: bool = ...,

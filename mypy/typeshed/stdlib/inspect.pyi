@@ -124,7 +124,7 @@ class Signature:
     def __init__(
         self, parameters: Sequence[Parameter] | None = ..., *, return_annotation: Any = ..., __validate_parameters__: bool = ...
     ) -> None: ...
-    empty: _empty
+    empty = _empty
     @property
     def parameters(self) -> types.MappingProxyType[str, Parameter]: ...
     # TODO: can we be more specific here?
@@ -172,7 +172,7 @@ class _ParameterKind(enum.IntEnum):
 
 class Parameter:
     def __init__(self, name: str, kind: _ParameterKind, *, default: Any = ..., annotation: Any = ...) -> None: ...
-    empty: _empty
+    empty = _empty
     name: str
     default: Any
     annotation: Any
