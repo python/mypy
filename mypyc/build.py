@@ -47,7 +47,7 @@ if TYPE_CHECKING:
 
 try:
     # Import setuptools so that it monkey-patch overrides distutils
-    import setuptools
+    import setuptools  # type: ignore  # noqa
 except ImportError:
     if sys.version_info >= (3, 12):
         # Raise on Python 3.12, since distutils will go away forever
