@@ -45,6 +45,13 @@ from mypyc.codegen import emitmodule
 if TYPE_CHECKING:
     from distutils.core import Extension  # noqa
 
+try:
+    # Import setuptools so that it monkey-patch overrides distutils
+    import setuptools  # type: ignore  # noqa
+except ImportError:
+    if sys.version_info >= (3, 12):
+        # Raise on Python 3.12, since distutils will go away forever
+        raise
 from distutils import sysconfig, ccompiler
 
 
