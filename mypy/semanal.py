@@ -2554,8 +2554,15 @@ class SemanticAnalyzer(NodeVisitor[None],
         if len(s.lvalues) > 1 or not isinstance(lvalue, NameExpr):
             # First rule: Only simple assignments like Alias = ... create aliases.
             return False
-        if s.unanalyzed_type is not None:
+
+        pep_613 = False
+        if s.unanalyzed_type is not None and isinstance(s.unanalyzed_type, UnboundType):
+            lookup = self.lookup(s.unanalyzed_type.name, s, suppress_errors=True)
+            if lookup and lookup.fullname in ("typing.TypeAlias", "typing_extensions.TypeAlias"):
+                pep_613 = True
+        if s.unanalyzed_type is not None and not pep_613:
             # Second rule: Explicit type (cls: Type[A] = A) always creates variable, not alias.
+            # unless using PEP 613 `cls: TypeAlias = A`
             return False
 
         existing = self.current_symbol_table().get(lvalue.name)
@@ -2580,7 +2587,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             return False
 
         non_global_scope = self.type or self.is_func_scope()
-        if isinstance(s.rvalue, RefExpr) and non_global_scope:
+        if isinstance(s.rvalue, RefExpr) and non_global_scope and not pep_613:
             # Fourth rule (special case): Non-subscripted right hand side creates a variable
             # at class and function scopes. For example:
             #
@@ -2593,7 +2600,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             # annotations (see the second rule).
             return False
         rvalue = s.rvalue
-        if not self.can_be_type_alias(rvalue):
+        if not self.can_be_type_alias(rvalue) and not pep_613:
             return False
 
         if existing and not isinstance(existing.node, (PlaceholderNode, TypeAlias)):
