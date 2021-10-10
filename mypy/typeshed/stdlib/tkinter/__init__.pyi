@@ -610,7 +610,7 @@ class Wm:
     withdraw = wm_withdraw
 
 class _ExceptionReportingCallback(Protocol):
-    def __call__(self, __exc: Type[BaseException], __val: BaseException, __tb: TracebackType) -> Any: ...
+    def __call__(self, __exc: Type[BaseException], __val: BaseException, __tb: TracebackType | None) -> Any: ...
 
 class Tk(Misc, Wm):
     master: None

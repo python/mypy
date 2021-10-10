@@ -1325,36 +1325,79 @@ else:
 def vars(__object: Any = ...) -> dict[str, Any]: ...
 
 class zip(Iterator[_T_co], Generic[_T_co]):
-    @overload
-    def __new__(cls, __iter1: Iterable[_T1]) -> zip[Tuple[_T1]]: ...
-    @overload
-    def __new__(cls, __iter1: Iterable[_T1], __iter2: Iterable[_T2]) -> zip[Tuple[_T1, _T2]]: ...
-    @overload
-    def __new__(cls, __iter1: Iterable[_T1], __iter2: Iterable[_T2], __iter3: Iterable[_T3]) -> zip[Tuple[_T1, _T2, _T3]]: ...
-    @overload
-    def __new__(
-        cls, __iter1: Iterable[_T1], __iter2: Iterable[_T2], __iter3: Iterable[_T3], __iter4: Iterable[_T4]
-    ) -> zip[Tuple[_T1, _T2, _T3, _T4]]: ...
-    @overload
-    def __new__(
-        cls,
-        __iter1: Iterable[_T1],
-        __iter2: Iterable[_T2],
-        __iter3: Iterable[_T3],
-        __iter4: Iterable[_T4],
-        __iter5: Iterable[_T5],
-    ) -> zip[Tuple[_T1, _T2, _T3, _T4, _T5]]: ...
-    @overload
-    def __new__(
-        cls,
-        __iter1: Iterable[Any],
-        __iter2: Iterable[Any],
-        __iter3: Iterable[Any],
-        __iter4: Iterable[Any],
-        __iter5: Iterable[Any],
-        __iter6: Iterable[Any],
-        *iterables: Iterable[Any],
-    ) -> zip[Tuple[Any, ...]]: ...
+    if sys.version_info >= (3, 10):
+        @overload
+        def __new__(cls, __iter1: Iterable[_T1], *, strict: bool = ...) -> zip[Tuple[_T1]]: ...
+        @overload
+        def __new__(cls, __iter1: Iterable[_T1], __iter2: Iterable[_T2], *, strict: bool = ...) -> zip[Tuple[_T1, _T2]]: ...
+        @overload
+        def __new__(
+            cls, __iter1: Iterable[_T1], __iter2: Iterable[_T2], __iter3: Iterable[_T3], *, strict: bool = ...
+        ) -> zip[Tuple[_T1, _T2, _T3]]: ...
+        @overload
+        def __new__(
+            cls,
+            __iter1: Iterable[_T1],
+            __iter2: Iterable[_T2],
+            __iter3: Iterable[_T3],
+            __iter4: Iterable[_T4],
+            *,
+            strict: bool = ...,
+        ) -> zip[Tuple[_T1, _T2, _T3, _T4]]: ...
+        @overload
+        def __new__(
+            cls,
+            __iter1: Iterable[_T1],
+            __iter2: Iterable[_T2],
+            __iter3: Iterable[_T3],
+            __iter4: Iterable[_T4],
+            __iter5: Iterable[_T5],
+            *,
+            strict: bool = ...,
+        ) -> zip[Tuple[_T1, _T2, _T3, _T4, _T5]]: ...
+        @overload
+        def __new__(
+            cls,
+            __iter1: Iterable[Any],
+            __iter2: Iterable[Any],
+            __iter3: Iterable[Any],
+            __iter4: Iterable[Any],
+            __iter5: Iterable[Any],
+            __iter6: Iterable[Any],
+            *iterables: Iterable[Any],
+            strict: bool = ...,
+        ) -> zip[Tuple[Any, ...]]: ...
+    else:
+        @overload
+        def __new__(cls, __iter1: Iterable[_T1]) -> zip[Tuple[_T1]]: ...
+        @overload
+        def __new__(cls, __iter1: Iterable[_T1], __iter2: Iterable[_T2]) -> zip[Tuple[_T1, _T2]]: ...
+        @overload
+        def __new__(cls, __iter1: Iterable[_T1], __iter2: Iterable[_T2], __iter3: Iterable[_T3]) -> zip[Tuple[_T1, _T2, _T3]]: ...
+        @overload
+        def __new__(
+            cls, __iter1: Iterable[_T1], __iter2: Iterable[_T2], __iter3: Iterable[_T3], __iter4: Iterable[_T4]
+        ) -> zip[Tuple[_T1, _T2, _T3, _T4]]: ...
+        @overload
+        def __new__(
+            cls,
+            __iter1: Iterable[_T1],
+            __iter2: Iterable[_T2],
+            __iter3: Iterable[_T3],
+            __iter4: Iterable[_T4],
+            __iter5: Iterable[_T5],
+        ) -> zip[Tuple[_T1, _T2, _T3, _T4, _T5]]: ...
+        @overload
+        def __new__(
+            cls,
+            __iter1: Iterable[Any],
+            __iter2: Iterable[Any],
+            __iter3: Iterable[Any],
+            __iter4: Iterable[Any],
+            __iter5: Iterable[Any],
+            __iter6: Iterable[Any],
+            *iterables: Iterable[Any],
+        ) -> zip[Tuple[Any, ...]]: ...
     def __iter__(self) -> Iterator[_T_co]: ...
     def __next__(self) -> _T_co: ...
 

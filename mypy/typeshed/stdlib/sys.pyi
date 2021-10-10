@@ -47,7 +47,7 @@ if sys.platform == "win32":
     dllhandle: int
 dont_write_bytecode: bool
 displayhook: Callable[[object], Any]
-excepthook: Callable[[Type[BaseException], BaseException, TracebackType], Any]
+excepthook: Callable[[Type[BaseException], BaseException, TracebackType | None], Any]
 exec_prefix: str
 executable: str
 float_repr_style: str
