@@ -1,3 +1,4 @@
+import sys
 from _typeshed import Self
 from email.message import Message
 from types import TracebackType
@@ -46,7 +47,10 @@ class addinfo(addbase):
 
 class addinfourl(addinfo):
     url: str
-    code: int
+    code: int | None
+    if sys.version_info >= (3, 9):
+        @property
+        def status(self) -> int | None: ...
     def __init__(self, fp: IO[bytes], headers: Message, url: str, code: int | None = ...) -> None: ...
     def geturl(self) -> str: ...
-    def getcode(self) -> int: ...
+    def getcode(self) -> int | None: ...
