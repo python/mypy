@@ -1327,8 +1327,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         for name, tvar_expr in declared_tvars:
             tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
             if isinstance(tvar_def, TypeVarType):
-                # This can also be `ParamSpecType`,
-                # error will be reported elsewhere: #11218
+                # TODO(PEP612): fix for ParamSpecType
+                # Error will be reported elsewhere: #11218
                 tvar_defs.append(tvar_def)
         return base_type_exprs, tvar_defs, is_protocol
 

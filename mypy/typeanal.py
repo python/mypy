@@ -692,7 +692,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if not isinstance(tvar_def, ParamSpecType):
             return None
 
-        # TODO(shantanu): construct correct type for paramspec
+        # TODO(PEP612): construct correct type for paramspec
         return CallableType(
             [AnyType(TypeOfAny.explicit), AnyType(TypeOfAny.explicit)],
             [nodes.ARG_STAR, nodes.ARG_STAR2],
@@ -745,7 +745,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 )
                 if maybe_ret is None:
                     # Callable[?, RET] (where ? is something invalid)
-                    # TODO(shantanu): change error to mention paramspec, once we actually have some
+                    # TODO(PEP612): change error to mention paramspec, once we actually have some
                     # support for it
                     self.fail('The first argument to Callable must be a list of types or "..."', t)
                     return AnyType(TypeOfAny.from_error)
