@@ -688,3 +688,21 @@ L0:
     a = r0
     r1 = CPyInt32_Remainder(a, y)
     return r1
+
+[case testLowLevelIntI32BoxAndUnbox]
+from typing import Any
+from mypy_extensions import i32
+
+def f(x: Any) -> Any:
+    y: i32 = x
+    return y
+[out]
+def f(x):
+    x :: object
+    r0, y :: int32
+    r1 :: object
+L0:
+    r0 = unbox(int32, x)
+    y = r0
+    r1 = box(int32, y)
+    return r1
