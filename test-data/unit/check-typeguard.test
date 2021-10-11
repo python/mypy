@@ -459,6 +459,21 @@ def foobar_typeguard(x: object):
     reveal_type(x)  # N: Revealed type is "__main__.<subclass of "Foo" and "Bar">"
 [builtins fixtures/tuple.pyi]
 
+[case testTypeGuardAsFunctionArgAsBoolSubtype]
+from typing import Callable
+from typing_extensions import TypeGuard
+
+def accepts_bool(f: Callable[[object], bool]): pass
+
+def with_bool_typeguard(o: object) -> TypeGuard[bool]: pass
+def with_str_typeguard(o: object) -> TypeGuard[str]: pass
+def with_bool(o: object) -> bool: pass
+
+accepts_bool(with_bool_typeguard)
+accepts_bool(with_str_typeguard)
+accepts_bool(with_bool)
+[builtins fixtures/tuple.pyi]
+
 [case testTypeGuardAsFunctionArg]
 from typing import Callable
 from typing_extensions import TypeGuard
