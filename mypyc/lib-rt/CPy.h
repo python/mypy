@@ -152,6 +152,8 @@ PyObject *CPyLong_FromFloat(PyObject *o);
 PyObject *CPyBool_Str(bool b);
 int64_t CPyInt64_Divide(int64_t x, int64_t y);
 int64_t CPyInt64_Remainder(int64_t x, int64_t y);
+int32_t CPyInt32_Divide(int32_t x, int32_t y);
+int32_t CPyInt32_Remainder(int32_t x, int32_t y);
 
 static inline int CPyTagged_CheckLong(CPyTagged x) {
     return x & CPY_INT_TAG;
@@ -347,6 +349,7 @@ PyObject *CPyList_GetItemShortBorrow(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemInt64(PyObject *list, int64_t index);
 bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value);
 bool CPyList_SetItemUnsafe(PyObject *list, CPyTagged index, PyObject *value);
+bool CPyList_SetItemInt64(PyObject *list, int64_t index, PyObject *value);
 PyObject *CPyList_PopLast(PyObject *obj);
 PyObject *CPyList_Pop(PyObject *obj, CPyTagged index);
 CPyTagged CPyList_Count(PyObject *obj, PyObject *value);
