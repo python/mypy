@@ -2566,7 +2566,7 @@ class TypeInfo(SymbolNode):
         'deletable_attributes', 'slots', 'assuming', 'assuming_proper',
         'inferring', 'is_enum', 'fallback_to_any', 'type_vars', 'has_param_spec_type',
         'bases', '_promote', 'tuple_type', 'is_named_tuple', 'typeddict_type',
-        'is_newtype', 'is_intersection', 'metadata',
+        'is_newtype', 'is_intersection', 'metadata', 'alt_promote',
     )
 
     _fullname: Bogus[str]  # Fully qualified name
@@ -2663,7 +2663,7 @@ class TypeInfo(SymbolNode):
     # Low-level integer types can be promoted to 'int', and vice versa.
     # This can be used for the other direction. This only supports
     # one-step promotions (e.g., C -> D, not C -> D -> E).
-    alt_promote = None  # type: Optional[TypeInfo]
+    alt_promote: Optional["TypeInfo"]
 
     # Representation of a Tuple[...] base class, if the class has any
     # (e.g., for named tuples). If this is not None, the actual Type
@@ -2724,6 +2724,7 @@ class TypeInfo(SymbolNode):
         self.is_enum = False
         self.fallback_to_any = False
         self._promote = None
+        self.alt_promote = None
         self.tuple_type = None
         self.is_named_tuple = False
         self.typeddict_type = None
