@@ -95,7 +95,6 @@ from mypy.types import (
 )
 from mypy.typeops import function_type
 from mypy.type_visitor import TypeQuery
-from mypy.traverser import all_call_expressions
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
     TypeAnalyser, analyze_type_alias, no_subscript_builtin_alias,
@@ -2280,24 +2279,31 @@ class SemanticAnalyzer(NodeVisitor[None],
     def apply_dynamic_class_hook(self, s: AssignmentStmt) -> None:
         if not isinstance(s.rvalue, CallExpr):
             return
-        call_expressions = all_call_expressions(s)
+        fname = None
+        call = s.rvalue
+        while True:
+            if isinstance(call.callee, RefExpr):
+                fname = call.callee.fullname
+            # check if method call
+            if fname is None and isinstance(call.callee, MemberExpr):
+                callee_expr = call.callee.expr
+                if isinstance(callee_expr, RefExpr) and callee_expr.fullname:
+                    method_name = call.callee.name
+                    fname = callee_expr.fullname + '.' + method_name
+                elif isinstance(callee_expr, CallExpr):
+                    # check if chain call
+                    call = callee_expr
+                    continue
+            break
+        if not fname:
+            return
+        hook = self.plugin.get_dynamic_class_hook(fname)
+        if not hook:
+            return
         for lval in s.lvalues:
             if not isinstance(lval, NameExpr):
                 continue
-            for call in call_expressions:
-                fname = None
-                if isinstance(call.callee, RefExpr):
-                    fname = call.callee.fullname
-                # check if method call
-                if fname is None and isinstance(call.callee, MemberExpr):
-                    callee_expr = call.callee.expr
-                    if isinstance(callee_expr, RefExpr) and callee_expr.fullname:
-                        method_name = call.callee.name
-                        fname = callee_expr.fullname + '.' + method_name
-                if fname:
-                    hook = self.plugin.get_dynamic_class_hook(fname)
-                    if hook:
-                        hook(DynamicClassDefContext(call, lval.name, self))
+            hook(DynamicClassDefContext(call, lval.name, self))
 
     def unwrap_final(self, s: AssignmentStmt) -> bool:
         """Strip Final[...] if present in an assignment.

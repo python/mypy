@@ -378,19 +378,3 @@ def all_yield_expressions(node: Node) -> List[Tuple[YieldExpr, bool]]:
     v = YieldCollector()
     node.accept(v)
     return v.yield_expressions
-
-
-class CallCollector(TraverserVisitor):
-    def __init__(self) -> None:
-        super().__init__()
-        self.call_expressions: List[CallExpr] = []
-
-    def visit_call_expr(self, o: CallExpr) -> None:
-        self.call_expressions.append(o)
-        return super().visit_call_expr(o)
-
-
-def all_call_expressions(node: Node) -> List[CallExpr]:
-    v = CallCollector()
-    node.accept(v)
-    return v.call_expressions
