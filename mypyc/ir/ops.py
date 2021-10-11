@@ -614,9 +614,9 @@ class GetAttr(RegisterOp):
         self.attr = attr
         assert isinstance(obj.type, RInstance), 'Attribute access not supported: %s' % obj.type
         self.class_type = obj.type
-        typ = obj.type.attr_type(attr)
-        self.type = typ
-        if is_fixed_width_rtype(typ):
+        attr_type = obj.type.attr_type(attr)
+        self.type = attr_type
+        if is_fixed_width_rtype(attr_type):
             self.error_kind = ERR_NEVER
         self.is_borrowed = borrow
 
