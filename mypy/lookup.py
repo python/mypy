@@ -2,6 +2,7 @@
 This is a module for various lookup functions:
 functions that will find a semantic node by its name.
 """
+
 from mypy.messages import SUGGESTED_TEST_FIXTURES
 from mypy.nodes import MypyFile, SymbolTable, SymbolTableNode, TypeInfo, TypeAlias
 from typing import Dict, Optional, cast

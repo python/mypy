@@ -791,7 +791,7 @@ c.py:2: error: Argument 1 to "bar" has incompatible type "str"; expected "int"
 [case testSrcPEP420Packages]
 # cmd: mypy -p anamespace --namespace-packages
 [file mypy.ini]
-\[mypy]]
+\[mypy]
 mypy_path = src
 [file src/setup.cfg]
 [file src/anamespace/foo/__init__.py]
@@ -946,7 +946,13 @@ emarg/foo.py:1: error: Name "fail" is not defined
 emarg/hatch/villip/mankangulisk.py:1: error: Name "fail" is not defined
 
 [case testPackageRootEmpty]
-# cmd: mypy --package-root= a/b/c.py main.py
+# cmd: mypy --no-namespace-packages --package-root= a/b/c.py main.py
+[file a/b/c.py]
+[file main.py]
+import a.b.c
+
+[case testPackageRootEmptyNamespacePackage]
+# cmd: mypy --namespace-packages --package-root= a/b/c.py main.py
 [file a/b/c.py]
 [file main.py]
 import a.b.c
@@ -1141,6 +1147,7 @@ import foo.bar
 1+'x'
 [out]
 src/foo/bar.py: error: Source file found twice under different module names: "src.foo.bar" and "foo.bar"
+src/foo/bar.py: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules for more info
 == Return code: 2
 
 [case testEnableInvalidErrorCode]

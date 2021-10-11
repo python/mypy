@@ -41,7 +41,7 @@ def freshen_function_type_vars(callee: F) -> F:
         tvs = []
         tvmap: Dict[TypeVarId, Type] = {}
         for v in callee.variables:
-            # TODO(shantanu): fix for ParamSpecType
+            # TODO(PEP612): fix for ParamSpecType
             if isinstance(v, ParamSpecType):
                 continue
             assert isinstance(v, TypeVarType)
