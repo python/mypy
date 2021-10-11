@@ -401,8 +401,17 @@ def foo(
 [case testNoneHasBool]
 none = None
 b = none.__bool__()
-reveal_type(b)  # N: Revealed type is "builtins.bool"
+reveal_type(b)  # N: Revealed type is "Literal[False]"
 [builtins fixtures/bool.pyi]
+
+[case testNoneHasBoolShowNoneErrorsFalse]
+none = None
+b = none.__bool__()
+reveal_type(b)  # N: Revealed type is "Literal[False]"
+[builtins fixtures/bool.pyi]
+[file mypy.ini]
+\[mypy]
+show_none_errors = False
 
 [case testAssignmentInvariantNoteForList]
 from typing import List
