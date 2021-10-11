@@ -179,7 +179,7 @@ def set(a, i, x):
     r1 :: bit
 L0:
     r0 = box(int64, x)
-    r1 = CPyList_SetItemI64(a, i, r0)
+    r1 = CPyList_SetItemInt64(a, i, r0)
     return 1
 
 [case testLowLevelIntMixedArithmetic]
