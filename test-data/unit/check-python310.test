@@ -24,11 +24,13 @@ match m:
         reveal_type(m)  # N: Revealed type is "builtins.bool"
 
 [case testLiteralPatternUnreachable]
+# primitives are needed because otherwise mypy doesn't see that int and str are incompatible
 m: int
 
 match m:
     case "str":
         reveal_type(m)
+[builtins fixtures/primitives.pyi]
 
 
 -- Value Pattern --
@@ -52,8 +54,23 @@ match m:
 [file b.py]
 b: int
 
-[case testValuePatternUnreachable]
+[case testValuePatternIntersect]
 import b
+
+class A: ...
+m: A
+
+match m:
+    case b.b:
+        reveal_type(m)  # N: Revealed type is "__main__.<subclass of "A" and "B">"
+[file b.py]
+class B: ...
+b: B
+
+[case testValuePatternUnreachable]
+# primitives are needed because otherwise mypy doesn't see that int and str are incompatible
+import b
+
 m: int
 
 match m:
@@ -61,6 +78,7 @@ match m:
         reveal_type(m)
 [file b.py]
 b: str
+[builtins fixtures/primitives.pyi]
 
 
 -- Sequence Pattern --
@@ -235,7 +253,7 @@ match m:
         reveal_type(c)
 [builtins fixtures/list.pyi]
 
-[case testSequencePatternTupleToShort]
+[case testSequencePatternTupleTooShort]
 from typing import Tuple
 m: Tuple[int, str, bool]
 
@@ -761,7 +779,7 @@ match m:
         reveal_type(m)  # N: Revealed type is "__main__.B"
 [builtins fixtures/tuple.pyi]
 
-[case testClassPatternUnreachable]
+[case testClassPatternIntersection]
 from typing import Final
 
 class A:
@@ -774,9 +792,9 @@ m: B
 
 match m:
     case A():
-        reveal_type(m)
+        reveal_type(m)  # N: Revealed type is "__main__.<subclass of "B" and "A">"
     case A(i, j):
-        reveal_type(m)
+        reveal_type(m)  # N: Revealed type is "__main__.<subclass of "B" and "A">1"
 [builtins fixtures/tuple.pyi]
 
 [case testClassPatternNonexistentKeyword]
@@ -1041,6 +1059,72 @@ match m:
         reveal_type(a)  # N: Revealed type is "builtins.str"
 
 
+-- Guards --
+[case testSimplePatternGuard]
+m: str
+
+def guard() -> bool: ...
+
+match m:
+    case a if guard():
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+
+[case testAlwaysTruePatternGuard]
+m: str
+
+match m:
+    case a if True:
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+
+[case testAlwaysFalsePatternGuard]
+m: str
+
+match m:
+    case a if False:
+        reveal_type(a)
+
+[case testRedefiningPatternGuard]
+# flags: --strict-optional
+m: str
+
+match m:
+    case a if a := 1:  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+        reveal_type(a)  # N: Revealed type is "<nothing>"
+
+[case testAssigningPatternGuard]
+m: str
+
+match m:
+    case a if a := "test":
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+
+[case testNarrowingPatternGuard]
+m: object
+
+match m:
+    case a if isinstance(a, str):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIncompatiblePatternGuard]
+class A: ...
+class B: ...
+
+m: A
+
+match m:
+    case a if isinstance(a, B):
+        reveal_type(a)  # N: Revealed type is "__main__.<subclass of "A" and "B">"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testUnreachablePatternGuard]
+m: str
+
+match m:
+    case a if isinstance(a, int):
+        reveal_type(a)
+[builtins fixtures/isinstancelist.pyi]
+
 -- Exhaustiveness --
 [case testUnionNegativeNarrowing-skip]
 from typing import Union
@@ -1066,3 +1150,19 @@ match m:
         reveal_type(m)  # N: Revealed type is "Union[builtins.str, builtins.bytes]"
     case b:
         reveal_type(b)  # N: Revealed type is "builtins.int"
+
+[case testExhaustiveReturn-skip]
+def foo(value) -> int:
+  match value:
+    case "bar":
+      return 1
+    case _:
+      return 2
+
+[case testNoneExhaustiveReturn-skip]
+def foo(value) -> int:  # E: Missing return statement
+  match value:
+    case "bar":
+      return 1
+    case 2:
+      return 2

@@ -3896,7 +3896,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             for pattern_type, g, b in zip(pattern_types, s.guards, s.bodies):
                 with self.binder.frame_context(can_skip=True, fall_through=2):
-                    if b.is_unreachable or pattern_type.type is None:
+                    if b.is_unreachable or isinstance(get_proper_type(pattern_type.type), UninhabitedType):
                         self.push_type_map(None)
                     else:
                         self.binder.put(s.subject, pattern_type.type)
@@ -4325,11 +4325,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if_maps: List[TypeMap] = []
         else_maps: List[TypeMap] = []
         for expr in exprs_in_type_calls:
-            current_if_map, current_else_map = self.conditional_type_map_with_intersection(
-                expr,
+            current_if_type, current_else_type = self.conditional_types_with_intersection(
                 type_map[expr],
-                type_being_compared
+                type_being_compared,
+                expr
             )
+            current_if_map, current_else_map = conditional_types_to_typemaps(expr,
+                                                                             type_map[expr],
+                                                                             current_if_type,
+                                                                             current_else_type)
             if_maps.append(current_if_map)
             else_maps.append(current_else_map)
 
@@ -4386,10 +4390,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if len(node.args) != 2:  # the error will be reported elsewhere
                     return {}, {}
                 if literal(expr) == LITERAL_TYPE:
-                    return self.conditional_type_map_with_intersection(
+                    return conditional_types_to_typemaps(
                         expr,
                         type_map[expr],
-                        get_isinstance_type(node.args[1], type_map),
+                        *self.conditional_types_with_intersection(
+                            type_map[expr],
+                            get_isinstance_type(node.args[1], type_map),
+                            expr
+                        )
                     )
             elif refers_to_fullname(node.callee, 'builtins.issubclass'):
                 if len(node.args) != 2:  # the error will be reported elsewhere
@@ -4886,7 +4894,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 expr_type = try_expanding_enum_to_union(expr_type, enum_name)
 
             # We intentionally use 'conditional_types' directly here instead of
-            # 'self.conditional_type_map_with_intersection': we only compute ad-hoc
+            # 'self.conditional_types_with_intersection': we only compute ad-hoc
             # intersections when working with pure instances.
             types = conditional_types(expr_type, target_type)
             partial_type_maps.append(conditional_types_to_typemaps(expr, expr_type, *types))
@@ -5307,55 +5315,55 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Any other object whose type we don't know precisely
             # for example, Any or a custom metaclass.
             return {}, {}  # unknown type
-        yes_map, no_map = self.conditional_type_map_with_intersection(expr, vartype, type)
+        yes_type, no_type = self.conditional_types_with_intersection(vartype, type, expr)
+        yes_map, no_map = conditional_types_to_typemaps(expr, vartype, yes_type, no_type)
         yes_map, no_map = map(convert_to_typetype, (yes_map, no_map))
         return yes_map, no_map
 
-    def conditional_type_map_with_intersection(self,
-                                               expr: Expression,
-                                               expr_type: Type,
-                                               type_ranges: Optional[List[TypeRange]],
-                                               ) -> Tuple[TypeMap, TypeMap]:
+    def conditional_types_with_intersection(self,
+                                            expr_type: Type,
+                                            type_ranges: Optional[List[TypeRange]],
+                                            ctx: Context,
+                                            ) -> Tuple[Type, Type]:
         initial_types = conditional_types(expr_type, type_ranges)
         # For some reason, doing "yes_map, no_map = conditional_types_to_typemaps(...)"
         # doesn't work: mypyc will decide that 'yes_map' is of type None if we try.
-        initial_maps = conditional_types_to_typemaps(expr, expr_type, *initial_types)
-        yes_map: TypeMap = initial_maps[0]
-        no_map: TypeMap = initial_maps[1]
+        yes_type: Type = initial_types[0]
+        no_type: Type = initial_types[1]
 
-        if yes_map is not None or type_ranges is None:
-            return yes_map, no_map
+        if not isinstance(get_proper_type(yes_type), UninhabitedType) or type_ranges is None:
+            return yes_type, no_type
 
         # If conditions_type_map was unable to successfully narrow the expr_type
         # using the type_ranges and concluded if-branch is unreachable, we try
         # computing it again using a different algorithm that tries to generate
         # an ad-hoc intersection between the expr_type and the type_ranges.
-        expr_type = get_proper_type(expr_type)
-        if isinstance(expr_type, UnionType):
-            possible_expr_types = get_proper_types(expr_type.relevant_items())
+        proper_type = get_proper_type(expr_type)
+        if isinstance(proper_type, UnionType):
+            possible_expr_types = get_proper_types(proper_type.relevant_items())
         else:
-            possible_expr_types = [expr_type]
+            possible_expr_types = [proper_type]
 
         possible_target_types = []
         for tr in type_ranges:
             item = get_proper_type(tr.item)
             if not isinstance(item, Instance) or tr.is_upper_bound:
-                return yes_map, no_map
+                return yes_type, no_type
             possible_target_types.append(item)
 
         out = []
         for v in possible_expr_types:
             if not isinstance(v, Instance):
-                return yes_map, no_map
+                return yes_type, no_type
             for t in possible_target_types:
-                intersection = self.intersect_instances((v, t), expr)
+                intersection = self.intersect_instances((v, t), ctx)
                 if intersection is None:
                     continue
                 out.append(intersection)
         if len(out) == 0:
-            return None, {}
+            return UninhabitedType(), expr_type
         new_yes_type = make_simplified_union(out)
-        return {expr: new_yes_type}, {}
+        return new_yes_type, expr_type
 
     def is_writable_attribute(self, node: Node) -> bool:
         """Check if an attribute is writable"""
