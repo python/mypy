@@ -317,6 +317,15 @@ match x:
     case [str()]:
         pass
 
+[case testSequenceUnion]
+from typing import List, Union
+m: Union[List[List[str]], str]
+
+match m:
+    case [list(['str'])]:
+        reveal_type(m)  # N: Revealed type is "Union[builtins.list[builtins.list[builtins.str]], builtins.str]"
+[builtins fixtures/list.pyi]
+
 -- Mapping Pattern --
 [case testMappingPatternCaptures]
 from typing import Dict

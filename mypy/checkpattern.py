@@ -1,6 +1,6 @@
 """Pattern checker. This file is conceptually part of TypeChecker."""
 from collections import defaultdict
-from typing import List, Optional, Tuple, Dict, NamedTuple, Set, cast, Union
+from typing import List, Optional, Tuple, Dict, NamedTuple, Set, Union
 
 import mypy.checker
 from mypy.checkmember import analyze_member_access
@@ -20,7 +20,7 @@ from mypy.subtypes import is_subtype
 from mypy.typeops import try_getting_str_literals_from_type, make_simplified_union
 from mypy.types import (
     ProperType, AnyType, TypeOfAny, Instance, Type, UninhabitedType, get_proper_type,
-    TypedDictType, TupleType, NoneType
+    TypedDictType, TupleType, NoneType, UnionType
 )
 from mypy.typevars import fill_typevars
 from mypy.visitor import PatternVisitor
@@ -49,7 +49,7 @@ non_sequence_match_type_names = [
 PatternType = NamedTuple(
     'PatternType',
     [
-        ('type', Optional[Type]),
+        ('type', Type),
         ('rest_type', Type),  # For exhaustiveness checking. Not used yet
         ('captures', Dict[Expression, Type]),
     ])
@@ -246,26 +246,24 @@ class PatternChecker(PatternVisitor[PatternType]):
         new_inner_types = self.expand_starred_pattern_types(contracted_new_inner_types,
                                                             star_position,
                                                             len(inner_types))
-        rest_inner_types = self.expand_starred_pattern_types(contracted_rest_inner_types,
-                                                             star_position,
-                                                             len(inner_types))
 
         #
         # Calculate new type
         #
         new_type: Type
-        rest_type = current_type
+        rest_type: Type = current_type
         if not can_match:
             new_type = UninhabitedType()
         elif isinstance(current_type, TupleType):
             narrowed_inner_types = []
             inner_rest_types = []
             for inner_type, new_inner_type in zip(inner_types, new_inner_types):
-                narrowed_inner_type, inner_rest_type = self.chk.conditional_types_with_intersection(
-                    new_inner_type,
-                    [get_type_range(inner_type)],
-                    o
-                )
+                narrowed_inner_type, inner_rest_type = \
+                    self.chk.conditional_types_with_intersection(
+                        new_inner_type,
+                        [get_type_range(inner_type)],
+                        o
+                    )
                 narrowed_inner_types.append(narrowed_inner_type)
                 inner_rest_types.append(inner_rest_type)
             if all(not is_uninhabited(typ) for typ in narrowed_inner_types):
@@ -291,6 +289,13 @@ class PatternChecker(PatternVisitor[PatternType]):
         t = get_proper_type(t)
         if isinstance(t, AnyType):
             return AnyType(TypeOfAny.from_another_any, t)
+        if isinstance(t, UnionType):
+            items = [self.get_sequence_type(item) for item in t.items]
+            not_none_items = [item for item in items if item is not None]
+            if len(not_none_items) > 0:
+                return make_simplified_union(not_none_items)
+            else:
+                return None
 
         if self.chk.type_is_iterable(t) and isinstance(t, Instance):
             return self.chk.iterable_item_type(t)
@@ -550,6 +555,8 @@ class PatternChecker(PatternVisitor[PatternType]):
         return False
 
     def can_match_sequence(self, typ: ProperType) -> bool:
+        if isinstance(typ, UnionType):
+            return any(self.can_match_sequence(get_proper_type(item)) for item in typ.items)
         for other in self.non_sequence_match_types:
             # We have to ignore promotions, as memoryview should match, but bytes,
             # which it can be promoted to, shouldn't

@@ -3896,7 +3896,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             for pattern_type, g, b in zip(pattern_types, s.guards, s.bodies):
                 with self.binder.frame_context(can_skip=True, fall_through=2):
-                    if b.is_unreachable or isinstance(get_proper_type(pattern_type.type), UninhabitedType):
+                    if b.is_unreachable or isinstance(get_proper_type(pattern_type.type),
+                                                      UninhabitedType):
                         self.push_type_map(None)
                     else:
                         self.binder.put(s.subject, pattern_type.type)
