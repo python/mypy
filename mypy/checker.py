@@ -5497,7 +5497,7 @@ def conditional_types(current_type: Type,
 def conditional_types(current_type: Type,
                       proposed_type_ranges: Optional[List[TypeRange]],
                       default: None
-                      ) -> Tuple[Type, Type]: ...
+                      ) -> Tuple[Optional[Type], Optional[Type]]: ...
 
 
 @overload
