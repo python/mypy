@@ -1053,7 +1053,7 @@ class CallableType(FunctionLike):
             self.def_extras = {
                 'first_arg': (
                     definition.arguments[0].variable.name
-                    if (getattr(definition, arguments, None)
+                    if (getattr(definition, 'arguments', None)
                         and definition.arg_names
                         and definition.info
                         and not definition.is_static)
