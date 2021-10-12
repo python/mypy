@@ -957,6 +957,10 @@ class MessageBuilder:
         self.fail('Not enough arguments for format string', context,
                   code=codes.STRING_FORMATTING)
 
+    def too_few_string_formatting_arguments_of_iterables(self, context: Context) -> None:
+        self.fail('Cannot determine the number of arguments for a Iterable type', context,
+                  code=codes.STRING_FORMATTING)
+
     def too_many_string_formatting_arguments(self, context: Context) -> None:
         self.fail('Not all arguments converted during string formatting', context,
                   code=codes.STRING_FORMATTING)

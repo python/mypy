@@ -660,7 +660,10 @@ class StringFormatterChecker:
             rep_types = [rhs_type]
 
         if len(checkers) > len(rep_types):
-            self.msg.too_few_string_formatting_arguments(replacements)
+            if is_subtype(rhs_type, self.chk.named_type("typing.Iterable")):
+                self.msg.too_few_string_formatting_arguments_of_iterables(replacements)
+            else:
+                self.msg.too_few_string_formatting_arguments(replacements)
         elif len(checkers) < len(rep_types):
             self.msg.too_many_string_formatting_arguments(replacements)
         else:
