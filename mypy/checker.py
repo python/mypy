@@ -7,7 +7,7 @@ from contextlib import contextmanager
 
 from typing import (
     Any, Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator,
-    Iterable, Sequence, Mapping, Generic, AbstractSet, Callable
+    Iterable, Sequence, Mapping, Generic, AbstractSet, Callable, overload
 )
 from typing_extensions import Final
 
@@ -4402,7 +4402,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 expr
             )
             current_if_map, current_else_map = conditional_types_to_typemaps(expr,
-                                                                             type_map[expr],
                                                                              current_if_type,
                                                                              current_else_type)
             if_maps.append(current_if_map)
@@ -4461,7 +4460,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if literal(expr) == LITERAL_TYPE:
                     return conditional_types_to_typemaps(
                         expr,
-                        type_map[expr],
                         *self.conditional_types_with_intersection(
                             type_map[expr],
                             get_isinstance_type(node.args[1], type_map),
@@ -4987,7 +4985,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # 'self.conditional_types_with_intersection': we only compute ad-hoc
             # intersections when working with pure instances.
             types = conditional_types(expr_type, target_type)
-            partial_type_maps.append(conditional_types_to_typemaps(expr, expr_type, *types))
+            partial_type_maps.append(conditional_types_to_typemaps(expr, *types))
 
         return reduce_conditional_maps(partial_type_maps)
 
@@ -5405,21 +5403,44 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # for example, Any or a custom metaclass.
             return {}, {}  # unknown type
         yes_type, no_type = self.conditional_types_with_intersection(vartype, type, expr)
-        yes_map, no_map = conditional_types_to_typemaps(expr, vartype, yes_type, no_type)
+        yes_map, no_map = conditional_types_to_typemaps(expr, yes_type, no_type)
         yes_map, no_map = map(convert_to_typetype, (yes_map, no_map))
         return yes_map, no_map
+
+    @overload
+    def conditional_types_with_intersection(self,
+                                            expr_type: Type,
+                                            type_ranges: Optional[List[TypeRange]],
+                                            ctx: Context,
+                                            ) -> Tuple[Optional[Type], Optional[Type]]: ...
+
+    @overload
+    def conditional_types_with_intersection(self,
+                                            expr_type: Type,
+                                            type_ranges: Optional[List[TypeRange]],
+                                            ctx: Context,
+                                            default: None
+                                            ) -> Tuple[Optional[Type], Optional[Type]]: ...
+
+    @overload
+    def conditional_types_with_intersection(self,
+                                            expr_type: Type,
+                                            type_ranges: Optional[List[TypeRange]],
+                                            ctx: Context,
+                                            default: Type
+                                            ) -> Tuple[Type, Type]: ...
 
     def conditional_types_with_intersection(self,
                                             expr_type: Type,
                                             type_ranges: Optional[List[TypeRange]],
                                             ctx: Context,
                                             default: Optional[Type] = None
-                                            ) -> Tuple[Type, Type]:
+                                            ) -> Tuple[Optional[Type], Optional[Type]]:
         initial_types = conditional_types(expr_type, type_ranges, default)
         # For some reason, doing "yes_map, no_map = conditional_types_to_typemaps(...)"
         # doesn't work: mypyc will decide that 'yes_map' is of type None if we try.
-        yes_type: Type = initial_types[0]
-        no_type: Type = initial_types[1]
+        yes_type: Optional[Type] = initial_types[0]
+        no_type: Optional[Type] = initial_types[1]
 
         if not isinstance(get_proper_type(yes_type), UninhabitedType) or type_ranges is None:
             return yes_type, no_type
@@ -5466,10 +5487,30 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return False
 
 
+@overload
+def conditional_types(current_type: Type,
+                      proposed_type_ranges: Optional[List[TypeRange]],
+                      ) -> Tuple[Optional[Type], Optional[Type]]: ...
+
+
+@overload
+def conditional_types(current_type: Type,
+                      proposed_type_ranges: Optional[List[TypeRange]],
+                      default: None
+                      ) -> Tuple[Type, Type]: ...
+
+
+@overload
+def conditional_types(current_type: Type,
+                      proposed_type_ranges: Optional[List[TypeRange]],
+                      default: Type
+                      ) -> Tuple[Type, Type]: ...
+
+
 def conditional_types(current_type: Type,
                       proposed_type_ranges: Optional[List[TypeRange]],
                       default: Optional[Type] = None
-                      ) -> Tuple[Type, Type]:
+                      ) -> Tuple[Optional[Type], Optional[Type]]:
     """Takes in the current type and a proposed type of an expression.
 
     Returns a 2-tuple: The first element is the proposed type, if the expression
@@ -5504,9 +5545,8 @@ def conditional_types(current_type: Type,
 
 
 def conditional_types_to_typemaps(expr: Expression,
-                                  expr_type: Type,
-                                  yes_type: Type,
-                                  no_type: Type
+                                  yes_type: Optional[Type],
+                                  no_type: Optional[Type]
                                   ) -> Tuple[TypeMap, TypeMap]:
     maps: List[TypeMap] = []
     for typ in (yes_type, no_type):
@@ -5516,6 +5556,7 @@ def conditional_types_to_typemaps(expr: Expression,
         elif proper_type is None:
             maps.append({})
         else:
+            assert typ is not None
             maps.append({expr: typ})
 
     return cast(Tuple[TypeMap, TypeMap], tuple(maps))
