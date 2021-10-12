@@ -572,6 +572,8 @@ def callable_type(fdef: FuncItem, fallback: Instance,
         line=fdef.line,
         column=fdef.column,
         implicit=True,
+        # We need this for better error messages:
+        definition=fdef,
     )
 
 
