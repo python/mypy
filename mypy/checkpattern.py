@@ -109,7 +109,8 @@ class PatternChecker(PatternVisitor[PatternType]):
         if not is_uninhabited(typ) and o.name is not None:
             typ, _ = self.chk.conditional_types_with_intersection(current_type,
                                                                   [get_type_range(typ)],
-                                                                  o)
+                                                                  o,
+                                                                  default=current_type)
             if not is_uninhabited(typ):
                 type_map[o.name] = typ
 
@@ -170,11 +171,13 @@ class PatternChecker(PatternVisitor[PatternType]):
         narrowed_type, rest_type = self.chk.conditional_types_with_intersection(
             current_type,
             [get_type_range(typ)],
-            o
+            o,
+            default=current_type
         )
         return PatternType(narrowed_type, rest_type, {})
 
     def visit_singleton_pattern(self, o: SingletonPattern) -> PatternType:
+        current_type = self.type_context[-1]
         value: Union[bool, None] = o.value
         if isinstance(value, bool):
             typ = self.chk.expr_checker.infer_literal_expr_type(value, "builtins.bool")
@@ -184,9 +187,10 @@ class PatternChecker(PatternVisitor[PatternType]):
             assert False
 
         narrowed_type, rest_type = self.chk.conditional_types_with_intersection(
-            self.type_context[-1],
+            current_type,
             [get_type_range(typ)],
-            o
+            o,
+            default=current_type
         )
         return PatternType(narrowed_type, rest_type, {})
 
@@ -262,7 +266,8 @@ class PatternChecker(PatternVisitor[PatternType]):
                     self.chk.conditional_types_with_intersection(
                         new_inner_type,
                         [get_type_range(inner_type)],
-                        o
+                        o,
+                        default=new_inner_type
                     )
                 narrowed_inner_types.append(narrowed_inner_type)
                 inner_rest_types.append(inner_rest_type)
@@ -274,7 +279,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             if all(is_uninhabited(typ) for typ in inner_rest_types):
                 # All subpatterns always match, so we can apply negative narrowing
                 new_type, rest_type = self.chk.conditional_types_with_intersection(
-                    current_type, [get_type_range(new_type)], o
+                    current_type, [get_type_range(new_type)], o, default=current_type
                 )
         else:
             new_inner_type = UninhabitedType()
@@ -442,7 +447,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             return self.early_non_match()
 
         new_type, rest_type = self.chk.conditional_types_with_intersection(
-            current_type, [get_type_range(typ)], o
+            current_type, [get_type_range(typ)], o, default=current_type
         )
         if is_uninhabited(new_type):
             return self.early_non_match()
