@@ -8,9 +8,10 @@ inputs:
     required: false
   paths:
     description: >
-      Paths to run mypy on. Default: '.'
+      Explicit paths to run mypy on. Defaults to the current directory and
+      the `files` value from mypy configuration file.
     required: false
-    default: "."
+    default: ""
   version:
     description: >
       Mypy version to use (PEP440) - e.g. "0.910"
@@ -20,6 +21,11 @@ inputs:
     description: >
       Whether to automatically install missing library stub packages.
       ('yes'|'no', default: 'yes')
+    default: "yes"
+  install_project_dependencies:
+    description: >
+      Whether to attempt to install project dependencies into mypy
+      environment. ('yes'|'no', default: 'yes')
     default: "yes"
 branding:
   color: "blue"
@@ -58,6 +64,14 @@ runs:
           exit 1
         fi
         echo ::endgroup::
+
+        if [ "${{ inputs.install_project_dependencies }}" == "yes" ]; then
+          VENV=$("$VENV_PYTHON" -c 'import sys;print(sys.prefix)')
+          echo ::group::Installing project dependencies...
+          "$VENV_PYTHON" -m pip download --dest="$VENV"/deps .
+          "$VENV_PYTHON" -m pip install -U --find-links="$VENV"/deps "$VENV"/deps/*
+          echo ::endgroup::
+        fi
 
         echo ::group::Running mypy...
         mypy_opts=""
