@@ -659,3 +659,64 @@ reveal_type(w)  # N: Revealed type is "__main__.Out.In"
 reveal_type(x)  # N: Revealed type is "__main__.Out.In.Inner"
 reveal_type(y)  # N: Revealed type is "__main__.Out.In.Inner"
 reveal_type(z)  # N: Revealed type is "__main__.Out.In"
+
+
+[case testSimplePep613]
+from typing_extensions import TypeAlias
+x: TypeAlias = str
+a: x
+reveal_type(a)  # N: Revealed type is "builtins.str"
+
+y: TypeAlias = "str"
+b: y
+reveal_type(b)  # N: Revealed type is "builtins.str"
+
+z: TypeAlias = "int | str"
+c: z
+reveal_type(c)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+[builtins fixtures/tuple.pyi]
+
+[case testForwardRefPep613]
+from typing_extensions import TypeAlias
+
+x: TypeAlias = "MyClass"
+a: x
+reveal_type(a)  # N: Revealed type is "__main__.MyClass"
+
+class MyClass: ...
+[builtins fixtures/tuple.pyi]
+
+[case testInvalidPep613]
+from typing_extensions import TypeAlias
+
+x: TypeAlias = list(int)  # E: Invalid type alias: expression is not a valid type \
+                          # E: Too many arguments for "list"
+a: x
+[builtins fixtures/tuple.pyi]
+
+[case testFunctionScopePep613]
+from typing_extensions import TypeAlias
+
+def f() -> None:
+    x: TypeAlias = str
+    a: x
+    reveal_type(a)  # N: Revealed type is "builtins.str"
+
+    y: TypeAlias = "str"
+    b: y
+    reveal_type(b)  # N: Revealed type is "builtins.str"
+[builtins fixtures/tuple.pyi]
+
+[case testImportCyclePep613]
+# cmd: mypy -m t t2
+[file t.py]
+MYPY = False
+if MYPY:
+    from t2 import A
+x: A
+reveal_type(x)  # N: Revealed type is "builtins.str"
+[file t2.py]
+from typing_extensions import TypeAlias
+A: TypeAlias = str
+[builtins fixtures/bool.pyi]
+[out]
