@@ -660,7 +660,10 @@ class StringFormatterChecker:
             rep_types = [rhs_type]
 
         if len(checkers) > len(rep_types):
-            if is_subtype(rhs_type, self.chk.named_type("typing.Iterable")):
+            # Only allows auto expansion for Tuple type. Other Iterable types would
+            # be assumed as one argument.
+            if (is_subtype(rhs_type, self.chk.named_type("typing.Iterable")) and
+                    not isinstance(rhs_type, TupleType)):
                 self.msg.too_few_string_formatting_arguments_of_iterables(replacements)
             else:
                 self.msg.too_few_string_formatting_arguments(replacements)
