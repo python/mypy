@@ -5,7 +5,7 @@ import warnings
 
 import typing  # for typing.Type, which conflicts with types.Type
 from typing import (
-    Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List, overload
+    Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List
 )
 
 from typing_extensions import Final, Literal, overload
@@ -156,7 +156,9 @@ TYPE_COMMENT_SYNTAX_ERROR: Final = "syntax error in type comment"
 
 INVALID_TYPE_IGNORE: Final = 'Invalid "type: ignore" comment'
 
-TYPE_IGNORE_PATTERN = re.compile(r'[^#]*#\s*type:\s*ignore\s*(.*)')
+INVALID_SLICE_ERROR: Final = 'Slice usage in type annotation is invalid'
+
+TYPE_IGNORE_PATTERN: Final = re.compile(r'[^#]*#\s*type:\s*ignore\s*(.*)')
 
 
 def parse(source: Union[str, bytes],
@@ -384,7 +386,8 @@ class ASTConverter:
         # ignores the whole module:
         if (ismodule and stmts and self.type_ignores
                 and min(self.type_ignores) < self.get_lineno(stmts[0])):
-            self.errors.used_ignored_lines[self.errors.file].add(min(self.type_ignores))
+            self.errors.used_ignored_lines[self.errors.file][min(self.type_ignores)].append(
+                codes.MISC.code)
             block = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
             mark_block_unreachable(block)
             return [block]
@@ -1654,12 +1657,12 @@ class TypeConverter:
             if (isinstance(sliceval, ast3.Slice) or
                 (isinstance(sliceval, ast3.Tuple) and
                  any(isinstance(x, ast3.Slice) for x in sliceval.elts))):
-                self.fail(TYPE_COMMENT_SYNTAX_ERROR, self.line, getattr(n, 'col_offset', -1))
+                self.fail(INVALID_SLICE_ERROR, self.line, getattr(n, 'col_offset', -1))
                 return AnyType(TypeOfAny.from_error)
         else:
             # Python 3.8 or earlier use a different AST structure for subscripts
             if not isinstance(n.slice, Index):
-                self.fail(TYPE_COMMENT_SYNTAX_ERROR, self.line, getattr(n, 'col_offset', -1))
+                self.fail(INVALID_SLICE_ERROR, self.line, getattr(n, 'col_offset', -1))
                 return AnyType(TypeOfAny.from_error)
             sliceval = n.slice.value
 

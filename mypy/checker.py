@@ -219,8 +219,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     # functions such as open(), etc.
     plugin: Plugin
 
+    # Future flags that we get from semantic analyzer.
+    future_import_flags: Set[str]
+
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile], options: Options,
-                 tree: MypyFile, path: str, plugin: Plugin) -> None:
+                 tree: MypyFile, path: str, plugin: Plugin,
+                 future_import_flags: Set[str]) -> None:
         """Construct a type checker.
 
         Use errors to report type check errors.
@@ -266,6 +270,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # NOTE: we use the context manager to avoid "threading" an additional `is_final_def`
         # argument through various `checker` and `checkmember` functions.
         self._is_final_def = False
+
+        self.future_import_flags = future_import_flags
 
     @property
     def type_context(self) -> List[Optional[Type]]:
@@ -393,8 +399,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.deferred_nodes.append(DeferredNode(node, enclosing_class))
 
     def handle_cannot_determine_type(self, name: str, context: Context) -> None:
-        node = self.scope.top_non_lambda_function()
-        if self.pass_num < self.last_pass and isinstance(node, FuncDef):
+        node = self.scope.top_function()
+        if self.pass_num < self.last_pass and isinstance(node, (FuncDef, LambdaExpr)):
             # Don't report an error yet. Just defer. Note that we don't defer
             # lambdas because they are coupled to the surrounding function
             # through the binder and the inferred type of the lambda, so it
@@ -1426,7 +1432,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if defn.info:
             # Class type variables
             tvars += defn.info.defn.type_vars or []
-        # TODO(shantanu): audit for paramspec
+        # TODO(PEP612): audit for paramspec
         for tvar in tvars:
             if isinstance(tvar, TypeVarType) and tvar.values:
                 subst.append([(tvar.id, value) for value in tvar.values])
@@ -3477,7 +3483,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if s.expr:
             self.type_check_raise(s.expr, s)
         if s.from_expr:
-            self.type_check_raise(s.from_expr, s, True)
+            self.type_check_raise(s.from_expr, s, optional=True)
         self.binder.unreachable()
 
     def type_check_raise(self, e: Expression, s: RaiseStmt,
@@ -3486,23 +3492,87 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(typ, DeletedType):
             self.msg.deleted_as_rvalue(typ, e)
             return
-        exc_type = self.named_type('builtins.BaseException')
-        expected_type = UnionType([exc_type, TypeType(exc_type)])
-        if optional:
-            expected_type.items.append(NoneType())
+
         if self.options.python_version[0] == 2:
-            # allow `raise type, value, traceback`
-            # https://docs.python.org/2/reference/simple_stmts.html#the-raise-statement
-            # TODO: Also check tuple item types.
-            any_type = AnyType(TypeOfAny.implementation_artifact)
-            tuple_type = self.named_type('builtins.tuple')
-            expected_type.items.append(TupleType([any_type, any_type], tuple_type))
-            expected_type.items.append(TupleType([any_type, any_type, any_type], tuple_type))
-        self.check_subtype(typ, expected_type, s, message_registry.INVALID_EXCEPTION)
+            # Since `raise` has very different rule on python2, we use a different helper.
+            # https://github.com/python/mypy/pull/11289
+            self._type_check_raise_python2(e, s, typ)
+            return
+
+        # Python3 case:
+        exc_type = self.named_type('builtins.BaseException')
+        expected_type_items = [exc_type, TypeType(exc_type)]
+        if optional:
+            # This is used for `x` part in a case like `raise e from x`,
+            # where we allow `raise e from None`.
+            expected_type_items.append(NoneType())
+
+        self.check_subtype(
+            typ, UnionType.make_union(expected_type_items), s,
+            message_registry.INVALID_EXCEPTION,
+        )
 
         if isinstance(typ, FunctionLike):
             # https://github.com/python/mypy/issues/11089
             self.expr_checker.check_call(typ, [], [], e)
+
+    def _type_check_raise_python2(self, e: Expression, s: RaiseStmt, typ: ProperType) -> None:
+        # Python2 has two possible major cases:
+        # 1. `raise expr`, where `expr` is some expression, it can be:
+        #    - Exception typ
+        #    - Exception instance
+        #    - Old style class (not supported)
+        #    - Tuple, where 0th item is exception type or instance
+        # 2. `raise exc, msg, traceback`, where:
+        #    - `exc` is exception type (not instance!)
+        #    - `traceback` is `types.TracebackType | None`
+        # Important note: `raise exc, msg` is not the same as `raise (exc, msg)`
+        # We call `raise exc, msg, traceback` - legacy mode.
+        exc_type = self.named_type('builtins.BaseException')
+
+        if (not s.legacy_mode and (isinstance(typ, TupleType) and typ.items
+                or (isinstance(typ, Instance) and typ.args
+                    and typ.type.fullname == 'builtins.tuple'))):
+            # `raise (exc, ...)` case:
+            item = typ.items[0] if isinstance(typ, TupleType) else typ.args[0]
+            self.check_subtype(
+                item, UnionType([exc_type, TypeType(exc_type)]), s,
+                'When raising a tuple, first element must by derived from BaseException',
+            )
+            return
+        elif s.legacy_mode:
+            # `raise Exception, msg` case
+            # `raise Exception, msg, traceback` case
+            # https://docs.python.org/2/reference/simple_stmts.html#the-raise-statement
+            assert isinstance(typ, TupleType)  # Is set in fastparse2.py
+            self.check_subtype(
+                typ.items[0], TypeType(exc_type), s,
+                'First argument must be BaseException subtype',
+            )
+
+            # Typecheck `traceback` part:
+            if len(typ.items) == 3:
+                # Now, we typecheck `traceback` argument if it is present.
+                # We do this after the main check for better error message
+                # and better ordering: first about `BaseException` subtype,
+                # then about `traceback` type.
+                traceback_type = UnionType.make_union([
+                    self.named_type('types.TracebackType'),
+                    NoneType(),
+                ])
+                self.check_subtype(
+                    typ.items[2], traceback_type, s,
+                    'Third argument to raise must have "{}" type'.format(traceback_type),
+                )
+        else:
+            expected_type_items = [
+                # `raise Exception` and `raise Exception()` cases:
+                exc_type, TypeType(exc_type),
+            ]
+            self.check_subtype(
+                typ, UnionType.make_union(expected_type_items),
+                s, message_registry.INVALID_EXCEPTION,
+            )
 
     def visit_try_stmt(self, s: TryStmt) -> None:
         """Type check a try statement."""
@@ -4380,12 +4450,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         type_map = self.type_map
         if is_true_literal(node):
             return {}, None
-        elif is_false_literal(node):
+        if is_false_literal(node):
             return None, {}
-        elif isinstance(node, CallExpr):
-            self._check_for_truthy_type(type_map[node], node)
-            if len(node.args) == 0:
-                return {}, {}
+
+        if isinstance(node, CallExpr) and len(node.args) != 0:
             expr = collapse_walrus(node.args[0])
             if refers_to_fullname(node.callee, 'builtins.isinstance'):
                 if len(node.args) != 2:  # the error will be reported elsewhere
@@ -4570,43 +4638,65 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             return reduce_conditional_maps(partial_type_maps)
         elif isinstance(node, AssignmentExpr):
-            return self.find_isinstance_check_helper(node.target)
-        elif isinstance(node, RefExpr):
-            # Restrict the type of the variable to True-ish/False-ish in the if and else branches
-            # respectively
-            vartype = type_map[node]
-            self._check_for_truthy_type(vartype, node)
-            if_type: Type = true_only(vartype)
-            else_type: Type = false_only(vartype)
-            ref: Expression = node
-            if_map = ({ref: if_type} if not isinstance(get_proper_type(if_type), UninhabitedType)
-                      else None)
-            else_map = ({ref: else_type} if not isinstance(get_proper_type(else_type),
-                                                           UninhabitedType)
-                        else None)
-            return if_map, else_map
+            if_map = {}
+            else_map = {}
+
+            if_assignment_map, else_assignment_map = self.find_isinstance_check(node.target)
+
+            if if_assignment_map is not None:
+                if_map.update(if_assignment_map)
+            if else_assignment_map is not None:
+                else_map.update(else_assignment_map)
+
+            if_condition_map, else_condition_map = self.find_isinstance_check(node.value)
+
+            if if_condition_map is not None:
+                if_map.update(if_condition_map)
+            if else_condition_map is not None:
+                else_map.update(else_condition_map)
+
+            return (
+                (None if if_assignment_map is None or if_condition_map is None else if_map),
+                (None if else_assignment_map is None or else_condition_map is None else else_map),
+            )
         elif isinstance(node, OpExpr) and node.op == 'and':
-            left_if_vars, left_else_vars = self.find_isinstance_check_helper(node.left)
-            right_if_vars, right_else_vars = self.find_isinstance_check_helper(node.right)
+            left_if_vars, left_else_vars = self.find_isinstance_check(node.left)
+            right_if_vars, right_else_vars = self.find_isinstance_check(node.right)
 
             # (e1 and e2) is true if both e1 and e2 are true,
             # and false if at least one of e1 and e2 is false.
             return (and_conditional_maps(left_if_vars, right_if_vars),
                     or_conditional_maps(left_else_vars, right_else_vars))
         elif isinstance(node, OpExpr) and node.op == 'or':
-            left_if_vars, left_else_vars = self.find_isinstance_check_helper(node.left)
-            right_if_vars, right_else_vars = self.find_isinstance_check_helper(node.right)
+            left_if_vars, left_else_vars = self.find_isinstance_check(node.left)
+            right_if_vars, right_else_vars = self.find_isinstance_check(node.right)
 
             # (e1 or e2) is true if at least one of e1 or e2 is true,
             # and false if both e1 and e2 are false.
             return (or_conditional_maps(left_if_vars, right_if_vars),
                     and_conditional_maps(left_else_vars, right_else_vars))
         elif isinstance(node, UnaryExpr) and node.op == 'not':
-            left, right = self.find_isinstance_check_helper(node.expr)
+            left, right = self.find_isinstance_check(node.expr)
             return right, left
 
-        # Not a supported isinstance check
-        return {}, {}
+        # Restrict the type of the variable to True-ish/False-ish in the if and else branches
+        # respectively
+        vartype = type_map[node]
+        self._check_for_truthy_type(vartype, node)
+        if_type = true_only(vartype)  # type: Type
+        else_type = false_only(vartype)  # type: Type
+        ref = node  # type: Expression
+        if_map = (
+            {ref: if_type}
+            if not isinstance(get_proper_type(if_type), UninhabitedType)
+            else None
+        )
+        else_map = (
+            {ref: else_type}
+            if not isinstance(get_proper_type(else_type), UninhabitedType)
+            else None
+        )
+        return if_map, else_map
 
     def propagate_up_typemap_info(self,
                                   existing_types: Mapping[Expression, Type],
@@ -4754,8 +4844,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Take each element in the parent union and replay the original lookup procedure
             # to figure out which parents are compatible.
             new_parent_types = []
-            for item in parent_type.items:
-                item = get_proper_type(item)
+            for item in union_items(parent_type):
                 member_type = replay_lookup(item)
                 if member_type is None:
                     # We were unable to obtain the member type. So, we give up on refining this
@@ -5062,9 +5151,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 or not self.dynamic_funcs
                 or not self.dynamic_funcs[-1])
 
-    def lookup(self, name: str, kind: int) -> SymbolTableNode:
+    def lookup(self, name: str) -> SymbolTableNode:
         """Look up a definition from the symbol table with the given name.
-        TODO remove kind argument
         """
         if name in self.globals:
             return self.globals[name]
@@ -5078,7 +5166,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def lookup_qualified(self, name: str) -> SymbolTableNode:
         if '.' not in name:
-            return self.lookup(name, GDEF)  # FIX kind
+            return self.lookup(name)
         else:
             parts = name.split('.')
             n = self.modules[parts[0]]

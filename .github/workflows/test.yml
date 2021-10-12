@@ -56,6 +56,12 @@ jobs:
           toxenv: py
           tox_extra_args: "-n 2"
           test_mypyc: true
+        - name: Test suite with py310-ubuntu
+          python: '3.10'
+          arch: x64
+          os: ubuntu-latest
+          toxenv: py
+          tox_extra_args: "-n 2"
         - name: mypyc runtime tests with py36-macos
           python: '3.6'
           arch: x64
@@ -96,7 +102,7 @@ jobs:
         ./misc/build-debug-python.sh $PYTHONVERSION $PYTHONDIR $VENV
         source $VENV/bin/activate
     - name: Install tox
-      run: pip install --upgrade 'setuptools!=50' 'virtualenv<16.7.11' tox==3.20.1
+      run: pip install --upgrade 'setuptools!=50' 'virtualenv>=20.6.0' tox==3.20.1
     - name: Compiled with mypyc
       if: ${{ matrix.test_mypyc }}
       run: |
@@ -107,23 +113,24 @@ jobs:
     - name: Test
       run: tox -e ${{ matrix.toxenv }} --skip-pkg-install -- ${{ matrix.tox_extra_args }}
 
-  python-nightly:
-    runs-on: ubuntu-latest
-    name: Test suite with Python nightly
-    steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-python@v2
-      with:
-        python-version: '3.10-dev'
-    - name: Install tox
-      run: |
-        pip install -U pip==21.2.3 setuptools
-        pip install --upgrade 'setuptools!=50' virtualenv==20.4.7 tox==3.20.1
-    - name: Setup tox environment
-      run: tox -e py --notest
-    - name: Test
-      run: tox -e py --skip-pkg-install -- "-n 2"
-      continue-on-error: true
-    - name: Mark as a success
-      run: exit 0
+# TODO: uncomment this when 3.11-dev is available
+#  python-nightly:
+#    runs-on: ubuntu-latest
+#    name: Test suite with Python nightly
+#    steps:
+#    - uses: actions/checkout@v2
+#    - uses: actions/setup-python@v2
+#      with:
+#        python-version: '3.11-dev'
+#    - name: Install tox
+#      run: |
+#        pip install -U pip==21.2.3 setuptools
+#        pip install --upgrade 'setuptools!=50' virtualenv==20.4.7 tox==3.20.1
+#    - name: Setup tox environment
+#      run: tox -e py --notest
+#    - name: Test
+#      run: tox -e py --skip-pkg-install -- "-n 2"
+#      continue-on-error: true
+#    - name: Mark as a success
+#      run: exit 0
 

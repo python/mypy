@@ -380,8 +380,9 @@ class StringFormatterChecker:
                 if (has_type_component(actual_type, 'builtins.bytes') and
                         not custom_special_method(actual_type, '__str__')):
                     self.msg.fail(
-                        "On Python 3 '{}'.format(b'abc') produces \"b'abc'\", not 'abc'; "
-                        "use '{!r}'.format(b'abc') if this is desired behavior",
+                        'On Python 3 formatting "b\'abc\'" with "{}" '
+                        'produces "b\'abc\'", not "abc"; '
+                        'use "{!r}" if this is desired behavior',
                         call, code=codes.STR_BYTES_PY3)
         if spec.flags:
             numeric_types = UnionType([self.named_type('builtins.int'),
@@ -836,8 +837,9 @@ class StringFormatterChecker:
             if self.chk.options.python_version >= (3, 0):
                 if has_type_component(typ, 'builtins.bytes'):
                     self.msg.fail(
-                        "On Python 3 '%s' % b'abc' produces \"b'abc'\", not 'abc'; "
-                        "use '%r' % b'abc' if this is desired behavior",
+                        'On Python 3 formatting "b\'abc\'" with "%s" '
+                        'produces "b\'abc\'", not "abc"; '
+                        'use "%r" if this is desired behavior',
                         context, code=codes.STR_BYTES_PY3)
                     return False
             if self.chk.options.python_version < (3, 0):

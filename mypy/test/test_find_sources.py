@@ -7,7 +7,6 @@ from typing import List, Optional, Set, Tuple
 
 from mypy.find_sources import InvalidSourceList, SourceFinder, create_source_list
 from mypy.fscache import FileSystemCache
-from mypy.modulefinder import BuildSource
 from mypy.options import Options
 from mypy.modulefinder import BuildSource
 

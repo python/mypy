@@ -111,6 +111,30 @@ a = 'x'.foobar(b)  # type: ignore[xyz, w, attr-defined]  # E: Name "b" is not de
 a = 'x'.foobar(b) # type: int # type: ignore[name-defined, attr-defined]
 b = 'x'.foobar(b) # type: int # type: ignore[name-defined, xyz]  # E: "str" has no attribute "foobar"  [attr-defined]
 
+[case testErrorCodeWarnUnusedIgnores1]
+# flags: --warn-unused-ignores
+x # type: ignore[name-defined, attr-defined] # E: unused "type: ignore[attr-defined]" comment
+
+[case testErrorCodeWarnUnusedIgnores2]
+# flags: --warn-unused-ignores
+"x".foobar(y) # type: ignore[name-defined, attr-defined]
+
+[case testErrorCodeWarnUnusedIgnores3]
+# flags: --warn-unused-ignores
+"x".foobar(y) # type: ignore[name-defined, attr-defined, xyz] # E: unused "type: ignore[xyz]" comment
+
+[case testErrorCodeWarnUnusedIgnores4]
+# flags: --warn-unused-ignores
+"x".foobar(y) # type: ignore[name-defined, attr-defined, valid-type] # E: unused "type: ignore[valid-type]" comment
+
+[case testErrorCodeWarnUnusedIgnores5]
+# flags: --warn-unused-ignores
+"x".foobar(y) # type: ignore[name-defined, attr-defined, valid-type, xyz] # E: unused "type: ignore[valid-type, xyz]" comment
+
+[case testErrorCodeWarnUnusedIgnores6_NoDetailWhenSingleErrorCode]
+# flags: --warn-unused-ignores
+"x" # type: ignore[name-defined] # E: unused "type: ignore" comment
+
 [case testErrorCodeIgnoreWithExtraSpace]
 x  # type: ignore   [name-defined]
 x2 # type: ignore   [ name-defined ]
@@ -641,8 +665,8 @@ def g() -> int:
 '%d' % 'no'  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsInt]")  [str-format]
 '%d + %d' % (1, 2, 3)  # E: Not all arguments converted during string formatting  [str-format]
 
-'{}'.format(b'abc')  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'", not 'abc'; use '{!r}'.format(b'abc') if this is desired behavior  [str-bytes-safe]
-'%s' % b'abc'  # E: On Python 3 '%s' % b'abc' produces "b'abc'", not 'abc'; use '%r' % b'abc' if this is desired behavior  [str-bytes-safe]
+'{}'.format(b'abc')  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior  [str-bytes-safe]
+'%s' % b'abc'  # E: On Python 3 formatting "b'abc'" with "%s" produces "b'abc'", not "abc"; use "%r" if this is desired behavior  [str-bytes-safe]
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-medium.pyi]
 

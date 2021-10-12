@@ -39,11 +39,11 @@ from mypyc.ir.rtypes import (
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.common import (
-    FAST_ISINSTANCE_MAX_SUBCLASSES, MAX_LITERAL_SHORT_INT, PLATFORM_SIZE, use_vectorcall,
-    use_method_vectorcall
+    FAST_ISINSTANCE_MAX_SUBCLASSES, MAX_LITERAL_SHORT_INT, MIN_LITERAL_SHORT_INT, PLATFORM_SIZE,
+    use_vectorcall, use_method_vectorcall
 )
 from mypyc.primitives.registry import (
-    method_call_ops, CFunctionDescription, function_ops,
+    method_call_ops, CFunctionDescription,
     binary_ops, unary_ops, ERR_NEG_INT
 )
 from mypyc.primitives.bytes_ops import bytes_compare
@@ -789,7 +789,7 @@ class LowLevelIRBuilder:
 
     def load_int(self, value: int) -> Value:
         """Load a tagged (Python) integer literal value."""
-        if abs(value) > MAX_LITERAL_SHORT_INT:
+        if value > MAX_LITERAL_SHORT_INT or value < MIN_LITERAL_SHORT_INT:
             return self.add(LoadLiteral(value, int_rprimitive))
         else:
             return Integer(value)
@@ -1185,15 +1185,6 @@ class LowLevelIRBuilder:
 
     def new_set_op(self, values: List[Value], line: int) -> Value:
         return self.call_c(new_set_op, values, line)
-
-    def builtin_call(self,
-                     args: List[Value],
-                     fn_op: str,
-                     line: int) -> Value:
-        call_c_ops_candidates = function_ops.get(fn_op, [])
-        target = self.matching_call_c(call_c_ops_candidates, args, line)
-        assert target, 'Unsupported builtin function: %s' % fn_op
-        return target
 
     def shortcircuit_helper(self, op: str,
                             expr_type: RType,

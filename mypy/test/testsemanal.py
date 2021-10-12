@@ -33,7 +33,8 @@ semanal_files = ['semanal-basic.test',
                  'semanal-typeddict.test',
                  'semenal-literal.test',
                  'semanal-classvar.test',
-                 'semanal-python2.test']
+                 'semanal-python2.test',
+                 'semanal-lambda.test']
 
 
 if sys.version_info >= (3, 10):
