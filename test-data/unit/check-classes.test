@@ -2835,7 +2835,7 @@ C(foo='') # E: Argument "foo" to "C" has incompatible type "str"; expected "Opti
 
 [case testConstructInstanceWithDynamicallyTyped__new__]
 class C:
-    def __new__(cls, foo):
+    def __new__(cls, foo):  # N: "C" defined here
         obj = object.__new__(cls)
         return obj
 
