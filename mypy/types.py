@@ -9,7 +9,7 @@ from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Set, Optional, Union, Iterable, NamedTuple,
     Sequence, Iterator
 )
-from typing_extensions import ClassVar, Final, TYPE_CHECKING, overload
+from typing_extensions import ClassVar, Final, TYPE_CHECKING, overload, TypeAlias
 
 import mypy.nodes
 from mypy import state
@@ -52,7 +52,7 @@ JsonDict = Dict[str, Any]
 # Note: Although "Literal[None]" is a valid type, we internally always convert
 # such a type directly into "None". So, "None" is not a valid parameter of
 # LiteralType and is omitted from this list.
-LiteralValue = Union[int, str, bool]
+LiteralValue: TypeAlias = Union[int, str, bool]
 
 
 # If we only import type_visitor in the middle of the file, mypy

@@ -15,7 +15,7 @@ import re
 from typing import (
     cast, List, Tuple, Dict, Callable, Union, Optional, Pattern, Match, Set
 )
-from typing_extensions import Final, TYPE_CHECKING
+from typing_extensions import Final, TYPE_CHECKING, TypeAlias
 
 from mypy.types import (
     Type, AnyType, TupleType, Instance, UnionType, TypeOfAny, get_proper_type, TypeVarType,
@@ -39,9 +39,9 @@ from mypy.typeops import custom_special_method
 from mypy.subtypes import is_subtype
 from mypy.parse import parse
 
-FormatStringExpr = Union[StrExpr, BytesExpr, UnicodeExpr]
-Checkers = Tuple[Callable[[Expression], None], Callable[[Type], bool]]
-MatchMap = Dict[Tuple[int, int], Match[str]]  # span -> match
+FormatStringExpr: TypeAlias = Union[StrExpr, BytesExpr, UnicodeExpr]
+Checkers: TypeAlias = Tuple[Callable[[Expression], None], Callable[[Type], bool]]
+MatchMap: TypeAlias = Dict[Tuple[int, int], Match[str]]  # span -> match
 
 
 def compile_format_re() -> Pattern[str]:
