@@ -14,9 +14,10 @@ error_codes: Dict[str, "ErrorCode"] = {}
 
 
 class ErrorCode:
-    def __init__(
-        self, code: str, description: str, category: str, default_enabled: bool = True
-    ) -> None:
+    def __init__(self, code: str,
+                 description: str,
+                 category: str,
+                 default_enabled: bool = True) -> None:
         self.code = code
         self.description = description
         self.category = category
@@ -24,7 +25,7 @@ class ErrorCode:
         error_codes[code] = self
 
     def __str__(self) -> str:
-        return "<ErrorCode {}>".format(self.code)
+        return '<ErrorCode {}>'.format(self.code)
 
 
 ATTR_DEFINED: Final = ErrorCode("attr-defined", "Check that attribute exists", "General")
@@ -123,7 +124,7 @@ UNREACHABLE: Final = ErrorCode(
 REDUNDANT_EXPR: Final = ErrorCode(
     "redundant-expr", "Warn about redundant expressions", "General", default_enabled=False
 )
-TRUTHY_BOOL: Final = ErrorCode(
+TRUTHY_BOOL: Final[ErrorCode] = ErrorCode(
     "truthy-bool",
     "Warn about expressions that could always evaluate to true in boolean contexts",
     "General",
