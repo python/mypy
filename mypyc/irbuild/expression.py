@@ -38,7 +38,7 @@ from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op, dict_get_it
 from mypyc.primitives.set_ops import set_add_op, set_update_op
 from mypyc.primitives.str_ops import str_slice_op
 from mypyc.primitives.int_ops import int_comparison_op_mapping
-from mypyc.irbuild.specialize import specializers
+from mypyc.irbuild.specialize import get_specialization
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import (
     translate_list_comprehension, translate_set_comprehension,
@@ -209,11 +209,13 @@ def transform_call_expr(builder: IRBuilder, expr: CallExpr) -> Value:
         callee = callee.analyzed.expr  # Unwrap type application
 
     if isinstance(callee, MemberExpr):
-        return translate_method_call(builder, expr, callee)
+        return get_specialization(builder, expr, callee) or \
+               translate_method_call(builder, expr, callee)
     elif isinstance(callee, SuperExpr):
         return translate_super_method_call(builder, expr, callee)
     else:
-        return translate_call(builder, expr, callee)
+        return get_specialization(builder, expr, callee) or \
+               translate_call(builder, expr, callee)
 
 
 def translate_call(builder: IRBuilder, expr: CallExpr, callee: Expression) -> Value:
@@ -229,18 +231,6 @@ def translate_call(builder: IRBuilder, expr: CallExpr, callee: Expression) -> Va
 
 def translate_refexpr_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value:
     """Translate a non-method call."""
-
-    # TODO: Allow special cases to have default args or named args. Currently they don't since
-    # they check that everything in arg_kinds is ARG_POS.
-
-    # If there is a specializer for this function, try calling it.
-    # We would return the first successful one.
-    if callee.fullname and (callee.fullname, None) in specializers:
-        for specializer in specializers[callee.fullname, None]:
-            val = specializer(builder, expr, callee)
-            if val is not None:
-                return val
-
     # Gen the argument values
     arg_values = [builder.accept(arg) for arg in expr.args]
 
@@ -297,11 +287,9 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
 
         # If there is a specializer for this method name/type, try calling it.
         # We would return the first successful one.
-        if (callee.name, receiver_typ) in specializers:
-            for specializer in specializers[callee.name, receiver_typ]:
-                val = specializer(builder, expr, callee)
-                if val is not None:
-                    return val
+        val = get_specialization(builder, expr, callee, receiver_typ, fullname=False)
+        if val is not None:
+            return val
 
         obj = builder.accept(callee.expr)
         args = [builder.accept(arg) for arg in expr.args]

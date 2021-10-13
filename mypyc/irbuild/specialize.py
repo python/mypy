@@ -57,6 +57,22 @@ Specializer = Callable[['IRBuilder', CallExpr, RefExpr], Optional[Value]]
 specializers: Dict[Tuple[str, Optional[RType]], List[Specializer]] = {}
 
 
+def get_specialization(builder: 'IRBuilder', expr: CallExpr, callee: RefExpr,
+                       typ: Optional[RType] = None, fullname: bool = True) -> Optional[Value]:
+    # TODO: Allow special cases to have default args or named args. Currently they don't since
+    # they check that everything in arg_kinds is ARG_POS.
+
+    name = callee.fullname if fullname else callee.name
+    # If there is a specializer for this function, try calling it.
+    # We would return the first successful one.
+    if name and (name, typ) in specializers:
+        for specializer in specializers[name, typ]:
+            val = specializer(builder, expr, callee)
+            if val is not None:
+                return val
+    return None
+
+
 def specialize_function(
         name: str, typ: Optional[RType] = None) -> Callable[[Specializer], Specializer]:
     """Decorator to register a function as being a specializer.
