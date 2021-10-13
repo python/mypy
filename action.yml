@@ -8,10 +8,9 @@ inputs:
     required: false
   paths:
     description: >
-      Explicit paths to run mypy on. Defaults to the current directory and
-      the `files` value from mypy configuration file.
+      Explicit paths to run mypy on. Defaults to the current directory.
     required: false
-    default: ""
+    default: "."
   version:
     description: >
       Mypy version to use (PEP440) - e.g. "0.910"
