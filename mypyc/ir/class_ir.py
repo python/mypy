@@ -152,6 +152,14 @@ class ClassIR:
         # None if separate compilation prevents this from working
         self.children: Optional[List[ClassIR]] = []
 
+    def __repr__(self) -> str:
+        return (
+            "ClassIR("
+            "name={self.name}, module_name={self.module_name}, "
+            "is_trait={self.is_trait}, is_generated={self.is_generated}, "
+            "is_abstract={self.is_abstract}, is_ext_class={self.is_ext_class}"
+            ")".format(self=self))
+
     @property
     def fullname(self) -> str:
         return "{}.{}".format(self.module_name, self.name)

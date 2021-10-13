@@ -283,6 +283,8 @@ def any_all_helper(builder: IRBuilder,
 
 
 @specialize_function('dataclasses.field')
+@specialize_function('attr.ib')
+@specialize_function('attr.attrib')
 @specialize_function('attr.Factory')
 def translate_dataclasses_field_call(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:

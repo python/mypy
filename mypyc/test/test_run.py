@@ -52,7 +52,8 @@ files = [
     'run-bench.test',
     'run-mypy-sim.test',
     'run-dunders.test',
-    'run-singledispatch.test'
+    'run-singledispatch.test',
+    'run-attrs.test',
 ]
 if sys.version_info >= (3, 7):
     files.append('run-python37.test')

@@ -9,6 +9,13 @@ from mypy.nodes import (
 )
 
 
+DATACLASS_DECORATORS = {
+    'dataclasses.dataclass',
+    'attr.s',
+    'attr.attrs',
+}
+
+
 def is_trait_decorator(d: Expression) -> bool:
     return isinstance(d, RefExpr) and d.fullname == 'mypy_extensions.trait'
 
@@ -19,11 +26,11 @@ def is_trait(cdef: ClassDef) -> bool:
 
 def is_dataclass_decorator(d: Expression) -> bool:
     return (
-        (isinstance(d, RefExpr) and d.fullname == 'dataclasses.dataclass')
+        (isinstance(d, RefExpr) and d.fullname in DATACLASS_DECORATORS)
         or (
             isinstance(d, CallExpr)
             and isinstance(d.callee, RefExpr)
-            and d.callee.fullname == 'dataclasses.dataclass'
+            and d.callee.fullname in DATACLASS_DECORATORS
         )
     )
 
