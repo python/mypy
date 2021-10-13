@@ -45,7 +45,10 @@ type_of_any_name_map: Final["collections.OrderedDict[int, str]"] = collections.O
     ]
 )
 
-ReporterClasses: _TypeAlias = Dict[str, Tuple[Callable[['Reports', str], 'AbstractReporter'], bool]]
+ReporterClasses: _TypeAlias = Dict[
+    str,
+    Tuple[Callable[['Reports', str], 'AbstractReporter'], bool],
+]
 
 reporter_classes: Final[ReporterClasses] = {}
 
