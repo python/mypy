@@ -1,7 +1,7 @@
 -r mypy-requirements.txt
 -r build-requirements.txt
 attrs>=18.0
-flake8>=3.8.1
+flake8==3.9.2
 flake8-bugbear
 flake8-pyi>=20.5
 lxml>=4.4.0
