@@ -79,9 +79,6 @@ def install_package(pkg: str,
 
 def test_pep561(testcase: DataDrivenTestCase) -> None:
     """Test running mypy on files that depend on PEP 561 packages."""
-    if (sys.platform == 'darwin' and hasattr(sys, 'base_prefix') and
-       sys.base_prefix != sys.prefix):
-        pytest.skip()
     assert testcase.old_cwd is not None, "test was not properly set up"
     if 'python2' in testcase.name.lower():
         python = try_find_python2_interpreter()
