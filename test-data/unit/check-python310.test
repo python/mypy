@@ -1049,6 +1049,19 @@ match m:
     case a:
         reveal_type(a)  # N: Revealed type is "builtins.int"
 
+[case testCapturePatternPreexistingNarrows]
+a: int
+m: bool
+
+match m:
+    case a:
+        reveal_type(a)  # N: Revealed type is "builtins.bool"
+
+# This is actually correct, as case a has to be taken.
+reveal_type(a)  # N: Revealed type is "builtins.bool"
+a = 3
+reveal_type(a)  # N: Revealed type is "builtins.int"
+
 [case testCapturePatternPreexistingIncompatible]
 a: str
 m: int
@@ -1056,6 +1069,8 @@ m: int
 match m:
     case a:  # E: Incompatible types in capture pattern (pattern captures type "int", variable has type "str")
         reveal_type(a)  # N: Revealed type is "builtins.str"
+
+reveal_type(a)  # N: Revealed type is "builtins.str"
 
 [case testCapturePatternPreexistingIncompatibleLater]
 a: str
@@ -1066,6 +1081,8 @@ match m:
         reveal_type(a)  # N: Revealed type is "builtins.str"
     case int(a):  # E: Incompatible types in capture pattern (pattern captures type "int", variable has type "str")
         reveal_type(a)  # N: Revealed type is "builtins.str"
+
+reveal_type(a)  # N: Revealed type is "builtins.str"
 
 
 -- Guards --
@@ -1135,7 +1152,7 @@ match m:
 [builtins fixtures/isinstancelist.pyi]
 
 -- Exhaustiveness --
-[case testUnionNegativeNarrowing-skip]
+[case testUnionNegativeNarrowing]
 from typing import Union
 
 m: Union[str, int]
@@ -1148,7 +1165,7 @@ match m:
         reveal_type(b)  # N: Revealed type is "builtins.int"
         reveal_type(m)  # N: Revealed type is "builtins.int"
 
-[case testOrPatternNegativeNarrowing-skip]
+[case testOrPatternNegativeNarrowing]
 from typing import Union
 
 m: Union[str, bytes, int]
@@ -1160,7 +1177,7 @@ match m:
     case b:
         reveal_type(b)  # N: Revealed type is "builtins.int"
 
-[case testExhaustiveReturn-skip]
+[case testExhaustiveReturn]
 def foo(value) -> int:
   match value:
     case "bar":
@@ -1168,7 +1185,7 @@ def foo(value) -> int:
     case _:
       return 2
 
-[case testNoneExhaustiveReturn-skip]
+[case testNoneExhaustiveReturn]
 def foo(value) -> int:  # E: Missing return statement
   match value:
     case "bar":
@@ -1216,3 +1233,30 @@ class A:
 class B:
     def __enter__(self) -> B: ...
     def __exit__(self, x, y, z) -> None: ...
+
+[case testNonExhaustiveError]
+from typing import NoReturn
+def assert_never(x: NoReturn) -> None: ...
+
+value: int
+match value:
+    case 1:
+        pass
+    case 2:
+        pass
+    case o:
+        assert_never(o)  # E: Argument 1 to "assert_never" has incompatible type "int"; expected "NoReturn"
+
+[case testExhaustiveNoError]
+from typing import NoReturn, Union, Literal
+def assert_never(x: NoReturn) -> None: ...
+
+value: Union[Literal[1], Literal[2]]
+match value:
+    case 1:
+        pass
+    case 2:
+        pass
+    case o:
+        assert_never(o)
+[typing fixtures/typing-medium.pyi]
