@@ -528,3 +528,22 @@ def returns_bool(a: object) -> bool: pass
 reveal_type(filter(is_int_typeguard))  # N: Revealed type is "__main__.filter[builtins.int*]"
 reveal_type(filter(returns_bool))  # N: Revealed type is "__main__.filter[builtins.object*]"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeGuardSubtypingVariance]
+from typing import Callable
+from typing_extensions import TypeGuard
+
+class A: pass
+class B(A): pass
+class C(B): pass
+
+def accepts_typeguard(f: Callable[[object], TypeGuard[B]]): pass
+
+def with_typeguard_a(o: object) -> TypeGuard[A]: pass
+def with_typeguard_b(o: object) -> TypeGuard[B]: pass
+def with_typeguard_c(o: object) -> TypeGuard[C]: pass
+
+accepts_typeguard(with_typeguard_a)  # E: Argument 1 to "accepts_typeguard" has incompatible type "Callable[[object], TypeGuard[A]]"; expected "Callable[[object], TypeGuard[B]]"
+accepts_typeguard(with_typeguard_b)
+accepts_typeguard(with_typeguard_c)
+[builtins fixtures/tuple.pyi]
