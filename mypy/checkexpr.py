@@ -7,7 +7,7 @@ import itertools
 from typing import (
     Any, cast, Dict, Set, List, Tuple, Callable, Union, Optional, Sequence, Iterator
 )
-from typing_extensions import ClassVar, Final, overload, TypeAlias
+from typing_extensions import ClassVar, Final, overload, TypeAlias as _TypeAlias
 
 from mypy.errors import report_internal_error
 from mypy.typeanal import (
@@ -72,7 +72,7 @@ import mypy.errorcodes as codes
 
 # Type of callback user for checking individual function arguments. See
 # check_args() below for details.
-ArgChecker: TypeAlias = Callable[[
+ArgChecker: _TypeAlias = Callable[[
         Type,
         Type,
         ArgKind,
