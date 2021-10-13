@@ -205,9 +205,9 @@ b.bf(False)
 a.bf(1)
 b.bf(1)
 [out]
-testNamespacePkgWStubs.py:4: error: Skipping analyzing "typedpkg_ns.b.bbb": found module but no type hints or library stubs
+testNamespacePkgWStubs.py:4: error: Skipping analyzing "typedpkg_ns.b.bbb": module is installed, but missing library stubs or py.typed marker
 testNamespacePkgWStubs.py:4: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-testNamespacePkgWStubs.py:4: error: Skipping analyzing "typedpkg_ns.b": found module but no type hints or library stubs
+testNamespacePkgWStubs.py:4: error: Skipping analyzing "typedpkg_ns.b": module is installed, but missing library stubs or py.typed marker
 testNamespacePkgWStubs.py:7: error: Argument 1 to "bf" has incompatible type "int"; expected "bool"
 
 [case testNamespacePkgWStubsWithNamespacePackagesFlag]
