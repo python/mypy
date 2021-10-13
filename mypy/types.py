@@ -130,6 +130,15 @@ class Type(mypy.nodes.Context):
     """Abstract base class for all types."""
 
     __slots__ = ('can_be_true', 'can_be_false')
+    # 'can_be_true' and 'can_be_false' mean whether the value of the
+    # expression can be true or false in a boolean context. They are useful
+    # when inferring the type of logic expressions like `x and y`.
+    #
+    # For example:
+    #   * the literal `False` can't be true while `True` can.
+    #   * a value with type `bool` can be true or false.
+    #   * `None` can't be true
+    #   * ...
 
     def __init__(self, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
@@ -1373,8 +1382,7 @@ class TupleType(ProperType):
         implicit: If True, derived from a tuple expression (t,....) instead of Tuple[t, ...]
     """
 
-    __slots__ = ('items', 'partial_fallback', 'implicit',
-                 'can_be_true', 'can_be_false')
+    __slots__ = ('items', 'partial_fallback', 'implicit')
 
     items: List[Type]
     partial_fallback: Instance
@@ -1451,8 +1459,7 @@ class TypedDictType(ProperType):
     TODO: The fallback structure is perhaps overly complicated.
     """
 
-    __slots__ = ('items', 'required_keys', 'fallback',
-                 'can_be_true', 'can_be_false')
+    __slots__ = ('items', 'required_keys', 'fallback')
 
     items: "OrderedDict[str, Type]"  # item_name -> item_type
     required_keys: Set[str]
