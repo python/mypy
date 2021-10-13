@@ -372,9 +372,16 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_long_unsigned(self) -> None:
         a = Register(int64_rprimitive, 'a')
         self.assert_emit(Assign(a, Integer(1 << 31, int64_rprimitive)),
-                         """cpy_r_a = 2147483648U;""")
+                         """cpy_r_a = 2147483648ULL;""")
         self.assert_emit(Assign(a, Integer((1 << 31) - 1, int64_rprimitive)),
                          """cpy_r_a = 2147483647;""")
+
+    def test_long_signed(self) -> None:
+        a = Register(int64_rprimitive, 'a')
+        self.assert_emit(Assign(a, Integer(-(1 << 31) + 1, int64_rprimitive)),
+                         """cpy_r_a = -2147483647;""")
+        self.assert_emit(Assign(a, Integer(-(1 << 31), int64_rprimitive)),
+                         """cpy_r_a = -2147483648LL;""")
 
     def assert_emit(self, op: Op, expected: str, next_block: Optional[BasicBlock] = None) -> None:
         block = BasicBlock(0)

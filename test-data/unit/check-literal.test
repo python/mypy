@@ -2687,11 +2687,8 @@ def force2(x: Tuple[Literal[1], Literal[2]]) -> None: pass
 reveal_type(a)          # N: Revealed type is "Literal[1]?"
 reveal_type(b)          # N: Revealed type is "Tuple[Literal[1]?, Literal[2]?]"
 
-# TODO: This test seems somewhat broken and might need a rewrite (and a fix somewhere in mypy).
-# See https://github.com/python/mypy/issues/7399#issuecomment-554188073 for more context.
-force1(reveal_type(a))  # N: Revealed type is "Literal[1]"
-force2(reveal_type(b))  # E: Argument 1 to "force2" has incompatible type "Tuple[int, int]"; expected "Tuple[Literal[1], Literal[2]]" \
-                        # N: Revealed type is "Tuple[Literal[1]?, Literal[2]?]"
+force1(a)  # ok
+force2(b)  # ok
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -3303,4 +3300,49 @@ if w:
 else:
     reveal_type(w)  # E: Statement is unreachable
 
+[builtins fixtures/bool.pyi]
+
+[case testLiteralAndInstanceSubtyping]
+# https://github.com/python/mypy/issues/7399
+# https://github.com/python/mypy/issues/11232
+from typing import Tuple, Union
+from typing_extensions import Literal, Final
+
+x: bool
+
+def f() -> Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]:
+    if x:
+        return (True, 5)
+    else:
+        return (False, 'oops')
+
+reveal_type(f())  # N: Revealed type is "Union[Tuple[Literal[True], builtins.int], Tuple[Literal[False], builtins.str]]"
+
+def does_work() -> Tuple[Literal[1]]:
+    x: Final = (1,)
+    return x
+
+def also_works() -> Tuple[Literal[1]]:
+    x: Tuple[Literal[1]] = (1,)
+    return x
+
+def invalid_literal_value() -> Tuple[Literal[1]]:
+    x: Final = (2,)
+    return x  # E: Incompatible return value type (got "Tuple[int]", expected "Tuple[Literal[1]]")
+
+def invalid_literal_type() -> Tuple[Literal[1]]:
+    x: Final = (True,)
+    return x  # E: Incompatible return value type (got "Tuple[bool]", expected "Tuple[Literal[1]]")
+
+def incorrect_return1() -> Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]:
+    if x:
+        return (False, 5)  # E: Incompatible return value type (got "Tuple[bool, int]", expected "Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]")
+    else:
+        return (True, 'oops')  # E: Incompatible return value type (got "Tuple[bool, str]", expected "Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]")
+
+def incorrect_return2() -> Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]:
+    if x:
+        return (bool(), 5)  # E: Incompatible return value type (got "Tuple[bool, int]", expected "Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]")
+    else:
+        return (bool(), 'oops')  # E: Incompatible return value type (got "Tuple[bool, str]", expected "Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]")
 [builtins fixtures/bool.pyi]
