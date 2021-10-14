@@ -58,11 +58,14 @@ specializers: Dict[Tuple[str, Optional[RType]], List[Specializer]] = {}
 
 
 def get_specialization(builder: 'IRBuilder', expr: CallExpr, callee: RefExpr,
-                       typ: Optional[RType] = None, fullname: bool = True) -> Optional[Value]:
+                       typ: Optional[RType] = None) -> Optional[Value]:
     # TODO: Allow special cases to have default args or named args. Currently they don't since
     # they check that everything in arg_kinds is ARG_POS.
 
-    name = callee.fullname if fullname else callee.name
+    if isinstance(callee, (MemberExpr, NameExpr)):
+        name = callee.fullname if callee.fullname else callee.name
+    else:
+        name = callee.fullname
     # If there is a specializer for this function, try calling it.
     # We would return the first successful one.
     if name and (name, typ) in specializers:

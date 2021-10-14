@@ -214,14 +214,14 @@ def transform_call_expr(builder: IRBuilder, expr: CallExpr) -> Value:
     elif isinstance(callee, SuperExpr):
         return translate_super_method_call(builder, expr, callee)
     else:
-        return get_specialization(builder, expr, callee) or \
-               translate_call(builder, expr, callee)
+        return translate_call(builder, expr, callee)
 
 
 def translate_call(builder: IRBuilder, expr: CallExpr, callee: Expression) -> Value:
     # The common case of calls is refexprs
     if isinstance(callee, RefExpr):
-        return translate_refexpr_call(builder, expr, callee)
+        return get_specialization(builder, expr, callee) or \
+               translate_refexpr_call(builder, expr, callee)
 
     function = builder.accept(callee)
     args = [builder.accept(arg) for arg in expr.args]
@@ -287,7 +287,7 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
 
         # If there is a specializer for this method name/type, try calling it.
         # We would return the first successful one.
-        val = get_specialization(builder, expr, callee, receiver_typ, fullname=False)
+        val = get_specialization(builder, expr, callee, receiver_typ)
         if val is not None:
             return val
 
