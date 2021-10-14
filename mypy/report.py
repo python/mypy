@@ -14,7 +14,7 @@ from urllib.request import pathname2url
 
 import typing
 from typing import Any, Callable, Dict, List, Optional, Tuple, cast, Iterator
-from typing_extensions import Final
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.nodes import MypyFile, Expression, FuncDef
 from mypy import stats
@@ -45,7 +45,10 @@ type_of_any_name_map: Final["collections.OrderedDict[int, str]"] = collections.O
     ]
 )
 
-ReporterClasses = Dict[str, Tuple[Callable[['Reports', str], 'AbstractReporter'], bool]]
+ReporterClasses: _TypeAlias = Dict[
+    str,
+    Tuple[Callable[['Reports', str], 'AbstractReporter'], bool],
+]
 
 reporter_classes: Final[ReporterClasses] = {}
 

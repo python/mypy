@@ -4,7 +4,7 @@ and potentially other mutable TypeInfo state. This module contains mutable globa
 """
 
 from typing import Dict, Set, Tuple, Optional, List
-from typing_extensions import ClassVar, Final
+from typing_extensions import ClassVar, Final, TypeAlias as _TypeAlias
 
 from mypy.nodes import TypeInfo
 from mypy.types import Instance, TypeAliasType, get_proper_type, Type
@@ -12,15 +12,15 @@ from mypy.server.trigger import make_trigger
 from mypy import state
 
 # Represents that the 'left' instance is a subtype of the 'right' instance
-SubtypeRelationship = Tuple[Instance, Instance]
+SubtypeRelationship: _TypeAlias = Tuple[Instance, Instance]
 
 # A tuple encoding the specific conditions under which we performed the subtype check.
 # (e.g. did we want a proper subtype? A regular subtype while ignoring variance?)
-SubtypeKind = Tuple[bool, ...]
+SubtypeKind: _TypeAlias = Tuple[bool, ...]
 
 # A cache that keeps track of whether the given TypeInfo is a part of a particular
 # subtype relationship
-SubtypeCache = Dict[TypeInfo, Dict[SubtypeKind, Set[SubtypeRelationship]]]
+SubtypeCache: _TypeAlias = Dict[TypeInfo, Dict[SubtypeKind, Set[SubtypeRelationship]]]
 
 
 class TypeState:

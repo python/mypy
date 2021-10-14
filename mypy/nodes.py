@@ -8,7 +8,7 @@ from collections import defaultdict
 from typing import (
     Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, Callable, Sequence, Iterator
 )
-from typing_extensions import DefaultDict, Final, TYPE_CHECKING
+from typing_extensions import DefaultDict, Final, TYPE_CHECKING, TypeAlias as _TypeAlias
 from mypy_extensions import trait
 
 import mypy.strconv
@@ -64,7 +64,7 @@ if TYPE_CHECKING:
 
 T = TypeVar('T')
 
-JsonDict = Dict[str, Any]
+JsonDict: _TypeAlias = Dict[str, Any]
 
 
 # Symbol table node kinds
@@ -208,7 +208,7 @@ class FakeExpression(Expression):
 # TODO:
 # Lvalue = Union['NameExpr', 'MemberExpr', 'IndexExpr', 'SuperExpr', 'StarExpr'
 #                'TupleExpr']; see #1783.
-Lvalue = Expression
+Lvalue: _TypeAlias = Expression
 
 
 @trait
@@ -241,7 +241,7 @@ class SymbolNode(Node):
 
 
 # Items: fullname, related symbol table node, surrounding type (if any)
-Definition = Tuple[str, 'SymbolTableNode', Optional['TypeInfo']]
+Definition: _TypeAlias = Tuple[str, 'SymbolTableNode', Optional['TypeInfo']]
 
 
 class MypyFile(SymbolNode):
@@ -514,7 +514,7 @@ class FuncBase(Node):
         return self._fullname
 
 
-OverloadPart = Union['FuncDef', 'Decorator']
+OverloadPart: _TypeAlias = Union['FuncDef', 'Decorator']
 
 
 class OverloadedFuncDef(FuncBase, SymbolNode, Statement):

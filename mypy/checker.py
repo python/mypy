@@ -8,7 +8,7 @@ from typing import (
     Any, Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator,
     Iterable, Sequence, Mapping, Generic, AbstractSet, Callable
 )
-from typing_extensions import Final
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.backports import nullcontext
 from mypy.errors import Errors, report_internal_error
@@ -86,8 +86,8 @@ T = TypeVar('T')
 
 DEFAULT_LAST_PASS: Final = 1  # Pass numbers start at 0
 
-DeferredNodeType = Union[FuncDef, LambdaExpr, OverloadedFuncDef, Decorator]
-FineGrainedDeferredNodeType = Union[FuncDef, MypyFile, OverloadedFuncDef]
+DeferredNodeType: _TypeAlias = Union[FuncDef, LambdaExpr, OverloadedFuncDef, Decorator]
+FineGrainedDeferredNodeType: _TypeAlias = Union[FuncDef, MypyFile, OverloadedFuncDef]
 
 # A node which is postponed to be processed during the next pass.
 # In normal mode one can defer functions and methods (also decorated and/or overloaded)
@@ -124,7 +124,7 @@ FineGrainedDeferredNode = NamedTuple(
 # probably be better to have the dict keyed by the nodes' literal_hash
 # field instead.
 
-TypeMap = Optional[Dict[Expression, Type]]
+TypeMap: _TypeAlias = Optional[Dict[Expression, Type]]
 
 # An object that represents either a precise type or a type with an upper bound;
 # it is important for correct type inference with isinstance.

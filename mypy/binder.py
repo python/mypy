@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from collections import defaultdict
 
 from typing import Dict, List, Set, Iterator, Union, Optional, Tuple, cast
-from typing_extensions import DefaultDict
+from typing_extensions import DefaultDict, TypeAlias as _TypeAlias
 
 from mypy.types import (
     Type, AnyType, PartialType, UnionType, TypeOfAny, NoneType, get_proper_type
@@ -16,7 +16,7 @@ from mypy.literals import Key, literal, literal_hash, subkeys
 from mypy.nodes import IndexExpr, MemberExpr, AssignmentExpr, NameExpr
 
 
-BindableExpression = Union[IndexExpr, MemberExpr, AssignmentExpr, NameExpr]
+BindableExpression: _TypeAlias = Union[IndexExpr, MemberExpr, AssignmentExpr, NameExpr]
 
 
 class Frame:
