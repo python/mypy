@@ -27,7 +27,7 @@ from mypyc.irbuild.util import (
     is_dataclass_decorator, get_func_def, is_dataclass, is_constant
 )
 from mypyc.irbuild.builder import IRBuilder
-from mypyc.irbuild.function import transform_method
+from mypyc.irbuild.function import load_type, transform_method
 
 
 def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
@@ -322,11 +322,14 @@ def add_non_ext_class_attr(builder: IRBuilder,
 
     If the attribute is initialized with a value, also add it to __dict__.
     """
+    from mypy.types import Instance
     # We populate __annotations__ because dataclasses uses it to determine
     # which attributes to compute on.
-    # TODO: Maybe generate more precise types for annotations
+    if isinstance(stmt.type, Instance):
+        typ = load_type(builder, stmt.type.type, stmt.line)
+    else:
+        typ = builder.add(LoadAddress(type_object_op.type, type_object_op.src, stmt.line))
     key = builder.load_str(lvalue.name)
-    typ = builder.add(LoadAddress(type_object_op.type, type_object_op.src, stmt.line))
     builder.call_c(dict_set_item_op, [non_ext.anns, key, typ], stmt.line)
 
     # Only add the attribute to the __dict__ if the assignment is of the form:
