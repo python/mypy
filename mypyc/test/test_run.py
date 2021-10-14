@@ -58,6 +58,7 @@ if sys.version_info >= (3, 7):
     files.extend([
         'run-python37.test',
         'run-attrs.test',
+        'run-attrs-non-auto.test',
     ])
 if sys.version_info >= (3, 8):
     files.append('run-python38.test')

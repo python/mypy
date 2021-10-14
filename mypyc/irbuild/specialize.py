@@ -63,7 +63,7 @@ def get_specialization(builder: 'IRBuilder', expr: CallExpr, callee: RefExpr,
     # they check that everything in arg_kinds is ARG_POS.
 
     if isinstance(callee, (MemberExpr, NameExpr)):
-        name = callee.fullname if callee.fullname else callee.name
+        name: Optional[str] = callee.fullname if callee.fullname else callee.name
     else:
         name = callee.fullname
     # If there is a specializer for this function, try calling it.
