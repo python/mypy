@@ -235,13 +235,13 @@ t2: List[str] = ['A', 'B']
 t3: Tuple[str, ...] = ('A', 'B')
 t4: Tuple[str, str] = ('A', 'B')
 t5: Iterable[str] = ('A', 'B')
-'%s %s' % t1 # E: Cannot determine the number of arguments for a Iterable type
-'%s %s' % t2 # E: Cannot determine the number of arguments for a Iterable type
+'%s %s' % t1
+'%s %s' % t2
 '%s %s' % t3
 '%s %s %s' % t3
 '%s %s' % t4
 '%s %s %s' % t4 # E: Not enough arguments for format string
-'%s %s' % t5 # E: Cannot determine the number of arguments for a Iterable type
+'%s %s' % t5
 [builtins fixtures/tuple.pyi]
 
 [case testUnicodeInterpolation_python2]
