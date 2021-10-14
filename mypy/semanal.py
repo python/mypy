@@ -4411,13 +4411,13 @@ class SemanticAnalyzer(NodeVisitor[None],
         return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
 
     def object_type(self) -> Instance:
-        return self.named_type('__builtins__.object')
+        return self.named_type('builtins.object')
 
     def str_type(self) -> Instance:
-        return self.named_type('__builtins__.str')
+        return self.named_type('builtins.str')
 
     def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
-        sym = self.lookup_qualified(qualified_name, Context())
+        sym = self.lookup_fully_qualified(qualified_name)
         assert sym, "Internal error: attempted to construct unknown type"
         node = sym.node
         assert isinstance(node, TypeInfo)
