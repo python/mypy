@@ -469,8 +469,8 @@ class MemoryXmlReporter(AbstractReporter):
         except ValueError:
             return
 
-        if should_skip_path(path):
-            return
+        if should_skip_path(path) or os.path.isdir(path):
+            return  # `path` can sometimes be a directory, see #11334
 
         visitor = stats.StatisticsVisitor(inferred=True,
                                           filename=tree.fullname,
