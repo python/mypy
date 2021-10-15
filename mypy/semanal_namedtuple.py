@@ -384,19 +384,19 @@ class NamedTupleAnalyzer:
                                   types: List[Type],
                                   default_items: Mapping[str, Expression],
                                   line: int) -> TypeInfo:
-        strtype = self.api.named_type('__builtins__.str')
+        strtype = self.api.named_type('builtins.str')
         implicit_any = AnyType(TypeOfAny.special_form)
-        basetuple_type = self.api.named_type('__builtins__.tuple', [implicit_any])
+        basetuple_type = self.api.named_type('builtins.tuple', [implicit_any])
         dictype = (self.api.named_type_or_none('builtins.dict', [strtype, implicit_any])
-                   or self.api.named_type('__builtins__.object'))
+                   or self.api.named_type('builtins.object'))
         # Actual signature should return OrderedDict[str, Union[types]]
         ordereddictype = (self.api.named_type_or_none('builtins.dict', [strtype, implicit_any])
-                          or self.api.named_type('__builtins__.object'))
-        fallback = self.api.named_type('__builtins__.tuple', [implicit_any])
+                          or self.api.named_type('builtins.object'))
+        fallback = self.api.named_type('builtins.tuple', [implicit_any])
         # Note: actual signature should accept an invariant version of Iterable[UnionType[types]].
         # but it can't be expressed. 'new' and 'len' should be callable types.
         iterable_type = self.api.named_type_or_none('typing.Iterable', [implicit_any])
-        function_type = self.api.named_type('__builtins__.function')
+        function_type = self.api.named_type('builtins.function')
 
         info = self.api.basic_new_typeinfo(name, fallback, line)
         info.is_named_tuple = True

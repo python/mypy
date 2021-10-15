@@ -4411,13 +4411,13 @@ class SemanticAnalyzer(NodeVisitor[None],
         return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
 
     def object_type(self) -> Instance:
-        return self.named_type('__builtins__.object')
+        return self.named_type('builtins.object')
 
     def str_type(self) -> Instance:
-        return self.named_type('__builtins__.str')
+        return self.named_type('builtins.str')
 
-    def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
-        sym = self.lookup_qualified(qualified_name, Context())
+    def named_type(self, fullname: str, args: Optional[List[Type]] = None) -> Instance:
+        sym = self.lookup_fully_qualified(fullname)
         assert sym, "Internal error: attempted to construct unknown type"
         node = sym.node
         assert isinstance(node, TypeInfo)
@@ -4426,9 +4426,9 @@ class SemanticAnalyzer(NodeVisitor[None],
             return Instance(node, args)
         return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
 
-    def named_type_or_none(self, qualified_name: str,
+    def named_type_or_none(self, fullname: str,
                            args: Optional[List[Type]] = None) -> Optional[Instance]:
-        sym = self.lookup_fully_qualified_or_none(qualified_name)
+        sym = self.lookup_fully_qualified_or_none(fullname)
         if not sym or isinstance(sym.node, PlaceholderNode):
             return None
         node = sym.node

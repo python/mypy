@@ -250,13 +250,13 @@ class SemanticAnalyzerPluginInterface:
     msg: MessageBuilder
 
     @abstractmethod
-    def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
+    def named_type(self, fullname: str,
+                   args: Optional[List[Type]] = None) -> Instance:
         """Construct an instance of a builtin type with given type arguments."""
         raise NotImplementedError
 
     @abstractmethod
-    def named_type_or_none(self,
-                           qualified_name: str,
+    def named_type_or_none(self, fullname: str,
                            args: Optional[List[Type]] = None) -> Optional[Instance]:
         """Construct an instance of a type with given type arguments.
 
