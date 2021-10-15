@@ -576,11 +576,11 @@ from typing_extensions import Final
 
 GOOD: Final = 'c'
 BAD: Final = 'no'
-OK: Final[str] = '...'
+BAD2: Final[str] = '...'
 
 '{:c}'.format(GOOD)
 '{:c}'.format(BAD)  # E: ":c" requires int or char
-'{:c}'.format(OK)
+'{:c}'.format(BAD2)  # E: ":c" requires int or char
 [builtins fixtures/primitives.pyi]
 
 [case testFormatCallForcedConversions]
