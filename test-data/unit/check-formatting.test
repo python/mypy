@@ -412,6 +412,15 @@ kwargs: Dict[str, str] = {}
 '{stuff[0]:c}'.format(**kwargs)
 [builtins fixtures/primitives.pyi]
 
+[case testFormatCallMatchingFinal]
+from typing import Final
+
+a: Final = "{test}"
+b: Final[str] = "{test}"
+a.format(test="test", foo="bar") # E: Not all arguments converted during string formatting
+b.format(test="test", foo="bar") # E: Not all arguments converted during string formatting
+[builtins fixtures/primitives.pyi]
+
 [case testFormatCallCustomFormatSpec]
 from typing import Union
 class Bad:
