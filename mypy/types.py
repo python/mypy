@@ -52,7 +52,7 @@ JsonDict: _TypeAlias = Dict[str, Any]
 # Note: Although "Literal[None]" is a valid type, we internally always convert
 # such a type directly into "None". So, "None" is not a valid parameter of
 # LiteralType and is omitted from this list.
-LiteralValue: _TypeAlias = Union[int, str, bool]
+LiteralValue: _TypeAlias = Union[int, str, float, bool]
 
 
 # If we only import type_visitor in the middle of the file, mypy
@@ -897,8 +897,8 @@ class Instance(ProperType):
             return NotImplemented
         return (self.type == other.type
                 and self.args == other.args)
-                # TODO: last_known_value is not set correctly at initializations of Literal type
-                # and self.last_known_value == other.last_known_value)
+        # TODO: last_known_value is not set correctly at initializations of Literal type
+        # and self.last_known_value == other.last_known_value)
 
     def serialize(self) -> Union[JsonDict, str]:
         assert self.type is not None

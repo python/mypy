@@ -265,7 +265,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if var.name in {'True', 'False'}:
                     return self.infer_literal_expr_type(var.name == 'True', 'builtins.bool')
                 if var.final_value is not None:
-                    return self.infer_literal_expr_type(var.final_value, '', var.type)
+                    return self.infer_literal_expr_type(var.final_value, '', var_type)
             return var.type
         else:
             if not var.is_ready and self.chk.in_checked_function():
@@ -2092,7 +2092,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return is_literal_type_like(self.type_context[-1])
 
     def infer_literal_expr_type(self, value: LiteralValue, fallback_name: str,
-                                fallback_typ: Optional[Type] = None) -> Type:
+                                fallback_typ: Optional[Instance] = None) -> Type:
         """Analyzes the given literal expression and determines if we should be
         inferring an Instance type, a Literal[...] type, or an Instance that
         remembers the original literal. We...
