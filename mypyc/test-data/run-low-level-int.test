@@ -1,5 +1,5 @@
 [case testLowLevelIntBasicOps]
-from typing import List
+from typing import List, Any, Tuple
 
 MYPY = False
 if MYPY:
@@ -228,6 +228,46 @@ def test_coerce_int_to_i64_and_back() -> None:
             b: int = x
             assert str(a) == str(x)
             assert a == b
+
+def test_tuple_i64() -> None:
+    a: i64 = 1
+    b: i64 = 2
+    t = (a, b)
+    a, b = t
+    assert a == 1
+    assert b == 2
+    x: Any = t
+    tt: Tuple[i64, i64] = x
+    assert tt == (1, 2)
+
+def test_list_set_item() -> None:
+    a: List[i64] = [0, 2, 6]
+    z: i64 = int()
+    a[z] = 1
+    assert a == [1, 2, 6]
+    a[z + 2] = 9
+    assert a == [1, 2, 9]
+    a[-(z + 1)] = 10
+    assert a == [1, 2, 10]
+    a[-(z + 3)] = 3
+    assert a == [3, 2, 10]
+    with assertRaises(IndexError):
+        a[z + 3] = 0
+    with assertRaises(IndexError):
+        a[-(z + 4)] = 0
+    assert a == [3, 2, 10]
+
+class C:
+    def __init__(self, x: i64) -> None:
+        self.x = x
+
+def test_attributes() -> None:
+    i: i64
+    for i in range(-1000, 1000):
+        c = C(i)
+        assert c.x == i
+        c.x = i + 1
+        assert c.x == i + 1
 
 [case testLowLevelIntErrorValues]
 from typing import Any
