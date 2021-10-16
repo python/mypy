@@ -973,7 +973,7 @@ class LowLevelIRBuilder:
             if op in FIXED_WIDTH_INT_BINARY_OPS:
                 if op.endswith('='):
                     op = op[:-1]
-                if is_fixed_width_rtype(rtype):
+                if is_fixed_width_rtype(rtype) or is_int_rprimitive(rtype):
                     if op != '//':
                         op_id = IntOp.op_to_id[op]
                     else:
@@ -991,16 +991,19 @@ class LowLevelIRBuilder:
                 op_id = ComparisonOp.signed_ops[op]
                 return self.comparison_op(lreg, rreg, op_id, line)
         elif (is_fixed_width_rtype(rtype)
-              and isinstance(lreg, Integer)
+              and (isinstance(lreg, Integer) or is_int_rprimitive(ltype))
               and op in FIXED_WIDTH_INT_BINARY_OPS):
             # TODO: Support comparison ops (similar to above)
             if op != '//':
                 op_id = IntOp.op_to_id[op]
             else:
                 op_id = IntOp.DIV
-            # TODO: Check what kind of Integer
-            return self.fixed_width_int_op(
-                rtype, Integer(lreg.value >> 1, rtype), rreg, op_id, line)
+            if isinstance(lreg, Integer):
+                # TODO: Check what kind of Integer
+                return self.fixed_width_int_op(
+                    rtype, Integer(lreg.value >> 1, rtype), rreg, op_id, line)
+            else:
+                return self.fixed_width_int_op(rtype, lreg, rreg, op_id, line)
 
         call_c_ops_candidates = binary_ops.get(op, [])
         target = self.matching_call_c(call_c_ops_candidates, [lreg, rreg], line)
@@ -1517,6 +1520,8 @@ class LowLevelIRBuilder:
             type: Either int64_rprimitive or int32_rprimitive
             op: IntOp.* constant (e.g. IntOp.ADD)
         """
+        lhs = self.coerce(lhs, type, line)
+        rhs = self.coerce(rhs, type, line)
         if op == IntOp.DIV:
             # Inline simple division by a constant, so that C
             # compilers can optimize more
