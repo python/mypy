@@ -993,6 +993,8 @@ class LowLevelIRBuilder:
         elif (is_fixed_width_rtype(rtype)
               and (isinstance(lreg, Integer) or is_int_rprimitive(ltype))
               and op in FIXED_WIDTH_INT_BINARY_OPS):
+            if op.endswith('='):
+                op = op[:-1]
             # TODO: Support comparison ops (similar to above)
             if op != '//':
                 op_id = IntOp.op_to_id[op]
