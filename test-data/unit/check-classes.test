@@ -6925,8 +6925,13 @@ def meth(self, x: int) -> int:
 class Foo:
     from not_a_module import func
 
-reveal_type(Foo.func)  # N: Revealed type is "Any"
-reveal_type(Foo().func)  # N: Revealed type is "Any"
+reveal_type(Foo.func)
+reveal_type(Foo().func)
+[out]
+main:2: error: Cannot find implementation or library stub for module named "not_a_module"
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+main:4: note: Revealed type is "Any"
+main:5: note: Revealed type is "Any"
 
 [case testExpandImportedMethodWithFollowImports]
 # flags: --follow-imports=skip
@@ -6937,3 +6942,17 @@ reveal_type(Foo().meth)  # N: Revealed type is "Any"
 [file a.py]
 def meth(self, x: int) -> int:
     ...
+
+[case testExpandWithNonSelfFirstArgument]
+class Foo:
+    from a import func
+
+reveal_type(Foo().func)
+reveal_type(Foo.func)
+[file a.py]
+def func(self: str, x: int) -> int:
+    ...
+[out]
+main:4: error: Invalid self argument "Foo" to attribute function "func" with type "Callable[[str, int], int]"
+main:4: note: Revealed type is "def (x: builtins.int) -> builtins.int"
+main:5: note: Revealed type is "def (self: builtins.str, x: builtins.int) -> builtins.int"
