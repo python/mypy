@@ -683,7 +683,19 @@ def is_singleton_type(typ: Type) -> bool:
     )
 
 
-def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperType:
+def enum_has_custom_equals(enum: Instance):
+    assert enum.type.is_enum
+    for typ in enum.type.mro:
+        if typ.fullname == "enum.Enum":
+            return False
+        if "__eq__" in typ.names:
+            return True
+
+
+def try_expanding_sum_type_to_union(typ: Type,
+                                    target_fullname: str,
+                                    *,
+                                    ignore_custom_equals: bool = True) -> ProperType:
     """Attempts to recursively expand any enum Instances with the given target_fullname
     into a Union of all of its component LiteralTypes.
 

@@ -19,7 +19,8 @@ from mypy.patterns import (
 )
 from mypy.plugin import Plugin
 from mypy.subtypes import is_subtype
-from mypy.typeops import try_getting_str_literals_from_type, make_simplified_union
+from mypy.typeops import try_getting_str_literals_from_type, make_simplified_union, \
+    coerce_to_literal
 from mypy.types import (
     ProperType, AnyType, TypeOfAny, Instance, Type, UninhabitedType, get_proper_type,
     TypedDictType, TupleType, NoneType, UnionType
@@ -177,6 +178,7 @@ class PatternChecker(PatternVisitor[PatternType]):
     def visit_value_pattern(self, o: ValuePattern) -> PatternType:
         current_type = self.type_context[-1]
         typ = self.chk.expr_checker.accept(o.expr)
+        typ = coerce_to_literal(typ)
         narrowed_type, rest_type = self.chk.conditional_types_with_intersection(
             current_type,
             [get_type_range(typ)],
@@ -259,6 +261,9 @@ class PatternChecker(PatternVisitor[PatternType]):
         new_inner_types = self.expand_starred_pattern_types(contracted_new_inner_types,
                                                             star_position,
                                                             len(inner_types))
+        rest_inner_types = self.expand_starred_pattern_types(contracted_rest_inner_types,
+                                                             star_position,
+                                                             len(inner_types))
 
         #
         # Calculate new type
@@ -287,9 +292,7 @@ class PatternChecker(PatternVisitor[PatternType]):
 
             if all(is_uninhabited(typ) for typ in inner_rest_types):
                 # All subpatterns always match, so we can apply negative narrowing
-                new_type, rest_type = self.chk.conditional_types_with_intersection(
-                    current_type, [get_type_range(new_type)], o, default=current_type
-                )
+                rest_type = TupleType(rest_inner_types, current_type.partial_fallback)
         else:
             new_inner_type = UninhabitedType()
             for typ in new_inner_types:

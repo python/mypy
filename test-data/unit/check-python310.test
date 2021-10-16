@@ -14,14 +14,15 @@ m: object
 
 match m:
     case 1:
-        reveal_type(m)  # N: Revealed type is "Literal[1]?"
+        reveal_type(m)  # N: Revealed type is "Literal[1]"
 
-[case testLiteralPatternAlreadyNarrower]
+[case testLiteralPatternAlreadyNarrower-skip]
 m: bool
 
 match m:
     case 1:
-        reveal_type(m)  # N: Revealed type is "builtins.bool"
+        reveal_type(m)  # This should probably be unreachable, but isn't detected as such.
+[builtins fixtures/primitives.pyi]
 
 [case testLiteralPatternUnreachable]
 # primitives are needed because otherwise mypy doesn't see that int and str are incompatible
@@ -269,7 +270,7 @@ m: Tuple[object, object]
 
 match m:
     case [1, "str"]:
-        reveal_type(m)  # N: Revealed type is "Tuple[Literal[1]?, Literal['str']?]"
+        reveal_type(m)  # N: Revealed type is "Tuple[Literal[1], Literal['str']]"
 [builtins fixtures/list.pyi]
 
 [case testSequencePatternTupleStarred]
@@ -968,7 +969,7 @@ m: object
 
 match m:
     case 1 | 2 as n:
-        reveal_type(n)  # N: Revealed type is "Union[Literal[1]?, Literal[2]?]"
+        reveal_type(n)  # N: Revealed type is "Union[Literal[1], Literal[2]]"
 
 [case testAsPatternAlreadyNarrower]
 m: bool
@@ -984,21 +985,21 @@ m: object
 
 match m:
     case 1 | 2:
-        reveal_type(m)  # N: Revealed type is "Union[Literal[1]?, Literal[2]?]"
+        reveal_type(m)  # N: Revealed type is "Union[Literal[1], Literal[2]]"
 
 [case testOrPatternNarrowsStr]
 m: object
 
 match m:
     case "foo" | "bar":
-        reveal_type(m)  # N: Revealed type is "Union[Literal['foo']?, Literal['bar']?]"
+        reveal_type(m)  # N: Revealed type is "Union[Literal['foo'], Literal['bar']]"
 
 [case testOrPatternNarrowsUnion]
 m: object
 
 match m:
     case 1 | "foo":
-        reveal_type(m)  # N: Revealed type is "Union[Literal[1]?, Literal['foo']?]"
+        reveal_type(m)  # N: Revealed type is "Union[Literal[1], Literal['foo']]"
 
 [case testOrPatterCapturesMissing]
 from typing import List
@@ -1057,7 +1058,6 @@ match m:
     case a:
         reveal_type(a)  # N: Revealed type is "builtins.bool"
 
-# This is actually correct, as case a has to be taken.
 reveal_type(a)  # N: Revealed type is "builtins.bool"
 a = 3
 reveal_type(a)  # N: Revealed type is "builtins.int"
@@ -1260,3 +1260,62 @@ match value:
     case o:
         assert_never(o)
 [typing fixtures/typing-medium.pyi]
+
+[case testSequencePatternNegativeNarrowing]
+from typing import Union, Sequence, Tuple
+
+m1: Sequence[Union[int, str]]
+
+match m1:
+    case [int()]:
+        reveal_type(m1)  # N: Revealed type is "typing.Sequence[builtins.int]"
+    case r:
+        reveal_type(m1)  # N: Revealed type is "typing.Sequence[Union[builtins.int, builtins.str]]"
+
+m2: Tuple[Union[int, str]]
+
+match m2:
+    case (int(),):
+        reveal_type(m2)  # N: Revealed type is "Tuple[builtins.int]"
+    case r2:
+        reveal_type(m2)  # N: Revealed type is "Tuple[builtins.str]"
+
+m3: Tuple[Union[int, str]]
+
+match m3:
+    case (1,):
+        reveal_type(m3)  # N: Revealed type is "Tuple[Literal[1]]"
+    case r2:
+        reveal_type(m3)  # N: Revealed type is "Tuple[Union[builtins.int, builtins.str]]"
+
+[case testLiteralPatternEnumNegativeNarrowing]
+from enum import Enum
+class Medal(Enum):
+    gold = 1
+    silver = 2
+    bronze = 3
+
+m: Medal
+
+match m:
+    case Medal.gold:
+        reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.gold]"
+    case _:
+        reveal_type(m)  # N: Revealed type is "Union[Literal[__main__.Medal.silver], Literal[__main__.Medal.bronze]]"
+
+[case testLiteralPatternEnumCustomEquals]
+from enum import Enum
+class Medal(Enum):
+    gold = 1
+    silver = 2
+    bronze = 3
+
+    def __eq__(self, other) -> bool: ...
+
+m: Medal
+
+match m:
+    case Medal.gold:
+        reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.gold]"
+    case _:
+        reveal_type(m)  # N: Revealed type is "__main__.Medal"
