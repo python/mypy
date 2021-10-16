@@ -264,7 +264,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # If `var` has final_value, we could update its type with literal type.
                 if var.name in {'True', 'False'}:
                     return self.infer_literal_expr_type(var.name == 'True', 'builtins.bool')
-                if var.final_value is not None:
+                if var.final_value is not None and not isinstance(var.final_value, float):
                     return self.infer_literal_expr_type(var.final_value, '', var_type)
             return var.type
         else:
