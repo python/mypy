@@ -6910,3 +6910,30 @@ reveal_type(Foo.func)  # N: Revealed type is "def () -> builtins.str"
 [file a.py]
 def func() -> str:
     ...
+
+[case testExpandImportedMethodInNestedClass]
+class Foo:
+    class Bar:
+        from a import meth
+
+reveal_type(Foo.Bar().meth)  # N: Revealed type is "def (x: builtins.int) -> builtins.int"
+[file a.py]
+def meth(self, x: int) -> int:
+    ...
+
+[case testExpandUndefinedImports]
+class Foo:
+    from not_a_module import func
+
+reveal_type(Foo.func)  # N: Revealed type is "Any"
+reveal_type(Foo().func)  # N: Revealed type is "Any"
+
+[case testExpandImportedMethodWithFollowImports]
+# flags: --follow-imports=skip
+class Foo:
+    from a import meth
+
+reveal_type(Foo().meth)  # N: Revealed type is "Any"
+[file a.py]
+def meth(self, x: int) -> int:
+    ...
