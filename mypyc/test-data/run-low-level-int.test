@@ -76,7 +76,7 @@ def test_divide_by_constant() -> None:
         assert div_by_3(i) == i // 3
     for i in range(-2**63, -2**63 + 1000):
         assert div_by_3(i) == i // 3
-    for i in range(2**63 - 1000, 2**63 - 1):
+    for i in range(2**63 - 1000, 2**63):
         assert div_by_3(i) == i // 3
 
 def test_divide_by_negative_constant() -> None:
@@ -84,13 +84,13 @@ def test_divide_by_negative_constant() -> None:
         assert div_by_neg_3(i) == i // -3
     for i in range(-2**63, -2**63 + 1000):
         assert div_by_neg_3(i) == i // -3
-    for i in range(2**63 - 1000, 2**63 - 1):
+    for i in range(2**63 - 1000, 2**63):
         assert div_by_neg_3(i) == i // -3
 
 def test_divide_by_variable() -> None:
     values = (list(range(-50, 50)) +
               list(range(-2**63, -2**63 + 10)) +
-              list(range(2**63 - 10, 2**63 - 1)))
+              list(range(2**63 - 10, 2**63)))
     for x in values:
         for y in values:
             if y != 0:
@@ -117,7 +117,7 @@ def test_mod_by_constant() -> None:
         assert mod_by_7(i) == i % 7
     for i in range(-2**63, -2**63 + 1000):
         assert mod_by_7(i) == i % 7
-    for i in range(2**63 - 1000, 2**63 - 1):
+    for i in range(2**63 - 1000, 2**63):
         assert mod_by_7(i) == i % 7
 
 def test_mod_by_negative_constant() -> None:
@@ -125,13 +125,13 @@ def test_mod_by_negative_constant() -> None:
         assert mod_by_neg_7(i) == i // -7
     for i in range(-2**63, -2**63 + 1000):
         assert mod_by_neg_7(i) == i // -7
-    for i in range(2**63 - 1000, 2**63 - 1):
+    for i in range(2**63 - 1000, 2**63):
         assert mod_by_neg_7(i) == i // -7
 
 def test_mod_by_variable() -> None:
     values = (list(range(-50, 50)) +
               list(range(-2**63, -2**63 + 10)) +
-              list(range(2**63 - 10, 2**63 - 1)))
+              list(range(2**63 - 10, 2**63)))
     for x in values:
         for y in values:
             if y != 0:
@@ -345,3 +345,81 @@ def test_box_and_unbox() -> None:
     with assertRaises(OverflowError, "int too large to convert to i32"):
         o = -2**32 - 1
         x = o
+
+def div_by_7(x: i32) -> i32:
+    return x // 7
+
+def div_by_neg_7(x: i32) -> i32:
+    return x // -7
+
+def div(x: i32, y: i32) -> i32:
+    return x // y
+
+def test_divide_by_constant() -> None:
+    for i in range(-1000, 1000):
+        assert div_by_7(i) == i // 7
+    for i in range(-2**31, -2**31 + 1000):
+        assert div_by_7(i) == i // 7
+    for i in range(2**31 - 1000, 2**31):
+        assert div_by_7(i) == i // 7
+
+def test_divide_by_negative_constant() -> None:
+    for i in range(-1000, 1000):
+        assert div_by_neg_7(i) == i // -7
+    for i in range(-2**31, -2**31 + 1000):
+        assert div_by_neg_7(i) == i // -7
+    for i in range(2**31 - 1000, 2**31):
+        assert div_by_neg_7(i) == i // -7
+
+def test_divide_by_variable() -> None:
+    values = (list(range(-50, 50)) +
+              list(range(-2**31, -2**31 + 10)) +
+              list(range(2**31 - 10, 2**31)))
+    for x in values:
+        for y in values:
+            if y != 0:
+                if x // y == 2**31:
+                    with assertRaises(OverflowError, "integer division overflow"):
+                        div(x, y)
+                else:
+                    assert div(x, y) == x // y
+            else:
+                with assertRaises(ZeroDivisionError, "integer division or modulo by zero"):
+                    div(x, y)
+
+def mod_by_7(x: i32) -> i32:
+    return x % 7
+
+def mod_by_neg_7(x: i32) -> i32:
+    return x // -7
+
+def mod(x: i32, y: i32) -> i32:
+    return x % y
+
+def test_mod_by_constant() -> None:
+    for i in range(-1000, 1000):
+        assert mod_by_7(i) == i % 7
+    for i in range(-2**31, -2**31 + 1000):
+        assert mod_by_7(i) == i % 7
+    for i in range(2**31 - 1000, 2**31):
+        assert mod_by_7(i) == i % 7
+
+def test_mod_by_negative_constant() -> None:
+    for i in range(-1000, 1000):
+        assert mod_by_neg_7(i) == i // -7
+    for i in range(-2**31, -2**31 + 1000):
+        assert mod_by_neg_7(i) == i // -7
+    for i in range(2**31 - 1000, 2**31):
+        assert mod_by_neg_7(i) == i // -7
+
+def test_mod_by_variable() -> None:
+    values = (list(range(-50, 50)) +
+              list(range(-2**31, -2**31 + 10)) +
+              list(range(2**31 - 10, 2**31)))
+    for x in values:
+        for y in values:
+            if y != 0:
+                assert mod(x, y) == x % y
+            else:
+                with assertRaises(ZeroDivisionError, "integer division or modulo by zero"):
+                    mod(x, y)
