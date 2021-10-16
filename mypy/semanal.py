@@ -1829,6 +1829,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                     defn = node.node
                     if imported_id not in top_class.names.keys() and isinstance(defn, FuncDef):
                         if not defn.is_decorated and not defn.is_overload:
+                            assert self.type is not None
                             defn.info = self.type
                             self.add_symbol(defn.name, defn, imp)
                 self.process_imported_symbol(
