@@ -56,7 +56,7 @@ PatternType = NamedTuple(
     'PatternType',
     [
         ('type', Type),  # The type the match subject can be narrowed to
-        ('rest_type', Type),  # For exhaustiveness checking. Not used yet
+        ('rest_type', Type),
         ('captures', Dict[Expression, Type]),  # The variables captured by the pattern
     ])
 
