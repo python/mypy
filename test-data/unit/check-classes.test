@@ -6891,3 +6891,22 @@ class B(A):  # E: Final class __main__.B has abstract attributes "foo"
 [case testUndefinedBaseclassInNestedClass]
 class C:
     class C1(XX): pass  # E: Name "XX" is not defined
+
+[case testExpandImportedMethodInClass]
+# https://github.com/python/mypy/issues/7045
+class Foo:
+    from a import meth
+
+reveal_type(Foo().meth)  # N: Revealed type is "def (x: builtins.int) -> builtins.int"
+[file a.py]
+def meth(self, x: int) -> int:
+    ...
+
+[case testExpandImportedFunctionInClass]
+class Foo:
+    from a import func
+
+reveal_type(Foo.func)  # N: Revealed type is "def () -> builtins.str"
+[file a.py]
+def func() -> str:
+    ...
