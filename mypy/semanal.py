@@ -1824,12 +1824,11 @@ class SemanticAnalyzer(NodeVisitor[None],
             if node and not node.module_hidden:
                 # expand into importing class, too... unless there's something already there.
                 # (deciding what expands is based on line order which cannot be checked here.)
-                if len(self.scope.classes) >= 1:
-                    top_class = self.scope.classes[-1]
+                if self.is_class_scope():
+                    assert self.type is not None
                     defn = node.node
-                    if imported_id not in top_class.names.keys() and isinstance(defn, FuncDef):
+                    if imported_id not in self.type.names.keys() and isinstance(defn, FuncDef):
                         if not defn.is_decorated and not defn.is_overload:
-                            assert self.type is not None
                             defn.info = self.type
                             self.add_symbol(defn.name, defn, imp)
                 self.process_imported_symbol(
