@@ -1543,10 +1543,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         assert isinstance(typ, CallableType)
                         if not is_equivalent(typ.ret_type, original_type):
                             self.fail('Signature of "{}" incompatible with {}'.format(
-                                      defn.name, base.name), context)
+                                      defn.name, base.name), context, code=codes.OVERRIDE)
                     else:
                         self.fail('Overriding an attribute with a property requires '
-                                  'defining a setter method', context)
+                                  'defining a setter method', context, code=codes.OVERRIDE)
                 elif isinstance(defn, OverloadedFuncDef):
                     # potential errors already reported by the checks above
                     pass
