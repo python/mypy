@@ -1360,6 +1360,29 @@ a.f = a.f # E: Property "f" defined in "A" is read-only
 a.f.x # E: "int" has no attribute "x"
 [builtins fixtures/property.pyi]
 
+[case testOverrideAttributeWithProperty]
+class A:
+    x: int
+    y: int
+    z: int
+class B(A):
+    @property
+    def x(self) -> int:
+        ...
+    @x.setter
+    def x(self, v: int) -> None:
+        ...
+    @property
+    def y(self) -> int:  # E: Overriding an attribute with a property requires defining a setter method
+        ...
+    @property
+    def z(self) -> str:  # E: Signature of "z" incompatible with A
+        ...
+    @z.setter
+    def z(self, v: str) -> None:
+        ...
+[builtins fixtures/property.pyi]
+
 -- Descriptors
 -- -----------
 

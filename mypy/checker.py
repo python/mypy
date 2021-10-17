@@ -1536,7 +1536,23 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 original_class_or_static = fdef.is_class or fdef.is_static
             else:
                 original_class_or_static = False  # a variable can't be class or static
-            if isinstance(original_type, AnyType) or isinstance(typ, AnyType):
+
+            if context.is_property and isinstance(original_node, Var):
+                if isinstance(defn, Decorator):
+                    if defn.var.is_settable_property:
+                        assert isinstance(defn.var.type, CallableType)
+                        if not is_equivalent(defn.var.type.ret_type, original_type):
+                            self.fail('Signature of "{}" incompatible with {}'.format(
+                                      defn.name, base.name), context)
+                    else:
+                        self.fail('Overriding an attribute with a property requires '
+                                  'defining a setter method', context)
+                elif isinstance(defn, OverloadedFuncDef):
+                    # potential errors already reported by the checks above
+                    pass
+                else:
+                    assert False, 'should be unreachable'
+            elif isinstance(original_type, AnyType) or isinstance(typ, AnyType):
                 pass
             elif isinstance(original_type, FunctionLike) and isinstance(typ, FunctionLike):
                 original = self.bind_and_map_method(base_attr, original_type,

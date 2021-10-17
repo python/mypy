@@ -762,8 +762,13 @@ class B(A):
 class C(A):
     @property  # E: Cannot override final attribute "x" (previously declared in base class "A")
     def x(self) -> None: pass
+    @x.setter
+    def x(self, v: int) -> None: pass
     @property  # E: Cannot override final attribute "y" (previously declared in base class "A")
     def y(self) -> None: pass
+    @y.setter
+    def y(self, v: int) -> None: pass
+
 [builtins fixtures/property.pyi]
 [out]
 
