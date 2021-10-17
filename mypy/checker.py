@@ -1540,8 +1540,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if context.is_property and isinstance(original_node, Var):
                 if isinstance(defn, Decorator):
                     if defn.var.is_settable_property:
-                        assert isinstance(defn.var.type, CallableType)
-                        if not is_equivalent(defn.var.type.ret_type, original_type):
+                        assert isinstance(typ, CallableType)
+                        if not is_equivalent(typ.ret_type, original_type):
                             self.fail('Signature of "{}" incompatible with {}'.format(
                                       defn.name, base.name), context)
                     else:
