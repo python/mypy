@@ -26,6 +26,8 @@ class DefaultPlugin(Plugin):
 
         if fullname == 'contextlib.contextmanager':
             return contextmanager_callback
+        if fullname == 'contextlib.asynccontextmanager':
+            return contextmanager_callback
         elif fullname == 'builtins.open' and self.python_version[0] == 3:
             return open_callback
         elif fullname == 'ctypes.Array':
