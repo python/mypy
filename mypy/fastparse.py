@@ -1,4 +1,5 @@
 from mypy.util import unnamed_function
+import copy
 import re
 import sys
 import warnings
@@ -1570,19 +1571,20 @@ class TypeConverter:
         elif isinstance(n.slice, ast3.Index):
             sliceval: Any = n.slice.value
         elif isinstance(n.slice, ast3.Slice):
-            sliceval = n.slice
+            sliceval = copy.deepcopy(n.slice)  # so we don't mutate passed AST
             if getattr(sliceval, "col_offset", None) is None:
                 # Fix column information so that we get Python 3.9+ message order
                 sliceval.col_offset = sliceval.lower.col_offset
         else:
             assert isinstance(n.slice, ast3.ExtSlice)
-            for s in n.slice.dims:
+            dims = copy.deepcopy(n.slice.dims)
+            for s in dims:
                 if getattr(s, "col_offset", None) is None:
                     if isinstance(s, ast3.Index):
                         s.col_offset = s.value.col_offset  # type: ignore
                     elif isinstance(s, ast3.Slice):
                         s.col_offset = s.lower.col_offset  # type: ignore
-            sliceval = ast3.Tuple(n.slice.dims, n.ctx)
+            sliceval = ast3.Tuple(dims, n.ctx)
 
         empty_tuple_index = False
         if isinstance(sliceval, ast3.Tuple):
