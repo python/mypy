@@ -15,6 +15,7 @@ import errno
 import gc
 import json
 import os
+import platform
 import re
 import stat
 import sys
@@ -201,8 +202,9 @@ def _build(sources: List[BuildSource],
            stderr: TextIO,
            extra_plugins: Sequence[Plugin],
            ) -> BuildResult:
-    # This seems the most reasonable place to tune garbage collection.
-    gc.set_threshold(150 * 1000)
+    if platform.python_implementation() == 'CPython':
+        # This seems the most reasonable place to tune garbage collection.
+        gc.set_threshold(150 * 1000)
 
     data_dir = default_data_dir()
     fscache = fscache or FileSystemCache()
