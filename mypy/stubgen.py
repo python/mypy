@@ -737,6 +737,11 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         name = expr.name
         if name in ('property', 'staticmethod', 'classmethod'):
             self.add_decorator(name)
+        elif (self.refers_to_fullname(name, 'builtins.property') or
+              self.refers_to_fullname(name, 'builtins.staticmethod') or
+              self.refers_to_fullname(name, 'builtins.classmethod')):
+            self.add_decorator(name)
+            self.import_tracker.require_name(name)
         elif self.import_tracker.module_for.get(name) in ('asyncio',
                                                           'asyncio.coroutines',
                                                           'types'):
@@ -775,6 +780,12 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         is_overload = False
         if expr.name == 'setter' and isinstance(expr.expr, NameExpr):
             self.add_decorator('%s.setter' % expr.expr.name)
+        elif (isinstance(expr.expr, NameExpr) and
+              (expr.expr.name == 'builtins' or
+               self.import_tracker.reverse_alias.get(expr.expr.name) == 'builtins') and
+              expr.name in ('property', 'staticmethod', 'classmethod')):
+            self.import_tracker.require_name(expr.expr.name)
+            self.add_decorator('%s.%s' % (expr.expr.name, expr.name))
         elif (isinstance(expr.expr, NameExpr) and
               (expr.expr.name == 'abc' or
                self.import_tracker.reverse_alias.get(expr.expr.name) == 'abc') and

@@ -318,6 +318,93 @@ class A:
     @classmethod
     def f(cls) -> None: ...
 
+[case testQualifiedBuiltins]
+import builtins
+
+class A:
+    @builtins.property
+    def f(self):
+        return 1
+    @f.setter
+    def f(self, x): ...
+    def h(self):
+        self.f = 1
+    @builtins.staticmethod
+    def static(x): ...
+    @builtins.classmethod
+    def cls(cls): ...
+[out]
+import builtins
+
+class A:
+    @builtins.property
+    def f(self): ...
+    @f.setter
+    def f(self, x) -> None: ...
+    def h(self) -> None: ...
+    @builtins.staticmethod
+    def static(x) -> None: ...
+    @builtins.classmethod
+    def cls(cls) -> None: ...
+
+[case testQualifiedAliasedBuiltins]
+import builtins as b
+
+class A:
+    @b.property
+    def f(self):
+        return 1
+    @f.setter
+    def f(self, x): ...
+    def h(self):
+        self.f = 1
+    @b.staticmethod
+    def static(x): ...
+    @b.classmethod
+    def cls(cls): ...
+[out]
+import builtins as b
+
+class A:
+    @b.property
+    def f(self): ...
+    @f.setter
+    def f(self, x) -> None: ...
+    def h(self) -> None: ...
+    @b.staticmethod
+    def static(x) -> None: ...
+    @b.classmethod
+    def cls(cls) -> None: ...
+
+[case testAliasedBuiltins]
+from builtins import property as p, staticmethod as sm, classmethod as cm
+
+class A:
+    @p
+    def f(self):
+        return 1
+    @f.setter
+    def f(self, x): ...
+    def h(self):
+        self.f = 1
+    @sm
+    def static(x): ...
+    @cm
+    def cls(cls): ...
+[out]
+from builtins import classmethod as cm, property as p, staticmethod as sm
+
+class A:
+    @p
+    def f(self): ...
+    @f.setter
+    def f(self, x) -> None: ...
+    def h(self) -> None: ...
+    @sm
+    def static(x) -> None: ...
+    @cm
+    def cls(cls) -> None: ...
+
 [case testIfMainCheck]
 def a(): ...
 if __name__ == '__main__':
