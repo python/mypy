@@ -768,7 +768,7 @@ while isinstance(b, int):
 else:
     reveal_type(b)  # E: Statement is unreachable
 
-def foo(c: int) -> None:
+def foo(c: int) -> None:  # E: Statement is unreachable
     reveal_type(c)  # N: Revealed type is "builtins.int"
     assert not isinstance(c, int)
     reveal_type(c)  # E: Statement is unreachable
