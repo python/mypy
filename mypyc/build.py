@@ -4,7 +4,7 @@ The main entry point is mypycify, which produces a list of extension
 modules to be passed to setup. A trivial setup.py for a mypyc built
 project, then, looks like:
 
-    from distutils.core import setup
+    from setuptools import setup
     from mypyc.build import mypycify
 
     setup(name='test_module',
@@ -45,6 +45,13 @@ from mypyc.codegen import emitmodule
 if TYPE_CHECKING:
     from distutils.core import Extension  # noqa
 
+try:
+    # Import setuptools so that it monkey-patch overrides distutils
+    import setuptools  # type: ignore  # noqa
+except ImportError:
+    if sys.version_info >= (3, 12):
+        # Raise on Python 3.12, since distutils will go away forever
+        raise
 from distutils import sysconfig, ccompiler
 
 
@@ -508,7 +515,7 @@ def mypycify(
             '-Wno-unreachable-code', '-Wno-unused-variable',
             '-Wno-unused-command-line-argument', '-Wno-unknown-warning-option',
         ]
-        if 'gcc' in compiler.compiler[0]:
+        if 'gcc' in compiler.compiler[0] or 'gnu-cc' in compiler.compiler[0]:
             # This flag is needed for gcc but does not exist on clang.
             cflags += ['-Wno-unused-but-set-variable']
     elif compiler.compiler_type == 'msvc':

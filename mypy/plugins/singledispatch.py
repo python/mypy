@@ -22,11 +22,11 @@ RegisterCallableInfo = NamedTuple('RegisterCallableInfo', [
     ('singledispatch_obj', Instance),
 ])
 
-SINGLEDISPATCH_TYPE = 'functools._SingleDispatchCallable'
+SINGLEDISPATCH_TYPE: Final = 'functools._SingleDispatchCallable'
 
-SINGLEDISPATCH_REGISTER_METHOD = '{}.register'.format(SINGLEDISPATCH_TYPE)  # type: Final
+SINGLEDISPATCH_REGISTER_METHOD: Final = '{}.register'.format(SINGLEDISPATCH_TYPE)
 
-SINGLEDISPATCH_CALLABLE_CALL_METHOD = '{}.__call__'.format(SINGLEDISPATCH_TYPE)  # type: Final
+SINGLEDISPATCH_CALLABLE_CALL_METHOD: Final = '{}.__call__'.format(SINGLEDISPATCH_TYPE)
 
 
 def get_singledispatch_info(typ: Instance) -> Optional[SingledispatchTypeVars]:
@@ -45,11 +45,11 @@ def get_first_arg(args: List[List[T]]) -> Optional[T]:
     return None
 
 
-REGISTER_RETURN_CLASS = '_SingleDispatchRegisterCallable'
+REGISTER_RETURN_CLASS: Final = '_SingleDispatchRegisterCallable'
 
-REGISTER_CALLABLE_CALL_METHOD = 'functools.{}.__call__'.format(
+REGISTER_CALLABLE_CALL_METHOD: Final = 'functools.{}.__call__'.format(
     REGISTER_RETURN_CLASS
-)  # type: Final
+)
 
 
 def make_fake_register_class_instance(api: CheckerPluginInterface, type_args: Sequence[Type]
@@ -131,7 +131,7 @@ def singledispatch_register_callback(ctx: MethodContext) -> Type:
 
         # is_subtype doesn't work when the right type is Overloaded, so we need the
         # actual type
-        register_type = first_arg_type.items()[0].ret_type
+        register_type = first_arg_type.items[0].ret_type
         type_args = RegisterCallableInfo(register_type, ctx.type)
         register_callable = make_fake_register_class_instance(
             ctx.api,

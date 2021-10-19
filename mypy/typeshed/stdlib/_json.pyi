@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Callable, Tuple
 
 class make_encoder:
     sort_keys: Any
@@ -11,10 +11,10 @@ class make_encoder:
     item_separator: Any
     def __init__(
         self,
-        markers: Optional[Dict[int, Any]],
+        markers: dict[int, Any] | None,
         default: Callable[[Any], Any],
         encoder: Callable[[str], str],
-        indent: Optional[int],
+        indent: int | None,
         key_separator: str,
         item_separator: str,
         sort_keys: bool,

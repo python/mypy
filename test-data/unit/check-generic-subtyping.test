@@ -817,4 +817,28 @@ class Y(Generic[T]):
     def f(self) -> T:
         return U()  # E: Incompatible return value type (got "U", expected "T")
 
+
+[case testTypeVarBoundToUnionAttributeAccess]
+from typing import Union, TypeVar
+
+class U:
+    a: float
+class V:
+    b: float
+class W:
+    c: float
+
+T = TypeVar("T", bound=Union[U, V, W])
+
+def f(x: T) -> None:
+    x.a  # E
+    x.b = 1.0  # E
+    del x.c  # E
+
 [out]
+main:13: error: Item "V" of the upper bound "Union[U, V, W]" of type variable "T" has no attribute "a"
+main:13: error: Item "W" of the upper bound "Union[U, V, W]" of type variable "T" has no attribute "a"
+main:14: error: Item "U" of the upper bound "Union[U, V, W]" of type variable "T" has no attribute "b"
+main:14: error: Item "W" of the upper bound "Union[U, V, W]" of type variable "T" has no attribute "b"
+main:15: error: Item "U" of the upper bound "Union[U, V, W]" of type variable "T" has no attribute "c"
+main:15: error: Item "V" of the upper bound "Union[U, V, W]" of type variable "T" has no attribute "c"

@@ -1,6 +1,14 @@
 -- Type checker test cases dealing with modules and imports on case-insensitive filesystems.
 
 [case testCaseSensitivityDir]
+# flags: --no-namespace-packages
+from a import B  # E: Module "a" has no attribute "B"
+
+[file a/__init__.py]
+[file a/b/__init__.py]
+
+[case testCaseSensitivityDirNamespacePackages]
+# flags: --namespace-packages
 from a import B  # E: Module "a" has no attribute "B"
 
 [file a/__init__.py]

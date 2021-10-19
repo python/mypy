@@ -1,4 +1,4 @@
-from typing import Any, Iterable, List, Optional, Tuple, Type, TypeVar
+from typing import Any, Iterable, List, Tuple, Type, TypeVar
 
 _T = TypeVar("_T")
 
@@ -6,7 +6,7 @@ StringTypes: Tuple[Type[str]]
 
 class NodeList(List[_T]):
     length: int
-    def item(self, index: int) -> Optional[_T]: ...
+    def item(self, index: int) -> _T | None: ...
 
 class EmptyNodeList(Tuple[Any, ...]):
     length: int

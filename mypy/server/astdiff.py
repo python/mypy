@@ -57,7 +57,7 @@ from mypy.nodes import (
     FuncBase, OverloadedFuncDef, FuncItem, MypyFile, UNBOUND_IMPORTED
 )
 from mypy.types import (
-    Type, TypeGuardType, TypeVisitor, UnboundType, AnyType, NoneType, UninhabitedType,
+    Type, TypeVisitor, UnboundType, AnyType, NoneType, UninhabitedType,
     ErasedType, DeletedType, Instance, TypeVarType, CallableType, TupleType, TypedDictType,
     UnionType, Overloaded, PartialType, TypeType, LiteralType, TypeAliasType
 )
@@ -335,11 +335,8 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
         normalized = tuple(sorted(items))
         return ('UnionType', normalized)
 
-    def visit_type_guard_type(self, typ: TypeGuardType) -> SnapshotItem:
-        return ('TypeGuardType', snapshot_type(typ.type_guard))
-
     def visit_overloaded(self, typ: Overloaded) -> SnapshotItem:
-        return ('Overloaded', snapshot_types(typ.items()))
+        return ('Overloaded', snapshot_types(typ.items))
 
     def visit_partial_type(self, typ: PartialType) -> SnapshotItem:
         # A partial type is not fully defined, so the result is indeterminate. We shouldn't

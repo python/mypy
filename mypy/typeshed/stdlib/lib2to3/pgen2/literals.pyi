@@ -1,6 +1,6 @@
-from typing import Dict, Match
+from typing import Match
 
-simple_escapes: Dict[str, str]
+simple_escapes: dict[str, str]
 
 def escape(m: Match[str]) -> str: ...
 def evalString(s: str) -> str: ...

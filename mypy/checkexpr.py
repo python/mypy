@@ -7,7 +7,7 @@ import itertools
 from typing import (
     Any, cast, Dict, Set, List, Tuple, Callable, Union, Optional, Sequence, Iterator
 )
-from typing_extensions import ClassVar, Final, overload
+from typing_extensions import ClassVar, Final, overload, TypeAlias as _TypeAlias
 
 from mypy.errors import report_internal_error
 from mypy.typeanal import (
@@ -15,7 +15,7 @@ from mypy.typeanal import (
     make_optional_type,
 )
 from mypy.types import (
-    Type, AnyType, CallableType, Overloaded, NoneType, TypeVarType, TypeGuardType,
+    Type, AnyType, CallableType, Overloaded, NoneType, TypeVarType,
     TupleType, TypedDictType, Instance, ErasedType, UnionType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, LiteralType, LiteralValue,
     is_named_instance, FunctionLike, ParamSpecType,
@@ -72,18 +72,21 @@ import mypy.errorcodes as codes
 
 # Type of callback user for checking individual function arguments. See
 # check_args() below for details.
-ArgChecker = Callable[[Type,
-                       Type,
-                       ArgKind,
-                       Type,
-                       int,
-                       int,
-                       CallableType,
-                       Optional[Type],
-                       Context,
-                       Context,
-                       MessageBuilder],
-                      None]
+ArgChecker: _TypeAlias = Callable[[
+        Type,
+        Type,
+        ArgKind,
+        Type,
+        int,
+        int,
+        CallableType,
+        Optional[Type],
+        Context,
+        Context,
+        MessageBuilder,
+    ],
+    None,
+]
 
 # Maximum nesting level for math union in overloads, setting this to large values
 # may cause performance issues. The reason is that although union math algorithm we use
@@ -94,11 +97,13 @@ MAX_UNIONS: Final = 5
 
 # Types considered safe for comparisons with --strict-equality due to known behaviour of __eq__.
 # NOTE: All these types are subtypes of AbstractSet.
-OVERLAPPING_TYPES_WHITELIST: Final = [
+OVERLAPPING_TYPES_ALLOWLIST: Final = [
     "builtins.set",
     "builtins.frozenset",
     "typing.KeysView",
     "typing.ItemsView",
+    "builtins._dict_keys",
+    "builtins._dict_items",
 ]
 
 
@@ -778,7 +783,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         else:
             assert isinstance(callee, Overloaded)
             items = []
-            for item in callee.items():
+            for item in callee.items:
                 adjusted = self.apply_signature_hook(
                     item, args, arg_kinds, arg_names, hook)
                 assert isinstance(adjusted, CallableType)
@@ -1079,7 +1084,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 callee = callee.copy_modified(ret_type=item)
             elif isinstance(callee, Overloaded):
                 callee = Overloaded([c.copy_modified(ret_type=item)
-                                     for c in callee.items()])
+                                     for c in callee.items])
             return callee
         # We support Type of namedtuples but not of tuples in general
         if (isinstance(item, TupleType)
@@ -1415,11 +1420,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         ok = True  # False if we've found any error
 
         for i, kind in enumerate(actual_kinds):
-            if i not in all_actuals and (
-                    kind != nodes.ARG_STAR or
+            if (i not in all_actuals and
                     # We accept the other iterables than tuple (including Any)
                     # as star arguments because they could be empty, resulting no arguments.
-                    is_non_empty_tuple(actual_types[i])):
+                    (kind != nodes.ARG_STAR or is_non_empty_tuple(actual_types[i])) and
+                    # Accept all types for double-starred arguments, because they could be empty
+                    # dictionaries and we can't tell it from their types
+                    kind != nodes.ARG_STAR2):
                 # Extra actual: not matched by a formal argument.
                 ok = False
                 if kind != nodes.ARG_NAMED:
@@ -1630,7 +1637,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 else:
                     code = codes.OPERATOR
                 arg_messages.no_variant_matches_arguments(
-                    plausible_targets, callee, arg_types, context, code=code)
+                    callee, arg_types, context, code=code)
 
         result = self.check_call(target, args, arg_kinds, context, arg_names,
                                  arg_messages=arg_messages,
@@ -1673,7 +1680,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if kind == ARG_STAR2 and not has_shape(typ):
                 args_have_kw_arg = True
 
-        for typ in overload.items():
+        for typ in overload.items:
             formal_to_actual = map_actuals_to_formals(arg_kinds, arg_names,
                                                       typ.arg_kinds, typ.arg_names,
                                                       lambda i: arg_types[i])
@@ -2355,8 +2362,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return False
         if isinstance(left, Instance) and isinstance(right, Instance):
             # Special case some builtin implementations of AbstractSet.
-            if (left.type.fullname in OVERLAPPING_TYPES_WHITELIST and
-                    right.type.fullname in OVERLAPPING_TYPES_WHITELIST):
+            if (left.type.fullname in OVERLAPPING_TYPES_ALLOWLIST and
+                    right.type.fullname in OVERLAPPING_TYPES_ALLOWLIST):
                 abstract_set = self.chk.lookup_typeinfo('typing.AbstractSet')
                 left = map_instance_to_supertype(left, abstract_set)
                 right = map_instance_to_supertype(right, abstract_set)
@@ -2369,8 +2376,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def get_operator_method(self, op: str) -> str:
         if op == '/' and self.chk.options.python_version[0] == 2:
-            # TODO also check for "from __future__ import division"
-            return '__div__'
+            return '__truediv__' if 'division' in self.chk.future_import_flags else '__div__'
         else:
             return operators.op_methods[op]
 
@@ -3221,13 +3227,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return AnyType(TypeOfAny.from_error)
             return self.apply_generic_arguments(tp, args, ctx)
         if isinstance(tp, Overloaded):
-            for it in tp.items():
+            for it in tp.items:
                 if len(it.variables) != len(args):
                     self.msg.incompatible_type_application(len(it.variables),
                                                            len(args), ctx)
                     return AnyType(TypeOfAny.from_error)
             return Overloaded([self.apply_generic_arguments(it, args, ctx)
-                               for it in tp.items()])
+                               for it in tp.items])
         return AnyType(TypeOfAny.special_form)
 
     def visit_list_expr(self, e: ListExpr) -> Type:
@@ -3504,6 +3510,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Type check everything in the body except for the final return
             # statement (it can contain tuple unpacking before return).
             with self.chk.scope.push_function(e):
+                # Lambdas can have more than one element in body,
+                # when we add "fictional" AssigmentStatement nodes, like in:
+                # `lambda (a, b): a`
                 for stmt in e.body.body[:-1]:
                     stmt.accept(self.chk)
                 # Only type check the return expression, not the return statement.
@@ -3869,7 +3878,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def analyze_cond_branch(self, map: Optional[Dict[Expression, Type]],
                             node: Expression, context: Optional[Type],
                             allow_none_return: bool = False) -> Type:
-        with self.chk.binder.frame_context(can_skip=True, fall_through=0):
+        # We need to be have the correct amount of binder frames.
+        # Sometimes it can be missing for unreachable parts.
+        with (
+            self.chk.binder.frame_context(can_skip=True, fall_through=0)
+            if len(self.chk.binder.frames) > 1
+            else self.chk.binder.top_frame_context()
+        ):
             if map is None:
                 # We still need to type check node, in case we want to
                 # process it for isinstance checks later
@@ -3944,21 +3959,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def is_valid_keyword_var_arg(self, typ: Type) -> bool:
         """Is a type valid as a **kwargs argument?"""
-        if self.chk.options.python_version[0] >= 3:
-            return is_subtype(typ, self.chk.named_generic_type(
-                'typing.Mapping', [self.named_type('builtins.str'),
-                                   AnyType(TypeOfAny.special_form)]))
-        else:
-            return (
-                is_subtype(typ, self.chk.named_generic_type(
-                    'typing.Mapping',
-                    [self.named_type('builtins.str'),
-                     AnyType(TypeOfAny.special_form)]))
-                or
-                is_subtype(typ, self.chk.named_generic_type(
-                    'typing.Mapping',
-                    [self.named_type('builtins.unicode'),
-                     AnyType(TypeOfAny.special_form)])))
+        ret = (
+                is_subtype(typ, self.chk.named_generic_type('typing.Mapping',
+                    [self.named_type('builtins.str'), AnyType(TypeOfAny.special_form)])) or
+                is_subtype(typ, self.chk.named_generic_type('typing.Mapping',
+                    [UninhabitedType(), UninhabitedType()])))
+        if self.chk.options.python_version[0] < 3:
+            ret = ret or is_subtype(typ, self.chk.named_generic_type('typing.Mapping',
+                [self.named_type('builtins.unicode'), AnyType(TypeOfAny.special_form)]))
+        return ret
 
     def has_member(self, typ: Type, member: str) -> bool:
         """Does type have member with the given name?"""
@@ -4179,10 +4188,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         if literal(expr) >= LITERAL_TYPE:
             restriction = self.chk.binder.get(expr)
-            # Ignore the error about using get_proper_type().
-            if isinstance(restriction, TypeGuardType):  # type: ignore[misc]
-                # A type guard forces the new type even if it doesn't overlap the old.
-                return restriction.type_guard
             # If the current node is deferred, some variables may get Any types that they
             # otherwise wouldn't have. We don't want to narrow down these since it may
             # produce invalid inferred Optional[Any] types, at least.
@@ -4374,7 +4379,7 @@ def arg_approximate_similarity(actual: Type, formal: Type) -> bool:
         if isinstance(actual, CallableType):
             actual = actual.fallback
         if isinstance(actual, Overloaded):
-            actual = actual.items()[0].fallback
+            actual = actual.items[0].fallback
         if isinstance(actual, TupleType):
             actual = tuple_fallback(actual)
         if isinstance(actual, Instance) and formal.type in actual.type.mro:
@@ -4474,7 +4479,7 @@ def merge_typevars_in_callables_by_name(
             for tv in target.variables:
                 name = tv.fullname
                 if name not in unique_typevars:
-                    # TODO(shantanu): fix for ParamSpecType
+                    # TODO(PEP612): fix for ParamSpecType
                     if isinstance(tv, ParamSpecType):
                         continue
                     assert isinstance(tv, TypeVarType)

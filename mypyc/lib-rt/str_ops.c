@@ -10,12 +10,12 @@ PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
         if (CPyTagged_CheckShort(index)) {
             Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
             Py_ssize_t size = PyUnicode_GET_LENGTH(str);
-            if ((n >= 0 && n >= size) || (n < 0 && n + size < 0)) {
+            if (n < 0)
+                n += size;
+            if (n < 0 || n >= size) {
                 PyErr_SetString(PyExc_IndexError, "string index out of range");
                 return NULL;
             }
-            if (n < 0)
-                n += size;
             enum PyUnicode_Kind kind = (enum PyUnicode_Kind)PyUnicode_KIND(str);
             void *data = PyUnicode_DATA(str);
             Py_UCS4 ch = PyUnicode_READ(kind, data, n);
@@ -25,8 +25,7 @@ PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
 
             if (PyUnicode_KIND(unicode) == PyUnicode_1BYTE_KIND) {
                 PyUnicode_1BYTE_DATA(unicode)[0] = (Py_UCS1)ch;
-            }
-            else if (PyUnicode_KIND(unicode) == PyUnicode_2BYTE_KIND) {
+            } else if (PyUnicode_KIND(unicode) == PyUnicode_2BYTE_KIND) {
                 PyUnicode_2BYTE_DATA(unicode)[0] = (Py_UCS2)ch;
             } else {
                 assert(PyUnicode_KIND(unicode) == PyUnicode_4BYTE_KIND);
@@ -130,22 +129,21 @@ PyObject *CPyStr_Build(Py_ssize_t len, ...) {
     return res;
 }
 
-PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split)
-{
+PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split) {
     Py_ssize_t temp_max_split = CPyTagged_AsSsize_t(max_split);
     if (temp_max_split == -1 && PyErr_Occurred()) {
         PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
-            return NULL;
+        return NULL;
     }
     return PyUnicode_Split(str, sep, temp_max_split);
 }
 
-PyObject *CPyStr_Replace(PyObject *str, PyObject *old_substr, PyObject *new_substr, CPyTagged max_replace)
-{
+PyObject *CPyStr_Replace(PyObject *str, PyObject *old_substr,
+                         PyObject *new_substr, CPyTagged max_replace) {
     Py_ssize_t temp_max_replace = CPyTagged_AsSsize_t(max_replace);
     if (temp_max_replace == -1 && PyErr_Occurred()) {
         PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
-            return NULL;
+        return NULL;
     }
     return PyUnicode_Replace(str, old_substr, new_substr, temp_max_replace);
 }
@@ -201,4 +199,43 @@ Py_ssize_t CPyStr_Size_size_t(PyObject *str) {
         return PyUnicode_GET_LENGTH(str);
     }
     return -1;
+}
+
+PyObject *CPy_Decode(PyObject *obj, PyObject *encoding, PyObject *errors) {
+    const char *enc = NULL;
+    const char *err = NULL;
+    if (encoding) {
+        enc = PyUnicode_AsUTF8AndSize(encoding, NULL);
+        if (!enc) return NULL;
+    }
+    if (errors) {
+        err = PyUnicode_AsUTF8AndSize(errors, NULL);
+        if (!err) return NULL;
+    }
+    if (PyBytes_Check(obj)) {
+        return PyUnicode_Decode(((PyBytesObject *)obj)->ob_sval,
+                                ((PyVarObject *)obj)->ob_size,
+                                enc, err);
+    } else {
+        return PyUnicode_FromEncodedObject(obj, enc, err);
+    }
+}
+
+PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors) {
+    const char *enc = NULL;
+    const char *err = NULL;
+    if (encoding) {
+        enc = PyUnicode_AsUTF8AndSize(encoding, NULL);
+        if (!enc) return NULL;
+    }
+    if (errors) {
+        err = PyUnicode_AsUTF8AndSize(errors, NULL);
+        if (!err) return NULL;
+    }
+    if (PyUnicode_Check(obj)) {
+        return PyUnicode_AsEncodedString(obj, enc, err);
+    } else {
+        PyErr_BadArgument();
+        return NULL;
+    }
 }

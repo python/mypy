@@ -323,8 +323,9 @@ def generate_bin_op_forward_only_wrapper(cl: ClassIR,
     #            return NotImplemented
     #        ...
     rmethod = reverse_op_methods[fn.name]
+    emitter.emit_line('_Py_IDENTIFIER({});'.format(rmethod))
     emitter.emit_line(
-        'return CPy_CallReverseOpMethod(obj_left, obj_right, "{}", "{}");'.format(
+        'return CPy_CallReverseOpMethod(obj_left, obj_right, "{}", &PyId_{});'.format(
             op_methods_to_symbols[fn.name],
             rmethod))
     gen.finish()
@@ -372,8 +373,9 @@ def generate_bin_op_both_wrappers(cl: ClassIR,
     gen.emit_call()
     gen.emit_error_handling()
     emitter.emit_line('} else {')
+    emitter.emit_line('_Py_IDENTIFIER({});'.format(fn_rev.name))
     emitter.emit_line(
-        'return CPy_CallReverseOpMethod(obj_left, obj_right, "{}", "{}");'.format(
+        'return CPy_CallReverseOpMethod(obj_left, obj_right, "{}", &PyId_{});'.format(
             op_methods_to_symbols[fn.name],
             fn_rev.name))
     emitter.emit_line('}')

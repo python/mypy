@@ -406,7 +406,7 @@ def split_lines(*streams: bytes) -> List[str]:
     ]
 
 
-def copy_and_fudge_mtime(source_path: str, target_path: str) -> None:
+def write_and_fudge_mtime(content: str, target_path: str) -> None:
     # In some systems, mtime has a resolution of 1 second which can
     # cause annoying-to-debug issues when a file has the same size
     # after a change. We manually set the mtime to circumvent this.
@@ -418,8 +418,10 @@ def copy_and_fudge_mtime(source_path: str, target_path: str) -> None:
     if os.path.isfile(target_path):
         new_time = os.stat(target_path).st_mtime + 1
 
-    # Use retries to work around potential flakiness on Windows (AppVeyor).
-    retry_on_error(lambda: shutil.copy(source_path, target_path))
+    dir = os.path.dirname(target_path)
+    os.makedirs(dir, exist_ok=True)
+    with open(target_path, "w", encoding="utf-8") as target:
+        target.write(content)
 
     if new_time:
         os.utime(target_path, times=(new_time, new_time))
@@ -430,7 +432,7 @@ def perform_file_operations(
     for op in operations:
         if isinstance(op, UpdateFile):
             # Modify/create file
-            copy_and_fudge_mtime(op.source_path, op.target_path)
+            write_and_fudge_mtime(op.content, op.target_path)
         else:
             # Delete file/directory
             if os.path.isdir(op.path):

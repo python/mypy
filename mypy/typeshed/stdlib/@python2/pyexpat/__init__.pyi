@@ -1,7 +1,7 @@
 import pyexpat.errors as errors
 import pyexpat.model as model
 from _typeshed import SupportsRead
-from typing import Any, Callable, Dict, List, Optional, Text, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Text, Tuple
 
 EXPAT_VERSION: str  # undocumented
 version_info: Tuple[int, int, int]  # undocumented
@@ -22,12 +22,12 @@ XML_PARAM_ENTITY_PARSING_ALWAYS: int
 _Model = Tuple[int, int, Optional[str], Tuple[Any, ...]]
 
 class XMLParserType(object):
-    def Parse(self, __data: Union[Text, bytes], __isfinal: bool = ...) -> int: ...
+    def Parse(self, __data: Text | bytes, __isfinal: bool = ...) -> int: ...
     def ParseFile(self, __file: SupportsRead[bytes]) -> int: ...
     def SetBase(self, __base: Text) -> None: ...
-    def GetBase(self) -> Optional[str]: ...
-    def GetInputContext(self) -> Optional[bytes]: ...
-    def ExternalEntityParserCreate(self, __context: Optional[Text], __encoding: Text = ...) -> XMLParserType: ...
+    def GetBase(self) -> str | None: ...
+    def GetInputContext(self) -> bytes | None: ...
+    def ExternalEntityParserCreate(self, __context: Text | None, __encoding: Text = ...) -> XMLParserType: ...
     def SetParamEntityParsing(self, __flag: int) -> int: ...
     def UseForeignDTD(self, __flag: bool = ...) -> None: ...
     buffer_size: int
@@ -43,37 +43,33 @@ class XMLParserType(object):
     CurrentByteIndex: int
     CurrentColumnNumber: int
     CurrentLineNumber: int
-    XmlDeclHandler: Optional[Callable[[str, Optional[str], int], Any]]
-    StartDoctypeDeclHandler: Optional[Callable[[str, Optional[str], Optional[str], bool], Any]]
-    EndDoctypeDeclHandler: Optional[Callable[[], Any]]
-    ElementDeclHandler: Optional[Callable[[str, _Model], Any]]
-    AttlistDeclHandler: Optional[Callable[[str, str, str, Optional[str], bool], Any]]
-    StartElementHandler: Optional[
-        Union[
-            Callable[[str, Dict[str, str]], Any],
-            Callable[[str, List[str]], Any],
-            Callable[[str, Union[Dict[str, str]], List[str]], Any],
-        ]
-    ]
-    EndElementHandler: Optional[Callable[[str], Any]]
-    ProcessingInstructionHandler: Optional[Callable[[str, str], Any]]
-    CharacterDataHandler: Optional[Callable[[str], Any]]
-    UnparsedEntityDeclHandler: Optional[Callable[[str, Optional[str], str, Optional[str], str], Any]]
-    EntityDeclHandler: Optional[Callable[[str, bool, Optional[str], Optional[str], str, Optional[str], Optional[str]], Any]]
-    NotationDeclHandler: Optional[Callable[[str, Optional[str], str, Optional[str]], Any]]
-    StartNamespaceDeclHandler: Optional[Callable[[str, str], Any]]
-    EndNamespaceDeclHandler: Optional[Callable[[str], Any]]
-    CommentHandler: Optional[Callable[[str], Any]]
-    StartCdataSectionHandler: Optional[Callable[[], Any]]
-    EndCdataSectionHandler: Optional[Callable[[], Any]]
-    DefaultHandler: Optional[Callable[[str], Any]]
-    DefaultHandlerExpand: Optional[Callable[[str], Any]]
-    NotStandaloneHandler: Optional[Callable[[], int]]
-    ExternalEntityRefHandler: Optional[Callable[[str, Optional[str], Optional[str], Optional[str]], int]]
+    XmlDeclHandler: Callable[[str, str | None, int], Any] | None
+    StartDoctypeDeclHandler: Callable[[str, str | None, str | None, bool], Any] | None
+    EndDoctypeDeclHandler: Callable[[], Any] | None
+    ElementDeclHandler: Callable[[str, _Model], Any] | None
+    AttlistDeclHandler: Callable[[str, str, str, str | None, bool], Any] | None
+    StartElementHandler: Callable[[str, Dict[str, str]], Any] | Callable[[str, List[str]], Any] | Callable[
+        [str, Dict[str, str], List[str]], Any
+    ] | None
+    EndElementHandler: Callable[[str], Any] | None
+    ProcessingInstructionHandler: Callable[[str, str], Any] | None
+    CharacterDataHandler: Callable[[str], Any] | None
+    UnparsedEntityDeclHandler: Callable[[str, str | None, str, str | None, str], Any] | None
+    EntityDeclHandler: Callable[[str, bool, str | None, str | None, str, str | None, str | None], Any] | None
+    NotationDeclHandler: Callable[[str, str | None, str, str | None], Any] | None
+    StartNamespaceDeclHandler: Callable[[str, str], Any] | None
+    EndNamespaceDeclHandler: Callable[[str], Any] | None
+    CommentHandler: Callable[[str], Any] | None
+    StartCdataSectionHandler: Callable[[], Any] | None
+    EndCdataSectionHandler: Callable[[], Any] | None
+    DefaultHandler: Callable[[str], Any] | None
+    DefaultHandlerExpand: Callable[[str], Any] | None
+    NotStandaloneHandler: Callable[[], int] | None
+    ExternalEntityRefHandler: Callable[[str, str | None, str | None, str | None], int] | None
 
 def ErrorString(__code: int) -> str: ...
 
 # intern is undocumented
 def ParserCreate(
-    encoding: Optional[Text] = ..., namespace_separator: Optional[Text] = ..., intern: Optional[Dict[str, Any]] = ...
+    encoding: Text | None = ..., namespace_separator: Text | None = ..., intern: Dict[str, Any] | None = ...
 ) -> XMLParserType: ...

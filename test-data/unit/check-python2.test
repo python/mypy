@@ -62,17 +62,72 @@ A.f(1)
 A.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 [builtins_py2 fixtures/staticmethod.pyi]
 
-[case testRaiseTuple]
-import typing
-raise BaseException, "a"
-raise BaseException, "a", None
-[builtins_py2 fixtures/exception.pyi]
-
 [case testRaiseTupleTypeFail]
 import typing
 x = None # type: typing.Type[typing.Tuple[typing.Any, typing.Any, typing.Any]]
 raise x # E: Exception must be derived from BaseException
 [builtins_py2 fixtures/exception.pyi]
+
+[case testRaiseTupleOfThreeOnPython2]
+from types import TracebackType
+from typing import Optional, Tuple, Type
+
+e = None  # type: Optional[TracebackType]
+
+raise BaseException # ok
+raise BaseException(1)  # ok
+raise (BaseException,)  # ok
+raise (BaseException(1),)  # ok
+raise BaseException, 1  # ok
+raise BaseException, 1, e  # ok
+raise BaseException, 1, None  # ok
+
+raise Exception # ok
+raise Exception(1)  # ok
+raise (Exception,)  # ok
+raise (Exception(1),)  # ok
+raise Exception, 1  # ok
+raise Exception, 1, e  # ok
+raise Exception, 1, None  # ok
+
+raise int, 1  # E: First argument must be BaseException subtype
+raise Exception(1), 1  # E: First argument must be BaseException subtype
+raise Exception(1), 1, None # E: First argument must be BaseException subtype
+raise Exception, 1, 1  # E: Third argument to raise must have "Union[types.TracebackType, None]" type
+raise int, 1, 1  # E: First argument must be BaseException subtype \
+                 # E: Third argument to raise must have "Union[types.TracebackType, None]" type
+
+t1 = (BaseException,)
+t2 = (Exception(1), 2, 3, 4)  # type: Tuple[Exception, int, int, int]
+t3 = (Exception,)  # type: Tuple[Type[Exception], ...]
+t4 = (Exception(1),)  # type: Tuple[Exception, ...]
+
+raise t1  # ok
+raise t2  # ok
+raise t3  # ok
+raise t4  # ok
+
+raise t1, 1, None  # E: First argument must be BaseException subtype
+raise t2, 1     # E: First argument must be BaseException subtype
+raise t3, 1, e  # E: First argument must be BaseException subtype
+raise t4, 1, 1  # E: First argument must be BaseException subtype \
+                # E: Third argument to raise must have "Union[types.TracebackType, None]" type
+
+w1 = ()
+w2 = (1, Exception)
+w3 = (1,)  # type: Tuple[int, ...]
+
+raise w1  # E: Exception must be derived from BaseException
+raise w2  # E: When raising a tuple, first element must by derived from BaseException
+raise w3  # E: When raising a tuple, first element must by derived from BaseException
+
+try:
+    pass
+except Exception:
+    raise  # ok
+[builtins_py2 fixtures/exception.pyi]
+[file types.pyi]
+class TracebackType: pass
 
 [case testTryExceptWithTuple]
 try:

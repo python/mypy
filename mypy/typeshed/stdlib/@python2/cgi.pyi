@@ -1,12 +1,12 @@
 from _typeshed import SupportsGetItem, SupportsItemAccess
 from builtins import type as _type
-from typing import IO, Any, AnyStr, Iterable, Iterator, List, Mapping, Optional, Protocol, TypeVar, Union
+from typing import IO, Any, AnyStr, Iterable, Iterator, List, Mapping, Protocol, TypeVar
 from UserDict import UserDict
 
 _T = TypeVar("_T", bound=FieldStorage)
 
 def parse(
-    fp: Optional[IO[Any]] = ...,
+    fp: IO[Any] | None = ...,
     environ: SupportsItemAccess[str, str] = ...,
     keep_blank_values: bool = ...,
     strict_parsing: bool = ...,
@@ -32,7 +32,7 @@ class MiniFieldStorage:
     filename: Any
     list: Any
     type: Any
-    file: Optional[IO[bytes]]
+    file: IO[bytes] | None
     type_options: dict[Any, Any]
     disposition: Any
     disposition_options: dict[Any, Any]
@@ -43,28 +43,28 @@ class MiniFieldStorage:
     def __repr__(self) -> str: ...
 
 class FieldStorage(object):
-    FieldStorageClass: Optional[_type]
+    FieldStorageClass: _type | None
     keep_blank_values: int
     strict_parsing: int
-    qs_on_post: Optional[str]
+    qs_on_post: str | None
     headers: Mapping[str, str]
     fp: IO[bytes]
     encoding: str
     errors: str
     outerboundary: bytes
     bytes_read: int
-    limit: Optional[int]
+    limit: int | None
     disposition: str
     disposition_options: dict[str, str]
-    filename: Optional[str]
-    file: Optional[IO[bytes]]
+    filename: str | None
+    file: IO[bytes] | None
     type: str
     type_options: dict[str, str]
     innerboundary: bytes
     length: int
     done: int
-    list: Optional[List[Any]]
-    value: Union[None, bytes, List[Any]]
+    list: List[Any] | None
+    value: None | bytes | List[Any]
     def __init__(
         self,
         fp: IO[Any] = ...,

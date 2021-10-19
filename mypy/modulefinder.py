@@ -10,7 +10,7 @@ import os
 import re
 import subprocess
 import sys
-from enum import Enum
+from enum import Enum, unique
 
 from typing import Dict, Iterator, List, NamedTuple, Optional, Set, Tuple, Union
 from typing_extensions import Final
@@ -41,6 +41,7 @@ PYTHON2_STUB_DIR: Final = "@python2"
 # TODO: Consider adding more reasons here?
 # E.g. if we deduce a module would likely be found if the user were
 # to set the --namespace-packages flag.
+@unique
 class ModuleNotFoundReason(Enum):
     # The module was not found: we found neither stubs nor a plausible code
     # implementation (with or without a py.typed file).
@@ -69,7 +70,10 @@ class ModuleNotFoundReason(Enum):
             notes = ["You may be running mypy in a subpackage, "
                      "mypy should be run on the package root"]
         elif self is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
-            msg = 'Skipping analyzing "{module}": found module but no type hints or library stubs'
+            msg = (
+                'Skipping analyzing "{module}": module is installed, but missing library stubs '
+                'or py.typed marker'
+            )
             notes = [doc_link]
         elif self is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED:
             msg = (
@@ -203,7 +207,9 @@ class FindModuleCache:
         if id not in self.results:
             top_level = id.partition('.')[0]
             use_typeshed = True
-            if top_level in self.stdlib_py_versions:
+            if id in self.stdlib_py_versions:
+                use_typeshed = self._typeshed_has_version(id)
+            elif top_level in self.stdlib_py_versions:
                 use_typeshed = self._typeshed_has_version(top_level)
             self.results[id] = self._find_module(id, use_typeshed)
             if (not fast_path
@@ -370,7 +376,7 @@ class FindModuleCache:
 
             # In namespace mode, register a potential namespace package
             if self.options and self.options.namespace_packages:
-                if fscache.isdir(base_path) and not has_init:
+                if fscache.exists_case(base_path, dir_prefix) and not has_init:
                     near_misses.append((base_path, dir_prefix))
 
             # No package, look for module.

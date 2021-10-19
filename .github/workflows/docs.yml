@@ -1,0 +1,30 @@
+name: Check documentation build
+
+on:
+  push:
+    branches: [master]
+    tags: ['*']
+  pull_request:
+    paths:
+    - 'docs/**'
+    - '**/*.rst'
+    - '**/*.md'
+    - CREDITS
+    - LICENSE
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    env:
+      TOXENV: docs
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.7'
+      - name: Install tox
+        run: pip install --upgrade 'setuptools!=50' 'virtualenv<16.7.11' tox==3.20.1
+      - name: Setup tox environment
+        run: tox -e ${{ env.TOXENV }} --notest
+      - name: Test
+        run: tox -e ${{ env.TOXENV }} --skip-pkg-install

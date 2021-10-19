@@ -3,7 +3,7 @@ from _typeshed import StrOrBytesPath, StrPath
 from collections.abc import Callable
 from configparser import RawConfigParser
 from threading import Thread
-from typing import IO, Any, Optional, Pattern, Union
+from typing import IO, Any, Pattern
 
 if sys.version_info >= (3, 8):
     from typing import Literal
@@ -23,19 +23,17 @@ def dictConfig(config: dict[str, Any]) -> None: ...
 
 if sys.version_info >= (3, 10):
     def fileConfig(
-        fname: Union[_Path, IO[str], RawConfigParser],
-        defaults: Optional[dict[str, str]] = ...,
+        fname: _Path | IO[str] | RawConfigParser,
+        defaults: dict[str, str] | None = ...,
         disable_existing_loggers: bool = ...,
-        encoding: Optional[str] = ...,
+        encoding: str | None = ...,
     ) -> None: ...
 
 else:
     def fileConfig(
-        fname: Union[_Path, IO[str], RawConfigParser],
-        defaults: Optional[dict[str, str]] = ...,
-        disable_existing_loggers: bool = ...,
+        fname: _Path | IO[str] | RawConfigParser, defaults: dict[str, str] | None = ..., disable_existing_loggers: bool = ...
     ) -> None: ...
 
 def valid_ident(s: str) -> Literal[True]: ...  # undocumented
-def listen(port: int = ..., verify: Optional[Callable[[bytes], Optional[bytes]]] = ...) -> Thread: ...
+def listen(port: int = ..., verify: Callable[[bytes], bytes | None] | None = ...) -> Thread: ...
 def stopListening() -> None: ...

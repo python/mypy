@@ -1,7 +1,7 @@
-from typing import IO, Any, AnyStr, Callable, Generic, Iterable, Iterator, Text, Union
+from typing import IO, Any, AnyStr, Callable, Generic, Iterable, Iterator, Text
 
 def input(
-    files: Union[Text, Iterable[Text], None] = ...,
+    files: Text | Iterable[Text] | None = ...,
     inplace: bool = ...,
     backup: str = ...,
     bufsize: int = ...,
@@ -20,7 +20,7 @@ def isstdin() -> bool: ...
 class FileInput(Iterable[AnyStr], Generic[AnyStr]):
     def __init__(
         self,
-        files: Union[None, Text, Iterable[Text]] = ...,
+        files: None | Text | Iterable[Text] = ...,
         inplace: bool = ...,
         backup: str = ...,
         bufsize: int = ...,

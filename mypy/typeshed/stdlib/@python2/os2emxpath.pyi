@@ -1,7 +1,7 @@
 import os
 import sys
 from genericpath import exists as exists
-from typing import Any, AnyStr, Callable, List, Optional, Sequence, Text, Tuple, TypeVar, overload
+from typing import Any, AnyStr, Callable, List, Sequence, Text, Tuple, TypeVar, overload
 
 _T = TypeVar("_T")
 
@@ -14,7 +14,7 @@ sep: str
 if sys.platform == "win32":
     altsep: str
 else:
-    altsep: Optional[str]
+    altsep: str | None
 extsep: str
 pathsep: str
 defpath: str
@@ -68,9 +68,9 @@ def join(__p1: bytes, __p2: Text, *p: Text) -> Text: ...
 @overload
 def join(__p1: Text, *p: Text) -> Text: ...
 @overload
-def relpath(path: str, start: Optional[str] = ...) -> str: ...
+def relpath(path: str, start: str | None = ...) -> str: ...
 @overload
-def relpath(path: Text, start: Optional[Text] = ...) -> Text: ...
+def relpath(path: Text, start: Text | None = ...) -> Text: ...
 def samefile(f1: Text, f2: Text) -> bool: ...
 def sameopenfile(fp1: int, fp2: int) -> bool: ...
 def samestat(s1: os.stat_result, s2: os.stat_result) -> bool: ...

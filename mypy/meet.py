@@ -5,7 +5,7 @@ from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, NoneType, TypeVarType, Instance, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeOfAny, Overloaded, FunctionLike, LiteralType,
-    ProperType, get_proper_type, get_proper_types, TypeAliasType, TypeGuardType
+    ProperType, get_proper_type, get_proper_types, TypeAliasType, TypeGuardedType
 )
 from mypy.subtypes import is_equivalent, is_subtype, is_callable_compatible, is_proper_subtype
 from mypy.erasetype import erase_type
@@ -51,6 +51,10 @@ def meet_types(s: Type, t: Type) -> ProperType:
 def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     """Return the declared type narrowed down to another type."""
     # TODO: check infinite recursion for aliases here.
+    if isinstance(narrowed, TypeGuardedType):  # type: ignore[misc]
+        # A type guard forces the new type even if it doesn't overlap the old.
+        return narrowed.type_guard
+
     declared = get_proper_type(declared)
     narrowed = get_proper_type(narrowed)
 
@@ -127,7 +131,7 @@ def get_possible_variants(typ: Type) -> List[Type]:
     elif isinstance(typ, Overloaded):
         # Note: doing 'return typ.items()' makes mypy
         # infer a too-specific return type of List[CallableType]
-        return list(typ.items())
+        return list(typ.items)
     else:
         return [typ]
 
@@ -142,6 +146,13 @@ def is_overlapping_types(left: Type,
     If 'prohibit_none_typevar_overlap' is True, we disallow None from overlapping with
     TypeVars (in both strict-optional and non-strict-optional mode).
     """
+    if (
+        isinstance(left, TypeGuardedType)  # type: ignore[misc]
+        or isinstance(right, TypeGuardedType)  # type: ignore[misc]
+    ):
+        # A type guard forces the new type even if it doesn't overlap the old.
+        return True
+
     left, right = get_proper_types((left, right))
 
     def _is_overlapping_types(left: Type, right: Type) -> bool:
@@ -566,8 +577,8 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         # as TypeJoinVisitor.visit_overloaded().
         s = self.s
         if isinstance(s, FunctionLike):
-            if s.items() == t.items():
-                return Overloaded(t.items())
+            if s.items == t.items:
+                return Overloaded(t.items)
             elif is_subtype(s, t):
                 return s
             elif is_subtype(t, s):
@@ -646,9 +657,6 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             return self.default(self.s)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
-        assert False, "This should be never called, got {}".format(t)
-
-    def visit_type_guard_type(self, t: TypeGuardType) -> ProperType:
         assert False, "This should be never called, got {}".format(t)
 
     def meet(self, s: Type, t: Type) -> ProperType:
