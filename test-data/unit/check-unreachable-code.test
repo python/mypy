@@ -773,8 +773,8 @@ def foo(c: int) -> None:  # E: Statement is unreachable
     assert not isinstance(c, int)
     reveal_type(c)  # E: Statement is unreachable
 
-d: int
-if False:
+d: int  # E: Statement is unreachable
+if False:  # E: Statement is unreachable 
     reveal_type(d)  # E: Statement is unreachable
 
 e: int
