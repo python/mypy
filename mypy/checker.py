@@ -306,7 +306,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.errors.set_file(self.path, self.tree.fullname, scope=self.tscope)
             with self.tscope.module_scope(self.tree.fullname):
                 with self.enter_partial_types(), self.binder.top_frame_context():
-                    self.accept(Block(self.tree.defs))
+                    for d in self.tree.defs:
+                        if (self.binder.is_unreachable()
+                                and self.should_report_unreachable_issues()
+                                and not self.is_raising_or_empty(d)):
+                            self.msg.unreachable_statement(d)
+                        self.accept(d)
 
                 assert not self.current_node_deferred
 
