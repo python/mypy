@@ -24,9 +24,7 @@ class DefaultPlugin(Plugin):
                           ) -> Optional[Callable[[FunctionContext], Type]]:
         from mypy.plugins import ctypes
 
-        if fullname == 'contextlib.contextmanager':
-            return contextmanager_callback
-        if fullname == 'contextlib.asynccontextmanager':
+        if fullname in ('contextlib.contextmanager', 'contextlib.asynccontextmanager'):
             return contextmanager_callback
         elif fullname == 'builtins.open' and self.python_version[0] == 3:
             return open_callback

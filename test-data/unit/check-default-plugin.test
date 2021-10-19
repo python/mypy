@@ -42,6 +42,25 @@ async with yield_id(1) as x:
 [typing fixtures/typing-async.pyi]
 [builtins fixtures/tuple.pyi]
 
+[case testAsyncContextManagerWithGenericFunctionAndSendType]
+# flags: --python-version 3.7
+from contextlib import asynccontextmanager
+from typing import TypeVar, AsyncGenerator
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+@asynccontextmanager
+async def yield_id(item: T) -> AsyncGenerator[T, S]:
+    yield item
+
+reveal_type(yield_id) # N: Revealed type is "def [T, S] (item: T`-1) -> typing.AsyncContextManager[T`-1]"
+
+async with yield_id(1) as x:
+    reveal_type(x) # N: Revealed type is "builtins.int*"
+[typing fixtures/typing-async.pyi]
+[builtins fixtures/tuple.pyi]
+
 [case testContextManagerWithUnspecifiedArguments]
 from contextlib import contextmanager
 from typing import Callable, Iterator
