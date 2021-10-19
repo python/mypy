@@ -306,8 +306,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.errors.set_file(self.path, self.tree.fullname, scope=self.tscope)
             with self.tscope.module_scope(self.tree.fullname):
                 with self.enter_partial_types(), self.binder.top_frame_context():
-                    for d in self.tree.defs:
-                        self.accept(d)
+                    self.accept(Block(self.tree.defs))
 
                 assert not self.current_node_deferred
 
