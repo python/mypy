@@ -1825,18 +1825,14 @@ def foo2():
 [case testUnreachableModuleBody1]
 # flags: --warn-unreachable
 from typing import NoReturn
-
 def foo() -> NoReturn:
     raise Exception("foo")
-
 foo()
 x = 1  # E: Statement is unreachable
 [builtins fixtures/exception.pyi]
 
 [case testUnreachableModuleBody2]
 # flags: --warn-unreachable
-from typing import NoReturn
-
 raise Exception
 x = 1  # E: Statement is unreachable
 [builtins fixtures/exception.pyi]
