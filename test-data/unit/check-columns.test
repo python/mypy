@@ -135,7 +135,7 @@ def foobar(): pass
 [builtins fixtures/module.pyi]
 
 [case testColumnUnexpectedOrMissingKeywordArg]
-def f(): pass
+def f(): pass  # N:1: "f" defined here
 # TODO: Point to "x" instead
 (f(x=1)) # E:2: Unexpected keyword argument "x" for "f"
 def g(*, x: int) -> None: pass
@@ -402,7 +402,7 @@ from typing import TypeVar, List
 
 T = TypeVar('T', int, str)
 
-def g(x): pass
+def g(x): pass  # N:1: "g" defined here
 
 def f(x: T) -> T:
     (x.bad) # E:6: "int" has no attribute "bad" \

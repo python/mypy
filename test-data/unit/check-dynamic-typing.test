@@ -730,7 +730,7 @@ class A(B):
 [out]
 main:5: error: Signature of "f" incompatible with supertype "B"
 main:5: note:      Superclass:
-main:5: note:          def f(x: Any, y: Any) -> Any
+main:5: note:          def f(self, x: Any, y: Any) -> Any
 main:5: note:      Subclass:
 main:5: note:          def f(self, x: A) -> None
 
