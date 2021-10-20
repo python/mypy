@@ -15,6 +15,7 @@ import errno
 import gc
 import json
 import os
+import platform
 import re
 import stat
 import sys
@@ -23,7 +24,7 @@ import types
 
 from typing import (AbstractSet, Any, Dict, Iterable, Iterator, List, Sequence,
                     Mapping, NamedTuple, Optional, Set, Tuple, TypeVar, Union, Callable, TextIO)
-from typing_extensions import ClassVar, Final, TYPE_CHECKING
+from typing_extensions import ClassVar, Final, TYPE_CHECKING, TypeAlias as _TypeAlias
 from mypy_extensions import TypedDict
 
 from mypy.nodes import MypyFile, ImportBase, Import, ImportFrom, ImportAll, SymbolTable
@@ -81,7 +82,7 @@ CORE_BUILTIN_MODULES: Final = {
 }
 
 
-Graph = Dict[str, 'State']
+Graph: _TypeAlias = Dict[str, 'State']
 
 
 # TODO: Get rid of BuildResult.  We might as well return a BuildManager.
@@ -201,8 +202,9 @@ def _build(sources: List[BuildSource],
            stderr: TextIO,
            extra_plugins: Sequence[Plugin],
            ) -> BuildResult:
-    # This seems the most reasonable place to tune garbage collection.
-    gc.set_threshold(150 * 1000)
+    if platform.python_implementation() == 'CPython':
+        # This seems the most reasonable place to tune garbage collection.
+        gc.set_threshold(150 * 1000)
 
     data_dir = default_data_dir()
     fscache = fscache or FileSystemCache()

@@ -30,7 +30,7 @@ def infer_decorator_signature_if_simple(dec: Decorator,
                 [ARG_POS],
                 [None],
                 AnyType(TypeOfAny.special_form),
-                analyzer.named_type('__builtins__.function'),
+                analyzer.named_type('builtins.function'),
                 name=dec.var.name)
         elif isinstance(dec.func.type, CallableType):
             dec.var.type = dec.func.type
@@ -47,7 +47,7 @@ def infer_decorator_signature_if_simple(dec: Decorator,
     if decorator_preserves_type:
         # No non-identity decorators left. We can trivially infer the type
         # of the function here.
-        dec.var.type = function_type(dec.func, analyzer.named_type('__builtins__.function'))
+        dec.var.type = function_type(dec.func, analyzer.named_type('builtins.function'))
     if dec.decorators:
         return_type = calculate_return_type(dec.decorators[0])
         if return_type and isinstance(return_type, AnyType):
@@ -58,7 +58,7 @@ def infer_decorator_signature_if_simple(dec: Decorator,
         if sig:
             # The outermost decorator always returns the same kind of function,
             # so we know that this is the type of the decorated function.
-            orig_sig = function_type(dec.func, analyzer.named_type('__builtins__.function'))
+            orig_sig = function_type(dec.func, analyzer.named_type('builtins.function'))
             sig.name = orig_sig.items[0].name
             dec.var.type = sig
 

@@ -25,7 +25,7 @@ will be incomplete.
 """
 
 from typing import List, Tuple, Optional, Union, Callable
-from typing_extensions import TYPE_CHECKING, Final
+from typing_extensions import TYPE_CHECKING, Final, TypeAlias as _TypeAlias
 
 from mypy.backports import nullcontext
 from mypy.nodes import (
@@ -51,7 +51,7 @@ if TYPE_CHECKING:
     from mypy.build import Graph, State
 
 
-Patches = List[Tuple[int, Callable[[], None]]]
+Patches: _TypeAlias = List[Tuple[int, Callable[[], None]]]
 
 
 # If we perform this many iterations, raise an exception since we are likely stuck.

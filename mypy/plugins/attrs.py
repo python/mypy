@@ -640,8 +640,8 @@ def _parse_assignments(
 
 def _add_order(ctx: 'mypy.plugin.ClassDefContext', adder: 'MethodAdder') -> None:
     """Generate all the ordering methods for this class."""
-    bool_type = ctx.api.named_type('__builtins__.bool')
-    object_type = ctx.api.named_type('__builtins__.object')
+    bool_type = ctx.api.named_type('builtins.bool')
+    object_type = ctx.api.named_type('builtins.object')
     # Make the types be:
     #    AT = TypeVar('AT')
     #    def __lt__(self: AT, other: AT) -> bool
@@ -714,7 +714,7 @@ def _add_attrs_magic_attribute(ctx: 'mypy.plugin.ClassDefContext',
         ctx.api.named_type_or_none('attr.Attribute', [attr_type or any_type]) or any_type
         for attr_type in raw_attr_types
     ]
-    fallback_type = ctx.api.named_type('__builtins__.tuple', [
+    fallback_type = ctx.api.named_type('builtins.tuple', [
         ctx.api.named_type_or_none('attr.Attribute', [any_type]) or any_type,
     ])
     var = Var(name=attr_name, type=TupleType(attributes_types, fallback=fallback_type))

@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 
 from typing import Any, List, Optional, Callable, Tuple, Iterator, Set, Union, cast, TypeVar
-from typing_extensions import Final
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneType,
@@ -30,7 +30,7 @@ IS_SETTABLE: Final = 1
 IS_CLASSVAR: Final = 2
 IS_CLASS_OR_STATIC: Final = 3
 
-TypeParameterChecker = Callable[[Type, Type, int], bool]
+TypeParameterChecker: _TypeAlias = Callable[[Type, Type, int], bool]
 
 
 def check_type_parameter(lefta: Type, righta: Type, variance: int) -> bool:
