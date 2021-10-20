@@ -258,6 +258,18 @@ short explanation of the bug. To do that, use this format:
     # Starting app on http://localhost:8000
     app.run(8000)  # type: ignore  # `run()` now accepts an `int`, as a port
 
+
+If your error displays an error code, like so:
+
+.. code-block:: text
+
+   error: "str" has no attribute "trim"  [attr-defined]
+
+
+It is possible to add a specific error-code in your message, like
+``# type: ignore[attr-defined]``, to clarify what's being silenced. You can
+find more information about error codes here: :ref:`silence-error-codes`
+
 Similarly, you can also ignore all mypy checks in a file, by adding a
 ``# type: ignore`` on the top of the file:
 
