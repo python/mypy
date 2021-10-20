@@ -242,7 +242,7 @@ match m:
         reveal_type(m)  # N: Revealed type is "Tuple[builtins.int, builtins.str, builtins.bool]"
 [builtins fixtures/list.pyi]
 
-[case testSequencePatternTupleToLong]
+[case testSequencePatternTupleTooLong]
 from typing import Tuple
 m: Tuple[int, str]
 
