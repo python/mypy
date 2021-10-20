@@ -195,10 +195,10 @@ class DataclassTransformer:
                 ('__match_args__' not in info.names or
                  info.names['__match_args__'].plugin_generated) and
                 attributes):
-            str_type = ctx.api.named_type("__builtins__.str")
+            str_type = ctx.api.named_type("builtins.str")
             literals: List[Type] = [LiteralType(attr.name, str_type)
                         for attr in attributes if attr.is_in_init]
-            match_args_type = TupleType(literals, ctx.api.named_type("__builtins__.tuple"))
+            match_args_type = TupleType(literals, ctx.api.named_type("builtins.tuple"))
             add_attribute_to_class(ctx.api, ctx.cls, "__match_args__", match_args_type, final=True)
 
         self._add_dataclass_fields_magic_attribute()
