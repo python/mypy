@@ -9,6 +9,7 @@ from mypy.join import join_types
 from mypy.literals import literal_hash
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import narrow_declared_type
+from mypy import message_registry
 from mypy.messages import MessageBuilder
 from mypy.nodes import Expression, ARG_POS, TypeAlias, TypeInfo, Var, NameExpr
 from mypy.patterns import (
@@ -149,7 +150,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         for i, pattern_type in enumerate(pattern_types[1:]):
             vars = {get_var(expr) for expr, _ in pattern_type.captures.items()}
             if capture_types.keys() != vars:
-                self.msg.fail("Alternative patterns bind different names", o.patterns[i])
+                self.msg.fail(message_registry.OR_PATTERN_ALTERNATIVE_NAMES, o.patterns[i])
             for expr, typ in pattern_type.captures.items():
                 node = get_var(expr)
                 capture_types[node].append((expr, typ))
@@ -431,7 +432,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         type_info = o.class_ref.node
         assert type_info is not None
         if isinstance(type_info, TypeAlias) and not type_info.no_args:
-            self.msg.fail("Class pattern class must not be a type alias with type parameters", o)
+            self.msg.fail(message_registry.CLASS_PATTERN_GENERIC_TYPE_ALIAS, o)
             return self.early_non_match()
         if isinstance(type_info, TypeInfo):
             any_type = AnyType(TypeOfAny.implementation_artifact)
@@ -443,7 +444,7 @@ class PatternChecker(PatternVisitor[PatternType]):
                 name = str(type_info.type)
             else:
                 name = type_info.name
-            self.msg.fail('Class pattern must be a type. Found "{}"'.format(name), o.class_ref)
+            self.msg.fail(message_registry.CLASS_PATTERN_TYPE_REQUIRED.format(name), o.class_ref)
             return self.early_non_match()
 
         new_type, rest_type = self.chk.conditional_types_with_intersection(
@@ -465,7 +466,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         if len(o.positionals) != 0:
             if self.should_self_match(typ):
                 if len(o.positionals) > 1:
-                    self.msg.fail("Too many positional patterns for class pattern", o)
+                    self.msg.fail(message_registry.CLASS_PATTERN_TOO_MANY_POSITIONAL_ARGS, o)
                 pattern_type = self.accept(o.positionals[0], narrowed_type)
                 if not is_uninhabited(pattern_type.type):
                     return PatternType(pattern_type.type,
@@ -481,7 +482,7 @@ class PatternChecker(PatternVisitor[PatternType]):
                                                         chk=self.chk)
 
                 if local_errors.is_errors():
-                    self.msg.fail("Class doesn't define __match_args__", o)
+                    self.msg.fail(message_registry.MISSING_MATCH_ARGS.format(typ), o)
                     return self.early_non_match()
 
                 proper_match_args_type = get_proper_type(match_args_type)
@@ -489,7 +490,7 @@ class PatternChecker(PatternVisitor[PatternType]):
                     match_arg_names = get_match_arg_names(proper_match_args_type)
 
                     if len(o.positionals) > len(match_arg_names):
-                        self.msg.fail("Too many positional patterns for class pattern", o)
+                        self.msg.fail(message_registry.CLASS_PATTERN_TOO_MANY_POSITIONAL_ARGS, o)
                         return self.early_non_match()
                 else:
                     match_arg_names = [None] * len(o.positionals)
@@ -507,11 +508,14 @@ class PatternChecker(PatternVisitor[PatternType]):
         for key, value in zip(o.keyword_keys, o.keyword_values):
             keyword_pairs.append((key, value))
             if key in match_arg_set:
-                self.msg.fail('Keyword "{}" already matches a positional pattern'.format(key),
-                              value)
+                self.msg.fail(
+                    message_registry.CLASS_PATTERN_KEYWORD_MATCHES_POSITIONAL.format(key),
+                    value
+                )
                 has_duplicates = True
             elif key in keyword_arg_set:
-                self.msg.fail('Duplicate keyword pattern "{}"'.format(key), value)
+                self.msg.fail(message_registry.CLASS_PATTERN_DUPLICATE_KEYWORD_PATTERN.format(key),
+                              value)
                 has_duplicates = True
             keyword_arg_set.add(key)
 
@@ -594,7 +598,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         for expr, typ in extra_type_map.items():
             if literal_hash(expr) in already_captured:
                 node = get_var(expr)
-                self.msg.fail('Multiple assignments to name "{}" in pattern'.format(node.name),
+                self.msg.fail(message_registry.MULTIPLE_ASSIGNMENTS_IN_PATTERN.format(node.name),
                               expr)
             else:
                 original_type_map[expr] = typ

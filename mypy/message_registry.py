@@ -158,3 +158,17 @@ RUNTIME_PROTOCOL_EXPECTED: Final = (
     "Only @runtime_checkable protocols can be used with instance and class checks"
 )
 CANNOT_INSTANTIATE_PROTOCOL: Final = 'Cannot instantiate protocol class "{}"'
+
+# Match Statement
+MISSING_MATCH_ARGS: Final = 'Class "{}" doesn\'t define "__match_args__"'
+OR_PATTERN_ALTERNATIVE_NAMES: Final = "Alternative patterns bind different names"
+CLASS_PATTERN_GENERIC_TYPE_ALIAS: Final = (
+    "Class pattern class must not be a type alias with type parameters"
+)
+CLASS_PATTERN_TYPE_REQUIRED: Final = 'Class pattern must be a type. Found "{}"'
+CLASS_PATTERN_TOO_MANY_POSITIONAL_ARGS: Final = "Too many positional patterns for class pattern"
+CLASS_PATTERN_KEYWORD_MATCHES_POSITIONAL: Final = (
+    'Keyword "{}" already matches a positional pattern'
+)
+CLASS_PATTERN_DUPLICATE_KEYWORD_PATTERN: Final = 'Duplicate keyword pattern "{}"'
+MULTIPLE_ASSIGNMENTS_IN_PATTERN: Final = 'Multiple assignments to name "{}" in pattern'

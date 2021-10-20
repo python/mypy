@@ -592,7 +592,7 @@ class A:
 m: A
 
 match m:
-    case A(i, j):  # E: Class doesn't define __match_args__
+    case A(i, j):  # E: Class "__main__.A" doesn't define "__match_args__"
         pass
 [builtins fixtures/dataclasses.pyi]
 
