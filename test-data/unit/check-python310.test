@@ -861,7 +861,7 @@ a = 1
 m: object
 
 match m:
-    case a(i, j):  # E: Class pattern must be a type. Found "builtins.int"
+    case a(i, j):  # E: Expected type in class pattern; found "builtins.int"
         reveal_type(i)
         reveal_type(j)
 
