@@ -217,11 +217,11 @@ to be annotated with a starred type:
 
 Here, the type of ``rs`` is set to ``List[int]``.
 
-Disabling type checks
+Silencing type errors
 *********************
 
 You might want to disable type checking on specific lines, or within specific
-files in your codebase. To do that, you can use a ``type: ignore`` comment.
+files in your codebase. To do that, you can use a ``# type: ignore`` comment.
 
 For example, say that the web framework that you use now takes an integer
 argument to ``run()``, which starts it on localhost on that port. Liks so:
@@ -248,7 +248,7 @@ disable type checking on that line, by adding a ``# type: ignore``:
 
 This will suppress any mypy errors that would have raised on that specific line.
 
-You should probably add some more information on the ``type: ignore`` comment,
+You should probably add some more information on the ``# type: ignore`` comment,
 to explain why the ignore was added in the first place. This could be a link to
 an issue on the repository responsible for the type stubs, or it could be a
 short explanation of the bug. To do that, use this format:
