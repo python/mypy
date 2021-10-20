@@ -6,7 +6,6 @@ from mypy_extensions import trait
 from mypy.nodes import Node, RefExpr, NameExpr, Expression
 from mypy.visitor import PatternVisitor
 
-# These are not real AST nodes. CPython represents patterns using the normal expression nodes.
 
 T = TypeVar('T')
 
