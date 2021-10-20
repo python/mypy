@@ -80,11 +80,6 @@ jobs:
           arch: x64
           os: ubuntu-latest
           toxenv: type
-        - name: Type check our own code (on pypy)
-          python: 'pypy-3.8'
-          arch: x64
-          os: ubuntu-latest
-          toxenv: type-pypy
         - name: Code style with flake8
           python: '3.7'
           arch: x64
