@@ -813,7 +813,7 @@ class A: ...
 m: object
 
 match m:
-    case A(a=j):
+    case A(a=j):  # E: Class "__main__.A" has no attribute "a"
         reveal_type(m)  # N: Revealed type is "__main__.A"
         reveal_type(j)  # N: Revealed type is "Any"
 

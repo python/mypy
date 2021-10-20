@@ -171,4 +171,5 @@ CLASS_PATTERN_KEYWORD_MATCHES_POSITIONAL: Final = (
     'Keyword "{}" already matches a positional pattern'
 )
 CLASS_PATTERN_DUPLICATE_KEYWORD_PATTERN: Final = 'Duplicate keyword pattern "{}"'
+CLASS_PATTERN_UNKNOWN_KEYWORD: Final = 'Class "{}" has no attribute "{}"'
 MULTIPLE_ASSIGNMENTS_IN_PATTERN: Final = 'Multiple assignments to name "{}" in pattern'
