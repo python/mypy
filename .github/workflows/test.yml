@@ -80,7 +80,7 @@ jobs:
           arch: x64
           os: ubuntu-latest
           toxenv: type
-        - name: Type check our own code
+        - name: Type check our own code (with PyPy)
           python: 'pypy-3.8'
           arch: x64
           os: ubuntu-latest
