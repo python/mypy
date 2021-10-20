@@ -6,6 +6,24 @@ match x:
 [out]
 main:2: error: Name "x" is not defined
 
+[case testMatchUndefinedValuePattern]
+import typing
+x = 1
+match x:
+    case a.b:
+        pass
+[out]
+main:4: error: Name "a" is not defined
+
+[case testMatchUndefinedClassPattern]
+import typing
+x = 1
+match x:
+    case A():
+        pass
+[out]
+main:4: error: Name "A" is not defined
+
 [case testNoneBindingWildcardPattern]
 import typing
 x = 1
