@@ -72,13 +72,16 @@ def install_package(pkg: str,
                 install_cmd.append('develop')
             else:
                 install_cmd.append('install')
+        # Note that newer versions of pip (21.3+) don't
+        # follow this env variable, but this is for compatibility
+        env = {'PIP_BUILD': dir}
+        # Inherit environment for Windows
+        env.update(os.environ)
         proc = subprocess.run(install_cmd,
                               cwd=working_dir,
                               stdout=PIPE,
                               stderr=PIPE,
-                              # Note that newer versions of pip (21.3+) don't
-                              # follow this env variable, but this is for compatibility
-                              env={'PIP_BUILD': dir})
+                              env=env)
     if proc.returncode != 0:
         raise Exception(proc.stdout.decode('utf-8') + proc.stderr.decode('utf-8'))
 
