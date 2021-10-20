@@ -13,7 +13,6 @@ class int:
     def __add__(self, other: int) -> int: pass
 class bool(int): pass
 class float: pass
-class bool(int): pass
 
 class str: pass
 class bytes: pass
