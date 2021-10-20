@@ -2820,6 +2820,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         matches: list[CallableType] = []
         return_types: list[Type] = []
         inferred_types: list[Type] = []
+        self_contains_any = has_any_type(object_type) if object_type is not None else False
         args_contain_any = any(map(has_any_type, arg_types))
         type_maps: list[dict[Expression, Type]] = []
 
@@ -2840,7 +2841,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if is_match:
                 # Return early if possible; otherwise record info, so we can
                 # check for ambiguity due to 'Any' below.
-                if not args_contain_any:
+                if not args_contain_any and not self_contains_any:
                     self.chk.store_types(m)
                     return ret_type, infer_type
                 p_infer_type = get_proper_type(infer_type)
@@ -2856,7 +2857,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if not matches:
             return None
-        elif any_causes_overload_ambiguity(matches, return_types, arg_types, arg_kinds, arg_names):
+        elif any_causes_overload_ambiguity(
+            matches,
+            return_types,
+            arg_types,
+            arg_kinds,
+            arg_names,
+            self_contains_any=self_contains_any,
+        ):
             # An argument of type or containing the type 'Any' caused ambiguity.
             # We try returning a precise type if we can. If not, we give up and just return 'Any'.
             if all_same_types(return_types):
@@ -6452,6 +6460,8 @@ def any_causes_overload_ambiguity(
     arg_types: list[Type],
     arg_kinds: list[ArgKind],
     arg_names: Sequence[str | None] | None,
+    *,
+    self_contains_any: bool = False,
 ) -> bool:
     """May an argument containing 'Any' cause ambiguous result type on call to overloaded function?
 
@@ -6501,7 +6511,7 @@ def any_causes_overload_ambiguity(
             if not all_same_types(matching_formals) and not all_same_types(matching_returns):
                 # Any maps to multiple different types, and the return types of these items differ.
                 return True
-    return False
+    return self_contains_any
 
 
 def all_same_types(types: list[Type]) -> bool:
