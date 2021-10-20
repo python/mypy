@@ -317,13 +317,13 @@ match x:
     case [str()]:
         pass
 
-[case testSequenceUnion]
+[case testSequenceUnion-skip]
 from typing import List, Union
 m: Union[List[List[str]], str]
 
 match m:
     case [list(['str'])]:
-        reveal_type(m)  # N: Revealed type is "Union[builtins.list[builtins.list[builtins.str]], builtins.str]"
+        reveal_type(m)  # N: Revealed type is "builtins.list[builtins.list[builtins.str]]"
 [builtins fixtures/list.pyi]
 
 -- Mapping Pattern --
