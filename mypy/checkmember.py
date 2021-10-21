@@ -860,6 +860,9 @@ def analyze_enum_class_attribute_access(itype: Instance,
     # For other names surrendered by underscores, we don't make them Enum members
     if name.startswith('__') and name.endswith("__") and name.replace('_', '') != '':
         return None
+    # Special case: when `name` and `value` are not redefined, they mean different
+    if name in ('name', 'value') and itype.type.names.get(name) is None:
+        return None
 
     enum_literal = LiteralType(name, fallback=itype)
     # When we analyze enums, the corresponding Instance is always considered to be erased
