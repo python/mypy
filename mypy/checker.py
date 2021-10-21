@@ -8,7 +8,7 @@ from typing import (
     Any, Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator,
     Iterable, Sequence, Mapping, Generic, AbstractSet, Callable
 )
-from typing_extensions import Final
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.backports import nullcontext
 from mypy.errors import Errors, report_internal_error
@@ -85,8 +85,8 @@ T = TypeVar('T')
 
 DEFAULT_LAST_PASS: Final = 1  # Pass numbers start at 0
 
-DeferredNodeType = Union[FuncDef, LambdaExpr, OverloadedFuncDef, Decorator]
-FineGrainedDeferredNodeType = Union[FuncDef, MypyFile, OverloadedFuncDef]
+DeferredNodeType: _TypeAlias = Union[FuncDef, LambdaExpr, OverloadedFuncDef, Decorator]
+FineGrainedDeferredNodeType: _TypeAlias = Union[FuncDef, MypyFile, OverloadedFuncDef]
 
 # A node which is postponed to be processed during the next pass.
 # In normal mode one can defer functions and methods (also decorated and/or overloaded)
@@ -123,7 +123,7 @@ FineGrainedDeferredNode = NamedTuple(
 # probably be better to have the dict keyed by the nodes' literal_hash
 # field instead.
 
-TypeMap = Optional[Dict[Expression, Type]]
+TypeMap: _TypeAlias = Optional[Dict[Expression, Type]]
 
 # An object that represents either a precise type or a type with an upper bound;
 # it is important for correct type inference with isinstance.
@@ -215,8 +215,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     # functions such as open(), etc.
     plugin: Plugin
 
+    # Future flags that we get from semantic analyzer.
+    future_import_flags: Set[str]
+
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile], options: Options,
-                 tree: MypyFile, path: str, plugin: Plugin) -> None:
+                 tree: MypyFile, path: str, plugin: Plugin,
+                 future_import_flags: Set[str]) -> None:
         """Construct a type checker.
 
         Use errors to report type check errors.
@@ -261,6 +265,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # NOTE: we use the context manager to avoid "threading" an additional `is_final_def`
         # argument through various `checker` and `checkmember` functions.
         self._is_final_def = False
+
+        self.future_import_flags = future_import_flags
 
     @property
     def type_context(self) -> List[Optional[Type]]:
@@ -1408,7 +1414,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if defn.info:
             # Class type variables
             tvars += defn.info.defn.type_vars or []
-        # TODO(shantanu): audit for paramspec
+        # TODO(PEP612): audit for paramspec
         for tvar in tvars:
             if isinstance(tvar, TypeVarType) and tvar.values:
                 subst.append([(tvar.id, value) for value in tvar.values])
@@ -3455,7 +3461,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if s.expr:
             self.type_check_raise(s.expr, s)
         if s.from_expr:
-            self.type_check_raise(s.from_expr, s, True)
+            self.type_check_raise(s.from_expr, s, optional=True)
         self.binder.unreachable()
 
     def type_check_raise(self, e: Expression, s: RaiseStmt,
@@ -3464,23 +3470,87 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(typ, DeletedType):
             self.msg.deleted_as_rvalue(typ, e)
             return
-        exc_type = self.named_type('builtins.BaseException')
-        expected_type = UnionType([exc_type, TypeType(exc_type)])
-        if optional:
-            expected_type.items.append(NoneType())
+
         if self.options.python_version[0] == 2:
-            # allow `raise type, value, traceback`
-            # https://docs.python.org/2/reference/simple_stmts.html#the-raise-statement
-            # TODO: Also check tuple item types.
-            any_type = AnyType(TypeOfAny.implementation_artifact)
-            tuple_type = self.named_type('builtins.tuple')
-            expected_type.items.append(TupleType([any_type, any_type], tuple_type))
-            expected_type.items.append(TupleType([any_type, any_type, any_type], tuple_type))
-        self.check_subtype(typ, expected_type, s, message_registry.INVALID_EXCEPTION)
+            # Since `raise` has very different rule on python2, we use a different helper.
+            # https://github.com/python/mypy/pull/11289
+            self._type_check_raise_python2(e, s, typ)
+            return
+
+        # Python3 case:
+        exc_type = self.named_type('builtins.BaseException')
+        expected_type_items = [exc_type, TypeType(exc_type)]
+        if optional:
+            # This is used for `x` part in a case like `raise e from x`,
+            # where we allow `raise e from None`.
+            expected_type_items.append(NoneType())
+
+        self.check_subtype(
+            typ, UnionType.make_union(expected_type_items), s,
+            message_registry.INVALID_EXCEPTION,
+        )
 
         if isinstance(typ, FunctionLike):
             # https://github.com/python/mypy/issues/11089
             self.expr_checker.check_call(typ, [], [], e)
+
+    def _type_check_raise_python2(self, e: Expression, s: RaiseStmt, typ: ProperType) -> None:
+        # Python2 has two possible major cases:
+        # 1. `raise expr`, where `expr` is some expression, it can be:
+        #    - Exception typ
+        #    - Exception instance
+        #    - Old style class (not supported)
+        #    - Tuple, where 0th item is exception type or instance
+        # 2. `raise exc, msg, traceback`, where:
+        #    - `exc` is exception type (not instance!)
+        #    - `traceback` is `types.TracebackType | None`
+        # Important note: `raise exc, msg` is not the same as `raise (exc, msg)`
+        # We call `raise exc, msg, traceback` - legacy mode.
+        exc_type = self.named_type('builtins.BaseException')
+
+        if (not s.legacy_mode and (isinstance(typ, TupleType) and typ.items
+                or (isinstance(typ, Instance) and typ.args
+                    and typ.type.fullname == 'builtins.tuple'))):
+            # `raise (exc, ...)` case:
+            item = typ.items[0] if isinstance(typ, TupleType) else typ.args[0]
+            self.check_subtype(
+                item, UnionType([exc_type, TypeType(exc_type)]), s,
+                'When raising a tuple, first element must by derived from BaseException',
+            )
+            return
+        elif s.legacy_mode:
+            # `raise Exception, msg` case
+            # `raise Exception, msg, traceback` case
+            # https://docs.python.org/2/reference/simple_stmts.html#the-raise-statement
+            assert isinstance(typ, TupleType)  # Is set in fastparse2.py
+            self.check_subtype(
+                typ.items[0], TypeType(exc_type), s,
+                'First argument must be BaseException subtype',
+            )
+
+            # Typecheck `traceback` part:
+            if len(typ.items) == 3:
+                # Now, we typecheck `traceback` argument if it is present.
+                # We do this after the main check for better error message
+                # and better ordering: first about `BaseException` subtype,
+                # then about `traceback` type.
+                traceback_type = UnionType.make_union([
+                    self.named_type('types.TracebackType'),
+                    NoneType(),
+                ])
+                self.check_subtype(
+                    typ.items[2], traceback_type, s,
+                    'Third argument to raise must have "{}" type'.format(traceback_type),
+                )
+        else:
+            expected_type_items = [
+                # `raise Exception` and `raise Exception()` cases:
+                exc_type, TypeType(exc_type),
+            ]
+            self.check_subtype(
+                typ, UnionType.make_union(expected_type_items),
+                s, message_registry.INVALID_EXCEPTION,
+            )
 
     def visit_try_stmt(self, s: TryStmt) -> None:
         """Type check a try statement."""

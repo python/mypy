@@ -1,4 +1,11 @@
+import sys
+from re import RegexFlag
 from typing import Any, Iterable, Mapping, Sequence, Tuple
+
+if sys.version_info >= (3, 8):
+    from re import Pattern
+else:
+    from typing import Pattern
 
 ascii_letters: str
 ascii_lowercase: str
@@ -14,6 +21,11 @@ def capwords(s: str, sep: str | None = ...) -> str: ...
 
 class Template:
     template: str
+    delimiter: str
+    idpattern: str
+    braceidpattern: str | None
+    flags: RegexFlag
+    pattern: Pattern[str]
     def __init__(self, template: str) -> None: ...
     def substitute(self, __mapping: Mapping[str, object] = ..., **kwds: object) -> str: ...
     def safe_substitute(self, __mapping: Mapping[str, object] = ..., **kwds: object) -> str: ...

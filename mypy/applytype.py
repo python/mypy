@@ -18,7 +18,7 @@ def get_target_type(
     context: Context,
     skip_unsatisfied: bool
 ) -> Optional[Type]:
-    # TODO(shantanu): fix for ParamSpecType
+    # TODO(PEP612): fix for ParamSpecType
     if isinstance(tvar, ParamSpecType):
         return None
     assert isinstance(tvar, TypeVarType)

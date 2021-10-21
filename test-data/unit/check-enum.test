@@ -1360,3 +1360,34 @@ class E(IntEnum):
     A = N(0)
 
 reveal_type(E.A.value) # N: Revealed type is "__main__.N"
+
+
+[case testEnumReusedKeys]
+# https://github.com/python/mypy/issues/11248
+from enum import Enum
+class Correct(Enum):
+    x = 'y'
+    y = 'x'
+class Foo(Enum):
+    A = 1
+    A = 'a'  # E: Attempted to reuse member name "A" in Enum definition "Foo" \
+             # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+reveal_type(Foo.A.value)  # N: Revealed type is "builtins.int"
+
+class Bar(Enum):
+    A = 1
+    B = A = 2  # E: Attempted to reuse member name "A" in Enum definition "Bar"
+class Baz(Enum):
+    A = 1
+    B, A = (1, 2)  # E: Attempted to reuse member name "A" in Enum definition "Baz"
+[builtins fixtures/tuple.pyi]
+
+[case testEnumReusedKeysOverlapWithLocalVar]
+from enum import Enum
+x = 1
+class Foo(Enum):
+    x = 2
+    def method(self) -> None:
+        x = 3
+x = 4
+[builtins fixtures/bool.pyi]

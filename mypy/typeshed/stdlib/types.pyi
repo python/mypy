@@ -212,11 +212,14 @@ class AsyncGeneratorType(AsyncGenerator[_T_co, _T_contra]):
 
 @final
 class CoroutineType:
+    __name__: str
+    __qualname__: str
     cr_await: Any | None
     cr_code: CodeType
     cr_frame: FrameType
     cr_running: bool
     def close(self) -> None: ...
+    def __await__(self) -> Generator[Any, None, Any]: ...
     def send(self, __arg: Any) -> Any: ...
     @overload
     def throw(self, __typ: Type[BaseException], __val: BaseException | object = ..., __tb: TracebackType | None = ...) -> Any: ...

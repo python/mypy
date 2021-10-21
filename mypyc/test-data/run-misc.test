@@ -2,6 +2,7 @@
 
 [case testAsync]
 import asyncio
+import sys
 
 async def h() -> int:
     return 1
@@ -13,8 +14,13 @@ async def g() -> int:
 async def f() -> int:
     return await g()
 
-loop = asyncio.get_event_loop()
-result = loop.run_until_complete(f())
+# sys.version_info >= (3, 7) fails with
+# error: Unsupported left operand type for >= ("Tuple[int, int, int, str, int]")
+if sys.version_info[0] >= 3 and sys.version_info[1] >= 7:
+    result = asyncio.run(f())
+else:
+    loop = asyncio.get_event_loop()
+    result = loop.run_until_complete(f())
 assert result == 1
 
 [typing fixtures/typing-full.pyi]
@@ -22,8 +28,13 @@ assert result == 1
 [file driver.py]
 from native import f
 import asyncio
-loop = asyncio.get_event_loop()
-result = loop.run_until_complete(f())
+import sys
+
+if sys.version_info >= (3, 7):
+    result = asyncio.run(f())
+else:
+    loop = asyncio.get_event_loop()
+    result = loop.run_until_complete(f())
 assert result == 1
 
 [case testMaybeUninitVar]

@@ -36,6 +36,7 @@ class int:
     def __mul__(self, n: int) -> int: pass
     def __pow__(self, n: int, modulo: Optional[int] = None) -> int: pass
     def __floordiv__(self, x: int) -> int: pass
+    def __truediv__(self, x: float) -> float: pass
     def __mod__(self, x: int) -> int: pass
     def __neg__(self) -> int: pass
     def __pos__(self) -> int: pass
@@ -270,6 +271,10 @@ class NotImplementedError(RuntimeError): pass
 
 class StopIteration(Exception):
     value: Any
+
+class ArithmeticError(Exception): pass
+
+class ZeroDivisionError(Exception): pass
 
 def any(i: Iterable[T]) -> bool: pass
 def all(i: Iterable[T]) -> bool: pass

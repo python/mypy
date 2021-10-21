@@ -315,3 +315,29 @@ class, including an abstract method defined in an abstract base class.
 
 You can implement an abstract property using either a normal
 property or an instance variable.
+
+Slots
+*****
+
+When a class has explicitly defined
+`__slots__ <https://docs.python.org/3/reference/datamodel.html#slots>`_
+mypy will check that all attributes assigned to are members of `__slots__`.
+
+.. code-block:: python
+
+  class Album:
+      __slots__ = ('name', 'year')
+
+      def __init__(self, name: str, year: int) -> None:
+         self.name = name
+         self.year = year
+         self.released = True  # E: Trying to assign name "released" that is not in "__slots__" of type "Album"
+
+  my_album = Album('Songs about Python', 2021)
+
+Mypy will only check attribute assignments against `__slots__` when the following conditions hold:
+
+1. All base classes (except builtin ones) must have explicit ``__slots__`` defined (mirrors CPython's behaviour)
+2. ``__slots__`` does not include ``__dict__``, since if ``__slots__`` includes ``__dict__``
+   it allows setting any attribute, similar to when ``__slots__`` is not defined (mirrors CPython's behaviour)
+3. All values in ``__slots__`` must be statically known. For example, no variables: only string literals.

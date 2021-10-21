@@ -67,7 +67,7 @@ def lookup_typeinfo(fullname: str, global_symtable: SymbolTable,
     return node
 
 
-def lookup_fully_qualified(name: str, modules: Dict[str, MypyFile],
+def lookup_fully_qualified(name: str, modules: Dict[str, MypyFile], *,
                            raise_on_missing: bool = False) -> Optional[SymbolTableNode]:
     """Find a symbol using it fully qualified name.
 

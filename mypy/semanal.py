@@ -53,7 +53,7 @@ from contextlib import contextmanager
 from typing import (
     List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable
 )
-from typing_extensions import Final
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.nodes import (
     MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
@@ -147,7 +147,7 @@ CORE_BUILTIN_CLASSES: Final = ["object", "bool", "function"]
 
 
 # Used for tracking incomplete references
-Tag = int
+Tag: _TypeAlias = int
 
 
 class SemanticAnalyzer(NodeVisitor[None],
@@ -1327,8 +1327,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         for name, tvar_expr in declared_tvars:
             tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
             if isinstance(tvar_def, TypeVarType):
-                # This can also be `ParamSpecType`,
-                # error will be reported elsewhere: #11218
+                # TODO(PEP612): fix for ParamSpecType
+                # Error will be reported elsewhere: #11218
                 tvar_defs.append(tvar_def)
         return base_type_exprs, tvar_defs, is_protocol
 
@@ -2554,8 +2554,15 @@ class SemanticAnalyzer(NodeVisitor[None],
         if len(s.lvalues) > 1 or not isinstance(lvalue, NameExpr):
             # First rule: Only simple assignments like Alias = ... create aliases.
             return False
-        if s.unanalyzed_type is not None:
+
+        pep_613 = False
+        if s.unanalyzed_type is not None and isinstance(s.unanalyzed_type, UnboundType):
+            lookup = self.lookup(s.unanalyzed_type.name, s, suppress_errors=True)
+            if lookup and lookup.fullname in ("typing.TypeAlias", "typing_extensions.TypeAlias"):
+                pep_613 = True
+        if s.unanalyzed_type is not None and not pep_613:
             # Second rule: Explicit type (cls: Type[A] = A) always creates variable, not alias.
+            # unless using PEP 613 `cls: TypeAlias = A`
             return False
 
         existing = self.current_symbol_table().get(lvalue.name)
@@ -2580,7 +2587,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             return False
 
         non_global_scope = self.type or self.is_func_scope()
-        if isinstance(s.rvalue, RefExpr) and non_global_scope:
+        if isinstance(s.rvalue, RefExpr) and non_global_scope and not pep_613:
             # Fourth rule (special case): Non-subscripted right hand side creates a variable
             # at class and function scopes. For example:
             #
@@ -2593,7 +2600,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             # annotations (see the second rule).
             return False
         rvalue = s.rvalue
-        if not self.can_be_type_alias(rvalue):
+        if not self.can_be_type_alias(rvalue) and not pep_613:
             return False
 
         if existing and not isinstance(existing.node, (PlaceholderNode, TypeAlias)):
@@ -2748,6 +2755,13 @@ class SemanticAnalyzer(NodeVisitor[None],
         existing = names.get(name)
 
         outer = self.is_global_or_nonlocal(name)
+        if kind == MDEF and isinstance(self.type, TypeInfo) and self.type.is_enum:
+            # Special case: we need to be sure that `Enum` keys are unique.
+            if existing:
+                self.fail('Attempted to reuse member name "{}" in Enum definition "{}"'.format(
+                    name, self.type.name,
+                ), lvalue)
+
         if (not existing or isinstance(existing.node, PlaceholderNode)) and not outer:
             # Define new variable.
             var = self.make_name_lvalue_var(lvalue, kind, not explicit_type)
@@ -4362,22 +4376,10 @@ class SemanticAnalyzer(NodeVisitor[None],
             return v
         return None
 
-    def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
-        """Lookup a fully qualified name.
-
-        Assume that the name is defined. This happens in the global namespace --
-        the local module namespace is ignored.
-
-        Note that this doesn't support visibility, module-level __getattr__, or
-        nested classes.
-        """
-        parts = name.split('.')
-        n = self.modules[parts[0]]
-        for i in range(1, len(parts) - 1):
-            next_sym = n.names[parts[i]]
-            assert isinstance(next_sym.node, MypyFile)
-            n = next_sym.node
-        return n.names[parts[-1]]
+    def lookup_fully_qualified(self, fullname: str) -> SymbolTableNode:
+        ret = self.lookup_fully_qualified_or_none(fullname)
+        assert ret is not None
+        return ret
 
     def lookup_fully_qualified_or_none(self, fullname: str) -> Optional[SymbolTableNode]:
         """Lookup a fully qualified name that refers to a module-level definition.
@@ -4409,13 +4411,13 @@ class SemanticAnalyzer(NodeVisitor[None],
         return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
 
     def object_type(self) -> Instance:
-        return self.named_type('__builtins__.object')
+        return self.named_type('builtins.object')
 
     def str_type(self) -> Instance:
-        return self.named_type('__builtins__.str')
+        return self.named_type('builtins.str')
 
-    def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
-        sym = self.lookup_qualified(qualified_name, Context())
+    def named_type(self, fullname: str, args: Optional[List[Type]] = None) -> Instance:
+        sym = self.lookup_fully_qualified(fullname)
         assert sym, "Internal error: attempted to construct unknown type"
         node = sym.node
         assert isinstance(node, TypeInfo)
@@ -4424,9 +4426,9 @@ class SemanticAnalyzer(NodeVisitor[None],
             return Instance(node, args)
         return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
 
-    def named_type_or_none(self, qualified_name: str,
+    def named_type_or_none(self, fullname: str,
                            args: Optional[List[Type]] = None) -> Optional[Instance]:
-        sym = self.lookup_fully_qualified_or_none(qualified_name)
+        sym = self.lookup_fully_qualified_or_none(fullname)
         if not sym or isinstance(sym.node, PlaceholderNode):
             return None
         node = sym.node
