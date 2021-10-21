@@ -1391,3 +1391,15 @@ class Foo(Enum):
         x = 3
 x = 4
 [builtins fixtures/bool.pyi]
+
+[case testEnumSelfMemberAccessInMethods]
+from enum import Enum
+class Foo(Enum):
+    x = 1
+    y = 2
+    def method(self) -> None:
+        reveal_type(self.x)  # N: Revealed type is "Literal[__main__.Foo.x]?"
+        reveal_type(self.y)  # N: Revealed type is "Literal[__main__.Foo.y]?"
+        reveal_type(self.method)  # N: Revealed type is "def ()"
+        self.missing  # E: "Foo" has no attribute "missing"
+[builtins fixtures/bool.pyi]

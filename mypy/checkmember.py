@@ -346,6 +346,20 @@ def analyze_member_var_access(name: str,
     # It was not a method. Try looking up a variable.
     v = lookup_member_var_or_accessor(info, name, mx.is_lvalue)
 
+    if isinstance(v, Var) and itype.type.is_enum and not mx.is_lvalue:
+        # Triggered when accessing `enum` values via `self` in methods. Like:
+        #
+        #   class Letter(Enum):
+        #       A = 'A'
+        #       def method(self) -> None:
+        #           reveal_type(self.A)  # Literal[ex.Letter.A]?
+        #
+        # But, without these lines it would be just `str`.
+        # https://github.com/python/mypy/issues/11368
+        enum_class_attribute_type = analyze_enum_class_attribute_access(itype, name, mx)
+        if enum_class_attribute_type:
+            return enum_class_attribute_type
+
     vv = v
     if isinstance(vv, Decorator):
         # The associated Var node of a decorator contains the type.
