@@ -179,7 +179,7 @@ def add_attribute_to_class(
     node = Var(name, typ)
     node.info = info
     node.is_final = final
-    node._fullname = api.qualified_name(name)
+    node._fullname = info.fullname + '.' + name
     info.names[name] = SymbolTableNode(MDEF, node, plugin_generated=True)
 
 

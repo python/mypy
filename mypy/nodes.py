@@ -1372,6 +1372,7 @@ class MatchStmt(Statement):
     def __init__(self, subject: Expression, patterns: List['Pattern'],
                  guards: List[Optional[Expression]], bodies: List[Block]) -> None:
         super().__init__()
+        assert len(patterns) == len(guards) == len(bodies)
         self.subject = subject
         self.patterns = patterns
         self.guards = guards
