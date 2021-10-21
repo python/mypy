@@ -1627,7 +1627,7 @@ class MemberExpr(RefExpr):
 
 # Kinds of arguments
 @unique
-class ArgKind(int, Enum):
+class ArgKind(Enum):
     # Positional argument
     ARG_POS = 0
     # Positional, optional argument (functions only, not calls)
@@ -1640,6 +1640,10 @@ class ArgKind(int, Enum):
     ARG_STAR2 = 4
     # In an argument list, keyword-only and also optional
     ARG_NAMED_OPT = 5
+
+    def __int__(self) -> int:
+        # All items in `ArgKind` are `int`s, but `IntEnum` is not supported by `mypyc`.
+        return cast(int, self)
 
     def is_positional(self, star: bool = False) -> bool:
         return (
