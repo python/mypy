@@ -133,6 +133,7 @@ TRUTHY_BOOL: Final[ErrorCode] = ErrorCode(
 NAME_MATCH: Final = ErrorCode(
     "name-match", "Check that type definition has consistent naming", "General"
 )
+UNSAFE_VARIANCE: Final = ErrorCode("unsafe-variance", "Incorrect usages of variance", "General")
 
 
 # Syntax errors are often blocking.
