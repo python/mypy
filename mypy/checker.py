@@ -311,6 +311,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 and self.should_report_unreachable_issues()
                                 and not self.is_raising_or_empty(d)):
                             self.msg.unreachable_statement(d)
+                            break
                         self.accept(d)
 
                 assert not self.current_node_deferred

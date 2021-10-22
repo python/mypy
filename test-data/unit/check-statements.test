@@ -1821,18 +1821,3 @@ def foo2():
     bar2 = []  # type: List[str]
     bar2
 [builtins fixtures/list.pyi]
-
-[case testUnreachableModuleBody1]
-# flags: --warn-unreachable
-from typing import NoReturn
-def foo() -> NoReturn:
-    raise Exception("foo")
-foo()
-x = 1  # E: Statement is unreachable
-[builtins fixtures/exception.pyi]
-
-[case testUnreachableModuleBody2]
-# flags: --warn-unreachable
-raise Exception
-x = 1  # E: Statement is unreachable
-[builtins fixtures/exception.pyi]
