@@ -154,9 +154,9 @@ z # type: ignore[name-defined]
 
 [case testErrorCodeMissingDoesntTrampleUnusedIgnoresWarning]
 # flags: --enable-error-code ignore-without-code --warn-unused-ignores
-"x" # type: ignore # E: Unused "type: ignore" comment
-"y" # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment
-z # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment # E: Name "z" is not defined  [name-defined] # N: Error code "name-defined" not covered by "type: ignore" comment
+"x" # type: ignore # E: Unused "type: ignore" comment  [unused-ignore]
+"y" # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment  [unused-ignore]
+z # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment  [unused-ignore] # E: Name "z" is not defined  [name-defined] # N: Error code "name-defined" not covered by "type: ignore" comment
 
 [case testErrorCodeMissingWholeFileIgnores]
 # flags: --enable-error-code ignore-without-code
