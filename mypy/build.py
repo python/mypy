@@ -2369,6 +2369,15 @@ class State:
                 self.verify_dependencies(suppressed_only=True)
             self.manager.errors.generate_unused_ignore_errors(self.xpath)
 
+    def generate_no_code_ignore_notes(self) -> None:
+        if self.options.warn_no_ignore_code:
+            # If this file was initially loaded from the cache, it may have suppressed
+            # dependencies due to imports with ignores on them. We need to generate
+            # those errors to avoid spuriously flagging them as unused ignores.
+            if self.meta:
+                self.verify_dependencies(suppressed_only=True)
+            self.manager.errors.generate_no_code_ignore_errors(self.xpath)
+
 
 # Module import and diagnostic glue
 
@@ -3155,6 +3164,7 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
                 graph[id].finish_passes()
     for id in stale:
         graph[id].generate_unused_ignore_notes()
+        graph[id].generate_no_code_ignore_notes()
     if any(manager.errors.is_errors_for_file(graph[id].xpath) for id in stale):
         for id in stale:
             graph[id].transitive_error = True
