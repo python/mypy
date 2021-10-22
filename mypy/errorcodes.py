@@ -156,6 +156,7 @@ UNUSED_AWAITABLE: Final = ErrorCode(
     "General",
     default_enabled=False,
 )
+UNSAFE_VARIANCE: Final = ErrorCode("unsafe-variance", "Incorrect usages of variance", "General")
 
 
 # Syntax errors are often blocking.
