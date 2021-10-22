@@ -1309,3 +1309,57 @@ pkg.py:1: error: "int" not callable
 1()
 [out]
 pkg.py:1: error: "int" not callable
+
+[case testCmdlineExclude]
+# cmd: mypy --exclude abc .
+[file abc/apkg.py]
+1()
+[file b/bpkg.py]
+1()
+[file c/cpkg.py]
+1()
+[out]
+c/cpkg.py:1: error: "int" not callable
+b/bpkg.py:1: error: "int" not callable
+
+[case testCmdlineMultipleExclude]
+# cmd: mypy --exclude abc --exclude b/ .
+[file abc/apkg.py]
+1()
+[file b/bpkg.py]
+1()
+[file c/cpkg.py]
+1()
+[out]
+c/cpkg.py:1: error: "int" not callable
+
+[case testCmdlineCfgExclude]
+# cmd: mypy .
+[file mypy.ini]
+\[mypy]
+exclude = abc
+[file abc/apkg.py]
+1()
+[file b/bpkg.py]
+1()
+[file c/cpkg.py]
+1()
+[out]
+c/cpkg.py:1: error: "int" not callable
+b/bpkg.py:1: error: "int" not callable
+
+[case testCmdlineCfgMultipleExclude]
+# cmd: mypy .
+[file mypy.ini]
+\[mypy]
+exclude =
+    abc
+    b
+[file abc/apkg.py]
+1()
+[file b/bpkg.py]
+1()
+[file c/cpkg.py]
+1()
+[out]
+c/cpkg.py:1: error: "int" not callable
