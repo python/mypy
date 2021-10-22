@@ -218,7 +218,7 @@ Daemon stopped
 [case testDaemonQuickstart]
 $ {python} -c "print('x=1')" >foo.py
 $ {python} -c "print('x=1')" >bar.py
-$ mypy --local-partial-types --cache-fine-grained --follow-imports=error --no-sqlite-cache --python-version=3.6 -- foo.py bar.py
+$ mypy --no-nonlocal-partial-types --cache-fine-grained --follow-imports=error --no-sqlite-cache --python-version=3.6 -- foo.py bar.py
 Success: no issues found in 2 source files
 $ {python} -c "import shutil; shutil.copy('.mypy_cache/3.6/bar.meta.json', 'asdf.json')"
 -- update bar's timestamp but don't change the file

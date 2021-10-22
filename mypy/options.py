@@ -42,9 +42,9 @@ PER_MODULE_OPTIONS: Final = {
     "ignore_errors",
     "ignore_missing_imports",
     "implicit_reexport",
-    "local_partial_types",
     "mypyc",
     "no_implicit_optional",
+    "nonlocal_partial_types",
     "show_none_errors",
     "strict_concatenate",
     "strict_equality",
@@ -104,48 +104,48 @@ class Options:
         self.exclude: List[str] = []
 
         # disallow_any options
-        self.disallow_any_generics = False
-        self.disallow_any_unimported = False
-        self.disallow_any_expr = False
-        self.disallow_any_decorated = False
-        self.disallow_any_explicit = False
+        self.disallow_any_generics = True
+        self.disallow_any_unimported = True
+        self.disallow_any_expr = True
+        self.disallow_any_decorated = True
+        self.disallow_any_explicit = True
 
         # Disallow calling untyped functions from typed ones
-        self.disallow_untyped_calls = False
+        self.disallow_untyped_calls = True
 
         # Disallow defining untyped (or incompletely typed) functions
-        self.disallow_untyped_defs = False
+        self.disallow_untyped_defs = True
 
         # Disallow defining incompletely typed functions
-        self.disallow_incomplete_defs = False
+        self.disallow_incomplete_defs = True
 
         # Type check unannotated functions
-        self.check_untyped_defs = False
+        self.check_untyped_defs = True
 
         # Disallow decorating typed functions with untyped decorators
-        self.disallow_untyped_decorators = False
+        self.disallow_untyped_decorators = True
 
         # Disallow subclassing values of type 'Any'
-        self.disallow_subclassing_any = False
+        self.disallow_subclassing_any = True
 
         # Also check typeshed for missing annotations
-        self.warn_incomplete_stub = False
+        self.warn_incomplete_stub = True
 
         # Warn about casting an expression to its inferred type
-        self.warn_redundant_casts = False
+        self.warn_redundant_casts = True
 
         # Warn about falling off the end of a function returning non-None
         self.warn_no_return = True
 
         # Warn about returning objects of type Any when the function is
         # declared with a precise type
-        self.warn_return_any = False
+        self.warn_return_any = True
 
         # Warn about unused '# type: ignore' comments
-        self.warn_unused_ignores = False
+        self.warn_unused_ignores = True
 
         # Warn about unused '[mypy-<pattern>]'  or '[[tool.mypy.overrides]]' config sections
-        self.warn_unused_configs = False
+        self.warn_unused_configs = True
 
         # Files in which to ignore all non-fatal errors
         self.ignore_errors = False
@@ -168,28 +168,28 @@ class Options:
         self.show_none_errors = True
 
         # Don't assume arguments with default values of None are Optional
-        self.no_implicit_optional = False
+        self.no_implicit_optional = True
 
         # Don't re-export names unless they are imported with `from ... as ...`
-        self.implicit_reexport = True
+        self.implicit_reexport = False
 
         # Suppress toplevel errors caused by missing annotations
         self.allow_untyped_globals = False
 
         # Allow variable to be redefined with an arbitrary type in the same block
         # and the same nesting level as the initialization
-        self.allow_redefinition = False
+        self.allow_redefinition = True
 
         # Prohibit equality, identity, and container checks for non-overlapping types.
         # This makes 1 == '1', 1 in ['1'], and 1 is '1' errors.
-        self.strict_equality = False
+        self.strict_equality = True
 
         # Make arguments prepended via Concatenate be truly positional-only.
         self.strict_concatenate = False
 
         # Report an error for any branches inferred to be unreachable as a result of
         # type analysis.
-        self.warn_unreachable = False
+        self.warn_unreachable = True
 
         # Variable names considered True
         self.always_true: List[str] = []
@@ -274,15 +274,15 @@ class Options:
 
         # -- experimental options --
         self.shadow_file: Optional[List[List[str]]] = None
-        self.show_column_numbers: bool = False
-        self.show_error_codes = False
+        self.show_column_numbers: bool = True
+        self.show_error_codes = True
         # Use soft word wrap and show trimmed source snippets with error location markers.
         self.pretty = False
         self.dump_graph = False
         self.dump_deps = False
         self.logical_deps = False
-        # If True, partial types can't span a module top level and a function
-        self.local_partial_types = False
+        # If True, partial types can span a module top level and a function
+        self.nonlocal_partial_types = flip_if_not_based(False)
         # Some behaviors are changed when using Bazel (https://bazel.build).
         self.bazel = False
         # If True, export inferred types for all expressions as BuildResult.types
@@ -314,6 +314,15 @@ class Options:
     @property
     def new_semantic_analyzer(self) -> bool:
         return True
+
+    # To avoid breaking plugin compatibility, keep providing local_partial_types
+    @property
+    def local_partial_types(self) -> bool:
+        return not self.nonlocal_partial_types
+
+    @local_partial_types.setter
+    def local_partial_types(self, value: bool) -> None:
+        self.nonlocal_partial_types = not value
 
     def snapshot(self) -> object:
         """Produce a comparable snapshot of this Option"""

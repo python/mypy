@@ -442,16 +442,12 @@ def process_options(args: List[str],
                                       stdout=stdout,
                                       stderr=stderr)
 
-    strict_flag_names: List[str] = []
-    strict_flag_assignments: List[Tuple[str, bool]] = []
-
     def add_invertible_flag(flag: str,
                             *,
                             inverse: Optional[str] = None,
                             default: bool,
                             dest: Optional[str] = None,
                             help: str,
-                            strict_flag: bool = False,
                             group: Optional[argparse._ActionsContainer] = None
                             ) -> None:
         if inverse is None:
@@ -467,14 +463,10 @@ def process_options(args: List[str],
                                  dest=dest,
                                  help=help)
         dest = arg.dest
-        arg = group.add_argument(inverse,
-                                 action='store_true' if default else 'store_false',
-                                 dest=dest,
-                                 help=argparse.SUPPRESS)
-        if strict_flag:
-            assert dest is not None
-            strict_flag_names.append(flag)
-            strict_flag_assignments.append((dest, not default))
+        group.add_argument(inverse,
+                           action='store_true' if default else 'store_false',
+                           dest=dest,
+                           help=argparse.SUPPRESS)
 
     # Unless otherwise specified, arguments will be parsed directly onto an
     # Options object.  Options that require further processing should have
@@ -509,9 +501,9 @@ def process_options(args: List[str],
         '--config-file',
         help="Configuration file, must have a [mypy] section "
              "(defaults to {})".format(', '.join(defaults.CONFIG_FILES)))
-    add_invertible_flag('--warn-unused-configs', default=False, strict_flag=True,
-                        help="Warn about unused '[mypy-<pattern>]' or '[[tool.mypy.overrides]]' "
-                             "config sections",
+    add_invertible_flag('--no-warn-unused-configs', default=True, dest="warn_unused_configs",
+                        help="Don't warn about unused '[mypy-<pattern>]' or "
+                             "'[[tool.mypy.overrides]]' config sections",
                         group=config_group)
 
     imports_group = parser.add_argument_group(
@@ -566,26 +558,27 @@ def process_options(args: List[str],
         help="Additional variable to be considered False (may be repeated)")
 
     disallow_any_group = parser.add_argument_group(
-        title='Disallow dynamic typing',
-        description="Disallow the use of the dynamic 'Any' type under certain conditions.")
-    disallow_any_group.add_argument(
-        '--disallow-any-unimported', default=False, action='store_true',
-        help="Disallow Any types resulting from unfollowed imports")
-    disallow_any_group.add_argument(
-        '--disallow-any-expr', default=False, action='store_true',
-        help='Disallow all expressions that have type Any')
-    disallow_any_group.add_argument(
-        '--disallow-any-decorated', default=False, action='store_true',
-        help='Disallow functions that have Any in their signature '
-             'after decorator transformation')
-    disallow_any_group.add_argument(
-        '--disallow-any-explicit', default=False, action='store_true',
-        help='Disallow explicit Any in type positions')
-    add_invertible_flag('--disallow-any-generics', default=False, strict_flag=True,
-                        help='Disallow usage of generic types that do not specify explicit type '
+        title='Allow dynamic typing',
+        description="Allow the use of the dynamic 'Any' type under certain conditions.")
+    add_invertible_flag(
+        '--allow-any-unimported', default=True,
+        dest="disallow_any_unimported",
+        help="Allow Any types resulting from unfollowed imports", group=disallow_any_group)
+    add_invertible_flag(
+        '--allow-any-expr', default=True, dest="disallow_any_expr",
+        help='Allow expressions that have type Any', group=disallow_any_group)
+    add_invertible_flag(
+        '--allow-any-decorated', default=True, dest="disallow_any_decorated",
+        help='Allow functions that have Any in their signature '
+             'after decorator transformation', group=disallow_any_group)
+    add_invertible_flag(
+        '--allow-any-explicit', default=True, dest="disallow_any_explicit",
+        help='Allow explicit Any in type positions', group=disallow_any_group)
+    add_invertible_flag('--allow-any-generics', default=True, dest="disallow_any_generics",
+                        help='Allow usage of generic types that do not specify explicit type '
                         'parameters', group=disallow_any_group)
-    add_invertible_flag('--disallow-subclassing-any', default=False, strict_flag=True,
-                        help="Disallow subclassing values of type 'Any' when defining classes",
+    add_invertible_flag('--allow-subclassing-any', default=True, dest="disallow_subclassing_any",
+                        help="Allow subclassing values of type 'Any' when defining classes",
                         group=disallow_any_group)
 
     untyped_group = parser.add_argument_group(
@@ -594,22 +587,23 @@ def process_options(args: List[str],
                     "Note: by default, mypy ignores any untyped function definitions "
                     "and assumes any calls to such functions have a return "
                     "type of 'Any'.")
-    add_invertible_flag('--disallow-untyped-calls', default=False, strict_flag=True,
-                        help="Disallow calling functions without type annotations"
+    add_invertible_flag('--allow-untyped-calls', default=True, dest="disallow_untyped_calls",
+                        help="Allow calling functions without type annotations"
                         " from functions with type annotations",
                         group=untyped_group)
-    add_invertible_flag('--disallow-untyped-defs', default=False, strict_flag=True,
-                        help="Disallow defining functions without type annotations"
+    add_invertible_flag('--allow-untyped-defs', default=True, dest="disallow_untyped_defs",
+                        help="Allow defining functions without type annotations"
                         " or with incomplete type annotations",
                         group=untyped_group)
-    add_invertible_flag('--disallow-incomplete-defs', default=False, strict_flag=True,
-                        help="Disallow defining functions with incomplete type annotations",
+    add_invertible_flag('--allow-incomplete-defs', default=True, dest="disallow_incomplete_defs",
+                        help="Allow defining functions with incomplete type annotations",
                         group=untyped_group)
-    add_invertible_flag('--check-untyped-defs', default=False, strict_flag=True,
-                        help="Type check the interior of functions without type annotations",
+    add_invertible_flag('--no-check-untyped-defs', default=True, dest="check_untyped_defs",
+                        help="Don't type check the interior of functions without type annotations",
                         group=untyped_group)
-    add_invertible_flag('--disallow-untyped-decorators', default=False, strict_flag=True,
-                        help="Disallow decorating typed functions with untyped decorators",
+    add_invertible_flag('--allow-untyped-decorators', default=True,
+                        dest="disallow_untyped_decorators",
+                        help="Allow decorating typed functions with untyped decorators",
                         group=untyped_group)
 
     none_group = parser.add_argument_group(
@@ -617,8 +611,8 @@ def process_options(args: List[str],
         description="Adjust how values of type 'None' are handled. For more context on "
                     "how mypy handles values of type 'None', see: "
                     "https://mypy.readthedocs.io/en/stable/kinds_of_types.html#no-strict-optional")
-    add_invertible_flag('--no-implicit-optional', default=False, strict_flag=True,
-                        help="Don't assume arguments with default values of None are Optional",
+    add_invertible_flag('--implicit-optional', default=True, dest="no_implicit_optional",
+                        help="Assume arguments with default values of None are Optional (cringe)",
                         group=none_group)
     none_group.add_argument(
         '--strict-optional', action='store_true',
@@ -633,49 +627,42 @@ def process_options(args: List[str],
     lint_group = parser.add_argument_group(
         title='Configuring warnings',
         description="Detect code that is sound but redundant or problematic.")
-    add_invertible_flag('--warn-redundant-casts', default=False, strict_flag=True,
-                        help="Warn about casting an expression to its inferred type",
+    add_invertible_flag('--no-warn-redundant-casts', default=True,
+                        dest="warn_redundant_casts",
+                        help="Do not warn about casting an expression to its inferred type",
                         group=lint_group)
-    add_invertible_flag('--warn-unused-ignores', default=False, strict_flag=True,
-                        help="Warn about unneeded '# type: ignore' comments",
+    add_invertible_flag('--no-warn-unused-ignores', default=True, dest="warn_unused_ignores",
+                        help="Do not warn about unneeded '# type: ignore' comments",
                         group=lint_group)
     add_invertible_flag('--no-warn-no-return', dest='warn_no_return', default=True,
                         help="Do not warn about functions that end without returning",
                         group=lint_group)
-    add_invertible_flag('--warn-return-any', default=False, strict_flag=True,
-                        help="Warn about returning values of type Any"
+    add_invertible_flag('--no-warn-return-any', default=True, dest="warn_return_any",
+                        help="Do not warn about returning values of type Any"
                              " from non-Any typed functions",
                         group=lint_group)
-    add_invertible_flag('--warn-unreachable', default=False, strict_flag=False,
-                        help="Warn about statements or expressions inferred to be"
+    add_invertible_flag('--no-warn-unreachable', default=True, dest="warn_unreachable",
+                        help="Do not warn about statements or expressions inferred to be"
                              " unreachable",
                         group=lint_group)
 
-    # Note: this group is intentionally added here even though we don't add
-    # --strict to this group near the end.
-    #
-    # That way, this group will appear after the various strictness groups
-    # but before the remaining flags.
-    # We add `--strict` near the end so we don't accidentally miss any strictness
-    # flags that are added after this group.
     strictness_group = parser.add_argument_group(
         title='Miscellaneous strictness flags')
 
-    add_invertible_flag('--allow-untyped-globals', default=False, strict_flag=False,
+    add_invertible_flag('--allow-untyped-globals', default=False,
                         help="Suppress toplevel errors caused by missing annotations",
                         group=strictness_group)
 
-    add_invertible_flag('--allow-redefinition', default=False, strict_flag=False,
-                        help="Allow unconditional variable redefinition with a new type",
+    add_invertible_flag('--disallow-redefinition', default=True, dest="allow-redefinition",
+                        help="Disallow unconditional variable redefinition with a new type",
                         group=strictness_group)
 
-    add_invertible_flag('--no-implicit-reexport', default=True, strict_flag=True,
-                        dest='implicit_reexport',
-                        help="Treat imports as private unless aliased",
+    add_invertible_flag('--implicit-reexport', default=False,
+                        help="Export all imports, not just aliased ones",
                         group=strictness_group)
 
-    add_invertible_flag('--strict-equality', default=False, strict_flag=True,
-                        help="Prohibit equality, identity, and container checks for"
+    add_invertible_flag('--no-strict-equality', default=True, dest="strict-equality",
+                        help="Allow equality, identity, and container checks for"
                              " non-overlapping types",
                         group=strictness_group)
 
@@ -683,12 +670,11 @@ def process_options(args: List[str],
                         help="Make arguments prepended via Concatenate be truly positional-only",
                         group=strictness_group)
 
-    strict_help = "Strict mode; enables the following flags: {}".format(
-        ", ".join(strict_flag_names))
-    strictness_group.add_argument(
-        '--strict', action='store_true', dest='special-opts:strict',
-        help=strict_help)
-
+    # --nonlocal-partial-types allows partial types spanning module top level and a function
+    # (implicitly defined in fine-grained incremental mode)
+    add_invertible_flag('--nonlocal-partial-types', default=True, dest="local_partial_types",
+                        help="Enable partial types in different scopes",
+                        group=strictness_group)
     strictness_group.add_argument(
         '--disable-error-code', metavar='NAME', action='append', default=[],
         help="Disable a specific error code")
@@ -707,8 +693,8 @@ def process_options(args: List[str],
     add_invertible_flag('--show-column-numbers', default=False,
                         help="Show column numbers in error messages",
                         group=error_group)
-    add_invertible_flag('--show-error-codes', default=False,
-                        help="Show error codes in error messages",
+    add_invertible_flag('--no-show-error-codes', default=True, dest="show-error-codes",
+                        help="Don't show error codes in error messages",
                         group=error_group)
     add_invertible_flag('--pretty', default=False,
                         help="Use visually nicer output in error messages:"
@@ -809,10 +795,10 @@ def process_options(args: List[str],
         '--scripts-are-modules', action='store_true',
         help="Script x becomes module x instead of __main__")
 
-    add_invertible_flag('--install-types', default=False, strict_flag=False,
+    add_invertible_flag('--install-types', default=False,
                         help="Install detected missing library stub packages using pip",
                         group=other_group)
-    add_invertible_flag('--non-interactive', default=False, strict_flag=False,
+    add_invertible_flag('--non-interactive', default=False,
                         help=("Install stubs without asking for confirmation and hide " +
                               "errors, with --install-types"),
                         group=other_group, inverse="--interactive")
@@ -848,9 +834,6 @@ def process_options(args: List[str],
     parser.add_argument('--dump-graph', action='store_true', help=argparse.SUPPRESS)
     # --semantic-analysis-only does exactly that.
     parser.add_argument('--semantic-analysis-only', action='store_true', help=argparse.SUPPRESS)
-    # --local-partial-types disallows partial types spanning module top level and a function
-    # (implicitly defined in fine-grained incremental mode)
-    parser.add_argument('--local-partial-types', action='store_true', help=argparse.SUPPRESS)
     # --logical-deps adds some more dependencies that are not semantically needed, but
     # may be helpful to determine relative importance of classes and functions for overall
     # type precision in a code base. It also _removes_ some deps, so this flag should be never
@@ -927,16 +910,10 @@ def process_options(args: List[str],
     options = Options()
 
     def set_strict_flags() -> None:
-        for dest, value in strict_flag_assignments:
-            setattr(options, dest, value)
+        pass
 
     # Parse config file first, so command line can override.
     parse_config_file(options, set_strict_flags, config_file, stdout, stderr)
-
-    # Set strict flags before parsing (if strict mode enabled), so other command
-    # line options can override.
-    if getattr(dummy, 'special-opts:strict'):  # noqa
-        set_strict_flags()
 
     # Override cache_dir if provided in the environment
     environ_cache_dir = os.getenv('MYPY_CACHE_DIR', '')
