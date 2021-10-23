@@ -268,4 +268,4 @@ class IPCServer(IPCBase):
         if sys.platform == 'win32':
             return self.name
         else:
-            return self.sock.getsockname()
+            return self.sock.getsockname()  # type: ignore[no-any-return, unused-ignore]
