@@ -103,6 +103,9 @@ class Options:
         # File names, directory names or subpaths to avoid checking
         self.exclude: List[str] = []
 
+        self.write_baseline = False
+        self.baseline_file = defaults.BASELINE_FILE
+
         # disallow_any options
         self.disallow_any_generics = True
         self.disallow_any_unimported = True
