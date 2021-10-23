@@ -512,7 +512,7 @@ int CPySequence_CheckUnpackCount(PyObject *sequence, Py_ssize_t expected) {
 
 // Parse an integer (size_t) encoded as a variable-length binary sequence.
 static const char *parse_int(const char *s, size_t *len) {
-    ssize_t n = 0;
+    Py_ssize_t n = 0;
     while ((unsigned char)*s >= 0x80) {
         n = (n << 7) + (*s & 0x7f);
         s++;

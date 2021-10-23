@@ -7,9 +7,9 @@ from mypy.backports import OrderedDict
 
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Set, Optional, Union, Iterable, NamedTuple,
-    Sequence, Iterator, overload
+    Sequence, Iterator
 )
-from typing_extensions import ClassVar, Final, TYPE_CHECKING, overload
+from typing_extensions import ClassVar, Final, TYPE_CHECKING, overload, TypeAlias as _TypeAlias
 
 import mypy.nodes
 from mypy import state
@@ -23,7 +23,7 @@ from mypy.bogus_type import Bogus
 
 T = TypeVar('T')
 
-JsonDict = Dict[str, Any]
+JsonDict: _TypeAlias = Dict[str, Any]
 
 # The set of all valid expressions that can currently be contained
 # inside of a Literal[...].
@@ -52,7 +52,7 @@ JsonDict = Dict[str, Any]
 # Note: Although "Literal[None]" is a valid type, we internally always convert
 # such a type directly into "None". So, "None" is not a valid parameter of
 # LiteralType and is omitted from this list.
-LiteralValue = Union[int, str, bool]
+LiteralValue: _TypeAlias = Union[int, str, bool]
 
 
 # If we only import type_visitor in the middle of the file, mypy
@@ -89,6 +89,9 @@ class TypeOfAny:
     """
     This class describes different types of Any. Each 'Any' can be of only one type at a time.
     """
+
+    __slots__ = ()
+
     # Was this Any type inferred without a type annotation?
     unannotated: Final = 1
     # Does this Any come from an explicit type annotation?
@@ -127,6 +130,15 @@ class Type(mypy.nodes.Context):
     """Abstract base class for all types."""
 
     __slots__ = ('can_be_true', 'can_be_false')
+    # 'can_be_true' and 'can_be_false' mean whether the value of the
+    # expression can be true or false in a boolean context. They are useful
+    # when inferring the type of logic expressions like `x and y`.
+    #
+    # For example:
+    #   * the literal `False` can't be true while `True` can.
+    #   * a value with type `bool` can be true or false.
+    #   * `None` can't be true
+    #   * ...
 
     def __init__(self, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
@@ -278,6 +290,9 @@ class TypeAliasType(Type):
 
 class TypeGuardedType(Type):
     """Only used by find_instance_check() etc."""
+
+    __slots__ = ('type_guard',)
+
     def __init__(self, type_guard: Type):
         super().__init__(line=type_guard.line, column=type_guard.column)
         self.type_guard = type_guard
@@ -291,6 +306,8 @@ class ProperType(Type):
 
     Every type except TypeAliasType must inherit from this type.
     """
+
+    __slots__ = ()
 
 
 class TypeVarId:
@@ -345,8 +362,11 @@ class TypeVarId:
 
 
 class TypeVarLikeType(ProperType):
-    name = ''  # Name (may be qualified)
-    fullname = ''  # Fully qualified name
+
+    __slots__ = ('name', 'fullname', 'id')
+
+    name: str  # Name (may be qualified)
+    fullname: str  # Fully qualified name
     id: TypeVarId
 
     def __init__(
@@ -370,9 +390,11 @@ class TypeVarLikeType(ProperType):
 class TypeVarType(TypeVarLikeType):
     """Definition of a single type variable."""
 
+    __slots__ = ('values', 'upper_bound', 'variance')
+
     values: List[Type]  # Value restriction, empty list if no restriction
     upper_bound: Type
-    variance: int = INVARIANT
+    variance: int
 
     def __init__(self, name: str, fullname: str, id: Union[TypeVarId, int], values: List[Type],
                  upper_bound: Type, variance: int = INVARIANT, line: int = -1,
@@ -426,6 +448,8 @@ class TypeVarType(TypeVarLikeType):
 
 class ParamSpecType(TypeVarLikeType):
     """Definition of a single ParamSpec variable."""
+
+    __slots__ = ()
 
     def __repr__(self) -> str:
         return self.name
@@ -544,9 +568,11 @@ class CallableArgument(ProperType):
     Note that this is a synthetic type for helping parse ASTs, not a real type.
     """
 
+    __slots__ = ('typ', 'name', 'constructor')
+
     typ: Type
-    name: Optional[str] = None
-    constructor: Optional[str] = None
+    name: Optional[str]
+    constructor: Optional[str]
 
     def __init__(self, typ: Type, name: Optional[str], constructor: Optional[str],
                  line: int = -1, column: int = -1) -> None:
@@ -571,6 +597,8 @@ class TypeList(ProperType):
     but a syntactic AST construct. UnboundTypes can also have TypeList
     types before they are processed into Callable types.
     """
+
+    __slots__ = ('items',)
 
     items: List[Type]
 
@@ -672,15 +700,18 @@ class UninhabitedType(ProperType):
         is_subtype(UninhabitedType, T) = True
     """
 
-    is_noreturn = False  # Does this come from a NoReturn?  Purely for error messages.
+    __slots__ = ('ambiguous', 'is_noreturn',)
+
+    is_noreturn: bool  # Does this come from a NoReturn?  Purely for error messages.
     # It is important to track whether this is an actual NoReturn type, or just a result
     # of ambiguous type inference, in the latter case we don't want to mark a branch as
     # unreachable in binder.
-    ambiguous = False  # Is this a result of inference for a variable without constraints?
+    ambiguous: bool  # Is this a result of inference for a variable without constraints?
 
     def __init__(self, is_noreturn: bool = False, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
         self.is_noreturn = is_noreturn
+        self.ambiguous = False
 
     def can_be_true_default(self) -> bool:
         return False
@@ -751,6 +782,8 @@ class ErasedType(ProperType):
     it is ignored during type inference.
     """
 
+    __slots__ = ()
+
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_erased_type(self)
 
@@ -761,7 +794,9 @@ class DeletedType(ProperType):
     These can be used as lvalues but not rvalues.
     """
 
-    source: Optional[str] = ""  # May be None; name that generated this value
+    __slots__ = ('source',)
+
+    source: Optional[str]  # May be None; name that generated this value
 
     def __init__(self, source: Optional[str] = None, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
@@ -1024,9 +1059,16 @@ class CallableType(FunctionLike):
             # after serialization, but it is useful in error messages.
             # TODO: decide how to add more info here (file, line, column)
             # without changing interface hash.
-            self.def_extras = {'first_arg': definition.arguments[0].variable.name
-                               if definition.arg_names and definition.info and
-                               not definition.is_static else None}
+            self.def_extras = {
+                'first_arg': (
+                    definition.arguments[0].variable.name
+                    if (getattr(definition, 'arguments', None)
+                        and definition.arg_names
+                        and definition.info
+                        and not definition.is_static)
+                    else None
+                ),
+            }
         else:
             self.def_extras = {}
         self.type_guard = type_guard
@@ -1277,6 +1319,8 @@ class Overloaded(FunctionLike):
     implementation.
     """
 
+    __slots__ = ('_items', 'fallback')
+
     _items: List[CallableType]  # Must not be empty
 
     def __init__(self, items: List[CallableType]) -> None:
@@ -1345,9 +1389,11 @@ class TupleType(ProperType):
         implicit: If True, derived from a tuple expression (t,....) instead of Tuple[t, ...]
     """
 
+    __slots__ = ('items', 'partial_fallback', 'implicit')
+
     items: List[Type]
     partial_fallback: Instance
-    implicit = False
+    implicit: bool
 
     def __init__(self, items: List[Type], fallback: Instance, line: int = -1,
                  column: int = -1, implicit: bool = False) -> None:
@@ -1419,6 +1465,8 @@ class TypedDictType(ProperType):
 
     TODO: The fallback structure is perhaps overly complicated.
     """
+
+    __slots__ = ('items', 'required_keys', 'fallback')
 
     items: "OrderedDict[str, Type]"  # item_name -> item_type
     required_keys: Set[str]
@@ -1557,6 +1605,9 @@ class RawExpressionType(ProperType):
             ],
         )
     """
+
+    __slots__ = ('literal_value', 'base_type_name', 'note')
+
     def __init__(self,
                  literal_value: Optional[LiteralValue],
                  base_type_name: str,
@@ -1684,6 +1735,8 @@ class StarType(ProperType):
     This is not a real type but a syntactic AST construct.
     """
 
+    __slots__ = ('type',)
+
     type: Type
 
     def __init__(self, type: Type, line: int = -1, column: int = -1) -> None:
@@ -1789,12 +1842,14 @@ class PartialType(ProperType):
           x = 1  # Infer actual type int for x
     """
 
+    __slots__ = ('type', 'var', 'value_type')
+
     # None for the 'None' partial type; otherwise a generic class
-    type: Optional[mypy.nodes.TypeInfo] = None
+    type: Optional[mypy.nodes.TypeInfo]
     var: mypy.nodes.Var
     # For partial defaultdict[K, V], the type V (K is unknown). If V is generic,
     # the type argument is Any and will be replaced later.
-    value_type: Optional[Instance] = None
+    value_type: Optional[Instance]
 
     def __init__(self,
                  type: 'Optional[mypy.nodes.TypeInfo]',
@@ -1816,6 +1871,8 @@ class EllipsisType(ProperType):
 
     A semantically analyzed type will never have ellipsis types.
     """
+
+    __slots__ = ()
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
@@ -1852,6 +1909,8 @@ class TypeType(ProperType):
     the future we might detect when they are violating that
     assumption).
     """
+
+    __slots__ = ('item',)
 
     # This can't be everything, but it can be a class reference,
     # a generic class instance, a union, Any, a type variable...
@@ -1911,6 +1970,8 @@ class PlaceholderType(ProperType):
     type without any placeholders. After semantic analysis, no placeholder types must
     exist.
     """
+
+    __slots__ = ('fullname', 'args')
 
     def __init__(self, fullname: Optional[str], args: List[Type], line: int) -> None:
         super().__init__(line)

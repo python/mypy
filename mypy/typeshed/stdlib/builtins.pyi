@@ -21,7 +21,7 @@ from _typeshed import (
 )
 from ast import AST, mod
 from io import BufferedRandom, BufferedReader, BufferedWriter, FileIO, TextIOWrapper
-from types import CodeType, TracebackType
+from types import CodeType, MappingProxyType, TracebackType
 from typing import (
     IO,
     AbstractSet,
@@ -73,6 +73,8 @@ _T_co = TypeVar("_T_co", covariant=True)
 _T_contra = TypeVar("_T_contra", contravariant=True)
 _KT = TypeVar("_KT")
 _VT = TypeVar("_VT")
+_KT_co = TypeVar("_KT_co", covariant=True)  # Key type covariant containers.
+_VT_co = TypeVar("_VT_co", covariant=True)  # Value type covariant containers.
 _S = TypeVar("_S")
 _T1 = TypeVar("_T1")
 _T2 = TypeVar("_T2")
@@ -787,6 +789,20 @@ class list(MutableSequence[_T], Generic[_T]):
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
 
+class _dict_keys(KeysView[_KT_co], Generic[_KT_co, _VT_co]):
+    if sys.version_info >= (3, 10):
+        mapping: MappingProxyType[_KT_co, _VT_co]
+
+# The generics are the wrong way around because of a mypy limitation
+#  https://github.com/python/mypy/issues/11138
+class _dict_values(ValuesView[_VT_co], Generic[_VT_co, _KT_co]):
+    if sys.version_info >= (3, 10):
+        mapping: MappingProxyType[_KT_co, _VT_co]
+
+class _dict_items(ItemsView[_KT_co, _VT_co], Generic[_KT_co, _VT_co]):
+    if sys.version_info >= (3, 10):
+        mapping: MappingProxyType[_KT_co, _VT_co]
+
 class dict(MutableMapping[_KT, _VT], Generic[_KT, _VT]):
     @overload
     def __init__(self: dict[_KT, _VT]) -> None: ...
@@ -796,6 +812,10 @@ class dict(MutableMapping[_KT, _VT], Generic[_KT, _VT]):
     def __init__(self, map: SupportsKeysAndGetItem[_KT, _VT], **kwargs: _VT) -> None: ...
     @overload
     def __init__(self, iterable: Iterable[Tuple[_KT, _VT]], **kwargs: _VT) -> None: ...
+    # Next overload is for dict(string.split(sep) for string in iterable)
+    # Cannot be Iterable[Sequence[_T]] or otherwise dict(["foo", "bar", "baz"]) is not an error
+    @overload
+    def __init__(self: dict[str, str], iterable: Iterable[list[str]]) -> None: ...
     def __new__(cls: Type[_T1], *args: Any, **kwargs: Any) -> _T1: ...
     def clear(self) -> None: ...
     def copy(self) -> dict[_KT, _VT]: ...
@@ -807,9 +827,9 @@ class dict(MutableMapping[_KT, _VT], Generic[_KT, _VT]):
     def update(self, __m: Iterable[Tuple[_KT, _VT]], **kwargs: _VT) -> None: ...
     @overload
     def update(self, **kwargs: _VT) -> None: ...
-    def keys(self) -> KeysView[_KT]: ...
-    def values(self) -> ValuesView[_VT]: ...
-    def items(self) -> ItemsView[_KT, _VT]: ...
+    def keys(self) -> _dict_keys[_KT, _VT]: ...
+    def values(self) -> _dict_values[_VT, _KT]: ...
+    def items(self) -> _dict_items[_KT, _VT]: ...
     @classmethod
     @overload
     def fromkeys(cls, __iterable: Iterable[_T], __value: None = ...) -> dict[_T, Any | None]: ...
@@ -1305,36 +1325,79 @@ else:
 def vars(__object: Any = ...) -> dict[str, Any]: ...
 
 class zip(Iterator[_T_co], Generic[_T_co]):
-    @overload
-    def __new__(cls, __iter1: Iterable[_T1]) -> zip[Tuple[_T1]]: ...
-    @overload
-    def __new__(cls, __iter1: Iterable[_T1], __iter2: Iterable[_T2]) -> zip[Tuple[_T1, _T2]]: ...
-    @overload
-    def __new__(cls, __iter1: Iterable[_T1], __iter2: Iterable[_T2], __iter3: Iterable[_T3]) -> zip[Tuple[_T1, _T2, _T3]]: ...
-    @overload
-    def __new__(
-        cls, __iter1: Iterable[_T1], __iter2: Iterable[_T2], __iter3: Iterable[_T3], __iter4: Iterable[_T4]
-    ) -> zip[Tuple[_T1, _T2, _T3, _T4]]: ...
-    @overload
-    def __new__(
-        cls,
-        __iter1: Iterable[_T1],
-        __iter2: Iterable[_T2],
-        __iter3: Iterable[_T3],
-        __iter4: Iterable[_T4],
-        __iter5: Iterable[_T5],
-    ) -> zip[Tuple[_T1, _T2, _T3, _T4, _T5]]: ...
-    @overload
-    def __new__(
-        cls,
-        __iter1: Iterable[Any],
-        __iter2: Iterable[Any],
-        __iter3: Iterable[Any],
-        __iter4: Iterable[Any],
-        __iter5: Iterable[Any],
-        __iter6: Iterable[Any],
-        *iterables: Iterable[Any],
-    ) -> zip[Tuple[Any, ...]]: ...
+    if sys.version_info >= (3, 10):
+        @overload
+        def __new__(cls, __iter1: Iterable[_T1], *, strict: bool = ...) -> zip[Tuple[_T1]]: ...
+        @overload
+        def __new__(cls, __iter1: Iterable[_T1], __iter2: Iterable[_T2], *, strict: bool = ...) -> zip[Tuple[_T1, _T2]]: ...
+        @overload
+        def __new__(
+            cls, __iter1: Iterable[_T1], __iter2: Iterable[_T2], __iter3: Iterable[_T3], *, strict: bool = ...
+        ) -> zip[Tuple[_T1, _T2, _T3]]: ...
+        @overload
+        def __new__(
+            cls,
+            __iter1: Iterable[_T1],
+            __iter2: Iterable[_T2],
+            __iter3: Iterable[_T3],
+            __iter4: Iterable[_T4],
+            *,
+            strict: bool = ...,
+        ) -> zip[Tuple[_T1, _T2, _T3, _T4]]: ...
+        @overload
+        def __new__(
+            cls,
+            __iter1: Iterable[_T1],
+            __iter2: Iterable[_T2],
+            __iter3: Iterable[_T3],
+            __iter4: Iterable[_T4],
+            __iter5: Iterable[_T5],
+            *,
+            strict: bool = ...,
+        ) -> zip[Tuple[_T1, _T2, _T3, _T4, _T5]]: ...
+        @overload
+        def __new__(
+            cls,
+            __iter1: Iterable[Any],
+            __iter2: Iterable[Any],
+            __iter3: Iterable[Any],
+            __iter4: Iterable[Any],
+            __iter5: Iterable[Any],
+            __iter6: Iterable[Any],
+            *iterables: Iterable[Any],
+            strict: bool = ...,
+        ) -> zip[Tuple[Any, ...]]: ...
+    else:
+        @overload
+        def __new__(cls, __iter1: Iterable[_T1]) -> zip[Tuple[_T1]]: ...
+        @overload
+        def __new__(cls, __iter1: Iterable[_T1], __iter2: Iterable[_T2]) -> zip[Tuple[_T1, _T2]]: ...
+        @overload
+        def __new__(cls, __iter1: Iterable[_T1], __iter2: Iterable[_T2], __iter3: Iterable[_T3]) -> zip[Tuple[_T1, _T2, _T3]]: ...
+        @overload
+        def __new__(
+            cls, __iter1: Iterable[_T1], __iter2: Iterable[_T2], __iter3: Iterable[_T3], __iter4: Iterable[_T4]
+        ) -> zip[Tuple[_T1, _T2, _T3, _T4]]: ...
+        @overload
+        def __new__(
+            cls,
+            __iter1: Iterable[_T1],
+            __iter2: Iterable[_T2],
+            __iter3: Iterable[_T3],
+            __iter4: Iterable[_T4],
+            __iter5: Iterable[_T5],
+        ) -> zip[Tuple[_T1, _T2, _T3, _T4, _T5]]: ...
+        @overload
+        def __new__(
+            cls,
+            __iter1: Iterable[Any],
+            __iter2: Iterable[Any],
+            __iter3: Iterable[Any],
+            __iter4: Iterable[Any],
+            __iter5: Iterable[Any],
+            __iter6: Iterable[Any],
+            *iterables: Iterable[Any],
+        ) -> zip[Tuple[Any, ...]]: ...
     def __iter__(self) -> Iterator[_T_co]: ...
     def __next__(self) -> _T_co: ...
 

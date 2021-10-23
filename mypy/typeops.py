@@ -17,7 +17,7 @@ from mypy.types import (
     copy_type, TypeAliasType, TypeQuery, ParamSpecType
 )
 from mypy.nodes import (
-    FuncBase, FuncItem, OverloadedFuncDef, TypeInfo, ARG_STAR, ARG_STAR2, ARG_POS,
+    FuncBase, FuncItem, FuncDef, OverloadedFuncDef, TypeInfo, ARG_STAR, ARG_STAR2, ARG_POS,
     Expression, StrExpr, Var, Decorator, SYMBOL_FUNCBASE_TYPES
 )
 from mypy.maptype import map_instance_to_supertype
@@ -511,7 +511,7 @@ def true_or_false(t: Type) -> ProperType:
 
 
 def erase_def_to_union_or_bound(tdef: TypeVarLikeType) -> Type:
-    # TODO(shantanu): fix for ParamSpecType
+    # TODO(PEP612): fix for ParamSpecType
     if isinstance(tdef, ParamSpecType):
         return AnyType(TypeOfAny.from_error)
     assert isinstance(tdef, TypeVarType)
@@ -572,6 +572,8 @@ def callable_type(fdef: FuncItem, fallback: Instance,
         line=fdef.line,
         column=fdef.column,
         implicit=True,
+        # We need this for better error messages, like missing `self` note:
+        definition=fdef if isinstance(fdef, FuncDef) else None,
     )
 
 

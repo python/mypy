@@ -11,9 +11,10 @@ class type:
     def __init__(self, x) -> None: pass
 
 class tuple(Generic[T]): pass
-
 class dict(Mapping[KT, VT]): pass
 
+class classmethod: pass
+class staticmethod: pass
 class function: pass
 
 def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass

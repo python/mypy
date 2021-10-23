@@ -933,7 +933,7 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
         #
         # 'tree headings' is same as ['tree', 'headings'], and I wouldn't be
         # surprised if someone was using it.
-        show: Literal["tree", "headings", "tree headings"] | tkinter._TkinterSequence[str] = ...,
+        show: Literal["tree", "headings", "tree headings", ""] | tkinter._TkinterSequence[str] = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
         xscrollcommand: tkinter._XYScrollCommand = ...,
@@ -950,7 +950,7 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
         height: int = ...,
         padding: tkinter._Padding = ...,
         selectmode: Literal["extended", "browse", "none"] = ...,
-        show: Literal["tree", "headings", "tree headings"] | tkinter._TkinterSequence[str] = ...,
+        show: Literal["tree", "headings", "tree headings", ""] | tkinter._TkinterSequence[str] = ...,
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
         xscrollcommand: tkinter._XYScrollCommand = ...,

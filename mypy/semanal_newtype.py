@@ -84,7 +84,7 @@ class NewTypeAnalyzer:
                 self.fail(message.format(format_type(old_type)), s, code=codes.VALID_NEWTYPE)
             # Otherwise the error was already reported.
             old_type = AnyType(TypeOfAny.from_error)
-            object_type = self.api.named_type('__builtins__.object')
+            object_type = self.api.named_type('builtins.object')
             newtype_class_info = self.build_newtype_typeinfo(name, old_type, object_type, s.line)
             newtype_class_info.fallback_to_any = True
 
@@ -194,7 +194,7 @@ class NewTypeAnalyzer:
             arg_kinds=[arg.kind for arg in args],
             arg_names=['self', 'item'],
             ret_type=NoneType(),
-            fallback=self.api.named_type('__builtins__.function'),
+            fallback=self.api.named_type('builtins.function'),
             name=name)
         init_func = FuncDef('__init__', args, Block([]), typ=signature)
         init_func.info = info
