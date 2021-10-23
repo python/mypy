@@ -21,6 +21,7 @@ import stat
 import sys
 import time
 import types
+from pathlib import Path
 
 from typing import (AbstractSet, Any, Dict, Iterable, Iterator, List, Sequence,
                     Mapping, NamedTuple, Optional, Set, Tuple, TypeVar, Union, Callable, TextIO)
@@ -61,8 +62,7 @@ from mypy.renaming import VariableRenameVisitor, LimitedVariableRenameVisitor
 from mypy.config_parser import parse_mypy_comments
 from mypy.freetree import free_tree
 from mypy.stubinfo import legacy_bundled_packages, is_legacy_bundled_package
-from mypy import errorcodes as codes
-
+from mypy import errorcodes as codes, defaults
 
 # Switch to True to produce debug output related to fine-grained incremental
 # mode only that is useful during development. This produces only a subset of
@@ -3202,7 +3202,16 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         for id in stale:
             graph[id].transitive_error = True
     for id in stale:
+        if not manager.options.write_baseline and manager.options.baseline_file:
+            res = manager.errors.load_baseline(Path(manager.options.baseline_file))
+            if not res and manager.options.baseline_file != defaults.BASELINE_FILE:
+                print("Baseline file not found")
+                raise Exception("Baseline file not found")
+        if manager.errors.baseline:
+            manager.errors.filter_baseline()
         manager.flush_errors(manager.errors.file_messages(graph[id].xpath), False)
+        if manager.options.write_baseline and manager.options.baseline_file:
+            manager.errors.save_baseline(Path(manager.options.baseline_file))
         graph[id].write_cache()
         graph[id].mark_as_rechecked()
 

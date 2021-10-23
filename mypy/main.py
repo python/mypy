@@ -126,6 +126,12 @@ def main(script_path: Optional[str],
             stdout.write(formatter.format_success(len(sources), options.color_output) + '\n')
         stdout.flush()
 
+    if options.write_baseline:
+        stdout.write(
+            formatter.style("Baseline successfully written to {}\n".format(options.baseline_file),
+                            "green", bold=True))
+        code = 0
+
     if options.install_types and not options.non_interactive:
         result = install_types(formatter, options, after_run=True, non_interactive=False)
         if result:
@@ -500,6 +506,13 @@ def process_options(args: List[str],
         help="Show program's version number and exit",
         stdout=stdout)
 
+    general_group.add_argument(
+        '--write-baseline', action="store_true",
+        help="Create an error baseline from the result of this execution")
+    general_group.add_argument(
+        '--baseline-file', action='store',
+        help="Use baseline info in the given file"
+             "(defaults to '{}')".format(defaults.BASELINE_FILE))
     config_group = parser.add_argument_group(
         title='Config file',
         description="Use a config file instead of command line arguments. "
@@ -661,7 +674,7 @@ def process_options(args: List[str],
                         help="Suppress toplevel errors caused by missing annotations",
                         group=strictness_group)
 
-    add_invertible_flag('--disallow-redefinition', default=True, dest="allow-redefinition",
+    add_invertible_flag('--disallow-redefinition', default=True, dest="allow_redefinition",
                         help="Disallow unconditional variable redefinition with a new type",
                         group=strictness_group)
 
@@ -669,7 +682,7 @@ def process_options(args: List[str],
                         help="Export all imports, not just aliased ones",
                         group=strictness_group)
 
-    add_invertible_flag('--no-strict-equality', default=True, dest="strict-equality",
+    add_invertible_flag('--no-strict-equality', default=True, dest="strict_equality",
                         help="Allow equality, identity, and container checks for"
                              " non-overlapping types",
                         group=strictness_group)
@@ -701,7 +714,7 @@ def process_options(args: List[str],
     add_invertible_flag('--show-column-numbers', default=False,
                         help="Show column numbers in error messages",
                         group=error_group)
-    add_invertible_flag('--no-show-error-codes', default=True, dest="show-error-codes",
+    add_invertible_flag('--no-show-error-codes', default=True, dest="show_error_codes",
                         help="Don't show error codes in error messages",
                         group=error_group)
     add_invertible_flag('--pretty', default=False,
