@@ -1,11 +1,15 @@
+import json
 import os.path
+import re
 import sys
 import traceback
+from pathlib import Path
+
 from mypy.backports import OrderedDict
 from collections import defaultdict
 
 from typing import Tuple, List, TypeVar, Set, Dict, Optional, TextIO, Callable
-from typing_extensions import Final
+from typing_extensions import Final, TypedDict
 
 from mypy.scope import Scope
 from mypy.options import Options
@@ -122,6 +126,32 @@ ErrorTuple = Tuple[Optional[str],
                    Optional[ErrorCode]]
 
 
+def filter_prefix(error_map: Dict[str, List[ErrorInfo]]) -> Dict[str, List[ErrorInfo]]:
+    """Convert absolute paths to relative paths in an error_map"""
+    result = {
+        Path(file).resolve().relative_to(Path.cwd()).as_posix(): errors
+        for file, errors in error_map.items()
+    }
+    for errors in result.values():
+        for error in errors:
+            error.origin = remove_path_prefix(
+                error.origin[0], os.getcwd()).replace(os.sep, "/"), *error.origin[1:]
+            error.file = remove_path_prefix(error.file, os.getcwd()).replace(os.sep, "/")
+            error.import_ctx = [
+                (
+                    remove_path_prefix(import_ctx[0], os.getcwd()).replace(os.sep, "/"),
+                    import_ctx[1],
+                ) for import_ctx in error.import_ctx
+            ]
+    return result
+
+
+class BaselineError(TypedDict):
+    line: int
+    code: str
+    message: str
+
+
 class Errors:
     """Container for compile errors.
 
@@ -177,6 +207,11 @@ class Errors:
     # Have we seen an import-related error so far? If yes, we filter out other messages
     # in some cases to avoid reporting huge numbers of errors.
     seen_import_error = False
+
+    # Error baseline
+    baseline: Dict[str, List[BaselineError]] = {}
+    # All detected errors before baseline filter
+    all_errors: Dict[str, List[ErrorInfo]] = {}
 
     def __init__(self,
                  show_error_context: bool = False,
@@ -806,6 +841,61 @@ class Errors:
                 res.append(errors[i])
             i += 1
         return res
+
+    def save_baseline(self, file: Path) -> None:
+        """Create/update a file that stores all errors"""
+        if not file.parent.exists():
+            file.parent.mkdir()
+        json.dump(
+            {
+                file: [
+                    {
+                        "line": error.line,
+                        "code": error.code.code,
+                        "message": error.message
+                    } for error in errors
+                ]
+                for file, errors in filter_prefix(self.error_info_map).items()
+            },
+            file.open("w"),
+            indent=2,
+        )
+
+    def load_baseline(self, file: Path) -> bool:
+        """Load baseline errors from baseline file"""
+
+        if not file.exists():
+            return False
+        self.baseline = json.load(file.open("r"))
+        return True
+
+    def filter_baseline(self) -> None:
+        """Remove baseline errors from the error_info_map"""
+
+        self.all_errors = self.error_info_map.copy()
+        for file, errors in self.error_info_map.items():
+            baseline_errors = self.baseline.get(
+                Path(file).resolve().relative_to(Path.cwd()).as_posix())
+            if not baseline_errors:
+                continue
+            new_errors = []
+            for error in errors:
+                for baseline_error in baseline_errors:
+                    if (
+                        error.line == baseline_error["line"] and
+                            (error.code and error.code.code) == baseline_error["code"]
+                            or clean_baseline_message(error.message) ==
+                            clean_baseline_message(baseline_error["message"]) and
+                            abs(error.line - baseline_error["line"]) < 50
+                    ):
+                        break
+                else:
+                    new_errors.append(error)
+            self.error_info_map[file] = new_errors
+
+
+def clean_baseline_message(message: str) -> str:
+    return re.sub(r"line \d+", "", message)
 
 
 class CompileError(Exception):
