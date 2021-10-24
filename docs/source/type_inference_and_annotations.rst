@@ -224,7 +224,7 @@ You might want to disable type checking on specific lines, or within specific
 files in your codebase. To do that, you can use a ``# type: ignore`` comment.
 
 For example, say that the web framework that you use now takes an integer
-argument to ``run()``, which starts it on localhost on that port. Liks so:
+argument to ``run()``, which starts it on localhost on that port. Like so:
 
 .. code-block:: python
 
