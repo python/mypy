@@ -302,6 +302,9 @@ class Options:
         # -1 means unlimited.
         self.many_errors_threshold = defaults.MANY_ERRORS_THRESHOLD
 
+        # Sets output format
+        self.output = ""
+
     # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property
     def new_semantic_analyzer(self) -> bool:
