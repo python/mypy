@@ -631,3 +631,16 @@ def g(s: S) -> Callable[[S], None]: ...
 def f(x: S) -> None:
     h = g(x)
     h(x)
+
+[case testTypeVarWithValuesAndSuper]
+from typing import Generic, TypeVar
+
+AnyStr = TypeVar('AnyStr', bytes, str)
+
+class Foo(Generic[AnyStr]):
+    def method1(self, s: AnyStr) -> None:
+        pass
+
+class Bar(Foo[AnyStr]):
+    def method1(self, s: AnyStr) -> None:
+        super().method1(s)
