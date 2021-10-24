@@ -296,7 +296,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return self._is_subtype(call, right)
             return False
         if isinstance(right, TypeVarType) and right.values:
-            return left in right.values
+            return any(self._is_subtype(left, r_val) for r_val in right.values)
         return False
 
     def visit_type_var(self, left: TypeVarType) -> bool:
