@@ -266,7 +266,7 @@ If your error displays an error code, like so:
    error: "str" has no attribute "trim"  [attr-defined]
 
 
-It is possible to add a specific error-code in your message, like
+It is possible to add a specific error-code in your ignore comment, like
 ``# type: ignore[attr-defined]``, to clarify what's being silenced. You can
 find more information about error codes here: :ref:`silence-error-codes`.
 
