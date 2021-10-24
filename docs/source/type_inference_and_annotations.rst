@@ -232,7 +232,7 @@ argument to ``run()``, which starts it on localhost on that port. Like so:
     app.run(8000)
 
 However, the type stubs that the package uses is not up-to-date, and it still
-expects only `str` types for `run()`. This would give you the following error:
+expects only ``str`` types for ``run()``. This would give you the following error:
 
 .. code-block:: text
 
