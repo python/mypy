@@ -216,3 +216,66 @@ to be annotated with a starred type:
     p, q, *rs = 1, 2  # type: int, int, List[int]
 
 Here, the type of ``rs`` is set to ``List[int]``.
+
+Silencing type errors
+*********************
+
+You might want to disable type checking on specific lines, or within specific
+files in your codebase. To do that, you can use a ``# type: ignore`` comment.
+
+For example, say that the web framework that you use now takes an integer
+argument to ``run()``, which starts it on localhost on that port. Liks so:
+
+.. code-block:: python
+
+    # Starting app on http://localhost:8000
+    app.run(8000)
+
+However, the type stubs that the package uses is not up-to-date, and it still
+expects only `str` types for `run()`. This would give you the following error:
+
+.. code-block:: text
+
+    error: Argument 1 to "run" of "A" has incompatible type "int"; expected "str"
+
+If you cannot directly fix the type stubs yourself, you can temporarily
+disable type checking on that line, by adding a ``# type: ignore``:
+
+.. code-block:: python
+
+    # Starting app on http://localhost:8000
+    app.run(8000)  # type: ignore
+
+This will suppress any mypy errors that would have raised on that specific line.
+
+You should probably add some more information on the ``# type: ignore`` comment,
+to explain why the ignore was added in the first place. This could be a link to
+an issue on the repository responsible for the type stubs, or it could be a
+short explanation of the bug. To do that, use this format:
+
+.. code-block:: python
+
+    # Starting app on http://localhost:8000
+    app.run(8000)  # type: ignore  # `run()` now accepts an `int`, as a port
+
+
+If your error displays an error code, like so:
+
+.. code-block:: text
+
+   error: "str" has no attribute "trim"  [attr-defined]
+
+
+It is possible to add a specific error-code in your message, like
+``# type: ignore[attr-defined]``, to clarify what's being silenced. You can
+find more information about error codes here: :ref:`silence-error-codes`.
+
+Similarly, you can also ignore all mypy checks in a file, by adding a
+``# type: ignore`` on the top of the file:
+
+.. code-block:: python
+
+    # type: ignore
+    # This is a test file, skipping type checking in it.
+    import unittest
+    ...
