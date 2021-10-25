@@ -500,16 +500,21 @@ class FindModuleCache:
         return sources
 
 
-def matches_exclude(subpath: str, exclude: str, fscache: FileSystemCache, verbose: bool) -> bool:
-    if not exclude:
+def matches_exclude(subpath: str,
+                    excludes: List[str],
+                    fscache: FileSystemCache,
+                    verbose: bool) -> bool:
+    if not excludes:
         return False
     subpath_str = os.path.relpath(subpath).replace(os.sep, "/")
     if fscache.isdir(subpath):
         subpath_str += "/"
-    if re.search(exclude, subpath_str):
-        if verbose:
-            print("TRACE: Excluding {}".format(subpath_str), file=sys.stderr)
-        return True
+    for exclude in excludes:
+        if re.search(exclude, subpath_str):
+            if verbose:
+                print("TRACE: Excluding {} (matches pattern {})".format(subpath_str, exclude),
+                      file=sys.stderr)
+            return True
     return False
 
 
