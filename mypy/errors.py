@@ -6,6 +6,7 @@ from collections import defaultdict
 
 from typing import Tuple, List, TypeVar, Set, Dict, Optional, TextIO, Callable
 from typing_extensions import Final
+from mypy.error_formatter import ErrorFormatter
 
 from mypy.scope import Scope
 from mypy.options import Options
@@ -575,19 +576,27 @@ class Errors:
                     a.append(' ' * (DEFAULT_SOURCE_OFFSET + column) + '^')
         return a
 
-    def file_messages(self, path: str) -> List[str]:
+    def file_messages(self, path: str, formatter: ErrorFormatter = None) -> List[str]:
         """Return a string list of new error messages from a given file.
 
         Use a form suitable for displaying to the user.
         """
         if path not in self.error_info_map:
             return []
+        
+        error_info = self.error_info_map[path]
+        if formatter is not None:
+            error_info = [info for info in error_info if not info.hidden]
+            errors = self.render_messages(self.sort_messages(error_info))
+            errors = self.remove_duplicates(errors)
+            return [formatter.report_error(err) for err in errors]
+
         self.flushed_files.add(path)
         source_lines = None
         if self.pretty:
             assert self.read_source
             source_lines = self.read_source(path)
-        return self.format_messages(self.error_info_map[path], source_lines)
+        return self.format_messages(error_info, source_lines)
 
     def new_messages(self) -> List[str]:
         """Return a string list of new error messages.

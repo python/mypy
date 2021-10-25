@@ -33,6 +33,7 @@ import mypy.semanal_main
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, ErrorInfo, report_internal_error
+from mypy.error_formatter import ErrorFormatter, JSONFormatter
 from mypy.util import (
     DecodeError, decode_python_encoding, is_sub_path, get_mypy_comments, module_prefix,
     read_py_file, hash_digest, is_typeshed_file, is_stub_package_file, get_top_two_prefixes
@@ -243,6 +244,7 @@ def _build(sources: List[BuildSource],
                            plugin=plugin,
                            plugins_snapshot=snapshot,
                            errors=errors,
+                           error_formatter=JSONFormatter() if options.output == 'json' else None,
                            flush_errors=flush_errors,
                            fscache=fscache,
                            stdout=stdout,
@@ -577,6 +579,7 @@ class BuildManager:
                  plugin: Plugin,
                  plugins_snapshot: Dict[str, str],
                  errors: Errors,
+                 error_formatter: 'Optional[ErrorFormatter]',
                  flush_errors: Callable[[List[str], bool], None],
                  fscache: FileSystemCache,
                  stdout: TextIO,
@@ -589,6 +592,7 @@ class BuildManager:
         self.data_dir = data_dir
         self.errors = errors
         self.errors.set_ignore_prefix(ignore_prefix)
+        self.error_formatter = error_formatter
         self.search_paths = search_paths
         self.source_set = source_set
         self.reports = reports
@@ -3154,7 +3158,9 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         for id in stale:
             graph[id].transitive_error = True
     for id in stale:
-        manager.flush_errors(manager.errors.file_messages(graph[id].xpath), False)
+        errors = manager.errors.file_messages(
+            graph[id].xpath, formatter=manager.error_formatter)
+        manager.flush_errors(errors, False)
         graph[id].write_cache()
         graph[id].mark_as_rechecked()
 
