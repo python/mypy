@@ -55,6 +55,7 @@ from typing import (
 )
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
+from mypy.lookup import lookup_fully_qualified
 from mypy.nodes import (
     MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
     ClassDef, Var, GDEF, FuncItem, Import, Expression, Lvalue,
@@ -4390,18 +4391,12 @@ class SemanticAnalyzer(NodeVisitor[None],
 
         Note that this can't be used for names nested in class namespaces.
         """
-        # TODO: unify/clean-up/simplify lookup methods, see #4157.
-        # TODO: support nested classes (but consider performance impact,
-        #       we might keep the module level only lookup for thing like 'builtins.int').
-        assert '.' in fullname
-        module, name = fullname.rsplit('.', maxsplit=1)
-        if module not in self.modules:
-            return None
-        filenode = self.modules[module]
-        result = filenode.names.get(name)
-        if result is None and self.is_incomplete_namespace(module):
-            # TODO: More explicit handling of incomplete refs?
-            self.record_incomplete_ref()
+        result = lookup_fully_qualified(fullname, self.modules)
+        if result is None:
+            module, _ = fullname.rsplit('.', maxsplit=1)
+            if self.is_incomplete_namespace(module):
+                # TODO: More explicit handling of incomplete refs?
+                self.record_incomplete_ref()
         return result
 
     def builtin_type(self, fully_qualified_name: str) -> Instance:
