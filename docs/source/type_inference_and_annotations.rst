@@ -224,7 +224,7 @@ You might want to disable type checking on specific lines, or within specific
 files in your codebase. To do that, you can use a ``# type: ignore`` comment.
 
 For example, say that the web framework that you use now takes an integer
-argument to ``run()``, which starts it on localhost on that port. Liks so:
+argument to ``run()``, which starts it on localhost on that port. Like so:
 
 .. code-block:: python
 
@@ -232,7 +232,7 @@ argument to ``run()``, which starts it on localhost on that port. Liks so:
     app.run(8000)
 
 However, the type stubs that the package uses is not up-to-date, and it still
-expects only `str` types for `run()`. This would give you the following error:
+expects only ``str`` types for ``run()``. This would give you the following error:
 
 .. code-block:: text
 
@@ -266,7 +266,7 @@ If your error displays an error code, like so:
    error: "str" has no attribute "trim"  [attr-defined]
 
 
-It is possible to add a specific error-code in your message, like
+It is possible to add a specific error-code in your ignore comment, like
 ``# type: ignore[attr-defined]``, to clarify what's being silenced. You can
 find more information about error codes here: :ref:`silence-error-codes`.
 
