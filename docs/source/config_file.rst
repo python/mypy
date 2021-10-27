@@ -197,11 +197,18 @@ section of the command line docs.
 
 .. confval:: exclude
 
-    :type: regular expression
+    :type: newline separated list of regular expressions
 
-    A regular expression that matches file names, directory names and paths
+    A newline list of regular expression that matches file names, directory names and paths
     which mypy should ignore while recursively discovering files to check.
     Use forward slashes on all platforms.
+
+    .. code-block:: ini
+
+      [mypy]
+      exclude =
+          ^file1\.py$
+          ^file2\.py$
 
     For more details, see :option:`--exclude <mypy --exclude>`.
 
