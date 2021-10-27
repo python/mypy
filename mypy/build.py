@@ -579,11 +579,11 @@ class BuildManager:
                  plugin: Plugin,
                  plugins_snapshot: Dict[str, str],
                  errors: Errors,
-                 error_formatter: 'Optional[ErrorFormatter]',
                  flush_errors: Callable[[List[str], bool], None],
                  fscache: FileSystemCache,
                  stdout: TextIO,
                  stderr: TextIO,
+                 error_formatter: Optional['ErrorFormatter'] = None,
                  ) -> None:
         self.stats: Dict[str, Any] = {}  # Values are ints or floats
         self.stdout = stdout
