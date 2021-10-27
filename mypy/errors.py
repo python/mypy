@@ -583,7 +583,7 @@ class Errors:
         """
         if path not in self.error_info_map:
             return []
-        
+
         error_info = self.error_info_map[path]
         if formatter is not None:
             error_info = [info for info in error_info if not info.hidden]

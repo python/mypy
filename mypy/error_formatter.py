@@ -12,6 +12,7 @@ class ErrorFormatter(ABC):
     def report_error(self, error: 'ErrorTuple') -> str:
         raise NotImplementedError
 
+
 class JSONFormatter(ErrorFormatter):
     def report_error(self, error: 'ErrorTuple') -> str:
         file, line, column, severity, message, _, errorcode = error
