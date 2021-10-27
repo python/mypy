@@ -576,7 +576,7 @@ class Errors:
                     a.append(' ' * (DEFAULT_SOURCE_OFFSET + column) + '^')
         return a
 
-    def file_messages(self, path: str, formatter: ErrorFormatter = None) -> List[str]:
+    def file_messages(self, path: str, formatter: Optional[ErrorFormatter] = None) -> List[str]:
         """Return a string list of new error messages from a given file.
 
         Use a form suitable for displaying to the user.
