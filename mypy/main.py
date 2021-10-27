@@ -489,7 +489,7 @@ def process_options(args: List[str],
         version='%(prog)s ' + __version__,
         help="Show program's version number and exit",
         stdout=stdout)
-    
+
     general_group.add_argument(
         '-O', '--output', metavar='FORMAT', help="Set a custom output format")
 
