@@ -298,7 +298,14 @@ class PatternChecker(PatternVisitor[PatternType]):
             for typ in new_inner_types:
                 new_inner_type = join_types(new_inner_type, typ)
             new_type = self.construct_sequence_child(current_type, new_inner_type)
-            if not is_subtype(new_type, current_type):
+            if is_subtype(new_type, current_type):
+                new_type, _ = self.chk.conditional_types_with_intersection(
+                    current_type,
+                    [get_type_range(new_type)],
+                    o,
+                    default=current_type
+                )
+            else:
                 new_type = current_type
         return PatternType(new_type, rest_type, captures)
 
@@ -642,6 +649,13 @@ class PatternChecker(PatternVisitor[PatternType]):
         For example:
         construct_sequence_child(List[int], str) = List[str]
         """
+        proper_type = get_proper_type(outer_type)
+        if isinstance(proper_type, UnionType):
+            types = [
+                self.construct_sequence_child(item, inner_type) for item in proper_type.items
+                if self.can_match_sequence(get_proper_type(item))
+            ]
+            return make_simplified_union(types)
         sequence = self.chk.named_generic_type("typing.Sequence", [inner_type])
         if is_subtype(outer_type, self.chk.named_type("typing.Sequence")):
             proper_type = get_proper_type(outer_type)
