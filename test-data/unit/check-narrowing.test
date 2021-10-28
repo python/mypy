@@ -1143,3 +1143,16 @@ else:
     reveal_type(abc) # N: Revealed type is "TypedDict('__main__.B', {'tag': Literal['B'], 'b': builtins.int})"
 
 [builtins fixtures/primitives.pyi]
+
+[case testWarnUnsafeNarrow]
+# flags: --python-version 3.7
+from typing import Sequence
+
+def do_with_items(items: Sequence[int]) -> None:
+    assert isinstance(items, list)
+    items += [4, 5, 6] # N: Narrowing from a known immutable to a known mutable type is unsafe
+
+do_with_items([1, 2, 3])
+
+[builtins fixtures/list-narrowing.pyi]
+[typing fixtures/typing-full.pyi]

@@ -1126,6 +1126,13 @@ class MessageBuilder:
         self.note('{} operand is of type {}'.format(side, format_type(original)), context,
                   code=codes.OPERATOR)
 
+    def warn_unsafe_narrowing(self, context: Context) -> None:
+        self.note(
+            "Narrowing from a known immutable to a known mutable type is unsafe",
+            context,
+            code=codes.MISC,
+        )
+
     def operator_method_signatures_overlap(
             self, reverse_class: TypeInfo, reverse_method: str, forward_class: Type,
             forward_method: str, context: Context) -> None:

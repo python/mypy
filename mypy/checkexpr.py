@@ -4172,6 +4172,29 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Return instance type 'bool'."""
         return self.named_type('builtins.bool')
 
+    def check_unsafe_narrowing(self, expr: Expression,  known_type: Type, narrowed_type: Type) -> None:
+        known_mutable = (
+            "builtins.list",
+            "builtins.set",
+            "builtins.dict",
+        )
+        known_immutable = (
+            "typing.Sequence",
+            "typing.Container",
+            "typing.AbstractSet",
+            "collections.abc.Container",
+            "collections.abc.Sequence",
+            "collections.abc.Set",
+            "builtins.tuple",
+        )
+        if (
+            isinstance(known_type, Instance)
+            and isinstance(narrowed_type, Instance)
+            and narrowed_type.type.fullname in known_mutable
+            and known_type.type.fullname in known_immutable
+        ):
+            self.msg.warn_unsafe_narrowing(expr)
+
     @overload
     def narrow_type_from_binder(self, expr: Expression, known_type: Type) -> Type: ...
 
@@ -4198,7 +4221,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         not is_overlapping_types(known_type, restriction,
                                                  prohibit_none_typevar_overlap=True)):
                     return None
-                return narrow_declared_type(known_type, restriction)
+                narrowed_type = narrow_declared_type(known_type, restriction)
+                self.check_unsafe_narrowing(expr, known_type, narrowed_type)
+                return narrowed_type
         return known_type
 
 
