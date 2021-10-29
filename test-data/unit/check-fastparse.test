@@ -321,8 +321,12 @@ x @= 1
 
 from typing import Dict
 x = None # type: Dict[x: y]
+
+[builtins fixtures/dict.pyi]
 [out]
-main:3: error: syntax error in type comment
+main:3: error: "dict" expects 2 type arguments, but 1 given
+main:3: error: Invalid type comment or annotation
+main:3: note: did you mean to use ',' instead of ':' ?
 
 [case testPrintStatementTrailingCommaFastParser_python2]
 

@@ -1,4 +1,5 @@
 from mypy.util import unnamed_function
+import copy
 import re
 import sys
 import warnings
@@ -1551,22 +1552,38 @@ class TypeConverter:
         contents = bytes_to_human_readable_repr(n.s)
         return RawExpressionType(contents, 'builtins.bytes', self.line, column=n.col_offset)
 
+    def visit_Index(self, n: ast3.Index) -> Type:
+        # cast for mypyc's benefit on Python 3.9
+        return self.visit(cast(Any, n).value)
+
+    def visit_Slice(self, n: ast3.Slice) -> Type:
+        return self.invalid_type(
+            n, note="did you mean to use ',' instead of ':' ?"
+        )
+
     # Subscript(expr value, slice slice, expr_context ctx)  # Python 3.8 and before
     # Subscript(expr value, expr slice, expr_context ctx)  # Python 3.9 and later
     def visit_Subscript(self, n: ast3.Subscript) -> Type:
         if sys.version_info >= (3, 9):  # Really 3.9a5 or later
             sliceval: Any = n.slice
-            if (isinstance(sliceval, ast3.Slice) or
-                (isinstance(sliceval, ast3.Tuple) and
-                 any(isinstance(x, ast3.Slice) for x in sliceval.elts))):
-                self.fail(TYPE_COMMENT_SYNTAX_ERROR, self.line, getattr(n, 'col_offset', -1))
-                return AnyType(TypeOfAny.from_error)
+        # Python 3.8 or earlier use a different AST structure for subscripts
+        elif isinstance(n.slice, ast3.Index):
+            sliceval: Any = n.slice.value
+        elif isinstance(n.slice, ast3.Slice):
+            sliceval = copy.deepcopy(n.slice)  # so we don't mutate passed AST
+            if getattr(sliceval, "col_offset", None) is None:
+                # Fix column information so that we get Python 3.9+ message order
+                sliceval.col_offset = sliceval.lower.col_offset
         else:
-            # Python 3.8 or earlier use a different AST structure for subscripts
-            if not isinstance(n.slice, Index):
-                self.fail(TYPE_COMMENT_SYNTAX_ERROR, self.line, getattr(n, 'col_offset', -1))
-                return AnyType(TypeOfAny.from_error)
-            sliceval = n.slice.value
+            assert isinstance(n.slice, ast3.ExtSlice)
+            dims = copy.deepcopy(n.slice.dims)
+            for s in dims:
+                if getattr(s, "col_offset", None) is None:
+                    if isinstance(s, ast3.Index):
+                        s.col_offset = s.value.col_offset  # type: ignore
+                    elif isinstance(s, ast3.Slice):
+                        s.col_offset = s.lower.col_offset  # type: ignore
+            sliceval = ast3.Tuple(dims, n.ctx)
 
         empty_tuple_index = False
         if isinstance(sliceval, ast3.Tuple):
