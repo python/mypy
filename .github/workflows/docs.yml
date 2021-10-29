@@ -2,7 +2,7 @@ name: Check documentation build
 
 on:
   push:
-    branches: [master]
+    branches: [master, 'release*']
     tags: ['*']
   pull_request:
     paths:
