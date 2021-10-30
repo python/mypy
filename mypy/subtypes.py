@@ -310,6 +310,13 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_callable_type(self, left: CallableType) -> bool:
         right = self.right
         if isinstance(right, CallableType):
+            if left.type_guard is not None and right.type_guard is not None:
+                if not self._is_subtype(left.type_guard, right.type_guard):
+                    return False
+            elif right.type_guard is not None and left.type_guard is None:
+                # This means that one function has `TypeGuard` and other does not.
+                # They are not compatible. See https://github.com/python/mypy/issues/11307
+                return False
             return is_callable_compatible(
                 left, right,
                 is_compat=self._is_subtype,

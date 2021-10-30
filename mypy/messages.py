@@ -1753,7 +1753,10 @@ def format_type_inner(typ: Type,
             # return type (this always works).
             return format(TypeType.make_normalized(erase_type(func.items[0].ret_type)))
         elif isinstance(func, CallableType):
-            return_type = format(func.ret_type)
+            if func.type_guard is not None:
+                return_type = f'TypeGuard[{format(func.type_guard)}]'
+            else:
+                return_type = format(func.ret_type)
             if func.is_ellipsis_args:
                 return 'Callable[..., {}]'.format(return_type)
             arg_strings = []
