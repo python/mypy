@@ -1143,3 +1143,32 @@ else:
     reveal_type(abc) # N: Revealed type is "TypedDict('__main__.B', {'tag': Literal['B'], 'b': builtins.int})"
 
 [builtins fixtures/primitives.pyi]
+
+
+[case testNarrowingRuntimeCover]
+from typing import Dict, List, Union
+
+def unreachable(x: Union[str, List[str]]) -> None:
+    if isinstance(x, str):
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    elif isinstance(x, list):
+        reveal_type(x)  # N: Revealed type is "builtins.list[builtins.str]"
+    else:
+        reveal_type(x)  # N: Revealed type is "<nothing>"
+
+def all_parts_covered(x: Union[str, List[str], List[int], int]) -> None:
+    if isinstance(x, str):
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    elif isinstance(x, list):
+        reveal_type(x)  # N: Revealed type is "Union[builtins.list[builtins.str], builtins.list[builtins.int]]"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+
+def two_type_vars(x: Union[str, Dict[str, int], Dict[bool, object], int]) -> None:
+    if isinstance(x, str):
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    elif isinstance(x, dict):
+        reveal_type(x)  # N: Revealed type is "Union[builtins.dict[builtins.str, builtins.int], builtins.dict[builtins.bool, builtins.object]]"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/dict.pyi]
