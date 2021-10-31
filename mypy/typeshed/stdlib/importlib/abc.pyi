@@ -12,7 +12,7 @@ from _typeshed import (
 from abc import ABCMeta, abstractmethod
 from importlib.machinery import ModuleSpec
 from io import BufferedRandom, BufferedReader, BufferedWriter, FileIO, TextIOWrapper
-from typing import IO, Any, BinaryIO, Iterator, Mapping, Protocol, Sequence, Tuple, Union, overload
+from typing import IO, Any, BinaryIO, Iterator, Mapping, Protocol, Sequence, Union, overload
 from typing_extensions import Literal, runtime_checkable
 
 _Path = Union[bytes, str]
@@ -55,7 +55,7 @@ class MetaPathFinder(Finder):
 
 class PathEntryFinder(Finder):
     def find_module(self, fullname: str) -> Loader | None: ...
-    def find_loader(self, fullname: str) -> Tuple[Loader | None, Sequence[_Path]]: ...
+    def find_loader(self, fullname: str) -> tuple[Loader | None, Sequence[_Path]]: ...
     def invalidate_caches(self) -> None: ...
     # Not defined on the actual class, but expected to exist.
     def find_spec(self, fullname: str, target: types.ModuleType | None = ...) -> ModuleSpec | None: ...

@@ -1,7 +1,7 @@
 import sys
 from _typeshed import StrOrBytesPath
 from os import PathLike
-from typing import Any, AnyStr, Callable, Generic, Iterable, Sequence, Tuple
+from typing import Any, AnyStr, Callable, Generic, Iterable, Sequence
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -11,7 +11,7 @@ DEFAULT_IGNORES: list[str]
 def cmp(f1: StrOrBytesPath, f2: StrOrBytesPath, shallow: int | bool = ...) -> bool: ...
 def cmpfiles(
     a: AnyStr | PathLike[AnyStr], b: AnyStr | PathLike[AnyStr], common: Iterable[AnyStr], shallow: int | bool = ...
-) -> Tuple[list[AnyStr], list[AnyStr], list[AnyStr]]: ...
+) -> tuple[list[AnyStr], list[AnyStr], list[AnyStr]]: ...
 
 class dircmp(Generic[AnyStr]):
     def __init__(
