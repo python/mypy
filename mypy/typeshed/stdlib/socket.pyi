@@ -341,6 +341,7 @@ if sys.platform == "linux" and sys.version_info >= (3, 8):
 if sys.platform == "linux" and sys.version_info >= (3, 9):
     from _socket import (
         CAN_J1939 as CAN_J1939,
+        CAN_RAW_JOIN_FILTERS as CAN_RAW_JOIN_FILTERS,
         J1939_EE_INFO_NONE as J1939_EE_INFO_NONE,
         J1939_EE_INFO_TX_ABORT as J1939_EE_INFO_TX_ABORT,
         J1939_FILTER_MAX as J1939_FILTER_MAX,

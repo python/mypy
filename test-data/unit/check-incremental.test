@@ -2886,7 +2886,7 @@ tmp/m/a.py:1: error: Unsupported operand types for + ("int" and "str")
 
 [case testDisallowAnyExprIncremental]
 # cmd: mypy -m main
-# flags:  --disallow-any-expr
+# flags: --disallow-any-expr
 
 [file ns.py]
 class Namespace:

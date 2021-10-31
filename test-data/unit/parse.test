@@ -949,6 +949,21 @@ main:1: error: invalid syntax
 [out version>=3.10]
 main:1: error: invalid syntax. Perhaps you forgot a comma?
 
+[case testSliceInList39]
+# flags: --python-version 3.9
+x = [1, 2][1:2]
+[out]
+MypyFile:1(
+  AssignmentStmt:2(
+    NameExpr(x)
+    IndexExpr:2(
+      ListExpr:2(
+        IntExpr(1)
+        IntExpr(2))
+      SliceExpr:2(
+        IntExpr(1)
+        IntExpr(2)))))
+
 [case testDictionaryExpression]
 {}
 {1:x}

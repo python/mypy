@@ -179,7 +179,7 @@ if sys.platform != "win32" and sys.version_info >= (3, 8):
         setsid: bool = ...,
         setsigmask: Iterable[int] = ...,
         setsigdef: Iterable[int] = ...,
-        scheduler: Tuple[Any, sched_param] | None = ...,
+        scheduler: tuple[Any, sched_param] | None = ...,
     ) -> int: ...
     def posix_spawnp(
         path: StrOrBytesPath,
@@ -192,7 +192,7 @@ if sys.platform != "win32" and sys.version_info >= (3, 8):
         setsid: bool = ...,
         setsigmask: Iterable[int] = ...,
         setsigdef: Iterable[int] = ...,
-        scheduler: Tuple[Any, sched_param] | None = ...,
+        scheduler: tuple[Any, sched_param] | None = ...,
     ) -> int: ...
 
 if sys.platform == "win32":

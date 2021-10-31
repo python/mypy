@@ -193,9 +193,9 @@ def f(p1: bytes, p2: float, /) -> None:
     reveal_type(p2)  # N: Revealed type is "builtins.float"
 
 [case testPEP570Unannotated]
-def f(arg, /): ...
+def f(arg, /): ...  # N: "f" defined here
 g = lambda arg, /: arg
-def h(arg=0, /): ...
+def h(arg=0, /): ...  # N: "h" defined here
 i = lambda arg=0, /: arg
 
 f(1)

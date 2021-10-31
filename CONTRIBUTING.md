@@ -1,73 +1,88 @@
-Contributing to Mypy
-====================
+# Contributing to Mypy
 
 Welcome!  Mypy is a community project that aims to work for a wide
-range of Python users and Python codebases.  If you're trying Mypy on
+range of Python users and Python codebases.  If you're trying mypy on
 your Python code, your experience and what you can contribute are
 important to the project's success.
 
-
-Getting started, building, and testing
---------------------------------------
-
-If you haven't already, take a look at the project's
-[README.md file](README.md)
-and the [Mypy documentation](https://mypy.readthedocs.io/en/latest/),
-and try adding type annotations to your file and type-checking it with Mypy.
-
-
-Discussion
-----------
-
-If you've run into behavior in Mypy you don't understand, or you're
-having trouble working out a good way to apply it to your code, or
-you've found a bug or would like a feature it doesn't have, we want to
-hear from you!
-
-Our main forum for discussion is the project's [GitHub issue
-tracker](https://github.com/python/mypy/issues).  This is the right
-place to start a discussion of any of the above or most any other
-topic concerning the project.
-
-For less formal discussion we have a chat room on
-[gitter.im](https://gitter.im/python/typing).  Some Mypy core developers
-are almost always present; feel free to find us there and we're happy
-to chat.  Substantive technical discussion will be directed to the
-issue tracker.
-
-(We also have an IRC channel, `#python-mypy` on irc.freenode.net.
-This is lightly used, we have mostly switched to the gitter room
-mentioned above.)
-
-#### Code of Conduct
+## Code of Conduct
 
 Everyone participating in the Mypy community, and in particular in our
-issue tracker, pull requests, and IRC channel, is expected to treat
+issue tracker, pull requests, and chat, is expected to treat
 other people with respect and more generally to follow the guidelines
-articulated in the [Python Community Code of
-Conduct](https://www.python.org/psf/codeofconduct/).
+articulated in the [Python Community Code of Conduct](https://www.python.org/psf/codeofconduct/).
 
-First Time Contributors
------------------------
 
-Mypy appreciates your contribution! If you are interested in helping improve
-mypy, there are several ways to get started:
+## Getting started with development
 
-* Contributing to [typeshed](https://github.com/python/typeshed/issues) is a great way to
-become familiar with Python's type syntax.
-* Work on [documentation issues](https://github.com/python/mypy/labels/documentation).
-* Ask on [the chat](https://gitter.im/python/typing) or on
-[the issue tracker](https://github.com/python/mypy/issues) about good beginner issues.
+### Setup
 
-Submitting Changes
-------------------
+Run the following:
+```
+# Clone the mypy repository
+git clone https://github.com/python/mypy.git
+
+# Enter the repository
+cd mypy
+
+# Create then activate a virtual environment
+python3 -m venv venv
+source venv/bin/actiate
+
+# Install the test requirements and the project
+python3 -m pip install -r test-requirements.txt
+python3 -m pip install -e .
+hash -r
+```
+
+### Running tests
+
+Once setup, you should be able to run tests:
+```
+python3 runtests.py
+```
+
+To use mypy to check mypy's own code, run:
+```
+python3 runtests.py self
+# or equivalently:
+python3 -m mypy --config-file mypy_self_check.ini -p mypy
+```
+
+You can also use `tox` to run tests, for instance:
+```
+tox -e py
+```
+
+## First time contributors
+
+If you're looking for things to help with, browse our [issue tracker](https://github.com/python/mypy/issues)!
+
+In particular, look for:
+- [good first issues](https://github.com/python/mypy/labels/good-first-issue)
+- [good second issues](https://github.com/python/mypy/labels/good-second-issue)
+- [documentation issues](https://github.com/python/mypy/labels/documentation)
+
+It's also extremely easy to get started contributing to our sister project
+[typeshed](https://github.com/python/typeshed/issues) that provides type stubs
+for libraries. This is a great way to become familiar with type syntax.
+
+If you need help getting started, don't hesitate to ask on
+[gitter](https://gitter.im/python/typing).
+
+To get help fixing a specific issue, it's often best to comment on the issue
+itself. The more details you provide about what you've tried and where you've
+looked, the easier it will be for you to get help.
+
+Interactive debuggers like `pdb` and `ipdb` are really useful for getting
+started with the mypy codebase. This is a
+[useful tutorial](https://realpython.com/python-debugging-pdb/).
+
+## Submitting changes
 
 Even more excellent than a good bug report is a fix for a bug, or the
-implementation of a much-needed new feature. (*)  We'd love to have
+implementation of a much-needed new feature. We'd love to have
 your contributions.
-
-(*) If your new feature will be a lot of work, we recommend talking to
-    us early -- see below.
 
 We use the usual GitHub pull-request flow, which may be familiar to
 you if you've contributed to other projects on GitHub.  For the mechanics,
@@ -76,17 +91,8 @@ or [GitHub's own documentation](https://help.github.com/articles/using-pull-requ
 
 Anyone interested in Mypy may review your code.  One of the Mypy core
 developers will merge your pull request when they think it's ready.
-For every pull request, we aim to promptly either merge it or say why
-it's not yet ready; if you go a few days without a reply, please feel
-free to ping the thread by adding a new comment.
 
-For a list of mypy core developers, see the file [CREDITS](CREDITS).
-
-
-Preparing Changes
------------------
-
-Before you begin: if your change will be a significant amount of work
+If your change will be a significant amount of work
 to write, we highly recommend starting by opening an issue laying out
 what you want to do.  That lets a conversation happen early in case
 other contributors disagree with what you'd like to do or have ideas
@@ -113,8 +119,7 @@ You may also find other pages in the
 helpful in developing your change.
 
 
-Core developer guidelines
--------------------------
+## Core developer guidelines
 
 Core developers should follow these rules when processing pull requests:
 
@@ -138,52 +143,3 @@ Core developers should follow these rules when processing pull requests:
   * If the PR fixes an issue, make sure something like "Fixes #xxx." occurs
     in the body of the message (not in the subject).
   * Use Markdown for formatting.
-
-
-Issue-tracker conventions
--------------------------
-
-We aim to reply to all new issues promptly.  We'll assign a milestone
-to help us track which issues we intend to get to when, and may apply
-labels to carry some other information.  Here's what our milestones
-and labels mean.
-
-### Task priority and sizing
-
-We use GitHub "labels" ([see our
-list](https://github.com/python/mypy/labels)) to roughly order what we
-want to do soon and less soon.  There's two dimensions taken into
-account: **priority** (does it matter to our users) and **size** (how
-long will it take to complete).
-
-Bugs that aren't a huge deal but do matter to users and don't seem
-like a lot of work to fix generally will be dealt with sooner; things
-that will take longer may go further out.
-
-We are trying to keep the backlog at a manageable size, an issue that is
-unlikely to be acted upon in foreseeable future is going to be
-respectfully closed.  This doesn't mean the issue is not important, but
-rather reflects the limits of the team.
-
-The **question** label is for issue threads where a user is asking a
-question but it isn't yet clear that it represents something to actually
-change.  We use the issue tracker as the preferred venue for such
-questions, even when they aren't literally issues, to keep down the
-number of distinct discussion venues anyone needs to track.  These might
-evolve into a bug or feature request.
-
-Issues **without a priority or size** haven't been triaged.  We aim to
-triage all new issues promptly, but there are some issues from previous
-years that we haven't yet re-reviewed since adopting these conventions.
-
-### Other labels
-
-* **needs discussion**: This issue needs agreement on some kind of
-  design before it makes sense to implement it, and it either doesn't
-  yet have a design or doesn't yet have agreement on one.
-* **feature**, **bug**, **crash**, **refactoring**, **documentation**:
-  These classify the user-facing impact of the change.  Specifically
-  "refactoring" means there should be no user-facing effect.
-* **topic-** labels group issues touching a similar aspect of the
-  project, for example PEP 484 compatibility, a specific command-line
-  option or dependency.

@@ -7,7 +7,7 @@ import itertools
 from typing import (
     Any, cast, Dict, Set, List, Tuple, Callable, Union, Optional, Sequence, Iterator
 )
-from typing_extensions import ClassVar, Final, overload
+from typing_extensions import ClassVar, Final, overload, TypeAlias as _TypeAlias
 
 from mypy.errors import report_internal_error
 from mypy.typeanal import (
@@ -74,18 +74,21 @@ import mypy.errorcodes as codes
 
 # Type of callback user for checking individual function arguments. See
 # check_args() below for details.
-ArgChecker = Callable[[Type,
-                       Type,
-                       ArgKind,
-                       Type,
-                       int,
-                       int,
-                       CallableType,
-                       Optional[Type],
-                       Context,
-                       Context,
-                       MessageBuilder],
-                      None]
+ArgChecker: _TypeAlias = Callable[[
+        Type,
+        Type,
+        ArgKind,
+        Type,
+        int,
+        int,
+        CallableType,
+        Optional[Type],
+        Context,
+        Context,
+        MessageBuilder,
+    ],
+    None,
+]
 
 # Maximum nesting level for math union in overloads, setting this to large values
 # may cause performance issues. The reason is that although union math algorithm we use
@@ -2384,8 +2387,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def get_operator_method(self, op: str) -> str:
         if op == '/' and self.chk.options.python_version[0] == 2:
-            # TODO also check for "from __future__ import division"
-            return '__div__'
+            return '__truediv__' if 'division' in self.chk.future_import_flags else '__div__'
         else:
             return operators.op_methods[op]
 
@@ -3569,6 +3571,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         callable_ctx = get_proper_type(replace_meta_vars(ctx, ErasedType()))
         assert isinstance(callable_ctx, CallableType)
 
+        if callable_ctx.type_guard is not None:
+            # Lambda's return type cannot be treated as a `TypeGuard`,
+            # because it is implicit. And `TypeGuard`s must be explicit.
+            # See https://github.com/python/mypy/issues/9927
+            return None, None
+
         arg_kinds = [arg.kind for arg in e.arguments]
 
         if callable_ctx.is_ellipsis_args:
@@ -4488,7 +4496,7 @@ def merge_typevars_in_callables_by_name(
             for tv in target.variables:
                 name = tv.fullname
                 if name not in unique_typevars:
-                    # TODO(shantanu): fix for ParamSpecType
+                    # TODO(PEP612): fix for ParamSpecType
                     if isinstance(tv, ParamSpecType):
                         continue
                     assert isinstance(tv, TypeVarType)

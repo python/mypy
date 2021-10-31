@@ -5,12 +5,13 @@ TODO: Use everywhere where we track targets, including in mypy.errors.
 
 from contextlib import contextmanager
 from typing import List, Optional, Iterator, Tuple
+from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.backports import nullcontext
 from mypy.nodes import TypeInfo, FuncBase
 
 
-SavedScope = Tuple[str, Optional[TypeInfo], Optional[FuncBase]]
+SavedScope: _TypeAlias = Tuple[str, Optional[TypeInfo], Optional[FuncBase]]
 
 
 class Scope:

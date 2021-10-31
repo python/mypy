@@ -145,7 +145,7 @@ class DataclassTransformer:
         if (decorator_arguments['eq'] and info.get('__eq__') is None or
                 decorator_arguments['order']):
             # Type variable for self types in generated methods.
-            obj_type = ctx.api.named_type('__builtins__.object')
+            obj_type = ctx.api.named_type('builtins.object')
             self_tvar_expr = TypeVarExpr(SELF_TVAR_NAME, info.fullname + '.' + SELF_TVAR_NAME,
                                          [], obj_type)
             info.names[SELF_TVAR_NAME] = SymbolTableNode(MDEF, self_tvar_expr)
@@ -158,10 +158,10 @@ class DataclassTransformer:
             for method_name in ['__lt__', '__gt__', '__le__', '__ge__']:
                 # Like for __eq__ and __ne__, we want "other" to match
                 # the self type.
-                obj_type = ctx.api.named_type('__builtins__.object')
+                obj_type = ctx.api.named_type('builtins.object')
                 order_tvar_def = TypeVarType(SELF_TVAR_NAME, info.fullname + '.' + SELF_TVAR_NAME,
                                             -1, [], obj_type)
-                order_return_type = ctx.api.named_type('__builtins__.bool')
+                order_return_type = ctx.api.named_type('builtins.bool')
                 order_args = [
                     Argument(Var('other', order_tvar_def), order_tvar_def, None, ARG_POS)
                 ]
@@ -426,8 +426,8 @@ class DataclassTransformer:
         attr_name = '__dataclass_fields__'
         any_type = AnyType(TypeOfAny.explicit)
         field_type = self._ctx.api.named_type_or_none('dataclasses.Field', [any_type]) or any_type
-        attr_type = self._ctx.api.named_type('__builtins__.dict', [
-            self._ctx.api.named_type('__builtins__.str'),
+        attr_type = self._ctx.api.named_type('builtins.dict', [
+            self._ctx.api.named_type('builtins.str'),
             field_type,
         ])
         var = Var(name=attr_name, type=attr_type)

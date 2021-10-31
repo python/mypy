@@ -665,8 +665,8 @@ def g() -> int:
 '%d' % 'no'  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsInt]")  [str-format]
 '%d + %d' % (1, 2, 3)  # E: Not all arguments converted during string formatting  [str-format]
 
-'{}'.format(b'abc')  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'", not 'abc'; use '{!r}'.format(b'abc') if this is desired behavior  [str-bytes-safe]
-'%s' % b'abc'  # E: On Python 3 '%s' % b'abc' produces "b'abc'", not 'abc'; use '%r' % b'abc' if this is desired behavior  [str-bytes-safe]
+'{}'.format(b'abc')  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior  [str-bytes-safe]
+'%s' % b'abc'  # E: On Python 3 formatting "b'abc'" with "%s" produces "b'abc'", not "abc"; use "%r" if this is desired behavior  [str-bytes-safe]
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-medium.pyi]
 
@@ -897,3 +897,39 @@ lst: List[int] = []
 if lst:
     pass
 [builtins fixtures/list.pyi]
+
+[case testSliceInDict39]
+# flags: --python-version 3.9 --show-column-numbers
+from typing import Dict
+b: Dict[int, x:y]
+c: Dict[x:y]
+
+[builtins fixtures/dict.pyi]
+[out]
+main:3:14: error: Invalid type comment or annotation  [valid-type]
+main:3:14: note: did you mean to use ',' instead of ':' ?
+main:4:4: error: "dict" expects 2 type arguments, but 1 given  [type-arg]
+main:4:9: error: Invalid type comment or annotation  [valid-type]
+main:4:9: note: did you mean to use ',' instead of ':' ?
+
+[case testSliceInDict38]
+# flags: --python-version 3.8 --show-column-numbers
+from typing import Dict
+b: Dict[int, x:y]
+c: Dict[x:y]
+
+[builtins fixtures/dict.pyi]
+[out]
+main:3:14: error: Invalid type comment or annotation  [valid-type]
+main:3:14: note: did you mean to use ',' instead of ':' ?
+main:4:4: error: "dict" expects 2 type arguments, but 1 given  [type-arg]
+main:4:9: error: Invalid type comment or annotation  [valid-type]
+main:4:9: note: did you mean to use ',' instead of ':' ?
+
+
+[case testSliceInCustomTensorType]
+# syntactically mimics torchtyping.TensorType
+class TensorType: ...
+t: TensorType["batch":..., float]  # type: ignore
+reveal_type(t)  # N: Revealed type is "__main__.TensorType"
+[builtins fixtures/tuple.pyi]

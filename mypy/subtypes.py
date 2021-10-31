@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 
 from typing import Any, List, Optional, Callable, Tuple, Iterator, Set, Union, cast, TypeVar
-from typing_extensions import Final
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneType,
@@ -30,7 +30,7 @@ IS_SETTABLE: Final = 1
 IS_CLASSVAR: Final = 2
 IS_CLASS_OR_STATIC: Final = 3
 
-TypeParameterChecker = Callable[[Type, Type, int], bool]
+TypeParameterChecker: _TypeAlias = Callable[[Type, Type, int], bool]
 
 
 def check_type_parameter(lefta: Type, righta: Type, variance: int) -> bool:
@@ -287,6 +287,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     return True
                 if isinstance(item, Instance):
                     return is_named_instance(item, 'builtins.object')
+        if isinstance(right, LiteralType) and left.last_known_value is not None:
+            return self._is_subtype(left.last_known_value, right)
         if isinstance(right, CallableType):
             # Special case: Instance can be a subtype of Callable.
             call = find_member('__call__', left, left, is_operator=True)
@@ -308,6 +310,13 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_callable_type(self, left: CallableType) -> bool:
         right = self.right
         if isinstance(right, CallableType):
+            if left.type_guard is not None and right.type_guard is not None:
+                if not self._is_subtype(left.type_guard, right.type_guard):
+                    return False
+            elif right.type_guard is not None and left.type_guard is None:
+                # This means that one function has `TypeGuard` and other does not.
+                # They are not compatible. See https://github.com/python/mypy/issues/11307
+                return False
             return is_callable_compatible(
                 left, right,
                 is_compat=self._is_subtype,
@@ -1129,6 +1138,8 @@ def restrict_subtype_away(t: Type, s: Type, *, ignore_promotions: bool = False) 
                      if (isinstance(get_proper_type(item), AnyType) or
                          not covers_at_runtime(item, s, ignore_promotions))]
         return UnionType.make_union(new_items)
+    elif covers_at_runtime(t, s, ignore_promotions):
+        return UninhabitedType()
     else:
         return t
 

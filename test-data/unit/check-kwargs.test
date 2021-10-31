@@ -252,7 +252,7 @@ class B: pass
 
 [case testCallingDynamicallyTypedFunctionWithKeywordArgs]
 import typing
-def f(x, y=A()): pass
+def f(x, y=A()): pass  # N: "f" defined here
 f(x=A(), y=A())
 f(y=A(), x=A())
 f(y=A())      # E: Missing positional argument "x" in call to "f"
