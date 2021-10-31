@@ -421,7 +421,7 @@ f(x=1, *[2])
 [builtins fixtures/list.pyi]
 [out]
 main:3: error: "f" gets multiple values for keyword argument "x"
-main:3: error: Argument 1 to "f" has incompatible type *List[int]; expected "str"
+main:3: error: Argument 1 to "f" has incompatible type "*List[int]"; expected "str"
 
 [case testVarArgsAfterKeywordArgInCall2]
 # see: mypy issue #2729
@@ -430,7 +430,7 @@ f(y='x', *[1])
 [builtins fixtures/list.pyi]
 [out]
 main:3: error: "f" gets multiple values for keyword argument "y"
-main:3: error: Argument 1 to "f" has incompatible type *List[int]; expected "str"
+main:3: error: Argument 1 to "f" has incompatible type "*List[int]"; expected "str"
 
 [case testVarArgsAfterKeywordArgInCall3]
 def f(x: int, y: str) -> None: pass
