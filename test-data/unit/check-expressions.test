@@ -63,13 +63,7 @@ if str():
     a = 1.1
 class A:
     pass
-[file builtins.py]
-class object:
-    def __init__(self): pass
-class type: pass
-class function: pass
-class float: pass
-class str: pass
+[builtins fixtures/dict.pyi]
 
 [case testComplexLiteral]
 a = 0.0j
@@ -80,13 +74,7 @@ if str():
     a = 1.1j
 class A:
     pass
-[file builtins.py]
-class object:
-    def __init__(self): pass
-class type: pass
-class function: pass
-class complex: pass
-class str: pass
+[builtins fixtures/dict.pyi]
 
 [case testBytesLiteral]
 b, a = None, None # type: (bytes, A)
@@ -99,14 +87,7 @@ if str():
 if str():
     a = b'foo' # E: Incompatible types in assignment (expression has type "bytes", variable has type "A")
 class A: pass
-[file builtins.py]
-class object:
-    def __init__(self): pass
-class type: pass
-class tuple: pass
-class function: pass
-class bytes: pass
-class str: pass
+[builtins fixtures/dict.pyi]
 
 [case testUnicodeLiteralInPython3]
 s = None  # type: str
@@ -1535,15 +1516,7 @@ if str():
 ....a  # E: "ellipsis" has no attribute "a"
 
 class A: pass
-[file builtins.py]
-class object:
-    def __init__(self): pass
-class ellipsis:
-    def __init__(self): pass
-    __class__ = object()
-class type: pass
-class function: pass
-class str: pass
+[builtins fixtures/dict.pyi]
 [out]
 
 

@@ -734,3 +734,29 @@ b = {'b': 1}
 f(a) # E: Argument 1 to "f" has incompatible type "List[int]"; expected "Listener"
 g(b) # E: Argument 1 to "g" has incompatible type "Dict[str, int]"; expected "DictReader"
 [builtins fixtures/dict.pyi]
+
+[case testInvariantTypeConfusingNames]
+from typing import Iterable, Generic, TypeVar, List
+
+T = TypeVar('T')
+
+class I(Iterable[T]):
+    ...
+
+class Bad(Generic[T]):
+    ...
+
+def bar(*args: float) -> float:
+    ...
+
+good1: Iterable[float]
+good2: List[float]
+good3: I[float]
+bad1: I[str]
+bad2: Bad[float]
+bar(*good1)
+bar(*good2)
+bar(*good3)
+bar(*bad1)  # E: Argument 1 to "bar" has incompatible type "*I[str]"; expected "float"
+bar(*bad2)  # E: List or tuple expected as variable arguments
+[builtins fixtures/dict.pyi]

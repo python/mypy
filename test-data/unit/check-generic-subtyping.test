@@ -842,3 +842,166 @@ main:14: error: Item "U" of the upper bound "Union[U, V, W]" of type variable "T
 main:14: error: Item "W" of the upper bound "Union[U, V, W]" of type variable "T" has no attribute "b"
 main:15: error: Item "U" of the upper bound "Union[U, V, W]" of type variable "T" has no attribute "c"
 main:15: error: Item "V" of the upper bound "Union[U, V, W]" of type variable "T" has no attribute "c"
+
+
+[case testSubtypingIterableUnpacking1]
+# https://github.com/python/mypy/issues/11138
+from typing import Generic, Iterator, TypeVar
+T = TypeVar("T")
+U = TypeVar("U")
+
+class X1(Iterator[U], Generic[T, U]):
+    pass
+
+x1: X1[str, int]
+reveal_type(list(x1))  # N: Revealed type is "builtins.list[builtins.int*]"
+reveal_type([*x1])  # N: Revealed type is "builtins.list[builtins.int*]"
+
+class X2(Iterator[T], Generic[T, U]):
+    pass
+
+x2: X2[str, int]
+reveal_type(list(x2))  # N: Revealed type is "builtins.list[builtins.str*]"
+reveal_type([*x2])  # N: Revealed type is "builtins.list[builtins.str*]"
+
+class X3(Generic[T, U], Iterator[U]):
+    pass
+
+x3: X3[str, int]
+reveal_type(list(x3))  # N: Revealed type is "builtins.list[builtins.int*]"
+reveal_type([*x3])  # N: Revealed type is "builtins.list[builtins.int*]"
+
+class X4(Generic[T, U], Iterator[T]):
+    pass
+
+x4: X4[str, int]
+reveal_type(list(x4))  # N: Revealed type is "builtins.list[builtins.str*]"
+reveal_type([*x4])  # N: Revealed type is "builtins.list[builtins.str*]"
+
+class X5(Iterator[T]):
+    pass
+
+x5: X5[str]
+reveal_type(list(x5))  # N: Revealed type is "builtins.list[builtins.str*]"
+reveal_type([*x5])  # N: Revealed type is "builtins.list[builtins.str*]"
+
+class X6(Generic[T, U], Iterator[bool]):
+    pass
+
+x6: X6[str, int]
+reveal_type(list(x6))  # N: Revealed type is "builtins.list[builtins.bool*]"
+reveal_type([*x6])  # N: Revealed type is "builtins.list[builtins.bool*]"
+[builtins fixtures/list.pyi]
+
+[case testSubtypingIterableUnpacking2]
+from typing import Generic, Iterator, TypeVar, Mapping
+T = TypeVar("T")
+U = TypeVar("U")
+
+class X1(Generic[T, U], Iterator[U], Mapping[U, T]):
+    pass
+
+x1: X1[str, int]
+reveal_type(list(x1))  # N: Revealed type is "builtins.list[builtins.int*]"
+reveal_type([*x1])  # N: Revealed type is "builtins.list[builtins.int*]"
+
+class X2(Generic[T, U], Iterator[U], Mapping[T, U]):
+    pass
+
+x2: X2[str, int]
+reveal_type(list(x2))  # N: Revealed type is "builtins.list[builtins.int*]"
+reveal_type([*x2])  # N: Revealed type is "builtins.list[builtins.int*]"
+[builtins fixtures/list.pyi]
+
+[case testSubtypingMappingUnpacking1]
+# https://github.com/python/mypy/issues/11138
+from typing import Generic, TypeVar, Mapping
+T = TypeVar("T")
+U = TypeVar("U")
+
+class X1(Generic[T, U],  Mapping[U, T]):
+    pass
+
+x1: X1[str, int]
+reveal_type(iter(x1))  # N: Revealed type is "typing.Iterator[builtins.int*]"
+reveal_type({**x1})  # N: Revealed type is "builtins.dict[builtins.int*, builtins.str*]"
+
+class X2(Generic[T, U],  Mapping[T, U]):
+    pass
+
+x2: X2[str, int]
+reveal_type(iter(x2))  # N: Revealed type is "typing.Iterator[builtins.str*]"
+reveal_type({**x2})  # N: Revealed type is "builtins.dict[builtins.str*, builtins.int*]"
+
+class X3(Generic[T, U],  Mapping[bool, float]):
+    pass
+
+x3: X3[str, int]
+reveal_type(iter(x3))  # N: Revealed type is "typing.Iterator[builtins.bool*]"
+reveal_type({**x3})  # N: Revealed type is "builtins.dict[builtins.bool*, builtins.float*]"
+[builtins fixtures/dict.pyi]
+
+[case testSubtypingMappingUnpacking2]
+from typing import Generic, TypeVar, Mapping
+T = TypeVar("T")
+U = TypeVar("U")
+
+class X1(Generic[T, U],  Mapping[U, T]):
+    pass
+
+def func_with_kwargs(**kwargs: int):
+    pass
+
+x1: X1[str, int]
+reveal_type(iter(x1))
+reveal_type({**x1})
+func_with_kwargs(**x1)
+[out]
+main:12: note: Revealed type is "typing.Iterator[builtins.int*]"
+main:13: note: Revealed type is "builtins.dict[builtins.int*, builtins.str*]"
+main:14: error: Keywords must be strings
+main:14: error: Argument 1 to "func_with_kwargs" has incompatible type "**X1[str, int]"; expected "int"
+[builtins fixtures/dict.pyi]
+
+[case testSubtypingMappingUnpacking3]
+from typing import Generic, TypeVar, Mapping, Iterable
+T = TypeVar("T")
+U = TypeVar("U")
+
+class X1(Generic[T, U],  Mapping[U, T], Iterable[U]):
+    pass
+
+x1: X1[str, int]
+reveal_type(iter(x1))  # N: Revealed type is "typing.Iterator[builtins.int*]"
+reveal_type({**x1})  # N: Revealed type is "builtins.dict[builtins.int*, builtins.str*]"
+
+# Some people would expect this to raise an error, but this currently does not:
+# `Mapping` has `Iterable[U]` base class, `X2` has direct `Iterable[T]` base class.
+# It would be impossible to define correct `__iter__` method for incompatible `T` and `U`.
+class X2(Generic[T, U],  Mapping[U, T], Iterable[T]):
+    pass
+
+x2: X2[str, int]
+reveal_type(iter(x2))  # N: Revealed type is "typing.Iterator[builtins.int*]"
+reveal_type({**x2})  # N: Revealed type is "builtins.dict[builtins.int*, builtins.str*]"
+[builtins fixtures/dict.pyi]
+
+[case testNotDirectIterableAndMappingSubtyping]
+from typing import Generic, TypeVar, Dict, Iterable, Iterator, List
+T = TypeVar("T")
+U = TypeVar("U")
+
+class X1(Generic[T, U], Dict[U, T], Iterable[U]):
+    def __iter__(self) -> Iterator[U]: pass
+
+x1: X1[str, int]
+reveal_type(iter(x1))  # N: Revealed type is "typing.Iterator[builtins.int*]"
+reveal_type({**x1})  # N: Revealed type is "builtins.dict[builtins.int*, builtins.str*]"
+
+class X2(Generic[T, U], List[U]):
+    def __iter__(self) -> Iterator[U]: pass
+
+x2: X2[str, int]
+reveal_type(iter(x2))  # N: Revealed type is "typing.Iterator[builtins.int*]"
+reveal_type([*x2])  # N: Revealed type is "builtins.list[builtins.int*]"
+[builtins fixtures/dict.pyi]
