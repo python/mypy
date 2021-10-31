@@ -1641,6 +1641,10 @@ class ArgKind(Enum):
     # In an argument list, keyword-only and also optional
     ARG_NAMED_OPT = 5
 
+    def __int__(self) -> int:
+        # All items in `ArgKind` are `int`s, but `IntEnum` is not supported by `mypyc`.
+        return cast(int, self)
+
     def is_positional(self, star: bool = False) -> bool:
         return (
             self == ARG_POS
