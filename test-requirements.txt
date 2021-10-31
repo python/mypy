@@ -14,5 +14,4 @@ py>=1.5.2
 typed_ast>=1.4.0,<1.5.0; python_version>='3.8'
 virtualenv>=20.6.0
 setuptools!=50
-sphinx>=4.2.0,<5.0.0
 importlib-metadata>=4.6.1,<5.0.0

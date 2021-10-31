@@ -3,7 +3,7 @@ version: 2
 python:
   version: 3.7
   install:
-    - requirements: test-requirements.txt
+    - requirements: docs/requirements-docs.txt
 
 sphinx:
   configuration: docs/source/conf.py
