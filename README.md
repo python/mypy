@@ -1,6 +1,6 @@
 <img src="http://mypy-lang.org/static/mypy_light.svg" alt="mypy logo" width="300px"/>
 
-Mypy: Optional Static Typing for Python
+Mypy: Static Typing for Python
 =======================================
 
 [![Build Status](https://api.travis-ci.com/python/mypy.svg?branch=master)](https://travis-ci.com/python/mypy)
@@ -9,72 +9,68 @@ Mypy: Optional Static Typing for Python
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
 
 
-Got a question? Join us on Gitter!
-----------------------------------
+Got a question?
+---------------
 
-We don't have a mailing list; but we are always happy to answer
-questions on [gitter chat](https://gitter.im/python/typing).  If you are
-sure you've found a bug please search our issue trackers for a
-duplicate before filing a new issue:
+We are always happy to answer questions! Here are some good places to ask them:
 
-- [mypy tracker](https://github.com/python/mypy/issues)
-  for mypy issues
-- [typeshed tracker](https://github.com/python/typeshed/issues)
-  for issues with specific modules
-- [typing tracker](https://github.com/python/typing/issues)
-  for discussion of new type system features (PEP 484 changes) and
-  runtime bugs in the typing module
+- for anything you're curious about, try [gitter chat](https://gitter.im/python/typing)
+- for general questions about Python typing, try [typing discussions](https://github.com/python/typing/discussions)
+
+If you're just getting started,
+[the documentation](https://mypy.readthedocs.io/en/stable/introduction.html)
+and [type hints cheat sheet](https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html)
+can also help answer questions.
+
+If you think you've found a bug:
+
+- check our [common issues page](https://mypy.readthedocs.io/en/stable/common_issues.html)
+- search our [issue tracker](https://github.com/python/mypy/issues) to see if
+  it's already been reported
+- consider asking on [gitter chat](https://gitter.im/python/typing)
+
+To report a bug or request an enhancement:
+
+- report at [our issue tracker](https://github.com/python/mypy/issues)
+- if the issue is with a specific library or function, consider reporting it at
+  [typeshed tracker](https://github.com/python/typeshed/issues) or the issue
+  tracker for that library
+
+To discuss a new type system feature:
+- discuss at [typing-sig mailing list](https://mail.python.org/archives/list/typing-sig@python.org/)
+- there is also some historical discussion [here](https://github.com/python/typing/issues)
+
 
 What is mypy?
 -------------
 
-Mypy is an optional static type checker for Python.  You can add type
-hints ([PEP 484](https://www.python.org/dev/peps/pep-0484/)) to your
-Python programs, and use mypy to type check them statically.
-Find bugs in your programs without even running them!
+Mypy is a static type checker for Python.
 
-You can mix dynamic and static typing in your programs. You can always
-fall back to dynamic typing when static typing is not convenient, such
-as for legacy code.
+Type checkers help ensure that you're using variables and functions in your code
+correctly. With mypy, add type hints ([PEP 484](https://www.python.org/dev/peps/pep-0484/))
+to your Python programs, and mypy will warn you when you use those types
+incorrectly.
 
-Here is a small example to whet your appetite (Python 3):
+Python is a dynamic language, so usually you'll only see errors in your code
+when you attempt to run it. Mypy is a *static* checker, so it finds bugs
+in your programs without even running them!
+
+Mypy is designed with gradual typing in mind. This means you can add type
+hints to your code base slowly and that you can always fall back to dynamic
+typing when static typing is not convenient.
+
+Here is a small example to whet your appetite:
 
 ```python
-from typing import Iterator
-
-def fib(n: int) -> Iterator[int]:
-    a, b = 0, 1
-    while a < n:
-        yield a
-        a, b = b, a + b
+number = input("What is your favourite number?")
+print("Well, my favourite number is: ", number + 1)  # error: Unsupported operand types for + ("str" and "int")
 ```
+
 See [the documentation](https://mypy.readthedocs.io/en/stable/introduction.html) for more examples.
 
-For Python 2.7, the standard annotations are written as comments:
-```python
-def is_palindrome(s):
-    # type: (str) -> bool
-    return s == s[::-1]
-```
-
-See [the documentation for Python 2 support](https://mypy.readthedocs.io/en/latest/python2.html).
-
-Mypy is in development; some features are missing and there are bugs.
-See 'Development status' below.
-
-Requirements
-------------
-
-You need Python 3.5 or later to run mypy.  You can have multiple Python
-versions (2.x and 3.x) installed on the same system without problems.
-
-In Ubuntu, Mint and Debian you can install Python 3 like this:
-
-    $ sudo apt-get install python3 python3-pip
-
-For other Linux flavors, macOS and Windows, packages are available at
-
-  https://www.python.org/getit/
+In particular, see:
+- [type hints cheat sheet](https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html)
+- [getting started](https://mypy.readthedocs.io/en/stable/getting_started.html)
 
 
 Quick start
@@ -89,14 +85,12 @@ If you want to run the latest version of the code, you can install from git:
     $ python3 -m pip install -U git+git://github.com/python/mypy.git
 
 
-Now, if Python on your system is configured properly (else see
-"Troubleshooting" below), you can type-check the [statically typed parts] of a
-program like this:
+Now you can type-check the [statically typed parts] of a program like this:
 
     $ mypy PROGRAM
 
-You can always use a Python interpreter to run your statically typed
-programs, even if they have type errors:
+You can always use the Python interpreter to run your statically typed
+programs, even if mypy reports type errors:
 
     $ python3 PROGRAM
 
@@ -106,8 +100,8 @@ Yusuke Miyazaki).
 [statically typed parts]: https://mypy.readthedocs.io/en/latest/getting_started.html#function-signatures-and-dynamic-vs-static-typing
 
 
-IDE, Linter Integrations, and Pre-commit
-----------------------------------------
+Integrations
+------------
 
 Mypy can be integrated into popular IDEs:
 
@@ -122,99 +116,34 @@ Mypy can be integrated into popular IDEs:
 * PyCharm: [mypy plugin](https://github.com/dropbox/mypy-PyCharm-plugin) (PyCharm integrates
   [its own implementation of PEP 484](https://www.jetbrains.com/help/pycharm/type-hinting-in-product.html))
 * VS Code: provides [basic integration](https://code.visualstudio.com/docs/python/linting#_mypy) with mypy.
-
-Mypy can also be set up as a pre-commit hook using [pre-commit mirrors-mypy].
-
-[pre-commit mirrors-mypy]: https://github.com/pre-commit/mirrors-mypy
+* pre-commit: use [pre-commit mirrors-mypy](https://github.com/pre-commit/mirrors-mypy).
 
 Web site and documentation
 --------------------------
 
-Documentation and additional information is available at the web site:
+Additional information is available at the web site:
 
   http://www.mypy-lang.org/
 
-Or you can jump straight to the documentation:
+Jump straight to the documentation:
 
   https://mypy.readthedocs.io/
 
+Follow along our changelog at:
 
-Troubleshooting
----------------
-
-Depending on your configuration, you may have to run `pip` like
-this:
-
-    $ python3 -m pip install -U mypy
-
-This should automatically install the appropriate version of
-mypy's parser, typed-ast.  If for some reason it does not, you
-can install it manually:
-
-    $ python3 -m pip install -U typed-ast
-
-If the `mypy` command isn't found after installation: After
-`python3 -m pip install`, the `mypy` script and
-dependencies, including the `typing` module, will be installed to
-system-dependent locations.  Sometimes the script directory will not
-be in `PATH`, and you have to add the target directory to `PATH`
-manually or create a symbolic link to the script.  In particular, on
-macOS, the script may be installed under `/Library/Frameworks`:
-
-    /Library/Frameworks/Python.framework/Versions/<version>/bin
-
-In Windows, the script is generally installed in
-`\PythonNN\Scripts`. So, type check a program like this (replace
-`\Python34` with your Python installation path):
-
-    C:\>\Python34\python \Python34\Scripts\mypy PROGRAM
-
-### Working with `virtualenv`
-
-If you are using [`virtualenv`](https://virtualenv.pypa.io/en/stable/),
-make sure you are running a python3 environment. Installing via `pip3`
-in a v2 environment will not configure the environment to run installed
-modules from the command line.
-
-    $ python3 -m pip install -U virtualenv
-    $ python3 -m virtualenv env
+  https://mypy-lang.blogspot.com/
 
 
-Quick start for contributing to mypy
-------------------------------------
+Contributing
+------------
 
-If you want to contribute, first clone the mypy git repository:
+Help in testing, development, documentation and other tasks is
+highly appreciated and useful to the project. There are tasks for
+contributors of all experience levels.
 
-    $ git clone https://github.com/python/mypy.git
+To get started with developing mypy, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-From the mypy directory, use pip to install mypy:
-
-    $ cd mypy
-    $ python3 -m pip install -U .
-
-Replace `python3` with your Python 3 interpreter.  You may have to do
-the above as root. For example, in Ubuntu:
-
-    $ sudo python3 -m pip install -U .
-
-Now you can use the `mypy` program just as above.  In case of trouble
-see "Troubleshooting" above.
-
-> NOTE: Installing with sudo can be a security risk. Please try with the `--user` flag first.
-    $ python3 -m pip install --user -U .
-
-
-Tests
------
-
-The basic way to run tests:
-
-    $ pip3 install -r test-requirements.txt
-    $ python2 -m pip install -U typing
-    $ ./runtests.py
-
-For more on the tests, such as how to write tests and how to control
-which tests to run, see [Test README.md](test-data/unit/README.md).
+If you need help getting started, don't hesitate to ask on [gitter](https://gitter.im/python/typing).
 
 
 Development status
@@ -224,58 +153,19 @@ Mypy is beta software, but it has already been used in production
 for several years at Dropbox and in many other organizations, and
 it has an extensive test suite.
 
-See [the roadmap](ROADMAP.md) if you are interested in plans for the
-future.
+mypyc and compiled version of mypy
+----------------------------------
 
-
-Changelog
----------
-
-Follow mypy's updates on the blog: https://mypy-lang.blogspot.com/
-
-
-Issue tracker
--------------
-
-Please report any bugs and enhancement ideas using the mypy issue
-tracker: https://github.com/python/mypy/issues
-
-If you have any questions about using mypy or types, please ask
-in the typing gitter instead: https://gitter.im/python/typing
-
-
-Compiled version of mypy
-------------------------
-
-We have built a compiled version of mypy using the [mypyc
-compiler](https://github.com/python/mypy/tree/master/mypyc) for
-mypy-annotated Python code. It is approximately 4 times faster than
-interpreted mypy and is available (and the default) for 64-bit
-Windows, macOS, and Linux.
+[Mypyc](https://github.com/mypyc/mypyc) uses Python type hints to compile Python
+modules to faster C extensions. Mypy is itself compiled using mypyc: this makes
+mypy approximately 4 times faster than if interpreted!
 
 To install an interpreted mypy instead, use:
 
     $ python3 -m pip install --no-binary mypy -U mypy
 
-If you wish to test out the compiled version of a development
-version of mypy, you can directly install a binary from
+To use a compiled version of a development
+version of mypy, directly install a binary from
 https://github.com/mypyc/mypy_mypyc-wheels/releases/latest.
 
-
-Help wanted
------------
-
-Any help in testing, development, documentation and other tasks is
-highly appreciated and useful to the project. There are tasks for
-contributors of all experience levels. If you're just getting started,
-ask on the [gitter chat](https://gitter.im/python/typing) for ideas of good
-beginner issues.
-
-For more details, see the file [CONTRIBUTING.md](CONTRIBUTING.md).
-
-
-License
--------
-
-Mypy is licensed under the terms of the MIT License (see the file
-LICENSE).
+To contribute to the mypyc project, check out https://github.com/mypyc/mypyc
