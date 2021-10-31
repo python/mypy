@@ -24,19 +24,19 @@ class SMTPServerDisconnected(SMTPException): ...
 class SMTPResponseException(SMTPException):
     smtp_code: int
     smtp_error: bytes | str
-    args: Tuple[int, bytes | str] | Tuple[int, bytes, str]
+    args: tuple[int, bytes | str] | tuple[int, bytes, str]
     def __init__(self, code: int, msg: bytes | str) -> None: ...
 
 class SMTPSenderRefused(SMTPResponseException):
     smtp_code: int
     smtp_error: bytes
     sender: str
-    args: Tuple[int, bytes, str]
+    args: tuple[int, bytes, str]
     def __init__(self, code: int, msg: bytes, sender: str) -> None: ...
 
 class SMTPRecipientsRefused(SMTPException):
     recipients: _SendErrs
-    args: Tuple[_SendErrs]
+    args: tuple[_SendErrs]
     def __init__(self, recipients: _SendErrs) -> None: ...
 
 class SMTPDataError(SMTPResponseException): ...

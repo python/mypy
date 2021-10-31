@@ -4,9 +4,9 @@ from _typeshed import SupportsRead
 from typing import Any, Callable, Optional, Tuple
 
 EXPAT_VERSION: str  # undocumented
-version_info: Tuple[int, int, int]  # undocumented
+version_info: tuple[int, int, int]  # undocumented
 native_encoding: str  # undocumented
-features: list[Tuple[str, int]]  # undocumented
+features: list[tuple[str, int]]  # undocumented
 
 class ExpatError(Exception):
     code: int

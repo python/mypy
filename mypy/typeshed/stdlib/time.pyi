@@ -7,7 +7,7 @@ _TimeTuple = Tuple[int, int, int, int, int, int, int, int, int]
 altzone: int
 daylight: int
 timezone: int
-tzname: Tuple[str, str]
+tzname: tuple[str, str]
 
 if sys.version_info >= (3, 7):
     if sys.platform == "linux":
@@ -51,16 +51,16 @@ class _struct_time(NamedTuple):
 class struct_time(_struct_time):
     def __init__(
         self,
-        o: Tuple[int, int, int, int, int, int, int, int, int]
-        | Tuple[int, int, int, int, int, int, int, int, int, str]
-        | Tuple[int, int, int, int, int, int, int, int, int, str, int],
+        o: tuple[int, int, int, int, int, int, int, int, int]
+        | tuple[int, int, int, int, int, int, int, int, int, str]
+        | tuple[int, int, int, int, int, int, int, int, int, str, int],
         _arg: Any = ...,
     ) -> None: ...
     def __new__(
         cls,
-        o: Tuple[int, int, int, int, int, int, int, int, int]
-        | Tuple[int, int, int, int, int, int, int, int, int, str]
-        | Tuple[int, int, int, int, int, int, int, int, int, str, int],
+        o: tuple[int, int, int, int, int, int, int, int, int]
+        | tuple[int, int, int, int, int, int, int, int, int, str]
+        | tuple[int, int, int, int, int, int, int, int, int, str, int],
         _arg: Any = ...,
     ) -> struct_time: ...
     @property

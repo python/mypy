@@ -1,7 +1,7 @@
 import sys
 from _typeshed import StrOrBytesPath, StrPath, SupportsWrite
 from collections.abc import Callable, ItemsView, Iterable, Iterator, Mapping, MutableMapping, Sequence
-from typing import Any, ClassVar, Dict, Optional, Pattern, Tuple, Type, TypeVar, overload
+from typing import Any, ClassVar, Dict, Optional, Pattern, Type, TypeVar, overload
 from typing_extensions import Literal
 
 # Internal type aliases
@@ -220,7 +220,7 @@ class InterpolationSyntaxError(InterpolationError): ...
 
 class ParsingError(Error):
     source: str
-    errors: list[Tuple[int, str]]
+    errors: list[tuple[int, str]]
     def __init__(self, source: str | None = ..., filename: str | None = ...) -> None: ...
     def append(self, lineno: int, line: str) -> None: ...
 
