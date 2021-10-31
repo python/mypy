@@ -6419,6 +6419,37 @@ class B(A):
 
 reveal_type(B())  # N: Revealed type is "__main__.B"
 
+[case testNewReturnType10]
+# https://github.com/python/mypy/issues/11398
+from typing import Type
+
+class MyMetaClass(type):
+    def __new__(cls, name, bases, attrs) -> Type['MyClass']:
+        pass
+
+class MyClass(metaclass=MyMetaClass):
+    pass
+
+[case testNewReturnType11]
+# https://github.com/python/mypy/issues/11398
+class MyMetaClass(type):
+    def __new__(cls, name, bases, attrs) -> type:
+        pass
+
+class MyClass(metaclass=MyMetaClass):
+    pass
+
+[case testNewReturnType12]
+# https://github.com/python/mypy/issues/11398
+from typing import Type
+
+class MyMetaClass(type):
+    def __new__(cls, name, bases, attrs) -> int:  # E: Incompatible return type for "__new__" (returns "int", but must return a subtype of "type")
+        pass
+
+class MyClass(metaclass=MyMetaClass):
+    pass
+
 [case testGenericOverride]
 from typing import Generic, TypeVar, Any
 
