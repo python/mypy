@@ -1,6 +1,6 @@
 """Type inference constraints."""
 
-from typing import Iterable, List, Optional, Sequence
+from typing import TYPE_CHECKING, Iterable, List, Optional, Sequence
 from typing_extensions import Final
 
 from mypy.types import (
@@ -17,6 +17,9 @@ from mypy.erasetype import erase_typevars
 from mypy.nodes import COVARIANT, CONTRAVARIANT, ArgKind
 from mypy.argmap import ArgTypeExpander
 from mypy.typestate import TypeState
+
+if TYPE_CHECKING:
+    from mypy.infer import ArgumentInferContext
 
 SUBTYPE_OF: Final = 0
 SUPERTYPE_OF: Final = 1
@@ -45,14 +48,17 @@ class Constraint:
 
 
 def infer_constraints_for_callable(
-        callee: CallableType, arg_types: Sequence[Optional[Type]], arg_kinds: List[ArgKind],
-        formal_to_actual: List[List[int]]) -> List[Constraint]:
+        callee: CallableType,
+        arg_types: Sequence[Optional[Type]],
+        arg_kinds: List[ArgKind],
+        formal_to_actual: List[List[int]],
+        context: 'ArgumentInferContext') -> List[Constraint]:
     """Infer type variable constraints for a callable and actual arguments.
 
     Return a list of constraints.
     """
     constraints: List[Constraint] = []
-    mapper = ArgTypeExpander()
+    mapper = ArgTypeExpander(context)
 
     for i, actuals in enumerate(formal_to_actual):
         for actual in actuals:

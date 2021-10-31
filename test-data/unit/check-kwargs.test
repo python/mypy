@@ -490,7 +490,7 @@ g(**d)  # E: Argument 1 to "g" has incompatible type "**Dict[str, object]"; expe
 
 m = {} # type: Mapping[str, object]
 f(**m)
-g(**m)  # TODO: Should be an error
+g(**m)  # E: Argument 1 to "g" has incompatible type "**Mapping[str, object]"; expected "int"
 [builtins fixtures/dict.pyi]
 
 [case testPassingEmptyDictWithStars]
@@ -499,4 +499,58 @@ def g(x=1): pass
 
 f(**{})
 g(**{})
+[builtins fixtures/dict.pyi]
+
+[case testKeywordUnpackWithDifferentTypes]
+# https://github.com/python/mypy/issues/11144
+from typing import Dict, Generic, TypeVar, Mapping
+
+T = TypeVar("T")
+T2 = TypeVar("T2")
+
+class A(Dict[T, T2]):
+    ...
+
+class B(Mapping[T, T2]):
+    ...
+
+class C(Generic[T, T2]):
+    ...
+
+class D:
+    ...
+
+def foo(**i: float) -> float:
+    ...
+
+a: A[str, str]
+b: B[str, str]
+c: C[str, float]
+d: D
+e = {"a": "b"}
+
+foo(k=1.5)
+foo(**a)
+foo(**b)
+foo(**c)
+foo(**d)
+foo(**e)
+
+# Correct:
+
+class Good(Mapping[str, float]):
+    ...
+
+good1: Good
+good2: A[str, float]
+good3: B[str, float]
+foo(**good1)
+foo(**good2)
+foo(**good3)
+[out]
+main:29: error: Argument 1 to "foo" has incompatible type "**A[str, str]"; expected "float"
+main:30: error: Argument 1 to "foo" has incompatible type "**B[str, str]"; expected "float"
+main:31: error: Argument after ** must be a mapping, not "C[str, float]"
+main:32: error: Argument after ** must be a mapping, not "D"
+main:33: error: Argument 1 to "foo" has incompatible type "**Dict[str, str]"; expected "float"
 [builtins fixtures/dict.pyi]
