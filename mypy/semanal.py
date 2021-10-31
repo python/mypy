@@ -76,7 +76,8 @@ from mypy.nodes import (
     get_nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
     REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_source_versions,
     EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement, AssignmentExpr,
-    ParamSpecExpr, EllipsisExpr
+    ParamSpecExpr, EllipsisExpr,
+    FuncBase, implicit_module_attrs,
 )
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.typevars import fill_typevars
@@ -95,7 +96,6 @@ from mypy.types import (
 )
 from mypy.typeops import function_type
 from mypy.type_visitor import TypeQuery
-from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
     TypeAnalyser, analyze_type_alias, no_subscript_builtin_alias,
     TypeVarLikeQuery, TypeVarLikeList, remove_dups, has_any_from_unimported_type,
@@ -1096,8 +1096,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.update_metaclass(defn)
 
         bases = defn.base_type_exprs
-        bases, tvar_defs, is_protocol = self.clean_up_bases_and_infer_type_variables(defn, bases,
-                                                                                     context=defn)
+        bases, tvar_defs, is_protocol = self.clean_up_bases_and_infer_type_variables(
+            defn, bases, context=defn)
 
         for tvd in tvar_defs:
             if any(has_placeholder(t) for t in [tvd.upper_bound] + tvd.values):
@@ -1521,6 +1521,19 @@ class SemanticAnalyzer(NodeVisitor[None],
             elif isinstance(base, Instance):
                 if base.type.is_newtype:
                     self.fail('Cannot subclass "NewType"', defn)
+                if (
+                    base.type.is_enum
+                    and base.type.fullname not in (
+                        'enum.Enum', 'enum.IntEnum', 'enum.Flag', 'enum.IntFlag')
+                    and base.type.names
+                    and any(not isinstance(n.node, (FuncBase, Decorator))
+                            for n in base.type.names.values())
+                ):
+                    # This means that are trying to subclass a non-default
+                    # Enum class, with defined members. This is not possible.
+                    # In runtime, it will raise. We need to mark this type as final.
+                    # However, methods can be defined on a type: only values can't.
+                    base.type.is_final = True
                 base_types.append(base)
             elif isinstance(base, AnyType):
                 if self.options.disallow_subclassing_any:
