@@ -24,12 +24,34 @@ long_description = '''
 Mypy -- Optional Static Typing for Python
 =========================================
 
-Add type annotations to your Python programs, and use mypy to type
-check them.  Mypy is essentially a Python linter on steroids, and it
-can catch many programming errors by analyzing your program, without
-actually having to run it.  Mypy has a powerful type system with
-features such as type inference, gradual typing, generics and union
-types.
+Ever tried to use pythons type system and thought to yourself "This doesn't seem based".
+
+Well fret no longer as basedmypy got you covered!
+
+Baseline
+--------
+
+Basedmypy has baseline, baseline is based! It allows you to adopt new features from basedmypy
+without the burden of fixing up every usage, just save all current errors to the baseline
+file and deal with them later.
+
+.. code-block:: python
+
+    def foo(a):
+        print(a)
+
+.. code-block:: bash
+
+    > mypy .
+    error: missing typehints !!!!!
+    Epic fail bro!
+
+    > mypy --write-baseline .
+    error: missing typehints
+    Baseline successfully saved!
+
+    > mypy .
+    Looks good to me, no errors!
 '''.lstrip()
 
 

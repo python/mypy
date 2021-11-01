@@ -1,44 +1,54 @@
-<img src="http://mypy-lang.org/static/mypy_light.svg" alt="mypy logo" width="300px"/>
+# Based  <img src="http://mypy-lang.org/static/mypy_light.svg" alt="mypy logo" width="300px"/>
 
-Mypy: Static Typing for Python
-=======================================
+Basedmypy: Based Static Typing for Python
+=========================================
+
+What is basedmypy?
+-------------
+Basedmypy is a fork of mypy that adds based functionality and breaks
+compatability with the cringe parts of pep 484.
+
+Based features include:
+- Typesafe by default (optional and dynamic typing still supported)
+- Baseline functionality
+
+See the [changelog](CHANGELOG.md) for a comprehensive list.
+
+## Usage
+
+### Installation
+
+Basedmypy can be installed using pip from PyPI or from this GitHub repo:
+
+    python -m pip install -U basedmypy
+
+### Running
+Basedmypy currently overrides the `mypy` installation:
+
+    mypy test.py
+
+    python -m mypy test.py 
+
+Got a question or found a bug?
+----------------------------------
+
+Feel free to start a discussion or raise an issue, were happy to respond:
+
+- [basedmypy tracker](https://github.com/KotlinIsland/basedmypy/issues)
+  for basedmypy issues
+- [basedtypeshed tracker](https://github.com/KotlinIsland/basedtypeshed/issues)
+  for issues with specific modules
+- [basedtyping tracker](https://github.com/KotlinIsland/basedtyping/issues)
+  for discussion of new type system features (against PEP 484) and
+  runtime bugs in the basedtyping module
+
+Readme from [python/mypy](https://github.com/python/mypy) 
+===========
 
 [![Build Status](https://api.travis-ci.com/python/mypy.svg?branch=master)](https://travis-ci.com/python/mypy)
 [![Documentation Status](https://readthedocs.org/projects/mypy/badge/?version=latest)](https://mypy.readthedocs.io/en/latest/?badge=latest)
 [![Chat at https://gitter.im/python/typing](https://badges.gitter.im/python/typing.svg)](https://gitter.im/python/typing?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
-
-
-Got a question?
----------------
-
-We are always happy to answer questions! Here are some good places to ask them:
-
-- for anything you're curious about, try [gitter chat](https://gitter.im/python/typing)
-- for general questions about Python typing, try [typing discussions](https://github.com/python/typing/discussions)
-
-If you're just getting started,
-[the documentation](https://mypy.readthedocs.io/en/stable/introduction.html)
-and [type hints cheat sheet](https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html)
-can also help answer questions.
-
-If you think you've found a bug:
-
-- check our [common issues page](https://mypy.readthedocs.io/en/stable/common_issues.html)
-- search our [issue tracker](https://github.com/python/mypy/issues) to see if
-  it's already been reported
-- consider asking on [gitter chat](https://gitter.im/python/typing)
-
-To report a bug or request an enhancement:
-
-- report at [our issue tracker](https://github.com/python/mypy/issues)
-- if the issue is with a specific library or function, consider reporting it at
-  [typeshed tracker](https://github.com/python/typeshed/issues) or the issue
-  tracker for that library
-
-To discuss a new type system feature:
-- discuss at [typing-sig mailing list](https://mail.python.org/archives/list/typing-sig@python.org/)
-- there is also some historical discussion [here](https://github.com/python/typing/issues)
 
 
 What is mypy?
