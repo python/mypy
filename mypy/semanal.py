@@ -2285,6 +2285,20 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.analyze_lvalue(lval,
                                 explicit_type=explicit,
                                 is_final=s.is_final_def)
+            if len(s.lvalues) == 1:
+                rval = s.rvalue
+                if (
+                    (len(s.lvalues) == 1)
+                    and isinstance(lval.node, Var)
+                    and isinstance(rval, CallExpr)
+                    and (rval.callee is not None)
+                    and refers_to_fullname(rval.callee, 'builtins.property')
+                ):
+                    lval.node.is_property = True
+                    lval.node.property_funcdef = rval.args[0].node
+                    if len(rval.args) > 1:
+                        lval.node.is_settable_property = True
+
 
     def apply_dynamic_class_hook(self, s: AssignmentStmt) -> None:
         if len(s.lvalues) > 1:
