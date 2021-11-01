@@ -856,6 +856,7 @@ class Var(SymbolNode):
                  'is_classmethod',
                  'is_property',
                  'is_settable_property',
+                 'property_funcdef',
                  'is_classvar',
                  'is_abstract_var',
                  'is_final',
@@ -884,6 +885,7 @@ class Var(SymbolNode):
         self.is_classmethod = False
         self.is_property = False
         self.is_settable_property = False
+        self.property_funcdef = None  # Optional[FuncDef]
         self.is_classvar = False
         self.is_abstract_var = False
         # Set to true when this variable refers to a module we were unable to
