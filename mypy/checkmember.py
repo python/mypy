@@ -860,10 +860,17 @@ def analyze_enum_class_attribute_access(itype: Instance,
 def analyze_typeddict_access(name: str, typ: TypedDictType,
                              mx: MemberContext, override_info: Optional[TypeInfo]) -> Type:
     if name == '__setitem__':
-        # Since we can only get this during `a['key'] = ...`
-        # it is safe to assume that the context is `IndexExpr`.
-        assert isinstance(mx.context, IndexExpr)
-        item_type = mx.chk.expr_checker.visit_typeddict_index_expr(typ, mx.context.index)
+        if isinstance(mx.context, IndexExpr):
+            # Since we can get this during `a['key'] = ...`
+            # it is safe to assume that the context is `IndexExpr`.
+            item_type = mx.chk.expr_checker.visit_typeddict_index_expr(
+                typ, mx.context.index)
+        else:
+            # It can also be `a.__setitem__(...)` direct call.
+            # In this case `item_type` can be `Any`,
+            # because we don't have args available yet.
+            # TODO: check in `default` plugin that `__setitem__` is correct.
+            item_type = AnyType(TypeOfAny.implementation_artifact)
         return CallableType(
             arg_types=[mx.chk.named_type('builtins.str'), item_type],
             arg_kinds=[ARG_POS, ARG_POS],
