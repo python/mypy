@@ -1360,7 +1360,7 @@ a.f = a.f # E: Property "f" defined in "A" is read-only
 a.f.x # E: "int" has no attribute "x"
 [builtins fixtures/property.pyi]
 
-[case testOverrideAttributeWithProperty]
+[case testOverrideAttributeWithDecoratedProperty]
 class A:
     x: int
     y: int
@@ -1381,7 +1381,265 @@ class B(A):
     @z.setter
     def z(self, v: str) -> None:
         ...
+b: B
+reveal_type(b.x)  # N: Revealed type is "builtins.int"
+b.x = "y"  #  E: Incompatible types in assignment (expression has type "str", variable has type "int")
 [builtins fixtures/property.pyi]
+
+[case testOverrideAttributeWithAssignedProperty]
+class A:
+    x: int
+    y: int
+    z: int
+class B(A):
+    def gx(self) -> int:
+        ...
+    def sx(self, v: int) -> None:
+        ...
+    x = property(gx, sx)
+    def gy(self) -> int:
+        ...
+    y = property(gy)  # E: Overriding an attribute with a property requires defining a setter method
+    def gz(self) -> str:
+        ...
+    def sz(self, v: str) -> None:
+        ...
+    z = property(gz, sz)  # E: Signature of "z" incompatible with A
+b: B
+reveal_type(b.x)  # N: Revealed type is "builtins.int"
+b.x = "y"  #  E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/property.pyi]
+
+[case testOverrideDecoratedPropertyWithDecoratedProperty]
+class A:
+    @property
+    def v(self) -> int:
+        ...
+    @v.setter
+    def v(self, v: int) -> None:
+        ...
+    @property
+    def w(self) -> int:
+        ...
+    @w.setter
+    def w(self, v: int) -> None:
+        ...
+    @property
+    def x(self) -> int:
+        ...
+    @property
+    def y(self) -> int:
+        ...
+    @property
+    def z(self) -> int:
+        ...
+    @z.setter
+    def z(self, v: int) -> None:
+        ...
+class B(A):
+    @property
+    def v(self) -> int:
+        ...
+    @w.setter
+    def v(self, v: int) -> None:
+        ...
+    @property  # E
+    def w(self) -> int:
+        ...
+    @property
+    def x(self) -> int:
+        ...
+    @property
+    def y(self) -> int:
+        ...
+    @y.setter
+    def y(self, v: int) -> None:
+        ...
+    @property
+    def z(self) -> str:  # E
+        ...
+    @z.setter
+    def z(self, v: str) -> None:
+        ...
+b: B
+reveal_type(b.v)
+b.v = "w"
+[out]
+main:33: error: Read-only property cannot override read-write property
+main:45: error: Signature of "z" incompatible with supertype "A"
+main:45: note:      Superclass:
+main:45: note:          @overload
+main:45: note:          def z(self) -> int
+main:45: note:      Subclass:
+main:45: note:          @overload
+main:45: note:          def z(self) -> str
+main:46: error: Signature of "z" incompatible with supertype "A"
+main:46: note:      Superclass:
+main:46: note:          @overload
+main:46: note:          def z(self) -> int
+main:46: note:      Subclass:
+main:46: note:          def z(self) -> str
+main:52: note: Revealed type is "builtins.int"
+main:53: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/property.pyi]
+
+[case testOverrideAssignedPropertyWithDecoratedProperty]
+class A:
+    def gv(self) -> int:
+        ...
+    def sv(self, v: int) -> None:
+        ...
+    v = property(gv, sv)
+    def gw(self) -> int:
+        ...
+    def sw(self, v: int) -> None:
+        ...
+    w = property(gw, sw)
+    def sx(self) -> int:
+        ...
+    x = property(sx)
+    def gy(self) -> int:
+        ...
+    y = property(gy)
+    def gz(self) -> int:
+        ...
+    def sz(self, v: int) -> None:
+        ...
+    z = property(gz, sz)
+class B(A):
+    @property
+    def v(self) -> int:
+        ...
+    @w.setter
+    def v(self, v: int) -> None:
+        ...
+    @property
+    def w(self) -> int:  # E: Read-only property cannot override read-write property
+        ...
+    @property
+    def x(self) -> int:
+        ...
+    @property
+    def y(self) -> int:
+        ...
+    @y.setter
+    def y(self, v: int) -> None:
+        ...
+    @property
+    def z(self) -> str:  # E: Signature of "z" incompatible with A
+        ...
+    @z.setter
+    def z(self, v: str) -> None:
+        ...
+b: B
+reveal_type(b.v) # N: Revealed type is "builtins.int"
+b.v = "w"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/property.pyi]
+
+[case testOverrideDecoratedPropertyWithAssignedProperty]
+class A:
+    @property
+    def v(self) -> int:
+        ...
+    @v.setter
+    def v(self, v: int) -> None:
+        ...
+    @property
+    def w(self) -> int:
+        ...
+    @w.setter
+    def w(self, v: int) -> None:
+        ...
+    @property
+    def x(self) -> int:
+        ...
+    @property
+    def y(self) -> int:
+        ...
+    @property
+    def z(self) -> int:
+        ...
+    @z.setter
+    def z(self, v: int) -> None:
+        ...
+class B(A):
+    def gv(self) -> int:
+        ...
+    def sv(self, v: int) -> None:
+        ...
+    v = property(gv, sv)
+    def gw(self) -> int:
+        ...
+    w = property(gw)  # E: Read-only property cannot override read-write property
+    def gx(self) -> int:
+        ...
+    x = property(gx)
+    def gy(self) -> int:
+        ...
+    def sy(self, v: int) -> None:
+        ...
+    y = property(gy, sy)
+    def gz(self) -> str:
+        ...
+    def sz(self, v: str) -> None:
+        ...
+    z = property(gz, sz)  # E: Signature of "z" incompatible with A
+b: B
+reveal_type(b.v) # N: Revealed type is "builtins.int"
+b.v = "w"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/property.pyi]
+
+
+[case testOverrideAssignedPropertyWithAssignedProperty]
+class A:
+    def gv(self) -> int:
+        ...
+    def sv(self, v: int) -> None:
+        ...
+    v = property(gv, sv)
+    def gw(self) -> int:
+        ...
+    def sw(self, v: int) -> None:
+        ...
+    w = property(gw, sw)
+    def sx(self) -> int:
+        ...
+    x = property(sx)
+    def gy(self) -> int:
+        ...
+    y = property(gy)
+    def gz(self) -> int:
+        ...
+    def sz(self, v: int) -> None:
+        ...
+    z = property(gz, sz)
+class B(A):
+    def gv(self) -> int:
+        ...
+    def sv(self, v: int) -> None:
+        ...
+    v = property(gv, sv)
+    def gw(self) -> int:
+        ...
+    w = property(gw)  # E: Read-only property cannot override read-write property
+    def gx(self) -> int:
+        ...
+    x = property(gx)
+    def gy(self) -> int:
+        ...
+    def sy(self, v: int) -> None:
+        ...
+    y = property(gy, sy)
+    def _gz(self) -> str:
+        ...
+    def _sz(self, v: str) -> None:
+        ...
+    z = property(_gz, _sz)  # E: Signature of "z" incompatible with A
+b: B
+reveal_type(b.v) # N: Revealed type is "builtins.int"
+b.v = "w"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/property.pyi]
+
 
 -- Descriptors
 -- -----------
