@@ -51,7 +51,7 @@ from mypy.options import Options
 from mypy.parse import parse
 from mypy.stats import dump_type_stats
 from mypy.types import Type
-from mypy.version import __version__
+from mypy.version import __based_version__, __version__
 from mypy.plugin import Plugin, ChainedPlugin, ReportConfigContext
 from mypy.plugins.default import DefaultPlugin
 from mypy.fscache import FileSystemCache
@@ -215,7 +215,7 @@ def _build(sources: List[BuildSource],
                            source_set=source_set,
                            reports=reports,
                            options=options,
-                           version_id=__version__,
+                           version_id=__based_version__,
                            plugin=plugin,
                            plugins_snapshot=snapshot,
                            errors=errors,
@@ -2636,6 +2636,7 @@ def log_configuration(manager: BuildManager, sources: List[BuildSource]) -> None
 
     manager.log()
     configuration_vars = [
+        ("Basedmypy Version", __based_version__),
         ("Mypy Version", __version__),
         ("Config File", (manager.options.config_file or "Default")),
         ("Configured Executable", manager.options.python_executable or "None"),

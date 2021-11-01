@@ -489,11 +489,11 @@ def normalize_file_output(content: List[str], current_abs_path: str) -> List[str
     """Normalize file output for comparison."""
     timestamp_regex = re.compile(r'\d{10}')
     result = [x.replace(current_abs_path, '$PWD') for x in content]
-    version = mypy.version.__version__
+    version = mypy.version.__based_version__
     result = [re.sub(r'\b' + re.escape(version) + r'\b', '$VERSION', x) for x in result]
     # We generate a new mypy.version when building mypy wheels that
     # lacks base_version, so handle that case.
-    base_version = getattr(mypy.version, 'base_version', version)
+    base_version = getattr(mypy.version, 'base_based_version', version)
     result = [re.sub(r'\b' + re.escape(base_version) + r'\b', '$VERSION', x) for x in result]
     result = [timestamp_regex.sub('$TIMESTAMP', x) for x in result]
     return result
