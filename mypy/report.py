@@ -21,7 +21,7 @@ from mypy import stats
 from mypy.options import Options
 from mypy.traverser import TraverserVisitor
 from mypy.types import Type, TypeOfAny
-from mypy.version import __version__
+from mypy.version import __based_version__
 from mypy.defaults import REPORTER_NAMES
 
 try:
@@ -579,7 +579,7 @@ class CoberturaXmlReporter(AbstractReporter):
 
         self.root = etree.Element('coverage',
                                   timestamp=str(int(time.time())),
-                                  version=__version__)
+                                  version=__based_version__)
         self.doc = etree.ElementTree(self.root)
         self.root_package = CoberturaPackage('.')
 

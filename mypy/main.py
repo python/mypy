@@ -27,7 +27,7 @@ from mypy.options import Options, BuildType
 from mypy.config_parser import get_config_module_names, parse_version, parse_config_file
 from mypy.split_namespace import SplitNamespace
 
-from mypy.version import __version__
+from mypy.version import __version__, __based_version__
 
 orig_stat: Final = os.stat
 MEM_PROFILE: Final = False  # If True, dump memory profile
@@ -296,6 +296,10 @@ HEADER: Final = """%(prog)s [-h] [-v] [-V] [more options; see below]
 
 
 DESCRIPTION: Final = """
+Basedmypy is a program that will type check your Python code.
+
+Based? Based on what?
+
 Mypy is a program that will type check your Python code.
 
 Pass in any files or folders you want to type check. Mypy will
@@ -489,7 +493,10 @@ def process_options(args: List[str],
     compilation_status = "no" if __file__.endswith(".py") else "yes"
     general_group.add_argument(
         '-V', '--version', action=CapturableVersionAction,
-        version='%(prog)s ' + __version__ + f" (compiled: {compilation_status})",
+        version=(
+            f'basedmypy {__based_version__} (compiled: {compilation_status})\n'
+            f'Based on %(prog)s {__version__}'
+        ),
         help="Show program's version number and exit",
         stdout=stdout)
 
