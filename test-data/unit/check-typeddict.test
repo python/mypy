@@ -2137,7 +2137,7 @@ class Foo2(TypedDict):
 def func(foo: Union[Foo1, Foo2]) -> str:
     reveal_type(foo["z"])  # N: Revealed type is "builtins.str"
     # ok, but type is incorrect:
-    foo.__getitem__("z")  # N: Revealed type is "builtins.object*"
+    reveal_type(foo.__getitem__("z"))  # N: Revealed type is "builtins.object*"
 
     reveal_type(foo["a"])  # N: Revealed type is "Union[builtins.int, Any]" \
                            # E: TypedDict "Foo2" has no key "a"
