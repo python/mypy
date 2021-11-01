@@ -1538,12 +1538,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 original_class_or_static = False  # a variable can't be class or static
 
             if context.is_property and isinstance(original_node, Var):
+                if original_node.property_funcdef:
+                    original_type = original_node.property_funcdef.type.ret_type
                 if isinstance(defn, Decorator):
                     if defn.var.is_settable_property:
                         assert isinstance(typ, CallableType)
                         if not is_equivalent(typ.ret_type, original_type):
                             self.fail('Signature of "{}" incompatible with {}'.format(
                                       defn.name, base.name), context, code=codes.OVERRIDE)
+                    elif original_node.property_funcdef:
+                        if original_node.is_settable_property:
+                            self.fail(message_registry.READ_ONLY_PROPERTY_OVERRIDES_READ_WRITE,
+                                      context, code=codes.OVERRIDE)
                     else:
                         self.fail('Overriding an attribute with a property requires '
                                   'defining a setter method', context, code=codes.OVERRIDE)
@@ -2385,6 +2391,31 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 compare_node = rvalue.node
                 if isinstance(compare_node, Decorator):
                     compare_node = compare_node.func
+
+            if isinstance(rvalue, CallExpr) and refers_to_fullname(rvalue.callee, 'builtins.property'):
+                if isinstance(base_node, OverloadedFuncDef) and base_node.is_property:
+                    if len(rvalue.args) < len(base_node.items):
+                        self.fail(message_registry.READ_ONLY_PROPERTY_OVERRIDES_READ_WRITE, rvalue)
+                        return False
+                    base_node = base_node.items[0].var
+                if isinstance(base_node, Var):
+                    if base_node.property_funcdef:
+                        base_type = base_node.property_funcdef.type.ret_type
+                        if (len(rvalue.args) < 2) and base_node.is_settable_property:
+                            self.fail(message_registry.READ_ONLY_PROPERTY_OVERRIDES_READ_WRITE, rvalue)
+                            return False
+                    else:
+                        if len(rvalue.args) < 2:
+                            self.fail('Overriding an attribute with a property requires '
+                                      'defining a setter method', rvalue)
+                            return False
+                    compare_node = rvalue.args[0].node
+                    compare_type = compare_node.type.ret_type
+                    if not is_equivalent(compare_type, get_proper_type(base_type)):
+                        self.fail('Signature of "{}" incompatible with {}'.format(
+                            lvalue.node.name, base.name), rvalue)
+                        return False
+                return True
 
         base_type = get_proper_type(base_type)
         compare_type = get_proper_type(compare_type)
