@@ -10,7 +10,9 @@ class type:
 
 class function: pass
 
-property = object()  # Dummy definition
+class property(object):
+    def __init__(self, fget, fset=None) -> None:
+        ...
 
 class dict: pass
 class int: pass
