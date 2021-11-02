@@ -2499,7 +2499,8 @@ from typing import Any, Generic, TypeVar
 T = TypeVar("T")
 class I(Generic[T]): ...
 
-a: I[int]
-b: I[Any]
-reveal_type([a, b])  # N: Revealed type is "builtins.list[__main__.I*[Any]]"
+a: I[I[int]]
+b: I[I[Any]]
+reveal_type([a, b])  # N: Revealed type is "builtins.list[__main__.I*[__main__.I[Any]]]"
+reveal_type([b, a])  # N: Revealed type is "builtins.list[__main__.I*[__main__.I[Any]]]"
 [builtins fixtures/list.pyi]
