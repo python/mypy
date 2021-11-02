@@ -90,6 +90,22 @@ instantiation:
    >>> print(Stack[int]().__class__)
    __main__.Stack
 
+For Python 3.8 and lower, note that built-in types :py:class:`list`,
+:py:class:`dict` and so on do not support indexing in Python.
+This is why we have the aliases :py:class:`~typing.List`, :py:class:`~typing.Dict`
+and so on in the :py:mod:`typing` module. Indexing these aliases gives
+you a class that directly inherits from the target class in Python:
+
+.. code-block:: python
+
+   >>> # ONLY RELEVANT FOR PYTHON 3.8 AND BELOW
+   >>> # For Python >=3.9, use normal `list[int]` syntax
+   >>> from typing import List
+   >>> List[int]
+   typing.List[int]
+   >>> List[int].__bases__
+   (<class 'list'>, typing.MutableSequence)
+
 Generic types could be instantiated or subclassed as usual classes,
 but the above examples illustrate that type variables are erased at
 runtime. Generic ``Stack`` instances are just ordinary
