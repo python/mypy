@@ -61,8 +61,9 @@ class InstanceJoiner:
                     if not is_equivalent(ta, sa):
                         self.seen_instances.pop()
                         return object_from_instance(t)
-                    # Randomly choose the left one since they are equivalent.
-                    new_type = ta
+                    # If the types are different but equivalent, then an Any is involved
+                    # so using a join in the contravariant case is also OK.
+                    new_type = join_types(ta, sa, self)
                 assert new_type is not None
                 args.append(new_type)
             result: ProperType = Instance(t.type, args)
