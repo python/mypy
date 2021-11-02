@@ -1,12 +1,14 @@
 # Based  <img src="http://mypy-lang.org/static/mypy_light.svg" alt="mypy logo" width="300px"/>
 
+[![Discord](https://img.shields.io/discord/948915247073349673?logo=discord)](https://discord.gg/7y9upqPrk2)
+
 Basedmypy: Based Static Typing for Python
 =========================================
 
 What is basedmypy?
 -------------
 Basedmypy is a fork of mypy that adds based functionality and breaks
-compatability with the cringe parts of pep 484.
+compatibility with the cringe parts of pep 484.
 
 Based features include:
 - Typesafe by default (optional and dynamic typing still supported)
@@ -23,26 +25,25 @@ Basedmypy can be installed using pip from PyPI or from this GitHub repo:
     python -m pip install -U basedmypy
 
 ### Running
-Basedmypy currently overrides the `mypy` installation:
+Basedmypy is installed as an alternative to, and in place of, the `mypy` installation:
 
     mypy test.py
 
-    python -m mypy test.py 
+    python -m mypy test.py
 
 Got a question or found a bug?
 ----------------------------------
 
-Feel free to start a discussion or raise an issue, were happy to respond:
+Feel free to start a discussion or raise an issue, we're happy to respond:
 
 - [basedmypy tracker](https://github.com/KotlinIsland/basedmypy/issues)
   for basedmypy issues
 - [basedtypeshed tracker](https://github.com/KotlinIsland/basedtypeshed/issues)
   for issues with specific modules
 - [basedtyping tracker](https://github.com/KotlinIsland/basedtyping/issues)
-  for discussion of new type system features (against PEP 484) and
-  runtime bugs in the basedtyping module
+  for issues with the 'basedtyping' package (runtime functionality).
 
-Readme from [python/mypy](https://github.com/python/mypy) 
+Readme from [python/mypy](https://github.com/python/mypy)
 ===========
 
 [![Stable Version](https://img.shields.io/pypi/v/mypy?color=blue)](https://pypi.org/project/mypy/)
