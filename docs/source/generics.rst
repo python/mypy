@@ -98,8 +98,8 @@ you a class that directly inherits from the target class in Python:
 
 .. code-block:: python
 
-   >>> # ONLY RELEVANT FOR PYTHON 3.8 AND BELOW
-   >>> # For Python >=3.9, use normal `list[int]` syntax
+   >>> # Only relevant for Python 3.8 and below
+   >>> # For Python 3.9 onwards, prefer `list[int]` syntax
    >>> from typing import List
    >>> List[int]
    typing.List[int]
