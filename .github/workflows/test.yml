@@ -2,7 +2,7 @@ name: Tests
 
 on:
   push:
-    branches: [master, 'release*']
+    branches: [master, 'release*', 'rebase-master']
     tags: ['*']
   pull_request:
     paths-ignore:
