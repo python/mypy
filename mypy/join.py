@@ -55,18 +55,14 @@ class InstanceJoiner:
                     if not is_subtype(new_type, type_var.upper_bound):
                         self.seen_instances.pop()
                         return object_from_instance(t)
-                elif type_var.variance == CONTRAVARIANT:
-                    new_type = meet.meet_types(ta, sa)
-                    if len(type_var.values) != 0 and new_type not in type_var.values:
-                        self.seen_instances.pop()
-                        return object_from_instance(t)
-                    # No need to check subtype, as ta and sa already have to be subtypes of
-                    # upper_bound
-                elif type_var.variance == INVARIANT:
-                    new_type = join_types(ta, sa)
+                # TODO: contravariant case should use meet but pass seen instances as
+                # an argument to keep track of recursive checks.
+                elif type_var.variance in (INVARIANT, CONTRAVARIANT):
                     if not is_equivalent(ta, sa):
                         self.seen_instances.pop()
                         return object_from_instance(t)
+                    # Randomly choose the left one since they are equivalent.
+                    new_type = ta
                 assert new_type is not None
                 args.append(new_type)
             result: ProperType = Instance(t.type, args)
