@@ -559,10 +559,11 @@ def analyze_var(name: str,
     """
     # Found a member variable.
     itype = map_instance_to_supertype(itype, var.info)
-    if var.property_funcdef:
-        typ = var.property_funcdef.type.ret_type
-    else:
+    if not var.property_funcdef:
         typ = var.type
+    else:
+        assert isinstance(var.property_funcdef.type, CallableType)
+        typ = var.property_funcdef.type.ret_type
     if typ:
         if isinstance(typ, PartialType):
             return mx.chk.handle_partial_var_type(typ, mx.is_lvalue, var, mx.context)

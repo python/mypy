@@ -1539,7 +1539,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             if context.is_property and isinstance(original_node, Var):
                 if original_node.property_funcdef:
-                    original_type = original_node.property_funcdef.type.ret_type
+                    type_ = original_node.property_funcdef.type
+                    assert isinstance(type_, CallableType)
+                    original_type = get_proper_type(type_.ret_type)
                 if isinstance(defn, Decorator):
                     if defn.var.is_settable_property:
                         assert isinstance(typ, CallableType)
@@ -2397,10 +2399,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if len(rvalue.args) < len(base_node.items):
                         self.fail(message_registry.READ_ONLY_PROPERTY_OVERRIDES_READ_WRITE, rvalue)
                         return False
-                    base_node = base_node.items[0].var
+                    if base_node.items:
+                        item = base_node.items[0]
+                        assert isinstance(item, Decorator)
+                        base_node = item.var
                 if isinstance(base_node, Var):
                     if base_node.property_funcdef:
-                        base_type = base_node.property_funcdef.type.ret_type
+                        type_ = base_node.property_funcdef.type
+                        assert isinstance(type, CallableType)
+                        base_type = type_.ret_type
                         if (len(rvalue.args) < 2) and base_node.is_settable_property:
                             self.fail(message_registry.READ_ONLY_PROPERTY_OVERRIDES_READ_WRITE, rvalue)
                             return False
@@ -2409,12 +2416,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             self.fail('Overriding an attribute with a property requires '
                                       'defining a setter method', rvalue)
                             return False
-                    compare_node = rvalue.args[0].node
-                    compare_type = compare_node.type.ret_type
-                    if not is_equivalent(compare_type, get_proper_type(base_type)):
-                        self.fail('Signature of "{}" incompatible with {}'.format(
-                            lvalue.node.name, base.name), rvalue)
-                        return False
+                    compare_node = rvalue.args[0].node  # type: ignore[attr-defined]
+                    if isinstance(compare_node, FuncDef) and isinstance(compare_node.type, CallableType):
+                        compare_type = compare_node.type.ret_type
+                        if not is_equivalent(compare_type, get_proper_type(base_type)):
+                            assert isinstance(lvalue.node, Var)
+                            self.fail('Signature of "{}" incompatible with {}'.format(
+                                lvalue.node.name, base.name), rvalue)
+                            return False
                 return True
 
         base_type = get_proper_type(base_type)
