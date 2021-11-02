@@ -19,10 +19,10 @@ from setuptools import setup, find_packages
 from setuptools.command.build_py import build_py
 from mypy.version import __version__, __based_version__, based_version_info
 
-description = 'Optional static typing for Python'
+description = 'Based static typing for Python'
 long_description = '''
-Mypy -- Optional Static Typing for Python
-=========================================
+Basedmypy -- Based Static Typing for Python
+===========================================
 
 Ever tried to use pythons type system and thought to yourself "This doesn't seem based".
 
@@ -199,13 +199,11 @@ classifiers = [
     'Topic :: Software Development',
 ]
 
-setup(name='mypy',
+setup(name='basedmypy',
       version=__based_version__,
       description=description,
       long_description=long_description,
-      author='Jukka Lehtosalo',
-      author_email='jukka.lehtosalo@iki.fi',
-      url='http://www.mypy-lang.org/',
+      author='KotlinIsland',
       license='MIT License',
       py_modules=[],
       ext_modules=ext_modules,
@@ -234,8 +232,9 @@ setup(name='mypy',
       python_requires=">=3.6",
       include_package_data=True,
       project_urls={
-          'News': 'http://mypy-lang.org/news.html',
-          'Documentation': 'https://mypy.readthedocs.io/en/stable/index.html',
-          'Repository': 'https://github.com/python/mypy',
+          'News': 'https://github.com/KotlinIsland/basedmypy/releases',
+          'Documentation': 'https://github.com/KotlinIsland/basedmypy/wiki',
+          'Repository': 'https://github.com/KotlinIsland/basedmypy',
+          "Discord": "https://discord.gg/7y9upqPrk2",
       },
       )
