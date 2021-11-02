@@ -11,7 +11,7 @@ class type:
 class function: pass
 
 class property(object):
-    def __init__(self, fget, fset=None) -> None:
+    def __init__(self, fget: typing.Any, fset: typing.Any = None) -> None:
         ...
 
 class dict: pass
