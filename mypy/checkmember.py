@@ -561,9 +561,12 @@ def analyze_var(name: str,
     itype = map_instance_to_supertype(itype, var.info)
     if not var.property_funcdef:
         typ = var.type
-    else:
-        assert isinstance(var.property_funcdef.type, CallableType)
+    elif isinstance(var.property_funcdef.type, CallableType):
         typ = var.property_funcdef.type.ret_type
+    elif not var.property_funcdef.type:
+        typ = None
+    else:
+        assert False, str(type(var.property_funcdef.type))
     if typ:
         if isinstance(typ, PartialType):
             return mx.chk.handle_partial_var_type(typ, mx.is_lvalue, var, mx.context)
