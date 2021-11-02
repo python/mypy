@@ -653,8 +653,8 @@ class JoinSuite(Suite):
 
     def test_generics_contravariant(self) -> None:
         self.assert_join(self.fx_contra.ga, self.fx_contra.ga, self.fx_contra.ga)
-        self.assert_join(self.fx_contra.ga, self.fx_contra.gb, self.fx_contra.gb)
-        self.assert_join(self.fx_contra.ga, self.fx_contra.gd, self.fx_contra.gn)
+        # TODO: this can be more precise than "object", see a comment in mypy/join.py
+        self.assert_join(self.fx_contra.ga, self.fx_contra.gb, self.fx_contra.o)
         self.assert_join(self.fx_contra.ga, self.fx_contra.g2a, self.fx_contra.o)
 
     def test_generics_with_multiple_args(self) -> None:
