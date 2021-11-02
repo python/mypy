@@ -2406,7 +2406,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if isinstance(base_node, Var):
                     if base_node.property_funcdef:
                         type_ = base_node.property_funcdef.type
-                        assert isinstance(type, CallableType)
+                        assert isinstance(type_, CallableType)
                         base_type = type_.ret_type
                         if (len(rvalue.args) < 2) and base_node.is_settable_property:
                             self.fail(message_registry.READ_ONLY_PROPERTY_OVERRIDES_READ_WRITE, rvalue)
