@@ -17,7 +17,6 @@ from mypy.subtypes import (
 from mypy.nodes import INVARIANT, COVARIANT, CONTRAVARIANT
 import mypy.typeops
 from mypy import state
-from mypy import meet
 
 
 class InstanceJoiner:
