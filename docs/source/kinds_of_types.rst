@@ -108,23 +108,24 @@ The ``Any`` type is discussed in more detail in section :ref:`dynamic-typing`.
 Tuple types
 ***********
 
-The type ``Tuple[T1, ..., Tn]`` represents a tuple with the item types ``T1``, ..., ``Tn``:
+The type ``tuple[T1, ..., Tn]`` represents a tuple with the item types ``T1``, ..., ``Tn``:
 
 .. code-block:: python
 
-   def f(t: Tuple[int, str]) -> None:
+   # Use `typing.Tuple` in Python 3.8 and earlier
+   def f(t: tuple[int, str]) -> None:
        t = 1, 'foo'    # OK
        t = 'foo', 1    # Type check error
 
 A tuple type of this kind has exactly a specific number of items (2 in
 the above example). Tuples can also be used as immutable,
-varying-length sequences. You can use the type ``Tuple[T, ...]`` (with
+varying-length sequences. You can use the type ``tuple[T, ...]`` (with
 a literal ``...`` -- it's part of the syntax) for this
 purpose. Example:
 
 .. code-block:: python
 
-    def print_squared(t: Tuple[int, ...]) -> None:
+    def print_squared(t: tuple[int, ...]) -> None:
         for n in t:
             print(n, n ** 2)
 
@@ -134,12 +135,12 @@ purpose. Example:
 
 .. note::
 
-   Usually it's a better idea to use ``Sequence[T]`` instead of ``Tuple[T, ...]``, as
+   Usually it's a better idea to use ``Sequence[T]`` instead of ``tuple[T, ...]``, as
    :py:class:`~typing.Sequence` is also compatible with lists and other non-tuple sequences.
 
 .. note::
 
-   ``Tuple[...]`` is valid as a base class in Python 3.6 and later, and
+   ``tuple[...]`` is valid as a base class in Python 3.6 and later, and
    always in stub files. In earlier Python versions you can sometimes work around this
    limitation by using a named tuple as a base class (see section :ref:`named-tuples`).
 
@@ -194,7 +195,7 @@ using bidirectional type inference:
 
 .. code-block:: python
 
-   l = map(lambda x: x + 1, [1, 2, 3])   # Infer x as int and l as List[int]
+   l = map(lambda x: x + 1, [1, 2, 3])   # Infer x as int and l as list[int]
 
 If you want to give the argument or return value types explicitly, use
 an ordinary, perhaps nested function definition.
@@ -353,20 +354,17 @@ and ``None`` is used as a dummy, placeholder initializer:
 
 .. code-block:: python
 
-   from typing import List
-
    class Container:
-       items = None  # type: List[str]  # OK (only with type comment)
+       items = None  # type: list[str]  # OK (only with type comment)
 
 This is not a problem when using variable annotations, since no initializer
 is needed:
 
 .. code-block:: python
 
-   from typing import List
 
    class Container:
-       items: List[str]  # No initializer
+       items: list[str]  # No initializer
 
 Mypy generally uses the first assignment to a variable to
 infer the type of the variable. However, if you assign both a ``None``
@@ -418,8 +416,6 @@ possible to use this syntax in versions of Python where it isn't supported by
 the runtime with some limitations (see :ref:`runtime_troubles`).
 
 .. code-block:: python
-
-    from typing import List
 
     t1: int | str  # equivalent to Union[int, str]
 
@@ -505,7 +501,7 @@ In certain situations, type names may end up being long and painful to type:
 
 .. code-block:: python
 
-   def f() -> Union[List[Dict[Tuple[int, str], Set[int]]], Tuple[str, List[str]]]:
+   def f() -> Union[list[dict[tuple[int, str], set[int]]], tuple[str, list[str]]]:
        ...
 
 When cases like this arise, you can define a type alias by simply
@@ -513,7 +509,7 @@ assigning the type to a variable:
 
 .. code-block:: python
 
-   AliasType = Union[List[Dict[Tuple[int, str], Set[int]]], Tuple[str, List[str]]]
+   AliasType = Union[list[dict[tuple[int, str], set[int]]], tuple[str, list[str]]]
 
    # Now we can use AliasType in place of the full name:
 

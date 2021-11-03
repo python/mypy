@@ -355,13 +355,15 @@ program:
 
 .. code-block:: python
 
-    from typing import List, overload
+    # For Python 3.8 and below you must use `typing.List` instead of `list`. e.g.
+    # from typing import List
+    from typing import overload
 
     @overload
-    def summarize(data: List[int]) -> float: ...
+    def summarize(data: list[int]) -> float: ...
 
     @overload
-    def summarize(data: List[str]) -> str: ...
+    def summarize(data: list[str]) -> str: ...
 
     def summarize(data):
         if not data:
@@ -375,7 +377,7 @@ program:
     output = summarize([])
 
 The ``summarize([])`` call matches both variants: an empty list could
-be either a ``List[int]`` or a ``List[str]``. In this case, mypy
+be either a ``list[int]`` or a ``list[str]``. In this case, mypy
 will break the tie by picking the first matching variant: ``output``
 will have an inferred type of ``float``. The implementor is responsible
 for making sure ``summarize`` breaks ties in the same way at runtime.
@@ -397,7 +399,7 @@ matching variant returns:
 
 .. code-block:: python
 
-    some_list: Union[List[int], List[str]]
+    some_list: Union[list[int], list[str]]
 
     # output3 is of type 'Union[float, str]'
     output3 = summarize(some_list)
@@ -524,7 +526,7 @@ suppose we modify the above snippet so it calls ``summarize`` instead of
 
 .. code-block:: python
 
-    some_list: List[str] = []
+    some_list: list[str] = []
     summarize(some_list) + "danger danger"  # Type safe, yet crashes at runtime!
 
 We run into a similar issue here. This program type checks if we look just at the
@@ -571,7 +573,7 @@ with ``Union[int, slice]`` and ``Union[T, Sequence]``.
 
    Previously, mypy used to perform type erasure on all overload variants. For
    example, the ``summarize`` example from the previous section used to be
-   illegal because ``List[str]`` and ``List[int]`` both erased to just ``List[Any]``.
+   illegal because ``list[str]`` and ``list[int]`` both erased to just ``list[Any]``.
    This restriction was removed in mypy 0.620.
 
    Mypy also previously used to select the best matching variant using a different
@@ -623,7 +625,7 @@ argument is itself generic:
        def first_chunk(self: Storage[Sequence[S]]) -> S:
            return self.content[0]
 
-   page: Storage[List[str]]
+   page: Storage[list[str]]
    page.first_chunk()  # OK, type is "str"
 
    Storage(0).first_chunk()  # Error: Invalid self argument "Storage[int]" to attribute function
@@ -708,13 +710,13 @@ classes are generic, self-type allows giving them precise signatures:
            self.item = item
 
        @classmethod
-       def make_pair(cls: Type[Q], item: T) -> Tuple[Q, Q]:
+       def make_pair(cls: Type[Q], item: T) -> tuple[Q, Q]:
            return cls(item), cls(item)
 
    class Sub(Base[T]):
        ...
 
-   pair = Sub.make_pair('yes')  # Type is "Tuple[Sub[str], Sub[str]]"
+   pair = Sub.make_pair('yes')  # Type is "tuple[Sub[str], Sub[str]]"
    bad = Sub[int].make_pair('no')  # Error: Argument 1 to "make_pair" of "Base"
                                    # has incompatible type "str"; expected "int"
 
@@ -906,7 +908,7 @@ Here is a typical example:
 Only a fixed set of string keys is expected (``'name'`` and
 ``'year'`` above), and each key has an independent value type (``str``
 for ``'name'`` and ``int`` for ``'year'`` above). We've previously
-seen the ``Dict[K, V]`` type, which lets you declare uniform
+seen the ``dict[K, V]`` type, which lets you declare uniform
 dictionary types, where every value has the same type, and arbitrary keys
 are supported. This is clearly not a good fit for
 ``movie`` above. Instead, you can use a ``TypedDict`` to give a precise
@@ -925,7 +927,7 @@ dictionary value depends on the key:
 and ``'year'`` (with type ``int``). Note that we used an explicit type
 annotation for the ``movie`` variable. This type annotation is
 important -- without it, mypy will try to infer a regular, uniform
-:py:class:`~typing.Dict` type for ``movie``, which is not what we want here.
+:py:class:`dict` type for ``movie``, which is not what we want here.
 
 .. note::
 
@@ -934,7 +936,7 @@ important -- without it, mypy will try to infer a regular, uniform
    desired type based on the declared argument type. Also, if an
    assignment target has been previously defined, and it has a
    ``TypedDict`` type, mypy will treat the assigned value as a ``TypedDict``,
-   not :py:class:`~typing.Dict`.
+   not :py:class:`dict`.
 
 Now mypy will recognize these as valid:
 
@@ -975,8 +977,8 @@ extra items is compatible with (a subtype of) a narrower
 ``TypedDict``, assuming item types are compatible (*totality* also affects
 subtyping, as discussed below).
 
-A ``TypedDict`` object is not a subtype of the regular ``Dict[...]``
-type (and vice versa), since :py:class:`~typing.Dict` allows arbitrary keys to be
+A ``TypedDict`` object is not a subtype of the regular ``dict[...]``
+type (and vice versa), since :py:class:`dict` allows arbitrary keys to be
 added and removed, unlike ``TypedDict``. However, any ``TypedDict`` object is
 a subtype of (that is, compatible with) ``Mapping[str, object]``, since
 :py:class:`~typing.Mapping` only provides read-only access to the dictionary items:
