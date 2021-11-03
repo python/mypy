@@ -24,7 +24,11 @@ def getprefixes():
 
 def getsitepackages():
     # type: () -> List[str]
-    if hasattr(site, 'getusersitepackages') and hasattr(site, 'getsitepackages'):
+    if (
+        hasattr(site, 'getusersitepackages')
+        and hasattr(site, 'getsitepackages')
+        and site.ENABLE_USER_SITE
+    ):
         user_dir = site.getusersitepackages()
         return site.getsitepackages() + [user_dir]
     else:
