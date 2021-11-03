@@ -818,7 +818,7 @@ class Y(Generic[T]):
         return U()  # E: Incompatible return value type (got "U", expected "T")
 
 
-[case testTypeVarBoundToUnionAttributeAccess]
+[case testTypeVarBoundToOldUnionAttributeAccess]
 from typing import Union, TypeVar
 
 class U:
@@ -842,6 +842,34 @@ main:14: error: Item "U" of the upper bound "Union[U, V, W]" of type variable "T
 main:14: error: Item "W" of the upper bound "Union[U, V, W]" of type variable "T" has no attribute "b"
 main:15: error: Item "U" of the upper bound "Union[U, V, W]" of type variable "T" has no attribute "c"
 main:15: error: Item "V" of the upper bound "Union[U, V, W]" of type variable "T" has no attribute "c"
+
+
+[case testTypeVarBoundToNewUnionAttributeAccess]
+# flags: --python-version 3.10
+from typing import TypeVar
+
+class U:
+    a: int
+class V:
+    b: int
+class W:
+    c: int
+
+T = TypeVar("T", bound=U | V | W)
+
+def f(x: T) -> None:
+    x.a  # E
+    x.b = 1  # E
+    del x.c  # E
+
+[builtins fixtures/tuple.pyi]
+[out]
+main:14: error: Item "V" of the upper bound "Union[U, V, W]" of type variable "T" has no attribute "a"
+main:14: error: Item "W" of the upper bound "Union[U, V, W]" of type variable "T" has no attribute "a"
+main:15: error: Item "U" of the upper bound "Union[U, V, W]" of type variable "T" has no attribute "b"
+main:15: error: Item "W" of the upper bound "Union[U, V, W]" of type variable "T" has no attribute "b"
+main:16: error: Item "U" of the upper bound "Union[U, V, W]" of type variable "T" has no attribute "c"
+main:16: error: Item "V" of the upper bound "Union[U, V, W]" of type variable "T" has no attribute "c"
 
 
 [case testSubtypingIterableUnpacking1]
