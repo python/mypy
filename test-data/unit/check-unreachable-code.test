@@ -988,7 +988,28 @@ def third() -> NoReturn:
     assert False
     assert False
     reveal_type(first)
+[builtins fixtures/exception.pyi]
 
+[case testSeveralUnreachableStatements2]
+# flags: --warn-unreachable
+from typing import NoReturn
+def assert_never() -> NoReturn:
+    assert False
+
+def first() -> NoReturn:
+    assert_never()
+    assert_never()
+
+def second() -> NoReturn:
+    raise Exception
+    raise Exception
+    raise Exception()
+
+def third() -> NoReturn:
+    assert False
+    assert False
+    assert False
+    assert False
 [builtins fixtures/exception.pyi]
 
 [case testUnreachableFlagExpressions]
