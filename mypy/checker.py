@@ -26,7 +26,8 @@ from mypy.nodes import (
     ARG_POS, ARG_STAR, LITERAL_TYPE, LDEF, MDEF, GDEF,
     CONTRAVARIANT, COVARIANT, INVARIANT, TypeVarExpr, AssignmentExpr,
     is_final_node,
-    ARG_NAMED)
+    ARG_NAMED,
+)
 from mypy import nodes
 from mypy import operators
 from mypy.literals import literal, literal_hash, Key
@@ -37,7 +38,8 @@ from mypy.types import (
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType,
     is_named_instance, union_items, TypeQuery, LiteralType,
     is_optional, remove_optional, TypeTranslator, StarType, get_proper_type, ProperType,
-    get_proper_types, is_literal_type, TypeAliasType, TypeGuardedType)
+    get_proper_types, is_literal_type, TypeAliasType, TypeGuardedType,
+)
 from mypy.sametypes import is_same_type
 from mypy.messages import (
     MessageBuilder, make_inferred_type_note, append_invariance_notes, pretty_seq,
@@ -2017,9 +2019,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # as unreachable -- so we don't display an error.
             self.binder.unreachable()
             return
-        for s in b.body:
+        for index, s in enumerate(b.body):
             if self.binder.is_unreachable():
-                if self.should_report_unreachable_issues() and not self.is_raising_or_empty(s):
+                if (self.should_report_unreachable_issues()
+                        and self.has_regular_unreachable_statements(b, index)):
                     self.msg.unreachable_statement(s)
                 break
             self.accept(s)
@@ -2052,6 +2055,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 if isinstance(typ, UninhabitedType):
                     return True
+        return False
+
+    def has_regular_unreachable_statements(self, block: Block, index: int) -> bool:
+        """Helps to identify cases when our body has some regular unreachable statements.
+
+        We call statements "regular" when they are not covered by our special rules
+        defined in `is_raising_or_empty` function.
+        """
+        for ind in range(index, len(block.body)):
+            if not self.is_raising_or_empty(block.body[ind]):
+                return True
         return False
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:

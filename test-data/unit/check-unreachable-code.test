@@ -915,15 +915,15 @@ def expect_str(x: str) -> str: pass
 
 x: int
 if False:
-    assert False
+    assert False  # E: Statement is unreachable
     reveal_type(x)
 
 if False:
-    raise Exception()
+    raise Exception()  # E: Statement is unreachable
     reveal_type(x)
 
 if False:
-    assert_never(x)
+    assert_never(x)  # E: Statement is unreachable
     reveal_type(x)
 
 if False:
@@ -932,8 +932,63 @@ if False:
 
 if False:
     # Ignore obvious type errors
-    assert_never(expect_str(x))
+    assert_never(expect_str(x))  # E: Statement is unreachable
     reveal_type(x)
+[builtins fixtures/exception.pyi]
+
+[case testUnreachableFlagOkWithDeadStatements2]
+# flags: --warn-unreachable
+from typing import NoReturn
+def assert_never(x: NoReturn) -> NoReturn:
+    assert False
+
+def nonthrowing_assert_never(x: NoReturn) -> None: ...
+
+def expect_str(x: str) -> str: pass
+
+x: int
+if False:
+    assert False
+
+if False:
+    raise Exception()
+
+if False:
+    assert_never(x)
+
+if False:
+    nonthrowing_assert_never(x)  # E: Statement is unreachable
+
+if False:
+    # Ignore obvious type errors
+    assert_never(expect_str(x))
+[builtins fixtures/exception.pyi]
+
+
+[case testSeveralUnreachableStatements]
+# flags: --warn-unreachable
+from typing import NoReturn
+def assert_never() -> NoReturn:
+    assert False
+
+def first() -> NoReturn:
+    assert_never()
+    assert_never()  # E: Statement is unreachable
+    reveal_type(first)
+
+def second() -> NoReturn:
+    raise Exception
+    raise Exception  # E: Statement is unreachable
+    raise Exception()
+    reveal_type(first)
+
+def third() -> NoReturn:
+    assert False
+    assert False  # E: Statement is unreachable
+    assert False
+    assert False
+    reveal_type(first)
+
 [builtins fixtures/exception.pyi]
 
 [case testUnreachableFlagExpressions]
@@ -1413,6 +1468,13 @@ x = 1  # E: Statement is unreachable
 
 [case testUnreachableModuleBody2]
 # flags: --warn-unreachable
+raise Exception
+x = 1  # E: Statement is unreachable
+[builtins fixtures/exception.pyi]
+
+[case testUnreachableModuleBody3]
+# flags: --warn-unreachable
+raise Exception
 raise Exception
 x = 1  # E: Statement is unreachable
 [builtins fixtures/exception.pyi]
