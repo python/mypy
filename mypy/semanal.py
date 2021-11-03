@@ -2032,9 +2032,13 @@ class SemanticAnalyzer(NodeVisitor[None],
             special_form = True
         elif self.analyze_enum_assign(s):
             special_form = True
+
         if special_form:
             self.record_special_form_lvalue(s)
             return
+        # Clear the alias flag if assignment turns out not a special form after all. It
+        # may be set to True while there were still placeholders due to forward refs.
+        s.is_alias_def = False
 
         # OK, this is a regular assignment, perform the necessary analysis steps.
         s.is_final_def = self.unwrap_final(s)
