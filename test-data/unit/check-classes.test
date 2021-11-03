@@ -1278,20 +1278,38 @@ main:8: note:          def f(self) -> None
 
 
 [case testAccessingReadOnlyProperty]
-import typing
 class A:
     @property
-    def f(self) -> str: pass
+    def x1(self) -> str: pass
+    def gx2(self) -> str: pass
+    x2 = property(gx2)
+    @property
+    def x3(self): pass
+    def gx4(self): pass
+    x4 = property(gx4)
 a = A()
-reveal_type(a.f)  # N: Revealed type is "builtins.str"
+reveal_type(a.x1)  # N: Revealed type is "builtins.str"
+reveal_type(a.x2)  # N: Revealed type is "builtins.str"
+reveal_type(a.x3)  # N: Revealed type is "Any"
+reveal_type(a.x4)  # N: Revealed type is "Any"
 [builtins fixtures/property.pyi]
 
 [case testAssigningToReadOnlyProperty]
 import typing
 class A:
     @property
-    def f(self) -> str: pass
-A().f = '' # E: Property "f" defined in "A" is read-only
+    def x1(self) -> str: pass
+    def gx2(self) -> str: pass
+    x2 = property(gx2)
+    @property
+    def x3(self): pass
+    def gx4(self): pass
+    x4 = property(gx4)
+a = A()
+a.x1 = '' # E: Property "x1" defined in "A" is read-only
+a.x2 = '' # E: Property "x2" defined in "A" is read-only
+a.x3 = '' # E: Property "x3" defined in "A" is read-only
+a.x4 = '' # E: Property "x4" defined in "A" is read-only
 [builtins fixtures/property.pyi]
 
 [case testAssigningToInheritedReadOnlyProperty]

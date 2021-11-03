@@ -564,7 +564,9 @@ def analyze_var(name: str,
     elif isinstance(var.property_funcdef.type, CallableType):
         typ = var.property_funcdef.type.ret_type
     elif not var.property_funcdef.type:
-        typ = None
+        if mx.is_lvalue and not var.is_settable_property:
+            mx.msg.read_only_property(name, itype.type, mx.context)
+        return AnyType(TypeOfAny.special_form)
     else:
         assert False, str(type(var.property_funcdef.type))
     if typ:
