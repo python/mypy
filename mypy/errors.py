@@ -11,6 +11,7 @@ from mypy.scope import Scope
 from mypy.options import Options
 from mypy.version import __version__ as mypy_version
 from mypy.errorcodes import ErrorCode, IMPORT
+from mypy.message_registry import ErrorMessage
 from mypy import errorcodes as codes
 from mypy.util import DEFAULT_SOURCE_OFFSET, is_typeshed_file
 
@@ -677,7 +678,12 @@ class Errors:
                     result.append((file, -1, -1, 'note',
                                    'In class "{}":'.format(e.type), e.allow_dups, None))
 
-            result.append((file, e.line, e.column, e.severity, e.message, e.allow_dups, e.code))
+            if isinstance(e.message, ErrorMessage):
+                result.append(
+                    (file, e.line, e.column, e.severity, e.message.value, e.allow_dups, e.code))
+            else:
+                result.append(
+                    (file, e.line, e.column, e.severity, e.message, e.allow_dups, e.code))
 
             prev_import_context = e.import_ctx
             prev_function_or_member = e.function_or_member

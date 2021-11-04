@@ -44,8 +44,10 @@ VAR_ANNOTATED: Final = ErrorCode(
 OVERRIDE: Final = ErrorCode(
     "override", "Check that method override is compatible with base class", "General"
 )
-RETURN: Final = ErrorCode("return", "Check that function always returns a value", "General")
-RETURN_VALUE: Final = ErrorCode(
+RETURN: Final[ErrorCode] = ErrorCode(
+    "return", "Check that function always returns a value", "General"
+)
+RETURN_VALUE: Final[ErrorCode] = ErrorCode(
     "return-value", "Check that return value is compatible with signature", "General"
 )
 ASSIGNMENT: Final = ErrorCode(
@@ -94,11 +96,11 @@ EXIT_RETURN: Final = ErrorCode(
 )
 
 # These error codes aren't enabled by default.
-NO_UNTYPED_DEF: Final = ErrorCode(
+NO_UNTYPED_DEF: Final[ErrorCode] = ErrorCode(
     "no-untyped-def", "Check that every function has an annotation", "General"
 )
 NO_UNTYPED_CALL: Final = ErrorCode(
-    'no-untyped-call',
+    "no-untyped-call",
     "Disallow calling functions without type annotations from annotated functions",
     "General",
 )
@@ -122,11 +124,11 @@ UNREACHABLE: Final = ErrorCode(
 REDUNDANT_EXPR: Final = ErrorCode(
     "redundant-expr", "Warn about redundant expressions", "General", default_enabled=False
 )
-TRUTHY_BOOL: Final = ErrorCode(
-    'truthy-bool',
+TRUTHY_BOOL: Final[ErrorCode] = ErrorCode(
+    "truthy-bool",
     "Warn about expressions that could always evaluate to true in boolean contexts",
-    'General',
-    default_enabled=False
+    "General",
+    default_enabled=False,
 )
 NAME_MATCH: Final = ErrorCode(
     "name-match", "Check that type definition has consistent naming", "General"

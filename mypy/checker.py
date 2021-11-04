@@ -56,6 +56,7 @@ from mypy.typeops import (
     is_literal_type_like,
 )
 from mypy import message_registry
+from mypy.message_registry import ErrorMessage
 from mypy.subtypes import (
     is_subtype, is_equivalent, is_proper_subtype, is_more_precise,
     restrict_subtype_away, is_subtype_ignoring_tvars, is_callable_compatible,
@@ -1019,10 +1020,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # entirely pass/Ellipsis/raise NotImplementedError.
                     if isinstance(return_type, UninhabitedType):
                         # This is a NoReturn function
-                        self.msg.fail(message_registry.INVALID_IMPLICIT_RETURN, defn)
+                        self.fail(message_registry.INVALID_IMPLICIT_RETURN, defn)
                     else:
-                        self.msg.fail(message_registry.MISSING_RETURN_STATEMENT, defn,
-                                      code=codes.RETURN)
+                        self.fail(message_registry.MISSING_RETURN_STATEMENT, defn)
 
             self.return_types.pop()
 
@@ -1078,31 +1078,25 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if fdef.type is None and self.options.disallow_untyped_defs:
                 if (not fdef.arguments or (len(fdef.arguments) == 1 and
                         (fdef.arg_names[0] == 'self' or fdef.arg_names[0] == 'cls'))):
-                    self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef,
-                              code=codes.NO_UNTYPED_DEF)
+                    self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
                     if not has_return_statement(fdef) and not fdef.is_generator:
                         self.note('Use "-> None" if function does not return a value', fdef,
                                   code=codes.NO_UNTYPED_DEF)
                 else:
-                    self.fail(message_registry.FUNCTION_TYPE_EXPECTED, fdef,
-                              code=codes.NO_UNTYPED_DEF)
+                    self.fail(message_registry.FUNCTION_TYPE_EXPECTED, fdef)
             elif isinstance(fdef.type, CallableType):
                 ret_type = get_proper_type(fdef.type.ret_type)
                 if is_unannotated_any(ret_type):
-                    self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef,
-                              code=codes.NO_UNTYPED_DEF)
+                    self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
                 elif fdef.is_generator:
                     if is_unannotated_any(self.get_generator_return_type(ret_type,
                                                                          fdef.is_coroutine)):
-                        self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef,
-                                  code=codes.NO_UNTYPED_DEF)
+                        self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
                 elif fdef.is_coroutine and isinstance(ret_type, Instance):
                     if is_unannotated_any(self.get_coroutine_return_type(ret_type)):
-                        self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef,
-                                  code=codes.NO_UNTYPED_DEF)
+                        self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
                 if any(is_unannotated_any(t) for t in fdef.type.arg_types):
-                    self.fail(message_registry.ARGUMENT_TYPE_EXPECTED, fdef,
-                              code=codes.NO_UNTYPED_DEF)
+                    self.fail(message_registry.ARGUMENT_TYPE_EXPECTED, fdef)
 
     def check___new___signature(self, fdef: FuncDef, typ: CallableType) -> None:
         self_type = fill_typevars_with_any(fdef.info)
@@ -1387,7 +1381,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if len(self.scope.stack) == 1:
             # module scope
             if name == '__getattribute__':
-                self.msg.fail(message_registry.MODULE_LEVEL_GETATTRIBUTE, context)
+                self.fail(message_registry.MODULE_LEVEL_GETATTRIBUTE, context)
                 return
             # __getattr__ is fine at the module level as of Python 3.7 (PEP 562). We could
             # show an error for Python < 3.7, but that would be annoying in code that supports
@@ -2608,7 +2602,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return
 
         self.fail(
-            'Trying to assign name "{}" that is not in "__slots__" of type "{}"'.format(
+            message_registry.NAME_NOT_IN_SLOTS.format(
                 lvalue.name, inst.type.fullname,
             ),
             lvalue,
@@ -2652,16 +2646,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     elif self.type_is_iterable(typs) and isinstance(typs, Instance):
                         if (iterable_type is not None
                                 and iterable_type != self.iterable_item_type(typs)):
-                            self.fail("Contiguous iterable with same type expected", context)
+                            self.fail(message_registry.CONTIGUOUS_ITERABLE_EXPECTED, context)
                         else:
                             if last_idx is None or last_idx + 1 == idx_rval:
                                 rvalues.append(rval)
                                 last_idx = idx_rval
                                 iterable_type = self.iterable_item_type(typs)
                             else:
-                                self.fail("Contiguous iterable with same type expected", context)
+                                self.fail(message_registry.CONTIGUOUS_ITERABLE_EXPECTED, context)
                     else:
-                        self.fail("Invalid type '{}' for *expr (iterable expected)".format(typs),
+                        self.fail(message_registry.ITERABLE_TYPE_EXPECTED.format(typs),
                              context)
                 else:
                     rvalues.append(rval)
@@ -3194,8 +3188,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         dunder_set = attribute_type.type.get_method('__set__')
         if dunder_set is None:
-            self.msg.fail(message_registry.DESCRIPTOR_SET_NOT_CALLABLE.format(attribute_type),
-                          context)
+            self.fail(message_registry.DESCRIPTOR_SET_NOT_CALLABLE.format(attribute_type), context)
             return AnyType(TypeOfAny.from_error), get_type, False
 
         function = function_type(dunder_set, self.named_type('builtins.function'))
@@ -3378,8 +3371,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # Functions returning a value of type None are allowed to have a None return.
                     if is_lambda or isinstance(typ, NoneType):
                         return
-                    self.fail(message_registry.NO_RETURN_VALUE_EXPECTED, s,
-                              code=codes.RETURN_VALUE)
+                    self.fail(message_registry.NO_RETURN_VALUE_EXPECTED, s)
                 else:
                     self.check_subtype(
                         subtype_label='got',
@@ -3401,7 +3393,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     return
 
                 if self.in_checked_function():
-                    self.fail(message_registry.RETURN_VALUE_EXPECTED, s, code=codes.RETURN_VALUE)
+                    self.fail(message_registry.RETURN_VALUE_EXPECTED, s)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
         """Type check an if statement."""
@@ -4251,23 +4243,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 return f'Expression has type "{t}"'
 
         if isinstance(t, FunctionLike):
-            self.msg.fail(
-                f'Function "{t}" could always be true in boolean context', expr,
-                code=codes.TRUTHY_BOOL,
-            )
+            self.fail(message_registry.FUNCTION_ALWAYS_TRUE.format(t), expr)
         elif isinstance(t, UnionType):
-            self.msg.fail(
-                f"{format_expr_type()} of which no members implement __bool__ or __len__ "
-                "so it could always be true in boolean context",
+            self.fail(
+                message_registry.TYPE_ALWAYS_TRUE_UNIONTYPE.format(format_expr_type()),
                 expr,
-                code=codes.TRUTHY_BOOL,
             )
         else:
-            self.msg.fail(
-                f'{format_expr_type()} which does not implement __bool__ or __len__ '
-                'so it could always be true in boolean context',
+            self.fail(
+                message_registry.TYPE_ALWAYS_TRUE.format(format_expr_type()),
                 expr,
-                code=codes.TRUTHY_BOOL,
             )
 
     def find_type_equals_check(self, node: ComparisonExpr, expr_indices: List[int]
@@ -4400,7 +4385,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if node.callee.type_guard is not None:
                     # TODO: Follow keyword args or *args, **kwargs
                     if node.arg_kinds[0] != nodes.ARG_POS:
-                        self.fail("Type guard requires positional argument", node)
+                        self.fail(message_registry.TYPE_GUARD_POS_ARG_REQUIRED, node)
                         return {}, {}
                     if literal(expr) == LITERAL_TYPE:
                         # Note: we wrap the target type, so that we can special case later.
@@ -4946,7 +4931,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                       subtype: Type,
                       supertype: Type,
                       context: Context,
-                      msg: str = message_registry.INCOMPATIBLE_TYPES,
+                      msg: Union[str, ErrorMessage] = message_registry.INCOMPATIBLE_TYPES,
                       subtype_label: Optional[str] = None,
                       supertype_label: Optional[str] = None,
                       *,
@@ -4956,9 +4941,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if is_subtype(subtype, supertype):
             return True
 
+        if isinstance(msg, ErrorMessage):
+            msg_text = msg.value
+            code = msg.code
+        else:
+            msg_text = msg
         subtype = get_proper_type(subtype)
         supertype = get_proper_type(supertype)
-        if self.msg.try_report_long_tuple_assignment_error(subtype, supertype, context, msg,
+        if self.msg.try_report_long_tuple_assignment_error(subtype, supertype, context, msg_text,
                                        subtype_label, supertype_label, code=code):
             return False
         if self.should_suppress_optional_error([subtype]):
@@ -4977,8 +4967,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(subtype, Instance) and isinstance(supertype, Instance):
                 notes = append_invariance_notes([], subtype, supertype)
         if extra_info:
-            msg += ' (' + ', '.join(extra_info) + ')'
-        self.fail(msg, context, code=code)
+            msg_text += ' (' + ', '.join(extra_info) + ')'
+
+        self.fail(ErrorMessage(msg_text, code=code), context)
         for note in notes:
             self.msg.note(note, context, code=code)
         if note_msg:
@@ -5249,8 +5240,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Create a temporary node with the given, fixed type."""
         return TempNode(t, context=context)
 
-    def fail(self, msg: str, context: Context, *, code: Optional[ErrorCode] = None) -> None:
+    def fail(self, msg: Union[str, ErrorMessage], context: Context, *,
+             code: Optional[ErrorCode] = None) -> None:
         """Produce an error message."""
+        if isinstance(msg, ErrorMessage):
+            self.msg.fail(msg.value, context, code=msg.code)
+            return
         self.msg.fail(msg, context, code=code)
 
     def note(self,
