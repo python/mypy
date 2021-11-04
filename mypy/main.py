@@ -81,7 +81,7 @@ def main(script_path: Optional[str],
              stderr, options)
 
     if options.install_types and not sources:
-        install_types(options.cache_dir, formatter, non_interactive=options.non_interactive)
+        install_types(options.cache_dir, formatter, options, non_interactive=options.non_interactive)
         return
 
     res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
@@ -90,7 +90,7 @@ def main(script_path: Optional[str],
         missing_pkgs = read_types_packages_to_install(options.cache_dir, after_run=True)
         if missing_pkgs:
             # Install missing type packages and rerun build.
-            install_types(options.cache_dir, formatter, after_run=True, non_interactive=True)
+            install_types(options.cache_dir, formatter, options, after_run=True, non_interactive=True)
             fscache.flush()
             print()
             res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
@@ -117,7 +117,7 @@ def main(script_path: Optional[str],
         stdout.flush()
 
     if options.install_types and not options.non_interactive:
-        result = install_types(options.cache_dir, formatter, after_run=True,
+        result = install_types(options.cache_dir, formatter, options, after_run=True,
                                non_interactive=False)
         if result:
             print()
@@ -1148,6 +1148,7 @@ def read_types_packages_to_install(cache_dir: str, after_run: bool) -> List[str]
 
 def install_types(cache_dir: str,
                   formatter: util.FancyFormatter,
+                  options: Options,
                   *,
                   after_run: bool = False,
                   non_interactive: bool = False) -> bool:
@@ -1159,7 +1160,7 @@ def install_types(cache_dir: str,
     if after_run and not non_interactive:
         print()
     print('Installing missing stub packages:')
-    cmd = [sys.executable, '-m', 'pip', 'install'] + packages
+    cmd = [options.python_executable, '-m', 'pip', 'install'] + packages
     print(formatter.style(' '.join(cmd), 'none', bold=True))
     print()
     if not non_interactive:
