@@ -1164,7 +1164,7 @@ def install_types(cache_dir: str,
     if after_run and not non_interactive:
         print()
     print('Installing missing stub packages:')
-    cmd = [options.python_executable, '-m', 'pip', 'install'] + packages
+    cmd = [options.python_executable or sys.executable, '-m', 'pip', 'install'] + packages
     print(formatter.style(' '.join(cmd), 'none', bold=True))
     print()
     if not non_interactive:
