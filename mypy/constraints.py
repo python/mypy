@@ -254,7 +254,7 @@ def any_constraints(options: List[Optional[List[Constraint]]], eager: bool) -> L
             variable_direction_pairs.add(frozenset((c.type_var, c.op) for c in option))
         if len(variable_direction_pairs) == 1:
             # All options have same structure. In this case we can merge-in trivial
-            # options (i.e. those that only have Any and try again.
+            # options (i.e. those that only have Any) and try again.
             trivial_options = select_trivial(valid_options)
             if trivial_options and len(trivial_options) < len(valid_options):
                 # Randomly choose first trivial option for source of Any.
