@@ -984,13 +984,27 @@ class Baz(NamedTuple):
     a: str
     b: str
 
+class Biz(Baz): ...
+class Other: ...
+class Both1(Bar, Other): ...
+class Both2(Other, Bar): ...
+class Both3(Biz, Other): ...
+
 def print_namedtuple(obj: NamedTuple) -> None:
-    reveal_type(obj._source)  # N: Revealed type is "builtins.str"
+    reveal_type(obj.name)  # N: Revealed type is "builtins.str"
 
 b1: Bar
 b2: Baz
+b3: Biz
+b4: Both1
+b5: Both2
+b6: Both3
 print_namedtuple(b1)  # ok
 print_namedtuple(b2)  # ok
+print_namedtuple(b3)  # ok
+print_namedtuple(b4)  # ok
+print_namedtuple(b5)  # ok
+print_namedtuple(b6)  # ok
 
 print_namedtuple(1)  # E: Argument 1 to "print_namedtuple" has incompatible type "int"; expected "NamedTuple"
 print_namedtuple(('bar',))  # E: Argument 1 to "print_namedtuple" has incompatible type "Tuple[str]"; expected "NamedTuple"
@@ -1006,17 +1020,35 @@ print_namedtuple(t)  # E: Argument 1 to "print_namedtuple" has incompatible type
 from typing import Tuple, NamedTuple
 
 class Bar(NamedTuple):
-    name: int
+    n: int
 
 class Baz(NamedTuple):
     a: str
     b: str
+
+class Biz(Bar): ...
+class Other: ...
+class Both1(Bar, Other): ...
+class Both2(Other, Bar): ...
+class Both3(Biz, Other): ...
 
 def good1() -> NamedTuple:
     b: Bar
     return b
 def good2() -> NamedTuple:
     b: Baz
+    return b
+def good3() -> NamedTuple:
+    b: Biz
+    return b
+def good4() -> NamedTuple:
+    b: Both1
+    return b
+def good5() -> NamedTuple:
+    b: Both2
+    return b
+def good6() -> NamedTuple:
+    b: Both3
     return b
 
 def bad1() -> NamedTuple:

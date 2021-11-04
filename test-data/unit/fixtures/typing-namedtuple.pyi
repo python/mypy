@@ -12,4 +12,4 @@ class Sequence(Iterable[T_co]): pass
 
 class Tuple(Sequence): pass
 class NamedTuple(Tuple):
-    _source: str
+    name: str

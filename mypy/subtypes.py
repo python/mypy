@@ -267,8 +267,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
             # in `TypeInfo.mro`, so when `(a: NamedTuple) -> None` is used,
             # we need to check for `is_named_tuple` property
             if ((left.type.has_base(rname) or rname == 'builtins.object'
-                    or (rname == 'typing.NamedTuple' and left.type.is_named_tuple)) and
-                    not self.ignore_declared_variance):
+                    or (rname == 'typing.NamedTuple'
+                        and any(l.is_named_tuple for l in left.type.mro)))
+                    and not self.ignore_declared_variance):
                 # Map left type to corresponding right instances.
                 t = map_instance_to_supertype(left, right.type)
                 nominal = all(self.check_type_parameter(lefta, righta, tvar.variance)

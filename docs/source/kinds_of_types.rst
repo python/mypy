@@ -586,6 +586,9 @@ Python 3.6 introduced an alternative, class-based syntax for named tuples with t
 
     deserialize_named_tuple((1, 2))  # Argument 1 to "deserialize_named_tuple" has incompatible type "Tuple[int, int]"; expected "NamedTuple"
 
+  Note, that behavior is highly experimental, non-standard,
+  and can be not supported by other type checkers.
+
 .. _type-of-class:
 
 The type of class objects
