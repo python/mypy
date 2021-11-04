@@ -2628,7 +2628,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         errors = []
         results = []
         for method, obj, arg in variants:
-            local_errors = make_local_errors()
+            local_errors = msg.clean_copy()
             result = self.check_method_call(
                 op_name, obj, method, [arg], [ARG_POS], context, local_errors)
             if local_errors.is_errors():
@@ -2650,7 +2650,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # call the __op__ method (even though it's missing).
 
         if not variants:
-            local_errors = make_local_errors()
+            local_errors = msg.clean_copy()
             result = self.check_method_call_by_name(
                 op_name, left_type, [right_expr], [ARG_POS], context, local_errors)
 
