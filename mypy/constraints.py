@@ -213,26 +213,49 @@ def any_constraints(options: List[Optional[List[Constraint]]], eager: bool) -> L
         valid_options = [option for option in options if option]
     else:
         valid_options = [option for option in options if option is not None]
+
     if len(valid_options) == 1:
         return valid_options[0]
-    elif (len(valid_options) > 1 and
-          all(is_same_constraints(valid_options[0], c)
-              for c in valid_options[1:])):
-        # Multiple sets of constraints that are all the same. Just pick any one of them.
+    if len(valid_options) > 1:
+        if all(
+            is_same_constraints(valid_options[0], c)
+            for c in valid_options[1:]
+        ):
+            # Multiple sets of constraints that are all the same.
+            # Just pick any one of them.
+            return valid_options[0]
         # TODO: More generally, if a given (variable, direction) pair appears in
-        #       every option, combine the bounds with meet/join.
-        return valid_options[0]
-    elif len(valid_options) > 1:
-        # Drop constraints that only refer to "Any" and try again. This way Any types
-        # in unions don't interfere with type inference.
-        narrowed_options = [option
-                            for option in valid_options
-                            if not (option and
-                                    all(isinstance(get_proper_type(c.target), AnyType)
-                                        for c in option))]
-        if len(narrowed_options) < len(valid_options):
-            return any_constraints([option for option in narrowed_options], eager)
-
+        #       every option, combine the bounds with meet/join always, not just for Any.
+        variable_direction_pairs = set()
+        for option in valid_options:
+            if option is None:
+                continue
+            variable_direction_pairs.add(frozenset((c.type_var, c.op) for c in option))
+        if len(variable_direction_pairs) == 1:
+            # All options have same structure. In this case we can merge-in trivial
+            # options (i.e. those that only have Any and try again.
+            trivial_options = [option
+                               for option in valid_options
+                               if (option and
+                                   all(isinstance(get_proper_type(c.target), AnyType)
+                                       for c in option))]
+            if trivial_options and len(trivial_options) < len(valid_options):
+                # Randomly choose first trivial option for source of Any.
+                any_by_type_var = {c.type_var: c.target for c in trivial_options[0]}
+                merged_options = []
+                for option in valid_options:
+                    if option in trivial_options:
+                        continue
+                    merged_options.append(
+                        [Constraint(
+                            c.type_var,
+                            c.op,
+                            UnionType.make_union([c.target, AnyType(
+                                TypeOfAny.from_another_any, source_any=any_by_type_var[c.type_var]
+                            )], c.target.line, c.target.column)
+                        ) for c in option]
+                    )
+                return any_constraints([option for option in merged_options], eager)
     # Otherwise, there are either no valid options or multiple, inconsistent valid
     # options. Give up and deduce nothing.
     return []
@@ -419,8 +442,16 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 instance.type.inferring.pop()
                 return res
         if isinstance(actual, AnyType):
-            # IDEA: Include both ways, i.e. add negation as well?
-            return self.infer_against_any(template.args, actual)
+            return self.infer_against_any(
+                template.args,
+                actual,
+                directions=[
+                    [self.direction] if type_var.variance == COVARIANT else
+                    [neg_op(self.direction)] if type_var.variance == CONTRAVARIANT else
+                    [self.direction, neg_op(self.direction)]
+                    for type_var in template.type.defn.type_vars
+                ],
+            )
         if (isinstance(actual, TupleType) and
             (is_named_instance(template, 'typing.Iterable') or
              is_named_instance(template, 'typing.Container') or
@@ -554,10 +585,18 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     def visit_type_alias_type(self, template: TypeAliasType) -> List[Constraint]:
         assert False, "This should be never called, got {}".format(template)
 
-    def infer_against_any(self, types: Iterable[Type], any_type: AnyType) -> List[Constraint]:
+    def infer_against_any(
+            self,
+            types: Sequence[Type],
+            any_type: AnyType,
+            directions: Optional[List[List[int]]] = None,
+        ) -> List[Constraint]:
         res: List[Constraint] = []
-        for t in types:
-            res.extend(infer_constraints(t, any_type, self.direction))
+        if directions is None:
+            directions = [[self.direction]] * len(types)
+        for i, t in enumerate(types):
+            for direction in directions[i]:
+                res.extend(infer_constraints(t, any_type, direction))
         return res
 
     def visit_overloaded(self, template: Overloaded) -> List[Constraint]:
