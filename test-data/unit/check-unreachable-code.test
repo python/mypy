@@ -760,7 +760,7 @@ a: int
 if isinstance(a, int):
     reveal_type(a)  # N: Revealed type is "builtins.int"
 else:
-    reveal_type(a)  # E: Statement is unreachable
+    a = 1           # E: Statement is unreachable
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnreachableFlagWithBadControlFlow2]
@@ -769,7 +769,7 @@ b: int
 while isinstance(b, int):
     reveal_type(b)  # N: Revealed type is "builtins.int"
 else:
-    reveal_type(b)  # E: Statement is unreachable
+    b = 1           # E: Statement is unreachable
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnreachableFlagWithBadControlFlow3]
@@ -777,14 +777,14 @@ else:
 def foo(c: int) -> None:
     reveal_type(c)  # N: Revealed type is "builtins.int"
     assert not isinstance(c, int)
-    reveal_type(c)  # E: Statement is unreachable
+    c = 1  # E: Statement is unreachable
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnreachableFlagWithBadControlFlow4]
 # flags: --warn-unreachable
 d: int
 if False:
-    reveal_type(d)  # E: Statement is unreachable
+    d = 1  # E: Statement is unreachable
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnreachableFlagWithBadControlFlow5]
@@ -793,15 +793,14 @@ e: int
 if True:
     reveal_type(e)  # N: Revealed type is "builtins.int"
 else:
-    reveal_type(e)  # E: Statement is unreachable
+    e = 2           # E: Statement is unreachable
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnreachableFlagStatementAfterReturn]
 # flags: --warn-unreachable
 def foo(x: int) -> None:
-    reveal_type(x)  # N: Revealed type is "builtins.int"
     return
-    reveal_type(x)  # E: Statement is unreachable
+    x = 1  # E: Statement is unreachable
 
 [case testUnreachableFlagTryBlocks]
 # flags: --warn-unreachable
@@ -810,24 +809,24 @@ def foo(x: int) -> int:
     try:
         reveal_type(x)      # N: Revealed type is "builtins.int"
         return x
-        reveal_type(x)      # E: Statement is unreachable
+        x = 1               # E: Statement is unreachable
     finally:
         reveal_type(x)      # N: Revealed type is "builtins.int"
         if True:
             reveal_type(x)  # N: Revealed type is "builtins.int"
         else:
-            reveal_type(x)  # E: Statement is unreachable
+            x = 1           # E: Statement is unreachable
 
 def bar(x: int) -> int:
     try:
         if True:
             raise Exception()
-        reveal_type(x)      # E: Statement is unreachable
+        x = 1               # E: Statement is unreachable
     except:
         reveal_type(x)      # N: Revealed type is "builtins.int"
         return x
     else:
-        reveal_type(x)      # E: Statement is unreachable
+        x = 1               # E: Statement is unreachable
 
 def baz(x: int) -> int:
     try:
@@ -915,15 +914,15 @@ def expect_str(x: str) -> str: pass
 
 x: int
 if False:
-    assert False  # E: Statement is unreachable
+    assert False
     reveal_type(x)
 
 if False:
-    raise Exception()  # E: Statement is unreachable
+    raise Exception()
     reveal_type(x)
 
 if False:
-    assert_never(x)  # E: Statement is unreachable
+    assert_never(x)
     reveal_type(x)
 
 if False:
@@ -932,7 +931,7 @@ if False:
 
 if False:
     # Ignore obvious type errors
-    assert_never(expect_str(x))  # E: Statement is unreachable
+    assert_never(expect_str(x))
     reveal_type(x)
 [builtins fixtures/exception.pyi]
 
@@ -965,29 +964,63 @@ if False:
 [builtins fixtures/exception.pyi]
 
 
+[case testUnreachableFlagOkWithDeadStatements3]
+# flags: --warn-unreachable
+from typing import NoReturn
+def assert_never(x: NoReturn) -> NoReturn:
+    assert False
+
+def nonthrowing_assert_never(x: NoReturn) -> None: ...
+
+def expect_str(x: str) -> str: pass
+
+x: int
+if False:
+    assert False  # E: Statement is unreachable
+    expect_str('a')
+
+if False:
+    raise Exception()  # E: Statement is unreachable
+    expect_str('a')
+
+if False:
+    assert_never(x)  # E: Statement is unreachable
+    expect_str('a')
+
+if False:
+    nonthrowing_assert_never(x)  # E: Statement is unreachable
+    expect_str('a')
+
+if False:
+    # Ignore obvious type errors
+    assert_never(expect_str(x))  # E: Statement is unreachable
+    expect_str('a')
+[builtins fixtures/exception.pyi]
+
+
 [case testSeveralUnreachableStatements]
 # flags: --warn-unreachable
 from typing import NoReturn
-def assert_never() -> NoReturn:
-    assert False
+def check() -> None: ...
+def never_return() -> NoReturn: ...
 
 def first() -> NoReturn:
-    assert_never()
-    assert_never()  # E: Statement is unreachable
-    reveal_type(first)
+    never_return()
+    never_return()  # E: Statement is unreachable
+    check()
 
 def second() -> NoReturn:
     raise Exception
     raise Exception  # E: Statement is unreachable
     raise Exception()
-    reveal_type(first)
+    check()
 
 def third() -> NoReturn:
     assert False
     assert False  # E: Statement is unreachable
     assert False
     assert False
-    reveal_type(first)
+    check()
 [builtins fixtures/exception.pyi]
 
 [case testSeveralUnreachableStatements2]
@@ -1045,29 +1078,31 @@ class Case1:
 # flags: --warn-unreachable
 from typing import TypeVar, Generic
 
+def check(obj: object) -> None: ...
+
 T1 = TypeVar('T1', bound=int)
 T2 = TypeVar('T2', int, str)
 T3 = TypeVar('T3', None, str)
 
 def test1(x: T1) -> T1:
     if isinstance(x, int):
-        reveal_type(x)  # N: Revealed type is "T1`-1"
+        check(x)
     else:
-        reveal_type(x)  # E: Statement is unreachable
+        check(x)  # E: Statement is unreachable
     return x
 
 def test2(x: T2) -> T2:
     if isinstance(x, int):
-        reveal_type(x)  # N: Revealed type is "builtins.int*"
+        check(x)
     else:
-        reveal_type(x)  # N: Revealed type is "builtins.str*"
+        check(x)
 
     if False:
         # This is unreachable, but we don't report an error, unfortunately.
         # The presence of the TypeVar with values unfortunately currently shuts
         # down type-checking for this entire function.
         # TODO: Find a way of removing this limitation
-        reveal_type(x)
+        check(x)
 
     return x
 
@@ -1076,13 +1111,13 @@ class Test3(Generic[T2]):
 
     def func(self) -> None:
         if isinstance(self.x, int):
-            reveal_type(self.x)  # N: Revealed type is "builtins.int*"
+            check(self.x)
         else:
-            reveal_type(self.x)  # N: Revealed type is "builtins.str*"
+            check(self.x)
 
         if False:
             # Same issue as above
-            reveal_type(self.x)
+            check(self.x)
 
 
 class Test4(Generic[T3]):
@@ -1420,6 +1455,7 @@ async def f_malformed_2() -> int:
 
 [case testUnreachableUntypedFunction]
 # flags: --warn-unreachable
+def check(obj: object) -> None: ...
 
 def test_untyped_fn(obj):
     assert obj.prop is True
@@ -1428,7 +1464,7 @@ def test_untyped_fn(obj):
     obj.reload()
 
     assert obj.prop is False
-    reveal_type(obj.prop)
+    check(obj.prop)
 
 def test_typed_fn(obj) -> None:
     assert obj.prop is True
@@ -1437,10 +1473,11 @@ def test_typed_fn(obj) -> None:
     obj.reload()
 
     assert obj.prop is False
-    reveal_type(obj.prop)  # E: Statement is unreachable
+    check(obj.prop)  # E: Statement is unreachable
 
 [case testUnreachableCheckedUntypedFunction]
 # flags: --warn-unreachable --check-untyped-defs
+def check(obj: object) -> None: ...
 
 def test_untyped_fn(obj):
     assert obj.prop is True
@@ -1449,7 +1486,7 @@ def test_untyped_fn(obj):
     obj.reload()
 
     assert obj.prop is False
-    reveal_type(obj.prop)  # E: Statement is unreachable
+    check(obj.prop)  # E: Statement is unreachable
 
 [case testConditionalTypeVarException]
 # every part of this test case was necessary to trigger the crash
@@ -1478,6 +1515,25 @@ def f() -> None:
         x = 1  # E: Statement is unreachable
 [builtins fixtures/dict.pyi]
 
+[case testRevealExprAlwaysReachable]
+# flags: --warn-unreachable
+
+# This should always report:
+
+def f() -> None:
+    if False:
+        x = 1  # E: Statement is unreachable
+
+# But, reveals are special:
+
+def g() -> None:
+    if False:
+        reveal_type(f)
+
+def h() -> None:
+    if False:
+        reveal_locals()
+
 [case testUnreachableModuleBody1]
 # flags: --warn-unreachable
 from typing import NoReturn
@@ -1496,6 +1552,6 @@ x = 1  # E: Statement is unreachable
 [case testUnreachableModuleBody3]
 # flags: --warn-unreachable
 raise Exception
-raise Exception
-x = 1  # E: Statement is unreachable
+raise Exception  # E: Statement is unreachable
+x = 1
 [builtins fixtures/exception.pyi]

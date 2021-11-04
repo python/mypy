@@ -26,7 +26,7 @@ from mypy.nodes import (
     ARG_POS, ARG_STAR, LITERAL_TYPE, LDEF, MDEF, GDEF,
     CONTRAVARIANT, COVARIANT, INVARIANT, TypeVarExpr, AssignmentExpr,
     is_final_node,
-    ARG_NAMED,
+    ARG_NAMED, RevealExpr,
 )
 from mypy import nodes
 from mypy import operators
@@ -38,7 +38,7 @@ from mypy.types import (
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType,
     is_named_instance, union_items, TypeQuery, LiteralType,
     is_optional, remove_optional, TypeTranslator, StarType, get_proper_type, ProperType,
-    get_proper_types, is_literal_type, TypeAliasType, TypeGuardedType,
+    get_proper_types, is_literal_type, TypeAliasType, TypeGuardedType
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import (
@@ -308,10 +308,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.errors.set_file(self.path, self.tree.fullname, scope=self.tscope)
             with self.tscope.module_scope(self.tree.fullname):
                 with self.enter_partial_types(), self.binder.top_frame_context():
-                    for d in self.tree.defs:
+                    for index, d in enumerate(self.tree.defs):
                         if (self.binder.is_unreachable()
                                 and self.should_report_unreachable_issues()
-                                and not self.is_raising_or_empty(d)):
+                                and self.has_regular_unreachable_statements(
+                                        self.tree.defs, index)):
                             self.msg.unreachable_statement(d)
                             break
                         self.accept(d)
@@ -2022,7 +2023,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         for index, s in enumerate(b.body):
             if self.binder.is_unreachable():
                 if (self.should_report_unreachable_issues()
-                        and self.has_regular_unreachable_statements(b, index)):
+                        and self.has_regular_unreachable_statements(b.body, index)):
                     self.msg.unreachable_statement(s)
                 break
             self.accept(s)
@@ -2049,6 +2050,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(s.expr, EllipsisExpr):
                 return True
             elif isinstance(s.expr, CallExpr):
+                if isinstance(s.expr.analyzed, RevealExpr):
+                    return True  # `reveal_type` and `reveal_locals` are no-op
+
                 with self.expr_checker.msg.disable_errors():
                     typ = get_proper_type(self.expr_checker.accept(
                         s.expr, allow_none_return=True, always_allow_any=True))
@@ -2057,14 +2061,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     return True
         return False
 
-    def has_regular_unreachable_statements(self, block: Block, index: int) -> bool:
+    def has_regular_unreachable_statements(self, block: Sequence[Statement],
+                                           index: int) -> bool:
         """Helps to identify cases when our body has some regular unreachable statements.
 
         We call statements "regular" when they are not covered by our special rules
         defined in `is_raising_or_empty` function.
         """
-        for ind in range(index, len(block.body)):
-            if not self.is_raising_or_empty(block.body[ind]):
+        for ind in range(index, len(block)):
+            if not self.is_raising_or_empty(block[ind]):
                 return True
         return False
 
