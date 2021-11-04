@@ -212,8 +212,10 @@ def select_trivial(options: Sequence[Optional[List[Constraint]]]) -> List[List[C
     return res
 
 
-def merge_with_any(constraint: Constraint, any_type: AnyType) -> Constraint:
+def merge_with_any(constraint: Constraint, any_type: Type) -> Constraint:
     """Transform a constraint target into a union with given Any type."""
+    any_type = get_proper_type(any_type)
+    assert isinstance(any_type, AnyType)
     target = constraint.target
     items = [target, AnyType(TypeOfAny.from_another_any, source_any=any_type)]
     return Constraint(
@@ -588,7 +590,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                                              self.direction))
             return res
         elif isinstance(actual, AnyType):
-            return self.infer_against_any(template.items.values(), actual)
+            return self.infer_against_any(list(template.items.values()), actual)
         else:
             return []
 
