@@ -1,13 +1,15 @@
 """Utilities for checking that internal ir is valid and consistent."""
-from typing import List, Union
+from typing import List, Union, Set
 from mypyc.ir.pprint import format_func
 from mypyc.ir.ops import (
     OpVisitor, BasicBlock, Op, ControlOp, Goto, Branch, Return, Unreachable,
     Assign, AssignMulti, LoadErrorValue, LoadLiteral, GetAttr, SetAttr, LoadStatic,
     InitStatic, TupleGet, TupleSet, IncRef, DecRef, Call, MethodCall, Cast,
     Box, Unbox, RaiseStandardError, CallC, Truncate, LoadGlobal, IntOp, ComparisonOp,
-    LoadMem, SetMem, GetElementPtr, LoadAddress, KeepAlive
+    LoadMem, SetMem, GetElementPtr, LoadAddress, KeepAlive, Register, Integer,
+    BaseAssign
 )
+from mypyc.ir.rtypes import RType, RPrimitive, RUnion, is_object_rprimitive, RInstance, RArray, int_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive, range_rprimitive, str_rprimitive, bytes_rprimitive, tuple_rprimitive
 from mypyc.ir.func_ir import FuncIR
 
 
@@ -35,12 +37,16 @@ def check_func_ir(fn: FuncIR) -> List[FnError]:
                 desc="Block not terminated",
             ))
 
+    errors.extend(check_op_sources_valid(fn))
+    if errors:
+        return errors
+
     op_checker = OpChecker(fn)
     for block in fn.blocks:
         for op in block.ops:
             op.accept(op_checker)
 
-    return errors + op_checker.errors
+    return op_checker.errors
 
 
 class IrCheckException(Exception):
@@ -53,6 +59,72 @@ def assert_func_ir_valid(fn: FuncIR) -> None:
         raise IrCheckException("Internal error: Generated invalid IR: \n" + "\n".join(
             format_func(fn, [(e.source, e.desc) for e in errors])),
         )
+
+
+def check_op_sources_valid(fn: FuncIR) -> List[FnError]:
+    errors = []
+    valid_ops: Set[Op] = set()
+    valid_registers: Set[Register] = set()
+
+    for block in fn.blocks:
+        valid_ops.update(block.ops)
+
+        valid_registers.update([
+            op.dest for op in block.ops if isinstance(op, BaseAssign)
+        ])
+
+    valid_registers.update(fn.arg_regs)
+
+    for block in fn.blocks:
+        for op in block.ops:
+            for source in op.sources():
+                if isinstance(source, Integer):
+                    pass
+                elif isinstance(source, Op):
+                    if source not in valid_ops:
+                        errors.append(FnError(source=op, desc=f"Invalid op reference to op of type {type(source).__name__}"))
+                elif isinstance(source, Register):
+                    if source not in valid_registers:
+                        errors.append(FnError(source=op, desc=f"Invalid op reference to register {source.name}"))
+
+    return errors
+
+
+disjoint_types = set([
+    int_rprimitive.name,
+    bytes_rprimitive.name,
+    str_rprimitive.name,
+    dict_rprimitive.name,
+    list_rprimitive.name,
+    set_rprimitive.name,
+    tuple_rprimitive.name,
+    range_rprimitive.name,
+])
+
+
+def can_coerce_to(src: RType, dest: RType) -> bool:
+    """Check if src can be assigned to dest_rtype.
+    
+    Currently okay to have false positives.
+    """
+    if isinstance(dest, RUnion):
+        return any(can_coerce_to(src, d) for d in dest.items)
+
+    if isinstance(dest, RPrimitive):
+        if isinstance(src, RPrimitive):
+            # If either src or dest is a disjoint type, then they must both be.
+            if src.name in disjoint_types and dest.name in disjoint_types:
+                return src.name == dest.name
+            return src.size == dest.size
+        if isinstance(src, RInstance):
+            return is_object_rprimitive(dest)
+        if isinstance(src, RUnion):
+            # IR doesn't have the ability to narrow unions based on
+            # control flow, so cannot be a strict all() here.
+            return any(can_coerce_to(s, dest) for s in src.items)
+        return False
+
+    return True
 
 
 class OpChecker(OpVisitor[None]):
@@ -68,6 +140,10 @@ class OpChecker(OpVisitor[None]):
             if target not in self.parent_fn.blocks:
                 self.fail(source=op, desc=f"Invalid control operation target: {target.label}")
 
+    def check_type_coercion(self, op: Op, src: RType, dest: RType) -> None:
+        if not can_coerce_to(src, dest):
+            self.fail(source=op, desc=f"Cannot coerce source type {src.name} to dest type {dest.name}")
+
     def visit_goto(self, op: Goto) -> None:
         self.check_control_op_targets(op)
 
@@ -75,16 +151,18 @@ class OpChecker(OpVisitor[None]):
         self.check_control_op_targets(op)
 
     def visit_return(self, op: Return) -> None:
-        pass
+        self.check_type_coercion(op, op.value.type, self.parent_fn.decl.sig.ret_type)
 
     def visit_unreachable(self, op: Unreachable) -> None:
         pass
 
     def visit_assign(self, op: Assign) -> None:
-        pass
+        self.check_type_coercion(op, op.src.type, op.dest.type)
 
     def visit_assign_multi(self, op: AssignMulti) -> None:
-        pass
+        for src in op.src:
+            assert isinstance(op.dest.type, RArray)
+            self.check_type_coercion(op, src.type, op.dest.type.item_type)
 
     def visit_load_error_value(self, op: LoadErrorValue) -> None:
         pass
