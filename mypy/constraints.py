@@ -606,7 +606,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             types: Sequence[Type],
             any_type: AnyType,
             directions: Optional[List[List[int]]] = None,
-        ) -> List[Constraint]:
+    ) -> List[Constraint]:
         res: List[Constraint] = []
         if directions is None:
             directions = [[self.direction]] * len(types)
