@@ -201,6 +201,28 @@ def infer_constraints_if_possible(template: Type, actual: Type,
     return infer_constraints(template, actual, direction)
 
 
+def select_trivial(options: Sequence[Optional[List[Constraint]]]) -> List[List[Constraint]]:
+    """Select only those lists where each item is a constraint against Any."""
+    res = []
+    for option in options:
+        if option is None:
+            continue
+        if all(isinstance(get_proper_type(c.target), AnyType) for c in option):
+            res.append(option)
+    return res
+
+
+def merge_with_any(constraint: Constraint, any_type: AnyType) -> Constraint:
+    """Transform a constraint target into a union with given Any type."""
+    target = constraint.target
+    items = [target, AnyType(TypeOfAny.from_another_any, source_any=any_type)]
+    return Constraint(
+        constraint.type_var,
+        constraint.op,
+        UnionType.make_union(items, target.line, target.column),
+    )
+
+
 def any_constraints(options: List[Optional[List[Constraint]]], eager: bool) -> List[Constraint]:
     """Deduce what we can from a collection of constraint lists.
 
@@ -217,10 +239,7 @@ def any_constraints(options: List[Optional[List[Constraint]]], eager: bool) -> L
     if len(valid_options) == 1:
         return valid_options[0]
     if len(valid_options) > 1:
-        if all(
-            is_same_constraints(valid_options[0], c)
-            for c in valid_options[1:]
-        ):
+        if all(is_same_constraints(valid_options[0], c) for c in valid_options[1:]):
             # Multiple sets of constraints that are all the same.
             # Just pick any one of them.
             return valid_options[0]
@@ -234,27 +253,22 @@ def any_constraints(options: List[Optional[List[Constraint]]], eager: bool) -> L
         if len(variable_direction_pairs) == 1:
             # All options have same structure. In this case we can merge-in trivial
             # options (i.e. those that only have Any and try again.
-            trivial_options = [option
-                               for option in valid_options
-                               if (option and
-                                   all(isinstance(get_proper_type(c.target), AnyType)
-                                       for c in option))]
+            trivial_options = select_trivial(valid_options)
             if trivial_options and len(trivial_options) < len(valid_options):
                 # Randomly choose first trivial option for source of Any.
+                # TODO: is it possible to get more precise attribution of source Any?
                 any_by_type_var = {c.type_var: c.target for c in trivial_options[0]}
                 merged_options = []
                 for option in valid_options:
                     if option in trivial_options:
                         continue
-                    merged_options.append(
-                        [Constraint(
-                            c.type_var,
-                            c.op,
-                            UnionType.make_union([c.target, AnyType(
-                                TypeOfAny.from_another_any, source_any=any_by_type_var[c.type_var]
-                            )], c.target.line, c.target.column)
-                        ) for c in option]
-                    )
+                    if option is not None:
+                        merged_option: Optional[List[Constraint]] = [
+                            merge_with_any(c, any_by_type_var[c.type_var]) for c in option
+                        ]
+                    else:
+                        merged_option = None
+                    merged_options.append(merged_option)
                 return any_constraints([option for option in merged_options], eager)
     # Otherwise, there are either no valid options or multiple, inconsistent valid
     # options. Give up and deduce nothing.
