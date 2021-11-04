@@ -4674,7 +4674,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 def replay_lookup(new_parent_type: ProperType) -> Optional[Type]:
                     msg_copy = self.msg.clean_copy()
-                    msg_copy.disable_count = 0
                     member_type = analyze_member_access(
                         name=member_name,
                         typ=new_parent_type,
