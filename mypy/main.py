@@ -81,7 +81,9 @@ def main(script_path: Optional[str],
              stderr, options)
 
     if options.install_types and not sources:
-        install_types(options.cache_dir, formatter, options, non_interactive=options.non_interactive)
+        install_types(
+            options.cache_dir, formatter, options, non_interactive=options.non_interactive
+        )
         return
 
     res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
@@ -90,7 +92,9 @@ def main(script_path: Optional[str],
         missing_pkgs = read_types_packages_to_install(options.cache_dir, after_run=True)
         if missing_pkgs:
             # Install missing type packages and rerun build.
-            install_types(options.cache_dir, formatter, options, after_run=True, non_interactive=True)
+            install_types(
+                options.cache_dir, formatter, options, after_run=True, non_interactive=True
+            )
             fscache.flush()
             print()
             res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
