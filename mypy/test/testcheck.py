@@ -3,8 +3,7 @@
 import os
 import re
 import sys
-from os import listdir
-from os.path import isfile, join
+from pathlib import Path
 
 from typing import Dict, List, Set, Tuple
 
@@ -25,8 +24,15 @@ from mypy.semanal_main import core_modules
 
 
 # List of files that contain test case descriptions.
-test_path = '../../test-data/unit/'
-typecheck_files = [f for f in listdir(test_path) if isfile(join(test_path, f)) and f.startswith('check-')]
+test_path = os.getcwd()
+test_path = Path(test_path).parents[1]
+test_path = test_path / 'test-data'
+test_path = test_path / 'unit'
+
+typecheck_files = []
+for dirpath, dirnames, filenames in os.walk(test_path):
+    for filename in [f for f in filenames if f.endswith(".test") and f.startswith("check")]:
+        typecheck_files.append(filename)
 
 
 # Tests that use Python 3.8-only AST features (like expression-scoped ignores):
