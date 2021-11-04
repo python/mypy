@@ -25,7 +25,7 @@ def getprefixes():
 def getsitepackages():
     # type: () -> List[str]
     res = []
-    if  hasattr(site, 'getsitepackages'):
+    if hasattr(site, 'getsitepackages'):
         res.extend(site.getsitepackages())
 
         if hasattr(site, 'getsitepackages') and site.ENABLE_USER_SITE:
