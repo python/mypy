@@ -19,6 +19,7 @@ from mypyc.ir.rtypes import is_bool_rprimitive, is_int_rprimitive, RType
 
 ErrorSource = Union[BasicBlock, Op]
 
+
 class IRPrettyPrintVisitor(OpVisitor[str]):
     """Internal visitor that pretty-prints ops."""
 
@@ -314,6 +315,7 @@ def format_blocks(blocks: List[BasicBlock],
             # Each basic block needs to exit somewhere.
             lines.append('    [MISSING BLOCK EXIT OPCODE]')
     return lines
+
 
 def format_func(fn: FuncIR, errors: Sequence[Tuple[ErrorSource, str]] = ()) -> List[str]:
     lines = []

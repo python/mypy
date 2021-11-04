@@ -1,7 +1,7 @@
 import unittest
 from typing import List
 
-from mypyc.analysis.ircheck import check_funcdef, FnError
+from mypyc.analysis.ircheck import check_func_ir, FnError
 from mypyc.ir.rtypes import none_rprimitive
 from mypyc.ir.ops import BasicBlock, Op, Return, Integer, Goto
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FuncSignature
@@ -9,12 +9,12 @@ from mypyc.ir.pprint import format_func
 
 
 def assert_has_error(fn: FuncIR, error: FnError) -> None:
-    errors = check_funcdef(fn)
+    errors = check_func_ir(fn)
     assert errors == [error]
 
 
 def assert_no_errors(fn: FuncIR) -> None:
-    assert not check_funcdef(fn)
+    assert not check_func_ir(fn)
 
 
 NONE_VALUE = Integer(0, rtype=none_rprimitive)

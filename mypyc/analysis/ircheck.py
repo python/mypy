@@ -1,7 +1,8 @@
+"""Utilities for checking that internal ir is valid and consistent."""
 from typing import List, Union
 from mypyc.ir.pprint import format_func
 from mypyc.ir.ops import (
-    OpVisitor, BasicBlock, Register, Op, ControlOp, Goto, Branch, Return, Unreachable,
+    OpVisitor, BasicBlock, Op, ControlOp, Goto, Branch, Return, Unreachable,
     Assign, AssignMulti, LoadErrorValue, LoadLiteral, GetAttr, SetAttr, LoadStatic,
     InitStatic, TupleGet, TupleSet, IncRef, DecRef, Call, MethodCall, Cast,
     Box, Unbox, RaiseStandardError, CallC, Truncate, LoadGlobal, IntOp, ComparisonOp,
@@ -23,10 +24,8 @@ class FnError(object):
         return f"FnError(source={self.source}, desc={self.desc})"
 
 
-def check_funcdef(fn: FuncIR) -> List[FnError]:
-    """Check a list of basic blocks (e.g. from a function definition) in surrounding
-    context (e.g. args).
-    """
+def check_func_ir(fn: FuncIR) -> List[FnError]:
+    """Applies validations to a given function ir and returns a list of errors found."""
     errors = []
 
     for block in fn.blocks:
@@ -48,10 +47,12 @@ class IrCheckException(Exception):
     pass
 
 
-def check_funcdef_and_crash(fn: FuncIR) -> None:
-    errors = check_funcdef(fn)
+def assert_func_ir_valid(fn: FuncIR) -> None:
+    errors = check_func_ir(fn)
     if errors:
-        raise IrCheckException("Internal error: Generated invalid IR: \n" + "\n".join(format_func(fn, [(e.source, e.desc) for e in errors])))
+        raise IrCheckException("Internal error: Generated invalid IR: \n" + "\n".join(
+            format_func(fn, [(e.source, e.desc) for e in errors])),
+        )
 
 
 class OpChecker(OpVisitor[None]):
@@ -67,25 +68,25 @@ class OpChecker(OpVisitor[None]):
             if target not in self.parent_fn.blocks:
                 self.fail(source=op, desc=f"Invalid control operation target: {target.label}")
 
-    def visit_goto(self, op: Goto) -> None:                            
+    def visit_goto(self, op: Goto) -> None:
         self.check_control_op_targets(op)
-              
-    def visit_branch(self, op: Branch) -> None:                    
+
+    def visit_branch(self, op: Branch) -> None:
         self.check_control_op_targets(op)
-                                                                       
+
     def visit_return(self, op: Return) -> None:
         pass
-                                                                                 
+
     def visit_unreachable(self, op: Unreachable) -> None:
-        pass           
-                                           
+        pass
+
     def visit_assign(self, op: Assign) -> None:
         pass
-                                        
+
     def visit_assign_multi(self, op: AssignMulti) -> None:
-        pass   
-                                                                      
-    def visit_load_error_value(self, op: LoadErrorValue) -> None:        
+        pass
+
+    def visit_load_error_value(self, op: LoadErrorValue) -> None:
         pass
 
     def visit_load_literal(self, op: LoadLiteral) -> None:
