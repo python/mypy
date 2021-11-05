@@ -7,7 +7,7 @@ from mypy.types import (
     CallableType, Type, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarType, Instance,
     TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeVarId, TypeQuery, is_named_instance, TypeOfAny, LiteralType,
-    ProperType, get_proper_type, TypeAliasType
+    ProperType, get_proper_type, TypeAliasType, get_proper_types
 )
 from mypy.maptype import map_instance_to_supertype
 import mypy.subtypes
@@ -212,11 +212,23 @@ def select_trivial(options: Sequence[Optional[List[Constraint]]]) -> List[List[C
     return res
 
 
+def is_union_with_any(tp: Type) -> bool:
+    tp = get_proper_type(tp)
+    if isinstance(tp, AnyType):
+        return True
+    if not isinstance(tp, UnionType):
+        return False
+    return any(is_union_with_any(t) for t in get_proper_types(tp.items))
+
+
 def merge_with_any(constraint: Constraint, any_type: Type) -> Constraint:
     """Transform a constraint target into a union with given Any type."""
     any_type = get_proper_type(any_type)
     assert isinstance(any_type, AnyType)
     target = constraint.target
+    if is_union_with_any(target):
+        # Do not produce redundant unions.
+        return constraint
     items = [target, AnyType(TypeOfAny.from_another_any, source_any=any_type)]
     return Constraint(
         constraint.type_var,
