@@ -24,7 +24,8 @@ from mypy.nodes import (
     ComparisonExpr, StarExpr, EllipsisExpr, RefExpr, PromoteExpr,
     Import, ImportFrom, ImportAll, ImportBase, TypeAlias,
     ARG_POS, ARG_STAR, LITERAL_TYPE, LDEF, MDEF, GDEF,
-    CONTRAVARIANT, COVARIANT, INVARIANT, TypeVarExpr, AssignmentExpr,
+    CONTRAVARIANT, COVARIANT, INVARIANT, TypeVarExpr,
+    AssignmentExpr,
     is_final_node,
     ARG_NAMED)
 from mypy import nodes
