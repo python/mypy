@@ -1049,13 +1049,4 @@ h2: Hashable = t2
 
 t3: type[Any] = type
 h3: Hashable = t3
-
-class NotHashable:
-    __hash__: None
-
-t4: type[NotHashable] = NotHashable
-h4: Hashable = t4  # E: Incompatible types in assignment (expression has type "Type[NotHashable]", variable has type "Hashable")
-
-class DifferentMRO(type):
-    def mro(self) -> int: pass  # E: Return type "int" of "mro" incompatible with return type "List[type[Any]]" in supertype "type"
 [builtins fixtures/type.pyi]
