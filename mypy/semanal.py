@@ -670,18 +670,38 @@ class SemanticAnalyzer(NodeVisitor[None],
                 leading_type = func.type.arg_types[0]
                 if not isinstance(leading_type, (Instance, TypeType)):
                     return
-                self_type = leading_type if not func.is_class else leading_type.item
+                self_type = leading_type.item if isinstance(leading_type, TypeType) else leading_type
                 fullname = None
                 # bind any SelfTypes
                 for idx, arg in enumerate(func.type.arg_types):
                     if self.is_self_type(arg):
+                        if func.is_static:
+                            self.fail(
+                                "Self types in the annotations of staticmethods are not supported, "
+                                "please replace the type with {}".format(self_type.type.name),
+                                func
+                            )
+                            func.type.arg_types[idx] = self.named_type(
+                                self_type.type.name
+                            )  # we replace them here for them
+                            continue
                         if fullname is None:
                             fullname = self.lookup_qualified(arg.name, arg).node.fullname
                         func.type.arg_types[idx] = SelfType(self_type, fullname=fullname)
 
                 if self.is_self_type(func.type.ret_type):
                     if fullname is None:
+                        self.lookup_qualified(func.type.ret_type.name, func.type.ret_type)
                         fullname = self.lookup_qualified(func.type.ret_type.name, func.type.ret_type).node.fullname
+                    if func.is_static:
+                        self.fail(
+                            "Self types in the annotations of staticmethods are not supported, "
+                            "please replace the type with {}".format(self_type.type.name),
+                            func,
+                        )
+                        func.type.ret_type = self.named_type(self_type.type.name)
+                        return
+
                     func.type.ret_type = SelfType(self_type, fullname=fullname)
 
     def set_original_def(self, previous: Optional[Node], new: Union[FuncDef, Decorator]) -> bool:
@@ -3296,7 +3316,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             return False
         return sym.node.fullname in ('typing.Final', 'typing_extensions.Final')
 
-    def is_self_type(self, typ: Optional[Type]) -> None:
+    def is_self_type(self, typ: Optional[Type]) -> bool:
         if not isinstance(typ, UnboundType):
             return False
         sym = self.lookup_qualified(typ.name, typ)
@@ -3629,8 +3649,8 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def bind_name_expr(self, expr: NameExpr, sym: SymbolTableNode) -> None:
         """Bind name expression to a symbol table node."""
-        if sym.node.fullname in ('typing.Self', 'typing_extensions.Self') and not self.is_class_scope():
-            self.fail('{} is unbound'.format(expr.name), expr)
+        # if sym.node.fullname in ('typing.Self', 'typing_extensions.Self') and not self.is_class_scope():
+        #     self.fail('{} is unbound'.format(expr.name), expr)
         if isinstance(sym.node, TypeVarExpr) and self.tvar_scope.get_binding(sym):
             self.fail('"{}" is a type variable and only valid in type '
                       'context'.format(expr.name), expr)

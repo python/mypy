@@ -1055,7 +1055,6 @@ class CallableType(FunctionLike):
         else:
             self.def_extras = {}
         self.type_guard = type_guard
-        # self.created = __import__('inspect').stack()
 
     def copy_modified(self,
                       arg_types: Bogus[Sequence[Type]] = _dummy,
