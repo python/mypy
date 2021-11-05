@@ -28,7 +28,7 @@ def getsitepackages():
     if hasattr(site, 'getsitepackages'):
         res.extend(site.getsitepackages())
 
-        if hasattr(site, 'getsitepackages') and site.ENABLE_USER_SITE:
+        if hasattr(site, 'getusersitepackages') and site.ENABLE_USER_SITE:
             res.insert(0, site.getusersitepackages())
     else:
         from distutils.sysconfig import get_python_lib
