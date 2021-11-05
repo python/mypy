@@ -24,7 +24,7 @@ from mypy.semanal_main import core_modules
 
 
 # List of files that contain test case descriptions.
-test_path = Path(os.getcwd())
+test_path = Path.cwd()
 test_path = Path(test_path).parents[1]
 test_path = test_path / Path('test-data')
 test_path = test_path / Path('unit')
