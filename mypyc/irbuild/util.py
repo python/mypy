@@ -34,7 +34,7 @@ def dataclass_decorator_type(d: Expression) -> Optional[str]:
         if name == 'attr' and 'auto_attribs' in d.arg_names:
             auto = d.args[d.arg_names.index('auto_attribs')]
             if isinstance(auto, NameExpr) and auto.name == 'True':
-                return name + '-auto'
+                return 'attr-auto'
         return name
     else:
         return None

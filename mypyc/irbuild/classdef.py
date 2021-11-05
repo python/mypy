@@ -83,7 +83,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
                               stmt.line)
             for item in stmt.items:
                 with builder.catch_errors(stmt.line):
-                    cls_builder.transform_method(get_func_def(item))
+                    cls_builder.add_method(get_func_def(item))
         elif isinstance(stmt, (FuncDef, Decorator, OverloadedFuncDef)):
             # Ignore plugin generated methods (since they have no
             # bodies to compile and will need to have the bodies
@@ -91,7 +91,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
             if cdef.info.names[stmt.name].plugin_generated:
                 continue
             with builder.catch_errors(stmt.line):
-                cls_builder.transform_method(get_func_def(stmt))
+                cls_builder.add_method(get_func_def(stmt))
         elif isinstance(stmt, PassStmt):
             continue
         elif isinstance(stmt, AssignmentStmt):
@@ -105,7 +105,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
                 continue
             # We want to collect class variables in a dictionary for both real
             # non-extension classes and fake dataclass ones.
-            cls_builder.add_class_attr(lvalue, stmt)
+            cls_builder.add_attr(lvalue, stmt)
 
         elif isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, StrExpr):
             # Docstring. Ignore
@@ -117,19 +117,21 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
 
 
 class ClassBuilder:
+    """Create IR for a class definition."""
+
     def __init__(self, builder: IRBuilder, cdef: ClassDef) -> None:
         self.builder = builder
         self.cdef = cdef
         self.attrs_to_cache: List[Tuple[Lvalue, RType]] = []
 
-    def transform_method(self, fdef: FuncDef) -> None:
-        pass
+    def add_method(self, fdef: FuncDef) -> None:
+        """Add a method to the class IR"""
 
-    def add_class_attr(self, lvalue: NameExpr, stmt: AssignmentStmt) -> None:
-        pass
+    def add_attr(self, lvalue: NameExpr, stmt: AssignmentStmt) -> None:
+        """Add an attribute to the class IR"""
 
     def finalize(self, ir: ClassIR) -> None:
-        pass
+        """Perform any final operations to complete the class IR"""
 
 
 class NonExtClassBuilder(ClassBuilder):
@@ -148,10 +150,10 @@ class NonExtClassBuilder(ClassBuilder):
         non_ext_anns = self.builder.call_c(dict_new_op, [], self.cdef.line)
         return NonExtClassInfo(non_ext_dict, non_ext_bases, non_ext_anns, non_ext_metaclass)
 
-    def transform_method(self, fdef: FuncDef) -> None:
+    def add_method(self, fdef: FuncDef) -> None:
         handle_non_ext_method(self.builder, self.non_ext, self.cdef, fdef)
 
-    def add_class_attr(self, lvalue: NameExpr, stmt: AssignmentStmt) -> None:
+    def add_attr(self, lvalue: NameExpr, stmt: AssignmentStmt) -> None:
         add_non_ext_class_attr_ann(self.builder, self.non_ext, lvalue, stmt)
         add_non_ext_class_attr(self.builder, self.non_ext, lvalue, stmt, self.cdef,
                                self.attrs_to_cache)
@@ -186,10 +188,10 @@ class ExtClassBuilder(ClassBuilder):
     def skip_attr_default(self, name: str, stmt: AssignmentStmt) -> bool:
         return False
 
-    def transform_method(self, fdef: FuncDef) -> None:
+    def add_method(self, fdef: FuncDef) -> None:
         handle_ext_method(self.builder, self.cdef, fdef)
 
-    def add_class_attr(self, lvalue: NameExpr, stmt: AssignmentStmt) -> None:
+    def add_attr(self, lvalue: NameExpr, stmt: AssignmentStmt) -> None:
         # Variable declaration with no body
         if isinstance(stmt.rvalue, TempNode):
             return
@@ -240,12 +242,12 @@ class DataClassBuilder(ExtClassBuilder):
             return ann_type.type
         return None
 
-    def add_class_attr(self, lvalue: NameExpr, stmt: AssignmentStmt) -> None:
+    def add_attr(self, lvalue: NameExpr, stmt: AssignmentStmt) -> None:
         add_non_ext_class_attr_ann(self.builder, self.non_ext, lvalue, stmt,
                                    self.get_type_annotation)
         add_non_ext_class_attr(self.builder, self.non_ext, lvalue, stmt, self.cdef,
                                self.attrs_to_cache)
-        super().add_class_attr(lvalue, stmt)
+        super().add_attr(lvalue, stmt)
 
     def finalize(self, ir: ClassIR) -> None:
         """Generate code to finish instantiating a dataclass.
@@ -277,6 +279,14 @@ class DataClassBuilder(ExtClassBuilder):
 
 
 class AttrsClassBuilder(DataClassBuilder):
+    """Create IR for an attrs class where auto_attribs=False (the default).
+
+    When auto_attribs is enabled, attrs classes behave similarly to dataclasses
+    (i.e. types are stored as annotations on the class) and are thus handled
+    by DataClassBuilder, but when auto_attribs is disabled the types are
+    provided via attr.ib(type=...)
+    """
+
     add_annotations_to_dict = False
 
     def skip_attr_default(self, name: str, stmt: AssignmentStmt) -> bool:
