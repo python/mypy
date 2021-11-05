@@ -510,6 +510,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             if isinstance(item, Instance):
                 metaclass = item.type.metaclass_type
                 return metaclass is not None and self._is_subtype(metaclass, right)
+            return self._is_subtype(item, left)
         return False
 
     def visit_type_alias_type(self, left: TypeAliasType) -> bool:
