@@ -1276,6 +1276,7 @@ def remove_blacklisted_modules(modules: List[StubSource]) -> List[StubSource]:
 
 
 def is_blacklisted_path(path: str) -> bool:
+    print(f"Ignoring module {path}")
     return any(substr in (normalize_path_separators(path) + '\n')
                for substr in BLACKLIST)
 
