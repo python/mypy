@@ -24,12 +24,16 @@ def getprefixes():
 
 def getsitepackages():
     # type: () -> List[str]
-    if hasattr(site, 'getusersitepackages') and hasattr(site, 'getsitepackages'):
-        user_dir = site.getusersitepackages()
-        return site.getsitepackages() + [user_dir]
+    res = []
+    if hasattr(site, 'getsitepackages'):
+        res.extend(site.getsitepackages())
+
+        if hasattr(site, 'getsitepackages') and site.ENABLE_USER_SITE:
+            res.insert(0, site.getusersitepackages())
     else:
         from distutils.sysconfig import get_python_lib
-        return [get_python_lib()]
+        res = [get_python_lib()]
+    return res
 
 
 if __name__ == '__main__':
