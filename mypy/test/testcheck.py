@@ -24,12 +24,7 @@ from mypy.semanal_main import core_modules
 
 
 # List of files that contain test case descriptions.
-test_path = Path.cwd().parent.parent / 'test-data' / 'unit'
-
-typecheck_files = []
-for path in test_path.rglob('check-*.test'):
-    typecheck_files.append(path.name)
-
+typecheck_files = [path.name for path in (Path.cwd().parent.parent / 'test-data' / 'unit').rglob('check-*.test')]
 
 # Tests that use Python 3.8-only AST features (like expression-scoped ignores):
 if sys.version_info >= (3, 8):
