@@ -1287,7 +1287,6 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
 
             if left.type.has_base(right.type.fullname):
                 def check_argument(leftarg: Type, rightarg: Type, variance: int) -> bool:
-                    print("AAA", leftarg, "BBB", rightarg)
                     if variance == COVARIANT:
                         return self._is_proper_subtype(leftarg, rightarg)
                     elif variance == CONTRAVARIANT:
