@@ -80,6 +80,10 @@ def main(script_path: Optional[str],
         fail("error: --install-types not supported with incremental mode disabled",
              stderr, options)
 
+    if options.install_types and options.python_executable is None:
+        fail("error: --install-types not supported without python executable or site packages",
+             stderr, options)
+
     if options.install_types and not sources:
         install_types(
             options.cache_dir, formatter, options, non_interactive=options.non_interactive
@@ -1164,7 +1168,8 @@ def install_types(cache_dir: str,
     if after_run and not non_interactive:
         print()
     print('Installing missing stub packages:')
-    cmd = [options.python_executable or sys.executable, '-m', 'pip', 'install'] + packages
+    assert options.python_executable, 'Python executable required to install types'
+    cmd = [options.python_executable, '-m', 'pip', 'install'] + packages
     print(formatter.style(' '.join(cmd), 'none', bold=True))
     print()
     if not non_interactive:
