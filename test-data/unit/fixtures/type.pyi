@@ -14,7 +14,6 @@ class type(Generic[T]):
     __name__: str
     def __or__(self, other: Union[type, None]) -> type: pass
     def mro(self) -> List['type']: pass
-    def __hash__(self) -> int: pass
 
 class tuple(Generic[T]): pass
 class function: pass
