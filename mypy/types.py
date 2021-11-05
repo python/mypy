@@ -1882,6 +1882,12 @@ class EllipsisType(ProperType):
         assert False, "Synthetic types don't serialize"
 
 
+PossibleTypeItem: _TypeAlias = Union[
+    Instance, AnyType, TypeVarType, TupleType, NoneType,
+    CallableType,
+]
+
+
 class TypeType(ProperType):
     """For types like Type[User].
 
@@ -1910,30 +1916,42 @@ class TypeType(ProperType):
     assumption).
     """
 
-    __slots__ = ('item',)
+    __slots__ = ('item', 'fallback')
 
     # This can't be everything, but it can be a class reference,
     # a generic class instance, a union, Any, a type variable...
     item: ProperType
+    # Fallback to `builtins.type` instance,
+    # might be unset due to compatinility reasons.
+    # TODO: make sure it is always set.
+    fallback: Optional[Instance]
 
-    def __init__(self, item: Bogus[Union[Instance, AnyType, TypeVarType, TupleType, NoneType,
-                                         CallableType]], *,
+    def __init__(self,
+                 item: Bogus[PossibleTypeItem],
+                 fallback: Optional[Instance] = None,
+                 *,
                  line: int = -1, column: int = -1) -> None:
         """To ensure Type[Union[A, B]] is always represented as Union[Type[A], Type[B]], item of
         type UnionType must be handled through make_normalized static method.
         """
         super().__init__(line, column)
         self.item = item
+        self.fallback = fallback
 
     @staticmethod
-    def make_normalized(item: Type, *, line: int = -1, column: int = -1) -> ProperType:
+    def make_normalized(item: Type, fallback: Optional[Instance] = None,
+                        *,
+                        line: int = -1, column: int = -1) -> ProperType:
         item = get_proper_type(item)
         if isinstance(item, UnionType):
             return UnionType.make_union(
-                [TypeType.make_normalized(union_item) for union_item in item.items],
-                line=line, column=column
+                [
+                    TypeType.make_normalized(union_item, fallback)
+                    for union_item in item.items
+                ],
+                line=line, column=column,
             )
-        return TypeType(item, line=line, column=column)  # type: ignore[arg-type]
+        return TypeType(item, fallback, line=line, column=column)  # type: ignore[arg-type]
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_type_type(self)

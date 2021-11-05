@@ -5121,7 +5121,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         return typ
 
     def class_type(self, self_type: Type) -> Type:
-        return TypeType.make_normalized(self_type)
+        return TypeType.make_normalized(self_type, fallback=self.named_type('builtins.type'))
 
     def schedule_patch(self, priority: int, patch: Callable[[], None]) -> None:
         self.patches.append((priority, patch))
