@@ -24,14 +24,14 @@ from mypy.semanal_main import core_modules
 
 
 # List of files that contain test case descriptions.
-test_path = os.getcwd()
+test_path = Path(os.getcwd())
 test_path = Path(test_path).parents[1]
-test_path = test_path / 'test-data'
-test_path = test_path / 'unit'
+test_path = test_path / Path('test-data')
+test_path = test_path / Path('unit')
 
 typecheck_files = []
 for dirpath, dirnames, filenames in os.walk(test_path):
-    for filename in [f for f in filenames if f.endswith(".test") and f.startswith("check")]:
+    for filename in [f for f in filenames if f.endswith(".test") and f.startswith("check-")]:
         typecheck_files.append(filename)
 
 
