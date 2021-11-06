@@ -1050,6 +1050,33 @@ h2: Hashable = t2
 t3: type[Any] = type
 h3: Hashable = t3
 
+# Metaclass magic:
+
+class NotHashable:
+    __hash__: None
+
+h_i: Hashable = NotHashable
+
+class NotHashableMeta(type):
+    __hash__: None  # E: Incompatible types in assignment (expression has type "None", base class "type" defined the type as "Callable[[type[Any]], int]")
+
+class NotHashableType(metaclass=NotHashableMeta):
+    pass
+
+h_t: Hashable = NotHashableType  # E: Incompatible types in assignment (expression has type "Type[NotHashableType]", variable has type "Hashable")
+
+# Exact types:
+
+o1: type[object] = object
+o2: type[int] = int
+o3 = object
+
+h4: Hashable = o1
+h5: Hashable = o2
+h6: Hashable = o3
+
+# Errors:
+
 err1: Iterable = t1  # E: Incompatible types in assignment (expression has type "type[Any]", variable has type "Iterable[Any]")
 err2: Iterable = t2  # E: Incompatible types in assignment (expression has type "Type[type[Any]]", variable has type "Iterable[Any]")
 err3: Iterable = t3  # E: Incompatible types in assignment (expression has type "Type[Any]", variable has type "Iterable[Any]")
