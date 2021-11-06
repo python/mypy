@@ -1036,7 +1036,7 @@ reveal_type([*x2])  # N: Revealed type is "builtins.list[builtins.int*]"
 
 [case testTypeSubtypingWithDifferentGenericVars]
 # flags: --python-version 3.10
-from typing import Any, Protocol
+from typing import Any, Protocol, Iterable
 
 class Hashable(Protocol):
     def __hash__(self) -> int: pass
@@ -1049,4 +1049,11 @@ h2: Hashable = t2
 
 t3: type[Any] = type
 h3: Hashable = t3
+
+err1: Iterable = t1  # E: Incompatible types in assignment (expression has type "type[Any]", variable has type "Iterable[Any]")
+err2: Iterable = t2  # E: Incompatible types in assignment (expression has type "Type[type[Any]]", variable has type "Iterable[Any]")
+err3: Iterable = t3  # E: Incompatible types in assignment (expression has type "Type[Any]", variable has type "Iterable[Any]")
+err4: int = t1  # E: Incompatible types in assignment (expression has type "type[Any]", variable has type "int")
+err5: int = t2  # E: Incompatible types in assignment (expression has type "Type[type[Any]]", variable has type "int")
+err6: int = t3  # E: Incompatible types in assignment (expression has type "Type[Any]", variable has type "int")
 [builtins fixtures/type.pyi]

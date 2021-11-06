@@ -1915,6 +1915,9 @@ class TypeType(ProperType):
     # This can't be everything, but it can be a class reference,
     # a generic class instance, a union, Any, a type variable...
     item: ProperType
+    # Fallback to `builtins.type`, used for better type checking.
+    # Can be unset untill `typechecker` phase.
+    fallback: ClassVar[Optional[Instance]] = None
 
     def __init__(self, item: Bogus[Union[Instance, AnyType, TypeVarType, TupleType, NoneType,
                                          CallableType]], *,
