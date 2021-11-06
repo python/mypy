@@ -158,6 +158,24 @@ static inline int CPyTagged_CheckShort(CPyTagged x) {
     return !CPyTagged_CheckLong(x);
 }
 
+static inline void CPyTagged_INCREF(CPyTagged x) {
+    if (unlikely(CPyTagged_CheckLong(x))) {
+        CPyTagged_IncRef(x);
+    }
+}
+
+static inline void CPyTagged_DECREF(CPyTagged x) {
+    if (unlikely(CPyTagged_CheckLong(x))) {
+        CPyTagged_DecRef(x);
+    }
+}
+
+static inline void CPyTagged_XDECREF(CPyTagged x) {
+    if (unlikely(CPyTagged_CheckLong(x))) {
+        CPyTagged_XDecRef(x);
+    }
+}
+
 static inline Py_ssize_t CPyTagged_ShortAsSsize_t(CPyTagged x) {
     // NOTE: Assume that we sign extend.
     return (Py_ssize_t)x >> 1;
