@@ -2345,7 +2345,7 @@ y: C
 if isinstance(y, B):
     reveal_type(y)        # N: Revealed type is "__main__.<subclass of "C" and "B">"
     if isinstance(y, A):  # E: Subclass of "C", "B", and "A" cannot exist: would have incompatible method signatures
-        reveal_type(y)    # E: Statement is unreachable
+        y                 # E: Statement is unreachable
 [builtins fixtures/isinstance.pyi]
 
 [case testIsInstanceAdHocIntersectionReversed]

@@ -1481,10 +1481,10 @@ _testUnreachableWithStdlibContextManagersNoStrictOptional.py:15: error: Statemen
 # mypy: warn-unreachable
 x: str
 if isinstance(x, bytes):
-    reveal_type(x)
+    x
 y: str
 if isinstance(x, int):
-    reveal_type(x)
+    x
 [out]
 _testIsInstanceAdHocIntersectionWithStrAndBytes.py:3: error: Subclass of "str" and "bytes" cannot exist: would have incompatible method signatures
 _testIsInstanceAdHocIntersectionWithStrAndBytes.py:4: error: Statement is unreachable
