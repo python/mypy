@@ -271,11 +271,10 @@ static inline bool CPyTagged_IsLe(CPyTagged left, CPyTagged right) {
 // Generic operations (that work with arbitrary types)
 
 
-/* We use intentionally non-inlined decrefs since it pretty
- * substantially speeds up compile time while only causing a ~1%
- * performance degradation. We have our own copies both to avoid the
- * null check in Py_DecRef and to avoid making an indirect PIC
- * call. */
+/* We use intentionally non-inlined decrefs in rarely executed code
+ * paths since it pretty substantially speeds up compile time. We have
+ * our own copies both to avoid the null check in Py_DecRef and to avoid
+ * making an indirect PIC call. */
 CPy_NOINLINE
 static void CPy_DecRef(PyObject *p) {
     CPy_DECREF(p);
