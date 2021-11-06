@@ -1,4 +1,4 @@
--- Test cases for dataclasses based on the attrs library
+-- Test cases for dataclasses based on the attrs library, where auto_attribs=True
 
 [case testRunAttrsclass]
 import attr

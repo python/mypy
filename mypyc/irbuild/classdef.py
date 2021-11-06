@@ -1,5 +1,6 @@
 """Transform class definitions from the mypy AST form to IR."""
 
+from abc import abstractmethod
 from typing import Callable, List, Optional, Tuple
 from typing_extensions import Final
 
@@ -117,19 +118,25 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
 
 
 class ClassBuilder:
-    """Create IR for a class definition."""
+    """Create IR for a class definition.
+
+    This is an abstract base class.
+    """
 
     def __init__(self, builder: IRBuilder, cdef: ClassDef) -> None:
         self.builder = builder
         self.cdef = cdef
         self.attrs_to_cache: List[Tuple[Lvalue, RType]] = []
 
+    @abstractmethod
     def add_method(self, fdef: FuncDef) -> None:
         """Add a method to the class IR"""
 
+    @abstractmethod
     def add_attr(self, lvalue: NameExpr, stmt: AssignmentStmt) -> None:
         """Add an attribute to the class IR"""
 
+    @abstractmethod
     def finalize(self, ir: ClassIR) -> None:
         """Perform any final operations to complete the class IR"""
 
@@ -470,8 +477,7 @@ def add_non_ext_class_attr_ann(builder: IRBuilder,
                                get_type_info: Optional[Callable[[AssignmentStmt],
                                                                 Optional[TypeInfo]]] = None
                                ) -> None:
-    """Add a class attribute to __annotations__ of a non-extension class.
-    """
+    """Add a class attribute to __annotations__ of a non-extension class."""
     typ: Optional[Value] = None
     if get_type_info is not None:
         type_info = get_type_info(stmt)
@@ -496,8 +502,7 @@ def add_non_ext_class_attr(builder: IRBuilder,
                            stmt: AssignmentStmt,
                            cdef: ClassDef,
                            attr_to_cache: List[Tuple[Lvalue, RType]]) -> None:
-    """Add a class attribute to __dict__ of a non-extension class.
-    """
+    """Add a class attribute to __dict__ of a non-extension class."""
     # Only add the attribute to the __dict__ if the assignment is of the form:
     # x: type = value (don't add attributes of the form 'x: type' to the __dict__).
     if not isinstance(stmt.rvalue, TempNode):

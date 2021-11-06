@@ -38,7 +38,7 @@ from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op, dict_get_it
 from mypyc.primitives.set_ops import set_add_op, set_update_op
 from mypyc.primitives.str_ops import str_slice_op
 from mypyc.primitives.int_ops import int_comparison_op_mapping
-from mypyc.irbuild.specialize import get_specialization
+from mypyc.irbuild.specialize import apply_function_specialization, apply_method_specialization
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import (
     translate_list_comprehension, translate_set_comprehension,
@@ -209,7 +209,7 @@ def transform_call_expr(builder: IRBuilder, expr: CallExpr) -> Value:
         callee = callee.analyzed.expr  # Unwrap type application
 
     if isinstance(callee, MemberExpr):
-        return get_specialization(builder, expr, callee) or \
+        return apply_method_specialization(builder, expr, callee) or \
                translate_method_call(builder, expr, callee)
     elif isinstance(callee, SuperExpr):
         return translate_super_method_call(builder, expr, callee)
@@ -220,7 +220,7 @@ def transform_call_expr(builder: IRBuilder, expr: CallExpr) -> Value:
 def translate_call(builder: IRBuilder, expr: CallExpr, callee: Expression) -> Value:
     # The common case of calls is refexprs
     if isinstance(callee, RefExpr):
-        return get_specialization(builder, expr, callee) or \
+        return apply_function_specialization(builder, expr, callee) or \
                translate_refexpr_call(builder, expr, callee)
 
     function = builder.accept(callee)
@@ -287,7 +287,7 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
 
         # If there is a specializer for this method name/type, try calling it.
         # We would return the first successful one.
-        val = get_specialization(builder, expr, callee, receiver_typ)
+        val = apply_method_specialization(builder, expr, callee, receiver_typ)
         if val is not None:
             return val
 

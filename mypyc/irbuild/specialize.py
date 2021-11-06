@@ -57,23 +57,32 @@ Specializer = Callable[['IRBuilder', CallExpr, RefExpr], Optional[Value]]
 specializers: Dict[Tuple[str, Optional[RType]], List[Specializer]] = {}
 
 
-def get_specialization(builder: 'IRBuilder', expr: CallExpr, callee: RefExpr,
-                       typ: Optional[RType] = None) -> Optional[Value]:
+def _apply_specialization(builder: 'IRBuilder', expr: CallExpr, callee: RefExpr,
+                          name: Optional[str], typ: Optional[RType] = None) -> Optional[Value]:
     # TODO: Allow special cases to have default args or named args. Currently they don't since
     # they check that everything in arg_kinds is ARG_POS.
 
-    if isinstance(callee, (MemberExpr, NameExpr)):
-        name: Optional[str] = callee.fullname if callee.fullname else callee.name
-    else:
-        name = callee.fullname
     # If there is a specializer for this function, try calling it.
-    # We would return the first successful one.
+    # Return the first successful one.
     if name and (name, typ) in specializers:
         for specializer in specializers[name, typ]:
             val = specializer(builder, expr, callee)
             if val is not None:
                 return val
     return None
+
+
+def apply_function_specialization(builder: 'IRBuilder', expr: CallExpr, callee: RefExpr
+                                  ) -> Optional[Value]:
+    """Invoke the Specializer callback for a function if one has bee registered"""
+    return _apply_specialization(builder, expr, callee, callee.fullname)
+
+
+def apply_method_specialization(builder: 'IRBuilder', expr: CallExpr, callee: MemberExpr,
+                                typ: Optional[RType] = None) -> Optional[Value]:
+    """Invoke the Specializer callback for a method if one has bee registered"""
+    name = callee.fullname if typ is None else callee.name
+    return _apply_specialization(builder, expr, callee, name, typ)
 
 
 def specialize_function(
