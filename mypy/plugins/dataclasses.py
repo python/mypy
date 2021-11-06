@@ -214,7 +214,7 @@ class DataclassTransformer:
                 self._ctx.reason,
             )
             return
-        if info.slots:
+        if info.slots is not None or info.names.get('__slots__'):
             # This means we have a slots confict.
             # Class explicitly specifies `__slots__` field.
             # And `@dataclass(slots=True)` is used.

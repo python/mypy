@@ -1393,6 +1393,18 @@ from dataclasses import dataclass
 class Some:  # E: "Some" both defines "__slots__" and is used with "slots=True"
     __slots__ = ('x',)
     x: int
+
+@dataclass(slots=True)
+class EmptyDef:  # E: "EmptyDef" both defines "__slots__" and is used with "slots=True"
+    __slots__ = ()
+    x: int
+
+slots = ('x',)
+
+@dataclass(slots=True)
+class DynamicDef:  # E: "DynamicDef" both defines "__slots__" and is used with "slots=True"
+    __slots__ = slots
+    x: int
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassWithSlotsArgBefore310]
