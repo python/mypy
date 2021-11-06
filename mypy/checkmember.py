@@ -456,8 +456,7 @@ def check_final_member(name: str, info: TypeInfo, msg: MessageBuilder, ctx: Cont
             msg.cant_assign_to_final(name, attr_assign=True, ctx=ctx)
 
 
-def analyze_descriptor_access(instance_type: Type,
-                              descriptor_type: Type,
+def analyze_descriptor_access(descriptor_type: Type,
                               mx: MemberContext) -> Type:
     """Type check descriptor access.
 
@@ -474,7 +473,7 @@ def analyze_descriptor_access(instance_type: Type,
     if isinstance(descriptor_type, UnionType):
         # Map the access over union types
         return make_simplified_union([
-            analyze_descriptor_access(instance_type, typ, mx)
+            analyze_descriptor_access(typ, mx)
             for typ in descriptor_type.items
         ])
     elif not isinstance(descriptor_type, Instance):
