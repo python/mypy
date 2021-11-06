@@ -62,8 +62,17 @@ class Person4:
     def name(self) -> str:
         return self._name
 
+@attr.s(auto_attribs=True)
+class Point:
+     x : int = attr.ib(converter=int)
+     y : int = attr.ib(init=False)
+
+     def __attrs_post_init__(self):
+         self.y = self.x + 1
+
+
 [file other.py]
-from native import Person1, Person1b, Person2, Person3, Person4, testBool
+from native import Person1, Person1b, Person2, Person3, Person4, testBool, Point
 i1 = Person1(age = 5, name = 'robot')
 assert i1.age == 5
 assert i1.name == 'robot'
@@ -112,12 +121,21 @@ assert i8 > i9
 assert Person1.__annotations__ == {'age': int, 'name': str}
 assert Person2.__annotations__ == {'age': int, 'name': str}
 
+p1 = Point(2)
+assert p1.x == 2
+assert p1.y == 3
+p2 = Point('2')
+assert p2.x == 2
+assert p2.y == 3
+
+assert Point.__annotations__ == {'x': int, 'y': int}
+
 [file driver.py]
 import sys
 
-# Dataclasses introduced in 3.7
+# PEP 526 introduced in 3.6
 version = sys.version_info[:2]
-if version[0] < 3 or version[1] < 7:
+if version[0] < 3 or version[1] < 6:
     exit()
 
 # Run the tests in both interpreted and compiled mode

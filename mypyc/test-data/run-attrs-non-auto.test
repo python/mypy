@@ -62,8 +62,17 @@ class Person4:
     def name(self) -> str:
         return self._name
 
+@attr.s
+class Point:
+     x = attr.ib(type=int, converter=int)
+     y = attr.ib(type=int, init=False)
+
+     def __attrs_post_init__(self):
+         self.y = self.x + 1
+
+
 [file other.py]
-from native import Person1, Person1b, Person2, Person3, Person4, testBool
+from native import Person1, Person1b, Person2, Person3, Person4, testBool, Point
 i1 = Person1(age = 5, name = 'robot')
 assert i1.age == 5
 assert i1.name == 'robot'
@@ -109,13 +118,15 @@ assert i8 == i9
 i8.age = 2
 assert i8 > i9
 
+p1 = Point(2)
+assert p1.x == 2
+assert p1.y == 3
+p2 = Point('2')
+assert p2.x == 2
+assert p2.y == 3
+
 [file driver.py]
 import sys
-
-# Dataclasses introduced in 3.7
-version = sys.version_info[:2]
-if version[0] < 3 or version[1] < 7:
-    exit()
 
 # Run the tests in both interpreted and compiled mode
 import other

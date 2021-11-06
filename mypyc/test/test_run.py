@@ -52,13 +52,16 @@ files = [
     'run-bench.test',
     'run-mypy-sim.test',
     'run-dunders.test',
-    'run-singledispatch.test'
+    'run-singledispatch.test',
+    'run-attrs-non-auto.test',
 ]
+if sys.version_info >= (3, 6):
+    files.extend([
+        'run-attrs.test',
+    ])
 if sys.version_info >= (3, 7):
     files.extend([
         'run-python37.test',
-        'run-attrs.test',
-        'run-attrs-non-auto.test',
     ])
 if sys.version_info >= (3, 8):
     files.append('run-python38.test')
