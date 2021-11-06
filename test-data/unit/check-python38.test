@@ -515,7 +515,7 @@ reveal_type(y)      # N: Revealed type is "Literal[False]"
 def always_false_with_parameter(x: int) -> Literal[False]: ...
 
 if z := always_false_with_parameter(5):
-    reveal_type(z)  # E: Statement is unreachable
+    z               # E: Statement is unreachable
 else:
     reveal_type(z)  # N: Revealed type is "Literal[False]"
 
