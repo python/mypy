@@ -956,9 +956,7 @@ class FunctionLike(ProperType):
     def __init__(self, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
         self.can_be_false = False
-        if TYPE_CHECKING:  # we don't want a runtime None value
-            # Corresponding instance type (e.g. builtins.type)
-            self.fallback = cast(Instance, None)
+        self.fallback: Instance
 
     @abstractmethod
     def is_type_obj(self) -> bool: pass
