@@ -107,6 +107,9 @@ class FileSystemCache:
         dirname, basename = os.path.split(path)
         if basename != '__init__.py':
             return False
+        if not os.path.basename(dirname).isidentifier():
+            # Can't put an __init__.py in a place that's not an identifier
+            return False
         try:
             st = self.stat(dirname)
         except OSError:
@@ -220,12 +223,14 @@ class FileSystemCache:
             res = False
         if res:
             # Also recursively check the other path components in case sensitive way.
-            res = self._exists_case(head, prefix)
+            res = self.exists_case(head, prefix)
         self.isfile_case_cache[path] = res
         return res
 
-    def _exists_case(self, path: str, prefix: str) -> bool:
-        """Helper to check path components in case sensitive fashion, up to prefix."""
+    def exists_case(self, path: str, prefix: str) -> bool:
+        """Return whether path exists - checking path components in case sensitive
+        fashion, up to prefix.
+        """
         if path in self.exists_case_cache:
             return self.exists_case_cache[path]
         head, tail = os.path.split(path)
@@ -242,7 +247,7 @@ class FileSystemCache:
             res = False
         if res:
             # Also recursively check other path components.
-            res = self._exists_case(head, prefix)
+            res = self.exists_case(head, prefix)
         self.exists_case_cache[path] = res
         return res
 

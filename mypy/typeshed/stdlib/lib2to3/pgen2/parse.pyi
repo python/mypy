@@ -1,6 +1,6 @@
 from lib2to3.pgen2.grammar import _DFAS, Grammar
 from lib2to3.pytree import _NL, _Convert, _RawNode
-from typing import Any, Sequence, Set, Tuple
+from typing import Any, Sequence, Set
 
 _Context = Sequence[Any]
 
@@ -14,7 +14,7 @@ class ParseError(Exception):
 class Parser:
     grammar: Grammar
     convert: _Convert
-    stack: list[Tuple[_DFAS, int, _RawNode]]
+    stack: list[tuple[_DFAS, int, _RawNode]]
     rootnode: _NL | None
     used_names: Set[str]
     def __init__(self, grammar: Grammar, convert: _Convert | None = ...) -> None: ...

@@ -53,7 +53,7 @@ from contextlib import contextmanager
 from typing import (
     List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable
 )
-from typing_extensions import Final
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.nodes import (
     MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
@@ -76,7 +76,8 @@ from mypy.nodes import (
     get_nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
     REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_source_versions,
     EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement, AssignmentExpr,
-    ParamSpecExpr, EllipsisExpr
+    ParamSpecExpr, EllipsisExpr,
+    FuncBase, implicit_module_attrs,
 )
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.typevars import fill_typevars
@@ -95,7 +96,6 @@ from mypy.types import (
 )
 from mypy.typeops import function_type
 from mypy.type_visitor import TypeQuery
-from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
     TypeAnalyser, analyze_type_alias, no_subscript_builtin_alias,
     TypeVarLikeQuery, TypeVarLikeList, remove_dups, has_any_from_unimported_type,
@@ -147,7 +147,7 @@ CORE_BUILTIN_CLASSES: Final = ["object", "bool", "function"]
 
 
 # Used for tracking incomplete references
-Tag = int
+Tag: _TypeAlias = int
 
 
 class SemanticAnalyzer(NodeVisitor[None],
@@ -732,7 +732,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             # This is a property.
             first_item.func.is_overload = True
             self.analyze_property_with_multi_part_definition(defn)
-            typ = function_type(first_item.func, self.builtin_type('builtins.function'))
+            typ = function_type(first_item.func, self.named_type('builtins.function'))
             assert isinstance(typ, CallableType)
             types = [typ]
         else:
@@ -789,7 +789,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 item.accept(self)
             # TODO: support decorated overloaded functions properly
             if isinstance(item, Decorator):
-                callable = function_type(item.func, self.builtin_type('builtins.function'))
+                callable = function_type(item.func, self.named_type('builtins.function'))
                 assert isinstance(callable, CallableType)
                 if not any(refers_to_fullname(dec, 'typing.overload')
                            for dec in item.decorators):
@@ -1096,8 +1096,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.update_metaclass(defn)
 
         bases = defn.base_type_exprs
-        bases, tvar_defs, is_protocol = self.clean_up_bases_and_infer_type_variables(defn, bases,
-                                                                                     context=defn)
+        bases, tvar_defs, is_protocol = self.clean_up_bases_and_infer_type_variables(
+            defn, bases, context=defn)
 
         for tvd in tvar_defs:
             if any(has_placeholder(t) for t in [tvd.upper_bound] + tvd.values):
@@ -1327,8 +1327,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         for name, tvar_expr in declared_tvars:
             tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
             if isinstance(tvar_def, TypeVarType):
-                # This can also be `ParamSpecType`,
-                # error will be reported elsewhere: #11218
+                # TODO(PEP612): fix for ParamSpecType
+                # Error will be reported elsewhere: #11218
                 tvar_defs.append(tvar_def)
         return base_type_exprs, tvar_defs, is_protocol
 
@@ -1521,6 +1521,19 @@ class SemanticAnalyzer(NodeVisitor[None],
             elif isinstance(base, Instance):
                 if base.type.is_newtype:
                     self.fail('Cannot subclass "NewType"', defn)
+                if (
+                    base.type.is_enum
+                    and base.type.fullname not in (
+                        'enum.Enum', 'enum.IntEnum', 'enum.Flag', 'enum.IntFlag')
+                    and base.type.names
+                    and any(not isinstance(n.node, (FuncBase, Decorator))
+                            for n in base.type.names.values())
+                ):
+                    # This means that are trying to subclass a non-default
+                    # Enum class, with defined members. This is not possible.
+                    # In runtime, it will raise. We need to mark this type as final.
+                    # However, methods can be defined on a type: only values can't.
+                    base.type.is_final = True
                 base_types.append(base)
             elif isinstance(base, AnyType):
                 if self.options.disallow_subclassing_any:
@@ -2031,9 +2044,13 @@ class SemanticAnalyzer(NodeVisitor[None],
             special_form = True
         elif self.analyze_enum_assign(s):
             special_form = True
+
         if special_form:
             self.record_special_form_lvalue(s)
             return
+        # Clear the alias flag if assignment turns out not a special form after all. It
+        # may be set to True while there were still placeholders due to forward refs.
+        s.is_alias_def = False
 
         # OK, this is a regular assignment, perform the necessary analysis steps.
         s.is_final_def = self.unwrap_final(s)
@@ -2554,8 +2571,15 @@ class SemanticAnalyzer(NodeVisitor[None],
         if len(s.lvalues) > 1 or not isinstance(lvalue, NameExpr):
             # First rule: Only simple assignments like Alias = ... create aliases.
             return False
-        if s.unanalyzed_type is not None:
+
+        pep_613 = False
+        if s.unanalyzed_type is not None and isinstance(s.unanalyzed_type, UnboundType):
+            lookup = self.lookup(s.unanalyzed_type.name, s, suppress_errors=True)
+            if lookup and lookup.fullname in ("typing.TypeAlias", "typing_extensions.TypeAlias"):
+                pep_613 = True
+        if s.unanalyzed_type is not None and not pep_613:
             # Second rule: Explicit type (cls: Type[A] = A) always creates variable, not alias.
+            # unless using PEP 613 `cls: TypeAlias = A`
             return False
 
         existing = self.current_symbol_table().get(lvalue.name)
@@ -2580,7 +2604,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             return False
 
         non_global_scope = self.type or self.is_func_scope()
-        if isinstance(s.rvalue, RefExpr) and non_global_scope:
+        if isinstance(s.rvalue, RefExpr) and non_global_scope and not pep_613:
             # Fourth rule (special case): Non-subscripted right hand side creates a variable
             # at class and function scopes. For example:
             #
@@ -2593,7 +2617,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             # annotations (see the second rule).
             return False
         rvalue = s.rvalue
-        if not self.can_be_type_alias(rvalue):
+        if not self.can_be_type_alias(rvalue) and not pep_613:
             return False
 
         if existing and not isinstance(existing.node, (PlaceholderNode, TypeAlias)):
@@ -2748,6 +2772,13 @@ class SemanticAnalyzer(NodeVisitor[None],
         existing = names.get(name)
 
         outer = self.is_global_or_nonlocal(name)
+        if kind == MDEF and isinstance(self.type, TypeInfo) and self.type.is_enum:
+            # Special case: we need to be sure that `Enum` keys are unique.
+            if existing:
+                self.fail('Attempted to reuse member name "{}" in Enum definition "{}"'.format(
+                    name, self.type.name,
+                ), lvalue)
+
         if (not existing or isinstance(existing.node, PlaceholderNode)) and not outer:
             # Define new variable.
             var = self.make_name_lvalue_var(lvalue, kind, not explicit_type)
@@ -4362,22 +4393,10 @@ class SemanticAnalyzer(NodeVisitor[None],
             return v
         return None
 
-    def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
-        """Lookup a fully qualified name.
-
-        Assume that the name is defined. This happens in the global namespace --
-        the local module namespace is ignored.
-
-        Note that this doesn't support visibility, module-level __getattr__, or
-        nested classes.
-        """
-        parts = name.split('.')
-        n = self.modules[parts[0]]
-        for i in range(1, len(parts) - 1):
-            next_sym = n.names[parts[i]]
-            assert isinstance(next_sym.node, MypyFile)
-            n = next_sym.node
-        return n.names[parts[-1]]
+    def lookup_fully_qualified(self, fullname: str) -> SymbolTableNode:
+        ret = self.lookup_fully_qualified_or_none(fullname)
+        assert ret is not None
+        return ret
 
     def lookup_fully_qualified_or_none(self, fullname: str) -> Optional[SymbolTableNode]:
         """Lookup a fully qualified name that refers to a module-level definition.
@@ -4402,20 +4421,14 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.record_incomplete_ref()
         return result
 
-    def builtin_type(self, fully_qualified_name: str) -> Instance:
-        sym = self.lookup_fully_qualified(fully_qualified_name)
-        node = sym.node
-        assert isinstance(node, TypeInfo)
-        return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
-
     def object_type(self) -> Instance:
-        return self.named_type('__builtins__.object')
+        return self.named_type('builtins.object')
 
     def str_type(self) -> Instance:
-        return self.named_type('__builtins__.str')
+        return self.named_type('builtins.str')
 
-    def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
-        sym = self.lookup_qualified(qualified_name, Context())
+    def named_type(self, fullname: str, args: Optional[List[Type]] = None) -> Instance:
+        sym = self.lookup_fully_qualified(fullname)
         assert sym, "Internal error: attempted to construct unknown type"
         node = sym.node
         assert isinstance(node, TypeInfo)
@@ -4424,9 +4437,9 @@ class SemanticAnalyzer(NodeVisitor[None],
             return Instance(node, args)
         return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
 
-    def named_type_or_none(self, qualified_name: str,
+    def named_type_or_none(self, fullname: str,
                            args: Optional[List[Type]] = None) -> Optional[Instance]:
-        sym = self.lookup_fully_qualified_or_none(qualified_name)
+        sym = self.lookup_fully_qualified_or_none(fullname)
         if not sym or isinstance(sym.node, PlaceholderNode):
             return None
         node = sym.node

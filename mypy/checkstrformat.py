@@ -15,7 +15,7 @@ import re
 from typing import (
     cast, List, Tuple, Dict, Callable, Union, Optional, Pattern, Match, Set
 )
-from typing_extensions import Final, TYPE_CHECKING
+from typing_extensions import Final, TYPE_CHECKING, TypeAlias as _TypeAlias
 
 from mypy.types import (
     Type, AnyType, TupleType, Instance, UnionType, TypeOfAny, get_proper_type, TypeVarType,
@@ -39,9 +39,9 @@ from mypy.typeops import custom_special_method
 from mypy.subtypes import is_subtype
 from mypy.parse import parse
 
-FormatStringExpr = Union[StrExpr, BytesExpr, UnicodeExpr]
-Checkers = Tuple[Callable[[Expression], None], Callable[[Type], bool]]
-MatchMap = Dict[Tuple[int, int], Match[str]]  # span -> match
+FormatStringExpr: _TypeAlias = Union[StrExpr, BytesExpr, UnicodeExpr]
+Checkers: _TypeAlias = Tuple[Callable[[Expression], None], Callable[[Type], bool]]
+MatchMap: _TypeAlias = Dict[Tuple[int, int], Match[str]]  # span -> match
 
 
 def compile_format_re() -> Pattern[str]:
@@ -660,7 +660,12 @@ class StringFormatterChecker:
             rep_types = [rhs_type]
 
         if len(checkers) > len(rep_types):
-            self.msg.too_few_string_formatting_arguments(replacements)
+            # Only check the fix-length Tuple type. Other Iterable types would skip.
+            if (is_subtype(rhs_type, self.chk.named_type("typing.Iterable")) and
+                    not isinstance(rhs_type, TupleType)):
+                return
+            else:
+                self.msg.too_few_string_formatting_arguments(replacements)
         elif len(checkers) < len(rep_types):
             self.msg.too_many_string_formatting_arguments(replacements)
         else:

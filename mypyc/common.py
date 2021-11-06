@@ -47,6 +47,7 @@ MAX_SHORT_INT: Final = sys.maxsize >> 1
 # Note: Assume that the compiled code uses the same bit width as mypyc, except for
 #       Python 3.5 on macOS.
 MAX_LITERAL_SHORT_INT: Final = sys.maxsize >> 1 if not IS_MIXED_32_64_BIT_BUILD else 2 ** 30 - 1
+MIN_LITERAL_SHORT_INT: Final = -MAX_LITERAL_SHORT_INT - 1
 
 # Runtime C library files
 RUNTIME_C_FILES: Final = [

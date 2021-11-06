@@ -1,10 +1,10 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
 setup(
     name='typedpkg_namespace.alpha',
     version='1.0.0',
-    packages=find_packages(),
     namespace_packages=['typedpkg_ns'],
     zip_safe=False,
-    package_data={'typedpkg_ns.ns': ['py.typed']}
+    package_data={'typedpkg_ns.a': ['py.typed']},
+    packages=['typedpkg_ns.a'],
 )

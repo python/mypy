@@ -12,17 +12,17 @@ _fileModuleFunction = Tuple[str, Optional[str], str]
 class CoverageResults:
     def __init__(
         self,
-        counts: dict[Tuple[str, int], int] | None = ...,
+        counts: dict[tuple[str, int], int] | None = ...,
         calledfuncs: dict[_fileModuleFunction, int] | None = ...,
         infile: StrPath | None = ...,
-        callers: dict[Tuple[_fileModuleFunction, _fileModuleFunction], int] | None = ...,
+        callers: dict[tuple[_fileModuleFunction, _fileModuleFunction], int] | None = ...,
         outfile: StrPath | None = ...,
     ) -> None: ...  # undocumented
     def update(self, other: CoverageResults) -> None: ...
     def write_results(self, show_missing: bool = ..., summary: bool = ..., coverdir: StrPath | None = ...) -> None: ...
     def write_results_file(
         self, path: StrPath, lines: Sequence[str], lnotab: Any, lines_hit: Mapping[int, int], encoding: str | None = ...
-    ) -> Tuple[int, int]: ...
+    ) -> tuple[int, int]: ...
     def is_ignored_filename(self, filename: str) -> bool: ...  # undocumented
 
 class Trace:

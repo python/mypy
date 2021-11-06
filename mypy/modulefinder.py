@@ -70,7 +70,10 @@ class ModuleNotFoundReason(Enum):
             notes = ["You may be running mypy in a subpackage, "
                      "mypy should be run on the package root"]
         elif self is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
-            msg = 'Skipping analyzing "{module}": found module but no type hints or library stubs'
+            msg = (
+                'Skipping analyzing "{module}": module is installed, but missing library stubs '
+                'or py.typed marker'
+            )
             notes = [doc_link]
         elif self is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED:
             msg = (
@@ -373,7 +376,7 @@ class FindModuleCache:
 
             # In namespace mode, register a potential namespace package
             if self.options and self.options.namespace_packages:
-                if fscache.isdir(base_path) and not has_init:
+                if fscache.exists_case(base_path, dir_prefix) and not has_init:
                     near_misses.append((base_path, dir_prefix))
 
             # No package, look for module.
@@ -497,16 +500,21 @@ class FindModuleCache:
         return sources
 
 
-def matches_exclude(subpath: str, exclude: str, fscache: FileSystemCache, verbose: bool) -> bool:
-    if not exclude:
+def matches_exclude(subpath: str,
+                    excludes: List[str],
+                    fscache: FileSystemCache,
+                    verbose: bool) -> bool:
+    if not excludes:
         return False
     subpath_str = os.path.relpath(subpath).replace(os.sep, "/")
     if fscache.isdir(subpath):
         subpath_str += "/"
-    if re.search(exclude, subpath_str):
-        if verbose:
-            print("TRACE: Excluding {}".format(subpath_str), file=sys.stderr)
-        return True
+    for exclude in excludes:
+        if re.search(exclude, subpath_str):
+            if verbose:
+                print("TRACE: Excluding {} (matches pattern {})".format(subpath_str, exclude),
+                      file=sys.stderr)
+            return True
     return False
 
 

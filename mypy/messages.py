@@ -649,6 +649,7 @@ class MessageBuilder:
     def too_many_arguments(self, callee: CallableType, context: Context) -> None:
         msg = 'Too many arguments' + for_function(callee)
         self.fail(msg, context, code=codes.CALL_ARG)
+        self.maybe_note_about_special_args(callee, context)
 
     def too_many_arguments_from_typed_dict(self,
                                            callee: CallableType,
@@ -668,6 +669,18 @@ class MessageBuilder:
                                       context: Context) -> None:
         msg = 'Too many positional arguments' + for_function(callee)
         self.fail(msg, context)
+        self.maybe_note_about_special_args(callee, context)
+
+    def maybe_note_about_special_args(self, callee: CallableType, context: Context) -> None:
+        # https://github.com/python/mypy/issues/11309
+        first_arg = callee.def_extras.get('first_arg')
+        if first_arg and first_arg not in {'self', 'cls', 'mcs'}:
+            self.note(
+                'Looks like the first special argument in a method '
+                'is not named "self", "cls", or "mcs", '
+                'maybe it is missing?',
+                context,
+            )
 
     def unexpected_keyword_argument(self, callee: CallableType, name: str, arg_type: Type,
                                     context: Context) -> None:
@@ -1740,7 +1753,10 @@ def format_type_inner(typ: Type,
             # return type (this always works).
             return format(TypeType.make_normalized(erase_type(func.items[0].ret_type)))
         elif isinstance(func, CallableType):
-            return_type = format(func.ret_type)
+            if func.type_guard is not None:
+                return_type = f'TypeGuard[{format(func.type_guard)}]'
+            else:
+                return_type = format(func.ret_type)
             if func.is_ellipsis_args:
                 return 'Callable[..., {}]'.format(return_type)
             arg_strings = []
