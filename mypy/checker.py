@@ -938,8 +938,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             and typ.arg_kinds[0] not in [nodes.ARG_STAR, nodes.ARG_STAR2]):
                         isclass = defn.is_class or defn.name in ('__new__', '__init_subclass__')
                         if isclass:
-                            ref_type = mypy.types.TypeType.make_normalized(
-                                ref_type, fallback=self.type_type())
+                            ref_type = mypy.types.TypeType.make_normalized(ref_type)
                         erased = get_proper_type(erase_to_bound(arg_type))
                         if not is_subtype_ignoring_tvars(ref_type, erased):
                             note = None
@@ -3488,7 +3487,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         # Python3 case:
         exc_type = self.named_type('builtins.BaseException')
-        expected_type_items = [exc_type, TypeType(exc_type, fallback=self.type_type())]
+        expected_type_items = [exc_type, TypeType(exc_type)]
         if optional:
             # This is used for `x` part in a case like `raise e from x`,
             # where we allow `raise e from None`.
@@ -3523,9 +3522,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # `raise (exc, ...)` case:
             item = typ.items[0] if isinstance(typ, TupleType) else typ.args[0]
             self.check_subtype(
-                item,
-                UnionType([exc_type, TypeType(exc_type, fallback=self.type_type())]),
-                s,
+                item, UnionType([exc_type, TypeType(exc_type)]), s,
                 'When raising a tuple, first element must by derived from BaseException',
             )
             return
@@ -3535,9 +3532,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # https://docs.python.org/2/reference/simple_stmts.html#the-raise-statement
             assert isinstance(typ, TupleType)  # Is set in fastparse2.py
             self.check_subtype(
-                typ.items[0],
-                TypeType(exc_type, fallback=self.type_type()),
-                s,
+                typ.items[0], TypeType(exc_type), s,
                 'First argument must be BaseException subtype',
             )
 
@@ -3558,7 +3553,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             expected_type_items = [
                 # `raise Exception` and `raise Exception()` cases:
-                exc_type, TypeType(exc_type, fallback=self.type_type()),
+                exc_type, TypeType(exc_type),
             ]
             self.check_subtype(
                 typ, UnionType.make_union(expected_type_items),
@@ -5321,10 +5316,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # for example, Any or a custom metaclass.
             return {}, {}  # unknown type
         yes_map, no_map = self.conditional_type_map_with_intersection(expr, vartype, type)
-        yes_map, no_map = map(
-            lambda x: convert_to_typetype(x, self.type_type()),
-            (yes_map, no_map),
-        )
+        yes_map, no_map = map(convert_to_typetype, (yes_map, no_map))
         return yes_map, no_map
 
     def conditional_type_map_with_intersection(self,
@@ -5615,7 +5607,7 @@ def reduce_conditional_maps(type_maps: List[Tuple[TypeMap, TypeMap]],
         return final_if_map, final_else_map
 
 
-def convert_to_typetype(type_map: TypeMap, type_type: Instance) -> TypeMap:
+def convert_to_typetype(type_map: TypeMap) -> TypeMap:
     converted_type_map: Dict[Expression, Type] = {}
     if type_map is None:
         return None
@@ -5627,7 +5619,7 @@ def convert_to_typetype(type_map: TypeMap, type_type: Instance) -> TypeMap:
         if not isinstance(get_proper_type(t), (UnionType, Instance)):
             # unknown type; error was likely reported earlier
             return {}
-        converted_type_map[expr] = TypeType.make_normalized(typ, fallback=type_type)
+        converted_type_map[expr] = TypeType.make_normalized(typ)
     return converted_type_map
 
 

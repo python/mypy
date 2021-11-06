@@ -281,10 +281,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             if isinstance(item, TupleType):
                 item = mypy.typeops.tuple_fallback(item)
             if is_named_instance(left, 'builtins.type'):
-                return self._is_subtype(
-                    TypeType(AnyType(TypeOfAny.special_form), fallback=left),
-                    right,
-                )
+                return self._is_subtype(TypeType(AnyType(TypeOfAny.special_form)), right)
             if left.type.is_metaclass():
                 if isinstance(item, AnyType):
                     return True
@@ -510,12 +507,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
             item = left.item
             if isinstance(item, TypeVarType):
                 item = get_proper_type(item.upper_bound)
+            if isinstance(item, AnyType):
+                return True
             if isinstance(item, Instance):
                 metaclass = item.type.metaclass_type
                 return metaclass is not None and self._is_subtype(metaclass, right)
-        if isinstance(left.fallback, Instance):
-            print('a')
-            return self._is_subtype(left.fallback, right)
         return False
 
     def visit_type_alias_type(self, left: TypeAliasType) -> bool:

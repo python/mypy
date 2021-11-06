@@ -214,7 +214,7 @@ def analyze_instance_member_access(name: str,
                 #       of this hack here and below (i.e. mx.self_type).
                 dispatched_type = meet.meet_types(mx.original_type, typ)
                 signature = check_self_arg(signature, dispatched_type, method.is_class,
-                                           name, mx)
+                                           mx.context, name, mx.msg)
             signature = bind_self(signature, mx.self_type, is_classmethod=method.is_class)
         typ = map_instance_to_supertype(typ, method.info)
         member_type = expand_type_by_instance(signature, typ)
@@ -493,21 +493,15 @@ def analyze_descriptor_access(instance_type: Type,
     callable_name = chk.expr_checker.method_fullname(descriptor_type, "__get__")
     dunder_get_type = chk.expr_checker.transform_callee_type(
         callable_name, dunder_get_type,
-        [
-            TempNode(instance_type, context=context),
-            TempNode(TypeType.make_normalized(
-                     owner_type, fallback=chk.type_type()), context=context),
-        ],
+        [TempNode(instance_type, context=context),
+         TempNode(TypeType.make_normalized(owner_type), context=context)],
         [ARG_POS, ARG_POS], context, object_type=descriptor_type,
     )
 
     _, inferred_dunder_get_type = chk.expr_checker.check_call(
         dunder_get_type,
-        [
-            TempNode(instance_type, context=context),
-            TempNode(TypeType.make_normalized(
-                     owner_type, fallback=chk.type_type()), context=context),
-        ],
+        [TempNode(instance_type, context=context),
+         TempNode(TypeType.make_normalized(owner_type), context=context)],
         [ARG_POS, ARG_POS], context, object_type=descriptor_type,
         callable_name=callable_name)
 
@@ -603,7 +597,8 @@ def analyze_var(name: str,
                 # and similarly for B1 when checking against B
                 dispatched_type = meet.meet_types(mx.original_type, itype)
                 signature = freshen_function_type_vars(functype)
-                signature = check_self_arg(signature, dispatched_type, var.is_classmethod, name, mx)
+                signature = check_self_arg(signature, dispatched_type, var.is_classmethod,
+                                           mx.context, name, mx.msg)
                 signature = bind_self(signature, mx.self_type, var.is_classmethod)
                 expanded_signature = get_proper_type(expand_type_by_instance(signature, itype))
                 freeze_type_vars(expanded_signature)
@@ -655,8 +650,8 @@ def lookup_member_var_or_accessor(info: TypeInfo, name: str,
 def check_self_arg(functype: FunctionLike,
                    dispatched_arg_type: Type,
                    is_classmethod: bool,
-                   name: str,
-                   mx: MemberContext) -> FunctionLike:
+                   context: Context, name: str,
+                   msg: MessageBuilder) -> FunctionLike:
     """Check that an instance has a valid type for a method with annotated 'self'.
 
     For example if the method is defined as:
@@ -675,12 +670,11 @@ def check_self_arg(functype: FunctionLike,
         return functype
     new_items = []
     if is_classmethod:
-        dispatched_arg_type = TypeType.make_normalized(
-            dispatched_arg_type, mx.chk.type_type())
+        dispatched_arg_type = TypeType.make_normalized(dispatched_arg_type)
     for item in items:
         if not item.arg_types or item.arg_kinds[0] not in (ARG_POS, ARG_STAR):
             # No positional first (self) argument (*args is okay).
-            mx.msg.no_formal_self(name, item, mx.context)
+            msg.no_formal_self(name, item, context)
             # This is pretty bad, so just return the original signature if
             # there is at least one such error.
             return functype
@@ -690,8 +684,8 @@ def check_self_arg(functype: FunctionLike,
                 new_items.append(item)
     if not new_items:
         # Choose first item for the message (it may be not very helpful for overloads).
-        mx.msg.incompatible_self_argument(name, dispatched_arg_type, items[0],
-                                          is_classmethod, mx.context)
+        msg.incompatible_self_argument(name, dispatched_arg_type, items[0],
+                                       is_classmethod, context)
         return functype
     if len(new_items) == 1:
         return new_items[0]
@@ -795,7 +789,7 @@ def analyze_class_attribute_access(itype: Instance,
                           or (isinstance(node.node, FuncBase) and node.node.is_class))
         t = get_proper_type(t)
         if isinstance(t, FunctionLike) and is_classmethod:
-            t = check_self_arg(t, mx.self_type, False, name, mx)
+            t = check_self_arg(t, mx.self_type, False, mx.context, name, mx.msg)
         result = add_class_tvars(t, isuper, is_classmethod,
                                  mx.self_type, original_vars=original_vars)
         if not mx.is_lvalue:

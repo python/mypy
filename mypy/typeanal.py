@@ -327,8 +327,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if len(t.args) == 0:
                 if fullname == 'typing.Type':
                     any_type = self.get_omitted_any(t)
-                    return TypeType(any_type, fallback=self.named_type('builtins.type'),
-                                    line=t.line, column=t.column)
+                    return TypeType(any_type, line=t.line, column=t.column)
                 else:
                     # To prevent assignment of 'builtins.type' inferred as 'builtins.object'
                     # See https://github.com/python/mypy/issues/9476 for more information
@@ -337,9 +336,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if len(t.args) != 1:
                 self.fail(type_str + ' must have exactly one type argument', t)
             item = self.anal_type(t.args[0])
-            return TypeType.make_normalized(item,
-                                            fallback=self.named_type('builtins.type'),
-                                            line=t.line)
+            return TypeType.make_normalized(item, line=t.line)
         elif fullname == 'typing.ClassVar':
             if self.nesting_level > 0:
                 self.fail('Invalid type: ClassVar nested inside other type', t)
@@ -669,11 +666,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return AnyType(TypeOfAny.from_error)
 
     def visit_type_type(self, t: TypeType) -> Type:
-        return TypeType.make_normalized(
-            self.anal_type(t.item),
-            fallback=self.named_type('builtins.type'),
-            line=t.line,
-        )
+        return TypeType.make_normalized(self.anal_type(t.item), line=t.line)
 
     def visit_placeholder_type(self, t: PlaceholderType) -> Type:
         n = None if t.fullname is None else self.api.lookup_fully_qualified(t.fullname)

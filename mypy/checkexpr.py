@@ -1039,8 +1039,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if (callee.is_type_obj() and (len(arg_types) == 1)
                 and is_equivalent(callee.ret_type, self.named_type('builtins.type'))):
-            callee = callee.copy_modified(ret_type=TypeType.make_normalized(
-                arg_types[0], fallback=self.chk.type_type()))
+            callee = callee.copy_modified(ret_type=TypeType.make_normalized(arg_types[0]))
 
         if callable_node:
             # Store the inferred callable type.
@@ -3684,7 +3683,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             # Zero-argument super() is like super(<current class>, <self>)
             current_type = fill_typevars(e.info)
-            type_type: ProperType = TypeType(current_type, fallback=self.chk.type_type())
+            type_type: ProperType = TypeType(current_type)
 
             # Use the type of the self argument, in case it was annotated
             method = self.chk.scope.top_function()
@@ -3713,15 +3712,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Imprecisely assume that the type is the current class
         if isinstance(type_type, AnyType):
             if e.info:
-                type_type = TypeType(fill_typevars(e.info), fallback=self.chk.type_type())
+                type_type = TypeType(fill_typevars(e.info))
             else:
                 return AnyType(TypeOfAny.from_another_any, source_any=type_type)
         elif isinstance(type_type, TypeType):
             type_item = type_type.item
             if isinstance(type_item, AnyType):
                 if e.info:
-                    type_type = TypeType(fill_typevars(e.info),
-                                         fallback=self.chk.type_type())
+                    type_type = TypeType(fill_typevars(e.info))
                 else:
                     return AnyType(TypeOfAny.from_another_any, source_any=type_item)
 
@@ -3741,8 +3739,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             instance_item = instance_type.item
             if isinstance(instance_item, AnyType):
                 if e.info:
-                    instance_type = TypeType(fill_typevars(e.info),
-                                             fallback=self.chk.type_type())
+                    instance_type = TypeType(fill_typevars(e.info))
                 else:
                     return AnyType(TypeOfAny.from_another_any, source_any=instance_item)
 
