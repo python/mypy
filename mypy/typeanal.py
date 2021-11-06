@@ -332,8 +332,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     # To prevent assignment of 'builtins.type' inferred as 'builtins.object'
                     # See https://github.com/python/mypy/issues/9476 for more information
                     return None
-            type_str = 'Type[...]' if fullname == 'typing.Type' else 'type[...]'
             if len(t.args) != 1:
+                type_str = 'Type[...]' if fullname == 'typing.Type' else 'type[...]'
                 self.fail(type_str + ' must have exactly one type argument', t)
             item = self.anal_type(t.args[0])
             return TypeType.make_normalized(item, line=t.line)
