@@ -1143,14 +1143,14 @@ reveal_type(y)      # N: Revealed type is "__main__.Foo"
 
 # The standard output when we end up inferring two disjoint facts about the same expr
 if x is Foo.A and x is Foo.B:
-    reveal_type(x)  # E: Statement is unreachable
+    x               # E: Statement is unreachable
 else:
     reveal_type(x)  # N: Revealed type is "__main__.Foo"
 reveal_type(x)      # N: Revealed type is "__main__.Foo"
 
 # ..and we get the same result if we have two disjoint groups within the same comp expr
 if x is Foo.A < x is Foo.B:
-    reveal_type(x)  # E: Statement is unreachable
+    x               # E: Statement is unreachable
 else:
     reveal_type(x)  # N: Revealed type is "__main__.Foo"
 reveal_type(x)      # N: Revealed type is "__main__.Foo"
@@ -1168,7 +1168,7 @@ class Foo(Enum):
 
 x: Foo
 if x is Foo.A is Foo.B:
-   reveal_type(x)   # E: Statement is unreachable
+   x                # E: Statement is unreachable
 else:
    reveal_type(x)   # N: Revealed type is "__main__.Foo"
 reveal_type(x)      # N: Revealed type is "__main__.Foo"
@@ -1176,7 +1176,7 @@ reveal_type(x)      # N: Revealed type is "__main__.Foo"
 literal_a: Literal[Foo.A]
 literal_b: Literal[Foo.B]
 if x is literal_a is literal_b:
-   reveal_type(x)   # E: Statement is unreachable
+   x                # E: Statement is unreachable
 else:
    reveal_type(x)   # N: Revealed type is "__main__.Foo"
 reveal_type(x)      # N: Revealed type is "__main__.Foo"
@@ -1184,7 +1184,7 @@ reveal_type(x)      # N: Revealed type is "__main__.Foo"
 final_a: Final = Foo.A
 final_b: Final = Foo.B
 if x is final_a is final_b:
-   reveal_type(x)   # E: Statement is unreachable
+   x                # E: Statement is unreachable
 else:
    reveal_type(x)   # N: Revealed type is "__main__.Foo"
 reveal_type(x)      # N: Revealed type is "__main__.Foo"

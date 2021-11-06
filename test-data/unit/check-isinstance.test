@@ -2336,10 +2336,10 @@ class C:
 
 class Example(A, B): pass  # E: Definition of "f" in base class "A" is incompatible with definition in base class "B"
 x: A
-if isinstance(x, B):  # E: Subclass of "A" and "B" cannot exist: would have incompatible method signatures
-    reveal_type(x)    # E: Statement is unreachable
+if isinstance(x, B):       # E: Subclass of "A" and "B" cannot exist: would have incompatible method signatures
+    x                      # E: Statement is unreachable
 else:
-    reveal_type(x)    # N: Revealed type is "__main__.A"
+    reveal_type(x)         # N: Revealed type is "__main__.A"
 
 y: C
 if isinstance(y, B):
@@ -2410,7 +2410,7 @@ class B:
 
 x: A[int]
 if isinstance(x, B):    # E: Subclass of "A[int]" and "B" cannot exist: would have incompatible method signatures
-    reveal_type(x)      # E: Statement is unreachable
+    x                   # E: Statement is unreachable
 else:
     reveal_type(x)      # N: Revealed type is "__main__.A[builtins.int]"
 
@@ -2580,7 +2580,7 @@ class B(Y, X): pass
 
 foo: A
 if isinstance(foo, B):  # E: Subclass of "A" and "B" cannot exist: would have inconsistent method resolution order
-    reveal_type(foo)    # E: Statement is unreachable
+    foo                 # E: Statement is unreachable
 [builtins fixtures/isinstance.pyi]
 
 [case testIsInstanceAdHocIntersectionAmbiguousClass]
@@ -2614,7 +2614,7 @@ x: Type[A]
 if issubclass(x, B):
     reveal_type(x)        # N: Revealed type is "Type[__main__.<subclass of "A" and "B">]"
     if issubclass(x, C):  # E: Subclass of "A", "B", and "C" cannot exist: would have incompatible method signatures
-        reveal_type(x)    # E: Statement is unreachable
+        x                 # E: Statement is unreachable
     else:
         reveal_type(x)    # N: Revealed type is "Type[__main__.<subclass of "A" and "B">]"
 else:
