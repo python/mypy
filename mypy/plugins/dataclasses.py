@@ -125,7 +125,9 @@ class DataclassTransformer:
             'eq': _get_decorator_bool_argument(self._ctx, 'eq', True),
             'order': _get_decorator_bool_argument(self._ctx, 'order', False),
             'frozen': _get_decorator_bool_argument(self._ctx, 'frozen', False),
+            'slots': _get_decorator_bool_argument(self._ctx, 'slots', False),
         }
+        py_version = self._ctx.api.options.python_version
 
         # If there are no attributes, it may be that the semantic analyzer has not
         # processed them yet. In order to work around this, we can simply skip generating
@@ -188,6 +190,9 @@ class DataclassTransformer:
         else:
             self._propertize_callables(attributes)
 
+        if decorator_arguments['slots']:
+            self.add_slots(info, attributes, correct_version=py_version >= (3, 10))
+
         self.reset_init_only_vars(info, attributes)
 
         self._add_dataclass_fields_magic_attribute()
@@ -196,6 +201,35 @@ class DataclassTransformer:
             'attributes': [attr.serialize() for attr in attributes],
             'frozen': decorator_arguments['frozen'],
         }
+
+    def add_slots(self,
+                  info: TypeInfo,
+                  attributes: List[DataclassAttribute],
+                  *,
+                  correct_version: bool) -> None:
+        if not correct_version:
+            # This means that version is lower than `3.10`,
+            # it is just a non-existent argument for `dataclass` function.
+            self._ctx.api.fail(
+                'Keyword argument "slots" for "dataclass" '
+                'is only valid in Python 3.10 and higher',
+                self._ctx.reason,
+            )
+            return
+        if info.slots is not None or info.names.get('__slots__'):
+            # This means we have a slots confict.
+            # Class explicitly specifies `__slots__` field.
+            # And `@dataclass(slots=True)` is used.
+            # In runtime this raises a type error.
+            self._ctx.api.fail(
+                '"{}" both defines "__slots__" and is used with "slots=True"'.format(
+                    self._ctx.cls.name,
+                ),
+                self._ctx.cls,
+            )
+            return
+
+        info.slots = {attr.name for attr in attributes}
 
     def reset_init_only_vars(self, info: TypeInfo, attributes: List[DataclassAttribute]) -> None:
         """Remove init-only vars from the class and reset init var declarations."""
