@@ -1,7 +1,7 @@
 import os
 import sys
 from types import CodeType, ModuleType
-from typing import Any, Tuple
+from typing import Any
 
 if sys.version_info >= (3, 7):
     from importlib.abc import ResourceReader
@@ -12,7 +12,7 @@ class zipimporter(object):
     archive: str
     prefix: str
     def __init__(self, path: str | bytes | os.PathLike[Any]) -> None: ...
-    def find_loader(self, fullname: str, path: str | None = ...) -> Tuple[zipimporter | None, list[str]]: ...  # undocumented
+    def find_loader(self, fullname: str, path: str | None = ...) -> tuple[zipimporter | None, list[str]]: ...  # undocumented
     def find_module(self, fullname: str, path: str | None = ...) -> zipimporter | None: ...
     def get_code(self, fullname: str) -> CodeType: ...
     def get_data(self, pathname: str) -> str: ...

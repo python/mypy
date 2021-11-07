@@ -1,9 +1,9 @@
 from _typeshed import StrOrBytesPath
-from tkinter import Button, Entry, Frame, Listbox, Misc, Scrollbar, StringVar, Toplevel, _TkinterSequence, commondialog
+from tkinter import Button, Entry, Frame, Listbox, Misc, Scrollbar, StringVar, Toplevel, commondialog
 from typing import IO, Any, ClassVar, Iterable, Tuple
 from typing_extensions import Literal
 
-dialogstates: dict[Any, Tuple[Any, Any]]
+dialogstates: dict[Any, tuple[Any, Any]]
 
 class FileDialog:
     title: str
@@ -64,7 +64,7 @@ def asksaveasfilename(
     *,
     confirmoverwrite: bool | None = ...,
     defaultextension: str | None = ...,
-    filetypes: Iterable[Tuple[str, str] | Tuple[str, _TkinterSequence[str]]] | None = ...,
+    filetypes: Iterable[tuple[str, str | list[str] | Tuple[str, ...]]] | None = ...,
     initialdir: StrOrBytesPath | None = ...,
     initialfile: StrOrBytesPath | None = ...,
     parent: Misc | None = ...,
@@ -74,7 +74,7 @@ def asksaveasfilename(
 def askopenfilename(
     *,
     defaultextension: str | None = ...,
-    filetypes: Iterable[Tuple[str, str] | Tuple[str, _TkinterSequence[str]]] | None = ...,
+    filetypes: Iterable[tuple[str, str | list[str] | Tuple[str, ...]]] | None = ...,
     initialdir: StrOrBytesPath | None = ...,
     initialfile: StrOrBytesPath | None = ...,
     parent: Misc | None = ...,
@@ -84,7 +84,7 @@ def askopenfilename(
 def askopenfilenames(
     *,
     defaultextension: str | None = ...,
-    filetypes: Iterable[Tuple[str, str] | Tuple[str, _TkinterSequence[str]]] | None = ...,
+    filetypes: Iterable[tuple[str, str | list[str] | Tuple[str, ...]]] | None = ...,
     initialdir: StrOrBytesPath | None = ...,
     initialfile: StrOrBytesPath | None = ...,
     parent: Misc | None = ...,
@@ -101,7 +101,7 @@ def asksaveasfile(
     *,
     confirmoverwrite: bool | None = ...,
     defaultextension: str | None = ...,
-    filetypes: Iterable[Tuple[str, str] | Tuple[str, _TkinterSequence[str]]] | None = ...,
+    filetypes: Iterable[tuple[str, str | list[str] | Tuple[str, ...]]] | None = ...,
     initialdir: StrOrBytesPath | None = ...,
     initialfile: StrOrBytesPath | None = ...,
     parent: Misc | None = ...,
@@ -112,7 +112,7 @@ def askopenfile(
     mode: str = ...,
     *,
     defaultextension: str | None = ...,
-    filetypes: Iterable[Tuple[str, str] | Tuple[str, _TkinterSequence[str]]] | None = ...,
+    filetypes: Iterable[tuple[str, str | list[str] | Tuple[str, ...]]] | None = ...,
     initialdir: StrOrBytesPath | None = ...,
     initialfile: StrOrBytesPath | None = ...,
     parent: Misc | None = ...,
@@ -123,7 +123,7 @@ def askopenfiles(
     mode: str = ...,
     *,
     defaultextension: str | None = ...,
-    filetypes: Iterable[Tuple[str, str] | Tuple[str, _TkinterSequence[str]]] | None = ...,
+    filetypes: Iterable[tuple[str, str | list[str] | Tuple[str, ...]]] | None = ...,
     initialdir: StrOrBytesPath | None = ...,
     initialfile: StrOrBytesPath | None = ...,
     parent: Misc | None = ...,

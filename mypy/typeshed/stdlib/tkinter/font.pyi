@@ -1,7 +1,7 @@
 import _tkinter
 import sys
 import tkinter
-from typing import Any, Tuple, Union, overload
+from typing import Any, List, Tuple, Union, overload
 from typing_extensions import Literal, TypedDict
 
 NORMAL: Literal["normal"]
@@ -15,7 +15,8 @@ _FontDescription = Union[
     # A font object constructed in Python
     Font,
     # ("Helvetica", 12, BOLD)
-    tkinter._TkinterSequence[Any],
+    List[Any],
+    Tuple[Any, ...],
     # A font object constructed in Tcl
     _tkinter.Tcl_Obj,
 ]

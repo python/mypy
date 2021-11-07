@@ -1,8 +1,8 @@
 # NOTE: These are incomplete!
 
-from typing import Callable, Sequence, Tuple
+from typing import Callable, Sequence
 
-def cloexec_pipe() -> Tuple[int, int]: ...
+def cloexec_pipe() -> tuple[int, int]: ...
 def fork_exec(
     args: Sequence[str],
     executable_list: Sequence[bytes],

@@ -11,7 +11,7 @@ on:
 
 jobs:
   mypy_primer:
-    name: Run
+    name: Run mypy_primer
     runs-on: ubuntu-latest
     permissions:
       contents: read

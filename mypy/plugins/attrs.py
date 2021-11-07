@@ -97,7 +97,7 @@ class Attribute:
             converter_type: Optional[Type] = None
             if converter and isinstance(converter.node, TypeInfo):
                 from mypy.checkmember import type_object_type  # To avoid import cycle.
-                converter_type = type_object_type(converter.node, ctx.api.builtin_type)
+                converter_type = type_object_type(converter.node, ctx.api.named_type)
             elif converter and isinstance(converter.node, OverloadedFuncDef):
                 converter_type = converter.node.type
             elif converter and converter.type:

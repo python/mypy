@@ -1,7 +1,7 @@
 import sys
 from _typeshed import Self, StrOrBytesPath
 from datetime import date, datetime, time
-from typing import Any, Callable, Generator, Iterable, Iterator, Protocol, Tuple, Type, TypeVar
+from typing import Any, Callable, Generator, Iterable, Iterator, Protocol, Type, TypeVar
 
 _T = TypeVar("_T")
 
@@ -16,8 +16,8 @@ def DateFromTicks(ticks: float) -> Date: ...
 def TimeFromTicks(ticks: float) -> Time: ...
 def TimestampFromTicks(ticks: float) -> Timestamp: ...
 
-version_info: Tuple[int, int, int]
-sqlite_version_info: Tuple[int, int, int]
+version_info: tuple[int, int, int]
+sqlite_version_info: tuple[int, int, int]
 Binary = memoryview
 
 # The remaining definitions are imported from _sqlite3.
@@ -167,7 +167,7 @@ class Cursor(Iterator[Any]):
     description: Any
     lastrowid: Any
     row_factory: Any
-    rowcount: Any
+    rowcount: int
     # TODO: Cursor class accepts exactly 1 argument
     # required type is sqlite3.Connection (which is imported as _Connection)
     # however, the name of the __init__ variable is unknown

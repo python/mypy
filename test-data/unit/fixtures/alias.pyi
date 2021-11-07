@@ -3,6 +3,8 @@ from typing import TypeVar, Mapping
 KT = TypeVar('KT')
 VT = TypeVar('VT')
 
+from typing import Mapping, Iterable  # needed for `ArgumentInferContext`
+
 class object:
     def __init__(self) -> None: pass
 class type:

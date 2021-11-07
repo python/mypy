@@ -754,35 +754,46 @@ if sys.version_info[0] >= 2:
 reveal_type('')  # N: Revealed type is "Literal['']?"
 [builtins fixtures/ops.pyi]
 
-[case testUnreachableFlagWithBadControlFlow]
+[case testUnreachableFlagWithBadControlFlow1]
 # flags: --warn-unreachable
 a: int
 if isinstance(a, int):
     reveal_type(a)  # N: Revealed type is "builtins.int"
 else:
     reveal_type(a)  # E: Statement is unreachable
+[builtins fixtures/isinstancelist.pyi]
 
+[case testUnreachableFlagWithBadControlFlow2]
+# flags: --warn-unreachable
 b: int
 while isinstance(b, int):
     reveal_type(b)  # N: Revealed type is "builtins.int"
 else:
     reveal_type(b)  # E: Statement is unreachable
+[builtins fixtures/isinstancelist.pyi]
 
+[case testUnreachableFlagWithBadControlFlow3]
+# flags: --warn-unreachable
 def foo(c: int) -> None:
     reveal_type(c)  # N: Revealed type is "builtins.int"
     assert not isinstance(c, int)
     reveal_type(c)  # E: Statement is unreachable
+[builtins fixtures/isinstancelist.pyi]
 
+[case testUnreachableFlagWithBadControlFlow4]
+# flags: --warn-unreachable
 d: int
 if False:
     reveal_type(d)  # E: Statement is unreachable
+[builtins fixtures/isinstancelist.pyi]
 
+[case testUnreachableFlagWithBadControlFlow5]
+# flags: --warn-unreachable
 e: int
 if True:
     reveal_type(e)  # N: Revealed type is "builtins.int"
 else:
     reveal_type(e)  # E: Statement is unreachable
-
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnreachableFlagStatementAfterReturn]
@@ -1390,3 +1401,18 @@ def f() -> None:
     if nope():
         x = 1  # E: Statement is unreachable
 [builtins fixtures/dict.pyi]
+
+[case testUnreachableModuleBody1]
+# flags: --warn-unreachable
+from typing import NoReturn
+def foo() -> NoReturn:
+    raise Exception("foo")
+foo()
+x = 1  # E: Statement is unreachable
+[builtins fixtures/exception.pyi]
+
+[case testUnreachableModuleBody2]
+# flags: --warn-unreachable
+raise Exception
+x = 1  # E: Statement is unreachable
+[builtins fixtures/exception.pyi]

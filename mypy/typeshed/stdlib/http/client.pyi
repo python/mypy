@@ -5,7 +5,7 @@ import sys
 import types
 from _typeshed import Self, WriteableBuffer
 from socket import socket
-from typing import IO, Any, BinaryIO, Callable, Iterable, Iterator, Mapping, Protocol, Tuple, Type, TypeVar, Union, overload
+from typing import IO, Any, BinaryIO, Callable, Iterable, Iterator, Mapping, Protocol, Type, TypeVar, Union, overload
 
 _DataType = Union[bytes, IO[Any], Iterable[bytes], str]
 _T = TypeVar("_T")
@@ -86,6 +86,10 @@ class HTTPResponse(io.BufferedIOBase, BinaryIO):
     closed: bool
     status: int
     reason: str
+    chunked: bool
+    chunk_left: int | None
+    length: int | None
+    will_close: bool
     def __init__(self, sock: socket, debuglevel: int = ..., method: str | None = ..., url: str | None = ...) -> None: ...
     def peek(self, n: int = ...) -> bytes: ...
     def read(self, amt: int | None = ...) -> bytes: ...
@@ -96,7 +100,7 @@ class HTTPResponse(io.BufferedIOBase, BinaryIO):
     def getheader(self, name: str) -> str | None: ...
     @overload
     def getheader(self, name: str, default: _T) -> str | _T: ...
-    def getheaders(self) -> list[Tuple[str, str]]: ...
+    def getheaders(self) -> list[tuple[str, str]]: ...
     def fileno(self) -> int: ...
     def isclosed(self) -> bool: ...
     def __iter__(self) -> Iterator[bytes]: ...
@@ -118,12 +122,12 @@ class _HTTPConnectionProtocol(Protocol):
             host: str,
             port: int | None = ...,
             timeout: float = ...,
-            source_address: Tuple[str, int] | None = ...,
+            source_address: tuple[str, int] | None = ...,
             blocksize: int = ...,
         ) -> HTTPConnection: ...
     else:
         def __call__(
-            self, host: str, port: int | None = ..., timeout: float = ..., source_address: Tuple[str, int] | None = ...
+            self, host: str, port: int | None = ..., timeout: float = ..., source_address: tuple[str, int] | None = ...
         ) -> HTTPConnection: ...
 
 class HTTPConnection:
@@ -141,12 +145,12 @@ class HTTPConnection:
             host: str,
             port: int | None = ...,
             timeout: float | None = ...,
-            source_address: Tuple[str, int] | None = ...,
+            source_address: tuple[str, int] | None = ...,
             blocksize: int = ...,
         ) -> None: ...
     else:
         def __init__(
-            self, host: str, port: int | None = ..., timeout: float | None = ..., source_address: Tuple[str, int] | None = ...
+            self, host: str, port: int | None = ..., timeout: float | None = ..., source_address: tuple[str, int] | None = ...
         ) -> None: ...
     def request(
         self, method: str, url: str, body: _DataType | None = ..., headers: Mapping[str, str] = ..., *, encode_chunked: bool = ...
@@ -170,7 +174,7 @@ class HTTPSConnection(HTTPConnection):
             key_file: str | None = ...,
             cert_file: str | None = ...,
             timeout: float | None = ...,
-            source_address: Tuple[str, int] | None = ...,
+            source_address: tuple[str, int] | None = ...,
             *,
             context: ssl.SSLContext | None = ...,
             check_hostname: bool | None = ...,
@@ -184,7 +188,7 @@ class HTTPSConnection(HTTPConnection):
             key_file: str | None = ...,
             cert_file: str | None = ...,
             timeout: float | None = ...,
-            source_address: Tuple[str, int] | None = ...,
+            source_address: tuple[str, int] | None = ...,
             *,
             context: ssl.SSLContext | None = ...,
             check_hostname: bool | None = ...,

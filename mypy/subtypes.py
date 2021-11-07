@@ -263,8 +263,13 @@ class SubtypeVisitor(TypeVisitor[bool]):
             rname = right.type.fullname
             # Always try a nominal check if possible,
             # there might be errors that a user wants to silence *once*.
-            if ((left.type.has_base(rname) or rname == 'builtins.object') and
-                    not self.ignore_declared_variance):
+            # NamedTuples are a special case, because `NamedTuple` is not listed
+            # in `TypeInfo.mro`, so when `(a: NamedTuple) -> None` is used,
+            # we need to check for `is_named_tuple` property
+            if ((left.type.has_base(rname) or rname == 'builtins.object'
+                    or (rname == 'typing.NamedTuple'
+                        and any(l.is_named_tuple for l in left.type.mro)))
+                    and not self.ignore_declared_variance):
                 # Map left type to corresponding right instances.
                 t = map_instance_to_supertype(left, right.type)
                 nominal = all(self.check_type_parameter(lefta, righta, tvar.variance)
@@ -310,6 +315,13 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_callable_type(self, left: CallableType) -> bool:
         right = self.right
         if isinstance(right, CallableType):
+            if left.type_guard is not None and right.type_guard is not None:
+                if not self._is_subtype(left.type_guard, right.type_guard):
+                    return False
+            elif right.type_guard is not None and left.type_guard is None:
+                # This means that one function has `TypeGuard` and other does not.
+                # They are not compatible. See https://github.com/python/mypy/issues/11307
+                return False
             return is_callable_compatible(
                 left, right,
                 is_compat=self._is_subtype,
@@ -1131,6 +1143,8 @@ def restrict_subtype_away(t: Type, s: Type, *, ignore_promotions: bool = False) 
                      if (isinstance(get_proper_type(item), AnyType) or
                          not covers_at_runtime(item, s, ignore_promotions))]
         return UnionType.make_union(new_items)
+    elif covers_at_runtime(t, s, ignore_promotions):
+        return UninhabitedType()
     else:
         return t
 
