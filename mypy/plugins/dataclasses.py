@@ -191,7 +191,7 @@ class DataclassTransformer:
             self._propertize_callables(attributes)
 
         if decorator_arguments['slots']:
-            self.add_slots(info, attributes, py_version >= (3, 10))
+            self.add_slots(info, attributes, correct_version=py_version >= (3, 10))
 
         self.reset_init_only_vars(info, attributes)
 
