@@ -205,12 +205,14 @@ class DataclassTransformer:
     def add_slots(self,
                   info: TypeInfo,
                   attributes: List[DataclassAttribute],
+                  *,
                   correct_version: bool) -> None:
         if not correct_version:
             # This means that version is lower than `3.10`,
             # it is just a non-existent argument for `dataclass` function.
             self._ctx.api.fail(
-                'Keyword argument "slots" for "dataclass" is only valid in Python 3.10 and higher',
+                'Keyword argument "slots" for "dataclass" '
+                'is only valid in Python 3.10 and higher',
                 self._ctx.reason,
             )
             return

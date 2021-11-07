@@ -1411,12 +1411,12 @@ class DynamicDef:  # E: "DynamicDef" both defines "__slots__" and is used with "
 # flags: --python-version 3.9
 from dataclasses import dataclass
 
-@dataclass(slots=True)  # E: Unexpected keyword argument "slots" for "dataclass"
+@dataclass(slots=True)  # E: Keyword argument "slots" for "dataclass" is only valid in Python 3.10 and higher
 class Some:
     x: int
 
 # Possible conflict:
-@dataclass(slots=True)  # E: Unexpected keyword argument "slots" for "dataclass"
+@dataclass(slots=True)  # E: Keyword argument "slots" for "dataclass" is only valid in Python 3.10 and higher
 class Other:
     __slots__ = ('x',)
     x: int
