@@ -1438,13 +1438,13 @@ class NonEmptyIntFlag(IntFlag):
     x = 1
 
 class ErrorEnumWithValue(NonEmptyEnum):  # E: Cannot inherit from final class "NonEmptyEnum"
-    x = 1
+    x = 1  # E: Cannot override final attribute "x" (previously declared in base class "NonEmptyEnum")
 class ErrorIntEnumWithValue(NonEmptyIntEnum):  # E: Cannot inherit from final class "NonEmptyIntEnum"
-    x = 1
+    x = 1  # E: Cannot override final attribute "x" (previously declared in base class "NonEmptyIntEnum")
 class ErrorFlagWithValue(NonEmptyFlag):  # E: Cannot inherit from final class "NonEmptyFlag"
-    x = 1
+    x = 1  # E: Cannot override final attribute "x" (previously declared in base class "NonEmptyFlag")
 class ErrorIntFlagWithValue(NonEmptyIntFlag):  # E: Cannot inherit from final class "NonEmptyIntFlag"
-    x = 1
+    x = 1  # E: Cannot override final attribute "x" (previously declared in base class "NonEmptyIntFlag")
 
 class ErrorEnumWithoutValue(NonEmptyEnum):  # E: Cannot inherit from final class "NonEmptyEnum"
     pass
