@@ -145,15 +145,17 @@ class NamedTupleAnalyzer:
                     types.append(analyzed)
                 # ...despite possible minor failures that allow further analyzis.
                 if name.startswith('_'):
-                    self.fail('NamedTuple field name cannot start with an underscore: {}'
+                    self.fail('NamedTuple field name cannot start with an underscore: "{}"'
                               .format(name), stmt)
                 if stmt.type is None or hasattr(stmt, 'new_syntax') and not stmt.new_syntax:
                     self.fail(NAMEDTUP_CLASS_ERROR, stmt)
                 elif isinstance(stmt.rvalue, TempNode):
                     # x: int assigns rvalue to TempNode(AnyType())
                     if default_items:
-                        self.fail('Non-default NamedTuple fields cannot follow default fields',
-                                  stmt)
+                        self.fail(
+                            'Non-default NamedTuple fields cannot follow default fields',
+                            stmt,
+                        )
                 else:
                     default_items[name] = stmt.rvalue
         return items, types, default_items
@@ -766,7 +768,7 @@ class NamedTupleCallAnalyzer:
             rename_arg = self._args[rename_index]
             if not isinstance(rename_arg, NameExpr) or rename_arg.name not in ('True', 'False'):
                 self._fail(
-                    'Bool literal expected as the rename argument '
+                    'Bool literal expected as the "rename" argument '
                     f'to "{self._shortname}()"',
                     rename_arg,
                 )
@@ -824,10 +826,10 @@ class NamedTupleCallAnalyzer:
         seen = set()
         for name in field_names:
             if name.startswith('_') and not rename:
-                self._fail(f'Field names cannot start with an underscore: {name!r}')
+                self._fail(f'Field names cannot start with an underscore: "{name}"')
                 is_valid = False
             if name in seen:
-                self._fail(f'Encountered duplicate field name: {name!r}')
+                self._fail(f'Encountered duplicate field name: "{name}"')
                 is_valid = False
             seen.add(name)
 
