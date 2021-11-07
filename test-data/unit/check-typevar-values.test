@@ -679,3 +679,26 @@ def f(data: T) -> None:
     _: Union[str, int] = data["x"]
 [builtins fixtures/tuple.pyi]
 [builtins fixtures/dict.pyi]
+
+[case testSelfTypeVarIndexExpr]
+from typing import TypeVar, Union, Type
+from typing_extensions import TypedDict
+
+T = TypeVar("T", bound="Indexable")
+
+class Indexable:
+    def __init__(self, index: str) -> None:
+        self.index = index 
+
+    def __getitem__(self: T, index: str) -> T:
+        return self._new_instance(index)
+
+    @classmethod
+    def _new_instance(cls: Type[T], index: str) -> T:
+        return cls("foo")
+
+    def m(self: T) -> T:
+        return self["foo"]
+
+[builtins fixtures/tuple.pyi]
+[builtins fixtures/classmethod.pyi]
