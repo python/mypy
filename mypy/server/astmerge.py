@@ -57,9 +57,9 @@ from mypy.nodes import (
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
     Type, SyntheticTypeVisitor, Instance, AnyType, NoneType, CallableType, ErasedType, DeletedType,
-    TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
-    Overloaded, TypeVarDef, TypeList, CallableArgument, EllipsisType, StarType, LiteralType,
-    RawExpressionType, PartialType, PlaceholderType, TypeAliasType, TypeGuardType
+    TupleType, TypeType, TypedDictType, UnboundType, UninhabitedType, UnionType,
+    Overloaded, TypeVarType, TypeList, CallableArgument, EllipsisType, StarType, LiteralType,
+    RawExpressionType, PartialType, PlaceholderType, TypeAliasType
 )
 from mypy.util import get_prefix, replace_object_state
 from mypy.typestate import TypeState
@@ -188,7 +188,7 @@ class NodeReplaceVisitor(TraverserVisitor):
             # Unanalyzed types can have AST node references
             self.fixup_type(node.unanalyzed_type)
 
-    def process_type_var_def(self, tv: TypeVarDef) -> None:
+    def process_type_var_def(self, tv: TypeVarType) -> None:
         for value in tv.values:
             self.fixup_type(value)
         self.fixup_type(tv.upper_bound)
@@ -370,13 +370,13 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
         if typ.fallback is not None:
             typ.fallback.accept(self)
         for tv in typ.variables:
-            if isinstance(tv, TypeVarDef):
+            if isinstance(tv, TypeVarType):
                 tv.upper_bound.accept(self)
                 for value in tv.values:
                     value.accept(self)
 
     def visit_overloaded(self, t: Overloaded) -> None:
-        for item in t.items():
+        for item in t.items:
             item.accept(self)
         # Fallback can be None for overloaded types that haven't been semantically analyzed.
         if t.fallback is not None:
@@ -388,9 +388,6 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
 
     def visit_deleted_type(self, typ: DeletedType) -> None:
         pass
-
-    def visit_type_guard_type(self, typ: TypeGuardType) -> None:
-        raise RuntimeError
 
     def visit_partial_type(self, typ: PartialType) -> None:
         raise RuntimeError

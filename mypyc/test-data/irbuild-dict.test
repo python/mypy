@@ -42,6 +42,19 @@ L0:
     d = r0
     return 1
 
+[case testNewEmptyDictViaFunc]
+from typing import Dict
+def f() -> None:
+    d: Dict[bool, int] = dict()
+
+[out]
+def f():
+    r0, d :: dict
+L0:
+    r0 = PyDict_New()
+    d = r0
+    return 1
+
 [case testNewDictWithValues]
 def f(x: object) -> None:
     d = {1: 2, '': x}
@@ -141,8 +154,8 @@ def increment(d):
     r1 :: native_int
     r2 :: short_int
     r3 :: object
-    r4 :: tuple[bool, int, object]
-    r5 :: int
+    r4 :: tuple[bool, short_int, object]
+    r5 :: short_int
     r6 :: bool
     r7 :: object
     r8, k :: str
@@ -219,8 +232,8 @@ def print_dict_methods(d1, d2):
     r1 :: native_int
     r2 :: short_int
     r3 :: object
-    r4 :: tuple[bool, int, object]
-    r5 :: int
+    r4 :: tuple[bool, short_int, object]
+    r5 :: short_int
     r6 :: bool
     r7 :: object
     r8, v :: int
@@ -233,8 +246,8 @@ def print_dict_methods(d1, d2):
     r16 :: native_int
     r17 :: short_int
     r18 :: object
-    r19 :: tuple[bool, int, object, object]
-    r20 :: int
+    r19 :: tuple[bool, short_int, object, object]
+    r20 :: short_int
     r21 :: bool
     r22, r23 :: object
     r24, r25, k :: int

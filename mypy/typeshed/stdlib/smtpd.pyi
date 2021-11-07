@@ -1,7 +1,7 @@
 import asynchat
 import asyncore
 import socket
-from typing import Any, DefaultDict, List, Optional, Tuple, Type, Union
+from typing import Any, DefaultDict, Tuple, Type
 
 _Address = Tuple[str, int]  # (host, port)
 
@@ -13,11 +13,11 @@ class SMTPChannel(asynchat.async_chat):
     smtp_server: SMTPServer
     conn: socket.socket
     addr: Any
-    received_lines: List[str]
+    received_lines: list[str]
     smtp_state: int
     seen_greeting: str
     mailfrom: str
-    rcpttos: List[str]
+    rcpttos: list[str]
     received_data: str
     fqdn: str
     peer: str
@@ -34,7 +34,7 @@ class SMTPChannel(asynchat.async_chat):
         conn: socket.socket,
         addr: Any,
         data_size_limit: int = ...,
-        map: Optional[asyncore._maptype] = ...,
+        map: asyncore._maptype | None = ...,
         enable_SMTPUTF8: bool = ...,
         decode_data: bool = ...,
     ) -> None: ...
@@ -64,23 +64,23 @@ class SMTPServer(asyncore.dispatcher):
         localaddr: _Address,
         remoteaddr: _Address,
         data_size_limit: int = ...,
-        map: Optional[asyncore._maptype] = ...,
+        map: asyncore._maptype | None = ...,
         enable_SMTPUTF8: bool = ...,
         decode_data: bool = ...,
     ) -> None: ...
     def handle_accepted(self, conn: socket.socket, addr: Any) -> None: ...
     def process_message(
-        self, peer: _Address, mailfrom: str, rcpttos: List[str], data: Union[bytes, str], **kwargs: Any
-    ) -> Optional[str]: ...
+        self, peer: _Address, mailfrom: str, rcpttos: list[str], data: bytes | str, **kwargs: Any
+    ) -> str | None: ...
 
 class DebuggingServer(SMTPServer): ...
 
 class PureProxy(SMTPServer):
     def process_message(  # type: ignore
-        self, peer: _Address, mailfrom: str, rcpttos: List[str], data: Union[bytes, str]
-    ) -> Optional[str]: ...
+        self, peer: _Address, mailfrom: str, rcpttos: list[str], data: bytes | str
+    ) -> str | None: ...
 
 class MailmanProxy(PureProxy):
     def process_message(  # type: ignore
-        self, peer: _Address, mailfrom: str, rcpttos: List[str], data: Union[bytes, str]
-    ) -> Optional[str]: ...
+        self, peer: _Address, mailfrom: str, rcpttos: list[str], data: bytes | str
+    ) -> str | None: ...

@@ -1375,3 +1375,11 @@ def f(x: Callable[..., T]) -> T:
 
 x: G[str] = f(G)
 [out]
+
+[case testConditionalExpressionWithEmptyListAndUnionWithAny]
+from typing import Union, List, Any
+
+def f(x: Union[List[str], Any]) -> None:
+    a = x if x else []
+    reveal_type(a)  # N: Revealed type is "Union[builtins.list[builtins.str], Any]"
+[builtins fixtures/list.pyi]

@@ -283,11 +283,11 @@ c_int_rprimitive = int32_rprimitive
 if IS_32_BIT_PLATFORM:
     c_size_t_rprimitive = uint32_rprimitive
     c_pyssize_t_rprimitive = RPrimitive('native_int', is_unboxed=True, is_refcounted=False,
-                              ctype='int32_t', size=4)
+                                        ctype='int32_t', size=4)
 else:
     c_size_t_rprimitive = uint64_rprimitive
     c_pyssize_t_rprimitive = RPrimitive('native_int', is_unboxed=True, is_refcounted=False,
-                              ctype='int64_t', size=8)
+                                        ctype='int64_t', size=8)
 
 # Low level pointer, represented as integer in C backends
 pointer_rprimitive: Final = RPrimitive("ptr", is_unboxed=True, is_refcounted=False, ctype="CPyPtr")
@@ -327,6 +327,9 @@ set_rprimitive: Final = RPrimitive("builtins.set", is_unboxed=False, is_refcount
 # Python str object. At the C layer, str is referred to as unicode
 # (PyUnicode).
 str_rprimitive: Final = RPrimitive("builtins.str", is_unboxed=False, is_refcounted=True)
+
+# Python bytes object.
+bytes_rprimitive: Final = RPrimitive('builtins.bytes', is_unboxed=False, is_refcounted=True)
 
 # Tuple of an arbitrary length (corresponds to Tuple[t, ...], with
 # explicit '...').
@@ -408,6 +411,10 @@ def is_set_rprimitive(rtype: RType) -> bool:
 
 def is_str_rprimitive(rtype: RType) -> bool:
     return isinstance(rtype, RPrimitive) and rtype.name == 'builtins.str'
+
+
+def is_bytes_rprimitive(rtype: RType) -> bool:
+    return isinstance(rtype, RPrimitive) and rtype.name == 'builtins.bytes'
 
 
 def is_tuple_rprimitive(rtype: RType) -> bool:
@@ -515,11 +522,11 @@ exc_rtuple = RTuple([object_rprimitive, object_rprimitive, object_rprimitive])
 # Dictionary iterator tuple: (should continue, internal offset, key, value)
 # See mypyc.irbuild.for_helpers.ForDictionaryCommon for more details.
 dict_next_rtuple_pair = RTuple(
-    [bool_rprimitive, int_rprimitive, object_rprimitive, object_rprimitive]
+    [bool_rprimitive, short_int_rprimitive, object_rprimitive, object_rprimitive]
 )
 # Same as above but just for key or value.
 dict_next_rtuple_single = RTuple(
-    [bool_rprimitive, int_rprimitive, object_rprimitive]
+    [bool_rprimitive, short_int_rprimitive, object_rprimitive]
 )
 
 

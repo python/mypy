@@ -83,7 +83,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
                 # properties with both getters and setters in non_extension
                 # classes not supported
                 builder.error("Property setters not supported in non-extension classes",
-                           stmt.line)
+                              stmt.line)
             for item in stmt.items:
                 with builder.catch_errors(stmt.line):
                     transform_method(builder, cdef, non_ext, get_func_def(item))
@@ -104,7 +104,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
             lvalue = stmt.lvalues[0]
             if not isinstance(lvalue, NameExpr):
                 builder.error("Only assignment to variables is supported in class bodies",
-                           stmt.line)
+                              stmt.line)
                 continue
             # We want to collect class variables in a dictionary for both real
             # non-extension classes and fake dataclass ones.
@@ -167,10 +167,10 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
         tp_bases = builder.add(LoadErrorValue(object_rprimitive, is_borrowed=True))
     modname = builder.load_str(builder.module_name)
     template = builder.add(LoadStatic(object_rprimitive, cdef.name + "_template",
-                                   builder.module_name, NAMESPACE_TYPE))
+                                      builder.module_name, NAMESPACE_TYPE))
     # Create the class
     tp = builder.call_c(pytype_from_template_op,
-                    [template, tp_bases, modname], cdef.line)
+                        [template, tp_bases, modname], cdef.line)
     # Immediately fix up the trait vtables, before doing anything with the class.
     ir = builder.mapper.type_to_ir[cdef.info]
     if not ir.is_trait and not ir.builtin_base:
@@ -189,11 +189,10 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
 
     # Add it to the dict
     builder.call_c(dict_set_item_op,
-                [
-                    builder.load_globals_dict(),
+                   [builder.load_globals_dict(),
                     builder.load_str(cdef.name),
-                    tp,
-                ], cdef.line)
+                    tp],
+                   cdef.line)
 
     return tp
 
@@ -290,8 +289,8 @@ def setup_non_ext_dict(builder: IRBuilder,
     """
     # Check if the metaclass defines a __prepare__ method, and if so, call it.
     has_prepare = builder.call_c(py_hasattr_op,
-                                [metaclass,
-                                builder.load_str('__prepare__')], cdef.line)
+                                 [metaclass,
+                                  builder.load_str('__prepare__')], cdef.line)
 
     non_ext_dict = Register(dict_rprimitive)
 
@@ -381,28 +380,25 @@ def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef) -> None:
     if not default_assignments:
         return
 
-    builder.enter_method(cls, '__mypyc_defaults_setup', bool_rprimitive)
+    with builder.enter_method(cls, '__mypyc_defaults_setup', bool_rprimitive):
+        self_var = builder.self()
+        for stmt in default_assignments:
+            lvalue = stmt.lvalues[0]
+            assert isinstance(lvalue, NameExpr)
+            if not stmt.is_final_def and not is_constant(stmt.rvalue):
+                builder.warning('Unsupported default attribute value', stmt.rvalue.line)
 
-    self_var = builder.self()
-    for stmt in default_assignments:
-        lvalue = stmt.lvalues[0]
-        assert isinstance(lvalue, NameExpr)
-        if not stmt.is_final_def and not is_constant(stmt.rvalue):
-            builder.warning('Unsupported default attribute value', stmt.rvalue.line)
+            # If the attribute is initialized to None and type isn't optional,
+            # don't initialize it to anything.
+            attr_type = cls.attr_type(lvalue.name)
+            if isinstance(stmt.rvalue, RefExpr) and stmt.rvalue.fullname == 'builtins.None':
+                if (not is_optional_type(attr_type) and not is_object_rprimitive(attr_type)
+                        and not is_none_rprimitive(attr_type)):
+                    continue
+            val = builder.coerce(builder.accept(stmt.rvalue), attr_type, stmt.line)
+            builder.add(SetAttr(self_var, lvalue.name, val, -1))
 
-        # If the attribute is initialized to None and type isn't optional,
-        # don't initialize it to anything.
-        attr_type = cls.attr_type(lvalue.name)
-        if isinstance(stmt.rvalue, RefExpr) and stmt.rvalue.fullname == 'builtins.None':
-            if (not is_optional_type(attr_type) and not is_object_rprimitive(attr_type)
-                    and not is_none_rprimitive(attr_type)):
-                continue
-        val = builder.coerce(builder.accept(stmt.rvalue), attr_type, stmt.line)
-        builder.add(SetAttr(self_var, lvalue.name, val, -1))
-
-    builder.add(Return(builder.true()))
-
-    builder.leave_method()
+        builder.add(Return(builder.true()))
 
 
 def check_deletable_declaration(builder: IRBuilder, cl: ClassIR, line: int) -> None:
@@ -430,30 +426,28 @@ def create_ne_from_eq(builder: IRBuilder, cdef: ClassDef) -> None:
 
 def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> None:
     """Generate a "__ne__" method from a "__eq__" method. """
-    builder.enter_method(cls, '__ne__', object_rprimitive)
-    rhs_arg = builder.add_argument('rhs', object_rprimitive)
+    with builder.enter_method(cls, '__ne__', object_rprimitive):
+        rhs_arg = builder.add_argument('rhs', object_rprimitive)
 
-    # If __eq__ returns NotImplemented, then __ne__ should also
-    not_implemented_block, regular_block = BasicBlock(), BasicBlock()
-    eqval = builder.add(MethodCall(builder.self(), '__eq__', [rhs_arg], line))
-    not_implemented = builder.add(LoadAddress(not_implemented_op.type,
-                                              not_implemented_op.src, line))
-    builder.add(Branch(
-        builder.translate_is_op(eqval, not_implemented, 'is', line),
-        not_implemented_block,
-        regular_block,
-        Branch.BOOL))
+        # If __eq__ returns NotImplemented, then __ne__ should also
+        not_implemented_block, regular_block = BasicBlock(), BasicBlock()
+        eqval = builder.add(MethodCall(builder.self(), '__eq__', [rhs_arg], line))
+        not_implemented = builder.add(LoadAddress(not_implemented_op.type,
+                                                  not_implemented_op.src, line))
+        builder.add(Branch(
+            builder.translate_is_op(eqval, not_implemented, 'is', line),
+            not_implemented_block,
+            regular_block,
+            Branch.BOOL))
 
-    builder.activate_block(regular_block)
-    retval = builder.coerce(
-        builder.unary_op(eqval, 'not', line), object_rprimitive, line
-    )
-    builder.add(Return(retval))
+        builder.activate_block(regular_block)
+        retval = builder.coerce(
+            builder.unary_op(eqval, 'not', line), object_rprimitive, line
+        )
+        builder.add(Return(retval))
 
-    builder.activate_block(not_implemented_block)
-    builder.add(Return(not_implemented))
-
-    builder.leave_method()
+        builder.activate_block(not_implemented_block)
+        builder.add(Return(not_implemented))
 
 
 def load_non_ext_class(builder: IRBuilder,
@@ -512,8 +506,8 @@ def create_mypyc_attrs_tuple(builder: IRBuilder, ir: ClassIR, line: int) -> Valu
 def finish_non_ext_dict(builder: IRBuilder, non_ext: NonExtClassInfo, line: int) -> None:
     # Add __annotations__ to the class dict.
     builder.call_c(dict_set_item_op,
-                [non_ext.dict, builder.load_str('__annotations__'),
-                non_ext.anns], -1)
+                   [non_ext.dict, builder.load_str('__annotations__'),
+                    non_ext.anns], -1)
 
     # We add a __doc__ attribute so if the non-extension class is decorated with the
     # dataclass decorator, dataclass will not try to look for __text_signature__.

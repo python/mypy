@@ -3,10 +3,11 @@
 # See the README.md file in this directory for more information.
 
 import array
+import ctypes
 import mmap
 import sys
 from os import PathLike
-from typing import AbstractSet, Any, Container, Iterable, Protocol, Tuple, TypeVar, Union
+from typing import AbstractSet, Any, Awaitable, Container, Iterable, Protocol, TypeVar, Union
 from typing_extensions import Literal, final
 
 _KT = TypeVar("_KT")
@@ -18,9 +19,21 @@ _T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)
 _T_contra = TypeVar("_T_contra", contravariant=True)
 
+# Use for "self" annotations:
+#   def __enter__(self: Self) -> Self: ...
+Self = TypeVar("Self")  # noqa Y001
+
 # stable
 class IdentityFunction(Protocol):
     def __call__(self, __x: _T) -> _T: ...
+
+# stable
+class SupportsNext(Protocol[_T_co]):
+    def __next__(self) -> _T_co: ...
+
+# stable
+class SupportsAnext(Protocol[_T_co]):
+    def __anext__(self) -> Awaitable[_T_co]: ...
 
 class SupportsLessThan(Protocol):
     def __lt__(self, __other: Any) -> bool: ...
@@ -33,11 +46,18 @@ class SupportsDivMod(Protocol[_T_contra, _T_co]):
 class SupportsRDivMod(Protocol[_T_contra, _T_co]):
     def __rdivmod__(self, __other: _T_contra) -> _T_co: ...
 
+class SupportsLenAndGetItem(Protocol[_T_co]):
+    def __len__(self) -> int: ...
+    def __getitem__(self, __k: int) -> _T_co: ...
+
+class SupportsTrunc(Protocol):
+    def __trunc__(self) -> int: ...
+
 # Mapping-like protocols
 
 # stable
 class SupportsItems(Protocol[_KT_co, _VT_co]):
-    def items(self) -> AbstractSet[Tuple[_KT_co, _VT_co]]: ...
+    def items(self) -> AbstractSet[tuple[_KT_co, _VT_co]]: ...
 
 # stable
 class SupportsKeysAndGetItem(Protocol[_KT, _VT_co]):
@@ -57,7 +77,6 @@ class SupportsItemAccess(SupportsGetItem[_KT_contra, _VT], Protocol[_KT_contra, 
 StrPath = Union[str, PathLike[str]]  # stable
 BytesPath = Union[bytes, PathLike[bytes]]  # stable
 StrOrBytesPath = Union[str, bytes, PathLike[str], PathLike[bytes]]  # stable
-AnyPath = StrOrBytesPath  # obsolete, will be removed soon
 
 OpenTextModeUpdating = Literal[
     "r+",
@@ -149,8 +168,13 @@ class SupportsNoArgReadline(Protocol[_T_co]):
 class SupportsWrite(Protocol[_T_contra]):
     def write(self, __s: _T_contra) -> Any: ...
 
-ReadableBuffer = Union[bytes, bytearray, memoryview, array.array[Any], mmap.mmap]  # stable
-WriteableBuffer = Union[bytearray, memoryview, array.array[Any], mmap.mmap]  # stable
+ReadOnlyBuffer = bytes  # stable
+# Anything that implements the read-write buffer interface.
+# The buffer interface is defined purely on the C level, so we cannot define a normal Protocol
+# for it. Instead we have to list the most common stdlib buffer classes in a Union.
+WriteableBuffer = Union[bytearray, memoryview, array.array[Any], mmap.mmap, ctypes._CData]  # stable
+# Same as _WriteableBuffer, but also includes read-only buffer types (like bytes).
+ReadableBuffer = Union[ReadOnlyBuffer, WriteableBuffer]  # stable
 
 # stable
 if sys.version_info >= (3, 10):

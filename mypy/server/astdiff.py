@@ -57,7 +57,7 @@ from mypy.nodes import (
     FuncBase, OverloadedFuncDef, FuncItem, MypyFile, UNBOUND_IMPORTED
 )
 from mypy.types import (
-    Type, TypeGuardType, TypeVisitor, UnboundType, AnyType, NoneType, UninhabitedType,
+    Type, TypeVisitor, UnboundType, AnyType, NoneType, UninhabitedType,
     ErasedType, DeletedType, Instance, TypeVarType, CallableType, TupleType, TypedDictType,
     UnionType, Overloaded, PartialType, TypeType, LiteralType, TypeAliasType
 )
@@ -213,7 +213,7 @@ def snapshot_definition(node: Optional[SymbolNode],
                  #     x: C[str] <- this is invalid, and needs to be re-checked if `T` changes.
                  # An alternative would be to create both deps: <...> -> C, and <...> -> <C>,
                  # but this currently seems a bit ad hoc.
-                 tuple(snapshot_type(TypeVarType(tdef)) for tdef in node.defn.type_vars),
+                 tuple(snapshot_type(tdef) for tdef in node.defn.type_vars),
                  [snapshot_type(base) for base in node.bases],
                  snapshot_optional_type(node._promote))
         prefix = node.fullname
@@ -335,11 +335,8 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
         normalized = tuple(sorted(items))
         return ('UnionType', normalized)
 
-    def visit_type_guard_type(self, typ: TypeGuardType) -> SnapshotItem:
-        return ('TypeGuardType', snapshot_type(typ.type_guard))
-
     def visit_overloaded(self, typ: Overloaded) -> SnapshotItem:
-        return ('Overloaded', snapshot_types(typ.items()))
+        return ('Overloaded', snapshot_types(typ.items))
 
     def visit_partial_type(self, typ: PartialType) -> SnapshotItem:
         # A partial type is not fully defined, so the result is indeterminate. We shouldn't

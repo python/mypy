@@ -24,6 +24,65 @@ f = g # E: Incompatible types in assignment (expression has type "Callable[[Any,
 [typing fixtures/typing-medium.pyi]
 [builtins fixtures/tuple.pyi]
 
+[case testContextManagerWithGenericFunctionAndSendType]
+from contextlib import contextmanager
+from typing import TypeVar, Generator
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+@contextmanager
+def yield_id(item: T) -> Generator[T, S, None]:
+    yield item
+
+reveal_type(yield_id) # N: Revealed type is "def [T] (item: T`-1) -> contextlib.GeneratorContextManager[T`-1]"
+
+with yield_id(1) as x:
+    reveal_type(x) # N: Revealed type is "builtins.int*"
+
+f = yield_id
+def g(x, y): pass
+f = g # E: Incompatible types in assignment (expression has type "Callable[[Any, Any], Any]", variable has type "Callable[[T], GeneratorContextManager[T]]")
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/tuple.pyi]
+
+[case testAsyncContextManagerWithGenericFunction]
+# flags: --python-version 3.7
+from contextlib import asynccontextmanager
+from typing import TypeVar, AsyncIterator
+
+T = TypeVar('T')
+
+@asynccontextmanager
+async def yield_id(item: T) -> AsyncIterator[T]:
+    yield item
+
+reveal_type(yield_id) # N: Revealed type is "def [T] (item: T`-1) -> typing.AsyncContextManager[T`-1]"
+
+async with yield_id(1) as x:
+    reveal_type(x) # N: Revealed type is "builtins.int*"
+[typing fixtures/typing-async.pyi]
+[builtins fixtures/tuple.pyi]
+
+[case testAsyncContextManagerWithGenericFunctionAndSendType]
+# flags: --python-version 3.7
+from contextlib import asynccontextmanager
+from typing import TypeVar, AsyncGenerator
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+@asynccontextmanager
+async def yield_id(item: T) -> AsyncGenerator[T, S]:
+    yield item
+
+reveal_type(yield_id) # N: Revealed type is "def [T] (item: T`-1) -> typing.AsyncContextManager[T`-1]"
+
+async with yield_id(1) as x:
+    reveal_type(x) # N: Revealed type is "builtins.int*"
+[typing fixtures/typing-async.pyi]
+[builtins fixtures/tuple.pyi]
+
 [case testContextManagerWithUnspecifiedArguments]
 from contextlib import contextmanager
 from typing import Callable, Iterator

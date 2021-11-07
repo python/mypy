@@ -58,12 +58,20 @@ for full details, see :ref:`running-mypy`.
     For instance, to avoid discovering any files named `setup.py` you could
     pass ``--exclude '/setup\.py$'``. Similarly, you can ignore discovering
     directories with a given name by e.g. ``--exclude /build/`` or
-    those matching a subpath with ``--exclude /project/vendor/``.
+    those matching a subpath with ``--exclude /project/vendor/``. To ignore
+    multiple files / directories / paths, you can provide the --exclude
+    flag more than once, e.g ``--exclude '/setup\.py$' --exclude '/build/'``.
 
-    Note that this flag only affects recursive discovery, that is, when mypy is
-    discovering files within a directory tree or submodules of a package to
-    check. If you pass a file or module explicitly it will still be checked. For
-    instance, ``mypy --exclude '/setup.py$' but_still_check/setup.py``.
+    Note that this flag only affects recursive directory tree discovery, that
+    is, when mypy is discovering files within a directory tree or submodules of
+    a package to check. If you pass a file or module explicitly it will still be
+    checked. For instance, ``mypy --exclude '/setup.py$'
+    but_still_check/setup.py``.
+
+    In particular, ``--exclude`` does not affect mypy's :ref:`import following
+    <follow-imports>`. You can use a per-module :confval:`follow_imports` config
+    option to additionally avoid mypy from following imports and checking code
+    you do not wish to be checked.
 
     Note that mypy will never recursively discover files and directories named
     "site-packages", "node_modules" or "__pycache__", or those whose name starts
@@ -557,8 +565,13 @@ of the above sections.
 
        # This won't re-export the value
        from foo import bar
+
+       # Neither will this
+       from foo import bar as bang
+
        # This will re-export it as bar and allow other modules to import it
        from foo import bar as bar
+
        # This will also re-export bar
        from foo import bar
        __all__ = ['bar']

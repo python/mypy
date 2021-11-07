@@ -566,6 +566,29 @@ Python 3.6 introduced an alternative, class-based syntax for named tuples with t
 
     p = Point(x=1, y='x')  # Argument has incompatible type "str"; expected "int"
 
+.. note::
+
+  You can use raw ``NamedTuple`` pseudo-class to annotate type
+  where any ``NamedTuple`` is expected.
+
+  For example, it can be useful for deserialization:
+
+  .. code-block:: python
+
+    def deserialize_named_tuple(arg: NamedTuple) -> Dict[str, Any]:
+        return arg._asdict()
+
+    Point = namedtuple('Point', ['x', 'y'])
+    Person = NamedTuple('Person', [('name', str), ('age', int)])
+
+    deserialize_named_tuple(Point(x=1, y=2))  # ok
+    deserialize_named_tuple(Person(name='Nikita', age=18))  # ok
+
+    deserialize_named_tuple((1, 2))  # Argument 1 to "deserialize_named_tuple" has incompatible type "Tuple[int, int]"; expected "NamedTuple"
+
+  Note, that behavior is highly experimental, non-standard,
+  and can be not supported by other type checkers.
+
 .. _type-of-class:
 
 The type of class objects

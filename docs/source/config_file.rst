@@ -197,11 +197,18 @@ section of the command line docs.
 
 .. confval:: exclude
 
-    :type: regular expression
+    :type: newline separated list of regular expressions
 
-    A regular expression that matches file names, directory names and paths
+    A newline list of regular expression that matches file names, directory names and paths
     which mypy should ignore while recursively discovering files to check.
     Use forward slashes on all platforms.
+
+    .. code-block:: ini
+
+      [mypy]
+      exclude =
+          ^file1\.py$
+          ^file2\.py$
 
     For more details, see :option:`--exclude <mypy --exclude>`.
 
@@ -253,6 +260,10 @@ section of the command line docs.
     The four possible values are ``normal``, ``silent``, ``skip`` and
     ``error``.  For explanations see the discussion for the
     :option:`--follow-imports <mypy --follow-imports>` command line flag.
+
+    Using this option in a per-module section (potentially with a wildcard,
+    as described at the top of this page) is a good way to prevent mypy from
+    checking portions of your code.
 
     If this option is used in a per-module section, the module name should
     match the name of the *imported* module, not the module containing the
@@ -319,7 +330,7 @@ Platform configuration
     :type: string
 
     Specifies the Python version used to parse and check the target
-    program.  The string should be in the format ``DIGIT.DIGIT`` --
+    program.  The string should be in the format ``MAJOR.MINOR`` --
     for example ``2.7``.  The default is the version of the Python
     interpreter used to run mypy.
 
@@ -605,6 +616,18 @@ section of the command line docs.
 
    Prohibit equality checks, identity checks, and container checks between
    non-overlapping types.
+
+.. confval:: strict
+
+    :type: boolean
+    :default: False
+
+   Enable all optional error checking flags.  You can see the list of
+   flags enabled by strict mode in the full :option:`mypy --help`
+   output.
+
+   Note: the exact list of flags enabled by :confval:`strict` may
+   change over time.
 
 
 Configuring error messages
@@ -924,10 +947,10 @@ Instead of using a ``mypy.ini`` file, a ``pyproject.toml`` file (as specified by
 
   * Boolean values should be all lower case
 
-Please see the `TOML Documentation`_ for more details and information on 
+Please see the `TOML Documentation`_ for more details and information on
 what is allowed in a ``toml`` file. See `PEP 518`_ for more information on the layout
 and structure of the ``pyproject.toml`` file.
-  
+
 Example ``pyproject.toml``
 **************************
 

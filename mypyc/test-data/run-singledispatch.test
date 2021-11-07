@@ -465,3 +465,234 @@ def h(arg: str) -> int:
 def test_singledispatch():
     assert f('a') == 35
     assert f(A()) == 10
+
+[case testMoreSpecificTypeBeforeLessSpecificType]
+from functools import singledispatch
+class A: pass
+class B(A): pass
+
+@singledispatch
+def f(arg) -> str:
+    return 'default'
+
+@f.register
+def g(arg: B) -> str:
+    return 'b'
+
+@f.register
+def h(arg: A) -> str:
+    return 'a'
+
+def test_singledispatch():
+    assert f(B()) == 'b'
+    assert f(A()) == 'a'
+    assert f(5) == 'default'
+
+[case testMultipleRelatedClassesBeingRegistered]
+from functools import singledispatch
+
+class A: pass
+class B(A): pass
+class C(B): pass
+
+@singledispatch
+def f(arg) -> str: return 'default'
+
+@f.register
+def _(arg: A) -> str: return 'a'
+
+@f.register
+def _(arg: C) -> str: return 'c'
+
+@f.register
+def _(arg: B) -> str: return 'b'
+
+def test_singledispatch():
+    assert f(A()) == 'a'
+    assert f(B()) == 'b'
+    assert f(C()) == 'c'
+    assert f(1) == 'default'
+
+[case testRegisteredImplementationsInDifferentFiles]
+from other_a import f, A, B, C
+@f.register
+def a(arg: A) -> int:
+    return 2
+
+@f.register
+def _(arg: C) -> int:
+    return 3
+
+def test_singledispatch():
+    assert f(B()) == 1
+    assert f(A()) == 2
+    assert f(C()) == 3
+    assert f(1) == 0
+
+[file other_a.py]
+from functools import singledispatch
+
+class A: pass
+class B(A): pass
+class C(B): pass
+
+@singledispatch
+def f(arg) -> int:
+    return 0
+
+@f.register
+def g(arg: B) -> int:
+    return 1
+
+[case testOrderCanOnlyBeDeterminedFromMRONotIsinstanceChecks]
+from mypy_extensions import trait
+from functools import singledispatch
+
+@trait
+class A: pass
+@trait
+class B: pass
+class AB(A, B): pass
+class BA(B, A): pass
+
+@singledispatch
+def f(arg) -> str:
+    return "default"
+    pass
+
+@f.register
+def fa(arg: A) -> str:
+    return "a"
+
+@f.register
+def fb(arg: B) -> str:
+    return "b"
+
+def test_singledispatch():
+    assert f(AB()) == "a"
+    assert f(BA()) == "b"
+
+[case testCallingFunctionBeforeAllImplementationsRegistered]
+from functools import singledispatch
+
+class A: pass
+class B(A): pass
+
+@singledispatch
+def f(arg) -> str:
+    return 'default'
+
+assert f(A()) == 'default'
+assert f(B()) == 'default'
+assert f(1) == 'default'
+
+@f.register
+def g(arg: A) -> str:
+    return 'a'
+
+assert f(A()) == 'a'
+assert f(B()) == 'a'
+assert f(1) == 'default'
+
+@f.register
+def _(arg: B) -> str:
+    return 'b'
+
+assert f(A()) == 'a'
+assert f(B()) == 'b'
+assert f(1) == 'default'
+
+
+[case testDynamicallyRegisteringFunctionFromInterpretedCode]
+from functools import singledispatch
+
+class A: pass
+class B(A): pass
+class C(B): pass
+class D(C): pass
+
+@singledispatch
+def f(arg) -> str:
+    return "default"
+
+@f.register
+def _(arg: B) -> str:
+    return 'b'
+
+[file register_impl.py]
+from native import f, A, B, C
+
+@f.register(A)
+def a(arg) -> str:
+    return 'a'
+
+@f.register
+def c(arg: C) -> str:
+    return 'c'
+
+[file driver.py]
+from native import f, A, B, C
+from register_impl import a, c
+# We need a custom driver here because register_impl has to be run before we test this (so that the
+# additional implementations are registered)
+assert f(C()) == 'c'
+assert f(A()) == 'a'
+assert f(B()) == 'b'
+assert a(C()) == 'a'
+assert c(A()) == 'c'
+
+[case testMalformedDynamicRegisterCall]
+from functools import singledispatch
+
+@singledispatch
+def f(arg) -> None:
+    pass
+[file register.py]
+from native import f
+from testutil import assertRaises
+
+with assertRaises(TypeError, 'Invalid first argument to `register()`'):
+    @f.register
+    def _():
+        pass
+
+[file driver.py]
+import register
+
+[case testCacheClearedWhenNewFunctionRegistered]
+from functools import singledispatch
+
+@singledispatch
+def f(arg) -> str:
+    return 'default'
+
+[file register.py]
+from native import f
+class A: pass
+class B: pass
+class C: pass
+
+# annotated function
+assert f(A()) == 'default'
+@f.register
+def _(arg: A) -> str:
+    return 'a'
+assert f(A()) == 'a'
+
+# type passed as argument
+assert f(B()) == 'default'
+@f.register(B)
+def _(arg: B) -> str:
+    return 'b'
+assert f(B()) == 'b'
+
+# 2 argument form
+assert f(C()) == 'default'
+def c(arg) -> str:
+    return 'c'
+f.register(C, c)
+assert f(C()) == 'c'
+
+
+[file driver.py]
+import register

@@ -28,7 +28,7 @@ load_address_op(
     type=object_rprimitive,
     src='PyLong_Type')
 
-# Convert from a float to int. We could do a bit better directly.
+# int(float). We could do a bit better directly.
 function_op(
     name='builtins.int',
     arg_types=[float_rprimitive],
@@ -52,7 +52,7 @@ function_op(
     c_function_name='CPyLong_FromStrWithBase',
     error_kind=ERR_MAGIC)
 
-# str(n) on ints
+# str(int)
 int_to_str_op = function_op(
     name='builtins.str',
     arg_types=[int_rprimitive],

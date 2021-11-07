@@ -24,7 +24,7 @@ from mypyc.ir.ops import (
     GetAttr, LoadStatic, MethodCall, CallC, Truncate, LoadLiteral, AssignMulti,
     RaiseStandardError, Unreachable, LoadErrorValue,
     NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, IntOp, GetElementPtr,
-    LoadMem, ComparisonOp, LoadAddress, TupleGet, SetMem, KeepAlive, ERR_NEVER, ERR_FALSE
+    LoadMem, ComparisonOp, LoadAddress, TupleGet, KeepAlive, ERR_NEVER, ERR_FALSE, SetMem
 )
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, RArray, optional_value_type, int_rprimitive, float_rprimitive,
@@ -33,20 +33,22 @@ from mypyc.ir.rtypes import (
     is_list_rprimitive, is_tuple_rprimitive, is_dict_rprimitive, is_set_rprimitive, PySetObject,
     none_rprimitive, RTuple, is_bool_rprimitive, is_str_rprimitive, c_int_rprimitive,
     pointer_rprimitive, PyObject, PyListObject, bit_rprimitive, is_bit_rprimitive,
-    object_pointer_rprimitive, c_size_t_rprimitive, dict_rprimitive
+    object_pointer_rprimitive, c_size_t_rprimitive, dict_rprimitive, bytes_rprimitive,
+    is_bytes_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.common import (
-    FAST_ISINSTANCE_MAX_SUBCLASSES, MAX_LITERAL_SHORT_INT, PLATFORM_SIZE, use_vectorcall,
-    use_method_vectorcall
+    FAST_ISINSTANCE_MAX_SUBCLASSES, MAX_LITERAL_SHORT_INT, MIN_LITERAL_SHORT_INT, PLATFORM_SIZE,
+    use_vectorcall, use_method_vectorcall
 )
 from mypyc.primitives.registry import (
-    method_call_ops, CFunctionDescription, function_ops,
+    method_call_ops, CFunctionDescription,
     binary_ops, unary_ops, ERR_NEG_INT
 )
+from mypyc.primitives.bytes_ops import bytes_compare
 from mypyc.primitives.list_ops import (
-    list_extend_op, new_list_op
+    list_extend_op, new_list_op, list_build_op
 )
 from mypyc.primitives.tuple_ops import (
     list_tuple_op, new_tuple_op, new_tuple_with_length_op
@@ -78,6 +80,12 @@ from mypyc.irbuild.util import concrete_arg_kind
 
 DictEntry = Tuple[Optional[Value], Value]
 
+# If the number of items is less than the threshold when initializing
+# a list, we would inline the generate IR using SetMem and expanded
+# for-loop. Otherwise, we would call `list_build_op` for larger lists.
+# TODO: The threshold is a randomly chosen number which needs further
+#       study on real-world projects for a better balance.
+LIST_BUILDING_EXPANSION_THRESHOLD = 10
 
 # From CPython
 PY_VECTORCALL_ARGUMENTS_OFFSET: Final = 1 << (PLATFORM_SIZE * 8 - 1)
@@ -253,11 +261,15 @@ class LowLevelIRBuilder:
             ret = self.shortcircuit_helper('or', bool_rprimitive, lambda: ret, other, line)
         return ret
 
-    def type_is_op(self, obj: Value, type_obj: Value, line: int) -> Value:
+    def get_type_of_obj(self, obj: Value, line: int) -> Value:
         ob_type_address = self.add(GetElementPtr(obj, PyObject, 'ob_type', line))
         ob_type = self.add(LoadMem(object_rprimitive, ob_type_address))
         self.add(KeepAlive([obj]))
-        return self.add(ComparisonOp(ob_type, type_obj, ComparisonOp.EQ, line))
+        return ob_type
+
+    def type_is_op(self, obj: Value, type_obj: Value, line: int) -> Value:
+        typ = self.get_type_of_obj(obj, line)
+        return self.add(ComparisonOp(typ, type_obj, ComparisonOp.EQ, line))
 
     def isinstance_native(self, obj: Value, class_ir: ClassIR, line: int) -> Value:
         """Fast isinstance() check for a native class.
@@ -669,7 +681,6 @@ class LowLevelIRBuilder:
         # coercing everything to the expected type.
         output_args = []
         for lst, arg in zip(formal_to_actual, sig.args):
-            output_arg = None
             if arg.kind == ARG_STAR:
                 assert star_arg
                 output_arg = star_arg
@@ -700,7 +711,7 @@ class LowLevelIRBuilder:
                         arg_names: Optional[List[Optional[str]]] = None) -> Value:
         """Generate either a native or Python method call."""
         # If we have *args, then fallback to Python method call.
-        if (arg_kinds is not None and any(kind.is_star() for kind in arg_kinds)):
+        if arg_kinds is not None and any(kind.is_star() for kind in arg_kinds):
             return self.py_method_call(base, name, arg_values, base.line, arg_kinds, arg_names)
 
         # If the base type is one of ours, do a MethodCall
@@ -766,7 +777,7 @@ class LowLevelIRBuilder:
 
     def true(self) -> Value:
         """Load unboxed True value (type: bool_rprimitive)."""
-        return Integer(1,  bool_rprimitive)
+        return Integer(1, bool_rprimitive)
 
     def false(self) -> Value:
         """Load unboxed False value (type: bool_rprimitive)."""
@@ -778,7 +789,7 @@ class LowLevelIRBuilder:
 
     def load_int(self, value: int) -> Value:
         """Load a tagged (Python) integer literal value."""
-        if abs(value) > MAX_LITERAL_SHORT_INT:
+        if value > MAX_LITERAL_SHORT_INT or value < MIN_LITERAL_SHORT_INT:
             return self.add(LoadLiteral(value, int_rprimitive))
         else:
             return Integer(value)
@@ -797,7 +808,7 @@ class LowLevelIRBuilder:
 
     def load_bytes(self, value: bytes) -> Value:
         """Load a bytes literal value."""
-        return self.add(LoadLiteral(value, object_rprimitive))
+        return self.add(LoadLiteral(value, bytes_rprimitive))
 
     def load_complex(self, value: complex) -> Value:
         """Load a complex literal value."""
@@ -850,8 +861,12 @@ class LowLevelIRBuilder:
         # Special case various ops
         if op in ('is', 'is not'):
             return self.translate_is_op(lreg, rreg, op, line)
+        # TODO: modify 'str' to use same interface as 'compare_bytes' as it avoids
+        # call to PyErr_Occurred()
         if is_str_rprimitive(ltype) and is_str_rprimitive(rtype) and op in ('==', '!='):
             return self.compare_strings(lreg, rreg, op, line)
+        if is_bytes_rprimitive(ltype) and is_bytes_rprimitive(rtype) and op in ('==', '!='):
+            return self.compare_bytes(lreg, rreg, op, line)
         if is_tagged(ltype) and is_tagged(rtype) and op in int_comparison_op_mapping:
             return self.compare_tagged(lreg, rreg, op, line)
         if is_bool_rprimitive(ltype) and is_bool_rprimitive(rtype) and op in (
@@ -992,6 +1007,12 @@ class LowLevelIRBuilder:
         return self.add(ComparisonOp(compare_result,
                                      Integer(0, c_int_rprimitive), op_type, line))
 
+    def compare_bytes(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
+        compare_result = self.call_c(bytes_compare, [lhs, rhs], line)
+        op_type = ComparisonOp.EQ if op == '==' else ComparisonOp.NEQ
+        return self.add(ComparisonOp(compare_result,
+                                     Integer(1, c_int_rprimitive), op_type, line))
+
     def compare_tuples(self,
                        lhs: Value,
                        rhs: Value,
@@ -1008,7 +1029,7 @@ class LowLevelIRBuilder:
             return result
         length = len(lhs.type.types)
         false_assign, true_assign, out = BasicBlock(), BasicBlock(), BasicBlock()
-        check_blocks = [BasicBlock() for i in range(length)]
+        check_blocks = [BasicBlock() for _ in range(length)]
         lhs_items = [self.add(TupleGet(lhs, i, line)) for i in range(length)]
         rhs_items = [self.add(TupleGet(rhs, i, line)) for i in range(length)]
 
@@ -1137,8 +1158,15 @@ class LowLevelIRBuilder:
         return self.call_c(new_list_op, [length], line)
 
     def new_list_op(self, values: List[Value], line: int) -> Value:
-        length = Integer(len(values), c_pyssize_t_rprimitive, line)
-        result_list = self.call_c(new_list_op, [length], line)
+        length: List[Value] = [Integer(len(values), c_pyssize_t_rprimitive, line)]
+        if len(values) >= LIST_BUILDING_EXPANSION_THRESHOLD:
+            return self.call_c(list_build_op, length + values, line)
+
+        # If the length of the list is less than the threshold,
+        # LIST_BUILDING_EXPANSION_THRESHOLD, we directly expand the
+        # for-loop and inline the SetMem operation, which is faster
+        # than list_build_op, however generates more code.
+        result_list = self.call_c(new_list_op, length, line)
         if len(values) == 0:
             return result_list
         args = [self.coerce(item, object_rprimitive, line) for item in values]
@@ -1158,15 +1186,6 @@ class LowLevelIRBuilder:
     def new_set_op(self, values: List[Value], line: int) -> Value:
         return self.call_c(new_set_op, values, line)
 
-    def builtin_call(self,
-                     args: List[Value],
-                     fn_op: str,
-                     line: int) -> Value:
-        call_c_ops_candidates = function_ops.get(fn_op, [])
-        target = self.matching_call_c(call_c_ops_candidates, args, line)
-        assert target, 'Unsupported builtin function: %s' % fn_op
-        return target
-
     def shortcircuit_helper(self, op: str,
                             expr_type: RType,
                             left: Callable[[], Value],
@@ -1174,7 +1193,7 @@ class LowLevelIRBuilder:
         # Having actual Phi nodes would be really nice here!
         target = Register(expr_type)
         # left_body takes the value of the left side, right_body the right
-        left_body, right_body, next = BasicBlock(), BasicBlock(), BasicBlock()
+        left_body, right_body, next_block = BasicBlock(), BasicBlock(), BasicBlock()
         # true_body is taken if the left is true, false_body if it is false.
         # For 'and' the value is the right side if the left is true, and for 'or'
         # it is the right side if the left is false.
@@ -1187,15 +1206,15 @@ class LowLevelIRBuilder:
         self.activate_block(left_body)
         left_coerced = self.coerce(left_value, expr_type, line)
         self.add(Assign(target, left_coerced))
-        self.goto(next)
+        self.goto(next_block)
 
         self.activate_block(right_body)
         right_value = right()
         right_coerced = self.coerce(right_value, expr_type, line)
         self.add(Assign(target, right_coerced))
-        self.goto(next)
+        self.goto(next_block)
 
-        self.activate_block(next)
+        self.activate_block(next_block)
         return target
 
     def add_bool_branch(self, value: Value, true: BasicBlock, false: BasicBlock) -> None:
@@ -1336,7 +1355,8 @@ class LowLevelIRBuilder:
         """
         typ = val.type
         size_value = None
-        if is_list_rprimitive(typ) or is_tuple_rprimitive(typ):
+        if (is_list_rprimitive(typ) or is_tuple_rprimitive(typ)
+                or is_bytes_rprimitive(typ)):
             elem_address = self.add(GetElementPtr(val, PyVarObject, 'ob_size'))
             size_value = self.add(LoadMem(c_pyssize_t_rprimitive, elem_address))
             self.add(KeepAlive([val]))

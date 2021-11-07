@@ -5,6 +5,26 @@
 #include <Python.h>
 #include "CPy.h"
 
+PyObject *CPyList_Build(Py_ssize_t len, ...) {
+    Py_ssize_t i;
+
+    PyObject *res = PyList_New(len);
+    if (res == NULL) {
+        return NULL;
+    }
+
+    va_list args;
+    va_start(args, len);
+    for (i = 0; i < len; i++) {
+        // Steals the reference
+        PyObject *value = va_arg(args, PyObject *);
+        PyList_SET_ITEM(res, i, value);
+    }
+    va_end(args);
+
+    return res;
+}
+
 PyObject *CPyList_GetItemUnsafe(PyObject *list, CPyTagged index) {
     Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
     PyObject *result = PyList_GET_ITEM(list, n);

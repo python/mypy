@@ -1,6 +1,6 @@
 # Test cases for strings (compile and run)
 
-[case testStr]
+[case testStrBasics]
 from typing import Tuple
 def f() -> str:
     return 'some string'
@@ -149,7 +149,7 @@ def test_str_to_bool() -> None:
         assert is_true(x)
         assert not is_false(x)
 
-[case testCStyleStringFormatting]
+[case testStringFormattingCStyle]
 [typing fixtures/typing-full.pyi]
 from typing import Tuple
 
@@ -218,8 +218,8 @@ def test_fstring_basics() -> None:
 
     x = bytes([1, 2, 3, 4])
     # assert f'bytes: {x}' == "bytes: b'\\x01\\x02\\x03\\x04'"
-    # error: On Python 3 '{}'.format(b'abc') produces "b'abc'", not 'abc';
-    #        use '{!r}'.format(b'abc') if this is desired behavior
+    # error: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc";
+    #        use "{!r}" if this is desired behavior behavior
 
     float_num = 123.4
     assert f'{float_num}' == '123.4'
@@ -354,7 +354,7 @@ def test_format_method_basics() -> None:
 def test_format_method_empty_braces() -> None:
     name = 'Eric'
     age = 14
-    
+
     assert 'Hello, {}!'.format(name) == 'Hello, Eric!'
     assert '{}'.format(name) == 'Eric'
     assert '{}! Hi!'.format(name) == 'Eric! Hi!'
@@ -511,3 +511,118 @@ def test_format_method_python_doc() -> None:
                         '    9    9   11 1001',\
                         '   10    A   12 1010',\
                         '   11    B   13 1011']
+
+[case testChr]
+# Some test cases are from https://docs.python.org/3/howto/unicode.html
+
+def try_invalid(x: int) -> bool:
+    try:
+        chr(x + int())
+        return False
+    except ValueError:
+        return True
+
+def test_chr() -> None:
+    assert chr(57344) == '\ue000'
+    assert chr(0) == '\x00'
+    assert chr(65) == 'A'
+    assert chr(150) == '\x96'
+    try:
+        chr(-1)
+        assert False
+    except ValueError:
+        pass
+    try:
+        chr(1114112)
+        assert False
+    except ValueError:
+        pass
+    assert chr(1114111) == '\U0010ffff'
+    x = 0
+    assert chr(x + int()) == '\x00'
+    x = 100
+    assert chr(x + int()) == 'd'
+    x = 150
+    assert chr(x + int()) == '\x96'
+    x = 257
+    assert chr(x + int()) == 'ā'
+    x = 65537
+    assert chr(x + int()) == '𐀁'
+    assert try_invalid(-1)
+    assert try_invalid(1114112)
+
+[case testOrd]
+def test_ord() -> None:
+    assert ord('\ue000') == 57344
+    s = "a\xac\u1234\u20ac\U00008000"
+    # ^^^^ two-digit hex escape
+    #   ^^^^^^ four-digit Unicode escape
+    #           ^^^^^^^^^^ eight-digit Unicode escape
+    l1 = [ord(c) for c in s]
+    assert l1 == [97, 172, 4660, 8364, 32768]
+    u = 'abcdé'
+    assert ord(u[-1]) == 233
+    assert ord(b'a') == 97
+    assert ord(b'a' + bytes()) == 97
+    u2 = '\U0010ffff'
+    assert ord(u2) == 1114111
+    try:
+        ord('aa')
+        assert False
+    except TypeError:
+        pass
+
+[case testDecode]
+def test_decode() -> None:
+    assert "\N{GREEK CAPITAL LETTER DELTA}" == '\u0394'
+    assert "\u0394" == "\u0394"
+    assert "\U00000394" == '\u0394'
+    assert b'\x80abc'.decode('utf-8', 'replace') == '\ufffdabc'
+    assert b'\x80abc'.decode('utf-8', 'backslashreplace') == '\\x80abc'
+    assert b'abc'.decode() == 'abc'
+    assert b'abc'.decode('utf-8') == 'abc'
+    assert b'\x80abc'.decode('utf-8', 'ignore') == 'abc'
+    assert b'\x80abc'.decode('UTF-8', 'ignore') == 'abc'
+    assert b'\x80abc'.decode('Utf-8', 'ignore') == 'abc'
+    assert b'\x80abc'.decode('utf_8', 'ignore') == 'abc'
+    assert b'\x80abc'.decode('latin1', 'ignore') == '\x80abc'
+    assert b'\xd2\xbb\xb6\xfe\xc8\xfd'.decode('gbk', 'ignore') == '一二三'
+    assert b'\xd2\xbb\xb6\xfe\xc8\xfd'.decode('latin1', 'ignore') == 'Ò»¶þÈý'
+    assert b'Z\xc3\xbcrich'.decode("utf-8") == 'Zürich'
+    try:
+        b'Z\xc3\xbcrich'.decode('ascii')
+        assert False
+    except UnicodeDecodeError:
+        pass
+    assert bytearray(range(5)).decode() == '\x00\x01\x02\x03\x04'
+    b = bytearray(b'\xe4\xbd\xa0\xe5\xa5\xbd')
+    assert b.decode() == '你好'
+    assert b.decode('gbk') == '浣犲ソ'
+    assert b.decode('latin1') == 'ä½\xa0å¥½'
+
+[case testEncode]
+from testutil import assertRaises
+
+def test_encode() -> None:
+    u = chr(40960) + 'abcd' + chr(1972)
+    assert u.encode() == b'\xea\x80\x80abcd\xde\xb4'
+    assert u.encode('utf-8') == b'\xea\x80\x80abcd\xde\xb4'
+    with assertRaises(UnicodeEncodeError):
+        u.encode('ascii')
+    with assertRaises(LookupError):
+        u.encode('aaa')
+    assert u.encode('utf-8', 'aaaaaa') == b'\xea\x80\x80abcd\xde\xb4'
+    assert u.encode('ascii', 'ignore') == b'abcd'
+    assert u.encode('ASCII', 'ignore') == b'abcd'
+    assert u.encode('ascii', 'replace') == b'?abcd?'
+    assert u.encode('ascii', 'xmlcharrefreplace') == b'&#40960;abcd&#1972;'
+    assert u.encode('ascii', 'backslashreplace') == b'\\ua000abcd\\u07b4'
+    assert u.encode('ascii', 'namereplace') == b'\\N{YI SYLLABLE IT}abcd\\u07b4'
+    assert 'pythön!'.encode() == b'pyth\xc3\xb6n!'
+    assert '一二三'.encode('gbk') == b'\xd2\xbb\xb6\xfe\xc8\xfd'
+    assert u.encode('UTF-8', 'ignore') == b'\xea\x80\x80abcd\xde\xb4'
+    assert u.encode('Utf_8') == b'\xea\x80\x80abcd\xde\xb4'
+    assert u.encode('UTF_8') == b'\xea\x80\x80abcd\xde\xb4'
+    assert u'\u00E1'.encode('latin1') == b'\xe1'
+    with assertRaises(UnicodeEncodeError):
+        u.encode('latin1')

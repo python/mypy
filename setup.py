@@ -86,7 +86,7 @@ if USE_MYPYC:
     MYPYC_BLACKLIST = tuple(os.path.join('mypy', x) for x in (
         # Need to be runnable as scripts
         '__main__.py',
-        'sitepkgs.py',
+        'pyinfo.py',
         os.path.join('dmypy', '__main__.py'),
 
         # Uses __getattr__/__setattr__
@@ -193,7 +193,7 @@ setup(name='mypy',
       install_requires=["typed_ast >= 1.4.0, < 1.5.0; python_version<'3.8'",
                         'typing_extensions>=3.7.4',
                         'mypy_extensions >= 0.4.3, < 0.5.0',
-                        'tomli<2.0.0',
+                        'tomli>=1.1.0,<1.2.0',
                         ],
       # Same here.
       extras_require={'dmypy': 'psutil >= 4.0', 'python2': 'typed_ast >= 1.4.0, < 1.5.0'},
@@ -201,5 +201,7 @@ setup(name='mypy',
       include_package_data=True,
       project_urls={
           'News': 'http://mypy-lang.org/news.html',
+          'Documentation': 'https://mypy.readthedocs.io/en/stable/introduction.html',
+          'Repository': 'https://github.com/python/mypy',
       },
       )

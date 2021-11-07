@@ -22,14 +22,30 @@ to_list = function_op(
     arg_types=[object_rprimitive],
     return_type=list_rprimitive,
     c_function_name='PySequence_List',
+    error_kind=ERR_MAGIC)
+
+# Construct an empty list via list().
+function_op(
+    name='builtins.list',
+    arg_types=[],
+    return_type=list_rprimitive,
+    c_function_name='PyList_New',
     error_kind=ERR_MAGIC,
-)
+    extra_int_constants=[(0, int_rprimitive)])
 
 new_list_op = custom_op(
     arg_types=[c_pyssize_t_rprimitive],
     return_type=list_rprimitive,
     c_function_name='PyList_New',
     error_kind=ERR_MAGIC)
+
+list_build_op = custom_op(
+    arg_types=[c_pyssize_t_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name='CPyList_Build',
+    error_kind=ERR_MAGIC,
+    var_arg_type=object_rprimitive,
+    steals=True)
 
 # list[index] (for an integer index)
 list_get_item_op = method_op(
@@ -163,11 +179,12 @@ binary_op(
     error_kind=ERR_MAGIC)
 
 # int * list
-binary_op(name='*',
-          arg_types=[int_rprimitive, list_rprimitive],
-          return_type=list_rprimitive,
-          c_function_name='CPySequence_RMultiply',
-          error_kind=ERR_MAGIC)
+binary_op(
+    name='*',
+    arg_types=[int_rprimitive, list_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name='CPySequence_RMultiply',
+    error_kind=ERR_MAGIC)
 
 # list[begin:end]
 list_slice_op = custom_op(

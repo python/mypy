@@ -11,13 +11,13 @@ import itertools
 import sys
 
 from mypy.types import (
-    TupleType, Instance, FunctionLike, Type, CallableType, TypeVarDef, TypeVarLikeDef, Overloaded,
+    TupleType, Instance, FunctionLike, Type, CallableType, TypeVarLikeType, Overloaded,
     TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType, TypedDictType,
     AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
-    copy_type, TypeAliasType, TypeQuery
+    copy_type, TypeAliasType, TypeQuery, ParamSpecType
 )
 from mypy.nodes import (
-    FuncBase, FuncItem, OverloadedFuncDef, TypeInfo, ARG_STAR, ARG_STAR2, ARG_POS,
+    FuncBase, FuncItem, FuncDef, OverloadedFuncDef, TypeInfo, ARG_STAR, ARG_STAR2, ARG_POS,
     Expression, StrExpr, Var, Decorator, SYMBOL_FUNCBASE_TYPES
 )
 from mypy.maptype import map_instance_to_supertype
@@ -76,9 +76,9 @@ def type_object_type_from_function(signature: FunctionLike,
     default_self = fill_typevars(info)
     if not is_new and not info.is_newtype:
         orig_self_types = [(it.arg_types[0] if it.arg_types and it.arg_types[0] != default_self
-                            and it.arg_kinds[0] == ARG_POS else None) for it in signature.items()]
+                            and it.arg_kinds[0] == ARG_POS else None) for it in signature.items]
     else:
-        orig_self_types = [None] * len(signature.items())
+        orig_self_types = [None] * len(signature.items)
 
     # The __init__ method might come from a generic superclass 'def_info'
     # with type variables that do not map identically to the type variables of
@@ -104,7 +104,7 @@ def type_object_type_from_function(signature: FunctionLike,
         # Overloaded __init__/__new__.
         assert isinstance(signature, Overloaded)
         items: List[CallableType] = []
-        for item, orig_self in zip(signature.items(), orig_self_types):
+        for item, orig_self in zip(signature.items, orig_self_types):
             items.append(class_callable(item, info, fallback, special_sig, is_new, orig_self))
         return Overloaded(items)
 
@@ -113,7 +113,7 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
                    special_sig: Optional[str],
                    is_new: bool, orig_self_type: Optional[Type] = None) -> CallableType:
     """Create a type object type based on the signature of __init__."""
-    variables: List[TypeVarLikeDef] = []
+    variables: List[TypeVarLikeType] = []
     variables.extend(info.defn.type_vars)
     variables.extend(init_type.variables)
 
@@ -213,7 +213,7 @@ def bind_self(method: F, original_type: Optional[Type] = None, is_classmethod: b
 
     if isinstance(method, Overloaded):
         return cast(F, Overloaded([bind_self(c, original_type, is_classmethod)
-                                   for c in method.items()]))
+                                   for c in method.items]))
     assert isinstance(method, CallableType)
     func = method
     if not func.arg_types:
@@ -228,7 +228,7 @@ def bind_self(method: F, original_type: Optional[Type] = None, is_classmethod: b
         return cast(F, func)
     self_param_type = get_proper_type(func.arg_types[0])
 
-    variables: Sequence[TypeVarLikeDef] = []
+    variables: Sequence[TypeVarLikeType] = []
     if func.variables and supported_self_type(self_param_type):
         if original_type is None:
             # TODO: type check method override (see #7861).
@@ -510,9 +510,11 @@ def true_or_false(t: Type) -> ProperType:
     return new_t
 
 
-def erase_def_to_union_or_bound(tdef: TypeVarLikeDef) -> Type:
-    # TODO(shantanu): fix for ParamSpecDef
-    assert isinstance(tdef, TypeVarDef)
+def erase_def_to_union_or_bound(tdef: TypeVarLikeType) -> Type:
+    # TODO(PEP612): fix for ParamSpecType
+    if isinstance(tdef, ParamSpecType):
+        return AnyType(TypeOfAny.from_error)
+    assert isinstance(tdef, TypeVarType)
     if tdef.values:
         return make_simplified_union(tdef.values)
     else:
@@ -570,6 +572,8 @@ def callable_type(fdef: FuncItem, fallback: Instance,
         line=fdef.line,
         column=fdef.column,
         implicit=True,
+        # We need this for better error messages, like missing `self` note:
+        definition=fdef if isinstance(fdef, FuncDef) else None,
     )
 
 

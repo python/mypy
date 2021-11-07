@@ -1,11 +1,12 @@
 from typing import Dict, Iterable, List, TypeVar, Mapping, cast
 
 from mypy.types import (
-    Type, Instance, CallableType, TypeGuardType, TypeVisitor, UnboundType, AnyType,
-    NoneType, TypeVarType, Overloaded, TupleType, TypedDictType, UnionType,
+    Type, Instance, CallableType, TypeVisitor, UnboundType, AnyType,
+    NoneType, Overloaded, TupleType, TypedDictType, UnionType,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId,
-    FunctionLike, TypeVarDef, LiteralType, get_proper_type, ProperType,
-    TypeAliasType)
+    FunctionLike, TypeVarType, LiteralType, get_proper_type, ProperType,
+    TypeAliasType, ParamSpecType
+)
 
 
 def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type:
@@ -37,20 +38,22 @@ def freshen_function_type_vars(callee: F) -> F:
     if isinstance(callee, CallableType):
         if not callee.is_generic():
             return cast(F, callee)
-        tvdefs = []
+        tvs = []
         tvmap: Dict[TypeVarId, Type] = {}
         for v in callee.variables:
-            # TODO(shantanu): fix for ParamSpecDef
-            assert isinstance(v, TypeVarDef)
-            tvdef = TypeVarDef.new_unification_variable(v)
-            tvdefs.append(tvdef)
-            tvmap[v.id] = TypeVarType(tvdef)
-        fresh = cast(CallableType, expand_type(callee, tvmap)).copy_modified(variables=tvdefs)
+            # TODO(PEP612): fix for ParamSpecType
+            if isinstance(v, ParamSpecType):
+                continue
+            assert isinstance(v, TypeVarType)
+            tv = TypeVarType.new_unification_variable(v)
+            tvs.append(tv)
+            tvmap[v.id] = tv
+        fresh = cast(CallableType, expand_type(callee, tvmap)).copy_modified(variables=tvs)
         return cast(F, fresh)
     else:
         assert isinstance(callee, Overloaded)
         fresh_overload = Overloaded([freshen_function_type_vars(item)
-                                     for item in callee.items()])
+                                     for item in callee.items])
         return cast(F, fresh_overload)
 
 
@@ -103,7 +106,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
 
     def visit_overloaded(self, t: Overloaded) -> Type:
         items: List[CallableType] = []
-        for item in t.items():
+        for item in t.items:
             new_item = item.accept(self)
             assert isinstance(new_item, ProperType)
             assert isinstance(new_item, CallableType)
@@ -125,9 +128,6 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         # some of the resulting types might be subtypes of others.
         from mypy.typeops import make_simplified_union  # asdf
         return make_simplified_union(self.expand_types(t.items), t.line, t.column)
-
-    def visit_type_guard_type(self, t: TypeGuardType) -> ProperType:
-        return TypeGuardType(t.type_guard.accept(self))
 
     def visit_partial_type(self, t: PartialType) -> Type:
         return t

@@ -100,7 +100,7 @@ class Options:
         # top-level __init__.py to your packages.
         self.explicit_package_bases = False
         # File names, directory names or subpaths to avoid checking
-        self.exclude: str = ""
+        self.exclude: List[str] = []
 
         # disallow_any options
         self.disallow_any_generics = False
@@ -241,9 +241,6 @@ class Options:
         # because it is intended for software integrating with
         # mypy. (Like mypyc.)
         self.preserve_asts = False
-
-        # PEP 612 support is a work in progress, hide it from users
-        self.wip_pep_612 = False
 
         # Paths of user plugins
         self.plugins: List[str] = []
