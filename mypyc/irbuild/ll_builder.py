@@ -14,7 +14,9 @@ from typing import (
 
 from typing_extensions import Final
 
-from mypy.nodes import ArgKind, ARG_POS, ARG_STAR, ARG_STAR2
+from mypy.nodes import (
+    ArgKind, ARG_POS, ARG_STAR, ARG_STAR2, is_optional, is_positional, is_named, is_star
+)
 from mypy.operators import op_methods
 from mypy.types import AnyType, TypeOfAny
 from mypy.checkexpr import map_actuals_to_formals
@@ -393,9 +395,9 @@ class LowLevelIRBuilder:
                     line=line
                 )
             else:
-                nullable = kind.is_optional()
-                maybe_pos = kind.is_positional() and has_star
-                maybe_named = kind.is_named() or (kind.is_optional() and name and has_star2)
+                nullable = is_optional(kind)
+                maybe_pos = is_positional(kind) and has_star
+                maybe_named = is_named(kind) or (is_optional(kind) and name and has_star2)
 
                 # If the argument is nullable, we need to create the
                 # relevant args/kwargs objects so that we can
@@ -530,7 +532,7 @@ class LowLevelIRBuilder:
         API should be used instead.
         """
         # We can do this if all args are positional or named (no *args or **kwargs, not optional).
-        if arg_kinds is None or all(not kind.is_star() and not kind.is_optional()
+        if arg_kinds is None or all(not is_star(kind) and not is_optional(kind)
                                     for kind in arg_kinds):
             if arg_values:
                 # Create a C array containing all arguments as boxed values.
@@ -602,7 +604,7 @@ class LowLevelIRBuilder:
         Return the return value if successful. Return None if a non-vectorcall
         API should be used instead.
         """
-        if arg_kinds is None or all(not kind.is_star() and not kind.is_optional()
+        if arg_kinds is None or all(not is_star(kind) and not is_optional(kind)
                                     for kind in arg_kinds):
             method_name_reg = self.load_str(method_name)
             array = Register(RArray(object_rprimitive, len(arg_values) + 1))
@@ -667,7 +669,7 @@ class LowLevelIRBuilder:
         has_star = has_star2 = False
         star_arg_entries = []
         for lst, arg in zip(formal_to_actual, sig.args):
-            if arg.kind.is_star():
+            if is_star(arg.kind):
                 star_arg_entries.extend([(args[i], arg_kinds[i], arg_names[i]) for i in lst])
             has_star = has_star or arg.kind == ARG_STAR
             has_star2 = has_star2 or arg.kind == ARG_STAR2
@@ -692,7 +694,7 @@ class LowLevelIRBuilder:
             else:
                 base_arg = args[lst[0]]
 
-                if arg_kinds[lst[0]].is_optional():
+                if is_optional(arg_kinds[lst[0]]):
                     output_arg = self.coerce_nullable(base_arg, arg.type, line)
                 else:
                     output_arg = self.coerce(base_arg, arg.type, line)
@@ -711,7 +713,7 @@ class LowLevelIRBuilder:
                         arg_names: Optional[List[Optional[str]]] = None) -> Value:
         """Generate either a native or Python method call."""
         # If we have *args, then fallback to Python method call.
-        if arg_kinds is not None and any(kind.is_star() for kind in arg_kinds):
+        if arg_kinds is not None and any(is_star(kind) for kind in arg_kinds):
             return self.py_method_call(base, name, arg_values, base.line, arg_kinds, arg_names)
 
         # If the base type is one of ours, do a MethodCall

@@ -72,7 +72,7 @@ from mypy.nodes import (
     TupleExpr, ListExpr, ComparisonExpr, CallExpr, IndexExpr, EllipsisExpr,
     ClassDef, MypyFile, Decorator, AssignmentStmt, TypeInfo,
     IfStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, Block,
-    Statement, OverloadedFuncDef, ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED,
+    Statement, OverloadedFuncDef, ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED, is_named
 )
 from mypy.stubgenc import generate_stub_for_c_module
 from mypy.stubutil import (
@@ -650,7 +650,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 if not isinstance(get_proper_type(annotated_type), AnyType):
                     annotation = ": {}".format(self.print_annotation(annotated_type))
             if arg_.initializer:
-                if kind.is_named() and not any(arg.startswith('*') for arg in args):
+                if is_named(kind) and not any(arg.startswith('*') for arg in args):
                     args.append('*')
                 if not annotation:
                     typename = self.get_str_type_of_node(arg_.initializer, True, False)

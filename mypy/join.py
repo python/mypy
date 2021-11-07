@@ -14,7 +14,7 @@ from mypy.subtypes import (
     is_subtype, is_equivalent, is_subtype_ignoring_tvars, is_proper_subtype,
     is_protocol_implementation, find_member
 )
-from mypy.nodes import INVARIANT, COVARIANT, CONTRAVARIANT
+from mypy.nodes import INVARIANT, COVARIANT, CONTRAVARIANT, is_named
 import mypy.typeops
 from mypy import state
 
@@ -532,7 +532,7 @@ def combine_arg_names(t: CallableType, s: CallableType) -> List[Optional[str]]:
     for i in range(num_args):
         t_name = t.arg_names[i]
         s_name = s.arg_names[i]
-        if t_name == s_name or t.arg_kinds[i].is_named() or s.arg_kinds[i].is_named():
+        if t_name == s_name or is_named(t.arg_kinds[i]) or is_named(s.arg_kinds[i]):
             new_names.append(t_name)
         else:
             new_names.append(None)

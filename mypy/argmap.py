@@ -33,7 +33,7 @@ def map_actuals_to_formals(actual_kinds: List[nodes.ArgKind],
     for ai, actual_kind in enumerate(actual_kinds):
         if actual_kind == nodes.ARG_POS:
             if fi < nformals:
-                if not formal_kinds[fi].is_star():
+                if not nodes.is_star(formal_kinds[fi]):
                     formal_to_actual[fi].append(ai)
                     fi += 1
                 elif formal_kinds[fi] == nodes.ARG_STAR:
@@ -55,14 +55,14 @@ def map_actuals_to_formals(actual_kinds: List[nodes.ArgKind],
                 # Assume that it is an iterable (if it isn't, there will be
                 # an error later).
                 while fi < nformals:
-                    if formal_kinds[fi].is_named(star=True):
+                    if nodes.is_named(formal_kinds[fi], star=True):
                         break
                     else:
                         formal_to_actual[fi].append(ai)
                     if formal_kinds[fi] == nodes.ARG_STAR:
                         break
                     fi += 1
-        elif actual_kind.is_named():
+        elif nodes.is_named(actual_kind):
             assert actual_names is not None, "Internal error: named kinds without names given"
             name = actual_names[ai]
             if name in formal_names:

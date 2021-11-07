@@ -15,7 +15,8 @@ import mypy.nodes
 from mypy import state
 from mypy.nodes import (
     INVARIANT, SymbolNode, FuncDef,
-    ArgKind, ARG_POS, ARG_STAR, ARG_STAR2,
+    ArgKind, ARG_POS, ARG_STAR, ARG_STAR2, is_positional, is_named, is_star, is_required,
+    is_optional
 )
 from mypy.util import IdMapper
 from mypy.bogus_type import Bogus
@@ -1166,7 +1167,7 @@ class CallableType(FunctionLike):
         This takes into account *arg and **kwargs but excludes keyword-only args."""
         if self.is_var_arg or self.is_kw_arg:
             return sys.maxsize
-        return sum([kind.is_positional() for kind in self.arg_kinds])
+        return sum([is_positional(kind) for kind in self.arg_kinds])
 
     def formal_arguments(self, include_star_args: bool = False) -> List[FormalArgument]:
         """Yields the formal arguments corresponding to this callable, ignoring *arg and **kwargs.
@@ -1180,12 +1181,12 @@ class CallableType(FunctionLike):
         done_with_positional = False
         for i in range(len(self.arg_types)):
             kind = self.arg_kinds[i]
-            if kind.is_named() or kind.is_star():
+            if is_named(kind) or is_star(kind):
                 done_with_positional = True
-            if not include_star_args and kind.is_star():
+            if not include_star_args and is_star(kind):
                 continue
 
-            required = kind.is_required()
+            required = is_required(kind)
             pos = None if done_with_positional else i
             arg = FormalArgument(
                 self.arg_names[i],
@@ -1203,13 +1204,13 @@ class CallableType(FunctionLike):
         for i, (arg_name, kind, typ) in enumerate(
                 zip(self.arg_names, self.arg_kinds, self.arg_types)):
             # No more positional arguments after these.
-            if kind.is_named() or kind.is_star():
+            if is_named(kind) or is_star(kind):
                 seen_star = True
-            if kind.is_star():
+            if is_star(kind):
                 continue
             if arg_name == name:
                 position = None if seen_star else i
-                return FormalArgument(name, position, typ, kind.is_required())
+                return FormalArgument(name, position, typ, is_required(kind))
         return self.try_synthesizing_arg_from_kwarg(name)
 
     def argument_by_position(self, position: Optional[int]) -> Optional[FormalArgument]:
@@ -1222,7 +1223,7 @@ class CallableType(FunctionLike):
             self.arg_kinds[position],
             self.arg_types[position],
         )
-        if kind.is_positional():
+        if is_positional(kind):
             return FormalArgument(name, position, typ, kind == ARG_POS)
         else:
             return self.try_synthesizing_arg_from_vararg(position)
@@ -2126,7 +2127,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         for i in range(len(t.arg_types)):
             if s != '':
                 s += ', '
-            if t.arg_kinds[i].is_named() and not bare_asterisk:
+            if is_named(t.arg_kinds[i]) and not bare_asterisk:
                 s += '*, '
                 bare_asterisk = True
             if t.arg_kinds[i] == ARG_STAR:
@@ -2137,7 +2138,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             if name:
                 s += name + ': '
             s += t.arg_types[i].accept(self)
-            if t.arg_kinds[i].is_optional():
+            if is_optional(t.arg_kinds[i]):
                 s += ' ='
 
         s = '({})'.format(s)
@@ -2388,7 +2389,7 @@ def is_generic_instance(tp: Type) -> bool:
     return isinstance(tp, Instance) and bool(tp.args)
 
 
-def is_optional(t: Type) -> bool:
+def is_optional_type(t: Type) -> bool:
     t = get_proper_type(t)
     return isinstance(t, UnionType) and any(isinstance(get_proper_type(e), NoneType)
                                             for e in t.items)

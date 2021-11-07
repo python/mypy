@@ -31,7 +31,8 @@ from mypy.nodes import (
     TypeInfo, Context, MypyFile, FuncDef, reverse_builtin_aliases,
     ArgKind, ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
-    CallExpr, IndexExpr, StrExpr, SymbolTable, TempNode, SYMBOL_FUNCBASE_TYPES
+    CallExpr, IndexExpr, StrExpr, SymbolTable, TempNode, SYMBOL_FUNCBASE_TYPES, is_positional,
+    is_named, is_star, is_optional
 )
 from mypy.operators import op_methods, op_methods_to_symbols
 from mypy.subtypes import (
@@ -1764,12 +1765,12 @@ def format_type_inner(typ: Type,
             for arg_name, arg_type, arg_kind in zip(
                     func.arg_names, func.arg_types, func.arg_kinds):
                 if (arg_kind == ARG_POS and arg_name is None
-                        or verbosity == 0 and arg_kind.is_positional()):
+                        or verbosity == 0 and is_positional(arg_kind)):
 
                     arg_strings.append(format(arg_type))
                 else:
                     constructor = ARG_CONSTRUCTOR_NAMES[arg_kind]
-                    if arg_kind.is_star() or arg_name is None:
+                    if is_star(arg_kind) or arg_name is None:
                         arg_strings.append("{}({})".format(
                             constructor,
                             format(arg_type)))
@@ -1912,7 +1913,7 @@ def pretty_callable(tp: CallableType) -> str:
     for i in range(len(tp.arg_types)):
         if s:
             s += ', '
-        if tp.arg_kinds[i].is_named() and not asterisk:
+        if is_named(tp.arg_kinds[i]) and not asterisk:
             s += '*, '
             asterisk = True
         if tp.arg_kinds[i] == ARG_STAR:
@@ -1924,7 +1925,7 @@ def pretty_callable(tp: CallableType) -> str:
         if name:
             s += name + ': '
         s += format_type_bare(tp.arg_types[i])
-        if tp.arg_kinds[i].is_optional():
+        if is_optional(tp.arg_kinds[i]):
             s += ' = ...'
 
     # If we got a "special arg" (i.e: self, cls, etc...), prepend it to the arg list

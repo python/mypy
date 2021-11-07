@@ -62,9 +62,9 @@ class StrConv(NodeVisitor[str]):
         extra: List[Tuple[str, List[mypy.nodes.Var]]] = []
         for arg in o.arguments:
             kind: mypy.nodes.ArgKind = arg.kind
-            if kind.is_required():
+            if mypy.nodes.is_required(kind):
                 args.append(arg.variable)
-            elif kind.is_optional():
+            elif mypy.nodes.is_optional(kind):
                 assert arg.initializer is not None
                 args.append(('default', [arg.variable, arg.initializer]))
             elif kind == mypy.nodes.ARG_STAR:
