@@ -51,7 +51,6 @@ class function: pass
 class float: pass
 class complex: pass
 class bool(int): pass
-class complex: pass
 
 class ellipsis:
     __class__: object
