@@ -210,7 +210,7 @@ class DataclassTransformer:
             # This means that version is lower than `3.10`,
             # it is just a non-existent argument for `dataclass` function.
             self._ctx.api.fail(
-                'Unexpected keyword argument "slots" for "dataclass"',
+                'Keyword argument "slots" for "dataclass" is only valid in Python 3.10 and higher',
                 self._ctx.reason,
             )
             return
