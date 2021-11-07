@@ -3111,7 +3111,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         contravariant = False
         upper_bound: Type = self.object_type()
         for param_value, param_name, param_kind in zip(args, names, kinds):
-            if not param_kind == ARG_NAMED:
+            if not param_kind.is_named():
                 self.fail("Unexpected argument to TypeVar()", context)
                 return None
             if param_name == 'covariant':
