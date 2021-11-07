@@ -67,16 +67,23 @@ class TypedDictAnalyzer:
                 defn.analyzed.line = defn.line
                 defn.analyzed.column = defn.column
                 return True, info
+
             # Extending/merging existing TypedDicts
-            if any(not isinstance(expr, RefExpr) or
-                   expr.fullname not in TPDICT_NAMES and
-                   not self.is_typeddict(expr) for expr in defn.base_type_exprs):
-                self.fail("All bases of a new TypedDict must be TypedDict types", defn)
-            typeddict_bases = list(filter(self.is_typeddict, defn.base_type_exprs))
+            typeddict_bases = []
+            typeddict_bases_set = set()
+            for expr in defn.base_type_exprs:
+                if (not isinstance(expr, RefExpr) or
+                        expr.fullname not in TPDICT_NAMES and not self.is_typeddict(expr)):
+                    self.fail("All bases of a new TypedDict must be TypedDict types", defn)
+                elif self.is_typeddict(expr):
+                    if expr.fullname not in typeddict_bases_set:
+                        typeddict_bases_set.add(expr.fullname)
+                        typeddict_bases.append(expr)
+                    else:
+                        self.fail('Duplicate base class "%s"' % expr.name, defn)
             keys: List[str] = []
             types = []
             required_keys = set()
-
             # Iterate over bases in reverse order so that leftmost base class' keys take precedence
             for base in reversed(typeddict_bases):
                 assert isinstance(base, RefExpr)
