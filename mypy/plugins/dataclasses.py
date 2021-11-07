@@ -227,8 +227,7 @@ class DataclassTransformer:
             )
             return
 
-        slots = [attr.name for attr in attributes]
-        info.slots = set(slots)
+        info.slots = {attr.name for attr in attributes}
 
     def reset_init_only_vars(self, info: TypeInfo, attributes: List[DataclassAttribute]) -> None:
         """Remove init-only vars from the class and reset init var declarations."""
