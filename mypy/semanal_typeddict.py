@@ -80,7 +80,8 @@ class TypedDictAnalyzer:
                         typeddict_bases_set.add(expr.fullname)
                         typeddict_bases.append(expr)
                     else:
-                        self.fail('Duplicate base class "%s"' % expr.name, defn)
+                        assert isinstance(expr.node, TypeInfo)
+                        self.fail('Duplicate base class "%s"' % expr.node.name, defn)
             keys: List[str] = []
             types = []
             required_keys = set()
