@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Mypyc command-line tool.
 
 Usage:
