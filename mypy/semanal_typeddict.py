@@ -72,16 +72,22 @@ class TypedDictAnalyzer:
             typeddict_bases = []
             typeddict_bases_set = set()
             for expr in defn.base_type_exprs:
-                if (not isinstance(expr, RefExpr) or
-                        expr.fullname not in TPDICT_NAMES and not self.is_typeddict(expr)):
-                    self.fail("All bases of a new TypedDict must be TypedDict types", defn)
-                elif self.is_typeddict(expr):
+                if isinstance(expr, RefExpr) and expr.fullname in TPDICT_NAMES:
+                    if 'TypedDict' not in typeddict_bases_set:
+                        typeddict_bases_set.add('TypedDict')
+                    else:
+                        self.fail('Duplicate base class "TypedDict"', defn)
+                elif isinstance(expr, RefExpr) and self.is_typeddict(expr):
+                    assert expr.fullname
                     if expr.fullname not in typeddict_bases_set:
                         typeddict_bases_set.add(expr.fullname)
                         typeddict_bases.append(expr)
                     else:
                         assert isinstance(expr.node, TypeInfo)
                         self.fail('Duplicate base class "%s"' % expr.node.name, defn)
+                else:
+                    self.fail("All bases of a new TypedDict must be TypedDict types", defn)
+
             keys: List[str] = []
             types = []
             required_keys = set()
@@ -336,3 +342,6 @@ class TypedDictAnalyzer:
 
     def fail(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
         self.api.fail(msg, ctx, code=code)
+
+    def note(self, msg: str, ctx: Context) -> None:
+        self.api.note(msg, ctx)

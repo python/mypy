@@ -181,6 +181,9 @@ class A(TypedDict):
 
 class B(A, A): # E: Duplicate base class "A"
     z: str
+
+class C(TypedDict, TypedDict): # E: Duplicate base class "TypedDict"
+    c1: int
 [typing fixtures/typing-typeddict.pyi]
 
 [case testCannotCreateTypedDictWithClassWithOtherStuff]
