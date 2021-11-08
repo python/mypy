@@ -1077,7 +1077,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self.record_name(alias or name)
 
         if self._all_:
-            # Include import froms that import names defined in __all__.
+            # Include import forms that import names defined in __all__.
             names = [name for name, alias in o.names
                      if name in self._all_ and alias is None and name not in IGNORED_DUNDERS]
             exported_names.update(names)
