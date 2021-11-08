@@ -2,14 +2,12 @@ from typing import List, Optional, Union
 
 from mypy.nodes import (
     ARG_POS, MDEF, Argument, Block, CallExpr, ClassDef, Expression, SYMBOL_FUNCBASE_TYPES,
-    FuncDef, PassStmt, RefExpr, SymbolTableNode, Var, JsonDict, AssignmentStmt, NameExpr,
-    TempNode,
+    FuncDef, PassStmt, RefExpr, SymbolTableNode, Var, JsonDict,
 )
 from mypy.plugin import CheckerPluginInterface, ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy.semanal import set_callable_name
 from mypy.types import (
     CallableType, Overloaded, Type, TypeVarType, deserialize_type, get_proper_type,
-    AnyType, TypeOfAny,
 )
 from mypy.typevars import fill_typevars
 from mypy.util import get_unique_redefinition_name
