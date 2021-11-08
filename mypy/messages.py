@@ -798,7 +798,7 @@ class MessageBuilder:
         self.fail("Unpacking a string is disallowed", context)
 
     def type_not_iterable(self, type: Type, context: Context) -> None:
-        self.fail('"{}" object is not iterable'.format(type), context)
+        self.fail('{} object is not iterable'.format(format_type(type)), context)
 
     def incompatible_operator_assignment(self, op: str,
                                          context: Context) -> None:
@@ -1613,8 +1613,8 @@ class MessageBuilder:
         for i, (lhs_t, rhs_t) in enumerate(zip(lhs_types, rhs_types)):
             if not is_subtype(lhs_t, rhs_t):
                 if error_cnt < 3:
-                    notes.append('Expression tuple item {} has type "{}"; "{}" expected; '
-                        .format(str(i), format_type_bare(rhs_t), format_type_bare(lhs_t)))
+                    notes.append('Expression tuple item {} has type {}; {} expected; '
+                        .format(str(i), format_type(rhs_t), format_type(lhs_t)))
                 error_cnt += 1
 
         error_msg = msg + ' ({} tuple items are incompatible'.format(str(error_cnt))
