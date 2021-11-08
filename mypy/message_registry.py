@@ -134,6 +134,7 @@ FUNCTION_ALWAYS_TRUE: Final = ErrorMessage(
     'Function "{}" could always be true in boolean context',
     code=codes.TRUTHY_BOOL,
 )
+NOT_CALLABLE: Final = '{} not callable'
 
 # Generic
 GENERIC_INSTANCE_VAR_CLASS_ACCESS: Final = (
