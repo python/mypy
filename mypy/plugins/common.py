@@ -15,6 +15,16 @@ from mypy.typeops import try_getting_str_literals  # noqa: F401  # Part of publi
 from mypy.fixup import TypeFixer
 
 
+def _has_decorator_argument(ctx: ClassDefContext, name: str) -> bool:
+    """Returns whether or not some argument was passed to a decorator.
+
+    We mostly need this because some arguments are version specific.
+    """
+    if isinstance(ctx.reason, CallExpr):
+        return name and name in ctx.reason.arg_names
+    return False
+
+
 def _get_decorator_bool_argument(
         ctx: ClassDefContext,
         name: str,
@@ -157,7 +167,7 @@ def add_method_to_class(
 
 
 def add_attribute_to_class(
-        api: SemanticAnalyzerPluginInterface,
+        api: Union[SemanticAnalyzerPluginInterface, CheckerPluginInterface],,
         cls: ClassDef,
         name: str,
         typ: Type,

@@ -11,7 +11,8 @@ from mypy.nodes import (
 )
 from mypy.plugin import ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
-    add_method, _get_decorator_bool_argument, deserialize_and_fixup_type, add_attribute_to_class,
+    add_method, _get_decorator_bool_argument, deserialize_and_fixup_type,
+    _has_decorator_argument, add_attribute_to_class,
 )
 from mypy.typeops import map_type_from_supertype
 from mypy.types import (
@@ -32,6 +33,9 @@ field_makers: Final = {
 
 
 SELF_TVAR_NAME: Final = "_DT"
+INVALID_KEYWORD: Final = (
+    'Keyword argument "{}" for "dataclass" is only valid in Python {} and higher'
+)
 
 
 class DataclassAttribute:
@@ -135,6 +139,10 @@ class DataclassTransformer:
             'match_args': _get_decorator_bool_argument(self._ctx, 'match_args', True),
         }
         py_version = self._ctx.api.options.python_version
+        if py_version >= (3, 10):
+            decorator_arguments.update({
+                'unsafe_hash': _get_decorator_bool_argument(self._ctx, 'unsafe_hash', False),
+            })
 
         # If there are no attributes, it may be that the semantic analyzer has not
         # processed them yet. In order to work around this, we can simply skip generating
@@ -214,8 +222,9 @@ class DataclassTransformer:
         else:
             self._propertize_callables(attributes)
 
-        if decorator_arguments['slots']:
-            self.add_slots(info, attributes, correct_version=py_version >= (3, 10))
+        if _has_decorator_argument(self._ctx, 'slots') or decorator_arguments.get('slots'):
+            self.add_slots(info, attributes, current_version=py_version)
+        self.add_hash(info, attributes, decorator_arguments, current_version=py_version)
 
         self.reset_init_only_vars(info, attributes)
 
@@ -240,13 +249,12 @@ class DataclassTransformer:
                   info: TypeInfo,
                   attributes: List[DataclassAttribute],
                   *,
-                  correct_version: bool) -> None:
-        if not correct_version:
+                  current_version: Tuple[int, ...]) -> None:
+        if current_version < (3, 10):
             # This means that version is lower than `3.10`,
             # it is just a non-existent argument for `dataclass` function.
             self._ctx.api.fail(
-                'Keyword argument "slots" for "dataclass" '
-                'is only valid in Python 3.10 and higher',
+                INVALID_KEYWORD.format('slots', '3.10'),
                 self._ctx.reason,
             )
             return
@@ -267,6 +275,79 @@ class DataclassTransformer:
             return
 
         info.slots = generated_slots
+
+    def add_hash(self,
+                 info: TypeInfo,
+                 attributes: List[DataclassAttribute],
+                 decorator_arguments: Dict[str, bool],
+                 *,
+                 current_version: Tuple[int, ...]) -> None:
+        if _has_decorator_argument(self._ctx, 'unsafe_hash') and current_version < (3, 10):
+            # This means that version is lower than `3.10`,
+            # it is just a non-existent argument for `dataclass` function.
+            self._ctx.api.fail(
+                INVALID_KEYWORD.format('unsafe_hash', '3.10'),
+                self._ctx.reason,
+            )
+            return
+
+        unsafe_hash = decorator_arguments.get('unsafe_hash', False)
+        eq = decorator_arguments['eq']
+        frozen = decorator_arguments['frozen']
+        cond = (unsafe_hash, eq, frozen)
+
+        existing = '__hash__' in info.names
+
+        # https://github.com/python/cpython/blob/24af9a40a8f85af813ea89998aa4e931fcc78cd9/Lib/dataclasses.py#L846
+        # TODO: Pattern matching would be a good fit here:
+        if cond == (False, False, False) or cond == (False, False, True):
+            # "No __eq__, use the base class __hash__"
+            # It will use the base's class `__hash__` method by default.
+            # Nothing to do here.
+            pass
+        elif cond == (False, True, False):
+            # "the default, not hashable"
+            # In this case, we just add `__hash__: None` to the body of the class
+            if not existing:
+                add_attribute_to_class(
+                    self._ctx.api,
+                    self._ctx.cls,
+                    name='__hash__',
+                    attr_type=NoneType(),
+                )
+        elif cond == (False, True, True):
+            # "Frozen, so hashable, allows override"
+            # In this case we never raise an error, even if superclass definition
+            # is incompatible.
+            if not existing:
+                add_method(
+                    self._ctx,
+                    name='__hash__',
+                    args=[],
+                    return_type=self._ctx.api.named_type('builtins.int'),
+                )
+        else:
+            # "Has no __eq__, but hashable" or
+            # "Not frozen, but hashable" or
+            # "Frozen, so hashable"
+            if existing:
+                # When class already has `__hash__` defined, we do not allow
+                # to override it. So, raise an error and do nothing.
+                self._ctx.api.fail(
+                    'Cannot overwrite attribute "__hash__" in class "{}"'.format(
+                        self._ctx.cls.name,
+                    ),
+                    self._ctx.cls,
+                )
+                return
+
+            # This means that class does not have `__hash__`, but we can add it.
+            add_method(
+                self._ctx,
+                name='__hash__',
+                args=[],
+                return_type=self._ctx.api.named_type('builtins.int'),
+            )
 
     def reset_init_only_vars(self, info: TypeInfo, attributes: List[DataclassAttribute]) -> None:
         """Remove init-only vars from the class and reset init var declarations."""
@@ -311,6 +392,12 @@ class DataclassTransformer:
             # don't have to worry about it.
             lhs = stmt.lvalues[0]
             if not isinstance(lhs, NameExpr):
+                continue
+            if lhs.name == '__hash__':
+                # Special case, annotation like `__hash__: None` is fine
+                # It is not a field, it is:
+                # <slot wrapper '__hash__' of 'object' objects>
+                # https://github.com/python/mypy/issues/11495
                 continue
 
             sym = cls.info.names.get(lhs.name)
