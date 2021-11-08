@@ -53,7 +53,7 @@ _SemaphoreType = synchronize.Semaphore
 # multiprocessing.context.BaseContext's methods, so the two signatures should
 # be identical (modulo self).
 
-# Synchronization primitives
+# Sychronization primitives
 _LockLike = Union[synchronize.Lock, synchronize.RLock]
 RawValue = context._default_context.RawValue
 RawArray = context._default_context.RawArray

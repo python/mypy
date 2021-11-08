@@ -315,7 +315,7 @@ class PathLike(Protocol[_AnyStr_co]):
 _FdOrAnyPath = Union[int, StrOrBytesPath]
 
 class DirEntry(Generic[AnyStr]):
-    # This is what the scandir iterator yields
+    # This is what the scandir interator yields
     # The constructor is hidden
 
     name: AnyStr
