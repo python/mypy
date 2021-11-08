@@ -1647,3 +1647,19 @@ A(a=1, b=2)
 A(1)
 A(a="foo")  # E: Argument "a" to "A" has incompatible type "str"; expected "int"
 [builtins fixtures/dataclasses.pyi]
+
+[case testDataclassHashDefault]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+
+@dataclass
+class FirstCase:
+    x: int
+reveal_type(FirstCase(1).__hash__)  # N: Revealed type is "None"
+
+@dataclass
+class SecondCase:
+    x: int
+    def __hash__(self) -> int: pass
+reveal_type(SecondCase(1).__hash__)  # N: Revealed type is "def () -> builtins.int"
+[builtins fixtures/dataclasses.pyi]
