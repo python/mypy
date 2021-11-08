@@ -36,6 +36,7 @@ SELF_TVAR_NAME: Final = "_DT"
 INVALID_KEYWORD: Final = (
     'Keyword argument "{}" for "dataclass" is only valid in Python {} and higher'
 )
+INVALID_SLOTS_DEF: Final = '"{}" both defines "__slots__" and is used with "slots=True"'
 
 
 class DataclassAttribute:
@@ -222,8 +223,7 @@ class DataclassTransformer:
         else:
             self._propertize_callables(attributes)
 
-        if _has_decorator_argument(self._ctx, 'slots') or decorator_arguments.get('slots'):
-            self.add_slots(info, attributes, current_version=py_version)
+        self.add_slots(info, decorator_arguments, attributes, current_version=py_version)
         self.add_hash(info, decorator_arguments)
 
         self.reset_init_only_vars(info, attributes)
@@ -247,10 +247,11 @@ class DataclassTransformer:
 
     def add_slots(self,
                   info: TypeInfo,
+                  decorator_arguments: Dict[str, bool],
                   attributes: List[DataclassAttribute],
                   *,
                   current_version: Tuple[int, ...]) -> None:
-        if current_version < (3, 10):
+        if _has_decorator_argument(self._ctx, 'slots') and current_version < (3, 10):
             # This means that version is lower than `3.10`,
             # it is just a non-existent argument for `dataclass` function.
             self._ctx.api.fail(
@@ -258,6 +259,8 @@ class DataclassTransformer:
                 self._ctx.reason,
             )
             return
+        if not decorator_arguments.get('slots'):
+            return  # `slots` is not provided, skip.
 
         generated_slots = {attr.name for attr in attributes}
         if ((info.slots is not None and info.slots != generated_slots)
@@ -267,9 +270,7 @@ class DataclassTransformer:
             # And `@dataclass(slots=True)` is used.
             # In runtime this raises a type error.
             self._ctx.api.fail(
-                '"{}" both defines "__slots__" and is used with "slots=True"'.format(
-                    self._ctx.cls.name,
-                ),
+                INVALID_SLOTS_DEF.format(self._ctx.cls.name),
                 self._ctx.cls,
             )
             return

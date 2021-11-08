@@ -1442,6 +1442,7 @@ class DynamicDef:  # E: "DynamicDef" both defines "__slots__" and is used with "
     x: int
 [builtins fixtures/dataclasses.pyi]
 
+
 [case testDataclassWithSlotsArgBefore310]
 # flags: --python-version 3.9
 from dataclasses import dataclass
@@ -1517,7 +1518,9 @@ class ThirdCase3:
 reveal_type(ThirdCase3(1).__hash__)  # N: Revealed type is "None"
 [builtins fixtures/dataclasses.pyi]
 
+
 [case testDataclassWithUnsafeHashTrue]
+# flags: --python-version 3.7
 from dataclasses import dataclass
 
 @dataclass(unsafe_hash=True, eq=False, frozen=False)
