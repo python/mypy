@@ -49,6 +49,6 @@ def main() -> None:
     cmd = subprocess.run([sys.executable, setup_file, 'build_ext', '--inplace'], env=env)
     sys.exit(cmd.returncode)
 
-    
+
 if __name__ == '__main__':
     main()
