@@ -246,7 +246,7 @@ when the configuration for a module changes, we want to invalidate
 mypy's cache for that module so that it can be rechecked. This hook
 should be used to report to mypy any relevant configuration data,
 so that mypy knows to recheck the module if the configuration changes.
-The hooks hould return data encodable as JSON.
+The hooks should return data encodable as JSON.
 
 Notes about the semantic analyzer
 *********************************

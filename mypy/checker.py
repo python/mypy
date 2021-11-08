@@ -2558,7 +2558,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 name = lv.node.name
                 cls = self.scope.active_class()
                 if cls is not None:
-                    # Theses additional checks exist to give more error messages
+                    # These additional checks exist to give more error messages
                     # even if the final attribute was overridden with a new symbol
                     # (which is itself an error)...
                     for base in cls.mro[1:]:
