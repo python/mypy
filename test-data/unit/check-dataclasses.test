@@ -1466,26 +1466,8 @@ class Third:
 [builtins fixtures/dataclasses.pyi]
 
 
-[case testDataclassWithUnsafeHashArgBefore310]
-# flags: --python-version 3.9
-from dataclasses import dataclass
-
-@dataclass()  # ok
-class Correct:
-    x: int
-
-@dataclass(unsafe_hash=True)  # E: Keyword argument "unsafe_hash" for "dataclass" is only valid in Python 3.10 and higher
-class Some:
-    x: int
-
-@dataclass(unsafe_hash=False)  # E: Keyword argument "unsafe_hash" for "dataclass" is only valid in Python 3.10 and higher
-class Third:
-    x: int
-[builtins fixtures/dataclasses.pyi]
-
-
 [case testDataclassWithUnsafeHashFalse]
-# flags: --python-version 3.10
+# flags: --python-version 3.7
 from dataclasses import dataclass
 
 @dataclass(unsafe_hash=False, eq=False, frozen=False)
@@ -1536,7 +1518,6 @@ reveal_type(ThirdCase3(1).__hash__)  # N: Revealed type is "None"
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassWithUnsafeHashTrue]
-# flags: --python-version 3.10
 from dataclasses import dataclass
 
 @dataclass(unsafe_hash=True, eq=False, frozen=False)

@@ -135,13 +135,13 @@ class DataclassTransformer:
             'eq': _get_decorator_bool_argument(self._ctx, 'eq', True),
             'order': _get_decorator_bool_argument(self._ctx, 'order', False),
             'frozen': _get_decorator_bool_argument(self._ctx, 'frozen', False),
-            'slots': _get_decorator_bool_argument(self._ctx, 'slots', False),
             'match_args': _get_decorator_bool_argument(self._ctx, 'match_args', True),
+            'unsafe_hash': _get_decorator_bool_argument(self._ctx, 'unsafe_hash', False),
         }
         py_version = self._ctx.api.options.python_version
         if py_version >= (3, 10):
             decorator_arguments.update({
-                'unsafe_hash': _get_decorator_bool_argument(self._ctx, 'unsafe_hash', False),
+                'slots': _get_decorator_bool_argument(self._ctx, 'slots', False),
             })
 
         # If there are no attributes, it may be that the semantic analyzer has not
@@ -224,7 +224,7 @@ class DataclassTransformer:
 
         if _has_decorator_argument(self._ctx, 'slots') or decorator_arguments.get('slots'):
             self.add_slots(info, attributes, current_version=py_version)
-        self.add_hash(info, attributes, decorator_arguments, current_version=py_version)
+        self.add_hash(info, decorator_arguments)
 
         self.reset_init_only_vars(info, attributes)
 
@@ -278,19 +278,7 @@ class DataclassTransformer:
 
     def add_hash(self,
                  info: TypeInfo,
-                 attributes: List[DataclassAttribute],
-                 decorator_arguments: Dict[str, bool],
-                 *,
-                 current_version: Tuple[int, ...]) -> None:
-        if _has_decorator_argument(self._ctx, 'unsafe_hash') and current_version < (3, 10):
-            # This means that version is lower than `3.10`,
-            # it is just a non-existent argument for `dataclass` function.
-            self._ctx.api.fail(
-                INVALID_KEYWORD.format('unsafe_hash', '3.10'),
-                self._ctx.reason,
-            )
-            return
-
+                 decorator_arguments: Dict[str, bool]) -> None:
         unsafe_hash = decorator_arguments.get('unsafe_hash', False)
         eq = decorator_arguments['eq']
         frozen = decorator_arguments['frozen']

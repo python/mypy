@@ -2,12 +2,14 @@ from typing import List, Optional, Union
 
 from mypy.nodes import (
     ARG_POS, MDEF, Argument, Block, CallExpr, ClassDef, Expression, SYMBOL_FUNCBASE_TYPES,
-    FuncDef, PassStmt, RefExpr, SymbolTableNode, Var, JsonDict,
+    FuncDef, PassStmt, RefExpr, SymbolTableNode, Var, JsonDict, AssignmentStmt, NameExpr,
+    TempNode,
 )
 from mypy.plugin import CheckerPluginInterface, ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy.semanal import set_callable_name
 from mypy.types import (
     CallableType, Overloaded, Type, TypeVarType, deserialize_type, get_proper_type,
+    AnyType, TypeOfAny,
 )
 from mypy.typevars import fill_typevars
 from mypy.util import get_unique_redefinition_name
@@ -21,7 +23,7 @@ def _has_decorator_argument(ctx: ClassDefContext, name: str) -> bool:
     We mostly need this because some arguments are version specific.
     """
     if isinstance(ctx.reason, CallExpr):
-        return name and name in ctx.reason.arg_names
+        return bool(name) and name in ctx.reason.arg_names
     return False
 
 
@@ -167,7 +169,7 @@ def add_method_to_class(
 
 
 def add_attribute_to_class(
-        api: Union[SemanticAnalyzerPluginInterface, CheckerPluginInterface],,
+        api: Union[SemanticAnalyzerPluginInterface, CheckerPluginInterface],
         cls: ClassDef,
         name: str,
         typ: Type,
