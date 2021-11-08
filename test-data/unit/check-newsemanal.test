@@ -2391,7 +2391,8 @@ import p
 import p
 reveal_type(p.y)
 [file p.pyi]
-from pp import x as y
+from pp import x
+y = x
 [file pp.pyi]
 def __getattr__(attr): ...
 [out2]

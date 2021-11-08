@@ -1808,6 +1808,12 @@ class SemanticAnalyzer(NodeVisitor[None],
             missing_submodule = False
             imported_id = as_id or id
 
+            # Modules imported in a stub file without using 'from Y import X as X' will
+            # not get exported.
+            # When implicit re-exporting is disabled, we have the same behavior as stubs.
+            use_implicit_reexport = not self.is_stub_file and self.options.implicit_reexport
+            module_public = use_implicit_reexport or (as_id is not None and id == as_id)
+
             # If the module does not contain a symbol with the name 'id',
             # try checking if it's a module instead.
             if not node:
@@ -1825,14 +1831,11 @@ class SemanticAnalyzer(NodeVisitor[None],
                 fullname = module_id + '.' + id
                 gvar = self.create_getattr_var(module.names['__getattr__'], imported_id, fullname)
                 if gvar:
-                    self.add_symbol(imported_id, gvar, imp)
+                    self.add_symbol(
+                        imported_id, gvar, imp, module_public=module_public,
+                        module_hidden=not module_public
+                    )
                     continue
-
-            # Modules imported in a stub file without using 'from Y import X as X' will
-            # not get exported.
-            # When implicit re-exporting is disabled, we have the same behavior as stubs.
-            use_implicit_reexport = not self.is_stub_file and self.options.implicit_reexport
-            module_public = use_implicit_reexport or (as_id is not None and id == as_id)
 
             if node and not node.module_hidden:
                 self.process_imported_symbol(
