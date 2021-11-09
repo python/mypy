@@ -1279,6 +1279,8 @@ def remove_blacklisted_modules(modules: List[StubSource]) -> List[StubSource]:
 
         else:
          module.append(m)
+     else:
+         module.append(m)
 
     return module
     
