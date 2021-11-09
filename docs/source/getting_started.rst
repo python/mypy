@@ -267,7 +267,7 @@ generic types or your own type aliases) by looking through the
 
    In some examples we use capitalized variants of types, such as
    ``List``, and sometimes we use plain ``list``. They are equivalent,
-   but the prior variant is needed if you are not using Python 3.9 or later.
+   but the prior variant is needed if you are using Python 3.8 or earlier.
 
 Local type inference
 ********************

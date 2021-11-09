@@ -46,7 +46,7 @@ Built-in types
 .. code-block:: python
 
    
-   from typing import List, Set, Dict, Tuple  # Only needed in Python 3.8 and earlier
+   from typing import List, Set, Dict, Tuple
    from typing import Optional
 
    # For simple built-in types, just use the name of the type
@@ -61,8 +61,8 @@ Built-in types
    x: list[int] = [1]
    x: set[int] = {6, 7}
 
-   # In Python 3.8 and earlier, specifying the item type of builtin collections isn't
-   # available, so you must use the aliases from the `typing` module
+   # In Python 3.8 and earlier, the name of the collection type is
+   # capitalized, and the type is imported from the 'typing' module
    x: List[int] = [1]
    x: Set[int] = {6, 7}
 
