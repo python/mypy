@@ -46,8 +46,7 @@ Built-in types
 .. code-block:: python
 
    
-   from typing import List, Set, Dict, Tuple
-   from typing import Optional
+   from typing import List, Set, Dict, Tuple, Optional
 
    # For simple built-in types, just use the name of the type
    x: int = 1
