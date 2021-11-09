@@ -1271,7 +1271,7 @@ def get_qualified_name(o: Expression) -> str:
 
 
 def remove_blacklisted_modules(modules: List[StubSource]) -> List[StubSource]:
-    module = []
+    module: List(StubSource) = []
     for m in modules:
      if is_blacklisted_path(m.path):
          print(f"Ignoring Module Path '{m.path}'")
@@ -1281,7 +1281,6 @@ def remove_blacklisted_modules(modules: List[StubSource]) -> List[StubSource]:
 
     return module
     
-
 
 def is_blacklisted_path(path: str) -> bool:
     return any(substr in (normalize_path_separators(path) + '\n')
