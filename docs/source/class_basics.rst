@@ -33,7 +33,7 @@ a type annotation:
 .. code-block:: python
 
    class A:
-       x: List[int]  # Declare attribute 'x' of type List[int]
+       x: list[int]  # Declare attribute 'x' of type list[int]
 
    a = A()
    a.x = [1]     # OK
@@ -48,7 +48,7 @@ than 3.6:
 .. code-block:: python
 
    class A:
-       x = None  # type: List[int]  # Declare attribute 'x' of type List[int]
+       x = None  # type: list[int]  # Declare attribute 'x' of type list[int]
 
 Note that attribute definitions in the class body that use a type comment
 are special: a ``None`` value is valid as the initializer, even though
@@ -62,7 +62,7 @@ in a method:
 
    class A:
        def __init__(self) -> None:
-           self.x: List[int] = []
+           self.x: list[int] = []
 
        def f(self) -> None:
            self.y: Any = 0
@@ -160,7 +160,7 @@ This behavior will change in the future, since it's surprising.
 
 .. note::
    A :py:data:`~typing.ClassVar` type parameter cannot include type variables:
-   ``ClassVar[T]`` and ``ClassVar[List[T]]``
+   ``ClassVar[T]`` and ``ClassVar[list[T]]``
    are both invalid if ``T`` is a type variable (see :ref:`generic-classes`
    for more about type variables).
 
@@ -200,7 +200,7 @@ override has a compatible signature:
 
    You can also vary return types **covariantly** in overriding. For
    example, you could override the return type ``Iterable[int]`` with a
-   subtype such as ``List[int]``. Similarly, you can vary argument types
+   subtype such as ``list[int]``. Similarly, you can vary argument types
    **contravariantly** -- subclasses can have more general argument types.
 
 You can also override a statically typed method with a dynamically
