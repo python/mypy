@@ -217,7 +217,7 @@ class DataclassTransformer:
             )
             return
         if info.slots is not None or info.names.get('__slots__'):
-            # This means we have a slots confict.
+            # This means we have a slots conflict.
             # Class explicitly specifies `__slots__` field.
             # And `@dataclass(slots=True)` is used.
             # In runtime this raises a type error.

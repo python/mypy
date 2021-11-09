@@ -545,7 +545,7 @@ Check instantiation of abstract classes [abstract]
 --------------------------------------------------
 
 Mypy generates an error if you try to instantiate an abstract base
-class (ABC). An abtract base class is a class with at least one
+class (ABC). An abstract base class is a class with at least one
 abstract method or attribute. (See also :py:mod:`abc` module documentation)
 
 Sometimes a class is made accidentally abstract, often due to an
