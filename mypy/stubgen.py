@@ -1286,17 +1286,14 @@ def get_qualified_name(o: Expression) -> str:
         return ERROR_MARKER
 
 
-def remove_blacklisted_modules(
-        modules: List[StubSource]
-    ) -> List[StubSource]:
+def remove_blacklisted_modules(modules: List[StubSource]) -> List[StubSource]:
     return_modules = []
     for module in modules:
         if module.path is None or is_blacklisted_path(module.path):
             print(f"Skipping Module Path '{module.path}'")
-        else: 
+        else:
             return_modules.append(module)
     return return_modules
-
 
 def is_blacklisted_path(path: str) -> bool:
     return any(substr in (normalize_path_separators(path) + '\n')
