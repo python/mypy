@@ -1271,7 +1271,7 @@ def get_qualified_name(o: Expression) -> str:
 
 
 def remove_blacklisted_modules(modules: List[StubSource]) -> List[StubSource]:
-    module: List(StubSource) = []
+    module = []
     for m in modules:
         if m.path is not None:
             if is_blacklisted_path(m.path):
