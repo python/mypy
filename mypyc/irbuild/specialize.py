@@ -21,7 +21,7 @@ from mypy.nodes import (
 from mypy.types import AnyType, TypeOfAny
 
 from mypyc.ir.ops import (
-    Value, Register, BasicBlock, Integer, RaiseStandardError, Unreachable, Assign
+    Value, Register, BasicBlock, Integer, RaiseStandardError, Unreachable
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
