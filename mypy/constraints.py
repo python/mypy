@@ -300,8 +300,16 @@ def is_same_constraints(x: List[Constraint], y: List[Constraint]) -> bool:
 
 
 def is_same_constraint(c1: Constraint, c2: Constraint) -> bool:
+    if (
+        isinstance(get_proper_type(c1.target), AnyType) and
+        isinstance(get_proper_type(c2.target), AnyType)
+    ):
+        # Ignore direction when comparing constraints against Any.
+        skip_op_check = True
+    else:
+        skip_op_check = False
     return (c1.type_var == c2.type_var
-            and c1.op == c2.op
+            and (c1.op == c2.op or skip_op_check)
             and mypy.sametypes.is_same_type(c1.target, c2.target))
 
 
