@@ -1,1 +1,1 @@
-DEBUG: bool
+DEBUG: bool | None

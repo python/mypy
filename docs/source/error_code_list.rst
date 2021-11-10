@@ -36,7 +36,7 @@ target module can be found):
 
 .. code-block:: python
 
-    # Error: Module 'os' has no attribute 'non_existent'  [attr-defined]
+    # Error: Module "os" has no attribute "non_existent"  [attr-defined]
     from os import non_existent
 
 A reference to a missing attribute is given the ``Any`` type. In the
@@ -87,7 +87,7 @@ This example accidentally calls ``sort()`` instead of :py:func:`sorted`:
 
 .. code-block:: python
 
-    x = sort([3, 2, 4])  # Error: Name 'sort' is not defined  [name-defined]
+    x = sort([3, 2, 4])  # Error: Name "sort" is not defined  [name-defined]
 
 Check arguments in calls [call-arg]
 -----------------------------------
@@ -117,15 +117,15 @@ Example:
 
 .. code-block:: python
 
-   from typing import List, Optional
+    from typing import Optional
 
-   def first(x: List[int]) -> Optional[int]:
+    def first(x: list[int]) -> Optional[int]:
         return x[0] if x else 0
 
-   t = (5, 4)
-   # Error: Argument 1 to "first" has incompatible type "Tuple[int, int]";
-   #        expected "List[int]"  [arg-type]
-   print(first(t))
+    t = (5, 4)
+    # Error: Argument 1 to "first" has incompatible type "tuple[int, int]";
+    #        expected "list[int]"  [arg-type]
+    print(first(t))
 
 Check calls to overloaded functions [call-overload]
 ---------------------------------------------------
@@ -171,26 +171,24 @@ This example incorrectly uses the function ``log`` as a type:
 
 .. code-block:: python
 
-   from typing import List
+    def log(x: object) -> None:
+        print('log:', repr(x))
 
-   def log(x: object) -> None:
-       print('log:', repr(x))
-
-   # Error: Function "t.log" is not valid as a type  [valid-type]
-   def log_all(objs: List[object], f: log) -> None:
-       for x in objs:
-           f(x)
+    # Error: Function "t.log" is not valid as a type  [valid-type]
+    def log_all(objs: list[object], f: log) -> None:
+        for x in objs:
+            f(x)
 
 You can use :py:data:`~typing.Callable` as the type for callable objects:
 
 .. code-block:: python
 
-   from typing import List, Callable
+    from typing import Callable
 
-   # OK
-   def log_all(objs: List[object], f: Callable[[object], None]) -> None:
-       for x in objs:
-           f(x)
+    # OK
+    def log_all(objs: list[object], f: Callable[[object], None]) -> None:
+        for x in objs:
+            f(x)
 
 Require annotation if variable type is unclear [var-annotated]
 --------------------------------------------------------------
@@ -206,23 +204,21 @@ Example with an error:
 
 .. code-block:: python
 
-   class Bundle:
-       def __init__(self) -> None:
-           # Error: Need type annotation for "items"
-           #        (hint: "items: List[<type>] = ...")  [var-annotated]
-           self.items = []
+    class Bundle:
+        def __init__(self) -> None:
+            # Error: Need type annotation for "items"
+            #        (hint: "items: list[<type>] = ...")  [var-annotated]
+            self.items = []
 
-   reveal_type(Bundle().items)  # list[Any]
+    reveal_type(Bundle().items)  # list[Any]
 
 To address this, we add an explicit annotation:
 
 .. code-block:: python
 
-   from typing import List
-
-   class Bundle:
-       def __init__(self) -> None:
-           self.items: List[str] = []  # OK
+    class Bundle:
+        def __init__(self) -> None:
+            self.items: list[str] = []  # OK
 
    reveal_type(Bundle().items)  # list[str]
 
@@ -377,10 +373,10 @@ Example:
 
    a['x']  # OK
 
-   # Error: Invalid index type "int" for "Dict[str, int]"; expected type "str"  [index]
+   # Error: Invalid index type "int" for "dict[str, int]"; expected type "str"  [index]
    print(a[1])
 
-   # Error: Invalid index type "bytes" for "Dict[str, int]"; expected type "str"  [index]
+   # Error: Invalid index type "bytes" for "dict[str, int]"; expected type "str"  [index]
    a[b'x'] = 4
 
 Check list items [list-item]
@@ -394,10 +390,8 @@ Example:
 
 .. code-block:: python
 
-    from typing import List
-
     # Error: List item 0 has incompatible type "int"; expected "str"  [list-item]
-    a: List[str] = [0]
+    a: list[str] = [0]
 
 Check dict items [dict-item]
 ----------------------------
@@ -410,16 +404,18 @@ Example:
 
 .. code-block:: python
 
-    from typing import Dict
-
     # Error: Dict entry 0 has incompatible type "str": "str"; expected "str": "int"  [dict-item]
-    d: Dict[str, int] = {'key': 'value'}
+    d: dict[str, int] = {'key': 'value'}
 
 Check TypedDict items [typeddict-item]
 --------------------------------------
 
 When constructing a ``TypedDict`` object, mypy checks that each key and value is compatible
 with the ``TypedDict`` type that is inferred from the surrounding context.
+
+When getting a ``TypedDict`` item, mypy checks that the key
+exists. When assigning to a ``TypedDict``, mypy checks that both the
+key and the value are valid.
 
 Example:
 
@@ -450,7 +446,7 @@ In this example the definitions of ``x`` and ``y`` are circular:
 
    class Problem:
        def set_x(self) -> None:
-           # Error: Cannot determine type of 'y'  [has-type]
+           # Error: Cannot determine type of "y"  [has-type]
            self.x = self.y
 
        def set_y(self) -> None:
@@ -508,7 +504,7 @@ Example:
    class A:
        def __init__(self, x: int) -> None: ...
 
-   class A:  # Error: Name 'A' already defined on line 1  [no-redef]
+   class A:  # Error: Name "A" already defined on line 1  [no-redef]
        def __init__(self, x: str) -> None: ...
 
    # Error: Argument 1 to "A" has incompatible type "str"; expected "int"
@@ -541,7 +537,7 @@ Check instantiation of abstract classes [abstract]
 --------------------------------------------------
 
 Mypy generates an error if you try to instantiate an abstract base
-class (ABC). An abtract base class is a class with at least one
+class (ABC). An abstract base class is a class with at least one
 abstract method or attribute. (See also :py:mod:`abc` module documentation)
 
 Sometimes a class is made accidentally abstract, often due to an
@@ -565,7 +561,7 @@ Example:
 
         ...  # No "save" method
 
-    # Error: Cannot instantiate abstract class 'Thing' with abstract attribute 'save'  [abstract]
+    # Error: Cannot instantiate abstract class "Thing" with abstract attribute "save"  [abstract]
     t = Thing()
 
 Check the target of NewType [valid-newtype]
@@ -658,7 +654,7 @@ consistently when using the call-based syntax. Example:
 
     from typing import NamedTuple
 
-    # Error: First argument to namedtuple() should be 'Point2D', not 'Point'
+    # Error: First argument to namedtuple() should be "Point2D", not "Point"
     Point2D = NamedTuple("Point", [("x", int), ("y", int)])
 
 Report syntax errors [syntax]

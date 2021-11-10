@@ -1,11 +1,11 @@
-from typing import ClassVar, Iterable, NoReturn, Optional
+from typing import ClassVar, Iterable, NoReturn
 from typing_extensions import Literal
 
 class Quitter:
     name: str
     eof: str
     def __init__(self, name: str, eof: str) -> None: ...
-    def __call__(self, code: Optional[int] = ...) -> NoReturn: ...
+    def __call__(self, code: int | None = ...) -> NoReturn: ...
 
 class _Printer:
     MAXLINES: ClassVar[Literal[23]]

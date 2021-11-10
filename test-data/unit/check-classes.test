@@ -235,7 +235,7 @@ class D(object):
 class A(object):
     def f(self) -> None:
         self.attr = 1
-    attr  # E: Name 'attr' is not defined
+    attr  # E: Name "attr" is not defined
 
 class B(object):
     attr = 0
@@ -310,7 +310,15 @@ class B(A):
     def g(self, x: A) -> A: pass # Fail
 [out]
 main:6: error: Signature of "f" incompatible with supertype "A"
+main:6: note:      Superclass:
+main:6: note:          def f(self, x: A) -> None
+main:6: note:      Subclass:
+main:6: note:          def f(self, x: A, y: A) -> None
 main:7: error: Signature of "g" incompatible with supertype "A"
+main:7: note:      Superclass:
+main:7: note:          def g(self, x: A, y: B) -> A
+main:7: note:      Subclass:
+main:7: note:          def g(self, x: A) -> A
 
 [case testMethodOverridingAcrossDeepInheritanceHierarchy1]
 import typing
@@ -403,10 +411,16 @@ class B(A):
     @int_to_none
     def f(self) -> int: pass
     @str_to_int
-    def g(self) -> str: pass # E: Signature of "g" incompatible with supertype "A"
+    def g(self) -> str: pass # Fail
     @int_to_none
     @str_to_int
     def h(self) -> str: pass
+[out]
+main:15: error: Signature of "g" incompatible with supertype "A"
+main:15: note:      Superclass:
+main:15: note:          def g(self) -> str
+main:15: note:      Subclass:
+main:15: note:          def g(*Any, **Any) -> int
 
 [case testOverrideDecorated]
 from typing import Callable
@@ -423,9 +437,15 @@ class A:
 
 class B(A):
     def f(self) -> int: pass
-    def g(self) -> str: pass # E: Signature of "g" incompatible with supertype "A"
+    def g(self) -> str: pass # Fail
     @str_to_int
     def h(self) -> str: pass
+[out]
+main:15: error: Signature of "g" incompatible with supertype "A"
+main:15: note:      Superclass:
+main:15: note:          def g(*Any, **Any) -> int
+main:15: note:      Subclass:
+main:15: note:          def g(self) -> str
 
 [case testOverrideWithDecoratorReturningAny]
 def dec(f): pass
@@ -938,7 +958,7 @@ A.B = None # E: Cannot assign to a type
 [targets __main__]
 
 [case testAccessingClassAttributeWithTypeInferenceIssue]
-x = C.x # E: Cannot determine type of 'x'
+x = C.x # E: Cannot determine type of "x"
 def f() -> int: return 1
 class C:
     x = f()
@@ -1093,7 +1113,7 @@ A()
 class A: pass
 class A: pass
 [out]
-main:4: error: Name 'A' already defined on line 3
+main:4: error: Name "A" already defined on line 3
 
 [case testDocstringInClass]
 import typing
@@ -1236,7 +1256,7 @@ class A:
     def g(self) -> None: pass
 
 class B(A):
-    def f(self) -> None: pass  # E: Signature of "f" incompatible with supertype "A"
+    def f(self) -> None: pass  # Fail
 
     @classmethod
     def g(cls) -> None: pass
@@ -1245,6 +1265,13 @@ class C(A):
     @staticmethod
     def f() -> None: pass
 [builtins fixtures/classmethod.pyi]
+[out]
+main:8: error: Signature of "f" incompatible with supertype "A"
+main:8: note:      Superclass:
+main:8: note:          @classmethod
+main:8: note:          def f(cls) -> None
+main:8: note:      Subclass:
+main:8: note:          def f(self) -> None
 
 -- Properties
 -- ----------
@@ -1808,12 +1835,20 @@ from typing import overload
 class A:
     def __add__(self, x: int) -> int: pass
 class B(A):
-    @overload  # E: Signature of "__add__" incompatible with supertype "A" \
-               # N: Overloaded operator methods can't have wider argument types in overrides
+    @overload  # Fail
     def __add__(self, x: int) -> int: pass
     @overload
     def __add__(self, x: str) -> str: pass
 [out]
+tmp/foo.pyi:5: error: Signature of "__add__" incompatible with supertype "A"
+tmp/foo.pyi:5: note:      Superclass:
+tmp/foo.pyi:5: note:          def __add__(self, int) -> int
+tmp/foo.pyi:5: note:      Subclass:
+tmp/foo.pyi:5: note:          @overload
+tmp/foo.pyi:5: note:          def __add__(self, int) -> int
+tmp/foo.pyi:5: note:          @overload
+tmp/foo.pyi:5: note:          def __add__(self, str) -> str
+tmp/foo.pyi:5: note: Overloaded operator methods cannot have wider argument types in overrides
 
 [case testOperatorMethodOverrideWideningArgumentType]
 import typing
@@ -1912,13 +1947,27 @@ class A:
     @overload
     def __add__(self, x: str) -> 'A': pass
 class B(A):
-    @overload  # E: Signature of "__add__" incompatible with supertype "A" \
-               # N: Overloaded operator methods can't have wider argument types in overrides
+    @overload  # Fail
     def __add__(self, x: int) -> A: pass
     @overload
     def __add__(self, x: str) -> A: pass
     @overload
     def __add__(self, x: type) -> A: pass
+[out]
+tmp/foo.pyi:8: error: Signature of "__add__" incompatible with supertype "A"
+tmp/foo.pyi:8: note:      Superclass:
+tmp/foo.pyi:8: note:          @overload
+tmp/foo.pyi:8: note:          def __add__(self, int) -> A
+tmp/foo.pyi:8: note:          @overload
+tmp/foo.pyi:8: note:          def __add__(self, str) -> A
+tmp/foo.pyi:8: note:      Subclass:
+tmp/foo.pyi:8: note:          @overload
+tmp/foo.pyi:8: note:          def __add__(self, int) -> A
+tmp/foo.pyi:8: note:          @overload
+tmp/foo.pyi:8: note:          def __add__(self, str) -> A
+tmp/foo.pyi:8: note:          @overload
+tmp/foo.pyi:8: note:          def __add__(self, type) -> A
+tmp/foo.pyi:8: note: Overloaded operator methods cannot have wider argument types in overrides
 
 [case testOverloadedOperatorMethodOverrideWithSwitchedItemOrder]
 from foo import *
@@ -2710,7 +2759,7 @@ t = Test()
 t.crash = 'test'  # E: "Test" has no attribute "crash"
 
 class A:
-    def __setattr__(self): ...  # E: Invalid signature "def (self: __main__.A) -> Any" for "__setattr__"
+    def __setattr__(self): ...  # E: Invalid signature "def (__main__.A) -> Any" for "__setattr__"
 a = A()
 a.test = 4  # E: "A" has no attribute "test"
 
@@ -2786,7 +2835,7 @@ C(foo='') # E: Argument "foo" to "C" has incompatible type "str"; expected "Opti
 
 [case testConstructInstanceWithDynamicallyTyped__new__]
 class C:
-    def __new__(cls, foo):
+    def __new__(cls, foo):  # N: "C" defined here
         obj = object.__new__(cls)
         return obj
 
@@ -2848,9 +2897,9 @@ c = C(1)
 c.a # E: "C" has no attribute "a"
 C('', '')
 C('') # E: No overload variant of "C" matches argument type "str" \
-      # N: Possible overload variant: \
+      # N: Possible overload variants: \
       # N:     def __new__(cls, foo: int) -> C \
-      # N:     <1 more non-matching overload not shown>
+      # N:     def __new__(cls, x: str, y: str) -> C
 [builtins fixtures/__new__.pyi]
 
 
@@ -2918,7 +2967,7 @@ C(arg=0)
 
 [case testErrorMapToSupertype]
 import typing
-class X(Nope): pass  # E: Name 'Nope' is not defined
+class X(Nope): pass  # E: Name "Nope" is not defined
 a, b = X()  # Used to crash here (#2244)
 
 
@@ -3154,7 +3203,7 @@ def foo(arg: Type[Any]):
 from typing import Type, Any
 def foo(arg: Type[Any]):
     reveal_type(arg.__str__)  # N: Revealed type is "def () -> builtins.str"
-    reveal_type(arg.mro())  # N: Revealed type is "builtins.list[builtins.type]"
+    reveal_type(arg.mro())  # N: Revealed type is "builtins.list[builtins.type[Any]]"
 [builtins fixtures/type.pyi]
 [out]
 
@@ -3276,9 +3325,9 @@ u = new(User)
 [builtins fixtures/classmethod.pyi]
 [out]
 tmp/foo.pyi:17: error: No overload variant of "User" matches argument type "str"
-tmp/foo.pyi:17: note: Possible overload variant:
+tmp/foo.pyi:17: note: Possible overload variants:
+tmp/foo.pyi:17: note:     def __init__(self) -> U
 tmp/foo.pyi:17: note:     def __init__(self, arg: int) -> U
-tmp/foo.pyi:17: note:     <1 more non-matching overload not shown>
 tmp/foo.pyi:18: error: Too many arguments for "foo" of "User"
 
 [case testTypeUsingTypeCInUpperBound]
@@ -3664,14 +3713,28 @@ class Super:
     def foo(self, a: C) -> C: pass
 
 class Sub(Super):
-    @overload  # E: Signature of "foo" incompatible with supertype "Super"
+    @overload  # Fail
     def foo(self, a: A) -> A: pass
     @overload
-    def foo(self, a: B) -> C: pass  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
+    def foo(self, a: B) -> C: pass  # Fail
     @overload
     def foo(self, a: C) -> C: pass
 [builtins fixtures/classmethod.pyi]
 [out]
+tmp/foo.pyi:16: error: Signature of "foo" incompatible with supertype "Super"
+tmp/foo.pyi:16: note:      Superclass:
+tmp/foo.pyi:16: note:          @overload
+tmp/foo.pyi:16: note:          def foo(self, a: A) -> A
+tmp/foo.pyi:16: note:          @overload
+tmp/foo.pyi:16: note:          def foo(self, a: C) -> C
+tmp/foo.pyi:16: note:      Subclass:
+tmp/foo.pyi:16: note:          @overload
+tmp/foo.pyi:16: note:          def foo(self, a: A) -> A
+tmp/foo.pyi:16: note:          @overload
+tmp/foo.pyi:16: note:          def foo(self, a: B) -> C
+tmp/foo.pyi:16: note:          @overload
+tmp/foo.pyi:16: note:          def foo(self, a: C) -> C
+tmp/foo.pyi:19: error: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
 
 [case testTypeTypeOverlapsWithObjectAndType]
 from foo import *
@@ -3799,7 +3862,7 @@ int.__eq__(int)
 int.__eq__(3, 4)
 [builtins fixtures/args.pyi]
 [out]
-main:33: error: Too few arguments for "__eq__" of "int" 
+main:33: error: Too few arguments for "__eq__" of "int"
 main:33: error: Unsupported operand types for == ("int" and "Type[int]")
 
 [case testMroSetAfterError]
@@ -3823,11 +3886,11 @@ class B(object, A): # E: Cannot determine consistent method resolution order (MR
     __iter__ = readlines
 
 [case testDynamicMetaclass]
-class C(metaclass=int()):  # E: Dynamic metaclass not supported for 'C'
+class C(metaclass=int()):  # E: Dynamic metaclass not supported for "C"
     pass
 
 [case testDynamicMetaclassCrash]
-class C(metaclass=int().x):  # E: Dynamic metaclass not supported for 'C'
+class C(metaclass=int().x):  # E: Dynamic metaclass not supported for "C"
     pass
 
 [case testVariableSubclass]
@@ -4086,7 +4149,7 @@ class A:
     def c() -> None: pass
 
 class B(A):
-    def a(self) -> None: pass  # E: Signature of "a" incompatible with supertype "A"
+    def a(self) -> None: pass  # Fail
 
     @classmethod
     def b(cls) -> None: pass
@@ -4094,6 +4157,13 @@ class B(A):
     @staticmethod
     def c() -> None: pass
 [builtins fixtures/classmethod.pyi]
+[out]
+main:11: error: Signature of "a" incompatible with supertype "A"
+main:11: note:      Superclass:
+main:11: note:          @staticmethod
+main:11: note:          def a() -> None
+main:11: note:      Subclass:
+main:11: note:          def a(self) -> None
 
 [case testTempNode]
 class A():
@@ -4170,13 +4240,13 @@ class C(B):
 class X(type): pass
 class Y(type): pass
 class A(metaclass=X): pass
-class B(A, metaclass=Y): pass  # E: Inconsistent metaclass structure for 'B'
+class B(A, metaclass=Y): pass  # E: Inconsistent metaclass structure for "B"
 
 [case testMetaclassNoTypeReveal]
 class M:
     x = 0  # type: int
 
-class A(metaclass=M): pass  # E: Metaclasses not inheriting from 'type' are not supported
+class A(metaclass=M): pass  # E: Metaclasses not inheriting from "type" are not supported
 
 A.x  # E: "Type[A]" has no attribute "x"
 
@@ -4235,7 +4305,7 @@ reveal_type(list(Explicit))  # N: Revealed type is "builtins.list[builtins.int*]
 from typing import Tuple
 
 class M(Tuple[int]): pass
-class C(metaclass=M): pass  # E: Invalid metaclass 'M'
+class C(metaclass=M): pass  # E: Invalid metaclass "M"
 
 [builtins fixtures/tuple.pyi]
 
@@ -4309,9 +4379,9 @@ A.x # E: "Type[A]" has no attribute "x"
 from typing import Any
 M = 0  # type: int
 MM = 0
-class A(metaclass=M): # E: Invalid metaclass 'M'
+class A(metaclass=M): # E: Invalid metaclass "M"
     y = 0
-class B(metaclass=MM): # E: Invalid metaclass 'MM'
+class B(metaclass=MM): # E: Invalid metaclass "MM"
     y = 0
 reveal_type(A.y) # N: Revealed type is "builtins.int"
 A.x # E: "Type[A]" has no attribute "x"
@@ -4573,7 +4643,7 @@ def parse_ast(name_dict: NameDict) -> None:
 [case testNoCrashForwardRefToBrokenDoubleNewType]
 from typing import Any, Dict, List, NewType
 
-Foo = NewType('NotFoo', int) # E: String argument 1 'NotFoo' to NewType(...) does not match variable name 'Foo'
+Foo = NewType('NotFoo', int) # E: String argument 1 "NotFoo" to NewType(...) does not match variable name "Foo"
 Foos = NewType('Foos', List[Foo]) # type: ignore
 
 def frob(foos: Dict[Any, Foos]) -> None:
@@ -4973,16 +5043,16 @@ class A(object): pass
 def f() -> type: return M
 class C1(six.with_metaclass(M), object): pass  # E: Unsupported dynamic base class "six.with_metaclass"
 class C2(C1, six.with_metaclass(M)): pass  # E: Unsupported dynamic base class "six.with_metaclass"
-class C3(six.with_metaclass(A)): pass  # E: Metaclasses not inheriting from 'type' are not supported
-@six.add_metaclass(A)  # E: Metaclasses not inheriting from 'type' are not supported  \
+class C3(six.with_metaclass(A)): pass  # E: Metaclasses not inheriting from "type" are not supported
+@six.add_metaclass(A)  # E: Metaclasses not inheriting from "type" are not supported  \
     # E: Argument 1 to "add_metaclass" has incompatible type "Type[A]"; expected "Type[type]"
 
 class D3(A): pass
 class C4(six.with_metaclass(M), metaclass=M): pass  # E: Multiple metaclass definitions
 @six.add_metaclass(M)
 class D4(metaclass=M): pass  # E: Multiple metaclass definitions
-class C5(six.with_metaclass(f())): pass  # E: Dynamic metaclass not supported for 'C5'
-@six.add_metaclass(f())  # E: Dynamic metaclass not supported for 'D5'
+class C5(six.with_metaclass(f())): pass  # E: Dynamic metaclass not supported for "C5"
+@six.add_metaclass(f())  # E: Dynamic metaclass not supported for "D5"
 class D5: pass
 
 @six.add_metaclass(M)
@@ -4991,8 +5061,8 @@ class CD(six.with_metaclass(M)): pass  # E: Multiple metaclass definitions
 class M1(type): pass
 class Q1(metaclass=M1): pass
 @six.add_metaclass(M)
-class CQA(Q1): pass  # E: Inconsistent metaclass structure for 'CQA'
-class CQW(six.with_metaclass(M, Q1)): pass  # E: Inconsistent metaclass structure for 'CQW'
+class CQA(Q1): pass  # E: Inconsistent metaclass structure for "CQA"
+class CQW(six.with_metaclass(M, Q1)): pass  # E: Inconsistent metaclass structure for "CQW"
 [builtins fixtures/tuple.pyi]
 
 [case testSixMetaclassErrors_python2]
@@ -5105,13 +5175,13 @@ class A(object): pass
 def f() -> type: return M
 class C1(future.utils.with_metaclass(M), object): pass  # E: Unsupported dynamic base class "future.utils.with_metaclass"
 class C2(C1, future.utils.with_metaclass(M)): pass  # E: Unsupported dynamic base class "future.utils.with_metaclass"
-class C3(future.utils.with_metaclass(A)): pass  # E: Metaclasses not inheriting from 'type' are not supported
+class C3(future.utils.with_metaclass(A)): pass  # E: Metaclasses not inheriting from "type" are not supported
 class C4(future.utils.with_metaclass(M), metaclass=M): pass  # E: Multiple metaclass definitions
-class C5(future.utils.with_metaclass(f())): pass  # E: Dynamic metaclass not supported for 'C5'
+class C5(future.utils.with_metaclass(f())): pass  # E: Dynamic metaclass not supported for "C5"
 
 class M1(type): pass
 class Q1(metaclass=M1): pass
-class CQW(future.utils.with_metaclass(M, Q1)): pass  # E: Inconsistent metaclass structure for 'CQW'
+class CQW(future.utils.with_metaclass(M, Q1)): pass  # E: Inconsistent metaclass structure for "CQW"
 [builtins fixtures/tuple.pyi]
 
 [case testFutureMetaclassErrors_python2]
@@ -5239,7 +5309,7 @@ b = object()
 @b.nothing         # E: "object" has no attribute "nothing"
 class C: pass
 
-@undefined         # E: Name 'undefined' is not defined
+@undefined         # E: Name "undefined" is not defined
 class D: pass
 
 [case testSlotsCompatibility]
@@ -5436,7 +5506,7 @@ main:8:6: error: Type argument "builtins.int" of "G" must be a subtype of "built
 [case testExtremeForwardReferencing]
 from typing import TypeVar, Generic
 
-T = TypeVar('T')
+T = TypeVar('T', covariant=True)
 class B(Generic[T]): ...
 
 y: A
@@ -6101,13 +6171,13 @@ def test() -> None:
 class C:
     def __init__(self) -> None:
         self.foo = 12
-        self.foo: int = 12  # E: Attribute 'foo' already defined on line 3
+        self.foo: int = 12  # E: Attribute "foo" already defined on line 3
 
 [case testMemberRedefinitionDefinedInClass]
 class C:
     foo = 12
     def __init__(self) -> None:
-        self.foo: int = 12  # E: Attribute 'foo' already defined on line 2
+        self.foo: int = 12  # E: Attribute "foo" already defined on line 2
 
 [case testAbstractInit]
 from abc import abstractmethod, ABCMeta
@@ -6120,9 +6190,9 @@ class B(A):
 class C(B):
     def __init__(self, a: int) -> None:
         self.c = a
-a = A(1) # E: Cannot instantiate abstract class 'A' with abstract attribute '__init__'
+a = A(1) # E: Cannot instantiate abstract class "A" with abstract attribute "__init__"
 A.c # E: "Type[A]" has no attribute "c"
-b = B(2) # E: Cannot instantiate abstract class 'B' with abstract attribute '__init__'
+b = B(2) # E: Cannot instantiate abstract class "B" with abstract attribute "__init__"
 B.c # E: "Type[B]" has no attribute "c"
 c = C(3)
 c.c
@@ -6348,6 +6418,37 @@ class B(A):
     pass
 
 reveal_type(B())  # N: Revealed type is "__main__.B"
+
+[case testNewReturnType10]
+# https://github.com/python/mypy/issues/11398
+from typing import Type
+
+class MyMetaClass(type):
+    def __new__(cls, name, bases, attrs) -> Type['MyClass']:
+        pass
+
+class MyClass(metaclass=MyMetaClass):
+    pass
+
+[case testNewReturnType11]
+# https://github.com/python/mypy/issues/11398
+class MyMetaClass(type):
+    def __new__(cls, name, bases, attrs) -> type:
+        pass
+
+class MyClass(metaclass=MyMetaClass):
+    pass
+
+[case testNewReturnType12]
+# https://github.com/python/mypy/issues/11398
+from typing import Type
+
+class MyMetaClass(type):
+    def __new__(cls, name, bases, attrs) -> int:  # E: Incompatible return type for "__new__" (returns "int", but must return a subtype of "type")
+        pass
+
+class MyClass(metaclass=MyMetaClass):
+    pass
 
 [case testGenericOverride]
 from typing import Generic, TypeVar, Any
@@ -6619,7 +6720,7 @@ reveal_type(Foo().y)  # N: Revealed type is "builtins.list[Any]"
 
 class Foo:
     def bad():  # E: Method must have at least one argument
-        self.x = 0  # E: Name 'self' is not defined
+        self.x = 0  # E: Name "self" is not defined
 
 [case testTypeAfterAttributeAccessWithDisallowAnyExpr]
 # flags: --disallow-any-expr
@@ -6817,3 +6918,7 @@ class A(metaclass=ABCMeta):
 @final
 class B(A):  # E: Final class __main__.B has abstract attributes "foo"
     pass
+
+[case testUndefinedBaseclassInNestedClass]
+class C:
+    class C1(XX): pass  # E: Name "XX" is not defined

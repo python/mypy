@@ -2,7 +2,7 @@ name: Test stubgenc on pybind11-mypy-demo
 
 on:
   push:
-    branches: [master]
+    branches: [master, 'release*']
     tags: ['*']
   pull_request:
     paths:
@@ -19,9 +19,6 @@ jobs:
     steps:
 
     - uses: actions/checkout@v2
-
-    - name: initialize submodules
-      run: git submodule update --init
 
     - name: Setup 🐍 3.8
       uses: actions/setup-python@v2

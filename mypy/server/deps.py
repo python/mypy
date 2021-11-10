@@ -89,7 +89,9 @@ from mypy.nodes import (
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
     TupleExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, Block,
     TypeInfo, FuncBase, OverloadedFuncDef, RefExpr, SuperExpr, Var, NamedTupleExpr, TypedDictExpr,
-    LDEF, MDEF, GDEF, TypeAliasExpr, NewTypeExpr, ImportAll, EnumCallExpr, AwaitExpr,
+    LDEF, MDEF, GDEF, TypeAliasExpr, NewTypeExpr, ImportAll, EnumCallExpr, AwaitExpr
+)
+from mypy.operators import (
     op_methods, reverse_op_methods, ops_with_inplace_method, unary_op_methods
 )
 from mypy.traverser import TraverserVisitor
@@ -97,7 +99,8 @@ from mypy.types import (
     Type, Instance, AnyType, NoneType, TypeVisitor, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
     FunctionLike, Overloaded, TypeOfAny, LiteralType, ErasedType, get_proper_type, ProperType,
-    TypeAliasType)
+    TypeAliasType
+)
 from mypy.server.trigger import make_trigger, make_wildcard_trigger
 from mypy.util import correct_relative_import
 from mypy.scope import Scope
@@ -123,23 +126,21 @@ def get_dependencies_of_target(module_id: str,
     """Get dependencies of a target -- don't recursive into nested targets."""
     # TODO: Add tests for this function.
     visitor = DependencyVisitor(type_map, python_version, module_tree.alias_deps)
-    visitor.scope.enter_file(module_id)
-    if isinstance(target, MypyFile):
-        # Only get dependencies of the top-level of the module. Don't recurse into
-        # functions.
-        for defn in target.defs:
-            # TODO: Recurse into top-level statements and class bodies but skip functions.
-            if not isinstance(defn, (ClassDef, Decorator, FuncDef, OverloadedFuncDef)):
-                defn.accept(visitor)
-    elif isinstance(target, FuncBase) and target.info:
-        # It's a method.
-        # TODO: Methods in nested classes.
-        visitor.scope.enter_class(target.info)
-        target.accept(visitor)
-        visitor.scope.leave()
-    else:
-        target.accept(visitor)
-    visitor.scope.leave()
+    with visitor.scope.module_scope(module_id):
+        if isinstance(target, MypyFile):
+            # Only get dependencies of the top-level of the module. Don't recurse into
+            # functions.
+            for defn in target.defs:
+                # TODO: Recurse into top-level statements and class bodies but skip functions.
+                if not isinstance(defn, (ClassDef, Decorator, FuncDef, OverloadedFuncDef)):
+                    defn.accept(visitor)
+        elif isinstance(target, FuncBase) and target.info:
+            # It's a method.
+            # TODO: Methods in nested classes.
+            with visitor.scope.class_scope(target.info):
+                target.accept(visitor)
+        else:
+            target.accept(visitor)
     return visitor.map
 
 
@@ -162,44 +163,42 @@ class DependencyVisitor(TraverserVisitor):
         # are preserved at alias expansion points in `semanal.py`, stored as an attribute
         # on MypyFile, and then passed here.
         self.alias_deps = alias_deps
-        self.map = {}  # type: Dict[str, Set[str]]
+        self.map: Dict[str, Set[str]] = {}
         self.is_class = False
         self.is_package_init_file = False
         self.options = options
 
     def visit_mypy_file(self, o: MypyFile) -> None:
-        self.scope.enter_file(o.fullname)
-        self.is_package_init_file = o.is_package_init_file()
-        self.add_type_alias_deps(self.scope.current_target())
-        for trigger, targets in o.plugin_deps.items():
-            self.map.setdefault(trigger, set()).update(targets)
-        super().visit_mypy_file(o)
-        self.scope.leave()
+        with self.scope.module_scope(o.fullname):
+            self.is_package_init_file = o.is_package_init_file()
+            self.add_type_alias_deps(self.scope.current_target())
+            for trigger, targets in o.plugin_deps.items():
+                self.map.setdefault(trigger, set()).update(targets)
+            super().visit_mypy_file(o)
 
     def visit_func_def(self, o: FuncDef) -> None:
-        self.scope.enter_function(o)
-        target = self.scope.current_target()
-        if o.type:
-            if self.is_class and isinstance(o.type, FunctionLike):
-                signature = bind_self(o.type)  # type: Type
-            else:
-                signature = o.type
-            for trigger in self.get_type_triggers(signature):
-                self.add_dependency(trigger)
-                self.add_dependency(trigger, target=make_trigger(target))
-        if o.info:
-            for base in non_trivial_bases(o.info):
-                # Base class __init__/__new__ doesn't generate a logical
-                # dependency since the override can be incompatible.
-                if not self.use_logical_deps() or o.name not in ('__init__', '__new__'):
-                    self.add_dependency(make_trigger(base.fullname + '.' + o.name))
-        self.add_type_alias_deps(self.scope.current_target())
-        super().visit_func_def(o)
-        variants = set(o.expanded) - {o}
-        for ex in variants:
-            if isinstance(ex, FuncDef):
-                super().visit_func_def(ex)
-        self.scope.leave()
+        with self.scope.function_scope(o):
+            target = self.scope.current_target()
+            if o.type:
+                if self.is_class and isinstance(o.type, FunctionLike):
+                    signature: Type = bind_self(o.type)
+                else:
+                    signature = o.type
+                for trigger in self.get_type_triggers(signature):
+                    self.add_dependency(trigger)
+                    self.add_dependency(trigger, target=make_trigger(target))
+            if o.info:
+                for base in non_trivial_bases(o.info):
+                    # Base class __init__/__new__ doesn't generate a logical
+                    # dependency since the override can be incompatible.
+                    if not self.use_logical_deps() or o.name not in ('__init__', '__new__'):
+                        self.add_dependency(make_trigger(base.fullname + '.' + o.name))
+            self.add_type_alias_deps(self.scope.current_target())
+            super().visit_func_def(o)
+            variants = set(o.expanded) - {o}
+            for ex in variants:
+                if isinstance(ex, FuncDef):
+                    super().visit_func_def(ex)
 
     def visit_decorator(self, o: Decorator) -> None:
         if not self.use_logical_deps():
@@ -216,7 +215,7 @@ class DependencyVisitor(TraverserVisitor):
             # then if `dec` is unannotated, then it will "spoil" `func` and consequently
             # all call sites, making them all `Any`.
             for d in o.decorators:
-                tname = None  # type: Optional[str]
+                tname: Optional[str] = None
                 if isinstance(d, RefExpr) and d.fullname is not None:
                     tname = d.fullname
                 if (isinstance(d, CallExpr) and isinstance(d.callee, RefExpr) and
@@ -227,24 +226,22 @@ class DependencyVisitor(TraverserVisitor):
         super().visit_decorator(o)
 
     def visit_class_def(self, o: ClassDef) -> None:
-        self.scope.enter_class(o.info)
-        target = self.scope.current_full_target()
-        self.add_dependency(make_trigger(target), target)
-        old_is_class = self.is_class
-        self.is_class = True
-        # Add dependencies to type variables of a generic class.
-        for tv in o.type_vars:
-            self.add_dependency(make_trigger(tv.fullname), target)
-        self.process_type_info(o.info)
-        super().visit_class_def(o)
-        self.is_class = old_is_class
-        self.scope.leave()
+        with self.scope.class_scope(o.info):
+            target = self.scope.current_full_target()
+            self.add_dependency(make_trigger(target), target)
+            old_is_class = self.is_class
+            self.is_class = True
+            # Add dependencies to type variables of a generic class.
+            for tv in o.type_vars:
+                self.add_dependency(make_trigger(tv.fullname), target)
+            self.process_type_info(o.info)
+            super().visit_class_def(o)
+            self.is_class = old_is_class
 
     def visit_newtype_expr(self, o: NewTypeExpr) -> None:
         if o.info:
-            self.scope.enter_class(o.info)
-            self.process_type_info(o.info)
-            self.scope.leave()
+            with self.scope.class_scope(o.info):
+                self.process_type_info(o.info)
 
     def process_type_info(self, info: TypeInfo) -> None:
         target = self.scope.current_full_target()
@@ -416,7 +413,7 @@ class DependencyVisitor(TraverserVisitor):
             # then it will make all points of use of `x` unchecked.
             if (isinstance(rvalue, CallExpr) and isinstance(rvalue.callee, RefExpr)
                     and rvalue.callee.fullname is not None):
-                fname = None  # type: Optional[str]
+                fname: Optional[str] = None
                 if isinstance(rvalue.callee.node, TypeInfo):
                     # use actual __init__ as a dependency source
                     init = rvalue.callee.node.get('__init__')
@@ -868,7 +865,7 @@ def get_type_triggers(typ: Type, use_logical_deps: bool) -> List[str]:
 
 class TypeTriggersVisitor(TypeVisitor[List[str]]):
     def __init__(self, use_logical_deps: bool) -> None:
-        self.deps = []  # type: List[str]
+        self.deps: List[str] = []
         self.use_logical_deps = use_logical_deps
 
     def get_type_triggers(self, typ: Type) -> List[str]:
@@ -914,7 +911,7 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
 
     def visit_overloaded(self, typ: Overloaded) -> List[str]:
         triggers = []
-        for item in typ.items():
+        for item in typ.items:
             triggers.extend(self.get_type_triggers(item))
         return triggers
 
@@ -997,7 +994,7 @@ def dump_all_dependencies(modules: Dict[str, MypyFile],
                           python_version: Tuple[int, int],
                           options: Options) -> None:
     """Generate dependencies for all interesting modules and print them to stdout."""
-    all_deps = {}  # type: Dict[str, Set[str]]
+    all_deps: Dict[str, Set[str]] = {}
     for id, node in modules.items():
         # Uncomment for debugging:
         # print('processing', id)

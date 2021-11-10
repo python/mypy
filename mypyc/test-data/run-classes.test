@@ -27,6 +27,7 @@ class D:
     pass
 [file driver.py]
 from native import C
+from testutil import assertRaises
 
 c = C()
 assert not hasattr(c, 'x')
@@ -42,11 +43,13 @@ print(c.x)
 assert hasattr(c, 'x')
 assert hasattr(c, 'y')
 assert not hasattr(c, 'z')
-del c.x
-assert not hasattr(c, 'x')
+with assertRaises(AttributeError, "'C' object attribute 'x' cannot be deleted"):
+    del c.x
+assert hasattr(c, 'x')
 assert hasattr(c, 'y')
-del c.y
-assert not hasattr(c, 'y')
+with assertRaises(AttributeError, "'C' object attribute 'y' cannot be deleted"):
+    del c.y
+assert hasattr(c, 'y')
 c.x = 10**30+2
 print(c.x)
 assert hasattr(c, 'x')
@@ -56,6 +59,121 @@ assert hasattr(c, 'x')
 1000000000000000000000000000000
 1000000000000000000000000000001
 1000000000000000000000000000002
+
+[case testClassWithDeletableAttributes]
+from typing import Any, cast
+from testutil import assertRaises
+
+class C:
+    __deletable__ = ['x', 'y']
+    x: int
+    y: int
+    z: int
+
+def test_delete() -> None:
+    c = C()
+    c.x = 1
+    c.y = 2
+    c.z = 3
+    del c.x
+    del c.y
+    assert c.z == 3
+    with assertRaises(AttributeError):
+        c.x
+    with assertRaises(AttributeError):
+        c.y
+
+def test_delete_any() -> None:
+    c: Any = C()
+    c.x = 1
+    c.y = 2
+    c.z = 3
+    del c.x
+    del c.y
+    with assertRaises(AttributeError, "'C' object attribute 'z' cannot be deleted"):
+        del c.z
+    assert c.z == 3
+    with assertRaises(AttributeError):
+        c.x
+    with assertRaises(AttributeError):
+        c.y
+
+class Base:
+    __deletable__ = ['a']
+    a: int
+    b: int
+
+class Deriv(Base):
+    __deletable__ = ('c',)
+    c: str
+    d: str
+
+def test_delete_with_inheritance() -> None:
+    d = Deriv()
+    d.a = 0
+    d.b = 1
+    d.c = 'X'
+    d.d = 'Y'
+    del d.a
+    with assertRaises(AttributeError):
+        d.a
+    del d.c
+    with assertRaises(AttributeError):
+        d.c
+    assert d.b == 1
+    assert d.d == 'Y'
+
+def test_delete_with_inheritance_any() -> None:
+    d: Any = Deriv()
+    d.a = 0
+    d.b = 1
+    d.c = 'X'
+    d.d = 'Y'
+    del d.a
+    with assertRaises(AttributeError):
+        d.a
+    del d.c
+    with assertRaises(AttributeError):
+        d.c
+    with assertRaises(AttributeError):
+        del d.b
+    assert d.b == 1
+    with assertRaises(AttributeError):
+        del d.d
+    assert d.d == 'Y'
+
+def decorator(cls):
+    return cls
+
+@decorator
+class NonExt:
+    x: int
+    y: int
+
+    # No effect in a non-native class
+    __deletable__ = ['x']
+
+def test_non_ext() -> None:
+    n = NonExt()
+    n.x = 2
+    n.y = 3
+    del n.x
+    del n.y
+    with assertRaises(AttributeError):
+        n.x
+    with assertRaises(AttributeError):
+        n.y
+
+def test_non_ext_any() -> None:
+    n: Any = NonExt()
+    n.x = 2
+    n.y = 3
+    del n.x
+    del n.y
+    with assertRaises(AttributeError):
+        n.x
+    with assertRaises(AttributeError):
+        n.y
 
 [case testNonExtMisc]
 from typing import Any, overload
@@ -107,8 +225,15 @@ class Overload:
 def get(c: Overload, s: str) -> str:
     return c.get(s)
 
+@decorator
+class Var:
+    x = 'xy'
+
+def get_class_var() -> str:
+    return Var.x
+
 [file driver.py]
-from native import A, Overload, get
+from native import A, Overload, get, get_class_var
 a = A()
 assert a.a == 1
 assert a.b == 2
@@ -121,6 +246,8 @@ assert A.constant() == 4
 o = Overload()
 assert get(o, "test") == "test"
 assert o.get(20) == 20
+
+assert get_class_var() == 'xy'
 
 [case testEnum]
 from enum import Enum
@@ -870,11 +997,11 @@ b(B())
 
 [case testMethodOverrideDefault2]
 class A:
-    def foo(self, *, x: int = 0) -> None:
+    def foo(self, *, x: int = -1) -> None:
         pass
-    def bar(self, *, x: int = 0, y: int = 0) -> None:
+    def bar(self, *, x: int = -1, y: int = -1) -> None:
         pass
-    def baz(self, x: int = 0) -> None:
+    def baz(self, x: int = -1) -> None:
         pass
 class B(A):
     def foo(self, *, y: int = 0, x: int = 0) -> None:
@@ -952,6 +1079,152 @@ a(B())
 B
 1 0
 10
+
+[case testMethodOverrideDefault4]
+class Foo:
+    def f(self, x: int=20, *, z: int=10) -> None:
+        pass
+
+class Bar(Foo):
+    def f(self, *args: int, **kwargs: int) -> None:
+        print("stuff", args, kwargs)
+
+z: Foo = Bar()
+z.f(1, z=50)
+z.f()
+
+[out]
+stuff (1,) {'z': 50}
+stuff () {}
+
+[case testMethodOverrideDefault5]
+from testutil import make_python_function
+from mypy_extensions import mypyc_attr
+from typing import TypeVar, Any
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Foo:
+    def f(self, x: int=20, *, z: int=10) -> None:
+        print("Foo", x, z)
+
+@make_python_function
+def baz_f(self: Any, *args: int, **kwargs: int) -> None:
+    print("Baz", args, kwargs)
+
+# Make an "interpreted" subtype of Foo
+type2: Any = type
+Bar = type2('Bar', (Foo,), {})
+Baz = type2('Baz', (Foo,), {'f': baz_f})
+
+y: Foo = Bar()
+y.f(1, z=2)
+y.f()
+
+z: Foo = Baz()
+z.f(1, z=2)
+z.f()
+
+[out]
+Foo 1 2
+Foo 20 10
+Baz (1,) {'z': 2}
+Baz () {}
+
+[case testMethodOverrideDefault6]
+from typing import Optional
+
+class Foo:
+    def f(self, x: int=20) -> None:
+        pass
+
+class Bar(Foo):
+    def f(self, x: Optional[int]=None) -> None:
+        print(x)
+
+z: Foo = Bar()
+z.f(1)
+z.f()
+
+[out]
+1
+None
+
+[case testMethodOverrideDefault7]
+from typing import TypeVar, Any
+
+class Foo:
+    def f(self, x: int, *args: int, **kwargs: int) -> None:
+        print("Foo", x, args, kwargs)
+
+class Bar(Foo):
+    def f(self, *args: int, **kwargs: int) -> None:
+        print("Bar", args, kwargs)
+
+z: Foo = Bar()
+z.f(1, z=2)
+z.f(1, 2, 3)
+# z.f(x=5)  # Not tested because we (knowingly) do the wrong thing and pass it as positional
+
+[out]
+Bar (1,) {'z': 2}
+Bar (1, 2, 3) {}
+--Bar () {'x': 5}
+
+[case testMethodOverrideDefault8]
+from typing import TypeVar, Any
+
+class Foo:
+    def f(self, *args: int, **kwargs: int) -> None:
+        print("Foo", args, kwargs)
+
+class Bar(Foo):
+    def f(self, x: int = 10, *args: int, **kwargs: int) -> None:
+        print("Bar", x, args, kwargs)
+
+z: Foo = Bar()
+z.f(1, z=2)
+z.f(1, 2, 3)
+z.f()
+
+[out]
+Bar 1 () {'z': 2}
+Bar 1 (2, 3) {}
+Bar 10 () {}
+
+[case testMethodOverrideDefault9]
+from testutil import make_python_function
+from mypy_extensions import mypyc_attr
+from typing import TypeVar, Any
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Foo:
+    def f(self, x: int=20, y: int=40) -> None:
+        print("Foo", x, y)
+
+# This sort of argument renaming is dodgy and not really sound but we
+# shouldn't break it when they aren't actually used by name...
+# (They *ought* to be positional only!)
+@make_python_function
+def baz_f(self, a: int=30, y: int=50) -> None:
+    print("Baz", a, y)
+
+# Make an "interpreted" subtype of Foo
+type2: Any = type
+Baz = type2('Baz', (Foo,), {'f': baz_f})
+
+z: Foo = Baz()
+z.f()
+z.f(y=1)
+z.f(1, 2)
+# Not tested because we don't (and probably won't) match cpython here
+# from testutil import assertRaises
+# with assertRaises(TypeError):
+#     z.f(x=7)
+
+[out]
+Baz 30 50
+Baz 30 1
+Baz 1 2
 
 [case testOverride]
 class A:
@@ -1318,13 +1591,13 @@ from mypy_extensions import trait
 class Temperature:
     @property
     def celsius(self) -> float:
-        return 5.0 * (self.farenheit - 32.0) / 9.0
+        return 5.0 * (self.fahrenheit - 32.0) / 9.0
 
-    def __init__(self, farenheit: float) -> None:
-        self.farenheit = farenheit
+    def __init__(self, fahrenheit: float) -> None:
+        self.fahrenheit = fahrenheit
 
     def print_temp(self) -> None:
-        print("F:", self.farenheit, "C:", self.celsius)
+        print("F:", self.fahrenheit, "C:", self.celsius)
 
     @property
     def rankine(self) -> float:

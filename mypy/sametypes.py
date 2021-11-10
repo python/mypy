@@ -10,6 +10,7 @@ from mypy.typeops import tuple_fallback, make_simplified_union
 
 def is_same_type(left: Type, right: Type) -> bool:
     """Is 'left' the same type as 'right'?"""
+
     left = get_proper_type(left)
     right = get_proper_type(right)
 
@@ -152,7 +153,7 @@ class SameTypeVisitor(TypeVisitor[bool]):
 
     def visit_overloaded(self, left: Overloaded) -> bool:
         if isinstance(self.right, Overloaded):
-            return is_same_types(left.items(), self.right.items())
+            return is_same_types(left.items, self.right.items)
         else:
             return False
 

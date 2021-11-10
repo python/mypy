@@ -7,8 +7,6 @@ import re
 import shutil
 from typing import List, Callable, Iterator, Optional, Tuple
 
-import pytest
-
 from mypy import build
 from mypy.errors import CompileError
 from mypy.options import Options
@@ -17,6 +15,7 @@ from mypy.test.config import test_temp_dir
 from mypy.test.helpers import assert_string_arrays_equal
 
 from mypyc.options import CompilerOptions
+from mypyc.analysis.ircheck import assert_func_ir_valid
 from mypyc.ir.func_ir import FuncIR
 from mypyc.errors import Errors
 from mypyc.irbuild.main import build_ir
@@ -32,7 +31,7 @@ TESTUTIL_PATH = os.path.join(test_data_prefix, 'fixtures/testutil.py')
 
 class MypycDataSuite(DataSuite):
     # Need to list no files, since this will be picked up as a suite of tests
-    files = []  # type: List[str]
+    files: List[str] = []
     data_prefix = test_data_prefix
 
 
@@ -57,12 +56,13 @@ def use_custom_builtins(builtins_path: str, testcase: DataDrivenTestCase) -> Ite
         shutil.copyfile(builtins_path, builtins)
         default_builtins = True
 
-    # Actually peform the test case.
-    yield None
-
-    if default_builtins:
-        # Clean up.
-        os.remove(builtins)
+    # Actually perform the test case.
+    try:
+        yield None
+    finally:
+        if default_builtins:
+            # Clean up.
+            os.remove(builtins)
 
 
 def perform_test(func: Callable[[DataDrivenTestCase], None],
@@ -77,7 +77,7 @@ def perform_test(func: Callable[[DataDrivenTestCase], None],
         shutil.copyfile(builtins_path, builtins)
         default_builtins = True
 
-    # Actually peform the test case.
+    # Actually perform the test case.
     func(testcase)
 
     if default_builtins:
@@ -116,10 +116,11 @@ def build_ir_for_single_file(input_lines: List[str],
         Mapper({'__main__': None}),
         compiler_options, errors)
     if errors.num_errors:
-        errors.flush_errors()
-        pytest.fail('Errors while building IR')
+        raise CompileError(errors.new_messages())
 
     module = list(modules.values())[0]
+    for fn in module.functions:
+        assert_func_ir_valid(fn)
     return module.functions
 
 
@@ -156,6 +157,8 @@ def assert_test_output(testcase: DataDrivenTestCase,
                        message: str,
                        expected: Optional[List[str]] = None,
                        formatted: Optional[List[str]] = None) -> None:
+    __tracebackhide__ = True
+
     expected_output = expected if expected is not None else testcase.output
     if expected_output != actual and testcase.config.getoption('--update-data', False):
         update_testcase_output(testcase, actual)
@@ -213,12 +216,6 @@ def fudge_dir_mtimes(dir: str, delta: int) -> None:
             path = os.path.join(dirpath, name)
             new_mtime = os.stat(path).st_mtime + delta
             os.utime(path, times=(new_mtime, new_mtime))
-
-
-def replace_native_int(text: List[str]) -> List[str]:
-    """Replace native_int with platform specific ints"""
-    int_format_str = 'int32' if IS_32_BIT_PLATFORM else 'int64'
-    return [s.replace('native_int', int_format_str) for s in text]
 
 
 def replace_word_size(text: List[str]) -> List[str]:

@@ -58,12 +58,20 @@ for full details, see :ref:`running-mypy`.
     For instance, to avoid discovering any files named `setup.py` you could
     pass ``--exclude '/setup\.py$'``. Similarly, you can ignore discovering
     directories with a given name by e.g. ``--exclude /build/`` or
-    those matching a subpath with ``--exclude /project/vendor/``.
+    those matching a subpath with ``--exclude /project/vendor/``. To ignore
+    multiple files / directories / paths, you can provide the --exclude
+    flag more than once, e.g ``--exclude '/setup\.py$' --exclude '/build/'``.
 
-    Note that this flag only affects recursive discovery, that is, when mypy is
-    discovering files within a directory tree or submodules of a package to
-    check. If you pass a file or module explicitly it will still be checked. For
-    instance, ``mypy --exclude '/setup.py$' but_still_check/setup.py``.
+    Note that this flag only affects recursive directory tree discovery, that
+    is, when mypy is discovering files within a directory tree or submodules of
+    a package to check. If you pass a file or module explicitly it will still be
+    checked. For instance, ``mypy --exclude '/setup.py$'
+    but_still_check/setup.py``.
+
+    In particular, ``--exclude`` does not affect mypy's :ref:`import following
+    <follow-imports>`. You can use a per-module :confval:`follow_imports` config
+    option to additionally avoid mypy from following imports and checking code
+    you do not wish to be checked.
 
     Note that mypy will never recursively discover files and directories named
     "site-packages", "node_modules" or "__pycache__", or those whose name starts
@@ -97,7 +105,7 @@ Config file
 
     This flag makes mypy read configuration settings from the given file.
 
-    By default settings are read from ``mypy.ini``, ``.mypy.ini``, or ``setup.cfg``
+    By default settings are read from ``mypy.ini``, ``.mypy.ini``, ``pyproject.toml``, or ``setup.cfg``
     in the current directory. Settings override mypy's built-in defaults and
     command line flags can override settings.
 
@@ -304,9 +312,8 @@ The following options are available:
 .. option:: --disallow-any-generics
 
     This flag disallows usage of generic types that do not specify explicit
-    type parameters. Moreover, built-in collections (such as :py:class:`list` and
-    :py:class:`dict`) become disallowed as you should use their aliases from the :py:mod:`typing`
-    module (such as :py:class:`List[int] <typing.List>` and :py:class:`Dict[str, str] <typing.Dict>`).
+    type parameters. For example you can't use a bare ``x: list``, you must say
+    ``x: list[int]``.
 
 .. option:: --disallow-subclassing-any
 
@@ -513,10 +520,10 @@ of the above sections.
 
     .. code-block:: python
 
-       def process(items: List[str]) -> None:
-           # 'items' has type List[str]
+       def process(items: list[str]) -> None:
+           # 'items' has type list[str]
            items = [item.split() for item in items]
-           # 'items' now has type List[List[str]]
+           # 'items' now has type list[list[str]]
            ...
 
 .. option:: --local-partial-types
@@ -557,8 +564,13 @@ of the above sections.
 
        # This won't re-export the value
        from foo import bar
+
+       # Neither will this
+       from foo import bar as bang
+
        # This will re-export it as bar and allow other modules to import it
        from foo import bar as bar
+
        # This will also re-export bar
        from foo import bar
        __all__ = ['bar']
@@ -572,9 +584,9 @@ of the above sections.
 
     .. code-block:: python
 
-       from typing import List, Text
+       from typing import Text
 
-       items: List[int]
+       items: list[int]
        if 'some string' in items:  # Error: non-overlapping container check!
            ...
 
@@ -686,6 +698,14 @@ in error messages.
 .. option:: --show-absolute-path
 
     Show absolute paths to files.
+
+.. option:: --soft-error-limit N
+
+    This flag will adjust the limit after which mypy will (sometimes)
+    disable reporting most additional errors. The limit only applies
+    if it seems likely that most of the remaining errors will not be
+    useful or they may be overly noisy. If ``N`` is negative, there is
+    no limit. The default limit is 200.
 
 
 .. _incremental:
@@ -876,8 +896,11 @@ Miscellaneous
 
     This flag causes mypy to install known missing stub packages for
     third-party libraries using pip.  It will display the pip command
-    line to run, and expects a confirmation before installing
-    anything.
+    that will be run, and expects a confirmation before installing
+    anything. For security reasons, these stubs are limited to only a
+    small subset of manually selected packages that have been
+    verified by the typeshed team. These packages include only stub
+    files and no executable code.
 
     If you use this option without providing any files or modules to
     type check, mypy will install stub packages suggested during the
@@ -889,8 +912,22 @@ Miscellaneous
     .. note::
 
         This is new in mypy 0.900. Previous mypy versions included a
-        selection of third-party package stubs, instead of having them
-        installed separately.
+        selection of third-party package stubs, instead of having
+        them installed separately.
+
+.. option:: --non-interactive
+
+   When used together with :option:`--install-types <mypy
+   --install-types>`, this causes mypy to install all suggested stub
+   packages using pip without asking for confirmation, and then
+   continues to perform type checking using the installed stubs, if
+   some files or modules are provided to type check.
+
+   This is implemented as up to two mypy runs internally. The first run
+   is used to find missing stub packages, and output is shown from
+   this run only if no missing stub packages were found. If missing
+   stub packages were found, they are installed and then another run
+   is performed.
 
 .. option:: --junit-xml JUNIT_XML
 

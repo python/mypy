@@ -15,13 +15,11 @@ import os
 import os.path
 import subprocess
 import sys
-import tempfile
-import time
 
 base_path = os.path.join(os.path.dirname(__file__), '..')
 
 setup_format = """\
-from distutils.core import setup
+from setuptools import setup
 from mypyc.build import mypycify
 
 setup(name='mypyc_output',

@@ -20,7 +20,7 @@ from mypy.types import Type
 # from testtypegen
 class SkippedNodeSearcher(TraverserVisitor):
     def __init__(self) -> None:
-        self.nodes = set()  # type: Set[Expression]
+        self.nodes: Set[Expression] = set()
         self.is_typing = False
 
     def visit_mypy_file(self, f: MypyFile) -> None:

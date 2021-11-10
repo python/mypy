@@ -282,7 +282,7 @@ class DeprecatedTrue:
 class DeprecatedFalse:
    ...
 
-@attrs(cmp=False, eq=True)  # E: Don't mix `cmp` with `eq' and `order`
+@attrs(cmp=False, eq=True)  # E: Don't mix "cmp" with "eq" and "order"
 class Mixed:
    ...
 
@@ -763,7 +763,7 @@ def converter(s:int) -> str:
 
 @attr.s
 class C:
-    x: str = attr.ib(converter=converter, convert=converter)  # E: Can't pass both `convert` and `converter`.
+    x: str = attr.ib(converter=converter, convert=converter)  # E: Can't pass both "convert" and "converter".
 
 [builtins fixtures/list.pyi]
 
@@ -976,13 +976,13 @@ reveal_type(A)  # N: Revealed type is "def (b: Any, a: Any) -> __main__.A"
 class B:
    a: int = attr.ib(default=8)
    b: int = attr.ib()
-   a: int = attr.ib()  # E: Name 'a' already defined on line 10
+   a: int = attr.ib()  # E: Name "a" already defined on line 10
 reveal_type(B)  # N: Revealed type is "def (b: builtins.int, a: builtins.int) -> __main__.B"
 @attr.s(auto_attribs=True)
 class C:
    a: int = 8
    b: int
-   a: int = attr.ib()  # E: Name 'a' already defined on line 16
+   a: int = attr.ib()  # E: Name "a" already defined on line 16
 reveal_type(C)  # N: Revealed type is "def (a: builtins.int, b: builtins.int) -> __main__.C"
 [builtins fixtures/bool.pyi]
 
@@ -1087,7 +1087,7 @@ A()
 import attr
 @attr.s
 class A:
-    x: int = attr.ib(factory=int, default=7)  # E: Can't pass both `default` and `factory`.
+    x: int = attr.ib(factory=int, default=7)  # E: Can't pass both "default" and "factory".
 [builtins fixtures/bool.pyi]
 
 [case testAttrsFactoryBadReturn]
@@ -1295,7 +1295,7 @@ import attr
 
 @attr.s
 class C:
-    total = attr.ib(type=Bad)  # E: Name 'Bad' is not defined
+    total = attr.ib(type=Bad)  # E: Name "Bad" is not defined
 [builtins fixtures/bool.pyi]
 
 [case testTypeInAttrForwardInRuntime]
@@ -1329,7 +1329,7 @@ import attr
 
 @attr.s(frozen=True)
 class C:
-    total = attr.ib(type=Bad)  # E: Name 'Bad' is not defined
+    total = attr.ib(type=Bad)  # E: Name "Bad" is not defined
 
 C(0).total = 1  # E: Property "total" defined in "C" is read-only
 [builtins fixtures/bool.pyi]
@@ -1390,3 +1390,45 @@ class B(A):
 
 reveal_type(B)  # N: Revealed type is "def (foo: builtins.int) -> __main__.B"
 [builtins fixtures/bool.pyi]
+
+[case testAttrsClassHasAttributeWithAttributes]
+import attr
+
+@attr.s
+class A:
+    b: int = attr.ib()
+    c: str = attr.ib()
+
+reveal_type(A.__attrs_attrs__)  # N: Revealed type is "Tuple[attr.Attribute[builtins.int], attr.Attribute[builtins.str]]"
+
+[builtins fixtures/attr.pyi]
+
+[case testAttrsClassWithSlots]
+import attr
+
+@attr.s(slots=True)
+class A:
+    b: int = attr.ib()
+
+    def __attrs_post_init__(self) -> None:
+        self.b = 1
+        self.c = 2  # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.A"
+
+@attr.dataclass(slots=True)
+class B:
+    __slots__ = ()  # would be replaced
+    b: int
+
+    def __attrs_post_init__(self) -> None:
+        self.b = 1
+        self.c = 2  # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.B"
+
+@attr.dataclass(slots=False)
+class C:
+    __slots__ = ()  # would not be replaced
+    b: int
+
+    def __attrs_post_init__(self) -> None:
+        self.b = 1  # E: Trying to assign name "b" that is not in "__slots__" of type "__main__.C"
+        self.c = 2  # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.C"
+[builtins fixtures/attr.pyi]

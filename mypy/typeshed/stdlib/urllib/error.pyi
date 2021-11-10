@@ -1,13 +1,17 @@
-from typing import IO, Mapping, Optional, Union
+from email.message import Message
+from typing import IO
 from urllib.response import addinfourl
 
 # Stubs for urllib.error
 
 class URLError(IOError):
-    reason: Union[str, BaseException]
+    reason: str | BaseException
+    def __init__(self, reason: str | BaseException, filename: str | None = ...) -> None: ...
 
 class HTTPError(URLError, addinfourl):
     code: int
-    def __init__(self, url: str, code: int, msg: str, hdrs: Mapping[str, str], fp: Optional[IO[bytes]]) -> None: ...
+    def __init__(self, url: str, code: int, msg: str, hdrs: Message, fp: IO[bytes] | None) -> None: ...
 
-class ContentTooShortError(URLError): ...
+class ContentTooShortError(URLError):
+    content: tuple[str, Message]
+    def __init__(self, message: str, content: tuple[str, Message]) -> None: ...

@@ -1,6 +1,3 @@
-import sys
-from typing import Dict, Text
-
 ENDMARKER: int
 NAME: int
 NUMBER: int
@@ -54,17 +51,15 @@ DOUBLESLASHEQUAL: int
 OP: int
 COMMENT: int
 NL: int
-if sys.version_info >= (3,):
-    RARROW: int
-if sys.version_info >= (3, 5):
-    AT: int
-    ATEQUAL: int
-    AWAIT: int
-    ASYNC: int
+RARROW: int
+AT: int
+ATEQUAL: int
+AWAIT: int
+ASYNC: int
 ERRORTOKEN: int
 N_TOKENS: int
 NT_OFFSET: int
-tok_name: Dict[int, Text]
+tok_name: dict[int, str]
 
 def ISTERMINAL(x: int) -> bool: ...
 def ISNONTERMINAL(x: int) -> bool: ...

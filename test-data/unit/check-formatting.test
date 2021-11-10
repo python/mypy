@@ -1,0 +1,651 @@
+
+-- String interpolation
+-- --------------------
+
+[case testStringInterpolationType]
+from typing import Tuple
+i, f, s, t = None, None, None, None # type: (int, float, str, Tuple[int])
+'%d' % i
+'%f' % f
+'%s' % s
+'%d' % (f,)
+'%d' % (s,) # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsInt]")
+'%d' % t
+'%d' % s  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsInt]")
+'%f' % s  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsFloat]")
+'%x' % f  # E: Incompatible types in string interpolation (expression has type "float", placeholder has type "int")
+'%i' % f
+'%o' % f  # E: Incompatible types in string interpolation (expression has type "float", placeholder has type "int")
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testStringInterpolationSAcceptsAnyType]
+from typing import Any
+i, o, s = None, None, None # type: (int, object, str)
+'%s %s %s' % (i, o, s)
+[builtins fixtures/primitives.pyi]
+
+[case testStringInterpolationSBytesVsStrErrorPy3]
+xb: bytes
+xs: str
+
+'%s' % xs   # OK
+'%s' % xb   # E: On Python 3 formatting "b'abc'" with "%s" produces "b'abc'", not "abc"; use "%r" if this is desired behavior
+'%(name)s' % {'name': b'value'}  # E: On Python 3 formatting "b'abc'" with "%s" produces "b'abc'", not "abc"; use "%r" if this is desired behavior
+[builtins fixtures/primitives.pyi]
+
+[case testStringInterpolationSBytesVsStrResultsPy2]
+# flags: --python-version 2.7
+xs = 'x'
+xu = u'x'
+
+reveal_type('%s' % xu)  # N: Revealed type is "builtins.unicode"
+reveal_type('%s, %d' % (u'abc', 42))  # N: Revealed type is "builtins.unicode"
+reveal_type('%(key)s' % {'key': xu})  # N: Revealed type is "builtins.unicode"
+reveal_type('%r' % xu)  # N: Revealed type is "builtins.str"
+reveal_type('%s' % xs)  # N: Revealed type is "builtins.str"
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testStringInterpolationCount]
+'%d %d' % 1  # E: Not enough arguments for format string
+'%d %d' % (1, 2)
+'%d %d' % (1, 2, 3)  # E: Not all arguments converted during string formatting
+t = 1, 's'
+'%d %s' % t
+'%s %d' % t  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsInt]")
+'%d' % t  # E: Not all arguments converted during string formatting
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testStringInterpolationWithAnyType]
+from typing import Any
+a = None # type: Any
+'%d %d' % a
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testStringInterpolationInvalidPlaceholder]
+'%W' % 1  # E: Unsupported format character "W"
+'%b' % 1  # E: Format character "b" is only supported on bytes patterns
+
+[case testStringInterPolationPython2]
+# flags: --python-version 2.7
+b'%b' % 1  # E: Format character "b" is only supported in Python 3.5 and later
+b'%s' % 1
+b'%a' % 1  # E: Format character "a" is only supported in Python 3
+
+[case testStringInterpolationWidth]
+'%2f' % 3.14
+'%*f' % 3.14 # E: Not enough arguments for format string
+'%*f' % (4, 3.14)
+'%*f' % (1.1, 3.14) # E: * wants int
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testStringInterpolationPrecision]
+'%.2f' % 3.14
+'%.*f' % 3.14 # E: Not enough arguments for format string
+'%.*f' % (4, 3.14)
+'%.*f' % (1.1, 3.14) # E: * wants int
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testStringInterpolationWidthAndPrecision]
+'%4.2f' % 3.14
+'%4.*f' % 3.14 # E: Not enough arguments for format string
+'%*.2f' % 3.14 # E: Not enough arguments for format string
+'%*.*f' % 3.14 # E: Not enough arguments for format string
+'%*.*f' % (4, 2, 3.14)
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testStringInterpolationFlagsAndLengthModifiers]
+'%04hd' % 1
+'%-.4ld' % 1
+'%+*Ld' % (1, 1)
+'% .*ld' % (1, 1)
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testStringInterpolationDoublePercentage]
+'%% %d' % 1
+'%3% %d' % 1
+'%*%' % 1
+'%*% %d' % 1  # E: Not enough arguments for format string
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testStringInterPolationCPython2]
+# flags: --py2 --no-strict-optional
+'%c' % 1
+'%c' % 1.0   # E: "%c" requires int or char (expression has type "float")
+'%c' % 's'
+'%c' % ''    # E: "%c" requires int or char
+'%c' % 'ab'  # E: "%c" requires int or char
+'%c' % b'a'
+'%c' % b''   # E: "%c" requires int or char
+'%c' % b'ab' # E: "%c" requires int or char
+[builtins_py2 fixtures/python2.pyi]
+
+[case testStringInterpolationC]
+# flags: --python-version 3.6
+'%c' % 1
+'%c' % 1.0   # E: "%c" requires int or char (expression has type "float")
+'%c' % 's'
+'%c' % ''    # E: "%c" requires int or char
+'%c' % 'ab'  # E: "%c" requires int or char
+'%c' % b'a'  # E: "%c" requires int or char (expression has type "bytes")
+'%c' % b''   # E: "%c" requires int or char (expression has type "bytes")
+'%c' % b'ab' # E: "%c" requires int or char (expression has type "bytes")
+[builtins fixtures/primitives.pyi]
+
+[case testStringInterpolationMappingTypes]
+'%(a)d %(b)s' % {'a': 1, 'b': 's'}
+'%(a)d %(b)s' % {'a': 's', 'b': 1}  # E: Incompatible types in string interpolation (expression has type "str", placeholder with key 'a' has type "Union[int, float, SupportsInt]")
+b'%(x)s' % {b'x': b'data'}
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testStringInterpolationMappingKeys]
+'%()d' % {'': 2}
+'%(a)d' % {'a': 1, 'b': 2, 'c': 3}
+'%(q)d' % {'a': 1, 'b': 2, 'c': 3}  # E: Key "q" not found in mapping
+'%(a)d %%' % {'a': 1}
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testStringInterpolationMappingDictTypes]
+from typing import Any, Dict
+a = None # type: Any
+ds, do, di = None, None, None # type: Dict[str, int], Dict[object, int], Dict[int, int]
+'%(a)' % 1  # E: Format requires a mapping (expression has type "int", expected type for mapping is "Mapping[str, Any]")
+'%()d' % a
+'%()d' % ds
+'%()d' % do  # E: Format requires a mapping (expression has type "Dict[object, int]", expected type for mapping is "Mapping[str, Any]")
+b'%()d' % ds  # E: Format requires a mapping (expression has type "Dict[str, int]", expected type for mapping is "Mapping[bytes, Any]")
+[builtins fixtures/primitives.pyi]
+
+[case testStringInterpolationMappingInvalidDictTypesPy2]
+# flags: --py2 --no-strict-optional
+from typing import Any, Dict
+di = None # type: Dict[int, int]
+'%()d' % di  # E: Format requires a mapping (expression has type "Dict[int, int]", expected type for mapping is "Union[Mapping[str, Any], Mapping[unicode, Any]]")
+[builtins_py2 fixtures/python2.pyi]
+
+[case testStringInterpolationMappingInvalidSpecifiers]
+'%(a)d %d' % 1  # E: String interpolation mixes specifier with and without mapping keys
+'%(b)*d' % 1  # E: String interpolation contains both stars and mapping keys
+'%(b).*d' % 1  # E: String interpolation contains both stars and mapping keys
+
+[case testStringInterpolationMappingFlagsAndLengthModifiers]
+'%(a)1d' % {'a': 1}
+'%(a).1d' % {'a': 1}
+'%(a)#1.1ld' % {'a': 1}
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testStringInterpolationFloatPrecision]
+'%.f' % 1.2
+'%.3f' % 1.2
+'%.f' % 'x'
+'%.3f' % 'x'
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-medium.pyi]
+[out]
+main:3: error: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsFloat]")
+main:4: error: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsFloat]")
+
+[case testStringInterpolationSpaceKey]
+'%( )s' % {' ': 'foo'}
+
+[case testStringInterpolationStarArgs]
+x = (1, 2)
+"%d%d" % (*x,)
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/tuple.pyi]
+
+[case testStringInterpolationVariableLengthTuple]
+from typing import Tuple
+def f(t: Tuple[int, ...]) -> None:
+    '%d %d' % t
+    '%d %d %d' % t
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testStringInterpolationUnionType]
+from typing import Tuple, Union
+a: Union[Tuple[int, str], Tuple[str, int]] = ('A', 1)
+'%s %s' % a
+'%s' % a  # E: Not all arguments converted during string formatting
+
+b: Union[Tuple[int, str], Tuple[int, int], Tuple[str, int]] = ('A', 1)
+'%s %s' % b
+'%s %s %s' % b  # E: Not enough arguments for format string
+
+c: Union[Tuple[str, int], Tuple[str, int, str]] = ('A', 1)
+'%s %s' % c  # E: Not all arguments converted during string formatting
+[builtins fixtures/tuple.pyi]
+
+[case testStringInterpolationIterableType]
+from typing import Sequence, List, Tuple, Iterable
+
+t1: Sequence[str] = ('A', 'B')
+t2: List[str] = ['A', 'B']
+t3: Tuple[str, ...] = ('A', 'B')
+t4: Tuple[str, str] = ('A', 'B')
+t5: Iterable[str] = ('A', 'B')
+'%s %s' % t1
+'%s %s' % t2
+'%s %s' % t3
+'%s %s %s' % t3
+'%s %s' % t4
+'%s %s %s' % t4 # E: Not enough arguments for format string
+'%s %s' % t5
+[builtins fixtures/tuple.pyi]
+
+[case testUnicodeInterpolation_python2]
+u'%s' % (u'abc',)
+
+
+-- Bytes interpolation
+-- --------------------
+
+
+[case testBytesInterpolationBefore35]
+# flags: --python-version 3.4
+b'%b' % 1  # E: Unsupported left operand type for % ("bytes")
+
+[case testBytesInterpolation]
+b'%b' % 1  # E: Incompatible types in string interpolation (expression has type "int", placeholder has type "bytes")
+b'%b' % b'1'
+b'%a' % 3
+
+[case testBytesInterPolationCPython2]
+# flags: --py2 --no-strict-optional
+b'%c' % 1
+b'%c' % 1.0   # E: "%c" requires int or char (expression has type "float")
+b'%c' % 's'
+b'%c' % ''    # E: "%c" requires int or char
+b'%c' % 'ab'  # E: "%c" requires int or char
+b'%c' % b'a'
+b'%c' % b''   # E: "%c" requires int or char
+b'%c' % b'aa' # E: "%c" requires int or char
+[builtins_py2 fixtures/python2.pyi]
+
+[case testBytesInterpolationC]
+# flags: --python-version 3.6
+b'%c' % 1
+b'%c' % 1.0   # E: "%c" requires an integer in range(256) or a single byte (expression has type "float")
+b'%c' % 's'   # E: "%c" requires an integer in range(256) or a single byte (expression has type "str")
+b'%c' % ''    # E: "%c" requires an integer in range(256) or a single byte (expression has type "str")
+b'%c' % 'ab'  # E: "%c" requires an integer in range(256) or a single byte (expression has type "str")
+b'%c' % b'a'
+b'%c' % b''   # E: "%c" requires an integer in range(256) or a single byte
+b'%c' % b'aa' # E: "%c" requires an integer in range(256) or a single byte
+[builtins fixtures/primitives.pyi]
+
+[case testByteByteInterpolation]
+def foo(a: bytes, b: bytes):
+    b'%s:%s' % (a, b)
+foo(b'a', b'b') == b'a:b'
+[builtins fixtures/tuple.pyi]
+
+[case testBytePercentInterpolationSupported]
+b'%s' % (b'xyz',)
+b'%(name)s' % {'name': b'jane'}  # E: Dictionary keys in bytes formatting must be bytes, not strings
+b'%(name)s' % {b'name': 'jane'}  # E: On Python 3 b'%s' requires bytes, not string
+b'%c' % (123)
+[builtins fixtures/tuple.pyi]
+
+
+-- str.format() calls
+-- ------------------
+
+
+[case testFormatCallParseErrors]
+'}'.format()  # E: Invalid conversion specifier in format string: unexpected }
+'{'.format()  # E: Invalid conversion specifier in format string: unmatched {
+
+'}}'.format()  # OK
+'{{'.format()  # OK
+
+'{{}}}'.format()  # E: Invalid conversion specifier in format string: unexpected }
+'{{{}}'.format()  # E: Invalid conversion specifier in format string: unexpected }
+
+'{}}{{}'.format()  # E: Invalid conversion specifier in format string: unexpected }
+'{{{}:{}}}'.format(0)  # E: Cannot find replacement for positional format specifier 1
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallValidationErrors]
+'{!}}'.format(0)  # E: Invalid conversion specifier in format string: unexpected }
+'{!x}'.format(0)  # E: Invalid conversion type "x", must be one of "r", "s" or "a"
+'{!:}'.format(0)  # E: Invalid conversion specifier in format string
+
+'{{}:s}'.format(0)  # E: Invalid conversion specifier in format string: unexpected }
+'{{}.attr}'.format(0)  # E: Invalid conversion specifier in format string: unexpected }
+'{{}[key]}'.format(0)  # E: Invalid conversion specifier in format string: unexpected }
+
+'{ {}:s}'.format()  # E: Conversion value must not contain { or }
+'{ {}.attr}'.format()  # E: Conversion value must not contain { or }
+'{ {}[key]}'.format()  # E: Conversion value must not contain { or }
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallEscaping]
+'{}'.format()  # E: Cannot find replacement for positional format specifier 0
+'{}'.format(0)  # OK
+
+'{{}}'.format()  # OK
+'{{}}'.format(0)  # E: Not all arguments converted during string formatting
+
+'{{{}}}'.format()  # E: Cannot find replacement for positional format specifier 0
+'{{{}}}'.format(0)  # OK
+
+'{{}} {} {{}}'.format(0)  # OK
+'{{}} {:d} {{}} {:d}'.format('a', 'b')  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "int")
+
+'foo({}, {}) == {{}} ({{}} expected)'.format(0)  # E: Cannot find replacement for positional format specifier 1
+'foo({}, {}) == {{}} ({{}} expected)'.format(0, 1)  # OK
+'foo({}, {}) == {{}} ({{}} expected)'.format(0, 1, 2)  # E: Not all arguments converted during string formatting
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallNestedFormats]
+'{:{}{}}'.format(42, '*')  # E: Cannot find replacement for positional format specifier 2
+'{:{}{}}'.format(42, '*', '^')  # OK
+'{:{}{}}'.format(42, '*', '^', 0)  # E: Not all arguments converted during string formatting
+
+# NOTE: we don't check format specifiers that contain { or } at all
+'{:{{}}}'.format()  # E: Cannot find replacement for positional format specifier 0
+
+'{:{:{}}}'.format()  # E: Formatting nesting must be at most two levels deep
+'{:{{}:{}}}'.format()  # E: Invalid conversion specifier in format string: unexpected }
+
+'{!s:{fill:d}{align}}'.format(42, fill='*', align='^')  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "int")
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallAutoNumbering]
+'{}, {{}}, {0}'.format()  # E: Cannot combine automatic field numbering and manual field specification
+'{0}, {1}, {}'.format()  # E: Cannot combine automatic field numbering and manual field specification
+
+'{0}, {1}, {0}'.format(1, 2, 3)  # E: Not all arguments converted during string formatting
+'{}, {other:+d}, {}'.format(1, 2, other='no')  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "int")
+'{0}, {other}, {}'.format()  # E: Cannot combine automatic field numbering and manual field specification
+
+'{:{}}, {:{:.5d}{}}'.format(1, 2, 3, 'a', 5)  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "int")
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallMatchingPositional]
+'{}'.format(positional='no')  # E: Cannot find replacement for positional format specifier 0 \
+                              # E: Not all arguments converted during string formatting
+'{.x}, {}, {}'.format(1, 'two', 'three')  # E: "int" has no attribute "x"
+'Reverse {2.x}, {1}, {0}'.format(1, 2, 'three')  # E: "str" has no attribute "x"
+''.format(1, 2)  # E: Not all arguments converted during string formatting
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallMatchingNamed]
+'{named}'.format(0)  # E: Cannot find replacement for named format specifier "named" \
+                     # E: Not all arguments converted during string formatting
+'{one.x}, {two}'.format(one=1, two='two')  # E: "int" has no attribute "x"
+'{one}, {two}, {.x}'.format(1, one='two', two='three')  # E: "int" has no attribute "x"
+''.format(stuff='yes')  # E: Not all arguments converted during string formatting
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallMatchingVarArg]
+from typing import List
+args: List[int] = []
+'{}, {}'.format(1, 2, *args)  # Don't flag this because args may be empty
+
+strings: List[str]
+'{:d}, {[0].x}'.format(*strings)  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "int") \
+                                  # E: "str" has no attribute "x"
+# TODO: this is a runtime error, but error message is confusing
+'{[0][:]:d}'.format(*strings)  # E: Syntax error in format specifier "0[0]["
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallMatchingKwArg]
+from typing import Dict
+kwargs: Dict[str, str] = {}
+'{one}, {two}'.format(one=1, two=2, **kwargs)  # Don't flag this because args may be empty
+
+'{stuff:.3d}'.format(**kwargs)  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "int")
+'{stuff[0]:f}, {other}'.format(**kwargs)  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float]")
+'{stuff[0]:c}'.format(**kwargs)
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallCustomFormatSpec]
+from typing import Union
+class Bad:
+    ...
+class Good:
+    def __format__(self, spec: str) -> str: ...
+
+'{:OMG}'.format(Good())
+'{:OMG}'.format(Bad())  # E: Unrecognized format specification "OMG"
+'{!s:OMG}'.format(Good())  # E: Unrecognized format specification "OMG"
+'{:{}OMG{}}'.format(Bad(), 'too', 'dynamic')
+
+x: Union[Good, Bad]
+'{:OMG}'.format(x)  # E: Unrecognized format specification "OMG"
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallFormatTypes]
+'{:x}'.format(42)
+'{:E}'.format(42)
+'{:g}'.format(42)
+'{:x}'.format('no')  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "int")
+'{:E}'.format('no')  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float]")
+'{:g}'.format('no')  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float]")
+'{:n}'.format(3.14)
+'{:d}'.format(3.14)  # E: Incompatible types in string interpolation (expression has type "float", placeholder has type "int")
+
+'{:s}'.format(42)
+'{:s}'.format('yes')
+
+'{:z}'.format('what')  # E: Unsupported format character "z"
+'{:Z}'.format('what')  # E: Unsupported format character "Z"
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallFormatTypesChar]
+'{:c}'.format(42)
+'{:c}'.format('no')  # E: ":c" requires int or char
+'{:c}'.format('c')
+
+class C:
+    ...
+'{:c}'.format(C())  # E: Incompatible types in string interpolation (expression has type "C", placeholder has type "Union[int, str]")
+x: str
+'{:c}'.format(x)
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallFormatTypesCustomFormat]
+from typing import Union
+class Bad:
+    ...
+class Good:
+    def __format__(self, spec: str) -> str: ...
+
+x: Union[Good, Bad]
+y: Union[Good, int]
+z: Union[Bad, int]
+t: Union[Good, str]
+'{:d}'.format(x)  # E: Incompatible types in string interpolation (expression has type "Bad", placeholder has type "int")
+'{:d}'.format(y)
+'{:d}'.format(z)  # E: Incompatible types in string interpolation (expression has type "Bad", placeholder has type "int")
+'{:d}'.format(t)  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "int")
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallFormatTypesBytes]
+from typing import Union, TypeVar, NewType, Generic
+
+A = TypeVar('A', str, bytes)
+B = TypeVar('B', bound=bytes)
+
+x: Union[str, bytes]
+a: str
+b: bytes
+
+N = NewType('N', bytes)
+n: N
+
+'{}'.format(a)
+'{}'.format(b)  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior
+'{}'.format(x)  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior
+'{}'.format(n)  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior
+
+f'{b}'  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior
+f'{x}'  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior
+f'{n}'  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior
+
+class C(Generic[B]):
+    x: B
+    def meth(self) -> None:
+        '{}'.format(self.x)  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior
+
+def func(x: A) -> A:
+    '{}'.format(x)  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior
+    return x
+
+'{!r}'.format(a)
+'{!r}'.format(b)
+'{!r}'.format(x)
+'{!r}'.format(n)
+f'{a}'
+f'{a!r}'
+f'{b!r}'
+f'{x!r}'
+f'{n!r}'
+
+class D(bytes):
+    def __str__(self) -> str:
+        return "overrides __str__ of bytes"
+
+'{}'.format(D())
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallFormatTypesBytesNotPy2]
+# flags: --py2
+from typing import Union, TypeVar, NewType, Generic
+
+A = TypeVar('A', str, unicode)
+B = TypeVar('B', bound=str)
+
+x = ''  # type: Union[str, unicode]
+a = ''
+b = b''
+
+N = NewType('N', str)
+n = N(b'')
+
+'{}'.format(a)
+'{}'.format(b)
+'{}'.format(x)
+'{}'.format(n)
+
+u'{}'.format(a)
+u'{}'.format(b)
+u'{}'.format(x)
+u'{}'.format(n)
+
+class C(Generic[B]):
+    x = None  # type: B
+    def meth(self):
+        # type: () -> None
+        '{}'.format(self.x)
+
+def func(x):
+    # type: (A) -> A
+    '{}'.format(x)
+    return x
+
+'{!r}'.format(b)
+'{!r}'.format(x)
+'{!r}'.format(n)
+[builtins_py2 fixtures/python2.pyi]
+
+[case testFormatCallFinal]
+from typing_extensions import Final
+
+FMT: Final = '{.x}, {:{:d}}'
+
+FMT.format(1, 2, 'no')  # E: "int" has no attribute "x" \
+                        # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "int")
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallFinalChar]
+from typing_extensions import Final
+
+GOOD: Final = 'c'
+BAD: Final = 'no'
+OK: Final[str] = '...'
+
+'{:c}'.format(GOOD)
+'{:c}'.format(BAD)  # E: ":c" requires int or char
+'{:c}'.format(OK)
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallForcedConversions]
+'{!r}'.format(42)
+'{!s}'.format(42)
+'{!s:d}'.format(42)  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "int")
+'{!s:s}'.format('OK')
+'{} and {!x}'.format(0, 1)  # E: Invalid conversion type "x", must be one of "r", "s" or "a"
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallAccessorsBasic]
+from typing import Any
+x: Any
+
+'{.x:{[0]}}'.format('yes', 42)  # E: "str" has no attribute "x" \
+                                # E: Value of type "int" is not indexable
+
+'{.1+}'.format(x)  # E: Syntax error in format specifier "0.1+"
+'{name.x[x]()[x]:.2f}'.format(name=x)  # E: Only index and member expressions are allowed in format field accessors; got "name.x[x]()[x]"
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallAccessorsIndices]
+from typing_extensions import TypedDict
+
+class User(TypedDict):
+    id: int
+    name: str
+
+u: User
+'{user[name]:.3f}'.format(user=u)  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float]")
+
+def f() -> str: ...
+'{[f()]}'.format(u)  # E: Invalid index expression in format field accessor "[f()]"
+[builtins fixtures/primitives.pyi]
+
+[case testFormatCallFlags]
+from typing import Union
+
+class Good:
+    def __format__(self, spec: str) -> str: ...
+
+'{:#}'.format(42)
+
+'{:#}'.format('no')  # E: Numeric flags are only allowed for numeric types
+'{!s:#}'.format(42)  # E: Numeric flags are only allowed for numeric types
+
+'{:#s}'.format(42)  # E: Numeric flags are only allowed for numeric types
+'{:+s}'.format(42)  # E: Numeric flags are only allowed for numeric types
+
+'{:+d}'.format(42)
+'{:#d}'.format(42)
+
+x: Union[float, Good]
+'{:+f}'.format(x)
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testFormatCallSpecialCases]
+'{:08b}'.format(int('3'))
+
+class S:
+    def __int__(self) -> int: ...
+
+'{:+d}'.format(S())  # E: Incompatible types in string interpolation (expression has type "S", placeholder has type "int")
+'%d' % S()  # This is OK however
+'{:%}'.format(0.001)
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-medium.pyi]

@@ -152,16 +152,16 @@ For example, compare and contrast what happens when you try appending these type
     a: Final = 19
     b: Literal[19] = 19
 
-    # Mypy will chose to infer List[int] here.
+    # Mypy will choose to infer list[int] here.
     list_of_ints = []
     list_of_ints.append(a)
-    reveal_type(list_of_ints)  # Revealed type is "List[int]"
+    reveal_type(list_of_ints)  # Revealed type is "list[int]"
 
     # But if the variable you're appending is an explicit Literal, mypy
-    # will infer List[Literal[19]].
+    # will infer list[Literal[19]].
     list_of_lits = []
     list_of_lits.append(b)
-    reveal_type(list_of_lits)  # Revealed type is "List[Literal[19]]"
+    reveal_type(list_of_lits)  # Revealed type is "list[Literal[19]]"
 
 
 Intelligent indexing
@@ -288,6 +288,73 @@ using ``isinstance()``:
 
 This feature is sometimes called "sum types" or "discriminated union types"
 in other programming languages.
+
+Exhaustive checks
+*****************
+
+One may want to check that some code covers all possible ``Literal`` or ``Enum`` cases, 
+example:
+
+.. code-block:: python
+
+  from typing import Literal
+
+  PossibleValues = Literal['one', 'two']
+
+  def validate(x: PossibleValues) -> bool:
+      if x == 'one':
+          return True
+      elif x == 'two':
+          return False
+      raise ValueError('Wrong values passed: {0}'.format(x))
+
+  assert validate('one') is True
+  assert validate('two') is False
+
+In the code above it is really easy to make a mistake in the future: 
+by adding a new literal value to ``PossibleValues``, 
+but not adding its handler to ``validate`` function:
+
+.. code-block:: python
+
+  PossibleValues = Literal['one', 'two', 'three']
+
+Mypy won't catch that ``'three'`` is not covered.
+However, if you want to have exhaustive check, you need to guard it properly:
+
+.. code-block:: python
+
+  from typing import Literal, NoReturn
+
+  PossibleValues = Literal['one', 'two']
+
+  def assert_never(value: NoReturn) -> NoReturn:
+      # This also works in runtime as well:
+      assert False, 'This code should never be reached, got: {0}'.format(value)
+
+  def validate(x: PossibleValues) -> bool:
+      if x == 'one':
+          return True
+      elif x == 'two':
+          return False
+      assert_never(x)
+
+In this case, when adding new values to ``PossibleValues``:
+
+.. code-block:: python
+
+  PossibleValues = Literal['one', 'two', 'three']
+
+Mypy will cover you:
+
+.. code-block:: python
+
+  def validate(x: PossibleValues) -> bool:
+      if x == 'one':
+          return True
+      elif x == 'two':
+          return False
+      assert_never(x)  # E: Argument 1 to "assert_never" has incompatible type "Literal['three']"; expected "NoReturn"
 
 Limitations
 ***********

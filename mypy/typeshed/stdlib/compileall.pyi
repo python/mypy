@@ -1,86 +1,88 @@
 import sys
-from _typeshed import AnyPath
-from typing import Any, Optional, Pattern
+from _typeshed import StrPath
+from typing import Any, Protocol
 
 if sys.version_info >= (3, 7):
     from py_compile import PycInvalidationMode
 
+class _SupportsSearch(Protocol):
+    def search(self, string: str) -> Any: ...
+
 if sys.version_info >= (3, 9):
     def compile_dir(
-        dir: AnyPath,
-        maxlevels: Optional[int] = ...,
-        ddir: Optional[AnyPath] = ...,
+        dir: StrPath,
+        maxlevels: int | None = ...,
+        ddir: StrPath | None = ...,
         force: bool = ...,
-        rx: Optional[Pattern[Any]] = ...,
+        rx: _SupportsSearch | None = ...,
         quiet: int = ...,
         legacy: bool = ...,
         optimize: int = ...,
         workers: int = ...,
-        invalidation_mode: Optional[PycInvalidationMode] = ...,
+        invalidation_mode: PycInvalidationMode | None = ...,
         *,
-        stripdir: Optional[str] = ...,  # TODO: change to Optional[AnyPath] once https://bugs.python.org/issue40447 is resolved
-        prependdir: Optional[AnyPath] = ...,
-        limit_sl_dest: Optional[AnyPath] = ...,
+        stripdir: str | None = ...,  # TODO: change to StrPath | None once https://bugs.python.org/issue40447 is resolved
+        prependdir: StrPath | None = ...,
+        limit_sl_dest: StrPath | None = ...,
         hardlink_dupes: bool = ...,
     ) -> int: ...
     def compile_file(
-        fullname: AnyPath,
-        ddir: Optional[AnyPath] = ...,
+        fullname: StrPath,
+        ddir: StrPath | None = ...,
         force: bool = ...,
-        rx: Optional[Pattern[Any]] = ...,
+        rx: _SupportsSearch | None = ...,
         quiet: int = ...,
         legacy: bool = ...,
         optimize: int = ...,
-        invalidation_mode: Optional[PycInvalidationMode] = ...,
+        invalidation_mode: PycInvalidationMode | None = ...,
         *,
-        stripdir: Optional[str] = ...,  # TODO: change to Optional[AnyPath] once https://bugs.python.org/issue40447 is resolved
-        prependdir: Optional[AnyPath] = ...,
-        limit_sl_dest: Optional[AnyPath] = ...,
+        stripdir: str | None = ...,  # TODO: change to StrPath | None once https://bugs.python.org/issue40447 is resolved
+        prependdir: StrPath | None = ...,
+        limit_sl_dest: StrPath | None = ...,
         hardlink_dupes: bool = ...,
     ) -> int: ...
 
 elif sys.version_info >= (3, 7):
     def compile_dir(
-        dir: AnyPath,
+        dir: StrPath,
         maxlevels: int = ...,
-        ddir: Optional[AnyPath] = ...,
+        ddir: StrPath | None = ...,
         force: bool = ...,
-        rx: Optional[Pattern[Any]] = ...,
+        rx: _SupportsSearch | None = ...,
         quiet: int = ...,
         legacy: bool = ...,
         optimize: int = ...,
         workers: int = ...,
-        invalidation_mode: Optional[PycInvalidationMode] = ...,
+        invalidation_mode: PycInvalidationMode | None = ...,
     ) -> int: ...
     def compile_file(
-        fullname: AnyPath,
-        ddir: Optional[AnyPath] = ...,
+        fullname: StrPath,
+        ddir: StrPath | None = ...,
         force: bool = ...,
-        rx: Optional[Pattern[Any]] = ...,
+        rx: _SupportsSearch | None = ...,
         quiet: int = ...,
         legacy: bool = ...,
         optimize: int = ...,
-        invalidation_mode: Optional[PycInvalidationMode] = ...,
+        invalidation_mode: PycInvalidationMode | None = ...,
     ) -> int: ...
 
 else:
-    # rx can be any object with a 'search' method; once we have Protocols we can change the type
     def compile_dir(
-        dir: AnyPath,
+        dir: StrPath,
         maxlevels: int = ...,
-        ddir: Optional[AnyPath] = ...,
+        ddir: StrPath | None = ...,
         force: bool = ...,
-        rx: Optional[Pattern[Any]] = ...,
+        rx: _SupportsSearch | None = ...,
         quiet: int = ...,
         legacy: bool = ...,
         optimize: int = ...,
         workers: int = ...,
     ) -> int: ...
     def compile_file(
-        fullname: AnyPath,
-        ddir: Optional[AnyPath] = ...,
+        fullname: StrPath,
+        ddir: StrPath | None = ...,
         force: bool = ...,
-        rx: Optional[Pattern[Any]] = ...,
+        rx: _SupportsSearch | None = ...,
         quiet: int = ...,
         legacy: bool = ...,
         optimize: int = ...,
@@ -94,7 +96,7 @@ if sys.version_info >= (3, 7):
         quiet: int = ...,
         legacy: bool = ...,
         optimize: int = ...,
-        invalidation_mode: Optional[PycInvalidationMode] = ...,
+        invalidation_mode: PycInvalidationMode | None = ...,
     ) -> int: ...
 
 else:
