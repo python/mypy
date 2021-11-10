@@ -25,3 +25,4 @@ def test_float_min() -> None:
     x: float = 20.0
     y: float = 30.0
     assert min(x, y) == 20.0
+    assert min(y, x) == 20.0

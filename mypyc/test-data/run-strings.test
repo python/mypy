@@ -631,7 +631,9 @@ def test_encode() -> None:
 def test_str_min() -> None:
     x: str = 'aaa'
     y: str = 'bbb'
+    z: str = 'aa'
     assert min(x, y) == 'aaa'
+    assert min(x, z) == 'aa'
 
 class SomeItem:
     def __init__(self, val: str) -> None:
@@ -643,4 +645,6 @@ class SomeItem:
 def test_dunder_min() -> None:
     x = SomeItem('aaa')
     y = SomeItem('bbb')
+    z = SomeItem('aa')
     assert min(x, y).val == 'aaa'
+    assert min(x, z).val == 'aa'
