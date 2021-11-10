@@ -1237,8 +1237,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 and forward_inst.has_readable_member(forward_name)):
             return
         forward_base = reverse_type.arg_types[1]
-        forward_type = self.expr_checker.analyze_external_member_access(forward_name, forward_base,
-                                                                        context=defn)
+        forward_type = analyze_member_access(
+            name=forward_name,
+            typ=forward_base,
+            context=defn,
+            is_lvalue=False, is_super=False, is_operator=False,
+            msg=self.msg,
+            original_type=forward_base,
+            chk=self,
+            in_literal_context=self.expr_checker.is_literal_context(),
+        )
         self.check_overlapping_op_methods(reverse_type, reverse_name, defn.info,
                                           forward_type, forward_name, forward_base,
                                           context=defn)
@@ -1365,8 +1373,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         other_method = '__' + method[3:]
         if cls.has_readable_member(other_method):
             instance = fill_typevars(cls)
-            typ2 = get_proper_type(self.expr_checker.analyze_external_member_access(
-                other_method, instance, defn))
+            typ2 = get_proper_type(analyze_member_access(
+                name=other_method, typ=instance, context=defn,
+                is_lvalue=False, is_super=False, is_operator=False,
+                msg=self.msg, original_type=instance, chk=self,
+                in_literal_context=self.expr_checker.is_literal_context(),
+            ))
             fail = False
             if isinstance(typ2, FunctionLike):
                 if not is_more_general_arg_prefix(typ, typ2):
@@ -3267,8 +3279,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 fallback=self.named_type('builtins.function')
             )
         else:
-            method_type = self.expr_checker.analyze_external_member_access(
-                '__setitem__', basetype, context)
+            method_type = analyze_member_access(
+                name='__setitem__', typ=basetype, context=context,
+                is_lvalue=False, is_super=False, is_operator=False,
+                msg=self.msg, original_type=basetype, chk=selfx,
+                in_literal_context=self.expr_checker.is_literal_context(),
+            )
         lvalue.method_type = method_type
         self.expr_checker.check_method_call(
             '__setitem__', basetype, method_type, [lvalue.index, rvalue],
@@ -3929,7 +3945,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             target_type = get_proper_type(self.expr_checker.accept(s.target))
             if not isinstance(target_type, NoneType):
                 # TODO: Also verify the type of 'write'.
-                self.expr_checker.analyze_external_member_access('write', target_type, s.target)
+                analyze_member_access(
+                    name='write', typ=target_type, context=s.target,
+                    is_lvalue=False, is_super=False, is_operator=False,
+                    msg=self.msg, original_type=target_type, chk=self,
+                    in_literal_context=self.expr_checker.is_literal_context(),
+                )
 
     def visit_break_stmt(self, s: BreakStmt) -> None:
         self.binder.handle_break()
