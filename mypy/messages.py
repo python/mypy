@@ -289,8 +289,8 @@ class MessageBuilder:
                 # Explain that the problem is that the type of the function is not known.
                 self.fail('Cannot call function of unknown type', context, code=codes.OPERATOR)
             else:
-                self.fail('{} not callable'.format(format_type(original_type)), context,
-                          code=codes.OPERATOR)
+                self.fail(message_registry.NOT_CALLABLE.format(
+                    format_type(original_type)), context, code=codes.OPERATOR)
         else:
             # The non-special case: a missing ordinary attribute.
             extra = ''
@@ -397,7 +397,7 @@ class MessageBuilder:
         self.fail(msg, context, code=codes.OPERATOR)
 
     def not_callable(self, typ: Type, context: Context) -> Type:
-        self.fail('{} not callable'.format(format_type(typ)), context)
+        self.fail(message_registry.NOT_CALLABLE.format(format_type(typ)), context)
         return AnyType(TypeOfAny.from_error)
 
     def untyped_function_call(self, callee: CallableType, context: Context) -> Type:
