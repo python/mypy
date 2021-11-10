@@ -864,11 +864,13 @@ def process_options(args: List[str],
         group=code_group)
     code_group.add_argument(
         "--exclude",
+        action="append",
         metavar="PATTERN",
-        default="",
+        default=[],
         help=(
             "Regular expression to match file names, directory names or paths which mypy should "
-            "ignore while recursively discovering files to check, e.g. --exclude '/setup\\.py$'"
+            "ignore while recursively discovering files to check, e.g. --exclude '/setup\\.py$'. "
+            "May be specified more than once, eg. --exclude a --exclude b"
         )
     )
     code_group.add_argument(
@@ -1008,7 +1010,7 @@ def process_options(args: List[str],
         process_cache_map(parser, special_opts, options)
 
     # An explicitly specified cache_fine_grained implies local_partial_types
-    # (because otherwise the cache is not compatiable with dmypy)
+    # (because otherwise the cache is not compatible with dmypy)
     if options.cache_fine_grained:
         options.local_partial_types = True
 

@@ -446,7 +446,7 @@ class A(I):
 [out]
 main:10: error: Signature of "g" incompatible with supertype "I"
 main:10: note:      Superclass:
-main:10: note:          def g(x: Any) -> Any
+main:10: note:          def g(self, x: Any) -> Any
 main:10: note:      Subclass:
 main:10: note:          def g(self, x: Any, y: Any) -> None
 

@@ -1,4 +1,4 @@
-from typing import List, NamedTuple
+from typing import NamedTuple
 
 class struct_spwd(NamedTuple):
     sp_namp: str
@@ -11,5 +11,5 @@ class struct_spwd(NamedTuple):
     sp_expire: int
     sp_flag: int
 
-def getspall() -> List[struct_spwd]: ...
+def getspall() -> list[struct_spwd]: ...
 def getspnam(__arg: str) -> struct_spwd: ...

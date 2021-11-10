@@ -414,23 +414,23 @@ main:4: error: Argument 2 to "f" has incompatible type "*List[A]"; expected "B"
 main:5: error: Argument 3 to "f" has incompatible type "*List[A]"; expected "B"
 main:6: error: Argument 1 to "f" has incompatible type "*Tuple[A, A, B]"; expected "Optional[B]"
 
-[case testVarArgsAfterKeywordArgInCall1-skip]
+[case testVarArgsAfterKeywordArgInCall1]
 # see: mypy issue #2729
 def f(x: int, y: str) -> None: pass
 f(x=1, *[2])
 [builtins fixtures/list.pyi]
 [out]
-main:2: error: "f" gets multiple values for keyword argument "x"
-main:2: error: Argument 2 to "f" has incompatible type *List[int]; expected "str"
+main:3: error: "f" gets multiple values for keyword argument "x"
+main:3: error: Argument 1 to "f" has incompatible type "*List[int]"; expected "str"
 
-[case testVarArgsAfterKeywordArgInCall2-skip]
+[case testVarArgsAfterKeywordArgInCall2]
 # see: mypy issue #2729
 def f(x: int, y: str) -> None: pass
 f(y='x', *[1])
 [builtins fixtures/list.pyi]
 [out]
-main:2: error: "f" gets multiple values for keyword argument "y"
-main:2: error: Argument 2 to "f" has incompatible type *List[int]; expected "str"
+main:3: error: "f" gets multiple values for keyword argument "y"
+main:3: error: Argument 1 to "f" has incompatible type "*List[int]"; expected "str"
 
 [case testVarArgsAfterKeywordArgInCall3]
 def f(x: int, y: str) -> None: pass
@@ -733,4 +733,30 @@ a = [1, 2]
 b = {'b': 1}
 f(a) # E: Argument 1 to "f" has incompatible type "List[int]"; expected "Listener"
 g(b) # E: Argument 1 to "g" has incompatible type "Dict[str, int]"; expected "DictReader"
+[builtins fixtures/dict.pyi]
+
+[case testInvariantTypeConfusingNames]
+from typing import Iterable, Generic, TypeVar, List
+
+T = TypeVar('T')
+
+class I(Iterable[T]):
+    ...
+
+class Bad(Generic[T]):
+    ...
+
+def bar(*args: float) -> float:
+    ...
+
+good1: Iterable[float]
+good2: List[float]
+good3: I[float]
+bad1: I[str]
+bad2: Bad[float]
+bar(*good1)
+bar(*good2)
+bar(*good3)
+bar(*bad1)  # E: Argument 1 to "bar" has incompatible type "*I[str]"; expected "float"
+bar(*bad2)  # E: List or tuple expected as variable arguments
 [builtins fixtures/dict.pyi]

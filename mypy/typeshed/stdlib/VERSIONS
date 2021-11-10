@@ -68,7 +68,7 @@ audioop: 2.7-
 base64: 2.7-
 bdb: 2.7-
 binascii: 2.7-
-binhex: 2.7-
+binhex: 2.7-3.10
 bisect: 2.7-
 builtins: 3.0-
 bz2: 2.7-

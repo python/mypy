@@ -1,19 +1,4 @@
-from typing import (
-    Any,
-    Container,
-    Dict,
-    Generic,
-    Iterable,
-    Iterator,
-    List,
-    Mapping,
-    Optional,
-    Sized,
-    Tuple,
-    TypeVar,
-    Union,
-    overload,
-)
+from typing import Any, Container, Dict, Generic, Iterable, Iterator, List, Mapping, Sized, Tuple, TypeVar, overload
 
 _KT = TypeVar("_KT")
 _VT = TypeVar("_VT")
@@ -33,9 +18,9 @@ class DictMixin(Iterable[_KT], Container[_KT], Sized, Generic[_KT, _VT]):
     # From  typing.Mapping[_KT, _VT]
     # (can't inherit because of keys())
     @overload
-    def get(self, k: _KT) -> Optional[_VT]: ...
+    def get(self, k: _KT) -> _VT | None: ...
     @overload
-    def get(self, k: _KT, default: Union[_VT, _T]) -> Union[_VT, _T]: ...
+    def get(self, k: _KT, default: _VT | _T) -> _VT | _T: ...
     def values(self) -> List[_VT]: ...
     def items(self) -> List[Tuple[_KT, _VT]]: ...
     def iterkeys(self) -> Iterator[_KT]: ...

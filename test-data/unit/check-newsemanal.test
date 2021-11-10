@@ -304,6 +304,7 @@ from a import x
 def f(): pass
 
 [targets a, b, a, a.y, b.f, __main__]
+[builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerRedefinitionAndDeferral1b]
 import a
@@ -2390,7 +2391,8 @@ import p
 import p
 reveal_type(p.y)
 [file p.pyi]
-from pp import x as y
+from pp import x
+y = x
 [file pp.pyi]
 def __getattr__(attr): ...
 [out2]

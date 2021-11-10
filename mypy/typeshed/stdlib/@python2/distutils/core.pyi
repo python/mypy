@@ -1,7 +1,7 @@
 from distutils.cmd import Command as Command
 from distutils.dist import Distribution as Distribution
 from distutils.extension import Extension as Extension
-from typing import Any, List, Mapping, Optional, Tuple, Type, Union
+from typing import Any, List, Mapping, Tuple, Type
 
 def setup(
     *,
@@ -25,8 +25,8 @@ def setup(
     script_args: List[str] = ...,
     options: Mapping[str, Any] = ...,
     license: str = ...,
-    keywords: Union[List[str], str] = ...,
-    platforms: Union[List[str], str] = ...,
+    keywords: List[str] | str = ...,
+    platforms: List[str] | str = ...,
     cmdclass: Mapping[str, Type[Command]] = ...,
     data_files: List[Tuple[str, List[str]]] = ...,
     package_dir: Mapping[str, str] = ...,
@@ -45,4 +45,4 @@ def setup(
     fullname: str = ...,
     **attrs: Any,
 ) -> None: ...
-def run_setup(script_name: str, script_args: Optional[List[str]] = ..., stop_after: str = ...) -> Distribution: ...
+def run_setup(script_name: str, script_args: List[str] | None = ..., stop_after: str = ...) -> Distribution: ...

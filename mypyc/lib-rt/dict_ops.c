@@ -68,12 +68,13 @@ PyObject *CPyDict_GetWithNone(PyObject *dict, PyObject *key) {
 }
 
 PyObject *CPyDict_SetDefault(PyObject *dict, PyObject *key, PyObject *value) {
-    if (PyDict_CheckExact(dict)){
+    if (PyDict_CheckExact(dict)) {
         PyObject* ret = PyDict_SetDefault(dict, key, value);
         Py_XINCREF(ret);
         return ret;
     }
-    return PyObject_CallMethod(dict, "setdefault", "(OO)", key, value);
+    _Py_IDENTIFIER(setdefault);
+    return _PyObject_CallMethodIdObjArgs(dict, &PyId_setdefault, key, value, NULL);
 }
 
 PyObject *CPyDict_SetDefaultWithNone(PyObject *dict, PyObject *key) {
@@ -128,7 +129,7 @@ static inline int CPy_ObjectToStatus(PyObject *obj) {
 
 static int CPyDict_UpdateGeneral(PyObject *dict, PyObject *stuff) {
     _Py_IDENTIFIER(update);
-    PyObject *res = _PyObject_CallMethodIdObjArgs(dict, &PyId_update, stuff, NULL);
+    PyObject *res = _PyObject_CallMethodIdOneArg(dict, &PyId_update, stuff);
     return CPy_ObjectToStatus(res);
 }
 
@@ -194,21 +195,24 @@ PyObject *CPyDict_KeysView(PyObject *dict) {
     if (PyDict_CheckExact(dict)){
         return _CPyDictView_New(dict, &PyDictKeys_Type);
     }
-    return PyObject_CallMethod(dict, "keys", NULL);
+    _Py_IDENTIFIER(keys);
+    return _PyObject_CallMethodIdNoArgs(dict, &PyId_keys);
 }
 
 PyObject *CPyDict_ValuesView(PyObject *dict) {
     if (PyDict_CheckExact(dict)){
         return _CPyDictView_New(dict, &PyDictValues_Type);
     }
-    return PyObject_CallMethod(dict, "values", NULL);
+    _Py_IDENTIFIER(values);
+    return _PyObject_CallMethodIdNoArgs(dict, &PyId_values);
 }
 
 PyObject *CPyDict_ItemsView(PyObject *dict) {
     if (PyDict_CheckExact(dict)){
         return _CPyDictView_New(dict, &PyDictItems_Type);
     }
-    return PyObject_CallMethod(dict, "items", NULL);
+    _Py_IDENTIFIER(items);
+    return _PyObject_CallMethodIdNoArgs(dict, &PyId_items);
 }
 
 PyObject *CPyDict_Keys(PyObject *dict) {
@@ -217,7 +221,8 @@ PyObject *CPyDict_Keys(PyObject *dict) {
     }
     // Inline generic fallback logic to also return a list.
     PyObject *list = PyList_New(0);
-    PyObject *view = PyObject_CallMethod(dict, "keys", NULL);
+    _Py_IDENTIFIER(keys);
+    PyObject *view = _PyObject_CallMethodIdNoArgs(dict, &PyId_keys);
     if (view == NULL) {
         return NULL;
     }
@@ -236,7 +241,8 @@ PyObject *CPyDict_Values(PyObject *dict) {
     }
     // Inline generic fallback logic to also return a list.
     PyObject *list = PyList_New(0);
-    PyObject *view = PyObject_CallMethod(dict, "values", NULL);
+    _Py_IDENTIFIER(values);
+    PyObject *view = _PyObject_CallMethodIdNoArgs(dict, &PyId_values);
     if (view == NULL) {
         return NULL;
     }
@@ -255,7 +261,8 @@ PyObject *CPyDict_Items(PyObject *dict) {
     }
     // Inline generic fallback logic to also return a list.
     PyObject *list = PyList_New(0);
-    PyObject *view = PyObject_CallMethod(dict, "items", NULL);
+    _Py_IDENTIFIER(items);
+    PyObject *view = _PyObject_CallMethodIdNoArgs(dict, &PyId_items);
     if (view == NULL) {
         return NULL;
     }
@@ -272,7 +279,8 @@ char CPyDict_Clear(PyObject *dict) {
     if (PyDict_CheckExact(dict)) {
         PyDict_Clear(dict);
     } else {
-        PyObject *res = PyObject_CallMethod(dict, "clear", NULL);
+        _Py_IDENTIFIER(clear);
+        PyObject *res = _PyObject_CallMethodIdNoArgs(dict, &PyId_clear);
         if (res == NULL) {
             return 0;
         }
@@ -284,7 +292,8 @@ PyObject *CPyDict_Copy(PyObject *dict) {
     if (PyDict_CheckExact(dict)) {
         return PyDict_Copy(dict);
     }
-    return PyObject_CallMethod(dict, "copy", NULL);
+    _Py_IDENTIFIER(copy);
+    return _PyObject_CallMethodIdNoArgs(dict, &PyId_copy);
 }
 
 PyObject *CPyDict_GetKeysIter(PyObject *dict) {
@@ -302,7 +311,8 @@ PyObject *CPyDict_GetItemsIter(PyObject *dict) {
         Py_INCREF(dict);
         return dict;
     }
-    PyObject *view = PyObject_CallMethod(dict, "items", NULL);
+    _Py_IDENTIFIER(items);
+    PyObject *view = _PyObject_CallMethodIdNoArgs(dict, &PyId_items);
     if (view == NULL) {
         return NULL;
     }
@@ -317,7 +327,8 @@ PyObject *CPyDict_GetValuesIter(PyObject *dict) {
         Py_INCREF(dict);
         return dict;
     }
-    PyObject *view = PyObject_CallMethod(dict, "values", NULL);
+    _Py_IDENTIFIER(values);
+    PyObject *view = _PyObject_CallMethodIdNoArgs(dict, &PyId_values);
     if (view == NULL) {
         return NULL;
     }

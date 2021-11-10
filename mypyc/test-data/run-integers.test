@@ -87,15 +87,36 @@ def big_int() -> None:
     max_63_bit = 9223372036854775807
     d_64_bit = 9223372036854775808
     max_32_bit = 2147483647
+    max_32_bit_plus1 = 2147483648
     max_31_bit = 1073741823
+    max_31_bit_plus1 = 1073741824
+    neg = -1234567
+    min_signed_63_bit = -4611686018427387904
+    underflow = -4611686018427387905
+    min_signed_64_bit = -9223372036854775808
+    min_signed_31_bit = -1073741824
+    min_signed_31_bit_plus1 = -1073741823
+    min_signed_31_bit_minus1 = -1073741825
+    min_signed_32_bit = -2147483648
     print(a_62_bit)
     print(max_62_bit)
     print(b_63_bit)
     print(c_63_bit)
     print(max_63_bit)
     print(d_64_bit)
+    print('==')
     print(max_32_bit)
+    print(max_32_bit_plus1)
     print(max_31_bit)
+    print(max_31_bit_plus1)
+    print(neg)
+    print(min_signed_63_bit)
+    print(underflow)
+    print(min_signed_64_bit)
+    print(min_signed_31_bit)
+    print(min_signed_31_bit_plus1)
+    print(min_signed_31_bit_minus1)
+    print(min_signed_32_bit)
 [file driver.py]
 from native import big_int
 big_int()
@@ -106,8 +127,19 @@ big_int()
 9223372036854775806
 9223372036854775807
 9223372036854775808
+==
 2147483647
+2147483648
 1073741823
+1073741824
+-1234567
+-4611686018427387904
+-4611686018427387905
+-9223372036854775808
+-1073741824
+-1073741823
+-1073741825
+-2147483648
 
 [case testNeg]
 def neg(x: int) -> int:
@@ -130,6 +162,14 @@ assert neg(9223372036854775807) == -9223372036854775807
 assert neg(-9223372036854775807) == 9223372036854775807
 assert neg(9223372036854775808) == -9223372036854775808
 assert neg(-9223372036854775808) == 9223372036854775808
+
+[case testIsinstanceIntAndNotBool]
+def test_isinstance_int_and_not_bool(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+[file driver.py]
+from native import test_isinstance_int_and_not_bool
+assert test_isinstance_int_and_not_bool(True) == False
+assert test_isinstance_int_and_not_bool(1) == True
 
 [case testIntOps]
 def check_and(x: int, y: int) -> None:
@@ -156,15 +196,6 @@ def check_bitwise(x: int, y: int) -> None:
             check_and(ll, rr)
             check_or(ll, rr)
             check_xor(ll, rr)
-
-[case testIsinstanceIntAndNotBool]
-def test_isinstance_int_and_not_bool(value: object) -> bool:
-    return isinstance(value, int) and not isinstance(value, bool)
-[file driver.py]
-from native import test_isinstance_int_and_not_bool
-assert test_isinstance_int_and_not_bool(True) == False
-assert test_isinstance_int_and_not_bool(1) == True
-
 
 SHIFT = 30
 DIGIT0a = 615729753
@@ -197,6 +228,10 @@ def test_and_or_xor() -> None:
     check_bitwise(BIG_SHORT, DIGIT0a + DIGIT1a)
     check_bitwise(BIG_SHORT, DIGIT0a + DIGIT1a + DIGIT2a)
     check_bitwise(BIG_SHORT, DIGIT0a + DIGIT1a + DIGIT2a + DIGIT50)
+
+    for x in range(-25, 25):
+        for y in range(-25, 25):
+            check_bitwise(x, y)
 
 def test_bitwise_inplace() -> None:
     # Basic sanity checks; these should use the same code as the non-in-place variants
@@ -328,6 +363,70 @@ def test_int_as_bool() -> None:
     for x in 1, 55, -1, -7, 1 << 50, 1 << 101, -(1 << 50), -(1 << 101):
         assert is_true(x)
         assert not is_false(x)
+
+def test_divide() -> None:
+    for x in range(-100, 100):
+        for y in range(-100, 100):
+            if y != 0:
+                assert x // y == getattr(x, "__floordiv__")(y)
+
+def test_mod() -> None:
+    for x in range(-100, 100):
+        for y in range(-100, 100):
+            if y != 0:
+                assert x % y == getattr(x, "__mod__")(y)
+
+def test_constant_fold() -> None:
+    assert str(-5 + 3) == "-2"
+    assert str(15 - 3) == "12"
+    assert str(1000 * 1000) == "1000000"
+    assert str(12325 // 12 ) == "1027"
+    assert str(87645 % 321) == "12"
+    assert str(674253 | 76544) == "748493"
+    assert str(765 ^ 82) == "687"
+    assert str(6546 << 3) == "52368"
+    assert str(6546 >> 7) == "51"
+    assert str(3**5) == "243"
+    assert str(~76) == "-77"
+    try:
+        2 / 0
+    except ZeroDivisionError:
+        pass
+    else:
+        assert False, "no exception raised"
+
+    x = int()
+    y = int() - 1
+    assert x == -1 or y != -3
+    assert -1 <= x
+    assert -1 == y
+
+    # Use int() to avoid constant propagation
+    i30 = (1 << 30) + int()
+    assert i30 == 1 << 30
+    i31 = (1 << 31) + int()
+    assert i31 == 1 << 31
+    i32 = (1 << 32) + int()
+    assert i32 == 1 << 32
+    i62 = (1 << 62) + int()
+    assert i62 == 1 << 62
+    i63 = (1 << 63) + int()
+    assert i63 == 1 << 63
+    i64 = (1 << 64) + int()
+    assert i64 == 1 << 64
+
+    n30 = -(1 << 30) + int()
+    assert n30 == -(1 << 30)
+    n31 = -(1 << 31) + int()
+    assert n31 == -(1 << 31)
+    n32 = -(1 << 32) + int()
+    assert n32 == -(1 << 32)
+    n62 = -(1 << 62) + int()
+    assert n62 == -(1 << 62)
+    n63 = -(1 << 63) + int()
+    assert n63 == -(1 << 63)
+    n64 = -(1 << 64) + int()
+    assert n64 == -(1 << 64)
 
 [case testIntMin]
 def test_int_min() -> None:

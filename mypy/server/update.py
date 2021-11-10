@@ -1077,7 +1077,7 @@ def lookup_target(manager: BuildManager,
         # A ClassDef target covers the body of the class and everything defined
         # within it.  To get the body we include the entire surrounding target,
         # typically a module top-level, since we don't support processing class
-        # bodies as separate entitites for simplicity.
+        # bodies as separate entities for simplicity.
         assert file is not None
         if node.fullname != target:
             # This is a reference to a different TypeInfo, likely due to a stale dependency.

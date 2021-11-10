@@ -12,11 +12,12 @@ from mypy_extensions import DefaultNamedArg
 from mypy.messages import MessageBuilder, quote_type_string, format_type_bare
 from mypy.options import Options
 from mypy.types import (
-    Type, UnboundType, TypeVarType, TupleType, TypedDictType, UnionType, Instance, AnyType,
+    Type, UnboundType, TupleType, TypedDictType, UnionType, Instance, AnyType,
     CallableType, NoneType, ErasedType, DeletedType, TypeList, TypeVarType, SyntheticTypeVisitor,
-    StarType, PartialType, EllipsisType, UninhabitedType, TypeType, TypeGuardType, TypeVarLikeType,
-    CallableArgument, TypeQuery, union_items, TypeOfAny, LiteralType, RawExpressionType,
-    PlaceholderType, Overloaded, get_proper_type, TypeAliasType, TypeVarLikeType, ParamSpecType
+    StarType, PartialType, EllipsisType, UninhabitedType, TypeType, CallableArgument,
+    TypeQuery, union_items, TypeOfAny, LiteralType, RawExpressionType,
+    PlaceholderType, Overloaded, get_proper_type, TypeAliasType,
+    TypeVarLikeType, ParamSpecType
 )
 
 from mypy.nodes import (
@@ -257,6 +258,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return res
             elif isinstance(node, TypeInfo):
                 return self.analyze_type_with_type_info(node, t.args, t)
+            elif node.fullname in ("typing_extensions.TypeAlias", "typing.TypeAlias"):
+                return AnyType(TypeOfAny.special_form)
             else:
                 return self.analyze_unbound_type_without_type_info(t, sym, defining_literal)
         else:  # sym is None
@@ -329,8 +332,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     # To prevent assignment of 'builtins.type' inferred as 'builtins.object'
                     # See https://github.com/python/mypy/issues/9476 for more information
                     return None
-            type_str = 'Type[...]' if fullname == 'typing.Type' else 'type[...]'
             if len(t.args) != 1:
+                type_str = 'Type[...]' if fullname == 'typing.Type' else 'type[...]'
                 self.fail(type_str + ' must have exactly one type argument', t)
             item = self.anal_type(t.args[0])
             return TypeType.make_normalized(item, line=t.line)
@@ -547,9 +550,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                                   )
         return ret
 
-    def visit_type_guard_type(self, t: TypeGuardType) -> Type:
-        return t
-
     def anal_type_guard(self, t: Type) -> Optional[Type]:
         if isinstance(t, UnboundType):
             sym = self.lookup_qualified(t.name, t)
@@ -694,7 +694,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if not isinstance(tvar_def, ParamSpecType):
             return None
 
-        # TODO(shantanu): construct correct type for paramspec
+        # TODO(PEP612): construct correct type for paramspec
         return CallableType(
             [AnyType(TypeOfAny.explicit), AnyType(TypeOfAny.explicit)],
             [nodes.ARG_STAR, nodes.ARG_STAR2],
@@ -747,7 +747,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 )
                 if maybe_ret is None:
                     # Callable[?, RET] (where ? is something invalid)
-                    # TODO(shantanu): change error to mention paramspec, once we actually have some
+                    # TODO(PEP612): change error to mention paramspec, once we actually have some
                     # support for it
                     self.fail('The first argument to Callable must be a list of types or "..."', t)
                     return AnyType(TypeOfAny.from_error)

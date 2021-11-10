@@ -30,7 +30,7 @@ string-literal types with non-string-literal types freely:
 
 .. code-block:: python
 
-   def f(a: List['A']) -> None: ...  # OK
+   def f(a: list['A']) -> None: ...  # OK
    def g(n: 'int') -> None: ...      # OK, though not useful
 
    class A: pass
@@ -62,7 +62,7 @@ required to be valid Python syntax. For more details, see :pep:`563`.
     of forward references or generics in:
 
     * :ref:`type aliases <type-aliases>`;
-    * :ref:`casts <casts>`;
+    * :ref:`type narrowing <type-narrowing>`;
     * type definitions (see :py:class:`~typing.TypeVar`, :py:func:`~typing.NewType`, :py:class:`~typing.NamedTuple`);
     * base classes.
 
@@ -70,7 +70,7 @@ required to be valid Python syntax. For more details, see :pep:`563`.
 
         # base class example
         from __future__ import annotations
-        class A(Tuple['B', 'C']): ... # String literal types needed here
+        class A(tuple['B', 'C']): ... # String literal types needed here
         class B: ...
         class C: ...
 
@@ -156,23 +156,22 @@ File ``foo.py``:
 
 .. code-block:: python
 
-   from typing import List, TYPE_CHECKING
+   from typing import TYPE_CHECKING
 
    if TYPE_CHECKING:
        import bar
 
-   def listify(arg: 'bar.BarClass') -> 'List[bar.BarClass]':
+   def listify(arg: 'bar.BarClass') -> 'list[bar.BarClass]':
        return [arg]
 
 File ``bar.py``:
 
 .. code-block:: python
 
-   from typing import List
    from foo import listify
 
    class BarClass:
-       def listifyme(self) -> 'List[BarClass]':
+       def listifyme(self) -> 'list[BarClass]':
            return listify(self)
 
 .. _not-generic-runtime:

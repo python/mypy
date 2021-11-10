@@ -9,9 +9,9 @@ class MIMEMultipart(MIMEBase):
     def __init__(
         self,
         _subtype: str = ...,
-        boundary: Optional[str] = ...,
-        _subparts: Optional[Sequence[Message]] = ...,
+        boundary: str | None = ...,
+        _subparts: Sequence[Message] | None = ...,
         *,
-        policy: Optional[Policy] = ...,
+        policy: Policy | None = ...,
         **_params: _ParamsType,
     ) -> None: ...

@@ -1547,9 +1547,9 @@ def f(blocks: Any): # E: Name "Any" is not defined \
 def f(blocks: object):
     to_process = []
     to_process = list(blocks) # E: No overload variant of "list" matches argument type "object" \
-                              # N: Possible overload variant: \
-                              # N:     def [T] __init__(self, x: Iterable[T]) -> List[T] \
-                              # N:     <1 more non-matching overload not shown>
+                              # N: Possible overload variants: \
+                              # N:     def [T] __init__(self) -> List[T] \
+                              # N:     def [T] __init__(self, x: Iterable[T]) -> List[T]
 [builtins fixtures/list.pyi]
 
 [case testInferListInitializedToEmptyAndAssigned]
@@ -1975,7 +1975,7 @@ T = TypeVar('T')
 
 class A:
     def f(self) -> None:
-        self.g() # E: Too few arguments for "g" of "A"   
+        self.g() # E: Too few arguments for "g" of "A"
         self.g(1)
     @dec
     def g(self, x: str) -> None: pass
