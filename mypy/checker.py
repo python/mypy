@@ -3282,7 +3282,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             method_type = analyze_member_access(
                 name='__setitem__', typ=basetype, context=context,
                 is_lvalue=False, is_super=False, is_operator=False,
-                msg=self.msg, original_type=basetype, chk=selfx,
+                msg=self.msg, original_type=basetype, chk=self,
                 in_literal_context=self.expr_checker.is_literal_context(),
             )
         lvalue.method_type = method_type
