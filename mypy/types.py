@@ -2344,17 +2344,11 @@ def flatten_nested_unions(types: Iterable[Type],
     flat_items: List[Type] = []
     if handle_type_alias_type:
         types = get_proper_types(types)
-    has_any = False
+    # TODO: avoid duplicate types in unions (e.g. using hash)
     for tp in types:
         if isinstance(tp, ProperType) and isinstance(tp, UnionType):
             flat_items.extend(flatten_nested_unions(tp.items,
                               handle_type_alias_type=handle_type_alias_type))
-        elif isinstance(tp, ProperType) and isinstance(tp, AnyType):
-            # Only append single Any per union.
-            # TODO: avoid other duplicates (e.g. using hash)
-            if not has_any:
-                flat_items.append(tp)
-            has_any = True
         else:
             flat_items.append(tp)
     return flat_items

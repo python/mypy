@@ -213,6 +213,7 @@ def select_trivial(options: Sequence[Optional[List[Constraint]]]) -> List[List[C
 
 
 def is_union_with_any(tp: Type) -> bool:
+    """Is this a union with Any or a plain Any type?"""
     tp = get_proper_type(tp)
     if isinstance(tp, AnyType):
         return True
