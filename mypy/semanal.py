@@ -2411,10 +2411,30 @@ class SemanticAnalyzer(NodeVisitor[None],
                             (isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs)):
                         node.final_unset_in_class = True
         else:
-            # Special case: deferred initialization of a final attribute in __init__.
-            # In this case we just pretend this is a valid final definition to suppress
-            # errors about assigning to final attribute.
             for lval in self.flatten_lvalues(s.lvalues):
+                # Special case: we are working with an `Enum`:
+                #
+                #   class MyEnum(Enum):
+                #       key = 'some value'
+                #
+                # Here `key` is implicitly final. In runtime, code like
+                #
+                #     MyEnum.key = 'modified'
+                #
+                # will fail with `AttributeError: Cannot reassign members.`
+                # That's why we need to replicate this.
+                if (isinstance(lval, NameExpr) and
+                        isinstance(self.type, TypeInfo) and
+                        self.type.is_enum):
+                    cur_node = self.type.names.get(lval.name, None)
+                    if (cur_node and isinstance(cur_node.node, Var) and
+                            not (isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs)):
+                        cur_node.node.is_final = True
+                        s.is_final_def = True
+
+                # Special case: deferred initialization of a final attribute in __init__.
+                # In this case we just pretend this is a valid final definition to suppress
+                # errors about assigning to final attribute.
                 if isinstance(lval, MemberExpr) and self.is_self_member_ref(lval):
                     assert self.type, "Self member outside a class"
                     cur_node = self.type.names.get(lval.name, None)

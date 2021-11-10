@@ -56,7 +56,7 @@ class Truth(Enum):
 x = ''
 x = Truth.true.name
 reveal_type(Truth.true.name)    # N: Revealed type is "Literal['true']?"
-reveal_type(Truth.false.value)  # N: Revealed type is "builtins.bool"
+reveal_type(Truth.false.value)  # N: Revealed type is "Literal[False]?"
 [builtins fixtures/bool.pyi]
 
 [case testEnumValueExtended]
@@ -66,7 +66,7 @@ class Truth(Enum):
     false = False
 
 def infer_truth(truth: Truth) -> None:
-    reveal_type(truth.value) # N: Revealed type is "builtins.bool"
+    reveal_type(truth.value) # N: Revealed type is "Union[Literal[True]?, Literal[False]?]"
 [builtins fixtures/bool.pyi]
 
 [case testEnumValueAllAuto]
@@ -90,7 +90,7 @@ def infer_truth(truth: Truth) -> None:
 [builtins fixtures/primitives.pyi]
 
 [case testEnumValueExtraMethods]
-from enum import Enum, auto
+from enum import Enum
 class Truth(Enum):
     true = True
     false = False
@@ -99,7 +99,7 @@ class Truth(Enum):
         return 'bar'
 
 def infer_truth(truth: Truth) -> None:
-    reveal_type(truth.value) # N: Revealed type is "builtins.bool"
+    reveal_type(truth.value) # N: Revealed type is "Union[Literal[True]?, Literal[False]?]"
 [builtins fixtures/bool.pyi]
 
 [case testEnumValueCustomAuto]
@@ -127,6 +127,20 @@ class Truth(Enum):
 
 def cannot_infer_truth(truth: Truth) -> None:
     reveal_type(truth.value) # N: Revealed type is "Any"
+[builtins fixtures/bool.pyi]
+
+[case testEnumValueSameType]
+from enum import Enum
+
+def newbool() -> bool:
+    ...
+
+class Truth(Enum):
+    true = newbool()
+    false = newbool()
+
+def infer_truth(truth: Truth) -> None:
+    reveal_type(truth.value) # N: Revealed type is "builtins.bool"
 [builtins fixtures/bool.pyi]
 
 [case testEnumUnique]
@@ -1362,6 +1376,25 @@ class E(IntEnum):
 reveal_type(E.A.value) # N: Revealed type is "__main__.N"
 
 
+[case testEnumFinalValues]
+from enum import Enum
+class Medal(Enum):
+    gold = 1
+    silver = 2
+
+# Another value:
+Medal.gold = 0  # E: Cannot assign to final attribute "gold"
+# Same value:
+Medal.silver = 2  # E: Cannot assign to final attribute "silver"
+
+
+[case testEnumFinalValuesCannotRedefineValueProp]
+from enum import Enum
+class Types(Enum):
+    key = 0
+    value = 1  # E: Cannot override writable attribute "value" with a final one
+
+
 [case testEnumReusedKeys]
 # https://github.com/python/mypy/issues/11248
 from enum import Enum
@@ -1405,13 +1438,13 @@ class NonEmptyIntFlag(IntFlag):
     x = 1
 
 class ErrorEnumWithValue(NonEmptyEnum):  # E: Cannot inherit from final class "NonEmptyEnum"
-    x = 1
+    x = 1  # E: Cannot override final attribute "x" (previously declared in base class "NonEmptyEnum")
 class ErrorIntEnumWithValue(NonEmptyIntEnum):  # E: Cannot inherit from final class "NonEmptyIntEnum"
-    x = 1
+    x = 1  # E: Cannot override final attribute "x" (previously declared in base class "NonEmptyIntEnum")
 class ErrorFlagWithValue(NonEmptyFlag):  # E: Cannot inherit from final class "NonEmptyFlag"
-    x = 1
+    x = 1  # E: Cannot override final attribute "x" (previously declared in base class "NonEmptyFlag")
 class ErrorIntFlagWithValue(NonEmptyIntFlag):  # E: Cannot inherit from final class "NonEmptyIntFlag"
-    x = 1
+    x = 1  # E: Cannot override final attribute "x" (previously declared in base class "NonEmptyIntFlag")
 
 class ErrorEnumWithoutValue(NonEmptyEnum):  # E: Cannot inherit from final class "NonEmptyEnum"
     pass
