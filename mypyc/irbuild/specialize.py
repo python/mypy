@@ -16,7 +16,7 @@ from typing import Callable, Optional, Dict, Tuple, List
 
 from mypy.nodes import (
     CallExpr, RefExpr, MemberExpr, NameExpr, TupleExpr, GeneratorExpr,
-    ListExpr, DictExpr, StrExpr, IntExpr, RG_POS, ARG_NAMED, Expression
+    ListExpr, DictExpr, StrExpr, IntExpr, ARG_POS, ARG_NAMED, Expression
 )
 from mypy.types import AnyType, TypeOfAny
 
@@ -276,9 +276,6 @@ def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> O
             and isinstance(expr.args[0], GeneratorExpr)):
         return None
 
-    gen_expr = expr.args[0]
-    target_type = builder.node_type(expr)
-
     # handle 'start' argument, if given
     if len(expr.args) == 2:
         # ensure call to sum() was properly constructed
@@ -288,15 +285,16 @@ def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> O
     else:
         start_expr = IntExpr(0)
 
+    gen_expr = expr.args[0]
+    target_type = builder.node_type(expr)
     retval = Register(target_type)
     builder.assign(retval, builder.coerce(builder.accept(start_expr), target_type, -1), -1)
-
-    loop_params = list(zip(gen_expr.indices, gen_expr.sequences, gen_expr.condlists))
 
     def gen_inner_stmts() -> None:
         call_expr = builder.accept(gen_expr.left_expr)
         builder.assign(retval, builder.binary_op(retval, call_expr, '+', -1), -1)
 
+    loop_params = list(zip(gen_expr.indices, gen_expr.sequences, gen_expr.condlists))
     comprehension_helper(builder, loop_params, gen_inner_stmts, gen_expr.line)
 
     return retval
@@ -331,12 +329,8 @@ def translate_next_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> 
         return None
 
     gen = expr.args[0]
-
     retval = Register(builder.node_type(expr))
-    default_val = None
-    if len(expr.args) > 1:
-        default_val = builder.accept(expr.args[1])
-
+    default_val = builder.accept(expr.args[1]) if len(expr.args) > 1 else None
     exit_block = BasicBlock()
 
     def gen_inner_stmts() -> None:
