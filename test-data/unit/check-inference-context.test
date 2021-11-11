@@ -1381,5 +1381,41 @@ from typing import Union, List, Any
 
 def f(x: Union[List[str], Any]) -> None:
     a = x if x else []
-    reveal_type(a)  # N: Revealed type is "Union[builtins.list[builtins.str], Any]"
+    reveal_type(a)  # N: Revealed type is "Union[builtins.list[Union[builtins.str, Any]], builtins.list[builtins.str], Any]"
 [builtins fixtures/list.pyi]
+
+[case testConditionalExpressionWithEmptyIteableAndUnionWithAny]
+from typing import Union, Iterable, Any
+
+def f(x: Union[Iterable[str], Any]) -> None:
+    a = x if x else []
+    reveal_type(a)  # N: Revealed type is "Union[builtins.list[Union[builtins.str, Any]], typing.Iterable[builtins.str], Any]"
+[builtins fixtures/list.pyi]
+
+[case testInferMultipleAnyUnionCovariant]
+from typing import Any, Mapping, Sequence, Union
+
+def foo(x: Union[Mapping[Any, Any], Mapping[Any, Sequence[Any]]]) -> None:
+    ...
+foo({1: 2})
+[builtins fixtures/dict.pyi]
+
+[case testInferMultipleAnyUnionInvariant]
+from typing import Any, Dict, Sequence, Union
+
+def foo(x: Union[Dict[Any, Any], Dict[Any, Sequence[Any]]]) -> None:
+    ...
+foo({1: 2})
+[builtins fixtures/dict.pyi]
+
+[case testInferMultipleAnyUnionDifferentVariance]
+from typing import Any, Dict, Mapping, Sequence, Union
+
+def foo(x: Union[Dict[Any, Any], Mapping[Any, Sequence[Any]]]) -> None:
+    ...
+foo({1: 2})
+
+def bar(x: Union[Mapping[Any, Any], Dict[Any, Sequence[Any]]]) -> None:
+    ...
+bar({1: 2})
+[builtins fixtures/dict.pyi]

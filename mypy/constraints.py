@@ -7,7 +7,7 @@ from mypy.types import (
     CallableType, Type, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarType, Instance,
     TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeVarId, TypeQuery, is_named_instance, TypeOfAny, LiteralType,
-    ProperType, get_proper_type, TypeAliasType
+    ProperType, get_proper_type, TypeAliasType, is_union_with_any
 )
 from mypy.maptype import map_instance_to_supertype
 import mypy.subtypes
@@ -201,6 +201,33 @@ def infer_constraints_if_possible(template: Type, actual: Type,
     return infer_constraints(template, actual, direction)
 
 
+def select_trivial(options: Sequence[Optional[List[Constraint]]]) -> List[List[Constraint]]:
+    """Select only those lists where each item is a constraint against Any."""
+    res = []
+    for option in options:
+        if option is None:
+            continue
+        if all(isinstance(get_proper_type(c.target), AnyType) for c in option):
+            res.append(option)
+    return res
+
+
+def merge_with_any(constraint: Constraint, any_type: Type) -> Constraint:
+    """Transform a constraint target into a union with given Any type."""
+    any_type = get_proper_type(any_type)
+    assert isinstance(any_type, AnyType)
+    target = constraint.target
+    if is_union_with_any(target):
+        # Do not produce redundant unions.
+        return constraint
+    items = [target, AnyType(TypeOfAny.from_another_any, source_any=any_type)]
+    return Constraint(
+        constraint.type_var,
+        constraint.op,
+        UnionType.make_union(items, target.line, target.column),
+    )
+
+
 def any_constraints(options: List[Optional[List[Constraint]]], eager: bool) -> List[Constraint]:
     """Deduce what we can from a collection of constraint lists.
 
@@ -213,26 +240,39 @@ def any_constraints(options: List[Optional[List[Constraint]]], eager: bool) -> L
         valid_options = [option for option in options if option]
     else:
         valid_options = [option for option in options if option is not None]
+
+    if not valid_options:
+        return []
+
     if len(valid_options) == 1:
         return valid_options[0]
-    elif (len(valid_options) > 1 and
-          all(is_same_constraints(valid_options[0], c)
-              for c in valid_options[1:])):
-        # Multiple sets of constraints that are all the same. Just pick any one of them.
-        # TODO: More generally, if a given (variable, direction) pair appears in
-        #       every option, combine the bounds with meet/join.
-        return valid_options[0]
-    elif len(valid_options) > 1:
-        # Drop constraints that only refer to "Any" and try again. This way Any types
-        # in unions don't interfere with type inference.
-        narrowed_options = [option
-                            for option in valid_options
-                            if not (option and
-                                    all(isinstance(get_proper_type(c.target), AnyType)
-                                        for c in option))]
-        if len(narrowed_options) < len(valid_options):
-            return any_constraints([option for option in narrowed_options], eager)
 
+    if all(is_same_constraints(valid_options[0], c) for c in valid_options[1:]):
+        # Multiple sets of constraints that are all the same. Just pick any one of them.
+        return valid_options[0]
+
+    if all(is_similar_constraints(valid_options[0], c) for c in valid_options[1:]):
+        # All options have same structure. In this case we can merge-in trivial
+        # options (i.e. those that only have Any) and try again.
+        # TODO: More generally, if a given (variable, direction) pair appears in
+        # every option, combine the bounds with meet/join always, not just for Any.
+        trivial_options = select_trivial(valid_options)
+        if trivial_options and len(trivial_options) < len(valid_options):
+            # Randomly choose first trivial option for source of Any.
+            # TODO: is it possible to get more precise attribution of source Any?
+            any_by_type_var = {c.type_var: c.target for c in trivial_options[0]}
+            merged_options = []
+            for option in valid_options:
+                if option in trivial_options:
+                    continue
+                if option is not None:
+                    merged_option: Optional[List[Constraint]] = [
+                        merge_with_any(c, any_by_type_var[c.type_var]) for c in option
+                    ]
+                else:
+                    merged_option = None
+                merged_options.append(merged_option)
+            return any_constraints([option for option in merged_options], eager)
     # Otherwise, there are either no valid options or multiple, inconsistent valid
     # options. Give up and deduce nothing.
     return []
@@ -249,9 +289,45 @@ def is_same_constraints(x: List[Constraint], y: List[Constraint]) -> bool:
 
 
 def is_same_constraint(c1: Constraint, c2: Constraint) -> bool:
+    # Ignore direction when comparing constraints against Any.
+    skip_op_check = (
+        isinstance(get_proper_type(c1.target), AnyType) and
+        isinstance(get_proper_type(c2.target), AnyType)
+    )
     return (c1.type_var == c2.type_var
-            and c1.op == c2.op
+            and (c1.op == c2.op or skip_op_check)
             and mypy.sametypes.is_same_type(c1.target, c2.target))
+
+
+def is_similar_constraints(x: List[Constraint], y: List[Constraint]) -> bool:
+    """Check that two lists of constraints have similar structure.
+
+    This means that each list has same type variable plus direction pairs (i.e we
+    ignore the target). Except for constraints where target is Any type, there
+    we ignore direction as well.
+    """
+    return _is_similar_constraints(x, y) and _is_similar_constraints(y, x)
+
+
+def _is_similar_constraints(x: List[Constraint], y: List[Constraint]) -> bool:
+    """Check that every constraint in the first list has a similar one in the second.
+
+    See docstring above for definition of similarity.
+    """
+    for c1 in x:
+        has_similar = False
+        for c2 in y:
+            # Ignore direction when either constraint is against Any.
+            skip_op_check = (
+                isinstance(get_proper_type(c1.target), AnyType) or
+                isinstance(get_proper_type(c2.target), AnyType)
+            )
+            if c1.type_var == c2.type_var and (c1.op == c2.op or skip_op_check):
+                has_similar = True
+                break
+        if not has_similar:
+            return False
+    return True
 
 
 def simplify_away_incomplete_types(types: Iterable[Type]) -> List[Type]:
@@ -419,7 +495,6 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 instance.type.inferring.pop()
                 return res
         if isinstance(actual, AnyType):
-            # IDEA: Include both ways, i.e. add negation as well?
             return self.infer_against_any(template.args, actual)
         if (isinstance(actual, TupleType) and
             (is_named_instance(template, 'typing.Iterable') or
@@ -557,6 +632,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     def infer_against_any(self, types: Iterable[Type], any_type: AnyType) -> List[Constraint]:
         res: List[Constraint] = []
         for t in types:
+            # Note that we ignore variance and simply always use the
+            # original direction. This is because for Any targets direction is
+            # irrelevant in most cases, see e.g. is_same_constraint().
             res.extend(infer_constraints(t, any_type, self.direction))
         return res
 
