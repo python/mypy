@@ -618,7 +618,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                                              self.direction))
             return res
         elif isinstance(actual, AnyType):
-            return self.infer_against_any(list(template.items.values()), actual)
+            return self.infer_against_any(template.items.values(), actual)
         else:
             return []
 
@@ -629,7 +629,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     def visit_type_alias_type(self, template: TypeAliasType) -> List[Constraint]:
         assert False, "This should be never called, got {}".format(template)
 
-    def infer_against_any(self, types: Sequence[Type], any_type: AnyType) -> List[Constraint]:
+    def infer_against_any(self, types: Iterable[Type], any_type: AnyType) -> List[Constraint]:
         res: List[Constraint] = []
         for t in types:
             # Note that we ignore variance and simply always use the
