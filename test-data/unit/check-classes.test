@@ -2794,6 +2794,15 @@ b.at = '3'  # E: Incompatible types in assignment (expression has type "str", va
 if int():
     integer = b.at  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
+[case testSetattrKeywordArg]
+from typing import Any
+
+class C:
+    def __setattr__(self, key: str, value: Any, p: bool = False) -> None: ...
+
+c: C
+c.__setattr__("x", 42, p=True)
+
 -- CallableType objects
 -- ----------------
 
