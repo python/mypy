@@ -3170,3 +3170,43 @@ reveal_type(f(lambda: 1))  # N: Revealed type is "builtins.int*"
 def g() -> None: pass
 
 reveal_type(f(g))  # N: Revealed type is "None"
+
+[case testInferredTypeIsSimpleNestedList]
+from typing import Any, Union, List
+
+y: Union[List[Any], Any]
+x: Union[List[Any], Any]
+x = [y]
+reveal_type(x)  # N: Revealed type is "builtins.list[Any]"
+[builtins fixtures/list.pyi]
+
+[case testInferredTypeIsSimpleNestedIterable]
+from typing import Any, Union, Iterable
+
+y: Union[Iterable[Any], Any]
+x: Union[Iterable[Any], Any]
+x = [y]
+reveal_type(x)  # N: Revealed type is "builtins.list[Any]"
+[builtins fixtures/list.pyi]
+
+[case testInferredTypeIsSimpleNestedListLoop]
+from typing import Any, Union, List
+
+def test(seq: List[Union[List, Any]]) -> None:
+    k: Union[List, Any]
+    for k in seq:
+        if bool():
+            k = [k]
+            reveal_type(k)  # N: Revealed type is "builtins.list[Any]"
+[builtins fixtures/list.pyi]
+
+[case testInferredTypeIsSimpleNestedIterableLoop]
+from typing import Any, Union, List, Iterable
+
+def test(seq: List[Union[Iterable, Any]]) -> None:
+    k: Union[Iterable, Any]
+    for k in seq:
+        if bool():
+            k = [k]
+            reveal_type(k)  # N: Revealed type is "builtins.list[Any]"
+[builtins fixtures/list.pyi]

@@ -2283,6 +2283,7 @@ def flatten_nested_unions(types: Iterable[Type],
     flat_items: List[Type] = []
     if handle_type_alias_type:
         types = get_proper_types(types)
+    # TODO: avoid duplicate types in unions (e.g. using hash)
     for tp in types:
         if isinstance(tp, ProperType) and isinstance(tp, UnionType):
             flat_items.extend(flatten_nested_unions(tp.items,
@@ -2305,6 +2306,16 @@ def union_items(typ: Type) -> List[ProperType]:
         return items
     else:
         return [typ]
+
+
+def is_union_with_any(tp: Type) -> bool:
+    """Is this a union with Any or a plain Any type?"""
+    tp = get_proper_type(tp)
+    if isinstance(tp, AnyType):
+        return True
+    if not isinstance(tp, UnionType):
+        return False
+    return any(is_union_with_any(t) for t in get_proper_types(tp.items))
 
 
 def is_generic_instance(tp: Type) -> bool:
