@@ -206,19 +206,18 @@ def select_trivial(options: Sequence[Optional[List[Constraint]]]) -> List[List[C
     return res
 
 
-def merge_with_any(constraint: Constraint, any_type: Type) -> Constraint:
+def merge_with_any(constraint: Constraint) -> Constraint:
     """Transform a constraint target into a union with given Any type."""
-    any_type = get_proper_type(any_type)
-    assert isinstance(any_type, AnyType)
     target = constraint.target
     if is_union_with_any(target):
         # Do not produce redundant unions.
         return constraint
-    items = [target, AnyType(TypeOfAny.from_another_any, source_any=any_type)]
+    # TODO: if we will support multiple sources Any, use this here instead.
+    any_type = AnyType(TypeOfAny.implementation_artifact)
     return Constraint(
         constraint.type_var,
         constraint.op,
-        UnionType.make_union(items, target.line, target.column),
+        UnionType.make_union([target, any_type], target.line, target.column),
     )
 
 
@@ -252,16 +251,13 @@ def any_constraints(options: List[Optional[List[Constraint]]], eager: bool) -> L
         # every option, combine the bounds with meet/join always, not just for Any.
         trivial_options = select_trivial(valid_options)
         if trivial_options and len(trivial_options) < len(valid_options):
-            # Randomly choose first trivial option for source of Any.
-            # TODO: is it possible to get more precise attribution of source Any?
-            any_by_type_var = {c.type_var: c.target for c in trivial_options[0]}
             merged_options = []
             for option in valid_options:
                 if option in trivial_options:
                     continue
                 if option is not None:
                     merged_option: Optional[List[Constraint]] = [
-                        merge_with_any(c, any_by_type_var[c.type_var]) for c in option
+                        merge_with_any(c) for c in option
                     ]
                 else:
                     merged_option = None
