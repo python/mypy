@@ -280,7 +280,7 @@ def any_constraints(options: List[Optional[List[Constraint]]], eager: bool) -> L
             # For now we chose some arbitrary Any in a stable way.
             any_by_type_var = {
                 tv: sorted(anys, key=get_any_kind)[0]
-                for tv, anys in collect_target_anys(trivial_options)
+                for tv, anys in collect_target_anys(trivial_options).items()
             }
             merged_options = []
             for option in valid_options:
