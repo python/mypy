@@ -2024,8 +2024,8 @@ class B:
 class C:
     def __radd__(self, other, oops) -> int: ...
 [out]
-tmp/foo.pyi:3: error: Invalid signature "def (foo.B) -> foo.A"
-tmp/foo.pyi:5: error: Invalid signature "def (foo.C, Any, Any) -> builtins.int"
+tmp/foo.pyi:3: error: Invalid signature "Callable[[B], A]"
+tmp/foo.pyi:5: error: Invalid signature "Callable[[C, Any, Any], int]"
 
 [case testReverseOperatorOrderingCase1]
 class A:
@@ -2627,8 +2627,8 @@ class C:
 class D:
     def __getattribute__(self, x: str) -> None: pass
 [out]
-main:4: error: Invalid signature "def (__main__.B, __main__.A) -> __main__.B" for "__getattribute__"
-main:6: error: Invalid signature "def (__main__.C, builtins.str, builtins.str) -> __main__.C" for "__getattribute__"
+main:4: error: Invalid signature "Callable[[B, A], B]" for "__getattribute__"
+main:6: error: Invalid signature "Callable[[C, str, str], C]" for "__getattribute__"
 
 [case testGetattr]
 
@@ -2704,8 +2704,8 @@ class C:
 class D:
     def __getattr__(self, x: str) -> None: pass
 [out]
-main:4: error: Invalid signature "def (__main__.B, __main__.A) -> __main__.B" for "__getattr__"
-main:6: error: Invalid signature "def (__main__.C, builtins.str, builtins.str) -> __main__.C" for "__getattr__"
+main:4: error: Invalid signature "Callable[[B, A], B]" for "__getattr__"
+main:6: error: Invalid signature "Callable[[C, str, str], C]" for "__getattr__"
 
 [case testSetattr]
 from typing import Union, Any
@@ -2729,7 +2729,7 @@ c = C()
 c.fail = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 class D:
-    __setattr__ = 'hello'  # E: Invalid signature "builtins.str" for "__setattr__"
+    __setattr__ = 'hello'  # E: Invalid signature "str" for "__setattr__"
 
 d = D()
 d.crash = 4  # E: "D" has no attribute "crash"
@@ -2754,12 +2754,12 @@ s.fail = 'fail'  # E: Incompatible types in assignment (expression has type "str
 from typing import Any
 
 class Test:
-    def __setattr__() -> None: ...  # E: Method must have at least one argument # E: Invalid signature "def ()" for "__setattr__"
+    def __setattr__() -> None: ...  # E: Method must have at least one argument # E: Invalid signature "Callable[[], None]" for "__setattr__"
 t = Test()
 t.crash = 'test'  # E: "Test" has no attribute "crash"
 
 class A:
-    def __setattr__(self): ...  # E: Invalid signature "def (__main__.A) -> Any" for "__setattr__"
+    def __setattr__(self): ...  # E: Invalid signature "Callable[[A], Any]" for "__setattr__"
 a = A()
 a.test = 4  # E: "A" has no attribute "test"
 
@@ -2769,7 +2769,7 @@ b = B()
 b.integer = 5
 
 class C:
-    def __setattr__(self, name: int, value: int) -> None: ...  # E: Invalid signature "def (__main__.C, builtins.int, builtins.int)" for "__setattr__"
+    def __setattr__(self, name: int, value: int) -> None: ...  # E: Invalid signature "Callable[[C, int, int], None]" for "__setattr__"
 c = C()
 c.check = 13
 
@@ -5500,8 +5500,8 @@ A = G
 x: A[B[int]] # E
 B = G
 [out]
-main:8:4: error: Type argument "__main__.G[builtins.int]" of "G" must be a subtype of "builtins.str"
-main:8:6: error: Type argument "builtins.int" of "G" must be a subtype of "builtins.str"
+main:8:4: error: Type argument "G[int]" of "G" must be a subtype of "str"
+main:8:6: error: Type argument "int" of "G" must be a subtype of "str"
 
 [case testExtremeForwardReferencing]
 from typing import TypeVar, Generic

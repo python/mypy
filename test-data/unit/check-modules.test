@@ -2000,7 +2000,7 @@ reveal_type(has_getattr.any_attribute)
 def __getattr__(x: int, y: str) -> str: ...
 
 [out]
-tmp/has_getattr.pyi:1: error: Invalid signature "def (builtins.int, builtins.str) -> builtins.str" for "__getattr__"
+tmp/has_getattr.pyi:1: error: Invalid signature "Callable[[int, str], str]" for "__getattr__"
 main:3: note: Revealed type is "builtins.str"
 
 [builtins fixtures/module.pyi]
@@ -2014,7 +2014,7 @@ reveal_type(has_getattr.any_attribute)
 __getattr__ = 3
 
 [out]
-tmp/has_getattr.pyi:1: error: Invalid signature "builtins.int" for "__getattr__"
+tmp/has_getattr.pyi:1: error: Invalid signature "int" for "__getattr__"
 main:3: note: Revealed type is "Any"
 
 [builtins fixtures/module.pyi]
@@ -2141,7 +2141,7 @@ def make_getattr_bad() -> Callable[[], int]: ...
 __getattr__ = make_getattr_bad()
 
 [out]
-tmp/non_stub.py:4: error: Invalid signature "def () -> builtins.int" for "__getattr__"
+tmp/non_stub.py:4: error: Invalid signature "Callable[[], int]" for "__getattr__"
 main:3: note: Revealed type is "builtins.int"
 
 [case testModuleLevelGetattrImportedGood]
@@ -2167,7 +2167,7 @@ from has_getattr import __getattr__
 def __getattr__() -> int: ...
 
 [out]
-tmp/has_getattr.py:1: error: Invalid signature "def () -> builtins.int" for "__getattr__"
+tmp/has_getattr.py:1: error: Invalid signature "Callable[[], int]" for "__getattr__"
 main:3: note: Revealed type is "builtins.int"
 
 [builtins fixtures/module.pyi]

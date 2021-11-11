@@ -576,7 +576,7 @@ T = TypeVar('T', bound='M')
 class G(Generic[T]):
     x: T
 
-yb: G[int] # E: Type argument "builtins.int" of "G" must be a subtype of "Tuple[builtins.int, fallback=__main__.M]"
+yb: G[int] # E: Type argument "int" of "G" must be a subtype of "M"
 yg: G[M]
 reveal_type(G[M]().x.x)  # N: Revealed type is "builtins.int"
 reveal_type(G[M]().x[0])  # N: Revealed type is "builtins.int"

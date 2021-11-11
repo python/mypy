@@ -131,7 +131,7 @@ TYPE_ALWAYS_TRUE_UNIONTYPE: Final = ErrorMessage(
     code=codes.TRUTHY_BOOL,
 )
 FUNCTION_ALWAYS_TRUE: Final = ErrorMessage(
-    'Function "{}" could always be true in boolean context',
+    'Function {} could always be true in boolean context',
     code=codes.TRUTHY_BOOL,
 )
 NOT_CALLABLE: Final = '{} not callable'
@@ -149,6 +149,9 @@ IMPLICIT_GENERIC_ANY_BUILTIN: Final = (
 # TypeVar
 INCOMPATIBLE_TYPEVAR_VALUE: Final = 'Value of type variable "{}" of {} cannot be {}'
 CANNOT_USE_TYPEVAR_AS_EXPRESSION: Final = 'Type variable "{}.{}" cannot be used as an expression'
+INVALID_TYPEVAR_AS_TYPEARG: Final = 'Type variable "{}" not valid as type argument value for "{}"'
+INVALID_TYPEVAR_ARG_BOUND: Final = 'Type argument {} of "{}" must be a subtype of {}'
+INVALID_TYPEVAR_ARG_VALUE: Final = 'Invalid type argument value for "{}"'
 
 # Super
 TOO_MANY_ARGS_FOR_SUPER: Final = 'Too many arguments for "super"'

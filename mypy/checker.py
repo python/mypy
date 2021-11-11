@@ -4229,31 +4229,27 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return
 
         def format_expr_type() -> str:
+            typ = format_type(t)
             if isinstance(expr, MemberExpr):
-                return f'Member "{expr.name}" has type "{t}"'
+                return f'Member "{expr.name}" has type {typ}'
             elif isinstance(expr, RefExpr) and expr.fullname:
-                return f'"{expr.fullname}" has type "{t}"'
+                return f'"{expr.fullname}" has type {typ}'
             elif isinstance(expr, CallExpr):
                 if isinstance(expr.callee, MemberExpr):
-                    return f'"{expr.callee.name}" returns "{t}"'
+                    return f'"{expr.callee.name}" returns {typ}'
                 elif isinstance(expr.callee, RefExpr) and expr.callee.fullname:
-                    return f'"{expr.callee.fullname}" returns "{t}"'
-                return f'Call returns "{t}"'
+                    return f'"{expr.callee.fullname}" returns {typ}'
+                return f'Call returns {typ}'
             else:
-                return f'Expression has type "{t}"'
+                return f'Expression has type {typ}'
 
         if isinstance(t, FunctionLike):
-            self.fail(message_registry.FUNCTION_ALWAYS_TRUE.format(t), expr)
+            self.fail(message_registry.FUNCTION_ALWAYS_TRUE.format(format_type(t)), expr)
         elif isinstance(t, UnionType):
-            self.fail(
-                message_registry.TYPE_ALWAYS_TRUE_UNIONTYPE.format(format_expr_type()),
-                expr,
-            )
+            self.fail(message_registry.TYPE_ALWAYS_TRUE_UNIONTYPE.format(format_expr_type()),
+                      expr)
         else:
-            self.fail(
-                message_registry.TYPE_ALWAYS_TRUE.format(format_expr_type()),
-                expr,
-            )
+            self.fail(message_registry.TYPE_ALWAYS_TRUE.format(format_expr_type()), expr)
 
     def find_type_equals_check(self, node: ComparisonExpr, expr_indices: List[int]
                                ) -> Tuple[TypeMap, TypeMap]:
