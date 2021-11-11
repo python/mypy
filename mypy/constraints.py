@@ -1,7 +1,5 @@
 """Type inference constraints."""
 
-from collections import defaultdict
-
 from typing import TYPE_CHECKING, Iterable, List, Optional, Sequence
 from typing_extensions import Final
 
