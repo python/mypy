@@ -4922,7 +4922,7 @@ class D(Generic[T]):
     pass
 [out]
 ==
-a.py:3: error: Type argument "c.A" of "D" must be a subtype of "c.B"
+a.py:3: error: Type argument "A" of "D" must be a subtype of "B"
 
 [case testTypeVarValuesRuntime]
 from mod import I, S, D

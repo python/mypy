@@ -1350,3 +1350,74 @@ class Foo:
 
 reveal_type(Foo(bar=1.5))  # N: Revealed type is "__main__.Foo"
 [builtins fixtures/dataclasses.pyi]
+
+
+[case testDataclassWithSlotsArg]
+# flags: --python-version 3.10
+from dataclasses import dataclass
+
+@dataclass(slots=True)
+class Some:
+    x: int
+
+    def __init__(self, x: int) -> None:
+        self.x = x
+        self.y = 0  # E: Trying to assign name "y" that is not in "__slots__" of type "__main__.Some"
+
+    def __post_init__(self) -> None:
+        self.y = 1  # E: Trying to assign name "y" that is not in "__slots__" of type "__main__.Some"
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassWithSlotsDef]
+# flags: --python-version 3.10
+from dataclasses import dataclass
+
+@dataclass(slots=False)
+class Some:
+    __slots__ = ('x',)
+    x: int
+
+    def __init__(self, x: int) -> None:
+        self.x = x
+        self.y = 0  # E: Trying to assign name "y" that is not in "__slots__" of type "__main__.Some"
+
+    def __post_init__(self) -> None:
+        self.y = 1  # E: Trying to assign name "y" that is not in "__slots__" of type "__main__.Some"
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassWithSlotsConflict]
+# flags: --python-version 3.10
+from dataclasses import dataclass
+
+@dataclass(slots=True)
+class Some:  # E: "Some" both defines "__slots__" and is used with "slots=True"
+    __slots__ = ('x',)
+    x: int
+
+@dataclass(slots=True)
+class EmptyDef:  # E: "EmptyDef" both defines "__slots__" and is used with "slots=True"
+    __slots__ = ()
+    x: int
+
+slots = ('x',)
+
+@dataclass(slots=True)
+class DynamicDef:  # E: "DynamicDef" both defines "__slots__" and is used with "slots=True"
+    __slots__ = slots
+    x: int
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassWithSlotsArgBefore310]
+# flags: --python-version 3.9
+from dataclasses import dataclass
+
+@dataclass(slots=True)  # E: Keyword argument "slots" for "dataclass" is only valid in Python 3.10 and higher
+class Some:
+    x: int
+
+# Possible conflict:
+@dataclass(slots=True)  # E: Keyword argument "slots" for "dataclass" is only valid in Python 3.10 and higher
+class Other:
+    __slots__ = ('x',)
+    x: int
+[builtins fixtures/dataclasses.pyi]

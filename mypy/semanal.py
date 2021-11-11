@@ -1808,6 +1808,12 @@ class SemanticAnalyzer(NodeVisitor[None],
             missing_submodule = False
             imported_id = as_id or id
 
+            # Modules imported in a stub file without using 'from Y import X as X' will
+            # not get exported.
+            # When implicit re-exporting is disabled, we have the same behavior as stubs.
+            use_implicit_reexport = not self.is_stub_file and self.options.implicit_reexport
+            module_public = use_implicit_reexport or (as_id is not None and id == as_id)
+
             # If the module does not contain a symbol with the name 'id',
             # try checking if it's a module instead.
             if not node:
@@ -1825,14 +1831,11 @@ class SemanticAnalyzer(NodeVisitor[None],
                 fullname = module_id + '.' + id
                 gvar = self.create_getattr_var(module.names['__getattr__'], imported_id, fullname)
                 if gvar:
-                    self.add_symbol(imported_id, gvar, imp)
+                    self.add_symbol(
+                        imported_id, gvar, imp, module_public=module_public,
+                        module_hidden=not module_public
+                    )
                     continue
-
-            # Modules imported in a stub file without using 'from Y import X as X' will
-            # not get exported.
-            # When implicit re-exporting is disabled, we have the same behavior as stubs.
-            use_implicit_reexport = not self.is_stub_file and self.options.implicit_reexport
-            module_public = use_implicit_reexport or (as_id is not None and id == as_id)
 
             if node and not node.module_hidden:
                 self.process_imported_symbol(
@@ -2408,10 +2411,30 @@ class SemanticAnalyzer(NodeVisitor[None],
                             (isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs)):
                         node.final_unset_in_class = True
         else:
-            # Special case: deferred initialization of a final attribute in __init__.
-            # In this case we just pretend this is a valid final definition to suppress
-            # errors about assigning to final attribute.
             for lval in self.flatten_lvalues(s.lvalues):
+                # Special case: we are working with an `Enum`:
+                #
+                #   class MyEnum(Enum):
+                #       key = 'some value'
+                #
+                # Here `key` is implicitly final. In runtime, code like
+                #
+                #     MyEnum.key = 'modified'
+                #
+                # will fail with `AttributeError: Cannot reassign members.`
+                # That's why we need to replicate this.
+                if (isinstance(lval, NameExpr) and
+                        isinstance(self.type, TypeInfo) and
+                        self.type.is_enum):
+                    cur_node = self.type.names.get(lval.name, None)
+                    if (cur_node and isinstance(cur_node.node, Var) and
+                            not (isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs)):
+                        cur_node.node.is_final = True
+                        s.is_final_def = True
+
+                # Special case: deferred initialization of a final attribute in __init__.
+                # In this case we just pretend this is a valid final definition to suppress
+                # errors about assigning to final attribute.
                 if isinstance(lval, MemberExpr) and self.is_self_member_ref(lval):
                     assert self.type, "Self member outside a class"
                     cur_node = self.type.names.get(lval.name, None)
@@ -3111,7 +3134,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         contravariant = False
         upper_bound: Type = self.object_type()
         for param_value, param_name, param_kind in zip(args, names, kinds):
-            if not param_kind == ARG_NAMED:
+            if not param_kind.is_named():
                 self.fail("Unexpected argument to TypeVar()", context)
                 return None
             if param_name == 'covariant':

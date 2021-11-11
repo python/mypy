@@ -27,7 +27,7 @@ cd mypy
 
 # Create then activate a virtual environment
 python3 -m venv venv
-source venv/bin/actiate
+source venv/bin/activate
 
 # Install the test requirements and the project
 python3 -m pip install -r test-requirements.txt

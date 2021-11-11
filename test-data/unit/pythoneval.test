@@ -1390,6 +1390,32 @@ x = X(a=1, b='s')
 [out]
 _testNamedTupleNew.py:12: note: Revealed type is "Tuple[builtins.int, fallback=_testNamedTupleNew.Child]"
 
+[case testNamedTupleTypeInheritanceSpecialCase]
+from typing import NamedTuple, Tuple
+from collections import namedtuple
+
+A = NamedTuple('A', [('param', int)])
+B = namedtuple('B', ['param'])
+
+def accepts_named_tuple(arg: NamedTuple):
+    reveal_type(arg._asdict())
+    reveal_type(arg._fields)
+    reveal_type(arg._field_defaults)
+
+a = A(1)
+b = B(1)
+
+accepts_named_tuple(a)
+accepts_named_tuple(b)
+accepts_named_tuple(1)
+accepts_named_tuple((1, 2))
+[out]
+_testNamedTupleTypeInheritanceSpecialCase.py:8: note: Revealed type is "collections.OrderedDict[builtins.str, Any]"
+_testNamedTupleTypeInheritanceSpecialCase.py:9: note: Revealed type is "builtins.tuple[builtins.str]"
+_testNamedTupleTypeInheritanceSpecialCase.py:10: note: Revealed type is "builtins.dict[builtins.str, Any]"
+_testNamedTupleTypeInheritanceSpecialCase.py:17: error: Argument 1 to "accepts_named_tuple" has incompatible type "int"; expected "NamedTuple"
+_testNamedTupleTypeInheritanceSpecialCase.py:18: error: Argument 1 to "accepts_named_tuple" has incompatible type "Tuple[int, int]"; expected "NamedTuple"
+
 [case testNewAnalyzerBasicTypeshed_newsemanal]
 from typing import Dict, List, Tuple
 

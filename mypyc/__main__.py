@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Mypyc command-line tool.
 
 Usage:
@@ -27,6 +26,7 @@ setup(name='mypyc_output',
 )
 """
 
+
 def main() -> None:
     build_dir = 'build'  # can this be overridden??
     try:
@@ -48,6 +48,7 @@ def main() -> None:
     env['PYTHONPATH'] = base_path + os.pathsep + env.get('PYTHONPATH', '')
     cmd = subprocess.run([sys.executable, setup_file, 'build_ext', '--inplace'], env=env)
     sys.exit(cmd.returncode)
+
 
 if __name__ == '__main__':
     main()

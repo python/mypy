@@ -411,10 +411,10 @@ from typing import Optional
 maybe_str: Optional[str]
 
 if (is_str := maybe_str is not None):
-    reveal_type(is_str)  # N: Revealed type is "builtins.bool"
+    reveal_type(is_str)  # N: Revealed type is "Literal[True]"
     reveal_type(maybe_str)  # N: Revealed type is "builtins.str"
 else:
-    reveal_type(is_str)  # N: Revealed type is "builtins.bool"
+    reveal_type(is_str)  # N: Revealed type is "Literal[False]"
     reveal_type(maybe_str)  # N: Revealed type is "None"
 
 reveal_type(maybe_str)  # N: Revealed type is "Union[builtins.str, None]"

@@ -51,7 +51,7 @@ from mypy.typeops import (
     map_type_from_supertype, bind_self, erase_to_bound, make_simplified_union,
     erase_def_to_union_or_bound, erase_to_union_or_bound, coerce_to_literal,
     try_getting_str_literals_from_type, try_getting_int_literals_from_type,
-    tuple_fallback, is_singleton_type, try_expanding_enum_to_union,
+    tuple_fallback, is_singleton_type, try_expanding_sum_type_to_union,
     true_only, false_only, function_type, get_type_vars, custom_special_method,
     is_literal_type_like,
 )
@@ -2558,7 +2558,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 name = lv.node.name
                 cls = self.scope.active_class()
                 if cls is not None:
-                    # Theses additional checks exist to give more error messages
+                    # These additional checks exist to give more error messages
                     # even if the final attribute was overridden with a new symbol
                     # (which is itself an error)...
                     for base in cls.mro[1:]:
@@ -4229,31 +4229,27 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return
 
         def format_expr_type() -> str:
+            typ = format_type(t)
             if isinstance(expr, MemberExpr):
-                return f'Member "{expr.name}" has type "{t}"'
+                return f'Member "{expr.name}" has type {typ}'
             elif isinstance(expr, RefExpr) and expr.fullname:
-                return f'"{expr.fullname}" has type "{t}"'
+                return f'"{expr.fullname}" has type {typ}'
             elif isinstance(expr, CallExpr):
                 if isinstance(expr.callee, MemberExpr):
-                    return f'"{expr.callee.name}" returns "{t}"'
+                    return f'"{expr.callee.name}" returns {typ}'
                 elif isinstance(expr.callee, RefExpr) and expr.callee.fullname:
-                    return f'"{expr.callee.fullname}" returns "{t}"'
-                return f'Call returns "{t}"'
+                    return f'"{expr.callee.fullname}" returns {typ}'
+                return f'Call returns {typ}'
             else:
-                return f'Expression has type "{t}"'
+                return f'Expression has type {typ}'
 
         if isinstance(t, FunctionLike):
-            self.fail(message_registry.FUNCTION_ALWAYS_TRUE.format(t), expr)
+            self.fail(message_registry.FUNCTION_ALWAYS_TRUE.format(format_type(t)), expr)
         elif isinstance(t, UnionType):
-            self.fail(
-                message_registry.TYPE_ALWAYS_TRUE_UNIONTYPE.format(format_expr_type()),
-                expr,
-            )
+            self.fail(message_registry.TYPE_ALWAYS_TRUE_UNIONTYPE.format(format_expr_type()),
+                      expr)
         else:
-            self.fail(
-                message_registry.TYPE_ALWAYS_TRUE.format(format_expr_type()),
-                expr,
-            )
+            self.fail(message_registry.TYPE_ALWAYS_TRUE.format(format_expr_type()), expr)
 
     def find_type_equals_check(self, node: ComparisonExpr, expr_indices: List[int]
                                ) -> Tuple[TypeMap, TypeMap]:
@@ -4583,8 +4579,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         # Restrict the type of the variable to True-ish/False-ish in the if and else branches
         # respectively
-        vartype = type_map[node]
-        self._check_for_truthy_type(vartype, node)
+        original_vartype = type_map[node]
+        self._check_for_truthy_type(original_vartype, node)
+        vartype = try_expanding_sum_type_to_union(original_vartype, "builtins.bool")
+
         if_type = true_only(vartype)  # type: Type
         else_type = false_only(vartype)  # type: Type
         ref = node  # type: Expression
@@ -4674,7 +4672,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 def replay_lookup(new_parent_type: ProperType) -> Optional[Type]:
                     msg_copy = self.msg.clean_copy()
-                    msg_copy.disable_count = 0
                     member_type = analyze_member_access(
                         name=member_name,
                         typ=new_parent_type,
@@ -4858,10 +4855,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if singleton_index == -1:
             singleton_index = possible_target_indices[-1]
 
-        enum_name = None
+        sum_type_name = None
         target = get_proper_type(target)
-        if isinstance(target, LiteralType) and target.is_enum_literal():
-            enum_name = target.fallback.type.fullname
+        if (isinstance(target, LiteralType) and
+                (target.is_enum_literal() or isinstance(target.value, bool))):
+            sum_type_name = target.fallback.type.fullname
 
         target_type = [TypeRange(target, is_upper_bound=False)]
 
@@ -4882,8 +4880,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             expr = operands[i]
             expr_type = coerce_to_literal(operand_types[i])
 
-            if enum_name is not None:
-                expr_type = try_expanding_enum_to_union(expr_type, enum_name)
+            if sum_type_name is not None:
+                expr_type = try_expanding_sum_type_to_union(expr_type, sum_type_name)
 
             # We intentionally use 'conditional_type_map' directly here instead of
             # 'self.conditional_type_map_with_intersection': we only compute ad-hoc
