@@ -1,13 +1,9 @@
 ---
 name: Feature
-about: Submit a proposal for a new mypy feature
+about: Submit a proposal for a based new mypy feature
 labels: "feature"
 ---
 
-**Feature**
+Before you raise this, consider if it's better suited to a discussion: https://github.com/KotlinIsland/basedmypy/discussions
 
-(A clear and concise description of your feature proposal.)
-
-**Pitch**
-
-(Please explain why this feature should be implemented and how it would be used. Add examples, if applicable.)
+<!-- Would be a banger if you included usage samples -->
