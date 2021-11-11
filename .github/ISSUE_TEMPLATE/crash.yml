@@ -1,0 +1,45 @@
+name: Crash Report
+description: Use this form only if mypy reports an "INTERNAL ERROR", "IMPOSTER DETECTED" and/or gives a traceback.
+labels: "crash"
+
+body:
+  - type: dropdown
+    attributes:
+      label: Is this crash exclusive to basedmypy, or does it also occur with mypy?
+      options: [yes, no]
+  - type: textarea
+    attributes:
+      label: Crash Report
+      description: Tell us what happened.
+  - type: textarea
+    attributes:
+      label:  Traceback
+      description: Please include the traceback and all other messages below (use `mypy --show-traceback`)
+      render: markdown
+  - type: textarea
+    attributes:
+      label: Gist to reproduce
+      description: >
+        Full source code is appreciated. We also very much appreciate
+        it if you try to narrow the source down to a small stand-alone example.
+      render: python
+  - type: markdown
+    attributes:
+      value: "# Your Environment"
+  - type: textarea
+    attributes:
+      label: Basedmypy version
+      description: output of `mypy --version`
+  - type: input
+    attributes:
+      label: Command-line flags
+  - type: input
+    attributes:
+      label: Configuration options from `pyproject.toml` (and other config files)
+  - type: input
+    attributes:
+      label: Python version used
+  - type: input
+    attributes:
+      label: Operating system and version
+      description: Linux/macOS/Windows/wsl etc

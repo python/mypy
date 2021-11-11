@@ -1,7 +1,4 @@
 contact_links:
-  - about: "Please check the linked documentation page before filing new issues."
-    name: "Common issues and solutions"
-    url: "https://mypy.readthedocs.io/en/stable/common_issues.html"
-  - about: "Please ask and answer any questions on the mypy Gitter."
-    name: "Questions or Chat"
-    url: "https://gitter.im/python/typing"
+  - about: "Please ask and answer usage questions in our official Discord."
+    name: Questions, help and discussion
+    url: "https://discord.gg/7y9upqPrk2"
