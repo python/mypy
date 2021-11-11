@@ -23,7 +23,7 @@ def console_entry() -> None:
         if options.show_traceback:
             sys.stdout.write(traceback.format_exc())
         formatter = FancyFormatter(sys.stdout, sys.stderr, False)
-        msg = " KeybordInterrupt called by user. Abort!\n"
+        msg = "Interrupted\n"
         sys.stdout.write(formatter.style(msg, color="red", bold=True))
         sys.stdout.flush()
         sys.stderr.flush()
