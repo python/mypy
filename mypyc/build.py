@@ -431,7 +431,8 @@ def mypycify(
     *,
     only_compile_paths: Optional[Iterable[str]] = None,
     verbose: bool = False,
-    opt_level: str = '3',
+    opt_level: str = "3",
+    debug_level: str = "1",
     strip_asserts: bool = False,
     multi_file: bool = False,
     separate: Union[bool, List[Tuple[List[str], Optional[str]]]] = False,
@@ -454,6 +455,7 @@ def mypycify(
         verbose: Should mypyc be more verbose. Defaults to false.
 
         opt_level: The optimization level, as a string. Defaults to '3' (meaning '-O3').
+        debug_level: The debug level, as a string. Defaults to '1' (meaning '-g1').
         strip_asserts: Should asserts be stripped from the generated code.
 
         multi_file: Should each Python module be compiled into its own C source file.
@@ -511,7 +513,9 @@ def mypycify(
     cflags: List[str] = []
     if compiler.compiler_type == 'unix':
         cflags += [
-            '-O{}'.format(opt_level), '-Werror', '-Wno-unused-function', '-Wno-unused-label',
+            '-O{}'.format(opt_level),
+            '-g{}'.format(debug_level),
+            '-Werror', '-Wno-unused-function', '-Wno-unused-label',
             '-Wno-unreachable-code', '-Wno-unused-variable',
             '-Wno-unused-command-line-argument', '-Wno-unknown-warning-option',
         ]
