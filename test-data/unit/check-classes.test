@@ -2759,7 +2759,7 @@ t = Test()
 t.crash = 'test'  # E: "Test" has no attribute "crash"
 
 class A:
-    def __setattr__(self): ...  # E: Invalid signature "def (__main__.A) -> Any" for "__setattr__"
+    def __setattr__(self): ...  # E: Invalid signature "def (self: __main__.A) -> Any" for "__setattr__"
 a = A()
 a.test = 4  # E: "A" has no attribute "test"
 
@@ -2769,7 +2769,7 @@ b = B()
 b.integer = 5
 
 class C:
-    def __setattr__(self, name: int, value: int) -> None: ...  # E: Invalid signature "def (__main__.C, builtins.int, builtins.int)" for "__setattr__"
+    def __setattr__(self, name: int, value: int) -> None: ...  # E: Invalid signature "def (self: __main__.C, name: builtins.int, value: builtins.int)" for "__setattr__"
 c = C()
 c.check = 13
 
@@ -2793,6 +2793,15 @@ b = B()
 b.at = '3'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 if int():
     integer = b.at  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testSetattrKeywordArg]
+from typing import Any
+
+class C:
+    def __setattr__(self, key: str, value: Any, p: bool = False) -> None: ...
+
+c: C
+c.__setattr__("x", 42, p=True)
 
 -- CallableType objects
 -- ----------------
@@ -6922,12 +6931,3 @@ class B(A):  # E: Final class __main__.B has abstract attributes "foo"
 [case testUndefinedBaseclassInNestedClass]
 class C:
     class C1(XX): pass  # E: Name "XX" is not defined
-
-[case testSetattrKeywordArg]
-from typing import Any
-
-class C:
-    def __setattr__(self, key: str, value: Any, p: bool = False) -> None: ...
-
-c: C
-c.__setattr__("x", 42, p=True)
