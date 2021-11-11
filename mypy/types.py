@@ -2410,14 +2410,6 @@ def is_literal_type(typ: ProperType, fallback_fullname: str, value: LiteralValue
     return typ.value == value
 
 
-def get_any_kind(any_type: AnyType) -> int:
-    """Get the kind of Any type, or of its source Any when present."""
-    if any_type.type_of_any != TypeOfAny.from_another_any:
-        return any_type.type_of_any
-    assert any_type.source_any is not None
-    return get_any_kind(any_type.source_any)
-
-
 names: Final = globals().copy()
 names.pop('NOT_READY', None)
 deserialize_map: Final = {
