@@ -1151,11 +1151,12 @@ class MessageBuilder:
         return AnyType(TypeOfAny.from_error)
 
     def invalid_signature(self, func_type: Type, context: Context) -> None:
-        self.fail('Invalid signature "{}"'.format(func_type), context)
+        self.fail('Invalid signature {}'.format(format_type(func_type)), context)
 
     def invalid_signature_for_special_method(
             self, func_type: Type, context: Context, method_name: str) -> None:
-        self.fail('Invalid signature "{}" for "{}"'.format(func_type, method_name), context)
+        self.fail('Invalid signature {} for "{}"'.format(format_type(func_type), method_name),
+                  context)
 
     def reveal_type(self, typ: Type, context: Context) -> None:
         self.note('Revealed type is "{}"'.format(typ), context)
