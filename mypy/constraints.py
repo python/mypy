@@ -1,13 +1,15 @@
 """Type inference constraints."""
 
-from typing import TYPE_CHECKING, Iterable, List, Optional, Sequence
+from collections import defaultdict
+
+from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Sequence
 from typing_extensions import Final
 
 from mypy.types import (
     CallableType, Type, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarType, Instance,
     TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeVarId, TypeQuery, is_named_instance, TypeOfAny, LiteralType,
-    ProperType, get_proper_type, TypeAliasType, is_union_with_any
+    ProperType, get_proper_type, TypeAliasType, is_union_with_any, get_any_kind
 )
 from mypy.maptype import map_instance_to_supertype
 import mypy.subtypes
@@ -212,6 +214,22 @@ def select_trivial(options: Sequence[Optional[List[Constraint]]]) -> List[List[C
     return res
 
 
+def collect_target_anys(
+    options: List[List[Constraint]]
+) -> Dict[TypeVarId, List[AnyType]]:
+    """Collect all Any targets among constraint options and group them by type variable.
+
+    This expects all constraint options to be trivial.
+    """
+    anys_by_type_var = defaultdict(list)
+    for option in options:
+        for c in option:
+            target = get_proper_type(c.target)
+            assert isinstance(target, AnyType)
+            anys_by_type_var[c.type_var].append(target)
+    return anys_by_type_var
+
+
 def merge_with_any(constraint: Constraint, any_type: Type) -> Constraint:
     """Transform a constraint target into a union with given Any type."""
     any_type = get_proper_type(any_type)
@@ -258,9 +276,12 @@ def any_constraints(options: List[Optional[List[Constraint]]], eager: bool) -> L
         # every option, combine the bounds with meet/join always, not just for Any.
         trivial_options = select_trivial(valid_options)
         if trivial_options and len(trivial_options) < len(valid_options):
-            # Randomly choose first trivial option for source of Any.
-            # TODO: is it possible to get more precise attribution of source Any?
-            any_by_type_var = {c.type_var: c.target for c in trivial_options[0]}
+            # TODO: if we will support multiple source Any, use this here.
+            # For now we chose some arbitrary Any in a stable way.
+            any_by_type_var = {
+                tv: sorted(anys, key=get_any_kind)[0]
+                for tv, anys in collect_target_anys(trivial_options)
+            }
             merged_options = []
             for option in valid_options:
                 if option in trivial_options:
