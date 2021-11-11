@@ -6922,3 +6922,12 @@ class B(A):  # E: Final class __main__.B has abstract attributes "foo"
 [case testUndefinedBaseclassInNestedClass]
 class C:
     class C1(XX): pass  # E: Name "XX" is not defined
+
+[case testSetattrKeywordArg]
+from typing import Any
+
+class C:
+    def __setattr__(self, key: str, value: Any, p: bool = False) -> None: ...
+
+c: C
+c.__setattr__("x", 42, p=True)
