@@ -763,7 +763,7 @@ class D(C[TY], Generic[TY]): pass
 class Y(Defer): pass
 class Defer: ...
 
-x: D[int]  # E: Type argument "builtins.int" of "D" must be a subtype of "__main__.Y"
+x: D[int]  # E: Type argument "int" of "D" must be a subtype of "Y"
 y: D[Y]
 
 [case testNewAnalyzerTypeVarForwardReferenceErrors]
@@ -1639,7 +1639,7 @@ class C(Generic[T]): pass
 
 class D(B): pass
 
-x: C[D] # E: Type argument "__main__.D" of "C" must be a subtype of "__main__.E"
+x: C[D] # E: Type argument "D" of "C" must be a subtype of "E"
 y: C[F]
 
 class B: pass
@@ -1678,14 +1678,14 @@ class A(C[str]): # E
 [out]
 main:2: note: In module imported here:
 tmp/a.py: note: In function "f":
-tmp/a.py:6: error: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
-tmp/a.py:7: error: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+tmp/a.py:6: error: Type argument "str" of "C" must be a subtype of "int"
+tmp/a.py:7: error: Type argument "str" of "C" must be a subtype of "int"
 tmp/a.py: note: In class "A":
-tmp/a.py:8: error: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
-tmp/a.py:9: error: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+tmp/a.py:8: error: Type argument "str" of "C" must be a subtype of "int"
+tmp/a.py:9: error: Type argument "str" of "C" must be a subtype of "int"
 tmp/a.py: note: In member "g" of class "A":
-tmp/a.py:10: error: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
-tmp/a.py:11: error: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+tmp/a.py:10: error: Type argument "str" of "C" must be a subtype of "int"
+tmp/a.py:11: error: Type argument "str" of "C" must be a subtype of "int"
 
 [case testNewAnalyzerTypeArgBoundCheckDifferentNodes]
 from typing import TypeVar, Generic, NamedTuple, NewType, Union, Any, cast, overload
@@ -1695,45 +1695,45 @@ T = TypeVar('T', bound=int)
 class C(Generic[T]): pass
 class C2(Generic[T]): pass
 
-A = C[str] # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int" \
+A = C[str] # E: Type argument "str" of "C" must be a subtype of "int" \
            # E: Value of type variable "T" of "C" cannot be "str"
-B = Union[C[str], int] # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
-S = TypeVar('S', bound=C[str]) # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
-U = TypeVar('U', C[str], str) # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+B = Union[C[str], int] # E: Type argument "str" of "C" must be a subtype of "int"
+S = TypeVar('S', bound=C[str]) # E: Type argument "str" of "C" must be a subtype of "int"
+U = TypeVar('U', C[str], str) # E: Type argument "str" of "C" must be a subtype of "int"
 N = NamedTuple('N', [
-    ('x', C[str])]) # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+    ('x', C[str])]) # E: Type argument "str" of "C" must be a subtype of "int"
 class N2(NamedTuple):
-    x: C[str]  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+    x: C[str]  # E: Type argument "str" of "C" must be a subtype of "int"
 class TD(TypedDict):
-    x: C[str]  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+    x: C[str]  # E: Type argument "str" of "C" must be a subtype of "int"
 class TD2(TD):
-    y: C2[str]  # E: Type argument "builtins.str" of "C2" must be a subtype of "builtins.int"
+    y: C2[str]  # E: Type argument "str" of "C2" must be a subtype of "int"
 NT = NewType('NT',
-             C[str]) # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+             C[str]) # E: Type argument "str" of "C" must be a subtype of "int"
 class D(
-        C[str]): # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+        C[str]): # E: Type argument "str" of "C" must be a subtype of "int"
     pass
 
-TD3 = TypedDict('TD3', {'x': C[str]}) # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+TD3 = TypedDict('TD3', {'x': C[str]}) # E: Type argument "str" of "C" must be a subtype of "int"
 
 a: Any
-for i in a: # type: C[str]  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+for i in a: # type: C[str]  # E: Type argument "str" of "C" must be a subtype of "int"
     pass
 
-with a as w: # type: C[str]  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+with a as w: # type: C[str]  # E: Type argument "str" of "C" must be a subtype of "int"
     pass
 
-cast(C[str], a)  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+cast(C[str], a)  # E: Type argument "str" of "C" must be a subtype of "int"
 C[str]()  # E: Value of type variable "T" of "C" cannot be "str"
 
 def f(s: S, y: U) -> None: pass  # No error here
 
 @overload
-def g(x: C[str]) -> int: ...  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+def g(x: C[str]) -> int: ...  # E: Type argument "str" of "C" must be a subtype of "int"
 @overload
 def g(x: int) -> int: ...
-def g(x: Union[C[str], int]) -> int:  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
-    y: C[object]  # E: Type argument "builtins.object" of "C" must be a subtype of "builtins.int"
+def g(x: Union[C[str], int]) -> int:  # E: Type argument "str" of "C" must be a subtype of "int"
+    y: C[object]  # E: Type argument "object" of "C" must be a subtype of "int"
     return 0
 [builtins fixtures/tuple.pyi]
 
@@ -1745,7 +1745,7 @@ import a
 from typing import TypeVar, Generic
 
 x: C[None]
-y: C[str]  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+y: C[str]  # E: Type argument "str" of "C" must be a subtype of "int"
 z: C[int]
 
 T = TypeVar('T', bound=int)
@@ -1755,8 +1755,8 @@ class C(Generic[T]):
 [file a.py]
 from b import C
 
-x: C[None]  # E: Type argument "None" of "C" must be a subtype of "builtins.int"
-y: C[str]  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+x: C[None]  # E: Type argument "None" of "C" must be a subtype of "int"
+y: C[str]  # E: Type argument "str" of "C" must be a subtype of "int"
 z: C[int]
 
 [file mypy.ini]
@@ -1774,7 +1774,7 @@ import a
 from typing import TypeVar, Generic
 
 x: C[None]
-y: C[str]  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+y: C[str]  # E: Type argument "str" of "C" must be a subtype of "int"
 z: C[int]
 
 T = TypeVar('T', bound=int)
@@ -1784,8 +1784,8 @@ class C(Generic[T]):
 [file a.py]
 from b import C
 
-x: C[None]  # E: Type argument "None" of "C" must be a subtype of "builtins.int"
-y: C[str]  # E: Type argument "builtins.str" of "C" must be a subtype of "builtins.int"
+x: C[None]  # E: Type argument "None" of "C" must be a subtype of "int"
+y: C[str]  # E: Type argument "str" of "C" must be a subtype of "int"
 z: C[int]
 
 [file pyproject.toml]
@@ -1993,16 +1993,16 @@ S = TypeVar('S', bound=Tuple[G[A], ...])
 class GG(Generic[S]): pass
 
 g: GG[Tuple[G[B], G[C]]] \
-  # E: Type argument "Tuple[__main__.G[__main__.B], __main__.G[__main__.C]]" of "GG" must be a subtype of "builtins.tuple[__main__.G[__main__.A]]" \
-  # E: Type argument "__main__.B" of "G" must be a subtype of "__main__.A" \
-  # E: Type argument "__main__.C" of "G" must be a subtype of "__main__.A"
+  # E: Type argument "Tuple[G[B], G[C]]" of "GG" must be a subtype of "Tuple[G[A], ...]" \
+  # E: Type argument "B" of "G" must be a subtype of "A" \
+  # E: Type argument "C" of "G" must be a subtype of "A"
 
 T = TypeVar('T', bound=A, covariant=True)
 
 class G(Generic[T]): pass
 
-t: Tuple[G[B], G[C]] # E: Type argument "__main__.B" of "G" must be a subtype of "__main__.A" \
-                     # E: Type argument "__main__.C" of "G" must be a subtype of "__main__.A"
+t: Tuple[G[B], G[C]] # E: Type argument "B" of "G" must be a subtype of "A" \
+                     # E: Type argument "C" of "G" must be a subtype of "A"
 reveal_type(t.__iter__) # N: Revealed type is "def () -> typing.Iterator[builtins.object*]"
 [builtins fixtures/tuple.pyi]
 
@@ -2201,7 +2201,7 @@ class B(Generic[T]):
     x: T
 class C: ...
 
-x: B[int]  # E: Type argument "builtins.int" of "B" must be a subtype of "__main__.B[Any]"
+x: B[int]  # E: Type argument "int" of "B" must be a subtype of "B[Any]"
 y: B[B[Any]]
 reveal_type(y.x)  # N: Revealed type is "__main__.B*[Any]"
 
@@ -2226,7 +2226,7 @@ x: B[int]
 y: B[B[Any]]
 reveal_type(y.x)
 [out]
-tmp/b.py:8: error: Type argument "builtins.int" of "B" must be a subtype of "b.B[Any]"
+tmp/b.py:8: error: Type argument "int" of "B" must be a subtype of "B[Any]"
 tmp/b.py:10: note: Revealed type is "b.B*[Any]"
 tmp/a.py:5: error: Cannot redefine "T" as a type variable
 tmp/a.py:5: error: Invalid assignment target
@@ -2255,7 +2255,7 @@ x: B[int]
 y: B[B[Any]]
 reveal_type(y.x)
 [out]
-tmp/b.py:9: error: Type argument "builtins.int" of "B" must be a subtype of "b.B[Any]"
+tmp/b.py:9: error: Type argument "int" of "B" must be a subtype of "B[Any]"
 tmp/b.py:11: note: Revealed type is "b.B*[Any]"
 tmp/a.py:5: error: Cannot redefine "T" as a type variable
 tmp/a.py:5: error: Invalid assignment target

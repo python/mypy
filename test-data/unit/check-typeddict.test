@@ -1468,7 +1468,7 @@ T = TypeVar('T', bound='M')
 class G(Generic[T]):
     x: T
 
-yb: G[int] # E: Type argument "builtins.int" of "G" must be a subtype of "TypedDict('__main__.M', {'x': builtins.int})"
+yb: G[int] # E: Type argument "int" of "G" must be a subtype of "M"
 yg: G[M]
 z: int = G[M]().x['x']
 

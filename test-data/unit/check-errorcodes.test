@@ -440,7 +440,7 @@ class D(Generic[S]): pass
 class E(Generic[S, T]): pass
 
 x: C[object]  # E: Value of type variable "T" of "C" cannot be "object"  [type-var]
-y: D[int]  # E: Type argument "builtins.int" of "D" must be a subtype of "builtins.str"  [type-var]
+y: D[int]  # E: Type argument "int" of "D" must be a subtype of "str"  [type-var]
 z: D[int, int]  # E: "D" expects 1 type argument, but 2 given  [type-arg]
 
 def h(a: TT, s: S) -> None:
