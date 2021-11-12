@@ -149,6 +149,13 @@ def test_str_to_bool() -> None:
         assert is_true(x)
         assert not is_false(x)
 
+def test_str_min() -> None:
+    x: str = 'aaa'
+    y: str = 'bbb'
+    z: str = 'aa'
+    assert min(x, y) == 'aaa'
+    assert min(x, z) == 'aa'
+
 [case testStringFormattingCStyle]
 [typing fixtures/typing-full.pyi]
 from typing import Tuple
@@ -626,25 +633,3 @@ def test_encode() -> None:
     assert u'\u00E1'.encode('latin1') == b'\xe1'
     with assertRaises(UnicodeEncodeError):
         u.encode('latin1')
-
-[case testStringMin]
-def test_str_min() -> None:
-    x: str = 'aaa'
-    y: str = 'bbb'
-    z: str = 'aa'
-    assert min(x, y) == 'aaa'
-    assert min(x, z) == 'aa'
-
-class SomeItem:
-    def __init__(self, val: str) -> None:
-        self.val = val
-    
-    def __lt__(self, x: 'SomeItem') -> bool:
-        return self.val < x.val
-
-def test_dunder_min() -> None:
-    x = SomeItem('aaa')
-    y = SomeItem('bbb')
-    z = SomeItem('aa')
-    assert min(x, y).val == 'aaa'
-    assert min(x, z).val == 'aa'

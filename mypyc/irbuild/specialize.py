@@ -187,11 +187,10 @@ def translate_set_from_generator_call(
 
 @specialize_function('builtins.min')
 def faster_min(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-    if (len(expr.args) > 0
-            and expr.arg_kinds == [ARG_POS, ARG_POS]):
+    if expr.arg_kinds == [ARG_POS, ARG_POS]:
         x, y = builder.accept(expr.args[0]), builder.accept(expr.args[1])
         result = Register(builder.node_type(expr))
-        comparison = builder.binary_op(x, y, '<', expr.line)
+        comparison = builder.binary_op(y, x, '<', expr.line)
         true = BasicBlock()
         false = BasicBlock()
         next_block = BasicBlock()
@@ -199,11 +198,11 @@ def faster_min(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[
         builder.add_bool_branch(comparison, true, false)
 
         builder.activate_block(true)
-        builder.assign(result, builder.coerce(x, result.type, expr.line), expr.line)
+        builder.assign(result, builder.coerce(y, result.type, expr.line), expr.line)
         builder.goto(next_block)
 
         builder.activate_block(false)
-        builder.assign(result, builder.coerce(y, result.type, expr.line), expr.line)
+        builder.assign(result, builder.coerce(x, result.type, expr.line), expr.line)
         builder.goto(next_block)
 
         builder.activate_block(next_block)
