@@ -456,7 +456,7 @@ def test_int_incompatible_min() -> None:
     try:
         print(min(x, y))
     except TypeError as e:
-        assert str(e) == "'<' not supported between instances of 'int' and 'str'"
+        assert str(e) == "'<' not supported between instances of 'str' and 'int'"
 
 def test_int_bool_min() -> None:
     x: int = 2
