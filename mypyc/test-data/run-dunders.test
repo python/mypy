@@ -758,13 +758,16 @@ def test_in_place_operator_returns_none() -> None:
     with assertRaises(TypeError, "native.BadInplaceAdd object expected; got None"):
         o += 5
 
-[case testDunderMin]
+[case testDunderMinMax]
 class SomeItem:
     def __init__(self, val: int) -> None:
         self.val = val
 
     def __lt__(self, x: 'SomeItem') -> bool:
         return self.val < x.val
+
+    def __gt__(self, x: 'SomeItem') -> bool:
+        return self.val > x.val
 
 class AnotherItem:
     def __init__(self, val: str) -> None:
@@ -773,14 +776,23 @@ class AnotherItem:
     def __lt__(self, x: 'AnotherItem') -> bool:
         return True
 
+    def __gt__(self, x: 'AnotherItem') -> bool:
+        return True
+
 def test_dunder_min() -> None:
     x = SomeItem(5)
     y = SomeItem(10)
     z = SomeItem(15)
     assert min(x, y).val == 5
     assert min(y, z).val == 10
+    assert max(x, y).val == 10
+    assert max(y, z).val == 15
     x2 = AnotherItem('xxx')
     y2 = AnotherItem('yyy')
     z2 = AnotherItem('zzz')
     assert min(x2, y2).val == 'yyy'
     assert min(y2, x2).val == 'xxx'
+    assert max(x2, y2).val == 'yyy'
+    assert max(y2, x2).val == 'xxx'
+    assert min(y2, z2).val == 'zzz'
+    assert max(x2, z2).val == 'zzz'
