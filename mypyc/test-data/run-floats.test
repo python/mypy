@@ -21,8 +21,10 @@ def test_abs() -> None:
     assert abs(-23.4) == 23.4
     assert abs(-43.44e-4) == 43.44e-4
 
-def test_float_min() -> None:
+def test_float_min_max() -> None:
     x: float = 20.0
     y: float = 30.0
     assert min(x, y) == 20.0
     assert min(y, x) == 20.0
+    assert max(x, y) == 30.0
+    assert max(y, x) == 30.0
