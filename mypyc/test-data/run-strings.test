@@ -149,6 +149,13 @@ def test_str_to_bool() -> None:
         assert is_true(x)
         assert not is_false(x)
 
+def test_str_min() -> None:
+    x: str = 'aaa'
+    y: str = 'bbb'
+    z: str = 'aa'
+    assert min(x, y) == 'aaa'
+    assert min(x, z) == 'aa'
+
 [case testStringFormattingCStyle]
 [typing fixtures/typing-full.pyi]
 from typing import Tuple
