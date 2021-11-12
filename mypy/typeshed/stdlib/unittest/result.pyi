@@ -10,10 +10,10 @@ _F = TypeVar("_F", bound=Callable[..., Any])
 def failfast(method: _F) -> _F: ...
 
 class TestResult:
-    errors: list[Tuple[unittest.case.TestCase, str]]
-    failures: list[Tuple[unittest.case.TestCase, str]]
-    skipped: list[Tuple[unittest.case.TestCase, str]]
-    expectedFailures: list[Tuple[unittest.case.TestCase, str]]
+    errors: list[tuple[unittest.case.TestCase, str]]
+    failures: list[tuple[unittest.case.TestCase, str]]
+    skipped: list[tuple[unittest.case.TestCase, str]]
+    expectedFailures: list[tuple[unittest.case.TestCase, str]]
     unexpectedSuccesses: list[unittest.case.TestCase]
     shouldStop: bool
     testsRun: int

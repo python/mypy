@@ -193,9 +193,9 @@ def f(p1: bytes, p2: float, /) -> None:
     reveal_type(p2)  # N: Revealed type is "builtins.float"
 
 [case testPEP570Unannotated]
-def f(arg, /): ...
+def f(arg, /): ...  # N: "f" defined here
 g = lambda arg, /: arg
-def h(arg=0, /): ...
+def h(arg=0, /): ...  # N: "h" defined here
 i = lambda arg=0, /: arg
 
 f(1)
@@ -411,10 +411,10 @@ from typing import Optional
 maybe_str: Optional[str]
 
 if (is_str := maybe_str is not None):
-    reveal_type(is_str)  # N: Revealed type is "builtins.bool"
+    reveal_type(is_str)  # N: Revealed type is "Literal[True]"
     reveal_type(maybe_str)  # N: Revealed type is "builtins.str"
 else:
-    reveal_type(is_str)  # N: Revealed type is "builtins.bool"
+    reveal_type(is_str)  # N: Revealed type is "Literal[False]"
     reveal_type(maybe_str)  # N: Revealed type is "None"
 
 reveal_type(maybe_str)  # N: Revealed type is "Union[builtins.str, None]"

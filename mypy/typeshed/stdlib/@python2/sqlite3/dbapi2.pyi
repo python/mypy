@@ -135,7 +135,7 @@ class Cursor(Iterator[Any]):
     description: Any
     lastrowid: Any
     row_factory: Any
-    rowcount: Any
+    rowcount: int
     # TODO: Cursor class accepts exactly 1 argument
     # required type is sqlite3.Connection (which is imported as _Connection)
     # however, the name of the __init__ variable is unknown

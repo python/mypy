@@ -1,6 +1,5 @@
 import sys
 from asyncio import transports
-from typing import Tuple
 
 class BaseProtocol:
     def connection_made(self, transport: transports.BaseTransport) -> None: ...
@@ -19,7 +18,7 @@ if sys.version_info >= (3, 7):
 
 class DatagramProtocol(BaseProtocol):
     def connection_made(self, transport: transports.DatagramTransport) -> None: ...  # type: ignore
-    def datagram_received(self, data: bytes, addr: Tuple[str, int]) -> None: ...
+    def datagram_received(self, data: bytes, addr: tuple[str, int]) -> None: ...
     def error_received(self, exc: Exception) -> None: ...
 
 class SubprocessProtocol(BaseProtocol):

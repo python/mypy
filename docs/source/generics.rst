@@ -2,7 +2,7 @@ Generics
 ========
 
 This section explains how you can define your own generic classes that take
-one or more type parameters, similar to built-in types such as ``List[X]``.
+one or more type parameters, similar to built-in types such as ``list[X]``.
 User-defined generics are a moderately advanced feature and you can get far
 without ever using them -- feel free to skip this section and come back later.
 
@@ -13,8 +13,8 @@ Defining generic classes
 
 The built-in collection classes are generic classes. Generic types
 have one or more type parameters, which can be arbitrary types. For
-example, ``Dict[int, str]`` has the type parameters ``int`` and
-``str``, and ``List[int]`` has a type parameter ``int``.
+example, ``dict[int, str]`` has the type parameters ``int`` and
+``str``, and ``list[int]`` has a type parameter ``int``.
 
 Programs can also define new generic classes. Here is a very simple
 generic class that represents a stack:
@@ -28,7 +28,7 @@ generic class that represents a stack:
    class Stack(Generic[T]):
        def __init__(self) -> None:
            # Create an empty list with items of type T
-           self.items: List[T] = []
+           self.items: list[T] = []
 
        def push(self, item: T) -> None:
            self.items.append(item)
@@ -40,7 +40,7 @@ generic class that represents a stack:
            return not self.items
 
 The ``Stack`` class can be used to represent a stack of any type:
-``Stack[int]``, ``Stack[Tuple[int, str]]``, etc.
+``Stack[int]``, ``Stack[tuple[int, str]]``, etc.
 
 Using ``Stack`` is similar to built-in container types:
 
@@ -90,13 +90,16 @@ instantiation:
    >>> print(Stack[int]().__class__)
    __main__.Stack
 
-Note that built-in types :py:class:`list`, :py:class:`dict` and so on do not support
-indexing in Python. This is why we have the aliases :py:class:`~typing.List`, :py:class:`~typing.Dict`
+For Python 3.8 and lower, note that built-in types :py:class:`list`,
+:py:class:`dict` and so on do not support indexing in Python.
+This is why we have the aliases :py:class:`~typing.List`, :py:class:`~typing.Dict`
 and so on in the :py:mod:`typing` module. Indexing these aliases gives
 you a class that directly inherits from the target class in Python:
 
 .. code-block:: python
 
+   >>> # Only relevant for Python 3.8 and below
+   >>> # For Python 3.9 onwards, prefer `list[int]` syntax
    >>> from typing import List
    >>> List[int]
    typing.List[int]
@@ -121,7 +124,7 @@ non-generic. For example:
 
 .. code-block:: python
 
-   from typing import Generic, TypeVar, Mapping, Iterator, Dict
+   from typing import Generic, TypeVar, Mapping, Iterator
 
    KT = TypeVar('KT')
    VT = TypeVar('VT')
@@ -136,7 +139,7 @@ non-generic. For example:
 
    items: MyMap[str, int]  # Okay
 
-   class StrDict(Dict[str, str]):  # This is a non-generic subclass of Dict
+   class StrDict(dict[str, str]):  # This is a non-generic subclass of dict
        def __str__(self) -> str:
            return 'StrDict({})'.format(super().__str__())
 
@@ -284,7 +287,7 @@ For class methods, you can also define generic ``cls``, using :py:class:`Type[T]
 
 .. code-block:: python
 
-   from typing import TypeVar, Tuple, Type
+   from typing import TypeVar, Type
 
    T = TypeVar('T', bound='Friend')
 
@@ -292,7 +295,7 @@ For class methods, you can also define generic ``cls``, using :py:class:`Type[T]
        other = None  # type: Friend
 
        @classmethod
-       def make_pair(cls: Type[T]) -> Tuple[T, T]:
+       def make_pair(cls: Type[T]) -> tuple[T, T]:
            a, b = cls(), cls()
            a.other = b
            b.other = a
@@ -345,8 +348,8 @@ Let us illustrate this by few simple examples:
 
   .. code-block:: python
 
-     def salaries(staff: List[Manager],
-                  accountant: Callable[[Manager], int]) -> List[int]: ...
+     def salaries(staff: list[Manager],
+                  accountant: Callable[[Manager], int]) -> list[int]: ...
 
   This function needs a callable that can calculate a salary for managers, and
   if we give it a callable that can calculate a salary for an arbitrary
@@ -363,10 +366,10 @@ Let us illustrate this by few simple examples:
          def rotate(self):
              ...
 
-     def add_one(things: List[Shape]) -> None:
+     def add_one(things: list[Shape]) -> None:
          things.append(Shape())
 
-     my_things: List[Circle] = []
+     my_things: list[Circle] = []
      add_one(my_things)     # This may appear safe, but...
      my_things[0].rotate()  # ...this will fail
 
@@ -532,7 +535,7 @@ Here's a complete example of a function decorator:
 
 .. code-block:: python
 
-   from typing import Any, Callable, TypeVar, Tuple, cast
+   from typing import Any, Callable, TypeVar, cast
 
    F = TypeVar('F', bound=Callable[..., Any])
 
@@ -724,11 +727,11 @@ variables replaced with ``Any``. Examples (following :pep:`PEP 484: Type aliases
 
 .. code-block:: python
 
-    from typing import TypeVar, Iterable, Tuple, Union, Callable
+    from typing import TypeVar, Iterable, Union, Callable
 
     S = TypeVar('S')
 
-    TInt = Tuple[int, S]
+    TInt = tuple[int, S]
     UInt = Union[S, int]
     CBack = Callable[..., S]
 
@@ -736,11 +739,11 @@ variables replaced with ``Any``. Examples (following :pep:`PEP 484: Type aliases
         ...
     def activate(cb: CBack[S]) -> S:        # Same as Callable[..., S]
         ...
-    table_entry: TInt  # Same as Tuple[int, Any]
+    table_entry: TInt  # Same as tuple[int, Any]
 
     T = TypeVar('T', int, float, complex)
 
-    Vec = Iterable[Tuple[T, T]]
+    Vec = Iterable[tuple[T, T]]
 
     def inproduct(v: Vec[T]) -> T:
         return sum(x*y for x, y in v)
@@ -748,8 +751,8 @@ variables replaced with ``Any``. Examples (following :pep:`PEP 484: Type aliases
     def dilate(v: Vec[T], scale: T) -> Vec[T]:
         return ((x * scale, y * scale) for x, y in v)
 
-    v1: Vec[int] = []      # Same as Iterable[Tuple[int, int]]
-    v2: Vec = []           # Same as Iterable[Tuple[Any, Any]]
+    v1: Vec[int] = []      # Same as Iterable[tuple[int, int]]
+    v2: Vec = []           # Same as Iterable[tuple[Any, Any]]
     v3: Vec[int, int] = [] # Error: Invalid alias, too many type arguments!
 
 Type aliases can be imported from modules just like other names. An

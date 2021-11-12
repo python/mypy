@@ -152,16 +152,16 @@ For example, compare and contrast what happens when you try appending these type
     a: Final = 19
     b: Literal[19] = 19
 
-    # Mypy will chose to infer List[int] here.
+    # Mypy will choose to infer list[int] here.
     list_of_ints = []
     list_of_ints.append(a)
-    reveal_type(list_of_ints)  # Revealed type is "List[int]"
+    reveal_type(list_of_ints)  # Revealed type is "list[int]"
 
     # But if the variable you're appending is an explicit Literal, mypy
-    # will infer List[Literal[19]].
+    # will infer list[Literal[19]].
     list_of_lits = []
     list_of_lits.append(b)
-    reveal_type(list_of_lits)  # Revealed type is "List[Literal[19]]"
+    reveal_type(list_of_lits)  # Revealed type is "list[Literal[19]]"
 
 
 Intelligent indexing

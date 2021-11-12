@@ -1,7 +1,7 @@
 import sys
 from _typeshed import Self, StrOrBytesPath
 from types import TracebackType
-from typing import IO, Any, AnyStr, Callable, Generic, Iterable, Mapping, Sequence, Tuple, Type, TypeVar, Union, overload
+from typing import IO, Any, AnyStr, Callable, Generic, Iterable, Mapping, Sequence, Type, TypeVar, Union, overload
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 9):
@@ -1002,7 +1002,7 @@ class Popen(Generic[AnyStr]):
         input: AnyStr | None = ...,
         timeout: float | None = ...,
         # morally this should be optional
-    ) -> Tuple[AnyStr, AnyStr]: ...
+    ) -> tuple[AnyStr, AnyStr]: ...
     def send_signal(self, sig: int) -> None: ...
     def terminate(self) -> None: ...
     def kill(self) -> None: ...
@@ -1014,9 +1014,14 @@ class Popen(Generic[AnyStr]):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
 
 # The result really is always a str.
-def getstatusoutput(cmd: _TXT) -> Tuple[int, str]: ...
+def getstatusoutput(cmd: _TXT) -> tuple[int, str]: ...
 def getoutput(cmd: _TXT) -> str: ...
-def list2cmdline(seq: Iterable[str]) -> str: ...  # undocumented
+
+if sys.version_info >= (3, 8):
+    def list2cmdline(seq: Iterable[StrOrBytesPath]) -> str: ...  # undocumented
+
+else:
+    def list2cmdline(seq: Iterable[str]) -> str: ...  # undocumented
 
 if sys.platform == "win32":
     class STARTUPINFO:

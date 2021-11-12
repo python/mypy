@@ -1,9 +1,9 @@
 from abc import abstractmethod
 from distutils.dist import Distribution
-from typing import Any, Callable, Iterable, Tuple
+from typing import Any, Callable, Iterable
 
 class Command:
-    sub_commands: list[Tuple[str, Callable[[Command], bool] | None]]
+    sub_commands: list[tuple[str, Callable[[Command], bool] | None]]
     def __init__(self, dist: Distribution) -> None: ...
     @abstractmethod
     def initialize_options(self) -> None: ...
@@ -18,7 +18,7 @@ class Command:
     def ensure_filename(self, option: str) -> None: ...
     def ensure_dirname(self, option: str) -> None: ...
     def get_command_name(self) -> str: ...
-    def set_undefined_options(self, src_cmd: str, *option_pairs: Tuple[str, str]) -> None: ...
+    def set_undefined_options(self, src_cmd: str, *option_pairs: tuple[str, str]) -> None: ...
     def get_finalized_command(self, command: str, create: int = ...) -> Command: ...
     def reinitialize_command(self, command: Command | str, reinit_subcommands: int = ...) -> Command: ...
     def run_command(self, command: str) -> None: ...
@@ -34,7 +34,7 @@ class Command:
         preserve_times: int = ...,
         link: str | None = ...,
         level: Any = ...,
-    ) -> Tuple[str, bool]: ...  # level is not used
+    ) -> tuple[str, bool]: ...  # level is not used
     def copy_tree(
         self,
         infile: str,
@@ -57,7 +57,7 @@ class Command:
     ) -> str: ...
     def make_file(
         self,
-        infiles: str | list[str] | Tuple[str],
+        infiles: str | list[str] | tuple[str],
         outfile: str,
         func: Callable[..., Any],
         args: list[Any],

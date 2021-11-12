@@ -64,7 +64,7 @@ class SimpleXMLRPCDispatcher:  # undocumented
 
 class SimpleXMLRPCRequestHandler(http.server.BaseHTTPRequestHandler):
 
-    rpc_paths: Tuple[str, str]
+    rpc_paths: tuple[str, str]
     encode_threshold: int  # undocumented
     aepattern: Pattern[str]  # undocumented
     def accept_encodings(self) -> dict[str, float]: ...
@@ -80,7 +80,7 @@ class SimpleXMLRPCServer(socketserver.TCPServer, SimpleXMLRPCDispatcher):
     _send_traceback_handler: bool
     def __init__(
         self,
-        addr: Tuple[str, int],
+        addr: tuple[str, int],
         requestHandler: Type[SimpleXMLRPCRequestHandler] = ...,
         logRequests: bool = ...,
         allow_none: bool = ...,
@@ -96,7 +96,7 @@ class MultiPathXMLRPCServer(SimpleXMLRPCServer):  # undocumented
     encoding: str
     def __init__(
         self,
-        addr: Tuple[str, int],
+        addr: tuple[str, int],
         requestHandler: Type[SimpleXMLRPCRequestHandler] = ...,
         logRequests: bool = ...,
         allow_none: bool = ...,
@@ -140,7 +140,7 @@ class DocXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
 class DocXMLRPCServer(SimpleXMLRPCServer, XMLRPCDocGenerator):
     def __init__(
         self,
-        addr: Tuple[str, int],
+        addr: tuple[str, int],
         requestHandler: Type[SimpleXMLRPCRequestHandler] = ...,
         logRequests: bool = ...,
         allow_none: bool = ...,

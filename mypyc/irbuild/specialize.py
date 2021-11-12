@@ -16,7 +16,7 @@ from typing import Callable, Optional, Dict, Tuple, List
 
 from mypy.nodes import (
     CallExpr, RefExpr, MemberExpr, NameExpr, TupleExpr, GeneratorExpr,
-    ListExpr, DictExpr, StrExpr, ARG_POS, Expression
+    ListExpr, DictExpr, StrExpr, IntExpr, ARG_POS, ARG_NAMED, Expression
 )
 from mypy.types import AnyType, TypeOfAny
 
@@ -188,7 +188,6 @@ def translate_set_from_generator_call(
 @specialize_function('builtins.tuple')
 @specialize_function('builtins.frozenset')
 @specialize_function('builtins.dict')
-@specialize_function('builtins.sum')
 @specialize_function('builtins.min')
 @specialize_function('builtins.max')
 @specialize_function('builtins.sorted')
@@ -266,6 +265,41 @@ def any_all_helper(builder: IRBuilder,
     return retval
 
 
+@specialize_function('builtins.sum')
+def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+    # specialized implementation is used if:
+    # - only one or two arguments given (if not, sum() has been given invalid arguments)
+    # - first argument is a Generator (there is no benefit to optimizing the performance of eg.
+    #   sum([1, 2, 3]), so non-Generator Iterables are not handled)
+    if not (len(expr.args) in (1, 2)
+            and expr.arg_kinds[0] == ARG_POS
+            and isinstance(expr.args[0], GeneratorExpr)):
+        return None
+
+    # handle 'start' argument, if given
+    if len(expr.args) == 2:
+        # ensure call to sum() was properly constructed
+        if not expr.arg_kinds[1] in (ARG_POS, ARG_NAMED):
+            return None
+        start_expr = expr.args[1]
+    else:
+        start_expr = IntExpr(0)
+
+    gen_expr = expr.args[0]
+    target_type = builder.node_type(expr)
+    retval = Register(target_type)
+    builder.assign(retval, builder.coerce(builder.accept(start_expr), target_type, -1), -1)
+
+    def gen_inner_stmts() -> None:
+        call_expr = builder.accept(gen_expr.left_expr)
+        builder.assign(retval, builder.binary_op(retval, call_expr, '+', -1), -1)
+
+    loop_params = list(zip(gen_expr.indices, gen_expr.sequences, gen_expr.condlists))
+    comprehension_helper(builder, loop_params, gen_inner_stmts, gen_expr.line)
+
+    return retval
+
+
 @specialize_function('dataclasses.field')
 @specialize_function('attr.Factory')
 def translate_dataclasses_field_call(
@@ -295,12 +329,8 @@ def translate_next_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> 
         return None
 
     gen = expr.args[0]
-
     retval = Register(builder.node_type(expr))
-    default_val = None
-    if len(expr.args) > 1:
-        default_val = builder.accept(expr.args[1])
-
+    default_val = builder.accept(expr.args[1]) if len(expr.args) > 1 else None
     exit_block = BasicBlock()
 
     def gen_inner_stmts() -> None:
