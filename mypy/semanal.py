@@ -413,6 +413,8 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.accept(d)
         if file_node.fullname == 'typing':
             self.add_builtin_aliases(file_node)
+        if file_node.fullname == 'typing_extensions':
+            self.add_typing_extension_aliases(file_node)
         self.adjust_public_exports()
         self.export_map[self.cur_mod_id] = self.all_exports
         self.all_exports = []
@@ -474,30 +476,57 @@ class SemanticAnalyzer(NodeVisitor[None],
             name = alias.split('.')[-1]
             if name in tree.names and not isinstance(tree.names[name].node, PlaceholderNode):
                 continue
-            tag = self.track_incomplete_refs()
-            n = self.lookup_fully_qualified_or_none(target_name)
-            if n:
-                if isinstance(n.node, PlaceholderNode):
-                    self.mark_incomplete(name, tree)
-                else:
-                    # Found built-in class target. Create alias.
-                    target = self.named_type_or_none(target_name, [])
-                    assert target is not None
-                    # Transform List to List[Any], etc.
-                    fix_instance_types(target, self.fail, self.note, self.options.python_version)
-                    alias_node = TypeAlias(target, alias,
-                                           line=-1, column=-1,  # there is no context
-                                           no_args=True, normalized=True)
-                    self.add_symbol(name, alias_node, tree)
-            elif self.found_incomplete_ref(tag):
-                # Built-in class target may not ready yet -- defer.
+            self.create_alias(tree, target_name, alias, name)
+
+    def add_typing_extension_aliases(self, tree: MypyFile) -> None:
+        """Typing extensions module does contain some type aliases.
+
+        We need to analyze them as such, because in typeshed
+        they are just annotated as `_Alias()`.
+        Which is not supported.
+        """
+        assert tree.fullname == 'typing_extensions'
+
+        aliases = {
+            # See: https://github.com/python/mypy/issues/11528
+            'typing_extensions.OrderedDict': 'collections.OrderedDict',
+        }
+
+        for alias, target_name in aliases.items():
+            name = alias.split('.')[-1]
+
+            # We need to remove any node that is there at the moment.
+            # It is invalid.
+            tree.names.pop(name, None)
+
+            # Now, create a new alias.
+            self.create_alias(tree, target_name, alias, name)
+
+    def create_alias(self, tree: MypyFile, target_name: str, alias: str, name: str) -> None:
+        tag = self.track_incomplete_refs()
+        n = self.lookup_fully_qualified_or_none(target_name)
+        if n:
+            if isinstance(n.node, PlaceholderNode):
                 self.mark_incomplete(name, tree)
             else:
-                # Test fixtures may be missing some builtin classes, which is okay.
-                # Kill the placeholder if there is one.
-                if name in tree.names:
-                    assert isinstance(tree.names[name].node, PlaceholderNode)
-                    del tree.names[name]
+                # Found built-in class target. Create alias.
+                target = self.named_type_or_none(target_name, [])
+                assert target is not None
+                # Transform List to List[Any], etc.
+                fix_instance_types(target, self.fail, self.note, self.options.python_version)
+                alias_node = TypeAlias(target, alias,
+                                       line=-1, column=-1,  # there is no context
+                                       no_args=True, normalized=True)
+                self.add_symbol(name, alias_node, tree)
+        elif self.found_incomplete_ref(tag):
+            # Built-in class target may not ready yet -- defer.
+            self.mark_incomplete(name, tree)
+        else:
+            # Test fixtures may be missing some builtin classes, which is okay.
+            # Kill the placeholder if there is one.
+            if name in tree.names:
+                assert isinstance(tree.names[name].node, PlaceholderNode)
+                del tree.names[name]
 
     def adjust_public_exports(self) -> None:
         """Adjust the module visibility of globals due to __all__."""
