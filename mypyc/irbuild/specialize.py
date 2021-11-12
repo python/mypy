@@ -191,6 +191,7 @@ def faster_min_max(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optio
     if expr.arg_kinds == [ARG_POS, ARG_POS]:
         x, y = builder.accept(expr.args[0]), builder.accept(expr.args[1])
         result = Register(builder.node_type(expr))
+        # CPython evaluates arguments reversely when calling min(...) or max(...)
         if callee.fullname == 'builtins.min':
             comparison = builder.binary_op(y, x, '<', expr.line)
         else:
