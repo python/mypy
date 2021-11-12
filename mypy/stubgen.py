@@ -1275,7 +1275,7 @@ def remove_blacklisted_modules(modules: List[StubSource]) -> List[StubSource]:
     for m in modules:
         if m.path is not None:
             if is_blacklisted_path(m.path):
-                print(f"Ignoring Module Path '{m.path}'")
+                print(f"Ignoring module '{m.path}'.")
             else:
                 module.append(m)
         else:
