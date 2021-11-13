@@ -1625,9 +1625,9 @@ class MemberExpr(RefExpr):
         return visitor.visit_member_expr(self)
 
 
-# Kinds of arguments
 @unique
 class ArgKind(Enum):
+    """Kinds of arguments"""
     # Positional argument
     ARG_POS = 0
     # Positional, optional argument (functions only, not calls)
@@ -1642,28 +1642,32 @@ class ArgKind(Enum):
     ARG_NAMED_OPT = 5
 
 
-def is_positional(self: ArgKind, star: bool = False) -> bool:
+def is_positional(kind: ArgKind, star: bool = False) -> bool:
     return (
-        self == ARG_POS
-        or self == ARG_OPT
-        or (star and self == ARG_STAR)
+        kind == ARG_POS
+        or kind == ARG_OPT
+        or (star and kind == ARG_STAR)
     )
 
-def is_named(self: ArgKind, star: bool = False) -> bool:
+
+def is_named(kind: ArgKind, star: bool = False) -> bool:
     return (
-        self == ARG_NAMED
-        or self == ARG_NAMED_OPT
-        or (star and self == ARG_STAR2)
+        kind == ARG_NAMED
+        or kind == ARG_NAMED_OPT
+        or (star and kind == ARG_STAR2)
     )
 
-def is_required(self: ArgKind) -> bool:
-    return self == ARG_POS or self == ARG_NAMED
 
-def is_optional(self: ArgKind) -> bool:
-    return self == ARG_OPT or self == ARG_NAMED_OPT
+def is_required(kind: ArgKind) -> bool:
+    return kind == ARG_POS or kind == ARG_NAMED
 
-def is_star(self: ArgKind) -> bool:
-    return self == ARG_STAR or self == ARG_STAR2
+
+def is_optional(kind: ArgKind) -> bool:
+    return kind == ARG_OPT or kind == ARG_NAMED_OPT
+
+
+def is_star(kind: ArgKind) -> bool:
+    return kind == ARG_STAR or kind == ARG_STAR2
 
 
 ARG_POS: Final = ArgKind.ARG_POS

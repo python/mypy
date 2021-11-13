@@ -76,8 +76,7 @@ from mypy.nodes import (
     get_nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
     REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_source_versions,
     EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement, AssignmentExpr,
-    ParamSpecExpr, EllipsisExpr,
-    FuncBase, implicit_module_attrs,
+    ParamSpecExpr, EllipsisExpr, FuncBase, implicit_module_attrs, is_named
 )
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.typevars import fill_typevars
@@ -3142,7 +3141,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         contravariant = False
         upper_bound: Type = self.object_type()
         for param_value, param_name, param_kind in zip(args, names, kinds):
-            if not param_kind.is_named():
+            if not is_named(param_kind):
                 self.fail("Unexpected argument to TypeVar()", context)
                 return None
             if param_name == 'covariant':
