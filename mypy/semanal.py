@@ -5102,7 +5102,6 @@ class SemanticAnalyzer(NodeVisitor[None],
                             allow_unbound_tvars=allow_unbound_tvars,
                             allow_tuple_literal=allow_tuple_literal,
                             report_invalid_types=report_invalid_types,
-                            allow_unnormalized=self.is_stub_file,
                             allow_placeholder=allow_placeholder,
                             allow_required=allow_required,
                             allow_new_syntax=self.is_stub_file)
