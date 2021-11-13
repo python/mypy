@@ -21,7 +21,7 @@ from mypyc.ir.rtypes import (
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD, all_values
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.pprint import generate_names_for_ir
-from mypyc.analysis.blockfreq import commonly_executed_blocks
+from mypyc.analysis.blockfreq import frequently_executed_blocks
 
 # Whether to insert debug asserts for all error handling, to quickly
 # catch errors propagating without exceptions set.
@@ -78,7 +78,7 @@ def generate_native_function(fn: FuncIR,
     for i, block in enumerate(blocks):
         block.label = i
 
-    common = commonly_executed_blocks(fn.blocks[0])
+    common = frequently_executed_blocks(fn.blocks[0])
 
     for i in range(len(blocks)):
         block = blocks[i]

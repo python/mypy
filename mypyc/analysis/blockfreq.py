@@ -1,4 +1,4 @@
-"""Find basic blocks that are likely to be executed commonly.
+"""Find basic blocks that are likely to be executed frequently.
 
 For example, this would not include blocks that have exception handlers.
 
@@ -12,7 +12,7 @@ from typing import Set
 from mypyc.ir.ops import BasicBlock, Goto, Branch
 
 
-def commonly_executed_blocks(entry_point: BasicBlock) -> Set[BasicBlock]:
+def frequently_executed_blocks(entry_point: BasicBlock) -> Set[BasicBlock]:
     result: Set[BasicBlock] = set()
     worklist = [entry_point]
     while worklist:
