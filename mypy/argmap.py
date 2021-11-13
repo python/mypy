@@ -168,11 +168,10 @@ class ArgTypeExpander:
         This is supposed to be called for each formal, in order. Call multiple times per
         formal if multiple actuals map to a formal.
         """
-        from mypy.subtypes import is_subtype
-
         actual_type = get_proper_type(actual_type)
         if actual_kind == nodes.ARG_STAR:
             if isinstance(actual_type, Instance) and actual_type.args:
+                from mypy.subtypes import is_subtype
                 if is_subtype(actual_type, self.context.iterable_type):
                     return map_instance_to_supertype(
                         actual_type,
@@ -195,6 +194,7 @@ class ArgTypeExpander:
             else:
                 return AnyType(TypeOfAny.from_error)
         elif actual_kind == nodes.ARG_STAR2:
+            from mypy.subtypes import is_subtype
             if isinstance(actual_type, TypedDictType):
                 if formal_kind != nodes.ARG_STAR2 and formal_name in actual_type.items:
                     # Lookup type based on keyword argument name.
