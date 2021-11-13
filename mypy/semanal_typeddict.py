@@ -253,7 +253,7 @@ class TypedDictAnalyzer:
                 t.item if isinstance(t, RequiredType) else t  # type: ignore[misc]
                 for t in types
             ]
-            info = self.build_typeddict_typeinfo(name, items, types, required_keys)
+            info = self.build_typeddict_typeinfo(name, items, types, required_keys, call.line)
             info.line = node.line
             # Store generated TypeInfo under both names, see semanal_namedtuple for more details.
             if name != var_name or is_func_scope:
