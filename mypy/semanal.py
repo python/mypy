@@ -75,6 +75,7 @@ from mypy.nodes import (
     PlaceholderNode, COVARIANT, CONTRAVARIANT, INVARIANT,
     get_nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
     REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_source_versions,
+    typing_extensions_aliases,
     EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement, AssignmentExpr,
     ParamSpecExpr, EllipsisExpr,
     FuncBase, implicit_module_attrs,
@@ -312,9 +313,12 @@ class SemanticAnalyzer(NodeVisitor[None],
         if file_node.fullname == 'builtins':
             self.prepare_builtins_namespace(file_node)
         if file_node.fullname == 'typing':
-            self.prepare_typing_namespace(file_node)
+            self.prepare_typing_namespace(file_node, type_aliases)
+        if file_node.fullname == 'typing_extensions':
+            self.prepare_typing_namespace(file_node, typing_extensions_aliases)
 
-    def prepare_typing_namespace(self, file_node: MypyFile) -> None:
+    def prepare_typing_namespace(self, file_node: MypyFile,
+                                 aliases: Dict[str, str]) -> None:
         """Remove dummy alias definitions such as List = TypeAlias(object) from typing.
 
         They will be replaced with real aliases when corresponding targets are ready.
@@ -336,7 +340,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if (isinstance(stmt, AssignmentStmt) and len(stmt.lvalues) == 1 and
                         isinstance(stmt.lvalues[0], NameExpr)):
                     # Assignment to a simple name, remove it if it is a dummy alias.
-                    if 'typing.' + stmt.lvalues[0].name in type_aliases:
+                    if f'{file_node.fullname}.{stmt.lvalues[0].name}' in aliases:
                         defs.remove(stmt)
 
         helper(file_node.defs)
@@ -487,12 +491,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         """
         assert tree.fullname == 'typing_extensions'
 
-        aliases = {
-            # See: https://github.com/python/mypy/issues/11528
-            'typing_extensions.OrderedDict': 'collections.OrderedDict',
-        }
-
-        for alias, target_name in aliases.items():
+        for alias, target_name in typing_extensions_aliases.items():
             name = alias.split('.')[-1]
 
             # We need to remove any node that is there at the moment.
