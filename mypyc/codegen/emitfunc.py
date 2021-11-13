@@ -579,7 +579,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.emitter.emit_lines(*lines)
 
     def emit_inc_ref(self, dest: str, rtype: RType) -> None:
-        self.emitter.emit_inc_ref(dest, rtype)
+        self.emitter.emit_inc_ref(dest, rtype, rare=self.rare)
 
     def emit_dec_ref(self, dest: str, rtype: RType, is_xdec: bool) -> None:
         self.emitter.emit_dec_ref(dest, rtype, is_xdec=is_xdec, rare=self.rare)

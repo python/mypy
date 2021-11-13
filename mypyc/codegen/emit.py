@@ -365,6 +365,7 @@ class Emitter:
             for i, item_type in enumerate(rtype.types):
                 self.emit_inc_ref('{}.f{}'.format(dest, i), item_type)
         elif not rtype.is_unboxed:
+            # Always inline, since this is a simple op
             self.emit_line('CPy_INCREF(%s);' % dest)
         # Otherwise assume it's an unboxed, pointerless value and do nothing.
 
