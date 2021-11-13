@@ -1,7 +1,7 @@
 from typing import Optional, Callable
 
 from mypy.plugin import Plugin, AnalyzeTypeContext
-from mypy.types import Type, UnboundType, TypeList, AnyType, CallableType, TypeOfAny
+from mypy.types import Type, TypeList, AnyType, CallableType, TypeOfAny
 # The official name changed to NoneType but we have an alias for plugin compat reasons
 # so we'll keep testing that here.
 from mypy.types import NoneTyp

@@ -70,17 +70,17 @@ class C:  # Forgot to add type params here
 c = C(t=3)  # type: C[int]  # E: "C" expects no type arguments, but 1 given
 
 [case testBreakOutsideLoop]
-break # E: 'break' outside loop
+break # E: "break" outside loop
 
 [case testContinueOutsideLoop]
-continue # E: 'continue' outside loop
+continue # E: "continue" outside loop
 
 [case testYieldOutsideFunction]
-yield # E: 'yield' outside function
+yield # E: "yield" outside function
 
 [case testYieldFromOutsideFunction]
 x = 1
-yield from x # E: 'yield from' outside function
+yield from x # E: "yield from" outside function
 
 [case testImportFuncDup]
 

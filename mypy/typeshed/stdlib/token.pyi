@@ -1,5 +1,4 @@
 import sys
-from typing import Dict
 
 ENDMARKER: int
 NAME: int
@@ -26,8 +25,6 @@ GREATER: int
 EQUAL: int
 DOT: int
 PERCENT: int
-if sys.version_info < (3,):
-    BACKQUOTE: int
 LBRACE: int
 RBRACE: int
 EQEQUAL: int
@@ -53,23 +50,18 @@ DOUBLESTAREQUAL: int
 DOUBLESLASH: int
 DOUBLESLASHEQUAL: int
 AT: int
-if sys.version_info >= (3,):
-    RARROW: int
-    ELLIPSIS: int
-if sys.version_info >= (3, 5):
-    ATEQUAL: int
-    if sys.version_info < (3, 7):
-        # These were removed in Python 3.7 but added back in Python 3.8
-        AWAIT: int
-        ASYNC: int
-if sys.version_info >= (3, 8):
+RARROW: int
+ELLIPSIS: int
+ATEQUAL: int
+if sys.version_info < (3, 7) or sys.version_info >= (3, 8):
+    # These were removed in Python 3.7 but added back in Python 3.8
     AWAIT: int
     ASYNC: int
 OP: int
 ERRORTOKEN: int
 N_TOKENS: int
 NT_OFFSET: int
-tok_name: Dict[int, str]
+tok_name: dict[int, str]
 if sys.version_info >= (3, 7):
     COMMENT: int
     NL: int
@@ -78,7 +70,7 @@ if sys.version_info >= (3, 8):
     TYPE_COMMENT: int
     TYPE_IGNORE: int
     COLONEQUAL: int
-    EXACT_TOKEN_TYPES: Dict[str, int]
+    EXACT_TOKEN_TYPES: dict[str, int]
 
 def ISTERMINAL(x: int) -> bool: ...
 def ISNONTERMINAL(x: int) -> bool: ...

@@ -2,6 +2,7 @@
 
 [case testAsync]
 import asyncio
+import sys
 
 async def h() -> int:
     return 1
@@ -13,8 +14,13 @@ async def g() -> int:
 async def f() -> int:
     return await g()
 
-loop = asyncio.get_event_loop()
-result = loop.run_until_complete(f())
+# sys.version_info >= (3, 7) fails with
+# error: Unsupported left operand type for >= ("Tuple[int, int, int, str, int]")
+if sys.version_info[0] >= 3 and sys.version_info[1] >= 7:
+    result = asyncio.run(f())
+else:
+    loop = asyncio.get_event_loop()
+    result = loop.run_until_complete(f())
 assert result == 1
 
 [typing fixtures/typing-full.pyi]
@@ -22,8 +28,13 @@ assert result == 1
 [file driver.py]
 from native import f
 import asyncio
-loop = asyncio.get_event_loop()
-result = loop.run_until_complete(f())
+import sys
+
+if sys.version_info >= (3, 7):
+    result = asyncio.run(f())
+else:
+    loop = asyncio.get_event_loop()
+    result = loop.run_until_complete(f())
 assert result == 1
 
 [case testMaybeUninitVar]
@@ -485,6 +496,8 @@ print(native.x)
 77
 
 [case testComprehensions]
+from typing import List
+
 # A list comprehension
 l = [str(x) + "     " + str(y) + "   " + str(x*y) for x in range(10)
      if x != 6 if x != 5 for y in range(x) if y*x != 8]
@@ -498,6 +511,17 @@ def pred(x: int) -> bool:
 # eventually and will raise an exception.
 l2 = [x for x in range(10) if x <= 6 if pred(x)]
 
+src = ['x']
+
+def f() -> List[str]:
+    global src
+    res = src
+    src = []
+    return res
+
+l3 = [s for s in f()]
+l4 = [s for s in f()]
+
 # A dictionary comprehension
 d = {k: k*k for k in range(10) if k != 5 if k != 6}
 
@@ -506,10 +530,12 @@ s = {str(x) + "     " + str(y) + "   " + str(x*y) for x in range(10)
      if x != 6 if x != 5 for y in range(x) if y*x != 8}
 
 [file driver.py]
-from native import l, l2, d, s
+from native import l, l2, l3, l4, d, s
 for a in l:
     print(a)
 print(tuple(l2))
+assert l3 == ['x']
+assert l4 == []
 for k in sorted(d):
     print(k, d[k])
 for a in sorted(s):
@@ -588,95 +614,6 @@ for a in sorted(s):
 9     6   54
 9     7   63
 9     8   72
-
-[case testDunders]
-from typing import Any
-class Item:
-    def __init__(self, value: str) -> None:
-        self.value = value
-
-    def __hash__(self) -> int:
-        return hash(self.value)
-
-    def __eq__(self, rhs: object) -> bool:
-        return isinstance(rhs, Item) and self.value == rhs.value
-
-    def __lt__(self, x: 'Item') -> bool:
-        return self.value < x.value
-
-class Subclass1(Item):
-    def __bool__(self) -> bool:
-        return bool(self.value)
-
-class NonBoxedThing:
-    def __getitem__(self, index: Item) -> Item:
-        return Item("2 * " + index.value + " + 1")
-
-class BoxedThing:
-    def __getitem__(self, index: int) -> int:
-        return 2 * index + 1
-
-class Subclass2(BoxedThing):
-    pass
-
-class UsesNotImplemented:
-    def __eq__(self, b: object) -> bool:
-        return NotImplemented
-
-def index_into(x : Any, y : Any) -> Any:
-    return x[y]
-
-def internal_index_into() -> None:
-    x = BoxedThing()
-    print (x[3])
-    y = NonBoxedThing()
-    z = Item("3")
-    print(y[z].value)
-
-def is_truthy(x: Item) -> bool:
-    return True if x else False
-
-[file driver.py]
-from native import *
-x = BoxedThing()
-y = 3
-print(x[y], index_into(x, y))
-
-x = Subclass2()
-y = 3
-print(x[y], index_into(x, y))
-
-z = NonBoxedThing()
-w = Item("3")
-print(z[w].value, index_into(z, w).value)
-
-i1 = Item('lolol')
-i2 = Item('lol' + 'ol')
-i3 = Item('xyzzy')
-assert hash(i1) == hash(i2)
-
-assert i1 == i2
-assert not i1 != i2
-assert not i1 == i3
-assert i1 != i3
-assert i2 < i3
-assert not i1 < i2
-assert i1 == Subclass1('lolol')
-
-assert is_truthy(Item(''))
-assert is_truthy(Item('a'))
-assert not is_truthy(Subclass1(''))
-assert is_truthy(Subclass1('a'))
-
-assert UsesNotImplemented() != object()
-
-internal_index_into()
-[out]
-7 7
-7 7
-2 * 3 + 1 2 * 3 + 1
-7
-2 * 3 + 1
 
 [case testDummyTypes]
 from typing import Tuple, List, Dict, NamedTuple
@@ -894,6 +831,51 @@ assert call_all(mixed_110) == 1
 assert call_any_nested([[1, 1, 1], [1, 1], []]) == 1
 assert call_any_nested([[1, 1, 1], [0, 1], []]) == 0
 
+[case testSum]
+[typing fixtures/typing-full.pyi]
+from typing import Any, List
+
+def test_sum_of_numbers() -> None:
+    assert sum(x for x in [1, 2, 3]) == 6
+    assert sum(x for x in [0.0, 1.2, 2]) == 6.2
+    assert sum(x for x in [1, 1j]) == 1 + 1j
+
+def test_sum_callables() -> None:
+    assert sum((lambda x: x == 0)(x) for x in []) == 0
+    assert sum((lambda x: x == 0)(x) for x in [0]) == 1
+    assert sum((lambda x: x == 0)(x) for x in [0, 0, 0]) == 3
+    assert sum((lambda x: x == 0)(x) for x in [0, 1, 0]) == 2
+    assert sum((lambda x: x % 2 == 0)(x) for x in range(2**10)) == 2**9
+
+def test_sum_comparisons() -> None:
+    assert sum(x == 0 for x in []) == 0
+    assert sum(x == 0 for x in [0]) == 1
+    assert sum(x == 0 for x in [0, 0, 0]) == 3
+    assert sum(x == 0 for x in [0, 1, 0]) == 2
+    assert sum(x % 2 == 0 for x in range(2**10)) == 2**9
+
+def test_sum_multi() -> None:
+    assert sum(i + j == 0 for i, j in zip([0, 0, 0], [0, 1, 0])) == 2
+
+def test_sum_misc() -> None:
+    # misc cases we do optimize (note, according to sum's helptext, we don't need to support
+    # non-numeric cases, but CPython and mypyc both do anyway)
+    assert sum(c == 'd' for c in 'abcdd') == 2
+    # misc cases we do not optimize
+    assert sum([0, 1]) == 1
+    assert sum([0, 1], 1) == 2
+
+def test_sum_start_given() -> None:
+    a = 1
+    assert sum((x == 0 for x in [0, 1]), a) == 2
+    assert sum(((lambda x: x == 0)(x) for x in []), 1) == 1
+    assert sum(((lambda x: x == 0)(x) for x in [0]), 1) == 2
+    assert sum(((lambda x: x == 0)(x) for x in [0, 0, 0]), 1) == 4
+    assert sum(((lambda x: x == 0)(x) for x in [0, 1, 0]), 1) == 3
+    assert sum(((lambda x: x % 2 == 0)(x) for x in range(2**10)), 1) == 2**9 + 1
+    assert sum((x for x in [1, 1j]), 2j) == 1 + 3j
+    assert sum((c == 'd' for c in 'abcdd'), 1) == 3
+
 [case testNoneStuff]
 from typing import Optional
 class A:
@@ -907,7 +889,6 @@ def none() -> None:
 
 def arg(x: Optional[A]) -> bool:
     return x is None
-
 
 [file driver.py]
 import native
@@ -1126,3 +1107,51 @@ C = sys.platform == 'x' and (lambda x: y + x)
 assert not A
 assert not B
 assert not C
+
+[case testDoesntSegfaultWhenTopLevelFails]
+# make the initial import fail
+assert False
+
+class C:
+    def __init__(self):
+        self.x = 1
+        self.y = 2
+def test() -> None:
+    a = C()
+[file driver.py]
+# load native, cause PyInit to be run, create the module but don't finish initializing the globals
+try:
+    import native
+except:
+    pass
+try:
+    # try accessing those globals that were never properly initialized
+    import native
+    native.test()
+# should fail with AssertionError due to `assert False` in other function
+except AssertionError:
+    pass
+
+[case testRepeatedUnderscoreFunctions]
+def _(arg): pass
+def _(arg): pass
+
+[case testUnderscoreFunctionsInMethods]
+
+class A:
+    def _(arg): pass
+    def _(arg): pass
+class B(A):
+    def _(arg): pass
+    def _(arg): pass
+
+[case testGlobalRedefinition_toplevel]
+# mypy: allow-redefinition
+i = 0
+i += 1
+i = "foo"
+i += i
+i = b"foo"
+
+def test_redefinition() -> None:
+    assert i == b"foo"

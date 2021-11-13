@@ -2,10 +2,11 @@ from typing import Dict, Iterable, List, TypeVar, Mapping, cast
 
 from mypy.types import (
     Type, Instance, CallableType, TypeVisitor, UnboundType, AnyType,
-    NoneType, TypeVarType, Overloaded, TupleType, TypedDictType, UnionType,
+    NoneType, Overloaded, TupleType, TypedDictType, UnionType,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId,
-    FunctionLike, TypeVarDef, LiteralType, get_proper_type, ProperType,
-    TypeAliasType)
+    FunctionLike, TypeVarType, LiteralType, get_proper_type, ProperType,
+    TypeAliasType, ParamSpecType
+)
 
 
 def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type:
@@ -23,7 +24,7 @@ def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
     if not instance.args:
         return typ
     else:
-        variables = {}  # type: Dict[TypeVarId, Type]
+        variables: Dict[TypeVarId, Type] = {}
         for binder, arg in zip(instance.type.defn.type_vars, instance.args):
             variables[binder.id] = arg
         return expand_type(typ, variables)
@@ -37,27 +38,29 @@ def freshen_function_type_vars(callee: F) -> F:
     if isinstance(callee, CallableType):
         if not callee.is_generic():
             return cast(F, callee)
-        tvdefs = []
-        tvmap = {}  # type: Dict[TypeVarId, Type]
+        tvs = []
+        tvmap: Dict[TypeVarId, Type] = {}
         for v in callee.variables:
-            # TODO(shantanu): fix for ParamSpecDef
-            assert isinstance(v, TypeVarDef)
-            tvdef = TypeVarDef.new_unification_variable(v)
-            tvdefs.append(tvdef)
-            tvmap[v.id] = TypeVarType(tvdef)
-        fresh = cast(CallableType, expand_type(callee, tvmap)).copy_modified(variables=tvdefs)
+            # TODO(PEP612): fix for ParamSpecType
+            if isinstance(v, ParamSpecType):
+                continue
+            assert isinstance(v, TypeVarType)
+            tv = TypeVarType.new_unification_variable(v)
+            tvs.append(tv)
+            tvmap[v.id] = tv
+        fresh = cast(CallableType, expand_type(callee, tvmap)).copy_modified(variables=tvs)
         return cast(F, fresh)
     else:
         assert isinstance(callee, Overloaded)
         fresh_overload = Overloaded([freshen_function_type_vars(item)
-                                     for item in callee.items()])
+                                     for item in callee.items])
         return cast(F, fresh_overload)
 
 
 class ExpandTypeVisitor(TypeVisitor[Type]):
     """Visitor that substitutes type variables with values."""
 
-    variables = None  # type: Mapping[TypeVarId, Type]  # TypeVar id -> TypeVar value
+    variables: Mapping[TypeVarId, Type]  # TypeVar id -> TypeVar value
 
     def __init__(self, variables: Mapping[TypeVarId, Type]) -> None:
         self.variables = variables
@@ -102,8 +105,8 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
                                            if t.type_guard is not None else None))
 
     def visit_overloaded(self, t: Overloaded) -> Type:
-        items = []  # type: List[CallableType]
-        for item in t.items():
+        items: List[CallableType] = []
+        for item in t.items:
             new_item = item.accept(self)
             assert isinstance(new_item, ProperType)
             assert isinstance(new_item, CallableType)
@@ -142,7 +145,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         return t.copy_modified(args=self.expand_types(t.args))
 
     def expand_types(self, types: Iterable[Type]) -> List[Type]:
-        a = []  # type: List[Type]
+        a: List[Type] = []
         for t in types:
             a.append(t.accept(self))
         return a

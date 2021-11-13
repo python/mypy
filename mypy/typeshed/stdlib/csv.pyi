@@ -17,10 +17,15 @@ from _csv import (
     unregister_dialect as unregister_dialect,
     writer as writer,
 )
-from collections import OrderedDict
-from typing import Any, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Text, Type
+from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
+from typing import Any, Generic, Type, TypeVar, overload
 
-_DictRow = Mapping[str, Any]
+if sys.version_info >= (3, 8):
+    from typing import Dict as _DictReadMapping
+else:
+    from collections import OrderedDict as _DictReadMapping
+
+_T = TypeVar("_T")
 
 class excel(Dialect):
     delimiter: str
@@ -33,55 +38,56 @@ class excel(Dialect):
 class excel_tab(excel):
     delimiter: str
 
-if sys.version_info >= (3,):
-    class unix_dialect(Dialect):
-        delimiter: str
-        quotechar: str
-        doublequote: bool
-        skipinitialspace: bool
-        lineterminator: str
-        quoting: int
+class unix_dialect(Dialect):
+    delimiter: str
+    quotechar: str
+    doublequote: bool
+    skipinitialspace: bool
+    lineterminator: str
+    quoting: int
 
-if sys.version_info >= (3, 8):
-    _DRMapping = Dict[str, str]
-elif sys.version_info >= (3, 6):
-    _DRMapping = OrderedDict[str, str]
-else:
-    _DRMapping = Dict[str, str]
-
-class DictReader(Iterator[_DRMapping]):
-    restkey: Optional[str]
-    restval: Optional[str]
+class DictReader(Generic[_T], Iterator[_DictReadMapping[_T, str]]):
+    fieldnames: Sequence[_T] | None
+    restkey: str | None
+    restval: str | None
     reader: _reader
     dialect: _DialectLike
     line_num: int
-    fieldnames: Optional[Sequence[str]]
+    @overload
     def __init__(
         self,
-        f: Iterable[Text],
-        fieldnames: Optional[Sequence[str]] = ...,
-        restkey: Optional[str] = ...,
-        restval: Optional[str] = ...,
+        f: Iterable[str],
+        fieldnames: Sequence[_T],
+        restkey: str | None = ...,
+        restval: str | None = ...,
         dialect: _DialectLike = ...,
         *args: Any,
         **kwds: Any,
     ) -> None: ...
-    def __iter__(self) -> DictReader: ...
-    if sys.version_info >= (3,):
-        def __next__(self) -> _DRMapping: ...
-    else:
-        def next(self) -> _DRMapping: ...
+    @overload
+    def __init__(
+        self: DictReader[str],
+        f: Iterable[str],
+        fieldnames: Sequence[str] | None = ...,
+        restkey: str | None = ...,
+        restval: str | None = ...,
+        dialect: _DialectLike = ...,
+        *args: Any,
+        **kwds: Any,
+    ) -> None: ...
+    def __iter__(self) -> DictReader[_T]: ...
+    def __next__(self) -> _DictReadMapping[_T, str]: ...
 
-class DictWriter(object):
-    fieldnames: Sequence[str]
-    restval: Optional[Any]
+class DictWriter(Generic[_T]):
+    fieldnames: Collection[_T]
+    restval: Any | None
     extrasaction: str
     writer: _writer
     def __init__(
         self,
         f: Any,
-        fieldnames: Iterable[str],
-        restval: Optional[Any] = ...,
+        fieldnames: Collection[_T],
+        restval: Any | None = ...,
         extrasaction: str = ...,
         dialect: _DialectLike = ...,
         *args: Any,
@@ -91,11 +97,11 @@ class DictWriter(object):
         def writeheader(self) -> Any: ...
     else:
         def writeheader(self) -> None: ...
-    def writerow(self, rowdict: _DictRow) -> Any: ...
-    def writerows(self, rowdicts: Iterable[_DictRow]) -> None: ...
+    def writerow(self, rowdict: Mapping[_T, Any]) -> Any: ...
+    def writerows(self, rowdicts: Iterable[Mapping[_T, Any]]) -> None: ...
 
 class Sniffer(object):
-    preferred: List[str]
+    preferred: list[str]
     def __init__(self) -> None: ...
-    def sniff(self, sample: str, delimiters: Optional[str] = ...) -> Type[Dialect]: ...
+    def sniff(self, sample: str, delimiters: str | None = ...) -> Type[Dialect]: ...
     def has_header(self, sample: str) -> bool: ...

@@ -171,6 +171,21 @@ p: Point2D
 reveal_type(p)  # N: Revealed type is "TypedDict('__main__.Point2D', {'x': builtins.int, 'y': builtins.int})"
 [builtins fixtures/dict.pyi]
 
+[case testCannotCreateTypedDictWithDuplicateBases]
+# https://github.com/python/mypy/issues/3673
+from typing import TypedDict
+
+class A(TypedDict):
+    x: str
+    y: int
+
+class B(A, A): # E: Duplicate base class "A"
+    z: str
+
+class C(TypedDict, TypedDict): # E: Duplicate base class "TypedDict"
+    c1: int
+[typing fixtures/typing-typeddict.pyi]
+
 [case testCannotCreateTypedDictWithClassWithOtherStuff]
 # flags: --python-version 3.6
 from mypy_extensions import TypedDict
@@ -184,6 +199,19 @@ class Point(TypedDict):
 p = Point(x=42, y=1337, z='whatever')
 reveal_type(p)  # N: Revealed type is "TypedDict('__main__.Point', {'x': builtins.int, 'y': builtins.int, 'z': Any})"
 [builtins fixtures/dict.pyi]
+
+[case testCannotCreateTypedDictWithClassWithFunctionUsedToCrash]
+# https://github.com/python/mypy/issues/11079
+from typing import TypedDict
+class D(TypedDict):
+    y: int
+    def x(self, key: int):  # E: Invalid statement in TypedDict definition; expected "field_name: field_type"
+        pass
+
+d = D(y=1)
+reveal_type(d)  # N: Revealed type is "TypedDict('__main__.D', {'y': builtins.int})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCanCreateTypedDictTypeWithUnderscoreItemName]
 from mypy_extensions import TypedDict
@@ -702,8 +730,8 @@ T = TypeVar('T')
 def join(x: T, y: T) -> T: return x
 ab = join(A(x='', y=1, z=''), B(x='', z=1))
 ac = join(A(x='', y=1, z=''), C(x='', y=0, z=1))
-ab['y']  # E: "y" is not a valid TypedDict key; expected one of ('x')
-ac['a']  # E: "a" is not a valid TypedDict key; expected one of ('x', 'y')
+ab['y']  # E: "y" is not a valid TypedDict key; expected one of ("x")
+ac['a']  # E: "a" is not a valid TypedDict key; expected one of ("x", "y")
 [builtins fixtures/dict.pyi]
 
 [case testCannotGetItemOfTypedDictWithNonLiteralKey]
@@ -712,7 +740,7 @@ from typing import Union
 TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 p = TaggedPoint(type='2d', x=42, y=1337)
 def get_coordinate(p: TaggedPoint, key: str) -> Union[str, int]:
-    return p[key]  # E: TypedDict key must be a string literal; expected one of ('type', 'x', 'y')
+    return p[key]  # E: TypedDict key must be a string literal; expected one of ("type", "x", "y")
 [builtins fixtures/dict.pyi]
 
 
@@ -746,7 +774,7 @@ from typing import Union
 TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 p = TaggedPoint(type='2d', x=42, y=1337)
 def set_coordinate(p: TaggedPoint, key: str, value: int) -> None:
-    p[key] = value  # E: TypedDict key must be a string literal; expected one of ('type', 'x', 'y')
+    p[key] = value  # E: TypedDict key must be a string literal; expected one of ("type", "x", "y")
 [builtins fixtures/dict.pyi]
 
 
@@ -1440,7 +1468,7 @@ T = TypeVar('T', bound='M')
 class G(Generic[T]):
     x: T
 
-yb: G[int] # E: Type argument "builtins.int" of "G" must be a subtype of "TypedDict('__main__.M', {'x': builtins.int})"
+yb: G[int] # E: Type argument "int" of "G" must be a subtype of "M"
 yg: G[M]
 z: int = G[M]().x['x']
 
@@ -1584,8 +1612,8 @@ d = None # type: Dict[Any, Any]
 
 f1(**td, **d)
 f1(**d, **td)
-f2(**td, **d) # E: Too many arguments for "f2"
-f2(**d, **td) # E: Too many arguments for "f2"
+f2(**td, **d)
+f2(**d, **td)
 [builtins fixtures/dict.pyi]
 
 [case testTypedDictNonMappingMethods]
@@ -2095,11 +2123,11 @@ class TD(TypedDict):
     foo: int
 
 d: TD = {b'foo': 2} # E: Expected TypedDict key to be string literal
-d[b'foo'] = 3 # E: TypedDict key must be a string literal; expected one of ('foo') \
+d[b'foo'] = 3 # E: TypedDict key must be a string literal; expected one of ("foo") \
     # E: Argument 1 has incompatible type "bytes"; expected "str"
-d[b'foo'] # E: TypedDict key must be a string literal; expected one of ('foo')
-d[3] # E: TypedDict key must be a string literal; expected one of ('foo')
-d[True] # E: TypedDict key must be a string literal; expected one of ('foo')
+d[b'foo'] # E: TypedDict key must be a string literal; expected one of ("foo")
+d[3] # E: TypedDict key must be a string literal; expected one of ("foo")
+d[True] # E: TypedDict key must be a string literal; expected one of ("foo")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 

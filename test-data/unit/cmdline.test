@@ -58,7 +58,7 @@ undef
 [file dir/subdir/a.py]
 undef
 [out]
-dir/a.py: error: Duplicate module named 'a' (also at 'dir/subdir/a.py')
+dir/a.py: error: Duplicate module named "a" (also at "dir/subdir/a.py")
 dir/a.py: note: Are you missing an __init__.py? Alternatively, consider using --exclude to avoid checking one of them.
 == Return code: 2
 
@@ -79,7 +79,7 @@ dir/subdir/b.py:1: error: Name "undef" is not defined
 [file pkg/__init__.py]
 [file pkg/a.py]
 undef
-import a
+import pkg.a
 [file pkg/subdir/a.py]
 undef
 import pkg.a
@@ -124,7 +124,7 @@ mypy: can't decode file 'a.py': unknown encoding: uft-8
 [file two/mod/__init__.py]
 # type: ignore
 [out]
-two/mod/__init__.py: error: Duplicate module named 'mod' (also at 'one/mod/__init__.py')
+two/mod/__init__.py: error: Duplicate module named "mod" (also at "one/mod/__init__.py")
 two/mod/__init__.py: note: Are you missing an __init__.py? Alternatively, consider using --exclude to avoid checking one of them.
 == Return code: 2
 
@@ -306,13 +306,13 @@ mypy.ini: [mypy-*]: Per-module sections should only specify per-module flags (py
 [file mypy.ini]
 \[mypy]
 mypy_path =
-    foo:bar
-    , baz
-[file foo/foo.pyi]
+    foo_dir:bar_dir
+    , baz_dir
+[file foo_dir/foo.pyi]
 def foo(x: int) -> str: ...
-[file bar/bar.pyi]
+[file bar_dir/bar.pyi]
 def bar(x: str) -> list: ...
-[file baz/baz.pyi]
+[file baz_dir/baz.pyi]
 def baz(x: list) -> dict: ...
 [file file.py]
 import no_stubs
@@ -413,7 +413,7 @@ follow_imports = error
 [file a.py]
 /  # No error reported
 [out]
-main.py:1: error: Import of 'a' ignored
+main.py:1: error: Import of "a" ignored
 main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 main.py:2: note: Revealed type is "Any"
 main.py:4: note: Revealed type is "Any"
@@ -451,7 +451,7 @@ bla bla
 bla bla
 [out]
 normal.py:2: error: Unsupported operand types for + ("int" and "str")
-main.py:4: error: Import of 'error' ignored
+main.py:4: error: Import of "error" ignored
 main.py:4: note: (Using --follow-imports=error, module not passed on command line)
 main.py:5: note: Revealed type is "builtins.int"
 main.py:6: note: Revealed type is "builtins.int"
@@ -753,6 +753,9 @@ def foo(
 [out]
 a.py:1: error: unexpected EOF while parsing
 == Return code: 2
+[out version>=3.10]
+a.py:1: error: '(' was never closed
+== Return code: 2
 
 [case testParseErrorAnnots]
 # cmd: mypy a.py
@@ -788,7 +791,7 @@ c.py:2: error: Argument 1 to "bar" has incompatible type "str"; expected "int"
 [case testSrcPEP420Packages]
 # cmd: mypy -p anamespace --namespace-packages
 [file mypy.ini]
-\[mypy]]
+\[mypy]
 mypy_path = src
 [file src/setup.cfg]
 [file src/anamespace/foo/__init__.py]
@@ -829,7 +832,7 @@ follow_imports_for_stubs = True
 import math
 math.frobnicate()
 [out]
-main.py:1: error: Import of 'math' ignored
+main.py:1: error: Import of "math" ignored
 main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 
 [case testFollowImportStubs2]
@@ -943,7 +946,13 @@ emarg/foo.py:1: error: Name "fail" is not defined
 emarg/hatch/villip/mankangulisk.py:1: error: Name "fail" is not defined
 
 [case testPackageRootEmpty]
-# cmd: mypy --package-root= a/b/c.py main.py
+# cmd: mypy --no-namespace-packages --package-root= a/b/c.py main.py
+[file a/b/c.py]
+[file main.py]
+import a.b.c
+
+[case testPackageRootEmptyNamespacePackage]
+# cmd: mypy --namespace-packages --package-root= a/b/c.py main.py
 [file a/b/c.py]
 [file main.py]
 import a.b.c
@@ -1137,7 +1146,8 @@ import foo.bar
 [file src/foo/bar.py]
 1+'x'
 [out]
-src/foo/bar.py: error: Source file found twice under different module names: 'src.foo.bar' and 'foo.bar'
+src/foo/bar.py: error: Source file found twice under different module names: "src.foo.bar" and "foo.bar"
+src/foo/bar.py: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules for more info
 == Return code: 2
 
 [case testEnableInvalidErrorCode]
@@ -1236,6 +1246,10 @@ x: str = 0
 pkg/x.py:1: error: invalid syntax
 Found 1 error in 1 file (errors prevented further checking)
 == Return code: 2
+[out version>=3.10]
+pkg/x.py:1: error: invalid syntax. Perhaps you forgot a comma?
+Found 1 error in 1 file (errors prevented further checking)
+== Return code: 2
 
 [case testCmdlinePackageAndFile]
 # cmd: mypy -p pkg file
@@ -1269,3 +1283,83 @@ x = 0  # type: str
 y = 0  # type: str
 [out]
 pkg.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testCmdlineNonInteractiveWithoutInstallTypes]
+# cmd: mypy --non-interactive -m pkg
+[out]
+error: --non-interactive is only supported with --install-types
+== Return code: 2
+
+[case testCmdlineNonInteractiveInstallTypesNothingToDo]
+# cmd: mypy --install-types --non-interactive -m pkg
+[file pkg.py]
+1()
+[out]
+pkg.py:1: error: "int" not callable
+
+[case testCmdlineNonInteractiveInstallTypesNothingToDoNoError]
+# cmd: mypy --install-types --non-interactive -m pkg
+[file pkg.py]
+1 + 2
+[out]
+
+[case testCmdlineInteractiveInstallTypesNothingToDo]
+# cmd: mypy --install-types -m pkg
+[file pkg.py]
+1()
+[out]
+pkg.py:1: error: "int" not callable
+
+[case testCmdlineExclude]
+# cmd: mypy --exclude abc .
+[file abc/apkg.py]
+1()
+[file b/bpkg.py]
+1()
+[file c/cpkg.py]
+1()
+[out]
+c/cpkg.py:1: error: "int" not callable
+b/bpkg.py:1: error: "int" not callable
+
+[case testCmdlineMultipleExclude]
+# cmd: mypy --exclude abc --exclude b/ .
+[file abc/apkg.py]
+1()
+[file b/bpkg.py]
+1()
+[file c/cpkg.py]
+1()
+[out]
+c/cpkg.py:1: error: "int" not callable
+
+[case testCmdlineCfgExclude]
+# cmd: mypy .
+[file mypy.ini]
+\[mypy]
+exclude = abc
+[file abc/apkg.py]
+1()
+[file b/bpkg.py]
+1()
+[file c/cpkg.py]
+1()
+[out]
+c/cpkg.py:1: error: "int" not callable
+b/bpkg.py:1: error: "int" not callable
+
+[case testCmdlineCfgMultipleExclude]
+# cmd: mypy .
+[file mypy.ini]
+\[mypy]
+exclude =
+    abc
+    b
+[file abc/apkg.py]
+1()
+[file b/bpkg.py]
+1()
+[file c/cpkg.py]
+1()
+[out]
+c/cpkg.py:1: error: "int" not callable

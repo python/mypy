@@ -46,20 +46,15 @@ def get_cfg(blocks: List[BasicBlock]) -> CFG:
          basic block index -> (successors blocks, predecesssor blocks)
     """
     succ_map = {}
-    pred_map = {}  # type: Dict[BasicBlock, List[BasicBlock]]
+    pred_map: Dict[BasicBlock, List[BasicBlock]] = {}
     exits = set()
     for block in blocks:
 
         assert not any(isinstance(op, ControlOp) for op in block.ops[:-1]), (
             "Control-flow ops must be at the end of blocks")
 
-        last = block.ops[-1]
-        if isinstance(last, Branch):
-            succ = [last.true, last.false]
-        elif isinstance(last, Goto):
-            succ = [last.label]
-        else:
-            succ = []
+        succ = list(block.terminator.targets())
+        if not succ:
             exits.add(block)
 
         # Errors can occur anywhere inside a block, which means that
@@ -104,12 +99,8 @@ def cleanup_cfg(blocks: List[BasicBlock]) -> None:
     while changed:
         # First collapse any jumps to basic block that only contain a goto
         for block in blocks:
-            term = block.ops[-1]
-            if isinstance(term, Goto):
-                term.label = get_real_target(term.label)
-            elif isinstance(term, Branch):
-                term.true = get_real_target(term.true)
-                term.false = get_real_target(term.false)
+            for i, tgt in enumerate(block.terminator.targets()):
+                block.terminator.set_target(i, get_real_target(tgt))
 
         # Then delete any blocks that have no predecessors
         changed = False
@@ -236,7 +227,18 @@ class DefinedVisitor(BaseAnalysisVisitor):
     Note that this only deals with registers and not temporaries, on
     the assumption that we never access temporaries when they might be
     undefined.
+
+    If strict_errors is True, then we regard any use of LoadErrorValue
+    as making a register undefined. Otherwise we only do if
+    `undefines` is set on the error value.
+
+    This lets us only consider the things we care about during
+    uninitialized variable checking while capturing all possibly
+    undefined things for refcounting.
     """
+
+    def __init__(self, strict_errors: bool = False) -> None:
+        self.strict_errors = strict_errors
 
     def visit_branch(self, op: Branch) -> GenAndKill:
         return set(), set()
@@ -252,7 +254,8 @@ class DefinedVisitor(BaseAnalysisVisitor):
 
     def visit_assign(self, op: Assign) -> GenAndKill:
         # Loading an error value may undefine the register.
-        if isinstance(op.src, LoadErrorValue) and op.src.undefines:
+        if (isinstance(op.src, LoadErrorValue)
+                and (op.src.undefines or self.strict_errors)):
             return set(), {op.dest}
         else:
             return {op.dest}, set()
@@ -284,7 +287,8 @@ def analyze_must_defined_regs(
         blocks: List[BasicBlock],
         cfg: CFG,
         initial_defined: Set[Value],
-        regs: Iterable[Value]) -> AnalysisResult[Value]:
+        regs: Iterable[Value],
+        strict_errors: bool = False) -> AnalysisResult[Value]:
     """Calculate always defined registers at each CFG location.
 
     This analysis can work before exception insertion, since it is a
@@ -296,7 +300,7 @@ def analyze_must_defined_regs(
     """
     return run_analysis(blocks=blocks,
                         cfg=cfg,
-                        gen_and_kill=DefinedVisitor(),
+                        gen_and_kill=DefinedVisitor(strict_errors=strict_errors),
                         initial=initial_defined,
                         backward=False,
                         kind=MUST_ANALYSIS,
@@ -448,7 +452,7 @@ MUST_ANALYSIS = 0
 MAYBE_ANALYSIS = 1
 
 
-# TODO the return type of this function is too complicated. Abtract it into its
+# TODO the return type of this function is too complicated. Abstract it into its
 # own class.
 
 def run_analysis(blocks: List[BasicBlock],
@@ -480,8 +484,8 @@ def run_analysis(blocks: List[BasicBlock],
 
     # Calculate kill and gen sets for entire basic blocks.
     for block in blocks:
-        gen = set()  # type: Set[T]
-        kill = set()  # type: Set[T]
+        gen: Set[T] = set()
+        kill: Set[T] = set()
         ops = block.ops
         if backward:
             ops = list(reversed(ops))
@@ -497,8 +501,8 @@ def run_analysis(blocks: List[BasicBlock],
     if not backward:
         worklist = worklist[::-1]  # Reverse for a small performance improvement
     workset = set(worklist)
-    before = {}  # type: Dict[BasicBlock, Set[T]]
-    after = {}  # type: Dict[BasicBlock, Set[T]]
+    before: Dict[BasicBlock, Set[T]] = {}
+    after: Dict[BasicBlock, Set[T]] = {}
     for block in blocks:
         if kind == MAYBE_ANALYSIS:
             before[block] = set()
@@ -520,7 +524,7 @@ def run_analysis(blocks: List[BasicBlock],
         label = worklist.pop()
         workset.remove(label)
         if pred_map[label]:
-            new_before = None  # type: Union[Set[T], None]
+            new_before: Union[Set[T], None] = None
             for pred in pred_map[label]:
                 if new_before is None:
                     new_before = set(after[pred])
@@ -541,12 +545,12 @@ def run_analysis(blocks: List[BasicBlock],
         after[label] = new_after
 
     # Run algorithm for each basic block to generate opcode-level sets.
-    op_before = {}  # type: Dict[Tuple[BasicBlock, int], Set[T]]
-    op_after = {}  # type: Dict[Tuple[BasicBlock, int], Set[T]]
+    op_before: Dict[Tuple[BasicBlock, int], Set[T]] = {}
+    op_after: Dict[Tuple[BasicBlock, int], Set[T]] = {}
     for block in blocks:
         label = block
         cur = before[label]
-        ops_enum = enumerate(block.ops)  # type: Iterator[Tuple[int, Op]]
+        ops_enum: Iterator[Tuple[int, Op]] = enumerate(block.ops)
         if backward:
             ops_enum = reversed(list(ops_enum))
         for idx, op in ops_enum:

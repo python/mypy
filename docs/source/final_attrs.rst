@@ -11,7 +11,7 @@ This section introduces these related features:
 3. *Final classes* should not be subclassed.
 
 All of these are only enforced by mypy, and only in annotated code.
-They is no runtime enforcement by the Python runtime.
+There is no runtime enforcement by the Python runtime.
 
 .. note::
 
@@ -119,9 +119,9 @@ annotations. Using it in any other position is an error. In particular,
 
 .. code-block:: python
 
-   x: List[Final[int]] = []  # Error!
+   x: list[Final[int]] = []  # Error!
 
-   def fun(x: Final[List[int]]) ->  None:  # Error!
+   def fun(x: Final[list[int]]) ->  None:  # Error!
        ...
 
 ``Final`` and :py:data:`~typing.ClassVar` should not be used together. Mypy will infer

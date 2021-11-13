@@ -72,20 +72,20 @@ class NewTypeAnalyzer:
         # Create the corresponding class definition if the aliased type is subtypeable
         if isinstance(old_type, TupleType):
             newtype_class_info = self.build_newtype_typeinfo(name, old_type,
-                                                             old_type.partial_fallback)
+                                                             old_type.partial_fallback, s.line)
             newtype_class_info.tuple_type = old_type
         elif isinstance(old_type, Instance):
             if old_type.type.is_protocol:
                 self.fail("NewType cannot be used with protocol classes", s)
-            newtype_class_info = self.build_newtype_typeinfo(name, old_type, old_type)
+            newtype_class_info = self.build_newtype_typeinfo(name, old_type, old_type, s.line)
         else:
             if old_type is not None:
                 message = "Argument 2 to NewType(...) must be subclassable (got {})"
                 self.fail(message.format(format_type(old_type)), s, code=codes.VALID_NEWTYPE)
             # Otherwise the error was already reported.
             old_type = AnyType(TypeOfAny.from_error)
-            object_type = self.api.named_type('__builtins__.object')
-            newtype_class_info = self.build_newtype_typeinfo(name, old_type, object_type)
+            object_type = self.api.named_type('builtins.object')
+            newtype_class_info = self.build_newtype_typeinfo(name, old_type, object_type, s.line)
             newtype_class_info.fallback_to_any = True
 
         check_for_explicit_any(old_type, self.options, self.api.is_typeshed_stub_file, self.msg,
@@ -160,7 +160,7 @@ class NewTypeAnalyzer:
         # Check second argument
         msg = "Argument 2 to NewType(...) must be a valid type"
         try:
-            unanalyzed_type = expr_to_unanalyzed_type(args[1])
+            unanalyzed_type = expr_to_unanalyzed_type(args[1], self.options, self.api.is_stub_file)
         except TypeTranslationError:
             self.fail(msg, context)
             return None, False
@@ -181,8 +181,9 @@ class NewTypeAnalyzer:
 
         return None if has_failed else old_type, should_defer
 
-    def build_newtype_typeinfo(self, name: str, old_type: Type, base_type: Instance) -> TypeInfo:
-        info = self.api.basic_new_typeinfo(name, base_type)
+    def build_newtype_typeinfo(self, name: str, old_type: Type, base_type: Instance,
+                               line: int) -> TypeInfo:
+        info = self.api.basic_new_typeinfo(name, base_type, line)
         info.is_newtype = True
 
         # Add __init__ method
@@ -193,7 +194,7 @@ class NewTypeAnalyzer:
             arg_kinds=[arg.kind for arg in args],
             arg_names=['self', 'item'],
             ret_type=NoneType(),
-            fallback=self.api.named_type('__builtins__.function'),
+            fallback=self.api.named_type('builtins.function'),
             name=name)
         init_func = FuncDef('__init__', args, Block([]), typ=signature)
         init_func.info = info

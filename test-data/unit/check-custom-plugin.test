@@ -11,6 +11,14 @@ reveal_type(f())  # N: Revealed type is "builtins.int"
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/fnplugin.py
 
+[case testFunctionPluginFilePyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+def f() -> str: ...
+reveal_type(f())  # N: Revealed type is "builtins.int"
+[file pyproject.toml]
+\[tool.mypy]
+plugins='<ROOT>/test-data/unit/plugins/fnplugin.py'
+
 [case testFunctionPlugin]
 # flags: --config-file tmp/mypy.ini
 def f() -> str: ...
@@ -18,6 +26,14 @@ reveal_type(f())  # N: Revealed type is "builtins.int"
 [file mypy.ini]
 \[mypy]
 plugins=fnplugin
+
+[case testFunctionPluginPyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+def f() -> str: ...
+reveal_type(f())  # N: Revealed type is "builtins.int"
+[file pyproject.toml]
+\[tool.mypy]
+plugins = 'fnplugin'
 
 [case testFunctionPluginFullnameIsNotNone]
 # flags: --config-file tmp/mypy.ini
@@ -29,6 +45,17 @@ g(f)()
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/fnplugin.py
+
+[case testFunctionPluginFullnameIsNotNonePyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+from typing import Callable, TypeVar
+f: Callable[[], None]
+T = TypeVar('T')
+def g(x: T) -> T: return x  # This strips out the name of a callable
+g(f)()
+[file pyproject.toml]
+\[tool.mypy]
+plugins="<ROOT>/test-data/unit/plugins/fnplugin.py"
 
 [case testTwoPlugins]
 # flags: --config-file tmp/mypy.ini
@@ -43,6 +70,20 @@ reveal_type(h())  # N: Revealed type is "Any"
 plugins=<ROOT>/test-data/unit/plugins/fnplugin.py,
   <ROOT>/test-data/unit/plugins/plugin2.py
 
+[case testTwoPluginsPyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+def f(): ...
+def g(): ...
+def h(): ...
+reveal_type(f())  # N: Revealed type is "builtins.int"
+reveal_type(g())  # N: Revealed type is "builtins.str"
+reveal_type(h())  # N: Revealed type is "Any"
+[file pyproject.toml]
+\[tool.mypy]
+plugins=['<ROOT>/test-data/unit/plugins/fnplugin.py',
+  '<ROOT>/test-data/unit/plugins/plugin2.py'
+]
+
 [case testTwoPluginsMixedType]
 # flags: --config-file tmp/mypy.ini
 def f(): ...
@@ -55,13 +96,25 @@ reveal_type(h())  # N: Revealed type is "Any"
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/fnplugin.py, plugin2
 
+[case testTwoPluginsMixedTypePyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+def f(): ...
+def g(): ...
+def h(): ...
+reveal_type(f())  # N: Revealed type is "builtins.int"
+reveal_type(g())  # N: Revealed type is "builtins.str"
+reveal_type(h())  # N: Revealed type is "Any"
+[file pyproject.toml]
+\[tool.mypy]
+plugins=['<ROOT>/test-data/unit/plugins/fnplugin.py', 'plugin2']
+
 [case testMissingPluginFile]
 # flags: --config-file tmp/mypy.ini
 [file mypy.ini]
 \[mypy]
 plugins=missing.py
 [out]
-tmp/mypy.ini:2: error: Can't find plugin 'tmp/missing.py'
+tmp/mypy.ini:2: error: Can't find plugin "tmp/missing.py"
 --' (work around syntax highlighting)
 
 [case testMissingPlugin]
@@ -70,7 +123,7 @@ tmp/mypy.ini:2: error: Can't find plugin 'tmp/missing.py'
 \[mypy]
 plugins=missing
 [out]
-tmp/mypy.ini:2: error: Error importing plugin 'missing': No module named 'missing'
+tmp/mypy.ini:2: error: Error importing plugin "missing": No module named 'missing'
 
 [case testMultipleSectionsDefinePlugin]
 # flags: --config-file tmp/mypy.ini
@@ -82,7 +135,7 @@ plugins=missing.py
 \[another]
 plugins=another_plugin
 [out]
-tmp/mypy.ini:4: error: Can't find plugin 'tmp/missing.py'
+tmp/mypy.ini:4: error: Can't find plugin "tmp/missing.py"
 --' (work around syntax highlighting)
 
 [case testInvalidPluginExtension]
@@ -92,7 +145,7 @@ tmp/mypy.ini:4: error: Can't find plugin 'tmp/missing.py'
 plugins=dir/badext.pyi
 [file dir/badext.pyi]
 [out]
-tmp/mypy.ini:2: error: Plugin 'badext.pyi' does not have a .py extension
+tmp/mypy.ini:2: error: Plugin "badext.pyi" does not have a .py extension
 
 [case testMissingPluginEntryPoint]
 # flags: --config-file tmp/mypy.ini
@@ -100,7 +153,7 @@ tmp/mypy.ini:2: error: Plugin 'badext.pyi' does not have a .py extension
 \[mypy]
  plugins = <ROOT>/test-data/unit/plugins/noentry.py
 [out]
-tmp/mypy.ini:2: error: Plugin '<ROOT>/test-data/unit/plugins/noentry.py' does not define entry point function "plugin"
+tmp/mypy.ini:2: error: Plugin "<ROOT>/test-data/unit/plugins/noentry.py" does not define entry point function "plugin"
 
 [case testCustomPluginEntryPointFile]
 # flags: --config-file tmp/mypy.ini
@@ -490,32 +543,58 @@ class Instr(Generic[T]): ...
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/dyn_class.py
 
-[case testDynamicClassPluginNegatives]
+[case testDynamicClassPluginChainCall]
 # flags: --config-file tmp/mypy.ini
-from mod import declarative_base, Column, Instr, non_declarative_base
+from mod import declarative_base, Column, Instr
 
-Bad1 = non_declarative_base()
-Bad2 = Bad3 = declarative_base()
+Base = declarative_base().with_optional_xxx()
 
-class C1(Bad1): ...  # E: Variable "__main__.Bad1" is not valid as a type \
-                     # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases \
-                     # E: Invalid base class "Bad1"
-class C2(Bad2): ...  # E: Variable "__main__.Bad2" is not valid as a type \
-                     # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases \
-                     # E: Invalid base class "Bad2"
-class C3(Bad3): ...  # E: Variable "__main__.Bad3" is not valid as a type \
-                     # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases \
-                     # E: Invalid base class "Bad3"
+class Model(Base):
+    x: Column[int]
+
+reveal_type(Model().x)  # N: Revealed type is "mod.Instr[builtins.int]"
 [file mod.py]
 from typing import Generic, TypeVar
-def declarative_base(): ...
-def non_declarative_base(): ...
+
+class Base:
+    def with_optional_xxx(self) -> Base: ...
+
+def declarative_base() -> Base: ...
 
 T = TypeVar('T')
 
 class Column(Generic[T]): ...
 class Instr(Generic[T]): ...
 
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/dyn_class.py
+
+[case testDynamicClassPluginChainedAssignment]
+# flags: --config-file tmp/mypy.ini
+from mod import declarative_base
+
+Base1 = Base2 = declarative_base()
+
+class C1(Base1): ...  
+class C2(Base2): ...
+[file mod.py]
+def declarative_base(): ...
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/dyn_class.py
+
+[case testDynamicClassPluginNegatives]
+# flags: --config-file tmp/mypy.ini
+from mod import non_declarative_base
+
+Bad1 = non_declarative_base()
+
+class C1(Bad1): ...  # E: Variable "__main__.Bad1" is not valid as a type \
+                     # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases \
+                     # E: Invalid base class "Bad1"
+[file mod.py]
+def non_declarative_base(): ...
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/dyn_class.py
@@ -730,3 +809,23 @@ reveal_type(dynamic_signature(1))  # N: Revealed type is "builtins.int"
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/function_sig_hook.py
+
+[case testPluginCalledCorrectlyWhenMethodInDecorator]
+# flags: --config-file tmp/mypy.ini
+from typing import TypeVar, Callable
+
+T = TypeVar('T')
+class Foo:
+    def a(self, x: Callable[[], T]) -> Callable[[], T]: ...
+
+b = Foo()
+
+@b.a
+def f() -> None:
+    pass
+
+reveal_type(f())  # N: Revealed type is "builtins.str"
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/method_in_decorator.py

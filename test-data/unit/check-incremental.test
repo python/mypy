@@ -1789,10 +1789,10 @@ import a
 [file a.py.2]
 //
 [out1]
-main:2: error: Import of 'a' ignored
+main:2: error: Import of "a" ignored
 main:2: note: (Using --follow-imports=error, module not passed on command line)
 [out2]
-main:2: error: Import of 'a' ignored
+main:2: error: Import of "a" ignored
 main:2: note: (Using --follow-imports=error, module not passed on command line)
 
 [case testIncrementalFollowImportsVariable]
@@ -1811,6 +1811,30 @@ follow_imports = skip
 main:3: note: Revealed type is "builtins.int"
 [out2]
 main:3: note: Revealed type is "Any"
+
+
+[case testIncrementalFollowImportsVariablePyProjectTOML]
+# flags: --config-file tmp/pyproject.toml
+import a
+reveal_type(a.x)
+
+[file a.py]
+x = 0
+
+[file pyproject.toml]
+\[tool.mypy]
+follow_imports = 'normal'
+
+[file pyproject.toml.2]
+\[tool.mypy]
+follow_imports = 'skip'
+
+[out1]
+main:3: note: Revealed type is "builtins.int"
+
+[out2]
+main:3: note: Revealed type is "Any"
+
 
 [case testIncrementalNamedTupleInMethod]
 from ntcrash import nope
@@ -2862,7 +2886,7 @@ tmp/m/a.py:1: error: Unsupported operand types for + ("int" and "str")
 
 [case testDisallowAnyExprIncremental]
 # cmd: mypy -m main
-# flags:  --disallow-any-expr
+# flags: --disallow-any-expr
 
 [file ns.py]
 class Namespace:
@@ -3647,7 +3671,7 @@ pass
 [out]
 [out2]
 [out3]
-tmp/a.py:2: error: unused 'type: ignore' comment
+tmp/a.py:2: error: unused "type: ignore" comment
 
 -- Test that a non cache_fine_grained run can use a fine-grained cache
 [case testRegularUsesFgCache]
@@ -3658,9 +3682,11 @@ x = 0
 [file mypy.ini]
 \[mypy]
 cache_fine_grained = True
+local_partial_types = True
 [file mypy.ini.2]
 \[mypy]
 cache_fine_grained = False
+local_partial_types = True
 -- Nothing should get rechecked
 [rechecked]
 [stale]
@@ -3804,7 +3830,7 @@ class A:
     E = 7
     F: ClassVar[int] = 22
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/dataclasses.pyi]
 [out1]
 [out2]
 
@@ -3837,7 +3863,7 @@ from dataclasses import dataclass
 class A:
     x: int
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/dataclasses.pyi]
 [out1]
 [out2]
 tmp/b.py:8: note: Revealed type is "def (x: builtins.int) -> b.B"
@@ -3882,7 +3908,7 @@ class NoInit:
 class NoCmp:
     x: int
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/dataclasses.pyi]
 [out1]
 [out2]
 tmp/b.py:4: error: Property "x" defined in "Frozen" is read-only
@@ -3937,7 +3963,7 @@ from dataclasses import dataclass
 class A:
     a: int
 
-[builtins fixtures/attr.pyi]
+[builtins fixtures/dataclasses.pyi]
 [out1]
 [out2]
 tmp/b.py:3: note: Revealed type is "def (a: builtins.int) -> a.A"
@@ -3984,7 +4010,7 @@ from dataclasses import dataclass
 class B(A):
     y: int
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/dataclasses.pyi]
 [out1]
 [out2]
 main:3: error: Argument 2 to "B" has incompatible type "str"; expected "int"
@@ -4018,7 +4044,7 @@ from dataclasses import dataclass
 class B(A):
     y: str
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/dataclasses.pyi]
 [out1]
 main:3: error: Argument 2 to "B" has incompatible type "str"; expected "int"
 
@@ -4061,7 +4087,7 @@ from dataclasses import dataclass
 class C(A, B):
     c: bool
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/dataclasses.pyi]
 [out1]
 [out2]
 tmp/c.py:7: error: Incompatible types in assignment (expression has type "bool", base class "B" defined the type as "str")
@@ -4093,7 +4119,7 @@ from dataclasses import dataclass
 class A:
     a: int = 6
 
-[builtins fixtures/list.pyi]
+[builtins fixtures/dataclasses.pyi]
 [out1]
 [out2]
 main:3: error: Argument 1 to "A" has incompatible type "int"; expected "str"
@@ -4214,6 +4240,34 @@ tmp/c.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mi
 [out2]
 tmp/c.py:1: error: Cannot find implementation or library stub for module named "a.b.c"
 tmp/c.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+[case testModuleGetattrIncrementalSerializeVarFlag]
+import main
+
+[file main.py]
+from b import A, f
+f()
+
+[file main.py.3]
+from b import A, f  # foo
+f()
+
+[file b.py]
+from c import A
+def f() -> A: ...
+
+[file b.py.2]
+from c import A  # foo
+def f() -> A: ...
+
+[file c.py]
+from d import A
+
+[file d.pyi]
+def __getattr__(n): ...
+[out1]
+[out2]
+[out3]
 
 [case testAddedMissingStubs]
 # flags: --ignore-missing-imports
@@ -5454,3 +5508,80 @@ class Foo:
 [delete c1.py.2]
 [file c2.py.2]
 class C: pass
+
+[case testIncrementalNestedNamedTuple]
+# flags: --python-version 3.6
+import a
+
+[file a.py]
+import b
+
+[file a.py.2]
+import b # foo
+
+[file b.py]
+from typing import NamedTuple
+
+def f() -> None:
+    class NT(NamedTuple):
+        x: int
+
+    n: NT = NT(x=2)
+
+def g() -> None:
+    NT = NamedTuple('NT', [('y', str)])
+
+    n: NT = NT(y='x')
+
+[builtins fixtures/tuple.pyi]
+
+[case testIncrementalNestedTypeAlias]
+import a
+
+[file a.py]
+import b
+
+[file a.py.2]
+import b
+reveal_type(b.C().x)
+reveal_type(b.D().x)
+
+[file b.py]
+from typing import List
+
+class C:
+    def __init__(self) -> None:
+        Alias = List[int]
+        self.x = []  # type: Alias
+
+class D:
+    def __init__(self) -> None:
+        Alias = List[str]
+        self.x = []  # type: Alias
+
+[builtins fixtures/list.pyi]
+[out2]
+tmp/a.py:2: note: Revealed type is "builtins.list[builtins.int]"
+tmp/a.py:3: note: Revealed type is "builtins.list[builtins.str]"
+
+[case testIncrementalNamespacePackage1]
+# flags: --namespace-packages
+import m
+[file m.py]
+from foo.bar import x
+x + 0
+[file foo/bar.py]
+x = 0
+[rechecked]
+[stale]
+
+[case testIncrementalNamespacePackage2]
+# flags: --namespace-packages
+import m
+[file m.py]
+from foo import bar
+bar.x + 0
+[file foo/bar.py]
+x = 0
+[rechecked]
+[stale]

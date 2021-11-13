@@ -322,7 +322,7 @@ _PyDict_GetItemStringWithError(PyObject *v, const char *key)
 
 #if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION < 6
 /* _PyUnicode_EqualToASCIIString got added in 3.5.3 (argh!) so we can't actually know
- * whether it will be precent at runtime, so we just assume we don't have it in 3.5. */
+ * whether it will be present at runtime, so we just assume we don't have it in 3.5. */
 #define CPyUnicode_EqualToASCIIString(x, y) (PyUnicode_CompareWithASCIIString((x), (y)) == 0)
 #elif PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 6
 #define CPyUnicode_EqualToASCIIString(x, y) _PyUnicode_EqualToASCIIString(x, y)
@@ -401,6 +401,18 @@ _CPyObject_HasAttrId(PyObject *v, _Py_Identifier *name) {
 }
 #else
 #define _CPyObject_HasAttrId _PyObject_HasAttrId
+#endif
+
+#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION < 9
+// OneArgs and NoArgs functions got added in 3.9
+#define _PyObject_CallMethodIdNoArgs(self, name) \
+    _PyObject_CallMethodIdObjArgs((self), (name), NULL)
+#define _PyObject_CallMethodIdOneArg(self, name, arg) \
+    _PyObject_CallMethodIdObjArgs((self), (name), (arg), NULL)
+#define PyObject_CallNoArgs(callable) \
+    PyObject_CallFunctionObjArgs((callable), NULL)
+#define PyObject_CallOneArg(callable, arg) \
+    PyObject_CallFunctionObjArgs((callable), (arg), NULL)
 #endif
 
 #endif

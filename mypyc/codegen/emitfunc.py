@@ -105,7 +105,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.source_path = source_path
         self.module_name = module_name
         self.literals = emitter.context.literals
-        self.next_block = None  # type: Optional[BasicBlock]
+        self.next_block: Optional[BasicBlock] = None
 
     def temp_name(self) -> str:
         return self.emitter.temp_name()
@@ -327,11 +327,11 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 '{} = 1;'.format(dest),
             )
 
-    PREFIX_MAP = {
+    PREFIX_MAP: Final = {
         NAMESPACE_STATIC: STATIC_PREFIX,
         NAMESPACE_TYPE: TYPE_PREFIX,
         NAMESPACE_MODULE: MODULE_PREFIX,
-    }  # type: Final
+    }
 
     def visit_load_static(self, op: LoadStatic) -> None:
         dest = self.reg(op)
@@ -483,14 +483,20 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         rhs = self.reg(op.rhs)
         lhs_cast = ""
         rhs_cast = ""
-        signed_op = {ComparisonOp.SLT, ComparisonOp.SGT, ComparisonOp.SLE, ComparisonOp.SGE}
-        unsigned_op = {ComparisonOp.ULT, ComparisonOp.UGT, ComparisonOp.ULE, ComparisonOp.UGE}
-        if op.op in signed_op:
+        if op.op in (ComparisonOp.SLT, ComparisonOp.SGT, ComparisonOp.SLE, ComparisonOp.SGE):
+            # Always signed comparison op
             lhs_cast = self.emit_signed_int_cast(op.lhs.type)
             rhs_cast = self.emit_signed_int_cast(op.rhs.type)
-        elif op.op in unsigned_op:
+        elif op.op in (ComparisonOp.ULT, ComparisonOp.UGT, ComparisonOp.ULE, ComparisonOp.UGE):
+            # Always unsigned comparison op
             lhs_cast = self.emit_unsigned_int_cast(op.lhs.type)
             rhs_cast = self.emit_unsigned_int_cast(op.rhs.type)
+        elif isinstance(op.lhs, Integer) and op.lhs.value < 0:
+            # Force signed ==/!= with negative operand
+            rhs_cast = self.emit_signed_int_cast(op.rhs.type)
+        elif isinstance(op.rhs, Integer) and op.rhs.value < 0:
+            # Force signed ==/!= with negative operand
+            lhs_cast = self.emit_signed_int_cast(op.lhs.type)
         self.emit_line('%s = %s%s %s %s%s;' % (dest, lhs_cast, lhs,
                                                op.op_str[op.op], rhs_cast, rhs))
 
@@ -542,7 +548,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             s = str(val)
             if val >= (1 << 31):
                 # Avoid overflowing signed 32-bit int
-                s += 'U'
+                s += 'ULL'
+            elif val == -(1 << 63):
+                # Avoid overflowing C integer literal
+                s = '(-9223372036854775807LL - 1)'
+            elif val <= -(1 << 31):
+                s += 'LL'
             return s
         else:
             return self.emitter.reg(reg)

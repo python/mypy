@@ -1,56 +1,59 @@
 import sys
-from typing import IO, Any, Dict as DictT, Mapping, MutableMapping, Optional, Text, Type, Union
+from datetime import datetime
+from enum import Enum
+from typing import IO, Any, Dict as _Dict, Mapping, MutableMapping, Tuple, Type
 
-if sys.version_info >= (3,):
-    from enum import Enum
-    class PlistFormat(Enum):
-        FMT_XML: int
-        FMT_BINARY: int
-    FMT_XML = PlistFormat.FMT_XML
-    FMT_BINARY = PlistFormat.FMT_BINARY
+class PlistFormat(Enum):
+    FMT_XML: int
+    FMT_BINARY: int
 
-_Path = Union[str, Text]
+FMT_XML = PlistFormat.FMT_XML
+FMT_BINARY = PlistFormat.FMT_BINARY
 
 if sys.version_info >= (3, 9):
-    def load(fp: IO[bytes], *, fmt: Optional[PlistFormat] = ..., dict_type: Type[MutableMapping[str, Any]] = ...) -> Any: ...
-    def loads(value: bytes, *, fmt: Optional[PlistFormat] = ..., dict_type: Type[MutableMapping[str, Any]] = ...) -> Any: ...
+    def load(fp: IO[bytes], *, fmt: PlistFormat | None = ..., dict_type: Type[MutableMapping[str, Any]] = ...) -> Any: ...
+    def loads(value: bytes, *, fmt: PlistFormat | None = ..., dict_type: Type[MutableMapping[str, Any]] = ...) -> Any: ...
 
-elif sys.version_info >= (3, 4):
+else:
     def load(
         fp: IO[bytes],
         *,
-        fmt: Optional[PlistFormat] = ...,
+        fmt: PlistFormat | None = ...,
         use_builtin_types: bool = ...,
         dict_type: Type[MutableMapping[str, Any]] = ...,
     ) -> Any: ...
     def loads(
         value: bytes,
         *,
-        fmt: Optional[PlistFormat] = ...,
+        fmt: PlistFormat | None = ...,
         use_builtin_types: bool = ...,
         dict_type: Type[MutableMapping[str, Any]] = ...,
     ) -> Any: ...
 
-if sys.version_info >= (3, 4):
-    def dump(
-        value: Mapping[str, Any], fp: IO[bytes], *, fmt: PlistFormat = ..., sort_keys: bool = ..., skipkeys: bool = ...
-    ) -> None: ...
-    def dumps(value: Mapping[str, Any], *, fmt: PlistFormat = ..., skipkeys: bool = ..., sort_keys: bool = ...) -> bytes: ...
+def dump(
+    value: Mapping[str, Any] | list[Any] | Tuple[Any, ...] | str | bool | float | bytes | datetime,
+    fp: IO[bytes],
+    *,
+    fmt: PlistFormat = ...,
+    sort_keys: bool = ...,
+    skipkeys: bool = ...,
+) -> None: ...
+def dumps(
+    value: Mapping[str, Any] | list[Any] | Tuple[Any, ...] | str | bool | float | bytes | datetime,
+    *,
+    fmt: PlistFormat = ...,
+    skipkeys: bool = ...,
+    sort_keys: bool = ...,
+) -> bytes: ...
 
 if sys.version_info < (3, 9):
-    def readPlist(pathOrFile: Union[_Path, IO[bytes]]) -> Any: ...
-    def writePlist(value: Mapping[str, Any], pathOrFile: Union[_Path, IO[bytes]]) -> None: ...
+    def readPlist(pathOrFile: str | IO[bytes]) -> Any: ...
+    def writePlist(value: Mapping[str, Any], pathOrFile: str | IO[bytes]) -> None: ...
     def readPlistFromBytes(data: bytes) -> Any: ...
     def writePlistToBytes(value: Mapping[str, Any]) -> bytes: ...
 
-if sys.version_info < (3,):
-    def readPlistFromResource(path: _Path, restype: str = ..., resid: int = ...) -> Any: ...
-    def writePlistToResource(rootObject: Mapping[str, Any], path: _Path, restype: str = ..., resid: int = ...) -> None: ...
-    def readPlistFromString(data: str) -> Any: ...
-    def writePlistToString(rootObject: Mapping[str, Any]) -> str: ...
-
 if sys.version_info < (3, 7):
-    class Dict(DictT[str, Any]):
+    class Dict(_Dict[str, Any]):
         def __getattr__(self, attr: str) -> Any: ...
         def __setattr__(self, attr: str, value: Any) -> None: ...
         def __delattr__(self, attr: str) -> None: ...

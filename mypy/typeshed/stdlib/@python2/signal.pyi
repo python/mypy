@@ -1,5 +1,5 @@
 from types import FrameType
-from typing import Any, Callable, Tuple, Union
+from typing import Callable, Tuple, Union
 
 SIG_DFL: int = ...
 SIG_IGN: int = ...

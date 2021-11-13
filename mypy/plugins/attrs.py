@@ -1,13 +1,13 @@
 """Plugin for supporting the attrs library (http://www.attrs.org)"""
 
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 
 from typing import Optional, Dict, List, cast, Tuple, Iterable
 from typing_extensions import Final
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
-from mypy.fixup import lookup_qualified_stnode
+from mypy.lookup import lookup_fully_qualified
 from mypy.nodes import (
     Context, Argument, Var, ARG_OPT, ARG_POS, TypeInfo, AssignmentStmt,
     TupleExpr, ListExpr, NameExpr, CallExpr, RefExpr, FuncDef,
@@ -21,8 +21,8 @@ from mypy.plugins.common import (
     deserialize_and_fixup_type
 )
 from mypy.types import (
-    Type, AnyType, TypeOfAny, CallableType, NoneType, TypeVarDef, TypeVarType,
-    Overloaded, UnionType, FunctionLike, get_proper_type
+    TupleType, Type, AnyType, TypeOfAny, CallableType, NoneType, TypeVarType,
+    Overloaded, UnionType, FunctionLike, get_proper_type,
 )
 from mypy.typeops import make_simplified_union, map_type_from_supertype
 from mypy.typevars import fill_typevars
@@ -32,29 +32,24 @@ from mypy.server.trigger import make_wildcard_trigger
 KW_ONLY_PYTHON_2_UNSUPPORTED = "kw_only is not supported in Python 2"
 
 # The names of the different functions that create classes or arguments.
-attr_class_makers = {
+attr_class_makers: Final = {
     'attr.s',
     'attr.attrs',
     'attr.attributes',
-}  # type: Final
-attr_dataclass_makers = {
+}
+attr_dataclass_makers: Final = {
     'attr.dataclass',
-}  # type: Final
-attr_frozen_makers = {
-    'attr.frozen'
-}  # type: Final
-attr_define_makers = {
-    'attr.define',
-    'attr.mutable'
-}  # type: Final
-attr_attrib_makers = {
+}
+attr_frozen_makers: Final = {"attr.frozen"}
+attr_define_makers: Final = {"attr.define", "attr.mutable"}
+attr_attrib_makers: Final = {
     'attr.ib',
     'attr.attrib',
     'attr.attr',
     'attr.field',
-}  # type: Final
+}
 
-SELF_TVAR_NAME = '_AT'  # type: Final
+SELF_TVAR_NAME: Final = "_AT"
 
 
 class Converter:
@@ -92,16 +87,17 @@ class Attribute:
         if self.converter.name:
             # When a converter is set the init_type is overridden by the first argument
             # of the converter method.
-            converter = lookup_qualified_stnode(ctx.api.modules, self.converter.name, True)
+            converter = lookup_fully_qualified(self.converter.name, ctx.api.modules,
+                                               raise_on_missing=False)
             if not converter:
                 # The converter may be a local variable. Check there too.
                 converter = ctx.api.lookup_qualified(self.converter.name, self.info, True)
 
             # Get the type of the converter.
-            converter_type = None  # type: Optional[Type]
+            converter_type: Optional[Type] = None
             if converter and isinstance(converter.node, TypeInfo):
                 from mypy.checkmember import type_object_type  # To avoid import cycle.
-                converter_type = type_object_type(converter.node, ctx.api.builtin_type)
+                converter_type = type_object_type(converter.node, ctx.api.named_type)
             elif converter and isinstance(converter.node, OverloadedFuncDef):
                 converter_type = converter.node.type
             elif converter and converter.type:
@@ -112,8 +108,8 @@ class Attribute:
             if isinstance(converter_type, CallableType) and converter_type.arg_types:
                 init_type = ctx.api.anal_type(converter_type.arg_types[0])
             elif isinstance(converter_type, Overloaded):
-                types = []  # type: List[Type]
-                for item in converter_type.items():
+                types: List[Type] = []
+                for item in converter_type.items:
                     # Walk the overloads looking for methods that can accept one argument.
                     num_arg_types = len(item.arg_types)
                     if not num_arg_types:
@@ -276,6 +272,7 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
     init = _get_decorator_bool_argument(ctx, 'init', True)
     frozen = _get_frozen(ctx, frozen_default)
     order = _determine_eq_order(ctx)
+    slots = _get_decorator_bool_argument(ctx, 'slots', False)
 
     auto_attribs = _get_decorator_optional_bool_argument(ctx, 'auto_attribs', auto_attribs_default)
     kw_only = _get_decorator_bool_argument(ctx, 'kw_only', False)
@@ -304,6 +301,10 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
         if node.type is None and not ctx.api.final_iteration:
             ctx.api.defer()
             return
+
+    _add_attrs_magic_attribute(ctx, raw_attr_types=[info[attr.name].type for attr in attributes])
+    if slots:
+        _add_slots(ctx, attributes)
 
     # Save the attributes so that subclasses can reuse them.
     ctx.cls.info.metadata['attrs'] = {
@@ -340,7 +341,7 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext',
     auto_attribs=None means we'll detect which mode to use.
     kw_only=True means that all attributes created here will be keyword only args in __init__.
     """
-    own_attrs = OrderedDict()  # type: OrderedDict[str, Attribute]
+    own_attrs: OrderedDict[str, Attribute] = OrderedDict()
     if auto_attribs is None:
         auto_attribs = _detect_auto_attribs(ctx)
 
@@ -549,7 +550,7 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
     attr_has_factory = bool(_get_argument(rvalue, 'factory'))
 
     if attr_has_default and attr_has_factory:
-        ctx.api.fail("Can't pass both `default` and `factory`.", rvalue)
+        ctx.api.fail('Can\'t pass both "default" and "factory".', rvalue)
     elif attr_has_factory:
         attr_has_default = True
 
@@ -557,7 +558,7 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
     type_arg = _get_argument(rvalue, 'type')
     if type_arg and not init_type:
         try:
-            un_type = expr_to_unanalyzed_type(type_arg)
+            un_type = expr_to_unanalyzed_type(type_arg, ctx.api.options, ctx.api.is_stub_file)
         except TypeTranslationError:
             ctx.api.fail('Invalid argument to type', type_arg)
         else:
@@ -571,7 +572,7 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
     converter = _get_argument(rvalue, 'converter')
     convert = _get_argument(rvalue, 'convert')
     if convert and converter:
-        ctx.api.fail("Can't pass both `convert` and `converter`.", rvalue)
+        ctx.api.fail('Can\'t pass both "convert" and "converter".', rvalue)
     elif convert:
         ctx.api.fail("convert is deprecated, use converter", rvalue)
         converter = convert
@@ -627,8 +628,8 @@ def _parse_assignments(
         lvalue: Expression,
         stmt: AssignmentStmt) -> Tuple[List[NameExpr], List[Expression]]:
     """Convert a possibly complex assignment expression into lists of lvalues and rvalues."""
-    lvalues = []  # type: List[NameExpr]
-    rvalues = []  # type: List[Expression]
+    lvalues: List[NameExpr] = []
+    rvalues: List[Expression] = []
     if isinstance(lvalue, (TupleExpr, ListExpr)):
         if all(isinstance(item, NameExpr) for item in lvalue.items):
             lvalues = cast(List[NameExpr], lvalue.items)
@@ -642,22 +643,21 @@ def _parse_assignments(
 
 def _add_order(ctx: 'mypy.plugin.ClassDefContext', adder: 'MethodAdder') -> None:
     """Generate all the ordering methods for this class."""
-    bool_type = ctx.api.named_type('__builtins__.bool')
-    object_type = ctx.api.named_type('__builtins__.object')
+    bool_type = ctx.api.named_type('builtins.bool')
+    object_type = ctx.api.named_type('builtins.object')
     # Make the types be:
     #    AT = TypeVar('AT')
     #    def __lt__(self: AT, other: AT) -> bool
     # This way comparisons with subclasses will work correctly.
-    tvd = TypeVarDef(SELF_TVAR_NAME, ctx.cls.info.fullname + '.' + SELF_TVAR_NAME,
+    tvd = TypeVarType(SELF_TVAR_NAME, ctx.cls.info.fullname + '.' + SELF_TVAR_NAME,
                      -1, [], object_type)
-    tvd_type = TypeVarType(tvd)
     self_tvar_expr = TypeVarExpr(SELF_TVAR_NAME, ctx.cls.info.fullname + '.' + SELF_TVAR_NAME,
                                  [], object_type)
     ctx.cls.info.names[SELF_TVAR_NAME] = SymbolTableNode(MDEF, self_tvar_expr)
 
-    args = [Argument(Var('other', tvd_type), tvd_type, None, ARG_POS)]
+    args = [Argument(Var('other', tvd), tvd, None, ARG_POS)]
     for method in ['__lt__', '__le__', '__gt__', '__ge__']:
-        adder.add_method(method, args, bool_type, self_type=tvd_type, tvd=tvd)
+        adder.add_method(method, args, bool_type, self_type=tvd, tvd=tvd)
 
 
 def _make_frozen(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute]) -> None:
@@ -709,6 +709,33 @@ def _add_init(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute],
     adder.add_method('__init__', args, NoneType())
 
 
+def _add_attrs_magic_attribute(ctx: 'mypy.plugin.ClassDefContext',
+                               raw_attr_types: 'List[Optional[Type]]') -> None:
+    attr_name = '__attrs_attrs__'
+    any_type = AnyType(TypeOfAny.explicit)
+    attributes_types: 'List[Type]' = [
+        ctx.api.named_type_or_none('attr.Attribute', [attr_type or any_type]) or any_type
+        for attr_type in raw_attr_types
+    ]
+    fallback_type = ctx.api.named_type('builtins.tuple', [
+        ctx.api.named_type_or_none('attr.Attribute', [any_type]) or any_type,
+    ])
+    var = Var(name=attr_name, type=TupleType(attributes_types, fallback=fallback_type))
+    var.info = ctx.cls.info
+    var._fullname = ctx.cls.info.fullname + '.' + attr_name
+    ctx.cls.info.names[attr_name] = SymbolTableNode(
+        kind=MDEF,
+        node=var,
+        plugin_generated=True,
+    )
+
+
+def _add_slots(ctx: 'mypy.plugin.ClassDefContext',
+               attributes: List[Attribute]) -> None:
+    # Unlike `@dataclasses.dataclass`, `__slots__` is rewritten here.
+    ctx.cls.info.slots = {attr.name for attr in attributes}
+
+
 class MethodAdder:
     """Helper to add methods to a TypeInfo.
 
@@ -724,7 +751,7 @@ class MethodAdder:
     def add_method(self,
                    method_name: str, args: List[Argument], ret_type: Type,
                    self_type: Optional[Type] = None,
-                   tvd: Optional[TypeVarDef] = None) -> None:
+                   tvd: Optional[TypeVarType] = None) -> None:
         """Add a method: def <method_name>(self, <args>) -> <ret_type>): ... to info.
 
         self_type: The type to use for the self argument or None to use the inferred self type.

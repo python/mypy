@@ -533,11 +533,11 @@ f = (PY3 or PY2) and 's'
 g = (PY2 or PY3) or 's'
 h = (PY3 or PY2) or 's'
 reveal_type(a)  # N: Revealed type is "builtins.bool"
-reveal_type(b)  # N: Revealed type is "builtins.str"
-reveal_type(c)  # N: Revealed type is "builtins.str"
+reveal_type(b)  # N: Revealed type is "Literal['s']"
+reveal_type(c)  # N: Revealed type is "Literal['s']"
 reveal_type(d)  # N: Revealed type is "builtins.bool"
-reveal_type(e)  # N: Revealed type is "builtins.str"
-reveal_type(f)  # N: Revealed type is "builtins.str"
+reveal_type(e)  # N: Revealed type is "Literal['s']"
+reveal_type(f)  # N: Revealed type is "Literal['s']"
 reveal_type(g)  # N: Revealed type is "builtins.bool"
 reveal_type(h)  # N: Revealed type is "builtins.bool"
 [builtins fixtures/ops.pyi]
@@ -615,6 +615,30 @@ if MYPY or mypy_only:
     pass
 [builtins fixtures/ops.pyi]
 
+[case testSemanticAnalysisFalseButTypeNarrowingTrue]
+# flags: --always-false COMPILE_TIME_FALSE
+from typing import Literal
+
+indeterminate: str
+COMPILE_TIME_FALSE: Literal[True]  # type-narrowing: mapped in 'if' only
+a = COMPILE_TIME_FALSE or indeterminate
+reveal_type(a)  # N: Revealed type is "builtins.str"
+b = indeterminate or COMPILE_TIME_FALSE
+reveal_type(b)  # N: Revealed type is "Union[builtins.str, Literal[True]]"
+[typing fixtures/typing-medium.pyi]
+
+[case testSemanticAnalysisTrueButTypeNarrowingFalse]
+# flags: --always-true COMPILE_TIME_TRUE
+from typing import Literal
+
+indeterminate: str
+COMPILE_TIME_TRUE: Literal[False]  # type narrowed to `else` only
+a = COMPILE_TIME_TRUE or indeterminate
+reveal_type(a)  # N: Revealed type is "Literal[False]"
+b = indeterminate or COMPILE_TIME_TRUE
+reveal_type(b)  # N: Revealed type is "Union[builtins.str, Literal[False]]"
+
+[typing fixtures/typing-medium.pyi]
 [case testConditionalAssertWithoutElse]
 import typing
 
@@ -730,35 +754,46 @@ if sys.version_info[0] >= 2:
 reveal_type('')  # N: Revealed type is "Literal['']?"
 [builtins fixtures/ops.pyi]
 
-[case testUnreachableFlagWithBadControlFlow]
+[case testUnreachableFlagWithBadControlFlow1]
 # flags: --warn-unreachable
 a: int
 if isinstance(a, int):
     reveal_type(a)  # N: Revealed type is "builtins.int"
 else:
     reveal_type(a)  # E: Statement is unreachable
+[builtins fixtures/isinstancelist.pyi]
 
+[case testUnreachableFlagWithBadControlFlow2]
+# flags: --warn-unreachable
 b: int
 while isinstance(b, int):
     reveal_type(b)  # N: Revealed type is "builtins.int"
 else:
     reveal_type(b)  # E: Statement is unreachable
+[builtins fixtures/isinstancelist.pyi]
 
+[case testUnreachableFlagWithBadControlFlow3]
+# flags: --warn-unreachable
 def foo(c: int) -> None:
     reveal_type(c)  # N: Revealed type is "builtins.int"
     assert not isinstance(c, int)
     reveal_type(c)  # E: Statement is unreachable
+[builtins fixtures/isinstancelist.pyi]
 
+[case testUnreachableFlagWithBadControlFlow4]
+# flags: --warn-unreachable
 d: int
 if False:
     reveal_type(d)  # E: Statement is unreachable
+[builtins fixtures/isinstancelist.pyi]
 
+[case testUnreachableFlagWithBadControlFlow5]
+# flags: --warn-unreachable
 e: int
 if True:
     reveal_type(e)  # N: Revealed type is "builtins.int"
 else:
     reveal_type(e)  # E: Statement is unreachable
-
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnreachableFlagStatementAfterReturn]
@@ -908,6 +943,7 @@ def foo() -> bool: ...
 lst = [1, 2, 3, 4]
 
 a = True or foo()                        # E: Right operand of "or" is never evaluated
+b = 42 or False                          # E: Right operand of "or" is never evaluated
 d = False and foo()                      # E: Right operand of "and" is never evaluated
 e = True or (True or (True or foo()))    # E: Right operand of "or" is never evaluated
 f = (True or foo()) or (True or foo())   # E: Right operand of "or" is never evaluated
@@ -1305,3 +1341,78 @@ async def f_malformed_2() -> int:
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/tuple.pyi]
+
+[case testUnreachableUntypedFunction]
+# flags: --warn-unreachable
+
+def test_untyped_fn(obj):
+    assert obj.prop is True
+
+    obj.update(prop=False)
+    obj.reload()
+
+    assert obj.prop is False
+    reveal_type(obj.prop)
+
+def test_typed_fn(obj) -> None:
+    assert obj.prop is True
+
+    obj.update(prop=False)
+    obj.reload()
+
+    assert obj.prop is False
+    reveal_type(obj.prop)  # E: Statement is unreachable
+
+[case testUnreachableCheckedUntypedFunction]
+# flags: --warn-unreachable --check-untyped-defs
+
+def test_untyped_fn(obj):
+    assert obj.prop is True
+
+    obj.update(prop=False)
+    obj.reload()
+
+    assert obj.prop is False
+    reveal_type(obj.prop)  # E: Statement is unreachable
+
+[case testConditionalTypeVarException]
+# every part of this test case was necessary to trigger the crash
+import sys
+from typing import TypeVar
+
+T = TypeVar("T", int, str)
+
+def f(t: T) -> None:
+    if sys.platform == "lol":
+        try:
+            pass
+        except BaseException as e:
+            pass
+[builtins fixtures/dict.pyi]
+
+
+[case testUnreachableLiteral]
+# flags: --warn-unreachable
+from typing_extensions import Literal
+
+def nope() -> Literal[False]: ...
+
+def f() -> None:
+    if nope():
+        x = 1  # E: Statement is unreachable
+[builtins fixtures/dict.pyi]
+
+[case testUnreachableModuleBody1]
+# flags: --warn-unreachable
+from typing import NoReturn
+def foo() -> NoReturn:
+    raise Exception("foo")
+foo()
+x = 1  # E: Statement is unreachable
+[builtins fixtures/exception.pyi]
+
+[case testUnreachableModuleBody2]
+# flags: --warn-unreachable
+raise Exception
+x = 1  # E: Statement is unreachable
+[builtins fixtures/exception.pyi]

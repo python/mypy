@@ -17,6 +17,7 @@ class bool: pass
 class ellipsis: pass
 
 class set(Iterable[T], Generic[T]):
+    def __init__(self, iterable: Iterable[T] = ...) -> None: ...
     def __iter__(self) -> Iterator[T]: pass
     def __contains__(self, item: object) -> bool: pass
     def __ior__(self, x: Set[T]) -> None: pass
