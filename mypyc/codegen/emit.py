@@ -386,6 +386,7 @@ class Emitter:
             if rare:
                 self.emit_line('CPyTagged_%sDecRef(%s);' % (x, dest))
             else:
+                # Inlined
                 self.emit_line('CPyTagged_%sDECREF(%s);' % (x, dest))
         elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):

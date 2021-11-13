@@ -9,7 +9,7 @@ from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.ir.ops import (
     BasicBlock, Goto, Return, Integer, Assign, AssignMulti, IncRef, DecRef, Branch,
     Call, Unbox, Box, TupleGet, GetAttr, SetAttr, Op, Value, CallC, IntOp, LoadMem,
-    GetElementPtr, LoadAddress, ComparisonOp, SetMem, Register
+    GetElementPtr, LoadAddress, ComparisonOp, SetMem, Register, Unreachable
 )
 from mypyc.ir.rtypes import (
     RTuple, RInstance, RType, RArray, int_rprimitive, bool_rprimitive, list_rprimitive,
@@ -203,17 +203,17 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
 
     def test_inc_ref(self) -> None:
         self.assert_emit(IncRef(self.m),
-                         "CPyTagged_IncRef(cpy_r_m);")
+                         "CPyTagged_INCREF(cpy_r_m);")
 
     def test_dec_ref(self) -> None:
         self.assert_emit(DecRef(self.m),
-                         "CPyTagged_DecRef(cpy_r_m);")
+                         "CPyTagged_DECREF(cpy_r_m);")
 
     def test_dec_ref_tuple(self) -> None:
-        self.assert_emit(DecRef(self.t), 'CPyTagged_DecRef(cpy_r_t.f0);')
+        self.assert_emit(DecRef(self.t), 'CPyTagged_DECREF(cpy_r_t.f0);')
 
     def test_dec_ref_tuple_nested(self) -> None:
-        self.assert_emit(DecRef(self.tt), 'CPyTagged_DecRef(cpy_r_tt.f0.f0);')
+        self.assert_emit(DecRef(self.tt), 'CPyTagged_DECREF(cpy_r_tt.f0.f0);')
 
     def test_list_get_item(self) -> None:
         self.assert_emit(CallC(list_get_item_op.c_function_name, [self.m, self.k],
@@ -253,7 +253,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                if (unlikely(((mod___AObject *)cpy_r_r)->_y == CPY_INT_TAG)) {
                    PyErr_SetString(PyExc_AttributeError, "attribute 'y' of 'A' undefined");
                } else {
-                   CPyTagged_IncRef(((mod___AObject *)cpy_r_r)->_y);
+                   CPyTagged_INCREF(((mod___AObject *)cpy_r_r)->_y);
                }
             """)
 
@@ -261,7 +261,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(
             SetAttr(self.r, 'y', self.m, 1),
             """if (((mod___AObject *)cpy_r_r)->_y != CPY_INT_TAG) {
-                   CPyTagged_DecRef(((mod___AObject *)cpy_r_r)->_y);
+                   CPyTagged_DECREF(((mod___AObject *)cpy_r_r)->_y);
                }
                ((mod___AObject *)cpy_r_r)->_y = cpy_r_m;
                cpy_r_r0 = 1;
@@ -458,6 +458,7 @@ class TestGenerateFunction(unittest.TestCase):
         reg = Register(int_rprimitive)
         op = Assign(reg, Integer(5))
         self.block.ops.append(op)
+        self.block.ops.append(Unreachable())
         fn = FuncIR(FuncDecl('myfunc', None, 'mod', FuncSignature([self.arg], list_rprimitive)),
                     [self.reg],
                     [self.block])
@@ -471,6 +472,7 @@ class TestGenerateFunction(unittest.TestCase):
                 '    CPyTagged cpy_r_r0;\n',
                 'CPyL0: ;\n',
                 '    cpy_r_r0 = 10;\n',
+                '    CPy_Unreachable();\n',
                 '}\n',
             ],
             result, msg='Generated code invalid')
