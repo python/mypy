@@ -486,16 +486,17 @@ class SemanticAnalyzer(NodeVisitor[None],
         """Typing extensions module does contain some type aliases.
 
         We need to analyze them as such, because in typeshed
-        they are just annotated as `_Alias()`.
-        Which is not supported.
+        they are just defined as `_Alias()` call.
+        Which is not supported natively.
         """
         assert tree.fullname == 'typing_extensions'
 
         for alias, target_name in typing_extensions_aliases.items():
             name = alias.split('.')[-1]
+            if name in tree.names and isinstance(tree.names[name].node, TypeAlias):
+                continue  # Do not reset TypeAliases on the second pass.
 
-            # We need to remove any node that is there at the moment.
-            # It is invalid.
+            # We need to remove any node that is there at the moment. It is invalid.
             tree.names.pop(name, None)
 
             # Now, create a new alias.
