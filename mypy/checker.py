@@ -887,12 +887,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             not self.dynamic_funcs[-1]):
                         self.fail(message_registry.MUST_HAVE_NONE_RETURN_TYPE.format(fdef.name),
                                   item)
+                    self.check_for_missing_annotations(fdef, typ)
 
                     # Check validity of __new__ signature
                     if fdef.info and fdef.name == '__new__':
                         self.check___new___signature(fdef, typ)
 
-                    self.check_for_missing_annotations(fdef)
                     if self.options.disallow_any_unimported:
                         if fdef.type and isinstance(fdef.type, CallableType):
                             ret_type = fdef.type.ret_type
@@ -1101,7 +1101,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             return method_name in operators.reverse_op_method_set
 
-    def check_for_missing_annotations(self, fdef: FuncItem) -> None:
+    def check_for_missing_annotations(self, fdef: FuncItem, typ: CallableType) -> None:
         # Check for functions with unspecified/not fully specified types.
         def is_unannotated_any(t: Type) -> bool:
             if not isinstance(t, ProperType):
@@ -1116,18 +1116,27 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         check_incomplete_defs = self.options.disallow_incomplete_defs and has_explicit_annotation
         if show_untyped and (self.options.disallow_untyped_defs or check_incomplete_defs):
             if fdef.type is None and self.options.disallow_untyped_defs:
-                if (not fdef.arguments or (len(fdef.arguments) == 1 and
-                        (fdef.arg_names[0] == 'self' or fdef.arg_names[0] == 'cls'))):
-                    self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
-                    if not has_return_statement(fdef) and not fdef.is_generator:
-                        self.note('Use "-> None" if function does not return a value', fdef,
-                                  code=codes.NO_UNTYPED_DEF)
+                if self.options.default_return:
+                    typ.implicit = False
+                    typ.ret_type = NoneType()
+                    # fully unannotated fdef needs to be assigned a type
+                    fdef.type = typ
                 else:
-                    self.fail(message_registry.FUNCTION_TYPE_EXPECTED, fdef)
+                    if (not fdef.arguments or (len(fdef.arguments) == 1 and
+                            (fdef.arg_names[0] == 'self' or fdef.arg_names[0] == 'cls'))):
+                        self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
+                        if not has_return_statement(fdef) and not fdef.is_generator:
+                            self.note('Use "-> None" if function does not return a value', fdef,
+                                      code=codes.NO_UNTYPED_DEF)
+                    else:
+                        self.fail(message_registry.FUNCTION_TYPE_EXPECTED, fdef)
             elif isinstance(fdef.type, CallableType):
                 ret_type = get_proper_type(fdef.type.ret_type)
                 if is_unannotated_any(ret_type):
-                    self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
+                    if self.options.default_return:
+                        fdef.type.ret_type = NoneType()
+                    else:
+                        self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
                 elif fdef.is_generator:
                     if is_unannotated_any(self.get_generator_return_type(ret_type,
                                                                          fdef.is_coroutine)):
@@ -1137,6 +1146,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
                 if any(is_unannotated_any(t) for t in fdef.type.arg_types):
                     self.fail(message_registry.ARGUMENT_TYPE_EXPECTED, fdef)
+        elif isinstance(fdef.type, CallableType) and self.options.default_return:
+            # we always want to override '-> Any' if default_return
+            ret_type = get_proper_type(fdef.type.ret_type)
+            if is_unannotated_any(ret_type):
+                fdef.type.ret_type = NoneType()
 
     def check___new___signature(self, fdef: FuncDef, typ: CallableType) -> None:
         self_type = fill_typevars_with_any(fdef.info)

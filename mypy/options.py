@@ -27,6 +27,7 @@ PER_MODULE_OPTIONS: Final = {
     "always_true",
     "check_untyped_defs",
     "debug_cache",
+    "default_return",
     "disallow_any_decorated",
     "disallow_any_explicit",
     "disallow_any_expr",
@@ -116,6 +117,7 @@ class Options:
         self.legacy = False
         self.write_baseline = False
         self.baseline_file = defaults.BASELINE_FILE
+        self.default_return = False
 
         # disallow_any options
         self.disallow_any_generics = flip_if_not_based(True)

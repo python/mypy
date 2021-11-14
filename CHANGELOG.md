@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Added
+- `default_return` option to imply unannotated return type as `None`.
 
 ## [1.2.0]
 ### Added
