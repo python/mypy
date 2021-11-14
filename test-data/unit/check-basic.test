@@ -404,6 +404,13 @@ b = none.__bool__()
 reveal_type(b)  # N: Revealed type is "Literal[False]"
 [builtins fixtures/bool.pyi]
 
+[case testNoneHasBoolPython27]
+# flags: --python-version 2.7
+none = None
+b = none.__bool__()  # E: "None" has no attribute "__bool__"
+reveal_type(b)  # N: Revealed type is "Any"
+[builtins fixtures/bool.pyi]
+
 [case testNoneHasBoolShowNoneErrorsFalse]
 none = None
 b = none.__bool__()
@@ -412,6 +419,19 @@ reveal_type(b)  # N: Revealed type is "Literal[False]"
 [file mypy.ini]
 \[mypy]
 show_none_errors = False
+
+[case testTypeNoneHasBool]
+from typing import Type
+none: Type[None]
+reveal_type(none.__bool__)  # N: Revealed type is "def (self: None) -> Literal[False]"
+[builtins fixtures/bool.pyi]
+
+[case testTypeNoneHasBoolPython27]
+# flags: --python-version 2.7
+from typing import Type
+none = type(None)  # type: Type[None]
+none.__bool__  # E: "Type[None]" has no attribute "__bool__"
+[builtins fixtures/bool.pyi]
 
 [case testAssignmentInvariantNoteForList]
 from typing import List

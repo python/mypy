@@ -291,6 +291,8 @@ def analyze_type_type_member_access(name: str,
         # Access member on metaclass object via Type[Type[C]]
         if isinstance(typ.item.item, Instance):
             item = typ.item.item.type.metaclass_type
+    elif isinstance(typ.item, NoneType):
+        return analyze_none_member_access(name, typ.item, mx, from_none_type=True)
     if item and not mx.is_operator:
         # See comment above for why operators are skipped
         result = analyze_class_attribute_access(item, name, mx, override_info)
@@ -316,17 +318,30 @@ def analyze_union_member_access(name: str, typ: UnionType, mx: MemberContext) ->
     return make_simplified_union(results)
 
 
-def analyze_none_member_access(name: str, typ: NoneType, mx: MemberContext) -> Type:
+def analyze_none_member_access(
+    name: str, typ: NoneType, mx: MemberContext,
+    *,
+    from_none_type: bool = False,
+) -> Type:
     is_python_3 = mx.chk.options.python_version[0] >= 3
     # In Python 2 "None" has exactly the same attributes as "object". Python 3 adds a single
     # extra attribute, "__bool__".
     if is_python_3 and name == '__bool__':
         literal_false = LiteralType(False, fallback=mx.named_type('builtins.bool'))
-        return CallableType(arg_types=[],
-                            arg_kinds=[],
-                            arg_names=[],
-                            ret_type=literal_false,
-                            fallback=mx.named_type('builtins.function'))
+        arg_types = []
+        arg_kinds = []
+        arg_names = []
+        if from_none_type:  # This means that `type(None).__bool__` is accessed.
+            arg_types.append(typ)
+            arg_kinds.append(ARG_POS)
+            arg_names.append('self')
+        return CallableType(
+            arg_types=arg_types,
+            arg_kinds=arg_kinds,
+            arg_names=arg_names,
+            ret_type=literal_false,
+            fallback=mx.named_type('builtins.function'),
+        )
     elif mx.chk.should_suppress_optional_error([typ]):
         return AnyType(TypeOfAny.from_error)
     else:
