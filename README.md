@@ -13,6 +13,7 @@ compatibility with the cringe parts of pep 484.
 Based features include:
 - Typesafe by default (optional and dynamic typing still supported)
 - Baseline functionality
+- Default return type of `None` instead of `Any`
 
 See the [changelog](CHANGELOG.md) for a comprehensive list.
 

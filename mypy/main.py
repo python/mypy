@@ -517,6 +517,10 @@ def process_options(args: List[str],
     based_group.add_argument(
         '--legacy', action='store_true',
         help="Disable all based functionality")
+    add_invertible_flag(
+        '--default-return', default=False, dest="default_return",
+        help="Assume implicit default return type of None",
+        group=based_group)
 
     config_group = parser.add_argument_group(
         title='Config file',
