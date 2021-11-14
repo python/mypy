@@ -1,6 +1,8 @@
 # Basedmypy Changelog
 
 ## [Unreleased]
+### Added
+- Unions in output messages show with new syntax
 
 ## [1.0.0]
 ### Added
