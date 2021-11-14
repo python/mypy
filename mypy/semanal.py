@@ -2686,6 +2686,8 @@ class SemanticAnalyzer(NodeVisitor[None],
 
         res: Optional[Type] = None
         if self.is_none_alias(rvalue):
+            # This is really `Type[None]`, not just `None`, but we use
+            # this as a backwards compatible solution. See #11550
             res = NoneType()
             alias_tvars, depends_on, qualified_tvars = \
                 [], set(), []  # type: List[str], Set[str], List[str]

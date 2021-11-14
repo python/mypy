@@ -3220,6 +3220,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return type_object_type(tuple_fallback(item).type, self.named_type)
         elif isinstance(item, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=item)
+        elif isinstance(item, NoneType):
+            # This is a special case, `x = type(None)` turns into
+            # `x = TypeAliasType(None)` during semantic analysis.
+            # So, we need to show the real type here. Which is `Type[None]`.
+            return TypeType(item)
         else:
             if alias_definition:
                 return AnyType(TypeOfAny.special_form)
