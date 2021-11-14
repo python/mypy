@@ -1,0 +1,114 @@
+-- Type checker test cases for default return type.
+
+
+[case testSimple]
+# flags: --default-return
+def f(): ...
+reveal_type(f)  # N: Revealed type is "def ()"
+
+def g(i: int): ...
+reveal_type(g)  # N: Revealed type is "def (i: builtins.int)"
+
+class A:
+    def f(self): ...
+    def g(self, i: int): ...
+
+reveal_type(A.f)  # N: Revealed type is "def (self: __main__.A)"
+reveal_type(A.g)  # N: Revealed type is "def (self: __main__.A, i: builtins.int)"
+
+
+[case testUntypedDefs]
+# flags: --default-return --allow-untyped-defs --allow-any-expr
+
+def f(): ...
+reveal_type(f)  # N: Revealed type is "def () -> Any"
+
+def g(i: int): ...
+reveal_type(g)  # N: Revealed type is "def (i: builtins.int)"
+
+def h(i: int, j): ... # E: Function is missing a type annotation for one or more arguments  [no-untyped-def]
+
+class A:
+    def f(self): ...
+    def g(self, i): ...
+    def h(self, i: int): ...
+    def i(self, i: int, j): ... # E: Function is missing a type annotation for one or more arguments  [no-untyped-def]
+
+reveal_type(A.f)  # N: Revealed type is "def (self: __main__.A) -> Any"
+reveal_type(A.g)  # N: Revealed type is "def (self: __main__.A, i: Any) -> Any"
+reveal_type(A.h)  # N: Revealed type is "def (self: __main__.A, i: builtins.int)"
+
+
+[case testIncompleteDefs]
+# flags: --default-return --allow-incomplete-defs --allow-untyped-defs --allow-any-expr
+
+def f(i): ...
+reveal_type(f)  # N: Revealed type is "def (i: Any) -> Any"
+
+def g(i: int, j): ...
+reveal_type(g)  # N: Revealed type is "def (i: builtins.int, j: Any)"
+
+class A:
+    def f(self): ...
+    def g(self, i): ...
+    def h(self, i: int): ...
+    def i(self, i: int, j): ...
+
+reveal_type(A.f)  # N: Revealed type is "def (self: __main__.A) -> Any"
+reveal_type(A.g)  # N: Revealed type is "def (self: __main__.A, i: Any) -> Any"
+reveal_type(A.h)  # N: Revealed type is "def (self: __main__.A, i: builtins.int)"
+reveal_type(A.i)  # N: Revealed type is "def (self: __main__.A, i: builtins.int, j: Any)"
+
+
+[case testGenerator]
+# flags: --default-return
+
+def f():  # E: The return type of a generator function should be "Generator" or one of its supertypes  [misc]
+    yield
+
+def g(i: int):  # E: The return type of a generator function should be "Generator" or one of its supertypes  [misc]
+    yield
+
+class A:
+    def f(self): # E: The return type of a generator function should be "Generator" or one of its supertypes  [misc]
+        yield
+    def g(self, i: int): # E: The return type of a generator function should be "Generator" or one of its supertypes  [misc]
+        yield
+
+
+[case testLambda]
+# flags: --default-return --allow-any-expr
+
+f = lambda x: x
+g = lambda: ...
+reveal_type(f)  # N: Revealed type is "def (x: Any) -> Any"
+reveal_type(g)  # N: Revealed type is "def () -> builtins.ellipsis"
+
+
+[case testExplicitAny]
+# flags: --default-return --allow-any-expr  --allow-any-explicit
+from typing import Any
+
+def f() -> Any: ...
+def g(i: int) -> Any: ...
+reveal_type(f)  # N: Revealed type is "def () -> Any"
+reveal_type(g)  # N: Revealed type is "def (i: builtins.int) -> Any"
+
+class A:
+    def f(self) -> Any: ...
+    def g(self, i: int) -> Any: ...
+reveal_type(A.f)  # N: Revealed type is "def (self: __main__.A) -> Any"
+reveal_type(A.g)  # N: Revealed type is "def (self: __main__.A, i: builtins.int) -> Any"
+
+
+[case testNoDefaultReturn]
+# flags: --allow-any-expr
+
+def f(i): ...  # E: Function is missing a type annotation  [no-untyped-def]
+def g(i: int, j): ...  # E: Function is missing a return type annotation  [no-untyped-def] \
+    # E: Function is missing a type annotation for one or more arguments  [no-untyped-def]
+
+class A:
+    def f(self, i): ...  # E: Function is missing a type annotation  [no-untyped-def]
+    def g(self, i: int, j): ...  # E: Function is missing a return type annotation  [no-untyped-def] \
+        # E: Function is missing a type annotation for one or more arguments  [no-untyped-def]
