@@ -1,11 +1,12 @@
 """Classes for representing mypy types."""
 
+import contextlib
 import sys
 from abc import abstractmethod
 
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Set, Optional, Union, Iterable, NamedTuple,
-    Sequence
+    Sequence, Generator
 )
 from typing_extensions import ClassVar, Final, TYPE_CHECKING, overload, TypeAlias as _TypeAlias
 
@@ -18,7 +19,7 @@ from mypy.nodes import (
 )
 from mypy.util import IdMapper
 from mypy.bogus_type import Bogus
-
+import mypy.options
 
 T = TypeVar('T')
 
@@ -502,18 +503,19 @@ class TypeVarLikeType(ProperType):
 class TypeVarType(TypeVarLikeType):
     """Type that refers to a type variable."""
 
-    __slots__ = ('values', 'variance')
+    __slots__ = ('values', 'variance', 'scopename')
 
     values: List[Type]  # Value restriction, empty list if no restriction
     variance: int
 
     def __init__(self, name: str, fullname: str, id: Union[TypeVarId, int], values: List[Type],
                  upper_bound: Type, variance: int = INVARIANT, line: int = -1,
-                 column: int = -1) -> None:
+                 column: int = -1, scopename: Optional[str] = None) -> None:
         super().__init__(name, fullname, id, upper_bound, line, column)
         assert values is not None, "No restrictions must be represented by empty list"
         self.values = values
         self.variance = variance
+        self.scopename = scopename
 
     @staticmethod
     def new_unification_variable(old: 'TypeVarType') -> 'TypeVarType':
@@ -542,6 +544,7 @@ class TypeVarType(TypeVarLikeType):
                 'values': [v.serialize() for v in self.values],
                 'upper_bound': self.upper_bound.serialize(),
                 'variance': self.variance,
+                'scopename': self.scopename,
                 }
 
     @classmethod
@@ -554,6 +557,7 @@ class TypeVarType(TypeVarLikeType):
             [deserialize_type(v) for v in data['values']],
             deserialize_type(data['upper_bound']),
             data['variance'],
+            scopename=data['scopename'],
         )
 
 
@@ -2621,6 +2625,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     def __init__(self, id_mapper: Optional[IdMapper] = None) -> None:
         self.id_mapper = id_mapper
         self.any_as_dots = False
+        self._own_type_vars: Sequence[TypeVarLikeType] = []
 
     def visit_unbound_type(self, t: UnboundType) -> str:
         s = t.name + '?'
@@ -2674,7 +2679,27 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                 s += f'[{self.list_str(t.args)}]'
         if self.id_mapper:
             s += f'<{self.id_mapper.id(t.type)}>'
+
+        return self.strip_builtins(s)
+
+    @staticmethod
+    def strip_builtins(s: str) -> str:
+        if mypy.options._based:
+            if s.startswith("builtins."):
+                return s.partition(".")[2]
         return s
+
+    @contextlib.contextmanager
+    def own_type_vars(
+        self, type_vars: Optional[Sequence[TypeVarLikeType]]
+    ) -> Generator[None, None, None]:
+        if not mypy.options._based:
+            yield
+        else:
+            previous = self._own_type_vars
+            self._own_type_vars = type_vars or []
+            yield
+            self._own_type_vars = previous
 
     def visit_type_var(self, t: TypeVarType) -> str:
         if t.name is None:
@@ -2682,7 +2707,16 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             s = f'`{t.id}'
         else:
             # Named type variable type.
-            s = f'{t.name}`{t.id}'
+            if mypy.options._based:
+                if t.scopename:
+                    if t in self._own_type_vars:
+                        s = t.name
+                    else:
+                        s = f"{t.name}@{t.scopename}"
+                else:
+                    s = t.name
+            else:
+                s = f'{t.name}`{t.id}'
         if self.id_mapper and t.upper_bound:
             s += f'(upper_bound={t.upper_bound.accept(self)})'
         return s
@@ -2741,63 +2775,73 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return s
 
     def visit_callable_type(self, t: CallableType) -> str:
-        param_spec = t.param_spec()
-        if param_spec is not None:
-            num_skip = 2
-        else:
-            num_skip = 0
-
-        s = ''
-        bare_asterisk = False
-        for i in range(len(t.arg_types) - num_skip):
-            if s != '':
-                s += ', '
-            if t.arg_kinds[i].is_named() and not bare_asterisk:
-                s += '*, '
-                bare_asterisk = True
-            if t.arg_kinds[i] == ARG_STAR:
-                s += '*'
-            if t.arg_kinds[i] == ARG_STAR2:
-                s += '**'
-            name = t.arg_names[i]
-            if name:
-                s += name + ': '
-            s += t.arg_types[i].accept(self)
-            if t.arg_kinds[i].is_optional():
-                s += ' ='
-
-        if param_spec is not None:
-            n = param_spec.name
-            if s:
-                s += ', '
-            s += f'*{n}.args, **{n}.kwargs'
-
-        s = f'({s})'
-
-        if not isinstance(get_proper_type(t.ret_type), NoneType):
-            if t.type_guard is not None:
-                s += f' -> TypeGuard[{t.type_guard.accept(self)}]'
+        with self.own_type_vars(t.variables):
+            param_spec = t.param_spec()
+            if param_spec is not None:
+                num_skip = 2
             else:
-                s += f' -> {t.ret_type.accept(self)}'
+                num_skip = 0
 
-        if t.variables:
-            vs = []
-            for var in t.variables:
-                if isinstance(var, TypeVarType):
-                    # We reimplement TypeVarType.__repr__ here in order to support id_mapper.
-                    if var.values:
-                        vals = f"({', '.join(val.accept(self) for val in var.values)})"
-                        vs.append(f'{var.name} in {vals}')
-                    elif not is_named_instance(var.upper_bound, 'builtins.object'):
-                        vs.append(f'{var.name} <: {var.upper_bound.accept(self)}')
-                    else:
-                        vs.append(var.name)
+            s = ''
+            bare_asterisk = False
+
+            for i in range(len(t.arg_types) - num_skip):
+                if s != '':
+                    s += ', '
+                if t.arg_kinds[i].is_named() and not bare_asterisk:
+                    s += '*, '
+                    bare_asterisk = True
+                if t.arg_kinds[i] == ARG_STAR:
+                    s += '*'
+                if t.arg_kinds[i] == ARG_STAR2:
+                    s += '**'
+                name = t.arg_names[i]
+                if name:
+                    s += name + ': '
+                s += t.arg_types[i].accept(self)
+                if t.arg_kinds[i].is_optional():
+                    s += ' ='
+
+            if param_spec is not None:
+                n = param_spec.name
+                if s:
+                    s += ', '
+                s += f'*{n}.args, **{n}.kwargs'
+
+            s = f'({s})'
+
+            if not isinstance(get_proper_type(t.ret_type), NoneType):
+                if t.type_guard is not None:
+                    s += f' -> TypeGuard[{t.type_guard.accept(self)}]'
                 else:
-                    # For other TypeVarLikeTypes, just use the name
-                    vs.append(var.name)
-            s = f"[{', '.join(vs)}] {s}"
+                    s += f' -> {t.ret_type.accept(self)}'
 
-        return f'def {s}'
+            if t.variables:
+                vs = []
+                for var in t.variables:
+                    if isinstance(var, TypeVarType):
+                        # We reimplement TypeVarType.__repr__ here in order to support id_mapper.
+                        if (
+                            mypy.options._based
+                            and var.scopename and t.name
+                            and var.scopename != t.name.split(" ")[0]
+                        ):
+                            name = f"{var.name} (from {var.scopename})"
+                        else:
+                            name = var.name
+                        if var.values:
+                            vals = f"({', '.join(val.accept(self) for val in var.values)})"
+                            vs.append(f'{name} in {vals}')
+                        elif not is_named_instance(var.upper_bound, 'builtins.object'):
+                            vs.append(f'{name} <: {var.upper_bound.accept(self)}')
+                        else:
+                            vs.append(name)
+                    else:
+                        # For other TypeVarLikeTypes, just use the name
+                        vs.append(var.name)
+                s = f"[{', '.join(vs)}] {s}"
+
+            return f'def {s}'
 
     def visit_overloaded(self, t: Overloaded) -> str:
         a = []
@@ -2810,8 +2854,12 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         if t.partial_fallback and t.partial_fallback.type:
             fallback_name = t.partial_fallback.type.fullname
             if fallback_name != 'builtins.tuple':
-                return f'Tuple[{s}, fallback={t.partial_fallback.accept(self)}]'
-        return f'Tuple[{s}]'
+                if not mypy.options._based:
+                    return f'Tuple[{s}, fallback={t.partial_fallback.accept(self)}]'
+                return f'tuple[{s}, fallback={t.partial_fallback.accept(self)}]'
+        if not mypy.options._based:
+            return f'Tuple[{s}]'
+        return f"({s})" if len(t.items) != 1 else f"({s},)"
 
     def visit_typeddict_type(self, t: TypedDictType) -> str:
         def item_str(name: str, typ: str) -> str:
@@ -2839,8 +2887,10 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return f'*{s}'
 
     def visit_union_type(self, t: UnionType) -> str:
-        s = self.list_str(t.items)
-        return f'Union[{s}]'
+        if not mypy.options._based:
+            s = self.list_str(t.items)
+            return f'Union[{s}]'
+        return self.union_str(t.items)
 
     def visit_partial_type(self, t: PartialType) -> str:
         if t.type is None:
@@ -2853,7 +2903,9 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return '...'
 
     def visit_type_type(self, t: TypeType) -> str:
-        return f'Type[{t.item.accept(self)}]'
+        if not mypy.options._based:
+            return f'Type[{t.item.accept(self)}]'
+        return f'type[{t.item.accept(self)}]'
 
     def visit_placeholder_type(self, t: PlaceholderType) -> str:
         return f'<placeholder {t.fullname}>'
@@ -2878,6 +2930,17 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         for t in a:
             res.append(t.accept(self))
         return ', '.join(res)
+
+    def union_str(self, a: Iterable[Type]) -> str:
+        """Convert items of an array to strings (pretty-print types)
+        and join the results with commas.
+        """
+        res = []
+        for t in a:
+            res.append(t.accept(self))
+        if not mypy.options._based:
+            return f"Union[{self.list_str(a)}]"
+        return ' | '.join(res)
 
 
 class UnrollAliasVisitor(TypeTranslator):

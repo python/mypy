@@ -1,6 +1,27 @@
 # Basedmypy Changelog
 
 ## [Unreleased]
+### Added
+- `ignore_any_from_errors` option to suppress `no-any-expr` messages from other errors
+### Enhancements
+- Render types a lot better in output messages
+
+## [1.3.0]
+### Added
+- `default_return` option to imply unannotated return type as `None`.
+- Specific error codes for `Any` errors
+- Automatic baseline mode, if there are no new errors then write.
+- Ignore baseline with `mypy --baseline-file= src`
+### Enhancements
+- Baseline will ignore reveals (`reveal_type` and `reveal_locals`).
+- `--write-baseline` will report total and new errors.
+- Much better baseline matching.
+
+## [1.2.0]
+### Added
+- Unions in output messages show with new syntax
+- `--legacy` flag
+- new baseline format
 
 ## [1.0.0]
 ### Added
