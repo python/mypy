@@ -1557,3 +1557,19 @@ _testNoPython3StubAvailable.py:1: note: See https://mypy.readthedocs.io/en/stabl
 _testNoPython3StubAvailable.py:3: error: Library stubs not installed for "maxminddb" (or incompatible with Python 3.6)
 _testNoPython3StubAvailable.py:3: note: Hint: "python3 -m pip install types-maxminddb"
 _testNoPython3StubAvailable.py:3: note: (or run "mypy --install-types" to install all missing stub packages)
+
+
+[case testTypingOrderedDictAlias]
+# flags: --python-version 3.7
+from typing import OrderedDict
+x: OrderedDict[str, int] = OrderedDict({})
+reveal_type(x)
+[out]
+_testTypingOrderedDictAlias.py:4: note: Revealed type is "collections.OrderedDict[builtins.str, builtins.int]"
+
+[case testTypingExtensionsOrderedDictAlias]
+from typing_extensions import OrderedDict
+x: OrderedDict[str, str] = OrderedDict({})
+reveal_type(x)  # Revealed type is "collections.OrderedDict[builtins.str, builtins.int]"
+[out]
+_testTypingExtensionsOrderedDictAlias.py:3: note: Revealed type is "collections.OrderedDict[builtins.str, builtins.str]"

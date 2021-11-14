@@ -135,6 +135,12 @@ type_aliases_source_versions: Final = {
     'typing.OrderedDict': (3, 7),
 }
 
+# This keeps track of aliases in `typing_extensions`, which we treat specially.
+typing_extensions_aliases: Final = {
+    # See: https://github.com/python/mypy/issues/11528
+    'typing_extensions.OrderedDict': 'collections.OrderedDict',
+}
+
 reverse_builtin_aliases: Final = {
     'builtins.list': 'typing.List',
     'builtins.dict': 'typing.Dict',
