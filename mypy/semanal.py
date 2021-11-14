@@ -835,6 +835,10 @@ class SemanticAnalyzer(NodeVisitor[None],
             if isinstance(item, Decorator):
                 callable = function_type(item.func, self.named_type('builtins.function'))
                 assert isinstance(callable, CallableType)
+                # overloads ignore the rule regarding default return and untyped defs
+                if item.type is None and self.options.default_return:
+                    if isinstance(get_proper_type(callable.ret_type), AnyType):
+                        callable.ret_type = NoneType()
                 if not any(refers_to_fullname(dec, OVERLOAD_NAMES)
                            for dec in item.decorators):
                     if i == len(defn.items) - 1 and not self.is_stub_file:

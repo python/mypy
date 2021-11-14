@@ -8,14 +8,14 @@ reveal_type(f)  # N:13: Revealed type is "def ()"
 reveal_type(f())  # N:13: Revealed type is "None"
 
 def g(i: int): ...
-reveal_type(g)  # N:13: Revealed type is "def (i: builtins.int)"
+reveal_type(g)  # N:13: Revealed type is "def (i: int)"
 
 class A:
     def f(self): ...
     def g(self, i: int): ...
 
 reveal_type(A.f)  # N:13: Revealed type is "def (self: __main__.A)"
-reveal_type(A.g)  # N:13: Revealed type is "def (self: __main__.A, i: builtins.int)"
+reveal_type(A.g)  # N:13: Revealed type is "def (self: __main__.A, i: int)"
 
 
 [case testUntypedDefs]
@@ -25,7 +25,7 @@ def f(): ...
 reveal_type(f)  # N:13: Revealed type is "def () -> Any"
 
 def g(i: int): ...
-reveal_type(g)  # N:13: Revealed type is "def (i: builtins.int)"
+reveal_type(g)  # N:13: Revealed type is "def (i: int)"
 
 def h(i: int, j): ... # E:1: Function is missing a type annotation for one or more arguments  [no-untyped-def]
 
@@ -37,7 +37,7 @@ class A:
 
 reveal_type(A.f)  # N:13: Revealed type is "def (self: __main__.A) -> Any"
 reveal_type(A.g)  # N:13: Revealed type is "def (self: __main__.A, i: Any) -> Any"
-reveal_type(A.h)  # N:13: Revealed type is "def (self: __main__.A, i: builtins.int)"
+reveal_type(A.h)  # N:13: Revealed type is "def (self: __main__.A, i: int)"
 
 
 [case testIncompleteDefs]
@@ -47,7 +47,7 @@ def f(i): ...
 reveal_type(f)  # N:13: Revealed type is "def (i: Any) -> Any"
 
 def g(i: int, j): ...
-reveal_type(g)  # N:13: Revealed type is "def (i: builtins.int, j: Any)"
+reveal_type(g)  # N:13: Revealed type is "def (i: int, j: Any)"
 
 class A:
     def f(self): ...
@@ -57,8 +57,8 @@ class A:
 
 reveal_type(A.f)  # N:13: Revealed type is "def (self: __main__.A) -> Any"
 reveal_type(A.g)  # N:13: Revealed type is "def (self: __main__.A, i: Any) -> Any"
-reveal_type(A.h)  # N:13: Revealed type is "def (self: __main__.A, i: builtins.int)"
-reveal_type(A.i)  # N:13: Revealed type is "def (self: __main__.A, i: builtins.int, j: Any)"
+reveal_type(A.h)  # N:13: Revealed type is "def (self: __main__.A, i: int)"
+reveal_type(A.i)  # N:13: Revealed type is "def (self: __main__.A, i: int, j: Any)"
 
 
 [case testGenerator]
@@ -83,7 +83,7 @@ class A:
 f = lambda x: x
 g = lambda: ...
 reveal_type(f)  # N:13: Revealed type is "def (x: Any) -> Any"
-reveal_type(g)  # N:13: Revealed type is "def () -> builtins.ellipsis"
+reveal_type(g)  # N:13: Revealed type is "def () -> ellipsis"
 
 
 [case testExplicitAny]
@@ -93,13 +93,13 @@ from typing import Any
 def f() -> Any: ...
 def g(i: int) -> Any: ...
 reveal_type(f)  # N:13: Revealed type is "def () -> Any"
-reveal_type(g)  # N:13: Revealed type is "def (i: builtins.int) -> Any"
+reveal_type(g)  # N:13: Revealed type is "def (i: int) -> Any"
 
 class A:
     def f(self) -> Any: ...
     def g(self, i: int) -> Any: ...
 reveal_type(A.f)  # N:13: Revealed type is "def (self: __main__.A) -> Any"
-reveal_type(A.g)  # N:13: Revealed type is "def (self: __main__.A, i: builtins.int) -> Any"
+reveal_type(A.g)  # N:13: Revealed type is "def (self: __main__.A, i: int) -> Any"
 
 
 [case testNoDefaultReturn]
@@ -126,7 +126,7 @@ class A:
     def f(self, i: int): ...
     def f(self, i: int = 0): ...
 
-reveal_type(A.f)  # N:13: Revealed type is "Overload(def (self: __main__.A), def (self: __main__.A, i: builtins.int))"
+reveal_type(A.f)  # N:13: Revealed type is "Overload(def (self: __main__.A), def (self: __main__.A, i: int))"
 
 @overload
 def f(): ...
@@ -134,7 +134,7 @@ def f(): ...
 def f(i: int): ...
 def f(i: int = 0): ...
 
-reveal_type(f)  # N:13: Revealed type is "Overload(def (), def (i: builtins.int))"
+reveal_type(f)  # N:13: Revealed type is "Overload(def (), def (i: int))"
 
 
 [case testOverloadIncomplete]
@@ -150,7 +150,7 @@ class A:
     def f(self, i, j: int): ...
     def f(self, i: int = 0, j: int = 0): ...
 
-reveal_type(A.f)  # N:13: Revealed type is "Overload(def (self: __main__.A) -> Any, def (self: __main__.A, i: Any) -> Any, def (self: __main__.A, i: Any, j: builtins.int))"
+reveal_type(A.f)  # N:13: Revealed type is "Overload(def (self: __main__.A) -> Any, def (self: __main__.A, i: Any) -> Any, def (self: __main__.A, i: Any, j: int))"
 
 @overload
 def f(): ...
@@ -160,7 +160,7 @@ def f(i): ...
 def f(i, j: int): ...
 def f(i: int = 0, j: int = 0): ...
 
-reveal_type(f)  # N:13: Revealed type is "Overload(def () -> Any, def (i: Any) -> Any, def (i: Any, j: builtins.int))"
+reveal_type(f)  # N:13: Revealed type is "Overload(def () -> Any, def (i: Any) -> Any, def (i: Any, j: int))"
 
 
 [case testOverloadUntyped]
@@ -176,7 +176,7 @@ class A:
     def f(self, *, j: int): ...
     def f(self, i: int = 0, j: int = 0): ...
 
-reveal_type(A.f)  # N:13: Revealed type is "Overload(def (self: __main__.A) -> Any, def (self: __main__.A, i: Any) -> Any, def (self: __main__.A, *, j: builtins.int))"
+reveal_type(A.f)  # N:13: Revealed type is "Overload(def (self: __main__.A) -> Any, def (self: __main__.A, i: Any) -> Any, def (self: __main__.A, *, j: int))"
 
 @overload
 def f(): ...
@@ -186,7 +186,7 @@ def f(i): ...
 def f(*, j: int): ...
 def f(i: int = 0, j: int = 0): ...
 
-reveal_type(f)  # N:13: Revealed type is "Overload(def () -> Any, def (i: Any) -> Any, def (*, j: builtins.int))"
+reveal_type(f)  # N:13: Revealed type is "Overload(def () -> Any, def (i: Any) -> Any, def (*, j: int))"
 
 [case testOverloadOther]
 # flags: --default-return --allow-untyped-defs --allow-incomplete-defs --allow-any-expr
@@ -201,7 +201,7 @@ class A:
     def f(self, i, j: int): ...
     def f(self, i: int = 0, j: int = 0) -> object: ...
 
-reveal_type(A.f)  # N:13: Revealed type is "Overload(def (self: __main__.A) -> builtins.int, def (self: __main__.A, i: Any) -> Any, def (self: __main__.A, i: Any, j: builtins.int))"
+reveal_type(A.f)  # N:13: Revealed type is "Overload(def (self: __main__.A) -> int, def (self: __main__.A, i: Any) -> Any, def (self: __main__.A, i: Any, j: int))"
 
 class B:
     @overload
@@ -212,7 +212,7 @@ class B:
     def f(self, i, j: int) -> int: ...
     def f(self, i: int = 0, j: int = 0) -> object: ...
 
-reveal_type(B.f)  # N:13: Revealed type is "Overload(def (self: __main__.B) -> builtins.str, def (self: __main__.B, i: Any) -> Any, def (self: __main__.B, i: Any, j: builtins.int) -> builtins.int)"
+reveal_type(B.f)  # N:13: Revealed type is "Overload(def (self: __main__.B) -> str, def (self: __main__.B, i: Any) -> Any, def (self: __main__.B, i: Any, j: int) -> int)"
 
 
 [case testNewHasError]

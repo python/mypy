@@ -99,9 +99,11 @@ class TypeCheckSuite(DataSuite):
 
         # set mypy to legacy mode
         from mypy import options as mypy_options
-        mypy_options._based = False
+        mypy_options._based = 'based' in testcase.file.rsplit(os.sep)[-1]
         # Parse options after moving files (in case mypy.ini is being moved).
-        options = parse_options(original_program_text, testcase, incremental_step)
+        options = parse_options(
+            original_program_text, testcase, incremental_step, based=mypy_options._based
+        )
         options.use_builtins_fixtures = True
         options.enable_incomplete_features = True
         options.show_traceback = True
