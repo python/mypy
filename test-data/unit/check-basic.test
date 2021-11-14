@@ -433,6 +433,15 @@ none = type(None)  # type: Type[None]
 none.__bool__  # E: "Type[None]" has no attribute "__bool__"
 [builtins fixtures/bool.pyi]
 
+[case testTypeNoneHasBoolShowNoneErrorsFalse]
+from typing import Type
+none: Type[None]
+reveal_type(none.__bool__)  # N: Revealed type is "def (self: None) -> Literal[False]"
+[builtins fixtures/bool.pyi]
+[file mypy.ini]
+\[mypy]
+show_none_errors = False
+
 [case testAssignmentInvariantNoteForList]
 from typing import List
 x: List[int]

@@ -291,7 +291,8 @@ def analyze_type_type_member_access(name: str,
         # Access member on metaclass object via Type[Type[C]]
         if isinstance(typ.item.item, Instance):
             item = typ.item.item.type.metaclass_type
-    elif isinstance(typ.item, NoneType):
+    elif isinstance(typ.item, NoneType) and name == '__bool__':
+        # Special case, `type(None).__bool__` is defined on python3.
         return analyze_none_member_access(name, typ.item, mx, from_none_type=True)
     if item and not mx.is_operator:
         # See comment above for why operators are skipped
