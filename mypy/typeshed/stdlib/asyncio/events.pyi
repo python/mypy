@@ -113,16 +113,16 @@ class AbstractEventLoop(metaclass=ABCMeta):
     @abstractmethod
     def call_soon_threadsafe(self, callback: Callable[..., Any], *args: Any) -> Handle: ...
     @abstractmethod
-    def run_in_executor(self, executor: Any, func: Callable[..., _T], *args: Any) -> Awaitable[_T]: ...
+    def run_in_executor(self, executor: Any, func: Callable[..., _T], *args: Any) -> Future[_T]: ...
     @abstractmethod
     def set_default_executor(self, executor: Any) -> None: ...
     # Network I/O methods returning Futures.
     @abstractmethod
     async def getaddrinfo(
         self, host: str | None, port: str | int | None, *, family: int = ..., type: int = ..., proto: int = ..., flags: int = ...
-    ) -> list[Tuple[AddressFamily, SocketKind, int, str, Tuple[str, int] | Tuple[str, int, int, int]]]: ...
+    ) -> list[tuple[AddressFamily, SocketKind, int, str, tuple[str, int] | tuple[str, int, int, int]]]: ...
     @abstractmethod
-    async def getnameinfo(self, sockaddr: Tuple[str, int] | Tuple[str, int, int, int], flags: int = ...) -> Tuple[str, str]: ...
+    async def getnameinfo(self, sockaddr: tuple[str, int] | tuple[str, int, int, int], flags: int = ...) -> tuple[str, str]: ...
     if sys.version_info >= (3, 8):
         @overload
         @abstractmethod
@@ -137,7 +137,7 @@ class AbstractEventLoop(metaclass=ABCMeta):
             proto: int = ...,
             flags: int = ...,
             sock: None = ...,
-            local_addr: Tuple[str, int] | None = ...,
+            local_addr: tuple[str, int] | None = ...,
             server_hostname: str | None = ...,
             ssl_handshake_timeout: float | None = ...,
             happy_eyeballs_delay: float | None = ...,
@@ -176,7 +176,7 @@ class AbstractEventLoop(metaclass=ABCMeta):
             proto: int = ...,
             flags: int = ...,
             sock: None = ...,
-            local_addr: Tuple[str, int] | None = ...,
+            local_addr: tuple[str, int] | None = ...,
             server_hostname: str | None = ...,
             ssl_handshake_timeout: float | None = ...,
         ) -> _TransProtPair: ...
@@ -211,7 +211,7 @@ class AbstractEventLoop(metaclass=ABCMeta):
             proto: int = ...,
             flags: int = ...,
             sock: None = ...,
-            local_addr: Tuple[str, int] | None = ...,
+            local_addr: tuple[str, int] | None = ...,
             server_hostname: str | None = ...,
         ) -> _TransProtPair: ...
         @overload
@@ -362,8 +362,8 @@ class AbstractEventLoop(metaclass=ABCMeta):
     async def create_datagram_endpoint(
         self,
         protocol_factory: _ProtocolFactory,
-        local_addr: Tuple[str, int] | None = ...,
-        remote_addr: Tuple[str, int] | None = ...,
+        local_addr: tuple[str, int] | None = ...,
+        remote_addr: tuple[str, int] | None = ...,
         *,
         family: int = ...,
         proto: int = ...,
@@ -430,7 +430,7 @@ class AbstractEventLoop(metaclass=ABCMeta):
         @abstractmethod
         async def sock_connect(self, sock: socket, address: _Address) -> None: ...
         @abstractmethod
-        async def sock_accept(self, sock: socket) -> Tuple[socket, _RetAddress]: ...
+        async def sock_accept(self, sock: socket) -> tuple[socket, _RetAddress]: ...
     else:
         @abstractmethod
         def sock_recv(self, sock: socket, nbytes: int) -> Future[bytes]: ...
@@ -439,7 +439,7 @@ class AbstractEventLoop(metaclass=ABCMeta):
         @abstractmethod
         def sock_connect(self, sock: socket, address: _Address) -> Future[None]: ...
         @abstractmethod
-        def sock_accept(self, sock: socket) -> Future[Tuple[socket, _RetAddress]]: ...
+        def sock_accept(self, sock: socket) -> Future[tuple[socket, _RetAddress]]: ...
     # Signal handling.
     @abstractmethod
     def add_signal_handler(self, sig: int, callback: Callable[..., Any], *args: Any) -> None: ...

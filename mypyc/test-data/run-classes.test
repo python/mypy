@@ -1591,13 +1591,13 @@ from mypy_extensions import trait
 class Temperature:
     @property
     def celsius(self) -> float:
-        return 5.0 * (self.farenheit - 32.0) / 9.0
+        return 5.0 * (self.fahrenheit - 32.0) / 9.0
 
-    def __init__(self, farenheit: float) -> None:
-        self.farenheit = farenheit
+    def __init__(self, fahrenheit: float) -> None:
+        self.fahrenheit = fahrenheit
 
     def print_temp(self) -> None:
-        print("F:", self.farenheit, "C:", self.celsius)
+        print("F:", self.fahrenheit, "C:", self.celsius)
 
     @property
     def rankine(self) -> float:

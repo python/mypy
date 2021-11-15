@@ -123,7 +123,7 @@ def singledispatch_register_callback(ctx: MethodContext) -> Type:
     # TODO: check that there's only one argument
     first_arg_type = get_proper_type(get_first_arg(ctx.arg_types))
     if isinstance(first_arg_type, (CallableType, Overloaded)) and first_arg_type.is_type_obj():
-        # HACK: We receieved a class as an argument to register. We need to be able
+        # HACK: We received a class as an argument to register. We need to be able
         # to access the function that register is being applied to, and the typeshed definition
         # of register has it return a generic Callable, so we create a new
         # SingleDispatchRegisterCallable class, define a __call__ method, and then add a

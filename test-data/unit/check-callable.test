@@ -545,3 +545,17 @@ Some.bad_cls_method(1)  # E: Too many arguments for "bad_cls_method" of "Some" \
 s.bad_st_method(1)  # E: Too many arguments for "bad_st_method" of "Some"
 Some.bad_st_method(1)  # E: Too many arguments for "bad_st_method" of "Some"
 [builtins fixtures/callable.pyi]
+
+[case testClassMethodAliasStub]
+from a import f
+f("no")  # E: Argument 1 has incompatible type "str"; expected "int"
+[file a.pyi]
+from b import C
+f = C.f
+[file b.pyi]
+import a
+class C(B):
+    @classmethod
+    def f(self, x: int) -> C: ...
+class B: ...
+[builtins fixtures/classmethod.pyi]

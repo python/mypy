@@ -440,7 +440,7 @@ class D(Generic[S]): pass
 class E(Generic[S, T]): pass
 
 x: C[object]  # E: Value of type variable "T" of "C" cannot be "object"  [type-var]
-y: D[int]  # E: Type argument "builtins.int" of "D" must be a subtype of "builtins.str"  [type-var]
+y: D[int]  # E: Type argument "int" of "D" must be a subtype of "str"  [type-var]
 z: D[int, int]  # E: "D" expects 1 type argument, but 2 given  [type-arg]
 
 def h(a: TT, s: S) -> None:
@@ -854,7 +854,7 @@ class Foo:
     pass
 
 foo = Foo()
-if foo:  # E: "__main__.foo" has type "__main__.Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+if foo:  # E: "__main__.foo" has type "Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
     pass
 
 zero = 0
@@ -880,18 +880,18 @@ if not good_union:
     pass
 
 bad_union: Union[Foo, object] = Foo()
-if bad_union:  # E: "__main__.bad_union" has type "Union[__main__.Foo, builtins.object]" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+if bad_union:  # E: "__main__.bad_union" has type "Union[Foo, object]" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
     pass
-if not bad_union:  # E: "__main__.bad_union" has type "builtins.object" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+if not bad_union:  # E: "__main__.bad_union" has type "object" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
     pass
 
 def f():
     pass
-if f:  # E: Function "def () -> Any" could always be true in boolean context  [truthy-bool]
+if f:  # E: Function "Callable[[], Any]" could always be true in boolean context  [truthy-bool]
     pass
-if not f:  # E: Function "def () -> Any" could always be true in boolean context  [truthy-bool]
+if not f:  # E: Function "Callable[[], Any]" could always be true in boolean context  [truthy-bool]
     pass
-conditional_result = 'foo' if f else 'bar'  # E: Function "def () -> Any" could always be true in boolean context  [truthy-bool]
+conditional_result = 'foo' if f else 'bar'  # E: Function "Callable[[], Any]" could always be true in boolean context  [truthy-bool]
 
 lst: List[int] = []
 if lst:

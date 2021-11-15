@@ -148,11 +148,11 @@ to perform a cast:
 
 .. code-block:: python
 
-   from typing import cast, List
+   from typing import cast
 
    o: object = [1]
-   x = cast(List[int], o)  # OK
-   y = cast(List[str], o)  # OK (cast performs no actual runtime check)
+   x = cast(list[int], o)  # OK
+   y = cast(list[str], o)  # OK (cast performs no actual runtime check)
 
 To support runtime checking of casts such as the above, we'd have to check
 the types of all list items, which would be very inefficient for large lists.
@@ -201,35 +201,32 @@ Let's have a look at the regular ``bool`` example:
 
 .. code-block:: python
 
-  from typing import List
-
-  def is_str_list(val: List[object]) -> bool:
+  def is_str_list(val: list[object]) -> bool:
     """Determines whether all objects in the list are strings"""
     return all(isinstance(x, str) for x in val)
 
-  def func1(val: List[object]) -> None:
+  def func1(val: list[object]) -> None:
       if is_str_list(val):
-          reveal_type(val)  # Reveals List[object]
+          reveal_type(val)  # Reveals list[object]
           print(" ".join(val)) # Error: incompatible type
 
 The same example with ``TypeGuard``:
 
 .. code-block:: python
 
-  from typing import List
   from typing import TypeGuard  # use `typing_extensions` for Python 3.9 and below
 
-  def is_str_list(val: List[object]) -> TypeGuard[List[str]]:
+  def is_str_list(val: list[object]) -> TypeGuard[list[str]]:
       """Determines whether all objects in the list are strings"""
       return all(isinstance(x, str) for x in val)
 
-  def func1(val: List[object]) -> None:
+  def func1(val: list[object]) -> None:
       if is_str_list(val):
-          reveal_type(val)  # List[str]
+          reveal_type(val)  # list[str]
           print(" ".join(val)) # ok
 
 How does it work? ``TypeGuard`` narrows the first function argument (``val``)
-to the type specified as the first type parameter (``List[str]``).
+to the type specified as the first type parameter (``list[str]``).
 
 .. note::
 
@@ -260,19 +257,19 @@ Generic TypeGuards
 
 .. code-block:: python
 
-  from typing import Tuple, TypeVar
+  from typing import TypeVar
   from typing import TypeGuard  # use `typing_extensions` for `python<3.10`
 
   _T = TypeVar("_T")
 
-  def is_two_element_tuple(val: Tuple[_T, ...]) -> TypeGuard[Tuple[_T, _T]]:
+  def is_two_element_tuple(val: tuple[_T, ...]) -> TypeGuard[tuple[_T, _T]]:
       return len(val) == 2
 
-  def func(names: Tuple[str, ...]):
+  def func(names: tuple[str, ...]):
       if is_two_element_tuple(names):
-          reveal_type(names)  # Tuple[str, str]
+          reveal_type(names)  # tuple[str, str]
       else:
-          reveal_type(names)  # Tuple[str, ...]
+          reveal_type(names)  # tuple[str, ...]
 
 Typeguards with parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -281,17 +278,17 @@ Type guard functions can accept extra arguments:
 
 .. code-block:: python
 
-  from typing import Type, Set, TypeVar
+  from typing import Type, TypeVar
   from typing import TypeGuard  # use `typing_extensions` for `python<3.10`
 
   _T = TypeVar("_T")
 
-  def is_set_of(val: Set[Any], type: Type[_T]) -> TypeGuard[Set[_T]]:
+  def is_set_of(val: set[Any], type: Type[_T]) -> TypeGuard[set[_T]]:
       return all(isinstance(x, type) for x in val)
 
-  items: Set[Any]
+  items: set[Any]
   if is_set_of(items, str):
-      reveal_type(items)  # Set[str]
+      reveal_type(items)  # set[str]
 
 TypeGuards as methods
 ~~~~~~~~~~~~~~~~~~~~~

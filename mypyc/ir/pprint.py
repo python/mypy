@@ -1,6 +1,7 @@
 """Utilities for pretty-printing IR in a human-readable form."""
 
-from typing import Any, Dict, List
+from collections import defaultdict
+from typing import Any, Dict, List, Union, Sequence, Tuple
 
 from typing_extensions import Final
 
@@ -10,11 +11,13 @@ from mypyc.ir.ops import (
     LoadStatic, InitStatic, TupleGet, TupleSet, IncRef, DecRef, Call, MethodCall, Cast, Box, Unbox,
     RaiseStandardError, CallC, Truncate, LoadGlobal, IntOp, ComparisonOp, LoadMem, SetMem,
     GetElementPtr, LoadAddress, Register, Value, OpVisitor, BasicBlock, ControlOp, LoadLiteral,
-    AssignMulti, KeepAlive
+    AssignMulti, KeepAlive, Op
 )
 from mypyc.ir.func_ir import FuncIR, all_values_full
 from mypyc.ir.module_ir import ModuleIRs
 from mypyc.ir.rtypes import is_bool_rprimitive, is_int_rprimitive, RType
+
+ErrorSource = Union[BasicBlock, Op]
 
 
 class IRPrettyPrintVisitor(OpVisitor[str]):
@@ -269,7 +272,8 @@ def format_registers(func_ir: FuncIR,
 
 
 def format_blocks(blocks: List[BasicBlock],
-                  names: Dict[Value, str]) -> List[str]:
+                  names: Dict[Value, str],
+                  source_to_error: Dict[ErrorSource, List[str]]) -> List[str]:
     """Format a list of IR basic blocks into a human-readable form."""
     # First label all of the blocks
     for i, block in enumerate(blocks):
@@ -290,14 +294,22 @@ def format_blocks(blocks: List[BasicBlock],
             handler_msg = ' (handler for {})'.format(', '.join(labels))
 
         lines.append('L%d:%s' % (block.label, handler_msg))
+        if block in source_to_error:
+            for error in source_to_error[block]:
+                lines.append(f"  ERR: {error}")
         ops = block.ops
         if (isinstance(ops[-1], Goto) and i + 1 < len(blocks)
-                and ops[-1].label == blocks[i + 1]):
-            # Hide the last goto if it just goes to the next basic block.
+                and ops[-1].label == blocks[i + 1]
+                and not source_to_error.get(ops[-1], [])):
+            # Hide the last goto if it just goes to the next basic block,
+            # and there are no assocatiated errors with the op.
             ops = ops[:-1]
         for op in ops:
             line = '    ' + op.accept(visitor)
             lines.append(line)
+            if op in source_to_error:
+                for error in source_to_error[op]:
+                    lines.append(f"  ERR: {error}")
 
         if not isinstance(block.ops[-1], (Goto, Branch, Return, Unreachable)):
             # Each basic block needs to exit somewhere.
@@ -305,7 +317,7 @@ def format_blocks(blocks: List[BasicBlock],
     return lines
 
 
-def format_func(fn: FuncIR) -> List[str]:
+def format_func(fn: FuncIR, errors: Sequence[Tuple[ErrorSource, str]] = ()) -> List[str]:
     lines = []
     cls_prefix = fn.class_name + '.' if fn.class_name else ''
     lines.append('def {}{}({}):'.format(cls_prefix, fn.name,
@@ -313,7 +325,12 @@ def format_func(fn: FuncIR) -> List[str]:
     names = generate_names_for_ir(fn.arg_regs, fn.blocks)
     for line in format_registers(fn, names):
         lines.append('    ' + line)
-    code = format_blocks(fn.blocks, names)
+
+    source_to_error = defaultdict(list)
+    for source, error in errors:
+        source_to_error[source].append(error)
+
+    code = format_blocks(fn.blocks, names, source_to_error)
     lines.extend(code)
     return lines
 

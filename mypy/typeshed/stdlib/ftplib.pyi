@@ -1,3 +1,4 @@
+import sys
 from _typeshed import Self, SupportsRead, SupportsReadline
 from socket import socket
 from ssl import SSLContext
@@ -32,22 +33,39 @@ class FTP:
     lastresp: str
     file: TextIO | None
     encoding: str
+
+    # The following variable is intentionally left undocumented.
+    # See https://bugs.python.org/issue43285 for relevant discussion
+    # trust_server_pasv_ipv4_address: bool
     def __enter__(self: Self) -> Self: ...
     def __exit__(
         self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None: ...
-    source_address: Tuple[str, int] | None
-    def __init__(
-        self,
-        host: str = ...,
-        user: str = ...,
-        passwd: str = ...,
-        acct: str = ...,
-        timeout: float = ...,
-        source_address: Tuple[str, int] | None = ...,
-    ) -> None: ...
+    source_address: tuple[str, int] | None
+    if sys.version_info >= (3, 9):
+        def __init__(
+            self,
+            host: str = ...,
+            user: str = ...,
+            passwd: str = ...,
+            acct: str = ...,
+            timeout: float = ...,
+            source_address: tuple[str, int] | None = ...,
+            *,
+            encoding: str = ...,
+        ) -> None: ...
+    else:
+        def __init__(
+            self,
+            host: str = ...,
+            user: str = ...,
+            passwd: str = ...,
+            acct: str = ...,
+            timeout: float = ...,
+            source_address: tuple[str, int] | None = ...,
+        ) -> None: ...
     def connect(
-        self, host: str = ..., port: int = ..., timeout: float = ..., source_address: Tuple[str, int] | None = ...
+        self, host: str = ..., port: int = ..., timeout: float = ..., source_address: tuple[str, int] | None = ...
     ) -> str: ...
     def getwelcome(self) -> str: ...
     def set_debuglevel(self, level: int) -> None: ...
@@ -66,10 +84,10 @@ class FTP:
     def sendport(self, host: str, port: int) -> str: ...
     def sendeprt(self, host: str, port: int) -> str: ...
     def makeport(self) -> socket: ...
-    def makepasv(self) -> Tuple[str, int]: ...
+    def makepasv(self) -> tuple[str, int]: ...
     def login(self, user: str = ..., passwd: str = ..., acct: str = ...) -> str: ...
     # In practice, `rest` rest can actually be anything whose str() is an integer sequence, so to make it simple we allow integers.
-    def ntransfercmd(self, cmd: str, rest: int | str | None = ...) -> Tuple[socket, int]: ...
+    def ntransfercmd(self, cmd: str, rest: int | str | None = ...) -> tuple[socket, int]: ...
     def transfercmd(self, cmd: str, rest: int | str | None = ...) -> socket: ...
     def retrbinary(
         self, cmd: str, callback: Callable[[bytes], Any], blocksize: int = ..., rest: int | str | None = ...
@@ -88,7 +106,7 @@ class FTP:
     def nlst(self, *args: str) -> list[str]: ...
     # Technically only the last arg can be a Callable but ...
     def dir(self, *args: str | Callable[[str], None]) -> None: ...
-    def mlsd(self, path: str = ..., facts: Iterable[str] = ...) -> Iterator[Tuple[str, dict[str, str]]]: ...
+    def mlsd(self, path: str = ..., facts: Iterable[str] = ...) -> Iterator[tuple[str, dict[str, str]]]: ...
     def rename(self, fromname: str, toname: str) -> str: ...
     def delete(self, filename: str) -> str: ...
     def cwd(self, dirname: str) -> str: ...
@@ -100,18 +118,34 @@ class FTP:
     def close(self) -> None: ...
 
 class FTP_TLS(FTP):
-    def __init__(
-        self,
-        host: str = ...,
-        user: str = ...,
-        passwd: str = ...,
-        acct: str = ...,
-        keyfile: str | None = ...,
-        certfile: str | None = ...,
-        context: SSLContext | None = ...,
-        timeout: float = ...,
-        source_address: Tuple[str, int] | None = ...,
-    ) -> None: ...
+    if sys.version_info >= (3, 9):
+        def __init__(
+            self,
+            host: str = ...,
+            user: str = ...,
+            passwd: str = ...,
+            acct: str = ...,
+            keyfile: str | None = ...,
+            certfile: str | None = ...,
+            context: SSLContext | None = ...,
+            timeout: float = ...,
+            source_address: tuple[str, int] | None = ...,
+            *,
+            encoding: str = ...,
+        ) -> None: ...
+    else:
+        def __init__(
+            self,
+            host: str = ...,
+            user: str = ...,
+            passwd: str = ...,
+            acct: str = ...,
+            keyfile: str | None = ...,
+            certfile: str | None = ...,
+            context: SSLContext | None = ...,
+            timeout: float = ...,
+            source_address: tuple[str, int] | None = ...,
+        ) -> None: ...
     ssl_version: int
     keyfile: str | None
     certfile: str | None
@@ -123,8 +157,8 @@ class FTP_TLS(FTP):
     def ccc(self) -> str: ...
 
 def parse150(resp: str) -> int | None: ...  # undocumented
-def parse227(resp: str) -> Tuple[str, int]: ...  # undocumented
-def parse229(resp: str, peer: Any) -> Tuple[str, int]: ...  # undocumented
+def parse227(resp: str) -> tuple[str, int]: ...  # undocumented
+def parse229(resp: str, peer: Any) -> tuple[str, int]: ...  # undocumented
 def parse257(resp: str) -> str: ...  # undocumented
 def ftpcp(
     source: FTP, sourcename: str, target: FTP, targetname: str = ..., type: Literal["A", "I"] = ...

@@ -7,7 +7,7 @@ from mypy.backports import OrderedDict
 
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Set, Optional, Union, Iterable, NamedTuple,
-    Sequence, Iterator
+    Sequence
 )
 from typing_extensions import ClassVar, Final, TYPE_CHECKING, overload, TypeAlias as _TypeAlias
 
@@ -956,9 +956,7 @@ class FunctionLike(ProperType):
     def __init__(self, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
         self.can_be_false = False
-        if TYPE_CHECKING:  # we don't want a runtime None value
-            # Corresponding instance type (e.g. builtins.type)
-            self.fallback = cast(Instance, None)
+        self.fallback: Instance
 
     @abstractmethod
     def is_type_obj(self) -> bool: pass
@@ -1168,7 +1166,7 @@ class CallableType(FunctionLike):
             return sys.maxsize
         return sum([kind.is_positional() for kind in self.arg_kinds])
 
-    def formal_arguments(self, include_star_args: bool = False) -> Iterator[FormalArgument]:
+    def formal_arguments(self, include_star_args: bool = False) -> List[FormalArgument]:
         """Yields the formal arguments corresponding to this callable, ignoring *arg and **kwargs.
 
         To handle *args and **kwargs, use the 'callable.var_args' and 'callable.kw_args' fields,
@@ -1176,6 +1174,7 @@ class CallableType(FunctionLike):
 
         If you really want to include star args in the yielded output, set the
         'include_star_args' parameter to 'True'."""
+        args = []
         done_with_positional = False
         for i in range(len(self.arg_types)):
             kind = self.arg_kinds[i]
@@ -1186,11 +1185,14 @@ class CallableType(FunctionLike):
 
             required = kind.is_required()
             pos = None if done_with_positional else i
-            yield FormalArgument(
+            arg = FormalArgument(
                 self.arg_names[i],
                 pos,
                 self.arg_types[i],
-                required)
+                required
+            )
+            args.append(arg)
+        return args
 
     def argument_by_name(self, name: Optional[str]) -> Optional[FormalArgument]:
         if name is None:
@@ -2344,6 +2346,7 @@ def flatten_nested_unions(types: Iterable[Type],
     flat_items: List[Type] = []
     if handle_type_alias_type:
         types = get_proper_types(types)
+    # TODO: avoid duplicate types in unions (e.g. using hash)
     for tp in types:
         if isinstance(tp, ProperType) and isinstance(tp, UnionType):
             flat_items.extend(flatten_nested_unions(tp.items,
@@ -2366,6 +2369,16 @@ def union_items(typ: Type) -> List[ProperType]:
         return items
     else:
         return [typ]
+
+
+def is_union_with_any(tp: Type) -> bool:
+    """Is this a union with Any or a plain Any type?"""
+    tp = get_proper_type(tp)
+    if isinstance(tp, AnyType):
+        return True
+    if not isinstance(tp, UnionType):
+        return False
+    return any(is_union_with_any(t) for t in get_proper_types(tp.items))
 
 
 def is_generic_instance(tp: Type) -> bool:

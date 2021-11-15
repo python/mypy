@@ -3,7 +3,7 @@ import io
 import socketserver
 import sys
 from _typeshed import StrPath, SupportsRead, SupportsWrite
-from typing import Any, AnyStr, BinaryIO, ClassVar, Mapping, Sequence, Tuple
+from typing import Any, AnyStr, BinaryIO, ClassVar, Mapping, Sequence
 
 class HTTPServer(socketserver.TCPServer):
     server_name: str
@@ -14,7 +14,7 @@ if sys.version_info >= (3, 7):
         daemon_threads: bool  # undocumented
 
 class BaseHTTPRequestHandler(socketserver.StreamRequestHandler):
-    client_address: Tuple[str, int]
+    client_address: tuple[str, int]
     server: socketserver.BaseServer
     close_connection: bool
     requestline: str
@@ -28,11 +28,11 @@ class BaseHTTPRequestHandler(socketserver.StreamRequestHandler):
     error_content_type: str
     protocol_version: str
     MessageClass: type
-    responses: Mapping[int, Tuple[str, str]]
+    responses: Mapping[int, tuple[str, str]]
     default_request_version: str  # undocumented
     weekdayname: ClassVar[Sequence[str]]  # undocumented
     monthname: ClassVar[Sequence[str | None]]  # undocumented
-    def __init__(self, request: bytes, client_address: Tuple[str, int], server: socketserver.BaseServer) -> None: ...
+    def __init__(self, request: bytes, client_address: tuple[str, int], server: socketserver.BaseServer) -> None: ...
     def handle(self) -> None: ...
     def handle_one_request(self) -> None: ...
     def handle_expect_100(self) -> bool: ...
@@ -56,10 +56,10 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     extensions_map: dict[str, str]
     if sys.version_info >= (3, 7):
         def __init__(
-            self, request: bytes, client_address: Tuple[str, int], server: socketserver.BaseServer, directory: str | None = ...
+            self, request: bytes, client_address: tuple[str, int], server: socketserver.BaseServer, directory: str | None = ...
         ) -> None: ...
     else:
-        def __init__(self, request: bytes, client_address: Tuple[str, int], server: socketserver.BaseServer) -> None: ...
+        def __init__(self, request: bytes, client_address: tuple[str, int], server: socketserver.BaseServer) -> None: ...
     def do_GET(self) -> None: ...
     def do_HEAD(self) -> None: ...
     def send_head(self) -> io.BytesIO | BinaryIO | None: ...  # undocumented

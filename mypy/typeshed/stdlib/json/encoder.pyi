@@ -1,4 +1,4 @@
-from typing import Any, Callable, Iterator, Tuple
+from typing import Any, Callable, Iterator
 
 def py_encode_basestring(s: str) -> str: ...  # undocumented
 def py_encode_basestring_ascii(s: str) -> str: ...  # undocumented
@@ -22,7 +22,7 @@ class JSONEncoder:
         allow_nan: bool = ...,
         sort_keys: bool = ...,
         indent: int | None = ...,
-        separators: Tuple[str, str] | None = ...,
+        separators: tuple[str, str] | None = ...,
         default: Callable[..., Any] | None = ...,
     ) -> None: ...
     def default(self, o: Any) -> Any: ...

@@ -6,6 +6,7 @@ from typing import (
     AsyncGenerator,
     Awaitable,
     Callable,
+    Coroutine,
     Generator,
     Generic,
     ItemsView,
@@ -13,6 +14,7 @@ from typing import (
     Iterator,
     KeysView,
     Mapping,
+    MutableSequence,
     Tuple,
     Type,
     TypeVar,
@@ -173,6 +175,7 @@ class ModuleType:
     __dict__: dict[str, Any]
     __loader__: _LoaderProtocol | None
     __package__: str | None
+    __path__: MutableSequence[str]
     __spec__: ModuleSpec | None
     def __init__(self, name: str, doc: str | None = ...) -> None: ...
 
@@ -211,7 +214,7 @@ class AsyncGeneratorType(AsyncGenerator[_T_co, _T_contra]):
     def aclose(self) -> Awaitable[None]: ...
 
 @final
-class CoroutineType:
+class CoroutineType(Coroutine[_T_co, _T_contra, _V_co]):
     __name__: str
     __qualname__: str
     cr_await: Any | None
@@ -219,12 +222,14 @@ class CoroutineType:
     cr_frame: FrameType
     cr_running: bool
     def close(self) -> None: ...
-    def __await__(self) -> Generator[Any, None, Any]: ...
-    def send(self, __arg: Any) -> Any: ...
+    def __await__(self) -> Generator[Any, None, _V_co]: ...
+    def send(self, __arg: _T_contra) -> _T_co: ...
     @overload
-    def throw(self, __typ: Type[BaseException], __val: BaseException | object = ..., __tb: TracebackType | None = ...) -> Any: ...
+    def throw(
+        self, __typ: Type[BaseException], __val: BaseException | object = ..., __tb: TracebackType | None = ...
+    ) -> _T_co: ...
     @overload
-    def throw(self, __typ: BaseException, __val: None = ..., __tb: TracebackType | None = ...) -> Any: ...
+    def throw(self, __typ: BaseException, __val: None = ..., __tb: TracebackType | None = ...) -> _T_co: ...
 
 class _StaticFunctionType:
     """Fictional type to correct the type of MethodType.__func__.
@@ -360,12 +365,12 @@ else:
 
 def prepare_class(
     name: str, bases: Tuple[type, ...] = ..., kwds: dict[str, Any] | None = ...
-) -> Tuple[type, dict[str, Any], dict[str, Any]]: ...
+) -> tuple[type, dict[str, Any], dict[str, Any]]: ...
 
 # Actually a different type, but `property` is special and we want that too.
 DynamicClassAttribute = property
 
-def coroutine(func: Callable[..., Any]) -> CoroutineType: ...
+def coroutine(func: Callable[..., Any]) -> CoroutineType[Any, Any, Any]: ...
 
 if sys.version_info >= (3, 8):
     CellType = _Cell
