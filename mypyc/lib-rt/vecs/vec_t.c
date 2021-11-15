@@ -65,9 +65,18 @@ VecT_dealloc(VecTObject *self)
     Py_TRASHCAN_END
 }
 
+static Py_ssize_t vec_length(PyObject *o) {
+    // TODO: Type check o
+    return ((VecTObject *)o)->len;
+}
+
+static PyMappingMethods VecTMapping = {
+    .mp_length = vec_length,
+};
+
 PyTypeObject VecTType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "vec[t]",
+    .tp_name = "vec",
     .tp_doc = "vec doc",
     .tp_basicsize = sizeof(VecTObject) - sizeof(PyObject *),
     .tp_itemsize = sizeof(PyObject *),
@@ -78,7 +87,7 @@ PyTypeObject VecTType = {
     //.tp_free = PyObject_GC_Del,
     .tp_repr = (reprfunc)vec_t_repr,
     //.tp_as_sequence = &VecI64Sequence,
-    //.tp_as_mapping = &VecI64Mapping,
+    .tp_as_mapping = &VecTMapping,
     // TODO: free
 };
 

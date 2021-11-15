@@ -51,7 +51,7 @@ int vec_i64_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
     }
 }
 
-Py_ssize_t vec_length(PyObject *o) {
+static Py_ssize_t vec_length(PyObject *o) {
     // TODO: Type check o
     return ((VecI64Object *)o)->len;
 }
