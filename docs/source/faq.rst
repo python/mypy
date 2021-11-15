@@ -201,7 +201,8 @@ the following aspects, among others:
 Does it run on PyPy?
 *********************
 
-No. MyPy relies on `typed-ast 
+Somewhat. With PyPy 3.8, mypy is at least able to type check itself.
+With older versions of PyPy, mypy relies on `typed-ast 
 <https://github.com/python/typed_ast>`_, which uses several APIs that
 PyPy does not support (including some internal CPython APIs).
 

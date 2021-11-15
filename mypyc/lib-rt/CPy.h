@@ -158,6 +158,24 @@ static inline int CPyTagged_CheckShort(CPyTagged x) {
     return !CPyTagged_CheckLong(x);
 }
 
+static inline void CPyTagged_INCREF(CPyTagged x) {
+    if (unlikely(CPyTagged_CheckLong(x))) {
+        CPyTagged_IncRef(x);
+    }
+}
+
+static inline void CPyTagged_DECREF(CPyTagged x) {
+    if (unlikely(CPyTagged_CheckLong(x))) {
+        CPyTagged_DecRef(x);
+    }
+}
+
+static inline void CPyTagged_XDECREF(CPyTagged x) {
+    if (unlikely(CPyTagged_CheckLong(x))) {
+        CPyTagged_XDecRef(x);
+    }
+}
+
 static inline Py_ssize_t CPyTagged_ShortAsSsize_t(CPyTagged x) {
     // NOTE: Assume that we sign extend.
     return (Py_ssize_t)x >> 1;
@@ -253,11 +271,10 @@ static inline bool CPyTagged_IsLe(CPyTagged left, CPyTagged right) {
 // Generic operations (that work with arbitrary types)
 
 
-/* We use intentionally non-inlined decrefs since it pretty
- * substantially speeds up compile time while only causing a ~1%
- * performance degradation. We have our own copies both to avoid the
- * null check in Py_DecRef and to avoid making an indirect PIC
- * call. */
+/* We use intentionally non-inlined decrefs in rarely executed code
+ * paths since it pretty substantially speeds up compile time. We have
+ * our own copies both to avoid the null check in Py_DecRef and to avoid
+ * making an indirect PIC call. */
 CPy_NOINLINE
 static void CPy_DecRef(PyObject *p) {
     CPy_DECREF(p);

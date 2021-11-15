@@ -543,32 +543,58 @@ class Instr(Generic[T]): ...
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/dyn_class.py
 
-[case testDynamicClassPluginNegatives]
+[case testDynamicClassPluginChainCall]
 # flags: --config-file tmp/mypy.ini
-from mod import declarative_base, Column, Instr, non_declarative_base
+from mod import declarative_base, Column, Instr
 
-Bad1 = non_declarative_base()
-Bad2 = Bad3 = declarative_base()
+Base = declarative_base().with_optional_xxx()
 
-class C1(Bad1): ...  # E: Variable "__main__.Bad1" is not valid as a type \
-                     # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases \
-                     # E: Invalid base class "Bad1"
-class C2(Bad2): ...  # E: Variable "__main__.Bad2" is not valid as a type \
-                     # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases \
-                     # E: Invalid base class "Bad2"
-class C3(Bad3): ...  # E: Variable "__main__.Bad3" is not valid as a type \
-                     # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases \
-                     # E: Invalid base class "Bad3"
+class Model(Base):
+    x: Column[int]
+
+reveal_type(Model().x)  # N: Revealed type is "mod.Instr[builtins.int]"
 [file mod.py]
 from typing import Generic, TypeVar
-def declarative_base(): ...
-def non_declarative_base(): ...
+
+class Base:
+    def with_optional_xxx(self) -> Base: ...
+
+def declarative_base() -> Base: ...
 
 T = TypeVar('T')
 
 class Column(Generic[T]): ...
 class Instr(Generic[T]): ...
 
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/dyn_class.py
+
+[case testDynamicClassPluginChainedAssignment]
+# flags: --config-file tmp/mypy.ini
+from mod import declarative_base
+
+Base1 = Base2 = declarative_base()
+
+class C1(Base1): ...  
+class C2(Base2): ...
+[file mod.py]
+def declarative_base(): ...
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/dyn_class.py
+
+[case testDynamicClassPluginNegatives]
+# flags: --config-file tmp/mypy.ini
+from mod import non_declarative_base
+
+Bad1 = non_declarative_base()
+
+class C1(Bad1): ...  # E: Variable "__main__.Bad1" is not valid as a type \
+                     # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases \
+                     # E: Invalid base class "Bad1"
+[file mod.py]
+def non_declarative_base(): ...
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/dyn_class.py

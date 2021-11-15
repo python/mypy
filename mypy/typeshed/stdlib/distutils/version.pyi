@@ -21,8 +21,8 @@ class Version:
 
 class StrictVersion(Version):
     version_re: Pattern[str]
-    version: Tuple[int, int, int]
-    prerelease: Tuple[str, int] | None
+    version: tuple[int, int, int]
+    prerelease: tuple[str, int] | None
     def __init__(self, vstring: str | None = ...) -> None: ...
     def parse(self: _T, vstring: str) -> _T: ...
     def __str__(self) -> str: ...

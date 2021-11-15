@@ -39,7 +39,7 @@ y = ''  # This could be valid if a new 'y' is defined here
 ```
 
 Note that some of the checks may turn out to be redundant, as the
-exact rules for what constitues a redefinition are still up for
+exact rules for what constitutes a redefinition are still up for
 debate. This is okay since the extra if statements generally don't
 otherwise affect semantics.
 

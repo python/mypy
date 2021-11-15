@@ -1402,3 +1402,33 @@ class A:
 reveal_type(A.__attrs_attrs__)  # N: Revealed type is "Tuple[attr.Attribute[builtins.int], attr.Attribute[builtins.str]]"
 
 [builtins fixtures/attr.pyi]
+
+[case testAttrsClassWithSlots]
+import attr
+
+@attr.s(slots=True)
+class A:
+    b: int = attr.ib()
+
+    def __attrs_post_init__(self) -> None:
+        self.b = 1
+        self.c = 2  # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.A"
+
+@attr.dataclass(slots=True)
+class B:
+    __slots__ = ()  # would be replaced
+    b: int
+
+    def __attrs_post_init__(self) -> None:
+        self.b = 1
+        self.c = 2  # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.B"
+
+@attr.dataclass(slots=False)
+class C:
+    __slots__ = ()  # would not be replaced
+    b: int
+
+    def __attrs_post_init__(self) -> None:
+        self.b = 1  # E: Trying to assign name "b" that is not in "__slots__" of type "__main__.C"
+        self.c = 2  # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.C"
+[builtins fixtures/attr.pyi]

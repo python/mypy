@@ -19,10 +19,10 @@ Check that type arguments exist [type-arg]
 ------------------------------------------
 
 If you use :option:`--disallow-any-generics <mypy --disallow-any-generics>`, mypy requires that each generic
-type has values for each type argument. For example, the types ``List`` or
-``dict`` would be rejected. You should instead use types like ``List[int]`` or
-``Dict[str, int]``. Any omitted generic type arguments get implicit ``Any``
-values. The type ``List`` is equivalent to ``List[Any]``, and so on.
+type has values for each type argument. For example, the types ``list`` or
+``dict`` would be rejected. You should instead use types like ``list[int]`` or
+``dict[str, int]``. Any omitted generic type arguments get implicit ``Any``
+values. The type ``list`` is equivalent to ``list[Any]``, and so on.
 
 Example:
 
@@ -30,10 +30,8 @@ Example:
 
     # mypy: disallow-any-generics
 
-    from typing import List
-
-    # Error: Missing type parameters for generic type "List"  [type-arg]
-    def remove_dups(items: List) -> List:
+    # Error: Missing type parameters for generic type "list"  [type-arg]
+    def remove_dups(items: list) -> list:
         ...
 
 Check that every function has an annotation [no-untyped-def]

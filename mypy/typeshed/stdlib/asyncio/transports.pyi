@@ -2,7 +2,7 @@ import sys
 from asyncio.events import AbstractEventLoop
 from asyncio.protocols import BaseProtocol
 from socket import _Address
-from typing import Any, Mapping, Tuple
+from typing import Any, Mapping
 
 class BaseTransport:
     def __init__(self, extra: Mapping[Any, Any] | None = ...) -> None: ...
@@ -43,4 +43,4 @@ class SubprocessTransport(BaseTransport):
 
 class _FlowControlMixin(Transport):
     def __init__(self, extra: Mapping[Any, Any] | None = ..., loop: AbstractEventLoop | None = ...) -> None: ...
-    def get_write_buffer_limits(self) -> Tuple[int, int]: ...
+    def get_write_buffer_limits(self) -> tuple[int, int]: ...

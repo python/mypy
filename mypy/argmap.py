@@ -1,11 +1,15 @@
 """Utilities for mapping between actual and formal arguments (and their types)."""
 
-from typing import List, Optional, Sequence, Callable, Set
+from typing import TYPE_CHECKING, List, Optional, Sequence, Callable, Set
 
+from mypy.maptype import map_instance_to_supertype
 from mypy.types import (
     Type, Instance, TupleType, AnyType, TypeOfAny, TypedDictType, get_proper_type
 )
 from mypy import nodes
+
+if TYPE_CHECKING:
+    from mypy.infer import ArgumentInferContext
 
 
 def map_actuals_to_formals(actual_kinds: List[nodes.ArgKind],
@@ -140,11 +144,13 @@ class ArgTypeExpander:
     needs a separate instance since instances have per-call state.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, context: 'ArgumentInferContext') -> None:
         # Next tuple *args index to use.
         self.tuple_index = 0
         # Keyword arguments in TypedDict **kwargs used.
         self.kwargs_used: Set[str] = set()
+        # Type context for `*` and `**` arg kinds.
+        self.context = context
 
     def expand_actual_type(self,
                            actual_type: Type,
@@ -164,14 +170,18 @@ class ArgTypeExpander:
         """
         actual_type = get_proper_type(actual_type)
         if actual_kind == nodes.ARG_STAR:
-            if isinstance(actual_type, Instance):
-                if actual_type.type.fullname == 'builtins.list':
-                    # List *arg.
-                    return actual_type.args[0]
-                elif actual_type.args:
-                    # TODO: Try to map type arguments to Iterable
-                    return actual_type.args[0]
+            if isinstance(actual_type, Instance) and actual_type.args:
+                from mypy.subtypes import is_subtype
+                if is_subtype(actual_type, self.context.iterable_type):
+                    return map_instance_to_supertype(
+                        actual_type,
+                        self.context.iterable_type.type,
+                    ).args[0]
                 else:
+                    # We cannot properly unpack anything other
+                    # than `Iterable` type with `*`.
+                    # Just return `Any`, other parts of code would raise
+                    # a different error for improper use.
                     return AnyType(TypeOfAny.from_error)
             elif isinstance(actual_type, TupleType):
                 # Get the next tuple item of a tuple *arg.
@@ -184,6 +194,7 @@ class ArgTypeExpander:
             else:
                 return AnyType(TypeOfAny.from_error)
         elif actual_kind == nodes.ARG_STAR2:
+            from mypy.subtypes import is_subtype
             if isinstance(actual_type, TypedDictType):
                 if formal_kind != nodes.ARG_STAR2 and formal_name in actual_type.items:
                     # Lookup type based on keyword argument name.
@@ -193,11 +204,17 @@ class ArgTypeExpander:
                     formal_name = (set(actual_type.items.keys()) - self.kwargs_used).pop()
                 self.kwargs_used.add(formal_name)
                 return actual_type.items[formal_name]
-            elif (isinstance(actual_type, Instance)
-                  and (actual_type.type.fullname == 'builtins.dict')):
-                # Dict **arg.
-                # TODO: Handle arbitrary Mapping
-                return actual_type.args[1]
+            elif (
+                isinstance(actual_type, Instance) and
+                len(actual_type.args) > 1 and
+                is_subtype(actual_type, self.context.mapping_type)
+            ):
+                # Only `Mapping` type can be unpacked with `**`.
+                # Other types will produce an error somewhere else.
+                return map_instance_to_supertype(
+                    actual_type,
+                    self.context.mapping_type.type,
+                ).args[1]
             else:
                 return AnyType(TypeOfAny.from_error)
         else:

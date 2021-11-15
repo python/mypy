@@ -42,11 +42,11 @@ from posixpath import (
     splitext as splitext,
     supports_unicode_filenames as supports_unicode_filenames,
 )
-from typing import AnyStr, Tuple, overload
+from typing import AnyStr, overload
 
 altsep: str
 if sys.version_info < (3, 7) and sys.platform == "win32":
-    def splitunc(p: AnyStr) -> Tuple[AnyStr, AnyStr]: ...  # deprecated
+    def splitunc(p: AnyStr) -> tuple[AnyStr, AnyStr]: ...  # deprecated
 
 # Similar to posixpath, but have slightly different argument names
 @overload

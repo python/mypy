@@ -252,13 +252,13 @@ class SemanticAnalyzerPluginInterface:
     msg: MessageBuilder
 
     @abstractmethod
-    def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
+    def named_type(self, fullname: str,
+                   args: Optional[List[Type]] = None) -> Instance:
         """Construct an instance of a builtin type with given type arguments."""
         raise NotImplementedError
 
     @abstractmethod
-    def named_type_or_none(self,
-                           qualified_name: str,
+    def named_type_or_none(self, fullname: str,
                            args: Optional[List[Type]] = None) -> Optional[Instance]:
         """Construct an instance of a type with given type arguments.
 
@@ -297,11 +297,6 @@ class SemanticAnalyzerPluginInterface:
     @abstractmethod
     def class_type(self, self_type: Type) -> Type:
         """Generate type of first argument of class methods from type of self."""
-        raise NotImplementedError
-
-    @abstractmethod
-    def builtin_type(self, fully_qualified_name: str) -> Instance:
-        """Deprecated: use named_type instead."""
         raise NotImplementedError
 
     @abstractmethod

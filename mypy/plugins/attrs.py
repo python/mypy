@@ -7,7 +7,7 @@ from typing_extensions import Final
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
-from mypy.fixup import lookup_qualified_stnode
+from mypy.lookup import lookup_fully_qualified
 from mypy.nodes import (
     Context, Argument, Var, ARG_OPT, ARG_POS, TypeInfo, AssignmentStmt,
     TupleExpr, ListExpr, NameExpr, CallExpr, RefExpr, FuncDef,
@@ -87,7 +87,8 @@ class Attribute:
         if self.converter.name:
             # When a converter is set the init_type is overridden by the first argument
             # of the converter method.
-            converter = lookup_qualified_stnode(ctx.api.modules, self.converter.name, True)
+            converter = lookup_fully_qualified(self.converter.name, ctx.api.modules,
+                                               raise_on_missing=False)
             if not converter:
                 # The converter may be a local variable. Check there too.
                 converter = ctx.api.lookup_qualified(self.converter.name, self.info, True)
@@ -96,7 +97,7 @@ class Attribute:
             converter_type: Optional[Type] = None
             if converter and isinstance(converter.node, TypeInfo):
                 from mypy.checkmember import type_object_type  # To avoid import cycle.
-                converter_type = type_object_type(converter.node, ctx.api.builtin_type)
+                converter_type = type_object_type(converter.node, ctx.api.named_type)
             elif converter and isinstance(converter.node, OverloadedFuncDef):
                 converter_type = converter.node.type
             elif converter and converter.type:
@@ -271,6 +272,7 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
     init = _get_decorator_bool_argument(ctx, 'init', True)
     frozen = _get_frozen(ctx, frozen_default)
     order = _determine_eq_order(ctx)
+    slots = _get_decorator_bool_argument(ctx, 'slots', False)
 
     auto_attribs = _get_decorator_optional_bool_argument(ctx, 'auto_attribs', auto_attribs_default)
     kw_only = _get_decorator_bool_argument(ctx, 'kw_only', False)
@@ -301,6 +303,8 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
             return
 
     _add_attrs_magic_attribute(ctx, raw_attr_types=[info[attr.name].type for attr in attributes])
+    if slots:
+        _add_slots(ctx, attributes)
 
     # Save the attributes so that subclasses can reuse them.
     ctx.cls.info.metadata['attrs'] = {
@@ -639,8 +643,8 @@ def _parse_assignments(
 
 def _add_order(ctx: 'mypy.plugin.ClassDefContext', adder: 'MethodAdder') -> None:
     """Generate all the ordering methods for this class."""
-    bool_type = ctx.api.named_type('__builtins__.bool')
-    object_type = ctx.api.named_type('__builtins__.object')
+    bool_type = ctx.api.named_type('builtins.bool')
+    object_type = ctx.api.named_type('builtins.object')
     # Make the types be:
     #    AT = TypeVar('AT')
     #    def __lt__(self: AT, other: AT) -> bool
@@ -713,7 +717,7 @@ def _add_attrs_magic_attribute(ctx: 'mypy.plugin.ClassDefContext',
         ctx.api.named_type_or_none('attr.Attribute', [attr_type or any_type]) or any_type
         for attr_type in raw_attr_types
     ]
-    fallback_type = ctx.api.named_type('__builtins__.tuple', [
+    fallback_type = ctx.api.named_type('builtins.tuple', [
         ctx.api.named_type_or_none('attr.Attribute', [any_type]) or any_type,
     ])
     var = Var(name=attr_name, type=TupleType(attributes_types, fallback=fallback_type))
@@ -724,6 +728,12 @@ def _add_attrs_magic_attribute(ctx: 'mypy.plugin.ClassDefContext',
         node=var,
         plugin_generated=True,
     )
+
+
+def _add_slots(ctx: 'mypy.plugin.ClassDefContext',
+               attributes: List[Attribute]) -> None:
+    # Unlike `@dataclasses.dataclass`, `__slots__` is rewritten here.
+    ctx.cls.info.slots = {attr.name for attr in attributes}
 
 
 class MethodAdder:

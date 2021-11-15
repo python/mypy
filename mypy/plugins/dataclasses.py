@@ -125,7 +125,9 @@ class DataclassTransformer:
             'eq': _get_decorator_bool_argument(self._ctx, 'eq', True),
             'order': _get_decorator_bool_argument(self._ctx, 'order', False),
             'frozen': _get_decorator_bool_argument(self._ctx, 'frozen', False),
+            'slots': _get_decorator_bool_argument(self._ctx, 'slots', False),
         }
+        py_version = self._ctx.api.options.python_version
 
         # If there are no attributes, it may be that the semantic analyzer has not
         # processed them yet. In order to work around this, we can simply skip generating
@@ -145,7 +147,7 @@ class DataclassTransformer:
         if (decorator_arguments['eq'] and info.get('__eq__') is None or
                 decorator_arguments['order']):
             # Type variable for self types in generated methods.
-            obj_type = ctx.api.named_type('__builtins__.object')
+            obj_type = ctx.api.named_type('builtins.object')
             self_tvar_expr = TypeVarExpr(SELF_TVAR_NAME, info.fullname + '.' + SELF_TVAR_NAME,
                                          [], obj_type)
             info.names[SELF_TVAR_NAME] = SymbolTableNode(MDEF, self_tvar_expr)
@@ -158,10 +160,10 @@ class DataclassTransformer:
             for method_name in ['__lt__', '__gt__', '__le__', '__ge__']:
                 # Like for __eq__ and __ne__, we want "other" to match
                 # the self type.
-                obj_type = ctx.api.named_type('__builtins__.object')
+                obj_type = ctx.api.named_type('builtins.object')
                 order_tvar_def = TypeVarType(SELF_TVAR_NAME, info.fullname + '.' + SELF_TVAR_NAME,
                                             -1, [], obj_type)
-                order_return_type = ctx.api.named_type('__builtins__.bool')
+                order_return_type = ctx.api.named_type('builtins.bool')
                 order_args = [
                     Argument(Var('other', order_tvar_def), order_tvar_def, None, ARG_POS)
                 ]
@@ -188,6 +190,9 @@ class DataclassTransformer:
         else:
             self._propertize_callables(attributes)
 
+        if decorator_arguments['slots']:
+            self.add_slots(info, attributes, correct_version=py_version >= (3, 10))
+
         self.reset_init_only_vars(info, attributes)
 
         self._add_dataclass_fields_magic_attribute()
@@ -196,6 +201,35 @@ class DataclassTransformer:
             'attributes': [attr.serialize() for attr in attributes],
             'frozen': decorator_arguments['frozen'],
         }
+
+    def add_slots(self,
+                  info: TypeInfo,
+                  attributes: List[DataclassAttribute],
+                  *,
+                  correct_version: bool) -> None:
+        if not correct_version:
+            # This means that version is lower than `3.10`,
+            # it is just a non-existent argument for `dataclass` function.
+            self._ctx.api.fail(
+                'Keyword argument "slots" for "dataclass" '
+                'is only valid in Python 3.10 and higher',
+                self._ctx.reason,
+            )
+            return
+        if info.slots is not None or info.names.get('__slots__'):
+            # This means we have a slots conflict.
+            # Class explicitly specifies `__slots__` field.
+            # And `@dataclass(slots=True)` is used.
+            # In runtime this raises a type error.
+            self._ctx.api.fail(
+                '"{}" both defines "__slots__" and is used with "slots=True"'.format(
+                    self._ctx.cls.name,
+                ),
+                self._ctx.cls,
+            )
+            return
+
+        info.slots = {attr.name for attr in attributes}
 
     def reset_init_only_vars(self, info: TypeInfo, attributes: List[DataclassAttribute]) -> None:
         """Remove init-only vars from the class and reset init var declarations."""
@@ -426,8 +460,8 @@ class DataclassTransformer:
         attr_name = '__dataclass_fields__'
         any_type = AnyType(TypeOfAny.explicit)
         field_type = self._ctx.api.named_type_or_none('dataclasses.Field', [any_type]) or any_type
-        attr_type = self._ctx.api.named_type('__builtins__.dict', [
-            self._ctx.api.named_type('__builtins__.str'),
+        attr_type = self._ctx.api.named_type('builtins.dict', [
+            self._ctx.api.named_type('builtins.str'),
             field_type,
         ])
         var = Var(name=attr_name, type=attr_type)
@@ -460,16 +494,18 @@ def _collect_field_args(expr: Expression,
     ):
         # field() only takes keyword arguments.
         args = {}
-        for name, arg in zip(expr.arg_names, expr.args):
-            if name is None:
-                # This means that `field` is used with `**` unpacking,
-                # the best we can do for now is not to fail.
-                # TODO: we can infer what's inside `**` and try to collect it.
-                ctx.api.fail(
-                    'Unpacking **kwargs in "field()" is not supported',
-                    expr,
-                )
+        for name, arg, kind in zip(expr.arg_names, expr.args, expr.arg_kinds):
+            if not kind.is_named():
+                if kind.is_named(star=True):
+                    # This means that `field` is used with `**` unpacking,
+                    # the best we can do for now is not to fail.
+                    # TODO: we can infer what's inside `**` and try to collect it.
+                    message = 'Unpacking **kwargs in "field()" is not supported'
+                else:
+                    message = '"field()" does not accept positional arguments'
+                ctx.api.fail(message, expr)
                 return True, {}
+            assert name is not None
             args[name] = arg
         return True, args
     return False, {}
