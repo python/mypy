@@ -54,12 +54,21 @@ typedef struct {
 
 #define VEC_SIZE(v) ((v)->ob_base.ob_size)
 
-PyObject *Vec_T_New(Py_ssize_t size, PyObject *item_type);
+VecTObject *Vec_T_New(Py_ssize_t size, PyObject *item_type);
+PyObject *Vec_T_Append(PyObject *obj, PyObject *x);
 
 PyObject *Vec_I64_Append(PyObject *obj, int64_t x);
 
 extern PyTypeObject VecI64Type;
 extern PyTypeObject VecTType;
 extern VecI64Features I64Features;
+
+inline int VecI64_Check(PyObject *o) {
+    return o->ob_type == &VecI64Type;
+}
+
+inline int VecT_Check(PyObject *o) {
+    return o->ob_type == &VecTType;
+}
 
 #endif

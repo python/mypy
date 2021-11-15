@@ -23,7 +23,7 @@ static PyObject *vec_proxy_call(PyObject *self, PyObject *args, PyObject *kw)
     if (!PyArg_ParseTupleAndKeywords(args, kw, ":vec", kwlist)) {
         return NULL;
     }
-    return Vec_T_New(0, ((VecProxy *)self)->item_type);
+    return (PyObject *)Vec_T_New(0, ((VecProxy *)self)->item_type);
 }
 
 static int
@@ -97,16 +97,38 @@ PyTypeObject VecGenericType = {
 
 static PyObject *vecs_append(PyObject *self, PyObject *args)
 {
-    PyObject *obj;
-    int64_t x;
+    PyObject *vec;
+    PyObject *item;
 
-    if (!PyArg_ParseTuple(args, "OL", &obj, &x))
+    if (!PyArg_ParseTuple(args, "OO", &vec, &item))
         return NULL;
 
     // TODO: Type check obj
 
-    Py_INCREF(obj);
-    return Vec_I64_Append(obj, x);
+    if (VecI64_Check(vec)) {
+        // TODO: Check exact
+        int64_t x = PyLong_AsLong(item);
+        if (x == -1 && PyErr_Occurred()) {
+            return NULL;
+        }
+        Py_INCREF(vec);
+        return Vec_I64_Append(vec, x);
+    } else if (VecT_Check(vec)) {
+        VecTObject *v = (VecTObject *)vec;
+        int r = PyObject_IsInstance(item, v->item_type);
+        if (r > 0) {
+            Py_INCREF(vec);
+            return Vec_T_Append(vec, item);
+        } else if (r == -1) {
+            return NULL;
+        } else {
+            // TODO: exception
+            return NULL;
+        }
+    } else {
+        // TODO: exception
+        return NULL;
+    }
 }
 
 static PyMethodDef VecsMethods[] = {

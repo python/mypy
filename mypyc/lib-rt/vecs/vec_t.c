@@ -30,6 +30,19 @@ PyObject *vec_t_repr(PyObject *self) {
     return PyUnicode_Join(sep, l);
 }
 
+PyObject *vec_t_get_item(PyObject *o, Py_ssize_t i) {
+    // TODO: Type check o
+    VecTObject *v = (VecTObject *)o;
+    if ((size_t)i < (size_t)v->len) {
+        PyObject *item = v->items[i];
+        Py_INCREF(item);
+        return item;
+    } else {
+        PyErr_SetString(PyExc_IndexError, "index out of range");
+        return NULL;
+    }
+}
+
 static int
 VecT_traverse(VecTObject *self, visitproc visit, void *arg)
 {
@@ -74,6 +87,11 @@ static PyMappingMethods VecTMapping = {
     .mp_length = vec_length,
 };
 
+static PySequenceMethods VecTSequence = {
+    .sq_item = vec_t_get_item,
+    //.sq_ass_item = vec_t_ass_item,
+};
+
 PyTypeObject VecTType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "vec",
@@ -86,13 +104,12 @@ PyTypeObject VecTType = {
     .tp_dealloc = (destructor)VecT_dealloc,
     //.tp_free = PyObject_GC_Del,
     .tp_repr = (reprfunc)vec_t_repr,
-    //.tp_as_sequence = &VecI64Sequence,
+    .tp_as_sequence = &VecTSequence,
     .tp_as_mapping = &VecTMapping,
     // TODO: free
 };
 
-PyObject *Vec_T_New(Py_ssize_t size, PyObject *item_type)
-{
+VecTObject *Vec_T_New(Py_ssize_t size, PyObject *item_type) {
     VecTObject *v;
     v = PyObject_GC_NewVar(VecTObject, &VecTType, size);
     //v = VecTType.tp_alloc(&VecTType, size);
@@ -106,5 +123,29 @@ PyObject *Vec_T_New(Py_ssize_t size, PyObject *item_type)
     }
 
     PyObject_GC_Track(v);
-    return (PyObject *)v;
+    return v;
+}
+
+PyObject *Vec_T_Append(PyObject *obj, PyObject *x) {
+    VecTObject *vec = (VecTObject *)obj;
+    Py_ssize_t cap = VEC_SIZE(vec);
+    Py_ssize_t len = vec->len;
+    Py_INCREF(x);
+    if (len < cap) {
+        vec->items[len] = x;
+        vec->len = len + 1;
+        return (PyObject *)vec;
+    } else {
+        Py_ssize_t new_size = 2 * cap + 1;
+        // TODO: Avoid initializing to zero here
+        VecTObject *new = Vec_T_New(new_size, vec->item_type);
+        if (new == NULL)
+            return NULL;
+        memcpy(new->items, vec->items, sizeof(PyObject *) * len);
+        memset(vec->items, 0, sizeof(PyObject *) * len);
+        new->items[len] = x;
+        new->len = len + 1;
+        Py_DECREF(vec);
+        return (PyObject *)new;
+    }
 }
