@@ -103,9 +103,8 @@ PyObject *Vec_I64_New(Py_ssize_t size)
 }
 
 PyObject *vec_i64_new(PyTypeObject *self, PyObject *args, PyObject *kw) {
-    static char *kwlist[] = {"", NULL};
-    PyObject *t;
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "O:vec", kwlist, &t)) {
+    static char *kwlist[] = {NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, ":vec", kwlist)) {
         return NULL;
     }
     return Vec_I64_New(0);

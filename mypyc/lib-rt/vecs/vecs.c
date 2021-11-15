@@ -2,6 +2,32 @@
 #include <Python.h>
 #include "vecs.h"
 
+// Untyped vec
+// cannot be instantiated, only used for isinstance and indexing vec[T]
+typedef struct {
+    PyObject_HEAD
+} VecGeneric;
+
+static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
+{
+    Py_INCREF(&VecI64Type);
+    return (PyObject *)&VecI64Type;
+}
+
+static PyMethodDef vec_methods[] = {
+    {"__class_getitem__", vec_class_getitem, METH_O|METH_CLASS, NULL},
+    {NULL, NULL, 0, NULL},  /* Sentinel */
+};
+
+PyTypeObject VecGenericType = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "vec.generic",
+    .tp_basicsize = sizeof(VecGeneric),
+    .tp_itemsize = 0,
+    .tp_flags = Py_TPFLAGS_DEFAULT, // XXX | Py_TPFLAGS_BASETYPE,
+    .tp_methods = vec_methods,
+};
+
 static PyObject *vecs_append(PyObject *self, PyObject *args)
 {
     PyObject *obj;
@@ -37,6 +63,8 @@ PyMODINIT_FUNC
 PyInit_vecs(void)
 {
     PyObject *m;
+    if (PyType_Ready(&VecGenericType) < 0)
+        return NULL;
     if (PyType_Ready(&VecI64Type) < 0)
         return NULL;
 
@@ -44,9 +72,9 @@ PyInit_vecs(void)
     if (m == NULL)
         return NULL;
 
-    Py_INCREF(&VecI64Type);
-    if (PyModule_AddObject(m, "vec", (PyObject *) &VecI64Type) < 0) {
-        Py_DECREF(&VecI64Type);
+    Py_INCREF(&VecGenericType);
+    if (PyModule_AddObject(m, "vec", (PyObject *)&VecGenericType) < 0) {
+        Py_DECREF(&VecGenericType);
         Py_DECREF(m);
         return NULL;
     }
@@ -57,7 +85,7 @@ PyInit_vecs(void)
 
     if (PyModule_AddObject(m, "_C_API", c_api) < 0) {
         Py_XDECREF(c_api);
-        Py_DECREF(&VecI64Type);
+        Py_DECREF(&VecGenericType);
         Py_DECREF(m);
         return NULL;
     }
