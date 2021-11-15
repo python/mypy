@@ -18,6 +18,7 @@ from mypy.erasetype import erase_type
 # import mypy.solve
 from mypy.nodes import (
     FuncBase, Var, Decorator, OverloadedFuncDef, TypeInfo, CONTRAVARIANT, COVARIANT,
+    is_star, is_positional, is_optional
 
 )
 from mypy.maptype import map_instance_to_supertype
@@ -966,8 +967,8 @@ def is_callable_compatible(left: CallableType, right: CallableType,
 
         i = right_star.pos
         assert i is not None
-        while i < len(left.arg_kinds) and left.arg_kinds[i].is_positional():
-            if allow_partial_overlap and left.arg_kinds[i].is_optional():
+        while i < len(left.arg_kinds) and is_positional(left.arg_kinds[i]):
+            if allow_partial_overlap and is_optional(left.arg_kinds[i]):
                 break
 
             left_by_position = left.argument_by_position(i)
@@ -986,7 +987,7 @@ def is_callable_compatible(left: CallableType, right: CallableType,
         right_names = {name for name in right.arg_names if name is not None}
         left_only_names = set()
         for name, kind in zip(left.arg_names, left.arg_kinds):
-            if name is None or kind.is_star() or name in right_names:
+            if name is None or is_star(kind) or name in right_names:
                 continue
             left_only_names.add(name)
 

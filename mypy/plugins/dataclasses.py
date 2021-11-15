@@ -6,7 +6,7 @@ from typing_extensions import Final
 from mypy.nodes import (
     ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_POS, MDEF, Argument, AssignmentStmt, CallExpr,
     Context, Expression, JsonDict, NameExpr, RefExpr,
-    SymbolTableNode, TempNode, TypeInfo, Var, TypeVarExpr, PlaceholderNode
+    SymbolTableNode, TempNode, TypeInfo, Var, TypeVarExpr, PlaceholderNode, is_named
 )
 from mypy.plugin import ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
@@ -495,8 +495,8 @@ def _collect_field_args(expr: Expression,
         # field() only takes keyword arguments.
         args = {}
         for name, arg, kind in zip(expr.arg_names, expr.args, expr.arg_kinds):
-            if not kind.is_named():
-                if kind.is_named(star=True):
+            if not is_named(kind):
+                if is_named(kind, star=True):
                     # This means that `field` is used with `**` unpacking,
                     # the best we can do for now is not to fail.
                     # TODO: we can infer what's inside `**` and try to collect it.

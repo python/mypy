@@ -16,7 +16,7 @@ from typing import (
 
 from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, Decorator, Var, YieldFromExpr, AwaitExpr, YieldExpr,
-    FuncItem, LambdaExpr, SymbolNode, ArgKind, TypeInfo
+    FuncItem, LambdaExpr, SymbolNode, ArgKind, TypeInfo, is_named, is_optional, is_star
 )
 from mypy.types import CallableType, get_proper_type
 
@@ -667,7 +667,7 @@ def get_args(builder: IRBuilder, rt_args: Sequence[RuntimeArg], line: int) -> Ar
     args = [builder.read(builder.add_local_reg(var, type, is_arg=True), line)
             for var, type in fake_vars]
     arg_names = [arg.name
-                 if arg.kind.is_named() or (arg.kind.is_optional() and not arg.pos_only) else None
+                 if is_named(arg.kind) or (is_optional(arg.kind) and not arg.pos_only) else None
                  for arg in rt_args]
     arg_kinds = [arg.kind for arg in rt_args]
     return ArgInfo(args, arg_names, arg_kinds)
@@ -715,8 +715,8 @@ def gen_glue_method(builder: IRBuilder, sig: FuncSignature, target: FuncIR,
     # We can do a passthrough *args/**kwargs with a native call, but if the
     # args need to get distributed out to arguments, we just let python handle it
     if (
-        any(kind.is_star() for kind in arg_kinds)
-        and any(not arg.kind.is_star() for arg in target.decl.sig.args)
+        any(is_star(kind) for kind in arg_kinds)
+        and any(not is_star(arg.kind) for arg in target.decl.sig.args)
     ):
         do_pycall = True
 

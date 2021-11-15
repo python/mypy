@@ -3,7 +3,7 @@
 from typing import List, Optional, Sequence
 from typing_extensions import Final
 
-from mypy.nodes import FuncDef, Block, ArgKind, ARG_POS
+from mypy.nodes import FuncDef, Block, ArgKind, ARG_POS, is_optional
 
 from mypyc.common import JsonDict, get_id_from_name, short_id_from_name
 from mypyc.ir.ops import (
@@ -28,7 +28,7 @@ class RuntimeArg:
 
     @property
     def optional(self) -> bool:
-        return self.kind.is_optional()
+        return is_optional(self.kind)
 
     def __repr__(self) -> str:
         return 'RuntimeArg(name=%s, type=%s, optional=%r, pos_only=%r)' % (

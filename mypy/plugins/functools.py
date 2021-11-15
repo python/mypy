@@ -3,7 +3,7 @@ from typing import Dict, NamedTuple, Optional
 from typing_extensions import Final
 
 import mypy.plugin
-from mypy.nodes import ARG_POS, ARG_STAR2, Argument, FuncItem, Var
+from mypy.nodes import ARG_POS, ARG_STAR2, Argument, FuncItem, Var, is_positional
 from mypy.plugins.common import add_method_to_class
 from mypy.types import AnyType, CallableType, get_proper_type, Type, TypeOfAny, UnboundType
 
@@ -66,7 +66,7 @@ def _find_other_type(method: _MethodInfo) -> Type:
     cur_pos_arg = 0
     other_arg = None
     for arg_kind, arg_type in zip(method.type.arg_kinds, method.type.arg_types):
-        if arg_kind.is_positional():
+        if is_positional(arg_kind):
             if cur_pos_arg == first_arg_pos:
                 other_arg = arg_type
                 break

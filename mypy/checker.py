@@ -36,7 +36,7 @@ from mypy.types import (
     Instance, NoneType, strip_type, TypeType, TypeOfAny,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType,
     is_named_instance, union_items, TypeQuery, LiteralType,
-    is_optional, remove_optional, TypeTranslator, StarType, get_proper_type, ProperType,
+    is_optional_type, remove_optional, TypeTranslator, StarType, get_proper_type, ProperType,
     get_proper_types, is_literal_type, TypeAliasType, TypeGuardedType)
 from mypy.sametypes import is_same_type
 from mypy.messages import (
@@ -4512,11 +4512,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     collection_type = operand_types[right_index]
 
                     # We only try and narrow away 'None' for now
-                    if not is_optional(item_type):
+                    if not is_optional_type(item_type):
                         continue
 
                     collection_item_type = get_proper_type(builtin_item_type(collection_type))
-                    if collection_item_type is None or is_optional(collection_item_type):
+                    if collection_item_type is None or is_optional_type(collection_item_type):
                         continue
                     if (isinstance(collection_item_type, Instance)
                             and collection_item_type.type.fullname == 'builtins.object'):
@@ -4904,7 +4904,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         non_optional_types = []
         for i in chain_indices:
             typ = operand_types[i]
-            if not is_optional(typ):
+            if not is_optional_type(typ):
                 non_optional_types.append(typ)
 
         # Make sure we have a mixture of optional and non-optional types.
@@ -4914,7 +4914,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if_map = {}
         for i in narrowable_operand_indices:
             expr_type = operand_types[i]
-            if not is_optional(expr_type):
+            if not is_optional_type(expr_type):
                 continue
             if any(is_overlapping_erased_types(expr_type, t) for t in non_optional_types):
                 if_map[operands[i]] = remove_optional(expr_type)

@@ -32,7 +32,7 @@ from mypy.types import (
     Type, AnyType, TypeOfAny, CallableType, UnionType, NoneType, Instance, TupleType,
     TypeVarType, FunctionLike, UninhabitedType,
     TypeStrVisitor, TypeTranslator,
-    is_optional, remove_optional, ProperType, get_proper_type,
+    is_optional_type, remove_optional, ProperType, get_proper_type,
     TypedDictType, TypeAliasType
 )
 from mypy.build import State, Graph
@@ -40,7 +40,7 @@ from mypy.nodes import (
     ArgKind, ARG_STAR, ARG_STAR2, FuncDef, MypyFile, SymbolTable,
     Decorator, RefExpr,
     SymbolNode, TypeInfo, Expression, ReturnStmt, CallExpr,
-    reverse_builtin_aliases,
+    reverse_builtin_aliases, is_named, is_star
 )
 from mypy.server.update import FineGrainedBuildManager
 from mypy.util import split_target
@@ -479,7 +479,7 @@ class SuggestionEngine:
                     arg = '*' + arg
                 elif kind == ARG_STAR2:
                     arg = '**' + arg
-                elif kind.is_named():
+                elif is_named(kind):
                     if name:
                         arg = "%s=%s" % (name, arg)
             args.append(arg)
@@ -712,7 +712,7 @@ class SuggestionEngine:
                 return 20
             if any(has_any_type(x) for x in t.items):
                 return 15
-            if not is_optional(t):
+            if not is_optional_type(t):
                 return 10
         if isinstance(t, CallableType) and (has_any_type(t) or is_tricky_callable(t)):
             return 10
@@ -763,7 +763,7 @@ def any_score_callable(t: CallableType, is_method: bool, ignore_return: bool) ->
 
 def is_tricky_callable(t: CallableType) -> bool:
     """Is t a callable that we need to put a ... in for syntax reasons?"""
-    return t.is_ellipsis_args or any(k.is_star() or k.is_named() for k in t.arg_kinds)
+    return t.is_ellipsis_args or any(is_star(k) or is_named(k) for k in t.arg_kinds)
 
 
 class TypeFormatter(TypeStrVisitor):
@@ -829,7 +829,7 @@ class TypeFormatter(TypeStrVisitor):
         return t.fallback.accept(self)
 
     def visit_union_type(self, t: UnionType) -> str:
-        if len(t.items) == 2 and is_optional(t):
+        if len(t.items) == 2 and is_optional_type(t):
             return "Optional[{}]".format(remove_optional(t).accept(self))
         else:
             return super().visit_union_type(t)
