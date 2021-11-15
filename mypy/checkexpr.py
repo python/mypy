@@ -1266,7 +1266,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if isinstance(first_arg, (NoneType, UninhabitedType)):
                     inferred_args[0] = self.named_type('builtins.str')
                 elif not first_arg or not is_subtype(self.named_type('builtins.str'), first_arg):
-                    self.fail(message_registry.KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE,
+                    self.chk.fail(message_registry.KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE,
                                   context)
         else:
             # In dynamically typed functions use implicit 'Any' types for
