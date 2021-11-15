@@ -8,7 +8,7 @@ static PyObject *vec_new(PyTypeObject *self, PyObject *args, PyObject *kw);
 
 PyObject *vec_repr(PyObject *self) {
     // TODO: Type check, refcounting, error handling
-    VecObject *o = (VecObject *)self;
+    VecI64Object *o = (VecI64Object *)self;
     PyObject *prefix = Py_BuildValue("s", "vec(i64, [");
     PyObject *suffix = Py_BuildValue("s", "])");
     PyObject *l = Py_BuildValue("[]");
@@ -29,7 +29,7 @@ PyObject *vec_repr(PyObject *self) {
 
 PyObject *vec_get_item(PyObject *o, Py_ssize_t i) {
     // TODO: Type check o
-    VecObject *v = (VecObject *)o;
+    VecI64Object *v = (VecI64Object *)o;
     if ((size_t)i < (size_t)v->len) {
         return PyLong_FromLongLong(v->items[i]);
     } else {
@@ -40,7 +40,7 @@ PyObject *vec_get_item(PyObject *o, Py_ssize_t i) {
 
 int vec_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
     // TODO: Type check o
-    VecObject *v = (VecObject *)self;
+    VecI64Object *v = (VecI64Object *)self;
     if ((size_t)i < (size_t)v->len) {
         long long x = PyLong_AsLongLong(o);
         if (x == -1 && PyErr_Occurred())
@@ -55,7 +55,7 @@ int vec_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
 
 Py_ssize_t vec_length(PyObject *o) {
     // TODO: Type check o
-    return ((VecObject *)o)->len;
+    return ((VecI64Object *)o)->len;
 }
 
 static PyMappingMethods VecMapping = {
@@ -71,7 +71,7 @@ static PyTypeObject VecType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "vecs.vec",
     .tp_doc = "vec doc",
-    .tp_basicsize = sizeof(VecObject) - sizeof(long long),
+    .tp_basicsize = sizeof(VecI64Object) - sizeof(long long),
     .tp_itemsize = sizeof(long long),
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_new = vec_new,
@@ -81,12 +81,12 @@ static PyTypeObject VecType = {
     .tp_as_mapping = &VecMapping,
 };
 
-static VecObject *
+static VecI64Object *
 vec_alloc(Py_ssize_t size)
 {
-    VecObject *v;
+    VecI64Object *v;
     /* TODO: Check for overflow */
-    v = PyObject_NewVar(VecObject, &VecType, size);
+    v = PyObject_NewVar(VecI64Object, &VecType, size);
     if (v == NULL)
         return NULL;
     return v;
@@ -95,7 +95,7 @@ vec_alloc(Py_ssize_t size)
 PyObject *
 Vec_New(Py_ssize_t size)
 {
-    VecObject *v;
+    VecI64Object *v;
     v = vec_alloc(size);
     if (v == NULL)
         return NULL;
@@ -117,22 +117,22 @@ PyObject *vec_new(PyTypeObject *self, PyObject *args, PyObject *kw) {
 
 PyObject *
 Vec_Append(PyObject *obj, int64_t x) {
-    VecObject *vec = (VecObject *)obj;
+    VecI64Object *vec = (VecI64Object *)obj;
     Py_ssize_t cap = VEC_SIZE(vec);
     Py_ssize_t len = vec->len;
     if (len < cap) {
         vec->items[len] = x;
         vec->len = len + 1;
-        Py_INCREF(vec);
         return (PyObject *)vec;
     } else {
         Py_ssize_t new_size = 2 * cap + 1;
-        VecObject *new = vec_alloc(new_size);
+        VecI64Object *new = vec_alloc(new_size);
         if (new == NULL)
             return NULL;
         memcpy(new->items, vec->items, sizeof(long long) * len);
         new->items[len] = x;
         new->len = len + 1;
+        Py_DECREF(vec);
         return (PyObject *)new;
     }
 }
@@ -148,6 +148,7 @@ vecs_append(PyObject *self, PyObject *args)
 
     // TODO: Type check obj
 
+    Py_INCREF(obj);
     return Vec_Append(obj, x);
 }
 
