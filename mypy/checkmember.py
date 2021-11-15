@@ -235,7 +235,7 @@ def analyze_type_callable_member_access(name: str,
     if isinstance(ret_type, TupleType):
         ret_type = tuple_fallback(ret_type)
     if isinstance(ret_type, Instance):
-        if not mx.is_operator:
+        if not mx.is_operator or name == '__class_getitem__':
             # When Python sees an operator (eg `3 == 4`), it automatically translates that
             # into something like `int.__eq__(3, 4)` instead of `(3).__eq__(4)` as an
             # optimization.
@@ -250,6 +250,9 @@ def analyze_type_callable_member_access(name: str,
             # the corresponding method in the current instance to avoid this edge case.
             # See https://github.com/python/mypy/pull/1787 for more info.
             # TODO: do not rely on same type variables being present in all constructor overloads.
+
+            # We also allow `SomeClass[1]` acccess via `__class_getitem__`,
+            # it is very special. It only works this way for non-generic types.
             result = analyze_class_attribute_access(ret_type, name, mx,
                                                     original_vars=typ.items[0].variables)
             if result:

@@ -1072,6 +1072,12 @@ def fix_instance(t: Instance, fail: MsgCallback, note: MsgCallback,
 
     Also emit a suitable error if this is not due to implicit Any's.
     """
+    if not t.type.is_generic() and t.type.has_readable_member('__class_getitem__'):
+        # Corner case: we might have a non-generic class with `__class_getitem__`
+        # which is used for something else: not type application.
+        # So, in this case: we allow using this type without type arguments.
+        return
+
     if len(t.args) == 0:
         if use_generic_error:
             fullname: Optional[str] = None
@@ -1081,6 +1087,7 @@ def fix_instance(t: Instance, fail: MsgCallback, note: MsgCallback,
                                    unexpanded_type)
         t.args = (any_type,) * len(t.type.type_vars)
         return
+
     # Invalid number of type parameters.
     n = len(t.type.type_vars)
     s = '{} type arguments'.format(n)

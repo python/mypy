@@ -2932,6 +2932,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Visit the index, just to make sure we have a type for it available
         self.accept(index)
 
+        # Base method name for instance-based item access, might be changed for types:
+        method_name = '__getitem__'
+
         if isinstance(left_type, UnionType):
             original_type = original_type or left_type
             # Don't combine literal types, since we may need them for type narrowing.
@@ -2967,12 +2970,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif (isinstance(left_type, TypeVarType)
               and not self.has_member(left_type.upper_bound, "__getitem__")):
             return self.visit_index_with_type(left_type.upper_bound, e, original_type)
-        else:
-            result, method_type = self.check_method_call_by_name(
-                '__getitem__', left_type, [e.index], [ARG_POS], e,
-                original_type=original_type)
-            e.method_type = method_type
-            return result
+        elif (isinstance(left_type, TypeType)
+                or (isinstance(left_type, CallableType) and left_type.is_type_obj())):
+            # When we do `SomeClass[1]`, we actually call `__class_getitem__`,
+            # not just `__getitem__`.
+            method_name = '__class_getitem__'
+
+        result, method_type = self.check_method_call_by_name(
+            method=method_name,
+            base_type=left_type,
+            args=[e.index],
+            arg_kinds=[ARG_POS],
+            context=e,
+            original_type=original_type,
+        )
+        e.method_type = method_type
+        return result
 
     def visit_tuple_slice_helper(self, left_type: TupleType, slic: SliceExpr) -> Type:
         begin: Sequence[Optional[int]] = [None]
