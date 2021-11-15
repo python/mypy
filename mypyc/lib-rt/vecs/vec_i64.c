@@ -7,7 +7,7 @@ static PyObject *vec_i64_new(PyTypeObject *self, PyObject *args, PyObject *kw);
 PyObject *vec_i64_repr(PyObject *self) {
     // TODO: Type check, refcounting, error handling
     VecI64Object *o = (VecI64Object *)self;
-    PyObject *prefix = Py_BuildValue("s", "vec(i64, [");
+    PyObject *prefix = Py_BuildValue("s", "vec[i64]([");
     PyObject *suffix = Py_BuildValue("s", "])");
     PyObject *l = Py_BuildValue("[]");
     PyObject *sep = Py_BuildValue("s", "");
