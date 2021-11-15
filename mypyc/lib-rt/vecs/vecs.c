@@ -21,7 +21,7 @@ static PyMethodDef vec_methods[] = {
 
 PyTypeObject VecGenericType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "vec.generic",
+    .tp_name = "vec",
     .tp_basicsize = sizeof(VecGeneric),
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT, // XXX | Py_TPFLAGS_BASETYPE,

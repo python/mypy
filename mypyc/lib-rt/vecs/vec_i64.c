@@ -67,7 +67,7 @@ static PySequenceMethods VecI64Sequence = {
 
 PyTypeObject VecI64Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "vecs.vec",
+    .tp_name = "vec[i64]",
     .tp_doc = "vec doc",
     .tp_basicsize = sizeof(VecI64Object) - sizeof(int64_t),
     .tp_itemsize = sizeof(int64_t),
