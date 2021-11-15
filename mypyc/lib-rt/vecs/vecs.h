@@ -52,4 +52,11 @@ typedef struct {
     // VecTFeatures *i64;
 } VecCapsule;
 
+#define VEC_SIZE(v) ((v)->ob_base.ob_size)
+
+PyObject *Vec_I64_Append(PyObject *obj, int64_t x);
+
+extern PyTypeObject VecI64Type;
+extern VecI64Features I64Features;
+
 #endif
