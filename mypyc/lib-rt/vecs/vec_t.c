@@ -43,6 +43,20 @@ PyObject *vec_t_get_item(PyObject *o, Py_ssize_t i) {
     }
 }
 
+
+int vec_t_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
+    // TODO: Type check o
+    VecTObject *v = (VecTObject *)self;
+    if ((size_t)i < (size_t)v->len) {
+        Py_INCREF(o);
+        v->items[i] = o;
+        return 0;
+    } else {
+        PyErr_SetString(PyExc_IndexError, "index out of range");
+        return -1;
+    }
+}
+
 static int
 VecT_traverse(VecTObject *self, visitproc visit, void *arg)
 {
@@ -89,7 +103,7 @@ static PyMappingMethods VecTMapping = {
 
 static PySequenceMethods VecTSequence = {
     .sq_item = vec_t_get_item,
-    //.sq_ass_item = vec_t_ass_item,
+    .sq_ass_item = vec_t_ass_item,
 };
 
 PyTypeObject VecTType = {

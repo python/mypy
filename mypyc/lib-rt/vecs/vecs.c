@@ -40,6 +40,18 @@ VecProxy_dealloc(VecProxy *self)
     PyObject_GC_Del(self);
 }
 
+PyObject *VecProxy_repr(PyObject *self) {
+    // TODO: error handling, refcounting, etc.
+    PyObject *l = Py_BuildValue("[]");
+    PyObject *prefix = Py_BuildValue("s", "<class_proxy 'vec[");
+    PyObject *suffix = Py_BuildValue("s", "]'>");
+    PyObject *sep = Py_BuildValue("s", "");
+    PyList_Append(l, prefix);
+    PyList_Append(l, PyObject_GetAttrString(((VecProxy *)self)->item_type, "__name__"));
+    PyList_Append(l, suffix);
+    return PyUnicode_Join(sep, l);
+}
+
 PyTypeObject VecProxyType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "vec_proxy",
@@ -49,6 +61,7 @@ PyTypeObject VecProxyType = {
     .tp_call = vec_proxy_call,
     .tp_traverse = (traverseproc)VecProxy_traverse,
     .tp_dealloc = (destructor)VecProxy_dealloc,
+    .tp_repr = (reprfunc)VecProxy_repr,
 };
 
 
