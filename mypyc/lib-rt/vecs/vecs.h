@@ -27,7 +27,7 @@ typedef struct _VecI64Features {
 typedef struct _VecTObject {
     PyObject_VAR_HEAD
     Py_ssize_t len;
-    PyObject *type_tagged;
+    PyObject *item_type;
     PyObject *items[1];
 } VecTObject;
 
@@ -54,9 +54,12 @@ typedef struct {
 
 #define VEC_SIZE(v) ((v)->ob_base.ob_size)
 
+PyObject *Vec_T_New(Py_ssize_t size, PyObject *item_type);
+
 PyObject *Vec_I64_Append(PyObject *obj, int64_t x);
 
 extern PyTypeObject VecI64Type;
+extern PyTypeObject VecTType;
 extern VecI64Features I64Features;
 
 #endif
