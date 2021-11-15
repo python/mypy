@@ -17,15 +17,39 @@ typedef struct _VecI64Features {
     PyObject *(*append)(PyObject *, int64_t);
     // PyObject *(*extend)(PyObject *, PyObject *);
     // PyObject *(*slice)(PyObject *, int64_t, int64_t);
-    // PyObject *(*concat)(PyObject *, VecObject *);
+    // PyObject *(*concat)(PyObject *, PyObject *);
     // bool (*contains)(PyObject *, int64_t);
     // int64_t (*pop)(PyObject *);
     // bool (*remove)(PyObject *, int64_t);
     // iter?
 } VecI64Features;
 
+typedef struct _VecTObject {
+    PyObject_VAR_HEAD
+    Py_ssize_t len;
+    PyObject *type_tagged;
+    PyObject *items[1];
+} VecTObject;
+
+// vec[T] operations + type object (stored in a capsule)
+//
+// T can be a class type, T | None or vec[T] (or a combination of these)
+typedef struct _VecTFeatures {
+    PyTypeObject *type;
+    PyObject *(*alloc)(Py_ssize_t);
+    PyObject *(*append)(PyObject *, PyObject *);
+    // PyObject *(*extend)(PyObject *, PyObject *);
+    // PyObject *(*slice)(PyObject *, int64_t, int64_t);
+    // PyObject *(*concat)(PyObject *, PyObject *);
+    // bool (*contains)(PyObject *, PyObject *);
+    // PyObject *(*pop)(PyObject *);
+    // bool (*remove)(PyObject *, PyObject *);
+    // iter?
+} VecTFeatures;
+
 typedef struct {
     VecI64Features *i64;
+    // VecTFeatures *i64;
 } VecCapsule;
 
 #endif

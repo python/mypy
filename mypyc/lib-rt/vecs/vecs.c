@@ -4,9 +4,9 @@
 
 #define VEC_SIZE(v) ((v)->ob_base.ob_size)
 
-static PyObject *vec_new(PyTypeObject *self, PyObject *args, PyObject *kw);
+static PyObject *vec_i64_new(PyTypeObject *self, PyObject *args, PyObject *kw);
 
-PyObject *vec_repr(PyObject *self) {
+PyObject *vec_i64_repr(PyObject *self) {
     // TODO: Type check, refcounting, error handling
     VecI64Object *o = (VecI64Object *)self;
     PyObject *prefix = Py_BuildValue("s", "vec(i64, [");
@@ -17,7 +17,7 @@ PyObject *vec_repr(PyObject *self) {
     PyList_Append(l, prefix);
     for (int i = 0; i < o->len; i++) {
         char s[100];
-        sprintf(s, "%lld", o->items[i]);
+        sprintf(s, "%lld", (long long)o->items[i]);
         PyObject *x = Py_BuildValue("s", s);
         PyList_Append(l, x);
         if (i + 1 < o->len)
@@ -27,7 +27,7 @@ PyObject *vec_repr(PyObject *self) {
     return PyUnicode_Join(sep, l);
 }
 
-PyObject *vec_get_item(PyObject *o, Py_ssize_t i) {
+PyObject *vec_i64_get_item(PyObject *o, Py_ssize_t i) {
     // TODO: Type check o
     VecI64Object *v = (VecI64Object *)o;
     if ((size_t)i < (size_t)v->len) {
@@ -38,7 +38,7 @@ PyObject *vec_get_item(PyObject *o, Py_ssize_t i) {
     }
 }
 
-int vec_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
+int vec_i64_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
     // TODO: Type check o
     VecI64Object *v = (VecI64Object *)self;
     if ((size_t)i < (size_t)v->len) {
@@ -58,45 +58,45 @@ Py_ssize_t vec_length(PyObject *o) {
     return ((VecI64Object *)o)->len;
 }
 
-static PyMappingMethods VecMapping = {
+static PyMappingMethods VecI64Mapping = {
     .mp_length = vec_length,
 };
 
-static PySequenceMethods VecSequence = {
-    .sq_item = vec_get_item,
-    .sq_ass_item = vec_ass_item,
+static PySequenceMethods VecI64Sequence = {
+    .sq_item = vec_i64_get_item,
+    .sq_ass_item = vec_i64_ass_item,
 };
 
-static PyTypeObject VecType = {
+static PyTypeObject VecI64Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "vecs.vec",
     .tp_doc = "vec doc",
-    .tp_basicsize = sizeof(VecI64Object) - sizeof(long long),
-    .tp_itemsize = sizeof(long long),
+    .tp_basicsize = sizeof(VecI64Object) - sizeof(int64_t),
+    .tp_itemsize = sizeof(int64_t),
     .tp_flags = Py_TPFLAGS_DEFAULT,
-    .tp_new = vec_new,
+    .tp_new = vec_i64_new,
     .tp_free = PyObject_Del,
-    .tp_repr = (reprfunc)vec_repr,
-    .tp_as_sequence = &VecSequence,
-    .tp_as_mapping = &VecMapping,
+    .tp_repr = (reprfunc)vec_i64_repr,
+    .tp_as_sequence = &VecI64Sequence,
+    .tp_as_mapping = &VecI64Mapping,
 };
 
 static VecI64Object *
-vec_alloc(Py_ssize_t size)
+vec_i64_alloc(Py_ssize_t size)
 {
     VecI64Object *v;
     /* TODO: Check for overflow */
-    v = PyObject_NewVar(VecI64Object, &VecType, size);
+    v = PyObject_NewVar(VecI64Object, &VecI64Type, size);
     if (v == NULL)
         return NULL;
     return v;
 }
 
 PyObject *
-Vec_New(Py_ssize_t size)
+Vec_I64_New(Py_ssize_t size)
 {
     VecI64Object *v;
-    v = vec_alloc(size);
+    v = vec_i64_alloc(size);
     if (v == NULL)
         return NULL;
     for (Py_ssize_t i = 0; i < size; i++) {
@@ -106,13 +106,13 @@ Vec_New(Py_ssize_t size)
     return (PyObject *)v;
 }
 
-PyObject *vec_new(PyTypeObject *self, PyObject *args, PyObject *kw) {
+PyObject *vec_i64_new(PyTypeObject *self, PyObject *args, PyObject *kw) {
     static char *kwlist[] = {"", NULL};
     PyObject *t;
     if (!PyArg_ParseTupleAndKeywords(args, kw, "O:vec", kwlist, &t)) {
         return NULL;
     }
-    return Vec_New(0);
+    return Vec_I64_New(0);
 }
 
 PyObject *
@@ -126,10 +126,10 @@ Vec_Append(PyObject *obj, int64_t x) {
         return (PyObject *)vec;
     } else {
         Py_ssize_t new_size = 2 * cap + 1;
-        VecI64Object *new = vec_alloc(new_size);
+        VecI64Object *new = vec_i64_alloc(new_size);
         if (new == NULL)
             return NULL;
-        memcpy(new->items, vec->items, sizeof(long long) * len);
+        memcpy(new->items, vec->items, sizeof(int64_t) * len);
         new->items[len] = x;
         new->len = len + 1;
         Py_DECREF(vec);
@@ -141,7 +141,7 @@ static PyObject *
 vecs_append(PyObject *self, PyObject *args)
 {
     PyObject *obj;
-    long long x;
+    int64_t x;
 
     if (!PyArg_ParseTuple(args, "OL", &obj, &x))
         return NULL;
@@ -166,8 +166,8 @@ static PyModuleDef vecsmodule = {
 };
 
 static VecI64Features I64Features = {
-    &VecType,
-    Vec_New,
+    &VecI64Type,
+    Vec_I64_New,
     Vec_Append,
 };
 
@@ -179,16 +179,16 @@ PyMODINIT_FUNC
 PyInit_vecs(void)
 {
     PyObject *m;
-    if (PyType_Ready(&VecType) < 0)
+    if (PyType_Ready(&VecI64Type) < 0)
         return NULL;
 
     m = PyModule_Create(&vecsmodule);
     if (m == NULL)
         return NULL;
 
-    Py_INCREF(&VecType);
-    if (PyModule_AddObject(m, "vec", (PyObject *) &VecType) < 0) {
-        Py_DECREF(&VecType);
+    Py_INCREF(&VecI64Type);
+    if (PyModule_AddObject(m, "vec", (PyObject *) &VecI64Type) < 0) {
+        Py_DECREF(&VecI64Type);
         Py_DECREF(m);
         return NULL;
     }
@@ -199,7 +199,7 @@ PyInit_vecs(void)
 
     if (PyModule_AddObject(m, "_C_API", c_api) < 0) {
         Py_XDECREF(c_api);
-        Py_DECREF(&VecType);
+        Py_DECREF(&VecI64Type);
         Py_DECREF(m);
         return NULL;
     }
