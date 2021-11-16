@@ -7,6 +7,12 @@ labels: "bug"
 <!--
   If you're new to mypy and you're not sure whether what you're experiencing is a mypy bug, please see the "Question and Help" form
   instead.
+  Please also consider:
+
+  - checking our common issues page: https://mypy.readthedocs.io/en/stable/common_issues.html
+  - searching our issue tracker: https://github.com/python/mypy/issues to see if
+    it's already been reported
+  - asking on gitter chat: https://gitter.im/python/typing
 -->
 
 **Bug Report**
