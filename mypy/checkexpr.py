@@ -2160,7 +2160,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def visit_ellipsis(self, e: EllipsisExpr) -> Type:
         """Type check '...'."""
         if self.chk.options.python_version[0] >= 3:
-            return self.named_type('builtins.ellipsis')
+            return self.named_type('_typeshed.ellipsis')
         else:
             # '...' is not valid in normal Python 2 code, but it can
             # be used in stubs.  The parser makes sure that we only
