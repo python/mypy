@@ -478,7 +478,7 @@ class Errors:
                 unused_codes_message = ""
                 if len(ignored_codes) > 1 and len(unused_ignored_codes) > 0:
                     unused_codes_message = f"[{', '.join(sorted(unused_ignored_codes))}]"
-                message = f'unused "type: ignore{unused_codes_message}" comment'
+                message = f'Unused "type: ignore{unused_codes_message}" comment'
                 # Don't use report since add_error_info will ignore the error!
                 info = ErrorInfo(self.import_context(), file, self.current_module(), None,
                                  None, line, -1, 'error', message,
