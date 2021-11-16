@@ -245,3 +245,12 @@ CLASS_PATTERN_KEYWORD_MATCHES_POSITIONAL: Final = (
 CLASS_PATTERN_DUPLICATE_KEYWORD_PATTERN: Final = 'Duplicate keyword pattern "{}"'
 CLASS_PATTERN_UNKNOWN_KEYWORD: Final = 'Class "{}" has no attribute "{}"'
 MULTIPLE_ASSIGNMENTS_IN_PATTERN: Final = 'Multiple assignments to name "{}" in pattern'
+
+# Dataclass plugin
+DATACLASS_VERSION_DEPENDENT_KEYWORD: Final = (
+    'Keyword argument "{}" for "dataclass" is only valid in Python {} and higher'
+)
+DATACLASS_TWO_KINDS_OF_SLOTS: Final = (
+    '"{}" both defines "__slots__" and is used with "slots=True"'
+)
+DATACLASS_HASH_OVERRIDE: Final = 'Cannot overwrite attribute "__hash__" in class "{}"'

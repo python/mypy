@@ -1479,7 +1479,31 @@ reveal_type(FirstCase1(1).__hash__)  # N: Revealed type is "def () -> builtins.i
 @dataclass(unsafe_hash=False, eq=False, frozen=False)
 class FirstCase2:
     x: int
+    def __hash__(self) -> int: pass
 reveal_type(FirstCase2(1).__hash__)  # N: Revealed type is "def () -> builtins.int"
+
+@dataclass(unsafe_hash=False, eq=False, frozen=False)
+class FirstCase3:
+    x: int
+    __hash__: None  # E: Incompatible types in assignment (expression has type "None", base class "object" defined the type as "Callable[[object], int]")
+reveal_type(FirstCase3(1).__hash__)  # N: Revealed type is "None"
+
+@dataclass(unsafe_hash=False, eq=False, frozen=True)
+class FirstCase4:
+    x: int
+reveal_type(FirstCase4(1).__hash__)  # N: Revealed type is "def () -> builtins.int"
+
+@dataclass(unsafe_hash=False, eq=False, frozen=True)
+class FirstCase5:
+    x: int
+    def __hash__(self) -> int: pass
+reveal_type(FirstCase5(1).__hash__)  # N: Revealed type is "def () -> builtins.int"
+
+@dataclass(unsafe_hash=False, eq=False, frozen=True)
+class FirstCase6:
+    x: int
+    __hash__: None  # E: Incompatible types in assignment (expression has type "None", base class "object" defined the type as "Callable[[object], int]")
+reveal_type(FirstCase6(1).__hash__)  # N: Revealed type is "None"
 
 
 @dataclass(unsafe_hash=False, eq=True, frozen=False)

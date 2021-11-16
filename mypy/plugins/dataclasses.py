@@ -3,6 +3,7 @@
 from typing import Dict, List, Set, Tuple, Optional
 from typing_extensions import Final
 
+from mypy import message_registry
 from mypy.nodes import (
     ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_POS, ARG_STAR, ARG_STAR2, MDEF,
     Argument, AssignmentStmt, CallExpr,    Context, Expression, JsonDict,
@@ -31,12 +32,7 @@ field_makers: Final = {
     'dataclasses.field',
 }
 
-
 SELF_TVAR_NAME: Final = "_DT"
-INVALID_KEYWORD: Final = (
-    'Keyword argument "{}" for "dataclass" is only valid in Python {} and higher'
-)
-INVALID_SLOTS_DEF: Final = '"{}" both defines "__slots__" and is used with "slots=True"'
 
 
 class DataclassAttribute:
@@ -255,7 +251,7 @@ class DataclassTransformer:
             # This means that version is lower than `3.10`,
             # it is just a non-existent argument for `dataclass` function.
             self._ctx.api.fail(
-                INVALID_KEYWORD.format('slots', '3.10'),
+                message_registry.DATACLASS_VERSION_DEPENDENT_KEYWORD.format('slots', '3.10'),
                 self._ctx.reason,
             )
             return
@@ -270,7 +266,7 @@ class DataclassTransformer:
             # And `@dataclass(slots=True)` is used.
             # In runtime this raises a type error.
             self._ctx.api.fail(
-                INVALID_SLOTS_DEF.format(self._ctx.cls.name),
+                DATACLASS_TWO_KINDS_OF_SLOTS.format(self._ctx.cls.name),
                 self._ctx.cls,
             )
             return
@@ -283,18 +279,16 @@ class DataclassTransformer:
         unsafe_hash = decorator_arguments.get('unsafe_hash', False)
         eq = decorator_arguments['eq']
         frozen = decorator_arguments['frozen']
-        cond = (unsafe_hash, eq, frozen)
-
         existing = '__hash__' in info.names
 
         # https://github.com/python/cpython/blob/24af9a40a8f85af813ea89998aa4e931fcc78cd9/Lib/dataclasses.py#L846
-        # TODO: Pattern matching would be a good fit here:
-        if cond == (False, False, False) or cond == (False, False, True):
+        if ((not unsafe_hash and not eq and not frozen)
+                or (not unsafe_hash and not eq and frozen)):
             # "No __eq__, use the base class __hash__"
             # It will use the base's class `__hash__` method by default.
             # Nothing to do here.
             pass
-        elif cond == (False, True, False):
+        elif not unsafe_hash and eq and not frozen:
             # "the default, not hashable"
             # In this case, we just add `__hash__: None` to the body of the class
             if not existing:
@@ -304,7 +298,7 @@ class DataclassTransformer:
                     name='__hash__',
                     attr_type=NoneType(),
                 )
-        elif cond == (False, True, True):
+        elif not unsafe_hash and eq and frozen:
             # "Frozen, so hashable, allows override"
             # In this case we never raise an error, even if superclass definition
             # is incompatible.
@@ -323,9 +317,7 @@ class DataclassTransformer:
                 # When class already has `__hash__` defined, we do not allow
                 # to override it. So, raise an error and do nothing.
                 self._ctx.api.fail(
-                    'Cannot overwrite attribute "__hash__" in class "{}"'.format(
-                        self._ctx.cls.name,
-                    ),
+                    DATACLASS_HASH_OVERRIDE.format(self._ctx.cls.name),
                     self._ctx.cls,
                 )
                 return
