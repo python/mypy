@@ -3172,27 +3172,23 @@ class SemanticAnalyzer(NodeVisitor[None],
         upper_bound: Type = self.object_type()
         for param_value, param_name, param_kind in zip(args, names, kinds):
             if not param_kind.is_named():
-                self.fail("Unexpected argument to TypeVar()", context)
+                self.fail(message_registry.TYPEVAR_UNEXPECTED_ARGUMENT, context)
                 return None
             if param_name == 'covariant':
-                if isinstance(param_value, NameExpr):
-                    if param_value.name == 'True':
-                        covariant = True
-                    else:
-                        self.fail("TypeVar 'covariant' may only be 'True'", context)
-                        return None
+                if (isinstance(param_value, NameExpr)
+                        and param_value.name in ('True', 'False')):
+                    covariant = param_value.name == 'True'
                 else:
-                    self.fail("TypeVar 'covariant' may only be 'True'", context)
+                    self.fail(message_registry.TYPEVAR_VARIANCE_DEF.format(
+                        'covariant'), context)
                     return None
             elif param_name == 'contravariant':
-                if isinstance(param_value, NameExpr):
-                    if param_value.name == 'True':
-                        contravariant = True
-                    else:
-                        self.fail("TypeVar 'contravariant' may only be 'True'", context)
-                        return None
+                if (isinstance(param_value, NameExpr)
+                        and param_value.name in ('True', 'False')):
+                    contravariant = param_value.name == 'True'
                 else:
-                    self.fail("TypeVar 'contravariant' may only be 'True'", context)
+                    self.fail(message_registry.TYPEVAR_VARIANCE_DEF.format(
+                        'contravariant'), context)
                     return None
             elif param_name == 'bound':
                 if has_values:
@@ -3214,11 +3210,11 @@ class SemanticAnalyzer(NodeVisitor[None],
                         analyzed = PlaceholderType(None, [], context.line)
                     upper_bound = get_proper_type(analyzed)
                     if isinstance(upper_bound, AnyType) and upper_bound.is_from_error:
-                        self.fail('TypeVar "bound" must be a type', param_value)
+                        self.fail(message_registry.TYPEVAR_BOUND_MUST_BE_TYPE, param_value)
                         # Note: we do not return 'None' here -- we want to continue
                         # using the AnyType as the upper bound.
                 except TypeTranslationError:
-                    self.fail('TypeVar "bound" must be a type', param_value)
+                    self.fail(message_registry.TYPEVAR_BOUND_MUST_BE_TYPE, param_value)
                     return None
             elif param_name == 'values':
                 # Probably using obsolete syntax with values=(...). Explain the current syntax.
@@ -3227,7 +3223,9 @@ class SemanticAnalyzer(NodeVisitor[None],
                           context)
                 return None
             else:
-                self.fail('Unexpected argument to TypeVar(): "{}"'.format(param_name), context)
+                self.fail('{}: "{}"'.format(
+                    message_registry.TYPEVAR_UNEXPECTED_ARGUMENT, param_name,
+                ), context)
                 return None
 
         if covariant and contravariant:
