@@ -266,7 +266,7 @@ class DataclassTransformer:
             # And `@dataclass(slots=True)` is used.
             # In runtime this raises a type error.
             self._ctx.api.fail(
-                DATACLASS_TWO_KINDS_OF_SLOTS.format(self._ctx.cls.name),
+                message_registry.DATACLASS_TWO_KINDS_OF_SLOTS.format(self._ctx.cls.name),
                 self._ctx.cls,
             )
             return
@@ -317,7 +317,7 @@ class DataclassTransformer:
                 # When class already has `__hash__` defined, we do not allow
                 # to override it. So, raise an error and do nothing.
                 self._ctx.api.fail(
-                    DATACLASS_HASH_OVERRIDE.format(self._ctx.cls.name),
+                    message_registry.DATACLASS_HASH_OVERRIDE.format(self._ctx.cls.name),
                     self._ctx.cls,
                 )
                 return
