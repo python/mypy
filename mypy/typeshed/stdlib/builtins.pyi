@@ -18,6 +18,7 @@ from _typeshed import (
     SupportsNext,
     SupportsRDivMod,
     SupportsWrite,
+    ellipsis
 )
 from ast import AST, mod
 from io import BufferedRandom, BufferedReader, BufferedWriter, FileIO, TextIOWrapper
@@ -1408,10 +1409,6 @@ def __import__(
     fromlist: Sequence[str] = ...,
     level: int = ...,
 ) -> Any: ...
-
-# Actually the type of Ellipsis is <type 'ellipsis'>, but since it's
-# not exposed anywhere under that name, we make it private here.
-class ellipsis: ...
 
 Ellipsis: ellipsis
 
