@@ -60,7 +60,6 @@ from typing_extensions import Final
 
 import mypy.build
 import mypy.parse
-import mypy.errors
 import mypy.traverser
 import mypy.mixedtraverser
 import mypy.util
@@ -256,7 +255,7 @@ class AnnotationPrinter(TypeStrVisitor):
         s = t.name
         self.stubgen.import_tracker.require_name(s)
         if t.args:
-            s += '[{}]'.format(self.list_str(t.args))
+            s += '[{}]'.format(self.args_str(t.args))
         return s
 
     def visit_none_type(self, t: NoneType) -> str:
@@ -264,6 +263,22 @@ class AnnotationPrinter(TypeStrVisitor):
 
     def visit_type_list(self, t: TypeList) -> str:
         return '[{}]'.format(self.list_str(t.items))
+
+    def args_str(self, args: Iterable[Type]) -> str:
+        """Convert an array of arguments to strings and join the results with commas.
+
+        The main difference from list_str is the preservation of quotes for string
+        arguments
+        """
+        types = ['builtins.bytes', 'builtins.unicode']
+        res = []
+        for arg in args:
+            arg_str = arg.accept(self)
+            if isinstance(arg, UnboundType) and arg.original_str_fallback in types:
+                res.append("'{}'".format(arg_str))
+            else:
+                res.append(arg_str)
+        return ', '.join(res)
 
 
 class AliasPrinter(NodeVisitor[str]):
@@ -1062,7 +1077,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self.record_name(alias or name)
 
         if self._all_:
-            # Include import froms that import names defined in __all__.
+            # Include "import from"s that import names defined in __all__.
             names = [name for name, alias in o.names
                      if name in self._all_ and alias is None and name not in IGNORED_DUNDERS]
             exported_names.update(names)

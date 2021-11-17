@@ -62,6 +62,32 @@ L0:
     c = r6
     return 1
 
+[case testBytesEquality]
+def eq(x: bytes, y: bytes) -> bool:
+    return x == y
+
+def neq(x: bytes, y: bytes) -> bool:
+    return x != y
+[out]
+def eq(x, y):
+    x, y :: bytes
+    r0 :: int32
+    r1, r2 :: bit
+L0:
+    r0 = CPyBytes_Compare(x, y)
+    r1 = r0 >= 0 :: signed
+    r2 = r0 == 1
+    return r2
+def neq(x, y):
+    x, y :: bytes
+    r0 :: int32
+    r1, r2 :: bit
+L0:
+    r0 = CPyBytes_Compare(x, y)
+    r1 = r0 >= 0 :: signed
+    r2 = r0 != 1
+    return r2
+
 [case testBytesSlicing]
 def f(a: bytes, start: int, end: int) -> bytes:
     return a[start:end]

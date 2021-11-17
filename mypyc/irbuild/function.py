@@ -37,7 +37,7 @@ from mypyc.primitives.misc_ops import (
     check_stop_op, yield_from_except_op, coro_op, send_op, register_function
 )
 from mypyc.primitives.dict_ops import dict_set_item_op, dict_new_op, dict_get_method_with_none
-from mypyc.common import SELF_NAME, LAMBDA_NAME, decorator_helper_name
+from mypyc.common import SELF_NAME, LAMBDA_NAME
 from mypyc.sametype import is_same_method_signature
 from mypyc.irbuild.util import is_constant
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
@@ -100,10 +100,9 @@ def transform_decorator(builder: IRBuilder, dec: Decorator) -> None:
     elif dec.func in builder.fdefs_to_decorators:
         # Obtain the the function name in order to construct the name of the helper function.
         name = dec.func.fullname.split('.')[-1]
-        helper_name = decorator_helper_name(name)
 
         # Load the callable object representing the non-decorated function, and decorate it.
-        orig_func = builder.load_global_str(helper_name, dec.line)
+        orig_func = builder.load_global_str(name, dec.line)
         decorated_func = load_decorated_func(builder, dec.func, orig_func)
 
     if decorated_func is not None:
@@ -333,8 +332,7 @@ def gen_func_item(builder: IRBuilder,
         builder.functions.append(func_ir)
         # create the dispatch function
         assert isinstance(fitem, FuncDef)
-        dispatch_name = decorator_helper_name(name) if is_decorated else name
-        return gen_dispatch_func_ir(builder, fitem, fn_info.name, dispatch_name, sig)
+        return gen_dispatch_func_ir(builder, fitem, fn_info.name, name, sig)
 
     return func_ir, func_reg
 
@@ -384,11 +382,10 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
     if is_decorated(builder, fdef):
         # Obtain the the function name in order to construct the name of the helper function.
         _, _, name = fdef.fullname.rpartition('.')
-        helper_name = decorator_helper_name(name)
         # Read the PyTypeObject representing the class, get the callable object
         # representing the non-decorated method
         typ = builder.load_native_type_object(cdef.fullname)
-        orig_func = builder.py_get_attr(typ, helper_name, fdef.line)
+        orig_func = builder.py_get_attr(typ, name, fdef.line)
 
         # Decorate the non-decorated method
         decorated_func = load_decorated_func(builder, fdef, orig_func)
@@ -981,26 +978,24 @@ def generate_singledispatch_callable_class_ctor(builder: IRBuilder) -> None:
     """Create an __init__ that sets registry and dispatch_cache to empty dicts"""
     line = -1
     class_ir = builder.fn_info.callable_class.ir
-    builder.enter_method(class_ir, '__init__', bool_rprimitive)
-    empty_dict = builder.call_c(dict_new_op, [], line)
-    builder.add(SetAttr(builder.self(), 'registry', empty_dict, line))
-    cache_dict = builder.call_c(dict_new_op, [], line)
-    dispatch_cache_str = builder.load_str('dispatch_cache')
-    # use the py_setattr_op instead of SetAttr so that it also gets added to our __dict__
-    builder.call_c(py_setattr_op, [builder.self(), dispatch_cache_str, cache_dict], line)
-    # the generated C code seems to expect that __init__ returns a char, so just return 1
-    builder.add(Return(Integer(1, bool_rprimitive, line), line))
-    builder.leave_method()
+    with builder.enter_method(class_ir, '__init__', bool_rprimitive):
+        empty_dict = builder.call_c(dict_new_op, [], line)
+        builder.add(SetAttr(builder.self(), 'registry', empty_dict, line))
+        cache_dict = builder.call_c(dict_new_op, [], line)
+        dispatch_cache_str = builder.load_str('dispatch_cache')
+        # use the py_setattr_op instead of SetAttr so that it also gets added to our __dict__
+        builder.call_c(py_setattr_op, [builder.self(), dispatch_cache_str, cache_dict], line)
+        # the generated C code seems to expect that __init__ returns a char, so just return 1
+        builder.add(Return(Integer(1, bool_rprimitive, line), line))
 
 
 def add_register_method_to_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
     line = -1
-    builder.enter_method(fn_info.callable_class.ir, 'register', object_rprimitive)
-    cls_arg = builder.add_argument('cls', object_rprimitive)
-    func_arg = builder.add_argument('func', object_rprimitive, ArgKind.ARG_OPT)
-    ret_val = builder.call_c(register_function, [builder.self(), cls_arg, func_arg], line)
-    builder.add(Return(ret_val, line))
-    builder.leave_method()
+    with builder.enter_method(fn_info.callable_class.ir, 'register', object_rprimitive):
+        cls_arg = builder.add_argument('cls', object_rprimitive)
+        func_arg = builder.add_argument('func', object_rprimitive, ArgKind.ARG_OPT)
+        ret_val = builder.call_c(register_function, [builder.self(), cls_arg, func_arg], line)
+        builder.add(Return(ret_val, line))
 
 
 def load_singledispatch_registry(builder: IRBuilder, dispatch_func_obj: Value, line: int) -> Value:

@@ -36,6 +36,7 @@ files = [
     'irbuild-isinstance.test',
     'irbuild-dunders.test',
     'irbuild-singledispatch.test',
+    'irbuild-constant-fold.test',
 ]
 
 

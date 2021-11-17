@@ -455,19 +455,19 @@ member:
 
 .. code-block:: python
 
-   from typing import Optional, Iterable, List
+   from typing import Optional, Iterable
    from typing_extensions import Protocol
 
    class Combiner(Protocol):
-       def __call__(self, *vals: bytes, maxlen: Optional[int] = None) -> List[bytes]: ...
+       def __call__(self, *vals: bytes, maxlen: Optional[int] = None) -> list[bytes]: ...
 
    def batch_proc(data: Iterable[bytes], cb_results: Combiner) -> bytes:
        for item in data:
            ...
 
-   def good_cb(*vals: bytes, maxlen: Optional[int] = None) -> List[bytes]:
+   def good_cb(*vals: bytes, maxlen: Optional[int] = None) -> list[bytes]:
        ...
-   def bad_cb(*vals: bytes, maxitems: Optional[int]) -> List[bytes]:
+   def bad_cb(*vals: bytes, maxitems: Optional[int]) -> list[bytes]:
        ...
 
    batch_proc([], good_cb)  # OK

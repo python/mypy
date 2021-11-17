@@ -1,17 +1,17 @@
 from _typeshed import StrOrBytesPath
-from typing import Dict, List, Optional, Tuple
+from typing import Optional, Tuple
 
 class NetrcParseError(Exception):
-    filename: Optional[str]
-    lineno: Optional[int]
+    filename: str | None
+    lineno: int | None
     msg: str
-    def __init__(self, msg: str, filename: Optional[StrOrBytesPath] = ..., lineno: Optional[int] = ...) -> None: ...
+    def __init__(self, msg: str, filename: StrOrBytesPath | None = ..., lineno: int | None = ...) -> None: ...
 
 # (login, account, password) tuple
 _NetrcTuple = Tuple[str, Optional[str], Optional[str]]
 
 class netrc:
-    hosts: Dict[str, _NetrcTuple]
-    macros: Dict[str, List[str]]
-    def __init__(self, file: Optional[StrOrBytesPath] = ...) -> None: ...
-    def authenticators(self, host: str) -> Optional[_NetrcTuple]: ...
+    hosts: dict[str, _NetrcTuple]
+    macros: dict[str, list[str]]
+    def __init__(self, file: StrOrBytesPath | None = ...) -> None: ...
+    def authenticators(self, host: str) -> _NetrcTuple | None: ...

@@ -148,13 +148,16 @@ class DocStringParser:
 
             if token.string == ')':
                 self.state.pop()
-            try:
-                self.args.append(ArgSig(name=self.arg_name, type=self.arg_type,
-                                        default=bool(self.arg_default)))
-            except ValueError:
-                # wrong type, use Any
-                self.args.append(ArgSig(name=self.arg_name, type=None,
-                                        default=bool(self.arg_default)))
+
+            # arg_name is empty when there are no args. e.g. func()
+            if self.arg_name:
+                try:
+                    self.args.append(ArgSig(name=self.arg_name, type=self.arg_type,
+                                            default=bool(self.arg_default)))
+                except ValueError:
+                    # wrong type, use Any
+                    self.args.append(ArgSig(name=self.arg_name, type=None,
+                                            default=bool(self.arg_default)))
             self.arg_name = ""
             self.arg_type = None
             self.arg_default = None

@@ -44,6 +44,7 @@ from mypyc.irbuild.for_helpers import (
     translate_list_comprehension, translate_set_comprehension,
     comprehension_helper
 )
+from mypyc.irbuild.constant_fold import constant_fold_expr
 
 
 # Name and attribute references
@@ -378,6 +379,10 @@ def translate_cast_expr(builder: IRBuilder, expr: CastExpr) -> Value:
 
 
 def transform_unary_expr(builder: IRBuilder, expr: UnaryExpr) -> Value:
+    folded = try_constant_fold(builder, expr)
+    if folded:
+        return folded
+
     return builder.unary_op(builder.accept(expr.expr), expr.op, expr.line)
 
 
@@ -390,6 +395,10 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
         ret = translate_printf_style_formatting(builder, expr.left, expr.right)
         if ret is not None:
             return ret
+
+    folded = try_constant_fold(builder, expr)
+    if folded:
+        return folded
 
     return builder.binary_op(
         builder.accept(expr.left), builder.accept(expr.right), expr.op, expr.line
@@ -411,6 +420,19 @@ def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
     index_reg = builder.accept(expr.index)
     return builder.gen_method_call(
         base, '__getitem__', [index_reg], builder.node_type(expr), expr.line)
+
+
+def try_constant_fold(builder: IRBuilder, expr: Expression) -> Optional[Value]:
+    """Return the constant value of an expression if possible.
+
+    Return None otherwise.
+    """
+    value = constant_fold_expr(builder, expr)
+    if isinstance(value, int):
+        return builder.load_int(value)
+    elif isinstance(value, str):
+        return builder.load_str(value)
+    return None
 
 
 def try_gen_slice_op(builder: IRBuilder, base: Value, index: SliceExpr) -> Optional[Value]:

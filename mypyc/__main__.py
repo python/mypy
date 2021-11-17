@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Mypyc command-line tool.
 
 Usage:
@@ -19,13 +18,14 @@ import sys
 base_path = os.path.join(os.path.dirname(__file__), '..')
 
 setup_format = """\
-from distutils.core import setup
+from setuptools import setup
 from mypyc.build import mypycify
 
 setup(name='mypyc_output',
       ext_modules=mypycify({}, opt_level="{}"),
 )
 """
+
 
 def main() -> None:
     build_dir = 'build'  # can this be overridden??
@@ -48,6 +48,7 @@ def main() -> None:
     env['PYTHONPATH'] = base_path + os.pathsep + env.get('PYTHONPATH', '')
     cmd = subprocess.run([sys.executable, setup_file, 'build_ext', '--inplace'], env=env)
     sys.exit(cmd.returncode)
+
 
 if __name__ == '__main__':
     main()

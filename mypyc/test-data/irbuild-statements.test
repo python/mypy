@@ -342,8 +342,8 @@ def f(d):
     r1 :: native_int
     r2 :: short_int
     r3 :: object
-    r4 :: tuple[bool, int, object]
-    r5 :: int
+    r4 :: tuple[bool, short_int, object]
+    r5 :: short_int
     r6 :: bool
     r7 :: object
     r8, key :: int
@@ -394,8 +394,8 @@ def sum_over_even_values(d):
     r1 :: native_int
     r2 :: short_int
     r3 :: object
-    r4 :: tuple[bool, int, object]
-    r5 :: int
+    r4 :: tuple[bool, short_int, object]
+    r5 :: short_int
     r6 :: bool
     r7 :: object
     r8, key :: int

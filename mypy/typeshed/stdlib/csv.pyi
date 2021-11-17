@@ -17,7 +17,8 @@ from _csv import (
     unregister_dialect as unregister_dialect,
     writer as writer,
 )
-from typing import Any, Generic, Iterable, Iterator, List, Mapping, Optional, Sequence, Type, TypeVar, overload
+from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
+from typing import Any, Generic, Type, TypeVar, overload
 
 if sys.version_info >= (3, 8):
     from typing import Dict as _DictReadMapping
@@ -46,9 +47,9 @@ class unix_dialect(Dialect):
     quoting: int
 
 class DictReader(Generic[_T], Iterator[_DictReadMapping[_T, str]]):
-    fieldnames: Optional[Sequence[_T]]
-    restkey: Optional[str]
-    restval: Optional[str]
+    fieldnames: Sequence[_T] | None
+    restkey: str | None
+    restval: str | None
     reader: _reader
     dialect: _DialectLike
     line_num: int
@@ -57,8 +58,8 @@ class DictReader(Generic[_T], Iterator[_DictReadMapping[_T, str]]):
         self,
         f: Iterable[str],
         fieldnames: Sequence[_T],
-        restkey: Optional[str] = ...,
-        restval: Optional[str] = ...,
+        restkey: str | None = ...,
+        restval: str | None = ...,
         dialect: _DialectLike = ...,
         *args: Any,
         **kwds: Any,
@@ -67,9 +68,9 @@ class DictReader(Generic[_T], Iterator[_DictReadMapping[_T, str]]):
     def __init__(
         self: DictReader[str],
         f: Iterable[str],
-        fieldnames: Optional[Sequence[str]] = ...,
-        restkey: Optional[str] = ...,
-        restval: Optional[str] = ...,
+        fieldnames: Sequence[str] | None = ...,
+        restkey: str | None = ...,
+        restval: str | None = ...,
         dialect: _DialectLike = ...,
         *args: Any,
         **kwds: Any,
@@ -78,15 +79,15 @@ class DictReader(Generic[_T], Iterator[_DictReadMapping[_T, str]]):
     def __next__(self) -> _DictReadMapping[_T, str]: ...
 
 class DictWriter(Generic[_T]):
-    fieldnames: Sequence[_T]
-    restval: Optional[Any]
+    fieldnames: Collection[_T]
+    restval: Any | None
     extrasaction: str
     writer: _writer
     def __init__(
         self,
         f: Any,
-        fieldnames: Sequence[_T],
-        restval: Optional[Any] = ...,
+        fieldnames: Collection[_T],
+        restval: Any | None = ...,
         extrasaction: str = ...,
         dialect: _DialectLike = ...,
         *args: Any,
@@ -100,7 +101,7 @@ class DictWriter(Generic[_T]):
     def writerows(self, rowdicts: Iterable[Mapping[_T, Any]]) -> None: ...
 
 class Sniffer(object):
-    preferred: List[str]
+    preferred: list[str]
     def __init__(self) -> None: ...
-    def sniff(self, sample: str, delimiters: Optional[str] = ...) -> Type[Dialect]: ...
+    def sniff(self, sample: str, delimiters: str | None = ...) -> Type[Dialect]: ...
     def has_header(self, sample: str) -> bool: ...

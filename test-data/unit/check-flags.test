@@ -1193,6 +1193,8 @@ import attr
 class Unannotated:
     foo = attr.ib()
 
+[builtins fixtures/attr.pyi]
+
 [case testDisallowIncompleteDefsAttrsWithAnnotations]
 # flags: --disallow-incomplete-defs
 import attr
@@ -1200,6 +1202,8 @@ import attr
 @attr.s()
 class Annotated:
     bar: int = attr.ib()
+
+[builtins fixtures/attr.pyi]
 
 [case testDisallowIncompleteDefsAttrsPartialAnnotations]
 # flags: --disallow-incomplete-defs
@@ -1209,6 +1213,8 @@ import attr
 class PartiallyAnnotated:  # E: Function is missing a type annotation for one or more arguments
     bar: int = attr.ib()
     baz = attr.ib()
+
+[builtins fixtures/attr.pyi]
 
 [case testAlwaysTrueAlwaysFalseFlags]
 # flags: --always-true=YOLO --always-true=YOLO1 --always-false=BLAH1 --always-false BLAH --ignore-missing-imports
@@ -1518,6 +1524,16 @@ __all__ = ('b',)
 [builtins fixtures/tuple.pyi]
 [out]
 main:2: error: Module "other_module_2" does not explicitly export attribute "a"; implicit reexport disabled
+
+[case testNoImplicitReexportGetAttr]
+# flags: --no-implicit-reexport --python-version 3.7
+from other_module_2 import a  # E: Module "other_module_2" does not explicitly export attribute "a"; implicit reexport disabled
+[file other_module_1.py]
+from typing import Any
+def __getattr__(name: str) -> Any: ...
+[file other_module_2.py]
+from other_module_1 import a
+[builtins fixtures/tuple.pyi]
 
 [case textNoImplicitReexportSuggestions]
 # flags: --no-implicit-reexport

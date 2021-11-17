@@ -34,6 +34,9 @@ class ProperTypePlugin(Plugin):
 
 
 def isinstance_proper_hook(ctx: FunctionContext) -> Type:
+    if len(ctx.arg_types) != 2 or not ctx.arg_types[1]:
+        return ctx.default_return_type
+
     right = get_proper_type(ctx.arg_types[1][0])
     for arg in ctx.arg_types[0]:
         if (is_improper_type(arg) or

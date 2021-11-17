@@ -173,8 +173,8 @@ def test3():
     r9 :: native_int
     r10 :: short_int
     r11 :: object
-    r12 :: tuple[bool, int, object]
-    r13 :: int
+    r12 :: tuple[bool, short_int, object]
+    r13 :: short_int
     r14 :: bool
     r15 :: object
     r16, x, r17 :: int

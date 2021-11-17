@@ -2,7 +2,7 @@ import array
 import threading
 import weakref
 from Queue import Queue
-from typing import Any, List, Optional
+from typing import Any, List
 
 class DummyProcess(threading.Thread):
     _children: weakref.WeakKeyDictionary[Any, Any]
@@ -11,7 +11,7 @@ class DummyProcess(threading.Thread):
     _start_called: bool
     def __init__(self, group=..., target=..., name=..., args=..., kwargs=...) -> None: ...
     @property
-    def exitcode(self) -> Optional[int]: ...
+    def exitcode(self) -> int | None: ...
 
 Process = DummyProcess
 
