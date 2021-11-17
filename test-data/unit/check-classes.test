@@ -147,7 +147,7 @@ class Base:
     def __hash__(self) -> int:
         pass
 
-class Dervied(Base):
+class Derived(Base):
     __hash__ = 1  # E: Incompatible types in assignment (expression has type "int", base class "Base" defined the type as "Callable[[Base], int]")
 
 
