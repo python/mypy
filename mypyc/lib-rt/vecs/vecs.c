@@ -116,10 +116,9 @@ static PyObject *vecs_append(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "OO", &vec, &item))
         return NULL;
 
-    // TODO: Type check obj
-
     if (VecI64_Check(vec)) {
-        // TODO: Check exact
+        if (check_float_error(item))
+            return NULL;
         int64_t x = PyLong_AsLong(item);
         if (x == -1 && PyErr_Occurred()) {
             return NULL;

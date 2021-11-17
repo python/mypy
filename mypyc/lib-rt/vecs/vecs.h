@@ -63,12 +63,20 @@ extern PyTypeObject VecI64Type;
 extern PyTypeObject VecTType;
 extern VecI64Features I64Features;
 
-inline int VecI64_Check(PyObject *o) {
+static inline int VecI64_Check(PyObject *o) {
     return o->ob_type == &VecI64Type;
 }
 
-inline int VecT_Check(PyObject *o) {
+static inline int VecT_Check(PyObject *o) {
     return o->ob_type == &VecTType;
+}
+
+static inline int check_float_error(PyObject *o) {
+    if (PyFloat_Check(o)) {
+        PyErr_SetString(PyExc_TypeError, "integer argument expected, got float");
+        return 1;
+    }
+    return 0;
 }
 
 #endif

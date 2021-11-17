@@ -37,7 +37,8 @@ PyObject *vec_i64_get_item(PyObject *o, Py_ssize_t i) {
 }
 
 int vec_i64_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
-    // TODO: Type check o
+    if (check_float_error(o))
+        return -1;
     VecI64Object *v = (VecI64Object *)self;
     if ((size_t)i < (size_t)v->len) {
         long long x = PyLong_AsLongLong(o);
