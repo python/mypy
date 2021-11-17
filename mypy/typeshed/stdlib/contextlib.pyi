@@ -1,5 +1,5 @@
 import sys
-from _typeshed import Self
+from _typeshed import Self, StrOrBytesPath
 from types import TracebackType
 from typing import (
     IO,
@@ -9,6 +9,7 @@ from typing import (
     Awaitable,
     Callable,
     ContextManager,
+    Generic,
     Iterator,
     Optional,
     Type,
@@ -124,3 +125,11 @@ elif sys.version_info >= (3, 7):
         def __init__(self: nullcontext[_T], enter_result: _T) -> None: ...
         def __enter__(self) -> _T: ...
         def __exit__(self, *exctype: Any) -> None: ...
+
+if sys.version_info >= (3, 11):
+    _T_fd_or_any_path = TypeVar("_T_fd_or_any_path", bound=int | StrOrBytesPath)
+    class chdir(AbstractContextManager[None], Generic[_T_fd_or_any_path]):
+        path: _T_fd_or_any_path
+        def __init__(self, path: _T_fd_or_any_path) -> None: ...
+        def __enter__(self) -> None: ...
+        def __exit__(self, *excinfo: object) -> None: ...

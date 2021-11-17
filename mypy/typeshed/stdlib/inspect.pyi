@@ -7,16 +7,23 @@ from collections.abc import Awaitable, Callable, Generator, Mapping, Sequence, S
 from types import (
     AsyncGeneratorType,
     BuiltinFunctionType,
+    BuiltinMethodType,
     CodeType,
     CoroutineType,
     FrameType,
     FunctionType,
     GeneratorType,
+    GetSetDescriptorType,
+    LambdaType,
     MethodType,
     ModuleType,
     TracebackType,
 )
-from typing import Any, ClassVar, NamedTuple, Tuple, Type, Union
+
+if sys.version_info >= (3, 7):
+    from types import ClassMethodDescriptorType, WrapperDescriptorType, MemberDescriptorType, MethodDescriptorType
+
+from typing import Any, ClassVar, NamedTuple, Protocol, Tuple, Type, TypeVar, Union
 from typing_extensions import Literal, TypeGuard
 
 #
@@ -71,17 +78,47 @@ if sys.version_info >= (3, 8):
 else:
     def isasyncgenfunction(object: object) -> bool: ...
 
+_T_cont = TypeVar("_T_cont", contravariant=True)
+_V_cont = TypeVar("_V_cont", contravariant=True)
+
+class _SupportsSet(Protocol[_T_cont, _V_cont]):
+    def __set__(self, __instance: _T_cont, __value: _V_cont) -> None: ...
+
+class _SupportsDelete(Protocol[_T_cont]):
+    def __delete__(self, __instance: _T_cont) -> None: ...
+
 def isasyncgen(object: object) -> TypeGuard[AsyncGeneratorType[Any, Any]]: ...
 def istraceback(object: object) -> TypeGuard[TracebackType]: ...
 def isframe(object: object) -> TypeGuard[FrameType]: ...
 def iscode(object: object) -> TypeGuard[CodeType]: ...
 def isbuiltin(object: object) -> TypeGuard[BuiltinFunctionType]: ...
-def isroutine(object: object) -> bool: ...
+
+if sys.version_info < (3, 7):
+    def isroutine(
+        object: object,
+    ) -> TypeGuard[FunctionType | LambdaType | MethodType | BuiltinFunctionType | BuiltinMethodType]: ...
+    def ismethoddescriptor(object: object) -> bool: ...
+    def ismemberdescriptor(object: object) -> bool: ...
+
+else:
+    def isroutine(
+        object: object,
+    ) -> TypeGuard[
+        FunctionType
+        | LambdaType
+        | MethodType
+        | BuiltinFunctionType
+        | BuiltinMethodType
+        | WrapperDescriptorType
+        | MethodDescriptorType
+        | ClassMethodDescriptorType
+    ]: ...
+    def ismethoddescriptor(object: object) -> TypeGuard[MethodDescriptorType]: ...
+    def ismemberdescriptor(object: object) -> TypeGuard[MemberDescriptorType]: ...
+
 def isabstract(object: object) -> bool: ...
-def ismethoddescriptor(object: object) -> bool: ...
-def isdatadescriptor(object: object) -> bool: ...
-def isgetsetdescriptor(object: object) -> bool: ...
-def ismemberdescriptor(object: object) -> bool: ...
+def isgetsetdescriptor(object: object) -> TypeGuard[GetSetDescriptorType]: ...
+def isdatadescriptor(object: object) -> TypeGuard[_SupportsSet[Any, Any] | _SupportsDelete[Any]]: ...
 
 #
 # Retrieving source code

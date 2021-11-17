@@ -407,7 +407,7 @@ class Misc:
         pad: _ScreenUnits = ...,
         uniform: str = ...,
         weight: int = ...,
-    ) -> _GridIndexInfo | Any: ...  # can be None but annoyying to check
+    ) -> _GridIndexInfo | Any: ...  # can be None but annoying to check
     columnconfigure = grid_columnconfigure
     rowconfigure = grid_rowconfigure
     def grid_location(self, x: _ScreenUnits, y: _ScreenUnits) -> tuple[int, int]: ...
@@ -730,7 +730,7 @@ class Pack:
     forget = pack_forget
     propagate = Misc.pack_propagate
     # commented out to avoid mypy getting confused with multiple
-    # inheritance and how things get overrided with different things
+    # inheritance and how things get overridden with different things
     # info = pack_info
     # pack_propagate = Misc.pack_propagate
     # configure = pack_configure
@@ -774,7 +774,7 @@ class Place:
     place = place_configure
     info = place_info
     # commented out to avoid mypy getting confused with multiple
-    # inheritance and how things get overrided with different things
+    # inheritance and how things get overridden with different things
     # config = place_configure
     # configure = place_configure
     # forget = place_forget
@@ -816,7 +816,7 @@ class Grid:
     location = Misc.grid_location
     size = Misc.grid_size
     # commented out to avoid mypy getting confused with multiple
-    # inheritance and how things get overrided with different things
+    # inheritance and how things get overridden with different things
     # bbox = Misc.grid_bbox
     # grid_bbox = Misc.grid_bbox
     # forget = grid_forget
@@ -954,7 +954,7 @@ class Button(Widget):
         state: Literal["normal", "active", "disabled"] = ...,
         takefocus: _TakeFocusValue = ...,
         text: float | str = ...,
-        # We allow the textvariable to be any Variable, not necessarly
+        # We allow the textvariable to be any Variable, not necessarily
         # StringVar. This is useful for e.g. a button that displays the value
         # of an IntVar.
         textvariable: Variable = ...,
@@ -2960,7 +2960,7 @@ class OptionMenu(Menubutton):
         command: Callable[[StringVar], Any] | None = ...,
     ) -> None: ...
     # configure, config, cget are inherited from Menubutton
-    # destroy and __getitem__ are overrided, signature does not change
+    # destroy and __getitem__ are overridden, signature does not change
 
 class _Image(Protocol):
     tk: _tkinter.TkappType

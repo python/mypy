@@ -2,7 +2,7 @@ import collections  # Needed by aliases like DefaultDict, see mypy issue 2986
 import sys
 from abc import ABCMeta, abstractmethod
 from types import BuiltinFunctionType, CodeType, FrameType, FunctionType, MethodType, ModuleType, TracebackType
-from typing_extensions import Literal as _Literal, ParamSpec as _ParamSpec
+from typing_extensions import Literal as _Literal, ParamSpec as _ParamSpec, final as _final
 
 if sys.version_info >= (3, 7):
     from types import MethodDescriptorType, MethodWrapperType, WrapperDescriptorType
@@ -50,6 +50,7 @@ Protocol: _SpecialForm = ...
 Callable: _SpecialForm = ...
 Type: _SpecialForm = ...
 ClassVar: _SpecialForm = ...
+NoReturn: _SpecialForm = ...
 if sys.version_info >= (3, 8):
     Final: _SpecialForm = ...
     def final(f: _T) -> _T: ...
@@ -82,11 +83,6 @@ if sys.version_info >= (3, 10):
     Concatenate: _SpecialForm = ...
     TypeAlias: _SpecialForm = ...
     TypeGuard: _SpecialForm = ...
-
-# Return type that indicates a function does not return.
-# This type is equivalent to the None type, but the no-op Union is necessary to
-# distinguish the None type from the None value.
-NoReturn = Union[None]
 
 # These type variables are used by the container types.
 _S = TypeVar("_S")
@@ -167,7 +163,7 @@ class SupportsRound(Protocol[_T_co]):
     def __round__(self) -> int: ...
     @overload
     @abstractmethod
-    def __round__(self, ndigits: int) -> _T_co: ...
+    def __round__(self, __ndigits: int) -> _T_co: ...
 
 @runtime_checkable
 class Sized(Protocol, metaclass=ABCMeta):
@@ -549,6 +545,7 @@ class TextIO(IO[str]):
 
 class ByteString(Sequence[int], metaclass=ABCMeta): ...
 
+@_final
 class Match(Generic[AnyStr]):
     pos: int
     endpos: int
@@ -592,6 +589,7 @@ class Match(Generic[AnyStr]):
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
 
+@_final
 class Pattern(Generic[AnyStr]):
     flags: int
     groupindex: Mapping[str, int]

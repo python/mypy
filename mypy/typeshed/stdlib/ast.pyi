@@ -8,10 +8,9 @@
 # sys.
 import sys
 import typing as _typing
+from _ast import *  # type: ignore
 from typing import Any, Iterator, TypeVar, overload
 from typing_extensions import Literal
-
-from _ast import *  # type: ignore
 
 if sys.version_info >= (3, 8):
     class Num(Constant):

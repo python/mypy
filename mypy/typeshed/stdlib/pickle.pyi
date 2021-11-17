@@ -1,5 +1,6 @@
 import sys
 from typing import Any, Callable, ClassVar, Iterable, Iterator, Mapping, Optional, Protocol, Tuple, Type, Union
+from typing_extensions import final
 
 HIGHEST_PROTOCOL: int
 DEFAULT_PROTOCOL: int
@@ -15,6 +16,7 @@ class _WritableFileobj(Protocol):
 
 if sys.version_info >= (3, 8):
     # TODO: holistic design for buffer interface (typing.Buffer?)
+    @final
     class PickleBuffer:
         # buffer must be a buffer-providing object
         def __init__(self, buffer: Any) -> None: ...
