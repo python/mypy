@@ -21,6 +21,7 @@ from mypyc.ir.rtypes import (
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD, all_values
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.pprint import generate_names_for_ir
+from mypyc.analysis.blockfreq import frequently_executed_blocks
 
 # Whether to insert debug asserts for all error handling, to quickly
 # catch errors propagating without exceptions set.
@@ -77,8 +78,11 @@ def generate_native_function(fn: FuncIR,
     for i, block in enumerate(blocks):
         block.label = i
 
+    common = frequently_executed_blocks(fn.blocks[0])
+
     for i in range(len(blocks)):
         block = blocks[i]
+        visitor.rare = block not in common
         next_block = None
         if i + 1 < len(blocks):
             next_block = blocks[i + 1]
@@ -105,6 +109,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.source_path = source_path
         self.module_name = module_name
         self.literals = emitter.context.literals
+        self.rare = False
         self.next_block: Optional[BasicBlock] = None
 
     def temp_name(self) -> str:
@@ -416,7 +421,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
     def visit_dec_ref(self, op: DecRef) -> None:
         src = self.reg(op.src)
-        self.emit_dec_ref(src, op.src.type, op.is_xdec)
+        self.emit_dec_ref(src, op.src.type, is_xdec=op.is_xdec)
 
     def visit_box(self, op: Box) -> None:
         self.emitter.emit_box(self.reg(op.src), self.reg(op), op.src.type, can_borrow=True)
@@ -483,14 +488,20 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         rhs = self.reg(op.rhs)
         lhs_cast = ""
         rhs_cast = ""
-        signed_op = {ComparisonOp.SLT, ComparisonOp.SGT, ComparisonOp.SLE, ComparisonOp.SGE}
-        unsigned_op = {ComparisonOp.ULT, ComparisonOp.UGT, ComparisonOp.ULE, ComparisonOp.UGE}
-        if op.op in signed_op:
+        if op.op in (ComparisonOp.SLT, ComparisonOp.SGT, ComparisonOp.SLE, ComparisonOp.SGE):
+            # Always signed comparison op
             lhs_cast = self.emit_signed_int_cast(op.lhs.type)
             rhs_cast = self.emit_signed_int_cast(op.rhs.type)
-        elif op.op in unsigned_op:
+        elif op.op in (ComparisonOp.ULT, ComparisonOp.UGT, ComparisonOp.ULE, ComparisonOp.UGE):
+            # Always unsigned comparison op
             lhs_cast = self.emit_unsigned_int_cast(op.lhs.type)
             rhs_cast = self.emit_unsigned_int_cast(op.rhs.type)
+        elif isinstance(op.lhs, Integer) and op.lhs.value < 0:
+            # Force signed ==/!= with negative operand
+            rhs_cast = self.emit_signed_int_cast(op.rhs.type)
+        elif isinstance(op.rhs, Integer) and op.rhs.value < 0:
+            # Force signed ==/!= with negative operand
+            lhs_cast = self.emit_signed_int_cast(op.lhs.type)
         self.emit_line('%s = %s%s %s %s%s;' % (dest, lhs_cast, lhs,
                                                op.op_str[op.op], rhs_cast, rhs))
 
@@ -542,7 +553,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             s = str(val)
             if val >= (1 << 31):
                 # Avoid overflowing signed 32-bit int
-                s += 'U'
+                s += 'ULL'
+            elif val == -(1 << 63):
+                # Avoid overflowing C integer literal
+                s = '(-9223372036854775807LL - 1)'
+            elif val <= -(1 << 31):
+                s += 'LL'
             return s
         else:
             return self.emitter.reg(reg)
@@ -563,10 +579,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.emitter.emit_lines(*lines)
 
     def emit_inc_ref(self, dest: str, rtype: RType) -> None:
-        self.emitter.emit_inc_ref(dest, rtype)
+        self.emitter.emit_inc_ref(dest, rtype, rare=self.rare)
 
     def emit_dec_ref(self, dest: str, rtype: RType, is_xdec: bool) -> None:
-        self.emitter.emit_dec_ref(dest, rtype, is_xdec)
+        self.emitter.emit_dec_ref(dest, rtype, is_xdec=is_xdec, rare=self.rare)
 
     def emit_declaration(self, line: str) -> None:
         self.declarations.emit_line(line)

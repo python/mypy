@@ -8,10 +8,10 @@ def reset() -> str: ...  # undocumented
 def small(text: str) -> str: ...  # undocumented
 def strong(text: str) -> str: ...  # undocumented
 def grey(text: str) -> str: ...  # undocumented
-def lookup(name: str, frame: FrameType, locals: dict[str, Any]) -> Tuple[str | None, Any]: ...  # undocumented
+def lookup(name: str, frame: FrameType, locals: dict[str, Any]) -> tuple[str | None, Any]: ...  # undocumented
 def scanvars(
     reader: Callable[[], bytes], frame: FrameType, locals: dict[str, Any]
-) -> list[Tuple[str, str | None, Any]]: ...  # undocumented
+) -> list[tuple[str, str | None, Any]]: ...  # undocumented
 def html(einfo: _ExcInfo, context: int = ...) -> str: ...
 def text(einfo: _ExcInfo, context: int = ...) -> str: ...
 

@@ -317,17 +317,18 @@ def analyze_union_member_access(name: str, typ: UnionType, mx: MemberContext) ->
 
 
 def analyze_none_member_access(name: str, typ: NoneType, mx: MemberContext) -> Type:
-    if mx.chk.should_suppress_optional_error([typ]):
-        return AnyType(TypeOfAny.from_error)
     is_python_3 = mx.chk.options.python_version[0] >= 3
     # In Python 2 "None" has exactly the same attributes as "object". Python 3 adds a single
     # extra attribute, "__bool__".
     if is_python_3 and name == '__bool__':
+        literal_false = LiteralType(False, fallback=mx.named_type('builtins.bool'))
         return CallableType(arg_types=[],
                             arg_kinds=[],
                             arg_names=[],
-                            ret_type=mx.named_type('builtins.bool'),
+                            ret_type=literal_false,
                             fallback=mx.named_type('builtins.function'))
+    elif mx.chk.should_suppress_optional_error([typ]):
+        return AnyType(TypeOfAny.from_error)
     else:
         return _analyze_member_access(name, mx.named_type('builtins.object'), mx)
 
@@ -437,7 +438,7 @@ def check_final_member(name: str, info: TypeInfo, msg: MessageBuilder, ctx: Cont
 
 def analyze_descriptor_access(instance_type: Type,
                               descriptor_type: Type,
-                              builtin_type: Callable[[str], Instance],
+                              named_type: Callable[[str], Instance],
                               msg: MessageBuilder,
                               context: Context, *,
                               chk: 'mypy.checker.TypeChecker') -> Type:
@@ -459,7 +460,7 @@ def analyze_descriptor_access(instance_type: Type,
     if isinstance(descriptor_type, UnionType):
         # Map the access over union types
         return make_simplified_union([
-            analyze_descriptor_access(instance_type, typ, builtin_type,
+            analyze_descriptor_access(instance_type, typ, named_type,
                                       msg, context, chk=chk)
             for typ in descriptor_type.items
         ])
@@ -475,7 +476,7 @@ def analyze_descriptor_access(instance_type: Type,
         msg.fail(message_registry.DESCRIPTOR_GET_NOT_CALLABLE.format(descriptor_type), context)
         return AnyType(TypeOfAny.from_error)
 
-    function = function_type(dunder_get, builtin_type('builtins.function'))
+    function = function_type(dunder_get, named_type('builtins.function'))
     bound_method = bind_self(function, descriptor_type)
     typ = map_instance_to_supertype(descriptor_type, dunder_get.info)
     dunder_get_type = expand_type_by_instance(bound_method, typ)
@@ -517,7 +518,7 @@ def analyze_descriptor_access(instance_type: Type,
 
 
 def instance_alias_type(alias: TypeAlias,
-                        builtin_type: Callable[[str], Instance]) -> Type:
+                        named_type: Callable[[str], Instance]) -> Type:
     """Type of a type alias node targeting an instance, when appears in runtime context.
 
     As usual, we first erase any unbound type variables to Any.
@@ -527,7 +528,7 @@ def instance_alias_type(alias: TypeAlias,
                       Instance), "Must be called only with aliases to classes"
     target = get_proper_type(set_any_tvars(alias, alias.line, alias.column))
     assert isinstance(target, Instance)
-    tp = type_object_type(target.type, builtin_type)
+    tp = type_object_type(target.type, named_type)
     return expand_type_by_instance(tp, target)
 
 

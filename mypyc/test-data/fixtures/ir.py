@@ -36,6 +36,7 @@ class int:
     def __mul__(self, n: int) -> int: pass
     def __pow__(self, n: int, modulo: Optional[int] = None) -> int: pass
     def __floordiv__(self, x: int) -> int: pass
+    def __truediv__(self, x: float) -> float: pass
     def __mod__(self, x: int) -> int: pass
     def __neg__(self) -> int: pass
     def __pos__(self) -> int: pass
@@ -271,8 +272,13 @@ class NotImplementedError(RuntimeError): pass
 class StopIteration(Exception):
     value: Any
 
+class ArithmeticError(Exception): pass
+
+class ZeroDivisionError(Exception): pass
+
 def any(i: Iterable[T]) -> bool: pass
 def all(i: Iterable[T]) -> bool: pass
+def sum(i: Iterable[T]) -> int: pass
 def reversed(object: Sequence[T]) -> Iterator[T]: ...
 def id(o: object) -> int: pass
 # This type is obviously wrong but the test stubs don't have Sized anymore
@@ -296,6 +302,8 @@ def zip(x: Iterable[T], y: Iterable[S], z: Iterable[V]) -> Iterator[Tuple[T, S, 
 def eval(e: str) -> Any: ...
 def abs(x: float) -> float: ...
 def exit() -> None: ...
+def min(x: T, y: T) -> T: ...
+def max(x: T, y: T) -> T: ...
 def repr(o: object) -> str: ...
 def ascii(o: object) -> str: ...
 def ord(o: object) -> int: ...

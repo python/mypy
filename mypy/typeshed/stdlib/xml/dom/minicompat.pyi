@@ -2,7 +2,7 @@ from typing import Any, Iterable, List, Tuple, Type, TypeVar
 
 _T = TypeVar("_T")
 
-StringTypes: Tuple[Type[str]]
+StringTypes: tuple[Type[str]]
 
 class NodeList(List[_T]):
     length: int

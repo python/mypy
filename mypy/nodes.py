@@ -8,7 +8,7 @@ from collections import defaultdict
 from typing import (
     Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, Callable, Sequence, Iterator
 )
-from typing_extensions import DefaultDict, Final, TYPE_CHECKING
+from typing_extensions import DefaultDict, Final, TYPE_CHECKING, TypeAlias as _TypeAlias
 from mypy_extensions import trait
 
 import mypy.strconv
@@ -64,7 +64,7 @@ if TYPE_CHECKING:
 
 T = TypeVar('T')
 
-JsonDict = Dict[str, Any]
+JsonDict: _TypeAlias = Dict[str, Any]
 
 
 # Symbol table node kinds
@@ -133,6 +133,12 @@ type_aliases_source_versions: Final = {
     'typing.DefaultDict': (2, 7),
     'typing.Deque': (2, 7),
     'typing.OrderedDict': (3, 7),
+}
+
+# This keeps track of aliases in `typing_extensions`, which we treat specially.
+typing_extensions_aliases: Final = {
+    # See: https://github.com/python/mypy/issues/11528
+    'typing_extensions.OrderedDict': 'collections.OrderedDict',
 }
 
 reverse_builtin_aliases: Final = {
@@ -208,7 +214,7 @@ class FakeExpression(Expression):
 # TODO:
 # Lvalue = Union['NameExpr', 'MemberExpr', 'IndexExpr', 'SuperExpr', 'StarExpr'
 #                'TupleExpr']; see #1783.
-Lvalue = Expression
+Lvalue: _TypeAlias = Expression
 
 
 @trait
@@ -241,7 +247,7 @@ class SymbolNode(Node):
 
 
 # Items: fullname, related symbol table node, surrounding type (if any)
-Definition = Tuple[str, 'SymbolTableNode', Optional['TypeInfo']]
+Definition: _TypeAlias = Tuple[str, 'SymbolTableNode', Optional['TypeInfo']]
 
 
 class MypyFile(SymbolNode):
@@ -514,7 +520,7 @@ class FuncBase(Node):
         return self._fullname
 
 
-OverloadPart = Union['FuncDef', 'Decorator']
+OverloadPart: _TypeAlias = Union['FuncDef', 'Decorator']
 
 
 class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
@@ -1288,16 +1294,19 @@ class IfStmt(Statement):
 
 
 class RaiseStmt(Statement):
-    __slots__ = ('expr', 'from_expr')
+    __slots__ = ('expr', 'from_expr', 'legacy_mode')
 
     # Plain 'raise' is a valid statement.
     expr: Optional[Expression]
     from_expr: Optional[Expression]
+    # Is set when python2 has `raise exc, msg, traceback`.
+    legacy_mode: bool
 
     def __init__(self, expr: Optional[Expression], from_expr: Optional[Expression]) -> None:
         super().__init__()
         self.expr = expr
         self.from_expr = from_expr
+        self.legacy_mode = False
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_raise_stmt(self)

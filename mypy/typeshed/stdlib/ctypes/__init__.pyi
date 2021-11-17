@@ -1,5 +1,5 @@
 import sys
-from array import array
+from _typeshed import ReadableBuffer, WriteableBuffer
 from typing import (
     Any,
     Callable,
@@ -72,13 +72,6 @@ if sys.platform == "win32":
 pydll: LibraryLoader[PyDLL]
 pythonapi: PyDLL
 
-# Anything that implements the read-write buffer interface.
-# The buffer interface is defined purely on the C level, so we cannot define a normal Protocol
-# for it. Instead we have to list the most common stdlib buffer classes in a Union.
-_WritableBuffer = _UnionT[bytearray, memoryview, array[Any], _CData]
-# Same as _WritableBuffer, but also includes read-only buffer types (like bytes).
-_ReadOnlyBuffer = _UnionT[_WritableBuffer, bytes]
-
 class _CDataMeta(type):
     # By default mypy complains about the following two methods, because strictly speaking cls
     # might not be a Type[_CT]. However this can never actually happen, because the only class that
@@ -91,9 +84,9 @@ class _CData(metaclass=_CDataMeta):
     _b_needsfree_: bool
     _objects: Mapping[Any, int] | None
     @classmethod
-    def from_buffer(cls: Type[_CT], source: _WritableBuffer, offset: int = ...) -> _CT: ...
+    def from_buffer(cls: Type[_CT], source: WriteableBuffer, offset: int = ...) -> _CT: ...
     @classmethod
-    def from_buffer_copy(cls: Type[_CT], source: _ReadOnlyBuffer, offset: int = ...) -> _CT: ...
+    def from_buffer_copy(cls: Type[_CT], source: ReadableBuffer, offset: int = ...) -> _CT: ...
     @classmethod
     def from_address(cls: Type[_CT], address: int) -> _CT: ...
     @classmethod
@@ -116,7 +109,7 @@ class _FuncPointer(_PointerLike, _CData):
     @overload
     def __init__(self, callable: Callable[..., Any]) -> None: ...
     @overload
-    def __init__(self, func_spec: Tuple[str | int, CDLL], paramflags: Tuple[_PF, ...] = ...) -> None: ...
+    def __init__(self, func_spec: tuple[str | int, CDLL], paramflags: Tuple[_PF, ...] = ...) -> None: ...
     @overload
     def __init__(self, vtlb_index: int, name: str, paramflags: Tuple[_PF, ...] = ..., iid: pointer[c_int] = ...) -> None: ...
     def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
@@ -259,7 +252,7 @@ class _CField:
     size: int
 
 class _StructUnionMeta(_CDataMeta):
-    _fields_: Sequence[Tuple[str, Type[_CData]] | Tuple[str, Type[_CData], int]]
+    _fields_: Sequence[tuple[str, Type[_CData]] | tuple[str, Type[_CData], int]]
     _pack_: int
     _anonymous_: Sequence[str]
     def __getattr__(self, name: str) -> _CField: ...

@@ -7,9 +7,9 @@ from mypy.backports import OrderedDict
 
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Set, Optional, Union, Iterable, NamedTuple,
-    Sequence, Iterator
+    Sequence
 )
-from typing_extensions import ClassVar, Final, TYPE_CHECKING, overload
+from typing_extensions import ClassVar, Final, TYPE_CHECKING, overload, TypeAlias as _TypeAlias
 
 import mypy.nodes
 from mypy import state
@@ -23,7 +23,7 @@ from mypy.bogus_type import Bogus
 
 T = TypeVar('T')
 
-JsonDict = Dict[str, Any]
+JsonDict: _TypeAlias = Dict[str, Any]
 
 # The set of all valid expressions that can currently be contained
 # inside of a Literal[...].
@@ -52,7 +52,7 @@ JsonDict = Dict[str, Any]
 # Note: Although "Literal[None]" is a valid type, we internally always convert
 # such a type directly into "None". So, "None" is not a valid parameter of
 # LiteralType and is omitted from this list.
-LiteralValue = Union[int, str, bool]
+LiteralValue: _TypeAlias = Union[int, str, bool]
 
 
 # If we only import type_visitor in the middle of the file, mypy
@@ -130,6 +130,15 @@ class Type(mypy.nodes.Context):
     """Abstract base class for all types."""
 
     __slots__ = ('can_be_true', 'can_be_false')
+    # 'can_be_true' and 'can_be_false' mean whether the value of the
+    # expression can be true or false in a boolean context. They are useful
+    # when inferring the type of logic expressions like `x and y`.
+    #
+    # For example:
+    #   * the literal `False` can't be true while `True` can.
+    #   * a value with type `bool` can be true or false.
+    #   * `None` can't be true
+    #   * ...
 
     def __init__(self, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
@@ -947,9 +956,7 @@ class FunctionLike(ProperType):
     def __init__(self, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
         self.can_be_false = False
-        if TYPE_CHECKING:  # we don't want a runtime None value
-            # Corresponding instance type (e.g. builtins.type)
-            self.fallback = cast(Instance, None)
+        self.fallback: Instance
 
     @abstractmethod
     def is_type_obj(self) -> bool: pass
@@ -1050,9 +1057,16 @@ class CallableType(FunctionLike):
             # after serialization, but it is useful in error messages.
             # TODO: decide how to add more info here (file, line, column)
             # without changing interface hash.
-            self.def_extras = {'first_arg': definition.arguments[0].variable.name
-                               if definition.arg_names and definition.info and
-                               not definition.is_static else None}
+            self.def_extras = {
+                'first_arg': (
+                    definition.arguments[0].variable.name
+                    if (getattr(definition, 'arguments', None)
+                        and definition.arg_names
+                        and definition.info
+                        and not definition.is_static)
+                    else None
+                ),
+            }
         else:
             self.def_extras = {}
         self.type_guard = type_guard
@@ -1152,7 +1166,7 @@ class CallableType(FunctionLike):
             return sys.maxsize
         return sum([kind.is_positional() for kind in self.arg_kinds])
 
-    def formal_arguments(self, include_star_args: bool = False) -> Iterator[FormalArgument]:
+    def formal_arguments(self, include_star_args: bool = False) -> List[FormalArgument]:
         """Yields the formal arguments corresponding to this callable, ignoring *arg and **kwargs.
 
         To handle *args and **kwargs, use the 'callable.var_args' and 'callable.kw_args' fields,
@@ -1160,6 +1174,7 @@ class CallableType(FunctionLike):
 
         If you really want to include star args in the yielded output, set the
         'include_star_args' parameter to 'True'."""
+        args = []
         done_with_positional = False
         for i in range(len(self.arg_types)):
             kind = self.arg_kinds[i]
@@ -1170,11 +1185,14 @@ class CallableType(FunctionLike):
 
             required = kind.is_required()
             pos = None if done_with_positional else i
-            yield FormalArgument(
+            arg = FormalArgument(
                 self.arg_names[i],
                 pos,
                 self.arg_types[i],
-                required)
+                required
+            )
+            args.append(arg)
+        return args
 
     def argument_by_name(self, name: Optional[str]) -> Optional[FormalArgument]:
         if name is None:
@@ -1373,8 +1391,7 @@ class TupleType(ProperType):
         implicit: If True, derived from a tuple expression (t,....) instead of Tuple[t, ...]
     """
 
-    __slots__ = ('items', 'partial_fallback', 'implicit',
-                 'can_be_true', 'can_be_false')
+    __slots__ = ('items', 'partial_fallback', 'implicit')
 
     items: List[Type]
     partial_fallback: Instance
@@ -1451,8 +1468,7 @@ class TypedDictType(ProperType):
     TODO: The fallback structure is perhaps overly complicated.
     """
 
-    __slots__ = ('items', 'required_keys', 'fallback',
-                 'can_be_true', 'can_be_false')
+    __slots__ = ('items', 'required_keys', 'fallback')
 
     items: "OrderedDict[str, Type]"  # item_name -> item_type
     required_keys: Set[str]
@@ -2330,6 +2346,7 @@ def flatten_nested_unions(types: Iterable[Type],
     flat_items: List[Type] = []
     if handle_type_alias_type:
         types = get_proper_types(types)
+    # TODO: avoid duplicate types in unions (e.g. using hash)
     for tp in types:
         if isinstance(tp, ProperType) and isinstance(tp, UnionType):
             flat_items.extend(flatten_nested_unions(tp.items,
@@ -2352,6 +2369,16 @@ def union_items(typ: Type) -> List[ProperType]:
         return items
     else:
         return [typ]
+
+
+def is_union_with_any(tp: Type) -> bool:
+    """Is this a union with Any or a plain Any type?"""
+    tp = get_proper_type(tp)
+    if isinstance(tp, AnyType):
+        return True
+    if not isinstance(tp, UnionType):
+        return False
+    return any(is_union_with_any(t) for t in get_proper_types(tp.items))
 
 
 def is_generic_instance(tp: Type) -> bool:

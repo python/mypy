@@ -854,8 +854,7 @@ p.f(1)
 from p.a import f
 [file p/a.py]
 def f(x: str) -> None: pass
-[delete p/__init__.py.2]
-[delete p/a.py.2]
+[delete p.2]
 [out]
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 ==
@@ -870,7 +869,7 @@ p.a.f(1)
 [file p/a.py]
 def f(x: str) -> None: pass
 [delete p/a.py.2]
-[delete p/__init__.py.3]
+[delete p.3]
 [builtins fixtures/module.pyi]
 [out]
 main:3: error: Argument 1 to "f" has incompatible type "int"; expected "str"
@@ -884,28 +883,30 @@ main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missin
 main:2: error: Cannot find implementation or library stub for module named "p"
 
 [case testDeletePackage4]
+# flags: --no-namespace-packages
 import p.a
 p.a.f(1)
 [file p/a.py]
 def f(x: str) -> None: pass
 [file p/__init__.py]
 [delete p/__init__.py.2]
-[delete p/a.py.3]
+[delete p.3]
 [out]
-main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+main:3: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 ==
-main:1: error: Cannot find implementation or library stub for module named "p.a"
-main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-main:1: error: Cannot find implementation or library stub for module named "p"
+main:2: error: Cannot find implementation or library stub for module named "p.a"
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+main:2: error: Cannot find implementation or library stub for module named "p"
 ==
-main:1: error: Cannot find implementation or library stub for module named "p.a"
-main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-main:1: error: Cannot find implementation or library stub for module named "p"
+main:2: error: Cannot find implementation or library stub for module named "p.a"
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+main:2: error: Cannot find implementation or library stub for module named "p"
 
 [case testDeletePackage5]
-# cmd1: mypy main p/a.py p/__init__.py
-# cmd2: mypy main p/a.py
-# cmd3: mypy main
+# flags: --no-namespace-packages
+# cmd1: mypy -m main -m p.a -m p.__init__
+# cmd2: mypy -m main -m p.a
+# cmd3: mypy -m main
 
 import p.a
 p.a.f(1)
@@ -913,23 +914,24 @@ p.a.f(1)
 def f(x: str) -> None: pass
 [file p/__init__.py]
 [delete p/__init__.py.2]
-[delete p/a.py.3]
+[delete p.3]
 [out]
-main:6: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+main:7: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 ==
-main:5: error: Cannot find implementation or library stub for module named "p.a"
-main:5: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-main:5: error: Cannot find implementation or library stub for module named "p"
+main:6: error: Cannot find implementation or library stub for module named "p.a"
+main:6: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+main:6: error: Cannot find implementation or library stub for module named "p"
 ==
-main:5: error: Cannot find implementation or library stub for module named "p.a"
-main:5: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-main:5: error: Cannot find implementation or library stub for module named "p"
+main:6: error: Cannot find implementation or library stub for module named "p.a"
+main:6: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+main:6: error: Cannot find implementation or library stub for module named "p"
 
 
 [case testDeletePackage6]
-# cmd1: mypy p/a.py p/b.py p/__init__.py
-# cmd2: mypy p/a.py p/b.py
-# cmd3: mypy p/a.py p/b.py
+# flags: --no-namespace-packages
+# cmd1: mypy -m p.a -m p.b -m p.__init__
+# cmd2: mypy -m p.a -m p.b
+# cmd3: mypy -m p.a -m p.b
 [file p/a.py]
 def f(x: str) -> None: pass
 [file p/b.py]

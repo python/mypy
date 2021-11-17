@@ -325,6 +325,7 @@ if sys.platform == "linux" and sys.version_info >= (3, 7):
 
 if sys.platform == "linux" and sys.version_info >= (3, 9):
     CAN_J1939: int
+    CAN_RAW_JOIN_FILTERS: int
 
     J1939_MAX_UNICAST_ADDR: int
     J1939_IDLE_ADDR: int

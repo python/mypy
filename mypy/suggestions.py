@@ -288,7 +288,7 @@ class SuggestionEngine:
             fdef.arg_kinds,
             fdef.arg_names,
             AnyType(TypeOfAny.suggestion_engine),
-            self.builtin_type('builtins.function'))
+            self.named_type('builtins.function'))
 
     def get_starting_type(self, fdef: FuncDef) -> CallableType:
         if isinstance(fdef.type, CallableType):
@@ -351,7 +351,7 @@ class SuggestionEngine:
     def add_adjustments(self, typs: List[Type]) -> List[Type]:
         if not self.try_text or self.manager.options.python_version[0] != 2:
             return typs
-        translator = StrToText(self.builtin_type)
+        translator = StrToText(self.named_type)
         return dedup(typs + [tp.accept(translator) for tp in typs])
 
     def get_guesses(self, is_method: bool, base: CallableType, defaults: List[Optional[Type]],
@@ -648,8 +648,8 @@ class SuggestionEngine:
         assert state.tree is not None
         return state.tree
 
-    def builtin_type(self, s: str) -> Instance:
-        return self.manager.semantic_analyzer.builtin_type(s)
+    def named_type(self, s: str) -> Instance:
+        return self.manager.semantic_analyzer.named_type(s)
 
     def json_suggestion(self, mod: str, func_name: str, node: FuncDef,
                         suggestion: PyAnnotateSignature) -> str:
@@ -850,8 +850,8 @@ class TypeFormatter(TypeStrVisitor):
 
 
 class StrToText(TypeTranslator):
-    def __init__(self, builtin_type: Callable[[str], Instance]) -> None:
-        self.text_type = builtin_type('builtins.unicode')
+    def __init__(self, named_type: Callable[[str], Instance]) -> None:
+        self.text_type = named_type('builtins.unicode')
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         exp_t = get_proper_type(t)

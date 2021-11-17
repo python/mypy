@@ -48,13 +48,16 @@ def main(script_path: Optional[str],
          stdout: TextIO,
          stderr: TextIO,
          args: Optional[List[str]] = None,
+         clean_exit: bool = False,
          ) -> None:
     """Main entry point to the type checker.
 
     Args:
         script_path: Path to the 'mypy' script (used for finding data files).
         args: Custom command-line arguments.  If not given, sys.argv[1:] will
-        be used.
+            be used.
+        clean_exit: Don't hard kill the process on exit. This allows catching
+            SystemExit.
     """
     util.check_python_version('mypy')
     t0 = time.time()
@@ -66,6 +69,8 @@ def main(script_path: Optional[str],
     fscache = FileSystemCache()
     sources, options = process_options(args, stdout=stdout, stderr=stderr,
                                        fscache=fscache)
+    if clean_exit:
+        options.fast_exit = False
 
     formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
 
@@ -769,7 +774,7 @@ def process_options(args: List[str],
         dest='shadow_file', action='append',
         help="When encountering SOURCE_FILE, read and type check "
              "the contents of SHADOW_FILE instead.")
-    add_invertible_flag('--fast-exit', default=False, help=argparse.SUPPRESS,
+    add_invertible_flag('--fast-exit', default=True, help=argparse.SUPPRESS,
                         group=internals_group)
 
     report_group = parser.add_argument_group(
@@ -864,11 +869,13 @@ def process_options(args: List[str],
         group=code_group)
     code_group.add_argument(
         "--exclude",
+        action="append",
         metavar="PATTERN",
-        default="",
+        default=[],
         help=(
             "Regular expression to match file names, directory names or paths which mypy should "
-            "ignore while recursively discovering files to check, e.g. --exclude '/setup\\.py$'"
+            "ignore while recursively discovering files to check, e.g. --exclude '/setup\\.py$'. "
+            "May be specified more than once, eg. --exclude a --exclude b"
         )
     )
     code_group.add_argument(
@@ -1008,7 +1015,7 @@ def process_options(args: List[str],
         process_cache_map(parser, special_opts, options)
 
     # An explicitly specified cache_fine_grained implies local_partial_types
-    # (because otherwise the cache is not compatiable with dmypy)
+    # (because otherwise the cache is not compatible with dmypy)
     if options.cache_fine_grained:
         options.local_partial_types = True
 

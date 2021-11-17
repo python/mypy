@@ -112,22 +112,21 @@ For example:
 
 .. code-block:: python
 
-    from typing import List
     from typing_extensions import Protocol
 
     class Resource(Protocol):
-        def ok_1(self, foo: List[str] = ...) -> None: ...
+        def ok_1(self, foo: list[str] = ...) -> None: ...
 
-        def ok_2(self, foo: List[str] = ...) -> None:
+        def ok_2(self, foo: list[str] = ...) -> None:
             raise NotImplementedError()
 
-        def ok_3(self, foo: List[str] = ...) -> None:
+        def ok_3(self, foo: list[str] = ...) -> None:
             """Some docstring"""
             pass
 
         # Error: Incompatible default for argument "foo" (default has
-        # type "ellipsis", argument has type "List[str]")
-        def not_ok(self, foo: List[str] = ...) -> None:
+        # type "ellipsis", argument has type "list[str]")
+        def not_ok(self, foo: list[str] = ...) -> None:
             print(foo)
 
 .. note::

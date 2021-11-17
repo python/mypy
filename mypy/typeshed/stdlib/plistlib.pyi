@@ -1,6 +1,7 @@
 import sys
+from datetime import datetime
 from enum import Enum
-from typing import IO, Any, Dict as _Dict, Mapping, MutableMapping, Type
+from typing import IO, Any, Dict as _Dict, Mapping, MutableMapping, Tuple, Type
 
 class PlistFormat(Enum):
     FMT_XML: int
@@ -30,9 +31,20 @@ else:
     ) -> Any: ...
 
 def dump(
-    value: Mapping[str, Any], fp: IO[bytes], *, fmt: PlistFormat = ..., sort_keys: bool = ..., skipkeys: bool = ...
+    value: Mapping[str, Any] | list[Any] | Tuple[Any, ...] | str | bool | float | bytes | datetime,
+    fp: IO[bytes],
+    *,
+    fmt: PlistFormat = ...,
+    sort_keys: bool = ...,
+    skipkeys: bool = ...,
 ) -> None: ...
-def dumps(value: Mapping[str, Any], *, fmt: PlistFormat = ..., skipkeys: bool = ..., sort_keys: bool = ...) -> bytes: ...
+def dumps(
+    value: Mapping[str, Any] | list[Any] | Tuple[Any, ...] | str | bool | float | bytes | datetime,
+    *,
+    fmt: PlistFormat = ...,
+    skipkeys: bool = ...,
+    sort_keys: bool = ...,
+) -> bytes: ...
 
 if sys.version_info < (3, 9):
     def readPlist(pathOrFile: str | IO[bytes]) -> Any: ...

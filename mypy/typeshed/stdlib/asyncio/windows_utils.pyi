@@ -1,7 +1,7 @@
 import sys
 from _typeshed import Self
 from types import TracebackType
-from typing import Callable, Protocol, Tuple, Type
+from typing import Callable, Protocol, Type
 
 class _WarnFunction(Protocol):
     def __call__(self, message: str, category: Type[Warning] = ..., stacklevel: int = ..., source: PipeHandle = ...) -> None: ...
@@ -10,7 +10,7 @@ BUFSIZE: int
 PIPE: int
 STDOUT: int
 
-def pipe(*, duplex: bool = ..., overlapped: Tuple[bool, bool] = ..., bufsize: int = ...) -> Tuple[int, int]: ...
+def pipe(*, duplex: bool = ..., overlapped: tuple[bool, bool] = ..., bufsize: int = ...) -> tuple[int, int]: ...
 
 class PipeHandle:
     def __init__(self, handle: int) -> None: ...

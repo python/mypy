@@ -25,7 +25,7 @@ will be incomplete.
 """
 
 from typing import List, Tuple, Optional, Union, Callable
-from typing_extensions import TYPE_CHECKING
+from typing_extensions import TYPE_CHECKING, Final, TypeAlias as _TypeAlias
 
 from mypy.backports import nullcontext
 from mypy.nodes import (
@@ -51,16 +51,16 @@ if TYPE_CHECKING:
     from mypy.build import Graph, State
 
 
-Patches = List[Tuple[int, Callable[[], None]]]
+Patches: _TypeAlias = List[Tuple[int, Callable[[], None]]]
 
 
 # If we perform this many iterations, raise an exception since we are likely stuck.
-MAX_ITERATIONS = 20
+MAX_ITERATIONS: Final = 20
 
 
 # Number of passes over core modules before going on to the rest of the builtin SCC.
-CORE_WARMUP = 2
-core_modules = ['typing', 'builtins', 'abc', 'collections']
+CORE_WARMUP: Final = 2
+core_modules: Final = ['typing', 'builtins', 'abc', 'collections']
 
 
 def semantic_analysis_for_scc(graph: 'Graph', scc: List[str], errors: Errors) -> None:
@@ -249,7 +249,7 @@ def process_top_level_function(analyzer: 'SemanticAnalyzer',
     """Analyze single top-level function or method.
 
     Process the body of the function (including nested functions) again and again,
-    until all names have been resolved (ot iteration limit reached).
+    until all names have been resolved (or iteration limit reached).
     """
     # We need one more iteration after incomplete is False (e.g. to report errors, if any).
     final_iteration = False

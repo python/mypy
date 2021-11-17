@@ -3,10 +3,11 @@
 # See the README.md file in this directory for more information.
 
 import array
+import ctypes
 import mmap
 import sys
 from os import PathLike
-from typing import AbstractSet, Any, Awaitable, Container, Iterable, Protocol, Tuple, TypeVar, Union
+from typing import AbstractSet, Any, Awaitable, Container, Iterable, Protocol, TypeVar, Union
 from typing_extensions import Literal, final
 
 _KT = TypeVar("_KT")
@@ -56,7 +57,7 @@ class SupportsTrunc(Protocol):
 
 # stable
 class SupportsItems(Protocol[_KT_co, _VT_co]):
-    def items(self) -> AbstractSet[Tuple[_KT_co, _VT_co]]: ...
+    def items(self) -> AbstractSet[tuple[_KT_co, _VT_co]]: ...
 
 # stable
 class SupportsKeysAndGetItem(Protocol[_KT, _VT_co]):
@@ -167,8 +168,13 @@ class SupportsNoArgReadline(Protocol[_T_co]):
 class SupportsWrite(Protocol[_T_contra]):
     def write(self, __s: _T_contra) -> Any: ...
 
-ReadableBuffer = Union[bytes, bytearray, memoryview, array.array[Any], mmap.mmap]  # stable
-WriteableBuffer = Union[bytearray, memoryview, array.array[Any], mmap.mmap]  # stable
+ReadOnlyBuffer = bytes  # stable
+# Anything that implements the read-write buffer interface.
+# The buffer interface is defined purely on the C level, so we cannot define a normal Protocol
+# for it. Instead we have to list the most common stdlib buffer classes in a Union.
+WriteableBuffer = Union[bytearray, memoryview, array.array[Any], mmap.mmap, ctypes._CData]  # stable
+# Same as _WriteableBuffer, but also includes read-only buffer types (like bytes).
+ReadableBuffer = Union[ReadOnlyBuffer, WriteableBuffer]  # stable
 
 # stable
 if sys.version_info >= (3, 10):

@@ -9,8 +9,8 @@ OCTDIGITS: FrozenSet[str]
 HEXDIGITS: FrozenSet[str]
 ASCIILETTERS: FrozenSet[str]
 WHITESPACE: FrozenSet[str]
-ESCAPES: dict[str, Tuple[_NIC, int]]
-CATEGORIES: dict[str, Tuple[_NIC, _NIC] | Tuple[_NIC, list[Tuple[_NIC, _NIC]]]]
+ESCAPES: dict[str, tuple[_NIC, int]]
+CATEGORIES: dict[str, tuple[_NIC, _NIC] | tuple[_NIC, list[tuple[_NIC, _NIC]]]]
 FLAGS: dict[str, int]
 GLOBAL_FLAGS: int
 
