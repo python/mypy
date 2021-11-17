@@ -140,7 +140,7 @@ class CorrectDerived(CorrectBase):
         pass
 
 [case testOverrideMethodWithAttribute]
-# The reserse should not crash as well:
+# The reverse should not crash as well:
 from typing import Callable
 
 class Base:
