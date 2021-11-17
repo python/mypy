@@ -31,7 +31,6 @@ PyObject *vec_t_repr(PyObject *self) {
 }
 
 PyObject *vec_t_get_item(PyObject *o, Py_ssize_t i) {
-    // TODO: Type check o
     VecTObject *v = (VecTObject *)o;
     if ((size_t)i < (size_t)v->len) {
         PyObject *item = v->items[i];
@@ -45,8 +44,19 @@ PyObject *vec_t_get_item(PyObject *o, Py_ssize_t i) {
 
 
 int vec_t_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
-    // TODO: Type check o
     VecTObject *v = (VecTObject *)self;
+
+    int r = PyObject_IsInstance(o, v->item_type);
+    if (r <= 0) {
+        if (r == -1) {
+            return -1;
+        } else {
+            // TODO: better error message
+            PyErr_SetString(PyExc_TypeError, "invalid item type");
+            return -1;
+        }
+    }
+
     if ((size_t)i < (size_t)v->len) {
         Py_INCREF(o);
         v->items[i] = o;

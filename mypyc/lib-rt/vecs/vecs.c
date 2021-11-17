@@ -65,9 +65,9 @@ PyTypeObject VecProxyType = {
 };
 
 
-// Untyped vec
+// The 'vec' type
 //
-// This cannot be instantiated, only used for isinstance and indexing: vec[T].
+// This cannot be instantiated, and it's only used for isinstance and indexing: vec[T].
 
 typedef struct {
     PyObject_HEAD
@@ -79,7 +79,15 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
         Py_INCREF(&VecI64Type);
         return (PyObject *)&VecI64Type;
     } else {
-        // TODO: Check validity
+        PyTypeObject *t = item->ob_type;
+        if (t != &PyType_Type) {
+            PyErr_SetString(PyExc_TypeError, "type object expected in vec[...]");
+            return NULL;
+        }
+        if (item == &PyLong_Type || item == &PyFloat_Type || item == &PyBool_Type) {
+            PyErr_SetString(PyExc_ValueError, "unsupported type in vec[...]");
+            return NULL;
+        }
         VecProxy *p;
         p = PyObject_GC_New(VecProxy, &VecProxyType);
         if (p == NULL)
@@ -134,11 +142,12 @@ static PyObject *vecs_append(PyObject *self, PyObject *args)
         } else if (r == -1) {
             return NULL;
         } else {
-            // TODO: exception
+            // TODO: better error message
+            PyErr_SetString(PyExc_TypeError, "invalid item type");
             return NULL;
         }
     } else {
-        // TODO: exception
+        PyErr_SetString(PyExc_TypeError, "vec argument expected");
         return NULL;
     }
 }
