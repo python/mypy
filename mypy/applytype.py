@@ -18,9 +18,8 @@ def get_target_type(
     context: Context,
     skip_unsatisfied: bool
 ) -> Optional[Type]:
-    # TODO(PEP612): fix for ParamSpecType
     if isinstance(tvar, ParamSpecType):
-        return None
+        return type
     assert isinstance(tvar, TypeVarType)
     values = get_proper_types(tvar.values)
     if values:

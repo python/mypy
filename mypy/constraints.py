@@ -536,23 +536,31 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
 
     def visit_callable_type(self, template: CallableType) -> List[Constraint]:
         if isinstance(self.actual, CallableType):
-            cactual = self.actual
-            # FIX verify argument counts
-            # FIX what if one of the functions is generic
             res: List[Constraint] = []
+            cactual = self.actual
+            if template.param_spec is None:
+                # FIX verify argument counts
+                # FIX what if one of the functions is generic
 
-            # We can't infer constraints from arguments if the template is Callable[..., T] (with
-            # literal '...').
-            if not template.is_ellipsis_args:
-                # The lengths should match, but don't crash (it will error elsewhere).
-                for t, a in zip(template.arg_types, cactual.arg_types):
-                    # Negate direction due to function argument type contravariance.
-                    res.extend(infer_constraints(t, a, neg_op(self.direction)))
+                # We can't infer constraints from arguments if the template is Callable[..., T]
+                # (with literal '...').
+                if not template.is_ellipsis_args:
+                    # The lengths should match, but don't crash (it will error elsewhere).
+                    for t, a in zip(template.arg_types, cactual.arg_types):
+                        # Negate direction due to function argument type contravariance.
+                        res.extend(infer_constraints(t, a, neg_op(self.direction)))
+            else:
+                # TODO: Direction
+                res.append(Constraint(template.param_spec.id,
+                                      SUBTYPE_OF,
+                                      cactual.copy_modified(ret_type=NoneType())))
+
             template_ret_type, cactual_ret_type = template.ret_type, cactual.ret_type
             if template.type_guard is not None:
                 template_ret_type = template.type_guard
             if cactual.type_guard is not None:
                 cactual_ret_type = cactual.type_guard
+
             res.extend(infer_constraints(template_ret_type, cactual_ret_type,
                                          self.direction))
             return res

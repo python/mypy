@@ -86,3 +86,17 @@ P = ParamSpec('P')
 def f(x: Callable[P, int]) -> None: ...
 reveal_type(f)  # N: Revealed type is "def [P] (x: def (*P.args, **P.kwargs) -> builtins.int)"
 [builtins fixtures/tuple.pyi]
+
+[case testParamSpecSimpleFunction]
+from typing import Callable, TypeVar
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+T = TypeVar('T')
+
+def changes_return_type_to_str(x: Callable[P, int]) -> Callable[P, str]: ...
+
+def returns_int(a: str, b: bool) -> int: ...
+
+reveal_type(changes_return_type_to_str(returns_int))  # N: Revealed type is "def (a: builtins.str, b: builtins.bool) -> builtins.str"
+[builtins fixtures/tuple.pyi]

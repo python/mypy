@@ -454,6 +454,14 @@ class ParamSpecType(TypeVarLikeType):
     def __repr__(self) -> str:
         return self.name
 
+    @staticmethod
+    def new_unification_variable(old: 'ParamSpecType') -> 'ParamSpecType':
+        new_id = TypeVarId.new(meta_level=1)
+        return ParamSpecType(old.name, old.fullname, new_id, old.line, old.column)
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_param_spec(self)
+
     def serialize(self) -> JsonDict:
         assert not self.id.is_meta_var()
         return {
