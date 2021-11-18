@@ -274,7 +274,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 t = map_instance_to_supertype(left, right.type)
                 nominal = all(self.check_type_parameter(lefta, righta, tvar.variance)
                               for lefta, righta, tvar in
-                              zip(t.args, right.args, right.type.defn.type_vars))
+                              zip(t.args, right.args, right.type.defn.type_vars)
+                              if isinstance(tvar, TypeVarType))
                 if nominal:
                     TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
                 return nominal

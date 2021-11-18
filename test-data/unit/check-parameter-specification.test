@@ -92,11 +92,24 @@ from typing import Callable, TypeVar
 from typing_extensions import ParamSpec
 
 P = ParamSpec('P')
-T = TypeVar('T')
 
 def changes_return_type_to_str(x: Callable[P, int]) -> Callable[P, str]: ...
 
 def returns_int(a: str, b: bool) -> int: ...
 
 reveal_type(changes_return_type_to_str(returns_int))  # N: Revealed type is "def (a: builtins.str, b: builtins.bool) -> builtins.str"
+[builtins fixtures/tuple.pyi]
+
+[case testParamSpecSimpleClass]
+from typing import Callable, TypeVar, Generic
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+
+class C(Generic[P]):
+    def __init__(self, x: Callable[P, None]) -> None: ...
+
+def f(x: int, y: str) -> None: ...
+
+reveal_type(C(f))  # N: Revealed type is "__main__.C[def (x: builtins.int, y: builtins.str)]"
 [builtins fixtures/tuple.pyi]
