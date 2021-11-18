@@ -2087,16 +2087,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             return member_type
 
-    def analyze_external_member_access(self, member: str, base_type: Type,
-                                       context: Context) -> Type:
-        """Analyse member access that is external, i.e. it cannot
-        refer to private definitions. Return the result type.
-        """
-        # TODO remove; no private definitions in mypy
-        return analyze_member_access(member, base_type, context, False, False, False,
-                                     self.msg, original_type=base_type, chk=self.chk,
-                                     in_literal_context=self.is_literal_context())
-
     def is_literal_context(self) -> bool:
         return is_literal_type_like(self.type_context[-1])
 
