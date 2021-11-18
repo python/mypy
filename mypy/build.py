@@ -1095,7 +1095,9 @@ def _load_json_file(file: str, manager: BuildManager,
     if manager.verbosity() >= 2:
         manager.trace(log_success + data.rstrip())
     try:
+        t1 = time.time()
         result = json.loads(data)
+        manager.add_stats(data_json_load_time=time.time() - t1)
     except json.JSONDecodeError:
         manager.errors.set_file(file, None)
         manager.errors.report(-1, -1,
