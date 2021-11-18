@@ -1536,6 +1536,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     original_type = self.function_type(original_node)
                 elif isinstance(original_node, Decorator):
                     original_type = self.function_type(original_node.func)
+                elif isinstance(original_node, Var):
+                    # Super type can define method as an attribute.
+                    # See https://github.com/python/mypy/issues/10134
+
+                    # We also check that sometimes `original_node.type` is None.
+                    # This is the case when we use something like `__hash__ = None`.
+                    if original_node.type is not None:
+                        original_type = get_proper_type(original_node.type)
+                    else:
+                        original_type = NoneType()
                 else:
                     assert False, str(base_attr.node)
             if isinstance(original_node, (FuncDef, OverloadedFuncDef)):
