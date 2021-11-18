@@ -1029,6 +1029,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             callee = self.infer_function_type_arguments(
                 callee, args, arg_kinds, formal_to_actual, context)
 
+        if callee.param_spec is not None:
+            if arg_kinds == [ARG_STAR, ARG_STAR2]:
+                arg1 = self.accept(args[0])
+                arg2 = self.accept(args[1])
+                if (is_named_instance(arg1, 'builtins.tuple')
+                    and is_named_instance(arg2, 'builtins.dict')):
+                    assert isinstance(arg1, Instance)
+                    assert isinstance(arg2, Instance)
+                    if (isinstance(arg1.args[0], ParamSpecType)
+                        and isinstance(arg2.args[1], ParamSpecType)):
+                        # TODO: Check ParamSpec ids and flavors
+                        return callee.ret_type, callee
+
         arg_types = self.infer_arg_types_in_context(
             callee, args, arg_kinds, formal_to_actual)
 

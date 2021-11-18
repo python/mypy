@@ -3,7 +3,7 @@
 import copy
 import sys
 from abc import abstractmethod
-from mypy.backports import OrderedDict
+from enum import Enum
 
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Set, Optional, Union, Iterable, NamedTuple,
@@ -11,6 +11,7 @@ from typing import (
 )
 from typing_extensions import ClassVar, Final, TYPE_CHECKING, overload, TypeAlias as _TypeAlias
 
+from mypy.backports import OrderedDict
 import mypy.nodes
 from mypy import state
 from mypy.nodes import (
@@ -446,13 +447,31 @@ class TypeVarType(TypeVarLikeType):
         )
 
 
+class ParamSpecFlavor(Enum):
+    # Simple ParamSpec reference such as "P"
+    BARE = 0
+    # P.args
+    ARGS = 1
+    # P.kwargs
+    KWARGS = 2
+
+
 class ParamSpecType(TypeVarLikeType):
     """Definition of a single ParamSpec variable."""
 
-    __slots__ = ()
+    __slots__ = ('flavor',)
+
+    flavor: ParamSpecFlavor
+
+    def __init__(
+        self, name: str, fullname: str, id: Union[TypeVarId, int], flavor: ParamSpecFlavor,
+         line: int = -1, column: int = -1
+    ) -> None:
+        super().__init__(name, fullname, id, line=line, column=column)
+        self.flavor = flavor
 
     def __repr__(self) -> str:
-        return self.name
+        return f"<ParamSpecType {self.name}:{self.flavor}>"
 
     @staticmethod
     def new_unification_variable(old: 'ParamSpecType') -> 'ParamSpecType':
@@ -2131,6 +2150,15 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             s += '(upper_bound={})'.format(t.upper_bound.accept(self))
         return s
 
+    def visit_param_spec(self, t: ParamSpecType) -> str:
+        if t.name is None:
+            # Anonymous type variable type (only numeric id).
+            s = '`{}'.format(t.id)
+        else:
+            # Named type variable type.
+            s = '{}`{}'.format(t.name, t.id)
+        return s
+
     def visit_callable_type(self, t: CallableType) -> str:
         if t.param_spec is None:
             s = ''
@@ -2176,8 +2204,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                     else:
                         vs.append(var.name)
                 else:
-                    # For other TypeVarLikeTypes, just use the repr
-                    vs.append(repr(var))
+                    # For other TypeVarLikeTypes, just use the name
+                    vs.append(var.name)
             s = '{} {}'.format('[{}]'.format(', '.join(vs)), s)
 
         return 'def {}'.format(s)

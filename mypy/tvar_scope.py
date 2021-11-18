@@ -1,5 +1,5 @@
 from typing import Optional, Dict, Union
-from mypy.types import TypeVarLikeType, TypeVarType, ParamSpecType
+from mypy.types import TypeVarLikeType, TypeVarType, ParamSpecType, ParamSpecFlavor
 from mypy.nodes import ParamSpecExpr, TypeVarExpr, TypeVarLikeExpr, SymbolTableNode
 
 
@@ -78,6 +78,7 @@ class TypeVarLikeScope:
                 name,
                 tvar_expr.fullname,
                 i,
+                flavor=ParamSpecFlavor.BARE,
                 line=tvar_expr.line,
                 column=tvar_expr.column
             )

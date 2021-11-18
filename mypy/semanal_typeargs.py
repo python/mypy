@@ -9,7 +9,8 @@ from typing import List, Optional, Set
 
 from mypy.nodes import TypeInfo, Context, MypyFile, FuncItem, ClassDef, Block, FakeInfo
 from mypy.types import (
-    Type, Instance, TypeVarType, AnyType, get_proper_types, TypeAliasType, get_proper_type
+    Type, Instance, TypeVarType, AnyType, get_proper_types, TypeAliasType, ParamSpecType,
+    get_proper_type
 )
 from mypy.mixedtraverser import MixedTraverserVisitor
 from mypy.subtypes import is_subtype
@@ -71,6 +72,10 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
             return  # https://github.com/python/mypy/issues/11079
         for (i, arg), tvar in zip(enumerate(t.args), info.defn.type_vars):
             if isinstance(tvar, TypeVarType):
+                if isinstance(arg, ParamSpecType):
+                    # TODO: Better message
+                    self.fail(f'Invalid location for ParamSpec "{arg.name}"', t)
+                    continue
                 if tvar.values:
                     if isinstance(arg, TypeVarType):
                         arg_values = arg.values

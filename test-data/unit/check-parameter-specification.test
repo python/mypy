@@ -28,19 +28,11 @@ def foo6(x: Callable[[P], int]) -> None: ...  # E: Invalid location for ParamSpe
                                               # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
 [builtins fixtures/tuple.pyi]
 
-[case testParamSpecTemporaryAnyBehaviour]
-# TODO(PEP612): behaviour tested here should change
-# This is a test of mypy's temporary behaviour in lieu of full support for ParamSpec
+[case testParamSpecContextManagerLike]
 from typing import Callable, List, Iterator, TypeVar
 from typing_extensions import ParamSpec
 P = ParamSpec('P')
 T = TypeVar('T')
-
-def changes_return_type_to_str(x: Callable[P, int]) -> Callable[P, str]: ...
-
-def returns_int(a: str, b: bool) -> int: ...
-
-reveal_type(changes_return_type_to_str(returns_int))  # N: Revealed type is "def (*Any, **Any) -> builtins.str"
 
 def tmpcontextmanagerlike(x: Callable[P, Iterator[T]]) -> Callable[P, List[T]]: ...
 
@@ -48,7 +40,7 @@ def tmpcontextmanagerlike(x: Callable[P, Iterator[T]]) -> Callable[P, List[T]]: 
 def whatever(x: int) -> Iterator[int]:
     yield x
 
-reveal_type(whatever)  # N: Revealed type is "def (*Any, **Any) -> builtins.list[builtins.int*]"
+reveal_type(whatever)  # N: Revealed type is "def (x: builtins.int) -> builtins.list[builtins.int*]"
 reveal_type(whatever(217))  # N: Revealed type is "builtins.list[builtins.int*]"
 [builtins fixtures/tuple.pyi]
 
@@ -109,7 +101,36 @@ P = ParamSpec('P')
 class C(Generic[P]):
     def __init__(self, x: Callable[P, None]) -> None: ...
 
+    def m(self, *args: P.args, **kwargs: P.kwargs) -> int:
+        return 1
+
 def f(x: int, y: str) -> None: ...
 
 reveal_type(C(f))  # N: Revealed type is "__main__.C[def (x: builtins.int, y: builtins.str)]"
-[builtins fixtures/tuple.pyi]
+reveal_type(C(f).m)  # N: Revealed type is "def (x: builtins.int, y: builtins.str) -> builtins.int"
+[builtins fixtures/dict.pyi]
+
+[case testParamSpecDecorator]
+from typing import Callable, TypeVar, Generic
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+R = TypeVar('R')
+
+class W(Generic[P, R]):
+    f: Callable[P, R]
+    x: int
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> R:
+        reveal_type(self.f(*args, **kwargs))  # N: Revealed type is "R`2"
+        return self.f(*args, **kwargs)
+
+def dec() -> Callable[[Callable[P, R]], W[P, R]]:
+    pass
+
+@dec()
+def f(a: int, b: str) -> None: ...
+
+reveal_type(f)  # N: Revealed type is "__main__.W[def (a: builtins.int, b: builtins.str), None]"
+reveal_type(f(1, ''))  # N: Revealed type is "None"
+reveal_type(f.x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/dict.pyi]

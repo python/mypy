@@ -65,6 +65,7 @@ class TypeVisitor(Generic[T]):
 
     @abstractmethod
     def visit_param_spec(self, t: ParamSpecType) -> T:
+        assert False
         pass
 
     @abstractmethod
@@ -181,6 +182,9 @@ class TypeTranslator(TypeVisitor[Type]):
         )
 
     def visit_type_var(self, t: TypeVarType) -> Type:
+        return t
+
+    def visit_param_spec(self, t: ParamSpecType) -> Type:
         return t
 
     def visit_partial_type(self, t: PartialType) -> Type:
