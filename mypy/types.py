@@ -1008,6 +1008,7 @@ class CallableType(FunctionLike):
                  'def_extras',  # Information about original definition we want to serialize.
                                 # This is used for more detailed error messages.
                  'type_guard',  # T, if -> TypeGuard[T] (ret_type is bool in this case).
+                 'param_spec',
                  )
 
     def __init__(self,
@@ -1028,6 +1029,7 @@ class CallableType(FunctionLike):
                  bound_args: Sequence[Optional[Type]] = (),
                  def_extras: Optional[Dict[str, Any]] = None,
                  type_guard: Optional[Type] = None,
+                 param_spec: Optional[ParamSpecType] = None,
                  ) -> None:
         super().__init__(line, column)
         assert len(arg_types) == len(arg_kinds) == len(arg_names)
@@ -1070,6 +1072,7 @@ class CallableType(FunctionLike):
         else:
             self.def_extras = {}
         self.type_guard = type_guard
+        self.param_spec = param_spec
 
     def copy_modified(self,
                       arg_types: Bogus[Sequence[Type]] = _dummy,
@@ -1089,6 +1092,7 @@ class CallableType(FunctionLike):
                       bound_args: Bogus[List[Optional[Type]]] = _dummy,
                       def_extras: Bogus[Dict[str, Any]] = _dummy,
                       type_guard: Bogus[Optional[Type]] = _dummy,
+                      param_spec: Bogus[Optional[ParamSpecType]] = _dummy,
                       ) -> 'CallableType':
         return CallableType(
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,
@@ -1109,6 +1113,7 @@ class CallableType(FunctionLike):
             bound_args=bound_args if bound_args is not _dummy else self.bound_args,
             def_extras=def_extras if def_extras is not _dummy else dict(self.def_extras),
             type_guard=type_guard if type_guard is not _dummy else self.type_guard,
+            param_spec=param_spec if param_spec is not _dummy else self.param_spec,
         )
 
     def var_arg(self) -> Optional[FormalArgument]:
@@ -2119,32 +2124,36 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return s
 
     def visit_callable_type(self, t: CallableType) -> str:
-        s = ''
-        bare_asterisk = False
-        for i in range(len(t.arg_types)):
-            if s != '':
-                s += ', '
-            if t.arg_kinds[i].is_named() and not bare_asterisk:
-                s += '*, '
-                bare_asterisk = True
-            if t.arg_kinds[i] == ARG_STAR:
-                s += '*'
-            if t.arg_kinds[i] == ARG_STAR2:
-                s += '**'
-            name = t.arg_names[i]
-            if name:
-                s += name + ': '
-            s += t.arg_types[i].accept(self)
-            if t.arg_kinds[i].is_optional():
-                s += ' ='
+        if t.param_spec is None:
+            s = ''
+            bare_asterisk = False
+            for i in range(len(t.arg_types)):
+                if s != '':
+                    s += ', '
+                if t.arg_kinds[i].is_named() and not bare_asterisk:
+                    s += '*, '
+                    bare_asterisk = True
+                if t.arg_kinds[i] == ARG_STAR:
+                    s += '*'
+                if t.arg_kinds[i] == ARG_STAR2:
+                    s += '**'
+                name = t.arg_names[i]
+                if name:
+                    s += name + ': '
+                s += t.arg_types[i].accept(self)
+                if t.arg_kinds[i].is_optional():
+                    s += ' ='
 
-        s = '({})'.format(s)
+            s = '({})'.format(s)
 
-        if not isinstance(get_proper_type(t.ret_type), NoneType):
-            if t.type_guard is not None:
-                s += ' -> TypeGuard[{}]'.format(t.type_guard.accept(self))
-            else:
-                s += ' -> {}'.format(t.ret_type.accept(self))
+            if not isinstance(get_proper_type(t.ret_type), NoneType):
+                if t.type_guard is not None:
+                    s += ' -> TypeGuard[{}]'.format(t.type_guard.accept(self))
+                else:
+                    s += ' -> {}'.format(t.ret_type.accept(self))
+        else:
+            n = t.param_spec.name
+            s = f'(*{n}.args, **{n}.kwargs) -> {t.ret_type.accept(self)}'
 
         if t.variables:
             vs = []

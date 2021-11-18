@@ -547,6 +547,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                                             else self.named_type('builtins.function')),
                                   variables=self.anal_var_defs(variables),
                                   type_guard=special,
+                                  param_spec=t.param_spec,
                                   )
         return ret
 
@@ -694,14 +695,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if not isinstance(tvar_def, ParamSpecType):
             return None
 
-        # TODO(PEP612): construct correct type for paramspec
         return CallableType(
             [AnyType(TypeOfAny.explicit), AnyType(TypeOfAny.explicit)],
             [nodes.ARG_STAR, nodes.ARG_STAR2],
             [None, None],
             ret_type=ret_type,
             fallback=fallback,
-            is_ellipsis_args=True
+            is_ellipsis_args=True,
+            param_spec=tvar_def,
         )
 
     def analyze_callable_type(self, t: UnboundType) -> Type:

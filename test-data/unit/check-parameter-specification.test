@@ -76,3 +76,13 @@ class MyFunction(P):  # E: Invalid location for ParamSpec "P" \
     ...
 
 a: MyFunction[int]  # E: "MyFunction" expects no type arguments, but 1 given
+
+[case testParamSpecRevealType]
+from typing import Callable
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+
+def f(x: Callable[P, int]) -> None: ...
+reveal_type(f)  # N: Revealed type is "def [P] (x: def (*P.args, **P.kwargs) -> builtins.int)"
+[builtins fixtures/tuple.pyi]
