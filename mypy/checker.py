@@ -3938,8 +3938,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if s.target:
             target_type = get_proper_type(self.expr_checker.accept(s.target))
             if not isinstance(target_type, NoneType):
-                # TODO: Also verify the type of 'write'.
-                self.expr_checker.analyze_external_member_access('write', target_type, s.target)
+                write_type = self.expr_checker.analyze_external_member_access(
+                    'write', target_type, s.target)
+                required_type = CallableType(
+                    arg_types=[self.named_type('builtins.str')],
+                    arg_kinds=[ARG_POS],
+                    arg_names=[None],
+                    ret_type=AnyType(TypeOfAny.implementation_artifact),
+                    fallback=self.named_type('builtins.function'),
+                )
+                # This has to be hard-coded, since it is a syntax pattern, not a function call.
+                if not is_subtype(write_type, required_type):
+                    self.fail(message_registry.PYTHON2_PRINT_FILE_TYPE.format(
+                        write_type,
+                        required_type,
+                    ), s.target)
 
     def visit_break_stmt(self, s: BreakStmt) -> None:
         self.binder.handle_break()

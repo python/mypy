@@ -135,6 +135,9 @@ FUNCTION_ALWAYS_TRUE: Final = ErrorMessage(
     code=codes.TRUTHY_BOOL,
 )
 NOT_CALLABLE: Final = '{} not callable'
+PYTHON2_PRINT_FILE_TYPE: Final = (
+    'Argument "file" to "print" has incompatible type "{}"; expected "{}"'
+)
 
 # Generic
 GENERIC_INSTANCE_VAR_CLASS_ACCESS: Final = (
