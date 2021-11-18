@@ -13,6 +13,7 @@ DATACLASS_DECORATORS = {
     'dataclasses.dataclass',
     'attr.s',
     'attr.attrs',
+    'attr.define',
 }
 
 
@@ -31,7 +32,8 @@ def dataclass_decorator_type(d: Expression) -> Optional[str]:
             and isinstance(d.callee, RefExpr)
             and d.callee.fullname in DATACLASS_DECORATORS):
         name = d.callee.fullname.split('.')[0]
-        if name == 'attr' and 'auto_attribs' in d.arg_names:
+        if d.callee.fullname == 'attr.define' or (
+                name == 'attr' and 'auto_attribs' in d.arg_names):
             # Note: the mypy attrs plugin checks that the value of auto_attribs is
             # not computed at runtime, so we don't need to perform that checks here
             auto = d.args[d.arg_names.index('auto_attribs')]

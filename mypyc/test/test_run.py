@@ -54,15 +54,11 @@ files = [
     'run-dunders.test',
     'run-singledispatch.test',
     'run-attrs-non-auto.test',
+    'run-attrs.test',
 ]
-if sys.version_info >= (3, 6):
-    files.extend([
-        'run-attrs.test',
-    ])
+
 if sys.version_info >= (3, 7):
-    files.extend([
-        'run-python37.test',
-    ])
+    files.append('run-python37.test')
 if sys.version_info >= (3, 8):
     files.append('run-python38.test')
 

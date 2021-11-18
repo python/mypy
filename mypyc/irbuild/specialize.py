@@ -74,13 +74,13 @@ def _apply_specialization(builder: 'IRBuilder', expr: CallExpr, callee: RefExpr,
 
 def apply_function_specialization(builder: 'IRBuilder', expr: CallExpr, callee: RefExpr
                                   ) -> Optional[Value]:
-    """Invoke the Specializer callback for a function if one has bee registered"""
+    """Invoke the Specializer callback for a function if one has been registered"""
     return _apply_specialization(builder, expr, callee, callee.fullname)
 
 
 def apply_method_specialization(builder: 'IRBuilder', expr: CallExpr, callee: MemberExpr,
                                 typ: Optional[RType] = None) -> Optional[Value]:
-    """Invoke the Specializer callback for a method if one has bee registered"""
+    """Invoke the Specializer callback for a method if one has been registered"""
     name = callee.fullname if typ is None else callee.name
     return _apply_specialization(builder, expr, callee, name, typ)
 
@@ -300,7 +300,7 @@ def any_all_helper(builder: IRBuilder,
 @specialize_function('attr.Factory')
 def translate_dataclasses_field_call(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-    """Special case for 'dataclasses.field' and 'attr.Factory'
+    """Special case for 'dataclasses.field', 'attr.attrib', and 'attr.Factory'
     function calls because the results of such calls are type-checked
     by mypy using the types of the arguments to their respective
     functions, resulting in attempted coercions by mypyc that throw a

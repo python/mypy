@@ -193,6 +193,9 @@ class ExtClassBuilder(ClassBuilder):
         self.type_obj: Optional[Value] = allocate_class(builder, cdef)
 
     def skip_attr_default(self, name: str, stmt: AssignmentStmt) -> bool:
+        """
+        Controls whether to skip generating a default for an attribute.
+        """
         return False
 
     def add_method(self, fdef: FuncDef) -> None:
@@ -218,6 +221,9 @@ class ExtClassBuilder(ClassBuilder):
 
 
 class DataClassBuilder(ExtClassBuilder):
+    # controls whether an __annotations__ attribute should be added to the class
+    # __dict__.  This is not desirable for attrs classes where auto_attribs is
+    # disabled, as attrs will reject it.
     add_annotations_to_dict = True
 
     def __init__(self, builder: IRBuilder, cdef: ClassDef) -> None:
@@ -522,7 +528,12 @@ def add_non_ext_class_attr(builder: IRBuilder,
 
 def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef,
                            skip: Optional[Callable[[str, AssignmentStmt], bool]] = None) -> None:
-    """Generate an initialization method for default attr values (from class vars)."""
+    """Generate an initialization method for default attr values (from class vars).
+
+    If provided, the skip arg should be a callable which will return whether
+    to skip generating a default for an attribute.  It will be passed the name of
+    the attribute and the corresponding AssignmentStmt.
+    """
     cls = builder.mapper.type_to_ir[cdef.info]
     if cls.builtin_base:
         return
