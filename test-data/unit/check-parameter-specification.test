@@ -110,6 +110,24 @@ reveal_type(C(f))  # N: Revealed type is "__main__.C[def (x: builtins.int, y: bu
 reveal_type(C(f).m)  # N: Revealed type is "def (x: builtins.int, y: builtins.str) -> builtins.int"
 [builtins fixtures/dict.pyi]
 
+[case testParamSpecClassWithPrefixArgument]
+from typing import Callable, TypeVar, Generic
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+
+class C(Generic[P]):
+    def __init__(self, x: Callable[P, None]) -> None: ...
+
+    def m(self, a: str, *args: P.args, **kwargs: P.kwargs) -> int:
+        return 1
+
+def f(x: int, y: str) -> None: ...
+
+reveal_type(C(f).m)  # N: Revealed type is "def (a: builtins.str, x: builtins.int, y: builtins.str) -> builtins.int"
+reveal_type(C(f).m('', 1, ''))  # N: Revealed type is "builtins.int"
+[builtins fixtures/dict.pyi]
+
 [case testParamSpecDecorator]
 from typing import Callable, TypeVar, Generic
 from typing_extensions import ParamSpec
@@ -133,4 +151,29 @@ def f(a: int, b: str) -> None: ...
 reveal_type(f)  # N: Revealed type is "__main__.W[def (a: builtins.int, b: builtins.str), None]"
 reveal_type(f(1, ''))  # N: Revealed type is "None"
 reveal_type(f.x)  # N: Revealed type is "builtins.int"
+
+class C:
+    @dec()
+    def m(self, x: int) -> str: ...
+
+#reveal_type(C().m(x=1))  # xN: x
+[builtins fixtures/dict.pyi]
+
+[case testParamSpecFunction]
+from typing import Callable, TypeVar
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+R = TypeVar('R')
+
+def f(x: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R:
+    return x(*args, **kwargs)
+
+def g(x: int, y: str) -> None: ...
+
+reveal_type(f(g, 1, y='x'))  # N: Revealed type is "None"
+f(g, 'x', y='x')  # E: Argument 2 to "f" has incompatible type "str"; expected "int"
+f(g, 1, y=1)  # E: Argument "y" to "f" has incompatible type "int"; expected "str"
+f(g)  # E: Missing positional arguments "x", "y" in call to "f"
+
 [builtins fixtures/dict.pyi]
