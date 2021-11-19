@@ -447,13 +447,13 @@ class TypeVarType(TypeVarLikeType):
         )
 
 
-class ParamSpecFlavor(Enum):
+class ParamSpecFlavor:
     # Simple ParamSpec reference such as "P"
-    BARE = 0
+    BARE: Final = 0
     # P.args
-    ARGS = 1
+    ARGS: Final = 1
     # P.kwargs
-    KWARGS = 2
+    KWARGS: Final = 2
 
 
 class ParamSpecType(TypeVarLikeType):
@@ -461,25 +461,31 @@ class ParamSpecType(TypeVarLikeType):
 
     __slots__ = ('flavor',)
 
-    flavor: ParamSpecFlavor
+    flavor: int
 
     def __init__(
-        self, name: str, fullname: str, id: Union[TypeVarId, int], flavor: ParamSpecFlavor,
+         self, name: str, fullname: str, id: Union[TypeVarId, int], flavor: int, *,
          line: int = -1, column: int = -1
     ) -> None:
         super().__init__(name, fullname, id, line=line, column=column)
         self.flavor = flavor
 
-    def __repr__(self) -> str:
-        return f"<ParamSpecType {self.name}:{self.flavor}>"
-
     @staticmethod
     def new_unification_variable(old: 'ParamSpecType') -> 'ParamSpecType':
         new_id = TypeVarId.new(meta_level=1)
-        return ParamSpecType(old.name, old.fullname, new_id, old.line, old.column)
+        return ParamSpecType(old.name, old.fullname, new_id, old.flavor,
+                             line=old.line, column=old.column)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_param_spec(self)
+
+    def __hash__(self) -> int:
+        return hash((self.id, self.flavor))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, ParamSpecType):
+            return NotImplemented
+        return self.id == other.id and self.flavor == other.flavor
 
     def serialize(self) -> JsonDict:
         assert not self.id.is_meta_var()
@@ -488,6 +494,7 @@ class ParamSpecType(TypeVarLikeType):
             'name': self.name,
             'fullname': self.fullname,
             'id': self.id.raw_id,
+            'flavor': self.flavor,
         }
 
     @classmethod
@@ -497,6 +504,7 @@ class ParamSpecType(TypeVarLikeType):
             data['name'],
             data['fullname'],
             data['id'],
+            data['flavor'],
         )
 
 
