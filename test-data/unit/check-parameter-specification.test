@@ -152,11 +152,13 @@ reveal_type(f)  # N: Revealed type is "__main__.W[def (a: builtins.int, b: built
 reveal_type(f(1, ''))  # N: Revealed type is "None"
 reveal_type(f.x)  # N: Revealed type is "builtins.int"
 
-class C:
-    @dec()
-    def m(self, x: int) -> str: ...
-
-#reveal_type(C().m(x=1))  # xN: x
+## TODO: How should this work?
+#
+# class C:
+#     @dec()
+#     def m(self, x: int) -> str: ...
+#
+# reveal_type(C().m(x=1))
 [builtins fixtures/dict.pyi]
 
 [case testParamSpecFunction]
@@ -205,3 +207,21 @@ reveal_type(f(g))  # N: Revealed type is "def (*Any, **Any) -> builtins.str"
 
 f(g)(1, 3, x=1, y=2)
 [builtins fixtures/tuple.pyi]
+
+[case testParamSpecDecoratorImplementation]
+from typing import Callable, Any, TypeVar, List
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+T = TypeVar('T')
+
+def dec(f: Callable[P, T]) -> Callable[P, List[T]]:
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> List[T]:
+        return [f(*args, **kwargs)]
+    return wrapper
+
+@dec
+def g(x: int, y: str = '') -> int: ...
+
+reveal_type(g)  # N: Revealed type is "def (x: builtins.int, y: builtins.str =) -> builtins.list[builtins.int*]"
+[builtins fixtures/dict.pyi]
