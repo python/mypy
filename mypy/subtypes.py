@@ -730,7 +730,8 @@ def find_node_type(node: Union[Var, FuncBase], itype: Instance, subtype: Type) -
                 and node.is_initialized_in_class
                 and not node.is_staticmethod)):
         assert isinstance(typ, FunctionLike)
-        signature = bind_self(typ, subtype)
+        signature = bind_self(typ, subtype,
+                              is_classmethod=isinstance(node, Var) and node.is_classmethod)
         if node.is_property:
             assert isinstance(signature, CallableType)
             typ = signature.ret_type
