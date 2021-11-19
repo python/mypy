@@ -1023,24 +1023,31 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             lambda i: self.accept(args[i]))
 
         if callee.is_generic():
+            refresh_map = any(isinstance(v, ParamSpecType) for v in callee.variables)
             callee = freshen_function_type_vars(callee)
             callee = self.infer_function_type_arguments_using_context(
                 callee, context)
             callee = self.infer_function_type_arguments(
                 callee, args, arg_kinds, formal_to_actual, context)
+            if refresh_map:
+                # Argument kinds etc. may have changed; recalculate actual-to-formal map
+                formal_to_actual = map_actuals_to_formals(
+                    arg_kinds, arg_names,
+                    callee.arg_kinds, callee.arg_names,
+                    lambda i: self.accept(args[i]))
 
-        if callee.param_spec is not None:
-            if arg_kinds == [ARG_STAR, ARG_STAR2]:
-                arg1 = get_proper_type(self.accept(args[0]))
-                arg2 = get_proper_type(self.accept(args[1]))
-                if (is_named_instance(arg1, 'builtins.tuple')
-                    and is_named_instance(arg2, 'builtins.dict')):
-                    assert isinstance(arg1, Instance)
-                    assert isinstance(arg2, Instance)
-                    if (isinstance(get_proper_type(arg1.args[0]), ParamSpecType)
-                        and isinstance(get_proper_type(arg2.args[1]), ParamSpecType)):
-                        # TODO: Check ParamSpec ids and flavors
-                        return callee.ret_type, callee
+        param_spec = callee.param_spec()
+        if param_spec is not None and arg_kinds == [ARG_STAR, ARG_STAR2]:
+            arg1 = get_proper_type(self.accept(args[0]))
+            arg2 = get_proper_type(self.accept(args[1]))
+            if (is_named_instance(arg1, 'builtins.tuple')
+                and is_named_instance(arg2, 'builtins.dict')):
+                assert isinstance(arg1, Instance)
+                assert isinstance(arg2, Instance)
+                if (isinstance(get_proper_type(arg1.args[0]), ParamSpecType)
+                    and isinstance(get_proper_type(arg2.args[1]), ParamSpecType)):
+                    # TODO: Check ParamSpec ids and flavors
+                    return callee.ret_type, callee
 
         arg_types = self.infer_arg_types_in_context(
             callee, args, arg_kinds, formal_to_actual)

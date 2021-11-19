@@ -89,7 +89,7 @@ def apply_generic_arguments(
         if target_type is not None:
             id_to_type[tvar.id] = target_type
 
-    param_spec = callable.param_spec2()
+    param_spec = callable.param_spec()
     if param_spec is not None:
         nt = id_to_type.get(param_spec.id)
         if nt is not None:

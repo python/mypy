@@ -1043,7 +1043,6 @@ class CallableType(FunctionLike):
                  'def_extras',  # Information about original definition we want to serialize.
                                 # This is used for more detailed error messages.
                  'type_guard',  # T, if -> TypeGuard[T] (ret_type is bool in this case).
-                 'param_spec',
                  )
 
     def __init__(self,
@@ -1064,7 +1063,6 @@ class CallableType(FunctionLike):
                  bound_args: Sequence[Optional[Type]] = (),
                  def_extras: Optional[Dict[str, Any]] = None,
                  type_guard: Optional[Type] = None,
-                 param_spec: Optional[ParamSpecType] = None,
                  ) -> None:
         super().__init__(line, column)
         assert len(arg_types) == len(arg_kinds) == len(arg_names)
@@ -1107,7 +1105,6 @@ class CallableType(FunctionLike):
         else:
             self.def_extras = {}
         self.type_guard = type_guard
-        self.param_spec = param_spec
 
     def copy_modified(self,
                       arg_types: Bogus[Sequence[Type]] = _dummy,
@@ -1127,7 +1124,6 @@ class CallableType(FunctionLike):
                       bound_args: Bogus[List[Optional[Type]]] = _dummy,
                       def_extras: Bogus[Dict[str, Any]] = _dummy,
                       type_guard: Bogus[Optional[Type]] = _dummy,
-                      param_spec: Bogus[Optional[ParamSpecType]] = _dummy,
                       ) -> 'CallableType':
         return CallableType(
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,
@@ -1148,7 +1144,6 @@ class CallableType(FunctionLike):
             bound_args=bound_args if bound_args is not _dummy else self.bound_args,
             def_extras=def_extras if def_extras is not _dummy else dict(self.def_extras),
             type_guard=type_guard if type_guard is not _dummy else self.type_guard,
-            param_spec=param_spec if param_spec is not _dummy else self.param_spec,
         )
 
     def var_arg(self) -> Optional[FormalArgument]:
@@ -1294,8 +1289,12 @@ class CallableType(FunctionLike):
             a.append(tv.id)
         return a
 
-    def param_spec2(self) -> Optional[ParamSpecType]:
-        """Return ParamSpec if callable can be called with one."""
+    def param_spec(self) -> Optional[ParamSpecType]:
+        """Return ParamSpec if callable can be called with one.
+
+        A Callable accepting ParamSpec P args (*args, **kwargs) must have the
+        two final parameters like this: *args: P.args, **kwargs: P.kwargs.
+        """
         if len(self.arg_types) < 2:
             return None
         if self.arg_kinds[-2] != ARG_STAR or self.arg_kinds[-1] != ARG_STAR2:
@@ -2184,7 +2183,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return s
 
     def visit_callable_type(self, t: CallableType) -> str:
-        if t.param_spec is None:
+        param_spec = t.param_spec()
+        if param_spec is None:
             s = ''
             bare_asterisk = False
             for i in range(len(t.arg_types)):
@@ -2212,7 +2212,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                 else:
                     s += ' -> {}'.format(t.ret_type.accept(self))
         else:
-            n = t.param_spec.name
+            # TODO: Other arguments
+            n = param_spec.name
             s = f'(*{n}.args, **{n}.kwargs) -> {t.ret_type.accept(self)}'
 
         if t.variables:

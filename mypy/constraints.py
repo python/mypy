@@ -546,7 +546,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         if isinstance(self.actual, CallableType):
             res: List[Constraint] = []
             cactual = self.actual
-            if template.param_spec is None:
+            param_spec = template.param_spec()
+            if param_spec is None:
                 # FIX verify argument counts
                 # FIX what if one of the functions is generic
 
@@ -559,7 +560,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         res.extend(infer_constraints(t, a, neg_op(self.direction)))
             else:
                 # TODO: Direction
-                res.append(Constraint(template.param_spec.id,
+                # TODO: Deal with arguments that come before param spec ones?
+                res.append(Constraint(param_spec.id,
                                       SUBTYPE_OF,
                                       cactual.copy_modified(ret_type=NoneType())))
 

@@ -177,3 +177,17 @@ f(g, 1, y=1)  # E: Argument "y" to "f" has incompatible type "int"; expected "st
 f(g)  # E: Missing positional arguments "x", "y" in call to "f"
 
 [builtins fixtures/dict.pyi]
+
+[case testParamSpecSpecialCase]
+from typing import Callable, TypeVar
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+T = TypeVar('T')
+
+def register(func: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> Callable[P, T]: ...
+
+def f(x: int, y: str, z: int, a: str) -> None: ...
+
+x = register(f, 1, '', 1, '')
+[builtins fixtures/dict.pyi]

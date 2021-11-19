@@ -110,36 +110,21 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             return repl
 
     def visit_callable_type(self, t: CallableType) -> Type:
-        if t.param_spec is None:
-            param_spec = t.param_spec2()
-            if param_spec is not None:
-                repl = get_proper_type(self.variables.get(param_spec.id))
-                if isinstance(repl, CallableType):
-                    # Substitute *args, **kwargs
-                    t = t.expand_param_spec(repl)
-                    return t.copy_modified(ret_type=t.ret_type.accept(self),
-                                           type_guard=(t.type_guard.accept(self)
-                                                       if t.type_guard is not None else None),
-                                           param_spec=None)
-            arg_types = self.expand_types(t.arg_types)
-        else:
-            repl = get_proper_type(self.variables.get(t.param_spec.id))
+        param_spec = t.param_spec()
+        if param_spec is not None:
+            repl = get_proper_type(self.variables.get(param_spec.id))
             if isinstance(repl, CallableType):
-                return t.copy_modified(arg_types=repl.arg_types,
-                                       arg_kinds=repl.arg_kinds,
-                                       arg_names=repl.arg_names,
-                                       ret_type=t.ret_type.accept(self),
+                # Substitute *args, **kwargs
+                t = t.expand_param_spec(repl)
+                # TODO: Substitute remaining arg types
+                return t.copy_modified(ret_type=t.ret_type.accept(self),
                                        type_guard=(t.type_guard.accept(self)
-                                                   if t.type_guard is not None else None),
-                                       param_spec=None)
-            arg_types = t.arg_types
+                                                   if t.type_guard is not None else None))
 
-        return t.copy_modified(arg_types=arg_types,
+        return t.copy_modified(arg_types=self.expand_types(t.arg_types),
                                ret_type=t.ret_type.accept(self),
                                type_guard=(t.type_guard.accept(self)
-                                           if t.type_guard is not None else None),
-                               param_spec=(t.param_spec.accept(self)
-                                           if t.param_spec is not None else None))
+                                           if t.type_guard is not None else None))
 
     def visit_overloaded(self, t: Overloaded) -> Type:
         items: List[CallableType] = []
