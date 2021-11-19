@@ -43,11 +43,11 @@ class NameGenerator:
         names are supported for generated names, but uncompiled modules
         will use long names.
         """
-        self.module_map = {}  # type: Dict[str, str]
+        self.module_map: Dict[str, str] = {}
         for names in groups:
             self.module_map.update(make_module_translation_map(names))
-        self.translations = {}  # type: Dict[Tuple[str, str], str]
-        self.used_names = set()  # type: Set[str]
+        self.translations: Dict[Tuple[str, str], str] = {}
+        self.used_names: Set[str] = set()
 
     def private_name(self, module: str, partial_name: Optional[str] = None) -> str:
         """Return a C name usable for a static definition.
@@ -90,7 +90,7 @@ def exported_name(fullname: str) -> str:
 
 
 def make_module_translation_map(names: List[str]) -> Dict[str, str]:
-    num_instances = {}  # type: Dict[str, int]
+    num_instances: Dict[str, int] = {}
     for name in names:
         for suffix in candidate_suffixes(name):
             num_instances[suffix] = num_instances.get(suffix, 0) + 1

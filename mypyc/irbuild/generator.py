@@ -157,9 +157,8 @@ def add_helper_to_generator_class(builder: IRBuilder,
 
 def add_iter_to_generator_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
     """Generates the '__iter__' method for a generator class."""
-    builder.enter_method(fn_info.generator_class.ir, '__iter__', object_rprimitive, fn_info)
-    builder.add(Return(builder.self()))
-    builder.leave_method()
+    with builder.enter_method(fn_info.generator_class.ir, '__iter__', object_rprimitive, fn_info):
+        builder.add(Return(builder.self()))
 
 
 def add_next_to_generator_class(builder: IRBuilder,
@@ -167,14 +166,14 @@ def add_next_to_generator_class(builder: IRBuilder,
                                 fn_decl: FuncDecl,
                                 sig: FuncSignature) -> None:
     """Generates the '__next__' method for a generator class."""
-    builder.enter_method(fn_info.generator_class.ir, '__next__', object_rprimitive, fn_info)
-    none_reg = builder.none_object()
-    # Call the helper function with error flags set to Py_None, and return that result.
-    result = builder.add(Call(fn_decl,
-                              [builder.self(), none_reg, none_reg, none_reg, none_reg],
-                              fn_info.fitem.line))
-    builder.add(Return(result))
-    builder.leave_method()
+    with builder.enter_method(fn_info.generator_class.ir, '__next__',
+                              object_rprimitive, fn_info):
+        none_reg = builder.none_object()
+        # Call the helper function with error flags set to Py_None, and return that result.
+        result = builder.add(Call(fn_decl,
+                                  [builder.self(), none_reg, none_reg, none_reg, none_reg],
+                                  fn_info.fitem.line))
+        builder.add(Return(result))
 
 
 def add_send_to_generator_class(builder: IRBuilder,
@@ -182,15 +181,15 @@ def add_send_to_generator_class(builder: IRBuilder,
                                 fn_decl: FuncDecl,
                                 sig: FuncSignature) -> None:
     """Generates the 'send' method for a generator class."""
-    builder.enter_method(fn_info.generator_class.ir, 'send', object_rprimitive, fn_info)
-    arg = builder.add_argument('arg', object_rprimitive)
-    none_reg = builder.none_object()
-    # Call the helper function with error flags set to Py_None, and return that result.
-    result = builder.add(Call(fn_decl,
-                              [builder.self(), none_reg, none_reg, none_reg, builder.read(arg)],
-                              fn_info.fitem.line))
-    builder.add(Return(result))
-    builder.leave_method()
+    with builder.enter_method(fn_info.generator_class.ir, 'send', object_rprimitive, fn_info):
+        arg = builder.add_argument('arg', object_rprimitive)
+        none_reg = builder.none_object()
+        # Call the helper function with error flags set to Py_None, and return that result.
+        result = builder.add(Call(
+            fn_decl,
+            [builder.self(), none_reg, none_reg, none_reg, builder.read(arg)],
+            fn_info.fitem.line))
+        builder.add(Return(result))
 
 
 def add_throw_to_generator_class(builder: IRBuilder,
@@ -198,47 +197,42 @@ def add_throw_to_generator_class(builder: IRBuilder,
                                  fn_decl: FuncDecl,
                                  sig: FuncSignature) -> None:
     """Generates the 'throw' method for a generator class."""
-    builder.enter_method(fn_info.generator_class.ir, 'throw', object_rprimitive, fn_info)
-    typ = builder.add_argument('type', object_rprimitive)
-    val = builder.add_argument('value', object_rprimitive, ARG_OPT)
-    tb = builder.add_argument('traceback', object_rprimitive, ARG_OPT)
+    with builder.enter_method(fn_info.generator_class.ir, 'throw',
+                              object_rprimitive, fn_info):
+        typ = builder.add_argument('type', object_rprimitive)
+        val = builder.add_argument('value', object_rprimitive, ARG_OPT)
+        tb = builder.add_argument('traceback', object_rprimitive, ARG_OPT)
 
-    # Because the value and traceback arguments are optional and hence
-    # can be NULL if not passed in, we have to assign them Py_None if
-    # they are not passed in.
-    none_reg = builder.none_object()
-    builder.assign_if_null(val, lambda: none_reg, builder.fn_info.fitem.line)
-    builder.assign_if_null(tb, lambda: none_reg, builder.fn_info.fitem.line)
+        # Because the value and traceback arguments are optional and hence
+        # can be NULL if not passed in, we have to assign them Py_None if
+        # they are not passed in.
+        none_reg = builder.none_object()
+        builder.assign_if_null(val, lambda: none_reg, builder.fn_info.fitem.line)
+        builder.assign_if_null(tb, lambda: none_reg, builder.fn_info.fitem.line)
 
-    # Call the helper function using the arguments passed in, and return that result.
-    result = builder.add(
-        Call(
+        # Call the helper function using the arguments passed in, and return that result.
+        result = builder.add(Call(
             fn_decl,
             [builder.self(), builder.read(typ), builder.read(val), builder.read(tb), none_reg],
-            fn_info.fitem.line
-        )
-    )
-    builder.add(Return(result))
-    builder.leave_method()
+            fn_info.fitem.line))
+        builder.add(Return(result))
 
 
 def add_close_to_generator_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
     """Generates the '__close__' method for a generator class."""
     # TODO: Currently this method just triggers a runtime error.
     #       We should fill this out (https://github.com/mypyc/mypyc/issues/790).
-    builder.enter_method(fn_info.generator_class.ir, 'close', object_rprimitive, fn_info)
-    builder.add(RaiseStandardError(RaiseStandardError.RUNTIME_ERROR,
-                                   'close method on generator classes unimplemented',
-                                   fn_info.fitem.line))
-    builder.add(Unreachable())
-    builder.leave_method()
+    with builder.enter_method(fn_info.generator_class.ir, 'close', object_rprimitive, fn_info):
+        builder.add(RaiseStandardError(RaiseStandardError.RUNTIME_ERROR,
+                                       'close method on generator classes unimplemented',
+                                       fn_info.fitem.line))
+        builder.add(Unreachable())
 
 
 def add_await_to_generator_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
     """Generates the '__await__' method for a generator class."""
-    builder.enter_method(fn_info.generator_class.ir, '__await__', object_rprimitive, fn_info)
-    builder.add(Return(builder.self()))
-    builder.leave_method()
+    with builder.enter_method(fn_info.generator_class.ir, '__await__', object_rprimitive, fn_info):
+        builder.add(Return(builder.self()))
 
 
 def setup_env_for_generator_class(builder: IRBuilder) -> None:

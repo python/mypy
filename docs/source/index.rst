@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to Mypy documentation!
+Welcome to mypy documentation!
 ==============================
 
 Mypy is a static type checker for Python 3 and Python 2.7.
@@ -37,9 +37,9 @@ Mypy is a static type checker for Python 3 and Python 2.7.
    class_basics
    runtime_troubles
    protocols
-   python2
    dynamic_typing
-   casts
+   python2
+   type_narrowing
    duck_type_compatibility
    stubs
    generics

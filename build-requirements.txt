@@ -1,0 +1,2 @@
+-r mypy-requirements.txt
+types-typed-ast>=1.4.0,<1.5.0

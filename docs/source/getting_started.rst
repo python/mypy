@@ -12,7 +12,7 @@ may not make much sense otherwise.
 Installing and running mypy
 ***************************
 
-Mypy requires Python 3.5 or later to run.  Once you've
+Mypy requires Python 3.6 or later to run.  Once you've
 `installed Python 3 <https://www.python.org/downloads/>`_,
 install mypy using pip:
 
@@ -153,29 +153,26 @@ Arguments with default values can be annotated like so:
 .. code-block:: python
 
    def stars(*args: int, **kwargs: float) -> None:
-       # 'args' has type 'Tuple[int, ...]' (a tuple of ints)
-       # 'kwargs' has type 'Dict[str, float]' (a dict of strs to floats)
+       # 'args' has type 'tuple[int, ...]' (a tuple of ints)
+       # 'kwargs' has type 'dict[str, float]' (a dict of strs to floats)
        for arg in args:
            print(arg)
        for key, value in kwargs:
            print(key, value)
 
-The typing module
-*****************
+Additional types, and the typing module
+***************************************
 
 So far, we've added type hints that use only basic concrete types like
 ``str`` and ``float``. What if we want to express more complex types,
 such as "a list of strings" or "an iterable of ints"?
 
-You can find many of these more complex static types inside of the :py:mod:`typing`
-module. For example, to indicate that some function can accept a list of
-strings, use the :py:class:`~typing.List` type:
+For example, to indicate that some function can accept a list of
+strings, use the ``list[str]`` type (Python 3.9 and later):
 
 .. code-block:: python
 
-   from typing import List
-
-   def greet_all(names: List[str]) -> None:
+   def greet_all(names: list[str]) -> None:
        for name in names:
            print('Hello ' + name)
 
@@ -185,20 +182,37 @@ strings, use the :py:class:`~typing.List` type:
    greet_all(names)   # Ok!
    greet_all(ages)    # Error due to incompatible types
 
-The :py:class:`~typing.List` type is an example of something called a *generic type*: it can
-accept one or more *type parameters*. In this case, we *parameterized* :py:class:`~typing.List`
-by writing ``List[str]``. This lets mypy know that ``greet_all`` accepts specifically
+The :py:class:`list` type is an example of something called a *generic type*: it can
+accept one or more *type parameters*. In this case, we *parameterized* :py:class:`list`
+by writing ``list[str]``. This lets mypy know that ``greet_all`` accepts specifically
 lists containing strings, and not lists containing ints or any other type.
 
-In this particular case, the type signature is perhaps a little too rigid.
-After all, there's no reason why this function must accept *specifically* a list --
-it would run just fine if you were to pass in a tuple, a set, or any other custom iterable.
-
-You can express this idea using the :py:class:`~typing.Iterable` type instead of :py:class:`~typing.List`:
+In Python 3.8 and earlier, you can instead import the
+:py:class:`~typing.List` type from the :py:mod:`typing` module:
 
 .. code-block:: python
 
-   from typing import Iterable
+   from typing import List  # Python 3.8 and earlier
+
+   def greet_all(names: List[str]) -> None:
+       for name in names:
+           print('Hello ' + name)
+
+   ...
+
+You can find many of these more complex static types in the :py:mod:`typing` module.
+
+In the above examples, the type signature is perhaps a little too rigid.
+After all, there's no reason why this function must accept *specifically* a list --
+it would run just fine if you were to pass in a tuple, a set, or any other custom iterable.
+
+You can express this idea using the
+:py:class:`collections.abc.Iterable` (or :py:class:`typing.Iterable` in Python
+3.8 and earlier) type instead of :py:class:`list` :
+
+.. code-block:: python
+
+   from collections.abc import Iterable  # or "from typing import Iterable"
 
    def greet_all(names: Iterable[str]) -> None:
        for name in names:
@@ -239,13 +253,21 @@ and a more detailed overview (including information on how to make your own
 generic types or your own type aliases) by looking through the
 :ref:`type system reference <overview-type-system-reference>`.
 
-One final note: when adding types, the convention is to import types
-using the form ``from typing import Iterable`` (as opposed to doing
-just ``import typing`` or ``import typing as t`` or ``from typing import *``).
+.. note::
 
-For brevity, we often omit these :py:mod:`typing` imports in code examples, but
-mypy will give an error if you use types such as :py:class:`~typing.Iterable`
-without first importing them.
+   When adding types, the convention is to import types
+   using the form ``from typing import Union`` (as opposed to doing
+   just ``import typing`` or ``import typing as t`` or ``from typing import *``).
+
+   For brevity, we often omit imports from :py:mod:`typing` or :py:mod:`collections.abc`
+   in code examples, but mypy will give an error if you use types such as
+   :py:class:`~typing.Iterable` without first importing them.
+
+.. note::
+
+   In some examples we use capitalized variants of types, such as
+   ``List``, and sometimes we use plain ``list``. They are equivalent,
+   but the prior variant is needed if you are using Python 3.8 or earlier.
 
 Local type inference
 ********************
@@ -263,11 +285,11 @@ in that if statement.
 
 As another example, consider the following function. Mypy can type check this function
 without a problem: it will use the available context and deduce that ``output`` must be
-of type ``List[float]`` and that ``num`` must be of type ``float``:
+of type ``list[float]`` and that ``num`` must be of type ``float``:
 
 .. code-block:: python
 
-   def nums_below(numbers: Iterable[float], limit: float) -> List[float]:
+   def nums_below(numbers: Iterable[float], limit: float) -> list[float]:
        output = []
        for num in numbers:
            if num < limit:
@@ -279,7 +301,7 @@ for example, when assigning an empty dictionary to some global value:
 
 .. code-block:: python
 
-    my_global_dict = {}  # Error: Need type annotation for 'my_global_dict'
+    my_global_dict = {}  # Error: Need type annotation for "my_global_dict"
 
 You can teach mypy what type ``my_global_dict`` is meant to have by giving it
 a type hint. For example, if you knew this variable is supposed to be a dict
@@ -289,10 +311,13 @@ syntax like so:
 
 .. code-block:: python
 
+   # If you're using Python 3.9+
+   my_global_dict: dict[int, float] = {}
+
    # If you're using Python 3.6+
    my_global_dict: Dict[int, float] = {}
 
-   # If you want compatibility with older versions of Python
+   # If you want compatibility with even older versions of Python
    my_global_dict = {}  # type: Dict[int, float]
 
 .. _stubs-intro:
@@ -303,10 +328,11 @@ Library stubs and typeshed
 Mypy uses library *stubs* to type check code interacting with library
 modules, including the Python standard library. A library stub defines
 a skeleton of the public interface of the library, including classes,
-variables and functions, and their types. Mypy ships with stubs from
-the `typeshed <https://github.com/python/typeshed>`_ project, which
-contains library stubs for the Python builtins, the standard library,
-and selected third-party packages.
+variables and functions, and their types. Mypy ships with stubs for
+the standard library from the `typeshed
+<https://github.com/python/typeshed>`_ project, which contains library
+stubs for the Python builtins, the standard library, and selected
+third-party packages.
 
 For example, consider this code:
 
@@ -318,11 +344,40 @@ Without a library stub, mypy would have no way of inferring the type of ``x``
 and checking that the argument to :py:func:`chr` has a valid type.
 
 Mypy complains if it can't find a stub (or a real module) for a
-library module that you import. Some modules ship with stubs that mypy
-can automatically find, or you can install a 3rd party module with
-additional stubs (see :ref:`installed-packages` for details).  You can
-also :ref:`create stubs <stub-files>` easily. We discuss ways of
-silencing complaints about missing stubs in :ref:`ignore-missing-imports`.
+library module that you import. Some modules ship with stubs or inline
+annotations that mypy can automatically find, or you can install
+additional stubs using pip (see :ref:`fix-missing-imports` and
+:ref:`installed-packages` for the details). For example, you can install
+the stubs for the ``requests`` package like this:
+
+.. code-block:: shell
+
+  python3 -m pip install types-requests
+
+The stubs are usually packaged in a distribution named
+``types-<distribution>``.  Note that the distribution name may be
+different from the name of the package that you import. For example,
+``types-PyYAML`` contains stubs for the ``yaml`` package. Mypy can
+often suggest the name of the stub distribution:
+
+.. code-block:: text
+
+  prog.py:1: error: Library stubs not installed for "yaml" (or incompatible with Python 3.8)
+  prog.py:1: note: Hint: "python3 -m pip install types-PyYAML"
+  ...
+
+.. note::
+
+   Starting in mypy 0.900, most third-party package stubs must be
+   installed explicitly. This decouples mypy and stub versioning,
+   allowing stubs to updated without updating mypy. This also allows
+   stubs not originally included with mypy to be installed. Earlier
+   mypy versions included a fixed set of stubs for third-party
+   packages.
+
+You can also :ref:`create
+stubs <stub-files>` easily. We discuss ways of silencing complaints
+about missing stubs in :ref:`ignore-missing-imports`.
 
 Configuring mypy
 ****************

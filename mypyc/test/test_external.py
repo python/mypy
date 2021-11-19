@@ -19,7 +19,7 @@ class TestExternal(unittest.TestCase):
         """Run C unit tests in a subprocess."""
         # Build Google Test, the C++ framework we use for testing C code.
         # The source code for Google Test is copied to this repository.
-        cppflags = []  # type: List[str]
+        cppflags: List[str] = []
         env = os.environ.copy()
         if sys.platform == 'darwin':
             cppflags += ['-mmacosx-version-min=10.10', '-stdlib=libc++']

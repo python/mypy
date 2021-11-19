@@ -80,7 +80,7 @@ operations:
         n = 1  # type: int
         n = o         # Error!
 
-You can use :py:func:`~typing.cast` (see chapter :ref:`casts`) or :py:func:`isinstance` to
-go from a general type such as :py:class:`object` to a more specific
-type (subtype) such as ``int``.  :py:func:`~typing.cast` is not needed with
+You can use different :ref:`type narrowing <type-narrowing>`
+techniques to narrow :py:class:`object` to a more specific
+type (subtype) such as ``int``. Type narrowing is not needed with
 dynamically typed values (values with type ``Any``).

@@ -45,6 +45,7 @@ Built-in types
 
 .. code-block:: python
 
+   
    from typing import List, Set, Dict, Tuple, Optional
 
    # For simple built-in types, just use the name of the type
@@ -54,21 +55,29 @@ Built-in types
    x: str = "test"
    x: bytes = b"test"
 
-   # For collections, the name of the type is capitalized, and the
-   # name of the type inside the collection is in brackets
+   # For collections, the type of the collection item is in brackets
+   # (Python 3.9+)
+   x: list[int] = [1]
+   x: set[int] = {6, 7}
+
+   # In Python 3.8 and earlier, the name of the collection type is
+   # capitalized, and the type is imported from the 'typing' module
    x: List[int] = [1]
    x: Set[int] = {6, 7}
 
-   # Same as above, but with type comment syntax
+   # Same as above, but with type comment syntax (Python 3.5 and earlier)
    x = [1]  # type: List[int]
 
    # For mappings, we need the types of both keys and values
-   x: Dict[str, float] = {'field': 2.0}
+   x: dict[str, float] = {"field": 2.0}  # Python 3.9+
+   x: Dict[str, float] = {"field": 2.0}
 
    # For tuples of fixed size, we specify the types of all the elements
+   x: tuple[int, str, float] = (3, "yes", 7.5)  # Python 3.9+
    x: Tuple[int, str, float] = (3, "yes", 7.5)
 
    # For tuples of variable size, we use one type and ellipsis
+   x: tuple[int, ...] = (1, 2, 3)  # Python 3.9+
    x: Tuple[int, ...] = (1, 2, 3)
 
    # Use Optional[] for values that could be None
@@ -87,7 +96,7 @@ Python 3 supports an annotation syntax for function declarations.
 
 .. code-block:: python
 
-   from typing import Callable, Iterator, Union, Optional, List
+   from typing import Callable, Iterator, Union, Optional
 
    # This is how you annotate a function definition
    def stringify(num: int) -> str:
@@ -113,12 +122,12 @@ Python 3 supports an annotation syntax for function declarations.
            i += 1
 
    # You can of course split a function annotation over multiple lines
-   def send_email(address: Union[str, List[str]],
+   def send_email(address: Union[str, list[str]],
                   sender: str,
-                  cc: Optional[List[str]],
-                  bcc: Optional[List[str]],
+                  cc: Optional[list[str]],
+                  bcc: Optional[list[str]],
                   subject='',
-                  body: Optional[List[str]] = None
+                  body: Optional[list[str]] = None
                   ) -> bool:
        ...
 
@@ -135,15 +144,15 @@ When you're puzzled or when things are complicated
 
 .. code-block:: python
 
-   from typing import Union, Any, List, Optional, cast
+   from typing import Union, Any, Optional, cast
 
    # To find out what type mypy infers for an expression anywhere in
    # your program, wrap it in reveal_type().  Mypy will print an error
    # message with the type; remove it again before running the code.
-   reveal_type(1)  # -> Revealed type is 'builtins.int'
+   reveal_type(1)  # -> Revealed type is "builtins.int"
 
    # Use Union when something could be one of a few types
-   x: List[Union[int, str]] = [3, 5, "test", "fun"]
+   x: list[Union[int, str]] = [3, 5, "test", "fun"]
 
    # Use Any if you don't know the type of something or it's too
    # dynamic to write a type for
@@ -151,7 +160,7 @@ When you're puzzled or when things are complicated
 
    # If you initialize a variable with an empty container or "None"
    # you may have to help mypy a bit by providing a type annotation
-   x: List[str] = []
+   x: list[str] = []
    x: Optional[str] = None
 
    # This makes each positional arg and each keyword arg a "str"
@@ -168,9 +177,9 @@ When you're puzzled or when things are complicated
    # "cast" is a helper function that lets you override the inferred
    # type of an expression. It's only for mypy -- there's no runtime check.
    a = [4]
-   b = cast(List[int], a)  # Passes fine
-   c = cast(List[str], a)  # Passes fine (no runtime check)
-   reveal_type(c)  # -> Revealed type is 'builtins.list[builtins.str]'
+   b = cast(list[int], a)  # Passes fine
+   c = cast(list[str], a)  # Passes fine (no runtime check)
+   reveal_type(c)  # -> Revealed type is "builtins.list[builtins.str]"
    print(c)  # -> [4]; the object is not cast
 
    # If you want dynamic attributes on your class, have it override "__setattr__"
@@ -201,25 +210,25 @@ that are common in idiomatic Python are standardized.
 
 .. code-block:: python
 
-   from typing import Mapping, MutableMapping, Sequence, Iterable, List, Set
+   from typing import Mapping, MutableMapping, Sequence, Iterable
 
    # Use Iterable for generic iterables (anything usable in "for"),
    # and Sequence where a sequence (supporting "len" and "__getitem__") is
    # required
-   def f(ints: Iterable[int]) -> List[str]:
+   def f(ints: Iterable[int]) -> list[str]:
        return [str(x) for x in ints]
 
    f(range(1, 3))
 
    # Mapping describes a dict-like object (with "__getitem__") that we won't
    # mutate, and MutableMapping one (with "__setitem__") that we might
-   def f(my_mapping: Mapping[int, str]) -> List[int]:
+   def f(my_mapping: Mapping[int, str]) -> list[int]:
        my_mapping[5] = 'maybe'  # if we try this, mypy will throw an error...
        return list(my_mapping.keys())
 
    f({3: 'yes', 4: 'no'})
 
-   def f(my_mapping: MutableMapping[int, str]) -> Set[str]:
+   def f(my_mapping: MutableMapping[int, str]) -> set[str]:
        my_mapping[5] = 'maybe'  # ...but mypy is OK with this.
        return set(my_mapping.values())
 
@@ -254,12 +263,12 @@ Classes
    # You can use the ClassVar annotation to declare a class variable
    class Car:
        seats: ClassVar[int] = 4
-       passengers: ClassVar[List[str]]
+       passengers: ClassVar[list[str]]
 
    # You can also declare the type of an attribute in "__init__"
    class Box:
        def __init__(self) -> None:
-           self.items: List[str] = []
+           self.items: list[str] = []
 
 
 Coroutines and asyncio

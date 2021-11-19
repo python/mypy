@@ -48,8 +48,12 @@ class list(Sequence[T]): # needed by some test cases
 class tuple(Generic[T]): pass
 class function: pass
 class float: pass
+class complex: pass
 class bool(int): pass
 
-class ellipsis: pass
+class ellipsis:
+    __class__: object
 def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass
 class BaseException: pass
+
+def iter(__iterable: Iterable[T]) -> Iterator[T]: pass

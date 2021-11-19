@@ -13,29 +13,18 @@ from mypy.test.config import package_path
 from mypy.util import try_find_python2_interpreter
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.config import test_temp_dir
-from mypy.test.helpers import assert_string_arrays_equal
+from mypy.test.helpers import assert_string_arrays_equal, perform_file_operations
 
 
 # NOTE: options.use_builtins_fixtures should not be set in these
 # tests, otherwise mypy will ignore installed third-party packages.
 
 
-_NAMESPACE_PROGRAM = """
-{import_style}
-from typedpkg_ns.ns.dne import dne
-
-af("abc")
-bf(False)
-dne(123)
-
-af(False)
-bf(2)
-dne("abc")
-"""
-
-
 class PEP561Suite(DataSuite):
-    files = ['pep561.test']
+    files = [
+        'pep561.test',
+    ]
+    base_path = '.'
 
     def run_case(self, test_case: DataDrivenTestCase) -> None:
         test_pep561(test_case)
@@ -73,7 +62,7 @@ def install_package(pkg: str,
     working_dir = os.path.join(package_path, pkg)
     with tempfile.TemporaryDirectory() as dir:
         if use_pip:
-            install_cmd = [python_executable, '-m', 'pip', 'install', '-b', '{}'.format(dir)]
+            install_cmd = [python_executable, '-m', 'pip', 'install']
             if editable:
                 install_cmd.append('-e')
             install_cmd.append('.')
@@ -83,16 +72,22 @@ def install_package(pkg: str,
                 install_cmd.append('develop')
             else:
                 install_cmd.append('install')
-        proc = subprocess.run(install_cmd, cwd=working_dir, stdout=PIPE, stderr=PIPE)
+        # Note that newer versions of pip (21.3+) don't
+        # follow this env variable, but this is for compatibility
+        env = {'PIP_BUILD': dir}
+        # Inherit environment for Windows
+        env.update(os.environ)
+        proc = subprocess.run(install_cmd,
+                              cwd=working_dir,
+                              stdout=PIPE,
+                              stderr=PIPE,
+                              env=env)
     if proc.returncode != 0:
         raise Exception(proc.stdout.decode('utf-8') + proc.stderr.decode('utf-8'))
 
 
 def test_pep561(testcase: DataDrivenTestCase) -> None:
     """Test running mypy on files that depend on PEP 561 packages."""
-    if (sys.platform == 'darwin' and hasattr(sys, 'base_prefix') and
-       sys.base_prefix != sys.prefix):
-        pytest.skip()
     assert testcase.old_cwd is not None, "test was not properly set up"
     if 'python2' in testcase.name.lower():
         python = try_find_python2_interpreter()
@@ -100,6 +95,7 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
             pytest.skip()
     else:
         python = sys.executable
+
     assert python is not None, "Should be impossible"
     pkgs, pip_args = parse_pkgs(testcase.input[0])
     mypy_args = parse_mypy_args(testcase.input[1])
@@ -116,31 +112,30 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
         for pkg in pkgs:
             install_package(pkg, python_executable, use_pip, editable)
 
-        if venv_dir is not None:
-            old_dir = os.getcwd()
-            os.chdir(venv_dir)
-        try:
-            cmd_line = list(mypy_args)
-            has_program = not ('-p' in cmd_line or '--package' in cmd_line)
-            if has_program:
-                program = testcase.name + '.py'
-                with open(program, 'w', encoding='utf-8') as f:
-                    for s in testcase.input:
-                        f.write('{}\n'.format(s))
-                cmd_line.append(program)
-            cmd_line.extend(['--no-incremental', '--no-error-summary'])
-            if python_executable != sys.executable:
-                cmd_line.append('--python-executable={}'.format(python_executable))
-            if testcase.files != []:
-                for name, content in testcase.files:
-                    if 'mypy.ini' in name:
-                        with open('mypy.ini', 'w') as m:
-                            m.write(content)
+        cmd_line = list(mypy_args)
+        has_program = not ('-p' in cmd_line or '--package' in cmd_line)
+        if has_program:
+            program = testcase.name + '.py'
+            with open(program, 'w', encoding='utf-8') as f:
+                for s in testcase.input:
+                    f.write('{}\n'.format(s))
+            cmd_line.append(program)
+
+        cmd_line.extend(['--no-error-summary'])
+        if python_executable != sys.executable:
+            cmd_line.append('--python-executable={}'.format(python_executable))
+
+        steps = testcase.find_steps()
+        if steps != [[]]:
+            steps = [[]] + steps  # type: ignore[operator,assignment]
+
+        for i, operations in enumerate(steps):
+            perform_file_operations(operations)
+
             output = []
             # Type check the module
             out, err, returncode = mypy.api.run(cmd_line)
-            if has_program:
-                os.remove(program)
+
             # split lines, remove newlines, and remove directory of test case
             for line in (out + err).splitlines():
                 if line.startswith(test_temp_dir + os.sep):
@@ -149,12 +144,15 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
                     # Normalize paths so that the output is the same on Windows and Linux/macOS.
                     line = line.replace(test_temp_dir + os.sep, test_temp_dir + '/')
                     output.append(line.rstrip("\r\n"))
-            assert_string_arrays_equal([line for line in testcase.output], output,
-                               'Invalid output ({}, line {})'.format(
-                                   testcase.file, testcase.line))
-        finally:
-            if venv_dir is not None:
-                os.chdir(old_dir)
+            iter_count = '' if i == 0 else ' on iteration {}'.format(i + 1)
+            expected = testcase.output if i == 0 else testcase.output2.get(i + 1, [])
+
+            assert_string_arrays_equal(expected, output,
+                               'Invalid output ({}, line {}){}'.format(
+                                   testcase.file, testcase.line, iter_count))
+
+        if has_program:
+            os.remove(program)
 
 
 def parse_pkgs(comment: str) -> Tuple[List[str], List[str]]:
@@ -172,9 +170,6 @@ def parse_mypy_args(line: str) -> List[str]:
     return m.group(1).split()
 
 
-@pytest.mark.skipif(sys.platform == 'darwin' and hasattr(sys, 'base_prefix') and
-                    sys.base_prefix != sys.prefix,
-                    reason="Temporarily skip to avoid having a virtualenv within a venv.")
 def test_mypy_path_is_respected() -> None:
     assert False
     packages = 'packages'

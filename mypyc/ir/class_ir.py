@@ -1,7 +1,7 @@
 """Intermediate representation of classes."""
 
 from typing import List, Optional, Set, Tuple, Dict, NamedTuple
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 
 from mypyc.common import JsonDict
 from mypyc.ir.ops import Value, DeserMaps
@@ -18,7 +18,7 @@ from mypyc.common import PROPSET_PREFIX
 # vtable.
 #
 # This makes multiple inheritance tricky, since obviously we cannot be
-# an extension of multiple parent classes. We solve this by requriing
+# an extension of multiple parent classes. We solve this by requiring
 # all but one parent to be "traits", which we can operate on in a
 # somewhat less efficient way. For each trait implemented by a class,
 # we generate a separate vtable for the methods in that trait.
@@ -102,50 +102,55 @@ class ClassIR:
         self.has_dict = False
         # Do we allow interpreted subclasses? Derived from a mypyc_attr.
         self.allow_interpreted_subclasses = False
+        # Does this class need getseters to be generated for its attributes? (getseters are also
+        # added if is_generated is False)
+        self.needs_getseters = False
         # If this a subclass of some built-in python class, the name
         # of the object for that class. We currently only support this
         # in a few ad-hoc cases.
-        self.builtin_base = None  # type: Optional[str]
+        self.builtin_base: Optional[str] = None
         # Default empty constructor
         self.ctor = FuncDecl(name, None, module_name, FuncSignature([], RInstance(self)))
 
-        self.attributes = OrderedDict()  # type: OrderedDict[str, RType]
+        self.attributes: OrderedDict[str, RType] = OrderedDict()
+        # Deletable attributes
+        self.deletable: List[str] = []
         # We populate method_types with the signatures of every method before
         # we generate methods, and we rely on this information being present.
-        self.method_decls = OrderedDict()  # type: OrderedDict[str, FuncDecl]
+        self.method_decls: OrderedDict[str, FuncDecl] = OrderedDict()
         # Map of methods that are actually present in an extension class
-        self.methods = OrderedDict()  # type: OrderedDict[str, FuncIR]
+        self.methods: OrderedDict[str, FuncIR] = OrderedDict()
         # Glue methods for boxing/unboxing when a class changes the type
-        # while overriding a method. Maps from (parent class overrided, method)
+        # while overriding a method. Maps from (parent class overridden, method)
         # to IR of glue method.
-        self.glue_methods = OrderedDict()  # type: Dict[Tuple[ClassIR, str], FuncIR]
+        self.glue_methods: Dict[Tuple[ClassIR, str], FuncIR] = OrderedDict()
 
         # Properties are accessed like attributes, but have behavior like method calls.
         # They don't belong in the methods dictionary, since we don't want to expose them to
         # Python's method API. But we want to put them into our own vtable as methods, so that
         # they are properly handled and overridden. The property dictionary values are a tuple
         # containing a property getter and an optional property setter.
-        self.properties = OrderedDict()  # type: OrderedDict[str, Tuple[FuncIR, Optional[FuncIR]]]
+        self.properties: OrderedDict[str, Tuple[FuncIR, Optional[FuncIR]]] = OrderedDict()
         # We generate these in prepare_class_def so that we have access to them when generating
         # other methods and properties that rely on these types.
-        self.property_types = OrderedDict()  # type: OrderedDict[str, RType]
+        self.property_types: OrderedDict[str, RType] = OrderedDict()
 
-        self.vtable = None  # type: Optional[Dict[str, int]]
-        self.vtable_entries = []  # type: VTableEntries
-        self.trait_vtables = OrderedDict()  # type: OrderedDict[ClassIR, VTableEntries]
+        self.vtable: Optional[Dict[str, int]] = None
+        self.vtable_entries: VTableEntries = []
+        self.trait_vtables: OrderedDict[ClassIR, VTableEntries] = OrderedDict()
         # N.B: base might not actually quite be the direct base.
         # It is the nearest concrete base, but we allow a trait in between.
-        self.base = None  # type: Optional[ClassIR]
-        self.traits = []  # type: List[ClassIR]
+        self.base: Optional[ClassIR] = None
+        self.traits: List[ClassIR] = []
         # Supply a working mro for most generated classes. Real classes will need to
         # fix it up.
-        self.mro = [self]  # type: List[ClassIR]
+        self.mro: List[ClassIR] = [self]
         # base_mro is the chain of concrete (non-trait) ancestors
-        self.base_mro = [self]  # type: List[ClassIR]
+        self.base_mro: List[ClassIR] = [self]
 
-        # Direct subclasses of this class (use subclasses() to also incude non-direct ones)
+        # Direct subclasses of this class (use subclasses() to also include non-direct ones)
         # None if separate compilation prevents this from working
-        self.children = []  # type: Optional[List[ClassIR]]
+        self.children: Optional[List[ClassIR]] = []
 
     @property
     def fullname(self) -> str:
@@ -211,6 +216,12 @@ class ClassIR:
             return False
         return True
 
+    def is_deletable(self, name: str) -> bool:
+        for ir in self.mro:
+            if name in ir.deletable:
+                return True
+        return False
+
     def name_prefix(self, names: NameGenerator) -> str:
         return names.private_name(self.module_name, self.name)
 
@@ -229,7 +240,7 @@ class ClassIR:
         return res[0] if res else None
 
     def subclasses(self) -> Optional[Set['ClassIR']]:
-        """Return all subclassses of this class, both direct and indirect.
+        """Return all subclasses of this class, both direct and indirect.
 
         Return None if it is impossible to identify all subclasses, for example
         because we are performing separate compilation.
@@ -255,7 +266,7 @@ class ClassIR:
             return None
         concrete = {c for c in subs if not (c.is_trait or c.is_abstract)}
         # We place classes with no children first because they are more likely
-        # to appear in various isinstance() checks. We then sort leafs by name
+        # to appear in various isinstance() checks. We then sort leaves by name
         # to get stable order.
         return sorted(concrete, key=lambda c: (len(c.children or []), c.name))
 
@@ -271,18 +282,19 @@ class ClassIR:
             'inherits_python': self.inherits_python,
             'has_dict': self.has_dict,
             'allow_interpreted_subclasses': self.allow_interpreted_subclasses,
+            'needs_getseters': self.needs_getseters,
             'builtin_base': self.builtin_base,
             'ctor': self.ctor.serialize(),
             # We serialize dicts as lists to ensure order is preserved
             'attributes': [(k, t.serialize()) for k, t in self.attributes.items()],
             # We try to serialize a name reference, but if the decl isn't in methods
             # then we can't be sure that will work so we serialize the whole decl.
-            'method_decls': [(k, d.fullname if k in self.methods else d.serialize())
+            'method_decls': [(k, d.id if k in self.methods else d.serialize())
                              for k, d in self.method_decls.items()],
             # We serialize method fullnames out and put methods in a separate dict
-            'methods': [(k, m.fullname) for k, m in self.methods.items()],
+            'methods': [(k, m.id) for k, m in self.methods.items()],
             'glue_methods': [
-                ((cir.fullname, k), m.fullname)
+                ((cir.fullname, k), m.id)
                 for (cir, k), m in self.glue_methods.items()
             ],
 
@@ -321,6 +333,7 @@ class ClassIR:
         ir.inherits_python = data['inherits_python']
         ir.has_dict = data['has_dict']
         ir.allow_interpreted_subclasses = data['allow_interpreted_subclasses']
+        ir.needs_getseters = data['needs_getseters']
         ir.builtin_base = data['builtin_base']
         ir.ctor = FuncDecl.deserialize(data['ctor'], ctx)
         ir.attributes = OrderedDict(
@@ -375,8 +388,8 @@ def serialize_vtable_entry(entry: VTableMethod) -> JsonDict:
         '.class': 'VTableMethod',
         'cls': entry.cls.fullname,
         'name': entry.name,
-        'method': entry.method.decl.fullname,
-        'shadow_method': entry.shadow_method.decl.fullname if entry.shadow_method else None,
+        'method': entry.method.decl.id,
+        'shadow_method': entry.shadow_method.decl.id if entry.shadow_method else None,
     }
 
 
