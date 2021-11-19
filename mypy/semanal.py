@@ -1609,7 +1609,9 @@ class SemanticAnalyzer(NodeVisitor[None],
             for node in base.type.defn.defs.body:
                 if isinstance(node, (FuncBase, Decorator)):
                     continue  # A method
-                if isinstance(node, AssignmentStmt) and isinstance(node.rvalue, TempNode):
+                if (isinstance(node, AssignmentStmt)
+                        and isinstance(node.rvalue, TempNode)
+                        and node.rvalue.no_rhs):
                     continue  # Corner case: assignments like `x: int` are fine.
                 return True
         return False
