@@ -1255,8 +1255,9 @@ class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
             if name.endswith('.args') or name.endswith('.kwargs'):
                 base = '.'.join(name.split('.')[:-1])
                 n = self.lookup(base, t)
-                if isinstance(n.node, ParamSpecExpr):
+                if n is not None and isinstance(n.node, ParamSpecExpr):
                     node = n
+                    name = base
         if node is None:
             node = self.lookup(name, t)
         if node and isinstance(node.node, TypeVarLikeExpr) and (
