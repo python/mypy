@@ -1678,7 +1678,6 @@ class A(Enum):
 class B(A): pass  # E: Cannot inherit from final class "A"
 [builtins fixtures/bool.pyi]
 
-
 [case testEnumFinalSpecialProps]
 # https://github.com/python/mypy/issues/11699
 from enum import Enum, IntEnum
@@ -1701,4 +1700,23 @@ class EI(IntEnum):
 
 E._order_ = 'a'  # E: Cannot assign to final attribute "_order_"
 EI.value = 2     # E: Cannot assign to final attribute "value"
+[builtins fixtures/bool.pyi]
+
+[case testEnumNotFinalWithMethodsAndUninitializedValues]
+# https://github.com/python/mypy/issues/11578
+from enum import Enum
+from typing import Final
+
+class A(Enum):
+    x: int
+    def method(self) -> int: pass
+
+class B(A):
+    x = 1  # E: Cannot override writable attribute "x" with a final one
+
+class A1(Enum):
+    x: int = 1
+
+class B1(A1):  # E: Cannot inherit from final class "A1"
+    pass
 [builtins fixtures/bool.pyi]

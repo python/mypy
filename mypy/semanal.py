@@ -1552,17 +1552,12 @@ class SemanticAnalyzer(NodeVisitor[None],
             elif isinstance(base, Instance):
                 if base.type.is_newtype:
                     self.fail('Cannot subclass "NewType"', defn)
-                if (
-                    base.type.is_enum
-                    and base.type.fullname not in ENUM_BASES
-                    and base.type.names
-                    and any(not isinstance(n.node, (FuncBase, Decorator))
-                            for n in base.type.names.values())
-                ):
+                if self.enum_has_final_values(base):
                     # This means that are trying to subclass a non-default
                     # Enum class, with defined members. This is not possible.
                     # In runtime, it will raise. We need to mark this type as final.
                     # However, methods can be defined on a type: only values can't.
+                    # We also don't count values with annotations only.
                     base.type.is_final = True
                 base_types.append(base)
             elif isinstance(base, AnyType):
@@ -1600,6 +1595,24 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.set_dummy_mro(defn.info)
             return
         self.calculate_class_mro(defn, self.object_type)
+
+    def enum_has_final_values(self, base: Instance) -> bool:
+        if (
+            base.type.is_enum
+            and base.type.fullname not in ENUM_BASES
+            and base.type.names
+            and base.type.defn
+        ):
+            # TODO: if `Var` ever has `.has_explicit_value` prop, remove `ast` traversal.
+            # Check that enum members are really initialized, ignore methods.
+            # We need at least one assigned member to call this Enum `final`.
+            for node in base.type.defn.defs.body:
+                if isinstance(node, (FuncBase, Decorator)):
+                    continue  # A method
+                if isinstance(node, AssignmentStmt) and isinstance(node.rvalue, TempNode):
+                    continue  # Corner case: assignments like `x: int` are fine.
+                return True
+        return False
 
     def configure_tuple_base_class(self,
                                    defn: ClassDef,
