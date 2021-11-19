@@ -111,27 +111,17 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
 
     def visit_callable_type(self, t: CallableType) -> Type:
         if t.param_spec is None:
-            arg_types = t.arg_types
-            if (
-                len(arg_types) >= 2
-                and isinstance(arg_types[-2], ParamSpecType)
-                and isinstance(arg_types[-1], ParamSpecType)
-            ):
-                param_spec = arg_types[-2]
+            param_spec = t.param_spec2()
+            if param_spec is not None:
                 repl = get_proper_type(self.variables.get(param_spec.id))
                 if isinstance(repl, CallableType):
                     # Substitute *args, **kwargs
-                    arg_types = arg_types[:-2] + repl.arg_types
-                    arg_kinds = t.arg_kinds[:-2] + repl.arg_kinds
-                    arg_names = t.arg_names[:-2] + repl.arg_names
-                    return t.copy_modified(arg_types=arg_types,
-                                           arg_kinds=arg_kinds,
-                                           arg_names=arg_names,
-                                           ret_type=t.ret_type.accept(self),
+                    t = t.expand_param_spec(repl)
+                    return t.copy_modified(ret_type=t.ret_type.accept(self),
                                            type_guard=(t.type_guard.accept(self)
                                                        if t.type_guard is not None else None),
                                            param_spec=None)
-            arg_types = self.expand_types(arg_types)
+            arg_types = self.expand_types(t.arg_types)
         else:
             repl = get_proper_type(self.variables.get(t.param_spec.id))
             if isinstance(repl, CallableType):

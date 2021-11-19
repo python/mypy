@@ -1294,6 +1294,22 @@ class CallableType(FunctionLike):
             a.append(tv.id)
         return a
 
+    def param_spec2(self) -> Optional[ParamSpecType]:
+        """Return ParamSpec if callable can be called with one."""
+        if len(self.arg_types) < 2:
+            return None
+        if self.arg_kinds[-2] != ARG_STAR or self.arg_kinds[-1] != ARG_STAR2:
+            return None
+        arg_type = get_proper_type(self.arg_types[-2])
+        if not isinstance(arg_type, ParamSpecType):
+            return None
+        return ParamSpecType(arg_type.name, arg_type.fullname, arg_type.id, ParamSpecFlavor.BARE)
+
+    def expand_param_spec(self, c: 'CallableType') -> 'CallableType':
+        return self.copy_modified(arg_types=self.arg_types[:-2] + c.arg_types,
+                                  arg_kinds=self.arg_kinds[:-2] + c.arg_kinds,
+                                  arg_names=self.arg_names[:-2] + c.arg_names)
+
     def __hash__(self) -> int:
         return hash((self.ret_type, self.is_type_obj(),
                      self.is_ellipsis_args, self.name,
