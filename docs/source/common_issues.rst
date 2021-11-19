@@ -786,6 +786,14 @@ False:
 If you use the :option:`--warn-unreachable <mypy --warn-unreachable>` flag, mypy will generate
 an error about each unreachable code block.
 
+There are several cases that we always treat as reachable:
+
+- ``reveal_type`` and ``reveal_locals`` helper functions, because they are only useful for type checking and can be used for debugging
+- ``assert False, 'unreahable'`` and similar constructs, because they can be used to guard places that should not be reached during runtime execution
+- functions that return ``NoReturn``, like ``sys.exit`` that can also be used to guard things
+- ``raise ...``, with the same reasoning as above
+- ``pass`` and ``...``, because they do nothing
+
 Narrowing and inner functions
 -----------------------------
 

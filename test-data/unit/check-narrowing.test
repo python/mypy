@@ -267,7 +267,7 @@ else:
     reveal_type(x)  # N: Revealed type is "Union[__main__.Object1, __main__.Object2]"
 
 if x.key is Key.D:
-    reveal_type(x)  # E: Statement is unreachable
+    x               # E: Statement is unreachable
 else:
     reveal_type(x)  # N: Revealed type is "Union[__main__.Object1, __main__.Object2]"
 [builtins fixtures/tuple.pyi]
@@ -294,7 +294,7 @@ else:
     reveal_type(x)  # N: Revealed type is "Union[TypedDict('__main__.TypedDict1', {'key': Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key': Union[Literal['B'], Literal['C']]})]"
 
 if x['key'] == 'D':
-    reveal_type(x)  # E: Statement is unreachable
+    x               # E: Statement is unreachable
 else:
     reveal_type(x)  # N: Revealed type is "Union[TypedDict('__main__.TypedDict1', {'key': Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key': Union[Literal['B'], Literal['C']]})]"
 [builtins fixtures/primitives.pyi]
@@ -321,7 +321,7 @@ else:
     reveal_type(x)  # N: Revealed type is "Union[TypedDict('__main__.TypedDict1', {'key'?: Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key'?: Union[Literal['B'], Literal['C']]})]"
 
 if x['key'] == 'D':
-    reveal_type(x)  # E: Statement is unreachable
+    x               # E: Statement is unreachable
 else:
     reveal_type(x)  # N: Revealed type is "Union[TypedDict('__main__.TypedDict1', {'key'?: Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key'?: Union[Literal['B'], Literal['C']]})]"
 [builtins fixtures/primitives.pyi]
@@ -612,8 +612,7 @@ else:
 
 y: Union[Parent1, Parent2]
 if y["model"]["key"] is Key.C:
-    reveal_type(y)              # E: Statement is unreachable
-    reveal_type(y["model"])
+    y                           # E: Statement is unreachable
 else:
     reveal_type(y)              # N: Revealed type is "Union[TypedDict('__main__.Parent1', {'model': TypedDict('__main__.Model1', {'key': Literal[__main__.Key.A]}), 'foo': builtins.int}), TypedDict('__main__.Parent2', {'model': TypedDict('__main__.Model2', {'key': Literal[__main__.Key.B]}), 'bar': builtins.str})]"
     reveal_type(y["model"])     # N: Revealed type is "Union[TypedDict('__main__.Model1', {'key': Literal[__main__.Key.A]}), TypedDict('__main__.Model2', {'key': Literal[__main__.Key.B]})]"
@@ -648,8 +647,7 @@ else:
 
 y: Union[Parent1, Parent2]
 if y["model"]["key"] == 'C':
-    reveal_type(y)              # E: Statement is unreachable
-    reveal_type(y["model"])
+    y                           # E: Statement is unreachable
 else:
     reveal_type(y)              # N: Revealed type is "Union[TypedDict('__main__.Parent1', {'model': TypedDict('__main__.Model1', {'key': Literal['A']}), 'foo': builtins.int}), TypedDict('__main__.Parent2', {'model': TypedDict('__main__.Model2', {'key': Literal['B']}), 'bar': builtins.str})]"
     reveal_type(y["model"])     # N: Revealed type is "Union[TypedDict('__main__.Model1', {'key': Literal['A']}), TypedDict('__main__.Model2', {'key': Literal['B']})]"
@@ -728,7 +726,7 @@ def test2(switch: FlipFlopEnum) -> None:
     switch.mutate()
 
     assert switch.state is State.B     # E: Non-overlapping identity check (left operand type: "Literal[State.A]", right operand type: "Literal[State.B]")
-    reveal_type(switch.state)          # E: Statement is unreachable
+    switch.state                       # E: Statement is unreachable
 
 def test3(switch: FlipFlopStr) -> None:
     # This is the same thing as 'test1', except we try using str literals.
@@ -895,8 +893,7 @@ else:
 
 # No contamination here
 if 1 == x == z:      # E: Non-overlapping equality check (left operand type: "Union[Literal[1], Literal[2], None]", right operand type: "Default")
-    reveal_type(x)   # E: Statement is unreachable
-    reveal_type(z)
+    x                # E: Statement is unreachable
 else:
     reveal_type(x)   # N: Revealed type is "Union[Literal[1], Literal[2], None]"
     reveal_type(z)   # N: Revealed type is "__main__.Default"
@@ -912,7 +909,7 @@ b: Literal[1, 2]
 c: Literal[2, 3]
 
 if a == b == c:
-    reveal_type(a)  # E: Statement is unreachable
+    a               # E: Statement is unreachable
     reveal_type(b)
     reveal_type(c)
 else:
@@ -923,7 +920,7 @@ else:
 if a == a == a:
     reveal_type(a)  # N: Revealed type is "Literal[1]"
 else:
-    reveal_type(a)  # E: Statement is unreachable
+    a               # E: Statement is unreachable
 
 if a == a == b:
     reveal_type(a)  # N: Revealed type is "Literal[1]"
@@ -986,8 +983,8 @@ elif a == a == 4:
 else:
     # In contrast, this branch must be unreachable: we assume (maybe naively)
     # that 'a' won't be mutated in the middle of the expression.
-    reveal_type(a)  # E: Statement is unreachable
-    reveal_type(b)
+    a               # E: Statement is unreachable
+    b
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingLiteralTruthiness]
