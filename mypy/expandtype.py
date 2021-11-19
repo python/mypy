@@ -5,7 +5,7 @@ from mypy.types import (
     NoneType, Overloaded, TupleType, TypedDictType, UnionType,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId,
     FunctionLike, TypeVarType, LiteralType, get_proper_type, ProperType,
-    TypeAliasType, ParamSpecType
+    TypeAliasType, ParamSpecType, TypeVarLikeType
 )
 
 
@@ -43,7 +43,7 @@ def freshen_function_type_vars(callee: F) -> F:
         for v in callee.variables:
             # TODO(PEP612): fix for ParamSpecType
             if isinstance(v, TypeVarType):
-                tv = TypeVarType.new_unification_variable(v)
+                tv: TypeVarLikeType = TypeVarType.new_unification_variable(v)
             else:
                 assert isinstance(v, ParamSpecType)
                 tv = ParamSpecType.new_unification_variable(v)
@@ -99,7 +99,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         else:
             return repl
 
-    def visit_param_spec(self, t: TypeVarType) -> Type:
+    def visit_param_spec(self, t: ParamSpecType) -> Type:
         repl = get_proper_type(self.variables.get(t.id, t))
         if isinstance(repl, Instance):
             inst = repl
