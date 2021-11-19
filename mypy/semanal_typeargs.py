@@ -72,6 +72,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
             return  # https://github.com/python/mypy/issues/11079
         for (i, arg), tvar in zip(enumerate(t.args), info.defn.type_vars):
             if isinstance(tvar, TypeVarType):
+                arg = get_proper_type(arg)
                 if isinstance(arg, ParamSpecType):
                     # TODO: Better message
                     self.fail(f'Invalid location for ParamSpec "{arg.name}"', t)
