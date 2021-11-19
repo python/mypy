@@ -1031,14 +1031,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if callee.param_spec is not None:
             if arg_kinds == [ARG_STAR, ARG_STAR2]:
-                arg1 = self.accept(args[0])
-                arg2 = self.accept(args[1])
+                arg1 = get_proper_type(self.accept(args[0]))
+                arg2 = get_proper_type(self.accept(args[1]))
                 if (is_named_instance(arg1, 'builtins.tuple')
                     and is_named_instance(arg2, 'builtins.dict')):
                     assert isinstance(arg1, Instance)
                     assert isinstance(arg2, Instance)
-                    if (isinstance(arg1.args[0], ParamSpecType)
-                        and isinstance(arg2.args[1], ParamSpecType)):
+                    if (isinstance(get_proper_type(arg1.args[0]), ParamSpecType)
+                        and isinstance(get_proper_type(arg2.args[1]), ParamSpecType)):
                         # TODO: Check ParamSpec ids and flavors
                         return callee.ret_type, callee
 
