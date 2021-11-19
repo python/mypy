@@ -239,3 +239,30 @@ class C(Generic[P]):
         reveal_type(args)  # N: Revealed type is "P.args`1"
         reveal_type(kwargs)  # N: Revealed type is "P.kwargs`1"
 [builtins fixtures/dict.pyi]
+
+[case testParamSpecSubtypeChecking]
+from typing import Callable, TypeVar, Generic, Any
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+
+class C(Generic[P]):
+    def __init__(self, x: Callable[P, None]) -> None: ...
+
+    def m(self, *args: P.args, **kwargs: P.kwargs) -> None:
+        args = args
+        kwargs = kwargs
+        o: object
+        o = args
+        o = kwargs
+        o2: object
+        args = o2  # E: Incompatible types in assignment (expression has type "object", variable has type "P.args")
+        kwargs = o2  # E: Incompatible types in assignment (expression has type "object", variable has type "P.kwargs")
+        a: Any
+        a = args
+        a = kwargs
+        args = kwargs  # E: Incompatible types in assignment (expression has type "P.kwargs", variable has type "P.args")
+        kwargs = args  # E: Incompatible types in assignment (expression has type "P.args", variable has type "P.kwargs")
+        args = a
+        kwargs = a
+[builtins fixtures/dict.pyi]

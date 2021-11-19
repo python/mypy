@@ -79,6 +79,7 @@ class TypeVarLikeScope:
                 tvar_expr.fullname,
                 i,
                 flavor=ParamSpecFlavor.BARE,
+                upper_bound=tvar_expr.upper_bound,
                 line=tvar_expr.line,
                 column=tvar_expr.column
             )

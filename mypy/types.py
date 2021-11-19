@@ -364,14 +364,16 @@ class TypeVarId:
 
 class TypeVarLikeType(ProperType):
 
-    __slots__ = ('name', 'fullname', 'id')
+    __slots__ = ('name', 'fullname', 'id', 'upper_bound')
 
     name: str  # Name (may be qualified)
     fullname: str  # Fully qualified name
     id: TypeVarId
+    upper_bound: Type
 
     def __init__(
-        self, name: str, fullname: str, id: Union[TypeVarId, int], line: int = -1, column: int = -1
+        self, name: str, fullname: str, id: Union[TypeVarId, int], upper_bound: Type,
+        line: int = -1, column: int = -1
     ) -> None:
         super().__init__(line, column)
         self.name = name
@@ -379,6 +381,7 @@ class TypeVarLikeType(ProperType):
         if isinstance(id, int):
             id = TypeVarId(id)
         self.id = id
+        self.upper_bound = upper_bound
 
     def serialize(self) -> JsonDict:
         raise NotImplementedError
@@ -391,19 +394,17 @@ class TypeVarLikeType(ProperType):
 class TypeVarType(TypeVarLikeType):
     """Definition of a single type variable."""
 
-    __slots__ = ('values', 'upper_bound', 'variance')
+    __slots__ = ('values', 'variance')
 
     values: List[Type]  # Value restriction, empty list if no restriction
-    upper_bound: Type
     variance: int
 
     def __init__(self, name: str, fullname: str, id: Union[TypeVarId, int], values: List[Type],
                  upper_bound: Type, variance: int = INVARIANT, line: int = -1,
                  column: int = -1) -> None:
-        super().__init__(name, fullname, id, line, column)
+        super().__init__(name, fullname, id, upper_bound, line, column)
         assert values is not None, "No restrictions must be represented by empty list"
         self.values = values
-        self.upper_bound = upper_bound
         self.variance = variance
 
     @staticmethod
@@ -464,20 +465,28 @@ class ParamSpecType(TypeVarLikeType):
     flavor: int
 
     def __init__(
-         self, name: str, fullname: str, id: Union[TypeVarId, int], flavor: int, *,
-         line: int = -1, column: int = -1
+         self, name: str, fullname: str, id: Union[TypeVarId, int], flavor: int,
+         upper_bound: Type, *, line: int = -1, column: int = -1
     ) -> None:
-        super().__init__(name, fullname, id, line=line, column=column)
+        super().__init__(name, fullname, id, upper_bound, line=line, column=column)
         self.flavor = flavor
 
     @staticmethod
     def new_unification_variable(old: 'ParamSpecType') -> 'ParamSpecType':
         new_id = TypeVarId.new(meta_level=1)
-        return ParamSpecType(old.name, old.fullname, new_id, old.flavor,
+        return ParamSpecType(old.name, old.fullname, new_id, old.flavor, old.upper_bound,
                              line=old.line, column=old.column)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_param_spec(self)
+
+    def name_with_suffix(self) -> str:
+        n = self.name
+        if self.flavor == ParamSpecFlavor.ARGS:
+            return f'{n}.args'
+        elif self.flavor == ParamSpecFlavor.KWARGS:
+            return f'{n}.kwargs'
+        return n
 
     def __hash__(self) -> int:
         return hash((self.id, self.flavor))
@@ -495,6 +504,7 @@ class ParamSpecType(TypeVarLikeType):
             'fullname': self.fullname,
             'id': self.id.raw_id,
             'flavor': self.flavor,
+            'upper_bound': self.upper_bound.serialize(),
         }
 
     @classmethod
@@ -505,6 +515,7 @@ class ParamSpecType(TypeVarLikeType):
             data['fullname'],
             data['id'],
             data['flavor'],
+            deserialize_type(data['upper_bound']),
         )
 
 
@@ -1302,7 +1313,8 @@ class CallableType(FunctionLike):
         arg_type = get_proper_type(self.arg_types[-2])
         if not isinstance(arg_type, ParamSpecType):
             return None
-        return ParamSpecType(arg_type.name, arg_type.fullname, arg_type.id, ParamSpecFlavor.BARE)
+        return ParamSpecType(arg_type.name, arg_type.fullname, arg_type.id, ParamSpecFlavor.BARE,
+                             arg_type.upper_bound)
 
     def expand_param_spec(self, c: 'CallableType') -> 'CallableType':
         return self.copy_modified(arg_types=self.arg_types[:-2] + c.arg_types,
@@ -2179,12 +2191,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             s = f'`{t.id}'
         else:
             # Named type variable type.
-            suffix = ''
-            if t.flavor == ParamSpecFlavor.ARGS:
-                suffix = '.args'
-            elif t.flavor == ParamSpecFlavor.KWARGS:
-                suffix = '.kwargs'
-            s = f'{t.name}{suffix}`{t.id}'
+            s = f'{t.name_with_suffix()}`{t.id}'
         return s
 
     def visit_callable_type(self, t: CallableType) -> str:

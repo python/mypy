@@ -215,7 +215,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 # Change the line number
                 return ParamSpecType(
                     tvar_def.name, tvar_def.fullname, tvar_def.id, tvar_def.flavor,
-                    line=t.line, column=t.column,
+                    tvar_def.upper_bound, line=t.line, column=t.column,
                 )
                 #self.fail('Invalid location for ParamSpec "{}"'.format(t.name), t)
                 #self.note(
@@ -601,6 +601,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     else:
                         assert False, kind
                     return ParamSpecType(tvar_def.name, tvar_def.fullname, tvar_def.id, flavor,
+                                         upper_bound=self.named_type('builtins.object'),
                                          line=t.line, column=t.column)
         return self.anal_type(t, nested=nested)
 
@@ -732,9 +733,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if not isinstance(tvar_def, ParamSpecType):
             return None
 
+        # TODO: Use tuple[...] or Mapping[..] instead?
+        obj = self.named_type('builtins.object')
         return CallableType(
-            [ParamSpecType(tvar_def.name, tvar_def.fullname, tvar_def.id, ParamSpecFlavor.ARGS),
-             ParamSpecType(tvar_def.name, tvar_def.fullname, tvar_def.id, ParamSpecFlavor.KWARGS)],
+            [ParamSpecType(tvar_def.name, tvar_def.fullname, tvar_def.id, ParamSpecFlavor.ARGS,
+                           upper_bound=obj),
+             ParamSpecType(tvar_def.name, tvar_def.fullname, tvar_def.id, ParamSpecFlavor.KWARGS,
+                           upper_bound=obj)],
             [nodes.ARG_STAR, nodes.ARG_STAR2],
             [None, None],
             ret_type=ret_type,

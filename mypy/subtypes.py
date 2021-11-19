@@ -314,8 +314,14 @@ class SubtypeVisitor(TypeVisitor[bool]):
         return self._is_subtype(left.upper_bound, self.right)
 
     def visit_param_spec(self, left: ParamSpecType) -> bool:
-        # TODO: What should we do here?
-        return False
+        right = self.right
+        if (
+            isinstance(right, ParamSpecType)
+            and right.id == left.id
+            and right.flavor == left.flavor
+        ):
+            return True
+        return self._is_subtype(left.upper_bound, self.right)
 
     def visit_callable_type(self, left: CallableType) -> bool:
         right = self.right
@@ -1332,6 +1338,16 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
             return True
         if left.values and self._is_proper_subtype(
                 mypy.typeops.make_simplified_union(left.values), self.right):
+            return True
+        return self._is_proper_subtype(left.upper_bound, self.right)
+
+    def visit_param_spec(self, left: ParamSpecType) -> bool:
+        right = self.right
+        if (
+            isinstance(right, ParamSpecType)
+            and right.id == left.id
+            and right.flavor == left.flavor
+        ):
             return True
         return self._is_proper_subtype(left.upper_bound, self.right)
 
