@@ -191,3 +191,17 @@ def f(x: int, y: str, z: int, a: str) -> None: ...
 
 x = register(f, 1, '', 1, '')
 [builtins fixtures/dict.pyi]
+
+[case testParamSpecInferredFromAny]
+from typing import Callable, Any
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+
+def f(x: Callable[P, int]) -> Callable[P, str]: ...
+
+g: Any
+reveal_type(f(g))  # N: Revealed type is "def (*Any, **Any) -> builtins.str"
+
+f(g)(1, 3, x=1, y=2)
+[builtins fixtures/tuple.pyi]

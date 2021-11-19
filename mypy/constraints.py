@@ -7,7 +7,8 @@ from mypy.types import (
     CallableType, Type, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarType, Instance,
     TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeVarId, TypeQuery, is_named_instance, TypeOfAny, LiteralType,
-    ProperType, ParamSpecType, get_proper_type, TypeAliasType, is_union_with_any
+    ProperType, ParamSpecType, get_proper_type, TypeAliasType, is_union_with_any,
+    callable_with_ellipsis
 )
 from mypy.maptype import map_instance_to_supertype
 import mypy.subtypes
@@ -575,11 +576,17 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                                          self.direction))
             return res
         elif isinstance(self.actual, AnyType):
-            # FIX what if generic
-            res = self.infer_against_any(template.arg_types, self.actual)
+            param_spec = template.param_spec()
             any_type = AnyType(TypeOfAny.from_another_any, source_any=self.actual)
-            res.extend(infer_constraints(template.ret_type, any_type, self.direction))
-            return res
+            if param_spec is None:
+                # FIX what if generic
+                res = self.infer_against_any(template.arg_types, self.actual)
+                res.extend(infer_constraints(template.ret_type, any_type, self.direction))
+                return res
+            else:
+                return [Constraint(param_spec.id,
+                                   SUBTYPE_OF,
+                                   callable_with_ellipsis(any_type, any_type, template.fallback))]
         elif isinstance(self.actual, Overloaded):
             return self.infer_against_overloaded(self.actual, template)
         elif isinstance(self.actual, TypeType):

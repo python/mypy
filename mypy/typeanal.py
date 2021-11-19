@@ -17,7 +17,7 @@ from mypy.types import (
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, CallableArgument,
     TypeQuery, union_items, TypeOfAny, LiteralType, RawExpressionType,
     PlaceholderType, Overloaded, get_proper_type, TypeAliasType,
-    TypeVarLikeType, ParamSpecType, ParamSpecFlavor
+    TypeVarLikeType, ParamSpecType, ParamSpecFlavor, callable_with_ellipsis
 )
 
 from mypy.nodes import (
@@ -747,12 +747,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if len(t.args) == 0:
             # Callable (bare). Treat as Callable[..., Any].
             any_type = self.get_omitted_any(t)
-            ret = CallableType([any_type, any_type],
-                               [nodes.ARG_STAR, nodes.ARG_STAR2],
-                               [None, None],
-                               ret_type=any_type,
-                               fallback=fallback,
-                               is_ellipsis_args=True)
+            ret = callable_with_ellipsis(any_type, any_type,fallback)
         elif len(t.args) == 2:
             callable_args = t.args[0]
             ret_type = t.args[1]
@@ -769,13 +764,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                                    fallback=fallback)
             elif isinstance(callable_args, EllipsisType):
                 # Callable[..., RET] (with literal ellipsis; accept arbitrary arguments)
-                ret = CallableType([AnyType(TypeOfAny.explicit),
-                                    AnyType(TypeOfAny.explicit)],
-                                   [nodes.ARG_STAR, nodes.ARG_STAR2],
-                                   [None, None],
-                                   ret_type=ret_type,
-                                   fallback=fallback,
-                                   is_ellipsis_args=True)
+                ret = callable_with_ellipsis(AnyType(TypeOfAny.explicit),
+                                             ret_type=ret_type,
+                                             fallback=fallback)
             else:
                 # Callable[P, RET] (where P is ParamSpec)
                 maybe_ret = self.analyze_callable_args_for_paramspec(
