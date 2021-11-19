@@ -7,7 +7,7 @@ from mypy.types import (
     CallableType, Type, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarType, Instance,
     TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeVarId, TypeQuery, is_named_instance, TypeOfAny, LiteralType,
-    ProperType, get_proper_type, TypeAliasType, is_union_with_any
+    ProperType, ParamSpecType, get_proper_type, TypeAliasType, is_union_with_any
 )
 from mypy.maptype import map_instance_to_supertype
 import mypy.subtypes
@@ -398,6 +398,10 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         assert False, ("Unexpected TypeVarType in ConstraintBuilderVisitor"
                        " (should have been handled in infer_constraints)")
 
+    def visit_param_spec(self, template: ParamSpecType) -> List[Constraint]:
+        # Can't infer ParamSpecs from component values (only via Callable[P, T]).
+        return []
+
     # Non-leaf types
 
     def visit_instance(self, template: Instance) -> List[Constraint]:
@@ -438,14 +442,16 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 # N.B: We use zip instead of indexing because the lengths might have
                 # mismatches during daemon reprocessing.
                 for tvar, mapped_arg, instance_arg in zip(tvars, mapped.args, instance.args):
-                    # The constraints for generic type parameters depend on variance.
-                    # Include constraints from both directions if invariant.
-                    if tvar.variance != CONTRAVARIANT:
-                        res.extend(infer_constraints(
-                            mapped_arg, instance_arg, self.direction))
-                    if tvar.variance != COVARIANT:
-                        res.extend(infer_constraints(
-                            mapped_arg, instance_arg, neg_op(self.direction)))
+                    # TODO: ParamSpecType
+                    if isinstance(tvar, TypeVarType):
+                        # The constraints for generic type parameters depend on variance.
+                        # Include constraints from both directions if invariant.
+                        if tvar.variance != CONTRAVARIANT:
+                            res.extend(infer_constraints(
+                                mapped_arg, instance_arg, self.direction))
+                        if tvar.variance != COVARIANT:
+                            res.extend(infer_constraints(
+                                mapped_arg, instance_arg, neg_op(self.direction)))
                 return res
             elif (self.direction == SUPERTYPE_OF and
                     instance.type.has_base(template.type.fullname)):
@@ -454,14 +460,16 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 # N.B: We use zip instead of indexing because the lengths might have
                 # mismatches during daemon reprocessing.
                 for tvar, mapped_arg, template_arg in zip(tvars, mapped.args, template.args):
-                    # The constraints for generic type parameters depend on variance.
-                    # Include constraints from both directions if invariant.
-                    if tvar.variance != CONTRAVARIANT:
-                        res.extend(infer_constraints(
-                            template_arg, mapped_arg, self.direction))
-                    if tvar.variance != COVARIANT:
-                        res.extend(infer_constraints(
-                            template_arg, mapped_arg, neg_op(self.direction)))
+                    # TODO: ParamSpecType
+                    if isinstance(tvar, TypeVarType):
+                        # The constraints for generic type parameters depend on variance.
+                        # Include constraints from both directions if invariant.
+                        if tvar.variance != CONTRAVARIANT:
+                            res.extend(infer_constraints(
+                                template_arg, mapped_arg, self.direction))
+                        if tvar.variance != COVARIANT:
+                            res.extend(infer_constraints(
+                                template_arg, mapped_arg, neg_op(self.direction)))
                 return res
             if (template.type.is_protocol and self.direction == SUPERTYPE_OF and
                     # We avoid infinite recursion for structural subtypes by checking
