@@ -2176,10 +2176,15 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     def visit_param_spec(self, t: ParamSpecType) -> str:
         if t.name is None:
             # Anonymous type variable type (only numeric id).
-            s = '`{}'.format(t.id)
+            s = f'`{t.id}'
         else:
             # Named type variable type.
-            s = '{}`{}'.format(t.name, t.id)
+            suffix = ''
+            if t.flavor == ParamSpecFlavor.ARGS:
+                suffix = '.args'
+            elif t.flavor == ParamSpecFlavor.KWARGS:
+                suffix = '.kwargs'
+            s = f'{t.name}{suffix}`{t.id}'
         return s
 
     def visit_callable_type(self, t: CallableType) -> str:

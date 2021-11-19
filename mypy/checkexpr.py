@@ -18,7 +18,7 @@ from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneType, TypeVarType,
     TupleType, TypedDictType, Instance, ErasedType, UnionType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, LiteralType, LiteralValue,
-    is_named_instance, FunctionLike, ParamSpecType,
+    is_named_instance, FunctionLike, ParamSpecType, ParamSpecFlavor,
     StarType, is_optional, remove_optional, is_generic_instance, get_proper_type, ProperType,
     get_proper_types, flatten_nested_unions
 )
@@ -3999,7 +3999,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return (isinstance(typ, TupleType) or
                 is_subtype(typ, self.chk.named_generic_type('typing.Iterable',
                                                             [AnyType(TypeOfAny.special_form)])) or
-                isinstance(typ, AnyType))
+                isinstance(typ, AnyType) or
+                (isinstance(typ, ParamSpecType) and typ.flavor == ParamSpecFlavor.ARGS))
 
     def is_valid_keyword_var_arg(self, typ: Type) -> bool:
         """Is a type valid as a **kwargs argument?"""
@@ -4007,7 +4008,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 is_subtype(typ, self.chk.named_generic_type('typing.Mapping',
                     [self.named_type('builtins.str'), AnyType(TypeOfAny.special_form)])) or
                 is_subtype(typ, self.chk.named_generic_type('typing.Mapping',
-                    [UninhabitedType(), UninhabitedType()])))
+                    [UninhabitedType(), UninhabitedType()])) or
+                (isinstance(typ, ParamSpecType) and typ.flavor == ParamSpecFlavor.KWARGS)
+        )
         if self.chk.options.python_version[0] < 3:
             ret = ret or is_subtype(typ, self.chk.named_generic_type('typing.Mapping',
                 [self.named_type('builtins.unicode'), AnyType(TypeOfAny.special_form)]))
