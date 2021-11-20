@@ -38,7 +38,7 @@ from mypy.types import (
     is_named_instance, union_items, TypeQuery, LiteralType,
     is_optional, remove_optional, TypeTranslator, StarType, get_proper_type, ProperType,
     get_proper_types, is_literal_type, TypeAliasType, TypeGuardedType, ParamSpecType,
-    OVERLOAD_NAMES, UnboundType
+    OVERLOAD_NAMES, UnboundType, is_unannotated_any
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import (
@@ -782,6 +782,104 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def visit_func_def(self, defn: FuncDef) -> None:
         if not self.recurse_into_functions:
             return
+        # If possible, transform def into an overload from super information
+        if defn.info and not defn.is_overload and (
+            # if it's fully annotated then we allow the invalid override
+            not (defn.type and isinstance(defn.type, CallableType) and defn.type.fully_typed)
+            or not defn.unanalyzed_type
+
+            or (defn.unanalyzed_type and isinstance(defn.unanalyzed_type, CallableType) and (
+                is_unannotated_any(defn.unanalyzed_type.ret_type)
+                or any(is_unannotated_any(typ) for typ in defn.unanalyzed_type.arg_types[1:])
+            ))
+        ) and self.options.infer_function_types:
+            for base in defn.info.mro[1:]:
+                super_ = base.names.get(defn.name)
+                if not super_ or not isinstance(super_.node, OverloadedFuncDef):
+                    continue
+                super_type = get_proper_type(super_.type)
+                assert isinstance(super_type, Overloaded)
+                if super_.node.impl:
+                    super_types = {
+                        arg: arg_type
+                        for arg, arg_type in zip(
+                            (
+                                super_.node.impl
+                                if isinstance(super_.node.impl, FuncDef)
+                                else super_.node.impl.func
+                            ).arg_names,
+                            cast(CallableType, super_.node.impl.type).arg_types,
+                        )
+                    }
+                else:
+                    super_types = {}
+                item_arg_types: Dict[str, List[Type]] = defaultdict(list)
+                item_ret_types = []
+                for item in super_.node.items:
+                    assert isinstance(item, Decorator)
+                    assert isinstance(item.func.type, CallableType)
+                    for arg, arg_type in zip(item.func.arg_names, item.func.type.arg_types):
+                        if not arg:
+                            continue
+                        if arg not in super_types and arg in defn.arg_names:
+                            if arg_type not in item_arg_types[arg]:
+                                item_arg_types[arg].append(arg_type)
+                    if item.func.type.ret_type not in item_ret_types:
+                        item_ret_types.append(item.func.type.ret_type)
+                super_types.update({
+                    arg: UnionType.make_union(arg_type) for arg, arg_type in item_arg_types.items()
+                })
+                any_ = AnyType(TypeOfAny.unannotated)
+                if defn.unanalyzed_type:
+                    assert isinstance(defn.unanalyzed_type, CallableType)
+                    assert isinstance(defn.type, CallableType)
+                    assert super_.node.impl
+                    t = get_proper_type(super_.node.impl.type)
+                    assert isinstance(t, CallableType)
+                    ret_type = (
+                        defn.type.ret_type
+                        if not is_unannotated_any(defn.unanalyzed_type.ret_type)
+                        else t.ret_type
+                    )
+                elif super_.node.impl:
+                    t = get_proper_type(super_.node.impl.type)
+                    assert isinstance(t, CallableType)
+                    ret_type = t.ret_type
+                elif item_ret_types:
+                    ret_type = UnionType.make_union(item_ret_types)
+                else:
+                    ret_type = any_
+                if not defn.type:
+                    defn.type = self.function_type(defn)
+                assert isinstance(defn.type, CallableType)
+                arg_types = [defn.type.arg_types[0]]
+                if defn.unanalyzed_type:
+                    assert isinstance(defn.unanalyzed_type, CallableType)
+                    arg_types.extend([
+                        arg_type
+                        if not is_unannotated_any(unanalyzed)
+                        else super_types.get(arg, any_)
+                        for arg, arg_type, unanalyzed in zip(
+                            defn.arg_names[1:],
+                            defn.type.arg_types[1:],
+                            defn.unanalyzed_type.arg_types[1:]
+                        )
+                    ])
+                else:
+                    arg_types.extend([super_types.get(arg, any_) for arg in defn.arg_names[1:]])
+                defn.type = defn.type.copy_modified(arg_types=arg_types, ret_type=ret_type)
+                new = OverloadedFuncDef(super_.node.items)
+                # the TypeInfo isn't set on each part, but idc
+                new.info = defn.info
+                new.impl = defn
+                new.type = Overloaded([item.copy_modified() for item in super_type.items])
+                if not defn.is_static:
+                    for new_item in new.type.items:
+                        new_item.arg_types[0] = defn.type.arg_types[0]
+                defn.is_overload = True
+                self.visit_overloaded_func_def(new)
+                defn.type = new.type
+                return
         with self.tscope.function_scope(defn):
             self._visit_func_def(defn)
 
@@ -868,6 +966,65 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def check_func_def(self, defn: FuncItem, typ: CallableType, name: Optional[str]) -> None:
         """Type check a function definition."""
+
+        # Infer argument types from base class
+        if defn.info and self.options.infer_function_types and not (
+            defn.type and isinstance(defn.type, CallableType) and defn.type.fully_typed
+        ):
+            for base in defn.info.mro[1:]:
+                super_ = base.names.get(defn.name)
+                if not super_ or not super_.type:
+                    continue
+                super_type = get_proper_type(super_.type)
+                if not isinstance(super_type, CallableType):
+                    continue
+
+                arg_types: List[Type] = []
+                for arg_i, arg_name in enumerate(defn.arg_names):
+                    # skip self/class
+                    if arg_i == 0 and not defn.is_static:
+                        arg_types.append(typ.arg_types[0])
+                        continue
+                    if (
+                        isinstance(defn.type, CallableType)
+                        and not isinstance(get_proper_type(defn.type.arg_types[arg_i]), AnyType)
+                    ):
+                        continue
+                    if arg_name in super_type.arg_names:
+                        super_i = super_type.arg_names.index(arg_name)
+                        if defn.type:
+                            assert isinstance(defn.type, CallableType)
+                            defn.type.arg_types[arg_i] = super_type.arg_types[super_i]
+                        else:
+                            arg_types.append(super_type.arg_types[super_i])
+                    elif not defn.type:
+                        arg_types.append(AnyType(TypeOfAny.unannotated))
+                if defn.type:
+                    assert isinstance(defn.type, CallableType)
+                    if isinstance(get_proper_type(defn.type.ret_type), AnyType):
+                        defn.type.ret_type = super_type.ret_type
+                else:
+                    typ = defn.type = CallableType(
+                        arg_types,
+                        defn.arg_kinds,
+                        defn.arg_names,
+                        super_type.ret_type
+                        if defn.name != "__new__"
+                        else fill_typevars_with_any(defn.info),
+                        self.named_type('builtins.function'))
+                break
+
+        # Infer argument types from default values,
+        #  this is done in semanal for literals, but done again here for some reason
+        if self.options.infer_function_types and not typ.fully_typed:
+            arg_types = []
+            for arg, arg_type in zip(defn.arguments, typ.arg_types):
+                if arg.initializer and is_unannotated_any(arg_type):
+                    arg_types.append(self.expr_checker.accept(arg.initializer))
+                else:
+                    arg_types.append(arg_type)
+            typ.arg_types = arg_types
+
         # Expand type variables with value restrictions to ordinary types.
         expanded = self.expand_typevars(defn, typ)
         for item, typ in expanded:
@@ -887,12 +1044,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             not self.dynamic_funcs[-1]):
                         self.fail(message_registry.MUST_HAVE_NONE_RETURN_TYPE.format(fdef.name),
                                   item)
-                    self.check_for_missing_annotations(fdef, typ)
 
                     # Check validity of __new__ signature
                     if fdef.info and fdef.name == '__new__':
                         self.check___new___signature(fdef, typ)
 
+                    self.check_for_missing_annotations(fdef)
                     if self.options.disallow_any_unimported:
                         if fdef.type and isinstance(fdef.type, CallableType):
                             ret_type = fdef.type.ret_type
@@ -1101,12 +1258,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             return method_name in operators.reverse_op_method_set
 
-    def check_for_missing_annotations(self, fdef: FuncItem, typ: CallableType) -> None:
+    def check_for_missing_annotations(self, fdef: FuncItem) -> None:
         # Check for functions with unspecified/not fully specified types.
-        def is_unannotated_any(t: Type) -> bool:
-            if not isinstance(t, ProperType):
-                return False
-            return isinstance(t, AnyType) and t.type_of_any == TypeOfAny.unannotated
 
         has_explicit_annotation = (isinstance(fdef.type, CallableType)
                                    and any(not is_unannotated_any(t)
@@ -1116,27 +1269,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         check_incomplete_defs = self.options.disallow_incomplete_defs and has_explicit_annotation
         if show_untyped and (self.options.disallow_untyped_defs or check_incomplete_defs):
             if fdef.type is None and self.options.disallow_untyped_defs:
-                if self.options.default_return:
-                    typ.implicit = False
-                    typ.ret_type = NoneType()
-                    # fully unannotated fdef needs to be assigned a type
-                    fdef.type = typ
+                if (not fdef.arguments or (len(fdef.arguments) == 1 and
+                        (fdef.arg_names[0] in ('self', 'cls')))):
+                    self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
+                    if not has_return_statement(fdef) and not fdef.is_generator:
+                        self.note('Use "-> None" if function does not return a value', fdef,
+                                  code=codes.NO_UNTYPED_DEF)
                 else:
-                    if (not fdef.arguments or (len(fdef.arguments) == 1 and
-                            (fdef.arg_names[0] == 'self' or fdef.arg_names[0] == 'cls'))):
-                        self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
-                        if not has_return_statement(fdef) and not fdef.is_generator:
-                            self.note('Use "-> None" if function does not return a value', fdef,
-                                      code=codes.NO_UNTYPED_DEF)
-                    else:
-                        self.fail(message_registry.FUNCTION_TYPE_EXPECTED, fdef)
+                    self.fail(message_registry.FUNCTION_TYPE_EXPECTED, fdef)
             elif isinstance(fdef.type, CallableType):
                 ret_type = get_proper_type(fdef.type.ret_type)
                 if is_unannotated_any(ret_type):
-                    if self.options.default_return:
-                        fdef.type.ret_type = NoneType()
-                    else:
-                        self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
+                    self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
                 elif fdef.is_generator:
                     if is_unannotated_any(self.get_generator_return_type(ret_type,
                                                                          fdef.is_coroutine)):
@@ -1146,11 +1290,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
                 if any(is_unannotated_any(t) for t in fdef.type.arg_types):
                     self.fail(message_registry.ARGUMENT_TYPE_EXPECTED, fdef)
-        elif isinstance(fdef.type, CallableType) and self.options.default_return:
-            # we always want to override '-> Any' if default_return
-            ret_type = get_proper_type(fdef.type.ret_type)
-            if is_unannotated_any(ret_type):
-                fdef.type.ret_type = NoneType()
 
     def check___new___signature(self, fdef: FuncDef, typ: CallableType) -> None:
         self_type = fill_typevars_with_any(fdef.info)

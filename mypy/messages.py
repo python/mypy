@@ -387,6 +387,13 @@ class MessageBuilder:
                   code=codes.NO_UNTYPED_CALL)
         return AnyType(TypeOfAny.from_error)
 
+    def partially_typed_function_call(self, callee: CallableType, context: Context) -> Type:
+        name = callable_name(callee) or '(unknown)'
+        self.fail(f'Call to incomplete function {name} in typed context', context,
+                  code=codes.NO_UNTYPED_CALL)
+        self.note(f'Type is "{callee}"', context)
+        return AnyType(TypeOfAny.from_error)
+
     def incompatible_argument(self,
                               n: int,
                               m: int,

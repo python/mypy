@@ -355,9 +355,29 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         callee_type = get_proper_type(self.accept(e.callee, type_context, always_allow_any=True))
         if (self.chk.options.disallow_untyped_calls and
                 self.chk.in_checked_function() and
-                isinstance(callee_type, CallableType)
-                and callee_type.implicit):
-            self.msg.untyped_function_call(callee_type, e)
+                isinstance(callee_type, CallableType)):
+            if callee_type.implicit:
+                self.msg.untyped_function_call(callee_type, e)
+            elif not callee_type.fully_typed:
+                # check for partially typed defs
+                if isinstance(callee_type.definition, FuncDef):
+                    if callee_type.definition.info:
+                        callee_module = callee_type.definition.info.module_name
+                    else:
+                        callee_module = callee_type.definition.fullname.rpartition(".")[0]
+                elif isinstance(e.callee, NameExpr):
+                    assert e.callee.fullname
+                    callee_module = e.callee.fullname.rpartition(".")[0]
+                elif isinstance(e.callee, MemberExpr) and isinstance(e.callee.expr, NameExpr):
+                    assert e.callee.expr.fullname
+                    callee_module = e.callee.expr.fullname.rpartition(".")[0]
+                else:
+                    # If this branch gets hit then look for a new way to get the module name
+                    callee_module = None
+                if callee_module:
+                    callee_options = self.chk.options.per_module(callee_module)
+                    if not callee_options.incomplete_is_typed:
+                        self.msg.partially_typed_function_call(callee_type, e)
 
         # Figure out the full name of the callee for plugin lookup.
         object_type = None
