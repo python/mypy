@@ -67,30 +67,25 @@ typedef struct {
 
 #define VEC_SIZE(v) ((v)->ob_base.ob_size)
 
-PyObject *Vec_I64_Append(PyObject *obj, int64_t x);
-
-VecTObject *Vec_T_New(Py_ssize_t size, PyTypeObject *item_type);
-PyObject *Vec_T_Append(PyObject *obj, PyObject *x);
+// Type objects
 
 extern PyTypeObject VecI64Type;
 extern PyTypeObject VecTType;
 extern PyTypeObject VecTExtType;
 extern VecI64Features I64Features;
 
+// vec[i64] operations
+
 static inline int VecI64_Check(PyObject *o) {
     return o->ob_type == &VecI64Type;
 }
 
+PyObject *Vec_I64_Append(PyObject *obj, int64_t x);
+
+// vec[t] operations (simple)
+
 static inline int VecT_Check(PyObject *o) {
     return o->ob_type == &VecTType;
-}
-
-static inline int check_float_error(PyObject *o) {
-    if (PyFloat_Check(o)) {
-        PyErr_SetString(PyExc_TypeError, "integer argument expected, got float");
-        return 1;
-    }
-    return 0;
 }
 
 static inline int VecT_ItemCheck(VecTObject *v, PyObject *item) {
@@ -101,6 +96,41 @@ static inline int VecT_ItemCheck(VecTObject *v, PyObject *item) {
         PyErr_SetString(PyExc_TypeError, "invalid item type");
         return 0;
     }
+}
+
+VecTObject *Vec_T_New(Py_ssize_t size, PyTypeObject *item_type);
+PyObject *Vec_T_Append(PyObject *obj, PyObject *x);
+
+// vec[t] operations (extended)
+
+static inline int VecTExt_Check(PyObject *o) {
+    return o->ob_type == &VecTExtType;
+}
+
+static inline int VecTExt_ItemCheck(VecTExtObject *v, PyObject *item) {
+    if (PyObject_TypeCheck(item, v->item_type))
+        return 1;
+    else if (item == Py_None && (v->optionals & 1)) {
+        return 1;
+    } else {
+        // TODO: better error message
+        PyErr_SetString(PyExc_TypeError, "invalid item type");
+        return 0;
+    }
+}
+
+VecTExtObject *Vec_T_Ext_New(Py_ssize_t size, PyTypeObject *item_type, int32_t optionals,
+                             int32_t depth);
+PyObject *Vec_T_Ext_Append(PyObject *obj, PyObject *x);
+
+// Misc helpers
+
+static inline int check_float_error(PyObject *o) {
+    if (PyFloat_Check(o)) {
+        PyErr_SetString(PyExc_TypeError, "integer argument expected, got float");
+        return 1;
+    }
+    return 0;
 }
 
 #endif

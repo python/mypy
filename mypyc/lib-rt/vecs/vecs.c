@@ -23,7 +23,12 @@ static PyObject *vec_proxy_call(PyObject *self, PyObject *args, PyObject *kw)
     if (!PyArg_ParseTupleAndKeywords(args, kw, ":vec", kwlist)) {
         return NULL;
     }
-    return (PyObject *)Vec_T_New(0, (PyTypeObject *)((VecProxy *)self)->item_type);
+    VecProxy *p = (VecProxy *)self;
+    if (p->optionals == 0 && p->depth == 0) {
+        return (PyObject *)Vec_T_New(0, (PyTypeObject *)p->item_type);
+    } else {
+        return (PyObject *)Vec_T_Ext_New(0, (PyTypeObject *)p->item_type, p->optionals, p->depth);
+    }
 }
 
 static int
@@ -81,7 +86,7 @@ typedef struct {
 static PyObject *extract_optional_item(PyObject *item) {
     PyObject *args = PyObject_GetAttrString(item, "__args__");
     if (args == NULL)
-        goto error;
+        return NULL;
     if (!PyTuple_CheckExact(args))
         goto error;
     if (PyTuple_GET_SIZE(args) != 2)
@@ -174,6 +179,12 @@ static PyObject *vecs_append(PyObject *self, PyObject *args)
             return NULL;
         Py_INCREF(vec);
         return Vec_T_Append(vec, item);
+    } else if (VecTExt_Check(vec)) {
+        VecTExtObject *v = (VecTExtObject *)vec;
+        if (!VecTExt_ItemCheck(v, item))
+            return NULL;
+        Py_INCREF(vec);
+        return Vec_T_Ext_Append(vec, item);
     } else {
         PyErr_SetString(PyExc_TypeError, "vec argument expected");
         return NULL;
