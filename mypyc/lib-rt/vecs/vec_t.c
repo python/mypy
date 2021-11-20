@@ -15,7 +15,7 @@ PyObject *vec_t_repr(PyObject *self) {
     PyObject *sep = Py_BuildValue("s", "");
     PyObject *comma = Py_BuildValue("s", ", ");
     PyList_Append(l, prefix);
-    PyList_Append(l, PyObject_GetAttrString(o->item_type, "__name__"));
+    PyList_Append(l, PyObject_GetAttrString((PyObject *)o->item_type, "__name__"));
     PyList_Append(l, mid);
     for (int i = 0; i < o->len; i++) {
         PyObject *r = PyObject_Repr(o->items[i]);
@@ -46,15 +46,11 @@ PyObject *vec_t_get_item(PyObject *o, Py_ssize_t i) {
 int vec_t_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
     VecTObject *v = (VecTObject *)self;
 
-    int r = PyObject_IsInstance(o, v->item_type);
-    if (r <= 0) {
-        if (r == -1) {
-            return -1;
-        } else {
-            // TODO: better error message
-            PyErr_SetString(PyExc_TypeError, "invalid item type");
-            return -1;
-        }
+    int r = PyObject_TypeCheck(o, v->item_type);
+    if (!r) {
+        // TODO: better error message
+        PyErr_SetString(PyExc_TypeError, "invalid item type");
+        return -1;
     }
 
     if ((size_t)i < (size_t)v->len) {
@@ -133,7 +129,7 @@ PyTypeObject VecTType = {
     // TODO: free
 };
 
-VecTObject *Vec_T_New(Py_ssize_t size, PyObject *item_type) {
+VecTObject *Vec_T_New(Py_ssize_t size, PyTypeObject *item_type) {
     VecTObject *v;
     v = PyObject_GC_NewVar(VecTObject, &VecTType, size);
     //v = VecTType.tp_alloc(&VecTType, size);

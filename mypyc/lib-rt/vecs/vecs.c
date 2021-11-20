@@ -23,7 +23,7 @@ static PyObject *vec_proxy_call(PyObject *self, PyObject *args, PyObject *kw)
     if (!PyArg_ParseTupleAndKeywords(args, kw, ":vec", kwlist)) {
         return NULL;
     }
-    return (PyObject *)Vec_T_New(0, ((VecProxy *)self)->item_type);
+    return (PyObject *)Vec_T_New(0, (PyTypeObject *)((VecProxy *)self)->item_type);
 }
 
 static int
@@ -79,8 +79,7 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
         Py_INCREF(&VecI64Type);
         return (PyObject *)&VecI64Type;
     } else {
-        PyTypeObject *t = item->ob_type;
-        if (t != &PyType_Type) {
+        if (!PyObject_TypeCheck(item, &PyType_Type)) {
             PyErr_SetString(PyExc_TypeError, "type object expected in vec[...]");
             return NULL;
         }
@@ -137,12 +136,9 @@ static PyObject *vecs_append(PyObject *self, PyObject *args)
         return Vec_I64_Append(vec, x);
     } else if (VecT_Check(vec)) {
         VecTObject *v = (VecTObject *)vec;
-        int r = PyObject_IsInstance(item, v->item_type);
-        if (r > 0) {
+        if (PyObject_TypeCheck(item, v->item_type)) {
             Py_INCREF(vec);
             return Vec_T_Append(vec, item);
-        } else if (r == -1) {
-            return NULL;
         } else {
             // TODO: better error message
             PyErr_SetString(PyExc_TypeError, "invalid item type");
