@@ -3,7 +3,7 @@
 #include "vecs.h"
 
 
-static PyObject *i64_type_obj;
+PyTypeObject *I64TypeObj;
 
 
 // vec type proxy
@@ -118,7 +118,7 @@ static PyObject *extract_optional_item(PyObject *item) {
 
 static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
 {
-    if (item == i64_type_obj) {
+    if (item == (PyObject *)I64TypeObj) {
         Py_INCREF(&VecI64Type);
         return (PyObject *)&VecI64Type;
     } else {
@@ -277,8 +277,9 @@ PyInit_vecs(void)
         return NULL;
     }
 
-    i64_type_obj = PyObject_GetAttrString(ext, "i64");
-    if (i64_type_obj == NULL) {
+    I64TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "i64");
+    // TODO: Check that it's a type object!
+    if (I64TypeObj == NULL) {
         return NULL;
     }
 

@@ -5,24 +5,7 @@
 static PyObject *vec_i64_new(PyTypeObject *self, PyObject *args, PyObject *kw);
 
 PyObject *vec_i64_repr(PyObject *self) {
-    // TODO: Type check, refcounting, error handling
-    VecI64Object *o = (VecI64Object *)self;
-    PyObject *prefix = Py_BuildValue("s", "vec[i64]([");
-    PyObject *suffix = Py_BuildValue("s", "])");
-    PyObject *l = Py_BuildValue("[]");
-    PyObject *sep = Py_BuildValue("s", "");
-    PyObject *comma = Py_BuildValue("s", ", ");
-    PyList_Append(l, prefix);
-    for (int i = 0; i < o->len; i++) {
-        char s[100];
-        sprintf(s, "%lld", (long long)o->items[i]);
-        PyObject *x = Py_BuildValue("s", s);
-        PyList_Append(l, x);
-        if (i + 1 < o->len)
-            PyList_Append(l, comma);
-    }
-    PyList_Append(l, suffix);
-    return PyUnicode_Join(sep, l);
+    return vec_repr(self, I64TypeObj, 0, 0, 1);
 }
 
 PyObject *vec_i64_get_item(PyObject *o, Py_ssize_t i) {

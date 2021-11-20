@@ -73,6 +73,7 @@ extern PyTypeObject VecI64Type;
 extern PyTypeObject VecTType;
 extern PyTypeObject VecTExtType;
 extern VecI64Features I64Features;
+extern PyTypeObject *I64TypeObj;
 
 // vec[i64] operations
 
