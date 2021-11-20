@@ -26,6 +26,20 @@ PyObject *vec_t_ext_get_item(PyObject *o, Py_ssize_t i) {
     }
 }
 
+int vec_t_ext_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
+    VecTExtObject *v = (VecTExtObject *)self;
+    if (!VecTExt_ItemCheck(v, o))
+        return -1;
+    if ((size_t)i < (size_t)v->len) {
+        Py_INCREF(o);
+        v->items[i] = o;
+        return 0;
+    } else {
+        PyErr_SetString(PyExc_IndexError, "index out of range");
+        return -1;
+    }
+}
+
 static int
 VecTExt_traverse(VecTExtObject *self, visitproc visit, void *arg)
 {
@@ -74,7 +88,7 @@ static PyMappingMethods VecTExtMapping = {
 
 static PySequenceMethods VecTExtSequence = {
     .sq_item = vec_t_ext_get_item,
-//    .sq_ass_item = vec_t_ext_ass_item,
+    .sq_ass_item = vec_t_ext_ass_item,
 };
 
 PyTypeObject VecTExtType = {
