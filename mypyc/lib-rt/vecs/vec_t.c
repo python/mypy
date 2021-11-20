@@ -13,29 +13,8 @@
 //static PyObject *vec_t_new(PyTypeObject *self, PyObject *args, PyObject *kw);
 
 PyObject *vec_t_repr(PyObject *self) {
-    // TODO: Type check, refcounting, error handling
-    VecTObject *o = (VecTObject *)self;
-    // TODO: Display actual type
-    PyObject *prefix = Py_BuildValue("s", "vec[");
-    PyObject *mid = Py_BuildValue("s", "]([");
-    PyObject *suffix = Py_BuildValue("s", "])");
-    PyObject *l = Py_BuildValue("[]");
-    PyObject *sep = Py_BuildValue("s", "");
-    PyObject *comma = Py_BuildValue("s", ", ");
-    PyList_Append(l, prefix);
-    PyList_Append(l, PyObject_GetAttrString((PyObject *)o->item_type, "__name__"));
-    PyList_Append(l, mid);
-    for (int i = 0; i < o->len; i++) {
-        PyObject *r = PyObject_Repr(o->items[i]);
-        if (r == NULL) {
-            return NULL;
-        }
-        PyList_Append(l, r);
-        if (i + 1 < o->len)
-            PyList_Append(l, comma);
-    }
-    PyList_Append(l, suffix);
-    return PyUnicode_Join(sep, l);
+    VecTObject *v = (VecTObject *)self;
+    return vec_repr(self, v->item_type, 0, 0, 1);
 }
 
 PyObject *vec_t_get_item(PyObject *o, Py_ssize_t i) {
