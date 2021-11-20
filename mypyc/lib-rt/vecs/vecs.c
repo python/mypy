@@ -45,19 +45,28 @@ VecProxy_dealloc(VecProxy *self)
     PyObject_GC_Del(self);
 }
 
+PyObject *vec_type_to_str(PyObject *item_type, int32_t depth, int32_t optionals) {
+    PyObject *item;
+    if (depth == 0)
+        item = PyObject_GetAttrString(item_type, "__name__");
+    else
+        item = vec_type_to_str(item_type, depth - 1, optionals >> 1);
+
+    if (optionals & 1) {
+        item = PyUnicode_FromFormat("%U | None", item);
+    }
+    return PyUnicode_FromFormat("vec[%U]", item);
+}
+
 PyObject *VecProxy_repr(PyObject *self) {
     // TODO: error handling, refcounting, etc.
     PyObject *l = Py_BuildValue("[]");
-    PyObject *prefix = Py_BuildValue("s", "<class_proxy 'vec[");
-    PyObject *suffix = Py_BuildValue("s", "]'>");
+    PyObject *prefix = Py_BuildValue("s", "<class_proxy '");
+    PyObject *suffix = Py_BuildValue("s", "'>");
     PyObject *sep = Py_BuildValue("s", "");
     PyList_Append(l, prefix);
     VecProxy *v = (VecProxy *)self;
-    PyList_Append(l, PyObject_GetAttrString(v->item_type, "__name__"));
-    if (v->optionals) {
-        PyObject *none = Py_BuildValue("s", " | None");
-        PyList_Append(l, none);
-    }
+    PyList_Append(l, vec_type_to_str(v->item_type, v->depth, v->optionals));
     PyList_Append(l, suffix);
     return PyUnicode_Join(sep, l);
 }
@@ -85,8 +94,10 @@ typedef struct {
 
 static PyObject *extract_optional_item(PyObject *item) {
     PyObject *args = PyObject_GetAttrString(item, "__args__");
-    if (args == NULL)
+    if (args == NULL) {
+        PyErr_Clear();
         return NULL;
+    }
     if (!PyTuple_CheckExact(args))
         goto error;
     if (PyTuple_GET_SIZE(args) != 2)
@@ -112,13 +123,22 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
         return (PyObject *)&VecI64Type;
     } else {
         int32_t optionals = 0;
+        int32_t depth = 0;
         if (!PyObject_TypeCheck(item, &PyType_Type)) {
-            item = extract_optional_item(item);
-            if (item == NULL) {
+            PyObject *it = extract_optional_item(item);
+            if (it != NULL) {
+                optionals = 1;
+                item = it;
+            }
+            if (item->ob_type == &VecProxyType) {
+                VecProxy *p = (VecProxy *)item;
+                item = p->item_type;
+                depth = p->depth + 1;
+                optionals |= p->optionals << 1;
+            } else if (!PyObject_TypeCheck(item, &PyType_Type)) {
                 PyErr_SetString(PyExc_TypeError, "type object expected in vec[...]");
                 return NULL;
             }
-            optionals = 1;
         }
         if (item == (PyObject *)&PyLong_Type
             || item == (PyObject *)&PyFloat_Type
@@ -132,7 +152,7 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
             return NULL;
         Py_INCREF(item);
         p->item_type = item;
-        p->depth = 0;
+        p->depth = depth;
         p->optionals = optionals;
         PyObject_GC_Track(p);
         return (PyObject *)p;
