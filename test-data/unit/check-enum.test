@@ -1710,13 +1710,34 @@ from typing import Final
 class A(Enum):
     x: int
     def method(self) -> int: pass
-
 class B(A):
     x = 1  # E: Cannot override writable attribute "x" with a final one
 
 class A1(Enum):
     x: int = 1
-
 class B1(A1):  # E: Cannot inherit from final class "A1"
     pass
+
+class A2(Enum):
+    x = 2
+class B2(A2):  # E: Cannot inherit from final class "A2"
+    pass
+[builtins fixtures/bool.pyi]
+
+[case testEnumNotFinalWithMethodsAndUninitializedValuesStub]
+import lib
+reveal_type(lib.A)
+reveal_type(lib.B)
+
+[file lib.pyi]
+from enum import Enum
+class A(Enum):
+    x: int
+class B(A):
+    x = 1
+[out]
+tmp/lib.pyi:4: error: Cannot inherit from final class "A"
+tmp/lib.pyi:5: error: Cannot override writable attribute "x" with a final one
+main:2: note: Revealed type is "def (value: builtins.object) -> lib.A*"
+main:3: note: Revealed type is "def (value: builtins.object) -> lib.B*"
 [builtins fixtures/bool.pyi]

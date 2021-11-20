@@ -1609,10 +1609,13 @@ class SemanticAnalyzer(NodeVisitor[None],
             for node in base.type.defn.defs.body:
                 if isinstance(node, (FuncBase, Decorator)):
                     continue  # A method
-                if (isinstance(node, AssignmentStmt)
+                if (not self.is_stub_file
+                        and isinstance(node, AssignmentStmt)
                         and isinstance(node.rvalue, TempNode)
                         and node.rvalue.no_rhs):
-                    continue  # Corner case: assignments like `x: int` are fine.
+                    # Corner case: assignments like `x: int` are fine.
+                    # But, only in `.py` files. Stub files can still be unintialized.
+                    continue
                 return True
         return False
 
