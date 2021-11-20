@@ -548,6 +548,13 @@ def process_options(args: List[str],
     add_invertible_flag(
         '--ignore-any-from-error', default=False, dest="ignore_any_from_error",
         help="Don't include Any type from errors in no-any-expr messages.", group=based_group)
+    add_invertible_flag(
+        '--no-infer-function-types', group=based_group, dest="infer_function_types",
+        default=True, help="Don't infer the type annotations of functions.")
+    add_invertible_flag(
+        '--incomplete-is-typed', group=based_group, default=False,
+        help="Partially typed/incomplete functions in this module are considered typed"
+             " for untyped call errors.")
 
     config_group = parser.add_argument_group(
         title='Config file',

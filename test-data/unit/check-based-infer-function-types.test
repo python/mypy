@@ -1,0 +1,385 @@
+-- Type checker test cases for infer-function-types.
+
+[case testInferFunctionTypesUntyped]
+# flags: --allow-untyped-defs --allow-incomplete-defs --allow-any-expr
+
+def f(): ...
+reveal_type(f)  # N: Revealed type is "def () -> Any"
+
+def g(i=1, b=""): ...
+reveal_type(g)  # N: Revealed type is "def (i: int =, b: str =) -> Any"
+
+class A1:
+    def __new__(cls): ...
+    def __init__(self): ...
+class B1(A1):
+    def __new__(cls): ...
+    def __init__(self): ...
+
+reveal_type(A1.__new__)  # N: Revealed type is "def (cls: type[__main__.A1]) -> Any"
+reveal_type(B1.__new__)  # N: Revealed type is "def (cls: type[__main__.B1]) -> Any"
+reveal_type(A1.__init__)  # N: Revealed type is "def (self: __main__.A1)"
+reveal_type(B1.__init__)  # N: Revealed type is "def (self: __main__.B1)"
+
+class A2:
+    def __new__(cls, a: int): ...
+    def __init__(self, a: int): ...
+class B2(A2):
+    def __new__(cls, a): ...
+    def __init__(self, a): ...
+
+reveal_type(A2.__new__)  # N: Revealed type is "def (cls: type[__main__.A2], a: int) -> __main__.A2"
+reveal_type(B2.__new__)  # N: Revealed type is "def (cls: type[__main__.B2], a: int) -> __main__.B2"
+reveal_type(A2.__init__)  # N: Revealed type is "def (self: __main__.A2, a: int)"
+reveal_type(B2.__init__)  # N: Revealed type is "def (self: __main__.B2, a: int)"
+
+
+[case testInferFunctionTypesComplete]
+class A1:
+    def __new__(cls): ...
+    def __init__(self): ...
+class B1(A1):
+    def __new__(cls): ...
+    def __init__(self): ...
+
+reveal_type(A1.__new__)  # N: Revealed type is "def (cls: type[__main__.A1]) -> __main__.A1"
+reveal_type(B1.__new__)  # N: Revealed type is "def (cls: type[__main__.B1]) -> __main__.B1"
+reveal_type(A1.__init__)  # N: Revealed type is "def (self: __main__.A1)"
+reveal_type(B1.__init__)  # N: Revealed type is "def (self: __main__.B1)"
+
+class A2:
+    def __new__(cls, a: int): ...
+    def __init__(self, a: int): ...
+class B2(A2):
+    def __new__(cls, a): ...
+    def __init__(self, a): ...
+
+reveal_type(A2.__new__)  # N: Revealed type is "def (cls: type[__main__.A2], a: int) -> __main__.A2"
+reveal_type(B2.__new__)  # N: Revealed type is "def (cls: type[__main__.B2], a: int) -> __main__.B2"
+reveal_type(A2.__init__)  # N: Revealed type is "def (self: __main__.A2, a: int)"
+reveal_type(B2.__init__)  # N: Revealed type is "def (self: __main__.B2, a: int)"
+
+
+[case testDefaultInstance]
+class A: ...
+def f(a=A()): ...
+reveal_type(f)  # N: Revealed type is "def (a: __main__.A =)"
+
+class B:
+    def foo(self, a: object): ...
+class C(B):
+    def foo(self, a=A()): ...
+
+reveal_type(C.foo)  # N: Revealed type is "def (self: __main__.C, a: object =)"
+
+
+[case testDontInferFunctionTypes]
+# flags: --no-infer-function-types --allow-untyped-defs --allow-incomplete-defs --allow-any-expr --no-default-return
+
+def f(): ...
+reveal_type(f)  # N: Revealed type is "def () -> Any"
+
+def g(i=1, b=""): ...
+reveal_type(g)  # N: Revealed type is "def (i: Any =, b: Any =) -> Any"
+
+class A1:
+    def __new__(cls): ...
+    def __init__(self): ...
+class B1(A1):
+    def __new__(cls): ...
+    def __init__(self): ...
+
+reveal_type(A1.__new__)  # N: Revealed type is "def (cls: type[__main__.A1]) -> Any"
+reveal_type(B1.__new__)  # N: Revealed type is "def (cls: type[__main__.B1]) -> Any"
+reveal_type(A1.__init__)  # N: Revealed type is "def (self: __main__.A1) -> Any"
+reveal_type(B1.__init__)  # N: Revealed type is "def (self: __main__.B1) -> Any"
+
+class A2:
+    def __new__(cls, a: int): ...
+    def __init__(self, a: int): ...
+class B2(A2):
+    def __new__(cls, a): ...
+    def __init__(self, a): ...
+
+reveal_type(A2.__new__)  # N: Revealed type is "def (cls: type[__main__.A2], a: int) -> Any"
+reveal_type(B2.__new__)  # N: Revealed type is "def (cls: type[__main__.B2], a: Any) -> Any"
+reveal_type(A2.__init__)  # N: Revealed type is "def (self: __main__.A2, a: int)"
+reveal_type(B2.__init__)  # N: Revealed type is "def (self: __main__.B2, a: Any) -> Any"
+
+
+[case testSimpleOverload]
+from typing import overload
+
+@overload
+def f(i: int) -> int: ...
+@overload
+def f(i: str) -> str: ...
+
+def f(i):
+    reveal_type(i)  # N: Revealed type is "int | str"
+    reveal_type(f)  # N: Revealed type is "Overload(def (i: int) -> int, def (i: str) -> str)"
+    if i:
+        return "asdf"
+    elif i:
+        return 100
+    return None  # E: Incompatible return value type (got "None", expected "int | str")  [return-value]
+
+
+[case testPartialOverload]
+from typing import overload
+
+@overload
+def f(*, i: int, j: int) -> int: ...
+@overload
+def f(*, j: str) -> str: ...
+
+def f(i: object = 1, j = "1"):
+    reveal_type(i)  # N: Revealed type is "object"
+    reveal_type(j)  # N: Revealed type is "int | str"
+    if j:
+        return "asdf"
+    elif j:
+        return 100
+    return None  # E: Incompatible return value type (got "None", expected "int | str")  [return-value]
+
+
+[case testInvalidOverload]
+@overload  # E: Name "overload" is not defined  [name-defined]
+def a(x: int): ...
+@overload  # E: Name "a" already defined on line 1  [no-redef] \
+           # E: Name "overload" is not defined  [name-defined]
+def a(x: str): ...
+def a(x: object): ...  # E: Name "a" already defined on line 1  [no-redef]
+
+def b(): ...
+def b(x: str): ...  # E: Name "b" already defined on line 7  [no-redef]
+
+
+[case testOverloadAndDefault]
+from typing import overload
+
+@overload
+def foo(a: int) -> None:
+    ...
+@overload
+def foo(a='1') -> None:
+    ...
+def foo(a="1") -> None:
+    reveal_type(a)  # N: Revealed type is "int | str"
+
+reveal_type(foo)  # N: Revealed type is "Overload(def (a: int), def (a: str =))"
+
+
+[case testVariadic]
+# flags: --allow-any-expr --disable-error-code truthy-bool --implicit-optional
+from typing import overload
+
+@overload
+def f(__a: str): ...
+@overload
+def f(__a: int): ...
+
+def f(*args):  # E: Function is missing a type annotation for one or more arguments  [no-untyped-def]
+    reveal_type(args)  # N: Revealed type is "tuple[Any, ...]"
+    if args:
+        return "asdf"  # E: No return value expected  [return-value]
+[builtins fixtures/tuple.pyi]
+
+
+[case testKariadic]
+# flags: --allow-any-expr
+from typing import overload
+
+@overload
+def f(*, kwargs: str): ...
+@overload
+def f(*, kwargs: int): ...
+
+def f(**kwargs):  # E: Function is missing a type annotation for one or more arguments  [no-untyped-def]
+    reveal_type(kwargs)  # N: Revealed type is "dict[str, Any]"
+    return 1 # E: No return value expected  [return-value]
+[builtins fixtures/dict.pyi]
+
+
+[case testOverrideOverload]
+from typing import overload, Union
+from s import S
+
+class A:
+    @overload
+    def f(self, f: int) -> str: ...
+    @overload
+    def f(self, f: str) -> int: ...
+    def f(self, f): ...
+
+class B(A):
+    def f(self, f):
+        reveal_type(self)  # N: Revealed type is "__main__.B"
+        reveal_type(f)  # N: Revealed type is "int | str"
+        return None  # E: Incompatible return value type (got "None", expected "str | int")  [return-value]
+class C(A):
+    def f(self, f: Union[int, str]):
+        reveal_type(self)  # N: Revealed type is "__main__.C"
+        reveal_type(f)  # N: Revealed type is "int | str"
+        return None  # E: Incompatible return value type (got "None", expected "str | int")  [return-value]
+class D(A):
+    def f(self, f: str):  # E: Overloaded function implementation does not accept all possible arguments of signature 1  [misc]
+        reveal_type(self)  # N: Revealed type is "__main__.D"
+        reveal_type(f)  # N: Revealed type is "str"
+        return None  # E: Incompatible return value type (got "None", expected "str | int")  [return-value]
+class E(A):
+    def f(self, f: str) -> None:  # E: Signature of "f" incompatible with supertype "A"  [override] \
+                                  # N:      Superclass: \
+                                  # N:          @overload \
+                                  # N:          def f(self, f: int) -> str \
+                                  # N:          @overload \
+                                  # N:          def f(self, f: str) -> int \
+                                  # N:      Subclass: \
+                                  # N:          def f(self, f: str) -> None
+        reveal_type(self)  # N: Revealed type is "__main__.E"
+        reveal_type(f)  # N: Revealed type is "str"
+        return None
+class F(A):
+    def f(self, f="") -> Union[str, int]:
+        reveal_type(self)  # N: Revealed type is "__main__.F"
+        reveal_type(f)  # N: Revealed type is "int | str"
+        return None  # E: Incompatible return value type (got "None", expected "str | int")  [return-value]
+class G(S):
+    def f(self, f=""):
+        reveal_type(self)  # N: Revealed type is "__main__.G"
+        reveal_type(f)  # N: Revealed type is "int | str"
+        return None  # E: Incompatible return value type (got "None", expected "str | int")  [return-value]
+
+
+reveal_type(A.f)  # N: Revealed type is "Overload(def (self: __main__.A, f: int) -> str, def (self: __main__.A, f: str) -> int)"
+reveal_type(B.f)  # N: Revealed type is "Overload(def (self: __main__.B, f: int) -> str, def (self: __main__.B, f: str) -> int)"
+reveal_type(C.f)  # N: Revealed type is "Overload(def (self: __main__.C, f: int) -> str, def (self: __main__.C, f: str) -> int)"
+reveal_type(D.f)  # N: Revealed type is "Overload(def (self: __main__.D, f: int) -> str, def (self: __main__.D, f: str) -> int)"
+reveal_type(E.f)  # N: Revealed type is "def (self: __main__.E, f: str)"
+reveal_type(F.f)  # N: Revealed type is "Overload(def (self: __main__.F, f: int) -> str, def (self: __main__.F, f: str) -> int)"
+reveal_type(G.f)  # N: Revealed type is "Overload(def (self: __main__.G, f: int) -> str, def (self: __main__.G, f: str) -> int)"
+
+[file s.pyi]
+from typing import overload
+
+class S:
+    @overload
+    def f(self, f: int) -> str: ...
+    @overload
+    def f(self, f: str) -> int: ...
+
+
+[case testCheckUntypedDefs]
+# flags: --no-check-untyped-defs --allow-untyped-defs
+
+def foo(a=1):
+    1 + ""
+
+foo()  # E: Call to untyped function "foo" in typed context  [no-untyped-call]
+reveal_type(foo)  # E: Expression type contains "Any" (has type "(int) -> Untyped")  [no-any-expr] \
+                  # N: Revealed type is "def (a: int =) -> Untyped"
+
+def bar(a=1) -> None:
+    1 + ""  # E: Unsupported operand types for + ("int" and "str")  [operator]
+
+bar()
+reveal_type(bar)  # N: Revealed type is "def (a: int =)"
+
+
+[case inferPropertyTypes]
+# flags: --no-infer-function-types --no-default-return --no-check-untyped-defs
+class A:
+    @property
+    def f(self) -> int: ...
+    @f.setter
+    def f(self, value): ...
+    @f.deleter
+    def f(self): ...
+
+a = A()
+reveal_type(a.f)  # N: Revealed type is "int"
+a.f = ""  # E: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
+del a.f
+
+class B:
+    @property
+    def f(self): ...  # E: Function is missing a return type annotation  [no-untyped-def] \
+                      # N: Use "-> None" if function does not return a value \
+                      # E: Type of decorated function contains type "Any" ("(B) -> Untyped")  [no-any-decorated]
+    @f.setter
+    def f(self, value):
+        1 + ""
+    @f.deleter
+    def f(self): ...
+
+b = B()
+reveal_type(b.f)  # E: Expression has type "Untyped"  [no-any-expr] \
+                  # N: Revealed type is "Untyped"
+b.f = 1  # E: Usage of untyped name "f" in typed context  [no-untyped-usage]
+del b.f
+[builtins fixtures/property.pyi]
+
+
+[case testPropertyNoAnnotation]
+class A:
+    @property
+    def p(self): ...  # E: Property is missing a type annotation  [no-untyped-def]
+    @p.setter
+    def p(self, value): ...
+    @p.deleter
+    def p(self): ...
+
+a = A()
+reveal_type(a.p)  # N: Revealed type is "None"
+a.p = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "None")  [assignment]
+del a.p
+[builtins fixtures/property.pyi]
+
+
+[case testPropertyInheritInfer-xfail]
+# Overloaded overrides aren't supported yet, so this is only the getter
+# xfail because infer function types has been disabled for now.
+class A:
+    @property
+    def p(self) -> int: ...
+class B(A):
+    @property
+    def p(self):
+        1 + ""  # E: Unsupported operand types for + ("int" and "str")  [operator]
+        return 1
+
+b = B()
+reveal_type(b.p)  # N: Revealed type is "int"
+c = b.p
+[builtins fixtures/property.pyi]
+
+
+[case testDefaultReturnOverride-xfail]
+class A:
+    def foo(self) -> int: ...
+    def bar(self, i: int) -> int: ...
+
+class B(A):
+    def foo(self): ...
+    def bar(self, i: int): ...
+
+b: B
+reveal_type(b.foo)  # N: Revealed type is "def () -> int"
+reveal_type(b.bar)  # N: Revealed type is "def (i: int) -> int"
+
+
+[case testUntypedInit]
+# flags: --allow-untyped-defs
+class A:
+    def __init__(self, foo): ...
+
+
+[case testInferFromDefaultWhenDecorated]
+from helper import T
+
+def deco(func: T) -> T: ...
+
+@deco
+def b(b=True) -> None: ...
+
+reveal_type(b)  # N: Revealed type is "def (b: bool =)"
