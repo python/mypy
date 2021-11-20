@@ -1,3 +1,11 @@
+// Implementation of generic vec[t], when t is a plain type object.
+//
+// Examples of types supported:
+//
+//  - vec[str]
+//  - vec[object]
+//  - vec[UserClass]
+
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include "vecs.h"

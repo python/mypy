@@ -4,11 +4,30 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
+// vec[i64]
 typedef struct _VecI64Object {
     PyObject_VAR_HEAD
     Py_ssize_t len;
     int64_t items[1];
 } VecI64Object;
+
+// Simple generic vec: vec[t] when t is a type object
+typedef struct _VecTObject {
+    PyObject_VAR_HEAD
+    Py_ssize_t len;
+    PyTypeObject *item_type;
+    PyObject *items[1];
+} VecTObject;
+
+// Extended generic vec type: vec[t | None], vec[vec[...]], etc.
+typedef struct _VecTExtObject {
+    PyObject_VAR_HEAD
+    Py_ssize_t len;
+    PyTypeObject *item_type;
+    int32_t depth;  // Number of nested VecTExt or VecT types
+    int32_t optionals;  // Flags for optional types on each nesting level
+    PyObject *items[1];
+} VecTExtObject;
 
 // vec[i64] operations + type object (stored in a capsule)
 typedef struct _VecI64Features {
@@ -23,13 +42,6 @@ typedef struct _VecI64Features {
     // bool (*remove)(PyObject *, int64_t);
     // iter?
 } VecI64Features;
-
-typedef struct _VecTObject {
-    PyObject_VAR_HEAD
-    Py_ssize_t len;
-    PyTypeObject *item_type;
-    PyObject *items[1];
-} VecTObject;
 
 // vec[T] operations + type object (stored in a capsule)
 //
@@ -49,18 +61,20 @@ typedef struct _VecTFeatures {
 
 typedef struct {
     VecI64Features *i64;
-    // VecTFeatures *i64;
+    // VecTFeatures *t;
+    // VecTExtFeatures *t_ext;
 } VecCapsule;
 
 #define VEC_SIZE(v) ((v)->ob_base.ob_size)
 
+PyObject *Vec_I64_Append(PyObject *obj, int64_t x);
+
 VecTObject *Vec_T_New(Py_ssize_t size, PyTypeObject *item_type);
 PyObject *Vec_T_Append(PyObject *obj, PyObject *x);
 
-PyObject *Vec_I64_Append(PyObject *obj, int64_t x);
-
 extern PyTypeObject VecI64Type;
 extern PyTypeObject VecTType;
+extern PyTypeObject VecTExtType;
 extern VecI64Features I64Features;
 
 static inline int VecI64_Check(PyObject *o) {

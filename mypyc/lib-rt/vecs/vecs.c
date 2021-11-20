@@ -9,12 +9,12 @@ static PyObject *i64_type_obj;
 // vec type proxy
 //
 // Used for the result of generic vec[t] that must preserve knowledge of 't'.
-// These aren't really types.
-
-// this can only instantiated
+// These aren't really types. This only supports constructing instances.
 typedef struct {
     PyObject_HEAD
     PyObject *item_type;
+    int32_t depth;  // Number of nested VecTExt or VecT types
+    int32_t optionals;  // Flags for optional types on each nesting level
 } VecProxy;
 
 static PyObject *vec_proxy_call(PyObject *self, PyObject *args, PyObject *kw)
@@ -47,7 +47,12 @@ PyObject *VecProxy_repr(PyObject *self) {
     PyObject *suffix = Py_BuildValue("s", "]'>");
     PyObject *sep = Py_BuildValue("s", "");
     PyList_Append(l, prefix);
-    PyList_Append(l, PyObject_GetAttrString(((VecProxy *)self)->item_type, "__name__"));
+    VecProxy *v = (VecProxy *)self;
+    PyList_Append(l, PyObject_GetAttrString(v->item_type, "__name__"));
+    if (v->optionals) {
+        PyObject *none = Py_BuildValue("s", " | None");
+        PyList_Append(l, none);
+    }
     PyList_Append(l, suffix);
     return PyUnicode_Join(sep, l);
 }
@@ -73,15 +78,42 @@ typedef struct {
     PyObject_HEAD
 } VecGeneric;
 
+static PyObject *extract_optional_item(PyObject *item) {
+    PyObject *args = PyObject_GetAttrString(item, "__args__");
+    if (args == NULL)
+        goto error;
+    if (!PyTuple_CheckExact(args))
+        goto error;
+    if (PyTuple_GET_SIZE(args) != 2)
+        goto error;
+    PyObject *item0 = PyTuple_GET_ITEM(args, 0);
+    PyObject *item1 = PyTuple_GET_ITEM(args, 1);
+    if (item0 == (PyObject *)Py_None->ob_type) {
+        Py_DECREF(args);
+        return item1;
+    } else if (item1 == (PyObject *)Py_None->ob_type) {
+        Py_DECREF(args);
+        return item0;
+    }
+  error:
+    Py_DECREF(args);
+    return NULL;
+}
+
 static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
 {
     if (item == i64_type_obj) {
         Py_INCREF(&VecI64Type);
         return (PyObject *)&VecI64Type;
     } else {
+        int32_t optionals = 0;
         if (!PyObject_TypeCheck(item, &PyType_Type)) {
-            PyErr_SetString(PyExc_TypeError, "type object expected in vec[...]");
-            return NULL;
+            item = extract_optional_item(item);
+            if (item == NULL) {
+                PyErr_SetString(PyExc_TypeError, "type object expected in vec[...]");
+                return NULL;
+            }
+            optionals = 1;
         }
         if (item == (PyObject *)&PyLong_Type
             || item == (PyObject *)&PyFloat_Type
@@ -95,6 +127,8 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
             return NULL;
         Py_INCREF(item);
         p->item_type = item;
+        p->depth = 0;
+        p->optionals = optionals;
         PyObject_GC_Track(p);
         return (PyObject *)p;
     }
@@ -181,6 +215,8 @@ PyInit_vecs(void)
     if (PyType_Ready(&VecProxyType) < 0)
         return NULL;
     if (PyType_Ready(&VecTType) < 0)
+        return NULL;
+    if (PyType_Ready(&VecTExtType) < 0)
         return NULL;
     if (PyType_Ready(&VecI64Type) < 0)
         return NULL;
