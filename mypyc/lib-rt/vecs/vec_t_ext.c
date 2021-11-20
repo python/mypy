@@ -10,30 +10,20 @@
 #include "vecs.h"
 
 PyObject *vec_t_ext_repr(PyObject *self) {
-    // TODO: Type check, refcounting, error handling
-    VecTExtObject *o = (VecTExtObject *)self;
-    // TODO: Display actual type
-    PyObject *prefix = Py_BuildValue("s", "vec[");
-    // TODO: Don't hard code
-    PyObject *mid = Py_BuildValue("s", " | None]([");
-    PyObject *suffix = Py_BuildValue("s", "])");
-    PyObject *l = Py_BuildValue("[]");
-    PyObject *sep = Py_BuildValue("s", "");
-    PyObject *comma = Py_BuildValue("s", ", ");
-    PyList_Append(l, prefix);
-    PyList_Append(l, PyObject_GetAttrString((PyObject *)o->item_type, "__name__"));
-    PyList_Append(l, mid);
-    for (int i = 0; i < o->len; i++) {
-        PyObject *r = PyObject_Repr(o->items[i]);
-        if (r == NULL) {
-            return NULL;
-        }
-        PyList_Append(l, r);
-        if (i + 1 < o->len)
-            PyList_Append(l, comma);
+    VecTExtObject *v = (VecTExtObject *)self;
+    return vec_repr(self, v->item_type, v->depth, v->optionals, 1);
+}
+
+PyObject *vec_t_ext_get_item(PyObject *o, Py_ssize_t i) {
+    VecTExtObject *v = (VecTExtObject *)o;
+    if ((size_t)i < (size_t)v->len) {
+        PyObject *item = v->items[i];
+        Py_INCREF(item);
+        return item;
+    } else {
+        PyErr_SetString(PyExc_IndexError, "index out of range");
+        return NULL;
     }
-    PyList_Append(l, suffix);
-    return PyUnicode_Join(sep, l);
 }
 
 static int
@@ -82,10 +72,10 @@ static PyMappingMethods VecTExtMapping = {
     .mp_length = vec_ext_length,
 };
 
-//static PySequenceMethods VecTSequence = {
-//    .sq_item = vec_t_get_item,
-//    .sq_ass_item = vec_t_ass_item,
-//};
+static PySequenceMethods VecTExtSequence = {
+    .sq_item = vec_t_ext_get_item,
+//    .sq_ass_item = vec_t_ext_ass_item,
+};
 
 PyTypeObject VecTExtType = {
     PyVarObject_HEAD_INIT(NULL, 0)
@@ -99,7 +89,7 @@ PyTypeObject VecTExtType = {
     .tp_dealloc = (destructor)VecTExt_dealloc,
     //.tp_free = PyObject_GC_Del,
     .tp_repr = (reprfunc)vec_t_ext_repr,
-    //.tp_as_sequence = &VecTExtSequence,
+    .tp_as_sequence = &VecTExtSequence,
     .tp_as_mapping = &VecTExtMapping,
     // TODO: free
 };

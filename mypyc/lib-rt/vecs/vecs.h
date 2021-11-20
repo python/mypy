@@ -107,10 +107,18 @@ static inline int VecTExt_Check(PyObject *o) {
     return o->ob_type == &VecTExtType;
 }
 
-static inline int VecTExt_ItemCheck(VecTExtObject *v, PyObject *item) {
-    if (PyObject_TypeCheck(item, v->item_type))
+static inline int VecTExt_ItemCheck(VecTExtObject *v, PyObject *it) {
+    if (v->depth == 0 && PyObject_TypeCheck(it, v->item_type)) {
         return 1;
-    else if (item == Py_None && (v->optionals & 1)) {
+    } else if (it == Py_None && (v->optionals & 1)) {
+        return 1;
+    } else if (v->depth == 1 && it->ob_type == &VecTType
+               && ((VecTExtObject *)it)->item_type == v->item_type) {
+        return 1;
+    } else if (it->ob_type == &VecTExtType
+               && ((VecTExtObject *)it)->depth == v->depth - 1
+               && ((VecTExtObject *)it)->item_type == v->item_type
+               && ((VecTExtObject *)it)->optionals == (v->optionals >> 1)) {
         return 1;
     } else {
         // TODO: better error message
@@ -132,5 +140,9 @@ static inline int check_float_error(PyObject *o) {
     }
     return 0;
 }
+
+PyObject *vec_type_to_str(PyTypeObject *item_type, int32_t depth, int32_t optionals);
+PyObject *vec_repr(PyObject *vec, PyTypeObject *item_type, int32_t depth, int32_t optionals,
+                   int verbose);
 
 #endif

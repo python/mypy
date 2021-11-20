@@ -12,7 +12,7 @@ static PyObject *i64_type_obj;
 // These aren't really types. This only supports constructing instances.
 typedef struct {
     PyObject_HEAD
-    PyObject *item_type;
+    PyTypeObject *item_type;
     int32_t depth;  // Number of nested VecTExt or VecT types
     int32_t optionals;  // Flags for optional types on each nesting level
 } VecProxy;
@@ -45,10 +45,10 @@ VecProxy_dealloc(VecProxy *self)
     PyObject_GC_Del(self);
 }
 
-PyObject *vec_type_to_str(PyObject *item_type, int32_t depth, int32_t optionals) {
+PyObject *vec_type_to_str(PyTypeObject *item_type, int32_t depth, int32_t optionals) {
     PyObject *item;
     if (depth == 0)
-        item = PyObject_GetAttrString(item_type, "__name__");
+        item = PyObject_GetAttrString((PyObject *)item_type, "__name__");
     else
         item = vec_type_to_str(item_type, depth - 1, optionals >> 1);
 
@@ -132,7 +132,7 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
             }
             if (item->ob_type == &VecProxyType) {
                 VecProxy *p = (VecProxy *)item;
-                item = p->item_type;
+                item = (PyObject *)p->item_type;
                 depth = p->depth + 1;
                 optionals |= p->optionals << 1;
             } else if (!PyObject_TypeCheck(item, &PyType_Type)) {
@@ -151,7 +151,7 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
         if (p == NULL)
             return NULL;
         Py_INCREF(item);
-        p->item_type = item;
+        p->item_type = (PyTypeObject *)item;
         p->depth = depth;
         p->optionals = optionals;
         PyObject_GC_Track(p);
@@ -173,6 +173,47 @@ PyTypeObject VecGenericType = {
     .tp_methods = vec_methods,
 };
 
+PyObject *vec_repr(PyObject *vec, PyTypeObject *item_type, int32_t depth, int32_t optionals,
+                   int verbose) {
+    PyObject *l = Py_BuildValue("[]");
+    PyObject *prefix;
+    PyObject *mid;
+    PyObject *suffix;
+    PyObject *sep = Py_BuildValue("s", "");
+    PyObject *comma = Py_BuildValue("s", ", ");
+    if (verbose) {
+        prefix = vec_type_to_str(item_type, depth, optionals);
+        mid = Py_BuildValue("s", "([");
+        suffix = Py_BuildValue("s", "])");
+    } else {
+        prefix = Py_BuildValue("s", "");
+        mid = Py_BuildValue("s", "[");
+        suffix = Py_BuildValue("s", "]");
+    }
+    PyList_Append(l, prefix);
+    PyList_Append(l, mid);
+
+    Py_ssize_t len = PyObject_Length(vec);
+
+    for (Py_ssize_t i = 0; i < len; i++) {
+        PyObject *it = PySequence_GetItem(vec, i);
+        PyObject *r;
+        if (depth == 0) {
+            r = PyObject_Repr(it);
+        } else {
+            r = vec_repr(it, item_type, depth - 1, optionals >> 1, 0);
+        }
+        if (r == NULL)
+            return NULL;
+        PyList_Append(l, r);
+        if (i + 1 < len)
+            PyList_Append(l, comma);
+    }
+
+    PyList_Append(l, suffix);
+
+    return PyUnicode_Join(sep, l);
+}
 
 // Module-level functions
 
