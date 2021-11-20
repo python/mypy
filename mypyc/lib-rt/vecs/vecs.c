@@ -84,7 +84,9 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
             PyErr_SetString(PyExc_TypeError, "type object expected in vec[...]");
             return NULL;
         }
-        if (item == &PyLong_Type || item == &PyFloat_Type || item == &PyBool_Type) {
+        if (item == (PyObject *)&PyLong_Type
+            || item == (PyObject *)&PyFloat_Type
+            || item == (PyObject *)&PyBool_Type) {
             PyErr_SetString(PyExc_ValueError, "unsupported type in vec[...]");
             return NULL;
         }
