@@ -136,14 +136,10 @@ static PyObject *vecs_append(PyObject *self, PyObject *args)
         return Vec_I64_Append(vec, x);
     } else if (VecT_Check(vec)) {
         VecTObject *v = (VecTObject *)vec;
-        if (PyObject_TypeCheck(item, v->item_type)) {
-            Py_INCREF(vec);
-            return Vec_T_Append(vec, item);
-        } else {
-            // TODO: better error message
-            PyErr_SetString(PyExc_TypeError, "invalid item type");
+        if (!VecT_ItemCheck(v, item))
             return NULL;
-        }
+        Py_INCREF(vec);
+        return Vec_T_Append(vec, item);
     } else {
         PyErr_SetString(PyExc_TypeError, "vec argument expected");
         return NULL;

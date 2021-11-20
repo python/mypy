@@ -79,4 +79,14 @@ static inline int check_float_error(PyObject *o) {
     return 0;
 }
 
+static inline int VecT_ItemCheck(VecTObject *v, PyObject *item) {
+    if (PyObject_TypeCheck(item, v->item_type))
+        return 1;
+    else {
+        // TODO: better error message
+        PyErr_SetString(PyExc_TypeError, "invalid item type");
+        return 0;
+    }
+}
+
 #endif
