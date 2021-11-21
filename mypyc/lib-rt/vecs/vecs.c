@@ -32,7 +32,13 @@ static PyObject *vec_proxy_call(PyObject *self, PyObject *args, PyObject *kw)
             return (PyObject *)Vec_T_FromIterable((PyTypeObject *)p->item_type, init);
         }
     } else {
-        return (PyObject *)Vec_T_Ext_New(0, (PyTypeObject *)p->item_type, p->optionals, p->depth);
+        if (init == NULL) {
+            return (PyObject *)Vec_T_Ext_New(0, (PyTypeObject *)p->item_type, p->optionals,
+                                             p->depth);
+        } else {
+            return (PyObject *)Vec_T_Ext_FromIterable((PyTypeObject *)p->item_type, p->optionals,
+                                                      p->depth, init);
+        }
     }
 }
 

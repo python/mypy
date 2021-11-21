@@ -131,8 +131,9 @@ static inline int VecTExt_ItemCheck(VecTExtObject *v, PyObject *it) {
 
 VecTExtObject *Vec_T_Ext_New(Py_ssize_t size, PyTypeObject *item_type, int32_t optionals,
                              int32_t depth);
+VecTExtObject *Vec_T_Ext_FromIterable(PyTypeObject *item_type, int32_t optionals, int32_t depth,
+                                      PyObject *iterable);
 PyObject *Vec_T_Ext_Append(PyObject *obj, PyObject *x);
-
 // Misc helpers
 
 static inline int check_float_error(PyObject *o) {

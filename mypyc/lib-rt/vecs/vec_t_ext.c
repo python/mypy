@@ -128,6 +128,45 @@ VecTExtObject *Vec_T_Ext_New(Py_ssize_t size, PyTypeObject *item_type, int32_t o
     return v;
 }
 
+VecTExtObject *Vec_T_Ext_FromIterable(PyTypeObject *item_type, int32_t optionals, int32_t depth,
+                                      PyObject *iterable) {
+    VecTExtObject *v = PyObject_GC_NewVar(VecTExtObject, &VecTExtType, 0);
+    if (v == NULL)
+        return NULL;
+    v->len = 0;
+    v->item_type = item_type;
+    v->optionals = optionals;
+    v->depth = depth;
+
+    PyObject *iter = PyObject_GetIter(iterable);
+    if (iter == NULL) {
+        Py_DECREF(v);
+        return NULL;
+    }
+    PyObject *item;
+    while ((item = PyIter_Next(iter)) != NULL) {
+        if (!VecTExt_ItemCheck(v, item)) {
+            Py_DECREF(iter);
+            Py_DECREF(v);
+            Py_DECREF(item);
+            return NULL;
+        }
+        v = (VecTExtObject *)Vec_T_Ext_Append((PyObject *)v, item);
+        Py_DECREF(item);
+        if (v == NULL) {
+            Py_DECREF(iter);
+            Py_DECREF(v);
+            return NULL;
+        }
+    }
+    Py_DECREF(iter);
+    if (PyErr_Occurred()) {
+        Py_DECREF(v);
+        return NULL;
+    }
+    return v;
+}
+
 PyObject *Vec_T_Ext_Append(PyObject *obj, PyObject *x) {
     VecTExtObject *vec = (VecTExtObject *)obj;
     Py_ssize_t cap = VEC_SIZE(vec);
