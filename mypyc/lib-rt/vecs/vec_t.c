@@ -29,7 +29,6 @@ PyObject *vec_t_get_item(PyObject *o, Py_ssize_t i) {
     }
 }
 
-
 int vec_t_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
     VecTObject *v = (VecTObject *)self;
     if (!VecT_ItemCheck(v, o))

@@ -86,12 +86,40 @@ PyObject *Vec_I64_New(Py_ssize_t size)
     return (PyObject *)v;
 }
 
+VecI64Object *Vec_I64_FromIterable(PyObject *iterable) {
+    VecI64Object *v = vec_i64_alloc(0);
+    if (v == NULL)
+        return NULL;
+    v->len = 0;
+
+    PyObject *iter = PyObject_GetIter(iterable);
+    PyObject *item;
+    while ((item = PyIter_Next(iter)) != NULL) {
+        int64_t x = PyLong_AsLongLong(item);
+        if (x == -1 && PyErr_Occurred())
+            return NULL;
+        v = (VecI64Object *)Vec_I64_Append((PyObject *)v, x);
+        if (v == NULL)
+            return NULL;
+        Py_DECREF(item);
+    }
+    Py_DECREF(iter);
+    if (PyErr_Occurred())
+        return NULL;
+    return v;
+}
+
 PyObject *vec_i64_new(PyTypeObject *self, PyObject *args, PyObject *kw) {
-    static char *kwlist[] = {NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, ":vec", kwlist)) {
+    static char *kwlist[] = {"", NULL};
+    PyObject *init = NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "|O:vec", kwlist, &init)) {
         return NULL;
     }
-    return Vec_I64_New(0);
+    if (init == NULL) {
+        return Vec_I64_New(0);
+    } else {
+        return (PyObject *)Vec_I64_FromIterable(init);
+    }
 }
 
 PyObject *Vec_I64_Append(PyObject *obj, int64_t x) {
