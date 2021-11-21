@@ -89,12 +89,17 @@ def map_actuals_to_formals(actual_kinds: List[nodes.ArgKind],
         #
         # TODO: If there are also tuple varargs, we might be missing some potential
         #       matches if the tuple was short enough to not match everything.
-        unmatched_formals = [fi for fi in range(nformals)
-                             if (formal_names[fi]
-                                 and (not formal_to_actual[fi]
-                                      or actual_kinds[formal_to_actual[fi][0]] == nodes.ARG_STAR)
-                                 and formal_kinds[fi] != nodes.ARG_STAR)
-                             or formal_kinds[fi] == nodes.ARG_STAR2]
+        unmatched_formals = []
+        for fi in range(nformals):
+            if (formal_names[fi]
+                    and formal_kinds[fi] != nodes.ARG_STAR
+                    and (not formal_to_actual[fi]
+                         or actual_kinds[formal_to_actual[fi][0]] == nodes.ARG_STAR)
+                    # Arguments with default values should not be matched:
+                    and not formal_kinds[fi].is_optional()
+                    or formal_kinds[fi] == nodes.ARG_STAR2):
+                unmatched_formals.append(fi)
+
         for ai in ambiguous_actual_kwargs:
             for fi in unmatched_formals:
                 formal_to_actual[fi].append(ai)

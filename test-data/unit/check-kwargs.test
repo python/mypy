@@ -484,13 +484,28 @@ def f(*vargs: int, **kwargs: object) -> None:
 def g(arg: int = 0, **kwargs: object) -> None:
 	pass
 
+def h(*, arg: int = 0, **kwargs: object) -> None:
+  pass
+
+def j(arg: int, **kwargs: object) -> None:
+  pass
+
+def k(*, arg: int, **kwargs: object) -> None:
+  pass
+
 d = {} # type: Dict[str, object]
 f(**d)
-g(**d)  # E: Argument 1 to "g" has incompatible type "**Dict[str, object]"; expected "int"
+g(**d)
+h(**d)
+j(**d)  # E: Argument 1 to "j" has incompatible type "**Dict[str, object]"; expected "int"
+k(**d)  # E: Argument 1 to "k" has incompatible type "**Dict[str, object]"; expected "int"
 
 m = {} # type: Mapping[str, object]
 f(**m)
-g(**m)  # E: Argument 1 to "g" has incompatible type "**Mapping[str, object]"; expected "int"
+g(**m)
+h(**m)
+j(**m)  # E: Argument 1 to "j" has incompatible type "**Mapping[str, object]"; expected "int"
+k(**m)  # E: Argument 1 to "k" has incompatible type "**Mapping[str, object]"; expected "int"
 [builtins fixtures/dict.pyi]
 
 [case testPassingEmptyDictWithStars]
