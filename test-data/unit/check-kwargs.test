@@ -496,15 +496,27 @@ def k(*, arg: int, **kwargs: object) -> None:
 d = {} # type: Dict[str, object]
 f(**d)
 g(**d)
+g(1, **d)
+g(arg=1, **d)
 h(**d)
+h(arg=1, **d)
+j(1, **d)
+j(arg=1, **d)
 j(**d)  # E: Argument 1 to "j" has incompatible type "**Dict[str, object]"; expected "int"
+k(arg=1, **d)
 k(**d)  # E: Argument 1 to "k" has incompatible type "**Dict[str, object]"; expected "int"
 
 m = {} # type: Mapping[str, object]
 f(**m)
 g(**m)
+g(1, **d)
+g(arg=1, **d)
 h(**m)
+h(arg=1, **d)
+j(1, **d)
+j(arg=1, **d)
 j(**m)  # E: Argument 1 to "j" has incompatible type "**Mapping[str, object]"; expected "int"
+k(arg=1, **d)
 k(**m)  # E: Argument 1 to "k" has incompatible type "**Mapping[str, object]"; expected "int"
 [builtins fixtures/dict.pyi]
 
