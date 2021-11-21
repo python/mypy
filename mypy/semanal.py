@@ -94,7 +94,7 @@ from mypy.types import (
     TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType,
     get_proper_type, get_proper_types, TypeAliasType, TypeVarLikeType
 )
-from mypy.typeops import function_type
+from mypy.typeops import function_type, get_type_vars
 from mypy.type_visitor import TypeQuery
 from mypy.typeanal import (
     TypeAnalyser, analyze_type_alias, no_subscript_builtin_alias,
@@ -3337,6 +3337,12 @@ class SemanticAnalyzer(NodeVisitor[None],
             node = lvalue.node
             if isinstance(node, Var):
                 node.is_classvar = True
+            analyzed = self.anal_type(s.type)
+            if analyzed is not None and get_type_vars(analyzed):
+                # This means that we have a type var defined inside of a ClassVar.
+                # This is not allowed by PEP526.
+                # See https://github.com/python/mypy/issues/11538
+                self.fail(message_registry.CLASS_VAR_WITH_TYPEVARS, s)
         elif not isinstance(lvalue, MemberExpr) or self.is_self_member_ref(lvalue):
             # In case of member access, report error only when assigning to self
             # Other kinds of member assignments should be already reported
@@ -3359,7 +3365,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         return sym.node.fullname in ('typing.Final', 'typing_extensions.Final')
 
     def fail_invalid_classvar(self, context: Context) -> None:
-        self.fail('ClassVar can only be used for assignments in class body', context)
+        self.fail(message_registry.CLASS_VAR_OUTSIDE_OF_CLASS, context)
 
     def process_module_assignment(self, lvals: List[Lvalue], rval: Expression,
                                   ctx: AssignmentStmt) -> None:
