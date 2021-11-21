@@ -126,6 +126,42 @@ VecTObject *Vec_T_New(Py_ssize_t size, PyTypeObject *item_type) {
     return v;
 }
 
+VecTObject *Vec_T_FromIterable(PyTypeObject *item_type, PyObject *iterable) {
+    VecTObject *v = PyObject_GC_NewVar(VecTObject, &VecTType, 0);
+    if (v == NULL)
+        return NULL;
+    v->len = 0;
+    v->item_type = item_type;
+
+    PyObject *iter = PyObject_GetIter(iterable);
+    if (iter == NULL) {
+        Py_DECREF(v);
+        return NULL;
+    }
+    PyObject *item;
+    while ((item = PyIter_Next(iter)) != NULL) {
+        if (!VecT_ItemCheck(v, item)) {
+            Py_DECREF(iter);
+            Py_DECREF(v);
+            Py_DECREF(item);
+            return NULL;
+        }
+        v = (VecTObject *)Vec_T_Append((PyObject *)v, item);
+        Py_DECREF(item);
+        if (v == NULL) {
+            Py_DECREF(iter);
+            Py_DECREF(v);
+            return NULL;
+        }
+    }
+    Py_DECREF(iter);
+    if (PyErr_Occurred()) {
+        Py_DECREF(v);
+        return NULL;
+    }
+    return v;
+}
+
 PyObject *Vec_T_Append(PyObject *obj, PyObject *x) {
     VecTObject *vec = (VecTObject *)obj;
     Py_ssize_t cap = VEC_SIZE(vec);

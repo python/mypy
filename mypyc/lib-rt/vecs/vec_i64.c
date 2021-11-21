@@ -93,19 +93,31 @@ VecI64Object *Vec_I64_FromIterable(PyObject *iterable) {
     v->len = 0;
 
     PyObject *iter = PyObject_GetIter(iterable);
+    if (iter == NULL) {
+        Py_DECREF(v);
+        return NULL;
+    }
     PyObject *item;
     while ((item = PyIter_Next(iter)) != NULL) {
         int64_t x = PyLong_AsLongLong(item);
-        if (x == -1 && PyErr_Occurred())
-            return NULL;
-        v = (VecI64Object *)Vec_I64_Append((PyObject *)v, x);
-        if (v == NULL)
-            return NULL;
         Py_DECREF(item);
+        if (x == -1 && PyErr_Occurred()) {
+            Py_DECREF(iter);
+            Py_DECREF(v);
+            return NULL;
+        }
+        v = (VecI64Object *)Vec_I64_Append((PyObject *)v, x);
+        if (v == NULL) {
+            Py_DECREF(iter);
+            Py_DECREF(v);
+            return NULL;
+        }
     }
     Py_DECREF(iter);
-    if (PyErr_Occurred())
+    if (PyErr_Occurred()) {
+        Py_DECREF(v);
         return NULL;
+    }
     return v;
 }
 

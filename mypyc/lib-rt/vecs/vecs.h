@@ -100,6 +100,7 @@ static inline int VecT_ItemCheck(VecTObject *v, PyObject *item) {
 }
 
 VecTObject *Vec_T_New(Py_ssize_t size, PyTypeObject *item_type);
+VecTObject *Vec_T_FromIterable(PyTypeObject *item_type, PyObject *iterable);
 PyObject *Vec_T_Append(PyObject *obj, PyObject *x);
 
 // vec[t] operations (extended)

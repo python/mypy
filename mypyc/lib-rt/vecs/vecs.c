@@ -19,13 +19,18 @@ typedef struct {
 
 static PyObject *vec_proxy_call(PyObject *self, PyObject *args, PyObject *kw)
 {
-    static char *kwlist[] = {NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, ":vec", kwlist)) {
+    static char *kwlist[] = {"", NULL};
+    PyObject *init = NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "|O:vec", kwlist, &init)) {
         return NULL;
     }
     VecProxy *p = (VecProxy *)self;
     if (p->optionals == 0 && p->depth == 0) {
-        return (PyObject *)Vec_T_New(0, (PyTypeObject *)p->item_type);
+        if (init == NULL) {
+            return (PyObject *)Vec_T_New(0, (PyTypeObject *)p->item_type);
+        } else {
+            return (PyObject *)Vec_T_FromIterable((PyTypeObject *)p->item_type, init);
+        }
     } else {
         return (PyObject *)Vec_T_Ext_New(0, (PyTypeObject *)p->item_type, p->optionals, p->depth);
     }
