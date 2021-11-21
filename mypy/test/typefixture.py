@@ -7,7 +7,7 @@ from typing import List, Optional, Tuple
 
 from mypy.semanal_shared import set_callable_name
 from mypy.types import (
-    Type, TypeVarType, AnyType, NoneType, Instance, CallableType, TypeVarType, TypeType,
+    Type, AnyType, NoneType, Instance, CallableType, TypeVarType, TypeType,
     UninhabitedType, TypeOfAny, TypeAliasType, UnionType, LiteralType
 )
 from mypy.nodes import (

@@ -5,6 +5,7 @@ from collections.abc import Callable, Iterable, Sequence
 from ctypes import _CData
 from logging import Logger
 from multiprocessing import queues, synchronize
+from multiprocessing.pool import Pool as _Pool
 from multiprocessing.process import BaseProcess
 from multiprocessing.sharedctypes import SynchronizedArray, SynchronizedBase
 from typing import Any, Type, TypeVar, Union, overload
@@ -57,7 +58,7 @@ class BaseContext(object):
         initializer: Callable[..., Any] | None = ...,
         initargs: Iterable[Any] = ...,
         maxtasksperchild: int | None = ...,
-    ) -> multiprocessing.pool.Pool: ...
+    ) -> _Pool: ...
     @overload
     def RawValue(self, typecode_or_type: Type[_CT], *args: Any) -> _CT: ...
     @overload

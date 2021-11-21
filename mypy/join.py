@@ -7,7 +7,7 @@ from mypy.types import (
     Type, AnyType, NoneType, TypeVisitor, Instance, UnboundType, TypeVarType, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, FunctionLike, Overloaded, LiteralType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, get_proper_type,
-    ProperType, get_proper_types, TypeAliasType, PlaceholderType, TypeGuardType
+    ProperType, get_proper_types, TypeAliasType, PlaceholderType
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import (
@@ -17,7 +17,6 @@ from mypy.subtypes import (
 from mypy.nodes import INVARIANT, COVARIANT, CONTRAVARIANT
 import mypy.typeops
 from mypy import state
-from mypy import meet
 
 
 class InstanceJoiner:
@@ -55,18 +54,15 @@ class InstanceJoiner:
                     if not is_subtype(new_type, type_var.upper_bound):
                         self.seen_instances.pop()
                         return object_from_instance(t)
-                elif type_var.variance == CONTRAVARIANT:
-                    new_type = meet.meet_types(ta, sa)
-                    if len(type_var.values) != 0 and new_type not in type_var.values:
-                        self.seen_instances.pop()
-                        return object_from_instance(t)
-                    # No need to check subtype, as ta and sa already have to be subtypes of
-                    # upper_bound
-                elif type_var.variance == INVARIANT:
-                    new_type = join_types(ta, sa)
+                # TODO: contravariant case should use meet but pass seen instances as
+                # an argument to keep track of recursive checks.
+                elif type_var.variance in (INVARIANT, CONTRAVARIANT):
                     if not is_equivalent(ta, sa):
                         self.seen_instances.pop()
                         return object_from_instance(t)
+                    # If the types are different but equivalent, then an Any is involved
+                    # so using a join in the contravariant case is also OK.
+                    new_type = join_types(ta, sa, self)
                 assert new_type is not None
                 args.append(new_type)
             result: ProperType = Instance(t.type, args)
@@ -430,9 +426,6 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             return self.default(self.s)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
-        assert False, "This should be never called, got {}".format(t)
-
-    def visit_type_guard_type(self, t: TypeGuardType) -> ProperType:
         assert False, "This should be never called, got {}".format(t)
 
     def join(self, s: Type, t: Type) -> ProperType:

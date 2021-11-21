@@ -46,7 +46,7 @@ class BaseRotatingHandler(FileHandler):
 
 class RotatingFileHandler(BaseRotatingHandler):
     maxBytes: str  # undocumented
-    backupCount: str  # undocumented
+    backupCount: int  # undocumented
     if sys.version_info >= (3, 9):
         def __init__(
             self,
@@ -73,7 +73,7 @@ class RotatingFileHandler(BaseRotatingHandler):
 
 class TimedRotatingFileHandler(BaseRotatingHandler):
     when: str  # undocumented
-    backupCount: str  # undocumented
+    backupCount: int  # undocumented
     utc: bool  # undocumented
     atTime: datetime.datetime | None  # undocumented
     interval: int  # undocumented
@@ -167,6 +167,7 @@ class SysLogHandler(Handler):
     LOG_LOCAL5: int
     LOG_LOCAL6: int
     LOG_LOCAL7: int
+    address: tuple[str, int] | str  # undocumented
     unixsocket: bool  # undocumented
     socktype: SocketKind  # undocumented
     ident: str  # undocumented

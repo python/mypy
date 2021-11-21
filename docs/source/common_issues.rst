@@ -370,7 +370,7 @@ Complex type tests
 Mypy can usually infer the types correctly when using :py:func:`isinstance <isinstance>`,
 :py:func:`issubclass <issubclass>`,
 or ``type(obj) is some_class`` type tests,
-and even user-defined type guards,
+and even :ref:`user-defined type guards <type-guards>`,
 but for other kinds of checks you may need to add an
 explicit type cast:
 
@@ -385,7 +385,7 @@ explicit type cast:
 
       found = a[index]  # Has `object` type, despite the fact that we know it is `str`
       return cast(str, found)  # So, we need an explicit cast to make mypy happy
-      
+
 Alternatively, you can use ``assert`` statement together with some
 of the supported type inference techniques:
 
@@ -728,6 +728,8 @@ not necessary:
     class NarrowerArgument(A):
         def test(self, t: List[int]) -> Sequence[str]:  # type: ignore[override]
             ...
+
+.. _unreachable:
 
 Unreachable code
 ----------------

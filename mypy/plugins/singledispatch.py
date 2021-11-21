@@ -22,11 +22,11 @@ RegisterCallableInfo = NamedTuple('RegisterCallableInfo', [
     ('singledispatch_obj', Instance),
 ])
 
-SINGLEDISPATCH_TYPE = 'functools._SingleDispatchCallable'
+SINGLEDISPATCH_TYPE: Final = 'functools._SingleDispatchCallable'
 
-SINGLEDISPATCH_REGISTER_METHOD = '{}.register'.format(SINGLEDISPATCH_TYPE)  # type: Final
+SINGLEDISPATCH_REGISTER_METHOD: Final = '{}.register'.format(SINGLEDISPATCH_TYPE)
 
-SINGLEDISPATCH_CALLABLE_CALL_METHOD = '{}.__call__'.format(SINGLEDISPATCH_TYPE)  # type: Final
+SINGLEDISPATCH_CALLABLE_CALL_METHOD: Final = '{}.__call__'.format(SINGLEDISPATCH_TYPE)
 
 
 def get_singledispatch_info(typ: Instance) -> Optional[SingledispatchTypeVars]:
@@ -45,11 +45,11 @@ def get_first_arg(args: List[List[T]]) -> Optional[T]:
     return None
 
 
-REGISTER_RETURN_CLASS = '_SingleDispatchRegisterCallable'
+REGISTER_RETURN_CLASS: Final = '_SingleDispatchRegisterCallable'
 
-REGISTER_CALLABLE_CALL_METHOD = 'functools.{}.__call__'.format(
+REGISTER_CALLABLE_CALL_METHOD: Final = 'functools.{}.__call__'.format(
     REGISTER_RETURN_CLASS
-)  # type: Final
+)
 
 
 def make_fake_register_class_instance(api: CheckerPluginInterface, type_args: Sequence[Type]
@@ -123,7 +123,7 @@ def singledispatch_register_callback(ctx: MethodContext) -> Type:
     # TODO: check that there's only one argument
     first_arg_type = get_proper_type(get_first_arg(ctx.arg_types))
     if isinstance(first_arg_type, (CallableType, Overloaded)) and first_arg_type.is_type_obj():
-        # HACK: We receieved a class as an argument to register. We need to be able
+        # HACK: We received a class as an argument to register. We need to be able
         # to access the function that register is being applied to, and the typeshed definition
         # of register has it return a generic Callable, so we create a new
         # SingleDispatchRegisterCallable class, define a __call__ method, and then add a

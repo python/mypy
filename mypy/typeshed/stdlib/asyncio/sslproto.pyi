@@ -1,6 +1,6 @@
 import ssl
 import sys
-from typing import Any, Callable, ClassVar, Deque, Tuple
+from typing import Any, Callable, ClassVar, Deque
 from typing_extensions import Literal
 
 from . import constants, events, futures, protocols, transports
@@ -38,8 +38,8 @@ class _SSLPipe:
     def do_handshake(self, callback: Callable[[BaseException | None], None] | None = ...) -> list[bytes]: ...
     def shutdown(self, callback: Callable[[], None] | None = ...) -> list[bytes]: ...
     def feed_eof(self) -> None: ...
-    def feed_ssldata(self, data: bytes, only_handshake: bool = ...) -> Tuple[list[bytes], list[bytes]]: ...
-    def feed_appdata(self, data: bytes, offset: int = ...) -> Tuple[list[bytes], int]: ...
+    def feed_ssldata(self, data: bytes, only_handshake: bool = ...) -> tuple[list[bytes], list[bytes]]: ...
+    def feed_appdata(self, data: bytes, offset: int = ...) -> tuple[list[bytes], int]: ...
 
 class _SSLProtocolTransport(transports._FlowControlMixin, transports.Transport):
 
@@ -73,7 +73,7 @@ class SSLProtocol(protocols.Protocol):
     _server_hostname: str | None
     _sslcontext: ssl.SSLContext
     _extra: dict[str, Any]
-    _write_backlog: Deque[Tuple[bytes, int]]
+    _write_backlog: Deque[tuple[bytes, int]]
     _write_buffer_size: int
     _waiter: futures.Future[Any]
     _loop: events.AbstractEventLoop

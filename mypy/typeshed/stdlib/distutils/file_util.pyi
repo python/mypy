@@ -1,4 +1,4 @@
-from typing import Sequence, Tuple
+from typing import Sequence
 
 def copy_file(
     src: str,
@@ -9,6 +9,6 @@ def copy_file(
     link: str | None = ...,
     verbose: bool = ...,
     dry_run: bool = ...,
-) -> Tuple[str, str]: ...
+) -> tuple[str, str]: ...
 def move_file(src: str, dst: str, verbose: bool = ..., dry_run: bool = ...) -> str: ...
 def write_file(filename: str, contents: Sequence[str]) -> None: ...

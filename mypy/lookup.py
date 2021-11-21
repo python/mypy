@@ -9,7 +9,7 @@ from typing import Dict, Optional
 # TODO: gradually move existing lookup functions to this module.
 
 
-def lookup_fully_qualified(name: str, modules: Dict[str, MypyFile],
+def lookup_fully_qualified(name: str, modules: Dict[str, MypyFile], *,
                            raise_on_missing: bool = False) -> Optional[SymbolTableNode]:
     """Find a symbol using it fully qualified name.
 

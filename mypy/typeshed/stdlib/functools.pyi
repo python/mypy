@@ -1,21 +1,7 @@
 import sys
+import types
 from _typeshed import SupportsItems, SupportsLessThan
-from typing import (
-    Any,
-    Callable,
-    Generic,
-    Hashable,
-    Iterable,
-    Mapping,
-    NamedTuple,
-    Sequence,
-    Set,
-    Sized,
-    Tuple,
-    Type,
-    TypeVar,
-    overload,
-)
+from typing import Any, Callable, Generic, Hashable, Iterable, NamedTuple, Sequence, Set, Sized, Tuple, Type, TypeVar, overload
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -86,7 +72,7 @@ class partialmethod(Generic[_T]):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
 
 class _SingleDispatchCallable(Generic[_T]):
-    registry: Mapping[Any, Callable[..., _T]]
+    registry: types.MappingProxyType[Any, Callable[..., _T]]
     def dispatch(self, cls: Any) -> Callable[..., _T]: ...
     # @fun.register(complex)
     # def _(arg, verbose=False): ...

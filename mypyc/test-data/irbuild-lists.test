@@ -381,3 +381,49 @@ L7:
 L8:
     b = r16
     return 1
+[case testGeneratorNext]
+from typing import List, Optional
+
+def test(x: List[int]) -> None:
+    res = next((i for i in x), None)
+[out]
+def test(x):
+    x :: list
+    r0 :: short_int
+    r1 :: ptr
+    r2 :: native_int
+    r3 :: short_int
+    r4 :: bit
+    r5 :: object
+    r6, i :: int
+    r7 :: object
+    r8 :: union[int, None]
+    r9 :: short_int
+    r10 :: object
+    res :: union[int, None]
+L0:
+    r0 = 0
+L1:
+    r1 = get_element_ptr x ob_size :: PyVarObject
+    r2 = load_mem r1 :: native_int*
+    keep_alive x
+    r3 = r2 << 1
+    r4 = r0 < r3 :: signed
+    if r4 goto L2 else goto L4 :: bool
+L2:
+    r5 = CPyList_GetItemUnsafe(x, r0)
+    r6 = unbox(int, r5)
+    i = r6
+    r7 = box(int, i)
+    r8 = r7
+    goto L5
+L3:
+    r9 = r0 + 2
+    r0 = r9
+    goto L1
+L4:
+    r10 = box(None, 1)
+    r8 = r10
+L5:
+    res = r8
+    return 1

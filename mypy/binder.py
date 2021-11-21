@@ -2,10 +2,10 @@ from contextlib import contextmanager
 from collections import defaultdict
 
 from typing import Dict, List, Set, Iterator, Union, Optional, Tuple, cast
-from typing_extensions import DefaultDict
+from typing_extensions import DefaultDict, TypeAlias as _TypeAlias
 
 from mypy.types import (
-    Type, AnyType, PartialType, UnionType, TypeOfAny, NoneType, TypeGuardType, get_proper_type
+    Type, AnyType, PartialType, UnionType, TypeOfAny, NoneType, get_proper_type
 )
 from mypy.subtypes import is_subtype
 from mypy.join import join_simple
@@ -13,10 +13,10 @@ from mypy.sametypes import is_same_type
 from mypy.erasetype import remove_instance_last_known_values
 from mypy.nodes import Expression, Var, RefExpr
 from mypy.literals import Key, literal, literal_hash, subkeys
-from mypy.nodes import IndexExpr, MemberExpr, NameExpr
+from mypy.nodes import IndexExpr, MemberExpr, AssignmentExpr, NameExpr
 
 
-BindableExpression = Union[IndexExpr, MemberExpr, NameExpr]
+BindableExpression: _TypeAlias = Union[IndexExpr, MemberExpr, AssignmentExpr, NameExpr]
 
 
 class Frame:
@@ -136,7 +136,7 @@ class ConditionalTypeBinder:
         return None
 
     def put(self, expr: Expression, typ: Type) -> None:
-        if not isinstance(expr, (IndexExpr, MemberExpr, NameExpr)):
+        if not isinstance(expr, (IndexExpr, MemberExpr, AssignmentExpr, NameExpr)):
             return
         if not literal(expr):
             return
@@ -210,9 +210,7 @@ class ConditionalTypeBinder:
             else:
                 for other in resulting_values[1:]:
                     assert other is not None
-                    # Ignore the error about using get_proper_type().
-                    if not contains_type_guard(other):
-                        type = join_simple(self.declarations[key], type, other)
+                    type = join_simple(self.declarations[key], type, other)
             if current_value is None or not is_same_type(type, current_value):
                 self._put(key, type)
                 changed = True
@@ -440,13 +438,3 @@ def get_declaration(expr: BindableExpression) -> Optional[Type]:
         if not isinstance(type, PartialType):
             return type
     return None
-
-
-def contains_type_guard(other: Type) -> bool:
-    # Ignore the error about using get_proper_type().
-    if isinstance(other, TypeGuardType):  # type: ignore[misc]
-        return True
-    other = get_proper_type(other)
-    if isinstance(other, UnionType):
-        return any(contains_type_guard(item) for item in other.relevant_items())
-    return False

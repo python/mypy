@@ -1,4 +1,5 @@
 import sys
+import types
 from typing import Any, Callable, Generic, Iterable, Mapping, Tuple, Type, TypeVar, overload
 from typing_extensions import Protocol
 
@@ -18,7 +19,7 @@ if sys.version_info >= (3, 10):
 @overload
 def asdict(obj: Any) -> dict[str, Any]: ...
 @overload
-def asdict(obj: Any, *, dict_factory: Callable[[list[Tuple[str, Any]]], _T]) -> _T: ...
+def asdict(obj: Any, *, dict_factory: Callable[[list[tuple[str, Any]]], _T]) -> _T: ...
 @overload
 def astuple(obj: Any) -> Tuple[Any, ...]: ...
 @overload
@@ -77,7 +78,7 @@ class Field(Generic[_T]):
     hash: bool | None
     init: bool
     compare: bool
-    metadata: Mapping[Any, Any]
+    metadata: types.MappingProxyType[Any, Any]
     if sys.version_info >= (3, 10):
         kw_only: bool
         def __init__(
@@ -189,7 +190,7 @@ class InitVar(Generic[_T]):
 if sys.version_info >= (3, 10):
     def make_dataclass(
         cls_name: str,
-        fields: Iterable[str | Tuple[str, type] | Tuple[str, type, Field[Any]]],
+        fields: Iterable[str | tuple[str, type] | tuple[str, type, Field[Any]]],
         *,
         bases: Tuple[type, ...] = ...,
         namespace: dict[str, Any] | None = ...,
@@ -206,7 +207,7 @@ if sys.version_info >= (3, 10):
 else:
     def make_dataclass(
         cls_name: str,
-        fields: Iterable[str | Tuple[str, type] | Tuple[str, type, Field[Any]]],
+        fields: Iterable[str | tuple[str, type] | tuple[str, type, Field[Any]]],
         *,
         bases: Tuple[type, ...] = ...,
         namespace: dict[str, Any] | None = ...,

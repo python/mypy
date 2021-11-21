@@ -1,5 +1,5 @@
 from email.message import Message
-from typing import IO, Tuple
+from typing import IO
 from urllib.response import addinfourl
 
 # Stubs for urllib.error
@@ -13,5 +13,5 @@ class HTTPError(URLError, addinfourl):
     def __init__(self, url: str, code: int, msg: str, hdrs: Message, fp: IO[bytes] | None) -> None: ...
 
 class ContentTooShortError(URLError):
-    content: Tuple[str, Message]
-    def __init__(self, message: str, content: Tuple[str, Message]) -> None: ...
+    content: tuple[str, Message]
+    def __init__(self, message: str, content: tuple[str, Message]) -> None: ...

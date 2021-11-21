@@ -20,20 +20,6 @@ from mypy.test.helpers import assert_string_arrays_equal, perform_file_operation
 # tests, otherwise mypy will ignore installed third-party packages.
 
 
-_NAMESPACE_PROGRAM = """
-{import_style}
-from typedpkg_ns.ns.dne import dne
-
-af("abc")
-bf(False)
-dne(123)
-
-af(False)
-bf(2)
-dne("abc")
-"""
-
-
 class PEP561Suite(DataSuite):
     files = [
         'pep561.test',
@@ -76,7 +62,7 @@ def install_package(pkg: str,
     working_dir = os.path.join(package_path, pkg)
     with tempfile.TemporaryDirectory() as dir:
         if use_pip:
-            install_cmd = [python_executable, '-m', 'pip', 'install', '-b', '{}'.format(dir)]
+            install_cmd = [python_executable, '-m', 'pip', 'install']
             if editable:
                 install_cmd.append('-e')
             install_cmd.append('.')
@@ -86,16 +72,22 @@ def install_package(pkg: str,
                 install_cmd.append('develop')
             else:
                 install_cmd.append('install')
-        proc = subprocess.run(install_cmd, cwd=working_dir, stdout=PIPE, stderr=PIPE)
+        # Note that newer versions of pip (21.3+) don't
+        # follow this env variable, but this is for compatibility
+        env = {'PIP_BUILD': dir}
+        # Inherit environment for Windows
+        env.update(os.environ)
+        proc = subprocess.run(install_cmd,
+                              cwd=working_dir,
+                              stdout=PIPE,
+                              stderr=PIPE,
+                              env=env)
     if proc.returncode != 0:
         raise Exception(proc.stdout.decode('utf-8') + proc.stderr.decode('utf-8'))
 
 
 def test_pep561(testcase: DataDrivenTestCase) -> None:
     """Test running mypy on files that depend on PEP 561 packages."""
-    if (sys.platform == 'darwin' and hasattr(sys, 'base_prefix') and
-       sys.base_prefix != sys.prefix):
-        pytest.skip()
     assert testcase.old_cwd is not None, "test was not properly set up"
     if 'python2' in testcase.name.lower():
         python = try_find_python2_interpreter()

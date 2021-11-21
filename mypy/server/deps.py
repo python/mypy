@@ -82,7 +82,6 @@ Test cases for this module live in 'test-data/unit/deps*.test'.
 from typing import Dict, List, Set, Optional, Tuple
 from typing_extensions import DefaultDict
 
-from mypy.backports import nullcontext
 from mypy.checkmember import bind_self
 from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, ClassDef, AssignmentStmt, NameExpr, MemberExpr, Import,
@@ -100,7 +99,7 @@ from mypy.types import (
     Type, Instance, AnyType, NoneType, TypeVisitor, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
     FunctionLike, Overloaded, TypeOfAny, LiteralType, ErasedType, get_proper_type, ProperType,
-    TypeAliasType, TypeGuardType
+    TypeAliasType
 )
 from mypy.server.trigger import make_trigger, make_wildcard_trigger
 from mypy.util import correct_relative_import
@@ -240,8 +239,9 @@ class DependencyVisitor(TraverserVisitor):
             self.is_class = old_is_class
 
     def visit_newtype_expr(self, o: NewTypeExpr) -> None:
-        with self.scope.class_scope(o.info) if o.info else nullcontext():
-            self.process_type_info(o.info)
+        if o.info:
+            with self.scope.class_scope(o.info):
+                self.process_type_info(o.info)
 
     def process_type_info(self, info: TypeInfo) -> None:
         target = self.scope.current_full_target()
@@ -969,9 +969,6 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
 
     def visit_uninhabited_type(self, typ: UninhabitedType) -> List[str]:
         return []
-
-    def visit_type_guard_type(self, typ: TypeGuardType) -> List[str]:
-        return typ.type_guard.accept(self)
 
     def visit_union_type(self, typ: UnionType) -> List[str]:
         triggers = []

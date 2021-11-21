@@ -1,8 +1,8 @@
 from typing import Dict, Iterable, List, TypeVar, Mapping, cast
 
 from mypy.types import (
-    Type, Instance, CallableType, TypeGuardType, TypeVisitor, UnboundType, AnyType,
-    NoneType, TypeVarType, Overloaded, TupleType, TypedDictType, UnionType,
+    Type, Instance, CallableType, TypeVisitor, UnboundType, AnyType,
+    NoneType, Overloaded, TupleType, TypedDictType, UnionType,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId,
     FunctionLike, TypeVarType, LiteralType, get_proper_type, ProperType,
     TypeAliasType, ParamSpecType
@@ -41,7 +41,7 @@ def freshen_function_type_vars(callee: F) -> F:
         tvs = []
         tvmap: Dict[TypeVarId, Type] = {}
         for v in callee.variables:
-            # TODO(shantanu): fix for ParamSpecType
+            # TODO(PEP612): fix for ParamSpecType
             if isinstance(v, ParamSpecType):
                 continue
             assert isinstance(v, TypeVarType)
@@ -128,9 +128,6 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         # some of the resulting types might be subtypes of others.
         from mypy.typeops import make_simplified_union  # asdf
         return make_simplified_union(self.expand_types(t.items), t.line, t.column)
-
-    def visit_type_guard_type(self, t: TypeGuardType) -> ProperType:
-        return TypeGuardType(t.type_guard.accept(self))
 
     def visit_partial_type(self, t: PartialType) -> Type:
         return t

@@ -47,7 +47,7 @@ if sys.platform == "win32":
     dllhandle: int
 dont_write_bytecode: bool
 displayhook: Callable[[object], Any]
-excepthook: Callable[[Type[BaseException], BaseException, TracebackType], Any]
+excepthook: Callable[[Type[BaseException], BaseException, TracebackType | None], Any]
 exec_prefix: str
 executable: str
 float_repr_style: str
@@ -70,8 +70,8 @@ if sys.version_info >= (3, 9):
 prefix: str
 if sys.version_info >= (3, 8):
     pycache_prefix: str | None
-ps1: str
-ps2: str
+ps1: object
+ps2: object
 stdin: TextIO
 stdout: TextIO
 stderr: TextIO
@@ -141,6 +141,7 @@ class _implementation:
     version: _version_info
     hexversion: int
     cache_tag: str
+    _multiarch: str
 
 int_info: _int_info
 
@@ -168,6 +169,7 @@ def exc_info() -> _OptExcInfo: ...
 
 # sys.exit() accepts an optional argument of anything printable
 def exit(__status: object = ...) -> NoReturn: ...
+def getallocatedblocks() -> int: ...
 def getdefaultencoding() -> str: ...
 
 if sys.platform != "win32":
@@ -203,7 +205,7 @@ class _WinVersion(Tuple[int, int, int, int, str, int, int, int, int, Tuple[int, 
     service_pack_major: int
     suite_mast: int
     product_type: int
-    platform_version: Tuple[int, int, int]
+    platform_version: tuple[int, int, int]
 
 if sys.platform == "win32":
     def getwindowsversion() -> _WinVersion: ...
@@ -246,3 +248,7 @@ class _asyncgen_hooks(Tuple[_AsyncgenHook, _AsyncgenHook]):
 
 def get_asyncgen_hooks() -> _asyncgen_hooks: ...
 def set_asyncgen_hooks(firstiter: _AsyncgenHook = ..., finalizer: _AsyncgenHook = ...) -> None: ...
+
+if sys.version_info >= (3, 7):
+    def get_coroutine_origin_tracking_depth() -> int: ...
+    def set_coroutine_origin_tracking_depth(depth: int) -> None: ...

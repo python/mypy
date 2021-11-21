@@ -171,6 +171,21 @@ p: Point2D
 reveal_type(p)  # N: Revealed type is "TypedDict('__main__.Point2D', {'x': builtins.int, 'y': builtins.int})"
 [builtins fixtures/dict.pyi]
 
+[case testCannotCreateTypedDictWithDuplicateBases]
+# https://github.com/python/mypy/issues/3673
+from typing import TypedDict
+
+class A(TypedDict):
+    x: str
+    y: int
+
+class B(A, A): # E: Duplicate base class "A"
+    z: str
+
+class C(TypedDict, TypedDict): # E: Duplicate base class "TypedDict"
+    c1: int
+[typing fixtures/typing-typeddict.pyi]
+
 [case testCannotCreateTypedDictWithClassWithOtherStuff]
 # flags: --python-version 3.6
 from mypy_extensions import TypedDict
@@ -184,6 +199,19 @@ class Point(TypedDict):
 p = Point(x=42, y=1337, z='whatever')
 reveal_type(p)  # N: Revealed type is "TypedDict('__main__.Point', {'x': builtins.int, 'y': builtins.int, 'z': Any})"
 [builtins fixtures/dict.pyi]
+
+[case testCannotCreateTypedDictWithClassWithFunctionUsedToCrash]
+# https://github.com/python/mypy/issues/11079
+from typing import TypedDict
+class D(TypedDict):
+    y: int
+    def x(self, key: int):  # E: Invalid statement in TypedDict definition; expected "field_name: field_type"
+        pass
+
+d = D(y=1)
+reveal_type(d)  # N: Revealed type is "TypedDict('__main__.D', {'y': builtins.int})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCanCreateTypedDictTypeWithUnderscoreItemName]
 from mypy_extensions import TypedDict
@@ -1440,7 +1468,7 @@ T = TypeVar('T', bound='M')
 class G(Generic[T]):
     x: T
 
-yb: G[int] # E: Type argument "builtins.int" of "G" must be a subtype of "TypedDict('__main__.M', {'x': builtins.int})"
+yb: G[int] # E: Type argument "int" of "G" must be a subtype of "M"
 yg: G[M]
 z: int = G[M]().x['x']
 

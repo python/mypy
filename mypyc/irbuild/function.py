@@ -978,26 +978,24 @@ def generate_singledispatch_callable_class_ctor(builder: IRBuilder) -> None:
     """Create an __init__ that sets registry and dispatch_cache to empty dicts"""
     line = -1
     class_ir = builder.fn_info.callable_class.ir
-    builder.enter_method(class_ir, '__init__', bool_rprimitive)
-    empty_dict = builder.call_c(dict_new_op, [], line)
-    builder.add(SetAttr(builder.self(), 'registry', empty_dict, line))
-    cache_dict = builder.call_c(dict_new_op, [], line)
-    dispatch_cache_str = builder.load_str('dispatch_cache')
-    # use the py_setattr_op instead of SetAttr so that it also gets added to our __dict__
-    builder.call_c(py_setattr_op, [builder.self(), dispatch_cache_str, cache_dict], line)
-    # the generated C code seems to expect that __init__ returns a char, so just return 1
-    builder.add(Return(Integer(1, bool_rprimitive, line), line))
-    builder.leave_method()
+    with builder.enter_method(class_ir, '__init__', bool_rprimitive):
+        empty_dict = builder.call_c(dict_new_op, [], line)
+        builder.add(SetAttr(builder.self(), 'registry', empty_dict, line))
+        cache_dict = builder.call_c(dict_new_op, [], line)
+        dispatch_cache_str = builder.load_str('dispatch_cache')
+        # use the py_setattr_op instead of SetAttr so that it also gets added to our __dict__
+        builder.call_c(py_setattr_op, [builder.self(), dispatch_cache_str, cache_dict], line)
+        # the generated C code seems to expect that __init__ returns a char, so just return 1
+        builder.add(Return(Integer(1, bool_rprimitive, line), line))
 
 
 def add_register_method_to_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
     line = -1
-    builder.enter_method(fn_info.callable_class.ir, 'register', object_rprimitive)
-    cls_arg = builder.add_argument('cls', object_rprimitive)
-    func_arg = builder.add_argument('func', object_rprimitive, ArgKind.ARG_OPT)
-    ret_val = builder.call_c(register_function, [builder.self(), cls_arg, func_arg], line)
-    builder.add(Return(ret_val, line))
-    builder.leave_method()
+    with builder.enter_method(fn_info.callable_class.ir, 'register', object_rprimitive):
+        cls_arg = builder.add_argument('cls', object_rprimitive)
+        func_arg = builder.add_argument('func', object_rprimitive, ArgKind.ARG_OPT)
+        ret_val = builder.call_c(register_function, [builder.self(), cls_arg, func_arg], line)
+        builder.add(Return(ret_val, line))
 
 
 def load_singledispatch_registry(builder: IRBuilder, dispatch_func_obj: Value, line: int) -> Value:

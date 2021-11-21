@@ -111,6 +111,30 @@ a = 'x'.foobar(b)  # type: ignore[xyz, w, attr-defined]  # E: Name "b" is not de
 a = 'x'.foobar(b) # type: int # type: ignore[name-defined, attr-defined]
 b = 'x'.foobar(b) # type: int # type: ignore[name-defined, xyz]  # E: "str" has no attribute "foobar"  [attr-defined]
 
+[case testErrorCodeWarnUnusedIgnores1]
+# flags: --warn-unused-ignores
+x # type: ignore[name-defined, attr-defined] # E: Unused "type: ignore[attr-defined]" comment
+
+[case testErrorCodeWarnUnusedIgnores2]
+# flags: --warn-unused-ignores
+"x".foobar(y) # type: ignore[name-defined, attr-defined]
+
+[case testErrorCodeWarnUnusedIgnores3]
+# flags: --warn-unused-ignores
+"x".foobar(y) # type: ignore[name-defined, attr-defined, xyz] # E: Unused "type: ignore[xyz]" comment
+
+[case testErrorCodeWarnUnusedIgnores4]
+# flags: --warn-unused-ignores
+"x".foobar(y) # type: ignore[name-defined, attr-defined, valid-type] # E: Unused "type: ignore[valid-type]" comment
+
+[case testErrorCodeWarnUnusedIgnores5]
+# flags: --warn-unused-ignores
+"x".foobar(y) # type: ignore[name-defined, attr-defined, valid-type, xyz] # E: Unused "type: ignore[valid-type, xyz]" comment
+
+[case testErrorCodeWarnUnusedIgnores6_NoDetailWhenSingleErrorCode]
+# flags: --warn-unused-ignores
+"x" # type: ignore[name-defined] # E: Unused "type: ignore" comment
+
 [case testErrorCodeIgnoreWithExtraSpace]
 x  # type: ignore   [name-defined]
 x2 # type: ignore   [ name-defined ]
@@ -416,7 +440,7 @@ class D(Generic[S]): pass
 class E(Generic[S, T]): pass
 
 x: C[object]  # E: Value of type variable "T" of "C" cannot be "object"  [type-var]
-y: D[int]  # E: Type argument "builtins.int" of "D" must be a subtype of "builtins.str"  [type-var]
+y: D[int]  # E: Type argument "int" of "D" must be a subtype of "str"  [type-var]
 z: D[int, int]  # E: "D" expects 1 type argument, but 2 given  [type-arg]
 
 def h(a: TT, s: S) -> None:
@@ -641,8 +665,8 @@ def g() -> int:
 '%d' % 'no'  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsInt]")  [str-format]
 '%d + %d' % (1, 2, 3)  # E: Not all arguments converted during string formatting  [str-format]
 
-'{}'.format(b'abc')  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'", not 'abc'; use '{!r}'.format(b'abc') if this is desired behavior  [str-bytes-safe]
-'%s' % b'abc'  # E: On Python 3 '%s' % b'abc' produces "b'abc'", not 'abc'; use '%r' % b'abc' if this is desired behavior  [str-bytes-safe]
+'{}'.format(b'abc')  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior  [str-bytes-safe]
+'%s' % b'abc'  # E: On Python 3 formatting "b'abc'" with "%s" produces "b'abc'", not "abc"; use "%r" if this is desired behavior  [str-bytes-safe]
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-medium.pyi]
 
@@ -830,7 +854,7 @@ class Foo:
     pass
 
 foo = Foo()
-if foo:  # E: "__main__.foo" has type "__main__.Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+if foo:  # E: "__main__.foo" has type "Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
     pass
 
 zero = 0
@@ -856,20 +880,56 @@ if not good_union:
     pass
 
 bad_union: Union[Foo, object] = Foo()
-if bad_union:  # E: "__main__.bad_union" has type "Union[__main__.Foo, builtins.object]" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+if bad_union:  # E: "__main__.bad_union" has type "Union[Foo, object]" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
     pass
-if not bad_union:  # E: "__main__.bad_union" has type "builtins.object" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+if not bad_union:  # E: "__main__.bad_union" has type "object" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
     pass
 
 def f():
     pass
-if f:  # E: Function "def () -> Any" could always be true in boolean context  [truthy-bool]
+if f:  # E: Function "Callable[[], Any]" could always be true in boolean context  [truthy-bool]
     pass
-if not f:  # E: Function "def () -> Any" could always be true in boolean context  [truthy-bool]
+if not f:  # E: Function "Callable[[], Any]" could always be true in boolean context  [truthy-bool]
     pass
-conditional_result = 'foo' if f else 'bar'  # E: Function "def () -> Any" could always be true in boolean context  [truthy-bool]
+conditional_result = 'foo' if f else 'bar'  # E: Function "Callable[[], Any]" could always be true in boolean context  [truthy-bool]
 
 lst: List[int] = []
 if lst:
     pass
 [builtins fixtures/list.pyi]
+
+[case testSliceInDict39]
+# flags: --python-version 3.9 --show-column-numbers
+from typing import Dict
+b: Dict[int, x:y]
+c: Dict[x:y]
+
+[builtins fixtures/dict.pyi]
+[out]
+main:3:14: error: Invalid type comment or annotation  [valid-type]
+main:3:14: note: did you mean to use ',' instead of ':' ?
+main:4:4: error: "dict" expects 2 type arguments, but 1 given  [type-arg]
+main:4:9: error: Invalid type comment or annotation  [valid-type]
+main:4:9: note: did you mean to use ',' instead of ':' ?
+
+[case testSliceInDict38]
+# flags: --python-version 3.8 --show-column-numbers
+from typing import Dict
+b: Dict[int, x:y]
+c: Dict[x:y]
+
+[builtins fixtures/dict.pyi]
+[out]
+main:3:14: error: Invalid type comment or annotation  [valid-type]
+main:3:14: note: did you mean to use ',' instead of ':' ?
+main:4:4: error: "dict" expects 2 type arguments, but 1 given  [type-arg]
+main:4:9: error: Invalid type comment or annotation  [valid-type]
+main:4:9: note: did you mean to use ',' instead of ':' ?
+
+
+[case testSliceInCustomTensorType]
+# syntactically mimics torchtyping.TensorType
+class TensorType: ...
+t: TensorType["batch":..., float]  # type: ignore
+reveal_type(t)  # N: Revealed type is "__main__.TensorType"
+[builtins fixtures/tuple.pyi]
