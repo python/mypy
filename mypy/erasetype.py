@@ -128,6 +128,11 @@ class TypeVarEraser(TypeTranslator):
             return self.replacement
         return t
 
+    def visit_param_spec(self, t: ParamSpecType) -> Type:
+        if self.erase_id(t.id):
+            return self.replacement
+        return t
+
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         # Type alias target can't contain bound type variables, so
         # it is safe to just erase the arguments.
