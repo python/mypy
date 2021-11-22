@@ -9745,4 +9745,16 @@ class ExampleClass(Generic[T]):
         self.example_attribute = None
 [out]
 ==
+[case testStrictNoneAttribute]
+# flags: --strict-optional
+from typing import Generic, TypeVar
 
+T = TypeVar('T', int, str)
+
+class ExampleClass(Generic[T]):
+    def __init__(
+        self
+    ) -> None:
+        self.example_attribute = None
+[out]
+==
