@@ -318,3 +318,29 @@ class C(Generic[P, P2]):
         reveal_type(join(c, c))  # N: Revealed type is "__main__.C*[P`1, P3`-1]"
         reveal_type(join(self, c))  # N: Revealed type is "builtins.object*"
 [builtins fixtures/dict.pyi]
+
+[case testParamSpecClassWithAny]
+from typing import Callable, Generic, Any
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+
+class C(Generic[P]):
+    def __init__(self, x: Callable[P, None]) -> None: ...
+
+    def m(self, *args: P.args, **kwargs: P.kwargs) -> int:
+        return 1
+
+c: C[Any]
+reveal_type(c)  # N: Revealed type is "__main__.C[Any]"
+reveal_type(c.m)  # N: Revealed type is "def (*args: Any, **kwargs: Any) -> builtins.int"
+c.m(4, 6, y='x')
+c = c
+
+def f() -> None: pass
+
+c2 = C(f)
+c2 = c
+c3 = C(f)
+c = c3
+[builtins fixtures/dict.pyi]
