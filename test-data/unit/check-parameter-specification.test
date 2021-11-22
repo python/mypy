@@ -240,7 +240,7 @@ class C(Generic[P]):
         reveal_type(kwargs)  # N: Revealed type is "P.kwargs`1"
 [builtins fixtures/dict.pyi]
 
-[case testParamSpecSubtypeChecking]
+[case testParamSpecSubtypeChecking1]
 from typing import Callable, TypeVar, Generic, Any
 from typing_extensions import ParamSpec
 
@@ -265,4 +265,26 @@ class C(Generic[P]):
         kwargs = args  # E: Incompatible types in assignment (expression has type "P.args", variable has type "P.kwargs")
         args = a
         kwargs = a
+[builtins fixtures/dict.pyi]
+
+[case testParamSpecSubtypeChecking2]
+from typing import Callable, Generic
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+P2 = ParamSpec('P2')
+
+class C(Generic[P]):
+    def m(self, c1: C[P], c2: C[P2]) -> None:
+        c1 = c1
+        c2 = c2
+        c1 = c2  # E: Incompatible types in assignment (expression has type "C[P2]", variable has type "C[P]")
+        c2 = c1  # E: Incompatible types in assignment (expression has type "C[P]", variable has type "C[P2]")
+
+class D(Generic[P, P2]):
+    def m(self, f: Callable[P, None], g: Callable[P2, None]) -> None:
+        f = f
+        g = g
+        f = g  # E: Incompatible types in assignment (expression has type "Callable[P2, None]", variable has type "Callable[P, None]")
+        g = f  # E: Incompatible types in assignment (expression has type "Callable[P, None]", variable has type "Callable[P2, None]")
 [builtins fixtures/dict.pyi]
