@@ -1041,11 +1041,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             arg1 = get_proper_type(self.accept(args[0]))
             arg2 = get_proper_type(self.accept(args[1]))
             if (is_named_instance(arg1, 'builtins.tuple')
-                and is_named_instance(arg2, 'builtins.dict')):
+                    and is_named_instance(arg2, 'builtins.dict')):
                 assert isinstance(arg1, Instance)
                 assert isinstance(arg2, Instance)
                 if (isinstance(get_proper_type(arg1.args[0]), ParamSpecType)
-                    and isinstance(get_proper_type(arg2.args[1]), ParamSpecType)):
+                        and isinstance(get_proper_type(arg2.args[1]), ParamSpecType)):
                     # TODO: Check ParamSpec ids and flavors
                     return callee.ret_type, callee
 
@@ -4004,6 +4004,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def is_valid_keyword_var_arg(self, typ: Type) -> bool:
         """Is a type valid as a **kwargs argument?"""
+        typ = get_proper_type(typ)
         ret = (
                 is_subtype(typ, self.chk.named_generic_type('typing.Mapping',
                     [self.named_type('builtins.str'), AnyType(TypeOfAny.special_form)])) or

@@ -209,7 +209,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 if tvar_def is None:
                     self.fail('ParamSpec "{}" is unbound'.format(t.name), t)
                     return AnyType(TypeOfAny.from_error)
-                assert isinstance(tvar_def , ParamSpecType)
+                assert isinstance(tvar_def, ParamSpecType)
                 if len(t.args) > 0:
                     self.fail('ParamSpec "{}" used with arguments'.format(t.name), t)
                 # Change the line number
@@ -745,7 +745,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if len(t.args) == 0:
             # Callable (bare). Treat as Callable[..., Any].
             any_type = self.get_omitted_any(t)
-            ret = callable_with_ellipsis(any_type, any_type,fallback)
+            ret = callable_with_ellipsis(any_type, any_type, fallback)
         elif len(t.args) == 2:
             callable_args = t.args[0]
             ret_type = t.args[1]
@@ -1000,8 +1000,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         finally:
             if nested:
                 self.nesting_level -= 1
+        # Use type(...) to ignore proper/non-proper type distinction.
         if (not allow_param_spec
-                and isinstance(analyzed, ParamSpecType)
+                and type(analyzed) is ParamSpecType
                 and analyzed.flavor == ParamSpecFlavor.BARE):
             self.fail('Invalid location for ParamSpec "{}"'.format(analyzed.name), t)
             self.note(

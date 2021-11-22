@@ -3,7 +3,6 @@
 import copy
 import sys
 from abc import abstractmethod
-from enum import Enum
 
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Set, Optional, Union, Iterable, NamedTuple,
