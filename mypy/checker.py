@@ -977,9 +977,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 ctx = typ
                             self.fail(message_registry.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT, ctx)
                     if typ.arg_kinds[i] == nodes.ARG_STAR:
-                        # builtins.tuple[T] is typing.Tuple[T, ...]
                         arg_type = get_proper_type(arg_type)
                         if not isinstance(arg_type, ParamSpecType):
+                            # builtins.tuple[T] is typing.Tuple[T, ...]
                             arg_type = self.named_generic_type('builtins.tuple',
                                                                [arg_type])
                     elif typ.arg_kinds[i] == nodes.ARG_STAR2:

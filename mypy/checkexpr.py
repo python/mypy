@@ -1023,13 +1023,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             lambda i: self.accept(args[i]))
 
         if callee.is_generic():
-            refresh_map = any(isinstance(v, ParamSpecType) for v in callee.variables)
+            need_refresh = any(isinstance(v, ParamSpecType) for v in callee.variables)
             callee = freshen_function_type_vars(callee)
             callee = self.infer_function_type_arguments_using_context(
                 callee, context)
             callee = self.infer_function_type_arguments(
                 callee, args, arg_kinds, formal_to_actual, context)
-            if refresh_map:
+            if need_refresh:
                 # Argument kinds etc. may have changed; recalculate actual-to-formal map
                 formal_to_actual = map_actuals_to_formals(
                     arg_kinds, arg_names,

@@ -501,8 +501,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             return self.default(self.s)
 
     def visit_param_spec(self, t: ParamSpecType) -> ProperType:
-        # TODO: use flavor
-        if isinstance(self.s, ParamSpecType) and self.s.id == t.id:
+        if self.s == t:
             return self.s
         else:
             return self.default(self.s)
