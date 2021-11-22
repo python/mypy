@@ -1762,6 +1762,9 @@ def format_type_inner(typ: Type,
                 return_type = format(func.ret_type)
             if func.is_ellipsis_args:
                 return 'Callable[..., {}]'.format(return_type)
+            param_spec = func.param_spec()
+            if param_spec is not None:
+                return f'Callable[{param_spec.name}, {return_type}]'
             arg_strings = []
             for arg_name, arg_type, arg_kind in zip(
                     func.arg_names, func.arg_types, func.arg_kinds):
