@@ -44,30 +44,14 @@ reveal_type(whatever)  # N: Revealed type is "def (x: builtins.int) -> builtins.
 reveal_type(whatever(217))  # N: Revealed type is "builtins.list[builtins.int*]"
 [builtins fixtures/tuple.pyi]
 
-[case testGenericParamSpecTemporaryBehaviour]
-# flags: --python-version 3.10
-# TODO(PEP612): behaviour tested here should change
-from typing import Generic, TypeVar, Callable, ParamSpec
-
-T = TypeVar("T")
-P = ParamSpec("P")
-
-class X(Generic[T, P]):  # E: Free type variable expected in Generic[...]
-  f: Callable[P, int]  # E: The first argument to Callable must be a list of types or "..."
-  x: T
-[out]
-
 [case testInvalidParamSpecType]
 # flags: --python-version 3.10
 from typing import ParamSpec
 
 P = ParamSpec("P")
 
-class MyFunction(P):  # E: Invalid location for ParamSpec "P" \
-                      # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
+class MyFunction(P):  # E: Invalid base class "P"
     ...
-
-a: MyFunction[int]  # E: "MyFunction" expects no type arguments, but 1 given
 
 [case testParamSpecRevealType]
 from typing import Callable

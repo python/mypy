@@ -217,13 +217,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     tvar_def.name, tvar_def.fullname, tvar_def.id, tvar_def.flavor,
                     tvar_def.upper_bound, line=t.line, column=t.column,
                 )
-                #self.fail('Invalid location for ParamSpec "{}"'.format(t.name), t)
-                #self.note(
-                #    'You can use ParamSpec as the first argument to Callable, e.g., '
-                #    "'Callable[{}, int]'".format(t.name),
-                #    t
-                #)
-                return AnyType(TypeOfAny.from_error)
             if isinstance(sym.node, TypeVarExpr) and tvar_def is not None and self.defining_alias:
                 self.fail('Can\'t use bound type variable "{}"'
                           ' to define generic alias'.format(t.name), t)
@@ -389,7 +382,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # checked only later, since we do not always know the
         # valid count at this point. Thus we may construct an
         # Instance with an invalid number of type arguments.
-        instance = Instance(info, self.anal_array(args), ctx.line, ctx.column)
+        instance = Instance(info, self.anal_array(args, allow_param_spec=True),
+                            ctx.line, ctx.column)
         # Check type argument count.
         if len(instance.args) != len(info.type_vars) and not self.defining_alias:
             fix_instance(instance, self.fail, self.note,
@@ -989,20 +983,33 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return False
         return self.tvar_scope.get_binding(tvar_node) is not None
 
-    def anal_array(self, a: Iterable[Type], nested: bool = True) -> List[Type]:
+    def anal_array(self,
+                   a: Iterable[Type],
+                   nested: bool = True, *,
+                   allow_param_spec: bool = False) -> List[Type]:
         res: List[Type] = []
         for t in a:
-            res.append(self.anal_type(t, nested))
+            res.append(self.anal_type(t, nested, allow_param_spec=allow_param_spec))
         return res
 
-    def anal_type(self, t: Type, nested: bool = True) -> Type:
+    def anal_type(self, t: Type, nested: bool = True, *, allow_param_spec: bool = False) -> Type:
         if nested:
             self.nesting_level += 1
         try:
-            return t.accept(self)
+            analyzed = t.accept(self)
         finally:
             if nested:
                 self.nesting_level -= 1
+        if (not allow_param_spec
+                and isinstance(analyzed, ParamSpecType)
+                and analyzed.flavor == ParamSpecFlavor.BARE):
+            self.fail('Invalid location for ParamSpec "{}"'.format(analyzed.name), t)
+            self.note(
+                'You can use ParamSpec as the first argument to Callable, e.g., '
+                "'Callable[{}, int]'".format(analyzed.name),
+                t
+            )
+        return analyzed
 
     def anal_var_def(self, var_def: TypeVarLikeType) -> TypeVarLikeType:
         if isinstance(var_def, TypeVarType):
