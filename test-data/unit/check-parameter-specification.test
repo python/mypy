@@ -275,16 +275,46 @@ P = ParamSpec('P')
 P2 = ParamSpec('P2')
 
 class C(Generic[P]):
-    def m(self, c1: C[P], c2: C[P2]) -> None:
-        c1 = c1
-        c2 = c2
-        c1 = c2  # E: Incompatible types in assignment (expression has type "C[P2]", variable has type "C[P]")
-        c2 = c1  # E: Incompatible types in assignment (expression has type "C[P]", variable has type "C[P2]")
+    pass
 
-class D(Generic[P, P2]):
+def f(c1: C[P], c2: C[P2]) -> None:
+    c1 = c1
+    c2 = c2
+    c1 = c2  # E: Incompatible types in assignment (expression has type "C[P2]", variable has type "C[P]")
+    c2 = c1  # E: Incompatible types in assignment (expression has type "C[P]", variable has type "C[P2]")
+
+def g(f: Callable[P, None], g: Callable[P2, None]) -> None:
+    f = f
+    g = g
+    f = g  # E: Incompatible types in assignment (expression has type "Callable[P2, None]", variable has type "Callable[P, None]")
+    g = f  # E: Incompatible types in assignment (expression has type "Callable[P, None]", variable has type "Callable[P2, None]")
+[builtins fixtures/dict.pyi]
+
+[case testParamSpecJoin]
+from typing import Callable, Generic, TypeVar
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+P2 = ParamSpec('P2')
+P3 = ParamSpec('P3')
+T = TypeVar('T')
+
+def join(x: T, y: T) -> T: ...
+
+class C(Generic[P, P2]):
     def m(self, f: Callable[P, None], g: Callable[P2, None]) -> None:
-        f = f
-        g = g
-        f = g  # E: Incompatible types in assignment (expression has type "Callable[P2, None]", variable has type "Callable[P, None]")
-        g = f  # E: Incompatible types in assignment (expression has type "Callable[P, None]", variable has type "Callable[P2, None]")
+        reveal_type(join(f, f))  # N: Revealed type is "def (*P.args, **P.kwargs) -> None"
+        reveal_type(join(f, g))  # N: Revealed type is "builtins.function*"
+
+    def m2(self, *args: P.args, **kwargs: P.kwargs) -> None:
+        reveal_type(join(args, args))  # N: Revealed type is "P.args`1"
+        reveal_type(join(kwargs, kwargs))  # N: Revealed type is "P.kwargs`1"
+        reveal_type(join(args, kwargs))  # N: Revealed type is "builtins.object*"
+        def f(*args2: P2.args, **kwargs2: P2.kwargs) -> None:
+            reveal_type(join(args, args2))  # N: Revealed type is "builtins.object*"
+            reveal_type(join(kwargs, kwargs2))  # N: Revealed type is "builtins.object*"
+
+    def m3(self, c: C[P, P3]) -> None:
+        reveal_type(join(c, c))  # N: Revealed type is "__main__.C*[P`1, P3`-1]"
+        reveal_type(join(self, c))  # N: Revealed type is "builtins.object*"
 [builtins fixtures/dict.pyi]
