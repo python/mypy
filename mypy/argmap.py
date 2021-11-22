@@ -73,7 +73,7 @@ def map_actuals_to_formals(actual_kinds: List[nodes.ArgKind],
             assert actual_kind == nodes.ARG_STAR2
             actualt = get_proper_type(actual_arg_type(ai))
             if isinstance(actualt, TypedDictType):
-                for name, value in actualt.items.items():
+                for name in actualt.items:
                     if name in formal_names:
                         formal_to_actual[formal_names.index(name)].append(ai)
                     elif nodes.ARG_STAR2 in formal_kinds:
