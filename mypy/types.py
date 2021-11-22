@@ -391,7 +391,7 @@ class TypeVarLikeType(ProperType):
 
 
 class TypeVarType(TypeVarLikeType):
-    """Definition of a single type variable."""
+    """Type that refers to a type variable."""
 
     __slots__ = ('values', 'variance')
 
@@ -457,7 +457,17 @@ class ParamSpecFlavor:
 
 
 class ParamSpecType(TypeVarLikeType):
-    """Definition of a single ParamSpec variable."""
+    """Type that refers to a ParamSpec.
+
+    A ParamSpec is a type variable that represents the parameter
+    types, names and kinds of a callable (i.e., the signature without
+    the return type).
+
+    This can be one of these forms
+     * P (ParamSpecFlavor.BARE)
+     * P.args (ParamSpecFlavor.ARGS)
+     * P.kwargs (ParamSpecFLavor.KWARGS)
+    """
 
     __slots__ = ('flavor',)
 
