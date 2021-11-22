@@ -2195,37 +2195,43 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
     def visit_callable_type(self, t: CallableType) -> str:
         param_spec = t.param_spec()
-        if param_spec is None:
-            s = ''
-            bare_asterisk = False
-            for i in range(len(t.arg_types)):
-                if s != '':
-                    s += ', '
-                if t.arg_kinds[i].is_named() and not bare_asterisk:
-                    s += '*, '
-                    bare_asterisk = True
-                if t.arg_kinds[i] == ARG_STAR:
-                    s += '*'
-                if t.arg_kinds[i] == ARG_STAR2:
-                    s += '**'
-                name = t.arg_names[i]
-                if name:
-                    s += name + ': '
-                s += t.arg_types[i].accept(self)
-                if t.arg_kinds[i].is_optional():
-                    s += ' ='
-
-            s = '({})'.format(s)
-
-            if not isinstance(get_proper_type(t.ret_type), NoneType):
-                if t.type_guard is not None:
-                    s += ' -> TypeGuard[{}]'.format(t.type_guard.accept(self))
-                else:
-                    s += ' -> {}'.format(t.ret_type.accept(self))
+        if param_spec is not None:
+            num_skip = 2
         else:
-            # TODO: Other arguments
+            num_skip = 0
+
+        s = ''
+        bare_asterisk = False
+        for i in range(len(t.arg_types) - num_skip):
+            if s != '':
+                s += ', '
+            if t.arg_kinds[i].is_named() and not bare_asterisk:
+                s += '*, '
+                bare_asterisk = True
+            if t.arg_kinds[i] == ARG_STAR:
+                s += '*'
+            if t.arg_kinds[i] == ARG_STAR2:
+                s += '**'
+            name = t.arg_names[i]
+            if name:
+                s += name + ': '
+            s += t.arg_types[i].accept(self)
+            if t.arg_kinds[i].is_optional():
+                s += ' ='
+
+        if param_spec is not None:
             n = param_spec.name
-            s = f'(*{n}.args, **{n}.kwargs) -> {t.ret_type.accept(self)}'
+            if s:
+                s += ', '
+            s += f'*{n}.args, **{n}.kwargs'
+
+        s = '({})'.format(s)
+
+        if not isinstance(get_proper_type(t.ret_type), NoneType):
+            if t.type_guard is not None:
+                s += ' -> TypeGuard[{}]'.format(t.type_guard.accept(self))
+            else:
+                s += ' -> {}'.format(t.ret_type.accept(self))
 
         if t.variables:
             vs = []
