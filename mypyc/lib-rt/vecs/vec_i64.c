@@ -40,6 +40,35 @@ static Py_ssize_t vec_length(PyObject *o) {
     return ((VecI64Object *)o)->len;
 }
 
+PyObject *vec_richcompare(PyObject *self, PyObject *other, int op) {
+    int cmp = 1;
+    PyObject *res;
+    if (op == Py_EQ || op == Py_NE) {
+        if (other->ob_type != &VecI64Type)
+            cmp = 0;
+        else {
+            VecI64Object *x = (VecI64Object *)self;
+            VecI64Object *y = (VecI64Object *)other;
+            if (x->len != y->len) {
+                cmp = 0;
+            } else {
+                for (Py_ssize_t i = 0; i < x->len; i++) {
+                    if (x->items[i] != y->items[i]) {
+                        cmp = 0;
+                        break;
+                    }
+                }
+            }
+        }
+        if (op == Py_NE)
+            cmp = cmp ^ 1;
+        res = cmp ? Py_True : Py_False;
+    } else
+        res = Py_NotImplemented;
+    Py_INCREF(res);
+    return res;
+}
+
 static PyMappingMethods VecI64Mapping = {
     .mp_length = vec_length,
 };
@@ -61,6 +90,7 @@ PyTypeObject VecI64Type = {
     .tp_repr = (reprfunc)vec_i64_repr,
     .tp_as_sequence = &VecI64Sequence,
     .tp_as_mapping = &VecI64Mapping,
+    .tp_richcompare = vec_richcompare,
 };
 
 static VecI64Object *vec_i64_alloc(Py_ssize_t size)
