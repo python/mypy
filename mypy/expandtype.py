@@ -113,8 +113,15 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         param_spec = t.param_spec()
         if param_spec is not None:
             repl = get_proper_type(self.variables.get(param_spec.id))
+            # If a ParamSpec in a callable type is substituted with a
+            # callable type, we can't use normal substitution logic,
+            # since ParamSpec is actually split into two components
+            # *P.args and **P.kwargs in the original type. Instead, we
+            # must expand both of them with all the argument types,
+            # kinds and names in the replacement. The return type in
+            # the replacement is ignored.
             if isinstance(repl, CallableType):
-                # Substitute *args, **kwargs
+                # Substitute *args: P.args, **kwargs: P.kwargs
                 t = t.expand_param_spec(repl)
                 # TODO: Substitute remaining arg types
                 return t.copy_modified(ret_type=t.ret_type.accept(self),

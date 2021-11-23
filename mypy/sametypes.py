@@ -98,6 +98,7 @@ class SameTypeVisitor(TypeVisitor[bool]):
                 left.id == self.right.id)
 
     def visit_param_spec(self, left: ParamSpecType) -> bool:
+        # Ignore upper bound since it's derived from flavor.
         return (isinstance(self.right, ParamSpecType) and
                 left.id == self.right.id and left.flavor == self.right.flavor)
 

@@ -952,9 +952,11 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         return triggers
 
     def visit_param_spec(self, typ: ParamSpecType) -> List[str]:
+        triggers = []
         if typ.fullname:
-            return [make_trigger(typ.fullname)]
-        return []
+            triggers.append(make_trigger(typ.fullname))
+        triggers.extend(self.get_type_triggers(typ.upper_bound))
+        return triggers
 
     def visit_typeddict_type(self, typ: TypedDictType) -> List[str]:
         triggers = []

@@ -467,6 +467,11 @@ class ParamSpecType(TypeVarLikeType):
      * P (ParamSpecFlavor.BARE)
      * P.args (ParamSpecFlavor.ARGS)
      * P.kwargs (ParamSpecFLavor.KWARGS)
+
+    The upper_bound is really used as a fallback type -- it's shared
+    with TypeVarType for simplicity. It can't be specified by the user
+    and the value is directly derived from the flavor (currently
+    always just 'object').
     """
 
     __slots__ = ('flavor',)
@@ -503,6 +508,7 @@ class ParamSpecType(TypeVarLikeType):
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, ParamSpecType):
             return NotImplemented
+        # Upper bound can be ignored, since it's determined by flavor.
         return self.id == other.id and self.flavor == other.flavor
 
     def serialize(self) -> JsonDict:
@@ -1319,7 +1325,7 @@ class CallableType(FunctionLike):
             return None
         if self.arg_kinds[-2] != ARG_STAR or self.arg_kinds[-1] != ARG_STAR2:
             return None
-        arg_type = get_proper_type(self.arg_types[-2])
+        arg_type = self.arg_types[-2]
         if not isinstance(arg_type, ParamSpecType):
             return None
         return ParamSpecType(arg_type.name, arg_type.fullname, arg_type.id, ParamSpecFlavor.BARE,

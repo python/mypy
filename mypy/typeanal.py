@@ -1000,9 +1000,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         finally:
             if nested:
                 self.nesting_level -= 1
-        # Use type(...) to ignore proper/non-proper type distinction.
         if (not allow_param_spec
-                and type(analyzed) is ParamSpecType
+                and isinstance(analyzed, ParamSpecType)
                 and analyzed.flavor == ParamSpecFlavor.BARE):
             self.fail('Invalid location for ParamSpec "{}"'.format(analyzed.name), t)
             self.note(

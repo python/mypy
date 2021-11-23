@@ -65,7 +65,6 @@ class TypeVisitor(Generic[T]):
 
     @abstractmethod
     def visit_param_spec(self, t: ParamSpecType) -> T:
-        assert False
         pass
 
     @abstractmethod

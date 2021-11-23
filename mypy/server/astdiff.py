@@ -311,7 +311,11 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
                 typ.variance)
 
     def visit_param_spec(self, typ: ParamSpecType) -> SnapshotItem:
-        return ('ParamSpec', typ.id.raw_id, typ.id.meta_level, typ.flavor)
+        return ('ParamSpec',
+                typ.id.raw_id,
+                typ.id.meta_level,
+                typ.flavor,
+                snapshot_type(typ.upper_bound))
 
     def visit_callable_type(self, typ: CallableType) -> SnapshotItem:
         # FIX generics

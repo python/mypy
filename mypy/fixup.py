@@ -249,7 +249,7 @@ class TypeFixer(TypeVisitor[None]):
             tvt.upper_bound.accept(self)
 
     def visit_param_spec(self, p: ParamSpecType) -> None:
-        pass  # Nothing to descend into.
+        p.upper_bound.accept(self)
 
     def visit_unbound_type(self, o: UnboundType) -> None:
         for a in o.args:
