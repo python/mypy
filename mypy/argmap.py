@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, List, Optional, Sequence, Callable, Set
 
 from mypy.maptype import map_instance_to_supertype
 from mypy.types import (
-    Type, Instance, TupleType, AnyType, TypeOfAny, TypedDictType, get_proper_type
+    Type, Instance, TupleType, AnyType, TypeOfAny, TypedDictType, ParamSpecType, get_proper_type
 )
 from mypy import nodes
 
@@ -191,6 +191,9 @@ class ArgTypeExpander:
                 else:
                     self.tuple_index += 1
                 return actual_type.items[self.tuple_index - 1]
+            elif isinstance(actual_type, ParamSpecType):
+                # ParamSpec is valid in *args but it can't be unpacked.
+                return actual_type
             else:
                 return AnyType(TypeOfAny.from_error)
         elif actual_kind == nodes.ARG_STAR2:
@@ -215,6 +218,9 @@ class ArgTypeExpander:
                     actual_type,
                     self.context.mapping_type.type,
                 ).args[1]
+            elif isinstance(actual_type, ParamSpecType):
+                # ParamSpec is valid in **kwargs but it can't be unpacked.
+                return actual_type
             else:
                 return AnyType(TypeOfAny.from_error)
         else:
