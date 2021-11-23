@@ -381,7 +381,10 @@ def analyze_member_var_access(name: str,
     elif isinstance(v, FuncDef):
         assert False, "Did not expect a function"
     elif (not v and name not in ['__getattr__', '__setattr__', '__getattribute__'] and
-          not mx.is_operator):
+          not mx.is_operator and mx.module_symbol_table is None):
+        # Above we skip ModuleType.__getattr__ etc. if we have a
+        # module symbol table, since the symbol table allows precise
+        # checking.
         if not mx.is_lvalue:
             for method_name in ('__getattribute__', '__getattr__'):
                 method = info.get_method(method_name)
