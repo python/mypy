@@ -328,3 +328,21 @@ c2 = c
 c3 = C(f)
 c = c3
 [builtins fixtures/dict.pyi]
+
+[case testParamSpecInferredFromLambda]
+from typing import Callable, TypeVar
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+T = TypeVar('T')
+
+# Similar to atexit.register
+def register(f: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> Callable[P, T]: ...  # N: "register" defined here
+
+def f(x: int) -> None: pass
+
+reveal_type(register(lambda: f(1)))  # N: Revealed type is "def ()"
+reveal_type(register(lambda x: f(x), x=1))  # N: Revealed type is "def (x: Any)"
+register(lambda x: f(x))  # E: Missing positional argument "x" in call to "register"
+register(lambda x: f(x), y=1)  # E: Unexpected keyword argument "y" for "register"
+[builtins fixtures/dict.pyi]
