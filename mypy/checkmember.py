@@ -6,7 +6,7 @@ from typing_extensions import TYPE_CHECKING
 from mypy.types import (
     Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike,
     TypeVarLikeType, Overloaded, TypeVarType, UnionType, PartialType, TypeOfAny, LiteralType,
-    DeletedType, NoneType, TypeType, has_type_vars, get_proper_type, ProperType
+    DeletedType, NoneType, TypeType, has_type_vars, get_proper_type, ProperType, ParamSpecType
 )
 from mypy.nodes import (
     TypeInfo, FuncBase, Var, FuncDef, SymbolNode, SymbolTable, Context,
@@ -668,6 +668,9 @@ def check_self_arg(functype: FunctionLike,
         else:
             selfarg = item.arg_types[0]
             if subtypes.is_subtype(dispatched_arg_type, erase_typevars(erase_to_bound(selfarg))):
+                new_items.append(item)
+            elif isinstance(selfarg, ParamSpecType):
+                # TODO: This is not always right. What's the most reasonable thing to do here?
                 new_items.append(item)
     if not new_items:
         # Choose first item for the message (it may be not very helpful for overloads).

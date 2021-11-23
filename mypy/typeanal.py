@@ -17,7 +17,7 @@ from mypy.types import (
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, CallableArgument,
     TypeQuery, union_items, TypeOfAny, LiteralType, RawExpressionType,
     PlaceholderType, Overloaded, get_proper_type, TypeAliasType,
-    TypeVarLikeType, ParamSpecType
+    TypeVarLikeType, ParamSpecType, ParamSpecFlavor, callable_with_ellipsis
 )
 
 from mypy.nodes import (
@@ -209,13 +209,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 if tvar_def is None:
                     self.fail('ParamSpec "{}" is unbound'.format(t.name), t)
                     return AnyType(TypeOfAny.from_error)
-                self.fail('Invalid location for ParamSpec "{}"'.format(t.name), t)
-                self.note(
-                    'You can use ParamSpec as the first argument to Callable, e.g., '
-                    "'Callable[{}, int]'".format(t.name),
-                    t
+                assert isinstance(tvar_def, ParamSpecType)
+                if len(t.args) > 0:
+                    self.fail('ParamSpec "{}" used with arguments'.format(t.name), t)
+                # Change the line number
+                return ParamSpecType(
+                    tvar_def.name, tvar_def.fullname, tvar_def.id, tvar_def.flavor,
+                    tvar_def.upper_bound, line=t.line, column=t.column,
                 )
-                return AnyType(TypeOfAny.from_error)
             if isinstance(sym.node, TypeVarExpr) and tvar_def is not None and self.defining_alias:
                 self.fail('Can\'t use bound type variable "{}"'
                           ' to define generic alias'.format(t.name), t)
@@ -381,7 +382,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # checked only later, since we do not always know the
         # valid count at this point. Thus we may construct an
         # Instance with an invalid number of type arguments.
-        instance = Instance(info, self.anal_array(args), ctx.line, ctx.column)
+        instance = Instance(info, self.anal_array(args, allow_param_spec=True),
+                            ctx.line, ctx.column)
         # Check type argument count.
         if len(instance.args) != len(info.type_vars) and not self.defining_alias:
             fix_instance(instance, self.fail, self.note,
@@ -531,6 +533,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def visit_type_var(self, t: TypeVarType) -> Type:
         return t
 
+    def visit_param_spec(self, t: ParamSpecType) -> Type:
+        return t
+
     def visit_callable_type(self, t: CallableType, nested: bool = True) -> Type:
         # Every Callable can bind its own type variables, if they're not in the outer scope
         with self.tvar_scope_frame():
@@ -539,7 +544,15 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             else:
                 variables = self.bind_function_type_variables(t, t)
             special = self.anal_type_guard(t.ret_type)
-            ret = t.copy_modified(arg_types=self.anal_array(t.arg_types, nested=nested),
+            arg_kinds = t.arg_kinds
+            if len(arg_kinds) >= 2 and arg_kinds[-2] == ARG_STAR and arg_kinds[-1] == ARG_STAR2:
+                arg_types = self.anal_array(t.arg_types[:-2], nested=nested) + [
+                    self.anal_star_arg_type(t.arg_types[-2], ARG_STAR, nested=nested),
+                    self.anal_star_arg_type(t.arg_types[-1], ARG_STAR2, nested=nested),
+                ]
+            else:
+                arg_types = self.anal_array(t.arg_types, nested=nested)
+            ret = t.copy_modified(arg_types=arg_types,
                                   ret_type=self.anal_type(t.ret_type, nested=nested),
                                   # If the fallback isn't filled in yet,
                                   # its type will be the falsey FakeInfo
@@ -565,6 +578,26 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return AnyType(TypeOfAny.from_error)
             return self.anal_type(t.args[0])
         return None
+
+    def anal_star_arg_type(self, t: Type, kind: ArgKind, nested: bool) -> Type:
+        """Analyze signature argument type for *args and **kwargs argument."""
+        # TODO: Check that suffix and kind match
+        if isinstance(t, UnboundType) and t.name and '.' in t.name and not t.args:
+            components = t.name.split('.')
+            sym = self.lookup_qualified('.'.join(components[:-1]), t)
+            if sym is not None and isinstance(sym.node, ParamSpecExpr):
+                tvar_def = self.tvar_scope.get_binding(sym)
+                if isinstance(tvar_def, ParamSpecType):
+                    if kind == ARG_STAR:
+                        flavor = ParamSpecFlavor.ARGS
+                    elif kind == ARG_STAR2:
+                        flavor = ParamSpecFlavor.KWARGS
+                    else:
+                        assert False, kind
+                    return ParamSpecType(tvar_def.name, tvar_def.fullname, tvar_def.id, flavor,
+                                         upper_bound=self.named_type('builtins.object'),
+                                         line=t.line, column=t.column)
+        return self.anal_type(t, nested=nested)
 
     def visit_overloaded(self, t: Overloaded) -> Type:
         # Overloaded types are manually constructed in semanal.py by analyzing the
@@ -694,14 +727,17 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if not isinstance(tvar_def, ParamSpecType):
             return None
 
-        # TODO(PEP612): construct correct type for paramspec
+        # TODO: Use tuple[...] or Mapping[..] instead?
+        obj = self.named_type('builtins.object')
         return CallableType(
-            [AnyType(TypeOfAny.explicit), AnyType(TypeOfAny.explicit)],
+            [ParamSpecType(tvar_def.name, tvar_def.fullname, tvar_def.id, ParamSpecFlavor.ARGS,
+                           upper_bound=obj),
+             ParamSpecType(tvar_def.name, tvar_def.fullname, tvar_def.id, ParamSpecFlavor.KWARGS,
+                           upper_bound=obj)],
             [nodes.ARG_STAR, nodes.ARG_STAR2],
             [None, None],
             ret_type=ret_type,
             fallback=fallback,
-            is_ellipsis_args=True
         )
 
     def analyze_callable_type(self, t: UnboundType) -> Type:
@@ -709,12 +745,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if len(t.args) == 0:
             # Callable (bare). Treat as Callable[..., Any].
             any_type = self.get_omitted_any(t)
-            ret = CallableType([any_type, any_type],
-                               [nodes.ARG_STAR, nodes.ARG_STAR2],
-                               [None, None],
-                               ret_type=any_type,
-                               fallback=fallback,
-                               is_ellipsis_args=True)
+            ret = callable_with_ellipsis(any_type, any_type, fallback)
         elif len(t.args) == 2:
             callable_args = t.args[0]
             ret_type = t.args[1]
@@ -731,13 +762,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                                    fallback=fallback)
             elif isinstance(callable_args, EllipsisType):
                 # Callable[..., RET] (with literal ellipsis; accept arbitrary arguments)
-                ret = CallableType([AnyType(TypeOfAny.explicit),
-                                    AnyType(TypeOfAny.explicit)],
-                                   [nodes.ARG_STAR, nodes.ARG_STAR2],
-                                   [None, None],
-                                   ret_type=ret_type,
-                                   fallback=fallback,
-                                   is_ellipsis_args=True)
+                ret = callable_with_ellipsis(AnyType(TypeOfAny.explicit),
+                                             ret_type=ret_type,
+                                             fallback=fallback)
             else:
                 # Callable[P, RET] (where P is ParamSpec)
                 maybe_ret = self.analyze_callable_args_for_paramspec(
@@ -956,20 +983,33 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return False
         return self.tvar_scope.get_binding(tvar_node) is not None
 
-    def anal_array(self, a: Iterable[Type], nested: bool = True) -> List[Type]:
+    def anal_array(self,
+                   a: Iterable[Type],
+                   nested: bool = True, *,
+                   allow_param_spec: bool = False) -> List[Type]:
         res: List[Type] = []
         for t in a:
-            res.append(self.anal_type(t, nested))
+            res.append(self.anal_type(t, nested, allow_param_spec=allow_param_spec))
         return res
 
-    def anal_type(self, t: Type, nested: bool = True) -> Type:
+    def anal_type(self, t: Type, nested: bool = True, *, allow_param_spec: bool = False) -> Type:
         if nested:
             self.nesting_level += 1
         try:
-            return t.accept(self)
+            analyzed = t.accept(self)
         finally:
             if nested:
                 self.nesting_level -= 1
+        if (not allow_param_spec
+                and isinstance(analyzed, ParamSpecType)
+                and analyzed.flavor == ParamSpecFlavor.BARE):
+            self.fail('Invalid location for ParamSpec "{}"'.format(analyzed.name), t)
+            self.note(
+                'You can use ParamSpec as the first argument to Callable, e.g., '
+                "'Callable[{}, int]'".format(analyzed.name),
+                t
+            )
+        return analyzed
 
     def anal_var_def(self, var_def: TypeVarLikeType) -> TypeVarLikeType:
         if isinstance(var_def, TypeVarType):
@@ -1187,6 +1227,7 @@ def flatten_tvars(ll: Iterable[List[T]]) -> List[T]:
 
 
 class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
+    """Find TypeVar and ParamSpec references in an unbound type."""
 
     def __init__(self,
                  lookup: Callable[[str, Context], Optional[SymbolTableNode]],
@@ -1209,7 +1250,17 @@ class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
 
     def visit_unbound_type(self, t: UnboundType) -> TypeVarLikeList:
         name = t.name
-        node = self.lookup(name, t)
+        node = None
+        # Special case P.args and P.kwargs for ParamSpecs only.
+        if name.endswith('args'):
+            if name.endswith('.args') or name.endswith('.kwargs'):
+                base = '.'.join(name.split('.')[:-1])
+                n = self.lookup(base, t)
+                if n is not None and isinstance(n.node, ParamSpecExpr):
+                    node = n
+                    name = base
+        if node is None:
+            node = self.lookup(name, t)
         if node and isinstance(node.node, TypeVarLikeExpr) and (
                 self.include_bound_tvars or self.scope.get_binding(node) is None):
             assert isinstance(node.node, TypeVarLikeExpr)

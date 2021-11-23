@@ -24,7 +24,7 @@ from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType, LiteralType,
     UnionType, NoneType, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
     UninhabitedType, TypeOfAny, UnboundType, PartialType, get_proper_type, ProperType,
-    get_proper_types
+    ParamSpecType, get_proper_types
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.nodes import (
@@ -1693,6 +1693,8 @@ def format_type_inner(typ: Type,
     elif isinstance(typ, TypeVarType):
         # This is similar to non-generic instance types.
         return typ.name
+    elif isinstance(typ, ParamSpecType):
+        return typ.name_with_suffix()
     elif isinstance(typ, TupleType):
         # Prefer the name of the fallback class (if not tuple), as it's more informative.
         if typ.partial_fallback.type.fullname != 'builtins.tuple':
@@ -1760,6 +1762,9 @@ def format_type_inner(typ: Type,
                 return_type = format(func.ret_type)
             if func.is_ellipsis_args:
                 return 'Callable[..., {}]'.format(return_type)
+            param_spec = func.param_spec()
+            if param_spec is not None:
+                return f'Callable[{param_spec.name}, {return_type}]'
             arg_strings = []
             for arg_name, arg_type, arg_kind in zip(
                     func.arg_names, func.arg_types, func.arg_kinds):

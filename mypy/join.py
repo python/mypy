@@ -7,7 +7,7 @@ from mypy.types import (
     Type, AnyType, NoneType, TypeVisitor, Instance, UnboundType, TypeVarType, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, FunctionLike, Overloaded, LiteralType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, get_proper_type,
-    ProperType, get_proper_types, TypeAliasType, PlaceholderType
+    ProperType, get_proper_types, TypeAliasType, PlaceholderType, ParamSpecType
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import (
@@ -46,22 +46,28 @@ class InstanceJoiner:
                     new_type = AnyType(TypeOfAny.from_another_any, ta_proper)
                 elif isinstance(sa_proper, AnyType):
                     new_type = AnyType(TypeOfAny.from_another_any, sa_proper)
-                elif type_var.variance == COVARIANT:
-                    new_type = join_types(ta, sa, self)
-                    if len(type_var.values) != 0 and new_type not in type_var.values:
-                        self.seen_instances.pop()
-                        return object_from_instance(t)
-                    if not is_subtype(new_type, type_var.upper_bound):
-                        self.seen_instances.pop()
-                        return object_from_instance(t)
-                # TODO: contravariant case should use meet but pass seen instances as
-                # an argument to keep track of recursive checks.
-                elif type_var.variance in (INVARIANT, CONTRAVARIANT):
+                elif isinstance(type_var, TypeVarType):
+                    if type_var.variance == COVARIANT:
+                        new_type = join_types(ta, sa, self)
+                        if len(type_var.values) != 0 and new_type not in type_var.values:
+                            self.seen_instances.pop()
+                            return object_from_instance(t)
+                        if not is_subtype(new_type, type_var.upper_bound):
+                            self.seen_instances.pop()
+                            return object_from_instance(t)
+                    # TODO: contravariant case should use meet but pass seen instances as
+                    # an argument to keep track of recursive checks.
+                    elif type_var.variance in (INVARIANT, CONTRAVARIANT):
+                        if not is_equivalent(ta, sa):
+                            self.seen_instances.pop()
+                            return object_from_instance(t)
+                        # If the types are different but equivalent, then an Any is involved
+                        # so using a join in the contravariant case is also OK.
+                        new_type = join_types(ta, sa, self)
+                else:
+                    # ParamSpec type variables behave the same, independent of variance
                     if not is_equivalent(ta, sa):
-                        self.seen_instances.pop()
-                        return object_from_instance(t)
-                    # If the types are different but equivalent, then an Any is involved
-                    # so using a join in the contravariant case is also OK.
+                        return get_proper_type(type_var.upper_bound)
                     new_type = join_types(ta, sa, self)
                 assert new_type is not None
                 args.append(new_type)
@@ -244,6 +250,11 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             return self.s
         else:
             return self.default(self.s)
+
+    def visit_param_spec(self, t: ParamSpecType) -> ProperType:
+        if self.s == t:
+            return t
+        return self.default(self.s)
 
     def visit_instance(self, t: Instance) -> ProperType:
         if isinstance(self.s, Instance):
@@ -444,6 +455,8 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         elif isinstance(typ, FunctionLike):
             return self.default(typ.fallback)
         elif isinstance(typ, TypeVarType):
+            return self.default(typ.upper_bound)
+        elif isinstance(typ, ParamSpecType):
             return self.default(typ.upper_bound)
         else:
             return AnyType(TypeOfAny.special_form)
