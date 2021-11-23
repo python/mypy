@@ -837,7 +837,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             #
             # 1. If the user attempts use an explicit Any as a parameter
             # 2. If the user is trying to use an enum value imported from a module with
-            #    no type hints, giving it an an implicit type of 'Any'
+            #    no type hints, giving it an implicit type of 'Any'
             # 3. If there's some other underlying problem with the parameter.
             #
             # We report an error in only the first two cases. In the third case, we assume
