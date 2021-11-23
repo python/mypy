@@ -107,6 +107,8 @@ OVERLAPPING_TYPES_ALLOWLIST: Final = [
     "typing.ItemsView",
     "builtins._dict_keys",
     "builtins._dict_items",
+    "_collections_abc.dict_keys",
+    "_collections_abc.dict_items",
 ]
 
 
