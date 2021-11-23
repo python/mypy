@@ -1,6 +1,6 @@
 import sys
 from typing import Any, NoReturn, Sequence, overload
-from typing_extensions import Literal
+from typing_extensions import Literal, final
 
 CREATE_NEW_CONSOLE: int
 CREATE_NEW_PROCESS_GROUP: int
@@ -126,7 +126,7 @@ def WriteFile(handle: int, buffer: bytes, overlapped: Literal[True]) -> tuple[Ov
 def WriteFile(handle: int, buffer: bytes, overlapped: Literal[False] = ...) -> tuple[int, int]: ...
 @overload
 def WriteFile(handle: int, buffer: bytes, overlapped: int | bool) -> tuple[Any, int]: ...
-
+@final
 class Overlapped:
     event: int
     def GetOverlappedResult(self, __wait: bool) -> tuple[int, int]: ...

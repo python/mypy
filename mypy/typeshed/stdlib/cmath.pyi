@@ -1,4 +1,8 @@
+import sys
 from typing import SupportsComplex, SupportsFloat, Union
+
+if sys.version_info >= (3, 8):
+    from typing import SupportsIndex
 
 e: float
 pi: float
@@ -8,7 +12,10 @@ nan: float
 nanj: complex
 tau: float
 
-_C = Union[SupportsFloat, SupportsComplex, complex]
+if sys.version_info >= (3, 8):
+    _C = Union[SupportsFloat, SupportsComplex, SupportsIndex, complex]
+else:
+    _C = Union[SupportsFloat, SupportsComplex, complex]
 
 def acos(__z: _C) -> complex: ...
 def acosh(__z: _C) -> complex: ...

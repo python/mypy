@@ -1,7 +1,8 @@
 import sys
 import types
 from _typeshed import SupportsItems, SupportsLessThan
-from typing import Any, Callable, Generic, Hashable, Iterable, NamedTuple, Sequence, Set, Sized, Tuple, Type, TypeVar, overload
+from typing import Any, Callable, Generic, Hashable, Iterable, NamedTuple, Sequence, Sized, Tuple, Type, TypeVar, overload
+from typing_extensions import final
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -22,6 +23,7 @@ class _CacheInfo(NamedTuple):
     maxsize: int
     currsize: int
 
+@final
 class _lru_cache_wrapper(Generic[_T]):
     __wrapped__: Callable[..., _T]
     def __call__(self, *args: Hashable, **kwargs: Hashable) -> _T: ...
@@ -122,7 +124,7 @@ def _make_key(
     kwds: SupportsItems[Any, Any],
     typed: bool,
     kwd_mark: Tuple[object, ...] = ...,
-    fasttypes: Set[type] = ...,
+    fasttypes: set[type] = ...,
     tuple: type = ...,
     type: Any = ...,
     len: Callable[[Sized], int] = ...,

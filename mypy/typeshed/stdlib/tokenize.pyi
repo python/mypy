@@ -2,7 +2,7 @@ import sys
 from _typeshed import StrOrBytesPath
 from builtins import open as _builtin_open
 from token import *  # noqa: F403
-from typing import Any, Callable, Generator, Iterable, NamedTuple, Pattern, Sequence, Set, TextIO, Tuple, Union
+from typing import Any, Callable, Generator, Iterable, NamedTuple, Pattern, Sequence, TextIO, Tuple, Union
 
 if sys.version_info < (3, 7):
     COMMENT: int
@@ -69,7 +69,7 @@ Floatnumber: str  # undocumented
 Imagnumber: str  # undocumented
 Number: str  # undocumented
 
-def _all_string_prefixes() -> Set[str]: ...  # undocumented
+def _all_string_prefixes() -> set[str]: ...  # undocumented
 
 StringPrefix: str  # undocumented
 
@@ -95,7 +95,7 @@ PseudoExtras: str  # undocumented
 PseudoToken: str  # undocumented
 
 endpats: dict[str, str]  # undocumented
-single_quoted: Set[str]  # undocumented
-triple_quoted: Set[str]  # undocumented
+single_quoted: set[str]  # undocumented
+triple_quoted: set[str]  # undocumented
 
 tabsize: int  # undocumented
