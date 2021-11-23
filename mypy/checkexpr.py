@@ -4484,7 +4484,7 @@ def merge_typevars_in_callables_by_name(
     "S", but we treat them as distinct, unrelated typevars. (E.g. they could both have
     distinct ids.)
 
-    If we pass in both callables into this function, it returns a a list containing two
+    If we pass in both callables into this function, it returns a list containing two
     new callables that are identical in signature, but use the same underlying TypeVarType
     for T and S.
 

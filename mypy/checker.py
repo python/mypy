@@ -5472,7 +5472,7 @@ def is_literal_enum(type_map: Mapping[Expression, Type], n: Expression) -> bool:
             B = 2
 
     ...and if the expression 'Foo' referred to that enum within the current type context,
-    then the expression 'Foo.A' would be a a literal enum. However, if we did 'a = Foo.A',
+    then the expression 'Foo.A' would be a literal enum. However, if we did 'a = Foo.A',
     then the variable 'a' would *not* be a literal enum.
 
     We occasionally special-case expressions like 'Foo.A' and treat them as a single primitive
