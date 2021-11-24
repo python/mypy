@@ -14,8 +14,8 @@ Got a question?
 
 We are always happy to answer questions! Here are some nice places to ask them:
 
-- for anything you're curious about, try [gitter chat](https://gitter.im/python/typing)
-- for general questions about Python typing, try [typing discussions](https://github.com/python/typing/discussions)
+-> For anything you're curious about, try [gitter chat](https://gitter.im/python/typing)
+-> For general questions about Python typing, try [typing discussions](https://github.com/python/typing/discussions)
 
 If you're just getting started,
 [the documentation](https://mypy.readthedocs.io/en/stable/introduction.html)
@@ -24,21 +24,21 @@ can also help answer questions.
 
 If you think you've found a bug:
 
-- check our [common issues page](https://mypy.readthedocs.io/en/stable/common_issues.html)
-- search our [issue tracker](https://github.com/python/mypy/issues) to see if
+-> check our [common issues page](https://mypy.readthedocs.io/en/stable/common_issues.html)
+-> search our [issue tracker](https://github.com/python/mypy/issues) to see if
   it's already been reported
-- consider asking on [gitter chat](https://gitter.im/python/typing)
+-> consider asking on [gitter chat](https://gitter.im/python/typing)
 
 To report a bug or request an enhancement:
 
-- report at [our issue tracker](https://github.com/python/mypy/issues)
-- if the issue is with a specific library or function, consider reporting it at
+-> report at [our issue tracker](https://github.com/python/mypy/issues)
+-> if the issue is with a specific library or function, consider reporting it at
   [typeshed tracker](https://github.com/python/typeshed/issues) or the issue
   tracker for that library
 
 To discuss a new type system feature:
-- discuss at [typing-sig mailing list](https://mail.python.org/archives/list/typing-sig@python.org/)
-- there is also some historical discussion [here](https://github.com/python/typing/issues)
+-> discuss at [typing-sig mailing list](https://mail.python.org/archives/list/typing-sig@python.org/)
+-> there is also some historical discussion [here](https://github.com/python/typing/issues)
 
 
 What is mypy?
@@ -69,8 +69,8 @@ print("Well, my favourite number is: ", number + 1)  # error: Unsupported operan
 See [the documentation](https://mypy.readthedocs.io/en/stable/introduction.html) for more examples.
 
 In particular, see:
-- [type hints cheat sheet](https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html)
-- [getting started](https://mypy.readthedocs.io/en/stable/getting_started.html)
+-> [type hints cheat sheet](https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html)
+-> [getting started](https://mypy.readthedocs.io/en/stable/getting_started.html)
 
 
 Quick start
