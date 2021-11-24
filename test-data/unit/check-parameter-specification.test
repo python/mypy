@@ -346,3 +346,35 @@ reveal_type(register(lambda x: f(x), x=1))  # N: Revealed type is "def (x: Any)"
 register(lambda x: f(x))  # E: Missing positional argument "x" in call to "register"
 register(lambda x: f(x), y=1)  # E: Unexpected keyword argument "y" for "register"
 [builtins fixtures/dict.pyi]
+
+[case testParamSpecInvalidCalls]
+from typing import Callable, Generic
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+P2 = ParamSpec('P2')
+
+class C(Generic[P, P2]):
+    def m1(self, *args: P.args, **kwargs: P.kwargs) -> None:
+        self.m1(*args, **kwargs)
+        self.m2(*args, **kwargs)  # E: Argument 1 to "m2" of "C" has incompatible type "*P.args"; expected "P2.args" \
+            # E: Argument 2 to "m2" of "C" has incompatible type "**P.kwargs"; expected "P2.kwargs"
+        self.m1(*kwargs, **args)  # E: Argument 1 to "m1" of "C" has incompatible type "*P.kwargs"; expected "P.args" \
+            # E: Argument 2 to "m1" of "C" has incompatible type "**P.args"; expected "P.kwargs"
+        self.m3(*args, **kwargs)  # E: Argument 1 to "m3" of "C" has incompatible type "*P.args"; expected "int" \
+            # E: Argument 2 to "m3" of "C" has incompatible type "**P.kwargs"; expected "int"
+        self.m4(*args, **kwargs)  # E: Argument 1 to "m4" of "C" has incompatible type "*P.args"; expected "int" \
+            # E: Argument 2 to "m4" of "C" has incompatible type "**P.kwargs"; expected "int"
+
+        self.m1(*args, **args)  # E: Argument 2 to "m1" of "C" has incompatible type "**P.args"; expected "P.kwargs"
+        self.m1(*kwargs, **kwargs)  # E: Argument 1 to "m1" of "C" has incompatible type "*P.kwargs"; expected "P.args"
+
+    def m2(self, *args: P2.args, **kwargs: P2.kwargs) -> None:
+        pass
+
+    def m3(self, *args: int, **kwargs: int) -> None:
+        pass
+
+    def m4(self, x: int) -> None:
+        pass
+[builtins fixtures/dict.pyi]

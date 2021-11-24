@@ -106,6 +106,8 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             # Return copy of instance with type erasure flag on.
             return Instance(inst.type, inst.args, line=inst.line,
                             column=inst.column, erased=True)
+        elif isinstance(repl, ParamSpecType):
+            return repl.with_flavor(t.flavor)
         else:
             return repl
 

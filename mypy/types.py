@@ -491,6 +491,10 @@ class ParamSpecType(TypeVarLikeType):
         return ParamSpecType(old.name, old.fullname, new_id, old.flavor, old.upper_bound,
                              line=old.line, column=old.column)
 
+    def with_flavor(self, flavor: int) -> 'ParamSpecType':
+        return ParamSpecType(self.name, self.fullname, self.id, flavor,
+                             upper_bound=self.upper_bound)
+
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_param_spec(self)
 
