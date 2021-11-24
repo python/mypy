@@ -209,8 +209,6 @@ def bind_self(method: F, original_type: Optional[Type] = None, is_classmethod: b
     b = B().copy()  # type: B
 
     """
-    from mypy.infer import infer_type_arguments
-
     if isinstance(method, Overloaded):
         return cast(F, Overloaded([bind_self(c, original_type, is_classmethod)
                                    for c in method.items]))
@@ -230,6 +228,8 @@ def bind_self(method: F, original_type: Optional[Type] = None, is_classmethod: b
 
     variables: Sequence[TypeVarLikeType] = []
     if func.variables and supported_self_type(self_param_type):
+        from mypy.infer import infer_type_arguments
+
         if original_type is None:
             # TODO: type check method override (see #7861).
             original_type = erase_to_bound(self_param_type)

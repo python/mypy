@@ -114,6 +114,43 @@ class A:
 A().f = None # E: Cannot assign to a method
 
 
+[case testOverrideAttributeWithMethod]
+# This was crashing:
+# https://github.com/python/mypy/issues/10134
+from typing import Protocol
+
+class Base:
+    __hash__ = None
+
+class Derived(Base):
+    def __hash__(self) -> int:  # E: Signature of "__hash__" incompatible with supertype "Base"
+        pass
+
+# Correct:
+
+class CallableProtocol(Protocol):
+    def __call__(self, arg: int) -> int:
+        pass
+
+class CorrectBase:
+    attr: CallableProtocol
+
+class CorrectDerived(CorrectBase):
+    def attr(self, arg: int) -> int:
+        pass
+
+[case testOverrideMethodWithAttribute]
+# The reverse should not crash as well:
+from typing import Callable
+
+class Base:
+    def __hash__(self) -> int:
+        pass
+
+class Derived(Base):
+    __hash__ = 1  # E: Incompatible types in assignment (expression has type "int", base class "Base" defined the type as "Callable[[Base], int]")
+
+
 -- Attributes
 -- ----------
 

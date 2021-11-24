@@ -5,7 +5,7 @@ from mypy.types import (
     NoneType, Overloaded, TupleType, TypedDictType, UnionType,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId,
     FunctionLike, TypeVarType, LiteralType, get_proper_type, ProperType,
-    TypeAliasType, ParamSpecType
+    TypeAliasType, ParamSpecType, TypeVarLikeType
 )
 
 
@@ -42,10 +42,11 @@ def freshen_function_type_vars(callee: F) -> F:
         tvmap: Dict[TypeVarId, Type] = {}
         for v in callee.variables:
             # TODO(PEP612): fix for ParamSpecType
-            if isinstance(v, ParamSpecType):
-                continue
-            assert isinstance(v, TypeVarType)
-            tv = TypeVarType.new_unification_variable(v)
+            if isinstance(v, TypeVarType):
+                tv: TypeVarLikeType = TypeVarType.new_unification_variable(v)
+            else:
+                assert isinstance(v, ParamSpecType)
+                tv = ParamSpecType.new_unification_variable(v)
             tvs.append(tv)
             tvmap[v.id] = tv
         fresh = cast(CallableType, expand_type(callee, tvmap)).copy_modified(variables=tvs)
@@ -98,7 +99,35 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         else:
             return repl
 
+    def visit_param_spec(self, t: ParamSpecType) -> Type:
+        repl = get_proper_type(self.variables.get(t.id, t))
+        if isinstance(repl, Instance):
+            inst = repl
+            # Return copy of instance with type erasure flag on.
+            return Instance(inst.type, inst.args, line=inst.line,
+                            column=inst.column, erased=True)
+        else:
+            return repl
+
     def visit_callable_type(self, t: CallableType) -> Type:
+        param_spec = t.param_spec()
+        if param_spec is not None:
+            repl = get_proper_type(self.variables.get(param_spec.id))
+            # If a ParamSpec in a callable type is substituted with a
+            # callable type, we can't use normal substitution logic,
+            # since ParamSpec is actually split into two components
+            # *P.args and **P.kwargs in the original type. Instead, we
+            # must expand both of them with all the argument types,
+            # kinds and names in the replacement. The return type in
+            # the replacement is ignored.
+            if isinstance(repl, CallableType):
+                # Substitute *args: P.args, **kwargs: P.kwargs
+                t = t.expand_param_spec(repl)
+                # TODO: Substitute remaining arg types
+                return t.copy_modified(ret_type=t.ret_type.accept(self),
+                                       type_guard=(t.type_guard.accept(self)
+                                                   if t.type_guard is not None else None))
+
         return t.copy_modified(arg_types=self.expand_types(t.arg_types),
                                ret_type=t.ret_type.accept(self),
                                type_guard=(t.type_guard.accept(self)

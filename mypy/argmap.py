@@ -73,7 +73,7 @@ def map_actuals_to_formals(actual_kinds: List[nodes.ArgKind],
             assert actual_kind == nodes.ARG_STAR2
             actualt = get_proper_type(actual_arg_type(ai))
             if isinstance(actualt, TypedDictType):
-                for name, value in actualt.items.items():
+                for name in actualt.items:
                     if name in formal_names:
                         formal_to_actual[formal_names.index(name)].append(ai)
                     elif nodes.ARG_STAR2 in formal_kinds:
@@ -168,11 +168,10 @@ class ArgTypeExpander:
         This is supposed to be called for each formal, in order. Call multiple times per
         formal if multiple actuals map to a formal.
         """
-        from mypy.subtypes import is_subtype
-
         actual_type = get_proper_type(actual_type)
         if actual_kind == nodes.ARG_STAR:
             if isinstance(actual_type, Instance) and actual_type.args:
+                from mypy.subtypes import is_subtype
                 if is_subtype(actual_type, self.context.iterable_type):
                     return map_instance_to_supertype(
                         actual_type,
@@ -195,6 +194,7 @@ class ArgTypeExpander:
             else:
                 return AnyType(TypeOfAny.from_error)
         elif actual_kind == nodes.ARG_STAR2:
+            from mypy.subtypes import is_subtype
             if isinstance(actual_type, TypedDictType):
                 if formal_kind != nodes.ARG_STAR2 and formal_name in actual_type.items:
                     # Lookup type based on keyword argument name.

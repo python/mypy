@@ -1284,6 +1284,35 @@ MypyFile:1(
         builtins.int
         builtins.str))))
 
+[case testTypevarWithFalseVariance]
+from typing import TypeVar
+T1 = TypeVar('T1', covariant=False)
+T2 = TypeVar('T2', covariant=False, contravariant=False)
+T3 = TypeVar('T3', contravariant=False)
+T4 = TypeVar('T4', covariant=True, contravariant=False)
+T5 = TypeVar('T5', covariant=False, contravariant=True)
+[builtins fixtures/bool.pyi]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar])
+  AssignmentStmt:2(
+    NameExpr(T1* [__main__.T1])
+    TypeVarExpr:2())
+  AssignmentStmt:3(
+    NameExpr(T2* [__main__.T2])
+    TypeVarExpr:3())
+  AssignmentStmt:4(
+    NameExpr(T3* [__main__.T3])
+    TypeVarExpr:4())
+  AssignmentStmt:5(
+    NameExpr(T4* [__main__.T4])
+    TypeVarExpr:5(
+      Variance(COVARIANT)))
+  AssignmentStmt:6(
+    NameExpr(T5* [__main__.T5])
+    TypeVarExpr:6(
+      Variance(CONTRAVARIANT))))
+
 [case testTypevarWithBound]
 from typing import TypeVar
 T = TypeVar('T', bound=int)

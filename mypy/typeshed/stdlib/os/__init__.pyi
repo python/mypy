@@ -30,14 +30,13 @@ from typing import (
     NoReturn,
     Protocol,
     Sequence,
-    Set,
     Tuple,
     TypeVar,
     Union,
     overload,
     runtime_checkable,
 )
-from typing_extensions import Literal
+from typing_extensions import Literal, final
 
 from . import path as _path
 
@@ -56,10 +55,10 @@ error = OSError
 
 supports_bytes_environ: bool
 
-supports_dir_fd: Set[Callable[..., Any]]
-supports_fd: Set[Callable[..., Any]]
-supports_effective_ids: Set[Callable[..., Any]]
-supports_follow_symlinks: Set[Callable[..., Any]]
+supports_dir_fd: set[Callable[..., Any]]
+supports_fd: set[Callable[..., Any]]
+supports_effective_ids: set[Callable[..., Any]]
+supports_follow_symlinks: set[Callable[..., Any]]
 
 if sys.platform != "win32":
     # Unix only
@@ -262,6 +261,7 @@ if sys.platform != "win32":
 TMP_MAX: int  # Undocumented, but used by tempfile
 
 # ----- os classes (structures) -----
+@final
 class stat_result:
     # For backward compatibility, the return value of stat() is also
     # accessible as a tuple of at least 10 integers giving the most important
@@ -314,8 +314,9 @@ class PathLike(Protocol[_AnyStr_co]):
 
 _FdOrAnyPath = Union[int, StrOrBytesPath]
 
+@final
 class DirEntry(Generic[AnyStr]):
-    # This is what the scandir interator yields
+    # This is what the scandir iterator yields
     # The constructor is hidden
 
     name: AnyStr
@@ -334,6 +335,7 @@ if sys.platform != "win32":
     _Tuple11Int = Tuple[int, int, int, int, int, int, int, int, int, int, int]
     if sys.version_info >= (3, 7):
         # f_fsid was added in https://github.com/python/cpython/pull/4571
+        @final
         class statvfs_result(_Tuple10Int):  # Unix only
             def __new__(cls, seq: _Tuple10Int | _Tuple11Int, dict: dict[str, int] = ...) -> statvfs_result: ...
             n_fields: int
@@ -566,6 +568,7 @@ if sys.platform != "win32":
     def readv(__fd: int, __buffers: Sequence[bytearray]) -> int: ...
     def writev(__fd: int, __buffers: Sequence[bytes]) -> int: ...
 
+@final
 class terminal_size(Tuple[int, int]):
     columns: int
     lines: int
@@ -826,7 +829,7 @@ if sys.platform != "win32":
         def sched_setparam(pid: int, param: sched_param) -> None: ...  # some flavors of Unix
         def sched_getparam(pid: int) -> sched_param: ...  # some flavors of Unix
         def sched_setaffinity(pid: int, mask: Iterable[int]) -> None: ...  # some flavors of Unix
-        def sched_getaffinity(pid: int) -> Set[int]: ...  # some flavors of Unix
+        def sched_getaffinity(pid: int) -> set[int]: ...  # some flavors of Unix
 
 def cpu_count() -> int | None: ...
 

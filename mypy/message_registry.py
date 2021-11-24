@@ -135,6 +135,9 @@ FUNCTION_ALWAYS_TRUE: Final = ErrorMessage(
     code=codes.TRUTHY_BOOL,
 )
 NOT_CALLABLE: Final = '{} not callable'
+PYTHON2_PRINT_FILE_TYPE: Final = (
+    'Argument "file" to "print" has incompatible type "{}"; expected "{}"'
+)
 
 # Generic
 GENERIC_INSTANCE_VAR_CLASS_ACCESS: Final = (
@@ -152,6 +155,9 @@ CANNOT_USE_TYPEVAR_AS_EXPRESSION: Final = 'Type variable "{}.{}" cannot be used 
 INVALID_TYPEVAR_AS_TYPEARG: Final = 'Type variable "{}" not valid as type argument value for "{}"'
 INVALID_TYPEVAR_ARG_BOUND: Final = 'Type argument {} of "{}" must be a subtype of {}'
 INVALID_TYPEVAR_ARG_VALUE: Final = 'Invalid type argument value for "{}"'
+TYPEVAR_VARIANCE_DEF: Final = 'TypeVar "{}" may only be a literal bool'
+TYPEVAR_BOUND_MUST_BE_TYPE: Final = 'TypeVar "bound" must be a type'
+TYPEVAR_UNEXPECTED_ARGUMENT: Final = 'Unexpected argument to "TypeVar()"'
 
 # Super
 TOO_MANY_ARGS_FOR_SUPER: Final = 'Too many arguments for "super"'

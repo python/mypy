@@ -10,7 +10,7 @@ from mypy.nodes import (
 from mypy.types import (
     CallableType, Instance, Overloaded, TupleType, TypedDictType,
     TypeVarType, UnboundType, UnionType, TypeVisitor, LiteralType,
-    TypeType, NOT_READY, TypeAliasType, AnyType, TypeOfAny
+    TypeType, NOT_READY, TypeAliasType, AnyType, TypeOfAny, ParamSpecType
 )
 from mypy.visitor import NodeVisitor
 from mypy.lookup import lookup_fully_qualified
@@ -121,9 +121,10 @@ class NodeFixer(NodeVisitor[None]):
 
     def visit_class_def(self, c: ClassDef) -> None:
         for v in c.type_vars:
-            for value in v.values:
-                value.accept(self.type_fixer)
-            v.upper_bound.accept(self.type_fixer)
+            if isinstance(v, TypeVarType):
+                for value in v.values:
+                    value.accept(self.type_fixer)
+                v.upper_bound.accept(self.type_fixer)
 
     def visit_type_var_expr(self, tv: TypeVarExpr) -> None:
         for value in tv.values:
@@ -246,6 +247,9 @@ class TypeFixer(TypeVisitor[None]):
                 vt.accept(self)
         if tvt.upper_bound is not None:
             tvt.upper_bound.accept(self)
+
+    def visit_param_spec(self, p: ParamSpecType) -> None:
+        p.upper_bound.accept(self)
 
     def visit_unbound_type(self, o: UnboundType) -> None:
         for a in o.args:

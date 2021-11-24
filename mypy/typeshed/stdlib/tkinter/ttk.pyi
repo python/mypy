@@ -1122,7 +1122,7 @@ class LabeledScale(Frame):
         compound: Literal["top"] | Literal["bottom"] = ...,
         **kw: Any,
     ) -> None: ...
-    # destroy is overrided, signature does not change
+    # destroy is overridden, signature does not change
     value: Any
 
 class OptionMenu(Menubutton):
@@ -1138,5 +1138,5 @@ class OptionMenu(Menubutton):
         command: Callable[[tkinter.StringVar], Any] | None = ...,
     ) -> None: ...
     # configure, config, cget, destroy are inherited from Menubutton
-    # destroy and __setitem__ are overrided, signature does not change
+    # destroy and __setitem__ are overridden, signature does not change
     def set_menu(self, default: Any | None = ..., *values): ...

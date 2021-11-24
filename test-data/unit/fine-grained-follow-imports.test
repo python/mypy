@@ -418,8 +418,7 @@ def f(x: str) -> None: pass
 [file p/m.py.3]
 def f(x: str) -> None: pass
 
-[delete p/m.py.4]
-[delete p/__init__.py.4]
+[delete p.4]
 
 [out]
 ==
@@ -445,8 +444,7 @@ def f(x: str) -> None: pass
 
 1()
 
-[delete p/m.py.3]
-[delete p/__init__.py.3]
+[delete p.3]
 
 [out]
 ==

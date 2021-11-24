@@ -1,8 +1,7 @@
+from _warnings import warn as warn, warn_explicit as warn_explicit
 from types import ModuleType, TracebackType
 from typing import List, TextIO, Type, overload
 from typing_extensions import Literal
-
-from _warnings import warn as warn, warn_explicit as warn_explicit
 
 def showwarning(
     message: Warning | str, category: Type[Warning], filename: str, lineno: int, file: TextIO | None = ..., line: str | None = ...

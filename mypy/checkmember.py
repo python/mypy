@@ -6,7 +6,7 @@ from typing_extensions import TYPE_CHECKING
 from mypy.types import (
     Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike,
     TypeVarLikeType, Overloaded, TypeVarType, UnionType, PartialType, TypeOfAny, LiteralType,
-    DeletedType, NoneType, TypeType, has_type_vars, get_proper_type, ProperType
+    DeletedType, NoneType, TypeType, has_type_vars, get_proper_type, ProperType, ParamSpecType
 )
 from mypy.nodes import (
     TypeInfo, FuncBase, Var, FuncDef, SymbolNode, SymbolTable, Context,
@@ -381,7 +381,10 @@ def analyze_member_var_access(name: str,
     elif isinstance(v, FuncDef):
         assert False, "Did not expect a function"
     elif (not v and name not in ['__getattr__', '__setattr__', '__getattribute__'] and
-          not mx.is_operator):
+          not mx.is_operator and mx.module_symbol_table is None):
+        # Above we skip ModuleType.__getattr__ etc. if we have a
+        # module symbol table, since the symbol table allows precise
+        # checking.
         if not mx.is_lvalue:
             for method_name in ('__getattribute__', '__getattr__'):
                 method = info.get_method(method_name)
@@ -532,17 +535,6 @@ def instance_alias_type(alias: TypeAlias,
     return expand_type_by_instance(tp, target)
 
 
-def is_instance_var(var: Var, info: TypeInfo) -> bool:
-    """Return if var is an instance variable according to PEP 526."""
-    return (
-        # check the type_info node is the var (not a decorated function, etc.)
-        var.name in info.names and info.names[var.name].node is var
-        and not var.is_classvar
-        # variables without annotations are treated as classvar
-        and not var.is_inferred
-    )
-
-
 def analyze_var(name: str,
                 var: Var,
                 itype: Instance,
@@ -571,12 +563,7 @@ def analyze_var(name: str,
         t = get_proper_type(expand_type_by_instance(typ, itype))
         result: Type = t
         typ = get_proper_type(typ)
-        if (
-            var.is_initialized_in_class
-            and not is_instance_var(var, info)
-            and isinstance(typ, FunctionLike)
-            and not typ.is_type_obj()
-        ):
+        if var.is_initialized_in_class and isinstance(typ, FunctionLike) and not typ.is_type_obj():
             if mx.is_lvalue:
                 if var.is_property:
                     if not var.is_settable_property:
@@ -681,6 +668,9 @@ def check_self_arg(functype: FunctionLike,
         else:
             selfarg = item.arg_types[0]
             if subtypes.is_subtype(dispatched_arg_type, erase_typevars(erase_to_bound(selfarg))):
+                new_items.append(item)
+            elif isinstance(selfarg, ParamSpecType):
+                # TODO: This is not always right. What's the most reasonable thing to do here?
                 new_items.append(item)
     if not new_items:
         # Choose first item for the message (it may be not very helpful for overloads).

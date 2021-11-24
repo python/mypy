@@ -1,8 +1,24 @@
 import threading
-from _typeshed import StrPath
+from _typeshed import StrPath, SupportsWrite
 from time import struct_time
 from types import FrameType, TracebackType
-from typing import IO, Any, Callable, Dict, List, Mapping, MutableMapping, Optional, Sequence, Text, Tuple, Union, overload
+from typing import (
+    IO,
+    Any,
+    Callable,
+    Dict,
+    Generic,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Sequence,
+    Text,
+    Tuple,
+    TypeVar,
+    Union,
+    overload,
+)
 
 _SysExcInfoType = Union[Tuple[type, BaseException, Optional[TracebackType]], Tuple[None, None, None]]
 _ExcInfoType = Union[None, bool, _SysExcInfoType]
@@ -159,10 +175,12 @@ class LogRecord:
     ) -> None: ...
     def getMessage(self) -> str: ...
 
-class LoggerAdapter:
-    logger: Logger
+_L = TypeVar("_L", Logger, LoggerAdapter[Logger], LoggerAdapter[Any])
+
+class LoggerAdapter(Generic[_L]):
+    logger: _L
     extra: Mapping[str, Any]
-    def __init__(self, logger: Logger, extra: Mapping[str, Any]) -> None: ...
+    def __init__(self, logger: _L, extra: Mapping[str, Any]) -> None: ...
     def process(self, msg: Any, kwargs: MutableMapping[str, Any]) -> Tuple[Any, MutableMapping[str, Any]]: ...
     def debug(
         self, msg: Any, *args: Any, exc_info: _ExcInfoType = ..., extra: Dict[str, Any] | None = ..., **kwargs: Any
@@ -227,9 +245,14 @@ def shutdown(handlerList: Sequence[Any] = ...) -> None: ...  # handlerList is un
 def setLoggerClass(klass: type) -> None: ...
 def captureWarnings(capture: bool) -> None: ...
 
-class StreamHandler(Handler):
-    stream: IO[str]  # undocumented
-    def __init__(self, stream: IO[str] | None = ...) -> None: ...
+_StreamT = TypeVar("_StreamT", bound=SupportsWrite[str])
+
+class StreamHandler(Handler, Generic[_StreamT]):
+    stream: _StreamT  # undocumented
+    @overload
+    def __init__(self: StreamHandler[IO[str]], stream: None = ...) -> None: ...
+    @overload
+    def __init__(self: StreamHandler[_StreamT], stream: _StreamT) -> None: ...
 
 class FileHandler(StreamHandler):
     baseFilename: str  # undocumented
