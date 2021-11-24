@@ -5339,3 +5339,29 @@ def register(cls: Any) -> Any: return None
 x = register(Foo)
 reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
+
+[case testOverloadWithPositionalOnlySelf]
+# flags: --python-version 3.8 --strict-optional
+# `/` is only available since 3.8
+from typing import overload, Optional
+
+class Foo:
+    @overload
+    def f(self, a: str, /) -> None: ...
+
+    @overload
+    def f(self, *, b: bool = False) -> None: ...
+
+    def f(self, a: Optional[str] = None, /, *, b: bool = False) -> None:  # E: Overloaded function implementation does not accept all possible arguments of signature 2
+        ...
+
+class Bar:
+    @overload
+    def f(self, a: str, /) -> None: ...
+
+    @overload  # Notice `/` in sig below:
+    def f(self, /, *, b: bool = False) -> None: ...
+
+    def f(self, a: Optional[str] = None, /, *, b: bool = False) -> None:
+        ...
+[builtins fixtures/bool.pyi]
