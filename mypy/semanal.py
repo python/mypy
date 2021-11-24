@@ -227,6 +227,9 @@ class SemanticAnalyzer(NodeVisitor[None],
     # type is stored in this mapping and that it still matches.
     wrapped_coro_return_types: Dict[FuncDef, Type] = {}
 
+    # Do we check annotation or a regular expr / statement? Rules are slightly different.
+    annotation_context: bool
+
     def __init__(self,
                  modules: Dict[str, MypyFile],
                  missing_modules: Set[str],
@@ -285,6 +288,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.deferral_debug_context: List[Tuple[str, int]] = []
 
         self.future_import_flags: Set[str] = set()
+        self.annotation_context = False
 
     # mypyc doesn't properly handle implementing an abstractproperty
     # with a regular attribute so we make them properties
@@ -587,6 +591,13 @@ class SemanticAnalyzer(NodeVisitor[None],
                 self.type = None
                 self.incomplete_type_stack.pop()
         del self.options
+
+    @contextmanager
+    def with_annotation_context(self, context: bool) -> Iterator[None]:
+        old = self.annotation_context
+        self.annotation_context = context
+        yield
+        self.annotation_context = old
 
     #
     # Functions
@@ -2051,7 +2062,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         tag = self.track_incomplete_refs()
         s.rvalue.accept(self)
         if s.annotation is not None:
-            s.annotation.accept(self)
+            with self.with_annotation_context(True):
+                s.annotation.accept(self)
         if self.found_incomplete_ref(tag) or self.should_wait_rhs(s.rvalue):
             # Initializer couldn't be fully analyzed. Defer the current node and give up.
             # Make sure that if we skip the definition of some local names, they can't be
@@ -3742,7 +3754,9 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def bind_name_expr(self, expr: NameExpr, sym: SymbolTableNode) -> None:
         """Bind name expression to a symbol table node."""
-        if isinstance(sym.node, TypeVarExpr) and self.tvar_scope.get_binding(sym):
+        if (isinstance(sym.node, TypeVarExpr)
+                and self.tvar_scope.get_binding(sym)
+                and not self.annotation_context):
             self.fail('"{}" is a type variable and only valid in type '
                       'context'.format(expr.name), expr)
         elif isinstance(sym.node, PlaceholderNode):
