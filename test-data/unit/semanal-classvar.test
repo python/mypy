@@ -207,3 +207,14 @@ class B:
         pass
 [out]
 main:4: error: ClassVar can only be used for assignments in class body
+
+[case testClassVarWithTypeVariable]
+from typing import ClassVar, TypeVar, Generic, List
+
+T = TypeVar('T')
+
+class Some(Generic[T]):
+    error: ClassVar[T]  # E: ClassVar cannot contain type variables
+    nested: ClassVar[List[List[T]]]  # E: ClassVar cannot contain type variables
+    ok: ClassVar[int]
+[out]
