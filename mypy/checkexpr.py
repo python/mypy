@@ -166,6 +166,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     msg: MessageBuilder
     # Type context for type inference
     type_context: List[Optional[Type]]
+    # Do we check annotation? If we do, rules are slightly different.
+    annotation_context: bool
 
     strfrm_checker: StringFormatterChecker
     plugin: Plugin
@@ -179,6 +181,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self.msg = msg
         self.plugin = plugin
         self.type_context = [None]
+        self.annotation_context = False
 
         # Temporary overrides for expression types. This is currently
         # used by the union math in overloads.
@@ -186,6 +189,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # multiassign_from_union, or maybe even combine the two?
         self.type_overrides: Dict[Expression, Type] = {}
         self.strfrm_checker = StringFormatterChecker(self, self.chk, self.msg)
+
+    @contextmanager
+    def with_annotation_context(self, context: bool) -> Iterator[None]:
+        old = self.annotation_context
+        self.annotation_context = context
+        yield
+        self.annotation_context = old
 
     def visit_name_expr(self, e: NameExpr) -> Type:
         """Type check a name expression.
@@ -246,9 +256,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Something that refers to a type alias appears in runtime context.
             # Note that we suppress bogus errors for alias redefinitions,
             # they are already reported in semanal.py.
-            result = self.alias_type_in_runtime_context(node, node.no_args, e,
-                                                        alias_definition=e.is_alias_rvalue
-                                                        or lvalue)
+            result = self.alias_type_in_runtime_context(
+                node, node.no_args, e,
+                alias_definition=e.is_alias_rvalue or lvalue,
+            )
         elif isinstance(node, (TypeVarExpr, ParamSpecExpr)):
             result = self.object_type()
         else:
@@ -3221,6 +3232,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             x = A()
             y = cast(A, ...)
         """
+        if self.annotation_context and alias.is_forward_ref:
+            # This means that we have `X: TypeAlias = 'SomeType'`.
+            # When checking annotations, we need to get runtime type,
+            # not the one analyzed by `semanal`. This helps us to solve
+            # runtime problems like `X | int`:
+            # `unsupported operand type(s) for |: 'str' and 'type'`
+            return self.named_type('builtins.str')
+
         if isinstance(alias.target, Instance) and alias.target.invalid:  # type: ignore
             # An invalid alias, error already has been reported
             return AnyType(TypeOfAny.from_error)

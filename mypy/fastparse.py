@@ -793,7 +793,13 @@ class ASTConverter:
         typ = TypeConverter(self.errors, line=line).visit(n.annotation)
         assert typ is not None
         typ.column = n.annotation.col_offset
-        s = AssignmentStmt([self.visit(n.target)], rvalue, type=typ, new_syntax=True)
+        s = AssignmentStmt(
+            lvalues=[self.visit(n.target)],
+            rvalue=rvalue,
+            annotation=self.visit(n.annotation),
+            type=typ,
+            new_syntax=True,
+        )
         return self.set_line(s, n)
 
     # AugAssign(expr target, operator op, expr value)

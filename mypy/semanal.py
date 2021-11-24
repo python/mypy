@@ -2050,6 +2050,8 @@ class SemanticAnalyzer(NodeVisitor[None],
 
         tag = self.track_incomplete_refs()
         s.rvalue.accept(self)
+        if s.annotation is not None:
+            s.annotation.accept(self)
         if self.found_incomplete_ref(tag) or self.should_wait_rhs(s.rvalue):
             # Initializer couldn't be fully analyzed. Defer the current node and give up.
             # Make sure that if we skip the definition of some local names, they can't be
@@ -2732,7 +2734,8 @@ class SemanticAnalyzer(NodeVisitor[None],
                                s.column,
                                alias_tvars=alias_tvars,
                                no_args=no_args,
-                               eager=eager)
+                               eager=eager,
+                               is_forward_ref=isinstance(rvalue, StrExpr))
         if isinstance(s.rvalue, (IndexExpr, CallExpr)):  # CallExpr is for `void = type(None)`
             s.rvalue.analyzed = TypeAliasExpr(alias_node)
             s.rvalue.analyzed.line = s.line

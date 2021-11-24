@@ -1099,11 +1099,14 @@ class AssignmentStmt(Statement):
     """
 
     __slots__ = ('lvalues', 'rvalue', 'type', 'unanalyzed_type', 'new_syntax',
-                 'is_alias_def', 'is_final_def')
+                 'is_alias_def', 'is_final_def', 'annotation')
 
     lvalues: List[Lvalue]
     # This is a TempNode if and only if no rvalue (x: t).
     rvalue: Expression
+    # Annotation expr if present. We only count real `: Type` annotations.
+    # Might be `None` when type comment or no explicit annotation is used.
+    annotation: Optional[Expression]
     # Declared type in a comment, may be None.
     type: Optional["mypy.types.Type"]
     # Original, not semantically analyzed type in annotation (used for reprocessing)
@@ -1121,13 +1124,18 @@ class AssignmentStmt(Statement):
     is_final_def: bool
 
     def __init__(self, lvalues: List[Lvalue], rvalue: Expression,
-                 type: 'Optional[mypy.types.Type]' = None, new_syntax: bool = False) -> None:
+                 type: 'Optional[mypy.types.Type]' = None,
+                 annotation: Optional[Expression] = None,
+                 new_syntax: bool = False) -> None:
         super().__init__()
         self.lvalues = lvalues
         self.rvalue = rvalue
         self.type = type
+        self.annotation = annotation
         self.unanalyzed_type = type
         self.new_syntax = new_syntax
+        if self.new_syntax is True:
+            assert self.annotation is not None, 'annotation is required when using new syntax'
         self.is_alias_def = False
         self.is_final_def = False
 
@@ -2971,19 +2979,25 @@ class TypeAlias(SymbolNode):
         within functions that can't be looked up from the symbol table)
     """
     __slots__ = ('target', '_fullname', 'alias_tvars', 'no_args', 'normalized',
-                 'line', 'column', '_is_recursive', 'eager')
+                 'line', 'column', '_is_recursive', 'eager', 'is_forward_ref')
 
-    def __init__(self, target: 'mypy.types.Type', fullname: str, line: int, column: int,
+    def __init__(self, target: 'mypy.types.Type', fullname: str,
+                 line: int, column: int,
                  *,
                  alias_tvars: Optional[List[str]] = None,
                  no_args: bool = False,
                  normalized: bool = False,
-                 eager: bool = False) -> None:
+                 eager: bool = False,
+                 is_forward_ref: bool = False) -> None:
         self._fullname = fullname
         self.target = target
         if alias_tvars is None:
             alias_tvars = []
         self.alias_tvars = alias_tvars
+        # Used to differentiate cases like `X: TypeAlias = int` and `X: TypeAlias = 'int'`
+        # This is important for cases like `X | bool`. The first one will work in runtime,
+        # but not the second one.
+        self.is_forward_ref = is_forward_ref
         self.no_args = no_args
         self.normalized = normalized
         # This attribute is manipulated by TypeAliasType. If non-None,
@@ -3010,6 +3024,7 @@ class TypeAlias(SymbolNode):
             "normalized": self.normalized,
             "line": self.line,
             "column": self.column,
+            "is_forward_ref": self.is_forward_ref,
         }
         return data
 
@@ -3026,8 +3041,14 @@ class TypeAlias(SymbolNode):
         normalized = data['normalized']
         line = data['line']
         column = data['column']
-        return cls(target, fullname, line, column, alias_tvars=alias_tvars,
-                   no_args=no_args, normalized=normalized)
+        is_forward_ref = data['is_forward_ref']
+        return cls(
+            target, fullname, line, column,
+            alias_tvars=alias_tvars,
+            no_args=no_args,
+            normalized=normalized,
+            is_forward_ref=is_forward_ref,
+        )
 
 
 class PlaceholderNode(SymbolNode):
