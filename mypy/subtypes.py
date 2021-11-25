@@ -1216,7 +1216,7 @@ def unify_generic_callable(type: CallableType, target: CallableType,
     for arg, target_arg in zip(type.formal_arguments(), target.formal_arguments()):
         if arg.pos and target_arg.pos:
             c = mypy.constraints.infer_constraints(
-                arg.type, target_arg.type, mypy.constraints.SUPERTYPE_OF)
+                arg.typ, target_arg.typ, mypy.constraints.SUPERTYPE_OF)
             constraints.extend(c)
         else:
             # optimization, no more positional arguments
