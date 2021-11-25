@@ -1210,11 +1210,13 @@ def unify_generic_callable(type: CallableType, target: CallableType,
     for i in range(len(target.arg_types)):
         if target.arg_names[i]:
             c = mypy.constraints.infer_constraints(
-                argument_names_map[target.arg_names[i]], target.arg_types[i], mypy.constraints.SUPERTYPE_OF)
+                    argument_names_map[target.arg_names[i]],
+                    target.arg_types[i],
+                    mypy.constraints.SUPERTYPE_OF)
             constraints.extend(c)
     # check pos-only arguments
     for arg, target_arg in zip(type.formal_arguments(), target.formal_arguments()):
-        if arg.pos and target_arg.pos:
+        if arg.pos is not None and target_arg.pos is not None:
             c = mypy.constraints.infer_constraints(
                 arg.typ, target_arg.typ, mypy.constraints.SUPERTYPE_OF)
             constraints.extend(c)
