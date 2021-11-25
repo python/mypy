@@ -81,6 +81,7 @@ assert testBool(Person1(age = 5, name = 'robo')) == False
 i1b = Person1b(age = 5, name = 'robot')
 assert i1b.age == 5
 assert i1b.name == 'robot'
+assert i1b.id == '000'
 assert testBool(i1b) == True
 assert testBool(Person1b(age = 5, name = 'robo')) == False
 i1c = Person1b(age = 20, name = 'robot', id = 'test')
@@ -244,6 +245,7 @@ assert testBool(Person1(age = 5, name = 'robo')) == False
 i1b = Person1b(age = 5, name = 'robot')
 assert i1b.age == 5
 assert i1b.name == 'robot'
+assert i1b.id == '000'
 assert testBool(i1b) == True
 assert testBool(Person1b(age = 5, name = 'robo')) == False
 i1c = Person1b(age = 20, name = 'robot', id = 'test')

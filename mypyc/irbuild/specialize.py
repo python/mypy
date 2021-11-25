@@ -60,7 +60,7 @@ specializers: Dict[Tuple[str, Optional[RType]], List[Specializer]] = {}
 def _apply_specialization(builder: 'IRBuilder', expr: CallExpr, callee: RefExpr,
                           name: Optional[str], typ: Optional[RType] = None) -> Optional[Value]:
     # TODO: Allow special cases to have default args or named args. Currently they don't since
-    # they check that everything in arg_kinds is ARG_POS.
+    #       they check that everything in arg_kinds is ARG_POS.
 
     # If there is a specializer for this function, try calling it.
     # Return the first successful one.
@@ -72,8 +72,8 @@ def _apply_specialization(builder: 'IRBuilder', expr: CallExpr, callee: RefExpr,
     return None
 
 
-def apply_function_specialization(builder: 'IRBuilder', expr: CallExpr, callee: RefExpr
-                                  ) -> Optional[Value]:
+def apply_function_specialization(builder: 'IRBuilder', expr: CallExpr,
+                                  callee: RefExpr) -> Optional[Value]:
     """Invoke the Specializer callback for a function if one has been registered"""
     return _apply_specialization(builder, expr, callee, callee.fullname)
 

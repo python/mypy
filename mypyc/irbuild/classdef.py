@@ -193,9 +193,7 @@ class ExtClassBuilder(ClassBuilder):
         self.type_obj: Optional[Value] = allocate_class(builder, cdef)
 
     def skip_attr_default(self, name: str, stmt: AssignmentStmt) -> bool:
-        """
-        Controls whether to skip generating a default for an attribute.
-        """
+        """Controls whether to skip generating a default for an attribute."""
         return False
 
     def add_method(self, fdef: FuncDef) -> None:
@@ -282,8 +280,8 @@ class DataClassBuilder(ExtClassBuilder):
         """
         super().finalize(ir)
         assert self.type_obj
-        finish_non_ext_dict(self.builder, self.non_ext, self.cdef.line,
-                            self.add_annotations_to_dict)
+        add_dunders_to_non_ext_dict(self.builder, self.non_ext, self.cdef.line,
+                                    self.add_annotations_to_dict)
         dec = self.builder.accept(
             next(d for d in self.cdef.decorators if is_dataclass_decorator(d)))
         self.builder.call_c(
@@ -641,7 +639,7 @@ def load_non_ext_class(builder: IRBuilder,
                        line: int) -> Value:
     cls_name = builder.load_str(ir.name)
 
-    finish_non_ext_dict(builder, non_ext, line)
+    add_dunders_to_non_ext_dict(builder, non_ext, line)
 
     class_type_obj = builder.py_call(
         non_ext.metaclass,
@@ -688,13 +686,11 @@ def create_mypyc_attrs_tuple(builder: IRBuilder, ir: ClassIR, line: int) -> Valu
     return builder.new_tuple(items, line)
 
 
-def finish_non_ext_dict(builder: IRBuilder, non_ext: NonExtClassInfo, line: int,
-                        add_annotations: bool = True) -> None:
+def add_dunders_to_non_ext_dict(builder: IRBuilder, non_ext: NonExtClassInfo,
+                                line: int, add_annotations: bool = True) -> None:
     if add_annotations:
         # Add __annotations__ to the class dict.
-        builder.call_c(dict_set_item_op,
-                       [non_ext.dict, builder.load_str('__annotations__'),
-                        non_ext.anns], -1)
+        builder.add_to_non_ext_dict(non_ext, '__annotations__', non_ext.anns, line)
 
     # We add a __doc__ attribute so if the non-extension class is decorated with the
     # dataclass decorator, dataclass will not try to look for __text_signature__.
