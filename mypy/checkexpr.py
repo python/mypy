@@ -18,7 +18,7 @@ from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneType, TypeVarType,
     TupleType, TypedDictType, Instance, ErasedType, UnionType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, LiteralType, LiteralValue,
-    is_named_instance, FunctionLike, ParamSpecType,
+    is_named_instance, FunctionLike, ParamSpecType, ParamSpecFlavor,
     StarType, is_optional, remove_optional, is_generic_instance, get_proper_type, ProperType,
     get_proper_types, flatten_nested_unions
 )
@@ -71,6 +71,7 @@ from mypy.typeops import (
     callable_type, try_getting_str_literals, custom_special_method,
     is_literal_type_like,
 )
+from mypy.message_registry import ErrorMessage
 import mypy.errorcodes as codes
 
 # Type of callback user for checking individual function arguments. See
@@ -107,6 +108,8 @@ OVERLAPPING_TYPES_ALLOWLIST: Final = [
     "typing.ItemsView",
     "builtins._dict_keys",
     "builtins._dict_items",
+    "_collections_abc.dict_keys",
+    "_collections_abc.dict_items",
 ]
 
 
@@ -1023,11 +1026,31 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             lambda i: self.accept(args[i]))
 
         if callee.is_generic():
+            need_refresh = any(isinstance(v, ParamSpecType) for v in callee.variables)
             callee = freshen_function_type_vars(callee)
             callee = self.infer_function_type_arguments_using_context(
                 callee, context)
             callee = self.infer_function_type_arguments(
                 callee, args, arg_kinds, formal_to_actual, context)
+            if need_refresh:
+                # Argument kinds etc. may have changed due to
+                # ParamSpec variables being replaced with an arbitrary
+                # number of arguments; recalculate actual-to-formal map
+                formal_to_actual = map_actuals_to_formals(
+                    arg_kinds, arg_names,
+                    callee.arg_kinds, callee.arg_names,
+                    lambda i: self.accept(args[i]))
+
+        param_spec = callee.param_spec()
+        if param_spec is not None and arg_kinds == [ARG_STAR, ARG_STAR2]:
+            arg1 = self.accept(args[0])
+            arg2 = self.accept(args[1])
+            if (isinstance(arg1, ParamSpecType)
+                    and isinstance(arg2, ParamSpecType)
+                    and arg1.flavor == ParamSpecFlavor.ARGS
+                    and arg2.flavor == ParamSpecFlavor.KWARGS
+                    and arg1.id == arg2.id == param_spec.id):
+                return callee.ret_type, callee
 
         arg_types = self.infer_arg_types_in_context(
             callee, args, arg_kinds, formal_to_actual)
@@ -1265,7 +1288,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if isinstance(first_arg, (NoneType, UninhabitedType)):
                     inferred_args[0] = self.named_type('builtins.str')
                 elif not first_arg or not is_subtype(self.named_type('builtins.str'), first_arg):
-                    self.msg.fail(message_registry.KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE,
+                    self.chk.fail(message_registry.KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE,
                                   context)
         else:
             # In dynamically typed functions use implicit 'Any' types for
@@ -1656,8 +1679,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                  callable_name=callable_name,
                                  object_type=object_type)
         if union_interrupted:
-            self.chk.fail("Not all union combinations were tried"
-                          " because there are too many unions", context)
+            self.chk.fail(message_registry.TOO_MANY_UNION_COMBINATIONS, context)
         return result
 
     def plausible_overload_call_targets(self,
@@ -3586,18 +3608,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         arg_kinds = [arg.kind for arg in e.arguments]
 
-        if callable_ctx.is_ellipsis_args:
+        if callable_ctx.is_ellipsis_args or ctx.param_spec() is not None:
             # Fill in Any arguments to match the arguments of the lambda.
             callable_ctx = callable_ctx.copy_modified(
                 is_ellipsis_args=False,
                 arg_types=[AnyType(TypeOfAny.special_form)] * len(arg_kinds),
                 arg_kinds=arg_kinds,
-                arg_names=[None] * len(arg_kinds)
+                arg_names=e.arg_names[:],
             )
 
         if ARG_STAR in arg_kinds or ARG_STAR2 in arg_kinds:
             # TODO treat this case appropriately
             return callable_ctx, None
+
         if callable_ctx.arg_kinds != arg_kinds:
             # Incompatible context; cannot use it to infer types.
             self.chk.fail(message_registry.CANNOT_INFER_LAMBDA_TYPE, e)
@@ -3674,7 +3697,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return AnyType(TypeOfAny.unannotated)
         elif len(e.call.args) == 0:
             if self.chk.options.python_version[0] == 2:
-                self.chk.fail(message_registry.TOO_FEW_ARGS_FOR_SUPER, e, code=codes.CALL_ARG)
+                self.chk.fail(message_registry.TOO_FEW_ARGS_FOR_SUPER, e)
                 return AnyType(TypeOfAny.from_error)
             elif not e.info:
                 # This has already been reported by the semantic analyzer.
@@ -3979,7 +4002,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return (isinstance(typ, TupleType) or
                 is_subtype(typ, self.chk.named_generic_type('typing.Iterable',
                                                             [AnyType(TypeOfAny.special_form)])) or
-                isinstance(typ, AnyType))
+                isinstance(typ, AnyType) or
+                isinstance(typ, ParamSpecType))
 
     def is_valid_keyword_var_arg(self, typ: Type) -> bool:
         """Is a type valid as a **kwargs argument?"""
@@ -3987,7 +4011,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 is_subtype(typ, self.chk.named_generic_type('typing.Mapping',
                     [self.named_type('builtins.str'), AnyType(TypeOfAny.special_form)])) or
                 is_subtype(typ, self.chk.named_generic_type('typing.Mapping',
-                    [UninhabitedType(), UninhabitedType()])))
+                    [UninhabitedType(), UninhabitedType()])) or
+                isinstance(typ, ParamSpecType)
+        )
         if self.chk.options.python_version[0] < 3:
             ret = ret or is_subtype(typ, self.chk.named_generic_type('typing.Mapping',
                 [self.named_type('builtins.unicode'), AnyType(TypeOfAny.special_form)]))
@@ -4064,7 +4090,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return self.check_awaitable_expr(actual_type, e,
                                          message_registry.INCOMPATIBLE_TYPES_IN_AWAIT)
 
-    def check_awaitable_expr(self, t: Type, ctx: Context, msg: str) -> Type:
+    def check_awaitable_expr(self, t: Type, ctx: Context, msg: Union[str, ErrorMessage]) -> Type:
         """Check the argument to `await` and extract the type of value.
 
         Also used by `async for` and `async with`.
@@ -4482,7 +4508,7 @@ def merge_typevars_in_callables_by_name(
     "S", but we treat them as distinct, unrelated typevars. (E.g. they could both have
     distinct ids.)
 
-    If we pass in both callables into this function, it returns a a list containing two
+    If we pass in both callables into this function, it returns a list containing two
     new callables that are identical in signature, but use the same underlying TypeVarType
     for T and S.
 

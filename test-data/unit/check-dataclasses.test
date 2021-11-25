@@ -1263,45 +1263,81 @@ reveal_type(A.__dataclass_fields__)  # N: Revealed type is "builtins.dict[builti
 
 [builtins fixtures/dict.pyi]
 
-[case testDataclassCallableFieldAccess]
+[case testDataclassCallableProperty]
 # flags: --python-version 3.7
 from dataclasses import dataclass
 from typing import Callable
 
 @dataclass
 class A:
-    x: Callable[[int], int]
-    y: Callable[[int], int] = lambda i: i
+    foo: Callable[[int], int]
 
-a = A(lambda i:i)
-x: int = a.x(0)
-y: str = a.y(0) # E: Incompatible types in assignment (expression has type "int", variable has type "str")
-reveal_type(a.x)  # N: Revealed type is "def (builtins.int) -> builtins.int"
-reveal_type(a.y)  # N: Revealed type is "def (builtins.int) -> builtins.int"
-reveal_type(A.y)  # N: Revealed type is "def (builtins.int) -> builtins.int"
+def my_foo(x: int) -> int:
+    return x
 
+a = A(foo=my_foo)
+a.foo(1)
+reveal_type(a.foo)  # N: Revealed type is "def (builtins.int) -> builtins.int"
+reveal_type(A.foo)  # N: Revealed type is "def (builtins.int) -> builtins.int"
+[typing fixtures/typing-medium.pyi]
 [builtins fixtures/dataclasses.pyi]
 
-[case testDataclassCallableFieldAssignment]
+[case testDataclassCallableAssignment]
 # flags: --python-version 3.7
 from dataclasses import dataclass
 from typing import Callable
 
 @dataclass
 class A:
-    x: Callable[[int], int]
+    foo: Callable[[int], int]
 
-def x(i: int) -> int:
-    return i
-def x2(s: str) -> str:
-    return s
+def my_foo(x: int) -> int:
+    return x
 
-a = A(lambda i:i)
-a.x = x
-a.x = x2 # E: Incompatible types in assignment (expression has type "Callable[[str], str]", variable has type "Callable[[int], int]")
+a = A(foo=my_foo)
 
+def another_foo(x: int) -> int:
+    return x
+
+a.foo = another_foo
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassCallablePropertyWrongType]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Callable
+
+@dataclass
+class A:
+    foo: Callable[[int], int]
+
+def my_foo(x: int) -> str:
+    return "foo"
+
+a = A(foo=my_foo)  # E: Argument "foo" to "A" has incompatible type "Callable[[int], str]"; expected "Callable[[int], int]"
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassCallablePropertyWrongTypeAssignment]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Callable
+
+@dataclass
+class A:
+    foo: Callable[[int], int]
+
+def my_foo(x: int) -> int:
+    return x
+
+a = A(foo=my_foo)
+
+def another_foo(x: int) -> str:
+    return "foo"
+
+a.foo = another_foo  # E: Incompatible types in assignment (expression has type "Callable[[int], str]", variable has type "Callable[[int], int]")
+[typing fixtures/typing-medium.pyi]
+[builtins fixtures/dataclasses.pyi]
 
 [case testDataclassFieldDoesNotFailOnKwargsUnpacking]
 # flags: --python-version 3.7
@@ -1350,7 +1386,6 @@ class Foo:
 
 reveal_type(Foo(bar=1.5))  # N: Revealed type is "__main__.Foo"
 [builtins fixtures/dataclasses.pyi]
-
 
 [case testDataclassWithSlotsArg]
 # flags: --python-version 3.10

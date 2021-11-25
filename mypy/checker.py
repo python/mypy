@@ -37,7 +37,8 @@ from mypy.types import (
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType,
     is_named_instance, union_items, TypeQuery, LiteralType,
     is_optional, remove_optional, TypeTranslator, StarType, get_proper_type, ProperType,
-    get_proper_types, is_literal_type, TypeAliasType, TypeGuardedType)
+    get_proper_types, is_literal_type, TypeAliasType, TypeGuardedType, ParamSpecType
+)
 from mypy.sametypes import is_same_type
 from mypy.messages import (
     MessageBuilder, make_inferred_type_note, append_invariance_notes, pretty_seq,
@@ -976,13 +977,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 ctx = typ
                             self.fail(message_registry.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT, ctx)
                     if typ.arg_kinds[i] == nodes.ARG_STAR:
-                        # builtins.tuple[T] is typing.Tuple[T, ...]
-                        arg_type = self.named_generic_type('builtins.tuple',
-                                                           [arg_type])
+                        if not isinstance(arg_type, ParamSpecType):
+                            # builtins.tuple[T] is typing.Tuple[T, ...]
+                            arg_type = self.named_generic_type('builtins.tuple',
+                                                               [arg_type])
                     elif typ.arg_kinds[i] == nodes.ARG_STAR2:
-                        arg_type = self.named_generic_type('builtins.dict',
-                                                           [self.str_type(),
-                                                            arg_type])
+                        if not isinstance(arg_type, ParamSpecType):
+                            arg_type = self.named_generic_type('builtins.dict',
+                                                               [self.str_type(),
+                                                                arg_type])
                     item.arguments[i].variable.type = arg_type
 
                 # Type check initialization expressions.
@@ -1536,6 +1539,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     original_type = self.function_type(original_node)
                 elif isinstance(original_node, Decorator):
                     original_type = self.function_type(original_node.func)
+                elif isinstance(original_node, Var):
+                    # Super type can define method as an attribute.
+                    # See https://github.com/python/mypy/issues/10134
+
+                    # We also check that sometimes `original_node.type` is None.
+                    # This is the case when we use something like `__hash__ = None`.
+                    if original_node.type is not None:
+                        original_type = get_proper_type(original_node.type)
+                    else:
+                        original_type = NoneType()
                 else:
                     assert False, str(base_attr.node)
             if isinstance(original_node, (FuncDef, OverloadedFuncDef)):
@@ -1873,7 +1886,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 expected = CONTRAVARIANT
             else:
                 expected = INVARIANT
-            if expected != tvar.variance:
+            if isinstance(tvar, TypeVarType) and expected != tvar.variance:
                 self.msg.bad_proto_variance(tvar.variance, tvar.name, expected, defn)
 
     def check_multiple_inheritance(self, typ: TypeInfo) -> None:
@@ -3928,8 +3941,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if s.target:
             target_type = get_proper_type(self.expr_checker.accept(s.target))
             if not isinstance(target_type, NoneType):
-                # TODO: Also verify the type of 'write'.
-                self.expr_checker.analyze_external_member_access('write', target_type, s.target)
+                write_type = self.expr_checker.analyze_external_member_access(
+                    'write', target_type, s.target)
+                required_type = CallableType(
+                    arg_types=[self.named_type('builtins.str')],
+                    arg_kinds=[ARG_POS],
+                    arg_names=[None],
+                    ret_type=AnyType(TypeOfAny.implementation_artifact),
+                    fallback=self.named_type('builtins.function'),
+                )
+                # This has to be hard-coded, since it is a syntax pattern, not a function call.
+                if not is_subtype(write_type, required_type):
+                    self.fail(message_registry.PYTHON2_PRINT_FILE_TYPE.format(
+                        write_type,
+                        required_type,
+                    ), s.target)
 
     def visit_break_stmt(self, s: BreakStmt) -> None:
         self.binder.handle_break()
@@ -5449,7 +5475,7 @@ def is_literal_enum(type_map: Mapping[Expression, Type], n: Expression) -> bool:
             B = 2
 
     ...and if the expression 'Foo' referred to that enum within the current type context,
-    then the expression 'Foo.A' would be a a literal enum. However, if we did 'a = Foo.A',
+    then the expression 'Foo.A' would be a literal enum. However, if we did 'a = Foo.A',
     then the variable 'a' would *not* be a literal enum.
 
     We occasionally special-case expressions like 'Foo.A' and treat them as a single primitive

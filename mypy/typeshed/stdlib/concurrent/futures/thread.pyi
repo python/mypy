@@ -1,6 +1,6 @@
 import queue
 import sys
-from collections.abc import Iterable, Mapping, Set
+from collections.abc import Iterable, Mapping, Set  # equivalent to typing.AbstractSet, not builtins.set
 from threading import Lock, Semaphore, Thread
 from typing import Any, Callable, Generic, Tuple, TypeVar
 from weakref import ref

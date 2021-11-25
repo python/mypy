@@ -1,12 +1,14 @@
 """Transform class definitions from the mypy AST form to IR."""
 
-from typing import List, Optional, Tuple
+from abc import abstractmethod
+from typing import Callable, List, Optional, Tuple
 from typing_extensions import Final
 
 from mypy.nodes import (
-    ClassDef, FuncDef, OverloadedFuncDef, PassStmt, AssignmentStmt, NameExpr, StrExpr,
-    ExpressionStmt, TempNode, Decorator, Lvalue, RefExpr, is_class_var
+    ClassDef, FuncDef, OverloadedFuncDef, PassStmt, AssignmentStmt, CallExpr, NameExpr, StrExpr,
+    ExpressionStmt, TempNode, Decorator, Lvalue, MemberExpr, RefExpr, TypeInfo, is_class_var
 )
+from mypy.types import Instance, get_proper_type
 from mypyc.ir.ops import (
     Value, Register, Call, LoadErrorValue, LoadStatic, InitStatic, TupleSet, SetAttr, Return,
     BasicBlock, Branch, MethodCall, NAMESPACE_TYPE, LoadAddress
@@ -24,10 +26,10 @@ from mypyc.primitives.misc_ops import (
 )
 from mypyc.primitives.dict_ops import dict_set_item_op, dict_new_op
 from mypyc.irbuild.util import (
-    is_dataclass_decorator, get_func_def, is_dataclass, is_constant
+    is_dataclass_decorator, get_func_def, is_constant, dataclass_type
 )
 from mypyc.irbuild.builder import IRBuilder
-from mypyc.irbuild.function import transform_method
+from mypyc.irbuild.function import handle_ext_method, handle_non_ext_method, load_type
 
 
 def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
@@ -61,32 +63,28 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
     # decorated or inherit from Enum. Classes decorated with @trait do not
     # apply here, and are handled in a different way.
     if ir.is_ext_class:
-        # If the class is not decorated, generate an extension class for it.
-        type_obj: Optional[Value] = allocate_class(builder, cdef)
-        non_ext: Optional[NonExtClassInfo] = None
-        dataclass_non_ext = dataclass_non_ext_info(builder, cdef)
+        cls_type = dataclass_type(cdef)
+        if cls_type is None:
+            cls_builder: ClassBuilder = ExtClassBuilder(builder, cdef)
+        elif cls_type in ['dataclasses', 'attr-auto']:
+            cls_builder = DataClassBuilder(builder, cdef)
+        elif cls_type == 'attr':
+            cls_builder = AttrsClassBuilder(builder, cdef)
+        else:
+            raise ValueError(cls_type)
     else:
-        non_ext_bases = populate_non_ext_bases(builder, cdef)
-        non_ext_metaclass = find_non_ext_metaclass(builder, cdef, non_ext_bases)
-        non_ext_dict = setup_non_ext_dict(builder, cdef, non_ext_metaclass, non_ext_bases)
-        # We populate __annotations__ for non-extension classes
-        # because dataclasses uses it to determine which attributes to compute on.
-        # TODO: Maybe generate more precise types for annotations
-        non_ext_anns = builder.call_c(dict_new_op, [], cdef.line)
-        non_ext = NonExtClassInfo(non_ext_dict, non_ext_bases, non_ext_anns, non_ext_metaclass)
-        dataclass_non_ext = None
-    attrs_to_cache: List[Tuple[Lvalue, RType]] = []
+        cls_builder = NonExtClassBuilder(builder, cdef)
 
     for stmt in cdef.defs.body:
         if isinstance(stmt, OverloadedFuncDef) and stmt.is_property:
-            if not ir.is_ext_class:
+            if isinstance(cls_builder, NonExtClassBuilder):
                 # properties with both getters and setters in non_extension
                 # classes not supported
                 builder.error("Property setters not supported in non-extension classes",
                               stmt.line)
             for item in stmt.items:
                 with builder.catch_errors(stmt.line):
-                    transform_method(builder, cdef, non_ext, get_func_def(item))
+                    cls_builder.add_method(get_func_def(item))
         elif isinstance(stmt, (FuncDef, Decorator, OverloadedFuncDef)):
             # Ignore plugin generated methods (since they have no
             # bodies to compile and will need to have the bodies
@@ -94,7 +92,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
             if cdef.info.names[stmt.name].plugin_generated:
                 continue
             with builder.catch_errors(stmt.line):
-                transform_method(builder, cdef, non_ext, get_func_def(stmt))
+                cls_builder.add_method(get_func_def(stmt))
         elif isinstance(stmt, PassStmt):
             continue
         elif isinstance(stmt, AssignmentStmt):
@@ -108,53 +106,217 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
                 continue
             # We want to collect class variables in a dictionary for both real
             # non-extension classes and fake dataclass ones.
-            var_non_ext = non_ext or dataclass_non_ext
-            if var_non_ext:
-                add_non_ext_class_attr(builder, var_non_ext, lvalue, stmt, cdef, attrs_to_cache)
-                if non_ext:
-                    continue
-            # Variable declaration with no body
-            if isinstance(stmt.rvalue, TempNode):
-                continue
-            # Only treat marked class variables as class variables.
-            if not (is_class_var(lvalue) or stmt.is_final_def):
-                continue
-            typ = builder.load_native_type_object(cdef.fullname)
-            value = builder.accept(stmt.rvalue)
-            builder.call_c(
-                py_setattr_op, [typ, builder.load_str(lvalue.name), value], stmt.line)
-            if builder.non_function_scope() and stmt.is_final_def:
-                builder.init_final_static(lvalue, value, cdef.name)
+            cls_builder.add_attr(lvalue, stmt)
+
         elif isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, StrExpr):
             # Docstring. Ignore
             pass
         else:
             builder.error("Unsupported statement in class body", stmt.line)
 
-    if not non_ext:  # That is, an extension class
-        generate_attr_defaults(builder, cdef)
-        create_ne_from_eq(builder, cdef)
-        if dataclass_non_ext:
-            assert type_obj
-            dataclass_finalize(builder, cdef, dataclass_non_ext, type_obj)
-    else:
+    cls_builder.finalize(ir)
+
+
+class ClassBuilder:
+    """Create IR for a class definition.
+
+    This is an abstract base class.
+    """
+
+    def __init__(self, builder: IRBuilder, cdef: ClassDef) -> None:
+        self.builder = builder
+        self.cdef = cdef
+        self.attrs_to_cache: List[Tuple[Lvalue, RType]] = []
+
+    @abstractmethod
+    def add_method(self, fdef: FuncDef) -> None:
+        """Add a method to the class IR"""
+
+    @abstractmethod
+    def add_attr(self, lvalue: NameExpr, stmt: AssignmentStmt) -> None:
+        """Add an attribute to the class IR"""
+
+    @abstractmethod
+    def finalize(self, ir: ClassIR) -> None:
+        """Perform any final operations to complete the class IR"""
+
+
+class NonExtClassBuilder(ClassBuilder):
+    def __init__(self, builder: IRBuilder, cdef: ClassDef) -> None:
+        super().__init__(builder, cdef)
+        self.non_ext = self.create_non_ext_info()
+
+    def create_non_ext_info(self) -> NonExtClassInfo:
+        non_ext_bases = populate_non_ext_bases(self.builder, self.cdef)
+        non_ext_metaclass = find_non_ext_metaclass(self.builder, self.cdef, non_ext_bases)
+        non_ext_dict = setup_non_ext_dict(self.builder, self.cdef, non_ext_metaclass,
+                                          non_ext_bases)
+        # We populate __annotations__ for non-extension classes
+        # because dataclasses uses it to determine which attributes to compute on.
+        # TODO: Maybe generate more precise types for annotations
+        non_ext_anns = self.builder.call_c(dict_new_op, [], self.cdef.line)
+        return NonExtClassInfo(non_ext_dict, non_ext_bases, non_ext_anns, non_ext_metaclass)
+
+    def add_method(self, fdef: FuncDef) -> None:
+        handle_non_ext_method(self.builder, self.non_ext, self.cdef, fdef)
+
+    def add_attr(self, lvalue: NameExpr, stmt: AssignmentStmt) -> None:
+        add_non_ext_class_attr_ann(self.builder, self.non_ext, lvalue, stmt)
+        add_non_ext_class_attr(self.builder, self.non_ext, lvalue, stmt, self.cdef,
+                               self.attrs_to_cache)
+
+    def finalize(self, ir: ClassIR) -> None:
         # Dynamically create the class via the type constructor
-        non_ext_class = load_non_ext_class(builder, ir, non_ext, cdef.line)
-        non_ext_class = load_decorated_class(builder, cdef, non_ext_class)
+        non_ext_class = load_non_ext_class(self.builder, ir, self.non_ext, self.cdef.line)
+        non_ext_class = load_decorated_class(self.builder, self.cdef, non_ext_class)
 
         # Save the decorated class
-        builder.add(InitStatic(non_ext_class, cdef.name, builder.module_name, NAMESPACE_TYPE))
+        self.builder.add(InitStatic(non_ext_class, self.cdef.name, self.builder.module_name,
+                                    NAMESPACE_TYPE))
 
         # Add the non-extension class to the dict
-        builder.call_c(dict_set_item_op,
-                       [
-                           builder.load_globals_dict(),
-                           builder.load_str(cdef.name),
-                           non_ext_class
-                       ], cdef.line)
+        self.builder.call_c(dict_set_item_op,
+                            [
+                                self.builder.load_globals_dict(),
+                                self.builder.load_str(self.cdef.name),
+                                non_ext_class
+                            ], self.cdef.line)
 
         # Cache any cacheable class attributes
-        cache_class_attrs(builder, attrs_to_cache, cdef)
+        cache_class_attrs(self.builder, self.attrs_to_cache, self.cdef)
+
+
+class ExtClassBuilder(ClassBuilder):
+    def __init__(self, builder: IRBuilder, cdef: ClassDef) -> None:
+        super().__init__(builder, cdef)
+        # If the class is not decorated, generate an extension class for it.
+        self.type_obj: Optional[Value] = allocate_class(builder, cdef)
+
+    def skip_attr_default(self, name: str, stmt: AssignmentStmt) -> bool:
+        """Controls whether to skip generating a default for an attribute."""
+        return False
+
+    def add_method(self, fdef: FuncDef) -> None:
+        handle_ext_method(self.builder, self.cdef, fdef)
+
+    def add_attr(self, lvalue: NameExpr, stmt: AssignmentStmt) -> None:
+        # Variable declaration with no body
+        if isinstance(stmt.rvalue, TempNode):
+            return
+        # Only treat marked class variables as class variables.
+        if not (is_class_var(lvalue) or stmt.is_final_def):
+            return
+        typ = self.builder.load_native_type_object(self.cdef.fullname)
+        value = self.builder.accept(stmt.rvalue)
+        self.builder.call_c(
+            py_setattr_op, [typ, self.builder.load_str(lvalue.name), value], stmt.line)
+        if self.builder.non_function_scope() and stmt.is_final_def:
+            self.builder.init_final_static(lvalue, value, self.cdef.name)
+
+    def finalize(self, ir: ClassIR) -> None:
+        generate_attr_defaults(self.builder, self.cdef, self.skip_attr_default)
+        create_ne_from_eq(self.builder, self.cdef)
+
+
+class DataClassBuilder(ExtClassBuilder):
+    # controls whether an __annotations__ attribute should be added to the class
+    # __dict__.  This is not desirable for attrs classes where auto_attribs is
+    # disabled, as attrs will reject it.
+    add_annotations_to_dict = True
+
+    def __init__(self, builder: IRBuilder, cdef: ClassDef) -> None:
+        super().__init__(builder, cdef)
+        self.non_ext = self.create_non_ext_info()
+
+    def create_non_ext_info(self) -> NonExtClassInfo:
+        """Set up a NonExtClassInfo to track dataclass attributes.
+
+        In addition to setting up a normal extension class for dataclasses,
+        we also collect its class attributes like a non-extension class so
+        that we can hand them to the dataclass decorator.
+        """
+        return NonExtClassInfo(
+            self.builder.call_c(dict_new_op, [], self.cdef.line),
+            self.builder.add(TupleSet([], self.cdef.line)),
+            self.builder.call_c(dict_new_op, [], self.cdef.line),
+            self.builder.add(LoadAddress(type_object_op.type, type_object_op.src, self.cdef.line))
+        )
+
+    def skip_attr_default(self, name: str, stmt: AssignmentStmt) -> bool:
+        return stmt.type is not None
+
+    def get_type_annotation(self, stmt: AssignmentStmt) -> Optional[TypeInfo]:
+        # We populate __annotations__ because dataclasses uses it to determine
+        # which attributes to compute on.
+        ann_type = get_proper_type(stmt.type)
+        if isinstance(ann_type, Instance):
+            return ann_type.type
+        return None
+
+    def add_attr(self, lvalue: NameExpr, stmt: AssignmentStmt) -> None:
+        add_non_ext_class_attr_ann(self.builder, self.non_ext, lvalue, stmt,
+                                   self.get_type_annotation)
+        add_non_ext_class_attr(self.builder, self.non_ext, lvalue, stmt, self.cdef,
+                               self.attrs_to_cache)
+        super().add_attr(lvalue, stmt)
+
+    def finalize(self, ir: ClassIR) -> None:
+        """Generate code to finish instantiating a dataclass.
+
+        This works by replacing all of the attributes on the class
+        (which will be descriptors) with whatever they would be in a
+        non-extension class, calling dataclass, then switching them back.
+
+        The resulting class is an extension class and instances of it do not
+        have a __dict__ (unless something else requires it).
+        All methods written explicitly in the source are compiled and
+        may be called through the vtable while the methods generated
+        by dataclasses are interpreted and may not be.
+
+        (If we just called dataclass without doing this, it would think that all
+        of the descriptors for our attributes are default values and generate an
+        incorrect constructor. We need to do the switch so that dataclass gets the
+        appropriate defaults.)
+        """
+        super().finalize(ir)
+        assert self.type_obj
+        add_dunders_to_non_ext_dict(self.builder, self.non_ext, self.cdef.line,
+                                    self.add_annotations_to_dict)
+        dec = self.builder.accept(
+            next(d for d in self.cdef.decorators if is_dataclass_decorator(d)))
+        self.builder.call_c(
+            dataclass_sleight_of_hand, [dec, self.type_obj, self.non_ext.dict, self.non_ext.anns],
+            self.cdef.line)
+
+
+class AttrsClassBuilder(DataClassBuilder):
+    """Create IR for an attrs class where auto_attribs=False (the default).
+
+    When auto_attribs is enabled, attrs classes behave similarly to dataclasses
+    (i.e. types are stored as annotations on the class) and are thus handled
+    by DataClassBuilder, but when auto_attribs is disabled the types are
+    provided via attr.ib(type=...)
+    """
+
+    add_annotations_to_dict = False
+
+    def skip_attr_default(self, name: str, stmt: AssignmentStmt) -> bool:
+        return True
+
+    def get_type_annotation(self, stmt: AssignmentStmt) -> Optional[TypeInfo]:
+        if isinstance(stmt.rvalue, CallExpr):
+            # find the type arg in `attr.ib(type=str)`
+            callee = stmt.rvalue.callee
+            if (isinstance(callee, MemberExpr) and
+                    callee.fullname in ['attr.ib', 'attr.attr'] and
+                    'type' in stmt.rvalue.arg_names):
+                index = stmt.rvalue.arg_names.index('type')
+                type_name = stmt.rvalue.args[index]
+                if isinstance(type_name, NameExpr) and isinstance(type_name.node, TypeInfo):
+                    lvalue = stmt.lvalues[0]
+                    assert isinstance(lvalue, NameExpr)
+                    return type_name.node
+        return None
 
 
 def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
@@ -312,23 +474,39 @@ def setup_non_ext_dict(builder: IRBuilder,
     return non_ext_dict
 
 
+def add_non_ext_class_attr_ann(builder: IRBuilder,
+                               non_ext: NonExtClassInfo,
+                               lvalue: NameExpr,
+                               stmt: AssignmentStmt,
+                               get_type_info: Optional[Callable[[AssignmentStmt],
+                                                                Optional[TypeInfo]]] = None
+                               ) -> None:
+    """Add a class attribute to __annotations__ of a non-extension class."""
+    typ: Optional[Value] = None
+    if get_type_info is not None:
+        type_info = get_type_info(stmt)
+        if type_info:
+            typ = load_type(builder, type_info, stmt.line)
+
+    if typ is None:
+        # FIXME: if get_type_info is not provided, don't fall back to stmt.type?
+        ann_type = get_proper_type(stmt.type)
+        if isinstance(ann_type, Instance):
+            typ = load_type(builder, ann_type.type, stmt.line)
+        else:
+            typ = builder.add(LoadAddress(type_object_op.type, type_object_op.src, stmt.line))
+
+    key = builder.load_str(lvalue.name)
+    builder.call_c(dict_set_item_op, [non_ext.anns, key, typ], stmt.line)
+
+
 def add_non_ext_class_attr(builder: IRBuilder,
                            non_ext: NonExtClassInfo,
                            lvalue: NameExpr,
                            stmt: AssignmentStmt,
                            cdef: ClassDef,
                            attr_to_cache: List[Tuple[Lvalue, RType]]) -> None:
-    """Add a class attribute to __annotations__ of a non-extension class.
-
-    If the attribute is initialized with a value, also add it to __dict__.
-    """
-    # We populate __annotations__ because dataclasses uses it to determine
-    # which attributes to compute on.
-    # TODO: Maybe generate more precise types for annotations
-    key = builder.load_str(lvalue.name)
-    typ = builder.add(LoadAddress(type_object_op.type, type_object_op.src, stmt.line))
-    builder.call_c(dict_set_item_op, [non_ext.anns, key, typ], stmt.line)
-
+    """Add a class attribute to __dict__ of a non-extension class."""
     # Only add the attribute to the __dict__ if the assignment is of the form:
     # x: type = value (don't add attributes of the form 'x: type' to the __dict__).
     if not isinstance(stmt.rvalue, TempNode):
@@ -346,8 +524,14 @@ def add_non_ext_class_attr(builder: IRBuilder,
             attr_to_cache.append((lvalue, object_rprimitive))
 
 
-def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef) -> None:
-    """Generate an initialization method for default attr values (from class vars)."""
+def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef,
+                           skip: Optional[Callable[[str, AssignmentStmt], bool]] = None) -> None:
+    """Generate an initialization method for default attr values (from class vars).
+
+    If provided, the skip arg should be a callable which will return whether
+    to skip generating a default for an attribute.  It will be passed the name of
+    the attribute and the corresponding AssignmentStmt.
+    """
     cls = builder.mapper.type_to_ir[cdef.info]
     if cls.builtin_base:
         return
@@ -371,8 +555,7 @@ def generate_attr_defaults(builder: IRBuilder, cdef: ClassDef) -> None:
                     check_deletable_declaration(builder, cls, stmt.line)
                     continue
 
-                # Skip type annotated assignments in dataclasses
-                if is_dataclass(cdef) and stmt.type:
+                if skip is not None and skip(name, stmt):
                     continue
 
                 default_assignments.append(stmt)
@@ -456,7 +639,7 @@ def load_non_ext_class(builder: IRBuilder,
                        line: int) -> Value:
     cls_name = builder.load_str(ir.name)
 
-    finish_non_ext_dict(builder, non_ext, line)
+    add_dunders_to_non_ext_dict(builder, non_ext, line)
 
     class_type_obj = builder.py_call(
         non_ext.metaclass,
@@ -503,11 +686,11 @@ def create_mypyc_attrs_tuple(builder: IRBuilder, ir: ClassIR, line: int) -> Valu
     return builder.new_tuple(items, line)
 
 
-def finish_non_ext_dict(builder: IRBuilder, non_ext: NonExtClassInfo, line: int) -> None:
-    # Add __annotations__ to the class dict.
-    builder.call_c(dict_set_item_op,
-                   [non_ext.dict, builder.load_str('__annotations__'),
-                    non_ext.anns], -1)
+def add_dunders_to_non_ext_dict(builder: IRBuilder, non_ext: NonExtClassInfo,
+                                line: int, add_annotations: bool = True) -> None:
+    if add_annotations:
+        # Add __annotations__ to the class dict.
+        builder.add_to_non_ext_dict(non_ext, '__annotations__', non_ext.anns, line)
 
     # We add a __doc__ attribute so if the non-extension class is decorated with the
     # dataclass decorator, dataclass will not try to look for __text_signature__.
@@ -517,46 +700,3 @@ def finish_non_ext_dict(builder: IRBuilder, non_ext: NonExtClassInfo, line: int)
         non_ext, '__doc__', builder.load_str(filler_doc_str), line)
     builder.add_to_non_ext_dict(
         non_ext, '__module__', builder.load_str(builder.module_name), line)
-
-
-def dataclass_finalize(
-        builder: IRBuilder, cdef: ClassDef, non_ext: NonExtClassInfo, type_obj: Value) -> None:
-    """Generate code to finish instantiating a dataclass.
-
-    This works by replacing all of the attributes on the class
-    (which will be descriptors) with whatever they would be in a
-    non-extension class, calling dataclass, then switching them back.
-
-    The resulting class is an extension class and instances of it do not
-    have a __dict__ (unless something else requires it).
-    All methods written explicitly in the source are compiled and
-    may be called through the vtable while the methods generated
-    by dataclasses are interpreted and may not be.
-
-    (If we just called dataclass without doing this, it would think that all
-    of the descriptors for our attributes are default values and generate an
-    incorrect constructor. We need to do the switch so that dataclass gets the
-    appropriate defaults.)
-    """
-    finish_non_ext_dict(builder, non_ext, cdef.line)
-    dec = builder.accept(next(d for d in cdef.decorators if is_dataclass_decorator(d)))
-    builder.call_c(
-        dataclass_sleight_of_hand, [dec, type_obj, non_ext.dict, non_ext.anns], cdef.line)
-
-
-def dataclass_non_ext_info(builder: IRBuilder, cdef: ClassDef) -> Optional[NonExtClassInfo]:
-    """Set up a NonExtClassInfo to track dataclass attributes.
-
-    In addition to setting up a normal extension class for dataclasses,
-    we also collect its class attributes like a non-extension class so
-    that we can hand them to the dataclass decorator.
-    """
-    if is_dataclass(cdef):
-        return NonExtClassInfo(
-            builder.call_c(dict_new_op, [], cdef.line),
-            builder.add(TupleSet([], cdef.line)),
-            builder.call_c(dict_new_op, [], cdef.line),
-            builder.add(LoadAddress(type_object_op.type, type_object_op.src, cdef.line))
-        )
-    else:
-        return None

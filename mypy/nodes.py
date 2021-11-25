@@ -135,6 +135,12 @@ type_aliases_source_versions: Final = {
     'typing.OrderedDict': (3, 7),
 }
 
+# This keeps track of aliases in `typing_extensions`, which we treat specially.
+typing_extensions_aliases: Final = {
+    # See: https://github.com/python/mypy/issues/11528
+    'typing_extensions.OrderedDict': 'collections.OrderedDict',
+}
+
 reverse_builtin_aliases: Final = {
     'builtins.list': 'typing.List',
     'builtins.dict': 'typing.Dict',
@@ -957,7 +963,7 @@ class ClassDef(Statement):
     name: str  # Name of the class without module prefix
     fullname: Bogus[str]  # Fully qualified name of the class
     defs: "Block"
-    type_vars: List["mypy.types.TypeVarType"]
+    type_vars: List["mypy.types.TypeVarLikeType"]
     # Base class expressions (not semantically analyzed -- can be arbitrary expressions)
     base_type_exprs: List[Expression]
     # Special base classes like Generic[...] get moved here during semantic analysis
@@ -972,7 +978,7 @@ class ClassDef(Statement):
     def __init__(self,
                  name: str,
                  defs: 'Block',
-                 type_vars: Optional[List['mypy.types.TypeVarType']] = None,
+                 type_vars: Optional[List['mypy.types.TypeVarLikeType']] = None,
                  base_type_exprs: Optional[List[Expression]] = None,
                  metaclass: Optional[Expression] = None,
                  keywords: Optional[List[Tuple[str, Expression]]] = None) -> None:

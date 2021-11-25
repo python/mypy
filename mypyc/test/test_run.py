@@ -52,8 +52,10 @@ files = [
     'run-bench.test',
     'run-mypy-sim.test',
     'run-dunders.test',
-    'run-singledispatch.test'
+    'run-singledispatch.test',
+    'run-attrs.test',
 ]
+
 if sys.version_info >= (3, 7):
     files.append('run-python37.test')
 if sys.version_info >= (3, 8):
@@ -242,6 +244,7 @@ class TestRun(MypycDataSuite):
             check_serialization_roundtrip(ir)
 
         opt_level = int(os.environ.get('MYPYC_OPT_LEVEL', 0))
+        debug_level = int(os.environ.get('MYPYC_DEBUG_LEVEL', 0))
 
         setup_file = os.path.abspath(os.path.join(WORKDIR, 'setup.py'))
         # We pass the C file information to the build script via setup.py unfortunately
@@ -250,7 +253,8 @@ class TestRun(MypycDataSuite):
                                         separate,
                                         cfiles,
                                         self.multi_file,
-                                        opt_level))
+                                        opt_level,
+                                        debug_level))
 
         if not run_setup(setup_file, ['build_ext', '--inplace']):
             if testcase.config.getoption('--mypyc-showc'):

@@ -144,10 +144,12 @@ if USE_MYPYC:
 
     from mypyc.build import mypycify
     opt_level = os.getenv('MYPYC_OPT_LEVEL', '3')
+    debug_level = os.getenv('MYPYC_DEBUG_LEVEL', '1')
     force_multifile = os.getenv('MYPYC_MULTI_FILE', '') == '1'
     ext_modules = mypycify(
         mypyc_targets + ['--config-file=mypy_bootstrap.ini'],
         opt_level=opt_level,
+        debug_level=debug_level,
         # Use multi-file compilation mode on windows because without it
         # our Appveyor builds run out of memory sometimes.
         multi_file=sys.platform == 'win32' or force_multifile,
