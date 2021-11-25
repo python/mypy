@@ -53,7 +53,6 @@ files = [
     'run-mypy-sim.test',
     'run-dunders.test',
     'run-singledispatch.test',
-    'run-attrs-non-auto.test',
     'run-attrs.test',
 ]
 
