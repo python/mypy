@@ -1198,10 +1198,29 @@ def unify_generic_callable(type: CallableType, target: CallableType,
         return_constraint_direction = mypy.constraints.SUBTYPE_OF
 
     constraints: List[mypy.constraints.Constraint] = []
-    for arg_type, target_arg_type in zip(type.arg_types, target.arg_types):
-        c = mypy.constraints.infer_constraints(
-            arg_type, target_arg_type, mypy.constraints.SUPERTYPE_OF)
-        constraints.extend(c)
+    # check by names
+    argument_names_map = {}
+    # `is_unsafe_overlapping_overload_signatures` calls this both ways
+    for i in range(len(target.arg_types)):
+        if target.arg_names[i]:
+            argument_names_map[target.arg_names[i]] = target.arg_types[i]
+    for i in range(len(type.arg_types)):
+        if type.arg_names[i]:
+            argument_names_map[type.arg_names[i]] = type.arg_types[i]
+    for i in range(len(target.arg_types)):
+        if target.arg_names[i]:
+            c = mypy.constraints.infer_constraints(
+                argument_names_map[target.arg_names[i]], target.arg_types[i], mypy.constraints.SUPERTYPE_OF)
+            constraints.extend(c)
+    # check pos-only arguments
+    for arg, target_arg in zip(type.formal_arguments(), target.formal_arguments()):
+        if arg.pos and target_arg.pos:
+            c = mypy.constraints.infer_constraints(
+                arg.type, target_arg.type, mypy.constraints.SUPERTYPE_OF)
+            constraints.extend(c)
+        else:
+            # optimization, no more positional arguments
+            break
     if not ignore_return:
         c = mypy.constraints.infer_constraints(
             type.ret_type, target.ret_type, return_constraint_direction)

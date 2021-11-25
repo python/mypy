@@ -585,7 +585,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # This is to match the direction the implementation's return
                 # needs to be compatible in.
                 if impl_type.variables:
-                    impl = unify_generic_callable(sig1, impl_type,
+                    impl = unify_generic_callable(impl_type, sig1,
                                                   ignore_return=False,
                                                   return_constraint_direction=SUPERTYPE_OF)
                     if impl is None:
