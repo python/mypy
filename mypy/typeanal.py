@@ -1022,7 +1022,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if nested:
                 self.nesting_level -= 1
             self.allow_required = old_allow_required
-            
         if (not allow_param_spec
                 and isinstance(analyzed, ParamSpecType)
                 and analyzed.flavor == ParamSpecFlavor.BARE):
