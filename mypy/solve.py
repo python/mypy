@@ -3,7 +3,7 @@
 from typing import List, Dict, Optional
 from collections import defaultdict
 
-from mypy.types import Type, AnyType, UninhabitedType, TypeVarId, TypeOfAny
+from mypy.types import Type, AnyType, UninhabitedType, TypeVarId, TypeOfAny, get_proper_type
 from mypy.constraints import Constraint, SUPERTYPE_OF
 from mypy.join import join_types
 from mypy.meet import meet_types
@@ -18,21 +18,21 @@ def solve_constraints(vars: List[TypeVarId], constraints: List[Constraint],
     could not be solved.
 
     If a variable has no constraints, if strict=True then arbitrarily
-    pick NoneTyp as the value of the type variable.  If strict=False,
+    pick NoneType as the value of the type variable.  If strict=False,
     pick AnyType.
     """
     # Collect a list of constraints for each type variable.
-    cmap = defaultdict(list)  # type: Dict[TypeVarId, List[Constraint]]
+    cmap: Dict[TypeVarId, List[Constraint]] = defaultdict(list)
     for con in constraints:
         cmap[con.type_var].append(con)
 
-    res = []  # type: List[Optional[Type]]
+    res: List[Optional[Type]] = []
 
     # Solve each type variable separately.
     for tvar in vars:
-        bottom = None  # type: Optional[Type]
-        top = None  # type: Optional[Type]
-        candidate = None  # type: Optional[Type]
+        bottom: Optional[Type] = None
+        top: Optional[Type] = None
+        candidate: Optional[Type] = None
 
         # Process each constraint separately, and calculate the lower and upper
         # bounds based on constraints. Note that we assume that the constraint
@@ -49,6 +49,8 @@ def solve_constraints(vars: List[TypeVarId], constraints: List[Constraint],
                 else:
                     top = meet_types(top, c.target)
 
+        top = get_proper_type(top)
+        bottom = get_proper_type(bottom)
         if isinstance(top, AnyType) or isinstance(bottom, AnyType):
             source_any = top if isinstance(top, AnyType) else bottom
             assert isinstance(source_any, AnyType)

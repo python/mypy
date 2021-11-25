@@ -5,6 +5,8 @@ from typing import Any
 class object:
     def __init__(self) -> None: pass
 
+    __class__ = object
+
     def __new__(cls) -> Any: pass
 
 class type:

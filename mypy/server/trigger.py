@@ -1,13 +1,11 @@
 """AST triggers that are used for fine-grained dependency handling."""
 
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
+from typing_extensions import Final
 
 # Used as a suffix for triggers to handle "from m import *" dependencies (see also
 # make_wildcard_trigger)
 
-WILDCARD_TAG = '[wildcard]'  # type: Final
+WILDCARD_TAG: Final = "[wildcard]"
 
 
 def make_trigger(name: str) -> str:

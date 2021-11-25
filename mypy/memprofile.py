@@ -11,6 +11,7 @@ from typing import List, Dict, Iterable, Tuple, cast
 
 from mypy.nodes import FakeInfo, Node
 from mypy.types import Type
+from mypy.util import get_class_descriptors
 
 
 def collect_memory_stats() -> Tuple[Dict[str, int],
@@ -33,21 +34,25 @@ def collect_memory_stats() -> Tuple[Dict[str, int],
         if hasattr(obj, '__dict__'):
             # Keep track of which class a particular __dict__ is associated with.
             inferred[id(obj.__dict__)] = '%s (__dict__)' % n
-        if isinstance(obj, (Node, Type)):
+        if isinstance(obj, (Node, Type)):  # type: ignore
             if hasattr(obj, '__dict__'):
                 for x in obj.__dict__.values():
                     if isinstance(x, list):
                         # Keep track of which node a list is associated with.
                         inferred[id(x)] = '%s (list)' % n
-            else:
-                for base in type.mro(type(obj)):
-                    for k in getattr(base, '__slots__', ()):
-                        x = getattr(obj, k, None)
-                        if isinstance(x, list):
-                            inferred[id(x)] = '%s (list)' % n
+                    if isinstance(x, tuple):
+                        # Keep track of which node a list is associated with.
+                        inferred[id(x)] = '%s (tuple)' % n
 
-    freqs = {}  # type: Dict[str, int]
-    memuse = {}  # type: Dict[str, int]
+            for k in get_class_descriptors(type(obj)):
+                x = getattr(obj, k, None)
+                if isinstance(x, list):
+                    inferred[id(x)] = '%s (list)' % n
+                if isinstance(x, tuple):
+                    inferred[id(x)] = '%s (tuple)' % n
+
+    freqs: Dict[str, int] = {}
+    memuse: Dict[str, int] = {}
     for obj in objs:
         if id(obj) in inferred:
             name = inferred[id(obj)]

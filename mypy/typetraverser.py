@@ -3,10 +3,10 @@ from typing import Iterable
 from mypy_extensions import trait
 
 from mypy.types import (
-    Type, SyntheticTypeVisitor, AnyType, UninhabitedType, NoneTyp, ErasedType, DeletedType,
+    Type, SyntheticTypeVisitor, AnyType, UninhabitedType, NoneType, ErasedType, DeletedType,
     TypeVarType, LiteralType, Instance, CallableType, TupleType, TypedDictType, UnionType,
     Overloaded, TypeType, CallableArgument, UnboundType, TypeList, StarType, EllipsisType,
-    ForwardRef, PlaceholderType, PartialType, RawExpressionType
+    PlaceholderType, PartialType, RawExpressionType, TypeAliasType, ParamSpecType
 )
 
 
@@ -22,7 +22,7 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
     def visit_uninhabited_type(self, t: UninhabitedType) -> None:
         pass
 
-    def visit_none_type(self, t: NoneTyp) -> None:
+    def visit_none_type(self, t: NoneType) -> None:
         pass
 
     def visit_erased_type(self, t: ErasedType) -> None:
@@ -37,8 +37,11 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
         # definition. We want to traverse everything just once.
         pass
 
-    def visit_literal_type(self, t: LiteralType) -> None:
+    def visit_param_spec(self, t: ParamSpecType) -> None:
         pass
+
+    def visit_literal_type(self, t: LiteralType) -> None:
+        t.fallback.accept(self)
 
     # Composite types
 
@@ -53,16 +56,17 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
 
     def visit_tuple_type(self, t: TupleType) -> None:
         self.traverse_types(t.items)
-        t.fallback.accept(self)
+        t.partial_fallback.accept(self)
 
     def visit_typeddict_type(self, t: TypedDictType) -> None:
         self.traverse_types(t.items.values())
+        t.fallback.accept(self)
 
     def visit_union_type(self, t: UnionType) -> None:
         self.traverse_types(t.items)
 
     def visit_overloaded(self, t: Overloaded) -> None:
-        self.traverse_types(t.items())
+        self.traverse_types(t.items)
 
     def visit_type_type(self, t: TypeType) -> None:
         t.item.accept(self)
@@ -84,9 +88,6 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
     def visit_ellipsis_type(self, t: EllipsisType) -> None:
         pass
 
-    def visit_forwardref_type(self, t: ForwardRef) -> None:
-        pass
-
     def visit_placeholder_type(self, t: PlaceholderType) -> None:
         self.traverse_types(t.args)
 
@@ -95,6 +96,9 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> None:
         pass
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> None:
+        self.traverse_types(t.args)
 
     # Helpers
 

@@ -115,20 +115,20 @@ MypyFile:1(
   ExpressionStmt:2(
     IndexExpr:2(
       NameExpr(x [__main__.x])
-      SliceExpr:-1(
+      SliceExpr:2(
         NameExpr(y [__main__.y])
         NameExpr(z [__main__.z])
         NameExpr(x [__main__.x]))))
   ExpressionStmt:3(
     IndexExpr:3(
       NameExpr(x [__main__.x])
-      SliceExpr:-1(
+      SliceExpr:3(
         <empty>
         <empty>)))
   ExpressionStmt:4(
     IndexExpr:4(
       NameExpr(x [__main__.x])
-      SliceExpr:-1(
+      SliceExpr:4(
         <empty>
         NameExpr(y [__main__.y])))))
 

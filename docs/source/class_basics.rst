@@ -23,10 +23,10 @@ initialized within the class. Mypy infers the types of attributes:
 
    a = A(1)
    a.x = 2  # OK!
-   a.y = 3  # Error: 'A' has no attribute 'y'
+   a.y = 3  # Error: "A" has no attribute "y"
 
 This is a bit like each class having an implicitly defined
-``__slots__`` attribute. This is only enforced during type
+:py:data:`__slots__ <object.__slots__>` attribute. This is only enforced during type
 checking and not when your program is running.
 
 You can declare types of variables in the class body explicitly using
@@ -35,14 +35,14 @@ a type annotation:
 .. code-block:: python
 
    class A:
-       x: List[int]  # Declare attribute 'x' of type List[int]
+       x: list[int]  # Declare attribute 'x' of type list[int]
 
    a = A()
    a.x = [1]     # OK
 
 As in Python generally, a variable defined in the class body can be used
 as a class or an instance variable. (As discussed in the next section, you
-can override this with a ``ClassVar`` annotation.)
+can override this with a :py:data:`~typing.ClassVar` annotation.)
 
 Type comments work as well, if you need to support Python versions earlier
 than 3.6:
@@ -50,7 +50,7 @@ than 3.6:
 .. code-block:: python
 
    class A:
-       x = None  # type: List[int]  # Declare attribute 'x' of type List[int]
+       x = None  # type: list[int]  # Declare attribute 'x' of type list[int]
 
 Note that attribute definitions in the class body that use a type comment
 are special: a ``None`` value is valid as the initializer, even though
@@ -64,7 +64,7 @@ in a method:
 
    class A:
        def __init__(self) -> None:
-           self.x: List[int] = []
+           self.x: list[int] = []
 
        def f(self) -> None:
            self.y: Any = 0
@@ -80,14 +80,14 @@ to it explicitly using ``self``:
            a = self
            a.x = 1      # Error: 'x' not defined
 
-Annotating `__init__` methods
-*****************************
+Annotating __init__ methods
+***************************
 
-The ``__init__`` method is somewhat special -- it doesn't return a
+The :py:meth:`__init__ <object.__init__>` method is somewhat special -- it doesn't return a
 value.  This is best expressed as ``-> None``.  However, since many feel
 this is redundant, it is allowed to omit the return type declaration
-on ``__init__`` methods **if at least one argument is annotated**.  For
-example, in the following classes ``__init__`` is considered fully
+on :py:meth:`__init__ <object.__init__>` methods **if at least one argument is annotated**.  For
+example, in the following classes :py:meth:`__init__ <object.__init__>` is considered fully
 annotated:
 
 .. code-block:: python
@@ -100,7 +100,7 @@ annotated:
        def __init__(self, arg: int):
            self.var = arg
 
-However, if ``__init__`` has no annotated arguments and no return type
+However, if :py:meth:`__init__ <object.__init__>` has no annotated arguments and no return type
 annotation, it is considered an untyped method:
 
 .. code-block:: python
@@ -113,7 +113,7 @@ annotation, it is considered an untyped method:
 Class attribute annotations
 ***************************
 
-You can use a ``ClassVar[t]`` annotation to explicitly declare that a
+You can use a :py:data:`ClassVar[t] <typing.ClassVar>` annotation to explicitly declare that a
 particular attribute should not be set on instances:
 
 .. code-block:: python
@@ -129,14 +129,8 @@ particular attribute should not be set on instances:
   a.x = 1  # Error: Cannot assign to class variable "x" via instance
   print(a.x)  # OK -- can be read through an instance
 
-.. note::
-
-   If you need to support Python 3 versions 3.5.2 or earlier, you have
-   to import ``ClassVar`` from ``typing_extensions`` instead (available on
-   PyPI). If you use Python 2.7, you can import it from ``typing``.
-
 It's not necessary to annotate all class variables using
-``ClassVar``. An attribute without the ``ClassVar`` annotation can
+:py:data:`~typing.ClassVar`. An attribute without the :py:data:`~typing.ClassVar` annotation can
 still be used as a class variable. However, mypy won't prevent it from
 being used as an instance variable, as discussed previously:
 
@@ -150,13 +144,13 @@ being used as an instance variable, as discussed previously:
   a = A()
   a.x = 1  # Also OK
 
-Note that ``ClassVar`` is not a class, and you can't use it with
-``isinstance()`` or ``issubclass()``. It does not change Python
+Note that :py:data:`~typing.ClassVar` is not a class, and you can't use it with
+:py:func:`isinstance` or :py:func:`issubclass`. It does not change Python
 runtime behavior -- it's only for type checkers such as mypy (and
 also helpful for human readers).
 
 You can also omit the square brackets and the variable type in
-a ``ClassVar`` annotation, but this might not do what you'd expect:
+a :py:data:`~typing.ClassVar` annotation, but this might not do what you'd expect:
 
 .. code-block:: python
 
@@ -167,8 +161,8 @@ In this case the type of the attribute will be implicitly ``Any``.
 This behavior will change in the future, since it's surprising.
 
 .. note::
-   A ``ClassVar`` type parameter cannot include type variables:
-   ``ClassVar[T]`` and ``ClassVar[List[T]]``
+   A :py:data:`~typing.ClassVar` type parameter cannot include type variables:
+   ``ClassVar[T]`` and ``ClassVar[list[T]]``
    are both invalid if ``T`` is a type variable (see :ref:`generic-classes`
    for more about type variables).
 
@@ -208,7 +202,7 @@ override has a compatible signature:
 
    You can also vary return types **covariantly** in overriding. For
    example, you could override the return type ``Iterable[int]`` with a
-   subtype such as ``List[int]``. Similarly, you can vary argument types
+   subtype such as ``list[int]``. Similarly, you can vary argument types
    **contravariantly** -- subclasses can have more general argument types.
 
 You can also override a statically typed method with a dynamically
@@ -234,10 +228,10 @@ effect at runtime:
 Abstract base classes and multiple inheritance
 **********************************************
 
-Mypy supports Python abstract base classes (ABCs). Abstract classes
+Mypy supports Python :doc:`abstract base classes <library/abc>` (ABCs). Abstract classes
 have at least one abstract method or property that must be implemented
 by any *concrete* (non-abstract) subclass. You can define abstract base
-classes using the ``abc.ABCMeta`` metaclass and the ``abc.abstractmethod``
+classes using the :py:class:`abc.ABCMeta` metaclass and the :py:func:`@abc.abstractmethod <abc.abstractmethod>`
 function decorator. Example:
 
 .. code-block:: python
@@ -265,11 +259,11 @@ function decorator. Example:
 
 .. note::
 
-   In Python 2.7 you have to use ``@abc.abstractproperty`` to define
+   In Python 2.7 you have to use :py:func:`@abc.abstractproperty <abc.abstractproperty>` to define
    an abstract property.
 
 Note that mypy performs checking for unimplemented abstract methods
-even if you omit the ``ABCMeta`` metaclass. This can be useful if the
+even if you omit the :py:class:`~abc.ABCMeta` metaclass. This can be useful if the
 metaclass would cause runtime metaclass conflicts.
 
 Since you can't create instances of ABCs, they are most commonly used in
@@ -323,3 +317,29 @@ class, including an abstract method defined in an abstract base class.
 
 You can implement an abstract property using either a normal
 property or an instance variable.
+
+Slots
+*****
+
+When a class has explicitly defined
+`__slots__ <https://docs.python.org/3/reference/datamodel.html#slots>`_
+mypy will check that all attributes assigned to are members of `__slots__`.
+
+.. code-block:: python
+
+  class Album:
+      __slots__ = ('name', 'year')
+
+      def __init__(self, name: str, year: int) -> None:
+         self.name = name
+         self.year = year
+         self.released = True  # E: Trying to assign name "released" that is not in "__slots__" of type "Album"
+
+  my_album = Album('Songs about Python', 2021)
+
+Mypy will only check attribute assignments against `__slots__` when the following conditions hold:
+
+1. All base classes (except builtin ones) must have explicit ``__slots__`` defined (mirrors CPython's behaviour)
+2. ``__slots__`` does not include ``__dict__``, since if ``__slots__`` includes ``__dict__``
+   it allows setting any attribute, similar to when ``__slots__`` is not defined (mirrors CPython's behaviour)
+3. All values in ``__slots__`` must be statically known. For example, no variables: only string literals.

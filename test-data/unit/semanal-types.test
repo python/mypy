@@ -147,6 +147,7 @@ class A: pass
 class B: pass
 a, b = None, None # type: (A, B)
 x = a, b
+[builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1(
   ClassDef:2(
@@ -187,7 +188,7 @@ MypyFile:1(
   ClassDef:5(
     A
     TypeVars(
-      t)
+      t`1)
     PassStmt:5())
   ClassDef:6(
     B
@@ -220,8 +221,8 @@ MypyFile:1(
   ClassDef:4(
     A
     TypeVars(
-      t
-      s)
+      t`1
+      s`2)
     PassStmt:4())
   ClassDef:5(
     B
@@ -283,7 +284,7 @@ MypyFile:1(
   ClassDef:4(
     d
     TypeVars(
-      t)
+      t`1)
     PassStmt:4())
   ExpressionStmt:5(
     CastExpr:5(
@@ -347,8 +348,8 @@ MypyFile:1(
   ClassDef:4(
     C
     TypeVars(
-      t
-      s)
+      t`1
+      s`2)
     PassStmt:4())
   ExpressionStmt:5(
     CastExpr:5(
@@ -358,6 +359,7 @@ MypyFile:1(
 [case testCastToTupleType]
 from typing import Tuple, cast
 cast(Tuple[int, str], None)
+[builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [Tuple, cast])
@@ -448,7 +450,7 @@ MypyFile:1(
   ClassDef:3(
     A
     TypeVars(
-      t)
+      t`1)
     PassStmt:3())
   FuncDef:4(
     f
@@ -464,6 +466,7 @@ from typing import TypeVar, Tuple, Generic
 t = TypeVar('t')
 class A(Generic[t]): pass
 def f(x: Tuple[int, t]) -> None: pass
+[builtins fixtures/tuple.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [TypeVar, Tuple, Generic])
@@ -473,7 +476,7 @@ MypyFile:1(
   ClassDef:3(
     A
     TypeVars(
-      t)
+      t`1)
     PassStmt:3())
   FuncDef:4(
     f
@@ -497,7 +500,7 @@ MypyFile:1(
   ClassDef:3(
     A
     TypeVars(
-      t)
+      t`1)
     PassStmt:3())
   FuncDef:4(
     f
@@ -521,7 +524,7 @@ MypyFile:1(
   ClassDef:3(
     A
     TypeVars(
-      t)
+      t`1)
     PassStmt:3())
   FuncDef:4(
     f
@@ -600,7 +603,7 @@ MypyFile:1(
   ClassDef:5(
     c
     TypeVars(
-      t)
+      t`1)
     FuncDef:6(
       f
       Args(
@@ -629,8 +632,8 @@ MypyFile:1(
   ClassDef:6(
     c
     TypeVars(
-      t
-      s)
+      t`1
+      s`2)
     FuncDef:7(
       f
       Args(
@@ -654,12 +657,12 @@ MypyFile:1(
   ClassDef:3(
     d
     TypeVars(
-      t)
+      t`1)
     PassStmt:3())
   ClassDef:4(
     c
     TypeVars(
-      t)
+      t`1)
     BaseType(
       __main__.d[t`1])
     PassStmt:4()))
@@ -700,7 +703,8 @@ MypyFile:1(
 
 [case testInvalidTupleType]
 from typing import Tuple
-t = None # type: Tuple[int, str, ...] # E: Unexpected '...'
+t = None # type: Tuple[int, str, ...] # E: Unexpected "..."
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testFunctionTypes]
@@ -872,8 +876,8 @@ MypyFile:1(
   ClassDef:4(
     A
     TypeVars(
-      t
-      s)
+      t`1
+      s`2)
     PassStmt:4())
   AssignmentStmt:5(
     NameExpr(x [__main__.x])
@@ -898,12 +902,12 @@ MypyFile:1(
   ClassDef:4(
     B
     TypeVars(
-      s)
+      s`1)
     PassStmt:4())
   ClassDef:5(
     A
     TypeVars(
-      t)
+      t`1)
     BaseType(
       __main__.B[Any])
     PassStmt:5()))
@@ -922,7 +926,7 @@ MypyFile:1(
   ClassDef:3(
     A
     TypeVars(
-      t)
+      t`1)
     PassStmt:3())
   AssignmentStmt:4(
     NameExpr(x* [__main__.x])
@@ -951,8 +955,8 @@ MypyFile:1(
   ClassDef:4(
     A
     TypeVars(
-      t
-      s)
+      t`1
+      s`2)
     PassStmt:4())
   AssignmentStmt:5(
     NameExpr(x* [__main__.x])
@@ -1005,7 +1009,7 @@ MypyFile:1(
   ClassDef:3(
     A
     TypeVars(
-      t)
+      t`1)
     PassStmt:3())
   ExpressionStmt:4(
     CallExpr:4(
@@ -1047,7 +1051,7 @@ MypyFile:1(
   ClassDef:4(
     A
     TypeVars(
-      T)
+      T`1)
     PassStmt:4()))
 
 [case testQualifiedTypevar]
@@ -1145,7 +1149,7 @@ MypyFile:1(
   ClassDef:3(
     A
     TypeVars(
-      T)
+      T`1)
     AssignmentStmt:4(
       NameExpr(y [m])
       NameExpr(None [builtins.None])
@@ -1168,7 +1172,7 @@ MypyFile:1(
   ClassDef:3(
     A
     TypeVars(
-      _m.T)
+      _m.T`1)
     AssignmentStmt:4(
       NameExpr(a [m])
       NameExpr(None [builtins.None])
@@ -1280,6 +1284,35 @@ MypyFile:1(
         builtins.int
         builtins.str))))
 
+[case testTypevarWithFalseVariance]
+from typing import TypeVar
+T1 = TypeVar('T1', covariant=False)
+T2 = TypeVar('T2', covariant=False, contravariant=False)
+T3 = TypeVar('T3', contravariant=False)
+T4 = TypeVar('T4', covariant=True, contravariant=False)
+T5 = TypeVar('T5', covariant=False, contravariant=True)
+[builtins fixtures/bool.pyi]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar])
+  AssignmentStmt:2(
+    NameExpr(T1* [__main__.T1])
+    TypeVarExpr:2())
+  AssignmentStmt:3(
+    NameExpr(T2* [__main__.T2])
+    TypeVarExpr:3())
+  AssignmentStmt:4(
+    NameExpr(T3* [__main__.T3])
+    TypeVarExpr:4())
+  AssignmentStmt:5(
+    NameExpr(T4* [__main__.T4])
+    TypeVarExpr:5(
+      Variance(COVARIANT)))
+  AssignmentStmt:6(
+    NameExpr(T5* [__main__.T5])
+    TypeVarExpr:6(
+      Variance(CONTRAVARIANT))))
+
 [case testTypevarWithBound]
 from typing import TypeVar
 T = TypeVar('T', bound=int)
@@ -1328,7 +1361,7 @@ MypyFile:1(
   ClassDef:3(
     C
     TypeVars(
-      T in (builtins.int, builtins.str))
+      T`1)
     PassStmt:3()))
 
 [case testGenericFunctionWithBound]
@@ -1364,18 +1397,18 @@ MypyFile:1(
   ClassDef:3(
     C
     TypeVars(
-      T <: builtins.int)
+      T`1)
     PassStmt:3()))
 
 [case testSimpleDucktypeDecorator]
 from typing import _promote
 @_promote(str)
 class S: pass
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-medium.pyi]
 [out]
 MypyFile:1(
   ImportFrom:1(typing, [_promote])
-  ClassDef:2(
+  ClassDef:3(
     S
     Promote(builtins.str)
     Decorators(
@@ -1478,7 +1511,7 @@ def f(x: (int, int)) -> None: pass
 main:1: error: Syntax error in type annotation
 main:1: note: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
 
-[case tesQualifiedTypeNameBasedOnAny]
+[case testQualifiedTypeNameBasedOnAny]
 from typing import Any
 x = 0 # type: Any
 z = 0 # type: x.y
@@ -1493,3 +1526,14 @@ MypyFile:1(
     NameExpr(z [__main__.z])
     IntExpr(0)
     Any))
+
+
+[case testParamSpec]
+from typing import ParamSpec
+P = ParamSpec("P")
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [ParamSpec])
+  AssignmentStmt:2(
+    NameExpr(P* [__main__.P])
+    ParamSpecExpr:2()))

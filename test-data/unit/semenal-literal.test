@@ -6,11 +6,11 @@ MypyFile:1(
   ImportFrom:1(typing_extensions, [Literal])
   AssignmentStmt:2(
     NameExpr(foo [__main__.foo])
-    TempNode:-1(
+    TempNode:2(
       Any)
     Literal[3]))
 
-[case testLiteralSemenalInFunction]
+[case testLiteralSemanalInFunction]
 from typing_extensions import Literal
 def foo(a: Literal[1], b: Literal["  foo  "]) -> Literal[True]: pass
 [builtins fixtures/bool.pyi]

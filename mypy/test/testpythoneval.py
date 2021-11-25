@@ -13,17 +13,19 @@ Note: These test cases are *not* included in the main test suite, as including
 import os
 import os.path
 import re
+import subprocess
+from subprocess import PIPE
 import sys
 from tempfile import TemporaryDirectory
 
-import pytest  # type: ignore  # no pytest in typeshed
+import pytest
 
 from typing import List
 
 from mypy.defaults import PYTHON3_VERSION
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
-from mypy.test.helpers import assert_string_arrays_equal, run_command
+from mypy.test.helpers import assert_string_arrays_equal, split_lines
 from mypy.util import try_find_python2_interpreter
 from mypy import api
 
@@ -49,15 +51,14 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
     version.
     """
     assert testcase.old_cwd is not None, "test was not properly set up"
+    # We must enable site packages to get access to installed stubs.
     # TODO: Enable strict optional for these tests
     mypy_cmdline = [
         '--show-traceback',
-        '--no-site-packages',
         '--no-strict-optional',
         '--no-silence-site-packages',
+        '--no-error-summary',
     ]
-    if testcase.name.lower().endswith('_newsemanal'):
-        mypy_cmdline.append('--new-semantic-analyzer')
     py2 = testcase.name.lower().endswith('python2')
     if py2:
         mypy_cmdline.append('--py2')
@@ -70,6 +71,10 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
     else:
         interpreter = python3_path
         mypy_cmdline.append('--python-version={}'.format('.'.join(map(str, PYTHON3_VERSION))))
+
+    m = re.search('# flags: (.*)$', '\n'.join(testcase.input), re.MULTILINE)
+    if m:
+        mypy_cmdline.extend(m.group(1).split())
 
     # Write the program to a file.
     program = '_' + testcase.name + '.py'
@@ -87,11 +92,14 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
         if line.startswith(test_temp_dir + os.sep):
             output.append(line[len(test_temp_dir + os.sep):].rstrip("\r\n"))
         else:
+            # Normalize paths so that the output is the same on Windows and Linux/macOS.
+            line = line.replace(test_temp_dir + os.sep, test_temp_dir + '/')
             output.append(line.rstrip("\r\n"))
     if returncode == 0:
         # Execute the program.
-        returncode, interp_out = run_command([interpreter, program])
-        output.extend(interp_out)
+        proc = subprocess.run([interpreter, '-Wignore', program],
+                              cwd=test_temp_dir, stdout=PIPE, stderr=PIPE)
+        output.extend(split_lines(proc.stdout, proc.stderr))
     # Remove temp file.
     os.remove(program_path)
     for i, line in enumerate(output):

@@ -7,6 +7,7 @@ from mypy.nodes import (
     SliceExpr, CastExpr, RevealExpr, UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr,
     IndexExpr, GeneratorExpr, ListComprehension, SetComprehension, DictionaryComprehension,
     ConditionalExpr, TypeApplication, LambdaExpr, StarExpr, BackquoteExpr, AwaitExpr,
+    AssignmentExpr,
 )
 from mypy.traverser import TraverserVisitor
 
@@ -19,7 +20,7 @@ def get_subexpressions(node: Node) -> List[Expression]:
 
 class SubexpressionFinder(TraverserVisitor):
     def __init__(self) -> None:
-        self.expressions = []  # type: List[Expression]
+        self.expressions: List[Expression] = []
 
     def visit_int_expr(self, o: Expression) -> None:
         self.add(o)
@@ -101,6 +102,10 @@ class SubexpressionFinder(TraverserVisitor):
     def visit_reveal_expr(self, e: RevealExpr) -> None:
         self.add(e)
         super().visit_reveal_expr(e)
+
+    def visit_assignment_expr(self, e: AssignmentExpr) -> None:
+        self.add(e)
+        super().visit_assignment_expr(e)
 
     def visit_unary_expr(self, e: UnaryExpr) -> None:
         self.add(e)

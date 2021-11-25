@@ -41,7 +41,7 @@ from types import MethodType as _MethodType, BuiltinMethodType as _BuiltinMethod
 from math import log as _log, exp as _exp, pi as _pi, e as _e, ceil as _ceil
 from math import sqrt as _sqrt, acos as _acos, cos as _cos, sin as _sin
 from os import urandom as _urandom
-from collections import Set as _Set, Sequence as _Sequence
+from collections.abc import Set as _Set, Sequence as _Sequence
 from hashlib import sha512 as _sha512
 
 from typing import (
@@ -238,7 +238,7 @@ class Random(_random.Random):
             while r >= n:
                 r = getrandbits(k)
             return r
-        # There's an overriden random() method but no new getrandbits() method,
+        # There's an overridden random() method but no new getrandbits() method,
         # so we can only use random() from here.
         random = self.random
         if n >= maxsize:

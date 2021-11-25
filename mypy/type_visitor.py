@@ -12,33 +12,28 @@ other modules refer to them.
 """
 
 from abc import abstractmethod
-from collections import OrderedDict
-from typing import Generic, TypeVar, cast, Any, List, Callable, Iterable, Optional
-from mypy_extensions import trait
+from mypy.backports import OrderedDict
+from typing import Generic, TypeVar, cast, Any, List, Callable, Iterable, Optional, Set, Sequence
+from mypy_extensions import trait, mypyc_attr
 
 T = TypeVar('T')
 
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, TupleType, TypedDictType, LiteralType,
-    RawExpressionType, Instance, NoneTyp, TypeType,
-    UnionType, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
-    UnboundType, ErasedType, ForwardRef, StarType, EllipsisType, TypeList, CallableArgument,
-    PlaceholderType,
+    RawExpressionType, Instance, NoneType, TypeType,
+    UnionType, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarLikeType,
+    UnboundType, ErasedType, StarType, EllipsisType, TypeList, CallableArgument,
+    PlaceholderType, TypeAliasType, ParamSpecType, get_proper_type
 )
 
 
 @trait
+@mypyc_attr(allow_interpreted_subclasses=True)
 class TypeVisitor(Generic[T]):
     """Visitor class for types (Type subclasses).
 
     The parameter T is the return type of the visit methods.
     """
-
-    def _notimplemented_helper(self, name: str) -> NotImplementedError:
-        return NotImplementedError("Method {}.visit_{}() not implemented\n"
-                                   .format(type(self).__name__, name)
-                                   + "This is a known bug, track development in "
-                                   + "'https://github.com/JukkaL/mypy/issues/730'")
 
     @abstractmethod
     def visit_unbound_type(self, t: UnboundType) -> T:
@@ -49,15 +44,16 @@ class TypeVisitor(Generic[T]):
         pass
 
     @abstractmethod
-    def visit_none_type(self, t: NoneTyp) -> T:
+    def visit_none_type(self, t: NoneType) -> T:
         pass
 
     @abstractmethod
     def visit_uninhabited_type(self, t: UninhabitedType) -> T:
         pass
 
+    @abstractmethod
     def visit_erased_type(self, t: ErasedType) -> T:
-        raise self._notimplemented_helper('erased_type')
+        pass
 
     @abstractmethod
     def visit_deleted_type(self, t: DeletedType) -> T:
@@ -68,6 +64,10 @@ class TypeVisitor(Generic[T]):
         pass
 
     @abstractmethod
+    def visit_param_spec(self, t: ParamSpecType) -> T:
+        pass
+
+    @abstractmethod
     def visit_instance(self, t: Instance) -> T:
         pass
 
@@ -75,8 +75,9 @@ class TypeVisitor(Generic[T]):
     def visit_callable_type(self, t: CallableType) -> T:
         pass
 
+    @abstractmethod
     def visit_overloaded(self, t: Overloaded) -> T:
-        raise self._notimplemented_helper('overloaded')
+        pass
 
     @abstractmethod
     def visit_tuple_type(self, t: TupleType) -> T:
@@ -102,14 +103,13 @@ class TypeVisitor(Generic[T]):
     def visit_type_type(self, t: TypeType) -> T:
         pass
 
-    def visit_forwardref_type(self, t: ForwardRef) -> T:
-        raise RuntimeError('Internal error: unresolved forward reference')
-
-    def visit_placeholder_type(self, t: PlaceholderType) -> T:
-        raise RuntimeError('Internal error: unresolved placeholder type {}'.format(t.fullname))
+    @abstractmethod
+    def visit_type_alias_type(self, t: TypeAliasType) -> T:
+        pass
 
 
 @trait
+@mypyc_attr(allow_interpreted_subclasses=True)
 class SyntheticTypeVisitor(TypeVisitor[T]):
     """A TypeVisitor that also knows how to visit synthetic AST constructs.
 
@@ -135,8 +135,12 @@ class SyntheticTypeVisitor(TypeVisitor[T]):
     def visit_raw_expression_type(self, t: RawExpressionType) -> T:
         pass
 
+    @abstractmethod
+    def visit_placeholder_type(self, t: PlaceholderType) -> T:
+        pass
 
-@trait
+
+@mypyc_attr(allow_interpreted_subclasses=True)
 class TypeTranslator(TypeVisitor[Type]):
     """Identity type transformation.
 
@@ -150,7 +154,7 @@ class TypeTranslator(TypeVisitor[Type]):
     def visit_any(self, t: AnyType) -> Type:
         return t
 
-    def visit_none_type(self, t: NoneTyp) -> Type:
+    def visit_none_type(self, t: NoneType) -> Type:
         return t
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> Type:
@@ -163,20 +167,23 @@ class TypeTranslator(TypeVisitor[Type]):
         return t
 
     def visit_instance(self, t: Instance) -> Type:
-        final_value = None  # type: Optional[LiteralType]
-        if t.final_value is not None:
-            raw_final_value = t.final_value.accept(self)
-            assert isinstance(raw_final_value, LiteralType)
-            final_value = raw_final_value
+        last_known_value: Optional[LiteralType] = None
+        if t.last_known_value is not None:
+            raw_last_known_value = t.last_known_value.accept(self)
+            assert isinstance(raw_last_known_value, LiteralType)  # type: ignore
+            last_known_value = raw_last_known_value
         return Instance(
             typ=t.type,
             args=self.translate_types(t.args),
             line=t.line,
             column=t.column,
-            final_value=final_value,
+            last_known_value=last_known_value,
         )
 
     def visit_type_var(self, t: TypeVarType) -> Type:
+        return t
+
+    def visit_param_spec(self, t: ParamSpecType) -> Type:
         return t
 
     def visit_partial_type(self, t: PartialType) -> Type:
@@ -190,7 +197,7 @@ class TypeTranslator(TypeVisitor[Type]):
     def visit_tuple_type(self, t: TupleType) -> Type:
         return TupleType(self.translate_types(t.items),
                          # TODO: This appears to be unsafe.
-                         cast(Any, t.fallback.accept(self)),
+                         cast(Any, t.partial_fallback.accept(self)),
                          t.line, t.column)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
@@ -206,7 +213,7 @@ class TypeTranslator(TypeVisitor[Type]):
 
     def visit_literal_type(self, t: LiteralType) -> Type:
         fallback = t.fallback.accept(self)
-        assert isinstance(fallback, Instance)
+        assert isinstance(fallback, Instance)  # type: ignore
         return LiteralType(
             value=t.value,
             fallback=fallback,
@@ -217,45 +224,52 @@ class TypeTranslator(TypeVisitor[Type]):
     def visit_union_type(self, t: UnionType) -> Type:
         return UnionType(self.translate_types(t.items), t.line, t.column)
 
-    def translate_types(self, types: List[Type]) -> List[Type]:
+    def translate_types(self, types: Iterable[Type]) -> List[Type]:
         return [t.accept(self) for t in types]
 
     def translate_variables(self,
-                            variables: List[TypeVarDef]) -> List[TypeVarDef]:
+                            variables: Sequence[TypeVarLikeType]) -> Sequence[TypeVarLikeType]:
         return variables
 
     def visit_overloaded(self, t: Overloaded) -> Type:
-        items = []  # type: List[CallableType]
-        for item in t.items():
+        items: List[CallableType] = []
+        for item in t.items:
             new = item.accept(self)
-            if isinstance(new, CallableType):
-                items.append(new)
-            else:
-                raise RuntimeError('CallableType expected, but got {}'.format(type(new)))
+            assert isinstance(new, CallableType)  # type: ignore
+            items.append(new)
         return Overloaded(items=items)
 
     def visit_type_type(self, t: TypeType) -> Type:
         return TypeType.make_normalized(t.item.accept(self), line=t.line, column=t.column)
 
-    def visit_forwardref_type(self, t: ForwardRef) -> Type:
-        return t
+    @abstractmethod
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
+        # This method doesn't have a default implementation for type translators,
+        # because type aliases are special: some information is contained in the
+        # TypeAlias node, and we normally don't generate new nodes. Every subclass
+        # must implement this depending on its semantics.
+        pass
 
-    def visit_placeholder_type(self, t: PlaceholderType) -> Type:
-        return PlaceholderType(t.fullname, self.translate_types(t.args), t.line)
 
-
-@trait
+@mypyc_attr(allow_interpreted_subclasses=True)
 class TypeQuery(SyntheticTypeVisitor[T]):
     """Visitor for performing queries of types.
 
-    strategy is used to combine results for a series of types
+    strategy is used to combine results for a series of types,
+    common use cases involve a boolean query using `any` or `all`.
 
-    Common use cases involve a boolean query using `any` or `all`
+    Note: this visitor keeps an internal state (tracks type aliases to avoid
+    recursion), so it should *never* be re-used for querying different types,
+    create a new visitor instance instead.
+
+    # TODO: check that we don't have existing violations of this rule.
     """
 
     def __init__(self, strategy: Callable[[Iterable[T]], T]) -> None:
         self.strategy = strategy
-        self.seen = []  # type: List[Type]
+        # Keep track of the type aliases already visited. This is needed to avoid
+        # infinite recursion on types like A = Union[int, List[A]].
+        self.seen_aliases: Set[TypeAliasType] = set()
 
     def visit_unbound_type(self, t: UnboundType) -> T:
         return self.query_types(t.args)
@@ -272,7 +286,7 @@ class TypeQuery(SyntheticTypeVisitor[T]):
     def visit_uninhabited_type(self, t: UninhabitedType) -> T:
         return self.strategy([])
 
-    def visit_none_type(self, t: NoneTyp) -> T:
+    def visit_none_type(self, t: NoneType) -> T:
         return self.strategy([])
 
     def visit_erased_type(self, t: ErasedType) -> T:
@@ -282,10 +296,13 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return self.strategy([])
 
     def visit_type_var(self, t: TypeVarType) -> T:
+        return self.query_types([t.upper_bound] + t.values)
+
+    def visit_param_spec(self, t: ParamSpecType) -> T:
         return self.strategy([])
 
     def visit_partial_type(self, t: PartialType) -> T:
-        return self.query_types(t.inner_types)
+        return self.strategy([])
 
     def visit_instance(self, t: Instance) -> T:
         return self.query_types(t.args)
@@ -313,16 +330,10 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return self.query_types(t.items)
 
     def visit_overloaded(self, t: Overloaded) -> T:
-        return self.query_types(t.items())
+        return self.query_types(t.items)
 
     def visit_type_type(self, t: TypeType) -> T:
         return t.item.accept(self)
-
-    def visit_forwardref_type(self, t: ForwardRef) -> T:
-        if t.resolved:
-            return t.resolved.accept(self)
-        else:
-            return t.unbound.accept(self)
 
     def visit_ellipsis_type(self, t: EllipsisType) -> T:
         return self.strategy([])
@@ -330,18 +341,23 @@ class TypeQuery(SyntheticTypeVisitor[T]):
     def visit_placeholder_type(self, t: PlaceholderType) -> T:
         return self.query_types(t.args)
 
+    def visit_type_alias_type(self, t: TypeAliasType) -> T:
+        return get_proper_type(t).accept(self)
+
     def query_types(self, types: Iterable[Type]) -> T:
         """Perform a query for a list of types.
 
         Use the strategy to combine the results.
-        Skip types already visited types to avoid infinite recursion.
-        Note: types can be recursive until they are fully analyzed and "unentangled"
-        in patches after the semantic analysis.
+        Skip type aliases already visited types to avoid infinite recursion.
         """
-        res = []  # type: List[T]
+        res: List[T] = []
         for t in types:
-            if any(t is s for s in self.seen):
-                continue
-            self.seen.append(t)
+            if isinstance(t, TypeAliasType):
+                # Avoid infinite recursion for recursive type aliases.
+                # TODO: Ideally we should fire subvisitors here (or use caching) if we care
+                #       about duplicates.
+                if t in self.seen_aliases:
+                    continue
+                self.seen_aliases.add(t)
             res.append(t.accept(self))
         return self.strategy(res)

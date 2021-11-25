@@ -1,12 +1,14 @@
+from mypy.util import unnamed_function
+import copy
+import re
 import sys
+import warnings
 
+import typing  # for typing.Type, which conflicts with types.Type
 from typing import (
-    Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List, overload
+    Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List
 )
-MYPY = False
-if MYPY:
-    import typing  # for typing.Type, which conflicts with types.Type
-    from typing_extensions import Final
+from typing_extensions import Final, Literal, overload
 
 from mypy.sharedparse import (
     special_function_elide_names, argument_elide_name,
@@ -21,80 +23,115 @@ from mypy.nodes import (
     TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
     DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
-    UnaryExpr, LambdaExpr, ComparisonExpr,
+    UnaryExpr, LambdaExpr, ComparisonExpr, AssignmentExpr,
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
     AwaitExpr, TempNode, Expression, Statement,
-    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR2,
+    ArgKind, ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR2,
     check_arg_names,
     FakeInfo,
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType, CallableArgument,
-    TypeOfAny, Instance, RawExpressionType,
+    TypeOfAny, Instance, RawExpressionType, ProperType, UnionType,
 )
 from mypy import defaults
-from mypy import message_registry
+from mypy import message_registry, errorcodes as codes
 from mypy.errors import Errors
 from mypy.options import Options
+from mypy.reachability import mark_block_unreachable
 
 try:
-    from typed_ast import ast3
-    from typed_ast.ast3 import (
-        AST,
-        Call,
-        FunctionType,
-        Name,
-        Attribute,
-        Ellipsis as ast3_Ellipsis,
-        Starred,
-        NameConstant,
-        Expression as ast3_Expression,
-        Str,
-        Bytes,
-        Index,
-        Num,
-        UnaryOp,
-        USub,
-    )
-except ImportError:
-    if sys.version_info.minor > 2:
-        try:
-            from typed_ast import ast35  # type: ignore
-        except ImportError:
-            print('The typed_ast package is not installed.\n'
-                  'You can install it with `python3 -m pip install typed-ast`.',
-                  file=sys.stderr)
-        else:
-            print('You need a more recent version of the typed_ast package.\n'
-                  'You can update to the latest version with '
-                  '`python3 -m pip install -U typed-ast`.',
-                  file=sys.stderr)
+    # pull this into a final variable to make mypyc be quiet about the
+    # the default argument warning
+    PY_MINOR_VERSION: Final = sys.version_info[1]
+
+    # Check if we can use the stdlib ast module instead of typed_ast.
+    if sys.version_info >= (3, 8):
+        import ast as ast3
+        assert 'kind' in ast3.Constant._fields, \
+               "This 3.8.0 alpha (%s) is too old; 3.8.0a3 required" % sys.version.split()[0]
+        # TODO: Num, Str, Bytes, NameConstant, Ellipsis are deprecated in 3.8.
+        # TODO: Index, ExtSlice are deprecated in 3.9.
+        from ast import (
+            AST,
+            Call,
+            FunctionType,
+            Name,
+            Attribute,
+            Ellipsis as ast3_Ellipsis,
+            Starred,
+            NameConstant,
+            Expression as ast3_Expression,
+            Str,
+            Bytes,
+            Index,
+            Num,
+            UnaryOp,
+            USub,
+        )
+
+        def ast3_parse(source: Union[str, bytes], filename: str, mode: str,
+                       feature_version: int = PY_MINOR_VERSION) -> AST:
+            return ast3.parse(source, filename, mode,
+                              type_comments=True,  # This works the magic
+                              feature_version=feature_version)
+
+        NamedExpr = ast3.NamedExpr
+        Constant = ast3.Constant
     else:
-        print('Mypy requires the typed_ast package, which is only compatible with\n'
-              'Python 3.3 and greater.', file=sys.stderr)
+        from typed_ast import ast3
+        from typed_ast.ast3 import (
+            AST,
+            Call,
+            FunctionType,
+            Name,
+            Attribute,
+            Ellipsis as ast3_Ellipsis,
+            Starred,
+            NameConstant,
+            Expression as ast3_Expression,
+            Str,
+            Bytes,
+            Index,
+            Num,
+            UnaryOp,
+            USub,
+        )
+
+        def ast3_parse(source: Union[str, bytes], filename: str, mode: str,
+                       feature_version: int = PY_MINOR_VERSION) -> AST:
+            return ast3.parse(source, filename, mode, feature_version=feature_version)
+
+        # These don't exist before 3.8
+        NamedExpr = Any
+        Constant = Any
+except ImportError:
+    try:
+        from typed_ast import ast35  # type: ignore[attr-defined]  # noqa: F401
+    except ImportError:
+        print('The typed_ast package is not installed.\n'
+              'You can install it with `python3 -m pip install typed-ast`.',
+              file=sys.stderr)
+    else:
+        print('You need a more recent version of the typed_ast package.\n'
+              'You can update to the latest version with '
+              '`python3 -m pip install -U typed-ast`.',
+              file=sys.stderr)
     sys.exit(1)
 
 N = TypeVar('N', bound=Node)
 
 # There is no way to create reasonable fallbacks at this stage,
 # they must be patched later.
-MISSING_FALLBACK = FakeInfo("fallback can't be filled out until semanal")  # type: Final
-_dummy_fallback = Instance(MISSING_FALLBACK, [], -1)  # type: Final
+MISSING_FALLBACK: Final = FakeInfo("fallback can't be filled out until semanal")
+_dummy_fallback: Final = Instance(MISSING_FALLBACK, [], -1)
 
-TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'  # type: Final
+TYPE_COMMENT_SYNTAX_ERROR: Final = "syntax error in type comment"
 
+INVALID_TYPE_IGNORE: Final = 'Invalid "type: ignore" comment'
 
-# Older versions of typing don't allow using overload outside stubs,
-# so provide a dummy.
-# mypyc doesn't like function declarations nested in if statements
-def _overload(x: Any) -> Any:
-    return x
-
-
-# mypyc doesn't like unreachable code, so trick mypy into thinking the branch is reachable
-if bool() or sys.version_info < (3, 6):
-    overload = _overload  # noqa
+TYPE_IGNORE_PATTERN: Final = re.compile(r'[^#]*#\s*type:\s*ignore\s*(.*)')
 
 
 def parse(source: Union[str, bytes],
@@ -122,7 +159,10 @@ def parse(source: Union[str, bytes],
         else:
             assert options.python_version[0] >= 3
             feature_version = options.python_version[1]
-        ast = ast3.parse(source, fnam, 'exec', feature_version=feature_version)
+        # Disable deprecation warnings about \u
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=DeprecationWarning)
+            ast = ast3_parse(source, fnam, 'exec', feature_version=feature_version)
 
         tree = ASTConverter(options=options,
                             is_stub=is_stub_file,
@@ -131,8 +171,16 @@ def parse(source: Union[str, bytes],
         tree.path = fnam
         tree.is_stub = is_stub_file
     except SyntaxError as e:
-        errors.report(e.lineno, e.offset, e.msg, blocker=True)
-        tree = MypyFile([], [], False, set())
+        # alias to please mypyc
+        is_py38_or_earlier = sys.version_info < (3, 9)
+        if is_py38_or_earlier and e.filename == "<fstring>":
+            # In Python 3.8 and earlier, syntax errors in f-strings have lineno relative to the
+            # start of the f-string. This would be misleading, as mypy will report the error as the
+            # lineno within the file.
+            e.lineno = None
+        errors.report(e.lineno if e.lineno is not None else -1, e.offset, e.msg, blocker=True,
+                      code=codes.SYNTAX)
+        tree = MypyFile([], [], False, {})
 
     if raise_on_error and errors.is_errors():
         errors.raise_error()
@@ -140,27 +188,68 @@ def parse(source: Union[str, bytes],
     return tree
 
 
+def parse_type_ignore_tag(tag: Optional[str]) -> Optional[List[str]]:
+    """Parse optional "[code, ...]" tag after "# type: ignore".
+
+    Return:
+     * [] if no tag was found (ignore all errors)
+     * list of ignored error codes if a tag was found
+     * None if the tag was invalid.
+    """
+    if not tag or tag.strip() == '' or tag.strip().startswith('#'):
+        # No tag -- ignore all errors.
+        return []
+    m = re.match(r'\s*\[([^]#]*)\]\s*(#.*)?$', tag)
+    if m is None:
+        # Invalid "# type: ignore" comment.
+        return None
+    return [code.strip() for code in m.group(1).split(',')]
+
+
 def parse_type_comment(type_comment: str,
                        line: int,
+                       column: int,
                        errors: Optional[Errors],
                        assume_str_is_unicode: bool = True,
-                       ) -> Optional[Type]:
+                       ) -> Tuple[Optional[List[str]], Optional[ProperType]]:
+    """Parse type portion of a type comment (+ optional type ignore).
+
+    Return (ignore info, parsed type).
+    """
     try:
-        typ = ast3.parse(type_comment, '<type_comment>', 'eval')
-    except SyntaxError as e:
+        typ = ast3_parse(type_comment, '<type_comment>', 'eval')
+    except SyntaxError:
         if errors is not None:
-            errors.report(line, e.offset, TYPE_COMMENT_SYNTAX_ERROR, blocker=True)
-            return None
+            stripped_type = type_comment.split("#", 2)[0].strip()
+            err_msg = '{} "{}"'.format(TYPE_COMMENT_SYNTAX_ERROR, stripped_type)
+            errors.report(line, column, err_msg, blocker=True, code=codes.SYNTAX)
+            return None, None
         else:
             raise
     else:
+        extra_ignore = TYPE_IGNORE_PATTERN.match(type_comment)
+        if extra_ignore:
+            # Typeshed has a non-optional return type for group!
+            tag: Optional[str] = cast(Any, extra_ignore).group(1)
+            ignored: Optional[List[str]] = parse_type_ignore_tag(tag)
+            if ignored is None:
+                if errors is not None:
+                    errors.report(line, column, INVALID_TYPE_IGNORE, code=codes.SYNTAX)
+                else:
+                    raise SyntaxError
+        else:
+            ignored = None
         assert isinstance(typ, ast3_Expression)
-        return TypeConverter(errors, line=line,
-                             assume_str_is_unicode=assume_str_is_unicode).visit(typ.body)
+        converted = TypeConverter(errors,
+                                  line=line,
+                                  override_column=column,
+                                  assume_str_is_unicode=assume_str_is_unicode,
+                                  is_evaluated=False).visit(typ.body)
+        return ignored, converted
 
 
 def parse_type_string(expr_string: str, expr_fallback_name: str,
-                      line: int, column: int, assume_str_is_unicode: bool = True) -> Type:
+                      line: int, column: int, assume_str_is_unicode: bool = True) -> ProperType:
     """Parses a type that was originally present inside of an explicit string,
     byte string, or unicode string.
 
@@ -176,11 +265,13 @@ def parse_type_string(expr_string: str, expr_fallback_name: str,
     code with unicode_literals...) and setting `assume_str_is_unicode` accordingly.
     """
     try:
-        node = parse_type_comment(expr_string.strip(), line=line, errors=None,
-                                  assume_str_is_unicode=assume_str_is_unicode)
+        _, node = parse_type_comment(expr_string.strip(), line=line, column=column, errors=None,
+                                     assume_str_is_unicode=assume_str_is_unicode)
         if isinstance(node, UnboundType) and node.original_str_expr is None:
             node.original_str_expr = expr_string
             node.original_str_fallback = expr_fallback_name
+            return node
+        elif isinstance(node, UnionType):
             return node
         else:
             return RawExpressionType(expr_string, expr_fallback_name, line, column)
@@ -204,21 +295,29 @@ class ASTConverter:
                  options: Options,
                  is_stub: bool,
                  errors: Errors) -> None:
-        self.class_nesting = 0
-        self.imports = []  # type: List[ImportBase]
+        # 'C' for class, 'F' for function
+        self.class_and_function_stack: List[Literal["C", "F"]] = []
+        self.imports: List[ImportBase] = []
 
         self.options = options
         self.is_stub = is_stub
         self.errors = errors
 
+        self.type_ignores: Dict[int, List[str]] = {}
+
         # Cache of visit_X methods keyed by type of visited object
-        self.visitor_cache = {}  # type: Dict[type, Callable[[Optional[AST]], Any]]
+        self.visitor_cache: Dict[type, Callable[[Optional[AST]], Any]] = {}
 
     def note(self, msg: str, line: int, column: int) -> None:
-        self.errors.report(line, column, msg, severity='note')
+        self.errors.report(line, column, msg, severity='note', code=codes.SYNTAX)
 
-    def fail(self, msg: str, line: int, column: int) -> None:
-        self.errors.report(line, column, msg, blocker=True)
+    def fail(self,
+             msg: str,
+             line: int,
+             column: int,
+             blocker: bool = True) -> None:
+        if blocker or not self.options.ignore_errors:
+            self.errors.report(line, column, msg, blocker=blocker, code=codes.SYNTAX)
 
     def visit(self, node: Optional[AST]) -> Any:
         if node is None:
@@ -231,26 +330,64 @@ class ASTConverter:
             self.visitor_cache[typeobj] = visitor
         return visitor(node)
 
-    def set_line(self, node: N, n: Union[ast3.expr, ast3.stmt]) -> N:
+    def set_line(self, node: N, n: Union[ast3.expr, ast3.stmt, ast3.ExceptHandler]) -> N:
         node.line = n.lineno
         node.column = n.col_offset
+        node.end_line = getattr(n, "end_lineno", None) if isinstance(n, ast3.expr) else None
         return node
 
-    def translate_expr_list(self, l: Sequence[AST]) -> List[Expression]:
-        res = []  # type: List[Expression]
+    def translate_opt_expr_list(self, l: Sequence[Optional[AST]]) -> List[Optional[Expression]]:
+        res: List[Optional[Expression]] = []
         for e in l:
             exp = self.visit(e)
             res.append(exp)
         return res
 
-    def translate_stmt_list(self, l: Sequence[AST]) -> List[Statement]:
-        res = []  # type: List[Statement]
-        for e in l:
-            stmt = self.visit(e)
-            res.append(stmt)
+    def translate_expr_list(self, l: Sequence[AST]) -> List[Expression]:
+        return cast(List[Expression], self.translate_opt_expr_list(l))
+
+    def get_lineno(self, node: Union[ast3.expr, ast3.stmt]) -> int:
+        if (isinstance(node, (ast3.AsyncFunctionDef, ast3.ClassDef, ast3.FunctionDef))
+                and node.decorator_list):
+            return node.decorator_list[0].lineno
+        return node.lineno
+
+    def translate_stmt_list(self,
+                            stmts: Sequence[ast3.stmt],
+                            ismodule: bool = False) -> List[Statement]:
+        # A "# type: ignore" comment before the first statement of a module
+        # ignores the whole module:
+        if (ismodule and stmts and self.type_ignores
+                and min(self.type_ignores) < self.get_lineno(stmts[0])):
+            self.errors.used_ignored_lines[self.errors.file][min(self.type_ignores)].append(
+                codes.MISC.code)
+            block = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
+            mark_block_unreachable(block)
+            return [block]
+
+        res: List[Statement] = []
+        for stmt in stmts:
+            node = self.visit(stmt)
+            res.append(node)
+
         return res
 
-    op_map = {
+    def translate_type_comment(self,
+                               n: Union[ast3.stmt, ast3.arg],
+                               type_comment: Optional[str]) -> Optional[ProperType]:
+        if type_comment is None:
+            return None
+        else:
+            lineno = n.lineno
+            extra_ignore, typ = parse_type_comment(type_comment,
+                                                   lineno,
+                                                   n.col_offset,
+                                                   self.errors)
+            if extra_ignore is not None:
+                self.type_ignores[lineno] = extra_ignore
+            return typ
+
+    op_map: Final[Dict[typing.Type[AST], str]] = {
         ast3.Add: '+',
         ast3.Sub: '-',
         ast3.Mult: '*',
@@ -264,7 +401,7 @@ class ASTConverter:
         ast3.BitXor: '^',
         ast3.BitAnd: '&',
         ast3.FloorDiv: '//'
-    }  # type: Final[Dict[typing.Type[AST], str]]
+    }
 
     def from_operator(self, op: ast3.operator) -> str:
         op_name = ASTConverter.op_map.get(type(op))
@@ -273,7 +410,7 @@ class ASTConverter:
         else:
             return op_name
 
-    comp_op_map = {
+    comp_op_map: Final[Dict[typing.Type[AST], str]] = {
         ast3.Gt: '>',
         ast3.Lt: '<',
         ast3.Eq: '==',
@@ -284,7 +421,7 @@ class ASTConverter:
         ast3.IsNot: 'is not',
         ast3.In: 'in',
         ast3.NotIn: 'not in'
-    }  # type: Final[Dict[typing.Type[AST], str]]
+    }
 
     def from_comp_operator(self, op: ast3.cmpop) -> str:
         op_name = ASTConverter.comp_op_map.get(type(op))
@@ -307,13 +444,13 @@ class ASTConverter:
         return b
 
     def fix_function_overloads(self, stmts: List[Statement]) -> List[Statement]:
-        ret = []  # type: List[Statement]
-        current_overload = []  # type: List[OverloadPart]
-        current_overload_name = None  # type: Optional[str]
+        ret: List[Statement] = []
+        current_overload: List[OverloadPart] = []
+        current_overload_name: Optional[str] = None
         for stmt in stmts:
             if (current_overload_name is not None
                     and isinstance(stmt, (Decorator, FuncDef))
-                    and stmt.name() == current_overload_name):
+                    and stmt.name == current_overload_name):
                 current_overload.append(stmt)
             else:
                 if len(current_overload) == 1:
@@ -321,9 +458,14 @@ class ASTConverter:
                 elif len(current_overload) > 1:
                     ret.append(OverloadedFuncDef(current_overload))
 
-                if isinstance(stmt, Decorator):
+                # If we have multiple decorated functions named "_" next to each, we want to treat
+                # them as a series of regular FuncDefs instead of one OverloadedFuncDef because
+                # most of mypy/mypyc assumes that all the functions in an OverloadedFuncDef are
+                # related, but multiple underscore functions next to each other aren't necessarily
+                # related
+                if isinstance(stmt, Decorator) and not unnamed_function(stmt.name):
                     current_overload = [stmt]
-                    current_overload_name = stmt.name()
+                    current_overload_name = stmt.name
                 else:
                     current_overload = []
                     current_overload_name = None
@@ -335,8 +477,8 @@ class ASTConverter:
             ret.append(OverloadedFuncDef(current_overload))
         return ret
 
-    def in_class(self) -> bool:
-        return self.class_nesting > 0
+    def in_method_scope(self) -> bool:
+        return self.class_and_function_stack[-2:] == ['C', 'F']
 
     def translate_module_id(self, id: str) -> str:
         """Return the actual, internal module id for a source text id.
@@ -352,12 +494,18 @@ class ASTConverter:
         return id
 
     def visit_Module(self, mod: ast3.Module) -> MypyFile:
-        body = self.fix_function_overloads(self.translate_stmt_list(mod.body))
-
+        self.type_ignores = {}
+        for ti in mod.type_ignores:
+            parsed = parse_type_ignore_tag(ti.tag)  # type: ignore[attr-defined]
+            if parsed is not None:
+                self.type_ignores[ti.lineno] = parsed
+            else:
+                self.fail(INVALID_TYPE_IGNORE, ti.lineno, -1)
+        body = self.fix_function_overloads(self.translate_stmt_list(mod.body, ismodule=True))
         return MypyFile(body,
                         self.imports,
                         False,
-                        {ti.lineno for ti in mod.type_ignores},
+                        self.type_ignores,
                         )
 
     # --- stmt ---
@@ -366,38 +514,36 @@ class ASTConverter:
     # arguments = (arg* args, arg? vararg, arg* kwonlyargs, expr* kw_defaults,
     #              arg? kwarg, expr* defaults)
     def visit_FunctionDef(self, n: ast3.FunctionDef) -> Union[FuncDef, Decorator]:
-        f = self.do_func_def(n)
-        f.set_line(n.lineno, n.col_offset)  # Overrides set_line -- can't use self.set_line
-        return f
+        return self.do_func_def(n)
 
     # AsyncFunctionDef(identifier name, arguments args,
     #                  stmt* body, expr* decorator_list, expr? returns, string? type_comment)
     def visit_AsyncFunctionDef(self, n: ast3.AsyncFunctionDef) -> Union[FuncDef, Decorator]:
-        f = self.do_func_def(n, is_coroutine=True)
-        f.set_line(n.lineno, n.col_offset)  # Overrides set_line -- can't use self.set_line
-        return f
+        return self.do_func_def(n, is_coroutine=True)
 
     def do_func_def(self, n: Union[ast3.FunctionDef, ast3.AsyncFunctionDef],
                     is_coroutine: bool = False) -> Union[FuncDef, Decorator]:
         """Helper shared between visit_FunctionDef and visit_AsyncFunctionDef."""
+        self.class_and_function_stack.append('F')
         no_type_check = bool(n.decorator_list and
                              any(is_no_type_check_decorator(d) for d in n.decorator_list))
 
         lineno = n.lineno
         args = self.transform_args(n.args, lineno, no_type_check=no_type_check)
+        if special_function_elide_names(n.name):
+            for arg in args:
+                arg.pos_only = True
 
         arg_kinds = [arg.kind for arg in args]
-        arg_names = [arg.variable.name() for arg in args]  # type: List[Optional[str]]
-        arg_names = [None if argument_elide_name(name) else name for name in arg_names]
-        if special_function_elide_names(n.name):
-            arg_names = [None] * len(arg_names)
-        arg_types = []  # type: List[Optional[Type]]
+        arg_names = [None if arg.pos_only else arg.variable.name for arg in args]
+
+        arg_types: List[Optional[Type]] = []
         if no_type_check:
             arg_types = [None] * len(args)
             return_type = None
         elif n.type_comment is not None:
             try:
-                func_type_ast = ast3.parse(n.type_comment, '<func_type>', 'func_type')
+                func_type_ast = ast3_parse(n.type_comment, '<func_type>', 'func_type')
                 assert isinstance(func_type_ast, FunctionType)
                 # for ellipsis arg
                 if (len(func_type_ast.argtypes) == 1 and
@@ -413,7 +559,9 @@ class ASTConverter:
                     # PEP 484 disallows both type annotations and type comments
                     if n.returns or any(a.type_annotation is not None for a in args):
                         self.fail(message_registry.DUPLICATE_TYPE_SIGNATURES, lineno, n.col_offset)
-                    translated_args = (TypeConverter(self.errors, line=lineno)
+                    translated_args = (TypeConverter(self.errors,
+                                                     line=lineno,
+                                                     override_column=n.col_offset)
                                        .translate_expr_list(func_type_ast.argtypes))
                     arg_types = [a if a is not None else AnyType(TypeOfAny.unannotated)
                                 for a in translated_args]
@@ -421,11 +569,13 @@ class ASTConverter:
                                             line=lineno).visit(func_type_ast.returns)
 
                 # add implicit self type
-                if self.in_class() and len(arg_types) < len(args):
+                if self.in_method_scope() and len(arg_types) < len(args):
                     arg_types.insert(0, AnyType(TypeOfAny.special_form))
             except SyntaxError:
-                self.fail(TYPE_COMMENT_SYNTAX_ERROR, lineno, n.col_offset)
-                if n.type_comment and n.type_comment[0] != "(":
+                stripped_type = n.type_comment.split("#", 2)[0].strip()
+                err_msg = '{} "{}"'.format(TYPE_COMMENT_SYNTAX_ERROR, stripped_type)
+                self.fail(err_msg, lineno, n.col_offset)
+                if n.type_comment and n.type_comment[0] not in ["(", "#"]:
                     self.note('Suggestion: wrap argument types in parentheses',
                               lineno, n.col_offset)
                 arg_types = [AnyType(TypeOfAny.from_error)] * len(args)
@@ -440,13 +590,16 @@ class ASTConverter:
 
         func_type = None
         if any(arg_types) or return_type:
-            if len(arg_types) != 1 and any(isinstance(t, EllipsisType) for t in arg_types):
+            if len(arg_types) != 1 and any(isinstance(t, EllipsisType)
+                                           for t in arg_types):
                 self.fail("Ellipses cannot accompany other argument types "
-                          "in function type signature.", lineno, 0)
+                          "in function type signature", lineno, n.col_offset)
             elif len(arg_types) > len(arg_kinds):
-                self.fail('Type signature has too many arguments', lineno, 0)
+                self.fail('Type signature has too many arguments', lineno, n.col_offset,
+                          blocker=False)
             elif len(arg_types) < len(arg_kinds):
-                self.fail('Type signature has too few arguments', lineno, 0)
+                self.fail('Type signature has too few arguments', lineno, n.col_offset,
+                          blocker=False)
             else:
                 func_type = CallableType([a if a is not None else
                                           AnyType(TypeOfAny.unannotated) for a in arg_types],
@@ -456,10 +609,11 @@ class ASTConverter:
                                          AnyType(TypeOfAny.unannotated),
                                          _dummy_fallback)
 
-        func_def = FuncDef(n.name,
-                       args,
-                       self.as_required_block(n.body, lineno),
-                       func_type)
+        func_def = FuncDef(
+            n.name,
+            args,
+            self.as_required_block(n.body, lineno),
+            func_type)
         if isinstance(func_def.type, CallableType):
             # semanal.py does some in-place modifications we want to avoid
             func_def.unanalyzed_type = func_def.type.copy_modified()
@@ -470,16 +624,34 @@ class ASTConverter:
             func_type.line = lineno
 
         if n.decorator_list:
-            var = Var(func_def.name())
+            if sys.version_info < (3, 8):
+                # Before 3.8, [typed_]ast the line number points to the first decorator.
+                # In 3.8, it points to the 'def' line, where we want it.
+                lineno += len(n.decorator_list)
+                end_lineno: Optional[int] = None
+            else:
+                # Set end_lineno to the old pre-3.8 lineno, in order to keep
+                # existing "# type: ignore" comments working:
+                end_lineno = n.decorator_list[0].lineno + len(n.decorator_list)
+
+            var = Var(func_def.name)
             var.is_ready = False
-            var.set_line(n.decorator_list[0].lineno)
+            var.set_line(lineno)
 
             func_def.is_decorated = True
-            func_def.set_line(lineno + len(n.decorator_list))
-            func_def.body.set_line(func_def.get_line())
-            return Decorator(func_def, self.translate_expr_list(n.decorator_list), var)
+            func_def.set_line(lineno, n.col_offset, end_lineno)
+            func_def.body.set_line(lineno)  # TODO: Why?
+
+            deco = Decorator(func_def, self.translate_expr_list(n.decorator_list), var)
+            first = n.decorator_list[0]
+            deco.set_line(first.lineno, first.col_offset)
+            retval: Union[FuncDef, Decorator] = deco
         else:
-            return func_def
+            # FuncDef overrides set_line -- can't use self.set_line
+            func_def.set_line(lineno, n.col_offset)
+            retval = func_def
+        self.class_and_function_stack.pop()
+        return retval
 
     def set_type_optional(self, type: Optional[Type], initializer: Optional[Expression]) -> None:
         if self.options.no_implicit_optional:
@@ -495,18 +667,21 @@ class ASTConverter:
                        no_type_check: bool = False,
                        ) -> List[Argument]:
         new_args = []
-        names = []  # type: List[ast3.arg]
-        args_args = args.args
+        names: List[ast3.arg] = []
+        posonlyargs = getattr(args, "posonlyargs", cast(List[ast3.arg], []))
+        args_args = posonlyargs + args.args
         args_defaults = args.defaults
         num_no_defaults = len(args_args) - len(args_defaults)
         # positional arguments without defaults
-        for a in args_args[:num_no_defaults]:
-            new_args.append(self.make_argument(a, None, ARG_POS, no_type_check))
+        for i, a in enumerate(args_args[:num_no_defaults]):
+            pos_only = i < len(posonlyargs)
+            new_args.append(self.make_argument(a, None, ARG_POS, no_type_check, pos_only))
             names.append(a)
 
         # positional arguments with defaults
-        for a, d in zip(args_args[num_no_defaults:], args_defaults):
-            new_args.append(self.make_argument(a, d, ARG_OPT, no_type_check))
+        for i, (a, d) in enumerate(zip(args_args[num_no_defaults:], args_defaults)):
+            pos_only = num_no_defaults + i < len(posonlyargs)
+            new_args.append(self.make_argument(a, d, ARG_OPT, no_type_check, pos_only))
             names.append(a)
 
         # *arg
@@ -515,11 +690,11 @@ class ASTConverter:
             names.append(args.vararg)
 
         # keyword-only arguments with defaults
-        for a, d in zip(args.kwonlyargs, args.kw_defaults):
+        for a, kd in zip(args.kwonlyargs, args.kw_defaults):
             new_args.append(self.make_argument(
                 a,
-                d,
-                ARG_NAMED if d is None else ARG_NAMED_OPT,
+                kd,
+                ARG_NAMED if kd is None else ARG_NAMED_OPT,
                 no_type_check))
             names.append(a)
 
@@ -528,12 +703,12 @@ class ASTConverter:
             new_args.append(self.make_argument(args.kwarg, None, ARG_STAR2, no_type_check))
             names.append(args.kwarg)
 
-        check_arg_names([arg.variable.name() for arg in new_args], names, self.fail_arg)
+        check_arg_names([arg.variable.name for arg in new_args], names, self.fail_arg)
 
         return new_args
 
-    def make_argument(self, arg: ast3.arg, default: Optional[ast3.expr], kind: int,
-                      no_type_check: bool) -> Argument:
+    def make_argument(self, arg: ast3.arg, default: Optional[ast3.expr], kind: ArgKind,
+                      no_type_check: bool, pos_only: bool = False) -> Argument:
         if no_type_check:
             arg_type = None
         else:
@@ -544,9 +719,12 @@ class ASTConverter:
             arg_type = None
             if annotation is not None:
                 arg_type = TypeConverter(self.errors, line=arg.lineno).visit(annotation)
-            elif type_comment is not None:
-                arg_type = parse_type_comment(type_comment, arg.lineno, self.errors)
-        return Argument(Var(arg.arg), arg_type, self.visit(default), kind)
+            else:
+                arg_type = self.translate_type_comment(arg, type_comment)
+        if argument_elide_name(arg.arg):
+            pos_only = True
+
+        return Argument(Var(arg.arg), arg_type, self.visit(default), kind, pos_only)
 
     def fail_arg(self, msg: str, arg: ast3.arg) -> None:
         self.fail(msg, arg.lineno, arg.col_offset)
@@ -557,7 +735,7 @@ class ASTConverter:
     #  stmt* body,
     #  expr* decorator_list)
     def visit_ClassDef(self, n: ast3.ClassDef) -> ClassDef:
-        self.class_nesting += 1
+        self.class_and_function_stack.append('C')
         keywords = [(kw.arg, self.visit(kw.value))
                     for kw in n.keywords if kw.arg]
 
@@ -568,8 +746,16 @@ class ASTConverter:
                         metaclass=dict(keywords).get('metaclass'),
                         keywords=keywords)
         cdef.decorators = self.translate_expr_list(n.decorator_list)
-        self.set_line(cdef, n)
-        self.class_nesting -= 1
+        # Set end_lineno to the old mypy 0.700 lineno, in order to keep
+        # existing "# type: ignore" comments working:
+        if sys.version_info < (3, 8):
+            cdef.line = n.lineno + len(n.decorator_list)
+            cdef.end_line = n.lineno
+        else:
+            cdef.line = n.lineno
+            cdef.end_line = n.decorator_list[0].lineno if n.decorator_list else None
+        cdef.column = n.col_offset
+        self.class_and_function_stack.pop()
         return cdef
 
     # Return(expr? value)
@@ -591,20 +777,20 @@ class ASTConverter:
     def visit_Assign(self, n: ast3.Assign) -> AssignmentStmt:
         lvalues = self.translate_expr_list(n.targets)
         rvalue = self.visit(n.value)
-        if n.type_comment is not None:
-            typ = parse_type_comment(n.type_comment, n.lineno, self.errors)
-        else:
-            typ = None
+        typ = self.translate_type_comment(n, n.type_comment)
         s = AssignmentStmt(lvalues, rvalue, type=typ, new_syntax=False)
         return self.set_line(s, n)
 
     # AnnAssign(expr target, expr annotation, expr? value, int simple)
     def visit_AnnAssign(self, n: ast3.AnnAssign) -> AssignmentStmt:
+        line = n.lineno
         if n.value is None:  # always allow 'x: int'
-            rvalue = TempNode(AnyType(TypeOfAny.special_form), no_rhs=True)  # type: Expression
+            rvalue: Expression = TempNode(AnyType(TypeOfAny.special_form), no_rhs=True)
+            rvalue.line = line
+            rvalue.column = n.col_offset
         else:
             rvalue = self.visit(n.value)
-        typ = TypeConverter(self.errors, line=n.lineno).visit(n.annotation)
+        typ = TypeConverter(self.errors, line=line).visit(n.annotation)
         assert typ is not None
         typ.column = n.annotation.col_offset
         s = AssignmentStmt([self.visit(n.target)], rvalue, type=typ, new_syntax=True)
@@ -619,10 +805,7 @@ class ASTConverter:
 
     # For(expr target, expr iter, stmt* body, stmt* orelse, string? type_comment)
     def visit_For(self, n: ast3.For) -> ForStmt:
-        if n.type_comment is not None:
-            target_type = parse_type_comment(n.type_comment, n.lineno, self.errors)
-        else:
-            target_type = None
+        target_type = self.translate_type_comment(n, n.type_comment)
         node = ForStmt(self.visit(n.target),
                        self.visit(n.iter),
                        self.as_required_block(n.body, n.lineno),
@@ -632,10 +815,7 @@ class ASTConverter:
 
     # AsyncFor(expr target, expr iter, stmt* body, stmt* orelse, string? type_comment)
     def visit_AsyncFor(self, n: ast3.AsyncFor) -> ForStmt:
-        if n.type_comment is not None:
-            target_type = parse_type_comment(n.type_comment, n.lineno, self.errors)
-        else:
-            target_type = None
+        target_type = self.translate_type_comment(n, n.type_comment)
         node = ForStmt(self.visit(n.target),
                        self.visit(n.iter),
                        self.as_required_block(n.body, n.lineno),
@@ -661,10 +841,7 @@ class ASTConverter:
 
     # With(withitem* items, stmt* body, string? type_comment)
     def visit_With(self, n: ast3.With) -> WithStmt:
-        if n.type_comment is not None:
-            target_type = parse_type_comment(n.type_comment, n.lineno, self.errors)
-        else:
-            target_type = None
+        target_type = self.translate_type_comment(n, n.type_comment)
         node = WithStmt([self.visit(i.context_expr) for i in n.items],
                         [self.visit(i.optional_vars) for i in n.items],
                         self.as_required_block(n.body, n.lineno),
@@ -673,10 +850,7 @@ class ASTConverter:
 
     # AsyncWith(withitem* items, stmt* body, string? type_comment)
     def visit_AsyncWith(self, n: ast3.AsyncWith) -> WithStmt:
-        if n.type_comment is not None:
-            target_type = parse_type_comment(n.type_comment, n.lineno, self.errors)
-        else:
-            target_type = None
+        target_type = self.translate_type_comment(n, n.type_comment)
         s = WithStmt([self.visit(i.context_expr) for i in n.items],
                      [self.visit(i.optional_vars) for i in n.items],
                      self.as_required_block(n.body, n.lineno),
@@ -691,7 +865,9 @@ class ASTConverter:
 
     # Try(stmt* body, excepthandler* handlers, stmt* orelse, stmt* finalbody)
     def visit_Try(self, n: ast3.Try) -> TryStmt:
-        vs = [NameExpr(h.name) if h.name is not None else None for h in n.handlers]
+        vs = [
+            self.set_line(NameExpr(h.name), h) if h.name is not None else None for h in n.handlers
+        ]
         types = [self.visit(h.type) for h in n.handlers]
         handlers = [self.as_required_block(h.body, h.lineno) for h in n.handlers]
 
@@ -710,7 +886,7 @@ class ASTConverter:
 
     # Import(alias* names)
     def visit_Import(self, n: ast3.Import) -> Import:
-        names = []  # type: List[Tuple[str, Optional[str]]]
+        names: List[Tuple[str, Optional[str]]] = []
         for alias in n.names:
             name = self.translate_module_id(alias.name)
             asname = alias.asname
@@ -729,7 +905,7 @@ class ASTConverter:
         assert n.level is not None
         if len(n.names) == 1 and n.names[0].name == '*':
             mod = n.module if n.module is not None else ''
-            i = ImportAll(mod, n.level)  # type: ImportBase
+            i: ImportBase = ImportAll(mod, n.level)
         else:
             i = ImportFrom(self.translate_module_id(n.module) if n.module is not None else '',
                            n.level,
@@ -769,6 +945,10 @@ class ASTConverter:
         return self.set_line(s, n)
 
     # --- expr ---
+
+    def visit_NamedExpr(self, n: NamedExpr) -> AssignmentExpr:
+        s = AssignmentExpr(self.visit(n.target), self.visit(n.value))
+        return self.set_line(s, n)
 
     # BoolOp(boolop op, expr* values)
     def visit_BoolOp(self, n: ast3.BoolOp) -> OpExpr:
@@ -823,8 +1003,8 @@ class ASTConverter:
     # Lambda(arguments args, expr body)
     def visit_Lambda(self, n: ast3.Lambda) -> LambdaExpr:
         body = ast3.Return(n.body)
-        body.lineno = n.lineno
-        body.col_offset = n.col_offset
+        body.lineno = n.body.lineno
+        body.col_offset = n.body.col_offset
 
         e = LambdaExpr(self.transform_args(n.args, n.lineno),
                        self.as_required_block([body], n.lineno))
@@ -840,7 +1020,7 @@ class ASTConverter:
 
     # Dict(expr* keys, expr* values)
     def visit_Dict(self, n: ast3.Dict) -> DictExpr:
-        e = DictExpr(list(zip(self.translate_expr_list(n.keys),
+        e = DictExpr(list(zip(self.translate_opt_expr_list(n.keys),
                               self.translate_expr_list(n.values))))
         return self.set_line(e, n)
 
@@ -926,15 +1106,39 @@ class ASTConverter:
                      cast('List[Optional[str]]', [None] * len(args)) + keyword_names)
         return self.set_line(e, n)
 
+    # Constant(object value) -- a constant, in Python 3.8.
+    def visit_Constant(self, n: Constant) -> Any:
+        val = n.value
+        e: Any = None
+        if val is None:
+            e = NameExpr('None')
+        elif isinstance(val, str):
+            e = StrExpr(n.s)
+        elif isinstance(val, bytes):
+            e = BytesExpr(bytes_to_human_readable_repr(n.s))
+        elif isinstance(val, bool):  # Must check before int!
+            e = NameExpr(str(val))
+        elif isinstance(val, int):
+            e = IntExpr(val)
+        elif isinstance(val, float):
+            e = FloatExpr(val)
+        elif isinstance(val, complex):
+            e = ComplexExpr(val)
+        elif val is Ellipsis:
+            e = EllipsisExpr()
+        else:
+            raise RuntimeError('Constant not implemented for ' + str(type(val)))
+        return self.set_line(e, n)
+
     # Num(object n) -- a number as a PyObject.
     def visit_Num(self, n: ast3.Num) -> Union[IntExpr, FloatExpr, ComplexExpr]:
         # The n field has the type complex, but complex isn't *really*
         # a parent of int and float, and this causes isinstance below
         # to think that the complex branch is always picked. Avoid
         # this by throwing away the type.
-        val = n.n  # type: object
+        val: object = n.n
         if isinstance(val, int):
-            e = IntExpr(val)  # type: Union[IntExpr, FloatExpr, ComplexExpr]
+            e: Union[IntExpr, FloatExpr, ComplexExpr] = IntExpr(val)
         elif isinstance(val, float):
             e = FloatExpr(val)
         elif isinstance(val, complex):
@@ -962,6 +1166,9 @@ class ASTConverter:
         empty_string.set_line(n.lineno, n.col_offset)
         strs_to_join = ListExpr(self.translate_expr_list(n.values))
         strs_to_join.set_line(empty_string)
+        # Don't make unnecessary join call if there is only one str to join
+        if len(strs_to_join.items) == 1:
+            return self.set_line(strs_to_join.items[0], n)
         join_method = MemberExpr(empty_string, 'join')
         join_method.set_line(empty_string)
         result_expression = CallExpr(join_method,
@@ -974,17 +1181,20 @@ class ASTConverter:
     def visit_FormattedValue(self, n: ast3.FormattedValue) -> Expression:
         # A FormattedValue is a component of a JoinedStr, or it can exist
         # on its own. We translate them to individual '{}'.format(value)
-        # calls -- we don't bother with the conversion/format_spec fields.
-        exp = self.visit(n.value)
-        exp.set_line(n.lineno, n.col_offset)
-        format_string = StrExpr('{}')
+        # calls. Format specifier and conversion information is passed along
+        # to allow mypyc to support f-strings with format specifiers and conversions.
+        val_exp = self.visit(n.value)
+        val_exp.set_line(n.lineno, n.col_offset)
+        conv_str = '' if n.conversion is None or n.conversion < 0 else '!' + chr(n.conversion)
+        format_string = StrExpr('{' + conv_str + ':{}}')
+        format_spec_exp = self.visit(n.format_spec) if n.format_spec is not None else StrExpr('')
         format_string.set_line(n.lineno, n.col_offset)
         format_method = MemberExpr(format_string, 'format')
         format_method.set_line(format_string)
         result_expression = CallExpr(format_method,
-                                     [exp],
-                                     [ARG_POS],
-                                     [None])
+                                     [val_exp, format_spec_exp],
+                                     [ARG_POS, ARG_POS],
+                                     [None, None])
         return self.set_line(result_expression, n)
 
     # Bytes(bytes s)
@@ -994,7 +1204,8 @@ class ASTConverter:
 
     # NameConstant(singleton value)
     def visit_NameConstant(self, n: NameConstant) -> NameExpr:
-        return NameExpr(str(n.value))
+        e = NameExpr(str(n.value))
+        return self.set_line(e, n)
 
     # Ellipsis
     def visit_Ellipsis(self, n: ast3_Ellipsis) -> EllipsisExpr:
@@ -1009,7 +1220,7 @@ class ASTConverter:
         if (isinstance(obj, CallExpr) and
                 isinstance(obj.callee, NameExpr) and
                 obj.callee.name == 'super'):
-            e = SuperExpr(member_expr.name, obj)  # type: Union[MemberExpr, SuperExpr]
+            e: Union[MemberExpr, SuperExpr] = SuperExpr(member_expr.name, obj)
         else:
             e = member_expr
         return self.set_line(e, n)
@@ -1017,7 +1228,20 @@ class ASTConverter:
     # Subscript(expr value, slice slice, expr_context ctx)
     def visit_Subscript(self, n: ast3.Subscript) -> IndexExpr:
         e = IndexExpr(self.visit(n.value), self.visit(n.slice))
-        return self.set_line(e, n)
+        self.set_line(e, n)
+        # alias to please mypyc
+        is_py38_or_earlier = sys.version_info < (3, 9)
+        if (
+            isinstance(n.slice, ast3.Slice) or
+            (is_py38_or_earlier and isinstance(n.slice, ast3.ExtSlice))
+        ):
+            # Before Python 3.9, Slice has no line/column in the raw ast. To avoid incompatibility
+            # visit_Slice doesn't set_line, even in Python 3.9 on.
+            # ExtSlice also has no line/column info. In Python 3.9 on, line/column is set for
+            # e.index when visiting n.slice.
+            e.index.line = e.line
+            e.index.column = e.column
+        return e
 
     # Starred(expr value, expr_context ctx)
     def visit_Starred(self, n: Starred) -> StarExpr:
@@ -1031,17 +1255,17 @@ class ASTConverter:
 
     # List(expr* elts, expr_context ctx)
     def visit_List(self, n: ast3.List) -> Union[ListExpr, TupleExpr]:
-        expr_list = [self.visit(e) for e in n.elts]  # type: List[Expression]
+        expr_list: List[Expression] = [self.visit(e) for e in n.elts]
         if isinstance(n.ctx, ast3.Store):
             # [x, y] = z and (x, y) = z means exactly the same thing
-            e = TupleExpr(expr_list)  # type: Union[ListExpr, TupleExpr]
+            e: Union[ListExpr, TupleExpr] = TupleExpr(expr_list)
         else:
             e = ListExpr(expr_list)
         return self.set_line(e, n)
 
     # Tuple(expr* elts, expr_context ctx)
     def visit_Tuple(self, n: ast3.Tuple) -> TupleExpr:
-        e = TupleExpr([self.visit(e) for e in n.elts])
+        e = TupleExpr(self.translate_expr_list(n.elts))
         return self.set_line(e, n)
 
     # --- slice ---
@@ -1054,23 +1278,40 @@ class ASTConverter:
 
     # ExtSlice(slice* dims)
     def visit_ExtSlice(self, n: ast3.ExtSlice) -> TupleExpr:
-        return TupleExpr(self.translate_expr_list(n.dims))
+        # cast for mypyc's benefit on Python 3.9
+        return TupleExpr(self.translate_expr_list(cast(Any, n).dims))
 
     # Index(expr value)
     def visit_Index(self, n: Index) -> Node:
-        return self.visit(n.value)
+        # cast for mypyc's benefit on Python 3.9
+        return self.visit(cast(Any, n).value)
 
 
 class TypeConverter:
     def __init__(self,
                  errors: Optional[Errors],
                  line: int = -1,
+                 override_column: int = -1,
                  assume_str_is_unicode: bool = True,
+                 is_evaluated: bool = True,
                  ) -> None:
         self.errors = errors
         self.line = line
-        self.node_stack = []  # type: List[AST]
+        self.override_column = override_column
+        self.node_stack: List[AST] = []
         self.assume_str_is_unicode = assume_str_is_unicode
+        self.is_evaluated = is_evaluated
+
+    def convert_column(self, column: int) -> int:
+        """Apply column override if defined; otherwise return column.
+
+        Column numbers are sometimes incorrect in the AST and the column
+        override can be used to work around that.
+        """
+        if self.override_column < 0:
+            return column
+        else:
+            return self.override_column
 
     def invalid_type(self, node: AST, note: Optional[str] = None) -> RawExpressionType:
         """Constructs a type representing some expression that normally forms an invalid type.
@@ -1091,12 +1332,12 @@ class TypeConverter:
         )
 
     @overload
-    def visit(self, node: ast3.expr) -> Type: ...
+    def visit(self, node: ast3.expr) -> ProperType: ...
 
-    @overload  # noqa
-    def visit(self, node: Optional[AST]) -> Optional[Type]: ...
+    @overload
+    def visit(self, node: Optional[AST]) -> Optional[ProperType]: ...
 
-    def visit(self, node: Optional[AST]) -> Optional[Type]:  # noqa
+    def visit(self, node: Optional[AST]) -> Optional[ProperType]:
         """Modified visit -- keep track of the stack of nodes"""
         if node is None:
             return None
@@ -1119,24 +1360,25 @@ class TypeConverter:
 
     def fail(self, msg: str, line: int, column: int) -> None:
         if self.errors:
-            self.errors.report(line, column, msg, blocker=True)
+            self.errors.report(line, column, msg, blocker=True, code=codes.SYNTAX)
 
     def note(self, msg: str, line: int, column: int) -> None:
         if self.errors:
-            self.errors.report(line, column, msg, severity='note')
+            self.errors.report(line, column, msg, severity='note', code=codes.SYNTAX)
 
     def translate_expr_list(self, l: Sequence[ast3.expr]) -> List[Type]:
         return [self.visit(e) for e in l]
 
     def visit_raw_str(self, s: str) -> Type:
         # An escape hatch that allows the AST walker in fastparse2 to
-        # directly hook into the Python 3.5 type converter in some cases
+        # directly hook into the Python 3 type converter in some cases
         # without needing to create an intermediary `Str` object.
-        return (parse_type_comment(s.strip(),
-                                   self.line,
-                                   self.errors,
-                                   self.assume_str_is_unicode)
-                or AnyType(TypeOfAny.from_error))
+        _, typ = parse_type_comment(s.strip(),
+                                    self.line,
+                                    -1,
+                                    self.errors,
+                                    self.assume_str_is_unicode)
+        return typ or AnyType(TypeOfAny.from_error)
 
     def visit_Call(self, e: Call) -> Type:
         # Parse the arg constructor
@@ -1151,9 +1393,9 @@ class TypeConverter:
         if not constructor:
             self.fail("Expected arg constructor name", e.lineno, e.col_offset)
 
-        name = None  # type: Optional[str]
+        name: Optional[str] = None
         default_type = AnyType(TypeOfAny.special_form)
-        typ = default_type  # type: Type
+        typ: Type = default_type
         for i, arg in enumerate(e.args):
             if i == 0:
                 converted = self.visit(arg)
@@ -1197,13 +1439,53 @@ class TypeConverter:
         return None
 
     def visit_Name(self, n: Name) -> Type:
-        return UnboundType(n.id, line=self.line)
+        return UnboundType(n.id, line=self.line, column=self.convert_column(n.col_offset))
+
+    def visit_BinOp(self, n: ast3.BinOp) -> Type:
+        if not isinstance(n.op, ast3.BitOr):
+            return self.invalid_type(n)
+
+        left = self.visit(n.left)
+        right = self.visit(n.right)
+        return UnionType([left, right],
+                         line=self.line,
+                         column=self.convert_column(n.col_offset),
+                         is_evaluated=self.is_evaluated,
+                         uses_pep604_syntax=True)
 
     def visit_NameConstant(self, n: NameConstant) -> Type:
         if isinstance(n.value, bool):
             return RawExpressionType(n.value, 'builtins.bool', line=self.line)
         else:
-            return UnboundType(str(n.value), line=self.line)
+            return UnboundType(str(n.value), line=self.line, column=n.col_offset)
+
+    # Only for 3.8 and newer
+    def visit_Constant(self, n: Constant) -> Type:
+        val = n.value
+        if val is None:
+            # None is a type.
+            return UnboundType('None', line=self.line)
+        if isinstance(val, str):
+            # Parse forward reference.
+            if (n.kind and 'u' in n.kind) or self.assume_str_is_unicode:
+                return parse_type_string(n.s, 'builtins.unicode', self.line, n.col_offset,
+                                         assume_str_is_unicode=self.assume_str_is_unicode)
+            else:
+                return parse_type_string(n.s, 'builtins.str', self.line, n.col_offset,
+                                         assume_str_is_unicode=self.assume_str_is_unicode)
+        if val is Ellipsis:
+            # '...' is valid in some types.
+            return EllipsisType(line=self.line)
+        if isinstance(val, bool):
+            # Special case for True/False.
+            return RawExpressionType(val, 'builtins.bool', line=self.line)
+        if isinstance(val, (int, float, complex)):
+            return self.numeric_type(val, n)
+        if isinstance(val, bytes):
+            contents = bytes_to_human_readable_repr(val)
+            return RawExpressionType(contents, 'builtins.bytes', self.line, column=n.col_offset)
+        # Everything else is invalid.
+        return self.invalid_type(n)
 
     # UnaryOp(op, operand)
     def visit_UnaryOp(self, n: UnaryOp) -> Type:
@@ -1216,15 +1498,13 @@ class TypeConverter:
                 return typ
         return self.invalid_type(n)
 
-    # Num(number n)
-    def visit_Num(self, n: Num) -> Type:
-        # The n field has the type complex, but complex isn't *really*
+    def numeric_type(self, value: object, n: AST) -> Type:
+        # The node's field has the type complex, but complex isn't *really*
         # a parent of int and float, and this causes isinstance below
         # to think that the complex branch is always picked. Avoid
         # this by throwing away the type.
-        value = n.n  # type: object
         if isinstance(value, int):
-            numeric_value = value  # type: Optional[int]
+            numeric_value: Optional[int] = value
             type_name = 'builtins.int'
         else:
             # Other kinds of numbers (floats, complex) are not valid parameters for
@@ -1239,6 +1519,14 @@ class TypeConverter:
             column=getattr(n, 'col_offset', -1),
         )
 
+    # These next three methods are only used if we are on python <
+    # 3.8, using typed_ast.  They are defined unconditionally because
+    # mypyc can't handle conditional method definitions.
+
+    # Num(number n)
+    def visit_Num(self, n: Num) -> Type:
+        return self.numeric_type(n.n, n)
+
     # Str(string s)
     def visit_Str(self, n: Str) -> Type:
         # Note: we transform these fallback types into the correct types in
@@ -1246,7 +1534,14 @@ class TypeConverter:
         # If we're analyzing Python 3, that function will translate 'builtins.unicode'
         # into 'builtins.str'. In contrast, if we're analyzing Python 2 code, we'll
         # translate 'builtins.bytes' in the method below into 'builtins.str'.
-        if 'u' in n.kind or self.assume_str_is_unicode:
+
+        # Do a getattr because the field doesn't exist in 3.8 (where
+        # this method doesn't actually ever run.) We can't just do
+        # an attribute access with a `# type: ignore` because it would be
+        # unused on < 3.8.
+        kind: str = getattr(n, "kind")  # noqa
+
+        if 'u' in kind or self.assume_str_is_unicode:
             return parse_type_string(n.s, 'builtins.unicode', self.line, n.col_offset,
                                      assume_str_is_unicode=self.assume_str_is_unicode)
         else:
@@ -1258,30 +1553,57 @@ class TypeConverter:
         contents = bytes_to_human_readable_repr(n.s)
         return RawExpressionType(contents, 'builtins.bytes', self.line, column=n.col_offset)
 
-    # Subscript(expr value, slice slice, expr_context ctx)
+    def visit_Index(self, n: ast3.Index) -> Type:
+        # cast for mypyc's benefit on Python 3.9
+        return self.visit(cast(Any, n).value)
+
+    def visit_Slice(self, n: ast3.Slice) -> Type:
+        return self.invalid_type(
+            n, note="did you mean to use ',' instead of ':' ?"
+        )
+
+    # Subscript(expr value, slice slice, expr_context ctx)  # Python 3.8 and before
+    # Subscript(expr value, expr slice, expr_context ctx)  # Python 3.9 and later
     def visit_Subscript(self, n: ast3.Subscript) -> Type:
-        if not isinstance(n.slice, Index):
-            self.fail(TYPE_COMMENT_SYNTAX_ERROR, self.line, getattr(n, 'col_offset', -1))
-            return AnyType(TypeOfAny.from_error)
+        if sys.version_info >= (3, 9):  # Really 3.9a5 or later
+            sliceval: Any = n.slice
+        # Python 3.8 or earlier use a different AST structure for subscripts
+        elif isinstance(n.slice, ast3.Index):
+            sliceval: Any = n.slice.value
+        elif isinstance(n.slice, ast3.Slice):
+            sliceval = copy.deepcopy(n.slice)  # so we don't mutate passed AST
+            if getattr(sliceval, "col_offset", None) is None:
+                # Fix column information so that we get Python 3.9+ message order
+                sliceval.col_offset = sliceval.lower.col_offset
+        else:
+            assert isinstance(n.slice, ast3.ExtSlice)
+            dims = copy.deepcopy(n.slice.dims)
+            for s in dims:
+                if getattr(s, "col_offset", None) is None:
+                    if isinstance(s, ast3.Index):
+                        s.col_offset = s.value.col_offset  # type: ignore
+                    elif isinstance(s, ast3.Slice):
+                        s.col_offset = s.lower.col_offset  # type: ignore
+            sliceval = ast3.Tuple(dims, n.ctx)
 
         empty_tuple_index = False
-        if isinstance(n.slice.value, ast3.Tuple):
-            params = self.translate_expr_list(n.slice.value.elts)
-            if len(n.slice.value.elts) == 0:
+        if isinstance(sliceval, ast3.Tuple):
+            params = self.translate_expr_list(sliceval.elts)
+            if len(sliceval.elts) == 0:
                 empty_tuple_index = True
         else:
-            params = [self.visit(n.slice.value)]
+            params = [self.visit(sliceval)]
 
         value = self.visit(n.value)
         if isinstance(value, UnboundType) and not value.args:
-            return UnboundType(value.name, params, line=self.line,
+            return UnboundType(value.name, params, line=self.line, column=value.column,
                                empty_tuple_index=empty_tuple_index)
         else:
             return self.invalid_type(n)
 
     def visit_Tuple(self, n: ast3.Tuple) -> Type:
         return TupleType(self.translate_expr_list(n.elts), _dummy_fallback,
-                         implicit=True, line=self.line)
+                         implicit=True, line=self.line, column=self.convert_column(n.col_offset))
 
     # Attribute(expr value, identifier attr, expr_context ctx)
     def visit_Attribute(self, n: Attribute) -> Type:
@@ -1323,4 +1645,4 @@ def bytes_to_human_readable_repr(b: bytes) -> str:
         >>> print(repr(s))
         'foo\\n\\x00'
     """
-    return str(b)[2:-1]
+    return repr(b)[2:-1]

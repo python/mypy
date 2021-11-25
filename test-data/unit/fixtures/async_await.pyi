@@ -12,6 +12,7 @@ class object:
 class type: pass
 class function: pass
 class int: pass
+class float: pass
 class str: pass
 class bool(int): pass
 class dict(typing.Generic[T, U]): pass

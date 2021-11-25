@@ -9,7 +9,7 @@ from typing import Dict, Optional
 # TODO: gradually move existing lookup functions to this module.
 
 
-def lookup_fully_qualified(name: str, modules: Dict[str, MypyFile],
+def lookup_fully_qualified(name: str, modules: Dict[str, MypyFile], *,
                            raise_on_missing: bool = False) -> Optional[SymbolTableNode]:
     """Find a symbol using it fully qualified name.
 
@@ -44,7 +44,7 @@ def lookup_fully_qualified(name: str, modules: Dict[str, MypyFile],
         key = rest.pop()
         if key not in names:
             if raise_on_missing:
-                assert key in names, "Cannot find %s for %s" % (key, name)
+                assert key in names, "Cannot find component %r for %r" % (key, name)
             return None
         stnode = names[key]
         if not rest:

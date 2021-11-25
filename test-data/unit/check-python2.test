@@ -27,10 +27,16 @@ class A:
         # type: (str) -> None
         pass
 
+class B:
+    def write(self):
+        # type: () -> int
+        pass
+
 print >>A(), ''
 print >>None, ''
 print >>1, '' # E: "int" has no attribute "write"
 print >>(None + ''), None # E: Unsupported left operand type for + ("None")
+print >> B(), ''  # E: Argument "file" to "print" has incompatible type "def () -> builtins.int"; expected "def (builtins.str) -> Any"
 
 [case testDivision]
 class A:
@@ -62,11 +68,72 @@ A.f(1)
 A.f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 [builtins_py2 fixtures/staticmethod.pyi]
 
-[case testRaiseTuple]
+[case testRaiseTupleTypeFail]
 import typing
-raise BaseException, "a"
-raise BaseException, "a", None
+x = None # type: typing.Type[typing.Tuple[typing.Any, typing.Any, typing.Any]]
+raise x # E: Exception must be derived from BaseException
 [builtins_py2 fixtures/exception.pyi]
+
+[case testRaiseTupleOfThreeOnPython2]
+from types import TracebackType
+from typing import Optional, Tuple, Type
+
+e = None  # type: Optional[TracebackType]
+
+raise BaseException # ok
+raise BaseException(1)  # ok
+raise (BaseException,)  # ok
+raise (BaseException(1),)  # ok
+raise BaseException, 1  # ok
+raise BaseException, 1, e  # ok
+raise BaseException, 1, None  # ok
+
+raise Exception # ok
+raise Exception(1)  # ok
+raise (Exception,)  # ok
+raise (Exception(1),)  # ok
+raise Exception, 1  # ok
+raise Exception, 1, e  # ok
+raise Exception, 1, None  # ok
+
+raise int, 1  # E: First argument must be BaseException subtype
+raise Exception(1), 1  # E: First argument must be BaseException subtype
+raise Exception(1), 1, None # E: First argument must be BaseException subtype
+raise Exception, 1, 1  # E: Third argument to raise must have "Union[types.TracebackType, None]" type
+raise int, 1, 1  # E: First argument must be BaseException subtype \
+                 # E: Third argument to raise must have "Union[types.TracebackType, None]" type
+
+t1 = (BaseException,)
+t2 = (Exception(1), 2, 3, 4)  # type: Tuple[Exception, int, int, int]
+t3 = (Exception,)  # type: Tuple[Type[Exception], ...]
+t4 = (Exception(1),)  # type: Tuple[Exception, ...]
+
+raise t1  # ok
+raise t2  # ok
+raise t3  # ok
+raise t4  # ok
+
+raise t1, 1, None  # E: First argument must be BaseException subtype
+raise t2, 1     # E: First argument must be BaseException subtype
+raise t3, 1, e  # E: First argument must be BaseException subtype
+raise t4, 1, 1  # E: First argument must be BaseException subtype \
+                # E: Third argument to raise must have "Union[types.TracebackType, None]" type
+
+w1 = ()
+w2 = (1, Exception)
+w3 = (1,)  # type: Tuple[int, ...]
+
+raise w1  # E: Exception must be derived from BaseException
+raise w2  # E: When raising a tuple, first element must by derived from BaseException
+raise w3  # E: When raising a tuple, first element must by derived from BaseException
+
+try:
+    pass
+except Exception:
+    raise  # ok
+[builtins_py2 fixtures/exception.pyi]
+[file types.pyi]
+class TracebackType: pass
 
 [case testTryExceptWithTuple]
 try:
@@ -78,15 +145,15 @@ except BaseException, e:
 [case testTryExceptUnsupported]
 try:
     pass
-except BaseException, (e, f):  # E: Sorry, `except <expr>, <anything but a name>` is not supported
+except BaseException, (e, f):  # E: Sorry, "except <expr>, <anything but a name>" is not supported
     pass
 try:
     pass
-except BaseException, [e, f, g]:  # E: Sorry, `except <expr>, <anything but a name>` is not supported
+except BaseException, [e, f, g]:  # E: Sorry, "except <expr>, <anything but a name>" is not supported
     pass
 try:
     pass
-except BaseException, e[0]:  # E: Sorry, `except <expr>, <anything but a name>` is not supported
+except BaseException, e[0]:  # E: Sorry, "except <expr>, <anything but a name>" is not supported
     pass
 [builtins_py2 fixtures/exception.pyi]
 
@@ -157,15 +224,6 @@ main:8: error: Argument 2 to "f" has incompatible type "int"; expected "Tuple[in
 [case testBackquoteExpr]
 `1`.x # E: "str" has no attribute "x"
 
-[case testPython2OnlyStdLibModuleWithoutStub]
-import asyncio
-import Bastion
-[out]
-main:1: error: Cannot find module named 'asyncio'
-main:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main:2: error: No library stub file for standard library module 'Bastion'
-main:2: note: (Stub files are from https://github.com/python/typeshed)
-
 [case testImportFromPython2Builtin]
 from __builtin__ import int as i
 x = 1 # type: i
@@ -196,11 +254,31 @@ def f(x, y, z): # type: (...) -> None
 def f(x, y, z): # type: (..., int) -> None
     pass
 [out]
-main:1: error: Ellipses cannot accompany other argument types in function type signature.
+main:1: error: Ellipses cannot accompany other argument types in function type signature
 
 [case testLambdaTupleArgInPython2]
 f = lambda (x, y): x + y
 f((0, 0))
+
+def g(): # type: () -> None
+    pass
+reveal_type(lambda (x,): g()) # N: Revealed type is "def (Any)"
+[out]
+
+[case testLambdaTupleArgInferenceInPython2]
+from typing import Callable, Tuple
+
+def f(c):
+    # type: (Callable[[Tuple[int, int]], int]) -> None
+    pass
+def g(c):
+    # type: (Callable[[Tuple[int, int]], str]) -> None
+    pass
+
+f(lambda (x, y): y)
+f(lambda (x, y): x()) # E: "int" not callable
+g(lambda (x, y): y) # E: Argument 1 to "g" has incompatible type "Callable[[Tuple[int, int]], int]"; expected "Callable[[Tuple[int, int]], str]" \
+    # E: Incompatible return value type (got "int", expected "str")
 [out]
 
 [case testLambdaSingletonTupleArgInPython2]
@@ -264,8 +342,8 @@ class M(type):
 class A(object):
     __metaclass__ = M
 
-reveal_type(A.x) # E: Revealed type is 'builtins.int'
-reveal_type(A.test()) # E: Revealed type is 'builtins.str'
+reveal_type(A.x) # N: Revealed type is "builtins.int"
+reveal_type(A.test()) # N: Revealed type is "builtins.str"
 
 [case testImportedMetaclass]
 import m
@@ -273,8 +351,8 @@ import m
 class A(object):
     __metaclass__ = m.M
 
-reveal_type(A.x) # E: Revealed type is 'builtins.int'
-reveal_type(A.test()) # E: Revealed type is 'builtins.str'
+reveal_type(A.x) # N: Revealed type is "builtins.int"
+reveal_type(A.test()) # N: Revealed type is "builtins.str"
 [file m.py]
 class M(type):
     x = 0
@@ -284,7 +362,7 @@ class M(type):
 
 [case testDynamicMetaclass]
 class C(object):
-    __metaclass__ = int()  # E: Dynamic metaclass not supported for 'C'
+    __metaclass__ = int()  # E: Dynamic metaclass not supported for "C"
 
 [case testMetaclassDefinedAsClass]
 class C(object):
@@ -293,9 +371,9 @@ class C(object):
 [case testErrorInMetaclass]
 x = 0
 class A(object):
-    __metaclass__ = m.M  # E: Name 'm' is not defined
+    __metaclass__ = m.M  # E: Name "m" is not defined
 class B(object):
-    __metaclass__ = M  # E: Name 'M' is not defined
+    __metaclass__ = M  # E: Name "M" is not defined
 
 [case testMetaclassAndSkippedImportInPython2]
 # flags: --ignore-missing-imports
@@ -303,7 +381,7 @@ from missing import M
 class A(object):
     __metaclass__ = M
     y = 0
-reveal_type(A.y) # E: Revealed type is 'builtins.int'
+reveal_type(A.y) # N: Revealed type is "builtins.int"
 A.x # E: "Type[A]" has no attribute "x"
 
 [case testAnyAsBaseOfMetaclass]
@@ -343,3 +421,8 @@ def foo(
 [case testNoneHasNoBoolInPython2]
 none = None
 b = none.__bool__() # E: "None" has no attribute "__bool__"
+
+[case testDictWithoutTypeCommentInPython2]
+# flags: --py2
+d = dict() # E: Need type comment for "d" (hint: "d = ...  \# type: Dict[<type>, <type>]")
+[builtins_py2 fixtures/floatdict_python2.pyi]

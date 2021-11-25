@@ -1,4 +1,5 @@
 from typing import Optional, Union, Any, Tuple, Iterable
+from typing_extensions import Final
 
 from mypy.nodes import (
     Expression, ComparisonExpr, OpExpr, MemberExpr, UnaryExpr, StarExpr, IndexExpr, LITERAL_YES,
@@ -7,13 +8,9 @@ from mypy.nodes import (
     ConditionalExpr, EllipsisExpr, YieldFromExpr, YieldExpr, RevealExpr, SuperExpr,
     TypeApplication, LambdaExpr, ListComprehension, SetComprehension, DictionaryComprehension,
     GeneratorExpr, BackquoteExpr, TypeVarExpr, TypeAliasExpr, NamedTupleExpr, EnumCallExpr,
-    TypedDictExpr, NewTypeExpr, PromoteExpr, AwaitExpr, TempNode,
+    TypedDictExpr, NewTypeExpr, PromoteExpr, AwaitExpr, TempNode, AssignmentExpr, ParamSpecExpr
 )
 from mypy.visitor import ExpressionVisitor
-
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
 
 # [Note Literals and literal_hash]
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -63,6 +60,9 @@ def literal(e: Expression) -> int:
 
     elif isinstance(e, (MemberExpr, UnaryExpr, StarExpr)):
         return literal(e.expr)
+
+    elif isinstance(e, AssignmentExpr):
+        return literal(e.target)
 
     elif isinstance(e, IndexExpr):
         if literal(e.index) == LITERAL_YES:
@@ -116,7 +116,10 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
         return ('Star', literal_hash(e.expr))
 
     def visit_name_expr(self, e: NameExpr) -> Key:
-        return ('Var', e.name)
+        # N.B: We use the node itself as the key, and not the name,
+        # because using the name causes issues when there is shadowing
+        # (for example, in list comprehensions).
+        return ('Var', e.node)
 
     def visit_member_expr(self, e: MemberExpr) -> Key:
         return ('Member', literal_hash(e.expr), e.name)
@@ -125,7 +128,7 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
         return ('Binary', e.op, literal_hash(e.left), literal_hash(e.right))
 
     def visit_comparison_expr(self, e: ComparisonExpr) -> Key:
-        rest = tuple(e.operators)  # type: Any
+        rest: Any = tuple(e.operators)
         rest += tuple(literal_hash(o) for o in e.operands)
         return ('Comparison',) + rest
 
@@ -134,7 +137,7 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
 
     def seq_expr(self, e: Union[ListExpr, TupleExpr, SetExpr], name: str) -> Optional[Key]:
         if all(literal(x) == LITERAL_YES for x in e.items):
-            rest = tuple(literal_hash(x) for x in e.items)  # type: Any
+            rest: Any = tuple(literal_hash(x) for x in e.items)
             return (name,) + rest
         return None
 
@@ -143,9 +146,10 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
 
     def visit_dict_expr(self, e: DictExpr) -> Optional[Key]:
         if all(a and literal(a) == literal(b) == LITERAL_YES for a, b in e.items):
-            rest = tuple((literal_hash(a) if a else None, literal_hash(b))
-                         for a, b in e.items)  # type: Any
-            return ('Dict',) + rest
+            rest: Any = tuple(
+                (literal_hash(a) if a else None, literal_hash(b)) for a, b in e.items
+            )
+            return ("Dict",) + rest
         return None
 
     def visit_tuple_expr(self, e: TupleExpr) -> Optional[Key]:
@@ -158,6 +162,9 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
         if literal(e.index) == LITERAL_YES:
             return ('Index', literal_hash(e.base), literal_hash(e.index))
         return None
+
+    def visit_assignment_expr(self, e: AssignmentExpr) -> Optional[Key]:
+        return literal_hash(e.target)
 
     def visit_call_expr(self, e: CallExpr) -> None:
         return None
@@ -210,6 +217,9 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
     def visit_type_var_expr(self, e: TypeVarExpr) -> None:
         return None
 
+    def visit_paramspec_expr(self, e: ParamSpecExpr) -> None:
+        return None
+
     def visit_type_alias_expr(self, e: TypeAliasExpr) -> None:
         return None
 
@@ -235,4 +245,4 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
         return None
 
 
-_hasher = _Hasher()  # type: Final
+_hasher: Final = _Hasher()

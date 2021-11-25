@@ -6,16 +6,15 @@ import json
 import os
 import shutil
 import tokenize
-import typing
+import time
+import sys
+import itertools
 from operator import attrgetter
 from urllib.request import pathname2url
-from typing import Any, Callable, Dict, List, Optional, Tuple, cast
 
-import time
-
-import sys
-
-import itertools
+import typing
+from typing import Any, Callable, Dict, List, Optional, Tuple, cast, Iterator
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.nodes import MypyFile, Expression, FuncDef
 from mypy import stats
@@ -25,39 +24,37 @@ from mypy.types import Type, TypeOfAny
 from mypy.version import __version__
 from mypy.defaults import REPORTER_NAMES
 
-MYPY = False
-if MYPY:
-    from typing_extensions import Final
-
 try:
-    # mypyc doesn't properly handle import from of submodules that we
-    # don't have stubs for, hence the hacky double import
-    import lxml.etree  # type: ignore
     from lxml import etree  # type: ignore
     LXML_INSTALLED = True
 except ImportError:
     LXML_INSTALLED = False
 
-type_of_any_name_map = collections.OrderedDict([
-    (TypeOfAny.unannotated, "Unannotated"),
-    (TypeOfAny.explicit, "Explicit"),
-    (TypeOfAny.from_unimported_type, "Unimported"),
-    (TypeOfAny.from_omitted_generics, "Omitted Generics"),
-    (TypeOfAny.from_error, "Error"),
-    (TypeOfAny.special_form, "Special Form"),
-    (TypeOfAny.implementation_artifact, "Implementation Artifact"),
-])  # type: Final[collections.OrderedDict[int, str]]
+type_of_any_name_map: Final["collections.OrderedDict[int, str]"] = collections.OrderedDict(
+    [
+        (TypeOfAny.unannotated, "Unannotated"),
+        (TypeOfAny.explicit, "Explicit"),
+        (TypeOfAny.from_unimported_type, "Unimported"),
+        (TypeOfAny.from_omitted_generics, "Omitted Generics"),
+        (TypeOfAny.from_error, "Error"),
+        (TypeOfAny.special_form, "Special Form"),
+        (TypeOfAny.implementation_artifact, "Implementation Artifact"),
+    ]
+)
 
-ReporterClasses = Dict[str, Tuple[Callable[['Reports', str], 'AbstractReporter'], bool]]
+ReporterClasses: _TypeAlias = Dict[
+    str,
+    Tuple[Callable[['Reports', str], 'AbstractReporter'], bool],
+]
 
-reporter_classes = {}  # type: Final[ReporterClasses]
+reporter_classes: Final[ReporterClasses] = {}
 
 
 class Reports:
     def __init__(self, data_dir: str, report_dirs: Dict[str, str]) -> None:
         self.data_dir = data_dir
-        self.reporters = []  # type: List[AbstractReporter]
-        self.named_reporters = {}  # type: Dict[str, AbstractReporter]
+        self.reporters: List[AbstractReporter] = []
+        self.named_reporters: Dict[str, AbstractReporter] = {}
 
         for report_type, report_dir in sorted(report_dirs.items()):
             self.add_report(report_type, report_dir)
@@ -79,9 +76,13 @@ class Reports:
         self.named_reporters[report_type] = reporter
         return reporter
 
-    def file(self, tree: MypyFile, type_map: Dict[Expression, Type], options: Options) -> None:
+    def file(self,
+             tree: MypyFile,
+             modules: Dict[str, MypyFile],
+             type_map: Dict[Expression, Type],
+             options: Options) -> None:
         for reporter in self.reporters:
-            reporter.on_file(tree, type_map, options)
+            reporter.on_file(tree, modules, type_map, options)
 
     def finish(self) -> None:
         for reporter in self.reporters:
@@ -95,7 +96,11 @@ class AbstractReporter(metaclass=ABCMeta):
             stats.ensure_dir_exists(output_dir)
 
     @abstractmethod
-    def on_file(self, tree: MypyFile, type_map: Dict[Expression, Type], options: Options) -> None:
+    def on_file(self,
+                tree: MypyFile,
+                modules: Dict[str, MypyFile],
+                type_map: Dict[Expression, Type],
+                options: Options) -> None:
         pass
 
     @abstractmethod
@@ -113,6 +118,23 @@ def alias_reporter(source_reporter: str, target_reporter: str) -> None:
     reporter_classes[target_reporter] = reporter_classes[source_reporter]
 
 
+def should_skip_path(path: str) -> bool:
+    if stats.is_special_module(path):
+        return True
+    if path.startswith('..'):
+        return True
+    if 'stubs' in path.split('/') or 'stubs' in path.split(os.sep):
+        return True
+    return False
+
+
+def iterate_python_lines(path: str) -> Iterator[Tuple[int, str]]:
+    """Return an iterator over (line number, line text) from a Python file."""
+    with tokenize.open(path) as input_file:
+        for line_info in enumerate(input_file, 1):
+            yield line_info
+
+
 class FuncCounterVisitor(TraverserVisitor):
     def __init__(self) -> None:
         super().__init__()
@@ -125,10 +147,11 @@ class FuncCounterVisitor(TraverserVisitor):
 class LineCountReporter(AbstractReporter):
     def __init__(self, reports: Reports, output_dir: str) -> None:
         super().__init__(reports, output_dir)
-        self.counts = {}  # type: Dict[str, Tuple[int, int, int, int]]
+        self.counts: Dict[str, Tuple[int, int, int, int]] = {}
 
     def on_file(self,
                 tree: MypyFile,
+                modules: Dict[str, MypyFile],
                 type_map: Dict[Expression, Type],
                 options: Options) -> None:
         # Count physical lines.  This assumes the file's encoding is a
@@ -152,12 +175,12 @@ class LineCountReporter(AbstractReporter):
                                        annotated_funcs, total_funcs)
 
     def on_finish(self) -> None:
-        counts = sorted(((c, p) for p, c in self.counts.items()),
-                        reverse=True)  # type: List[Tuple[Tuple[int, int, int, int], str]]
-        total_counts = tuple(sum(c[i] for c, p in counts)
-                             for i in range(4))
-        with open(os.path.join(self.output_dir, 'linecount.txt'), 'w') as f:
-            f.write('{:7} {:7} {:6} {:6} total\n'.format(*total_counts))
+        counts: List[Tuple[Tuple[int, int, int, int], str]] = sorted(
+            ((c, p) for p, c in self.counts.items()), reverse=True
+        )
+        total_counts = tuple(sum(c[i] for c, p in counts) for i in range(4))
+        with open(os.path.join(self.output_dir, "linecount.txt"), "w") as f:
+            f.write("{:7} {:7} {:6} {:6} total\n".format(*total_counts))
             for c, p in counts:
                 f.write('{:7} {:7} {:6} {:6} {}\n'.format(
                     c[0], c[1], c[2], c[3], p))
@@ -167,26 +190,32 @@ register_reporter('linecount', LineCountReporter)
 
 
 class AnyExpressionsReporter(AbstractReporter):
+    """Report frequencies of different kinds of Any types."""
+
     def __init__(self, reports: Reports, output_dir: str) -> None:
         super().__init__(reports, output_dir)
-        self.counts = {}  # type: Dict[str, Tuple[int, int]]
-        self.any_types_counter = {}  # type: Dict[str, typing.Counter[int]]
+        self.counts: Dict[str, Tuple[int, int]] = {}
+        self.any_types_counter: Dict[str, typing.Counter[int]] = {}
 
     def on_file(self,
                 tree: MypyFile,
+                modules: Dict[str, MypyFile],
                 type_map: Dict[Expression, Type],
                 options: Options) -> None:
-        visitor = stats.StatisticsVisitor(inferred=True, filename=tree.fullname(),
-                                          typemap=type_map, all_nodes=True,
+        visitor = stats.StatisticsVisitor(inferred=True,
+                                          filename=tree.fullname,
+                                          modules=modules,
+                                          typemap=type_map,
+                                          all_nodes=True,
                                           visit_untyped_defs=False)
         tree.accept(visitor)
-        self.any_types_counter[tree.fullname()] = visitor.type_of_any_counter
+        self.any_types_counter[tree.fullname] = visitor.type_of_any_counter
         num_unanalyzed_lines = list(visitor.line_map.values()).count(stats.TYPE_UNANALYZED)
         # count each line of dead code as one expression of type "Any"
         num_any = visitor.num_any_exprs + num_unanalyzed_lines
         num_total = visitor.num_imprecise_exprs + visitor.num_precise_exprs + num_any
         if num_total > 0:
-            self.counts[tree.fullname()] = (num_any, num_total)
+            self.counts[tree.fullname] = (num_any, num_total)
 
     def on_finish(self) -> None:
         self._report_any_exprs()
@@ -229,26 +258,28 @@ class AnyExpressionsReporter(AbstractReporter):
             total_coverage = (float(total_expr - total_any) / float(total_expr)) * 100
 
         column_names = ["Name", "Anys", "Exprs", "Coverage"]
-        rows = []  # type: List[List[str]]
+        rows: List[List[str]] = []
         for filename in sorted(self.counts):
             (num_any, num_total) = self.counts[filename]
             coverage = (float(num_total - num_any) / float(num_total)) * 100
             coverage_str = '{:.2f}%'.format(coverage)
             rows.append([filename, str(num_any), str(num_total), coverage_str])
+        rows.sort(key=lambda x: x[0])
         total_row = ["Total", str(total_any), str(total_expr), '{:.2f}%'.format(total_coverage)]
         self._write_out_report('any-exprs.txt', column_names, rows, total_row)
 
     def _report_types_of_anys(self) -> None:
-        total_counter = collections.Counter()  # type: typing.Counter[int]
+        total_counter: typing.Counter[int] = collections.Counter()
         for counter in self.any_types_counter.values():
             for any_type, value in counter.items():
                 total_counter[any_type] += value
         file_column_name = "Name"
         total_row_name = "Total"
         column_names = [file_column_name] + list(type_of_any_name_map.values())
-        rows = []  # type: List[List[str]]
+        rows: List[List[str]] = []
         for filename, counter in self.any_types_counter.items():
             rows.append([filename] + [str(counter[typ]) for typ in type_of_any_name_map])
+        rows.sort(key=lambda x: x[0])
         total_row = [total_row_name] + [str(total_counter[typ])
                                         for typ in type_of_any_name_map]
         self._write_out_report('types-of-anys.txt', column_names, rows, total_row)
@@ -357,12 +388,14 @@ class LineCoverageReporter(AbstractReporter):
     source file's absolute pathname the list of line numbers that
     belong to typed functions in that file.
     """
+
     def __init__(self, reports: Reports, output_dir: str) -> None:
         super().__init__(reports, output_dir)
-        self.lines_covered = {}  # type: Dict[str, List[int]]
+        self.lines_covered: Dict[str, List[int]] = {}
 
     def on_file(self,
                 tree: MypyFile,
+                modules: Dict[str, MypyFile],
                 type_map: Dict[Expression, Type],
                 options: Options) -> None:
         with open(tree.path) as f:
@@ -396,7 +429,7 @@ class FileInfo:
         return sum(self.counts)
 
     def attrib(self) -> Dict[str, str]:
-        return {name: str(val) for name, val in zip(stats.precision_names, self.counts)}
+        return {name: str(val) for name, val in sorted(zip(stats.precision_names, self.counts))}
 
 
 class MemoryXmlReporter(AbstractReporter):
@@ -413,44 +446,48 @@ class MemoryXmlReporter(AbstractReporter):
         self.css_html_path = os.path.join(reports.data_dir, 'xml', 'mypy-html.css')
         xsd_path = os.path.join(reports.data_dir, 'xml', 'mypy.xsd')
         self.schema = etree.XMLSchema(etree.parse(xsd_path))
-        self.last_xml = None  # type: Optional[Any]
-        self.files = []  # type: List[FileInfo]
+        self.last_xml: Optional[Any] = None
+        self.files: List[FileInfo] = []
 
     # XML doesn't like control characters, but they are sometimes
     # legal in source code (e.g. comments, string literals).
     # Tabs (#x09) are allowed in XML content.
-    control_fixer = str.maketrans(''.join(chr(i) for i in range(32) if i != 9), '?' * 31)
+    control_fixer: Final = str.maketrans("".join(chr(i) for i in range(32) if i != 9), "?" * 31)
 
     def on_file(self,
                 tree: MypyFile,
+                modules: Dict[str, MypyFile],
                 type_map: Dict[Expression, Type],
                 options: Options) -> None:
         self.last_xml = None
-        path = os.path.relpath(tree.path)
-        if stats.is_special_module(path):
-            return
-        if path.startswith('..'):
-            return
-        if 'stubs' in path.split('/'):
+
+        try:
+            path = os.path.relpath(tree.path)
+        except ValueError:
             return
 
-        visitor = stats.StatisticsVisitor(inferred=True, filename=tree.fullname(),
-                                          typemap=type_map, all_nodes=True)
+        if should_skip_path(path) or os.path.isdir(path):
+            return  # `path` can sometimes be a directory, see #11334
+
+        visitor = stats.StatisticsVisitor(inferred=True,
+                                          filename=tree.fullname,
+                                          modules=modules,
+                                          typemap=type_map,
+                                          all_nodes=True)
         tree.accept(visitor)
 
         root = etree.Element('mypy-report-file', name=path, module=tree._fullname)
         doc = etree.ElementTree(root)
         file_info = FileInfo(path, tree._fullname)
 
-        with tokenize.open(path) as input_file:
-            for lineno, line_text in enumerate(input_file, 1):
-                status = visitor.line_map.get(lineno, stats.TYPE_EMPTY)
-                file_info.counts[status] += 1
-                etree.SubElement(root, 'line',
-                                 number=str(lineno),
-                                 precision=stats.precision_names[status],
-                                 content=line_text.rstrip('\n').translate(self.control_fixer),
-                                 any_info=self._get_any_info_for_line(visitor, lineno))
+        for lineno, line_text in iterate_python_lines(path):
+            status = visitor.line_map.get(lineno, stats.TYPE_EMPTY)
+            file_info.counts[status] += 1
+            etree.SubElement(root, 'line',
+                             any_info=self._get_any_info_for_line(visitor, lineno),
+                             content=line_text.rstrip('\n').translate(self.control_fixer),
+                             number=str(lineno),
+                             precision=stats.precision_names[status])
         # Assumes a layout similar to what XmlReporter uses.
         xslt_path = os.path.relpath('mypy-html.xslt', path)
         transform_pi = etree.ProcessingInstruction('xml-stylesheet',
@@ -465,7 +502,7 @@ class MemoryXmlReporter(AbstractReporter):
     def _get_any_info_for_line(visitor: stats.StatisticsVisitor, lineno: int) -> str:
         if lineno in visitor.any_line_map:
             result = "Any Types on this line: "
-            counter = collections.Counter()  # type: typing.Counter[int]
+            counter: typing.Counter[int] = collections.Counter()
             for typ in visitor.any_line_map[lineno]:
                 counter[typ.type_of_any] += 1
             for any_type, occurrences in counter.items():
@@ -485,9 +522,9 @@ class MemoryXmlReporter(AbstractReporter):
         for file_info in output_files:
             etree.SubElement(root, 'file',
                              file_info.attrib(),
-                             total=str(file_info.total()),
-                             name=file_info.name,
-                             module=file_info.module)
+                             module=file_info.module,
+                             name=pathname2url(file_info.name),
+                             total=str(file_info.total()))
         xslt_path = os.path.relpath('mypy-html.xslt', '.')
         transform_pi = etree.ProcessingInstruction('xml-stylesheet',
                 'type="text/xsl" href="%s"' % pathname2url(xslt_path))
@@ -508,19 +545,19 @@ def get_line_rate(covered_lines: int, total_lines: int) -> str:
 
 
 class CoberturaPackage(object):
-    """Container for XML and statistics mapping python modules to Cobertura package
-    """
+    """Container for XML and statistics mapping python modules to Cobertura package."""
+
     def __init__(self, name: str) -> None:
         self.name = name
-        self.classes = {}  # type: Dict[str, Any]
-        self.packages = {}  # type: Dict[str, CoberturaPackage]
+        self.classes: Dict[str, Any] = {}
+        self.packages: Dict[str, CoberturaPackage] = {}
         self.total_lines = 0
         self.covered_lines = 0
 
     def as_xml(self) -> Any:
         package_element = etree.Element('package',
-                                        name=self.name,
-                                        complexity='1.0')
+                                        complexity='1.0',
+                                        name=self.name)
         package_element.attrib['branch-rate'] = '0'
         package_element.attrib['line-rate'] = get_line_rate(self.covered_lines, self.total_lines)
         classes_element = etree.SubElement(package_element, 'classes')
@@ -537,8 +574,7 @@ class CoberturaPackage(object):
 
 
 class CoberturaXmlReporter(AbstractReporter):
-    """Reporter for generating Cobertura compliant XML.
-    """
+    """Reporter for generating Cobertura compliant XML."""
 
     def __init__(self, reports: Reports, output_dir: str) -> None:
         super().__init__(reports, output_dir)
@@ -551,18 +587,22 @@ class CoberturaXmlReporter(AbstractReporter):
 
     def on_file(self,
                 tree: MypyFile,
+                modules: Dict[str, MypyFile],
                 type_map: Dict[Expression, Type],
                 options: Options) -> None:
         path = os.path.relpath(tree.path)
-        visitor = stats.StatisticsVisitor(inferred=True, filename=tree.fullname(),
-                                          typemap=type_map, all_nodes=True)
+        visitor = stats.StatisticsVisitor(inferred=True,
+                                          filename=tree.fullname,
+                                          modules=modules,
+                                          typemap=type_map,
+                                          all_nodes=True)
         tree.accept(visitor)
 
         class_name = os.path.basename(path)
         file_info = FileInfo(path, tree._fullname)
         class_element = etree.Element('class',
-                                      filename=path,
                                       complexity='1.0',
+                                      filename=path,
                                       name=class_name)
         etree.SubElement(class_element, 'methods')
         lines_element = etree.SubElement(class_element, 'lines')
@@ -584,10 +624,10 @@ class CoberturaXmlReporter(AbstractReporter):
                     branch = True
                 file_info.counts[status] += 1
                 line_element = etree.SubElement(lines_element, 'line',
-                                                number=str(lineno),
-                                                precision=stats.precision_names[status],
+                                                branch=str(branch).lower(),
                                                 hits=str(hits),
-                                                branch=str(branch).lower())
+                                                number=str(lineno),
+                                                precision=stats.precision_names[status])
                 if branch:
                     line_element.attrib['condition-coverage'] = '50% (1/2)'
             class_element.attrib['branch-rate'] = '0'
@@ -648,6 +688,7 @@ class XmlReporter(AbstractXmlReporter):
 
     def on_file(self,
                 tree: MypyFile,
+                modules: Dict[str, MypyFile],
                 type_map: Dict[Expression, Type],
                 options: Options) -> None:
         last_xml = self.memory_xml.last_xml
@@ -690,6 +731,7 @@ class XsltHtmlReporter(AbstractXmlReporter):
 
     def on_file(self,
                 tree: MypyFile,
+                modules: Dict[str, MypyFile],
                 type_map: Dict[Expression, Type],
                 options: Options) -> None:
         last_xml = self.memory_xml.last_xml
@@ -732,6 +774,7 @@ class XsltTxtReporter(AbstractXmlReporter):
 
     def on_file(self,
                 tree: MypyFile,
+                modules: Dict[str, MypyFile],
                 type_map: Dict[Expression, Type],
                 options: Options) -> None:
         pass
@@ -750,6 +793,82 @@ register_reporter('xslt-txt', XsltTxtReporter, needs_lxml=True)
 
 alias_reporter('xslt-html', 'html')
 alias_reporter('xslt-txt', 'txt')
+
+
+class LinePrecisionReporter(AbstractReporter):
+    """Report per-module line counts for typing precision.
+
+    Each line is classified into one of these categories:
+
+    * precise (fully type checked)
+    * imprecise (Any types in a type component, such as List[Any])
+    * any (something with an Any type, implicit or explicit)
+    * empty (empty line, comment or docstring)
+    * unanalyzed (mypy considers line unreachable)
+
+    The meaning of these categories varies slightly depending on
+    context.
+    """
+
+    def __init__(self, reports: Reports, output_dir: str) -> None:
+        super().__init__(reports, output_dir)
+        self.files: List[FileInfo] = []
+
+    def on_file(self,
+                tree: MypyFile,
+                modules: Dict[str, MypyFile],
+                type_map: Dict[Expression, Type],
+                options: Options) -> None:
+
+        try:
+            path = os.path.relpath(tree.path)
+        except ValueError:
+            return
+
+        if should_skip_path(path):
+            return
+
+        visitor = stats.StatisticsVisitor(inferred=True,
+                                          filename=tree.fullname,
+                                          modules=modules,
+                                          typemap=type_map,
+                                          all_nodes=True)
+        tree.accept(visitor)
+
+        file_info = FileInfo(path, tree._fullname)
+        for lineno, _ in iterate_python_lines(path):
+            status = visitor.line_map.get(lineno, stats.TYPE_EMPTY)
+            file_info.counts[status] += 1
+
+        self.files.append(file_info)
+
+    def on_finish(self) -> None:
+        if not self.files:
+            # Nothing to do.
+            return
+        output_files = sorted(self.files, key=lambda x: x.module)
+        report_file = os.path.join(self.output_dir, 'lineprecision.txt')
+        width = max(4, max(len(info.module) for info in output_files))
+        titles = ('Lines', 'Precise', 'Imprecise', 'Any', 'Empty', 'Unanalyzed')
+        widths = (width,) + tuple(len(t) for t in titles)
+        fmt = '{:%d}  {:%d}  {:%d}  {:%d}  {:%d}  {:%d}  {:%d}\n' % widths
+        with open(report_file, 'w') as f:
+            f.write(
+                fmt.format('Name', *titles))
+            f.write('-' * (width + 51) + '\n')
+            for file_info in output_files:
+                counts = file_info.counts
+                f.write(fmt.format(file_info.module.ljust(width),
+                                   file_info.total(),
+                                   counts[stats.TYPE_PRECISE],
+                                   counts[stats.TYPE_IMPRECISE],
+                                   counts[stats.TYPE_ANY],
+                                   counts[stats.TYPE_EMPTY],
+                                   counts[stats.TYPE_UNANALYZED]))
+
+
+register_reporter('lineprecision', LinePrecisionReporter)
+
 
 # Reporter class names are defined twice to speed up mypy startup, as this
 # module is slow to import. Ensure that the two definitions match.

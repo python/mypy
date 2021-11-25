@@ -13,3 +13,4 @@ class int: pass
 class str: pass
 
 class slice: pass
+class ellipsis: pass

@@ -188,9 +188,9 @@ from typing import Any
 x = 5  # type: Any
 
 if callable(x):
-    reveal_type(x)  # E: Revealed type is 'Any'
+    reveal_type(x)  # N: Revealed type is "Any"
 else:
-    reveal_type(x)  # E: Revealed type is 'Any'
+    reveal_type(x)  # N: Revealed type is "Any"
 [builtins fixtures/callable.pyi]
 
 [case testCallableCallableClasses]
@@ -217,9 +217,9 @@ if not callable(b):
     5 + 'test'
 
 if callable(c):
-    reveal_type(c)  # E: Revealed type is '__main__.B'
+    reveal_type(c)  # N: Revealed type is "__main__.B"
 else:
-    reveal_type(c)  # E: Revealed type is '__main__.A'
+    reveal_type(c)  # N: Revealed type is "__main__.A"
 
 [builtins fixtures/callable.pyi]
 
@@ -230,9 +230,9 @@ T = Union[Union[int, Callable[[], int]], Union[str, Callable[[], str]]]
 
 def f(t: T) -> None:
     if callable(t):
-        reveal_type(t())  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+        reveal_type(t())  # N: Revealed type is "Union[builtins.int, builtins.str]"
     else:
-        reveal_type(t)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+        reveal_type(t)  # N: Revealed type is "Union[builtins.int, builtins.str]"
 
 [builtins fixtures/callable.pyi]
 
@@ -256,11 +256,11 @@ T = TypeVar('T', int, Callable[[], int], Union[str, Callable[[], str]])
 
 def f(t: T) -> None:
     if callable(t):
-        reveal_type(t())  # E: Revealed type is 'Any'  \
-            # E: Revealed type is 'builtins.int'  \
-            # E: Revealed type is 'builtins.str'
+        reveal_type(t())  # N: Revealed type is "Any"  \
+            # N: Revealed type is "builtins.int"  \
+            # N: Revealed type is "builtins.str"
     else:
-        reveal_type(t)  # E: Revealed type is 'builtins.int*'  # E: Revealed type is 'builtins.str'
+        reveal_type(t)  # N: Revealed type is "builtins.int*"  # N: Revealed type is "builtins.str"
 
 [builtins fixtures/callable.pyi]
 
@@ -299,6 +299,28 @@ def f(t: T) -> A:
     else:
         return 5
 
+[builtins fixtures/callable.pyi]
+
+[case testCallableTypeVarBoundAndLambdaDefer]
+# See https://github.com/python/mypy/issues/11212
+from typing import Callable, TypeVar
+
+C = TypeVar('C', bound=Callable)
+
+def dec(val: None) -> Callable[[C], C]:
+    def wrapper(f):
+        return f
+    return wrapper
+
+lambda: foo() + 2  # error was here
+
+@dec(None)
+def foo() -> int:
+    return 2
+
+lambda: foo() + 2  # double check
+
+reveal_type(foo() + 2)  # N: Revealed type is "builtins.int"
 [builtins fixtures/callable.pyi]
 
 [case testCallableTypeUnion]
@@ -356,7 +378,7 @@ def f(o: object) -> None:
         o(1,2,3)
         1 + 'boom'  # E: Unsupported operand types for + ("int" and "str")
         o('hi') + 12
-        reveal_type(o)  # E: Revealed type is '__main__.<callable subtype of object>'
+        reveal_type(o)  # N: Revealed type is "__main__.<callable subtype of object>"
 
 [builtins fixtures/callable.pyi]
 
@@ -442,3 +464,98 @@ def g(o: Thing) -> None:
         o(1,2,3)
 
 [builtins fixtures/callable.pyi]
+
+[case testCallableNoArgs]
+
+if callable():  # E: Missing positional argument "x" in call to "callable"
+    pass
+
+[builtins fixtures/callable.pyi]
+
+[case testCallableWithNoneArgs]
+
+fn = None
+if callable(fn):
+  fn()
+
+[builtins fixtures/callable.pyi]
+
+[case testCallableUnionOfNoneAndCallable]
+
+from typing import Union, Callable
+
+def f() -> int:
+    return 42
+
+fn = f  # type: Union[None, Callable[[], int]]
+
+if callable(fn):
+    reveal_type(fn) # N: Revealed type is "def () -> builtins.int"
+else:
+    reveal_type(fn) # N: Revealed type is "None"
+
+[builtins fixtures/callable.pyi]
+
+[case testBuiltinsTypeAsCallable]
+# flags: --python-version 3.7
+from __future__ import annotations
+
+reveal_type(type)  # N: Revealed type is "def (x: Any) -> builtins.type"
+_TYPE = type
+reveal_type(_TYPE)  # N: Revealed type is "def (x: Any) -> builtins.type"
+_TYPE('bar')
+
+[builtins fixtures/callable.pyi]
+
+[case testErrorMessageAboutSelf]
+# https://github.com/python/mypy/issues/11309
+class Some:
+    def method(self, a) -> None: pass
+    @classmethod
+    def cls_method(cls, a) -> None: pass
+    @staticmethod
+    def st_method(a) -> None: pass
+
+    def bad_method(a) -> None: pass
+    @classmethod
+    def bad_cls_method(a) -> None: pass
+    @staticmethod
+    def bad_st_method() -> None: pass
+
+s: Some
+
+s.method(1)
+s.cls_method(1)
+Some.cls_method(1)
+s.st_method(1)
+Some.st_method(1)
+
+s.method(1, 2)  # E: Too many arguments for "method" of "Some"
+s.cls_method(1, 2)  # E: Too many arguments for "cls_method" of "Some"
+Some.cls_method(1, 2)  # E: Too many arguments for "cls_method" of "Some"
+s.st_method(1, 2)  # E: Too many arguments for "st_method" of "Some"
+Some.st_method(1, 2)  # E: Too many arguments for "st_method" of "Some"
+
+s.bad_method(1)  # E: Too many arguments for "bad_method" of "Some" \
+                 # N: Looks like the first special argument in a method is not named "self", "cls", or "mcs", maybe it is missing?
+s.bad_cls_method(1)  # E: Too many arguments for "bad_cls_method" of "Some" \
+                     # N: Looks like the first special argument in a method is not named "self", "cls", or "mcs", maybe it is missing?
+Some.bad_cls_method(1)  # E: Too many arguments for "bad_cls_method" of "Some" \
+                        # N: Looks like the first special argument in a method is not named "self", "cls", or "mcs", maybe it is missing?
+s.bad_st_method(1)  # E: Too many arguments for "bad_st_method" of "Some"
+Some.bad_st_method(1)  # E: Too many arguments for "bad_st_method" of "Some"
+[builtins fixtures/callable.pyi]
+
+[case testClassMethodAliasStub]
+from a import f
+f("no")  # E: Argument 1 has incompatible type "str"; expected "int"
+[file a.pyi]
+from b import C
+f = C.f
+[file b.pyi]
+import a
+class C(B):
+    @classmethod
+    def f(self, x: int) -> C: ...
+class B: ...
+[builtins fixtures/classmethod.pyi]

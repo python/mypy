@@ -11,19 +11,21 @@ from mypy.build import Graph
 from mypy.modulefinder import BuildSource, SearchPaths, FindModuleCache
 from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import (
-    DataDrivenTestCase, DataSuite, FileOperation, UpdateFile, module_from_path
+    DataDrivenTestCase, DataSuite, FileOperation, module_from_path
 )
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages, assert_module_equivalence,
-    retry_on_error, update_testcase_output, parse_options,
-    copy_and_fudge_mtime
+    update_testcase_output, parse_options,
+    assert_target_equivalence, check_test_output_files, perform_file_operations,
 )
 from mypy.errors import CompileError
+from mypy.semanal_main import core_modules
 
 
 # List of files that contain test case descriptions.
 typecheck_files = [
     'check-basic.test',
+    'check-union-or-syntax.test',
     'check-callable.test',
     'check-classes.test',
     'check-statements.test',
@@ -45,6 +47,7 @@ typecheck_files = [
     'check-isinstance.test',
     'check-lists.test',
     'check-namedtuple.test',
+    'check-narrowing.test',
     'check-typeddict.test',
     'check-type-aliases.test',
     'check-ignore.test',
@@ -83,7 +86,28 @@ typecheck_files = [
     'check-redefine.test',
     'check-literal.test',
     'check-newsemanal.test',
+    'check-inline-config.test',
+    'check-reports.test',
+    'check-errorcodes.test',
+    'check-annotated.test',
+    'check-parameter-specification.test',
+    'check-generic-alias.test',
+    'check-typeguard.test',
+    'check-functools.test',
+    'check-singledispatch.test',
+    'check-slots.test',
+    'check-formatting.test'
 ]
+
+# Tests that use Python 3.8-only AST features (like expression-scoped ignores):
+if sys.version_info >= (3, 8):
+    typecheck_files.append('check-python38.test')
+if sys.version_info >= (3, 9):
+    typecheck_files.append('check-python39.test')
+
+# Special tests for platforms with case-insensitive filesystems.
+if sys.platform in ('darwin', 'win32'):
+    typecheck_files.extend(['check-modules-case.test'])
 
 
 class TypeCheckSuite(DataSuite):
@@ -96,7 +120,6 @@ class TypeCheckSuite(DataSuite):
         if incremental:
             # Incremental tests are run once with a cold cache, once with a warm cache.
             # Expect success on first run, errors from testcase.output (if any) on second run.
-            # We briefly sleep to make sure file timestamps are distinct.
             num_steps = max([2] + list(testcase.output2.keys()))
             # Check that there are no file changes beyond the last run (they would be ignored).
             for dn, dirs, files in os.walk(os.curdir):
@@ -134,24 +157,21 @@ class TypeCheckSuite(DataSuite):
                     break
         elif incremental_step > 1:
             # In runs 2+, copy *.[num] files to * files.
-            for op in operations:
-                if isinstance(op, UpdateFile):
-                    # Modify/create file
-                    copy_and_fudge_mtime(op.source_path, op.target_path)
-                else:
-                    # Delete file
-                    # Use retries to work around potential flakiness on Windows (AppVeyor).
-                    path = op.path
-                    retry_on_error(lambda: os.remove(path))
+            perform_file_operations(operations)
 
         # Parse options after moving files (in case mypy.ini is being moved).
         options = parse_options(original_program_text, testcase, incremental_step)
         options.use_builtins_fixtures = True
         options.show_traceback = True
+
+        # Enable some options automatically based on test file name.
         if 'optional' in testcase.file:
             options.strict_optional = True
-        if 'newsemanal' in testcase.file:
-            options.new_semantic_analyzer = True
+        if 'columns' in testcase.file:
+            options.show_column_numbers = True
+        if 'errorcodes' in testcase.file:
+            options.show_error_codes = True
+
         if incremental_step and options.incremental:
             # Don't overwrite # flags: --no-incremental in incremental test cases
             options.incremental = True
@@ -208,16 +228,32 @@ class TypeCheckSuite(DataSuite):
             if options.cache_dir != os.devnull:
                 self.verify_cache(module_data, res.errors, res.manager, res.graph)
 
+            name = 'targets'
+            if incremental_step:
+                name += str(incremental_step + 1)
+            expected = testcase.expected_fine_grained_targets.get(incremental_step + 1)
+            actual = res.manager.processed_targets
+            # Skip the initial builtin cycle.
+            actual = [t for t in actual
+                      if not any(t.startswith(mod)
+                                 for mod in core_modules + ['mypy_extensions'])]
+            if expected is not None:
+                assert_target_equivalence(name, expected, actual)
             if incremental_step > 1:
                 suffix = '' if incremental_step == 2 else str(incremental_step - 1)
-                assert_module_equivalence(
-                    'rechecked' + suffix,
-                    testcase.expected_rechecked_modules.get(incremental_step - 1),
-                    res.manager.rechecked_modules)
-                assert_module_equivalence(
-                    'stale' + suffix,
-                    testcase.expected_stale_modules.get(incremental_step - 1),
-                    res.manager.stale_modules)
+                expected_rechecked = testcase.expected_rechecked_modules.get(incremental_step - 1)
+                if expected_rechecked is not None:
+                    assert_module_equivalence(
+                        'rechecked' + suffix,
+                        expected_rechecked, res.manager.rechecked_modules)
+                expected_stale = testcase.expected_stale_modules.get(incremental_step - 1)
+                if expected_stale is not None:
+                    assert_module_equivalence(
+                        'stale' + suffix,
+                        expected_stale, res.manager.stale_modules)
+
+        if testcase.output_files:
+            check_test_output_files(testcase, incremental_step, strip_prefix='tmp/')
 
     def verify_cache(self, module_data: List[Tuple[str, str, str]], a: List[str],
                      manager: build.BuildManager, graph: Graph) -> None:
@@ -238,6 +274,11 @@ class TypeCheckSuite(DataSuite):
         if not missing_paths == busted_paths:
             raise AssertionError("cache data discrepancy %s != %s" %
                                  (missing_paths, busted_paths))
+        assert os.path.isfile(os.path.join(manager.options.cache_dir, ".gitignore"))
+        cachedir_tag = os.path.join(manager.options.cache_dir, "CACHEDIR.TAG")
+        assert os.path.isfile(cachedir_tag)
+        with open(cachedir_tag) as f:
+            assert f.read().startswith("Signature: 8a477f597d28d172789f06886806bc55")
 
     def find_error_message_paths(self, a: List[str]) -> Set[str]:
         hits = set()
@@ -298,10 +339,10 @@ class TypeCheckSuite(DataSuite):
             module_names = m.group(1)
             out = []
             search_paths = SearchPaths((test_temp_dir,), (), (), ())
-            cache = FindModuleCache(search_paths)
+            cache = FindModuleCache(search_paths, fscache=None, options=None)
             for module_name in module_names.split(' '):
                 path = cache.find_module(module_name)
-                assert path is not None, "Can't find ad hoc case file"
+                assert isinstance(path, str), "Can't find ad hoc case file: %s" % module_name
                 with open(path, encoding='utf8') as f:
                     program_text = f.read()
                 out.append((module_name, path, program_text))

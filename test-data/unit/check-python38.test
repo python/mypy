@@ -1,0 +1,572 @@
+[case testDecoratedClassLine]
+def d(c): ...
+@d
+
+class C: ...
+class C: ...  # E: Name "C" already defined on line 4
+
+[case testDecoratedFunctionLine]
+# flags: --disallow-untyped-defs
+def d(f): ...  # type: ignore
+@d
+
+def f(): ...  # E: Function is missing a return type annotation \
+              # N: Use "-> None" if function does not return a value
+
+[case testIgnoreDecoratedFunction1]
+# flags: --disallow-untyped-defs --warn-unused-ignores
+def d(f): ...  # type: ignore
+@d
+# type: ignore
+def f(): ...  # type: ignore  # E: Unused "type: ignore" comment
+
+[case testIgnoreDecoratedFunction2]
+# flags: --disallow-untyped-defs
+def d(f): ...  # type: ignore
+@d
+
+def f(): ...  # type: ignore
+
+[case testIgnoreScopeIssue1032]
+def f(a: int): ...
+f(
+    1,
+    2,
+)  # type: ignore
+
+[case testIgnoreScopeNested1]
+def g(x: str) -> str: ...
+def f(a: int) -> int: ...
+f(
+    f(
+        g(
+            "IGNORE"
+        )  # type: ignore
+    )
+)
+
+[case testIgnoreScopeNested2]
+[
+    "IGNORE"  # type: ignore
+    &
+    "IGNORE",
+]
+[builtins fixtures/list.pyi]
+
+[case testIgnoreScopeNested3]
+{
+    "IGNORE"
+    |  # type: ignore
+    "IGNORE",
+}
+[builtins fixtures/set.pyi]
+
+[case testIgnoreScopeNested4]
+{
+    None: "IGNORE"
+    ^
+    "IGNORE",  # type: ignore
+}
+[builtins fixtures/dict.pyi]
+
+[case testIgnoreScopeNestedNonOverlapping]
+def f(x: int): ...
+def g(x: int): ...
+(
+    f("ERROR"),  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+    g("IGNORE"),  # type: ignore
+    f("ERROR"),  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+)
+[builtins fixtures/tuple.pyi]
+
+[case testIgnoreScopeNestedOverlapping]
+def f(x: int): ...
+def g(x: int): ...
+(
+    f("ERROR"), g(  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+        "IGNORE"  # type: ignore
+    ), f("ERROR"),  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+)
+[builtins fixtures/tuple.pyi]
+
+[case testIgnoreScopeUnused1]
+# flags: --warn-unused-ignores
+(  # type: ignore  # E: Unused "type: ignore" comment
+    "IGNORE"  # type: ignore  # E: Unused "type: ignore" comment
+    +  # type: ignore  # E: Unused "type: ignore" comment
+    0  # type: ignore
+)  # type: ignore  # E: Unused "type: ignore" comment
+[builtins fixtures/primitives.pyi]
+
+[case testIgnoreScopeUnused2]
+# flags: --warn-unused-ignores
+(  # type: ignore  # E: Unused "type: ignore" comment
+    "IGNORE"
+    -  # type: ignore
+    0  # type: ignore  # E: Unused "type: ignore" comment
+)  # type: ignore  # E: Unused "type: ignore" comment
+
+[case testIgnoreScopeUnused3]
+# flags: --warn-unused-ignores
+(  # type: ignore  # E: Unused "type: ignore" comment
+    "IGNORE"
+    /
+    0  # type: ignore
+)  # type: ignore  # E: Unused "type: ignore" comment
+
+[case testPEP570ArgTypesMissing]
+# flags: --disallow-untyped-defs
+def f(arg, /) -> None: ...  # E: Function is missing a type annotation for one or more arguments
+
+[case testPEP570ArgTypesBadDefault]
+def f(arg: int = "ERROR", /) -> None: ...  # E: Incompatible default for argument "arg" (default has type "str", argument has type "int")
+
+[case testPEP570ArgTypesDefault]
+def f(arg: int = 0, /) -> None:
+    reveal_type(arg)  # N: Revealed type is "builtins.int"
+
+[case testPEP570ArgTypesRequired]
+def f(arg: int, /) -> None:
+    reveal_type(arg)  # N: Revealed type is "builtins.int"
+
+[case testPEP570Required]
+def f(arg: int, /) -> None: ...  # N: "f" defined here
+f(1)
+f("ERROR")  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+f(arg=1)  # E: Unexpected keyword argument "arg" for "f"
+f(arg="ERROR")  # E: Unexpected keyword argument "arg" for "f"
+
+[case testPEP570Default]
+def f(arg: int = 0, /) -> None: ...  # N: "f" defined here
+f()
+f(1)
+f("ERROR")  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+f(arg=1)  # E: Unexpected keyword argument "arg" for "f"
+f(arg="ERROR")  # E: Unexpected keyword argument "arg" for "f"
+
+[case testPEP570Calls]
+from typing import Any, Dict
+def f(p, /, p_or_kw, *, kw) -> None: ...  # N: "f" defined here
+d = None # type: Dict[Any, Any]
+f(0, 0, 0)  # E: Too many positional arguments for "f"
+f(0, 0, kw=0)
+f(0, p_or_kw=0, kw=0)
+f(p=0, p_or_kw=0, kw=0)  # E: Unexpected keyword argument "p" for "f"
+f(0, **d)
+f(**d)  # E: Missing positional argument "p_or_kw" in call to "f"
+[builtins fixtures/dict.pyi]
+
+[case testPEP570Signatures1]
+def f(p1: bytes, p2: float, /, p_or_kw: int, *, kw: str) -> None:
+    reveal_type(p1)  # N: Revealed type is "builtins.bytes"
+    reveal_type(p2)  # N: Revealed type is "builtins.float"
+    reveal_type(p_or_kw)  # N: Revealed type is "builtins.int"
+    reveal_type(kw)  # N: Revealed type is "builtins.str"
+
+[case testPEP570Signatures2]
+def f(p1: bytes, p2: float = 0.0, /, p_or_kw: int = 0, *, kw: str) -> None:
+    reveal_type(p1)  # N: Revealed type is "builtins.bytes"
+    reveal_type(p2)  # N: Revealed type is "builtins.float"
+    reveal_type(p_or_kw)  # N: Revealed type is "builtins.int"
+    reveal_type(kw)  # N: Revealed type is "builtins.str"
+
+[case testPEP570Signatures3]
+def f(p1: bytes, p2: float = 0.0, /, *, kw: int) -> None:
+    reveal_type(p1)  # N: Revealed type is "builtins.bytes"
+    reveal_type(p2)  # N: Revealed type is "builtins.float"
+    reveal_type(kw)  # N: Revealed type is "builtins.int"
+
+[case testPEP570Signatures4]
+def f(p1: bytes, p2: int = 0, /) -> None:
+    reveal_type(p1)  # N: Revealed type is "builtins.bytes"
+    reveal_type(p2)  # N: Revealed type is "builtins.int"
+
+[case testPEP570Signatures5]
+def f(p1: bytes, p2: float, /, p_or_kw: int) -> None:
+    reveal_type(p1)  # N: Revealed type is "builtins.bytes"
+    reveal_type(p2)  # N: Revealed type is "builtins.float"
+    reveal_type(p_or_kw)  # N: Revealed type is "builtins.int"
+
+[case testPEP570Signatures6]
+def f(p1: bytes, p2: float, /) -> None:
+    reveal_type(p1)  # N: Revealed type is "builtins.bytes"
+    reveal_type(p2)  # N: Revealed type is "builtins.float"
+
+[case testPEP570Unannotated]
+def f(arg, /): ...  # N: "f" defined here
+g = lambda arg, /: arg
+def h(arg=0, /): ...  # N: "h" defined here
+i = lambda arg=0, /: arg
+
+f(1)
+g(1)
+h()
+h(1)
+i()
+i(1)
+f(arg=0)  # E: Unexpected keyword argument "arg" for "f"
+g(arg=0)  # E: Unexpected keyword argument "arg"
+h(arg=0)  # E: Unexpected keyword argument "arg" for "h"
+i(arg=0)  # E: Unexpected keyword argument "arg"
+
+[case testWalrus]
+# flags: --strict-optional
+from typing import NamedTuple, Optional, List
+from typing_extensions import Final
+
+if a := 2:
+    reveal_type(a)  # N: Revealed type is "builtins.int"
+
+while b := "x":
+    reveal_type(b)  # N: Revealed type is "builtins.str"
+
+l = [y2 := 1, y2 + 2, y2 + 3]
+reveal_type(y2)  # N: Revealed type is "builtins.int"
+reveal_type(l)  # N: Revealed type is "builtins.list[builtins.int*]"
+
+filtered_data = [y3 for x in l if (y3 := a) is not None]
+reveal_type(filtered_data)  # N: Revealed type is "builtins.list[builtins.int*]"
+reveal_type(y3)  # N: Revealed type is "builtins.int"
+
+d = {'a': (a2 := 1), 'b': a2 + 1, 'c': a2 + 2}
+reveal_type(d)  # N: Revealed type is "builtins.dict[builtins.str*, builtins.int*]"
+reveal_type(a2)  # N: Revealed type is "builtins.int"
+
+d2 = {(prefix := 'key_') + 'a': (start_val := 1), prefix + 'b': start_val + 1, prefix + 'c': start_val + 2}
+reveal_type(d2)  # N: Revealed type is "builtins.dict[builtins.str*, builtins.int*]"
+reveal_type(prefix)  # N: Revealed type is "builtins.str"
+reveal_type(start_val)  # N: Revealed type is "builtins.int"
+
+filtered_dict = {k: new_v for k, v in [('a', 1), ('b', 2), ('c', 3)] if (new_v := v + 1) == 2}
+reveal_type(filtered_dict)  # N: Revealed type is "builtins.dict[builtins.str*, builtins.int*]"
+reveal_type(new_v)  # N: Revealed type is "builtins.int"
+
+def f(x: int = (c := 4)) -> int:
+    if a := 2:
+        reveal_type(a)  # N: Revealed type is "builtins.int"
+
+    while b := "x":
+        reveal_type(b)  # N: Revealed type is "builtins.str"
+
+    x = (y := 1) + (z := 2)
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+    reveal_type(y)  # N: Revealed type is "builtins.int"
+    reveal_type(z)  # N: Revealed type is "builtins.int"
+
+    l = [y2 := 1, y2 + 2, y2 + 3]
+    reveal_type(y2)  # N: Revealed type is "builtins.int"
+    reveal_type(l)  # N: Revealed type is "builtins.list[builtins.int*]"
+
+    filtered_data = [y3 for x in l if (y3 := a) is not None]
+    reveal_type(filtered_data)  # N: Revealed type is "builtins.list[builtins.int*]"
+    reveal_type(y3)  # N: Revealed type is "builtins.int"
+
+    d = {'a': (a2 := 1), 'b': a2 + 1, 'c': a2 + 2}
+    reveal_type(d)  # N: Revealed type is "builtins.dict[builtins.str*, builtins.int*]"
+    reveal_type(a2)  # N: Revealed type is "builtins.int"
+
+    d2 = {(prefix := 'key_') + 'a': (start_val := 1), prefix + 'b': start_val + 1, prefix + 'c': start_val + 2}
+    reveal_type(d2)  # N: Revealed type is "builtins.dict[builtins.str*, builtins.int*]"
+    reveal_type(prefix)  # N: Revealed type is "builtins.str"
+    reveal_type(start_val)  # N: Revealed type is "builtins.int"
+
+    filtered_dict = {k: new_v for k, v in [('a', 1), ('b', 2), ('c', 3)] if (new_v := v + 1) == 2}
+    reveal_type(filtered_dict)  # N: Revealed type is "builtins.dict[builtins.str*, builtins.int*]"
+    reveal_type(new_v)  # N: Revealed type is "builtins.int"
+
+    # https://www.python.org/dev/peps/pep-0572/#exceptional-cases
+    (y4 := 3)
+    reveal_type(y4)  # N: Revealed type is "builtins.int"
+
+    y5 = (y6 := 3)
+    reveal_type(y5)  # N: Revealed type is "builtins.int"
+    reveal_type(y6)  # N: Revealed type is "builtins.int"
+
+    f(x=(y7 := 3))
+    reveal_type(y7)  # N: Revealed type is "builtins.int"
+
+    reveal_type((lambda: (y8 := 3) and y8)())  # N: Revealed type is "builtins.int"
+    y8  # E: Name "y8" is not defined
+
+    y7 = 1.0  # E: Incompatible types in assignment (expression has type "float", variable has type "int")
+    if y7 := "x":  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+        pass
+
+    # Just make sure we don't crash on this sort of thing.
+    if NT := NamedTuple("NT", [("x", int)]):  # E: "int" not callable
+        z2: NT  # E: Variable "NT" is not valid as a type \
+                # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+
+    if Alias := int:
+        z3: Alias  # E: Variable "Alias" is not valid as a type \
+                   # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+
+    if (reveal_type(y9 := 3) and   # N: Revealed type is "Literal[3]?"
+            reveal_type(y9)):       # N: Revealed type is "builtins.int"
+        reveal_type(y9)            # N: Revealed type is "builtins.int"
+
+    return (y10 := 3) + y10
+
+reveal_type(c)  # N: Revealed type is "builtins.int"
+
+def check_final() -> None:
+    x: Final = 3
+
+    if x := 4:  # E: Cannot assign to final name "x"
+        pass
+
+def check_binder(x: Optional[int], y: Optional[int], z: Optional[int], a: Optional[int],
+                 b: Optional[int]) -> None:
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, None]"
+
+    (x := 1)
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+
+    if x or (y := 1):
+        reveal_type(y)  # N: Revealed type is "Union[builtins.int, None]"
+
+    if x and (y := 1):
+        reveal_type(y)  # N: Revealed type is "builtins.int"
+
+    if (a := 1) and x:
+        reveal_type(a)  # N: Revealed type is "builtins.int"
+
+    if (b := 1) or x:
+        reveal_type(b)  # N: Revealed type is "builtins.int"
+
+    if z := 1:
+        reveal_type(z)  # N: Revealed type is "builtins.int"
+
+def check_partial() -> None:
+    x = None
+    if bool() and (x := 2):
+        pass
+
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, None]"
+
+def check_narrow(x: Optional[int], s: List[int]) -> None:
+    if (y := x):
+        reveal_type(y)  # N: Revealed type is "builtins.int"
+
+    if (y := x) is not None:
+        reveal_type(y)  # N: Revealed type is "builtins.int"
+
+    if (y := x) == 10:
+        reveal_type(y)  # N: Revealed type is "builtins.int"
+
+    if (y := x) in s:
+        reveal_type(y)  # N: Revealed type is "builtins.int"
+
+    if isinstance((y := x), int):
+        reveal_type(y)  # N: Revealed type is "builtins.int"
+
+class AssignmentExpressionsClass:
+    x = (y := 1) + (z := 2)
+    reveal_type(z)  # N: Revealed type is "builtins.int"
+
+    l = [x2 := 1, 2, 3]
+    reveal_type(x2)  # N: Revealed type is "builtins.int"
+
+    def __init__(self) -> None:
+        reveal_type(self.z)  # N: Revealed type is "builtins.int"
+
+        l = [z2 := 1, z2 + 2, z2 + 3]
+        reveal_type(z2)  # N: Revealed type is "builtins.int"
+        reveal_type(l)  # N: Revealed type is "builtins.list[builtins.int*]"
+
+        filtered_data = [z3 for x in l if (z3 := 1) is not None]
+        reveal_type(filtered_data)  # N: Revealed type is "builtins.list[builtins.int*]"
+        reveal_type(z3)  # N: Revealed type is "builtins.int"
+
+# Assignment expressions from inside the class should not escape the class scope.
+reveal_type(x2)  # E: Name "x2" is not defined  # N: Revealed type is "Any"
+reveal_type(z2)  # E: Name "z2" is not defined  # N: Revealed type is "Any"
+
+[builtins fixtures/isinstancelist.pyi]
+
+[case testWalrusConditionalTypeBinder]
+from typing import Union
+from typing_extensions import Literal
+
+class Good:
+    @property
+    def is_good(self) -> Literal[True]: ...
+
+class Bad:
+    @property
+    def is_good(self) -> Literal[False]: ...
+
+def get_thing() -> Union[Good, Bad]: ...
+
+if (thing := get_thing()).is_good:
+    reveal_type(thing)  # N: Revealed type is "__main__.Good"
+else:
+    reveal_type(thing)  # N: Revealed type is "__main__.Bad"
+[builtins fixtures/property.pyi]
+
+[case testWalrusConditionalTypeCheck]
+# flags: --strict-optional
+from typing import Optional
+
+maybe_str: Optional[str]
+
+if (is_str := maybe_str is not None):
+    reveal_type(is_str)  # N: Revealed type is "Literal[True]"
+    reveal_type(maybe_str)  # N: Revealed type is "builtins.str"
+else:
+    reveal_type(is_str)  # N: Revealed type is "Literal[False]"
+    reveal_type(maybe_str)  # N: Revealed type is "None"
+
+reveal_type(maybe_str)  # N: Revealed type is "Union[builtins.str, None]"
+[builtins fixtures/bool.pyi]
+
+[case testWalrusConditionalTypeCheck2]
+from typing import Optional
+
+maybe_str: Optional[str]
+
+if (x := maybe_str) is not None:
+    reveal_type(x)  # N: Revealed type is "builtins.str"
+    reveal_type(maybe_str)  # N: Revealed type is "Union[builtins.str, None]"
+else:
+    reveal_type(x)  # N: Revealed type is "None"
+    reveal_type(maybe_str)  # N: Revealed type is "Union[builtins.str, None]"
+
+reveal_type(maybe_str)  # N: Revealed type is "Union[builtins.str, None]"
+[builtins fixtures/bool.pyi]
+
+[case testWalrusPartialTypes]
+from typing import List
+
+def check_partial_list() -> None:
+    if (x := []):  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
+        pass
+
+    y: List[str]
+    if (y := []):
+        pass
+
+    if (z := []):
+        z.append(3)
+    reveal_type(z)  # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/list.pyi]
+
+[case testWalrusAssignmentAndConditionScopeForLiteral]
+# flags: --warn-unreachable
+
+if (x := 0):
+    reveal_type(x)  # E: Statement is unreachable
+else:
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+
+reveal_type(x)  # N: Revealed type is "builtins.int"
+
+[case testWalrusAssignmentAndConditionScopeForProperty]
+# flags: --warn-unreachable
+
+from typing_extensions import Literal
+
+class PropertyWrapper:
+    @property
+    def f(self) -> str: ...
+    @property
+    def always_false(self) -> Literal[False]: ...
+
+wrapper = PropertyWrapper()
+
+if x := wrapper.f:
+    reveal_type(x)  # N: Revealed type is "builtins.str"
+else:
+    reveal_type(x)  # N: Revealed type is "builtins.str"
+
+reveal_type(x)  # N: Revealed type is "builtins.str"
+
+if y := wrapper.always_false:
+    reveal_type(y)  # E: Statement is unreachable
+else:
+    reveal_type(y)  # N: Revealed type is "Literal[False]"
+
+reveal_type(y)  # N: Revealed type is "Literal[False]"
+[builtins fixtures/property.pyi]
+
+[case testWalrusAssignmentAndConditionScopeForFunction]
+# flags: --warn-unreachable
+
+from typing_extensions import Literal
+
+def f() -> str: ...
+
+if x := f():
+    reveal_type(x)  # N: Revealed type is "builtins.str"
+else:
+    reveal_type(x)  # N: Revealed type is "builtins.str"
+
+reveal_type(x)  # N: Revealed type is "builtins.str"
+
+def always_false() -> Literal[False]: ...
+
+if y := always_false():
+    reveal_type(y)  # E: Statement is unreachable
+else:
+    reveal_type(y)  # N: Revealed type is "Literal[False]"
+
+reveal_type(y)  # N: Revealed type is "Literal[False]"
+
+def always_false_with_parameter(x: int) -> Literal[False]: ...
+
+if z := always_false_with_parameter(5):
+    reveal_type(z)  # E: Statement is unreachable
+else:
+    reveal_type(z)  # N: Revealed type is "Literal[False]"
+
+reveal_type(z)  # N: Revealed type is "Literal[False]"
+[builtins fixtures/tuple.pyi]
+
+[case testWalrusExpr]
+def func() -> None:
+    foo = Foo()
+    if x := foo.x:
+        pass
+
+class Foo:
+    def __init__(self) -> None:
+        self.x = 123
+
+[case testWalrusTypeGuard]
+from typing_extensions import TypeGuard
+def is_float(a: object) -> TypeGuard[float]: pass
+def main(a: object) -> None:
+    if is_float(x := a):
+        reveal_type(x)  # N: Revealed type is "builtins.float"
+        reveal_type(a)  # N: Revealed type is "builtins.object"
+[builtins fixtures/tuple.pyi]
+
+[case testWalrusRedefined]
+def foo() -> None:
+    x = 0
+    [x := x + y for y in [1, 2, 3]]
+[builtins fixtures/dict.pyi]
+
+[case testOverloadWithPositionalOnlySelf]
+from typing import overload, Optional
+
+class Foo:
+    @overload
+    def f(self, a: str, /) -> None: ...
+
+    @overload
+    def f(self, *, b: bool = False) -> None: ...
+
+    def f(self, a: Optional[str] = None, /, *, b: bool = False) -> None:  # E: Overloaded function implementation does not accept all possible arguments of signature 2
+        ...
+
+class Bar:
+    @overload
+    def f(self, a: str, /) -> None: ...
+
+    @overload  # Notice `/` in sig below:
+    def f(self, /, *, b: bool = False) -> None: ...
+
+    def f(self, a: Optional[str] = None, /, *, b: bool = False) -> None:
+        ...
+[builtins fixtures/bool.pyi]

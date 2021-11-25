@@ -52,6 +52,6 @@ MypyFile:1(
       StrExpr(foo))
     AssignmentStmt:4(
       NameExpr(x)
-      TempNode:-1(
+      TempNode:4(
         Any)
       str?)))

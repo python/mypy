@@ -19,6 +19,7 @@ class int:
     @classmethod
     def from_bytes(cls, bytes: bytes, byteorder: str) -> int: pass
 
+class float: pass
 class str: pass
 class bytes: pass
 class bool: pass

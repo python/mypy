@@ -1,14 +1,19 @@
 from typing import Sequence
 
 from mypy.types import (
-    Type, UnboundType, AnyType, NoneTyp, TupleType, TypedDictType,
+    Type, UnboundType, AnyType, NoneType, TupleType, TypedDictType,
     UnionType, CallableType, TypeVarType, Instance, TypeVisitor, ErasedType,
     Overloaded, PartialType, DeletedType, UninhabitedType, TypeType, LiteralType,
+    ProperType, get_proper_type, TypeAliasType, ParamSpecType
 )
+from mypy.typeops import tuple_fallback, make_simplified_union
 
 
 def is_same_type(left: Type, right: Type) -> bool:
     """Is 'left' the same type as 'right'?"""
+
+    left = get_proper_type(left)
+    right = get_proper_type(right)
 
     if isinstance(right, UnboundType):
         # Make unbound types same as anything else to reduce the number of
@@ -28,9 +33,10 @@ def is_same_type(left: Type, right: Type) -> bool:
         return left.accept(SameTypeVisitor(right))
 
 
-def simplify_union(t: Type) -> Type:
+def simplify_union(t: Type) -> ProperType:
+    t = get_proper_type(t)
     if isinstance(t, UnionType):
-        return UnionType.make_simplified_union(t.items)
+        return make_simplified_union(t.items)
     return t
 
 
@@ -46,7 +52,7 @@ def is_same_types(a1: Sequence[Type], a2: Sequence[Type]) -> bool:
 class SameTypeVisitor(TypeVisitor[bool]):
     """Visitor for checking whether two types are the 'same' type."""
 
-    def __init__(self, right: Type) -> None:
+    def __init__(self, right: ProperType) -> None:
         self.right = right
 
     # visit_x(left) means: is left (which is an instance of X) the same type as
@@ -58,8 +64,8 @@ class SameTypeVisitor(TypeVisitor[bool]):
     def visit_any(self, left: AnyType) -> bool:
         return isinstance(self.right, AnyType)
 
-    def visit_none_type(self, left: NoneTyp) -> bool:
-        return isinstance(self.right, NoneTyp)
+    def visit_none_type(self, left: NoneType) -> bool:
+        return isinstance(self.right, NoneType)
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
         return isinstance(self.right, UninhabitedType)
@@ -78,11 +84,23 @@ class SameTypeVisitor(TypeVisitor[bool]):
         return (isinstance(self.right, Instance) and
                 left.type == self.right.type and
                 is_same_types(left.args, self.right.args) and
-                left.final_value == self.right.final_value)
+                left.last_known_value == self.right.last_known_value)
+
+    def visit_type_alias_type(self, left: TypeAliasType) -> bool:
+        # Similar to protocols, two aliases with the same targets return False here,
+        # but both is_subtype(t, s) and is_subtype(s, t) return True.
+        return (isinstance(self.right, TypeAliasType) and
+                left.alias == self.right.alias and
+                is_same_types(left.args, self.right.args))
 
     def visit_type_var(self, left: TypeVarType) -> bool:
         return (isinstance(self.right, TypeVarType) and
                 left.id == self.right.id)
+
+    def visit_param_spec(self, left: ParamSpecType) -> bool:
+        # Ignore upper bound since it's derived from flavor.
+        return (isinstance(self.right, ParamSpecType) and
+                left.id == self.right.id and left.flavor == self.right.flavor)
 
     def visit_callable_type(self, left: CallableType) -> bool:
         # FIX generics
@@ -99,7 +117,7 @@ class SameTypeVisitor(TypeVisitor[bool]):
 
     def visit_tuple_type(self, left: TupleType) -> bool:
         if isinstance(self.right, TupleType):
-            return (is_same_type(left.fallback, self.right.fallback)
+            return (is_same_type(tuple_fallback(left), tuple_fallback(self.right))
                     and is_same_types(left.items, self.right.items))
         else:
             return False
@@ -141,7 +159,7 @@ class SameTypeVisitor(TypeVisitor[bool]):
 
     def visit_overloaded(self, left: Overloaded) -> bool:
         if isinstance(self.right, Overloaded):
-            return is_same_types(left.items(), self.right.items())
+            return is_same_types(left.items, self.right.items)
         else:
             return False
 

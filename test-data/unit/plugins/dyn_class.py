@@ -23,7 +23,7 @@ def add_info_hook(ctx):
 
     info = TypeInfo(SymbolTable(), class_def, ctx.api.cur_mod_id)
     class_def.info = info
-    obj = ctx.api.builtin_type('builtins.object')
+    obj = ctx.api.named_type('builtins.object')
     info.mro = [info, obj.type]
     info.bases = [obj]
     ctx.api.add_symbol_table_node(ctx.name, SymbolTableNode(GDEF, info))
@@ -34,12 +34,12 @@ def replace_col_hook(ctx):
     for sym in info.names.values():
         node = sym.node
         if isinstance(node, Var) and isinstance(node.type, Instance):
-            if node.type.type.fullname() == 'mod.Column':
+            if node.type.type.fullname == 'mod.Column':
                 new_sym = ctx.api.lookup_fully_qualified_or_none('mod.Instr')
                 if new_sym:
                     new_info = new_sym.node
                     assert isinstance(new_info, TypeInfo)
-                    node.type = Instance(new_info, node.type.args.copy(),
+                    node.type = Instance(new_info, node.type.args,
                                          node.type.line,
                                          node.type.column)
 

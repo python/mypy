@@ -1,7 +1,11 @@
 """Tests for the mypy parser."""
 
+import sys
+
+from pytest import skip
+
 from mypy import defaults
-from mypy.test.helpers import assert_string_arrays_equal
+from mypy.test.helpers import assert_string_arrays_equal, parse_options
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.parse import parse
 from mypy.errors import CompileError
@@ -60,12 +64,16 @@ class ParseErrorSuite(DataSuite):
 
 def test_parse_error(testcase: DataDrivenTestCase) -> None:
     try:
+        options = parse_options('\n'.join(testcase.input), testcase, 0)
+        if options.python_version != sys.version_info[:2]:
+            skip()
         # Compile temporary file. The test file contains non-ASCII characters.
         parse(bytes('\n'.join(testcase.input), 'utf-8'), INPUT_FILE_NAME, '__main__', None,
-              Options())
+              options)
         raise AssertionError('No errors reported')
     except CompileError as e:
-        assert e.module_with_blocker == '__main__'
+        if e.module_with_blocker is not None:
+            assert e.module_with_blocker == '__main__'
         # Verify that there was a compile error and that the error messages
         # are equivalent.
         assert_string_arrays_equal(
