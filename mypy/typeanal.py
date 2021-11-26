@@ -1269,6 +1269,9 @@ class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
             return []
         elif node and node.fullname in ('typing_extensions.Literal', 'typing.Literal'):
             return []
+        elif node and node.fullname in ('typing_extensions.Annotated', 'typing.Annotated'):
+            # Don't query the second argument to Annotated for TypeVars
+            return self.query_types([t.args[0]])
         else:
             return super().visit_unbound_type(t)
 
