@@ -3263,25 +3263,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """
         self.try_infer_partial_type_from_indexed_assignment(lvalue, rvalue)
         basetype = get_proper_type(self.expr_checker.accept(lvalue.base))
-        if (isinstance(basetype, TypedDictType) or (isinstance(basetype, TypeVarType)
-                and isinstance(get_proper_type(basetype.upper_bound), TypedDictType))):
-            if isinstance(basetype, TypedDictType):
-                typed_dict_type = basetype
-            else:
-                upper_bound_type = get_proper_type(basetype.upper_bound)
-                assert isinstance(upper_bound_type, TypedDictType)
-                typed_dict_type = upper_bound_type
-            item_type = self.expr_checker.visit_typeddict_index_expr(typed_dict_type, lvalue.index)
-            method_type: Type = CallableType(
-                arg_types=[self.named_type('builtins.str'), item_type],
-                arg_kinds=[ARG_POS, ARG_POS],
-                arg_names=[None, None],
-                ret_type=NoneType(),
-                fallback=self.named_type('builtins.function')
-            )
-        else:
-            method_type = self.expr_checker.analyze_external_member_access(
-                '__setitem__', basetype, context)
+        method_type = self.expr_checker.analyze_external_member_access(
+            '__setitem__', basetype, lvalue)
+
         lvalue.method_type = method_type
         self.expr_checker.check_method_call(
             '__setitem__', basetype, method_type, [lvalue.index, rvalue],

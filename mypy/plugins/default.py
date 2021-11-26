@@ -47,8 +47,6 @@ class DefaultPlugin(Plugin):
             return typed_dict_pop_signature_callback
         elif fullname in set(n + '.update' for n in TPDICT_FB_NAMES):
             return typed_dict_update_signature_callback
-        elif fullname in set(n + '.__delitem__' for n in TPDICT_FB_NAMES):
-            return typed_dict_delitem_signature_callback
         elif fullname == 'ctypes.Array.__setitem__':
             return ctypes.array_setitem_callback
         elif fullname == singledispatch.SINGLEDISPATCH_CALLABLE_CALL_METHOD:
@@ -389,12 +387,6 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
 
         return make_simplified_union(value_types)
     return ctx.default_return_type
-
-
-def typed_dict_delitem_signature_callback(ctx: MethodSigContext) -> CallableType:
-    # Replace NoReturn as the argument type.
-    str_type = ctx.api.named_generic_type('builtins.str', [])
-    return ctx.default_signature.copy_modified(arg_types=[str_type])
 
 
 def typed_dict_delitem_callback(ctx: MethodContext) -> Type:

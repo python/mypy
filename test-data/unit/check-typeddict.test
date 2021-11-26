@@ -1696,8 +1696,8 @@ s = ''
 del a[s] # E: Expected TypedDict key to be string literal
 del b[s] # E: Expected TypedDict key to be string literal
 alias = b.__delitem__
-alias('x') # E: Argument 1 has incompatible type "str"; expected "NoReturn"
-alias(s) # E: Argument 1 has incompatible type "str"; expected "NoReturn"
+alias('x')
+alias(s)
 [builtins fixtures/dict.pyi]
 
 [case testPluginUnionsOfTypedDicts]
@@ -2124,7 +2124,7 @@ class TD(TypedDict):
 
 d: TD = {b'foo': 2} # E: Expected TypedDict key to be string literal
 d[b'foo'] = 3 # E: TypedDict key must be a string literal; expected one of ("foo") \
-    # E: Argument 1 has incompatible type "bytes"; expected "str"
+    # E: Argument 1 to "__setitem__" has incompatible type "bytes"; expected "str"
 d[b'foo'] # E: TypedDict key must be a string literal; expected one of ("foo")
 d[3] # E: TypedDict key must be a string literal; expected one of ("foo")
 d[True] # E: TypedDict key must be a string literal; expected one of ("foo")
@@ -2137,3 +2137,120 @@ from mypy_extensions import TypedDict
 Foo = TypedDict('Foo', {'camelCaseKey': str})
 value: Foo = {}  # E: Missing key "camelCaseKey" for TypedDict "Foo"
 [builtins fixtures/dict.pyi]
+
+
+[case testTypedDictUnionGetItem]
+from typing import TypedDict, Union
+
+class Foo1(TypedDict):
+    z: str
+    a: int
+class Foo2(TypedDict):
+    z: str
+    b: int
+
+def func(foo: Union[Foo1, Foo2]) -> str:
+    reveal_type(foo["z"])  # N: Revealed type is "builtins.str"
+    # ok, but type is incorrect:
+    reveal_type(foo.__getitem__("z"))  # N: Revealed type is "builtins.object*"
+
+    reveal_type(foo["a"])  # N: Revealed type is "Union[builtins.int, Any]" \
+                           # E: TypedDict "Foo2" has no key "a"
+    reveal_type(foo["b"])  # N: Revealed type is "Union[Any, builtins.int]" \
+                           # E: TypedDict "Foo1" has no key "b"
+    reveal_type(foo["missing"])  # N: Revealed type is "Any" \
+                                 # E: TypedDict "Foo1" has no key "missing" \
+                                 # E: TypedDict "Foo2" has no key "missing"
+    reveal_type(foo[1])  # N: Revealed type is "Any" \
+                         # E: TypedDict key must be a string literal; expected one of ("z", "a") \
+                         # E: TypedDict key must be a string literal; expected one of ("z", "b")
+
+    return foo["z"]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictUnionSetItem]
+from typing import TypedDict, Union
+
+class Foo1(TypedDict):
+    z: str
+    a: int
+class Foo2(TypedDict):
+    z: str
+    b: int
+
+def func(foo: Union[Foo1, Foo2]):
+    foo["z"] = "a"  # ok
+    foo.__setitem__("z", "a")  # ok
+
+    foo["z"] = 1  # E: Value of "z" has incompatible type "int"; expected "str"
+
+    foo["a"] = 1  # E: TypedDict "Foo2" has no key "a"
+    foo["b"] = 2  # E: TypedDict "Foo1" has no key "b"
+
+    foo["missing"] = 1  # E: TypedDict "Foo1" has no key "missing" \
+                        # E: TypedDict "Foo2" has no key "missing"
+    foo[1] = "m"  # E: TypedDict key must be a string literal; expected one of ("z", "a") \
+                  # E: TypedDict key must be a string literal; expected one of ("z", "b") \
+                  # E: Argument 1 to "__setitem__" has incompatible type "int"; expected "str"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictUnionDelItem]
+from typing import TypedDict, Union
+
+class Foo1(TypedDict):
+    z: str
+    a: int
+class Foo2(TypedDict):
+    z: str
+    b: int
+
+def func(foo: Union[Foo1, Foo2]):
+    del foo["z"]  # E: Key "z" of TypedDict "Foo1" cannot be deleted \
+                  # E: Key "z" of TypedDict "Foo2" cannot be deleted
+    foo.__delitem__("z")  # E: Key "z" of TypedDict "Foo1" cannot be deleted \
+                          # E: Key "z" of TypedDict "Foo2" cannot be deleted
+
+    del foo["a"]  # E: Key "a" of TypedDict "Foo1" cannot be deleted \
+                  # E: TypedDict "Foo2" has no key "a"
+    del foo["b"]  # E: TypedDict "Foo1" has no key "b" \
+                  # E: Key "b" of TypedDict "Foo2" cannot be deleted
+
+    del foo["missing"]  # E: TypedDict "Foo1" has no key "missing" \
+                        # E: TypedDict "Foo2" has no key "missing"
+    del foo[1]  # E: Expected TypedDict key to be string literal \
+                # E: Argument 1 to "__delitem__" has incompatible type "int"; expected "str"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictTypeVarUnionSetItem]
+from typing import TypedDict, Union, TypeVar
+
+F1 = TypeVar('F1', bound='Foo1')
+F2 = TypeVar('F2', bound='Foo2')
+
+class Foo1(TypedDict):
+    z: str
+    a: int
+class Foo2(TypedDict):
+    z: str
+    b: int
+
+def func(foo: Union[F1, F2]):
+    foo["z"] = "a"  # ok
+    foo["z"] = 1  # E: Value of "z" has incompatible type "int"; expected "str"
+
+    foo["a"] = 1  # E: TypedDict "Foo2" has no key "a"
+    foo["b"] = 2  # E: TypedDict "Foo1" has no key "b"
+
+    foo["missing"] = 1  # E: TypedDict "Foo1" has no key "missing" \
+                        # E: TypedDict "Foo2" has no key "missing"
+    foo[1] = "m"  # E: TypedDict key must be a string literal; expected one of ("z", "a") \
+                  # E: TypedDict key must be a string literal; expected one of ("z", "b") \
+                  # E: Argument 1 to "__setitem__" has incompatible type "int"; expected "str"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
