@@ -134,8 +134,10 @@ def f1(a: Annotated[str, "metadata"]):
 reveal_type(f1)  # N: Revealed type is "def (a: builtins.str) -> Any"
 def f2(a: Annotated["str", "metadata"]):
     pass
+reveal_type(f2)  # N: Revealed type is "def (a: builtins.str) -> Any"
 def f3(a: Annotated["notdefined", "metadata"]): # E: Name "notdefined" is not defined
     pass
+[builtins fixtures/tuple.pyi]
 
 [case testSliceAnnotated39]
 # flags: --python-version 3.9
