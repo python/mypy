@@ -721,8 +721,8 @@ For more details, see :ref:`type-variable-value-restriction`.
 Generators
 **********
 
-A basic generator that only yields values can be annotated as having a return
-type of either :py:class:`Iterator[YieldType] <typing.Iterator>` or :py:class:`Iterable[YieldType] <typing.Iterable>`. For example:
+A basic generator that only yields values can be succinctly annotated as having a return
+type of :py:class:`Iterator[YieldType] <typing.Iterator>`. For example:
 
 .. code-block:: python
 
@@ -755,7 +755,7 @@ annotated the first example as the following:
        for i in range(n):
            yield i * i
 
-This is slightly different from using ``Iterable[int]`` or ``Iterator[int]``,
+This is slightly different from using ``Iterator[int]`` or ``Iterable[int]``,
 since generators have :py:meth:`~generator.close`, :py:meth:`~generator.send`, and :py:meth:`~generator.throw` methods that
-generic iterables don't. If you will call these methods on the returned
-generator, use the :py:class:`~typing.Generator` type instead of :py:class:`~typing.Iterable` or :py:class:`~typing.Iterator`.
+generic iterators and iterables don't. If you plan to call these methods on the returned
+generator, use the :py:class:`~typing.Generator` type instead of :py:class:`~typing.Iterator`.
