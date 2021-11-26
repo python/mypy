@@ -241,4 +241,8 @@ class TypeAnnotation(Generic[T]):
     def __init__(self) -> None:
         self.instance_attr = []  # type: List[T]
         self.none_attr = None  # type: List[T]
+
+class Plain(Generic[T]):
+    ok = []
+    none = None
 [out]
