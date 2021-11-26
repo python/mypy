@@ -245,4 +245,6 @@ class TypeAnnotation(Generic[T]):
 class Plain(Generic[T]):
     ok = []
     none = None
+    ann: T
+    nested_ann: List[List[T]]
 [out]

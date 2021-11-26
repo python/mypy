@@ -3352,6 +3352,10 @@ class SemanticAnalyzer(NodeVisitor[None],
     def check_class_level_typevar(self, lvalue: Lvalue,
                                   typ: Type, context: AssignmentStmt) -> None:
         if self.is_class_scope() and isinstance(lvalue, NameExpr):
+            if isinstance(context.rvalue, TempNode) and context.rvalue.no_rhs:
+                # There's no value, it is not a real class-var,
+                # it is just `x: X` annotation.
+                return
             if (not context.new_syntax
                     and isinstance(context.rvalue, NameExpr)
                     and context.rvalue.fullname == 'builtins.None'):
