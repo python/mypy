@@ -1,5 +1,6 @@
 """Utility functions with no non-trivial dependencies."""
 
+from mypy import pyinfo
 import os
 import pathlib
 import re
@@ -725,3 +726,28 @@ def is_stub_package_file(file: str) -> bool:
 
 def unnamed_function(name: Optional[str]) -> bool:
     return name is not None and name == "_"
+
+
+def get_sitepkgs_prefix(path: pathlib.Path) -> Optional[pathlib.Path]:
+    if path.name != "site-packages":
+        return None
+    # it is either <prefix>/[Ll]ib/site-packages or <prefix>/lib/pythonX.Y/site-packages
+    # so max 2 levels up
+    prefix = path.parent
+    for _ in range(2):
+        if prefix.name.lower() == "lib":
+            return prefix.parent
+        prefix = prefix.parent
+    return None
+
+
+def is_default_sitepkgs(path: pathlib.Path) -> bool:
+    return path.resolve() in (pathlib.Path(sp).resolve() for sp in pyinfo.getsitepackages())
+
+
+def is_same_sitepkgs_as_mypy(file: str) -> bool:
+    mypy_sitepkgs = pathlib.Path(__file__).resolve().parents[1]
+    common_path = pathlib.Path(
+        os.path.commonpath((mypy_sitepkgs, pathlib.Path(file).resolve()))
+    )
+    return mypy_sitepkgs == common_path

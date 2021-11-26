@@ -1,4 +1,5 @@
 from mypy.backports import OrderedDict
+import pathlib
 import re
 import pprint
 import sys
@@ -301,6 +302,9 @@ class Options:
         # skip most errors after this many messages have been reported.
         # -1 means unlimited.
         self.many_errors_threshold = defaults.MANY_ERRORS_THRESHOLD
+
+        # Prefix where mypy is installed, or None if default is used
+        self.prefix = None  # type: Optional[pathlib.Path]
 
     # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property

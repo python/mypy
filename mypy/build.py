@@ -35,8 +35,9 @@ from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, ErrorInfo, report_internal_error
 from mypy.util import (
-    DecodeError, decode_python_encoding, is_sub_path, get_mypy_comments, module_prefix,
-    read_py_file, hash_digest, is_typeshed_file, is_stub_package_file, get_top_two_prefixes
+    DecodeError, decode_python_encoding, is_same_sitepkgs_as_mypy, is_sub_path, get_mypy_comments,
+    module_prefix, read_py_file, hash_digest, is_typeshed_file, is_stub_package_file,
+    get_top_two_prefixes
 )
 if TYPE_CHECKING:
     from mypy.report import Reports  # Avoid unconditional slow import
@@ -2447,7 +2448,8 @@ def find_module_and_diagnose(manager: BuildManager,
                 and not is_typeshed_file(result)
                 and not is_stub_package_file(result)
                 and not options.use_builtins_fixtures
-                and not options.custom_typeshed_dir):
+                and not options.custom_typeshed_dir
+                and not is_same_sitepkgs_as_mypy(result)):
             raise CompileError([
                 'mypy: "%s" shadows library module "%s"' % (os.path.relpath(result), id),
                 'note: A user-defined top-level module with name "%s" is not supported' % id
