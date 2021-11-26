@@ -347,6 +347,37 @@ f(**d)
 class A: pass
 [builtins fixtures/dict.pyi]
 
+[case testPassingMappingLiteralsForKeywordVarArg]
+from typing import Mapping, Any, Union
+from typing_extensions import Literal
+def f(a=None, b=None, **kwargs) -> None: pass
+def g(a: int, b: int) -> None: pass # N: "g" defined here
+def h(a: int, b: int, **kwargs) -> None: pass
+
+s: Mapping[Literal[3], int] = {3: 2}
+f(**s) # E: Keywords must be strings
+
+t: Mapping[Literal['b'], int] = {'b':2}
+f(**t)
+h(**t)
+
+u: Mapping[Literal['c'], int] = {'b':2} \
+# E: Dict entry 0 has incompatible type "Literal['b']": "int"; expected "Literal['c']": "int"
+f(**u)
+
+v: Mapping[Literal['a','b'], int] = {'a':2, 'b':1}
+f(**v)
+
+w: Mapping[Literal['d'], int] = {'c':2} \
+# E: Dict entry 0 has incompatible type "Literal['c']": "int"; expected "Literal['d']": "int"
+f(**w)
+
+x: Mapping[Literal['c','d'], int] = {'c':1, 'd': 2}
+g(**x) # E: Unexpected keyword argument "c" for "g"
+h(**x) # E: Missing positional arguments "a", "b" in call to "h"
+
+[builtins fixtures/dict.pyi]
+
 [case testInvalidTypeForKeywordVarArg]
 from typing import Dict
 def f(**kwargs: 'A') -> None: pass
@@ -551,36 +582,4 @@ main:30: error: Argument 1 to "foo" has incompatible type "**B[str, str]"; expec
 main:31: error: Argument after ** must be a mapping, not "C[str, float]"
 main:32: error: Argument after ** must be a mapping, not "D"
 main:33: error: Argument 1 to "foo" has incompatible type "**Dict[str, str]"; expected "float"
-[builtins fixtures/dict.pyi]
-
-
-[case testGivingArgumentAsPositionalAndKeywordArg3]
-from typing import Mapping, Any, Union
-from typing_extensions import Literal
-def f(a=None, b=None, **kwargs) -> None: pass
-def g(a: int, b: int) -> None: pass # N: "g" defined here
-def h(a: int, b: int, **kwargs) -> None: pass
-
-s: Mapping[Literal[3], int] = {3: 2}
-f(**s) # E: Keywords must be strings
-
-t: Mapping[Literal['b'], int] = {'b':2}
-f(**t)
-h(**t)
-
-u: Mapping[Literal['c'], int] = {'b':2} \
-# E: Dict entry 0 has incompatible type "Literal['b']": "int"; expected "Literal['c']": "int"
-f(**u)
-
-v: Mapping[Literal['a','b'], int] = {'a':2, 'b':1}
-f(**v)
-
-w: Mapping[Literal['d'], int] = {'c':2} \
-# E: Dict entry 0 has incompatible type "Literal['c']": "int"; expected "Literal['d']": "int"
-f(**w)
-
-x: Mapping[Literal['c','d'], int] = {'c':1, 'd': 2}
-g(**x) # E: Unexpected keyword argument "c" for "g"
-h(**x) # E: Missing positional arguments "a", "b" in call to "h"
-
 [builtins fixtures/dict.pyi]
