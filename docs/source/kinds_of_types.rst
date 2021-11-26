@@ -743,7 +743,7 @@ called on the object returned from the generator function. In these cases, it ma
 to use ``Iterable`` instead of ``Iterator``.
 
 If you want your generator to accept values via the :py:meth:`~generator.send` method or return
-a value, meanwhile, you should use the
+a value, you should use the
 :py:class:`Generator[YieldType, SendType, ReturnType] <typing.Generator>` generic type instead of
 either ``Iterator`` or ``Iterable``. For example:
 
