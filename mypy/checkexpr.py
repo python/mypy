@@ -4027,18 +4027,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def is_valid_keyword_var_arg(self, typ: Type) -> bool:
         """Is a type valid as a **kwargs argument?"""
-                mapping_type = self.chk.named_generic_type(
+        mapping_type = self.chk.named_generic_type(
                 'typing.Mapping', [self.named_type('builtins.str'), AnyType(TypeOfAny.special_form)])
         typ = get_proper_type(typ)
 
         ret = (
-     is_subtype(typ, mapping_type)      or
-            (isinstance(typ, Instance)              and
-                 is_subtype(typ, self.chk.named_generic_type('typing.Mapping',
-                    [UninhabitedType(), UninhabitedType()]))              and
+            is_subtype(typ, mapping_type) or
+            is_subtype(typ, self.chk.named_generic_type('typing.Mapping',
+                                                        [UninhabitedType(), UninhabitedType()])) or
+            (isinstance(typ, Instance) and
+                is_subtype(typ, self.chk.named_type('typing.Mapping')) and
                 try_getting_str_literals_from_type(map_instance_to_supertype(
-                    typ, mapping_type.type).arg[0]) is not None
- )              or
+                    typ, mapping_type.type).args[0]) is not None
+            ) or
             isinstance(typ, ParamSpecType)
         )
         if self.chk.options.python_version[0] < 3:

@@ -135,14 +135,14 @@ class A: pass
 
 [case testKeywordArgumentsWithDynamicallyTypedCallable]
 from typing import Any
-f = None # type: Any
+f: Any = None
 f(x=f(), z=None()) # E: "None" not callable
 f(f, zz=None()) # E: "None" not callable
 f(x=None)
 
 [case testKeywordArgumentWithFunctionObject]
 from typing import Callable
-f = None # type: Callable[[A, B], None]
+f: Callable[[A, B], None] = None
 f(a=A(), b=B())
 f(A(), b=B())
 class A: pass
@@ -212,8 +212,8 @@ class B: pass
 [case testKwargsAfterBareArgs]
 from typing import Tuple, Any
 def f(a, *, b=None) -> None: pass
-a = None  # type: Any
-b = None  # type: Any
+a: Any = None
+b: Any = None
 f(a, **b)
 
 [builtins fixtures/dict.pyi]
@@ -237,7 +237,7 @@ class B: pass
 [case testKeywordArgAfterVarArgsWithBothCallerAndCalleeVarArgs]
 from typing import List
 def f(*a: 'A', b: 'B' = None) -> None: pass
-a = None # type: List[A]
+a: List[A] = None
 f(*a)
 f(A(), *a)
 f(b=B())
@@ -262,22 +262,20 @@ class A: pass
 [case testKwargsArgumentInFunctionBody]
 from typing import Dict, Any
 def f( **kwargs: 'A') -> None:
-    d1 = kwargs # type: Dict[str, A]
-    d2 = kwargs # type: Dict[A, Any] # E: Incompatible types in assignment (expression has type "Dict[str, A]", variable has type "Dict[A, Any]")
-    d3 = kwargs # type: Dict[Any, str] # E: Incompatible types in assignment (expression has type "Dict[str, A]", variable has type "Dict[Any, str]")
+    d1: Dict[str, A] = kwargs
+    d2: Dict[A, Any] = kwargs # E: Incompatible types in assignment (expression has type "Dict[str, A]", variable has type "Dict[A, Any]")
+    d3: Dict[Any, str] = kwargs # E: Incompatible types in assignment (expression has type "Dict[str, A]", variable has type "Dict[Any, str]")
 class A: pass
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testKwargsArgumentInFunctionBodyWithImplicitAny]
 from typing import Dict, Any
 def f(**kwargs) -> None:
-    d1 = kwargs # type: Dict[str, A]
-    d2 = kwargs # type: Dict[str, str]
-    d3 = kwargs # type: Dict[A, Any] # E: Incompatible types in assignment (expression has type "Dict[str, Any]", variable has type "Dict[A, Any]")
+    d1: Dict[str, A] = kwargs
+    d2: Dict[str, str] = kwargs
+    d3: Dict[A, Any] = kwargs # E: Incompatible types in assignment (expression has type "Dict[str, Any]", variable has type "Dict[A, Any]")
 class A: pass
 [builtins fixtures/dict.pyi]
-[out]
 
 [case testCallingFunctionThatAcceptsVarKwargs]
 import typing
@@ -295,10 +293,10 @@ class B: pass
 [case testCallingFunctionWithKeywordVarArgs]
 from typing import Dict
 def f( **kwargs: 'A') -> None: pass
-d = None # type: Dict[str, A]
+d: Dict[str, A] = None
 f(**d)
 f(x=A(), **d)
-d2 = None # type: Dict[str, B]
+d2: Dict[str, B] = None
 f(**d2)         # E: Argument 1 to "f" has incompatible type "**Dict[str, B]"; expected "A"
 f(x=A(), **d2)  # E: Argument 2 to "f" has incompatible type "**Dict[str, B]"; expected "A"
 f(**{'x': B()}) # E: Argument 1 to "f" has incompatible type "**Dict[str, B]"; expected "A"
@@ -331,9 +329,9 @@ reveal_type(formatter.__call__)  # N: Revealed type is "def (message: builtins.s
 [case testPassingMappingForKeywordVarArg]
 from typing import Mapping
 def f(**kwargs: 'A') -> None: pass
-b = None # type: Mapping
-d = None # type: Mapping[A, A]
-m = None # type: Mapping[str, A]
+b: Mapping = None
+d: Mapping[A, A] = None
+m: Mapping[str, A] = None
 f(**d)         # E: Keywords must be strings
 f(**m)
 f(**b)
@@ -344,7 +342,7 @@ class A: pass
 from typing import Mapping
 class MappingSubclass(Mapping[str, str]): pass
 def f(**kwargs: 'A') -> None: pass
-d = None # type: MappingSubclass
+d: MappingSubclass = None
 f(**d)
 class A: pass
 [builtins fixtures/dict.pyi]
@@ -352,7 +350,7 @@ class A: pass
 [case testInvalidTypeForKeywordVarArg]
 from typing import Dict
 def f(**kwargs: 'A') -> None: pass
-d = None # type: Dict[A, A]
+d: Dict[A, A] = None
 f(**d)         # E: Keywords must be strings
 f(**A())       # E: Argument after ** must be a mapping, not "A"
 class A: pass
@@ -361,9 +359,9 @@ class A: pass
 [case testPassingKeywordVarArgsToNonVarArgsFunction]
 from typing import Any, Dict
 def f(a: 'A', b: 'B') -> None: pass
-d = None # type: Dict[str, Any]
+d: Dict[str, Any] = None
 f(**d)
-d2 = None # type: Dict[str, A]
+d2: Dict[str, A] = None
 f(**d2) # E: Argument 1 to "f" has incompatible type "**Dict[str, A]"; expected "B"
 class A: pass
 class B: pass
@@ -372,8 +370,8 @@ class B: pass
 [case testBothKindsOfVarArgs]
 from typing import Any, List, Dict
 def f(a: 'A', b: 'A') -> None: pass
-l = None # type: List[Any]
-d = None # type: Dict[Any, Any]
+l: List[Any] = None
+d: Dict[Any, Any] = None
 f(*l, **d)
 class A: pass
 [builtins fixtures/dict.pyi]
@@ -384,8 +382,8 @@ def f1(a: 'A', b: 'A') -> None: pass
 def f2(a: 'A') -> None: pass
 def f3(a: 'A', **kwargs: 'A') -> None: pass
 def f4(**kwargs: 'A') -> None: pass
-d = None # type: Dict[Any, Any]
-d2 = None # type: Dict[Any, Any]
+d: Dict[Any, Any] = None
+d2: Dict[Any, Any] = None
 f1(**d, **d2)
 f2(**d, **d2)
 f3(**d, **d2)
@@ -396,14 +394,14 @@ class A: pass
 [case testPassingKeywordVarArgsToVarArgsOnlyFunction]
 from typing import Any, Dict
 def f(*args: 'A') -> None: pass
-d = None # type: Dict[Any, Any]
+d: Dict[Any, Any] = None
 f(**d)
 class A: pass
 [builtins fixtures/dict.pyi]
 
 [case testKeywordArgumentAndCommentSignature]
 import typing
-def f(x): # type: (int) -> str # N: "f" defined here
+def f(x: int) -> str: # N: "f" defined here
     pass
 f(x='') # E: Argument "x" to "f" has incompatible type "str"; expected "int"
 f(x=0)
@@ -412,7 +410,7 @@ f(y=0) # E: Unexpected keyword argument "y" for "f"
 [case testKeywordArgumentAndCommentSignature2]
 import typing
 class A:
-    def f(self, x): # type: (int) -> str  # N: "f" of "A" defined here
+    def f(self, x: int) -> str:  # N: "f" of "A" defined here
         pass
 A().f(x='') # E: Argument "x" to "f" of "A" has incompatible type "str"; expected "int"
 A().f(x=0)
@@ -420,7 +418,7 @@ A().f(y=0) # E: Unexpected keyword argument "y" for "f" of "A"
 
 [case testKeywordVarArgsAndCommentSignature]
 import typing
-def f(**kwargs): # type: (**int) -> None
+def f(**kwargs: int):
     pass
 f(z=1)
 f(x=1, y=1)
@@ -484,11 +482,11 @@ def f(*vargs: int, **kwargs: object) -> None:
 def g(arg: int = 0, **kwargs: object) -> None:
 	pass
 
-d = {} # type: Dict[str, object]
+d: Dict[str, object] = {}
 f(**d)
 g(**d)  # E: Argument 1 to "g" has incompatible type "**Dict[str, object]"; expected "int"
 
-m = {} # type: Mapping[str, object]
+m: Mapping[str, object] = {}
 f(**m)
 g(**m)  # E: Argument 1 to "g" has incompatible type "**Mapping[str, object]"; expected "int"
 [builtins fixtures/dict.pyi]
@@ -563,25 +561,25 @@ def f(a=None, b=None, **kwargs) -> None: pass
 def g(a: int, b: int) -> None: pass # N: "g" defined here
 def h(a: int, b: int, **kwargs) -> None: pass
 
-s = {3: 2} # type: Mapping[Literal[3], int]
+s: Mapping[Literal[3], int] = {3: 2}
 f(**s) # E: Keywords must be strings
 
-t = {'b':2} # type: Mapping[Literal['b'], int]
+t: Mapping[Literal['b'], int] = {'b':2}
 f(**t)
 h(**t)
 
-u = {'b':2} # type: Mapping[Literal['c'], int] \
+u: Mapping[Literal['c'], int] = {'b':2} \
 # E: Dict entry 0 has incompatible type "Literal['b']": "int"; expected "Literal['c']": "int"
 f(**u)
 
-v = {'a':2, 'b':1} # type: Mapping[Literal['a','b'], int]
+v: Mapping[Literal['a','b'], int] = {'a':2, 'b':1}
 f(**v)
 
-w = {'c':2} # type: Mapping[Literal['d'], int] \
+w: Mapping[Literal['d'], int] = {'c':2} \
 # E: Dict entry 0 has incompatible type "Literal['c']": "int"; expected "Literal['d']": "int"
 f(**w)
 
-x = {'c':1, 'd': 2} # type: Mapping[Literal['c','d'], int]
+x: Mapping[Literal['c','d'], int] = {'c':1, 'd': 2}
 g(**x) # E: Unexpected keyword argument "c" for "g"
 h(**x) # E: Missing positional arguments "a", "b" in call to "h"
 
