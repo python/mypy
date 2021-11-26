@@ -730,20 +730,18 @@ type of either :py:class:`Iterator[YieldType] <typing.Iterator>` or :py:class:`I
        for i in range(n):
            yield i * i
            
-In general, :py:class:`Iterator[YieldType] <typing.Iterator>` should be preferred over
-:py:class:`Iterable[YieldType] <typing.Iterable>` for the return type of a generator function,
-as it is more precise regarding the type of the returned object. All iterator objects have a
-:py:meth:`~iterator.__next__` method, so using ``Iterator`` as the return type alerts mypy to
-the fact that :py:func:`next` can be called on the object returned from the generator function.
-Using ``Iterable`` runs the risk of mypy raising false-positive errors if a user attempts to call
-`next()` on the returned object.
-
-However, in some cases, it may be considered an implementation detail that ``next()`` can be
-called on the object returned from the generator function. In these cases, it may be preferable
-to use ``Iterable`` instead of ``Iterator``.
+A good rule of thumb is to annotate functions with the most specific return
+type possible. However, you should also take care to avoid leaking implementation
+details into a function's public API. In keeping with these two principles, prefer 
+:py:class:`Iterator[YieldType] <typing.Iterator>` over
+:py:class:`Iterable[YieldType] <typing.Iterable>` as the return-type annotation for a 
+generator function, as it lets mypy know that users are able to call :py:func:`next` on 
+the object returned by the function. Nonetheless, bear in mind that ``Iterable`` may
+sometimes be the better option, if you consider it an implementation detail that 
+``next()`` can be called on the object returned by your function.
 
 If you want your generator to accept values via the :py:meth:`~generator.send` method or return
-a value, however, you should use the
+a value, on the other hand, you should use the
 :py:class:`Generator[YieldType, SendType, ReturnType] <typing.Generator>` generic type instead of
 either ``Iterator`` or ``Iterable``. For example:
 
