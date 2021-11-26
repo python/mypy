@@ -1,7 +1,10 @@
 mypyc: Mypy to Python C Extension Compiler
 ==========================================
 
-*Mypyc is (mostly) not yet useful for general Python development.*
+**NOTE: We are in the process of moving the mypyc README to the**
+**[mypyc repository](https://github.com/mypyc/mypyc)**
+
+**This may be out of date!**
 
 Mypyc is a compiler that compiles mypy-annotated, statically typed
 Python modules into CPython C extensions. Currently our primary focus

@@ -9,7 +9,7 @@ LiteralValue = Union[str, bytes, int, bool, float, complex, Tuple[object, ...], 
 
 
 # Some literals are singletons and handled specially (None, False and True)
-NUM_SINGLETONS = 3  # type: Final
+NUM_SINGLETONS: Final = 3
 
 
 class Literals:
@@ -17,12 +17,12 @@ class Literals:
 
     def __init__(self) -> None:
         # Each dict maps value to literal index (0, 1, ...)
-        self.str_literals = {}  # type: Dict[str, int]
-        self.bytes_literals = {}  # type: Dict[bytes, int]
-        self.int_literals = {}  # type: Dict[int, int]
-        self.float_literals = {}  # type: Dict[float, int]
-        self.complex_literals = {}  # type: Dict[complex, int]
-        self.tuple_literals = {}  # type: Dict[Tuple[object, ...], int]
+        self.str_literals: Dict[str, int] = {}
+        self.bytes_literals: Dict[bytes, int] = {}
+        self.int_literals: Dict[int, int] = {}
+        self.float_literals: Dict[float, int] = {}
+        self.complex_literals: Dict[complex, int] = {}
+        self.tuple_literals: Dict[Tuple[object, ...], int] = {}
 
     def record_literal(self, value: LiteralValue) -> None:
         """Ensure that the literal value is available in generated code."""
@@ -98,19 +98,19 @@ class Literals:
     # of different types
 
     def encoded_str_values(self) -> List[bytes]:
-        return encode_str_values(self.str_literals)
+        return _encode_str_values(self.str_literals)
 
     def encoded_int_values(self) -> List[bytes]:
-        return encode_int_values(self.int_literals)
+        return _encode_int_values(self.int_literals)
 
     def encoded_bytes_values(self) -> List[bytes]:
-        return encode_bytes_values(self.bytes_literals)
+        return _encode_bytes_values(self.bytes_literals)
 
     def encoded_float_values(self) -> List[str]:
-        return encode_float_values(self.float_literals)
+        return _encode_float_values(self.float_literals)
 
     def encoded_complex_values(self) -> List[str]:
-        return encode_complex_values(self.complex_literals)
+        return _encode_complex_values(self.complex_literals)
 
     def encoded_tuple_values(self) -> List[str]:
         """Encode tuple values into a C array.
@@ -141,31 +141,49 @@ class Literals:
         return result
 
 
-def encode_str_values(values: Dict[str, int]) -> List[bytes]:
+def _encode_str_values(values: Dict[str, int]) -> List[bytes]:
     value_by_index = {}
     for value, index in values.items():
         value_by_index[index] = value
     result = []
-    num = len(values)
-    result.append(format_int(num))
-    for i in range(num):
+    line: List[bytes] = []
+    line_len = 0
+    for i in range(len(values)):
         value = value_by_index[i]
         c_literal = format_str_literal(value)
-        result.append(c_literal)
+        c_len = len(c_literal)
+        if line_len > 0 and line_len + c_len > 70:
+            result.append(format_int(len(line)) + b''.join(line))
+            line = []
+            line_len = 0
+        line.append(c_literal)
+        line_len += c_len
+    if line:
+        result.append(format_int(len(line)) + b''.join(line))
+    result.append(b'')
     return result
 
 
-def encode_bytes_values(values: Dict[bytes, int]) -> List[bytes]:
+def _encode_bytes_values(values: Dict[bytes, int]) -> List[bytes]:
     value_by_index = {}
     for value, index in values.items():
         value_by_index[index] = value
     result = []
-    num = len(values)
-    result.append(format_int(num))
-    for i in range(num):
+    line: List[bytes] = []
+    line_len = 0
+    for i in range(len(values)):
         value = value_by_index[i]
-        result.append(format_int(len(value)))
-        result.append(value)
+        c_init = format_int(len(value))
+        c_len = len(c_init) + len(value)
+        if line_len > 0 and line_len + c_len > 70:
+            result.append(format_int(len(line)) + b''.join(line))
+            line = []
+            line_len = 0
+        line.append(c_init + value)
+        line_len += c_len
+    if line:
+        result.append(format_int(len(line)) + b''.join(line))
+    result.append(b'')
     return result
 
 
@@ -189,8 +207,8 @@ def format_str_literal(s: str) -> bytes:
     return format_int(len(utf8)) + utf8
 
 
-def encode_int_values(values: Dict[int, int]) -> List[bytes]:
-    """Encode int values into C string fragments.
+def _encode_int_values(values: Dict[int, int]) -> List[bytes]:
+    """Encode int values into C strings.
 
     Values are stored in base 10 and separated by 0 bytes.
     """
@@ -198,11 +216,20 @@ def encode_int_values(values: Dict[int, int]) -> List[bytes]:
     for value, index in values.items():
         value_by_index[index] = value
     result = []
-    num = len(values)
-    result.append(format_int(num))
-    for i in range(num):
+    line: List[bytes] = []
+    line_len = 0
+    for i in range(len(values)):
         value = value_by_index[i]
-        result.append(b'%d\0' % value)
+        encoded = b'%d' % value
+        if line_len > 0 and line_len + len(encoded) > 70:
+            result.append(format_int(len(line)) + b'\0'.join(line))
+            line = []
+            line_len = 0
+        line.append(encoded)
+        line_len += len(encoded)
+    if line:
+        result.append(format_int(len(line)) + b'\0'.join(line))
+    result.append(b'')
     return result
 
 
@@ -216,7 +243,7 @@ def float_to_c(x: float) -> str:
     return s
 
 
-def encode_float_values(values: Dict[float, int]) -> List[str]:
+def _encode_float_values(values: Dict[float, int]) -> List[str]:
     """Encode float values into a C array values.
 
     The result contains the number of values followed by individual values.
@@ -233,7 +260,7 @@ def encode_float_values(values: Dict[float, int]) -> List[str]:
     return result
 
 
-def encode_complex_values(values: Dict[complex, int]) -> List[str]:
+def _encode_complex_values(values: Dict[complex, int]) -> List[str]:
     """Encode float values into a C array values.
 
     The result contains the number of values followed by pairs of doubles

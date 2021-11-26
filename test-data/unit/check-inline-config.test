@@ -61,7 +61,7 @@ import a
 [file a.py]
 # mypy: allow-any-generics, disallow-untyped-globals
 
-x = []  # E: Need type annotation for 'x' (hint: "x: List[<type>] = ...")
+x = []  # E: Need type annotation for "x" (hint: "x: List[<type>] = ...")
 
 from typing import List
 def foo() -> List:
@@ -161,4 +161,4 @@ main:1: error: Unrecognized option: skip_file = True
 [case testInlineStrict]
 # mypy: strict
 [out]
-main:1: error: Setting 'strict' not supported in inline configuration: specify it in a configuration file instead, or set individual inline flags (see 'mypy -h' for the list of flags enabled in strict mode)
+main:1: error: Setting "strict" not supported in inline configuration: specify it in a configuration file instead, or set individual inline flags (see "mypy -h" for the list of flags enabled in strict mode)

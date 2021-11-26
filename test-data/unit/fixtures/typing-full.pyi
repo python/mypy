@@ -10,7 +10,7 @@ from abc import abstractmethod, ABCMeta
 
 class GenericMeta(type): pass
 
-cast = 0
+def cast(t, o): ...
 overload = 0
 Any = 0
 Union = 0
@@ -40,6 +40,11 @@ S = TypeVar('S')
 
 # Note: definitions below are different from typeshed, variances are declared
 # to silence the protocol variance checks. Maybe it is better to use type: ignore?
+
+@runtime_checkable
+class Hashable(Protocol, metaclass=ABCMeta):
+    @abstractmethod
+    def __hash__(self) -> int: pass
 
 @runtime_checkable
 class Container(Protocol[T_co]):

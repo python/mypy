@@ -3,6 +3,7 @@
 
 # stubs
 prune mypy/typeshed
+include mypy/typeshed/LICENSE
 include mypy/typeshed/stdlib/VERSIONS
 recursive-include mypy/typeshed *.pyi
 
@@ -29,6 +30,7 @@ graft mypyc/doc
 
 # files necessary for testing sdist
 include mypy-requirements.txt
+include build-requirements.txt
 include test-requirements.txt
 include mypy_self_check.ini
 prune misc
@@ -39,7 +41,7 @@ include runtests.py
 include pytest.ini
 
 include LICENSE mypyc/README.md
-exclude .gitmodules CONTRIBUTING.md CREDITS ROADMAP.md tox.ini
+exclude .gitmodules CONTRIBUTING.md CREDITS ROADMAP.md tox.ini action.yml
 
 global-exclude *.py[cod]
 global-exclude .DS_Store

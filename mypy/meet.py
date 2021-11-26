@@ -1,20 +1,19 @@
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 from typing import List, Optional, Tuple, Callable
 
-from mypy.join import (
-    is_similar_callables, combine_similar_callables, join_type_list, unpack_callback_protocol
-)
 from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, NoneType, TypeVarType, Instance, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeOfAny, Overloaded, FunctionLike, LiteralType,
-    ProperType, get_proper_type, get_proper_types, TypeAliasType
+    ProperType, get_proper_type, get_proper_types, TypeAliasType, TypeGuardedType,
+    ParamSpecType
 )
 from mypy.subtypes import is_equivalent, is_subtype, is_callable_compatible, is_proper_subtype
 from mypy.erasetype import erase_type
 from mypy.maptype import map_instance_to_supertype
 from mypy.typeops import tuple_fallback, make_simplified_union, is_recursive_pair
 from mypy import state
+from mypy import join
 
 # TODO Describe this module.
 
@@ -53,6 +52,10 @@ def meet_types(s: Type, t: Type) -> ProperType:
 def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     """Return the declared type narrowed down to another type."""
     # TODO: check infinite recursion for aliases here.
+    if isinstance(narrowed, TypeGuardedType):  # type: ignore[misc]
+        # A type guard forces the new type even if it doesn't overlap the old.
+        return narrowed.type_guard
+
     declared = get_proper_type(declared)
     narrowed = get_proper_type(narrowed)
 
@@ -72,8 +75,15 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
                                       for x in narrowed.relevant_items()])
     elif isinstance(narrowed, AnyType):
         return narrowed
+    elif isinstance(narrowed, TypeVarType) and is_subtype(narrowed.upper_bound, declared):
+        return narrowed
     elif isinstance(declared, TypeType) and isinstance(narrowed, TypeType):
         return TypeType.make_normalized(narrow_declared_type(declared.item, narrowed.item))
+    elif (isinstance(declared, TypeType)
+          and isinstance(narrowed, Instance)
+          and narrowed.type.is_metaclass()):
+        # We'd need intersection types, so give up.
+        return declared
     elif isinstance(declared, (Instance, TupleType, TypeType, LiteralType)):
         return meet_types(declared, narrowed)
     elif isinstance(declared, TypedDictType) and isinstance(narrowed, Instance):
@@ -122,7 +132,7 @@ def get_possible_variants(typ: Type) -> List[Type]:
     elif isinstance(typ, Overloaded):
         # Note: doing 'return typ.items()' makes mypy
         # infer a too-specific return type of List[CallableType]
-        return list(typ.items())
+        return list(typ.items)
     else:
         return [typ]
 
@@ -137,6 +147,13 @@ def is_overlapping_types(left: Type,
     If 'prohibit_none_typevar_overlap' is True, we disallow None from overlapping with
     TypeVars (in both strict-optional and non-strict-optional mode).
     """
+    if (
+        isinstance(left, TypeGuardedType)  # type: ignore[misc]
+        or isinstance(right, TypeGuardedType)  # type: ignore[misc]
+    ):
+        # A type guard forces the new type even if it doesn't overlap the old.
+        return True
+
     left, right = get_proper_types((left, right))
 
     def _is_overlapping_types(left: Type, right: Type) -> bool:
@@ -161,10 +178,6 @@ def is_overlapping_types(left: Type,
     if isinstance(left, illegal_types) or isinstance(right, illegal_types):
         return True
 
-    # 'Any' may or may not be overlapping with the other type
-    if isinstance(left, AnyType) or isinstance(right, AnyType):
-        return True
-
     # When running under non-strict optional mode, simplify away types of
     # the form 'Union[A, B, C, None]' into just 'Union[A, B, C]'.
 
@@ -174,6 +187,10 @@ def is_overlapping_types(left: Type,
         if isinstance(right, UnionType):
             right = UnionType.make_union(right.relevant_items())
         left, right = get_proper_types((left, right))
+
+    # 'Any' may or may not be overlapping with the other type
+    if isinstance(left, AnyType) or isinstance(right, AnyType):
+        return True
 
     # We check for complete overlaps next as a general-purpose failsafe.
     # If this check fails, we start checking to see if there exists a
@@ -441,7 +458,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 
     def visit_union_type(self, t: UnionType) -> ProperType:
         if isinstance(self.s, UnionType):
-            meets = []  # type: List[Type]
+            meets: List[Type] = []
             for x in t.items:
                 for y in self.s.items:
                     meets.append(meet_types(x, y))
@@ -483,6 +500,12 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         else:
             return self.default(self.s)
 
+    def visit_param_spec(self, t: ParamSpecType) -> ProperType:
+        if self.s == t:
+            return self.s
+        else:
+            return self.default(self.s)
+
     def visit_instance(self, t: Instance) -> ProperType:
         if isinstance(self.s, Instance):
             si = self.s
@@ -490,7 +513,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                 if is_subtype(t, self.s) or is_subtype(self.s, t):
                     # Combine type arguments. We could have used join below
                     # equivalently.
-                    args = []  # type: List[Type]
+                    args: List[Type] = []
                     # N.B: We use zip instead of indexing because the lengths might have
                     # mismatches during daemon reprocessing.
                     for ta, sia in zip(t.args, si.args):
@@ -513,7 +536,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                     else:
                         return NoneType()
         elif isinstance(self.s, FunctionLike) and t.type.is_protocol:
-            call = unpack_callback_protocol(t)
+            call = join.unpack_callback_protocol(t)
             if call:
                 return meet_types(call, self.s)
         elif isinstance(self.s, FunctionLike) and self.s.is_type_obj() and t.type.is_metaclass():
@@ -531,9 +554,9 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         return self.default(self.s)
 
     def visit_callable_type(self, t: CallableType) -> ProperType:
-        if isinstance(self.s, CallableType) and is_similar_callables(t, self.s):
+        if isinstance(self.s, CallableType) and join.is_similar_callables(t, self.s):
             if is_equivalent(t, self.s):
-                return combine_similar_callables(t, self.s)
+                return join.combine_similar_callables(t, self.s)
             result = meet_similar_callables(t, self.s)
             # We set the from_type_type flag to suppress error when a collection of
             # concrete class objects gets inferred as their common abstract superclass.
@@ -551,7 +574,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                 return TypeType.make_normalized(res)
             return self.default(self.s)
         elif isinstance(self.s, Instance) and self.s.type.is_protocol:
-            call = unpack_callback_protocol(self.s)
+            call = join.unpack_callback_protocol(self.s)
             if call:
                 return meet_types(t, call)
         return self.default(self.s)
@@ -561,8 +584,8 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         # as TypeJoinVisitor.visit_overloaded().
         s = self.s
         if isinstance(s, FunctionLike):
-            if s.items() == t.items():
-                return Overloaded(t.items())
+            if s.items == t.items:
+                return Overloaded(t.items)
             elif is_subtype(s, t):
                 return s
             elif is_subtype(t, s):
@@ -570,14 +593,14 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             else:
                 return meet_types(t.fallback, s.fallback)
         elif isinstance(self.s, Instance) and self.s.type.is_protocol:
-            call = unpack_callback_protocol(self.s)
+            call = join.unpack_callback_protocol(self.s)
             if call:
                 return meet_types(t, call)
         return meet_types(t.fallback, s)
 
     def visit_tuple_type(self, t: TupleType) -> ProperType:
         if isinstance(self.s, TupleType) and self.s.length() == t.length():
-            items = []  # type: List[Type]
+            items: List[Type] = []
             for i in range(t.length()):
                 items.append(self.meet(t.items[i], self.s.items[i]))
             # TODO: What if the fallbacks are different?
@@ -597,7 +620,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                 if (not is_equivalent(l, r) or
                         (name in t.required_keys) != (name in self.s.required_keys)):
                     return self.default(self.s)
-            item_list = []  # type: List[Tuple[str, Type]]
+            item_list: List[Tuple[str, Type]] = []
             for (item_name, s_item_type, t_item_type) in self.s.zipall(t):
                 if s_item_type is not None:
                     item_list.append((item_name, s_item_type))
@@ -606,7 +629,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                     assert t_item_type is not None
                     item_list.append((item_name, t_item_type))
             items = OrderedDict(item_list)
-            mapping_value_type = join_type_list(list(items.values()))
+            mapping_value_type = join.join_type_list(list(items.values()))
             fallback = self.s.create_anonymous_fallback(value_type=mapping_value_type)
             required_keys = t.required_keys | self.s.required_keys
             return TypedDictType(items, required_keys, fallback)
@@ -658,7 +681,8 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 
 def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     from mypy.join import join_types
-    arg_types = []  # type: List[Type]
+
+    arg_types: List[Type] = []
     for i in range(len(t.arg_types)):
         arg_types.append(join_types(t.arg_types[i], s.arg_types[i]))
     # TODO in combine_similar_callables also applies here (names and kinds)

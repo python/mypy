@@ -1,13 +1,13 @@
 from contextlib import contextmanager
 
 from typing import Any, List, Optional, Callable, Tuple, Iterator, Set, Union, cast, TypeVar
-from typing_extensions import Final
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneType,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
-    FunctionLike, TypeOfAny, LiteralType, get_proper_type, TypeAliasType
+    FunctionLike, TypeOfAny, LiteralType, get_proper_type, TypeAliasType, ParamSpecType
 )
 import mypy.applytype
 import mypy.constraints
@@ -18,7 +18,7 @@ from mypy.erasetype import erase_type
 # import mypy.solve
 from mypy.nodes import (
     FuncBase, Var, Decorator, OverloadedFuncDef, TypeInfo, CONTRAVARIANT, COVARIANT,
-    ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2
+
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance
@@ -26,11 +26,11 @@ from mypy.typestate import TypeState, SubtypeKind
 from mypy import state
 
 # Flags for detected protocol members
-IS_SETTABLE = 1  # type: Final
-IS_CLASSVAR = 2  # type: Final
-IS_CLASS_OR_STATIC = 3  # type: Final
+IS_SETTABLE: Final = 1
+IS_CLASSVAR: Final = 2
+IS_CLASS_OR_STATIC: Final = 3
 
-TypeParameterChecker = Callable[[Type, Type, int], bool]
+TypeParameterChecker: _TypeAlias = Callable[[Type, Type, int], bool]
 
 
 def check_type_parameter(lefta: Type, righta: Type, variance: int) -> bool:
@@ -121,6 +121,18 @@ def _is_subtype(left: Type, right: Type,
                                             ignore_declared_variance=ignore_declared_variance,
                                             ignore_promotions=ignore_promotions)
                                  for item in right.items)
+        # Recombine rhs literal types, to make an enum type a subtype
+        # of a union of all enum items as literal types. Only do it if
+        # the previous check didn't succeed, since recombining can be
+        # expensive.
+        if not is_subtype_of_item and isinstance(left, Instance) and left.type.is_enum:
+            right = UnionType(mypy.typeops.try_contracting_literals_in_union(right.items))
+            is_subtype_of_item = any(is_subtype(orig_left, item,
+                                                ignore_type_params=ignore_type_params,
+                                                ignore_pos_arg_names=ignore_pos_arg_names,
+                                                ignore_declared_variance=ignore_declared_variance,
+                                                ignore_promotions=ignore_promotions)
+                                     for item in right.items)
         # However, if 'left' is a type variable T, T might also have
         # an upper bound which is itself a union. This case will be
         # handled below by the SubtypeVisitor. We have to check both
@@ -251,13 +263,23 @@ class SubtypeVisitor(TypeVisitor[bool]):
             rname = right.type.fullname
             # Always try a nominal check if possible,
             # there might be errors that a user wants to silence *once*.
-            if ((left.type.has_base(rname) or rname == 'builtins.object') and
-                    not self.ignore_declared_variance):
+            # NamedTuples are a special case, because `NamedTuple` is not listed
+            # in `TypeInfo.mro`, so when `(a: NamedTuple) -> None` is used,
+            # we need to check for `is_named_tuple` property
+            if ((left.type.has_base(rname) or rname == 'builtins.object'
+                    or (rname == 'typing.NamedTuple'
+                        and any(l.is_named_tuple for l in left.type.mro)))
+                    and not self.ignore_declared_variance):
                 # Map left type to corresponding right instances.
                 t = map_instance_to_supertype(left, right.type)
-                nominal = all(self.check_type_parameter(lefta, righta, tvar.variance)
-                              for lefta, righta, tvar in
-                              zip(t.args, right.args, right.type.defn.type_vars))
+                nominal = True
+                for lefta, righta, tvar in zip(t.args, right.args, right.type.defn.type_vars):
+                    if isinstance(tvar, TypeVarType):
+                        if not self.check_type_parameter(lefta, righta, tvar.variance):
+                            nominal = False
+                    else:
+                        if not is_equivalent(lefta, righta):
+                            nominal = False
                 if nominal:
                     TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
                 return nominal
@@ -275,6 +297,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     return True
                 if isinstance(item, Instance):
                     return is_named_instance(item, 'builtins.object')
+        if isinstance(right, LiteralType) and left.last_known_value is not None:
+            return self._is_subtype(left.last_known_value, right)
         if isinstance(right, CallableType):
             # Special case: Instance can be a subtype of Callable.
             call = find_member('__call__', left, left, is_operator=True)
@@ -293,15 +317,32 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return True
         return self._is_subtype(left.upper_bound, self.right)
 
+    def visit_param_spec(self, left: ParamSpecType) -> bool:
+        right = self.right
+        if (
+            isinstance(right, ParamSpecType)
+            and right.id == left.id
+            and right.flavor == left.flavor
+        ):
+            return True
+        return self._is_subtype(left.upper_bound, self.right)
+
     def visit_callable_type(self, left: CallableType) -> bool:
         right = self.right
         if isinstance(right, CallableType):
+            if left.type_guard is not None and right.type_guard is not None:
+                if not self._is_subtype(left.type_guard, right.type_guard):
+                    return False
+            elif right.type_guard is not None and left.type_guard is None:
+                # This means that one function has `TypeGuard` and other does not.
+                # They are not compatible. See https://github.com/python/mypy/issues/11307
+                return False
             return is_callable_compatible(
                 left, right,
                 is_compat=self._is_subtype,
                 ignore_pos_arg_names=self.ignore_pos_arg_names)
         elif isinstance(right, Overloaded):
-            return all(self._is_subtype(left, item) for item in right.items())
+            return all(self._is_subtype(left, item) for item in right.items)
         elif isinstance(right, Instance):
             if right.type.is_protocol and right.type.protocol_members == ['__call__']:
                 # OK, a callable can implement a protocol with a single `__call__` member.
@@ -399,7 +440,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     return True
             return self._is_subtype(left.fallback, right)
         elif isinstance(right, CallableType):
-            for item in left.items():
+            for item in left.items:
                 if self._is_subtype(item, right):
                     return True
             return False
@@ -413,10 +454,10 @@ class SubtypeVisitor(TypeVisitor[bool]):
             matched_overloads = set()
             possible_invalid_overloads = set()
 
-            for right_index, right_item in enumerate(right.items()):
+            for right_index, right_item in enumerate(right.items):
                 found_match = False
 
-                for left_index, left_item in enumerate(left.items()):
+                for left_index, left_item in enumerate(left.items):
                     subtype_match = self._is_subtype(left_item, right_item)
 
                     # Order matters: we need to make sure that the index of
@@ -456,7 +497,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             # All the items must have the same type object status, so
             # it's sufficient to query only (any) one of them.
             # This is unsound, we don't check all the __init__ signatures.
-            return left.is_type_obj() and self._is_subtype(left.items()[0], right)
+            return left.is_type_obj() and self._is_subtype(left.items[0], right)
         else:
             return False
 
@@ -465,7 +506,13 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
     def visit_partial_type(self, left: PartialType) -> bool:
         # This is indeterminate as we don't really know the complete type yet.
-        raise RuntimeError
+        if left.type is None:
+            # Special case, partial `None`. This might happen when defining
+            # class-level attributes with explicit `None`.
+            # We can still recover from this.
+            # https://github.com/python/mypy/issues/11105
+            return self.visit_none_type(NoneType())
+        raise RuntimeError(f'Partial type "{left}" cannot be checked with "issubtype()"')
 
     def visit_type_type(self, left: TypeType) -> bool:
         right = self.right
@@ -522,15 +569,21 @@ def is_protocol_implementation(left: Instance, right: Instance,
     assert right.type.is_protocol
     # We need to record this check to generate protocol fine-grained dependencies.
     TypeState.record_protocol_subtype_check(left.type, right.type)
+    # nominal subtyping currently ignores '__init__' and '__new__' signatures
+    members_not_to_check = {'__init__', '__new__'}
+    # Trivial check that circumvents the bug described in issue 9771:
+    if left.type.is_protocol:
+        members_right = set(right.type.protocol_members) - members_not_to_check
+        members_left = set(left.type.protocol_members) - members_not_to_check
+        if not members_right.issubset(members_left):
+            return False
     assuming = right.type.assuming_proper if proper_subtype else right.type.assuming
     for (l, r) in reversed(assuming):
-        if (mypy.sametypes.is_same_type(l, left)
-                and mypy.sametypes.is_same_type(r, right)):
+        if l == left and r == right:
             return True
     with pop_on_exit(assuming, left, right):
         for member in right.type.protocol_members:
-            # nominal subtyping currently ignores '__init__' and '__new__' signatures
-            if member in ('__init__', '__new__'):
+            if member in members_not_to_check:
                 continue
             ignore_names = member != '__call__'  # __call__ can be passed kwargs
             # The third argument below indicates to what self type is bound.
@@ -589,7 +642,7 @@ def find_member(name: str,
                 is_operator: bool = False) -> Optional[Type]:
     """Find the type of member by 'name' in 'itype's TypeInfo.
 
-    Fin the member type after applying type arguments from 'itype', and binding
+    Find the member type after applying type arguments from 'itype', and binding
     'self' to 'subtype'. Return None if member was not found.
     """
     # TODO: this code shares some logic with checkmember.analyze_member_access,
@@ -678,8 +731,9 @@ def find_node_type(node: Union[Var, FuncBase], itype: Instance, subtype: Type) -
     from mypy.typeops import bind_self
 
     if isinstance(node, FuncBase):
-        typ = mypy.typeops.function_type(
-            node, fallback=Instance(itype.type.mro[-1], []))  # type: Optional[Type]
+        typ: Optional[Type] = mypy.typeops.function_type(
+            node, fallback=Instance(itype.type.mro[-1], [])
+        )
     else:
         typ = node.type
     typ = get_proper_type(typ)
@@ -691,7 +745,8 @@ def find_node_type(node: Union[Var, FuncBase], itype: Instance, subtype: Type) -
                 and node.is_initialized_in_class
                 and not node.is_staticmethod)):
         assert isinstance(typ, FunctionLike)
-        signature = bind_self(typ, subtype)
+        signature = bind_self(typ, subtype,
+                              is_classmethod=isinstance(node, Var) and node.is_classmethod)
         if node.is_property:
             assert isinstance(signature, CallableType)
             typ = signature.ret_type
@@ -706,7 +761,7 @@ def non_method_protocol_members(tp: TypeInfo) -> List[str]:
     """Find all non-callable members of a protocol."""
 
     assert tp.is_protocol
-    result = []  # type: List[str]
+    result: List[str] = []
     anytype = AnyType(TypeOfAny.special_form)
     instance = Instance(tp, [anytype] * len(tp.defn.type_vars))
 
@@ -927,8 +982,8 @@ def is_callable_compatible(left: CallableType, right: CallableType,
 
         i = right_star.pos
         assert i is not None
-        while i < len(left.arg_kinds) and left.arg_kinds[i] in (ARG_POS, ARG_OPT):
-            if allow_partial_overlap and left.arg_kinds[i] == ARG_OPT:
+        while i < len(left.arg_kinds) and left.arg_kinds[i].is_positional():
+            if allow_partial_overlap and left.arg_kinds[i].is_optional():
                 break
 
             left_by_position = left.argument_by_position(i)
@@ -947,7 +1002,7 @@ def is_callable_compatible(left: CallableType, right: CallableType,
         right_names = {name for name in right.arg_names if name is not None}
         left_only_names = set()
         for name, kind in zip(left.arg_names, left.arg_kinds):
-            if name is None or kind in (ARG_STAR, ARG_STAR2) or name in right_names:
+            if name is None or kind.is_star() or name in right_names:
                 continue
             left_only_names.add(name)
 
@@ -1059,7 +1114,7 @@ def unify_generic_callable(type: CallableType, target: CallableType,
     if return_constraint_direction is None:
         return_constraint_direction = mypy.constraints.SUBTYPE_OF
 
-    constraints = []  # type: List[mypy.constraints.Constraint]
+    constraints: List[mypy.constraints.Constraint] = []
     for arg_type, target_arg_type in zip(type.arg_types, target.arg_types):
         c = mypy.constraints.infer_constraints(
             arg_type, target_arg_type, mypy.constraints.SUPERTYPE_OF)
@@ -1104,6 +1159,8 @@ def restrict_subtype_away(t: Type, s: Type, *, ignore_promotions: bool = False) 
                      if (isinstance(get_proper_type(item), AnyType) or
                          not covers_at_runtime(item, s, ignore_promotions))]
         return UnionType.make_union(new_items)
+    elif covers_at_runtime(t, s, ignore_promotions):
+        return UninhabitedType()
     else:
         return t
 
@@ -1264,8 +1321,13 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                     assert isinstance(erased, Instance)
                     left = erased
 
-                nominal = all(check_argument(ta, ra, tvar.variance) for ta, ra, tvar in
-                              zip(left.args, right.args, right.type.defn.type_vars))
+                nominal = True
+                for ta, ra, tvar in zip(left.args, right.args, right.type.defn.type_vars):
+                    if isinstance(tvar, TypeVarType):
+                        nominal = nominal and check_argument(ta, ra, tvar.variance)
+                    else:
+                        nominal = nominal and mypy.sametypes.is_same_type(ta, ra)
+
                 if nominal:
                     TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
                 return nominal
@@ -1288,13 +1350,23 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
             return True
         return self._is_proper_subtype(left.upper_bound, self.right)
 
+    def visit_param_spec(self, left: ParamSpecType) -> bool:
+        right = self.right
+        if (
+            isinstance(right, ParamSpecType)
+            and right.id == left.id
+            and right.flavor == left.flavor
+        ):
+            return True
+        return self._is_proper_subtype(left.upper_bound, self.right)
+
     def visit_callable_type(self, left: CallableType) -> bool:
         right = self.right
         if isinstance(right, CallableType):
             return is_callable_compatible(left, right, is_compat=self._is_proper_subtype)
         elif isinstance(right, Overloaded):
             return all(self._is_proper_subtype(left, item)
-                       for item in right.items())
+                       for item in right.items)
         elif isinstance(right, Instance):
             return self._is_proper_subtype(left.fallback, right)
         elif isinstance(right, TypeType):

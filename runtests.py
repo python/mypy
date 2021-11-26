@@ -1,18 +1,7 @@
 #!/usr/bin/env python3
 import subprocess
 from subprocess import Popen
-from os import system
-from sys import argv, exit, platform, executable, version_info
-
-
-# Use the Python provided to execute the script, or fall back to a sane default
-if version_info >= (3, 5, 0):
-    python_name = executable
-else:
-    if platform == 'win32':
-        python_name = 'py -3'
-    else:
-        python_name = 'python3'
+from sys import argv, exit, executable
 
 # Slow test suites
 CMDLINE = 'PythonCmdline'
@@ -55,30 +44,33 @@ MYPYC_OPT_IN = [MYPYC_RUN, MYPYC_RUN_MULTI]
 # time to run.
 cmds = {
     # Self type check
-    'self': python_name + ' -m mypy --config-file mypy_self_check.ini -p mypy',
+    'self': [executable, '-m', 'mypy', '--config-file', 'mypy_self_check.ini', '-p', 'mypy'],
     # Lint
-    'lint': 'flake8 -j0',
+    'lint': ['flake8', '-j0'],
     # Fast test cases only (this is the bulk of the test suite)
-    'pytest-fast': 'pytest -q -k "not (%s)"' % ' or '.join(ALL_NON_FAST),
+    'pytest-fast': ['pytest', '-q', '-k', 'not (%s)' % ' or '.join(ALL_NON_FAST)],
     # Test cases that invoke mypy (with small inputs)
-    'pytest-cmdline': 'pytest -q -k "%s"' % ' or '.join([CMDLINE,
-                                                         EVALUATION,
-                                                         STUBGEN_CMD,
-                                                         STUBGEN_PY]),
+    'pytest-cmdline': ['pytest', '-q', '-k', ' or '.join([CMDLINE,
+                                                          EVALUATION,
+                                                          STUBGEN_CMD,
+                                                          STUBGEN_PY])],
     # Test cases that may take seconds to run each
-    'pytest-slow': 'pytest -q -k "%s"' % ' or '.join(
+    'pytest-slow': ['pytest', '-q', '-k', ' or '.join(
         [SAMPLES,
          TYPESHED,
          PEP561,
          DAEMON,
          MYPYC_EXTERNAL,
          MYPYC_COMMAND_LINE,
-         ERROR_STREAM]),
+         ERROR_STREAM])],
     # Test cases to run in typeshed CI
-    'typeshed-ci': 'pytest -q -k "%s"' % ' or '.join([CMDLINE, EVALUATION, SAMPLES, TYPESHED]),
+    'typeshed-ci': ['pytest', '-q', '-k', ' or '.join([CMDLINE,
+                                                       EVALUATION,
+                                                       SAMPLES,
+                                                       TYPESHED])],
     # Mypyc tests that aren't run by default, since they are slow and rarely
     # fail for commits that don't touch mypyc
-    'mypyc-extra': 'pytest -q -k "%s"' % ' or '.join(MYPYC_OPT_IN),
+    'mypyc-extra': ['pytest', '-q', '-k', ' or '.join(MYPYC_OPT_IN)],
 }
 
 # Stop run immediately if these commands fail
@@ -93,10 +85,10 @@ def run_cmd(name: str) -> int:
     status = 0
     cmd = cmds[name]
     print('run %s: %s' % (name, cmd))
-    res = (system(cmd) & 0x7F00) >> 8
-    if res:
+    proc = subprocess.run(cmd, stderr=subprocess.STDOUT)
+    if proc.returncode:
         print('\nFAILED: %s' % name)
-        status = res
+        status = proc.returncode
         if name in FAST_FAIL:
             exit(status)
     return status
@@ -105,7 +97,6 @@ def run_cmd(name: str) -> int:
 def start_background_cmd(name: str) -> Popen:
     cmd = cmds[name]
     proc = subprocess.Popen(cmd,
-                            shell=True,
                             stderr=subprocess.STDOUT,
                             stdout=subprocess.PIPE)
     return proc

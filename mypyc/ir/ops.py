@@ -18,7 +18,7 @@ from typing_extensions import Final, TYPE_CHECKING
 from mypy_extensions import trait
 
 from mypyc.ir.rtypes import (
-    RType, RInstance, RTuple, RVoid, is_bool_rprimitive, is_int_rprimitive,
+    RType, RInstance, RTuple, RArray, RVoid, is_bool_rprimitive, is_int_rprimitive,
     is_short_int_rprimitive, is_none_rprimitive, object_rprimitive, bool_rprimitive,
     short_int_rprimitive, int_rprimitive, void_rtype, pointer_rprimitive, is_pointer_rprimitive,
     bit_rprimitive, is_bit_rprimitive
@@ -63,8 +63,8 @@ class BasicBlock:
 
     def __init__(self, label: int = -1) -> None:
         self.label = label
-        self.ops = []  # type: List[Op]
-        self.error_handler = None  # type: Optional[BasicBlock]
+        self.ops: List[Op] = []
+        self.error_handler: Optional[BasicBlock] = None
 
     @property
     def terminated(self) -> bool:
@@ -75,15 +75,21 @@ class BasicBlock:
         """
         return bool(self.ops) and isinstance(self.ops[-1], ControlOp)
 
+    @property
+    def terminator(self) -> 'ControlOp':
+        """The terminator operation of the block."""
+        assert bool(self.ops) and isinstance(self.ops[-1], ControlOp)
+        return self.ops[-1]
+
 
 # Never generates an exception
-ERR_NEVER = 0  # type: Final
+ERR_NEVER: Final = 0
 # Generates magic value (c_error_value) based on target RType on exception
-ERR_MAGIC = 1  # type: Final
+ERR_MAGIC: Final = 1
 # Generates false (bool) on exception
-ERR_FALSE = 2  # type: Final
+ERR_FALSE: Final = 2
 # Always fails
-ERR_ALWAYS = 3  # type: Final
+ERR_ALWAYS: Final = 3
 
 # Hack: using this line number for an op will suppress it in tracebacks
 NO_TRACEBACK_LINE_NO = -10000
@@ -108,7 +114,7 @@ class Value:
     # Source line number (-1 for no/unknown line)
     line = -1
     # Type of the value or the result of the operation
-    type = void_rtype  # type: RType
+    type: RType = void_rtype
     is_borrowed = False
 
     @property
@@ -149,11 +155,13 @@ class Integer(Value):
     not included in data flow analyses and such, unlike Register and
     Op subclasses.
 
-    These can represent both short tagged integers
-    (short_int_primitive type; the tag bit is clear), ordinary
-    fixed-width integers (e.g., int32_rprimitive), and values of some
-    other unboxed primitive types that are represented as integers
-    (none_rprimitive, bool_rprimitive).
+    Integer can represent multiple types:
+
+     * Short tagged integers (short_int_primitive type; the tag bit is clear)
+     * Ordinary fixed-width integers (e.g., int32_rprimitive)
+     * Values of other unboxed primitive types that are represented as integers
+       (none_rprimitive, bool_rprimitive)
+     * Null pointers (value 0) of various types, including object_rprimitive
     """
 
     def __init__(self, value: int, rtype: RType = short_int_rprimitive, line: int = -1) -> None:
@@ -195,7 +203,7 @@ class Op(Value):
         return []
 
     def unique_sources(self) -> List[Value]:
-        result = []  # type: List[Value]
+        result: List[Value] = []
         for reg in self.sources():
             if reg not in result:
                 result.append(reg)
@@ -226,13 +234,47 @@ class Assign(Op):
         return visitor.visit_assign(self)
 
 
-class ControlOp(Op):
-    """Control flow operation.
+class AssignMulti(Op):
+    """Assign multiple values to a Register (dest = src1, src2, ...).
 
-    This is Basically just for class hierarchy organization.
+    This is used to initialize RArray values. It's provided to avoid
+    very verbose IR for common vectorcall operations.
 
-    We could plausibly have a targets() method if we wanted.
+    Note that this interacts atypically with reference counting. We
+    assume that each RArray register is initialized exactly once
+    with this op.
     """
+
+    error_kind = ERR_NEVER
+
+    def __init__(self, dest: Register, src: List[Value], line: int = -1) -> None:
+        super().__init__(line)
+        assert src
+        assert isinstance(dest.type, RArray)
+        assert dest.type.length == len(src)
+        self.src = src
+        self.dest = dest
+
+    def sources(self) -> List[Value]:
+        return self.src[:]
+
+    def stolen(self) -> List[Value]:
+        return []
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_assign_multi(self)
+
+
+class ControlOp(Op):
+    """Control flow operation."""
+
+    def targets(self) -> Sequence[BasicBlock]:
+        """Get all basic block targets of the control operation."""
+        return ()
+
+    def set_target(self, i: int, new: BasicBlock) -> None:
+        """Update a basic block target."""
+        raise AssertionError("Invalid set_target({}, {})".format(self, i))
 
 
 class Goto(ControlOp):
@@ -243,6 +285,13 @@ class Goto(ControlOp):
     def __init__(self, label: BasicBlock, line: int = -1) -> None:
         super().__init__(line)
         self.label = label
+
+    def targets(self) -> Sequence[BasicBlock]:
+        return (self.label,)
+
+    def set_target(self, i: int, new: BasicBlock) -> None:
+        assert i == 0
+        self.label = new
 
     def __repr__(self) -> str:
         return '<Goto %s>' % self.label.label
@@ -267,8 +316,8 @@ class Branch(ControlOp):
     # Branch ops never raise an exception.
     error_kind = ERR_NEVER
 
-    BOOL = 100  # type: Final
-    IS_ERROR = 101  # type: Final
+    BOOL: Final = 100
+    IS_ERROR: Final = 101
 
     def __init__(self,
                  value: Value,
@@ -290,9 +339,20 @@ class Branch(ControlOp):
         # If True, the condition is negated
         self.negated = False
         # If not None, the true label should generate a traceback entry (func name, line number)
-        self.traceback_entry = None  # type: Optional[Tuple[str, int]]
-        # If True, the condition is expected to be usually False (for optimization purposes)
+        self.traceback_entry: Optional[Tuple[str, int]] = None
+        # If True, we expect to usually take the false branch (for optimization purposes);
+        # this is implicitly treated as true if there is a traceback entry
         self.rare = rare
+
+    def targets(self) -> Sequence[BasicBlock]:
+        return (self.true, self.false)
+
+    def set_target(self, i: int, new: BasicBlock) -> None:
+        assert i == 0 or i == 1
+        if i == 0:
+            self.true = new
+        elif i == 1:
+            self.false = new
 
     def sources(self) -> List[Value]:
         return [self.value]
@@ -366,7 +426,7 @@ class RegisterOp(Op):
 
     error_kind = -1  # Can this raise exception and how is it signalled; one of ERR_*
 
-    _type = None  # type: Optional[RType]
+    _type: Optional[RType] = None
 
     def __init__(self, line: int) -> None:
         super().__init__(line)
@@ -576,13 +636,13 @@ class SetAttr(RegisterOp):
 
 
 # Default name space for statics, variables
-NAMESPACE_STATIC = 'static'  # type: Final
+NAMESPACE_STATIC: Final = "static"
 
 # Static namespace for pointers to native type objects
-NAMESPACE_TYPE = 'type'  # type: Final
+NAMESPACE_TYPE: Final = "type"
 
 # Namespace for modules
-NAMESPACE_MODULE = 'module'  # type: Final
+NAMESPACE_MODULE: Final = "module"
 
 
 class LoadStatic(RegisterOp):
@@ -776,12 +836,12 @@ class RaiseStandardError(RegisterOp):
 
     error_kind = ERR_FALSE
 
-    VALUE_ERROR = 'ValueError'  # type: Final
-    ASSERTION_ERROR = 'AssertionError'  # type: Final
-    STOP_ITERATION = 'StopIteration'  # type: Final
-    UNBOUND_LOCAL_ERROR = 'UnboundLocalError'  # type: Final
-    RUNTIME_ERROR = 'RuntimeError'  # type: Final
-    NAME_ERROR = 'NameError'  # type: Final
+    VALUE_ERROR: Final = "ValueError"
+    ASSERTION_ERROR: Final = "AssertionError"
+    STOP_ITERATION: Final = "StopIteration"
+    UNBOUND_LOCAL_ERROR: Final = "UnboundLocalError"
+    RUNTIME_ERROR: Final = "RuntimeError"
+    NAME_ERROR: Final = "NameError"
 
     def __init__(self, class_name: str, value: Optional[Union[str, Value]], line: int) -> None:
         super().__init__(line)
@@ -917,20 +977,20 @@ class IntOp(RegisterOp):
     error_kind = ERR_NEVER
 
     # Arithmetic ops
-    ADD = 0  # type: Final
-    SUB = 1  # type: Final
-    MUL = 2  # type: Final
-    DIV = 3  # type: Final
-    MOD = 4  # type: Final
+    ADD: Final = 0
+    SUB: Final = 1
+    MUL: Final = 2
+    DIV: Final = 3
+    MOD: Final = 4
 
     # Bitwise ops
-    AND = 200  # type: Final
-    OR = 201  # type: Final
-    XOR = 202  # type: Final
-    LEFT_SHIFT = 203  # type: Final
-    RIGHT_SHIFT = 204  # type: Final
+    AND: Final = 200
+    OR: Final = 201
+    XOR: Final = 202
+    LEFT_SHIFT: Final = 203
+    RIGHT_SHIFT: Final = 204
 
-    op_str = {
+    op_str: Final = {
         ADD: '+',
         SUB: '-',
         MUL: '*',
@@ -941,7 +1001,7 @@ class IntOp(RegisterOp):
         XOR: '^',
         LEFT_SHIFT: '<<',
         RIGHT_SHIFT: '>>',
-    }  # type: Final
+    }
 
     def __init__(self, type: RType, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
         super().__init__(line)
@@ -974,18 +1034,18 @@ class ComparisonOp(RegisterOp):
     error_kind = ERR_NEVER
 
     # S for signed and U for unsigned
-    EQ = 100  # type: Final
-    NEQ = 101  # type: Final
-    SLT = 102  # type: Final
-    SGT = 103  # type: Final
-    SLE = 104  # type: Final
-    SGE = 105  # type: Final
-    ULT = 106  # type: Final
-    UGT = 107  # type: Final
-    ULE = 108  # type: Final
-    UGE = 109  # type: Final
+    EQ: Final = 100
+    NEQ: Final = 101
+    SLT: Final = 102
+    SGT: Final = 103
+    SLE: Final = 104
+    SGE: Final = 105
+    ULT: Final = 106
+    UGT: Final = 107
+    ULE: Final = 108
+    UGE: Final = 109
 
-    op_str = {
+    op_str: Final = {
         EQ: '==',
         NEQ: '!=',
         SLT: '<',
@@ -996,7 +1056,7 @@ class ComparisonOp(RegisterOp):
         UGT: '>',
         ULE: '<=',
         UGE: '>=',
-    }  # type: Final
+    }
 
     def __init__(self, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
         super().__init__(line)
@@ -1018,30 +1078,21 @@ class LoadMem(RegisterOp):
     Attributes:
       type: Type of the read value
       src: Pointer to memory to read
-      base: If not None, the object from which we are reading memory.
-            It's used to avoid the target object from being freed via
-            reference counting. If the target is not in reference counted
-            memory, or we know that the target won't be freed, it can be
-            None.
     """
 
     error_kind = ERR_NEVER
 
-    def __init__(self, type: RType, src: Value, base: Optional[Value], line: int = -1) -> None:
+    def __init__(self, type: RType, src: Value, line: int = -1) -> None:
         super().__init__(line)
         self.type = type
         # TODO: for now we enforce that the src memory address should be Py_ssize_t
         #       later we should also support same width unsigned int
         assert is_pointer_rprimitive(src.type)
         self.src = src
-        self.base = base
         self.is_borrowed = True
 
     def sources(self) -> List[Value]:
-        if self.base:
-            return [self.src, self.base]
-        else:
-            return [self.src]
+        return [self.src]
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_load_mem(self)
@@ -1054,11 +1105,6 @@ class SetMem(Op):
       type: Type of the written value
       dest: Pointer to memory to write
       src: Source value
-      base: If not None, the object which we are modifying.
-            It's used to avoid the target object from being freed via
-            reference counting. If the target is not in reference counted
-            memory, or we know that the target won't be freed, it can be
-            None.
     """
 
     error_kind = ERR_NEVER
@@ -1067,20 +1113,15 @@ class SetMem(Op):
                  type: RType,
                  dest: Value,
                  src: Value,
-                 base: Optional[Value],
                  line: int = -1) -> None:
         super().__init__(line)
         self.type = void_rtype
         self.dest_type = type
         self.src = src
         self.dest = dest
-        self.base = base
 
     def sources(self) -> List[Value]:
-        if self.base:
-            return [self.src, self.base, self.dest]
-        else:
-            return [self.src, self.dest]
+        return [self.src, self.dest]
 
     def stolen(self) -> List[Value]:
         return [self.src]
@@ -1090,7 +1131,11 @@ class SetMem(Op):
 
 
 class GetElementPtr(RegisterOp):
-    """Get the address of a struct element."""
+    """Get the address of a struct element.
+
+    Note that you may need to use KeepAlive to avoid the struct
+    being freed, if it's reference counted, such as PyObject *.
+    """
 
     error_kind = ERR_NEVER
 
@@ -1135,6 +1180,37 @@ class LoadAddress(RegisterOp):
         return visitor.visit_load_address(self)
 
 
+class KeepAlive(RegisterOp):
+    """A no-op operation that ensures source values aren't freed.
+
+    This is sometimes useful to avoid decref when a reference is still
+    being held but not seen by the compiler.
+
+    A typical use case is like this (C-like pseudocode):
+
+      ptr = &x.item
+      r = *ptr
+      keep_alive x  # x must not be freed here
+      # x may be freed here
+
+    If we didn't have "keep_alive x", x could be freed immediately
+    after taking the address of 'item', resulting in a read after free
+    on the second line.
+    """
+
+    error_kind = ERR_NEVER
+
+    def __init__(self, src: List[Value]) -> None:
+        assert src
+        self.src = src
+
+    def sources(self) -> List[Value]:
+        return self.src[:]
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_keep_alive(self)
+
+
 @trait
 class OpVisitor(Generic[T]):
     """Generic visitor over ops (uses the visitor design pattern)."""
@@ -1157,6 +1233,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_assign(self, op: Assign) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_assign_multi(self, op: AssignMulti) -> T:
         raise NotImplementedError
 
     @abstractmethod
@@ -1257,6 +1337,10 @@ class OpVisitor(Generic[T]):
     def visit_load_address(self, op: LoadAddress) -> T:
         raise NotImplementedError
 
+    @abstractmethod
+    def visit_keep_alive(self, op: KeepAlive) -> T:
+        raise NotImplementedError
+
 
 # TODO: Should the following definition live somewhere else?
 
@@ -1275,7 +1359,7 @@ class OpVisitor(Generic[T]):
 # we might need to reference.
 #
 # Because of these references, we need to maintain maps from class
-# names to ClassIRs and func names to FuncIRs.
+# names to ClassIRs and func IDs to FuncIRs.
 #
 # These are tracked in a DeserMaps which is passed to every
 # deserialization function.

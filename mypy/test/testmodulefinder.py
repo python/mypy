@@ -184,6 +184,13 @@ class ModuleFinderSitePackagesSuite(Suite):
             ("ns_pkg_untyped.b.c", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
             ("ns_pkg_untyped.a.a_var", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
 
+            # Namespace package without stub package
+            ("ns_pkg_w_stubs", self.path("ns_pkg_w_stubs")),
+            ("ns_pkg_w_stubs.typed", self.path("ns_pkg_w_stubs-stubs", "typed", "__init__.pyi")),
+            ("ns_pkg_w_stubs.typed_inline",
+                self.path("ns_pkg_w_stubs", "typed_inline", "__init__.py")),
+            ("ns_pkg_w_stubs.untyped", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+
             # Regular package with py.typed
             ("pkg_typed", self.path("pkg_typed", "__init__.py")),
             ("pkg_typed.a", self.path("pkg_typed", "a.py")),
@@ -238,6 +245,13 @@ class ModuleFinderSitePackagesSuite(Suite):
             ("ns_pkg_untyped.b", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
             ("ns_pkg_untyped.b.c", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
             ("ns_pkg_untyped.a.a_var", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+
+            # Namespace package without stub package
+            ("ns_pkg_w_stubs", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+            ("ns_pkg_w_stubs.typed", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+            ("ns_pkg_w_stubs.typed_inline",
+                self.path("ns_pkg_w_stubs", "typed_inline", "__init__.py")),
+            ("ns_pkg_w_stubs.untyped", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
 
             # Regular package with py.typed
             ("pkg_typed", self.path("pkg_typed", "__init__.py")),

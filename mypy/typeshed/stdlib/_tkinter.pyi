@@ -1,4 +1,5 @@
-from typing import Any, Tuple, Union
+from typing import Any
+from typing_extensions import Literal, final
 
 # _tkinter is meant to be only used internally by tkinter, but some tkinter
 # functions e.g. return _tkinter.Tcl_Obj objects. Tcl_Obj represents a Tcl
@@ -13,6 +14,7 @@ from typing import Any, Tuple, Union
 #    >>> text.tag_add('foo', '1.0', 'end')
 #    >>> text.tag_ranges('foo')
 #    (<textindex object: '1.0'>, <textindex object: '2.0'>)
+@final
 class Tcl_Obj:
     string: str  # str(tclobj) returns this
     typename: str
@@ -36,9 +38,10 @@ class TclError(Exception): ...
 #
 # eval always returns str because _tkinter_tkapp_eval_impl in _tkinter.c calls
 # Tkapp_UnicodeResult, and it returns a string when it succeeds.
+@final
 class TkappType:
     # Please keep in sync with tkinter.Tk
-    def call(self, __command: Union[str, Tuple[Any, ...]], *args: Any) -> Any: ...
+    def call(self, __command: Any, *args: Any) -> Any: ...
     def eval(self, __script: str) -> str: ...
     adderrorinfo: Any
     createcommand: Any
@@ -71,16 +74,17 @@ class TkappType:
     wantobjects: Any
     willdispatch: Any
 
-ALL_EVENTS: int
-FILE_EVENTS: int
-IDLE_EVENTS: int
-TIMER_EVENTS: int
-WINDOW_EVENTS: int
+# These should be kept in sync with tkinter.tix constants, except ALL_EVENTS which doesn't match TCL_ALL_EVENTS
+ALL_EVENTS: Literal[-3]
+FILE_EVENTS: Literal[8]
+IDLE_EVENTS: Literal[32]
+TIMER_EVENTS: Literal[16]
+WINDOW_EVENTS: Literal[4]
 
-DONT_WAIT: int
-EXCEPTION: int
-READABLE: int
-WRITABLE: int
+DONT_WAIT: Literal[2]
+EXCEPTION: Literal[8]
+READABLE: Literal[2]
+WRITABLE: Literal[4]
 
 TCL_VERSION: str
 TK_VERSION: str

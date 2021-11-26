@@ -78,9 +78,9 @@ def instantiate_env_class(builder: IRBuilder) -> Value:
     if builder.fn_info.is_nested:
         builder.fn_info.callable_class._curr_env_reg = curr_env_reg
         builder.add(SetAttr(curr_env_reg,
-                         ENV_ATTR_NAME,
-                         builder.fn_info.callable_class.prev_env_reg,
-                         builder.fn_info.fitem.line))
+                            ENV_ATTR_NAME,
+                            builder.fn_info.callable_class.prev_env_reg,
+                            builder.fn_info.fitem.line))
     else:
         builder.fn_info._curr_env_reg = curr_env_reg
 

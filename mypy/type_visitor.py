@@ -12,7 +12,7 @@ other modules refer to them.
 """
 
 from abc import abstractmethod
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 from typing import Generic, TypeVar, cast, Any, List, Callable, Iterable, Optional, Set, Sequence
 from mypy_extensions import trait, mypyc_attr
 
@@ -21,9 +21,9 @@ T = TypeVar('T')
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, TupleType, TypedDictType, LiteralType,
     RawExpressionType, Instance, NoneType, TypeType,
-    UnionType, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarLikeDef,
+    UnionType, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarLikeType,
     UnboundType, ErasedType, StarType, EllipsisType, TypeList, CallableArgument,
-    PlaceholderType, TypeAliasType, get_proper_type
+    PlaceholderType, TypeAliasType, ParamSpecType, get_proper_type
 )
 
 
@@ -61,6 +61,10 @@ class TypeVisitor(Generic[T]):
 
     @abstractmethod
     def visit_type_var(self, t: TypeVarType) -> T:
+        pass
+
+    @abstractmethod
+    def visit_param_spec(self, t: ParamSpecType) -> T:
         pass
 
     @abstractmethod
@@ -163,7 +167,7 @@ class TypeTranslator(TypeVisitor[Type]):
         return t
 
     def visit_instance(self, t: Instance) -> Type:
-        last_known_value = None  # type: Optional[LiteralType]
+        last_known_value: Optional[LiteralType] = None
         if t.last_known_value is not None:
             raw_last_known_value = t.last_known_value.accept(self)
             assert isinstance(raw_last_known_value, LiteralType)  # type: ignore
@@ -177,6 +181,9 @@ class TypeTranslator(TypeVisitor[Type]):
         )
 
     def visit_type_var(self, t: TypeVarType) -> Type:
+        return t
+
+    def visit_param_spec(self, t: ParamSpecType) -> Type:
         return t
 
     def visit_partial_type(self, t: PartialType) -> Type:
@@ -221,12 +228,12 @@ class TypeTranslator(TypeVisitor[Type]):
         return [t.accept(self) for t in types]
 
     def translate_variables(self,
-                            variables: Sequence[TypeVarLikeDef]) -> Sequence[TypeVarLikeDef]:
+                            variables: Sequence[TypeVarLikeType]) -> Sequence[TypeVarLikeType]:
         return variables
 
     def visit_overloaded(self, t: Overloaded) -> Type:
-        items = []  # type: List[CallableType]
-        for item in t.items():
+        items: List[CallableType] = []
+        for item in t.items:
             new = item.accept(self)
             assert isinstance(new, CallableType)  # type: ignore
             items.append(new)
@@ -262,7 +269,7 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         self.strategy = strategy
         # Keep track of the type aliases already visited. This is needed to avoid
         # infinite recursion on types like A = Union[int, List[A]].
-        self.seen_aliases = set()  # type: Set[TypeAliasType]
+        self.seen_aliases: Set[TypeAliasType] = set()
 
     def visit_unbound_type(self, t: UnboundType) -> T:
         return self.query_types(t.args)
@@ -290,6 +297,9 @@ class TypeQuery(SyntheticTypeVisitor[T]):
 
     def visit_type_var(self, t: TypeVarType) -> T:
         return self.query_types([t.upper_bound] + t.values)
+
+    def visit_param_spec(self, t: ParamSpecType) -> T:
+        return self.strategy([])
 
     def visit_partial_type(self, t: PartialType) -> T:
         return self.strategy([])
@@ -320,7 +330,7 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return self.query_types(t.items)
 
     def visit_overloaded(self, t: Overloaded) -> T:
-        return self.query_types(t.items())
+        return self.query_types(t.items)
 
     def visit_type_type(self, t: TypeType) -> T:
         return t.item.accept(self)
@@ -340,7 +350,7 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         Use the strategy to combine the results.
         Skip type aliases already visited types to avoid infinite recursion.
         """
-        res = []  # type: List[T]
+        res: List[T] = []
         for t in types:
             if isinstance(t, TypeAliasType):
                 # Avoid infinite recursion for recursive type aliases.

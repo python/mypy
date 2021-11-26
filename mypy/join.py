@@ -1,22 +1,111 @@
 """Calculation of the least upper bound types (joins)."""
 
-from mypy.ordered_dict import OrderedDict
-from typing import List, Optional
+from mypy.backports import OrderedDict
+from typing import List, Optional, Tuple
 
 from mypy.types import (
     Type, AnyType, NoneType, TypeVisitor, Instance, UnboundType, TypeVarType, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, FunctionLike, Overloaded, LiteralType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, get_proper_type,
-    ProperType, get_proper_types, TypeAliasType
+    ProperType, get_proper_types, TypeAliasType, PlaceholderType, ParamSpecType
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import (
     is_subtype, is_equivalent, is_subtype_ignoring_tvars, is_proper_subtype,
     is_protocol_implementation, find_member
 )
-from mypy.nodes import ARG_NAMED, ARG_NAMED_OPT
+from mypy.nodes import INVARIANT, COVARIANT, CONTRAVARIANT
 import mypy.typeops
 from mypy import state
+
+
+class InstanceJoiner:
+    def __init__(self) -> None:
+        self.seen_instances: List[Tuple[Instance, Instance]] = []
+
+    def join_instances(self, t: Instance, s: Instance) -> ProperType:
+        if (t, s) in self.seen_instances or (s, t) in self.seen_instances:
+            return object_from_instance(t)
+
+        self.seen_instances.append((t, s))
+
+        """Calculate the join of two instance types."""
+        if t.type == s.type:
+            # Simplest case: join two types with the same base type (but
+            # potentially different arguments).
+
+            # Combine type arguments.
+            args: List[Type] = []
+            # N.B: We use zip instead of indexing because the lengths might have
+            # mismatches during daemon reprocessing.
+            for ta, sa, type_var in zip(t.args, s.args, t.type.defn.type_vars):
+                ta_proper = get_proper_type(ta)
+                sa_proper = get_proper_type(sa)
+                new_type: Optional[Type] = None
+                if isinstance(ta_proper, AnyType):
+                    new_type = AnyType(TypeOfAny.from_another_any, ta_proper)
+                elif isinstance(sa_proper, AnyType):
+                    new_type = AnyType(TypeOfAny.from_another_any, sa_proper)
+                elif isinstance(type_var, TypeVarType):
+                    if type_var.variance == COVARIANT:
+                        new_type = join_types(ta, sa, self)
+                        if len(type_var.values) != 0 and new_type not in type_var.values:
+                            self.seen_instances.pop()
+                            return object_from_instance(t)
+                        if not is_subtype(new_type, type_var.upper_bound):
+                            self.seen_instances.pop()
+                            return object_from_instance(t)
+                    # TODO: contravariant case should use meet but pass seen instances as
+                    # an argument to keep track of recursive checks.
+                    elif type_var.variance in (INVARIANT, CONTRAVARIANT):
+                        if not is_equivalent(ta, sa):
+                            self.seen_instances.pop()
+                            return object_from_instance(t)
+                        # If the types are different but equivalent, then an Any is involved
+                        # so using a join in the contravariant case is also OK.
+                        new_type = join_types(ta, sa, self)
+                else:
+                    # ParamSpec type variables behave the same, independent of variance
+                    if not is_equivalent(ta, sa):
+                        return get_proper_type(type_var.upper_bound)
+                    new_type = join_types(ta, sa, self)
+                assert new_type is not None
+                args.append(new_type)
+            result: ProperType = Instance(t.type, args)
+        elif t.type.bases and is_subtype_ignoring_tvars(t, s):
+            result = self.join_instances_via_supertype(t, s)
+        else:
+            # Now t is not a subtype of s, and t != s. Now s could be a subtype
+            # of t; alternatively, we need to find a common supertype. This works
+            # in of the both cases.
+            result = self.join_instances_via_supertype(s, t)
+
+        self.seen_instances.pop()
+        return result
+
+    def join_instances_via_supertype(self, t: Instance, s: Instance) -> ProperType:
+        # Give preference to joins via duck typing relationship, so that
+        # join(int, float) == float, for example.
+        if t.type._promote and is_subtype(t.type._promote, s):
+            return join_types(t.type._promote, s, self)
+        elif s.type._promote and is_subtype(s.type._promote, t):
+            return join_types(t, s.type._promote, self)
+        # Compute the "best" supertype of t when joined with s.
+        # The definition of "best" may evolve; for now it is the one with
+        # the longest MRO.  Ties are broken by using the earlier base.
+        best: Optional[ProperType] = None
+        for base in t.type.bases:
+            mapped = map_instance_to_supertype(t, base.type)
+            res = self.join_instances(mapped, s)
+            if best is None or is_better(res, best):
+                best = res
+        assert best is not None
+        promote = get_proper_type(t.type._promote)
+        if isinstance(promote, Instance):
+            res = self.join_instances(promote, s)
+            if is_better(res, best):
+                best = res
+        return best
 
 
 def join_simple(declaration: Optional[Type], s: Type, t: Type) -> ProperType:
@@ -69,7 +158,7 @@ def trivial_join(s: Type, t: Type) -> ProperType:
         return object_or_any_from_type(get_proper_type(t))
 
 
-def join_types(s: Type, t: Type) -> ProperType:
+def join_types(s: Type, t: Type, instance_joiner: Optional[InstanceJoiner] = None) -> ProperType:
     """Return the least upper bound of s and t.
 
     For example, the join of 'int' and 'object' is 'object'.
@@ -101,8 +190,16 @@ def join_types(s: Type, t: Type) -> ProperType:
     if isinstance(s, UninhabitedType) and not isinstance(t, UninhabitedType):
         s, t = t, s
 
+    # We shouldn't run into PlaceholderTypes here, but in practice we can encounter them
+    # here in the presence of undefined names
+    if isinstance(t, PlaceholderType) and not isinstance(s, PlaceholderType):
+        # mypyc does not allow switching the values like above.
+        return s.accept(TypeJoinVisitor(t))
+    elif isinstance(t, PlaceholderType):
+        return AnyType(TypeOfAny.from_error)
+
     # Use a visitor to handle non-trivial cases.
-    return t.accept(TypeJoinVisitor(s))
+    return t.accept(TypeJoinVisitor(s, instance_joiner))
 
 
 class TypeJoinVisitor(TypeVisitor[ProperType]):
@@ -112,8 +209,9 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
       s: The other (left) type operand.
     """
 
-    def __init__(self, s: ProperType) -> None:
+    def __init__(self, s: ProperType, instance_joiner: Optional[InstanceJoiner] = None) -> None:
         self.s = s
+        self.instance_joiner = instance_joiner
 
     def visit_unbound_type(self, t: UnboundType) -> ProperType:
         return AnyType(TypeOfAny.special_form)
@@ -153,10 +251,17 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         else:
             return self.default(self.s)
 
+    def visit_param_spec(self, t: ParamSpecType) -> ProperType:
+        if self.s == t:
+            return t
+        return self.default(self.s)
+
     def visit_instance(self, t: Instance) -> ProperType:
         if isinstance(self.s, Instance):
-            nominal = join_instances(t, self.s)
-            structural = None  # type: Optional[Instance]
+            if self.instance_joiner is None:
+                self.instance_joiner = InstanceJoiner()
+            nominal = self.instance_joiner.join_instances(t, self.s)
+            structural: Optional[Instance] = None
             if t.type.is_protocol and is_protocol_implementation(self.s, t):
                 structural = t
             elif self.s.type.is_protocol and is_protocol_implementation(t, self.s):
@@ -237,12 +342,12 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         #       Ov([Any, int] -> Any, [Any, int] -> Any)
         #
         # TODO: Consider more cases of callable subtyping.
-        result = []  # type: List[CallableType]
+        result: List[CallableType] = []
         s = self.s
         if isinstance(s, FunctionLike):
             # The interesting case where both types are function types.
-            for t_item in t.items():
-                for s_item in s.items():
+            for t_item in t.items:
+                for s_item in s.items:
                     if is_similar_callables(t_item, s_item):
                         if is_equivalent(t_item, s_item):
                             result.append(combine_similar_callables(t_item, s_item))
@@ -274,11 +379,13 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         # * Joining with any Sequence also returns a Sequence:
         #   Tuple[int, bool] + List[bool] becomes Sequence[int]
         if isinstance(self.s, TupleType) and self.s.length() == t.length():
-            fallback = join_instances(mypy.typeops.tuple_fallback(self.s),
-                                      mypy.typeops.tuple_fallback(t))
+            if self.instance_joiner is None:
+                self.instance_joiner = InstanceJoiner()
+            fallback = self.instance_joiner.join_instances(mypy.typeops.tuple_fallback(self.s),
+                                                       mypy.typeops.tuple_fallback(t))
             assert isinstance(fallback, Instance)
             if self.s.length() == t.length():
-                items = []  # type: List[Type]
+                items: List[Type] = []
                 for i in range(t.length()):
                     items.append(self.join(t.items[i], self.s.items[i]))
                 return TupleType(items, fallback)
@@ -310,8 +417,9 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         if isinstance(self.s, LiteralType):
             if t == self.s:
                 return t
-            else:
-                return join_types(self.s.fallback, t.fallback)
+            if self.s.fallback.type.is_enum and t.fallback.type.is_enum:
+                return mypy.typeops.make_simplified_union([self.s, t])
+            return join_types(self.s.fallback, t.fallback)
         else:
             return join_types(self.s, t.fallback)
 
@@ -348,58 +456,10 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             return self.default(typ.fallback)
         elif isinstance(typ, TypeVarType):
             return self.default(typ.upper_bound)
+        elif isinstance(typ, ParamSpecType):
+            return self.default(typ.upper_bound)
         else:
             return AnyType(TypeOfAny.special_form)
-
-
-def join_instances(t: Instance, s: Instance) -> ProperType:
-    """Calculate the join of two instance types."""
-    if t.type == s.type:
-        # Simplest case: join two types with the same base type (but
-        # potentially different arguments).
-        if is_subtype(t, s) or is_subtype(s, t):
-            # Compatible; combine type arguments.
-            args = []  # type: List[Type]
-            # N.B: We use zip instead of indexing because the lengths might have
-            # mismatches during daemon reprocessing.
-            for ta, sa in zip(t.args, s.args):
-                args.append(join_types(ta, sa))
-            return Instance(t.type, args)
-        else:
-            # Incompatible; return trivial result object.
-            return object_from_instance(t)
-    elif t.type.bases and is_subtype_ignoring_tvars(t, s):
-        return join_instances_via_supertype(t, s)
-    else:
-        # Now t is not a subtype of s, and t != s. Now s could be a subtype
-        # of t; alternatively, we need to find a common supertype. This works
-        # in of the both cases.
-        return join_instances_via_supertype(s, t)
-
-
-def join_instances_via_supertype(t: Instance, s: Instance) -> ProperType:
-    # Give preference to joins via duck typing relationship, so that
-    # join(int, float) == float, for example.
-    if t.type._promote and is_subtype(t.type._promote, s):
-        return join_types(t.type._promote, s)
-    elif s.type._promote and is_subtype(s.type._promote, t):
-        return join_types(t, s.type._promote)
-    # Compute the "best" supertype of t when joined with s.
-    # The definition of "best" may evolve; for now it is the one with
-    # the longest MRO.  Ties are broken by using the earlier base.
-    best = None  # type: Optional[ProperType]
-    for base in t.type.bases:
-        mapped = map_instance_to_supertype(t, base.type)
-        res = join_instances(mapped, s)
-        if best is None or is_better(res, best):
-            best = res
-    assert best is not None
-    promote = get_proper_type(t.type._promote)
-    if isinstance(promote, Instance):
-        res = join_instances(promote, s)
-        if is_better(res, best):
-            best = res
-    return best
 
 
 def is_better(t: Type, s: Type) -> bool:
@@ -427,7 +487,8 @@ def is_similar_callables(t: CallableType, s: CallableType) -> bool:
 
 def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     from mypy.meet import meet_types
-    arg_types = []  # type: List[Type]
+
+    arg_types: List[Type] = []
     for i in range(len(t.arg_types)):
         arg_types.append(meet_types(t.arg_types[i], s.arg_types[i]))
     # TODO in combine_similar_callables also applies here (names and kinds)
@@ -445,7 +506,7 @@ def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
 
 
 def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:
-    arg_types = []  # type: List[Type]
+    arg_types: List[Type] = []
     for i in range(len(t.arg_types)):
         arg_types.append(join_types(t.arg_types[i], s.arg_types[i]))
     # TODO kinds and argument names
@@ -481,11 +542,10 @@ def combine_arg_names(t: CallableType, s: CallableType) -> List[Optional[str]]:
     """
     num_args = len(t.arg_types)
     new_names = []
-    named = (ARG_NAMED, ARG_NAMED_OPT)
     for i in range(num_args):
         t_name = t.arg_names[i]
         s_name = s.arg_names[i]
-        if t_name == s_name or t.arg_kinds[i] in named or s.arg_kinds[i] in named:
+        if t_name == s_name or t.arg_kinds[i].is_named() or s.arg_kinds[i].is_named():
             new_names.append(t_name)
         else:
             new_names.append(None)

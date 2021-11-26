@@ -12,11 +12,11 @@ import sys
 from typing import Any, Iterator, List, cast
 
 from mypy import build
-from mypy.test.data import DataDrivenTestCase, UpdateFile
+from mypy.test.data import DataDrivenTestCase
 from mypy.test.config import test_temp_dir
 from mypy.errors import CompileError
 from mypy.options import Options
-from mypy.test.helpers import copy_and_fudge_mtime, assert_module_equivalence
+from mypy.test.helpers import assert_module_equivalence, perform_file_operations
 
 from mypyc.codegen import emitmodule
 from mypyc.options import CompilerOptions
@@ -36,6 +36,7 @@ files = [
     'run-floats.test',
     'run-bools.test',
     'run-strings.test',
+    'run-bytes.test',
     'run-tuples.test',
     'run-lists.test',
     'run-dicts.test',
@@ -50,7 +51,11 @@ files = [
     'run-multimodule.test',
     'run-bench.test',
     'run-mypy-sim.test',
+    'run-dunders.test',
+    'run-singledispatch.test',
+    'run-attrs.test',
 ]
+
 if sys.version_info >= (3, 7):
     files.append('run-python37.test')
 if sys.version_info >= (3, 8):
@@ -132,7 +137,8 @@ class TestRun(MypycDataSuite):
             self.run_case_inner(testcase)
 
     def run_case_inner(self, testcase: DataDrivenTestCase) -> None:
-        os.mkdir(WORKDIR)
+        if not os.path.isdir(WORKDIR):  # (one test puts something in build...)
+            os.mkdir(WORKDIR)
 
         text = '\n'.join(testcase.input)
 
@@ -158,16 +164,7 @@ class TestRun(MypycDataSuite):
 
             step += 1
             with chdir_manager('..'):
-                for op in operations:
-                    if isinstance(op, UpdateFile):
-                        # Modify/create file
-                        copy_and_fudge_mtime(op.source_path, op.target_path)
-                    else:
-                        # Delete file
-                        try:
-                            os.remove(op.path)
-                        except FileNotFoundError:
-                            pass
+                perform_file_operations(operations)
             self.run_case_step(testcase, step)
 
     def run_case_step(self, testcase: DataDrivenTestCase, incremental_step: int) -> None:
@@ -247,6 +244,7 @@ class TestRun(MypycDataSuite):
             check_serialization_roundtrip(ir)
 
         opt_level = int(os.environ.get('MYPYC_OPT_LEVEL', 0))
+        debug_level = int(os.environ.get('MYPYC_DEBUG_LEVEL', 0))
 
         setup_file = os.path.abspath(os.path.join(WORKDIR, 'setup.py'))
         # We pass the C file information to the build script via setup.py unfortunately
@@ -255,7 +253,8 @@ class TestRun(MypycDataSuite):
                                         separate,
                                         cfiles,
                                         self.multi_file,
-                                        opt_level))
+                                        opt_level,
+                                        debug_level))
 
         if not run_setup(setup_file, ['build_ext', '--inplace']):
             if testcase.config.getoption('--mypyc-showc'):

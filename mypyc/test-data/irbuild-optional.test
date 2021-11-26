@@ -319,7 +319,8 @@ def get(o):
 L0:
     r0 = __main__.A :: type
     r1 = get_element_ptr o ob_type :: PyObject
-    r2 = load_mem r1, o :: builtins.object*
+    r2 = load_mem r1 :: builtins.object*
+    keep_alive o
     r3 = r2 == r0
     if r3 goto L1 else goto L2 :: bool
 L1:
@@ -397,7 +398,8 @@ def g(o):
 L0:
     r0 = __main__.A :: type
     r1 = get_element_ptr o ob_type :: PyObject
-    r2 = load_mem r1, o :: builtins.object*
+    r2 = load_mem r1 :: builtins.object*
+    keep_alive o
     r3 = r2 == r0
     if r3 goto L1 else goto L2 :: bool
 L1:
@@ -409,7 +411,8 @@ L1:
 L2:
     r8 = __main__.B :: type
     r9 = get_element_ptr o ob_type :: PyObject
-    r10 = load_mem r9, o :: builtins.object*
+    r10 = load_mem r9 :: builtins.object*
+    keep_alive o
     r11 = r10 == r8
     if r11 goto L3 else goto L4 :: bool
 L3:
@@ -461,7 +464,8 @@ def f(o):
 L0:
     r0 = __main__.A :: type
     r1 = get_element_ptr o ob_type :: PyObject
-    r2 = load_mem r1, o :: builtins.object*
+    r2 = load_mem r1 :: builtins.object*
+    keep_alive o
     r3 = r2 == r0
     if r3 goto L1 else goto L2 :: bool
 L1:
@@ -492,7 +496,8 @@ def g(o):
 L0:
     r0 = __main__.A :: type
     r1 = get_element_ptr o ob_type :: PyObject
-    r2 = load_mem r1, o :: builtins.object*
+    r2 = load_mem r1 :: builtins.object*
+    keep_alive o
     r3 = r2 == r0
     if r3 goto L1 else goto L2 :: bool
 L1:

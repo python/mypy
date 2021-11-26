@@ -1,6 +1,6 @@
 # builtins stub used in type-related test cases.
 
-from typing import Generic, TypeVar, List
+from typing import Generic, TypeVar, List, Union
 
 T = TypeVar('T')
 
@@ -10,8 +10,9 @@ class object:
 
 class list(Generic[T]): pass
 
-class type:
+class type(Generic[T]):
     __name__: str
+    def __or__(self, other: Union[type, None]) -> type: pass
     def mro(self) -> List['type']: pass
 
 class tuple(Generic[T]): pass

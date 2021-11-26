@@ -4,7 +4,7 @@ from mypy.types import (
     Type, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarId, Instance, TypeVarType,
     CallableType, TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType,
     DeletedType, TypeTranslator, UninhabitedType, TypeType, TypeOfAny, LiteralType, ProperType,
-    get_proper_type, TypeAliasType
+    get_proper_type, TypeAliasType, ParamSpecType
 )
 from mypy.nodes import ARG_STAR, ARG_STAR2
 
@@ -57,6 +57,9 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
     def visit_type_var(self, t: TypeVarType) -> ProperType:
         return AnyType(TypeOfAny.special_form)
 
+    def visit_param_spec(self, t: ParamSpecType) -> ProperType:
+        return AnyType(TypeOfAny.special_form)
+
     def visit_callable_type(self, t: CallableType) -> ProperType:
         # We must preserve the fallback type for overload resolution to work.
         any_type = AnyType(TypeOfAny.special_form)
@@ -87,7 +90,7 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
 
     def visit_union_type(self, t: UnionType) -> ProperType:
         erased_items = [erase_type(item) for item in t.items]
-        from mypy.typeops import make_simplified_union  # asdf
+        from mypy.typeops import make_simplified_union
         return make_simplified_union(erased_items)
 
     def visit_type_type(self, t: TypeType) -> ProperType:
@@ -121,6 +124,11 @@ class TypeVarEraser(TypeTranslator):
         self.replacement = replacement
 
     def visit_type_var(self, t: TypeVarType) -> Type:
+        if self.erase_id(t.id):
+            return self.replacement
+        return t
+
+    def visit_param_spec(self, t: ParamSpecType) -> Type:
         if self.erase_id(t.id):
             return self.replacement
         return t

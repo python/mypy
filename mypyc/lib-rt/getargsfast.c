@@ -21,6 +21,8 @@
 /* None of this is supported on Python 3.6 or earlier */
 #if PY_VERSION_HEX >= 0x03070000
 
+#define PARSER_INITED(parser) ((parser)->kwtuple != NULL)
+
 /* Forward */
 static int
 vgetargskeywordsfast_impl(PyObject *const *args, Py_ssize_t nargs,
@@ -93,10 +95,12 @@ CPyArg_ParseStackAndKeywordsSimple(PyObject *const *args, Py_ssize_t nargs, PyOb
     va_list va;
 
     va_start(va, parser);
-    if (kwnames == NULL && nargs >= parser->min && nargs <= parser->max) {
+    if (kwnames == NULL && PARSER_INITED(parser) &&
+            nargs >= parser->min && nargs <= parser->max) {
         // Fast path: correct number of positional arguments only
         PyObject **p;
-        for (Py_ssize_t i = 0; i < nargs; i++) {
+        Py_ssize_t i;
+        for (i = 0; i < nargs; i++) {
             p = va_arg(va, PyObject **);
             *p = args[i];
         }
@@ -123,7 +127,7 @@ parser_init(CPyArg_Parser *parser)
     PyObject *kwtuple;
 
     assert(parser->keywords != NULL);
-    if (parser->kwtuple != NULL) {
+    if (PARSER_INITED(parser)) {
         return 1;
     }
 

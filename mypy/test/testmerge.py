@@ -49,7 +49,7 @@ class ASTMergeSuite(DataSuite):
         super().setup()
         self.str_conv = StrConv(show_ids=True)
         assert self.str_conv.id_mapper is not None
-        self.id_mapper = self.str_conv.id_mapper  # type: IdMapper
+        self.id_mapper: IdMapper = self.str_conv.id_mapper
         self.type_str_conv = TypeStrVisitor(self.id_mapper)
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
@@ -124,6 +124,7 @@ class ASTMergeSuite(DataSuite):
     def build_increment(self, manager: FineGrainedBuildManager,
                         module_id: str, path: str) -> Tuple[MypyFile,
                                                             Dict[Expression, Type]]:
+        manager.flush_cache()
         manager.update([(module_id, path)], [])
         module = manager.manager.modules[module_id]
         type_map = manager.graph[module_id].type_map()

@@ -19,8 +19,8 @@ class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
     """Returns all module references within a particular type."""
 
     def __init__(self) -> None:
-        self.cache = {}  # type: Dict[types.Type, Set[str]]
-        self.seen_aliases = set()  # type: Set[types.TypeAliasType]
+        self.cache: Dict[types.Type, Set[str]] = {}
+        self.seen_aliases: Set[types.TypeAliasType] = set()
 
     def find_modules(self, typs: Iterable[types.Type]) -> Set[str]:
         self.seen_aliases.clear()
@@ -28,7 +28,7 @@ class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
 
     def _visit(self, typ_or_typs: Union[types.Type, Iterable[types.Type]]) -> Set[str]:
         typs = [typ_or_typs] if isinstance(typ_or_typs, types.Type) else typ_or_typs
-        output = set()  # type: Set[str]
+        output: Set[str] = set()
         for typ in typs:
             if isinstance(typ, types.TypeAliasType):
                 # Avoid infinite recursion for recursive type aliases.
@@ -64,6 +64,9 @@ class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
     def visit_type_var(self, t: types.TypeVarType) -> Set[str]:
         return self._visit(t.values) | self._visit(t.upper_bound)
 
+    def visit_param_spec(self, t: types.ParamSpecType) -> Set[str]:
+        return set()
+
     def visit_instance(self, t: types.Instance) -> Set[str]:
         out = self._visit(t.args)
         if t.type:
@@ -83,7 +86,7 @@ class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
         return out
 
     def visit_overloaded(self, t: types.Overloaded) -> Set[str]:
-        return self._visit(t.items()) | self._visit(t.fallback)
+        return self._visit(t.items) | self._visit(t.fallback)
 
     def visit_tuple_type(self, t: types.TupleType) -> Set[str]:
         return self._visit(t.items) | self._visit(t.partial_fallback)

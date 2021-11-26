@@ -4,7 +4,7 @@ The main entry point is mypycify, which produces a list of extension
 modules to be passed to setup. A trivial setup.py for a mypyc built
 project, then, looks like:
 
-    from distutils.core import setup
+    from setuptools import setup
     from mypyc.build import mypycify
 
     setup(name='test_module',
@@ -45,6 +45,13 @@ from mypyc.codegen import emitmodule
 if TYPE_CHECKING:
     from distutils.core import Extension  # noqa
 
+try:
+    # Import setuptools so that it monkey-patch overrides distutils
+    import setuptools  # type: ignore  # noqa
+except ImportError:
+    if sys.version_info >= (3, 12):
+        # Raise on Python 3.12, since distutils will go away forever
+        raise
 from distutils import sysconfig, ccompiler
 
 
@@ -296,7 +303,7 @@ def write_file(path: str, contents: str) -> None:
     encoded_contents = contents.encode('utf-8')
     try:
         with open(path, 'rb') as f:
-            old_contents = f.read()  # type: Optional[bytes]
+            old_contents: Optional[bytes] = f.read()
     except IOError:
         old_contents = None
     if old_contents != encoded_contents:
@@ -328,9 +335,7 @@ def construct_groups(
     """
 
     if separate is True:
-        groups = [
-            ([source], None) for source in sources
-        ]  # type: emitmodule.Groups
+        groups: emitmodule.Groups = [([source], None) for source in sources]
     elif isinstance(separate, list):
         groups = []
         used_sources = set()
@@ -362,7 +367,7 @@ def get_header_deps(cfiles: List[Tuple[str, str]]) -> List[str]:
     Arguments:
         cfiles: A list of (file name, file contents) pairs.
     """
-    headers = set()  # type: Set[str]
+    headers: Set[str] = set()
     for _, contents in cfiles:
         headers.update(re.findall(r'#include "(.*)"', contents))
 
@@ -406,7 +411,7 @@ def mypyc_build(
 
     # Write out the generated C and collect the files for each group
     # Should this be here??
-    group_cfilenames = []  # type: List[Tuple[List[str], List[str]]]
+    group_cfilenames: List[Tuple[List[str], List[str]]] = []
     for cfiles in group_cfiles:
         cfilenames = []
         for cfile, ctext in cfiles:
@@ -426,7 +431,8 @@ def mypycify(
     *,
     only_compile_paths: Optional[Iterable[str]] = None,
     verbose: bool = False,
-    opt_level: str = '3',
+    opt_level: str = "3",
+    debug_level: str = "1",
     strip_asserts: bool = False,
     multi_file: bool = False,
     separate: Union[bool, List[Tuple[List[str], Optional[str]]]] = False,
@@ -449,6 +455,7 @@ def mypycify(
         verbose: Should mypyc be more verbose. Defaults to false.
 
         opt_level: The optimization level, as a string. Defaults to '3' (meaning '-O3').
+        debug_level: The debug level, as a string. Defaults to '1' (meaning '-g1').
         strip_asserts: Should asserts be stripped from the generated code.
 
         multi_file: Should each Python module be compiled into its own C source file.
@@ -496,21 +503,23 @@ def mypycify(
     setup_mypycify_vars()
 
     # Create a compiler object so we can make decisions based on what
-    # compiler is being used. typeshed is missing some attribues on the
+    # compiler is being used. typeshed is missing some attributes on the
     # compiler object so we give it type Any
-    compiler = ccompiler.new_compiler()  # type: Any
+    compiler: Any = ccompiler.new_compiler()
     sysconfig.customize_compiler(compiler)
 
     build_dir = compiler_options.target_dir
 
-    cflags = []  # type: List[str]
+    cflags: List[str] = []
     if compiler.compiler_type == 'unix':
         cflags += [
-            '-O{}'.format(opt_level), '-Werror', '-Wno-unused-function', '-Wno-unused-label',
+            '-O{}'.format(opt_level),
+            '-g{}'.format(debug_level),
+            '-Werror', '-Wno-unused-function', '-Wno-unused-label',
             '-Wno-unreachable-code', '-Wno-unused-variable',
             '-Wno-unused-command-line-argument', '-Wno-unknown-warning-option',
         ]
-        if 'gcc' in compiler.compiler[0]:
+        if 'gcc' in compiler.compiler[0] or 'gnu-cc' in compiler.compiler[0]:
             # This flag is needed for gcc but does not exist on clang.
             cflags += ['-Wno-unused-but-set-variable']
     elif compiler.compiler_type == 'msvc':

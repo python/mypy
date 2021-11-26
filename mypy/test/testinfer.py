@@ -6,7 +6,7 @@ from mypy.test.helpers import Suite, assert_equal
 from mypy.argmap import map_actuals_to_formals
 from mypy.checker import group_comparison_operands, DisjointDict
 from mypy.literals import Key
-from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED, NameExpr
+from mypy.nodes import ArgKind, ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED, NameExpr
 from mypy.types import AnyType, TupleType, Type, TypeOfAny
 from mypy.test.typefixture import TypeFixture
 
@@ -170,8 +170,8 @@ class MapActualsToFormalsSuite(Suite):
                         [[0]])
 
     def assert_map(self,
-                   caller_kinds_: List[Union[int, str]],
-                   callee_kinds_: List[Union[int, Tuple[int, str]]],
+                   caller_kinds_: List[Union[ArgKind, str]],
+                   callee_kinds_: List[Union[ArgKind, Tuple[ArgKind, str]]],
                    expected: List[List[int]],
                    ) -> None:
         caller_kinds, caller_names = expand_caller_kinds(caller_kinds_)
@@ -185,8 +185,8 @@ class MapActualsToFormalsSuite(Suite):
         assert_equal(result, expected)
 
     def assert_vararg_map(self,
-                          caller_kinds: List[int],
-                          callee_kinds: List[int],
+                          caller_kinds: List[ArgKind],
+                          callee_kinds: List[ArgKind],
                           expected: List[List[int]],
                           vararg_type: Type,
                           ) -> None:
@@ -199,10 +199,10 @@ class MapActualsToFormalsSuite(Suite):
         assert_equal(result, expected)
 
 
-def expand_caller_kinds(kinds_or_names: List[Union[int, str]]
-                        ) -> Tuple[List[int], List[Optional[str]]]:
+def expand_caller_kinds(kinds_or_names: List[Union[ArgKind, str]]
+                        ) -> Tuple[List[ArgKind], List[Optional[str]]]:
     kinds = []
-    names = []  # type: List[Optional[str]]
+    names: List[Optional[str]] = []
     for k in kinds_or_names:
         if isinstance(k, str):
             kinds.append(ARG_NAMED)
@@ -213,10 +213,10 @@ def expand_caller_kinds(kinds_or_names: List[Union[int, str]]
     return kinds, names
 
 
-def expand_callee_kinds(kinds_and_names: List[Union[int, Tuple[int, str]]]
-                        ) -> Tuple[List[int], List[Optional[str]]]:
+def expand_callee_kinds(kinds_and_names: List[Union[ArgKind, Tuple[ArgKind, str]]]
+                        ) -> Tuple[List[ArgKind], List[Optional[str]]]:
     kinds = []
-    names = []  # type: List[Optional[str]]
+    names: List[Optional[str]] = []
     for v in kinds_and_names:
         if isinstance(v, tuple):
             kinds.append(v[0])
@@ -287,7 +287,7 @@ class OperandDisjointDictSuite(Suite):
 class OperandComparisonGroupingSuite(Suite):
     """Test cases for checker.group_comparison_operands."""
     def literal_keymap(self, assignable_operands: Dict[int, NameExpr]) -> Dict[int, Key]:
-        output = {}  # type: Dict[int, Key]
+        output: Dict[int, Key] = {}
         for index, expr in assignable_operands.items():
             output[index] = ('FakeExpr', expr.name)
         return output
@@ -437,10 +437,10 @@ class OperandComparisonGroupingSuite(Suite):
         single_comparison = [('==', x0, x1)]
         expected_output = [('==', [0, 1])]
 
-        assignable_combinations = [
+        assignable_combinations: List[Dict[int, NameExpr]] = [
             {}, {0: x0}, {1: x1}, {0: x0, 1: x1},
-        ]  # type: List[Dict[int, NameExpr]]
-        to_group_by = [set(), {'=='}, {'is'}]  # type: List[Set[str]]
+        ]
+        to_group_by: List[Set[str]] = [set(), {"=="}, {"is"}]
 
         for combo in assignable_combinations:
             for operators in to_group_by:
