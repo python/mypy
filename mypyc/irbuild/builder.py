@@ -10,8 +10,10 @@ AST node type to code that actually does the bulk of the work. For
 example, expressions are transformed in mypyc.irbuild.expression and
 functions are transformed in mypyc.irbuild.function.
 """
+from contextlib import contextmanager
 
-from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any
+from mypyc.irbuild.prepare import RegisterImplInfo
+from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any, Iterator
 from typing_extensions import overload
 from mypy.backports import OrderedDict
 
@@ -19,7 +21,8 @@ from mypy.build import Graph
 from mypy.nodes import (
     MypyFile, SymbolNode, Statement, OpExpr, IntExpr, NameExpr, LDEF, Var, UnaryExpr,
     CallExpr, IndexExpr, Expression, MemberExpr, RefExpr, Lvalue, TupleExpr,
-    TypeInfo, Decorator, OverloadedFuncDef, StarExpr, ComparisonExpr, GDEF, ARG_POS, ARG_NAMED
+    TypeInfo, Decorator, OverloadedFuncDef, StarExpr, ComparisonExpr, GDEF,
+    ArgKind, ARG_POS, ARG_NAMED, FuncDef,
 )
 from mypy.types import (
     Type, Instance, TupleType, UninhabitedType, get_proper_type
@@ -84,7 +87,8 @@ class IRBuilder:
                  mapper: Mapper,
                  pbv: PreBuildVisitor,
                  visitor: IRVisitor,
-                 options: CompilerOptions) -> None:
+                 options: CompilerOptions,
+                 singledispatch_impls: Dict[FuncDef, List[RegisterImplInfo]]) -> None:
         self.builder = LowLevelIRBuilder(current_module, mapper, options)
         self.builders = [self.builder]
         self.symtables: List[OrderedDict[SymbolNode, SymbolTarget]] = [OrderedDict()]
@@ -115,7 +119,7 @@ class IRBuilder:
         self.encapsulating_funcs = pbv.encapsulating_funcs
         self.nested_fitems = pbv.nested_funcs.keys()
         self.fdefs_to_decorators = pbv.funcs_to_decorators
-        self.singledispatch_impls = pbv.singledispatch_impls
+        self.singledispatch_impls = singledispatch_impls
 
         self.visitor = visitor
 
@@ -197,6 +201,16 @@ class IRBuilder:
     def load_str(self, value: str) -> Value:
         return self.builder.load_str(value)
 
+    def load_bytes_from_str_literal(self, value: str) -> Value:
+        """Load bytes object from a string literal.
+
+        The literal characters of BytesExpr (the characters inside b'')
+        are stored in BytesExpr.value, whose type is 'str' not 'bytes'.
+        Thus we perform a special conversion here.
+        """
+        bytes_value = bytes(value, 'utf8').decode('unicode-escape').encode('raw-unicode-escape')
+        return self.builder.load_bytes(bytes_value)
+
     def load_int(self, value: int) -> Value:
         return self.builder.load_int(value)
 
@@ -238,7 +252,7 @@ class IRBuilder:
                 function: Value,
                 arg_values: List[Value],
                 line: int,
-                arg_kinds: Optional[List[int]] = None,
+                arg_kinds: Optional[List[ArgKind]] = None,
                 arg_names: Optional[Sequence[Optional[str]]] = None) -> Value:
         return self.builder.py_call(function, arg_values, line, arg_kinds, arg_names)
 
@@ -254,7 +268,7 @@ class IRBuilder:
                         arg_values: List[Value],
                         result_type: Optional[RType],
                         line: int,
-                        arg_kinds: Optional[List[int]] = None,
+                        arg_kinds: Optional[List[ArgKind]] = None,
                         arg_names: Optional[List[Optional[str]]] = None) -> Value:
         return self.builder.gen_method_call(
             base, name, arg_values, result_type, line, arg_kinds, arg_names
@@ -528,7 +542,7 @@ class IRBuilder:
                rvalue_reg: Value,
                line: int) -> None:
         if isinstance(target, Register):
-            self.add(Assign(target, rvalue_reg))
+            self.add(Assign(target, self.coerce(rvalue_reg, target.type, line)))
         elif isinstance(target, AssignmentTargetRegister):
             rvalue_reg = self.coerce(rvalue_reg, target.type, line)
             self.add(Assign(target.register, rvalue_reg))
@@ -854,6 +868,16 @@ class IRBuilder:
         callee_node = callee.node
         if isinstance(callee_node, OverloadedFuncDef):
             callee_node = callee_node.impl
+        # TODO: use native calls for any decorated functions which have all their decorators
+        # removed, not just singledispatch functions (which we don't do now just in case those
+        # decorated functions are callable classes or cannot be called without the python API for
+        # some other reason)
+        if (
+            isinstance(callee_node, Decorator)
+            and callee_node.func not in self.fdefs_to_decorators
+            and callee_node.func in self.singledispatch_impls
+        ):
+            callee_node = callee_node.func
         if (callee_node is not None
                 and callee.fullname is not None
                 and callee_node in self.mapper.func_to_decl
@@ -981,21 +1005,17 @@ class IRBuilder:
         self.fn_info = self.fn_infos[-1]
         return builder.args, runtime_args, builder.blocks, ret_type, fn_info
 
+    @contextmanager
     def enter_method(self,
                      class_ir: ClassIR,
                      name: str,
                      ret_type: RType,
                      fn_info: Union[FuncInfo, str] = '',
-                     self_type: Optional[RType] = None) -> None:
-        """Begin generating IR for a method.
+                     self_type: Optional[RType] = None) -> Iterator[None]:
+        """Generate IR for a method.
 
         If the method takes arguments, you should immediately afterwards call
         add_argument() for each non-self argument (self is created implicitly).
-
-        Call leave_method() to finish the generation of the method.
-
-        You can enter multiple methods at a time. They are maintained in a
-        stack, and leave_method() leaves the topmost one.
 
         Args:
             class_ir: Add method to this class
@@ -1012,8 +1032,20 @@ class IRBuilder:
         if self_type is None:
             self_type = RInstance(class_ir)
         self.add_argument(SELF_NAME, self_type)
+        try:
+            yield
+        finally:
+            arg_regs, args, blocks, ret_type, fn_info = self.leave()
+            sig = FuncSignature(args, ret_type)
+            name = self.function_name_stack.pop()
+            class_ir = self.class_ir_stack.pop()
+            decl = FuncDecl(name, class_ir.name, self.module_name, sig)
+            ir = FuncIR(decl, arg_regs, blocks)
+            class_ir.methods[name] = ir
+            class_ir.method_decls[name] = ir.decl
+            self.functions.append(ir)
 
-    def add_argument(self, var: Union[str, Var], typ: RType, kind: int = ARG_POS) -> Register:
+    def add_argument(self, var: Union[str, Var], typ: RType, kind: ArgKind = ARG_POS) -> Register:
         """Declare an argument in the current function.
 
         You should use this instead of directly calling add_local() in new code.
@@ -1023,18 +1055,6 @@ class IRBuilder:
         reg = self.add_local(var, typ, is_arg=True)
         self.runtime_args[-1].append(RuntimeArg(var.name, typ, kind))
         return reg
-
-    def leave_method(self) -> None:
-        """Finish the generation of IR for a method."""
-        arg_regs, args, blocks, ret_type, fn_info = self.leave()
-        sig = FuncSignature(args, ret_type)
-        name = self.function_name_stack.pop()
-        class_ir = self.class_ir_stack.pop()
-        decl = FuncDecl(name, class_ir.name, self.module_name, sig)
-        ir = FuncIR(decl, arg_regs, blocks)
-        class_ir.methods[name] = ir
-        class_ir.method_decls[name] = ir.decl
-        self.functions.append(ir)
 
     def lookup(self, symbol: SymbolNode) -> SymbolTarget:
         return self.symtables[-1][symbol]
@@ -1046,7 +1066,12 @@ class IRBuilder:
             is_arg: is this a function argument
         """
         assert isinstance(symbol, SymbolNode)
-        reg = Register(typ, symbol.name, is_arg=is_arg, line=symbol.line)
+        reg = Register(
+            typ,
+            remangle_redefinition_name(symbol.name),
+            is_arg=is_arg,
+            line=symbol.line,
+        )
         self.symtables[-1][symbol] = AssignmentTargetRegister(reg)
         if is_arg:
             self.builder.args.append(reg)
@@ -1183,3 +1208,14 @@ def gen_arg_defaults(builder: IRBuilder) -> None:
                         GetAttr(builder.fn_info.callable_class.self_reg, name, arg.line))
             assert isinstance(target, AssignmentTargetRegister)
             builder.assign_if_null(target.register, get_default, arg.initializer.line)
+
+
+def remangle_redefinition_name(name: str) -> str:
+    """Remangle names produced by mypy when allow-redefinition is used and a name
+    is used with multiple types within a single block.
+
+    We only need to do this for locals, because the name is used as the name of the register;
+    for globals, the name itself is stored in a register for the purpose of doing dict
+    lookups.
+    """
+    return name.replace("'", "__redef__")

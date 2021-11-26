@@ -7,17 +7,16 @@ from mypy.types import (
     Type, AnyType, NoneType, TypeVisitor, Instance, UnboundType, TypeVarType, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, FunctionLike, Overloaded, LiteralType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, get_proper_type,
-    ProperType, get_proper_types, TypeAliasType, PlaceholderType, TypeGuardType
+    ProperType, get_proper_types, TypeAliasType, PlaceholderType, ParamSpecType
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import (
     is_subtype, is_equivalent, is_subtype_ignoring_tvars, is_proper_subtype,
     is_protocol_implementation, find_member
 )
-from mypy.nodes import ARG_NAMED, ARG_NAMED_OPT, INVARIANT, COVARIANT, CONTRAVARIANT
+from mypy.nodes import INVARIANT, COVARIANT, CONTRAVARIANT
 import mypy.typeops
 from mypy import state
-from mypy import meet
 
 
 class InstanceJoiner:
@@ -47,26 +46,29 @@ class InstanceJoiner:
                     new_type = AnyType(TypeOfAny.from_another_any, ta_proper)
                 elif isinstance(sa_proper, AnyType):
                     new_type = AnyType(TypeOfAny.from_another_any, sa_proper)
-                elif type_var.variance == COVARIANT:
-                    new_type = join_types(ta, sa, self)
-                    if len(type_var.values) != 0 and new_type not in type_var.values:
-                        self.seen_instances.pop()
-                        return object_from_instance(t)
-                    if not is_subtype(new_type, type_var.upper_bound):
-                        self.seen_instances.pop()
-                        return object_from_instance(t)
-                elif type_var.variance == CONTRAVARIANT:
-                    new_type = meet.meet_types(ta, sa)
-                    if len(type_var.values) != 0 and new_type not in type_var.values:
-                        self.seen_instances.pop()
-                        return object_from_instance(t)
-                    # No need to check subtype, as ta and sa already have to be subtypes of
-                    # upper_bound
-                elif type_var.variance == INVARIANT:
-                    new_type = join_types(ta, sa)
+                elif isinstance(type_var, TypeVarType):
+                    if type_var.variance == COVARIANT:
+                        new_type = join_types(ta, sa, self)
+                        if len(type_var.values) != 0 and new_type not in type_var.values:
+                            self.seen_instances.pop()
+                            return object_from_instance(t)
+                        if not is_subtype(new_type, type_var.upper_bound):
+                            self.seen_instances.pop()
+                            return object_from_instance(t)
+                    # TODO: contravariant case should use meet but pass seen instances as
+                    # an argument to keep track of recursive checks.
+                    elif type_var.variance in (INVARIANT, CONTRAVARIANT):
+                        if not is_equivalent(ta, sa):
+                            self.seen_instances.pop()
+                            return object_from_instance(t)
+                        # If the types are different but equivalent, then an Any is involved
+                        # so using a join in the contravariant case is also OK.
+                        new_type = join_types(ta, sa, self)
+                else:
+                    # ParamSpec type variables behave the same, independent of variance
                     if not is_equivalent(ta, sa):
-                        self.seen_instances.pop()
-                        return object_from_instance(t)
+                        return get_proper_type(type_var.upper_bound)
+                    new_type = join_types(ta, sa, self)
                 assert new_type is not None
                 args.append(new_type)
             result: ProperType = Instance(t.type, args)
@@ -249,6 +251,11 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         else:
             return self.default(self.s)
 
+    def visit_param_spec(self, t: ParamSpecType) -> ProperType:
+        if self.s == t:
+            return t
+        return self.default(self.s)
+
     def visit_instance(self, t: Instance) -> ProperType:
         if isinstance(self.s, Instance):
             if self.instance_joiner is None:
@@ -339,8 +346,8 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         s = self.s
         if isinstance(s, FunctionLike):
             # The interesting case where both types are function types.
-            for t_item in t.items():
-                for s_item in s.items():
+            for t_item in t.items:
+                for s_item in s.items:
                     if is_similar_callables(t_item, s_item):
                         if is_equivalent(t_item, s_item):
                             result.append(combine_similar_callables(t_item, s_item))
@@ -432,9 +439,6 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
     def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
         assert False, "This should be never called, got {}".format(t)
 
-    def visit_type_guard_type(self, t: TypeGuardType) -> ProperType:
-        assert False, "This should be never called, got {}".format(t)
-
     def join(self, s: Type, t: Type) -> ProperType:
         return join_types(s, t)
 
@@ -451,6 +455,8 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         elif isinstance(typ, FunctionLike):
             return self.default(typ.fallback)
         elif isinstance(typ, TypeVarType):
+            return self.default(typ.upper_bound)
+        elif isinstance(typ, ParamSpecType):
             return self.default(typ.upper_bound)
         else:
             return AnyType(TypeOfAny.special_form)
@@ -536,11 +542,10 @@ def combine_arg_names(t: CallableType, s: CallableType) -> List[Optional[str]]:
     """
     num_args = len(t.arg_types)
     new_names = []
-    named = (ARG_NAMED, ARG_NAMED_OPT)
     for i in range(num_args):
         t_name = t.arg_names[i]
         s_name = s.arg_names[i]
-        if t_name == s_name or t.arg_kinds[i] in named or s.arg_kinds[i] in named:
+        if t_name == s_name or t.arg_kinds[i].is_named() or s.arg_kinds[i].is_named():
             new_names.append(t_name)
         else:
             new_names.append(None)

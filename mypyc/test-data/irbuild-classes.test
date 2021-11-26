@@ -1144,3 +1144,41 @@ class DeletableFinal2:
     X: Final = 0  # E: Deletable attribute cannot be final
 
     __deletable__ = ['X']
+
+[case testNeedAnnotateClassVar]
+from typing import Final, ClassVar, Type
+
+class C:
+    a = 'A'
+    b: str = 'B'
+    f: Final = 'F'
+    c: ClassVar = 'C'
+
+class D(C):
+    pass
+
+def f() -> None:
+    C.a  # E: Cannot access instance attribute "a" through class object \
+         # N: (Hint: Use "x: Final = ..." or "x: ClassVar = ..." to define a class attribute)
+    C.b  # E: Cannot access instance attribute "b" through class object \
+         # N: (Hint: Use "x: Final = ..." or "x: ClassVar = ..." to define a class attribute)
+    C.f
+    C.c
+
+    D.a  # E: Cannot access instance attribute "a" through class object \
+         # N: (Hint: Use "x: Final = ..." or "x: ClassVar = ..." to define a class attribute)
+    D.b  # E: Cannot access instance attribute "b" through class object \
+         # N: (Hint: Use "x: Final = ..." or "x: ClassVar = ..." to define a class attribute)
+    D.f
+    D.c
+
+def g(c: Type[C], d: Type[D]) -> None:
+    c.a  # E: Cannot access instance attribute "a" through class object \
+         # N: (Hint: Use "x: Final = ..." or "x: ClassVar = ..." to define a class attribute)
+    c.f
+    c.c
+
+    d.a  # E: Cannot access instance attribute "a" through class object \
+         # N: (Hint: Use "x: Final = ..." or "x: ClassVar = ..." to define a class attribute)
+    d.f
+    d.c

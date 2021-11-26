@@ -16,7 +16,7 @@ fun(1) # E: Argument 1 to "fun" has incompatible type "int"; expected "A"
 # probably won't be required after singledispatch is special cased
 [builtins fixtures/args.pyi]
 
-[case testMultipleUnderscoreFunctionsIsntError-xfail]
+[case testMultipleUnderscoreFunctionsIsntError]
 from functools import singledispatch
 
 @singledispatch
@@ -312,5 +312,15 @@ g(1, 1) # E: Argument 2 to "g" has incompatible type "int"; expected "str"
 # first argument
 h(1, 'a')
 h('a', 1) # E: Argument 2 to "h" has incompatible type "int"; expected "str"
+
+[builtins fixtures/args.pyi]
+
+[case testDontCrashWhenRegisteringAfterError]
+import functools
+a = functools.singledispatch('a') # E: Need type annotation for "a" # E: Argument 1 to "singledispatch" has incompatible type "str"; expected "Callable[..., <nothing>]"
+
+@a.register(int)
+def default(val) -> int:
+    return 3
 
 [builtins fixtures/args.pyi]

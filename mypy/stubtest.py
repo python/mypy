@@ -161,6 +161,10 @@ def test_module(module_name: str) -> Iterator[Error]:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             runtime = importlib.import_module(module_name)
+            # Also run the equivalent of `from module import *`
+            # This could have the additional effect of loading not-yet-loaded submodules
+            # mentioned in __all__
+            __import__(module_name, fromlist=["*"])
     except Exception as e:
         yield Error([module_name], "failed to import: {}".format(e), stub, MISSING)
         return
@@ -200,15 +204,15 @@ def verify_mypyfile(
     to_check = set(
         m
         for m, o in stub.names.items()
+        # TODO: change `o.module_public` to `not o.module_hidden`
         if o.module_public and (not m.startswith("_") or hasattr(runtime, m))
     )
     runtime_public_contents = [
         m
         for m in dir(runtime)
         if not m.startswith("_")
-        # Ensure that the object's module is `runtime`, e.g. so that we don't pick up reexported
-        # modules and infinitely recurse. Unfortunately, there's no way to detect an explicit
-        # reexport missing from the stubs (that isn't specified in __all__)
+        # Ensure that the object's module is `runtime`, since in the absence of __all__ we don't
+        # have a good way to detect re-exports at runtime.
         and getattr(getattr(runtime, m), "__module__", None) == runtime.__name__
     ]
     # Check all things declared in module's __all__, falling back to runtime_public_contents
@@ -216,10 +220,13 @@ def verify_mypyfile(
     to_check.difference_update({"__file__", "__doc__", "__name__", "__builtins__", "__package__"})
 
     for entry in sorted(to_check):
-        stub_to_verify = stub.names[entry].node if entry in stub.names else MISSING
-        assert stub_to_verify is not None
+        stub_entry = stub.names[entry].node if entry in stub.names else MISSING
+        if isinstance(stub_entry, nodes.MypyFile):
+            # Don't recursively check exported modules, since that leads to infinite recursion
+            continue
+        assert stub_entry is not None
         yield from verify(
-            stub_to_verify,
+            stub_entry,
             getattr(runtime, entry, MISSING),
             object_path + [entry],
         )
@@ -334,7 +341,7 @@ def _verify_arg_default_value(
 ) -> Iterator[str]:
     """Checks whether argument default values are compatible."""
     if runtime_arg.default != inspect.Parameter.empty:
-        if stub_arg.kind not in (nodes.ARG_OPT, nodes.ARG_NAMED_OPT):
+        if stub_arg.kind.is_required():
             yield (
                 'runtime argument "{}" has a default value but stub argument does not'.format(
                     runtime_arg.name
@@ -363,7 +370,7 @@ def _verify_arg_default_value(
                     )
                 )
     else:
-        if stub_arg.kind in (nodes.ARG_OPT, nodes.ARG_NAMED_OPT):
+        if stub_arg.kind.is_optional():
             yield (
                 'stub argument "{}" has a default value but runtime argument does not'.format(
                     stub_arg.variable.name
@@ -406,7 +413,7 @@ class Signature(Generic[T]):
             if isinstance(arg, inspect.Parameter):
                 return arg.default != inspect.Parameter.empty
             if isinstance(arg, nodes.Argument):
-                return arg.kind in (nodes.ARG_OPT, nodes.ARG_NAMED_OPT)
+                return arg.kind.is_optional()
             raise AssertionError
 
         def get_desc(arg: Any) -> str:
@@ -433,9 +440,9 @@ class Signature(Generic[T]):
         stub_sig: Signature[nodes.Argument] = Signature()
         stub_args = maybe_strip_cls(stub.name, stub.arguments)
         for stub_arg in stub_args:
-            if stub_arg.kind in (nodes.ARG_POS, nodes.ARG_OPT):
+            if stub_arg.kind.is_positional():
                 stub_sig.pos.append(stub_arg)
-            elif stub_arg.kind in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT):
+            elif stub_arg.kind.is_named():
                 stub_sig.kwonly[stub_arg.variable.name] = stub_arg
             elif stub_arg.kind == nodes.ARG_STAR:
                 stub_sig.varpos = stub_arg
@@ -502,7 +509,7 @@ class Signature(Generic[T]):
                 ]
                 return mypy.typeops.make_simplified_union([t for t in all_types if t])
 
-        def get_kind(arg_name: str) -> int:
+        def get_kind(arg_name: str) -> nodes.ArgKind:
             kinds = {arg.kind for arg, _ in all_args[arg_name]}
             if nodes.ARG_STAR in kinds:
                 return nodes.ARG_STAR
@@ -531,9 +538,9 @@ class Signature(Generic[T]):
                 initializer=None,
                 kind=get_kind(arg_name),
             )
-            if arg.kind in (nodes.ARG_POS, nodes.ARG_OPT):
+            if arg.kind.is_positional():
                 sig.pos.append(arg)
-            elif arg.kind in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT):
+            elif arg.kind.is_named():
                 sig.kwonly[arg.variable.name] = arg
             elif arg.kind == nodes.ARG_STAR:
                 sig.varpos = arg
@@ -646,11 +653,7 @@ def verify_funcitem(
         yield Error(object_path, "is not present at runtime", stub, runtime)
         return
 
-    if (
-        not isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType))
-        and not isinstance(runtime, (types.MethodType, types.BuiltinMethodType))
-        and not inspect.ismethoddescriptor(runtime)
-    ):
+    if not is_probably_a_function(runtime):
         yield Error(object_path, "is not a function", stub, runtime)
         if not callable(runtime):
             return
@@ -658,11 +661,8 @@ def verify_funcitem(
     for message in _verify_static_class_methods(stub, runtime, object_path):
         yield Error(object_path, "is inconsistent, " + message, stub, runtime)
 
-    try:
-        signature = inspect.signature(runtime)
-    except (ValueError, RuntimeError):
-        # inspect.signature throws sometimes
-        # catch RuntimeError because of https://bugs.python.org/issue39504
+    signature = safe_inspect_signature(runtime)
+    if not signature:
         return
 
     stub_sig = Signature.from_funcitem(stub)
@@ -730,11 +730,7 @@ def verify_overloadedfuncdef(
         # We get here in cases of overloads from property.setter
         return
 
-    if (
-        not isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType))
-        and not isinstance(runtime, (types.MethodType, types.BuiltinMethodType))
-        and not inspect.ismethoddescriptor(runtime)
-    ):
+    if not is_probably_a_function(runtime):
         yield Error(object_path, "is not a function", stub, runtime)
         if not callable(runtime):
             return
@@ -742,9 +738,8 @@ def verify_overloadedfuncdef(
     for message in _verify_static_class_methods(stub, runtime, object_path):
         yield Error(object_path, "is inconsistent, " + message, stub, runtime)
 
-    try:
-        signature = inspect.signature(runtime)
-    except ValueError:
+    signature = safe_inspect_signature(runtime)
+    if not signature:
         return
 
     stub_sig = Signature.from_overloadedfuncdef(stub)
@@ -863,8 +858,31 @@ def verify_decorator(
 def verify_typealias(
     stub: nodes.TypeAlias, runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
-    if False:
-        yield None
+    if isinstance(runtime, Missing):
+        # ignore type aliases that don't have a runtime counterpart
+        return
+    stub_target = mypy.types.get_proper_type(stub.target)
+    if isinstance(stub_target, mypy.types.Instance):
+        yield from verify(stub_target.type, runtime, object_path)
+        return
+    if isinstance(stub_target, mypy.types.UnionType):
+        if not getattr(runtime, "__origin__", None) is Union:
+            yield Error(object_path, "is not a Union", stub, runtime, stub_desc=str(stub_target))
+        # could check Union contents here...
+        return
+    if isinstance(stub_target, mypy.types.TupleType):
+        if tuple not in getattr(runtime, "__mro__", ()):
+            yield Error(
+                object_path, "is not a subclass of tuple", stub, runtime,
+                stub_desc=str(stub_target)
+            )
+        # could check Tuple contents here...
+        return
+    if isinstance(stub_target, mypy.types.AnyType):
+        return
+    yield Error(
+        object_path, "is not a recognised type alias", stub, runtime, stub_desc=str(stub_target)
+    )
 
 
 SPECIAL_DUNDERS = ("__init__", "__new__", "__call__", "__init_subclass__", "__class_getitem__")
@@ -879,6 +897,25 @@ def is_dunder(name: str, exclude_special: bool = False) -> bool:
     if exclude_special and name in SPECIAL_DUNDERS:
         return False
     return name.startswith("__") and name.endswith("__")
+
+
+def is_probably_a_function(runtime: Any) -> bool:
+    return (
+        isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType))
+        or isinstance(runtime, (types.MethodType, types.BuiltinMethodType))
+        or (inspect.ismethoddescriptor(runtime) and callable(runtime))
+    )
+
+
+def safe_inspect_signature(runtime: Any) -> Optional[inspect.Signature]:
+    try:
+        return inspect.signature(runtime)
+    except Exception:
+        # inspect.signature throws ValueError all the time
+        # catch RuntimeError because of https://bugs.python.org/issue39504
+        # catch TypeError because of https://github.com/python/typeshed/pull/5762
+        # catch AttributeError because of inspect.signature(_curses.window.border)
+        return None
 
 
 def is_subtype_helper(left: mypy.types.Type, right: mypy.types.Type) -> bool:
@@ -923,8 +960,8 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
         type_info = builtins.names["function"].node
         assert isinstance(type_info, nodes.TypeInfo)
         fallback = mypy.types.Instance(type_info, [anytype()])
-        try:
-            signature = inspect.signature(runtime)
+        signature = safe_inspect_signature(runtime)
+        if signature:
             arg_types = []
             arg_kinds = []
             arg_names = []
@@ -946,7 +983,7 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
                     arg_kinds.append(nodes.ARG_STAR2)
                 else:
                     raise AssertionError
-        except ValueError:
+        else:
             arg_types = [anytype(), anytype()]
             arg_kinds = [nodes.ARG_STAR, nodes.ARG_STAR2]
             arg_names = [None, None]

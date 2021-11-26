@@ -1,5 +1,5 @@
-import sys
-from typing import Dict, Any, Tuple
+from mypy.util import unnamed_function
+from typing import Dict, Any, Optional, Tuple
 import sys
 
 from typing_extensions import Final
@@ -47,6 +47,7 @@ MAX_SHORT_INT: Final = sys.maxsize >> 1
 # Note: Assume that the compiled code uses the same bit width as mypyc, except for
 #       Python 3.5 on macOS.
 MAX_LITERAL_SHORT_INT: Final = sys.maxsize >> 1 if not IS_MIXED_32_64_BIT_BUILD else 2 ** 30 - 1
+MIN_LITERAL_SHORT_INT: Final = -MAX_LITERAL_SHORT_INT - 1
 
 # Runtime C library files
 RUNTIME_C_FILES: Final = [
@@ -54,9 +55,10 @@ RUNTIME_C_FILES: Final = [
     'getargs.c',
     'getargsfast.c',
     'int_ops.c',
+    'str_ops.c',
+    'bytes_ops.c',
     'list_ops.c',
     'dict_ops.c',
-    'str_ops.c',
     'set_ops.c',
     'tuple_ops.c',
     'exc_ops.c',
@@ -66,10 +68,6 @@ RUNTIME_C_FILES: Final = [
 
 
 JsonDict = Dict[str, Any]
-
-
-def decorator_helper_name(func_name: str) -> str:
-    return '__mypyc_{}_decorator_helper__'.format(func_name)
 
 
 def shared_lib_name(group_name: str) -> str:
@@ -99,3 +97,25 @@ def use_vectorcall(capi_version: Tuple[int, int]) -> bool:
 def use_method_vectorcall(capi_version: Tuple[int, int]) -> bool:
     # We can use a dedicated vectorcall API to call methods on Python 3.9+.
     return capi_version >= (3, 9)
+
+
+def get_id_from_name(name: str, fullname: str, line: int) -> str:
+    """Create a unique id for a function.
+
+    This creates an id that is unique for any given function definition, so that it can be used as
+    a dictionary key. This is usually the fullname of the function, but this is different in that
+    it handles the case where the function is named '_', in which case multiple different functions
+    could have the same name."""
+    if unnamed_function(name):
+        return "{}.{}".format(fullname, line)
+    else:
+        return fullname
+
+
+def short_id_from_name(func_name: str, shortname: str, line: Optional[int]) -> str:
+    if unnamed_function(func_name):
+        assert line is not None
+        partial_name = "{}.{}".format(shortname, line)
+    else:
+        partial_name = shortname
+    return partial_name

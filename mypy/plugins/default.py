@@ -10,11 +10,12 @@ from mypy.plugin import (
 from mypy.plugins.common import try_getting_str_literals
 from mypy.types import (
     FunctionLike, Type, Instance, AnyType, TypeOfAny, CallableType, NoneType, TypedDictType,
-    TypeVarDef, TypeVarType, TPDICT_FB_NAMES, get_proper_type, LiteralType
+    TypeVarType, TPDICT_FB_NAMES, get_proper_type, LiteralType, TupleType
 )
 from mypy.subtypes import is_subtype
 from mypy.typeops import make_simplified_union
 from mypy.checkexpr import is_literal_type_like
+from mypy.checker import detach_callable
 
 
 class DefaultPlugin(Plugin):
@@ -24,7 +25,7 @@ class DefaultPlugin(Plugin):
                           ) -> Optional[Callable[[FunctionContext], Type]]:
         from mypy.plugins import ctypes, singledispatch
 
-        if fullname == 'contextlib.contextmanager':
+        if fullname in ('contextlib.contextmanager', 'contextlib.asynccontextmanager'):
             return contextmanager_callback
         elif fullname == 'builtins.open' and self.python_version[0] == 3:
             return open_callback
@@ -64,6 +65,8 @@ class DefaultPlugin(Plugin):
             return int_pow_callback
         elif fullname == 'builtins.int.__neg__':
             return int_neg_callback
+        elif fullname in ('builtins.tuple.__mul__', 'builtins.tuple.__rmul__'):
+            return tuple_mul_callback
         elif fullname in set(n + '.setdefault' for n in TPDICT_FB_NAMES):
             return typed_dict_setdefault_callback
         elif fullname in set(n + '.pop' for n in TPDICT_FB_NAMES):
@@ -191,12 +194,12 @@ def contextmanager_callback(ctx: FunctionContext) -> Type:
                 and isinstance(default_return, CallableType)):
             # The stub signature doesn't preserve information about arguments so
             # add them back here.
-            return default_return.copy_modified(
+            return detach_callable(default_return.copy_modified(
                 arg_types=arg_type.arg_types,
                 arg_kinds=arg_type.arg_kinds,
                 arg_names=arg_type.arg_names,
                 variables=arg_type.variables,
-                is_ellipsis_args=arg_type.is_ellipsis_args)
+                is_ellipsis_args=arg_type.is_ellipsis_args))
     return ctx.default_return_type
 
 
@@ -227,8 +230,8 @@ def typed_dict_get_signature_callback(ctx: MethodSigContext) -> CallableType:
             # Tweak the signature to include the value type as context. It's
             # only needed for type inference since there's a union with a type
             # variable that accepts everything.
-            assert isinstance(signature.variables[0], TypeVarDef)
-            tv = TypeVarType(signature.variables[0])
+            tv = signature.variables[0]
+            assert isinstance(tv, TypeVarType)
             return signature.copy_modified(
                 arg_types=[signature.arg_types[0],
                            make_simplified_union([value_type, tv])],
@@ -292,8 +295,8 @@ def typed_dict_pop_signature_callback(ctx: MethodSigContext) -> CallableType:
             # Tweak the signature to include the value type as context. It's
             # only needed for type inference since there's a union with a type
             # variable that accepts everything.
-            assert isinstance(signature.variables[0], TypeVarDef)
-            tv = TypeVarType(signature.variables[0])
+            tv = signature.variables[0]
+            assert isinstance(tv, TypeVarType)
             typ = make_simplified_union([value_type, tv])
             return signature.copy_modified(
                 arg_types=[str_type, typ],
@@ -470,4 +473,25 @@ def int_neg_callback(ctx: MethodContext) -> Type:
         fallback = ctx.type.fallback
         if isinstance(value, int):
             return LiteralType(value=-value, fallback=fallback)
+    return ctx.default_return_type
+
+
+def tuple_mul_callback(ctx: MethodContext) -> Type:
+    """Infer a more precise return type for tuple.__mul__ and tuple.__rmul__.
+
+    This is used to return a specific sized tuple if multiplied by Literal int
+    """
+    if not isinstance(ctx.type, TupleType):
+        return ctx.default_return_type
+
+    arg_type = get_proper_type(ctx.arg_types[0][0])
+    if isinstance(arg_type, Instance) and arg_type.last_known_value is not None:
+        value = arg_type.last_known_value.value
+        if isinstance(value, int):
+            return ctx.type.copy_modified(items=ctx.type.items * value)
+    elif isinstance(ctx.type, LiteralType):
+        value = arg_type.value
+        if isinstance(value, int):
+            return ctx.type.copy_modified(items=ctx.type.items * value)
+
     return ctx.default_return_type

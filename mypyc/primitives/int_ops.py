@@ -15,7 +15,7 @@ from mypyc.ir.rtypes import (
     str_rprimitive, bit_rprimitive, RType
 )
 from mypyc.primitives.registry import (
-    load_address_op, c_unary_op, CFunctionDescription, function_op, binary_op, custom_op
+    load_address_op, unary_op, CFunctionDescription, function_op, binary_op, custom_op
 )
 
 # These int constructors produce object_rprimitives that then need to be unboxed
@@ -28,7 +28,7 @@ load_address_op(
     type=object_rprimitive,
     src='PyLong_Type')
 
-# Convert from a float to int. We could do a bit better directly.
+# int(float). We could do a bit better directly.
 function_op(
     name='builtins.int',
     arg_types=[float_rprimitive],
@@ -52,8 +52,8 @@ function_op(
     c_function_name='CPyLong_FromStrWithBase',
     error_kind=ERR_MAGIC)
 
-# str(n) on ints
-function_op(
+# str(int)
+int_to_str_op = function_op(
     name='builtins.str',
     arg_types=[int_rprimitive],
     return_type=str_rprimitive,
@@ -114,11 +114,11 @@ int_binary_op('<<=', 'CPyTagged_Lshift', error_kind=ERR_MAGIC)
 
 
 def int_unary_op(name: str, c_function_name: str) -> CFunctionDescription:
-    return c_unary_op(name=name,
-                      arg_type=int_rprimitive,
-                      return_type=int_rprimitive,
-                      c_function_name=c_function_name,
-                      error_kind=ERR_NEVER)
+    return unary_op(name=name,
+                    arg_type=int_rprimitive,
+                    return_type=int_rprimitive,
+                    c_function_name=c_function_name,
+                    error_kind=ERR_NEVER)
 
 
 int_neg_op = int_unary_op('-', 'CPyTagged_Negate')

@@ -100,7 +100,7 @@ class Options:
         # top-level __init__.py to your packages.
         self.explicit_package_bases = False
         # File names, directory names or subpaths to avoid checking
-        self.exclude: str = ""
+        self.exclude: List[str] = []
 
         # disallow_any options
         self.disallow_any_generics = False
@@ -242,9 +242,6 @@ class Options:
         # mypy. (Like mypyc.)
         self.preserve_asts = False
 
-        # PEP 612 support is a work in progress, hide it from users
-        self.wip_pep_612 = False
-
         # Paths of user plugins
         self.plugins: List[str] = []
 
@@ -289,7 +286,7 @@ class Options:
         self.package_root: List[str] = []
         self.cache_map: Dict[str, Tuple[str, str]] = {}
         # Don't properly free objects on exit, just kill the current process.
-        self.fast_exit = False
+        self.fast_exit = True
         # Used to transform source code before parsing if not None
         # TODO: Make the type precise (AnyStr -> AnyStr)
         self.transform_source: Optional[Callable[[Any], Any]] = None

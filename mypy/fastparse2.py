@@ -14,6 +14,7 @@ of redundancy is because the Python 2 AST and the Python 3 AST nodes belong to t
 different class hierarchies, which made it difficult to write a shared visitor between the
 two in a typesafe way.
 """
+from mypy.util import unnamed_function
 import sys
 import warnings
 
@@ -36,7 +37,7 @@ from mypy.nodes import (
     UnaryExpr, LambdaExpr, ComparisonExpr, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
     Expression, Statement, BackquoteExpr, PrintStmt, ExecStmt,
-    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2, OverloadPart, check_arg_names,
+    ArgKind, ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2, OverloadPart, check_arg_names,
     FakeInfo,
 )
 from mypy.types import (
@@ -214,7 +215,8 @@ class ASTConverter:
         # ignores the whole module:
         if (module and stmts and self.type_ignores
                 and min(self.type_ignores) < self.get_lineno(stmts[0])):
-            self.errors.used_ignored_lines[self.errors.file].add(min(self.type_ignores))
+            self.errors.used_ignored_lines[self.errors.file][min(self.type_ignores)].append(
+                codes.MISC.code)
             block = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
             mark_block_unreachable(block)
             return [block]
@@ -313,7 +315,7 @@ class ASTConverter:
                 elif len(current_overload) > 1:
                     ret.append(OverloadedFuncDef(current_overload))
 
-                if isinstance(stmt, Decorator):
+                if isinstance(stmt, Decorator) and not unnamed_function(stmt.name):
                     current_overload = [stmt]
                     current_overload_name = stmt.name
                 else:
@@ -369,12 +371,12 @@ class ASTConverter:
         converter = TypeConverter(self.errors, line=lineno, override_column=n.col_offset,
                                   assume_str_is_unicode=self.unicode_literals)
         args, decompose_stmts = self.transform_args(n.args, lineno)
+        if special_function_elide_names(n.name):
+            for arg in args:
+                arg.pos_only = True
 
         arg_kinds = [arg.kind for arg in args]
-        arg_names: List[Optional[str]] = [arg.variable.name for arg in args]
-        arg_names = [None if argument_elide_name(name) else name for name in arg_names]
-        if special_function_elide_names(n.name):
-            arg_names = [None] * len(arg_names)
+        arg_names = [None if arg.pos_only else arg.variable.name for arg in args]
 
         arg_types: List[Optional[Type]] = []
         type_comment = n.type_comment
@@ -518,6 +520,10 @@ class ASTConverter:
             new_args.append(Argument(Var(n.kwarg), typ, None, ARG_STAR2))
             names.append(n.kwarg)
 
+        for arg in new_args:
+            if argument_elide_name(arg.variable.name):
+                arg.pos_only = True
+
         # We don't have any context object to give, but we have closed around the line num
         def fail_arg(msg: str, arg: None) -> None:
             self.fail(msg, line, 0)
@@ -658,19 +664,23 @@ class ASTConverter:
                         typ)
         return self.set_line(stmt, n)
 
+    # 'raise' [test [',' test [',' test]]]
     def visit_Raise(self, n: ast27.Raise) -> RaiseStmt:
+        legacy_mode = False
         if n.type is None:
             e = None
         else:
             if n.inst is None:
                 e = self.visit(n.type)
             else:
+                legacy_mode = True
                 if n.tback is None:
                     e = TupleExpr([self.visit(n.type), self.visit(n.inst)])
                 else:
                     e = TupleExpr([self.visit(n.type), self.visit(n.inst), self.visit(n.tback)])
 
         stmt = RaiseStmt(e, None)
+        stmt.legacy_mode = legacy_mode
         return self.set_line(stmt, n)
 
     # TryExcept(stmt* body, excepthandler* handlers, stmt* orelse)
@@ -923,7 +933,7 @@ class ASTConverter:
     # keyword = (identifier? arg, expr value)
     def visit_Call(self, n: Call) -> CallExpr:
         arg_types: List[ast27.expr] = []
-        arg_kinds: List[int] = []
+        arg_kinds: List[ArgKind] = []
         signature: List[Optional[str]] = []
 
         args = n.args

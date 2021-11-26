@@ -34,7 +34,7 @@ def test_specialize() -> None:
     assert fun(B())
     assert fun(A())
 
-[case testSuperclassImplementationNotUsedWhenSubclassHasImplementation-xfail]
+[case testSuperclassImplementationNotUsedWhenSubclassHasImplementation]
 from functools import singledispatch
 class A: pass
 class B(A): pass
@@ -56,7 +56,7 @@ def test_specialize() -> None:
     assert fun(B())
     assert not fun(A())
 
-[case testMultipleUnderscoreFunctionsIsntError-xfail]
+[case testMultipleUnderscoreFunctionsIsntError]
 from functools import singledispatch
 
 @singledispatch
@@ -71,9 +71,17 @@ def _(arg: str) -> str:
 def _(arg: int) -> str:
     return 'int'
 
+# extra function to make sure all 3 underscore functions aren't treated as one OverloadedFuncDef
+def a(b): pass
+
+@fun.register
+def _(arg: list) -> str:
+    return 'list'
+
 def test_singledispatch() -> None:
     assert fun(0) == 'int'
     assert fun('a') == 'str'
+    assert fun([1, 2]) == 'list'
     assert fun({'a': 'b'}) == 'default'
 
 [case testCanRegisterCompiledClasses]
@@ -122,21 +130,22 @@ def test_singledispatch() -> None:
     assert fun(0)
     assert not fun('a')
 
-[case testRegisterDoesntChangeFunction-xfail]
+[case testRegisterDoesntChangeFunction]
 from functools import singledispatch
 
 @singledispatch
 def fun(arg) -> bool:
     return False
 
-@fun.register
-def fun_specialized(arg: int) -> bool:
+@fun.register(int)
+def fun_specialized(arg) -> bool:
     return True
 
 def test_singledispatch() -> None:
     assert fun_specialized('a')
 
-[case testNoneIsntATypeWhenUsedAsArgumentToRegister-xfail]
+# TODO: turn this into a mypy error
+[case testNoneIsntATypeWhenUsedAsArgumentToRegister]
 from functools import singledispatch
 
 @singledispatch
@@ -144,8 +153,8 @@ def fun(arg) -> bool:
     return False
 
 try:
-    @fun.register(None)
-    def fun_specialized(arg) -> bool:
+    @fun.register
+    def fun_specialized(arg: None) -> bool:
         return True
 except TypeError:
     pass
@@ -167,7 +176,7 @@ def test_singledispatch() -> None:
     assert fun('a')
     assert not fun([1, 2])
 
-[case testTypeIsAnABC-xfail]
+[case testTypeIsAnABC]
 from functools import singledispatch
 from collections.abc import Mapping
 
@@ -182,25 +191,6 @@ def fun_specialized(arg: Mapping) -> bool:
 def test_singledispatch() -> None:
     assert not fun(1)
     assert fun({'a': 'b'})
-
-[case testArgumentDoesntMatchTypeOfAnySpecializedImplementationsOrDefaultImplementation-xfail]
-from functools import singledispatch
-class A: pass
-class B(A): pass
-
-@singledispatch
-def fun(arg: A) -> bool:
-    return False
-
-@fun.register
-def fun_specialized(arg: B) -> bool:
-    return True
-
-def test_singledispatch() -> None:
-    assert fun(B())
-    assert fun(A())
-    assert not fun([1, 2])
-
 
 [case testSingleDispatchMethod-xfail]
 from functools import singledispatchmethod
@@ -247,7 +237,7 @@ def test_singledispatchmethod() -> None:
     assert x.fun('a') == 'str'
     assert x.fun([1, 2]) == 'default'
 
-[case testSingledispatchTreeSumAndEqual-xfail]
+[case testSingledispatchTreeSumAndEqual]
 from functools import singledispatch
 
 class Tree:
@@ -299,13 +289,13 @@ def test_sum_and_equal():
     tree2 = build(5)
     tree2.right.right.right.value = 10
     assert calc_sum(tree) == 57
-    assert calc_sum(tree2) == 62
+    assert calc_sum(tree2) == 65
     assert equal(tree, tree)
     assert not equal(tree, tree2)
     tree3 = build(4)
     assert not equal(tree, tree3)
 
-[case testSimulateMypySingledispatch-xfail]
+[case testSimulateMypySingledispatch]
 from functools import singledispatch
 from mypy_extensions import trait
 from typing import Iterator, Union, TypeVar, Any, List, Type
@@ -321,10 +311,13 @@ class MypyFile(Node): pass
 class TypeInfo(Node): pass
 
 
+@trait
 class SymbolNode(Node): pass
+@trait
 class Expression(Node): pass
 class TypeVarLikeExpr(SymbolNode, Expression): pass
 class TypeVarExpr(TypeVarLikeExpr): pass
+class TypeAlias(SymbolNode): pass
 
 class Missing: pass
 MISSING = Missing()
@@ -364,12 +357,12 @@ def verify_list(stub, a, b) -> List[str]:
     return list(err.msg for err in verify(stub, a, b))
 
 def test_verify() -> None:
-    assert verify_list(Node(), 'a', ['a', 'b']) == ['unknown node type']
-    assert verify_list(MypyFile(), 'a', ['a', 'b']) == ['should be an int']
+    assert verify_list(TypeAlias(), 'a', ['a', 'b']) == ['unknown node type']
     assert verify_list(MypyFile(), MISSING, ['a', 'b']) == ["shouldn't be missing"]
     assert verify_list(MypyFile(), 5, ['a', 'b']) == ['in TypeInfo', 'hello']
     assert verify_list(TypeInfo(), str, ['a', 'b']) == ['in TypeInfo', 'hello']
-    assert verify_list(TypeVarExpr(), 'a', ['x', 'y']) == ['x', 'y']
+    assert verify_list(TypeVarExpr(), 'a', ['x', 'y']) == []
+
 
 [case testArgsInRegisteredImplNamedDifferentlyFromMainFunction]
 from functools import singledispatch
@@ -386,27 +379,27 @@ def test_singledispatch():
     assert f(5)
     assert not f('a')
 
-[case testKeywordArguments-xfail]
+[case testKeywordArguments]
 from functools import singledispatch
 
 @singledispatch
-def f(arg, *, kwarg: bool = False) -> bool:
-    return not kwarg
+def f(arg, *, kwarg: int = 0) -> int:
+    return kwarg + 10
 
 @f.register
-def g(arg: int, *, kwarg: bool = True) -> bool:
-    return kwarg
+def g(arg: int, *, kwarg: int = 5) -> int:
+    return kwarg - 10
 
 def test_keywords():
-    assert f('a')
-    assert f('a', kwarg=False)
-    assert not f('a', kwarg=True)
+    assert f('a') == 10
+    assert f('a', kwarg=3) == 13
+    assert f('a', kwarg=7) == 17
 
-    assert f(1)
-    assert f(1, kwarg=True)
-    assert not f(1, kwarg=False)
+    assert f(1) == -5
+    assert f(1, kwarg=4) == -6
+    assert f(1, kwarg=6) == -4
 
-[case testGeneratorAndMultipleTypesOfIterable-xfail]
+[case testGeneratorAndMultipleTypesOfIterable]
 from functools import singledispatch
 from typing import *
 
@@ -422,3 +415,284 @@ def test_iterables():
     assert f(1) != [1]
     assert list(f(1)) == [1]
     assert f('a') == [0]
+
+[case testRegisterUsedAtSameTimeAsOtherDecorators]
+from functools import singledispatch
+from typing import TypeVar
+
+class A: pass
+class B: pass
+
+T = TypeVar('T')
+
+def decorator(f: T) -> T:
+    return f
+
+@singledispatch
+def f(arg) -> int:
+    return 0
+
+@f.register
+@decorator
+def h(arg: str) -> int:
+    return 2
+
+def test_singledispatch():
+    assert f(1) == 0
+    assert f('a') == 2
+
+[case testDecoratorModifiesFunction]
+from functools import singledispatch
+from typing import Callable, Any
+
+class A: pass
+
+def decorator(f: Callable[[Any], int]) -> Callable[[Any], int]:
+    def wrapper(x) -> int:
+        return f(x) * 7
+    return wrapper
+
+@singledispatch
+def f(arg) -> int:
+    return 10
+
+@f.register
+@decorator
+def h(arg: str) -> int:
+    return 5
+
+
+def test_singledispatch():
+    assert f('a') == 35
+    assert f(A()) == 10
+
+[case testMoreSpecificTypeBeforeLessSpecificType]
+from functools import singledispatch
+class A: pass
+class B(A): pass
+
+@singledispatch
+def f(arg) -> str:
+    return 'default'
+
+@f.register
+def g(arg: B) -> str:
+    return 'b'
+
+@f.register
+def h(arg: A) -> str:
+    return 'a'
+
+def test_singledispatch():
+    assert f(B()) == 'b'
+    assert f(A()) == 'a'
+    assert f(5) == 'default'
+
+[case testMultipleRelatedClassesBeingRegistered]
+from functools import singledispatch
+
+class A: pass
+class B(A): pass
+class C(B): pass
+
+@singledispatch
+def f(arg) -> str: return 'default'
+
+@f.register
+def _(arg: A) -> str: return 'a'
+
+@f.register
+def _(arg: C) -> str: return 'c'
+
+@f.register
+def _(arg: B) -> str: return 'b'
+
+def test_singledispatch():
+    assert f(A()) == 'a'
+    assert f(B()) == 'b'
+    assert f(C()) == 'c'
+    assert f(1) == 'default'
+
+[case testRegisteredImplementationsInDifferentFiles]
+from other_a import f, A, B, C
+@f.register
+def a(arg: A) -> int:
+    return 2
+
+@f.register
+def _(arg: C) -> int:
+    return 3
+
+def test_singledispatch():
+    assert f(B()) == 1
+    assert f(A()) == 2
+    assert f(C()) == 3
+    assert f(1) == 0
+
+[file other_a.py]
+from functools import singledispatch
+
+class A: pass
+class B(A): pass
+class C(B): pass
+
+@singledispatch
+def f(arg) -> int:
+    return 0
+
+@f.register
+def g(arg: B) -> int:
+    return 1
+
+[case testOrderCanOnlyBeDeterminedFromMRONotIsinstanceChecks]
+from mypy_extensions import trait
+from functools import singledispatch
+
+@trait
+class A: pass
+@trait
+class B: pass
+class AB(A, B): pass
+class BA(B, A): pass
+
+@singledispatch
+def f(arg) -> str:
+    return "default"
+    pass
+
+@f.register
+def fa(arg: A) -> str:
+    return "a"
+
+@f.register
+def fb(arg: B) -> str:
+    return "b"
+
+def test_singledispatch():
+    assert f(AB()) == "a"
+    assert f(BA()) == "b"
+
+[case testCallingFunctionBeforeAllImplementationsRegistered]
+from functools import singledispatch
+
+class A: pass
+class B(A): pass
+
+@singledispatch
+def f(arg) -> str:
+    return 'default'
+
+assert f(A()) == 'default'
+assert f(B()) == 'default'
+assert f(1) == 'default'
+
+@f.register
+def g(arg: A) -> str:
+    return 'a'
+
+assert f(A()) == 'a'
+assert f(B()) == 'a'
+assert f(1) == 'default'
+
+@f.register
+def _(arg: B) -> str:
+    return 'b'
+
+assert f(A()) == 'a'
+assert f(B()) == 'b'
+assert f(1) == 'default'
+
+
+[case testDynamicallyRegisteringFunctionFromInterpretedCode]
+from functools import singledispatch
+
+class A: pass
+class B(A): pass
+class C(B): pass
+class D(C): pass
+
+@singledispatch
+def f(arg) -> str:
+    return "default"
+
+@f.register
+def _(arg: B) -> str:
+    return 'b'
+
+[file register_impl.py]
+from native import f, A, B, C
+
+@f.register(A)
+def a(arg) -> str:
+    return 'a'
+
+@f.register
+def c(arg: C) -> str:
+    return 'c'
+
+[file driver.py]
+from native import f, A, B, C
+from register_impl import a, c
+# We need a custom driver here because register_impl has to be run before we test this (so that the
+# additional implementations are registered)
+assert f(C()) == 'c'
+assert f(A()) == 'a'
+assert f(B()) == 'b'
+assert a(C()) == 'a'
+assert c(A()) == 'c'
+
+[case testMalformedDynamicRegisterCall]
+from functools import singledispatch
+
+@singledispatch
+def f(arg) -> None:
+    pass
+[file register.py]
+from native import f
+from testutil import assertRaises
+
+with assertRaises(TypeError, 'Invalid first argument to `register()`'):
+    @f.register
+    def _():
+        pass
+
+[file driver.py]
+import register
+
+[case testCacheClearedWhenNewFunctionRegistered]
+from functools import singledispatch
+
+@singledispatch
+def f(arg) -> str:
+    return 'default'
+
+[file register.py]
+from native import f
+class A: pass
+class B: pass
+class C: pass
+
+# annotated function
+assert f(A()) == 'default'
+@f.register
+def _(arg: A) -> str:
+    return 'a'
+assert f(A()) == 'a'
+
+# type passed as argument
+assert f(B()) == 'default'
+@f.register(B)
+def _(arg: B) -> str:
+    return 'b'
+assert f(B()) == 'b'
+
+# 2 argument form
+assert f(C()) == 'default'
+def c(arg) -> str:
+    return 'c'
+f.register(C, c)
+assert f(C()) == 'c'
+
+
+[file driver.py]
+import register

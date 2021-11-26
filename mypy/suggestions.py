@@ -37,7 +37,7 @@ from mypy.types import (
 )
 from mypy.build import State, Graph
 from mypy.nodes import (
-    ARG_STAR, ARG_NAMED, ARG_STAR2, ARG_NAMED_OPT, FuncDef, MypyFile, SymbolTable,
+    ArgKind, ARG_STAR, ARG_STAR2, FuncDef, MypyFile, SymbolTable,
     Decorator, RefExpr,
     SymbolNode, TypeInfo, Expression, ReturnStmt, CallExpr,
     reverse_builtin_aliases,
@@ -70,7 +70,7 @@ Callsite = NamedTuple(
     'Callsite',
     [('path', str),
      ('line', int),
-     ('arg_kinds', List[List[int]]),
+     ('arg_kinds', List[List[ArgKind]]),
      ('callee_arg_names', List[Optional[str]]),
      ('arg_names', List[List[Optional[str]]]),
      ('arg_types', List[List[Type]])])
@@ -288,7 +288,7 @@ class SuggestionEngine:
             fdef.arg_kinds,
             fdef.arg_names,
             AnyType(TypeOfAny.suggestion_engine),
-            self.builtin_type('builtins.function'))
+            self.named_type('builtins.function'))
 
     def get_starting_type(self, fdef: FuncDef) -> CallableType:
         if isinstance(fdef.type, CallableType):
@@ -351,7 +351,7 @@ class SuggestionEngine:
     def add_adjustments(self, typs: List[Type]) -> List[Type]:
         if not self.try_text or self.manager.options.python_version[0] != 2:
             return typs
-        translator = StrToText(self.builtin_type)
+        translator = StrToText(self.named_type)
         return dedup(typs + [tp.accept(translator) for tp in typs])
 
     def get_guesses(self, is_method: bool, base: CallableType, defaults: List[Optional[Type]],
@@ -468,7 +468,7 @@ class SuggestionEngine:
         return self.pyannotate_signature(mod, is_method, best)
 
     def format_args(self,
-                    arg_kinds: List[List[int]],
+                    arg_kinds: List[List[ArgKind]],
                     arg_names: List[List[Optional[str]]],
                     arg_types: List[List[Type]]) -> str:
         args: List[str] = []
@@ -479,7 +479,7 @@ class SuggestionEngine:
                     arg = '*' + arg
                 elif kind == ARG_STAR2:
                     arg = '**' + arg
-                elif kind in (ARG_NAMED, ARG_NAMED_OPT):
+                elif kind.is_named():
                     if name:
                         arg = "%s=%s" % (name, arg)
             args.append(arg)
@@ -604,7 +604,7 @@ class SuggestionEngine:
 
             if not isinstance(typ, FunctionLike):
                 return None
-            for ct in typ.items():
+            for ct in typ.items:
                 if not (len(ct.arg_types) == 1
                         and isinstance(ct.arg_types[0], TypeVarType)
                         and ct.arg_types[0] == ct.ret_type):
@@ -648,8 +648,8 @@ class SuggestionEngine:
         assert state.tree is not None
         return state.tree
 
-    def builtin_type(self, s: str) -> Instance:
-        return self.manager.semantic_analyzer.builtin_type(s)
+    def named_type(self, s: str) -> Instance:
+        return self.manager.semantic_analyzer.named_type(s)
 
     def json_suggestion(self, mod: str, func_name: str, node: FuncDef,
                         suggestion: PyAnnotateSignature) -> str:
@@ -763,8 +763,7 @@ def any_score_callable(t: CallableType, is_method: bool, ignore_return: bool) ->
 
 def is_tricky_callable(t: CallableType) -> bool:
     """Is t a callable that we need to put a ... in for syntax reasons?"""
-    return t.is_ellipsis_args or any(
-        k in (ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT) for k in t.arg_kinds)
+    return t.is_ellipsis_args or any(k.is_star() or k.is_named() for k in t.arg_kinds)
 
 
 class TypeFormatter(TypeStrVisitor):
@@ -851,8 +850,8 @@ class TypeFormatter(TypeStrVisitor):
 
 
 class StrToText(TypeTranslator):
-    def __init__(self, builtin_type: Callable[[str], Instance]) -> None:
-        self.text_type = builtin_type('builtins.unicode')
+    def __init__(self, named_type: Callable[[str], Instance]) -> None:
+        self.text_type = named_type('builtins.unicode')
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         exp_t = get_proper_type(t)

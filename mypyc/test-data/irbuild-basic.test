@@ -581,12 +581,12 @@ L8:
 
 [case testUnaryMinus]
 def f(n: int) -> int:
-    return -1
+    return -n
 [out]
 def f(n):
     n, r0 :: int
 L0:
-    r0 = CPyTagged_Negate(2)
+    r0 = CPyTagged_Negate(n)
     return r0
 
 [case testConditionalExpr]
@@ -761,7 +761,7 @@ def f() -> bytes:
     return b'1234'
 [out]
 def f():
-    r0, x, r1 :: object
+    r0, x, r1 :: bytes
 L0:
     r0 = b'\xf0'
     x = r0
@@ -1748,10 +1748,10 @@ def g():
     r6, r7 :: dict
     r8 :: str
     r9 :: object
-    r10 :: tuple
-    r11 :: dict
-    r12 :: int32
-    r13 :: bit
+    r10 :: dict
+    r11 :: int32
+    r12 :: bit
+    r13 :: tuple
     r14 :: object
     r15 :: tuple[int, int, int]
 L0:
@@ -1765,11 +1765,11 @@ L0:
     r7 = __main__.globals :: static
     r8 = 'f'
     r9 = CPyDict_GetItem(r7, r8)
-    r10 = PyTuple_Pack(0)
-    r11 = PyDict_New()
-    r12 = CPyDict_UpdateInDisplay(r11, r6)
-    r13 = r12 >= 0 :: signed
-    r14 = PyObject_Call(r9, r10, r11)
+    r10 = PyDict_New()
+    r11 = CPyDict_UpdateInDisplay(r10, r6)
+    r12 = r11 >= 0 :: signed
+    r13 = PyTuple_Pack(0)
+    r14 = PyObject_Call(r9, r13, r10)
     r15 = unbox(tuple[int, int, int], r14)
     return r15
 def h():
@@ -1777,11 +1777,12 @@ def h():
     r2, r3 :: object
     r4, r5 :: dict
     r6 :: str
-    r7, r8 :: object
-    r9 :: tuple
-    r10 :: dict
-    r11 :: int32
-    r12 :: bit
+    r7 :: object
+    r8 :: dict
+    r9 :: int32
+    r10 :: bit
+    r11 :: object
+    r12 :: tuple
     r13 :: object
     r14 :: tuple[int, int, int]
 L0:
@@ -1793,12 +1794,12 @@ L0:
     r5 = __main__.globals :: static
     r6 = 'f'
     r7 = CPyDict_GetItem(r5, r6)
-    r8 = box(short_int, 2)
-    r9 = PyTuple_Pack(1, r8)
-    r10 = PyDict_New()
-    r11 = CPyDict_UpdateInDisplay(r10, r4)
-    r12 = r11 >= 0 :: signed
-    r13 = PyObject_Call(r7, r9, r10)
+    r8 = PyDict_New()
+    r9 = CPyDict_UpdateInDisplay(r8, r4)
+    r10 = r9 >= 0 :: signed
+    r11 = box(short_int, 2)
+    r12 = PyTuple_Pack(1, r11)
+    r13 = PyObject_Call(r7, r12, r8)
     r14 = unbox(tuple[int, int, int], r13)
     return r14
 
@@ -2929,7 +2930,7 @@ L0:
     r0.g = r2; r4 = is_error
     r5 = r0.g
     return r5
-def __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj.__get__(__mypyc_self__, instance, owner):
+def d_c_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner, r0 :: object
     r1 :: bit
     r2 :: object
@@ -2942,9 +2943,9 @@ L1:
 L2:
     r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
-def __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj.__call__(__mypyc_self__):
-    __mypyc_self__ :: __main__.__mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj
-    r0 :: __main__.__mypyc_c_decorator_helper___env
+def d_c_obj.__call__(__mypyc_self__):
+    __mypyc_self__ :: __main__.d_c_obj
+    r0 :: __main__.c_env
     r1, d :: object
     r2 :: str
     r3 :: object
@@ -2960,9 +2961,9 @@ L0:
     r5 = CPyObject_GetAttr(r3, r4)
     r6 = PyObject_CallFunctionObjArgs(r5, r2, 0)
     return 1
-def __mypyc_c_decorator_helper__():
-    r0 :: __main__.__mypyc_c_decorator_helper___env
-    r1 :: __main__.__mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj
+def c():
+    r0 :: __main__.c_env
+    r1 :: __main__.d_c_obj
     r2 :: bool
     r3 :: dict
     r4 :: str
@@ -2971,13 +2972,17 @@ def __mypyc_c_decorator_helper__():
     r8 :: str
     r9, r10 :: object
     r11 :: bool
-    r12 :: str
-    r13 :: object
-    r14 :: str
-    r15, r16, r17, r18 :: object
+    r12 :: dict
+    r13 :: str
+    r14 :: int32
+    r15 :: bit
+    r16 :: str
+    r17 :: object
+    r18 :: str
+    r19, r20, r21, r22 :: object
 L0:
-    r0 = __mypyc_c_decorator_helper___env()
-    r1 = __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj()
+    r0 = c_env()
+    r1 = d_c_obj()
     r1.__mypyc_env__ = r0; r2 = is_error
     r3 = __main__.globals :: static
     r4 = 'b'
@@ -2988,13 +2993,17 @@ L0:
     r9 = CPyDict_GetItem(r7, r8)
     r10 = PyObject_CallFunctionObjArgs(r9, r6, 0)
     r0.d = r10; r11 = is_error
-    r12 = 'c'
-    r13 = builtins :: module
-    r14 = 'print'
-    r15 = CPyObject_GetAttr(r13, r14)
-    r16 = PyObject_CallFunctionObjArgs(r15, r12, 0)
-    r17 = r0.d
-    r18 = PyObject_CallFunctionObjArgs(r17, 0)
+    r12 = __main__.globals :: static
+    r13 = 'd'
+    r14 = CPyDict_SetItem(r12, r13, r10)
+    r15 = r14 >= 0 :: signed
+    r16 = 'c'
+    r17 = builtins :: module
+    r18 = 'print'
+    r19 = CPyObject_GetAttr(r17, r18)
+    r20 = PyObject_CallFunctionObjArgs(r19, r16, 0)
+    r21 = r0.d
+    r22 = PyObject_CallFunctionObjArgs(r21, 0)
     return 1
 def __top_level__():
     r0, r1 :: object
@@ -3053,7 +3062,7 @@ L2:
     r17 = CPyDict_SetItem(r5, r16, r15)
     r18 = r17 >= 0 :: signed
     r19 = __main__.globals :: static
-    r20 = '__mypyc_c_decorator_helper__'
+    r20 = 'c'
     r21 = CPyDict_GetItem(r19, r20)
     r22 = __main__.globals :: static
     r23 = 'b'
@@ -3276,6 +3285,46 @@ L9:
     r10 = CPy_NoErrOccured()
 L10:
 L11:
+    return r0
+
+[case testSum]
+from typing import Callable, Iterable
+
+def call_sum(l: Iterable[int], comparison: Callable[[int], bool]) -> int:
+    return sum(comparison(x) for x in l)
+
+[out]
+def call_sum(l, comparison):
+    l, comparison :: object
+    r0 :: int
+    r1, r2 :: object
+    r3, x :: int
+    r4, r5 :: object
+    r6 :: bool
+    r7 :: object
+    r8, r9 :: int
+    r10 :: bit
+L0:
+    r0 = 0
+    r1 = PyObject_GetIter(l)
+L1:
+    r2 = PyIter_Next(r1)
+    if is_error(r2) goto L4 else goto L2
+L2:
+    r3 = unbox(int, r2)
+    x = r3
+    r4 = box(int, x)
+    r5 = PyObject_CallFunctionObjArgs(comparison, r4, 0)
+    r6 = unbox(bool, r5)
+    r7 = box(bool, r6)
+    r8 = unbox(int, r7)
+    r9 = CPyTagged_Add(r0, r8)
+    r0 = r9
+L3:
+    goto L1
+L4:
+    r10 = CPy_NoErrOccured()
+L5:
     return r0
 
 [case testSetAttr1]
@@ -3735,4 +3784,28 @@ L3:
     i = r3
     goto L1
 L4:
+    return 1
+[case testLocalRedefinition]
+# mypy: allow-redefinition
+def f() -> None:
+    i = 0
+    i += 1
+    i = "foo"
+    i += i
+    i = 0.0
+[out]
+def f():
+    i, r0 :: int
+    r1, i__redef__, r2 :: str
+    r3, i__redef____redef__ :: float
+L0:
+    i = 0
+    r0 = CPyTagged_Add(i, 2)
+    i = r0
+    r1 = 'foo'
+    i__redef__ = r1
+    r2 = CPyStr_Append(i__redef__, i__redef__)
+    i__redef__ = r2
+    r3 = 0.0
+    i__redef____redef__ = r3
     return 1

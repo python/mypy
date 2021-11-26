@@ -1,6 +1,6 @@
 """Generic node traverser visitor"""
 
-from typing import List
+from typing import List, Tuple
 from mypy_extensions import mypyc_attr
 
 from mypy.visitor import NodeVisitor
@@ -319,9 +319,22 @@ def has_return_statement(fdef: FuncBase) -> bool:
     return seeker.found
 
 
-class ReturnCollector(TraverserVisitor):
+class YieldSeeker(TraverserVisitor):
     def __init__(self) -> None:
-        self.return_statements: List[ReturnStmt] = []
+        self.found = False
+
+    def visit_yield_expr(self, o: YieldExpr) -> None:
+        self.found = True
+
+
+def has_yield_expression(fdef: FuncBase) -> bool:
+    seeker = YieldSeeker()
+    fdef.accept(seeker)
+    return seeker.found
+
+
+class FuncCollectorBase(TraverserVisitor):
+    def __init__(self) -> None:
         self.inside_func = False
 
     def visit_func_def(self, defn: FuncDef) -> None:
@@ -329,6 +342,12 @@ class ReturnCollector(TraverserVisitor):
             self.inside_func = True
             super().visit_func_def(defn)
             self.inside_func = False
+
+
+class ReturnCollector(FuncCollectorBase):
+    def __init__(self) -> None:
+        super().__init__()
+        self.return_statements: List[ReturnStmt] = []
 
     def visit_return_stmt(self, stmt: ReturnStmt) -> None:
         self.return_statements.append(stmt)
@@ -338,3 +357,24 @@ def all_return_statements(node: Node) -> List[ReturnStmt]:
     v = ReturnCollector()
     node.accept(v)
     return v.return_statements
+
+
+class YieldCollector(FuncCollectorBase):
+    def __init__(self) -> None:
+        super().__init__()
+        self.in_assignment = False
+        self.yield_expressions: List[Tuple[YieldExpr, bool]] = []
+
+    def visit_assignment_stmt(self, stmt: AssignmentStmt) -> None:
+        self.in_assignment = True
+        super().visit_assignment_stmt(stmt)
+        self.in_assignment = False
+
+    def visit_yield_expr(self, expr: YieldExpr) -> None:
+        self.yield_expressions.append((expr, self.in_assignment))
+
+
+def all_yield_expressions(node: Node) -> List[Tuple[YieldExpr, bool]]:
+    v = YieldCollector()
+    node.accept(v)
+    return v.yield_expressions

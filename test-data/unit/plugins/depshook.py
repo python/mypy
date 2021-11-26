@@ -1,4 +1,4 @@
-from typing import Optional, Callable, List, Tuple
+from typing import List, Tuple
 
 from mypy.plugin import Plugin
 from mypy.nodes import MypyFile

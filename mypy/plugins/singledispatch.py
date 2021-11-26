@@ -1,7 +1,7 @@
 from mypy.messages import format_type
 from mypy.plugins.common import add_method_to_class
 from mypy.nodes import (
-    ARG_POS, Argument, Block, ClassDef, SymbolTable, TypeInfo, Var, ARG_STAR, ARG_OPT, Context
+    ARG_POS, Argument, Block, ClassDef, SymbolTable, TypeInfo, Var, Context
 )
 from mypy.subtypes import is_subtype
 from mypy.types import (
@@ -22,15 +22,17 @@ RegisterCallableInfo = NamedTuple('RegisterCallableInfo', [
     ('singledispatch_obj', Instance),
 ])
 
-SINGLEDISPATCH_TYPE = 'functools._SingleDispatchCallable'
+SINGLEDISPATCH_TYPE: Final = 'functools._SingleDispatchCallable'
 
-SINGLEDISPATCH_REGISTER_METHOD = '{}.register'.format(SINGLEDISPATCH_TYPE)  # type: Final
+SINGLEDISPATCH_REGISTER_METHOD: Final = '{}.register'.format(SINGLEDISPATCH_TYPE)
 
-SINGLEDISPATCH_CALLABLE_CALL_METHOD = '{}.__call__'.format(SINGLEDISPATCH_TYPE)  # type: Final
+SINGLEDISPATCH_CALLABLE_CALL_METHOD: Final = '{}.__call__'.format(SINGLEDISPATCH_TYPE)
 
 
-def get_singledispatch_info(typ: Instance) -> SingledispatchTypeVars:
-    return SingledispatchTypeVars(*typ.args)  # type: ignore
+def get_singledispatch_info(typ: Instance) -> Optional[SingledispatchTypeVars]:
+    if len(typ.args) == 2:
+        return SingledispatchTypeVars(*typ.args)  # type: ignore
+    return None
 
 
 T = TypeVar('T')
@@ -43,11 +45,11 @@ def get_first_arg(args: List[List[T]]) -> Optional[T]:
     return None
 
 
-REGISTER_RETURN_CLASS = '_SingleDispatchRegisterCallable'
+REGISTER_RETURN_CLASS: Final = '_SingleDispatchRegisterCallable'
 
-REGISTER_CALLABLE_CALL_METHOD = 'functools.{}.__call__'.format(
+REGISTER_CALLABLE_CALL_METHOD: Final = 'functools.{}.__call__'.format(
     REGISTER_RETURN_CLASS
-)  # type: Final
+)
 
 
 def make_fake_register_class_instance(api: CheckerPluginInterface, type_args: Sequence[Type]
@@ -98,7 +100,7 @@ def create_singledispatch_function_callback(ctx: FunctionContext) -> Type:
             )
             return ctx.default_return_type
 
-        elif func_type.arg_kinds[0] not in (ARG_POS, ARG_OPT, ARG_STAR):
+        elif not func_type.arg_kinds[0].is_positional(star=True):
             fail(
                 ctx,
                 'First argument to singledispatch function must be a positional argument',
@@ -121,7 +123,7 @@ def singledispatch_register_callback(ctx: MethodContext) -> Type:
     # TODO: check that there's only one argument
     first_arg_type = get_proper_type(get_first_arg(ctx.arg_types))
     if isinstance(first_arg_type, (CallableType, Overloaded)) and first_arg_type.is_type_obj():
-        # HACK: We receieved a class as an argument to register. We need to be able
+        # HACK: We received a class as an argument to register. We need to be able
         # to access the function that register is being applied to, and the typeshed definition
         # of register has it return a generic Callable, so we create a new
         # SingleDispatchRegisterCallable class, define a __call__ method, and then add a
@@ -129,7 +131,7 @@ def singledispatch_register_callback(ctx: MethodContext) -> Type:
 
         # is_subtype doesn't work when the right type is Overloaded, so we need the
         # actual type
-        register_type = first_arg_type.items()[0].ret_type
+        register_type = first_arg_type.items[0].ret_type
         type_args = RegisterCallableInfo(register_type, ctx.type)
         register_callable = make_fake_register_class_instance(
             ctx.api,
@@ -157,6 +159,10 @@ def register_function(ctx: PluginContext, singledispatch_obj: Instance, func: Ty
     if not isinstance(func, CallableType):
         return
     metadata = get_singledispatch_info(singledispatch_obj)
+    if metadata is None:
+        # if we never added the fallback to the type variables, we already reported an error, so
+        # just don't do anything here
+        return
     dispatch_type = get_dispatch_type(func, register_arg)
     if dispatch_type is None:
         # TODO: report an error here that singledispatch requires at least one argument
@@ -209,4 +215,6 @@ def call_singledispatch_function_callback(ctx: MethodSigContext) -> FunctionLike
     if not isinstance(ctx.type, Instance):
         return ctx.default_signature
     metadata = get_singledispatch_info(ctx.type)
+    if metadata is None:
+        return ctx.default_signature
     return metadata.fallback

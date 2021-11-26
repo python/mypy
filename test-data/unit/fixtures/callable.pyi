@@ -10,6 +10,8 @@ class type:
 
 class tuple(Generic[T]): pass
 
+class classmethod: pass
+class staticmethod: pass
 class function: pass
 
 def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass
@@ -25,3 +27,4 @@ class str:
     def __add__(self, other: 'str') -> 'str': pass
     def __eq__(self, other: 'str') -> bool: pass
 class ellipsis: pass
+class list: ...

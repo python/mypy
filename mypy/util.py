@@ -30,14 +30,14 @@ DEFAULT_COLUMNS: Final = 80
 
 # At least this number of columns will be shown on each side of
 # error location when printing source code snippet.
-MINIMUM_WIDTH = 20
+MINIMUM_WIDTH: Final = 20
 
 # VT100 color code processing was added in Windows 10, but only the second major update,
 # Threshold 2. Fortunately, everyone (even on LTSB, Long Term Support Branch) should
 # have a version of Windows 10 newer than this. Note that Windows 8 and below are not
 # supported, but are either going out of support, or make up only a few % of the market.
-MINIMUM_WINDOWS_MAJOR_VT100 = 10
-MINIMUM_WINDOWS_BUILD_VT100 = 10586
+MINIMUM_WINDOWS_MAJOR_VT100: Final = 10
+MINIMUM_WINDOWS_BUILD_VT100: Final = 10586
 
 default_python2_interpreter: Final = [
     "python2",
@@ -721,3 +721,7 @@ def is_stub_package_file(file: str) -> bool:
         return False
     return any(component.endswith('-stubs')
                for component in os.path.abspath(file).split(os.sep))
+
+
+def unnamed_function(name: Optional[str]) -> bool:
+    return name is not None and name == "_"

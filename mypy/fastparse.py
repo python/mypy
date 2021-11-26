@@ -1,10 +1,12 @@
+from mypy.util import unnamed_function
+import copy
 import re
 import sys
 import warnings
 
 import typing  # for typing.Type, which conflicts with types.Type
 from typing import (
-    Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List, overload
+    Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List
 )
 from typing_extensions import Final, Literal, overload
 
@@ -25,7 +27,7 @@ from mypy.nodes import (
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
     AwaitExpr, TempNode, Expression, Statement,
-    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR2,
+    ArgKind, ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR2,
     check_arg_names,
     FakeInfo,
 )
@@ -129,7 +131,7 @@ TYPE_COMMENT_SYNTAX_ERROR: Final = "syntax error in type comment"
 
 INVALID_TYPE_IGNORE: Final = 'Invalid "type: ignore" comment'
 
-TYPE_IGNORE_PATTERN = re.compile(r'[^#]*#\s*type:\s*ignore\s*(.*)')
+TYPE_IGNORE_PATTERN: Final = re.compile(r'[^#]*#\s*type:\s*ignore\s*(.*)')
 
 
 def parse(source: Union[str, bytes],
@@ -357,7 +359,8 @@ class ASTConverter:
         # ignores the whole module:
         if (ismodule and stmts and self.type_ignores
                 and min(self.type_ignores) < self.get_lineno(stmts[0])):
-            self.errors.used_ignored_lines[self.errors.file].add(min(self.type_ignores))
+            self.errors.used_ignored_lines[self.errors.file][min(self.type_ignores)].append(
+                codes.MISC.code)
             block = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
             mark_block_unreachable(block)
             return [block]
@@ -455,7 +458,12 @@ class ASTConverter:
                 elif len(current_overload) > 1:
                     ret.append(OverloadedFuncDef(current_overload))
 
-                if isinstance(stmt, Decorator):
+                # If we have multiple decorated functions named "_" next to each, we want to treat
+                # them as a series of regular FuncDefs instead of one OverloadedFuncDef because
+                # most of mypy/mypyc assumes that all the functions in an OverloadedFuncDef are
+                # related, but multiple underscore functions next to each other aren't necessarily
+                # related
+                if isinstance(stmt, Decorator) and not unnamed_function(stmt.name):
                     current_overload = [stmt]
                     current_overload_name = stmt.name
                 else:
@@ -522,14 +530,13 @@ class ASTConverter:
 
         lineno = n.lineno
         args = self.transform_args(n.args, lineno, no_type_check=no_type_check)
-
-        posonlyargs = [arg.arg for arg in getattr(n.args, "posonlyargs", [])]
-        arg_kinds = [arg.kind for arg in args]
-        arg_names: List[Optional[str]] = [arg.variable.name for arg in args]
-        arg_names = [None if argument_elide_name(name) or name in posonlyargs else name
-                     for name in arg_names]
         if special_function_elide_names(n.name):
-            arg_names = [None] * len(arg_names)
+            for arg in args:
+                arg.pos_only = True
+
+        arg_kinds = [arg.kind for arg in args]
+        arg_names = [None if arg.pos_only else arg.variable.name for arg in args]
+
         arg_types: List[Optional[Type]] = []
         if no_type_check:
             arg_types = [None] * len(args)
@@ -602,10 +609,11 @@ class ASTConverter:
                                          AnyType(TypeOfAny.unannotated),
                                          _dummy_fallback)
 
-        func_def = FuncDef(n.name,
-                       args,
-                       self.as_required_block(n.body, lineno),
-                       func_type)
+        func_def = FuncDef(
+            n.name,
+            args,
+            self.as_required_block(n.body, lineno),
+            func_type)
         if isinstance(func_def.type, CallableType):
             # semanal.py does some in-place modifications we want to avoid
             func_def.unanalyzed_type = func_def.type.copy_modified()
@@ -660,17 +668,20 @@ class ASTConverter:
                        ) -> List[Argument]:
         new_args = []
         names: List[ast3.arg] = []
-        args_args = getattr(args, "posonlyargs", cast(List[ast3.arg], [])) + args.args
+        posonlyargs = getattr(args, "posonlyargs", cast(List[ast3.arg], []))
+        args_args = posonlyargs + args.args
         args_defaults = args.defaults
         num_no_defaults = len(args_args) - len(args_defaults)
         # positional arguments without defaults
-        for a in args_args[:num_no_defaults]:
-            new_args.append(self.make_argument(a, None, ARG_POS, no_type_check))
+        for i, a in enumerate(args_args[:num_no_defaults]):
+            pos_only = i < len(posonlyargs)
+            new_args.append(self.make_argument(a, None, ARG_POS, no_type_check, pos_only))
             names.append(a)
 
         # positional arguments with defaults
-        for a, d in zip(args_args[num_no_defaults:], args_defaults):
-            new_args.append(self.make_argument(a, d, ARG_OPT, no_type_check))
+        for i, (a, d) in enumerate(zip(args_args[num_no_defaults:], args_defaults)):
+            pos_only = num_no_defaults + i < len(posonlyargs)
+            new_args.append(self.make_argument(a, d, ARG_OPT, no_type_check, pos_only))
             names.append(a)
 
         # *arg
@@ -696,8 +707,8 @@ class ASTConverter:
 
         return new_args
 
-    def make_argument(self, arg: ast3.arg, default: Optional[ast3.expr], kind: int,
-                      no_type_check: bool) -> Argument:
+    def make_argument(self, arg: ast3.arg, default: Optional[ast3.expr], kind: ArgKind,
+                      no_type_check: bool, pos_only: bool = False) -> Argument:
         if no_type_check:
             arg_type = None
         else:
@@ -710,7 +721,10 @@ class ASTConverter:
                 arg_type = TypeConverter(self.errors, line=arg.lineno).visit(annotation)
             else:
                 arg_type = self.translate_type_comment(arg, type_comment)
-        return Argument(Var(arg.arg), arg_type, self.visit(default), kind)
+        if argument_elide_name(arg.arg):
+            pos_only = True
+
+        return Argument(Var(arg.arg), arg_type, self.visit(default), kind, pos_only)
 
     def fail_arg(self, msg: str, arg: ast3.arg) -> None:
         self.fail(msg, arg.lineno, arg.col_offset)
@@ -1539,22 +1553,38 @@ class TypeConverter:
         contents = bytes_to_human_readable_repr(n.s)
         return RawExpressionType(contents, 'builtins.bytes', self.line, column=n.col_offset)
 
+    def visit_Index(self, n: ast3.Index) -> Type:
+        # cast for mypyc's benefit on Python 3.9
+        return self.visit(cast(Any, n).value)
+
+    def visit_Slice(self, n: ast3.Slice) -> Type:
+        return self.invalid_type(
+            n, note="did you mean to use ',' instead of ':' ?"
+        )
+
     # Subscript(expr value, slice slice, expr_context ctx)  # Python 3.8 and before
     # Subscript(expr value, expr slice, expr_context ctx)  # Python 3.9 and later
     def visit_Subscript(self, n: ast3.Subscript) -> Type:
         if sys.version_info >= (3, 9):  # Really 3.9a5 or later
             sliceval: Any = n.slice
-            if (isinstance(sliceval, ast3.Slice) or
-                (isinstance(sliceval, ast3.Tuple) and
-                 any(isinstance(x, ast3.Slice) for x in sliceval.elts))):
-                self.fail(TYPE_COMMENT_SYNTAX_ERROR, self.line, getattr(n, 'col_offset', -1))
-                return AnyType(TypeOfAny.from_error)
+        # Python 3.8 or earlier use a different AST structure for subscripts
+        elif isinstance(n.slice, ast3.Index):
+            sliceval: Any = n.slice.value
+        elif isinstance(n.slice, ast3.Slice):
+            sliceval = copy.deepcopy(n.slice)  # so we don't mutate passed AST
+            if getattr(sliceval, "col_offset", None) is None:
+                # Fix column information so that we get Python 3.9+ message order
+                sliceval.col_offset = sliceval.lower.col_offset
         else:
-            # Python 3.8 or earlier use a different AST structure for subscripts
-            if not isinstance(n.slice, Index):
-                self.fail(TYPE_COMMENT_SYNTAX_ERROR, self.line, getattr(n, 'col_offset', -1))
-                return AnyType(TypeOfAny.from_error)
-            sliceval = n.slice.value
+            assert isinstance(n.slice, ast3.ExtSlice)
+            dims = copy.deepcopy(n.slice.dims)
+            for s in dims:
+                if getattr(s, "col_offset", None) is None:
+                    if isinstance(s, ast3.Index):
+                        s.col_offset = s.value.col_offset  # type: ignore
+                    elif isinstance(s, ast3.Slice):
+                        s.col_offset = s.lower.col_offset  # type: ignore
+            sliceval = ast3.Tuple(dims, n.ctx)
 
         empty_tuple_index = False
         if isinstance(sliceval, ast3.Tuple):

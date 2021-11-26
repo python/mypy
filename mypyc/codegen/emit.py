@@ -15,7 +15,7 @@ from mypyc.ir.rtypes import (
     is_list_rprimitive, is_dict_rprimitive, is_set_rprimitive, is_tuple_rprimitive,
     is_none_rprimitive, is_object_rprimitive, object_rprimitive, is_str_rprimitive,
     int_rprimitive, is_optional_type, optional_value_type, is_int32_rprimitive,
-    is_int64_rprimitive, is_bit_rprimitive, is_range_rprimitive
+    is_int64_rprimitive, is_bit_rprimitive, is_range_rprimitive, is_bytes_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -348,35 +348,56 @@ class Emitter:
                 is_type=True,
             )
 
-    def emit_inc_ref(self, dest: str, rtype: RType) -> None:
+    def emit_inc_ref(self, dest: str, rtype: RType, *, rare: bool = False) -> None:
         """Increment reference count of C expression `dest`.
 
         For composite unboxed structures (e.g. tuples) recursively
         increment reference counts for each component.
+
+        If rare is True, optimize for code size and compilation speed.
         """
         if is_int_rprimitive(rtype):
-            self.emit_line('CPyTagged_IncRef(%s);' % dest)
+            if rare:
+                self.emit_line('CPyTagged_IncRef(%s);' % dest)
+            else:
+                self.emit_line('CPyTagged_INCREF(%s);' % dest)
         elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
                 self.emit_inc_ref('{}.f{}'.format(dest, i), item_type)
         elif not rtype.is_unboxed:
+            # Always inline, since this is a simple op
             self.emit_line('CPy_INCREF(%s);' % dest)
         # Otherwise assume it's an unboxed, pointerless value and do nothing.
 
-    def emit_dec_ref(self, dest: str, rtype: RType, is_xdec: bool = False) -> None:
+    def emit_dec_ref(self,
+                     dest: str,
+                     rtype: RType,
+                     *,
+                     is_xdec: bool = False,
+                     rare: bool = False) -> None:
         """Decrement reference count of C expression `dest`.
 
         For composite unboxed structures (e.g. tuples) recursively
         decrement reference counts for each component.
+
+        If rare is True, optimize for code size and compilation speed.
         """
         x = 'X' if is_xdec else ''
         if is_int_rprimitive(rtype):
-            self.emit_line('CPyTagged_%sDecRef(%s);' % (x, dest))
+            if rare:
+                self.emit_line('CPyTagged_%sDecRef(%s);' % (x, dest))
+            else:
+                # Inlined
+                self.emit_line('CPyTagged_%sDECREF(%s);' % (x, dest))
         elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
-                self.emit_dec_ref('{}.f{}'.format(dest, i), item_type, is_xdec)
+                self.emit_dec_ref('{}.f{}'.format(dest, i), item_type, is_xdec=is_xdec, rare=rare)
         elif not rtype.is_unboxed:
-            self.emit_line('CPy_%sDecRef(%s);' % (x, dest))
+            if rare:
+                self.emit_line('CPy_%sDecRef(%s);' % (x, dest))
+            else:
+                # Inlined
+                self.emit_line('CPy_%sDECREF(%s);' % (x, dest))
         # Otherwise assume it's an unboxed, pointerless value and do nothing.
 
     def pretty_name(self, typ: RType) -> str:
@@ -452,7 +473,7 @@ class Emitter:
         # TODO: Verify refcount handling.
         if (is_list_rprimitive(typ) or is_dict_rprimitive(typ) or is_set_rprimitive(typ)
                 or is_str_rprimitive(typ) or is_range_rprimitive(typ) or is_float_rprimitive(typ)
-                or is_int_rprimitive(typ) or is_bool_rprimitive(typ)):
+                or is_int_rprimitive(typ) or is_bool_rprimitive(typ) or is_bit_rprimitive(typ)):
             if declare_dest:
                 self.emit_line('PyObject *{};'.format(dest))
             if is_list_rprimitive(typ):
@@ -477,6 +498,18 @@ class Emitter:
             if likely:
                 check = '(likely{})'.format(check)
             self.emit_arg_check(src, dest, typ, check.format(prefix, src), optional)
+            self.emit_lines(
+                '    {} = {};'.format(dest, src),
+                'else {',
+                err,
+                '}')
+        elif is_bytes_rprimitive(typ):
+            if declare_dest:
+                self.emit_line('PyObject *{};'.format(dest))
+            check = '(PyBytes_Check({}) || PyByteArray_Check({}))'
+            if likely:
+                check = '(likely{})'.format(check)
+            self.emit_arg_check(src, dest, typ, check.format(src, src), optional)
             self.emit_lines(
                 '    {} = {};'.format(dest, src),
                 'else {',
@@ -635,7 +668,7 @@ class Emitter:
                    borrow: bool = False) -> None:
         """Emit code for unboxing a value of given type (from PyObject *).
 
-        By default, assing error value to dest if the value has an
+        By default, assign error value to dest if the value has an
         incompatible type and raise TypeError. These can be customized
         using 'error' and 'raise_exception'.
 

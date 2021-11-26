@@ -1,5 +1,4 @@
 import argparse
-from collections import OrderedDict
 import configparser
 import glob as fileglob
 from io import StringIO
@@ -7,16 +6,18 @@ import os
 import re
 import sys
 
-import toml
+import tomli
 from typing import (Any, Callable, Dict, List, Mapping, MutableMapping,  Optional, Sequence,
-                    TextIO, Tuple, Union, cast)
-from typing_extensions import Final
+                    TextIO, Tuple, Union)
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy import defaults
 from mypy.options import Options, PER_MODULE_OPTIONS
 
-_CONFIG_VALUE_TYPES = Union[str, bool, int, float, Dict[str, str], List[str], Tuple[int, int]]
-_INI_PARSER_CALLABLE = Callable[[Any], _CONFIG_VALUE_TYPES]
+_CONFIG_VALUE_TYPES: _TypeAlias = Union[
+    str, bool, int, float, Dict[str, str], List[str], Tuple[int, int],
+]
+_INI_PARSER_CALLABLE: _TypeAlias = Callable[[Any], _CONFIG_VALUE_TYPES]
 
 
 def parse_version(v: str) -> Tuple[int, int]:
@@ -125,6 +126,7 @@ ini_config_types: Final[Dict[str, _INI_PARSER_CALLABLE]] = {
     'cache_dir': expand_path,
     'python_executable': expand_path,
     'strict': bool,
+    'exclude': lambda s: [p.strip() for p in s.split('\n') if p.strip()],
 }
 
 # Reuse the ini_config_types and overwrite the diff
@@ -169,20 +171,20 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
             continue
         try:
             if is_toml(config_file):
-                toml_data = cast("OrderedDict[str, Any]",
-                                 toml.load(config_file, _dict=OrderedDict))
+                with open(config_file, encoding="utf-8") as f:
+                    toml_data = tomli.load(f)
                 # Filter down to just mypy relevant toml keys
                 toml_data = toml_data.get('tool', {})
                 if 'mypy' not in toml_data:
                     continue
-                toml_data = OrderedDict({'mypy': toml_data['mypy']})
+                toml_data = {'mypy': toml_data['mypy']}
                 parser: MutableMapping[str, Any] = destructure_overrides(toml_data)
                 config_types = toml_config_types
             else:
                 config_parser.read(config_file)
                 parser = config_parser
                 config_types = ini_config_types
-        except (toml.TomlDecodeError, configparser.Error, ConfigTOMLValueError) as err:
+        except (tomli.TOMLDecodeError, configparser.Error, ConfigTOMLValueError) as err:
             print("%s: %s" % (config_file, err), file=stderr)
         else:
             if config_file in defaults.SHARED_CONFIG_FILES and 'mypy' not in parser:
@@ -252,7 +254,7 @@ def is_toml(filename: str) -> bool:
     return filename.lower().endswith('.toml')
 
 
-def destructure_overrides(toml_data: "OrderedDict[str, Any]") -> "OrderedDict[str, Any]":
+def destructure_overrides(toml_data: Dict[str, Any]) -> Dict[str, Any]:
     """Take the new [[tool.mypy.overrides]] section array in the pyproject.toml file,
     and convert it back to a flatter structure that the existing config_parser can handle.
 

@@ -3,7 +3,7 @@ from typing import Union, List
 from mypy.nodes import TypeInfo
 
 from mypy.erasetype import erase_typevars
-from mypy.types import Instance, TypeVarType, TupleType, Type, TypeOfAny, AnyType
+from mypy.types import Instance, TypeVarType, TupleType, Type, TypeOfAny, AnyType, ParamSpecType
 
 
 def fill_typevars(typ: TypeInfo) -> Union[Instance, TupleType]:
@@ -11,11 +11,22 @@ def fill_typevars(typ: TypeInfo) -> Union[Instance, TupleType]:
 
     For a generic G type with parameters T1, .., Tn, return G[T1, ..., Tn].
     """
-    tv: List[Type] = []
+    tvs: List[Type] = []
     # TODO: why do we need to keep both typ.type_vars and typ.defn.type_vars?
     for i in range(len(typ.defn.type_vars)):
-        tv.append(TypeVarType(typ.defn.type_vars[i]))
-    inst = Instance(typ, tv)
+        tv = typ.defn.type_vars[i]
+        # Change the line number
+        if isinstance(tv, TypeVarType):
+            tv = TypeVarType(
+                tv.name, tv.fullname, tv.id, tv.values,
+                tv.upper_bound, tv.variance, line=-1, column=-1,
+            )
+        else:
+            assert isinstance(tv, ParamSpecType)
+            tv = ParamSpecType(tv.name, tv.fullname, tv.id, tv.flavor, tv.upper_bound,
+                               line=-1, column=-1)
+        tvs.append(tv)
+    inst = Instance(typ, tvs)
     if typ.tuple_type is None:
         return inst
     return typ.tuple_type.copy_modified(fallback=inst)

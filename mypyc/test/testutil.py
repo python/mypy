@@ -15,6 +15,7 @@ from mypy.test.config import test_temp_dir
 from mypy.test.helpers import assert_string_arrays_equal
 
 from mypyc.options import CompilerOptions
+from mypyc.analysis.ircheck import assert_func_ir_valid
 from mypyc.ir.func_ir import FuncIR
 from mypyc.errors import Errors
 from mypyc.irbuild.main import build_ir
@@ -55,7 +56,7 @@ def use_custom_builtins(builtins_path: str, testcase: DataDrivenTestCase) -> Ite
         shutil.copyfile(builtins_path, builtins)
         default_builtins = True
 
-    # Actually peform the test case.
+    # Actually perform the test case.
     try:
         yield None
     finally:
@@ -76,7 +77,7 @@ def perform_test(func: Callable[[DataDrivenTestCase], None],
         shutil.copyfile(builtins_path, builtins)
         default_builtins = True
 
-    # Actually peform the test case.
+    # Actually perform the test case.
     func(testcase)
 
     if default_builtins:
@@ -118,6 +119,8 @@ def build_ir_for_single_file(input_lines: List[str],
         raise CompileError(errors.new_messages())
 
     module = list(modules.values())[0]
+    for fn in module.functions:
+        assert_func_ir_valid(fn)
     return module.functions
 
 

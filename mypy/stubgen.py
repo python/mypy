@@ -60,7 +60,6 @@ from typing_extensions import Final
 
 import mypy.build
 import mypy.parse
-import mypy.errors
 import mypy.traverser
 import mypy.mixedtraverser
 import mypy.util
@@ -73,7 +72,7 @@ from mypy.nodes import (
     TupleExpr, ListExpr, ComparisonExpr, CallExpr, IndexExpr, EllipsisExpr,
     ClassDef, MypyFile, Decorator, AssignmentStmt, TypeInfo,
     IfStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, Block,
-    Statement, OverloadedFuncDef, ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT
+    Statement, OverloadedFuncDef, ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED,
 )
 from mypy.stubgenc import generate_stub_for_c_module
 from mypy.stubutil import (
@@ -91,7 +90,7 @@ from mypy.visitor import NodeVisitor
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.build import build
 from mypy.errors import CompileError, Errors
-from mypy.traverser import has_return_statement
+from mypy.traverser import all_yield_expressions, has_return_statement, has_yield_expression
 from mypy.moduleinspect import ModuleInspect
 
 
@@ -256,7 +255,7 @@ class AnnotationPrinter(TypeStrVisitor):
         s = t.name
         self.stubgen.import_tracker.require_name(s)
         if t.args:
-            s += '[{}]'.format(self.list_str(t.args))
+            s += '[{}]'.format(self.args_str(t.args))
         return s
 
     def visit_none_type(self, t: NoneType) -> str:
@@ -264,6 +263,22 @@ class AnnotationPrinter(TypeStrVisitor):
 
     def visit_type_list(self, t: TypeList) -> str:
         return '[{}]'.format(self.list_str(t.items))
+
+    def args_str(self, args: Iterable[Type]) -> str:
+        """Convert an array of arguments to strings and join the results with commas.
+
+        The main difference from list_str is the preservation of quotes for string
+        arguments
+        """
+        types = ['builtins.bytes', 'builtins.unicode']
+        res = []
+        for arg in args:
+            arg_str = arg.accept(self)
+            if isinstance(arg, UnboundType) and arg.original_str_fallback in types:
+                res.append("'{}'".format(arg_str))
+            else:
+                res.append(arg_str)
+        return ', '.join(res)
 
 
 class AliasPrinter(NodeVisitor[str]):
@@ -290,7 +305,7 @@ class AliasPrinter(NodeVisitor[str]):
             elif kind == ARG_NAMED:
                 args.append('{}={}'.format(name, arg.accept(self)))
             else:
-                raise ValueError("Unknown argument kind %d in call" % kind)
+                raise ValueError("Unknown argument kind %s in call" % kind)
         return "{}({})".format(callee, ", ".join(args))
 
     def visit_name_expr(self, node: NameExpr) -> str:
@@ -550,13 +565,17 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.path = o.path
         self.defined_names = find_defined_names(o)
         self.referenced_names = find_referenced_names(o)
-        typing_imports = ["Any", "Optional", "TypeVar"]
-        for t in typing_imports:
-            if t not in self.defined_names:
-                alias = None
-            else:
-                alias = '_' + t
-            self.import_tracker.add_import_from("typing", [(t, alias)])
+        known_imports = {
+            "typing": ["Any", "TypeVar"],
+            "collections.abc": ["Generator"],
+        }
+        for pkg, imports in known_imports.items():
+            for t in imports:
+                if t not in self.defined_names:
+                    alias = None
+                else:
+                    alias = '_' + t
+                self.import_tracker.add_import_from(pkg, [(t, alias)])
         super().visit_mypy_file(o)
         undefined_names = [name for name in self._all_ or []
                            if name not in self._toplevel_names]
@@ -631,8 +650,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 if not isinstance(get_proper_type(annotated_type), AnyType):
                     annotation = ": {}".format(self.print_annotation(annotated_type))
             if arg_.initializer:
-                if kind in (ARG_NAMED, ARG_NAMED_OPT) and not any(arg.startswith('*')
-                                                                  for arg in args):
+                if kind.is_named() and not any(arg.startswith('*') for arg in args):
                     args.append('*')
                 if not annotation:
                     typename = self.get_str_type_of_node(arg_.initializer, True, False)
@@ -662,6 +680,23 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             # Always assume abstract methods return Any unless explicitly annotated. Also
             # some dunder methods should not have a None return type.
             retname = None  # implicit Any
+        elif has_yield_expression(o):
+            self.add_abc_import('Generator')
+            yield_name = 'None'
+            send_name = 'None'
+            return_name = 'None'
+            for expr, in_assignment in all_yield_expressions(o):
+                if expr.expr is not None and not self.is_none_expr(expr.expr):
+                    self.add_typing_import('Any')
+                    yield_name = 'Any'
+                if in_assignment:
+                    self.add_typing_import('Any')
+                    send_name = 'Any'
+            if has_return_statement(o):
+                self.add_typing_import('Any')
+                return_name = 'Any'
+            generator_name = self.typing_name('Generator')
+            retname = f'{generator_name}[{yield_name}, {send_name}, {return_name}]'
         elif not has_return_statement(o) and not is_abstract:
             retname = 'None'
         retfield = ''
@@ -671,6 +706,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.add(', '.join(args))
         self.add("){}: ...\n".format(retfield))
         self._state = FUNC
+
+    def is_none_expr(self, expr: Expression) -> bool:
+        return isinstance(expr, NameExpr) and expr.name == "None"
 
     def visit_decorator(self, o: Decorator) -> None:
         if self.is_private_name(o.func.name, o.func.fullname):
@@ -903,7 +941,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if self._state != EMPTY:
             self.add('\n')
         if isinstance(rvalue.args[1], StrExpr):
-            items = rvalue.args[1].value.split(" ")
+            items = rvalue.args[1].value.replace(',', ' ').split()
         elif isinstance(rvalue.args[1], (ListExpr, TupleExpr)):
             list_items = cast(List[StrExpr], rvalue.args[1].items)
             items = [item.value for item in list_items]
@@ -1039,7 +1077,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self.record_name(alias or name)
 
         if self._all_:
-            # Include import froms that import names defined in __all__.
+            # Include "import from"s that import names defined in __all__.
             names = [name for name, alias in o.names
                      if name in self._all_ and alias is None and name not in IGNORED_DUNDERS]
             exported_names.update(names)
@@ -1101,6 +1139,14 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
 
     def add_typing_import(self, name: str) -> None:
         """Add a name to be imported from typing, unless it's imported already.
+
+        The import will be internal to the stub.
+        """
+        name = self.typing_name(name)
+        self.import_tracker.require_name(name)
+
+    def add_abc_import(self, name: str) -> None:
+        """Add a name to be imported from collections.abc, unless it's imported already.
 
         The import will be internal to the stub.
         """
@@ -1615,7 +1661,7 @@ def parse_options(args: List[str]) -> Options:
 
     ns = parser.parse_args(args)
 
-    pyversion = defaults.PYTHON2_VERSION if ns.py2 else defaults.PYTHON3_VERSION
+    pyversion = defaults.PYTHON2_VERSION if ns.py2 else sys.version_info[:2]
     if not ns.interpreter:
         ns.interpreter = sys.executable if pyversion[0] == 3 else default_py2_interpreter()
     if ns.modules + ns.packages and ns.files:

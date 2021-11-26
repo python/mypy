@@ -58,12 +58,20 @@ for full details, see :ref:`running-mypy`.
     For instance, to avoid discovering any files named `setup.py` you could
     pass ``--exclude '/setup\.py$'``. Similarly, you can ignore discovering
     directories with a given name by e.g. ``--exclude /build/`` or
-    those matching a subpath with ``--exclude /project/vendor/``.
+    those matching a subpath with ``--exclude /project/vendor/``. To ignore
+    multiple files / directories / paths, you can provide the --exclude
+    flag more than once, e.g ``--exclude '/setup\.py$' --exclude '/build/'``.
 
-    Note that this flag only affects recursive discovery, that is, when mypy is
-    discovering files within a directory tree or submodules of a package to
-    check. If you pass a file or module explicitly it will still be checked. For
-    instance, ``mypy --exclude '/setup.py$' but_still_check/setup.py``.
+    Note that this flag only affects recursive directory tree discovery, that
+    is, when mypy is discovering files within a directory tree or submodules of
+    a package to check. If you pass a file or module explicitly it will still be
+    checked. For instance, ``mypy --exclude '/setup.py$'
+    but_still_check/setup.py``.
+
+    In particular, ``--exclude`` does not affect mypy's :ref:`import following
+    <follow-imports>`. You can use a per-module :confval:`follow_imports` config
+    option to additionally avoid mypy from following imports and checking code
+    you do not wish to be checked.
 
     Note that mypy will never recursively discover files and directories named
     "site-packages", "node_modules" or "__pycache__", or those whose name starts
@@ -304,9 +312,8 @@ The following options are available:
 .. option:: --disallow-any-generics
 
     This flag disallows usage of generic types that do not specify explicit
-    type parameters. Moreover, built-in collections (such as :py:class:`list` and
-    :py:class:`dict`) become disallowed as you should use their aliases from the :py:mod:`typing`
-    module (such as :py:class:`List[int] <typing.List>` and :py:class:`Dict[str, str] <typing.Dict>`).
+    type parameters. For example you can't use a bare ``x: list``, you must say
+    ``x: list[int]``.
 
 .. option:: --disallow-subclassing-any
 
@@ -513,10 +520,10 @@ of the above sections.
 
     .. code-block:: python
 
-       def process(items: List[str]) -> None:
-           # 'items' has type List[str]
+       def process(items: list[str]) -> None:
+           # 'items' has type list[str]
            items = [item.split() for item in items]
-           # 'items' now has type List[List[str]]
+           # 'items' now has type list[list[str]]
            ...
 
 .. option:: --local-partial-types
@@ -557,8 +564,13 @@ of the above sections.
 
        # This won't re-export the value
        from foo import bar
+
+       # Neither will this
+       from foo import bar as bang
+
        # This will re-export it as bar and allow other modules to import it
        from foo import bar as bar
+
        # This will also re-export bar
        from foo import bar
        __all__ = ['bar']
@@ -572,9 +584,9 @@ of the above sections.
 
     .. code-block:: python
 
-       from typing import List, Text
+       from typing import Text
 
-       items: List[int]
+       items: list[int]
        if 'some string' in items:  # Error: non-overlapping container check!
            ...
 

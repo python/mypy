@@ -86,7 +86,7 @@ if USE_MYPYC:
     MYPYC_BLACKLIST = tuple(os.path.join('mypy', x) for x in (
         # Need to be runnable as scripts
         '__main__.py',
-        'sitepkgs.py',
+        'pyinfo.py',
         os.path.join('dmypy', '__main__.py'),
 
         # Uses __getattr__/__setattr__
@@ -144,10 +144,12 @@ if USE_MYPYC:
 
     from mypyc.build import mypycify
     opt_level = os.getenv('MYPYC_OPT_LEVEL', '3')
+    debug_level = os.getenv('MYPYC_DEBUG_LEVEL', '1')
     force_multifile = os.getenv('MYPYC_MULTI_FILE', '') == '1'
     ext_modules = mypycify(
         mypyc_targets + ['--config-file=mypy_bootstrap.ini'],
         opt_level=opt_level,
+        debug_level=debug_level,
         # Use multi-file compilation mode on windows because without it
         # our Appveyor builds run out of memory sometimes.
         multi_file=sys.platform == 'win32' or force_multifile,
@@ -181,25 +183,27 @@ setup(name='mypy',
       ext_modules=ext_modules,
       packages=find_packages(),
       package_data={'mypy': package_data},
-      scripts=['scripts/mypyc'],
       entry_points={'console_scripts': ['mypy=mypy.__main__:console_entry',
                                         'stubgen=mypy.stubgen:main',
                                         'stubtest=mypy.stubtest:main',
                                         'dmypy=mypy.dmypy.client:console_entry',
+                                        'mypyc=mypyc.__main__:main',
                                         ]},
       classifiers=classifiers,
       cmdclass=cmdclass,
       # When changing this, also update mypy-requirements.txt.
-      install_requires=["typed_ast >= 1.4.0, < 1.5.0; python_version<'3.8'",
+      install_requires=["typed_ast >= 1.4.0, < 2; python_version<'3.8'",
                         'typing_extensions>=3.7.4',
                         'mypy_extensions >= 0.4.3, < 0.5.0',
-                        'toml',
+                        'tomli>=1.1.0,<1.2.0',
                         ],
       # Same here.
-      extras_require={'dmypy': 'psutil >= 4.0', 'python2': 'typed_ast >= 1.4.0, < 1.5.0'},
+      extras_require={'dmypy': 'psutil >= 4.0', 'python2': 'typed_ast >= 1.4.0, < 2'},
       python_requires=">=3.6",
       include_package_data=True,
       project_urls={
           'News': 'http://mypy-lang.org/news.html',
+          'Documentation': 'https://mypy.readthedocs.io/en/stable/introduction.html',
+          'Repository': 'https://github.com/python/mypy',
       },
       )

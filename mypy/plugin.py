@@ -120,11 +120,11 @@ semantic analyzer is enabled (it's always true in mypy 0.730 and later).
 """
 
 from abc import abstractmethod
-from typing import Any, Callable, List, Tuple, Optional, NamedTuple, TypeVar, Dict
+from typing import Any, Callable, List, Tuple, Optional, NamedTuple, TypeVar, Dict, Union
 from mypy_extensions import trait, mypyc_attr
 
 from mypy.nodes import (
-    Expression, Context, ClassDef, SymbolTableNode, MypyFile, CallExpr
+    Expression, Context, ClassDef, SymbolTableNode, MypyFile, CallExpr, ArgKind
 )
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.types import (
@@ -134,6 +134,7 @@ from mypy.messages import MessageBuilder
 from mypy.options import Options
 from mypy.lookup import lookup_fully_qualified
 from mypy.errorcodes import ErrorCode
+from mypy.message_registry import ErrorMessage
 
 
 @trait
@@ -167,7 +168,7 @@ class TypeAnalyzerPluginInterface:
 
     @abstractmethod
     def analyze_callable_args(self, arglist: TypeList) -> Optional[Tuple[List[Type],
-                                                                         List[int],
+                                                                         List[ArgKind],
                                                                          List[Optional[str]]]]:
         """Find types, kinds, and names of arguments from extended callable syntax."""
         raise NotImplementedError
@@ -223,7 +224,8 @@ class CheckerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def fail(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
+    def fail(self, msg: Union[str, ErrorMessage], ctx: Context, *,
+             code: Optional[ErrorCode] = None) -> None:
         """Emit an error message at given location."""
         raise NotImplementedError
 
@@ -250,8 +252,20 @@ class SemanticAnalyzerPluginInterface:
     msg: MessageBuilder
 
     @abstractmethod
-    def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
+    def named_type(self, fullname: str,
+                   args: Optional[List[Type]] = None) -> Instance:
         """Construct an instance of a builtin type with given type arguments."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def named_type_or_none(self, fullname: str,
+                           args: Optional[List[Type]] = None) -> Optional[Instance]:
+        """Construct an instance of a type with given type arguments.
+
+        Return None if a type could not be constructed for the qualified
+        type name. This is possible when the qualified name includes a
+        module name and the module has not been imported.
+        """
         raise NotImplementedError
 
     @abstractmethod
@@ -283,11 +297,6 @@ class SemanticAnalyzerPluginInterface:
     @abstractmethod
     def class_type(self, self_type: Type) -> Type:
         """Generate type of first argument of class methods from type of self."""
-        raise NotImplementedError
-
-    @abstractmethod
-    def builtin_type(self, fully_qualified_name: str) -> Instance:
-        """Deprecated: use named_type instead."""
         raise NotImplementedError
 
     @abstractmethod
@@ -389,8 +398,8 @@ FunctionSigContext = NamedTuple(
 # callback at least sometimes can infer a more precise type.
 FunctionContext = NamedTuple(
     'FunctionContext', [
-        ('arg_types', List[List[Type]]),   # List of actual caller types for each formal argument
-        ('arg_kinds', List[List[int]]),    # Ditto for argument kinds, see nodes.ARG_* constants
+        ('arg_types', List[List[Type]]),     # List of actual caller types for each formal argument
+        ('arg_kinds', List[List[ArgKind]]),  # Ditto for argument kinds, see nodes.ARG_* constants
         # Names of formal parameters from the callee definition,
         # these will be sufficient in most cases.
         ('callee_arg_names', List[Optional[str]]),
@@ -427,7 +436,7 @@ MethodContext = NamedTuple(
         ('type', ProperType),              # Base object type for method call
         ('arg_types', List[List[Type]]),   # List of actual caller types for each formal argument
         # see FunctionContext for details about names and kinds
-        ('arg_kinds', List[List[int]]),
+        ('arg_kinds', List[List[ArgKind]]),
         ('callee_arg_names', List[Optional[str]]),
         ('arg_names', List[List[Optional[str]]]),
         ('default_return_type', Type),     # Return type inferred by mypy

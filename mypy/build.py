@@ -15,6 +15,7 @@ import errno
 import gc
 import json
 import os
+import platform
 import re
 import stat
 import sys
@@ -22,8 +23,8 @@ import time
 import types
 
 from typing import (AbstractSet, Any, Dict, Iterable, Iterator, List, Sequence,
-                    Mapping, NamedTuple, Optional, Set, Tuple, Union, Callable, TextIO)
-from typing_extensions import ClassVar, Final, TYPE_CHECKING
+                    Mapping, NamedTuple, Optional, Set, Tuple, TypeVar, Union, Callable, TextIO)
+from typing_extensions import ClassVar, Final, TYPE_CHECKING, TypeAlias as _TypeAlias
 from mypy_extensions import TypedDict
 
 from mypy.nodes import MypyFile, ImportBase, Import, ImportFrom, ImportAll, SymbolTable
@@ -69,7 +70,7 @@ from mypy import errorcodes as codes
 DEBUG_FINE_GRAINED: Final = False
 
 # These modules are special and should always come from typeshed.
-CORE_BUILTIN_MODULES = {
+CORE_BUILTIN_MODULES: Final = {
     'builtins',
     'typing',
     'types',
@@ -81,7 +82,7 @@ CORE_BUILTIN_MODULES = {
 }
 
 
-Graph = Dict[str, 'State']
+Graph: _TypeAlias = Dict[str, 'State']
 
 
 # TODO: Get rid of BuildResult.  We might as well return a BuildManager.
@@ -201,8 +202,9 @@ def _build(sources: List[BuildSource],
            stderr: TextIO,
            extra_plugins: Sequence[Plugin],
            ) -> BuildResult:
-    # This seems the most reasonable place to tune garbage collection.
-    gc.set_threshold(150 * 1000)
+    if platform.python_implementation() == 'CPython':
+        # This seems the most reasonable place to tune garbage collection.
+        gc.set_threshold(150 * 1000)
 
     data_dir = default_data_dir()
     fscache = fscache or FileSystemCache()
@@ -492,6 +494,7 @@ def take_module_snapshot(module: types.ModuleType) -> str:
     (e.g. if there is a change in modules imported by a plugin).
     """
     if hasattr(module, '__file__'):
+        assert module.__file__ is not None
         with open(module.__file__, 'rb') as f:
             digest = hash_digest(f.read())
     else:
@@ -751,7 +754,6 @@ class BuildManager:
                             res.append((ancestor_pri, ".".join(ancestors), imp.line))
                 elif isinstance(imp, ImportFrom):
                     cur_id = correct_rel_imp(imp)
-                    pos = len(res)
                     all_are_submodules = True
                     # Also add any imported names that are submodules.
                     pri = import_priority(imp, PRI_MED)
@@ -768,7 +770,10 @@ class BuildManager:
                     # if all of the imports are submodules, do the import at a lower
                     # priority.
                     pri = import_priority(imp, PRI_HIGH if not all_are_submodules else PRI_LOW)
-                    res.insert(pos, ((pri, cur_id, imp.line)))
+                    # The imported module goes in after the
+                    # submodules, for the same namespace related
+                    # reasons discussed in the Import case.
+                    res.append((pri, cur_id, imp.line))
                 elif isinstance(imp, ImportAll):
                     pri = import_priority(imp, PRI_HIGH)
                     res.append((pri, correct_rel_imp(imp), imp.line))
@@ -1317,7 +1322,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
         st = manager.get_stat(path)
     except OSError:
         return None
-    if not stat.S_ISREG(st.st_mode):
+    if not (stat.S_ISREG(st.st_mode) or stat.S_ISDIR(st.st_mode)):
         manager.log('Metadata abandoned for {}: file {} does not exist'.format(id, path))
         return None
 
@@ -1360,7 +1365,11 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
 
         t0 = time.time()
         try:
-            source_hash = manager.fscache.hash_digest(path)
+            # dir means it is a namespace package
+            if stat.S_ISDIR(st.st_mode):
+                source_hash = ''
+            else:
+                source_hash = manager.fscache.hash_digest(path)
         except (OSError, UnicodeDecodeError, DecodeError):
             return None
         manager.add_stats(validate_hash_time=time.time() - t0)
@@ -1835,15 +1844,15 @@ class State:
         if path:
             self.abspath = os.path.abspath(path)
         self.xpath = path or '<string>'
-        if path and source is None and self.manager.fscache.isdir(path):
-            source = ''
-        self.source = source
         if path and source is None and self.manager.cache_enabled:
             self.meta = find_cache_meta(self.id, path, manager)
             # TODO: Get mtime if not cached.
             if self.meta is not None:
                 self.interface_hash = self.meta.interface_hash
                 self.meta_source_hash = self.meta.hash
+        if path and source is None and self.manager.fscache.isdir(path):
+            source = ''
+        self.source = source
         self.add_ancestors()
         t0 = time.time()
         self.meta = validate_meta(self.meta, self.id, self.path, self.ignore_all, manager)
@@ -2038,6 +2047,9 @@ class State:
                     else:
                         err = "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))
                     raise CompileError([err], module_with_blocker=self.id) from decodeerr
+            elif self.path and self.manager.fscache.isdir(self.path):
+                source = ''
+                self.source_hash = ''
             else:
                 assert source is not None
                 self.source_hash = compute_hash(source)
@@ -2169,8 +2181,11 @@ class State:
         if not self._type_checker:
             assert self.tree is not None, "Internal error: must be called on parsed file only"
             manager = self.manager
-            self._type_checker = TypeChecker(manager.errors, manager.modules, self.options,
-                                             self.tree, self.xpath, manager.plugin)
+            self._type_checker = TypeChecker(
+                manager.errors, manager.modules, self.options,
+                self.tree, self.xpath, manager.plugin,
+                self.manager.semantic_analyzer.future_import_flags,
+            )
         return self._type_checker
 
     def type_map(self) -> Dict[Expression, Type]:
@@ -2880,7 +2895,14 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                                 -1, 0,
                                 'Source file found twice under different module names: '
                                 '"{}" and "{}"'.format(seen_files[newst_path].id, newst.id),
-                                blocker=True)
+                                blocker=True,
+                            )
+                            manager.errors.report(
+                                -1, 0,
+                                "See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules "  # noqa: E501
+                                "for more info",
+                                severity='note',
+                            )
                             manager.errors.raise_error()
 
                         seen_files[newst_path] = newst
@@ -3234,21 +3256,22 @@ def strongly_connected_components(vertices: AbstractSet[str],
             yield from dfs(v)
 
 
-def topsort(data: Dict[AbstractSet[str],
-                       Set[AbstractSet[str]]]) -> Iterable[Set[AbstractSet[str]]]:
+T = TypeVar("T")
+
+
+def topsort(data: Dict[T, Set[T]]) -> Iterable[Set[T]]:
     """Topological sort.
 
     Args:
-      data: A map from SCCs (represented as frozen sets of strings) to
-            sets of SCCs, its dependencies.  NOTE: This data structure
+      data: A map from vertices to all vertices that it has an edge
+            connecting it to.  NOTE: This data structure
             is modified in place -- for normalization purposes,
             self-dependencies are removed and entries representing
             orphans are added.
 
     Returns:
-      An iterator yielding sets of SCCs that have an equivalent
-      ordering.  NOTE: The algorithm doesn't care about the internal
-      structure of SCCs.
+      An iterator yielding sets of vertices that have an equivalent
+      ordering.
 
     Example:
       Suppose the input has the following structure:

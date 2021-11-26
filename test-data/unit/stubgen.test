@@ -64,6 +64,25 @@ def g(x: Foo = Foo()) -> Bar: ...
 def f(x: Foo) -> Bar: ...
 def g(x: Foo = ...) -> Bar: ...
 
+[case testPreserveFunctionAnnotationWithArgs]
+def f(x: foo['x']) -> bar: ...
+def g(x: foo[x]) -> bar: ...
+def h(x: foo['x', 'y']) -> bar: ...
+def i(x: foo[x, y]) -> bar: ...
+def j(x: foo['x', y]) -> bar: ...
+def k(x: foo[x, 'y']) -> bar: ...
+def lit_str(x: Literal['str']) -> Literal['str']: ...
+def lit_int(x: Literal[1]) -> Literal[1]: ...
+[out]
+def f(x: foo['x']) -> bar: ...
+def g(x: foo[x]) -> bar: ...
+def h(x: foo['x', 'y']) -> bar: ...
+def i(x: foo[x, y]) -> bar: ...
+def j(x: foo['x', y]) -> bar: ...
+def k(x: foo[x, 'y']) -> bar: ...
+def lit_str(x: Literal['str']) -> Literal['str']: ...
+def lit_int(x: Literal[1]) -> Literal[1]: ...
+
 [case testPreserveVarAnnotation]
 x: Foo
 [out]
@@ -594,6 +613,28 @@ class X(NamedTuple):
     a: Any
     b: Any
 
+[case testNamedtupleAltSyntaxUsingComma]
+from collections import namedtuple, xx
+X = namedtuple('X', 'a,    b')
+xx
+[out]
+from typing import Any, NamedTuple
+
+class X(NamedTuple):
+    a: Any
+    b: Any
+
+[case testNamedtupleAltSyntaxUsingMultipleCommas]
+from collections import namedtuple, xx
+X = namedtuple('X', 'a,,   b')
+xx
+[out]
+from typing import Any, NamedTuple
+
+class X(NamedTuple):
+    a: Any
+    b: Any
+
 [case testNamedtupleWithUnderscore]
 from collections import namedtuple as _namedtuple
 def f(): ...
@@ -943,6 +984,56 @@ def g() -> None: ...
 def f(): ...
 [out]
 def f() -> None: ...
+
+[case testFunctionYields]
+def f():
+    yield 123
+def g():
+    x = yield
+def h1():
+    yield
+    return
+def h2():
+    yield
+    return "abc"
+def all():
+    x = yield 123
+    return "abc"
+[out]
+from collections.abc import Generator
+from typing import Any
+
+def f() -> Generator[Any, None, None]: ...
+def g() -> Generator[None, Any, None]: ...
+def h1() -> Generator[None, None, None]: ...
+def h2() -> Generator[None, None, Any]: ...
+def all() -> Generator[Any, Any, Any]: ...
+
+[case testFunctionYieldsNone]
+def f():
+    yield
+def g():
+    yield None
+
+[out]
+from collections.abc import Generator
+
+def f() -> Generator[None, None, None]: ...
+def g() -> Generator[None, None, None]: ...
+
+[case testGeneratorAlreadyDefined]
+class Generator:
+    pass
+
+def f():
+    yield 123
+[out]
+from collections.abc import Generator as _Generator
+from typing import Any
+
+class Generator: ...
+
+def f() -> _Generator[Any, None, None]: ...
 
 [case testCallable]
 from typing import Callable

@@ -5,21 +5,22 @@ import mypy.sametypes
 from mypy.expandtype import expand_type
 from mypy.types import (
     Type, TypeVarId, TypeVarType, CallableType, AnyType, PartialType, get_proper_types,
-    TypeVarDef, TypeVarLikeDef, ProperType
+    TypeVarLikeType, ProperType, ParamSpecType, get_proper_type
 )
 from mypy.nodes import Context
 
 
 def get_target_type(
-    tvar: TypeVarLikeDef,
+    tvar: TypeVarLikeType,
     type: ProperType,
     callable: CallableType,
     report_incompatible_typevar_value: Callable[[CallableType, Type, str, Context], None],
     context: Context,
     skip_unsatisfied: bool
 ) -> Optional[Type]:
-    # TODO(shantanu): fix for ParamSpecDef
-    assert isinstance(tvar, TypeVarDef)
+    if isinstance(tvar, ParamSpecType):
+        return type
+    assert isinstance(tvar, TypeVarType)
     values = get_proper_types(tvar.values)
     if values:
         if isinstance(type, AnyType):
@@ -87,6 +88,14 @@ def apply_generic_arguments(
         )
         if target_type is not None:
             id_to_type[tvar.id] = target_type
+
+    param_spec = callable.param_spec()
+    if param_spec is not None:
+        nt = id_to_type.get(param_spec.id)
+        if nt is not None:
+            nt = get_proper_type(nt)
+            if isinstance(nt, CallableType):
+                callable = callable.expand_param_spec(nt)
 
     # Apply arguments to argument types.
     arg_types = [expand_type(at, id_to_type) for at in callable.arg_types]

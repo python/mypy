@@ -158,6 +158,24 @@ static inline int CPyTagged_CheckShort(CPyTagged x) {
     return !CPyTagged_CheckLong(x);
 }
 
+static inline void CPyTagged_INCREF(CPyTagged x) {
+    if (unlikely(CPyTagged_CheckLong(x))) {
+        CPyTagged_IncRef(x);
+    }
+}
+
+static inline void CPyTagged_DECREF(CPyTagged x) {
+    if (unlikely(CPyTagged_CheckLong(x))) {
+        CPyTagged_DecRef(x);
+    }
+}
+
+static inline void CPyTagged_XDECREF(CPyTagged x) {
+    if (unlikely(CPyTagged_CheckLong(x))) {
+        CPyTagged_XDecRef(x);
+    }
+}
+
 static inline Py_ssize_t CPyTagged_ShortAsSsize_t(CPyTagged x) {
     // NOTE: Assume that we sign extend.
     return (Py_ssize_t)x >> 1;
@@ -253,11 +271,10 @@ static inline bool CPyTagged_IsLe(CPyTagged left, CPyTagged right) {
 // Generic operations (that work with arbitrary types)
 
 
-/* We use intentionally non-inlined decrefs since it pretty
- * substantially speeds up compile time while only causing a ~1%
- * performance degradation. We have our own copies both to avoid the
- * null check in Py_DecRef and to avoid making an indirect PIC
- * call. */
+/* We use intentionally non-inlined decrefs in rarely executed code
+ * paths since it pretty substantially speeds up compile time. We have
+ * our own copies both to avoid the null check in Py_DecRef and to avoid
+ * making an indirect PIC call. */
 CPy_NOINLINE
 static void CPy_DecRef(PyObject *p) {
     CPy_DECREF(p);
@@ -285,7 +302,7 @@ static inline CPyTagged CPyObject_Size(PyObject *obj) {
 static void CPy_LogGetAttr(const char *method, PyObject *obj, PyObject *attr) {
     PyObject *module = PyImport_ImportModule("getattr_hook");
     if (module) {
-        PyObject *res = PyObject_CallMethod(module, method, "OO", obj, attr);
+        PyObject *res = PyObject_CallMethodObjArgs(module, method, obj, attr, NULL);
         Py_XDECREF(res);
         Py_DECREF(module);
     }
@@ -318,6 +335,7 @@ PyObject *CPyObject_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
 // List operations
 
 
+PyObject *CPyList_Build(Py_ssize_t len, ...);
 PyObject *CPyList_GetItem(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemUnsafe(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index);
@@ -394,6 +412,22 @@ bool CPyStr_Startswith(PyObject *self, PyObject *subobj);
 bool CPyStr_Endswith(PyObject *self, PyObject *subobj);
 bool CPyStr_IsTrue(PyObject *obj);
 Py_ssize_t CPyStr_Size_size_t(PyObject *str);
+PyObject *CPy_Decode(PyObject *obj, PyObject *encoding, PyObject *errors);
+PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors);
+
+
+// Bytes operations
+
+
+PyObject *CPyBytes_Build(Py_ssize_t len, ...);
+PyObject *CPyBytes_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
+CPyTagged CPyBytes_GetItem(PyObject *o, CPyTagged index);
+PyObject *CPyBytes_Concat(PyObject *a, PyObject *b);
+PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter);
+
+
+int CPyBytes_Compare(PyObject *left, PyObject *right);
+
 
 
 // Set operations
@@ -545,11 +579,13 @@ int CPyStatics_Initialize(PyObject **statics,
                           const int *tuples);
 PyObject *CPy_Super(PyObject *builtins, PyObject *self);
 PyObject *CPy_CallReverseOpMethod(PyObject *left, PyObject *right, const char *op,
-                                  const char *method);
+                                  _Py_Identifier *method);
 
 PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
                                PyObject *import_name, PyObject *as_name);
 
+PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func, PyObject *cls,
+                                             PyObject *func);
 #ifdef __cplusplus
 }
 #endif

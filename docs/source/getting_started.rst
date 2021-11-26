@@ -153,8 +153,8 @@ Arguments with default values can be annotated like so:
 .. code-block:: python
 
    def stars(*args: int, **kwargs: float) -> None:
-       # 'args' has type 'Tuple[int, ...]' (a tuple of ints)
-       # 'kwargs' has type 'Dict[str, float]' (a dict of strs to floats)
+       # 'args' has type 'tuple[int, ...]' (a tuple of ints)
+       # 'kwargs' has type 'dict[str, float]' (a dict of strs to floats)
        for arg in args:
            print(arg)
        for key, value in kwargs:
@@ -182,8 +182,8 @@ strings, use the ``list[str]`` type (Python 3.9 and later):
    greet_all(names)   # Ok!
    greet_all(ages)    # Error due to incompatible types
 
-The ``list`` type is an example of something called a *generic type*: it can
-accept one or more *type parameters*. In this case, we *parameterized* ``list``
+The :py:class:`list` type is an example of something called a *generic type*: it can
+accept one or more *type parameters*. In this case, we *parameterized* :py:class:`list`
 by writing ``list[str]``. This lets mypy know that ``greet_all`` accepts specifically
 lists containing strings, and not lists containing ints or any other type.
 
@@ -207,9 +207,8 @@ After all, there's no reason why this function must accept *specifically* a list
 it would run just fine if you were to pass in a tuple, a set, or any other custom iterable.
 
 You can express this idea using the
-:py:class:`collections.abc.Iterable` type instead of
-:py:class:`~typing.List` (or :py:class:`typing.Iterable` in Python
-3.8 and earlier):
+:py:class:`collections.abc.Iterable` (or :py:class:`typing.Iterable` in Python
+3.8 and earlier) type instead of :py:class:`list` :
 
 .. code-block:: python
 
@@ -268,7 +267,7 @@ generic types or your own type aliases) by looking through the
 
    In some examples we use capitalized variants of types, such as
    ``List``, and sometimes we use plain ``list``. They are equivalent,
-   but the prior variant is needed if you are not using a recent Python.
+   but the prior variant is needed if you are using Python 3.8 or earlier.
 
 Local type inference
 ********************
@@ -286,7 +285,7 @@ in that if statement.
 
 As another example, consider the following function. Mypy can type check this function
 without a problem: it will use the available context and deduce that ``output`` must be
-of type ``List[float]`` and that ``num`` must be of type ``float``:
+of type ``list[float]`` and that ``num`` must be of type ``float``:
 
 .. code-block:: python
 

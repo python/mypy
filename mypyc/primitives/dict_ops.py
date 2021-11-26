@@ -17,6 +17,14 @@ load_address_op(
     type=object_rprimitive,
     src='PyDict_Type')
 
+# Construct an empty dictionary via dict().
+function_op(
+    name='builtins.dict',
+    arg_types=[],
+    return_type=dict_rprimitive,
+    c_function_name='PyDict_New',
+    error_kind=ERR_MAGIC)
+
 # Construct an empty dictionary.
 dict_new_op = custom_op(
     arg_types=[],
@@ -111,7 +119,7 @@ method_op(
     error_kind=ERR_MAGIC)
 
 # dict.get(key)
-method_op(
+dict_get_method_with_none = method_op(
     name='get',
     arg_types=[dict_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
