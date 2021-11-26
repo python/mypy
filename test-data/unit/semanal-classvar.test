@@ -215,6 +215,22 @@ T = TypeVar('T')
 
 class Some(Generic[T]):
     error: ClassVar[T]  # E: ClassVar cannot contain type variables
-    nested: ClassVar[List[List[T]]]  # E: ClassVar cannot contain type variables
+    nested_error: ClassVar[List[List[T]]]  # E: ClassVar cannot contain type variables
     ok: ClassVar[int]
+[out]
+
+[case testImplicitClassVarWithTypeVariable]
+from typing import TypeVar, Generic, List
+
+T = TypeVar('T')
+
+class TypeComments(Generic[T]):
+    error = []  # type: List[T]  # E: ClassVar cannot contain type variables
+    nested_error = []  # type: List[List[T]]  # E: ClassVar cannot contain type variables
+    ok = None  # type: List[T]
+
+class TypeAnnotation(Generic[T]):
+    error: List[T] = []  # E: ClassVar cannot contain type variables
+    nested_error: List[List[T]] = []  # E: ClassVar cannot contain type variables
+    ok: List[T] = None  # E: ClassVar cannot contain type variables
 [out]

@@ -3331,22 +3331,41 @@ class SemanticAnalyzer(NodeVisitor[None],
         lvalue = s.lvalues[0]
         if len(s.lvalues) != 1 or not isinstance(lvalue, RefExpr):
             return
-        if not s.type or not self.is_classvar(s.type):
+        if not s.type:
+            return
+        if not self.is_classvar(s.type):
+            # Corner case, this might be a pre-PEP526 classvar,
+            # defined as `x: List[...] = []` (or typed with comments).
+            # We need to still check for valid type variables usage in it.
+            self.check_class_level_typevar(s.type, s)
             return
         if self.is_class_scope() and isinstance(lvalue, NameExpr):
             node = lvalue.node
             if isinstance(node, Var):
                 node.is_classvar = True
-            analyzed = self.anal_type(s.type)
-            if analyzed is not None and get_type_vars(analyzed):
-                # This means that we have a type var defined inside of a ClassVar.
-                # This is not allowed by PEP526.
-                # See https://github.com/python/mypy/issues/11538
-                self.fail(message_registry.CLASS_VAR_WITH_TYPEVARS, s)
+            self.analyze_class_level_typevars(s.type, s)
         elif not isinstance(lvalue, MemberExpr) or self.is_self_member_ref(lvalue):
             # In case of member access, report error only when assigning to self
             # Other kinds of member assignments should be already reported
             self.fail_invalid_classvar(lvalue)
+
+    def check_class_level_typevar(self, typ: Type, context: AssignmentStmt) -> None:
+        if (not context.new_syntax
+                and isinstance(context.rvalue, NameExpr)
+                and context.rvalue.fullname == 'builtins.None'):
+            # Special case: pre-PEP526 code sometimes uses pattern like:
+            #   `x = None  # type: List[T]`
+            # to define instance level annotations.
+            return
+        self.analyze_class_level_typevars(typ, context)
+
+    def analyze_class_level_typevars(self, typ: Type, context: AssignmentStmt) -> None:
+        analyzed = self.anal_type(typ)
+        if analyzed is not None and get_type_vars(analyzed):
+            # This means that we have a type var defined inside of a ClassVar.
+            # This is not allowed by PEP526.
+            # See https://github.com/python/mypy/issues/11538
+            self.fail(message_registry.CLASS_VAR_WITH_TYPEVARS, context)
 
     def is_classvar(self, typ: Type) -> bool:
         if not isinstance(typ, UnboundType):
