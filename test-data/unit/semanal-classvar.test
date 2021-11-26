@@ -232,5 +232,5 @@ class TypeComments(Generic[T]):
 class TypeAnnotation(Generic[T]):
     error: List[T] = []  # E: ClassVar cannot contain type variables
     nested_error: List[List[T]] = []  # E: ClassVar cannot contain type variables
-    ok: List[T] = None  # E: ClassVar cannot contain type variables
+    not_ok: List[T] = None  # E: ClassVar cannot contain type variables
 [out]
