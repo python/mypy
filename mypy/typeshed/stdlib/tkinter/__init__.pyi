@@ -338,30 +338,40 @@ class Misc:
     # binds do. The default value of func is not str.
     @overload
     def bind(
-        self, sequence: str | None = ..., func: Callable[[Event[Misc]], Any] | None = ..., add: bool | None = ...
+        self,
+        sequence: str | None = ...,
+        func: Callable[[Event[Misc]], Any] | None = ...,
+        add: Literal["", "+"] | bool | None = ...,
     ) -> str: ...
     @overload
-    def bind(self, sequence: str | None, func: str, add: bool | None = ...) -> None: ...
+    def bind(self, sequence: str | None, func: str, add: Literal["", "+"] | bool | None = ...) -> None: ...
     @overload
-    def bind(self, *, func: str, add: bool | None = ...) -> None: ...
+    def bind(self, *, func: str, add: Literal["", "+"] | bool | None = ...) -> None: ...
     # There's no way to know what type of widget bind_all and bind_class
     # callbacks will get, so those are Misc.
     @overload
     def bind_all(
-        self, sequence: str | None = ..., func: Callable[[Event[Misc]], Any] | None = ..., add: bool | None = ...
+        self,
+        sequence: str | None = ...,
+        func: Callable[[Event[Misc]], Any] | None = ...,
+        add: Literal["", "+"] | bool | None = ...,
     ) -> str: ...
     @overload
-    def bind_all(self, sequence: str | None, func: str, add: bool | None = ...) -> None: ...
+    def bind_all(self, sequence: str | None, func: str, add: Literal["", "+"] | bool | None = ...) -> None: ...
     @overload
-    def bind_all(self, *, func: str, add: bool | None = ...) -> None: ...
+    def bind_all(self, *, func: str, add: Literal["", "+"] | bool | None = ...) -> None: ...
     @overload
     def bind_class(
-        self, className: str, sequence: str | None = ..., func: Callable[[Event[Misc]], Any] | None = ..., add: bool | None = ...
+        self,
+        className: str,
+        sequence: str | None = ...,
+        func: Callable[[Event[Misc]], Any] | None = ...,
+        add: Literal["", "+"] | bool | None = ...,
     ) -> str: ...
     @overload
-    def bind_class(self, className: str, sequence: str | None, func: str, add: bool | None = ...) -> None: ...
+    def bind_class(self, className: str, sequence: str | None, func: str, add: Literal["", "+"] | bool | None = ...) -> None: ...
     @overload
-    def bind_class(self, className: str, *, func: str, add: bool | None = ...) -> None: ...
+    def bind_class(self, className: str, *, func: str, add: Literal["", "+"] | bool | None = ...) -> None: ...
     def unbind(self, sequence: str, funcid: str | None = ...) -> None: ...
     def unbind_all(self, sequence: str) -> None: ...
     def unbind_class(self, className: str, sequence: str) -> None: ...
@@ -407,7 +417,7 @@ class Misc:
         pad: _ScreenUnits = ...,
         uniform: str = ...,
         weight: int = ...,
-    ) -> _GridIndexInfo | Any: ...  # can be None but annoyying to check
+    ) -> _GridIndexInfo | Any: ...  # can be None but annoying to check
     columnconfigure = grid_columnconfigure
     rowconfigure = grid_rowconfigure
     def grid_location(self, x: _ScreenUnits, y: _ScreenUnits) -> tuple[int, int]: ...
@@ -730,7 +740,7 @@ class Pack:
     forget = pack_forget
     propagate = Misc.pack_propagate
     # commented out to avoid mypy getting confused with multiple
-    # inheritance and how things get overrided with different things
+    # inheritance and how things get overridden with different things
     # info = pack_info
     # pack_propagate = Misc.pack_propagate
     # configure = pack_configure
@@ -774,7 +784,7 @@ class Place:
     place = place_configure
     info = place_info
     # commented out to avoid mypy getting confused with multiple
-    # inheritance and how things get overrided with different things
+    # inheritance and how things get overridden with different things
     # config = place_configure
     # configure = place_configure
     # forget = place_forget
@@ -816,7 +826,7 @@ class Grid:
     location = Misc.grid_location
     size = Misc.grid_size
     # commented out to avoid mypy getting confused with multiple
-    # inheritance and how things get overrided with different things
+    # inheritance and how things get overridden with different things
     # bbox = Misc.grid_bbox
     # grid_bbox = Misc.grid_bbox
     # forget = grid_forget
@@ -847,12 +857,15 @@ class Widget(BaseWidget, Pack, Place, Grid):
     # widgets don't.
     @overload
     def bind(
-        self: _W, sequence: str | None = ..., func: Callable[[Event[_W]], Any] | None = ..., add: bool | None = ...
+        self: _W,
+        sequence: str | None = ...,
+        func: Callable[[Event[_W]], Any] | None = ...,
+        add: Literal["", "+"] | bool | None = ...,
     ) -> str: ...
     @overload
-    def bind(self, sequence: str | None, func: str, add: bool | None = ...) -> None: ...
+    def bind(self, sequence: str | None, func: str, add: Literal["", "+"] | bool | None = ...) -> None: ...
     @overload
-    def bind(self, *, func: str, add: bool | None = ...) -> None: ...
+    def bind(self, *, func: str, add: Literal["", "+"] | bool | None = ...) -> None: ...
 
 class Toplevel(BaseWidget, Wm):
     # Toplevel and Tk have the same options because they correspond to the same
@@ -954,7 +967,7 @@ class Button(Widget):
         state: Literal["normal", "active", "disabled"] = ...,
         takefocus: _TakeFocusValue = ...,
         text: float | str = ...,
-        # We allow the textvariable to be any Variable, not necessarly
+        # We allow the textvariable to be any Variable, not necessarily
         # StringVar. This is useful for e.g. a button that displays the value
         # of an IntVar.
         textvariable: Variable = ...,
@@ -1129,12 +1142,14 @@ class Canvas(Widget, XView, YView):
         tagOrId: str | int,
         sequence: str | None = ...,
         func: Callable[[Event[Canvas]], Any] | None = ...,
-        add: bool | None = ...,
+        add: Literal["", "+"] | bool | None = ...,
     ) -> str: ...
     @overload
-    def tag_bind(self, tagOrId: str | int, sequence: str | None, func: str, add: bool | None = ...) -> None: ...
+    def tag_bind(
+        self, tagOrId: str | int, sequence: str | None, func: str, add: Literal["", "+"] | bool | None = ...
+    ) -> None: ...
     @overload
-    def tag_bind(self, tagOrId: str | int, *, func: str, add: bool | None = ...) -> None: ...
+    def tag_bind(self, tagOrId: str | int, *, func: str, add: Literal["", "+"] | bool | None = ...) -> None: ...
     def tag_unbind(self, tagOrId: str | int, sequence: str, funcid: str | None = ...) -> None: ...
     def canvasx(self, screenx, gridspacing: Any | None = ...): ...
     def canvasy(self, screeny, gridspacing: Any | None = ...): ...
@@ -2879,10 +2894,14 @@ class Text(Widget, XView, YView):
     # tag_bind stuff is very similar to Canvas
     @overload
     def tag_bind(
-        self, tagName: str, sequence: str | None, func: Callable[[Event[Text]], Any] | None, add: bool | None = ...
+        self,
+        tagName: str,
+        sequence: str | None,
+        func: Callable[[Event[Text]], Any] | None,
+        add: Literal["", "+"] | bool | None = ...,
     ) -> str: ...
     @overload
-    def tag_bind(self, tagName: str, sequence: str | None, func: str, add: bool | None = ...) -> None: ...
+    def tag_bind(self, tagName: str, sequence: str | None, func: str, add: Literal["", "+"] | bool | None = ...) -> None: ...
     def tag_unbind(self, tagName: str, sequence: str, funcid: str | None = ...) -> None: ...
     # allowing any string for cget instead of just Literals because there's no other way to look up tag options
     def tag_cget(self, tagName: str, option: str) -> Any: ...
@@ -2960,7 +2979,7 @@ class OptionMenu(Menubutton):
         command: Callable[[StringVar], Any] | None = ...,
     ) -> None: ...
     # configure, config, cget are inherited from Menubutton
-    # destroy and __getitem__ are overrided, signature does not change
+    # destroy and __getitem__ are overridden, signature does not change
 
 class _Image(Protocol):
     tk: _tkinter.TkappType

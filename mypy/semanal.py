@@ -77,8 +77,7 @@ from mypy.nodes import (
     REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_source_versions,
     typing_extensions_aliases,
     EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement, AssignmentExpr,
-    ParamSpecExpr, EllipsisExpr,
-    FuncBase, implicit_module_attrs,
+    ParamSpecExpr, EllipsisExpr, TypeVarLikeExpr, FuncBase, implicit_module_attrs,
 )
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.typevars import fill_typevars
@@ -93,9 +92,9 @@ from mypy.types import (
     FunctionLike, UnboundType, TypeVarType, TupleType, UnionType, StarType,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
     TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType,
-    get_proper_type, get_proper_types, TypeAliasType,
+    get_proper_type, get_proper_types, TypeAliasType, TypeVarLikeType
 )
-from mypy.typeops import function_type
+from mypy.typeops import function_type, get_type_vars
 from mypy.type_visitor import TypeQuery
 from mypy.typeanal import (
     TypeAnalyser, analyze_type_alias, no_subscript_builtin_alias,
@@ -1129,7 +1128,8 @@ class SemanticAnalyzer(NodeVisitor[None],
             defn, bases, context=defn)
 
         for tvd in tvar_defs:
-            if any(has_placeholder(t) for t in [tvd.upper_bound] + tvd.values):
+            if (isinstance(tvd, TypeVarType)
+                    and any(has_placeholder(t) for t in [tvd.upper_bound] + tvd.values)):
                 # Some type variable bounds or values are not ready, we need
                 # to re-analyze this class.
                 self.defer()
@@ -1291,7 +1291,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             defn: ClassDef,
             base_type_exprs: List[Expression],
             context: Context) -> Tuple[List[Expression],
-                                       List[TypeVarType],
+                                       List[TypeVarLikeType],
                                        bool]:
         """Remove extra base classes such as Generic and infer type vars.
 
@@ -1352,13 +1352,10 @@ class SemanticAnalyzer(NodeVisitor[None],
             # grained incremental mode.
             defn.removed_base_type_exprs.append(defn.base_type_exprs[i])
             del base_type_exprs[i]
-        tvar_defs: List[TypeVarType] = []
+        tvar_defs: List[TypeVarLikeType] = []
         for name, tvar_expr in declared_tvars:
             tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
-            if isinstance(tvar_def, TypeVarType):
-                # TODO(PEP612): fix for ParamSpecType
-                # Error will be reported elsewhere: #11218
-                tvar_defs.append(tvar_def)
+            tvar_defs.append(tvar_def)
         return base_type_exprs, tvar_defs, is_protocol
 
     def analyze_class_typevar_declaration(
@@ -1395,13 +1392,18 @@ class SemanticAnalyzer(NodeVisitor[None],
             return tvars, is_proto
         return None
 
-    def analyze_unbound_tvar(self, t: Type) -> Optional[Tuple[str, TypeVarExpr]]:
+    def analyze_unbound_tvar(self, t: Type) -> Optional[Tuple[str, TypeVarLikeExpr]]:
         if not isinstance(t, UnboundType):
             return None
         unbound = t
         sym = self.lookup_qualified(unbound.name, unbound)
         if sym and isinstance(sym.node, PlaceholderNode):
             self.record_incomplete_ref()
+        if sym and isinstance(sym.node, ParamSpecExpr):
+            if sym.fullname and not self.tvar_scope.allow_binding(sym.fullname):
+                # It's bound by our type variable scope
+                return None
+            return unbound.name, sym.node
         if sym is None or not isinstance(sym.node, TypeVarExpr):
             return None
         elif sym.fullname and not self.tvar_scope.allow_binding(sym.fullname):
@@ -3335,6 +3337,12 @@ class SemanticAnalyzer(NodeVisitor[None],
             node = lvalue.node
             if isinstance(node, Var):
                 node.is_classvar = True
+            analyzed = self.anal_type(s.type)
+            if analyzed is not None and get_type_vars(analyzed):
+                # This means that we have a type var defined inside of a ClassVar.
+                # This is not allowed by PEP526.
+                # See https://github.com/python/mypy/issues/11538
+                self.fail(message_registry.CLASS_VAR_WITH_TYPEVARS, s)
         elif not isinstance(lvalue, MemberExpr) or self.is_self_member_ref(lvalue):
             # In case of member access, report error only when assigning to self
             # Other kinds of member assignments should be already reported
@@ -3357,7 +3365,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         return sym.node.fullname in ('typing.Final', 'typing_extensions.Final')
 
     def fail_invalid_classvar(self, context: Context) -> None:
-        self.fail('ClassVar can only be used for assignments in class body', context)
+        self.fail(message_registry.CLASS_VAR_OUTSIDE_OF_CLASS, context)
 
     def process_module_assignment(self, lvals: List[Lvalue], rval: Expression,
                                   ctx: AssignmentStmt) -> None:

@@ -2,7 +2,9 @@ import sys
 from _typeshed import StrOrBytesPath
 from os import PathLike, _ExecEnv, _ExecVArgs, stat_result as stat_result
 from typing import Any, Iterable, NamedTuple, Sequence, Tuple, overload
+from typing_extensions import final
 
+@final
 class uname_result(NamedTuple):
     sysname: str
     nodename: str
@@ -10,6 +12,7 @@ class uname_result(NamedTuple):
     version: str
     machine: str
 
+@final
 class times_result(NamedTuple):
     user: float
     system: float

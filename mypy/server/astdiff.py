@@ -59,7 +59,7 @@ from mypy.nodes import (
 from mypy.types import (
     Type, TypeVisitor, UnboundType, AnyType, NoneType, UninhabitedType,
     ErasedType, DeletedType, Instance, TypeVarType, CallableType, TupleType, TypedDictType,
-    UnionType, Overloaded, PartialType, TypeType, LiteralType, TypeAliasType
+    UnionType, Overloaded, PartialType, TypeType, LiteralType, TypeAliasType, ParamSpecType
 )
 from mypy.util import get_prefix
 
@@ -309,6 +309,13 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
                 snapshot_types(typ.values),
                 snapshot_type(typ.upper_bound),
                 typ.variance)
+
+    def visit_param_spec(self, typ: ParamSpecType) -> SnapshotItem:
+        return ('ParamSpec',
+                typ.id.raw_id,
+                typ.id.meta_level,
+                typ.flavor,
+                snapshot_type(typ.upper_bound))
 
     def visit_callable_type(self, typ: CallableType) -> SnapshotItem:
         # FIX generics

@@ -546,3 +546,27 @@ def foo() -> None:
     x = 0
     [x := x + y for y in [1, 2, 3]]
 [builtins fixtures/dict.pyi]
+
+[case testOverloadWithPositionalOnlySelf]
+from typing import overload, Optional
+
+class Foo:
+    @overload
+    def f(self, a: str, /) -> None: ...
+
+    @overload
+    def f(self, *, b: bool = False) -> None: ...
+
+    def f(self, a: Optional[str] = None, /, *, b: bool = False) -> None:  # E: Overloaded function implementation does not accept all possible arguments of signature 2
+        ...
+
+class Bar:
+    @overload
+    def f(self, a: str, /) -> None: ...
+
+    @overload  # Notice `/` in sig below:
+    def f(self, /, *, b: bool = False) -> None: ...
+
+    def f(self, a: Optional[str] = None, /, *, b: bool = False) -> None:
+        ...
+[builtins fixtures/bool.pyi]

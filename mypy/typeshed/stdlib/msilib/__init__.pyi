@@ -1,6 +1,6 @@
 import sys
 from types import ModuleType
-from typing import Any, Container, Iterable, Sequence, Set, Tuple, Type
+from typing import Any, Container, Iterable, Sequence, Tuple, Type
 from typing_extensions import Literal
 
 if sys.platform == "win32":
@@ -49,13 +49,13 @@ if sys.platform == "win32":
 
         name: str
         files: list[tuple[str, str]]
-        filenames: Set[str]
+        filenames: set[str]
         index: int
         def __init__(self, name: str) -> None: ...
         def gen_id(self, file: str) -> str: ...
         def append(self, full: str, file: str, logical: str) -> tuple[int, str]: ...
         def commit(self, db: _Database) -> None: ...
-    _directories: Set[str]
+    _directories: set[str]
     class Directory:
 
         db: _Database
@@ -64,8 +64,8 @@ if sys.platform == "win32":
         physical: str
         logical: str
         component: str | None
-        short_names: Set[str]
-        ids: Set[str]
+        short_names: set[str]
+        ids: set[str]
         keyfiles: dict[str, str]
         componentflags: int | None
         absolute: str

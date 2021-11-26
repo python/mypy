@@ -40,6 +40,11 @@ class SupportsLessThan(Protocol):
 
 SupportsLessThanT = TypeVar("SupportsLessThanT", bound=SupportsLessThan)  # noqa: Y001
 
+class SupportsGreaterThan(Protocol):
+    def __gt__(self, __other: Any) -> bool: ...
+
+SupportsGreaterThanT = TypeVar("SupportsGreaterThanT", bound=SupportsGreaterThan)  # noqa: Y001
+
 class SupportsDivMod(Protocol[_T_contra, _T_co]):
     def __divmod__(self, __other: _T_contra) -> _T_co: ...
 

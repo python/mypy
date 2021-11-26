@@ -37,7 +37,8 @@ from mypy.types import (
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType,
     is_named_instance, union_items, TypeQuery, LiteralType,
     is_optional, remove_optional, TypeTranslator, StarType, get_proper_type, ProperType,
-    get_proper_types, is_literal_type, TypeAliasType, TypeGuardedType)
+    get_proper_types, is_literal_type, TypeAliasType, TypeGuardedType, ParamSpecType
+)
 from mypy.sametypes import is_same_type
 from mypy.messages import (
     MessageBuilder, make_inferred_type_note, append_invariance_notes, pretty_seq,
@@ -976,13 +977,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 ctx = typ
                             self.fail(message_registry.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT, ctx)
                     if typ.arg_kinds[i] == nodes.ARG_STAR:
-                        # builtins.tuple[T] is typing.Tuple[T, ...]
-                        arg_type = self.named_generic_type('builtins.tuple',
-                                                           [arg_type])
+                        if not isinstance(arg_type, ParamSpecType):
+                            # builtins.tuple[T] is typing.Tuple[T, ...]
+                            arg_type = self.named_generic_type('builtins.tuple',
+                                                               [arg_type])
                     elif typ.arg_kinds[i] == nodes.ARG_STAR2:
-                        arg_type = self.named_generic_type('builtins.dict',
-                                                           [self.str_type(),
-                                                            arg_type])
+                        if not isinstance(arg_type, ParamSpecType):
+                            arg_type = self.named_generic_type('builtins.dict',
+                                                               [self.str_type(),
+                                                                arg_type])
                     item.arguments[i].variable.type = arg_type
 
                 # Type check initialization expressions.
@@ -1883,7 +1886,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 expected = CONTRAVARIANT
             else:
                 expected = INVARIANT
-            if expected != tvar.variance:
+            if isinstance(tvar, TypeVarType) and expected != tvar.variance:
                 self.msg.bad_proto_variance(tvar.variance, tvar.name, expected, defn)
 
     def check_multiple_inheritance(self, typ: TypeInfo) -> None:
@@ -3260,25 +3263,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """
         self.try_infer_partial_type_from_indexed_assignment(lvalue, rvalue)
         basetype = get_proper_type(self.expr_checker.accept(lvalue.base))
-        if (isinstance(basetype, TypedDictType) or (isinstance(basetype, TypeVarType)
-                and isinstance(get_proper_type(basetype.upper_bound), TypedDictType))):
-            if isinstance(basetype, TypedDictType):
-                typed_dict_type = basetype
-            else:
-                upper_bound_type = get_proper_type(basetype.upper_bound)
-                assert isinstance(upper_bound_type, TypedDictType)
-                typed_dict_type = upper_bound_type
-            item_type = self.expr_checker.visit_typeddict_index_expr(typed_dict_type, lvalue.index)
-            method_type: Type = CallableType(
-                arg_types=[self.named_type('builtins.str'), item_type],
-                arg_kinds=[ARG_POS, ARG_POS],
-                arg_names=[None, None],
-                ret_type=NoneType(),
-                fallback=self.named_type('builtins.function')
-            )
-        else:
-            method_type = self.expr_checker.analyze_external_member_access(
-                '__setitem__', basetype, context)
+        method_type = self.expr_checker.analyze_external_member_access(
+            '__setitem__', basetype, lvalue)
+
         lvalue.method_type = method_type
         self.expr_checker.check_method_call(
             '__setitem__', basetype, method_type, [lvalue.index, rvalue],
@@ -5472,7 +5459,7 @@ def is_literal_enum(type_map: Mapping[Expression, Type], n: Expression) -> bool:
             B = 2
 
     ...and if the expression 'Foo' referred to that enum within the current type context,
-    then the expression 'Foo.A' would be a a literal enum. However, if we did 'a = Foo.A',
+    then the expression 'Foo.A' would be a literal enum. However, if we did 'a = Foo.A',
     then the variable 'a' would *not* be a literal enum.
 
     We occasionally special-case expressions like 'Foo.A' and treat them as a single primitive

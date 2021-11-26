@@ -1085,7 +1085,7 @@ _testTypedDictGet.py:9: note: Revealed type is "builtins.object*"
 _testTypedDictGet.py:10: error: All overload variants of "get" of "Mapping" require at least one argument
 _testTypedDictGet.py:10: note: Possible overload variants:
 _testTypedDictGet.py:10: note:     def get(self, key: str) -> object
-_testTypedDictGet.py:10: note:     def [_T] get(self, key: str, default: object) -> object
+_testTypedDictGet.py:10: note:     def [_T] get(self, str, object) -> object
 _testTypedDictGet.py:12: note: Revealed type is "builtins.object*"
 
 [case testTypedDictMappingMethods]
@@ -1456,9 +1456,9 @@ frozenset({1}) == [1]  # Error
 {1: 2}.keys() == [1]  # Error
 [out]
 _testStrictEqualityAllowlist.py:5: error: Non-overlapping equality check (left operand type: "FrozenSet[int]", right operand type: "List[int]")
-_testStrictEqualityAllowlist.py:11: error: Non-overlapping equality check (left operand type: "_dict_keys[int, int]", right operand type: "Set[str]")
-_testStrictEqualityAllowlist.py:12: error: Non-overlapping equality check (left operand type: "_dict_values[int, int]", right operand type: "Set[int]")
-_testStrictEqualityAllowlist.py:13: error: Non-overlapping equality check (left operand type: "_dict_keys[int, int]", right operand type: "List[int]")
+_testStrictEqualityAllowlist.py:11: error: Non-overlapping equality check (left operand type: "dict_keys[int, int]", right operand type: "Set[str]")
+_testStrictEqualityAllowlist.py:12: error: Non-overlapping equality check (left operand type: "dict_values[int, int]", right operand type: "Set[int]")
+_testStrictEqualityAllowlist.py:13: error: Non-overlapping equality check (left operand type: "dict_keys[int, int]", right operand type: "List[int]")
 
 [case testUnreachableWithStdlibContextManagers]
 # mypy: warn-unreachable, strict-optional

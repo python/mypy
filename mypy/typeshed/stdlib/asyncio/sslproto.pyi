@@ -1,6 +1,7 @@
 import ssl
 import sys
-from typing import Any, Callable, ClassVar, Deque
+from collections import deque
+from typing import Any, Callable, ClassVar
 from typing_extensions import Literal
 
 from . import constants, events, futures, protocols, transports
@@ -73,7 +74,7 @@ class SSLProtocol(protocols.Protocol):
     _server_hostname: str | None
     _sslcontext: ssl.SSLContext
     _extra: dict[str, Any]
-    _write_backlog: Deque[tuple[bytes, int]]
+    _write_backlog: deque[tuple[bytes, int]]
     _write_buffer_size: int
     _waiter: futures.Future[Any]
     _loop: events.AbstractEventLoop
