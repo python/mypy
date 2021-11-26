@@ -3337,7 +3337,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             # Corner case, this might be a pre-PEP526 classvar,
             # defined as `x: List[...] = []` (or typed with comments).
             # We need to still check for valid type variables usage in it.
-            self.check_class_level_typevar(s.type, s)
+            self.check_class_level_typevar(lvalue, s.type, s)
             return
         if self.is_class_scope() and isinstance(lvalue, NameExpr):
             node = lvalue.node
@@ -3349,15 +3349,17 @@ class SemanticAnalyzer(NodeVisitor[None],
             # Other kinds of member assignments should be already reported
             self.fail_invalid_classvar(lvalue)
 
-    def check_class_level_typevar(self, typ: Type, context: AssignmentStmt) -> None:
-        if (not context.new_syntax
-                and isinstance(context.rvalue, NameExpr)
-                and context.rvalue.fullname == 'builtins.None'):
-            # Special case: pre-PEP526 code sometimes uses pattern like:
-            #   `x = None  # type: List[T]`
-            # to define instance level annotations.
-            return
-        self.analyze_class_level_typevars(typ, context)
+    def check_class_level_typevar(self, lvalue: Lvalue,
+                                  typ: Type, context: AssignmentStmt) -> None:
+        if self.is_class_scope() and isinstance(lvalue, NameExpr):
+            if (not context.new_syntax
+                    and isinstance(context.rvalue, NameExpr)
+                    and context.rvalue.fullname == 'builtins.None'):
+                # Special case: pre-PEP526 code sometimes uses pattern like:
+                #   `x = None  # type: List[T]`
+                # to define instance level annotations.
+                return
+            self.analyze_class_level_typevars(typ, context)
 
     def analyze_class_level_typevars(self, typ: Type, context: AssignmentStmt) -> None:
         analyzed = self.anal_type(typ)

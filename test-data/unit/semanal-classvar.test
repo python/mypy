@@ -229,8 +229,16 @@ class TypeComments(Generic[T]):
     nested_error = []  # type: List[List[T]]  # E: ClassVar cannot contain type variables
     ok = None  # type: List[T]
 
+    def __init__(self) -> None:
+        self.instance_attr = []  # type: List[T]
+        self.none_attr = None  # type: List[T]
+
 class TypeAnnotation(Generic[T]):
     error: List[T] = []  # E: ClassVar cannot contain type variables
     nested_error: List[List[T]] = []  # E: ClassVar cannot contain type variables
     not_ok: List[T] = None  # E: ClassVar cannot contain type variables
+
+    def __init__(self) -> None:
+        self.instance_attr = []  # type: List[T]
+        self.none_attr = None  # type: List[T]
 [out]
