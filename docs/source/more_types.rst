@@ -84,7 +84,7 @@ certain values from base class instances. Example:
         ...
 
 However, this approach introduces some runtime overhead. To avoid this, the typing
-module provides a helper function :py:func:`NewType <typing.NewType>` that creates simple unique types with
+module provides a helper object :py:func:`NewType <typing.NewType>` that creates simple unique types with
 almost zero runtime overhead. Mypy will treat the statement
 ``Derived = NewType('Derived', Base)`` as being roughly equivalent to the following
 definition:
@@ -95,7 +95,7 @@ definition:
         def __init__(self, _x: Base) -> None:
             ...
 
-However, at runtime, ``NewType('Derived', Base)`` will return a dummy function that
+However, at runtime, ``NewType('Derived', Base)`` will return a dummy callable that
 simply returns its argument:
 
 .. code-block:: python
@@ -127,7 +127,7 @@ containing the name of the new type and must equal the name of the variable to w
 type is assigned. The second argument must be a properly subclassable class, i.e.,
 not a type construct like :py:data:`~typing.Union`, etc.
 
-The function returned by :py:func:`NewType <typing.NewType>` accepts only one argument; this is equivalent to
+The callable returned by :py:func:`NewType <typing.NewType>` accepts only one argument; this is equivalent to
 supporting only one constructor accepting an instance of the base class (see above).
 Example:
 
@@ -148,8 +148,7 @@ Example:
     tcp_packet = TcpPacketId(127, 0)  # Fails in type checker and at runtime
 
 You cannot use :py:func:`isinstance` or :py:func:`issubclass` on the object returned by
-:py:func:`~typing.NewType`, because function objects don't support these operations. You cannot
-create subclasses of these objects either.
+:py:func:`~typing.NewType`, nor can you subclass an object returned by :py:func:`~typing.NewType`.
 
 .. note::
 
