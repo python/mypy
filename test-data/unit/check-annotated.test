@@ -128,6 +128,7 @@ reveal_type(x)  # N: Revealed type is "def () -> builtins.int"
 [builtins fixtures/tuple.pyi]
 
 [case testAnnotatedStringLiteralInFunc]
+from typing import TypeVar
 from typing_extensions import Annotated
 def f1(a: Annotated[str, "metadata"]):
     pass
@@ -137,6 +138,10 @@ def f2(a: Annotated["str", "metadata"]):
 reveal_type(f2)  # N: Revealed type is "def (a: builtins.str) -> Any"
 def f3(a: Annotated["notdefined", "metadata"]): # E: Name "notdefined" is not defined
     pass
+T = TypeVar('T')
+def f4(a: Annotated[T, "metatdata"]):
+    pass
+reveal_type(f4)  # N: Revealed type is "def [T] (a: T`-1) -> Any"
 [builtins fixtures/tuple.pyi]
 
 [case testSliceAnnotated39]
