@@ -148,7 +148,6 @@ VecTExt_traverse(VecTExtObject *self, visitproc visit, void *arg)
 {
     Py_VISIT(self->item_type);
     for (Py_ssize_t i = 0; i < self->len; i++) {
-        // TODO: NULL checks?
         Py_VISIT(self->items[i]);
     }
     return 0;
@@ -159,7 +158,6 @@ VecTExt_clear(VecTExtObject *self)
 {
     Py_CLEAR(self->item_type);
     for (Py_ssize_t i = 0; i < self->len; i++) {
-        // TODO: NULL checks?
         Py_CLEAR(self->items[i]);
     }
     return 0;
@@ -170,12 +168,10 @@ VecTExt_dealloc(VecTExtObject *self)
 {
     PyObject_GC_UnTrack(self);
     Py_TRASHCAN_BEGIN(self, VecTExt_dealloc)
-    VecTExt_clear(self);
-    //Py_DECREF(self->item_type);
-    //for (Py_ssize_t i = 0; i < self->len; i++) {
-    //    Py_XDECREF(self->items[i]);
-    //}
-    //PyObject_GC_Del(self);
+    Py_DECREF(self->item_type);
+    for (Py_ssize_t i = 0; i < self->len; i++) {
+        Py_XDECREF(self->items[i]);
+    }
     Py_TYPE(self)->tp_free((PyObject *)self);
     Py_TRASHCAN_END
 }

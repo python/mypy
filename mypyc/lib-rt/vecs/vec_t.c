@@ -160,12 +160,10 @@ VecT_dealloc(VecTObject *self)
 {
     PyObject_GC_UnTrack(self);
     Py_TRASHCAN_BEGIN(self, VecT_dealloc)
-    VecT_clear(self);
-    //Py_DECREF(self->item_type);
-    //for (Py_ssize_t i = 0; i < self->len; i++) {
-    //    Py_XDECREF(self->items[i]);
-    //}
-    //PyObject_GC_Del(self);
+    Py_DECREF(self->item_type);
+    for (Py_ssize_t i = 0; i < self->len; i++) {
+        Py_XDECREF(self->items[i]);
+    }
     Py_TYPE(self)->tp_free((PyObject *)self);
     Py_TRASHCAN_END
 }
