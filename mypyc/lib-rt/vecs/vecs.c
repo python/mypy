@@ -255,6 +255,30 @@ PyObject *vec_generic_richcompare(Py_ssize_t len, PyObject **items,
     return res;
 }
 
+PyObject *vec_generic_remove(Py_ssize_t *len, PyObject **items, PyObject *item) {
+    for (Py_ssize_t i = 0; i < *len; i++) {
+        int match = 0;
+        if (items[i] == item)
+            match = 1;
+        else {
+            int itemcmp = PyObject_RichCompareBool(items[i], item, Py_EQ);
+            if (itemcmp < 0)
+                return NULL;
+            match = itemcmp;
+        }
+        if (match) {
+            Py_DECREF(items[i]);
+            for (; i < *len - 1; i++) {
+                items[i] = items[i + 1];
+            }
+            (*len)--;
+            Py_RETURN_NONE;
+        }
+    }
+    PyErr_SetString(PyExc_ValueError, "vec.remove(x): x not in vec");
+    return NULL;
+}
+
 // Module-level functions
 
 static PyObject *vecs_append(PyObject *self, PyObject *args)

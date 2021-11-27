@@ -150,5 +150,6 @@ PyObject *vec_repr(PyObject *vec, PyTypeObject *item_type, int32_t depth, int32_
 PyObject *vec_generic_richcompare(Py_ssize_t len, PyObject **items,
                                   Py_ssize_t other_len, PyObject **other_items,
                                   int op);
+PyObject *vec_generic_remove(Py_ssize_t *len, PyObject **items, PyObject *item);
 
 #endif
