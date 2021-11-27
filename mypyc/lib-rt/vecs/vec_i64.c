@@ -87,7 +87,6 @@ PyObject *vec_i64_get_item(PyObject *o, Py_ssize_t i) {
     }
 }
 
-
 PyObject *vec_i64_subscript(PyObject *self, PyObject *item) {
     VecI64Object *vec = (VecI64Object *)self;
     if (PyIndex_Check(item)) {
