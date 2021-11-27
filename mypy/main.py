@@ -85,8 +85,12 @@ def main(script_path: Optional[str],
         fail("error: --install-types not supported with incremental mode disabled",
              stderr, options)
 
+    if options.install_types and options.python_executable is None:
+        fail("error: --install-types not supported without python executable or site packages",
+             stderr, options)
+
     if options.install_types and not sources:
-        install_types(options.cache_dir, formatter, non_interactive=options.non_interactive)
+        install_types(formatter, options, non_interactive=options.non_interactive)
         return
 
     res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
@@ -95,7 +99,7 @@ def main(script_path: Optional[str],
         missing_pkgs = read_types_packages_to_install(options.cache_dir, after_run=True)
         if missing_pkgs:
             # Install missing type packages and rerun build.
-            install_types(options.cache_dir, formatter, after_run=True, non_interactive=True)
+            install_types(formatter, options, after_run=True, non_interactive=True)
             fscache.flush()
             print()
             res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
@@ -122,8 +126,7 @@ def main(script_path: Optional[str],
         stdout.flush()
 
     if options.install_types and not options.non_interactive:
-        result = install_types(options.cache_dir, formatter, after_run=True,
-                               non_interactive=False)
+        result = install_types(formatter, options, after_run=True, non_interactive=False)
         if result:
             print()
             print("note: Run mypy again for up-to-date results with installed types")
@@ -1151,20 +1154,21 @@ def read_types_packages_to_install(cache_dir: str, after_run: bool) -> List[str]
         return [line.strip() for line in f.readlines()]
 
 
-def install_types(cache_dir: str,
-                  formatter: util.FancyFormatter,
+def install_types(formatter: util.FancyFormatter,
+                  options: Options,
                   *,
                   after_run: bool = False,
                   non_interactive: bool = False) -> bool:
     """Install stub packages using pip if some missing stubs were detected."""
-    packages = read_types_packages_to_install(cache_dir, after_run)
+    packages = read_types_packages_to_install(options.cache_dir, after_run)
     if not packages:
         # If there are no missing stubs, generate no output.
         return False
     if after_run and not non_interactive:
         print()
     print('Installing missing stub packages:')
-    cmd = [sys.executable, '-m', 'pip', 'install'] + packages
+    assert options.python_executable, 'Python executable required to install types'
+    cmd = [options.python_executable, '-m', 'pip', 'install'] + packages
     print(formatter.style(' '.join(cmd), 'none', bold=True))
     print()
     if not non_interactive:
