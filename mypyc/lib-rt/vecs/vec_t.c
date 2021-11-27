@@ -10,6 +10,8 @@
 #include <Python.h>
 #include "vecs.h"
 
+// Alloc a partially initialized vec. Caller *must* initialize len and items, and
+// call PyObject_GC_Track().
 static VecTObject *vec_t_alloc(Py_ssize_t size, PyTypeObject *item_type) {
     VecTObject *v = PyObject_GC_NewVar(VecTObject, &VecTType, size);
     if (v == NULL)

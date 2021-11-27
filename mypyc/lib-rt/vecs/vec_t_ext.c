@@ -9,6 +9,39 @@
 #include <Python.h>
 #include "vecs.h"
 
+// Alloc a partially initialized vec. Caller *must* initialize len and items, and
+// call PyObject_GC_Track().
+static VecTExtObject *vec_t_ext_alloc(Py_ssize_t size, PyTypeObject *item_type, int32_t optionals,
+                                      int32_t depth) {
+    VecTExtObject *v = PyObject_GC_NewVar(VecTExtObject, &VecTExtType, size);
+    if (v == NULL)
+        return NULL;
+    v->item_type = item_type;
+    v->optionals = optionals;
+    v->depth = depth;
+    return v;
+}
+
+VecTExtObject *Vec_T_Ext_New(Py_ssize_t size, PyTypeObject *item_type, int32_t optionals,
+                             int32_t depth) {
+    VecTExtObject *v;
+    v = PyObject_GC_NewVar(VecTExtObject, &VecTExtType, size);
+    //v = VecTType.tp_alloc(&VecTType, size);
+    if (v == NULL)
+        return NULL;
+
+    v->item_type = item_type;
+    v->len = size;
+    for (Py_ssize_t i = 0; i < size; i++) {
+        v->items[i] = NULL;
+    }
+    v->optionals = optionals;
+    v->depth = depth;
+
+    PyObject_GC_Track(v);
+    return v;
+}
+
 PyObject *vec_t_ext_repr(PyObject *self) {
     VecTExtObject *v = (VecTExtObject *)self;
     return vec_repr(self, v->item_type, v->depth, v->optionals, 1);
@@ -22,6 +55,46 @@ PyObject *vec_t_ext_get_item(PyObject *o, Py_ssize_t i) {
         return item;
     } else {
         PyErr_SetString(PyExc_IndexError, "index out of range");
+        return NULL;
+    }
+}
+
+PyObject *vec_t_ext_subscript(PyObject *self, PyObject *item) {
+    VecTExtObject *vec = (VecTExtObject *)self;
+    if (PyIndex_Check(item)) {
+        Py_ssize_t i = PyNumber_AsSsize_t(item, PyExc_IndexError);
+        if (i == -1 && PyErr_Occurred())
+            return NULL;
+        if ((size_t)i < (size_t)vec->len) {
+            PyObject *item = vec->items[i];
+            Py_INCREF(item);
+            return item;
+        } else {
+            PyErr_SetString(PyExc_IndexError, "index out of range");
+            return NULL;
+        }
+    } else if (PySlice_Check(item)) {
+        Py_ssize_t start, stop, step;
+        if (PySlice_Unpack(item, &start, &stop, &step) < 0)
+            return NULL;
+        Py_ssize_t slicelength = PySlice_AdjustIndices(vec->len, &start, &stop, step);
+        VecTExtObject *res = vec_t_ext_alloc(slicelength, vec->item_type, vec->optionals,
+                                             vec->depth);
+        if (res == NULL)
+            return NULL;
+        res->len = slicelength;
+        Py_ssize_t j = start;
+        for (Py_ssize_t i = 0; i < slicelength; i++) {
+            PyObject *item = vec->items[j];
+            Py_INCREF(item);
+            res->items[i] = item;
+            j += step;
+        }
+        PyObject_GC_Track(res);
+        return (PyObject *)res;
+    } else {
+        PyErr_Format(PyExc_TypeError, "vec indices must be integers or slices, not %.100s",
+                     item->ob_type->tp_name);
         return NULL;
     }
 }
@@ -105,6 +178,7 @@ static Py_ssize_t vec_ext_length(PyObject *o) {
 
 static PyMappingMethods VecTExtMapping = {
     .mp_length = vec_ext_length,
+    .mp_subscript = vec_t_ext_subscript,
 };
 
 static PySequenceMethods VecTExtSequence = {
@@ -129,26 +203,6 @@ PyTypeObject VecTExtType = {
     .tp_richcompare = vec_t_ext_richcompare,
     // TODO: free
 };
-
-VecTExtObject *Vec_T_Ext_New(Py_ssize_t size, PyTypeObject *item_type, int32_t optionals,
-                             int32_t depth) {
-    VecTExtObject *v;
-    v = PyObject_GC_NewVar(VecTExtObject, &VecTExtType, size);
-    //v = VecTType.tp_alloc(&VecTType, size);
-    if (v == NULL)
-        return NULL;
-
-    v->item_type = item_type;
-    v->len = size;
-    for (Py_ssize_t i = 0; i < size; i++) {
-        v->items[i] = NULL;
-    }
-    v->optionals = optionals;
-    v->depth = depth;
-
-    PyObject_GC_Track(v);
-    return v;
-}
 
 VecTExtObject *Vec_T_Ext_FromIterable(PyTypeObject *item_type, int32_t optionals, int32_t depth,
                                       PyObject *iterable) {
