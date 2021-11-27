@@ -1150,5 +1150,5 @@ TypedDict in the same way you can with regular objects.
 Instead, you can use the :ref:`tagged union pattern <tagged_unions>`. The referenced
 section of the docs has a full description with an example, but in short, you will
 need to give each TypedDict the same key where each value has a unique
-unique :ref:`Literal type <literal_types>`. Then, check that key to distinguish
+:ref:`Literal type <literal_types>`. Then, check that key to distinguish
 between your TypedDicts.
