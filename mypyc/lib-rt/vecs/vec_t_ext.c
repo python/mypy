@@ -136,6 +136,13 @@ PyObject *vec_t_ext_richcompare(PyObject *self, PyObject *other, int op) {
     return res;
 }
 
+static PyObject *vec_t_ext_remove(PyObject *self, PyObject *arg) {
+    VecTExtObject *v = (VecTExtObject *)self;
+    if (!VecTExt_ItemCheck(v, arg))
+        return NULL;
+    return vec_generic_remove(&v->len, v->items, arg);
+}
+
 static int
 VecTExt_traverse(VecTExtObject *self, visitproc visit, void *arg)
 {
@@ -188,6 +195,11 @@ static PySequenceMethods VecTExtSequence = {
     .sq_ass_item = vec_t_ext_ass_item,
 };
 
+static PyMethodDef vec_t_ext_methods[] = {
+    {"remove", vec_t_ext_remove, METH_O, NULL},
+    {NULL, NULL, 0, NULL},  /* Sentinel */
+};
+
 PyTypeObject VecTExtType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "vec",
@@ -203,6 +215,7 @@ PyTypeObject VecTExtType = {
     .tp_as_sequence = &VecTExtSequence,
     .tp_as_mapping = &VecTExtMapping,
     .tp_richcompare = vec_t_ext_richcompare,
+    .tp_methods = vec_t_ext_methods,
     // TODO: free
 };
 
