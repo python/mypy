@@ -40,6 +40,27 @@ int vec_t_ext_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
     }
 }
 
+PyObject *vec_t_ext_richcompare(PyObject *self, PyObject *other, int op) {
+    PyObject *res;
+    if (op == Py_EQ || op == Py_NE) {
+        if (other->ob_type != &VecTExtType) {
+            res = op == Py_EQ ? Py_False : Py_True;
+        } else {
+            VecTExtObject *x = (VecTExtObject *)self;
+            VecTExtObject *y = (VecTExtObject *)other;
+            if (x->item_type != y->item_type
+                    || x->depth != y->depth
+                    || x->optionals != y->optionals) {
+                res = op == Py_EQ ? Py_False : Py_True;
+            } else
+                return vec_generic_richcompare(x->len, x->items, y->len, y->items, op);
+        }
+    } else
+        res = Py_NotImplemented;
+    Py_INCREF(res);
+    return res;
+}
+
 static int
 VecTExt_traverse(VecTExtObject *self, visitproc visit, void *arg)
 {
@@ -105,6 +126,7 @@ PyTypeObject VecTExtType = {
     .tp_repr = (reprfunc)vec_t_ext_repr,
     .tp_as_sequence = &VecTExtSequence,
     .tp_as_mapping = &VecTExtMapping,
+    .tp_richcompare = vec_t_ext_richcompare,
     // TODO: free
 };
 
