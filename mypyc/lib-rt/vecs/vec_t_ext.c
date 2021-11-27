@@ -126,7 +126,7 @@ PyObject *vec_t_ext_richcompare(PyObject *self, PyObject *other, int op) {
                     || x->optionals != y->optionals) {
                 res = op == Py_EQ ? Py_False : Py_True;
             } else
-                return vec_generic_richcompare(x->len, x->items, y->len, y->items, op);
+                return vec_generic_richcompare(&x->len, x->items, &y->len, y->items, op);
         }
     } else
         res = Py_NotImplemented;

@@ -227,16 +227,16 @@ PyObject *vec_repr(PyObject *vec, PyTypeObject *item_type, int32_t depth, int32_
 }
 
 // Generic comparison implementation for vecs with PyObject * items.
-PyObject *vec_generic_richcompare(Py_ssize_t len, PyObject **items,
-                                  Py_ssize_t other_len, PyObject **other_items,
+PyObject *vec_generic_richcompare(Py_ssize_t *len, PyObject **items,
+                                  Py_ssize_t *other_len, PyObject **other_items,
                                   int op) {
     int cmp = 1;
     PyObject *res;
     if (op == Py_EQ || op == Py_NE) {
-        if (len != other_len) {
+        if (*len != *other_len) {
             cmp = 0;
         } else {
-            for (Py_ssize_t i = 0; i < len; i++) {
+            for (Py_ssize_t i = 0; i < *len && i < *other_len; i++) {
                 int itemcmp = PyObject_RichCompareBool(items[i], other_items[i], Py_EQ);
                 if (itemcmp < 0)
                     return NULL;
@@ -267,7 +267,7 @@ PyObject *vec_generic_remove(Py_ssize_t *len, PyObject **items, PyObject *item) 
             match = itemcmp;
         }
         if (match) {
-            Py_DECREF(items[i]);
+            Py_CLEAR(items[i]);
             for (; i < *len - 1; i++) {
                 items[i] = items[i + 1];
             }

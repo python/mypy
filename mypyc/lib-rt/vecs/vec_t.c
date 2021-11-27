@@ -118,7 +118,7 @@ PyObject *vec_t_richcompare(PyObject *self, PyObject *other, int op) {
             if (x->item_type != y->item_type) {
                 res = op == Py_EQ ? Py_False : Py_True;
             } else
-                return vec_generic_richcompare(x->len, x->items, y->len, y->items, op);
+                return vec_generic_richcompare(&x->len, x->items, &y->len, y->items, op);
         }
     } else
         res = Py_NotImplemented;

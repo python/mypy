@@ -147,8 +147,8 @@ static inline int check_float_error(PyObject *o) {
 PyObject *vec_type_to_str(PyTypeObject *item_type, int32_t depth, int32_t optionals);
 PyObject *vec_repr(PyObject *vec, PyTypeObject *item_type, int32_t depth, int32_t optionals,
                    int verbose);
-PyObject *vec_generic_richcompare(Py_ssize_t len, PyObject **items,
-                                  Py_ssize_t other_len, PyObject **other_items,
+PyObject *vec_generic_richcompare(Py_ssize_t *len, PyObject **items,
+                                  Py_ssize_t *other_len, PyObject **other_items,
                                   int op);
 PyObject *vec_generic_remove(Py_ssize_t *len, PyObject **items, PyObject *item);
 
