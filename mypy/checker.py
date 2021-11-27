@@ -515,8 +515,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     )
                     if isinstance(inner_call, CallableType):
                         impl_type = inner_call
-                else:
-                    assert False
                 if impl_type is None:
                     self.msg.not_callable(inner_type, defn.impl)
 
