@@ -40,7 +40,7 @@ static Py_ssize_t vec_length(PyObject *o) {
     return ((VecI64Object *)o)->len;
 }
 
-PyObject *vec_richcompare(PyObject *self, PyObject *other, int op) {
+static PyObject *vec_i64_richcompare(PyObject *self, PyObject *other, int op) {
     int cmp = 1;
     PyObject *res;
     if (op == Py_EQ || op == Py_NE) {
@@ -90,7 +90,7 @@ PyTypeObject VecI64Type = {
     .tp_repr = (reprfunc)vec_i64_repr,
     .tp_as_sequence = &VecI64Sequence,
     .tp_as_mapping = &VecI64Mapping,
-    .tp_richcompare = vec_richcompare,
+    .tp_richcompare = vec_i64_richcompare,
 };
 
 static VecI64Object *vec_i64_alloc(Py_ssize_t size)

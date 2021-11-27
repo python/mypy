@@ -43,6 +43,25 @@ int vec_t_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
     }
 }
 
+PyObject *vec_t_richcompare(PyObject *self, PyObject *other, int op) {
+    PyObject *res;
+    if (op == Py_EQ || op == Py_NE) {
+        if (other->ob_type != &VecTType) {
+            res = op == Py_EQ ? Py_False : Py_True;
+        } else {
+            VecTObject *x = (VecTObject *)self;
+            VecTObject *y = (VecTObject *)other;
+            if (x ->item_type != y->item_type) {
+                res = op == Py_EQ ? Py_False : Py_True;
+            } else
+                return vec_generic_richcompare(x->len, x->items, y->len, y->items, op);
+        }
+    } else
+        res = Py_NotImplemented;
+    Py_INCREF(res);
+    return res;
+}
+
 static int
 VecT_traverse(VecTObject *self, visitproc visit, void *arg)
 {
@@ -106,6 +125,7 @@ PyTypeObject VecTType = {
     .tp_repr = (reprfunc)vec_t_repr,
     .tp_as_sequence = &VecTSequence,
     .tp_as_mapping = &VecTMapping,
+    .tp_richcompare = vec_t_richcompare,
     // TODO: free
 };
 

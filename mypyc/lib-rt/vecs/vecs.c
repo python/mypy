@@ -226,6 +226,35 @@ PyObject *vec_repr(PyObject *vec, PyTypeObject *item_type, int32_t depth, int32_
     return PyUnicode_Join(sep, l);
 }
 
+// Generic comparison implementation for vecs with PyObject * items.
+PyObject *vec_generic_richcompare(Py_ssize_t len, PyObject **items,
+                                  Py_ssize_t other_len, PyObject **other_items,
+                                  int op) {
+    int cmp = 1;
+    PyObject *res;
+    if (op == Py_EQ || op == Py_NE) {
+        if (len != other_len) {
+            cmp = 0;
+        } else {
+            for (Py_ssize_t i = 0; i < len; i++) {
+                int itemcmp = PyObject_RichCompareBool(items[i], other_items[i], Py_EQ);
+                if (itemcmp < 0)
+                    return NULL;
+                if (!itemcmp) {
+                    cmp = 0;
+                    break;
+                }
+            }
+        }
+        if (op == Py_NE)
+            cmp = cmp ^ 1;
+        res = cmp ? Py_True : Py_False;
+    } else
+        res = Py_NotImplemented;
+    Py_INCREF(res);
+    return res;
+}
+
 // Module-level functions
 
 static PyObject *vecs_append(PyObject *self, PyObject *args)
