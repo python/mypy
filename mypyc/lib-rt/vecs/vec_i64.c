@@ -171,6 +171,27 @@ static PyObject *vec_i64_richcompare(PyObject *self, PyObject *other, int op) {
     return res;
 }
 
+static PyObject *vec_i64_remove(PyObject *self, PyObject *arg) {
+    if (check_float_error(arg))
+        return NULL;
+    VecI64Object *v = (VecI64Object *)self;
+    long long x = PyLong_AsLongLong(arg);
+    if (x == -1 && PyErr_Occurred())
+        return NULL;
+
+    for (Py_ssize_t i = 0; i < v->len; i++) {
+        if (v->items[i] == x) {
+            for (; i < v->len - 1; i++) {
+                v->items[i] = v->items[i + 1];
+            }
+            v->len--;
+            Py_RETURN_NONE;
+        }
+    }
+    PyErr_SetString(PyExc_ValueError, "vec.remove(x): x not in vec");
+    return NULL;
+}
+
 static PyMappingMethods VecI64Mapping = {
     .mp_length = vec_length,
     .mp_subscript = vec_i64_subscript,
@@ -179,6 +200,11 @@ static PyMappingMethods VecI64Mapping = {
 static PySequenceMethods VecI64Sequence = {
     .sq_item = vec_i64_get_item,
     .sq_ass_item = vec_i64_ass_item,
+};
+
+static PyMethodDef vec_i64_methods[] = {
+    {"remove", vec_i64_remove, METH_O, NULL},
+    {NULL, NULL, 0, NULL},  /* Sentinel */
 };
 
 PyTypeObject VecI64Type = {
@@ -194,6 +220,7 @@ PyTypeObject VecI64Type = {
     .tp_as_sequence = &VecI64Sequence,
     .tp_as_mapping = &VecI64Mapping,
     .tp_richcompare = vec_i64_richcompare,
+    .tp_methods = vec_i64_methods,
 };
 
 PyObject *Vec_I64_Append(PyObject *obj, int64_t x) {
