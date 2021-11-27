@@ -37,16 +37,19 @@ jobs:
           cd mypy_to_test
           echo "new commit"
           git rev-list --format=%s --max-count=1 $GITHUB_SHA
-          git checkout -b upstream_master origin/master
+
+          MERGE_BASE=$(git merge-base $GITHUB_SHA origin/master)
+          git checkout -b base_commit $MERGE_BASE
           echo "base commit"
-          git rev-list --format=%s --max-count=1 upstream_master
+          git rev-list --format=%s --max-count=1 base_commit
+
           echo ''
           cd ..
           # fail action if exit code isn't zero or one
           (
             mypy_primer \
             --repo mypy_to_test \
-            --new $GITHUB_SHA --old upstream_master \
+            --new $GITHUB_SHA --old base_commit \
             --num-shards 3 --shard-index ${{ matrix.shard-index }} \
             --debug \
             --output concise \
