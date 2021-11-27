@@ -5335,7 +5335,68 @@ def register(cls: Type[_T]) -> int: ...
 def register(cls: Callable[..., _T]) -> str: ...
 def register(cls: Any) -> Any: return None
 
-
 x = register(Foo)
 reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/dict.pyi]
+
+[case testOverloadSelfArgWithMultipleMatches]
+# https://github.com/python/mypy/issues/11347
+from typing import Generic, TypeVar, overload, Any
+
+T = TypeVar('T')
+
+class Some(Generic[T]):
+    @overload
+    def method(self: Some[int]) -> str: ...
+    @overload
+    def method(self: Some[str]) -> float: ...
+    def method(self): ...
+
+s1: Some[int]
+s2: Some[str]
+s3: Some[Any]
+reveal_type(s1.method())  # N: Revealed type is "builtins.str"
+reveal_type(s2.method())  # N: Revealed type is "builtins.float"
+reveal_type(s3.method()) # N: Revealed type is "Any"
+[builtins fixtures/dict.pyi]
+
+[case testOverloadSelfArgWithOtherSameArgAndMultipleMatches]
+from typing import Generic, TypeVar, overload, Any
+
+T = TypeVar('T')
+
+class Some(Generic[T]):
+    @overload
+    def method(self: Some[int], other: int) -> str: ...
+    @overload
+    def method(self: Some[str], other: int) -> float: ...
+    def method(self): ...
+
+# was ok
+s1: Some[int]
+s2: Some[str]
+s3: Some[Any]
+reveal_type(s1.method(1))  # N: Revealed type is "builtins.str"
+reveal_type(s2.method(1))  # N: Revealed type is "builtins.float"
+reveal_type(s3.method(1)) # N: Revealed type is "Any"
+[builtins fixtures/dict.pyi]
+
+[case testOverloadSelfArgWithOtherDifferentArgAndMultipleMatches]
+from typing import Generic, TypeVar, overload, Any
+
+T = TypeVar('T')
+
+class Some(Generic[T]):
+    @overload
+    def method(self: Some[int], other: int) -> str: ...
+    @overload
+    def method(self: Some[str], other: str) -> float: ...
+    def method(self): ...
+
+s1: Some[int]
+s2: Some[str]
+s3: Some[Any]
+reveal_type(s1.method(1))  # N: Revealed type is "builtins.str"
+reveal_type(s2.method('a'))  # N: Revealed type is "builtins.float"
+reveal_type(s3.method(1)) # N: Revealed type is "builtins.str"
 [builtins fixtures/dict.pyi]
