@@ -16,6 +16,7 @@ static VecTObject *vec_t_alloc(Py_ssize_t size, PyTypeObject *item_type) {
     VecTObject *v = PyObject_GC_NewVar(VecTObject, &VecTType, size);
     if (v == NULL)
         return NULL;
+    Py_INCREF(item_type);
     v->item_type = item_type;
     return v;
 }
@@ -27,6 +28,7 @@ VecTObject *Vec_T_New(Py_ssize_t size, PyTypeObject *item_type) {
     if (v == NULL)
         return NULL;
 
+    Py_INCREF(item_type);
     v->item_type = item_type;
     v->len = size;
     for (Py_ssize_t i = 0; i < size; i++) {
@@ -212,7 +214,9 @@ VecTObject *Vec_T_FromIterable(PyTypeObject *item_type, PyObject *iterable) {
     if (v == NULL)
         return NULL;
     v->len = 0;
+    Py_INCREF(item_type);
     v->item_type = item_type;
+    PyObject_GC_Track(v);
 
     PyObject *iter = PyObject_GetIter(iterable);
     if (iter == NULL) {

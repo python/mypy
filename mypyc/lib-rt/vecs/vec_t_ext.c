@@ -16,6 +16,7 @@ static VecTExtObject *vec_t_ext_alloc(Py_ssize_t size, PyTypeObject *item_type, 
     VecTExtObject *v = PyObject_GC_NewVar(VecTExtObject, &VecTExtType, size);
     if (v == NULL)
         return NULL;
+    Py_INCREF(item_type);
     v->item_type = item_type;
     v->optionals = optionals;
     v->depth = depth;
@@ -30,6 +31,7 @@ VecTExtObject *Vec_T_Ext_New(Py_ssize_t size, PyTypeObject *item_type, int32_t o
     if (v == NULL)
         return NULL;
 
+    Py_INCREF(item_type);
     v->item_type = item_type;
     v->len = size;
     for (Py_ssize_t i = 0; i < size; i++) {
@@ -210,9 +212,11 @@ VecTExtObject *Vec_T_Ext_FromIterable(PyTypeObject *item_type, int32_t optionals
     if (v == NULL)
         return NULL;
     v->len = 0;
+    Py_INCREF(item_type);
     v->item_type = item_type;
     v->optionals = optionals;
     v->depth = depth;
+    PyObject_GC_Track(v);
 
     PyObject *iter = PyObject_GetIter(iterable);
     if (iter == NULL) {
