@@ -485,6 +485,28 @@ class Errors:
                                  None, False, False, False)
                 self._add_error_info(file, info)
 
+    def generate_ignore_without_code_errors(self,
+                                            file: str,
+                                            is_warning_unused_ignores: bool) -> None:
+        if is_typeshed_file(file) or file in self.ignored_files:
+            return
+
+        used_ignored_lines = self.used_ignored_lines[file]
+        for line, ignored_codes in self.ignored_lines[file].items():
+            if ignored_codes:
+                continue
+
+            # If the ignore is itself unused and that would be warned about, let
+            # that error stand alone
+            if is_warning_unused_ignores and not used_ignored_lines[line]:
+                continue
+
+            # Don't use report since add_error_info will ignore the error!
+            info = ErrorInfo(self.import_context(), file, self.current_module(), None,
+                             None, line, -1, 'error', '"type: ignore" comment without error code',
+                             None, False, False, False)
+            self._add_error_info(file, info)
+
     def num_messages(self) -> int:
         """Return the number of generated messages."""
         return sum(len(x) for x in self.error_info_map.values())

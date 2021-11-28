@@ -135,6 +135,15 @@ x # type: ignore[name-defined, attr-defined] # E: Unused "type: ignore[attr-defi
 # flags: --warn-unused-ignores
 "x" # type: ignore[name-defined] # E: Unused "type: ignore" comment
 
+[case testErrorCodeMissingWhenRequired]
+# flags: --disallow-ignore-without-code
+"x" # type: ignore # E: "type: ignore" comment without error code
+y # type: ignore # E: "type: ignore" comment without error code
+
+[case testErrorCodeMissingDoesntTrampleUnusedIgnoresWarning]
+# flags: --disallow-ignore-without-code --warn-unused-ignores
+"x" # type: ignore # E: Unused "type: ignore" comment
+
 [case testErrorCodeIgnoreWithExtraSpace]
 x  # type: ignore   [name-defined]
 x2 # type: ignore   [ name-defined ]

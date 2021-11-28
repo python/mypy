@@ -677,6 +677,10 @@ def process_options(args: List[str],
                              " non-overlapping types",
                         group=strictness_group)
 
+    add_invertible_flag('--disallow-ignore-without-code', default=False, strict_flag=True,
+                        help="Disallow 'type: ignore' comments which do not have error codes",
+                        group=strictness_group)
+
     strict_help = "Strict mode; enables the following flags: {}".format(
         ", ".join(strict_flag_names))
     strictness_group.add_argument(

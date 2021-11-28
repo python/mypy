@@ -680,6 +680,15 @@ in error messages.
 
     See :ref:`error-codes` for more information.
 
+.. option:: --disallow-ignore-without-code
+
+    This flag will disallow ``type: ignore`` comments which do not have
+    error codes::
+
+        prog.py:1: error: "type: ignore" comment without error code
+
+    See :ref:`error-codes` for more information.
+
 .. option:: --pretty
 
     Use visually nicer output in error messages: use soft word wrap,

@@ -143,6 +143,9 @@ class Options:
         # Warn about unused '# type: ignore' comments
         self.warn_unused_ignores = False
 
+        # Warn about '# type: ignore' comments without error codes
+        self.disallow_ignore_without_code = False
+
         # Warn about unused '[mypy-<pattern>]'  or '[[tool.mypy.overrides]]' config sections
         self.warn_unused_configs = False
 
