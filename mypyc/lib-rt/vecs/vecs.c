@@ -27,7 +27,7 @@ static PyObject *vec_proxy_call(PyObject *self, PyObject *args, PyObject *kw)
     VecProxy *p = (VecProxy *)self;
     if (p->optionals == 0 && p->depth == 0) {
         if (init == NULL) {
-            return (PyObject *)Vec_T_New(0, (PyTypeObject *)p->item_type);
+            return (PyObject *)Vec_T_New(0, (PyObject *)p->item_type);
         } else {
             return (PyObject *)Vec_T_FromIterable((PyTypeObject *)p->item_type, init);
         }
@@ -352,7 +352,8 @@ static PyModuleDef vecsmodule = {
 };
 
 static VecCapsule Capsule = {
-    &I64Features
+    &I64Features,
+    &TFeatures,
 };
 
 PyMODINIT_FUNC

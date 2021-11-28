@@ -21,7 +21,7 @@ static VecTObject *vec_t_alloc(Py_ssize_t size, PyTypeObject *item_type) {
     return v;
 }
 
-VecTObject *Vec_T_New(Py_ssize_t size, PyTypeObject *item_type) {
+PyObject *Vec_T_New(Py_ssize_t size, PyObject *item_type) {
     VecTObject *v;
     v = PyObject_GC_NewVar(VecTObject, &VecTType, size);
     //v = VecTType.tp_alloc(&VecTType, size);
@@ -29,14 +29,14 @@ VecTObject *Vec_T_New(Py_ssize_t size, PyTypeObject *item_type) {
         return NULL;
 
     Py_INCREF(item_type);
-    v->item_type = item_type;
+    v->item_type = (PyTypeObject *)item_type;
     v->len = size;
     for (Py_ssize_t i = 0; i < size; i++) {
         v->items[i] = NULL;
     }
 
     PyObject_GC_Track(v);
-    return v;
+    return (PyObject *)v;
 }
 
 PyObject *vec_t_repr(PyObject *self) {
@@ -263,7 +263,7 @@ PyObject *Vec_T_Append(PyObject *obj, PyObject *x) {
     } else {
         Py_ssize_t new_size = 2 * cap + 1;
         // TODO: Avoid initializing to zero here
-        VecTObject *new = Vec_T_New(new_size, vec->item_type);
+        VecTObject *new = (VecTObject *)Vec_T_New(new_size, (PyObject *)vec->item_type);
         if (new == NULL)
             return NULL;
         memcpy(new->items, vec->items, sizeof(PyObject *) * len);
@@ -274,3 +274,9 @@ PyObject *Vec_T_Append(PyObject *obj, PyObject *x) {
         return (PyObject *)new;
     }
 }
+
+VecTFeatures TFeatures = {
+    &VecTType,
+    Vec_T_New,
+    Vec_T_Append,
+};

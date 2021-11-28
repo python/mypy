@@ -54,7 +54,7 @@ typedef struct _VecI64Features {
 // T can be a class type, T | None or vec[T] (or a combination of these)
 typedef struct _VecTFeatures {
     PyTypeObject *type;
-    PyObject *(*alloc)(Py_ssize_t);
+    PyObject *(*alloc)(Py_ssize_t, PyObject *item_type);
     PyObject *(*append)(PyObject *, PyObject *);
     // PyObject *(*extend)(PyObject *, PyObject *);
     // PyObject *(*slice)(PyObject *, int64_t, int64_t);
@@ -67,7 +67,7 @@ typedef struct _VecTFeatures {
 
 typedef struct {
     VecI64Features *i64;
-    // VecTFeatures *t;
+    VecTFeatures *t;
     // VecTExtFeatures *t_ext;
 } VecCapsule;
 
@@ -80,6 +80,7 @@ extern PyTypeObject VecTType;
 extern PyTypeObject VecTExtType;
 extern VecI64Features I64Features;
 extern PyTypeObject *I64TypeObj;
+extern VecTFeatures TFeatures;
 
 // vec[i64] operations
 
@@ -105,7 +106,7 @@ static inline int VecT_ItemCheck(VecTObject *v, PyObject *item) {
     }
 }
 
-VecTObject *Vec_T_New(Py_ssize_t size, PyTypeObject *item_type);
+PyObject *Vec_T_New(Py_ssize_t size, PyObject *item_type);
 VecTObject *Vec_T_FromIterable(PyTypeObject *item_type, PyObject *iterable);
 PyObject *Vec_T_Append(PyObject *obj, PyObject *x);
 
