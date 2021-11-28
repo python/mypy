@@ -143,6 +143,11 @@ static PyObject *vec_t_ext_remove(PyObject *self, PyObject *arg) {
     return vec_generic_remove(&v->len, v->items, arg);
 }
 
+static PyObject *vec_t_ext_pop(PyObject *self, PyObject *args) {
+    VecTExtObject *v = (VecTExtObject *)self;
+    return vec_generic_pop(&v->len, v->items, args);
+}
+
 static int
 VecTExt_traverse(VecTExtObject *self, visitproc visit, void *arg)
 {
@@ -193,6 +198,7 @@ static PySequenceMethods VecTExtSequence = {
 
 static PyMethodDef vec_t_ext_methods[] = {
     {"remove", vec_t_ext_remove, METH_O, NULL},
+    {"pop", vec_t_ext_pop, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL},  /* Sentinel */
 };
 
