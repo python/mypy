@@ -5337,3 +5337,71 @@ def register(cls: Any) -> Any: return None
 x = register(Foo)
 reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
+
+
+[case testOverloadWithObjectDecorator]
+from typing import Any, Callable, Union, overload
+
+class A:
+    def __call__(self, *arg, **kwargs) -> None: ...
+
+def dec_a(f: Callable[..., Any]) -> A:
+    return A()
+
+@overload
+def f_a(arg: int) -> None: ...
+@overload
+def f_a(arg: str) -> None: ...
+@dec_a
+def f_a(arg): ...
+
+class B:
+    def __call__(self, arg: Union[int, str]) -> None: ...
+
+def dec_b(f: Callable[..., Any]) -> B:
+    return B()
+
+@overload
+def f_b(arg: int) -> None: ...
+@overload
+def f_b(arg: str) -> None: ...
+@dec_b
+def f_b(arg): ...
+
+class C:
+    def __call__(self, arg: int) -> None: ...
+
+def dec_c(f: Callable[..., Any]) -> C:
+    return C()
+
+@overload
+def f_c(arg: int) -> None: ...
+@overload
+def f_c(arg: str) -> None: ...
+@dec_c  # E: Overloaded function implementation does not accept all possible arguments of signature 2
+def f_c(arg): ...
+[builtins fixtures/dict.pyi]
+
+[case testOverloadWithErrorDecorator]
+from typing import Any, Callable, TypeVar, overload
+
+def dec_d(f: Callable[..., Any]) -> int: ...
+
+@overload
+def f_d(arg: int) -> None: ...
+@overload
+def f_d(arg: str) -> None: ...
+@dec_d  # E: "int" not callable
+def f_d(arg): ...
+
+Bad = TypeVar('Good')  # type: ignore
+
+def dec_e(f: Bad) -> Bad: ...  # type: ignore
+
+@overload
+def f_e(arg: int) -> None: ...
+@overload
+def f_e(arg: str) -> None: ...
+@dec_e  # E: Bad? not callable
+def f_e(arg): ...
+[builtins fixtures/dict.pyi]
