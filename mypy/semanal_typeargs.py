@@ -7,9 +7,10 @@ operations, including subtype checks.
 
 from typing import List, Optional, Set
 
-from mypy.nodes import TypeInfo, Context, MypyFile, FuncItem, ClassDef, Block
+from mypy.nodes import TypeInfo, Context, MypyFile, FuncItem, ClassDef, Block, FakeInfo
 from mypy.types import (
-    Type, Instance, TypeVarType, AnyType, get_proper_types, TypeAliasType, get_proper_type
+    Type, Instance, TypeVarType, AnyType, get_proper_types, TypeAliasType, ParamSpecType,
+    get_proper_type
 )
 from mypy.mixedtraverser import MixedTraverserVisitor
 from mypy.subtypes import is_subtype
@@ -19,6 +20,7 @@ from mypy.scope import Scope
 from mypy.options import Options
 from mypy.errorcodes import ErrorCode
 from mypy import message_registry, errorcodes as codes
+from mypy.messages import format_type
 
 
 class TypeArgumentAnalyzer(MixedTraverserVisitor):
@@ -35,9 +37,8 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
 
     def visit_mypy_file(self, o: MypyFile) -> None:
         self.errors.set_file(o.path, o.fullname, scope=self.scope)
-        self.scope.enter_file(o.fullname)
-        super().visit_mypy_file(o)
-        self.scope.leave()
+        with self.scope.module_scope(o.fullname):
+            super().visit_mypy_file(o)
 
     def visit_func(self, defn: FuncItem) -> None:
         if not self.recurse_into_functions:
@@ -67,22 +68,31 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         # Type argument counts were checked in the main semantic analyzer pass. We assume
         # that the counts are correct here.
         info = t.type
+        if isinstance(info, FakeInfo):
+            return  # https://github.com/python/mypy/issues/11079
         for (i, arg), tvar in zip(enumerate(t.args), info.defn.type_vars):
-            if tvar.values:
-                if isinstance(arg, TypeVarType):
-                    arg_values = arg.values
-                    if not arg_values:
-                        self.fail('Type variable "{}" not valid as type '
-                                  'argument value for "{}"'.format(
-                                      arg.name, info.name), t, code=codes.TYPE_VAR)
-                        continue
-                else:
-                    arg_values = [arg]
-                self.check_type_var_values(info, arg_values, tvar.name, tvar.values, i + 1, t)
-            if not is_subtype(arg, tvar.upper_bound):
-                self.fail('Type argument "{}" of "{}" must be '
-                          'a subtype of "{}"'.format(
-                              arg, info.name, tvar.upper_bound), t, code=codes.TYPE_VAR)
+            if isinstance(tvar, TypeVarType):
+                if isinstance(arg, ParamSpecType):
+                    # TODO: Better message
+                    self.fail(f'Invalid location for ParamSpec "{arg.name}"', t)
+                    continue
+                if tvar.values:
+                    if isinstance(arg, TypeVarType):
+                        arg_values = arg.values
+                        if not arg_values:
+                            self.fail(
+                                message_registry.INVALID_TYPEVAR_AS_TYPEARG.format(
+                                    arg.name, info.name),
+                                t, code=codes.TYPE_VAR)
+                            continue
+                    else:
+                        arg_values = [arg]
+                    self.check_type_var_values(info, arg_values, tvar.name, tvar.values, i + 1, t)
+                if not is_subtype(arg, tvar.upper_bound):
+                    self.fail(
+                        message_registry.INVALID_TYPEVAR_ARG_BOUND.format(
+                            format_type(arg), info.name, format_type(tvar.upper_bound)),
+                        t, code=codes.TYPE_VAR)
         super().visit_instance(t)
 
     def check_type_var_values(self, type: TypeInfo, actuals: List[Type], arg_name: str,
@@ -92,8 +102,9 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                     not any(is_same_type(actual, value)
                             for value in valids)):
                 if len(actuals) > 1 or not isinstance(actual, Instance):
-                    self.fail('Invalid type argument value for "{}"'.format(
-                        type.name), context, code=codes.TYPE_VAR)
+                    self.fail(
+                        message_registry.INVALID_TYPEVAR_ARG_VALUE.format(type.name),
+                        context, code=codes.TYPE_VAR)
                 else:
                     class_name = '"{}"'.format(type.name)
                     actual_type_name = '"{}"'.format(actual.type.name)

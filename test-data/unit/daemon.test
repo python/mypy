@@ -274,7 +274,7 @@ bar.py:3: (str)
 bar.py:4: (arg=str)
 $ dmypy suggest foo.foo
 (str) -> int
-$ {python} -c "import shutil; shutil.copy('foo.py.2', 'foo.py')"
+$ {python} -c "import shutil; shutil.copy('foo2.py', 'foo.py')"
 $ dmypy check foo.py bar.py
 bar.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 == Return code: 1
@@ -284,7 +284,7 @@ def foo(arg):
 class Bar:
     def bar(self): pass
 var = 0
-[file foo.py.2]
+[file foo2.py]
 def foo(arg: str) -> int:
     return 12
 class Bar:

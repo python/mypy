@@ -1,4 +1,4 @@
-from typing import IO, Any, Union
+from typing import IO, Any
 
 import _io
 from _io import (
@@ -18,7 +18,7 @@ from _io import (
 )
 
 def _OpenWrapper(
-    file: Union[str, unicode, int],
+    file: str | unicode | int,
     mode: unicode = ...,
     buffering: int = ...,
     encoding: unicode = ...,

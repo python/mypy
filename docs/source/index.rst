@@ -39,7 +39,7 @@ Mypy is a static type checker for Python 3 and Python 2.7.
    protocols
    dynamic_typing
    python2
-   casts
+   type_narrowing
    duck_type_compatibility
    stubs
    generics

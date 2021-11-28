@@ -406,8 +406,7 @@ class MyError(BaseException): pass
 [out]
 main:5: error: Exception must be derived from BaseException
 
-[case testRaiseClassobject]
-import typing
+[case testRaiseClassObject]
 class A: pass
 class MyError(BaseException): pass
 def f(): pass
@@ -416,6 +415,33 @@ raise MyError
 raise A # E: Exception must be derived from BaseException
 raise object # E: Exception must be derived from BaseException
 raise f # E: Exception must be derived from BaseException
+[builtins fixtures/exception.pyi]
+
+[case testRaiseClassObjectCustomInit]
+class MyBaseError(BaseException):
+    def __init__(self, required) -> None:
+        ...
+class MyError(Exception):
+    def __init__(self, required1, required2) -> None:
+        ...
+class MyKwError(Exception):
+    def __init__(self, *, kwonly) -> None:
+        ...
+class MyErrorWithDefault(Exception):
+    def __init__(self, optional=1) -> None:
+        ...
+raise BaseException
+raise Exception
+raise BaseException(1)
+raise Exception(2)
+raise MyBaseError(4)
+raise MyError(5, 6)
+raise MyKwError(kwonly=7)
+raise MyErrorWithDefault(8)
+raise MyErrorWithDefault
+raise MyBaseError  # E: Too few arguments for "MyBaseError"
+raise MyError  # E: Too few arguments for "MyError"
+raise MyKwError  # E: Missing named argument "kwonly" for "MyKwError"
 [builtins fixtures/exception.pyi]
 
 [case testRaiseExceptionType]

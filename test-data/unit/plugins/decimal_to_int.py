@@ -1,8 +1,5 @@
-import builtins
-from typing import Optional, Callable
 
-from mypy.plugin import Plugin, AnalyzeTypeContext
-from mypy.types import CallableType, Type
+from mypy.plugin import Plugin
 
 
 class MyPlugin(Plugin):
