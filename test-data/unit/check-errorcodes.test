@@ -144,6 +144,12 @@ y # type: ignore # E: "type: ignore" comment without error code
 # flags: --disallow-ignore-without-code --warn-unused-ignores
 "x" # type: ignore # E: Unused "type: ignore" comment
 
+[case testErrorCodeMissingWholeFileIgnores]
+# flags: --disallow-ignore-without-code
+# type: ignore  # whole file ignore
+x
+y # type: ignore  # ignore the lack of error code since we're ignore the whole file
+
 [case testErrorCodeIgnoreWithExtraSpace]
 x  # type: ignore   [name-defined]
 x2 # type: ignore   [ name-defined ]

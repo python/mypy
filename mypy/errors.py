@@ -492,6 +492,13 @@ class Errors:
             return
 
         used_ignored_lines = self.used_ignored_lines[file]
+
+        # If the whole file is ignored, ignore it.
+        if used_ignored_lines:
+            _, used_codes = min(used_ignored_lines.items())
+            if codes.FILE.code in used_codes:
+                return
+
         for line, ignored_codes in self.ignored_lines[file].items():
             if ignored_codes:
                 continue
