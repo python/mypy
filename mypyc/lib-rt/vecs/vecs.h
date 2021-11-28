@@ -4,6 +4,12 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
+// Arbitrary vec object (only shared bits)
+typedef struct _VecObject {
+    PyObject_VAR_HEAD
+    Py_ssize_t len;
+} VecObject;
+
 // vec[i64]
 typedef struct _VecI64Object {
     PyObject_VAR_HEAD
