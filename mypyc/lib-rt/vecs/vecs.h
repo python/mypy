@@ -151,5 +151,6 @@ PyObject *vec_generic_richcompare(Py_ssize_t *len, PyObject **items,
                                   Py_ssize_t *other_len, PyObject **other_items,
                                   int op);
 PyObject *vec_generic_remove(Py_ssize_t *len, PyObject **items, PyObject *item);
+PyObject *vec_generic_pop(Py_ssize_t *len, PyObject **items, PyObject *args);
 
 #endif

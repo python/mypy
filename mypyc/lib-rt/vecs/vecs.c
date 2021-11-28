@@ -279,6 +279,28 @@ PyObject *vec_generic_remove(Py_ssize_t *len, PyObject **items, PyObject *item) 
     return NULL;
 }
 
+PyObject *vec_generic_pop(Py_ssize_t *len, PyObject **items, PyObject *args) {
+    Py_ssize_t index = -1;
+    if (!PyArg_ParseTuple(args, "|n:pop", &index))
+        return NULL;
+
+    if (index < 0)
+        index += *len;
+
+    if (index < 0 || index >= *len) {
+        PyErr_SetString(PyExc_IndexError, "index out of range");
+        return NULL;
+    }
+
+    PyObject *item = items[index];
+    for (Py_ssize_t i = index; i < *len - 1; i++)
+        items[i] = items[i + 1];
+
+    (*len)--;
+
+    return item;
+}
+
 // Module-level functions
 
 static PyObject *vecs_append(PyObject *self, PyObject *args)

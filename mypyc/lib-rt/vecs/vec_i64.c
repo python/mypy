@@ -194,7 +194,7 @@ static PyObject *vec_i64_remove(PyObject *self, PyObject *arg) {
 
 static PyObject *vec_i64_pop(PyObject *self, PyObject *args) {
     Py_ssize_t index = -1;
-    if (!PyArg_ParseTuple(args, "|n:vec", &index))
+    if (!PyArg_ParseTuple(args, "|n:pop", &index))
         return NULL;
 
     VecI64Object *v = (VecI64Object *)self;
