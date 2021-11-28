@@ -508,8 +508,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # decorator or if the implementation is untyped -- we gave up on the types.
             inner_type = get_proper_type(inner_type)
             if inner_type is not None and not isinstance(inner_type, AnyType):
-                assert isinstance(inner_type, CallableType)
-                impl_type = inner_type
+                if isinstance(inner_type, CallableType):
+                    impl_type = inner_type
+                elif isinstance(inner_type, Instance):
+                    inner_call = get_proper_type(
+                        find_member('__call__', inner_type, inner_type, is_operator=True)
+                    )
+                    if isinstance(inner_call, CallableType):
+                        impl_type = inner_call
+                if impl_type is None:
+                    self.msg.not_callable(inner_type, defn.impl)
 
         is_descriptor_get = defn.info and defn.name == "__get__"
         for i, item in enumerate(defn.items):
