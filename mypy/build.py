@@ -1096,7 +1096,9 @@ def _load_json_file(file: str, manager: BuildManager,
     if manager.verbosity() >= 2:
         manager.trace(log_success + data.rstrip())
     try:
+        t1 = time.time()
         result = json.loads(data)
+        manager.add_stats(data_json_load_time=time.time() - t1)
     except json.JSONDecodeError:
         manager.errors.set_file(file, None)
         manager.errors.report(-1, -1,
@@ -1979,17 +1981,17 @@ class State:
     def load_tree(self, temporary: bool = False) -> None:
         assert self.meta is not None, "Internal error: this method must be called only" \
                                       " for cached modules"
+
+        data = _load_json_file(self.meta.data_json, self.manager, "Load tree ",
+                               "Could not load tree: ")
+        if data is None:
+            return None
+
         t0 = time.time()
-        raw = self.manager.metastore.read(self.meta.data_json)
-        t1 = time.time()
-        data = json.loads(raw)
-        t2 = time.time()
         # TODO: Assert data file wasn't changed.
         self.tree = MypyFile.deserialize(data)
-        t3 = time.time()
-        self.manager.add_stats(data_read_time=t1 - t0,
-                               data_json_load_time=t2 - t1,
-                               deserialize_time=t3 - t2)
+        t1 = time.time()
+        self.manager.add_stats(deserialize_time=t1 - t0)
         if not temporary:
             self.manager.modules[self.id] = self.tree
             self.manager.add_stats(fresh_trees=1)
