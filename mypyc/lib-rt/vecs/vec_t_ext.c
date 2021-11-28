@@ -23,8 +23,7 @@ static VecTExtObject *vec_t_ext_alloc(Py_ssize_t size, PyTypeObject *item_type, 
     return v;
 }
 
-VecTExtObject *Vec_T_Ext_New(Py_ssize_t size, PyTypeObject *item_type, int32_t optionals,
-                             int32_t depth) {
+PyObject *Vec_T_Ext_New(Py_ssize_t size, PyObject *item_type, int32_t optionals, int32_t depth) {
     VecTExtObject *v;
     v = PyObject_GC_NewVar(VecTExtObject, &VecTExtType, size);
     //v = VecTType.tp_alloc(&VecTType, size);
@@ -32,7 +31,7 @@ VecTExtObject *Vec_T_Ext_New(Py_ssize_t size, PyTypeObject *item_type, int32_t o
         return NULL;
 
     Py_INCREF(item_type);
-    v->item_type = item_type;
+    v->item_type = (PyTypeObject *)item_type;
     v->len = size;
     for (Py_ssize_t i = 0; i < size; i++) {
         v->items[i] = NULL;
@@ -41,7 +40,7 @@ VecTExtObject *Vec_T_Ext_New(Py_ssize_t size, PyTypeObject *item_type, int32_t o
     v->depth = depth;
 
     PyObject_GC_Track(v);
-    return v;
+    return (PyObject *)v;
 }
 
 PyObject *vec_t_ext_repr(PyObject *self) {
@@ -274,7 +273,8 @@ PyObject *Vec_T_Ext_Append(PyObject *obj, PyObject *x) {
     } else {
         Py_ssize_t new_size = 2 * cap + 1;
         // TODO: Avoid initializing to zero here
-        VecTExtObject *new = Vec_T_Ext_New(new_size, vec->item_type, vec->optionals, vec->depth);
+        VecTExtObject *new = (VecTExtObject *)Vec_T_Ext_New(
+            new_size, (PyObject *)vec->item_type, vec->optionals, vec->depth);
         if (new == NULL)
             return NULL;
         memcpy(new->items, vec->items, sizeof(PyObject *) * len);
@@ -285,3 +285,9 @@ PyObject *Vec_T_Ext_Append(PyObject *obj, PyObject *x) {
         return (PyObject *)new;
     }
 }
+
+VecTExtFeatures TExtFeatures = {
+    &VecTExtType,
+    Vec_T_Ext_New,
+    Vec_T_Ext_Append,
+};

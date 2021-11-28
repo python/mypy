@@ -51,10 +51,10 @@ typedef struct _VecI64Features {
 
 // vec[T] operations + type object (stored in a capsule)
 //
-// T can be a class type, T | None or vec[T] (or a combination of these)
+// T is a class type
 typedef struct _VecTFeatures {
     PyTypeObject *type;
-    PyObject *(*alloc)(Py_ssize_t, PyObject *item_type);
+    PyObject *(*alloc)(Py_ssize_t, PyObject *);
     PyObject *(*append)(PyObject *, PyObject *);
     // PyObject *(*extend)(PyObject *, PyObject *);
     // PyObject *(*slice)(PyObject *, int64_t, int64_t);
@@ -65,10 +65,26 @@ typedef struct _VecTFeatures {
     // iter?
 } VecTFeatures;
 
+// vec[T] operations for complex item types + type object (stored in a capsule)
+//
+// T can be T | None or vec[T] (or a combination of these)
+typedef struct _VecTExtFeatures {
+    PyTypeObject *type;
+    PyObject *(*alloc)(Py_ssize_t, PyObject *, int optional, int depth);
+    PyObject *(*append)(PyObject *, PyObject *);
+    // PyObject *(*extend)(PyObject *, PyObject *);
+    // PyObject *(*slice)(PyObject *, int64_t, int64_t);
+    // PyObject *(*concat)(PyObject *, PyObject *);
+    // bool (*contains)(PyObject *, PyObject *);
+    // PyObject *(*pop)(PyObject *);
+    // bool (*remove)(PyObject *, PyObject *);
+    // iter?
+} VecTExtFeatures;
+
 typedef struct {
     VecI64Features *i64;
     VecTFeatures *t;
-    // VecTExtFeatures *t_ext;
+    VecTExtFeatures *t_ext;
 } VecCapsule;
 
 #define VEC_SIZE(v) ((v)->ob_base.ob_size)
@@ -81,6 +97,7 @@ extern PyTypeObject VecTExtType;
 extern VecI64Features I64Features;
 extern PyTypeObject *I64TypeObj;
 extern VecTFeatures TFeatures;
+extern VecTExtFeatures TExtFeatures;
 
 // vec[i64] operations
 
@@ -136,8 +153,7 @@ static inline int VecTExt_ItemCheck(VecTExtObject *v, PyObject *it) {
     }
 }
 
-VecTExtObject *Vec_T_Ext_New(Py_ssize_t size, PyTypeObject *item_type, int32_t optionals,
-                             int32_t depth);
+PyObject *Vec_T_Ext_New(Py_ssize_t size, PyObject *item_type, int32_t optionals, int32_t depth);
 VecTExtObject *Vec_T_Ext_FromIterable(PyTypeObject *item_type, int32_t optionals, int32_t depth,
                                       PyObject *iterable);
 PyObject *Vec_T_Ext_Append(PyObject *obj, PyObject *x);
