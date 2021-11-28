@@ -192,6 +192,29 @@ static PyObject *vec_i64_remove(PyObject *self, PyObject *arg) {
     return NULL;
 }
 
+static PyObject *vec_i64_pop(PyObject *self, PyObject *args) {
+    Py_ssize_t index = -1;
+    if (!PyArg_ParseTuple(args, "|n:vec", &index))
+        return NULL;
+
+    VecI64Object *v = (VecI64Object *)self;
+    if (index < 0)
+        index += v->len;
+
+    if (index < 0 || index >= v->len) {
+        PyErr_SetString(PyExc_IndexError, "index out of range");
+        return NULL;
+    }
+
+    int64_t item = v->items[index];
+    for (Py_ssize_t i = index; i < v->len - 1; i++)
+        v->items[i] = v->items[i + 1];
+
+    v->len--;
+
+    return PyLong_FromLongLong(item);
+}
+
 static PyMappingMethods VecI64Mapping = {
     .mp_length = vec_length,
     .mp_subscript = vec_i64_subscript,
@@ -204,6 +227,7 @@ static PySequenceMethods VecI64Sequence = {
 
 static PyMethodDef vec_i64_methods[] = {
     {"remove", vec_i64_remove, METH_O, NULL},
+    {"pop", vec_i64_pop, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL},  /* Sentinel */
 };
 
