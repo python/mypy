@@ -138,7 +138,7 @@ x # type: ignore[name-defined, attr-defined] # E: Unused "type: ignore[attr-defi
 [case testErrorCodeMissingWhenRequired]
 # flags: --disallow-ignore-without-code
 "x" # type: ignore # E: "type: ignore" comment without error code
-y # type: ignore # E: "type: ignore" comment without error code
+y # type: ignore # E: "type: ignore" comment without error code (hint: add [name-defined])
 
 [case testErrorCodeMissingDoesntTrampleUnusedIgnoresWarning]
 # flags: --disallow-ignore-without-code --warn-unused-ignores

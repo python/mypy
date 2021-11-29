@@ -508,9 +508,15 @@ class Errors:
             if is_warning_unused_ignores and not used_ignored_lines[line]:
                 continue
 
+            codes_hint = ''
+            ignored_codes = used_ignored_lines[line]
+            if ignored_codes:
+                codes_hint = f' (hint: add [{", ".join(ignored_codes)}])'
+
+            message = f'"type: ignore" comment without error code{codes_hint}'
             # Don't use report since add_error_info will ignore the error!
             info = ErrorInfo(self.import_context(), file, self.current_module(), None,
-                             None, line, -1, 'error', '"type: ignore" comment without error code',
+                             None, line, -1, 'error', message,
                              None, False, False, False)
             self._add_error_info(file, info)
 
