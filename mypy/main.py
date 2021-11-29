@@ -637,6 +637,9 @@ def process_options(args: List[str],
     add_invertible_flag('--warn-unused-ignores', default=False, strict_flag=True,
                         help="Warn about unneeded '# type: ignore' comments",
                         group=lint_group)
+    add_invertible_flag('--disallow-ignore-without-code', default=False,
+                        help="Disallow '# type: ignore' comments which do not have error codes",
+                        group=lint_group)
     add_invertible_flag('--no-warn-no-return', dest='warn_no_return', default=True,
                         help="Do not warn about functions that end without returning",
                         group=lint_group)
@@ -675,10 +678,6 @@ def process_options(args: List[str],
     add_invertible_flag('--strict-equality', default=False, strict_flag=True,
                         help="Prohibit equality, identity, and container checks for"
                              " non-overlapping types",
-                        group=strictness_group)
-
-    add_invertible_flag('--disallow-ignore-without-code', default=False, strict_flag=True,
-                        help="Disallow 'type: ignore' comments which do not have error codes",
                         group=strictness_group)
 
     strict_help = "Strict mode; enables the following flags: {}".format(
