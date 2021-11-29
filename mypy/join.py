@@ -29,7 +29,7 @@ class InstanceJoiner:
 
         self.seen_instances.append((t, s))
 
-        """Calculate the join of two instance types."""
+        # Calculate the join of two instance types
         if t.type == s.type:
             # Simplest case: join two types with the same base type (but
             # potentially different arguments).
