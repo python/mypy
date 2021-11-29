@@ -5396,14 +5396,27 @@ def f_d(arg: str) -> None: ...
 @dec_d  # E: "int" not callable
 def f_d(arg): ...
 
-Bad = TypeVar('Good')  # type: ignore
+Bad1 = TypeVar('Good')  # type: ignore
 
-def dec_e(f: Bad) -> Bad: ...  # type: ignore
+def dec_e(f: Bad1) -> Bad1: ...  # type: ignore
 
 @overload
 def f_e(arg: int) -> None: ...
 @overload
 def f_e(arg: str) -> None: ...
-@dec_e  # E: Bad? not callable
+@dec_e  # E: Bad1? not callable
 def f_e(arg): ...
+
+class Bad2:
+    def __getattr__(self, attr):
+        if attr == "__call__":
+            return lambda *a, **kw: print(a, kw)
+        raise AttributeError
+
+@overload
+def f_f(arg: int) -> None: ...
+@overload
+def f_f(arg: str) -> None: ...
+@Bad2()  # E: "Bad2" not callable
+def f_f(arg): ...
 [builtins fixtures/dict.pyi]
