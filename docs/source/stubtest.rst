@@ -26,7 +26,7 @@ It's important to be aware of the limitations of this comparison. stubtest will
 not make any attempt to statically analyse your actual code and relies only on
 dynamic runtime introspection (in particular, this approach means stubtest works
 well with extension modules). However, this means that stubtest has limited
-visibility, for instance, it cannot tell if a return type of a function is
+visibility; for instance, it cannot tell if a return type of a function is
 accurately typed in the stubs.
 
 For clarity, here are some more things stubtest does not do:

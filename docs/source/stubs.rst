@@ -44,7 +44,7 @@ consider making it available for other programmers that use mypy
 by contributing it back to the typeshed repo.
 
 Mypy also ships with two tools for making it easier to create and maintain
-stubs, see :ref:`stubgen` and :ref:`stubtest`.
+stubs: :ref:`stubgen` and :ref:`stubtest`.
 
 The following sections explain the kinds of type annotations you can use
 in your programs and stub files.
