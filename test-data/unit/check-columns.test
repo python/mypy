@@ -369,9 +369,19 @@ class A:
     def x(self, x: int) -> None: pass
 
 class B(A):
-    @property  # E:6: Read-only property cannot override read-write property
-    def x(self) -> int: pass
+    @property  # Fail
+    def x(self) -> int: pass  # Fail
 [builtins fixtures/property.pyi]
+[out]
+main:9:6: error: Read-only property cannot override read-write property
+main:10:5: error: Signature of "x" incompatible with supertype "A"
+main:10:5: note:      Superclass:
+main:10:5: note:          @overload
+main:10:5: note:          def x(self) -> int
+main:10:5: note:          @overload
+main:10:5: note:          def x(self, x: int) -> None
+main:10:5: note:      Subclass:
+main:10:5: note:          def x(self) -> int
 
 [case testColumnProperty_python2]
 class A:
@@ -384,10 +394,20 @@ class A:
         pass
 
 class B(A):
-    @property  # E:5: Read-only property cannot override read-write property
-    def x(self): # type: () -> int
+    @property  # Fail
+    def x(self): # type: () -> int  # Fail
         pass
 [builtins_py2 fixtures/property_py2.pyi]
+[out]
+main:11:5: error: Read-only property cannot override read-write property
+main:12: error: Signature of "x" incompatible with supertype "A"
+main:12: note:      Superclass:
+main:12: note:          @overload
+main:12: note:          def x(self) -> int
+main:12: note:          @overload
+main:12: note:          def x(self, x: int) -> None
+main:12: note:      Subclass:
+main:12: note:          def x(self) -> int
 
 [case testColumnOverloaded]
 from typing import overload, Any

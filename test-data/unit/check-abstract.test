@@ -850,12 +850,20 @@ class A(metaclass=ABCMeta):
     def x(self, v: int) -> None: pass
 class B(A):
     @property # E
-    def x(self) -> int: pass
+    def x(self) -> int: pass # E
 b = B()
 b.x.y # E
 [builtins fixtures/property.pyi]
 [out]
 main:8: error: Read-only property cannot override read-write property
+main:9: error: Signature of "x" incompatible with supertype "A"
+main:9: note:      Superclass:
+main:9: note:          @overload
+main:9: note:          def x(self) -> int
+main:9: note:          @overload
+main:9: note:          def x(self, v: int) -> None
+main:9: note:      Subclass:
+main:9: note:          def x(self) -> int
 main:11: error: "int" has no attribute "y"
 
 [case testDynamicallyTypedReadOnlyAbstractProperty]

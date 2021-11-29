@@ -533,11 +533,12 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
     Overloaded variants must be consecutive in the source file.
     """
 
-    __slots__ = ('items', 'unanalyzed_items', 'impl')
+    __slots__ = ('items', 'unanalyzed_items', 'impl', 'property_setter')
 
     items: List[OverloadPart]
     unanalyzed_items: List[OverloadPart]
     impl: Optional[OverloadPart]
+    property_setter: 'Optional[Decorator]'
 
     def __init__(self, items: List['OverloadPart']) -> None:
         super().__init__()
@@ -547,6 +548,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         if len(items) > 0:
             self.set_line(items[0].line, items[0].column)
         self.is_final = False
+        self.property_setter = None
 
     @property
     def name(self) -> str:
@@ -862,6 +864,7 @@ class Var(SymbolNode):
                  'is_classmethod',
                  'is_property',
                  'is_settable_property',
+                 'is_property_setter_different',
                  'is_classvar',
                  'is_abstract_var',
                  'is_final',
@@ -890,6 +893,7 @@ class Var(SymbolNode):
         self.is_classmethod = False
         self.is_property = False
         self.is_settable_property = False
+        self.is_property_setter_different = False
         self.is_classvar = False
         self.is_abstract_var = False
         # Set to true when this variable refers to a module we were unable to

@@ -200,8 +200,11 @@ def analyze_instance_member_access(name: str,
     if method:
         if method.is_property:
             assert isinstance(method, OverloadedFuncDef)
-            first_item = cast(Decorator, method.items[0])
-            return analyze_var(name, first_item.var, typ, info, mx)
+            if mx.is_lvalue and method.property_setter is not None:
+                var = method.property_setter.var
+            else:
+                var = cast(Decorator, method.items[0]).var
+            return analyze_var(name, var, typ, info, mx)
         if mx.is_lvalue:
             mx.msg.cant_assign_to_method(mx.context)
         signature = function_type(method, mx.named_type('builtins.function'))
@@ -594,7 +597,11 @@ def analyze_var(name: str,
                 if var.is_property:
                     # A property cannot have an overloaded type => the cast is fine.
                     assert isinstance(expanded_signature, CallableType)
-                    result = expanded_signature.ret_type
+                    if mx.is_lvalue and var.is_property_setter_different:
+                        assert var.is_settable_property
+                        result = expanded_signature.arg_types[0]
+                    else:
+                        result = expanded_signature.ret_type
                 else:
                     result = expanded_signature
     else:

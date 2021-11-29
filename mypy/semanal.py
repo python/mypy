@@ -760,9 +760,14 @@ class SemanticAnalyzer(NodeVisitor[None],
             # This is a property.
             first_item.func.is_overload = True
             self.analyze_property_with_multi_part_definition(defn)
-            typ = function_type(first_item.func, self.named_type('builtins.function'))
-            assert isinstance(typ, CallableType)
-            types = [typ]
+            getter = function_type(first_item.func, self.named_type('builtins.function'))
+            assert isinstance(getter, CallableType)
+            types = [getter]
+            if defn.property_setter is not None:
+                setter = function_type(defn.property_setter.func,
+                                       self.named_type('builtins.function'))
+                assert isinstance(setter, CallableType)
+                types.append(setter)
         else:
             # This is an a normal overload. Find the item signatures, the
             # implementation (if outside a stub), and any missing @overload
@@ -945,10 +950,22 @@ class SemanticAnalyzer(NodeVisitor[None],
                     node = item.decorators[0]
                     if isinstance(node, MemberExpr):
                         if node.name == 'setter':
-                            # The first item represents the entire property.
                             first_item.var.is_settable_property = True
-                            # Get abstractness from the original definition.
                             item.func.is_abstract = first_item.func.is_abstract
+                            item.func.is_property = True
+                            # Only record the specific setter if it is actually
+                            # valid setter, this way the property is still kept
+                            # "settable", but will use whatever the get type
+                            # is.
+                            if len(item.func.arguments) < 2:
+                                self.fail('Too few arguments', item.func)
+                            else:
+                                defn.property_setter = item
+                                item.var.is_settable_property = True
+                                item.var.is_property_setter_different = True
+                                item.var.is_initialized_in_class = True
+                                item.var.is_property = True
+                                item.var.info = first_item.var.info
                 else:
                     self.fail("Decorated property not supported", item)
                 item.func.accept(self)

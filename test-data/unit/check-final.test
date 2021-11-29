@@ -1003,16 +1003,28 @@ class B:
     def y(self, x: Any) -> None: ...
 
 class C(B):
-    x: Final = 1  # E: Cannot override writable attribute "x" with a final one
-    y: Final = 1  # E: Cannot override writable attribute "y" with a final one
+    x: Final = 1  # Fail
+    y: Final = 1  # Fail
 
 class D(B):
-    @final  # E: Cannot override writable attribute "x" with a final one
+    @final  # Fail
     def x(self) -> int: ...
-    @final  # E: Cannot override writable attribute "y" with a final one
-    def y(self) -> int: ...
+    @final  # Fail
+    def y(self) -> int: ...  # Fail
 [builtins fixtures/property.pyi]
 [out]
+main:11: error: Cannot override writable attribute "x" with a final one
+main:12: error: Cannot override writable attribute "y" with a final one
+main:15: error: Cannot override writable attribute "x" with a final one
+main:17: error: Cannot override writable attribute "y" with a final one
+main:18: error: Signature of "y" incompatible with supertype "B"
+main:18: note:      Superclass:
+main:18: note:          @overload
+main:18: note:          def y(self) -> Any
+main:18: note:          @overload
+main:18: note:          def y(self, x: Any) -> None
+main:18: note:      Subclass:
+main:18: note:          def y(self) -> int
 
 [case testFinalCanUseTypingExtensions]
 from typing_extensions import final, Final

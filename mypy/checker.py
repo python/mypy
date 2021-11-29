@@ -466,7 +466,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         if defn.is_property:
             # HACK: Infer the type of the property.
-            self.visit_decorator(cast(Decorator, defn.items[0]))
+            self.visit_decorator(cast(Decorator, defn.items[0]), overloaded_property=True)
+            if defn.property_setter is not None:
+                self.visit_decorator(defn.property_setter, overloaded_property=True)
         for fdef in defn.items:
             assert isinstance(fdef, Decorator)
             self.check_func_item(fdef.func, name=fdef.func.name)
@@ -3787,7 +3789,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.binder.assign_type(elt, DeletedType(source=elt.name),
                                             get_declaration(elt), False)
 
-    def visit_decorator(self, e: Decorator) -> None:
+    def visit_decorator(self, e: Decorator, overloaded_property: bool = False) -> None:
         for d in e.decorators:
             if isinstance(d, RefExpr):
                 if d.fullname == 'typing.no_type_check':
@@ -3802,33 +3804,34 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # Process decorators from the inside out to determine decorated signature, which
         # may be different from the declared signature.
         sig: Type = self.function_type(e.func)
-        for d in reversed(e.decorators):
-            if refers_to_fullname(d, 'typing.overload'):
-                self.fail(message_registry.MULTIPLE_OVERLOADS_REQUIRED, e)
-                continue
-            dec = self.expr_checker.accept(d)
-            temp = self.temp_node(sig, context=e)
-            fullname = None
-            if isinstance(d, RefExpr):
-                fullname = d.fullname
-            # if this is a expression like @b.a where b is an object, get the type of b
-            # so we can pass it the method hook in the plugins
-            object_type: Optional[Type] = None
-            if fullname is None and isinstance(d, MemberExpr) and d.expr in self.type_map:
-                object_type = self.type_map[d.expr]
-                fullname = self.expr_checker.method_fullname(object_type, d.name)
-            self.check_for_untyped_decorator(e.func, dec, d)
-            sig, t2 = self.expr_checker.check_call(dec, [temp],
-                                                   [nodes.ARG_POS], e,
-                                                   callable_name=fullname,
-                                                   object_type=object_type)
+        if not overloaded_property:
+            for d in reversed(e.decorators):
+                if refers_to_fullname(d, 'typing.overload'):
+                    self.fail(message_registry.MULTIPLE_OVERLOADS_REQUIRED, e)
+                    continue
+                dec = self.expr_checker.accept(d)
+                temp = self.temp_node(sig, context=e)
+                fullname = None
+                if isinstance(d, RefExpr):
+                    fullname = d.fullname
+                # if this is a expression like @b.a where b is an object, get the type of b
+                # so we can pass it the method hook in the plugins
+                object_type: Optional[Type] = None
+                if fullname is None and isinstance(d, MemberExpr) and d.expr in self.type_map:
+                    object_type = self.type_map[d.expr]
+                    fullname = self.expr_checker.method_fullname(object_type, d.name)
+                self.check_for_untyped_decorator(e.func, dec, d)
+                sig, t2 = self.expr_checker.check_call(dec, [temp],
+                                                       [nodes.ARG_POS], e,
+                                                       callable_name=fullname,
+                                                       object_type=object_type)
         self.check_untyped_after_decorator(sig, e.func)
         sig = set_callable_name(sig, e.func)
         e.var.type = sig
         e.var.is_ready = True
         if e.func.is_property:
             self.check_incompatible_property_override(e)
-        if e.func.info and not e.func.is_dynamic():
+        if e.func.info and not e.func.is_dynamic() and not overloaded_property:
             self.check_method_override(e)
 
         if e.func.info and e.func.name in ('__init__', '__new__'):

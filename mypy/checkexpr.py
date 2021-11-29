@@ -2084,10 +2084,21 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Visit member expression (of form e.id)."""
         self.chk.module_refs.update(extract_refexpr_names(e))
         result = self.analyze_ordinary_member_access(e, is_lvalue)
-        return self.narrow_type_from_binder(e, result)
+        # Properties with a setter should not narrow if the set type does
+        # not overlap with the get type
+        skip_non_overlapping_narrow = False
+        original_type = self.accept(e.expr)
+        typ = get_proper_type(original_type)
+        if isinstance(typ, Instance):
+            method = typ.type.get_method(e.name)
+            if isinstance(method, OverloadedFuncDef) and method.property_setter:
+                skip_non_overlapping_narrow = True
+        narrow_result = self.narrow_type_from_binder(
+            e, result,
+            skip_non_overlapping=skip_non_overlapping_narrow)
+        return narrow_result if narrow_result else result
 
-    def analyze_ordinary_member_access(self, e: MemberExpr,
-                                       is_lvalue: bool) -> Type:
+    def analyze_ordinary_member_access(self, e: MemberExpr, is_lvalue: bool) -> Type:
         """Analyse member expression or member lvalue."""
         if e.kind is not None:
             # This is a reference to a module attribute.
