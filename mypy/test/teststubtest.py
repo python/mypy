@@ -665,12 +665,12 @@ class StubtestUnit(unittest.TestCase):
         yield Case(stub="", runtime="CONSTANT = 0", error="CONSTANT")
 
     @collect_cases
-    def test_missing_non_public_stub_1(self) -> Iterator[Case]:
+    def test_non_public_1(self) -> Iterator[Case]:
         yield Case(stub="__all__: list[str]", runtime="", error=None)  # dummy case
         yield Case(stub="_f: int", runtime="def _f(): ...", error="_f")
 
     @collect_cases
-    def test_missing_non_public_stub_2(self) -> Iterator[Case]:
+    def test_non_public_2(self) -> Iterator[Case]:
         yield Case(
             stub="__all__: list[str] = ['f']", runtime="__all__ = ['f']", error=None
         )
