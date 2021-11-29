@@ -2083,26 +2083,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def visit_member_expr(self, e: MemberExpr, is_lvalue: bool = False) -> Type:
         """Visit member expression (of form e.id)."""
         self.chk.module_refs.update(extract_refexpr_names(e))
-        result = self.analyze_ordinary_member_access(e, is_lvalue)
-        # Properties with a setter should not narrow if the set type does
-        # not overlap with the get type
-        skip_non_overlapping_narrow = False
-        original_type = self.accept(e.expr)
-        typ = get_proper_type(original_type)
-        if isinstance(typ, Instance):
-            method = typ.type.get_method(e.name)
-            if isinstance(method, OverloadedFuncDef) and method.property_setter:
-                skip_non_overlapping_narrow = True
-        narrow_result = self.narrow_type_from_binder(
-            e, result,
-            skip_non_overlapping=skip_non_overlapping_narrow)
-        return narrow_result if narrow_result else result
+        return self.analyze_ordinary_member_access(e, is_lvalue, narrow=True)
 
-    def analyze_ordinary_member_access(self, e: MemberExpr, is_lvalue: bool) -> Type:
+    def analyze_ordinary_member_access(self,
+                                       e: MemberExpr,
+                                       is_lvalue: bool,
+                                       narrow: bool = False) -> Type:
         """Analyse member expression or member lvalue."""
+        skip_non_overlapping_narrow = False
         if e.kind is not None:
             # This is a reference to a module attribute.
-            return self.analyze_ref_expr(e)
+            result_type = self.analyze_ref_expr(e)
         else:
             # This is a reference to a non-module attribute.
             original_type = self.accept(e.expr)
@@ -2112,13 +2103,26 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if isinstance(base, RefExpr) and isinstance(base.node, MypyFile):
                 module_symbol_table = base.node.names
 
-            member_type = analyze_member_access(
+            result_type = analyze_member_access(
                 e.name, original_type, e, is_lvalue, False, False,
                 self.msg, original_type=original_type, chk=self.chk,
                 in_literal_context=self.is_literal_context(),
                 module_symbol_table=module_symbol_table)
+            # Properties with a setter should not narrow if the set type does
+            # not overlap with the get type
+            proper_type = get_proper_type(original_type)
+            if isinstance(proper_type, Instance):
+                method = proper_type.type.get_method(e.name)
+                if isinstance(method, OverloadedFuncDef) and method.property_setter:
+                    skip_non_overlapping_narrow = True
 
-            return member_type
+        if narrow:
+            narrow_type = self.narrow_type_from_binder(
+                e, result_type,
+                skip_non_overlapping=skip_non_overlapping_narrow)
+            return narrow_type if narrow_type is not None else result_type
+
+        return result_type
 
     def analyze_external_member_access(self, member: str, base_type: Type,
                                        context: Context) -> Type:
