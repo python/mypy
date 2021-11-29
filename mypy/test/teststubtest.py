@@ -648,7 +648,7 @@ class StubtestUnit(unittest.TestCase):
             runtime="",
             error="h",
         )
-        yield Case("", "__all__ = []", None)  # dummy case
+        yield Case(stub="", runtime="__all__ = []", error=None)  # dummy case
         yield Case(stub="", runtime="__all__ += ['y']\ny = 5", error="y")
         yield Case(stub="", runtime="__all__ += ['g']\ndef g(): pass", error="g")
         # Here we should only check that runtime has B, since the stub explicitly re-exports it
@@ -660,6 +660,7 @@ class StubtestUnit(unittest.TestCase):
     def test_missing_no_runtime_all(self) -> Iterator[Case]:
         yield Case(stub="", runtime="import sys", error=None)
         yield Case(stub="", runtime="def g(): ...", error="g")
+        yield Case(stub="", runtime="CONSTANT = 0", error="CONSTANT")
 
     @collect_cases
     def test_special_dunders(self) -> Iterator[Case]:
