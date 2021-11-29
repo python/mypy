@@ -442,7 +442,7 @@ potentially problematic or redundant in some way.
 
 .. option:: --disallow-ignore-without-code
 
-    This flag will disallow ``type: ignore`` comments which do not have
+    This flag will disallow ``# type: ignore`` comments which do not have
     error codes::
 
         prog.py:1: error: "type: ignore" comment without error code
