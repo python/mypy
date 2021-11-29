@@ -207,27 +207,27 @@ def verify_mypyfile(
         if not o.module_hidden and (not m.startswith("_") or hasattr(runtime, m))
     )
 
-    def _belongs_to_runtime(attr: str) -> bool:
-        runtime_attr = getattr(runtime, attr)
-        runtime_attr_module = getattr(runtime_attr, "__module__", None)
-        if runtime_attr_module is not None:
-            return runtime_attr_module == runtime.__name__
-        return not isinstance(runtime_attr, types.ModuleType)
+    def _belongs_to_runtime(r: types.ModuleType, attr: str) -> bool:
+        obj = getattr(r, attr)
+        obj_mod = getattr(obj, "__module__", None)
+        if obj_mod is not None:
+            return obj_mod == r.__name__
+        return not isinstance(obj, types.ModuleType)
 
-    def _runtime_public_contents() -> List[str]:
-        if hasattr(runtime, "__all__"):
-            return getattr(runtime, "__all__")
-        return [
+    runtime_public_contents = (
+        runtime.__all__
+        if hasattr(runtime, "__all__")
+        else [
             m
             for m in dir(runtime)
             if not m.startswith("_")
-            # Ensure that the object's module is `runtime`, since in the absence of __all__ we don't
-            # have a good way to detect re-exports at runtime.
-            and _belongs_to_runtime(m)
+            # Ensure that the object's module is `runtime`, since in the absence of __all__ we
+            # don't have a good way to detect re-exports at runtime.
+            and _belongs_to_runtime(runtime, m)
         ]
-
+    )
     # Check all things declared in module's __all__, falling back to our best guess
-    to_check.update(_runtime_public_contents())
+    to_check.update(runtime_public_contents)
     to_check.difference_update({"__file__", "__doc__", "__name__", "__builtins__", "__package__"})
 
     for entry in sorted(to_check):
