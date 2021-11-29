@@ -387,16 +387,16 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
                        fdef.line)
 
     if fdef.is_property:
-        # If there is a property setter, it will be processed after the getter,
-        # We populate the optional setter field with none for now.
-        assert name not in class_ir.properties
-        class_ir.properties[name] = (func_ir, None)
-
-    elif fdef in builder.prop_setters:
-        # The respective property getter must have been processed already
-        assert name in class_ir.properties
-        getter_ir, _ = class_ir.properties[name]
-        class_ir.properties[name] = (getter_ir, func_ir)
+        if fdef not in builder.prop_setters:
+            # If there is a property setter, it will be processed after the getter,
+            # We populate the optional setter field with none for now.
+            assert name not in class_ir.properties
+            class_ir.properties[name] = (func_ir, None)
+        else:
+            # The respective property getter must have been processed already
+            assert name in class_ir.properties
+            getter_ir, _ = class_ir.properties[name]
+            class_ir.properties[name] = (getter_ir, func_ir)
 
     class_ir.methods[func_ir.decl.name] = func_ir
 
