@@ -518,7 +518,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             context=defn.impl,
                             is_lvalue=False,
                             is_super=False,
-                            is_operator=False,
+                            is_operator=True,
                             msg=self.msg,
                             original_type=inner_type,
                             chk=self,
