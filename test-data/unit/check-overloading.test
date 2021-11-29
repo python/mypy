@@ -5382,6 +5382,20 @@ def f_c(arg: int) -> None: ...
 def f_c(arg: str) -> None: ...
 @dec_c  # E: Overloaded function implementation does not accept all possible arguments of signature 2
 def f_c(arg): ...
+
+class D:
+    def __getattr__(self, attr: str) -> Callable[[Union[int, str]], None]:
+        ...   # Will return `__call__` in runtime
+
+def dec_d(f: Callable[..., Any]) -> D:
+    return D()
+
+@overload
+def f_d(__arg: int) -> None: ...
+@overload
+def f_d(__arg: str) -> None: ...
+@dec_d
+def f_d(__arg: Union[int, str]) -> None: ...
 [builtins fixtures/dict.pyi]
 
 [case testOverloadWithErrorDecorator]
