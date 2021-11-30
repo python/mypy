@@ -4037,6 +4037,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 is_subtype(typ, self.chk.named_type('typing.Mapping')) and
                 try_getting_str_literals_from_type(map_instance_to_supertype(
                     typ, mapping_type.type).args[0]) is not None) or
+            # This condition is to avoid false-positive errors when empty dictionaries are
+            # passed with double-stars (e.g., **{})。The type of empty dicts is inferred to be
+            # dict[<nothing>, <nothing>], which is not a subtype of Mapping[str, Any]。
             is_subtype(typ, self.chk.named_generic_type('typing.Mapping',
                                                         [UninhabitedType(), UninhabitedType()])) or
             isinstance(typ, ParamSpecType)
