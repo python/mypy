@@ -141,7 +141,7 @@ def prepare_method_def(ir: ClassIR, module_name: str, cdef: ClassDef, mapper: Ma
             decl.is_prop_setter = True
             ir.method_decls[PROPSET_PREFIX + node.name] = decl
 
-        if node.func.is_property:
+        if node.func.is_property and not decl.is_prop_setter:
             assert node.func.type
             decl.is_prop_getter = True
             ir.property_types[node.name] = decl.sig.ret_type
