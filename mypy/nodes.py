@@ -2971,14 +2971,15 @@ class TypeAlias(SymbolNode):
         within functions that can't be looked up from the symbol table)
     """
     __slots__ = ('target', '_fullname', 'alias_tvars', 'no_args', 'normalized',
-                 'line', 'column', '_is_recursive', 'eager')
+                 'line', 'column', '_is_recursive', 'eager', 'rvalue')
 
     def __init__(self, target: 'mypy.types.Type', fullname: str, line: int, column: int,
                  *,
                  alias_tvars: Optional[List[str]] = None,
                  no_args: bool = False,
                  normalized: bool = False,
-                 eager: bool = False) -> None:
+                 eager: bool = False,
+                 rvalue: Optional[Expression] = None) -> None:
         self._fullname = fullname
         self.target = target
         if alias_tvars is None:
@@ -2990,6 +2991,7 @@ class TypeAlias(SymbolNode):
         # it is the cached value.
         self._is_recursive: Optional[bool] = None
         self.eager = eager
+        self.rvalue = rvalue
         super().__init__(line, column)
 
     @property

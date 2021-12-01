@@ -196,3 +196,16 @@ def f(x: Union[int, str, None]) -> None:
     else:
         reveal_type(x)  # N: Revealed type is "None"
 [builtins fixtures/isinstance.pyi]
+
+[case testUnionOrSyntaxMetaclassOverride]
+# flags: --python-version 3.10
+class U(type): pass
+
+class Meta(type):
+    def __or__(self, other) -> U: pass # type: ignore
+
+class F(metaclass=Meta): pass
+
+reveal_type(F | F)  # N: Revealed type is "__main__.U"
+UnionF = F | F
+reveal_type(UF)  # N: Revealed type is "__main__.U"

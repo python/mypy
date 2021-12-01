@@ -3242,6 +3242,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return type_object_type(tuple_fallback(item).type, self.named_type)
         elif isinstance(item, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=item)
+        elif isinstance(item, UnionType) and isinstance(alias.rvalue, OpExpr):
+            return self.accept(alias.rvalue)
         else:
             if alias_definition:
                 return AnyType(TypeOfAny.special_form)
