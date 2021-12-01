@@ -207,5 +207,5 @@ class Meta(type):
 class F(metaclass=Meta): pass
 
 reveal_type(F | F)  # N: Revealed type is "__main__.U"
-UnionF = F | F
+UF = F | F
 reveal_type(UF)  # N: Revealed type is "__main__.U"
