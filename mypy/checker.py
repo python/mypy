@@ -512,7 +512,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     impl_type = inner_type
                 elif isinstance(inner_type, Instance):
                     inner_call = get_proper_type(
-                        find_member('__call__', inner_type, inner_type, is_operator=True)
+                        analyze_member_access(
+                            name='__call__',
+                            typ=inner_type,
+                            context=defn.impl,
+                            is_lvalue=False,
+                            is_super=False,
+                            is_operator=True,
+                            msg=self.msg,
+                            original_type=inner_type,
+                            chk=self,
+                        ),
                     )
                     if isinstance(inner_call, CallableType):
                         impl_type = inner_call

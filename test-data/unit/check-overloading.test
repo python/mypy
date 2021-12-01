@@ -5409,6 +5409,7 @@ def f_e(arg): ...
 
 class Bad2:
     def __getattr__(self, attr):
+        # __getattr__ is not called for implicit `__call__`
         if attr == "__call__":
             return lambda *a, **kw: print(a, kw)
         raise AttributeError
