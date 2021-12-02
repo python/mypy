@@ -14,7 +14,23 @@ on:
     - LICENSE
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code style with flake8
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: Install tox
+        run: pip install --upgrade 'setuptools!=50' 'virtualenv>=20.6.0' tox==3.20.1
+      - name: Setup tox environment
+        run: tox -e lint --notest
+      - name: Test
+        run: tox -e lint --skip-pkg-install
+
   main:
+    needs: lint
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -80,11 +96,6 @@ jobs:
           arch: x64
           os: ubuntu-latest
           toxenv: type
-        - name: Code style with flake8
-          python: '3.7'
-          arch: x64
-          os: ubuntu-latest
-          toxenv: lint
 
     name: ${{ matrix.name }}
     steps:
