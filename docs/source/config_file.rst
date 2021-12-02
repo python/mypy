@@ -507,12 +507,12 @@ section of the command line docs.
 
     Warns about unneeded ``# type: ignore`` comments.
 
-.. confval:: disallow_ignore_without_code
+.. confval:: warn_ignores_without_codes
 
     :type: boolean
     :default: False
 
-    Disallow ``# type: ignore`` comments which do not have error codes.
+    Warn about '# type: ignore' comments which do not have error codes.
 
 .. confval:: warn_no_return
 

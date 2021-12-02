@@ -136,16 +136,16 @@ x # type: ignore[name-defined, attr-defined] # E: Unused "type: ignore[attr-defi
 "x" # type: ignore[name-defined] # E: Unused "type: ignore" comment
 
 [case testErrorCodeMissingWhenRequired]
-# flags: --disallow-ignore-without-code
+# flags: --warn-ignores-without-codes
 "x" # type: ignore # E: "type: ignore" comment without error code
 y # type: ignore # E: "type: ignore" comment without error code (hint: add [name-defined])
 
 [case testErrorCodeMissingDoesntTrampleUnusedIgnoresWarning]
-# flags: --disallow-ignore-without-code --warn-unused-ignores
+# flags: --warn-ignores-without-codes --warn-unused-ignores
 "x" # type: ignore # E: Unused "type: ignore" comment
 
 [case testErrorCodeMissingWholeFileIgnores]
-# flags: --disallow-ignore-without-code
+# flags: --warn-ignores-without-codes
 # type: ignore  # whole file ignore
 x
 y # type: ignore  # ignore the lack of error code since we're ignore the whole file
