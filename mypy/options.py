@@ -32,6 +32,7 @@ PER_MODULE_OPTIONS: Final = {
     "disallow_any_expr",
     "disallow_any_generics",
     "disallow_any_unimported",
+    "disallow_ignore_without_code",
     "disallow_incomplete_defs",
     "disallow_subclassing_any",
     "disallow_untyped_calls",
