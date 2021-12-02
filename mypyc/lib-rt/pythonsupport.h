@@ -8,6 +8,7 @@
 
 #include <stdbool.h>
 #include <Python.h>
+#include "pythoncapi_compat.h"
 #include <frameobject.h>
 #include <assert.h>
 #include "mypyc_util.h"
@@ -220,7 +221,7 @@ list_resize(PyListObject *self, Py_ssize_t newsize)
     */
     if (allocated >= newsize && newsize >= (allocated >> 1)) {
         assert(self->ob_item != NULL || newsize == 0);
-        Py_SIZE(self) = newsize;
+        Py_SET_SIZE(self, newsize);
         return 0;
     }
 
@@ -248,7 +249,7 @@ list_resize(PyListObject *self, Py_ssize_t newsize)
         return -1;
     }
     self->ob_item = items;
-    Py_SIZE(self) = newsize;
+    Py_SET_SIZE(self, newsize);
     self->allocated = new_allocated;
     return 0;
 }
