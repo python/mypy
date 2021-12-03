@@ -1887,7 +1887,9 @@ class SemanticAnalyzer(NodeVisitor[None],
         if self.is_incomplete_namespace(import_id):
             # We don't know whether the name will be there, since the namespace
             # is incomplete. Defer the current target.
-            self.mark_incomplete(imported_id, context)
+            self.mark_incomplete(
+                imported_id, context, module_public=module_public, module_hidden=module_hidden
+            )
             return
         message = 'Module "{}" has no attribute "{}"'.format(import_id, source_id)
         # Suggest alternatives, if any match is found.
