@@ -2654,6 +2654,35 @@ b = a.bar
 [out]
 main:9: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 
+[case testDecoratedGetAttribute]
+from typing import Callable, TypeVar
+
+T = TypeVar('T', bound=Callable)
+
+def decorator(f: T) -> T:
+    return f
+
+def bad(f: Callable) -> Callable[..., int]:
+    return f
+
+class A:
+    @decorator
+    def __getattribute__(self, x: str) -> A:
+        return A()
+class B:
+    @bad  # We test that type will be taken from decorated type, not node itself
+    def __getattribute__(self, x: str) -> A:
+        return A()
+
+a: A
+b: B
+
+a1: A = a.foo
+b1: B = a.bar  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a2: A = b.baz  # E: Incompatible types in assignment (expression has type "int", variable has type "A")
+b2: B = b.roo  # E: Incompatible types in assignment (expression has type "int", variable has type "B")
+[builtins fixtures/tuple.pyi]
+
 [case testGetattributeSignature]
 class A:
     def __getattribute__(self, x: str) -> A: pass
@@ -2680,6 +2709,35 @@ b = a.bar
 [builtins fixtures/tuple.pyi]
 [out]
 main:9: error: Incompatible types in assignment (expression has type "A", variable has type "B")
+
+[case testDecoratedGetattr]
+from typing import Callable, TypeVar
+
+T = TypeVar('T', bound=Callable)
+
+def decorator(f: T) -> T:
+    return f
+
+def bad(f: Callable) -> Callable[..., int]:
+    return f
+
+class A:
+    @decorator
+    def __getattr__(self, x: str) -> A:
+        return A()
+class B:
+    @bad  # We test that type will be taken from decorated type, not node itself
+    def __getattr__(self, x: str) -> A:
+        return A()
+
+a: A
+b: B
+
+a1: A = a.foo
+b1: B = a.bar  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a2: A = b.baz  # E: Incompatible types in assignment (expression has type "int", variable has type "A")
+b2: B = b.roo  # E: Incompatible types in assignment (expression has type "int", variable has type "B")
+[builtins fixtures/tuple.pyi]
 
 [case testGetattrWithGetitem]
 class A:
@@ -2786,6 +2844,35 @@ class Sub(Super):
 s = Sub()
 s.success = 4
 s.fail = 'fail'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testDecoratedSetattr]
+from typing import Any, Callable, TypeVar
+
+T = TypeVar('T', bound=Callable)
+
+def decorator(f: T) -> T:
+    return f
+
+def bad(f: Callable) -> Callable[[Any, str, int], None]:
+    return f
+
+class A:
+    @decorator
+    def __setattr__(self, k: str, v: str) -> None:
+        pass
+class B:
+    @bad  # We test that type will be taken from decorated type, not node itself
+    def __setattr__(self, k: str, v: str) -> None:
+        pass
+
+a: A
+a.foo = 'a'
+a.bar = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+b: B
+b.good = 1
+b.bad = 'a'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/tuple.pyi]
 
 [case testSetattrSignature]
 from typing import Any
@@ -6114,6 +6201,85 @@ class C:
     def meth_spec(self) -> None:
         self.spec = B()
         reveal_type(self.spec)  # N: Revealed type is "__main__.B"
+[builtins fixtures/bool.pyi]
+
+[case testDecoratedDunderGet]
+from typing import Any, Callable, TypeVar, Type
+
+F = TypeVar('F', bound=Callable)
+T = TypeVar('T')
+
+def decorator(f: F) -> F:
+    return f
+
+def change(f: Callable) -> Callable[..., int]:
+    pass
+
+def untyped(f):
+    return f
+
+class A: ...
+
+class Descr1:
+    @decorator
+    def __get__(self, obj: T, typ: Type[T]) -> A: ...
+class Descr2:
+    @change
+    def __get__(self, obj: T, typ: Type[T]) -> A: ...
+class Descr3:
+    @untyped
+    def __get__(self, obj: T, typ: Type[T]) -> A: ...
+
+class C:
+    spec1 = Descr1()
+    spec2 = Descr2()
+    spec3 = Descr3()
+
+c: C
+reveal_type(c.spec1)  # N: Revealed type is "__main__.A"
+reveal_type(c.spec2)  # N: Revealed type is "builtins.int"
+reveal_type(c.spec3)  # N: Revealed type is "Any"
+[builtins fixtures/bool.pyi]
+
+[case testDecoratedDunderSet]
+from typing import Any, Callable, TypeVar, Type
+
+F = TypeVar('F', bound=Callable)
+T = TypeVar('T')
+
+def decorator(f: F) -> F:
+    return f
+
+def change(f: Callable) -> Callable[[Any, Any, int], None]:
+    pass
+
+def untyped(f):
+    return f
+
+class A: ...
+
+class Descr1:
+    @decorator
+    def __set__(self, obj: T, value: A) -> None: ...
+class Descr2:
+    @change
+    def __set__(self, obj: T, value: A) -> None: ...
+class Descr3:
+    @untyped
+    def __set__(self, obj: T, value: A) -> None: ...
+
+class C:
+    spec1 = Descr1()
+    spec2 = Descr2()
+    spec3 = Descr3()
+
+c: C
+c.spec1 = A()
+c.spec1 = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "A")
+c.spec2 = A()  # E: Incompatible types in assignment (expression has type "A", variable has type "int")
+c.spec2 = 1
+c.spec3 = A()
+c.spec3 = 1
 [builtins fixtures/bool.pyi]
 
 [case testClassLevelImport]

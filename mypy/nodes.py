@@ -2687,11 +2687,13 @@ class TypeInfo(SymbolNode):
     def has_readable_member(self, name: str) -> bool:
         return self.get(name) is not None
 
-    def get_method(self, name: str) -> Optional[FuncBase]:
+    def get_method(self, name: str) -> Union[FuncBase, Decorator, None]:
         for cls in self.mro:
             if name in cls.names:
                 node = cls.names[name].node
                 if isinstance(node, FuncBase):
+                    return node
+                elif isinstance(node, Decorator):  # Two `if`s make `mypyc` happy
                     return node
                 else:
                     return None

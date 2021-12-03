@@ -67,7 +67,8 @@ class MemberContext:
         self.chk.handle_cannot_determine_type(name, context)
 
     def copy_modified(self, *, messages: Optional[MessageBuilder] = None,
-                      self_type: Optional[Type] = None) -> 'MemberContext':
+                      self_type: Optional[Type] = None,
+                      is_lvalue: Optional[bool] = None) -> 'MemberContext':
         mx = MemberContext(self.is_lvalue, self.is_super, self.is_operator,
                            self.original_type, self.context, self.msg, self.chk,
                            self.self_type, self.module_symbol_table)
@@ -75,6 +76,8 @@ class MemberContext:
             mx.msg = messages
         if self_type is not None:
             mx.self_type = self_type
+        if is_lvalue is not None:
+            mx.is_lvalue = is_lvalue
         return mx
 
 
@@ -197,7 +200,7 @@ def analyze_instance_member_access(name: str,
 
     # Look up the member. First look up the method dictionary.
     method = info.get_method(name)
-    if method:
+    if method and not isinstance(method, Decorator):
         if method.is_property:
             assert isinstance(method, OverloadedFuncDef)
             first_item = cast(Decorator, method.items[0])
@@ -390,29 +393,46 @@ def analyze_member_var_access(name: str,
         if not mx.is_lvalue:
             for method_name in ('__getattribute__', '__getattr__'):
                 method = info.get_method(method_name)
+
                 # __getattribute__ is defined on builtins.object and returns Any, so without
                 # the guard this search will always find object.__getattribute__ and conclude
                 # that the attribute exists
                 if method and method.info.fullname != 'builtins.object':
-                    function = function_type(method, mx.named_type('builtins.function'))
-                    bound_method = bind_self(function, mx.self_type)
+                    if isinstance(method, Decorator):
+                        # https://github.com/python/mypy/issues/10409
+                        bound_method = analyze_var(method_name, method.var, itype, info, mx)
+                    else:
+                        bound_method = bind_self(
+                            function_type(method, mx.named_type('builtins.function')),
+                            mx.self_type,
+                        )
                     typ = map_instance_to_supertype(itype, method.info)
                     getattr_type = get_proper_type(expand_type_by_instance(bound_method, typ))
                     if isinstance(getattr_type, CallableType):
                         result = getattr_type.ret_type
+                    else:
+                        result = getattr_type
 
-                        # Call the attribute hook before returning.
-                        fullname = '{}.{}'.format(method.info.fullname, name)
-                        hook = mx.chk.plugin.get_attribute_hook(fullname)
-                        if hook:
-                            result = hook(AttributeContext(get_proper_type(mx.original_type),
-                                                           result, mx.context, mx.chk))
-                        return result
+                    # Call the attribute hook before returning.
+                    fullname = '{}.{}'.format(method.info.fullname, name)
+                    hook = mx.chk.plugin.get_attribute_hook(fullname)
+                    if hook:
+                        result = hook(AttributeContext(get_proper_type(mx.original_type),
+                                                       result, mx.context, mx.chk))
+                    return result
         else:
             setattr_meth = info.get_method('__setattr__')
             if setattr_meth and setattr_meth.info.fullname != 'builtins.object':
-                setattr_func = function_type(setattr_meth, mx.named_type('builtins.function'))
-                bound_type = bind_self(setattr_func, mx.self_type)
+                if isinstance(setattr_meth, Decorator):
+                    bound_type = analyze_var(
+                        name, setattr_meth.var, itype, info,
+                        mx.copy_modified(is_lvalue=False),
+                    )
+                else:
+                    bound_type = bind_self(
+                        function_type(setattr_meth, mx.named_type('builtins.function')),
+                        mx.self_type,
+                    )
                 typ = map_instance_to_supertype(itype, setattr_meth.info)
                 setattr_type = get_proper_type(expand_type_by_instance(bound_type, typ))
                 if isinstance(setattr_type, CallableType) and len(setattr_type.arg_types) > 0:
@@ -441,32 +461,24 @@ def check_final_member(name: str, info: TypeInfo, msg: MessageBuilder, ctx: Cont
             msg.cant_assign_to_final(name, attr_assign=True, ctx=ctx)
 
 
-def analyze_descriptor_access(instance_type: Type,
-                              descriptor_type: Type,
-                              named_type: Callable[[str], Instance],
-                              msg: MessageBuilder,
-                              context: Context, *,
-                              chk: 'mypy.checker.TypeChecker') -> Type:
+def analyze_descriptor_access(descriptor_type: Type,
+                              mx: MemberContext) -> Type:
     """Type check descriptor access.
 
     Arguments:
-        instance_type: The type of the instance on which the descriptor
-            attribute is being accessed (the type of ``a`` in ``a.f`` when
-            ``f`` is a descriptor).
         descriptor_type: The type of the descriptor attribute being accessed
             (the type of ``f`` in ``a.f`` when ``f`` is a descriptor).
-        context: The node defining the context of this inference.
+        mx: The current member access context.
     Return:
         The return type of the appropriate ``__get__`` overload for the descriptor.
     """
-    instance_type = get_proper_type(instance_type)
+    instance_type = get_proper_type(mx.original_type)
     descriptor_type = get_proper_type(descriptor_type)
 
     if isinstance(descriptor_type, UnionType):
         # Map the access over union types
         return make_simplified_union([
-            analyze_descriptor_access(instance_type, typ, named_type,
-                                      msg, context, chk=chk)
+            analyze_descriptor_access(typ, mx)
             for typ in descriptor_type.items
         ])
     elif not isinstance(descriptor_type, Instance):
@@ -476,13 +488,21 @@ def analyze_descriptor_access(instance_type: Type,
         return descriptor_type
 
     dunder_get = descriptor_type.type.get_method('__get__')
-
     if dunder_get is None:
-        msg.fail(message_registry.DESCRIPTOR_GET_NOT_CALLABLE.format(descriptor_type), context)
+        mx.msg.fail(message_registry.DESCRIPTOR_GET_NOT_CALLABLE.format(descriptor_type),
+                    mx.context)
         return AnyType(TypeOfAny.from_error)
 
-    function = function_type(dunder_get, named_type('builtins.function'))
-    bound_method = bind_self(function, descriptor_type)
+    if isinstance(dunder_get, Decorator):
+        bound_method = analyze_var(
+            '__set__', dunder_get.var, descriptor_type, descriptor_type.type, mx,
+        )
+    else:
+        bound_method = bind_self(
+            function_type(dunder_get, mx.named_type('builtins.function')),
+            descriptor_type,
+        )
+
     typ = map_instance_to_supertype(descriptor_type, dunder_get.info)
     dunder_get_type = expand_type_by_instance(bound_method, typ)
 
@@ -495,19 +515,19 @@ def analyze_descriptor_access(instance_type: Type,
     else:
         owner_type = instance_type
 
-    callable_name = chk.expr_checker.method_fullname(descriptor_type, "__get__")
-    dunder_get_type = chk.expr_checker.transform_callee_type(
+    callable_name = mx.chk.expr_checker.method_fullname(descriptor_type, "__get__")
+    dunder_get_type = mx.chk.expr_checker.transform_callee_type(
         callable_name, dunder_get_type,
-        [TempNode(instance_type, context=context),
-         TempNode(TypeType.make_normalized(owner_type), context=context)],
-        [ARG_POS, ARG_POS], context, object_type=descriptor_type,
+        [TempNode(instance_type, context=mx.context),
+         TempNode(TypeType.make_normalized(owner_type), context=mx.context)],
+        [ARG_POS, ARG_POS], mx.context, object_type=descriptor_type,
     )
 
-    _, inferred_dunder_get_type = chk.expr_checker.check_call(
+    _, inferred_dunder_get_type = mx.chk.expr_checker.check_call(
         dunder_get_type,
-        [TempNode(instance_type, context=context),
-         TempNode(TypeType.make_normalized(owner_type), context=context)],
-        [ARG_POS, ARG_POS], context, object_type=descriptor_type,
+        [TempNode(instance_type, context=mx.context),
+         TempNode(TypeType.make_normalized(owner_type), context=mx.context)],
+        [ARG_POS, ARG_POS], mx.context, object_type=descriptor_type,
         callable_name=callable_name)
 
     inferred_dunder_get_type = get_proper_type(inferred_dunder_get_type)
@@ -516,7 +536,8 @@ def analyze_descriptor_access(instance_type: Type,
         return inferred_dunder_get_type
 
     if not isinstance(inferred_dunder_get_type, CallableType):
-        msg.fail(message_registry.DESCRIPTOR_GET_NOT_CALLABLE.format(descriptor_type), context)
+        mx.msg.fail(message_registry.DESCRIPTOR_GET_NOT_CALLABLE.format(descriptor_type),
+                    mx.context)
         return AnyType(TypeOfAny.from_error)
 
     return inferred_dunder_get_type.ret_type
@@ -605,8 +626,7 @@ def analyze_var(name: str,
     fullname = '{}.{}'.format(var.info.fullname, name)
     hook = mx.chk.plugin.get_attribute_hook(fullname)
     if result and not mx.is_lvalue and not implicit:
-        result = analyze_descriptor_access(mx.original_type, result, mx.named_type,
-                                           mx.msg, mx.context, chk=mx.chk)
+        result = analyze_descriptor_access(result, mx)
     if hook:
         result = hook(AttributeContext(get_proper_type(mx.original_type),
                                        result, mx.context, mx.chk))
@@ -785,8 +805,7 @@ def analyze_class_attribute_access(itype: Instance,
         result = add_class_tvars(t, isuper, is_classmethod,
                                  mx.self_type, original_vars=original_vars)
         if not mx.is_lvalue:
-            result = analyze_descriptor_access(mx.original_type, result, mx.named_type,
-                                               mx.msg, mx.context, chk=mx.chk)
+            result = analyze_descriptor_access(result, mx)
         return result
     elif isinstance(node.node, Var):
         mx.not_ready_callback(name, mx.context)

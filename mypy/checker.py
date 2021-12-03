@@ -46,7 +46,8 @@ from mypy.messages import (
 )
 import mypy.checkexpr
 from mypy.checkmember import (
-    analyze_member_access, analyze_descriptor_access, type_object_type,
+    MemberContext, analyze_member_access, analyze_descriptor_access, analyze_var,
+    type_object_type,
 )
 from mypy.typeops import (
     map_type_from_supertype, bind_self, erase_to_bound, make_simplified_union,
@@ -3205,9 +3206,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                        code=codes.ASSIGNMENT)
             return rvalue_type, attribute_type, True
 
-        get_type = analyze_descriptor_access(
-            instance_type, attribute_type, self.named_type,
-            self.msg, context, chk=self)
+        mx = MemberContext(
+            is_lvalue=False, is_super=False, is_operator=False,
+            original_type=instance_type, context=context, self_type=None,
+            msg=self.msg, chk=self,
+        )
+        get_type = analyze_descriptor_access(attribute_type, mx)
         if not attribute_type.type.has_readable_member('__set__'):
             # If there is no __set__, we type-check that the assigned value matches
             # the return type of __get__. This doesn't match the python semantics,
@@ -3221,9 +3225,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if dunder_set is None:
             self.fail(message_registry.DESCRIPTOR_SET_NOT_CALLABLE.format(attribute_type), context)
             return AnyType(TypeOfAny.from_error), get_type, False
-
-        function = function_type(dunder_set, self.named_type('builtins.function'))
-        bound_method = bind_self(function, attribute_type)
+        if isinstance(dunder_set, Decorator):
+            bound_method = analyze_var(
+                '__set__', dunder_set.var, attribute_type, attribute_type.type, mx,
+            )
+        else:
+            bound_method = bind_self(
+                function_type(dunder_set, self.named_type('builtins.function')),
+                attribute_type,
+            )
         typ = map_instance_to_supertype(attribute_type, dunder_set.info)
         dunder_set_type = expand_type_by_instance(bound_method, typ)
 
@@ -6214,6 +6224,12 @@ def is_untyped_decorator(typ: Optional[Type]) -> bool:
     elif isinstance(typ, Instance):
         method = typ.type.get_method('__call__')
         if method:
+            if isinstance(method, Decorator):
+                return (
+                    is_untyped_decorator(method.func.type)
+                    or is_untyped_decorator(method.var.type)
+                )
+
             if isinstance(method.type, Overloaded):
                 return any(is_untyped_decorator(item) for item in method.type.items)
             else:
