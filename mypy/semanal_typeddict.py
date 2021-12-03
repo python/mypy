@@ -308,6 +308,7 @@ class TypedDictAnalyzer:
                                                self.api.is_stub_file)
             except TypeTranslationError:
                 if (isinstance(field_type_expr, CallExpr) and
+                        isinstance(field_type_expr.callee, RefExpr) and
                         field_type_expr.callee.fullname in TPDICT_NAMES):
                     self.fail_typeddict_arg(
                         'Inline TypedDict types not supported; use assignment',
