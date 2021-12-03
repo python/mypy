@@ -307,7 +307,14 @@ class TypedDictAnalyzer:
                 type = expr_to_unanalyzed_type(field_type_expr, self.options,
                                                self.api.is_stub_file)
             except TypeTranslationError:
-                self.fail_typeddict_arg('Invalid field type', field_type_expr)
+                if (isinstance(field_type_expr, CallExpr) and
+                        isinstance(field_type_expr.callee, RefExpr) and
+                        field_type_expr.callee.fullname in TPDICT_NAMES):
+                    self.fail_typeddict_arg(
+                        'Inline TypedDict types not supported; use assignment to define TypedDict',
+                        field_type_expr)
+                else:
+                    self.fail_typeddict_arg('Invalid field type', field_type_expr)
                 return [], [], False
             analyzed = self.api.anal_type(type)
             if analyzed is None:
