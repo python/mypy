@@ -1149,6 +1149,14 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.mark_incomplete(defn.name, defn)
             return
 
+        # update the typevar ids such that they will not conflict with any base classes
+        #  (yuck, there has to be a better way to do this.)
+        if any(isinstance(base[0], Instance) for base in base_types):
+            offset = max(self.find_maximum_class_id(base[0].type) for base in base_types if isinstance(base[0], Instance))
+            # mutating the type vars to be what we want (and hoping nothing previously saved them)
+            for tvar in tvar_defs:
+                tvar.id.raw_id += offset
+
         is_typeddict, info = self.typed_dict_analyzer.analyze_typeddict_classdef(defn)
         if is_typeddict:
             for decorator in defn.decorators:
@@ -1182,6 +1190,14 @@ class SemanticAnalyzer(NodeVisitor[None],
             for decorator in defn.decorators:
                 self.analyze_class_decorator(defn, decorator)
             self.analyze_class_body_common(defn)
+
+    # should this be memoized in TypeInfo??
+    def find_maximum_class_id(self, info: TypeInfo) -> int:
+        # top class?
+        if len(info.mro) in (0, 1):
+            return len(info.type_vars)
+        else:
+            return len(info.type_vars) + max(self.find_maximum_class_id(cls) for cls in info.mro[1:])
 
     def is_core_builtin_class(self, defn: ClassDef) -> bool:
         return self.cur_mod_id == 'builtins' and defn.name in CORE_BUILTIN_CLASSES

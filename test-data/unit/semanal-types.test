@@ -662,9 +662,9 @@ MypyFile:1(
   ClassDef:4(
     c
     TypeVars(
-      t`1)
+      t`2)
     BaseType(
-      __main__.d[t`1])
+      __main__.d[t`2])
     PassStmt:4()))
 
 [case testTupleType]
@@ -907,7 +907,7 @@ MypyFile:1(
   ClassDef:5(
     A
     TypeVars(
-      t`1)
+      t`2)
     BaseType(
       __main__.B[Any])
     PassStmt:5()))

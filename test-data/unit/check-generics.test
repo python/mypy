@@ -1933,9 +1933,9 @@ class C(Generic[T]):
 class D(C[Tuple[T, S]]): ...
 class E(D[S, str]): ...
 
-reveal_type(D.make_one)  # N: Revealed type is "def [T, S] (x: Tuple[T`1, S`2]) -> __main__.C[Tuple[T`1, S`2]]"
+reveal_type(D.make_one)  # N: Revealed type is "def [T, S] (x: Tuple[T`2, S`3]) -> __main__.C[Tuple[T`2, S`3]]"
 reveal_type(D[int, str].make_one)  # N: Revealed type is "def (x: Tuple[builtins.int*, builtins.str*]) -> __main__.C[Tuple[builtins.int*, builtins.str*]]"
-reveal_type(E.make_one)  # N: Revealed type is "def [S] (x: Tuple[S`1, builtins.str*]) -> __main__.C[Tuple[S`1, builtins.str*]]"
+reveal_type(E.make_one)  # N: Revealed type is "def [S] (x: Tuple[S`4, builtins.str*]) -> __main__.C[Tuple[S`4, builtins.str*]]"
 reveal_type(E[int].make_one)  # N: Revealed type is "def (x: Tuple[builtins.int*, builtins.str*]) -> __main__.C[Tuple[builtins.int*, builtins.str*]]"
 [builtins fixtures/classmethod.pyi]
 
@@ -2111,11 +2111,11 @@ class A(Generic[T]):
 
 class B(A[T], Generic[T, S]):
     def meth(self) -> None:
-        reveal_type(A[T].foo)  # N: Revealed type is "def () -> Tuple[T`1, __main__.A[T`1]]"
+        reveal_type(A[T].foo)  # N: Revealed type is "def () -> Tuple[T`2, __main__.A[T`2]]"
     @classmethod
     def other(cls) -> None:
-        reveal_type(cls.foo)  # N: Revealed type is "def () -> Tuple[T`1, __main__.B[T`1, S`2]]"
-reveal_type(B.foo)  # N: Revealed type is "def [T, S] () -> Tuple[T`1, __main__.B[T`1, S`2]]"
+        reveal_type(cls.foo)  # N: Revealed type is "def () -> Tuple[T`2, __main__.B[T`2, S`3]]"
+reveal_type(B.foo)  # N: Revealed type is "def [T, S] () -> Tuple[T`2, __main__.B[T`2, S`3]]"
 [builtins fixtures/classmethod.pyi]
 
 [case testGenericClassAlternativeConstructorPrecise]
@@ -2504,3 +2504,24 @@ b: I[I[Any]]
 reveal_type([a, b])  # N: Revealed type is "builtins.list[__main__.I*[__main__.I[Any]]]"
 reveal_type([b, a])  # N: Revealed type is "builtins.list[__main__.I*[__main__.I[Any]]]"
 [builtins fixtures/list.pyi]
+
+[case testOverlappingTypeVarIds]
+from typing import TypeVar, Generic
+
+class A: ...
+class B: ...
+
+T = TypeVar("T", bound=A)
+V = TypeVar("V", bound=B)
+S = TypeVar("S")
+
+class Whatever(Generic[T]):
+    def something(self: S) -> S:
+        return self
+
+# the "V" here had the same id as "T" and so mypy used to think it could expand one into another.
+# this test is here to make sure that doesn't happen!
+class WhateverPartTwo(Whatever[A], Generic[V]):
+    def something(self: S) -> S:
+        return self
+

@@ -435,7 +435,7 @@ class B(A[C, T], Generic[T]):
 CallExpr(9) : None
 MemberExpr(9) : def (a: C)
 NameExpr(9) : C
-NameExpr(9) : B[T`1]
+NameExpr(9) : B[T`3]
 
 [case testExternalReferenceWithGenericInheritance]
 from typing import TypeVar, Generic
