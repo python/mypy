@@ -78,7 +78,7 @@ p = Point(x='meaning_of_life', y=1337)  # E: Incompatible types (expression has 
 [case testCannotCreateTypedDictInstanceWithInlineTypedDict]
 from mypy_extensions import TypedDict
 D = TypedDict('D', {
-    'x': TypedDict('E', {  # E: Inline TypedDict types not supported; use assignment
+    'x': TypedDict('E', {  # E: Inline TypedDict types not supported; use assignment to define TypedDict
         'y': int
     })
 })

@@ -311,7 +311,7 @@ class TypedDictAnalyzer:
                         isinstance(field_type_expr.callee, RefExpr) and
                         field_type_expr.callee.fullname in TPDICT_NAMES):
                     self.fail_typeddict_arg(
-                        'Inline TypedDict types not supported; use assignment',
+                        'Inline TypedDict types not supported; use assignment to define TypedDict',
                         field_type_expr)
                 else:
                     self.fail_typeddict_arg('Invalid field type', field_type_expr)
