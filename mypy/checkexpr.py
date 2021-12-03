@@ -3242,8 +3242,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return type_object_type(tuple_fallback(item).type, self.named_type)
         elif isinstance(item, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=item)
-        elif isinstance(item, UnionType) and isinstance(alias.rvalue, OpExpr):
-            return self.accept(alias.rvalue)
+        elif isinstance(item, UnionType):
+            if alias.rtype is not None:
+                return alias.rtype
+            elif self.chk.options.python_version[:2] >= (3, 10):
+                return self.named_type('types.UnionType')
+            else:
+                return self.named_type('builtins.object')
         else:
             if alias_definition:
                 return AnyType(TypeOfAny.special_form)

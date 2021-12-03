@@ -139,6 +139,8 @@ class NodeFixer(NodeVisitor[None]):
 
     def visit_type_alias(self, a: TypeAlias) -> None:
         a.target.accept(self.type_fixer)
+        if a.rtype is not None:
+            a.rtype.accept(self.type_fixer)
 
 
 class TypeFixer(TypeVisitor[None]):

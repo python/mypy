@@ -199,6 +199,20 @@ def f(x: Union[int, str, None]) -> None:
 
 [case testUnionOrSyntaxMetaclassOverride]
 # flags: --python-version 3.10
+import types
+
+class Meta(type):
+    def __or__(self, other) -> types.UnionType: pass
+
+class F(metaclass=Meta): pass
+
+reveal_type(F | F)  # N: Revealed type is "types.UnionType"
+UF = F | F
+reveal_type(UF)  # N: Revealed type is "types.UnionType"
+[builtins fixtures/tuple.pyi]
+
+[case testUnionOrSyntaxMetaclassOverrideType]
+# flags: --python-version 3.10
 class U(type): pass
 
 class Meta(type):
@@ -209,3 +223,20 @@ class F(metaclass=Meta): pass
 reveal_type(F | F)  # N: Revealed type is "__main__.U"
 UF = F | F
 reveal_type(UF)  # N: Revealed type is "__main__.U"
+
+[case testUnionOrSyntaxMetaclassOverrideUnion]
+# flags: --python-version 3.10
+from typing import TypeVar, Union, Type
+
+T = TypeVar('T')
+U = TypeVar('U')
+
+class Meta(type):
+    def __or__(self: Type[T], other: Type[U]) -> Union[T, U]: pass
+
+class A(metaclass=Meta): pass
+class B(metaclass=Meta): pass
+
+reveal_type(A | B)  # N: Revealed type is "Union[__main__.A, __main__.B*]"
+C = A | B
+reveal_type(C)  # N: Revealed type is "Union[__main__.A, __main__.B*]"

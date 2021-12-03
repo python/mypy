@@ -2112,6 +2112,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.fail(message_registry.DEPENDENT_FINAL_IN_CLASS_BODY, s)
 
     def check_type_alias_rvalue(self, s: AssignmentStmt) -> None:
+        assert s.type_alias is not None
         if not (self.is_stub and isinstance(s.rvalue, OpExpr) and s.rvalue.op == '|'):
             # We do this mostly for compatibility with old semantic analyzer.
             # TODO: should we get rid of this?
@@ -2132,6 +2133,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.expr_checker.accept(e)
 
             accept_items(s.rvalue)
+        s.type_alias.rtype = get_proper_type(alias_type)
         self.store_type(s.lvalues[-1], alias_type)
 
     def check_assignment(self, lvalue: Lvalue, rvalue: Expression, infer_lvalue_type: bool = True,
