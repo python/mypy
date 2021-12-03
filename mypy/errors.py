@@ -516,8 +516,8 @@ class Errors:
             message = f'"type: ignore" comment without error code{codes_hint}'
             # Don't use report since add_error_info will ignore the error!
             info = ErrorInfo(self.import_context(), file, self.current_module(), None,
-                             None, line, -1, 'error', message,
-                             None, False, False, False)
+                             None, line, -1, 'error', message, codes.IGNORE_WITHOUT_CODE,
+                             False, False, False)
             self._add_error_info(file, info)
 
     def num_messages(self) -> int:

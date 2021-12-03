@@ -133,6 +133,12 @@ TRUTHY_BOOL: Final[ErrorCode] = ErrorCode(
 NAME_MATCH: Final = ErrorCode(
     "name-match", "Check that type definition has consistent naming", "General"
 )
+IGNORE_WITHOUT_CODE: Final = ErrorCode(
+    "ignore-without-code",
+    "Warn about '# type: ignore' comments which do not have error codes",
+    "General",
+    default_enabled=False,
+)
 
 
 # Syntax errors are often blocking.
