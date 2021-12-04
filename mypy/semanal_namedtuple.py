@@ -816,11 +816,11 @@ class NamedTupleCallAnalyzer:
         for name in [typename] + field_names:
             if not name.isidentifier():
                 self._fail('Type names and field names must be valid '
-                           f'identifiers: {name!r}')
+                           f'identifiers: "{name}"')
                 is_valid = False
             if iskeyword(name):
                 self._fail('Type names and field names cannot be a '
-                           f'keyword: {name!r}')
+                           f'keyword: "{name}"')
                 is_valid = False
 
         seen = set()

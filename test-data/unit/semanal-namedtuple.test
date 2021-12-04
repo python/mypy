@@ -521,7 +521,7 @@ N = namedtuple('N', ['x', 1]) # E: String literal expected as "namedtuple()" fie
 
 [case testNamedTupleWithUnderscoreItemName]
 from collections import namedtuple
-N = namedtuple('N', ['_fallback']) # E: Field names cannot start with an underscore: '_fallback'
+N = namedtuple('N', ['_fallback']) # E: Field names cannot start with an underscore: "_fallback"
 [builtins fixtures/tuple.pyi]
 
 [case testTypingNamedTupleWithManyArguments]
@@ -547,7 +547,7 @@ N = NamedTuple('N', 1)  # E: List or tuple literal expected as the fields argume
 
 [case testTypingNamedTupleWithUnderscoreItemName]
 from typing import NamedTuple
-N = NamedTuple('N', [('_fallback', int)]) # E: Field names cannot start with an underscore: '_fallback'
+N = NamedTuple('N', [('_fallback', int)]) # E: Field names cannot start with an underscore: "_fallback"
 [builtins fixtures/tuple.pyi]
 
 [case testTypingNamedTupleWithUnexpectedNames]
@@ -617,15 +617,15 @@ N = namedtuple('N', field_names=['x'], defaults=defaults)  # E: List or tuple li
 
 [case testNamedTupleWithDuplicateFieldname]
 from collections import namedtuple
-N = namedtuple('N', ['x', 'x'])  # E: Encountered duplicate field name: 'x'
+N = namedtuple('N', ['x', 'x'])  # E: Encountered duplicate field name: "x"
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleWithUnderscoredNameField]
 from collections import namedtuple
 N = namedtuple('N', field_names=['a', '_x', '_y'])
 [out]
-main:2: error: Field names cannot start with an underscore: '_x'
-main:2: error: Field names cannot start with an underscore: '_y'
+main:2: error: Field names cannot start with an underscore: "_x"
+main:2: error: Field names cannot start with an underscore: "_y"
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleWithKeywordTypename1]
@@ -633,7 +633,7 @@ from collections import namedtuple
 try_ = namedtuple('try', field_names=[])
 [out]
 main:2: error: First argument to "namedtuple()" should be "try_", not "try"
-main:2: error: Type names and field names cannot be a keyword: 'try'
+main:2: error: Type names and field names cannot be a keyword: "try"
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleWithKeywordTypename2]
@@ -641,15 +641,15 @@ from collections import namedtuple
 try_ = namedtuple('try', ['x'])
 [out]
 main:2: error: First argument to "namedtuple()" should be "try_", not "try"
-main:2: error: Type names and field names cannot be a keyword: 'try'
+main:2: error: Type names and field names cannot be a keyword: "try"
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleWithKeywordNameField]
 from collections import namedtuple
 N = namedtuple('N', field_names=['raise', 'try'])
 [out]
-main:2: error: Type names and field names cannot be a keyword: 'raise'
-main:2: error: Type names and field names cannot be a keyword: 'try'
+main:2: error: Type names and field names cannot be a keyword: "raise"
+main:2: error: Type names and field names cannot be a keyword: "try"
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleWithInvalidIdentifierTypename1]
@@ -657,7 +657,7 @@ from collections import namedtuple
 a = namedtuple('@a', field_names=[])
 [out]
 main:2: error: First argument to "namedtuple()" should be "a", not "@a"
-main:2: error: Type names and field names must be valid identifiers: '@a'
+main:2: error: Type names and field names must be valid identifiers: "@a"
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleWithInvalidIdentifierTypename2]
@@ -665,29 +665,29 @@ from collections import namedtuple
 a = namedtuple('@a', ['x'])
 [out]
 main:2: error: First argument to "namedtuple()" should be "a", not "@a"
-main:2: error: Type names and field names must be valid identifiers: '@a'
+main:2: error: Type names and field names must be valid identifiers: "@a"
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleWithInvalidNameField]
 from collections import namedtuple
-N = namedtuple('N', field_names=['@a'])  # E: Type names and field names must be valid identifiers: '@a'
+N = namedtuple('N', field_names=['@a'])  # E: Type names and field names must be valid identifiers: "@a"
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleAllValidationErrors]
 from collections import namedtuple
 N = namedtuple('N', ['@a', '_x', 'break', '@a'], defaults=[1, 2, 3, 4, 5])
 [out]
-main:2: error: Type names and field names must be valid identifiers: '@a'
-main:2: error: Type names and field names cannot be a keyword: 'break'
-main:2: error: Field names cannot start with an underscore: '_x'
-main:2: error: Encountered duplicate field name: '@a'
+main:2: error: Type names and field names must be valid identifiers: "@a"
+main:2: error: Type names and field names cannot be a keyword: "break"
+main:2: error: Field names cannot start with an underscore: "_x"
+main:2: error: Encountered duplicate field name: "@a"
 main:2: error: Got more default values than field names
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleWithInvalidRenameField]
 from collections import namedtuple
 rename: bool
-N = namedtuple('N', field_names=['a'], rename=rename)  # E: Bool literal expected as the rename argument to "namedtuple()"
+N = namedtuple('N', field_names=['a'], rename=rename)  # E: Bool literal expected as the "rename" argument to "namedtuple()"
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleWithInvalidDefaultsField]
@@ -708,10 +708,10 @@ N = namedtuple('N', field_names)  # E: String, list or tuple literal expected as
 from collections import namedtuple
 N = namedtuple('N', ['_x', '@y', 'try', 'try'], rename=False)
 [out]
-main:2: error: Type names and field names must be valid identifiers: '@y'
-main:2: error: Type names and field names cannot be a keyword: 'try'
-main:2: error: Field names cannot start with an underscore: '_x'
-main:2: error: Encountered duplicate field name: 'try'
+main:2: error: Type names and field names must be valid identifiers: "@y"
+main:2: error: Type names and field names cannot be a keyword: "try"
+main:2: error: Field names cannot start with an underscore: "_x"
+main:2: error: Encountered duplicate field name: "try"
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleInvalidFieldsRenameFalse2]
@@ -738,17 +738,17 @@ MypyFile:1(
 
 [case testTypingNamedTupleDuplicateField]
 from typing import NamedTuple
-N = NamedTuple('N', [('x', int), ('x', str)])  # E: Encountered duplicate field name: 'x'
+N = NamedTuple('N', [('x', int), ('x', str)])  # E: Encountered duplicate field name: "x"
 [builtins fixtures/tuple.pyi]
 
 [case testTypingNamedTupleUnderscoreField1]
 from typing import NamedTuple
-N = NamedTuple('N', _x=int)  # E: Field names cannot start with an underscore: '_x'
+N = NamedTuple('N', _x=int)  # E: Field names cannot start with an underscore: "_x"
 [builtins fixtures/tuple.pyi]
 
 [case testTypingNamedTupleUnderscoreField2]
 from typing import NamedTuple
-N = NamedTuple('N', (('_x', int),))  # E: Field names cannot start with an underscore: '_x'
+N = NamedTuple('N', (('_x', int),))  # E: Field names cannot start with an underscore: "_x"
 [builtins fixtures/tuple.pyi]
 
 [case testTypingNamedTupleWithKeywordTypename1]
@@ -756,7 +756,7 @@ from typing import NamedTuple
 try_ = NamedTuple('try')
 [out]
 main:2: error: First argument to "NamedTuple()" should be "try_", not "try"
-main:2: error: Type names and field names cannot be a keyword: 'try'
+main:2: error: Type names and field names cannot be a keyword: "try"
 [builtins fixtures/tuple.pyi]
 
 [case testTypingNamedTupleWithKeywordTypename2]
@@ -764,12 +764,12 @@ from typing import NamedTuple
 try_ = NamedTuple('try', x=int)
 [out]
 main:2: error: First argument to "NamedTuple()" should be "try_", not "try"
-main:2: error: Type names and field names cannot be a keyword: 'try'
+main:2: error: Type names and field names cannot be a keyword: "try"
 [builtins fixtures/tuple.pyi]
 
 [case testTypingNamedTupleKeywordField]
 from typing import NamedTuple
-N = NamedTuple('N', [('try', int)])  # E: Type names and field names cannot be a keyword: 'try'
+N = NamedTuple('N', [('try', int)])  # E: Type names and field names cannot be a keyword: "try"
 [builtins fixtures/tuple.pyi]
 
 [case testTypingNamedTupleWithInvalidIdentifierTypename1]
@@ -777,7 +777,7 @@ from typing import NamedTuple
 a = NamedTuple('@a', [])
 [out]
 main:2: error: First argument to "NamedTuple()" should be "a", not "@a"
-main:2: error: Type names and field names must be valid identifiers: '@a'
+main:2: error: Type names and field names must be valid identifiers: "@a"
 [builtins fixtures/tuple.pyi]
 
 [case testTypingNamedTupleWithInvalidIdentifierTypename2]
@@ -785,22 +785,22 @@ from typing import NamedTuple
 a = NamedTuple('@a', x=int)
 [out]
 main:2: error: First argument to "NamedTuple()" should be "a", not "@a"
-main:2: error: Type names and field names must be valid identifiers: '@a'
+main:2: error: Type names and field names must be valid identifiers: "@a"
 [builtins fixtures/tuple.pyi]
 
 [case testTypingNamedTupleInvalidIdentifierField]
 from typing import NamedTuple
-N = NamedTuple('N', [('@a', int)])  # E: Type names and field names must be valid identifiers: '@a'
+N = NamedTuple('N', [('@a', int)])  # E: Type names and field names must be valid identifiers: "@a"
 [builtins fixtures/tuple.pyi]
 
 [case testTypingNamedTupleAllValidationErrors]
 from typing import NamedTuple
 N = NamedTuple('N', [('@a', int), ('@a', int), ('try', str), ('_x', str)])
 [out]
-main:2: error: Type names and field names must be valid identifiers: '@a'
-main:2: error: Type names and field names cannot be a keyword: 'try'
-main:2: error: Encountered duplicate field name: '@a'
-main:2: error: Field names cannot start with an underscore: '_x'
+main:2: error: Type names and field names must be valid identifiers: "@a"
+main:2: error: Type names and field names cannot be a keyword: "try"
+main:2: error: Encountered duplicate field name: "@a"
+main:2: error: Field names cannot start with an underscore: "_x"
 [builtins fixtures/tuple.pyi]
 
 
