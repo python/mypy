@@ -1692,7 +1692,8 @@ N = NamedTuple('N', [('x', int)])
 [file a.py]
 def f() -> None: pass
 [file a.py.2]
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 [out]
 ==
 main:2: error: Module "a" has no attribute "f"
@@ -3278,7 +3279,8 @@ class C(N):
 x = 0
 [file m.py.2]
 x = ''
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 [out]
 ==
 
@@ -3387,7 +3389,8 @@ a: A
 def g() -> None:
     x = L(A())
     x.f(a)
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 [out]
 ==
 
@@ -3455,7 +3458,8 @@ import a
 def f(x: a.N) -> None:
     pass
 f(a.x)
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 [out]
 ==
 
@@ -3474,7 +3478,8 @@ import a
 def f(x: a.N) -> None:
     pass
 f(a.x)
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 [out]
 ==
 
@@ -3503,7 +3508,8 @@ def f(x: b.M) -> None:
     lol(x)
 f(b.x)
 lol(b.x)
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 [out]
 ==
 c.py:7: error: Argument 1 to "lol" has incompatible type "M"; expected "Tuple[Tuple[int]]"
@@ -4346,7 +4352,8 @@ def f() -> None:
 x = 0
 [file b.py.2]
 x = ''
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 [out]
 ==
 
@@ -8509,7 +8516,8 @@ NT = NamedTuple('NT', [('x', B)])
 [file b.py.2]
 def func(x): pass
 B = func
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 [out]
 ==
 main:5: error: Variable "b.B" is not valid as a type
@@ -8527,7 +8535,8 @@ A = B
 [file b.py.2]
 def func(x): pass
 B = func
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 [out]
 ==
 main:5: error: Variable "a.A" is not valid as a type
@@ -8555,7 +8564,8 @@ A = B
 [file b.py.2]
 def func(x): pass
 B = func
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 [out]
 ==
 m.py:4: error: Variable "a.A" is not valid as a type

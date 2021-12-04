@@ -153,7 +153,8 @@ from typing import NamedTuple
 N = NamedTuple('N', [('x', int)])
 def foo():
     return N(1)
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 [out]
 () -> foo.N
 ==
