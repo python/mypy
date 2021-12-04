@@ -2320,7 +2320,7 @@ reveal_type(tup2[idx1:idx2])    # N: Revealed type is "Union[Tuple[__main__.B, _
 reveal_type(tup2[0::idx1])      # N: Revealed type is "Union[Tuple[__main__.A, __main__.B, __main__.C, __main__.D, __main__.E, fallback=__main__.Tup2Class], Tuple[__main__.A, __main__.C, __main__.E, fallback=__main__.Tup2Class]]"
 tup2[idx_bad]                   # E: Tuple index out of range
 [builtins fixtures/slice.pyi]
-[out]
+[typing fixtures/typing-namedtuple.pyi]
 
 [case testLiteralIntelligentIndexingTypedDictUnions]
 from typing_extensions import Literal, Final

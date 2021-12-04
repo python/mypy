@@ -1777,8 +1777,8 @@ for i in lst: # type: N
 
 N = NamedTuple('N', [('x', int)])
 class M(N): pass
-[builtins fixtures/list.pyi]
-[out]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 
 [case testForwardRefsInWithStatementImplicit]
 from typing import ContextManager, Any

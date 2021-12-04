@@ -5017,11 +5017,11 @@ NT([])
 
 [case testCrashInvalidArgsSyntheticFunctionSyntaxNamedTuple]
 from typing import NamedTuple, List
-NM = NamedTuple('NM', [('x', List[int, str])]) # E: "list" expects 1 type argument, but 2 given \
+NM = NamedTuple('NM', [('x', List[int, str])]) # E: "List" expects 1 type argument, but 2 given \
                                                # E: Type application has too many types (1 expected)
 
 # These should not crash
-NM(x=[])
+NM(x=[])  # type: ignore
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-namedtuple.pyi]
 

@@ -867,7 +867,8 @@ reveal_type(i.t)  # N: Revealed type is "__main__.Other"
 
 In = NamedTuple('In', [('s', str), ('t', Other)])
 class Other: pass
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 
 [case testNewAnalyzerNamedTupleClass]
 from typing import NamedTuple
@@ -907,7 +908,8 @@ class C:
     In = NamedTuple('In', [('s', str), ('t', Other)])
     Out = NamedTuple('Out', [('x', In), ('y', Other)])
     class Other: pass
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 
 
 [case testNewAnalyzerNamedTupleClassNested]
@@ -930,7 +932,8 @@ class C:
         s: str
         t: C.Other
     class Other: pass
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 
 [case testNewAnalyzerNamedTupleCallNestedMethod]
 from typing import NamedTuple
@@ -945,7 +948,8 @@ class C:
         Out = NamedTuple('Out', [('x', In), ('y', Other)])
         In = NamedTuple('In', [('s', str), ('t', Other)])
         class Other: pass
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 
 [case testNewAnalyzerNamedTupleClassNestedMethod]
 from typing import NamedTuple
@@ -997,7 +1001,8 @@ class SubO(Out): pass
 Out = NamedTuple('Out', [('x', In), ('y', Other)])
 In = NamedTuple('In', [('s', str), ('t', Other)])
 class Other: pass
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 
 [case testNewAnalyzerNamedTupleBaseClass]
 from typing import NamedTuple
@@ -1701,7 +1706,8 @@ B = Union[C[str], int] # E: Type argument "str" of "C" must be a subtype of "int
 S = TypeVar('S', bound=C[str]) # E: Type argument "str" of "C" must be a subtype of "int"
 U = TypeVar('U', C[str], str) # E: Type argument "str" of "C" must be a subtype of "int"
 N = NamedTuple('N', [
-    ('x', C[str])]) # E: Type argument "str" of "C" must be a subtype of "int"
+    ('x', C[str])]) # E: Type argument "str" of "C" must be a subtype of "int" \
+                    # E: Value of type variable "T" of "C" cannot be "str"
 class N2(NamedTuple):
     x: C[str]  # E: Type argument "str" of "C" must be a subtype of "int"
 class TD(TypedDict):
@@ -1735,7 +1741,8 @@ def g(x: int) -> int: ...
 def g(x: Union[C[str], int]) -> int:  # E: Type argument "str" of "C" must be a subtype of "int"
     y: C[object]  # E: Type argument "object" of "C" must be a subtype of "int"
     return 0
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 
 [case testNewAnalyzerTypeArgBoundCheckWithStrictOptional]
 # flags: --config-file tmp/mypy.ini
@@ -2305,13 +2312,10 @@ reveal_type(A().x)  # N: Revealed type is "__main__.C"
 
 class C(A): ...
 
-[case testNewAnalyzerCastForward2]
+[case testNewAnalyzerCastForward1_2]
 from typing import cast
-
 x = cast('C', None)
-
 reveal_type(x)  # N: Revealed type is "builtins.int"
-
 C = int
 
 [case testNewAnalyzerCastForward2]
@@ -2323,7 +2327,8 @@ reveal_type(x)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.C]"
 reveal_type(x.x)  # N: Revealed type is "builtins.int"
 
 C = NamedTuple('C', [('x', int)])
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 
 [case testNewAnalyzerApplicationForward1]
 from typing import Generic, TypeVar
