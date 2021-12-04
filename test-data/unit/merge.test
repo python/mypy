@@ -1124,7 +1124,7 @@ __main__:
     N: TypeInfo<0>
     NamedTuple: TypeInfo<1>
     f: Var<4>(Any)
-target:                                       
+target:
 
 [case testRefreshAttributeDefinedInClassBody_typeinfo]
 from target import f
