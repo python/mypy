@@ -864,7 +864,8 @@ from mod import I
 A = I
 [file mod.py]
 class I: pass
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 [out]
 <a.A> -> m
 <a> -> m

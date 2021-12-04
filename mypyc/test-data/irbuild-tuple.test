@@ -169,6 +169,7 @@ def f(nt: NT, b: bool) -> int:
     if b:
         return nt.x
     return nt.y
+[typing fixtures/typing-full.pyi]
 [out]
 def f(nt, b):
     nt :: tuple

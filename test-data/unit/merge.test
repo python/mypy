@@ -656,7 +656,8 @@ N = NamedTuple('N', [('x', A)])
 from typing import NamedTuple
 class A: pass
 N = NamedTuple('N', [('x', A), ('y', A)])
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 [out]
 TypeInfo<0>(
   Name(target.A)
@@ -666,20 +667,27 @@ TypeInfo<0>(
 TypeInfo<2>(
   Name(target.N)
   Bases(builtins.tuple[target.A<0>]<3>)
-  Mro(target.N<2>, builtins.tuple<3>, typing.Sequence<4>, typing.Iterable<5>, builtins.object<1>)
+  Mro(target.N<2>, builtins.tuple<3>, builtins.object<1>)
   Names(
-    _NT<6>
-    __annotations__<7> (builtins.object<1>)
-    __doc__<8> (builtins.str<9>)
-    __new__<10>
-    _asdict<11>
-    _field_defaults<12> (builtins.object<1>)
-    _field_types<13> (builtins.object<1>)
-    _fields<14> (Tuple[builtins.str<9>])
-    _make<15>
-    _replace<16>
-    _source<17> (builtins.str<9>)
-    x<18> (target.A<0>)))
+    _NT<4>
+    __annotations__<5> (builtins.dict[builtins.str<6>, Any]<7>)
+    __doc__<8> (builtins.str<6>)
+    __new__<9>
+    _asdict<10>
+    _field_defaults<11> (builtins.dict[builtins.str<6>, Any]<7>)
+    _field_types<12> (builtins.dict[builtins.str<6>, Any]<7>)
+    _fields<13> (Tuple[builtins.str<6>])
+    _make<14>
+    _replace<15>
+    _source<16> (builtins.str<6>)
+    x<17> (target.A<0>)))
+TypeInfo<18>(
+  Name(typing.NamedTuple)
+  Bases(builtins.tuple[Any]<3>)
+  Mro(typing.NamedTuple<18>, builtins.tuple<3>, builtins.object<1>)
+  Names(
+    __init__<19>
+    _source<20> (builtins.str<6>)))
 ==>
 TypeInfo<0>(
   Name(target.A)
@@ -689,21 +697,28 @@ TypeInfo<0>(
 TypeInfo<2>(
   Name(target.N)
   Bases(builtins.tuple[target.A<0>]<3>)
-  Mro(target.N<2>, builtins.tuple<3>, typing.Sequence<4>, typing.Iterable<5>, builtins.object<1>)
+  Mro(target.N<2>, builtins.tuple<3>, builtins.object<1>)
   Names(
-    _NT<6>
-    __annotations__<7> (builtins.object<1>)
-    __doc__<8> (builtins.str<9>)
-    __new__<10>
-    _asdict<11>
-    _field_defaults<12> (builtins.object<1>)
-    _field_types<13> (builtins.object<1>)
-    _fields<14> (Tuple[builtins.str<9>, builtins.str<9>])
-    _make<15>
-    _replace<16>
-    _source<17> (builtins.str<9>)
-    x<18> (target.A<0>)
-    y<19> (target.A<0>)))
+    _NT<4>
+    __annotations__<5> (builtins.dict[builtins.str<6>, Any]<7>)
+    __doc__<8> (builtins.str<6>)
+    __new__<9>
+    _asdict<10>
+    _field_defaults<11> (builtins.dict[builtins.str<6>, Any]<7>)
+    _field_types<12> (builtins.dict[builtins.str<6>, Any]<7>)
+    _fields<13> (Tuple[builtins.str<6>, builtins.str<6>])
+    _make<14>
+    _replace<15>
+    _source<16> (builtins.str<6>)
+    x<17> (target.A<0>)
+    y<21> (target.A<0>)))
+TypeInfo<18>(
+  Name(typing.NamedTuple)
+  Bases(builtins.tuple[Any]<3>)
+  Mro(typing.NamedTuple<18>, builtins.tuple<3>, builtins.object<1>)
+  Names(
+    __init__<19>
+    _source<20> (builtins.str<6>)))
 
 [case testUnionType_types]
 import target
@@ -1095,20 +1110,21 @@ N = NamedTuple('N', [('x', int)])
 [file target.py]
 f = 1
 [file target.py.next]
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 [out]
 __main__:
     N: TypeInfo<0>
-    NamedTuple: Var<1>
+    NamedTuple: TypeInfo<1>
     f: Var<2>(builtins.int<3>)
 target:
     f: Var<2>(builtins.int<3>)
 ==>
 __main__:
     N: TypeInfo<0>
-    NamedTuple: Var<1>
+    NamedTuple: TypeInfo<1>
     f: Var<4>(Any)
-target:
+target:                                       
 
 [case testRefreshAttributeDefinedInClassBody_typeinfo]
 from target import f

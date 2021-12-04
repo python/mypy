@@ -273,7 +273,8 @@ M = NamedTuple('M', [('x', int), ('y', str)])
 from typing import NamedTuple
 N = NamedTuple('N', [('x', int), ('y', int)])
 M = NamedTuple('M', [('x', int), ('y', str)])
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 [out]
 __main__.A
 __main__.N
