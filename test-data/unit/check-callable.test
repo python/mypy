@@ -501,7 +501,6 @@ def g(o: int) -> None:
 [builtins fixtures/callable.pyi]
 
 [case testCallableTuple]
-
 from typing import NamedTuple
 
 Thing = NamedTuple('Thing', [('s', str), ('n', int)])
@@ -512,8 +511,8 @@ def g(o: Thing) -> None:
         i, s = o
         i + s  # E: Unsupported operand types for + ("str" and "int")
         o(1,2,3)
-
 [builtins fixtures/callable.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 
 [case testCallableNoArgs]
 

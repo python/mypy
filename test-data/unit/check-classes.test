@@ -3480,10 +3480,9 @@ def f(a: Type[Tuple[int, int]]):
 from typing import Type, NamedTuple
 N = NamedTuple('N', [('x', int), ('y', int)])
 def f(a: Type[N]):
-    a()
-[builtins fixtures/list.pyi]
-[out]
-main:4: error: Missing positional arguments "x", "y" in call to "N"
+    a()  # E: Missing positional arguments "x", "y" in call to "N"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 
 [case testTypeUsingTypeCJoin]
 from typing import Type
@@ -4681,13 +4680,13 @@ class A(Tuple[int, str]): pass
 -- -----------------------
 
 [case testCrashOnSelfRecursiveNamedTupleVar]
-
 from typing import NamedTuple
 
 N = NamedTuple('N', [('x', N)]) # E: Cannot resolve name "N" (possible cyclic definition)
 n: N
 reveal_type(n) # N: Revealed type is "Tuple[Any, fallback=__main__.N]"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 
 [case testCrashOnSelfRecursiveTypedDictVar]
 from mypy_extensions import TypedDict
@@ -5006,18 +5005,25 @@ reveal_type(y1) # N: Revealed type is "Tuple[builtins.list[Any], fallback=__main
 [out]
 
 [case testCrashInvalidArgsSyntheticFunctionSyntax]
-from typing import List, NewType, NamedTuple
+from typing import List, NewType
 from mypy_extensions import TypedDict
 TD = TypedDict('TD', {'x': List[int, str]}) # E: "list" expects 1 type argument, but 2 given
-NM = NamedTuple('NM', [('x', List[int, str])]) # E: "list" expects 1 type argument, but 2 given
 NT = NewType('NT', List[int, str]) # E: "list" expects 1 type argument, but 2 given
 
-# These three should not crash
+# These should not crash
 TD({'x': []})
-NM(x=[])
 NT([])
 [builtins fixtures/dict.pyi]
-[out]
+
+[case testCrashInvalidArgsSyntheticFunctionSyntaxNamedTuple]
+from typing import NamedTuple, List
+NM = NamedTuple('NM', [('x', List[int, str])]) # E: "list" expects 1 type argument, but 2 given \
+                                               # E: Type application has too many types (1 expected)
+
+# These should not crash
+NM(x=[])
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 
 [case testCrashForwardSyntheticClassSyntax]
 from typing import NamedTuple
@@ -5037,16 +5043,22 @@ reveal_type(y['b']) # N: Revealed type is "__main__.B"
 [builtins fixtures/dict.pyi]
 [out]
 
-[case testCrashForwardSyntheticFunctionSyntax]
+[case testCrashForwardSyntheticFunctionSyntaxNamedTuple]
 from typing import NamedTuple
-from mypy_extensions import TypedDict
 A1 = NamedTuple('A1', [('b', 'B'), ('x', int)])
-A2 = TypedDict('A2', {'b': 'B', 'x': int})
 class B:
     pass
 x: A1
-y: A2
 reveal_type(x.b) # N: Revealed type is "__main__.B"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testCrashForwardSyntheticFunctionSyntax]
+from mypy_extensions import TypedDict
+A2 = TypedDict('A2', {'b': 'B', 'x': int})
+class B:
+    pass
+y: A2
 reveal_type(y['b']) # N: Revealed type is "__main__.B"
 [builtins fixtures/dict.pyi]
 [out]
@@ -6610,7 +6622,8 @@ N = NamedTuple('N', [('x', int)])
 class B(A, N): pass
 
 reveal_type(A())  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.B]"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 
 [case testNewReturnType8]
 from typing import TypeVar, Any

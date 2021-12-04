@@ -142,20 +142,13 @@ A = namedtuple('A', 'a b')
 A1 = namedtuple('A1', 'a _b raise', rename=True)
 B = namedtuple('B', 'a b', rename=1)
 C = namedtuple('C', 'a b', rename='not a bool')
-D = namedtuple('D', 'a b', unrecognized_arg=False)
-E = namedtuple('E', 'a b', 0)
-
+D = namedtuple('D', 'a b', 0)
 [builtins fixtures/bool.pyi]
-
 [out]
 main:5: error: Bool literal expected as the "rename" argument to "namedtuple()"
 main:6: error: Bool literal expected as the "rename" argument to "namedtuple()"
 main:6: error: Argument "rename" to "namedtuple" has incompatible type "str"; expected "int"
-main:7: error: Unexpected keyword argument "unrecognized_arg" for "namedtuple"
-/Users/sobolev/Desktop/mypy/test-data/unit/lib-stub/collections.pyi:3: note: "namedtuple" defined here
-main:7: error: Unexpected keyword argument "unrecognized_arg" for "namedtuple"
-/Users/sobolev/Desktop/mypy/test-data/unit/lib-stub/collections.pyi:3: note: "namedtuple" defined here
-main:8: error: Too many positional arguments for "namedtuple"
+main:7: error: Too many positional arguments for "namedtuple"
 
 [case testNamedTupleDefaults]
 # flags: --python-version 3.7
@@ -695,7 +688,7 @@ Node = NamedTuple('Node', [
         ('children', List['Node']), # E: Cannot resolve name "Node" (possible cyclic definition)
     ])
 n: Node
-reveal_type(n) # N: Revealed type is "Tuple[builtins.str, builtins.list[Any], fallback=__main__.Node]"
+reveal_type(n) # N: Revealed type is "Tuple[builtins.str, typing.List[Any], fallback=__main__.Node]"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-namedtuple.pyi]
 
@@ -711,7 +704,7 @@ class B(NamedTuple):
     y: int
 
 n: A
-reveal_type(n) # N: Revealed type is "Tuple[builtins.str, builtins.list[Any], fallback=__main__.A]"
+reveal_type(n) # N: Revealed type is "Tuple[builtins.str, typing.List[Any], fallback=__main__.A]"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-namedtuple.pyi]
 

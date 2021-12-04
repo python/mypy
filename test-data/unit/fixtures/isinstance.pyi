@@ -1,4 +1,4 @@
-from typing import Tuple, TypeVar, Generic, Union, cast, Any, Type
+from typing import Tuple, TypeVar, Generic, Union, cast, Any, Type, Iterable
 
 T = TypeVar('T')
 
@@ -9,6 +9,8 @@ class type:
     def __init__(self, x) -> None: pass
 
 class tuple(Generic[T]): pass
+class list(Iterable[T]): pass
+class dict: pass
 
 class function: pass
 
