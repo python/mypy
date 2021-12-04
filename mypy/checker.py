@@ -46,8 +46,9 @@ from mypy.messages import (
 )
 import mypy.checkexpr
 from mypy.checkmember import (
-    MemberContext, analyze_member_access, analyze_descriptor_access, analyze_var,
+    MemberContext, analyze_member_access, analyze_descriptor_access,
     type_object_type,
+    analyze_decorator_or_funcbase_access,
 )
 from mypy.typeops import (
     map_type_from_supertype, bind_self, erase_to_bound, make_simplified_union,
@@ -3225,15 +3226,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if dunder_set is None:
             self.fail(message_registry.DESCRIPTOR_SET_NOT_CALLABLE.format(attribute_type), context)
             return AnyType(TypeOfAny.from_error), get_type, False
-        if isinstance(dunder_set, Decorator):
-            bound_method = analyze_var(
-                '__set__', dunder_set.var, attribute_type, attribute_type.type, mx,
-            )
-        else:
-            bound_method = bind_self(
-                function_type(dunder_set, self.named_type('builtins.function')),
-                attribute_type,
-            )
+
+        bound_method = analyze_decorator_or_funcbase_access(
+            defn=dunder_set, itype=attribute_type, info=attribute_type.type,
+            self_type=attribute_type, name='__set__', mx=mx)
         typ = map_instance_to_supertype(attribute_type, dunder_set.info)
         dunder_set_type = expand_type_by_instance(bound_method, typ)
 
