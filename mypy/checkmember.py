@@ -420,7 +420,8 @@ def analyze_member_var_access(name: str,
             if setattr_meth and setattr_meth.info.fullname != 'builtins.object':
                 bound_type = analyze_decorator_or_funcbase_access(
                     defn=setattr_meth, itype=itype, info=info,
-                    self_type=mx.self_type, name=name, mx=mx)
+                    self_type=mx.self_type, name=name,
+                    mx=mx.copy_modified(is_lvalue=False))
                 typ = map_instance_to_supertype(itype, setattr_meth.info)
                 setattr_type = get_proper_type(expand_type_by_instance(bound_type, typ))
                 if isinstance(setattr_type, CallableType) and len(setattr_type.arg_types) > 0:
