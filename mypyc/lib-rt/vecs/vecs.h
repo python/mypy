@@ -70,7 +70,7 @@ typedef struct _VecTFeatures {
 // T can be T | None or vec[T] (or a combination of these)
 typedef struct _VecTExtFeatures {
     PyTypeObject *type;
-    PyObject *(*alloc)(Py_ssize_t, PyObject *, int optional, int depth);
+    PyObject *(*alloc)(Py_ssize_t, PyObject *, int optionals, int depth);
     PyObject *(*append)(PyObject *, PyObject *);
     // PyObject *(*extend)(PyObject *, PyObject *);
     // PyObject *(*slice)(PyObject *, int64_t, int64_t);
