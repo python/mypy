@@ -2,7 +2,7 @@
 # signatures are currently omitted.
 
 from abc import ABCMeta, abstractmethod
-from typing import Any, Optional, SupportsFloat
+from typing import Any, SupportsFloat
 
 class Number(metaclass=ABCMeta):
     @abstractmethod
@@ -89,7 +89,7 @@ class Integral(Rational):
     def __long__(self) -> long: ...
     def __index__(self) -> int: ...
     @abstractmethod
-    def __pow__(self, exponent: Any, modulus: Optional[Any] = ...) -> Any: ...
+    def __pow__(self, exponent: Any, modulus: Any | None = ...) -> Any: ...
     @abstractmethod
     def __lshift__(self, other: Any) -> Any: ...
     @abstractmethod

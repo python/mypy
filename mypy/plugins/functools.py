@@ -1,5 +1,6 @@
 """Plugin for supporting the functools standard library module."""
 from typing import Dict, NamedTuple, Optional
+from typing_extensions import Final
 
 import mypy.plugin
 from mypy.nodes import ARG_POS, ARG_STAR2, Argument, FuncItem, Var
@@ -7,11 +8,11 @@ from mypy.plugins.common import add_method_to_class
 from mypy.types import AnyType, CallableType, get_proper_type, Type, TypeOfAny, UnboundType
 
 
-functools_total_ordering_makers = {
+functools_total_ordering_makers: Final = {
     'functools.total_ordering',
 }
 
-_ORDERING_METHODS = {
+_ORDERING_METHODS: Final = {
     '__lt__',
     '__le__',
     '__gt__',
@@ -44,9 +45,9 @@ def functools_total_ordering_maker_callback(ctx: mypy.plugin.ClassDefContext,
         return
 
     other_type = _find_other_type(root_method)
-    bool_type = ctx.api.named_type('__builtins__.bool')
+    bool_type = ctx.api.named_type('builtins.bool')
     ret_type: Type = bool_type
-    if root_method.type.ret_type != ctx.api.named_type('__builtins__.bool'):
+    if root_method.type.ret_type != ctx.api.named_type('builtins.bool'):
         proper_ret_type = get_proper_type(root_method.type.ret_type)
         if not (isinstance(proper_ret_type, UnboundType)
                 and proper_ret_type.name.split('.')[-1] == 'bool'):

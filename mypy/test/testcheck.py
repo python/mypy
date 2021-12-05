@@ -95,6 +95,8 @@ typecheck_files = [
     'check-typeguard.test',
     'check-functools.test',
     'check-singledispatch.test',
+    'check-slots.test',
+    'check-formatting.test'
 ]
 
 # Tests that use Python 3.8-only AST features (like expression-scoped ignores):

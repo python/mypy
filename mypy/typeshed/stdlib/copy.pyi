@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, TypeVar
+from typing import Any, TypeVar
 
 _T = TypeVar("_T")
 
@@ -6,7 +6,7 @@ _T = TypeVar("_T")
 PyStringMap: Any
 
 # Note: memo and _nil are internal kwargs.
-def deepcopy(x: _T, memo: Optional[Dict[int, Any]] = ..., _nil: Any = ...) -> _T: ...
+def deepcopy(x: _T, memo: dict[int, Any] | None = ..., _nil: Any = ...) -> _T: ...
 def copy(x: _T) -> _T: ...
 
 class Error(Exception): ...

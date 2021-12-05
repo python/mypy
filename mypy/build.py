@@ -15,6 +15,7 @@ import errno
 import gc
 import json
 import os
+import platform
 import re
 import stat
 import sys
@@ -23,7 +24,7 @@ import types
 
 from typing import (AbstractSet, Any, Dict, Iterable, Iterator, List, Sequence,
                     Mapping, NamedTuple, Optional, Set, Tuple, TypeVar, Union, Callable, TextIO)
-from typing_extensions import ClassVar, Final, TYPE_CHECKING
+from typing_extensions import ClassVar, Final, TYPE_CHECKING, TypeAlias as _TypeAlias
 from mypy_extensions import TypedDict
 
 from mypy.nodes import MypyFile, ImportBase, Import, ImportFrom, ImportAll, SymbolTable
@@ -69,7 +70,7 @@ from mypy import errorcodes as codes
 DEBUG_FINE_GRAINED: Final = False
 
 # These modules are special and should always come from typeshed.
-CORE_BUILTIN_MODULES = {
+CORE_BUILTIN_MODULES: Final = {
     'builtins',
     'typing',
     'types',
@@ -81,7 +82,7 @@ CORE_BUILTIN_MODULES = {
 }
 
 
-Graph = Dict[str, 'State']
+Graph: _TypeAlias = Dict[str, 'State']
 
 
 # TODO: Get rid of BuildResult.  We might as well return a BuildManager.
@@ -201,8 +202,9 @@ def _build(sources: List[BuildSource],
            stderr: TextIO,
            extra_plugins: Sequence[Plugin],
            ) -> BuildResult:
-    # This seems the most reasonable place to tune garbage collection.
-    gc.set_threshold(150 * 1000)
+    if platform.python_implementation() == 'CPython':
+        # This seems the most reasonable place to tune garbage collection.
+        gc.set_threshold(150 * 1000)
 
     data_dir = default_data_dir()
     fscache = fscache or FileSystemCache()
@@ -492,6 +494,7 @@ def take_module_snapshot(module: types.ModuleType) -> str:
     (e.g. if there is a change in modules imported by a plugin).
     """
     if hasattr(module, '__file__'):
+        assert module.__file__ is not None
         with open(module.__file__, 'rb') as f:
             digest = hash_digest(f.read())
     else:
@@ -1093,7 +1096,9 @@ def _load_json_file(file: str, manager: BuildManager,
     if manager.verbosity() >= 2:
         manager.trace(log_success + data.rstrip())
     try:
+        t1 = time.time()
         result = json.loads(data)
+        manager.add_stats(data_json_load_time=time.time() - t1)
     except json.JSONDecodeError:
         manager.errors.set_file(file, None)
         manager.errors.report(-1, -1,
@@ -1976,17 +1981,17 @@ class State:
     def load_tree(self, temporary: bool = False) -> None:
         assert self.meta is not None, "Internal error: this method must be called only" \
                                       " for cached modules"
+
+        data = _load_json_file(self.meta.data_json, self.manager, "Load tree ",
+                               "Could not load tree: ")
+        if data is None:
+            return None
+
         t0 = time.time()
-        raw = self.manager.metastore.read(self.meta.data_json)
-        t1 = time.time()
-        data = json.loads(raw)
-        t2 = time.time()
         # TODO: Assert data file wasn't changed.
         self.tree = MypyFile.deserialize(data)
-        t3 = time.time()
-        self.manager.add_stats(data_read_time=t1 - t0,
-                               data_json_load_time=t2 - t1,
-                               deserialize_time=t3 - t2)
+        t1 = time.time()
+        self.manager.add_stats(deserialize_time=t1 - t0)
         if not temporary:
             self.manager.modules[self.id] = self.tree
             self.manager.add_stats(fresh_trees=1)
@@ -2178,8 +2183,11 @@ class State:
         if not self._type_checker:
             assert self.tree is not None, "Internal error: must be called on parsed file only"
             manager = self.manager
-            self._type_checker = TypeChecker(manager.errors, manager.modules, self.options,
-                                             self.tree, self.xpath, manager.plugin)
+            self._type_checker = TypeChecker(
+                manager.errors, manager.modules, self.options,
+                self.tree, self.xpath, manager.plugin,
+                self.manager.semantic_analyzer.future_import_flags,
+            )
         return self._type_checker
 
     def type_map(self) -> Dict[Expression, Type]:
@@ -2889,7 +2897,14 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                                 -1, 0,
                                 'Source file found twice under different module names: '
                                 '"{}" and "{}"'.format(seen_files[newst_path].id, newst.id),
-                                blocker=True)
+                                blocker=True,
+                            )
+                            manager.errors.report(
+                                -1, 0,
+                                "See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules "  # noqa: E501
+                                "for more info",
+                                severity='note',
+                            )
                             manager.errors.raise_error()
 
                         seen_files[newst_path] = newst

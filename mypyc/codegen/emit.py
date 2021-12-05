@@ -348,35 +348,56 @@ class Emitter:
                 is_type=True,
             )
 
-    def emit_inc_ref(self, dest: str, rtype: RType) -> None:
+    def emit_inc_ref(self, dest: str, rtype: RType, *, rare: bool = False) -> None:
         """Increment reference count of C expression `dest`.
 
         For composite unboxed structures (e.g. tuples) recursively
         increment reference counts for each component.
+
+        If rare is True, optimize for code size and compilation speed.
         """
         if is_int_rprimitive(rtype):
-            self.emit_line('CPyTagged_IncRef(%s);' % dest)
+            if rare:
+                self.emit_line('CPyTagged_IncRef(%s);' % dest)
+            else:
+                self.emit_line('CPyTagged_INCREF(%s);' % dest)
         elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
                 self.emit_inc_ref('{}.f{}'.format(dest, i), item_type)
         elif not rtype.is_unboxed:
+            # Always inline, since this is a simple op
             self.emit_line('CPy_INCREF(%s);' % dest)
         # Otherwise assume it's an unboxed, pointerless value and do nothing.
 
-    def emit_dec_ref(self, dest: str, rtype: RType, is_xdec: bool = False) -> None:
+    def emit_dec_ref(self,
+                     dest: str,
+                     rtype: RType,
+                     *,
+                     is_xdec: bool = False,
+                     rare: bool = False) -> None:
         """Decrement reference count of C expression `dest`.
 
         For composite unboxed structures (e.g. tuples) recursively
         decrement reference counts for each component.
+
+        If rare is True, optimize for code size and compilation speed.
         """
         x = 'X' if is_xdec else ''
         if is_int_rprimitive(rtype):
-            self.emit_line('CPyTagged_%sDecRef(%s);' % (x, dest))
+            if rare:
+                self.emit_line('CPyTagged_%sDecRef(%s);' % (x, dest))
+            else:
+                # Inlined
+                self.emit_line('CPyTagged_%sDECREF(%s);' % (x, dest))
         elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
-                self.emit_dec_ref('{}.f{}'.format(dest, i), item_type, is_xdec)
+                self.emit_dec_ref('{}.f{}'.format(dest, i), item_type, is_xdec=is_xdec, rare=rare)
         elif not rtype.is_unboxed:
-            self.emit_line('CPy_%sDecRef(%s);' % (x, dest))
+            if rare:
+                self.emit_line('CPy_%sDecRef(%s);' % (x, dest))
+            else:
+                # Inlined
+                self.emit_line('CPy_%sDECREF(%s);' % (x, dest))
         # Otherwise assume it's an unboxed, pointerless value and do nothing.
 
     def pretty_name(self, typ: RType) -> str:

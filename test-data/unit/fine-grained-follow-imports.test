@@ -418,8 +418,7 @@ def f(x: str) -> None: pass
 [file p/m.py.3]
 def f(x: str) -> None: pass
 
-[delete p/m.py.4]
-[delete p/__init__.py.4]
+[delete p.4]
 
 [out]
 ==
@@ -445,8 +444,7 @@ def f(x: str) -> None: pass
 
 1()
 
-[delete p/m.py.3]
-[delete p/__init__.py.3]
+[delete p.3]
 
 [out]
 ==
@@ -638,6 +636,7 @@ import p2.m2
 p1/m1.py:1: error: "int" not callable
 main.py:2: error: Cannot find implementation or library stub for module named "p2.m2"
 main.py:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+main.py:2: error: Cannot find implementation or library stub for module named "p2"
 ==
 p2/m2.py:1: error: "str" not callable
 p1/m1.py:1: error: "int" not callable

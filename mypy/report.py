@@ -14,7 +14,7 @@ from urllib.request import pathname2url
 
 import typing
 from typing import Any, Callable, Dict, List, Optional, Tuple, cast, Iterator
-from typing_extensions import Final
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.nodes import MypyFile, Expression, FuncDef
 from mypy import stats
@@ -25,10 +25,7 @@ from mypy.version import __version__
 from mypy.defaults import REPORTER_NAMES
 
 try:
-    # mypyc doesn't properly handle import from of submodules that we
-    # don't have stubs for, hence the hacky double import
-    import lxml.etree  # type: ignore  # noqa: F401
-    from lxml import etree
+    from lxml import etree  # type: ignore
     LXML_INSTALLED = True
 except ImportError:
     LXML_INSTALLED = False
@@ -45,7 +42,10 @@ type_of_any_name_map: Final["collections.OrderedDict[int, str]"] = collections.O
     ]
 )
 
-ReporterClasses = Dict[str, Tuple[Callable[['Reports', str], 'AbstractReporter'], bool]]
+ReporterClasses: _TypeAlias = Dict[
+    str,
+    Tuple[Callable[['Reports', str], 'AbstractReporter'], bool],
+]
 
 reporter_classes: Final[ReporterClasses] = {}
 
@@ -466,8 +466,8 @@ class MemoryXmlReporter(AbstractReporter):
         except ValueError:
             return
 
-        if should_skip_path(path):
-            return
+        if should_skip_path(path) or os.path.isdir(path):
+            return  # `path` can sometimes be a directory, see #11334
 
         visitor = stats.StatisticsVisitor(inferred=True,
                                           filename=tree.fullname,

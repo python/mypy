@@ -52,6 +52,8 @@ class bool(int): ...
 class str: ...
 class bytes: ...
 
+class list(Sequence[T]): ...
+
 def property(f: T) -> T: ...
 def classmethod(f: T) -> T: ...
 def staticmethod(f: T) -> T: ...
@@ -648,7 +650,7 @@ class StubtestUnit(unittest.TestCase):
             runtime="",
             error="h",
         )
-        yield Case("", "__all__ = []", None)  # dummy case
+        yield Case(stub="", runtime="__all__ = []", error=None)  # dummy case
         yield Case(stub="", runtime="__all__ += ['y']\ny = 5", error="y")
         yield Case(stub="", runtime="__all__ += ['g']\ndef g(): pass", error="g")
         # Here we should only check that runtime has B, since the stub explicitly re-exports it
@@ -660,6 +662,20 @@ class StubtestUnit(unittest.TestCase):
     def test_missing_no_runtime_all(self) -> Iterator[Case]:
         yield Case(stub="", runtime="import sys", error=None)
         yield Case(stub="", runtime="def g(): ...", error="g")
+        yield Case(stub="", runtime="CONSTANT = 0", error="CONSTANT")
+
+    @collect_cases
+    def test_non_public_1(self) -> Iterator[Case]:
+        yield Case(stub="__all__: list[str]", runtime="", error=None)  # dummy case
+        yield Case(stub="_f: int", runtime="def _f(): ...", error="_f")
+
+    @collect_cases
+    def test_non_public_2(self) -> Iterator[Case]:
+        yield Case(
+            stub="__all__: list[str] = ['f']", runtime="__all__ = ['f']", error=None
+        )
+        yield Case(stub="f: int", runtime="def f(): ...", error="f")
+        yield Case(stub="g: int", runtime="def g(): ...", error="g")
 
     @collect_cases
     def test_special_dunders(self) -> Iterator[Case]:

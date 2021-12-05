@@ -197,11 +197,18 @@ section of the command line docs.
 
 .. confval:: exclude
 
-    :type: regular expression
+    :type: newline separated list of regular expressions
 
-    A regular expression that matches file names, directory names and paths
+    A newline list of regular expression that matches file names, directory names and paths
     which mypy should ignore while recursively discovering files to check.
     Use forward slashes on all platforms.
+
+    .. code-block:: ini
+
+      [mypy]
+      exclude =
+          ^file1\.py$
+          ^file2\.py$
 
     For more details, see :option:`--exclude <mypy --exclude>`.
 
@@ -323,7 +330,7 @@ Platform configuration
     :type: string
 
     Specifies the Python version used to parse and check the target
-    program.  The string should be in the format ``DIGIT.DIGIT`` --
+    program.  The string should be in the format ``MAJOR.MINOR`` --
     for example ``2.7``.  The default is the version of the Python
     interpreter used to run mypy.
 
@@ -609,6 +616,18 @@ section of the command line docs.
 
    Prohibit equality checks, identity checks, and container checks between
    non-overlapping types.
+
+.. confval:: strict
+
+    :type: boolean
+    :default: False
+
+   Enable all optional error checking flags.  You can see the list of
+   flags enabled by strict mode in the full :option:`mypy --help`
+   output.
+
+   Note: the exact list of flags enabled by :confval:`strict` may
+   change over time.
 
 
 Configuring error messages
