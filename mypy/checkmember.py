@@ -398,14 +398,9 @@ def analyze_member_var_access(name: str,
                 # the guard this search will always find object.__getattribute__ and conclude
                 # that the attribute exists
                 if method and method.info.fullname != 'builtins.object':
-                    if isinstance(method, Decorator):
-                        # https://github.com/python/mypy/issues/10409
-                        bound_method = analyze_var(method_name, method.var, itype, info, mx)
-                    else:
-                        bound_method = bind_self(
-                            function_type(method, mx.named_type('builtins.function')),
-                            mx.self_type,
-                        )
+                    bound_method = analyze_decorator_or_funcbase_access(
+                        defn=method, itype=itype, info=info,
+                        self_type=mx.self_type, name=method_name, mx=mx)
                     typ = map_instance_to_supertype(itype, method.info)
                     getattr_type = get_proper_type(expand_type_by_instance(bound_method, typ))
                     if isinstance(getattr_type, CallableType):
@@ -423,16 +418,10 @@ def analyze_member_var_access(name: str,
         else:
             setattr_meth = info.get_method('__setattr__')
             if setattr_meth and setattr_meth.info.fullname != 'builtins.object':
-                if isinstance(setattr_meth, Decorator):
-                    bound_type = analyze_var(
-                        name, setattr_meth.var, itype, info,
-                        mx.copy_modified(is_lvalue=False),
-                    )
-                else:
-                    bound_type = bind_self(
-                        function_type(setattr_meth, mx.named_type('builtins.function')),
-                        mx.self_type,
-                    )
+                bound_type = analyze_decorator_or_funcbase_access(
+                    defn=setattr_meth, itype=itype, info=info,
+                    self_type=mx.self_type, name=name,
+                    mx=mx.copy_modified(is_lvalue=False))
                 typ = map_instance_to_supertype(itype, setattr_meth.info)
                 setattr_type = get_proper_type(expand_type_by_instance(bound_type, typ))
                 if isinstance(setattr_type, CallableType) and len(setattr_type.arg_types) > 0:
@@ -493,15 +482,9 @@ def analyze_descriptor_access(descriptor_type: Type,
                     mx.context)
         return AnyType(TypeOfAny.from_error)
 
-    if isinstance(dunder_get, Decorator):
-        bound_method = analyze_var(
-            '__set__', dunder_get.var, descriptor_type, descriptor_type.type, mx,
-        )
-    else:
-        bound_method = bind_self(
-            function_type(dunder_get, mx.named_type('builtins.function')),
-            descriptor_type,
-        )
+    bound_method = analyze_decorator_or_funcbase_access(
+        defn=dunder_get, itype=descriptor_type, info=descriptor_type.type,
+        self_type=descriptor_type, name='__set__', mx=mx)
 
     typ = map_instance_to_supertype(descriptor_type, dunder_get.info)
     dunder_get_type = expand_type_by_instance(bound_method, typ)
@@ -1026,6 +1009,27 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
         assert isinstance(method.type, FunctionLike)  # is_valid_constructor() ensures this
         t = method.type
     return type_object_type_from_function(t, info, method.info, fallback, is_new)
+
+
+def analyze_decorator_or_funcbase_access(
+    defn: Union[Decorator, FuncBase],
+    itype: Instance,
+    info: TypeInfo,
+    self_type: Optional[Type],
+    name: str,
+    mx: MemberContext,
+) -> Type:
+    """Analyzes the type behind method access.
+
+    The function itself can possibly be decorated.
+    See: https://github.com/python/mypy/issues/10409
+    """
+    if isinstance(defn, Decorator):
+        return analyze_var(name, defn.var, itype, info, mx)
+    return bind_self(
+        function_type(defn,  mx.chk.named_type('builtins.function')),
+        original_type=self_type,
+    )
 
 
 def is_valid_constructor(n: Optional[SymbolNode]) -> bool:
