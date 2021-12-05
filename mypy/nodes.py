@@ -569,6 +569,8 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
                 'fullname': self._fullname,
                 'impl': None if self.impl is None else self.impl.serialize(),
                 'flags': get_flags(self, FUNCBASE_FLAGS),
+                'property_setter': (None if self.property_setter is None else
+                                    self.property_setter.serialize()),
                 }
 
     @classmethod
@@ -588,6 +590,10 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
             res.type = typ
         res._fullname = data['fullname']
         set_flags(res, data['flags'])
+        if data.get('property_setter') is not None:
+            property_setter = SymbolNode.deserialize(data['property_setter'])
+            assert isinstance(property_setter, Decorator)
+            res.property_setter = property_setter
         # NOTE: res.info will be set in the fixup phase.
         return res
 
@@ -839,9 +845,9 @@ class Decorator(SymbolNode, Statement):
 
 VAR_FLAGS: Final = [
     'is_self', 'is_initialized_in_class', 'is_staticmethod',
-    'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import',
-    'is_classvar', 'is_abstract_var', 'is_final', 'final_unset_in_class', 'final_set_in_init',
-    'explicit_self_type', 'is_ready', 'from_module_getattr',
+    'is_classmethod', 'is_property', 'is_settable_property', 'is_property_setter_different',
+    'is_suppressed_import', 'is_classvar', 'is_abstract_var', 'is_final', 'final_unset_in_class',
+    'final_set_in_init', 'explicit_self_type', 'is_ready', 'from_module_getattr',
 ]
 
 
