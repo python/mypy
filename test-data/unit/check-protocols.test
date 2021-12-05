@@ -39,6 +39,57 @@ def fun2() -> P:
 def fun3() -> P:
     return B() # E: Incompatible return value type (got "B", expected "P")
 
+[case testProtocolAttrAccessDecoratedGetAttrDunder]
+from typing import Any, Protocol, Callable
+
+def typed_decorator(fun: Callable) -> Callable[[Any, str], str]:
+    pass
+
+def untyped_decorator(fun):
+    pass
+
+class P(Protocol):
+    @property
+    def x(self) -> int:
+        pass
+
+class A:
+    @untyped_decorator
+    def __getattr__(self, key: str) -> int:
+        pass
+
+class B:
+    @typed_decorator
+    def __getattr__(self, key: str) -> int:
+        pass
+
+class C:
+    def __getattr__(self, key: str) -> int:
+        pass
+
+def fun(x: P) -> None:
+    pass
+
+a: A
+reveal_type(a.x)
+fun(a)
+
+b: B
+reveal_type(b.x)
+fun(b)
+
+c: C
+reveal_type(c.x)
+fun(c)
+[out]
+main:32: note: Revealed type is "Any"
+main:36: note: Revealed type is "builtins.str"
+main:37: error: Argument 1 to "fun" has incompatible type "B"; expected "P"
+main:37: note: Following member(s) of "B" have conflicts:
+main:37: note:     x: expected "int", got "str"
+main:40: note: Revealed type is "builtins.int"
+[builtins fixtures/bool.pyi]
+
 [case testSimpleProtocolOneAbstractMethod]
 from typing import Protocol
 from abc import abstractmethod

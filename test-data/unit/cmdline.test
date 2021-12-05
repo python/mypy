@@ -1299,6 +1299,12 @@ pkg.py:1: error: "int" not callable
 1 + 2
 [out]
 
+[case testCmdlineNonInteractiveInstallTypesNoSitePackages]
+# cmd: mypy --install-types --non-interactive --no-site-packages -m pkg
+[out]
+error: --install-types not supported without python executable or site packages
+== Return code: 2
+
 [case testCmdlineInteractiveInstallTypesNothingToDo]
 # cmd: mypy --install-types -m pkg
 [file pkg.py]

@@ -46,7 +46,9 @@ from mypy.messages import (
 )
 import mypy.checkexpr
 from mypy.checkmember import (
-    analyze_member_access, analyze_descriptor_access, type_object_type,
+    MemberContext, analyze_member_access, analyze_descriptor_access,
+    type_object_type,
+    analyze_decorator_or_funcbase_access,
 )
 from mypy.typeops import (
     map_type_from_supertype, bind_self, erase_to_bound, make_simplified_union,
@@ -508,8 +510,26 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # decorator or if the implementation is untyped -- we gave up on the types.
             inner_type = get_proper_type(inner_type)
             if inner_type is not None and not isinstance(inner_type, AnyType):
-                assert isinstance(inner_type, CallableType)
-                impl_type = inner_type
+                if isinstance(inner_type, CallableType):
+                    impl_type = inner_type
+                elif isinstance(inner_type, Instance):
+                    inner_call = get_proper_type(
+                        analyze_member_access(
+                            name='__call__',
+                            typ=inner_type,
+                            context=defn.impl,
+                            is_lvalue=False,
+                            is_super=False,
+                            is_operator=True,
+                            msg=self.msg,
+                            original_type=inner_type,
+                            chk=self,
+                        ),
+                    )
+                    if isinstance(inner_call, CallableType):
+                        impl_type = inner_call
+                if impl_type is None:
+                    self.msg.not_callable(inner_type, defn.impl)
 
         is_descriptor_get = defn.info and defn.name == "__get__"
         for i, item in enumerate(defn.items):
@@ -3187,9 +3207,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                        code=codes.ASSIGNMENT)
             return rvalue_type, attribute_type, True
 
-        get_type = analyze_descriptor_access(
-            instance_type, attribute_type, self.named_type,
-            self.msg, context, chk=self)
+        mx = MemberContext(
+            is_lvalue=False, is_super=False, is_operator=False,
+            original_type=instance_type, context=context, self_type=None,
+            msg=self.msg, chk=self,
+        )
+        get_type = analyze_descriptor_access(attribute_type, mx)
         if not attribute_type.type.has_readable_member('__set__'):
             # If there is no __set__, we type-check that the assigned value matches
             # the return type of __get__. This doesn't match the python semantics,
@@ -3204,8 +3227,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.fail(message_registry.DESCRIPTOR_SET_NOT_CALLABLE.format(attribute_type), context)
             return AnyType(TypeOfAny.from_error), get_type, False
 
-        function = function_type(dunder_set, self.named_type('builtins.function'))
-        bound_method = bind_self(function, attribute_type)
+        bound_method = analyze_decorator_or_funcbase_access(
+            defn=dunder_set, itype=attribute_type, info=attribute_type.type,
+            self_type=attribute_type, name='__set__', mx=mx)
         typ = map_instance_to_supertype(attribute_type, dunder_set.info)
         dunder_set_type = expand_type_by_instance(bound_method, typ)
 
@@ -3263,25 +3287,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """
         self.try_infer_partial_type_from_indexed_assignment(lvalue, rvalue)
         basetype = get_proper_type(self.expr_checker.accept(lvalue.base))
-        if (isinstance(basetype, TypedDictType) or (isinstance(basetype, TypeVarType)
-                and isinstance(get_proper_type(basetype.upper_bound), TypedDictType))):
-            if isinstance(basetype, TypedDictType):
-                typed_dict_type = basetype
-            else:
-                upper_bound_type = get_proper_type(basetype.upper_bound)
-                assert isinstance(upper_bound_type, TypedDictType)
-                typed_dict_type = upper_bound_type
-            item_type = self.expr_checker.visit_typeddict_index_expr(typed_dict_type, lvalue.index)
-            method_type: Type = CallableType(
-                arg_types=[self.named_type('builtins.str'), item_type],
-                arg_kinds=[ARG_POS, ARG_POS],
-                arg_names=[None, None],
-                ret_type=NoneType(),
-                fallback=self.named_type('builtins.function')
-            )
-        else:
-            method_type = self.expr_checker.analyze_external_member_access(
-                '__setitem__', basetype, context)
+        method_type = self.expr_checker.analyze_external_member_access(
+            '__setitem__', basetype, lvalue)
+
         lvalue.method_type = method_type
         self.expr_checker.check_method_call(
             '__setitem__', basetype, method_type, [lvalue.index, rvalue],
@@ -6212,6 +6220,12 @@ def is_untyped_decorator(typ: Optional[Type]) -> bool:
     elif isinstance(typ, Instance):
         method = typ.type.get_method('__call__')
         if method:
+            if isinstance(method, Decorator):
+                return (
+                    is_untyped_decorator(method.func.type)
+                    or is_untyped_decorator(method.var.type)
+                )
+
             if isinstance(method.type, Overloaded):
                 return any(is_untyped_decorator(item) for item in method.type.items)
             else:

@@ -650,6 +650,8 @@ def find_member(name: str,
     info = itype.type
     method = info.get_method(name)
     if method:
+        if isinstance(method, Decorator):
+            return find_node_type(method.var, itype, subtype)
         if method.is_property:
             assert isinstance(method, OverloadedFuncDef)
             dec = method.items[0]
@@ -659,12 +661,7 @@ def find_member(name: str,
     else:
         # don't have such method, maybe variable or decorator?
         node = info.get(name)
-        if not node:
-            v = None
-        else:
-            v = node.node
-        if isinstance(v, Decorator):
-            v = v.var
+        v = node.node if node else None
         if isinstance(v, Var):
             return find_node_type(v, itype, subtype)
         if (not v and name not in ['__getattr__', '__setattr__', '__getattribute__'] and
@@ -676,9 +673,13 @@ def find_member(name: str,
                 # structural subtyping.
                 method = info.get_method(method_name)
                 if method and method.info.fullname != 'builtins.object':
-                    getattr_type = get_proper_type(find_node_type(method, itype, subtype))
+                    if isinstance(method, Decorator):
+                        getattr_type = get_proper_type(find_node_type(method.var, itype, subtype))
+                    else:
+                        getattr_type = get_proper_type(find_node_type(method, itype, subtype))
                     if isinstance(getattr_type, CallableType):
                         return getattr_type.ret_type
+                    return getattr_type
         if itype.type.fallback_to_any:
             return AnyType(TypeOfAny.special_form)
     return None
@@ -698,8 +699,10 @@ def get_member_flags(name: str, info: TypeInfo) -> Set[int]:
     method = info.get_method(name)
     setattr_meth = info.get_method('__setattr__')
     if method:
-        # this could be settable property
-        if method.is_property:
+        if isinstance(method, Decorator):
+            if method.var.is_staticmethod or method.var.is_classmethod:
+                return {IS_CLASS_OR_STATIC}
+        elif method.is_property:  # this could be settable property
             assert isinstance(method, OverloadedFuncDef)
             dec = method.items[0]
             assert isinstance(dec, Decorator)
@@ -712,9 +715,6 @@ def get_member_flags(name: str, info: TypeInfo) -> Set[int]:
             return {IS_SETTABLE}
         return set()
     v = node.node
-    if isinstance(v, Decorator):
-        if v.var.is_staticmethod or v.var.is_classmethod:
-            return {IS_CLASS_OR_STATIC}
     # just a variable
     if isinstance(v, Var) and not v.is_property:
         flags = {IS_SETTABLE}
