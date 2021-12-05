@@ -4,7 +4,6 @@
 [case testAssignmentAndVarDef]
 a = None # type: A
 b = None # type: B
-reveal_type(a)
 if int():
     a = a
 if int():
