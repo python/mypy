@@ -65,7 +65,7 @@ class TypeVisitor(Generic[T], metaclass=ABCMeta):
 
     @abstractmethod
     def visit_self_type(self, t: SelfType) -> T:
-      pass
+        pass
 
     def visit_param_spec(self, t: ParamSpecType) -> T:
         pass
