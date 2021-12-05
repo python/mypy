@@ -4,7 +4,7 @@ from mypy.types import (
     Type, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarId, Instance, TypeVarType,
     CallableType, TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType,
     DeletedType, TypeTranslator, UninhabitedType, TypeType, TypeOfAny, LiteralType, ProperType,
-    get_proper_type, TypeAliasType, TypeGuardType, ParamSpecType, SelfType
+    get_proper_type, TypeAliasType, ParamSpecType, SelfType
 )
 from mypy.nodes import ARG_STAR, ARG_STAR2
 
