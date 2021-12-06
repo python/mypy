@@ -493,6 +493,26 @@ reveal_type(fun(b))  # N: Revealed type is "builtins.object*"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testTypedDictTempTestName]
+from typing import Any, Type, TypeVar
+from typing_extensions import TypedDict
+
+T = TypeVar('T')
+class C(TypedDict):
+    x: str
+
+def gen() -> Any:
+    return {'x': 1}
+def foo(cls: Type[T]) -> T:
+    return gen()
+def fun(c: C):
+    pass
+
+fun(foo(C))
+reveal_type(foo(C)) # N: Revealed type is "__main__.C*"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
+
 -- Join
 
 [case testJoinOfTypedDictHasOnlyCommonKeysAndNewFallback]

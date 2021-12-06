@@ -250,8 +250,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return False
             return True
         right = self.right
-        if isinstance(right, TupleType) and mypy.typeops.tuple_fallback(right).type.is_enum:
-            return self._is_subtype(left, mypy.typeops.tuple_fallback(right))
         if isinstance(right, Instance):
             if TypeState.is_cached_subtype_check(self._subtype_kind, left, right):
                 return True
@@ -297,16 +295,21 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     return True
                 if isinstance(item, Instance):
                     return is_named_instance(item, 'builtins.object')
-        if isinstance(right, LiteralType) and left.last_known_value is not None:
-            return self._is_subtype(left.last_known_value, right)
         if isinstance(right, CallableType):
             # Special case: Instance can be a subtype of Callable.
             call = find_member('__call__', left, left, is_operator=True)
             if call:
                 return self._is_subtype(call, right)
             return False
-        else:
-            return False
+        # Special cases
+        if isinstance(right, LiteralType) and left.last_known_value is not None:
+            return self._is_subtype(left.last_known_value, right)
+        right_fallback = mypy.typeops.try_getting_instance_fallback(right)
+        if (right_fallback is not None
+                and ((isinstance(right, TupleType) and right_fallback.type.is_enum)
+                     or isinstance(right, TypedDictType))):
+            return self._is_subtype(left, right_fallback)
+        return False
 
     def visit_type_var(self, left: TypeVarType) -> bool:
         right = self.right
