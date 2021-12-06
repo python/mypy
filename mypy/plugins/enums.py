@@ -10,12 +10,14 @@ Note that this file does *not* contain all special-cased logic related to enums:
 we actually bake some of it directly in to the semantic analysis layer (see
 semanal_enum.py).
 """
-from typing import Iterable, Optional, TypeVar
+from typing import Iterable, Optional, Sequence, TypeVar, cast
 from typing_extensions import Final
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.types import Type, Instance, LiteralType, CallableType, ProperType, get_proper_type
+from mypy.typeops import make_simplified_union
 from mypy.nodes import TypeInfo
+from mypy.subtypes import is_equivalent
 
 # Note: 'enum.EnumMeta' is deliberately excluded from this list. Classes that directly use
 # enum.EnumMeta do not necessarily automatically have the 'name' and 'value' attributes.
@@ -165,19 +167,44 @@ def enum_value_callback(ctx: 'mypy.plugin.AttributeContext') -> Type:
                 get_proper_type(n.type) if n else None
                 for n in stnodes
                 if n is None or not n.implicit)
-            proper_types = (
+            proper_types = list(
                 _infer_value_type_with_auto_fallback(ctx, t)
                 for t in node_types
                 if t is None or not isinstance(t, CallableType))
             underlying_type = _first(proper_types)
             if underlying_type is None:
                 return ctx.default_attr_type
+
+            # At first we try to predict future `value` type if all other items
+            # have the same type. For example, `int`.
+            # If this is the case, we simply return this type.
+            # See https://github.com/python/mypy/pull/9443
             all_same_value_type = all(
                 proper_type is not None and proper_type == underlying_type
                 for proper_type in proper_types)
             if all_same_value_type:
                 if underlying_type is not None:
                     return underlying_type
+
+            # But, after we started treating all `Enum` values as `Final`,
+            # we start to infer types in
+            # `item = 1` as `Literal[1]`, not just `int`.
+            # So, for example types in this `Enum` will all be different:
+            #
+            #  class Ordering(IntEnum):
+            #      one = 1
+            #      two = 2
+            #      three = 3
+            #
+            # We will infer three `Literal` types here.
+            # They are not the same, but they are equivalent.
+            # So, we unify them to make sure `.value` prediction still works.
+            # Result will be `Literal[1] | Literal[2] | Literal[3]` for this case.
+            all_equivalent_types = all(
+                proper_type is not None and is_equivalent(proper_type, underlying_type)
+                for proper_type in proper_types)
+            if all_equivalent_types:
+                return make_simplified_union(cast(Sequence[Type], proper_types))
         return ctx.default_attr_type
 
     assert isinstance(ctx.type, Instance)

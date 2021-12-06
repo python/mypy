@@ -67,6 +67,9 @@ class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
     def visit_self_type(self, t: types.SelfType) -> Set[str]:
         return set()
 
+    def visit_param_spec(self, t: types.ParamSpecType) -> Set[str]:
+        return set()
+
     def visit_instance(self, t: types.Instance) -> Set[str]:
         out = self._visit(t.args)
         if t.type:
@@ -86,7 +89,7 @@ class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
         return out
 
     def visit_overloaded(self, t: types.Overloaded) -> Set[str]:
-        return self._visit(t.items()) | self._visit(t.fallback)
+        return self._visit(t.items) | self._visit(t.fallback)
 
     def visit_tuple_type(self, t: types.TupleType) -> Set[str]:
         return self._visit(t.items) | self._visit(t.partial_fallback)
@@ -99,9 +102,6 @@ class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
 
     def visit_union_type(self, t: types.UnionType) -> Set[str]:
         return self._visit(t.items)
-
-    def visit_type_guard_type(self, t: types.TypeGuardType) -> Set[str]:
-        return self._visit(t.type_guard)
 
     def visit_partial_type(self, t: types.PartialType) -> Set[str]:
         return set()

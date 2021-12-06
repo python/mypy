@@ -19,11 +19,11 @@ from mypy_extensions import trait, mypyc_attr
 T = TypeVar('T')
 
 from mypy.types import (
-    Type, AnyType, CallableType, Overloaded, TupleType, TypeGuardType, TypedDictType, LiteralType,
+    Type, AnyType, CallableType, Overloaded, TupleType, TypedDictType, LiteralType,
     RawExpressionType, Instance, NoneType, TypeType,
     UnionType, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarLikeType,
     UnboundType, ErasedType, StarType, EllipsisType, TypeList, CallableArgument,
-    PlaceholderType, TypeAliasType, get_proper_type, SelfType
+    PlaceholderType, TypeAliasType, ParamSpecType, SelfType, get_proper_type
 )
 
 
@@ -67,6 +67,9 @@ class TypeVisitor(Generic[T]):
     def visit_self_type(self, t: SelfType) -> T:
         pass
 
+    def visit_param_spec(self, t: ParamSpecType) -> T:
+        pass
+
     @abstractmethod
     def visit_instance(self, t: Instance) -> T:
         pass
@@ -105,10 +108,6 @@ class TypeVisitor(Generic[T]):
 
     @abstractmethod
     def visit_type_alias_type(self, t: TypeAliasType) -> T:
-        pass
-
-    @abstractmethod
-    def visit_type_guard_type(self, t: TypeGuardType) -> T:
         pass
 
 
@@ -190,6 +189,9 @@ class TypeTranslator(TypeVisitor[Type]):
     def visit_self_type(self, t: SelfType) -> Type:
         return t
 
+    def visit_param_spec(self, t: ParamSpecType) -> Type:
+        return t
+
     def visit_partial_type(self, t: PartialType) -> Type:
         return t
 
@@ -231,16 +233,13 @@ class TypeTranslator(TypeVisitor[Type]):
     def translate_types(self, types: Iterable[Type]) -> List[Type]:
         return [t.accept(self) for t in types]
 
-    def visit_type_guard_type(self, t: TypeGuardType) -> Type:
-        return TypeGuardType(t.type_guard.accept(self))
-
     def translate_variables(self,
                             variables: Sequence[TypeVarLikeType]) -> Sequence[TypeVarLikeType]:
         return variables
 
     def visit_overloaded(self, t: Overloaded) -> Type:
         items: List[CallableType] = []
-        for item in t.items():
+        for item in t.items:
             new = item.accept(self)
             assert isinstance(new, CallableType)  # type: ignore
             items.append(new)
@@ -308,6 +307,9 @@ class TypeQuery(SyntheticTypeVisitor[T]):
     def visit_self_type(self, t: SelfType) -> T:
         return self.strategy([])
 
+    def visit_param_spec(self, t: ParamSpecType) -> T:
+        return self.strategy([])
+
     def visit_partial_type(self, t: PartialType) -> T:
         return self.strategy([])
 
@@ -336,11 +338,8 @@ class TypeQuery(SyntheticTypeVisitor[T]):
     def visit_union_type(self, t: UnionType) -> T:
         return self.query_types(t.items)
 
-    def visit_type_guard_type(self, t: TypeGuardType) -> T:
-        return t.type_guard.accept(self)
-
     def visit_overloaded(self, t: Overloaded) -> T:
-        return self.query_types(t.items())
+        return self.query_types(t.items)
 
     def visit_type_type(self, t: TypeType) -> T:
         return t.item.accept(self)

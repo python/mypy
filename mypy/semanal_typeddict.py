@@ -67,16 +67,30 @@ class TypedDictAnalyzer:
                 defn.analyzed.line = defn.line
                 defn.analyzed.column = defn.column
                 return True, info
+
             # Extending/merging existing TypedDicts
-            if any(not isinstance(expr, RefExpr) or
-                   expr.fullname not in TPDICT_NAMES and
-                   not self.is_typeddict(expr) for expr in defn.base_type_exprs):
-                self.fail("All bases of a new TypedDict must be TypedDict types", defn)
-            typeddict_bases = list(filter(self.is_typeddict, defn.base_type_exprs))
+            typeddict_bases = []
+            typeddict_bases_set = set()
+            for expr in defn.base_type_exprs:
+                if isinstance(expr, RefExpr) and expr.fullname in TPDICT_NAMES:
+                    if 'TypedDict' not in typeddict_bases_set:
+                        typeddict_bases_set.add('TypedDict')
+                    else:
+                        self.fail('Duplicate base class "TypedDict"', defn)
+                elif isinstance(expr, RefExpr) and self.is_typeddict(expr):
+                    assert expr.fullname
+                    if expr.fullname not in typeddict_bases_set:
+                        typeddict_bases_set.add(expr.fullname)
+                        typeddict_bases.append(expr)
+                    else:
+                        assert isinstance(expr.node, TypeInfo)
+                        self.fail('Duplicate base class "%s"' % expr.node.name, defn)
+                else:
+                    self.fail("All bases of a new TypedDict must be TypedDict types", defn)
+
             keys: List[str] = []
             types = []
             required_keys = set()
-
             # Iterate over bases in reverse order so that leftmost base class' keys take precedence
             for base in reversed(typeddict_bases):
                 assert isinstance(base, RefExpr)
@@ -293,7 +307,14 @@ class TypedDictAnalyzer:
                 type = expr_to_unanalyzed_type(field_type_expr, self.options,
                                                self.api.is_stub_file)
             except TypeTranslationError:
-                self.fail_typeddict_arg('Invalid field type', field_type_expr)
+                if (isinstance(field_type_expr, CallExpr) and
+                        isinstance(field_type_expr.callee, RefExpr) and
+                        field_type_expr.callee.fullname in TPDICT_NAMES):
+                    self.fail_typeddict_arg(
+                        'Inline TypedDict types not supported; use assignment to define TypedDict',
+                        field_type_expr)
+                else:
+                    self.fail_typeddict_arg('Invalid field type', field_type_expr)
                 return [], [], False
             analyzed = self.api.anal_type(type)
             if analyzed is None:
@@ -328,3 +349,6 @@ class TypedDictAnalyzer:
 
     def fail(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
         self.api.fail(msg, ctx, code=code)
+
+    def note(self, msg: str, ctx: Context) -> None:
+        self.api.note(msg, ctx)

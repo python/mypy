@@ -62,7 +62,7 @@ def _get_argument(call: CallExpr, name: str) -> Optional[Expression]:
         callee_node_type = get_proper_type(callee_node.type)
         if isinstance(callee_node_type, Overloaded):
             # We take the last overload.
-            callee_type = callee_node_type.items()[-1]
+            callee_type = callee_node_type.items[-1]
         elif isinstance(callee_node_type, CallableType):
             callee_type = callee_node_type
 
@@ -122,13 +122,8 @@ def add_method_to_class(
             cls.defs.body.remove(sym.node)
 
     self_type = self_type or fill_typevars(info)
-    # TODO: semanal.py and checker.py seem to have subtly different implementations of
-    # named_type/named_generic_type (starting with the fact that we have to use different names
-    # for builtins), so it's easier to just check which one we're dealing with here and pick the
-    # correct function to use than to try to add a named_type method that behaves the same for
-    # both. We should probably combine those implementations at some point.
     if isinstance(api, SemanticAnalyzerPluginInterface):
-        function_type = api.named_type('__builtins__.function')
+        function_type = api.named_type('builtins.function')
     else:
         function_type = api.named_generic_type('builtins.function', [])
 

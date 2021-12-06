@@ -9,6 +9,6 @@ if sys.version_info >= (3, 7):
     SENDFILE_FALLBACK_READBUFFER_SIZE: int
 
 class _SendfileMode(enum.Enum):
-    UNSUPPORTED: int = ...
-    TRY_NATIVE: int = ...
-    FALLBACK: int = ...
+    UNSUPPORTED: int
+    TRY_NATIVE: int
+    FALLBACK: int

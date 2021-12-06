@@ -340,7 +340,8 @@ class Branch(ControlOp):
         self.negated = False
         # If not None, the true label should generate a traceback entry (func name, line number)
         self.traceback_entry: Optional[Tuple[str, int]] = None
-        # If True, the condition is expected to be usually False (for optimization purposes)
+        # If True, we expect to usually take the false branch (for optimization purposes);
+        # this is implicitly treated as true if there is a traceback entry
         self.rare = rare
 
     def targets(self) -> Sequence[BasicBlock]:
