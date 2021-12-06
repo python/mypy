@@ -247,7 +247,9 @@ class DataDrivenTestCase(pytest.Item):
         # TODO: add a better error message for when someone uses skip and xfail at the same time
         elif self.xfail:
             self.add_marker(pytest.mark.xfail)
-        suite = self.getparent(DataSuiteCollector).obj()
+        parent = self.getparent(DataSuiteCollector)
+        assert parent is not None, 'Should not happen'
+        suite = parent.obj()
         suite.setup()
         try:
             suite.run_case(self)
@@ -623,7 +625,7 @@ class DataFileCollector(pytest.Collector):
         *,
         name: str,
     ) -> 'DataFileCollector':
-        return super().from_parent(parent, name=name)  # type: ignore[no-untyped-call]
+        return super().from_parent(parent, name=name)
 
     def collect(self) -> Iterator['DataDrivenTestCase']:
         yield from split_test_cases(
