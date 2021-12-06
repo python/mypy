@@ -247,7 +247,7 @@ class DataDrivenTestCase(pytest.Item):
         # TODO: add a better error message for when someone uses skip and xfail at the same time
         elif self.xfail:
             self.add_marker(pytest.mark.xfail)
-        suite = self.parent.obj()
+        suite = self.getparent(DataSuiteCollector).obj()
         suite.setup()
         try:
             suite.run_case(self)
@@ -609,11 +609,12 @@ class DataSuiteCollector(pytest.Class):
             yield DataFileCollector.from_parent(parent=self, name=data_file)
 
 
-class DataFileCollector(pytest.Class):
+class DataFileCollector(pytest.Collector):
     """Represents a single `.test` data driven test file.
 
     More context: https://github.com/python/mypy/issues/11662
     """
+    parent: DataSuiteCollector
 
     @classmethod  # We have to fight with pytest here:
     def from_parent(  # type: ignore[override]
@@ -622,15 +623,13 @@ class DataFileCollector(pytest.Class):
         *,
         name: str,
     ) -> 'DataFileCollector':
-        instance = super().from_parent(parent, name=name)  # type: ignore[no-untyped-call]
-        instance.obj = parent.obj  # We need to copy `DataSuite` object deeper.
-        return instance
+        return super().from_parent(parent, name=name)  # type: ignore[no-untyped-call]
 
     def collect(self) -> Iterator['DataDrivenTestCase']:
         yield from split_test_cases(
             parent=self,
-            suite=self.obj,
-            file=os.path.join(self.obj.data_prefix, self.name),
+            suite=self.parent.obj,
+            file=os.path.join(self.parent.obj.data_prefix, self.name),
         )
 
 
