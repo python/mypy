@@ -57,7 +57,7 @@ from mypy.nodes import (
     FuncBase, OverloadedFuncDef, FuncItem, MypyFile, UNBOUND_IMPORTED
 )
 from mypy.types import (
-    Type, TypeGuardType, TypeVisitor, UnboundType, AnyType, NoneType, UninhabitedType,
+    SelfType, Type, TypeGuardType, TypeVisitor, UnboundType, AnyType, NoneType, UninhabitedType,
     ErasedType, DeletedType, Instance, TypeVarType, CallableType, TupleType, TypedDictType,
     UnionType, Overloaded, PartialType, TypeType, LiteralType, TypeAliasType
 )
@@ -305,6 +305,12 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
                 snapshot_types(typ.values),
                 snapshot_type(typ.upper_bound),
                 typ.variance)
+
+    def visit_self_type(self, typ: SelfType) -> SnapshotItem:
+        return ('SelfType',
+                typ.fullname,
+                snapshot_type(typ.instance)
+                )
 
     def visit_callable_type(self, typ: CallableType) -> SnapshotItem:
         # FIX generics

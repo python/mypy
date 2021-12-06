@@ -29,7 +29,7 @@ from mypy.types import (
 
 @trait
 @mypyc_attr(allow_interpreted_subclasses=True)
-class TypeVisitor(Generic[T], metaclass=ABCMeta):
+class TypeVisitor(Generic[T]):
     """Visitor class for types (Type subclasses).
 
     The parameter T is the return type of the visit methods.

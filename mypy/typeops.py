@@ -276,8 +276,10 @@ def bind_self(method: F, original_type: Optional[Type] = None, is_classmethod: b
         if isinstance(arg_type, UnionType):
             for idx, item in enumerate(arg_type.items):
                 if isinstance(item, SelfType):
+                    assert original_type is not None
                     arg_type.items[idx] = original_type
     if isinstance(res.ret_type, SelfType):
+        assert original_type is not None
         res.ret_type = original_type
     return cast(F, res)
 

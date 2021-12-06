@@ -355,7 +355,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return self.anal_type(t.args[0])
         elif fullname in ('typing_extensions.Self', 'typing.Self'):
             try:
-                bound = self.named_type(self.api.type.fullname)
+                bound = self.named_type(self.api.type.fullname)  # type: ignore
             except AttributeError:
                 return self.fail("Self is unbound", t)
             return SelfType(bound, fullname, line=t.line, column=t.column)

@@ -428,11 +428,14 @@ class TypeVarType(TypeVarLikeType):
 
 
 class SelfType(ProperType):
+    name: ClassVar[str] = 'Self'
+
+    __slots__ = ('fullname', 'instance')
+
     def __init__(self, instance: 'Instance', fullname: str, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
-        self.name = "Self"
         self.fullname = fullname
-        self.instance: 'Instance' = instance
+        self.instance = instance
         self.line = line
         self.column = column
 
@@ -449,7 +452,9 @@ class SelfType(ProperType):
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'SelfType':
         assert data['.class'] == 'SelfType'
-        return cls(deserialize_type(data['instance']), data['fullname'])
+        instance = deserialize_type(data['instance'])
+        assert isinstance(instance, Instance)
+        return cls(instance, data['fullname'])
 
 
 class ParamSpecType(TypeVarLikeType):

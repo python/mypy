@@ -673,6 +673,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 self_type = leading_type.item if isinstance(leading_type, TypeType) else leading_type
                 fullname = None
                 # bind any SelfTypes
+                assert isinstance(func.type, CallableType)
                 for idx, arg in enumerate(func.type.arg_types):
                     if self.is_self_type(arg):
                         if func.is_static:
@@ -692,7 +693,9 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if self.is_self_type(func.type.ret_type):
                     if fullname is None:
                         self.lookup_qualified(func.type.ret_type.name, func.type.ret_type)
-                        fullname = self.lookup_qualified(func.type.ret_type.name, func.type.ret_type).node.fullname
+                        table_node = self.lookup_qualified(func.type.ret_type.name, func.type.ret_type)
+                        assert isinstance(table_node, SymbolTableNode) and table_node.node
+                        fullname = cast(str, table_node.node.fullname)
                     if func.is_static:
                         self.fail(
                             "Self types in the annotations of staticmethods are not supported, "
@@ -5159,7 +5162,6 @@ class HasPlaceholders(TypeQuery[bool]):
 def has_placeholder(typ: Type) -> bool:
     """Check if a type contains any placeholder types (recursively)."""
     return typ.accept(HasPlaceholders())
-    return t
 
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
