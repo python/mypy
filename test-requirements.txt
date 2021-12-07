@@ -4,7 +4,7 @@ attrs>=18.0
 flake8==3.9.2
 flake8-bugbear
 flake8-pyi>=20.5
-lxml>=4.4.0
+lxml>=4.4.0; python_version<'3.11'
 psutil>=4.0
 pytest>=6.2.0,<7.0.0
 pytest-xdist>=1.34.0,<2.0.0
