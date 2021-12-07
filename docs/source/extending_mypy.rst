@@ -9,10 +9,10 @@ Integrating mypy into another Python application
 ************************************************
 
 It is possible to integrate mypy into another Python 3 application by
-importing ``mypy.api`` and calling the ``run`` function with a parameter of type ``List[str]``, containing
+importing ``mypy.api`` and calling the ``run`` function with a parameter of type ``list[str]``, containing
 what normally would have been the command line arguments to mypy.
 
-Function ``run`` returns a ``Tuple[str, str, int]``, namely
+Function ``run`` returns a ``tuple[str, str, int]``, namely
 ``(<normal_report>, <error_report>, <exit_status>)``, in which ``<normal_report>``
 is what mypy normally writes to :py:data:`sys.stdout`, ``<error_report>`` is what mypy
 normally writes to :py:data:`sys.stderr` and ``exit_status`` is the exit status mypy normally
@@ -246,7 +246,7 @@ when the configuration for a module changes, we want to invalidate
 mypy's cache for that module so that it can be rechecked. This hook
 should be used to report to mypy any relevant configuration data,
 so that mypy knows to recheck the module if the configuration changes.
-The hooks hould return data encodable as JSON.
+The hooks should return data encodable as JSON.
 
 Notes about the semantic analyzer
 *********************************

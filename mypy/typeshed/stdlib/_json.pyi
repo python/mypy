@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Callable
 
 class make_encoder:
     sort_keys: Any
@@ -11,10 +11,10 @@ class make_encoder:
     item_separator: Any
     def __init__(
         self,
-        markers: Optional[Dict[int, Any]],
+        markers: dict[int, Any] | None,
         default: Callable[[Any], Any],
         encoder: Callable[[str], str],
-        indent: Optional[int],
+        indent: int | None,
         key_separator: str,
         item_separator: str,
         sort_keys: bool,
@@ -32,7 +32,7 @@ class make_scanner:
     strict: bool
     # TODO: 'context' needs the attrs above (ducktype), but not __call__.
     def __init__(self, context: make_scanner) -> None: ...
-    def __call__(self, string: str, index: int) -> Tuple[Any, int]: ...
+    def __call__(self, string: str, index: int) -> tuple[Any, int]: ...
 
 def encode_basestring_ascii(s: str) -> str: ...
-def scanstring(string: str, end: int, strict: bool = ...) -> Tuple[str, int]: ...
+def scanstring(string: str, end: int, strict: bool = ...) -> tuple[str, int]: ...

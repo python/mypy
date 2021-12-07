@@ -215,7 +215,8 @@ class ASTConverter:
         # ignores the whole module:
         if (module and stmts and self.type_ignores
                 and min(self.type_ignores) < self.get_lineno(stmts[0])):
-            self.errors.used_ignored_lines[self.errors.file].add(min(self.type_ignores))
+            self.errors.used_ignored_lines[self.errors.file][min(self.type_ignores)].append(
+                codes.MISC.code)
             block = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
             mark_block_unreachable(block)
             return [block]
@@ -663,19 +664,23 @@ class ASTConverter:
                         typ)
         return self.set_line(stmt, n)
 
+    # 'raise' [test [',' test [',' test]]]
     def visit_Raise(self, n: ast27.Raise) -> RaiseStmt:
+        legacy_mode = False
         if n.type is None:
             e = None
         else:
             if n.inst is None:
                 e = self.visit(n.type)
             else:
+                legacy_mode = True
                 if n.tback is None:
                     e = TupleExpr([self.visit(n.type), self.visit(n.inst)])
                 else:
                     e = TupleExpr([self.visit(n.type), self.visit(n.inst), self.visit(n.tback)])
 
         stmt = RaiseStmt(e, None)
+        stmt.legacy_mode = legacy_mode
         return self.set_line(stmt, n)
 
     # TryExcept(stmt* body, excepthandler* handlers, stmt* orelse)

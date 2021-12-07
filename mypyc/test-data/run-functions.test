@@ -1183,3 +1183,12 @@ with assertRaises(TypeError, "varargs4() missing required keyword-only argument 
     varargs4(1, 2, 3)
 with assertRaises(TypeError, "varargs4() missing required argument 'a' (pos 1)"):
     varargs4(y=20)
+
+[case testDecoratorName]
+def dec(f): return f
+
+@dec
+def foo(): pass
+
+def test_decorator_name():
+    assert foo.__name__ == "foo"

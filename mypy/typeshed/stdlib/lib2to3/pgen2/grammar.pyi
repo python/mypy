@@ -7,14 +7,14 @@ _DFA = List[List[Tuple[int, int]]]
 _DFAS = Tuple[_DFA, Dict[int, int]]
 
 class Grammar:
-    symbol2number: Dict[str, int]
-    number2symbol: Dict[int, str]
-    states: List[_DFA]
-    dfas: Dict[int, _DFAS]
-    labels: List[_Label]
-    keywords: Dict[str, int]
-    tokens: Dict[int, int]
-    symbol2label: Dict[str, int]
+    symbol2number: dict[str, int]
+    number2symbol: dict[int, str]
+    states: list[_DFA]
+    dfas: dict[int, _DFAS]
+    labels: list[_Label]
+    keywords: dict[str, int]
+    tokens: dict[int, int]
+    symbol2label: dict[str, int]
     start: int
     def __init__(self) -> None: ...
     def dump(self, filename: StrPath) -> None: ...
@@ -23,4 +23,4 @@ class Grammar:
     def report(self) -> None: ...
 
 opmap_raw: str
-opmap: Dict[str, str]
+opmap: dict[str, str]

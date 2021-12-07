@@ -19,10 +19,10 @@ Check that type arguments exist [type-arg]
 ------------------------------------------
 
 If you use :option:`--disallow-any-generics <mypy --disallow-any-generics>`, mypy requires that each generic
-type has values for each type argument. For example, the types ``List`` or
-``dict`` would be rejected. You should instead use types like ``List[int]`` or
-``Dict[str, int]``. Any omitted generic type arguments get implicit ``Any``
-values. The type ``List`` is equivalent to ``List[Any]``, and so on.
+type has values for each type argument. For example, the types ``list`` or
+``dict`` would be rejected. You should instead use types like ``list[int]`` or
+``dict[str, int]``. Any omitted generic type arguments get implicit ``Any``
+values. The type ``list`` is equivalent to ``list[Any]``, and so on.
 
 Example:
 
@@ -30,10 +30,8 @@ Example:
 
     # mypy: disallow-any-generics
 
-    from typing import List
-
-    # Error: Missing type parameters for generic type "List"  [type-arg]
-    def remove_dups(items: List) -> List:
+    # Error: Missing type parameters for generic type "list"  [type-arg]
+    def remove_dups(items: list) -> list:
         ...
 
 Check that every function has an annotation [no-untyped-def]
@@ -214,3 +212,46 @@ mypy generates an error if it thinks that an expression is redundant.
 
         # Error: If condition in comprehension is always true  [redundant-expr]
         [i for i in range(x) if isinstance(i, int)]
+
+
+Check that expression is not implicitly true in boolean context [truthy-bool]
+-----------------------------------------------------------------------------
+
+Warn when an expression whose type does not implement ``__bool__`` or ``__len__`` is used in boolean context,
+since unless implemented by a sub-type, the expression will always evaluate to true.
+
+.. code-block:: python
+
+    # mypy: enable-error-code truthy-bool
+
+    class Foo:
+      pass
+    foo = Foo()
+    # Error: "foo" has type "Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context
+    if foo:
+       ...
+
+
+This check might falsely imply an error. For example, ``Iterable`` does not implement
+``__len__`` and so this code will be flagged:
+
+.. code-block:: python
+
+    # mypy: enable-error-code truthy-bool
+    from typing import Iterable
+
+    def transform(items: Iterable[int]) -> Iterable[int]:
+        # Error: "items" has type "Iterable[int]" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+        if not items:
+            return [42]
+        return [x + 1 for x in items]
+
+
+
+If called as ``transform((int(s) for s in []))``, this function would not return ``[42]`` unlike what the author
+might have intended. Of course it's possible that ``transform`` is only passed ``list`` objects, and so there is
+no error in practice. In such case, it might be prudent to annotate ``items: Sequence[int]``.
+
+This is similar in concept to ensuring that an expression's type implements an expected interface (e.g. ``Sized``),
+except that attempting to invoke an undefined method (e.g. ``__len__``) results in an error,
+while attempting to evaluate an object in boolean context without a concrete implementation results in a truthy value.

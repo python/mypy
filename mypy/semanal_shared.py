@@ -101,11 +101,12 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
+    def named_type(self, fullname: str,
+                   args: Optional[List[Type]] = None) -> Instance:
         raise NotImplementedError
 
     @abstractmethod
-    def named_type_or_none(self, qualified_name: str,
+    def named_type_or_none(self, fullname: str,
                            args: Optional[List[Type]] = None) -> Optional[Instance]:
         raise NotImplementedError
 
@@ -118,6 +119,7 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
                   tvar_scope: Optional[TypeVarLikeScope] = None,
                   allow_tuple_literal: bool = False,
                   allow_unbound_tvars: bool = False,
+                  allow_required: bool = False,
                   report_invalid_types: bool = True) -> Optional[Type]:
         raise NotImplementedError
 

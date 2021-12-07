@@ -54,12 +54,12 @@ from typing import Set, Dict, Tuple, Optional, Sequence, Union
 
 from mypy.nodes import (
     SymbolTable, TypeInfo, Var, SymbolNode, Decorator, TypeVarExpr, TypeAlias,
-    FuncBase, OverloadedFuncDef, FuncItem, MypyFile, UNBOUND_IMPORTED
+    FuncBase, OverloadedFuncDef, FuncItem, MypyFile, ParamSpecExpr, UNBOUND_IMPORTED
 )
 from mypy.types import (
-    Type, TypeGuardType, TypeVisitor, UnboundType, AnyType, NoneType, UninhabitedType,
+    Type, TypeVisitor, UnboundType, AnyType, NoneType, UninhabitedType,
     ErasedType, DeletedType, Instance, TypeVarType, CallableType, TupleType, TypedDictType,
-    UnionType, Overloaded, PartialType, TypeType, LiteralType, TypeAliasType
+    UnionType, Overloaded, PartialType, TypeType, LiteralType, TypeAliasType, ParamSpecType
 )
 from mypy.util import get_prefix
 
@@ -151,6 +151,10 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> Dict[str, Sna
                             node.normalized,
                             node.no_args,
                             snapshot_optional_type(node.target))
+        elif isinstance(node, ParamSpecExpr):
+            result[name] = ('ParamSpec',
+                            node.variance,
+                            snapshot_type(node.upper_bound))
         else:
             assert symbol.kind != UNBOUND_IMPORTED
             if node and get_prefix(node.fullname) != name_prefix:
@@ -306,6 +310,13 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
                 snapshot_type(typ.upper_bound),
                 typ.variance)
 
+    def visit_param_spec(self, typ: ParamSpecType) -> SnapshotItem:
+        return ('ParamSpec',
+                typ.id.raw_id,
+                typ.id.meta_level,
+                typ.flavor,
+                snapshot_type(typ.upper_bound))
+
     def visit_callable_type(self, typ: CallableType) -> SnapshotItem:
         # FIX generics
         return ('CallableType',
@@ -335,11 +346,8 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
         normalized = tuple(sorted(items))
         return ('UnionType', normalized)
 
-    def visit_type_guard_type(self, typ: TypeGuardType) -> SnapshotItem:
-        return ('TypeGuardType', snapshot_type(typ.type_guard))
-
     def visit_overloaded(self, typ: Overloaded) -> SnapshotItem:
-        return ('Overloaded', snapshot_types(typ.items()))
+        return ('Overloaded', snapshot_types(typ.items))
 
     def visit_partial_type(self, typ: PartialType) -> SnapshotItem:
         # A partial type is not fully defined, so the result is indeterminate. We shouldn't
