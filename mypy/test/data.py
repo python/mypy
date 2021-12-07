@@ -247,7 +247,9 @@ class DataDrivenTestCase(pytest.Item):
         # TODO: add a better error message for when someone uses skip and xfail at the same time
         elif self.xfail:
             self.add_marker(pytest.mark.xfail)
-        suite = self.parent.obj()
+        parent = self.getparent(DataSuiteCollector)
+        assert parent is not None, 'Should not happen'
+        suite = parent.obj()
         suite.setup()
         try:
             suite.run_case(self)
@@ -550,12 +552,12 @@ def pytest_pycollect_makeitem(collector: Any, name: str,
             # The collect method of the returned DataSuiteCollector instance will be called later,
             # with self.obj being obj.
             return DataSuiteCollector.from_parent(  # type: ignore[no-untyped-call]
-                parent=collector, name=name
+                parent=collector, name=name,
             )
     return None
 
 
-def split_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
+def split_test_cases(parent: 'DataFileCollector', suite: 'DataSuite',
                      file: str) -> Iterator['DataDrivenTestCase']:
     """Iterate over raw test cases in file, at collection time, ignoring sub items.
 
@@ -596,7 +598,7 @@ def split_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
 
 
 class DataSuiteCollector(pytest.Class):
-    def collect(self) -> Iterator[pytest.Item]:
+    def collect(self) -> Iterator['DataFileCollector']:
         """Called by pytest on each of the object returned from pytest_pycollect_makeitem"""
 
         # obj is the object for which pytest_pycollect_makeitem returned self.
@@ -605,8 +607,32 @@ class DataSuiteCollector(pytest.Class):
         assert os.path.isdir(suite.data_prefix), \
             'Test data prefix ({}) not set correctly'.format(suite.data_prefix)
 
-        for f in suite.files:
-            yield from split_test_cases(self, suite, os.path.join(suite.data_prefix, f))
+        for data_file in suite.files:
+            yield DataFileCollector.from_parent(parent=self, name=data_file)
+
+
+class DataFileCollector(pytest.Collector):
+    """Represents a single `.test` data driven test file.
+
+    More context: https://github.com/python/mypy/issues/11662
+    """
+    parent: DataSuiteCollector
+
+    @classmethod  # We have to fight with pytest here:
+    def from_parent(  # type: ignore[override]
+        cls,
+        parent: DataSuiteCollector,
+        *,
+        name: str,
+    ) -> 'DataFileCollector':
+        return super().from_parent(parent, name=name)
+
+    def collect(self) -> Iterator['DataDrivenTestCase']:
+        yield from split_test_cases(
+            parent=self,
+            suite=self.parent.obj,
+            file=os.path.join(self.parent.obj.data_prefix, self.name),
+        )
 
 
 def add_test_name_suffix(name: str, suffix: str) -> str:
