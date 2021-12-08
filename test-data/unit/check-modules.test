@@ -3143,18 +3143,25 @@ from a import no_such_export  # E: Module "a" has no attribute "no_such_export"
 [case testCyclicUndefinedImportWithStar1]
 import a
 [file a.py]
-from b import no_such_export  # E: Module "b" has no attribute "no_such_export"
+from b import no_such_export
 [file b.py]
 from a import *
+[out]
+tmp/b.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
+tmp/a.py:1: error: Module "b" has no attribute "no_such_export"
 
 [case testCyclicUndefinedImportWithStar2]
 import a
 [file a.py]
-from b import no_such_export  # E: Module "b" has no attribute "no_such_export"
+from b import no_such_export
 [file b.py]
 from c import *
 [file c.py]
 from a import *
+[out]
+tmp/c.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
+tmp/b.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
+tmp/a.py:1: error: Module "b" has no attribute "no_such_export"
 
 [case testCyclicUndefinedImportWithStar3]
 import test1
