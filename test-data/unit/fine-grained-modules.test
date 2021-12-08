@@ -1752,7 +1752,7 @@ class Foo:
 ==
 a.py:3: error: Argument 1 to "foo" of "Foo" has incompatible type "int"; expected "str"
 
-[case testAddAndUseClass4]
+[case testAddAndUseClass4_2]
 [file a.py]
 [file a.py.2]
 from p.b import *

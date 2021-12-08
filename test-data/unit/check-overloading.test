@@ -4314,7 +4314,7 @@ class Wrapper3:
     def foo(x: Union[int, str]): pass  # E: Self argument missing for a non-static method (or an invalid type for self)
 [builtins fixtures/staticmethod.pyi]
 
-[case testOverloadWithSwappedDecorators]
+[case testOverloadWithSwappedDecorators2]
 from typing import overload
 
 class Wrapper1:

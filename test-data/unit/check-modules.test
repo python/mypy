@@ -1,7 +1,7 @@
 -- Type checker test cases dealing with modules and imports.
 -- Towards the end there are tests for PEP 420 (namespace packages, i.e. __init__.py-less packages).
 
-[case testAccessImportedDefinitions]
+[case testAccessImportedDefinitions0]
 import m
 import typing
 m.f()           # E: Missing positional argument "a" in call to "f"
@@ -14,7 +14,7 @@ class A: pass
 def f(a: A) -> None: pass
 x = A()
 
-[case testAccessImportedDefinitions]
+[case testAccessImportedDefinitions1]
 import m
 import typing
 m.f(object()) # E: Argument 1 to "f" has incompatible type "object"; expected "A"
