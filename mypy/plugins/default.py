@@ -1,19 +1,15 @@
 from functools import partial
 from typing import Callable, Optional, List
 
-from mypy import message_registry
-from mypy.nodes import Expression, StrExpr, IntExpr, DictExpr, UnaryExpr
+from mypy.nodes import Expression, StrExpr, IntExpr, UnaryExpr
 from mypy.plugin import (
     Plugin, FunctionContext, MethodContext, MethodSigContext, AttributeContext, ClassDefContext,
     CheckerPluginInterface,
 )
-from mypy.plugins.common import try_getting_str_literals
 from mypy.types import (
-    FunctionLike, Type, Instance, AnyType, TypeOfAny, CallableType, NoneType, TypedDictType,
-    TypeVarType, TPDICT_FB_NAMES, get_proper_type, LiteralType, TupleType
+    FunctionLike, Type, Instance, CallableType, TPDICT_FB_NAMES, get_proper_type,
+    LiteralType, TupleType
 )
-from mypy.subtypes import is_subtype
-from mypy.typeops import make_simplified_union
 from mypy.checkexpr import is_literal_type_like
 from mypy.checker import detach_callable
 
@@ -37,16 +33,18 @@ class DefaultPlugin(Plugin):
 
     def get_method_signature_hook(self, fullname: str
                                   ) -> Optional[Callable[[MethodSigContext], FunctionLike]]:
-        from mypy.plugins import ctypes, singledispatch
+        from mypy.plugins import typeddict, ctypes, singledispatch
 
         if fullname == 'typing.Mapping.get':
-            return typed_dict_get_signature_callback
+            return typeddict.typed_dict_get_signature_callback
+        elif fullname == 'typing.Mapping.__getitem__':
+            return typeddict.typed_dict_get_signature_callback
         elif fullname in set(n + '.setdefault' for n in TPDICT_FB_NAMES):
-            return typed_dict_setdefault_signature_callback
+            return typeddict.typed_dict_setdefault_signature_callback
         elif fullname in set(n + '.pop' for n in TPDICT_FB_NAMES):
-            return typed_dict_pop_signature_callback
+            return typeddict.typed_dict_pop_signature_callback
         elif fullname in set(n + '.update' for n in TPDICT_FB_NAMES):
-            return typed_dict_update_signature_callback
+            return typeddict.typed_dict_update_signature_callback
         elif fullname == 'ctypes.Array.__setitem__':
             return ctypes.array_setitem_callback
         elif fullname == singledispatch.SINGLEDISPATCH_CALLABLE_CALL_METHOD:
@@ -55,10 +53,12 @@ class DefaultPlugin(Plugin):
 
     def get_method_hook(self, fullname: str
                         ) -> Optional[Callable[[MethodContext], Type]]:
-        from mypy.plugins import ctypes, singledispatch
+        from mypy.plugins import typeddict, ctypes, singledispatch
 
         if fullname == 'typing.Mapping.get':
-            return typed_dict_get_callback
+            return typeddict.typed_dict_get_callback
+        elif fullname == 'typing.Mapping.__getitem__':
+            return typeddict.typed_dict_getitem_callback
         elif fullname == 'builtins.int.__pow__':
             return int_pow_callback
         elif fullname == 'builtins.int.__neg__':
@@ -66,11 +66,11 @@ class DefaultPlugin(Plugin):
         elif fullname in ('builtins.tuple.__mul__', 'builtins.tuple.__rmul__'):
             return tuple_mul_callback
         elif fullname in set(n + '.setdefault' for n in TPDICT_FB_NAMES):
-            return typed_dict_setdefault_callback
+            return typeddict.typed_dict_setdefault_callback
         elif fullname in set(n + '.pop' for n in TPDICT_FB_NAMES):
-            return typed_dict_pop_callback
+            return typeddict.typed_dict_pop_callback
         elif fullname in set(n + '.__delitem__' for n in TPDICT_FB_NAMES):
-            return typed_dict_delitem_callback
+            return typeddict.typed_dict_delitem_callback
         elif fullname == 'ctypes.Array.__getitem__':
             return ctypes.array_getitem_callback
         elif fullname == 'ctypes.Array.__iter__':
@@ -199,225 +199,6 @@ def contextmanager_callback(ctx: FunctionContext) -> Type:
                 variables=arg_type.variables,
                 is_ellipsis_args=arg_type.is_ellipsis_args))
     return ctx.default_return_type
-
-
-def typed_dict_get_signature_callback(ctx: MethodSigContext) -> CallableType:
-    """Try to infer a better signature type for TypedDict.get.
-
-    This is used to get better type context for the second argument that
-    depends on a TypedDict value type.
-    """
-    signature = ctx.default_signature
-    if (isinstance(ctx.type, TypedDictType)
-            and len(ctx.args) == 2
-            and len(ctx.args[0]) == 1
-            and isinstance(ctx.args[0][0], StrExpr)
-            and len(signature.arg_types) == 2
-            and len(signature.variables) == 1
-            and len(ctx.args[1]) == 1):
-        key = ctx.args[0][0].value
-        value_type = get_proper_type(ctx.type.items.get(key))
-        ret_type = signature.ret_type
-        if value_type:
-            default_arg = ctx.args[1][0]
-            if (isinstance(value_type, TypedDictType)
-                    and isinstance(default_arg, DictExpr)
-                    and len(default_arg.items) == 0):
-                # Caller has empty dict {} as default for typed dict.
-                value_type = value_type.copy_modified(required_keys=set())
-            # Tweak the signature to include the value type as context. It's
-            # only needed for type inference since there's a union with a type
-            # variable that accepts everything.
-            tv = signature.variables[0]
-            assert isinstance(tv, TypeVarType)
-            return signature.copy_modified(
-                arg_types=[signature.arg_types[0],
-                           make_simplified_union([value_type, tv])],
-                ret_type=ret_type)
-    return signature
-
-
-def typed_dict_get_callback(ctx: MethodContext) -> Type:
-    """Infer a precise return type for TypedDict.get with literal first argument."""
-    if (isinstance(ctx.type, TypedDictType)
-            and len(ctx.arg_types) >= 1
-            and len(ctx.arg_types[0]) == 1):
-        keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
-        if keys is None:
-            return ctx.default_return_type
-
-        output_types: List[Type] = []
-        for key in keys:
-            value_type = get_proper_type(ctx.type.items.get(key))
-            if value_type is None:
-                return ctx.default_return_type
-
-            if len(ctx.arg_types) == 1:
-                output_types.append(value_type)
-            elif (len(ctx.arg_types) == 2 and len(ctx.arg_types[1]) == 1
-                  and len(ctx.args[1]) == 1):
-                default_arg = ctx.args[1][0]
-                if (isinstance(default_arg, DictExpr) and len(default_arg.items) == 0
-                        and isinstance(value_type, TypedDictType)):
-                    # Special case '{}' as the default for a typed dict type.
-                    output_types.append(value_type.copy_modified(required_keys=set()))
-                else:
-                    output_types.append(value_type)
-                    output_types.append(ctx.arg_types[1][0])
-
-        if len(ctx.arg_types) == 1:
-            output_types.append(NoneType())
-
-        return make_simplified_union(output_types)
-    return ctx.default_return_type
-
-
-def typed_dict_pop_signature_callback(ctx: MethodSigContext) -> CallableType:
-    """Try to infer a better signature type for TypedDict.pop.
-
-    This is used to get better type context for the second argument that
-    depends on a TypedDict value type.
-    """
-    signature = ctx.default_signature
-    str_type = ctx.api.named_generic_type('builtins.str', [])
-    if (isinstance(ctx.type, TypedDictType)
-            and len(ctx.args) == 2
-            and len(ctx.args[0]) == 1
-            and isinstance(ctx.args[0][0], StrExpr)
-            and len(signature.arg_types) == 2
-            and len(signature.variables) == 1
-            and len(ctx.args[1]) == 1):
-        key = ctx.args[0][0].value
-        value_type = ctx.type.items.get(key)
-        if value_type:
-            # Tweak the signature to include the value type as context. It's
-            # only needed for type inference since there's a union with a type
-            # variable that accepts everything.
-            tv = signature.variables[0]
-            assert isinstance(tv, TypeVarType)
-            typ = make_simplified_union([value_type, tv])
-            return signature.copy_modified(
-                arg_types=[str_type, typ],
-                ret_type=typ)
-    return signature.copy_modified(arg_types=[str_type, signature.arg_types[1]])
-
-
-def typed_dict_pop_callback(ctx: MethodContext) -> Type:
-    """Type check and infer a precise return type for TypedDict.pop."""
-    if (isinstance(ctx.type, TypedDictType)
-            and len(ctx.arg_types) >= 1
-            and len(ctx.arg_types[0]) == 1):
-        keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
-        if keys is None:
-            ctx.api.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
-            return AnyType(TypeOfAny.from_error)
-
-        value_types = []
-        for key in keys:
-            if key in ctx.type.required_keys:
-                ctx.api.msg.typeddict_key_cannot_be_deleted(ctx.type, key, ctx.context)
-
-            value_type = ctx.type.items.get(key)
-            if value_type:
-                value_types.append(value_type)
-            else:
-                ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
-                return AnyType(TypeOfAny.from_error)
-
-        if len(ctx.args[1]) == 0:
-            return make_simplified_union(value_types)
-        elif (len(ctx.arg_types) == 2 and len(ctx.arg_types[1]) == 1
-              and len(ctx.args[1]) == 1):
-            return make_simplified_union([*value_types, ctx.arg_types[1][0]])
-    return ctx.default_return_type
-
-
-def typed_dict_setdefault_signature_callback(ctx: MethodSigContext) -> CallableType:
-    """Try to infer a better signature type for TypedDict.setdefault.
-
-    This is used to get better type context for the second argument that
-    depends on a TypedDict value type.
-    """
-    signature = ctx.default_signature
-    str_type = ctx.api.named_generic_type('builtins.str', [])
-    if (isinstance(ctx.type, TypedDictType)
-            and len(ctx.args) == 2
-            and len(ctx.args[0]) == 1
-            and isinstance(ctx.args[0][0], StrExpr)
-            and len(signature.arg_types) == 2
-            and len(ctx.args[1]) == 1):
-        key = ctx.args[0][0].value
-        value_type = ctx.type.items.get(key)
-        if value_type:
-            return signature.copy_modified(arg_types=[str_type, value_type])
-    return signature.copy_modified(arg_types=[str_type, signature.arg_types[1]])
-
-
-def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
-    """Type check TypedDict.setdefault and infer a precise return type."""
-    if (isinstance(ctx.type, TypedDictType)
-            and len(ctx.arg_types) == 2
-            and len(ctx.arg_types[0]) == 1
-            and len(ctx.arg_types[1]) == 1):
-        keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
-        if keys is None:
-            ctx.api.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
-            return AnyType(TypeOfAny.from_error)
-
-        default_type = ctx.arg_types[1][0]
-
-        value_types = []
-        for key in keys:
-            value_type = ctx.type.items.get(key)
-
-            if value_type is None:
-                ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
-                return AnyType(TypeOfAny.from_error)
-
-            # The signature_callback above can't always infer the right signature
-            # (e.g. when the expression is a variable that happens to be a Literal str)
-            # so we need to handle the check ourselves here and make sure the provided
-            # default can be assigned to all key-value pairs we're updating.
-            if not is_subtype(default_type, value_type):
-                ctx.api.msg.typeddict_setdefault_arguments_inconsistent(
-                    default_type, value_type, ctx.context)
-                return AnyType(TypeOfAny.from_error)
-
-            value_types.append(value_type)
-
-        return make_simplified_union(value_types)
-    return ctx.default_return_type
-
-
-def typed_dict_delitem_callback(ctx: MethodContext) -> Type:
-    """Type check TypedDict.__delitem__."""
-    if (isinstance(ctx.type, TypedDictType)
-            and len(ctx.arg_types) == 1
-            and len(ctx.arg_types[0]) == 1):
-        keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
-        if keys is None:
-            ctx.api.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, ctx.context)
-            return AnyType(TypeOfAny.from_error)
-
-        for key in keys:
-            if key in ctx.type.required_keys:
-                ctx.api.msg.typeddict_key_cannot_be_deleted(ctx.type, key, ctx.context)
-            elif key not in ctx.type.items:
-                ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
-    return ctx.default_return_type
-
-
-def typed_dict_update_signature_callback(ctx: MethodSigContext) -> CallableType:
-    """Try to infer a better signature type for TypedDict.update."""
-    signature = ctx.default_signature
-    if (isinstance(ctx.type, TypedDictType)
-            and len(signature.arg_types) == 1):
-        arg_type = get_proper_type(signature.arg_types[0])
-        assert isinstance(arg_type, TypedDictType)
-        arg_type = arg_type.as_anonymous()
-        arg_type = arg_type.copy_modified(required_keys=set())
-        return signature.copy_modified(arg_types=[arg_type])
-    return signature
 
 
 def int_pow_callback(ctx: MethodContext) -> Type:
