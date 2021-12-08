@@ -2862,13 +2862,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         with (self.msg.disable_errors() if right_map is None else nullcontext()):
             right_type = self.analyze_cond_branch(right_map, e.right, expanded_left_type)
 
+        if left_map is None and right_map is None:
+            return UninhabitedType()
+
         if right_map is None:
             # The boolean expression is statically known to be the left value
-            assert left_map is not None  # find_isinstance_check guarantees this
+            assert left_map is not None
             return left_type
         if left_map is None:
             # The boolean expression is statically known to be the right value
-            assert right_map is not None  # find_isinstance_check guarantees this
+            assert right_map is not None
             return right_type
 
         if e.op == 'and':
