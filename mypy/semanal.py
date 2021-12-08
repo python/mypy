@@ -4616,7 +4616,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 self.process_placeholder(name, 'name', context)
             else:
                 # see note in docstring describing None contexts
-                self.defer(context)
+                self.defer()
         if (existing is not None
                 and context is not None
                 and not is_valid_replacement(existing, symbol)):
