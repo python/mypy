@@ -485,7 +485,7 @@ class DependencyVisitor(TraverserVisitor):
                 if lvalue.node.type:
                     lvalue_type = get_proper_type(lvalue.node.type)
                 else:
-                    lvalue_type = NoneType()
+                    lvalue_type = UninhabitedType()
             else:
                 # Probably a secondary, non-definition assignment that doesn't
                 # result in a non-partial type. We won't be able to infer any
