@@ -1733,8 +1733,8 @@ reveal_type(td.get('c'))  # N: Revealed type is "builtins.object*"
 
 reveal_type(td['a'])  # N: Revealed type is "builtins.int"
 reveal_type(td['b'])  # N: Revealed type is "Union[builtins.str, builtins.int]"
-reveal_type(td['c'])  # N: Revealed type is "Union[Any, builtins.int]" \
-                      # E: TypedDict "TDA" has no key "c"
+reveal_type(td['c'])  # E: TypedDict "TDA" has no key "c" \
+                      # N: Revealed type is "Union[Any, builtins.int]"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -2137,12 +2137,12 @@ class TD(TypedDict):
 d: TD = {b'foo': 2} # E: Expected TypedDict key to be string literal
 d[b'foo'] = 3 # E: TypedDict key must be a string literal; expected one of ("foo") \
               # E: Argument 1 to "__setitem__" has incompatible type "bytes"; expected "str"
-d[b'foo'] # E: Invalid index type "bytes" for "TD"; expected type "str" \
-          # E: TypedDict key must be a string literal; expected one of ("foo")
-d[3] # E: Invalid index type "int" for "TD"; expected type "str" \
-     # E: TypedDict key must be a string literal; expected one of ("foo")
-d[True]  # E: Invalid index type "bool" for "TD"; expected type "str" \
-         # E: TypedDict key must be a string literal; expected one of ("foo")
+d[b'foo'] # E: TypedDict key must be a string literal; expected one of ("foo") \
+          # E: Invalid index type "bytes" for "TD"; expected type "str"
+d[3] # E: TypedDict key must be a string literal; expected one of ("foo") \
+     # E: Invalid index type "int" for "TD"; expected type "str"
+d[True]  # E: TypedDict key must be a string literal; expected one of ("foo") \
+         # E: Invalid index type "bool" for "TD"; expected type "str"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -2168,18 +2168,17 @@ def func(foo: Union[Foo1, Foo2]) -> str:
     reveal_type(foo["z"])  # N: Revealed type is "builtins.str"
     reveal_type(foo.__getitem__("z"))  # N: Revealed type is "builtins.str"
 
-    reveal_type(foo["a"])  # N: Revealed type is "Union[builtins.int, Any]" \
-                           # E: TypedDict "Foo2" has no key "a"
-    reveal_type(foo["b"])  # N: Revealed type is "Union[Any, builtins.int]" \
-                           # E: TypedDict "Foo1" has no key "b"
-    reveal_type(foo["missing"])  # N: Revealed type is "Any" \
-                                 # E: TypedDict "Foo1" has no key "missing" \
-                                 # E: TypedDict "Foo2" has no key "missing"
-    reveal_type(foo[1])  # N: Revealed type is "Any" \
-                         # E: Invalid index type "int" for "Union[Foo1, Foo2]"; expected type "str" \
-                         # E: TypedDict key must be a string literal; expected one of ("z", "a") \
-                         # E: TypedDict key must be a string literal; expected one of ("z", "b")
-
+    reveal_type(foo["a"])  # E: TypedDict "Foo2" has no key "a" \
+                           # N: Revealed type is "Union[builtins.int, Any]"
+    reveal_type(foo["b"])  # E: TypedDict "Foo1" has no key "b" \
+                           # N: Revealed type is "Union[Any, builtins.int]"
+    reveal_type(foo["missing"])  # E: TypedDict "Foo1" has no key "missing" \
+                                 # E: TypedDict "Foo2" has no key "missing" \
+                                 # N: Revealed type is "Any"
+    reveal_type(foo[1])  # E: TypedDict key must be a string literal; expected one of ("z", "a") \
+                         # E: TypedDict key must be a string literal; expected one of ("z", "b") \
+                         # N: Revealed type is "Any" \
+                         # E: Invalid index type "int" for "Union[Foo1, Foo2]"; expected type "str"
     return foo["z"]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
