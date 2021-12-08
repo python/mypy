@@ -361,7 +361,7 @@ n.py:2: error: "A" has no attribute "g"
 ==
 n.py:2: error: "A" has no attribute "g"
 
-[case testContinueToReportErrorAtTopLevel-only_when_cache]
+[case testContinueToReportErrorAtTopLevel2-only_when_cache]
 -- Different cache/no-cache tests because:
 -- Error message ordering differs
 import n
@@ -7171,7 +7171,7 @@ main:4: note:          def f(self, arg: int) -> int
 main:4: note:          @overload
 main:4: note:          def f(self, arg: str) -> str
 
-[case testOverloadedMethodSupertype-only_when_nocache]
+[case testOverloadedMethodSupertype2-only_when_nocache]
 -- Different cache/no-cache tests because
 -- CallableType.def_extras.first_arg differs ("self"/None)
 from typing import overload, Any
@@ -8411,7 +8411,7 @@ a.py:3: note:          def meth(self, x: str) -> str
 a.py:3: note:      Subclass:
 a.py:3: note:          def meth(self) -> None
 
-[case testFinalBodyReprocessedAndStillFinalOverloaded-only_when_nocache]
+[case testFinalBodyReprocessedAndStillFinalOverloaded2-only_when_nocache]
 -- Different cache/no-cache tests because
 -- CallableType.def_extras.first_arg differs ("self"/None)
 import a

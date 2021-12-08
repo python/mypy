@@ -578,13 +578,12 @@ def split_test_cases(parent: 'DataFileCollector', suite: 'DataSuite',
                      data,
                      flags=re.DOTALL | re.MULTILINE)
     line_no = cases[0].count('\n') + 1
-    test_names = {}
+    test_names = set()
     for i in range(1, len(cases), NUM_GROUPS):
         name, writescache, only_when, platform_flag, skip, xfail, data = cases[i:i + NUM_GROUPS]
-        if (name in test_names
-                and test_names[name] == (writescache, only_when, platform_flag)):
-            raise RuntimeError('Found a duplicate test name "{}" in {}'.format(
-                name, parent.name,
+        if name in test_names:
+            raise RuntimeError('Found a duplicate test name "{}" in {} on line {}'.format(
+                name, parent.name, line_no,
             ))
         platform = platform_flag[1:] if platform_flag else None
         yield DataDrivenTestCase.from_parent(
@@ -603,7 +602,7 @@ def split_test_cases(parent: 'DataFileCollector', suite: 'DataSuite',
         line_no += data.count('\n') + 1
 
         # Record existing tests to prevent duplicates:
-        test_names.update({name: (writescache, only_when, platform_flag)})
+        test_names.update({name})
 
 
 class DataSuiteCollector(pytest.Class):
