@@ -677,6 +677,7 @@ TypeError
 1
 TypeError
 10
+[typing fixtures/typing-full.pyi]
 
 [case testClassBasedTypedDict]
 from typing_extensions import TypedDict
@@ -711,6 +712,7 @@ def test_non_total_typed_dict() -> None:
     d4 = TD4(a=1, b=2, c=3, d=4)
     assert d3['c'] == 3
     assert d4['d'] == 4
+[typing fixtures/typing-full.pyi]
 
 [case testClassBasedNamedTuple]
 from typing import NamedTuple

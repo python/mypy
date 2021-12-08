@@ -615,6 +615,7 @@ u: User
 def f() -> str: ...
 '{[f()]}'.format(u)  # E: Invalid index expression in format field accessor "[f()]"
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testFormatCallFlags]
 from typing import Union

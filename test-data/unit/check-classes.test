@@ -4724,6 +4724,7 @@ m: M
 lst = [n, m]
 reveal_type(lst[0]['x'])  # N: Revealed type is "Any"
 [builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCrashInForwardRefToNamedTupleWithIsinstance]
 from typing import Dict, NamedTuple
@@ -4846,7 +4847,7 @@ def get_state(proc: 'Process') -> int:
 class Process(TypedDict):
      state: int
 [builtins fixtures/isinstancelist.pyi]
-[out]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCorrectDoubleForwardNamedTuple]
 from typing import NamedTuple
@@ -4875,7 +4876,7 @@ class B(TypedDict):
 
 reveal_type(x['one']['attr'])  # N: Revealed type is "builtins.str"
 [builtins fixtures/isinstancelist.pyi]
-[out]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCrashOnForwardUnionOfNamedTuples]
 from typing import Union, NamedTuple
@@ -4907,7 +4908,7 @@ def foo(node: NodeType) -> int:
     x = node
     return x['x']
 [builtins fixtures/isinstancelist.pyi]
-[out]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testSupportForwardUnionOfNewTypes]
 from typing import Union, NewType
@@ -5035,7 +5036,7 @@ y: A2
 reveal_type(x.b) # N: Revealed type is "__main__.B"
 reveal_type(y['b']) # N: Revealed type is "__main__.B"
 [builtins fixtures/dict.pyi]
-[out]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCrashForwardSyntheticFunctionSyntax]
 from typing import NamedTuple
@@ -5049,7 +5050,7 @@ y: A2
 reveal_type(x.b) # N: Revealed type is "__main__.B"
 reveal_type(y['b']) # N: Revealed type is "__main__.B"
 [builtins fixtures/dict.pyi]
-[out]
+[typing fixtures/typing-typeddict.pyi]
 
 -- Special support for six
 -- -----------------------

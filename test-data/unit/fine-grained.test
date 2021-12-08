@@ -3559,6 +3559,7 @@ from a import Point
 def foo(x: Point) -> int:
     return x['x'] + x['y']
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 ==
 b.py:3: error: Unsupported operand types for + ("int" and "str")
@@ -3582,6 +3583,7 @@ from a import Point
 def foo(x: Point) -> int:
     return x['x'] + x['y']
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 ==
 b.py:3: error: Unsupported operand types for + ("int" and "str")

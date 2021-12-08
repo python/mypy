@@ -649,6 +649,7 @@ p = Point(dict(x=42, y=1337))
 def foo(x: Point) -> int:
     return x['x'] + x['y']
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 <m.Point> -> <m.foo>, <m.p>, m, m.foo
 <m.p> -> m
@@ -661,6 +662,7 @@ p = Point(dict(x=42, y=A()))
 def foo(x: Point) -> int:
     return x['x']
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 <m.A.__init__> -> m
 <m.A.__new__> -> m
@@ -678,6 +680,7 @@ p = Point(dict(x=42, y=A()))
 def foo(x: Point) -> int:
     return x['x']
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 [out]
 <m.A.__init__> -> m
 <m.A.__new__> -> m

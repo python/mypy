@@ -639,13 +639,12 @@ from typing_extensions import TypedDict
 class Data(TypedDict):
     x: int
 
-
 T = TypeVar("T", bound=Data)
-
 
 def f(data: T) -> None:
     reveal_type(data["x"]) # N: Revealed type is "builtins.int"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypeVarWithUnionTypedDictBoundInIndexExpression]
 from typing import TypeVar, Union, Dict
@@ -654,15 +653,13 @@ from typing_extensions import TypedDict
 class Data(TypedDict):
     x: int
 
-
 T = TypeVar("T", bound=Union[Data, Dict[str, str]])
-
 
 def f(data: T) -> None:
     reveal_type(data["x"]) # N: Revealed type is "Union[builtins.int, builtins.str*]"
 
-[builtins fixtures/tuple.pyi]
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypeVarWithTypedDictValueInIndexExpression]
 from typing import TypeVar, Union, Dict
@@ -671,14 +668,13 @@ from typing_extensions import TypedDict
 class Data(TypedDict):
     x: int
 
-
 T = TypeVar("T", Data, Dict[str, str])
-
 
 def f(data: T) -> None:
     _: Union[str, int] = data["x"]
 [builtins fixtures/tuple.pyi]
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testSelfTypeVarIndexExpr]
 from typing import TypeVar, Union, Type
