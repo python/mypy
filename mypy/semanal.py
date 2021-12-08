@@ -4707,7 +4707,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         symbol = SymbolTableNode(node.kind, node.node,
                                  module_public=module_public,
                                  module_hidden=module_hidden)
-        self.add_symbol_table_node(name, symbol, context, can_defer=not self.final_iteration)
+        self.add_symbol_table_node(name, symbol, context)
 
     def add_unknown_imported_symbol(self,
                                     name: str,
