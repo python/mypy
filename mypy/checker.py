@@ -4375,7 +4375,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         If either of the values in the tuple is None, then that particular
         branch can never occur.
 
-        Guaranteed to not return None, None. (But may return {}, {})
+        May return {}, {}.
+        Can return None, None in situations involving NoReturn.
         """
         if_map, else_map = self.find_isinstance_check_helper(node)
         new_if_map = self.propagate_up_typemap_info(self.type_map, if_map)
