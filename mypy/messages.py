@@ -2124,11 +2124,6 @@ def find_defining_module(modules: Dict[str, MypyFile], typ: CallableType) -> Opt
     return None
 
 
-def temp_message_builder() -> MessageBuilder:
-    """Return a message builder usable for throwaway errors (which may not format properly)."""
-    return MessageBuilder(Errors(), {})
-
-
 # For hard-coding suggested missing member alternatives.
 COMMON_MISTAKES: Final[Dict[str, Sequence[str]]] = {
     'add': ('append', 'extend'),
