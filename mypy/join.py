@@ -597,3 +597,45 @@ def unpack_callback_protocol(t: Instance) -> Optional[Type]:
     if t.type.protocol_members == ['__call__']:
         return find_member('__call__', t, t, is_operator=True)
     return None
+
+
+def dict_unpack(dict_obj: Type, other: Type, mapping_type: Instance) -> ProperType:
+    """Joins two dict-like objects.
+
+    For example, `dict[str, int]` and `dict[int, int]`
+    will become `dict[object, int]`.
+    """
+    dict_obj = get_proper_type(dict_obj)
+    if (not isinstance(dict_obj, Instance)
+            or dict_obj.type.fullname != 'builtins.dict'
+            or len(dict_obj.args) != 2):
+        # Since this function is only used when two dicts are joined like:
+        # `{**other, 'a': 1}`, we require `dict_obj` to be an `Instance`
+        # of `builtins.dict``.
+        return AnyType(TypeOfAny.from_error)
+
+    key_type, value_type = dict_obj.args
+    new_key_type, new_value_type = extract_key_value_types(other, mapping_type)
+    return dict_obj.copy_modified(args=[
+        join_types(key_type, new_key_type),
+        join_types(value_type, new_value_type),
+    ])
+
+
+def extract_key_value_types(typ: Type, mapping_type: Instance) -> Tuple[Type, Type]:
+    typ = get_proper_type(typ)
+    if isinstance(typ, Instance) and len(typ.args) >= 2:
+        mapping = map_instance_to_supertype(typ, mapping_type.type)
+        return mapping.args[0], mapping.args[1]
+    elif isinstance(typ, UnionType):
+        keys = []
+        values = []
+        for item in typ.relevant_items:
+            key, value = extract_key_value_types(item, mapping_type)
+            keys.append(key)
+            values.append(value)
+        return join_type_list(keys), join_type_list(values)
+    return (
+        AnyType(TypeOfAny.implementation_artifact),
+        AnyType(TypeOfAny.implementation_artifact),
+    )

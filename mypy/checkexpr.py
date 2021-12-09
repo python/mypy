@@ -3334,13 +3334,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.chk.named_generic_type(fullname, [tv]),
             self.named_type('builtins.function'),
             name=tag,
-            variables=[tv])
-        out = self.check_call(constructor,
-                              [(i.expr if isinstance(i, StarExpr) else i)
-                               for i in items],
-                              [(nodes.ARG_STAR if isinstance(i, StarExpr) else nodes.ARG_POS)
-                               for i in items],
-                              context)[0]
+            variables=[tv],
+        )
+        out = self.check_call(
+            constructor,
+            [(i.expr if isinstance(i, StarExpr) else i) for i in items],
+            [(nodes.ARG_STAR if isinstance(i, StarExpr) else nodes.ARG_POS) for i in items],
+            context,
+        )[0]
         return remove_instance_last_known_values(out)
 
     def visit_tuple_expr(self, e: TupleExpr) -> Type:
@@ -3518,7 +3519,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         variables=[kt, vt])
                     rv = self.check_call(constructor, [arg], [nodes.ARG_POS], arg)[0]
                 else:
-                    self.check_method_call_by_name('update', rv, [arg], [nodes.ARG_POS], arg)
+                    arg_type = arg.accept(self)
+                    rv = join.dict_unpack(rv, arg_type, self.named_type('typing.Mapping'))
         assert rv is not None
         return rv
 
