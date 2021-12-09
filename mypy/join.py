@@ -630,7 +630,7 @@ def extract_key_value_types(typ: Type, mapping_type: Instance) -> Tuple[Type, Ty
     elif isinstance(typ, UnionType):
         keys = []
         values = []
-        for item in typ.relevant_items:
+        for item in typ.relevant_items():
             key, value = extract_key_value_types(item, mapping_type)
             keys.append(key)
             values.append(value)
