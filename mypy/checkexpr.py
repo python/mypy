@@ -3531,14 +3531,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         will become `dict[object, int]`.
         """
         dict_obj = get_proper_type(dict_obj)
-        if (not isinstance(dict_obj, Instance)
-                or dict_obj.type.fullname != 'builtins.dict'
-                or len(dict_obj.args) != 2):
-            # Since this function is only used when two dicts are joined like:
-            # `{**other, 'a': 1}`, we require `dict_obj` to be an `Instance`
-            # of `builtins.dict``. This should not happen, unless someone else
-            # will call this function from other places.
-            return AnyType(TypeOfAny.from_error)
+
+        # Since this function is only used when two dicts are joined like:
+        # `{**other, 'a': 1}`, we require `dict_obj` to be an `Instance`
+        # of `builtins.dict``. This should not happen, unless someone else
+        # will call this function from other places.
+        assert isinstance(dict_obj, Instance)
+        assert dict_obj.type.fullname == 'builtins.dict'
+        assert len(dict_obj.args) == 2
 
         key_type, value_type = dict_obj.args
         new_key_type, new_value_type = self.extract_key_value_types(other, context)

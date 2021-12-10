@@ -1781,7 +1781,7 @@ a = {'a': 1}
 b = {'z': 26, **a}
 c = {**b}
 d = {**a, **b, 'c': 3}
-e = {1: 'a', **a}  # E: Argument 1 to "update" of "dict" has incompatible type "Dict[str, int]"; expected "Mapping[int, str]"
+e = {1: 'a', **a}
 f = {**b}  # type: Dict[int, int]  # E: List item 0 has incompatible type "Dict[str, int]"; expected "Mapping[int, int]"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -1907,6 +1907,10 @@ reveal_type({'a': 1, **d})  # N: Revealed type is "builtins.dict[builtins.str, b
 
 u2: Union[MyDict[str, int],  MyDict[int, str]]
 reveal_type({'a': 1, **u2})  # N: Revealed type is "builtins.dict[builtins.object, builtins.object]"
+
+u3: Union[MyComplexTypedDict, MySimpleTypedDict]
+reveal_type({**u3})  # N: Revealed type is "builtins.dict[builtins.str*, builtins.object*]"
+reveal_type({'a': 1, **u3})  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
 
 
 # Wrong types:

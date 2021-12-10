@@ -7395,7 +7395,7 @@ def d() -> Dict[int, int]: pass
 [builtins fixtures/dict.pyi]
 [out]
 ==
-main:5: error: Argument 1 to "update" of "dict" has incompatible type "Dict[int, int]"; expected "Mapping[int, str]"
+main:5: error: Incompatible return value type (got "Dict[int, object]", expected "Dict[int, str]")
 
 [case testAwaitAndAsyncDef-only_when_nocache]
 from a import g
