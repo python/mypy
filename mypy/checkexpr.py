@@ -3551,14 +3551,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         mapping_type = self.named_type('typing.Mapping')
 
         typ = get_proper_type(typ)
-        print(typ, type(typ))
         if (isinstance(typ, Instance)
                 and is_subtype(typ, mapping_type, ignore_type_params=True)):
             mapping = map_instance_to_supertype(typ, mapping_type.type)
             if len(mapping.args) >= 2:
                 return mapping.args[0], mapping.args[1]
         elif isinstance(typ, TypedDictType):
-            print(list(typ.items.values()))
             return (
                 self.named_type('builtins.str'),
                 join.join_type_list(list(typ.items.values())),
