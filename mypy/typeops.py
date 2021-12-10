@@ -12,7 +12,7 @@ import sys
 
 from mypy.types import (
     TupleType, Instance, FunctionLike, Type, CallableType, TypeVarLikeType, Overloaded,
-    TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType, TypedDictType,
+    TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType,
     AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
     copy_type, TypeAliasType, TypeQuery, ParamSpecType
 )

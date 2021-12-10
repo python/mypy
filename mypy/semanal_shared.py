@@ -7,10 +7,9 @@ from typing_extensions import Final
 from mypy_extensions import trait
 
 from mypy.nodes import (
-    Context, SymbolTableNode, MypyFile, ImportedName, FuncDef, Node, TypeInfo, Expression, GDEF,
+    Context, SymbolTableNode, FuncDef, Node, TypeInfo, Expression,
     SymbolNode, SymbolTable
 )
-from mypy.util import correct_relative_import
 from mypy.types import (
     Type, FunctionLike, Instance, TupleType, TPDICT_FB_NAMES, ProperType, get_proper_type
 )
