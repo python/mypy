@@ -402,8 +402,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
                 if (is_equivalent(s_item_type, t_item_type) and
                     (item_name in t.required_keys) == (item_name in self.s.required_keys))
             ])
-            mapping_value_type = join_type_list(list(items.values()))
-            fallback = self.s.create_anonymous_fallback(value_type=mapping_value_type)
+            fallback = self.s.create_anonymous_fallback()
             # We need to filter by items.keys() since some required keys present in both t and
             # self.s might be missing from the join if the types are incompatible.
             required_keys = set(items.keys()) & t.required_keys & self.s.required_keys

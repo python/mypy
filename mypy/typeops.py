@@ -44,25 +44,6 @@ def tuple_fallback(typ: TupleType) -> Instance:
     return Instance(info, [join_type_list(typ.items)])
 
 
-def try_getting_instance_fallback(typ: ProperType) -> Optional[Instance]:
-    """Returns the Instance fallback for this type if one exists.
-
-    Otherwise, returns None.
-    """
-    if isinstance(typ, Instance):
-        return typ
-    elif isinstance(typ, TupleType):
-        return tuple_fallback(typ)
-    elif isinstance(typ, TypedDictType):
-        return typ.fallback
-    elif isinstance(typ, FunctionLike):
-        return typ.fallback
-    elif isinstance(typ, LiteralType):
-        return typ.fallback
-    else:
-        return None
-
-
 def type_object_type_from_function(signature: FunctionLike,
                                    info: TypeInfo,
                                    def_info: TypeInfo,

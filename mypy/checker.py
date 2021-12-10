@@ -1742,7 +1742,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 if len(order) == len(original.items) and order != sorted(order):
                     self.msg.overload_signature_incompatible_with_supertype(
-                        name, name_in_super, supertype, override, node)
+                        name, name_in_super, supertype, node)
                     emitted_msg = True
 
             if not emitted_msg:

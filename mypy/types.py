@@ -1639,7 +1639,7 @@ class TypedDictType(ProperType):
             required_keys = self.required_keys
         return TypedDictType(items, required_keys, fallback, self.line, self.column)
 
-    def create_anonymous_fallback(self, *, value_type: Type) -> Instance:
+    def create_anonymous_fallback(self) -> Instance:
         anonymous = self.as_anonymous()
         return anonymous.fallback
 

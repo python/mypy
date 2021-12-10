@@ -629,8 +629,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                     assert t_item_type is not None
                     item_list.append((item_name, t_item_type))
             items = OrderedDict(item_list)
-            mapping_value_type = join.join_type_list(list(items.values()))
-            fallback = self.s.create_anonymous_fallback(value_type=mapping_value_type)
+            fallback = self.s.create_anonymous_fallback()
             required_keys = t.required_keys | self.s.required_keys
             return TypedDictType(items, required_keys, fallback)
         elif isinstance(self.s, Instance) and is_subtype(t, self.s):

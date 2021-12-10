@@ -807,7 +807,7 @@ class MessageBuilder:
 
     def overload_signature_incompatible_with_supertype(
             self, name: str, name_in_super: str, supertype: str,
-            overload: Overloaded, context: Context) -> None:
+            context: Context) -> None:
         target = self.override_target(name, name_in_super, supertype)
         self.fail('Signature of "{}" incompatible with {}'.format(
             name, target), context, code=codes.OVERRIDE)
@@ -1399,9 +1399,6 @@ class MessageBuilder:
     def redundant_condition_in_if(self, truthiness: bool, context: Context) -> None:
         self.redundant_expr("If condition", truthiness, context)
 
-    def redundant_condition_in_assert(self, truthiness: bool, context: Context) -> None:
-        self.redundant_expr("Condition in assert", truthiness, context)
-
     def redundant_expr(self, description: str, truthiness: bool, context: Context) -> None:
         self.fail("{} is always {}".format(description, str(truthiness).lower()),
                   context, code=codes.REDUNDANT_EXPR)
@@ -1855,8 +1852,7 @@ def format_type(typ: Type, verbosity: int = 0) -> str:
 
 
 def format_type_bare(typ: Type,
-                     verbosity: int = 0,
-                     fullnames: Optional[Set[str]] = None) -> str:
+                     verbosity: int = 0) -> str:
     """
     Convert a type to a relatively short string suitable for error messages.
 

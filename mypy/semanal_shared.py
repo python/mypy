@@ -179,27 +179,6 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         raise NotImplementedError
 
 
-def create_indirect_imported_name(file_node: MypyFile,
-                                  module: str,
-                                  relative: int,
-                                  imported_name: str) -> Optional[SymbolTableNode]:
-    """Create symbol table entry for a name imported from another module.
-
-    These entries act as indirect references.
-    """
-    target_module, ok = correct_relative_import(
-        file_node.fullname,
-        relative,
-        module,
-        file_node.is_package_init_file())
-    if not ok:
-        return None
-    target_name = '%s.%s' % (target_module, imported_name)
-    link = ImportedName(target_name)
-    # Use GDEF since this refers to a module-level definition.
-    return SymbolTableNode(GDEF, link)
-
-
 def set_callable_name(sig: Type, fdef: FuncDef) -> ProperType:
     sig = get_proper_type(sig)
     if isinstance(sig, FunctionLike):
