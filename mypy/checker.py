@@ -62,7 +62,7 @@ from mypy import message_registry
 from mypy.message_registry import ErrorMessage
 from mypy.subtypes import (
     is_subtype, is_equivalent, is_proper_subtype, is_more_precise,
-    restrict_subtype_away, is_subtype_ignoring_tvars, is_callable_compatible,
+    restrict_subtype_away, is_callable_compatible,
     unify_generic_callable, find_member
 )
 from mypy.constraints import SUPERTYPE_OF
@@ -961,7 +961,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         if isclass:
                             ref_type = mypy.types.TypeType.make_normalized(ref_type)
                         erased = get_proper_type(erase_to_bound(arg_type))
-                        if not is_subtype_ignoring_tvars(ref_type, erased):
+                        if not is_subtype(ref_type, erased, ignore_type_params=True):
                             note = None
                             if (isinstance(erased, Instance) and erased.type.is_protocol or
                                     isinstance(erased, TypeType) and
