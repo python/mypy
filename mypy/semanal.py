@@ -1196,14 +1196,13 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     # should this be memoized in TypeInfo?
     def find_maximum_class_id(self, info: TypeInfo) -> int:
-        # top class?
-        if len(info.mro) in (0, 1):
-            return len(info.type_vars)
-        else:
+        if info.bases:
             return len(info.type_vars) + max(
-                self.find_maximum_class_id(cls)
-                for cls in info.mro[1:]
+                self.find_maximum_class_id(cls.type)
+                for cls in info.bases
             )
+        else:
+            return len(info.type_vars)
 
     def is_core_builtin_class(self, defn: ClassDef) -> bool:
         return self.cur_mod_id == 'builtins' and defn.name in CORE_BUILTIN_CLASSES
