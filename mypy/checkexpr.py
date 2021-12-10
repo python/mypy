@@ -3520,9 +3520,69 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     rv = self.check_call(constructor, [arg], [nodes.ARG_POS], arg)[0]
                 else:
                     arg_type = arg.accept(self)
-                    rv = join.dict_unpack(rv, arg_type, self.named_type('typing.Mapping'))
+                    rv = self.dict_unpack(rv, arg_type, arg)
         assert rv is not None
         return rv
+
+    def dict_unpack(self, dict_obj: Type, other: Type, context: Context) -> ProperType:
+        """Joins two dict-like objects.
+
+        For example, `dict[str, int]` and `dict[int, int]`
+        will become `dict[object, int]`.
+        """
+        dict_obj = get_proper_type(dict_obj)
+        if (not isinstance(dict_obj, Instance)
+                or dict_obj.type.fullname != 'builtins.dict'
+                or len(dict_obj.args) != 2):
+            # Since this function is only used when two dicts are joined like:
+            # `{**other, 'a': 1}`, we require `dict_obj` to be an `Instance`
+            # of `builtins.dict``. This should not happen, unless someone else
+            # will call this function from other places.
+            return AnyType(TypeOfAny.from_error)
+
+        key_type, value_type = dict_obj.args
+        new_key_type, new_value_type = self.extract_key_value_types(other, context)
+        return dict_obj.copy_modified(args=[
+            join.join_types(key_type, new_key_type),
+            join.join_types(value_type, new_value_type),
+        ])
+
+    def extract_key_value_types(self, typ: Type, context: Context) -> Tuple[Type, Type]:
+        mapping_type = self.named_type('typing.Mapping')
+
+        typ = get_proper_type(typ)
+        print(typ, type(typ))
+        if (isinstance(typ, Instance)
+                and is_subtype(typ, mapping_type, ignore_type_params=True)):
+            mapping = map_instance_to_supertype(typ, mapping_type.type)
+            if len(mapping.args) >= 2:
+                return mapping.args[0], mapping.args[1]
+        elif isinstance(typ, TypedDictType):
+            print(list(typ.items.values()))
+            return (
+                self.named_type('builtins.str'),
+                join.join_type_list(list(typ.items.values())),
+            )
+        elif isinstance(typ, UnionType):
+            keys = []
+            values = []
+            for item in typ.relevant_items():
+                key, value = self.extract_key_value_types(item, context)
+                keys.append(key)
+                values.append(value)
+            return join.join_type_list(keys), join.join_type_list(values)
+        elif isinstance(typ, AnyType):
+            return (
+                AnyType(TypeOfAny.implementation_artifact),
+                AnyType(TypeOfAny.implementation_artifact),
+            )
+
+        # All other types are not allowed to be unpacked.
+        self.chk.fail('Cannot unpack "{}" type with "**"'.format(typ), context)
+        return (
+            AnyType(TypeOfAny.from_error),
+            AnyType(TypeOfAny.from_error),
+        )
 
     def find_typeddict_context(self, context: Optional[Type],
                                dict_expr: DictExpr) -> Optional[TypedDictType]:

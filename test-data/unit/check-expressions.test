@@ -1786,6 +1786,161 @@ f = {**b}  # type: Dict[int, int]  # E: List item 0 has incompatible type "Dict[
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-medium.pyi]
 
+[case testDictExprWithStarAdvanced]
+# Same type:
+foo = {1: "a"}
+
+reveal_type({**foo})  # N: Revealed type is "builtins.dict[builtins.int*, builtins.str*]"
+reveal_type({**foo, 2: 'b'})  # N: Revealed type is "builtins.dict[builtins.int, builtins.str]"
+reveal_type({**foo, 2: 'b', 3: 'c'})  # N: Revealed type is "builtins.dict[builtins.int*, builtins.str*]"
+reveal_type({2: 'b', **foo})  # N: Revealed type is "builtins.dict[builtins.int, builtins.str]"
+reveal_type({2: 'b', 3: 'c', **foo})  # N: Revealed type is "builtins.dict[builtins.int*, builtins.str*]"
+reveal_type({2: 'b', **foo, 3: 'c'})  # N: Revealed type is "builtins.dict[builtins.int*, builtins.str*]"
+reveal_type({2: 'b', **foo, 3: 'c', **foo})  # N: Revealed type is "builtins.dict[builtins.int*, builtins.str*]"
+
+
+# Changing type:
+bar = {'a': 1}
+
+reveal_type({**bar, 2: 'b'})  # N: Revealed type is "builtins.dict[builtins.object, builtins.object]"
+reveal_type({**bar, 2: 'b', 3: 'c'})  # N: Revealed type is "builtins.dict[builtins.object, builtins.object]"
+reveal_type({2: 'b', **bar})  # N: Revealed type is "builtins.dict[builtins.object, builtins.object]"
+reveal_type({2: 'b', 3: 'c', **bar})  # N: Revealed type is "builtins.dict[builtins.object, builtins.object]"
+reveal_type({2: 'b', **bar, 3: 'c'})  # N: Revealed type is "builtins.dict[builtins.object, builtins.object]"
+reveal_type({2: 'b', **bar, 3: 'c', **bar})  # N: Revealed type is "builtins.dict[builtins.object, builtins.object]"
+
+
+# With subtypes:
+class A: pass
+class B(A): pass
+
+parent_dict = {A(): A()}
+child_dict = {B(): B()}
+mixed_dict = {A(): B()}
+
+reveal_type({**parent_dict, A(): A()})  # N: Revealed type is "builtins.dict[__main__.A*, __main__.A*]"
+reveal_type({**parent_dict, B(): B()})  # N: Revealed type is "builtins.dict[__main__.A, __main__.A]"
+reveal_type({A(): B(), **parent_dict})  # N: Revealed type is "builtins.dict[__main__.A, __main__.A]"
+
+reveal_type({**child_dict, A(): A()})  # N: Revealed type is "builtins.dict[__main__.A, __main__.A]"
+reveal_type({**child_dict, B(): B()})  # N: Revealed type is "builtins.dict[__main__.B*, __main__.B*]"
+reveal_type({**child_dict, A(): B()})  # N: Revealed type is "builtins.dict[__main__.A, __main__.B]"
+
+reveal_type({**mixed_dict, A(): A()})  # N: Revealed type is "builtins.dict[__main__.A, __main__.A]"
+reveal_type({**mixed_dict, B(): B()})  # N: Revealed type is "builtins.dict[__main__.A, __main__.B]"
+reveal_type({**mixed_dict, A(): B()})  # N: Revealed type is "builtins.dict[__main__.A*, __main__.B*]"
+reveal_type({**mixed_dict, B(): A()})  # N: Revealed type is "builtins.dict[__main__.A, __main__.A]"
+[builtins fixtures/dict.pyi]
+
+
+[case testDictUnpackDifferentTypes]
+from typing import Any, Union, Dict, Mapping, TypeVar, Generic, TypedDict, NoReturn
+
+K = TypeVar('K')
+V = TypeVar('V')
+
+class MyClass: pass
+class MyGeneric1(Generic[K]): pass
+class MyGeneric2(Generic[K, V]): pass
+class MyDict(Dict[K, V]): pass
+class MyMapping(Mapping[K, V]): pass
+class MyMapping2(Generic[K, V], Mapping[V, K]): pass
+class MyMapping3(Mapping[str, int]): pass
+
+class MySimpleTypedDict(TypedDict):
+    arg: int
+
+class MyComplexTypedDict(TypedDict):
+    arg: int
+    t: type
+
+
+# Correct types:
+
+d = {'a': 1}
+
+md: MyDict[str, int]
+mm: MyMapping[str, int]
+mm2: MyMapping2[int, str]  # reversed
+mm3: MyMapping3
+mstd: MySimpleTypedDict
+mctd: MyComplexTypedDict
+
+reveal_type({**md})  # N: Revealed type is "builtins.dict[builtins.str*, builtins.int*]"
+reveal_type({**md, 'b': 2})  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
+reveal_type({**md, 2: 2})  # N: Revealed type is "builtins.dict[builtins.object, builtins.int]"
+reveal_type({**md, 2: 'b'})  # N: Revealed type is "builtins.dict[builtins.object, builtins.object]"
+reveal_type({**md, **d})  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
+reveal_type({**d, **md})  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
+
+reveal_type({**mm})  # N: Revealed type is "builtins.dict[builtins.str*, builtins.int*]"
+reveal_type({**mm, 'b': 2})  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
+reveal_type({**mm, 2: 'b'})  # N: Revealed type is "builtins.dict[builtins.object, builtins.object]"
+
+reveal_type({**mm2})  # N: Revealed type is "builtins.dict[builtins.str*, builtins.int*]"
+reveal_type({**mm2, 'b': 2})  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
+reveal_type({**mm2, 2: 'b'})  # N: Revealed type is "builtins.dict[builtins.object, builtins.object]"
+
+reveal_type({**mm3})  # N: Revealed type is "builtins.dict[builtins.str*, builtins.int*]"
+reveal_type({**mm3, 'b': 2})  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
+reveal_type({**mm3, 2: 'b'})  # N: Revealed type is "builtins.dict[builtins.object, builtins.object]"
+
+# TODO: this type for `**mstd` does not seem correct, but this issue is not related to
+# https://github.com/python/mypy/pull/11693
+reveal_type({**mstd})  # N: Revealed type is "builtins.dict[builtins.str*, builtins.object*]"
+reveal_type({**mstd, 'b': 2})  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
+reveal_type({**mstd, 2: 'b'})  # N: Revealed type is "builtins.dict[builtins.object, builtins.object]"
+
+reveal_type({**mctd})  # N: Revealed type is "builtins.dict[builtins.str*, builtins.object*]"
+reveal_type({**mctd, 'b': 2})  # N: Revealed type is "builtins.dict[builtins.str, builtins.object]"
+reveal_type({**mctd, 2: 'b'})  # N: Revealed type is "builtins.dict[builtins.object, builtins.object]"
+
+a: Any
+reveal_type({**a})  # N: Revealed type is "builtins.dict[Any, Any]"
+reveal_type({**a, **d})  # N: Revealed type is "builtins.dict[Any, Any]"
+reveal_type({'a': 1, **a})  # N: Revealed type is "builtins.dict[Any, Any]"
+
+u1: Union[MyDict[str, int], MyMapping[str, int], Dict[str, int]]
+reveal_type({**u1})  # N: Revealed type is "builtins.dict[builtins.str*, builtins.int*]"
+reveal_type({**u1, **d})  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
+reveal_type({'a': 1, **d})  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
+
+u2: Union[MyDict[str, int],  MyDict[int, str]]
+reveal_type({'a': 1, **u2})  # N: Revealed type is "builtins.dict[builtins.object, builtins.object]"
+
+
+# Wrong types:
+
+mc: MyClass
+mg1: MyGeneric1[str]
+mg2: MyGeneric2[str, int]
+never: NoReturn
+un1: Union[MyClass, Dict[str, int]]
+un2: Union[MyClass, MyGeneric1[str]]
+
+
+reveal_type({1: 'a', **mc})  # N: Revealed type is "builtins.dict[Any, Any]" \
+                             # E: Cannot unpack "__main__.MyClass" type with "**"
+
+reveal_type({1: 'a', **mg1})  # N: Revealed type is "builtins.dict[Any, Any]" \
+                              # E: Cannot unpack "__main__.MyGeneric1[builtins.str]" type with "**"
+
+reveal_type({1: 'a', **mg2})  # N: Revealed type is "builtins.dict[Any, Any]" \
+                              # E: Cannot unpack "__main__.MyGeneric2[builtins.str, builtins.int]" type with "**"
+
+reveal_type({1: 'a', **never})  # N: Revealed type is "builtins.dict[Any, Any]" \
+                                # E: Cannot unpack "<nothing>" type with "**"
+
+reveal_type({1: 'a', **un1})  # N: Revealed type is "builtins.dict[Any, Any]" \
+                              # E: Cannot unpack "__main__.MyClass" type with "**"
+
+reveal_type({1: 'a', **un2})  # N: Revealed type is "builtins.dict[Any, Any]" \
+                              # E: Cannot unpack "__main__.MyClass" type with "**" \
+                              # E: Cannot unpack "__main__.MyGeneric1[builtins.str]" type with "**"
+
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testDictIncompatibleTypeErrorMessage]
 from typing import Dict, Callable
 
