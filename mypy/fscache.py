@@ -30,7 +30,6 @@ advantage of the benefits.
 
 import os
 import stat
-import sys
 from typing import Dict, List, Set
 from mypy.util import hash_digest
 from mypy_extensions import mypyc_attr
