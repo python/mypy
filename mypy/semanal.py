@@ -1893,7 +1893,10 @@ class SemanticAnalyzer(NodeVisitor[None],
                                 fullname: str,  # TODO: remove
                                 module_public: bool,
                                 context: ImportBase) -> None:
-        module_hidden = not module_public
+        module_hidden = not module_public and (
+            not isinstance(node.node, MypyFile)
+            or fullname not in self.modules
+        )
 
         if isinstance(node.node, PlaceholderNode):
             if self.final_iteration:
