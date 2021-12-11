@@ -1,9 +1,7 @@
-from typing import Generic, Sequence, TypeVar, Mapping
+from typing import Generic, Sequence, TypeVar
 from types import ModuleType
 
 _T = TypeVar('_T')
-_KT = TypeVar('_KT')
-_VT = TypeVar('_VT')
 
 class object:
     def __init__(self) -> None: pass
@@ -17,5 +15,4 @@ class list(Generic[_T], Sequence[_T]):
     def extend(self, x: Sequence[_T]): pass
     def __add__(self, rhs: Sequence[_T]) -> list[_T]: pass
 class tuple(Generic[_T]): pass
-class dict(Mapping[_KT, _VT]): pass
 class ellipsis: pass

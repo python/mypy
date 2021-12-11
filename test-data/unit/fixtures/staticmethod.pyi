@@ -1,8 +1,5 @@
 import typing
 
-_KT = typing.TypeVar('_KT')
-_VT = typing.TypeVar('_VT')
-
 class object:
     def __init__(self) -> None: pass
 
@@ -10,8 +7,6 @@ class type:
     def __init__(self, x) -> None: pass
 
 class function: pass
-
-class dict(typing.Mapping[_KT, _VT]): pass
 
 staticmethod = object() # Dummy definition.
 property = object()  # Dummy definition

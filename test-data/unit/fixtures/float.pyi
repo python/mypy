@@ -1,8 +1,5 @@
-from typing import Generic, TypeVar, Mapping
-
+from typing import Generic, TypeVar
 T = TypeVar('T')
-KT = TypeVar('KT')
-VT = TypeVar('VT')
 
 Any = 0
 
@@ -19,8 +16,6 @@ class str:
 class bytes: pass
 
 class tuple(Generic[T]): pass
-class dict(Mapping[KT, VT]):
-    def __iter__(self): pass
 class function: pass
 
 class ellipsis: pass

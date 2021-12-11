@@ -1,11 +1,9 @@
 # builtins stub used in for statement test cases
 
-from typing import TypeVar, Generic, Iterable, Iterator, Generator, Mapping
+from typing import TypeVar, Generic, Iterable, Iterator, Generator
 from abc import abstractmethod, ABCMeta
 
 t = TypeVar('t')
-KT = TypeVar('KT')
-VT = TypeVar('VT')
 
 class object:
     def __init__(self) -> None: pass
@@ -20,5 +18,3 @@ class str: pass # for convenience
 
 class list(Iterable[t], Generic[t]):
     def __iter__(self) -> Iterator[t]: pass
-
-class dict(Mapping[KT, VT]): pass

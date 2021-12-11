@@ -1,8 +1,6 @@
-from typing import overload, Any, Generic, Sequence, Tuple, TypeVar, Optional, Mapping
+from typing import overload, Any, Generic, Sequence, Tuple, TypeVar, Optional
 
 Tco = TypeVar('Tco', covariant=True)
-KT = TypeVar('KT')
-VT = TypeVar('VT')
 
 # This is an extension of transform builtins with additional operations.
 
@@ -23,8 +21,6 @@ class tuple(Sequence[Tco]):
     def __le__(self, x: Tuple[Tco, ...]) -> bool: pass
     def __gt__(self, x: Tuple[Tco, ...]) -> bool: pass
     def __ge__(self, x: Tuple[Tco, ...]) -> bool: pass
-
-class dict(Mapping[KT, VT]): pass
 
 class function: pass
 

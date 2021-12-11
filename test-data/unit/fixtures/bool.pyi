@@ -1,9 +1,6 @@
 # builtins stub used in boolean-related test cases.
-from typing import Generic, TypeVar, Mapping, Iterator
-
+from typing import Generic, TypeVar
 T = TypeVar('T')
-KT = TypeVar('KT')
-VT = TypeVar('VT')
 
 class object:
     def __init__(self) -> None: pass
@@ -20,5 +17,4 @@ class str: pass
 class unicode: pass
 class ellipsis: pass
 class list: pass
-class dict(Mapping[KT, VT]):
-    def __iter__(self) -> Iterator[KT]: pass
+class property: pass
