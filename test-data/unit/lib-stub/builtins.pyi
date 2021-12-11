@@ -25,8 +25,5 @@ from typing import Generic, Sequence, TypeVar, Mapping
 _T = TypeVar('_T')
 class list(Generic[_T], Sequence[_T]): pass
 
-_KT = TypeVar('_KT')
-_VT = TypeVar('_VT')
-class dict(Mapping[_KT, _VT]): pass
 
 # Definition of None is implicit
