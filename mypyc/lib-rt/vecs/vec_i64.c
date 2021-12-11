@@ -171,13 +171,8 @@ static PyObject *vec_i64_richcompare(PyObject *self, PyObject *other, int op) {
     return res;
 }
 
-static PyObject *vec_i64_remove(PyObject *self, PyObject *arg) {
-    if (check_float_error(arg))
-        return NULL;
+static int Vec_I64_Remove(PyObject *self, int64_t x) {
     VecI64Object *v = (VecI64Object *)self;
-    long long x = PyLong_AsLongLong(arg);
-    if (x == -1 && PyErr_Occurred())
-        return NULL;
 
     for (Py_ssize_t i = 0; i < v->len; i++) {
         if (v->items[i] == x) {
@@ -185,11 +180,23 @@ static PyObject *vec_i64_remove(PyObject *self, PyObject *arg) {
                 v->items[i] = v->items[i + 1];
             }
             v->len--;
-            Py_RETURN_NONE;
+            return 1;
         }
     }
     PyErr_SetString(PyExc_ValueError, "vec.remove(x): x not in vec");
-    return NULL;
+    return 0;
+}
+
+static PyObject *vec_i64_remove(PyObject *self, PyObject *arg) {
+    if (check_float_error(arg))
+        return NULL;
+    long long x = PyLong_AsLongLong(arg);
+    if (x == -1 && PyErr_Occurred())
+        return NULL;
+
+    if (!Vec_I64_Remove(self, x))
+        return NULL;
+    Py_RETURN_NONE;
 }
 
 static int64_t Vec_I64_Pop(PyObject *self, Py_ssize_t index) {
@@ -280,4 +287,5 @@ VecI64Features I64Features = {
     Vec_I64_New,
     Vec_I64_Append,
     Vec_I64_Pop,
+    Vec_I64_Remove,
 };

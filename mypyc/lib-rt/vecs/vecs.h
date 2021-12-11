@@ -45,11 +45,11 @@ typedef struct _VecI64Features {
     PyObject *(*alloc)(Py_ssize_t);
     PyObject *(*append)(PyObject *, int64_t);
     int64_t (*pop)(PyObject *, Py_ssize_t);
+    int (*remove)(PyObject *, int64_t);
     // PyObject *(*extend)(PyObject *, PyObject *);
     // PyObject *(*slice)(PyObject *, int64_t, int64_t);
     // PyObject *(*concat)(PyObject *, PyObject *);
     // bool (*contains)(PyObject *, int64_t);
-    // bool (*remove)(PyObject *, int64_t);
     // iter?
 } VecI64Features;
 
