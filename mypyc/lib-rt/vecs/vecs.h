@@ -61,11 +61,11 @@ typedef struct _VecTFeatures {
     PyObject *(*alloc)(Py_ssize_t, PyObject *);
     PyObject *(*append)(PyObject *, PyObject *);
     PyObject *(*pop)(PyObject *, Py_ssize_t);
+    int (*remove)(PyObject *, PyObject *);
     // PyObject *(*extend)(PyObject *, PyObject *);
     // PyObject *(*slice)(PyObject *, int64_t, int64_t);
     // PyObject *(*concat)(PyObject *, PyObject *);
     // bool (*contains)(PyObject *, PyObject *);
-    // bool (*remove)(PyObject *, PyObject *);
     // iter?
 } VecTFeatures;
 
@@ -77,11 +77,11 @@ typedef struct _VecTExtFeatures {
     PyObject *(*alloc)(Py_ssize_t, PyObject *, int optionals, int depth);
     PyObject *(*append)(PyObject *, PyObject *);
     PyObject *(*pop)(PyObject *, Py_ssize_t);
+    int (*remove)(PyObject *, PyObject *);
     // PyObject *(*extend)(PyObject *, PyObject *);
     // PyObject *(*slice)(PyObject *, int64_t, int64_t);
     // PyObject *(*concat)(PyObject *, PyObject *);
     // bool (*contains)(PyObject *, PyObject *);
-    // bool (*remove)(PyObject *, PyObject *);
     // iter?
 } VecTExtFeatures;
 
@@ -177,7 +177,7 @@ PyObject *vec_repr(PyObject *vec, PyTypeObject *item_type, int32_t depth, int32_
 PyObject *vec_generic_richcompare(Py_ssize_t *len, PyObject **items,
                                   Py_ssize_t *other_len, PyObject **other_items,
                                   int op);
-PyObject *vec_generic_remove(Py_ssize_t *len, PyObject **items, PyObject *item);
+int vec_generic_remove(Py_ssize_t *len, PyObject **items, PyObject *item);
 PyObject *vec_generic_pop_wrapper(Py_ssize_t *len, PyObject **items, PyObject *args);
 PyObject *vec_generic_pop(Py_ssize_t *len, PyObject **items, Py_ssize_t index);
 

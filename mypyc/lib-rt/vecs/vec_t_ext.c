@@ -135,11 +135,18 @@ PyObject *vec_t_ext_richcompare(PyObject *self, PyObject *other, int op) {
     return res;
 }
 
+static int Vec_T_Ext_Remove(PyObject *self, PyObject *arg) {
+    VecTExtObject *v = (VecTExtObject *)self;
+    return vec_generic_remove(&v->len, v->items, arg);
+}
+
 static PyObject *vec_t_ext_remove(PyObject *self, PyObject *arg) {
     VecTExtObject *v = (VecTExtObject *)self;
     if (!VecTExt_ItemCheck(v, arg))
         return NULL;
-    return vec_generic_remove(&v->len, v->items, arg);
+    if (!vec_generic_remove(&v->len, v->items, arg))
+        return NULL;
+    Py_RETURN_NONE;
 }
 
 static PyObject *Vec_T_Ext_Pop(PyObject *self, Py_ssize_t index) {
@@ -296,4 +303,5 @@ VecTExtFeatures TExtFeatures = {
     Vec_T_Ext_New,
     Vec_T_Ext_Append,
     Vec_T_Ext_Pop,
+    Vec_T_Ext_Remove,
 };

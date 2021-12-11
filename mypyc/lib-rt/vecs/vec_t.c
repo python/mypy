@@ -128,11 +128,18 @@ PyObject *vec_t_richcompare(PyObject *self, PyObject *other, int op) {
     return res;
 }
 
+static int Vec_T_Remove(PyObject *self, PyObject *arg) {
+    VecTObject *v = (VecTObject *)self;
+    return vec_generic_remove(&v->len, v->items, arg);
+}
+
 static PyObject *vec_t_remove(PyObject *self, PyObject *arg) {
     VecTObject *v = (VecTObject *)self;
     if (!VecT_ItemCheck(v, arg))
         return NULL;
-    return vec_generic_remove(&v->len, v->items, arg);
+    if (!vec_generic_remove(&v->len, v->items, arg))
+        return NULL;
+    Py_RETURN_NONE;
 }
 
 static PyObject *Vec_T_Pop(PyObject *self, Py_ssize_t index) {
@@ -285,4 +292,5 @@ VecTFeatures TFeatures = {
     Vec_T_New,
     Vec_T_Append,
     Vec_T_Pop,
+    Vec_T_Remove,
 };

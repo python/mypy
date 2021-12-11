@@ -255,7 +255,7 @@ PyObject *vec_generic_richcompare(Py_ssize_t *len, PyObject **items,
     return res;
 }
 
-PyObject *vec_generic_remove(Py_ssize_t *len, PyObject **items, PyObject *item) {
+int vec_generic_remove(Py_ssize_t *len, PyObject **items, PyObject *item) {
     for (Py_ssize_t i = 0; i < *len; i++) {
         int match = 0;
         if (items[i] == item)
@@ -263,7 +263,7 @@ PyObject *vec_generic_remove(Py_ssize_t *len, PyObject **items, PyObject *item) 
         else {
             int itemcmp = PyObject_RichCompareBool(items[i], item, Py_EQ);
             if (itemcmp < 0)
-                return NULL;
+                return 0;
             match = itemcmp;
         }
         if (match) {
@@ -272,11 +272,11 @@ PyObject *vec_generic_remove(Py_ssize_t *len, PyObject **items, PyObject *item) 
                 items[i] = items[i + 1];
             }
             (*len)--;
-            Py_RETURN_NONE;
+            return 1;
         }
     }
     PyErr_SetString(PyExc_ValueError, "vec.remove(x): x not in vec");
-    return NULL;
+    return 0;
 }
 
 PyObject *vec_generic_pop(Py_ssize_t *len, PyObject **items, Py_ssize_t index) {
