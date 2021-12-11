@@ -1,7 +1,6 @@
 # Builtins stub used in tuple-related test cases.
 
-from typing import Iterable, Iterator, TypeVar, Generic, Sequence, Any, overload, Tuple, Mapping, Type
-from typing import Iterable, Iterator, TypeVar, Generic, Sequence, Any, overload, Tuple, Type
+from typing import Iterable, Iterator, TypeVar, Generic, Sequence, Any, overload, Tuple, Type, Mapping
 
 T = TypeVar("T")
 KT = TypeVar('KT')

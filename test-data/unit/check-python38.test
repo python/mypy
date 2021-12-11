@@ -78,7 +78,6 @@ def g(x: int): ...
     f("ERROR"),  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 )
 [builtins fixtures/tuple.pyi]
-[builtins fixtures/dict.pyi]
 
 [case testIgnoreScopeNestedOverlapping]
 def f(x: int): ...
@@ -89,7 +88,6 @@ def g(x: int): ...
     ), f("ERROR"),  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 )
 [builtins fixtures/tuple.pyi]
-[builtins fixtures/dict.pyi]
 
 [case testIgnoreScopeUnused1]
 # flags: --warn-unused-ignores
