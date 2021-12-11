@@ -2543,7 +2543,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             x: C = D()
             x.attr = 3  # Oops!
         """
-        print(locals())
         writable = True
         if base_node:
             writable = self.is_writable_attribute(base_node)

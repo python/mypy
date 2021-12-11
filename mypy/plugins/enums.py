@@ -20,8 +20,6 @@ from mypy.nodes import TypeInfo
 from mypy.subtypes import is_equivalent
 from mypy.semanal_enum import ENUM_BASES
 
-# Note: 'enum.EnumMeta' is deliberately excluded from this list. Classes that directly use
-# enum.EnumMeta do not necessarily automatically have the 'name' and 'value' attributes.
 ENUM_NAME_ACCESS: Final = {"{}.name".format(prefix) for prefix in ENUM_BASES} | {
     "{}._name_".format(prefix) for prefix in ENUM_BASES
 }
