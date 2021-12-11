@@ -120,7 +120,16 @@ class CGIXMLRPCRequestHandler(SimpleXMLRPCDispatcher):
     def handle_request(self, request_text: str | None = ...) -> None: ...
 
 class ServerHTMLDoc(pydoc.HTMLDoc):  # undocumented
-    def docroutine(self, object: object, name: str, mod: str | None = ..., funcs: Mapping[str, str] = ..., classes: Mapping[str, str] = ..., methods: Mapping[str, str] = ..., cl: type | None = ...) -> str: ...  # type: ignore
+    def docroutine(  # type: ignore[override]
+        self,
+        object: object,
+        name: str,
+        mod: str | None = ...,
+        funcs: Mapping[str, str] = ...,
+        classes: Mapping[str, str] = ...,
+        methods: Mapping[str, str] = ...,
+        cl: type | None = ...,
+    ) -> str: ...
     def docserver(self, server_name: str, package_documentation: str, methods: dict[str, str]) -> str: ...
 
 class XMLRPCDocGenerator:  # undocumented

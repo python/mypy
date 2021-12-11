@@ -5,6 +5,7 @@ from abc import abstractmethod
 from collections.abc import Container, Iterable, Iterator, Sequence
 from logging import Logger
 from typing import Any, Callable, Generic, Protocol, Set, TypeVar, overload
+from typing_extensions import SupportsIndex
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -81,7 +82,7 @@ class DoneAndNotDoneFutures(Sequence[Set[Future[_T]]]):
     def __new__(_cls, done: set[Future[_T]], not_done: set[Future[_T]]) -> DoneAndNotDoneFutures[_T]: ...
     def __len__(self) -> int: ...
     @overload
-    def __getitem__(self, i: int) -> set[Future[_T]]: ...
+    def __getitem__(self, i: SupportsIndex) -> set[Future[_T]]: ...
     @overload
     def __getitem__(self, s: slice) -> DoneAndNotDoneFutures[_T]: ...
 

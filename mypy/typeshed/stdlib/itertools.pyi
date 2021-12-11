@@ -17,6 +17,9 @@ from typing import (
 )
 from typing_extensions import Literal, SupportsIndex
 
+if sys.version_info >= (3, 9):
+    from types import GenericAlias
+
 _T = TypeVar("_T")
 _S = TypeVar("_S")
 _N = TypeVar("_N", int, float, SupportsFloat, SupportsInt, SupportsIndex, SupportsComplex)
@@ -67,6 +70,8 @@ class chain(Iterator[_T], Generic[_T]):
     @classmethod
     # We use Type and not Type[_S] to not lose the type inference from __iterable
     def from_iterable(cls: Type[Any], __iterable: Iterable[Iterable[_S]]) -> Iterator[_S]: ...
+    if sys.version_info >= (3, 9):
+        def __class_getitem__(cls, __item: Any) -> GenericAlias: ...
 
 class compress(Iterator[_T], Generic[_T]):
     def __init__(self, data: Iterable[_T], selectors: Iterable[Any]) -> None: ...

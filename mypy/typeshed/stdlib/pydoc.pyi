@@ -109,7 +109,7 @@ class HTMLDoc(Doc):
         *ignored: Any,
     ) -> str: ...
     def formatvalue(self, object: object) -> str: ...
-    def docroutine(
+    def docroutine(  # type: ignore[override]
         self,
         object: object,
         name: str | None = ...,
@@ -118,15 +118,10 @@ class HTMLDoc(Doc):
         classes: Mapping[str, str] = ...,
         methods: Mapping[str, str] = ...,
         cl: type | None = ...,
-        *ignored: Any,
     ) -> str: ...
-    def docproperty(
-        self, object: object, name: str | None = ..., mod: str | None = ..., cl: Any | None = ..., *ignored: Any
-    ) -> str: ...
+    def docproperty(self, object: object, name: str | None = ..., mod: str | None = ..., cl: Any | None = ...) -> str: ...  # type: ignore[override]
     def docother(self, object: object, name: str | None = ..., mod: Any | None = ..., *ignored: Any) -> str: ...
-    def docdata(
-        self, object: object, name: str | None = ..., mod: Any | None = ..., cl: Any | None = ..., *ignored: Any
-    ) -> str: ...
+    def docdata(self, object: object, name: str | None = ..., mod: Any | None = ..., cl: Any | None = ...) -> str: ...  # type: ignore[override]
     def index(self, dir: str, shadowed: MutableMapping[str, bool] | None = ...) -> str: ...
     def filelink(self, url: str, path: str) -> str: ...
 
@@ -150,19 +145,13 @@ class TextDoc(Doc):
     def formattree(
         self, tree: list[tuple[type, Tuple[type, ...]] | list[Any]], modname: str, parent: type | None = ..., prefix: str = ...
     ) -> str: ...
-    def docmodule(self, object: object, name: str | None = ..., mod: Any | None = ..., *ignored: Any) -> str: ...
+    def docmodule(self, object: object, name: str | None = ..., mod: Any | None = ...) -> str: ...  # type: ignore[override]
     def docclass(self, object: object, name: str | None = ..., mod: str | None = ..., *ignored: Any) -> str: ...
     def formatvalue(self, object: object) -> str: ...
-    def docroutine(
-        self, object: object, name: str | None = ..., mod: str | None = ..., cl: Any | None = ..., *ignored: Any
-    ) -> str: ...
-    def docproperty(
-        self, object: object, name: str | None = ..., mod: Any | None = ..., cl: Any | None = ..., *ignored: Any
-    ) -> str: ...
-    def docdata(
-        self, object: object, name: str | None = ..., mod: str | None = ..., cl: Any | None = ..., *ignored: Any
-    ) -> str: ...
-    def docother(
+    def docroutine(self, object: object, name: str | None = ..., mod: str | None = ..., cl: Any | None = ...) -> str: ...  # type: ignore[override]
+    def docproperty(self, object: object, name: str | None = ..., mod: Any | None = ..., cl: Any | None = ...) -> str: ...  # type: ignore[override]
+    def docdata(self, object: object, name: str | None = ..., mod: str | None = ..., cl: Any | None = ...) -> str: ...  # type: ignore[override]
+    def docother(  # type: ignore[override]
         self,
         object: object,
         name: str | None = ...,
@@ -170,7 +159,6 @@ class TextDoc(Doc):
         parent: str | None = ...,
         maxlen: int | None = ...,
         doc: Any | None = ...,
-        *ignored: Any,
     ) -> str: ...
 
 def pager(text: str) -> None: ...

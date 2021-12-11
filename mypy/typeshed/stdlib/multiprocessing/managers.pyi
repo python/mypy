@@ -3,7 +3,8 @@
 import queue
 import sys
 import threading
-from typing import Any, AnyStr, Callable, ContextManager, Generic, Iterable, Mapping, Sequence, Tuple, TypeVar
+from contextlib import AbstractContextManager
+from typing import Any, AnyStr, Callable, Generic, Iterable, Mapping, Sequence, Tuple, TypeVar
 
 from .connection import Connection
 from .context import BaseContext
@@ -71,7 +72,7 @@ class Server:
     def serve_forever(self) -> None: ...
     def accept_connection(self, c: Connection, name: str) -> None: ...
 
-class BaseManager(ContextManager[BaseManager]):
+class BaseManager(AbstractContextManager[BaseManager]):
     def __init__(
         self, address: Any | None = ..., authkey: bytes | None = ..., serializer: str = ..., ctx: BaseContext | None = ...
     ) -> None: ...
@@ -97,7 +98,7 @@ class BaseManager(ContextManager[BaseManager]):
 _dict = dict
 _list = list
 
-class SyncManager(BaseManager, ContextManager[SyncManager]):
+class SyncManager(BaseManager, AbstractContextManager[SyncManager]):
     def BoundedSemaphore(self, value: Any = ...) -> threading.BoundedSemaphore: ...
     def Condition(self, lock: Any = ...) -> threading.Condition: ...
     def Event(self) -> threading.Event: ...

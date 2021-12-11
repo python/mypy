@@ -55,6 +55,7 @@ class TCPServer(BaseServer):
     def close_request(self, request: _RequestType) -> None: ...  # undocumented
 
 class UDPServer(BaseServer):
+    max_packet_size: ClassVar[int]
     def __init__(
         self,
         server_address: tuple[str, int],

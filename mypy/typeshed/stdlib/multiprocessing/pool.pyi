@@ -1,6 +1,7 @@
 import sys
 from _typeshed import Self
-from typing import Any, Callable, ContextManager, Generic, Iterable, Iterator, List, Mapping, TypeVar
+from contextlib import AbstractContextManager
+from typing import Any, Callable, Generic, Iterable, Iterator, List, Mapping, TypeVar
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -62,7 +63,7 @@ class IMapIterator(Iterator[_T]):
 
 class IMapUnorderedIterator(IMapIterator[_T]): ...
 
-class Pool(ContextManager[Pool]):
+class Pool(AbstractContextManager[Pool]):
     def __init__(
         self,
         processes: int | None = ...,
@@ -107,7 +108,7 @@ class Pool(ContextManager[Pool]):
     def join(self) -> None: ...
     def __enter__(self: Self) -> Self: ...
 
-class ThreadPool(Pool, ContextManager[ThreadPool]):
+class ThreadPool(Pool, AbstractContextManager[ThreadPool]):
     def __init__(
         self, processes: int | None = ..., initializer: Callable[..., Any] | None = ..., initargs: Iterable[Any] = ...
     ) -> None: ...

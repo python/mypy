@@ -1,3 +1,4 @@
+import sys
 from _typeshed import Self
 from email.message import Message as _Message
 from socket import socket
@@ -149,6 +150,16 @@ class SMTP_SSL(SMTP):
 LMTP_PORT: int
 
 class LMTP(SMTP):
-    def __init__(
-        self, host: str = ..., port: int = ..., local_hostname: str | None = ..., source_address: _SourceAddress | None = ...
-    ) -> None: ...
+    if sys.version_info >= (3, 9):
+        def __init__(
+            self,
+            host: str = ...,
+            port: int = ...,
+            local_hostname: str | None = ...,
+            source_address: _SourceAddress | None = ...,
+            timeout: float = ...,
+        ) -> None: ...
+    else:
+        def __init__(
+            self, host: str = ..., port: int = ..., local_hostname: str | None = ..., source_address: _SourceAddress | None = ...
+        ) -> None: ...

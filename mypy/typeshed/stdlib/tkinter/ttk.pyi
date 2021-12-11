@@ -158,7 +158,7 @@ class Entry(Widget, tkinter.Entry):
         width: int = ...,
         xscrollcommand: tkinter._XYScrollCommand = ...,
     ) -> None: ...
-    @overload  # type: ignore
+    @overload  # type: ignore[override]
     def configure(
         self,
         cnf: dict[str, Any] | None = ...,
@@ -183,7 +183,7 @@ class Entry(Widget, tkinter.Entry):
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
     # config must be copy/pasted, otherwise ttk.Entry().config is mypy error (don't know why)
-    @overload  # type: ignore
+    @overload  # type: ignore[override]
     def config(
         self,
         cnf: dict[str, Any] | None = ...,
@@ -238,7 +238,7 @@ class Combobox(Entry):
         width: int = ...,
         xscrollcommand: tkinter._XYScrollCommand = ...,  # undocumented
     ) -> None: ...
-    @overload  # type: ignore
+    @overload  # type: ignore[override]
     def configure(
         self,
         cnf: dict[str, Any] | None = ...,
@@ -266,7 +266,7 @@ class Combobox(Entry):
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
     # config must be copy/pasted, otherwise ttk.Combobox().config is mypy error (don't know why)
-    @overload  # type: ignore
+    @overload  # type: ignore[override]
     def config(
         self,
         cnf: dict[str, Any] | None = ...,
@@ -547,7 +547,7 @@ class Panedwindow(Widget, tkinter.PanedWindow):
         width: int = ...,
     ) -> None: ...
     def add(self, child: tkinter.Widget, *, weight: int = ..., **kw) -> None: ...
-    @overload  # type: ignore
+    @overload  # type: ignore[override]
     def configure(
         self,
         cnf: dict[str, Any] | None = ...,
@@ -561,7 +561,7 @@ class Panedwindow(Widget, tkinter.PanedWindow):
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
     # config must be copy/pasted, otherwise ttk.Panedwindow().config is mypy error (don't know why)
-    @overload  # type: ignore
+    @overload  # type: ignore[override]
     def config(
         self,
         cnf: dict[str, Any] | None = ...,
@@ -688,7 +688,7 @@ class Scale(Widget, tkinter.Scale):
         value: float = ...,
         variable: tkinter.IntVar | tkinter.DoubleVar = ...,
     ) -> None: ...
-    @overload  # type: ignore
+    @overload  # type: ignore[override]
     def configure(
         self,
         cnf: dict[str, Any] | None = ...,
@@ -708,7 +708,7 @@ class Scale(Widget, tkinter.Scale):
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
     # config must be copy/pasted, otherwise ttk.Scale().config is mypy error (don't know why)
-    @overload  # type: ignore
+    @overload  # type: ignore[override]
     def config(
         self,
         cnf: dict[str, Any] | None = ...,
@@ -742,7 +742,7 @@ class Scrollbar(Widget, tkinter.Scrollbar):
         style: str = ...,
         takefocus: tkinter._TakeFocusValue = ...,
     ) -> None: ...
-    @overload  # type: ignore
+    @overload  # type: ignore[override]
     def configure(
         self,
         cnf: dict[str, Any] | None = ...,
@@ -756,7 +756,7 @@ class Scrollbar(Widget, tkinter.Scrollbar):
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
     # config must be copy/pasted, otherwise ttk.Scrollbar().config is mypy error (don't know why)
-    @overload  # type: ignore
+    @overload  # type: ignore[override]
     def config(
         self,
         cnf: dict[str, Any] | None = ...,
@@ -852,7 +852,7 @@ if sys.version_info >= (3, 7):
             wrap: bool = ...,
             xscrollcommand: tkinter._XYScrollCommand = ...,
         ) -> None: ...
-        @overload  # type: ignore
+        @overload  # type: ignore[override]
         def configure(
             self,
             cnf: dict[str, Any] | None = ...,
@@ -883,7 +883,7 @@ if sys.version_info >= (3, 7):
         ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
         @overload
         def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
-        config = configure  # type: ignore
+        config = configure  # type: ignore[assignment]
         def set(self, value: Any) -> None: ...
 
 class _TreeviewItemDict(TypedDict):
@@ -959,7 +959,7 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
     config = configure
-    def bbox(self, item, column: _TreeviewColumnId | None = ...) -> tuple[int, int, int, int] | Literal[""]: ...  # type: ignore
+    def bbox(self, item, column: _TreeviewColumnId | None = ...) -> tuple[int, int, int, int] | Literal[""]: ...  # type: ignore[override]
     def get_children(self, item: str | None = ...) -> Tuple[str, ...]: ...
     def set_children(self, item: str, *newchildren: str) -> None: ...
     @overload
@@ -987,7 +987,7 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
     def delete(self, *items: str) -> None: ...
     def detach(self, *items: str) -> None: ...
     def exists(self, item: str) -> bool: ...
-    @overload  # type: ignore
+    @overload  # type: ignore[override]
     def focus(self, item: None = ...) -> str: ...  # can return empty string
     @overload
     def focus(self, item: str) -> Literal[""]: ...

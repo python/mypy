@@ -11,8 +11,8 @@ from _typeshed import (
     StrPath,
 )
 from builtins import OSError
+from contextlib import AbstractContextManager
 from io import BufferedRandom, BufferedReader, BufferedWriter, FileIO, TextIOWrapper as _TextIOWrapper
-from posix import listdir as listdir, times_result
 from subprocess import Popen
 from typing import (
     IO,
@@ -20,13 +20,13 @@ from typing import (
     AnyStr,
     BinaryIO,
     Callable,
-    ContextManager,
     Generic,
     Iterable,
     Iterator,
     List,
     Mapping,
     MutableMapping,
+    NamedTuple,
     NoReturn,
     Protocol,
     Sequence,
@@ -101,6 +101,8 @@ if sys.platform != "win32":
     CLD_TRAPPED: int
     CLD_CONTINUED: int
 
+    # TODO: SCHED_RESET_ON_FORK not available on darwin?
+    # TODO: SCHED_BATCH and SCHED_IDLE are linux only?
     SCHED_OTHER: int  # some flavors of Unix
     SCHED_BATCH: int  # some flavors of Unix
     SCHED_IDLE: int  # some flavors of Unix
@@ -119,6 +121,8 @@ if sys.platform != "win32":
 
 if sys.platform == "linux":
     RTLD_DEEPBIND: int
+    GRND_NONBLOCK: int
+    GRND_RANDOM: int
 
 SEEK_SET: int
 SEEK_CUR: int
@@ -161,6 +165,24 @@ O_NOATIME: int  # Gnu extension if in C library
 O_PATH: int  # Gnu extension if in C library
 O_TMPFILE: int  # Gnu extension if in C library
 O_LARGEFILE: int  # Gnu extension if in C library
+O_ACCMODE: int  # TODO: when does this exist?
+
+if sys.platform != "win32" and sys.platform != "darwin":
+    # posix, but apparently missing on macos
+    ST_APPEND: int
+    ST_MANDLOCK: int
+    ST_NOATIME: int
+    ST_NODEV: int
+    ST_NODIRATIME: int
+    ST_NOEXEC: int
+    ST_NOSUID: int
+    ST_RDONLY: int
+    ST_RELATIME: int
+    ST_SYNCHRONOUS: int
+    ST_WRITE: int
+
+if sys.platform != "win32":
+    NGROUPS_MAX: int
 
 curdir: str
 pardir: str
@@ -210,7 +232,7 @@ class _Environ(MutableMapping[AnyStr, AnyStr], Generic[AnyStr]):
             putenv: Callable[[AnyStr, AnyStr], None],
             unsetenv: Callable[[AnyStr, AnyStr], None],
         ) -> None: ...
-    def setdefault(self, key: AnyStr, value: AnyStr) -> AnyStr: ...  # type: ignore
+    def setdefault(self, key: AnyStr, value: AnyStr) -> AnyStr: ...  # type: ignore[override]
     def copy(self) -> dict[AnyStr, AnyStr]: ...
     def __delitem__(self, key: AnyStr) -> None: ...
     def __getitem__(self, key: AnyStr) -> AnyStr: ...
@@ -312,6 +334,15 @@ class PathLike(Protocol[_AnyStr_co]):
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
 
+@overload
+def listdir(path: str | None = ...) -> list[str]: ...
+@overload
+def listdir(path: bytes) -> list[bytes]: ...
+@overload
+def listdir(path: int) -> list[str]: ...
+@overload
+def listdir(path: PathLike[str]) -> list[str]: ...
+
 _FdOrAnyPath = Union[int, StrOrBytesPath]
 
 @final
@@ -385,9 +416,15 @@ def getpid() -> int: ...
 def getppid() -> int: ...
 def strerror(__code: int) -> str: ...
 def umask(__mask: int) -> int: ...
+@final
+class uname_result(NamedTuple):
+    sysname: str
+    nodename: str
+    release: str
+    version: str
+    machine: str
 
 if sys.platform != "win32":
-    # Unix only
     def ctermid() -> str: ...
     def getegid() -> int: ...
     def geteuid() -> int: ...
@@ -417,7 +454,6 @@ if sys.platform != "win32":
     def getsid(__pid: int) -> int: ...
     def setsid() -> None: ...
     def setuid(__uid: int) -> None: ...
-    from posix import uname_result
     def uname() -> uname_result: ...
 
 @overload
@@ -433,7 +469,7 @@ if sys.platform != "win32":
 
 def putenv(__name: bytes | str, __value: bytes | str) -> None: ...
 
-if sys.platform != "win32":
+if sys.platform != "win32" or sys.version_info >= (3, 9):
     def unsetenv(__name: bytes | str) -> None: ...
 
 _Opener = Callable[[str, int], int]
@@ -527,7 +563,9 @@ else:
     def dup2(fd: int, fd2: int, inheritable: bool = ...) -> None: ...
 
 def fstat(fd: int) -> stat_result: ...
+def ftruncate(__fd: int, __length: int) -> None: ...
 def fsync(fd: FileDescriptorLike) -> None: ...
+def isatty(__fd: int) -> bool: ...
 def lseek(__fd: int, __position: int, __how: int) -> int: ...
 def open(path: StrOrBytesPath, flags: int, mode: int = ..., *, dir_fd: int | None = ...) -> int: ...
 def pipe() -> tuple[int, int]: ...
@@ -537,18 +575,15 @@ if sys.platform != "win32":
     # Unix only
     def fchmod(fd: int, mode: int) -> None: ...
     def fchown(fd: int, uid: int, gid: int) -> None: ...
-    if sys.platform != "darwin":
-        def fdatasync(fd: FileDescriptorLike) -> None: ...  # Unix only, not Mac
     def fpathconf(__fd: int, __name: str | int) -> int: ...
     def fstatvfs(__fd: int) -> statvfs_result: ...
-    def ftruncate(__fd: int, __length: int) -> None: ...
     def get_blocking(__fd: int) -> bool: ...
     def set_blocking(__fd: int, __blocking: bool) -> None: ...
-    def isatty(__fd: int) -> bool: ...
     def lockf(__fd: int, __command: int, __length: int) -> None: ...
     def openpty() -> tuple[int, int]: ...  # some flavors of Unix
     if sys.platform != "darwin":
-        def pipe2(flags: int) -> tuple[int, int]: ...  # some flavors of Unix
+        def fdatasync(fd: FileDescriptorLike) -> None: ...
+        def pipe2(__flags: int) -> tuple[int, int]: ...  # some flavors of Unix
         def posix_fallocate(fd: int, offset: int, length: int) -> None: ...
         def posix_fadvise(fd: int, offset: int, length: int, advice: int) -> None: ...
     def pread(__fd: int, __length: int, __offset: int) -> bytes: ...
@@ -596,17 +631,14 @@ def getcwd() -> str: ...
 def getcwdb() -> bytes: ...
 def chmod(path: _FdOrAnyPath, mode: int, *, dir_fd: int | None = ..., follow_symlinks: bool = ...) -> None: ...
 
-if sys.platform != "win32":
+if sys.platform != "win32" and sys.platform != "linux":
     def chflags(path: StrOrBytesPath, flags: int, follow_symlinks: bool = ...) -> None: ...  # some flavors of Unix
-    def chown(
-        path: _FdOrAnyPath, uid: int, gid: int, *, dir_fd: int | None = ..., follow_symlinks: bool = ...
-    ) -> None: ...  # Unix only
-
-if sys.platform != "win32":
-    # Unix only
-    def chroot(path: StrOrBytesPath) -> None: ...
     def lchflags(path: StrOrBytesPath, flags: int) -> None: ...
     def lchmod(path: StrOrBytesPath, mode: int) -> None: ...
+
+if sys.platform != "win32":
+    def chroot(path: StrOrBytesPath) -> None: ...
+    def chown(path: _FdOrAnyPath, uid: int, gid: int, *, dir_fd: int | None = ..., follow_symlinks: bool = ...) -> None: ...
     def lchown(path: StrOrBytesPath, uid: int, gid: int) -> None: ...
 
 def link(
@@ -640,7 +672,7 @@ def renames(old: StrOrBytesPath, new: StrOrBytesPath) -> None: ...
 def replace(src: StrOrBytesPath, dst: StrOrBytesPath, *, src_dir_fd: int | None = ..., dst_dir_fd: int | None = ...) -> None: ...
 def rmdir(path: StrOrBytesPath, *, dir_fd: int | None = ...) -> None: ...
 
-class _ScandirIterator(Iterator[DirEntry[AnyStr]], ContextManager[_ScandirIterator[AnyStr]]):
+class _ScandirIterator(Iterator[DirEntry[AnyStr]], AbstractContextManager[_ScandirIterator[AnyStr]]):
     def __next__(self) -> DirEntry[AnyStr]: ...
     def close(self) -> None: ...
 
@@ -773,7 +805,7 @@ if sys.platform != "win32":
 
 class _wrap_close(_TextIOWrapper):
     def __init__(self, stream: _TextIOWrapper, proc: Popen[str]) -> None: ...
-    def close(self) -> int | None: ...  # type: ignore
+    def close(self) -> int | None: ...  # type: ignore[override]
 
 def popen(cmd: str, mode: str = ..., buffering: int = ...) -> _wrap_close: ...
 def spawnl(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: StrOrBytesPath) -> int: ...
@@ -788,6 +820,14 @@ else:
     def spawnve(__mode: int, __path: StrOrBytesPath, __argv: _ExecVArgs, __env: _ExecEnv) -> int: ...
 
 def system(command: StrOrBytesPath) -> int: ...
+@final
+class times_result(NamedTuple):
+    user: float
+    system: float
+    children_user: float
+    children_system: float
+    elapsed: float
+
 def times() -> times_result: ...
 def waitpid(__pid: int, __options: int) -> tuple[int, int]: ...
 
@@ -795,14 +835,18 @@ if sys.platform == "win32":
     def startfile(path: StrOrBytesPath, operation: str | None = ...) -> None: ...
 
 else:
-    # Unix only
     def spawnlp(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: StrOrBytesPath) -> int: ...
     def spawnlpe(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: Any) -> int: ...  # Imprecise signature
     def spawnvp(mode: int, file: StrOrBytesPath, args: _ExecVArgs) -> int: ...
     def spawnvpe(mode: int, file: StrOrBytesPath, args: _ExecVArgs, env: _ExecEnv) -> int: ...
     def wait() -> tuple[int, int]: ...  # Unix only
     if sys.platform != "darwin":
-        from posix import waitid_result
+        class waitid_result(NamedTuple):
+            si_pid: int
+            si_uid: int
+            si_signo: int
+            si_status: int
+            si_code: int
         def waitid(idtype: int, ident: int, options: int) -> waitid_result: ...
     def wait3(options: int) -> tuple[int, int, Any]: ...
     def wait4(pid: int, options: int) -> tuple[int, int, Any]: ...
@@ -815,10 +859,36 @@ else:
     def WSTOPSIG(status: int) -> int: ...
     def WTERMSIG(status: int) -> int: ...
     if sys.version_info >= (3, 8):
-        from posix import posix_spawn as posix_spawn, posix_spawnp as posix_spawnp
+        def posix_spawn(
+            path: StrOrBytesPath,
+            argv: _ExecVArgs,
+            env: _ExecEnv,
+            *,
+            file_actions: Sequence[Tuple[Any, ...]] | None = ...,
+            setpgroup: int | None = ...,
+            resetids: bool = ...,
+            setsid: bool = ...,
+            setsigmask: Iterable[int] = ...,
+            setsigdef: Iterable[int] = ...,
+            scheduler: tuple[Any, sched_param] | None = ...,
+        ) -> int: ...
+        def posix_spawnp(
+            path: StrOrBytesPath,
+            argv: _ExecVArgs,
+            env: _ExecEnv,
+            *,
+            file_actions: Sequence[Tuple[Any, ...]] | None = ...,
+            setpgroup: int | None = ...,
+            resetids: bool = ...,
+            setsid: bool = ...,
+            setsigmask: Iterable[int] = ...,
+            setsigdef: Iterable[int] = ...,
+            scheduler: tuple[Any, sched_param] | None = ...,
+        ) -> int: ...
 
 if sys.platform != "win32":
-    from posix import sched_param
+    class sched_param(NamedTuple):
+        sched_priority: int
     def sched_get_priority_min(policy: int) -> int: ...  # some flavors of Unix
     def sched_get_priority_max(policy: int) -> int: ...  # some flavors of Unix
     def sched_yield() -> None: ...  # some flavors of Unix
@@ -880,3 +950,6 @@ if sys.version_info >= (3, 8):
         MFD_HUGE_2GB: int
         MFD_HUGE_16GB: int
         def memfd_create(name: str, flags: int = ...) -> int: ...
+
+if sys.version_info >= (3, 9):
+    def waitstatus_to_exitcode(status: int) -> int: ...

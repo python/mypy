@@ -10,9 +10,6 @@ if sys.version_info >= (3, 7):
 if sys.version_info >= (3, 9):
     from types import GenericAlias
 
-# Definitions of special type checking related constructs.  Their definitions
-# are not used, so their value does not matter.
-
 Any = object()
 
 class TypeVar:
@@ -29,11 +26,18 @@ class TypeVar:
         covariant: bool = ...,
         contravariant: bool = ...,
     ) -> None: ...
+    if sys.version_info >= (3, 10):
+        def __or__(self, other: Any) -> _SpecialForm: ...
+        def __ror__(self, other: Any) -> _SpecialForm: ...
 
+# Used for an undocumented mypy feature. Does not exist at runtime.
 _promote = object()
 
 class _SpecialForm:
     def __getitem__(self, typeargs: Any) -> object: ...
+    if sys.version_info >= (3, 10):
+        def __or__(self, other: Any) -> _SpecialForm: ...
+        def __ror__(self, other: Any) -> _SpecialForm: ...
 
 _F = TypeVar("_F", bound=Callable[..., Any])
 _P = _ParamSpec("_P")
@@ -80,9 +84,20 @@ if sys.version_info >= (3, 10):
         def args(self) -> ParamSpecArgs: ...
         @property
         def kwargs(self) -> ParamSpecKwargs: ...
+        def __or__(self, other: Any) -> _SpecialForm: ...
+        def __ror__(self, other: Any) -> _SpecialForm: ...
     Concatenate: _SpecialForm = ...
     TypeAlias: _SpecialForm = ...
     TypeGuard: _SpecialForm = ...
+    class NewType:
+        def __init__(self, name: str, tp: type) -> None: ...
+        def __call__(self, x: _T) -> _T: ...
+        def __or__(self, other: Any) -> _SpecialForm: ...
+        def __ror__(self, other: Any) -> _SpecialForm: ...
+        __supertype__: type
+
+else:
+    def NewType(name: str, tp: Type[_T]) -> Type[_T]: ...
 
 # These type variables are used by the container types.
 _S = TypeVar("_S")
@@ -96,7 +111,7 @@ _T_contra = TypeVar("_T_contra", contravariant=True)  # Ditto contravariant.
 _TC = TypeVar("_TC", bound=Type[object])
 
 def no_type_check(arg: _F) -> _F: ...
-def no_type_check_decorator(decorator: Callable[_P, _T]) -> Callable[_P, _T]: ...  # type: ignore
+def no_type_check_decorator(decorator: Callable[_P, _T]) -> Callable[_P, _T]: ...  # type: ignore[misc]
 
 # Type aliases and type constructors
 
@@ -121,6 +136,14 @@ if sys.version_info >= (3, 9):
 
 # Predefined type variables.
 AnyStr = TypeVar("AnyStr", str, bytes)
+
+if sys.version_info >= (3, 8):
+    # This class did actually exist in 3.7, but had a different base.
+    # We'll just pretend it didn't exist though: the main external use case for _ProtocolMeta is
+    # to inherit from for your own custom protocol metaclasses. If you're using 3.7, at runtime
+    # you'd use typing_extensions.Protocol, which would be unrelated to typing._ProtocolMeta and
+    # so you'd run into metaclass conflicts at runtime if you used typing._ProtocolMeta.
+    class _ProtocolMeta(ABCMeta): ...
 
 # Abstract base classes.
 
@@ -246,7 +269,7 @@ class Coroutine(Awaitable[_V_co], Generic[_T_co, _T_contra, _V_co]):
     @abstractmethod
     def close(self) -> None: ...
 
-# NOTE: This type does not exist in typing.py or PEP 484.
+# NOTE: This type does not exist in typing.py or PEP 484 but mypy needs it to exist.
 # The parameters correspond to Generator, but the 4th is the original type.
 class AwaitableGenerator(
     Awaitable[_V_co], Generator[_T_co, _T_contra, _V_co], Generic[_T_co, _T_contra, _V_co, _S], metaclass=ABCMeta
@@ -657,7 +680,6 @@ def cast(typ: object, val: Any) -> Any: ...
 
 # Type constructors
 
-# NamedTuple is special-cased in the type checker
 class NamedTuple(Tuple[Any, ...]):
     _field_types: collections.OrderedDict[str, Type[Any]]
     _field_defaults: dict[str, Any]
@@ -691,8 +713,6 @@ class _TypedDict(Mapping[str, object], metaclass=ABCMeta):
     def __or__(self: _T, __value: _T) -> _T: ...
     def __ior__(self: _T, __value: _T) -> _T: ...
 
-def NewType(name: str, tp: Type[_T]) -> Type[_T]: ...
-
 # This itself is only available during type checking
 def type_check_only(func_or_cls: _F) -> _F: ...
 
@@ -712,6 +732,9 @@ if sys.version_info >= (3, 7):
         def __eq__(self, other: Any) -> bool: ...
         def __hash__(self) -> int: ...
         def __repr__(self) -> str: ...
+        if sys.version_info >= (3, 11):
+            def __or__(self, other: Any) -> _SpecialForm: ...
+            def __ror__(self, other: Any) -> _SpecialForm: ...
 
 if sys.version_info >= (3, 10):
-    def is_typeddict(tp: Any) -> bool: ...
+    def is_typeddict(tp: object) -> bool: ...

@@ -102,7 +102,15 @@ def RAND_egd(path: str) -> None: ...
 def RAND_add(__s: bytes, __entropy: float) -> None: ...
 def match_hostname(cert: _PeerCertRetType, hostname: str) -> None: ...
 def cert_time_to_seconds(cert_time: str) -> int: ...
-def get_server_certificate(addr: tuple[str, int], ssl_version: int = ..., ca_certs: str | None = ...) -> str: ...
+
+if sys.version_info >= (3, 10):
+    def get_server_certificate(
+        addr: tuple[str, int], ssl_version: int = ..., ca_certs: str | None = ..., timeout: float = ...
+    ) -> str: ...
+
+else:
+    def get_server_certificate(addr: tuple[str, int], ssl_version: int = ..., ca_certs: str | None = ...) -> str: ...
+
 def DER_cert_to_PEM_cert(der_cert_bytes: bytes) -> str: ...
 def PEM_cert_to_DER_cert(pem_cert_string: str) -> bytes: ...
 
@@ -135,12 +143,19 @@ class VerifyFlags(enum.IntFlag):
     VERIFY_CRL_CHECK_CHAIN: int
     VERIFY_X509_STRICT: int
     VERIFY_X509_TRUSTED_FIRST: int
+    if sys.version_info >= (3, 10):
+        VERIFY_ALLOW_PROXY_CERTS: int
+        VERIFY_X509_PARTIAL_CHAIN: int
 
 VERIFY_DEFAULT: VerifyFlags
 VERIFY_CRL_CHECK_LEAF: VerifyFlags
 VERIFY_CRL_CHECK_CHAIN: VerifyFlags
 VERIFY_X509_STRICT: VerifyFlags
 VERIFY_X509_TRUSTED_FIRST: VerifyFlags
+
+if sys.version_info >= (3, 10):
+    VERIFY_ALLOW_PROXY_CERTS: VerifyFlags
+    VERIFY_X509_PARTIAL_CHAIN: VerifyFlags
 
 class _SSLMethod(enum.IntEnum):
     PROTOCOL_SSLv23: int
@@ -293,7 +308,9 @@ class SSLSocket(socket.socket):
     server_hostname: str | None
     session: SSLSession | None
     session_reused: bool | None
-    if sys.version_info < (3, 7):
+    if sys.version_info >= (3, 7):
+        def __init__(self, *args: Any, **kwargs: Any) -> None: ...
+    else:
         def __init__(
             self,
             sock: socket.socket | None = ...,
@@ -315,8 +332,6 @@ class SSLSocket(socket.socket):
             _context: SSLContext | None = ...,
             _session: Any | None = ...,
         ) -> None: ...
-    else:
-        def __init__(self, *args: Any, **kwargs: Any) -> None: ...
     def connect(self, addr: socket._Address | bytes) -> None: ...
     def connect_ex(self, addr: socket._Address | bytes) -> int: ...
     def recv(self, buflen: int = ..., flags: int = ...) -> bytes: ...

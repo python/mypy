@@ -31,7 +31,7 @@ class _gdbm:
     def keys(self) -> list[bytes]: ...
     def setdefault(self, k: _KeyType, default: _ValueType = ...) -> bytes: ...
     # Don't exist at runtime
-    __new__: None  # type: ignore
-    __init__: None  # type: ignore
+    __new__: None  # type: ignore[assignment]
+    __init__: None  # type: ignore[assignment]
 
 def open(__filename: str, __flags: str = ..., __mode: int = ...) -> _gdbm: ...

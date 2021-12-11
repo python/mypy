@@ -36,10 +36,10 @@ class _GeneratorContextManager(AbstractContextManager[_T_co]):
     def __call__(self, func: _F) -> _F: ...
 
 # type ignore to deal with incomplete ParamSpec support in mypy
-def contextmanager(func: Callable[_P, Iterator[_T]]) -> Callable[_P, _GeneratorContextManager[_T]]: ...  # type: ignore
+def contextmanager(func: Callable[_P, Iterator[_T]]) -> Callable[_P, _GeneratorContextManager[_T]]: ...  # type: ignore[misc]
 
 if sys.version_info >= (3, 7):
-    def asynccontextmanager(func: Callable[_P, AsyncIterator[_T]]) -> Callable[_P, AbstractAsyncContextManager[_T]]: ...  # type: ignore
+    def asynccontextmanager(func: Callable[_P, AsyncIterator[_T]]) -> Callable[_P, AbstractAsyncContextManager[_T]]: ...  # type: ignore[misc]
 
 class _SupportsClose(Protocol):
     def close(self) -> object: ...

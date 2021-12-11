@@ -111,6 +111,7 @@ _TakeFocusValue = Union[int, Literal[""], Callable[[str], Optional[bool]]]  # -t
 class EventType(str, Enum):
     Activate: str
     ButtonPress: str
+    Button = ButtonPress
     ButtonRelease: str
     Circulate: str
     CirculateRequest: str
@@ -128,6 +129,7 @@ class EventType(str, Enum):
     GraphicsExpose: str
     Gravity: str
     KeyPress: str
+    Key = KeyPress
     KeyRelease: str
     Keymap: str
     Leave: str
@@ -688,7 +690,8 @@ class Tk(Misc, Wm):
     quit: Any
     record: Any
     setvar: Any
-    split: Any
+    if sys.version_info < (3, 11):
+        split: Any
     splitlist: Any
     unsetvar: Any
     wantobjects: Any
@@ -739,14 +742,6 @@ class Pack:
     pack = pack_configure
     forget = pack_forget
     propagate = Misc.pack_propagate
-    # commented out to avoid mypy getting confused with multiple
-    # inheritance and how things get overridden with different things
-    # info = pack_info
-    # pack_propagate = Misc.pack_propagate
-    # configure = pack_configure
-    # config = pack_configure
-    # slaves = Misc.pack_slaves
-    # pack_slaves = Misc.pack_slaves
 
 class _PlaceInfo(_InMiscNonTotal):  # empty dict if widget hasn't been placed
     anchor: _Anchor
@@ -783,13 +778,6 @@ class Place:
     def place_info(self) -> _PlaceInfo: ...
     place = place_configure
     info = place_info
-    # commented out to avoid mypy getting confused with multiple
-    # inheritance and how things get overridden with different things
-    # config = place_configure
-    # configure = place_configure
-    # forget = place_forget
-    # slaves = Misc.place_slaves
-    # place_slaves = Misc.place_slaves
 
 class _GridInfo(_InMiscNonTotal):  # empty dict if widget hasn't been gridded
     column: int
@@ -825,24 +813,6 @@ class Grid:
     grid = grid_configure
     location = Misc.grid_location
     size = Misc.grid_size
-    # commented out to avoid mypy getting confused with multiple
-    # inheritance and how things get overridden with different things
-    # bbox = Misc.grid_bbox
-    # grid_bbox = Misc.grid_bbox
-    # forget = grid_forget
-    # info = grid_info
-    # grid_location = Misc.grid_location
-    # grid_propagate = Misc.grid_propagate
-    # grid_size = Misc.grid_size
-    # rowconfigure = Misc.grid_rowconfigure
-    # grid_rowconfigure = Misc.grid_rowconfigure
-    # grid_columnconfigure = Misc.grid_columnconfigure
-    # columnconfigure = Misc.grid_columnconfigure
-    # config = grid_configure
-    # configure = grid_configure
-    # propagate = Misc.grid_propagate
-    # slaves = Misc.grid_slaves
-    # grid_slaves = Misc.grid_slaves
 
 class BaseWidget(Misc):
     master: Misc
@@ -1135,7 +1105,7 @@ class Canvas(Widget, XView, YView):
     # Canvas.bbox() args are `str | _CanvasItemId`, but mypy rejects that
     # description because it's incompatible with Misc.bbox(), an alias for
     # Misc.grid_bbox(). Yes it is, but there's not much we can do about it.
-    def bbox(self, *args: str | _CanvasItemId) -> tuple[int, int, int, int]: ...  # type: ignore
+    def bbox(self, *args: str | _CanvasItemId) -> tuple[int, int, int, int]: ...  # type: ignore[override]
     @overload
     def tag_bind(
         self,
@@ -1505,10 +1475,10 @@ class Canvas(Widget, XView, YView):
     #
     # But mypy doesn't like aliasing here (maybe because Misc defines the same names)
     def tag_lower(self, __first: str | _CanvasItemId, __second: str | _CanvasItemId | None = ...) -> None: ...
-    def lower(self, __first: str | _CanvasItemId, __second: str | _CanvasItemId | None = ...) -> None: ...  # type: ignore
+    def lower(self, __first: str | _CanvasItemId, __second: str | _CanvasItemId | None = ...) -> None: ...  # type: ignore[override]
     def tag_raise(self, __first: str | _CanvasItemId, __second: str | _CanvasItemId | None = ...) -> None: ...
-    def tkraise(self, __first: str | _CanvasItemId, __second: str | _CanvasItemId | None = ...) -> None: ...  # type: ignore
-    def lift(self, __first: str | _CanvasItemId, __second: str | _CanvasItemId | None = ...) -> None: ...  # type: ignore
+    def tkraise(self, __first: str | _CanvasItemId, __second: str | _CanvasItemId | None = ...) -> None: ...  # type: ignore[override]
+    def lift(self, __first: str | _CanvasItemId, __second: str | _CanvasItemId | None = ...) -> None: ...  # type: ignore[override]
     def scale(self, *args): ...
     def scan_mark(self, x, y): ...
     def scan_dragto(self, x, y, gain: int = ...): ...
@@ -1737,7 +1707,7 @@ class Entry(Widget, XView):
     def scan_mark(self, x): ...
     def scan_dragto(self, x): ...
     def selection_adjust(self, index: _EntryIndex) -> None: ...
-    def selection_clear(self) -> None: ...  # type: ignore
+    def selection_clear(self) -> None: ...  # type: ignore[override]
     def selection_from(self, index: _EntryIndex) -> None: ...
     def selection_present(self) -> bool: ...
     def selection_range(self, start: _EntryIndex, end: _EntryIndex) -> None: ...
@@ -1983,7 +1953,7 @@ class Listbox(Widget, XView, YView):
     def see(self, index): ...
     def selection_anchor(self, index): ...
     select_anchor: Any
-    def selection_clear(self, first, last: Any | None = ...): ...  # type: ignore
+    def selection_clear(self, first, last: Any | None = ...): ...  # type: ignore[override]
     select_clear: Any
     def selection_includes(self, index): ...
     select_includes: Any
@@ -2793,7 +2763,7 @@ class Text(Widget, XView, YView):
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
     config = configure
-    def bbox(self, index: _TextIndex) -> tuple[int, int, int, int] | None: ...  # type: ignore
+    def bbox(self, index: _TextIndex) -> tuple[int, int, int, int] | None: ...  # type: ignore[override]
     def compare(self, index1: _TextIndex, op: Literal["<", "<=", "==", ">=", ">", "!="], index2: _TextIndex) -> bool: ...
     def count(self, index1, index2, *args): ...  # TODO
     @overload

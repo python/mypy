@@ -285,7 +285,17 @@ class Formatter:
     else:
         default_msec_format: str
 
-    if sys.version_info >= (3, 8):
+    if sys.version_info >= (3, 10):
+        def __init__(
+            self,
+            fmt: str | None = ...,
+            datefmt: str | None = ...,
+            style: _FormatStyle = ...,
+            validate: bool = ...,
+            *,
+            defaults: Mapping[str, Any] | None = ...,
+        ) -> None: ...
+    elif sys.version_info >= (3, 8):
         def __init__(
             self, fmt: str | None = ..., datefmt: str | None = ..., style: _FormatStyle = ..., validate: bool = ...
         ) -> None: ...
@@ -357,7 +367,7 @@ class LoggerAdapter(Generic[_L]):
     manager: Manager  # undocumented
     if sys.version_info >= (3, 10):
         extra: Mapping[str, object] | None
-        def __init__(self, logger: _L, extra: Mapping[str, object] | None) -> None: ...
+        def __init__(self, logger: _L, extra: Mapping[str, object] | None = ...) -> None: ...
     else:
         extra: Mapping[str, object]
         def __init__(self, logger: _L, extra: Mapping[str, object]) -> None: ...
@@ -745,7 +755,10 @@ class PercentStyle(object):  # undocumented
     if sys.version_info >= (3, 8):
         validation_pattern: Pattern[str]
     _fmt: str
-    def __init__(self, fmt: str) -> None: ...
+    if sys.version_info >= (3, 10):
+        def __init__(self, fmt: str, *, defaults: Mapping[str, Any] | None = ...) -> None: ...
+    else:
+        def __init__(self, fmt: str) -> None: ...
     def usesTime(self) -> bool: ...
     if sys.version_info >= (3, 8):
         def validate(self) -> None: ...

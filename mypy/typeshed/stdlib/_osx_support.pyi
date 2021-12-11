@@ -1,3 +1,4 @@
+import sys
 from typing import Iterable, Sequence, Tuple, TypeVar
 
 _T = TypeVar("_T")
@@ -11,7 +12,13 @@ _COMPILER_CONFIG_VARS: Tuple[str, ...]  # undocumented
 _INITPRE: str  # undocumented
 
 def _find_executable(executable: str, path: str | None = ...) -> str | None: ...  # undocumented
-def _read_output(commandstring: str) -> str | None: ...  # undocumented
+
+if sys.version_info >= (3, 7):
+    def _read_output(commandstring: str, capture_stderr: bool = ...) -> str | None: ...  # undocumented
+
+else:
+    def _read_output(commandstring: str) -> str | None: ...  # undocumented
+
 def _find_build_tool(toolname: str) -> str: ...  # undocumented
 
 _SYSTEM_VERSION: str | None  # undocumented

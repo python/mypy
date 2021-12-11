@@ -334,7 +334,7 @@ class Terminal(str):
     def pop_trailing_ws(self) -> None: ...
     @property
     def comments(self) -> list[str]: ...
-    def __getnewargs__(self) -> tuple[str, str]: ...  # type: ignore
+    def __getnewargs__(self) -> tuple[str, str]: ...  # type: ignore[override]
 
 class WhiteSpaceTerminal(Terminal):
     @property
