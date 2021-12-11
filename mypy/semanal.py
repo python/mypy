@@ -1890,12 +1890,13 @@ class SemanticAnalyzer(NodeVisitor[None],
                                 module_id: str,
                                 id: str,
                                 imported_id: str,
-                                fullname: str,  # TODO: remove
+                                fullname: str,
                                 module_public: bool,
                                 context: ImportBase) -> None:
-        module_hidden = not module_public and (
-            not isinstance(node.node, MypyFile)
-            or fullname not in self.modules
+        module_hidden = not module_public and not (
+            # `from package import module` should work regardless of whether package
+            # re-exports module
+            isinstance(node.node, MypyFile) and fullname in self.modules
         )
 
         if isinstance(node.node, PlaceholderNode):
