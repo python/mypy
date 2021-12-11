@@ -142,9 +142,14 @@ static PyObject *vec_t_ext_remove(PyObject *self, PyObject *arg) {
     return vec_generic_remove(&v->len, v->items, arg);
 }
 
+static PyObject *Vec_T_Ext_Pop(PyObject *self, Py_ssize_t index) {
+    VecTExtObject *v = (VecTExtObject *)self;
+    return vec_generic_pop(&v->len, v->items, index);
+}
+
 static PyObject *vec_t_ext_pop(PyObject *self, PyObject *args) {
     VecTExtObject *v = (VecTExtObject *)self;
-    return vec_generic_pop(&v->len, v->items, args);
+    return vec_generic_pop_wrapper(&v->len, v->items, args);
 }
 
 static int
@@ -172,7 +177,7 @@ VecTExt_dealloc(VecTExtObject *self)
 {
     PyObject_GC_UnTrack(self);
     Py_TRASHCAN_BEGIN(self, VecTExt_dealloc)
-    Py_DECREF(self->item_type);
+    Py_XDECREF(self->item_type);
     for (Py_ssize_t i = 0; i < self->len; i++) {
         Py_XDECREF(self->items[i]);
     }
@@ -290,4 +295,5 @@ VecTExtFeatures TExtFeatures = {
     &VecTExtType,
     Vec_T_Ext_New,
     Vec_T_Ext_Append,
+    Vec_T_Ext_Pop,
 };

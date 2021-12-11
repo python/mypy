@@ -4,6 +4,10 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
+// Magic (native) integer return value on exception. Caller must also
+// use PyErr_Occurred() since this overlaps with valid integer values.
+#define MYPYC_INT_ERROR -113
+
 // Arbitrary vec object (only shared bits)
 typedef struct _VecObject {
     PyObject_VAR_HEAD
@@ -40,11 +44,11 @@ typedef struct _VecI64Features {
     PyTypeObject *type;
     PyObject *(*alloc)(Py_ssize_t);
     PyObject *(*append)(PyObject *, int64_t);
+    int64_t (*pop)(PyObject *, Py_ssize_t);
     // PyObject *(*extend)(PyObject *, PyObject *);
     // PyObject *(*slice)(PyObject *, int64_t, int64_t);
     // PyObject *(*concat)(PyObject *, PyObject *);
     // bool (*contains)(PyObject *, int64_t);
-    // int64_t (*pop)(PyObject *);
     // bool (*remove)(PyObject *, int64_t);
     // iter?
 } VecI64Features;
@@ -56,11 +60,11 @@ typedef struct _VecTFeatures {
     PyTypeObject *type;
     PyObject *(*alloc)(Py_ssize_t, PyObject *);
     PyObject *(*append)(PyObject *, PyObject *);
+    PyObject *(*pop)(PyObject *, Py_ssize_t);
     // PyObject *(*extend)(PyObject *, PyObject *);
     // PyObject *(*slice)(PyObject *, int64_t, int64_t);
     // PyObject *(*concat)(PyObject *, PyObject *);
     // bool (*contains)(PyObject *, PyObject *);
-    // PyObject *(*pop)(PyObject *);
     // bool (*remove)(PyObject *, PyObject *);
     // iter?
 } VecTFeatures;
@@ -72,11 +76,11 @@ typedef struct _VecTExtFeatures {
     PyTypeObject *type;
     PyObject *(*alloc)(Py_ssize_t, PyObject *, int optionals, int depth);
     PyObject *(*append)(PyObject *, PyObject *);
+    PyObject *(*pop)(PyObject *, Py_ssize_t);
     // PyObject *(*extend)(PyObject *, PyObject *);
     // PyObject *(*slice)(PyObject *, int64_t, int64_t);
     // PyObject *(*concat)(PyObject *, PyObject *);
     // bool (*contains)(PyObject *, PyObject *);
-    // PyObject *(*pop)(PyObject *);
     // bool (*remove)(PyObject *, PyObject *);
     // iter?
 } VecTExtFeatures;
@@ -174,6 +178,7 @@ PyObject *vec_generic_richcompare(Py_ssize_t *len, PyObject **items,
                                   Py_ssize_t *other_len, PyObject **other_items,
                                   int op);
 PyObject *vec_generic_remove(Py_ssize_t *len, PyObject **items, PyObject *item);
-PyObject *vec_generic_pop(Py_ssize_t *len, PyObject **items, PyObject *args);
+PyObject *vec_generic_pop_wrapper(Py_ssize_t *len, PyObject **items, PyObject *args);
+PyObject *vec_generic_pop(Py_ssize_t *len, PyObject **items, Py_ssize_t index);
 
 #endif

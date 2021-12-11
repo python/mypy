@@ -192,18 +192,14 @@ static PyObject *vec_i64_remove(PyObject *self, PyObject *arg) {
     return NULL;
 }
 
-static PyObject *vec_i64_pop(PyObject *self, PyObject *args) {
-    Py_ssize_t index = -1;
-    if (!PyArg_ParseTuple(args, "|n:pop", &index))
-        return NULL;
-
+static int64_t Vec_I64_Pop(PyObject *self, Py_ssize_t index) {
     VecI64Object *v = (VecI64Object *)self;
     if (index < 0)
         index += v->len;
 
     if (index < 0 || index >= v->len) {
         PyErr_SetString(PyExc_IndexError, "index out of range");
-        return NULL;
+        return MYPYC_INT_ERROR;
     }
 
     int64_t item = v->items[index];
@@ -211,8 +207,19 @@ static PyObject *vec_i64_pop(PyObject *self, PyObject *args) {
         v->items[i] = v->items[i + 1];
 
     v->len--;
+    return item;
+}
 
-    return PyLong_FromLongLong(item);
+static PyObject *vec_i64_pop(PyObject *self, PyObject *args) {
+    Py_ssize_t index = -1;
+    if (!PyArg_ParseTuple(args, "|n:pop", &index))
+        return NULL;
+
+    int64_t res = Vec_I64_Pop(self, index);
+    if (res == MYPYC_INT_ERROR && PyErr_Occurred())
+        return NULL;
+
+    return PyLong_FromLongLong(res);
 }
 
 static PyMappingMethods VecI64Mapping = {
@@ -272,4 +279,5 @@ VecI64Features I64Features = {
     &VecI64Type,
     Vec_I64_New,
     Vec_I64_Append,
+    Vec_I64_Pop,
 };

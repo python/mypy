@@ -279,11 +279,7 @@ PyObject *vec_generic_remove(Py_ssize_t *len, PyObject **items, PyObject *item) 
     return NULL;
 }
 
-PyObject *vec_generic_pop(Py_ssize_t *len, PyObject **items, PyObject *args) {
-    Py_ssize_t index = -1;
-    if (!PyArg_ParseTuple(args, "|n:pop", &index))
-        return NULL;
-
+PyObject *vec_generic_pop(Py_ssize_t *len, PyObject **items, Py_ssize_t index) {
     if (index < 0)
         index += *len;
 
@@ -297,8 +293,15 @@ PyObject *vec_generic_pop(Py_ssize_t *len, PyObject **items, PyObject *args) {
         items[i] = items[i + 1];
 
     (*len)--;
-
     return item;
+}
+
+PyObject *vec_generic_pop_wrapper(Py_ssize_t *len, PyObject **items, PyObject *args) {
+    Py_ssize_t index = -1;
+    if (!PyArg_ParseTuple(args, "|n:pop", &index))
+        return NULL;
+
+    return vec_generic_pop(len, items, index);
 }
 
 // Module-level functions
