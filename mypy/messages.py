@@ -145,6 +145,14 @@ class MessageBuilder:
         finally:
             self.disable_count -= 1
 
+    @contextmanager
+    def temporary_disable_type_names(self) -> Iterator[None]:
+        self.disable_type_names += 1
+        try:
+            yield
+        finally:
+            self.disable_type_names -= 1
+
     def is_errors(self) -> bool:
         return self.errors.is_errors()
 
