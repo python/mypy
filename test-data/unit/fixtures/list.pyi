@@ -1,18 +1,14 @@
 # Builtins stub used in list-related test cases.
 
-from typing import TypeVar, Generic, Iterable, Iterator, Sequence, overload, Mapping
+from typing import TypeVar, Generic, Iterable, Iterator, Sequence, overload
 
 T = TypeVar('T')
-KT = TypeVar('KT')
-VT = TypeVar('VT')
 
 class object:
     def __init__(self) -> None: pass
 
 class type: pass
 class ellipsis: pass
-class dict(Mapping[KT, VT]):
-    def __iter__(self)-> Iterator[KT]: pass
 
 class list(Sequence[T]):
     @overload
