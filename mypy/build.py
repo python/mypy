@@ -1311,8 +1311,11 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
     assert path is not None, "Internal error: meta was provided without a path"
     if not manager.options.skip_cache_mtime_checks:
         # Check data_json; assume if its mtime matches it's good.
-        # TODO: stat() errors
-        data_mtime = manager.getmtime(meta.data_json)
+        try:
+            data_mtime = manager.getmtime(meta.data_json)
+        except OSError:
+            manager.log('Metadata abandoned for {}: failed to stat data_json'.format(id))
+            return None
         if data_mtime != meta.data_mtime:
             manager.log('Metadata abandoned for {}: data cache is modified'.format(id))
             return None
@@ -1508,9 +1511,6 @@ def write_cache(id: str, path: str, tree: MypyFile,
     # Write data cache file, if applicable
     # Note that for Bazel we don't record the data file's mtime.
     if old_interface_hash == interface_hash:
-        # If the interface is unchanged, the cached data is guaranteed
-        # to be equivalent, and we only need to update the metadata.
-        data_mtime = manager.getmtime(data_json)
         manager.trace("Interface for {} is unchanged".format(id))
     else:
         manager.trace("Interface for {} has changed".format(id))
@@ -1527,7 +1527,12 @@ def write_cache(id: str, path: str, tree: MypyFile,
             # Both have the effect of slowing down the next run a
             # little bit due to an out-of-date cache file.
             return interface_hash, None
+
+    try:
         data_mtime = manager.getmtime(data_json)
+    except OSError:
+        manager.log("Error in os.stat({!r}), skipping cache write".format(data_json))
+        return interface_hash, None
 
     mtime = 0 if bazel else int(st.st_mtime)
     size = st.st_size
