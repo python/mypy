@@ -7011,6 +7011,68 @@ class A:
 reveal_type(A().y)  # N: Revealed type is "builtins.int"
 [builtins fixtures/property.pyi]
 
+[case testDecoratedProperty]
+from typing import Callable, TypeVar
+
+def correct(x: Callable[['X', int], int]) -> Callable[['X'], int]:
+    def inner(self: 'X') -> int:
+        return x(self, 1)
+    return inner
+
+def changing_type(x: Callable[['X', int], int]) -> Callable[['X'], str]:
+    def inner(self: 'X') -> str:
+        return 'a'
+    return inner
+
+def wrong_input(x: Callable[['X', int], int]) -> Callable[['X'], int]:
+    def inner(self: 'X') -> int:
+        return 1
+    return inner
+
+def wrong_return(x: Callable[['X', int], int]) -> Callable[[], int]:
+    def inner() -> int:
+        return 1
+    return inner
+
+C = TypeVar('C', bound=Callable)
+
+def return_itself(c: C) -> C:
+    return c
+
+class X:
+    @property
+    @correct
+    def a(self, arg: int) -> int:
+        return 1
+
+    @property
+    @changing_type
+    def b(self, arg: int) -> int:
+        return 2
+
+    @property  # E: Argument 1 to "wrong_input" has incompatible type "Callable[[X, str], str]"; expected "Callable[[X, int], int]"
+    @wrong_input
+    def c(self, arg: str) -> str:
+        return 'a'
+
+    @property
+    @wrong_return
+    def d(self, arg: int) -> int:
+        return 3
+
+    @property
+    @return_itself
+    def e(self) -> int:
+        return 4
+
+reveal_type(X().a)  # N: Revealed type is "builtins.int"
+reveal_type(X().b)  # N: Revealed type is "builtins.str"
+reveal_type(X().c)  # N: Revealed type is "builtins.int"
+reveal_type(X().d)  # E: Attribute function "d" with type "Callable[[], int]" does not accept self argument \
+                    # N: Revealed type is "builtins.int"
+reveal_type(X().e)  # N: Revealed type is "builtins.int"
+[builtins fixtures/property.pyi]
+
 [case testEnclosingScopeLambdaNoCrash]
 class C:
     x = lambda x: x.y.g()

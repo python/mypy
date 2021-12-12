@@ -1062,8 +1062,6 @@ class SemanticAnalyzer(NodeVisitor[None],
                 elif refers_to_fullname(d, 'functools.cached_property'):
                     dec.var.is_settable_property = True
                 self.check_decorated_function_is_method('property', dec)
-                if len(dec.func.arguments) > 1:
-                    self.fail('Too many arguments', dec.func)
             elif refers_to_fullname(d, 'typing.no_type_check'):
                 dec.var.type = AnyType(TypeOfAny.special_form)
                 no_type_check = True
@@ -1086,8 +1084,8 @@ class SemanticAnalyzer(NodeVisitor[None],
             dec.var.is_initialized_in_class = True
         if not no_type_check and self.recurse_into_functions:
             dec.func.accept(self)
-        if dec.decorators and dec.var.is_property:
-            self.fail('Decorated property not supported', dec)
+        # if dec.decorators and dec.var.is_property:
+        #     self.fail('Decorated property not supported', dec)
 
     def check_decorated_function_is_method(self, decorator: str,
                                            context: Context) -> None:
