@@ -1,10 +1,8 @@
 # Builtins stub used in tuple-related test cases.
 
-from typing import Iterable, Iterator, TypeVar, Generic, Sequence, Any, overload, Tuple, Type, Mapping
+from typing import Iterable, Iterator, TypeVar, Generic, Sequence, Any, overload, Tuple, Type
 
 T = TypeVar("T")
-KT = TypeVar('KT')
-VT = TypeVar('VT')
 Tco = TypeVar('Tco', covariant=True)
 
 class object:
@@ -42,10 +40,6 @@ class list(Sequence[T], Generic[T]):
     def __getitem__(self, s: slice) -> list[T]: ...
     def __contains__(self, item: object) -> bool: ...
     def __iter__(self) -> Iterator[T]: ...
-
-class dict(Mapping[KT, VT]):
-    def __iter__(self) -> Iterator[KT]: pass
-
 
 def isinstance(x: object, t: type) -> bool: pass
 
