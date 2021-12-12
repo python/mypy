@@ -7055,7 +7055,7 @@ class X:
     def c(self, arg: str) -> str:
         return 'a'
 
-    @property
+    @property  # E: Argument 1 to "property" has incompatible type "Callable[[], int]"; expected "Optional[Callable[[Any], Any]]"
     @wrong_return
     def d(self, arg: int) -> int:
         return 3
@@ -7119,11 +7119,10 @@ class B:
         return A
 
 class C:
-    @property
+    @property  # E: Argument 1 to "property" has incompatible type "Callable[[], Type[A]]"; expected "Optional[Callable[[Any], Any]]"
     @staticmethod
     def A() -> Type[A]:
         return A
-
 [builtins fixtures/staticmethod.pyi]
 
 [case testRefMethodWithOverloadDecorator]

@@ -3756,20 +3756,37 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 continue
             dec = self.expr_checker.accept(d)
             temp = self.temp_node(sig, context=e)
-            fullname = None
-            if isinstance(d, RefExpr):
-                fullname = d.fullname
-            # if this is a expression like @b.a where b is an object, get the type of b
-            # so we can pass it the method hook in the plugins
-            object_type: Optional[Type] = None
-            if fullname is None and isinstance(d, MemberExpr) and d.expr in self.type_map:
-                object_type = self.type_map[d.expr]
-                fullname = self.expr_checker.method_fullname(object_type, d.name)
+            fullname, object_type = self.get_decorator_fullname_and_object_type(d)
             self.check_for_untyped_decorator(e.func, dec, d)
             sig, t2 = self.expr_checker.check_call(dec, [temp],
                                                    [nodes.ARG_POS], e,
                                                    callable_name=fullname,
                                                    object_type=object_type)
+
+        if e.property_decorator is not None:
+            # What we do here: we ensure that `@property` / `@cached_property`
+            # decorators get the correct type, but we don't override the resulting
+            # signature. Why? Because decorated properties were not supported
+            # for a long time. And a lot of implementation details assume
+            # that we won't atually get `builtins.property` type in the result.
+            # And we also know how to handle properties pretty well.
+            # So, this is a not-really-dirty-hack
+            # that allows us to keep this feature simple.
+            # See: https://github.com/python/mypy/issues/1362
+            fullname, object_type = self.get_decorator_fullname_and_object_type(
+                e.property_decorator,
+            )
+            prop_type = self.expr_checker.accept(e.property_decorator)
+            temp = self.temp_node(sig, context=e)
+            self.expr_checker.check_call(
+                prop_type,
+                [temp],
+                [nodes.ARG_POS],
+                e,
+                callable_name=fullname,
+                object_type=object_type,
+            )
+
         self.check_untyped_after_decorator(sig, e.func)
         sig = set_callable_name(sig, e.func)
         e.var.type = sig
@@ -3782,6 +3799,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if e.func.info and e.func.name in ('__init__', '__new__'):
             if e.type and not isinstance(get_proper_type(e.type), (FunctionLike, AnyType)):
                 self.fail(message_registry.BAD_CONSTRUCTOR_TYPE, e)
+
+    def get_decorator_fullname_and_object_type(
+        self, dec: Expression,
+    ) -> Tuple[Optional[str], Optional[Type]]:
+        fullname = None
+        if isinstance(dec, RefExpr):
+            fullname = dec.fullname
+        # if this is a expression like @b.a where b is an object, get the type of b
+        # so we can pass it the method hook in the plugins
+        object_type: Optional[Type] = None
+        if fullname is None and isinstance(dec, MemberExpr) and dec.expr in self.type_map:
+            object_type = self.type_map[d.expr]
+            fullname = self.expr_checker.method_fullname(object_type, dec.name)
+        return fullname, object_type
 
     def check_for_untyped_decorator(self,
                                     func: FuncDef,

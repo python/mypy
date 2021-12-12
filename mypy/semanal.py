@@ -950,7 +950,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                             # Get abstractness from the original definition.
                             item.func.is_abstract = first_item.func.is_abstract
                 else:
-                    self.fail("Decorated property not supported", item)
+                    self.fail("Overloaded property is not supported", item)
                 item.func.accept(self)
             else:
                 self.fail('Unexpected definition for property "{}"'.format(first_item.func.name),
@@ -1062,6 +1062,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 elif refers_to_fullname(d, 'functools.cached_property'):
                     dec.var.is_settable_property = True
                 self.check_decorated_function_is_method('property', dec)
+                dec.property_decorator = d
             elif refers_to_fullname(d, 'typing.no_type_check'):
                 dec.var.type = AnyType(TypeOfAny.special_form)
                 no_type_check = True
@@ -1084,8 +1085,6 @@ class SemanticAnalyzer(NodeVisitor[None],
             dec.var.is_initialized_in_class = True
         if not no_type_check and self.recurse_into_functions:
             dec.func.accept(self)
-        # if dec.decorators and dec.var.is_property:
-        #     self.fail('Decorated property not supported', dec)
 
     def check_decorated_function_is_method(self, decorator: str,
                                            context: Context) -> None:

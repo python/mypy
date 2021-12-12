@@ -776,12 +776,20 @@ class Decorator(SymbolNode, Statement):
     A single Decorator object can include any number of function decorators.
     """
 
-    __slots__ = ('func', 'decorators', 'original_decorators', 'var', 'is_overload')
+    __slots__ = (
+        'func', 'decorators', 'original_decorators',
+        'property_decorator',
+        'var', 'is_overload',
+    )
 
     func: FuncDef  # Decorated function
     decorators: List[Expression]  # Decorators (may be empty)
     # Some decorators are removed by semanal, keep the original here.
     original_decorators: List[Expression]
+    # We use special field, where we store the `@property` / `@cached_property`
+    # decorator. It is implied that `@property` is the top-most decorator in the chain.
+    # Other use-cases are so rare, that we don't support them.
+    property_decorator: Optional[Expression]
     # TODO: This is mostly used for the type; consider replacing with a 'type' attribute
     var: "Var"  # Represents the decorated function obj
     is_overload: bool
@@ -792,6 +800,7 @@ class Decorator(SymbolNode, Statement):
         self.func = func
         self.decorators = decorators
         self.original_decorators = decorators.copy()
+        self.property_decorator = None
         self.var = var
         self.is_overload = False
 
