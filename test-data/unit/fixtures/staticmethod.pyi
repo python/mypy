@@ -11,11 +11,8 @@ class function: pass
 staticmethod = object() # Dummy definition.
 
 class property(object):
-    def __init__(
-        self,
-        fget: Callable[[Any], Any] | None = ...,
-    ) -> None: ...
-    def __get__(self, __obj: Any, __type: type | None = ...) -> Any: ...
+    def __init__(self, fget: Callable[[Any], Any]) -> None:
+        pass
 
 class int:
     @staticmethod

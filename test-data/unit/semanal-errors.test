@@ -1207,7 +1207,7 @@ class A:
 [case testOverloadedProperty]
 from typing import overload
 class A:
-    @overload  # E: Overloaded property is not supported
+    @overload
     @property
     def f(self) -> int: pass
     @property  # E: Overloaded property is not supported
@@ -1221,7 +1221,7 @@ from typing import overload
 class A:
     @overload  # E: An overloaded function outside a stub file must have an implementation
     def f(self) -> int: pass
-    @property  # E: Overloaded property is not supported
+    @property
     @overload
     def f(self) -> int: pass
 [builtins fixtures/property.pyi]

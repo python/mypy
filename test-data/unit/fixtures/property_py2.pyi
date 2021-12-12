@@ -10,7 +10,9 @@ class type:
 
 class function: pass
 
-property = object()  # Dummy definition
+class property(object):
+    def __init__(self, fget: typing.Callable[[typing.Any], typing.Any]) -> None:
+        pass
 
 class int: pass
 class str: pass

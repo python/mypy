@@ -5,5 +5,9 @@ T = TypeVar('T', bound=Type[Any])
 class ABC(type): pass
 class ABCMeta(type):
     def register(cls, tp: T) -> T: pass
+
 abstractmethod = object()
-abstractproperty = object()
+
+class abstractproperty(property):
+    def __init__(self, fget: Callable[[Any], Any]) -> None:
+        pass

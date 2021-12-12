@@ -1,4 +1,5 @@
 from typing import (
+    Any, Callable,
     Generic, Iterator, Iterable, Mapping, Optional, Sequence, Tuple,
     TypeVar, Union, overload,
 )
@@ -40,4 +41,7 @@ class dict(Mapping[KT, VT]):
 class list(Generic[_T], Sequence[_T]): pass
 class function: pass
 class classmethod: pass
-property = object()
+
+class property(object):
+    def __init__(self, fget: Callable[[Any], Any]) -> None:
+        pass

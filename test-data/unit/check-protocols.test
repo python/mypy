@@ -88,7 +88,7 @@ main:37: error: Argument 1 to "fun" has incompatible type "B"; expected "P"
 main:37: note: Following member(s) of "B" have conflicts:
 main:37: note:     x: expected "int", got "str"
 main:40: note: Revealed type is "builtins.int"
-[builtins fixtures/bool.pyi]
+[builtins fixtures/property.pyi]
 
 [case testSimpleProtocolOneAbstractMethod]
 from typing import Protocol

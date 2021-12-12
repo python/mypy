@@ -1,6 +1,6 @@
 # Builtins stub used in list-related test cases.
 
-from typing import TypeVar, Generic, Iterable, Iterator, Sequence, overload
+from typing import Any, Callable, TypeVar, Generic, Iterable, Iterator, Sequence, overload
 
 T = TypeVar('T')
 
@@ -35,4 +35,6 @@ class str:
     def __len__(self) -> bool: pass
 class bool(int): pass
 
-property = object() # Dummy definition.
+class property(object):
+    def __init__(self, fget: Callable[[Any], Any]) -> None:
+        pass
