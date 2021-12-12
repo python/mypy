@@ -3810,7 +3810,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # so we can pass it the method hook in the plugins
         object_type: Optional[Type] = None
         if fullname is None and isinstance(dec, MemberExpr) and dec.expr in self.type_map:
-            object_type = self.type_map[d.expr]
+            object_type = self.type_map[dec.expr]
             fullname = self.expr_checker.method_fullname(object_type, dec.name)
         return fullname, object_type
 
