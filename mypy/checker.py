@@ -1817,10 +1817,58 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     sig, _ = self.expr_checker.check_call(dec, [temp],
                                                           [nodes.ARG_POS], defn,
                                                           callable_name=fullname)
+
+                    if defn.info.is_enum and refers_to_fullname(decorator, 'enum.unique'):
+                        self.check_enum_unique_decorator(defn, decorator)
                 # TODO: Apply the sig to the actual TypeInfo so we can handle decorators
                 # that completely swap out the type.  (e.g. Callable[[Type[A]], Type[B]])
         if typ.is_protocol and typ.defn.type_vars:
             self.check_protocol_variance(defn)
+
+    def check_enum_unique_decorator(self, defn: ClassDef, decorator: Expression) -> None:
+        # TODO: this can also check known `Literal` types in the future.
+        known_values = []
+
+        # All `Enum`s are just a series of `a = 1`, `b = 2` assignments in their bodies.
+        # We need raw exressions in these assignments.
+        for node in defn.defs.body:
+            if not isinstance(node, AssignmentStmt):
+                continue
+
+            # Next, we need to be sure that all parts of `Enum` definition
+            # are just simple names and are present in `TypeInfo`.
+            for lvalue in node.lvalues:
+                if not isinstance(lvalue, NameExpr):
+                    continue
+                field = defn.info.get(lvalue.name)
+                if field is None or not isinstance(field.node, Var):
+                    continue
+
+                # Validation passed, continue.
+                is_known, value = mypy.checkexpr.try_getting_statically_known_value(
+                    node.rvalue)
+                if not is_known:
+                    # We continue, because value was not known.
+                    # But, others possibly still can be reported.
+                    continue
+                known_values.append(value)
+
+        # Since we might end up with unhashable objects, like `[1]` or `{}`,
+        # we cannot use `dict` or `Counter`.
+        # It should not hit us hard, because `Enum`s rarely have lots of values.
+        errors = []
+        seen = []
+        for value in known_values:
+            if value in seen:
+                errors.append(value)
+            if value not in seen:
+                seen.append(value)
+
+        # Now, report all errors:
+        for error in errors:
+            self.fail('Duplicate value "{}" in "{}" unique enum definition'.format(
+                error, defn.name,
+            ), defn)
 
     def check_final_deletable(self, typ: TypeInfo) -> None:
         # These checks are only for mypyc. Only perform some checks that are easier

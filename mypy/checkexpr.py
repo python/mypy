@@ -5,7 +5,8 @@ from mypy.backports import OrderedDict, nullcontext
 from contextlib import contextmanager
 import itertools
 from typing import (
-    Any, cast, Dict, Set, List, Tuple, Callable, Union, Optional, Sequence, Iterator
+    Any, cast, Dict, Set, List, Tuple, Callable, Union,
+    Optional, Sequence, Iterator, Iterable
 )
 from typing_extensions import ClassVar, Final, overload, TypeAlias as _TypeAlias
 
@@ -4608,3 +4609,77 @@ def get_partial_instance_type(t: Optional[Type]) -> Optional[PartialType]:
     if t is None or not isinstance(t, PartialType) or t.type is None:
         return None
     return t
+
+
+def try_getting_statically_known_value(node: Expression) -> Tuple[bool, Any]:
+    """We try to get statically known expression's value.
+
+    Imagine, that you have:
+
+       class Some(enum.Enum):
+           one = 'one'
+           two = ('t', 'w', 'o')
+           three = None
+           four = method_call()
+
+    The first boolean represent whether given node was a literal value.
+    The second element is literal's value if any.
+
+    When trying to call ``try_getting_literal_expr`` on ``Some.one``
+    it will return ``True, 'one'`` tuple.
+    On ``Some.two`` it will return ``True, ('t', 'w', 'o')`` tuple.
+    On ``three`` it will return ``True, None``.
+    On ``four`` it will return ``False, None``.
+
+    We also recurse into nested nodes like ``TupleExpr``, ``ListExpr``, etc.
+    """
+    if isinstance(node, (StrExpr, UnicodeExpr, IntExpr, FloatExpr, ComplexExpr)):
+        return True, node.value
+    if isinstance(node, BytesExpr):
+        # Since `bytes`'s value is store as `str` in `mypy`,
+        # we use this hack to tell them appart.
+        return True, f'b"{node.value}"'
+    if isinstance(node, NameExpr):
+        if node.name == 'None':
+            return True, None
+        if node.name in ('True', 'False'):
+            return True, node.name == 'True'
+    if isinstance(node, EllipsisExpr):
+        return True, ...
+
+    # Recursive types:
+    if isinstance(node, TupleExpr):
+        return _recursive_statically_known_value(node.items, tuple)
+    if isinstance(node, ListExpr):
+        return _recursive_statically_known_value(node.items, list)
+    if isinstance(node, SetExpr):
+        return _recursive_statically_known_value(node.items, set)
+    if isinstance(node, DictExpr):
+        keys = []
+        values = []
+        for key, value in node.items:
+            if key is None:
+                return False, None  # We've met `**` unpacking
+
+            known_key, key_value = try_getting_statically_known_value(key)
+            if not known_key:
+                return False, None
+            known_value, value_value = try_getting_statically_known_value(value)
+            if not known_value:
+                return False, None
+            keys.append(key_value)
+            values.append(value_value)
+        return True, dict(zip(keys, values))
+    return False, None
+
+
+def _recursive_statically_known_value(items: Iterable[Expression],
+                                      typ: type) -> Tuple[bool, Any]:
+    res: List[Any] = []
+    for item in items:
+        is_known, item_value = try_getting_statically_known_value(item)
+        if is_known:
+            res.append(item_value)
+        else:
+            return False, None
+    return True, typ(res)

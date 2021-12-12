@@ -148,10 +148,11 @@ import enum
 @enum.unique
 class E(enum.Enum):
     x = 1
-    y = 1  # NOTE: This duplicate value is not detected by mypy at the moment
+    y = 1
 x = 1
 x = E.x
 [out]
+main:3: error: Duplicate value "1" in "E" unique enum definition
 main:7: error: Incompatible types in assignment (expression has type "E", variable has type "int")
 
 [case testIntEnum_assignToIntVariable]
@@ -1677,3 +1678,219 @@ class A(Enum):
     class Inner: pass
 class B(A): pass  # E: Cannot inherit from final class "A"
 [builtins fixtures/bool.pyi]
+
+
+[case testUniqueEnumCorrectStaticValues]
+from enum import Enum, IntEnum, Flag, IntFlag, unique
+
+@unique
+class EmptyEnum(Enum):
+    pass
+@unique
+class EmptyIntEnum(IntEnum):
+    pass
+@unique
+class EmptyFlag(Flag):
+    pass
+@unique
+class EmptyIntFlag(IntFlag):
+    pass
+
+@unique
+class NonEmptyEnum(Enum):
+    x = [1, 'a', (1, [1, 2])]
+    y = 2
+    z = '1'
+    n = None
+    a = (1,)
+    b = [1]
+    c = {1: 1}
+    d = {1}
+    e = ...
+    f = False
+    g = True
+    h = 1.5
+    j = 1j
+    k = b'1'
+@unique
+class NonEmptyIntEnum(IntEnum):
+    x = 1
+    y = 2
+@unique
+class NonEmptyFlag(Flag):
+    x = 'x'
+    y = 'y'
+@unique
+class NonEmptyIntFlag(IntFlag):
+    x = 1
+    y = 2
+[builtins fixtures/dict.pyi]
+
+[case testNonEnumUnique]
+from enum import unique
+@unique
+class A:
+    x = 1
+    y = 1
+[builtins fixtures/bool.pyi]
+
+[case testEnumNonUniqueDecorator]
+from enum import Enum
+def dec(t):
+    return t
+@dec
+class A(Enum):
+    x = 1
+    y = 1
+[builtins fixtures/bool.pyi]
+
+[case testEnumMetaUnique]
+from enum import unique, EnumMeta
+@unique
+class A(EnumMeta):
+    x = 1
+    y = 1
+[builtins fixtures/bool.pyi]
+
+[case testEnumDynamicValues]
+from typing import List
+from enum import Enum, unique
+
+# We cannot infer these yet (possibly - never):
+def y() -> int:
+    return 1
+z = [1]
+
+@unique
+class EmptyEnum(Enum):
+    a = z
+    b = z
+    c = y()
+    d = y()
+    e = z[0]
+    f = z[0]
+
+@unique
+class ComplexValuesEnum(Enum):
+    a = (z, z)
+    b = (z, z)
+    c = {y()}
+    d = {y()}
+    e = [z, y()]
+    f = [z, y()]
+    d1 = {z: 1}
+    d2 = {z: 1}
+    d3 = {1: y()}
+    d4 = {1: y()}
+    d5 = {z: y()}
+    d6 = {z: y()}
+
+@unique
+class EmptyIntEnum(Enum):  # E: Duplicate value "0" in "EmptyIntEnum" unique enum definition
+    a = z[0]
+    # This still raises, we know `1` is duplicated:
+    b = 0
+    c = 0
+    # This won't:
+    d = int()
+    e = int()
+[builtins fixtures/dict.pyi]
+
+[case testEnumUniqueSeveralLValues]
+from enum import Enum, unique
+@unique
+class IntFloatEnum(Enum):  # E: Duplicate value "1" in "IntFloatEnum" unique enum definition
+    x = y = 1
+[builtins fixtures/bool.pyi]
+
+[case testEnumUniqueUnpacking]
+from enum import Enum, unique
+@unique
+class UniqueEnum(Enum):
+    x, y = (1, 2)
+# TODO: should raise, but does not
+# TODO: this should be handled with `Literal` types
+@unique
+class NonUniqueEnum(Enum):
+    x, y = (1, 1)
+[builtins fixtures/bool.pyi]
+
+[case testEnumDuplocateStaticValues]
+from enum import Enum, unique
+
+@unique
+class IntFloatEnum(Enum):
+    x = 1
+    y = 1.0
+@unique
+class IntEnum(Enum):
+    x = 1
+    y = 1
+@unique
+class FloatEnum(Enum):
+    x = 1.0
+    y = 1.0
+@unique
+class ComplexEnum(Enum):
+    x = 1j
+    y = 1j
+@unique
+class StrEnum(Enum):
+    a = 'a'
+    b = 'a'
+@unique
+class BytesEnum(Enum):
+    a = b'a'
+    b = b'a'
+@unique
+class BytesStrEnum(Enum):
+    a = 'a'  # ok
+    b = b'a'
+@unique
+class BoolEnum(Enum):
+    a = True
+    b = True
+@unique
+class BoolIntEnum(Enum):
+    a = True
+    b = 1
+@unique
+class NoneEnum(Enum):
+    a = None
+    b = None
+@unique
+class ElipsisEnum(Enum):
+    a = ...
+    b = ...
+@unique
+class TupleEnum(Enum):
+    a = (True, 1, None)
+    b = (True, 1, None)
+@unique
+class ListEnum(Enum):
+    a = [1, (2, 3), [4, 5]]
+    b = [1, (2, 3), [4, 5]]
+@unique
+class SetEnum(Enum):
+    a = {1, True, 1.0}
+    b = {1}
+@unique
+class DictEnum(Enum):
+    a = {1: 'a'}
+    b = {1: 'a'}
+[out]
+main:4: error: Duplicate value "1.0" in "IntFloatEnum" unique enum definition
+main:8: error: Duplicate value "1" in "IntEnum" unique enum definition
+main:12: error: Duplicate value "1.0" in "FloatEnum" unique enum definition
+main:16: error: Duplicate value "1j" in "ComplexEnum" unique enum definition
+main:20: error: Duplicate value "a" in "StrEnum" unique enum definition
+main:24: error: Duplicate value "b"a"" in "BytesEnum" unique enum definition
+main:32: error: Duplicate value "True" in "BoolEnum" unique enum definition
+main:36: error: Duplicate value "1" in "BoolIntEnum" unique enum definition
+main:40: error: Duplicate value "None" in "NoneEnum" unique enum definition
+main:44: error: Duplicate value "Ellipsis" in "ElipsisEnum" unique enum definition
+main:48: error: Duplicate value "(True, 1, None)" in "TupleEnum" unique enum definition
+main:52: error: Duplicate value "[1, (2, 3), [4, 5]]" in "ListEnum" unique enum definition
+main:56: error: Duplicate value "{1}" in "SetEnum" unique enum definition
+main:60: error: Duplicate value "{1: 'a'}" in "DictEnum" unique enum definition
+[builtins fixtures/dict.pyi]
