@@ -1,5 +1,5 @@
 # Builtins stub used in slicing test cases.
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, Iterator, Iterable
 T = TypeVar('T')
 
 class object:
@@ -14,3 +14,7 @@ class str: pass
 
 class slice: pass
 class ellipsis: pass
+
+class list(Iterable[T]):
+    def __iter__(self) -> Iterator[T]: pass
+class dict: pass

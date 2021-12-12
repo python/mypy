@@ -589,6 +589,7 @@ reveal_type(FullyQualifiedTestNamedTuple('')._asdict()) # N: Revealed type is "b
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/fully_qualified_test_hook.py
 [builtins fixtures/classmethod.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 
 [case testDynamicClassPlugin]
 # flags: --config-file tmp/mypy.ini
@@ -649,7 +650,7 @@ from mod import declarative_base
 
 Base1 = Base2 = declarative_base()
 
-class C1(Base1): ...  
+class C1(Base1): ...
 class C2(Base2): ...
 [file mod.py]
 def declarative_base(): ...

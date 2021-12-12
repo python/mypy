@@ -891,7 +891,8 @@ from missing import Unchecked
 
 Point = NamedTuple('Point', [('x', List[Unchecked]),
                              ('y', Unchecked)])
-[builtins fixtures/list.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 [out]
 main:5: error: NamedTuple type becomes "Tuple[List[Any], Any]" due to an unfollowed import
 
@@ -1182,7 +1183,8 @@ Point = NamedTuple('Point', [('x', int), ('y', int)])  # no error
 
 def origin() -> Point:
     return Point(x=0, y=0)
-[builtins fixtures/list.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 
 [case testDisallowAnyExprNewType]
 # flags: --disallow-any-expr
@@ -1738,7 +1740,8 @@ z = cast(List[Any], x)  # E: Explicit "Any" is not allowed
 from typing import Any, List, NamedTuple
 
 Point = NamedTuple('Point', [('x', List[Any]), ('y', Any)])  # E: Explicit "Any" is not allowed
-[builtins fixtures/list.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 
 [case testDisallowAnyExplicitTypeVarConstraint]
 # flags: --disallow-any-explicit

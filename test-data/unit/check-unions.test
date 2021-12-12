@@ -323,6 +323,7 @@ def foo(a: Union[A, B, C]):
             # E: Item "C" of "Union[B, C]" has no attribute "y"
         b = a # type: Union[B, C]
 [builtins fixtures/isinstance.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 
 [case testSimplifyingUnionAndTypePromotions]
 from typing import TypeVar, Union

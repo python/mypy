@@ -21,7 +21,6 @@ Protocol = 0
 Tuple = 0
 Callable = 0
 _promote = 0
-NamedTuple = 0
 Type = 0
 no_type_check = 0
 ClassVar = 0
@@ -166,3 +165,9 @@ class _TypedDict(Mapping[str, object]):
     def pop(self, k: NoReturn, default: T = ...) -> object: ...
     def update(self: T, __m: T) -> None: ...
     def __delitem__(self, k: NoReturn) -> None: ...
+
+class NamedTuple(object):
+    @overload
+    def __init__(self, typename: str, fields: Iterable[Tuple[str, Any]] = ...) -> None: ...
+    @overload
+    def __init__(self, typename: str, fields: None = ..., **kwargs: Any) -> None: ...

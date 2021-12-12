@@ -12,8 +12,8 @@ from typing import NamedTuple
 
 class X(NamedTuple):
     x: int
-    _y: int  # E: NamedTuple field name cannot start with an underscore: _y
-    _z: int  # E: NamedTuple field name cannot start with an underscore: _z
+    _y: int  # E: NamedTuple field name cannot start with an underscore: "_y"
+    _z: int  # E: NamedTuple field name cannot start with an underscore: "_z"
 [builtins fixtures/tuple.pyi]
 
 [case testNewNamedTupleAccessingAttributes]
@@ -408,7 +408,7 @@ class X(NamedTuple):
     y = 2  # E: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]"
 [builtins fixtures/tuple.pyi]
 
-[case testTypeUsingTypeCNamedTuple]
+[case testClassTypeUsingTypeCNamedTuple]
 # flags: --python-version 3.6
 from typing import NamedTuple, Type
 
@@ -417,10 +417,8 @@ class N(NamedTuple):
     y: str
 
 def f(a: Type[N]):
-    a()
+    a()  # E: Missing positional arguments "x", "y" in call to "N"
 [builtins fixtures/list.pyi]
-[out]
-main:9: error: Missing positional arguments "x", "y" in call to "N"
 
 [case testNewNamedTupleWithDefaults]
 # flags: --python-version 3.6
@@ -627,7 +625,7 @@ class MagicalFields(NamedTuple):
     def __slots__(self) -> None: pass  # E: Cannot overwrite NamedTuple attribute "__slots__"
     def __new__(cls) -> MagicalFields: pass  # E: Cannot overwrite NamedTuple attribute "__new__"
     def _source(self) -> int: pass  # E: Cannot overwrite NamedTuple attribute "_source"
-    __annotations__ = {'x': float}  # E: NamedTuple field name cannot start with an underscore: __annotations__ \
+    __annotations__ = {'x': float}  # E: NamedTuple field name cannot start with an underscore: "__annotations__" \
         # E: Invalid statement in NamedTuple definition; expected "field_name: field_type [= default]" \
         # E: Cannot overwrite NamedTuple attribute "__annotations__"
 

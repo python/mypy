@@ -2531,7 +2531,8 @@ x = m.One(name="Foo")
 reveal_type(x.name)
 class Two:
     pass
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 [out]
 tmp/m/two.py:3: note: Revealed type is "builtins.str"
 

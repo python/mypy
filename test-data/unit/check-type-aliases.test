@@ -390,8 +390,8 @@ D = NamedTuple('D', [('y', str)])
 
 class E(Tuple[int, str]):
     pass
-[builtins fixtures/tuple.pyi]
-[out]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 
 [case testTypeAliasesToAny]
 from typing import Any

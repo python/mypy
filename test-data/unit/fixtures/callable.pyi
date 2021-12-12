@@ -1,4 +1,4 @@
-from typing import Generic, Tuple, TypeVar, Union
+from typing import Generic, Tuple, TypeVar, Union, Iterable
 
 T = TypeVar('T')
 
@@ -27,4 +27,5 @@ class str:
     def __add__(self, other: 'str') -> 'str': pass
     def __eq__(self, other: 'str') -> bool: pass
 class ellipsis: pass
-class list: ...
+class list(Iterable[T]): pass
+class dict: pass

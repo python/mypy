@@ -2632,7 +2632,8 @@ c: C
 reveal_type(f(*a))  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
 reveal_type(f(*b))  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
 reveal_type(f(*c))  # N: Revealed type is "builtins.tuple[builtins.int]"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 
 [case testOverloadKwargsSelectionWithDict]
 from typing import overload, Tuple, Dict

@@ -1637,7 +1637,8 @@ MyTuple = NamedTuple('MyTuple', [
 
 [rechecked bar, mid, foo]
 [stale bar]
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 [out2]
 tmp/foo.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
 
@@ -1672,7 +1673,8 @@ class Outer:
 
 [rechecked bar, mid, foo]
 [stale bar]
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 [out2]
 tmp/foo.py:3: error: Argument 1 to "accept_int" has incompatible type "str"; expected "int"
 
@@ -1843,7 +1845,8 @@ from typing import NamedTuple
 class C:
     def f(self) -> None:
         A = NamedTuple('A', [('x', int), ('y', int)])
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 [out1]
 main:1: error: Module "ntcrash" has no attribute "nope"
 [out2]
@@ -1857,7 +1860,8 @@ class C:
     class D:
         def f(self) -> None:
             A = NamedTuple('A', [('x', int), ('y', int)])
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 [out1]
 main:1: error: Module "ntcrash" has no attribute "nope"
 [out2]
@@ -1872,7 +1876,8 @@ class C:
         class D:
             def f(self) -> None:
                 A = NamedTuple('A', [('x', int), ('y', int)])
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 [out1]
 main:1: error: Module "ntcrash" has no attribute "nope"
 [out2]
@@ -1937,6 +1942,7 @@ def f() -> None:
     B = NamedTuple('B', [('x', X)])
 
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 [out1]
 main:1: error: Module "ntcrash" has no attribute "nope"
 [out2]
@@ -2648,7 +2654,8 @@ yg: G[M]
 z: int = G[M]().x.x
 z = G[M]().x[0]
 M = NamedTuple('M', [('x', int)])
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 [out]
 
 [case testSelfRefNTIncremental1]
@@ -2660,7 +2667,8 @@ Node = NamedTuple('Node', [
         ('children', Tuple['Node', ...]), # type: ignore
     ])
 n: Node
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 
 [case testSelfRefNTIncremental2]
 
@@ -2675,7 +2683,8 @@ class B(NamedTuple):
     y: int
 
 n: A
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 
 [case testSelfRefNTIncremental3]
 
@@ -2691,7 +2700,8 @@ A = NamedTuple('A', [
 n: B
 m: A
 lst = [m, n]
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 
 [case testSelfRefNTIncremental4]
 
@@ -2721,7 +2731,8 @@ A = NamedTuple('A', [
     ])
 n: A
 def f(m: B) -> None: pass
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 
 [case testCrashWithPartialGlobalAndCycle]
 import bar
@@ -5119,11 +5130,12 @@ reveal_type(x)
 [file b.py]
 from typing import NamedTuple
 NT = NamedTuple('BadName', [('x', int)])
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 [out]
-tmp/b.py:2: error: First argument to namedtuple() should be "NT", not "BadName"
+tmp/b.py:2: error: First argument to "NamedTuple()" should be "NT", not "BadName"
 [out2]
-tmp/b.py:2: error: First argument to namedtuple() should be "NT", not "BadName"
+tmp/b.py:2: error: First argument to "NamedTuple()" should be "NT", not "BadName"
 tmp/a.py:3: note: Revealed type is "Tuple[builtins.int, fallback=b.NT]"
 
 [case testNewAnalyzerIncrementalBrokenNamedTupleNested]
@@ -5143,9 +5155,9 @@ def test() -> None:
     NT = namedtuple('BadName', ['x', 'y'])
 [builtins fixtures/list.pyi]
 [out]
-tmp/b.py:4: error: First argument to namedtuple() should be "NT", not "BadName"
+tmp/b.py:4: error: First argument to "namedtuple()" should be "NT", not "BadName"
 [out2]
-tmp/b.py:4: error: First argument to namedtuple() should be "NT", not "BadName"
+tmp/b.py:4: error: First argument to "namedtuple()" should be "NT", not "BadName"
 
 [case testNewAnalyzerIncrementalMethodNamedTuple]
 
@@ -5163,7 +5175,8 @@ class C:
     def __init__(self) -> None:
         self.h: Hidden
         Hidden = NamedTuple('Hidden', [('x', int)])
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 [out]
 [out2]
 tmp/a.py:3: note: Revealed type is "Tuple[builtins.int, fallback=b.C.Hidden@5]"
@@ -5532,8 +5545,8 @@ def g() -> None:
     NT = NamedTuple('NT', [('y', str)])
 
     n: NT = NT(y='x')
-
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 
 [case testIncrementalNestedTypeAlias]
 import a

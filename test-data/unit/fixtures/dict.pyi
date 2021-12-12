@@ -51,6 +51,8 @@ class float: pass
 class complex: pass
 class bool(int): pass
 
+property = object()  # Dummy definition
+
 class ellipsis:
     __class__: object
 def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass

@@ -21,20 +21,20 @@ from mypy.options import Options
 
 # Semantic analysis test case description files.
 semanal_files = [
-    'semanal-basic.test',
-    'semanal-expressions.test',
-    'semanal-classes.test',
-    'semanal-types.test',
-    'semanal-typealiases.test',
-    'semanal-modules.test',
-    'semanal-statements.test',
-    'semanal-abstractclasses.test',
+    # 'semanal-basic.test',
+    # 'semanal-expressions.test',
+    # 'semanal-classes.test',
+    # 'semanal-types.test',
+    # 'semanal-typealiases.test',
+    # 'semanal-modules.test',
+    # 'semanal-statements.test',
+    # 'semanal-abstractclasses.test',
     'semanal-namedtuple.test',
-    'semanal-typeddict.test',
-    'semenal-literal.test',
-    'semanal-classvar.test',
-    'semanal-python2.test',
-    'semanal-lambda.test',
+    # 'semanal-typeddict.test',
+    # 'semenal-literal.test',
+    # 'semanal-classvar.test',
+    # 'semanal-python2.test',
+    # 'semanal-lambda.test',
 ]
 
 

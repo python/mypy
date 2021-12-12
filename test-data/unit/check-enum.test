@@ -245,7 +245,8 @@ class E(N, Enum):
 def f(x: E) -> None: pass
 
 f(E.X)
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 
 [case testEnumCall]
 from enum import IntEnum

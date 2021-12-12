@@ -2201,6 +2201,7 @@ tup2[idx5]                    # E: Tuple index out of range
 reveal_type(tup2[idx2:idx4])  # N: Revealed type is "Tuple[__main__.C, __main__.D, fallback=__main__.Tup2Class]"
 reveal_type(tup2[::idx2])     # N: Revealed type is "Tuple[__main__.A, __main__.C, __main__.E, fallback=__main__.Tup2Class]"
 [builtins fixtures/slice.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 [out]
 
 [case testLiteralIntelligentIndexingTypedDict]
@@ -2242,7 +2243,7 @@ del d[c_key]                  # E: TypedDict "Outer" has no key "c"
 [out]
 
 [case testLiteralIntelligentIndexingUsingFinal]
-from typing import Tuple, NamedTuple
+from typing import Tuple
 from typing_extensions import Literal, Final
 from mypy_extensions import TypedDict
 
@@ -2253,32 +2254,43 @@ str_key_bad: Final = "missing"
 
 class Unrelated: pass
 
-MyTuple = NamedTuple('MyTuple', [
-    ('foo', int),
-    ('bar', str),
-])
-
 class MyDict(TypedDict):
     foo: int
     bar: str
 
 a: Tuple[int, str]
-b: MyTuple
 c: MyDict
 u: Unrelated
 
 reveal_type(a[int_key_good])         # N: Revealed type is "builtins.int"
-reveal_type(b[int_key_good])         # N: Revealed type is "builtins.int"
 reveal_type(c[str_key_good])         # N: Revealed type is "builtins.int"
 reveal_type(c.get(str_key_good, u))  # N: Revealed type is "Union[builtins.int, __main__.Unrelated]"
 reveal_type(c.get(str_key_bad, u))   # N: Revealed type is "builtins.object"
 
 a[int_key_bad]                       # E: Tuple index out of range
-b[int_key_bad]                       # E: Tuple index out of range
 c[str_key_bad]                       # E: TypedDict "MyDict" has no key "missing"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 [out]
+
+[case testLiteralIntelligentIndexingUsingFinalNamedTuple]
+from typing import NamedTuple
+from typing_extensions import Final
+
+int_key_good: Final = 0
+int_key_bad: Final = 3
+
+MyTuple = NamedTuple('MyTuple', [
+    ('foo', int),
+    ('bar', str),
+])
+
+b: MyTuple
+
+reveal_type(b[int_key_good])         # N: Revealed type is "builtins.int"
+b[int_key_bad]                       # E: Tuple index out of range
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-namedtuple.pyi]
 
 [case testLiteralIntelligentIndexingTupleUnions]
 from typing import Tuple, NamedTuple
@@ -2308,7 +2320,7 @@ reveal_type(tup2[idx1:idx2])    # N: Revealed type is "Union[Tuple[__main__.B, _
 reveal_type(tup2[0::idx1])      # N: Revealed type is "Union[Tuple[__main__.A, __main__.B, __main__.C, __main__.D, __main__.E, fallback=__main__.Tup2Class], Tuple[__main__.A, __main__.C, __main__.E, fallback=__main__.Tup2Class]]"
 tup2[idx_bad]                   # E: Tuple index out of range
 [builtins fixtures/slice.pyi]
-[out]
+[typing fixtures/typing-namedtuple.pyi]
 
 [case testLiteralIntelligentIndexingTypedDictUnions]
 from typing_extensions import Literal, Final
