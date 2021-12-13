@@ -266,6 +266,7 @@ class Options:
         # Use stub builtins fixtures to speed up tests
         self.use_builtins_fixtures = False
 
+
         # -- experimental options --
         self.shadow_file: Optional[List[List[str]]] = None
         self.show_column_numbers: bool = False
