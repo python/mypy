@@ -1227,6 +1227,21 @@ class A:
 [builtins fixtures/property.pyi]
 [out]
 
+[case testPropertyNotAtTop]
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def identity(i: T) -> T:
+    return i
+
+class A:
+    @identity
+    @property  # E: Property must be used as the top-most decorator
+    def f(self) -> int: pass
+[builtins fixtures/property.pyi]
+[out]
+
 [case testImportTwoModulesWithSameNameInFunction]
 import typing
 def f() -> None:

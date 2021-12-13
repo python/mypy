@@ -937,24 +937,23 @@ class SemanticAnalyzer(NodeVisitor[None],
         """
         defn.is_property = True
         items = defn.items
-        first_item = cast(Decorator, defn.items[0])
+        property_def = cast(Decorator, defn.items[0])
         deleted_items = []
         for i, item in enumerate(items[1:]):
             if isinstance(item, Decorator):
-                if len(item.decorators) == 1:
-                    node = item.decorators[0]
-                    if isinstance(node, MemberExpr):
-                        if node.name == 'setter':
-                            # The first item represents the entire property.
-                            first_item.var.is_settable_property = True
-                            # Get abstractness from the original definition.
-                            item.func.is_abstract = first_item.func.is_abstract
-                else:
-                    self.fail("Overloaded property is not supported", item)
+                for node in item.decorators:
+                    if (isinstance(node, MemberExpr)
+                            and isinstance(node.expr, NameExpr)
+                            and node.expr.name == property_def.var.name
+                            and node.name == 'setter'):
+                        # The `property_def` represents the entire property.
+                        property_def.var.is_settable_property = True
+                        # Get abstractness from the original definition.
+                        item.func.is_abstract = property_def.func.is_abstract
                 item.func.accept(self)
             else:
                 self.fail('Unexpected definition for property "{}"'.format(
-                    first_item.func.name,
+                    property_def.func.name,
                 ), item)
                 deleted_items.append(i + 1)
         for i in reversed(deleted_items):
@@ -1063,7 +1062,10 @@ class SemanticAnalyzer(NodeVisitor[None],
                 elif refers_to_fullname(d, 'functools.cached_property'):
                     dec.var.is_settable_property = True
                 self.check_decorated_function_is_method('property', dec)
-                dec.property_decorator = d
+                if i == 0:
+                    dec.property_decorator = d
+                else:
+                    self.fail('Property must be used as the top-most decorator', d)
             elif refers_to_fullname(d, 'typing.no_type_check'):
                 dec.var.type = AnyType(TypeOfAny.special_form)
                 no_type_check = True

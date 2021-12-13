@@ -2105,6 +2105,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 self.msg, original_type=original_type, chk=self.chk,
                 in_literal_context=self.is_literal_context(),
                 module_symbol_table=module_symbol_table)
+            print(e.name, original_type)
 
             return member_type
 
