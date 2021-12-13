@@ -581,12 +581,12 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             if param_spec is None:
                 # FIX what if generic
                 res = self.infer_against_any(template.arg_types, self.actual)
-                res.extend(infer_constraints(template.ret_type, any_type, self.direction))
-                return res
             else:
-                return [Constraint(param_spec.id,
-                                   SUBTYPE_OF,
-                                   callable_with_ellipsis(any_type, any_type, template.fallback))]
+                res = [Constraint(param_spec.id,
+                                  SUBTYPE_OF,
+                                  callable_with_ellipsis(any_type, any_type, template.fallback))]
+            res.extend(infer_constraints(template.ret_type, any_type, self.direction))
+            return res
         elif isinstance(self.actual, Overloaded):
             return self.infer_against_overloaded(self.actual, template)
         elif isinstance(self.actual, TypeType):

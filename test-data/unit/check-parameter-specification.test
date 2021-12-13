@@ -378,3 +378,31 @@ class C(Generic[P, P2]):
     def m4(self, x: int) -> None:
         pass
 [builtins fixtures/dict.pyi]
+
+[case testParamSpecOverUnannotatedDecorator]
+from typing import Callable, Iterator, TypeVar, ContextManager, Any
+from typing_extensions import ParamSpec
+
+from nonexistent import deco2  # type: ignore
+
+T = TypeVar("T")
+P = ParamSpec("P")
+T_co = TypeVar("T_co", covariant=True)
+
+class CM(ContextManager[T_co]):
+    def __call__(self, func: T) -> T: ...
+
+def deco1(
+    func: Callable[P, Iterator[T]]) -> Callable[P, CM[T]]: ...
+
+@deco1
+@deco2
+def f():
+    pass
+
+reveal_type(f)  # N: Revealed type is "def (*Any, **Any) -> __main__.CM[Any]"
+
+with f() as x:
+    pass
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
