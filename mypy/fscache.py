@@ -30,7 +30,6 @@ advantage of the benefits.
 
 import os
 import stat
-import sys
 from typing import Dict, List, Set
 from mypy.util import hash_digest
 from mypy_extensions import mypyc_attr
@@ -202,9 +201,6 @@ class FileSystemCache:
 
         The caller must ensure that prefix is a valid file system prefix of path.
         """
-        if sys.platform == "linux":
-            # Assume that the file system on Linux is case sensitive
-            return self.isfile(path)
         if not self.isfile(path):
             # Fast path
             return False
