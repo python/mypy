@@ -7119,7 +7119,7 @@ class B:
         return A
 
 class C:
-    @property  # E: Argument 1 to "property" has incompatible type "Callable[[], Type[A]]"; expected "Optional[Callable[[Any], Any]]"
+    @property  # E: Argument 1 to "property" has incompatible type "Callable[[], Type[A]]"; expected "Callable[[Any], Any]"
     @staticmethod
     def A() -> Type[A]:
         return A

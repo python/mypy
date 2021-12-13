@@ -36,5 +36,5 @@ class str:
 class bool(int): pass
 
 class property(object):
-    def __init__(self, fget: Callable[[Any], Any]) -> None:
+    def __init__(self, fget: Callable[[object], object]) -> None:
         pass
