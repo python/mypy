@@ -161,6 +161,9 @@ class TypeCheckSuite(DataSuite):
             # In runs 2+, copy *.[num] files to * files.
             perform_file_operations(operations)
 
+        # set mypy to legacy mode
+        from mypy import options as mypy_options
+        mypy_options._based = False
         # Parse options after moving files (in case mypy.ini is being moved).
         options = parse_options(original_program_text, testcase, incremental_step)
         options.use_builtins_fixtures = True
@@ -222,6 +225,9 @@ class TypeCheckSuite(DataSuite):
         else:
             raise AssertionError()
 
+        # BASED: inject sussy new line
+        # This is to enable newlines characters in expected error messages
+        output = [it.replace("$NL", "\n") for it in output]
         if output != a and testcase.config.getoption('--update-data', False):
             update_testcase_output(testcase, a)
         assert_string_arrays_equal(output, a, msg.format(testcase.file, testcase.line))

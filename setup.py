@@ -172,7 +172,7 @@ if USE_MYPYC:
     debug_level = os.getenv('MYPYC_DEBUG_LEVEL', '1')
     force_multifile = os.getenv('MYPYC_MULTI_FILE', '') == '1'
     ext_modules = mypycify(
-        mypyc_targets + ['--config-file=mypy_bootstrap.ini'],
+        mypyc_targets + ['--config-file=mypy_bootstrap.ini', "--legacy"],
         opt_level=opt_level,
         debug_level=debug_level,
         # Use multi-file compilation mode on windows because without it

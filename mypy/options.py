@@ -60,6 +60,16 @@ OPTIONS_AFFECTING_CACHE: Final = (PER_MODULE_OPTIONS | {"platform", "bazel", "pl
     "debug_cache"
 }
 
+_based = True
+
+
+def flip_if_not_based(b: bool) -> bool:
+    """Flips this bool if we are not based.
+
+    Used to run tests in old mode.
+    """
+    return b if _based else not b
+
 
 class Options:
     """Options collected from flags."""
@@ -108,51 +118,51 @@ class Options:
         self.baseline_file = defaults.BASELINE_FILE
 
         # disallow_any options
-        self.disallow_any_generics = True
-        self.disallow_any_unimported = True
-        self.disallow_any_expr = True
-        self.disallow_any_decorated = True
-        self.disallow_any_explicit = True
+        self.disallow_any_generics = flip_if_not_based(True)
+        self.disallow_any_unimported = flip_if_not_based(True)
+        self.disallow_any_expr = flip_if_not_based(True)
+        self.disallow_any_decorated = flip_if_not_based(True)
+        self.disallow_any_explicit = flip_if_not_based(True)
 
         # Disallow calling untyped functions from typed ones
-        self.disallow_untyped_calls = True
+        self.disallow_untyped_calls = flip_if_not_based(True)
 
         # Disallow defining untyped (or incompletely typed) functions
-        self.disallow_untyped_defs = True
+        self.disallow_untyped_defs = flip_if_not_based(True)
 
         # Disallow defining incompletely typed functions
-        self.disallow_incomplete_defs = True
+        self.disallow_incomplete_defs = flip_if_not_based(True)
 
         # Type check unannotated functions
-        self.check_untyped_defs = True
+        self.check_untyped_defs = flip_if_not_based(True)
 
         # Disallow decorating typed functions with untyped decorators
-        self.disallow_untyped_decorators = True
+        self.disallow_untyped_decorators = flip_if_not_based(True)
 
         # Disallow subclassing values of type 'Any'
-        self.disallow_subclassing_any = True
+        self.disallow_subclassing_any = flip_if_not_based(True)
 
         # Also check typeshed for missing annotations
-        self.warn_incomplete_stub = True
+        self.warn_incomplete_stub = flip_if_not_based(True)
 
         # Warn about casting an expression to its inferred type
-        self.warn_redundant_casts = True
+        self.warn_redundant_casts = flip_if_not_based(True)
 
         # Warn about falling off the end of a function returning non-None
         self.warn_no_return = True
 
         # Warn about returning objects of type Any when the function is
         # declared with a precise type
-        self.warn_return_any = True
+        self.warn_return_any = flip_if_not_based(True)
 
         # Warn about unused '# type: ignore' comments
-        self.warn_unused_ignores = True
+        self.warn_unused_ignores = flip_if_not_based(True)
 
         # Warn about '# type: ignore' comments that don't include an error code
-        self.warn_no_ignore_code = True
+        self.warn_no_ignore_code = flip_if_not_based(True)
 
         # Warn about unused '[mypy-<pattern>]'  or '[[tool.mypy.overrides]]' config sections
-        self.warn_unused_configs = True
+        self.warn_unused_configs = flip_if_not_based(True)
 
         # Files in which to ignore all non-fatal errors
         self.ignore_errors = False
@@ -175,25 +185,25 @@ class Options:
         self.show_none_errors = True
 
         # Don't assume arguments with default values of None are Optional
-        self.no_implicit_optional = True
+        self.no_implicit_optional = flip_if_not_based(True)
 
         # Don't re-export names unless they are imported with `from ... as ...`
-        self.implicit_reexport = False
+        self.implicit_reexport = flip_if_not_based(False)
 
         # Suppress toplevel errors caused by missing annotations
         self.allow_untyped_globals = False
 
         # Allow variable to be redefined with an arbitrary type in the same block
         # and the same nesting level as the initialization
-        self.allow_redefinition = True
+        self.allow_redefinition = flip_if_not_based(True)
 
         # Prohibit equality, identity, and container checks for non-overlapping types.
         # This makes 1 == '1', 1 in ['1'], and 1 is '1' errors.
-        self.strict_equality = True
+        self.strict_equality = flip_if_not_based(True)
 
         # Report an error for any branches inferred to be unreachable as a result of
         # type analysis.
-        self.warn_unreachable = True
+        self.warn_unreachable = flip_if_not_based(True)
 
         # Variable names considered True
         self.always_true: List[str] = []
@@ -277,7 +287,7 @@ class Options:
         # -- experimental options --
         self.shadow_file: Optional[List[List[str]]] = None
         self.show_column_numbers: bool = False
-        self.show_error_codes = True
+        self.show_error_codes = flip_if_not_based(True)
         # Use soft word wrap and show trimmed source snippets with error location markers.
         self.pretty = False
         self.dump_graph = False
