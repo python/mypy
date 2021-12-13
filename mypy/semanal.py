@@ -4611,7 +4611,11 @@ class SemanticAnalyzer(NodeVisitor[None],
         names = self.current_symbol_table(escape_comprehensions=escape_comprehensions)
         existing = names.get(name)
         if isinstance(symbol.node, PlaceholderNode) and can_defer:
-            self.defer(context)
+            if context is not None:
+                self.process_placeholder(name, 'name', context)
+            else:
+                # see note in docstring describing None contexts
+                self.defer()
         if (existing is not None
                 and context is not None
                 and not is_valid_replacement(existing, symbol)):
