@@ -14,6 +14,7 @@ from mypy.typeanal import (
     has_any_from_unimported_type, check_for_explicit_any, set_any_tvars, expand_type_alias,
     make_optional_type,
 )
+from mypy.semanal_enum import ENUM_BASES
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneType, TypeVarType,
     TupleType, TypedDictType, Instance, ErasedType, UnionType,
@@ -1000,9 +1001,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         ret_type = get_proper_type(callee.ret_type)
         if callee.is_type_obj() and isinstance(ret_type, Instance):
             callable_name = ret_type.type.fullname
-        if (isinstance(callable_node, RefExpr)
-            and callable_node.fullname in ('enum.Enum', 'enum.IntEnum',
-                                           'enum.Flag', 'enum.IntFlag')):
+        if isinstance(callable_node, RefExpr) and callable_node.fullname in ENUM_BASES:
             # An Enum() call that failed SemanticAnalyzerPass2.check_enum_call().
             return callee.ret_type, callee
 

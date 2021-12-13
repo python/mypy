@@ -116,7 +116,7 @@ from mypy.semanal_shared import (
 )
 from mypy.semanal_namedtuple import NamedTupleAnalyzer
 from mypy.semanal_typeddict import TypedDictAnalyzer
-from mypy.semanal_enum import EnumCallAnalyzer
+from mypy.semanal_enum import EnumCallAnalyzer, ENUM_BASES
 from mypy.semanal_newtype import NewTypeAnalyzer
 from mypy.reachability import (
     infer_reachability_of_if_statement, infer_condition_value, ALWAYS_FALSE, ALWAYS_TRUE,
@@ -1554,8 +1554,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                     self.fail('Cannot subclass "NewType"', defn)
                 if (
                     base.type.is_enum
-                    and base.type.fullname not in (
-                        'enum.Enum', 'enum.IntEnum', 'enum.Flag', 'enum.IntFlag')
+                    and base.type.fullname not in ENUM_BASES
                     and base.type.names
                     and any(not isinstance(n.node, (FuncBase, Decorator))
                             for n in base.type.names.values())

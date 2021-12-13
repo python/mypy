@@ -4,6 +4,7 @@ This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 """
 
 from typing import List, Tuple, Optional, Union, cast
+from typing_extensions import Final
 
 from mypy.nodes import (
     Expression, Context, TypeInfo, AssignmentStmt, NameExpr, CallExpr, RefExpr, StrExpr,
@@ -12,6 +13,15 @@ from mypy.nodes import (
 )
 from mypy.semanal_shared import SemanticAnalyzerInterface
 from mypy.options import Options
+
+# Note: 'enum.EnumMeta' is deliberately excluded from this list. Classes that directly use
+# enum.EnumMeta do not necessarily automatically have the 'name' and 'value' attributes.
+ENUM_BASES: Final = frozenset((
+    'enum.Enum', 'enum.IntEnum', 'enum.Flag', 'enum.IntFlag',
+))
+ENUM_SPECIAL_PROPS: Final = frozenset((
+    'name', 'value', '_name_', '_value_', '_order_', '__order__',
+))
 
 
 class EnumCallAnalyzer:
@@ -62,7 +72,7 @@ class EnumCallAnalyzer:
         if not isinstance(callee, RefExpr):
             return None
         fullname = callee.fullname
-        if fullname not in ('enum.Enum', 'enum.IntEnum', 'enum.Flag', 'enum.IntFlag'):
+        if fullname not in ENUM_BASES:
             return None
         items, values, ok = self.parse_enum_call_args(call, fullname.split('.')[-1])
         if not ok:

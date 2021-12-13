@@ -50,6 +50,7 @@ from mypy.checkmember import (
     type_object_type,
     analyze_decorator_or_funcbase_access,
 )
+from mypy.semanal_enum import ENUM_BASES, ENUM_SPECIAL_PROPS
 from mypy.typeops import (
     map_type_from_supertype, bind_self, erase_to_bound, make_simplified_union,
     erase_def_to_union_or_bound, erase_to_union_or_bound, coerce_to_literal,
@@ -2522,13 +2523,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.cant_override_final(node.name, base.name, node)
             return False
         if node.is_final:
+            if base.fullname in ENUM_BASES and node.name in ENUM_SPECIAL_PROPS:
+                return True
             self.check_if_final_var_override_writable(node.name, base_node, node)
         return True
 
     def check_if_final_var_override_writable(self,
                                              name: str,
-                                             base_node:
-                                             Optional[Node],
+                                             base_node: Optional[Node],
                                              ctx: Context) -> None:
         """Check that a final variable doesn't override writeable attribute.
 
