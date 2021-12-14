@@ -1285,6 +1285,10 @@ class ASTConverter:
         # cast for mypyc's benefit on Python 3.9
         return self.visit(cast(Any, n).value)
 
+    def visit_Match(self, n: Any) -> None:
+        self.fail("Match statement is not supported",
+                  line=n.lineno, column=n.col_offset, blocker=True)
+
 
 class TypeConverter:
     def __init__(self,
