@@ -448,7 +448,7 @@ class ASTConverter:
         current_overload: List[OverloadPart] = []
         current_overload_name: Optional[str] = None
         last_if_stmt: Optional[IfStmt] = None
-        last_if_overload: Optional[Union[Decorator, OverloadedFuncDef]] = None
+        last_if_overload: Optional[Union[Decorator, FuncDef, OverloadedFuncDef]] = None
         for stmt in stmts:
             if_overload_name: Optional[str] = None
             if_block_with_overload: Optional[Block] = None
@@ -496,7 +496,9 @@ class ASTConverter:
                 if isinstance(if_block_with_overload.body[0], OverloadedFuncDef):
                     current_overload.extend(if_block_with_overload.body[0].items)
                 else:
-                    current_overload.append(if_block_with_overload.body[0])
+                    current_overload.append(
+                        cast(Union[Decorator, FuncDef], if_block_with_overload.body[0])
+                    )
             else:
                 if last_if_stmt is not None:
                     ret.append(last_if_stmt)
@@ -523,7 +525,10 @@ class ASTConverter:
                     current_overload = []
                     current_overload_name = if_overload_name
                     last_if_stmt = stmt
-                    last_if_overload = if_block_with_overload.body[0]
+                    last_if_overload = cast(
+                        Union[Decorator, FuncDef, OverloadedFuncDef],
+                        if_block_with_overload.body[0]
+                    )
                 else:
                     current_overload = []
                     current_overload_name = None
@@ -549,7 +554,9 @@ class ASTConverter:
         ):
             return None
 
-        overload_name = stmt.body[0].body[0].name
+        overload_name = cast(
+            Union[Decorator, FuncDef, OverloadedFuncDef], stmt.body[0].body[0]
+        ).name
         if stmt.else_body is None:
             return overload_name
 
