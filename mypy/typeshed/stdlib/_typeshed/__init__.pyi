@@ -45,6 +45,26 @@ class SupportsGreaterThan(Protocol):
 
 SupportsGreaterThanT = TypeVar("SupportsGreaterThanT", bound=SupportsGreaterThan)  # noqa: Y001
 
+# Comparison protocols
+
+class SupportsDunderLT(Protocol):
+    def __lt__(self, __other: Any) -> Any: ...
+
+class SupportsDunderGT(Protocol):
+    def __gt__(self, __other: Any) -> Any: ...
+
+class SupportsDunderLE(Protocol):
+    def __le__(self, __other: Any) -> Any: ...
+
+class SupportsDunderGE(Protocol):
+    def __ge__(self, __other: Any) -> Any: ...
+
+class SupportsAllComparisons(SupportsDunderLT, SupportsDunderGT, SupportsDunderLE, SupportsDunderGE, Protocol): ...
+
+SupportsRichComparison = Union[SupportsDunderLT, SupportsDunderGT]
+SupportsRichComparisonT = TypeVar("SupportsRichComparisonT", bound=SupportsRichComparison)  # noqa: Y001
+SupportsAnyComparison = Union[SupportsDunderLE, SupportsDunderGE, SupportsDunderGT, SupportsDunderLT]
+
 class SupportsDivMod(Protocol[_T_contra, _T_co]):
     def __divmod__(self, __other: _T_contra) -> _T_co: ...
 
