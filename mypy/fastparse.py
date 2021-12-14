@@ -450,10 +450,24 @@ class ASTConverter:
         last_if_stmt: Optional[IfStmt] = None
         last_if_overload: Optional[Union[Decorator, OverloadedFuncDef]] = None
         for stmt in stmts:
+            if_overload_name: Optional[str] = None
+            if_block_with_overload: Optional[Block] = None
+            if (
+                isinstance(stmt, IfStmt)
+                and len(stmt.body[0].body) == 1
+                and isinstance(stmt.body[0].body[0], (Decorator, FuncDef, OverloadedFuncDef))
+            ):
+                # Check IfStmt block to determine if function overloads can be merged
+                if_overload_name = self._check_ifstmt_for_overloads(stmt)
+                if if_overload_name is not None:
+                    if_block_with_overload = self._get_executable_if_block_with_overloads(stmt)
+
             if (current_overload_name is not None
                     and isinstance(stmt, (Decorator, FuncDef))
                     and stmt.name == current_overload_name):
                 if last_if_overload is not None:
+                    # Last stmt was an IfStmt with same overload name
+                    # Add overloads to current_overload
                     if isinstance(last_if_overload, OverloadedFuncDef):
                         current_overload.extend(last_if_overload.items)
                     else:
@@ -463,29 +477,26 @@ class ASTConverter:
             elif (
                 current_overload_name is not None
                 and isinstance(stmt, IfStmt)
-                and len(stmt.body[0].body) == 1
-                and isinstance(
-                    stmt.body[0].body[0], (Decorator, FuncDef, OverloadedFuncDef))
-                and stmt.body[0].body[0].name == current_overload_name
+                and if_overload_name == current_overload_name
             ):
                 # IfStmt only contains stmts relevant to current_overload.
                 # Check if stmts are reachable and add them to current_overload,
                 # otherwise skip IfStmt to allow subsequent overload
                 # or function definitions.
-                infer_reachability_of_if_statement(stmt, self.options)
-                if stmt.body[0].is_unreachable is True:
+                if if_block_with_overload is None:
                     continue
                 if last_if_overload is not None:
+                    # Last stmt was an IfStmt with same overload name
+                    # Add overloads to current_overload
                     if isinstance(last_if_overload, OverloadedFuncDef):
                         current_overload.extend(last_if_overload.items)
                     else:
                         current_overload.append(last_if_overload)
                     last_if_stmt, last_if_overload = None, None
-                    last_if_overload = None
-                if isinstance(stmt.body[0].body[0], OverloadedFuncDef):
-                    current_overload.extend(stmt.body[0].body[0].items)
+                if isinstance(if_block_with_overload.body[0], OverloadedFuncDef):
+                    current_overload.extend(if_block_with_overload.body[0].items)
                 else:
-                    current_overload.append(stmt.body[0].body[0])
+                    current_overload.append(if_block_with_overload.body[0])
             else:
                 if last_if_stmt is not None:
                     ret.append(last_if_stmt)
@@ -506,18 +517,13 @@ class ASTConverter:
                     current_overload_name = stmt.name
                 elif (
                     isinstance(stmt, IfStmt)
-                    and len(stmt.body[0].body) == 1
-                    and isinstance(
-                        stmt.body[0].body[0], (Decorator, OverloadedFuncDef))
-                    and infer_reachability_of_if_statement(  # type: ignore[func-returns-value]
-                        stmt, self.options
-                    ) is None
-                    and stmt.body[0].is_unreachable is False
+                    and if_overload_name is not None
+                    and if_block_with_overload is not None
                 ):
                     current_overload = []
-                    current_overload_name = stmt.body[0].body[0].name
+                    current_overload_name = if_overload_name
                     last_if_stmt = stmt
-                    last_if_overload = stmt.body[0].body[0]
+                    last_if_overload = if_block_with_overload.body[0]
                 else:
                     current_overload = []
                     current_overload_name = None
@@ -530,6 +536,61 @@ class ASTConverter:
         elif last_if_stmt is not None:
             ret.append(last_if_stmt)
         return ret
+
+    def _check_ifstmt_for_overloads(self, stmt: IfStmt) -> Optional[str]:
+        """Check if IfStmt contains only overloads with the same name.
+        Return overload_name if found, None otherwise.
+        """
+        # Check that block only contains a single Decorator, FuncDef, or OverloadedFuncDef.
+        # Multiple overloads have already been merged as OverloadedFuncDef.
+        if not (
+            len(stmt.body[0].body) == 1
+            or isinstance(stmt.body[0].body[0], (Decorator, FuncDef, OverloadedFuncDef))
+        ):
+            return None
+
+        overload_name = stmt.body[0].body[0].name
+        if stmt.else_body is None:
+            return overload_name
+
+        if isinstance(stmt.else_body, Block) and len(stmt.else_body.body) == 1:
+            # For elif: else_body contains an IfStmt itself -> do a recursive check.
+            if (
+                isinstance(stmt.else_body.body[0], (Decorator, FuncDef, OverloadedFuncDef))
+                and stmt.else_body.body[0].name == overload_name
+            ):
+                return overload_name
+            if (
+                isinstance(stmt.else_body.body[0], IfStmt)
+                and self._check_ifstmt_for_overloads(stmt.else_body.body[0]) == overload_name
+            ):
+                return overload_name
+
+        return None
+
+    def _get_executable_if_block_with_overloads(self, stmt: IfStmt) -> Optional[Block]:
+        """Return block from IfStmt that will get executed.
+
+        Only returns block if sure that alternative blocks are unreachable.
+        """
+        infer_reachability_of_if_statement(stmt, self.options)
+        if (
+            stmt.else_body is None
+            or stmt.body[0].is_unreachable is False
+            and stmt.else_body.is_unreachable is False
+        ):
+            # The truth value is unknown, thus not conclusive
+            return None
+        if stmt.else_body.is_unreachable is True:
+            # else_body will be set unreachable if condition is always True
+            return stmt.body[0]
+        if stmt.body[0].is_unreachable is True:
+            # body will be set unreachable if condition is always False
+            # else_body can contain an IfStmt itself (for elif) -> do a recursive check
+            if isinstance(stmt.else_body.body[0], IfStmt):
+                return self._get_executable_if_block_with_overloads(stmt.else_body.body[0])
+            return stmt.else_body
+        return None
 
     def in_method_scope(self) -> bool:
         return self.class_and_function_stack[-2:] == ['C', 'F']

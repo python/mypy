@@ -5488,6 +5488,7 @@ reveal_type(f2("Hello"))  # E: No overload variant of "f2" matches argument type
 [builtins fixtures/tuple.pyi]
 
 [case testOverloadIfMatching]
+# flags: --always-true True
 from typing import overload, Any
 
 class A: ...
@@ -5544,6 +5545,7 @@ reveal_type(f5(42))  # N: Revealed type is "__main__.A"
 reveal_type(f5("Hello"))  # N: Revealed type is "__main__.B"
 
 [case testOverloadIfNotMatching]
+# flags: --always-true True
 from typing import overload, Any
 
 class A: ...
@@ -5555,11 +5557,11 @@ def f1(g: int) -> A: ...
 @overload
 def f1(g: bytes) -> B: ...
 if True:
-    @overload  # E: Name "f1" already defined on line 7 \
+    @overload  # E: Name "f1" already defined on line 8 \
                # E: Single overload definition, multiple required
     def f1(g: str) -> C: ...
     pass  # Some other action
-def f1(g: Any) -> Any: ...  # E: Name "f1" already defined on line 7
+def f1(g: Any) -> Any: ...  # E: Name "f1" already defined on line 8
 reveal_type(f1(42))  # N: Revealed type is "__main__.A"
 reveal_type(f1("Hello"))  # E: No overload variant of "f1" matches argument type "str" \
                           # N: Possible overload variants: \
@@ -5571,7 +5573,7 @@ if True:
     pass  # Some other action
     @overload  # E: Single overload definition, multiple required
     def f2(g: int) -> A: ...
-@overload  # E: Name "f2" already defined on line 21
+@overload  # E: Name "f2" already defined on line 22
 def f2(g: bytes) -> B: ...
 @overload
 def f2(g: str) -> C: ...
