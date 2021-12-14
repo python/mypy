@@ -3,6 +3,7 @@ Generic = 0
 Any = 0
 overload = 0
 Type = 0
+Literal = 0
 
 T_co = TypeVar('T_co', covariant=True)
 KT = TypeVar('KT')
